@@ -156,7 +156,7 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
 
   return (
     <BaseLayout insets={{ top: false }}>
-      <View className="flex-1">
+      <View className="flex-1" testID="send-search-contacts-screen">
         <View className="mb-8">
           <Input
             fieldSize="lg"
@@ -166,7 +166,7 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
                 color={themeColors.foreground.primary}
               />
             }
-            testID="search-input"
+            testID="send-recipient-input"
             placeholder={t("sendPaymentScreen.inputPlaceholder")}
             onChangeText={handleSearch}
             endButton={{

@@ -56,7 +56,7 @@ describe("IconButton", () => {
       <IconButton Icon={Icon.Home02} title="Home" disabled />,
     );
 
-    const container = getByTestId("icon-button-container");
+    const container = getByTestId("icon-button-home-container");
     expect(container.props.className).toContain("opacity-50");
   });
 

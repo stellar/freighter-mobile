@@ -234,11 +234,17 @@ jobs:
       matrix:
         include:
           - shard-index: 0
-            shard-total: 2
+            shard-total: 4
             flow-name: CreateWallet
           - shard-index: 1
-            shard-total: 2
+            shard-total: 4
             flow-name: ImportWallet
+          - shard-index: 2
+            shard-total: 4
+            flow-name: SendClassicToken
+          - shard-index: 3
+            shard-total: 4
+            flow-name: SwapClassicToken
 
     steps:
       - name: Checkout repo

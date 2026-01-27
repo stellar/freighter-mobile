@@ -138,12 +138,14 @@ if [ -n "${SHARD_INDEX:-}" ] && [ -z "${E2E_TEST_RECOVERY_PHRASE:-}" ]; then
 fi
 
 # Build E2E script args: --platform android and, when set, --shard-index/--shard-total (CI matrix).
-# FLOW_NAME (CI only) is used for log output only.
+# FLOW_NAME (CI only) can be passed as positional arg to run a specific flow.
 E2E_ARGS="--platform android"
 if [ -n "${SHARD_INDEX:-}" ] && [ -n "${SHARD_TOTAL:-}" ]; then
   E2E_ARGS="$E2E_ARGS --shard-index $SHARD_INDEX --shard-total $SHARD_TOTAL"
   if [ -n "${FLOW_NAME:-}" ]; then
     echo "Running E2E tests ($FLOW_NAME, shard $SHARD_INDEX/$SHARD_TOTAL)..."
+    # Pass FLOW_NAME as positional argument to run specific flow
+    E2E_ARGS="$E2E_ARGS $FLOW_NAME"
   else
     echo "📂 Running E2E shard $SHARD_INDEX/$SHARD_TOTAL"
   fi

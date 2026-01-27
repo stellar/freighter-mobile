@@ -12,45 +12,75 @@ tags:
 - assertVisible:
     id: home-screen
 
-- tapOn: Account 1
-- assertVisible: Account 2
+# Open account switcher and select Account 2
 - tapOn:
-    point: 87%,38% # tap on ellipses "..." to open the context menu
+    id: home-account-switcher
+- assertVisible:
+    id: account-row-1
+# Open context menu for Account 2 and copy address
+- tapOn:
+    id: account-row-1-context-menu
 - tapOn: Copy address
+# Close manage accounts bottom sheet
 - tapOn:
-    point: 7%,24% # tap on the bottom sheet upper left "X" button
-- assertVisible: Tokens
-- assertVisible: Collectibles
+    id: manage-accounts-close-button
+# Verify tabs are visible
+- assertVisible:
+    id: tab-tokens
+- assertVisible:
+    id: tab-collectibles
+# Navigate to send flow
 - tapOn:
     id: icon-button-send
-- assertVisible: Choose recipient
-- assertVisible: Send to
-- tapOn: Send to
-- assertVisible: Paste
-- tapOn: Paste
+# Tap recipient row to open search (if not already on search screen)
+- tapOn:
+    id: send-recipient-row
+# Paste address from clipboard
+- tapOn:
+    id: send-recipient-input-end-button
+# Close any suggestion overlay if present (point tap for now - may need testID later)
 - tapOn:
     point: 6%,28%
-- assertVisible: Set amount
-- tapOn: "0"
+# Verify we're on amount screen
+- assertVisible:
+    id: send-amount-screen
+# Enter amount: 0.0000001 using numeric keyboard
 - tapOn:
-    text: .
-    index: 9
-- tapOn: "0"
-- tapOn: "0"
-- tapOn: "0"
-- tapOn: "0"
-- tapOn: "0"
-- tapOn: "0"
-- tapOn: "1"
-- assertVisible: Review
-- tapOn: Review
-- assertVisible: You are sending
-- assertVisible: Transaction details
-- assertVisible: Confirm
-- tapOn: Confirm
-- assertVisible: Sending
-- assertVisible: Sent!
-- assertVisible: " was sent to "
-- assertVisible: Done
-- tapOn: Done
+    id: numeric-key-0
+- tapOn:
+    id: numeric-key-decimal
+- tapOn:
+    id: numeric-key-0
+- tapOn:
+    id: numeric-key-0
+- tapOn:
+    id: numeric-key-0
+- tapOn:
+    id: numeric-key-0
+- tapOn:
+    id: numeric-key-0
+- tapOn:
+    id: numeric-key-0
+- tapOn:
+    id: numeric-key-1
+# Tap Review button (continue button when amount is set)
+- tapOn:
+    id: send-continue-button
+# Verify review sheet is visible
+- assertVisible:
+    id: send-review-sheet
+# Confirm the transaction
+- tapOn:
+    id: send-review-confirm-button
+# Verify processing screen
+- assertVisible:
+    id: send-processing-screen
+# Wait for completion and tap Done
+- extendedWaitUntil:
+    visible:
+      id: send-processing-done-button
+    timeout: 30000
+- tapOn:
+    id: send-processing-done-button
+# Verify Sent on history screen
 - assertVisible: Sent

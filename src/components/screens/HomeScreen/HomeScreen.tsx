@@ -262,7 +262,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
           {/* Header section with account info and actions */}
           <View className="pt-8 w-full items-center">
             <View className="flex-col gap-3 items-center">
-              <TouchableOpacity onPress={handleManageAccountsPress}>
+              <TouchableOpacity
+                onPress={handleManageAccountsPress}
+                testID="home-account-switcher"
+              >
                 <View className="flex-row items-center gap-2">
                   <Avatar size="sm" publicAddress={account?.publicKey ?? ""} />
                   <Text>{account?.accountName ?? t("home.title")}</Text>
@@ -282,12 +285,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
                 Icon={Icon.Plus}
                 title={t("home.buy")}
                 onPress={navigateToBuyXLM}
+                testID="icon-button-buy"
               />
               <IconButton
                 Icon={Icon.ArrowUp}
                 title={t("home.send")}
                 disabled={hasZeroBalance}
                 onPress={handleSendPress}
+                testID="icon-button-send"
               />
               {swapEnabled && (
                 <IconButton
@@ -295,12 +300,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
                   title={t("home.swap")}
                   disabled={hasZeroBalance}
                   onPress={handleSwapPress}
+                  testID="icon-button-swap"
                 />
               )}
               <IconButton
                 Icon={Icon.Copy01}
                 title={t("common.copy")}
                 onPress={() => handleCopyAddress(account?.publicKey)}
+                testID="icon-button-copy"
               />
             </View>
             <View className="w-full border-b mb-4 border-border-primary" />

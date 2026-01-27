@@ -280,6 +280,7 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
             disabled={shouldHideCollectibles}
             className="py-2"
             onPress={() => handleTabChange(TabType.TOKENS)}
+            testID="tab-tokens"
           >
             <Text
               medium
@@ -297,6 +298,7 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
             <TouchableOpacity
               className="py-2"
               onPress={() => handleTabChange(TabType.COLLECTIBLES)}
+              testID="tab-collectibles"
             >
               <Text
                 medium
@@ -324,6 +326,7 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
               side="bottom"
               align="end"
               sideOffset={8}
+              testID="tab-settings-menu"
             >
               <View className="-mr-2">
                 <Icon.Sliders01 size={20} color={themeColors.text.secondary} />

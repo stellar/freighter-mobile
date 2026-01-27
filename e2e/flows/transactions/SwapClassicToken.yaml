@@ -1,0 +1,90 @@
+appId: org.stellar.freighterdev
+tags:
+  - transactions
+  - swap
+  - classic-token
+---
+# Import wallet first to ensure we have a wallet with balances
+- runFlow:
+    file: ../onboarding/ImportWallet.yaml
+
+# Verify we're on home screen after import
+- assertVisible:
+    id: home-screen
+
+# Navigate to swap screen
+- assertVisible:
+    id: tab-tokens
+- assertVisible:
+    id: tab-collectibles
+- tapOn:
+    id: icon-button-swap
+
+# Verify we're on swap amount screen
+- assertVisible:
+    id: swap-amount-screen
+
+# Select "from" token (XLM)
+- tapOn:
+    id: swap-from-token-row
+# Verify token selection screen
+- assertVisible:
+    id: swap-token-selection-content
+# Select XLM
+- tapOn:
+    id: token-option-XLM
+
+# Select "to" token (USDC)
+- tapOn:
+    id: swap-to-choose-token
+# Verify token selection screen
+- assertVisible:
+    id: swap-token-selection-content
+# Select USDC
+- tapOn:
+    id: token-option-USDC
+
+# Enter amount: 0.0000001 using numeric keyboard
+- assertVisible:
+    id: swap-amount-screen
+- tapOn:
+    id: numeric-key-0
+- tapOn:
+    id: numeric-key-decimal
+- tapOn:
+    id: numeric-key-0
+- tapOn:
+    id: numeric-key-0
+- tapOn:
+    id: numeric-key-0
+- tapOn:
+    id: numeric-key-0
+- tapOn:
+    id: numeric-key-0
+- tapOn:
+    id: numeric-key-0
+- tapOn:
+    id: numeric-key-1
+
+# Review and confirm swap
+- tapOn:
+    id: swap-continue-button
+# Verify review sheet is visible
+- assertVisible:
+    id: swap-review-sheet
+# Confirm the swap
+- tapOn:
+    id: swap-review-confirm-button
+
+# Verify swap transaction success
+- assertVisible:
+    id: swap-processing-screen
+# Wait for completion and tap Done
+- extendedWaitUntil:
+    visible:
+      id: swap-processing-done-button
+    timeout: 30000
+- tapOn:
+    id: swap-processing-done-button
+# Verify Swapped on history screen
+- assertVisible: Swapped
