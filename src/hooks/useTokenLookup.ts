@@ -70,6 +70,7 @@ export const useTokenLookup = ({
         [SecurityLevel.SAFE]: [],
         [SecurityLevel.SUSPICIOUS]: [],
         [SecurityLevel.MALICIOUS]: [],
+        [SecurityLevel.EXPECTED_TO_FAIL]: [],
         [SecurityLevel.UNABLE_TO_SCAN]: [],
       };
 

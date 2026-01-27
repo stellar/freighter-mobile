@@ -70,6 +70,7 @@ export const SecurityDetailBottomSheet: React.FC<
 
   const isMalicious = severity === SecurityLevel.MALICIOUS;
   const isUnableToScan = severity === SecurityLevel.UNABLE_TO_SCAN;
+  const isExpectedToFail = severity === SecurityLevel.EXPECTED_TO_FAIL;
 
   const getHeaderIcon = () => {
     const baseClasses =
@@ -175,6 +176,15 @@ export const SecurityDetailBottomSheet: React.FC<
         }
       }
 
+      if (isExpectedToFail) {
+        switch (securityContext) {
+          case SecurityContext.TRANSACTION:
+            return t("securityWarning.expectedToFailDescription");
+          default:
+            return t("securityWarning.expectedToFailDescription");
+        }
+      }
+
       switch (securityContext) {
         case SecurityContext.TOKEN:
           return t("securityWarning.token");
@@ -186,7 +196,7 @@ export const SecurityDetailBottomSheet: React.FC<
           return "";
       }
     },
-    [securityContext, t, isUnableToScan],
+    [securityContext, t, isUnableToScan, isExpectedToFail],
   );
 
   return (
@@ -201,6 +211,7 @@ export const SecurityDetailBottomSheet: React.FC<
         {(() => {
           if (isMalicious) return t("securityWarning.doNotProceed");
           if (isUnableToScan) return t("securityWarning.proceedWithCaution");
+          if (isExpectedToFail) return t("securityWarning.expectedToFailTitle");
           return t("securityWarning.suspiciousRequest");
         })()}
       </Text>

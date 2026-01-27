@@ -254,12 +254,43 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
   },
 
   setDestinationAddress: (address: string, fedAddress?: string) => {
+    const { network } = useAuthenticationStore.getState();
+
     set({
       destinationAddress: address,
       federationAddress: fedAddress || "",
       isValidDestination: true,
-      isDestinationFunded: null,
+      isDestinationFunded: null, // Will be updated async
     });
+
+    // Fetch the account funding status asynchronously
+    (async () => {
+      try {
+        const account = await getAccount(address, network);
+        set({
+          isDestinationFunded: !!account,
+        });
+      } catch (error) {
+        logger.error(
+          "[sendRecipient]",
+          "Failed to check account status:",
+          error,
+        );
+
+        // If account lookup returns 404, mark as unfunded so we can surface
+        // the expected-to-fail banner; otherwise leave unknown (null).
+        const isNotFound =
+          typeof error === "object" &&
+          error !== null &&
+          "response" in error &&
+          (error as { response?: { status?: number } }).response?.status ===
+            404;
+
+        set({
+          isDestinationFunded: isNotFound ? false : null,
+        });
+      }
+    })();
   },
 
   resetSendRecipient: () => {
