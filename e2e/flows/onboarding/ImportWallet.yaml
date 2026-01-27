@@ -155,6 +155,15 @@ tags:
             - tapOn:
                 text: "Don't Allow|Don't Allow|Cancel"
 
+# Dismiss welcome banner if it appears (check before home screen)
+- runFlow:
+    when:
+      visible:
+        id: welcome-banner-dismiss-button
+    commands:
+      - tapOn:
+          id: welcome-banner-dismiss-button
+
 # Verify we reached home screen
 - extendedWaitUntil:
     visible:
