@@ -276,9 +276,18 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
           "Failed to check account status:",
           error,
         );
-        // Keep it null if we can't determine
+
+        // If account lookup returns 404, mark as unfunded so we can surface
+        // the expected-to-fail banner; otherwise leave unknown (null).
+        const isNotFound =
+          typeof error === "object" &&
+          error !== null &&
+          "response" in error &&
+          (error as { response?: { status?: number } }).response?.status ===
+            404;
+
         set({
-          isDestinationFunded: null,
+          isDestinationFunded: isNotFound ? false : null,
         });
       }
     })();

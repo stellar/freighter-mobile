@@ -348,34 +348,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     return result;
   }, [selectedBalance, account, transactionFee]);
 
-  // Build context for unfunded destination detection
-  const unfundedContext: UnfundedDestinationContext | undefined =
-    useMemo(() => {
-      if (!selectedBalance || isDestinationFunded === null) {
-        return undefined;
-      }
-
-      // Use the token code (e.g., "XLM", "USDC")
-      const assetCode = selectedBalance.tokenCode || "unknown";
-
-      const context = {
-        assetCode,
-        isDestinationFunded,
-      };
-
-      return context;
-    }, [selectedBalance, isDestinationFunded]);
-
-  const {
-    transactionSecurityAssessment,
-    transactionSecurityWarnings,
-    transactionSecuritySeverity,
-  } = getTransactionSecurity(
-    transactionScanResult,
-    overriddenBlockaidResponse,
-    unfundedContext,
-  );
-
   const {
     tokenAmount,
     tokenAmountDisplay,
@@ -387,6 +359,36 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     setTokenAmount,
     updateFiatDisplay,
   } = useTokenFiatConverter({ selectedBalance });
+
+  // Build context for unfunded destination detection (used by Blockaid warnings)
+  const unfundedContext: UnfundedDestinationContext | undefined =
+    useMemo(() => {
+      if (!selectedBalance || isDestinationFunded === null) {
+        return undefined;
+      }
+
+      const assetCode = selectedBalance.tokenCode || "unknown";
+      const canCreateAccountWithAmount =
+        assetCode === NATIVE_TOKEN_CODE
+          ? BigNumber(tokenAmount).isGreaterThanOrEqualTo(1)
+          : undefined;
+
+      return {
+        assetCode,
+        isDestinationFunded,
+        canCreateAccountWithAmount,
+      };
+    }, [selectedBalance, isDestinationFunded, tokenAmount]);
+
+  const {
+    transactionSecurityAssessment,
+    transactionSecurityWarnings,
+    transactionSecuritySeverity,
+  } = getTransactionSecurity(
+    transactionScanResult,
+    overriddenBlockaidResponse,
+    unfundedContext,
+  );
 
   const handlePercentagePress = (percentage: number) => {
     if (!selectedBalance) return;

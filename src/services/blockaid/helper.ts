@@ -44,6 +44,11 @@ export interface UnfundedDestinationContext {
   assetCode: string;
   /** Whether the destination account exists and is funded */
   isDestinationFunded: boolean;
+  /**
+   * Whether this payment amount can create a new account when asset is XLM.
+   * If false for XLM, we treat the transaction as expected to fail.
+   */
+  canCreateAccountWithAmount?: boolean;
 }
 
 /**
@@ -203,23 +208,19 @@ export const isUnfundedDestinationError = (
   scanResult?: Blockaid.StellarTransactionScanResponse,
   unfundedContext?: UnfundedDestinationContext,
 ): boolean => {
-  if (!scanResult || !unfundedContext) {
+  if (!unfundedContext) {
     return false;
   }
 
-  // Unfunded destination errors occur when:
-  // 1. Simulation failed (transaction will fail)
-  // 2. Destination is not funded (doesn't exist or has no balance)
-  // 3. Sending non-XLM asset (XLM transfers can create accounts)
-  if (scanResult.simulation && "error" in scanResult.simulation) {
-    const isNonXlm = unfundedContext.assetCode !== "XLM";
-    const isDestinationNotFunded = !unfundedContext.isDestinationFunded;
-    const result = isNonXlm && isDestinationNotFunded;
+  // Unfunded destination errors occur when destination doesn't exist/funded and
+  // either (a) asset is non-XLM, or (b) asset is XLM but amount cannot create the account.
+  const isDestinationNotFunded = !unfundedContext.isDestinationFunded;
+  const isNonXlm = unfundedContext.assetCode !== "XLM";
+  const canCreateAccount =
+    unfundedContext.assetCode === "XLM" &&
+    unfundedContext.canCreateAccountWithAmount === true;
 
-    return result;
-  }
-
-  return false;
+  return isDestinationNotFunded && (isNonXlm || !canCreateAccount);
 };
 
 /**
@@ -261,18 +262,19 @@ export const assessTransactionSecurity = (
 
   const { simulation, validation } = scanResult;
 
+  // Early check: if context says unfunded + cannot create account, mark expected to fail
+  if (isUnfundedDestinationError(scanResult, unfundedContext)) {
+    const messageKeys =
+      TRANSACTION_SECURITY_LEVEL_MESSAGE_KEYS[SecurityLevel.EXPECTED_TO_FAIL];
+    return createSecurityAssessment(
+      SecurityLevel.EXPECTED_TO_FAIL,
+      messageKeys.title,
+      messageKeys.description,
+    );
+  }
+
   // Check for simulation errors - classify unfunded destination specially, others as suspicious
   if (simulation && "error" in simulation) {
-    // If this is specifically an unfunded destination error, use EXPECTED_TO_FAIL level
-    if (isUnfundedDestinationError(scanResult, unfundedContext)) {
-      const messageKeys =
-        TRANSACTION_SECURITY_LEVEL_MESSAGE_KEYS[SecurityLevel.EXPECTED_TO_FAIL];
-      return createSecurityAssessment(
-        SecurityLevel.EXPECTED_TO_FAIL,
-        messageKeys.title,
-        messageKeys.description,
-      );
-    }
     // For other simulation errors, treat as suspicious
     const messageKeys =
       TRANSACTION_SECURITY_LEVEL_MESSAGE_KEYS[SecurityLevel.SUSPICIOUS];
@@ -341,6 +343,10 @@ export const extractSecurityWarnings = (
     scanResult as unknown as Blockaid.StellarTransactionScanResponse,
     unfundedContext,
   );
+  const isNativeUnderMinimum =
+    isUnfunded &&
+    unfundedContext?.assetCode === "XLM" &&
+    unfundedContext?.canCreateAccountWithAmount === false;
 
   // Handle site scan results
   if ("status" in scanResult) {
@@ -391,9 +397,13 @@ export const extractSecurityWarnings = (
     // Check if this scan result indicates unfunded destination (transaction expected to fail)
     if (isUnfunded) {
       // Only add the detailed explanation - the title already says "Transaction is expected to fail"
+      const descriptionKey = isNativeUnderMinimum
+        ? "blockaid.security.transaction.unfundedDestinationNative"
+        : "blockaid.security.transaction.unfundedDestination";
+
       warnings.push({
         id: "unfunded-destination-details",
-        description: t("blockaid.security.transaction.unfundedDestination"),
+        description: t(descriptionKey),
       });
 
       // Do not surface Blockaid technical messages for unfunded accounts

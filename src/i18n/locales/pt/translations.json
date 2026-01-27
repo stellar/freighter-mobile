@@ -1094,6 +1094,7 @@
         "simulationFailed": "Falha na simulação da transação",
         "expectedToFail": "Espera-se que esta transação falhe.",
         "unfundedDestination": "Esta é uma nova conta e precisa de 1 XLM para começar. Qualquer transação para enviar não-XLM para uma conta não financiada falhará.",
+        "unfundedDestinationNative": "Esta é uma nova conta e precisa de pelo menos 1 XLM para ser criada. Enviar menos de 1 XLM para criá-la falhará.",
         "malicious": "Esta transação foi marcada como maliciosa",
         "warning": "Esta transação foi marcada como aviso",
         "unableToSimulate": "Não foi possível simular a transação",
