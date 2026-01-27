@@ -807,7 +807,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     isUnableToScan: transactionSecurityAssessment.isUnableToScan,
     isRequiredMemoMissing,
     isMuxedAddressWithoutMemoSupport,
-    scanResult: transactionScanResult,
     unfundedContext,
     onSecurityWarningPress: openSecurityWarningBottomSheet,
     onMemoMissingPress: openAddMemoExplanationBottomSheet,

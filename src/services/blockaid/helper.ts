@@ -192,7 +192,6 @@ export const assessSiteSecurity = (
  * @returns true if sending non-XLM to unfunded destination, false otherwise
  */
 export const isUnfundedDestinationError = (
-  scanResult?: Blockaid.StellarTransactionScanResponse,
   unfundedContext?: UnfundedDestinationContext,
 ): boolean => {
   if (!unfundedContext) {
@@ -250,7 +249,7 @@ export const assessTransactionSecurity = (
   const { simulation, validation } = scanResult;
 
   // Early check: if context says unfunded + cannot create account, mark expected to fail
-  if (isUnfundedDestinationError(scanResult, unfundedContext)) {
+  if (isUnfundedDestinationError(unfundedContext)) {
     const messageKeys =
       TRANSACTION_SECURITY_LEVEL_MESSAGE_KEYS[SecurityLevel.EXPECTED_TO_FAIL];
     return createSecurityAssessment(
@@ -331,7 +330,7 @@ export const extractSecurityWarnings = (
   let isNativeUnderMinimum = false;
 
   if ("simulation" in scanResult) {
-    isUnfunded = isUnfundedDestinationError(scanResult, unfundedContext);
+    isUnfunded = isUnfundedDestinationError(unfundedContext);
     isNativeUnderMinimum =
       isUnfunded &&
       unfundedContext?.assetCode === "XLM" &&

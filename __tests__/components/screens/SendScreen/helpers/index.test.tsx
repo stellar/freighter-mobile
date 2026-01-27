@@ -245,21 +245,32 @@ describe("SendScreen Helpers", () => {
       expect(result.current).toBeUndefined();
     });
 
-    it("should return unfunded destination banner content when suspicious transaction is unfunded destination error", () => {
+    it("should return suspicious banner when scanResult alone is flagged but no unfunded context", () => {
       const onSecurityWarningPress = jest.fn();
-      const mockScanResult = {
-        simulation: {
-          error: "The destination account is not funded",
-        },
-      } as unknown as Blockaid.StellarTransactionScanResponse;
-
-      mockIsUnfundedDestinationError.mockReturnValue(true);
 
       const { result } = renderHook(() =>
         useSendBannerContent({
           isMalicious: false,
           isSuspicious: true,
-          scanResult: mockScanResult,
+          onSecurityWarningPress,
+        }),
+      );
+
+      expect(result.current).toEqual({
+        text: "transactionAmountScreen.errors.suspicious",
+        variant: "warning",
+        onPress: onSecurityWarningPress,
+      });
+    });
+
+    it("should return expected-to-fail banner when explicitly flagged", () => {
+      const onSecurityWarningPress = jest.fn();
+
+      const { result } = renderHook(() =>
+        useSendBannerContent({
+          isMalicious: false,
+          isSuspicious: false,
+          isExpectedToFail: true,
           onSecurityWarningPress,
         }),
       );
@@ -273,19 +284,12 @@ describe("SendScreen Helpers", () => {
 
     it("should return normal suspicious banner when error is not unfunded destination", () => {
       const onSecurityWarningPress = jest.fn();
-      const mockScanResult = {
-        simulation: {
-          error: "Some other error",
-        },
-      } as unknown as Blockaid.StellarTransactionScanResponse;
-
       mockIsUnfundedDestinationError.mockReturnValue(false);
 
       const { result } = renderHook(() =>
         useSendBannerContent({
           isMalicious: false,
           isSuspicious: true,
-          scanResult: mockScanResult,
           onSecurityWarningPress,
         }),
       );

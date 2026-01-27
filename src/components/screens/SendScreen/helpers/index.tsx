@@ -98,7 +98,6 @@ export interface UseSendBannerContentParams {
   isUnableToScan?: boolean;
   isRequiredMemoMissing?: boolean;
   isMuxedAddressWithoutMemoSupport?: boolean;
-  scanResult?: Blockaid.StellarTransactionScanResponse;
   unfundedContext?: UnfundedDestinationContext;
   onSecurityWarningPress: () => void;
   onMemoMissingPress?: () => void;
@@ -116,7 +115,6 @@ export function useSendBannerContent({
   isUnableToScan = false,
   isRequiredMemoMissing = false,
   isMuxedAddressWithoutMemoSupport = false,
-  scanResult,
   unfundedContext,
   onSecurityWarningPress,
   onMemoMissingPress,
@@ -126,11 +124,11 @@ export function useSendBannerContent({
 
   // Check if this is an unfunded destination error
   const isUnfundedDestination = useMemo(() => {
-    if (!scanResult) {
+    if (!unfundedContext) {
       return false;
     }
-    return isUnfundedDestinationError(scanResult, unfundedContext);
-  }, [scanResult, unfundedContext]);
+    return isUnfundedDestinationError(unfundedContext);
+  }, [unfundedContext]);
 
   return useMemo(() => {
     const shouldShowNoticeBanner =

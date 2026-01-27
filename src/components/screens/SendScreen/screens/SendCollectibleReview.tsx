@@ -538,7 +538,6 @@ const SendCollectibleReviewScreen: React.FC<
     isExpectedToFail: transactionSecurityAssessment.isExpectedToFail,
     isUnableToScan: transactionSecurityAssessment.isUnableToScan,
     isMuxedAddressWithoutMemoSupport,
-    scanResult: transactionScanResult,
     unfundedContext:
       selectedCollectible && isDestinationFunded !== null
         ? {
