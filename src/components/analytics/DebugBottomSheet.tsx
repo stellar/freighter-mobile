@@ -28,6 +28,14 @@ interface DebugBottomSheetProps {
 
 const SNAP_VALUE_PERCENT = 90;
 
+enum TransactionFailureMode {
+  NONE = "none",
+  BUILD = "build",
+  SIGN = "sign",
+  SUBMIT = "submit",
+  SWAP_PATH = "swapPath",
+}
+
 const CustomContent: React.FC<{
   onDismiss: () => void;
 }> = ({ onDismiss }) => {
@@ -42,9 +50,61 @@ const CustomContent: React.FC<{
     overriddenBlockaidResponse,
     setOverriddenBlockaidResponse,
     clearOverriddenBlockaidResponse,
+    forceBuildTransactionFailure,
+    forceSignTransactionFailure,
+    forceSubmitTransactionFailure,
+    setForceBuildTransactionFailure,
+    setForceSignTransactionFailure,
+    setForceSubmitTransactionFailure,
+    clearAllTransactionFailures,
+    forceSwapPathFailure,
+    setForceSwapPathFailure,
+    clearSwapPathDebug,
   } = useDebugStore();
   const [versionInput, setVersionInput] = useState(overriddenAppVersion || "");
   const [currentVersion] = useState(getVersion());
+
+  // Determine the currently active transaction failure mode
+  const getActiveFailureMode = (): TransactionFailureMode => {
+    if (forceBuildTransactionFailure) return TransactionFailureMode.BUILD;
+    if (forceSignTransactionFailure) return TransactionFailureMode.SIGN;
+    if (forceSubmitTransactionFailure) return TransactionFailureMode.SUBMIT;
+    if (forceSwapPathFailure) return TransactionFailureMode.SWAP_PATH;
+    return TransactionFailureMode.NONE;
+  };
+
+  const activeFailureMode = getActiveFailureMode();
+
+  const setActiveFailureMode = (mode: TransactionFailureMode): void => {
+    const setterMap: Record<TransactionFailureMode, () => void> = {
+      [TransactionFailureMode.NONE]: () => {
+        clearAllTransactionFailures();
+        clearSwapPathDebug();
+      },
+      [TransactionFailureMode.BUILD]: () => {
+        clearAllTransactionFailures();
+        clearSwapPathDebug();
+        setForceBuildTransactionFailure(true);
+      },
+      [TransactionFailureMode.SIGN]: () => {
+        clearAllTransactionFailures();
+        clearSwapPathDebug();
+        setForceSignTransactionFailure(true);
+      },
+      [TransactionFailureMode.SUBMIT]: () => {
+        clearAllTransactionFailures();
+        clearSwapPathDebug();
+        setForceSubmitTransactionFailure(true);
+      },
+      [TransactionFailureMode.SWAP_PATH]: () => {
+        clearAllTransactionFailures();
+        clearSwapPathDebug();
+        setForceSwapPathFailure(true);
+      },
+    };
+
+    setterMap[mode]();
+  };
 
   const handleRefresh = () => {
     setDebugInfo(analytics.getAnalyticsDebugInfo());
@@ -348,6 +408,139 @@ const CustomContent: React.FC<{
                 onPress={clearOverriddenBlockaidResponse}
               >
                 {t("debug.blockaidOverride.clearOverride")}
+              </Button>
+            )}
+          </View>
+
+          {/* Swap Failure Overrides Section */}
+          <View className="gap-3 mb-4">
+            <Text lg medium>
+              {t("debug.transactionFailure.title")}
+            </Text>
+            <Text xs color={themeColors.text.secondary}>
+              {t("debug.transactionFailure.description")}
+            </Text>
+
+            {activeFailureMode !== TransactionFailureMode.NONE && (
+              <View className="p-3 rounded-lg bg-amber-50 border border-amber-200">
+                <Text xs color={themeColors.status.warning}>
+                  {t("debug.transactionFailure.activeOverrides")}
+                </Text>
+                {activeFailureMode === TransactionFailureMode.BUILD && (
+                  <Text xs color={themeColors.status.warning}>
+                    • {t("debug.transactionFailure.buildActive")}
+                  </Text>
+                )}
+                {activeFailureMode === TransactionFailureMode.SIGN && (
+                  <Text xs color={themeColors.status.warning}>
+                    • {t("debug.transactionFailure.signActive")}
+                  </Text>
+                )}
+                {activeFailureMode === TransactionFailureMode.SUBMIT && (
+                  <Text xs color={themeColors.status.warning}>
+                    • {t("debug.transactionFailure.submitActive")}
+                  </Text>
+                )}
+                {activeFailureMode === TransactionFailureMode.SWAP_PATH && (
+                  <Text xs color={themeColors.status.warning}>
+                    • {t("debug.transactionFailure.swapPathForceActive")}
+                  </Text>
+                )}
+              </View>
+            )}
+
+            <View className="flex flex-col gap-2">
+              <Button
+                variant={
+                  activeFailureMode === TransactionFailureMode.BUILD
+                    ? "destructive"
+                    : "secondary"
+                }
+                sm
+                onPress={() => {
+                  if (activeFailureMode === TransactionFailureMode.BUILD) {
+                    setActiveFailureMode(TransactionFailureMode.NONE);
+                  } else {
+                    setActiveFailureMode(TransactionFailureMode.BUILD);
+                  }
+                }}
+              >
+                {activeFailureMode === TransactionFailureMode.BUILD
+                  ? t("debug.transactionFailure.buildEnabled")
+                  : t("debug.transactionFailure.buildDisabled")}
+              </Button>
+
+              <Button
+                variant={
+                  activeFailureMode === TransactionFailureMode.SIGN
+                    ? "destructive"
+                    : "secondary"
+                }
+                sm
+                onPress={() => {
+                  if (activeFailureMode === TransactionFailureMode.SIGN) {
+                    setActiveFailureMode(TransactionFailureMode.NONE);
+                  } else {
+                    setActiveFailureMode(TransactionFailureMode.SIGN);
+                  }
+                }}
+              >
+                {activeFailureMode === TransactionFailureMode.SIGN
+                  ? t("debug.transactionFailure.signEnabled")
+                  : t("debug.transactionFailure.signDisabled")}
+              </Button>
+
+              <Button
+                variant={
+                  activeFailureMode === TransactionFailureMode.SUBMIT
+                    ? "destructive"
+                    : "secondary"
+                }
+                sm
+                onPress={() => {
+                  if (activeFailureMode === TransactionFailureMode.SUBMIT) {
+                    setActiveFailureMode(TransactionFailureMode.NONE);
+                  } else {
+                    setActiveFailureMode(TransactionFailureMode.SUBMIT);
+                  }
+                }}
+              >
+                {activeFailureMode === TransactionFailureMode.SUBMIT
+                  ? t("debug.transactionFailure.submitEnabled")
+                  : t("debug.transactionFailure.submitDisabled")}
+              </Button>
+
+              <Button
+                variant={
+                  activeFailureMode === TransactionFailureMode.SWAP_PATH
+                    ? "destructive"
+                    : "secondary"
+                }
+                sm
+                onPress={() => {
+                  if (activeFailureMode === TransactionFailureMode.SWAP_PATH) {
+                    setActiveFailureMode(TransactionFailureMode.NONE);
+                  } else {
+                    setActiveFailureMode(TransactionFailureMode.SWAP_PATH);
+                  }
+                }}
+              >
+                {activeFailureMode === TransactionFailureMode.SWAP_PATH
+                  ? t("debug.transactionFailure.swapPathForceEnabled")
+                  : t("debug.transactionFailure.swapPathForceDisabled")}
+              </Button>
+            </View>
+
+            {activeFailureMode !== TransactionFailureMode.NONE && (
+              <Button
+                variant="tertiary"
+                sm
+                onPress={() => {
+                  clearAllTransactionFailures();
+                  clearSwapPathDebug();
+                }}
+              >
+                {t("debug.transactionFailure.clearAll")}
               </Button>
             )}
           </View>

@@ -24,6 +24,8 @@ export interface ToastOptions {
   duration?: number;
   /** Optional ID for the toast. If a toast with the same ID already exists, it will be replaced */
   toastId?: string;
+  /** If true, the toast will not auto-dismiss and can only be dismissed by user interaction */
+  persistent?: boolean;
 }
 
 interface ToastContextType {
