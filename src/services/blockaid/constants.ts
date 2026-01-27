@@ -21,16 +21,6 @@ export const BLOCKAID_ERROR_MESSAGES = {
 } as const;
 
 /**
- * Unfunded destination detection patterns
- * Used to identify simulation errors related to unfunded account operations
- */
-export const UNFUNDED_DESTINATION_PATTERNS = {
-  UNFUNDED: "unfunded",
-  DESTINATION_NOT_FUNDED: "destination.*not.*funded",
-  NEW_ACCOUNT: "new.*account",
-} as const;
-
-/**
  * Security levels for Blockaid assessments
  * Provides type-safe security classification
  */

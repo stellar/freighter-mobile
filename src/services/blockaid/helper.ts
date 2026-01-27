@@ -36,6 +36,17 @@ export interface ScanAssessment {
 }
 
 /**
+ * Transaction context for unfunded destination detection
+ * Avoids parsing error strings by using actual transaction data
+ */
+export interface UnfundedDestinationContext {
+  /** Asset code being sent (e.g., "USDC", "XLM") */
+  assetCode: string;
+  /** Whether the destination account exists and is funded */
+  isDestinationFunded: boolean;
+}
+
+/**
  * Determines security level from Blockaid result type
  * Centralized logic for consistent security assessment
  */
@@ -180,17 +191,52 @@ export const assessSiteSecurity = (
 };
 
 /**
+ * Detects if a transaction is expected to fail due to unfunded destination
+ * Uses transaction context (asset type + destination funding status) instead of error message parsing
+ * This identifies non-XLM transfers to unfunded accounts, which cannot succeed
+ *
+ * @param scanResult - The Blockaid transaction scan result
+ * @param unfundedContext - Context with asset code and destination funding status
+ * @returns true if sending non-XLM to unfunded destination, false otherwise
+ */
+export const isUnfundedDestinationError = (
+  scanResult?: Blockaid.StellarTransactionScanResponse,
+  unfundedContext?: UnfundedDestinationContext,
+): boolean => {
+  if (!scanResult || !unfundedContext) {
+    return false;
+  }
+
+  // Unfunded destination errors occur when:
+  // 1. Simulation failed (transaction will fail)
+  // 2. Destination is not funded (doesn't exist or has no balance)
+  // 3. Sending non-XLM asset (XLM transfers can create accounts)
+  if (scanResult.simulation && "error" in scanResult.simulation) {
+    const isNonXlm = unfundedContext.assetCode !== "XLM";
+    const isDestinationNotFunded = !unfundedContext.isDestinationFunded;
+    const result = isNonXlm && isDestinationNotFunded;
+
+    return result;
+  }
+
+  return false;
+};
+
+/**
  * Transaction Security Assessment
  *
  * Evaluates transaction scan results using simulation + validation for transaction-specific logic.
  * Returns "Unable to scan" state when scanResult is null/undefined (scan failed).
  *
  * @param scanResult - The Blockaid transaction scan result
- * @returns SecurityAssessment with type-safe level and localized details
+ * @param debugOverride - Debug override for testing
+ * @param unfundedContext - Optional context to determine if unfunded destination
+ * @returns ScanAssessment with type-safe level and localized details
  */
 export const assessTransactionSecurity = (
   scanResult?: Blockaid.StellarTransactionScanResponse,
   debugOverride?: SecurityLevel | null,
+  unfundedContext?: UnfundedDestinationContext,
 ): ScanAssessment => {
   // Check for debug override first
   if (debugOverride) {
@@ -215,12 +261,23 @@ export const assessTransactionSecurity = (
 
   const { simulation, validation } = scanResult;
 
-  // Check for simulation errors = suspicious
+  // Check for simulation errors - classify unfunded destination specially, others as suspicious
   if (simulation && "error" in simulation) {
+    // If this is specifically an unfunded destination error, use EXPECTED_TO_FAIL level
+    if (isUnfundedDestinationError(scanResult, unfundedContext)) {
+      const messageKeys =
+        TRANSACTION_SECURITY_LEVEL_MESSAGE_KEYS[SecurityLevel.EXPECTED_TO_FAIL];
+      return createSecurityAssessment(
+        SecurityLevel.EXPECTED_TO_FAIL,
+        messageKeys.title,
+        messageKeys.description,
+      );
+    }
+    // For other simulation errors, treat as suspicious
     const messageKeys =
-      TRANSACTION_SECURITY_LEVEL_MESSAGE_KEYS[SecurityLevel.EXPECTED_TO_FAIL];
+      TRANSACTION_SECURITY_LEVEL_MESSAGE_KEYS[SecurityLevel.SUSPICIOUS];
     return createSecurityAssessment(
-      SecurityLevel.EXPECTED_TO_FAIL,
+      SecurityLevel.SUSPICIOUS,
       messageKeys.title,
       messageKeys.description,
     );
@@ -260,43 +317,11 @@ export const isBlockaidWarning = (resultType: string): boolean =>
   resultType === BLOCKAID_RESULT_TYPES.SPAM;
 
 /**
- * Detects if a transaction scan result indicates an unfunded destination error
- * Checks for simulation errors or specific validation patterns that indicate
- * the transaction is expected to fail due to unfunded destination
- *
- * @param scanResult - The Blockaid transaction scan result
- * @returns true if the result indicates an unfunded destination, false otherwise
- */
-export const isUnfundedDestinationError = (
-  scanResult?: Blockaid.StellarTransactionScanResponse,
-): boolean => {
-  if (!scanResult) {
-    return false;
-  }
-
-  // Check if simulation has an error (indicates transaction will fail)
-  if (scanResult.simulation && "error" in scanResult.simulation) {
-    return true;
-  }
-
-  // Also check for validation errors that indicate simulation failed
-  // The response may include validation: { error: "simulation failed" }
-  if (scanResult.validation && "error" in scanResult.validation) {
-    const validation = scanResult.validation as unknown as { error?: string };
-    return (
-      validation.error !== undefined &&
-      validation.error.toLowerCase().includes("simulation")
-    );
-  }
-
-  return false;
-};
-
-/**
  * Extracts security warnings from Blockaid scan results
  * Matches extension behavior: sites show simple labels, tokens/transactions show detailed warnings
  *
  * @param scanResult - The Blockaid scan result (token, site, or transaction)
+ * @param unfundedContext - Optional context for detecting unfunded destination
  * @returns Array of security warnings with id and description
  */
 export const extractSecurityWarnings = (
@@ -304,6 +329,7 @@ export const extractSecurityWarnings = (
     | Blockaid.TokenScanResponse
     | Blockaid.SiteScanResponse
     | Blockaid.StellarTransactionScanResponse,
+  unfundedContext?: UnfundedDestinationContext,
 ): Array<SecurityWarning> => {
   const warnings: Array<SecurityWarning> = [];
 
@@ -313,6 +339,7 @@ export const extractSecurityWarnings = (
 
   const isUnfunded = isUnfundedDestinationError(
     scanResult as unknown as Blockaid.StellarTransactionScanResponse,
+    unfundedContext,
   );
 
   // Handle site scan results

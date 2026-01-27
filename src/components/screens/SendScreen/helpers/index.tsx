@@ -6,11 +6,13 @@ import {
   assessTransactionSecurity,
   extractSecurityWarnings,
   isUnfundedDestinationError,
+  UnfundedDestinationContext,
 } from "services/blockaid/helper";
 
 function getTransactionSecurityWarnings(
   assessment: ReturnType<typeof assessTransactionSecurity>,
   scanResult: Blockaid.StellarTransactionScanResponse | undefined,
+  unfundedContext?: UnfundedDestinationContext,
 ) {
   if (assessment.isUnableToScan) {
     return [
@@ -26,7 +28,7 @@ function getTransactionSecurityWarnings(
     assessment.isSuspicious ||
     assessment.isExpectedToFail
   ) {
-    const warnings = extractSecurityWarnings(scanResult);
+    const warnings = extractSecurityWarnings(scanResult, unfundedContext);
 
     if (Array.isArray(warnings) && warnings.length > 0) {
       return warnings;
@@ -50,19 +52,26 @@ function getTransactionSecuritySeverity(
 /**
  * Function for getting transaction security assessment
  * Can be called at runtime with scanResult as parameter
+ *
+ * @param scanResult - The Blockaid scan result
+ * @param overriddenBlockaidResponse - Optional override for debugging
+ * @param unfundedContext - Optional context for unfunded destination detection
  */
 export function getTransactionSecurity(
   scanResult: Blockaid.StellarTransactionScanResponse | undefined,
   overriddenBlockaidResponse?: SecurityLevel | null,
+  unfundedContext?: UnfundedDestinationContext,
 ) {
   const transactionSecurityAssessment = assessTransactionSecurity(
     scanResult,
     overriddenBlockaidResponse,
+    unfundedContext,
   );
 
   const transactionSecurityWarnings = getTransactionSecurityWarnings(
     transactionSecurityAssessment,
     scanResult,
+    unfundedContext,
   );
 
   const transactionSecuritySeverity = getTransactionSecuritySeverity(
@@ -90,6 +99,7 @@ export interface UseSendBannerContentParams {
   isRequiredMemoMissing?: boolean;
   isMuxedAddressWithoutMemoSupport?: boolean;
   scanResult?: Blockaid.StellarTransactionScanResponse;
+  unfundedContext?: UnfundedDestinationContext;
   onSecurityWarningPress: () => void;
   onMemoMissingPress?: () => void;
   onMuxedAddressWithoutMemoSupportPress?: () => void;
@@ -107,6 +117,7 @@ export function useSendBannerContent({
   isRequiredMemoMissing = false,
   isMuxedAddressWithoutMemoSupport = false,
   scanResult,
+  unfundedContext,
   onSecurityWarningPress,
   onMemoMissingPress,
   onMuxedAddressWithoutMemoSupportPress,
@@ -118,8 +129,8 @@ export function useSendBannerContent({
     if (!scanResult) {
       return false;
     }
-    return isUnfundedDestinationError(scanResult);
-  }, [scanResult]);
+    return isUnfundedDestinationError(scanResult, unfundedContext);
+  }, [scanResult, unfundedContext]);
 
   return useMemo(() => {
     const shouldShowNoticeBanner =

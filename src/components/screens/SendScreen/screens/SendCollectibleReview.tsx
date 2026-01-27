@@ -64,6 +64,7 @@ import React, {
 import { View } from "react-native";
 import { analytics } from "services/analytics";
 import { TransactionOperationType } from "services/analytics/types";
+import { UnfundedDestinationContext } from "services/blockaid/helper";
 
 type SendCollectibleReviewScreenProps = NativeStackScreenProps<
   SendPaymentStackParamList,
@@ -90,7 +91,7 @@ const SendCollectibleReviewScreen: React.FC<
     useTransactionSettingsStore();
   const { getCollectible } = useCollectiblesStore();
   const { overriddenBlockaidResponse } = useDebugStore();
-  const { resetSendRecipient } = useSendRecipientStore();
+  const { resetSendRecipient, isDestinationFunded } = useSendRecipientStore();
   const { fetchAccountHistory } = useHistoryStore();
 
   useEffect(() => {
@@ -178,20 +179,38 @@ const SendCollectibleReviewScreen: React.FC<
     navigation.popTo(SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN);
   };
 
-  const {
-    transactionSecurityAssessment,
-    transactionSecurityWarnings,
-    transactionSecuritySeverity,
-  } = useMemo(
-    () =>
-      getTransactionSecurity(transactionScanResult, overriddenBlockaidResponse),
-    [transactionScanResult, overriddenBlockaidResponse],
-  );
-
   const selectedCollectible = useMemo(
     () => getCollectible({ collectionAddress, tokenId }),
     [collectionAddress, tokenId, getCollectible],
   );
+
+  const {
+    transactionSecurityAssessment,
+    transactionSecurityWarnings,
+    transactionSecuritySeverity,
+  } = useMemo(() => {
+    // Build context for unfunded destination detection
+    // For collectibles, we don't have a traditional asset code, so use the collection address as identifier
+    const unfundedCtx: UnfundedDestinationContext | undefined =
+      selectedCollectible && isDestinationFunded !== null
+        ? {
+            // Use the collection contract ID as the asset identifier
+            assetCode: selectedCollectible.collectionAddress || "collectible",
+            isDestinationFunded,
+          }
+        : undefined;
+
+    return getTransactionSecurity(
+      transactionScanResult,
+      overriddenBlockaidResponse,
+      unfundedCtx,
+    );
+  }, [
+    transactionScanResult,
+    overriddenBlockaidResponse,
+    selectedCollectible,
+    isDestinationFunded,
+  ]);
 
   // Check if recipient is M address
   const isRecipientMuxed = Boolean(
@@ -228,9 +247,20 @@ const SendCollectibleReviewScreen: React.FC<
 
   const handleTransactionScanSuccess = useCallback(
     (scanResult: Blockaid.StellarTransactionScanResponse | undefined) => {
+      // Build context for unfunded destination detection
+      const unfundedCtx: UnfundedDestinationContext | undefined =
+        selectedCollectible && isDestinationFunded !== null
+          ? {
+              // Use the collection contract ID as the asset identifier
+              assetCode: selectedCollectible.collectionAddress || "collectible",
+              isDestinationFunded,
+            }
+          : undefined;
+
       const security = getTransactionSecurity(
         scanResult,
         overriddenBlockaidResponse,
+        unfundedCtx,
       );
       if (security.transactionSecurityAssessment.isUnableToScan) {
         transactionSecurityWarningBottomSheetModalRef.current?.present();
@@ -238,7 +268,7 @@ const SendCollectibleReviewScreen: React.FC<
         reviewBottomSheetModalRef.current?.present();
       }
     },
-    [overriddenBlockaidResponse],
+    [overriddenBlockaidResponse, selectedCollectible, isDestinationFunded],
   );
 
   const handleTransactionScanError = useCallback(() => {
@@ -509,6 +539,13 @@ const SendCollectibleReviewScreen: React.FC<
     isUnableToScan: transactionSecurityAssessment.isUnableToScan,
     isMuxedAddressWithoutMemoSupport,
     scanResult: transactionScanResult,
+    unfundedContext:
+      selectedCollectible && isDestinationFunded !== null
+        ? {
+            assetCode: selectedCollectible.collectionAddress || "collectible",
+            isDestinationFunded,
+          }
+        : undefined,
     onSecurityWarningPress: openSecurityWarningBottomSheet,
     onMuxedAddressWithoutMemoSupportPress: openMuxedAddressWarningBottomSheet,
   });

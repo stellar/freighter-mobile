@@ -77,6 +77,7 @@ import { TouchableOpacity, View, Text as RNText } from "react-native";
 import { analytics } from "services/analytics";
 import { TransactionOperationType } from "services/analytics/types";
 import { SecurityContext } from "services/blockaid/constants";
+import { UnfundedDestinationContext } from "services/blockaid/helper";
 
 type TransactionAmountScreenProps = NativeStackScreenProps<
   SendPaymentStackParamList,
@@ -122,7 +123,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     resetSettings,
   } = useTransactionSettingsStore();
 
-  const { resetSendRecipient } = useSendRecipientStore();
+  const { resetSendRecipient, isDestinationFunded } = useSendRecipientStore();
   const { fetchAccountHistory } = useHistoryStore();
 
   // Ensure defaults when entering the screen
@@ -347,11 +348,33 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     return result;
   }, [selectedBalance, account, transactionFee]);
 
+  // Build context for unfunded destination detection
+  const unfundedContext: UnfundedDestinationContext | undefined =
+    useMemo(() => {
+      if (!selectedBalance || isDestinationFunded === null) {
+        return undefined;
+      }
+
+      // Use the token code (e.g., "XLM", "USDC")
+      const assetCode = selectedBalance.tokenCode || "unknown";
+
+      const context = {
+        assetCode,
+        isDestinationFunded,
+      };
+
+      return context;
+    }, [selectedBalance, isDestinationFunded]);
+
   const {
     transactionSecurityAssessment,
     transactionSecurityWarnings,
     transactionSecuritySeverity,
-  } = getTransactionSecurity(transactionScanResult, overriddenBlockaidResponse);
+  } = getTransactionSecurity(
+    transactionScanResult,
+    overriddenBlockaidResponse,
+    unfundedContext,
+  );
 
   const {
     tokenAmount,
@@ -501,6 +524,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         const security = getTransactionSecurity(
           scanResult,
           overriddenBlockaidResponse,
+          unfundedContext,
         );
         if (security.transactionSecurityAssessment.isUnableToScan) {
           transactionSecurityWarningBottomSheetModalRef.current?.present();
@@ -509,7 +533,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         }
       }
     },
-    [overriddenBlockaidResponse],
+    [overriddenBlockaidResponse, unfundedContext],
   );
 
   const handleTransactionScanError = useCallback(
@@ -520,6 +544,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         const security = getTransactionSecurity(
           undefined,
           overriddenBlockaidResponse,
+          unfundedContext,
         );
         if (security.transactionSecurityAssessment.isUnableToScan) {
           transactionSecurityWarningBottomSheetModalRef.current?.present();
@@ -528,7 +553,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         }
       }
     },
-    [overriddenBlockaidResponse],
+    [overriddenBlockaidResponse, unfundedContext],
   );
 
   const prepareTransaction = useCallback(
@@ -781,6 +806,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     isRequiredMemoMissing,
     isMuxedAddressWithoutMemoSupport,
     scanResult: transactionScanResult,
+    unfundedContext,
     onSecurityWarningPress: openSecurityWarningBottomSheet,
     onMemoMissingPress: openAddMemoExplanationBottomSheet,
     onMuxedAddressWithoutMemoSupportPress: openMuxedAddressWarningBottomSheet,

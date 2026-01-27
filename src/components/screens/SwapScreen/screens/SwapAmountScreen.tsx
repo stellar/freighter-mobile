@@ -482,7 +482,9 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     ) {
       const extractedWarnings = [
         ...extractSecurityWarnings(transactionScanResult),
-        ...Object.values(scanResults).map(extractSecurityWarnings),
+        ...Object.values(scanResults).map((result) =>
+          extractSecurityWarnings(result),
+        ),
       ].flat();
 
       if (Array.isArray(extractedWarnings) && extractedWarnings.length > 0) {
