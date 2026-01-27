@@ -10,7 +10,10 @@ import { TransactionDetails } from "components/screens/HistoryScreen";
 import HistoryItem from "components/screens/HistoryScreen/HistoryItem";
 import HistoryWrapper from "components/screens/HistoryScreen/HistoryWrapper";
 import MonthHeader from "components/screens/HistoryScreen/MonthHeader";
-import { TransactionDetailsBottomSheetCustomContent } from "components/screens/HistoryScreen/TransactionDetailsBottomSheetCustomContent";
+import {
+  TransactionDetailsBottomSheetCustomContent,
+  TransactionDetailsFooter,
+} from "components/screens/HistoryScreen/TransactionDetailsBottomSheetCustomContent";
 import { NetworkDetails } from "config/constants";
 import useAppTranslation from "hooks/useAppTranslation";
 import { HistorySection, HistoryData } from "hooks/useGetHistoryData";
@@ -20,6 +23,7 @@ import {
   SectionList,
   View,
   SectionListData,
+  useWindowDimensions,
 } from "react-native";
 import { analytics } from "services/analytics";
 
@@ -66,6 +70,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
   refreshActionPosition = "center",
 }) => {
   const { t } = useAppTranslation();
+  const { height: windowHeight } = useWindowDimensions();
   const [transactionDetails, setTransactionDetails] =
     useState<TransactionDetails | null>(null);
   const transactionDetailsBottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -125,6 +130,15 @@ const HistoryList: React.FC<HistoryListProps> = ({
   );
 
   const keyExtractor = useCallback((item: Operation) => item.id.toString(), []);
+
+  const renderFooterComponent = useCallback(
+    () => (
+      <TransactionDetailsFooter
+        externalUrl={transactionDetails?.externalUrl ?? ""}
+      />
+    ),
+    [transactionDetails?.externalUrl],
+  );
 
   const getEmptyListClasses = (
     position: "start" | "center" | "end",
@@ -195,11 +209,15 @@ const HistoryList: React.FC<HistoryListProps> = ({
         handleCloseModal={() =>
           transactionDetailsBottomSheetModalRef.current?.dismiss()
         }
+        scrollable
+        useInsetsBottomPadding={false}
+        maxDynamicContentSize={windowHeight * 0.9}
         customContent={
           <TransactionDetailsBottomSheetCustomContent
             transactionDetails={transactionDetails!}
           />
         }
+        renderFooterComponent={renderFooterComponent}
       />
 
       <View className="flex-1 relative">
