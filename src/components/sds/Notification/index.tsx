@@ -17,7 +17,7 @@ export interface NotificationProps {
   /** Notification icon @defaultValue `<Icon.InfoCircle />` */
   icon?: React.ReactNode;
   /** Notification message */
-  message?: string;
+  message?: string | React.ReactNode;
   /** Whether to show filled background */
   isFilled?: boolean;
   /** Custom content to render instead of title and message */
@@ -136,11 +136,14 @@ export const Notification: React.FC<NotificationProps> = ({
                   {title}
                 </Text>
               )}
-              {message && (
-                <Text sm secondary>
-                  {message}
-                </Text>
-              )}
+              {message &&
+                (typeof message === "string" ? (
+                  <Text sm secondary>
+                    {message}
+                  </Text>
+                ) : (
+                  message
+                ))}
             </>
           )}
         </CustomContentContainer>
@@ -155,12 +158,19 @@ export const Notification: React.FC<NotificationProps> = ({
           onPress={onPress}
           activeOpacity={0.8}
           accessibilityRole="button"
-          accessibilityLabel={title || message}
+          accessibilityLabel={
+            title || (typeof message === "string" ? message : undefined)
+          }
         >
           {content}
         </TouchableOpacity>
       ) : (
-        <View accessibilityRole="alert" accessibilityLabel={title || message}>
+        <View
+          accessibilityRole="alert"
+          accessibilityLabel={
+            title || (typeof message === "string" ? message : undefined)
+          }
+        >
           {content}
         </View>
       )}

@@ -623,6 +623,13 @@
     "invalidAddress": "Invalid Stellar address",
     "scanQRCodeText": "Scan a Freighter QR Code"
   },
+  "sendSearchContacts": {
+    "unfunded": {
+      "title": "The destination account doesn’t exist",
+      "action": "Send at least 1 XLM to create the account.",
+      "learnMore": "Learn more about account creation"
+    }
+  },
   "swapScreen": {
     "swapFrom": "Swap from",
     "swapTo": "Swap to",
