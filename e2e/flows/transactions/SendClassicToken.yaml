@@ -1,0 +1,56 @@
+appId: org.stellar.freighterdev
+tags:
+  - transactions
+  - send
+  - classic-token
+---
+# Import wallet first to ensure we have a wallet with balances
+- runFlow:
+    file: ../onboarding/ImportWallet.yaml
+
+# Verify we're on home screen after import
+- assertVisible:
+    id: home-screen
+
+- tapOn: Account 1
+- assertVisible: Account 2
+- tapOn:
+    point: 87%,38% # tap on ellipses "..." to open the context menu
+- tapOn: Copy address
+- tapOn:
+    point: 7%,24% # tap on the bottom sheet upper left "X" button
+- assertVisible: Tokens
+- assertVisible: Collectibles
+- tapOn:
+    id: icon-button-send
+- assertVisible: Choose recipient
+- assertVisible: Send to
+- tapOn: Send to
+- assertVisible: Paste
+- tapOn: Paste
+- tapOn:
+    point: 6%,28%
+- assertVisible: Set amount
+- tapOn: "0"
+- tapOn:
+    text: .
+    index: 9
+- tapOn: "0"
+- tapOn: "0"
+- tapOn: "0"
+- tapOn: "0"
+- tapOn: "0"
+- tapOn: "0"
+- tapOn: "1"
+- assertVisible: Review
+- tapOn: Review
+- assertVisible: You are sending
+- assertVisible: Transaction details
+- assertVisible: Confirm
+- tapOn: Confirm
+- assertVisible: Sending
+- assertVisible: Sent!
+- assertVisible: " was sent to "
+- assertVisible: Done
+- tapOn: Done
+- assertVisible: Sent
