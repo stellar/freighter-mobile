@@ -62,7 +62,7 @@ describe("processAssetBalanceChanges", () => {
     mockGetIconUrl.mockResolvedValue(mockIconUrl);
   });
 
-  describe("processing all changes (not filtering by user)", () => {
+  describe("filtering changes by user involvement", () => {
     it("should process changes where user is sender", async () => {
       const operation = {
         asset_balance_changes: [
@@ -101,7 +101,7 @@ describe("processAssetBalanceChanges", () => {
       expect(result[0].destination).toBe(mockOtherKey1);
     });
 
-    it("should process changes where user is neither sender nor receiver", async () => {
+    it("should filter out changes where user is neither sender nor receiver", async () => {
       const operation = {
         asset_balance_changes: [
           { ...nativeAssetChange, from: mockOtherKey1, to: mockOtherKey2 },
@@ -114,14 +114,11 @@ describe("processAssetBalanceChanges", () => {
         TESTNET_NETWORK_DETAILS,
       );
 
-      // CRITICAL: This tests the new behavior - should still process
-      expect(result).toHaveLength(1);
-      expect(result[0].assetCode).toBe(NATIVE_TOKEN_CODE);
-      expect(result[0].isCredit).toBe(false); // to !== publicKey
-      expect(result[0].destination).toBe(mockOtherKey2);
+      // Should filter out changes that don't involve the user
+      expect(result).toHaveLength(0);
     });
 
-    it("should process multiple changes including non-user changes", async () => {
+    it("should only include user-involved changes from multiple changes", async () => {
       const operation = {
         asset_balance_changes: [
           { ...nativeAssetChange, from: mockPublicKey, to: mockOtherKey1 },
@@ -136,11 +133,10 @@ describe("processAssetBalanceChanges", () => {
         TESTNET_NETWORK_DETAILS,
       );
 
-      // Should return 3 diffs, not just 2
-      expect(result).toHaveLength(3);
+      // Should return 2 diffs (user as sender and receiver), filtering out non-user change
+      expect(result).toHaveLength(2);
       expect(result[0].assetCode).toBe(NATIVE_TOKEN_CODE);
-      expect(result[1].assetCode).toBe("USDC");
-      expect(result[2].assetCode).toBe("LONGASSETNAME");
+      expect(result[1].assetCode).toBe("LONGASSETNAME");
     });
   });
 
@@ -334,24 +330,6 @@ describe("processAssetBalanceChanges", () => {
 
       expect(result[0].isCredit).toBe(false);
       expect(result[0].destination).toBe(mockOtherKey1);
-    });
-
-    it("should mark as debit for non-user transfers (to !== publicKey)", async () => {
-      const operation = {
-        asset_balance_changes: [
-          { ...nativeAssetChange, from: mockOtherKey1, to: mockOtherKey2 },
-        ],
-      } as any;
-
-      const result = await processAssetBalanceChanges(
-        operation,
-        mockPublicKey,
-        TESTNET_NETWORK_DETAILS,
-      );
-
-      // isCredit = to === publicKey, so when to !== publicKey, isCredit = false
-      expect(result[0].isCredit).toBe(false);
-      expect(result[0].destination).toBe(mockOtherKey2);
     });
   });
 
