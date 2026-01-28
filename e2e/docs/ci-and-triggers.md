@@ -18,7 +18,7 @@ flowchart TD
 | Trigger               | Condition                                                                                          |
 | --------------------- | -------------------------------------------------------------------------------------------------- |
 | **Pull request**      | `opened`, `synchronize`, `reopened`, `ready_for_review` on `main`, `release`, or `v*.*.*` branches |
-| **Push**              | Same branches as bove                                                                              |
+| **Push**              | Same branches as above                                                                             |
 | **Issue comment**     | Comment **exactly** `/e2e` on a PR (runs on that PR's head)                                        |
 | **workflow_dispatch** | Manual run from **Actions** tab                                                                    |
 
