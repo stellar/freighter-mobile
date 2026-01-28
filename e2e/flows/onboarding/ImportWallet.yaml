@@ -59,52 +59,28 @@ tags:
 #
 # Phrase: CI uses secrets.E2E_TEST_RECOVERY_PHRASE; local uses .env E2E_TEST_RECOVERY_PHRASE.
 #
-# iOS CI: clipboard set before tests; tap the app's clipboard button to paste (covers pasting UX).
-#         we need to use clipboard in CI because the iOS Simulator skips letters when typing in CI.
-#
-# iOS Local: Use inputText to type the recovery phrase (covers typing UX).
-#         iOS Simulator doesn't skip letters when typing locally so we can use inputText.
+# iOS: Use clipboard (phrase set by run-e2e-tests.sh / CI workflow). Tap app's clipboard button to paste.
+#      Avoids iOS Simulator occasionally skipping letters when typing. Handle "Allow Paste" if shown.
 #
 # Android: Use inputText to type the recovery phrase (covers typing UX).
 #
 - assertVisible:
     id: import-wallet-input
-# iOS: Use clipboard in CI, inputText locally
+# iOS: Clipboard approach
 - runFlow:
     when:
       platform: ios
     commands:
-      # CI: Use clipboard approach (IS_CI_ENV is set to "true" in CI workflows)
+      - tapOn:
+          id: clipboard-button
       - runFlow:
           when:
-            true: ${IS_CI_ENV === 'true'}
+            visible:
+              text: "Allow Paste|Don't Allow Paste"
           commands:
             - tapOn:
-                id: clipboard-button
-            # Handle iOS paste permission modal if it appears
-            - runFlow:
-                when:
-                  visible:
-                    text: "Allow Paste|Don't Allow Paste"
-                commands:
-                  - tapOn:
-                      text: "Allow Paste"
-      # Local: Use inputText approach (like Android)
-      - runFlow:
-          when:
-            true: ${IS_CI_ENV !== 'true'}
-          commands:
-            - tapOn:
-                id: import-wallet-input
-            - inputText: "${E2E_TEST_RECOVERY_PHRASE}"
-            # Only hide keyboard if button is not visible (suggesting keyboard is blocking it)
-            - runFlow:
-                when:
-                  notVisible:
-                    id: default-action-button
-                commands:
-                  - hideKeyboard
-# Android: Always use inputText
+                text: "Allow Paste"
+# Android: inputText approach
 - runFlow:
     when:
       platform: android
