@@ -15,7 +15,6 @@ flowchart TB
   ROOT --> F4[SwapClassicToken-&lt;timestamp&gt;/]
   F1 --> R1[recording.mp4]
   F1 --> M1[maestro.log]
-  F1 --> H1[report.html]
   F1 --> TS1[&lt;Maestro-timestamp&gt;/]
   TS1 --> C1[commands-*.json]
   TS1 --> A1[ai-*.json, ai-report-*.html]
@@ -40,9 +39,7 @@ Each flow produces `e2e-artifacts/<FlowName>-<timestamp>/`:
 |---------|--------|-------------| | `recording.mp4` | `run-e2e-tests.sh` |
 Screen recording for that flow (simctl/adb) | | `maestro.log` | Maestro (moved
 by script) | Maestro logs for the run (moved from nested `.maestro/tests/`
-folder) | | `report.html` | Maestro | HTML test report with execution summary
-(pass/fail), per-flow status, and failure error messages. Workaround for
-[Maestro issue #2098](https://github.com/mobile-dev-inc/maestro/issues/2098). |
+folder) |
 
 **In Maestro's timestamped subfolder**
 (`<FlowName>-<timestamp>/<Maestro-timestamp>/`): | Content | Source |
@@ -74,20 +71,15 @@ Download from the **Actions** run → **Summary** → **Artifacts**.
      Check for crashes, JS errors, and app-specific logs.
 3. **Recording**: Play `e2e-artifacts/<FlowName>-<ts>/recording.mp4` to see what
    the app did during the run.
-4. **HTML Report**: Open `e2e-artifacts/<FlowName>-<ts>/report.html` in a
-   browser for a visual execution summary (pass/fail, duration, per-flow status,
-   and failure error messages). For step-level details and screenshots, use
-   `maestro.log`, `commands-*.json`, and the screenshots in the timestamped
-   subfolder.
-5. **Maestro Logs**:
+4. **Maestro Logs**:
    - Open `e2e-artifacts/<FlowName>-<ts>/maestro.log` to see which step failed
      and why.
    - Open `e2e-artifacts/<FlowName>-<ts>/<Maestro-timestamp>/commands-*.json` to
      see which step failed and why.
-6. **Screenshots**: If Maestro captured screenshots on failure, find them in
+5. **Screenshots**: If Maestro captured screenshots on failure, find them in
    `e2e-artifacts/<FlowName>-<ts>/<Maestro-timestamp>/` to see the UI at the
    point of failure.
-7. **GitHub Actions UI workflow logs**: You can also check the workflow run logs
+6. **GitHub Actions UI workflow logs**: You can also check the workflow run logs
    directly in the GitHub Actions UI. Maestro output is available in:
    - **Android**: "Boot Android Emulator and Run E2E Tests" step
    - **iOS**: "Run E2E tests" step This is useful for quick inspection without

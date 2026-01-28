@@ -297,28 +297,26 @@ for file in $FLOW_FILES; do
   # Run Maestro test with per-flow output directory.
   # Pass E2E_TEST_RECOVERY_PHRASE and IS_CI_ENV when set via Maestro's `-e KEY=value`.
   # --debug-output ensures maestro.log is written to FLOW_OUTPUT_DIR (otherwise it goes to ~/.maestro/tests/).
-  # --format html --output generates a proper HTML report with execution summary and screenshots (fixes bug where
-  # ai-report-*.html files only show "0 possible defects found" without --output).
   _ret=0
   if [ -n "$MAESTRO_DEVICE" ]; then
     if [ -n "${E2E_TEST_RECOVERY_PHRASE:-}" ] && [ -n "${IS_CI_ENV:-}" ]; then
-      maestro test -e "E2E_TEST_RECOVERY_PHRASE=$E2E_TEST_RECOVERY_PHRASE" -e "IS_CI_ENV=$IS_CI_ENV" --device "$MAESTRO_DEVICE" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" --format html --output "$FLOW_OUTPUT_DIR/report.html" || _ret=$?
+      maestro test -e "E2E_TEST_RECOVERY_PHRASE=$E2E_TEST_RECOVERY_PHRASE" -e "IS_CI_ENV=$IS_CI_ENV" --device "$MAESTRO_DEVICE" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" || _ret=$?
     elif [ -n "${E2E_TEST_RECOVERY_PHRASE:-}" ]; then
-      maestro test -e "E2E_TEST_RECOVERY_PHRASE=$E2E_TEST_RECOVERY_PHRASE" --device "$MAESTRO_DEVICE" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" --format html --output "$FLOW_OUTPUT_DIR/report.html" || _ret=$?
+      maestro test -e "E2E_TEST_RECOVERY_PHRASE=$E2E_TEST_RECOVERY_PHRASE" --device "$MAESTRO_DEVICE" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" || _ret=$?
     elif [ -n "${IS_CI_ENV:-}" ]; then
-      maestro test -e "IS_CI_ENV=$IS_CI_ENV" --device "$MAESTRO_DEVICE" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" --format html --output "$FLOW_OUTPUT_DIR/report.html" || _ret=$?
+      maestro test -e "IS_CI_ENV=$IS_CI_ENV" --device "$MAESTRO_DEVICE" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" || _ret=$?
     else
-      maestro test --device "$MAESTRO_DEVICE" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" --format html --output "$FLOW_OUTPUT_DIR/report.html" || _ret=$?
+      maestro test --device "$MAESTRO_DEVICE" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" || _ret=$?
     fi
   else
     if [ -n "${E2E_TEST_RECOVERY_PHRASE:-}" ] && [ -n "${IS_CI_ENV:-}" ]; then
-      maestro test -e "E2E_TEST_RECOVERY_PHRASE=$E2E_TEST_RECOVERY_PHRASE" -e "IS_CI_ENV=$IS_CI_ENV" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" --format html --output "$FLOW_OUTPUT_DIR/report.html" || _ret=$?
+      maestro test -e "E2E_TEST_RECOVERY_PHRASE=$E2E_TEST_RECOVERY_PHRASE" -e "IS_CI_ENV=$IS_CI_ENV" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" || _ret=$?
     elif [ -n "${E2E_TEST_RECOVERY_PHRASE:-}" ]; then
-      maestro test -e "E2E_TEST_RECOVERY_PHRASE=$E2E_TEST_RECOVERY_PHRASE" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" --format html --output "$FLOW_OUTPUT_DIR/report.html" || _ret=$?
+      maestro test -e "E2E_TEST_RECOVERY_PHRASE=$E2E_TEST_RECOVERY_PHRASE" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" || _ret=$?
     elif [ -n "${IS_CI_ENV:-}" ]; then
-      maestro test -e "IS_CI_ENV=$IS_CI_ENV" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" --format html --output "$FLOW_OUTPUT_DIR/report.html" || _ret=$?
+      maestro test -e "IS_CI_ENV=$IS_CI_ENV" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" || _ret=$?
     else
-      maestro test "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" --format html --output "$FLOW_OUTPUT_DIR/report.html" || _ret=$?
+      maestro test "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" || _ret=$?
     fi
   fi
   
