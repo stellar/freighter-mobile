@@ -361,6 +361,7 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
       const collections = await apiFetchCollectibles({
         owner: publicKey,
         contracts,
+        network,
       });
 
       // Filter collections that are an error
@@ -494,6 +495,7 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
             token_ids: [tokenId],
           },
         ],
+        network,
       });
 
       const collectibleError = collections?.find(
