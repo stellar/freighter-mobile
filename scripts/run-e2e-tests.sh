@@ -296,26 +296,37 @@ for file in $FLOW_FILES; do
   
   # Run Maestro test with per-flow output directory.
   # Pass E2E_TEST_RECOVERY_PHRASE and IS_CI_ENV when set via Maestro's `-e KEY=value`.
+  # --debug-output ensures maestro.log is written to FLOW_OUTPUT_DIR (otherwise it goes to ~/.maestro/tests/).
   _ret=0
   if [ -n "$MAESTRO_DEVICE" ]; then
     if [ -n "${E2E_TEST_RECOVERY_PHRASE:-}" ] && [ -n "${IS_CI_ENV:-}" ]; then
-      maestro test -e "E2E_TEST_RECOVERY_PHRASE=$E2E_TEST_RECOVERY_PHRASE" -e "IS_CI_ENV=$IS_CI_ENV" --device "$MAESTRO_DEVICE" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" || _ret=$?
+      maestro test -e "E2E_TEST_RECOVERY_PHRASE=$E2E_TEST_RECOVERY_PHRASE" -e "IS_CI_ENV=$IS_CI_ENV" --device "$MAESTRO_DEVICE" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" || _ret=$?
     elif [ -n "${E2E_TEST_RECOVERY_PHRASE:-}" ]; then
-      maestro test -e "E2E_TEST_RECOVERY_PHRASE=$E2E_TEST_RECOVERY_PHRASE" --device "$MAESTRO_DEVICE" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" || _ret=$?
+      maestro test -e "E2E_TEST_RECOVERY_PHRASE=$E2E_TEST_RECOVERY_PHRASE" --device "$MAESTRO_DEVICE" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" || _ret=$?
     elif [ -n "${IS_CI_ENV:-}" ]; then
-      maestro test -e "IS_CI_ENV=$IS_CI_ENV" --device "$MAESTRO_DEVICE" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" || _ret=$?
+      maestro test -e "IS_CI_ENV=$IS_CI_ENV" --device "$MAESTRO_DEVICE" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" || _ret=$?
     else
-      maestro test --device "$MAESTRO_DEVICE" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" || _ret=$?
+      maestro test --device "$MAESTRO_DEVICE" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" || _ret=$?
     fi
   else
     if [ -n "${E2E_TEST_RECOVERY_PHRASE:-}" ] && [ -n "${IS_CI_ENV:-}" ]; then
-      maestro test -e "E2E_TEST_RECOVERY_PHRASE=$E2E_TEST_RECOVERY_PHRASE" -e "IS_CI_ENV=$IS_CI_ENV" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" || _ret=$?
+      maestro test -e "E2E_TEST_RECOVERY_PHRASE=$E2E_TEST_RECOVERY_PHRASE" -e "IS_CI_ENV=$IS_CI_ENV" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" || _ret=$?
     elif [ -n "${E2E_TEST_RECOVERY_PHRASE:-}" ]; then
-      maestro test -e "E2E_TEST_RECOVERY_PHRASE=$E2E_TEST_RECOVERY_PHRASE" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" || _ret=$?
+      maestro test -e "E2E_TEST_RECOVERY_PHRASE=$E2E_TEST_RECOVERY_PHRASE" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" || _ret=$?
     elif [ -n "${IS_CI_ENV:-}" ]; then
-      maestro test -e "IS_CI_ENV=$IS_CI_ENV" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" || _ret=$?
+      maestro test -e "IS_CI_ENV=$IS_CI_ENV" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" || _ret=$?
     else
-      maestro test "$file" --test-output-dir "$FLOW_OUTPUT_DIR" || _ret=$?
+      maestro test "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" || _ret=$?
+    fi
+  fi
+  
+  # Move maestro.log from nested .maestro/tests/<timestamp>/ to flow output directory
+  # Maestro creates a nested structure even with --debug-output, so we move it to the top level
+  if [ -d "$FLOW_OUTPUT_DIR/.maestro/tests" ]; then
+    _maestro_log=$(find "$FLOW_OUTPUT_DIR/.maestro/tests" -name "maestro.log" -type f | head -1)
+    if [ -n "$_maestro_log" ] && [ -f "$_maestro_log" ]; then
+      mv "$_maestro_log" "$FLOW_OUTPUT_DIR/maestro.log" 2>/dev/null || true
+      echo "✅ Moved maestro.log to flow output directory"
     fi
   fi
   
