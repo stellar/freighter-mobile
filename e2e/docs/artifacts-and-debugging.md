@@ -4,24 +4,23 @@ Where E2E artifacts live and how to use them to debug failures.
 
 ## Artifact layout
 
-```mermaid
-flowchart TB
-  ROOT[e2e-artifacts/]
-  ROOT --> LOG_ANDROID[android-emulator-logs.txt]
-  ROOT --> LOG_IOS[ios-simulator-logs.txt]
-  ROOT --> F1[CreateWallet-&lt;timestamp&gt;/]
-  ROOT --> F2[ImportWallet-&lt;timestamp&gt;/]
-  ROOT --> F3[SendClassicToken-&lt;timestamp&gt;/]
-  ROOT --> F4[SwapClassicToken-&lt;timestamp&gt;/]
-  F1 --> R1[recording.mp4]
-  F1 --> M1[maestro.log]
-  F1 --> TS1[&lt;Maestro-timestamp&gt;/]
-  TS1 --> C1[commands-*.json]
-  TS1 --> A1[ai-*.json, ai-report-*.html]
-  TS1 --> S1[Screenshots on failure]
-  F2 --> R2[recording.mp4]
-  F2 --> M2[maestro.log]
-  F2 --> TS2[&lt;Maestro-timestamp&gt;/]
+```
+e2e-artifacts/
+├── android-emulator-logs.txt      # Android CI only
+├── ios-simulator-logs.txt         # iOS CI only
+├── CreateWallet-<timestamp>/
+│   ├── recording.mp4
+│   ├── maestro.log
+│   └── <Maestro-timestamp>/       # e.g. 2026-01-27_183037
+│       ├── commands-*.json
+│       ├── ai-*.json, ai-report-*.html
+│       └── (screenshots on failure)
+├── ImportWallet-<timestamp>/
+│   └── (same structure as above)
+├── SendClassicToken-<timestamp>/
+│   └── (same structure as above)
+└── SwapClassicToken-<timestamp>/
+    └── (same structure as above)
 ```
 
 ### Root-level logs (CI)
@@ -35,20 +34,21 @@ flowchart TB
 
 Each flow produces `e2e-artifacts/<FlowName>-<timestamp>/`:
 
-**Directly in flow folder:** | Content | Source | Description |
-|---------|--------|-------------| | `recording.mp4` | `run-e2e-tests.sh` |
-Screen recording for that flow (simctl/adb) | | `maestro.log` | Maestro (moved
-by script) | Maestro logs for the run (moved from nested `.maestro/tests/`
-folder) |
+**Directly in flow folder:**
+
+| Content         | Source                    | Description                                                           |
+| --------------- | ------------------------- | --------------------------------------------------------------------- |
+| `recording.mp4` | `run-e2e-tests.sh`        | Screen recording for that flow (simctl/adb)                           |
+| `maestro.log`   | Maestro (moved by script) | Maestro logs for the run (moved from nested `.maestro/tests/` folder) |
 
 **In Maestro's timestamped subfolder**
-(`<FlowName>-<timestamp>/<Maestro-timestamp>/`): | Content | Source |
-Description | |---------|--------|-------------| | `commands-*.json` | Maestro |
-Command metadata | | `ai-*.json`, `ai-report-*.html` | Maestro | AI analysis
-files (currently not useful - only show "0 possible defects found" without
-execution details; see
-[Maestro issue #2098](https://github.com/mobile-dev-inc/maestro/issues/2098)) |
-| Screenshots | Maestro | On failure; stored in the timestamped subfolder |
+(`<FlowName>-<timestamp>/<Maestro-timestamp>/`):
+
+| Content                         | Source  | Description                                                                                                                                                |
+| ------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `commands-*.json`               | Maestro | Command metadata                                                                                                                                           |
+| `ai-*.json`, `ai-report-*.html` | Maestro | AI analysis files (currently not useful—only "0 possible defects found"; see [Maestro issue #2098](https://github.com/mobile-dev-inc/maestro/issues/2098)) |
+| Screenshots                     | Maestro | On failure; stored in the timestamped subfolder                                                                                                            |
 
 ## CI uploads
 

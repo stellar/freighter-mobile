@@ -17,7 +17,7 @@ invoked with `--platform`, `--shard-index`, `--shard-total`, and the flow name.
 - Maestro installed, `.env` configured (see
   [Local Setup & Env](local-setup-and-env.md)).
 - App built and running in simulator (iOS) or emulator (Android).
-- For iOS: `run-e2e-tests.sh` can set the simulator clipboard with
+- For iOS: `run-e2e-tests.sh` will set the simulator clipboard with
   `E2E_TEST_RECOVERY_PHRASE` for Import Wallet.
 
 ### Commands

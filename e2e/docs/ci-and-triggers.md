@@ -15,12 +15,12 @@ flowchart TD
   BR --> |Other| SKIP[Skip]
 ```
 
-| Trigger               | Condition                                                                                 |
-| --------------------- | ----------------------------------------------------------------------------------------- |
-| **Pull request**      | `opened`, `synchronize`, `reopened`, `ready_for_review` on `main`, `release`, or `v*.*.*` |
-| **Push**              | Same branches                                                                             |
-| **Issue comment**     | Comment **exactly** `/e2e` on a PR (runs on that PR's head)                               |
-| **workflow_dispatch** | Manual run from **Actions** tab                                                           |
+| Trigger               | Condition                                                                                          |
+| --------------------- | -------------------------------------------------------------------------------------------------- |
+| **Pull request**      | `opened`, `synchronize`, `reopened`, `ready_for_review` on `main`, `release`, or `v*.*.*` branches |
+| **Push**              | Same branches as bove                                                                              |
+| **Issue comment**     | Comment **exactly** `/e2e` on a PR (runs on that PR's head)                                        |
+| **workflow_dispatch** | Manual run from **Actions** tab                                                                    |
 
 **Branch patterns**: `v*.*.*` matches semantic versions (e.g. `v1.2.3`), not
 arbitrary names like `vrandombranch`.

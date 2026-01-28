@@ -127,12 +127,12 @@ e2e/
 
 ## Test Flows
 
-| Flow                   | File                                       | Description                                                                   |
-| ---------------------- | ------------------------------------------ | ----------------------------------------------------------------------------- |
-| **Create Wallet**      | `flows/onboarding/CreateWallet.yaml`       | New wallet, password, recovery phrase, validation, skip biometrics, home      |
-| **Import Wallet**      | `flows/onboarding/ImportWallet.yaml`       | "I already have a wallet", password, recovery phrase, skip biometrics, home   |
-| **Send Classic Token** | `flows/transactions/SendClassicToken.yaml` | Imports wallet → home → send flow → enter recipient/amount → confirm → "Sent" |
-| **Swap Classic Token** | `flows/transactions/SwapClassicToken.yaml` | Imports wallet → home → swap flow → "Swapped"                                 |
+| Flow                   | File                                       | Description                                                                                   |
+| ---------------------- | ------------------------------------------ | --------------------------------------------------------------------------------------------- |
+| **Create Wallet**      | `flows/onboarding/CreateWallet.yaml`       | "Create a new wallet" → password → recovery phrase → skip validation → skip biometrics → home |
+| **Import Wallet**      | `flows/onboarding/ImportWallet.yaml`       | "I already have a wallet" → password → recovery phrase → skip biometrics → home               |
+| **Send Classic Token** | `flows/transactions/SendClassicToken.yaml` | Imports wallet → home → send flow → confirm → "Sent"                                          |
+| **Swap Classic Token** | `flows/transactions/SwapClassicToken.yaml` | Imports wallet → home → swap flow → confirm → "Swapped"                                       |
 
 **Test data**: Password `TestPassword123!`; recovery phrase from
 `E2E_TEST_RECOVERY_PHRASE` (see
