@@ -1,0 +1,147 @@
+appId: org.stellar.freighterdev
+tags:
+  - onboarding
+  - import-wallet
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+
+# If iOS App Tracking Transparency prompt appears on first launch,
+# choose "Ask App Not to Track". Retry up to 3 times if dismiss fails.
+- retry:
+    maxRetries: 3
+    commands:
+      - runFlow:
+          when:
+            platform: ios
+            visible:
+              text: "Ask App Not to Track"
+          commands:
+            - tapOn:
+                text: "Ask App Not to Track"
+
+# Wait for welcome screen (may take time on first launch)
+- extendedWaitUntil:
+    visible:
+      id: welcome-screen
+    timeout: 600000 # 10 minutes (600 seconds = 600000 milliseconds)
+
+# Tap import wallet button
+- tapOn:
+    id: import-wallet-button
+
+# Enter password on Choose Password screen
+- assertVisible:
+    id: password-input
+- tapOn:
+    id: password-input
+- inputText: "TestPassword123!"
+- hideKeyboard
+
+# Tap continue button
+- tapOn:
+    id: default-action-button
+
+# Confirm password screen
+- assertVisible:
+    id: confirm-password-input
+- tapOn:
+    id: confirm-password-input
+- inputText: "TestPassword123!"
+- hideKeyboard
+
+# Tap continue button
+- tapOn:
+    id: default-action-button
+
+# Import wallet screen - enter recovery phrase
+#
+# Phrase: CI uses secrets.E2E_TEST_RECOVERY_PHRASE; local uses .env E2E_TEST_RECOVERY_PHRASE.
+#
+# iOS: Use clipboard (phrase set by run-e2e-tests.sh / CI workflow). Tap app's clipboard button to paste.
+#      Avoids iOS Simulator occasionally skipping letters when typing. Handle "Allow Paste" if shown.
+#
+# Android: Use inputText to type the recovery phrase (covers typing UX).
+#
+- assertVisible:
+    id: import-wallet-input
+# iOS: Clipboard approach
+- runFlow:
+    when:
+      platform: ios
+    commands:
+      - tapOn:
+          id: clipboard-button
+      - runFlow:
+          when:
+            visible:
+              text: "Allow Paste|Don't Allow Paste"
+          commands:
+            - tapOn:
+                text: "Allow Paste"
+# Android: inputText approach
+- runFlow:
+    when:
+      platform: android
+    commands:
+      - tapOn:
+          id: import-wallet-input
+      - inputText: "${E2E_TEST_RECOVERY_PHRASE}"
+      # Only hide keyboard if button is not visible (suggesting keyboard is blocking it)
+      # This prevents calling hideKeyboard when keyboard is already hidden (which causes navigation issues)
+      - runFlow:
+          when:
+            notVisible:
+              id: default-action-button
+          commands:
+            - hideKeyboard
+# Tap continue/import button
+- tapOn:
+    id: default-action-button
+
+# Biometrics screen - skip biometrics if it appears
+- runFlow:
+    when:
+      visible:
+        text: .*biometric.*|.*Face ID.*|.*Touch ID.*|.*Enable.*
+    commands:
+      # Prefer tapping an explicit "Skip" / secondary action button if present
+      - runFlow:
+          when:
+            visible:
+              id: secondary-action-button
+          commands:
+            - tapOn:
+                id: secondary-action-button
+      # Fallback to common textual variants for skipping biometrics
+      - runFlow:
+          when:
+            visible:
+              text: "Skip for now|Skip|Not now|Maybe later"
+          commands:
+            - tapOn:
+                text: "Skip for now|Skip|Not now|Maybe later"
+      # If a system biometric dialog appears, choose the negative option
+      - runFlow:
+          when:
+            visible:
+              text: "Don't Allow|Don't Allow|Cancel"
+          commands:
+            - tapOn:
+                text: "Don't Allow|Don't Allow|Cancel"
+
+# Dismiss welcome banner if it appears (check before home screen)
+- runFlow:
+    when:
+      visible:
+        id: welcome-banner-dismiss-button
+    commands:
+      - tapOn:
+          id: welcome-banner-dismiss-button
+
+# Verify we reached home screen
+- extendedWaitUntil:
+    visible:
+      id: home-screen
+    timeout: 30000

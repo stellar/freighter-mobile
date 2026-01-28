@@ -209,7 +209,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
   ]);
 
   return (
-    <View className="flex-1">
+    <View className="flex-1" testID="swap-review-sheet">
       <View className="rounded-[16px] p-[16px] gap-[16px] bg-background-tertiary">
         <Text lg medium>
           {t("swapScreen.review.title")}
@@ -402,6 +402,7 @@ export const SwapReviewFooter: React.FC<SwapReviewFooterProps> = React.memo(
             tertiary
             xl
             disabled={isDisabled}
+            testID="swap-review-confirm-button"
           >
             {t("common.confirm")}
           </Button>
@@ -430,6 +431,7 @@ export const SwapReviewFooter: React.FC<SwapReviewFooterProps> = React.memo(
             xl
             isFullWidth
             onPress={onCancel}
+            testID="swap-review-cancel-button"
           >
             {t("common.cancel")}
           </Button>
@@ -438,7 +440,13 @@ export const SwapReviewFooter: React.FC<SwapReviewFooterProps> = React.memo(
 
       const confirmAnywayButton = isUnableToScanToken ? (
         <View className="flex-1">
-          <Button xl isFullWidth onPress={onConfirm} variant="tertiary">
+          <Button
+            xl
+            isFullWidth
+            onPress={onConfirm}
+            variant="tertiary"
+            testID="swap-review-confirm-anyway-button"
+          >
             {t("transactionAmountScreen.confirmAnyway")}
           </Button>
         </View>
@@ -447,6 +455,7 @@ export const SwapReviewFooter: React.FC<SwapReviewFooterProps> = React.memo(
           text={t("transactionAmountScreen.confirmAnyway")}
           onPress={onConfirm}
           variant={isMalicious ? "error" : "secondary"}
+          testID="swap-review-confirm-anyway-button"
         />
       );
 
