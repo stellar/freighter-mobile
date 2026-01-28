@@ -1073,7 +1073,7 @@ export type CollectiblesResponse = {
  *     id: "CCBWOUL7XW5XSWD3UKL76VWLLFCSZP4D4GUSCFBHUQCEAW23QVKJZ7ON",
  *     token_ids: ["abc", "def", "ghi"]
  *   }],
- *   network: "PUBLIC"
+ *   network: NETWORKS.PUBLIC
  * });
  * ```
  */
