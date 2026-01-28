@@ -2,12 +2,10 @@ name: Android E2E Tests
 
 on:
   pull_request:
-    # TODO: remove "cg-integration-test" before merging this PR to main
-    branches: [cg-integration-test, main, release, "v*.*.*"]
+    branches: [main, release, "v*.*.*"]
     types: [opened, synchronize, reopened, ready_for_review]
   push:
-    # TODO: remove "cg-integration-test" before merging this PR to main
-    branches: [cg-integration-test, main, release, "v*.*.*"]
+    branches: [main, release, "v*.*.*"]
   issue_comment:
     types: [created]
   workflow_dispatch:
