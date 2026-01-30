@@ -255,12 +255,14 @@ export const useTokenIconsStore = create<TokenIconsState>()(
       cacheTokenListIcons: async ({ network }) => {
         const { getVerifiedTokens } = useVerifiedTokensStore.getState();
         const verifiedTokens = await getVerifiedTokens({ network });
+        const existingIcons = get().icons;
         const iconMap = verifiedTokens.reduce(
           (prev, curr) => {
             if (curr.icon) {
               let iconUrl = curr.icon;
               let isValidated = false;
               let isValid: boolean | null = null;
+              const existingIcon = existingIcons[`${curr.code}:${curr.issuer}`];
 
               if (
                 network === NETWORKS.PUBLIC &&
@@ -273,19 +275,42 @@ export const useTokenIconsStore = create<TokenIconsState>()(
                 isValid = true;
               }
 
+              const shouldUseExistingValidation =
+                existingIcon &&
+                existingIcon.imageUrl === iconUrl &&
+                existingIcon.network === network;
+
               const icon: Icon = {
                 imageUrl: iconUrl,
                 network,
-                isValidated,
-                isValid,
+                isValidated: shouldUseExistingValidation
+                  ? existingIcon.isValidated
+                  : isValidated,
+                isValid: shouldUseExistingValidation
+                  ? existingIcon.isValid
+                  : isValid,
               };
               // eslint-disable-next-line no-param-reassign
               prev[`${curr.code}:${curr.issuer}`] = icon;
 
               // We should cache icons by contract ID as well, to be used when adding new tokens by C address.
               if (curr.contract) {
+                const existingContractIcon =
+                  existingIcons[`${curr.code}:${curr.contract}`];
+                const shouldUseExistingContractValidation =
+                  existingContractIcon &&
+                  existingContractIcon.imageUrl === iconUrl &&
+                  existingContractIcon.network === network;
                 // eslint-disable-next-line no-param-reassign
-                prev[`${curr.code}:${curr.contract}`] = icon;
+                prev[`${curr.code}:${curr.contract}`] = {
+                  ...icon,
+                  isValidated: shouldUseExistingContractValidation
+                    ? existingContractIcon.isValidated
+                    : icon.isValidated,
+                  isValid: shouldUseExistingContractValidation
+                    ? existingContractIcon.isValid
+                    : icon.isValid,
+                };
               }
             }
             return prev;
