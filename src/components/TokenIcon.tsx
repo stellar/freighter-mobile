@@ -121,12 +121,18 @@ export const TokenIcon: React.FC<TokenIconProps> = ({
 
   const isLoading = !iconUrl && icon && !icon.isValidated && !!icon.imageUrl;
 
-  // Lazy validation
   React.useEffect(() => {
     if (!iconUrl && icon && icon.isValidated === false) {
       validateIconOnAccess(tokenIdentifier);
     }
-  }, [iconUrl, icon, tokenIdentifier, validateIconOnAccess]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    iconUrl,
+    icon?.isValidated,
+    icon?.imageUrl,
+    tokenIdentifier,
+    validateIconOnAccess,
+  ]);
 
   // Render callbacks
   const renderLPContent = React.useCallback(
