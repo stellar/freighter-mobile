@@ -323,13 +323,13 @@ export const useTokenIconsStore = create<TokenIconsState>()(
             // Mark existing icons as not validated to trigger lazy validation
             // This covers "On app start: mark all existing cached icons as isValidated: false"
             // effectively resetting validation state on mass update.
+            ...state.icons,
             ...Object.fromEntries(
               Object.keys(state.icons).map((key) => [
                 key,
                 { ...state.icons[key], isValidated: false },
               ]),
             ),
-            ...state.icons,
             ...iconMap,
           },
         }));
