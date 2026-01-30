@@ -137,6 +137,7 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
             issuer: selectedToken.issuer,
             decimals: selectedToken.decimals,
             name: selectedToken.name,
+            iconUrl: selectedToken.iconUrl,
           }
         : null,
       network,

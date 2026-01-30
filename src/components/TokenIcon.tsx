@@ -56,7 +56,6 @@ export const TokenIcon: React.FC<TokenIconProps> = ({
   backgroundColor,
   iconUrl,
 }) => {
-  const icons = useTokenIconsStore((state) => state.icons);
   const { t } = useTranslation();
 
   const getFallbackTextSize = (tokenSize: TokenSize) => {
@@ -72,6 +71,87 @@ export const TokenIcon: React.FC<TokenIconProps> = ({
     }
   };
 
+  // Memoize fallback text size since it only depends on size prop
+  const fallbackTextSize = React.useMemo(
+    () => getFallbackTextSize(size),
+    [size],
+  );
+
+  // Normalize token prop early so hooks can depend on it
+  const token: Token = React.useMemo(() => {
+    if ("contractId" in tokenProp) {
+      return {
+        ...tokenProp,
+        type: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+        code: tokenProp.symbol,
+        issuer: {
+          key: tokenProp.contractId,
+        },
+      };
+    }
+    if ("token" in tokenProp) {
+      return tokenProp.token;
+    }
+    return tokenProp as Token;
+  }, [tokenProp]);
+
+  // Compute identifier
+  const tokenIdentifier = React.useMemo(() => {
+    // Basic check for LP first (though isLiquidityPool check happens later for rendering,
+    // we need an identifier for the hook)
+    if (isLiquidityPool(tokenProp)) return "LP";
+
+    if (token.type === TokenTypeWithCustomToken.NATIVE) return "native";
+    return getTokenIdentifier(token);
+  }, [tokenProp, token]);
+
+  // Optimize store subscription: Select only the needed icon
+  // Note: We use useTokenIconsStore with a selector to avoid re-renders on every store update
+  const icon = useTokenIconsStore(
+    React.useCallback(
+      (state) => state.icons[tokenIdentifier],
+      [tokenIdentifier],
+    ),
+  );
+
+  // Select validate action (stable reference)
+  const validateIconOnAccess = useTokenIconsStore(
+    (state) => state.validateIconOnAccess,
+  );
+
+  const isLoading = !iconUrl && icon && !icon.isValidated && !!icon.imageUrl;
+
+  // Lazy validation
+  React.useEffect(() => {
+    if (!iconUrl && icon && icon.isValidated === false) {
+      validateIconOnAccess(tokenIdentifier);
+    }
+  }, [iconUrl, icon, tokenIdentifier, validateIconOnAccess]);
+
+  // Render callbacks
+  const renderLPContent = React.useCallback(
+    () => (
+      <Text size={fallbackTextSize} bold secondary isVerticallyCentered>
+        LP
+      </Text>
+    ),
+    [fallbackTextSize],
+  );
+
+  const renderSorobanContent = React.useCallback(
+    () => <SorobanTokenIcon />,
+    [],
+  );
+
+  const renderInitialsContent = React.useCallback(
+    () => (
+      <Text size={fallbackTextSize} bold secondary isVerticallyCentered>
+        {token.code?.slice(0, size === "sm" ? 1 : 2) || ""}
+      </Text>
+    ),
+    [fallbackTextSize, token.code, size],
+  );
+
   // Liquidity pool: show "LP" text
   if (isLiquidityPool(tokenProp)) {
     return (
@@ -81,37 +161,10 @@ export const TokenIcon: React.FC<TokenIconProps> = ({
         sourceOne={{
           altText: t("tokenIconAlt", { code: "LP" }),
           backgroundColor,
-          renderContent: () => (
-            <Text
-              size={getFallbackTextSize(size)}
-              bold
-              secondary
-              isVerticallyCentered
-            >
-              LP
-            </Text>
-          ),
+          renderContent: renderLPContent,
         }}
       />
     );
-  }
-
-  let token: Token;
-
-  // Normalize token prop
-  if ("contractId" in tokenProp) {
-    token = {
-      ...tokenProp,
-      type: TokenTypeWithCustomToken.CUSTOM_TOKEN,
-      code: tokenProp.symbol,
-      issuer: {
-        key: tokenProp.contractId,
-      },
-    };
-  } else if ("token" in tokenProp) {
-    token = tokenProp.token;
-  } else {
-    token = tokenProp as Token;
   }
 
   // Native XLM: show Stellar logo
@@ -129,12 +182,11 @@ export const TokenIcon: React.FC<TokenIconProps> = ({
     );
   }
 
+  const finalImageUrl = iconUrl || (icon?.isValid ? icon.imageUrl : undefined);
+  const skipImageLoader = !iconUrl && !!icon?.isValidated;
+
   // Soroban custom tokens: show icon if available, otherwise SorobanTokenIcon
   if (token.type === TokenTypeWithCustomToken.CUSTOM_TOKEN) {
-    const tokenIdentifier = getTokenIdentifier(token);
-    const icon = icons[tokenIdentifier];
-    const imageUrl = iconUrl || icon?.imageUrl;
-
     return (
       <TokenComponent
         variant="single"
@@ -142,22 +194,16 @@ export const TokenIcon: React.FC<TokenIconProps> = ({
         sourceOne={{
           altText: t("tokenIconAlt", { code: token.code }),
           backgroundColor,
-          image: imageUrl,
+          image: finalImageUrl,
+          isLoading,
+          skipImageLoader,
           // Fallback: show SorobanTokenIcon for Soroban custom tokens
           // in case the specific icon is not available
-          renderContent: () => <SorobanTokenIcon />,
+          renderContent: renderSorobanContent,
         }}
       />
     );
   }
-
-  // Classic tokens (and SACs): show icon if available, otherwise show token initials
-  const tokenIdentifier = getTokenIdentifier(token);
-  const icon = icons[tokenIdentifier];
-  const imageUrl = iconUrl || icon?.imageUrl;
-
-  const maxLetters = size === "sm" ? 1 : 2;
-  const tokenInitials = token.code?.slice(0, maxLetters) || "";
 
   return (
     <TokenComponent
@@ -166,18 +212,11 @@ export const TokenIcon: React.FC<TokenIconProps> = ({
       sourceOne={{
         altText: t("tokenIconAlt", { code: token.code }),
         backgroundColor,
-        image: imageUrl,
+        image: finalImageUrl,
+        isLoading,
+        skipImageLoader,
         // Fallback: show token initials if the icon is not available
-        renderContent: () => (
-          <Text
-            size={getFallbackTextSize(size)}
-            bold
-            secondary
-            isVerticallyCentered
-          >
-            {tokenInitials}
-          </Text>
-        ),
+        renderContent: renderInitialsContent,
       }}
     />
   );

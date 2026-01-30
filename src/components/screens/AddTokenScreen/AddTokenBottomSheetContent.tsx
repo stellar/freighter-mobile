@@ -246,6 +246,7 @@ const AddTokenBottomSheetContent: React.FC<AddTokenBottomSheetContentProps> = ({
               key: token.issuer,
             },
           }}
+          iconUrl={token.iconUrl}
         />
         {isMalicious && (
           <View className="absolute -bottom-1 -right-1 rounded-full p-1 z-10 bg-red-3">

@@ -15,6 +15,7 @@ import { useVerifiedTokensStore } from "ducks/verifiedTokens";
 import { getTokenIdentifier, isLiquidityPool } from "helpers/balances";
 import { debug } from "helpers/debug";
 import { getIconUrl } from "helpers/getIconUrl";
+import { Image } from "react-native";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
@@ -22,10 +23,14 @@ import { persist, createJSONStorage } from "zustand/middleware";
  * Represents a token icon with its source URL and network context
  * @property {string} imageUrl - The URL of the icon image
  * @property {NETWORK_URLS} networkUrl - The network URL where this icon was fetched from
+ * @property {boolean} [isValidated] - Whether the icon URL has been validated
+ * @property {boolean | null} [isValid] - Validation result (null = not validated, true = valid, false = invalid)
  */
 export interface Icon {
   imageUrl: string;
   network: NETWORKS;
+  isValidated?: boolean;
+  isValid?: boolean | null;
 }
 
 /**
@@ -74,12 +79,51 @@ interface TokenIconsState {
    * Processes icons in batches to avoid overwhelming the network
    */
   refreshIcons: () => void;
+  /**
+   * Lazy validation trigger for a token icon
+   * Only validates if not already validated
+   * @param {string} identifier - The token identifier to validate
+   */
+  validateIconOnAccess: (identifier: string) => Promise<void>;
 }
 
 /** Number of icons to process in each batch */
 const BATCH_SIZE = 3;
 /** Delay in milliseconds between processing batches */
 const BATCH_DELAY = 1000;
+
+/**
+ * Validates an icon URL by attempting to fetch it
+ * @param {string} url - The URL to validate
+ * @returns {Promise<boolean>} True if the URL is valid and accessible
+ */
+const validateIconUrl = async (url: string): Promise<boolean> => {
+  if (!url) return false;
+
+  // If it's not a remote URL (http/https), assume it's valid (local resource or data URI)
+  if (
+    typeof url !== "string" ||
+    (!url.startsWith("http") && !url.startsWith("https"))
+  ) {
+    return true;
+  }
+
+  // Use Image.prefetch to validate and cache the image
+  try {
+    const fetchPromise = Image.prefetch(url)
+      .then(() => true)
+      .catch(() => false);
+
+    // 3 second timeout
+    const timeoutPromise = new Promise<boolean>((resolve) => {
+      setTimeout(() => resolve(false), 3000);
+    });
+
+    return await Promise.race([fetchPromise, timeoutPromise]);
+  } catch (error) {
+    return false;
+  }
+};
 
 /**
  * Processes a batch of icons for refresh in a low-priority background task
@@ -132,10 +176,15 @@ const processIconBatches = async (params: {
         updatedIcons[cacheKey] = {
           imageUrl,
           network: icon.network,
+          isValidated: false,
+          isValid: null,
         };
       } catch (error) {
-        // Keep the existing icon URL if refresh fails
-        updatedIcons[cacheKey] = icon;
+        // Keep the existing icon URL if refresh fails, but mark for re-validation
+        updatedIcons[cacheKey] = {
+          ...icon,
+          isValidated: false,
+        };
       }
     }),
   );
@@ -210,6 +259,9 @@ export const useTokenIconsStore = create<TokenIconsState>()(
           (prev, curr) => {
             if (curr.icon) {
               let iconUrl = curr.icon;
+              let isValidated = false;
+              let isValid: boolean | null = null;
+
               if (
                 network === NETWORKS.PUBLIC &&
                 curr.code === USDC_CODE &&
@@ -217,10 +269,15 @@ export const useTokenIconsStore = create<TokenIconsState>()(
                   curr.contract === CIRCLE_USDC_CONTRACT)
               ) {
                 iconUrl = logos.usdc as unknown as string;
+                isValidated = true;
+                isValid = true;
               }
+
               const icon: Icon = {
                 imageUrl: iconUrl,
                 network,
+                isValidated,
+                isValid,
               };
               // eslint-disable-next-line no-param-reassign
               prev[`${curr.code}:${curr.issuer}`] = icon;
@@ -238,6 +295,15 @@ export const useTokenIconsStore = create<TokenIconsState>()(
 
         set((state) => ({
           icons: {
+            // Mark existing icons as not validated to trigger lazy validation
+            // This covers "On app start: mark all existing cached icons as isValidated: false"
+            // effectively resetting validation state on mass update.
+            ...Object.fromEntries(
+              Object.keys(state.icons).map((key) => [
+                key,
+                { ...state.icons[key], isValidated: false },
+              ]),
+            ),
             ...state.icons,
             ...iconMap,
           },
@@ -266,6 +332,8 @@ export const useTokenIconsStore = create<TokenIconsState>()(
           const icon: Icon = {
             imageUrl,
             network,
+            isValidated: false,
+            isValid: null,
           };
 
           debug(
@@ -276,18 +344,38 @@ export const useTokenIconsStore = create<TokenIconsState>()(
           );
 
           // Cache the icon URL (even if empty, to avoid re-fetching)
-          set((state) => ({
-            icons: {
-              ...state.icons,
-              [cacheKey]: icon,
-            },
-          }));
+          set((state) => {
+            const currentIcon = state.icons[cacheKey];
+            // If we already have the same icon data, don't update to avoid triggering re-renders
+            // or resetting validation state unnecessarily
+            if (
+              currentIcon &&
+              currentIcon.imageUrl === icon.imageUrl &&
+              currentIcon.network === icon.network
+            ) {
+              return state;
+            }
+
+            return {
+              icons: {
+                ...state.icons,
+                [cacheKey]: icon,
+              },
+            };
+          });
+
+          // Validate in background
+          if (imageUrl) {
+            get().validateIconOnAccess(cacheKey);
+          }
 
           return icon;
         } catch (error) {
           return {
             imageUrl: "",
             network,
+            isValidated: true,
+            isValid: false,
           };
         }
       },
@@ -311,10 +399,16 @@ export const useTokenIconsStore = create<TokenIconsState>()(
 
             // Fetching icon will save it to the cache automatically
             // so that we don't need to return anything
-            await get().fetchIconUrl({
+            const icon = await get().fetchIconUrl({
               token: balance.token,
               network,
             });
+
+            // Validate immediately for user's balances
+            if (icon && icon.imageUrl && !icon.isValidated) {
+              const cacheKey = getTokenIdentifier(balance.token);
+              await get().validateIconOnAccess(cacheKey);
+            }
           }),
         );
       },
@@ -353,6 +447,69 @@ export const useTokenIconsStore = create<TokenIconsState>()(
           updatedIcons,
           startTime,
           set,
+        });
+      },
+      validateIconOnAccess: async (identifier) => {
+        const icon = get().icons[identifier];
+        if (
+          !icon ||
+          icon.isValidated ||
+          (!icon.imageUrl && icon.imageUrl !== "")
+        ) {
+          return;
+        }
+
+        if (!icon.imageUrl) {
+          set((state) => ({
+            icons: {
+              ...state.icons,
+              [identifier]: {
+                ...state.icons[identifier],
+                isValidated: true,
+                isValid: false,
+              },
+            },
+          }));
+          return;
+        }
+
+        const isValid = await validateIconUrl(icon.imageUrl);
+
+        set((state) => {
+          const currentIcon = state.icons[identifier];
+          // Check if icon still exists and matches
+          if (!currentIcon || currentIcon.imageUrl !== icon.imageUrl) {
+            return state;
+          }
+
+          if (isValid) {
+            return {
+              icons: {
+                ...state.icons,
+                [identifier]: {
+                  ...currentIcon,
+                  isValidated: true,
+                  isValid: true,
+                },
+              },
+            };
+          }
+
+          // If validation failed, we enable retry logic on next access only if needed,
+          // but specifically for "forever loading" issues (like ARST), we should probably
+          // stop trying if it fails confirmedly.
+          // However, to fix the specific "loading forever" bug:
+          // We must mark it as validated even if false, so UI stops spinning.
+          return {
+            icons: {
+              ...state.icons,
+              [identifier]: {
+                ...currentIcon,
+                isValidated: true,
+                isValid: false,
+              },
+            },
+          };
         });
       },
     }),
