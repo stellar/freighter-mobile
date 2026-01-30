@@ -1,8 +1,14 @@
-import Spinner from "components/Spinner";
 import { THEME } from "config/theme";
 import { px } from "helpers/dimensions";
-import React, { useState, useEffect, useRef } from "react";
-import { ImageSourcePropType, View } from "react-native";
+import React, { useState, useEffect } from "react";
+import { ImageSourcePropType, View, StyleSheet } from "react-native";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  withSequence,
+} from "react-native-reanimated";
 import styled from "styled-components/native";
 
 // =============================================================================
@@ -114,6 +120,10 @@ export type TokenSource = {
   backgroundColor?: string;
   /** Custom content renderer */
   renderContent?: () => React.ReactNode;
+  /** Explicit loading state */
+  isLoading?: boolean;
+  /** Whether to skip the internal image loading state (e.g. if pre-fetched) */
+  skipImageLoader?: boolean;
 };
 
 /**
@@ -333,22 +343,50 @@ const TokenImage = styled.Image`
   height: 100%;
 `;
 
+const TokenLoader = () => {
+  const opacity = useSharedValue(0.4);
+
+  useEffect(() => {
+    opacity.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 1000 }),
+        withTiming(0.4, { duration: 1000 }),
+      ),
+      -1,
+      true,
+    );
+  }, [opacity]);
+
+  const style = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+  }));
+
+  return (
+    <Animated.View
+      style={[
+        {
+          ...StyleSheet.absoluteFillObject,
+          backgroundColor: THEME.colors.border.default, // Using border color as a neutral placeholder
+        },
+        style,
+      ]}
+    />
+  );
+};
+
 // =============================================================================
 // Component
 // =============================================================================
 
-// Component to handle image loading with timeout fallback
+// Component to handle image loading with simple fallback on error
 const ImageWithFallback: React.FC<{
   source: TokenSource;
 }> = ({ source }) => {
-  const [showFallback, setShowFallback] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const imageLoadedRef = useRef(false);
-  const imageErroredRef = useRef(false);
-
-  // Timeout constant: show fallback after 1s if image hasn't loaded
-  const IMAGE_LOAD_TIMEOUT = 1000;
+  const [hasError, setHasError] = useState(false);
+  const [isImageLoading, setIsImageLoading] = useState(
+    !source.skipImageLoader &&
+      !!(source.image && typeof source.image === "string"),
+  );
 
   // Check if image is valid (non-empty string or valid ImageSourcePropType)
   const hasValidImage =
@@ -357,76 +395,42 @@ const ImageWithFallback: React.FC<{
       ? source.image.trim().length > 0
       : !!source.image);
 
+  // Reset error state if image source changes
   useEffect(() => {
-    if (hasValidImage) {
-      imageLoadedRef.current = false;
-      imageErroredRef.current = false;
-      setShowFallback(false);
-      setIsLoading(true);
+    setHasError(false);
+    setIsImageLoading(
+      !source.skipImageLoader &&
+        !!(source.image && typeof source.image === "string"),
+    );
+  }, [source.image, source.skipImageLoader]);
 
-      timeoutRef.current = setTimeout(() => {
-        if (!imageLoadedRef.current && !imageErroredRef.current) {
-          setShowFallback(true);
-          setIsLoading(false);
-        }
-      }, IMAGE_LOAD_TIMEOUT);
-    } else {
-      setIsLoading(false);
-    }
+  if (source.isLoading) {
+    return <TokenLoader />;
+  }
 
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-      }
-    };
-  }, [hasValidImage]);
-
-  const handleImageLoad = () => {
-    imageLoadedRef.current = true;
-    setIsLoading(false);
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
-  };
-
-  const handleImageError = () => {
-    imageErroredRef.current = true;
-    setIsLoading(false);
-    setShowFallback(true);
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
-  };
-
-  // If we have a valid image, render the image with spinner overlay
-  if (hasValidImage && !showFallback) {
+  if (hasValidImage && !hasError) {
     return (
       <View className="w-full h-full relative">
+        {isImageLoading && <TokenLoader />}
         <TokenImage
-          // This will allow handling both local and remote images
           source={
             typeof source.image === "string"
               ? { uri: source.image }
               : source.image
           }
           accessibilityLabel={source.altText}
-          onLoad={handleImageLoad}
-          onError={handleImageError}
+          onError={() => {
+            setHasError(true);
+            setIsImageLoading(false);
+          }}
+          onLoadEnd={() => setIsImageLoading(false)}
+          style={isImageLoading ? { opacity: 0 } : undefined}
         />
-        {/* Spinner overlay - shown while loading, hidden when image loads */}
-        {isLoading && (
-          <View className="absolute inset-0 justify-center items-center">
-            <Spinner size="small" />
-          </View>
-        )}
       </View>
     );
   }
 
-  // If no valid image or image failed, show fallback
+  // Fallback
   return source.renderContent ? <>{source.renderContent()}</> : null;
 };
 
@@ -530,29 +534,31 @@ const ImageWithFallback: React.FC<{
  *   }}
  * />
  */
-export const Token: React.FC<TokenProps> = ({
-  variant,
-  size = "lg",
-  sourceOne,
-  sourceTwo,
-  testID = "token",
-}: TokenProps) => {
-  const renderImage = (source: TokenSource, isSecond = false) => (
-    <TokenImageContainer
-      $size={size}
-      $variant={variant}
-      $isSecond={isSecond}
-      $backgroundColor={source.backgroundColor}
-      testID={`${testID}-image-${isSecond ? "two" : "one"}`}
-    >
-      <ImageWithFallback source={source} />
-    </TokenImageContainer>
-  );
+export const Token: React.FC<TokenProps> = React.memo(
+  ({
+    variant,
+    size = "lg",
+    sourceOne,
+    sourceTwo,
+    testID = "token",
+  }: TokenProps) => {
+    const renderImage = (source: TokenSource, isSecond = false) => (
+      <TokenImageContainer
+        $size={size}
+        $variant={variant}
+        $isSecond={isSecond}
+        $backgroundColor={source.backgroundColor}
+        testID={`${testID}-image-${isSecond ? "two" : "one"}`}
+      >
+        <ImageWithFallback source={source} />
+      </TokenImageContainer>
+    );
 
-  return (
-    <TokenContainer $size={size} $variant={variant} testID={testID}>
-      {renderImage(sourceOne)}
-      {sourceTwo && renderImage(sourceTwo, true)}
-    </TokenContainer>
-  );
-};
+    return (
+      <TokenContainer $size={size} $variant={variant} testID={testID}>
+        {renderImage(sourceOne)}
+        {sourceTwo && renderImage(sourceTwo, true)}
+      </TokenContainer>
+    );
+  },
+);

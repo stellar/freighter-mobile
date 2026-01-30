@@ -48,6 +48,7 @@ jest.mock("components/sds/Token", () => {
     Token: ({ sourceOne, size, variant }: TokenProps) => (
       <View testID="token" data-size={size} data-variant={variant}>
         {sourceOne.image && <Text testID="image-url">{sourceOne.image}</Text>}
+        {sourceOne.isLoading && <Text testID="is-loading">Loading</Text>}
         {sourceOne.renderContent && sourceOne.renderContent()}
       </View>
     ),
@@ -59,9 +60,23 @@ describe("TokenIcon", () => {
     typeof useTokenIconsStore
   >;
 
+  const mockValidateIconOnAccess = jest.fn();
+  let mockState: any;
+
   beforeEach(() => {
     jest.clearAllMocks();
-    mockUseTokenIconsStore.mockReturnValue({ icons: {} });
+    mockState = {
+      icons: {},
+      validateIconOnAccess: mockValidateIconOnAccess,
+    };
+
+    // Mock implementation to handle selectors
+    mockUseTokenIconsStore.mockImplementation((selector) => {
+      if (typeof selector === "function") {
+        return selector(mockState);
+      }
+      return mockState;
+    });
   });
 
   it("renders Stellar logo for native XLM token", () => {
@@ -102,5 +117,34 @@ describe("TokenIcon", () => {
 
     const { getByText } = render(<TokenIcon token={mockLPBalance} />);
     expect(getByText("LP")).toBeTruthy();
+  });
+
+  it("renders loading state when icon is validating", () => {
+    const issuerKey =
+      "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
+    const cacheKey = `USDC:${issuerKey}`;
+
+    mockState.icons = {
+      [cacheKey]: {
+        imageUrl: "https://example.com/icon.png",
+        network: "PUBLIC",
+        isValidated: false,
+        isValid: null,
+      },
+    };
+
+    const { getByTestId } = render(
+      <TokenIcon
+        token={{
+          code: "USDC",
+          issuer: {
+            key: issuerKey,
+          },
+          type: TokenTypeWithCustomToken.CREDIT_ALPHANUM12,
+        }}
+      />,
+    );
+
+    expect(getByTestId("is-loading")).toBeTruthy();
   });
 });

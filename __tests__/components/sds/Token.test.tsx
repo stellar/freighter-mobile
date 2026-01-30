@@ -1,6 +1,6 @@
 /* eslint-disable no-promise-executor-return */
 /* eslint-disable @typescript-eslint/require-await */
-import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, render } from "@testing-library/react-native";
 import { Token } from "components/sds/Token";
 import { Text } from "components/sds/Typography";
 import React from "react";
@@ -248,12 +248,10 @@ describe("Token", () => {
       expect(getByText("Error Fallback")).toBeTruthy();
     });
 
-    it("shows renderContent after timeout when image does not load", async () => {
-      jest.useFakeTimers();
-
+    it("does not show renderContent before image loads or errors (immediate display)", () => {
       const renderContent = () => <Text>Timeout Fallback</Text>;
 
-      const { getByLabelText, getByText } = render(
+      const { getByLabelText, queryByText } = render(
         <Token
           variant="single"
           size="md"
@@ -265,44 +263,17 @@ describe("Token", () => {
         />,
       );
 
-      // Initially should show image (with spinner overlay)
+      // Should show image immediately (lazy validation handles "loading" state logic upstream)
       const image = getByLabelText("Token with timeout");
       expect(image).toBeTruthy();
 
-      // Fast-forward time by 1 second to trigger timeout
-      act(() => {
-        jest.advanceTimersByTime(1000);
-      });
-
-      // Wait for state update
-      await waitFor(() => {
-        expect(getByText("Timeout Fallback")).toBeTruthy();
-      });
-
-      jest.useRealTimers();
-    });
-
-    it("shows spinner while image is loading", () => {
-      const { getByLabelText } = render(
-        <Token
-          variant="single"
-          size="md"
-          sourceOne={{
-            image: "https://example.com/slow-loading.png",
-            altText: "Token loading",
-          }}
-        />,
-      );
-
-      const image = getByLabelText("Token loading");
-      expect(image).toBeTruthy();
-
-      // Image should be rendered (spinner is shown as overlay, but we verify image exists)
-      // The spinner overlay is present when isLoading is true
-      expect(image).toBeTruthy();
+      // Should NOT show fallback content immediately
+      expect(queryByText("Timeout Fallback")).toBeFalsy();
     });
 
     it("hides spinner when image loads successfully", async () => {
+      // Logic for spinner validation removed as spinner was removed from Token component
+      // This test effectively checks that the image renders
       const { getByLabelText } = render(
         <Token
           variant="single"
@@ -322,14 +293,14 @@ describe("Token", () => {
         fireEvent(image, "load");
       });
 
-      // After load, image should still be rendered (spinner overlay hidden)
+      // After load, image should still be rendered
       expect(image).toBeTruthy();
       expect(image.props.source).toEqual({
         uri: "https://example.com/token.png",
       });
     });
 
-    it("hides spinner when image errors", async () => {
+    it("shows fallback when image errors", async () => {
       const renderContent = () => <Text>Error Fallback</Text>;
 
       const { getByLabelText, getByText } = render(
@@ -354,7 +325,7 @@ describe("Token", () => {
         await new Promise((resolve) => setTimeout(resolve, 100));
       });
 
-      // After error, fallback should be shown (spinner is hidden)
+      // After error, fallback should be shown
       expect(getByText("Error Fallback")).toBeTruthy();
     });
 
