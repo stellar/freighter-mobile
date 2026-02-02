@@ -21,10 +21,17 @@ import { persist, createJSONStorage } from "zustand/middleware";
 
 /**
  * Represents a token icon with its source URL and network context
+ *
+ * Note: While we store the imageUrl in this interface, the actual image data
+ * is cached in the native iOS/Android image cache via Image.prefetch().
+ * This provides two-tier caching:
+ * 1. URL metadata cached in AsyncStorage (persisted via Zustand)
+ * 2. Actual image data cached in native cache (managed by React Native Image)
+ *
  * @property {string} imageUrl - The URL of the icon image
  * @property {NETWORK_URLS} networkUrl - The network URL where this icon was fetched from
- * @property {boolean} [isValidated] - Whether the icon URL has been validated
- * @property {boolean | null} [isValid] - Validation result (null = not validated, true = valid, false = invalid)
+ * @property {boolean} [isValidated] - Whether the icon URL has been validated and cached to native storage
+ * @property {boolean | null} [isValid] - Validation result (null = not validated, true = valid and cached, false = invalid)
  */
 export interface Icon {
   imageUrl: string;
@@ -93,9 +100,15 @@ const BATCH_SIZE = 3;
 const BATCH_DELAY = 1000;
 
 /**
- * Validates an icon URL by attempting to fetch it
+ * Validates an icon URL by checking native cache and prefetching if needed
+ *
+ * This function provides multi-level caching:
+ * 1. First checks if the image is already in native iOS/Android cache
+ * 2. If not cached, uses Image.prefetch() to download and cache to disk
+ * 3. The cached image persists across app sessions until cleared by OS
+ *
  * @param {string} url - The URL to validate
- * @returns {Promise<boolean>} True if the URL is valid and accessible
+ * @returns {Promise<boolean>} True if the URL is valid and accessible (or already cached)
  */
 const validateIconUrl = async (url: string): Promise<boolean> => {
   if (!url) return false;
@@ -111,7 +124,10 @@ const validateIconUrl = async (url: string): Promise<boolean> => {
   // Use Image.prefetch to validate and cache the image
   try {
     const fetchPromise = Image.prefetch(url)
-      .then(() => true)
+      .then(() => {
+        debug("validateIconUrl", `Image prefetched and cached: ${url}`);
+        return true;
+      })
       .catch(() => false);
 
     // 3 second timeout
