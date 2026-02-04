@@ -15,7 +15,7 @@ import { useVerifiedTokensStore } from "ducks/verifiedTokens";
 import { getTokenIdentifier, isLiquidityPool } from "helpers/balances";
 import { debug } from "helpers/debug";
 import { getIconUrl } from "helpers/getIconUrl";
-import { Image } from "react-native";
+import { validateIconUrl, isIconCached } from "helpers/validateIconUrl";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
@@ -98,50 +98,6 @@ interface TokenIconsState {
 const BATCH_SIZE = 3;
 /** Delay in milliseconds between processing batches */
 const BATCH_DELAY = 1000;
-/** Timeout in milliseconds for validating icon URLs */
-const ICON_VALIDATION_TIMEOUT = 3000;
-
-/**
- * Validates an icon URL by checking native cache and prefetching if needed
- *
- * This function provides multi-level caching:
- * 1. First checks if the image is already in native iOS/Android cache
- * 2. If not cached, uses Image.prefetch() to download and cache to disk
- * 3. The cached image persists across app sessions until cleared by OS
- *
- * @param {string} url - The URL to validate
- * @returns {Promise<boolean>} True if the URL is valid and accessible (or already cached)
- */
-const validateIconUrl = async (url: string): Promise<boolean> => {
-  if (!url) return false;
-
-  // If it's not a remote URL (http/https), assume it's valid (local resource or data URI)
-  if (
-    typeof url !== "string" ||
-    (!url.startsWith("http") && !url.startsWith("https"))
-  ) {
-    return true;
-  }
-
-  // Use Image.prefetch to validate and cache the image
-  try {
-    const fetchPromise = Image.prefetch(url)
-      .then(() => {
-        debug("validateIconUrl", `Image prefetched and cached: ${url}`);
-        return true;
-      })
-      .catch(() => false);
-
-    // 3 second timeout
-    const timeoutPromise = new Promise<boolean>((resolve) => {
-      setTimeout(() => resolve(false), ICON_VALIDATION_TIMEOUT);
-    });
-
-    return await Promise.race([fetchPromise, timeoutPromise]);
-  } catch (error) {
-    return false;
-  }
-};
 
 /**
  * Processes a batch of icons for refresh in a low-priority background task
@@ -191,17 +147,20 @@ const processIconBatches = async (params: {
           network: icon.network,
         });
 
+        // Only reset validation state if the URL or network changed
+        // This preserves validation state for unchanged URLs, preventing flashing
+        const urlUnchanged = imageUrl === icon.imageUrl;
+
         updatedIcons[cacheKey] = {
           imageUrl,
           network: icon.network,
-          isValidated: false,
-          isValid: null,
+          isValidated: urlUnchanged ? icon.isValidated : false,
+          isValid: urlUnchanged ? icon.isValid : null,
         };
       } catch (error) {
-        // Keep the existing icon URL if refresh fails, but mark for re-validation
+        // Keep the existing icon URL and validation state if refresh fails
         updatedIcons[cacheKey] = {
           ...icon,
-          isValidated: false,
         };
       }
     }),
@@ -336,21 +295,39 @@ export const useTokenIconsStore = create<TokenIconsState>()(
           {} as Record<string, Icon>,
         );
 
-        set((state) => ({
-          icons: {
-            // Mark existing icons as not validated to trigger lazy validation
-            // This covers "On app start: mark all existing cached icons as isValidated: false"
-            // effectively resetting validation state on mass update.
-            ...state.icons,
-            ...Object.fromEntries(
-              Object.keys(state.icons).map((key) => [
+        set((state) => {
+          // Only reset validation for icons whose URL actually changed
+          // This prevents unnecessary re-renders and "flashing" of already-validated icons
+          const iconMapWithValidation = Object.fromEntries(
+            Object.entries(iconMap).map(([key, icon]) => {
+              const existingIcon = state.icons[key];
+              const urlAndNetworkUnchanged =
+                existingIcon?.imageUrl === icon.imageUrl &&
+                existingIcon?.network === icon.network;
+
+              return [
                 key,
-                { ...state.icons[key], isValidated: false },
-              ]),
-            ),
-            ...iconMap,
-          },
-        }));
+                {
+                  ...icon,
+                  // Keep existing validation state if URL and network didn't change
+                  isValidated: urlAndNetworkUnchanged
+                    ? existingIcon?.isValidated
+                    : icon.isValidated,
+                  isValid: urlAndNetworkUnchanged
+                    ? existingIcon?.isValid
+                    : icon.isValid,
+                },
+              ];
+            }),
+          );
+
+          return {
+            icons: {
+              ...state.icons,
+              ...iconMapWithValidation,
+            },
+          };
+        });
       },
       fetchIconUrl: async ({ token, network }) => {
         const cacheKey = getTokenIdentifier(token);
@@ -516,6 +493,35 @@ export const useTokenIconsStore = create<TokenIconsState>()(
           return;
         }
 
+        // Check if icon is already in the native cache
+        // If it is, mark as validated immediately without triggering a refetch
+        const isCached = await isIconCached(icon.imageUrl);
+        if (isCached) {
+          set((state) => ({
+            icons: {
+              ...state.icons,
+              [identifier]: {
+                ...state.icons[identifier],
+                isValidated: true,
+                isValid: true,
+              },
+            },
+          }));
+          return;
+        }
+
+        // Icon not in cache, mark as being validated to prevent concurrent validations
+        // This prevents multiple components from validating the same icon URL simultaneously
+        set((state) => ({
+          icons: {
+            ...state.icons,
+            [identifier]: {
+              ...state.icons[identifier],
+              isValidated: true, // Mark as validated to prevent re-triggers
+            },
+          },
+        }));
+
         const isValid = await validateIconUrl(icon.imageUrl);
 
         set((state) => {
@@ -525,31 +531,12 @@ export const useTokenIconsStore = create<TokenIconsState>()(
             return state;
           }
 
-          if (isValid) {
-            return {
-              icons: {
-                ...state.icons,
-                [identifier]: {
-                  ...currentIcon,
-                  isValidated: true,
-                  isValid: true,
-                },
-              },
-            };
-          }
-
-          // If validation failed, we enable retry logic on next access only if needed,
-          // but specifically for "forever loading" issues (like ARST), we should probably
-          // stop trying if it fails confirmedly.
-          // However, to fix the specific "loading forever" bug:
-          // We must mark it as validated even if false, so UI stops spinning.
           return {
             icons: {
               ...state.icons,
               [identifier]: {
                 ...currentIcon,
-                isValidated: true,
-                isValid: false,
+                isValid,
               },
             },
           };
