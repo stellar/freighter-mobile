@@ -136,7 +136,7 @@ const findClassicSwapPath = async (params: {
     };
   } catch (error) {
     logger.error("SwapStore", "Failed to find classic swap path", error);
-    throw error instanceof Error ? error : new Error(String(error));
+    throw error;
   }
 };
 
