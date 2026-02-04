@@ -22,10 +22,11 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
-import { NATIVE_TOKEN_CODE } from "config/constants";
+import { DEFAULT_PADDING, NATIVE_TOKEN_CODE } from "config/constants";
 import { THEME } from "config/theme";
 import { calculateSwapRate } from "helpers/balances";
 import { formatDate } from "helpers/date";
+import { pxValue } from "helpers/dimensions";
 import { formatTokenForDisplay, stroopToXlm } from "helpers/formatAmount";
 import { truncateAddress, isMuxedAccount } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -34,6 +35,7 @@ import useColors, { ThemeColors } from "hooks/useColors";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
 import React, { useCallback, useMemo } from "react";
 import { View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { analytics } from "services/analytics";
 
 interface TransactionDetailsBottomSheetCustomContentProps {
@@ -91,7 +93,6 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
 > = ({ transactionDetails }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
-  const { open: openInAppBrowser } = useInAppBrowser();
   const { copyToClipboard } = useClipboard();
 
   const fee = stroopToXlm(transactionDetails.fee).toString();
@@ -244,8 +245,8 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
   ) as ListItemProps[];
 
   return (
-    <View className="flex-1 justify-center gap-6">
-      <View className="flex-row items-center flex-1">
+    <View className="gap-6">
+      <View className="flex-row items-center">
         {renderIconComponent({
           iconComponent: transactionDetails.IconComponent as React.ReactElement,
           themeColors,
@@ -271,7 +272,7 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
         <View className="bg-background-tertiary rounded-[16px] p-4">
           {assetDiffs.map((diff, index) => (
             <AssetDiffRow
-              key={`${diff.amount}:${diff.assetCode}`}
+              key={`${diff.isCredit ? "credit" : "debit"}:${diff.assetCode}:${diff.assetIssuer ?? "native"}:${diff.amount}`}
               diff={diff}
               themeColors={themeColors}
               isLast={index === assetDiffs.length - 1}
@@ -341,14 +342,36 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
       )}
 
       <List variant="secondary" items={detailItems} />
+    </View>
+  );
+};
+
+interface TransactionDetailsFooterProps {
+  externalUrl: string;
+}
+
+export const TransactionDetailsFooter: React.FC<
+  TransactionDetailsFooterProps
+> = ({ externalUrl }) => {
+  const { t } = useAppTranslation();
+  const { themeColors } = useColors();
+  const { open: openInAppBrowser } = useInAppBrowser();
+  const insets = useSafeAreaInsets();
+
+  return (
+    <View
+      className="bg-background-primary w-full px-6 py-6 mt-6"
+      style={{
+        paddingBottom: insets.bottom + pxValue(DEFAULT_PADDING),
+      }}
+    >
       <Button
         isFullWidth
         tertiary
         icon={<Icon.LinkExternal01 size={16} color={themeColors.base[0]} />}
         onPress={() => {
           analytics.track(AnalyticsEvent.HISTORY_OPEN_FULL_HISTORY);
-
-          openInAppBrowser(transactionDetails.externalUrl);
+          openInAppBrowser(externalUrl);
         }}
       >
         {t("history.transactionDetails.viewOnStellarExpert")}
