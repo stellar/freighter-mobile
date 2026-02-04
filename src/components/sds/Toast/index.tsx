@@ -131,8 +131,8 @@ export const Toast: React.FC<ToastProps> = ({
             toValue: { x: 0, y: 0 },
             useNativeDriver: true,
           }).start(() => {
-            // Restart the auto-dismiss timer only if not persistent
-            if (duration) {
+            // Restart the auto-dismiss timer only if duration is not disabled
+            if (duration !== 0) {
               timerRef.current = setTimeout(animateOut, duration);
             }
           });
@@ -142,8 +142,8 @@ export const Toast: React.FC<ToastProps> = ({
   ).current;
   useEffect(() => {
     animateIn();
-    // Only set auto-dismiss timer if not persistent
-    if (duration) {
+    // Only set auto-dismiss timer if duration is not disabled
+    if (duration !== 0) {
       timerRef.current = setTimeout(animateOut, duration);
     }
     return () => {

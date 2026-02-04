@@ -94,7 +94,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const [activeError, setActiveError] = useState<{
     message: string;
     toastId: string;
-    isPersistent: boolean;
+    duration: number;
   } | null>(null);
   const { showToast } = useToast();
   const deviceSize = useDeviceSize();
@@ -159,7 +159,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       setActiveError({
         message: errorMessage,
         toastId: "insufficient-xlm-for-fees",
-        isPersistent: false,
+        duration: 3000,
       });
       return;
     }
@@ -185,7 +185,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       setActiveError({
         message: errorMessage,
         toastId: "insufficient-balance",
-        isPersistent: false,
+        duration: 3000,
       });
     } else {
       setAmountError(null);
@@ -262,7 +262,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         variant: "error",
         title: activeError.message,
         toastId: activeError.toastId,
-        duration: activeError.isPersistent ? undefined : 3000,
+        duration: activeError.duration,
       });
     }
   }, [activeError, showToast]);
@@ -277,7 +277,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       setActiveError({
         message: pathError,
         toastId: "swap-path-error",
-        isPersistent: true,
+        duration: 0,
       });
     }
   }, [pathError, sourceAmount, destinationTokenId]);
@@ -357,7 +357,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         setActiveError({
           message: errorMessage,
           toastId: "failed-to-setup-transaction",
-          isPersistent: true,
+          duration: 0,
         });
       }
     },
@@ -729,15 +729,13 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         </View>
       </View>
 
-      {/* Clear persistent error when review is closed */}
+      {/* Clear errors when review is closed */}
       <BottomSheet
         modalRef={swapReviewBottomSheetModalRef}
         handleCloseModal={() => {
           swapReviewBottomSheetModalRef.current?.dismiss();
-          // Clear persistent errors when review is closed
-          if (activeError?.isPersistent) {
-            setActiveError(null);
-          }
+          // Clear all errors when review is closed
+          setActiveError(null);
         }}
         snapPoints={["80%"]}
         scrollable

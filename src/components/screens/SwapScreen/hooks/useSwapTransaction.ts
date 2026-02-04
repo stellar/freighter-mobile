@@ -187,7 +187,7 @@ export const useSwapTransaction = ({
         variant: "error",
         title: errorMessage,
         toastId,
-        duration: undefined, // Persistent
+        duration: 0,
       });
 
       throw error;
