@@ -65,7 +65,7 @@ export const useManageToken = ({
     if (iconUrl) {
       // Cache token icon immediately to prevent Home Screen fallback (initials)
       // This uses the icon found during the token search phase, avoiding the need
-      // to wait for network validation which includes a 5s demo delay
+      // to wait for the background icon fetch process (which starts after a 5s delay)
       const identifier = `${code}:${issuer}`;
 
       useTokenIconsStore.getState().cacheTokenIcons({

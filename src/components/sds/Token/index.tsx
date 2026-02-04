@@ -413,6 +413,7 @@ const ImageWithFallback: React.FC<{
       <View className="w-full h-full relative">
         {isImageLoading && <TokenLoader />}
         <TokenImage
+          // This will allow handling both local and remote images
           source={
             typeof source.image === "string"
               ? { uri: source.image }

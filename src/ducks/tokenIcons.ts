@@ -98,6 +98,8 @@ interface TokenIconsState {
 const BATCH_SIZE = 3;
 /** Delay in milliseconds between processing batches */
 const BATCH_DELAY = 1000;
+/** Timeout in milliseconds for validating icon URLs */
+const ICON_VALIDATION_TIMEOUT = 3000;
 
 /**
  * Validates an icon URL by checking native cache and prefetching if needed
@@ -132,7 +134,7 @@ const validateIconUrl = async (url: string): Promise<boolean> => {
 
     // 3 second timeout
     const timeoutPromise = new Promise<boolean>((resolve) => {
-      setTimeout(() => resolve(false), 3000);
+      setTimeout(() => resolve(false), ICON_VALIDATION_TIMEOUT);
     });
 
     return await Promise.race([fetchPromise, timeoutPromise]);
