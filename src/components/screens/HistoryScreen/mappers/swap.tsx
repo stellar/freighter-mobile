@@ -65,9 +65,12 @@ export const mapSwapHistoryItem = async ({
   const formattedAmount = `+${formatTokenForDisplay(amount, destTokenCodeFinal)}`;
 
   // Get token icons for assetDiffs (for detailed views)
+  // Note: Icons are set to undefined to enable lazy validation in TokenIcon component.
+  // The TokenIcon component handles caching, validation, and fallback logic via Zustand store.
+  // This prevents unnecessary icon fetches and re-validation of previously failed tokens.
   const destIcon =
     destTokenCodeFinal === NATIVE_TOKEN_CODE
-      ? undefined
+      ? undefined // Native token uses hardcoded logos.stellar inside IconComponent
       : await getIconUrl({
           asset: {
             code: destTokenCodeFinal || "",
@@ -78,7 +81,7 @@ export const mapSwapHistoryItem = async ({
 
   const sourceIcon =
     srcTokenCode === NATIVE_TOKEN_CODE
-      ? undefined
+      ? undefined // Native token uses hardcoded logos.stellar inside IconComponent
       : await getIconUrl({
           asset: {
             code: srcTokenCode || "",
