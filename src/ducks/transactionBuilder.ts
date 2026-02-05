@@ -1,9 +1,11 @@
 import { NETWORKS, mapNetworkToNetworkDetails } from "config/constants";
 import { logger } from "config/logger";
 import { PricedBalance } from "config/types";
+import { useDebugStore } from "ducks/debug";
 import { xlmToStroop } from "helpers/formatAmount";
 import { isContractId } from "helpers/soroban";
 import { isMuxedAccount } from "helpers/stellar";
+import { t } from "i18next";
 import { signTransaction, submitTx } from "services/stellar";
 import {
   buildPaymentTransaction,
@@ -224,6 +226,13 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
       set({ isBuilding: true, error: null, requestId: newRequestId });
 
       try {
+        // Check debug override for forced build failure
+        const { forceBuildTransactionFailure } = useDebugStore.getState();
+
+        if (forceBuildTransactionFailure) {
+          throw new Error(t("debug.debugMessages.buildFailure"));
+        }
+
         const builtTxResult = await buildSwapTransaction({
           sourceAmount: params.sourceAmount,
           sourceBalance: params.sourceBalance,
@@ -355,6 +364,13 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
      */
     signTransaction: (params) => {
       try {
+        // Check debug override for forced sign failure
+        const { forceSignTransactionFailure } = useDebugStore.getState();
+
+        if (forceSignTransactionFailure) {
+          throw new Error(t("debug.debugMessages.signFailure"));
+        }
+
         const { transactionXDR } = get();
 
         if (!transactionXDR) {
@@ -391,6 +407,28 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
       // Tag this submit cycle (reuse current id if exists)
       const currentRequestId = get().requestId || createRequestId();
       set({ isSubmitting: true, error: null, requestId: currentRequestId });
+
+      // Check debug override for forced submit failure BEFORE the try-catch
+      // so the error propagates directly to the caller
+      const { forceSubmitTransactionFailure } = useDebugStore.getState();
+
+      if (forceSubmitTransactionFailure) {
+        // Simulate network submission delay
+        await new Promise((resolve) => {
+          setTimeout(resolve, 5000);
+        });
+
+        const debugErrorMessage = t("debug.debugMessages.submitFailure");
+
+        logger.error(
+          "TransactionBuilderStore",
+          "DEBUG: About to throw submit error:",
+          debugErrorMessage,
+        );
+
+        set({ error: debugErrorMessage, isSubmitting: false });
+        throw new Error(debugErrorMessage);
+      }
 
       try {
         const { signedTransactionXDR } = get();

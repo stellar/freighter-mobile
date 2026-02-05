@@ -7,6 +7,7 @@ import {
 } from "config/constants";
 import { logger } from "config/logger";
 import { PricedBalance } from "config/types";
+import { useDebugStore } from "ducks/debug";
 import { formatBigNumberForDisplay } from "helpers/formatAmount";
 import { t } from "i18next";
 import { getTokenForPayment } from "services/transactionService";
@@ -135,8 +136,7 @@ const findClassicSwapPath = async (params: {
     };
   } catch (error) {
     logger.error("SwapStore", "Failed to find classic swap path", error);
-
-    return null;
+    throw error;
   }
 };
 
@@ -178,6 +178,12 @@ export const useSwapStore = create<SwapState>((set) => ({
     set({ isLoadingPath: true, pathError: null, pathResult: null });
 
     try {
+      const { forceSwapPathFailure } = useDebugStore.getState();
+
+      if (forceSwapPathFailure) {
+        throw new Error(t("debug.debugMessages.swapPathFailure"));
+      }
+
       // For now, we only support classic path payments
       // TODO: Add Soroswap support for Testnet in future iteration
       const pathResult = await findClassicSwapPath({
@@ -216,9 +222,14 @@ export const useSwapStore = create<SwapState>((set) => ({
 
       logger.error("SwapStore", "Failed to find swap path", error);
 
+      // In dev mode, show the actual error; otherwise show generic message
+      const displayError = __DEV__
+        ? errorMessage
+        : t("swapScreen.errors.pathFindFailed");
+
       set({
         isLoadingPath: false,
-        pathError: errorMessage,
+        pathError: displayError,
       });
     }
   },
