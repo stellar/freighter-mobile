@@ -181,12 +181,10 @@ export const useSwapTransaction = ({
           ? error.message
           : t("swapScreen.errors.swapTransactionFailed");
 
-      const toastId = `swap-transaction-failed-${errorMessage}`;
-
       showToast({
         variant: "error",
         title: errorMessage,
-        toastId,
+        toastId: "swap-transaction-failed",
         duration: 0,
       });
 

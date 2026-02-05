@@ -20,7 +20,7 @@ export interface ToastProps {
   icon?: React.ReactNode;
   /** Toast message */
   message?: string;
-  /** Duration in milliseconds before the toast is dismissed */
+  /** Duration in milliseconds before the toast is dismissed. Set to 0 for persistent (no auto-dismiss) */
   duration?: number;
   /** Callback function when toast is dismissed */
   onDismiss?: () => void;

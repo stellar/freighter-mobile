@@ -280,7 +280,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         duration: 0,
       });
     }
-  }, [pathError, sourceAmount, destinationTokenId]);
+  }, [pathError, sourceAmount, destinationTokenId, activeError]);
 
   useRightHeaderButton({
     icon: Icon.Settings04,
