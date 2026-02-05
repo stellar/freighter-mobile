@@ -411,6 +411,7 @@ const ImageWithFallback: React.FC<{
   if (hasValidImage && !hasError) {
     return (
       <View className="w-full h-full relative">
+        {/* TokenLoader shown while loading, hidden when image loads */}
         {isImageLoading && <TokenLoader />}
         <TokenImage
           // This will allow handling both local and remote images
