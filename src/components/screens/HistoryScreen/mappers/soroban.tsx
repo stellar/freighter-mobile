@@ -508,6 +508,7 @@ const processCollectibleTransfer = async ({
   operation,
   sorobanAttributes,
   publicKey,
+  network,
   stellarExpertUrl,
   fee,
   xdr,
@@ -558,6 +559,7 @@ const processCollectibleTransfer = async ({
           token_ids: [tokenId],
         },
       ],
+      network,
     });
     const backendCollections = collections.filter(
       (collection) => "collection" in collection,
