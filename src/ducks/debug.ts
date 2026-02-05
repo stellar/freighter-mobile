@@ -14,11 +14,29 @@ interface DebugState {
   overriddenBlockaidResponse: SecurityLevel | null;
   setOverriddenBlockaidResponse: (response: SecurityLevel | null) => void;
   clearOverriddenBlockaidResponse: () => void;
+
+  // Transaction failure overrides for testing error handling in DEV mode
+  forceBuildTransactionFailure: boolean;
+  forceSignTransactionFailure: boolean;
+  forceSubmitTransactionFailure: boolean;
+  setForceBuildTransactionFailure: (force: boolean) => void;
+  setForceSignTransactionFailure: (force: boolean) => void;
+  setForceSubmitTransactionFailure: (force: boolean) => void;
+  clearAllTransactionFailures: () => void;
+
+  // Swap path finding overrides
+  forceSwapPathFailure: boolean;
+  setForceSwapPathFailure: (force: boolean) => void;
+  clearSwapPathDebug: () => void;
 }
 
 const INITIAL_DEBUG_STATE = {
   overriddenAppVersion: null,
   overriddenBlockaidResponse: null,
+  forceBuildTransactionFailure: false,
+  forceSignTransactionFailure: false,
+  forceSubmitTransactionFailure: false,
+  forceSwapPathFailure: false,
 };
 
 export const useDebugStore = create<DebugState>()(
@@ -33,6 +51,21 @@ export const useDebugStore = create<DebugState>()(
             set({ overriddenBlockaidResponse: response }),
           clearOverriddenBlockaidResponse: () =>
             set({ overriddenBlockaidResponse: null }),
+          setForceBuildTransactionFailure: (force: boolean) =>
+            set({ forceBuildTransactionFailure: force }),
+          setForceSignTransactionFailure: (force: boolean) =>
+            set({ forceSignTransactionFailure: force }),
+          setForceSubmitTransactionFailure: (force: boolean) =>
+            set({ forceSubmitTransactionFailure: force }),
+          clearAllTransactionFailures: () =>
+            set({
+              forceBuildTransactionFailure: false,
+              forceSignTransactionFailure: false,
+              forceSubmitTransactionFailure: false,
+            }),
+          setForceSwapPathFailure: (force: boolean) =>
+            set({ forceSwapPathFailure: force }),
+          clearSwapPathDebug: () => set({ forceSwapPathFailure: false }),
         }),
         {
           name: "debug-storage",
@@ -46,5 +79,11 @@ export const useDebugStore = create<DebugState>()(
         clearOverriddenAppVersion: () => {},
         setOverriddenBlockaidResponse: () => {},
         clearOverriddenBlockaidResponse: () => {},
+        setForceBuildTransactionFailure: () => {},
+        setForceSignTransactionFailure: () => {},
+        setForceSubmitTransactionFailure: () => {},
+        clearAllTransactionFailures: () => {},
+        setForceSwapPathFailure: () => {},
+        clearSwapPathDebug: () => {},
       }),
 );
