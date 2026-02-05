@@ -1,4 +1,6 @@
+import { NATIVE_TOKEN_CODE } from "config/constants";
 import { THEME } from "config/theme";
+import { useTokenIconsStore } from "ducks/tokenIcons";
 import { px } from "helpers/dimensions";
 import React, { useState, useEffect } from "react";
 import { ImageSourcePropType, View, StyleSheet } from "react-native";
@@ -110,6 +112,11 @@ type TokenVariant = "single" | "swap" | "pair" | "platform";
  * @property {() => React.ReactNode} [renderContent] - Optional function to render custom content
  *   as a fallback when `image` is not provided or invalid (e.g., for displaying text or other components).
  *   Only rendered if `image` is not available or invalid.
+ * @property {object} [token] - Optional token data for lazy validation
+ *   When provided, the image will be validated and cached using the token icon store
+ *   (similar to TokenIcon behavior). The token code will be used for fallback text.
+ * @property {string} [token.code] - Token code (e.g., "XLM", "ARST")
+ * @property {string} [token.issuer] - Token issuer key
  */
 export type TokenSource = {
   /** Image URL */
@@ -124,6 +131,11 @@ export type TokenSource = {
   isLoading?: boolean;
   /** Whether to skip the internal image loading state (e.g. if pre-fetched) */
   skipImageLoader?: boolean;
+  /** Optional token data for lazy validation and caching */
+  token?: {
+    code: string;
+    issuer: string;
+  };
 };
 
 /**
@@ -388,21 +400,89 @@ const ImageWithFallback: React.FC<{
       !!(source.image && typeof source.image === "string"),
   );
 
+  // Get validated icon from store if token data is provided
+  // For native XLM, we'll use the Stellar logo directly
+  const icon = useTokenIconsStore(
+    React.useCallback(
+      (state) => {
+        if (!source.token) return null;
+
+        // For native tokens, we don't need to look in store - they use logos.stellar
+        if (source.token.code === NATIVE_TOKEN_CODE) {
+          return null;
+        }
+
+        // Construct identifier the same way as getTokenIdentifier does
+        // For non-native tokens: code:issuer
+        const identifier = `${source.token.code}:${source.token.issuer}`;
+        return state.icons[identifier];
+      },
+      [source.token],
+    ),
+  );
+
+  // Get validate action for token icon lazy validation
+  const validateIconOnAccess = useTokenIconsStore(
+    (state) => state.validateIconOnAccess,
+  );
+
+  // Trigger validation when token data is provided and icon needs validation
+  React.useEffect(() => {
+    if (!source.token || icon === null) return;
+
+    // Skip native tokens - they use logos.stellar directly
+    if (source.token.code === NATIVE_TOKEN_CODE) return;
+
+    // Only validate non-native tokens that need it
+    if (icon && icon.isValidated === false && icon.isValid !== false) {
+      const identifier = `${source.token.code}:${source.token.issuer}`;
+      validateIconOnAccess(identifier);
+    }
+  }, [source.token, icon, validateIconOnAccess]);
+
+  // Determine the final image URL
+  // If token data is provided and we have a validated icon, use its imageUrl
+  // For native tokens (XLM), return undefined to use fallback (which gets Stellar logo from source.image)
+  // Otherwise fall back to the direct image prop
+  const finalImageUrl =
+    source.token &&
+    source.token.code !== NATIVE_TOKEN_CODE &&
+    icon?.isValid === true
+      ? icon.imageUrl
+      : source.image;
+
   // Check if image is valid (non-empty string or valid ImageSourcePropType)
   const hasValidImage =
-    source.image &&
-    (typeof source.image === "string"
-      ? source.image.trim().length > 0
-      : !!source.image);
+    finalImageUrl &&
+    (typeof finalImageUrl === "string"
+      ? finalImageUrl.trim().length > 0
+      : !!finalImageUrl);
 
   // Reset error state if image source changes
   useEffect(() => {
     setHasError(false);
     setIsImageLoading(
       !source.skipImageLoader &&
-        !!(source.image && typeof source.image === "string"),
+        !!(finalImageUrl && typeof finalImageUrl === "string"),
     );
-  }, [source.image, source.skipImageLoader]);
+
+    // If image is loading, timeout after 3 seconds to prevent infinite loading state
+    let timeoutId: NodeJS.Timeout | null = null;
+    if (
+      !source.skipImageLoader &&
+      !!(finalImageUrl && typeof finalImageUrl === "string")
+    ) {
+      timeoutId = setTimeout(() => {
+        setIsImageLoading(false);
+      }, 3000);
+    }
+
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [finalImageUrl, source.skipImageLoader]);
 
   if (source.isLoading) {
     return <TokenLoader />;
@@ -416,9 +496,9 @@ const ImageWithFallback: React.FC<{
         <TokenImage
           // This will allow handling both local and remote images
           source={
-            typeof source.image === "string"
-              ? { uri: source.image }
-              : source.image
+            typeof finalImageUrl === "string"
+              ? { uri: finalImageUrl }
+              : finalImageUrl
           }
           accessibilityLabel={source.altText}
           onError={() => {

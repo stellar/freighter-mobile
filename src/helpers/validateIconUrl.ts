@@ -84,21 +84,33 @@ export const validateIconUrl = async (url: string): Promise<boolean> => {
 
   // Use Image.prefetch to validate and cache the image
   try {
+    // Create a timeout promise that explicitly rejects after ICON_VALIDATION_TIMEOUT
+    // This ensures we don't wait for Image.prefetch indefinitely
+    const timeoutPromise = new Promise<boolean>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error(`Icon validation timeout for ${url}`));
+      }, ICON_VALIDATION_TIMEOUT);
+    });
+
     const fetchPromise = Image.prefetch(url)
       .then(() => {
         debug("validateIconUrl", `Image prefetched and cached: ${url}`);
         return true;
       })
-      .catch(() => false);
+      .catch((error) => {
+        debug(
+          "validateIconUrl",
+          `Image prefetch failed for ${url}: ${String(error)}`,
+        );
+        return false;
+      });
 
-    // Race between fetch and timeout - whichever completes first
-    const timeoutPromise = new Promise<boolean>((resolve) => {
-      setTimeout(() => resolve(false), ICON_VALIDATION_TIMEOUT);
-    });
-
+    // Race between fetch and timeout
+    // If timeout rejects first, it will be caught and return false
     return await Promise.race([fetchPromise, timeoutPromise]);
   } catch (error) {
-    // Any uncaught error during validation = invalid
+    // Timeout or any other error = invalid
+    debug("validateIconUrl", `Validation failed for ${url}: ${String(error)}`);
     return false;
   }
 };

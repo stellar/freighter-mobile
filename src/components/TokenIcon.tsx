@@ -119,19 +119,45 @@ export const TokenIcon: React.FC<TokenIconProps> = ({
     (state) => state.validateIconOnAccess,
   );
 
-  const isLoading = !iconUrl && icon && !icon.isValidated && !!icon.imageUrl;
+  // Select failed token codes (to skip validation for already-failed tokens)
+  const failedTokenCodes = useTokenIconsStore(
+    (state) => state.failedTokenCodes ?? {},
+  );
+
+  // Extract token code from identifier
+  const tokenCode = React.useMemo(
+    () => tokenIdentifier.split(":")[0],
+    [tokenIdentifier],
+  );
+
+  const hasIconToValidate =
+    !!icon &&
+    icon.isValidated === false &&
+    !!icon.imageUrl &&
+    icon.isValid !== false;
+
+  // Show loading only if: no explicit iconUrl, has imageUrl, not yet validated, and not already failed
+  const isLoading = !iconUrl && hasIconToValidate;
+
+  const shouldValidateIcon =
+    !iconUrl && hasIconToValidate && !failedTokenCodes[tokenCode];
 
   React.useEffect(() => {
-    if (!iconUrl && icon && icon.isValidated === false) {
+    // Only validate if: no explicit iconUrl, icon exists, not validated, has imageUrl, and hasn't failed before
+    // This prevents re-validating icons that have already failed (isValid === false)
+    // Also skip if token code has already failed on another screen (tracked in failedTokenCodes)
+    if (shouldValidateIcon) {
       validateIconOnAccess(tokenIdentifier);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     iconUrl,
-    icon?.isValidated,
-    icon?.imageUrl,
+    hasIconToValidate,
+    shouldValidateIcon,
     tokenIdentifier,
     validateIconOnAccess,
+    failedTokenCodes,
+    tokenCode,
   ]);
 
   // Render callbacks
@@ -188,7 +214,10 @@ export const TokenIcon: React.FC<TokenIconProps> = ({
     );
   }
 
-  const finalImageUrl = iconUrl || (icon?.isValid ? icon.imageUrl : undefined);
+  // Use iconUrl if provided explicitly, otherwise use cached icon only if it's valid
+  // If icon validation failed (isValid === false), don't use the imageUrl (will trigger fallback)
+  const finalImageUrl =
+    iconUrl || (icon?.isValid === true ? icon.imageUrl : undefined);
   const skipImageLoader = !iconUrl && !!icon?.isValidated;
 
   // Soroban custom tokens: show icon if available, otherwise SorobanTokenIcon

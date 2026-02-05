@@ -44,10 +44,13 @@ export interface Icon {
  * State and actions for managing token icons
  * @property {Record<string, Icon>} icons - Cached icon data mapped by token identifier
  * @property {number | null} lastRefreshed - Timestamp of the last icon refresh operation
+ * @property {Record<string, boolean>} failedTokenCodes - Map of token codes that failed validation (e.g., "ARST", "XYZ")
+ *   Used to prevent re-validating the same token across different screens/identifiers
  */
 interface TokenIconsState {
   icons: Record<string, Icon>;
   lastRefreshed: number | null;
+  failedTokenCodes: Record<string, boolean>;
   /**
    * Caches a single token icon
    * @param {Object} params - Function parameters
@@ -221,6 +224,7 @@ export const useTokenIconsStore = create<TokenIconsState>()(
     (set, get) => ({
       icons: {},
       lastRefreshed: null,
+      failedTokenCodes: {},
       cacheTokenIcons: ({ icons }) => {
         set((state) => ({
           icons: {
@@ -471,15 +475,20 @@ export const useTokenIconsStore = create<TokenIconsState>()(
       },
       validateIconOnAccess: async (identifier) => {
         const icon = get().icons[identifier];
-        if (
-          !icon ||
-          icon.isValidated ||
-          (!icon.imageUrl && icon.imageUrl !== "")
-        ) {
+        const tokenCode = identifier.split(":")[0];
+
+        const shouldSkipValidation =
+          !icon || icon.isValidated || (!icon.imageUrl && icon.imageUrl !== "");
+
+        if (shouldSkipValidation) {
           return;
         }
 
-        if (!icon.imageUrl) {
+        const failedTokenCodes = get().failedTokenCodes ?? {};
+
+        // Skip validation if this token code has already failed on another screen
+        if (failedTokenCodes[tokenCode]) {
+          // Mark as validated and invalid without attempting validation
           set((state) => ({
             icons: {
               ...state.icons,
@@ -488,6 +497,25 @@ export const useTokenIconsStore = create<TokenIconsState>()(
                 isValidated: true,
                 isValid: false,
               },
+            },
+          }));
+          return;
+        }
+
+        if (!icon.imageUrl) {
+          // Add to failed codes and mark as validated with isValid false
+          set((state) => ({
+            icons: {
+              ...state.icons,
+              [identifier]: {
+                ...state.icons[identifier],
+                isValidated: true,
+                isValid: false,
+              },
+            },
+            failedTokenCodes: {
+              ...state.failedTokenCodes,
+              [tokenCode]: true,
             },
           }));
           return;
@@ -523,13 +551,20 @@ export const useTokenIconsStore = create<TokenIconsState>()(
         }));
 
         const isValid = await validateIconUrl(icon.imageUrl);
-
         set((state) => {
           const currentIcon = state.icons[identifier];
           // Check if icon still exists and matches
           if (!currentIcon || currentIcon.imageUrl !== icon.imageUrl) {
             return state;
           }
+
+          // If validation failed, track this token code to prevent re-validation
+          const newFailedCodes = isValid
+            ? state.failedTokenCodes
+            : {
+                ...state.failedTokenCodes,
+                [tokenCode]: true,
+              };
 
           return {
             icons: {
@@ -539,6 +574,7 @@ export const useTokenIconsStore = create<TokenIconsState>()(
                 isValid,
               },
             },
+            failedTokenCodes: newFailedCodes,
           };
         });
       },
