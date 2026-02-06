@@ -5,9 +5,17 @@ on:
   workflow_dispatch:
     inputs:
       app_version:
-        description: App version (e.g. 1.8.24)
+        description: App version to bump to (e.g. 1.10.24)
         required: true
         type: string
+      branch_from:
+        description:
+          Branch this release from (Default is `main`. For emergency releases,
+          enter the tag version to branch from, e.g. 1.9.24. Available tag
+          versions will be shown in the workflow logs if validation fails.)
+        required: true
+        type: string
+        default: "main"
 
 jobs:
   create_release_branch:
@@ -15,10 +23,24 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      APP_VERSION: ${{ inputs.app_version }}
-      RELEASE_BRANCH: ${{ format('release/v{0}', inputs.app_version) }}
+      BRANCH_FROM: ${{ inputs.branch_from }}
 
     steps:
+      - name: Validate and normalize app version
+        id: normalize_version
+        run: |
+          APP_VERSION="${{ inputs.app_version }}"
+          # Remove "v" prefix if user included it
+          APP_VERSION=$(echo "$APP_VERSION" | sed 's/^v//')
+          # Validate version format (e.g., 1.10.24)
+          if [[ ! "$APP_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "❌ Error: Invalid version format. Expected format: 1.10.24 or v1.10.24"
+            exit 1
+          fi
+          echo "app_version=${APP_VERSION}" >> $GITHUB_OUTPUT
+          echo "APP_VERSION=${APP_VERSION}" >> $GITHUB_ENV
+          echo "✓ Using normalized version: ${APP_VERSION}"
+
       - name: Checkout repository
         uses: actions/checkout@v5
         with:
@@ -35,12 +57,66 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
+      - name: Validate and get available tags
+        id: validate_branch_from
+        uses: ./.github/actions/validate-branch-from
+        with:
+          branch_from: ${{ env.BRANCH_FROM }}
+
+      - name: Determine release branch name and base branch
+        id: set_release_branch
+        run: |
+          BRANCH_FROM="${{ steps.validate_branch_from.outputs.branch_or_tag }}"
+          APP_VERSION="${{ steps.normalize_version.outputs.app_version }}"
+
+          if [ "$BRANCH_FROM" = "main" ]; then
+            RELEASE_BRANCH="release/v${APP_VERSION}"
+            BASE_BRANCH="main"
+          else
+            RELEASE_BRANCH="emergency-release/v${APP_VERSION}"
+            # For tags, create a base branch name from the tag
+            # GitHub requires PR base to be a branch, not a tag
+            BASE_BRANCH="base-${BRANCH_FROM}"
+          fi
+
+          echo "release_branch=${RELEASE_BRANCH}" >> $GITHUB_OUTPUT
+          echo "base_branch=${BASE_BRANCH}" >> $GITHUB_OUTPUT
+          echo "RELEASE_BRANCH=${RELEASE_BRANCH}" >> $GITHUB_ENV
+          echo "BASE_BRANCH=${BASE_BRANCH}" >> $GITHUB_ENV
+          echo "Using release branch: ${RELEASE_BRANCH}"
+          echo "Using base branch: ${BASE_BRANCH}"
+
+      - name: Checkout branch_from and create base branch if needed
+        run: |
+          BRANCH_FROM="${{ steps.validate_branch_from.outputs.branch_or_tag }}"
+          BASE_BRANCH="${{ steps.set_release_branch.outputs.base_branch }}"
+
+          if [ "$BRANCH_FROM" = "main" ]; then
+            git checkout main
+            git pull origin main
+          else
+            # For tags, checkout the tag and create a branch from it
+            git checkout "$BRANCH_FROM"
+            # Check if base branch already exists remotely
+            if git ls-remote --heads origin "$BASE_BRANCH" | grep -q "$BASE_BRANCH"; then
+              echo "Base branch $BASE_BRANCH already exists, checking it out"
+              git checkout "$BASE_BRANCH"
+              git pull origin "$BASE_BRANCH"
+            else
+              echo "Creating base branch $BASE_BRANCH from tag $BRANCH_FROM"
+              git checkout -b "$BASE_BRANCH"
+              git push --set-upstream origin "$BASE_BRANCH"
+            fi
+          fi
+
       - name: Create release branch
         run: |
+          RELEASE_BRANCH="${{ steps.set_release_branch.outputs.release_branch }}"
           git checkout -b "$RELEASE_BRANCH"
 
       - name: Update app version
         run: |
+          APP_VERSION="${{ steps.normalize_version.outputs.app_version }}"
           node ./scripts/set-app-version "$APP_VERSION"
 
       - name: Generate release notes
@@ -48,6 +124,28 @@ jobs:
         run: |
           set -eo pipefail
 
+          BRANCH_FROM="${{ env.BRANCH_FROM }}"
+          OUTPUT_DELIM="__RELEASE_DESCRIPTION__"
+
+          # For emergency releases (not from main), use simpler release notes
+          if [ "$BRANCH_FROM" != "main" ]; then
+            release_notes="Use this branch to push the emergency fix. Please replace this PR description with a description of the fix after it has been pushed."
+
+            {
+              echo "release_notes<<$OUTPUT_DELIM"
+              echo "$release_notes"
+              echo "$OUTPUT_DELIM"
+            } >> "$GITHUB_OUTPUT"
+
+            {
+              echo "RELEASE_NOTES<<$OUTPUT_DELIM"
+              echo "$release_notes"
+              echo "$OUTPUT_DELIM"
+            } >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          # For regular releases from main, generate release notes from commits
           # Find the latest version tag (e.g., v1.8.24)
           # Use --sort=-version:refname to sort tags by version in descending order
           last_release_tag=$(git tag --list 'v*' --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1 || true)
@@ -69,8 +167,6 @@ jobs:
           printf -v release_notes '## Release Changes\n\n%s' "$commits"
           release_notes=${release_notes%$'\n'}
 
-          OUTPUT_DELIM="__RELEASE_DESCRIPTION__"
-
           {
             echo "release_notes<<$OUTPUT_DELIM"
             echo "$release_notes"
@@ -85,28 +181,37 @@ jobs:
 
       - name: Commit changes
         run: |
+          APP_VERSION="${{ steps.normalize_version.outputs.app_version }}"
           git status
           if [ -z "$(git status --porcelain)" ]; then
             echo "No changes detected after running set-app-version."
             exit 1
           fi
           git add .
-          git commit -m "chore: bump app version to v$APP_VERSION"
+          git commit -m "chore: bump app version to v${APP_VERSION}"
 
       - name: Push release branch
         run: |
+          RELEASE_BRANCH="${{ steps.set_release_branch.outputs.release_branch }}"
           git push --set-upstream origin "$RELEASE_BRANCH"
 
       - name: Create pull request
         id: create_pr
         uses: actions/github-script@v8
         env:
-          APP_VERSION: ${{ env.APP_VERSION }}
-          RELEASE_BRANCH: ${{ env.RELEASE_BRANCH }}
+          APP_VERSION: ${{ steps.normalize_version.outputs.app_version }}
+          RELEASE_BRANCH: ${{ steps.set_release_branch.outputs.release_branch }}
+          BASE_BRANCH: ${{ steps.set_release_branch.outputs.base_branch }}
+          BRANCH_FROM: ${{ steps.validate_branch_from.outputs.branch_or_tag }}
         with:
           script: |
-            const title = `v${process.env.APP_VERSION}`;
             const branch = process.env.RELEASE_BRANCH;
+            const baseBranch = process.env.BASE_BRANCH;
+            const branchFrom = process.env.BRANCH_FROM;
+            const isEmergencyRelease = branchFrom !== "main";
+            const title = isEmergencyRelease 
+              ? `[Emergency Release] v${process.env.APP_VERSION}`
+              : `v${process.env.APP_VERSION}`;
             const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/");
             const releaseNotes = process.env.RELEASE_NOTES || "";
             const trimmedBody = releaseNotes.trim();
@@ -123,7 +228,7 @@ jobs:
                 owner,
                 repo,
                 head: branch,
-                base: "main",
+                base: baseBranch,
                 title,
                 body
               });
@@ -135,6 +240,84 @@ jobs:
                   owner,
                   repo,
                   head: `${owner}:${branch}`,
+                  base: baseBranch,
+                  state: "open"
+                });
+
+                if (existing.length > 0) {
+                  await setOutputs(existing[0]);
+                } else {
+                  throw error;
+                }
+              } else {
+                throw error;
+              }
+            }
+
+      - name: Create bump-version branch
+        run: |
+          git checkout main
+          git pull origin main
+          # Delete bump-version branch if it exists locally
+          git branch -D bump-version 2>/dev/null || true
+          # Delete bump-version branch if it exists remotely
+          git push origin --delete bump-version 2>/dev/null || true
+          git checkout -b bump-version
+
+      - name: Update app version on bump-version branch
+        run: |
+          APP_VERSION="${{ steps.normalize_version.outputs.app_version }}"
+          node ./scripts/set-app-version "$APP_VERSION"
+
+      - name: Commit version bump on bump-version branch
+        run: |
+          APP_VERSION="${{ steps.normalize_version.outputs.app_version }}"
+          git status
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "No changes detected after running set-app-version."
+            exit 1
+          fi
+          git add .
+          git commit -m "chore: bump app version to v${APP_VERSION}"
+
+      - name: Push bump-version branch
+        run: |
+          git push --set-upstream origin bump-version
+
+      - name: Create bump-version pull request
+        uses: actions/github-script@v8
+        env:
+          APP_VERSION: ${{ steps.normalize_version.outputs.app_version }}
+        with:
+          script: |
+            const version = process.env.APP_VERSION;
+            const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/");
+            const title = `Bump version to v${version}`;
+            const body = `Bumping version on \`main\` branch to \`v${version}\`.`;
+
+            async function setOutputs(pr) {
+              core.notice(`Bump version pull request ready: ${pr.html_url}`);
+              core.setOutput("bump_version_pr_number", pr.number.toString());
+              core.setOutput("bump_version_pr_url", pr.html_url);
+            }
+
+            try {
+              const { data } = await github.rest.pulls.create({
+                owner,
+                repo,
+                head: "bump-version",
+                base: "main",
+                title,
+                body
+              });
+              await setOutputs(data);
+            } catch (error) {
+              if (error.status === 422) {
+                core.warning(`Bump version pull request could not be created automatically: ${error.message}`);
+                const { data: existing } = await github.rest.pulls.list({
+                  owner,
+                  repo,
+                  head: `${owner}:bump-version`,
                   base: "main",
                   state: "open"
                 });
@@ -149,11 +332,15 @@ jobs:
               }
             }
 
+      # Only trigger dev builds for regular releases from main branch
+      # Emergency releases branching from previous release skip initial QA builds
+      # as they should be manually triggered after the emergency fixes are pushed
       - name: Trigger dev builds (initial QA)
+        if: env.BRANCH_FROM == 'main'
         uses: actions/github-script@v8
         env:
-          APP_VERSION: ${{ env.APP_VERSION }}
-          RELEASE_BRANCH: ${{ env.RELEASE_BRANCH }}
+          APP_VERSION: ${{ steps.normalize_version.outputs.app_version }}
+          RELEASE_BRANCH: ${{ steps.set_release_branch.outputs.release_branch }}
         with:
           script: |
             const branch = process.env.RELEASE_BRANCH;
