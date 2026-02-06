@@ -153,7 +153,10 @@ jobs:
           SENTRY_DISABLE_AUTO_UPLOAD: "true"
         run: |
           cd android
-          ./gradlew assembleDevRelease
+          ./gradlew assembleDevRelease \
+            -PreactNativeArchitectures=x86_64 \
+            --parallel \
+            --build-cache
 
           # Find APK with relative path from android directory
           APK_PATH_REL=$(find ./app/build/outputs/apk/dev/release -name "*.apk" | head -n 1)
