@@ -194,16 +194,6 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
         return;
       }
 
-      // Skip history fetch for unfunded accounts (they don't exist on the network)
-      const { isFunded } = useBalancesStore.getState();
-      if (!isFunded) {
-        logger.info(
-          "fetchAccountHistory",
-          "Skipping history fetch for unfunded account",
-        );
-        return;
-      }
-
       // Prevent duplicate concurrent requests
       if (get().isFetching) {
         logger.info(
@@ -228,16 +218,36 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
       const { fetchAccountBalances, getBalances } = useBalancesStore.getState();
       const networkDetails = mapNetworkToNetworkDetails(params.network);
 
-      const [, rawOperations] = await Promise.all([
-        fetchAccountBalances({
-          publicKey: params.publicKey,
-          network: params.network,
-        }),
-        getAccountHistory({
-          publicKey: params.publicKey,
-          networkDetails,
-        }),
-      ]);
+      await fetchAccountBalances({
+        publicKey: params.publicKey,
+        network: params.network,
+      });
+
+      const { isFunded } = useBalancesStore.getState();
+      if (!isFunded) {
+        logger.info(
+          "fetchAccountHistory",
+          "Skipping history fetch for unfunded account",
+        );
+
+        set({
+          rawHistoryData: {
+            balances: getBalances(),
+            rawOperations: [],
+          },
+          isLoading: false,
+          error: null,
+          isFetching: false,
+          hasRecentTransaction: false,
+        });
+
+        return;
+      }
+
+      const rawOperations = await getAccountHistory({
+        publicKey: params.publicKey,
+        networkDetails,
+      });
 
       const balances = getBalances();
       const rawHistoryData: RawHistoryData = {
