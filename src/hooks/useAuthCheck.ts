@@ -43,8 +43,12 @@ const useAuthCheck = () => {
 
     // Prevent excessive checking
     if (now - lastCheckRef.current < MIN_CHECK_INTERVAL) return;
-    // Skip checks if already on lock screen
-    if (authStatus === AUTH_STATUS.HASH_KEY_EXPIRED) return;
+    // Skip checks if already on lock screen or in locked state
+    if (
+      authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ||
+      authStatus === AUTH_STATUS.LOCKED
+    )
+      return;
 
     lastCheckRef.current = now;
     try {

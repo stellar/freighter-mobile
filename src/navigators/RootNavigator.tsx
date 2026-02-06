@@ -146,7 +146,10 @@ export const RootNavigator = () => {
       return ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK;
     }
 
-    if (authStatus === AUTH_STATUS.HASH_KEY_EXPIRED) {
+    if (
+      authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ||
+      authStatus === AUTH_STATUS.LOCKED
+    ) {
       return ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN;
     }
 
@@ -261,7 +264,8 @@ export const RootNavigator = () => {
             options={getScreenBottomNavigateOptions("")}
           />
         </RootStack.Group>
-      ) : authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ? (
+      ) : authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ||
+        authStatus === AUTH_STATUS.LOCKED ? (
         <RootStack.Screen
           name={ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN}
           component={LockScreen}
