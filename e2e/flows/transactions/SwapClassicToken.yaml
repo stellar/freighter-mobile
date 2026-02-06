@@ -54,18 +54,11 @@ tags:
     id: numeric-key-0
 - tapOn:
     id: numeric-key-decimal
-- tapOn:
-    id: numeric-key-0
-- tapOn:
-    id: numeric-key-0
-- tapOn:
-    id: numeric-key-0
-- tapOn:
-    id: numeric-key-0
-- tapOn:
-    id: numeric-key-0
-- tapOn:
-    id: numeric-key-0
+- repeat:
+    times: 6
+    commands:
+      - tapOn:
+          id: numeric-key-0
 - tapOn:
     id: numeric-key-1
 
