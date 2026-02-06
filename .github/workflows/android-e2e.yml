@@ -141,17 +141,6 @@ jobs:
       - name: Run Post Install
         run: yarn postinstall
 
-      - name: Clean Gradle cache before build
-        run: |
-          echo "=== Cleaning Gradle cache before build ==="
-          cd android
-          ./gradlew clean --no-daemon || true
-          cd ..
-          # Remove Gradle cache to free up space
-          rm -rf ~/.gradle/caches/* 2>/dev/null || true
-          echo "=== Disk space before build ==="
-          df -h
-
       - name: Build Android APK for emulator
         env:
           SENTRY_DISABLE_AUTO_UPLOAD: "true"
