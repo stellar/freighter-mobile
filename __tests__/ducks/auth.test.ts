@@ -6,6 +6,7 @@ import {
   SENSITIVE_STORAGE_KEYS,
   LoginType,
 } from "config/constants";
+import { logger } from "config/logger";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
 import { Account, AUTH_STATUS } from "config/types";
 import {
@@ -15,6 +16,7 @@ import {
   clearAccountData,
 } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
+import { useCollectiblesStore } from "ducks/collectibles";
 import { useHistoryStore } from "ducks/history";
 import { usePreferencesStore } from "ducks/preferences";
 import { usePricesStore } from "ducks/prices";
@@ -32,7 +34,7 @@ import {
   getHashKey,
 } from "services/storage/helpers";
 // Import mocked modules
-import { rnBiometrics } from "services/storage/reactNativeBiometricStorage";
+import { rnBiometrics } from "services/storage/secureStorage";
 import {
   dataStorage,
   secureDataStorage,
@@ -91,7 +93,7 @@ jest.mock("services/storage/storageFactory", () => ({
   },
 }));
 
-jest.mock("services/storage/reactNativeBiometricStorage", () => ({
+jest.mock("services/storage/secureStorage", () => ({
   rnBiometrics: {
     isSensorAvailable: jest.fn(),
   },
@@ -170,6 +172,12 @@ jest.mock("ducks/history", () => ({
     getState: jest.fn(() => ({
       fetchHistory: jest.fn().mockResolvedValue(undefined),
     })),
+    setState: jest.fn(),
+  },
+}));
+
+jest.mock("ducks/collectibles", () => ({
+  useCollectiblesStore: {
     setState: jest.fn(),
   },
 }));
@@ -262,7 +270,6 @@ describe("auth duck", () => {
     useAuthenticationStore.getState().renameAccount = jest.fn();
     useAuthenticationStore.getState().getAllAccounts = jest.fn();
     useAuthenticationStore.getState().selectAccount = jest.fn();
-    useAuthenticationStore.getState().getTemporaryStore = jest.fn();
     useAuthenticationStore.getState().clearError = jest.fn();
 
     // Reset the store state
@@ -1414,6 +1421,9 @@ describe("auth duck", () => {
         // Verify data was cleared
         expect(clearTemporaryData).toHaveBeenCalled();
         expect(clearNonSensitiveData).toHaveBeenCalled();
+        expect(dataStorage.remove).toHaveBeenCalledWith(
+          STORAGE_KEYS.COLLECTIBLES_LIST,
+        );
       });
     });
 
@@ -1754,6 +1764,7 @@ describe("auth duck", () => {
       expect(useBalancesStore.setState).toHaveBeenCalledTimes(1);
       expect(useHistoryStore.setState).toHaveBeenCalledTimes(1);
       expect(usePricesStore.setState).toHaveBeenCalledTimes(1);
+      expect(useCollectiblesStore.setState).toHaveBeenCalledTimes(1);
     });
 
     it("should reset loading flags to false", () => {
@@ -1823,6 +1834,16 @@ describe("auth duck", () => {
         .calls[0]?.[0];
       expect(pricesCall?.prices).toEqual({});
       expect(pricesCall?.lastUpdated).toBeNull();
+    });
+
+    it("should reset collectibles store to empty collections", () => {
+      clearAccountData();
+
+      expect(useCollectiblesStore.setState).toHaveBeenCalledWith({
+        collections: [],
+        isLoading: false,
+        error: null,
+      });
     });
   });
 });

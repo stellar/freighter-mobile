@@ -30,6 +30,7 @@ import {
 } from "config/types";
 import { useBalancesStore } from "ducks/balances";
 import { useBrowserTabsStore } from "ducks/browserTabs";
+import { useCollectiblesStore } from "ducks/collectibles";
 import { useHistoryStore } from "ducks/history";
 import { usePreferencesStore } from "ducks/preferences";
 import { usePricesStore } from "ducks/prices";
@@ -974,6 +975,7 @@ const clearAllData = async (): Promise<void> => {
     ...allKeys.map((key) => keyManager.removeKey(key)),
     clearTemporaryData(),
     clearNonSensitiveData(),
+    dataStorage.remove(STORAGE_KEYS.COLLECTIBLES_LIST),
   ]);
 };
 
@@ -1167,6 +1169,70 @@ const verifyAndCreateExistingAccountsOnNetwork = async (
 };
 
 /**
+ * Clears account-specific data when switching between accounts.
+ *
+ * This prevents showing stale data (balances, history, prices) from the previous
+ * account while the new account data is being loaded.
+ *
+ * This function intentionally uses direct `setState` calls on the relevant stores
+ * instead of going through individual store actions. The goal is to perform a
+ * synchronous, centralized reset of all account-bound state so that:
+ *
+ * - No stale balances, history, or prices are rendered for the previously active
+ *   account after an account switch is initiated.
+ * - Loading and error flags are reset in a single place before triggering any
+ *   new network requests for the newly selected account.
+ *
+ * Ordering and side effects:
+ *
+ * - This function should be called immediately after changing the active account
+ *   (e.g., via {@link selectAccount}) and before starting any new data loads
+ *   (balances, history, prices) for that account.
+ * - Because it directly clears multiple stores at once, it avoids intermediate
+ *   states where some stores have been reset and others have not, which could
+ *   otherwise lead to inconsistent UI.
+ * - It resets `isLoading`/`isFetching` flags to `false` and clears any previous
+ *   `error` values, so callers must ensure that subsequent fetch logic correctly
+ *   updates these flags for the newly active account.
+ */
+export function clearAccountData(): void {
+  // Clear balances data
+  useBalancesStore.setState({
+    balances: {},
+    pricedBalances: {},
+    scanResults: {},
+    isLoading: false,
+    isFunded: false,
+    subentryCount: 0,
+    error: null,
+  });
+
+  // Clear history data
+  useHistoryStore.setState({
+    rawHistoryData: null,
+    isLoading: false,
+    error: null,
+    hasRecentTransaction: false,
+    isFetching: false,
+  });
+
+  // Clear prices data
+  usePricesStore.setState({
+    prices: {},
+    isLoading: false,
+    error: null,
+    lastUpdated: null,
+  });
+
+  // Clear collectibles data
+  useCollectiblesStore.setState({
+    collections: [],
+    isLoading: false,
+    error: null,
+  });
+}
+
+/**
  * Logs in the user with the provided password
  *
  * Validates the password against the stored key, loads the account data,
@@ -1281,6 +1347,7 @@ const signUp = async ({
   try {
     const keyPair = deriveKeyPair({ mnemonicPhrase });
 
+    clearAccountData();
     await clearAllData();
 
     // Store the account in the key manager and create the temporary store
@@ -1291,6 +1358,7 @@ const signUp = async ({
     });
   } catch (error) {
     // Clean up any partial data on error
+    clearAccountData();
     await clearAllData();
 
     throw error;
@@ -1313,6 +1381,7 @@ const importWallet = async ({
   try {
     const keyPair = deriveKeyPair({ mnemonicPhrase });
 
+    clearAccountData();
     await clearAllData();
 
     // Store the account in the key manager and create the temporary store
@@ -1334,6 +1403,7 @@ const importWallet = async ({
       error instanceof Error ? error.message : String(error),
     );
     // Clean up any partial data on error
+    clearAccountData();
     await clearAllData();
 
     throw error;
@@ -1756,36 +1826,6 @@ const clearBiometricsData = async (): Promise<void> => {
  *   `error` values, so callers must ensure that subsequent fetch logic correctly
  *   updates these flags for the newly active account.
  */
-export const clearAccountData = (): void => {
-  // Clear balances data
-  useBalancesStore.setState({
-    balances: {},
-    pricedBalances: {},
-    scanResults: {},
-    isLoading: false,
-    isFunded: false,
-    subentryCount: 0,
-    error: null,
-  });
-
-  // Clear history data
-  useHistoryStore.setState({
-    rawHistoryData: null,
-    isLoading: false,
-    error: null,
-    hasRecentTransaction: false,
-    isFetching: false,
-  });
-
-  // Clear prices data
-  usePricesStore.setState({
-    prices: {},
-    isLoading: false,
-    error: null,
-    lastUpdated: null,
-  });
-};
-
 /**
  * Authentication Store
  *
@@ -1867,7 +1907,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
      *
      * For accounts with existing accounts, it preserves account data but clears sensitive info,
      * setting the auth status to HASH_KEY_EXPIRED and navigating to the lock screen.
-     * For lock=true, it preserves private keys but expires hash key (LOCKED state).
+     * For lock=true, it preserves private keys and hash key (LOCKED state).
      * For new users with no accounts, it performs a full logout.
      */
     logout: (shouldWipeAllData = false) => {
@@ -1878,16 +1918,6 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
       setTimeout(() => {
         (async () => {
           try {
-            // Make sure to disconnect all WalletConnect sessions first
-            await useWalletKitStore.getState().disconnectAllSessions();
-
-            // Clear all Wallet Connect storage
-            await clearWalletKitStorage();
-
-            // Clear all WebView data (cookies and screenshots)
-            await clearAllWebViewData();
-            useBrowserTabsStore.getState().closeAllTabs();
-
             const accountList = await getAllAccounts();
             const hasAccountList = accountList.length > 0;
 
@@ -1920,8 +1950,21 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
               }
             } else {
               // If it's a wipe all data logout, clear everything
+              clearAccountData();
+
+              // Make sure to disconnect all WalletConnect sessions first
+              await useWalletKitStore.getState().disconnectAllSessions();
+
+              // Clear all Wallet Connect storage
+              await clearWalletKitStorage();
+
+              // Clear all WebView data (cookies and screenshots)
+              await clearAllWebViewData();
+              useBrowserTabsStore.getState().closeAllTabs();
+
               await clearTemporaryData();
               await clearNonSensitiveData();
+              await dataStorage.remove(STORAGE_KEYS.COLLECTIBLES_LIST);
 
               await clearBiometricsData();
 

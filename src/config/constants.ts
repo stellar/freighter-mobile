@@ -265,11 +265,11 @@ export const mapNetworkToNetworkDetails = (network: NETWORKS) => {
  *
  * COLLECTIBLES_LIST The collectibles list is used to keep track of all the collectibles stored in the key manager.
  * Formatted as: { [publicKey: string]: { [network: string]: CollectibleContract[] } } @see CollectiblesStorage
- * The COLLECTIBLES_LIST is not removed during the logout process. It is used to keep the collectibles even after the user logs out, since the API does not store collectibles.
+ * The COLLECTIBLES_LIST is not removed during the standard logout process. It is used to keep the collectibles even after the user logs out, since the API does not store collectibles.
  *
  * HIDDEN_COLLECTIBLES_LIST The hidden collectibles list is used to keep track of all the hidden collectibles stored in the key manager.
  * Formatted as: { [publicKey: string]: { [network: string]: CollectibleContract[] } } @see CollectiblesStorage
- * The HIDDEN_COLLECTIBLES_LIST is not removed during the logout process. It is used to keep the hidden collectibles even after the user logs out, since the API does not store hidden collectibles.
+ * The HIDDEN_COLLECTIBLES_LIST is not removed during the standard logout process. It is used to keep the hidden collectibles even after the user logs out, since the API does not store hidden collectibles.
  *
  * ACTIVE_NETWORK The active network is the network that is currently being used.
  * RECENT_ADDRESSES The list of recently used addresses for sending payments.
