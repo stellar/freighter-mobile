@@ -264,9 +264,20 @@ jobs:
       - name: Set up Android SDK and NDK for 16KB page size alignment
         run: ./scripts/setup-android-ndk-16kb
 
+      - name: Cache Maestro
+        uses: actions/cache@v4
+        with:
+          path: ~/.maestro
+          key: ${{ runner.os }}-maestro-v1
+
       - name: Install Maestro
         run: |
-          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          if [ ! -f "$HOME/.maestro/bin/maestro" ]; then
+            echo "Maestro not found in cache, installing..."
+            curl -fsSL "https://get.maestro.mobile.dev" | bash
+          else
+            echo "Maestro found in cache"
+          fi
           export PATH="$PATH:$HOME/.maestro/bin"
           maestro --version
 
