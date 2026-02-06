@@ -5,6 +5,7 @@ import { Text } from "components/sds/Typography";
 import { TokenTypeWithCustomToken, Balance, Token } from "config/types";
 import { useTokenIconsStore } from "ducks/tokenIcons";
 import { getTokenIdentifier, isLiquidityPool } from "helpers/balances";
+import { debug } from "helpers/debug";
 import React from "react";
 import { useTranslation } from "react-i18next";
 
@@ -136,11 +137,10 @@ export const TokenIcon: React.FC<TokenIconProps> = ({
     !!icon.imageUrl &&
     icon.isValid !== false;
 
-  // Show loading only if: no explicit iconUrl, has imageUrl, not yet validated, and not already failed
-  const isLoading = !iconUrl && hasIconToValidate;
-
   const shouldValidateIcon =
     !iconUrl && hasIconToValidate && !failedTokenCodes[tokenCode];
+
+  const lastValidImageUrl = icon?.lastValidImageUrl;
 
   React.useEffect(() => {
     // Only validate if: no explicit iconUrl, icon exists, not validated, has imageUrl, and hasn't failed before
@@ -184,6 +184,47 @@ export const TokenIcon: React.FC<TokenIconProps> = ({
     [fallbackTextSize, token.code, size],
   );
 
+  // Use iconUrl if provided explicitly, otherwise use cached icon only if it's valid
+  // If icon validation failed (isValid === false), don't use the imageUrl (will trigger fallback)
+  const finalImageUrl =
+    iconUrl ||
+    (icon?.isValid === false ? undefined : icon?.imageUrl || lastValidImageUrl);
+  React.useEffect(() => {
+    if (tokenCode !== "BTC") {
+      return;
+    }
+
+    debug("TokenIcon", "BTC icon state", {
+      tokenCode,
+      tokenType: token.type,
+      tokenIdentifier,
+      iconUrl,
+      finalImageUrl,
+      hasIconToValidate,
+      shouldValidateIcon,
+      failedTokenCode: failedTokenCodes[tokenCode],
+      cacheState: icon
+        ? {
+            hasImageUrl: !!icon.imageUrl,
+            network: icon.network,
+            isValidated: icon.isValidated,
+            isValid: icon.isValid,
+            lastValidImageUrl: icon.lastValidImageUrl,
+          }
+        : null,
+    });
+  }, [
+    failedTokenCodes,
+    finalImageUrl,
+    hasIconToValidate,
+    icon,
+    iconUrl,
+    shouldValidateIcon,
+    token.type,
+    tokenCode,
+    tokenIdentifier,
+  ]);
+
   // Liquidity pool: show "LP" text
   if (isLiquidityPool(tokenProp)) {
     return (
@@ -214,12 +255,6 @@ export const TokenIcon: React.FC<TokenIconProps> = ({
     );
   }
 
-  // Use iconUrl if provided explicitly, otherwise use cached icon only if it's valid
-  // If icon validation failed (isValid === false), don't use the imageUrl (will trigger fallback)
-  const finalImageUrl =
-    iconUrl || (icon?.isValid === true ? icon.imageUrl : undefined);
-  const skipImageLoader = !iconUrl && !!icon?.isValidated;
-
   // Soroban custom tokens: show icon if available, otherwise SorobanTokenIcon
   if (token.type === TokenTypeWithCustomToken.CUSTOM_TOKEN) {
     return (
@@ -230,8 +265,6 @@ export const TokenIcon: React.FC<TokenIconProps> = ({
           altText: t("tokenIconAlt", { code: token.code }),
           backgroundColor,
           image: finalImageUrl,
-          isLoading,
-          skipImageLoader,
           // Fallback: show SorobanTokenIcon for Soroban custom tokens
           // in case the specific icon is not available
           renderContent: renderSorobanContent,
@@ -248,8 +281,6 @@ export const TokenIcon: React.FC<TokenIconProps> = ({
         altText: t("tokenIconAlt", { code: token.code }),
         backgroundColor,
         image: finalImageUrl,
-        isLoading,
-        skipImageLoader,
         // Fallback: show token initials if the icon is not available
         renderContent: renderInitialsContent,
       }}

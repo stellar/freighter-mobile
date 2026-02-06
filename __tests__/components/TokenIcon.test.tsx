@@ -48,7 +48,6 @@ jest.mock("components/sds/Token", () => {
     Token: ({ sourceOne, size, variant }: TokenProps) => (
       <View testID="token" data-size={size} data-variant={variant}>
         {sourceOne.image && <Text testID="image-url">{sourceOne.image}</Text>}
-        {sourceOne.isLoading && <Text testID="is-loading">Loading</Text>}
         {sourceOne.renderContent && sourceOne.renderContent()}
       </View>
     ),
@@ -119,7 +118,7 @@ describe("TokenIcon", () => {
     expect(getByText("LP")).toBeTruthy();
   });
 
-  it("renders loading state when icon is validating", () => {
+  it("shows fallback letters while icon is validating", () => {
     const issuerKey =
       "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
     const cacheKey = `USDC:${issuerKey}`;
@@ -133,7 +132,7 @@ describe("TokenIcon", () => {
       },
     };
 
-    const { getByTestId } = render(
+    const { getByText } = render(
       <TokenIcon
         token={{
           code: "USDC",
@@ -145,6 +144,6 @@ describe("TokenIcon", () => {
       />,
     );
 
-    expect(getByTestId("is-loading")).toBeTruthy();
+    expect(getByText("US")).toBeTruthy();
   });
 });

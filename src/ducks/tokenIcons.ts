@@ -32,13 +32,17 @@ import { persist, createJSONStorage } from "zustand/middleware";
  * @property {NETWORK_URLS} networkUrl - The network URL where this icon was fetched from
  * @property {boolean} [isValidated] - Whether the icon URL has been validated and cached to native storage
  * @property {boolean | null} [isValid] - Validation result (null = not validated, true = valid and cached, false = invalid)
+ * @property {string} [lastValidImageUrl] - Last known valid image URL to avoid flashing during refresh/validation
  */
 export interface Icon {
   imageUrl: string;
   network: NETWORKS;
   isValidated?: boolean;
   isValid?: boolean | null;
+  lastValidImageUrl?: string;
 }
+
+export const TOKEN_ICONS_STORAGE_KEY = "token-icons-storage";
 
 /**
  * State and actions for managing token icons
@@ -95,6 +99,10 @@ interface TokenIconsState {
    * @param {string} identifier - The token identifier to validate
    */
   validateIconOnAccess: (identifier: string) => Promise<void>;
+  /**
+   * Clears cached icons and validation state (dev/testing)
+   */
+  resetIconsCache: () => void;
 }
 
 /** Number of icons to process in each batch */
@@ -154,11 +162,21 @@ const processIconBatches = async (params: {
         // This preserves validation state for unchanged URLs, preventing flashing
         const urlUnchanged = imageUrl === icon.imageUrl;
 
+        if (!imageUrl && icon.lastValidImageUrl) {
+          updatedIcons[cacheKey] = {
+            ...icon,
+          };
+          return;
+        }
+
         updatedIcons[cacheKey] = {
           imageUrl,
           network: icon.network,
           isValidated: urlUnchanged ? icon.isValidated : false,
           isValid: urlUnchanged ? icon.isValid : null,
+          lastValidImageUrl:
+            icon.lastValidImageUrl ??
+            (icon.isValid ? icon.imageUrl : undefined),
         };
       } catch (error) {
         // Keep the existing icon URL and validation state if refresh fails
@@ -225,13 +243,50 @@ export const useTokenIconsStore = create<TokenIconsState>()(
       icons: {},
       lastRefreshed: null,
       failedTokenCodes: {},
+      resetIconsCache: () => {
+        set({
+          icons: {},
+          lastRefreshed: null,
+          failedTokenCodes: {},
+        });
+      },
       cacheTokenIcons: ({ icons }) => {
-        set((state) => ({
-          icons: {
-            ...state.icons,
-            ...icons,
-          },
-        }));
+        set((state) => {
+          const mergedIcons = Object.fromEntries(
+            Object.entries(icons).map(([key, icon]) => {
+              const existingIcon = state.icons[key];
+              const nextIsValidated =
+                icon.isValidated ?? existingIcon?.isValidated;
+              const nextIsValid = icon.isValid ?? existingIcon?.isValid;
+              const nextIcon = {
+                ...existingIcon,
+                ...icon,
+                isValidated: nextIsValidated,
+                isValid: nextIsValid,
+              };
+              const nextLastValidImageUrl = nextIsValid
+                ? icon.imageUrl ||
+                  existingIcon?.imageUrl ||
+                  existingIcon?.lastValidImageUrl
+                : (icon.lastValidImageUrl ?? existingIcon?.lastValidImageUrl);
+
+              return [
+                key,
+                {
+                  ...nextIcon,
+                  lastValidImageUrl: nextLastValidImageUrl,
+                },
+              ];
+            }),
+          );
+
+          return {
+            icons: {
+              ...state.icons,
+              ...mergedIcons,
+            },
+          };
+        });
       },
       cacheTokenListIcons: async ({ network }) => {
         const { getVerifiedTokens } = useVerifiedTokensStore.getState();
@@ -260,6 +315,10 @@ export const useTokenIconsStore = create<TokenIconsState>()(
                 existingIcon &&
                 existingIcon.imageUrl === iconUrl &&
                 existingIcon.network === network;
+              let lastValidImageUrl = existingIcon?.lastValidImageUrl;
+              if (!shouldUseExistingValidation && isValid) {
+                lastValidImageUrl = iconUrl;
+              }
 
               const icon: Icon = {
                 imageUrl: iconUrl,
@@ -270,6 +329,7 @@ export const useTokenIconsStore = create<TokenIconsState>()(
                 isValid: shouldUseExistingValidation
                   ? existingIcon.isValid
                   : isValid,
+                lastValidImageUrl,
               };
               // eslint-disable-next-line no-param-reassign
               prev[`${curr.code}:${curr.issuer}`] = icon;
@@ -291,6 +351,9 @@ export const useTokenIconsStore = create<TokenIconsState>()(
                   isValid: shouldUseExistingContractValidation
                     ? existingContractIcon.isValid
                     : icon.isValid,
+                  lastValidImageUrl: shouldUseExistingContractValidation
+                    ? existingContractIcon.lastValidImageUrl
+                    : icon.lastValidImageUrl,
                 };
               }
             }
@@ -305,6 +368,14 @@ export const useTokenIconsStore = create<TokenIconsState>()(
           const iconMapWithValidation = Object.fromEntries(
             Object.entries(iconMap).map(([key, icon]) => {
               const existingIcon = state.icons[key];
+              const shouldKeepExisting =
+                !icon.imageUrl &&
+                !!existingIcon?.lastValidImageUrl &&
+                existingIcon?.network === icon.network;
+
+              if (shouldKeepExisting) {
+                return [key, { ...existingIcon }];
+              }
               const urlAndNetworkUnchanged =
                 existingIcon?.imageUrl === icon.imageUrl &&
                 existingIcon?.network === icon.network;
@@ -320,6 +391,10 @@ export const useTokenIconsStore = create<TokenIconsState>()(
                   isValid: urlAndNetworkUnchanged
                     ? existingIcon?.isValid
                     : icon.isValid,
+                  lastValidImageUrl: urlAndNetworkUnchanged
+                    ? existingIcon?.lastValidImageUrl
+                    : (icon.lastValidImageUrl ??
+                      existingIcon?.lastValidImageUrl),
                 },
               ];
             }),
@@ -377,6 +452,10 @@ export const useTokenIconsStore = create<TokenIconsState>()(
               currentIcon.imageUrl === icon.imageUrl &&
               currentIcon.network === icon.network
             ) {
+              return state;
+            }
+
+            if (!icon.imageUrl && currentIcon?.lastValidImageUrl) {
               return state;
             }
 
@@ -477,6 +556,26 @@ export const useTokenIconsStore = create<TokenIconsState>()(
         const icon = get().icons[identifier];
         const tokenCode = identifier.split(":")[0];
 
+        // If previously marked invalid but we still have a URL, allow retry on access
+        if (icon?.isValid === false && icon.imageUrl) {
+          set((state) => {
+            const nextFailedCodes = { ...state.failedTokenCodes };
+            delete nextFailedCodes[tokenCode];
+
+            return {
+              icons: {
+                ...state.icons,
+                [identifier]: {
+                  ...state.icons[identifier],
+                  isValidated: false,
+                  isValid: null,
+                },
+              },
+              failedTokenCodes: nextFailedCodes,
+            };
+          });
+        }
+
         const shouldSkipValidation =
           !icon || icon.isValidated || (!icon.imageUrl && icon.imageUrl !== "");
 
@@ -495,7 +594,9 @@ export const useTokenIconsStore = create<TokenIconsState>()(
               [identifier]: {
                 ...state.icons[identifier],
                 isValidated: true,
-                isValid: false,
+                isValid:
+                  state.icons[identifier]?.isValid ??
+                  !!state.icons[identifier]?.lastValidImageUrl,
               },
             },
           }));
@@ -532,6 +633,7 @@ export const useTokenIconsStore = create<TokenIconsState>()(
                 ...state.icons[identifier],
                 isValidated: true,
                 isValid: true,
+                lastValidImageUrl: icon.imageUrl,
               },
             },
           }));
@@ -558,6 +660,9 @@ export const useTokenIconsStore = create<TokenIconsState>()(
             return state;
           }
 
+          const hasValidFallback = !!currentIcon.lastValidImageUrl;
+          const nextIsValid = isValid || hasValidFallback;
+
           // If validation failed, track this token code to prevent re-validation
           const newFailedCodes = isValid
             ? state.failedTokenCodes
@@ -571,7 +676,10 @@ export const useTokenIconsStore = create<TokenIconsState>()(
               ...state.icons,
               [identifier]: {
                 ...currentIcon,
-                isValid,
+                isValid: nextIsValid,
+                lastValidImageUrl: isValid
+                  ? currentIcon.imageUrl
+                  : currentIcon.lastValidImageUrl,
               },
             },
             failedTokenCodes: newFailedCodes,
@@ -580,7 +688,7 @@ export const useTokenIconsStore = create<TokenIconsState>()(
       },
     }),
     {
-      name: "token-icons-storage",
+      name: TOKEN_ICONS_STORAGE_KEY,
       storage: createJSONStorage(() => AsyncStorage),
     },
   ),

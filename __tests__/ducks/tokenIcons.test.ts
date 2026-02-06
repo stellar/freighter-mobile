@@ -10,7 +10,7 @@ import {
 import { useTokenIconsStore } from "ducks/tokenIcons";
 import { useVerifiedTokensStore } from "ducks/verifiedTokens";
 import { getIconUrl } from "helpers/getIconUrl";
-import { Image } from "react-native";
+import { validateIconUrl, isIconCached } from "helpers/validateIconUrl";
 import { TokenListReponseItem } from "services/verified-token-lists";
 
 // Mock verified tokens service
@@ -34,6 +34,12 @@ jest.mock("helpers/getIconUrl", () => ({
   getIconUrl: jest.fn(),
 }));
 
+// Mock the validateIconUrl helpers
+jest.mock("helpers/validateIconUrl", () => ({
+  validateIconUrl: jest.fn(),
+  isIconCached: jest.fn(),
+}));
+
 // Mock the logos asset
 jest.mock("assets/logos", () => ({
   logos: {
@@ -48,6 +54,12 @@ const TWENTY_FIVE_HOURS = 25 * 60 * 60 * 1000;
 
 describe("tokenIcons store", () => {
   const mockGetIconUrl = getIconUrl as jest.MockedFunction<typeof getIconUrl>;
+  const mockValidateIconUrl = validateIconUrl as jest.MockedFunction<
+    typeof validateIconUrl
+  >;
+  const mockIsIconCached = isIconCached as jest.MockedFunction<
+    typeof isIconCached
+  >;
   const mockGetVerifiedTokens = jest.fn();
 
   beforeEach(() => {
@@ -61,6 +73,9 @@ describe("tokenIcons store", () => {
     (useVerifiedTokensStore.getState as jest.Mock) = jest.fn(() => ({
       getVerifiedTokens: mockGetVerifiedTokens,
     }));
+
+    mockValidateIconUrl.mockResolvedValue(true);
+    mockIsIconCached.mockResolvedValue(false);
   });
 
   describe("fetchIconUrl", () => {
@@ -486,6 +501,7 @@ describe("tokenIcons store", () => {
         network: NETWORKS.PUBLIC,
         isValidated: true,
         isValid: true,
+        lastValidImageUrl: "bundled-usdc-logo.png",
       });
 
       // Other tokens should have their original token list icons
@@ -545,8 +561,6 @@ describe("tokenIcons store", () => {
         },
       });
 
-      (Image.prefetch as jest.Mock).mockResolvedValue(true);
-
       await useTokenIconsStore.getState().validateIconOnAccess(cacheKey);
 
       const icon = useTokenIconsStore.getState().icons[cacheKey];
@@ -569,7 +583,7 @@ describe("tokenIcons store", () => {
         },
       });
 
-      (Image.prefetch as jest.Mock).mockRejectedValue(new Error("Failed"));
+      mockValidateIconUrl.mockResolvedValue(false);
 
       await useTokenIconsStore.getState().validateIconOnAccess(cacheKey);
 

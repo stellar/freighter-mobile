@@ -1,16 +1,11 @@
+import { logos } from "assets/logos";
+import { Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import { THEME } from "config/theme";
 import { useTokenIconsStore } from "ducks/tokenIcons";
 import { px } from "helpers/dimensions";
 import React, { useState, useEffect } from "react";
-import { ImageSourcePropType, View, StyleSheet } from "react-native";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withRepeat,
-  withTiming,
-  withSequence,
-} from "react-native-reanimated";
+import { ImageSourcePropType, View } from "react-native";
 import styled from "styled-components/native";
 
 // =============================================================================
@@ -355,37 +350,6 @@ const TokenImage = styled.Image`
   height: 100%;
 `;
 
-const TokenLoader = () => {
-  const opacity = useSharedValue(0.4);
-
-  useEffect(() => {
-    opacity.value = withRepeat(
-      withSequence(
-        withTiming(1, { duration: 1000 }),
-        withTiming(0.4, { duration: 1000 }),
-      ),
-      -1,
-      true,
-    );
-  }, [opacity]);
-
-  const style = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-  }));
-
-  return (
-    <Animated.View
-      style={[
-        {
-          ...StyleSheet.absoluteFillObject,
-          backgroundColor: THEME.colors.border.default, // Using border color as a neutral placeholder
-        },
-        style,
-      ]}
-    />
-  );
-};
-
 // =============================================================================
 // Component
 // =============================================================================
@@ -395,10 +359,9 @@ const ImageWithFallback: React.FC<{
   source: TokenSource;
 }> = ({ source }) => {
   const [hasError, setHasError] = useState(false);
-  const [isImageLoading, setIsImageLoading] = useState(
-    !source.skipImageLoader &&
-      !!(source.image && typeof source.image === "string"),
-  );
+  const [isSourceLoading, setIsSourceLoading] = useState(!!source.isLoading);
+  const [hasTimedOut, setHasTimedOut] = useState(false);
+  const [isImageLoaded, setIsImageLoaded] = useState(false);
 
   // Get validated icon from store if token data is provided
   // For native XLM, we'll use the Stellar logo directly
@@ -444,12 +407,32 @@ const ImageWithFallback: React.FC<{
   // If token data is provided and we have a validated icon, use its imageUrl
   // For native tokens (XLM), return undefined to use fallback (which gets Stellar logo from source.image)
   // Otherwise fall back to the direct image prop
-  const finalImageUrl =
-    source.token &&
-    source.token.code !== NATIVE_TOKEN_CODE &&
-    icon?.isValid === true
-      ? icon.imageUrl
-      : source.image;
+  const isNativeToken = source.token?.code === NATIVE_TOKEN_CODE;
+
+  const resolvedIconUrl =
+    icon?.isValid === false
+      ? undefined
+      : icon?.imageUrl || icon?.lastValidImageUrl;
+
+  let finalImageUrl = source.image;
+  if (isNativeToken) {
+    finalImageUrl = source.image || logos.stellar;
+  } else if (source.token) {
+    finalImageUrl = resolvedIconUrl || source.image;
+  }
+
+  const isUsingLastValidUrl =
+    !!icon?.lastValidImageUrl &&
+    typeof finalImageUrl === "string" &&
+    finalImageUrl === icon.lastValidImageUrl &&
+    icon?.isValid !== true;
+
+  const shouldSkipLoader =
+    source.skipImageLoader || isUsingLastValidUrl || isNativeToken;
+
+  const [isImageLoading, setIsImageLoading] = useState(
+    !shouldSkipLoader && !!(finalImageUrl && typeof finalImageUrl === "string"),
+  );
 
   // Check if image is valid (non-empty string or valid ImageSourcePropType)
   const hasValidImage =
@@ -461,18 +444,21 @@ const ImageWithFallback: React.FC<{
   // Reset error state if image source changes
   useEffect(() => {
     setHasError(false);
+    setHasTimedOut(false);
+    setIsImageLoaded(false);
     setIsImageLoading(
-      !source.skipImageLoader &&
+      !shouldSkipLoader &&
         !!(finalImageUrl && typeof finalImageUrl === "string"),
     );
 
     // If image is loading, timeout after 3 seconds to prevent infinite loading state
     let timeoutId: NodeJS.Timeout | null = null;
     if (
-      !source.skipImageLoader &&
+      !shouldSkipLoader &&
       !!(finalImageUrl && typeof finalImageUrl === "string")
     ) {
       timeoutId = setTimeout(() => {
+        setHasTimedOut(true);
         setIsImageLoading(false);
       }, 3000);
     }
@@ -482,17 +468,54 @@ const ImageWithFallback: React.FC<{
         clearTimeout(timeoutId);
       }
     };
-  }, [finalImageUrl, source.skipImageLoader]);
+  }, [finalImageUrl, shouldSkipLoader]);
 
-  if (source.isLoading) {
-    return <TokenLoader />;
-  }
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout | null = null;
+
+    if (source.isLoading) {
+      setIsSourceLoading(true);
+      timeoutId = setTimeout(() => {
+        setIsSourceLoading(false);
+      }, 3000);
+    } else {
+      setIsSourceLoading(false);
+    }
+
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [source.isLoading]);
+
+  const fallbackText = source.token?.code?.slice(0, 2) || "?";
+
+  const renderFallbackContent = () => {
+    if (source.renderContent) {
+      const customContent = source.renderContent();
+      if (customContent) {
+        return customContent;
+      }
+    }
+
+    return (
+      <Text xs secondary semiBold>
+        {fallbackText}
+      </Text>
+    );
+  };
+
+  const shouldShowFallback =
+    isSourceLoading ||
+    isImageLoading ||
+    !hasValidImage ||
+    hasError ||
+    (hasTimedOut && !isImageLoaded);
 
   if (hasValidImage && !hasError) {
     return (
-      <View className="w-full h-full relative">
-        {/* TokenLoader shown while loading, hidden when image loads */}
-        {isImageLoading && <TokenLoader />}
+      <View className="w-full h-full relative items-center justify-center">
         <TokenImage
           // This will allow handling both local and remote images
           source={
@@ -505,15 +528,24 @@ const ImageWithFallback: React.FC<{
             setHasError(true);
             setIsImageLoading(false);
           }}
-          onLoadEnd={() => setIsImageLoading(false)}
-          style={isImageLoading ? { opacity: 0 } : undefined}
+          onLoadEnd={() => {
+            if (!hasTimedOut) {
+              setIsImageLoaded(true);
+              setIsImageLoading(false);
+            }
+          }}
+          style={shouldShowFallback ? { opacity: 0 } : undefined}
         />
+        {shouldShowFallback && (
+          <View className="absolute inset-0 items-center justify-center">
+            {renderFallbackContent()}
+          </View>
+        )}
       </View>
     );
   }
 
-  // Fallback
-  return source.renderContent ? <>{source.renderContent()}</> : null;
+  return <>{renderFallbackContent()}</>;
 };
 
 /**

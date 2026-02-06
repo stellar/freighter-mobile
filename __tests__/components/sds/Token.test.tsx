@@ -248,7 +248,7 @@ describe("Token", () => {
       expect(getByText("Error Fallback")).toBeTruthy();
     });
 
-    it("does not show renderContent before image loads or errors (immediate display)", () => {
+    it("shows renderContent while image is loading", () => {
       const renderContent = () => <Text>Timeout Fallback</Text>;
 
       const { getByLabelText, queryByText } = render(
@@ -267,8 +267,8 @@ describe("Token", () => {
       const image = getByLabelText("Token with timeout");
       expect(image).toBeTruthy();
 
-      // Should NOT show fallback content immediately
-      expect(queryByText("Timeout Fallback")).toBeFalsy();
+      // Fallback is shown while loading
+      expect(queryByText("Timeout Fallback")).toBeTruthy();
     });
 
     it("hides spinner when image loads successfully", async () => {
@@ -290,7 +290,7 @@ describe("Token", () => {
 
       // Simulate successful image load immediately
       act(() => {
-        fireEvent(image, "load");
+        fireEvent(image, "loadEnd");
       });
 
       // After load, image should still be rendered
@@ -348,7 +348,7 @@ describe("Token", () => {
 
       // Simulate successful image load immediately
       act(() => {
-        fireEvent(image, "load");
+        fireEvent(image, "loadEnd");
       });
 
       // Wait a bit for any async state updates
@@ -358,6 +358,62 @@ describe("Token", () => {
 
       // Fallback should not be shown
       expect(queryByText("Should Not Show")).toBeFalsy();
+    });
+
+    it("keeps fallback visible after 3000ms without load end", () => {
+      jest.useFakeTimers();
+      const renderContent = () => <Text>Timeout Fallback</Text>;
+
+      const { getByLabelText, getByText } = render(
+        <Token
+          variant="single"
+          size="md"
+          sourceOne={{
+            image: "https://example.com/slow-loading.png",
+            altText: "Token with timeout",
+            renderContent,
+          }}
+        />,
+      );
+
+      const image = getByLabelText("Token with timeout");
+      expect(image).toBeTruthy();
+      expect(getByText("Timeout Fallback")).toBeTruthy();
+
+      act(() => {
+        jest.advanceTimersByTime(3000);
+      });
+
+      expect(getByLabelText("Token with timeout")).toBeTruthy();
+      expect(getByText("Timeout Fallback")).toBeTruthy();
+      jest.useRealTimers();
+    });
+
+    it("keeps fallback visible after 3000ms when source is loading", () => {
+      jest.useFakeTimers();
+      const renderContent = () => <Text>Loading Fallback</Text>;
+
+      const { getByText } = render(
+        <Token
+          variant="single"
+          size="md"
+          sourceOne={{
+            image: "https://example.com/loading.png",
+            altText: "Token loading",
+            renderContent,
+            isLoading: true,
+          }}
+        />,
+      );
+
+      expect(getByText("Loading Fallback")).toBeTruthy();
+
+      act(() => {
+        jest.advanceTimersByTime(3000);
+      });
+
+      expect(getByText("Loading Fallback")).toBeTruthy();
+      jest.useRealTimers();
     });
 
     it("renders container when no image and no renderContent provided", () => {
