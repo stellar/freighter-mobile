@@ -151,7 +151,10 @@ jobs:
             CODE_SIGNING_ALLOWED=YES \
             CODE_SIGN_IDENTITY="-" \
             CODE_SIGN_ENTITLEMENTS="$ENTITLEMENTS_PATH" \
-            CODE_SIGNING_REQUIRED=NO
+            CODE_SIGNING_REQUIRED=NO \
+            ONLY_ACTIVE_ARCH=YES \
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            DEBUG_INFORMATION_FORMAT=dwarf
 
           # Find the .app bundle (relative to ios/)
           APP_PATH=$(find ./build/Build/Products/Release-iphonesimulator -name "*.app" -type d | head -n 1)
