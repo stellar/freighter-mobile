@@ -122,8 +122,6 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
-        with:
-          cache-read-only: ${{ github.event_name == 'pull_request' }}
 
       - name: Set up Android SDK and NDK for 16KB page size alignment
         run: ./scripts/setup-android-ndk-16kb
