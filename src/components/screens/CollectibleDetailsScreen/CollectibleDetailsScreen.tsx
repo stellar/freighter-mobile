@@ -212,9 +212,7 @@ export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
     }
 
     return (
-      <BaseLayout
-        insets={{ top: false, bottom: Boolean(collectible?.externalUrl) }}
-      >
+      <BaseLayout insets={{ top: false, bottom: true }}>
         <ScrollView
           className="flex-1"
           showsVerticalScrollIndicator={false}
