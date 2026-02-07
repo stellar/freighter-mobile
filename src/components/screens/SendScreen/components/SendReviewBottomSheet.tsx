@@ -491,7 +491,7 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
           onPress={onConfirm}
           isLoading={isLoading}
           disabled={isDisabled}
-          variant={isMalicious || isUnableToScan ? "error" : "secondary"}
+          variant={isMalicious ? "error" : "secondary"}
         />
       );
 

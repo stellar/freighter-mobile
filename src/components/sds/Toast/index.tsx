@@ -20,7 +20,7 @@ export interface ToastProps {
   icon?: React.ReactNode;
   /** Toast message */
   message?: string;
-  /** Duration in milliseconds before the toast is dismissed */
+  /** Duration in milliseconds before the toast is dismissed. Set to 0 for persistent (no auto-dismiss) */
   duration?: number;
   /** Callback function when toast is dismissed */
   onDismiss?: () => void;
@@ -131,17 +131,21 @@ export const Toast: React.FC<ToastProps> = ({
             toValue: { x: 0, y: 0 },
             useNativeDriver: true,
           }).start(() => {
-            // Restart the auto-dismiss timer
-            timerRef.current = setTimeout(animateOut, duration);
+            // Restart the auto-dismiss timer only if duration is not disabled
+            if (duration !== 0) {
+              timerRef.current = setTimeout(animateOut, duration);
+            }
           });
         }
       },
     }),
   ).current;
-
   useEffect(() => {
     animateIn();
-    timerRef.current = setTimeout(animateOut, duration);
+    // Only set auto-dismiss timer if duration is not disabled
+    if (duration !== 0) {
+      timerRef.current = setTimeout(animateOut, duration);
+    }
     return () => {
       if (timerRef.current) {
         clearTimeout(timerRef.current);

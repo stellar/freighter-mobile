@@ -16,6 +16,8 @@ import { SwapPathResult } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
+import useAppTranslation from "hooks/useAppTranslation";
+import { useToast } from "providers/ToastProvider";
 import { useState, useCallback } from "react";
 import { analytics } from "services/analytics";
 
@@ -58,6 +60,8 @@ export const useSwapTransaction = ({
     useTransactionBuilderStore();
   const { fetchAccountHistory } = useHistoryStore();
   const { scanTransaction } = useBlockaidTransaction();
+  const { t } = useAppTranslation();
+  const { showToast } = useToast();
 
   const setupSwapTransaction = useCallback(async () => {
     if (
@@ -87,7 +91,9 @@ export const useSwapTransaction = ({
     });
 
     if (!transactionXDR) {
-      throw new Error("Failed to build swap transaction");
+      // Get the error message stored in the transaction builder
+      const { error: builderError } = useTransactionBuilderStore.getState();
+      throw new Error(builderError || "Failed to build swap transaction");
     }
     try {
       const scanResult = await scanTransaction(transactionXDR, "internal");
@@ -129,13 +135,20 @@ export const useSwapTransaction = ({
       });
 
       if (!signedXDR) {
-        throw new Error("Failed to sign transaction");
+        // Get the error message stored in the transaction builder
+        const { error: signingError } = useTransactionBuilderStore.getState();
+        throw new Error(signingError || "Failed to sign transaction");
       }
 
+      // submitTransaction will throw if it fails (including debug overrides)
+      // or return the hash if successful. If it returns null, surface the
+      // stored error to keep the toast message accurate (e.g. DEBUG failures).
       const transactionHash = await submitTransaction({ network });
 
       if (!transactionHash) {
-        throw new Error("Failed to submit transaction");
+        const { error: submitError } = useTransactionBuilderStore.getState();
+        const errorMessage = submitError || "Failed to submit transaction";
+        throw new Error(errorMessage);
       }
 
       // Get fresh slippage value for analytics
@@ -152,9 +165,27 @@ export const useSwapTransaction = ({
       setIsProcessing(false);
       logger.error("SwapTransaction", "Swap failed", error);
 
+      // Debug: Log the actual error object and message
+      if (error instanceof Error) {
+        logger.error("SwapTransaction", "Error message:", error.message);
+      }
+
       analytics.trackTransactionError({
         error: error instanceof Error ? error.message : String(error),
         isSwap: true,
+      });
+
+      // Show error toast that persists even if component unmounts
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : t("swapScreen.errors.swapTransactionFailed");
+
+      showToast({
+        variant: "error",
+        title: errorMessage,
+        toastId: "swap-transaction-failed",
+        duration: 0,
       });
 
       throw error;
@@ -166,6 +197,8 @@ export const useSwapTransaction = ({
     signTransaction,
     network,
     submitTransaction,
+    t,
+    showToast,
   ]);
 
   const handleProcessingScreenClose = () => {

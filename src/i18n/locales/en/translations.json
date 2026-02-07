@@ -661,7 +661,8 @@
       "swapTransactionFailed": "Swap transaction failed",
       "insufficientBalance": "Insufficient balance. Maximum spendable: {{amount}} {{symbol}}",
       "insufficientXlmForFees": "Insufficient XLM for transaction fees. You need at least {{fee}} XLM to pay the transaction fee.",
-      "noPathFound": "No path found between these tokens"
+      "noPathFound": "No path found between these tokens",
+      "pathFindFailed": "Couldn't fetch swap path. Please try again."
     },
     "proceedAnyway": "Proceed anyway"
   },
@@ -1080,6 +1081,30 @@
       "malicious": "Malicious",
       "unableToScan": "Unable to Scan",
       "clearOverride": "Clear Override"
+    },
+    "transactionFailure": {
+      "title": "Transaction Failure Override",
+      "description": "Force swap flow failures (build, sign, submit, path finding) or override swap path errors for testing (DEV only)",
+      "activeOverrides": "Active failure overrides:",
+      "buildActive": "Build transaction will fail",
+      "signActive": "Sign transaction will fail",
+      "submitActive": "Submit transaction will fail",
+      "swapPathForceActive": "Swap path finding will fail",
+      "buildEnabled": "✓ Force Build Failure",
+      "buildDisabled": "Force Build Failure",
+      "signEnabled": "✓ Force Sign Failure",
+      "signDisabled": "Force Sign Failure",
+      "submitEnabled": "✓ Force Submit Failure",
+      "submitDisabled": "Force Submit Failure",
+      "swapPathForceEnabled": "✓ Force Swap Path Failure",
+      "swapPathForceDisabled": "Force Swap Path Failure",
+      "clearAll": "Clear All Failures",
+      "debugMessages": {
+        "buildFailure": "[DEBUG] Forced build transaction failure - testing error handling",
+        "signFailure": "[DEBUG] Forced sign transaction failure - testing error handling",
+        "submitFailure": "[DEBUG] Forced submit transaction failure - testing error handling",
+        "swapPathFailure": "[DEBUG] Forced swap path finding failure - testing error handling"
+      }
     }
   },
   "blockaid": {
