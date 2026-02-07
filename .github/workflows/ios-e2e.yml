@@ -222,8 +222,8 @@ jobs:
     timeout-minutes: 120
     strategy:
       fail-fast: false
-      # SendClassicToken and SwapClassicToken are skipped on iOS for now (test-id / component
-      # lookup issues on iOS). They remain in the Android E2E matrix and run there as expected.
+      # SendClassicToken and SwapClassicToken are skipped on iOS (and Android) for now due to
+      # testID-related issues. Re-enable in matrix once flows are fixed.
       matrix:
         include:
           - shard-index: 0

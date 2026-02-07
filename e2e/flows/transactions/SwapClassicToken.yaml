@@ -4,6 +4,9 @@ tags:
   - swap
   - classic-token
 ---
+# NOTE: This flow is currently excluded from CI (iOS and Android) due to testID-related
+# issues. Further investigation is needed to fix component/testID lookups before re-enabling.
+#
 # Import wallet first to ensure we have a wallet with balances
 # NOTE: you can comment this first ImportWallet.yaml runFlow section out to
 # skip the import wallet flow when testing locally so you don't need to import
