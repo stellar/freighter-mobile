@@ -187,7 +187,6 @@ export const assessSiteSecurity = (
  * Uses transaction context (asset type + destination funding status) instead of error message parsing
  * This identifies non-XLM transfers to unfunded accounts, which cannot succeed
  *
- * @param scanResult - The Blockaid transaction scan result
  * @param unfundedContext - Context with asset code and destination funding status
  * @returns true if sending non-XLM to unfunded destination, false otherwise
  */

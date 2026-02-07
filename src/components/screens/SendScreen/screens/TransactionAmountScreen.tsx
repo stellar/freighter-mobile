@@ -30,6 +30,7 @@ import { Display, Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import {
   DEFAULT_DECIMALS,
+  MINIMUM_CREATE_ACCOUNT_XLM,
   NATIVE_TOKEN_CODE,
   TransactionContext,
   mapNetworkToNetworkDetails,
@@ -370,7 +371,9 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       const assetCode = selectedBalance.tokenCode || "unknown";
       const canCreateAccountWithAmount =
         assetCode === NATIVE_TOKEN_CODE
-          ? BigNumber(tokenAmount).isGreaterThanOrEqualTo(1)
+          ? BigNumber(tokenAmount).isGreaterThanOrEqualTo(
+              MINIMUM_CREATE_ACCOUNT_XLM,
+            )
           : undefined;
 
       return {

@@ -541,6 +541,7 @@ const SendCollectibleReviewScreen: React.FC<
     unfundedContext:
       selectedCollectible && isDestinationFunded !== null
         ? {
+            // Collectibles (Soroban) require funded destination accounts.
             assetCode: selectedCollectible.collectionAddress || "collectible",
             isDestinationFunded,
           }

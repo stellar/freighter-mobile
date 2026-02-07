@@ -10,7 +10,7 @@ import { Input } from "components/sds/Input";
 import { Notification } from "components/sds/Notification";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
-import { QRCodeSource } from "config/constants";
+import { CREATE_ACCOUNT_TUTORIAL_URL, QRCodeSource } from "config/constants";
 import {
   ROOT_NAVIGATOR_ROUTES,
   RootStackParamList,
@@ -204,9 +204,7 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
                     </Text>
                   }
                   onPress={() => {
-                    openInAppBrowser(
-                      "https://developers.stellar.org/docs/tutorials/create-account/#create-account",
-                    );
+                    openInAppBrowser(CREATE_ACCOUNT_TUTORIAL_URL);
                   }}
                 />
               </View>

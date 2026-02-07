@@ -13,6 +13,7 @@ import { AxiosError } from "axios";
 import { BigNumber } from "bignumber.js";
 import {
   DEFAULT_DECIMALS,
+  MINIMUM_CREATE_ACCOUNT_XLM,
   NATIVE_TOKEN_CODE,
   NETWORKS,
   NetworkDetails,
@@ -481,7 +482,7 @@ export const buildPaymentTransaction = async (
         if (error.response && error.response.status === 404) {
           // If destination is unfunded and amount < 1 XLM, let the transaction proceed
           // so Blockaid can flag it as expected-to-fail during review instead of failing early.
-          if (BigNumber(amount).isLessThan(1)) {
+          if (BigNumber(amount).isLessThan(MINIMUM_CREATE_ACCOUNT_XLM)) {
             // Skip createAccount and fall through to add a standard payment operation below.
           } else {
             transactionBuilder.addOperation(
