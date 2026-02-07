@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -eu  # Exit on error, undefined vars (pipefail not available in sh)
 
 # Create base output directory for Maestro artifacts
