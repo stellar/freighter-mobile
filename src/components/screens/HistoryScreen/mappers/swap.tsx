@@ -64,10 +64,13 @@ export const mapSwapHistoryItem = async ({
   const destTokenCodeFinal = destTokenCode || NATIVE_TOKEN_CODE;
   const formattedAmount = `+${formatTokenForDisplay(amount, destTokenCodeFinal)}`;
 
-  // Get token icons
+  // Get token icons for assetDiffs (for detailed views)
+  // Note: Icons are set to undefined to enable lazy validation in TokenIcon component.
+  // The TokenIcon component handles caching, validation, and fallback logic via Zustand store.
+  // This prevents unnecessary icon fetches and re-validation of previously failed tokens.
   const destIcon =
     destTokenCodeFinal === NATIVE_TOKEN_CODE
-      ? logos.stellar
+      ? undefined // Native token uses hardcoded logos.stellar inside IconComponent
       : await getIconUrl({
           asset: {
             code: destTokenCodeFinal || "",
@@ -78,7 +81,7 @@ export const mapSwapHistoryItem = async ({
 
   const sourceIcon =
     srcTokenCode === NATIVE_TOKEN_CODE
-      ? logos.stellar
+      ? undefined // Native token uses hardcoded logos.stellar inside IconComponent
       : await getIconUrl({
           asset: {
             code: srcTokenCode || "",
@@ -119,7 +122,15 @@ export const mapSwapHistoryItem = async ({
       variant="swap"
       sourceOne={{
         altText: "Swap source token logo",
-        image: sourceIcon,
+        // For native XLM, use the Stellar logo directly
+        image: srcTokenCode === NATIVE_TOKEN_CODE ? logos.stellar : undefined,
+        token:
+          srcTokenCode === NATIVE_TOKEN_CODE
+            ? undefined
+            : {
+                code: srcTokenCode,
+                issuer: sourceTokenIssuer || "",
+              },
         // Fallback: show token initials if the icon is not available
         renderContent: () => (
           <Text xs secondary semiBold>
@@ -129,7 +140,16 @@ export const mapSwapHistoryItem = async ({
       }}
       sourceTwo={{
         altText: "Swap destination token logo",
-        image: destIcon,
+        // For native XLM, use the Stellar logo directly
+        image:
+          destTokenCodeFinal === NATIVE_TOKEN_CODE ? logos.stellar : undefined,
+        token:
+          destTokenCodeFinal === NATIVE_TOKEN_CODE
+            ? undefined
+            : {
+                code: destTokenCodeFinal,
+                issuer: tokenIssuer || "",
+              },
         // Fallback: show token initials if the icon is not available
         renderContent: () => (
           <Text xs secondary semiBold>

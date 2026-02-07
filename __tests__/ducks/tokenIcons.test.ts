@@ -1,15 +1,16 @@
 import { BigNumber } from "bignumber.js";
 import { NETWORKS } from "config/constants";
 import {
-  NonNativeToken,
-  TokenTypeWithCustomToken,
   BalanceMap,
   ClassicBalance,
   NativeBalance,
+  NonNativeToken,
+  TokenTypeWithCustomToken,
 } from "config/types";
 import { useTokenIconsStore } from "ducks/tokenIcons";
 import { useVerifiedTokensStore } from "ducks/verifiedTokens";
 import { getIconUrl } from "helpers/getIconUrl";
+import { validateIconUrl, isIconCached } from "helpers/validateIconUrl";
 import { TokenListReponseItem } from "services/verified-token-lists";
 
 // Mock verified tokens service
@@ -18,12 +19,25 @@ jest.mock("services/verified-token-lists", () => ({
   TOKEN_LISTS_API_SERVICES: {},
 }));
 
+// Mock react-native Image
+jest.mock("react-native", () => ({
+  Image: {
+    prefetch: jest.fn(),
+  },
+}));
+
 // Mock the verified tokens store
 jest.mock("ducks/verifiedTokens");
 
 // Mock the getIconUrl helper
 jest.mock("helpers/getIconUrl", () => ({
   getIconUrl: jest.fn(),
+}));
+
+// Mock the validateIconUrl helpers
+jest.mock("helpers/validateIconUrl", () => ({
+  validateIconUrl: jest.fn(),
+  isIconCached: jest.fn(),
 }));
 
 // Mock the logos asset
@@ -40,6 +54,12 @@ const TWENTY_FIVE_HOURS = 25 * 60 * 60 * 1000;
 
 describe("tokenIcons store", () => {
   const mockGetIconUrl = getIconUrl as jest.MockedFunction<typeof getIconUrl>;
+  const mockValidateIconUrl = validateIconUrl as jest.MockedFunction<
+    typeof validateIconUrl
+  >;
+  const mockIsIconCached = isIconCached as jest.MockedFunction<
+    typeof isIconCached
+  >;
   const mockGetVerifiedTokens = jest.fn();
 
   beforeEach(() => {
@@ -53,6 +73,9 @@ describe("tokenIcons store", () => {
     (useVerifiedTokensStore.getState as jest.Mock) = jest.fn(() => ({
       getVerifiedTokens: mockGetVerifiedTokens,
     }));
+
+    mockValidateIconUrl.mockResolvedValue(true);
+    mockIsIconCached.mockResolvedValue(false);
   });
 
   describe("fetchIconUrl", () => {
@@ -73,10 +96,18 @@ describe("tokenIcons store", () => {
         network: NETWORKS.PUBLIC,
       });
 
-      expect(result).toEqual({
+      const expectedIcon = {
+        imageUrl: mockIconUrl,
+        network: NETWORKS.PUBLIC,
+        isValidated: false,
+        isValid: null,
+      };
+
+      expect(result).toMatchObject({
         imageUrl: mockIconUrl,
         network: NETWORKS.PUBLIC,
       });
+      // Skip validating isValidated because the background process might have kicked in
       expect(mockGetIconUrl).toHaveBeenCalledWith({
         asset: {
           code: mockToken.code,
@@ -86,14 +117,13 @@ describe("tokenIcons store", () => {
       });
 
       // Should cache the fetched icon
-      expect(
+      const cached =
         useTokenIconsStore.getState().icons[
           "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
-        ],
-      ).toEqual({
-        imageUrl: mockIconUrl,
-        network: NETWORKS.PUBLIC,
-      });
+        ];
+
+      expect(cached.imageUrl).toEqual(expectedIcon.imageUrl);
+      expect(cached.network).toEqual(expectedIcon.network);
     });
 
     it("should return cached icon if available for non-USDC tokens", async () => {
@@ -145,6 +175,8 @@ describe("tokenIcons store", () => {
       expect(result).toEqual({
         imageUrl: mockIconUrl,
         network: NETWORKS.PUBLIC,
+        isValidated: false,
+        isValid: null,
       });
       expect(mockGetIconUrl).toHaveBeenCalledWith({
         asset: {
@@ -174,6 +206,8 @@ describe("tokenIcons store", () => {
       expect(result).toEqual({
         imageUrl: "",
         network: NETWORKS.PUBLIC,
+        isValidated: true,
+        isValid: false,
       });
     });
   });
@@ -265,14 +299,13 @@ describe("tokenIcons store", () => {
       });
 
       // Should have cached the fetched icon
-      expect(
+      const cached =
         useTokenIconsStore.getState().icons[
           "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
-        ],
-      ).toEqual({
-        imageUrl: mockIconUrl,
-        network: NETWORKS.PUBLIC,
-      });
+        ];
+
+      expect(cached.imageUrl).toEqual(mockIconUrl);
+      expect(cached.network).toEqual(NETWORKS.PUBLIC);
     });
   });
 
@@ -466,12 +499,17 @@ describe("tokenIcons store", () => {
       ).toEqual({
         imageUrl: "bundled-usdc-logo.png",
         network: NETWORKS.PUBLIC,
+        isValidated: true,
+        isValid: true,
+        lastValidImageUrl: "bundled-usdc-logo.png",
       });
 
       // Other tokens should have their original token list icons
       expect(icons["BTC:GB456"]).toEqual({
         imageUrl: "https://example.com/btc.png",
         network: NETWORKS.PUBLIC,
+        isValidated: false,
+        isValid: null,
       });
     });
 
@@ -501,7 +539,77 @@ describe("tokenIcons store", () => {
       ).toEqual({
         imageUrl: "https://token-list.com/usdc.png",
         network: NETWORKS.TESTNET,
+        isValidated: false,
+        isValid: null,
       });
+    });
+  });
+
+  describe("validateIconOnAccess", () => {
+    it("should validate and update icon state on success", async () => {
+      const mockIconUrl = "https://example.com/icon.png";
+      const cacheKey = "TEST:ISSUER";
+
+      useTokenIconsStore.setState({
+        icons: {
+          [cacheKey]: {
+            imageUrl: mockIconUrl,
+            network: NETWORKS.PUBLIC,
+            isValidated: false,
+            isValid: null,
+          },
+        },
+      });
+
+      await useTokenIconsStore.getState().validateIconOnAccess(cacheKey);
+
+      const icon = useTokenIconsStore.getState().icons[cacheKey];
+      expect(icon.isValidated).toBe(true);
+      expect(icon.isValid).toBe(true);
+    });
+
+    it("should update isValidated on validation failure (stop retry logic)", async () => {
+      const mockIconUrl = "https://example.com/icon.png";
+      const cacheKey = "TEST:ISSUER";
+
+      useTokenIconsStore.setState({
+        icons: {
+          [cacheKey]: {
+            imageUrl: mockIconUrl,
+            network: NETWORKS.PUBLIC,
+            isValidated: false,
+            isValid: null,
+          },
+        },
+      });
+
+      mockValidateIconUrl.mockResolvedValue(false);
+
+      await useTokenIconsStore.getState().validateIconOnAccess(cacheKey);
+
+      const icon = useTokenIconsStore.getState().icons[cacheKey];
+      expect(icon.isValidated).toBe(true);
+      expect(icon.isValid).toBe(false);
+    });
+
+    it("should mark icon as invalid immediately if empty URL", async () => {
+      const cacheKey = "TEST:ISSUER";
+      useTokenIconsStore.setState({
+        icons: {
+          [cacheKey]: {
+            imageUrl: "",
+            network: NETWORKS.PUBLIC,
+            isValidated: false,
+            isValid: null,
+          },
+        },
+      });
+
+      await useTokenIconsStore.getState().validateIconOnAccess(cacheKey);
+
+      const icon = useTokenIconsStore.getState().icons[cacheKey];
+      expect(icon.isValidated).toBe(true);
+      expect(icon.isValid).toBe(false);
     });
   });
 });

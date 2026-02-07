@@ -1,8 +1,19 @@
-import Spinner from "components/Spinner";
+import { logos } from "assets/logos";
+import { Text } from "components/sds/Typography";
+import { NATIVE_TOKEN_CODE } from "config/constants";
 import { THEME } from "config/theme";
+import { useTokenIconsStore } from "ducks/tokenIcons";
 import { px } from "helpers/dimensions";
-import React, { useState, useEffect, useRef } from "react";
-import { ImageSourcePropType, View } from "react-native";
+import { ICON_VALIDATION_TIMEOUT } from "helpers/validateIconUrl";
+import React, { useState, useEffect } from "react";
+import { ImageSourcePropType, StyleSheet, View } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from "react-native-reanimated";
 import styled from "styled-components/native";
 
 // =============================================================================
@@ -104,6 +115,11 @@ type TokenVariant = "single" | "swap" | "pair" | "platform";
  * @property {() => React.ReactNode} [renderContent] - Optional function to render custom content
  *   as a fallback when `image` is not provided or invalid (e.g., for displaying text or other components).
  *   Only rendered if `image` is not available or invalid.
+ * @property {object} [token] - Optional token data for lazy validation
+ *   When provided, the image will be validated and cached using the token icon store
+ *   (similar to TokenIcon behavior). The token code will be used for fallback text.
+ * @property {string} [token.code] - Token code (e.g., "XLM", "ARST")
+ * @property {string} [token.issuer] - Token issuer key
  */
 export type TokenSource = {
   /** Image URL */
@@ -114,6 +130,15 @@ export type TokenSource = {
   backgroundColor?: string;
   /** Custom content renderer */
   renderContent?: () => React.ReactNode;
+  /** Explicit loading state */
+  isLoading?: boolean;
+  /** Whether to skip the internal image loading state (e.g. if pre-fetched) */
+  skipImageLoader?: boolean;
+  /** Optional token data for lazy validation and caching */
+  token?: {
+    code: string;
+    issuer: string;
+  };
 };
 
 /**
@@ -333,101 +358,218 @@ const TokenImage = styled.Image`
   height: 100%;
 `;
 
+const TokenLoader: React.FC = () => {
+  const opacity = useSharedValue(0.4);
+
+  useEffect(() => {
+    opacity.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 1000 }),
+        withTiming(0.4, { duration: 1000 }),
+      ),
+      -1,
+      true,
+    );
+  }, [opacity]);
+
+  const style = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+  }));
+
+  return (
+    <Animated.View
+      style={[
+        {
+          ...StyleSheet.absoluteFillObject,
+          backgroundColor: THEME.colors.border.default,
+        },
+        style,
+      ]}
+    />
+  );
+};
+
 // =============================================================================
 // Component
 // =============================================================================
 
-// Component to handle image loading with timeout fallback
+// Component to handle image loading with simple fallback on error
 const ImageWithFallback: React.FC<{
   source: TokenSource;
 }> = ({ source }) => {
-  const [showFallback, setShowFallback] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const imageLoadedRef = useRef(false);
-  const imageErroredRef = useRef(false);
+  const [hasError, setHasError] = useState(false);
+  const [isSourceLoading, setIsSourceLoading] = useState(!!source.isLoading);
+  const [hasTimedOut, setHasTimedOut] = useState(false);
+  const [isImageLoaded, setIsImageLoaded] = useState(false);
 
-  // Timeout constant: show fallback after 1s if image hasn't loaded
-  const IMAGE_LOAD_TIMEOUT = 1000;
+  // Get validated icon from store if token data is provided
+  // For native XLM, we'll use the Stellar logo directly
+  const icon = useTokenIconsStore(
+    React.useCallback(
+      (state) => {
+        if (!source.token) return null;
+
+        // For native tokens, we don't need to look in store - they use logos.stellar
+        if (source.token.code === NATIVE_TOKEN_CODE) {
+          return null;
+        }
+
+        // Construct identifier the same way as getTokenIdentifier does
+        // For non-native tokens: code:issuer
+        const identifier = `${source.token.code}:${source.token.issuer}`;
+        return state.icons[identifier];
+      },
+      [source.token],
+    ),
+  );
+
+  // Get validate action for token icon lazy validation
+  const validateIconOnAccess = useTokenIconsStore(
+    (state) => state.validateIconOnAccess,
+  );
+
+  // Trigger validation when token data is provided and icon needs validation
+  React.useEffect(() => {
+    if (!source.token || icon === null) return;
+
+    // Skip native tokens - they use logos.stellar directly
+    if (source.token.code === NATIVE_TOKEN_CODE) return;
+
+    // Only validate non-native tokens that need it
+    if (icon && icon.isValidated === false && icon.isValid !== false) {
+      const identifier = `${source.token.code}:${source.token.issuer}`;
+      validateIconOnAccess(identifier);
+    }
+  }, [source.token, icon, validateIconOnAccess]);
+
+  // Determine the final image URL
+  // If token data is provided and we have a validated icon, use its imageUrl
+  // For native tokens (XLM), return undefined to use fallback (which gets Stellar logo from source.image)
+  // Otherwise fall back to the direct image prop
+  const isNativeToken = source.token?.code === NATIVE_TOKEN_CODE;
+
+  const resolvedIconUrl =
+    icon?.isValid === false
+      ? undefined
+      : icon?.imageUrl || icon?.lastValidImageUrl;
+
+  let finalImageUrl = source.image;
+  if (isNativeToken) {
+    finalImageUrl = source.image || logos.stellar;
+  } else if (source.token) {
+    finalImageUrl = resolvedIconUrl || source.image;
+  }
+
+  const isUsingLastValidUrl =
+    !!icon?.lastValidImageUrl &&
+    typeof finalImageUrl === "string" &&
+    finalImageUrl === icon.lastValidImageUrl &&
+    icon?.isValid !== true;
+
+  const shouldSkipLoader =
+    source.skipImageLoader || isUsingLastValidUrl || isNativeToken;
+
+  const [isImageLoading, setIsImageLoading] = useState(
+    !shouldSkipLoader && !!(finalImageUrl && typeof finalImageUrl === "string"),
+  );
 
   // Check if image is valid (non-empty string or valid ImageSourcePropType)
   const hasValidImage =
-    source.image &&
-    (typeof source.image === "string"
-      ? source.image.trim().length > 0
-      : !!source.image);
+    finalImageUrl &&
+    (typeof finalImageUrl === "string"
+      ? finalImageUrl.trim().length > 0
+      : !!finalImageUrl);
 
+  // Reset error state if image source changes
   useEffect(() => {
-    if (hasValidImage) {
-      imageLoadedRef.current = false;
-      imageErroredRef.current = false;
-      setShowFallback(false);
-      setIsLoading(true);
+    const shouldLoadImage =
+      !shouldSkipLoader &&
+      !!(finalImageUrl && typeof finalImageUrl === "string");
 
-      timeoutRef.current = setTimeout(() => {
-        if (!imageLoadedRef.current && !imageErroredRef.current) {
-          setShowFallback(true);
-          setIsLoading(false);
-        }
-      }, IMAGE_LOAD_TIMEOUT);
-    } else {
-      setIsLoading(false);
+    let timeoutId: NodeJS.Timeout | null = null;
+
+    if (!isImageLoaded) {
+      setHasError(false);
+      setHasTimedOut(false);
+      setIsImageLoaded(false);
+      setIsImageLoading(shouldLoadImage);
+      setIsSourceLoading(!!source.isLoading);
+
+      const shouldStartTimeout = shouldLoadImage || source.isLoading;
+      if (shouldStartTimeout) {
+        timeoutId = setTimeout(() => {
+          setHasTimedOut(true);
+          setIsImageLoading(false);
+          setIsSourceLoading(false);
+        }, ICON_VALIDATION_TIMEOUT);
+      }
     }
 
     return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
       }
     };
-  }, [hasValidImage]);
+  }, [finalImageUrl, shouldSkipLoader, source.isLoading, isImageLoaded]);
 
-  const handleImageLoad = () => {
-    imageLoadedRef.current = true;
-    setIsLoading(false);
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
+  const fallbackText = source.token?.code?.slice(0, 2) || "?";
+
+  const renderFallbackContent = () => {
+    if (source.renderContent) {
+      const customContent = source.renderContent();
+      if (customContent) {
+        return customContent;
+      }
     }
-  };
 
-  const handleImageError = () => {
-    imageErroredRef.current = true;
-    setIsLoading(false);
-    setShowFallback(true);
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
-  };
-
-  // If we have a valid image, render the image with spinner overlay
-  if (hasValidImage && !showFallback) {
     return (
-      <View className="w-full h-full relative">
-        <TokenImage
-          // This will allow handling both local and remote images
-          source={
-            typeof source.image === "string"
-              ? { uri: source.image }
-              : source.image
-          }
-          accessibilityLabel={source.altText}
-          onLoad={handleImageLoad}
-          onError={handleImageError}
-        />
-        {/* Spinner overlay - shown while loading, hidden when image loads */}
-        {isLoading && (
-          <View className="absolute inset-0 justify-center items-center">
-            <Spinner size="small" />
-          </View>
-        )}
-      </View>
+      <Text xs secondary semiBold>
+        {fallbackText}
+      </Text>
     );
-  }
+  };
 
-  // If no valid image or image failed, show fallback
-  return source.renderContent ? <>{source.renderContent()}</> : null;
+  const shouldShowLoader = isImageLoaded
+    ? false
+    : !hasTimedOut && !hasError && (isSourceLoading || isImageLoading);
+
+  const shouldShowFallback =
+    !isImageLoaded &&
+    !shouldShowLoader &&
+    (isSourceLoading ||
+      isImageLoading ||
+      !hasValidImage ||
+      hasError ||
+      hasTimedOut);
+
+  return (
+    <View className="w-full h-full relative items-center justify-center">
+      <TokenImage
+        // This will allow handling both local and remote images
+        source={
+          typeof finalImageUrl === "string"
+            ? { uri: finalImageUrl }
+            : finalImageUrl
+        }
+        accessibilityLabel={source.altText}
+        onError={() => {
+          setHasError(true);
+          setIsImageLoading(false);
+        }}
+        onLoadEnd={() => {
+          setIsImageLoaded(true);
+          setIsImageLoading(false);
+        }}
+        style={shouldShowFallback ? { opacity: 0 } : undefined}
+      />
+      {shouldShowLoader ? <TokenLoader /> : null}
+      {(shouldShowFallback || (hasError && !shouldShowLoader)) && (
+        <View className="absolute inset-0 items-center justify-center">
+          {renderFallbackContent()}
+        </View>
+      )}
+    </View>
+  );
 };
 
 /**
@@ -530,29 +672,31 @@ const ImageWithFallback: React.FC<{
  *   }}
  * />
  */
-export const Token: React.FC<TokenProps> = ({
-  variant,
-  size = "lg",
-  sourceOne,
-  sourceTwo,
-  testID = "token",
-}: TokenProps) => {
-  const renderImage = (source: TokenSource, isSecond = false) => (
-    <TokenImageContainer
-      $size={size}
-      $variant={variant}
-      $isSecond={isSecond}
-      $backgroundColor={source.backgroundColor}
-      testID={`${testID}-image-${isSecond ? "two" : "one"}`}
-    >
-      <ImageWithFallback source={source} />
-    </TokenImageContainer>
-  );
+export const Token: React.FC<TokenProps> = React.memo(
+  ({
+    variant,
+    size = "lg",
+    sourceOne,
+    sourceTwo,
+    testID = "token",
+  }: TokenProps) => {
+    const renderImage = (source: TokenSource, isSecond = false) => (
+      <TokenImageContainer
+        $size={size}
+        $variant={variant}
+        $isSecond={isSecond}
+        $backgroundColor={source.backgroundColor}
+        testID={`${testID}-image-${isSecond ? "two" : "one"}`}
+      >
+        <ImageWithFallback source={source} />
+      </TokenImageContainer>
+    );
 
-  return (
-    <TokenContainer $size={size} $variant={variant} testID={testID}>
-      {renderImage(sourceOne)}
-      {sourceTwo && renderImage(sourceTwo, true)}
-    </TokenContainer>
-  );
-};
+    return (
+      <TokenContainer $size={size} $variant={variant} testID={testID}>
+        {renderImage(sourceOne)}
+        {sourceTwo && renderImage(sourceTwo, true)}
+      </TokenContainer>
+    );
+  },
+);
