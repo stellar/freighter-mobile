@@ -556,26 +556,6 @@ export const useTokenIconsStore = create<TokenIconsState>()(
         const icon = get().icons[identifier];
         const tokenCode = identifier.split(":")[0];
 
-        // If previously marked invalid but we still have a URL, allow retry on access
-        if (icon?.isValid === false && icon.imageUrl) {
-          set((state) => {
-            const nextFailedCodes = { ...state.failedTokenCodes };
-            delete nextFailedCodes[tokenCode];
-
-            return {
-              icons: {
-                ...state.icons,
-                [identifier]: {
-                  ...state.icons[identifier],
-                  isValidated: false,
-                  isValid: null,
-                },
-              },
-              failedTokenCodes: nextFailedCodes,
-            };
-          });
-        }
-
         const shouldSkipValidation =
           !icon || icon.isValidated || (!icon.imageUrl && icon.imageUrl !== "");
 

@@ -2,10 +2,14 @@ import { logos } from "assets/logos";
 import SorobanTokenIcon from "assets/logos/icon-soroban.svg";
 import { Token as TokenComponent, TokenSize } from "components/sds/Token";
 import { Text } from "components/sds/Typography";
-import { TokenTypeWithCustomToken, Balance, Token } from "config/types";
+import {
+  TokenTypeWithCustomToken,
+  Balance,
+  Token,
+  NonNativeToken,
+} from "config/types";
 import { useTokenIconsStore } from "ducks/tokenIcons";
 import { getTokenIdentifier, isLiquidityPool } from "helpers/balances";
-import { debug } from "helpers/debug";
 import React from "react";
 import { useTranslation } from "react-i18next";
 
@@ -51,63 +55,99 @@ interface TokenIconProps {
  * @param {TokenIconProps} props - Component props
  * @returns {JSX.Element} The rendered token icon
  */
-export const TokenIcon: React.FC<TokenIconProps> = ({
-  token: tokenProp,
-  size = "lg",
-  backgroundColor,
-  iconUrl,
-}) => {
+const getFallbackTextSize = (tokenSize: TokenSize) => {
+  switch (tokenSize) {
+    case "sm":
+      return "xs";
+    case "md":
+      return "sm";
+    case "lg":
+      return "md";
+    default:
+      return "md";
+  }
+};
+
+const normalizeToken = (tokenProp: Token | Balance): Token => {
+  if ("contractId" in tokenProp) {
+    return {
+      ...tokenProp,
+      type: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+      code: tokenProp.symbol,
+      issuer: {
+        key: tokenProp.contractId,
+      },
+    };
+  }
+  if ("token" in tokenProp) {
+    return tokenProp.token;
+  }
+  return tokenProp as Token;
+};
+
+const LiquidityPoolTokenIcon: React.FC<
+  Pick<TokenIconProps, "size" | "backgroundColor">
+> = ({ size = "lg", backgroundColor }) => {
   const { t } = useTranslation();
-
-  const getFallbackTextSize = (tokenSize: TokenSize) => {
-    switch (tokenSize) {
-      case "sm":
-        return "xs";
-      case "md":
-        return "sm";
-      case "lg":
-        return "md";
-      default:
-        return "md";
-    }
-  };
-
-  // Memoize fallback text size since it only depends on size prop
   const fallbackTextSize = React.useMemo(
     () => getFallbackTextSize(size),
     [size],
   );
 
-  // Normalize token prop early so hooks can depend on it
-  const token: Token = React.useMemo(() => {
-    if ("contractId" in tokenProp) {
-      return {
-        ...tokenProp,
-        type: TokenTypeWithCustomToken.CUSTOM_TOKEN,
-        code: tokenProp.symbol,
-        issuer: {
-          key: tokenProp.contractId,
-        },
-      };
-    }
-    if ("token" in tokenProp) {
-      return tokenProp.token;
-    }
-    return tokenProp as Token;
-  }, [tokenProp]);
+  const renderLPContent = React.useCallback(
+    () => (
+      <Text size={fallbackTextSize} bold secondary isVerticallyCentered>
+        LP
+      </Text>
+    ),
+    [fallbackTextSize],
+  );
 
-  // Compute identifier
-  const tokenIdentifier = React.useMemo(() => {
-    // Basic check for LP first (though isLiquidityPool check happens later for rendering,
-    // we need an identifier for the hook)
-    if (isLiquidityPool(tokenProp)) return "LP";
+  return (
+    <TokenComponent
+      variant="single"
+      size={size}
+      sourceOne={{
+        altText: t("tokenIconAlt", { code: "LP" }),
+        backgroundColor,
+        renderContent: renderLPContent,
+      }}
+    />
+  );
+};
 
-    if (token.type === TokenTypeWithCustomToken.NATIVE) return "native";
-    return getTokenIdentifier(token);
-  }, [tokenProp, token]);
+const NativeTokenIcon: React.FC<
+  Pick<TokenIconProps, "size" | "backgroundColor">
+> = ({ size = "lg", backgroundColor }) => {
+  const { t } = useTranslation();
 
-  // Optimize store subscription: Select only the needed icon
-  // Note: We use useTokenIconsStore with a selector to avoid re-renders on every store update
+  return (
+    <TokenComponent
+      variant="single"
+      size={size}
+      sourceOne={{
+        altText: t("tokenIconAlt", { code: "XLM" }),
+        backgroundColor,
+        image: logos.stellar,
+      }}
+    />
+  );
+};
+
+const TokenIconWithStore: React.FC<{
+  token: NonNativeToken;
+  size?: TokenSize;
+  backgroundColor?: string;
+  iconUrl?: string;
+  renderContent: () => React.ReactNode;
+}> = ({ token, size = "lg", backgroundColor, iconUrl, renderContent }) => {
+  const { t } = useTranslation();
+
+  const tokenIdentifier = React.useMemo(
+    () => getTokenIdentifier(token),
+    [token],
+  );
+
   const icon = useTokenIconsStore(
     React.useCallback(
       (state) => state.icons[tokenIdentifier],
@@ -115,17 +155,14 @@ export const TokenIcon: React.FC<TokenIconProps> = ({
     ),
   );
 
-  // Select validate action (stable reference)
   const validateIconOnAccess = useTokenIconsStore(
     (state) => state.validateIconOnAccess,
   );
 
-  // Select failed token codes (to skip validation for already-failed tokens)
   const failedTokenCodes = useTokenIconsStore(
     (state) => state.failedTokenCodes ?? {},
   );
 
-  // Extract token code from identifier
   const tokenCode = React.useMemo(
     () => tokenIdentifier.split(":")[0],
     [tokenIdentifier],
@@ -143,9 +180,6 @@ export const TokenIcon: React.FC<TokenIconProps> = ({
   const lastValidImageUrl = icon?.lastValidImageUrl;
 
   React.useEffect(() => {
-    // Only validate if: no explicit iconUrl, icon exists, not validated, has imageUrl, and hasn't failed before
-    // This prevents re-validating icons that have already failed (isValid === false)
-    // Also skip if token code has already failed on another screen (tracked in failedTokenCodes)
     if (shouldValidateIcon) {
       validateIconOnAccess(tokenIdentifier);
     }
@@ -160,19 +194,61 @@ export const TokenIcon: React.FC<TokenIconProps> = ({
     tokenCode,
   ]);
 
-  // Render callbacks
-  const renderLPContent = React.useCallback(
-    () => (
-      <Text size={fallbackTextSize} bold secondary isVerticallyCentered>
-        LP
-      </Text>
-    ),
-    [fallbackTextSize],
-  );
+  const finalImageUrl = icon?.imageUrl || lastValidImageUrl || iconUrl;
 
+  const tokenSourceToken = token.issuer?.key
+    ? {
+        code: token.code,
+        issuer: token.issuer.key,
+      }
+    : undefined;
+
+  return (
+    <TokenComponent
+      variant="single"
+      size={size}
+      sourceOne={{
+        altText: t("tokenIconAlt", { code: token.code }),
+        backgroundColor,
+        image: finalImageUrl,
+        token: tokenSourceToken,
+        renderContent,
+      }}
+    />
+  );
+};
+
+const CustomTokenIcon: React.FC<{
+  token: NonNativeToken;
+  size?: TokenSize;
+  backgroundColor?: string;
+  iconUrl?: string;
+}> = ({ token, size, backgroundColor, iconUrl }) => {
   const renderSorobanContent = React.useCallback(
     () => <SorobanTokenIcon />,
     [],
+  );
+
+  return (
+    <TokenIconWithStore
+      token={token}
+      size={size}
+      backgroundColor={backgroundColor}
+      iconUrl={iconUrl}
+      renderContent={renderSorobanContent}
+    />
+  );
+};
+
+const StandardTokenIcon: React.FC<{
+  token: NonNativeToken;
+  size?: TokenSize;
+  backgroundColor?: string;
+  iconUrl?: string;
+}> = ({ token, size = "lg", backgroundColor, iconUrl }) => {
+  const fallbackTextSize = React.useMemo(
+    () => getFallbackTextSize(size),
+    [size],
   );
 
   const renderInitialsContent = React.useCallback(
@@ -184,106 +260,52 @@ export const TokenIcon: React.FC<TokenIconProps> = ({
     [fallbackTextSize, token.code, size],
   );
 
-  // Use iconUrl if provided explicitly, otherwise use cached icon only if it's valid
-  // If icon validation failed (isValid === false), don't use the imageUrl (will trigger fallback)
-  const finalImageUrl =
-    iconUrl ||
-    (icon?.isValid === false ? undefined : icon?.imageUrl || lastValidImageUrl);
-  React.useEffect(() => {
-    if (tokenCode !== "BTC") {
-      return;
-    }
+  return (
+    <TokenIconWithStore
+      token={token}
+      size={size}
+      backgroundColor={backgroundColor}
+      iconUrl={iconUrl}
+      renderContent={renderInitialsContent}
+    />
+  );
+};
 
-    debug("TokenIcon", "BTC icon state", {
-      tokenCode,
-      tokenType: token.type,
-      tokenIdentifier,
-      iconUrl,
-      finalImageUrl,
-      hasIconToValidate,
-      shouldValidateIcon,
-      failedTokenCode: failedTokenCodes[tokenCode],
-      cacheState: icon
-        ? {
-            hasImageUrl: !!icon.imageUrl,
-            network: icon.network,
-            isValidated: icon.isValidated,
-            isValid: icon.isValid,
-            lastValidImageUrl: icon.lastValidImageUrl,
-          }
-        : null,
-    });
-  }, [
-    failedTokenCodes,
-    finalImageUrl,
-    hasIconToValidate,
-    icon,
-    iconUrl,
-    shouldValidateIcon,
-    token.type,
-    tokenCode,
-    tokenIdentifier,
-  ]);
-
-  // Liquidity pool: show "LP" text
+export const TokenIcon: React.FC<TokenIconProps> = ({
+  token: tokenProp,
+  size = "lg",
+  backgroundColor,
+  iconUrl,
+}) => {
   if (isLiquidityPool(tokenProp)) {
     return (
-      <TokenComponent
-        variant="single"
-        size={size}
-        sourceOne={{
-          altText: t("tokenIconAlt", { code: "LP" }),
-          backgroundColor,
-          renderContent: renderLPContent,
-        }}
-      />
+      <LiquidityPoolTokenIcon size={size} backgroundColor={backgroundColor} />
     );
   }
 
-  // Native XLM: show Stellar logo
+  const token = normalizeToken(tokenProp);
+
   if (token.type === TokenTypeWithCustomToken.NATIVE) {
-    return (
-      <TokenComponent
-        variant="single"
-        size={size}
-        sourceOne={{
-          altText: t("tokenIconAlt", { code: "XLM" }),
-          backgroundColor,
-          image: logos.stellar,
-        }}
-      />
-    );
+    return <NativeTokenIcon size={size} backgroundColor={backgroundColor} />;
   }
 
-  // Soroban custom tokens: show icon if available, otherwise SorobanTokenIcon
   if (token.type === TokenTypeWithCustomToken.CUSTOM_TOKEN) {
     return (
-      <TokenComponent
-        variant="single"
+      <CustomTokenIcon
+        token={token}
         size={size}
-        sourceOne={{
-          altText: t("tokenIconAlt", { code: token.code }),
-          backgroundColor,
-          image: finalImageUrl,
-          // Fallback: show SorobanTokenIcon for Soroban custom tokens
-          // in case the specific icon is not available
-          renderContent: renderSorobanContent,
-        }}
+        backgroundColor={backgroundColor}
+        iconUrl={iconUrl}
       />
     );
   }
 
   return (
-    <TokenComponent
-      variant="single"
+    <StandardTokenIcon
+      token={token}
       size={size}
-      sourceOne={{
-        altText: t("tokenIconAlt", { code: token.code }),
-        backgroundColor,
-        image: finalImageUrl,
-        // Fallback: show token initials if the icon is not available
-        renderContent: renderInitialsContent,
-      }}
+      backgroundColor={backgroundColor}
+      iconUrl={iconUrl}
     />
   );
 };

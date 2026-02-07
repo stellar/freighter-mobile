@@ -204,9 +204,10 @@ describe("Token", () => {
     });
 
     it("shows renderContent when image is whitespace-only string", () => {
+      jest.useFakeTimers();
       const renderContent = () => <Text>Whitespace Image Fallback</Text>;
 
-      const { getByText } = render(
+      const { queryByText, getByText } = render(
         <Token
           variant="single"
           size="md"
@@ -218,7 +219,14 @@ describe("Token", () => {
         />,
       );
 
+      expect(queryByText("Whitespace Image Fallback")).toBeNull();
+
+      act(() => {
+        jest.advanceTimersByTime(3000);
+      });
+
       expect(getByText("Whitespace Image Fallback")).toBeTruthy();
+      jest.useRealTimers();
     });
 
     it("shows renderContent when image fails to load", async () => {
@@ -248,7 +256,7 @@ describe("Token", () => {
       expect(getByText("Error Fallback")).toBeTruthy();
     });
 
-    it("shows renderContent while image is loading", () => {
+    it("does not show renderContent while image is loading", () => {
       const renderContent = () => <Text>Timeout Fallback</Text>;
 
       const { getByLabelText, queryByText } = render(
@@ -267,8 +275,8 @@ describe("Token", () => {
       const image = getByLabelText("Token with timeout");
       expect(image).toBeTruthy();
 
-      // Fallback is shown while loading
-      expect(queryByText("Timeout Fallback")).toBeTruthy();
+      // Fallback is hidden while loader is active
+      expect(queryByText("Timeout Fallback")).toBeNull();
     });
 
     it("hides spinner when image loads successfully", async () => {
@@ -364,7 +372,7 @@ describe("Token", () => {
       jest.useFakeTimers();
       const renderContent = () => <Text>Timeout Fallback</Text>;
 
-      const { getByLabelText, getByText } = render(
+      const { getByLabelText, getByText, queryByText } = render(
         <Token
           variant="single"
           size="md"
@@ -378,7 +386,7 @@ describe("Token", () => {
 
       const image = getByLabelText("Token with timeout");
       expect(image).toBeTruthy();
-      expect(getByText("Timeout Fallback")).toBeTruthy();
+      expect(queryByText("Timeout Fallback")).toBeNull();
 
       act(() => {
         jest.advanceTimersByTime(3000);
@@ -393,7 +401,7 @@ describe("Token", () => {
       jest.useFakeTimers();
       const renderContent = () => <Text>Loading Fallback</Text>;
 
-      const { getByText } = render(
+      const { getByText, queryByText } = render(
         <Token
           variant="single"
           size="md"
@@ -406,7 +414,7 @@ describe("Token", () => {
         />,
       );
 
-      expect(getByText("Loading Fallback")).toBeTruthy();
+      expect(queryByText("Loading Fallback")).toBeNull();
 
       act(() => {
         jest.advanceTimersByTime(3000);

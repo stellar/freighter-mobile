@@ -5,7 +5,7 @@ import { Image } from "react-native";
  * Timeout in milliseconds for validating icon URLs
  * If the image doesn't load within this time, validation fails
  */
-const ICON_VALIDATION_TIMEOUT = 3000;
+export const ICON_VALIDATION_TIMEOUT = 3000;
 
 /**
  * Checks if an image URL is already cached in the native image cache
