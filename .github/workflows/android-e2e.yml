@@ -309,7 +309,7 @@ jobs:
         with:
           api-level: 33
           arch: x86_64
-          profile: Pixel 7
+          profile: pixel_7_pro
           cores: 4
           ram-size: 4096
           emulator-options:

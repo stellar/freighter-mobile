@@ -5,6 +5,11 @@ set -euo pipefail
 # and run E2E tests via run-e2e-tests.sh. Used by CI (android-e2e.yml). Expects
 # downloaded-artifacts/app.apk. CI passes SHARD_INDEX, SHARD_TOTAL, FLOW_NAME.
 
+# Log available AVD device profiles (for CI artifact; avdmanager is provided by android-emulator-runner)
+mkdir -p e2e-artifacts
+echo "=== Available AVD device profiles (avdmanager list device) ==="
+avdmanager list device 2>&1 | tee e2e-artifacts/avdmanager-devices.txt || true
+
 echo "=== Verifying ADB connection ==="
 adb devices
 
