@@ -616,7 +616,8 @@
       "swapTransactionFailed": "Transação de troca falhou",
       "insufficientBalance": "Saldo insuficiente. Máximo disponível: {{amount}} {{symbol}}",
       "insufficientXlmForFees": "XLM insuficiente para taxas de transação. Você precisa de pelo menos {{fee}} XLM para pagar a taxa de transação.",
-      "noPathFound": "Nenhum caminho encontrado entre estes tokens"
+      "noPathFound": "Nenhum caminho encontrado entre estes tokens",
+      "pathFindFailed": "Não foi possível buscar o caminho de troca. Tente novamente."
     },
     "proceedAnyway": "Prosseguir mesmo assim"
   },
@@ -1072,6 +1073,30 @@
       "malicious": "Malicioso",
       "unableToScan": "Não foi possível escanear",
       "clearOverride": "Limpar Substituição"
+    },
+    "transactionFailure": {
+      "title": "Substituição de Falha de Transação",
+      "description": "Forçar falhas no fluxo de troca (construção, assinatura, envio, busca de caminho) ou substituir erros de caminho para testes (apenas DEV)",
+      "activeOverrides": "Substituições de falha ativas:",
+      "buildActive": "Construção de transação falhará",
+      "signActive": "Assinatura de transação falhará",
+      "submitActive": "Envio de transação falhará",
+      "swapPathForceActive": "Busca de caminho de troca falhará",
+      "buildEnabled": "✓ Forçar Falha na Construção",
+      "buildDisabled": "Forçar Falha na Construção",
+      "signEnabled": "✓ Forçar Falha na Assinatura",
+      "signDisabled": "Forçar Falha na Assinatura",
+      "submitEnabled": "✓ Forçar Falha no Envio",
+      "submitDisabled": "Forçar Falha no Envio",
+      "swapPathForceEnabled": "✓ Forçar Falha de Caminho",
+      "swapPathForceDisabled": "Forçar Falha de Caminho",
+      "clearAll": "Limpar Todas as Falhas",
+      "debugMessages": {
+        "buildFailure": "[DEBUG] Falha forçada na construção de transação - testando tratamento de erros",
+        "signFailure": "[DEBUG] Falha forçada na assinatura de transação - testando tratamento de erros",
+        "submitFailure": "[DEBUG] Falha forçada no envio de transação - testando tratamento de erros",
+        "swapPathFailure": "[DEBUG] Falha forçada na busca de caminho de troca - testando tratamento de erros"
+      }
     }
   },
   "blockaid": {

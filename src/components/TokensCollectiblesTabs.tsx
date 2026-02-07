@@ -38,8 +38,6 @@ export enum TabType {
 interface Props {
   /** The default active tab when the component mounts */
   defaultTab?: TabType;
-  /** Whether to hide the collectibles tab */
-  hideCollectibles?: boolean;
   /** Whether to show the settings menu button for tokens tab */
   showTokensSettings?: boolean;
   /** Whether to show the settings menu button for collectibles tab */
@@ -90,7 +88,6 @@ interface Props {
 export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
   ({
     defaultTab = TabType.TOKENS,
-    hideCollectibles = false,
     showTokensSettings = true,
     showCollectiblesSettings = true,
     onTabChange,
@@ -111,11 +108,6 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
     );
 
     const [activeTab, setActiveTab] = useState<TabType>(defaultTab);
-
-    const shouldHideCollectibles = useMemo(
-      () => hideCollectibles || network !== NETWORKS.PUBLIC,
-      [hideCollectibles, network],
-    );
 
     /**
      * Handles tab switching and triggers the optional onTabChange callback
@@ -248,17 +240,12 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
      */
     const renderContent = useMemo(() => {
       // If collectibles are hidden, we should render tokens content only
-      if (shouldHideCollectibles || activeTab === TabType.TOKENS) {
+      if (activeTab === TabType.TOKENS) {
         return renderTokensContent;
       }
 
       return renderCollectiblesContent;
-    }, [
-      shouldHideCollectibles,
-      activeTab,
-      renderTokensContent,
-      renderCollectiblesContent,
-    ]);
+    }, [activeTab, renderTokensContent, renderCollectiblesContent]);
 
     /**
      * Determines whether to show the settings menu button based on active tab
@@ -277,7 +264,6 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
       >
         <View className="flex-row items-center gap-3 mb-4">
           <TouchableOpacity
-            disabled={shouldHideCollectibles}
             className="py-2"
             onPress={() => handleTabChange(TabType.TOKENS)}
             testID="tab-tokens"
@@ -294,24 +280,22 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
             </Text>
           </TouchableOpacity>
 
-          {!shouldHideCollectibles && (
-            <TouchableOpacity
-              className="py-2"
-              onPress={() => handleTabChange(TabType.COLLECTIBLES)}
-              testID="tab-collectibles"
+          <TouchableOpacity
+            className="py-2"
+            onPress={() => handleTabChange(TabType.COLLECTIBLES)}
+            testID="tab-collectibles"
+          >
+            <Text
+              medium
+              color={
+                activeTab === TabType.COLLECTIBLES
+                  ? themeColors.text.primary
+                  : themeColors.text.secondary
+              }
             >
-              <Text
-                medium
-                color={
-                  activeTab === TabType.COLLECTIBLES
-                    ? themeColors.text.primary
-                    : themeColors.text.secondary
-                }
-              >
-                {t("collectiblesGrid.title")}
-              </Text>
-            </TouchableOpacity>
-          )}
+              {t("collectiblesGrid.title")}
+            </Text>
+          </TouchableOpacity>
 
           <View className="flex-1" />
 

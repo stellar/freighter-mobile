@@ -467,8 +467,8 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
       const cancelButton = (
         <View className={`${shouldUseRowLayout ? "flex-1" : "w-full"}`}>
           <Button
-            tertiary={isSuspicious && !isUnableToScan}
-            destructive={!shouldUseRowLayout}
+            tertiary={isSuspicious || isUnableToScan}
+            destructive={isMalicious}
             secondary={shouldUseRowLayout}
             isFullWidth
             onPress={onCancel}
@@ -490,7 +490,7 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
           onPress={onConfirm}
           isLoading={isLoading}
           disabled={isDisabled}
-          variant={isMalicious || isUnableToScan ? "error" : "secondary"}
+          variant={isMalicious ? "error" : "secondary"}
           testID="send-review-confirm-anyway-button"
         />
       );
