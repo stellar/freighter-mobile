@@ -24,6 +24,8 @@ export interface NotificationProps {
   customContent?: React.ReactNode;
   /** Optional onPress handler to make the notification interactive */
   onPress?: () => void;
+  /** Optional accessibility label for non-string or custom content */
+  accessibilityLabel?: string;
 }
 
 const getBackgroundColor = (
@@ -121,7 +123,12 @@ export const Notification: React.FC<NotificationProps> = ({
   isFilled = false,
   customContent,
   onPress,
+  accessibilityLabel,
 }) => {
+  const computedAccessibilityLabel =
+    accessibilityLabel ||
+    title ||
+    (typeof message === "string" ? message : undefined);
   const content = (
     <NotificationContainer variant={variant} isFilled={isFilled}>
       <NotificationContentContainer>
@@ -158,18 +165,14 @@ export const Notification: React.FC<NotificationProps> = ({
           onPress={onPress}
           activeOpacity={0.8}
           accessibilityRole="button"
-          accessibilityLabel={
-            title || (typeof message === "string" ? message : undefined)
-          }
+          accessibilityLabel={computedAccessibilityLabel}
         >
           {content}
         </TouchableOpacity>
       ) : (
         <View
           accessibilityRole="alert"
-          accessibilityLabel={
-            title || (typeof message === "string" ? message : undefined)
-          }
+          accessibilityLabel={computedAccessibilityLabel}
         >
           {content}
         </View>

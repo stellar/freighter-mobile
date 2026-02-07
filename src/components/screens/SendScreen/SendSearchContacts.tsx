@@ -195,6 +195,9 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
                 <Notification
                   variant="primary"
                   title={t("sendSearchContacts.unfunded.title")}
+                  accessibilityLabel={`${t(
+                    "sendSearchContacts.unfunded.title",
+                  )} ${t("sendSearchContacts.unfunded.action")}`}
                   message={
                     <Text md secondary>
                       {t("sendSearchContacts.unfunded.action")}{" "}
