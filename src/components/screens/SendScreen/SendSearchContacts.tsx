@@ -7,9 +7,10 @@ import {
 } from "components/screens/SendScreen/components";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
+import { Notification } from "components/sds/Notification";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
-import { QRCodeSource } from "config/constants";
+import { CREATE_ACCOUNT_TUTORIAL_URL, QRCodeSource } from "config/constants";
 import {
   ROOT_NAVIGATOR_ROUTES,
   RootStackParamList,
@@ -22,6 +23,7 @@ import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
+import { useInAppBrowser } from "hooks/useInAppBrowser";
 import { useRightHeaderButton } from "hooks/useRightHeader";
 import React, { useCallback, useEffect, useState } from "react";
 import { View } from "react-native";
@@ -46,6 +48,7 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
+  const { open: openInAppBrowser } = useInAppBrowser();
   const { getClipboardText } = useClipboard();
   const [address, setAddress] = useState("");
   const {
@@ -64,6 +67,8 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
     searchAddress,
     setDestinationAddress,
     resetSendRecipient,
+    isValidDestination,
+    isDestinationFunded,
   } = useSendRecipientStore();
 
   // Load recent addresses when component mounts
@@ -183,6 +188,30 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
               </Text>
             </View>
           )}
+          {!searchError &&
+            isValidDestination &&
+            isDestinationFunded === false && (
+              <View className="mt-4">
+                <Notification
+                  variant="primary"
+                  title={t("sendSearchContacts.unfunded.title")}
+                  accessibilityLabel={`${t(
+                    "sendSearchContacts.unfunded.title",
+                  )} ${t("sendSearchContacts.unfunded.action")}`}
+                  message={
+                    <Text md secondary>
+                      {t("sendSearchContacts.unfunded.action")}{" "}
+                      <Text md semiBold color={themeColors.primary}>
+                        {t("sendSearchContacts.unfunded.learnMore")}
+                      </Text>
+                    </Text>
+                  }
+                  onPress={() => {
+                    openInAppBrowser(CREATE_ACCOUNT_TUTORIAL_URL);
+                  }}
+                />
+              </View>
+            )}
         </View>
 
         {searchResults.length > 0 ? (

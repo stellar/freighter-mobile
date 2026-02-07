@@ -39,6 +39,7 @@ export const HISTORY_FETCH_POLLING_INTERVAL = 30000;
 export const NATIVE_TOKEN_CODE = "XLM";
 export const MIN_TRANSACTION_FEE = "0.00001";
 export const BASE_RESERVE = BigNumber(0.5);
+export const MINIMUM_CREATE_ACCOUNT_XLM = 1;
 export const MAX_MEMO_BYTES = 28;
 
 // Circle USDC constants for icon special casing

@@ -45,6 +45,7 @@ export interface SecurityAssessment {
   isSuspicious: boolean;
   isMalicious: boolean;
   isUnableToScan: boolean;
+  isExpectedToFail?: boolean;
   details?: string;
 }
 

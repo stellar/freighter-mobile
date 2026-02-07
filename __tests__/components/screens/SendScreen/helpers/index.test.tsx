@@ -22,6 +22,10 @@ const mockExtractSecurityWarnings =
   blockaidHelper.extractSecurityWarnings as jest.MockedFunction<
     typeof blockaidHelper.extractSecurityWarnings
   >;
+const mockIsUnfundedDestinationError =
+  blockaidHelper.isUnfundedDestinationError as jest.MockedFunction<
+    typeof blockaidHelper.isUnfundedDestinationError
+  >;
 
 describe("SendScreen Helpers", () => {
   beforeEach(() => {
@@ -239,6 +243,62 @@ describe("SendScreen Helpers", () => {
       );
 
       expect(result.current).toBeUndefined();
+    });
+
+    it("should return suspicious banner when scanResult alone is flagged but no unfunded context", () => {
+      const onSecurityWarningPress = jest.fn();
+
+      const { result } = renderHook(() =>
+        useSendBannerContent({
+          isMalicious: false,
+          isSuspicious: true,
+          onSecurityWarningPress,
+        }),
+      );
+
+      expect(result.current).toEqual({
+        text: "transactionAmountScreen.errors.suspicious",
+        variant: "warning",
+        onPress: onSecurityWarningPress,
+      });
+    });
+
+    it("should return expected-to-fail banner when explicitly flagged", () => {
+      const onSecurityWarningPress = jest.fn();
+
+      const { result } = renderHook(() =>
+        useSendBannerContent({
+          isMalicious: false,
+          isSuspicious: false,
+          isExpectedToFail: true,
+          onSecurityWarningPress,
+        }),
+      );
+
+      expect(result.current).toEqual({
+        text: "blockaid.security.transaction.expectedToFail",
+        variant: "warning",
+        onPress: onSecurityWarningPress,
+      });
+    });
+
+    it("should return normal suspicious banner when error is not unfunded destination", () => {
+      const onSecurityWarningPress = jest.fn();
+      mockIsUnfundedDestinationError.mockReturnValue(false);
+
+      const { result } = renderHook(() =>
+        useSendBannerContent({
+          isMalicious: false,
+          isSuspicious: true,
+          onSecurityWarningPress,
+        }),
+      );
+
+      expect(result.current).toEqual({
+        text: "transactionAmountScreen.errors.suspicious",
+        variant: "warning",
+        onPress: onSecurityWarningPress,
+      });
     });
   });
 });
