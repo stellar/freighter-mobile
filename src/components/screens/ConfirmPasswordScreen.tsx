@@ -76,6 +76,7 @@ export const ConfirmPasswordScreen: React.FC<ConfirmPasswordScreenProps> = ({
         note={t("passwordInput.passwordNote")}
         error={error}
         value={confirmPasswordValue}
+        testID="confirm-password-input"
         onChangeText={(text) => {
           handlePasswordChange(text);
           if (text.length > PASSWORD_MAX_LENGTH) {

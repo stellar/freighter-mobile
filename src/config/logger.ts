@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 import * as Sentry from "@sentry/react-native";
 import { debug } from "helpers/debug";
-import { isDev } from "helpers/isEnv";
+import { isDev, isE2ETest } from "helpers/isEnv";
 
 /**
  * Log levels supported by the logger
@@ -417,6 +417,10 @@ const sentryAdapter: LoggerAdapter = {
   debug: () => {},
   info: () => {},
   warn: (context: string, message: string) => {
+    // Skip Sentry during e2e tests
+    if (isE2ETest) {
+      return;
+    }
     // capture a message for warning level
     Sentry.captureMessage(`[${context}] ${message}`, "warning");
   },
@@ -426,6 +430,10 @@ const sentryAdapter: LoggerAdapter = {
     error: unknown,
     ...args: unknown[]
   ) => {
+    // Skip Sentry during e2e tests
+    if (isE2ETest) {
+      return;
+    }
     const normalizedError = normalizeError(error);
 
     // capture the error with context and sanitized extra data
@@ -448,7 +456,10 @@ const combinedAdapter: LoggerAdapter = {
   },
   warn: (context: string, message: string, ...args: unknown[]) => {
     consoleAdapter.warn(context, message, ...args);
-    sentryAdapter.warn(context, message, ...args);
+    // Skip Sentry during e2e tests
+    if (!isE2ETest) {
+      sentryAdapter.warn(context, message, ...args);
+    }
   },
   error: (
     context: string,
@@ -457,7 +468,10 @@ const combinedAdapter: LoggerAdapter = {
     ...args: unknown[]
   ) => {
     consoleAdapter.error(context, message, error, ...args);
-    sentryAdapter.error(context, message, error, ...args);
+    // Skip Sentry during e2e tests
+    if (!isE2ETest) {
+      sentryAdapter.error(context, message, error, ...args);
+    }
   },
 };
 

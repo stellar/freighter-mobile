@@ -13,11 +13,19 @@ const NumericKeyboard: React.FC<NumericKeyboardProps> = ({ onPress }) => {
   const { themeColors } = useColors();
   const { decimalSeparator } = getNumberFormatSettings();
 
+  const getKeyTestID = (content: string | React.ReactNode) => {
+    if (typeof content !== "string") return "numeric-key-delete";
+    return content === decimalSeparator
+      ? "numeric-key-decimal"
+      : `numeric-key-${content}`;
+  };
+
   const renderButton = (content: string | React.ReactNode) => (
     <View className="flex-1">
       <View
         className="h-[48px] max-xs:h-[28px] items-center justify-center rounded-[12px]"
         onTouchEnd={() => onPress(typeof content === "string" ? content : "")}
+        testID={getKeyTestID(content)}
       >
         {typeof content === "string" ? (
           <Display xs medium>

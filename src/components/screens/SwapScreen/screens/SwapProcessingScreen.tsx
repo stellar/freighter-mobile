@@ -178,7 +178,7 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
 
   return (
     <BaseLayout insets={{ top: false }}>
-      <View className="flex-1 justify-between">
+      <View className="flex-1 justify-between" testID="swap-processing-screen">
         <View className="flex-1 items-center justify-center">
           <View className="items-center gap-[8px] w-full">
             {getStatusIcon()}
@@ -236,10 +236,16 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
               onPress={() =>
                 transactionDetailsBottomSheetModalRef.current?.present()
               }
+              testID="swap-processing-view-transaction-button"
             >
               {t("swapProcessingScreen.viewTransaction")}
             </Button>
-            <Button tertiary xl onPress={onClose}>
+            <Button
+              tertiary
+              xl
+              onPress={onClose}
+              testID="swap-processing-done-button"
+            >
               {t("common.done")}
             </Button>
           </View>
@@ -248,7 +254,12 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
             <Text sm medium secondary textAlign="center">
               {t("swapProcessingScreen.closeMessage")}
             </Text>
-            <Button secondary xl onPress={onClose}>
+            <Button
+              secondary
+              xl
+              onPress={onClose}
+              testID="swap-processing-close-button"
+            >
               {t("common.close")}
             </Button>
           </View>

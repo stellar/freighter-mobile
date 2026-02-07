@@ -56,18 +56,28 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
 
   return (
     <BaseLayout useSafeArea>
-      <Container>
+      <Container testID="welcome-screen">
         <StyledIconContainer>
           <FreighterLogo />
         </StyledIconContainer>
         <View>
           <StyledDisplay>{t("freighterWallet")}</StyledDisplay>
           <StyledSpacer $size={32} />
-          <Button tertiary xl onPress={() => navigateToScreen(false)}>
+          <Button
+            tertiary
+            xl
+            testID="create-wallet-button"
+            onPress={() => navigateToScreen(false)}
+          >
             {t("welcomeScreen.createNewWallet")}
           </Button>
           <StyledSpacer $size={12} />
-          <Button secondary xl onPress={() => navigateToScreen(true)}>
+          <Button
+            secondary
+            xl
+            testID="import-wallet-button"
+            onPress={() => navigateToScreen(true)}
+          >
             {t("welcomeScreen.iAlreadyHaveWallet")}
           </Button>
         </View>

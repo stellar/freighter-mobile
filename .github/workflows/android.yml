@@ -96,6 +96,11 @@ env:
   # MP Collections Addresses (comma-separated list of collection addresses)
   MP_COLLECTIONS_ADDRESSES: ${{ vars.MP_COLLECTIONS_ADDRESSES }}
 
+  # E2E test vars: defined here for consistency with E2E workflow files (ios-e2e, android-e2e).
+  # They are shared by gh-android-env → EnvFileCreator (.env) in both release and E2E workflows.
+  IS_E2E_TEST: "false"
+  E2E_TEST_RECOVERY_PHRASE: ""
+
 jobs:
   # Scheduled nightly builds should not overwrite the dev build
   # when a release candidate branch is active (branches starting with "release" or "emergency-release").
@@ -130,7 +135,7 @@ jobs:
     needs: check_release_branch
     if: needs.check_release_branch.outputs.skip == 'false'
     name: Build Android
-    runs-on: "ubuntu-latest-16-cores"
+    runs-on: ubuntu-latest-16-cores
     timeout-minutes: 45
 
     steps:
@@ -142,7 +147,8 @@ jobs:
             echo "REF_NAME=${{ github.ref_name }}" >> $GITHUB_ENV
           fi
 
-      - uses: actions/checkout@v5
+      - name: Checkout repo
+        uses: actions/checkout@v5
         with:
           ref: ${{ env.REF_NAME }}
 
@@ -221,7 +227,7 @@ jobs:
         run: ./scripts/setup-android-ndk-16kb
 
       - name: Run Yarn Install
-        run: yarn install --frozen-lockfile --immutable
+        run: yarn install --immutable
 
       - name: Run Post Install
         run: yarn postinstall
