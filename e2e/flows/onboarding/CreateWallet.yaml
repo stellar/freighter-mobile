@@ -54,37 +54,6 @@ tags:
 - tapOn:
     id: skip-confirm-button
 
-# Biometrics screen - skip biometrics if it appears
-- runFlow:
-    when:
-      visible:
-        text: .*biometric.*|.*Face ID.*|.*Touch ID.*|.*Enable.*
-    commands:
-      # Prefer tapping an explicit "Skip" / secondary action button if present
-      - runFlow:
-          when:
-            visible:
-              id: secondary-action-button
-          commands:
-            - tapOn:
-                id: secondary-action-button
-      # Fallback to common textual variants for skipping biometrics
-      - runFlow:
-          when:
-            visible:
-              text: "Skip for now|Skip|Not now|Maybe later"
-          commands:
-            - tapOn:
-                text: "Skip for now|Skip|Not now|Maybe later"
-      # If a system biometric dialog appears, choose the negative option
-      - runFlow:
-          when:
-            visible:
-              text: "Don't Allow|Don’t Allow|Cancel"
-          commands:
-            - tapOn:
-                text: "Don't Allow|Don’t Allow|Cancel"
-
 # Dismiss welcome banner if it appears (check before home screen)
 - runFlow:
     when:
