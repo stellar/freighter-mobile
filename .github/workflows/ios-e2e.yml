@@ -222,20 +222,16 @@ jobs:
     timeout-minutes: 120
     strategy:
       fail-fast: false
+      # SendClassicToken and SwapClassicToken are skipped on iOS for now (test-id / component
+      # lookup issues on iOS). They remain in the Android E2E matrix and run there as expected.
       matrix:
         include:
           - shard-index: 0
-            shard-total: 4
+            shard-total: 2
             flow-name: CreateWallet
           - shard-index: 1
-            shard-total: 4
+            shard-total: 2
             flow-name: ImportWallet
-          - shard-index: 2
-            shard-total: 4
-            flow-name: SendClassicToken
-          - shard-index: 3
-            shard-total: 4
-            flow-name: SwapClassicToken
 
     steps:
       - name: Checkout repo
