@@ -63,23 +63,6 @@ adb install -r downloaded-artifacts/app.apk || {
 }
 echo "✅ APK installed"
 
-echo "=== Launching app ==="
-APP_ID="org.stellar.freighterdev"
-MAIN_ACTIVITY="org.stellar.freighterwallet.MainActivity"
-
-echo "App ID: $APP_ID"
-echo "Main Activity: $MAIN_ACTIVITY"
-
-sleep 2
-
-adb shell am start -n "${APP_ID}/${MAIN_ACTIVITY}" -a android.intent.action.MAIN -c android.intent.category.LAUNCHER || {
-  echo "❌ Error: Failed to launch app on emulator"
-  echo "Checking if app is installed..."
-  adb shell pm list packages | grep -i "$APP_ID" || echo "App not found in installed packages list"
-  exit 1
-}
-echo "✅ App launched successfully"
-
 echo "=== Running E2E tests ==="
 
 LOG_FILE="e2e-artifacts/android-emulator-logs.txt"

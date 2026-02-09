@@ -389,26 +389,6 @@ jobs:
           }
           echo "✅ App installed successfully: $APP_PATH_ABS"
 
-      - name: Launch app on Simulator
-        run: |
-          set -euo pipefail  # Exit on error, undefined vars, pipe failures
-
-          DEVICE_UDID="${{ steps.simulator.outputs.udid }}"
-          APP_ID="org.stellar.freighterdev"
-
-          echo "=== Launching app on simulator ==="
-          echo "Device UDID: $DEVICE_UDID"
-          echo "App ID: $APP_ID"
-
-          # Launch the app on the simulator
-          xcrun simctl launch "$DEVICE_UDID" "$APP_ID" || {
-            echo "❌ Error: Failed to launch app on simulator"
-            echo "Checking if app is installed..."
-            xcrun simctl listapps "$DEVICE_UDID" | grep -i "$APP_ID" || echo "App not found in installed apps list"
-            exit 1
-          }
-          echo "✅ App launched successfully"
-
       - name: Set recovery phrase in simulator clipboard
         run: |
           set -euo pipefail
