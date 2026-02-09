@@ -365,6 +365,7 @@ type SendReviewFooterProps = {
   isValidatingMemo?: boolean;
   isSuspicious?: boolean;
   isUnableToScan?: boolean;
+  isExpectedToFail?: boolean;
   isMuxedAddressWithoutMemoSupport?: boolean;
   onSettingsPress?: () => void;
   amountError?: string | null;
@@ -384,6 +385,7 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
       isValidatingMemo,
       isSuspicious,
       isUnableToScan,
+      isExpectedToFail,
       isMuxedAddressWithoutMemoSupport,
       onSettingsPress,
       amountError,
@@ -393,6 +395,7 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
       !isMalicious &&
       !isSuspicious &&
       !isUnableToScan &&
+      !isExpectedToFail &&
       !isMuxedAddressWithoutMemoSupport;
     const isLoading = isBuilding;
     const isDisabled = !transactionXDR || isLoading;
@@ -467,8 +470,8 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
       const cancelButton = (
         <View className={`${shouldUseRowLayout ? "flex-1" : "w-full"}`}>
           <Button
-            tertiary={isSuspicious || isUnableToScan}
-            destructive={isMalicious}
+            tertiary={(isSuspicious && !isUnableToScan) || isExpectedToFail}
+            destructive={isMalicious && !shouldUseRowLayout}
             secondary={shouldUseRowLayout}
             isFullWidth
             onPress={onCancel}
@@ -517,6 +520,7 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
       isSuspicious,
       isMalicious,
       isUnableToScan,
+      isExpectedToFail,
       onCancel,
       isRequiredMemoMissing,
       isDisabled,

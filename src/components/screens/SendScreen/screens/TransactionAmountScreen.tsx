@@ -30,6 +30,7 @@ import { Display, Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import {
   DEFAULT_DECIMALS,
+  MINIMUM_CREATE_ACCOUNT_XLM,
   NATIVE_TOKEN_CODE,
   TransactionContext,
   mapNetworkToNetworkDetails,
@@ -77,6 +78,7 @@ import { TouchableOpacity, View, Text as RNText } from "react-native";
 import { analytics } from "services/analytics";
 import { TransactionOperationType } from "services/analytics/types";
 import { SecurityContext } from "services/blockaid/constants";
+import { type UnfundedDestinationContext } from "services/blockaid/helper";
 
 type TransactionAmountScreenProps = NativeStackScreenProps<
   SendPaymentStackParamList,
@@ -122,7 +124,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     resetSettings,
   } = useTransactionSettingsStore();
 
-  const { resetSendRecipient } = useSendRecipientStore();
+  const { resetSendRecipient, isDestinationFunded } = useSendRecipientStore();
   const { fetchAccountHistory } = useHistoryStore();
 
   // Ensure defaults when entering the screen
@@ -348,12 +350,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   }, [selectedBalance, account, transactionFee]);
 
   const {
-    transactionSecurityAssessment,
-    transactionSecurityWarnings,
-    transactionSecuritySeverity,
-  } = getTransactionSecurity(transactionScanResult, overriddenBlockaidResponse);
-
-  const {
     tokenAmount,
     tokenAmountDisplay,
     fiatAmountDisplay,
@@ -364,6 +360,38 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     setTokenAmount,
     updateFiatDisplay,
   } = useTokenFiatConverter({ selectedBalance });
+
+  // Build context for unfunded destination detection (used by Blockaid warnings)
+  const unfundedContext: UnfundedDestinationContext | undefined =
+    useMemo(() => {
+      if (!selectedBalance || isDestinationFunded === null) {
+        return undefined;
+      }
+
+      const assetCode = selectedBalance.tokenCode || "unknown";
+      const canCreateAccountWithAmount =
+        assetCode === NATIVE_TOKEN_CODE
+          ? BigNumber(tokenAmount).isGreaterThanOrEqualTo(
+              MINIMUM_CREATE_ACCOUNT_XLM,
+            )
+          : undefined;
+
+      return {
+        assetCode,
+        isDestinationFunded,
+        canCreateAccountWithAmount,
+      };
+    }, [selectedBalance, isDestinationFunded, tokenAmount]);
+
+  const {
+    transactionSecurityAssessment,
+    transactionSecurityWarnings,
+    transactionSecuritySeverity,
+  } = getTransactionSecurity(
+    transactionScanResult,
+    overriddenBlockaidResponse,
+    unfundedContext,
+  );
 
   const handlePercentagePress = (percentage: number) => {
     if (!selectedBalance) return;
@@ -501,6 +529,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         const security = getTransactionSecurity(
           scanResult,
           overriddenBlockaidResponse,
+          unfundedContext,
         );
         if (security.transactionSecurityAssessment.isUnableToScan) {
           transactionSecurityWarningBottomSheetModalRef.current?.present();
@@ -509,7 +538,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         }
       }
     },
-    [overriddenBlockaidResponse],
+    [overriddenBlockaidResponse, unfundedContext],
   );
 
   const handleTransactionScanError = useCallback(
@@ -520,6 +549,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         const security = getTransactionSecurity(
           undefined,
           overriddenBlockaidResponse,
+          unfundedContext,
         );
         if (security.transactionSecurityAssessment.isUnableToScan) {
           transactionSecurityWarningBottomSheetModalRef.current?.present();
@@ -528,7 +558,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         }
       }
     },
-    [overriddenBlockaidResponse],
+    [overriddenBlockaidResponse, unfundedContext],
   );
 
   const prepareTransaction = useCallback(
@@ -702,6 +732,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       isMalicious: transactionSecurityAssessment.isMalicious,
       isSuspicious: transactionSecurityAssessment.isSuspicious,
       isUnableToScan: transactionSecurityAssessment.isUnableToScan,
+      isExpectedToFail: transactionSecurityAssessment.isExpectedToFail,
       isMuxedAddressWithoutMemoSupport,
       isValidatingMemo,
       onSettingsPress: handleOpenSettingsFromReview,
@@ -713,6 +744,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       transactionSecurityAssessment.isMalicious,
       transactionSecurityAssessment.isSuspicious,
       transactionSecurityAssessment.isUnableToScan,
+      transactionSecurityAssessment.isExpectedToFail,
       isMuxedAddressWithoutMemoSupport,
       amountError,
       onConfirmAddMemo,
@@ -774,9 +806,11 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const bannerContent = useSendBannerContent({
     isMalicious: transactionSecurityAssessment.isMalicious,
     isSuspicious: transactionSecurityAssessment.isSuspicious,
+    isExpectedToFail: transactionSecurityAssessment.isExpectedToFail,
     isUnableToScan: transactionSecurityAssessment.isUnableToScan,
     isRequiredMemoMissing,
     isMuxedAddressWithoutMemoSupport,
+    unfundedContext,
     onSecurityWarningPress: openSecurityWarningBottomSheet,
     onMemoMissingPress: openAddMemoExplanationBottomSheet,
     onMuxedAddressWithoutMemoSupportPress: openMuxedAddressWarningBottomSheet,
