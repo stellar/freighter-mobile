@@ -127,7 +127,7 @@ jobs:
     needs: check_release_branch
     if: needs.check_release_branch.outputs.skip == 'false'
     name: Build iOS
-    runs-on: macos-26
+    runs-on: macos-26-xlarge
     timeout-minutes: 60
 
     steps:
