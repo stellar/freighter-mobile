@@ -12,7 +12,8 @@ on:
     inputs:
       ref:
         description:
-          "Commit hash to run tests on (leave empty for default workflow branch)"
+          "Commit hash to run tests on (leave empty for default workflow
+          branchh)"
         required: false
         type: string
 
