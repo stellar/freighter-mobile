@@ -75,7 +75,7 @@ env:
 jobs:
   build:
     name: Build Android APK
-    runs-on: ubuntu-latest-16-cores
+    runs-on: ubuntu-latest-32-cores
     timeout-minutes: 120
     # Run on PR "/e2e" comments, or on normal triggers (PR, push, workflow_dispatch)
     if: |
@@ -221,7 +221,7 @@ jobs:
   test:
     name: E2E ${{ matrix.flow-name }}
     needs: build
-    runs-on: ubuntu-latest-16-cores
+    runs-on: ubuntu-latest-32-cores
     timeout-minutes: 120
     strategy:
       fail-fast: false
