@@ -7,9 +7,15 @@
  */
 import "@walletconnect/react-native-compat";
 import { App } from "components/App";
-import { AppRegistry } from "react-native";
+import { isE2ETest } from "helpers/isEnv";
+import { AppRegistry, LogBox } from "react-native";
 
 import { name as appName } from "../app.json";
 import "../global.css";
+
+// Disable LogBox warnings during e2e tests to prevent banner from interfering with tests
+if (isE2ETest) {
+  LogBox.ignoreAllLogs(true);
+}
 
 AppRegistry.registerComponent(appName, () => App);

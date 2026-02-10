@@ -70,7 +70,13 @@ const CustomContent: React.FC<{
         >
           {t("welcomeBanner.addXLM")}
         </Button>
-        <Button secondary xl isFullWidth onPress={onDismiss}>
+        <Button
+          secondary
+          xl
+          isFullWidth
+          testID="welcome-banner-dismiss-button"
+          onPress={onDismiss}
+        >
           {t("welcomeBanner.doThisLater")}
         </Button>
       </View>

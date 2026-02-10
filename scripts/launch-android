@@ -2,9 +2,9 @@
 # frozen_string_literal: true
 
 # Summary:
-# - Starts Metro bundler on port 8081 in a new Terminal window (falls back to background).
+# - Starts Metro bundler on port 8081 in a new Terminal window (falls back to background) for debug builds only.
 # - Boots the most recent available Android emulator if no device is connected and waits for boot.
-# - Ensures adb reverse is set up for Metro (tcp:8081 <-> tcp:8081).
+# - Ensures adb reverse is set up for Metro (tcp:8081 <-> tcp:8081) for debug builds only.
 # - Installs the selected Android variant based on --env and --release flags (supports --clean).
 # - Launches the app's main activity after installation.
 #
@@ -175,11 +175,15 @@ OptionParser.new do |opts|
 end.parse!
 
 # Orchestrate helpful dev steps similar to iOS flow
-start_metro
 launch_emulator_if_needed
-wait_for_metro
 wait_for_emulator_boot
-ensure_adb_reverse
+
+# Metro bundler is only needed for debug builds (release builds bundle JS in the APK)
+unless release
+  start_metro
+  wait_for_metro
+  ensure_adb_reverse
+end
 
 Dir.chdir("android") do
   task = ["install"]

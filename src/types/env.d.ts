@@ -35,6 +35,9 @@ declare module "react-native-config" {
     ANDROID_PROD_KEYSTORE_ALIAS: string;
 
     MP_COLLECTIONS_ADDRESSES: string;
+
+    IS_E2E_TEST: string;
+    E2E_TEST_RECOVERY_PHRASE: string;
   }
   const Config: NativeConfig;
   export default Config;

@@ -851,7 +851,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
   return (
     <BaseLayout insets={{ top: false }}>
-      <View className="flex-1">
+      <View className="flex-1" testID="send-amount-screen">
         <View className="items-center gap-[12px] max-xs:gap-[6px]">
           <View className="rounded-[12px] gap-[8px] max-xs:gap-[4px] py-[12px] max-xs:py-[8px] px-[16px] max-xs:px-[12px] items-center">
             {showFiatAmount ? (
@@ -922,6 +922,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
                     variant="ghost"
                   />
                 }
+                testID="send-token-row"
               />
             )}
           </View>
@@ -930,6 +931,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
               isSingleRow
               onPress={navigateToSelectContactScreen}
               address={recipientAddress}
+              testID="send-recipient-row"
               rightElement={
                 <IconButton
                   Icon={Icon.ChevronRight}
@@ -972,6 +974,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
               xl
               onPress={handleContinueButtonPress}
               disabled={isContinueButtonDisabled}
+              testID="send-continue-button"
             >
               {getContinueButtonText()}
             </Button>

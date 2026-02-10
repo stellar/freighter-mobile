@@ -1,0 +1,324 @@
+name: Android E2E Tests
+
+on:
+  pull_request:
+    branches: [main, release, "v*.*.*"]
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main, release, "v*.*.*"]
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description:
+          "Commit hash to run tests on (leave empty for default workflow branch)"
+        required: false
+        type: string
+
+env:
+  NODE_VERSION: "20"
+  RUBY_VERSION: 3.1.4
+  JAVA_VERSION: "17"
+  SKIP_COCOAPODS: "yes"
+  APP_ID: "org.stellar.freighterdev"
+
+  # Sentry configuration (disabled for E2E, but vars still needed)
+  SENTRY_PROPERTIES_CONTENT: "disabled-for-e2e"
+  SENTRY_DSN: "disabled-for-e2e"
+
+  # Amplitude Analytics configuration (disabled for E2E)
+  AMPLITUDE_API_KEY: "disabled-for-e2e"
+  AMPLITUDE_EXPERIMENT_DEPLOYMENT_KEY: "disabled-for-e2e"
+
+  # Android Keystores configuration (for create_keystore_file)
+  ANDROID_DEV_KEYSTORE_CONTENT: ${{ secrets.ANDROID_DEV_KEYSTORE_CONTENT }}
+
+  # Android Keystore Passwords and Aliases (for build.gradle)
+  ANDROID_DEV_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_DEV_KEYSTORE_PASSWORD }}
+  ANDROID_DEV_KEYSTORE_ALIAS: ${{ vars.ANDROID_DEV_KEYSTORE_ALIAS }}
+
+  # Backend URLs
+  FREIGHTER_BACKEND_V1_PROD_URL: ${{ vars.FREIGHTER_BACKEND_V1_PROD_URL }}
+  FREIGHTER_BACKEND_V1_STG_URL: ${{ vars.FREIGHTER_BACKEND_V1_STG_URL }}
+  FREIGHTER_BACKEND_V1_DEV_URL: ${{ vars.FREIGHTER_BACKEND_V1_DEV_URL }}
+  FREIGHTER_BACKEND_V2_PROD_URL: ${{ vars.FREIGHTER_BACKEND_V2_PROD_URL }}
+  FREIGHTER_BACKEND_V2_STG_URL: ${{ vars.FREIGHTER_BACKEND_V2_STG_URL }}
+  FREIGHTER_BACKEND_V2_DEV_URL: ${{ vars.FREIGHTER_BACKEND_V2_DEV_URL }}
+
+  # Wallet Kit Configuration (Production)
+  WALLET_KIT_PROJECT_ID_PROD: ${{ secrets.WALLET_KIT_PROJECT_ID_PROD }}
+  WALLET_KIT_MT_NAME_PROD: ${{ vars.WALLET_KIT_MT_NAME_PROD }}
+  WALLET_KIT_MT_DESCRIPTION_PROD: ${{ vars.WALLET_KIT_MT_DESCRIPTION_PROD }}
+  WALLET_KIT_MT_URL_PROD: ${{ vars.WALLET_KIT_MT_URL_PROD }}
+  WALLET_KIT_MT_ICON_PROD: ${{ vars.WALLET_KIT_MT_ICON_PROD }}
+  WALLET_KIT_MT_REDIRECT_NATIVE_PROD:
+    ${{ vars.WALLET_KIT_MT_REDIRECT_NATIVE_PROD }}
+
+  # Wallet Kit Configuration (Development)
+  WALLET_KIT_PROJECT_ID_DEV: ${{ secrets.WALLET_KIT_PROJECT_ID_DEV }}
+  WALLET_KIT_MT_NAME_DEV: ${{ vars.WALLET_KIT_MT_NAME_DEV }}
+  WALLET_KIT_MT_DESCRIPTION_DEV: ${{ vars.WALLET_KIT_MT_DESCRIPTION_DEV }}
+  WALLET_KIT_MT_URL_DEV: ${{ vars.WALLET_KIT_MT_URL_DEV }}
+  WALLET_KIT_MT_ICON_DEV: ${{ vars.WALLET_KIT_MT_ICON_DEV }}
+  WALLET_KIT_MT_REDIRECT_NATIVE_DEV:
+    ${{ vars.WALLET_KIT_MT_REDIRECT_NATIVE_DEV }}
+
+  # MP Collections Addresses (comma-separated list of collection addresses)
+  MP_COLLECTIONS_ADDRESSES: ${{ vars.MP_COLLECTIONS_ADDRESSES }}
+
+  # E2E Test Configuration
+  IS_E2E_TEST: "true"
+  E2E_TEST_RECOVERY_PHRASE: ${{ secrets.E2E_TEST_RECOVERY_PHRASE }}
+  IS_CI_ENV: "true"
+
+jobs:
+  build:
+    name: Build Android APK
+    runs-on: ubuntu-latest-16-cores
+    timeout-minutes: 120
+    # Run on PR "/e2e" comments, or on normal triggers (PR, push, workflow_dispatch)
+    if: |
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request && github.event.comment.body == '/e2e') ||
+      github.event_name != 'issue_comment'
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+        with:
+          ref:
+            ${{ github.event.inputs.ref || (github.event_name == 'issue_comment'
+            && format('refs/pull/{0}/head', github.event.issue.number)) ||
+            github.ref }}
+
+      - name: Make scripts executable
+        run: find scripts -type f -exec chmod +x {} \;
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "yarn"
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          bundler-cache: true
+
+      - name: Set env and create .env file
+        run: |
+          export ANDROID_FLAVOR="dev"
+          ./scripts/gh-android-env >> $GITHUB_ENV
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: zulu
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Set up Android SDK and NDK for 16KB page size alignment
+        run: ./scripts/setup-android-ndk-16kb
+
+      - name: Create Android keystore file
+        run: |
+          echo "Creating dev-release.keystore file..."
+          mkdir -p android/keystores
+          echo "$ANDROID_DEV_KEYSTORE_CONTENT" | base64 -d > android/keystores/dev-release.keystore
+          ls -lh android/keystores/dev-release.keystore
+
+      - name: Run Yarn Install
+        run: yarn install --immutable
+
+      - name: Run Post Install
+        run: yarn postinstall
+
+      - name: Build Android APK for emulator
+        env:
+          SENTRY_DISABLE_AUTO_UPLOAD: "true"
+        run: |
+          cd android
+          ./gradlew assembleDevRelease \
+            -PreactNativeArchitectures=x86_64 \
+            --parallel \
+            --build-cache
+
+          # Find APK with relative path from android directory
+          APK_PATH_REL=$(find ./app/build/outputs/apk/dev/release -name "*.apk" | head -n 1)
+
+          if [ -z "$APK_PATH_REL" ]; then
+            echo "Error: APK not found in ./app/build/outputs/apk/dev/release"
+            echo "Searching for APK files:"
+            find ./app/build/outputs -name "*.apk" 2>/dev/null || true
+            echo "Contents of ./app/build/outputs/apk/dev/release:"
+            ls -la ./app/build/outputs/apk/dev/release/ 2>/dev/null || true
+            exit 1
+          fi
+
+          echo "Built APK at: $APK_PATH_REL (relative to android/)"
+
+          # Get absolute path before changing directory
+          REPO_ROOT=$(pwd)/..
+          APK_PATH_ABS="$REPO_ROOT/android/$APK_PATH_REL"
+
+          # Verify the file exists
+          if [ ! -f "$APK_PATH_ABS" ]; then
+            echo "Error: APK file does not exist at: $APK_PATH_ABS"
+            exit 1
+          fi
+
+          cd ..
+
+          # Copy to repo root with absolute path
+          cp "$APK_PATH_ABS" app.apk
+
+          # Verify copy was successful
+          if [ ! -f "app.apk" ]; then
+            echo "Error: Failed to copy APK to app.apk"
+            exit 1
+          fi
+
+          echo "✅ APK copied successfully: $(pwd)/app.apk"
+          ls -lh app.apk
+          echo "APK_PATH=$(pwd)/app.apk" >> $GITHUB_ENV
+
+      - name: Clean up build artifacts
+        run: |
+          echo "=== Disk space before cleanup ==="
+          df -h
+
+          echo "=== Cleaning up Android build artifacts ==="
+          # Remove build outputs we don't need (keep only the APK)
+          rm -rf android/app/build/outputs/bundle
+          rm -rf android/app/build/intermediates
+          rm -rf android/app/build/tmp
+          rm -rf android/.gradle
+
+          echo "=== Cleaning up Gradle cache ==="
+          rm -rf ~/.gradle/caches
+          rm -rf ~/.gradle/daemon
+
+          echo "=== Cleaning up node_modules build artifacts ==="
+          find node_modules -name "*.o" -delete 2>/dev/null || true
+          find node_modules -name "*.a" -delete 2>/dev/null || true
+
+          echo "=== Disk space after cleanup ==="
+          df -h
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-e2e-build-${{ github.run_id }}
+          path: app.apk
+          retention-days: 2
+
+  test:
+    name: E2E ${{ matrix.flow-name }}
+    needs: build
+    runs-on: ubuntu-latest-16-cores
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      # SendClassicToken and SwapClassicToken are skipped on Android for now (testID-related
+      # issues; same as iOS). Re-enable in matrix once flows are fixed.
+      matrix:
+        include:
+          - shard-index: 0
+            shard-total: 2
+            flow-name: CreateWallet
+          - shard-index: 1
+            shard-total: 2
+            flow-name: ImportWallet
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+        with:
+          ref:
+            ${{ github.event.inputs.ref || (github.event_name == 'issue_comment'
+            && format('refs/pull/{0}/head', github.event.issue.number)) ||
+            github.ref }}
+
+      - name: Make scripts executable
+        run: find scripts -type f -exec chmod +x {} \;
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "yarn"
+
+      - name: Set up Android SDK and NDK for 16KB page size alignment
+        run: ./scripts/setup-android-ndk-16kb
+
+      - name: Cache Maestro
+        uses: actions/cache@v4
+        with:
+          path: ~/.maestro
+          key: ${{ runner.os }}-maestro-v1
+
+      - name: Install Maestro
+        run: |
+          if [ ! -f "$HOME/.maestro/bin/maestro" ]; then
+            echo "Maestro not found in cache, installing..."
+            curl -fsSL "https://get.maestro.mobile.dev" | bash
+          else
+            echo "Maestro found in cache"
+          fi
+          export PATH="$PATH:$HOME/.maestro/bin"
+          maestro --version
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: android-e2e-build-${{ github.run_id }}
+          path: downloaded-artifacts
+
+      - name: Run Yarn Install
+        run: yarn install --immutable
+
+      - name: Enable KVM for hardware acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Boot Android Emulator and Run E2E Tests
+        uses: reactivecircus/android-emulator-runner@v2
+        id: emulator
+        continue-on-error: false
+        env:
+          MAESTRO_DISABLE_UPDATE_CHECK: "true"
+          MAESTRO_CLI_NO_ANALYTICS: "true"
+          SHARD_INDEX: ${{ matrix.shard-index }}
+          SHARD_TOTAL: ${{ matrix.shard-total }}
+          FLOW_NAME: ${{ matrix.flow-name }}
+        with:
+          api-level: 33
+          arch: x86_64
+          profile: pixel_7
+          cores: 4
+          ram-size: 4096
+          emulator-options:
+            "-no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio
+            -no-boot-anim -partition-size 4096 -cache-size 1024 -accel on"
+          disable-animations: true
+          script: ./scripts/run-android-e2e-on-emulator.sh
+
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-e2e-results-${{ github.run_id }}-${{ matrix.flow-name }}
+          path: e2e-artifacts/
+          retention-days: 7
+          if-no-files-found: ignore

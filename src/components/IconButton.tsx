@@ -141,15 +141,17 @@ export const IconButton: React.FC<IconButtonProps> = ({
   // otherwise it would steal the touch event from the parent
   const IconWrapper = onPress ? TouchableOpacity : View;
 
+  const effectiveTestID =
+    testID ?? `icon-button-${title?.toLowerCase() ?? "button"}`;
   return (
     <View
       className={`flex flex-col items-center ${title ? "gap-[12px]" : ""} ${isDisabled ? "opacity-50" : "opacity-100"}`}
-      testID={testID ?? "icon-button-container"}
+      testID={`${effectiveTestID}-container`}
     >
       <IconWrapper
         onPress={onPress}
         disabled={isDisabled}
-        testID={`icon-button-${title?.toLowerCase() ?? "button"}`}
+        testID={effectiveTestID}
         className={`${sizeConfig.container} rounded-full justify-center items-center ${variantStyles.hasBorder ? "border" : ""}`}
         style={{
           backgroundColor: variantStyles.backgroundColor,

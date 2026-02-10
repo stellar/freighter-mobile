@@ -73,14 +73,14 @@ const TokenSelectionContent: React.FC<TokenSelectionContentProps> = ({
   };
 
   return (
-    <View className="flex-1">
+    <View className="flex-1" testID="swap-token-selection-content">
       <View className="mb-8 mt-4">
         <Input
           fieldSize="lg"
           leftElement={
             <Icon.SearchMd size={16} color={themeColors.foreground.primary} />
           }
-          testID="search-input"
+          testID="swap-token-search-input"
           placeholder={t("swapScreen.searchTokenInputPlaceholder")}
           onChangeText={handleSearch}
           endButton={{
@@ -106,6 +106,7 @@ const TokenSelectionContent: React.FC<TokenSelectionContentProps> = ({
         excludeTokenIds={excludeTokenIds}
         showSpendableAmount={showSpendableAmount}
         feeContext={feeContext}
+        balanceRowTestIDPrefix="token-option"
       />
     </View>
   );

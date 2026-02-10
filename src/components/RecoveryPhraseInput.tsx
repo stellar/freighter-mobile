@@ -18,6 +18,7 @@ export const RecoveryPhraseInput: React.FC<RecoveryPhraseInputProps> = ({
   onFocus,
   onBlur,
   setValue,
+  testID,
   ...restProps
 }) => {
   // Mask function (customize as needed)
@@ -72,6 +73,7 @@ export const RecoveryPhraseInput: React.FC<RecoveryPhraseInputProps> = ({
   return (
     <Textarea
       {...restProps}
+      testID={testID}
       value={showMasked ? displayValue : actualValue}
       onChangeText={handleChangeText}
       autoComplete="off"

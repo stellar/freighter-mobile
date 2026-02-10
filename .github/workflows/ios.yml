@@ -88,6 +88,11 @@ env:
   # MP Collections Addresses (comma-separated list of collection addresses)
   MP_COLLECTIONS_ADDRESSES: ${{ vars.MP_COLLECTIONS_ADDRESSES }}
 
+  # E2E test vars: defined here for consistency with E2E workflow files (ios-e2e, android-e2e).
+  # They are shared by gh-ios-env → EnvFileCreator (.env) in both release and E2E workflows.
+  IS_E2E_TEST: "false"
+  E2E_TEST_RECOVERY_PHRASE: ""
+
 jobs:
   # Scheduled nightly builds should not overwrite the dev build
   # when a release candidate branch is active (branches starting with "release" or "emergency-release").
@@ -122,101 +127,10 @@ jobs:
     needs: check_release_branch
     if: needs.check_release_branch.outputs.skip == 'false'
     name: Build iOS
-    runs-on: macos-26
+    runs-on: macos-26-xlarge
     timeout-minutes: 60
 
     steps:
-      - name: Display macOS Image Information and Xcode versions
-        run: |
-          echo "=== macOS Runner Information ==="
-          echo "Runner OS: ${{ runner.os }}"
-          echo "Runner Name: ${{ runner.name }}"
-          echo "macOS Version:"
-          sw_vers
-          echo ""
-          echo "Kernel Version:"
-          uname -a
-          echo ""
-          echo "Xcode Command Line Tools Version:"
-          xcode-select --version 2>/dev/null || echo "Not installed"
-          echo ""
-          echo "Available Xcode versions:"
-          ls -1 /Applications | grep -i Xcode || echo "No Xcode found"
-
-      - name: Set latest stable Xcode version
-        run: |
-          # Find all beta/RC Xcode versions to identify base versions to exclude
-          BETA_XCODE_PATHS=$(ls -1d /Applications/Xcode*.app 2>/dev/null | grep -E "(Release_Candidate|RC|beta|Beta)" || true)
-
-          # Extract base version numbers (major.minor) from beta/RC versions
-          EXCLUDED_BASE_VERSIONS=""
-          if [ -n "$BETA_XCODE_PATHS" ]; then
-            echo "Found beta/RC Xcode versions:"
-            for BETA_XCODE_PATH in $BETA_XCODE_PATHS; do
-              BETA_VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$BETA_XCODE_PATH/Contents/Info.plist" 2>/dev/null || echo "")
-              if [ -n "$BETA_VERSION" ]; then
-                # Extract major.minor version (e.g., 26.2 from 26.2.0 or 26.2_beta_2)
-                BASE_VERSION=$(echo "$BETA_VERSION" | sed -E 's/^([0-9]+\.[0-9]+).*/\1/')
-                echo "  - $BETA_XCODE_PATH (Version: $BETA_VERSION, Base: $BASE_VERSION)"
-                EXCLUDED_BASE_VERSIONS="${EXCLUDED_BASE_VERSIONS}${BASE_VERSION} "
-              fi
-            done
-            echo "Excluding all paths with base versions: $EXCLUDED_BASE_VERSIONS"
-          fi
-
-          # Find all stable Xcode versions (exclude Release_Candidate, RC, beta, Beta)
-          XCODE_PATHS=$(ls -1d /Applications/Xcode*.app 2>/dev/null | grep -v -E "(Release_Candidate|RC|beta|Beta)" || true)
-
-          if [ -z "$XCODE_PATHS" ]; then
-            echo "Error: No stable Xcode installation found in /Applications"
-            echo "Available Xcode versions:"
-            ls -1 /Applications | grep -i Xcode || true
-            exit 1
-          fi
-
-          # Find the latest stable Xcode by sorting versions, excluding those with beta/RC base versions
-          LATEST_XCODE=""
-          LATEST_VERSION=""
-
-          TEMP_FILE=$(mktemp)
-          for XCODE_PATH in $XCODE_PATHS; do
-            VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$XCODE_PATH/Contents/Info.plist" 2>/dev/null || echo "0")
-            if [ "$VERSION" != "0" ]; then
-              # Extract major.minor version for comparison
-              BASE_VERSION=$(echo "$VERSION" | sed -E 's/^([0-9]+\.[0-9]+).*/\1/')
-              # Check if this base version should be excluded
-              SHOULD_EXCLUDE=false
-              for EXCLUDED_BASE in $EXCLUDED_BASE_VERSIONS; do
-                if [ "$BASE_VERSION" = "$EXCLUDED_BASE" ]; then
-                  echo "Excluding $XCODE_PATH (Version: $VERSION, Base: $BASE_VERSION matches excluded base version)"
-                  SHOULD_EXCLUDE=true
-                  break
-                fi
-              done
-              if [ "$SHOULD_EXCLUDE" = "false" ]; then
-                printf "%s\t%s\n" "$VERSION" "$XCODE_PATH" >> "$TEMP_FILE"
-              fi
-            fi
-          done
-
-          # Sort by version (descending) and get the first one
-          LATEST=$(sort -V -r -k1 "$TEMP_FILE" | head -n 1)
-          rm -f "$TEMP_FILE"
-
-          if [ -z "$LATEST" ]; then
-            echo "Error: Failed to determine latest Xcode version"
-            exit 1
-          fi
-
-          LATEST_VERSION=$(echo "$LATEST" | cut -f1)
-          LATEST_XCODE=$(echo "$LATEST" | cut -f2)
-
-          echo "Selected Xcode: $LATEST_XCODE (Version: $LATEST_VERSION)"
-          sudo xcode-select -s "$LATEST_XCODE"
-
-      - name: Verify selected Xcode Version
-        run: xcodebuild -version
-
       - name: Set ref
         run: |
           if [[ "${{ github.event.inputs.ref_name }}" != "" ]]; then
@@ -225,12 +139,22 @@ jobs:
             echo "REF_NAME=${{ github.ref_name }}" >> $GITHUB_ENV
           fi
 
-      - uses: actions/checkout@v5
+      - name: Checkout repo
+        uses: actions/checkout@v5
         with:
           ref: ${{ env.REF_NAME }}
 
       - name: Make scripts executable
         run: find scripts -type f -exec chmod +x {} \;
+
+      - name: Display iOS environment information
+        run: ./scripts/display-ios-environment
+
+      - name: Set latest stable Xcode version
+        run: ./scripts/setup-xcode-latest-stable
+
+      - name: Verify selected Xcode Version
+        run: xcodebuild -version
 
       - name: Set env
         run: |
@@ -302,7 +226,7 @@ jobs:
           key: ${{ runner.os }}-pods-${{ hashFiles('ios/Podfile.lock') }}
 
       - name: Run Yarn Install
-        run: yarn install --frozen-lockfile --immutable
+        run: yarn install --immutable
 
       - name: Run Post Install
         run: yarn postinstall

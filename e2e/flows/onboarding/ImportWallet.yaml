@@ -1,0 +1,107 @@
+appId: org.stellar.freighterdev
+tags:
+  - onboarding
+  - import-wallet
+---
+# Launch app and wait for welcome screen; retry up to 3 times (2 min wait each) if not visible
+- retry:
+    maxRetries: 2
+    commands:
+      - launchApp:
+          clearState: true
+          clearKeychain: true
+      - extendedWaitUntil:
+          visible:
+            id: welcome-screen
+          timeout: 120000 # 2 minutes
+
+# Tap import wallet button
+- tapOn:
+    id: import-wallet-button
+
+# Enter password on Choose Password screen
+- assertVisible:
+    id: password-input
+- tapOn:
+    id: password-input
+- inputText: "TestPassword123!"
+- hideKeyboard
+
+# Tap continue button
+- tapOn:
+    id: default-action-button
+
+# Confirm password screen
+- assertVisible:
+    id: confirm-password-input
+- tapOn:
+    id: confirm-password-input
+- inputText: "TestPassword123!"
+- hideKeyboard
+
+# Tap continue button
+- tapOn:
+    id: default-action-button
+
+# Import wallet screen - enter recovery phrase
+#
+# Phrase: CI uses secrets.E2E_TEST_RECOVERY_PHRASE; local uses .env E2E_TEST_RECOVERY_PHRASE.
+#
+# iOS: Use clipboard (phrase set by run-e2e-tests.sh / CI workflow). Tap app's clipboard button to paste.
+#      Avoids iOS Simulator occasionally skipping letters when typing. Handle "Allow Paste" if shown.
+#
+# Android: Use inputText to type the recovery phrase (covers typing UX).
+#
+- assertVisible:
+    id: import-wallet-input
+# iOS: Clipboard approach
+- runFlow:
+    when:
+      platform: ios
+    commands:
+      - tapOn:
+          id: clipboard-button
+      - runFlow:
+          when:
+            visible:
+              text: "Allow Paste|Don't Allow Paste"
+          commands:
+            - tapOn:
+                text: "Allow Paste"
+# Android: inputText approach
+- runFlow:
+    when:
+      platform: android
+    commands:
+      - tapOn:
+          id: import-wallet-input
+      - inputText: "${E2E_TEST_RECOVERY_PHRASE}"
+      # Only hide keyboard if button is not visible (suggesting keyboard is blocking it)
+      # This prevents calling hideKeyboard when keyboard is already hidden (which causes navigation issues)
+      - runFlow:
+          when:
+            notVisible:
+              id: default-action-button
+          commands:
+            - hideKeyboard
+# Tap continue/import button
+- tapOn:
+    id: default-action-button
+
+# Dismiss welcome banner if it appears (retry up to 3 times in case it appears after a delay)
+- retry:
+    maxRetries: 2
+    commands:
+      - runFlow:
+          when:
+            visible:
+              id: welcome-banner-dismiss-button
+          commands:
+            - tapOn:
+                id: welcome-banner-dismiss-button
+
+# Verify we reached home screen
+- extendedWaitUntil:
+    visible:
+      id: home-screen
+    timeout: 180000

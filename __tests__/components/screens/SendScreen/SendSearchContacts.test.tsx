@@ -190,7 +190,9 @@ describe("SendSearchContacts", () => {
       </NavigationContainer>,
     );
 
-    const pasteButton = await screen.findByTestId("search-input-end-button");
+    const pasteButton = await screen.findByTestId(
+      "send-recipient-input-end-button",
+    );
     await userEvent.press(pasteButton);
 
     await waitFor(() => {
