@@ -36,13 +36,19 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
   activeAccount,
   bottomSheetRef,
 }) => {
-  const { renameAccount, selectAccount, isRenamingAccount } =
-    useAuthenticationStore();
+  const {
+    renameAccount,
+    selectAccount,
+    isRenamingAccount,
+    isSwitchingAccount,
+  } = useAuthenticationStore();
   const { copyToClipboard } = useClipboard();
   const { t } = useAppTranslation();
 
   const [accountToRename, setAccountToRename] = useState<Account | null>(null);
   const [renameAccountModalVisible, setRenameAccountModalVisible] =
+    useState(false);
+  const [isAccountSwitchInProgress, setIsAccountSwitchInProgress] =
     useState(false);
 
   const handleCopyAddress = useCallback(
@@ -85,14 +91,30 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
 
   const handleSelectAccount = useCallback(
     async (publicKey: string) => {
-      if (publicKey === activeAccount?.publicKey) {
+      if (
+        publicKey === activeAccount?.publicKey ||
+        isAccountSwitchInProgress ||
+        isSwitchingAccount
+      ) {
         return;
       }
 
-      await selectAccount(publicKey);
       bottomSheetRef.current?.dismiss();
+      setIsAccountSwitchInProgress(true);
+
+      try {
+        await selectAccount(publicKey);
+      } finally {
+        setIsAccountSwitchInProgress(false);
+      }
     },
-    [activeAccount, selectAccount, bottomSheetRef],
+    [
+      activeAccount,
+      isAccountSwitchInProgress,
+      isSwitchingAccount,
+      selectAccount,
+      bottomSheetRef,
+    ],
   );
 
   const handleOpenRenameAccountModal = useCallback(
@@ -125,6 +147,7 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
             accounts={accounts}
             activeAccount={activeAccount}
             handleSelectAccount={handleSelectAccount}
+            isAccountSwitching={isAccountSwitchInProgress || isSwitchingAccount}
           />
         }
       />

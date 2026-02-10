@@ -21,6 +21,7 @@ interface ManageAccountBottomSheetProps {
   accounts: Account[];
   activeAccount: ActiveAccount | null;
   handleSelectAccount: (publicKey: string) => Promise<void>;
+  isAccountSwitching: boolean;
 }
 
 const SNAP_VALUE_PERCENT = 80;
@@ -33,6 +34,7 @@ const ManageAccountBottomSheet: React.FC<ManageAccountBottomSheetProps> = ({
   accounts,
   activeAccount,
   handleSelectAccount,
+  isAccountSwitching,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
@@ -73,6 +75,7 @@ const ManageAccountBottomSheet: React.FC<ManageAccountBottomSheetProps> = ({
               handleRenameAccount={handleRenameAccount}
               handleSelectAccount={handleSelectAccount}
               isSelected={account.publicKey === activeAccount?.publicKey}
+              isAccountSwitching={isAccountSwitching}
               testID={`account-row-${index}`}
             />
           ))}
@@ -82,6 +85,7 @@ const ManageAccountBottomSheet: React.FC<ManageAccountBottomSheetProps> = ({
           isFullWidth
           xl
           onPress={onPressAddAnotherWallet}
+          disabled={isAccountSwitching}
           testID="manage-accounts-add-wallet-button"
         >
           {t("home.manageAccount.addWallet")}

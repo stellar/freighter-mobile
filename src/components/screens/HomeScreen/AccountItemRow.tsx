@@ -22,6 +22,7 @@ interface AccountItemRowProps {
   handleRenameAccount: (account: Account) => void;
   handleSelectAccount: (publicKey: string) => Promise<void>;
   isSelected: boolean;
+  isAccountSwitching: boolean;
   testID?: string;
 }
 
@@ -31,6 +32,7 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
   handleRenameAccount,
   handleSelectAccount,
   isSelected,
+  isAccountSwitching,
   testID,
 }) => {
   const { themeColors } = useColors();
@@ -64,19 +66,26 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
     {
       title: t("home.manageAccount.renameWallet"),
       systemIcon: icons!.renameWallet,
+      disabled: isAccountSwitching,
       onPress: () => handleRenameAccount(account),
     },
     {
       title: t("home.manageAccount.copyAddress"),
       systemIcon: icons!.copyAddress,
+      disabled: isAccountSwitching,
       onPress: () => handleCopyAddress(account.publicKey),
     },
     {
       title: t("home.manageAccount.viewOnExplorer"),
       systemIcon: icons!.viewOnExplorer,
+      disabled: isAccountSwitching,
       onPress: handleViewOnExplorer,
     },
   ];
+
+  const handleSelectAccountPress = React.useCallback(() => {
+    handleSelectAccount(account.publicKey);
+  }, [account.publicKey, handleSelectAccount]);
 
   return (
     <View
@@ -85,7 +94,8 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
     >
       <TouchableOpacity
         className="flex-row justify-between items-center flex-1"
-        onPress={() => handleSelectAccount(account.publicKey)}
+        onPress={handleSelectAccountPress}
+        disabled={isAccountSwitching}
         delayPressIn={DEFAULT_PRESS_DELAY}
         testID={testID ? `${testID}-select` : undefined}
       >
