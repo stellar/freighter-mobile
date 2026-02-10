@@ -10,13 +10,9 @@ import {
 import { t } from "i18next";
 import { getAccount } from "services/stellar";
 import { dataStorage } from "services/storage/storageFactory";
+import { Contact } from "types/contact";
 import { create } from "zustand";
 
-interface Contact {
-  id: string;
-  address: string;
-  name?: string;
-}
 
 interface SendStore {
   recentAddresses: Contact[];
@@ -284,7 +280,7 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
           error !== null &&
           "response" in error &&
           (error as { response?: { status?: number } }).response?.status ===
-            404;
+          404;
 
         set({
           isDestinationFunded: isNotFound ? false : null,
