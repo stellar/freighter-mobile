@@ -195,6 +195,7 @@ jest.mock("services/blockaid/helper", () => ({
     isSuspicious: false,
   })),
   extractSecurityWarnings: jest.fn(() => []),
+  isUnfundedDestinationError: jest.fn(() => false),
 }));
 
 // Mock cachedFetch to return memo-required accounts data

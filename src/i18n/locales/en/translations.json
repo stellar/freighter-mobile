@@ -584,6 +584,8 @@
     "doNotProceed": "Do not proceed",
     "suspiciousRequest": "Suspicious request",
     "proceedWithCaution": "Proceed with caution",
+    "expectedToFailTitle": "Warning",
+    "expectedToFailDescription": "This transaction is expected to fail for the following reasons:",
     "unsafeTransaction": "This transaction does not appear safe for the following reasons:",
     "token": "This token does not appear safe for the following reasons:",
     "cancel": "Cancel",
@@ -622,6 +624,13 @@
     "cannotSendToSelf": "Cannot send to yourself",
     "invalidAddress": "Invalid Stellar address",
     "scanQRCodeText": "Scan a Freighter QR Code"
+  },
+  "sendSearchContacts": {
+    "unfunded": {
+      "title": "The destination account doesn’t exist",
+      "action": "Send at least 1 XLM to create the account.",
+      "learnMore": "Learn more about account creation"
+    }
   },
   "swapScreen": {
     "swapFrom": "Swap from",
@@ -1116,6 +1125,9 @@
       },
       "transaction": {
         "simulationFailed": "Transaction simulation failed",
+        "expectedToFail": "Transaction is expected to fail.",
+        "unfundedDestination": "This is a new account and needs 1 XLM in order to get started. Any transaction to send non-XLM to an unfunded account will fail.",
+        "unfundedDestinationNative": "This is a new account and needs at least 1 XLM to be created. Sending less than 1 XLM to create it will fail.",
         "malicious": "This transaction was flagged as malicious",
         "warning": "This transaction was flagged as warning",
         "unableToSimulate": "Unable to simulate transaction",

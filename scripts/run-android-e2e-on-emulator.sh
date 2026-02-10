@@ -1,0 +1,149 @@
+#!/bin/bash
+set -euo pipefail
+
+# Boot Android emulator (when run via android-emulator-runner), install app, capture logcat,
+# and run E2E tests via run-e2e-tests.sh. Used by CI (android-e2e.yml). Expects
+# downloaded-artifacts/app.apk. CI passes SHARD_INDEX, SHARD_TOTAL, FLOW_NAME.
+
+# Log available AVD device profiles to artifact only (avdmanager is provided by android-emulator-runner)
+mkdir -p e2e-artifacts
+avdmanager list device > e2e-artifacts/avdmanager-devices.txt 2>&1 || true
+echo "Available AVD device list written to e2e-artifacts/avdmanager-devices.txt"
+
+echo "=== Verifying ADB connection ==="
+adb devices
+
+echo "Waiting for emulator to boot completely..."
+adb wait-for-device
+
+boot_completed=""
+timeout=600  # 10 minutes
+while [ "$timeout" -gt 0 ]; do
+  boot_completed=$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
+  if [ "$boot_completed" = "1" ]; then
+    break
+  fi
+  sleep 2
+  timeout=$((timeout - 2))
+done
+
+if [ "$boot_completed" != "1" ]; then
+  echo "❌ Error: Emulator failed to boot within 10 minutes"
+  exit 1
+fi
+
+echo "Waiting for ADB device to be online..."
+timeout=300  # 5 minutes
+adb_ready=false
+while [ "$timeout" -gt 0 ]; do
+  if adb devices | grep -q "device$"; then
+    adb_ready=true
+    break
+  fi
+  echo "Device not ready yet, waiting... (${timeout}s remaining)"
+  sleep 5
+  timeout=$((timeout - 5))
+  adb devices
+done
+
+if [ "$adb_ready" = false ]; then
+  echo "❌ Error: No Android device/emulator connected or device is not ready"
+  echo "ADB devices output:"
+  adb devices
+  exit 1
+fi
+
+DEVICE_COUNT=$(adb devices | grep -c "device$" || echo "0")
+echo "✅ Found $DEVICE_COUNT connected device(s)"
+
+echo "=== Installing app ==="
+adb install -r downloaded-artifacts/app.apk || {
+  echo "❌ Error: Failed to install APK"
+  exit 1
+}
+echo "✅ APK installed"
+
+echo "=== Running E2E tests ==="
+
+LOG_FILE="e2e-artifacts/android-emulator-logs.txt"
+
+# Start capturing Android logs in the background (filtered for freighter app)
+echo "📱 Starting Android logcat capture (filtered for freighter app)..."
+mkdir -p e2e-artifacts
+# Clear logcat buffer first to start fresh
+adb logcat -c
+# Start logcat in background with timestamp, filtering by log tags:
+# - ReactNativeJS:V (all React Native JavaScript console logs)
+# - ReactNative:V (native React Native logs)
+# - AndroidRuntime:E (crashes and errors)
+# Then pipe through grep to further filter for:
+# - The same tags (to catch any missed entries)
+# - Our app package name (org.stellar.freighterdev)
+# - The word "freighter" (to catch any related logs)
+# Use --line-buffered to prevent grep from buffering output
+adb logcat -v time ReactNativeJS:V ReactNative:V AndroidRuntime:E | grep --line-buffered -E "(ReactNativeJS|ReactNative|AndroidRuntime|org\.stellar\.freighterdev|freighter)" > "$LOG_FILE" 2>&1 &
+LOGCAT_PID=$!
+echo "✅ Log capture started (PID: $LOGCAT_PID)"
+
+# Cleanup function (Android-specific: avoid wait to prevent hangs; kill pipeline + orphan adb logcat)
+cleanup() {
+  echo "🛑 Stopping logcat capture..."
+  if [ -n "${LOGCAT_PID:-}" ]; then
+    kill -TERM "$LOGCAT_PID" 2>/dev/null || true
+    sleep 1
+    kill -KILL "$LOGCAT_PID" 2>/dev/null || true
+    # Don't wait - prevents script from hanging if the pipeline is stuck
+  fi
+  pkill -f "adb logcat.*ReactNativeJS" 2>/dev/null || true
+  sleep 1
+  echo "✅ Logcat capture stopped"
+}
+trap cleanup EXIT INT TERM
+
+# Verify Maestro is installed and accessible
+MAESTRO_PATH="$HOME/.maestro/bin/maestro"
+if [ ! -f "$MAESTRO_PATH" ]; then
+  echo "❌ Error: Maestro not found at $MAESTRO_PATH"
+  exit 1
+fi
+
+# Add Maestro to PATH and verify
+export PATH="$PATH:$HOME/.maestro/bin"
+if ! command -v maestro >/dev/null 2>&1; then
+  echo "❌ Error: maestro command not found in PATH"
+  echo "PATH: $PATH"
+  exit 1
+fi
+
+echo "✅ Maestro found: $(maestro --version)"
+
+# Verify E2E_TEST_RECOVERY_PHRASE is set in CI (required for ImportWallet flow)
+# Local runs can load from .env via run-e2e-tests.sh
+if [ -n "${SHARD_INDEX:-}" ] && [ -z "${E2E_TEST_RECOVERY_PHRASE:-}" ]; then
+  echo "❌ Error: E2E_TEST_RECOVERY_PHRASE secret is not set in CI"
+  echo "   Ensure secrets.E2E_TEST_RECOVERY_PHRASE is configured in GitHub repository settings"
+  exit 1
+fi
+
+# Build E2E script args: --platform android and, when set, --shard-index/--shard-total (CI matrix).
+# FLOW_NAME (CI only) can be passed as positional arg to run a specific flow.
+E2E_ARGS="--platform android"
+if [ -n "${SHARD_INDEX:-}" ] && [ -n "${SHARD_TOTAL:-}" ]; then
+  E2E_ARGS="$E2E_ARGS --shard-index $SHARD_INDEX --shard-total $SHARD_TOTAL"
+  if [ -n "${FLOW_NAME:-}" ]; then
+    echo "Running E2E tests ($FLOW_NAME, shard $SHARD_INDEX/$SHARD_TOTAL)..."
+    # Pass FLOW_NAME as positional argument to run specific flow
+    E2E_ARGS="$E2E_ARGS $FLOW_NAME"
+  else
+    echo "📂 Running E2E shard $SHARD_INDEX/$SHARD_TOTAL"
+  fi
+else
+  echo "Running E2E tests..."
+fi
+./scripts/run-e2e-tests.sh $E2E_ARGS || {
+  echo "❌ Error: E2E tests failed"
+  exit 1
+}
+
+echo "✅ All E2E tests passed"
+

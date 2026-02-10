@@ -548,6 +548,8 @@
     "doNotProceed": "Não prossiga",
     "suspiciousRequest": "Solicitação suspeita",
     "proceedWithCaution": "Proceda com cautela",
+    "expectedToFailTitle": "Aviso",
+    "expectedToFailDescription": "Esta transação deve falhar pelos seguintes motivos:",
     "unsafeTransaction": "Esta transação não parece segura pelos seguintes motivos:",
     "token": "Este token não parece seguro pelos seguintes motivos:",
     "cancel": "Cancelar",
@@ -586,6 +588,13 @@
     "cannotSendToSelf": "Não é possível enviar para você mesmo",
     "invalidAddress": "Endereço Stellar inválido",
     "scanQRCodeText": "Escanear um QR Code do Freighter"
+  },
+  "sendSearchContacts": {
+    "unfunded": {
+      "title": "A conta de destino não existe",
+      "action": "Envie pelo menos 1 XLM para criar a conta.",
+      "learnMore": "Saiba mais sobre a criação de contas"
+    }
   },
   "swapScreen": {
     "swapFrom": "Trocar de",
@@ -1117,6 +1126,9 @@
       },
       "transaction": {
         "simulationFailed": "Falha na simulação da transação",
+        "expectedToFail": "Espera-se que esta transação falhe.",
+        "unfundedDestination": "Esta é uma nova conta e precisa de 1 XLM para começar. Qualquer transação para enviar não-XLM para uma conta não financiada falhará.",
+        "unfundedDestinationNative": "Esta é uma nova conta e precisa de pelo menos 1 XLM para ser criada. Enviar menos de 1 XLM para criá-la falhará.",
         "malicious": "Esta transação foi marcada como maliciosa",
         "warning": "Esta transação foi marcada como aviso",
         "unableToSimulate": "Não foi possível simular a transação",

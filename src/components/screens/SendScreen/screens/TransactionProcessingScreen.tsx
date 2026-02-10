@@ -179,7 +179,7 @@ const TransactionProcessingScreen: React.FC<
 
   return (
     <BaseLayout insets={{ top: false }}>
-      <View className="flex-1 justify-between">
+      <View className="flex-1 justify-between" testID="send-processing-screen">
         <View className="flex-1 items-center justify-center">
           <View className="items-center gap-[8px] w-full">
             {getStatusIcon()}
@@ -239,10 +239,20 @@ const TransactionProcessingScreen: React.FC<
 
         {status === TransactionStatus.SENT ? (
           <View className="gap-[16px]">
-            <Button secondary xl onPress={handleViewTransaction}>
+            <Button
+              secondary
+              xl
+              onPress={handleViewTransaction}
+              testID="send-processing-view-transaction-button"
+            >
               {t("transactionProcessingScreen.viewTransaction")}
             </Button>
-            <Button tertiary xl onPress={handleClose}>
+            <Button
+              tertiary
+              xl
+              onPress={handleClose}
+              testID="send-processing-done-button"
+            >
               {t("common.done")}
             </Button>
           </View>
@@ -251,7 +261,12 @@ const TransactionProcessingScreen: React.FC<
             <Text sm medium secondary textAlign="center">
               {t("transactionProcessingScreen.closeMessage")}
             </Text>
-            <Button secondary xl onPress={handleClose}>
+            <Button
+              secondary
+              xl
+              onPress={handleClose}
+              testID="send-processing-close-button"
+            >
               {t("common.close")}
             </Button>
           </View>

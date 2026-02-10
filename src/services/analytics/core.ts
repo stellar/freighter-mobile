@@ -5,6 +5,7 @@ import { logger } from "config/logger";
 import { useAnalyticsStore } from "ducks/analytics";
 import { useAuthenticationStore } from "ducks/auth";
 import { useNetworkStore } from "ducks/networkInfo";
+import { isE2ETest } from "helpers/isEnv";
 import { throttle, memoize } from "lodash";
 import { Platform } from "react-native";
 import {
@@ -64,9 +65,9 @@ export const initAnalytics = (): void => {
   if (hasInitialised) return;
 
   if (!AMPLITUDE_API_KEY) {
-    // We should only report this error when not in development
-    // since in development we purposely don't have the amplitude api key set
-    if (!__DEV__) {
+    // We should only report this error when not in development or during e2e tests
+    // since in development or during e2e tests we purposely don't have the Amplitude API key set
+    if (!(__DEV__ || isE2ETest)) {
       logger.error(
         DEBUG_CONFIG.LOG_PREFIX,
         "missing amplitude config error",
@@ -246,9 +247,9 @@ const dispatchUnthrottled = (
   }
 
   if (!AMPLITUDE_API_KEY) {
-    // We should only report this error when not in development
-    // since in development we purposely don't have the amplitude api key set
-    if (!__DEV__) {
+    // We should only report this error when not in development or during e2e tests
+    // since in development or during e2e tests we purposely don't have the Amplitude API key set
+    if (!(__DEV__ || isE2ETest)) {
       logger.debug(
         DEBUG_CONFIG.LOG_PREFIX,
         `Skipping event due to missing API key: ${event}`,

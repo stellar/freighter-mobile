@@ -485,7 +485,9 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     ) {
       const extractedWarnings = [
         ...extractSecurityWarnings(transactionScanResult),
-        ...Object.values(scanResults).map(extractSecurityWarnings),
+        ...Object.values(scanResults).map((result) =>
+          extractSecurityWarnings(result),
+        ),
       ].flat();
 
       if (Array.isArray(extractedWarnings) && extractedWarnings.length > 0) {
@@ -605,7 +607,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
 
   return (
     <BaseLayout insets={{ top: false }}>
-      <View className="flex-1">
+      <View className="flex-1" testID="swap-amount-screen">
         <View className="flex-none items-center py-[24px] max-xs:py-[16px] px-6">
           <View className="flex-row items-center gap-1">
             <Display
@@ -632,6 +634,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
                 scanResult={scanResults[sourceBalance.id.replace(":", "-")]}
                 onPress={navigateToSelectSourceTokenScreen}
                 spendableAmount={spendableAmount || undefined}
+                testID="swap-from-token-row"
                 rightContent={
                   <IconButton
                     Icon={Icon.ChevronRight}
@@ -652,6 +655,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
                   scanResults[destinationBalance.id.replace(":", "-")]
                 }
                 onPress={navigateToSelectDestinationTokenScreen}
+                testID="swap-to-token-row"
                 rightContent={
                   <IconButton
                     Icon={Icon.ChevronRight}
@@ -664,6 +668,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
               <TouchableOpacity
                 className="flex-row w-full h-[44px] justify-between items-center"
                 onPress={navigateToSelectDestinationTokenScreen}
+                testID="swap-to-choose-token"
               >
                 <View className="flex-row items-center flex-1 mr-4">
                   <View className="flex-row items-center gap-16px">
@@ -720,6 +725,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
               onPress={handleMainButtonPress}
               disabled={isButtonDisabled}
               isLoading={isLoadingPath || isBuilding}
+              testID="swap-continue-button"
             >
               {destinationBalance
                 ? t("common.review")

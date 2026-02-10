@@ -131,6 +131,7 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
         setValue={setLocalMnemonicPhrase}
         error={error}
         showMasked={showMasked}
+        testID="import-wallet-input"
       />
     </OnboardLayout>
   );

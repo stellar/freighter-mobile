@@ -191,7 +191,7 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
         <Text secondary md>
           {t("recoveryPhraseScreen.warning")}
         </Text>
-        <RecoveryPhraseContainer>
+        <RecoveryPhraseContainer testID="recovery-phrase-container">
           <RecoveryPhraseText primary md>
             {localMnemonicPhrase}
           </RecoveryPhraseText>
