@@ -34,6 +34,7 @@ import { submitTx } from "services/stellar";
 const stellarNamespaceMethods = [
   StellarRpcMethods.SIGN_XDR,
   StellarRpcMethods.SIGN_AND_SUBMIT_XDR,
+  StellarRpcMethods.SIGN_MESSAGE,
 ];
 
 /** Supported Stellar RPC events for WalletKit */
@@ -225,6 +226,7 @@ export const rejectSessionRequest = async ({
 export const approveSessionRequest = async ({
   sessionRequest,
   signTransaction,
+  signMessage,
   networkPassphrase,
   activeChain,
   showToast,
@@ -234,6 +236,7 @@ export const approveSessionRequest = async ({
   signTransaction: (
     transaction: Transaction | FeeBumpTransaction,
   ) => string | null;
+  signMessage: (message: string) => string | null;
   networkPassphrase: string;
   activeChain: string;
   showToast: (options: ToastOptions) => void;
@@ -281,6 +284,97 @@ export const approveSessionRequest = async ({
     return;
   }
 
+  // Handle SIGN_MESSAGE separately (doesn't involve transaction XDR)
+  if (rpcMethod === StellarRpcMethods.SIGN_MESSAGE) {
+    const { message } = requestParams || {};
+
+    if (!message || typeof message !== "string") {
+      const errorMessage = "Invalid message parameter";
+      showToast({
+        title: t("walletKit.errorSigning"),
+        message: errorMessage,
+        variant: "error",
+      });
+      rejectSessionRequest({ sessionRequest, message: errorMessage });
+      return;
+    }
+
+    // Validate message length (1KB limit per SEP-53 recommendations)
+    if (message.length > 1024) {
+      const errorMessage = "Message too long (max 1KB)";
+      showToast({
+        title: t("walletKit.errorSigning"),
+        message: errorMessage,
+        variant: "error",
+      });
+      rejectSessionRequest({ sessionRequest, message: errorMessage });
+      return;
+    }
+
+    const signedMessage = signMessage(message);
+
+    if (!signedMessage) {
+      const errorMessage = "Failed to sign message";
+      logger.error(
+        "approveSessionRequest",
+        errorMessage,
+        new Error(errorMessage),
+      );
+      showToast({
+        title: t("walletKit.errorSigning"),
+        message: t("walletKit.pleaseTryAgainLater"),
+        variant: "error",
+      });
+      rejectSessionRequest({ sessionRequest, message: errorMessage });
+      return;
+    }
+
+    // Get dapp metadata for analytics
+    const { activeSessions } = useWalletKitStore.getState();
+    const dappMetadata = getDappMetadataFromEvent(
+      sessionRequest,
+      activeSessions,
+    );
+    const dappDomain = dappMetadata?.url;
+
+    analytics.trackSignedMessage({
+      messageLength: message.length,
+      ...(dappDomain ? { dappDomain } : {}),
+    });
+
+    const response = {
+      id,
+      result: { signedMessage },
+      jsonrpc: "2.0",
+    };
+
+    try {
+      await walletKit.respondSessionRequest({ topic, response });
+
+      showToast({
+        title: t("walletKit.signSuccessfull"),
+        message: t("walletKit.returnToBrowser"),
+        variant: "success",
+      });
+    } catch (error) {
+      const message = t("common.error", {
+        errorMessage:
+          error instanceof Error ? error.message : t("common.unknownError"),
+      });
+
+      showToast({
+        title: t("walletKit.errorRespondingRequest"),
+        message,
+        variant: "error",
+      });
+
+      rejectSessionRequest({ sessionRequest, message });
+    }
+
+    return;
+  }
+
+  // Transaction signing flow (for SIGN_XDR and SIGN_AND_SUBMIT_XDR)
   let transaction: Transaction | FeeBumpTransaction;
   let signedTransaction: string | null;
   let dappDomain: string | undefined;

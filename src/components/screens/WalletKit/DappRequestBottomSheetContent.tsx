@@ -2,6 +2,7 @@ import Blockaid from "@blockaid/client";
 import { List } from "components/List";
 import SignTransactionDetails from "components/screens/SignTransactionDetails";
 import { SignTransactionDetailsInterface } from "components/screens/SignTransactionDetails/types";
+import { MessageDisplay } from "components/screens/WalletKit/MessageDisplay";
 import { App } from "components/sds/App";
 import Avatar from "components/sds/Avatar";
 import { Banner } from "components/sds/Banner";
@@ -13,7 +14,7 @@ import { AnalyticsEvent } from "config/analyticsConfig";
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import { ActiveAccount } from "ducks/auth";
 import { useProtocolsStore } from "ducks/protocols";
-import { WalletKitSessionRequest } from "ducks/walletKit";
+import { StellarRpcMethods, WalletKitSessionRequest } from "ducks/walletKit";
 import { formatTokenForDisplay } from "helpers/formatAmount";
 import { findMatchedProtocol, getHostname } from "helpers/protocols";
 import { useTransactionBalanceListItems } from "hooks/blockaid/useTransactionBalanceListItems";
@@ -121,6 +122,14 @@ const DappRequestBottomSheetContent: React.FC<
     return formatTokenForDisplay(String(feeXlm), NATIVE_TOKEN_CODE);
   };
 
+  const sessionRequest = requestEvent?.params;
+  const requestMethod = sessionRequest?.request?.method as StellarRpcMethods;
+  const requestParams = sessionRequest?.request?.params;
+  const isSignMessage = requestMethod === StellarRpcMethods.SIGN_MESSAGE;
+  const messageToSign = isSignMessage
+    ? (requestParams as { message?: string })?.message
+    : undefined;
+
   const accountDetailList = useMemo(
     () => [
       {
@@ -142,24 +151,36 @@ const DappRequestBottomSheetContent: React.FC<
         ),
         titleColor: themeColors.text.secondary,
       },
-      {
-        icon: <Icon.Route size={16} color={themeColors.foreground.primary} />,
-        title: t("transactionAmountScreen.details.fee"),
-        trailingContent: (
-          <View className="flex-row items-center gap-2">
-            <Text md primary>
-              {formatFeeAmount(signTransactionDetails?.summary.feeXlm)}
-            </Text>
-          </View>
-        ),
-        titleColor: themeColors.text.secondary,
-      },
+      // Only show fee for transaction signing, not message signing
+      ...(!isSignMessage
+        ? [
+            {
+              icon: (
+                <Icon.Route size={16} color={themeColors.foreground.primary} />
+              ),
+              title: t("transactionAmountScreen.details.fee"),
+              trailingContent: (
+                <View className="flex-row items-center gap-2">
+                  <Text md primary>
+                    {formatFeeAmount(signTransactionDetails?.summary.feeXlm)}
+                  </Text>
+                </View>
+              ),
+              titleColor: themeColors.text.secondary,
+            },
+          ]
+        : []),
     ],
-    [account, themeColors, t, signTransactionDetails?.summary.feeXlm],
+    [
+      account,
+      themeColors,
+      t,
+      signTransactionDetails?.summary.feeXlm,
+      isSignMessage,
+    ],
   );
 
   const dappMetadata = useDappMetadata(requestEvent);
-  const sessionRequest = requestEvent?.params;
   const requestOrigin = requestEvent?.verifyContext?.verified?.origin ?? "";
 
   const matchedProtocol = useMemo(
@@ -280,7 +301,9 @@ const DappRequestBottomSheetContent: React.FC<
         <App size="lg" appName={dAppName} favicon={dAppFavicon} />
         <View className="ml-2">
           <Text md primary>
-            {t("dappRequestBottomSheetContent.confirmTransaction")}
+            {isSignMessage
+              ? t("dappRequestBottomSheetContent.signMessage")
+              : t("dappRequestBottomSheetContent.confirmTransaction")}
           </Text>
           {dAppDomain && (
             <Text sm secondary>
@@ -304,13 +327,24 @@ const DappRequestBottomSheetContent: React.FC<
         />
       )}
       <View className="gap-[12px]">
-        <List variant="secondary" items={transactionBalanceListItems} />
-        <List variant="secondary" items={accountDetailList} />
-        {signTransactionDetails && (
-          <SignTransactionDetails
-            data={signTransactionDetails}
-            analyticsEvent={AnalyticsEvent.VIEW_SIGN_DAPP_TRANSACTION_DETAILS}
-          />
+        {isSignMessage && messageToSign ? (
+          <>
+            <MessageDisplay message={messageToSign} />
+            <List variant="secondary" items={accountDetailList} />
+          </>
+        ) : (
+          <>
+            <List variant="secondary" items={transactionBalanceListItems} />
+            <List variant="secondary" items={accountDetailList} />
+            {signTransactionDetails && (
+              <SignTransactionDetails
+                data={signTransactionDetails}
+                analyticsEvent={
+                  AnalyticsEvent.VIEW_SIGN_DAPP_TRANSACTION_DETAILS
+                }
+              />
+            )}
+          </>
         )}
       </View>
 

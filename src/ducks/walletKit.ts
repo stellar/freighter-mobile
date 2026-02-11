@@ -53,6 +53,7 @@ export enum StellarRpcChains {
 export enum StellarRpcMethods {
   SIGN_XDR = "stellar_signXDR",
   SIGN_AND_SUBMIT_XDR = "stellar_signAndSubmitXDR",
+  SIGN_MESSAGE = "stellar_signMessage",
 }
 
 /**

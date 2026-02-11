@@ -832,6 +832,7 @@
   "dappRequestBottomSheetContent": {
     "transactionRequest": "Solicitação de transação",
     "confirmTransaction": "Confirmar transação",
+    "signMessage": "Assinar mensagem",
     "cancel": "Cancelar",
     "confirm": "Confirmar",
     "confirmAnyway": "Confirmar mesmo assim",

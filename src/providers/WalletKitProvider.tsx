@@ -88,7 +88,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 }) => {
   const { themeColors } = useColors();
   const { network, authStatus } = useAuthenticationStore();
-  const { account, signTransaction } = useGetActiveAccount();
+  const { account, signTransaction, signMessage } = useGetActiveAccount();
   const { overriddenBlockaidResponse } = useDebugStore();
 
   const addMemoExplanationBottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -437,6 +437,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     approveSessionRequest({
       sessionRequest: requestEvent,
       signTransaction,
+      signMessage,
       networkPassphrase: networkDetails.networkPassphrase,
       activeChain,
       showToast,
