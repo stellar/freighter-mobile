@@ -7,16 +7,30 @@ tags:
 # NOTE: This flow is currently excluded from CI (iOS and Android) due to testID-related
 # issues. Further investigation is needed to fix component/testID lookups before re-enabling.
 #
-# Import wallet first to ensure we have a wallet with balances
+# Import funded wallet first to ensure we have a wallet with balances
 # NOTE: you can comment this first ImportWallet.yaml runFlow section out to
 # skip the import wallet flow when testing locally so you don't need to import
 # the wallet every time.
 - runFlow:
-    file: ../onboarding/ImportWallet.yaml
+    file: ../onboarding/ImportFundedWallet.yaml
+
+# Switch to testnet after import
+- runFlow:
+    file: ../walletconnect/SwitchToTestnet.yaml
 
 # Verify we're on home screen after import
 - assertVisible:
     id: home-screen
+
+# Wait for accounts and balances to load (can take ~10s after import)
+- extendedWaitUntil:
+    visible:
+      id: home-account-switcher
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: icon-button-swap
+    timeout: 15000
 
 # Navigate to swap screen
 - assertVisible:

@@ -5,6 +5,7 @@ import { TokensCollectiblesTabs } from "components/TokensCollectiblesTabs";
 import { AnalyticsDebugTrigger } from "components/analytics/AnalyticsDebugTrigger";
 import { DebugBottomSheet } from "components/analytics/DebugBottomSheet";
 import { BaseLayout } from "components/layout/BaseLayout";
+import { WCE2ES } from "components/screens/E2EWalletConnectSimulator";
 import ManageAccounts from "components/screens/HomeScreen/ManageAccounts";
 import WelcomeBannerBottomSheet from "components/screens/HomeScreen/WelcomeBannerBottomSheet";
 import Avatar from "components/sds/Avatar";
@@ -25,6 +26,7 @@ import { useBalancesStore } from "ducks/balances";
 import { useCollectiblesStore } from "ducks/collectibles";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { useWalletKitStore } from "ducks/walletKit";
+import { isE2ETest } from "helpers/isEnv";
 import { isContractId } from "helpers/soroban";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
@@ -199,6 +201,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
       analyticsDebugBottomSheetRef.current?.dismiss();
     }, []);
 
+    const handleOpenSettingsPress = useCallback(() => {
+      navigation.navigate(ROOT_NAVIGATOR_ROUTES.SETTINGS_STACK);
+    }, [navigation]);
+
     const handleRefresh = useCallback(async () => {
       if (!account?.publicKey) return;
 
@@ -259,6 +265,18 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
           }
           contentContainerStyle={{ flexGrow: 1 }}
         >
+          {isE2ETest && (
+            <View className="w-full items-center mt-2">
+              <TouchableOpacity
+                onPress={handleOpenSettingsPress}
+                testID="e2e-open-settings"
+              >
+                <Text sm secondary>
+                  {t("settings.title")}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
           {/* Header section with account info and actions */}
           <View className="pt-8 w-full items-center">
             <View className="flex-col gap-3 items-center">
@@ -332,6 +350,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
             onDismiss={handleAnalyticsDebugDismiss}
           />
         )}
+        <WCE2ES />
         <AnalyticsDebugTrigger onPress={handleAnalyticsDebugPress} />
       </BaseLayout>
     );

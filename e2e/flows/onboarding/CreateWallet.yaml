@@ -56,20 +56,17 @@ tags:
 - tapOn:
     id: skip-confirm-button
 
-# Dismiss welcome banner if it appears (retry up to 3 times in case it appears after a delay)
-- retry:
-    maxRetries: 2
-    commands:
-      - runFlow:
-          when:
-            visible:
-              id: welcome-banner-dismiss-button
-          commands:
-            - tapOn:
-                id: welcome-banner-dismiss-button
-
-# Verify we reached home screen
+# Wait for wallet creation to complete
 - extendedWaitUntil:
     visible:
       id: home-screen
-    timeout: 180000
+    timeout: 10000
+
+# Dismiss welcome banner if it appears after wallet creation
+- runFlow:
+    when:
+      visible:
+        id: welcome-banner-dismiss-button
+    commands:
+      - tapOn:
+          id: welcome-banner-dismiss-button

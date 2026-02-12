@@ -45,8 +45,9 @@ export const MessageDisplay: React.FC<MessageDisplayProps> = ({ message }) => {
     <View
       className="rounded-2xl p-4 my-3"
       style={{ backgroundColor: themeColors.background.secondary }}
+      testID="message-display"
     >
-      <Text sm secondary style={{ marginBottom: 8 }}>
+      <Text sm secondary style={{ marginBottom: 8 }} testID="message-display-prefix">
         {SIGN_MESSAGE_PREFIX}
       </Text>
       <ScrollView
@@ -54,6 +55,7 @@ export const MessageDisplay: React.FC<MessageDisplayProps> = ({ message }) => {
         style={{
           maxHeight: 200,
         }}
+        testID="message-display-content-scroll"
       >
         <Text
           sm
@@ -61,6 +63,7 @@ export const MessageDisplay: React.FC<MessageDisplayProps> = ({ message }) => {
           style={{
             fontFamily: isJson ? "monospace" : undefined,
           }}
+          testID="message-display-content"
         >
           {displayMessage}
         </Text>

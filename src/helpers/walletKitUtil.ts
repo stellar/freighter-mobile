@@ -356,19 +356,19 @@ export const approveSessionRequest = async ({
         message: t("walletKit.returnToBrowser"),
         variant: "success",
       });
-    } catch (error) {
-      const message = t("common.error", {
+    } catch (err) {
+      const errorMsg = t("common.error", {
         errorMessage:
-          error instanceof Error ? error.message : t("common.unknownError"),
+          err instanceof Error ? err.message : t("common.unknownError"),
       });
 
       showToast({
         title: t("walletKit.errorRespondingRequest"),
-        message,
+        message: errorMsg,
         variant: "error",
       });
 
-      rejectSessionRequest({ sessionRequest, message });
+      rejectSessionRequest({ sessionRequest, message: errorMsg });
     }
 
     return;

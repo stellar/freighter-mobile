@@ -55,7 +55,7 @@ const useGetActiveAccount = () => {
 
       try {
         return signMessageHelper(message, account.privateKey);
-      } catch (error) {
+      } catch (err) {
         return null;
       }
     },

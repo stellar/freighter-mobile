@@ -1,4 +1,4 @@
-import { MuxedAccount, StrKey } from "@stellar/stellar-sdk";
+import { MuxedAccount, StrKey, hash } from "@stellar/stellar-sdk";
 import { logger } from "config/logger";
 import { isContractId } from "helpers/soroban";
 import {
@@ -555,7 +555,6 @@ describe("Stellar helpers", () => {
       it("should include SEP-53 prefix in encoding", () => {
         // We can verify the prefix is used by comparing hashes
         // If we hash the message directly vs with prefix, they should be different
-        const { hash } = require("@stellar/stellar-sdk");
         const message = "Test";
 
         const directHash = hash(Buffer.from(message, "utf8"));

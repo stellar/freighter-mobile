@@ -78,6 +78,18 @@ if [ -z "${E2E_TEST_RECOVERY_PHRASE:-}" ]; then
   echo "   Add E2E_TEST_RECOVERY_PHRASE to your .env file (see .env.example)."
 fi
 
+# Load E2E_TEST_FUNDED_RECOVERY_PHRASE from .env when not set (local runs). CI uses secrets.
+if [ -z "${E2E_TEST_FUNDED_RECOVERY_PHRASE:-}" ] && [ -f .env ]; then
+  E2E_TEST_FUNDED_RECOVERY_PHRASE=$(sed -n 's/^E2E_TEST_FUNDED_RECOVERY_PHRASE=//p' .env 2>/dev/null | head -1)
+  export E2E_TEST_FUNDED_RECOVERY_PHRASE
+fi
+
+# Load E2E_TEST_RECIPIENT_ADDRESS from .env when not set (local runs). CI uses secrets.
+if [ -z "${E2E_TEST_RECIPIENT_ADDRESS:-}" ] && [ -f .env ]; then
+  E2E_TEST_RECIPIENT_ADDRESS=$(sed -n 's/^E2E_TEST_RECIPIENT_ADDRESS=//p' .env 2>/dev/null | head -1)
+  export E2E_TEST_RECIPIENT_ADDRESS
+fi
+
 if [ -n "$PLATFORM" ]; then
   case "$PLATFORM" in
     ios)
@@ -87,6 +99,10 @@ if [ -n "$PLATFORM" ]; then
         exit 1
       fi
       echo "📱 Targeting iOS simulator: $MAESTRO_DEVICE"
+
+      # Disable Face ID/Touch ID enrollment for E2E tests to avoid biometrics flow interruptions
+      echo "🔓 Disabling biometric enrollment on simulator..."
+      xcrun simctl spawn "$MAESTRO_DEVICE" notifyutil -p com.apple.BiometricKit.enrollmentChanged >/dev/null 2>&1 || true
       ;;
     android)
       MAESTRO_DEVICE=$(adb devices 2>/dev/null | awk '/^[^[:space:]]+[[:space:]]+device$/ { print $1; exit }')
@@ -269,12 +285,6 @@ if [ -z "$FLOW_FILES" ]; then
   exit 1
 fi
 
-# Set iOS simulator clipboard for ImportWallet (local runs). CI sets it in the workflow.
-if [ "$PLATFORM" = "ios" ] && [ -n "${E2E_TEST_RECOVERY_PHRASE:-}" ] && [ -n "${MAESTRO_DEVICE:-}" ]; then
-  echo "$E2E_TEST_RECOVERY_PHRASE" | xcrun simctl pbcopy "$MAESTRO_DEVICE"
-  echo "✅ Recovery phrase set in simulator clipboard (for ImportWallet)"
-fi
-
 # Track failures
 failed=0
 failed_tests=""
@@ -282,6 +292,29 @@ failed_tests=""
 for file in $FLOW_FILES; do
   # Extract flow name from file path (e.g., "CreateWallet" from "e2e/flows/onboarding/CreateWallet.yaml")
   FLOW_NAME=$(basename "$file" .yaml)
+
+  if grep -q "E2E_TEST_RECIPIENT_ADDRESS" "$file" 2>/dev/null; then
+    if [ -z "${E2E_TEST_RECIPIENT_ADDRESS:-}" ]; then
+      echo "⚠️  E2E_TEST_RECIPIENT_ADDRESS is not set; $FLOW_NAME may fail."
+    fi
+  fi
+
+  # Set iOS simulator clipboard based on flow type (local runs). CI sets it in the workflow.
+  if [ "$PLATFORM" = "ios" ] && [ -n "${MAESTRO_DEVICE:-}" ]; then
+    if grep -q "ImportFundedWallet.yaml" "$file" 2>/dev/null; then
+      # Use funded recovery phrase for flows that import funded wallets
+      if [ -n "${E2E_TEST_FUNDED_RECOVERY_PHRASE:-}" ]; then
+        echo "$E2E_TEST_FUNDED_RECOVERY_PHRASE" | xcrun simctl pbcopy "$MAESTRO_DEVICE"
+        echo "✅ Funded recovery phrase set in simulator clipboard (for $FLOW_NAME)"
+      fi
+    elif echo "$FLOW_NAME" | grep -qi "import"; then
+      # Use regular recovery phrase for import wallet flows
+      if [ -n "${E2E_TEST_RECOVERY_PHRASE:-}" ]; then
+        echo "$E2E_TEST_RECOVERY_PHRASE" | xcrun simctl pbcopy "$MAESTRO_DEVICE"
+        echo "✅ Recovery phrase set in simulator clipboard (for $FLOW_NAME)"
+      fi
+    fi
+  fi
   TS=$(date +%s)
   FLOW_OUTPUT_DIR="$OUTPUT_DIR/${FLOW_NAME}-${TS}"
   
@@ -298,26 +331,21 @@ for file in $FLOW_FILES; do
   # Pass E2E_TEST_RECOVERY_PHRASE and IS_CI_ENV when set via Maestro's `-e KEY=value`.
   # --debug-output ensures maestro.log is written to FLOW_OUTPUT_DIR (otherwise it goes to ~/.maestro/tests/).
   _ret=0
+  MAESTRO_ENV_ARGS=()
+  if [ -n "${E2E_TEST_RECOVERY_PHRASE:-}" ]; then
+    MAESTRO_ENV_ARGS+=("-e" "E2E_TEST_RECOVERY_PHRASE=$E2E_TEST_RECOVERY_PHRASE")
+  fi
+  if [ -n "${E2E_TEST_RECIPIENT_ADDRESS:-}" ]; then
+    MAESTRO_ENV_ARGS+=("-e" "E2E_TEST_RECIPIENT_ADDRESS=$E2E_TEST_RECIPIENT_ADDRESS")
+  fi
+  if [ -n "${IS_CI_ENV:-}" ]; then
+    MAESTRO_ENV_ARGS+=("-e" "IS_CI_ENV=$IS_CI_ENV")
+  fi
+
   if [ -n "$MAESTRO_DEVICE" ]; then
-    if [ -n "${E2E_TEST_RECOVERY_PHRASE:-}" ] && [ -n "${IS_CI_ENV:-}" ]; then
-      maestro test -e "E2E_TEST_RECOVERY_PHRASE=$E2E_TEST_RECOVERY_PHRASE" -e "IS_CI_ENV=$IS_CI_ENV" --device "$MAESTRO_DEVICE" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" || _ret=$?
-    elif [ -n "${E2E_TEST_RECOVERY_PHRASE:-}" ]; then
-      maestro test -e "E2E_TEST_RECOVERY_PHRASE=$E2E_TEST_RECOVERY_PHRASE" --device "$MAESTRO_DEVICE" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" || _ret=$?
-    elif [ -n "${IS_CI_ENV:-}" ]; then
-      maestro test -e "IS_CI_ENV=$IS_CI_ENV" --device "$MAESTRO_DEVICE" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" || _ret=$?
-    else
-      maestro test --device "$MAESTRO_DEVICE" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" || _ret=$?
-    fi
+    maestro test "${MAESTRO_ENV_ARGS[@]}" --device "$MAESTRO_DEVICE" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" || _ret=$?
   else
-    if [ -n "${E2E_TEST_RECOVERY_PHRASE:-}" ] && [ -n "${IS_CI_ENV:-}" ]; then
-      maestro test -e "E2E_TEST_RECOVERY_PHRASE=$E2E_TEST_RECOVERY_PHRASE" -e "IS_CI_ENV=$IS_CI_ENV" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" || _ret=$?
-    elif [ -n "${E2E_TEST_RECOVERY_PHRASE:-}" ]; then
-      maestro test -e "E2E_TEST_RECOVERY_PHRASE=$E2E_TEST_RECOVERY_PHRASE" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" || _ret=$?
-    elif [ -n "${IS_CI_ENV:-}" ]; then
-      maestro test -e "IS_CI_ENV=$IS_CI_ENV" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" || _ret=$?
-    else
-      maestro test "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" || _ret=$?
-    fi
+    maestro test "${MAESTRO_ENV_ARGS[@]}" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" || _ret=$?
   fi
   
   # Move maestro.log from nested .maestro/tests/<timestamp>/ to flow output directory

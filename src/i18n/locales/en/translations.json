@@ -36,7 +36,8 @@
     "copy": "Copy",
     "name": "Name",
     "collection": "Collection",
-    "tokenId": "Token ID"
+    "tokenId": "Token ID",
+    "useE2ERecipient": "Use E2E recipient"
   },
   "home": {
     "title": "Home",

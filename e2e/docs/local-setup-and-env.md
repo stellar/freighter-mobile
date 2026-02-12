@@ -7,10 +7,11 @@ secrets/variables are used in CI.
 
 Create a `.env` from `.env.example` and set at least:
 
-| Variable                   | Required             | Description                                                        |
-| -------------------------- | -------------------- | ------------------------------------------------------------------ |
-| `IS_E2E_TEST`              | Yes                  | Set to `true` for E2E. Enables test-specific behavior in the app.  |
-| `E2E_TEST_RECOVERY_PHRASE` | For Import/Send/Swap | Recovery phrase used by Import Wallet and flows that `runFlow` it. |
+| Variable                     | Required             | Description                                                                       |
+| ---------------------------- | -------------------- | --------------------------------------------------------------------------------- |
+| `IS_E2E_TEST`                | Yes                  | Set to `true` for E2E. Enables test-specific behavior in the app.                 |
+| `E2E_TEST_RECOVERY_PHRASE`   | For Import/Send/Swap | Recovery phrase used by Import Wallet and flows that `runFlow` it.                |
+| `E2E_TEST_RECIPIENT_ADDRESS` | For Send             | Recipient address used by SendClassicToken flow (must not be the active account). |
 
 Example:
 
@@ -18,6 +19,7 @@ Example:
 IS_E2E_TEST=true
 # DO NOT add quotes around the recovery phrase as it will break the ImportWallet flow
 E2E_TEST_RECOVERY_PHRASE=word1 word2 ... word12
+E2E_TEST_RECIPIENT_ADDRESS=G...TESTNET_RECIPIENT
 ```
 
 `run-e2e-tests.sh` loads `E2E_TEST_RECOVERY_PHRASE` from `.env` when it's not
@@ -29,6 +31,7 @@ already set.
 - **Password**: `TestPassword123!` (hardcoded in flows).
 - **Recovery phrase**: From `E2E_TEST_RECOVERY_PHRASE` (`.env` locally,
   `secrets.E2E_TEST_RECOVERY_PHRASE` in CI).
+- **Recipient address**: From `E2E_TEST_RECIPIENT_ADDRESS` for SendClassicToken.
 
 ## Secrets and variables in CI
 

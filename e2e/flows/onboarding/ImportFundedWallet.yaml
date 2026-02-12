@@ -2,6 +2,7 @@ appId: org.stellar.freighterdev
 tags:
   - onboarding
   - import-wallet
+  - funded
 ---
 # Launch app and wait for welcome screen; retry up to 3 times (2 min wait each) if not visible
 - retry:
@@ -43,9 +44,9 @@ tags:
 - tapOn:
     id: default-action-button
 
-# Import wallet screen - enter recovery phrase
+# Import wallet screen - enter recovery phrase for funded wallet
 #
-# Phrase: CI uses secrets.E2E_TEST_RECOVERY_PHRASE; local uses .env E2E_TEST_RECOVERY_PHRASE.
+# Phrase: CI uses secrets.E2E_TEST_FUNDED_RECOVERY_PHRASE; local uses .env E2E_TEST_FUNDED_RECOVERY_PHRASE.
 #
 # iOS: Use clipboard (phrase set by run-e2e-tests.sh / CI workflow). Tap app's clipboard button to paste.
 #      Avoids iOS Simulator occasionally skipping letters when typing. Handle "Allow Paste" if shown.
@@ -75,7 +76,7 @@ tags:
     commands:
       - tapOn:
           id: import-wallet-input
-      - inputText: "${E2E_TEST_RECOVERY_PHRASE}"
+      - inputText: "${E2E_TEST_FUNDED_RECOVERY_PHRASE}"
       # Only hide keyboard if button is not visible (suggesting keyboard is blocking it)
       # This prevents calling hideKeyboard when keyboard is already hidden (which causes navigation issues)
       - runFlow:

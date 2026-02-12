@@ -26,8 +26,6 @@ interface ContextMenuButtonProps {
     actions: MenuItem[];
     onPress?: (e: { nativeEvent: { name: string } }) => void;
   };
-  /** Optional testID for the menu trigger (ellipsis button) */
-  testID?: string;
   // Positioning props for MenuContent
   side?: "top" | "right" | "bottom" | "left";
   align?: "start" | "center" | "end";
@@ -38,7 +36,6 @@ interface ContextMenuButtonProps {
 const ContextMenuButton: React.FC<ContextMenuButtonProps> = ({
   children,
   contextMenuProps,
-  testID,
   side,
   align,
   sideOffset,
@@ -81,7 +78,7 @@ const ContextMenuButton: React.FC<ContextMenuButtonProps> = ({
   return (
     <MenuRoot>
       <MenuTrigger>
-        <View testID={testID}>{children}</View>
+        <View>{children}</View>
       </MenuTrigger>
       <MenuContent
         side={side}

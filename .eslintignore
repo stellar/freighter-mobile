@@ -11,3 +11,6 @@ ios/
 
 # Lock file
 yarn.lock
+
+# E2E testing infrastructure (dev-only)
+e2e/mock-dapp/

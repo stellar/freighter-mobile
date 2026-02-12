@@ -117,10 +117,7 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
           </View>
         </View>
       </TouchableOpacity>
-      <ContextMenuButton
-        contextMenuProps={{ actions }}
-        testID={testID ? `${testID}-context-menu` : undefined}
-      >
+      <ContextMenuButton contextMenuProps={{ actions }}>
         <Icon.DotsHorizontal color={themeColors.foreground.primary} />
       </ContextMenuButton>
     </View>

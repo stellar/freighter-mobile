@@ -1,0 +1,140 @@
+appId: org.stellar.freighterdev
+tags:
+  - walletconnect
+  - sign-message
+  - network-mismatch
+  - e2e
+---
+# WalletConnect Sign Message E2E Flow - Network Mismatch
+#
+# Tests network validation by sending a request for the wrong chain.
+# The WCE2ES FAB hardcodes testnet, so this test requires the mock server
+# to send a pubnet request while the wallet is on testnet.
+#
+# NOTE: This test requires the mock WalletConnect server running on localhost:3001
+#
+# Steps:
+# 1. Import wallet (setup on Testnet)
+# 2. Switch to testnet
+# 3. Create WalletConnect session via mock server
+# 4. Approve connection
+# 5. Send signMessage request for pubnet (wrong network)
+# 6. Verify error handling
+#
+# Prerequisites:
+# - Mock WalletConnect server running on localhost:3001
+# - IS_E2E_TEST=true in .env
+# - E2E_TEST_FUNDED_RECOVERY_PHRASE set
+
+#########################################
+# SETUP: Import Wallet
+#########################################
+
+- runFlow:
+    file: ../onboarding/ImportFundedWallet.yaml
+
+# Dismiss welcome banner if it appears
+- runFlow:
+    when:
+      visible:
+        id: welcome-banner-dismiss-button
+    commands:
+      - tapOn:
+          id: welcome-banner-dismiss-button
+      - extendedWaitUntil:
+          visible:
+            id: home-screen
+          timeout: 10000
+
+- assertVisible:
+    id: home-screen
+
+#########################################
+# SETUP: Switch to Testnet
+#########################################
+
+- runFlow:
+    file: ./SwitchToTestnet.yaml
+
+#########################################
+# STEP 1: Create WalletConnect Session
+#########################################
+
+- evalScript: |
+    const response = await http.post('http://localhost:3001/session/create', {
+        headers: { 'Content-Type': 'application/json' }
+    });
+
+    if (response.status !== 200) {
+        throw new Error(`HTTP ${response.status}: ${response.body}`);
+    }
+
+    const data = JSON.parse(response.body);
+
+    if (!data.sessionId || !data.deepLink) {
+        throw new Error('Invalid response: missing sessionId or deepLink');
+    }
+
+    output.sessionId = data.sessionId;
+    output.deepLink = data.deepLink;
+
+- openLink: ${output.deepLink}
+
+#########################################
+# STEP 2: Approve Session
+#########################################
+
+- extendedWaitUntil:
+    visible:
+      id: walletconnect-session-proposal-sheet
+    timeout: 10000
+
+- tapOn:
+    id: session-proposal-confirm-button
+
+- extendedWaitUntil:
+    visible: "Connection successful"
+    timeout: 5000
+
+- evalScript: |
+    const response = await http.get(`http://localhost:3001/session/${output.sessionId}/wait?timeout=15000`);
+
+    if (response.status !== 200) {
+        throw new Error(`HTTP ${response.status}: ${response.body}`);
+    }
+
+#########################################
+# STEP 3: Request Sign Message (Wrong Network)
+#########################################
+
+# Send request for Public network while wallet is on Testnet
+- evalScript: |
+    const response = await http.post(`http://localhost:3001/session/${output.sessionId}/request/signMessage`, {
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            message: 'Network mismatch test',
+            network: 'pubnet'
+        })
+    });
+
+    if (response.status !== 200) {
+        throw new Error(`HTTP ${response.status}: ${response.body}`);
+    }
+
+#########################################
+# STEP 4: Verify Error Handling
+#########################################
+
+# Should show network mismatch error
+- extendedWaitUntil:
+    visible:
+      text: "network"
+    timeout: 5000
+
+# Wait to ensure no request sheet appears
+- evalScript: |
+    await new Promise(resolve => setTimeout(resolve, 3000));
+
+# Verify we're still on home (no successful request)
+- assertVisible:
+    id: home-screen

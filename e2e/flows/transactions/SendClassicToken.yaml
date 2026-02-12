@@ -7,29 +7,34 @@ tags:
 # NOTE: This flow is currently excluded from CI (iOS and Android) due to testID-related
 # issues. Further investigation is needed to fix component/testID lookups before re-enabling.
 #
-# Import wallet first to ensure we have a wallet with balances
+# Import funded wallet first to ensure we have a wallet with balances
 # NOTE: you can comment this first ImportWallet.yaml runFlow section out to
 # skip the import wallet flow when testing locally so you don't need to import
 # the wallet every time.
 - runFlow:
-    file: ../onboarding/ImportWallet.yaml
+    file: ../onboarding/ImportFundedWallet.yaml
+
+# Switch to testnet after import
+- runFlow:
+    file: ../walletconnect/SwitchToTestnet.yaml
 
 # Verify we're on home screen after import
 - assertVisible:
     id: home-screen
 
-# Open account switcher and select Account 2
+# Wait for accounts and balances to load (can take ~10s after import)
+- extendedWaitUntil:
+    visible:
+      id: home-account-switcher
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: icon-button-send
+    timeout: 15000
+
+# Copy active account address to clipboard
 - tapOn:
-    id: home-account-switcher
-- assertVisible:
-    id: account-row-1
-# Open context menu for Account 2 and copy address
-- tapOn:
-    id: account-row-1-context-menu
-- tapOn: Copy address
-# Close manage accounts bottom sheet
-- tapOn:
-    id: manage-accounts-close-button
+    id: icon-button-copy
 # Verify tabs are visible
 - assertVisible:
     id: tab-tokens
@@ -41,15 +46,23 @@ tags:
 # Tap recipient row to open search (if not already on search screen)
 - tapOn:
     id: send-recipient-row
-# Paste address from clipboard
+# Wait for recipient search screen
+- extendedWaitUntil:
+    visible:
+      id: send-search-contacts-screen
+    timeout: 15000
+# Use the E2E recipient shortcut
+- extendedWaitUntil:
+    visible:
+      id: e2e-use-recipient
+    timeout: 15000
 - tapOn:
-    id: send-recipient-input-end-button
-# Close any suggestion overlay if present (point tap for now - may need testID later)
-- tapOn:
-    point: 6%,28%
-# Verify we're on amount screen
-- assertVisible:
-    id: send-amount-screen
+    id: e2e-use-recipient
+# Verify we're back on amount screen
+- extendedWaitUntil:
+    visible:
+      id: send-amount-screen
+    timeout: 15000
 # Enter amount: 0.0000001 using numeric keyboard
 - tapOn:
     id: numeric-key-0

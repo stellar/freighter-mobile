@@ -180,6 +180,7 @@ const DappConnectionBottomSheetContent: React.FC<
               isFullWidth
               onPress={handleUserCancel}
               disabled={isConnecting}
+              testID="session-proposal-cancel-button"
             >
               {t("common.cancel")}
             </Button>
@@ -193,6 +194,7 @@ const DappConnectionBottomSheetContent: React.FC<
               onPress={() => onConnection()}
               isLoading={isConnecting}
               disabled={isConnecting}
+              testID="session-proposal-confirm-button"
             >
               {t("dappConnectionBottomSheetContent.connect")}
             </Button>
@@ -262,12 +264,21 @@ const DappConnectionBottomSheetContent: React.FC<
   };
 
   return (
-    <View className="flex-1 justify-center items-center mt-2 gap-[16px]">
+    <View
+      className="flex-1 justify-center items-center mt-2 gap-[16px]"
+      testID="walletconnect-session-proposal-sheet"
+    >
       <View className="gap-[16px] justify-center items-center">
         <App size="lg" appName={dAppName} favicon={dAppFavicon} />
 
         <View className="justify-center items-center">
-          <Text lg primary medium textAlign="center">
+          <Text
+            lg
+            primary
+            medium
+            textAlign="center"
+            testID="dapp-metadata-name"
+          >
             {dAppName}
           </Text>
           {dAppDomain && (
@@ -288,7 +299,7 @@ const DappConnectionBottomSheetContent: React.FC<
                   />
                 </TouchableOpacity>
               )}
-              <Text sm secondary medium>
+              <Text sm secondary medium testID="dapp-metadata-domain">
                 {dAppDomain}
               </Text>
             </View>

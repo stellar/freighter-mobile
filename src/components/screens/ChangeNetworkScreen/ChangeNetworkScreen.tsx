@@ -93,6 +93,7 @@ const ChangeNetworkScreen: React.FC<ChangeNetworkScreenProps> = ({
           <Pressable
             className="flex flex-row items-center justify-between gap-2 px-4 py-3 rounded-lg border border-border-primary mt-2"
             onPress={() => selectNetworkBottomSheetModalRef.current?.present()}
+            testID="change-network-selector"
           >
             <View className="flex flex-row items-center gap-2">
               <View

@@ -127,17 +127,25 @@ e2e/
 
 ## Test Flows
 
-| Flow                   | File                                       | Description                                                                                   |
-| ---------------------- | ------------------------------------------ | --------------------------------------------------------------------------------------------- |
-| **Create Wallet**      | `flows/onboarding/CreateWallet.yaml`       | "Create a new wallet" → password → recovery phrase → skip validation → skip biometrics → home |
-| **Import Wallet**      | `flows/onboarding/ImportWallet.yaml`       | "I already have a wallet" → password → recovery phrase → skip biometrics → home               |
-| **Send Classic Token** | `flows/transactions/SendClassicToken.yaml` | Imports wallet → home → send flow → confirm → "Sent"                                          |
-| **Swap Classic Token** | `flows/transactions/SwapClassicToken.yaml` | Imports wallet → home → swap flow → confirm → "Swapped"                                       |
+| Flow                                   | File                                                  | Description                                                                                   |
+| -------------------------------------- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| **Create Wallet**                      | `flows/onboarding/CreateWallet.yaml`                  | "Create a new wallet" → password → recovery phrase → skip validation → skip biometrics → home |
+| **Import Wallet**                      | `flows/onboarding/ImportWallet.yaml`                  | "I already have a wallet" → password → recovery phrase → skip biometrics → home               |
+| **Send Classic Token**                 | `flows/transactions/SendClassicToken.yaml`            | Imports wallet → home → send flow → confirm → "Sent"                                          |
+| **Swap Classic Token**                 | `flows/transactions/SwapClassicToken.yaml`            | Imports wallet → home → swap flow → confirm → "Swapped"                                       |
+| **WC Sign Message (Approval)**         | `flows/walletconnect/SignMessageApproval.yaml`        | Connect to dApp → approve signMessage → verify signature returned                             |
+| **WC Sign Message (Rejection)**        | `flows/walletconnect/SignMessageRejection.yaml`       | Connect to dApp → reject signMessage → verify rejection                                       |
+| **WC Sign Message (Network Mismatch)** | `flows/walletconnect/SignMessageNetworkMismatch.yaml` | Connect to dApp → request wrong network → verify error                                        |
+| **WC Sign Message (JSON)**             | `flows/walletconnect/SignMessageJSON.yaml`            | Connect to dApp → sign JSON message → verify formatting                                       |
 
 **Test data**: Password `TestPassword123!`; recovery phrase from
 `E2E_TEST_RECOVERY_PHRASE` (see
-[Test Data](docs/local-setup-and-env.md#test-data) in local-setup-and-env).  
+[Test Data](docs/local-setup-and-env.md#test-data) in local-setup-and-env).
 **Never** use these in production or commit real secrets.
+
+**WalletConnect tests**: Require mock dApp server running. See
+[WalletConnect E2E Testing](docs/walletconnect-e2e-testing.md) for setup and
+[Mock dApp README](mock-dapp/README.md) for server usage.
 
 ---
 
@@ -148,9 +156,12 @@ e2e/
   validation would require test flow changes and UI-specific selectors.
 - **Biometrics**: Always skipped in E2E flows for simplification (we tap Skip /
   Don't Allow). Biometric enrollment or verification is not exercised.
-- **ImportWallet**: Required for most flows (e.g. Send, Swap) since we need a
-  logged-in user with balances to test transactions. Ensure
+- **ImportWallet**: Required for most flows (e.g. Send, Swap, WalletConnect)
+  since we need a logged-in user with balances to test transactions. Ensure
   `E2E_TEST_RECOVERY_PHRASE` is set locally or in CI.
+- **WalletConnect**: Requires mock dApp server to simulate external requests.
+  Server must be running before executing WalletConnect flows. Not all
+  production dApps support all WalletConnect methods in testing.
 
 ---
 

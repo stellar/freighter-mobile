@@ -92,3 +92,10 @@ ios/sentry.properties
 # Fastlane secret files
 fastlane/*-secret.json
 ios/fastlane/*.p8
+
+# E2E Testing artifacts
+e2e-artifacts/
+e2e/mock-dapp/.server.log
+e2e/mock-dapp/.server.pid
+*.bak
+.env.bak

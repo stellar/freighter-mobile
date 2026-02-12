@@ -211,6 +211,7 @@ const DappRequestBottomSheetContent: React.FC<
               isFullWidth
               onPress={onCancelRequest}
               disabled={isSigning || !!isValidatingMemo}
+              testID="dapp-request-cancel-button"
             >
               {t("common.cancel")}
             </Button>
@@ -224,6 +225,7 @@ const DappRequestBottomSheetContent: React.FC<
               onPress={() => onConfirm?.()}
               isLoading={isSigning || !!isValidatingMemo}
               disabled={!!isMemoMissing || isSigning || !!isValidatingMemo}
+              testID="dapp-request-confirm-button"
             >
               {t("dappRequestBottomSheetContent.confirm")}
             </Button>
@@ -296,11 +298,14 @@ const DappRequestBottomSheetContent: React.FC<
   };
 
   return (
-    <View className="flex-1 justify-center mt-2 gap-[16px]">
+    <View
+      className="flex-1 justify-center mt-2 gap-[16px]"
+      testID="dapp-request-bottom-sheet"
+    >
       <View className="flex-row items-center gap-[12px] w-full">
         <App size="lg" appName={dAppName} favicon={dAppFavicon} />
         <View className="ml-2">
-          <Text md primary>
+          <Text md primary testID={isSignMessage ? "sign-message-title" : "sign-transaction-title"}>
             {isSignMessage
               ? t("dappRequestBottomSheetContent.signMessage")
               : t("dappRequestBottomSheetContent.confirmTransaction")}

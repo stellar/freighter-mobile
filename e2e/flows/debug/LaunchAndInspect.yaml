@@ -1,0 +1,11 @@
+appId: org.stellar.freighterdev
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+
+- runScript: |
+    console.log("App launched, waiting 5 seconds...");
+
+- evalScript: |
+    await new Promise(resolve => setTimeout(resolve, 5000));

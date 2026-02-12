@@ -68,13 +68,15 @@ export const useHomeHeaders = ({ navigation }: UseHomeHeadersProps) => {
   const HeaderLeftComponent = useCallback(
     () => (
       <View className="flex-row gap-4">
-        <ContextMenuButton
-          contextMenuProps={{
-            actions: menuActions,
-          }}
-        >
-          <Icon.DotsHorizontal color={themeColors.base[1]} />
-        </ContextMenuButton>
+        <View testID="home-actions-menu" accessible>
+          <ContextMenuButton
+            contextMenuProps={{
+              actions: menuActions,
+            }}
+          >
+            <Icon.DotsHorizontal color={themeColors.base[1]} />
+          </ContextMenuButton>
+        </View>
 
         <CustomHeaderButton
           position="left"
