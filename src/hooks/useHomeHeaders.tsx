@@ -70,6 +70,7 @@ export const useHomeHeaders = ({ navigation }: UseHomeHeadersProps) => {
       <View className="flex-row gap-4">
         <View testID="home-actions-menu" accessible>
           <ContextMenuButton
+            testID="home-screen-settings-button"
             contextMenuProps={{
               actions: menuActions,
             }}

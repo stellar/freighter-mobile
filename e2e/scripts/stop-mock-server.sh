@@ -4,7 +4,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MOCK_DAPP_DIR="$(cd "$SCRIPT_DIR/../mock-dapp" && pwd)"
+MOCK_DAPP_DIR="$(cd "$SCRIPT_DIR/../../mock-dapp" && pwd)"
 PID_FILE="$MOCK_DAPP_DIR/.server.pid"
 
 echo "🛑 Stopping Mock WalletConnect dApp Server..."

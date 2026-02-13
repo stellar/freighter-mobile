@@ -3,9 +3,9 @@ appId: org.stellar.freighterdev
 # Shared flow: switch active network to Testnet
 # Used by WalletConnect E2E flows since the mock server targets testnet
 
-# Open settings from the E2E shortcut on the home screen
+# Open settings from the home screen settings menu
 - tapOn:
-    id: e2e-open-settings
+    id: home-screen-settings-button
 
 - extendedWaitUntil:
     visible:

@@ -95,7 +95,7 @@ ios/fastlane/*.p8
 
 # E2E Testing artifacts
 e2e-artifacts/
-e2e/mock-dapp/.server.log
-e2e/mock-dapp/.server.pid
+.server.log
+.server.pid
 *.bak
 .env.bak

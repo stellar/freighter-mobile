@@ -158,3 +158,65 @@ The app supports two different bundle IDs for different environments:
 This should get you up and running with the Freighter Mobile app in your
 development environment. If you encounter any issues, please refer to the React
 Native documentation or open an issue in the repository.
+
+## WalletConnect Mock dApp for Manual Testing
+
+The mock-dapp server allows you to manually test WalletConnect features like
+`stellar_signMessage` and `stellar_signXDR` without needing a full dApp. This is
+useful for both automated e2e tests and manual testing during development.
+
+### Setup
+
+1. **Navigate to mock-dapp directory:**
+
+   ```bash
+   cd mock-dapp
+   ```
+
+2. **Install dependencies:**
+
+   ```bash
+   npm install
+   ```
+
+3. **Configure environment variables:**
+
+   Create a `.env` file in the `mock-dapp` directory:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   Add your WalletConnect project ID:
+
+   ```
+   WALLET_KIT_PROJECT_ID=your_project_id_here
+   PORT=3001
+   ```
+
+4. **Start the server:**
+
+   ```bash
+   npm start
+   ```
+
+   Or use the provided script from the e2e directory:
+
+   ```bash
+   ./e2e/scripts/start-mock-server.sh
+   ```
+
+The server will run on `http://localhost:3001` and provide endpoints for:
+
+- Creating WalletConnect sessions
+- Sending sign message requests
+- Sending sign transaction requests
+- Viewing session responses
+
+For more details, see the mock-dapp [README](./mock-dapp/README.md).
+
+To stop the server:
+
+```bash
+./e2e/scripts/stop-mock-server.sh
+```

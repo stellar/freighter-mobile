@@ -89,13 +89,22 @@ e2e/
 ├── config.yaml           # Maestro config (appId, disableAnimations)
 ├── README.md             # This file
 ├── docs/                 # Detailed guides (see Documentation Index)
+├── scripts/              # Helper scripts (start/stop mock server)
 └── flows/
-    ├── onboarding/
+    ├── debug/            # Debug flows for development
+    ├── onboarding/       # Wallet creation and import flows
     │   ├── CreateWallet.yaml
-    │   └── ImportWallet.yaml
-    └── transactions/
-        ├── SendClassicToken.yaml
-        └── SwapClassicToken.yaml
+    │   ├── ImportWallet.yaml
+    │   └── ImportFundedWallet.yaml
+    ├── transactions/     # Transaction flows (send, swap)
+    │   ├── SendClassicToken.yaml
+    │   └── SwapClassicToken.yaml
+    └── walletconnect/    # WalletConnect integration tests
+        ├── SignMessageMockDapp.yaml
+        ├── SignMessageRejectionMockDapp.yaml
+        ├── SignMessageNetworkMismatchMockDapp.yaml
+        ├── SignMessageVariations.yaml
+        └── SwitchToTestnet.yaml
 ```
 
 ---
@@ -127,16 +136,16 @@ e2e/
 
 ## Test Flows
 
-| Flow                                   | File                                                  | Description                                                                                   |
-| -------------------------------------- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| **Create Wallet**                      | `flows/onboarding/CreateWallet.yaml`                  | "Create a new wallet" → password → recovery phrase → skip validation → skip biometrics → home |
-| **Import Wallet**                      | `flows/onboarding/ImportWallet.yaml`                  | "I already have a wallet" → password → recovery phrase → skip biometrics → home               |
-| **Send Classic Token**                 | `flows/transactions/SendClassicToken.yaml`            | Imports wallet → home → send flow → confirm → "Sent"                                          |
-| **Swap Classic Token**                 | `flows/transactions/SwapClassicToken.yaml`            | Imports wallet → home → swap flow → confirm → "Swapped"                                       |
-| **WC Sign Message (Approval)**         | `flows/walletconnect/SignMessageApproval.yaml`        | Connect to dApp → approve signMessage → verify signature returned                             |
-| **WC Sign Message (Rejection)**        | `flows/walletconnect/SignMessageRejection.yaml`       | Connect to dApp → reject signMessage → verify rejection                                       |
-| **WC Sign Message (Network Mismatch)** | `flows/walletconnect/SignMessageNetworkMismatch.yaml` | Connect to dApp → request wrong network → verify error                                        |
-| **WC Sign Message (JSON)**             | `flows/walletconnect/SignMessageJSON.yaml`            | Connect to dApp → sign JSON message → verify formatting                                       |
+| Flow                                   | File                                                          | Description                                                                                   |
+| -------------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| **Create Wallet**                      | `flows/onboarding/CreateWallet.yaml`                          | "Create a new wallet" → password → recovery phrase → skip validation → skip biometrics → home |
+| **Import Wallet**                      | `flows/onboarding/ImportWallet.yaml`                          | "I already have a wallet" → password → recovery phrase → skip biometrics → home               |
+| **Send Classic Token**                 | `flows/transactions/SendClassicToken.yaml`                    | Imports wallet → home → send flow → confirm → "Sent"                                          |
+| **Swap Classic Token**                 | `flows/transactions/SwapClassicToken.yaml`                    | Imports wallet → home → swap flow → confirm → "Swapped"                                       |
+| **WC Sign Message (Approval)**         | `flows/walletconnect/SignMessageMockDapp.yaml`                | Connect to dApp → approve signMessage → verify signature returned                             |
+| **WC Sign Message (Rejection)**        | `flows/walletconnect/SignMessageRejectionMockDapp.yaml`       | Connect to dApp → reject signMessage → verify session recovery                                |
+| **WC Sign Message (Network Mismatch)** | `flows/walletconnect/SignMessageNetworkMismatchMockDapp.yaml` | Connect to dApp → request wrong network → switch network → approve                            |
+| **WC Sign Message (Variations)**       | `flows/walletconnect/SignMessageVariations.yaml`              | Full WalletConnect session flow with message variations                                       |
 
 **Test data**: Password `TestPassword123!`; recovery phrase from
 `E2E_TEST_RECOVERY_PHRASE` (see
@@ -145,7 +154,7 @@ e2e/
 
 **WalletConnect tests**: Require mock dApp server running. See
 [WalletConnect E2E Testing](docs/walletconnect-e2e-testing.md) for setup and
-[Mock dApp README](mock-dapp/README.md) for server usage.
+[Mock dApp README](../mock-dapp/README.md) for server usage.
 
 ---
 

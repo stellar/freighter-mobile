@@ -660,13 +660,11 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         return;
       }
 
-      // Wait for active sessions to be fetched (skip this check in E2E mode)
-      if (!isE2ETest && Object.keys(activeSessions).length === 0) {
+      if (Object.keys(activeSessions).length === 0) {
         return;
       }
 
-      // Validate that the session exists (skip this check in E2E mode)
-      if (!isE2ETest && !activeSessions[sessionRequest.topic]) {
+      if (!activeSessions[sessionRequest.topic]) {
         showToast({
           title: t("walletKit.connectionNotFound"),
           message: t("walletKit.connectionNotFoundMessage"),

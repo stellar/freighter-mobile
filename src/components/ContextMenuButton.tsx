@@ -31,6 +31,7 @@ interface ContextMenuButtonProps {
   align?: "start" | "center" | "end";
   sideOffset?: number;
   alignOffset?: number;
+  testID?: string;
 }
 
 const ContextMenuButton: React.FC<ContextMenuButtonProps> = ({
@@ -40,6 +41,7 @@ const ContextMenuButton: React.FC<ContextMenuButtonProps> = ({
   align,
   sideOffset,
   alignOffset,
+  testID,
 }) => {
   const { actions, onPress } = contextMenuProps;
 
@@ -78,7 +80,7 @@ const ContextMenuButton: React.FC<ContextMenuButtonProps> = ({
   return (
     <MenuRoot>
       <MenuTrigger>
-        <View>{children}</View>
+        <View testID={testID}>{children}</View>
       </MenuTrigger>
       <MenuContent
         side={side}

@@ -3,7 +3,6 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { STORAGE_KEYS } from "config/constants";
 import { logger } from "config/logger";
 import { ActiveAccount } from "ducks/auth";
-import { isE2ETest } from "helpers/isEnv";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 interface UseWelcomeBannerProps {
@@ -40,10 +39,6 @@ export const useWelcomeBanner = ({
   useEffect(() => {
     const checkWelcomeBannerStatus = async () => {
       setHasAccountSeenWelcome(undefined);
-      if (isE2ETest) {
-        setHasAccountSeenWelcome(true);
-        return;
-      }
       if (welcomeBannerShownKey) {
         const hasSeenWelcome = await AsyncStorage.getItem(
           welcomeBannerShownKey,
@@ -56,9 +51,6 @@ export const useWelcomeBanner = ({
 
   // Check if welcome modal should be shown for new accounts
   const checkWelcomeBannerStatus = useCallback(() => {
-    if (isE2ETest) {
-      return;
-    }
     if (!account?.publicKey || isLoadingBalances) {
       return;
     }

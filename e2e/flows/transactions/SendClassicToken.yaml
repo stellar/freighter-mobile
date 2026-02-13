@@ -14,6 +14,19 @@ tags:
 - runFlow:
     file: ../onboarding/ImportFundedWallet.yaml
 
+# Dismiss welcome banner if it appears after import
+- runFlow:
+    when:
+      visible:
+        id: welcome-banner-dismiss-button
+    commands:
+      - tapOn:
+          id: welcome-banner-dismiss-button
+      - extendedWaitUntil:
+          visible:
+            id: home-screen
+          timeout: 10000
+
 # Switch to testnet after import
 - runFlow:
     file: ../walletconnect/SwitchToTestnet.yaml

@@ -1,4 +1,5 @@
 /* eslint-disable @fnando/consistent-import/consistent-import */
+/* eslint-disable no-console */
 import { Router, Request, Response } from "express";
 
 import { MockWalletConnectClient } from "./walletconnect";
@@ -10,7 +11,7 @@ export function createRoutes(wcClient: MockWalletConnectClient): Router {
   interface SessionResponse {
     id: string;
     type: "signMessage" | "signXDR";
-    params: Record<string, string | number>;
+    params: Record<string, string | number | undefined>;
     promise: Promise<unknown>;
     createdAt: number;
   }
@@ -81,21 +82,21 @@ export function createRoutes(wcClient: MockWalletConnectClient): Router {
           console.error(`[API] Session ${sessionId} approval failed:`, error);
         });
 
-      res.json({
+      console.log("[API] 📤 Response sent:", {
+        sessionId,
+        deepLink: `${deepLink.substring(0, 50)}...`,
+      });
+      return res.json({
         sessionId,
         uri,
         deepLink,
         message: "Session created. Use URI or deepLink to connect wallet.",
       });
-      console.log("[API] 📤 Response sent:", {
-        sessionId,
-        deepLink: `${deepLink.substring(0, 50)}...`,
-      });
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       console.error("[API] Failed to create session:", error);
-      res.status(500).json({
+      return res.status(500).json({
         error: "Failed to create session",
         message: errorMessage,
       });
@@ -116,7 +117,7 @@ export function createRoutes(wcClient: MockWalletConnectClient): Router {
 
     const session = metadata.topic ? wcClient.getSession(metadata.topic) : null;
 
-    res.json({
+    return res.json({
       sessionId: metadata.sessionId,
       topic: metadata.topic || null,
       connected: !!session,
@@ -151,8 +152,10 @@ export function createRoutes(wcClient: MockWalletConnectClient): Router {
         throw new Error("Timeout waiting for session approval");
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      return checkApproval();
+      await new Promise((resolve) => {
+        setTimeout(resolve, 500);
+      });
+      await checkApproval();
     };
 
     try {
@@ -160,7 +163,7 @@ export function createRoutes(wcClient: MockWalletConnectClient): Router {
 
       const session = wcClient.getSession(metadata.topic);
 
-      res.json({
+      return res.json({
         sessionId: metadata.sessionId,
         topic: metadata.topic,
         connected: true,
@@ -169,12 +172,15 @@ export function createRoutes(wcClient: MockWalletConnectClient): Router {
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
-      res.status(408).json({
+      return res.status(408).json({
         error: "Timeout",
         message: errorMessage,
       });
     }
   });
+
+  const parseNetwork = (value: unknown): "testnet" | "pubnet" =>
+    value === "pubnet" ? "pubnet" : "testnet";
 
   /**
    * Send stellar_signMessage request
@@ -182,11 +188,12 @@ export function createRoutes(wcClient: MockWalletConnectClient): Router {
    */
   router.post(
     "/session/:id/request/signMessage",
-    async (req: Request, res: Response) => {
+    (req: Request, res: Response) => {
       const id = Array.isArray(req.params.id)
         ? req.params.id[0]
         : req.params.id;
-      const { message, network = "testnet" } = req.body;
+      const { message } = req.body as { message?: unknown; network?: unknown };
+      const network = parseNetwork((req.body as { network?: unknown }).network);
 
       if (!message || typeof message !== "string") {
         return res.status(400).json({
@@ -194,6 +201,8 @@ export function createRoutes(wcClient: MockWalletConnectClient): Router {
           message: "Message is required and must be a string",
         });
       }
+
+      const messageText = message;
 
       const metadata = sessionMetadata.get(id);
 
@@ -212,7 +221,7 @@ export function createRoutes(wcClient: MockWalletConnectClient): Router {
         // Send request asynchronously and store promise
         const requestPromise = wcClient.requestSignMessage(
           metadata.topic,
-          { message },
+          { message: messageText },
           network,
         );
 
@@ -227,13 +236,6 @@ export function createRoutes(wcClient: MockWalletConnectClient): Router {
           createdAt: Date.now(),
         });
 
-        // Don't wait for response here - client will poll /response endpoint
-        res.json({
-          requestId,
-          status: "pending",
-          message: "Request sent. Poll /session/:id/response for result.",
-        });
-
         // Handle response in background
         requestPromise
           .then((result) => {
@@ -242,11 +244,18 @@ export function createRoutes(wcClient: MockWalletConnectClient): Router {
           .catch((error) => {
             console.error(`[API] Request ${requestId} failed:`, error);
           });
+
+        // Don't wait for response here - client will poll /response endpoint
+        return res.json({
+          requestId,
+          status: "pending",
+          message: "Request sent. Poll /session/:id/response for result.",
+        });
       } catch (error: unknown) {
         const errorMessage =
           error instanceof Error ? error.message : String(error);
         console.error("[API] Failed to send signMessage request:", error);
-        res.status(500).json({
+        return res.status(500).json({
           error: "Failed to send request",
           message: errorMessage,
         });
@@ -258,76 +267,80 @@ export function createRoutes(wcClient: MockWalletConnectClient): Router {
    * Send stellar_signXDR request
    * POST /session/:id/request/signXDR
    */
-  router.post(
-    "/session/:id/request/signXDR",
-    async (req: Request, res: Response) => {
-      const id = Array.isArray(req.params.id)
-        ? req.params.id[0]
-        : req.params.id;
-      const { xdr, description, network = "testnet" } = req.body;
+  router.post("/session/:id/request/signXDR", (req: Request, res: Response) => {
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const { xdr, description } = req.body as {
+      xdr?: unknown;
+      description?: string | number;
+      network?: unknown;
+    };
+    const network = parseNetwork((req.body as { network?: unknown }).network);
 
-      if (!xdr || typeof xdr !== "string") {
-        return res.status(400).json({
-          error: "Invalid request",
-          message: "XDR is required and must be a string",
+    if (!xdr || typeof xdr !== "string") {
+      return res.status(400).json({
+        error: "Invalid request",
+        message: "XDR is required and must be a string",
+      });
+    }
+
+    const xdrText = xdr;
+    const descriptionText =
+      typeof description === "string" ? description : undefined;
+
+    const metadata = sessionMetadata.get(id);
+
+    if (!metadata) {
+      return res.status(404).json({ error: "Session not found" });
+    }
+
+    if (!metadata.topic) {
+      return res.status(400).json({
+        error: "Session not connected",
+        message: "Wait for wallet approval first",
+      });
+    }
+
+    try {
+      const requestPromise = wcClient.requestSignXDR(
+        metadata.topic,
+        { xdr: xdrText, description: descriptionText },
+        network,
+      );
+
+      const requestId = `req-${Date.now()}`;
+
+      metadata.responses.push({
+        id: requestId,
+        type: "signXDR",
+        params: { xdr, description, network },
+        promise: requestPromise,
+        createdAt: Date.now(),
+      });
+
+      // eslint-disable-next-line @typescript-eslint/no-misused-promises
+      requestPromise
+        .then((result) => {
+          console.log(`[API] Request ${requestId} completed:`, result);
+        })
+        .catch((error: unknown) => {
+          console.error(`[API] Request ${requestId} failed:`, error);
         });
-      }
 
-      const metadata = sessionMetadata.get(id);
-
-      if (!metadata) {
-        return res.status(404).json({ error: "Session not found" });
-      }
-
-      if (!metadata.topic) {
-        return res.status(400).json({
-          error: "Session not connected",
-          message: "Wait for wallet approval first",
-        });
-      }
-
-      try {
-        const requestPromise = wcClient.requestSignXDR(
-          metadata.topic,
-          { xdr, description },
-          network,
-        );
-
-        const requestId = `req-${Date.now()}`;
-
-        metadata.responses.push({
-          id: requestId,
-          type: "signXDR",
-          params: { xdr, description, network },
-          promise: requestPromise,
-          createdAt: Date.now(),
-        });
-
-        res.json({
-          requestId,
-          status: "pending",
-          message: "Request sent. Poll /session/:id/response for result.",
-        });
-
-        // eslint-disable-next-line @typescript-eslint/no-misused-promises
-        requestPromise
-          .then((result) => {
-            console.log(`[API] Request ${requestId} completed:`, result);
-          })
-          .catch((error: unknown) => {
-            console.error(`[API] Request ${requestId} failed:`, error);
-          });
-      } catch (error: unknown) {
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
-        console.error("[API] Failed to send signXDR request:", error);
-        res.status(500).json({
-          error: "Failed to send request",
-          message: errorMessage,
-        });
-      }
-    },
-  );
+      return res.json({
+        requestId,
+        status: "pending",
+        message: "Request sent. Poll /session/:id/response for result.",
+      });
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      console.error("[API] Failed to send signXDR request:", error);
+      return res.status(500).json({
+        error: "Failed to send request",
+        message: errorMessage,
+      });
+    }
+  });
 
   /**
    * Get the latest response
@@ -336,7 +349,7 @@ export function createRoutes(wcClient: MockWalletConnectClient): Router {
   router.get("/session/:id/response", async (req: Request, res: Response) => {
     const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
     const wait = req.query.wait === "true";
-    const timeout = parseInt(req.query.timeout as string) || 30000;
+    const timeout = parseInt(req.query.timeout as string, 10) || 30000;
 
     const metadata = sessionMetadata.get(id);
 
@@ -358,61 +371,59 @@ export function createRoutes(wcClient: MockWalletConnectClient): Router {
         // Wait for response with timeout
         const result = await Promise.race([
           lastRequest.promise,
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error("Timeout")), timeout),
-          ),
+          new Promise((_, reject) => {
+            setTimeout(() => reject(new Error("Timeout")), timeout);
+          }),
         ]);
 
-        res.json({
+        return res.json({
           requestId: lastRequest.id,
           type: lastRequest.type,
           status: "approved",
           result,
         });
-      } else {
-        // Try to get result immediately
-        const isResolved = await Promise.race([
-          lastRequest.promise.then(() => true),
-          new Promise((resolve) => setTimeout(() => resolve(false), 100)),
-        ]);
-
-        if (isResolved) {
-          const result = await lastRequest.promise;
-          res.json({
-            requestId: lastRequest.id,
-            type: lastRequest.type,
-            status: "approved",
-            result,
-          });
-        } else {
-          res.json({
-            requestId: lastRequest.id,
-            type: lastRequest.type,
-            status: "pending",
-            message:
-              "Request still pending. Use ?wait=true to wait for response.",
-          });
-        }
       }
+      // Try to get result immediately
+      const isResolved = await Promise.race([
+        lastRequest.promise.then(() => true),
+        new Promise((resolve) => {
+          setTimeout(() => resolve(false), 100);
+        }),
+      ]);
+
+      if (isResolved) {
+        const result = await lastRequest.promise;
+        return res.json({
+          requestId: lastRequest.id,
+          type: lastRequest.type,
+          status: "approved",
+          result,
+        });
+      }
+      return res.json({
+        requestId: lastRequest.id,
+        type: lastRequest.type,
+        status: "pending",
+        message: "Request still pending. Use ?wait=true to wait for response.",
+      });
     } catch (error: unknown) {
       // Check if it's a rejection from wallet
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       if (errorMessage?.includes("User rejected")) {
-        res.json({
+        return res.json({
           requestId: lastRequest.id,
           type: lastRequest.type,
           status: "rejected",
           error: errorMessage,
         });
-      } else {
-        res.status(500).json({
-          requestId: lastRequest.id,
-          type: lastRequest.type,
-          status: "error",
-          error: errorMessage,
-        });
       }
+      return res.status(500).json({
+        requestId: lastRequest.id,
+        type: lastRequest.type,
+        status: "error",
+        error: errorMessage,
+      });
     }
   });
 
@@ -438,7 +449,7 @@ export function createRoutes(wcClient: MockWalletConnectClient): Router {
 
     sessionMetadata.delete(id);
 
-    res.json({
+    return res.json({
       sessionId: id,
       message: "Session disconnected",
     });
@@ -475,14 +486,14 @@ export function createRoutes(wcClient: MockWalletConnectClient): Router {
       await wcClient.disconnectAll();
       sessionMetadata.clear();
 
-      res.json({
+      return res.json({
         message: "All sessions disconnected",
       });
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       console.error("[API] Failed to disconnect all sessions:", error);
-      res.status(500).json({
+      return res.status(500).json({
         error: "Failed to disconnect sessions",
         message: errorMessage,
       });
