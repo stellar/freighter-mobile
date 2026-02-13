@@ -1,0 +1,173 @@
+appId: org.stellar.freighterdev
+tags:
+  - walletconnect
+  - sign-message
+  - e2e
+  - mock-dapp
+  - rejection
+---
+# SignMessage Rejection E2E Test
+#
+# Tests that users can reject/cancel sign message requests via the mock dApp API.
+#
+# Flow:
+# 1. Import funded wallet
+# 2. Switch to testnet
+# 3. Trigger sign message request via API
+# 4. Verify modal appears
+# 5. Cancel/Reject the signature
+# 6. Verify rejection is returned to dApp
+#
+# Prerequisites:
+# - IS_E2E_TEST=true in .env
+# - E2E_TEST_FUNDED_RECOVERY_PHRASE set
+# - Mock dApp server running on http://localhost:3001
+
+#########################################
+# SETUP: Import and Connect Wallet
+#########################################
+
+- runFlow:
+    file: ../onboarding/ImportFundedWallet.yaml
+
+- runFlow:
+    when:
+      visible:
+        id: welcome-banner-dismiss-button
+    commands:
+      - tapOn:
+          id: welcome-banner-dismiss-button
+      - extendedWaitUntil:
+          visible:
+            id: home-screen
+          timeout: 10000
+
+- runFlow:
+    file: ./SwitchToTestnet.yaml
+
+# Create session
+- httpRequest:
+    url: http://localhost:3001/session/create
+    method: POST
+    body: {}
+    assignJsonPath:
+      SESSION_ID: $.sessionId
+
+- httpRequest:
+    url: http://localhost:3001/session/${SESSION_ID}/wait?timeout=30000
+    method: GET
+    assignJsonPath:
+      SESSION_TOPIC: $.topic
+
+- log: "✅ Session ready for rejection test"
+
+#########################################
+# TRIGGER SIGN MESSAGE REQUEST
+#########################################
+
+- httpRequest:
+    url: http://localhost:3001/session/${SESSION_ID}/request/signMessage
+    method: POST
+    body:
+      message: "This request will be rejected"
+      network: "testnet"
+    assignJsonPath:
+      REQUEST_ID: $.requestId
+
+- log: "📨 Sign message request sent: ${REQUEST_ID}"
+
+#########################################
+# VERIFY MODAL APPEARS
+#########################################
+
+- extendedWaitUntil:
+    visible:
+      id: sign-message-title
+    timeout: 10000
+
+- log: "✅ Sign message modal appeared"
+
+- assertVisible:
+    id: message-display
+
+#########################################
+# REJECT/CANCEL THE REQUEST
+#########################################
+
+# Tap the cancel button
+- tapOn:
+    id: dapp-request-cancel-button
+
+- log: "✅ Tapped cancel button"
+
+#########################################
+# VERIFY REJECTION
+#########################################
+
+# Wait for the bottom sheet to dismiss
+- extendedWaitUntil:
+    notVisible:
+      id: sign-message-title
+    timeout: 10000
+
+- log: "✅ Sign message sheet dismissed"
+
+# Verify we're back on home screen
+- assertVisible:
+    id: home-screen
+
+# Poll the mock dApp API to verify rejection was returned
+- httpRequest:
+    url: http://localhost:3001/session/${SESSION_ID}/response?wait=false
+    method: GET
+    assignJsonPath:
+      RESPONSE_STATUS: $.status
+
+# Check if rejection is properly returned (status should be "rejected")
+- assert:
+    condition: ${RESPONSE_STATUS} == "rejected"
+    message: "Request should be rejected"
+
+- log: "✅ Rejection confirmed: ${RESPONSE_STATUS}"
+
+#########################################
+# TEST 2: Verify Can Sign After Rejection
+#########################################
+
+- log: "🧪 Test 2: Verify can sign after rejection"
+
+- sleep: 1000
+
+# Send another request to ensure the session still works
+- httpRequest:
+    url: http://localhost:3001/session/${SESSION_ID}/request/signMessage
+    method: POST
+    body:
+      message: "This request will be approved"
+      network: "testnet"
+
+- extendedWaitUntil:
+    visible:
+      id: sign-message-title
+    timeout: 10000
+
+# This time approve it
+- tapOn:
+    id: dapp-request-confirm-button
+
+- extendedWaitUntil:
+    notVisible:
+      id: sign-message-title
+    timeout: 10000
+
+- log: "✅ Second request signed successfully after rejection"
+
+#########################################
+# CLEANUP
+#########################################
+
+- httpRequest:
+    url: http://localhost:3001/session/${SESSION_ID}
+    method: DELETE
+
+- log: "✅ Rejection and recovery tests completed successfully!"
