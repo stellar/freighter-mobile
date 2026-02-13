@@ -51,13 +51,11 @@ tags:
     visible:
       id: send-search-contacts-screen
     timeout: 15000
-# Use the E2E recipient shortcut
-- extendedWaitUntil:
-    visible:
-      id: e2e-use-recipient
-    timeout: 15000
+# Tap on the recipient input field and enter a Stellar address
 - tapOn:
-    id: e2e-use-recipient
+    id: send-recipient-input
+# Type a test Stellar address (hardcoded for consistency)
+- inputText: GDAS7BS4XKW27H2K5C25V6ZU46FCFGBTFQGFDZURAKVPA6QYQG4GTWBC
 # Verify we're back on amount screen
 - extendedWaitUntil:
     visible:

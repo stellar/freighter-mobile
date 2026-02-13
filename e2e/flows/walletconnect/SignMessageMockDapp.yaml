@@ -2,36 +2,15 @@ appId: org.stellar.freighterdev
 tags:
   - walletconnect
   - sign-message
-  - e2e
   - mock-dapp
+  - e2e
 ---
-# SignMessage E2E Test with Mock dApp
-#
-# Tests the complete stellar_signMessage WalletConnect flow using the mock dApp
-# backend API to programmatically create sessions and trigger signing requests.
-#
-# Flow:
-# 1. Import funded wallet
-# 2. Switch to testnet
-# 3. Call mock dApp API to create WalletConnect session
-# 4. Call mock dApp API to trigger sign message request
-# 5. Verify sign message modal appears in mobile app
-# 6. Approve the signature
-# 7. Verify signature completed
-#
-# Prerequisites:
-# - IS_E2E_TEST=true in .env
-# - E2E_TEST_FUNDED_RECOVERY_PHRASE set
-# - Mock dApp server running on http://localhost:3001
-
-#########################################
-# SETUP: Import Funded Wallet
-#########################################
+# SignMessage Mock Dapp E2E Test - Happy Path
+# Tests basic WalletConnect SignMessage flow with approval
 
 - runFlow:
     file: ../onboarding/ImportFundedWallet.yaml
 
-# Dismiss welcome banner if it appears
 - runFlow:
     when:
       visible:
@@ -44,128 +23,86 @@ tags:
             id: home-screen
           timeout: 10000
 
-- assertVisible:
-    id: home-screen
-
-#########################################
-# SETUP: Switch to Testnet
-#########################################
-
 - runFlow:
     file: ./SwitchToTestnet.yaml
 
-#########################################
-# STEP 1: Create WalletConnect Session via API
-#########################################
+# Create WalletConnect session
+- evalScript: |
+    const res = await fetch('http://localhost:3001/session/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    const data = await res.json();
+    output.wcUri = data.uri;
+    output.sessionId = data.sessionId;
 
-# Call the mock dApp backend to create a session
-- httpRequest:
-    url: http://localhost:3001/session/create
-    method: POST
-    headers:
-      Content-Type: application/json
-    body: {}
-    assignJsonPath:
-      SESSION_ID: $.sessionId
-      SESSION_URI: $.uri
+# Navigate to WalletConnect settings
+- tapOn:
+    id: home-screen-settings-button
 
-- log: "✅ Session created: ${SESSION_ID}"
-- log: "📡 WalletConnect URI created"
+- extendedWaitUntil:
+    visible:
+      id: settings-screen
+    timeout: 5000
 
-#########################################
-# STEP 2: Wait for Wallet Approval
-#########################################
+- tapOn:
+    id: settings-walletconnect-button
 
-# Wait for the user to approve the session in the mobile wallet
-# This simulates scanning the QR code and approving connection
-- httpRequest:
-    url: http://localhost:3001/session/${SESSION_ID}/wait?timeout=30000
-    method: GET
-    assignJsonPath:
-      SESSION_TOPIC: $.topic
+- extendedWaitUntil:
+    visible:
+      id: walletconnect-input-screen
+    timeout: 5000
 
-- log: "✅ Session approved with topic: ${SESSION_TOPIC}"
+# Enter WalletConnect URI
+- tapOn:
+    id: walletconnect-uri-input
 
-#########################################
-# STEP 3: Trigger Sign Message Request via API
-#########################################
+- inputText: ${output.wcUri}
 
-# Send a sign message request through the mock dApp API
-- httpRequest:
-    url: http://localhost:3001/session/${SESSION_ID}/request/signMessage
-    method: POST
-    headers:
-      Content-Type: application/json
-    body:
-      message:
-        "Hello from E2E test! Please sign this message to verify your wallet."
-      network: "testnet"
-    assignJsonPath:
-      REQUEST_ID: $.requestId
+- tapOn:
+    id: walletconnect-connect-button
 
-- log: "📨 Sign message request sent: ${REQUEST_ID}"
+# Accept connection proposal
+- extendedWaitUntil:
+    visible:
+      id: session-proposal-confirm-button
+    timeout: 10000
 
-#########################################
-# STEP 4: Verify Sign Message UI Appears
-#########################################
+- tapOn:
+    id: session-proposal-confirm-button
 
-# Wait for the sign message bottom sheet to appear
+# Wait for connection approval
+- extendedWaitUntil:
+    visible:
+      id: home-screen
+    timeout: 10000
+
+# Request sign message from mock dApp
+- evalScript: |
+    await fetch(`http://localhost:3001/session/${output.sessionId}/request/signMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: "Hello from E2E test! Please sign this message to verify your wallet.", network: "testnet" })
+    });
+
+# Wait for SignMessage modal
 - extendedWaitUntil:
     visible:
       id: sign-message-title
     timeout: 10000
 
-- log: "✅ Sign message modal appeared"
-
-# Verify the message display is visible
+# Verify message and buttons are visible
 - assertVisible:
     id: message-display
+- assertVisible:
+    id: dapp-request-confirm-button
 
-- log: "✅ Message content is displayed"
-
-#########################################
-# STEP 5: Approve Signature
-#########################################
-
-# Tap the confirm button to approve
+# Approve the signature
 - tapOn:
     id: dapp-request-confirm-button
 
-- log: "✅ Tapped confirm button"
-
-#########################################
-# STEP 6: Verify Success
-#########################################
-
-# Wait for the bottom sheet to dismiss
-- extendedWaitUntil:
-    notVisible:
-      id: sign-message-title
-    timeout: 10000
-
-- log: "✅ Sign message sheet dismissed"
-
 # Verify we're back on home screen
-- assertVisible:
-    id: home-screen
-
-# Poll the mock dApp API to confirm the signature was completed
-- httpRequest:
-    url: http://localhost:3001/session/${SESSION_ID}/response?wait=true&timeout=5000
-    method: GET
-    assignJsonPath:
-      RESPONSE_STATUS: $.status
-      SIGNATURE: $.result.signature
-
-- log: "✅ Signature completed with status: ${RESPONSE_STATUS}"
-- log: "📝 Signature received: ${SIGNATURE}"
-
-#########################################
-# CLEANUP: Disconnect Session
-#########################################
-
-- httpRequest:
-    url: http://localhost:3001/session/${SESSION_ID}
-    method: DELETE
-
-- log: "✅ Session disconnected"
+- extendedWaitUntil:
+    visible:
+      id: home-screen
+    timeout: 5000

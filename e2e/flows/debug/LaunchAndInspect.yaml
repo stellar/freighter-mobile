@@ -4,7 +4,7 @@ appId: org.stellar.freighterdev
     clearState: true
     clearKeychain: true
 
-- runScript: |
+- evalScript: |
     console.log("App launched, waiting 5 seconds...");
 
 - evalScript: |

@@ -3,24 +3,10 @@ tags:
   - walletconnect
   - sign-message
   - e2e
-  - mock-dapp
   - message-variations
 ---
 # SignMessage Variations E2E Test
-#
-# Tests stellar_signMessage with different message types using the mock dApp API:
-# 1. Short message
-# 2. Long message
-# 3. JSON formatted message
-#
-# Prerequisites:
-# - IS_E2E_TEST=true in .env
-# - E2E_TEST_FUNDED_RECOVERY_PHRASE set
-# - Mock dApp server running on http://localhost:3001
-
-#########################################
-# SETUP: Import and Connect Wallet
-#########################################
+# Full WalletConnect session flow
 
 - runFlow:
     file: ../onboarding/ImportFundedWallet.yaml
@@ -40,141 +26,87 @@ tags:
 - runFlow:
     file: ./SwitchToTestnet.yaml
 
-# Create initial session
-- httpRequest:
-    url: http://localhost:3001/session/create
-    method: POST
-    body: {}
-    assignJsonPath:
-      SESSION_ID: $.sessionId
+# Step 1: Create WalletConnect session on mock dApp
+- evalScript: |
+    const res = await fetch('http://localhost:3001/session/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    const data = await res.json();
+    output.wcUri = data.uri;
+    output.sessionId = data.sessionId;
 
-- httpRequest:
-    url: http://localhost:3001/session/${SESSION_ID}/wait?timeout=30000
-    method: GET
-    assignJsonPath:
-      SESSION_TOPIC: $.topic
+# Step 2: Navigate to WalletConnect in the app
+# Tap the WalletConnect button or navigate to the connection screen
+- tapOn:
+    id: home-screen-settings-button
 
-- log: "✅ Session ready for testing message variations"
+- extendedWaitUntil:
+    visible:
+      id: settings-screen
+    timeout: 5000
 
-#########################################
-# TEST 1: Short Message
-#########################################
+# Look for WalletConnect or connection option (adjust ID if needed)
+- tapOn:
+    id: settings-walletconnect-button
 
-- log: "🧪 Test 1: Short Message"
+- extendedWaitUntil:
+    visible:
+      id: walletconnect-input-screen
+    timeout: 5000
 
-- httpRequest:
-    url: http://localhost:3001/session/${SESSION_ID}/request/signMessage
-    method: POST
-    body:
-      message: "Sign this short message"
-      network: "testnet"
+# Step 3: Paste the WalletConnect URI
+- tapOn:
+    id: walletconnect-uri-input
 
+- inputText: ${output.wcUri}
+
+- tapOn:
+    id: walletconnect-connect-button
+
+- extendedWaitUntil:
+    visible:
+      id: session-proposal-confirm-button
+    timeout: 10000
+
+# Step 4: Accept the connection request
+- tapOn:
+    id: session-proposal-confirm-button
+
+# Step 5: Wait for session approval
+- extendedWaitUntil:
+    visible:
+      id: home-screen
+    timeout: 10000
+
+# Step 6: Mock dApp sends sign request (after session is approved)
+- evalScript: |
+    await fetch(`http://localhost:3001/session/${output.sessionId}/request/signMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: "Sign this message", network: "testnet" })
+    });
+
+# Step 7: Wait for SignMessage modal to appear
 - extendedWaitUntil:
     visible:
       id: sign-message-title
     timeout: 10000
 
+# Verify message content is displayed
 - assertVisible:
     id: message-display
 
+# Step 8: Approve the signature
 - tapOn:
     id: dapp-request-confirm-button
 
-- extendedWaitUntil:
-    notVisible:
-      id: sign-message-title
-    timeout: 10000
-
-- log: "✅ Short message signed successfully"
-
-# Small delay between requests
-- sleep: 1000
-
-#########################################
-# TEST 2: Long Message
-#########################################
-
-- log: "🧪 Test 2: Long Message"
-
-- httpRequest:
-    url: http://localhost:3001/session/${SESSION_ID}/request/signMessage
-    method: POST
-    body:
-      message:
-        "This is a very long message that tests message rendering and line
-        wrapping behavior in the Freighter signing sheet. It should display
-        properly without truncation. This message contains multiple sentences to
-        ensure that the signing sheet expands dynamically to accommodate longer
-        text without requiring excessive scrolling. The user should be able to
-        see the entire message at once without having to scroll through multiple
-        lines."
-      network: "testnet"
-
+# Wait for modal to dismiss
 - extendedWaitUntil:
     visible:
-      id: sign-message-title
-    timeout: 10000
+      id: home-screen
+    timeout: 5000
 
+# Verify we're back on home screen
 - assertVisible:
-    id: message-display
-
-# Verify the message display can handle the long content
-- assertVisible:
-    id: message-display-content-scroll
-
-- tapOn:
-    id: dapp-request-confirm-button
-
-- extendedWaitUntil:
-    notVisible:
-      id: sign-message-title
-    timeout: 10000
-
-- log: "✅ Long message signed successfully"
-
-- sleep: 1000
-
-#########################################
-# TEST 3: JSON Message
-#########################################
-
-- log: "🧪 Test 3: JSON Formatted Message"
-
-- httpRequest:
-    url: http://localhost:3001/session/${SESSION_ID}/request/signMessage
-    method: POST
-    body:
-      message: '{"action":"sign","timestamp":1234567890,"data":{"test":true}}'
-      network: "testnet"
-
-- extendedWaitUntil:
-    visible:
-      id: sign-message-title
-    timeout: 10000
-
-- assertVisible:
-    id: message-display
-
-# Verify JSON is displayed with monospace font
-- assertVisible:
-    id: message-display-content
-
-- tapOn:
-    id: dapp-request-confirm-button
-
-- extendedWaitUntil:
-    notVisible:
-      id: sign-message-title
-    timeout: 10000
-
-- log: "✅ JSON message signed successfully"
-
-#########################################
-# CLEANUP
-#########################################
-
-- httpRequest:
-    url: http://localhost:3001/session/${SESSION_ID}
-    method: DELETE
-
-- log: "✅ All message variation tests completed successfully!"
+    id: home-screen

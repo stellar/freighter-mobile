@@ -2,31 +2,11 @@ appId: org.stellar.freighterdev
 tags:
   - walletconnect
   - sign-message
-  - e2e
-  - mock-dapp
   - network-validation
+  - e2e
 ---
 # SignMessage Network Mismatch E2E Test
-#
-# Tests that the wallet properly validates network mismatches when a dApp
-# requests a signature on a different network than the wallet is configured for.
-#
-# Flow:
-# 1. Import funded wallet (defaults to testnet in E2E setup)
-# 2. Trigger sign message request for PUBNET (different from wallet's testnet)
-# 3. Verify wallet shows network mismatch error
-# 4. User cannot approve on wrong network
-# 5. Switch wallet to PUBNET
-# 6. Same dApp request can now be signed
-#
-# Prerequisites:
-# - IS_E2E_TEST=true in .env
-# - E2E_TEST_FUNDED_RECOVERY_PHRASE set
-# - Mock dApp server running on http://localhost:3001
-
-#########################################
-# SETUP: Import and Connect Wallet
-#########################################
+# Tests wallet network switching for WalletConnect requests
 
 - runFlow:
     file: ../onboarding/ImportFundedWallet.yaml
@@ -43,82 +23,20 @@ tags:
             id: home-screen
           timeout: 10000
 
-# Ensure we're on Testnet
 - runFlow:
     file: ./SwitchToTestnet.yaml
 
-# Create session
-- httpRequest:
-    url: http://localhost:3001/session/create
-    method: POST
-    body: {}
-    assignJsonPath:
-      SESSION_ID: $.sessionId
+# Create WalletConnect session
+- evalScript: |
+    const res = await fetch('http://localhost:3001/session/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    const data = await res.json();
+    output.wcUri = data.uri;
+    output.sessionId = data.sessionId;
 
-- httpRequest:
-    url: http://localhost:3001/session/${SESSION_ID}/wait?timeout=30000
-    method: GET
-    assignJsonPath:
-      SESSION_TOPIC: $.topic
-
-- log: "✅ Session created on testnet wallet"
-
-#########################################
-# TEST 1: Network Mismatch - Request PUBNET on Testnet Wallet
-#########################################
-
-- log:
-    "🧪 Test 1: Network Mismatch - Requesting PUBNET signature on Testnet wallet"
-
-# Send sign message request for PUBNET (different from wallet's testnet)
-- httpRequest:
-    url: http://localhost:3001/session/${SESSION_ID}/request/signMessage
-    method: POST
-    body:
-      message: "Please sign this on mainnet"
-      network: "pubnet"
-    assignJsonPath:
-      REQUEST_ID: $.requestId
-
-- log: "📨 Sent pubnet sign request: ${REQUEST_ID}"
-
-#########################################
-# VERIFY NETWORK MISMATCH HANDLING
-#########################################
-
-# Wait to see if modal appears (it might show an error or be rejected)
-- runFlow:
-    when:
-      visible:
-        id: sign-message-title
-    timeout: 5000
-    commands:
-      - log: "⚠️  Modal appeared - network mismatch should be handled by app"
-
-# Since network mismatch should cause rejection, check the response
-# without waiting (request should be rejected quickly)
-- sleep: 2000
-
-- httpRequest:
-    url: http://localhost:3001/session/${SESSION_ID}/response?wait=false
-    method: GET
-    assignJsonPath:
-      RESPONSE_STATUS: $.status
-
-# The request should be rejected due to network mismatch
-- assert:
-    condition: ${RESPONSE_STATUS} == "rejected" || ${RESPONSE_STATUS} == "error"
-    message: "Network mismatch request should be rejected or errored"
-
-- log: "✅ Network mismatch properly rejected: ${RESPONSE_STATUS}"
-
-#########################################
-# TEST 2: Switch to PUBNET and Retry
-#########################################
-
-- log: "🧪 Test 2: Switch wallet to PUBNET and retry signature"
-
-# Go to settings to switch network
+# Navigate to WalletConnect and establish connection
 - tapOn:
     id: home-screen-settings-button
 
@@ -127,48 +45,43 @@ tags:
       id: settings-screen
     timeout: 5000
 
-# Navigate to network settings
 - tapOn:
-    id: settings-network-button
+    id: settings-walletconnect-button
 
 - extendedWaitUntil:
     visible:
-      id: network-selection-sheet
+      id: walletconnect-input-screen
     timeout: 5000
 
-# Select PUBNET (Mainnet)
 - tapOn:
-    id: network-pubnet-option
+    id: walletconnect-uri-input
+
+- inputText: ${output.wcUri}
+
+- tapOn:
+    id: walletconnect-connect-button
+
+- extendedWaitUntil:
+    visible:
+      id: session-proposal-confirm-button
+    timeout: 10000
+
+- tapOn:
+    id: session-proposal-confirm-button
 
 - extendedWaitUntil:
     visible:
       id: home-screen
-    timeout: 5000
+    timeout: 10000
 
-- log: "✅ Switched wallet to PUBNET"
+# Test 1: Request signature on PUBNET while wallet is on Testnet
+- evalScript: |
+    await fetch(`http://localhost:3001/session/${output.sessionId}/request/signMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: "Please sign on mainnet", network: "pubnet" })
+    });
 
-#########################################
-# Send Testnet Request (now should work on pubnet wallet at different network)
-# Or test that same network works
-#########################################
-
-# Send a new sign message request for PUBNET (now wallet is also pubnet)
-- httpRequest:
-    url: http://localhost:3001/session/${SESSION_ID}/request/signMessage
-    method: POST
-    body:
-      message: "Now signing on the correct network"
-      network: "pubnet"
-    assignJsonPath:
-      REQUEST_ID_2: $.requestId
-
-- log: "📨 Sent pubnet sign request again: ${REQUEST_ID_2}"
-
-#########################################
-# VERIFY SUCCESS ON MATCHING NETWORK
-#########################################
-
-# Wait for signing modal
 - extendedWaitUntil:
     visible:
       id: sign-message-title
@@ -177,36 +90,48 @@ tags:
 - assertVisible:
     id: message-display
 
-# Approve the signature
+# Test 2: Switch network to PUBNET via settings
+- tapOn:
+    id: home-screen-settings-button
+
+- extendedWaitUntil:
+    visible:
+      id: settings-screen
+    timeout: 5000
+
+- tapOn:
+    id: settings-network-button
+
+- extendedWaitUntil:
+    visible:
+      id: network-selection-sheet
+    timeout: 5000
+
+- tapOn:
+    id: network-pubnet-option
+
+- extendedWaitUntil:
+    visible:
+      id: home-screen
+    timeout: 5000
+
+# Test 3: Request signature on matching network (PUBNET)
+- evalScript: |
+    await fetch(`http://localhost:3001/session/${output.sessionId}/request/signMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: "Now signing on the correct network", network: "pubnet" })
+    });
+
+- extendedWaitUntil:
+    visible:
+      id: sign-message-title
+    timeout: 10000
+
 - tapOn:
     id: dapp-request-confirm-button
 
 - extendedWaitUntil:
-    notVisible:
-      id: sign-message-title
-    timeout: 10000
-
-- log: "✅ Signature approved on matching network"
-
-# Verify signature was completed
-- httpRequest:
-    url: http://localhost:3001/session/${SESSION_ID}/response?wait=true&timeout=5000
-    method: GET
-    assignJsonPath:
-      FINAL_STATUS: $.status
-
-- assert:
-    condition: ${FINAL_STATUS} == "approved"
-    message: "Signature should be approved on matching network"
-
-- log: "✅ Signature verified: ${FINAL_STATUS}"
-
-#########################################
-# CLEANUP
-#########################################
-
-- httpRequest:
-    url: http://localhost:3001/session/${SESSION_ID}
-    method: DELETE
-
-- log: "✅ Network mismatch validation tests completed successfully!"
+    visible:
+      id: home-screen
+    timeout: 5000

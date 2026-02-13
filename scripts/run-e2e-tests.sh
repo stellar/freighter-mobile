@@ -1,6 +1,9 @@
 #!/bin/bash
 set -eu  # Exit on error, undefined vars (pipefail not available in sh)
 
+# Ensure maestro is in PATH
+export PATH="$PATH:$HOME/.maestro/bin"
+
 # Create base output directory for Maestro artifacts
 OUTPUT_DIR="e2e-artifacts"
 mkdir -p "$OUTPUT_DIR"
@@ -84,11 +87,6 @@ if [ -z "${E2E_TEST_FUNDED_RECOVERY_PHRASE:-}" ] && [ -f .env ]; then
   export E2E_TEST_FUNDED_RECOVERY_PHRASE
 fi
 
-# Load E2E_TEST_RECIPIENT_ADDRESS from .env when not set (local runs). CI uses secrets.
-if [ -z "${E2E_TEST_RECIPIENT_ADDRESS:-}" ] && [ -f .env ]; then
-  E2E_TEST_RECIPIENT_ADDRESS=$(sed -n 's/^E2E_TEST_RECIPIENT_ADDRESS=//p' .env 2>/dev/null | head -1)
-  export E2E_TEST_RECIPIENT_ADDRESS
-fi
 
 if [ -n "$PLATFORM" ]; then
   case "$PLATFORM" in
@@ -293,11 +291,6 @@ for file in $FLOW_FILES; do
   # Extract flow name from file path (e.g., "CreateWallet" from "e2e/flows/onboarding/CreateWallet.yaml")
   FLOW_NAME=$(basename "$file" .yaml)
 
-  if grep -q "E2E_TEST_RECIPIENT_ADDRESS" "$file" 2>/dev/null; then
-    if [ -z "${E2E_TEST_RECIPIENT_ADDRESS:-}" ]; then
-      echo "⚠️  E2E_TEST_RECIPIENT_ADDRESS is not set; $FLOW_NAME may fail."
-    fi
-  fi
 
   # Set iOS simulator clipboard based on flow type (local runs). CI sets it in the workflow.
   if [ "$PLATFORM" = "ios" ] && [ -n "${MAESTRO_DEVICE:-}" ]; then
@@ -334,9 +327,6 @@ for file in $FLOW_FILES; do
   MAESTRO_ENV_ARGS=()
   if [ -n "${E2E_TEST_RECOVERY_PHRASE:-}" ]; then
     MAESTRO_ENV_ARGS+=("-e" "E2E_TEST_RECOVERY_PHRASE=$E2E_TEST_RECOVERY_PHRASE")
-  fi
-  if [ -n "${E2E_TEST_RECIPIENT_ADDRESS:-}" ]; then
-    MAESTRO_ENV_ARGS+=("-e" "E2E_TEST_RECIPIENT_ADDRESS=$E2E_TEST_RECIPIENT_ADDRESS")
   fi
   if [ -n "${IS_CI_ENV:-}" ]; then
     MAESTRO_ENV_ARGS+=("-e" "IS_CI_ENV=$IS_CI_ENV")

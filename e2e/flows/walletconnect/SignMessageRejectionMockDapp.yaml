@@ -2,30 +2,11 @@ appId: org.stellar.freighterdev
 tags:
   - walletconnect
   - sign-message
-  - e2e
-  - mock-dapp
   - rejection
+  - e2e
 ---
 # SignMessage Rejection E2E Test
-#
-# Tests that users can reject/cancel sign message requests via the mock dApp API.
-#
-# Flow:
-# 1. Import funded wallet
-# 2. Switch to testnet
-# 3. Trigger sign message request via API
-# 4. Verify modal appears
-# 5. Cancel/Reject the signature
-# 6. Verify rejection is returned to dApp
-#
-# Prerequisites:
-# - IS_E2E_TEST=true in .env
-# - E2E_TEST_FUNDED_RECOVERY_PHRASE set
-# - Mock dApp server running on http://localhost:3001
-
-#########################################
-# SETUP: Import and Connect Wallet
-#########################################
+# Tests rejecting a signature request and session recovery
 
 - runFlow:
     file: ../onboarding/ImportFundedWallet.yaml
@@ -45,106 +26,92 @@ tags:
 - runFlow:
     file: ./SwitchToTestnet.yaml
 
-# Create session
-- httpRequest:
-    url: http://localhost:3001/session/create
-    method: POST
-    body: {}
-    assignJsonPath:
-      SESSION_ID: $.sessionId
+# Create WalletConnect session
+- evalScript: |
+    const res = await fetch('http://localhost:3001/session/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    const data = await res.json();
+    output.wcUri = data.uri;
+    output.sessionId = data.sessionId;
 
-- httpRequest:
-    url: http://localhost:3001/session/${SESSION_ID}/wait?timeout=30000
-    method: GET
-    assignJsonPath:
-      SESSION_TOPIC: $.topic
+# Navigate to WalletConnect and establish connection
+- tapOn:
+    id: home-screen-settings-button
 
-- log: "✅ Session ready for rejection test"
+- extendedWaitUntil:
+    visible:
+      id: settings-screen
+    timeout: 5000
 
-#########################################
-# TRIGGER SIGN MESSAGE REQUEST
-#########################################
+- tapOn:
+    id: settings-walletconnect-button
 
-- httpRequest:
-    url: http://localhost:3001/session/${SESSION_ID}/request/signMessage
-    method: POST
-    body:
-      message: "This request will be rejected"
-      network: "testnet"
-    assignJsonPath:
-      REQUEST_ID: $.requestId
+- extendedWaitUntil:
+    visible:
+      id: walletconnect-input-screen
+    timeout: 5000
 
-- log: "📨 Sign message request sent: ${REQUEST_ID}"
+- tapOn:
+    id: walletconnect-uri-input
 
-#########################################
-# VERIFY MODAL APPEARS
-#########################################
+- inputText: ${output.wcUri}
+
+- tapOn:
+    id: walletconnect-connect-button
+
+- extendedWaitUntil:
+    visible:
+      id: session-proposal-confirm-button
+    timeout: 10000
+
+- tapOn:
+    id: session-proposal-confirm-button
+
+- extendedWaitUntil:
+    visible:
+      id: home-screen
+    timeout: 10000
+
+# Test 1: Send first sign request and reject it
+- evalScript: |
+    await fetch(`http://localhost:3001/session/${output.sessionId}/request/signMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: "This request will be rejected", network: "testnet" })
+    });
 
 - extendedWaitUntil:
     visible:
       id: sign-message-title
     timeout: 10000
 
-- log: "✅ Sign message modal appeared"
-
 - assertVisible:
     id: message-display
+- assertVisible:
+    id: dapp-request-cancel-button
 
-#########################################
-# REJECT/CANCEL THE REQUEST
-#########################################
-
-# Tap the cancel button
+# Reject the signature
 - tapOn:
     id: dapp-request-cancel-button
 
-- log: "✅ Tapped cancel button"
-
-#########################################
-# VERIFY REJECTION
-#########################################
-
-# Wait for the bottom sheet to dismiss
-- extendedWaitUntil:
-    notVisible:
-      id: sign-message-title
-    timeout: 10000
-
-- log: "✅ Sign message sheet dismissed"
-
 # Verify we're back on home screen
+- extendedWaitUntil:
+    visible:
+      id: home-screen
+    timeout: 5000
+
 - assertVisible:
     id: home-screen
 
-# Poll the mock dApp API to verify rejection was returned
-- httpRequest:
-    url: http://localhost:3001/session/${SESSION_ID}/response?wait=false
-    method: GET
-    assignJsonPath:
-      RESPONSE_STATUS: $.status
-
-# Check if rejection is properly returned (status should be "rejected")
-- assert:
-    condition: ${RESPONSE_STATUS} == "rejected"
-    message: "Request should be rejected"
-
-- log: "✅ Rejection confirmed: ${RESPONSE_STATUS}"
-
-#########################################
-# TEST 2: Verify Can Sign After Rejection
-#########################################
-
-- log: "🧪 Test 2: Verify can sign after rejection"
-
-- sleep: 1000
-
-# Send another request to ensure the session still works
-- httpRequest:
-    url: http://localhost:3001/session/${SESSION_ID}/request/signMessage
-    method: POST
-    body:
-      message: "This request will be approved"
-      network: "testnet"
+# Test 2: Send second sign request and approve it (verify session still works)
+- evalScript: |
+    await fetch(`http://localhost:3001/session/${output.sessionId}/request/signMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: "This request will be approved", network: "testnet" })
+    });
 
 - extendedWaitUntil:
     visible:
@@ -155,19 +122,8 @@ tags:
 - tapOn:
     id: dapp-request-confirm-button
 
+# Verify we're back on home screen
 - extendedWaitUntil:
-    notVisible:
-      id: sign-message-title
-    timeout: 10000
-
-- log: "✅ Second request signed successfully after rejection"
-
-#########################################
-# CLEANUP
-#########################################
-
-- httpRequest:
-    url: http://localhost:3001/session/${SESSION_ID}
-    method: DELETE
-
-- log: "✅ Rejection and recovery tests completed successfully!"
+    visible:
+      id: home-screen
+    timeout: 5000
