@@ -1,7 +1,9 @@
 /* eslint-disable @fnando/consistent-import/consistent-import */
+/* eslint-disable no-console */
 import cors from "cors";
 import dotenv from "dotenv";
 import express, { Application } from "express";
+import path from "path";
 
 import { createRoutes } from "./routes";
 import { MockWalletConnectClient } from "./walletconnect";
@@ -53,25 +55,22 @@ async function startServer(): Promise<void> {
     },
   );
 
+  // Serve static files from public directory
+  const publicPath = path.join(__dirname, "..", "public");
+  app.use(express.static(publicPath));
+
   // Routes
   const router = createRoutes(wcClient);
   app.use("/", router);
 
   // Error handling
-  app.use(
-    (
-      err: Error,
-      _req: express.Request,
-      res: express.Response,
-      _next: express.NextFunction,
-    ) => {
-      console.error("❌ Unhandled error:", err);
-      res.status(500).json({
-        error: "Internal server error",
-        message: err.message,
-      });
-    },
-  );
+  app.use((err: Error, _req: express.Request, res: express.Response) => {
+    console.error("❌ Unhandled error:", err);
+    res.status(500).json({
+      error: "Internal server error",
+      message: err.message,
+    });
+  });
 
   console.log("✅ Express routes configured\n");
 
@@ -146,8 +145,14 @@ async function startServer(): Promise<void> {
     process.exit(0);
   };
 
-  process.on("SIGTERM", shutdown);
-  process.on("SIGINT", shutdown);
+  process.on("SIGTERM", () => {
+    console.log("Received SIGTERM signal");
+    shutdown();
+  });
+  process.on("SIGINT", () => {
+    console.log("Received SIGINT signal");
+    shutdown();
+  });
 }
 
 // Start the server

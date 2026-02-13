@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import SignClient from "@walletconnect/sign-client";
 import { SessionTypes } from "@walletconnect/types";
 
@@ -49,7 +50,7 @@ export class MockWalletConnectClient {
         name: "Mock WalletConnect dApp",
         description: "E2E testing mock dApp for Freighter Mobile",
         url: "http://localhost:3001",
-        icons: ["https://docs.freighter.app/img/freighter-icon.png"],
+        icons: ["https://docs.freighter.app/images/logo.png"],
       },
     });
 
@@ -97,17 +98,15 @@ export class MockWalletConnectClient {
       throw new Error("Failed to generate WalletConnect URI");
     }
 
-    // Store session after approval
-    approval()
-      .then((session) => {
-        this.sessions.set(session.topic, session);
-        console.log(`[WC] Session approved: ${session.topic}`);
-      })
-      .catch((error) => {
-        console.error("[WC] Session approval failed:", error);
-      });
+    // Wrap approval to store session when it completes
+    const wrappedApproval = async () => {
+      const session = await approval();
+      this.sessions.set(session.topic, session);
+      console.log(`[WC] Session approved and stored: ${session.topic}`);
+      return session;
+    };
 
-    return { uri, approval };
+    return { uri, approval: wrappedApproval };
   }
 
   /**
@@ -130,7 +129,7 @@ export class MockWalletConnectClient {
     const chainId = `stellar:${network}`;
 
     console.log(`[WC] Requesting stellar_signMessage on ${chainId}:`, {
-      message: `${params.message.substring(0, 50)  }...`,
+      message: `${params.message.substring(0, 50)}...`,
       length: params.message.length,
     });
 

@@ -840,6 +840,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         analyticsEvent={AnalyticsEvent.VIEW_SIGN_DAPP_TRANSACTION}
         bottomSheetModalProps={{
           onDismiss: handleClearDappRequest,
+          enableDynamicSizing: true,
         }}
         customContent={
           <DappRequestBottomSheetContent

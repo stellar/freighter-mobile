@@ -16,7 +16,7 @@ import { ActiveAccount } from "ducks/auth";
 import { useProtocolsStore } from "ducks/protocols";
 import { StellarRpcMethods, WalletKitSessionRequest } from "ducks/walletKit";
 import { formatTokenForDisplay } from "helpers/formatAmount";
-import { findMatchedProtocol, getHostname } from "helpers/protocols";
+import { findMatchedProtocol, getDisplayHost } from "helpers/protocols";
 import { useTransactionBalanceListItems } from "hooks/blockaid/useTransactionBalanceListItems";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
@@ -181,13 +181,13 @@ const DappRequestBottomSheetContent: React.FC<
   );
 
   const dappMetadata = useDappMetadata(requestEvent);
-  const requestOrigin = requestEvent?.verifyContext?.verified?.origin ?? "";
+  const requestOrigin = requestEvent?.verifyContext?.verified?.origin;
 
   const matchedProtocol = useMemo(
     () =>
       findMatchedProtocol({
         protocols,
-        searchUrl: requestOrigin,
+        searchUrl: requestOrigin || "",
       }),
     [protocols, requestOrigin],
   );
@@ -196,7 +196,7 @@ const DappRequestBottomSheetContent: React.FC<
     return null;
   }
 
-  const dAppDomain = getHostname(requestOrigin ?? dappMetadata?.url ?? "");
+  const dAppDomain = getDisplayHost(requestOrigin || dappMetadata?.url || "");
   const dAppName = matchedProtocol?.name ?? dappMetadata.name;
   const dAppFavicon = matchedProtocol?.iconUrl ?? dappMetadata.icons[0];
 
@@ -305,7 +305,13 @@ const DappRequestBottomSheetContent: React.FC<
       <View className="flex-row items-center gap-[12px] w-full">
         <App size="lg" appName={dAppName} favicon={dAppFavicon} />
         <View className="ml-2">
-          <Text md primary testID={isSignMessage ? "sign-message-title" : "sign-transaction-title"}>
+          <Text
+            md
+            primary
+            testID={
+              isSignMessage ? "sign-message-title" : "sign-transaction-title"
+            }
+          >
             {isSignMessage
               ? t("dappRequestBottomSheetContent.signMessage")
               : t("dappRequestBottomSheetContent.confirmTransaction")}

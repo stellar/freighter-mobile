@@ -27,6 +27,7 @@ const isJsonString = (str: string): boolean => {
 /**
  * MessageDisplay component for showing SEP-53 messages
  * Displays the message with the SEP-53 prefix and handles JSON formatting
+ * Dynamically increases height based on message length
  *
  * @component
  * @param {MessageDisplayProps} props - The component props
@@ -47,16 +48,15 @@ export const MessageDisplay: React.FC<MessageDisplayProps> = ({ message }) => {
       style={{ backgroundColor: themeColors.background.secondary }}
       testID="message-display"
     >
-      <Text sm secondary style={{ marginBottom: 8 }} testID="message-display-prefix">
+      <Text
+        sm
+        secondary
+        style={{ marginBottom: 8 }}
+        testID="message-display-prefix"
+      >
         {SIGN_MESSAGE_PREFIX}
       </Text>
-      <ScrollView
-        className="max-h-48"
-        style={{
-          maxHeight: 200,
-        }}
-        testID="message-display-content-scroll"
-      >
+      <ScrollView className="max-h-48" testID="message-display-content-scroll">
         <Text
           sm
           primary
