@@ -56,10 +56,10 @@ tags:
 - tapOn:
     id: skip-confirm-button
 
-# Wait for wallet creation to complete
+# Wait for wallet creation to complete - check for home screen or welcome banner
 - extendedWaitUntil:
     visible:
-      id: home-screen
+      id: home-screen|welcome-banner-dismiss-button
     timeout: 10000
 
 # Dismiss welcome banner if it appears after wallet creation
@@ -70,3 +70,7 @@ tags:
     commands:
       - tapOn:
           id: welcome-banner-dismiss-button
+      - extendedWaitUntil:
+          visible:
+            id: home-screen
+          timeout: 10000

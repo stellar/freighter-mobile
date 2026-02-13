@@ -68,9 +68,8 @@ export const useHomeHeaders = ({ navigation }: UseHomeHeadersProps) => {
   const HeaderLeftComponent = useCallback(
     () => (
       <View className="flex-row gap-4">
-        <View testID="home-actions-menu" accessible>
+        <View testID="home-screen-settings-button" accessible>
           <ContextMenuButton
-            testID="home-screen-settings-button"
             contextMenuProps={{
               actions: menuActions,
             }}

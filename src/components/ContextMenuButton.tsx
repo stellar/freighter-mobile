@@ -8,7 +8,6 @@ import {
   MenuTrigger,
 } from "components/primitives/Menu";
 import React from "react";
-import { View } from "react-native";
 import type { SFSymbol } from "sf-symbols-typescript";
 
 export interface MenuItem {
@@ -79,9 +78,7 @@ const ContextMenuButton: React.FC<ContextMenuButtonProps> = ({
 
   return (
     <MenuRoot>
-      <MenuTrigger>
-        <View testID={testID}>{children}</View>
-      </MenuTrigger>
+      <MenuTrigger testID={testID}>{children}</MenuTrigger>
       <MenuContent
         side={side}
         align={align}

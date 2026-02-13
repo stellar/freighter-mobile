@@ -7,6 +7,16 @@ appId: org.stellar.freighterdev
 - tapOn:
     id: home-screen-settings-button
 
+# Tap on "Settings" in the dropdown menu
+- tapOn: "Settings"
+
+# Wait for settings screen to load
+- extendedWaitUntil:
+    visible:
+      id: settings-screen
+    timeout: 10000
+
+# Wait for change network button to be visible
 - extendedWaitUntil:
     visible:
       id: change-network-button
