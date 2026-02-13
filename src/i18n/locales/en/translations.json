@@ -37,7 +37,8 @@
     "name": "Name",
     "collection": "Collection",
     "tokenId": "Token ID",
-    "useE2ERecipient": "Use E2E recipient"
+    "useE2ERecipient": "Use E2E recipient",
+    "message": "Message"
   },
   "home": {
     "title": "Home",

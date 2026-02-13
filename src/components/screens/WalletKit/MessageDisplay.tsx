@@ -1,7 +1,8 @@
+import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { SIGN_MESSAGE_PREFIX } from "helpers/stellar";
 import useColors from "hooks/useColors";
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { ScrollView, View } from "react-native";
 
 /**
@@ -36,6 +37,7 @@ const isJsonString = (str: string): boolean => {
 export const MessageDisplay: React.FC<MessageDisplayProps> = ({ message }) => {
   const { themeColors } = useColors();
   const isJson = isJsonString(message);
+  const { t } = useTranslation();
 
   // Format JSON with indentation for better readability
   const displayMessage = isJson
@@ -48,15 +50,18 @@ export const MessageDisplay: React.FC<MessageDisplayProps> = ({ message }) => {
       style={{ backgroundColor: themeColors.background.secondary }}
       testID="message-display"
     >
-      <Text
-        sm
-        secondary
-        style={{ marginBottom: 8 }}
-        testID="message-display-prefix"
-      >
-        {SIGN_MESSAGE_PREFIX}
-      </Text>
-      <ScrollView className="max-h-48" testID="message-display-content-scroll">
+      <View className="flex-row items-center gap-2 mb-4">
+        <Icon.LayoutAlt03 size={16} color={themeColors.text.secondary} />
+        <Text
+          sm
+          secondary
+          style={{ marginTop: 1 }}
+          testID="message-display-prefix"
+        >
+          {t("common.message")}
+        </Text>
+      </View>
+      <ScrollView testID="message-display-content-scroll">
         <Text
           sm
           primary
