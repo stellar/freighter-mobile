@@ -18,7 +18,8 @@ invoked with `--platform`, `--shard-index`, `--shard-total`, and the flow name.
   [Local Setup & Env](local-setup-and-env.md)).
 - App built and running in simulator (iOS) or emulator (Android).
 - For iOS: `run-e2e-tests.sh` will set the simulator clipboard with
-  `E2E_TEST_RECOVERY_PHRASE` for Import Wallet.
+  `E2E_TEST_RECOVERY_PHRASE` (for ImportWallet) or
+  `E2E_TEST_FUNDED_RECOVERY_PHRASE` (for ImportFundedWallet).
 
 ### Commands
 

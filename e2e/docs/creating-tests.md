@@ -44,14 +44,14 @@ when you add them to flows.
 
 There are two options. Use the comparison below to choose:
 
-|                  | **Desktop app**                                                            | **CLI / in-browser**                                          |
-| ---------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| **What it is**   | Standalone IDE: create, edit, and run flows                                | Element picker + REPL in browser (`maestro studio`)           |
-| **Flow editing** | Built-in; edit YAML in the app                                             | None; you edit flows in your editor and paste snippets        |
-| **Run tests**    | Run locally from the UI                                                    | You run `maestro test` (or `yarn test:e2e`) yourself          |
-| **Env vars**     | Settings UI (e.g. `E2E_TEST_RECOVERY_PHRASE`); one-by-one                  | No env config; use `-e` when running `maestro test`           |
-| **CLI required** | No                                                                         | Yes (Maestro CLI)                                             |
-| **Best for**     | Inspecting, editing, creating flows; setting env vars; all-in-one workflow | Quick element discovery and REPL when you already use the CLI |
+|                  | **Desktop app**                                                                              | **CLI / in-browser**                                          |
+| ---------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| **What it is**   | Standalone IDE: create, edit, and run flows                                                  | Element picker + REPL in browser (`maestro studio`)           |
+| **Flow editing** | Built-in; edit YAML in the app                                                               | None; you edit flows in your editor and paste snippets        |
+| **Run tests**    | Run locally from the UI                                                                      | You run `maestro test` (or `yarn test:e2e`) yourself          |
+| **Env vars**     | Settings UI (e.g. `E2E_TEST_RECOVERY_PHRASE`, `E2E_TEST_FUNDED_RECOVERY_PHRASE`); one-by-one | No env config; use `-e` when running `maestro test`           |
+| **CLI required** | No                                                                                           | Yes (Maestro CLI)                                             |
+| **Best for**     | Inspecting, editing, creating flows; setting env vars; all-in-one workflow                   | Quick element discovery and REPL when you already use the CLI |
 
 ### Option 1: Maestro Studio Desktop (recommended)
 
@@ -67,7 +67,7 @@ environment variables in the app. No CLI needed.
 1. Install the app, connect a simulator/emulator, and open your project (or
    `e2e/flows/`).
 2. Create or edit flows in the UI. Use **Settings** to add env vars (e.g.
-   `E2E_TEST_RECOVERY_PHRASE`).
+   `E2E_TEST_RECOVERY_PHRASE`, `E2E_TEST_FUNDED_RECOVERY_PHRASE`).
 3. Run flows via **Run Locally** or **Run on Cloud**; save `.yaml` under
    `e2e/flows/` (e.g. `flows/onboarding/`, `flows/transactions/`).
 
@@ -91,7 +91,8 @@ configuration in the UI.
    or run commands in the REPL. Copy snippets and paste them into your `.yaml`
    flows under `e2e/flows/`.
 4. Run tests via `yarn test:e2e` (or `maestro test`). Pass env vars with `-e` if
-   needed; the script injects `E2E_TEST_RECOVERY_PHRASE` when set in `.env`.
+   needed; the script injects `E2E_TEST_RECOVERY_PHRASE` and
+   `E2E_TEST_FUNDED_RECOVERY_PHRASE` when set in `.env`.
 
 ## Recording a flow run (video)
 
