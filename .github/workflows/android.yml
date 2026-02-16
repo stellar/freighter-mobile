@@ -163,6 +163,11 @@ jobs:
           workload_identity_provider: ${{ env.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ env.GCP_SERVICE_ACCOUNT_EMAIL }}
 
+      # Fastlane's supply action reads from SUPPLY_JSON_KEY, not GOOGLE_APPLICATION_CREDENTIALS
+      - name: Set Fastlane Google credentials
+        run:
+          echo "SUPPLY_JSON_KEY=$GOOGLE_APPLICATION_CREDENTIALS" >> $GITHUB_ENV
+
       - name: Make scripts executable
         run: find scripts -type f -exec chmod +x {} \;
 
