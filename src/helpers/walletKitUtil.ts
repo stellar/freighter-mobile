@@ -300,7 +300,9 @@ export const approveSessionRequest = async ({
     }
 
     // Validate message length (1KB limit per SEP-53 recommendations)
-    if (message.length > 1024) {
+    // Use UTF-8 byte length instead of UTF-16 character count
+    const messageByteLength = new TextEncoder().encode(message).length;
+    if (messageByteLength > 1024) {
       const errorMessage = "Message too long (max 1KB)";
       showToast({
         title: t("walletKit.errorSigning"),
@@ -344,7 +346,7 @@ export const approveSessionRequest = async ({
 
     const response = {
       id,
-      result: { signedMessage },
+      result: { signature: signedMessage },
       jsonrpc: "2.0",
     };
 

@@ -6,11 +6,12 @@ tags:
   - e2e
 ---
 # SignMessage Mock Dapp E2E Test - Happy Path
-# Tests basic WalletConnect SignMessage flow with approval
+# Tests basic WalletConnect SignMessage flow with approval on mainnet
 
 - runFlow:
     file: ../onboarding/ImportFundedWallet.yaml
 
+# Dismiss welcome banner if it appears after import
 - runFlow:
     when:
       visible:
@@ -21,53 +22,76 @@ tags:
       - extendedWaitUntil:
           visible:
             id: home-screen
-          timeout: 10000
+          timeout: 5000
 
+# Dismiss welcome banner if it appears again
 - runFlow:
-    file: ./SwitchToTestnet.yaml
+    when:
+      visible:
+        id: welcome-banner-dismiss-button
+    commands:
+      - tapOn:
+          id: welcome-banner-dismiss-button
+      - extendedWaitUntil:
+          visible:
+            id: home-screen
+          timeout: 5000
 
-# Create WalletConnect session
-- evalScript: |
-    const res = await fetch('http://localhost:3001/session/create', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
-    });
-    const data = await res.json();
-    output.wcUri = data.uri;
-    output.sessionId = data.sessionId;
-
-# Navigate to WalletConnect settings
+# Open WC E2E Helper FAB and create session
 - tapOn:
-    id: home-screen-settings-button
+    id: wc-e2e-helper-fab
 
+# Wait for bottom sheet animation to complete
+- scroll
+
+# Tap Create Session button
+- tapOn:
+    id: wc-e2e-create-session
+
+# Wait for session to be created
 - extendedWaitUntil:
     visible:
-      id: settings-screen
+      id: wc-e2e-copy-uri
     timeout: 5000
 
+# Copy WC URI to clipboard (modal will auto-close)
 - tapOn:
-    id: settings-walletconnect-button
+    id: wc-e2e-copy-uri
 
+# Wait for modal to close
 - extendedWaitUntil:
     visible:
-      id: walletconnect-input-screen
+      id: home-screen
+    timeout: 3000
+
+# Navigate to QR scanner
+- tapOn:
+    id: home-screen-scan-button
+
+# Wait for QR scanner to load - manual input is always visible for WalletConnect
+- extendedWaitUntil:
+    visible: "Paste"
     timeout: 5000
 
-# Enter WalletConnect URI
-- tapOn:
-    id: walletconnect-uri-input
+# Paste WC URI
+- tapOn: "Paste"
 
-- inputText: ${output.wcUri}
+# Wait for connect button and tap it
+- extendedWaitUntil:
+    visible:
+      id: walletconnect-connect-button
+    timeout: 3000
 
 - tapOn:
     id: walletconnect-connect-button
 
-# Accept connection proposal
+# Wait for session proposal
 - extendedWaitUntil:
     visible:
       id: session-proposal-confirm-button
-    timeout: 10000
+    timeout: 20000
 
+# Tap confirm button
 - tapOn:
     id: session-proposal-confirm-button
 
@@ -77,13 +101,29 @@ tags:
       id: home-screen
     timeout: 10000
 
-# Request sign message from mock dApp
-- evalScript: |
-    await fetch(`http://localhost:3001/session/${output.sessionId}/request/signMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: "Hello from E2E test! Please sign this message to verify your wallet.", network: "testnet" })
-    });
+# Request sign message using WC E2E Helper
+- tapOn:
+    id: wc-e2e-helper-fab
+
+# Wait for modal to open and show inputs
+- scroll
+
+# Fill in message and network (pubnet for mainnet)
+- tapOn:
+    id: wc-e2e-message-input
+
+- inputText: "Hello from E2E test! Please sign this message to verify your wallet."
+
+- tapOn:
+    id: wc-e2e-network-input
+
+- inputText: "pubnet"
+
+- hideKeyboard
+
+# Request sign message - modal will auto-close after request
+- tapOn:
+    id: wc-e2e-request-sign
 
 # Wait for SignMessage modal
 - extendedWaitUntil:

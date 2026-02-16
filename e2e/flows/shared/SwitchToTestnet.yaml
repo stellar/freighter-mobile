@@ -7,13 +7,7 @@ appId: org.stellar.freighterdev
 - tapOn:
     id: e2e-open-settings
 
-# Wait for settings screen to load
-- extendedWaitUntil:
-    visible:
-      id: settings-screen
-    timeout: 10000
-
-# Wait for change network button to be visible
+# Wait for change network button to be visible (confirms settings screen loaded)
 - extendedWaitUntil:
     visible:
       id: change-network-button

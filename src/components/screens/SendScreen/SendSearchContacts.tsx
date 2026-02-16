@@ -148,11 +148,6 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
     getClipboardText().then(handleSearch);
   };
 
-  const handleUseE2ERecipientPress = useCallback(() => {
-    if (!e2eRecipientAddress) return;
-    handleContactPress(e2eRecipientAddress);
-  }, [e2eRecipientAddress, handleContactPress]);
-
   const handleOpenQRScanner = () => {
     // Navigate to the root navigator's QR scanner screen
     navigation.navigate(ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN, {
@@ -188,19 +183,6 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
             }}
             value={address}
           />
-
-          {isE2ETest && e2eRecipientAddress && (
-            <View className="mt-3">
-              <TouchableOpacity
-                testID="e2e-use-recipient"
-                onPress={handleUseE2ERecipientPress}
-              >
-                <Text sm secondary>
-                  {t("common.useE2ERecipient")}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
 
           {searchError && (
             <View className="mt-4">

@@ -228,6 +228,7 @@ const DappConnectionBottomSheetContent: React.FC<
               }}
               isLoading={isConnecting}
               disabled={isConnecting}
+              testID="session-proposal-continue-button"
             >
               {t("common.continue")}
             </Button>

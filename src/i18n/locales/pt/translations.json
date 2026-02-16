@@ -37,8 +37,7 @@
     "copy": "Copiar",
     "name": "Nome",
     "collection": "Coleção",
-    "tokenId": "ID do Token",
-    "useE2ERecipient": "Usar destinatario E2E"
+    "tokenId": "ID do Token"
   },
   "home": {
     "title": "Início",

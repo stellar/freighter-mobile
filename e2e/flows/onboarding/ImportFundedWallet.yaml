@@ -69,6 +69,11 @@ tags:
           commands:
             - tapOn:
                 text: "Allow Paste"
+            # Wait for the allow paste dialog to fully dismiss
+            - extendedWaitUntil:
+                notVisible:
+                  text: "Allow Paste|Don't Allow Paste"
+                timeout: 5000
 # Android: inputText approach
 - runFlow:
     when:
@@ -89,33 +94,8 @@ tags:
 - tapOn:
     id: default-action-button
 
-# Wait for import to complete - either welcome banner or home screen will appear
-# Try welcome banner first (it usually appears immediately after import)
-- runFlow:
-    when:
-      visible:
-        id: welcome-banner-dismiss-button
-    commands:
-      - tapOn:
-          id: welcome-banner-dismiss-button
-      - extendedWaitUntil:
-          visible:
-            id: home-screen
-          timeout: 10000
-
-# If welcome banner didn't appear, wait for home screen
-- runFlow:
-    when:
-      notVisible:
-        id: home-screen
-    commands:
-      - extendedWaitUntil:
-          visible:
-            id: home-screen
-          timeout: 60000
-
-# Allow time for accounts/balances to load after import
+# Wait for import to complete - wait for either home screen, banner, or account switcher
 - extendedWaitUntil:
     visible:
-      id: home-account-switcher
-    timeout: 15000
+      id: home-screen|welcome-banner-dismiss-button|home-account-switcher
+    timeout: 60000

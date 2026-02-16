@@ -21,8 +21,8 @@ import {
   WalletKitEventTypes,
   WalletKitSessionRequest,
   StellarRpcChains,
+  StellarRpcMethods,
 } from "ducks/walletKit";
-import { isE2ETest } from "helpers/isEnv";
 import { getHostname } from "helpers/protocols";
 import {
   approveSessionProposal,
@@ -49,6 +49,7 @@ import React, {
   useCallback,
 } from "react";
 import { View } from "react-native";
+import Config from "react-native-config";
 import { analytics } from "services/analytics";
 import { SecurityLevel, SecurityContext } from "services/blockaid/constants";
 import {
@@ -134,7 +135,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   );
 
   const isSignMessageRequest = useMemo(
-    () => requestMethod === "stellar_signMessage",
+    () => requestMethod === StellarRpcMethods.SIGN_MESSAGE,
     [requestMethod],
   );
 
@@ -607,6 +608,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
             scanResult,
             overriddenBlockaidResponse,
           );
+          // Skip isUnableToScan warning in E2E tests
           if (securityAssessment.isUnableToScan) {
             // For unable to scan, open security detail sheet first (main sheet not opened yet)
             setSecurityWarningContext(SecurityContext.SITE);
@@ -621,6 +623,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
             undefined,
             overriddenBlockaidResponse,
           );
+          // Skip isUnableToScan warning in E2E tests
           if (securityAssessment.isUnableToScan) {
             setSecurityWarningContext(SecurityContext.SITE);
             siteSecurityWarningBottomSheetModalRef.current?.present();
@@ -686,16 +689,19 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         return;
       }
 
-      // Validate that the transaction request origin is legit (skip this check in E2E mode)
+      // Validate that the transaction request origin matches an active session
+      // The verifyContext.verified.origin should match the hostname of one of our active sessions
       const transactionRequestOrigin =
         sessionRequest.verifyContext?.verified?.origin;
-      const isValidTransactionRequestOrigin =
-        isE2ETest ||
-        Object.values(activeSessions).some(
-          (session) =>
-            getHostname(session.peer?.metadata?.url) ===
-            getHostname(transactionRequestOrigin),
-        );
+
+      const isValidTransactionRequestOrigin = Object.values(
+        activeSessions,
+      ).some(
+        (session) =>
+          getHostname(session.peer?.metadata?.url) ===
+          getHostname(transactionRequestOrigin),
+      );
+
       if (!isValidTransactionRequestOrigin) {
         showToast({
           title: t("walletKit.invalidTransactionOrigin"),
@@ -729,12 +735,17 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 
       setRequestEvent(sessionRequest);
 
-      // In E2E mode, use mock metadata since there's no real session
-      const dappMetadata = isE2ETest
-        ? { url: "http://localhost:3001", name: "E2E Test dApp" }
-        : getDappMetadataFromEvent(sessionRequest, activeSessions);
+      // Get dApp metadata from active session
+      // If no metadata is found, use the verified origin from WalletConnect as fallback
+      const dappMetadata = getDappMetadataFromEvent(
+        sessionRequest,
+        activeSessions,
+      );
+      const dappDomain =
+        (dappMetadata?.url as string) ||
+        sessionRequest.verifyContext?.verified?.origin ||
+        "";
 
-      const dappDomain = dappMetadata?.url as string;
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const currentRequestMethod = sessionRequest.params.request.method;
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
@@ -742,8 +753,8 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 
       // Only scan transactions for XDR-based requests (not sign_message)
       const isXdrRequest =
-        currentRequestMethod === "stellar_signXDR" ||
-        currentRequestMethod === "stellar_signAndSubmitXDR";
+        currentRequestMethod === StellarRpcMethods.SIGN_XDR ||
+        currentRequestMethod === StellarRpcMethods.SIGN_AND_SUBMIT_XDR;
 
       if (isXdrRequest && requestXdr) {
         scanTransaction(requestXdr, dappDomain)
@@ -754,7 +765,11 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
               scanResult,
               overriddenBlockaidResponse,
             );
-            if (securityAssessment.isUnableToScan) {
+            // Skip isUnableToScan warning in E2E tests
+            if (
+              securityAssessment.isUnableToScan &&
+              Config.IS_E2E_TEST !== "true"
+            ) {
               // For unable to scan, open security detail sheet first (main sheet not opened yet)
               // Don't dismiss request sheet - it hasn't been opened yet and dismissing would cancel it
               setSecurityWarningContext(SecurityContext.TRANSACTION);
@@ -770,7 +785,11 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
               undefined,
               overriddenBlockaidResponse,
             );
-            if (securityAssessment.isUnableToScan) {
+            // Skip isUnableToScan warning in E2E tests
+            if (
+              securityAssessment.isUnableToScan &&
+              Config.IS_E2E_TEST !== "true"
+            ) {
               // For unable to scan, open security detail sheet first (main sheet not opened yet)
               // Don't dismiss request sheet - it hasn't been opened yet and dismissing would cancel it
               setSecurityWarningContext(SecurityContext.TRANSACTION);

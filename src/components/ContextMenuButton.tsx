@@ -17,6 +17,7 @@ export interface MenuItem {
   disabled?: boolean;
   onPress?: () => void;
   actions?: MenuItem[];
+  testID?: string;
 }
 
 interface ContextMenuButtonProps {
@@ -65,6 +66,7 @@ const ContextMenuButton: React.FC<ContextMenuButtonProps> = ({
       }}
       disabled={item.disabled}
       destructive={item.destructive}
+      testID={item.testID}
     >
       <MenuItemTitle>{item.title}</MenuItemTitle>
       {item.systemIcon && (

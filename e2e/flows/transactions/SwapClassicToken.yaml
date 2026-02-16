@@ -14,7 +14,13 @@ tags:
 - runFlow:
     file: ../onboarding/ImportFundedWallet.yaml
 
-# Dismiss welcome banner if it appears after import
+# Wait for either home screen or banner to appear
+- extendedWaitUntil:
+    visible:
+      id: home-screen|welcome-banner-dismiss-button
+    timeout: 30000
+
+# Dismiss welcome banner if visible
 - runFlow:
     when:
       visible:
@@ -25,11 +31,11 @@ tags:
       - extendedWaitUntil:
           visible:
             id: home-screen
-          timeout: 10000
+          timeout: 30000
 
 # Switch to testnet after import
 - runFlow:
-    file: ../walletconnect/SwitchToTestnet.yaml
+    file: ../shared/SwitchToTestnet.yaml
 
 # Verify we're on home screen after import
 - assertVisible:

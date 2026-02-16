@@ -19,9 +19,9 @@ export const MenuTrigger = DropdownMenu.create(
 );
 export const MenuContent = DropdownMenu.Content;
 export const MenuItem = DropdownMenu.create(
-  (props: React.ComponentProps<typeof DropdownMenu.Item>) => (
-    <DropdownMenu.Item {...props} />
-  ),
+  (
+    props: React.ComponentProps<typeof DropdownMenu.Item> & { testID?: string },
+  ) => <DropdownMenu.Item {...props} />,
   "Item",
 );
 

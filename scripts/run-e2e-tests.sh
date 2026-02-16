@@ -224,6 +224,11 @@ cleanup() {
     echo "🛑 Emergency cleanup - stopping recording..."
     stop_flow_recording
   fi
+  # Stop mock-dapp server if we started it
+  if [ -n "$MOCK_SERVER_PID" ]; then
+    echo "🛑 Stopping mock-dapp server (PID: $MOCK_SERVER_PID)..."
+    kill "$MOCK_SERVER_PID" 2>/dev/null || true
+  fi
 }
 
 # Trap to ensure recording is stopped on exit/interrupt
@@ -238,10 +243,10 @@ if [ -n "$SHARD_INDEX" ] || [ -n "$SHARD_TOTAL" ]; then
   echo "📂 Shard $SHARD_INDEX of $SHARD_TOTAL (CI matrix)"
 fi
 
-# Collect flows deterministically (sorted), optionally filter by shard
+# Collect flows deterministically (sorted), optionally filter by shard. Exclude shared directory.
 FLOW_FILES=""
 idx=0
-for file in $(find e2e/flows -name "*.yaml" | sort); do
+for file in $(find e2e/flows -name "*.yaml" ! -path "*/shared/*" | sort); do
   if [ -n "$SHARD_TOTAL" ] && [ -n "$SHARD_INDEX" ]; then
     _mod=$(( idx % SHARD_TOTAL ))
     if [ "$_mod" -ne "$SHARD_INDEX" ]; then
@@ -283,6 +288,45 @@ if [ -z "$FLOW_FILES" ]; then
   exit 1
 fi
 
+# Start mock-dapp server for WalletConnect E2E tests
+echo "🔌 Starting mock-dapp server for WalletConnect tests..."
+MOCK_SERVER_PID=""
+MOCK_SERVER_PORT=3001
+
+# Check if server is already running
+if curl -s "http://127.0.0.1:$MOCK_SERVER_PORT/health" >/dev/null 2>&1; then
+  echo "✅ Mock-dapp server already running on port $MOCK_SERVER_PORT"
+else
+  # Start server in background
+  if [ -d "mock-dapp" ]; then
+    cd mock-dapp
+    npm start > ../e2e-artifacts/mock-server.log 2>&1 &
+    MOCK_SERVER_PID=$!
+    cd ..
+    
+    # Wait for server to be ready (max 10 seconds)
+    echo "⏳ Waiting for mock-dapp server to start..."
+    for i in $(seq 1 10); do
+      if curl -s "http://127.0.0.1:$MOCK_SERVER_PORT/health" >/dev/null 2>&1; then
+        echo "✅ Mock-dapp server started successfully (PID: $MOCK_SERVER_PID)"
+        break
+      fi
+      sleep 1
+    done
+    
+    # Verify it started
+    if ! curl -s "http://127.0.0.1:$MOCK_SERVER_PORT/health" >/dev/null 2>&1; then
+      echo "❌ Error: Mock-dapp server failed to start. Check e2e-artifacts/mock-server.log"
+      if [ -n "$MOCK_SERVER_PID" ]; then
+        kill "$MOCK_SERVER_PID" 2>/dev/null || true
+      fi
+      exit 1
+    fi
+  else
+    echo "⚠️  Warning: mock-dapp directory not found, WalletConnect tests may fail"
+  fi
+fi
+
 # Track failures
 failed=0
 failed_tests=""
@@ -294,14 +338,13 @@ for file in $FLOW_FILES; do
 
   # Set iOS simulator clipboard based on flow type (local runs). CI sets it in the workflow.
   if [ "$PLATFORM" = "ios" ] && [ -n "${MAESTRO_DEVICE:-}" ]; then
-    if grep -q "ImportFundedWallet.yaml" "$file" 2>/dev/null; then
-      # Use funded recovery phrase for flows that import funded wallets
+    # Check if this test uses ImportFundedWallet (either standalone or as subflow)
+    if [ "$FLOW_NAME" = "ImportFundedWallet" ] || grep -q "ImportFundedWallet.yaml" "$file" 2>/dev/null; then
       if [ -n "${E2E_TEST_FUNDED_RECOVERY_PHRASE:-}" ]; then
         echo "$E2E_TEST_FUNDED_RECOVERY_PHRASE" | xcrun simctl pbcopy "$MAESTRO_DEVICE"
         echo "✅ Funded recovery phrase set in simulator clipboard (for $FLOW_NAME)"
       fi
-    elif echo "$FLOW_NAME" | grep -qi "import"; then
-      # Use regular recovery phrase for import wallet flows
+    elif [ "$FLOW_NAME" = "ImportWallet" ] || echo "$FLOW_NAME" | grep -qi "import"; then
       if [ -n "${E2E_TEST_RECOVERY_PHRASE:-}" ]; then
         echo "$E2E_TEST_RECOVERY_PHRASE" | xcrun simctl pbcopy "$MAESTRO_DEVICE"
         echo "✅ Recovery phrase set in simulator clipboard (for $FLOW_NAME)"
