@@ -156,9 +156,8 @@ jobs:
           repositories: freighter-mobile-fastlane
 
       - name: Set Match Git Token
-        run:
-          echo "MATCH_GIT_TOKEN=${{ steps.match-token.outputs.token }}" >>
-          $GITHUB_ENV
+        run: |
+          echo "MATCH_GIT_TOKEN=${{ steps.match-token.outputs.token }}" >> $GITHUB_ENV
 
       - name: Make scripts executable
         run: find scripts -type f -exec chmod +x {} \;
