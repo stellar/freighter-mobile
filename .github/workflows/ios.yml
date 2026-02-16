@@ -152,6 +152,7 @@ jobs:
         with:
           app-id: ${{ vars.MATCH_GITHUB_APP_ID }}
           private-key: ${{ secrets.MATCH_GITHUB_APP_PRIVATE_KEY }}
+          # It's preferable to hardcode "stellar" here for security reasons instead of "github.repository_owner"
           owner: stellar
           repositories: freighter-mobile-fastlane
 
