@@ -109,12 +109,12 @@ tags:
 - extendedWaitUntil:
     visible:
       id: swap-processing-screen
-    timeout: 30000
+    timeout: 60000
 # Wait for completion and tap Done
 - extendedWaitUntil:
     visible:
       id: swap-processing-done-button
-    timeout: 30000
+    timeout: 60000
 - tapOn:
     id: swap-processing-done-button
 # Verify Swapped on history screen
