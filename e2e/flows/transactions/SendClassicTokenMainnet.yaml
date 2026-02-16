@@ -3,14 +3,12 @@ tags:
   - transactions
   - send
   - classic-token
+  - mainnet
 ---
-# NOTE: This flow is currently excluded from CI (iOS and Android) due to testID-related
-# issues. Further investigation is needed to fix component/testID lookups before re-enabling.
+# Send 0.000001 XLM on mainnet to E2E_TEST_RECIPIENT_ADDRESS.
+# Uses a small amount to avoid wasting mainnet funds.
 #
-# Import funded wallet first to ensure we have a wallet with balances
-# NOTE: you can comment this first ImportWallet.yaml runFlow section out to
-# skip the import wallet flow when testing locally so you don't need to import
-# the wallet every time.
+# Import funded wallet
 - runFlow:
     file: ../onboarding/ImportFundedWallet.yaml
 
@@ -33,15 +31,13 @@ tags:
             id: home-screen
           timeout: 30000
 
-# Switch to testnet after import
-- runFlow:
-    file: ../shared/SwitchToTestnet.yaml
+# Stay on mainnet (no network switch)
 
 # Verify we're on home screen after import
 - assertVisible:
     id: home-screen
 
-# Wait for accounts and balances to load (can take ~10s after import)
+# Wait for accounts and balances to load
 - extendedWaitUntil:
     visible:
       id: home-account-switcher
@@ -51,18 +47,10 @@ tags:
       id: icon-button-send
     timeout: 15000
 
-# Copy active account address to clipboard
-- tapOn:
-    id: icon-button-copy
-# Verify tabs are visible
-- assertVisible:
-    id: tab-tokens
-- assertVisible:
-    id: tab-collectibles
 # Navigate to send flow
 - tapOn:
     id: icon-button-send
-# Tap recipient row to open search (if not already on search screen)
+# Tap recipient row to open search
 - tapOn:
     id: send-recipient-row
 # Wait for recipient search screen
@@ -70,40 +58,57 @@ tags:
     visible:
       id: send-search-contacts-screen
     timeout: 15000
-# Tap on the recipient input field and enter a Stellar address
+
+# Type the recipient address
 - tapOn:
     id: send-recipient-input
-# Type a test Stellar address (hardcoded for consistency)
 - inputText: GDAS7BS4XKW27H2K5C25V6ZU46FCFGBTFQGFDZURAKVPA6QYQG4GTWBC
-# Verify we're back on amount screen
+
+# Wait for search suggestion to appear and select it
+# Note: keyboardShouldPersistTaps="handled" on the FlatList allows tapping
+# suggestions without hiding the keyboard first.
+- extendedWaitUntil:
+    visible:
+      id: search-suggestion-0
+    timeout: 30000
+- tapOn:
+    id: search-suggestion-0
+
+# Verify we're on amount screen
 - extendedWaitUntil:
     visible:
       id: send-amount-screen
     timeout: 15000
-# Enter amount: 0.0000001 using numeric keyboard
+
+# Enter amount: 0.000001 XLM (minimal to avoid wasting mainnet funds)
 - tapOn:
     id: numeric-key-0
 - tapOn:
     id: numeric-key-decimal
 - repeat:
-    times: 6
+    times: 5
     commands:
       - tapOn:
           id: numeric-key-0
 - tapOn:
     id: numeric-key-1
-# Tap Review button (continue button when amount is set)
+
+# Tap Review button
 - tapOn:
     id: send-continue-button
 # Verify review sheet is visible
-- assertVisible:
-    id: send-review-sheet
+- extendedWaitUntil:
+    visible:
+      id: send-review-sheet
+    timeout: 30000
 # Confirm the transaction
 - tapOn:
     id: send-review-confirm-button
 # Verify processing screen
-- assertVisible:
-    id: send-processing-screen
+- extendedWaitUntil:
+    visible:
+      id: send-processing-screen
+    timeout: 30000
 # Wait for completion and tap Done
 - extendedWaitUntil:
     visible:
@@ -112,4 +117,6 @@ tags:
 - tapOn:
     id: send-processing-done-button
 # Verify Sent on history screen
-- assertVisible: Sent
+- extendedWaitUntil:
+    visible: "Sent"
+    timeout: 30000

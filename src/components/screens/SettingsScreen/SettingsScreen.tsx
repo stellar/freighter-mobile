@@ -153,7 +153,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   );
 
   return (
-    <BaseLayout insets={{ top: false, bottom: false }}>
+    <BaseLayout testID="settings-screen" insets={{ top: false, bottom: false }}>
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}

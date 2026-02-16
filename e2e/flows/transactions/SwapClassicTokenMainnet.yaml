@@ -3,14 +3,12 @@ tags:
   - transactions
   - swap
   - classic-token
+  - mainnet
 ---
-# NOTE: This flow is currently excluded from CI (iOS and Android) due to testID-related
-# issues. Further investigation is needed to fix component/testID lookups before re-enabling.
+# Swap 0.000001 XLM → USDC on mainnet.
+# Mainnet has real liquidity so path finding should succeed.
 #
-# Import funded wallet first to ensure we have a wallet with balances
-# NOTE: you can comment this first ImportWallet.yaml runFlow section out to
-# skip the import wallet flow when testing locally so you don't need to import
-# the wallet every time.
+# Import funded wallet
 - runFlow:
     file: ../onboarding/ImportFundedWallet.yaml
 
@@ -33,15 +31,13 @@ tags:
             id: home-screen
           timeout: 30000
 
-# Switch to testnet after import
-- runFlow:
-    file: ../shared/SwitchToTestnet.yaml
+# Stay on mainnet (no network switch)
 
 # Verify we're on home screen after import
 - assertVisible:
     id: home-screen
 
-# Wait for accounts and balances to load (can take ~10s after import)
+# Wait for accounts and balances to load
 - extendedWaitUntil:
     visible:
       id: home-account-switcher
@@ -83,7 +79,7 @@ tags:
 - tapOn:
     id: token-option-USDC
 
-# Enter amount: 0.0000001 using numeric keyboard
+# Enter amount: 0.000001 XLM (minimal to avoid wasting mainnet funds)
 - assertVisible:
     id: swap-amount-screen
 - tapOn:
@@ -91,7 +87,7 @@ tags:
 - tapOn:
     id: numeric-key-decimal
 - repeat:
-    times: 6
+    times: 5
     commands:
       - tapOn:
           id: numeric-key-0

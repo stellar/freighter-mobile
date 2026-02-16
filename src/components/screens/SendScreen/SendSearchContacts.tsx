@@ -20,15 +20,13 @@ import {
 import { useQRDataStore } from "ducks/qrData";
 import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
-import { isE2ETest } from "helpers/isEnv";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
 import { useRightHeaderButton } from "hooks/useRightHeader";
 import React, { useCallback, useEffect, useState } from "react";
-import { TouchableOpacity, View } from "react-native";
-import Config from "react-native-config";
+import { View } from "react-native";
 import { analytics } from "services/analytics";
 
 type SendSearchContactsProps = NativeStackScreenProps<
@@ -53,7 +51,6 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
   const { open: openInAppBrowser } = useInAppBrowser();
   const { getClipboardText } = useClipboard();
   const [address, setAddress] = useState("");
-  const e2eRecipientAddress = Config.E2E_TEST_RECIPIENT_ADDRESS;
   const {
     saveRecipientAddress,
     selectedCollectibleDetails,
@@ -148,12 +145,12 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
     getClipboardText().then(handleSearch);
   };
 
-  const handleOpenQRScanner = () => {
+  const handleOpenQRScanner = useCallback(() => {
     // Navigate to the root navigator's QR scanner screen
     navigation.navigate(ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN, {
       source: QRCodeSource.ADDRESS_INPUT,
     });
-  };
+  }, [navigation]);
 
   // Set up the QR code button in the header
   useRightHeaderButton({

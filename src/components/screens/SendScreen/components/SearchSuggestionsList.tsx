@@ -48,6 +48,7 @@ export const SearchSuggestionsList: React.FC<SearchSuggestionsListProps> = ({
         </View>
       </View>
       <FlatList
+        keyboardShouldPersistTaps="handled"
         data={suggestions}
         renderItem={({ item, index }) => (
           <ContactRow
