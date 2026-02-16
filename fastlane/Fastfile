@@ -94,11 +94,13 @@ platform :ios do
       in_house: false
     )
 
+    git_token = ENV.fetch("MATCH_GIT_TOKEN") { raise "MATCH_GIT_TOKEN environment variable is required" }
+
     match(
       type: "appstore",
       readonly: true,
       git_url: ENV.fetch("FASTLANE_GIT_URL") { raise "FASTLANE_GIT_URL environment variable is required" },
-      git_private_key: Base64.strict_decode64(ENV.fetch("FASTLANE_GIT_DEPLOY_KEY") { raise "FASTLANE_GIT_DEPLOY_KEY environment variable is required" }),
+      git_basic_authorization: Base64.strict_encode64("x-access-token:#{git_token}"),
       git_branch: "main",
       verbose: false
     )

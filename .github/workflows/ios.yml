@@ -1,6 +1,9 @@
 ---
 name: iOS Release
 
+permissions:
+  contents: read
+
 on:
   workflow_dispatch:
     inputs:
@@ -45,9 +48,8 @@ env:
   APPLE_CONNECT_ISSUER_ID: ${{ secrets.APPLE_CONNECT_ISSUER_ID }}
   APPLE_CONNECT_KEY_CONTENT: ${{ secrets.APPLE_CONNECT_KEY_CONTENT }}
 
-  # Fastlane Match configuration
+  # Fastlane Match configuration (GitHub App token approach)
   FASTLANE_GIT_URL: ${{ vars.FASTLANE_GIT_URL }}
-  FASTLANE_GIT_DEPLOY_KEY: ${{ secrets.FASTLANE_GIT_DEPLOY_KEY }}
   MATCH_PASSWORD: ${{ secrets.FASTLANE_MATCH_PASSWORD }}
 
   # Sentry configuration
@@ -144,6 +146,20 @@ jobs:
         with:
           ref: ${{ env.REF_NAME }}
 
+      - name: Generate Match Repository Token
+        id: match-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.MATCH_GITHUB_APP_ID }}
+          private-key: ${{ secrets.MATCH_GITHUB_APP_PRIVATE_KEY }}
+          owner: stellar
+          repositories: freighter-mobile-fastlane
+
+      - name: Set Match Git Token
+        run:
+          echo "MATCH_GIT_TOKEN=${{ steps.match-token.outputs.token }}" >>
+          $GITHUB_ENV
+
       - name: Make scripts executable
         run: find scripts -type f -exec chmod +x {} \;
 
@@ -200,7 +216,6 @@ jobs:
           echo "APPLE_CONNECT_ISSUER_ID=$(echo -n $APPLE_CONNECT_ISSUER_ID | md5)"
           echo "APPLE_CONNECT_KEY_CONTENT=$(echo -n $APPLE_CONNECT_KEY_CONTENT | md5)"
           echo "FASTLANE_GIT_URL=$(echo -n $FASTLANE_GIT_URL | md5)"
-          echo "FASTLANE_GIT_DEPLOY_KEY=$(echo -n $FASTLANE_GIT_DEPLOY_KEY | md5)"
           echo "MATCH_PASSWORD=$(echo -n $MATCH_PASSWORD | md5)"
 
       - name: Enable Corepack
