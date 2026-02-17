@@ -12,7 +12,7 @@ Create a `.env` from `.env.example` and set at least:
 | `IS_E2E_TEST`                     | Yes                         | Set to `true` for E2E. Enables test-specific behavior in the app.                         |
 | `E2E_TEST_RECOVERY_PHRASE`        | For Import/Send/Swap        | Recovery phrase used by Import Wallet and flows that `runFlow` it.                        |
 | `E2E_TEST_FUNDED_RECOVERY_PHRASE` | For Send/Swap/WalletConnect | Recovery phrase for funded wallet used by ImportFundedWallet and flows that `runFlow` it. |
-| `E2E_TEST_RECIPIENT_ADDRESS`      | For Send                    | Recipient address used by SendClassicToken flow (must not be the active account).         |
+| `E2E_TEST_RECIPIENT_ADDRESS`      | For Send                    | Recipient address used by SendClassicTokenMainnet flow (must not be the active account).  |
 
 Example:
 
@@ -35,7 +35,8 @@ not commit `.env`** or use a phrase that holds real funds.
   `secrets.E2E_TEST_RECOVERY_PHRASE` in CI).
 - **Funded recovery phrase**: From `E2E_TEST_FUNDED_RECOVERY_PHRASE` (`.env`
   locally, `secrets.E2E_TEST_FUNDED_RECOVERY_PHRASE` in CI).
-- **Recipient address**: From `E2E_TEST_RECIPIENT_ADDRESS` for SendClassicToken.
+- **Recipient address**: From `E2E_TEST_RECIPIENT_ADDRESS` for
+  SendClassicTokenMainnet.
 
 ## Secrets and variables in CI
 

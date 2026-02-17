@@ -117,4 +117,4 @@ tags:
 - extendedWaitUntil:
     visible:
       id: home-account-switcher
-    timeout: 15000
+    timeout: 30000

@@ -97,9 +97,9 @@ e2e/
     │   ├── CreateWallet.yaml
     │   ├── ImportWallet.yaml
     │   └── ImportFundedWallet.yaml
-    ├── transactions/     # Transaction flows (send, swap)
-    │   ├── SendClassicToken.yaml
-    │   └── SwapClassicToken.yaml
+    ├── transactions/     # Transaction flows (send and swap on mainnet)
+    │   ├── SendClassicTokenMainnet.yaml      # Send 0.000001 XLM to a different address
+    │   └── SwapClassicTokenMainnet.yaml      # Swap 0.000001 XLM → USDC on mainnet
     └── walletconnect/    # WalletConnect integration tests
         ├── SignMessageMockDapp.yaml
         ├── SignMessageRejectionMockDapp.yaml
@@ -144,8 +144,8 @@ e2e/
 | **Create Wallet**                      | `flows/onboarding/CreateWallet.yaml`                          | "Create a new wallet" → password → recovery phrase → skip validation → skip biometrics → home |
 | **Import Wallet**                      | `flows/onboarding/ImportWallet.yaml`                          | "I already have a wallet" → password → recovery phrase → skip biometrics → home               |
 | **Import Funded Wallet**               | `flows/onboarding/ImportFundedWallet.yaml`                    | Import wallet with funded account (uses `E2E_TEST_FUNDED_RECOVERY_PHRASE`)                    |
-| **Send Classic Token**                 | `flows/transactions/SendClassicToken.yaml`                    | Imports funded wallet → home → send flow → confirm → "Sent"                                   |
-| **Swap Classic Token**                 | `flows/transactions/SwapClassicToken.yaml`                    | Imports funded wallet → home → swap flow → confirm → "Swapped"                                |
+| **Send Classic Token (Mainnet)**       | `flows/transactions/SendClassicTokenMainnet.yaml`             | Imports funded wallet → home → send 0.000001 XLM to recipient → confirm → "Sent"              |
+| **Swap Classic Token (Mainnet)**       | `flows/transactions/SwapClassicTokenMainnet.yaml`             | Imports funded wallet → home → swap 0.000001 XLM → USDC → confirm → "Swapped"                 |
 | **WC Sign Message (Approval)**         | `flows/walletconnect/SignMessageMockDapp.yaml`                | Connect to dApp → approve signMessage → verify signature returned                             |
 | **WC Sign Message (Rejection)**        | `flows/walletconnect/SignMessageRejectionMockDapp.yaml`       | Connect to dApp → reject signMessage → verify session recovery                                |
 | **WC Sign Message (Network Mismatch)** | `flows/walletconnect/SignMessageNetworkMismatchMockDapp.yaml` | Connect to dApp → request wrong network → switch network → approve                            |

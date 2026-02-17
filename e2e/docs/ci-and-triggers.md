@@ -38,21 +38,23 @@ Use **workflow_dispatch** to run E2E tests on demand:
 flowchart LR
   BUILD[Build job] --> A[Test CreateWallet]
   BUILD --> B[Test ImportWallet]
-  BUILD --> C[Test SendClassicToken]
-  BUILD --> D[Test SwapClassicToken]
+  BUILD --> C[Test SignMessageVariations]
   A --> ART_A[Artifacts shard 0]
   B --> ART_B[Artifacts shard 1]
   C --> ART_C[Artifacts shard 2]
-  D --> ART_D[Artifacts shard 3]
 ```
 
 - **One build job** per workflow (Android or iOS). Output: `app.apk` /
   `app.tar.gz`.
-- **Test job** uses a **matrix**: 4 shards, each running a **single flow**.
-  - Shard 0 → `CreateWallet`
-  - Shard 1 → `ImportWallet`
-  - Shard 2 → `SendClassicToken`
-  - Shard 3 → `SwapClassicToken`
+- **Test job** uses a **matrix**: 3 shards, each running a **single flow**.
+  - Shard 0 → `CreateWallet` - Basic wallet creation
+  - Shard 1 → `ImportWallet` - Wallet import with recovery phrase
+  - Shard 2 → `SignMessageVariations` - WalletConnect sign message flow
+
+**Note:** `SendClassicTokenMainnet` and `SwapClassicTokenMainnet` test mainnet
+transactions with small amounts (0.000001 XLM) and are available locally but
+excluded from CI to keep the matrix lean and avoid transient mainnet API
+failures. Run them locally with `yarn test:e2e:ios SendClassicTokenMainnet`.
 
 Matrix is **fail-fast: false**, so one failing flow does not cancel the others.
 Each matrix job uploads its own artifacts (see

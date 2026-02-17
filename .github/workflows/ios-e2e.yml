@@ -214,9 +214,13 @@ jobs:
     timeout-minutes: 120
     strategy:
       fail-fast: false
-      # SendClassicToken and SwapClassicToken are skipped on iOS (and Android) for now due to
-      # testID-related issues. Re-enable in matrix once flows are fixed.
-      # SignMessage tests require the mock dApp server which is started in the test job setup.
+      # Running 3 core flow tests per shard:
+      # - CreateWallet: Basic wallet creation flow
+      # - ImportWallet: Import existing wallet with recovery phrase
+      # - SignMessageVariations: WalletConnect sign message functionality
+      # Note: SendClassicTokenMainnet and SwapClassicTokenMainnet are available locally but
+      # not included in CI to keep test matrix lean. They test mainnet transactions using
+      # small amounts (0.000001 XLM) and are prone to transient API failures.
       matrix:
         include:
           - shard-index: 0
