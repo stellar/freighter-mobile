@@ -96,7 +96,6 @@ fastlane/*-secret.json
 ios/fastlane/*.p8
 
 # E2E Testing artifacts
-e2e-artifacts/
 .server.log
 .server.pid
 *.bak

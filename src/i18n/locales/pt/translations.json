@@ -848,6 +848,7 @@
     "connectionSuccessfull": "Conexão com {{dappName}} realizada com sucesso!",
     "returnToBrowser": "Você pode agora retornar ao seu navegador",
     "signSuccessfull": "Transação assinada com sucesso!",
+    "signMessageSuccessfull": "Mensagem assinada com sucesso!",
     "signAndSubmitSuccessfull": "Transação assinada e enviada com sucesso!",
     "userRejected": "O usuário rejeitou a solicitação",
     "errorInitializing": "Erro ao inicializar o WalletConnect",

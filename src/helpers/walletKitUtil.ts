@@ -354,7 +354,7 @@ export const approveSessionRequest = async ({
       await walletKit.respondSessionRequest({ topic, response });
 
       showToast({
-        title: t("walletKit.signSuccessfull"),
+        title: t("walletKit.signMessageSuccessfull"),
         message: t("walletKit.returnToBrowser"),
         variant: "success",
       });

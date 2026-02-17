@@ -37,7 +37,6 @@
     "name": "Name",
     "collection": "Collection",
     "tokenId": "Token ID",
-    "useE2ERecipient": "Use E2E recipient",
     "message": "Message"
   },
   "home": {
@@ -885,6 +884,7 @@
     "connectionSuccessfull": "{{dappName}} connection successfull!",
     "returnToBrowser": "You can now return to your browser",
     "signSuccessfull": "Transaction successfully signed!",
+    "signMessageSuccessfull": "Message successfully signed!",
     "signAndSubmitSuccessfull": "Transaction successfully signed and submitted!",
     "userRejected": "User rejected the request",
     "errorInitializing": "Error initializing WalletConnect",
