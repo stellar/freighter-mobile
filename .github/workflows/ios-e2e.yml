@@ -214,25 +214,52 @@ jobs:
     timeout-minutes: 120
     strategy:
       fail-fast: false
-      # Running 3 core flow tests per shard:
+      # Running all E2E flow tests in parallel shards:
+      # - DebugLaunch: Simple app launch test for debugging
+      # - LaunchAndInspect: Launch and inspect app state
       # - CreateWallet: Basic wallet creation flow
       # - ImportWallet: Import existing wallet with recovery phrase
+      # - ImportFundedWallet: Import wallet with funded account
+      # - SwitchToTestnet: Switch network to testnet
+      # - SendClassicTokenMainnet: Send XLM on mainnet (small amount: 0.000001 XLM)
+      # - SwapClassicTokenMainnet: Swap tokens on mainnet (small amount: 0.000001 XLM)
       # - SignMessageMockDapp: WalletConnect sign message functionality
-      # Note: SendClassicTokenMainnet and SwapClassicTokenMainnet are available locally but
-      # not included in CI to keep test matrix lean. They test mainnet transactions using
-      # small amounts (0.000001 XLM) and are prone to transient API failures.
       matrix:
         include:
           - shard-index: 0
-            shard-total: 3
-            flow-name: CreateWallet
+            shard-total: 9
+            flow-name: DebugLaunch
             requires-mock-server: false
           - shard-index: 1
-            shard-total: 3
-            flow-name: ImportWallet
+            shard-total: 9
+            flow-name: LaunchAndInspect
             requires-mock-server: false
           - shard-index: 2
-            shard-total: 3
+            shard-total: 9
+            flow-name: CreateWallet
+            requires-mock-server: false
+          - shard-index: 3
+            shard-total: 9
+            flow-name: ImportWallet
+            requires-mock-server: false
+          - shard-index: 4
+            shard-total: 9
+            flow-name: ImportFundedWallet
+            requires-mock-server: false
+          - shard-index: 5
+            shard-total: 9
+            flow-name: SwitchToTestnet
+            requires-mock-server: false
+          - shard-index: 6
+            shard-total: 9
+            flow-name: SendClassicTokenMainnet
+            requires-mock-server: false
+          - shard-index: 7
+            shard-total: 9
+            flow-name: SwapClassicTokenMainnet
+            requires-mock-server: false
+          - shard-index: 8
+            shard-total: 9
             flow-name: SignMessageMockDapp
             requires-mock-server: true
 

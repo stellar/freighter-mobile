@@ -87,6 +87,42 @@ if [ -z "${E2E_TEST_FUNDED_RECOVERY_PHRASE:-}" ] && [ -f .env ]; then
   export E2E_TEST_FUNDED_RECOVERY_PHRASE
 fi
 
+# Function to ensure stable ADB connection
+ensure_adb_connection() {
+  if [ "$PLATFORM" = "android" ] || ( [ -z "$PLATFORM" ] && command -v adb >/dev/null 2>&1 ); then
+    echo "🔧 Ensuring stable ADB connection..."
+    
+    # Get ADB server PID to restart if needed
+    ADB_SERVER_PID=$(ps aux | grep 'adb.*fork-server' | grep -v grep | awk '{print $2}' | head -1)
+    
+    # Check if device is offline
+    if adb devices 2>/dev/null | grep -q "offline"; then
+      echo "⚠️  Device offline detected, reconnecting ADB..."
+      # Stop the specific ADB process if running
+      if [ -n "$ADB_SERVER_PID" ]; then
+        kill "$ADB_SERVER_PID" 2>/dev/null || true
+        sleep 2
+      fi
+      adb start-server >/dev/null 2>&1
+      sleep 3
+    fi
+    
+    # Verify connection
+    if ! adb devices 2>/dev/null | grep -q "device$"; then
+      echo "⚠️  No device found after reconnect, attempting to restart ADB server..."
+      if [ -n "$ADB_SERVER_PID" ]; then
+        kill "$ADB_SERVER_PID" 2>/dev/null || true
+      fi
+      adb start-server >/dev/null 2>&1
+      sleep 3
+    fi
+    
+    echo "✅ ADB connection verified"
+  fi
+}
+
+# Ensure ADB connection is stable before running tests
+ensure_adb_connection
 
 if [ -n "$PLATFORM" ]; then
   case "$PLATFORM" in
@@ -247,10 +283,35 @@ if [ -n "$SHARD_INDEX" ] || [ -n "$SHARD_TOTAL" ]; then
   echo "📂 Shard $SHARD_INDEX of $SHARD_TOTAL (CI matrix)"
 fi
 
-# Collect flows deterministically (sorted), optionally filter by shard. Exclude shared directory.
+# Collect all flows first (sorted), exclude shared directory
+ALL_FLOW_FILES=$(find e2e/flows -name "*.yaml" ! -path "*/shared/*" | sort)
+
+# Apply flow name filter FIRST if set (exact match, case-insensitive)
+if [ -n "$FLOW_NAME_FILTER" ]; then
+  _filtered=""
+  for file in $ALL_FLOW_FILES; do
+    _name=$(basename "$file" .yaml)
+    if [ "$(echo "$_name" | tr '[:upper:]' '[:lower:]')" = "$(echo "$FLOW_NAME_FILTER" | tr '[:upper:]' '[:lower:]')" ]; then
+      _filtered="${_filtered:+$_filtered }$file"
+    fi
+  done
+  
+  if [ -z "$_filtered" ]; then
+    echo "❌ Error: No flow found matching '$FLOW_NAME_FILTER'"
+    echo "Available flows:"
+    for f in $ALL_FLOW_FILES; do
+      echo "  - $(basename "$f" .yaml)"
+    done
+    exit 1
+  fi
+  
+  ALL_FLOW_FILES="$_filtered"
+fi
+
+# Now apply sharding to the filtered list
 FLOW_FILES=""
 idx=0
-for file in $(find e2e/flows -name "*.yaml" ! -path "*/shared/*" | sort); do
+for file in $ALL_FLOW_FILES; do
   if [ -n "$SHARD_TOTAL" ] && [ -n "$SHARD_INDEX" ]; then
     _mod=$(( idx % SHARD_TOTAL ))
     if [ "$_mod" -ne "$SHARD_INDEX" ]; then
@@ -261,27 +322,6 @@ for file in $(find e2e/flows -name "*.yaml" ! -path "*/shared/*" | sort); do
   FLOW_FILES="${FLOW_FILES:+$FLOW_FILES }$file"
   idx=$(( idx + 1 ))
 done
-
-# Apply flow name filter if set (exact match, case-insensitive)
-if [ -n "$FLOW_NAME_FILTER" ]; then
-  _filtered=""
-  for file in $FLOW_FILES; do
-    _name=$(basename "$file" .yaml)
-    if [ "$(echo "$_name" | tr '[:upper:]' '[:lower:]')" = "$(echo "$FLOW_NAME_FILTER" | tr '[:upper:]' '[:lower:]')" ]; then
-      _filtered="${_filtered:+$_filtered }$file"
-    fi
-  done
-  FLOW_FILES="$_filtered"
-
-  if [ -z "$FLOW_FILES" ]; then
-    echo "❌ Error: No flow found matching '$FLOW_NAME_FILTER'"
-    echo "Available flows:"
-    find e2e/flows -name "*.yaml" | sort | while read f; do
-      echo "  - $(basename "$f" .yaml)"
-    done
-    exit 1
-  fi
-fi
 
 if [ -z "$FLOW_FILES" ]; then
   if [ -n "$SHARD_TOTAL" ] && [ -n "$SHARD_INDEX" ]; then
@@ -377,10 +417,41 @@ for file in $FLOW_FILES; do
     MAESTRO_ENV_ARGS+=("-e" "IS_CI_ENV=$IS_CI_ENV")
   fi
 
-  if [ -n "$MAESTRO_DEVICE" ]; then
-    maestro test "${MAESTRO_ENV_ARGS[@]}" --device "$MAESTRO_DEVICE" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" || _ret=$?
-  else
-    maestro test "${MAESTRO_ENV_ARGS[@]}" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" || _ret=$?
+  # Retry logic for ADB connection issues
+  MAX_RETRIES=3
+  retry_count=0
+  while [ $retry_count -lt $MAX_RETRIES ]; do
+    if [ $retry_count -gt 0 ]; then
+      echo "⚠️  Retry attempt $retry_count/$MAX_RETRIES after ADB connection issue..."
+      # Reconnect ADB before retry
+      ensure_adb_connection
+      sleep 5
+    fi
+    
+    # Capture stderr to detect device offline errors
+    MAESTRO_ERROR_LOG="$FLOW_OUTPUT_DIR/maestro_error.log"
+    
+    if [ -n "$MAESTRO_DEVICE" ]; then
+      maestro test "${MAESTRO_ENV_ARGS[@]}" --device "$MAESTRO_DEVICE" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" 2>"$MAESTRO_ERROR_LOG" && _ret=0 && break || _ret=$?
+    else
+      maestro test "${MAESTRO_ENV_ARGS[@]}" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" 2>"$MAESTRO_ERROR_LOG" && _ret=0 && break || _ret=$?
+    fi
+    
+    # Check if it's an ADB connection issue
+    if grep -qi "device offline" "$MAESTRO_ERROR_LOG" 2>/dev/null; then
+      retry_count=$((retry_count + 1))
+      if [ $retry_count -lt $MAX_RETRIES ]; then
+        echo "🔧 Detected ADB connection issue, will retry..."
+      fi
+    else
+      # Not an ADB issue, don't retry
+      break
+    fi
+  done
+  
+  # Remove error log if test succeeded
+  if [ $_ret -eq 0 ] && [ -f "$MAESTRO_ERROR_LOG" ]; then
+    rm "$MAESTRO_ERROR_LOG"
   fi
   
   # Move maestro.log from nested .maestro/tests/<timestamp>/ to flow output directory
