@@ -98,6 +98,7 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
   return (
     <View
       className="flex-row justify-between items-center flex-1 h-16 mb-2"
+      style={{ opacity: isSwitchingToThisAccount ? 0.5 : 1 }}
       testID={testID}
     >
       <TouchableOpacity
@@ -111,7 +112,9 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
           <Avatar
             size="md"
             publicAddress={account.publicKey}
-            isSelected={isSelected}
+            isSelected={
+              isSwitchingToThisAccount || (isSelected && !isAccountSwitching)
+            }
           />
           <View className="ml-4 flex-1 mr-2">
             <Text md primary medium numberOfLines={1}>
