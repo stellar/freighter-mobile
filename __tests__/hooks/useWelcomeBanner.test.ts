@@ -46,11 +46,22 @@ describe("useWelcomeBanner", () => {
 
   const welcomeBannerShownKey = `${STORAGE_KEYS.WELCOME_BANNER_SHOWN_PREFIX}${mockAccount.publicKey}`;
 
+  const advanceTime = (ms = 100) => {
+    act(() => {
+      jest.advanceTimersByTime(ms);
+    });
+  };
+
   beforeEach(() => {
+    jest.useFakeTimers();
     jest.clearAllMocks();
     // Set up mocks to resolve immediately
     (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
     (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   describe("accountSwitchCompleted state", () => {
@@ -67,14 +78,7 @@ describe("useWelcomeBanner", () => {
         },
       );
 
-      // Wait for all async operations to complete
-      await act(async () => {
-        await new Promise((resolve) => {
-          setTimeout(() => {
-            resolve(undefined);
-          }, 100);
-        });
-      });
+      await advanceTime();
 
       expect(AsyncStorage.getItem).toHaveBeenCalledWith(welcomeBannerShownKey);
 
@@ -88,18 +92,15 @@ describe("useWelcomeBanner", () => {
       (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
 
       // Update props to simulate balances loaded
-      await act(async () => {
+      await act(() => {
         rerender({
           account: mockAccount,
           isFunded: true,
           isLoadingBalances: false,
           isSwitchingAccount: false,
         });
-        // Give time for effects to run
-        await new Promise((resolve) => {
-          setTimeout(resolve, 100);
-        });
       });
+      await advanceTime();
 
       // State should update but getItem shouldn't be called again (key hasn't changed)
       // Just verify the hook completed without errors
@@ -146,29 +147,22 @@ describe("useWelcomeBanner", () => {
         },
       );
 
-      // Wait for initial effect to run - the effect is async
-      await act(async () => {
-        await new Promise((resolve) => {
-          setTimeout(resolve, 100);
-        });
-      });
+      await advanceTime();
       expect(AsyncStorage.getItem).toHaveBeenCalledWith(welcomeBannerShownKey);
 
       // Mock that banner hasn't been shown yet
       (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
 
       // Complete account switch
-      await act(async () => {
+      await act(() => {
         rerender({
           account: mockAccount,
           isFunded: false,
           isLoadingBalances: false,
           isSwitchingAccount: false,
         });
-        await new Promise((resolve) => {
-          setTimeout(resolve, 100);
-        });
       });
+      await advanceTime();
 
       // Just verify the account switch completed without errors
     });
@@ -187,12 +181,7 @@ describe("useWelcomeBanner", () => {
         }),
       );
 
-      // Wait for initial effect to run - the effect is async
-      await act(async () => {
-        await new Promise((resolve) => {
-          setTimeout(resolve, 100);
-        });
-      });
+      await advanceTime();
       expect(AsyncStorage.getItem).toHaveBeenCalledWith(welcomeBannerShownKey);
 
       // Get the ref and mock the present method
@@ -201,12 +190,7 @@ describe("useWelcomeBanner", () => {
           mockPresent;
       }
 
-      // Wait a bit to ensure effects have run
-      await act(async () => {
-        await new Promise((resolve) => {
-          setTimeout(resolve, 100);
-        });
-      });
+      await advanceTime();
 
       // Banner should not be presented during switching
       expect(mockPresent).not.toHaveBeenCalled();
@@ -224,12 +208,7 @@ describe("useWelcomeBanner", () => {
         }),
       );
 
-      // Wait for initial effect to run - the effect is async
-      await act(async () => {
-        await new Promise((resolve) => {
-          setTimeout(resolve, 100);
-        });
-      });
+      await advanceTime();
       expect(AsyncStorage.getItem).toHaveBeenCalledWith(welcomeBannerShownKey);
 
       if (result.current.welcomeBannerBottomSheetModalRef.current) {
@@ -237,12 +216,7 @@ describe("useWelcomeBanner", () => {
           mockPresent;
       }
 
-      // Wait a bit to ensure effects have run
-      await act(async () => {
-        await new Promise((resolve) => {
-          setTimeout(resolve, 100);
-        });
-      });
+      await advanceTime();
 
       // Banner should not be presented while loading
       expect(mockPresent).not.toHaveBeenCalled();
@@ -251,7 +225,7 @@ describe("useWelcomeBanner", () => {
     it("should show welcome banner after account switch completes for unfunded account", async () => {
       (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
 
-      const { result, rerender, waitForNextUpdate } = renderHook(
+      const { result, rerender } = renderHook(
         (props: UseWelcomeBannerProps) => useWelcomeBanner(props),
         {
           initialProps: {
@@ -263,14 +237,7 @@ describe("useWelcomeBanner", () => {
         },
       );
 
-      // Wait for initial effect to load hasAccountSeenWelcome
-      await act(async () => {
-        try {
-          await waitForNextUpdate({ timeout: 500 });
-        } catch {
-          // No update is fine
-        }
-      });
+      await advanceTime();
       expect(AsyncStorage.getItem).toHaveBeenCalledWith(welcomeBannerShownKey);
 
       // Mock the ref
@@ -287,20 +254,15 @@ describe("useWelcomeBanner", () => {
       });
 
       // Complete account switch
-      await act(async () => {
+      await act(() => {
         rerender({
           account: mockAccount,
           isFunded: false,
           isLoadingBalances: false,
           isSwitchingAccount: false,
         });
-        // Give enough time for both effects to run:
-        // 1. accountSwitchCompleted effect
-        // 2. checkWelcomeBannerStatus effect
-        await new Promise((resolve) => {
-          setTimeout(resolve, 200);
-        });
       });
+      await advanceTime(200);
 
       // Wait for the banner to be presented
       expect(mockPresent).toHaveBeenCalled();
@@ -318,12 +280,7 @@ describe("useWelcomeBanner", () => {
         }),
       );
 
-      // Wait for initial effect to run - the effect is async
-      await act(async () => {
-        await new Promise((resolve) => {
-          setTimeout(resolve, 100);
-        });
-      });
+      await advanceTime();
       expect(AsyncStorage.getItem).toHaveBeenCalledWith(welcomeBannerShownKey);
 
       if (result.current.welcomeBannerBottomSheetModalRef.current) {
@@ -331,12 +288,7 @@ describe("useWelcomeBanner", () => {
           mockPresent;
       }
 
-      // Wait a bit to ensure effects have run
-      await act(async () => {
-        await new Promise((resolve) => {
-          setTimeout(resolve, 100);
-        });
-      });
+      await advanceTime();
 
       // Banner should not be shown for funded accounts
       expect(mockPresent).not.toHaveBeenCalled();
@@ -354,12 +306,7 @@ describe("useWelcomeBanner", () => {
         }),
       );
 
-      // Wait for initial effect to run - the effect is async
-      await act(async () => {
-        await new Promise((resolve) => {
-          setTimeout(resolve, 100);
-        });
-      });
+      await advanceTime();
       expect(AsyncStorage.getItem).toHaveBeenCalledWith(welcomeBannerShownKey);
 
       if (result.current.welcomeBannerBottomSheetModalRef.current) {
@@ -367,12 +314,7 @@ describe("useWelcomeBanner", () => {
           mockPresent;
       }
 
-      // Wait a bit to ensure effects have run
-      await act(async () => {
-        await new Promise((resolve) => {
-          setTimeout(resolve, 100);
-        });
-      });
+      await advanceTime();
 
       // Banner should not be shown if already seen
       expect(mockPresent).not.toHaveBeenCalled();
@@ -410,12 +352,7 @@ describe("useWelcomeBanner", () => {
         }),
       );
 
-      // Wait for initial effect to run - the effect is async
-      await act(async () => {
-        await new Promise((resolve) => {
-          setTimeout(resolve, 100);
-        });
-      });
+      await advanceTime();
       expect(AsyncStorage.getItem).toHaveBeenCalledWith(welcomeBannerShownKey);
 
       // Mock the ref
@@ -456,12 +393,7 @@ describe("useWelcomeBanner", () => {
         }),
       );
 
-      // Wait for initial effect to run - the effect is async
-      await act(async () => {
-        await new Promise((resolve) => {
-          setTimeout(resolve, 100);
-        });
-      });
+      await advanceTime();
       expect(AsyncStorage.getItem).toHaveBeenCalledWith(welcomeBannerShownKey);
 
       const mockError = new Error("Storage error");
@@ -503,12 +435,7 @@ describe("useWelcomeBanner", () => {
         }),
       );
 
-      // Wait for the async effect to complete
-      await act(async () => {
-        await new Promise((resolve) => {
-          setTimeout(resolve, 100);
-        });
-      });
+      await advanceTime();
       expect(AsyncStorage.getItem).toHaveBeenCalledWith(expectedKey);
     });
 
@@ -531,12 +458,7 @@ describe("useWelcomeBanner", () => {
         },
       );
 
-      // Wait for initial effect to complete
-      await act(async () => {
-        await new Promise((resolve) => {
-          setTimeout(resolve, 100);
-        });
-      });
+      await advanceTime();
       expect(AsyncStorage.getItem).toHaveBeenCalledWith(welcomeBannerShownKey);
 
       (AsyncStorage.getItem as jest.Mock).mockClear();
@@ -544,17 +466,15 @@ describe("useWelcomeBanner", () => {
       const secondAccountKey = `${STORAGE_KEYS.WELCOME_BANNER_SHOWN_PREFIX}${secondAccount.publicKey}`;
 
       // Change account
-      await act(async () => {
+      await act(() => {
         rerender({
           account: secondAccount,
           isFunded: false,
           isLoadingBalances: false,
           isSwitchingAccount: false,
         });
-        await new Promise((resolve) => {
-          setTimeout(resolve, 100);
-        });
       });
+      await advanceTime();
 
       expect(AsyncStorage.getItem).toHaveBeenCalledWith(secondAccountKey);
     });

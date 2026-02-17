@@ -12,7 +12,7 @@ import { getStellarExpertUrl } from "helpers/stellarExpert";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
-import React from "react";
+import React, { useCallback } from "react";
 import { TouchableOpacity, View, Platform } from "react-native";
 import { analytics } from "services/analytics";
 
@@ -83,7 +83,7 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
     },
   ];
 
-  const handleSelectAccountPress = React.useCallback(() => {
+  const handleSelectAccountPress = useCallback(() => {
     handleSelectAccount(account.publicKey);
   }, [account.publicKey, handleSelectAccount]);
 

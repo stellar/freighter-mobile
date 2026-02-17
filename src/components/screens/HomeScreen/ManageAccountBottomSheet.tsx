@@ -10,7 +10,12 @@ import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React from "react";
-import { TouchableOpacity, View } from "react-native";
+import {
+  ActivityIndicator,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { heightPercentageToDP } from "react-native-responsive-screen";
 
 interface ManageAccountBottomSheetProps {
@@ -26,7 +31,9 @@ interface ManageAccountBottomSheetProps {
 
 const SNAP_VALUE_PERCENT = 80;
 
-const ManageAccountBottomSheet: React.FC<ManageAccountBottomSheetProps> = ({
+export const ManageAccountBottomSheet: React.FC<
+  ManageAccountBottomSheetProps
+> = ({
   handleCloseModal,
   onPressAddAnotherWallet,
   handleCopyAddress,
@@ -39,8 +46,9 @@ const ManageAccountBottomSheet: React.FC<ManageAccountBottomSheetProps> = ({
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
 
+  // Styles moved to className props below; no StyleSheet used
   return (
-    <View className="flex-1 justify-between items-center w-full">
+    <View className="flex-1 justify-between items-center w-full relative">
       <BottomSheetAdaptiveContainer
         bottomPaddingPx={heightPercentageToDP(100 - SNAP_VALUE_PERCENT)}
         header={
@@ -91,6 +99,25 @@ const ManageAccountBottomSheet: React.FC<ManageAccountBottomSheetProps> = ({
           {t("home.manageAccount.addWallet")}
         </Button>
       </BottomSheetAdaptiveContainer>
+      {isAccountSwitching && (
+        <View
+          pointerEvents="auto"
+          style={[
+            StyleSheet.absoluteFillObject,
+            {
+              backgroundColor: themeColors.overlay[4],
+              alignItems: "center",
+              justifyContent: "center",
+            },
+          ]}
+          testID="account-switching-overlay"
+        >
+          <ActivityIndicator
+            size="large"
+            color={themeColors.foreground.primary}
+          />
+        </View>
+      )}
     </View>
   );
 };

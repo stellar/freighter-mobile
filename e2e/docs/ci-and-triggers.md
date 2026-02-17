@@ -9,7 +9,6 @@ covers when they run, how to trigger them manually, and how the CI matrix works.
 flowchart TD
   PR[Pull request] --> BR{Target branch?}
   PU[Push] --> BR
-  IC[Comment /e2e on PR] --> RUN
   WD[workflow_dispatch] --> RUN
   BR --> |main, release, v*.*.*| RUN[Run E2E workflow]
   BR --> |Other| SKIP[Skip]
@@ -19,7 +18,6 @@ flowchart TD
 | --------------------- | -------------------------------------------------------------------------------------------------- |
 | **Pull request**      | `opened`, `synchronize`, `reopened`, `ready_for_review` on `main`, `release`, or `v*.*.*` branches |
 | **Push**              | Same branches as above                                                                             |
-| **Issue comment**     | Comment **exactly** `/e2e` on a PR (runs on that PR's head)                                        |
 | **workflow_dispatch** | Manual run from **Actions** tab                                                                    |
 
 **Branch patterns**: `v*.*.*` matches semantic versions (e.g. `v1.2.3`), not
@@ -27,17 +25,12 @@ arbitrary names like `vrandombranch`.
 
 ## Manual runs
 
-### 1. workflow_dispatch
+Use **workflow_dispatch** to run E2E tests on demand:
 
 1. Open **Actions** → **Android E2E Tests** or **iOS E2E Tests**.
 2. Click **Run workflow**.
 3. Optionally set **ref** (commit hash) or leave empty for default branch.
 4. Run.
-
-### 2. Comment `/e2e` on a PR
-
-Comment **exactly** `/e2e` on a pull request. The workflow runs for that PR's
-head. Build and test jobs use the same ref.
 
 ## CI matrix & parallelism
 

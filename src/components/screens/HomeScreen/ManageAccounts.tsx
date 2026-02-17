@@ -99,11 +99,11 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
         return;
       }
 
-      bottomSheetRef.current?.dismiss();
       setIsAccountSwitchInProgress(true);
 
       try {
         await selectAccount(publicKey);
+        bottomSheetRef.current?.dismiss();
       } finally {
         setIsAccountSwitchInProgress(false);
       }

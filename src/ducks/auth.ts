@@ -1303,6 +1303,7 @@ const signIn = async ({
         accountName: account.name,
         id: loadedKey.id,
       },
+      shouldRefreshHashKey: false,
     });
   } else {
     // LOCKED state unlock: Generate new hash key and re-encrypt existing temporary store
@@ -1462,7 +1463,7 @@ const derivePrivateKeyFromMnemonic = (
   publicKey: string,
 ): string | null => {
   const wallet = StellarHDWallet.fromMnemonic(mnemonicPhrase);
-  const indicesToTry = Array.from({ length: 10 }, (_, i) => i);
+  const indicesToTry = Array.from({ length: 50 }, (_, i) => i);
   const matchingIndex = indicesToTry.find(
     (index) => wallet.getPublicKey(index) === publicKey,
   );
