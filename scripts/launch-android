@@ -192,6 +192,10 @@ OptionParser.new do |opts|
   end
 end.parse!
 
+unless envs.include?(env)
+  exit_with_error("Invalid env '#{env}'. Must be one of: #{envs.join(', ')}")
+end
+
 # Orchestrate helpful dev steps similar to iOS flow
 launch_emulator_if_needed
 wait_for_emulator_boot
