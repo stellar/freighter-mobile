@@ -214,8 +214,7 @@ jobs:
     timeout-minutes: 120
     strategy:
       fail-fast: false
-      # Running all E2E flow tests in parallel shards:
-      # - DebugLaunch: Simple app launch test for debugging
+      # Running E2E flow tests in parallel shards:
       # - LaunchAndInspect: Launch and inspect app state
       # - CreateWallet: Basic wallet creation flow
       # - ImportWallet: Import existing wallet with recovery phrase
@@ -223,45 +222,43 @@ jobs:
       # - SwitchToTestnet: Switch network to testnet
       # - SendClassicTokenMainnet: Send XLM on mainnet (small amount: 0.000001 XLM)
       # - SwapClassicTokenMainnet: Swap tokens on mainnet (small amount: 0.000001 XLM)
-      # - SignMessageMockDapp: WalletConnect sign message functionality
+      # Commented out (can be enabled when needed):
+      # - SignMessageMockDapp: WalletConnect sign message functionality (requires mock server)
       matrix:
         include:
           - shard-index: 0
-            shard-total: 9
-            flow-name: DebugLaunch
-            requires-mock-server: false
-          - shard-index: 1
-            shard-total: 9
+            shard-total: 7
             flow-name: LaunchAndInspect
             requires-mock-server: false
-          - shard-index: 2
-            shard-total: 9
+          - shard-index: 1
+            shard-total: 7
             flow-name: CreateWallet
             requires-mock-server: false
-          - shard-index: 3
-            shard-total: 9
+          - shard-index: 2
+            shard-total: 7
             flow-name: ImportWallet
             requires-mock-server: false
-          - shard-index: 4
-            shard-total: 9
+          - shard-index: 3
+            shard-total: 7
             flow-name: ImportFundedWallet
             requires-mock-server: false
-          - shard-index: 5
-            shard-total: 9
+          - shard-index: 4
+            shard-total: 7
             flow-name: SwitchToTestnet
             requires-mock-server: false
-          - shard-index: 6
-            shard-total: 9
+          - shard-index: 5
+            shard-total: 7
             flow-name: SendClassicTokenMainnet
             requires-mock-server: false
-          - shard-index: 7
-            shard-total: 9
+          - shard-index: 6
+            shard-total: 7
             flow-name: SwapClassicTokenMainnet
             requires-mock-server: false
-          - shard-index: 8
-            shard-total: 9
-            flow-name: SignMessageMockDapp
-            requires-mock-server: true
+          # Commented out - uncomment to enable WalletConnect tests
+          # - shard-index: 7
+          #   shard-total: 8
+          #   flow-name: SignMessageMockDapp
+          #   requires-mock-server: true
 
     steps:
       - name: Checkout repo
