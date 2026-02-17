@@ -29,6 +29,7 @@ interface ManageAccountsProps {
 }
 
 const SNAP_VALUE_PERCENT = 80;
+const ACCOUNT_SWITCH_DELAY_MS = 500;
 
 const ManageAccounts: React.FC<ManageAccountsProps> = ({
   navigation,
@@ -101,9 +102,16 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
 
       setIsAccountSwitchInProgress(true);
 
+      // Dismiss the modal immediately
+      bottomSheetRef.current?.dismiss();
+
+      // Wait for modal dismiss animation to complete before switching accounts
+      await new Promise((resolve) => {
+        setTimeout(resolve, ACCOUNT_SWITCH_DELAY_MS);
+      });
+
       try {
         await selectAccount(publicKey);
-        bottomSheetRef.current?.dismiss();
       } finally {
         setIsAccountSwitchInProgress(false);
       }

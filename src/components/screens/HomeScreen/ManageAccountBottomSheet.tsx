@@ -10,12 +10,7 @@ import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React from "react";
-import {
-  ActivityIndicator,
-  StyleSheet,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { TouchableOpacity, View } from "react-native";
 import { heightPercentageToDP } from "react-native-responsive-screen";
 
 interface ManageAccountBottomSheetProps {
@@ -99,25 +94,6 @@ export const ManageAccountBottomSheet: React.FC<
           {t("home.manageAccount.addWallet")}
         </Button>
       </BottomSheetAdaptiveContainer>
-      {isAccountSwitching && (
-        <View
-          pointerEvents="auto"
-          style={[
-            StyleSheet.absoluteFillObject,
-            {
-              backgroundColor: themeColors.overlay[4],
-              alignItems: "center",
-              justifyContent: "center",
-            },
-          ]}
-          testID="account-switching-overlay"
-        >
-          <ActivityIndicator
-            size="large"
-            color={themeColors.foreground.primary}
-          />
-        </View>
-      )}
     </View>
   );
 };
