@@ -1801,33 +1801,6 @@ const clearBiometricsData = async (): Promise<void> => {
 };
 
 /**
- * Clears account-specific data when switching between accounts.
- *
- * This prevents showing stale data (balances, history, prices) from the previous
- * account while the new account data is being loaded.
- *
- * This function intentionally uses direct `setState` calls on the relevant stores
- * instead of going through individual store actions. The goal is to perform a
- * synchronous, centralized reset of all account-bound state so that:
- *
- * - No stale balances, history, or prices are rendered for the previously active
- *   account after an account switch is initiated.
- * - Loading and error flags are reset in a single place before triggering any
- *   new network requests for the newly selected account.
- *
- * Ordering and side effects:
- *
- * - This function should be called immediately after changing the active account
- *   (e.g., via {@link selectAccount}) and before starting any new data loads
- *   (balances, history, prices) for that account.
- * - Because it directly clears multiple stores at once, it avoids intermediate
- *   states where some stores have been reset and others have not, which could
- *   otherwise lead to inconsistent UI.
- * - It resets `isLoading`/`isFetching` flags to `false` and clears any previous
- *   `error` values, so callers must ensure that subsequent fetch logic correctly
- *   updates these flags for the newly active account.
- */
-/**
  * Authentication Store
  *
  * A Zustand store that manages user authentication state and operations.
