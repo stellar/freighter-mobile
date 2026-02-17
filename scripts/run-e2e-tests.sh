@@ -332,41 +332,54 @@ if [ -z "$FLOW_FILES" ]; then
   exit 1
 fi
 
-# Start mock-dapp server for WalletConnect E2E tests
-echo "🔌 Starting mock-dapp server for WalletConnect tests..."
-
-# Check if server is already running
-if curl -s "http://127.0.0.1:$MOCK_SERVER_PORT/health" >/dev/null 2>&1; then
-  echo "✅ Mock-dapp server already running on port $MOCK_SERVER_PORT"
-else
-  # Start server in background
-  if [ -d "mock-dapp" ]; then
-    cd mock-dapp
-    npm start > ../e2e-artifacts/mock-server.log 2>&1 &
-    MOCK_SERVER_PID=$!
-    cd ..
-    
-    # Wait for server to be ready (max 10 seconds)
-    echo "⏳ Waiting for mock-dapp server to start..."
-    for i in $(seq 1 10); do
-      if curl -s "http://127.0.0.1:$MOCK_SERVER_PORT/health" >/dev/null 2>&1; then
-        echo "✅ Mock-dapp server started successfully (PID: $MOCK_SERVER_PID)"
-        break
-      fi
-      sleep 1
-    done
-    
-    # Verify it started
-    if ! curl -s "http://127.0.0.1:$MOCK_SERVER_PORT/health" >/dev/null 2>&1; then
-      echo "❌ Error: Mock-dapp server failed to start. Check e2e-artifacts/mock-server.log"
-      if [ -n "$MOCK_SERVER_PID" ]; then
-        kill "$MOCK_SERVER_PID" 2>/dev/null || true
-      fi
-      exit 1
-    fi
-  else
-    echo "⚠️  Warning: mock-dapp directory not found, WalletConnect tests may fail"
+# Check if any flows require mock-dapp server (only SignMessageMockDapp needs it)
+NEEDS_MOCK_SERVER=false
+for flow_file in $FLOW_FILES; do
+  if echo "$flow_file" | grep -q "SignMessageMockDapp"; then
+    NEEDS_MOCK_SERVER=true
+    break
   fi
+done
+
+# Start mock-dapp server only if needed
+if [ "$NEEDS_MOCK_SERVER" = true ]; then
+  echo "🔌 Starting mock-dapp server for WalletConnect tests..."
+  
+  # Check if server is already running
+  if curl -s "http://127.0.0.1:$MOCK_SERVER_PORT/health" >/dev/null 2>&1; then
+    echo "✅ Mock-dapp server already running on port $MOCK_SERVER_PORT"
+  else
+    # Start server in background
+    if [ -d "mock-dapp" ]; then
+      cd mock-dapp
+      npm start > ../e2e-artifacts/mock-server.log 2>&1 &
+      MOCK_SERVER_PID=$!
+      cd ..
+      
+      # Wait for server to be ready (max 10 seconds)
+      echo "⏳ Waiting for mock-dapp server to start..."
+      for i in $(seq 1 10); do
+        if curl -s "http://127.0.0.1:$MOCK_SERVER_PORT/health" >/dev/null 2>&1; then
+          echo "✅ Mock-dapp server started successfully (PID: $MOCK_SERVER_PID)"
+          break
+        fi
+        sleep 1
+      done
+      
+      # Verify it started
+      if ! curl -s "http://127.0.0.1:$MOCK_SERVER_PORT/health" >/dev/null 2>&1; then
+        echo "❌ Error: Mock-dapp server failed to start. Check e2e-artifacts/mock-server.log"
+        if [ -n "$MOCK_SERVER_PID" ]; then
+          kill "$MOCK_SERVER_PID" 2>/dev/null || true
+        fi
+        exit 1
+      fi
+    else
+      echo "⚠️  Warning: mock-dapp directory not found, WalletConnect tests may fail"
+    fi
+  fi
+else
+  echo "ℹ️  Skipping mock-dapp server (not needed for selected flows)"
 fi
 
 # Track failures

@@ -1,8 +1,0 @@
-appId: org.stellar.freighterdev
----
-- launchApp:
-    clearState: true
-    clearKeychain: true
-
-- evalScript: |
-    await new Promise(resolve => setTimeout(resolve, 10000));
