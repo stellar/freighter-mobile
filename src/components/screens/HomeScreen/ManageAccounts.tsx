@@ -29,6 +29,7 @@ interface ManageAccountsProps {
 }
 
 const SNAP_VALUE_PERCENT = 80;
+const ACCOUNT_SWITCH_DISMISS_DELAY_MS = 500;
 
 const ManageAccounts: React.FC<ManageAccountsProps> = ({
   navigation,
@@ -47,8 +48,6 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
 
   const [accountToRename, setAccountToRename] = useState<Account | null>(null);
   const [renameAccountModalVisible, setRenameAccountModalVisible] =
-    useState(false);
-  const [isAccountSwitchInProgress, setIsAccountSwitchInProgress] =
     useState(false);
   const [switchingToPublicKey, setSwitchingToPublicKey] = useState<
     string | null
@@ -94,37 +93,25 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
 
   const handleSelectAccount = useCallback(
     async (publicKey: string) => {
-      if (
-        publicKey === activeAccount?.publicKey ||
-        isAccountSwitchInProgress ||
-        isSwitchingAccount
-      ) {
+      if (publicKey === activeAccount?.publicKey || isSwitchingAccount) {
         return;
       }
 
-      setIsAccountSwitchInProgress(true);
       setSwitchingToPublicKey(publicKey);
 
       // Keep sheet open and start account switch immediately
       try {
         await selectAccount(publicKey);
-        // Wait before dismissing to show the loaded state briefly
+        // Wait for data to load and show the loaded state briefly
         await new Promise((resolve) => {
-          setTimeout(resolve, 500);
+          setTimeout(resolve, ACCOUNT_SWITCH_DISMISS_DELAY_MS);
         });
         bottomSheetRef.current?.dismiss();
       } finally {
-        setIsAccountSwitchInProgress(false);
         setSwitchingToPublicKey(null);
       }
     },
-    [
-      activeAccount,
-      isAccountSwitchInProgress,
-      isSwitchingAccount,
-      selectAccount,
-      bottomSheetRef,
-    ],
+    [activeAccount, isSwitchingAccount, selectAccount, bottomSheetRef],
   );
 
   const handleOpenRenameAccountModal = useCallback(
@@ -145,7 +132,7 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
         snapPoints={[toPercent(SNAP_VALUE_PERCENT)]}
         modalRef={bottomSheetRef}
         handleCloseModal={handleCloseModal}
-        enablePanDownToClose={false}
+        enablePanDownToClose
         enableDynamicSizing={false}
         analyticsEvent={AnalyticsEvent.VIEW_MANAGE_WALLETS}
         customContent={
@@ -157,7 +144,7 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
             accounts={accounts}
             activeAccount={activeAccount}
             handleSelectAccount={handleSelectAccount}
-            isAccountSwitching={isAccountSwitchInProgress || isSwitchingAccount}
+            isAccountSwitching={isSwitchingAccount}
             switchingToPublicKey={switchingToPublicKey}
           />
         }
