@@ -192,6 +192,7 @@ OptionParser.new do |opts|
   end
 end.parse!
 
+# Security step: validate --env flag to prevent shell injection
 unless envs.include?(env)
   exit_with_error("Invalid env '#{env}'. Must be one of: #{envs.join(', ')}")
 end
