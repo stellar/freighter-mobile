@@ -163,6 +163,11 @@ jobs:
           workload_identity_provider: ${{ env.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ env.GCP_SERVICE_ACCOUNT_EMAIL }}
 
+      # Fastlane's supply action reads from SUPPLY_JSON_KEY, not GOOGLE_APPLICATION_CREDENTIALS
+      - name: Set Fastlane Google credentials
+        run:
+          echo "SUPPLY_JSON_KEY=$GOOGLE_APPLICATION_CREDENTIALS" >> $GITHUB_ENV
+
       - name: Make scripts executable
         run: find scripts -type f -exec chmod +x {} \;
 
@@ -193,8 +198,7 @@ jobs:
           echo ${{ env.SENTRY_PROPERTIES_CONTENT }} | base64 --decode >
           ./android/sentry.properties
 
-      # Most of the vars below are set on the ./scripts/gh-android-env script.
-      - name: Debug info
+      - name: Print Build config
         run: |
           echo "UPLOAD_TO_GOOGLE_PLAY=${UPLOAD_TO_GOOGLE_PLAY}"
           echo "BUILD_VERSION=${BUILD_VERSION}"
@@ -204,12 +208,6 @@ jobs:
           echo "APP_NAME=${APP_NAME}"
           echo "ANDROID_FLAVOR=${ANDROID_FLAVOR}"
           echo "FASTLANE_LANE=${FASTLANE_LANE}"
-
-          echo "SENTRY_PROPERTIES_CONTENT=$(echo -n $SENTRY_PROPERTIES_CONTENT | md5sum)"
-          echo "ANDROID_DEV_KEYSTORE_CONTENT=$(echo -n $ANDROID_DEV_KEYSTORE_CONTENT | md5sum)"
-          echo "ANDROID_PROD_KEYSTORE_CONTENT=$(echo -n $ANDROID_PROD_KEYSTORE_CONTENT | md5sum)"
-          echo "ANDROID_DEV_KEYSTORE_PASSWORD=$(echo -n $ANDROID_DEV_KEYSTORE_PASSWORD | md5sum)"
-          echo "ANDROID_PROD_KEYSTORE_PASSWORD=$(echo -n $ANDROID_PROD_KEYSTORE_PASSWORD | md5sum)"
 
       - name: Enable Corepack
         run: corepack enable
