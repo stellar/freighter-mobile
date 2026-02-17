@@ -72,8 +72,7 @@ export const RootNavigator = () => {
     useNavigation<
       NativeStackNavigationProp<RootStackParamList & AuthStackParamList>
     >();
-  const { authStatus, getAuthStatus, isSwitchingAccount } =
-    useAuthenticationStore();
+  const { authStatus, getAuthStatus } = useAuthenticationStore();
   const remoteConfigInitialized = useRemoteConfigStore(
     (state) => state.isInitialized,
   );
@@ -161,7 +160,7 @@ export const RootNavigator = () => {
     return <SecurityBlockScreen />;
   }
 
-  if (initializing || isSwitchingAccount) {
+  if (initializing) {
     return <LoadingScreen />;
   }
 

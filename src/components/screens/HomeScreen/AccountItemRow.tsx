@@ -13,7 +13,13 @@ import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
 import React, { useCallback } from "react";
-import { TouchableOpacity, View, Platform } from "react-native";
+import {
+  TouchableOpacity,
+  View,
+  Platform,
+  ActivityIndicator,
+  StyleSheet,
+} from "react-native";
 import { analytics } from "services/analytics";
 
 interface AccountItemRowProps {
@@ -23,6 +29,7 @@ interface AccountItemRowProps {
   handleSelectAccount: (publicKey: string) => Promise<void>;
   isSelected: boolean;
   isAccountSwitching: boolean;
+  isSwitchingToThisAccount: boolean;
   testID?: string;
 }
 
@@ -33,6 +40,7 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
   handleSelectAccount,
   isSelected,
   isAccountSwitching,
+  isSwitchingToThisAccount,
   testID,
 }) => {
   const { themeColors } = useColors();
@@ -133,6 +141,24 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
       >
         <Icon.DotsHorizontal color={themeColors.foreground.primary} />
       </ContextMenuButton>
+      {isSwitchingToThisAccount && (
+        <View
+          style={[
+            StyleSheet.absoluteFillObject,
+            {
+              backgroundColor: "transparent",
+              alignItems: "center",
+              justifyContent: "center",
+            },
+          ]}
+          pointerEvents="none"
+        >
+          <ActivityIndicator
+            size="small"
+            color={themeColors.foreground.primary}
+          />
+        </View>
+      )}
     </View>
   );
 };

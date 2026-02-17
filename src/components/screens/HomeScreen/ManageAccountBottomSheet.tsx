@@ -22,6 +22,7 @@ interface ManageAccountBottomSheetProps {
   activeAccount: ActiveAccount | null;
   handleSelectAccount: (publicKey: string) => Promise<void>;
   isAccountSwitching: boolean;
+  switchingToPublicKey: string | null;
 }
 
 const SNAP_VALUE_PERCENT = 80;
@@ -37,6 +38,7 @@ export const ManageAccountBottomSheet: React.FC<
   activeAccount,
   handleSelectAccount,
   isAccountSwitching,
+  switchingToPublicKey,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
@@ -79,6 +81,9 @@ export const ManageAccountBottomSheet: React.FC<
               handleSelectAccount={handleSelectAccount}
               isSelected={account.publicKey === activeAccount?.publicKey}
               isAccountSwitching={isAccountSwitching}
+              isSwitchingToThisAccount={
+                switchingToPublicKey === account.publicKey
+              }
               testID={`account-row-${index}`}
             />
           ))}

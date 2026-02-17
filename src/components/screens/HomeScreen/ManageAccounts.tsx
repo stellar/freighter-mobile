@@ -29,7 +29,6 @@ interface ManageAccountsProps {
 }
 
 const SNAP_VALUE_PERCENT = 80;
-const ACCOUNT_SWITCH_DELAY_MS = 500;
 
 const ManageAccounts: React.FC<ManageAccountsProps> = ({
   navigation,
@@ -51,6 +50,9 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
     useState(false);
   const [isAccountSwitchInProgress, setIsAccountSwitchInProgress] =
     useState(false);
+  const [switchingToPublicKey, setSwitchingToPublicKey] = useState<
+    string | null
+  >(null);
 
   const handleCopyAddress = useCallback(
     (publicKey?: string) => {
@@ -101,19 +103,19 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
       }
 
       setIsAccountSwitchInProgress(true);
+      setSwitchingToPublicKey(publicKey);
 
-      // Dismiss the modal immediately
-      bottomSheetRef.current?.dismiss();
-
-      // Wait for modal dismiss animation to complete before switching accounts
-      await new Promise((resolve) => {
-        setTimeout(resolve, ACCOUNT_SWITCH_DELAY_MS);
-      });
-
+      // Keep sheet open and start account switch immediately
       try {
         await selectAccount(publicKey);
+        // Wait before dismissing to show the loaded state briefly
+        await new Promise((resolve) => {
+          setTimeout(resolve, 500);
+        });
+        bottomSheetRef.current?.dismiss();
       } finally {
         setIsAccountSwitchInProgress(false);
+        setSwitchingToPublicKey(null);
       }
     },
     [
@@ -156,6 +158,7 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
             activeAccount={activeAccount}
             handleSelectAccount={handleSelectAccount}
             isAccountSwitching={isAccountSwitchInProgress || isSwitchingAccount}
+            switchingToPublicKey={switchingToPublicKey}
           />
         }
       />
