@@ -29,7 +29,7 @@ flowchart LR
   end
   subgraph CI
     D[GitHub Actions] --> E[Build app]
-    E --> F[Matrix: 4 flows × Android/iOS]
+    E --> F[Matrix: 3 flows × Android/iOS]
     F --> G[Upload artifacts]
   end
   C --> H[e2e-artifacts/]
@@ -101,11 +101,7 @@ e2e/
     │   ├── SendClassicTokenMainnet.yaml      # Send 0.000001 XLM to a different address
     │   └── SwapClassicTokenMainnet.yaml      # Swap 0.000001 XLM → USDC on mainnet
     └── walletconnect/    # WalletConnect integration tests
-        ├── SignMessageMockDapp.yaml
-        ├── SignMessageRejectionMockDapp.yaml
-        ├── SignMessageNetworkMismatchMockDapp.yaml
-        ├── SignMessageVariations.yaml
-        └── SwitchToTestnet.yaml
+        └── SignMessageMockDapp.yaml
 ```
 
 ---
@@ -139,17 +135,14 @@ e2e/
 
 ## Test Flows
 
-| Flow                                   | File                                                          | Description                                                                                   |
-| -------------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| **Create Wallet**                      | `flows/onboarding/CreateWallet.yaml`                          | "Create a new wallet" → password → recovery phrase → skip validation → skip biometrics → home |
-| **Import Wallet**                      | `flows/onboarding/ImportWallet.yaml`                          | "I already have a wallet" → password → recovery phrase → skip biometrics → home               |
-| **Import Funded Wallet**               | `flows/onboarding/ImportFundedWallet.yaml`                    | Import wallet with funded account (uses `E2E_TEST_FUNDED_RECOVERY_PHRASE`)                    |
-| **Send Classic Token (Mainnet)**       | `flows/transactions/SendClassicTokenMainnet.yaml`             | Imports funded wallet → home → send 0.000001 XLM to recipient → confirm → "Sent"              |
-| **Swap Classic Token (Mainnet)**       | `flows/transactions/SwapClassicTokenMainnet.yaml`             | Imports funded wallet → home → swap 0.000001 XLM → USDC → confirm → "Swapped"                 |
-| **WC Sign Message (Approval)**         | `flows/walletconnect/SignMessageMockDapp.yaml`                | Connect to dApp → approve signMessage → verify signature returned                             |
-| **WC Sign Message (Rejection)**        | `flows/walletconnect/SignMessageRejectionMockDapp.yaml`       | Connect to dApp → reject signMessage → verify session recovery                                |
-| **WC Sign Message (Network Mismatch)** | `flows/walletconnect/SignMessageNetworkMismatchMockDapp.yaml` | Connect to dApp → request wrong network → switch network → approve                            |
-| **WC Sign Message (Variations)**       | `flows/walletconnect/SignMessageVariations.yaml`              | Full WalletConnect session flow with message variations                                       |
+| Flow                             | File                                              | Description                                                                                   |
+| -------------------------------- | ------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| **Create Wallet**                | `flows/onboarding/CreateWallet.yaml`              | "Create a new wallet" → password → recovery phrase → skip validation → skip biometrics → home |
+| **Import Wallet**                | `flows/onboarding/ImportWallet.yaml`              | "I already have a wallet" → password → recovery phrase → skip biometrics → home               |
+| **Import Funded Wallet**         | `flows/onboarding/ImportFundedWallet.yaml`        | Import wallet with funded account (uses `E2E_TEST_FUNDED_RECOVERY_PHRASE`)                    |
+| **Send Classic Token (Mainnet)** | `flows/transactions/SendClassicTokenMainnet.yaml` | Imports funded wallet → home → send 0.000001 XLM to recipient → confirm → "Sent"              |
+| **Swap Classic Token (Mainnet)** | `flows/transactions/SwapClassicTokenMainnet.yaml` | Imports funded wallet → home → swap 0.000001 XLM → USDC → confirm → "Swapped"                 |
+| **WC Sign Message (Mock dApp)**  | `flows/walletconnect/SignMessageMockDapp.yaml`    | Connect to dApp → approve signMessage → verify signature returned                             |
 
 **Test data**: Password `TestPassword123!`;
 

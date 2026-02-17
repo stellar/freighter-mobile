@@ -122,6 +122,10 @@ CURRENT_RECORDING_PID=""
 CURRENT_RECORDING_ANDROID_DEVICE=""
 CURRENT_VIDEO_PATH=""
 
+# Mock server PID (initialized before trap is set)
+MOCK_SERVER_PID=""
+MOCK_SERVER_PORT=3001
+
 # Function to start video recording for a specific flow
 # Arguments: $1 = output directory for this flow
 start_flow_recording() {
@@ -290,8 +294,6 @@ fi
 
 # Start mock-dapp server for WalletConnect E2E tests
 echo "🔌 Starting mock-dapp server for WalletConnect tests..."
-MOCK_SERVER_PID=""
-MOCK_SERVER_PORT=3001
 
 # Check if server is already running
 if curl -s "http://127.0.0.1:$MOCK_SERVER_PORT/health" >/dev/null 2>&1; then

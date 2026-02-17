@@ -38,7 +38,7 @@ Use **workflow_dispatch** to run E2E tests on demand:
 flowchart LR
   BUILD[Build job] --> A[Test CreateWallet]
   BUILD --> B[Test ImportWallet]
-  BUILD --> C[Test SignMessageVariations]
+  BUILD --> C[Test SignMessageMockDapp]
   A --> ART_A[Artifacts shard 0]
   B --> ART_B[Artifacts shard 1]
   C --> ART_C[Artifacts shard 2]
@@ -49,7 +49,7 @@ flowchart LR
 - **Test job** uses a **matrix**: 3 shards, each running a **single flow**.
   - Shard 0 → `CreateWallet` - Basic wallet creation
   - Shard 1 → `ImportWallet` - Wallet import with recovery phrase
-  - Shard 2 → `SignMessageVariations` - WalletConnect sign message flow
+  - Shard 2 → `SignMessageMockDapp` - WalletConnect sign message flow
 
 **Note:** `SendClassicTokenMainnet` and `SwapClassicTokenMainnet` test mainnet
 transactions with small amounts (0.000001 XLM) and are available locally but
