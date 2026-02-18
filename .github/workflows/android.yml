@@ -1,6 +1,10 @@
 ---
 name: Android Release
 
+permissions:
+  contents: read
+  id-token: write
+
 on:
   workflow_dispatch:
     inputs:
@@ -42,8 +46,9 @@ env:
   JAVA_VERSION: "17"
   SKIP_COCOAPODS: "yes"
 
-  # Google Play Console API configuration (for upload_to_play_store)
-  GOOGLE_JSON_SECRET_CONTENT: ${{ secrets.GOOGLE_JSON_SECRET_CONTENT }}
+  # Google Play Console API configuration (Workload Identity Federation)
+  GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+  GCP_SERVICE_ACCOUNT_EMAIL: ${{ vars.GCP_SERVICE_ACCOUNT_EMAIL }}
 
   # Android Keystores configuration (for create_keystore_file)
   ANDROID_DEV_KEYSTORE_CONTENT: ${{ secrets.ANDROID_DEV_KEYSTORE_CONTENT }}
@@ -152,6 +157,17 @@ jobs:
         with:
           ref: ${{ env.REF_NAME }}
 
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.GCP_SERVICE_ACCOUNT_EMAIL }}
+
+      # Fastlane's supply action reads from SUPPLY_JSON_KEY, not GOOGLE_APPLICATION_CREDENTIALS
+      - name: Set Fastlane Google credentials
+        run:
+          echo "SUPPLY_JSON_KEY=$GOOGLE_APPLICATION_CREDENTIALS" >> $GITHUB_ENV
+
       - name: Make scripts executable
         run: find scripts -type f -exec chmod +x {} \;
 
@@ -182,8 +198,7 @@ jobs:
           echo ${{ env.SENTRY_PROPERTIES_CONTENT }} | base64 --decode >
           ./android/sentry.properties
 
-      # Most of the vars below are set on the ./scripts/gh-android-env script.
-      - name: Debug info
+      - name: Print Build config
         run: |
           echo "UPLOAD_TO_GOOGLE_PLAY=${UPLOAD_TO_GOOGLE_PLAY}"
           echo "BUILD_VERSION=${BUILD_VERSION}"
@@ -193,13 +208,6 @@ jobs:
           echo "APP_NAME=${APP_NAME}"
           echo "ANDROID_FLAVOR=${ANDROID_FLAVOR}"
           echo "FASTLANE_LANE=${FASTLANE_LANE}"
-
-          echo "SENTRY_PROPERTIES_CONTENT=$(echo -n $SENTRY_PROPERTIES_CONTENT | md5sum)"
-          echo "GOOGLE_JSON_SECRET_CONTENT=$(echo -n $GOOGLE_JSON_SECRET_CONTENT | md5sum)"
-          echo "ANDROID_DEV_KEYSTORE_CONTENT=$(echo -n $ANDROID_DEV_KEYSTORE_CONTENT | md5sum)"
-          echo "ANDROID_PROD_KEYSTORE_CONTENT=$(echo -n $ANDROID_PROD_KEYSTORE_CONTENT | md5sum)"
-          echo "ANDROID_DEV_KEYSTORE_PASSWORD=$(echo -n $ANDROID_DEV_KEYSTORE_PASSWORD | md5sum)"
-          echo "ANDROID_PROD_KEYSTORE_PASSWORD=$(echo -n $ANDROID_PROD_KEYSTORE_PASSWORD | md5sum)"
 
       - name: Enable Corepack
         run: corepack enable
