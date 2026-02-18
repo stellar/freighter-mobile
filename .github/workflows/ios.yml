@@ -183,8 +183,7 @@ jobs:
           echo ${{ env.SENTRY_PROPERTIES_CONTENT }} | base64 --decode >
           ./ios/sentry.properties
 
-      # Most of the vars below are set on the ./scripts/gh-ios-env script.
-      - name: Debug info
+      - name: Print Build config
         run: |
           echo "UPLOAD_TO_TESTFLIGHT=${UPLOAD_TO_TESTFLIGHT}"
           echo "BUILD_VERSION=${BUILD_VERSION}"
@@ -194,14 +193,6 @@ jobs:
           echo "APP_NAME=${APP_NAME}"
           echo "IOS_SCHEME=${IOS_SCHEME}"
           echo "FASTLANE_LANE=${FASTLANE_LANE}"
-
-          echo "SENTRY_PROPERTIES_CONTENT=$(echo -n $SENTRY_PROPERTIES_CONTENT | md5)" 
-          echo "APPLE_CONNECT_KEY_ID=$(echo -n $APPLE_CONNECT_KEY_ID | md5)"
-          echo "APPLE_CONNECT_ISSUER_ID=$(echo -n $APPLE_CONNECT_ISSUER_ID | md5)"
-          echo "APPLE_CONNECT_KEY_CONTENT=$(echo -n $APPLE_CONNECT_KEY_CONTENT | md5)"
-          echo "FASTLANE_GIT_URL=$(echo -n $FASTLANE_GIT_URL | md5)"
-          echo "FASTLANE_GIT_DEPLOY_KEY=$(echo -n $FASTLANE_GIT_DEPLOY_KEY | md5)"
-          echo "MATCH_PASSWORD=$(echo -n $MATCH_PASSWORD | md5)"
 
       - name: Enable Corepack
         run: corepack enable
