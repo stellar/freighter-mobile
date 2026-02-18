@@ -102,7 +102,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   const initialized = useWalletKitInitialize();
   useWalletKitEventsManager(initialized);
 
-  const { event, clearEvent, activeSessions, fetchActiveSessions } =
+  const { event, clearEvent, setEvent, activeSessions, fetchActiveSessions } =
     useWalletKitStore();
   const { showToast } = useToast();
   const { t } = useAppTranslation();
@@ -121,6 +121,10 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   const [transactionScanResult, setTransactionScanResult] = useState<
     Blockaid.StellarTransactionScanResponse | undefined
   >(undefined);
+
+  // Request queue to prevent concurrent request handling race conditions
+  const isProcessingRequestRef = useRef(false);
+  const pendingRequestRef = useRef<WalletKitSessionRequest | null>(null);
 
   const xdr = useMemo(
     () =>
@@ -402,6 +406,20 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       setSecurityWarningContext(SecurityContext.SITE);
       saveMemo("");
       clearEvent();
+
+      // Mark processing as complete and process pending request if any
+      isProcessingRequestRef.current = false;
+      if (pendingRequestRef.current) {
+        logger.debug(
+          "WalletKitProvider",
+          "Processing pending request after current request completed",
+        );
+        const pending = pendingRequestRef.current;
+        pendingRequestRef.current = null;
+        // Trigger the event again to process the pending request
+        // pending is already a complete WalletKitSessionRequest with type property
+        setEvent(pending);
+      }
     }, 200);
   };
 
@@ -636,6 +654,24 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     if (event.type === WalletKitEventTypes.SESSION_REQUEST) {
       const sessionRequest = event as WalletKitSessionRequest;
 
+      // Simple queue: if already processing a request, store this one as pending
+      if (isProcessingRequestRef.current) {
+        logger.warn(
+          "WalletKitProvider",
+          "Request already in progress, queuing new request",
+          {
+            currentRequestId: requestEvent?.id,
+            newRequestId: sessionRequest.id,
+          },
+        );
+        pendingRequestRef.current = sessionRequest;
+        clearEvent();
+        return;
+      }
+
+      // Mark as processing
+      isProcessingRequestRef.current = true;
+
       // Check if user is not authenticated
       if (authStatus === AUTH_STATUS.NOT_AUTHENTICATED) {
         showToast({
@@ -650,6 +686,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         });
 
         clearEvent();
+        isProcessingRequestRef.current = false;
         return;
       }
 
@@ -753,8 +790,9 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 
       // Only scan transactions for XDR-based requests (not sign_message)
       const isXdrRequest =
-        currentRequestMethod === StellarRpcMethods.SIGN_XDR ||
-        currentRequestMethod === StellarRpcMethods.SIGN_AND_SUBMIT_XDR;
+        currentRequestMethod === (StellarRpcMethods.SIGN_XDR as string) ||
+        currentRequestMethod ===
+          (StellarRpcMethods.SIGN_AND_SUBMIT_XDR as string);
 
       if (isXdrRequest && requestXdr) {
         scanTransaction(requestXdr, dappDomain)

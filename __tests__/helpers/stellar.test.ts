@@ -589,18 +589,79 @@ describe("Stellar helpers", () => {
         expect(() => signMessage(message, invalidKey)).toThrow();
       });
 
-      it("should sign empty message", () => {
+      it("should throw error for empty message", () => {
         const message = "";
         const privateKey =
-          "SBXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+          "SAKICEVQLYWGSOJS4WW7HZJWAHZVEEBS527LHK5V4MLJALYKICQCJXMW";
 
-        try {
-          const signature = signMessage(message, privateKey);
-          expect(typeof signature).toBe("string");
-        } catch (error) {
-          // Expected to fail with invalid key, but validates the flow
-          expect(error).toBeDefined();
-        }
+        expect(() => signMessage(message, privateKey)).toThrow(
+          "Cannot sign empty or whitespace-only message",
+        );
+      });
+
+      it("should throw error for whitespace-only message", () => {
+        const message = "   \n\t  ";
+        const privateKey =
+          "SAKICEVQLYWGSOJS4WW7HZJWAHZVEEBS527LHK5V4MLJALYKICQCJXMW";
+
+        expect(() => signMessage(message, privateKey)).toThrow(
+          "Cannot sign empty or whitespace-only message",
+        );
+      });
+
+      // SEP-53 Official Test Cases
+      // https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0053.md
+      describe("SEP-53 Compliance", () => {
+        const seed = "SAKICEVQLYWGSOJS4WW7HZJWAHZVEEBS527LHK5V4MLJALYKICQCJXMW";
+        // Expected address: GBXFXNDLV4LSWA4VB7YIL5GBD7BVNR22SGBTDKMO2SBZZHDXSKZYCP7L
+
+        it("should match SEP-53 test case 1: Simple ASCII message", () => {
+          const message = "Hello, World!";
+          const expectedSignature =
+            "fO5dbYhXUhBMhe6kId/cuVq/AfEnHRHEvsP8vXh03M1uLpi5e46yO2Q8rEBzu3feXQewcQE5GArp88u6ePK6BA==";
+
+          const signature = signMessage(message, seed);
+
+          expect(signature).toBe(expectedSignature);
+        });
+
+        it("should match SEP-53 test case 2: Japanese UTF-8 message", () => {
+          const message = "こんにちは、世界！";
+          const expectedSignature =
+            "CDU265Xs8y3OWbB/56H9jPgUss5G9A0qFuTqH2zs2YDgTm+++dIfmAEceFqB7bhfN3am59lCtDXrCtwH2k1GBA==";
+
+          const signature = signMessage(message, seed);
+
+          expect(signature).toBe(expectedSignature);
+        });
+
+        it("should produce 64-byte signature in base64 format", () => {
+          const message = "Test";
+          const signature = signMessage(message, seed);
+
+          // Base64 encoded 64 bytes = 88 characters (with padding)
+          expect(signature.length).toBe(88);
+          expect(signature).toMatch(/^[A-Za-z0-9+/]+=*$/);
+        });
+
+        it("should produce different signatures for different messages", () => {
+          const message1 = "Hello";
+          const message2 = "World";
+
+          const sig1 = signMessage(message1, seed);
+          const sig2 = signMessage(message2, seed);
+
+          expect(sig1).not.toBe(sig2);
+        });
+
+        it("should produce same signature for same message (deterministic)", () => {
+          const message = "Test deterministic signing";
+
+          const sig1 = signMessage(message, seed);
+          const sig2 = signMessage(message, seed);
+
+          expect(sig1).toBe(sig2);
+        });
       });
     });
 

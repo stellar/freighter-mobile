@@ -12,6 +12,7 @@ import { TextButton } from "components/sds/TextButton";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { NATIVE_TOKEN_CODE } from "config/constants";
+import { logger } from "config/logger";
 import { ActiveAccount } from "ducks/auth";
 import { useProtocolsStore } from "ducks/protocols";
 import { StellarRpcMethods, WalletKitSessionRequest } from "ducks/walletKit";
@@ -183,6 +184,14 @@ const DappRequestBottomSheetContent: React.FC<
   const dappMetadata = useDappMetadata(requestEvent);
   const requestOrigin = requestEvent?.verifyContext?.verified?.origin;
 
+  // Log warning if origin is missing for security audit
+  if (!requestOrigin && requestEvent) {
+    logger.warn("DappRequestBottomSheetContent", "Missing verified origin", {
+      hasVerifyContext: !!requestEvent.verifyContext,
+      hasVerified: !!requestEvent.verifyContext?.verified,
+    });
+  }
+
   const matchedProtocol = useMemo(
     () =>
       findMatchedProtocol({
@@ -193,6 +202,11 @@ const DappRequestBottomSheetContent: React.FC<
   );
 
   if (!dappMetadata || !account || !sessionRequest) {
+    logger.warn("DappRequestBottomSheetContent", "Missing required data", {
+      hasDappMetadata: !!dappMetadata,
+      hasAccount: !!account,
+      hasSessionRequest: !!sessionRequest,
+    });
     return null;
   }
 

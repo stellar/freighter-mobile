@@ -289,9 +289,9 @@ export const approveSessionRequest = async ({
     const { message } = requestParams || {};
 
     if (!message || typeof message !== "string") {
-      const errorMessage = "Invalid message parameter";
+      const errorMessage = t("walletKit.errorInvalidMessage");
       showToast({
-        title: t("walletKit.errorSigning"),
+        title: t("walletKit.errorSigningMessage"),
         message: errorMessage,
         variant: "error",
       });
@@ -303,9 +303,9 @@ export const approveSessionRequest = async ({
     // Use UTF-8 byte length instead of UTF-16 character count
     const messageByteLength = new TextEncoder().encode(message).length;
     if (messageByteLength > 1024) {
-      const errorMessage = "Message too long (max 1KB)";
+      const errorMessage = t("walletKit.errorMessageTooLong");
       showToast({
-        title: t("walletKit.errorSigning"),
+        title: t("walletKit.errorSigningMessage"),
         message: errorMessage,
         variant: "error",
       });
@@ -323,7 +323,7 @@ export const approveSessionRequest = async ({
         new Error(errorMessage),
       );
       showToast({
-        title: t("walletKit.errorSigning"),
+        title: t("walletKit.errorSigningMessage"),
         message: t("walletKit.pleaseTryAgainLater"),
         variant: "error",
       });

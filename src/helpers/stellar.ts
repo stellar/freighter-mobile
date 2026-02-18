@@ -273,8 +273,9 @@ export const SIGN_MESSAGE_PREFIX = "Stellar Signed Message:\n";
  * Encodes a message using SEP-53 format (prefix + hash)
  * This follows the SEP-53 standard for signing arbitrary messages on Stellar
  *
+ * @see https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0053.md
  * @param message - UTF-8 string message to encode
- * @returns SHA-256 hash of prefixed message
+ * @returns Buffer containing the 32-byte SHA-256 hash ready for signing
  *
  * @example
  * const message = "Hello, Stellar!";
@@ -291,10 +292,12 @@ export const encodeSep53Message = (message: string): Buffer => {
 /**
  * Signs a message using the account's private key following SEP-53 standard
  *
- * @param message - UTF-8 string message to sign
+ * @see https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0053.md
+ * @param message - UTF-8 string message to sign (must not be empty or whitespace-only)
  * @param privateKey - Account's secret key (S...)
  * @returns Base64-encoded signature
  *
+ * @throws {Error} If message is empty or whitespace-only
  * @throws {Error} If private key is invalid
  * @throws {Error} If message encoding fails
  *
@@ -305,6 +308,11 @@ export const encodeSep53Message = (message: string): Buffer => {
  * // Returns base64 signature string
  */
 export const signMessage = (message: string, privateKey: string): string => {
+  // Validate message is not empty or whitespace-only
+  if (!message || message.trim().length === 0) {
+    throw new Error("Cannot sign empty or whitespace-only message");
+  }
+
   const keyPair = Keypair.fromSecret(privateKey);
   const encodedMessage = encodeSep53Message(message);
   const signature = keyPair.sign(encodedMessage);
