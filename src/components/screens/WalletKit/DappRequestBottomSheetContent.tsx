@@ -15,7 +15,11 @@ import { NATIVE_TOKEN_CODE } from "config/constants";
 import { logger } from "config/logger";
 import { ActiveAccount } from "ducks/auth";
 import { useProtocolsStore } from "ducks/protocols";
-import { StellarRpcMethods, WalletKitSessionRequest } from "ducks/walletKit";
+import {
+  StellarRpcMethods,
+  WalletKitSessionRequest,
+  StellarSignMessageParams,
+} from "ducks/walletKit";
 import { formatTokenForDisplay } from "helpers/formatAmount";
 import { findMatchedProtocol, getDisplayHost } from "helpers/protocols";
 import { useTransactionBalanceListItems } from "hooks/blockaid/useTransactionBalanceListItems";
@@ -128,7 +132,7 @@ const DappRequestBottomSheetContent: React.FC<
   const requestParams = sessionRequest?.request?.params;
   const isSignMessage = requestMethod === StellarRpcMethods.SIGN_MESSAGE;
   const messageToSign = isSignMessage
-    ? (requestParams as { message?: string })?.message
+    ? (requestParams as StellarSignMessageParams)?.message
     : undefined;
 
   const accountDetailList = useMemo(

@@ -64,6 +64,27 @@ export enum StellarRpcEvents {
 }
 
 /**
+ * Type representing parameters for stellar_signXDR request
+ */
+export interface StellarSignXDRParams {
+  xdr: string;
+}
+
+/**
+ * Type representing parameters for stellar_signMessage request
+ */
+export interface StellarSignMessageParams {
+  message: string;
+}
+
+/**
+ * Type representing parameters for stellar_signAndSubmitXDR request
+ */
+export interface StellarSignAndSubmitXDRParams {
+  xdr: string;
+}
+
+/**
  * Type representing a WalletKit session proposal event
  */
 export type WalletKitSessionProposal = WalletKitTypes.SessionProposal & {

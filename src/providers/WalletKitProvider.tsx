@@ -22,6 +22,7 @@ import {
   WalletKitSessionRequest,
   StellarRpcChains,
   StellarRpcMethods,
+  StellarSignXDRParams,
 } from "ducks/walletKit";
 import { getHostname } from "helpers/protocols";
 import {
@@ -124,12 +125,11 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 
   // Request queue to prevent concurrent request handling race conditions
   const isProcessingRequestRef = useRef(false);
-  const pendingRequestRef = useRef<WalletKitSessionRequest | null>(null);
+  const pendingRequestsQueueRef = useRef<WalletKitSessionRequest[]>([]);
 
   const xdr = useMemo(
     () =>
-      (requestEvent?.params.request.params as unknown as { xdr: string })
-        ?.xdr ?? "",
+      (requestEvent?.params.request.params as StellarSignXDRParams)?.xdr ?? "",
     [requestEvent],
   );
 
@@ -409,13 +409,15 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 
       // Mark processing as complete and process pending request if any
       isProcessingRequestRef.current = false;
-      if (pendingRequestRef.current) {
+      if (pendingRequestsQueueRef.current.length > 0) {
         logger.debug(
           "WalletKitProvider",
           "Processing pending request after current request completed",
+          {
+            queueLength: pendingRequestsQueueRef.current.length,
+          },
         );
-        const pending = pendingRequestRef.current;
-        pendingRequestRef.current = null;
+        const pending = pendingRequestsQueueRef.current.shift()!;
         // Trigger the event again to process the pending request
         // pending is already a complete WalletKitSessionRequest with type property
         setEvent(pending);
@@ -431,6 +433,22 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
    */
   const handleDappConnection = () => {
     if (!proposalEvent) {
+      return;
+    }
+
+    // Validate that publicKey is not empty before approving session
+    if (!publicKey || publicKey.trim().length === 0) {
+      logger.error(
+        "WalletKitProvider",
+        "Cannot approve session with empty publicKey",
+        new Error("Empty publicKey in handleDappConnection"),
+      );
+      showToast({
+        title: t("walletKit.connectionNotFound"),
+        message: t("walletKit.userNotAuthenticated"),
+        variant: "error",
+      });
+      handleClearDappConnection();
       return;
     }
 
@@ -662,9 +680,10 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
           {
             currentRequestId: requestEvent?.id,
             newRequestId: sessionRequest.id,
+            queueLength: pendingRequestsQueueRef.current.length + 1,
           },
         );
-        pendingRequestRef.current = sessionRequest;
+        pendingRequestsQueueRef.current.push(sessionRequest);
         clearEvent();
         return;
       }
@@ -733,11 +752,17 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 
       const isValidTransactionRequestOrigin = Object.values(
         activeSessions,
-      ).some(
-        (session) =>
-          getHostname(session.peer?.metadata?.url) ===
-          getHostname(transactionRequestOrigin),
-      );
+      ).some((session) => {
+        const sessionHostname = getHostname(session.peer?.metadata?.url);
+        const requestHostname = getHostname(transactionRequestOrigin);
+
+        // Reject if either hostname is null/undefined - prevents null === null bypass
+        if (!sessionHostname || !requestHostname) {
+          return false;
+        }
+
+        return sessionHostname === requestHostname;
+      });
 
       if (!isValidTransactionRequestOrigin) {
         showToast({

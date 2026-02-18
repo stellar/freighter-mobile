@@ -12,7 +12,7 @@ import { MockWalletConnectClient } from "./walletconnect";
 dotenv.config();
 
 const PORT = parseInt(process.env.PORT || "3001", 10);
-const HOST = process.env.HOST || "0.0.0.0";
+const HOST = process.env.HOST || "127.0.0.1";
 const PROJECT_ID = process.env.WALLET_KIT_PROJECT_ID;
 
 if (!PROJECT_ID) {
