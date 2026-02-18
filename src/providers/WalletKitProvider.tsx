@@ -716,10 +716,12 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         return;
       }
 
+      // Wait for active sessions to be fetched
       if (Object.keys(activeSessions).length === 0) {
         return;
       }
 
+      // Validate that the session exists
       if (!activeSessions[sessionRequest.topic]) {
         showToast({
           title: t("walletKit.connectionNotFound"),
