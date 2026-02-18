@@ -50,7 +50,6 @@ import React, {
   useCallback,
 } from "react";
 import { View } from "react-native";
-import Config from "react-native-config";
 import { analytics } from "services/analytics";
 import { SecurityLevel, SecurityContext } from "services/blockaid/constants";
 import {
@@ -644,7 +643,6 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
             scanResult,
             overriddenBlockaidResponse,
           );
-          // Skip isUnableToScan warning in E2E tests
           if (securityAssessment.isUnableToScan) {
             // For unable to scan, open security detail sheet first (main sheet not opened yet)
             setSecurityWarningContext(SecurityContext.SITE);
@@ -659,7 +657,6 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
             undefined,
             overriddenBlockaidResponse,
           );
-          // Skip isUnableToScan warning in E2E tests
           if (securityAssessment.isUnableToScan) {
             setSecurityWarningContext(SecurityContext.SITE);
             siteSecurityWarningBottomSheetModalRef.current?.present();
@@ -828,11 +825,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
               scanResult,
               overriddenBlockaidResponse,
             );
-            // Skip isUnableToScan warning in E2E tests
-            if (
-              securityAssessment.isUnableToScan &&
-              Config.IS_E2E_TEST !== "true"
-            ) {
+            if (securityAssessment.isUnableToScan) {
               // For unable to scan, open security detail sheet first (main sheet not opened yet)
               // Don't dismiss request sheet - it hasn't been opened yet and dismissing would cancel it
               setSecurityWarningContext(SecurityContext.TRANSACTION);
@@ -848,11 +841,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
               undefined,
               overriddenBlockaidResponse,
             );
-            // Skip isUnableToScan warning in E2E tests
-            if (
-              securityAssessment.isUnableToScan &&
-              Config.IS_E2E_TEST !== "true"
-            ) {
+            if (securityAssessment.isUnableToScan) {
               // For unable to scan, open security detail sheet first (main sheet not opened yet)
               // Don't dismiss request sheet - it hasn't been opened yet and dismissing would cancel it
               setSecurityWarningContext(SecurityContext.TRANSACTION);

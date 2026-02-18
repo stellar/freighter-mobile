@@ -3,6 +3,7 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
+import { isE2ETest } from "helpers/isEnv";
 import { useToast } from "providers/ToastProvider";
 import React, {
   useState,
@@ -17,37 +18,37 @@ import { View, TouchableOpacity, ScrollView, Modal } from "react-native";
  */
 export const WalletConnectE2EHelperTrigger: React.FC<{
   onPress: () => void;
-}> = ({ onPress }) => (
-  // Only render in E2E test mode
-  // TODO: Re-enable this check after testing
-  // if (Config.IS_E2E_TEST !== "true") {
-  //   return null;
-  // }
+}> = ({ onPress }) => {
+  if (!isE2ETest) {
+    return null;
+  }
 
-  <TouchableOpacity
-    testID="wc-e2e-helper-fab"
-    onPress={onPress}
-    style={{
-      position: "absolute",
-      bottom: 80,
-      right: 16,
-      width: 56,
-      height: 56,
-      borderRadius: 28,
-      backgroundColor: "#9333ea",
-      alignItems: "center",
-      justifyContent: "center",
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.25,
-      shadowRadius: 3.84,
-      elevation: 5,
-      zIndex: 9999,
-    }}
-  >
-    <Icon.Settings01 size={24} color="white" />
-  </TouchableOpacity>
-);
+  return (
+    <TouchableOpacity
+      testID="wc-e2e-helper-fab"
+      onPress={onPress}
+      style={{
+        position: "absolute",
+        bottom: 80,
+        right: 16,
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: "#9333ea",
+        alignItems: "center",
+        justifyContent: "center",
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+        zIndex: 9999,
+      }}
+    >
+      <Icon.Settings01 size={24} color="white" />
+    </TouchableOpacity>
+  );
+};
 
 interface WalletConnectE2EHelperRef {
   present: () => void;
