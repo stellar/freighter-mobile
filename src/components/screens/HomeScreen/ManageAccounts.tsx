@@ -132,7 +132,7 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
         snapPoints={[toPercent(SNAP_VALUE_PERCENT)]}
         modalRef={bottomSheetRef}
         handleCloseModal={handleCloseModal}
-        enablePanDownToClose
+        enablePanDownToClose={false}
         enableDynamicSizing={false}
         analyticsEvent={AnalyticsEvent.VIEW_MANAGE_WALLETS}
         customContent={
