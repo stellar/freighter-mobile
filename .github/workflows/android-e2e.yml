@@ -257,7 +257,7 @@ jobs:
             shard-total: 7
             flow-name: SwapClassicTokenMainnet
             requires-mock-server: false
-          # Commented out - uncomment to enable WalletConnect tests
+          # Commented out - uncomment to enable WalletConnect tests - Disabled until test fixed on CI - runs on localhost
           # - shard-index: 7
           #   shard-total: 8
           #   flow-name: SignMessageMockDapp
