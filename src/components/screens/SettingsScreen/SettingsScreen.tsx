@@ -15,7 +15,7 @@ import { getAppVersionAndBuildNumber } from "helpers/version";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
-import React, { useRef } from "react";
+import React, { useCallback, useRef } from "react";
 import { ScrollView, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -33,21 +33,21 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const { open: openInAppBrowser } = useInAppBrowser();
   const insets = useSafeAreaInsets();
 
-  const handleLogout = React.useCallback(() => {
+  const handleLogout = useCallback(() => {
     logout();
   }, [logout]);
 
-  const handleDeleteAccount = React.useCallback(() => {
+  const handleDeleteAccount = useCallback(() => {
     deleteAccountModalRef.current?.present();
   }, []);
 
-  const confirmDeleteAccount = React.useCallback(() => {
+  const confirmDeleteAccount = useCallback(() => {
     // Pass "true" here so we can wipe all data and navigate to the welcome screen
     // the same the app does when users tap on "Forgot password"
     logout(true);
   }, [logout]);
 
-  const cancelDeleteAccount = React.useCallback(() => {
+  const cancelDeleteAccount = useCallback(() => {
     deleteAccountModalRef.current?.dismiss();
   }, []);
 

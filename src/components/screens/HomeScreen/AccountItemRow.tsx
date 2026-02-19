@@ -12,8 +12,14 @@ import { getStellarExpertUrl } from "helpers/stellarExpert";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
-import React from "react";
-import { TouchableOpacity, View, Platform } from "react-native";
+import React, { useCallback } from "react";
+import {
+  TouchableOpacity,
+  View,
+  Platform,
+  ActivityIndicator,
+  StyleSheet,
+} from "react-native";
 import { analytics } from "services/analytics";
 
 interface AccountItemRowProps {
@@ -22,6 +28,8 @@ interface AccountItemRowProps {
   handleRenameAccount: (account: Account) => void;
   handleSelectAccount: (publicKey: string) => Promise<void>;
   isSelected: boolean;
+  isAccountSwitching: boolean;
+  isSwitchingToThisAccount: boolean;
   testID?: string;
 }
 
@@ -31,6 +39,8 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
   handleRenameAccount,
   handleSelectAccount,
   isSelected,
+  isAccountSwitching,
+  isSwitchingToThisAccount,
   testID,
 }) => {
   const { themeColors } = useColors();
@@ -64,28 +74,37 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
     {
       title: t("home.manageAccount.renameWallet"),
       systemIcon: icons!.renameWallet,
+      disabled: isAccountSwitching,
       onPress: () => handleRenameAccount(account),
     },
     {
       title: t("home.manageAccount.copyAddress"),
       systemIcon: icons!.copyAddress,
+      disabled: isAccountSwitching,
       onPress: () => handleCopyAddress(account.publicKey),
     },
     {
       title: t("home.manageAccount.viewOnExplorer"),
       systemIcon: icons!.viewOnExplorer,
+      disabled: isAccountSwitching,
       onPress: handleViewOnExplorer,
     },
   ];
 
+  const handleSelectAccountPress = useCallback(() => {
+    handleSelectAccount(account.publicKey);
+  }, [account.publicKey, handleSelectAccount]);
+
   return (
     <View
       className="flex-row justify-between items-center flex-1 h-16 mb-2"
+      style={{ opacity: isSwitchingToThisAccount ? 0.5 : 1 }}
       testID={testID}
     >
       <TouchableOpacity
         className="flex-row justify-between items-center flex-1"
-        onPress={() => handleSelectAccount(account.publicKey)}
+        onPress={handleSelectAccountPress}
+        disabled={isAccountSwitching}
         delayPressIn={DEFAULT_PRESS_DELAY}
         testID={testID ? `${testID}-select` : undefined}
       >
@@ -93,7 +112,9 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
           <Avatar
             size="md"
             publicAddress={account.publicKey}
-            isSelected={isSelected}
+            isSelected={
+              isSwitchingToThisAccount || (isSelected && !isAccountSwitching)
+            }
           />
           <View className="ml-4 flex-1 mr-2">
             <Text md primary medium numberOfLines={1}>
@@ -120,6 +141,24 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
       <ContextMenuButton contextMenuProps={{ actions }}>
         <Icon.DotsHorizontal color={themeColors.foreground.primary} />
       </ContextMenuButton>
+      {isSwitchingToThisAccount && (
+        <View
+          style={[
+            StyleSheet.absoluteFillObject,
+            {
+              backgroundColor: "transparent",
+              alignItems: "center",
+              justifyContent: "center",
+            },
+          ]}
+          pointerEvents="none"
+        >
+          <ActivityIndicator
+            size="small"
+            color={themeColors.foreground.primary}
+          />
+        </View>
+      )}
     </View>
   );
 };

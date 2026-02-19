@@ -266,11 +266,11 @@ export const mapNetworkToNetworkDetails = (network: NETWORKS) => {
  *
  * COLLECTIBLES_LIST The collectibles list is used to keep track of all the collectibles stored in the key manager.
  * Formatted as: { [publicKey: string]: { [network: string]: CollectibleContract[] } } @see CollectiblesStorage
- * The COLLECTIBLES_LIST is not removed during the logout process. It is used to keep the collectibles even after the user logs out, since the API does not store collectibles.
+ * The COLLECTIBLES_LIST is not removed during the standard logout process. It is used to keep the collectibles even after the user logs out, since the API does not store collectibles.
  *
  * HIDDEN_COLLECTIBLES_LIST The hidden collectibles list is used to keep track of all the hidden collectibles stored in the key manager.
  * Formatted as: { [publicKey: string]: { [network: string]: CollectibleContract[] } } @see CollectiblesStorage
- * The HIDDEN_COLLECTIBLES_LIST is not removed during the logout process. It is used to keep the hidden collectibles even after the user logs out, since the API does not store hidden collectibles.
+ * The HIDDEN_COLLECTIBLES_LIST is not removed during the standard logout process. It is used to keep the hidden collectibles even after the user logs out, since the API does not store hidden collectibles.
  *
  * ACTIVE_NETWORK The active network is the network that is currently being used.
  * RECENT_ADDRESSES The list of recently used addresses for sending payments.
@@ -303,10 +303,12 @@ export enum STORAGE_KEYS {
  * TEMPORARY_STORE The temporary store contains encrypted private keys and mnemonic phrase.
  * HASH_KEY The hash key and salt in an JSON stryngified object. This is used to encrypt and decrypt the temporary store.
  * HASH_KEY format: { hashKey: string, salt: string, expiresAt: number }
+ * AUTH_STATUS The authentication status is stored securely to prevent tampering on rooted/jailbroken devices.
  * */
 export enum SENSITIVE_STORAGE_KEYS {
   TEMPORARY_STORE = "temporaryStore",
   HASH_KEY = "hashKey",
+  AUTH_STATUS = "authStatus",
 }
 
 /**

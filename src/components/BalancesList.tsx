@@ -26,7 +26,7 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
-import React, { ReactNode } from "react";
+import React, { ReactNode, useMemo } from "react";
 import { FlatList, RefreshControl } from "react-native";
 import styled from "styled-components/native";
 
@@ -129,7 +129,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
   } = useBalancesList({ publicKey, network, searchTerm });
 
   // Filter out excluded tokens and calculate spendable amounts
-  const balanceItems = React.useMemo((): BalanceItemWithSpendable[] => {
+  const balanceItems = useMemo((): BalanceItemWithSpendable[] => {
     const currentFee =
       feeContext === TransactionContext.Swap ? swapFee : transactionFee;
 

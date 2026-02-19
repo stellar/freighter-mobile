@@ -366,7 +366,9 @@
       "invalidMnemonicPhrase": "Frase inválida - as palavras devem estar na ordem correta, em minúsculas e separadas por espaços",
       "failedToCreateAccount": "Falha ao criar conta. Por favor, tente novamente.",
       "accountAlreadyExists": "Conta já existe",
-      "failedToImportSecretKey": "Falha ao importar chave secreta"
+      "failedToImportSecretKey": "Falha ao importar chave secreta",
+      "failedToReEncryptData": "Falha ao re-criptografar dados. Por favor, faça login novamente.",
+      "failedToDecryptData": "Falha ao descriptografar dados. Por favor, faça login novamente."
     },
     "account": "Conta {{number}}",
     "faceId": {

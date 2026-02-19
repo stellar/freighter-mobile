@@ -149,6 +149,24 @@ def ensure_adb_reverse
   run "adb reverse tcp:8081 tcp:8081 &> /dev/null || true"
 end
 
+def detect_native_architecture
+  # Detect host machine architecture to build only the needed ABI
+  # This significantly speeds up local builds
+  host_arch = `uname -m`.strip
+
+  case host_arch
+  when "arm64", "aarch64"
+    # Apple Silicon (M1/M2/M3/M4) or ARM Linux
+    "arm64-v8a"
+  when "x86_64", "amd64"
+    # Intel Mac or x86 Linux
+    "x86_64"
+  else
+    # Unknown architecture, build all ABIs
+    nil
+  end
+end
+
 envs = %w[
   prod
   dev
@@ -174,6 +192,11 @@ OptionParser.new do |opts|
   end
 end.parse!
 
+# Security step: validate --env flag to prevent shell injection
+unless envs.include?(env)
+  exit_with_error("Invalid env '#{env}'. Must be one of: #{envs.join(', ')}")
+end
+
 # Orchestrate helpful dev steps similar to iOS flow
 launch_emulator_if_needed
 wait_for_emulator_boot
@@ -190,8 +213,12 @@ Dir.chdir("android") do
   task << capitalize(env)
   task << (release ? "Release" : "Debug")
 
+  # Build only for the host architecture to speed up local builds
+  arch = detect_native_architecture
+  arch_flag = arch ? "-PreactNativeArchitectures=#{arch}" : ""
+
   run "./gradlew clean" if clean
-  run "./gradlew #{task.join}"
+  run "./gradlew #{task.join} #{arch_flag}".strip
 end
 
 # After installation, launch the app on the connected device/emulator

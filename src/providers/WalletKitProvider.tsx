@@ -616,7 +616,10 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       }
 
       // Check if wallet is locked
-      if (authStatus === AUTH_STATUS.HASH_KEY_EXPIRED) {
+      if (
+        authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ||
+        authStatus === AUTH_STATUS.LOCKED
+      ) {
         showToast({
           title: t("walletKit.walletLocked"),
           message: t("walletKit.pleaseUnlockToConnect"),
@@ -707,7 +710,10 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       }
 
       // Check if wallet is locked
-      if (authStatus === AUTH_STATUS.HASH_KEY_EXPIRED) {
+      if (
+        authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ||
+        authStatus === AUTH_STATUS.LOCKED
+      ) {
         showToast({
           title: t("walletKit.walletLocked"),
           message: t("walletKit.pleaseUnlockToSignTransaction"),
