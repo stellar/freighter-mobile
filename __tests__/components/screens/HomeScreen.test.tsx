@@ -3,6 +3,42 @@ import HomeScreen from "components/screens/HomeScreen";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 
+jest.mock("react-native-safe-area-context", () => ({
+  SafeAreaProvider: ({ children }: { children: React.ReactNode }) => children,
+  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+}));
+
+jest.mock("@gorhom/bottom-sheet", () => ({
+  BottomSheetModalProvider: ({ children }: { children: React.ReactNode }) =>
+    children,
+  BottomSheetModal: "View",
+  BottomSheetTextInput: "input",
+  BottomSheetView: "View",
+  BottomSheetScrollView: "ScrollView",
+  BottomSheetFlatList: "FlatList",
+  BottomSheetSectionList: "SectionList",
+  BottomSheetDraggableView: "View",
+  BottomSheetBackdrop: "View",
+}));
+
+jest.mock("components/sds/Icon", () => ({
+  __esModule: true,
+  default: new Proxy({}, { get: () => "View" }),
+}));
+
+jest.mock("components/screens/HomeScreen/ManageAccountBottomSheet", () => ({
+  __esModule: true,
+  default: function MockManageAccountBottomSheet() {
+    return null;
+  },
+}));
+
+jest.mock("components/analytics/DebugBottomSheet", () => ({
+  DebugBottomSheet: function MockDebugBottomSheet() {
+    return null;
+  },
+}));
+
 jest.mock("components/primitives/Menu", () => {
   const MenuRoot = ({ children }: { children: React.ReactNode }) => (
     <div data-testid="menu-root">{children}</div>

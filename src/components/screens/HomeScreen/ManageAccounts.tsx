@@ -29,6 +29,7 @@ interface ManageAccountsProps {
 }
 
 const SNAP_VALUE_PERCENT = 80;
+const ACCOUNT_SWITCH_DISMISS_DELAY_MS = 500;
 
 const ManageAccounts: React.FC<ManageAccountsProps> = ({
   navigation,
@@ -36,14 +37,21 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
   activeAccount,
   bottomSheetRef,
 }) => {
-  const { renameAccount, selectAccount, isRenamingAccount } =
-    useAuthenticationStore();
+  const {
+    renameAccount,
+    selectAccount,
+    isRenamingAccount,
+    isSwitchingAccount,
+  } = useAuthenticationStore();
   const { copyToClipboard } = useClipboard();
   const { t } = useAppTranslation();
 
   const [accountToRename, setAccountToRename] = useState<Account | null>(null);
   const [renameAccountModalVisible, setRenameAccountModalVisible] =
     useState(false);
+  const [switchingToPublicKey, setSwitchingToPublicKey] = useState<
+    string | null
+  >(null);
 
   const handleCopyAddress = useCallback(
     (publicKey?: string) => {
@@ -85,14 +93,25 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
 
   const handleSelectAccount = useCallback(
     async (publicKey: string) => {
-      if (publicKey === activeAccount?.publicKey) {
+      if (publicKey === activeAccount?.publicKey || isSwitchingAccount) {
         return;
       }
 
-      await selectAccount(publicKey);
-      bottomSheetRef.current?.dismiss();
+      setSwitchingToPublicKey(publicKey);
+
+      // Keep sheet open and start account switch immediately
+      try {
+        await selectAccount(publicKey);
+        // Wait for data to load and show the loaded state briefly
+        await new Promise((resolve) => {
+          setTimeout(resolve, ACCOUNT_SWITCH_DISMISS_DELAY_MS);
+        });
+        bottomSheetRef.current?.dismiss();
+      } finally {
+        setSwitchingToPublicKey(null);
+      }
     },
-    [activeAccount, selectAccount, bottomSheetRef],
+    [activeAccount, isSwitchingAccount, selectAccount, bottomSheetRef],
   );
 
   const handleOpenRenameAccountModal = useCallback(
@@ -125,6 +144,8 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
             accounts={accounts}
             activeAccount={activeAccount}
             handleSelectAccount={handleSelectAccount}
+            isAccountSwitching={isSwitchingAccount}
+            switchingToPublicKey={switchingToPublicKey}
           />
         }
       />

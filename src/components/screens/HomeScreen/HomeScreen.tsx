@@ -62,7 +62,8 @@ type HomeScreenProps = BottomTabScreenProps<
 export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
   ({ navigation }) => {
     const { account } = useGetActiveAccount();
-    const { network, getAllAccounts, allAccounts } = useAuthenticationStore();
+    const { network, getAllAccounts, allAccounts, isSwitchingAccount } =
+      useAuthenticationStore();
     const { themeColors } = useColors();
     const manageAccountsBottomSheetRef = useRef<BottomSheetModal>(null);
     const analyticsDebugBottomSheetRef = useRef<BottomSheetModal>(null);
@@ -100,6 +101,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
         account,
         isFunded,
         isLoadingBalances,
+        isSwitchingAccount,
       });
 
     // NOTE: VIEW_HOME analytics event is already tracked by useNavigationAnalytics
