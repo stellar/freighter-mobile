@@ -425,14 +425,14 @@ const getAuthStatus = async (): Promise<AuthStatus> => {
       return AUTH_STATUS.HASH_KEY_EXPIRED;
     }
 
-    // Check if LOCKED status was persisted from previous session
+    // Read from SECURE storage (encrypted) to prevent tampering
     // Security validation: Only honor LOCKED status if BOTH:
     // 1. Temporary store exists (contains encrypted data)
     // 2. Hash key exists and hasn't expired
     // This prevents an attacker from setting persisted auth status to LOCKED
     // to bypass security checks
-    const persistedAuthStatus = await dataStorage.getItem(
-      STORAGE_KEYS.AUTH_STATUS,
+    const persistedAuthStatus = await secureDataStorage.getItem(
+      SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
     );
     if (persistedAuthStatus === AUTH_STATUS.LOCKED) {
       // Validate that both temporary store and valid hash key exist
@@ -441,7 +441,7 @@ const getAuthStatus = async (): Promise<AuthStatus> => {
       }
 
       // Clear invalid persisted LOCKED status
-      await dataStorage.remove(STORAGE_KEYS.AUTH_STATUS);
+      await secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.AUTH_STATUS);
       return AUTH_STATUS.HASH_KEY_EXPIRED;
     }
 
@@ -1908,9 +1908,9 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
                 isLoading: false,
               });
 
-              // Persist LOCKED status across app restarts
-              await dataStorage.setItem(
-                STORAGE_KEYS.AUTH_STATUS,
+              // This prevents tampering via ADB or rooted devices
+              await secureDataStorage.setItem(
+                SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
                 AUTH_STATUS.LOCKED,
               );
 
@@ -2031,8 +2031,8 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
             isLoadingAccount: false,
           });
 
-          // Clear persisted auth status since we're now authenticated
-          await dataStorage.remove(STORAGE_KEYS.AUTH_STATUS);
+          // SECURITY FIX: Clear persisted auth status from secure storage since we're now authenticated
+          await secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.AUTH_STATUS);
         } catch (accountError) {
           // If we can't access the account after sign-in, handle it as an expired key
           analytics.trackReAuthFail();

@@ -1380,9 +1380,9 @@ describe("auth duck", () => {
           });
         });
 
-        // Verify LOCKED status was persisted
-        expect(dataStorage.setItem).toHaveBeenCalledWith(
-          STORAGE_KEYS.AUTH_STATUS,
+        // Verify LOCKED status was persisted in secure storage
+        expect(secureDataStorage.setItem).toHaveBeenCalledWith(
+          SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
           AUTH_STATUS.LOCKED,
         );
       });
@@ -1442,8 +1442,16 @@ describe("auth duck", () => {
           if (key === STORAGE_KEYS.ACCOUNT_LIST) {
             return Promise.resolve(JSON.stringify([mockAccount]));
           }
-          if (key === STORAGE_KEYS.AUTH_STATUS) {
+          return Promise.resolve(null);
+        });
+
+        // Mock secure storage with both AUTH_STATUS and TEMPORARY_STORE
+        (secureDataStorage.getItem as jest.Mock).mockImplementation((key) => {
+          if (key === SENSITIVE_STORAGE_KEYS.AUTH_STATUS) {
             return Promise.resolve(AUTH_STATUS.LOCKED);
+          }
+          if (key === SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE) {
+            return Promise.resolve("encrypted-temp-store");
           }
           return Promise.resolve(null);
         });
@@ -1453,14 +1461,6 @@ describe("auth duck", () => {
           hashKey: "mock-hash-key",
           salt: "mock-salt",
           createdAt: Date.now(),
-        });
-
-        // Mock temporary store exists
-        (secureDataStorage.getItem as jest.Mock).mockImplementation((key) => {
-          if (key === SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE) {
-            return Promise.resolve("encrypted-temp-store");
-          }
-          return Promise.resolve(null);
         });
 
         await act(async () => {
@@ -1482,9 +1482,14 @@ describe("auth duck", () => {
           if (key === STORAGE_KEYS.ACCOUNT_LIST) {
             return Promise.resolve(JSON.stringify([mockAccount]));
           }
-          if (key === STORAGE_KEYS.AUTH_STATUS) {
+          return Promise.resolve(null);
+        });
+
+        (secureDataStorage.getItem as jest.Mock).mockImplementation((key) => {
+          if (key === SENSITIVE_STORAGE_KEYS.AUTH_STATUS) {
             return Promise.resolve(AUTH_STATUS.LOCKED);
           }
+          // Mock temporary store does NOT exist
           return Promise.resolve(null);
         });
 
@@ -1494,20 +1499,17 @@ describe("auth duck", () => {
           expiresAt: Date.now() + 3600000, // Valid for 1 hour
         });
 
-        // Mock temporary store does NOT exist
-        (secureDataStorage.getItem as jest.Mock).mockResolvedValue(null);
-
-        // Ensure dataStorage.remove is a mock function
-        (dataStorage.remove as jest.Mock).mockResolvedValue(undefined);
+        // Ensure secureDataStorage.remove is a mock function
+        (secureDataStorage.remove as jest.Mock).mockResolvedValue(undefined);
 
         await act(async () => {
           const status = await result.current.getAuthStatus();
           expect(status).toBe(AUTH_STATUS.HASH_KEY_EXPIRED);
         });
 
-        // Verify invalid LOCKED status was cleared
-        expect(dataStorage.remove).toHaveBeenCalledWith(
-          STORAGE_KEYS.AUTH_STATUS,
+        // Verify invalid LOCKED status was cleared from secure storage
+        expect(secureDataStorage.remove).toHaveBeenCalledWith(
+          SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
         );
       });
     });
@@ -1606,9 +1608,9 @@ describe("auth duck", () => {
         expect(result.current.authStatus).toBe(AUTH_STATUS.AUTHENTICATED);
         expect(result.current.account).toBeTruthy();
 
-        // Verify persisted AUTH_STATUS was cleared
-        expect(dataStorage.remove).toHaveBeenCalledWith(
-          STORAGE_KEYS.AUTH_STATUS,
+        // Verify persisted AUTH_STATUS was cleared from secure storage
+        expect(secureDataStorage.remove).toHaveBeenCalledWith(
+          SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
         );
 
         // Verify re-encryption occurred

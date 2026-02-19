@@ -295,7 +295,6 @@ export enum STORAGE_KEYS {
   WELCOME_BANNER_SHOWN_PREFIX = "welcomeBanner_shown_",
   HAS_SEEN_BIOMETRICS_ENABLE_SCREEN = "hasSeenBiometricsEnableScreen",
   APP_UPDATE_DISMISSED_REQUIRED_VERSION = "appUpdateDismissedRequiredVersion",
-  AUTH_STATUS = "authStatus",
 }
 
 /**
@@ -304,10 +303,12 @@ export enum STORAGE_KEYS {
  * TEMPORARY_STORE The temporary store contains encrypted private keys and mnemonic phrase.
  * HASH_KEY The hash key and salt in an JSON stryngified object. This is used to encrypt and decrypt the temporary store.
  * HASH_KEY format: { hashKey: string, salt: string, expiresAt: number }
+ * AUTH_STATUS The authentication status is stored securely to prevent tampering on rooted/jailbroken devices.
  * */
 export enum SENSITIVE_STORAGE_KEYS {
   TEMPORARY_STORE = "temporaryStore",
   HASH_KEY = "hashKey",
+  AUTH_STATUS = "authStatus",
 }
 
 /**
