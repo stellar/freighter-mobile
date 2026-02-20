@@ -1288,7 +1288,7 @@ const signIn = async ({
   // Handle temporary store based on whether it's a fresh login or unlock
   if (shouldCreateTempStore) {
     // Fresh login: Generate new hash key and create new temporary store
-    // BUG FIX: Let createTemporaryStore handle hash key generation to avoid duplication
+    // Let createTemporaryStore handle hash key generation to avoid duplication
     await createTemporaryStore({
       password,
       mnemonicPhrase: keyExtraData.mnemonicPhrase,
@@ -1848,7 +1848,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
 
     initBiometricPassword: async () => {
       try {
-        // BUG FIX: Don't try to access temp store when hash key is expired
+        // Let createTemporaryStore handle hash key generation to avoid duplication
         // The biometric password is already stored in biometric storage from previous login
         // We just need to verify it exists
         const biometricPasswordExists =
