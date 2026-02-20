@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { Networks } from "@stellar/stellar-sdk";
 import BigNumber from "bignumber.js";
+import { useDebugStore } from "ducks/debug";
 import { getAppVersion } from "helpers/version";
 import { t } from "i18next";
 import { BIOMETRY_TYPE } from "react-native-keychain";
@@ -72,7 +73,32 @@ export const PASSWORD_MAX_LENGTH = 2048;
 export const ACCOUNT_NAME_MIN_LENGTH = 1;
 export const ACCOUNT_NAME_MAX_LENGTH = 24;
 export const ACCOUNTS_TO_VERIFY_ON_EXISTING_MNEMONIC_PHRASE = 6;
-export const HASH_KEY_EXPIRATION_MS = 24 * 60 * 60 * 1000; // 24 hours
+// Hash key expiration: 24 hours in production
+// Can be overridden in debug mode via getHashKeyExpirationMs()
+export const HASH_KEY_EXPIRATION_MS = 30 * 1000; // 30 seconds //FIXME: set back to 24h post testing
+export const MIN_HASH_KEY_EXPIRATION_SECONDS = 30; // Minimum 30 seconds to prevent lockout
+
+/**
+ * Get the hash key expiration time in milliseconds.
+ * In dev mode, this can be overridden via debug settings.
+ * Enforces a minimum of 30 seconds to prevent user lockout.
+ * @returns Hash key expiration time in milliseconds
+ */
+export const getHashKeyExpirationMs = (): number => {
+  if (__DEV__) {
+    const { hashKeyExpirationSeconds } = useDebugStore.getState();
+    if (hashKeyExpirationSeconds) {
+      // Enforce minimum of 30 seconds to prevent lockout
+      const seconds = Math.max(
+        hashKeyExpirationSeconds,
+        MIN_HASH_KEY_EXPIRATION_SECONDS,
+      );
+      return seconds * 1000; // Convert seconds to milliseconds
+    }
+  }
+  return HASH_KEY_EXPIRATION_MS;
+};
+
 export const VISUAL_DELAY_MS = 500;
 
 // Recovery phrase validation constants

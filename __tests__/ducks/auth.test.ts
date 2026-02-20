@@ -1848,4 +1848,143 @@ describe("auth duck", () => {
       });
     });
   });
+
+  describe("Hash key expiration and login refresh", () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it("should successfully sign in after hash key expiration without duplicating hash key", async () => {
+      // Setup: Mock KeyManager with valid account
+      mockKeyManager.loadKey.mockResolvedValue({
+        id: mockAccount.id,
+        publicKey: mockAccount.publicKey,
+        privateKey: "SBXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+        extra: {
+          mnemonicPhrase:
+            "test phrase word one two three four five six seven eight nine ten eleven twelve",
+        },
+      });
+      mockKeyManager.loadAllKeyIds.mockResolvedValue([mockAccount.id]);
+
+      // Setup: User has accounts but hash key is expired/missing
+      (dataStorage.getItem as jest.Mock).mockImplementation((key) => {
+        if (key === STORAGE_KEYS.ACCOUNT_LIST) {
+          return Promise.resolve(JSON.stringify([mockAccount]));
+        }
+        if (key === STORAGE_KEYS.ACTIVE_ACCOUNT_ID) {
+          return Promise.resolve(mockAccount.id);
+        }
+        return Promise.resolve(null);
+      });
+
+      // No hash key exists initially (expired/cleared)
+      (getHashKey as jest.Mock).mockResolvedValue(null);
+
+      // Mock password derivation for hash key generation
+      (deriveKeyFromPassword as jest.Mock).mockResolvedValue(
+        new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]),
+      );
+      (generateSalt as jest.Mock).mockReturnValue("new-mock-salt");
+
+      // Mock secure storage
+      (secureDataStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+      (secureDataStorage.getItem as jest.Mock).mockResolvedValue(null);
+
+      // Mock encryption - new temp store creation
+      (encryptDataWithPassword as jest.Mock).mockResolvedValue({
+        encryptedData: "encrypted-temp-store-data",
+        salt: "new-mock-salt",
+      });
+
+      // Mock biometric storage check
+      (biometricDataStorage.checkIfExists as jest.Mock).mockResolvedValue(
+        false,
+      );
+      (biometricDataStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+
+      const { result } = renderHook(() => useAuthenticationStore());
+
+      // Restore original signIn method (in case it was mocked)
+      act(() => {
+        useAuthenticationStore.setState({
+          signIn: originalStoreMethods.signIn,
+        });
+      });
+
+      // THE KEY TEST: This should NOT throw "hash key not found" error
+      // Before the fix, this would fail because:
+      // 1. signIn() generated hash key
+      // 2. createTemporaryStore() tried to fetch old temp store
+      // 3. Fetch failed, clearTemporaryData() deleted the newly created hash key
+      // 4. Result: "hash key not found" error, user locked out
+
+      let signInError: Error | null = null;
+      await act(async () => {
+        try {
+          await result.current.signIn({ password: "TestPassword123!" });
+        } catch (error) {
+          signInError = error as Error;
+        }
+      });
+
+      // Verify: Sign in did NOT throw "hash key not found" error (the critical bug fix)
+      expect(signInError).toBeNull();
+
+      // Verify: Temporary store was created (proves hash key generation worked without duplication)
+      expect(secureDataStorage.setItem).toHaveBeenCalledWith(
+        SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE,
+        expect.any(String),
+      );
+
+      // Verify: Hash key was stored
+      expect(secureDataStorage.setItem).toHaveBeenCalledWith(
+        SENSITIVE_STORAGE_KEYS.HASH_KEY,
+        expect.any(String),
+      );
+    });
+
+    it("should initialize biometric password when hash key expired without accessing temp store", async () => {
+      const { result } = renderHook(() => useAuthenticationStore());
+
+      // Biometric password already stored from previous login
+      (biometricDataStorage.checkIfExists as jest.Mock).mockResolvedValue(true);
+
+      // Execute initialization
+      const success = await result.current.initBiometricPassword();
+
+      // Verify: Returns true without trying to access temp store
+      expect(success).toBe(true);
+
+      // Verify: Did NOT try to access temp store (which would fail if hash key expired)
+      expect(secureDataStorage.getItem).not.toHaveBeenCalledWith(
+        SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE,
+      );
+    });
+
+    it("should gracefully fail biometric initialization when hash key expired and no stored password", async () => {
+      const { result } = renderHook(() => useAuthenticationStore());
+
+      // Set hash key expired state
+      act(() => {
+        useAuthenticationStore.setState({
+          authStatus: AUTH_STATUS.HASH_KEY_EXPIRED,
+        });
+      });
+
+      // Biometric password does NOT exist
+      (biometricDataStorage.checkIfExists as jest.Mock).mockResolvedValue(
+        false,
+      );
+
+      // No hash key (expired)
+      (getHashKey as jest.Mock).mockResolvedValue(null);
+
+      // Execute initialization
+      const success = await result.current.initBiometricPassword();
+
+      // Verify: Returns false gracefully (doesn't crash)
+      expect(success).toBe(false);
+    });
+  });
 });

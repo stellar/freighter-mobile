@@ -2,7 +2,6 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { DiscoveryScreen } from "components/screens/DiscoveryScreen/DiscoveryScreen";
 import { HistoryScreen } from "components/screens/HistoryScreen";
 import HomeScreen from "components/screens/HomeScreen";
-import { LoadingScreen } from "components/screens/LoadingScreen";
 import Icon from "components/sds/Icon";
 import { mapNetworkToNetworkDetails } from "config/constants";
 import { MAIN_TAB_ROUTES, MainTabStackParamList } from "config/routes";
@@ -106,8 +105,10 @@ export const TabNavigator = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // If no publicKey, don't render anything
+  // RootNavigator will handle navigation based on auth status
   if (!publicKey) {
-    return <LoadingScreen />;
+    return null;
   }
 
   return (

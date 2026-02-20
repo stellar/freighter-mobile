@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { MIN_HASH_KEY_EXPIRATION_SECONDS } from "config/constants";
 import { isDev } from "helpers/isEnv";
 import { SecurityLevel } from "services/blockaid/constants";
 import { create } from "zustand";
@@ -28,6 +29,11 @@ interface DebugState {
   forceSwapPathFailure: boolean;
   setForceSwapPathFailure: (force: boolean) => void;
   clearSwapPathDebug: () => void;
+
+  // Hash key expiration override for testing (in seconds)
+  hashKeyExpirationSeconds: number | null;
+  setHashKeyExpirationSeconds: (seconds: number | null) => void;
+  clearHashKeyExpirationOverride: () => void;
 }
 
 const INITIAL_DEBUG_STATE = {
@@ -37,6 +43,7 @@ const INITIAL_DEBUG_STATE = {
   forceSignTransactionFailure: false,
   forceSubmitTransactionFailure: false,
   forceSwapPathFailure: false,
+  hashKeyExpirationSeconds: null,
 };
 
 export const useDebugStore = create<DebugState>()(
@@ -66,6 +73,16 @@ export const useDebugStore = create<DebugState>()(
           setForceSwapPathFailure: (force: boolean) =>
             set({ forceSwapPathFailure: force }),
           clearSwapPathDebug: () => set({ forceSwapPathFailure: false }),
+          setHashKeyExpirationSeconds: (seconds: number | null) => {
+            // Enforce minimum to prevent lockout
+            const validSeconds =
+              seconds !== null && seconds >= MIN_HASH_KEY_EXPIRATION_SECONDS
+                ? seconds
+                : null;
+            set({ hashKeyExpirationSeconds: validSeconds });
+          },
+          clearHashKeyExpirationOverride: () =>
+            set({ hashKeyExpirationSeconds: null }),
         }),
         {
           name: "debug-storage",
@@ -85,5 +102,7 @@ export const useDebugStore = create<DebugState>()(
         clearAllTransactionFailures: () => {},
         setForceSwapPathFailure: () => {},
         clearSwapPathDebug: () => {},
+        setHashKeyExpirationSeconds: () => {},
+        clearHashKeyExpirationOverride: () => {},
       }),
 );

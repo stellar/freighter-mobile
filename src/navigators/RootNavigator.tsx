@@ -17,6 +17,7 @@ import { LockScreen } from "components/screens/LockScreen";
 import ScanQRCodeScreen from "components/screens/ScanQRCodeScreen";
 import { SecurityBlockScreen } from "components/screens/SecurityBlockScreen";
 import TokenDetailsScreen from "components/screens/TokenDetailsScreen";
+import { logger } from "config/logger";
 import {
   ManageWalletsStackParamList,
   ROOT_NAVIGATOR_ROUTES,
@@ -43,6 +44,7 @@ import { useAppOpenBiometricsLogin } from "hooks/useAppOpenBiometricsLogin";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useAppUpdate } from "hooks/useAppUpdate";
 import { useBiometrics } from "hooks/useBiometrics";
+import useGetActiveAccount from "hooks/useGetActiveAccount";
 import {
   AuthNavigator,
   AddFundsStackNavigator,
@@ -53,6 +55,7 @@ import {
   SwapStackNavigator,
 } from "navigators";
 import { TabNavigator } from "navigators/TabNavigator";
+import { useToast } from "providers/ToastProvider";
 import React, { useEffect, useMemo, useState } from "react";
 import RNBootSplash from "react-native-bootsplash";
 import { isInitialized as isAnalyticsInitialized } from "services/analytics/core";
@@ -67,28 +70,57 @@ const RootStack = createNativeStackNavigator<
     AddFundsStackParamList
 >();
 
+// Maximum time to wait for app initialization before forcing exit from loading screen
+const INITIALIZATION_TIMEOUT_MS = 30000; // 30 seconds
+
 export const RootNavigator = () => {
   const navigation =
     useNavigation<
       NativeStackNavigationProp<RootStackParamList & AuthStackParamList>
     >();
-  const { authStatus, getAuthStatus } = useAuthenticationStore();
+  const { authStatus, getAuthStatus, setAuthStatus } = useAuthenticationStore();
+  const { account } = useGetActiveAccount();
   const remoteConfigInitialized = useRemoteConfigStore(
     (state) => state.isInitialized,
   );
   const [initializing, setInitializing] = useState(true);
   const [showForceUpdate, setShowForceUpdate] = useState(false);
   const [isJailbroken, setIsJailbroken] = useState(false);
+  const [initializationTimedOut, setInitializationTimedOut] = useState(false);
   const { t } = useAppTranslation();
   const { checkBiometrics, isBiometricsEnabled } = useBiometrics();
   const { showFullScreenUpdateNotice, dismissFullScreenNotice } =
     useAppUpdate();
+  const { showToast } = useToast();
   // Use analytics/permissions hook only after splash is hidden
   useAnalyticsPermissions({
     previousState: initializing ? undefined : "none",
   });
 
   useAppOpenBiometricsLogin(initializing);
+
+  // Safety timeout: If initialization takes longer than 10 seconds, force exit loading
+  // This prevents users from getting stuck on infinite loading screen
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (initializing) {
+        logger.error(
+          "RootNavigator",
+          "Initialization timeout - forcing exit from loading screen",
+          new Error("Initialization timeout"),
+          {
+            authStatus,
+            remoteConfigInitialized,
+          },
+        );
+        setInitializationTimedOut(true);
+        setInitializing(false);
+        RNBootSplash.hide({ fade: true });
+      }
+    }, INITIALIZATION_TIMEOUT_MS);
+
+    return () => clearTimeout(timeout);
+  }, [initializing, authStatus, remoteConfigInitialized]);
 
   useEffect(() => {
     const initializeApp = async (
@@ -127,11 +159,48 @@ export const RootNavigator = () => {
 
   // Wait for all initialization states to complete
   useEffect(() => {
-    if (isAnalyticsInitialized() && remoteConfigInitialized) {
+    if (
+      (isAnalyticsInitialized() && remoteConfigInitialized) ||
+      initializationTimedOut
+    ) {
       setInitializing(false);
       RNBootSplash.hide({ fade: true });
     }
-  }, [remoteConfigInitialized]);
+  }, [remoteConfigInitialized, initializationTimedOut]);
+
+  // Guard: Detect inconsistent state (AUTHENTICATED but no account)
+  // This should never happen after our fixes, but serves as final safety net
+  useEffect(() => {
+    if (authStatus === AUTH_STATUS.AUTHENTICATED && !account && !initializing) {
+      logger.error(
+        "RootNavigator",
+        "CRITICAL: Detected inconsistent state - AUTHENTICATED with no account. Forcing state change to LOCKED.",
+        new Error("Inconsistent auth state"),
+        {
+          authStatus,
+          hasAccount: !!account,
+        },
+      );
+      setAuthStatus(AUTH_STATUS.LOCKED);
+    }
+  }, [authStatus, account, initializing, setAuthStatus]);
+
+  // Show toast when hash key or temp store is not found (hash key expired)
+  useEffect(() => {
+    if (
+      authStatus === AUTH_STATUS.HASH_KEY_EXPIRED &&
+      !initializing &&
+      !initializationTimedOut
+    ) {
+      showToast({
+        variant: "error",
+        title: t("authStore.error.errorUnlockingWallet"),
+        message: t("authStore.error.errorUnlockingWalletMessage"),
+        toastId: "hash-key-expired-toast",
+        duration: 6000,
+      });
+    }
+  }, [authStatus, initializing, initializationTimedOut, showToast, t]);
 
   // Show force update screen when needed
   useEffect(() => {

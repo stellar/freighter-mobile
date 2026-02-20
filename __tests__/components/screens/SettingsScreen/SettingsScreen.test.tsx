@@ -10,6 +10,7 @@ jest.mock("react-native-device-info", () => ({
   getVersion: () => "1.1",
   getBuildNumber: () => "1",
   hasNotch: jest.fn(() => false),
+  getBundleId: jest.fn(() => "org.stellar.freighterdev"),
 }));
 
 type SettingsScreenNavigationProp = NativeStackScreenProps<

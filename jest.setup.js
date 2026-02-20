@@ -197,6 +197,10 @@ jest.mock("@react-navigation/bottom-tabs", () => ({
 
 jest.mock("react-native-device-info", () => mockRNDeviceInfo);
 
+jest.mock("react-native-config", () => ({
+  IS_E2E_TEST: undefined,
+}));
+
 jest.mock("react-native-gesture-handler", () => mockGestureHandler);
 
 jest.mock("@gorhom/bottom-sheet", () => {

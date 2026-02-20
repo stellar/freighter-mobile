@@ -368,7 +368,9 @@
       "accountAlreadyExists": "Conta já existe",
       "failedToImportSecretKey": "Falha ao importar chave secreta",
       "failedToReEncryptData": "Falha ao re-criptografar dados. Por favor, faça login novamente.",
-      "failedToDecryptData": "Falha ao descriptografar dados. Por favor, faça login novamente."
+      "failedToDecryptData": "Falha ao descriptografar dados. Por favor, faça login novamente.",
+      "errorUnlockingWallet": "Erro ao desbloquear carteira",
+      "errorUnlockingWalletMessage": "Se o problema persistir, toque em \"Esqueceu a senha\" e reimporte sua carteira."
     },
     "account": "Conta {{number}}",
     "faceId": {

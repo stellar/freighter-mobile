@@ -12,7 +12,7 @@ import {
   BIOMETRIC_STORAGE_KEYS,
   FACE_ID_BIOMETRY_TYPES,
   FINGERPRINT_BIOMETRY_TYPES,
-  HASH_KEY_EXPIRATION_MS,
+  getHashKeyExpirationMs,
   LoginType,
   NETWORKS,
   SENSITIVE_STORAGE_KEYS,
@@ -786,7 +786,7 @@ const generateHashKey = async (password: string): Promise<HashKey> => {
     const hashKey = base64Encode(hashKeyBytes);
 
     // Calculate the expiration timestamp
-    const expirationTime = Date.now() + HASH_KEY_EXPIRATION_MS;
+    const expirationTime = Date.now() + getHashKeyExpirationMs();
 
     // Return the hash key object (caller will store it)
     return {
@@ -1288,12 +1288,7 @@ const signIn = async ({
   // Handle temporary store based on whether it's a fresh login or unlock
   if (shouldCreateTempStore) {
     // Fresh login: Generate new hash key and create new temporary store
-    const newHashKey = await generateHashKey(password);
-    await secureDataStorage.setItem(
-      SENSITIVE_STORAGE_KEYS.HASH_KEY,
-      JSON.stringify(newHashKey),
-    );
-
+    // Let createTemporaryStore handle hash key generation to avoid duplication
     await createTemporaryStore({
       password,
       mnemonicPhrase: keyExtraData.mnemonicPhrase,
@@ -1303,7 +1298,7 @@ const signIn = async ({
         accountName: account.name,
         id: loadedKey.id,
       },
-      shouldRefreshHashKey: false,
+      shouldRefreshHashKey: true,
     });
   } else {
     // LOCKED state unlock: Generate new hash key and re-encrypt existing temporary store
@@ -1853,14 +1848,39 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
 
     initBiometricPassword: async () => {
       try {
+        // Let createTemporaryStore handle hash key generation to avoid duplication
+        // The biometric password is already stored in biometric storage from previous login
+        // We just need to verify it exists
+        const biometricPasswordExists =
+          await biometricDataStorage.checkIfExists(
+            BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
+          );
+
+        if (biometricPasswordExists) {
+          // Password already stored, nothing to do
+          return true;
+        }
+
+        // If biometric password doesn't exist, try to get it from temp store
+        // This only works when authenticated (not when hash key expired)
         const temporaryStore = await getTemporaryStore(get().authStatus);
         if (!temporaryStore) {
+          logger.warn(
+            "initBiometricPassword",
+            "Cannot initialize biometric password - temp store not accessible",
+          );
           return false;
         }
+
         const { password } = temporaryStore;
         if (!password) {
+          logger.warn(
+            "initBiometricPassword",
+            "Cannot initialize biometric password - password not in temp store",
+          );
           return false;
         }
+
         await biometricDataStorage.setItem(
           BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
           password,
@@ -1869,7 +1889,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
       } catch (error) {
         logger.error(
           "initBiometricPassword",
-          "Failed to initialize biometric password from temporary store",
+          "Failed to initialize biometric password",
           error,
         );
         return false;
@@ -1973,13 +1993,23 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
       set((state) => ({ ...state, isLoading: true, error: null }));
       try {
         await signUp(params);
+
+        // Fetch active account BEFORE setting authenticated status
+        // This prevents AUTHENTICATED + null account state
+        const activeAccount = await get().fetchActiveAccount();
+
+        if (!activeAccount) {
+          throw new Error(t("authStore.error.failedToLoadAccount"));
+        }
+
+        // Only set AUTHENTICATED after we have a valid account
         set({
           ...initialState,
           isLoading: false,
           authStatus: AUTH_STATUS.AUTHENTICATED,
+          account: activeAccount,
+          isLoadingAccount: false,
         });
-        // Fetch active account after successful signup
-        await get().fetchActiveAccount();
       } catch (error) {
         logger.error("useAuthenticationStore.signUp", "Sign up failed", error);
         set({
@@ -2402,14 +2432,24 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
 
       try {
         await importWallet(params);
+
+        // Fetch active account BEFORE setting authenticated status
+        // This prevents AUTHENTICATED + null account state
+        const activeAccount = await get().fetchActiveAccount();
+
+        if (!activeAccount) {
+          throw new Error(t("authStore.error.failedToLoadAccount"));
+        }
+
+        // Only set AUTHENTICATED after we have a valid account
         set({
           ...initialState,
           authStatus: AUTH_STATUS.AUTHENTICATED,
           isLoading: false,
+          account: activeAccount,
+          isLoadingAccount: false,
         });
 
-        // Fetch active account after successful wallet import
-        get().fetchActiveAccount();
         return true;
       } catch (error) {
         logger.error(
