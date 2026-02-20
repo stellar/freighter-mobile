@@ -25,7 +25,7 @@
     "@types/node": "^22.10.5",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.3",
-    "nodemon": "^3.1.9"
+    "nodemon": "^3.1.13"
   },
   "engines": {
     "node": ">=18.0.0"
