@@ -38,6 +38,7 @@ declare module "react-native-config" {
 
     IS_E2E_TEST: string;
     E2E_TEST_RECOVERY_PHRASE: string;
+    E2E_TEST_FUNDED_RECOVERY_PHRASE: string;
   }
   const Config: NativeConfig;
   export default Config;

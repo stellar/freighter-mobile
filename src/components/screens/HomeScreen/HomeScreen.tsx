@@ -2,6 +2,11 @@ import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import { IconButton } from "components/IconButton";
 import { TokensCollectiblesTabs } from "components/TokensCollectiblesTabs";
+import {
+  WalletConnectE2EHelper,
+  WalletConnectE2EHelperTrigger,
+  WalletConnectE2EHelperRef,
+} from "components/WalletConnectE2EHelper";
 import { AnalyticsDebugTrigger } from "components/analytics/AnalyticsDebugTrigger";
 import { DebugBottomSheet } from "components/analytics/DebugBottomSheet";
 import { BaseLayout } from "components/layout/BaseLayout";
@@ -67,6 +72,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
     const { themeColors } = useColors();
     const manageAccountsBottomSheetRef = useRef<BottomSheetModal>(null);
     const analyticsDebugBottomSheetRef = useRef<BottomSheetModal>(null);
+    const walletConnectE2EHelperRef = useRef<WalletConnectE2EHelperRef>(null);
 
     const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -199,6 +205,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
 
     const handleAnalyticsDebugDismiss = useCallback(() => {
       analyticsDebugBottomSheetRef.current?.dismiss();
+    }, []);
+
+    const handleWalletConnectE2EHelperPress = useCallback(() => {
+      walletConnectE2EHelperRef.current?.present();
     }, []);
 
     const handleRefresh = useCallback(async () => {
@@ -335,6 +345,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
           />
         )}
         <AnalyticsDebugTrigger onPress={handleAnalyticsDebugPress} />
+
+        {/* WalletConnect E2E Helper - E2E Test Mode Only */}
+        <WalletConnectE2EHelper ref={walletConnectE2EHelperRef} />
+        <WalletConnectE2EHelperTrigger
+          onPress={handleWalletConnectE2EHelperPress}
+        />
       </BaseLayout>
     );
   },

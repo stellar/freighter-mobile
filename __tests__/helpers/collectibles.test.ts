@@ -906,7 +906,7 @@ describe("collectibles helpers", () => {
             tokenId: "token1",
           }),
         ).rejects.toThrow(
-          'Cannot remove hidden collectible: storage not found for publicKey "non-existent-key" and network "testnet"',
+          "Cannot remove hidden collectible: storage not found for publicKey \"non-existent-key\" and network \"testnet\"",
         );
 
         expect(dataStorage.setItem).not.toHaveBeenCalled();

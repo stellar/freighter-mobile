@@ -1,0 +1,123 @@
+appId: org.stellar.freighterdev
+tags:
+  - transactions
+  - send
+  - classic-token
+  - mainnet
+---
+# Send 0.000001 XLM on mainnet to E2E_TEST_RECIPIENT_ADDRESS.
+# Uses a small amount to avoid wasting mainnet funds.
+#
+# Import funded wallet
+- runFlow:
+    file: ../onboarding/ImportFundedWallet.yaml
+
+# Wait for either home screen or banner to appear
+- extendedWaitUntil:
+    visible:
+      id: home-screen|welcome-banner-dismiss-button
+    timeout: 30000
+
+# Dismiss welcome banner if visible
+- runFlow:
+    when:
+      visible:
+        id: welcome-banner-dismiss-button
+    commands:
+      - tapOn:
+          id: welcome-banner-dismiss-button
+      - extendedWaitUntil:
+          visible:
+            id: home-screen
+          timeout: 30000
+
+# Stay on mainnet (no network switch)
+
+# Verify we're on home screen after import
+- assertVisible:
+    id: home-screen
+
+# Wait for accounts and balances to load
+- extendedWaitUntil:
+    visible:
+      id: home-account-switcher
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: icon-button-send
+    timeout: 15000
+
+# Navigate to send flow
+- tapOn:
+    id: icon-button-send
+# Tap recipient row to open search
+- tapOn:
+    id: send-recipient-row
+# Wait for recipient search screen
+- extendedWaitUntil:
+    visible:
+      id: send-search-contacts-screen
+    timeout: 15000
+
+# Type the recipient address
+- tapOn:
+    id: send-recipient-input
+- inputText: GDAS7BS4XKW27H2K5C25V6ZU46FCFGBTFQGFDZURAKVPA6QYQG4GTWBC
+
+# Wait for search suggestion to appear and select it
+# Note: keyboardShouldPersistTaps="handled" on the FlatList allows tapping
+# suggestions without hiding the keyboard first.
+- extendedWaitUntil:
+    visible:
+      id: search-suggestion-0
+    timeout: 30000
+- tapOn:
+    id: search-suggestion-0
+
+# Verify we're on amount screen
+- extendedWaitUntil:
+    visible:
+      id: send-amount-screen
+    timeout: 15000
+
+# Enter amount: 0.000001 XLM (minimal to avoid wasting mainnet funds)
+- tapOn:
+    id: numeric-key-0
+- tapOn:
+    id: numeric-key-decimal
+- repeat:
+    times: 5
+    commands:
+      - tapOn:
+          id: numeric-key-0
+- tapOn:
+    id: numeric-key-1
+
+# Tap Review button
+- tapOn:
+    id: send-continue-button
+# Verify review sheet is visible
+- extendedWaitUntil:
+    visible:
+      id: send-review-sheet
+    timeout: 30000
+# Confirm the transaction
+- tapOn:
+    id: send-review-confirm-button
+# Verify processing screen
+- extendedWaitUntil:
+    visible:
+      id: send-processing-screen
+    timeout: 30000
+# Wait for completion and tap Done
+- extendedWaitUntil:
+    visible:
+      id: send-processing-done-button
+    timeout: 30000
+- tapOn:
+    id: send-processing-done-button
+# Verify we're back on history screen with transaction visible
+# Note: optional because the transaction might not be immediately rendered in the view
+- assertVisible:
+    text: "XLM"
+    optional: true

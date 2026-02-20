@@ -20,6 +20,7 @@ interface CustomHeaderButtonProps {
     left: number;
     right: number;
   };
+  testID?: string;
 }
 
 /**
@@ -90,6 +91,7 @@ interface CustomHeaderButtonProps {
  * @param iconSize - Size of the icon (defaults to 24)
  * @param className - Additional CSS classes for styling
  * @param hitSlop - Custom hit slop values for touch area
+ * @param testID - Optional testID for testing purposes
  */
 export const CustomHeaderButton: React.FC<CustomHeaderButtonProps> = ({
   position = "left",
@@ -98,6 +100,7 @@ export const CustomHeaderButton: React.FC<CustomHeaderButtonProps> = ({
   iconSize = 24,
   className: customClassName,
   hitSlop = { top: 10, bottom: 10, left: 10, right: 10 },
+  testID = "header-button",
 }) => {
   const navigation = useNavigation();
   const { themeColors } = useColors();
@@ -136,7 +139,7 @@ export const CustomHeaderButton: React.FC<CustomHeaderButtonProps> = ({
       className={className}
       hitSlop={hitSlop}
       disabled={!handlePress}
-      testID="header-button"
+      testID={testID}
     >
       <IconComponent size={iconSize} color={baseColor} />
     </TouchableOpacity>

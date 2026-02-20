@@ -53,6 +53,7 @@ export enum StellarRpcChains {
 export enum StellarRpcMethods {
   SIGN_XDR = "stellar_signXDR",
   SIGN_AND_SUBMIT_XDR = "stellar_signAndSubmitXDR",
+  SIGN_MESSAGE = "stellar_signMessage",
 }
 
 /**
@@ -60,6 +61,27 @@ export enum StellarRpcMethods {
  */
 export enum StellarRpcEvents {
   ACCOUNTS_CHANGED = "accountsChanged",
+}
+
+/**
+ * Type representing parameters for stellar_signXDR request
+ */
+export interface StellarSignXDRParams {
+  xdr: string;
+}
+
+/**
+ * Type representing parameters for stellar_signMessage request
+ */
+export interface StellarSignMessageParams {
+  message: string;
+}
+
+/**
+ * Type representing parameters for stellar_signAndSubmitXDR request
+ */
+export interface StellarSignAndSubmitXDRParams {
+  xdr: string;
 }
 
 /**

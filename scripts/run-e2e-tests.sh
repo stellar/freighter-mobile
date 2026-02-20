@@ -1,6 +1,9 @@
 #!/bin/bash
 set -eu  # Exit on error, undefined vars (pipefail not available in sh)
 
+# Ensure maestro is in PATH
+export PATH="$PATH:$HOME/.maestro/bin"
+
 # Create base output directory for Maestro artifacts
 OUTPUT_DIR="e2e-artifacts"
 mkdir -p "$OUTPUT_DIR"
@@ -78,6 +81,49 @@ if [ -z "${E2E_TEST_RECOVERY_PHRASE:-}" ]; then
   echo "   Add E2E_TEST_RECOVERY_PHRASE to your .env file (see .env.example)."
 fi
 
+# Load E2E_TEST_FUNDED_RECOVERY_PHRASE from .env when not set (local runs). CI uses secrets.
+if [ -z "${E2E_TEST_FUNDED_RECOVERY_PHRASE:-}" ] && [ -f .env ]; then
+  E2E_TEST_FUNDED_RECOVERY_PHRASE=$(sed -n 's/^E2E_TEST_FUNDED_RECOVERY_PHRASE=//p' .env 2>/dev/null | head -1)
+  export E2E_TEST_FUNDED_RECOVERY_PHRASE
+fi
+
+# Function to ensure stable ADB connection
+ensure_adb_connection() {
+  if [ "$PLATFORM" = "android" ] || ( [ -z "$PLATFORM" ] && command -v adb >/dev/null 2>&1 ); then
+    echo "🔧 Ensuring stable ADB connection..."
+    
+    # Get ADB server PID to restart if needed
+    ADB_SERVER_PID=$(ps aux | grep 'adb.*fork-server' | grep -v grep | awk '{print $2}' | head -1)
+    
+    # Check if device is offline
+    if adb devices 2>/dev/null | grep -q "offline"; then
+      echo "⚠️  Device offline detected, reconnecting ADB..."
+      # Stop the specific ADB process if running
+      if [ -n "$ADB_SERVER_PID" ]; then
+        kill "$ADB_SERVER_PID" 2>/dev/null || true
+        sleep 2
+      fi
+      adb start-server >/dev/null 2>&1
+      sleep 3
+    fi
+    
+    # Verify connection
+    if ! adb devices 2>/dev/null | grep -q "device$"; then
+      echo "⚠️  No device found after reconnect, attempting to restart ADB server..."
+      if [ -n "$ADB_SERVER_PID" ]; then
+        kill "$ADB_SERVER_PID" 2>/dev/null || true
+      fi
+      adb start-server >/dev/null 2>&1
+      sleep 3
+    fi
+    
+    echo "✅ ADB connection verified"
+  fi
+}
+
+# Ensure ADB connection is stable before running tests
+ensure_adb_connection
+
 if [ -n "$PLATFORM" ]; then
   case "$PLATFORM" in
     ios)
@@ -87,6 +133,10 @@ if [ -n "$PLATFORM" ]; then
         exit 1
       fi
       echo "📱 Targeting iOS simulator: $MAESTRO_DEVICE"
+
+      # Disable Face ID/Touch ID enrollment for E2E tests to avoid biometrics flow interruptions
+      echo "🔓 Disabling biometric enrollment on simulator..."
+      xcrun simctl spawn "$MAESTRO_DEVICE" notifyutil -p com.apple.BiometricKit.enrollmentChanged >/dev/null 2>&1 || true
       ;;
     android)
       MAESTRO_DEVICE=$(adb devices 2>/dev/null | awk '/^[^[:space:]]+[[:space:]]+device$/ { print $1; exit }')
@@ -107,6 +157,10 @@ fi
 CURRENT_RECORDING_PID=""
 CURRENT_RECORDING_ANDROID_DEVICE=""
 CURRENT_VIDEO_PATH=""
+
+# Mock server PID (initialized before trap is set)
+MOCK_SERVER_PID=""
+MOCK_SERVER_PORT=3001
 
 # Function to start video recording for a specific flow
 # Arguments: $1 = output directory for this flow
@@ -210,6 +264,11 @@ cleanup() {
     echo "🛑 Emergency cleanup - stopping recording..."
     stop_flow_recording
   fi
+  # Stop mock-dapp server if we started it
+  if [ -n "$MOCK_SERVER_PID" ]; then
+    echo "🛑 Stopping mock-dapp server (PID: $MOCK_SERVER_PID)..."
+    kill "$MOCK_SERVER_PID" 2>/dev/null || true
+  fi
 }
 
 # Trap to ensure recording is stopped on exit/interrupt
@@ -224,10 +283,35 @@ if [ -n "$SHARD_INDEX" ] || [ -n "$SHARD_TOTAL" ]; then
   echo "📂 Shard $SHARD_INDEX of $SHARD_TOTAL (CI matrix)"
 fi
 
-# Collect flows deterministically (sorted), optionally filter by shard
+# Collect all flows first (sorted), exclude shared directory
+ALL_FLOW_FILES=$(find e2e/flows -name "*.yaml" ! -path "*/shared/*" | sort)
+
+# Apply flow name filter FIRST if set (exact match, case-insensitive)
+if [ -n "$FLOW_NAME_FILTER" ]; then
+  _filtered=""
+  for file in $ALL_FLOW_FILES; do
+    _name=$(basename "$file" .yaml)
+    if [ "$(echo "$_name" | tr '[:upper:]' '[:lower:]')" = "$(echo "$FLOW_NAME_FILTER" | tr '[:upper:]' '[:lower:]')" ]; then
+      _filtered="${_filtered:+$_filtered }$file"
+    fi
+  done
+  
+  if [ -z "$_filtered" ]; then
+    echo "❌ Error: No flow found matching '$FLOW_NAME_FILTER'"
+    echo "Available flows:"
+    for f in $ALL_FLOW_FILES; do
+      echo "  - $(basename "$f" .yaml)"
+    done
+    exit 1
+  fi
+  
+  ALL_FLOW_FILES="$_filtered"
+fi
+
+# Now apply sharding to the filtered list
 FLOW_FILES=""
 idx=0
-for file in $(find e2e/flows -name "*.yaml" | sort); do
+for file in $ALL_FLOW_FILES; do
   if [ -n "$SHARD_TOTAL" ] && [ -n "$SHARD_INDEX" ]; then
     _mod=$(( idx % SHARD_TOTAL ))
     if [ "$_mod" -ne "$SHARD_INDEX" ]; then
@@ -239,27 +323,6 @@ for file in $(find e2e/flows -name "*.yaml" | sort); do
   idx=$(( idx + 1 ))
 done
 
-# Apply flow name filter if set (exact match, case-insensitive)
-if [ -n "$FLOW_NAME_FILTER" ]; then
-  _filtered=""
-  for file in $FLOW_FILES; do
-    _name=$(basename "$file" .yaml)
-    if [ "$(echo "$_name" | tr '[:upper:]' '[:lower:]')" = "$(echo "$FLOW_NAME_FILTER" | tr '[:upper:]' '[:lower:]')" ]; then
-      _filtered="${_filtered:+$_filtered }$file"
-    fi
-  done
-  FLOW_FILES="$_filtered"
-
-  if [ -z "$FLOW_FILES" ]; then
-    echo "❌ Error: No flow found matching '$FLOW_NAME_FILTER'"
-    echo "Available flows:"
-    find e2e/flows -name "*.yaml" | sort | while read f; do
-      echo "  - $(basename "$f" .yaml)"
-    done
-    exit 1
-  fi
-fi
-
 if [ -z "$FLOW_FILES" ]; then
   if [ -n "$SHARD_TOTAL" ] && [ -n "$SHARD_INDEX" ]; then
     echo "✅ No flows in shard $SHARD_INDEX/$SHARD_TOTAL; nothing to run"
@@ -269,10 +332,54 @@ if [ -z "$FLOW_FILES" ]; then
   exit 1
 fi
 
-# Set iOS simulator clipboard for ImportWallet (local runs). CI sets it in the workflow.
-if [ "$PLATFORM" = "ios" ] && [ -n "${E2E_TEST_RECOVERY_PHRASE:-}" ] && [ -n "${MAESTRO_DEVICE:-}" ]; then
-  echo "$E2E_TEST_RECOVERY_PHRASE" | xcrun simctl pbcopy "$MAESTRO_DEVICE"
-  echo "✅ Recovery phrase set in simulator clipboard (for ImportWallet)"
+# Check if any flows require mock-dapp server (only SignMessageMockDapp needs it)
+NEEDS_MOCK_SERVER=false
+for flow_file in $FLOW_FILES; do
+  if echo "$flow_file" | grep -q "SignMessageMockDapp"; then
+    NEEDS_MOCK_SERVER=true
+    break
+  fi
+done
+
+# Start mock-dapp server only if needed
+if [ "$NEEDS_MOCK_SERVER" = true ]; then
+  echo "🔌 Starting mock-dapp server for WalletConnect tests..."
+  
+  # Check if server is already running
+  if curl -s "http://127.0.0.1:$MOCK_SERVER_PORT/health" >/dev/null 2>&1; then
+    echo "✅ Mock-dapp server already running on port $MOCK_SERVER_PORT"
+  else
+    # Start server in background
+    if [ -d "mock-dapp" ]; then
+      cd mock-dapp
+      npm start > ../e2e-artifacts/mock-server.log 2>&1 &
+      MOCK_SERVER_PID=$!
+      cd ..
+      
+      # Wait for server to be ready (max 10 seconds)
+      echo "⏳ Waiting for mock-dapp server to start..."
+      for i in $(seq 1 10); do
+        if curl -s "http://127.0.0.1:$MOCK_SERVER_PORT/health" >/dev/null 2>&1; then
+          echo "✅ Mock-dapp server started successfully (PID: $MOCK_SERVER_PID)"
+          break
+        fi
+        sleep 1
+      done
+      
+      # Verify it started
+      if ! curl -s "http://127.0.0.1:$MOCK_SERVER_PORT/health" >/dev/null 2>&1; then
+        echo "❌ Error: Mock-dapp server failed to start. Check e2e-artifacts/mock-server.log"
+        if [ -n "$MOCK_SERVER_PID" ]; then
+          kill "$MOCK_SERVER_PID" 2>/dev/null || true
+        fi
+        exit 1
+      fi
+    else
+      echo "⚠️  Warning: mock-dapp directory not found, WalletConnect tests may fail"
+    fi
+  fi
+else
+  echo "ℹ️  Skipping mock-dapp server (not needed for selected flows)"
 fi
 
 # Track failures
@@ -282,6 +389,23 @@ failed_tests=""
 for file in $FLOW_FILES; do
   # Extract flow name from file path (e.g., "CreateWallet" from "e2e/flows/onboarding/CreateWallet.yaml")
   FLOW_NAME=$(basename "$file" .yaml)
+
+
+  # Set iOS simulator clipboard based on flow type (local runs). CI sets it in the workflow.
+  if [ "$PLATFORM" = "ios" ] && [ -n "${MAESTRO_DEVICE:-}" ]; then
+    # Check if this test uses ImportFundedWallet (either standalone or as subflow)
+    if [ "$FLOW_NAME" = "ImportFundedWallet" ] || grep -q "ImportFundedWallet.yaml" "$file" 2>/dev/null; then
+      if [ -n "${E2E_TEST_FUNDED_RECOVERY_PHRASE:-}" ]; then
+        echo "$E2E_TEST_FUNDED_RECOVERY_PHRASE" | xcrun simctl pbcopy "$MAESTRO_DEVICE"
+        echo "✅ Funded recovery phrase set in simulator clipboard (for $FLOW_NAME)"
+      fi
+    elif [ "$FLOW_NAME" = "ImportWallet" ] || echo "$FLOW_NAME" | grep -qi "import"; then
+      if [ -n "${E2E_TEST_RECOVERY_PHRASE:-}" ]; then
+        echo "$E2E_TEST_RECOVERY_PHRASE" | xcrun simctl pbcopy "$MAESTRO_DEVICE"
+        echo "✅ Recovery phrase set in simulator clipboard (for $FLOW_NAME)"
+      fi
+    fi
+  fi
   TS=$(date +%s)
   FLOW_OUTPUT_DIR="$OUTPUT_DIR/${FLOW_NAME}-${TS}"
   
@@ -298,26 +422,49 @@ for file in $FLOW_FILES; do
   # Pass E2E_TEST_RECOVERY_PHRASE and IS_CI_ENV when set via Maestro's `-e KEY=value`.
   # --debug-output ensures maestro.log is written to FLOW_OUTPUT_DIR (otherwise it goes to ~/.maestro/tests/).
   _ret=0
-  if [ -n "$MAESTRO_DEVICE" ]; then
-    if [ -n "${E2E_TEST_RECOVERY_PHRASE:-}" ] && [ -n "${IS_CI_ENV:-}" ]; then
-      maestro test -e "E2E_TEST_RECOVERY_PHRASE=$E2E_TEST_RECOVERY_PHRASE" -e "IS_CI_ENV=$IS_CI_ENV" --device "$MAESTRO_DEVICE" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" || _ret=$?
-    elif [ -n "${E2E_TEST_RECOVERY_PHRASE:-}" ]; then
-      maestro test -e "E2E_TEST_RECOVERY_PHRASE=$E2E_TEST_RECOVERY_PHRASE" --device "$MAESTRO_DEVICE" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" || _ret=$?
-    elif [ -n "${IS_CI_ENV:-}" ]; then
-      maestro test -e "IS_CI_ENV=$IS_CI_ENV" --device "$MAESTRO_DEVICE" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" || _ret=$?
-    else
-      maestro test --device "$MAESTRO_DEVICE" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" || _ret=$?
+  MAESTRO_ENV_ARGS=()
+  if [ -n "${E2E_TEST_RECOVERY_PHRASE:-}" ]; then
+    MAESTRO_ENV_ARGS+=("-e" "E2E_TEST_RECOVERY_PHRASE=$E2E_TEST_RECOVERY_PHRASE")
+  fi
+  if [ -n "${IS_CI_ENV:-}" ]; then
+    MAESTRO_ENV_ARGS+=("-e" "IS_CI_ENV=$IS_CI_ENV")
+  fi
+
+  # Retry logic for ADB connection issues
+  MAX_RETRIES=3
+  retry_count=0
+  while [ $retry_count -lt $MAX_RETRIES ]; do
+    if [ $retry_count -gt 0 ]; then
+      echo "⚠️  Retry attempt $retry_count/$MAX_RETRIES after ADB connection issue..."
+      # Reconnect ADB before retry
+      ensure_adb_connection
+      sleep 5
     fi
-  else
-    if [ -n "${E2E_TEST_RECOVERY_PHRASE:-}" ] && [ -n "${IS_CI_ENV:-}" ]; then
-      maestro test -e "E2E_TEST_RECOVERY_PHRASE=$E2E_TEST_RECOVERY_PHRASE" -e "IS_CI_ENV=$IS_CI_ENV" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" || _ret=$?
-    elif [ -n "${E2E_TEST_RECOVERY_PHRASE:-}" ]; then
-      maestro test -e "E2E_TEST_RECOVERY_PHRASE=$E2E_TEST_RECOVERY_PHRASE" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" || _ret=$?
-    elif [ -n "${IS_CI_ENV:-}" ]; then
-      maestro test -e "IS_CI_ENV=$IS_CI_ENV" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" || _ret=$?
+    
+    # Capture stderr to detect device offline errors
+    MAESTRO_ERROR_LOG="$FLOW_OUTPUT_DIR/maestro_error.log"
+    
+    if [ -n "$MAESTRO_DEVICE" ]; then
+      maestro test "${MAESTRO_ENV_ARGS[@]}" --device "$MAESTRO_DEVICE" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" 2>"$MAESTRO_ERROR_LOG" && _ret=0 && break || _ret=$?
     else
-      maestro test "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" || _ret=$?
+      maestro test "${MAESTRO_ENV_ARGS[@]}" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" 2>"$MAESTRO_ERROR_LOG" && _ret=0 && break || _ret=$?
     fi
+    
+    # Check if it's an ADB connection issue
+    if grep -qi "device offline" "$MAESTRO_ERROR_LOG" 2>/dev/null; then
+      retry_count=$((retry_count + 1))
+      if [ $retry_count -lt $MAX_RETRIES ]; then
+        echo "🔧 Detected ADB connection issue, will retry..."
+      fi
+    else
+      # Not an ADB issue, don't retry
+      break
+    fi
+  done
+  
+  # Remove error log if test succeeded
+  if [ $_ret -eq 0 ] && [ -f "$MAESTRO_ERROR_LOG" ]; then
+    rm "$MAESTRO_ERROR_LOG"
   fi
   
   # Move maestro.log from nested .maestro/tests/<timestamp>/ to flow output directory

@@ -21,6 +21,8 @@ import {
   WalletKitEventTypes,
   WalletKitSessionRequest,
   StellarRpcChains,
+  StellarRpcMethods,
+  StellarSignXDRParams,
 } from "ducks/walletKit";
 import { getHostname } from "helpers/protocols";
 import {
@@ -88,7 +90,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 }) => {
   const { themeColors } = useColors();
   const { network, authStatus } = useAuthenticationStore();
-  const { account, signTransaction } = useGetActiveAccount();
+  const { account, signTransaction, signMessage } = useGetActiveAccount();
   const { overriddenBlockaidResponse } = useDebugStore();
 
   const addMemoExplanationBottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -100,7 +102,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   const initialized = useWalletKitInitialize();
   useWalletKitEventsManager(initialized);
 
-  const { event, clearEvent, activeSessions, fetchActiveSessions } =
+  const { event, clearEvent, setEvent, activeSessions, fetchActiveSessions } =
     useWalletKitStore();
   const { showToast } = useToast();
   const { t } = useAppTranslation();
@@ -120,19 +122,37 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     Blockaid.StellarTransactionScanResponse | undefined
   >(undefined);
 
+  // Request queue to prevent concurrent request handling race conditions
+  const isProcessingRequestRef = useRef(false);
+  const pendingRequestsQueueRef = useRef<WalletKitSessionRequest[]>([]);
+
   const xdr = useMemo(
     () =>
-      (requestEvent?.params.request.params as unknown as { xdr: string })
-        ?.xdr ?? "",
+      (requestEvent?.params.request.params as StellarSignXDRParams)?.xdr ?? "",
     [requestEvent],
+  );
+
+  const requestMethod = useMemo(
+    () => requestEvent?.params.request.method,
+    [requestEvent],
+  );
+
+  const isSignMessageRequest = useMemo(
+    () => requestMethod === StellarRpcMethods.SIGN_MESSAGE,
+    [requestMethod],
   );
 
   /**
    * Validates transaction memo requirements for incoming dApp transaction requests
    * Uses the useValidateTransactionMemo hook to check if the transaction
    * destination requires a memo and if one is currently missing
+   * Only validates for XDR-based requests (not sign_message)
    */
-  const { isMemoMissing, isValidatingMemo } = useValidateTransactionMemo(xdr);
+  const { isMemoMissing: isMemoMissingRaw, isValidatingMemo } =
+    useValidateTransactionMemo(xdr);
+
+  // Only apply memo validation to XDR-based requests, not sign_message
+  const isMemoMissing = isSignMessageRequest ? false : isMemoMissingRaw;
 
   const dappConnectionBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const dappRequestBottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -385,6 +405,22 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       setSecurityWarningContext(SecurityContext.SITE);
       saveMemo("");
       clearEvent();
+
+      // Mark processing as complete and process pending request if any
+      isProcessingRequestRef.current = false;
+      if (pendingRequestsQueueRef.current.length > 0) {
+        logger.debug(
+          "WalletKitProvider",
+          "Processing pending request after current request completed",
+          {
+            queueLength: pendingRequestsQueueRef.current.length,
+          },
+        );
+        const pending = pendingRequestsQueueRef.current.shift()!;
+        // Trigger the event again to process the pending request
+        // pending is already a complete WalletKitSessionRequest with type property
+        setEvent(pending);
+      }
     }, 200);
   };
 
@@ -396,6 +432,22 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
    */
   const handleDappConnection = () => {
     if (!proposalEvent) {
+      return;
+    }
+
+    // Validate that publicKey is not empty before approving session
+    if (!publicKey || publicKey.trim().length === 0) {
+      logger.error(
+        "WalletKitProvider",
+        "Cannot approve session with empty publicKey",
+        new Error("Empty publicKey in handleDappConnection"),
+      );
+      showToast({
+        title: t("walletKit.connectionNotFound"),
+        message: t("walletKit.userNotAuthenticated"),
+        variant: "error",
+      });
+      handleClearDappConnection();
       return;
     }
 
@@ -437,6 +489,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     approveSessionRequest({
       sessionRequest: requestEvent,
       signTransaction,
+      signMessage,
       networkPassphrase: networkDetails.networkPassphrase,
       activeChain,
       showToast,
@@ -619,6 +672,25 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     if (event.type === WalletKitEventTypes.SESSION_REQUEST) {
       const sessionRequest = event as WalletKitSessionRequest;
 
+      // Simple queue: if already processing a request, store this one as pending
+      if (isProcessingRequestRef.current) {
+        logger.warn(
+          "WalletKitProvider",
+          "Request already in progress, queuing new request",
+          {
+            currentRequestId: requestEvent?.id,
+            newRequestId: sessionRequest.id,
+            queueLength: pendingRequestsQueueRef.current.length + 1,
+          },
+        );
+        pendingRequestsQueueRef.current.push(sessionRequest);
+        clearEvent();
+        return;
+      }
+
+      // Mark as processing
+      isProcessingRequestRef.current = true;
+
       // Check if user is not authenticated
       if (authStatus === AUTH_STATUS.NOT_AUTHENTICATED) {
         showToast({
@@ -633,6 +705,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         });
 
         clearEvent();
+        isProcessingRequestRef.current = false;
         return;
       }
 
@@ -677,16 +750,25 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         return;
       }
 
-      // Validate that the transaction request origin is legit
+      // Validate that the transaction request origin matches an active session
+      // The verifyContext.verified.origin should match the hostname of one of our active sessions
       const transactionRequestOrigin =
         sessionRequest.verifyContext?.verified?.origin;
+
       const isValidTransactionRequestOrigin = Object.values(
         activeSessions,
-      ).some(
-        (session) =>
-          getHostname(session.peer?.metadata?.url) ===
-          getHostname(transactionRequestOrigin),
-      );
+      ).some((session) => {
+        const sessionHostname = getHostname(session.peer?.metadata?.url);
+        const requestHostname = getHostname(transactionRequestOrigin);
+
+        // Reject if either hostname is null/undefined - prevents null === null bypass
+        if (!sessionHostname || !requestHostname) {
+          return false;
+        }
+
+        return sessionHostname === requestHostname;
+      });
+
       if (!isValidTransactionRequestOrigin) {
         showToast({
           title: t("walletKit.invalidTransactionOrigin"),
@@ -720,48 +802,66 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 
       setRequestEvent(sessionRequest);
 
+      // Get dApp metadata from active session
+      // If no metadata is found, use the verified origin from WalletConnect as fallback
       const dappMetadata = getDappMetadataFromEvent(
         sessionRequest,
         activeSessions,
       );
+      const dappDomain =
+        (dappMetadata?.url as string) ||
+        sessionRequest.verifyContext?.verified?.origin ||
+        "";
 
-      const dappDomain = dappMetadata?.url as string;
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      const currentRequestMethod = sessionRequest.params.request.method;
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const requestXdr = sessionRequest.params.request.params.xdr as string;
 
-      scanTransaction(requestXdr, dappDomain)
-        .then((scanResult) => {
-          setTransactionScanResult(scanResult);
-          // Check security assessment inline to decide which sheet to open
-          const securityAssessment = assessTransactionSecurity(
-            scanResult,
-            overriddenBlockaidResponse,
-          );
-          if (securityAssessment.isUnableToScan) {
-            // For unable to scan, open security detail sheet first (main sheet not opened yet)
-            // Don't dismiss request sheet - it hasn't been opened yet and dismissing would cancel it
-            setSecurityWarningContext(SecurityContext.TRANSACTION);
-            siteSecurityWarningBottomSheetModalRef.current?.present();
-          } else {
-            dappRequestBottomSheetModalRef.current?.present();
-          }
-        })
-        .catch(() => {
-          setTransactionScanResult(undefined);
-          // If scan fails, treat as unable to scan
-          const securityAssessment = assessTransactionSecurity(
-            undefined,
-            overriddenBlockaidResponse,
-          );
-          if (securityAssessment.isUnableToScan) {
-            // For unable to scan, open security detail sheet first (main sheet not opened yet)
-            // Don't dismiss request sheet - it hasn't been opened yet and dismissing would cancel it
-            setSecurityWarningContext(SecurityContext.TRANSACTION);
-            siteSecurityWarningBottomSheetModalRef.current?.present();
-          } else {
-            dappRequestBottomSheetModalRef.current?.present();
-          }
-        });
+      // Only scan transactions for XDR-based requests (not sign_message)
+      const isXdrRequest =
+        currentRequestMethod === (StellarRpcMethods.SIGN_XDR as string) ||
+        currentRequestMethod ===
+          (StellarRpcMethods.SIGN_AND_SUBMIT_XDR as string);
+
+      if (isXdrRequest && requestXdr) {
+        scanTransaction(requestXdr, dappDomain)
+          .then((scanResult) => {
+            setTransactionScanResult(scanResult);
+            // Check security assessment inline to decide which sheet to open
+            const securityAssessment = assessTransactionSecurity(
+              scanResult,
+              overriddenBlockaidResponse,
+            );
+            if (securityAssessment.isUnableToScan) {
+              // For unable to scan, open security detail sheet first (main sheet not opened yet)
+              // Don't dismiss request sheet - it hasn't been opened yet and dismissing would cancel it
+              setSecurityWarningContext(SecurityContext.TRANSACTION);
+              siteSecurityWarningBottomSheetModalRef.current?.present();
+            } else {
+              dappRequestBottomSheetModalRef.current?.present();
+            }
+          })
+          .catch(() => {
+            setTransactionScanResult(undefined);
+            // If scan fails, treat as unable to scan
+            const securityAssessment = assessTransactionSecurity(
+              undefined,
+              overriddenBlockaidResponse,
+            );
+            if (securityAssessment.isUnableToScan) {
+              // For unable to scan, open security detail sheet first (main sheet not opened yet)
+              // Don't dismiss request sheet - it hasn't been opened yet and dismissing would cancel it
+              setSecurityWarningContext(SecurityContext.TRANSACTION);
+              siteSecurityWarningBottomSheetModalRef.current?.present();
+            } else {
+              dappRequestBottomSheetModalRef.current?.present();
+            }
+          });
+      } else {
+        // For sign_message requests, skip transaction scanning and show modal directly
+        dappRequestBottomSheetModalRef.current?.present();
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -817,6 +917,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         analyticsEvent={AnalyticsEvent.VIEW_SIGN_DAPP_TRANSACTION}
         bottomSheetModalProps={{
           onDismiss: handleClearDappRequest,
+          enableDynamicSizing: true,
         }}
         customContent={
           <DappRequestBottomSheetContent
@@ -827,10 +928,24 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
             onBannerPress={onOpenAddMemoExplanationBottomSheet}
             onConfirm={handleDappRequest}
             onCancelRequest={handleClearDappRequest}
-            isMalicious={transactionSecurityAssessment.isMalicious}
-            isSuspicious={transactionSecurityAssessment.isSuspicious}
-            isUnableToScan={transactionSecurityAssessment.isUnableToScan}
-            transactionScanResult={transactionScanResult}
+            isMalicious={
+              isSignMessageRequest
+                ? false
+                : transactionSecurityAssessment.isMalicious
+            }
+            isSuspicious={
+              isSignMessageRequest
+                ? false
+                : transactionSecurityAssessment.isSuspicious
+            }
+            isUnableToScan={
+              isSignMessageRequest
+                ? false
+                : transactionSecurityAssessment.isUnableToScan
+            }
+            transactionScanResult={
+              isSignMessageRequest ? undefined : transactionScanResult
+            }
             securityWarningAction={() =>
               presentSecurityWarningDetail(SecurityContext.TRANSACTION)
             }

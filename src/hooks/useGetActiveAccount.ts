@@ -1,6 +1,7 @@
 import { FeeBumpTransaction, Keypair, Transaction } from "@stellar/stellar-sdk";
 import { navigationRef } from "components/App";
 import { useAuthenticationStore } from "ducks/auth";
+import { signMessage as signMessageHelper } from "helpers/stellar";
 import { useCallback, useEffect } from "react";
 
 /**
@@ -48,12 +49,26 @@ const useGetActiveAccount = () => {
     [account],
   );
 
+  const signMessage = useCallback(
+    (message: string): string | null => {
+      if (!account) return null;
+
+      try {
+        return signMessageHelper(message, account.privateKey);
+      } catch (err) {
+        return null;
+      }
+    },
+    [account],
+  );
+
   return {
     account,
     isLoading,
     error,
     refreshAccount,
     signTransaction,
+    signMessage,
   };
 };
 

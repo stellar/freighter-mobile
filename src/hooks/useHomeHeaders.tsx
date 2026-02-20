@@ -14,6 +14,7 @@ import {
   RootStackParamList,
   MAIN_TAB_ROUTES,
 } from "config/routes";
+import { isE2ETest } from "helpers/isEnv";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useCallback, useLayoutEffect, useMemo } from "react";
@@ -40,6 +41,7 @@ export const useHomeHeaders = ({ navigation }: UseHomeHeadersProps) => {
         }),
         onPress: () =>
           navigation.navigate(ROOT_NAVIGATOR_ROUTES.SETTINGS_STACK),
+        testID: "settings-menu-item",
       },
       {
         title: t("home.actions.myQRCode"),
@@ -68,13 +70,29 @@ export const useHomeHeaders = ({ navigation }: UseHomeHeadersProps) => {
   const HeaderLeftComponent = useCallback(
     () => (
       <View className="flex-row gap-4">
-        <ContextMenuButton
-          contextMenuProps={{
-            actions: menuActions,
-          }}
-        >
-          <Icon.DotsHorizontal color={themeColors.base[1]} />
-        </ContextMenuButton>
+        {/* Menu button - only show in production (when not E2E test) */}
+        {isE2ETest ? ( // testID press not working on Dropdown items
+          <View testID="home-screen-settings-button" accessible>
+            <CustomHeaderButton
+              position="left"
+              testID="e2e-open-settings"
+              onPress={() =>
+                navigation.navigate(ROOT_NAVIGATOR_ROUTES.SETTINGS_STACK)
+              }
+              icon={Icon.Settings01}
+            />
+          </View>
+        ) : (
+          <View testID="home-screen-menu-button" accessible>
+            <ContextMenuButton
+              contextMenuProps={{
+                actions: menuActions,
+              }}
+            >
+              <Icon.DotsHorizontal color={themeColors.base[1]} />
+            </ContextMenuButton>
+          </View>
+        )}
 
         <CustomHeaderButton
           position="left"
@@ -93,6 +111,7 @@ export const useHomeHeaders = ({ navigation }: UseHomeHeadersProps) => {
       <CustomHeaderButton
         position="right"
         icon={Icon.Scan}
+        testID="home-screen-scan-button"
         onPress={() =>
           navigation.navigate(ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN, {
             source: QRCodeSource.WALLET_CONNECT,

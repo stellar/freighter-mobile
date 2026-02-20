@@ -17,9 +17,9 @@ e2e-artifacts/
 │       └── (screenshots on failure)
 ├── ImportWallet-<timestamp>/
 │   └── (same structure as above)
-├── SendClassicToken-<timestamp>/
+├── SendClassicTokenMainnet-<timestamp>/
 │   └── (same structure as above)
-└── SwapClassicToken-<timestamp>/
+└── SwapClassicTokenMainnet-<timestamp>/
     └── (same structure as above)
 ```
 
