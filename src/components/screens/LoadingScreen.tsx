@@ -10,7 +10,7 @@ const Container = styled.View`
 `;
 
 export const LoadingScreen: React.FC = () => (
-  <BaseLayout useSafeArea>
+  <BaseLayout useSafeArea testID="loading-screen">
     <Container>
       <Spinner />
     </Container>

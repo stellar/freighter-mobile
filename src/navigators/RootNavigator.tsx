@@ -103,6 +103,7 @@ export const RootNavigator = () => {
         logger.error(
           "RootNavigator",
           "Initialization timeout - forcing exit from loading screen",
+          new Error("Initialization timeout"),
           {
             authStatus,
             remoteConfigInitialized,

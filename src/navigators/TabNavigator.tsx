@@ -70,7 +70,11 @@ const TabIcon = ({ route, focused, color }: TabIconProps) => {
 export const TabNavigator = () => {
   const { account } = useGetActiveAccount();
   const publicKey = account?.publicKey;
-  const { network: activeNetwork, authStatus, logout } = useAuthenticationStore();
+  const {
+    network: activeNetwork,
+    authStatus,
+    logout,
+  } = useAuthenticationStore();
   const networkDetails = useMemo(
     () => mapNetworkToNetworkDetails(activeNetwork),
     [activeNetwork],
@@ -78,24 +82,6 @@ export const TabNavigator = () => {
   const { fetchProtocols } = useProtocolsStore();
   const { discover_enabled: discoverEnabled } = useRemoteConfigStore();
   const [publicKeyTimedOut, setPublicKeyTimedOut] = useState(false);
-
-  // Safety check: If user is not authenticated, they shouldn't be on TabNavigator
-  // Force logout to redirect them to the appropriate auth screen
-  useEffect(() => {
-    if (authStatus !== AUTH_STATUS.AUTHENTICATED) {
-      logger.warn(
-        "TabNavigator",
-        "User not authenticated but on TabNavigator - forcing logout",
-        {
-          authStatus,
-          hasAccount: !!account,
-          hasPublicKey: !!publicKey,
-        },
-      );
-      // Force logout to redirect to auth screen
-      logout(false); // Don't wipe data, just expire session to show lock/login screen
-    }
-  }, [authStatus, account, publicKey, logout]);
 
   // Safety timeout: If publicKey doesn't load within 10 seconds while authenticated, force logout
   // This prevents users from getting stuck on infinite loading screen
@@ -115,6 +101,7 @@ export const TabNavigator = () => {
         logger.error(
           "TabNavigator",
           "Public key loading timeout while authenticated - forcing logout to prevent infinite loading",
+          new Error("Public key loading timeout"),
           {
             account,
             activeNetwork,
@@ -176,7 +163,7 @@ export const TabNavigator = () => {
   }
 
   // If we reach here without publicKey, render nothing
-  // The auth check effect will trigger logout and redirect
+  // This allows RootNavigator to handle navigation based on auth status
   if (!publicKey) {
     return null;
   }
