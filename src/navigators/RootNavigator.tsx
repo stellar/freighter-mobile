@@ -29,6 +29,7 @@ import {
   AuthStackParamList,
 } from "config/routes";
 import { AUTH_STATUS } from "config/types";
+import { logger } from "config/logger";
 import { useAuthenticationStore } from "ducks/auth";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { isDeviceJailbroken } from "helpers/deviceSecurity";
@@ -67,6 +68,9 @@ const RootStack = createNativeStackNavigator<
     AddFundsStackParamList
 >();
 
+// Maximum time to wait for app initialization before forcing exit from loading screen
+const INITIALIZATION_TIMEOUT_MS = 10000; // 10 seconds
+
 export const RootNavigator = () => {
   const navigation =
     useNavigation<
@@ -79,6 +83,7 @@ export const RootNavigator = () => {
   const [initializing, setInitializing] = useState(true);
   const [showForceUpdate, setShowForceUpdate] = useState(false);
   const [isJailbroken, setIsJailbroken] = useState(false);
+  const [initializationTimedOut, setInitializationTimedOut] = useState(false);
   const { t } = useAppTranslation();
   const { checkBiometrics, isBiometricsEnabled } = useBiometrics();
   const { showFullScreenUpdateNotice, dismissFullScreenNotice } =
@@ -89,6 +94,28 @@ export const RootNavigator = () => {
   });
 
   useAppOpenBiometricsLogin(initializing);
+
+  // Safety timeout: If initialization takes longer than 10 seconds, force exit loading
+  // This prevents users from getting stuck on infinite loading screen
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (initializing) {
+        logger.error(
+          "RootNavigator",
+          "Initialization timeout - forcing exit from loading screen",
+          {
+            authStatus,
+            remoteConfigInitialized,
+          },
+        );
+        setInitializationTimedOut(true);
+        setInitializing(false);
+        RNBootSplash.hide({ fade: true });
+      }
+    }, INITIALIZATION_TIMEOUT_MS);
+
+    return () => clearTimeout(timeout);
+  }, [initializing, authStatus, remoteConfigInitialized]);
 
   useEffect(() => {
     const initializeApp = async (
@@ -127,11 +154,14 @@ export const RootNavigator = () => {
 
   // Wait for all initialization states to complete
   useEffect(() => {
-    if (isAnalyticsInitialized() && remoteConfigInitialized) {
+    if (
+      (isAnalyticsInitialized() && remoteConfigInitialized) ||
+      initializationTimedOut
+    ) {
       setInitializing(false);
       RNBootSplash.hide({ fade: true });
     }
-  }, [remoteConfigInitialized]);
+  }, [remoteConfigInitialized, initializationTimedOut]);
 
   // Show force update screen when needed
   useEffect(() => {
