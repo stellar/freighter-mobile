@@ -77,7 +77,7 @@ export const RootNavigator = () => {
     useNavigation<
       NativeStackNavigationProp<RootStackParamList & AuthStackParamList>
     >();
-  const { authStatus, getAuthStatus, logout } = useAuthenticationStore();
+  const { authStatus, getAuthStatus, setAuthStatus } = useAuthenticationStore();
   const { account } = useGetActiveAccount();
   const remoteConfigInitialized = useRemoteConfigStore(
     (state) => state.isInitialized,
@@ -172,17 +172,16 @@ export const RootNavigator = () => {
     if (authStatus === AUTH_STATUS.AUTHENTICATED && !account && !initializing) {
       logger.error(
         "RootNavigator",
-        "CRITICAL: Detected inconsistent state - AUTHENTICATED with no account. Forcing logout.",
+        "CRITICAL: Detected inconsistent state - AUTHENTICATED with no account. Forcing state change to LOCKED.",
         new Error("Inconsistent auth state"),
         {
           authStatus,
           hasAccount: !!account,
         },
       );
-      // Force logout to recover from impossible state
-      logout(false);
+      setAuthStatus(AUTH_STATUS.LOCKED);
     }
-  }, [authStatus, account, initializing, logout]);
+  }, [authStatus, account, initializing, setAuthStatus]);
 
   // Show force update screen when needed
   useEffect(() => {
