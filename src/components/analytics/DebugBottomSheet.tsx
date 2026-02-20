@@ -6,7 +6,10 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
-import { STORAGE_KEYS } from "config/constants";
+import {
+  MIN_HASH_KEY_EXPIRATION_SECONDS,
+  STORAGE_KEYS,
+} from "config/constants";
 import { useAuthenticationStore } from "ducks/auth";
 import { useDebugStore } from "ducks/debug";
 import { formatTimeAgo } from "helpers/date";
@@ -60,8 +63,14 @@ const CustomContent: React.FC<{
     forceSwapPathFailure,
     setForceSwapPathFailure,
     clearSwapPathDebug,
+    hashKeyExpirationSeconds,
+    setHashKeyExpirationSeconds,
+    clearHashKeyExpirationOverride,
   } = useDebugStore();
   const [versionInput, setVersionInput] = useState(overriddenAppVersion || "");
+  const [hashKeyInput, setHashKeyInput] = useState(
+    hashKeyExpirationSeconds?.toString() || "",
+  );
   const [currentVersion] = useState(getVersion());
 
   // Determine the currently active transaction failure mode
@@ -154,6 +163,24 @@ const CustomContent: React.FC<{
   const handleClearVersionOverride = () => {
     setVersionInput("");
     clearOverriddenAppVersion();
+  };
+
+  const handleSetHashKeyExpiration = () => {
+    const seconds = parseInt(hashKeyInput.trim(), 10);
+    if (!Number.isNaN(seconds) && seconds >= MIN_HASH_KEY_EXPIRATION_SECONDS) {
+      setHashKeyExpirationSeconds(seconds);
+    } else if (!Number.isNaN(seconds) && seconds > 0) {
+      // Too low - auto-correct to minimum
+      setHashKeyInput(MIN_HASH_KEY_EXPIRATION_SECONDS.toString());
+      setHashKeyExpirationSeconds(MIN_HASH_KEY_EXPIRATION_SECONDS);
+    } else {
+      clearHashKeyExpirationOverride();
+    }
+  };
+
+  const handleClearHashKeyExpiration = () => {
+    setHashKeyInput("");
+    clearHashKeyExpirationOverride();
   };
 
   return (
@@ -321,6 +348,62 @@ const CustomContent: React.FC<{
                 {t("debug.appVersionOverride.clearUpdateDismissalFlag")}
               </Button>
             </View>
+          </View>
+
+          {/* Hash Key Expiration Override Section */}
+          <View className="gap-3 mb-4">
+            <Text lg medium>
+              Hash Key Expiration Override
+            </Text>
+            <Text xs color={themeColors.text.secondary}>
+              Override the hash key expiration time for testing. Default is 24
+              hours (86400 seconds). Minimum is{" "}
+              {MIN_HASH_KEY_EXPIRATION_SECONDS} seconds to prevent lockout.
+              Recommended: {MIN_HASH_KEY_EXPIRATION_SECONDS}-60 seconds for
+              testing.
+            </Text>
+
+            <View className="flex flex-col gap-2">
+              <Text xs color={themeColors.text.secondary}>
+                Default: 86400 seconds (24 hours)
+              </Text>
+
+              {hashKeyExpirationSeconds && (
+                <Text xs color={themeColors.status.warning}>
+                  Overridden: {hashKeyExpirationSeconds} seconds
+                </Text>
+              )}
+            </View>
+
+            <View className="flex flex-row gap-2">
+              <View className="flex-1">
+                <Input
+                  placeholder={`e.g., ${MIN_HASH_KEY_EXPIRATION_SECONDS} (minimum ${MIN_HASH_KEY_EXPIRATION_SECONDS} seconds)`}
+                  value={hashKeyInput}
+                  onChangeText={setHashKeyInput}
+                  keyboardType="numeric"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+              <Button
+                variant="secondary"
+                onPress={handleSetHashKeyExpiration}
+                disabled={!hashKeyInput.trim()}
+              >
+                Set
+              </Button>
+            </View>
+
+            {hashKeyExpirationSeconds && (
+              <Button
+                variant="tertiary"
+                sm
+                onPress={handleClearHashKeyExpiration}
+              >
+                Clear Override
+              </Button>
+            )}
           </View>
 
           {/* Blockaid Response Override Section */}

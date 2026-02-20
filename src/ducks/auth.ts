@@ -12,7 +12,7 @@ import {
   BIOMETRIC_STORAGE_KEYS,
   FACE_ID_BIOMETRY_TYPES,
   FINGERPRINT_BIOMETRY_TYPES,
-  HASH_KEY_EXPIRATION_MS,
+  getHashKeyExpirationMs,
   LoginType,
   NETWORKS,
   SENSITIVE_STORAGE_KEYS,
@@ -786,7 +786,7 @@ const generateHashKey = async (password: string): Promise<HashKey> => {
     const hashKey = base64Encode(hashKeyBytes);
 
     // Calculate the expiration timestamp
-    const expirationTime = Date.now() + HASH_KEY_EXPIRATION_MS;
+    const expirationTime = Date.now() + getHashKeyExpirationMs();
 
     // Return the hash key object (caller will store it)
     return {
