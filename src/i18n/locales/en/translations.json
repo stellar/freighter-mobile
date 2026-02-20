@@ -404,7 +404,9 @@
       "accountAlreadyExists": "Account already exists",
       "failedToImportSecretKey": "Failed to import secret key",
       "failedToReEncryptData": "Failed to re-encrypt data. Please sign in again.",
-      "failedToDecryptData": "Failed to decrypt data. Please sign in again."
+      "failedToDecryptData": "Failed to decrypt data. Please sign in again.",
+      "errorUnlockingWallet": "Error unlocking wallet",
+      "errorUnlockingWalletMessage": "If the problem persists, please tap on \"Forgot password\" and re-import your wallet."
     },
     "account": "Account {{number}}",
     "faceId": {

@@ -55,6 +55,7 @@ import {
   SwapStackNavigator,
 } from "navigators";
 import { TabNavigator } from "navigators/TabNavigator";
+import { useToast } from "providers/ToastProvider";
 import React, { useEffect, useMemo, useState } from "react";
 import RNBootSplash from "react-native-bootsplash";
 import { isInitialized as isAnalyticsInitialized } from "services/analytics/core";
@@ -90,6 +91,7 @@ export const RootNavigator = () => {
   const { checkBiometrics, isBiometricsEnabled } = useBiometrics();
   const { showFullScreenUpdateNotice, dismissFullScreenNotice } =
     useAppUpdate();
+  const { showToast } = useToast();
   // Use analytics/permissions hook only after splash is hidden
   useAnalyticsPermissions({
     previousState: initializing ? undefined : "none",
@@ -182,6 +184,23 @@ export const RootNavigator = () => {
       setAuthStatus(AUTH_STATUS.LOCKED);
     }
   }, [authStatus, account, initializing, setAuthStatus]);
+
+  // Show toast when hash key or temp store is not found (hash key expired)
+  useEffect(() => {
+    if (
+      authStatus === AUTH_STATUS.HASH_KEY_EXPIRED &&
+      !initializing &&
+      !initializationTimedOut
+    ) {
+      showToast({
+        variant: "error",
+        title: t("authStore.error.errorUnlockingWallet"),
+        message: t("authStore.error.errorUnlockingWalletMessage"),
+        toastId: "hash-key-expired-toast",
+        duration: 6000,
+      });
+    }
+  }, [authStatus, initializing, initializationTimedOut, showToast, t]);
 
   // Show force update screen when needed
   useEffect(() => {
