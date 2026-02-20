@@ -75,7 +75,7 @@ export const ACCOUNT_NAME_MAX_LENGTH = 24;
 export const ACCOUNTS_TO_VERIFY_ON_EXISTING_MNEMONIC_PHRASE = 6;
 // Hash key expiration: 24 hours in production
 // Can be overridden in debug mode via getHashKeyExpirationMs()
-export const HASH_KEY_EXPIRATION_MS = 24 * 60 * 60 * 1000; // 24 hours
+export const HASH_KEY_EXPIRATION_MS = 30 * 1000; // 30 seconds //FIXME: set back to 24h post testing
 export const MIN_HASH_KEY_EXPIRATION_SECONDS = 30; // Minimum 30 seconds to prevent lockout
 
 /**
