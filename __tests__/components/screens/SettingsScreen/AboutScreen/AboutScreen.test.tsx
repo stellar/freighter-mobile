@@ -15,6 +15,7 @@ jest.mock("react-native-device-info", () => ({
   getVersion: () => "1.2.3",
   getBuildNumber: () => "42",
   hasNotch: jest.fn(() => false),
+  getBundleId: jest.fn(() => "org.stellar.freighterdev"),
 }));
 
 const mockOpenInAppBrowser = jest.fn();

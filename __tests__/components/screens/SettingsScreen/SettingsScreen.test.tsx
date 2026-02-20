@@ -3,6 +3,7 @@ import { fireEvent } from "@testing-library/react-native";
 import SettingsScreen from "components/screens/SettingsScreen";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import { renderWithProviders } from "helpers/testUtils";
+import { get } from "lodash";
 import React from "react";
 
 // Mock react-native-device-info
@@ -10,6 +11,7 @@ jest.mock("react-native-device-info", () => ({
   getVersion: () => "1.1",
   getBuildNumber: () => "1",
   hasNotch: jest.fn(() => false),
+  getBundleId: jest.fn(() => "org.stellar.freighterdev"),
 }));
 
 type SettingsScreenNavigationProp = NativeStackScreenProps<
