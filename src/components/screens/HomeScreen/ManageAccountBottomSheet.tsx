@@ -93,7 +93,7 @@ export const ManageAccountBottomSheet: React.FC<
           isFullWidth
           xl
           onPress={onPressAddAnotherWallet}
-          disabled={isAccountSwitching}
+          disabled={isAccountSwitching || switchingToPublicKey !== null}
           testID="manage-accounts-add-wallet-button"
         >
           {t("home.manageAccount.addWallet")}
