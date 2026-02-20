@@ -17,6 +17,7 @@ import { LockScreen } from "components/screens/LockScreen";
 import ScanQRCodeScreen from "components/screens/ScanQRCodeScreen";
 import { SecurityBlockScreen } from "components/screens/SecurityBlockScreen";
 import TokenDetailsScreen from "components/screens/TokenDetailsScreen";
+import { logger } from "config/logger";
 import {
   ManageWalletsStackParamList,
   ROOT_NAVIGATOR_ROUTES,
@@ -29,7 +30,6 @@ import {
   AuthStackParamList,
 } from "config/routes";
 import { AUTH_STATUS } from "config/types";
-import { logger } from "config/logger";
 import { useAuthenticationStore } from "ducks/auth";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { isDeviceJailbroken } from "helpers/deviceSecurity";
@@ -69,7 +69,7 @@ const RootStack = createNativeStackNavigator<
 >();
 
 // Maximum time to wait for app initialization before forcing exit from loading screen
-const INITIALIZATION_TIMEOUT_MS = 10000; // 10 seconds
+const INITIALIZATION_TIMEOUT_MS = 5000; // 5 seconds
 
 export const RootNavigator = () => {
   const navigation =
