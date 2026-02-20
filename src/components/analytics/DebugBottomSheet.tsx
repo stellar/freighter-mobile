@@ -170,7 +170,6 @@ const CustomContent: React.FC<{
     if (!Number.isNaN(seconds) && seconds >= MIN_HASH_KEY_EXPIRATION_SECONDS) {
       setHashKeyExpirationSeconds(seconds);
     } else if (!Number.isNaN(seconds) && seconds > 0) {
-      // Too low - auto-correct to minimum
       setHashKeyInput(MIN_HASH_KEY_EXPIRATION_SECONDS.toString());
       setHashKeyExpirationSeconds(MIN_HASH_KEY_EXPIRATION_SECONDS);
     } else {
