@@ -1993,13 +1993,23 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
       set((state) => ({ ...state, isLoading: true, error: null }));
       try {
         await signUp(params);
+
+        // Fetch active account BEFORE setting authenticated status
+        // This prevents AUTHENTICATED + null account state
+        const activeAccount = await get().fetchActiveAccount();
+
+        if (!activeAccount) {
+          throw new Error(t("authStore.error.failedToLoadAccount"));
+        }
+
+        // Only set AUTHENTICATED after we have a valid account
         set({
           ...initialState,
           isLoading: false,
           authStatus: AUTH_STATUS.AUTHENTICATED,
+          account: activeAccount,
+          isLoadingAccount: false,
         });
-        // Fetch active account after successful signup
-        await get().fetchActiveAccount();
       } catch (error) {
         logger.error("useAuthenticationStore.signUp", "Sign up failed", error);
         set({
@@ -2422,14 +2432,24 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
 
       try {
         await importWallet(params);
+
+        // Fetch active account BEFORE setting authenticated status
+        // This prevents AUTHENTICATED + null account state
+        const activeAccount = await get().fetchActiveAccount();
+
+        if (!activeAccount) {
+          throw new Error(t("authStore.error.failedToLoadAccount"));
+        }
+
+        // Only set AUTHENTICATED after we have a valid account
         set({
           ...initialState,
           authStatus: AUTH_STATUS.AUTHENTICATED,
           isLoading: false,
+          account: activeAccount,
+          isLoadingAccount: false,
         });
 
-        // Fetch active account after successful wallet import
-        get().fetchActiveAccount();
         return true;
       } catch (error) {
         logger.error(

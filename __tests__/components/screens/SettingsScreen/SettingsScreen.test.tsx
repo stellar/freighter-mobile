@@ -3,7 +3,6 @@ import { fireEvent } from "@testing-library/react-native";
 import SettingsScreen from "components/screens/SettingsScreen";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import { renderWithProviders } from "helpers/testUtils";
-import { get } from "lodash";
 import React from "react";
 
 // Mock react-native-device-info

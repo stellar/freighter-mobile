@@ -2,13 +2,10 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { DiscoveryScreen } from "components/screens/DiscoveryScreen/DiscoveryScreen";
 import { HistoryScreen } from "components/screens/HistoryScreen";
 import HomeScreen from "components/screens/HomeScreen";
-import { LoadingScreen } from "components/screens/LoadingScreen";
 import Icon from "components/sds/Icon";
 import { mapNetworkToNetworkDetails } from "config/constants";
-import { logger } from "config/logger";
 import { MAIN_TAB_ROUTES, MainTabStackParamList } from "config/routes";
 import { THEME } from "config/theme";
-import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useProtocolsStore } from "ducks/protocols";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
@@ -19,13 +16,10 @@ import { useFetchTokenIcons } from "hooks/useFetchTokenIcons";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useHistoryPolling } from "hooks/useHistoryPolling";
 import { usePricedBalancesPolling } from "hooks/usePricedBalancesPolling";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo } from "react";
 import styled from "styled-components/native";
 
 const MainTab = createBottomTabNavigator<MainTabStackParamList>();
-
-// Maximum time to wait for public key to load before forcing navigation
-const PUBLIC_KEY_LOADING_TIMEOUT_MS = 5000; // 5 seconds
 
 const TAB_ICON_SIZE = 20;
 
@@ -70,56 +64,13 @@ const TabIcon = ({ route, focused, color }: TabIconProps) => {
 export const TabNavigator = () => {
   const { account } = useGetActiveAccount();
   const publicKey = account?.publicKey;
-  const {
-    network: activeNetwork,
-    authStatus,
-    logout,
-    setAuthStatus,
-  } = useAuthenticationStore();
+  const { network: activeNetwork } = useAuthenticationStore();
   const networkDetails = useMemo(
     () => mapNetworkToNetworkDetails(activeNetwork),
     [activeNetwork],
   );
   const { fetchProtocols } = useProtocolsStore();
   const { discover_enabled: discoverEnabled } = useRemoteConfigStore();
-  const [publicKeyTimedOut, setPublicKeyTimedOut] = useState(false);
-
-  // Safety timeout: If publicKey doesn't load within 10 seconds while authenticated, force logout
-  // This prevents users from getting stuck on infinite loading screen
-  useEffect(() => {
-    // Only apply timeout if user is authenticated
-    if (authStatus !== AUTH_STATUS.AUTHENTICATED) {
-      return undefined;
-    }
-
-    if (publicKey) {
-      // Public key loaded successfully, clear any timeout
-      return undefined;
-    }
-
-    const timeout = setTimeout(() => {
-      if (!publicKey && authStatus === AUTH_STATUS.AUTHENTICATED) {
-        logger.error(
-          "TabNavigator",
-          "Public key loading timeout while authenticated - forcing logout to prevent infinite loading",
-          new Error("Public key loading timeout"),
-          {
-            account,
-            activeNetwork,
-            authStatus,
-          },
-        );
-        setPublicKeyTimedOut(true);
-        // Immediately set LOCKED status synchronously to prevent infinite loop
-        // The logout function wraps state changes in setTimeout, causing a race condition
-        setAuthStatus(AUTH_STATUS.LOCKED);
-        // Force logout to allow user to recover (will also set LOCKED and navigate)
-        logout(false); // Don't wipe data, just expire session
-      }
-    }, PUBLIC_KEY_LOADING_TIMEOUT_MS);
-
-    return () => clearTimeout(timeout);
-  }, [publicKey, account, activeNetwork, authStatus, logout, setAuthStatus]);
 
   // Fetch balances when component mounts or when publicKey/network changes
   useFetchPricedBalances({
@@ -154,20 +105,8 @@ export const TabNavigator = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Show loading only if:
-  // 1. User is AUTHENTICATED (if not, logout effect will redirect them)
-  // 2. PublicKey hasn't loaded yet
-  // 3. Haven't timed out yet
-  if (
-    authStatus === AUTH_STATUS.AUTHENTICATED &&
-    !publicKey &&
-    !publicKeyTimedOut
-  ) {
-    return <LoadingScreen />;
-  }
-
-  // If we reach here without publicKey, render nothing
-  // This allows RootNavigator to handle navigation based on auth status
+  // If no publicKey, don't render anything
+  // RootNavigator will handle navigation based on auth status
   if (!publicKey) {
     return null;
   }

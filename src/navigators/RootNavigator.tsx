@@ -44,6 +44,7 @@ import { useAppOpenBiometricsLogin } from "hooks/useAppOpenBiometricsLogin";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useAppUpdate } from "hooks/useAppUpdate";
 import { useBiometrics } from "hooks/useBiometrics";
+import useGetActiveAccount from "hooks/useGetActiveAccount";
 import {
   AuthNavigator,
   AddFundsStackNavigator,
@@ -76,7 +77,8 @@ export const RootNavigator = () => {
     useNavigation<
       NativeStackNavigationProp<RootStackParamList & AuthStackParamList>
     >();
-  const { authStatus, getAuthStatus } = useAuthenticationStore();
+  const { authStatus, getAuthStatus, logout } = useAuthenticationStore();
+  const { account } = useGetActiveAccount();
   const remoteConfigInitialized = useRemoteConfigStore(
     (state) => state.isInitialized,
   );
@@ -163,6 +165,24 @@ export const RootNavigator = () => {
       RNBootSplash.hide({ fade: true });
     }
   }, [remoteConfigInitialized, initializationTimedOut]);
+
+  // Guard: Detect inconsistent state (AUTHENTICATED but no account)
+  // This should never happen after our fixes, but serves as final safety net
+  useEffect(() => {
+    if (authStatus === AUTH_STATUS.AUTHENTICATED && !account && !initializing) {
+      logger.error(
+        "RootNavigator",
+        "CRITICAL: Detected inconsistent state - AUTHENTICATED with no account. Forcing logout.",
+        new Error("Inconsistent auth state"),
+        {
+          authStatus,
+          hasAccount: !!account,
+        },
+      );
+      // Force logout to recover from impossible state
+      logout(false);
+    }
+  }, [authStatus, account, initializing, logout]);
 
   // Show force update screen when needed
   useEffect(() => {
