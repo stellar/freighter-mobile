@@ -74,6 +74,7 @@ export const TabNavigator = () => {
     network: activeNetwork,
     authStatus,
     logout,
+    setAuthStatus,
   } = useAuthenticationStore();
   const networkDetails = useMemo(
     () => mapNetworkToNetworkDetails(activeNetwork),
@@ -88,12 +89,12 @@ export const TabNavigator = () => {
   useEffect(() => {
     // Only apply timeout if user is authenticated
     if (authStatus !== AUTH_STATUS.AUTHENTICATED) {
-      return;
+      return undefined;
     }
 
     if (publicKey) {
       // Public key loaded successfully, clear any timeout
-      return;
+      return undefined;
     }
 
     const timeout = setTimeout(() => {
@@ -109,13 +110,16 @@ export const TabNavigator = () => {
           },
         );
         setPublicKeyTimedOut(true);
-        // Force logout to allow user to recover
+        // Immediately set LOCKED status synchronously to prevent infinite loop
+        // The logout function wraps state changes in setTimeout, causing a race condition
+        setAuthStatus(AUTH_STATUS.LOCKED);
+        // Force logout to allow user to recover (will also set LOCKED and navigate)
         logout(false); // Don't wipe data, just expire session
       }
     }, PUBLIC_KEY_LOADING_TIMEOUT_MS);
 
     return () => clearTimeout(timeout);
-  }, [publicKey, account, activeNetwork, authStatus, logout]);
+  }, [publicKey, account, activeNetwork, authStatus, logout, setAuthStatus]);
 
   // Fetch balances when component mounts or when publicKey/network changes
   useFetchPricedBalances({
