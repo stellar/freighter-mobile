@@ -70,7 +70,7 @@ const RootStack = createNativeStackNavigator<
 >();
 
 // Maximum time to wait for app initialization before forcing exit from loading screen
-const INITIALIZATION_TIMEOUT_MS = 5000; // 5 seconds
+const INITIALIZATION_TIMEOUT_MS = 10000; // 10 seconds
 
 export const RootNavigator = () => {
   const navigation =
