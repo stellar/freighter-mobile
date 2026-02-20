@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { Networks } from "@stellar/stellar-sdk";
 import BigNumber from "bignumber.js";
+import { isE2ETestHashExpiration } from "helpers/isEnv";
 import { getAppVersion } from "helpers/version";
 import { t } from "i18next";
 import { BIOMETRY_TYPE } from "react-native-keychain";
@@ -72,7 +73,10 @@ export const PASSWORD_MAX_LENGTH = 2048;
 export const ACCOUNT_NAME_MIN_LENGTH = 1;
 export const ACCOUNT_NAME_MAX_LENGTH = 24;
 export const ACCOUNTS_TO_VERIFY_ON_EXISTING_MNEMONIC_PHRASE = 6;
-export const HASH_KEY_EXPIRATION_MS = 24 * 60 * 60 * 1000; // 24 hours
+// Hash key expiration: 24 hours in production, 10 seconds for specific E2E hash expiration tests
+export const HASH_KEY_EXPIRATION_MS = isE2ETestHashExpiration
+  ? 10 * 1000 // 10 seconds for hash expiration E2E testing only
+  : 24 * 60 * 60 * 1000; // 24 hours
 export const VISUAL_DELAY_MS = 500;
 
 // Recovery phrase validation constants
