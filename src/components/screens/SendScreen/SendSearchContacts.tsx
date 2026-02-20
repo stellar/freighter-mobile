@@ -145,12 +145,12 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
     getClipboardText().then(handleSearch);
   };
 
-  const handleOpenQRScanner = () => {
+  const handleOpenQRScanner = useCallback(() => {
     // Navigate to the root navigator's QR scanner screen
     navigation.navigate(ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN, {
       source: QRCodeSource.ADDRESS_INPUT,
     });
-  };
+  }, [navigation]);
 
   // Set up the QR code button in the header
   useRightHeaderButton({

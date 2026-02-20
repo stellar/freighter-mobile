@@ -29,7 +29,7 @@ flowchart LR
   end
   subgraph CI
     D[GitHub Actions] --> E[Build app]
-    E --> F[Matrix: 4 flows × Android/iOS]
+    E --> F[Matrix: 3 flows × Android/iOS]
     F --> G[Upload artifacts]
   end
   C --> H[e2e-artifacts/]
@@ -46,13 +46,13 @@ E2E tests run **locally** (with Maestro CLI + simulator/emulator) or in **CI**
 
 Detailed guides live in `e2e/docs/`:
 
-| Topic                     | File                                                          | Description                                                                                |
-| ------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| **CI & Triggers**         | [ci-and-triggers.md](docs/ci-and-triggers.md)                 | When tests run, branch filters, manual runs (workflow_dispatch), CI matrix parallelism     |
-| **Local Setup & Env**     | [local-setup-and-env.md](docs/local-setup-and-env.md)         | `.env` for E2E, `E2E_TEST_RECOVERY_PHRASE`, how secrets/vars are used in CI                |
-| **Running Tests**         | [running-tests.md](docs/running-tests.md)                     | Run in CI vs locally, single flow by platform + name                                       |
-| **Artifacts & Debugging** | [artifacts-and-debugging.md](docs/artifacts-and-debugging.md) | Artifact layout, logs, recordings, screenshots, how to debug failures                      |
-| **Creating Tests**        | [creating-tests.md](docs/creating-tests.md)                   | Maestro YAML (API), Maestro Studio, recording flows, best practices (e.g. prefer `testID`) |
+| Topic                     | File                                                          | Description                                                                                                    |
+| ------------------------- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| **CI & Triggers**         | [ci-and-triggers.md](docs/ci-and-triggers.md)                 | When tests run, branch filters, manual runs (workflow_dispatch, `/e2e`), CI matrix parallelism                 |
+| **Local Setup & Env**     | [local-setup-and-env.md](docs/local-setup-and-env.md)         | `.env` for E2E, `E2E_TEST_RECOVERY_PHRASE`, `E2E_TEST_FUNDED_RECOVERY_PHRASE`, how secrets/vars are used in CI |
+| **Running Tests**         | [running-tests.md](docs/running-tests.md)                     | Run in CI vs locally, single flow by platform + name                                                           |
+| **Artifacts & Debugging** | [artifacts-and-debugging.md](docs/artifacts-and-debugging.md) | Artifact layout, logs, recordings, screenshots, how to debug failures                                          |
+| **Creating Tests**        | [creating-tests.md](docs/creating-tests.md)                   | Maestro YAML (API), Maestro Studio, recording flows, best practices (e.g. prefer `testID`)                     |
 
 ---
 
@@ -69,9 +69,10 @@ maestro --version
 ### 2. Environment
 
 - Set `IS_E2E_TEST=true` in `.env` (enables test-specific app behavior).
-- For **Import Wallet** (and flows that use it, e.g. Send/Swap): set
-  `E2E_TEST_RECOVERY_PHRASE` in `.env`.  
-  See [local-setup-and-env.md](docs/local-setup-and-env.md) and `.env.example`.
+- For **Import Wallet** flows: set `E2E_TEST_RECOVERY_PHRASE` in `.env`.
+- For **Send/Swap/WalletConnect** flows (use ImportFundedWallet): set
+  `E2E_TEST_FUNDED_RECOVERY_PHRASE` in `.env`. See
+  [local-setup-and-env.md](docs/local-setup-and-env.md) and `.env.example`.
 
 ### 3. iOS Simulator / Android Emulator
 
@@ -89,22 +90,29 @@ e2e/
 ├── config.yaml           # Maestro config (appId, disableAnimations)
 ├── README.md             # This file
 ├── docs/                 # Detailed guides (see Documentation Index)
+├── scripts/              # Helper scripts (start/stop mock server)
 └── flows/
-    ├── onboarding/
+    ├── debug/            # Debug flows for development
+    ├── onboarding/       # Wallet creation and import flows
     │   ├── CreateWallet.yaml
-    │   └── ImportWallet.yaml
-    └── transactions/
-        ├── SendClassicToken.yaml
-        └── SwapClassicToken.yaml
+    │   ├── ImportWallet.yaml
+    │   └── ImportFundedWallet.yaml
+    ├── transactions/     # Transaction flows (send and swap on mainnet)
+    │   ├── SendClassicTokenMainnet.yaml      # Send 0.000001 XLM to a different address
+    │   └── SwapClassicTokenMainnet.yaml      # Swap 0.000001 XLM → USDC on mainnet
+    └── walletconnect/    # WalletConnect integration tests
+        └── SignMessageMockDapp.yaml
 ```
 
 ---
 
 ## Quick Start
 
-1. **Configure `.env`**  
-   Check `.env.example`, set `IS_E2E_TEST=true` and (for Import/Send/Swap)
-   `E2E_TEST_RECOVERY_PHRASE`.  
+1. **Configure `.env`** Check `.env.example`, set `IS_E2E_TEST=true` and:
+
+   - `E2E_TEST_RECOVERY_PHRASE` for Import Wallet flows
+   - `E2E_TEST_FUNDED_RECOVERY_PHRASE` for Send/Swap/WalletConnect flows
+
    See [local-setup-and-env.md](docs/local-setup-and-env.md).
 
 2. **Build and run the app** (e.g. iOS):
@@ -127,17 +135,27 @@ e2e/
 
 ## Test Flows
 
-| Flow                   | File                                       | Description                                                                                   |
-| ---------------------- | ------------------------------------------ | --------------------------------------------------------------------------------------------- |
-| **Create Wallet**      | `flows/onboarding/CreateWallet.yaml`       | "Create a new wallet" → password → recovery phrase → skip validation → skip biometrics → home |
-| **Import Wallet**      | `flows/onboarding/ImportWallet.yaml`       | "I already have a wallet" → password → recovery phrase → skip biometrics → home               |
-| **Send Classic Token** | `flows/transactions/SendClassicToken.yaml` | Imports wallet → home → send flow → confirm → "Sent"                                          |
-| **Swap Classic Token** | `flows/transactions/SwapClassicToken.yaml` | Imports wallet → home → swap flow → confirm → "Swapped"                                       |
+| Flow                             | File                                              | Description                                                                                   |
+| -------------------------------- | ------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| **Create Wallet**                | `flows/onboarding/CreateWallet.yaml`              | "Create a new wallet" → password → recovery phrase → skip validation → skip biometrics → home |
+| **Import Wallet**                | `flows/onboarding/ImportWallet.yaml`              | "I already have a wallet" → password → recovery phrase → skip biometrics → home               |
+| **Import Funded Wallet**         | `flows/onboarding/ImportFundedWallet.yaml`        | Import wallet with funded account (uses `E2E_TEST_FUNDED_RECOVERY_PHRASE`)                    |
+| **Send Classic Token (Mainnet)** | `flows/transactions/SendClassicTokenMainnet.yaml` | Imports funded wallet → home → send 0.000001 XLM to recipient → confirm → "Sent"              |
+| **Swap Classic Token (Mainnet)** | `flows/transactions/SwapClassicTokenMainnet.yaml` | Imports funded wallet → home → swap 0.000001 XLM → USDC → confirm → "Swapped"                 |
+| **WC Sign Message (Mock dApp)**  | `flows/walletconnect/SignMessageMockDapp.yaml`    | Connect to dApp → approve signMessage → verify signature returned                             |
 
-**Test data**: Password `TestPassword123!`; recovery phrase from
-`E2E_TEST_RECOVERY_PHRASE` (see
-[Test Data](docs/local-setup-and-env.md#test-data) in local-setup-and-env).  
+**Test data**: Password `TestPassword123!`;
+
+- Recovery phrase from `E2E_TEST_RECOVERY_PHRASE` for ImportWallet
+- Funded recovery phrase from `E2E_TEST_FUNDED_RECOVERY_PHRASE` for
+  ImportFundedWallet
+
+See [Test Data](docs/local-setup-and-env.md#test-data) in local-setup-and-env.
 **Never** use these in production or commit real secrets.
+
+**WalletConnect tests**: Require mock dApp server running. See
+[WalletConnect E2E Testing](docs/walletconnect-e2e-testing.md) for setup and
+[Mock dApp README](../mock-dapp/README.md) for server usage.
 
 ---
 
@@ -148,9 +166,14 @@ e2e/
   validation would require test flow changes and UI-specific selectors.
 - **Biometrics**: Always skipped in E2E flows for simplification (we tap Skip /
   Don't Allow). Biometric enrollment or verification is not exercised.
-- **ImportWallet**: Required for most flows (e.g. Send, Swap) since we need a
-  logged-in user with balances to test transactions. Ensure
-  `E2E_TEST_RECOVERY_PHRASE` is set locally or in CI.
+- **ImportWallet vs ImportFundedWallet**:
+  - `ImportWallet` uses `E2E_TEST_RECOVERY_PHRASE` for basic wallet import flows
+  - `ImportFundedWallet` uses `E2E_TEST_FUNDED_RECOVERY_PHRASE` and is required
+    for Send/Swap/WalletConnect flows that need funded accounts
+  - Ensure both recovery phrases are set in `.env` locally or in CI secrets
+- **WalletConnect**: Requires mock dApp server to simulate external requests.
+  Server must be running before executing WalletConnect flows. Not all
+  production dApps support all WalletConnect methods in testing.
 
 ---
 

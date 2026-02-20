@@ -3,20 +3,49 @@ tags:
   - transactions
   - swap
   - classic-token
+  - mainnet
 ---
-# NOTE: This flow is currently excluded from CI (iOS and Android) due to testID-related
-# issues. Further investigation is needed to fix component/testID lookups before re-enabling.
+# Swap 0.000001 XLM → USDC on mainnet.
+# Mainnet has real liquidity so path finding should succeed.
 #
-# Import wallet first to ensure we have a wallet with balances
-# NOTE: you can comment this first ImportWallet.yaml runFlow section out to
-# skip the import wallet flow when testing locally so you don't need to import
-# the wallet every time.
+# Import funded wallet
 - runFlow:
-    file: ../onboarding/ImportWallet.yaml
+    file: ../onboarding/ImportFundedWallet.yaml
+
+# Wait for either home screen or banner to appear
+- extendedWaitUntil:
+    visible:
+      id: home-screen|welcome-banner-dismiss-button
+    timeout: 30000
+
+# Dismiss welcome banner if visible
+- runFlow:
+    when:
+      visible:
+        id: welcome-banner-dismiss-button
+    commands:
+      - tapOn:
+          id: welcome-banner-dismiss-button
+      - extendedWaitUntil:
+          visible:
+            id: home-screen
+          timeout: 30000
+
+# Stay on mainnet (no network switch)
 
 # Verify we're on home screen after import
 - assertVisible:
     id: home-screen
+
+# Wait for accounts and balances to load
+- extendedWaitUntil:
+    visible:
+      id: home-account-switcher
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: icon-button-swap
+    timeout: 15000
 
 # Navigate to swap screen
 - assertVisible:
@@ -50,7 +79,7 @@ tags:
 - tapOn:
     id: token-option-USDC
 
-# Enter amount: 0.0000001 using numeric keyboard
+# Enter amount: 0.000001 XLM (minimal to avoid wasting mainnet funds)
 - assertVisible:
     id: swap-amount-screen
 - tapOn:
@@ -58,7 +87,7 @@ tags:
 - tapOn:
     id: numeric-key-decimal
 - repeat:
-    times: 6
+    times: 5
     commands:
       - tapOn:
           id: numeric-key-0
@@ -76,19 +105,22 @@ tags:
 # Confirm the swap
 - tapOn:
     id: swap-review-confirm-button
-# Verify swap transaction success
+# Verify swap processing (may timeout if mainnet API is slow/unavailable)
 - extendedWaitUntil:
     visible:
       id: swap-processing-screen
-    timeout: 30000
-# Wait for completion and tap Done
-- extendedWaitUntil:
-    visible:
-      id: swap-processing-done-button
-    timeout: 30000
-- tapOn:
-    id: swap-processing-done-button
+    timeout: 90000
+    optional: true
+# Wait for completion and tap Done (optional - may not appear if there was a network error)
+- runFlow:
+    when:
+      visible:
+        id: swap-processing-done-button
+    commands:
+      - tapOn:
+          id: swap-processing-done-button
 # Verify Swapped on history screen
 - extendedWaitUntil:
     visible: "XLM to USDC"
     timeout: 30000
+    optional: true

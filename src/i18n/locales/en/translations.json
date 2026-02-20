@@ -36,7 +36,8 @@
     "copy": "Copy",
     "name": "Name",
     "collection": "Collection",
-    "tokenId": "Token ID"
+    "tokenId": "Token ID",
+    "message": "Message"
   },
   "home": {
     "title": "Home",
@@ -870,6 +871,7 @@
   "dappRequestBottomSheetContent": {
     "transactionRequest": "Transaction Request",
     "confirmTransaction": "Confirm transaction",
+    "signMessage": "Sign Message",
     "cancel": "Cancel",
     "confirm": "Confirm",
     "confirmAnyway": "Confirm anyway",
@@ -884,6 +886,7 @@
     "connectionSuccessfull": "{{dappName}} connection successfull!",
     "returnToBrowser": "You can now return to your browser",
     "signSuccessfull": "Transaction successfully signed!",
+    "signMessageSuccessfull": "Message successfully signed!",
     "signAndSubmitSuccessfull": "Transaction successfully signed and submitted!",
     "userRejected": "User rejected the request",
     "errorInitializing": "Error initializing WalletConnect",
@@ -891,6 +894,10 @@
     "errorNoUriParam": "No URI parameter found in the link",
     "errorConnecting": "{{dappName}} connection failed",
     "errorSigning": "Failed to sign transaction",
+    "errorSigningMessage": "Failed to sign message",
+    "errorInvalidMessage": "Invalid message",
+    "errorEmptyMessage": "Cannot sign empty message",
+    "errorMessageTooLong": "Message too long (max 1KB)",
     "errorSubmitting": "Failed to submit transaction",
     "errorRespondingRequest": "Failed to respond transaction request",
     "errorWrongNetwork": "Wrong Network",

@@ -40,6 +40,8 @@ local.properties
 node_modules/
 npm-debug.log
 yarn-error.log
+*.log
+dist/
 
 # fastlane
 #
@@ -92,3 +94,9 @@ ios/sentry.properties
 # Fastlane secret files
 fastlane/*-secret.json
 ios/fastlane/*.p8
+
+# E2E Testing artifacts
+.server.log
+.server.pid
+*.bak
+.env.bak

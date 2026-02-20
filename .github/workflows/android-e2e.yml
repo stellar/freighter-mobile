@@ -68,6 +68,8 @@ env:
   # E2E Test Configuration
   IS_E2E_TEST: "true"
   E2E_TEST_RECOVERY_PHRASE: ${{ secrets.E2E_TEST_RECOVERY_PHRASE }}
+  E2E_TEST_FUNDED_RECOVERY_PHRASE:
+    ${{ secrets.E2E_TEST_FUNDED_RECOVERY_PHRASE }}
   IS_CI_ENV: "true"
 
 jobs:
@@ -215,16 +217,51 @@ jobs:
     timeout-minutes: 120
     strategy:
       fail-fast: false
-      # SendClassicToken and SwapClassicToken are skipped on Android for now (testID-related
-      # issues; same as iOS). Re-enable in matrix once flows are fixed.
+      # Running E2E flow tests in parallel shards:
+      # - LaunchAndInspect: Launch and inspect app state
+      # - CreateWallet: Basic wallet creation flow
+      # - ImportWallet: Import existing wallet with recovery phrase
+      # - ImportFundedWallet: Import wallet with funded account
+      # - SwitchToTestnet: Switch network to testnet
+      # - SendClassicTokenMainnet: Send XLM on mainnet (small amount: 0.000001 XLM)
+      # - SwapClassicTokenMainnet: Swap tokens on mainnet (small amount: 0.000001 XLM)
+      # Commented out (can be enabled when needed):
+      # - SignMessageMockDapp: WalletConnect sign message functionality (requires mock server)
       matrix:
         include:
           - shard-index: 0
-            shard-total: 2
-            flow-name: CreateWallet
+            shard-total: 7
+            flow-name: LaunchAndInspect
+            requires-mock-server: false
           - shard-index: 1
-            shard-total: 2
+            shard-total: 7
+            flow-name: CreateWallet
+            requires-mock-server: false
+          - shard-index: 2
+            shard-total: 7
             flow-name: ImportWallet
+            requires-mock-server: false
+          - shard-index: 3
+            shard-total: 7
+            flow-name: ImportFundedWallet
+            requires-mock-server: false
+          - shard-index: 4
+            shard-total: 7
+            flow-name: SwitchToTestnet
+            requires-mock-server: false
+          - shard-index: 5
+            shard-total: 7
+            flow-name: SendClassicTokenMainnet
+            requires-mock-server: false
+          - shard-index: 6
+            shard-total: 7
+            flow-name: SwapClassicTokenMainnet
+            requires-mock-server: false
+          # Commented out - uncomment to enable WalletConnect tests - Disabled until test fixed on CI - runs on localhost
+          # - shard-index: 7
+          #   shard-total: 8
+          #   flow-name: SignMessageMockDapp
+          #   requires-mock-server: true
 
     steps:
       - name: Checkout repo
@@ -273,6 +310,45 @@ jobs:
       - name: Run Yarn Install
         run: yarn install --immutable
 
+      - name: Start Mock WalletConnect Server (for SignMessage tests)
+        if: matrix.requires-mock-server
+        run: |
+          set -euo pipefail
+
+          # Create .env file for mock dApp (not checked in git)
+          echo "📝 Creating mock dApp .env file..."
+          cat > mock-dapp/.env << EOF
+          # WalletConnect Project ID
+          # Using DEV project ID for E2E testing with freighterdev app
+          WALLET_KIT_PROJECT_ID=${{ secrets.WALLET_KIT_PROJECT_ID_DEV }}
+
+          # Server configuration
+          PORT=3001
+          HOST=0.0.0.0
+
+          # Logging
+          LOG_LEVEL=debug
+
+          # Mobile app deep link scheme (dev build)
+          MOBILE_APP_SCHEME=freighterdev
+          EOF
+
+          # Add scripts to PATH
+          chmod +x e2e/scripts/*.sh
+
+          # Start the mock server
+          echo "🚀 Starting mock WalletConnect dApp server..."
+          ./e2e/scripts/start-mock-server.sh
+
+          # Store the PID for cleanup
+          if [ -f "e2e/mock-dapp/.server.pid" ]; then
+            echo "✅ Mock server started successfully"
+            cat e2e/mock-dapp/.server.pid > /tmp/mock-server.pid
+          else
+            echo "❌ Failed to start mock server"
+            exit 1
+          fi
+
       - name: Enable KVM for hardware acceleration
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -309,3 +385,16 @@ jobs:
           path: e2e-artifacts/
           retention-days: 7
           if-no-files-found: ignore
+
+      - name: Stop Mock WalletConnect Server
+        if: always() && matrix.requires-mock-server
+        run: |
+          set -euo pipefail
+
+          # Add scripts to PATH
+          chmod +x e2e/scripts/*.sh
+
+          # Stop the mock server
+          echo "🛑 Stopping mock WalletConnect dApp server..."
+          ./e2e/scripts/stop-mock-server.sh
+          echo "✅ Mock server stopped"

@@ -2,6 +2,7 @@ import Blockaid from "@blockaid/client";
 import { List } from "components/List";
 import SignTransactionDetails from "components/screens/SignTransactionDetails";
 import { SignTransactionDetailsInterface } from "components/screens/SignTransactionDetails/types";
+import { MessageDisplay } from "components/screens/WalletKit/MessageDisplay";
 import { App } from "components/sds/App";
 import Avatar from "components/sds/Avatar";
 import { Banner } from "components/sds/Banner";
@@ -11,11 +12,16 @@ import { TextButton } from "components/sds/TextButton";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { NATIVE_TOKEN_CODE } from "config/constants";
+import { logger } from "config/logger";
 import { ActiveAccount } from "ducks/auth";
 import { useProtocolsStore } from "ducks/protocols";
-import { WalletKitSessionRequest } from "ducks/walletKit";
+import {
+  StellarRpcMethods,
+  WalletKitSessionRequest,
+  StellarSignMessageParams,
+} from "ducks/walletKit";
 import { formatTokenForDisplay } from "helpers/formatAmount";
-import { findMatchedProtocol, getHostname } from "helpers/protocols";
+import { findMatchedProtocol, getDisplayHost } from "helpers/protocols";
 import { useTransactionBalanceListItems } from "hooks/blockaid/useTransactionBalanceListItems";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
@@ -121,6 +127,14 @@ const DappRequestBottomSheetContent: React.FC<
     return formatTokenForDisplay(String(feeXlm), NATIVE_TOKEN_CODE);
   };
 
+  const sessionRequest = requestEvent?.params;
+  const requestMethod = sessionRequest?.request?.method as StellarRpcMethods;
+  const requestParams = sessionRequest?.request?.params;
+  const isSignMessage = requestMethod === StellarRpcMethods.SIGN_MESSAGE;
+  const messageToSign = isSignMessage
+    ? (requestParams as StellarSignMessageParams)?.message
+    : undefined;
+
   const accountDetailList = useMemo(
     () => [
       {
@@ -142,40 +156,65 @@ const DappRequestBottomSheetContent: React.FC<
         ),
         titleColor: themeColors.text.secondary,
       },
-      {
-        icon: <Icon.Route size={16} color={themeColors.foreground.primary} />,
-        title: t("transactionAmountScreen.details.fee"),
-        trailingContent: (
-          <View className="flex-row items-center gap-2">
-            <Text md primary>
-              {formatFeeAmount(signTransactionDetails?.summary.feeXlm)}
-            </Text>
-          </View>
-        ),
-        titleColor: themeColors.text.secondary,
-      },
+      // Only show fee for transaction signing, not message signing
+      ...(!isSignMessage
+        ? [
+            {
+              icon: (
+                <Icon.Route size={16} color={themeColors.foreground.primary} />
+              ),
+              title: t("transactionAmountScreen.details.fee"),
+              trailingContent: (
+                <View className="flex-row items-center gap-2">
+                  <Text md primary>
+                    {formatFeeAmount(signTransactionDetails?.summary.feeXlm)}
+                  </Text>
+                </View>
+              ),
+              titleColor: themeColors.text.secondary,
+            },
+          ]
+        : []),
     ],
-    [account, themeColors, t, signTransactionDetails?.summary.feeXlm],
+    [
+      account,
+      themeColors,
+      t,
+      signTransactionDetails?.summary.feeXlm,
+      isSignMessage,
+    ],
   );
 
   const dappMetadata = useDappMetadata(requestEvent);
-  const sessionRequest = requestEvent?.params;
-  const requestOrigin = requestEvent?.verifyContext?.verified?.origin ?? "";
+  const requestOrigin = requestEvent?.verifyContext?.verified?.origin;
+
+  // Log warning if origin is missing for security audit
+  if (!requestOrigin && requestEvent) {
+    logger.warn("DappRequestBottomSheetContent", "Missing verified origin", {
+      hasVerifyContext: !!requestEvent.verifyContext,
+      hasVerified: !!requestEvent.verifyContext?.verified,
+    });
+  }
 
   const matchedProtocol = useMemo(
     () =>
       findMatchedProtocol({
         protocols,
-        searchUrl: requestOrigin,
+        searchUrl: requestOrigin || "",
       }),
     [protocols, requestOrigin],
   );
 
   if (!dappMetadata || !account || !sessionRequest) {
+    logger.warn("DappRequestBottomSheetContent", "Missing required data", {
+      hasDappMetadata: !!dappMetadata,
+      hasAccount: !!account,
+      hasSessionRequest: !!sessionRequest,
+    });
     return null;
   }
 
-  const dAppDomain = getHostname(requestOrigin ?? dappMetadata?.url ?? "");
+  const dAppDomain = getDisplayHost(requestOrigin || dappMetadata?.url || "");
   const dAppName = matchedProtocol?.name ?? dappMetadata.name;
   const dAppFavicon = matchedProtocol?.iconUrl ?? dappMetadata.icons[0];
 
@@ -190,6 +229,7 @@ const DappRequestBottomSheetContent: React.FC<
               isFullWidth
               onPress={onCancelRequest}
               disabled={isSigning || !!isValidatingMemo}
+              testID="dapp-request-cancel-button"
             >
               {t("common.cancel")}
             </Button>
@@ -203,6 +243,7 @@ const DappRequestBottomSheetContent: React.FC<
               onPress={() => onConfirm?.()}
               isLoading={isSigning || !!isValidatingMemo}
               disabled={!!isMemoMissing || isSigning || !!isValidatingMemo}
+              testID="dapp-request-confirm-button"
             >
               {t("dappRequestBottomSheetContent.confirm")}
             </Button>
@@ -275,12 +316,23 @@ const DappRequestBottomSheetContent: React.FC<
   };
 
   return (
-    <View className="flex-1 justify-center mt-2 gap-[16px]">
+    <View
+      className="flex-1 justify-center mt-2 gap-[16px]"
+      testID="dapp-request-bottom-sheet"
+    >
       <View className="flex-row items-center gap-[12px] w-full">
         <App size="lg" appName={dAppName} favicon={dAppFavicon} />
         <View className="ml-2">
-          <Text md primary>
-            {t("dappRequestBottomSheetContent.confirmTransaction")}
+          <Text
+            md
+            primary
+            testID={
+              isSignMessage ? "sign-message-title" : "sign-transaction-title"
+            }
+          >
+            {isSignMessage
+              ? t("dappRequestBottomSheetContent.signMessage")
+              : t("dappRequestBottomSheetContent.confirmTransaction")}
           </Text>
           {dAppDomain && (
             <Text sm secondary>
@@ -304,13 +356,24 @@ const DappRequestBottomSheetContent: React.FC<
         />
       )}
       <View className="gap-[12px]">
-        <List variant="secondary" items={transactionBalanceListItems} />
-        <List variant="secondary" items={accountDetailList} />
-        {signTransactionDetails && (
-          <SignTransactionDetails
-            data={signTransactionDetails}
-            analyticsEvent={AnalyticsEvent.VIEW_SIGN_DAPP_TRANSACTION_DETAILS}
-          />
+        {isSignMessage && messageToSign ? (
+          <>
+            <MessageDisplay message={messageToSign} />
+            <List variant="secondary" items={accountDetailList} />
+          </>
+        ) : (
+          <>
+            <List variant="secondary" items={transactionBalanceListItems} />
+            <List variant="secondary" items={accountDetailList} />
+            {signTransactionDetails && (
+              <SignTransactionDetails
+                data={signTransactionDetails}
+                analyticsEvent={
+                  AnalyticsEvent.VIEW_SIGN_DAPP_TRANSACTION_DETAILS
+                }
+              />
+            )}
+          </>
         )}
       </View>
 

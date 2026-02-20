@@ -48,12 +48,14 @@ export const SearchSuggestionsList: React.FC<SearchSuggestionsListProps> = ({
         </View>
       </View>
       <FlatList
+        keyboardShouldPersistTaps="handled"
         data={suggestions}
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
           <ContactRow
             address={item.address}
             name={item.name}
             onPress={() => onContactPress(item.address)}
+            testID={`search-suggestion-${index}`}
           />
         )}
         keyExtractor={(item) => item.id}

@@ -23,6 +23,7 @@ const ChangeNetworkBottomSheetContent: React.FC<
         onPress={() => {
           onSelectNetwork(network.network);
         }}
+        testID={`change-network-option-${network.network.toLowerCase()}`}
       >
         <View className="flex flex-row items-center gap-2">
           <Icon.Globe02 color={networkColors[network.network]} />
