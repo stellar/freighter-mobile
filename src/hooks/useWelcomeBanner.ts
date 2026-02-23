@@ -9,7 +9,6 @@ interface UseWelcomeBannerProps {
   account: ActiveAccount | null;
   isFunded: boolean;
   isLoadingBalances: boolean;
-  isSwitchingAccount: boolean;
 }
 
 interface UseWelcomeBannerReturn {
@@ -24,14 +23,11 @@ export const useWelcomeBanner = ({
   account,
   isFunded,
   isLoadingBalances,
-  isSwitchingAccount,
 }: UseWelcomeBannerProps): UseWelcomeBannerReturn => {
   const welcomeBannerBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [hasAccountSeenWelcome, setHasAccountSeenWelcome] = useState<
     boolean | undefined
   >(undefined);
-  const [accountSwitchCompleted, setAccountSwitchCompleted] =
-    useState<boolean>(false);
 
   // Memoize the storage key to avoid recreating it on every render
   const welcomeBannerShownKey = useMemo(
@@ -53,24 +49,9 @@ export const useWelcomeBanner = ({
     checkWelcomeBannerStatus();
   }, [welcomeBannerShownKey]);
 
-  // Track when account switching completes and balances are loaded
-  useEffect(() => {
-    if (!isSwitchingAccount && !isLoadingBalances) {
-      setAccountSwitchCompleted(true);
-    } else if (isSwitchingAccount) {
-      setAccountSwitchCompleted(false);
-    }
-  }, [isSwitchingAccount, isLoadingBalances]);
-
   // Check if welcome modal should be shown for new accounts
   const checkWelcomeBannerStatus = useCallback(() => {
-    // Only check when account switching is complete AND balances are loaded
-    if (
-      !account?.publicKey ||
-      isLoadingBalances ||
-      isSwitchingAccount ||
-      !accountSwitchCompleted
-    ) {
+    if (!account?.publicKey || isLoadingBalances) {
       return;
     }
 
@@ -86,24 +67,11 @@ export const useWelcomeBanner = ({
         error,
       );
     }
-  }, [
-    account?.publicKey,
-    hasAccountSeenWelcome,
-    isFunded,
-    isLoadingBalances,
-    isSwitchingAccount,
-    accountSwitchCompleted,
-  ]);
+  }, [account?.publicKey, hasAccountSeenWelcome, isFunded, isLoadingBalances]);
 
   useEffect(() => {
     checkWelcomeBannerStatus();
-  }, [
-    checkWelcomeBannerStatus,
-    isFunded,
-    isLoadingBalances,
-    isSwitchingAccount,
-    accountSwitchCompleted,
-  ]);
+  }, [checkWelcomeBannerStatus, isFunded, isLoadingBalances]);
 
   const handleWelcomeBannerDismiss = useCallback(async () => {
     try {
