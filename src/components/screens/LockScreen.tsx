@@ -53,10 +53,6 @@ export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
     clearError();
   }, [clearError]);
 
-  // Show a toast for system-level errors (hash key missing, temp store missing,
-  // session expired, etc.). These are distinct from a wrong-password error,
-  // which only needs the inline field error. The toast guides the user to use
-  // "Forgot password" if the problem persists.
   useEffect(() => {
     if (error && error !== t("authStore.error.invalidPassword")) {
       showToast({
