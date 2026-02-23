@@ -53,7 +53,7 @@ import {
   SwapStackNavigator,
 } from "navigators";
 import { TabNavigator } from "navigators/TabNavigator";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import RNBootSplash from "react-native-bootsplash";
 import { isInitialized as isAnalyticsInitialized } from "services/analytics/core";
 
@@ -91,16 +91,6 @@ export const RootNavigator = () => {
 
   useAppOpenBiometricsLogin(initializing);
 
-  // Keep biometric values in refs so the one-time initializeApp effect can read
-  // the latest values without depending directly on them (which would re-run it).
-  const checkBiometricsRef = useRef(checkBiometrics);
-  const isBiometricsEnabledRef = useRef(isBiometricsEnabled);
-  useEffect(() => {
-    // This runs on every render to keep the refs up to date with the latest values.
-    checkBiometricsRef.current = checkBiometrics;
-    isBiometricsEnabledRef.current = isBiometricsEnabled;
-  });
-
   // Run once on mount: check jailbreak, fetch auth status from storage, trigger
   // face-id onboarding if needed. We intentionally omit deps so this only fires
   // once — subsequent auth status changes are handled by the RootStack's
@@ -124,8 +114,8 @@ export const RootNavigator = () => {
       triggerFaceIdOnboarding(
         navigation,
         freshAuthStatus,
-        checkBiometricsRef.current,
-        isBiometricsEnabledRef.current ?? false,
+        checkBiometrics,
+        isBiometricsEnabled ?? false,
       );
     };
 

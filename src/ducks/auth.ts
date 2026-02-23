@@ -1248,7 +1248,6 @@ const signIn = async ({
   const activeAccount = await dataStorage.getItem(
     STORAGE_KEYS.ACTIVE_ACCOUNT_ID,
   );
-
   const loadedKey = await getKeyFromKeyManager(password, activeAccount);
 
   const keyExtraData = loadedKey.extra as
@@ -1287,13 +1286,6 @@ const signIn = async ({
 
   // Handle temporary store based on whether it's a fresh login or unlock
   if (shouldCreateTempStore) {
-    // Fresh login: Generate new hash key and create new temporary store
-    const newHashKey = await generateHashKey(password);
-    await secureDataStorage.setItem(
-      SENSITIVE_STORAGE_KEYS.HASH_KEY,
-      JSON.stringify(newHashKey),
-    );
-
     await createTemporaryStore({
       password,
       mnemonicPhrase: keyExtraData.mnemonicPhrase,
@@ -1913,6 +1905,15 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
                 SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
                 AUTH_STATUS.LOCKED,
               );
+
+              // Navigate to lock screen
+              const { navigationRef } = get();
+              if (navigationRef && navigationRef.isReady()) {
+                navigationRef.resetRoot({
+                  index: 0,
+                  routes: [{ name: ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN }],
+                });
+              }
             } else {
               // If it's a wipe all data logout, clear everything.
               // Navigate away from any authenticated screen BEFORE async cleanup
