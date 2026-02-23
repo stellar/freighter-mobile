@@ -976,6 +976,7 @@ const clearAllData = async (): Promise<void> => {
     clearTemporaryData(),
     clearNonSensitiveData(),
     dataStorage.remove(STORAGE_KEYS.COLLECTIBLES_LIST),
+    secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.AUTH_STATUS),
   ]);
 };
 
@@ -1943,6 +1944,11 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
                 });
               }
             } else {
+              // Clear account from store immediately to prevent components like
+              // useWelcomeBanner from reacting to subsequent data clearing
+              // (e.g. isFunded going false) while account is still set.
+              set({ account: null, isLoadingAccount: false });
+
               // If it's a wipe all data logout, clear everything
               clearAccountData();
 
@@ -2002,6 +2008,11 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
           throw new Error(t("authStore.error.failedToLoadAccount"));
         }
 
+        // Clear any stale persisted auth status before setting AUTHENTICATED.
+        // Prevents race condition where stale LOCKED status overwrites AUTHENTICATED
+        // when fetchActiveAccount() fires and calls getAuthStatus() from storage.
+        await secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.AUTH_STATUS);
+
         // Only set AUTHENTICATED after we have a valid account
         set({
           ...initialState,
@@ -2051,6 +2062,12 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
             throw new Error(t("authStore.error.failedToLoadAccount"));
           }
 
+          // SECURITY FIX: Clear persisted auth status from secure storage BEFORE
+          // setting AUTHENTICATED state. This prevents a race condition where
+          // fetchActiveAccount() could still see a stale LOCKED status in storage
+          // and overwrite AUTHENTICATED back to LOCKED.
+          await secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.AUTH_STATUS);
+
           // Only if we can successfully load the account, set the authenticated state
           analytics.trackReAuthSuccess();
           set({
@@ -2060,9 +2077,6 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
             account: activeAccount,
             isLoadingAccount: false,
           });
-
-          // SECURITY FIX: Clear persisted auth status from secure storage since we're now authenticated
-          await secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.AUTH_STATUS);
         } catch (accountError) {
           // If we can't access the account after sign-in, handle it as an expired key
           analytics.trackReAuthFail();

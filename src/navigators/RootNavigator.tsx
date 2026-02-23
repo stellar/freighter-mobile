@@ -29,7 +29,7 @@ import {
   AUTH_STACK_ROUTES,
   AuthStackParamList,
 } from "config/routes";
-import { AUTH_STATUS } from "config/types";
+import { AUTH_STATUS, type AuthStatus } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { isDeviceJailbroken } from "helpers/deviceSecurity";
@@ -44,7 +44,6 @@ import { useAppOpenBiometricsLogin } from "hooks/useAppOpenBiometricsLogin";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useAppUpdate } from "hooks/useAppUpdate";
 import { useBiometrics } from "hooks/useBiometrics";
-import useGetActiveAccount from "hooks/useGetActiveAccount";
 import {
   AuthNavigator,
   AddFundsStackNavigator,
@@ -78,8 +77,7 @@ export const RootNavigator = () => {
     useNavigation<
       NativeStackNavigationProp<RootStackParamList & AuthStackParamList>
     >();
-  const { authStatus, getAuthStatus, setAuthStatus } = useAuthenticationStore();
-  const { account } = useGetActiveAccount();
+  const { authStatus, getAuthStatus } = useAuthenticationStore();
   const remoteConfigInitialized = useRemoteConfigStore(
     (state) => state.isInitialized,
   );
@@ -88,7 +86,7 @@ export const RootNavigator = () => {
   const [isJailbroken, setIsJailbroken] = useState(false);
   const [initializationTimedOut, setInitializationTimedOut] = useState(false);
   const { t } = useAppTranslation();
-  const { checkBiometrics, isBiometricsEnabled } = useBiometrics();
+  const { checkBiometrics } = useBiometrics();
   const { showFullScreenUpdateNotice, dismissFullScreenNotice } =
     useAppUpdate();
   const { showToast } = useToast();
@@ -120,11 +118,16 @@ export const RootNavigator = () => {
     }, INITIALIZATION_TIMEOUT_MS);
 
     return () => clearTimeout(timeout);
-  }, [initializing, authStatus, remoteConfigInitialized]);
+    // authStatus is intentionally omitted: including it would restart the
+    // timeout on every auth state change, defeating the safety-net purpose.
+    // It is only referenced inside the logger call (diagnostics), not for
+    // control flow, so a stale closure value is acceptable here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initializing, remoteConfigInitialized]);
 
   useEffect(() => {
     const initializeApp = async (
-      postInitializeCallback?: () => void,
+      postInitializeCallback?: (currentAuthStatus: AuthStatus) => void,
     ): Promise<void> => {
       const deviceCompromised = isDeviceJailbroken();
       setIsJailbroken(deviceCompromised);
@@ -135,27 +138,24 @@ export const RootNavigator = () => {
         return; // Block further initialization
       }
 
-      await getAuthStatus();
+      // Capture the fresh auth status returned by getAuthStatus so the
+      // callback receives a non-stale value (avoids triggering biometrics
+      // onboarding for the wrong auth state via closure).
+      const currentAuthStatus = await getAuthStatus();
       if (postInitializeCallback) {
-        postInitializeCallback();
+        postInitializeCallback(currentAuthStatus);
       }
     };
 
-    initializeApp(() => {
-      triggerFaceIdOnboarding(
-        navigation,
-        authStatus,
-        checkBiometrics,
-        isBiometricsEnabled ?? false,
-      );
+    initializeApp((currentAuthStatus) => {
+      triggerFaceIdOnboarding(navigation, currentAuthStatus, checkBiometrics);
     });
-  }, [
-    getAuthStatus,
-    navigation,
-    authStatus,
-    checkBiometrics,
-    isBiometricsEnabled,
-  ]);
+    // authStatus is intentionally omitted: including it would re-run this
+    // effect (and the 3-second biometrics timer) on every auth state change.
+    // isBiometricsEnabled is also omitted; it is read at runtime inside
+    // triggerFaceIdOnboarding via the preferences store.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [getAuthStatus, navigation, checkBiometrics]);
 
   // Wait for all initialization states to complete
   useEffect(() => {
@@ -167,23 +167,6 @@ export const RootNavigator = () => {
       RNBootSplash.hide({ fade: true });
     }
   }, [remoteConfigInitialized, initializationTimedOut]);
-
-  // Guard: Detect inconsistent state (AUTHENTICATED but no account)
-  // This should never happen after our fixes, but serves as final safety net
-  useEffect(() => {
-    if (authStatus === AUTH_STATUS.AUTHENTICATED && !account && !initializing) {
-      logger.error(
-        "RootNavigator",
-        "CRITICAL: Detected inconsistent state - AUTHENTICATED with no account. Forcing state change to LOCKED.",
-        new Error("Inconsistent auth state"),
-        {
-          authStatus,
-          hasAccount: !!account,
-        },
-      );
-      setAuthStatus(AUTH_STATUS.LOCKED);
-    }
-  }, [authStatus, account, initializing, setAuthStatus]);
 
   // Show toast when hash key or temp store is not found (hash key expired)
   useEffect(() => {

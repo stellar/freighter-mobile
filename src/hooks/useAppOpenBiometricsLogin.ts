@@ -24,7 +24,8 @@ export const useAppOpenBiometricsLogin = (initializing: boolean) => {
     }
 
     if (
-      authStatus === AUTH_STATUS.HASH_KEY_EXPIRED &&
+      (authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ||
+        authStatus === AUTH_STATUS.LOCKED) &&
       !hasTriggeredAppOpenBiometricsLogin
     ) {
       setHasTriggeredAppOpenBiometricsLogin(true);
