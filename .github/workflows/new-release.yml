@@ -292,7 +292,7 @@ jobs:
           script: |
             const version = process.env.APP_VERSION;
             const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/");
-            const title = `Bump version to v${version}`;
+            const title = `Bump version to v${version} [merge now]`;
             const body = `Bumping version on \`main\` branch to \`v${version}\`.`;
 
             async function setOutputs(pr) {
