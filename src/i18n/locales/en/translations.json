@@ -287,7 +287,9 @@
     "useTouchIdInstead": "Use Touch ID instead",
     "useOpticIdInstead": "Use Optic ID instead",
     "useIrisInstead": "Use Iris instead",
-    "enterPasswordInstead": "Use password instead"
+    "enterPasswordInstead": "Use password instead",
+    "errorUnlockingWalletTitle": "Error unlocking wallet",
+    "errorUnlockingWalletMessage": "If the problem persists, please tap on \"Forgot password\" and re-import your wallet."
   },
   "onboarding": {
     "continue": "Continue",

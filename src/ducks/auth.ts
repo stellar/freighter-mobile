@@ -1303,7 +1303,7 @@ const signIn = async ({
         accountName: account.name,
         id: loadedKey.id,
       },
-      shouldRefreshHashKey: false,
+      shouldRefreshHashKey: true,
     });
   } else {
     // LOCKED state unlock: Generate new hash key and re-encrypt existing temporary store
@@ -1913,18 +1913,16 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
                 SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
                 AUTH_STATUS.LOCKED,
               );
-
-              // Navigate to lock screen
-              const { navigationRef } = get();
-              if (navigationRef && navigationRef.isReady()) {
-                navigationRef.resetRoot({
-                  index: 0,
-                  routes: [{ name: ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN }],
-                });
-              }
             } else {
-              // If it's a wipe all data logout, clear everything
+              // If it's a wipe all data logout, clear everything.
+              // Navigate away from any authenticated screen BEFORE async cleanup
+              // to prevent the home screen from being visible during the wipe.
               clearAccountData();
+              set({
+                ...initialState,
+                authStatus: AUTH_STATUS.NOT_AUTHENTICATED,
+                isLoading: true,
+              });
 
               // Make sure to disconnect all WalletConnect sessions first
               await useWalletKitStore.getState().disconnectAllSessions();
@@ -1942,11 +1940,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
 
               await clearBiometricsData();
 
-              set({
-                ...initialState,
-                authStatus: AUTH_STATUS.NOT_AUTHENTICATED,
-                isLoading: false,
-              });
+              set({ isLoading: false });
             }
           } catch (error) {
             logger.error("logout", "Failed to logout", error);

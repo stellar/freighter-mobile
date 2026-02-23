@@ -251,7 +251,9 @@
     "useTouchIdInstead": "Usar Touch ID",
     "useOpticIdInstead": "Usar Optic ID",
     "useIrisInstead": "Usar Iris",
-    "enterPasswordInstead": "Usar senha"
+    "enterPasswordInstead": "Usar senha",
+    "errorUnlockingWalletTitle": "Erro ao desbloquear carteira",
+    "errorUnlockingWalletMessage": "Se o problema persistir, toque em \"Esqueci minha senha\" e reimporte sua carteira."
   },
   "onboarding": {
     "continue": "Continuar",

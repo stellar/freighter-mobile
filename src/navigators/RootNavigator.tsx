@@ -53,7 +53,7 @@ import {
   SwapStackNavigator,
 } from "navigators";
 import { TabNavigator } from "navigators/TabNavigator";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import RNBootSplash from "react-native-bootsplash";
 import { isInitialized as isAnalyticsInitialized } from "services/analytics/core";
 
@@ -77,6 +77,7 @@ export const RootNavigator = () => {
     (state) => state.isInitialized,
   );
   const [initializing, setInitializing] = useState(true);
+  const [isAuthStatusReady, setIsAuthStatusReady] = useState(false);
   const [showForceUpdate, setShowForceUpdate] = useState(false);
   const [isJailbroken, setIsJailbroken] = useState(false);
   const { t } = useAppTranslation();
@@ -90,48 +91,59 @@ export const RootNavigator = () => {
 
   useAppOpenBiometricsLogin(initializing);
 
+  // Capture biometric values at mount time via ref to avoid stale closures
+  // without adding them as effect dependencies (which would re-run initializeApp).
+  const checkBiometricsRef = useRef(checkBiometrics);
+  const isBiometricsEnabledRef = useRef(isBiometricsEnabled);
   useEffect(() => {
-    const initializeApp = async (
-      postInitializeCallback?: () => void,
-    ): Promise<void> => {
+    checkBiometricsRef.current = checkBiometrics;
+    isBiometricsEnabledRef.current = isBiometricsEnabled;
+  });
+
+  // Run once on mount: check jailbreak, fetch auth status from storage, trigger
+  // face-id onboarding if needed. We intentionally omit deps so this only fires
+  // once — subsequent auth status changes are handled by the RootStack's
+  // conditional screen rendering.
+  useEffect(() => {
+    const initializeApp = async (): Promise<void> => {
       const deviceCompromised = isDeviceJailbroken();
       setIsJailbroken(deviceCompromised);
 
       if (deviceCompromised) {
-        setInitializing(false);
+        setIsAuthStatusReady(true);
         RNBootSplash.hide({ fade: true });
-        return; // Block further initialization
+        return;
       }
 
-      await getAuthStatus();
-      if (postInitializeCallback) {
-        postInitializeCallback();
-      }
-    };
+      // Fetch the real auth status from storage and overwrite the initial
+      // NOT_AUTHENTICATED default before any navigation decision is made.
+      const freshAuthStatus = await getAuthStatus();
+      setIsAuthStatusReady(true);
 
-    initializeApp(() => {
       triggerFaceIdOnboarding(
         navigation,
-        authStatus,
-        checkBiometrics,
-        isBiometricsEnabled ?? false,
+        freshAuthStatus,
+        checkBiometricsRef.current,
+        isBiometricsEnabledRef.current ?? false,
       );
-    });
-  }, [
-    getAuthStatus,
-    navigation,
-    authStatus,
-    checkBiometrics,
-    isBiometricsEnabled,
-  ]);
+    };
 
-  // Wait for all initialization states to complete
+    initializeApp();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // intentionally run only once on mount
+
+  // Wait for ALL initialization states to complete before showing any UI.
+  // This prevents a flash of the wrong screen while auth status is loading.
   useEffect(() => {
-    if (isAnalyticsInitialized() && remoteConfigInitialized) {
+    if (
+      isAnalyticsInitialized() &&
+      remoteConfigInitialized &&
+      isAuthStatusReady
+    ) {
       setInitializing(false);
       RNBootSplash.hide({ fade: true });
     }
-  }, [remoteConfigInitialized]);
+  }, [remoteConfigInitialized, isAuthStatusReady]);
 
   // Show force update screen when needed
   useEffect(() => {
