@@ -61,8 +61,9 @@ export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
         message: t("lockScreen.errorUnlockingWalletMessage"),
         duration: 6000,
       });
+      clearError();
     }
-  }, [error, t, showToast]);
+  }, [error, t, showToast, clearError]);
 
   const handleUnlock = useCallback(
     (password: string) => {
