@@ -91,11 +91,12 @@ export const RootNavigator = () => {
 
   useAppOpenBiometricsLogin(initializing);
 
-  // Capture biometric values at mount time via ref to avoid stale closures
-  // without adding them as effect dependencies (which would re-run initializeApp).
+  // Keep biometric values in refs so the one-time initializeApp effect can read
+  // the latest values without depending directly on them (which would re-run it).
   const checkBiometricsRef = useRef(checkBiometrics);
   const isBiometricsEnabledRef = useRef(isBiometricsEnabled);
   useEffect(() => {
+    // This runs on every render to keep the refs up to date with the latest values.
     checkBiometricsRef.current = checkBiometrics;
     isBiometricsEnabledRef.current = isBiometricsEnabled;
   });
