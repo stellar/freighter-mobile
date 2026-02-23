@@ -230,6 +230,7 @@ const setupDefaultMocks = () => {
   const mockTransactionBuilderState = {
     buildSendCollectibleTransaction: jest.fn().mockResolvedValue(mockXDR),
     signTransaction: jest.fn(),
+    signMessage: jest.fn(),
     submitTransaction: jest.fn().mockResolvedValue(true),
     resetTransaction: jest.fn(),
     isBuilding: false,
@@ -292,6 +293,7 @@ const setupDefaultMocks = () => {
     error: null,
     refreshAccount: jest.fn(),
     signTransaction: jest.fn(),
+    signMessage: jest.fn(),
   });
 
   mockUseRightHeaderMenu.mockReturnValue(undefined);
@@ -356,6 +358,7 @@ describe("SendCollectibleReview - Banner Content", () => {
   const mockTransactionBuilderState = {
     buildSendCollectibleTransaction: jest.fn(),
     signTransaction: jest.fn(),
+    signMessage: jest.fn(),
     submitTransaction: jest.fn(),
     resetTransaction: jest.fn(),
     isBuilding: false,
@@ -422,6 +425,7 @@ describe("SendCollectibleReview - Banner Content", () => {
       error: null,
       refreshAccount: jest.fn(),
       signTransaction: jest.fn(),
+      signMessage: jest.fn(),
     });
 
     mockUseRightHeaderMenu.mockReturnValue(undefined);

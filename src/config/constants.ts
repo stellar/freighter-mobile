@@ -39,6 +39,7 @@ export const HISTORY_FETCH_POLLING_INTERVAL = 30000;
 export const NATIVE_TOKEN_CODE = "XLM";
 export const MIN_TRANSACTION_FEE = "0.00001";
 export const BASE_RESERVE = BigNumber(0.5);
+export const MINIMUM_CREATE_ACCOUNT_XLM = 1;
 export const MAX_MEMO_BYTES = 28;
 
 // Circle USDC constants for icon special casing
@@ -265,11 +266,11 @@ export const mapNetworkToNetworkDetails = (network: NETWORKS) => {
  *
  * COLLECTIBLES_LIST The collectibles list is used to keep track of all the collectibles stored in the key manager.
  * Formatted as: { [publicKey: string]: { [network: string]: CollectibleContract[] } } @see CollectiblesStorage
- * The COLLECTIBLES_LIST is not removed during the logout process. It is used to keep the collectibles even after the user logs out, since the API does not store collectibles.
+ * The COLLECTIBLES_LIST is not removed during the standard logout process. It is used to keep the collectibles even after the user logs out, since the API does not store collectibles.
  *
  * HIDDEN_COLLECTIBLES_LIST The hidden collectibles list is used to keep track of all the hidden collectibles stored in the key manager.
  * Formatted as: { [publicKey: string]: { [network: string]: CollectibleContract[] } } @see CollectiblesStorage
- * The HIDDEN_COLLECTIBLES_LIST is not removed during the logout process. It is used to keep the hidden collectibles even after the user logs out, since the API does not store hidden collectibles.
+ * The HIDDEN_COLLECTIBLES_LIST is not removed during the standard logout process. It is used to keep the hidden collectibles even after the user logs out, since the API does not store hidden collectibles.
  *
  * ACTIVE_NETWORK The active network is the network that is currently being used.
  * RECENT_ADDRESSES The list of recently used addresses for sending payments.
@@ -302,10 +303,12 @@ export enum STORAGE_KEYS {
  * TEMPORARY_STORE The temporary store contains encrypted private keys and mnemonic phrase.
  * HASH_KEY The hash key and salt in an JSON stryngified object. This is used to encrypt and decrypt the temporary store.
  * HASH_KEY format: { hashKey: string, salt: string, expiresAt: number }
+ * AUTH_STATUS The authentication status is stored securely to prevent tampering on rooted/jailbroken devices.
  * */
 export enum SENSITIVE_STORAGE_KEYS {
   TEMPORARY_STORE = "temporaryStore",
   HASH_KEY = "hashKey",
+  AUTH_STATUS = "authStatus",
 }
 
 /**
@@ -330,10 +333,10 @@ export const BROWSER_CONSTANTS = {
   DEFAULT_TAB_TITLE: t("discovery.defaultTabTitle"),
   SCREENSHOT_STORAGE_KEY: "browser_screenshots",
   MAX_RECENT_TABS: 20,
-  MAX_SCREENSHOTS_STORED: 100,
+  MAX_SCREENSHOTS_STORED: 30,
   MAX_ACTIVE_WEBVIEWS: 10, // Maximum number of active WebView instances
   SCREENSHOT_FORMAT: "jpg",
-  SCREENSHOT_QUALITY: 0.5,
+  SCREENSHOT_QUALITY: 0.25,
   SCREENSHOT_WIDTH: 400,
   SCREENSHOT_HEIGHT: 600,
   SCREENSHOT_ON_LOAD_DELAY: 500, // Take screenshot after site finishes loading

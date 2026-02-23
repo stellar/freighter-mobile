@@ -3,7 +3,6 @@ import { BROWSER_CONSTANTS } from "config/constants";
 import { logger } from "config/logger";
 import {
   isHomepageUrl,
-  getDomainFromUrl,
   getFaviconUrl,
   normalizeUrl,
   extractSearchQuery,
@@ -52,34 +51,6 @@ describe("browser helpers", () => {
     it("should return false for other URLs", () => {
       expect(isHomepageUrl("https://example.com")).toBe(false);
       expect(isHomepageUrl("http://google.com")).toBe(false);
-    });
-  });
-
-  describe("getDomainFromUrl", () => {
-    it("should return empty string for homepage", () => {
-      expect(getDomainFromUrl("")).toBe("");
-      expect(getDomainFromUrl(BROWSER_CONSTANTS.HOMEPAGE_URL)).toBe("");
-    });
-
-    it("should extract domain from valid URLs", () => {
-      expect(getDomainFromUrl("https://www.example.com")).toBe("example.com");
-      expect(getDomainFromUrl("http://example.com/path")).toBe("example.com");
-      expect(getDomainFromUrl("https://sub.example.com")).toBe(
-        "sub.example.com",
-      );
-    });
-
-    it("should handle URLs without www", () => {
-      expect(getDomainFromUrl("https://example.com")).toBe("example.com");
-    });
-
-    it("should return original URL for invalid URLs", () => {
-      expect(getDomainFromUrl("not-a-url")).toBe("not-a-url");
-      expect(getDomainFromUrl("invalid://url")).toBe("url");
-    });
-
-    it("should handle URLs with ports", () => {
-      expect(getDomainFromUrl("https://example.com:8080")).toBe("example.com");
     });
   });
 

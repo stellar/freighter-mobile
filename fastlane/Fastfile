@@ -18,17 +18,6 @@ opt_out_usage
 
 default_platform(:android)
 
-def create_json_secret_file
-  key_file_contents = Base64.strict_decode64(
-    ENV.fetch("GOOGLE_JSON_SECRET_CONTENT") { raise "GOOGLE_JSON_SECRET_CONTENT environment variable is required" }
-  )
-
-  key_file = "google-fastlane-secret.json"
-
-  File.open(key_file, "w") {|io| io << key_file_contents }
-  File.chmod(0o600, key_file)
-end
-
 def create_keystore_file(env)
   key_file_contents = Base64.strict_decode64(
     ENV.fetch("ANDROID_#{env.to_s.upcase}_KEYSTORE_CONTENT") { raise "ANDROID_#{env.to_s.upcase}_KEYSTORE_CONTENT environment variable is required" }
@@ -179,8 +168,6 @@ platform :android do
       find: /versionCode\s+\d+/,
       replace: "versionCode #{build_version}"
     )
-
-    create_json_secret_file
   end
 
   lane :upload_build do

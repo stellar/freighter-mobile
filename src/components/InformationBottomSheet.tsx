@@ -14,6 +14,7 @@ import { TouchableOpacity, View } from "react-native";
  * @property {string} title - The main title displayed at the top of the bottom sheet
  * @property {React.ReactNode} [headerElement] - Optional custom header element (e.g., icon with background)
  * @property {Array<{ key: string; value: string }>} texts - Array of text strings to display as content paragraphs
+ * @property {string} [confirmLabel] - Optional label for the confirmation button (defaults to "Add memo")
  */
 type InformationBottomSheetProps = {
   onConfirm?: () => void;
@@ -21,6 +22,7 @@ type InformationBottomSheetProps = {
   title: string;
   headerElement?: React.ReactNode;
   texts: { key: string; value: string }[];
+  confirmLabel?: string;
 };
 
 /**
@@ -41,32 +43,6 @@ type InformationBottomSheetProps = {
  *
  * @param {InformationBottomSheetProps} props - Component props
  * @returns {JSX.Element} The rendered information bottom sheet
- *
- * @example
- * ```tsx
- * // Basic usage for memo explanation
- * <InformationBottomSheet
- *   title="Memo is required"
- *   texts={[
- *     "Some destination accounts require a memo to identify your payment.",
- *     "Without a memo, your funds may not reach the intended recipient."
- *   ]}
- *   onClose={() => setShowExplanation(false)}
- *   onConfirm={() => handleAddMemo()}
- *   headerElement={
- *     <View className="bg-red-3 p-2 rounded-[8px]">
- *       <Icon.InfoOctagon color={themeColors.status.error} size={28} />
- *     </View>
- *   }
- * />
- *
- * // Usage without confirmation button
- * <InformationBottomSheet
- *   title="Transaction Information"
- *   texts={["This is informational content only."]}
- *   onClose={() => setShowInfo(false)}
- * />
- * ```
  */
 const InformationBottomSheet = ({
   onConfirm,
@@ -74,6 +50,7 @@ const InformationBottomSheet = ({
   title,
   headerElement,
   texts,
+  confirmLabel,
 }: InformationBottomSheetProps) => {
   const { themeColors } = useColors();
 
@@ -108,7 +85,7 @@ const InformationBottomSheet = ({
         <View className="mt-[24px] gap-[12px] flex-row">
           <View className="flex-1">
             <Button onPress={onConfirm} tertiary xl>
-              {t("common.addMemo")}
+              {confirmLabel ?? t("common.addMemo")}
             </Button>
           </View>
         </View>

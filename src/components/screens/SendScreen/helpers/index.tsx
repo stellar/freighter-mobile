@@ -5,11 +5,14 @@ import { SecurityLevel } from "services/blockaid/constants";
 import {
   assessTransactionSecurity,
   extractSecurityWarnings,
+  isUnfundedDestinationError,
+  type UnfundedDestinationContext,
 } from "services/blockaid/helper";
 
 function getTransactionSecurityWarnings(
   assessment: ReturnType<typeof assessTransactionSecurity>,
   scanResult: Blockaid.StellarTransactionScanResponse | undefined,
+  unfundedContext?: UnfundedDestinationContext,
 ) {
   if (assessment.isUnableToScan) {
     return [
@@ -20,8 +23,12 @@ function getTransactionSecurityWarnings(
     ];
   }
 
-  if (assessment.isMalicious || assessment.isSuspicious) {
-    const warnings = extractSecurityWarnings(scanResult);
+  if (
+    assessment.isMalicious ||
+    assessment.isSuspicious ||
+    assessment.isExpectedToFail
+  ) {
+    const warnings = extractSecurityWarnings(scanResult, unfundedContext);
 
     if (Array.isArray(warnings) && warnings.length > 0) {
       return warnings;
@@ -34,6 +41,7 @@ function getTransactionSecurityWarnings(
 function getTransactionSecuritySeverity(
   assessment: ReturnType<typeof assessTransactionSecurity>,
 ): Exclude<SecurityLevel, SecurityLevel.SAFE> | undefined {
+  if (assessment.isExpectedToFail) return SecurityLevel.EXPECTED_TO_FAIL;
   if (assessment.isMalicious) return SecurityLevel.MALICIOUS;
   if (assessment.isSuspicious) return SecurityLevel.SUSPICIOUS;
   if (assessment.isUnableToScan) return SecurityLevel.UNABLE_TO_SCAN;
@@ -44,19 +52,26 @@ function getTransactionSecuritySeverity(
 /**
  * Function for getting transaction security assessment
  * Can be called at runtime with scanResult as parameter
+ *
+ * @param scanResult - The Blockaid scan result
+ * @param overriddenBlockaidResponse - Optional override for debugging
+ * @param unfundedContext - Optional context for unfunded destination detection
  */
 export function getTransactionSecurity(
   scanResult: Blockaid.StellarTransactionScanResponse | undefined,
   overriddenBlockaidResponse?: SecurityLevel | null,
+  unfundedContext?: UnfundedDestinationContext,
 ) {
   const transactionSecurityAssessment = assessTransactionSecurity(
     scanResult,
     overriddenBlockaidResponse,
+    unfundedContext,
   );
 
   const transactionSecurityWarnings = getTransactionSecurityWarnings(
     transactionSecurityAssessment,
     scanResult,
+    unfundedContext,
   );
 
   const transactionSecuritySeverity = getTransactionSecuritySeverity(
@@ -79,9 +94,11 @@ export interface BannerContent {
 export interface UseSendBannerContentParams {
   isMalicious: boolean;
   isSuspicious: boolean;
+  isExpectedToFail?: boolean;
   isUnableToScan?: boolean;
   isRequiredMemoMissing?: boolean;
   isMuxedAddressWithoutMemoSupport?: boolean;
+  unfundedContext?: UnfundedDestinationContext;
   onSecurityWarningPress: () => void;
   onMemoMissingPress?: () => void;
   onMuxedAddressWithoutMemoSupportPress?: () => void;
@@ -94,20 +111,32 @@ export interface UseSendBannerContentParams {
 export function useSendBannerContent({
   isMalicious,
   isSuspicious,
+  isExpectedToFail = false,
   isUnableToScan = false,
   isRequiredMemoMissing = false,
   isMuxedAddressWithoutMemoSupport = false,
+  unfundedContext,
   onSecurityWarningPress,
   onMemoMissingPress,
   onMuxedAddressWithoutMemoSupportPress,
 }: UseSendBannerContentParams): BannerContent | undefined {
   const { t } = useAppTranslation();
 
+  // Check if this is an unfunded destination error
+  const isUnfundedDestination = useMemo(() => {
+    if (!unfundedContext) {
+      return false;
+    }
+    return isUnfundedDestinationError(unfundedContext);
+  }, [unfundedContext]);
+
   return useMemo(() => {
     const shouldShowNoticeBanner =
       isRequiredMemoMissing ||
       isMalicious ||
       isSuspicious ||
+      isExpectedToFail ||
+      isUnfundedDestination ||
       isMuxedAddressWithoutMemoSupport ||
       isUnableToScan;
 
@@ -119,6 +148,14 @@ export function useSendBannerContent({
       return {
         text: t("transactionAmountScreen.errors.malicious"),
         variant: "error" as const,
+        onPress: onSecurityWarningPress,
+      };
+    }
+
+    if (isExpectedToFail || isUnfundedDestination) {
+      return {
+        text: t("blockaid.security.transaction.expectedToFail"),
+        variant: "warning" as const,
         onPress: onSecurityWarningPress,
       };
     }
@@ -164,10 +201,13 @@ export function useSendBannerContent({
     isRequiredMemoMissing,
     isMalicious,
     isSuspicious,
+    isExpectedToFail,
     isMuxedAddressWithoutMemoSupport,
     isUnableToScan,
+    isUnfundedDestination,
     onSecurityWarningPress,
     onMemoMissingPress,
     onMuxedAddressWithoutMemoSupportPress,
+    t,
   ]);
 }

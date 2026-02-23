@@ -65,6 +65,7 @@ export const ChoosePasswordScreen: React.FC<ChoosePasswordScreenProps> = ({
         note={t("passwordInput.passwordNote")}
         error={error}
         value={localPassword}
+        testID="password-input"
         onChangeText={(text) => {
           setLocalPassword(text);
           if (text.length > PASSWORD_MAX_LENGTH) {

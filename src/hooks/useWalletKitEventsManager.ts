@@ -129,6 +129,12 @@ export const useWalletKitEventsManager = (initialized: boolean) => {
     }
 
     return () => {
+      // Clean up event listeners to prevent memory leaks
+      if (initialized) {
+        walletKit.off("session_proposal", onSessionProposal);
+        walletKit.off("session_request", onSessionRequest);
+        walletKit.off("session_delete", onSessionDelete);
+      }
       deepLinkSubscription?.remove();
     };
   }, [

@@ -256,6 +256,8 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
           webViewRef={webViewRef}
           onNavigationStateChange={handleNavigationStateChange}
           onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest}
+          javaScriptEnabled
+          domStorageEnabled
         />
 
         <BottomNavigation

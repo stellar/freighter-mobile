@@ -53,7 +53,6 @@ const HorizontalListSection: React.FC<HorizontalListSectionProps> = React.memo(
           // Try to relate with some of the known protocols for copy consistency
           const matchedProtocolSite = findMatchedProtocol({
             protocols,
-            searchName: siteItem.title,
             searchUrl: siteItem.url,
           });
 

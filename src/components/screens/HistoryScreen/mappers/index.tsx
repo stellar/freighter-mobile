@@ -15,7 +15,9 @@ import { mapSorobanHistoryItem } from "components/screens/HistoryScreen/mappers/
 import { mapSwapHistoryItem } from "components/screens/HistoryScreen/mappers/swap";
 import { HistoryItemData } from "components/screens/HistoryScreen/types";
 import { NetworkDetails, NETWORKS } from "config/constants";
+import { logger } from "config/logger";
 import { BalanceMap } from "config/types";
+import { processAssetBalanceChanges } from "helpers/assetBalanceChanges";
 import { formatTransactionDate } from "helpers/date";
 import { getAttrsFromSorobanHorizonOp } from "helpers/soroban";
 import { getStellarExpertUrl } from "helpers/stellarExpert";
@@ -57,6 +59,19 @@ export const mapHistoryItemData = async ({
 
   // Get URL for transaction viewing
   const stellarExpertUrl = getStellarExpertUrl(network);
+
+  // Process asset balance changes for all operations
+  let assetDiffs: Awaited<ReturnType<typeof processAssetBalanceChanges>> = [];
+  try {
+    assetDiffs = await processAssetBalanceChanges(
+      operation,
+      publicKey,
+      networkDetails,
+    );
+  } catch (error) {
+    logger.error("mapHistoryItemData", "Failed to process asset diffs", error);
+    // Continue with empty assetDiffs
+  }
 
   // Handle failed transaction
   if (transactionSuccessful === false) {
@@ -124,6 +139,7 @@ export const mapHistoryItemData = async ({
       themeColors,
       xdr,
       network: networkDetails.network,
+      assetDiffs,
     });
   }
 
@@ -147,6 +163,7 @@ export const mapHistoryItemData = async ({
       fee,
       xdr,
       themeColors,
+      assetDiffs,
     });
   }
 

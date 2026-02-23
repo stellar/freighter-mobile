@@ -13,6 +13,7 @@ import { AxiosError } from "axios";
 import { BigNumber } from "bignumber.js";
 import {
   DEFAULT_DECIMALS,
+  MINIMUM_CREATE_ACCOUNT_XLM,
   NATIVE_TOKEN_CODE,
   NETWORKS,
   NetworkDetails,
@@ -479,27 +480,29 @@ export const buildPaymentTransaction = async (
         const error = e as AxiosError;
 
         if (error.response && error.response.status === 404) {
-          if (BigNumber(amount).isLessThan(1)) {
-            throw new Error(t("transaction.errors.minimumXlmForNewAccount"));
+          // If destination is unfunded and amount < 1 XLM, let the transaction proceed
+          // so Blockaid can flag it as expected-to-fail during review instead of failing early.
+          if (BigNumber(amount).isLessThan(MINIMUM_CREATE_ACCOUNT_XLM)) {
+            // Skip createAccount and fall through to add a standard payment operation below.
+          } else {
+            transactionBuilder.addOperation(
+              Operation.createAccount({
+                destination: baseAccount,
+                startingBalance: amount,
+              }),
+            );
+
+            const transaction = transactionBuilder.build();
+
+            return {
+              tx: transaction,
+              xdr: transaction.toXDR(),
+              finalDestination: recipientAddress,
+            };
           }
-
-          transactionBuilder.addOperation(
-            Operation.createAccount({
-              destination: baseAccount,
-              startingBalance: amount,
-            }),
-          );
-
-          const transaction = transactionBuilder.build();
-
-          return {
-            tx: transaction,
-            xdr: transaction.toXDR(),
-            finalDestination: recipientAddress,
-          };
+        } else {
+          throw error;
         }
-
-        throw error;
       }
     }
 

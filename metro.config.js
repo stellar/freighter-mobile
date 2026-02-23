@@ -18,6 +18,26 @@ const {
 const config = {
   transformer: {
     babelTransformerPath: require.resolve("react-native-svg-transformer"),
+    minifierConfig: {
+      // Terser minification options for production builds
+      compress: {
+        drop_console: true, // Remove console.log statements
+        drop_debugger: true, // Remove debugger statements
+        pure_funcs: [
+          "console.log",
+          "console.info",
+          "console.debug",
+          "console.warn",
+        ],
+      },
+      mangle: {
+        toplevel: true, // Mangle top-level variable names
+      },
+      output: {
+        comments: false, // Remove all comments
+        ascii_only: true, // Escape Unicode characters
+      },
+    },
   },
   resolver: {
     assetExts: ["png", "jpg", "jpeg", "gif"],

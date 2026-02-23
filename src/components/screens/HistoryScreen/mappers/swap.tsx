@@ -9,11 +9,16 @@ import {
   TransactionType,
   TransactionStatus,
   HistoryItemData,
+  AssetDiffSummary,
 } from "components/screens/HistoryScreen/types";
 import Icon from "components/sds/Icon";
 import { Token } from "components/sds/Token";
 import { Text } from "components/sds/Typography";
-import { NATIVE_TOKEN_CODE, NETWORKS } from "config/constants";
+import {
+  DEFAULT_DECIMALS,
+  NATIVE_TOKEN_CODE,
+  NETWORKS,
+} from "config/constants";
 import { TokenTypeWithCustomToken } from "config/types";
 import { formatTokenForDisplay } from "helpers/formatAmount";
 import { getIconUrl } from "helpers/getIconUrl";
@@ -82,6 +87,28 @@ export const mapSwapHistoryItem = async ({
           network,
         });
 
+  // Create asset diffs for swap: one debit (sent) and one credit (received)
+  const assetDiffs: AssetDiffSummary[] = [
+    // Debit: Source asset being sold
+    {
+      assetCode: srcTokenCode,
+      assetIssuer: sourceTokenIssuer || null,
+      decimals: DEFAULT_DECIMALS,
+      amount: operation.source_amount || "",
+      isCredit: false,
+      icon: sourceIcon,
+    },
+    // Credit: Destination asset being bought
+    {
+      assetCode: destTokenCodeFinal,
+      assetIssuer: tokenIssuer || null,
+      decimals: DEFAULT_DECIMALS,
+      amount,
+      isCredit: true,
+      icon: destIcon,
+    },
+  ];
+
   const ActionIconComponent = (
     <Icon.RefreshCw05 size={16} color={themeColors.foreground.primary} />
   );
@@ -91,26 +118,24 @@ export const mapSwapHistoryItem = async ({
       size="lg"
       variant="swap"
       sourceOne={{
-        image: sourceIcon,
         altText: "Swap source token logo",
-        renderContent: !sourceIcon
-          ? () => (
-              <Text xs secondary semiBold>
-                {srcTokenCode.substring(0, 2)}
-              </Text>
-            )
-          : undefined,
+        image: sourceIcon,
+        // Fallback: show token initials if the icon is not available
+        renderContent: () => (
+          <Text xs secondary semiBold>
+            {srcTokenCode.substring(0, 2)}
+          </Text>
+        ),
       }}
       sourceTwo={{
-        image: destIcon,
         altText: "Swap destination token logo",
-        renderContent: !destIcon
-          ? () => (
-              <Text xs secondary semiBold>
-                {destTokenCodeFinal.substring(0, 2)}
-              </Text>
-            )
-          : undefined,
+        image: destIcon,
+        // Fallback: show token initials if the icon is not available
+        renderContent: () => (
+          <Text xs secondary semiBold>
+            {destTokenCodeFinal.substring(0, 2)}
+          </Text>
+        ),
       }}
     />
   );
@@ -139,6 +164,7 @@ export const mapSwapHistoryItem = async ({
       sourceTokenType: operation.source_asset_type || "",
       destinationTokenType: operation.asset_type || "",
     },
+    assetDiffs,
   };
 
   return {

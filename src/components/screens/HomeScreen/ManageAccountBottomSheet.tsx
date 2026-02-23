@@ -21,11 +21,15 @@ interface ManageAccountBottomSheetProps {
   accounts: Account[];
   activeAccount: ActiveAccount | null;
   handleSelectAccount: (publicKey: string) => Promise<void>;
+  isAccountSwitching: boolean;
+  switchingToPublicKey: string | null;
 }
 
 const SNAP_VALUE_PERCENT = 80;
 
-const ManageAccountBottomSheet: React.FC<ManageAccountBottomSheetProps> = ({
+export const ManageAccountBottomSheet: React.FC<
+  ManageAccountBottomSheetProps
+> = ({
   handleCloseModal,
   onPressAddAnotherWallet,
   handleCopyAddress,
@@ -33,12 +37,15 @@ const ManageAccountBottomSheet: React.FC<ManageAccountBottomSheetProps> = ({
   accounts,
   activeAccount,
   handleSelectAccount,
+  isAccountSwitching,
+  switchingToPublicKey,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
 
+  // Styles moved to className props below; no StyleSheet used
   return (
-    <View className="flex-1 justify-between items-center w-full">
+    <View className="flex-1 justify-between items-center w-full relative">
       <BottomSheetAdaptiveContainer
         bottomPaddingPx={heightPercentageToDP(100 - SNAP_VALUE_PERCENT)}
         header={
@@ -46,6 +53,7 @@ const ManageAccountBottomSheet: React.FC<ManageAccountBottomSheetProps> = ({
             <TouchableOpacity
               onPress={handleCloseModal}
               className="absolute left-0"
+              testID="manage-accounts-close-button"
             >
               <Icon.X color={themeColors.base[1]} />
             </TouchableOpacity>
@@ -64,7 +72,7 @@ const ManageAccountBottomSheet: React.FC<ManageAccountBottomSheetProps> = ({
             paddingBottom: pxValue(20),
           }}
         >
-          {accounts.map((account) => (
+          {accounts.map((account, index) => (
             <AccountItemRow
               key={account.publicKey}
               account={account}
@@ -72,10 +80,22 @@ const ManageAccountBottomSheet: React.FC<ManageAccountBottomSheetProps> = ({
               handleRenameAccount={handleRenameAccount}
               handleSelectAccount={handleSelectAccount}
               isSelected={account.publicKey === activeAccount?.publicKey}
+              isAccountSwitching={isAccountSwitching}
+              isSwitchingToThisAccount={
+                switchingToPublicKey === account.publicKey
+              }
+              testID={`account-row-${index}`}
             />
           ))}
         </BottomSheetScrollView>
-        <Button tertiary isFullWidth xl onPress={onPressAddAnotherWallet}>
+        <Button
+          tertiary
+          isFullWidth
+          xl
+          onPress={onPressAddAnotherWallet}
+          disabled={isAccountSwitching || switchingToPublicKey !== null}
+          testID="manage-accounts-add-wallet-button"
+        >
           {t("home.manageAccount.addWallet")}
         </Button>
       </BottomSheetAdaptiveContainer>

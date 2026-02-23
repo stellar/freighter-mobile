@@ -163,6 +163,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
           publicKey={account?.publicKey ?? ""}
           networkDetails={networkDetails}
           onRefresh={handleRefresh}
+          refreshActionPosition="start"
           isRefreshing={isRefreshing}
           isNavigationRefresh={isNavigationRefresh}
           ListHeaderComponent={

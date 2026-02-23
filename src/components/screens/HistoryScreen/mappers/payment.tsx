@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-import { TransactionBuilder, Horizon } from "@stellar/stellar-sdk";
 import BigNumber from "bignumber.js";
 import { TokenIcon } from "components/TokenIcon";
 import TransactionDetailsContent from "components/screens/HistoryScreen/TransactionDetailsContent";
@@ -10,6 +9,7 @@ import {
   TransactionType,
   TransactionStatus,
   HistoryItemData,
+  AssetDiffSummary,
 } from "components/screens/HistoryScreen/types";
 import { Avatar, AvatarSizes } from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
@@ -18,8 +18,8 @@ import {
   NATIVE_TOKEN_CODE,
   mapNetworkToNetworkDetails,
 } from "config/constants";
-import { logger } from "config/logger";
 import { TokenTypeWithCustomToken } from "config/types";
+import { normalizePaymentToAssetDiffs } from "helpers/assetBalanceChanges";
 import { formatTokenForDisplay } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import useColors, { ThemeColors } from "hooks/useColors";
@@ -37,53 +37,13 @@ interface PaymentHistoryItemData {
   themeColors: ThemeColors;
   xdr: string;
   network?: string;
+  assetDiffs?: AssetDiffSummary[];
 }
-
-/**
- * Extracts the actual destination address from transaction XDR
- * This is needed because Horizon API returns base G address for M addresses
- */
-const extractDestinationFromXDR = (
-  xdr: string,
-  network: string | undefined,
-  fallbackTo: string,
-): string => {
-  if (!xdr || !network) {
-    return fallbackTo;
-  }
-
-  try {
-    const networkDetails = mapNetworkToNetworkDetails(network as any);
-    const transaction = TransactionBuilder.fromXDR(
-      xdr,
-      networkDetails.networkPassphrase,
-    );
-
-    // Find payment operation and extract destination
-    const paymentOp = transaction.operations.find(
-      (op) => op.type === Horizon.HorizonApi.OperationResponseType.payment,
-    );
-
-    if (paymentOp && "destination" in paymentOp) {
-      const { destination } = paymentOp;
-      // Return the destination from XDR (could be M address)
-      return destination;
-    }
-  } catch (error) {
-    logger.error(
-      "mapPaymentHistoryItem",
-      "Failed to parse XDR for destination address",
-      error,
-    );
-  }
-
-  return fallbackTo;
-};
 
 /**
  * Maps payment operation data to history item data
  */
-export const mapPaymentHistoryItem = ({
+export const mapPaymentHistoryItem = async ({
   operation,
   publicKey,
   stellarExpertUrl,
@@ -93,7 +53,8 @@ export const mapPaymentHistoryItem = ({
   themeColors,
   xdr,
   network,
-}: PaymentHistoryItemData): HistoryItemData => {
+  assetDiffs = [],
+}: PaymentHistoryItemData): Promise<HistoryItemData> => {
   const {
     id,
     amount,
@@ -101,23 +62,49 @@ export const mapPaymentHistoryItem = ({
     asset_type: tokenType = "native",
     asset_issuer: tokenIssuer = "",
     to,
+    to_muxed: toMuxed,
     from,
   } = operation;
 
-  // Extract actual destination from XDR (may be M address)
-  // Horizon API returns base G address, but XDR contains the actual address used
-  const actualDestination = extractDestinationFromXDR(xdr, network, to);
+  const actualDestination = toMuxed || to;
 
   // Payment mapper handles classic/native tokens only (Soroban payments go to soroban mapper)
   // Classic tokens support M address + memo, so preserve memo even for M addresses
   const finalMemo = memo;
 
-  const isRecipient = actualDestination === publicKey && from !== publicKey;
+  const isRecipient = actualDestination === publicKey;
   const paymentDifference = isRecipient ? "+" : "-";
   const formattedAmount = `${paymentDifference}${formatTokenForDisplay(
     new BigNumber(amount).toString(),
     destTokenCode,
   )}`;
+
+  // Normalize payment to asset diffs if not already present
+  let finalAssetDiffs = assetDiffs;
+  if (finalAssetDiffs.length === 0 && network) {
+    finalAssetDiffs = await normalizePaymentToAssetDiffs({
+      amount,
+      assetCode: destTokenCode,
+      assetIssuer: tokenIssuer || null,
+      isCredit: isRecipient,
+      destination: isRecipient ? from : actualDestination,
+      networkDetails: mapNetworkToNetworkDetails(network as any),
+    });
+  }
+
+  // Use asset diffs for amount display if present
+  let amountText: string | null = formattedAmount;
+  let displayIsAddingFunds: boolean | null = isRecipient;
+
+  if (finalAssetDiffs && finalAssetDiffs.length === 1) {
+    const diff = finalAssetDiffs[0];
+    const prefix = diff.isCredit ? "+" : "-";
+    amountText = `${prefix}${formatTokenForDisplay(diff.amount, diff.assetCode)}`;
+    displayIsAddingFunds = diff.isCredit;
+  } else if (finalAssetDiffs && finalAssetDiffs.length > 1) {
+    amountText = t("history.transactionHistory.multiple");
+    displayIsAddingFunds = null; // Remove color styling for "Multiple"
+  }
 
   const IconComponent = (
     <TokenIcon
@@ -159,6 +146,7 @@ export const mapPaymentHistoryItem = ({
       from,
       to: actualDestination, // Use actual destination from XDR (may be M address)
     },
+    assetDiffs: finalAssetDiffs,
   };
 
   return {
@@ -168,9 +156,9 @@ export const mapPaymentHistoryItem = ({
       ? t("history.transactionHistory.received")
       : t("history.transactionHistory.sent"),
     dateText: date,
-    amountText: formattedAmount,
+    amountText,
     IconComponent,
-    isAddingFunds: isRecipient,
+    isAddingFunds: displayIsAddingFunds,
     ActionIconComponent,
     transactionStatus: TransactionStatus.SUCCESS,
   };

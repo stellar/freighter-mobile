@@ -36,7 +36,8 @@
     "copy": "Copy",
     "name": "Name",
     "collection": "Collection",
-    "tokenId": "Token ID"
+    "tokenId": "Token ID",
+    "message": "Message"
   },
   "home": {
     "title": "Home",
@@ -332,8 +333,8 @@
       "removedTrustline": "Removed trustline",
       "received": "Received",
       "sent": "Sent",
-      "swapTwoTokens": "{{srcTokenCode}} for {{destTokenCode}}",
-      "swappedTwoTokens": "Swapped {{srcTokenCode}} for {{destTokenCode}}",
+      "swapTwoTokens": "{{srcTokenCode}} to {{destTokenCode}}",
+      "swappedTwoTokens": "Swapped {{srcTokenCode}} to {{destTokenCode}}",
       "swapped": "Swapped",
       "transactionFailed": "Transaction failed",
       "failed": "Failed",
@@ -343,6 +344,7 @@
       "mintedToSelf": "Minted {{tokenSymbol}} to self",
       "unknown": "Unknown",
       "ops": "ops",
+      "multiple": "Multiple",
       "collectibleTransfer": {
         "unknownCollectible": "Unknown Collectible",
         "unknownCollection": "Collection {{contractId}}"
@@ -359,7 +361,10 @@
       "addressCopied": "Address copied to clipboard",
       "startingBalance": "Starting balance:",
       "minter": "Minter",
-      "mintedTo": "Minted to"
+      "mintedTo": "Minted to",
+      "assetChanges": "Asset Changes",
+      "from": "From",
+      "to": "To"
     }
   },
   "tokenDetailsScreen": {
@@ -397,7 +402,9 @@
       "invalidMnemonicPhrase": "Invalid phrase - words must be in the correct order, lowercase, and separated by spaces",
       "failedToCreateAccount": "Failed to create account. Please try again.",
       "accountAlreadyExists": "Account already exists",
-      "failedToImportSecretKey": "Failed to import secret key"
+      "failedToImportSecretKey": "Failed to import secret key",
+      "failedToReEncryptData": "Failed to re-encrypt data. Please sign in again.",
+      "failedToDecryptData": "Failed to decrypt data. Please sign in again."
     },
     "account": "Account {{number}}",
     "faceId": {
@@ -578,6 +585,8 @@
     "doNotProceed": "Do not proceed",
     "suspiciousRequest": "Suspicious request",
     "proceedWithCaution": "Proceed with caution",
+    "expectedToFailTitle": "Warning",
+    "expectedToFailDescription": "This transaction is expected to fail for the following reasons:",
     "unsafeTransaction": "This transaction does not appear safe for the following reasons:",
     "token": "This token does not appear safe for the following reasons:",
     "cancel": "Cancel",
@@ -617,6 +626,13 @@
     "invalidAddress": "Invalid Stellar address",
     "scanQRCodeText": "Scan a Freighter QR Code"
   },
+  "sendSearchContacts": {
+    "unfunded": {
+      "title": "The destination account doesn’t exist",
+      "action": "Send at least 1 XLM to create the account.",
+      "learnMore": "Learn more about account creation"
+    }
+  },
   "swapScreen": {
     "swapFrom": "Swap from",
     "swapTo": "Swap to",
@@ -648,7 +664,8 @@
       "swapTransactionFailed": "Swap transaction failed",
       "insufficientBalance": "Insufficient balance. Maximum spendable: {{amount}} {{symbol}}",
       "insufficientXlmForFees": "Insufficient XLM for transaction fees. You need at least {{fee}} XLM to pay the transaction fee.",
-      "noPathFound": "No path found between these tokens"
+      "noPathFound": "No path found between these tokens",
+      "pathFindFailed": "Couldn't fetch swap path. Please try again."
     },
     "proceedAnyway": "Proceed anyway"
   },
@@ -811,7 +828,11 @@
     "connect": "Connect",
     "connectAnyway": "Connect anyway",
     "maliciousFlag": "This site was flagged as malicious",
-    "suspiciousFlag": "This site was flagged as suspicious"
+    "suspiciousFlag": "This site was flagged as suspicious",
+    "verifyDomainTitle": "Verify Domain",
+    "verifyDomainDescription": "Please make sure this domain matches the site you are trying to connect with.",
+    "verifyDomainButton": "Got it",
+    "verifyDomainAccessibilityLabel": "Open information about verifying this domain"
   },
   "low": "Low",
   "medium": "Medium",
@@ -850,6 +871,7 @@
   "dappRequestBottomSheetContent": {
     "transactionRequest": "Transaction Request",
     "confirmTransaction": "Confirm transaction",
+    "signMessage": "Sign Message",
     "cancel": "Cancel",
     "confirm": "Confirm",
     "confirmAnyway": "Confirm anyway",
@@ -864,6 +886,7 @@
     "connectionSuccessfull": "{{dappName}} connection successfull!",
     "returnToBrowser": "You can now return to your browser",
     "signSuccessfull": "Transaction successfully signed!",
+    "signMessageSuccessfull": "Message successfully signed!",
     "signAndSubmitSuccessfull": "Transaction successfully signed and submitted!",
     "userRejected": "User rejected the request",
     "errorInitializing": "Error initializing WalletConnect",
@@ -871,6 +894,10 @@
     "errorNoUriParam": "No URI parameter found in the link",
     "errorConnecting": "{{dappName}} connection failed",
     "errorSigning": "Failed to sign transaction",
+    "errorSigningMessage": "Failed to sign message",
+    "errorInvalidMessage": "Invalid message",
+    "errorEmptyMessage": "Cannot sign empty message",
+    "errorMessageTooLong": "Message too long (max 1KB)",
     "errorSubmitting": "Failed to submit transaction",
     "errorRespondingRequest": "Failed to respond transaction request",
     "errorWrongNetwork": "Wrong Network",
@@ -891,7 +918,9 @@
     "connectionNotFound": "Connection not found",
     "connectionNotFoundMessage": "Please try creating a new connection or switch to another account which has the connection in your Freighter wallet",
     "walletIsLocked": "Wallet is locked",
-    "userNotAuthenticated": "User not authenticated"
+    "userNotAuthenticated": "User not authenticated",
+    "invalidTransactionOrigin": "Untrusted Transaction Domain",
+    "invalidTransactionOriginMessage": "A WalletConnect transaction was received from {{transactionRequestOrigin}}, but this domain is not connected in your Freighter wallet."
   },
   "sendRecipient": {
     "error": {
@@ -1061,6 +1090,30 @@
       "malicious": "Malicious",
       "unableToScan": "Unable to Scan",
       "clearOverride": "Clear Override"
+    },
+    "transactionFailure": {
+      "title": "Transaction Failure Override",
+      "description": "Force swap flow failures (build, sign, submit, path finding) or override swap path errors for testing (DEV only)",
+      "activeOverrides": "Active failure overrides:",
+      "buildActive": "Build transaction will fail",
+      "signActive": "Sign transaction will fail",
+      "submitActive": "Submit transaction will fail",
+      "swapPathForceActive": "Swap path finding will fail",
+      "buildEnabled": "✓ Force Build Failure",
+      "buildDisabled": "Force Build Failure",
+      "signEnabled": "✓ Force Sign Failure",
+      "signDisabled": "Force Sign Failure",
+      "submitEnabled": "✓ Force Submit Failure",
+      "submitDisabled": "Force Submit Failure",
+      "swapPathForceEnabled": "✓ Force Swap Path Failure",
+      "swapPathForceDisabled": "Force Swap Path Failure",
+      "clearAll": "Clear All Failures",
+      "debugMessages": {
+        "buildFailure": "[DEBUG] Forced build transaction failure - testing error handling",
+        "signFailure": "[DEBUG] Forced sign transaction failure - testing error handling",
+        "submitFailure": "[DEBUG] Forced submit transaction failure - testing error handling",
+        "swapPathFailure": "[DEBUG] Forced swap path finding failure - testing error handling"
+      }
     }
   },
   "blockaid": {
@@ -1079,6 +1132,9 @@
       },
       "transaction": {
         "simulationFailed": "Transaction simulation failed",
+        "expectedToFail": "Transaction is expected to fail.",
+        "unfundedDestination": "This is a new account and needs 1 XLM in order to get started. Any transaction to send non-XLM to an unfunded account will fail.",
+        "unfundedDestinationNative": "This is a new account and needs at least 1 XLM to be created. Sending less than 1 XLM to create it will fail.",
         "malicious": "This transaction was flagged as malicious",
         "warning": "This transaction was flagged as warning",
         "unableToSimulate": "Unable to simulate transaction",
@@ -1211,5 +1267,10 @@
       "skipTitle": "Proceed without update?",
       "skipMessage": "Using an outdated version may cause errors or failed transactions. By continuing, you accept full responsibility for any issues until you update Freighter."
     }
+  },
+  "jailbreakDetected": {
+    "title": "Cannot run on this device",
+    "description": "This device is rooted or jailbroken, which prevents the app from protecting your wallet keys.",
+    "disclaimer": "The app is disabled on compromised systems. Install and use it on a device with standard security intact."
   }
 }

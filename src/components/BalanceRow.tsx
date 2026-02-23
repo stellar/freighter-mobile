@@ -64,6 +64,7 @@ interface BalanceRowProps {
   isSingleRow?: boolean;
   customTextContent?: string;
   spendableAmount?: BigNumber;
+  testID?: string;
 }
 
 const getBlockaidDataFromBalance = (
@@ -116,12 +117,14 @@ const renderContent = (
   children: ReactNode,
   onPress?: () => void,
   isSingleRow?: boolean,
+  testID?: string,
 ) => {
   if (onPress) {
     return (
       <TouchableOpacity
         onPress={onPress}
         delayPressIn={isSingleRow ? 0 : DEFAULT_PRESS_DELAY}
+        testID={testID}
       >
         {children}
       </TouchableOpacity>
@@ -140,6 +143,7 @@ export const BalanceRow: React.FC<BalanceRowProps> = ({
   onPress,
   isSingleRow = false,
   spendableAmount,
+  testID,
 }) => {
   const { overriddenBlockaidResponse } = useDebugStore();
 
@@ -186,5 +190,6 @@ export const BalanceRow: React.FC<BalanceRowProps> = ({
     </BalanceRowContainer>,
     onPress,
     isSingleRow,
+    testID,
   );
 };

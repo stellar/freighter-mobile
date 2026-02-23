@@ -1,6 +1,29 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Horizon } from "@stellar/stellar-sdk";
 import { SorobanTokenInterface } from "helpers/soroban";
+import { ImageSourcePropType } from "react-native";
+
+// Asset balance change from Horizon API
+export interface AssetBalanceChange {
+  asset_type: string;
+  asset_code?: string;
+  asset_issuer?: string;
+  type: string;
+  from: string;
+  to: string;
+  amount: string;
+}
+
+// Asset diff summary for UI display
+export interface AssetDiffSummary {
+  assetCode: string;
+  assetIssuer: string | null;
+  decimals: number;
+  amount: string;
+  isCredit: boolean;
+  destination?: string;
+  icon?: string | ImageSourcePropType;
+}
 
 export enum TransactionType {
   UNKNOWN = "unknown",
@@ -90,6 +113,7 @@ export interface TransactionDetails {
   swapDetails?: SwapDetailsType;
   paymentDetails?: PaymentDetailsType;
   contractDetails?: ContractDetailsType;
+  assetDiffs?: AssetDiffSummary[];
 }
 
 // Additional types for HistoryItem component

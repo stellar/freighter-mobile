@@ -2,10 +2,12 @@ import Blockaid from "@blockaid/client";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import AddMemoExplanationBottomSheet from "components/AddMemoExplanationBottomSheet";
 import BottomSheet from "components/BottomSheet";
+import InformationBottomSheet from "components/InformationBottomSheet";
 import { SecurityDetailBottomSheet } from "components/blockaid";
 import { useSignTransactionDetails } from "components/screens/SignTransactionDetails/hooks/useSignTransactionDetails";
 import DappConnectionBottomSheetContent from "components/screens/WalletKit/DappConnectionBottomSheetContent";
 import DappRequestBottomSheetContent from "components/screens/WalletKit/DappRequestBottomSheetContent";
+import Icon from "components/sds/Icon";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { mapNetworkToNetworkDetails, NETWORKS } from "config/constants";
 import { logger } from "config/logger";
@@ -19,7 +21,10 @@ import {
   WalletKitEventTypes,
   WalletKitSessionRequest,
   StellarRpcChains,
+  StellarRpcMethods,
+  StellarSignXDRParams,
 } from "ducks/walletKit";
+import { getHostname } from "helpers/protocols";
 import {
   approveSessionProposal,
   approveSessionRequest,
@@ -29,6 +34,7 @@ import {
 import { useBlockaidSite } from "hooks/blockaid/useBlockaidSite";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
+import useColors from "hooks/useColors";
 import { getDappMetadataFromEvent } from "hooks/useDappMetadata";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useValidateTransactionMemo } from "hooks/useValidateTransactionMemo";
@@ -82,8 +88,9 @@ interface WalletKitProviderProps {
 export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   children,
 }) => {
+  const { themeColors } = useColors();
   const { network, authStatus } = useAuthenticationStore();
-  const { account, signTransaction } = useGetActiveAccount();
+  const { account, signTransaction, signMessage } = useGetActiveAccount();
   const { overriddenBlockaidResponse } = useDebugStore();
 
   const addMemoExplanationBottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -95,7 +102,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   const initialized = useWalletKitInitialize();
   useWalletKitEventsManager(initialized);
 
-  const { event, clearEvent, activeSessions, fetchActiveSessions } =
+  const { event, clearEvent, setEvent, activeSessions, fetchActiveSessions } =
     useWalletKitStore();
   const { showToast } = useToast();
   const { t } = useAppTranslation();
@@ -115,23 +122,42 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     Blockaid.StellarTransactionScanResponse | undefined
   >(undefined);
 
+  // Request queue to prevent concurrent request handling race conditions
+  const isProcessingRequestRef = useRef(false);
+  const pendingRequestsQueueRef = useRef<WalletKitSessionRequest[]>([]);
+
   const xdr = useMemo(
     () =>
-      (requestEvent?.params.request.params as unknown as { xdr: string })
-        ?.xdr ?? "",
+      (requestEvent?.params.request.params as StellarSignXDRParams)?.xdr ?? "",
     [requestEvent],
+  );
+
+  const requestMethod = useMemo(
+    () => requestEvent?.params.request.method,
+    [requestEvent],
+  );
+
+  const isSignMessageRequest = useMemo(
+    () => requestMethod === StellarRpcMethods.SIGN_MESSAGE,
+    [requestMethod],
   );
 
   /**
    * Validates transaction memo requirements for incoming dApp transaction requests
    * Uses the useValidateTransactionMemo hook to check if the transaction
    * destination requires a memo and if one is currently missing
+   * Only validates for XDR-based requests (not sign_message)
    */
-  const { isMemoMissing, isValidatingMemo } = useValidateTransactionMemo(xdr);
+  const { isMemoMissing: isMemoMissingRaw, isValidatingMemo } =
+    useValidateTransactionMemo(xdr);
+
+  // Only apply memo validation to XDR-based requests, not sign_message
+  const isMemoMissing = isSignMessageRequest ? false : isMemoMissingRaw;
 
   const dappConnectionBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const dappRequestBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const siteSecurityWarningBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const verifyDomainBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [securityWarningContext, setSecurityWarningContext] =
     useState<SecurityContext>(SecurityContext.SITE);
 
@@ -340,6 +366,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   const handleClearDappConnection = () => {
     dappConnectionBottomSheetModalRef.current?.dismiss();
     siteSecurityWarningBottomSheetModalRef.current?.dismiss();
+    verifyDomainBottomSheetModalRef.current?.dismiss();
     // Also ensure other sheets are closed to avoid any leftovers
     dappRequestBottomSheetModalRef.current?.dismiss();
 
@@ -378,6 +405,22 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       setSecurityWarningContext(SecurityContext.SITE);
       saveMemo("");
       clearEvent();
+
+      // Mark processing as complete and process pending request if any
+      isProcessingRequestRef.current = false;
+      if (pendingRequestsQueueRef.current.length > 0) {
+        logger.debug(
+          "WalletKitProvider",
+          "Processing pending request after current request completed",
+          {
+            queueLength: pendingRequestsQueueRef.current.length,
+          },
+        );
+        const pending = pendingRequestsQueueRef.current.shift()!;
+        // Trigger the event again to process the pending request
+        // pending is already a complete WalletKitSessionRequest with type property
+        setEvent(pending);
+      }
     }, 200);
   };
 
@@ -389,6 +432,22 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
    */
   const handleDappConnection = () => {
     if (!proposalEvent) {
+      return;
+    }
+
+    // Validate that publicKey is not empty before approving session
+    if (!publicKey || publicKey.trim().length === 0) {
+      logger.error(
+        "WalletKitProvider",
+        "Cannot approve session with empty publicKey",
+        new Error("Empty publicKey in handleDappConnection"),
+      );
+      showToast({
+        title: t("walletKit.connectionNotFound"),
+        message: t("walletKit.userNotAuthenticated"),
+        variant: "error",
+      });
+      handleClearDappConnection();
       return;
     }
 
@@ -430,6 +489,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     approveSessionRequest({
       sessionRequest: requestEvent,
       signTransaction,
+      signMessage,
       networkPassphrase: networkDetails.networkPassphrase,
       activeChain,
       showToast,
@@ -504,6 +564,17 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   }, []);
 
   /**
+   * Handles opening and closing of the Verify Domain bottom sheet
+   */
+  const handleOpenVerifyDomain = useCallback(() => {
+    verifyDomainBottomSheetModalRef.current?.present();
+  }, []);
+
+  const handleCloseVerifyDomain = useCallback(() => {
+    verifyDomainBottomSheetModalRef.current?.dismiss();
+  }, []);
+
+  /**
    * Effect that handles WalletKit events (session proposals and requests).
    * Processes incoming session proposals and requests, validates authentication status,
    * scans dApp URLs for security, and presents appropriate bottom sheet modals for user interaction.
@@ -545,7 +616,10 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       }
 
       // Check if wallet is locked
-      if (authStatus === AUTH_STATUS.HASH_KEY_EXPIRED) {
+      if (
+        authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ||
+        authStatus === AUTH_STATUS.LOCKED
+      ) {
         showToast({
           title: t("walletKit.walletLocked"),
           message: t("walletKit.pleaseUnlockToConnect"),
@@ -598,6 +672,25 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     if (event.type === WalletKitEventTypes.SESSION_REQUEST) {
       const sessionRequest = event as WalletKitSessionRequest;
 
+      // Simple queue: if already processing a request, store this one as pending
+      if (isProcessingRequestRef.current) {
+        logger.warn(
+          "WalletKitProvider",
+          "Request already in progress, queuing new request",
+          {
+            currentRequestId: requestEvent?.id,
+            newRequestId: sessionRequest.id,
+            queueLength: pendingRequestsQueueRef.current.length + 1,
+          },
+        );
+        pendingRequestsQueueRef.current.push(sessionRequest);
+        clearEvent();
+        return;
+      }
+
+      // Mark as processing
+      isProcessingRequestRef.current = true;
+
       // Check if user is not authenticated
       if (authStatus === AUTH_STATUS.NOT_AUTHENTICATED) {
         showToast({
@@ -612,11 +705,15 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         });
 
         clearEvent();
+        isProcessingRequestRef.current = false;
         return;
       }
 
       // Check if wallet is locked
-      if (authStatus === AUTH_STATUS.HASH_KEY_EXPIRED) {
+      if (
+        authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ||
+        authStatus === AUTH_STATUS.LOCKED
+      ) {
         showToast({
           title: t("walletKit.walletLocked"),
           message: t("walletKit.pleaseUnlockToSignTransaction"),
@@ -653,50 +750,118 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         return;
       }
 
+      // Validate that the transaction request origin matches an active session
+      // The verifyContext.verified.origin should match the hostname of one of our active sessions
+      const transactionRequestOrigin =
+        sessionRequest.verifyContext?.verified?.origin;
+
+      const isValidTransactionRequestOrigin = Object.values(
+        activeSessions,
+      ).some((session) => {
+        const sessionHostname = getHostname(session.peer?.metadata?.url);
+        const requestHostname = getHostname(transactionRequestOrigin);
+
+        // Reject if either hostname is null/undefined - prevents null === null bypass
+        if (!sessionHostname || !requestHostname) {
+          return false;
+        }
+
+        return sessionHostname === requestHostname;
+      });
+
+      if (!isValidTransactionRequestOrigin) {
+        showToast({
+          title: t("walletKit.invalidTransactionOrigin"),
+          message: t("walletKit.invalidTransactionOriginMessage", {
+            transactionRequestOrigin,
+          }),
+          variant: "error",
+        });
+
+        logger.error(
+          "WalletKitProvider",
+          "Invalid transaction origin",
+          new Error(
+            "Untrusted Transaction Domain. Bad actor potentially found in transaction request.",
+          ),
+          {
+            transactionRequestOrigin,
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            xdr: sessionRequest.params?.request?.params?.xdr,
+          },
+        );
+
+        rejectSessionRequest({
+          sessionRequest,
+          message: `${t("walletKit.invalidTransactionOrigin")}: ${transactionRequestOrigin}.`,
+        });
+
+        clearEvent();
+        return;
+      }
+
       setRequestEvent(sessionRequest);
 
+      // Get dApp metadata from active session
+      // If no metadata is found, use the verified origin from WalletConnect as fallback
       const dappMetadata = getDappMetadataFromEvent(
         sessionRequest,
         activeSessions,
       );
+      const dappDomain =
+        (dappMetadata?.url as string) ||
+        sessionRequest.verifyContext?.verified?.origin ||
+        "";
 
-      const dappDomain = dappMetadata?.url as string;
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      const currentRequestMethod = sessionRequest.params.request.method;
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const requestXdr = sessionRequest.params.request.params.xdr as string;
 
-      scanTransaction(requestXdr, dappDomain)
-        .then((scanResult) => {
-          setTransactionScanResult(scanResult);
-          // Check security assessment inline to decide which sheet to open
-          const securityAssessment = assessTransactionSecurity(
-            scanResult,
-            overriddenBlockaidResponse,
-          );
-          if (securityAssessment.isUnableToScan) {
-            // For unable to scan, open security detail sheet first (main sheet not opened yet)
-            // Don't dismiss request sheet - it hasn't been opened yet and dismissing would cancel it
-            setSecurityWarningContext(SecurityContext.TRANSACTION);
-            siteSecurityWarningBottomSheetModalRef.current?.present();
-          } else {
-            dappRequestBottomSheetModalRef.current?.present();
-          }
-        })
-        .catch(() => {
-          setTransactionScanResult(undefined);
-          // If scan fails, treat as unable to scan
-          const securityAssessment = assessTransactionSecurity(
-            undefined,
-            overriddenBlockaidResponse,
-          );
-          if (securityAssessment.isUnableToScan) {
-            // For unable to scan, open security detail sheet first (main sheet not opened yet)
-            // Don't dismiss request sheet - it hasn't been opened yet and dismissing would cancel it
-            setSecurityWarningContext(SecurityContext.TRANSACTION);
-            siteSecurityWarningBottomSheetModalRef.current?.present();
-          } else {
-            dappRequestBottomSheetModalRef.current?.present();
-          }
-        });
+      // Only scan transactions for XDR-based requests (not sign_message)
+      const isXdrRequest =
+        currentRequestMethod === (StellarRpcMethods.SIGN_XDR as string) ||
+        currentRequestMethod ===
+          (StellarRpcMethods.SIGN_AND_SUBMIT_XDR as string);
+
+      if (isXdrRequest && requestXdr) {
+        scanTransaction(requestXdr, dappDomain)
+          .then((scanResult) => {
+            setTransactionScanResult(scanResult);
+            // Check security assessment inline to decide which sheet to open
+            const securityAssessment = assessTransactionSecurity(
+              scanResult,
+              overriddenBlockaidResponse,
+            );
+            if (securityAssessment.isUnableToScan) {
+              // For unable to scan, open security detail sheet first (main sheet not opened yet)
+              // Don't dismiss request sheet - it hasn't been opened yet and dismissing would cancel it
+              setSecurityWarningContext(SecurityContext.TRANSACTION);
+              siteSecurityWarningBottomSheetModalRef.current?.present();
+            } else {
+              dappRequestBottomSheetModalRef.current?.present();
+            }
+          })
+          .catch(() => {
+            setTransactionScanResult(undefined);
+            // If scan fails, treat as unable to scan
+            const securityAssessment = assessTransactionSecurity(
+              undefined,
+              overriddenBlockaidResponse,
+            );
+            if (securityAssessment.isUnableToScan) {
+              // For unable to scan, open security detail sheet first (main sheet not opened yet)
+              // Don't dismiss request sheet - it hasn't been opened yet and dismissing would cancel it
+              setSecurityWarningContext(SecurityContext.TRANSACTION);
+              siteSecurityWarningBottomSheetModalRef.current?.present();
+            } else {
+              dappRequestBottomSheetModalRef.current?.present();
+            }
+          });
+      } else {
+        // For sign_message requests, skip transaction scanning and show modal directly
+        dappRequestBottomSheetModalRef.current?.present();
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -740,6 +905,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
             securityWarningAction={() =>
               presentSecurityWarningDetail(SecurityContext.SITE)
             }
+            onVerifyDomainPress={handleOpenVerifyDomain}
           />
         }
       />
@@ -751,6 +917,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         analyticsEvent={AnalyticsEvent.VIEW_SIGN_DAPP_TRANSACTION}
         bottomSheetModalProps={{
           onDismiss: handleClearDappRequest,
+          enableDynamicSizing: true,
         }}
         customContent={
           <DappRequestBottomSheetContent
@@ -761,10 +928,24 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
             onBannerPress={onOpenAddMemoExplanationBottomSheet}
             onConfirm={handleDappRequest}
             onCancelRequest={handleClearDappRequest}
-            isMalicious={transactionSecurityAssessment.isMalicious}
-            isSuspicious={transactionSecurityAssessment.isSuspicious}
-            isUnableToScan={transactionSecurityAssessment.isUnableToScan}
-            transactionScanResult={transactionScanResult}
+            isMalicious={
+              isSignMessageRequest
+                ? false
+                : transactionSecurityAssessment.isMalicious
+            }
+            isSuspicious={
+              isSignMessageRequest
+                ? false
+                : transactionSecurityAssessment.isSuspicious
+            }
+            isUnableToScan={
+              isSignMessageRequest
+                ? false
+                : transactionSecurityAssessment.isUnableToScan
+            }
+            transactionScanResult={
+              isSignMessageRequest ? undefined : transactionScanResult
+            }
             securityWarningAction={() =>
               presentSecurityWarningDetail(SecurityContext.TRANSACTION)
             }
@@ -777,6 +958,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         }
       />
 
+      {/* Bottom sheet for explaining why a memo is required for a dApp transaction request */}
       <BottomSheet
         modalRef={addMemoExplanationBottomSheetModalRef}
         handleCloseModal={onCancelAddMemo}
@@ -798,6 +980,35 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
             securityContext={securityWarningContext}
             severity={getSeverity()}
             proceedAnywayText={getProceedAnywayText()}
+          />
+        }
+      />
+
+      {/* Bottom sheet for explaining why a domain should be verified for a dApp connection request */}
+      <BottomSheet
+        modalRef={verifyDomainBottomSheetModalRef}
+        handleCloseModal={handleCloseVerifyDomain}
+        customContent={
+          <InformationBottomSheet
+            title={t("dappConnectionBottomSheetContent.verifyDomainTitle")}
+            texts={[
+              {
+                key: "verify-domain-description",
+                value: t(
+                  "dappConnectionBottomSheetContent.verifyDomainDescription",
+                ),
+              },
+            ]}
+            headerElement={
+              <View className="p-2 rounded-[8px] bg-background-tertiary">
+                <Icon.InfoCircle color={themeColors.foreground.primary} />
+              </View>
+            }
+            onClose={handleCloseVerifyDomain}
+            onConfirm={handleCloseVerifyDomain}
+            confirmLabel={t(
+              "dappConnectionBottomSheetContent.verifyDomainButton",
+            )}
           />
         }
       />

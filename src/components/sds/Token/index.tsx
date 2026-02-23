@@ -1,7 +1,8 @@
+import Spinner from "components/Spinner";
 import { THEME } from "config/theme";
 import { px } from "helpers/dimensions";
-import React from "react";
-import { ImageSourcePropType } from "react-native";
+import React, { useState, useEffect, useRef } from "react";
+import { ImageSourcePropType, View } from "react-native";
 import styled from "styled-components/native";
 
 // =============================================================================
@@ -93,14 +94,16 @@ type TokenVariant = "single" | "swap" | "pair" | "platform";
  *
  * Defines the properties needed to display a token image.
  *
- * @property {ImageSourcePropType | string} image - The image source - can be either:
+ * @property {ImageSourcePropType | string} [image] - The image source - can be either:
  *   - An imported image (e.g., `logos.stellar`)
  *   - A remote URL as string (e.g., "https://example.com/logo.png")
+ *   - If provided and valid, this takes priority over `renderContent`
  * @property {string} altText - Accessible description of the image for screen readers
  * @property {string} [backgroundColor] - Optional custom background color for the token
  *   (defaults to the theme's background color if not provided)
  * @property {() => React.ReactNode} [renderContent] - Optional function to render custom content
- *   instead of an image (e.g., for displaying text or other components)
+ *   as a fallback when `image` is not provided or invalid (e.g., for displaying text or other components).
+ *   Only rendered if `image` is not available or invalid.
  */
 export type TokenSource = {
   /** Image URL */
@@ -334,6 +337,99 @@ const TokenImage = styled.Image`
 // Component
 // =============================================================================
 
+// Component to handle image loading with timeout fallback
+const ImageWithFallback: React.FC<{
+  source: TokenSource;
+}> = ({ source }) => {
+  const [showFallback, setShowFallback] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const imageLoadedRef = useRef(false);
+  const imageErroredRef = useRef(false);
+
+  // Timeout constant: show fallback after 1s if image hasn't loaded
+  const IMAGE_LOAD_TIMEOUT = 1000;
+
+  // Check if image is valid (non-empty string or valid ImageSourcePropType)
+  const hasValidImage =
+    source.image &&
+    (typeof source.image === "string"
+      ? source.image.trim().length > 0
+      : !!source.image);
+
+  useEffect(() => {
+    if (hasValidImage) {
+      imageLoadedRef.current = false;
+      imageErroredRef.current = false;
+      setShowFallback(false);
+      setIsLoading(true);
+
+      timeoutRef.current = setTimeout(() => {
+        if (!imageLoadedRef.current && !imageErroredRef.current) {
+          setShowFallback(true);
+          setIsLoading(false);
+        }
+      }, IMAGE_LOAD_TIMEOUT);
+    } else {
+      setIsLoading(false);
+    }
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    };
+  }, [hasValidImage]);
+
+  const handleImageLoad = () => {
+    imageLoadedRef.current = true;
+    setIsLoading(false);
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  };
+
+  const handleImageError = () => {
+    imageErroredRef.current = true;
+    setIsLoading(false);
+    setShowFallback(true);
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  };
+
+  // If we have a valid image, render the image with spinner overlay
+  if (hasValidImage && !showFallback) {
+    return (
+      <View className="w-full h-full relative">
+        <TokenImage
+          // This will allow handling both local and remote images
+          source={
+            typeof source.image === "string"
+              ? { uri: source.image }
+              : source.image
+          }
+          accessibilityLabel={source.altText}
+          onLoad={handleImageLoad}
+          onError={handleImageError}
+        />
+        {/* Spinner overlay - shown while loading, hidden when image loads */}
+        {isLoading && (
+          <View className="absolute inset-0 justify-center items-center">
+            <Spinner size="small" />
+          </View>
+        )}
+      </View>
+    );
+  }
+
+  // If no valid image or image failed, show fallback
+  return source.renderContent ? <>{source.renderContent()}</> : null;
+};
+
 /**
  * Token Component
  *
@@ -348,7 +444,9 @@ const TokenImage = styled.Image`
  *   - "pair": displays two tokens side by side (for trading pairs)
  *   - "platform": displays two tokens with a platform logo overlaid (for protocol tokens)
  * - Supports both local tokens (imported from the token system) and remote images (URLs)
- * - Supports custom content rendering (e.g., text or other components)
+ * - Rendering priority: `image` takes priority over `renderContent`. If a valid `image` is provided,
+ *   it will be rendered. `renderContent` is only used as a fallback when `image` is not available or invalid.
+ * - Supports custom content rendering (e.g., text or other components) as fallback
  * - Consistent styling with border and background
  * - Customizable background colors for specific tokens
  *
@@ -420,6 +518,17 @@ const TokenImage = styled.Image`
  *     altText: "Stellar Platform Logo"
  *   }}
  * />
+ *
+ * @example
+ * // Token with fallback content (renderContent only used if image is not available)
+ * <Token
+ *   variant="single"
+ *   sourceOne={{
+ *     image: "https://example.com/token-logo.png", // This takes priority
+ *     altText: "Token Logo",
+ *     renderContent: () => <Text>Token</Text> // Fallback if image fails or is invalid
+ *   }}
+ * />
  */
 export const Token: React.FC<TokenProps> = ({
   variant,
@@ -436,19 +545,7 @@ export const Token: React.FC<TokenProps> = ({
       $backgroundColor={source.backgroundColor}
       testID={`${testID}-image-${isSecond ? "two" : "one"}`}
     >
-      {source.renderContent ? (
-        source.renderContent()
-      ) : (
-        <TokenImage
-          // This will allow handling both local and remote images
-          source={
-            typeof source.image === "string"
-              ? { uri: source.image }
-              : source.image
-          }
-          accessibilityLabel={source.altText}
-        />
-      )}
+      <ImageWithFallback source={source} />
     </TokenImageContainer>
   );
 

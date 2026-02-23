@@ -90,8 +90,12 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const transactionSecurityWarningBottomSheetModalRef =
     useRef<BottomSheetModal>(null);
   const transactionSettingsBottomSheetModalRef = useRef<BottomSheetModal>(null);
-  const [swapError, setSwapError] = useState<string | null>(null);
   const [amountError, setAmountError] = useState<string | null>(null);
+  const [activeError, setActiveError] = useState<{
+    message: string;
+    toastId: string;
+    duration: number;
+  } | null>(null);
   const { showToast } = useToast();
   const deviceSize = useDeviceSize();
   const isSmallScreen = deviceSize === DeviceSize.XS;
@@ -152,11 +156,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         fee: swapFee,
       });
       setAmountError(errorMessage);
-      showToast({
-        variant: "error",
-        title: t("swapScreen.errors.insufficientXlmForFees", {
-          fee: swapFee,
-        }),
+      setActiveError({
+        message: errorMessage,
         toastId: "insufficient-xlm-for-fees",
         duration: 3000,
       });
@@ -181,16 +182,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         symbol: sourceTokenSymbol,
       });
       setAmountError(errorMessage);
-      showToast({
-        variant: "error",
-        title: t("swapScreen.errors.insufficientBalance", {
-          amount: spendableAmount
-            ? formatBigNumberForDisplay(spendableAmount, {
-                decimalPlaces: DEFAULT_DECIMALS,
-              })
-            : "0",
-          symbol: sourceTokenSymbol,
-        }),
+      setActiveError({
+        message: errorMessage,
         toastId: "insufficient-balance",
         duration: 3000,
       });
@@ -207,7 +200,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     transactionHash,
     sourceBalance,
     balanceItems,
-    showToast,
   ]);
 
   useSwapPathFinding({
@@ -263,18 +255,40 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
 
   useInitialRecommendedFee(recommendedFee, TransactionContext.Swap);
 
+  // Unified error toast effect
   useEffect(() => {
-    if (swapError) {
-      setSwapError(null);
+    if (activeError) {
+      showToast({
+        variant: "error",
+        title: activeError.message,
+        toastId: activeError.toastId,
+        duration: activeError.duration,
+      });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sourceAmount, pathResult]);
+  }, [activeError, showToast]);
+
+  // Show persistent toast for path-related errors when user has entered amount and selected destination token
+  useEffect(() => {
+    const hasAmount = sourceAmount && Number(sourceAmount) > 0;
+    const hasDestinationToken = !!destinationTokenId;
+
+    // Only show toast when there's an actual pathError (not just a missing pathResult)
+    if (pathError && hasAmount && hasDestinationToken) {
+      setActiveError({
+        message: pathError,
+        toastId: "swap-path-error",
+        duration: 0,
+      });
+    }
+  }, [pathError, sourceAmount, destinationTokenId, activeError]);
+
+  const handleSettingsPress = useCallback(() => {
+    transactionSettingsBottomSheetModalRef.current?.present();
+  }, []);
 
   useRightHeaderButton({
     icon: Icon.Settings04,
-    onPress: () => {
-      transactionSettingsBottomSheetModalRef.current?.present();
-    },
+    onPress: handleSettingsPress,
   });
 
   const navigateToSelectDestinationTokenScreen = useCallback(() => {
@@ -338,37 +352,27 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           error,
         );
 
-        const errorMessage = t("swapScreen.errors.failedToSetupTransaction");
-        setSwapError(errorMessage);
-        showToast({
-          variant: "error",
-          title: t("swapScreen.errors.failedToSetupTransaction"),
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : t("swapScreen.errors.failedToSetupTransaction");
+        setActiveError({
+          message: errorMessage,
           toastId: "failed-to-setup-transaction",
-          duration: 3000,
+          duration: 0,
         });
       }
     },
-    [setupSwapTransaction, t, showToast],
+    [setupSwapTransaction, t],
   );
 
   const handleConfirmSwap = useCallback(() => {
     swapReviewBottomSheetModalRef.current?.dismiss();
 
-    setTimeout(() => {
-      executeSwap().catch((error) => {
-        logger.error("SwapAmountScreen", "Swap transaction failed:", error);
-
-        const errorMessage = t("swapScreen.errors.swapTransactionFailed");
-        setSwapError(errorMessage);
-        showToast({
-          variant: "error",
-          title: t("swapScreen.errors.swapTransactionFailed"),
-          toastId: "swap-transaction-failed",
-          duration: 3000,
-        });
-      });
-    }, 100);
-  }, [executeSwap, t, showToast]);
+    // Execute swap without setTimeout - errors are handled in the hook itself
+    // so they persist even if this component unmounts
+    executeSwap();
+  }, [executeSwap]);
 
   const handleOpenSettings = useCallback(() => {
     transactionSettingsBottomSheetModalRef.current?.present();
@@ -460,6 +464,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       resetSwap();
       resetTransaction();
       resetToDefaults();
+      setActiveError(null);
     },
     [resetSwap, resetTransaction, resetToDefaults],
   );
@@ -482,7 +487,9 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     ) {
       const extractedWarnings = [
         ...extractSecurityWarnings(transactionScanResult),
-        ...Object.values(scanResults).map(extractSecurityWarnings),
+        ...Object.values(scanResults).map((result) =>
+          extractSecurityWarnings(result),
+        ),
       ].flat();
 
       if (Array.isArray(extractedWarnings) && extractedWarnings.length > 0) {
@@ -602,7 +609,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
 
   return (
     <BaseLayout insets={{ top: false }}>
-      <View className="flex-1">
+      <View className="flex-1" testID="swap-amount-screen">
         <View className="flex-none items-center py-[24px] max-xs:py-[16px] px-6">
           <View className="flex-row items-center gap-1">
             <Display
@@ -629,6 +636,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
                 scanResult={scanResults[sourceBalance.id.replace(":", "-")]}
                 onPress={navigateToSelectSourceTokenScreen}
                 spendableAmount={spendableAmount || undefined}
+                testID="swap-from-token-row"
                 rightContent={
                   <IconButton
                     Icon={Icon.ChevronRight}
@@ -649,6 +657,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
                   scanResults[destinationBalance.id.replace(":", "-")]
                 }
                 onPress={navigateToSelectDestinationTokenScreen}
+                testID="swap-to-token-row"
                 rightContent={
                   <IconButton
                     Icon={Icon.ChevronRight}
@@ -661,6 +670,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
               <TouchableOpacity
                 className="flex-row w-full h-[44px] justify-between items-center"
                 onPress={navigateToSelectDestinationTokenScreen}
+                testID="swap-to-choose-token"
               >
                 <View className="flex-row items-center flex-1 mr-4">
                   <View className="flex-row items-center gap-16px">
@@ -717,6 +727,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
               onPress={handleMainButtonPress}
               disabled={isButtonDisabled}
               isLoading={isLoadingPath || isBuilding}
+              testID="swap-continue-button"
             >
               {destinationBalance
                 ? t("common.review")
@@ -726,11 +737,14 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         </View>
       </View>
 
+      {/* Clear errors when review is closed */}
       <BottomSheet
         modalRef={swapReviewBottomSheetModalRef}
-        handleCloseModal={() =>
-          swapReviewBottomSheetModalRef.current?.dismiss()
-        }
+        handleCloseModal={() => {
+          swapReviewBottomSheetModalRef.current?.dismiss();
+          // Clear all errors when review is closed
+          setActiveError(null);
+        }}
         snapPoints={["80%"]}
         scrollable
         analyticsEvent={AnalyticsEvent.VIEW_SWAP_CONFIRM}

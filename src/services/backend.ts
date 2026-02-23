@@ -975,6 +975,7 @@ export const fetchProtocols = async (): Promise<DiscoverProtocol[]> => {
  * @property {Object[]} contracts - Array of contract objects to query
  * @property {string} contracts[].id - The contract ID
  * @property {string[]} contracts[].token_ids - Array of token IDs to fetch
+ * @property {string} network - The network to query (PUBLIC or TESTNET)
  */
 export interface FetchCollectiblesParams {
   owner: string;
@@ -982,6 +983,7 @@ export interface FetchCollectiblesParams {
     id: string;
     token_ids: string[];
   }[];
+  network: string;
 }
 
 /**
@@ -1070,19 +1072,21 @@ export type CollectiblesResponse = {
  *   contracts: [{
  *     id: "CCBWOUL7XW5XSWD3UKL76VWLLFCSZP4D4GUSCFBHUQCEAW23QVKJZ7ON",
  *     token_ids: ["abc", "def", "ghi"]
- *   }]
+ *   }],
+ *   network: NETWORKS.PUBLIC
  * });
  * ```
  */
 export const fetchCollectibles = async ({
   owner,
   contracts,
+  network,
 }: FetchCollectiblesParams): Promise<
   (BackendCollection | BackendCollectionError)[]
 > => {
   try {
     const { data } = await freighterBackendV2.post<CollectiblesResponse>(
-      "/collectibles",
+      `/collectibles?network=${network}`,
       {
         owner,
         contracts,

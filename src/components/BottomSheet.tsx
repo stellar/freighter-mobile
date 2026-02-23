@@ -63,6 +63,7 @@ export type BottomSheetProps = {
   enablePanDownToClose?: boolean;
   enableContentPanningGesture?: boolean;
   enableDynamicSizing?: boolean;
+  maxDynamicContentSize?: number;
   useInsetsBottomPadding?: boolean;
   analyticsEvent?: AnalyticsEvent;
   analyticsProps?: AnalyticsProps;
@@ -84,6 +85,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
   enablePanDownToClose = true,
   enableContentPanningGesture = true,
   enableDynamicSizing = true,
+  maxDynamicContentSize,
   useInsetsBottomPadding = true,
   analyticsEvent,
   analyticsProps,
@@ -213,6 +215,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
       enablePanDownToClose={enablePanDownToClose}
       enableContentPanningGesture={enableContentPanningGesture}
       enableDynamicSizing={enableDynamicSizing}
+      maxDynamicContentSize={maxDynamicContentSize}
       enableOverDrag={false}
       snapPoints={snapPoints}
       backdropComponent={renderBackdrop}

@@ -95,7 +95,7 @@ describe("SecurityDetailBottomSheet", () => {
     expect(getByText("Connect anyway")).toBeTruthy();
   });
 
-  it("renders with different variants for malicious vs warning", () => {
+  it("renders with different variants for malicious vs warning vs expected to fail", () => {
     const { getByText: getByTextMalicious } = renderWithProviders(
       <SecurityDetailBottomSheet
         {...defaultProps}
@@ -115,6 +115,21 @@ describe("SecurityDetailBottomSheet", () => {
 
     // Should show "Suspicious request" for warning
     expect(getByTextWarning(/suspicious request/i)).toBeTruthy();
+
+    const { getByText: getByTextExpectedToFail } = renderWithProviders(
+      <SecurityDetailBottomSheet
+        {...defaultProps}
+        severity={SecurityLevel.EXPECTED_TO_FAIL}
+      />,
+    );
+
+    // Should show Blockaid-style warning title and expected-to-fail subtitle
+    expect(getByTextExpectedToFail(/warning/i)).toBeTruthy();
+    expect(
+      getByTextExpectedToFail(
+        /this transaction is expected to fail for the following reasons:/i,
+      ),
+    ).toBeTruthy();
   });
 
   it("renders correct description based on securityContext", () => {

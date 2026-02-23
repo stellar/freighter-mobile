@@ -12,25 +12,6 @@ export const isHomepageUrl = (url: string): boolean =>
   !url || url === BROWSER_CONSTANTS.HOMEPAGE_URL;
 
 /**
- * Extracts the domain from a URL for display purposes.
- * @param url - The URL to extract the domain from
- * @returns The domain as a string, or the original input if invalid
- */
-export const getDomainFromUrl = (url: string): string => {
-  if (isHomepageUrl(url)) {
-    return "";
-  }
-
-  try {
-    const urlObj = new URL(url);
-    const domain = urlObj.hostname.replace("www.", "");
-    return domain;
-  } catch {
-    return url;
-  }
-};
-
-/**
  * Generates a favicon URL from a website URL.
  * @param url - The website URL
  * @returns The favicon URL, or an empty string if invalid
