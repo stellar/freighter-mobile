@@ -98,7 +98,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
       [rawBalance],
     );
 
-    // Set up navigation headers (hook handles navigation.setOptions internally) 
+    // Set up navigation headers (hook handles navigation.setOptions internally)
     useHomeHeaders({ navigation });
 
     const { welcomeBannerBottomSheetModalRef, handleWelcomeBannerDismiss } =
