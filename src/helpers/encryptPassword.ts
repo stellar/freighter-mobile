@@ -175,7 +175,7 @@ export async function decryptDataWithPassword({
 }
 
 /**
- * Decrypt data using a pre-derived AES key (no KDF — ~0ms).
+ * Decrypt data using a pre-derived symmetric encryption key (no KDF — ~0ms).
  * Use when the caller already holds the output of `deriveKeyFromPassword`.
  * Avoids the scrypt cost that `decryptDataWithPassword` always pays.
  */
@@ -202,7 +202,7 @@ export function decryptDataWithDerivedKey(
 }
 
 /**
- * Encrypt data using a pre-derived AES key (no KDF — ~0ms).
+ * Encrypt data using a pre-derived symmetric encryption key (no KDF — ~0ms).
  * Use when the caller already holds the output of `deriveKeyFromPassword`.
  * Returns base64-encoded ciphertext bundle; salt is tracked separately by the caller.
  */

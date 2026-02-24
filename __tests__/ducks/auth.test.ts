@@ -352,7 +352,7 @@ describe("auth duck", () => {
     );
     (encryptDataWithDerivedKey as jest.Mock).mockReturnValue(mockEncryptedData);
 
-    // secureDataStorage.remove must return a Promise so clearAesKeyCache's
+    // secureDataStorage.remove must return a Promise so clearDerivedKeyCache's
     // .catch() call does not throw TypeError
     (secureDataStorage.remove as jest.Mock).mockResolvedValue(undefined);
 

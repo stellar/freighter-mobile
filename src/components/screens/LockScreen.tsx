@@ -56,6 +56,7 @@ export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
   useEffect(() => {
     if (error && error !== t("authStore.error.invalidPassword")) {
       showToast({
+        toastId: "unlock-wallet-error",
         variant: "error",
         title: t("lockScreen.errorUnlockingWalletTitle"),
         message: t("lockScreen.errorUnlockingWalletMessage"),
