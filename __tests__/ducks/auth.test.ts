@@ -25,6 +25,8 @@ import {
   decryptDataWithPassword,
   deriveKeyFromPassword,
   generateSalt,
+  decryptDataWithDerivedKey,
+  encryptDataWithDerivedKey,
 } from "helpers/encryptPassword";
 import { createKeyManager } from "helpers/keyManager/keyManager";
 import { getSupportedBiometryType, BIOMETRY_TYPE } from "react-native-keychain";
@@ -68,6 +70,8 @@ jest.mock("helpers/encryptPassword", () => ({
   decryptDataWithPassword: jest.fn(),
   deriveKeyFromPassword: jest.fn(),
   generateSalt: jest.fn(),
+  decryptDataWithDerivedKey: jest.fn(),
+  encryptDataWithDerivedKey: jest.fn(),
 }));
 
 jest.mock("@stablelib/base64", () => ({
@@ -84,7 +88,7 @@ jest.mock("services/storage/storageFactory", () => ({
   secureDataStorage: {
     getItem: jest.fn(),
     setItem: jest.fn(),
-    remove: jest.fn(),
+    remove: jest.fn().mockResolvedValue(undefined),
   },
   biometricDataStorage: {
     getItem: jest.fn(),
@@ -280,6 +284,7 @@ describe("auth duck", () => {
         isCreatingAccount: false,
         isRenamingAccount: false,
         isLoadingAllAccounts: false,
+        isSwitchingAccount: false,
         error: null,
         authStatus: AUTH_STATUS.NOT_AUTHENTICATED,
         allAccounts: [],
@@ -341,6 +346,22 @@ describe("auth duck", () => {
     (decryptDataWithPassword as jest.Mock).mockResolvedValue(
       mockTemporaryStore,
     );
+    // New derived-key helpers (synchronous, no KDF)
+    (decryptDataWithDerivedKey as jest.Mock).mockReturnValue(
+      mockTemporaryStore,
+    );
+    (encryptDataWithDerivedKey as jest.Mock).mockReturnValue(mockEncryptedData);
+
+    // secureDataStorage.remove must return a Promise so clearAesKeyCache's
+    // .catch() call does not throw TypeError
+    (secureDataStorage.remove as jest.Mock).mockResolvedValue(undefined);
+
+    // biometricDataStorage.clear is called in clearBiometricsData (logout/wipe path)
+    (
+      biometricDataStorage as jest.Mocked<typeof biometricDataStorage> & {
+        clear: jest.Mock;
+      }
+    ).clear = jest.fn().mockResolvedValue(undefined);
 
     // Setup storage helpers
     (getHashKey as jest.Mock).mockResolvedValue(mockHashKeyObj);
@@ -1044,7 +1065,7 @@ describe("auth duck", () => {
         }
         return Promise.resolve(null);
       });
-      (decryptDataWithPassword as jest.Mock).mockResolvedValue(
+      (decryptDataWithDerivedKey as jest.Mock).mockReturnValue(
         mockTemporaryStore,
       );
     });
@@ -1108,7 +1129,7 @@ describe("auth duck", () => {
           mnemonicPhrase: mockMnemonicPhrase,
           password: mockPassword,
         });
-        (decryptDataWithPassword as jest.Mock).mockResolvedValue(
+        (decryptDataWithDerivedKey as jest.Mock).mockReturnValue(
           tempStoreWithPassword,
         );
 
@@ -1127,7 +1148,9 @@ describe("auth duck", () => {
       it("should return false when decryption fails", async () => {
         const { result } = renderHook(() => useAuthenticationStore());
 
-        (decryptDataWithPassword as jest.Mock).mockResolvedValue(null);
+        (decryptDataWithDerivedKey as jest.Mock).mockImplementation(() => {
+          throw new Error("Decryption failed");
+        });
 
         act(() => {
           useAuthenticationStore.setState({
@@ -1152,7 +1175,7 @@ describe("auth duck", () => {
           // Missing privateKeys and mnemonicPhrase
           someOtherField: "value",
         });
-        (decryptDataWithPassword as jest.Mock).mockResolvedValue(
+        (decryptDataWithDerivedKey as jest.Mock).mockReturnValue(
           invalidTempStore,
         );
 
@@ -1176,9 +1199,9 @@ describe("auth duck", () => {
         const { result } = renderHook(() => useAuthenticationStore());
 
         const decryptionError = new Error("Decryption failed");
-        (decryptDataWithPassword as jest.Mock).mockRejectedValue(
-          decryptionError,
-        );
+        (decryptDataWithDerivedKey as jest.Mock).mockImplementation(() => {
+          throw decryptionError;
+        });
 
         act(() => {
           useAuthenticationStore.setState({
@@ -1254,7 +1277,9 @@ describe("auth duck", () => {
         });
 
         // Mock decryption failures to trigger tracking
-        (decryptDataWithPassword as jest.Mock).mockResolvedValue(null);
+        (decryptDataWithDerivedKey as jest.Mock).mockImplementation(() => {
+          throw new Error("Decryption failed");
+        });
 
         // Make multiple failed attempts sequentially to properly track failures
         for (let i = 0; i < 3; i++) {
@@ -1277,7 +1302,9 @@ describe("auth duck", () => {
         const { result } = renderHook(() => useAuthenticationStore());
 
         // First, make a failed decryption attempt
-        (decryptDataWithPassword as jest.Mock).mockResolvedValue(null);
+        (decryptDataWithDerivedKey as jest.Mock).mockImplementation(() => {
+          throw new Error("Decryption failed");
+        });
         await act(async () => {
           const success = await result.current.initBiometricPassword();
           expect(success).toBe(false);
@@ -1291,7 +1318,7 @@ describe("auth duck", () => {
           mnemonicPhrase: mockMnemonicPhrase,
           password: mockPassword,
         });
-        (decryptDataWithPassword as jest.Mock).mockResolvedValue(
+        (decryptDataWithDerivedKey as jest.Mock).mockReturnValue(
           tempStoreWithPassword,
         );
 
@@ -1515,7 +1542,7 @@ describe("auth duck", () => {
     });
 
     describe("signIn from LOCKED state", () => {
-      it("should authenticate from LOCKED state and re-encrypt temporary store with new hash key", async () => {
+      it("should authenticate from LOCKED state and refresh TTL on the existing hash key", async () => {
         // Update the keyManager mock to return the correct account
         mockKeyManager.loadKey.mockResolvedValueOnce({
           id: mockAccount.id,
@@ -1564,30 +1591,19 @@ describe("auth duck", () => {
           return Promise.resolve(null);
         });
 
-        // Mock decryption with old key and encryption with new key
-        // Always return decrypted data successfully
-        (decryptDataWithPassword as jest.Mock).mockImplementation(() =>
-          Promise.resolve(
-            JSON.stringify({
-              privateKeys: { [mockAccount.id]: "mock-private-key" },
-              mnemonicPhrase: "mock mnemonic phrase",
-            }),
-          ),
-        );
-
-        (encryptDataWithPassword as jest.Mock).mockImplementation(() =>
-          Promise.resolve({
-            encryptedData: "re-encrypted-temp-store",
-            salt: "new-mock-salt",
+        // New LOCKED path: TTL refresh only — no re-encryption, no KDF for decryption.
+        // decryptDataWithDerivedKey is used by getActiveAccount (background load).
+        (decryptDataWithDerivedKey as jest.Mock).mockReturnValue(
+          JSON.stringify({
+            privateKeys: { [mockAccount.id]: "mock-private-key" },
+            mnemonicPhrase: "mock mnemonic phrase",
           }),
         );
 
-        // Mock deriveKeyFromPassword for generateHashKey
+        // Mock deriveKeyFromPassword for decryptTemporaryStore (cold AES cache path)
         (deriveKeyFromPassword as jest.Mock).mockResolvedValue(
           new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]),
         );
-
-        (generateSalt as jest.Mock).mockReturnValue("new-mock-salt");
 
         // Ensure secureDataStorage.setItem is mocked
         (secureDataStorage.setItem as jest.Mock).mockResolvedValue(undefined);
@@ -1605,6 +1621,13 @@ describe("auth duck", () => {
           await result.current.signIn({ password: "test-password" });
         });
 
+        // Flush background getActiveAccount promise
+        await act(async () => {
+          await new Promise<void>((resolve) => {
+            setTimeout(resolve, 0);
+          });
+        });
+
         expect(result.current.authStatus).toBe(AUTH_STATUS.AUTHENTICATED);
         expect(result.current.account).toBeTruthy();
 
@@ -1613,13 +1636,14 @@ describe("auth duck", () => {
           SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
         );
 
-        // Verify re-encryption occurred
-        expect(decryptDataWithPassword).toHaveBeenCalled();
-        expect(encryptDataWithPassword).toHaveBeenCalled();
+        // Verify TTL was refreshed on the existing hash key (no re-encryption)
         expect(secureDataStorage.setItem).toHaveBeenCalledWith(
-          SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE,
-          "re-encrypted-temp-store",
+          SENSITIVE_STORAGE_KEYS.HASH_KEY,
+          expect.stringContaining('"expiresAt":'),
         );
+        // Verify that re-encryption did NOT occur
+        expect(decryptDataWithPassword).not.toHaveBeenCalled();
+        expect(encryptDataWithPassword).not.toHaveBeenCalled();
       });
     });
 
@@ -1674,7 +1698,7 @@ describe("auth duck", () => {
           return Promise.resolve(null);
         });
 
-        (decryptDataWithPassword as jest.Mock).mockResolvedValue(
+        (decryptDataWithDerivedKey as jest.Mock).mockReturnValue(
           JSON.stringify({
             privateKeys: {
               [mockAccount.id]: "mock-private-key-1",

@@ -173,3 +173,55 @@ export async function decryptDataWithPassword({
     }
   }
 }
+
+/**
+ * Decrypt data using a pre-derived AES key (no KDF — ~0ms).
+ * Use when the caller already holds the output of `deriveKeyFromPassword`.
+ * Avoids the scrypt cost that `decryptDataWithPassword` always pays.
+ */
+export function decryptDataWithDerivedKey(
+  data: string,
+  derivedKey: Uint8Array,
+): string {
+  const bundle = base64Decode(data);
+  const version = bundle[0];
+
+  if (version !== CURRENT_CRYPTO_VERSION) {
+    throw new Error(`Cipher version ${version} not supported.`);
+  }
+
+  const nonce = bundle.slice(1, 1 + NONCE_BYTES);
+  const cipherText = bundle.slice(1 + NONCE_BYTES);
+  const decryptedBytes = nacl.secretbox.open(cipherText, nonce, derivedKey);
+
+  if (!decryptedBytes) {
+    throw new Error("Invalid key or corrupted data.");
+  }
+
+  return utf8Decode(decryptedBytes);
+}
+
+/**
+ * Encrypt data using a pre-derived AES key (no KDF — ~0ms).
+ * Use when the caller already holds the output of `deriveKeyFromPassword`.
+ * Returns base64-encoded ciphertext bundle; salt is tracked separately by the caller.
+ */
+export function encryptDataWithDerivedKey(
+  data: string,
+  derivedKey: Uint8Array,
+): string {
+  const nonce = nacl.randomBytes(NONCE_BYTES);
+  const textBytes = utf8Encode(data);
+  const cipherText = nacl.secretbox(textBytes, nonce, derivedKey);
+
+  if (!cipherText) {
+    throw new Error("Encryption failed");
+  }
+
+  const bundle = new Uint8Array(1 + nonce.length + cipherText.length);
+  bundle.set([CURRENT_CRYPTO_VERSION]);
+  bundle.set(nonce, 1);
+  bundle.set(cipherText, 1 + nonce.length);
+
+  return base64Encode(bundle);
+}
