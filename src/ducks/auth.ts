@@ -1340,10 +1340,11 @@ const signIn = async ({
       shouldRefreshHashKey: true,
     });
   } else {
-    // LOCKED / HASH_KEY_EXPIRED path: session data is intact on disk. Only
-    // refresh the hash key TTL so the existing temp store (and derived key cache)
-    // remain valid. This avoids generateHashKey (scrypt) +
-    // reEncryptTemporaryStore (2× scrypt).
+    // LOCKED path only: session data is intact on disk. Only refresh the hash
+    // key TTL so the existing temp store (and derived key cache) remain valid.
+    // This avoids generateHashKey (scrypt) + reEncryptTemporaryStore (2× scrypt).
+    // Note: HASH_KEY_EXPIRED sets shouldCreateTempStore=true, so it never reaches
+    // this branch — it always goes through the full createTemporaryStore above.
     //
     // Edge case: if DERIVED_KEY in SecureStorage is stale (e.g. from a different
     // password epoch due to a mid-flight setDerivedKeyCache failure),
