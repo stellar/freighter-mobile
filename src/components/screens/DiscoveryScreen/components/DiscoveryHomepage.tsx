@@ -1,3 +1,5 @@
+import { images } from "assets/images";
+import { TrendingCarousel, TrendingItem } from "components/TrendingCarousel";
 import { App } from "components/sds/App";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
@@ -161,6 +163,17 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
       [goToPage, tabId],
     );
 
+    const trendingItems: TrendingItem[] = useMemo(
+      () =>
+        protocols.map((protocol) => ({
+          id: protocol.websiteUrl,
+          title: protocol.name,
+          category: protocol.tags[0],
+          imageSource: images.featuredBackgroundPlaceholder,
+        })),
+      [protocols],
+    );
+
     const recentTabs = useMemo(
       () =>
         tabs
@@ -201,6 +214,15 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
         style={{ flex: 1 }}
       >
         <View className="flex-1 bg-background-primary">
+          {trendingItems.length > 0 && (
+            <View className="mt-8">
+              <TrendingCarousel
+                items={trendingItems}
+                onItemPress={(item) => handleSitePress(item.id)}
+              />
+            </View>
+          )}
+
           {recentTabs.length > 0 && (
             <HorizontalListSection
               protocols={protocols}
