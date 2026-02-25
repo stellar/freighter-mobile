@@ -349,14 +349,22 @@ const initialState: Omit<AuthState, "network"> = {
   hasTriggeredAppOpenBiometricsLogin: false,
 };
 
-// Derived symmetric encryption key (32 bytes): output of scrypt(hashKey.hashKey, salt).
-// Kept through LOCKED state so unlock only needs one scrypt (password verify);
-// cleared only when a new hash key is generated (new session / wipe).
+/**
+ * Module-level cache for the scrypt-derived symmetric encryption key (32 bytes).
+ *
+ * Not in the Zustand store because:
+ *  - Uint8Array is not serializable (breaks devtools / persist middleware).
+ *  - Updating it would notify all store subscribers and trigger re-renders.
+ *  - It is an encryption implementation detail, not UI state.
+ *
+ * Kept through LOCKED state so unlock only needs one scrypt (password verify);
+ * cleared only when a new hash key is generated (new session / wipe).
+ */
 let derivedKeyCache: Uint8Array | null = null;
 
 /**
- * Set the symmetric encryption key both in memory and in SecureStorage so it survives
- * process restarts (e.g. cold app-open from LOCKED state).
+ * Set the symmetric encryption key both in memory and in SecureStorage so it
+ * survives process restarts (e.g. cold app-open from LOCKED state).
  */
 const setDerivedKeyCache = async (key: Uint8Array): Promise<void> => {
   derivedKeyCache = key;
@@ -365,8 +373,9 @@ const setDerivedKeyCache = async (key: Uint8Array): Promise<void> => {
       SENSITIVE_STORAGE_KEYS.DERIVED_KEY,
       base64Encode(key),
     );
-  } catch {
-    // Persist failure is non-fatal: next cold open will derive the key once.
+  } catch (e) {
+    // Non-fatal: next cold open will derive the key once via the slow path.
+    logger.debug("setDerivedKeyCache", "Failed to persist derived key", e);
   }
 };
 
@@ -375,7 +384,11 @@ const clearDerivedKeyCache = (): void => {
   // Best-effort removal from SecureStorage. Fire-and-forget: the in-memory null
   // is the authoritative security boundary; the persisted key is only an
   // optimisation and is derivable from HashKey anyway.
-  secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.DERIVED_KEY).catch(() => {});
+  secureDataStorage
+    .remove(SENSITIVE_STORAGE_KEYS.DERIVED_KEY)
+    .catch((e) =>
+      logger.debug("clearDerivedKeyCache", "Failed to remove derived key", e),
+    );
 };
 
 /**
@@ -818,8 +831,13 @@ const createTemporaryStore = async (input: {
           preservedPrivateKeys = decrypted.privateKeys;
         }
       }
-    } catch {
+    } catch (e) {
       // Old store unreadable (first login, corrupted data, etc.) — proceed empty.
+      logger.warn(
+        "createTemporaryStore",
+        "Could not salvage private keys from previous session; keys will be re-derived on first access",
+        e,
+      );
     }
     // Clear AFTER reading so decryptTemporaryStore can still use the old key.
     clearDerivedKeyCache();
@@ -2103,7 +2121,9 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
         // Clear persisted auth status in background (non-blocking)
         secureDataStorage
           .remove(SENSITIVE_STORAGE_KEYS.AUTH_STATUS)
-          .catch(() => {});
+          .catch((e) =>
+            logger.debug("signIn", "Failed to clear persisted auth status", e),
+          );
       } catch (error) {
         analytics.trackReAuthFail();
         set({
