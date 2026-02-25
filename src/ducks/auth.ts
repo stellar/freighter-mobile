@@ -2615,11 +2615,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
 
       try {
         await renameAccount(params);
-        await Promise.all([
-          renameAccount(params),
-          get().fetchActiveAccount(),
-          get().getAllAccounts(),
-        ]);
+        await Promise.all([get().fetchActiveAccount(), get().getAllAccounts()]);
         set({ isRenamingAccount: false });
       } catch (error) {
         logger.error("renameAccount", "Failed to rename account", error);
