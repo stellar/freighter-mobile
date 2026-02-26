@@ -719,11 +719,21 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
           message: t("walletKit.pleaseUnlockToSignTransaction"),
           variant: "error",
         });
+        rejectSessionRequest({
+          sessionRequest,
+          message: t("walletKit.walletLocked"),
+        });
+        clearEvent();
+        isProcessingRequestRef.current = false;
         return;
       }
 
-      // Wait for active sessions to be fetched
+      // Wait for active sessions to be fetched.
+      // Reset the flag so that when activeSessions is populated and the effect
+      // re-fires (activeSessions is a dependency), this request is processed
+      // normally rather than being treated as a concurrent duplicate and queued.
       if (Object.keys(activeSessions).length === 0) {
+        isProcessingRequestRef.current = false;
         return;
       }
 
@@ -747,6 +757,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         });
 
         clearEvent();
+        isProcessingRequestRef.current = false;
         return;
       }
 
@@ -797,6 +808,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         });
 
         clearEvent();
+        isProcessingRequestRef.current = false;
         return;
       }
 
