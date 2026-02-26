@@ -2102,8 +2102,13 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
         getActiveAccount(AUTH_STATUS.AUTHENTICATED)
           .then((activeAccount) => {
             if (!activeAccount) {
-              // No account found after sign-in — navigate to lock screen
-              set({ isLoadingAccount: false });
+              // Sign-in succeeded but no active account was found — lock and
+              // surface an error so the user knows something went wrong.
+              set({
+                isLoadingAccount: false,
+                authStatus: AUTH_STATUS.LOCKED,
+                error: t("authStore.error.failedToLoadAccount"),
+              });
               get().navigateToLockScreen();
               return;
             }
@@ -2115,7 +2120,11 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
               "Failed to load account in background",
               accountError,
             );
-            set({ isLoadingAccount: false });
+            set({
+              isLoadingAccount: false,
+              authStatus: AUTH_STATUS.LOCKED,
+              error: t("authStore.error.failedToLoadAccount"),
+            });
             get().navigateToLockScreen();
           });
 
