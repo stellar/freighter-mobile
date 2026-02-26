@@ -11,6 +11,7 @@ import {
 } from "services/analytics/debug";
 import {
   trackSignedTransaction,
+  trackSignedMessage,
   trackSubmittedTransaction,
   trackSimulationError,
   trackReAuthSuccess,
@@ -50,6 +51,7 @@ export interface AnalyticsInstance {
 
   // Transaction analytics
   readonly trackSignedTransaction: typeof trackSignedTransaction;
+  readonly trackSignedMessage: typeof trackSignedMessage;
   readonly trackSubmittedTransaction: typeof trackSubmittedTransaction;
   readonly trackSimulationError: typeof trackSimulationError;
   readonly trackCopyPublicKey: typeof trackCopyPublicKey;
@@ -110,6 +112,7 @@ export const analytics: AnalyticsInstance = {
   trackReAuthSuccess,
   trackReAuthFail,
   trackSignedTransaction,
+  trackSignedMessage,
   trackSubmittedTransaction,
   trackSimulationError,
   trackCopyPublicKey,

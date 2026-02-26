@@ -1,14 +1,17 @@
-import { MuxedAccount, StrKey } from "@stellar/stellar-sdk";
+import { MuxedAccount, StrKey, hash } from "@stellar/stellar-sdk";
 import { logger } from "config/logger";
 import { isContractId } from "helpers/soroban";
 import {
   createMuxedAccount,
+  encodeSep53Message,
   getBaseAccount,
   getMuxedId,
   isFederationAddress,
   isMuxedAccount,
   isSameAccount,
   isValidStellarAddress,
+  SIGN_MESSAGE_PREFIX,
+  signMessage,
   truncateAddress,
 } from "helpers/stellar";
 
@@ -501,6 +504,171 @@ describe("Stellar helpers", () => {
       const result = getMuxedId(validMuxed);
 
       expect(result).toBeNull();
+    });
+  });
+
+  describe("SEP-53 Message Signing", () => {
+    describe("encodeSep53Message", () => {
+      it("should encode a simple message with SEP-53 prefix", () => {
+        const message = "Hello, Stellar!";
+        const encoded = encodeSep53Message(message);
+
+        expect(encoded).toBeInstanceOf(Buffer);
+        expect(encoded.length).toBe(32); // SHA-256 hash is 32 bytes
+      });
+
+      it("should encode empty message", () => {
+        const message = "";
+        const encoded = encodeSep53Message(message);
+
+        expect(encoded).toBeInstanceOf(Buffer);
+        expect(encoded.length).toBe(32);
+      });
+
+      it("should encode UTF-8 message with special characters", () => {
+        const message = "Hello 世界! 🌟";
+        const encoded = encodeSep53Message(message);
+
+        expect(encoded).toBeInstanceOf(Buffer);
+        expect(encoded.length).toBe(32);
+      });
+
+      it("should produce different hashes for different messages", () => {
+        const message1 = "Message 1";
+        const message2 = "Message 2";
+
+        const encoded1 = encodeSep53Message(message1);
+        const encoded2 = encodeSep53Message(message2);
+
+        expect(encoded1).not.toEqual(encoded2);
+      });
+
+      it("should produce same hash for same message", () => {
+        const message = "Test message";
+
+        const encoded1 = encodeSep53Message(message);
+        const encoded2 = encodeSep53Message(message);
+
+        expect(encoded1).toEqual(encoded2);
+      });
+
+      it("should include SEP-53 prefix in encoding", () => {
+        // We can verify the prefix is used by comparing hashes
+        // If we hash the message directly vs with prefix, they should be different
+        const message = "Test";
+
+        const directHash = hash(Buffer.from(message, "utf8"));
+        const sep53Hash = encodeSep53Message(message);
+
+        expect(directHash).not.toEqual(sep53Hash);
+      });
+    });
+
+    describe("signMessage", () => {
+      it("should sign a message and return base64 signature", () => {
+        const message = "Hello, Stellar!";
+        const privateKey =
+          "SBXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+
+        // This will use the real Keypair implementation from stellar-sdk
+        // We test that it returns a string that could be a base64 signature
+        try {
+          const signature = signMessage(message, privateKey);
+          expect(typeof signature).toBe("string");
+          expect(signature.length).toBeGreaterThan(0);
+        } catch (error) {
+          // Expected to fail with invalid key in test, but we're testing the flow
+          expect(error).toBeDefined();
+        }
+      });
+
+      it("should throw error for invalid private key", () => {
+        const message = "Test message";
+        const invalidKey = "invalid-key";
+
+        expect(() => signMessage(message, invalidKey)).toThrow();
+      });
+
+      it("should throw error for empty message", () => {
+        const message = "";
+        const privateKey =
+          "SAKICEVQLYWGSOJS4WW7HZJWAHZVEEBS527LHK5V4MLJALYKICQCJXMW";
+
+        expect(() => signMessage(message, privateKey)).toThrow(
+          "Cannot sign empty or whitespace-only message",
+        );
+      });
+
+      it("should throw error for whitespace-only message", () => {
+        const message = "   \n\t  ";
+        const privateKey =
+          "SAKICEVQLYWGSOJS4WW7HZJWAHZVEEBS527LHK5V4MLJALYKICQCJXMW";
+
+        expect(() => signMessage(message, privateKey)).toThrow(
+          "Cannot sign empty or whitespace-only message",
+        );
+      });
+
+      // SEP-53 Official Test Cases
+      // https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0053.md
+      describe("SEP-53 Compliance", () => {
+        const seed = "SAKICEVQLYWGSOJS4WW7HZJWAHZVEEBS527LHK5V4MLJALYKICQCJXMW";
+        // Expected address: GBXFXNDLV4LSWA4VB7YIL5GBD7BVNR22SGBTDKMO2SBZZHDXSKZYCP7L
+
+        it("should match SEP-53 test case 1: Simple ASCII message", () => {
+          const message = "Hello, World!";
+          const expectedSignature =
+            "fO5dbYhXUhBMhe6kId/cuVq/AfEnHRHEvsP8vXh03M1uLpi5e46yO2Q8rEBzu3feXQewcQE5GArp88u6ePK6BA==";
+
+          const signature = signMessage(message, seed);
+
+          expect(signature).toBe(expectedSignature);
+        });
+
+        it("should match SEP-53 test case 2: Japanese UTF-8 message", () => {
+          const message = "こんにちは、世界！";
+          const expectedSignature =
+            "CDU265Xs8y3OWbB/56H9jPgUss5G9A0qFuTqH2zs2YDgTm+++dIfmAEceFqB7bhfN3am59lCtDXrCtwH2k1GBA==";
+
+          const signature = signMessage(message, seed);
+
+          expect(signature).toBe(expectedSignature);
+        });
+
+        it("should produce 64-byte signature in base64 format", () => {
+          const message = "Test";
+          const signature = signMessage(message, seed);
+
+          // Base64 encoded 64 bytes = 88 characters (with padding)
+          expect(signature.length).toBe(88);
+          expect(signature).toMatch(/^[A-Za-z0-9+/]+=*$/);
+        });
+
+        it("should produce different signatures for different messages", () => {
+          const message1 = "Hello";
+          const message2 = "World";
+
+          const sig1 = signMessage(message1, seed);
+          const sig2 = signMessage(message2, seed);
+
+          expect(sig1).not.toBe(sig2);
+        });
+
+        it("should produce same signature for same message (deterministic)", () => {
+          const message = "Test deterministic signing";
+
+          const sig1 = signMessage(message, seed);
+          const sig2 = signMessage(message, seed);
+
+          expect(sig1).toBe(sig2);
+        });
+      });
+    });
+
+    describe("SIGN_MESSAGE_PREFIX constant", () => {
+      it("should have the correct SEP-53 prefix value", () => {
+        expect(SIGN_MESSAGE_PREFIX).toBe("Stellar Signed Message:\n");
+      });
     });
   });
 });

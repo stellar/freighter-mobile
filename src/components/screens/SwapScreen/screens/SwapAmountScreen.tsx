@@ -282,11 +282,13 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     }
   }, [pathError, sourceAmount, destinationTokenId, activeError]);
 
+  const handleSettingsPress = useCallback(() => {
+    transactionSettingsBottomSheetModalRef.current?.present();
+  }, []);
+
   useRightHeaderButton({
     icon: Icon.Settings04,
-    onPress: () => {
-      transactionSettingsBottomSheetModalRef.current?.present();
-    },
+    onPress: handleSettingsPress,
   });
 
   const navigateToSelectDestinationTokenScreen = useCallback(() => {

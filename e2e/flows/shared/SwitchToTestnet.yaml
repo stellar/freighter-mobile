@@ -1,0 +1,52 @@
+appId: org.stellar.freighterdev
+---
+# Shared flow: switch active network to Testnet
+# Used by WalletConnect E2E flows since the mock server targets testnet
+
+# Open settings from the home screen (E2E only button)
+- tapOn:
+    id: e2e-open-settings
+
+# Wait for change network button to be visible (confirms settings screen loaded)
+- extendedWaitUntil:
+    visible:
+      id: change-network-button
+    timeout: 5000
+
+# Open change network screen
+- tapOn:
+    id: change-network-button
+
+- extendedWaitUntil:
+    visible:
+      id: change-network-selector
+    timeout: 5000
+
+# Open network selector bottom sheet
+- tapOn:
+    id: change-network-selector
+
+- extendedWaitUntil:
+    visible:
+      id: change-network-option-testnet
+    timeout: 5000
+
+- tapOn:
+    id: change-network-option-testnet
+
+# Return to home screen
+- tapOn:
+    id: header-button
+
+- extendedWaitUntil:
+    visible:
+      id: change-network-button
+    timeout: 5000
+
+- tapOn:
+    id: header-button
+
+- extendedWaitUntil:
+    visible:
+      id: home-screen
+    timeout: 5000

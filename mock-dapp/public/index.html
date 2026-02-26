@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mock WalletConnect dApp - Freighter Mobile Testing</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      padding: 30px;
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+
+    .logo {
+      width: 48px;
+      height: 48px;
+      margin-bottom: 15px;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .section {
+      margin-bottom: 30px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 30px;
+    }
+
+    .section:last-child {
+      border-bottom: none;
+    }
+
+    .section-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 15px;
+    }
+
+    button {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-right: 10px;
+      margin-bottom: 10px;
+    }
+
+    button:hover {
+      background: #5568d3;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .button-secondary {
+      background: #6c757d;
+    }
+
+    .button-secondary:hover {
+      background: #5a6268;
+    }
+
+    .button-danger {
+      background: #dc3545;
+    }
+
+    .button-danger:hover {
+      background: #c82333;
+    }
+
+    .input-group {
+      margin-bottom: 15px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      color: #333;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    input, textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+      font-family: monospace;
+      resize: vertical;
+    }
+
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .status-box {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 6px;
+      padding: 15px;
+      margin-bottom: 15px;
+      font-size: 13px;
+    }
+
+    .status-box.success {
+      background: #d4edda;
+      border-color: #c3e6cb;
+      color: #155724;
+    }
+
+    .status-box.error {
+      background: #f8d7da;
+      border-color: #f5c6cb;
+      color: #721c24;
+    }
+
+    .status-box.info {
+      background: #d1ecf1;
+      border-color: #bee5eb;
+      color: #0c5460;
+    }
+
+    .qr-container {
+      text-align: center;
+      margin: 20px 0;
+    }
+
+    .qr-container img {
+      max-width: 300px;
+      border: 2px solid #667eea;
+      border-radius: 8px;
+      padding: 10px;
+      background: white;
+    }
+
+    .uri-display {
+      background: #f5f5f5;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 12px;
+      margin: 10px 0;
+      word-break: break-all;
+      font-size: 12px;
+      font-family: monospace;
+    }
+
+    .copy-button {
+      padding: 8px 12px;
+      font-size: 12px;
+    }
+
+    .loading {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid #f3f3f3;
+      border-top: 2px solid #667eea;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-left: 8px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .response-box {
+      background: #2d3436;
+      color: #00ff00;
+      border-radius: 6px;
+      padding: 15px;
+      margin: 10px 0;
+      font-family: monospace;
+      font-size: 12px;
+      max-height: 300px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .network-select {
+      margin-bottom: 15px;
+    }
+
+    .network-select select {
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .grid button {
+      margin: 0;
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        padding: 20px;
+      }
+
+      h1 {
+        font-size: 22px;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <img src="https://docs.freighter.app/images/logo.png" alt="Freighter Logo" class="logo">
+    <h1>🚀 Mock WalletConnect dApp</h1>
+    <p class="subtitle">Freighter Mobile E2E Testing</p>
+    <p id="domain-subtitle" class="subtitle" style="color: #999; font-size: 12px; margin-top: -10px;"></p>
+
+    <!-- Status Messages -->
+    <div id="status-container"></div>
+
+    <!-- Step 1: Session Management -->
+    <div class="section">
+      <div class="section-title">1️⃣ Create Session</div>
+      <button onclick="createSession()">Create New Session</button>
+      <button class="button-secondary" onclick="getSessionStatus()" id="statusBtn" style="display:none;">Check Status</button>
+      <button class="button-danger" onclick="disconnect()" id="disconnectBtn" style="display:none;">Disconnect All</button>
+
+      <div id="session-info" style="display:none; margin-top: 20px;">
+        <div class="status-box info">
+          <strong>Session ID:</strong> <span id="sessionId"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2: Check Approval -->
+    <div class="section" id="approval-section" style="display:none;">
+      <div class="section-title">2️⃣ Check Approval</div>
+      <p style="color: #666; font-size: 14px; margin-bottom: 15px;">Connect your Freighter Mobile wallet to approve this session.</p>
+
+      <div class="qr-container" id="qr-container" style="display:none;">
+        <p style="margin-bottom: 10px; font-size: 12px; color: #666;">Scan with Freighter Mobile Camera:</p>
+        <img id="qr-code" alt="WalletConnect QR Code">
+      </div>
+
+      <div class="uri-display" id="uri-display" style="display:none;"></div>
+      <button class="copy-button" onclick="copyUri()" id="copyBtn" style="display:none;">📋 Copy URI</button>
+      <button onclick="waitForApproval()" id="waitBtn" style="display:none;">⏳ Wait for Approval</button>
+
+      <div id="approval-status" style="display:none; margin-top: 15px;">
+        <div class="status-box success">
+          ✅ Connection Approved! Ready to sign messages.
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3: Sign Message -->
+    <div class="section" id="sign-section" style="display:none;">
+      <div class="section-title">3️⃣ Sign Message</div>
+
+      <div class="network-select">
+        <label>Network:</label>
+        <select id="network">
+          <option value="testnet">Testnet</option>
+          <option value="pubnet">Mainnet</option>
+        </select>
+      </div>
+
+      <div class="input-group">
+        <label for="message">Message to Sign:</label>
+        <textarea id="message" placeholder="Enter a message to sign..." rows="4">Hello Freighter Mobile!</textarea>
+      </div>
+
+      <button onclick="signMessage()">Sign Message</button>
+
+      <div id="sign-status" style="display:none; margin-top: 15px;">
+        <div class="status-box info">
+          <strong>Status:</strong> <span id="signStatusText"></span>
+        </div>
+      </div>
+
+      <div id="signature-result" style="display:none; margin-top: 15px;">
+        <div class="section-title">Signature Result</div>
+        <div class="response-box" id="response-json"></div>
+      </div>
+    </div>
+
+    <!-- Message Variations for Testing -->
+    <div class="section" id="test-section" style="display:none;">
+      <div class="section-title">🧪 Test Message Variations</div>
+      <p style="color: #666; font-size: 13px; margin-bottom: 15px;">Quick buttons to test different message types:</p>
+
+      <div class="grid">
+        <button onclick="testMessage('Hello')">Short Message</button>
+        <button onclick="testMessage('This is a very long message that tests message rendering and line wrapping behavior in the Freighter signing sheet. It should display properly without truncation. This message contains multiple sentences to ensure that the signing sheet expands dynamically to accommodate longer text without requiring excessive scrolling. The user should be able to see the entire message at once without having to scroll through multiple lines.')">Long Message</button>
+        <button onclick="testMessage('Test 🚀 with émojis and symbols!@#$%')">Special Chars</button>
+        <button onclick="testJsonMessage()">JSON Format</button>
+      </div>
+
+      <button class="button-danger" onclick="testCancelSignature()" style="margin-top: 15px; width: 100%;">Test: Cancel Signature</button>
+      <p style="color: #999; font-size: 12px; margin-top: 8px;">👉 Tap "Cancel" in Freighter when signature sheet appears</p>
+    </div>
+
+    <!-- Debug Info -->
+    <div class="section">
+      <div class="section-title">🔧 Debug Info</div>
+      <button class="button-secondary" onclick="toggleDebug()">Show/Hide Debug Logs</button>
+      <div id="debug-logs" style="display:none; margin-top: 15px;">
+        <div class="response-box" id="debug-content">Waiting for API calls...</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = window.location.origin;
+    const debugLogs = [];
+    let currentSessionId = null;
+    let currentTopic = null;
+    let isApproved = false;
+
+    function logDebug(message, data = null) {
+      const timestamp = new Date().toLocaleTimeString();
+      const logLine = data ? `[${timestamp}] ${message}: ${JSON.stringify(data, null, 2)}` : `[${timestamp}] ${message}`;
+      debugLogs.push(logLine);
+      updateDebugDisplay();
+    }
+
+    function updateDebugDisplay() {
+      const debugContent = document.getElementById('debug-content');
+      debugContent.textContent = debugLogs.slice(-50).join('\n\n');
+      debugContent.scrollTop = debugContent.scrollHeight;
+    }
+
+    function toggleDebug() {
+      const debugLogs = document.getElementById('debug-logs');
+      debugLogs.style.display = debugLogs.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function showStatus(message, type = 'info') {
+      const container = document.getElementById('status-container');
+      const div = document.createElement('div');
+      div.className = `status-box ${type}`;
+      div.textContent = message;
+      container.appendChild(div);
+      setTimeout(() => div.remove(), 5000);
+      logDebug(`[${type.toUpperCase()}] ${message}`);
+    }
+
+    async function createSession() {
+      try {
+        logDebug('Creating new session...');
+        const response = await fetch(`${API_BASE}/session/create`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await response.json();
+        logDebug('Session created', data);
+
+        currentSessionId = data.sessionId;
+        currentTopic = null;
+        isApproved = false;
+
+        logDebug('Session IDs', { sessionId: currentSessionId, topic: currentTopic });
+
+        // Clear previous results
+        document.getElementById('approval-status').style.display = 'none';
+        document.getElementById('sign-status').style.display = 'none';
+        document.getElementById('signature-result').style.display = 'none';
+
+        // Show session info
+        document.getElementById('session-info').style.display = 'block';
+        document.getElementById('sessionId').textContent = data.sessionId;
+        document.getElementById('statusBtn').style.display = 'inline-block';
+        document.getElementById('disconnectBtn').style.display = 'inline-block';
+
+        // Show approval section
+        document.getElementById('approval-section').style.display = 'block';
+
+        // Show QR code
+        document.getElementById('uri-display').textContent = data.uri;
+        document.getElementById('uri-display').style.display = 'block';
+        document.getElementById('copyBtn').style.display = 'inline-block';
+        document.getElementById('waitBtn').style.display = 'inline-block';
+
+        // Generate QR code using QR server API
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(data.uri)}`;
+        document.getElementById('qr-code').src = qrUrl;
+        document.getElementById('qr-container').style.display = 'block';
+
+        showStatus('✅ Session created! Scan QR code with Freighter Mobile camera.', 'success');
+      } catch (error) {
+        logDebug('Error creating session', error);
+        showStatus(`❌ Error: ${error.message}`, 'error');
+      }
+    }
+
+    function copyUri() {
+      const uri = document.getElementById('uri-display').textContent;
+      navigator.clipboard.writeText(uri).then(() => {
+        showStatus('✅ URI copied to clipboard!', 'success');
+      });
+    }
+
+    async function waitForApproval() {
+      if (!currentSessionId) {
+        showStatus('❌ No session created', 'error');
+        return;
+      }
+
+      try {
+        logDebug('Waiting for approval...');
+        document.getElementById('waitBtn').textContent = '⏳ Waiting...';
+        document.getElementById('waitBtn').disabled = true;
+
+        const response = await fetch(`${API_BASE}/session/${currentSessionId}/wait?timeout=60000`);
+        const data = await response.json();
+        logDebug('Approval response', data);
+        logDebug('Stored IDs before approval', { sessionId: currentSessionId, topic: currentTopic });
+
+        if (data.topic) {
+          currentTopic = data.topic;
+          isApproved = true;
+          logDebug('Stored IDs after approval', { sessionId: currentSessionId, topic: currentTopic });
+          document.getElementById('approval-status').style.display = 'block';
+          document.getElementById('sign-section').style.display = 'block';
+          document.getElementById('test-section').style.display = 'block';
+          showStatus('✅ Connection approved! Ready to sign messages.', 'success');
+        } else {
+          showStatus('❌ Connection not approved', 'error');
+        }
+      } catch (error) {
+        logDebug('Error waiting for approval', error);
+        showStatus(`❌ Error: ${error.message}`, 'error');
+      } finally {
+        document.getElementById('waitBtn').textContent = '⏳ Wait for Approval';
+        document.getElementById('waitBtn').disabled = false;
+      }
+    }
+
+    async function getSessionStatus() {
+      if (!currentSessionId) {
+        showStatus('❌ No session created', 'error');
+        return;
+      }
+
+      try {
+        logDebug('Checking session status...');
+        const response = await fetch(`${API_BASE}/session/${currentSessionId}`);
+        const data = await response.json();
+        logDebug('Session status', data);
+
+        if (data.connected) {
+          showStatus('✅ Session connected and approved', 'success');
+          isApproved = true;
+          document.getElementById('approval-status').style.display = 'block';
+          document.getElementById('sign-section').style.display = 'block';
+          document.getElementById('test-section').style.display = 'block';
+        } else {
+          showStatus('⏳ Session waiting for approval...', 'info');
+        }
+      } catch (error) {
+        logDebug('Error checking session status', error);
+        showStatus(`❌ Error: ${error.message}`, 'error');
+      }
+    }
+
+    async function signMessage() {
+      if (!currentSessionId || !isApproved) {
+        showStatus('❌ Session not approved. Wait for approval first.', 'error');
+        return;
+      }
+
+      const message = document.getElementById('message').value.trim();
+      const network = document.getElementById('network').value;
+
+      if (!message) {
+        showStatus('❌ Message cannot be empty', 'error');
+        return;
+      }
+
+      try {
+        logDebug('Sending sign message request...');
+        logDebug('Using sessionId for request', { sessionId: currentSessionId, topic: currentTopic });
+        document.getElementById('sign-status').style.display = 'block';
+        document.getElementById('signStatusText').textContent = 'Waiting for signature...';
+
+        const response = await fetch(`${API_BASE}/session/${currentSessionId}/request/signMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message, network })
+        });
+        const data = await response.json();
+        logDebug('Sign request sent', data);
+
+        // Poll for response
+        const pollResponse = async () => {
+          logDebug('Polling for response with sessionId', { sessionId: currentSessionId, topic: currentTopic });
+          const respResponse = await fetch(`${API_BASE}/session/${currentSessionId}/response?wait=true&timeout=60000`);
+          const respData = await respResponse.json();
+          logDebug('Signature response', respData);
+
+          if (respData.status === 'approved') {
+            document.getElementById('signStatusText').textContent = '✅ Signature approved!';
+            document.getElementById('signature-result').style.display = 'block';
+            document.getElementById('response-json').textContent = JSON.stringify(respData, null, 2);
+            showStatus('✅ Signature received!', 'success');
+          } else if (respData.status === 'rejected') {
+            document.getElementById('signStatusText').textContent = '❌ Signature rejected by user';
+            showStatus('❌ User rejected the signature', 'error');
+          } else {
+            document.getElementById('signStatusText').textContent = respData.message || 'Waiting...';
+          }
+        };
+
+        pollResponse();
+      } catch (error) {
+        logDebug('Error signing message', error);
+        document.getElementById('signStatusText').textContent = `❌ Error: ${error.message}`;
+        showStatus(`❌ Error: ${error.message}`, 'error');
+      }
+    }
+
+    function testMessage(message) {
+      document.getElementById('message').value = message;
+      showStatus(`📝 Message set. Now tap "Sign Message" button`, 'info');
+    }
+
+    function testJsonMessage() {
+      const jsonMessage = JSON.stringify({
+        action: 'sign',
+        timestamp: Math.floor(Date.now() / 1000)
+      });
+      testMessage(jsonMessage);
+    }
+
+    async function testCancelSignature() {
+      showStatus('⏳ Sending request... Tap "Cancel" in Freighter when signing sheet appears', 'info');
+      await signMessage();
+    }
+
+    async function disconnect() {
+      if (!currentSessionId) {
+        showStatus('❌ No session to disconnect', 'error');
+        return;
+      }
+
+      try {
+        logDebug('Disconnecting all sessions...');
+        const response = await fetch(`${API_BASE}/sessions`, {
+          method: 'DELETE'
+        });
+        const data = await response.json();
+        logDebug('Disconnect response', data);
+
+        // Reset UI
+        currentSessionId = null;
+        currentTopic = null;
+        isApproved = false;
+        document.getElementById('session-info').style.display = 'none';
+        document.getElementById('approval-section').style.display = 'none';
+        document.getElementById('sign-section').style.display = 'none';
+        document.getElementById('test-section').style.display = 'none';
+        document.getElementById('approval-status').style.display = 'none';
+        document.getElementById('statusBtn').style.display = 'none';
+        document.getElementById('disconnectBtn').style.display = 'none';
+
+        showStatus('✅ All sessions disconnected', 'success');
+      } catch (error) {
+        logDebug('Error disconnecting', error);
+        showStatus(`❌ Error: ${error.message}`, 'error');
+      }
+    }
+
+    // Initialize
+    logDebug('📱 Mock WalletConnect dApp loaded');
+
+    // Display domain
+    const domainSubtitle = document.getElementById('domain-subtitle');
+    domainSubtitle.textContent = `Domain: ${window.location.host}`;
+  </script>
+</body>
+</html>

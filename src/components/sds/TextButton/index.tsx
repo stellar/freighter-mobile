@@ -2,7 +2,7 @@ import Spinner from "components/Spinner";
 import { Text, FontWeight } from "components/sds/Typography";
 import { useAuthenticationStore } from "ducks/auth";
 import useColors from "hooks/useColors";
-import React from "react";
+import React, { useCallback } from "react";
 import { TouchableOpacity, View } from "react-native";
 
 export type TextButtonVariant =
@@ -97,7 +97,7 @@ export const TextButton: React.FC<TextButtonProps> = ({
     }
   };
 
-  const handlePress = React.useCallback(() => {
+  const handlePress = useCallback(() => {
     if (!onPress) return;
     if (biometric) {
       verifyActionWithBiometrics(() => {

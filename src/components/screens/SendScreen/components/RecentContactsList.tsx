@@ -66,13 +66,13 @@ export const RecentContactsList: React.FC<RecentContactsListProps> = ({
           data={transactions}
           ListHeaderComponent={ListHeader}
           ListFooterComponent={DefaultListFooter}
-          renderItem={({ item }) => (
+          renderItem={({ item, index }) => (
             <ContactRow
               address={item.address}
               name={item.name}
               onPress={() => onContactPress(item.address)}
               className="mb-[24px]"
-              testID={`recent-contact-${item.id}`}
+              testID={`recent-contact-${index}`}
             />
           )}
           keyExtractor={(item) => item.id}

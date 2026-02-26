@@ -985,7 +985,9 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         modalRef={reviewBottomSheetModalRef}
         handleCloseModal={() => reviewBottomSheetModalRef.current?.dismiss()}
         analyticsEvent={AnalyticsEvent.VIEW_SEND_CONFIRM}
+        snapPoints={["80%"]}
         scrollable
+        bottomSheetModalProps={{ accessible: false }}
         customContent={
           <SendReviewBottomSheet
             type={SendType.Token}

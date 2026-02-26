@@ -18,7 +18,8 @@ invoked with `--platform`, `--shard-index`, `--shard-total`, and the flow name.
   [Local Setup & Env](local-setup-and-env.md)).
 - App built and running in simulator (iOS) or emulator (Android).
 - For iOS: `run-e2e-tests.sh` will set the simulator clipboard with
-  `E2E_TEST_RECOVERY_PHRASE` for Import Wallet.
+  `E2E_TEST_RECOVERY_PHRASE` (for ImportWallet) or
+  `E2E_TEST_FUNDED_RECOVERY_PHRASE` (for ImportFundedWallet).
 
 ### Commands
 
@@ -44,8 +45,8 @@ Pass the **flow name** (filename without `.yaml`) as a positional argument:
 ```bash
 yarn test:e2e:ios CreateWallet
 yarn test:e2e:ios ImportWallet
-yarn test:e2e:ios SendClassicToken
-yarn test:e2e:ios SwapClassicToken
+yarn test:e2e:ios SendClassicTokenMainnet  # Send on mainnet (0.000001 XLM)
+yarn test:e2e:ios SwapClassicTokenMainnet  # Swap on mainnet (0.000001 XLM)
 ```
 
 ```bash
@@ -58,7 +59,7 @@ Or with explicit platform:
 
 ```bash
 yarn test:e2e -- --platform ios CreateWallet
-yarn test:e2e -- --platform android SwapClassicToken
+yarn test:e2e -- --platform android SendClassicTokenMainnet
 ```
 
 Flow name matching is **case-insensitive**. The script runs only that flow and

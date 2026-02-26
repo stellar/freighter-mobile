@@ -88,20 +88,33 @@ tags:
 - tapOn:
     id: default-action-button
 
-# Dismiss welcome banner if it appears (retry up to 3 times in case it appears after a delay)
-- retry:
-    maxRetries: 2
+# Wait for import to complete - either welcome banner or home screen will appear
+# Try welcome banner first (it usually appears immediately after import)
+- runFlow:
+    when:
+      visible:
+        id: welcome-banner-dismiss-button
     commands:
-      - runFlow:
-          when:
-            visible:
-              id: welcome-banner-dismiss-button
-          commands:
-            - tapOn:
-                id: welcome-banner-dismiss-button
+      - tapOn:
+          id: welcome-banner-dismiss-button
+      - extendedWaitUntil:
+          visible:
+            id: home-screen
+          timeout: 10000
 
-# Verify we reached home screen
+# If welcome banner didn't appear, wait for home screen
+- runFlow:
+    when:
+      notVisible:
+        id: home-screen
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: home-screen
+          timeout: 60000
+
+# Allow time for accounts/balances to load after import
 - extendedWaitUntil:
     visible:
-      id: home-screen
-    timeout: 180000
+      id: home-account-switcher
+    timeout: 30000

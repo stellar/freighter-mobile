@@ -1,4 +1,10 @@
-import { Account, MuxedAccount, StrKey } from "@stellar/stellar-sdk";
+import {
+  Account,
+  hash,
+  Keypair,
+  MuxedAccount,
+  StrKey,
+} from "@stellar/stellar-sdk";
 import { logger } from "config/logger";
 import { isContractId } from "helpers/soroban";
 
@@ -255,4 +261,60 @@ export const isSameAccount = (address1: string, address2: string): boolean => {
 
     return false;
   }
+};
+
+/**
+ * SEP-53 message signing prefix
+ * @see https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0053.md
+ */
+export const SIGN_MESSAGE_PREFIX = "Stellar Signed Message:\n";
+
+/**
+ * Encodes a message using SEP-53 format (prefix + hash)
+ * This follows the SEP-53 standard for signing arbitrary messages on Stellar
+ *
+ * @see https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0053.md
+ * @param message - UTF-8 string message to encode
+ * @returns Buffer containing the 32-byte SHA-256 hash ready for signing
+ *
+ * @example
+ * const message = "Hello, Stellar!";
+ * const encodedMessage = encodeSep53Message(message);
+ * // Returns Buffer containing SHA-256 hash of "Stellar Signed Message:\nHello, Stellar!"
+ */
+export const encodeSep53Message = (message: string): Buffer => {
+  const messageBytes = Buffer.from(message, "utf8");
+  const prefixBytes = Buffer.from(SIGN_MESSAGE_PREFIX, "utf8");
+  const encodedMessage = Buffer.concat([prefixBytes, messageBytes]);
+  return hash(encodedMessage);
+};
+
+/**
+ * Signs a message using the account's private key following SEP-53 standard
+ *
+ * @see https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0053.md
+ * @param message - UTF-8 string message to sign (must not be empty or whitespace-only)
+ * @param privateKey - Account's secret key (S...)
+ * @returns Base64-encoded signature
+ *
+ * @throws {Error} If message is empty or whitespace-only
+ * @throws {Error} If private key is invalid
+ * @throws {Error} If message encoding fails
+ *
+ * @example
+ * const message = "Hello, Stellar!";
+ * const privateKey = "SBXXXX...";
+ * const signature = signMessage(message, privateKey);
+ * // Returns base64 signature string
+ */
+export const signMessage = (message: string, privateKey: string): string => {
+  // Validate message is not empty or whitespace-only
+  if (!message || message.trim().length === 0) {
+    throw new Error("Cannot sign empty or whitespace-only message");
+  }
+
+  const keyPair = Keypair.fromSecret(privateKey);
+  const encodedMessage = encodeSep53Message(message);
+  const signature = keyPair.sign(encodedMessage);
+  return signature.toString("base64");
 };
