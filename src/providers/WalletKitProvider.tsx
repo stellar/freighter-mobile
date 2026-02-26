@@ -625,10 +625,9 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
           message: t("walletKit.pleaseUnlockToConnect"),
           variant: "error",
         });
+
         return;
       }
-
-      handleClearDappRequest();
 
       setProposalEvent(sessionProposal);
 
@@ -719,11 +718,6 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
           message: t("walletKit.pleaseUnlockToSignTransaction"),
           variant: "error",
         });
-        rejectSessionRequest({
-          sessionRequest,
-          message: t("walletKit.walletLocked"),
-        });
-        clearEvent();
         isProcessingRequestRef.current = false;
         return;
       }
