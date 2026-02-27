@@ -61,6 +61,7 @@ describe("useManageToken", () => {
     // Mock the getState method
     (useTokenIconsStore.getState as jest.Mock) = jest.fn(() => ({
       cacheTokenIcons: jest.fn(),
+      validateIconOnAccess: jest.fn(),
     }));
   });
 
@@ -133,6 +134,7 @@ describe("useManageToken", () => {
     const mockCacheTokenIcons = jest.fn();
     (useTokenIconsStore.getState as jest.Mock).mockReturnValue({
       cacheTokenIcons: mockCacheTokenIcons,
+      validateIconOnAccess: jest.fn(),
     });
 
     const { result } = renderHook(() =>
@@ -148,14 +150,15 @@ describe("useManageToken", () => {
       await result.current.addToken();
     });
 
-    // Verify icon was cached with the correct identifier and metadata
+    // Verify icon was cached with isValidated:false so it goes through
+    // the normal validation path before being trusted
     expect(mockCacheTokenIcons).toHaveBeenCalledWith({
       icons: {
         [`${mockCode}:${mockIssuer}`]: {
           imageUrl: mockIconUrl,
           network: NETWORKS.TESTNET,
-          isValidated: true,
-          isValid: true,
+          isValidated: false,
+          isValid: null,
         },
       },
     });
@@ -165,6 +168,7 @@ describe("useManageToken", () => {
     const mockCacheTokenIcons = jest.fn();
     (useTokenIconsStore.getState as jest.Mock).mockReturnValue({
       cacheTokenIcons: mockCacheTokenIcons,
+      validateIconOnAccess: jest.fn(),
     });
 
     const tokenWithoutIcon = { ...mockToken, iconUrl: undefined };
@@ -190,6 +194,7 @@ describe("useManageToken", () => {
     const mockCacheTokenIcons = jest.fn();
     (useTokenIconsStore.getState as jest.Mock).mockReturnValue({
       cacheTokenIcons: mockCacheTokenIcons,
+      validateIconOnAccess: jest.fn(),
     });
 
     const { result } = renderHook(() =>
@@ -210,8 +215,8 @@ describe("useManageToken", () => {
         [`${mockCode}:${mockIssuer}`]: {
           imageUrl: mockIconUrl,
           network: NETWORKS.PUBLIC,
-          isValidated: true,
-          isValid: true,
+          isValidated: false,
+          isValid: null,
         },
       },
     });
@@ -221,6 +226,7 @@ describe("useManageToken", () => {
     const mockCacheTokenIcons = jest.fn();
     (useTokenIconsStore.getState as jest.Mock).mockReturnValue({
       cacheTokenIcons: mockCacheTokenIcons,
+      validateIconOnAccess: jest.fn(),
     });
 
     // First token addition - caches the icon
@@ -274,6 +280,7 @@ describe("useManageToken", () => {
     // Mock the store to return a cached icon
     (useTokenIconsStore.getState as jest.Mock).mockReturnValue({
       cacheTokenIcons: mockCacheTokenIcons,
+      validateIconOnAccess: jest.fn(),
       icons: {
         [`${mockCode}:${mockIssuer}`]: cachedIcon,
       },
@@ -292,15 +299,14 @@ describe("useManageToken", () => {
       await result.current.addToken();
     });
 
-    // Even though store has cached icon, we still cache the iconUrl from the token object
-    // This ensures the Home Screen gets the icon immediately
+    // Icon is cached with isValidated:false so it is re-validated through the normal path
     expect(mockCacheTokenIcons).toHaveBeenCalledWith({
       icons: {
         [`${mockCode}:${mockIssuer}`]: {
           imageUrl: mockIconUrl,
           network: NETWORKS.PUBLIC,
-          isValidated: true,
-          isValid: true,
+          isValidated: false,
+          isValid: null,
         },
       },
     });

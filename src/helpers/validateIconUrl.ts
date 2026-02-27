@@ -1,116 +1,83 @@
+import FastImage from "@d11/react-native-fast-image";
 import { debug } from "helpers/debug";
-import { Image } from "react-native";
 
 /**
- * Timeout in milliseconds for validating icon URLs
- * If the image doesn't load within this time, validation fails
+ * Timeout in milliseconds for validating icon URLs.
+ * If the HEAD request doesn't resolve within this window the URL is considered
+ * unreachable and validation returns false.
  */
 export const ICON_VALIDATION_TIMEOUT = 3000;
 
 /**
- * Checks if an image URL is already cached in the native image cache
+ * Validates an icon URL and pre-warms FastImage's cache.
  *
- * This performs a quick cache check without downloading.
- * For remote URLs, uses Image.prefetch with a short timeout.
- * For local resources, assumes they're always available.
+ * Validation pipeline:
+ * 1. Rejects empty / non-string values immediately.
+ * 2. Accepts `data:image/` URIs — other data: subtypes (text/html, etc.) are
+ *    rejected to prevent unexpected content.
+ * 3. For http/https URLs, races a HEAD request against a 3-second timeout:
+ *    - HEAD success  → calls FastImage.preload to cache via SDWebImage/Glide,
+ *                      returns true
+ *    - HEAD failure  → returns false (404, network error, etc.)
+ *    - timeout       → returns false (slow or unreachable host)
+ * 4. Any other scheme (file://, ftp://, javascript:, blob:, etc.) is rejected.
+ *    Bundled Metro assets are Numbers, not strings, so they never reach this
+ *    function; the only legitimate string values are http(s) URLs and the
+ *    inline `data:image/` URIs from step 2.
  *
- * @param {string} url - The URL to check
- * @returns {Promise<boolean>} True if the image is cached or a local resource
+ * Note: The Zustand store's `isValidated` optimistic-lock guarantees this
+ * function is called at most once per icon URL, so redundant network requests
+ * are never issued even when multiple components mount for the same token.
  *
- * @example
- * const isCached = await isIconCached("https://example.com/logo.png");
- */
-export const isIconCached = async (url: string): Promise<boolean> => {
-  // Empty URL is not cached
-  if (!url) return false;
-
-  // Local resources are always "cached" (available)
-  if (
-    typeof url !== "string" ||
-    (!url.startsWith("http") && !url.startsWith("https"))
-  ) {
-    return true;
-  }
-
-  // For remote URLs, try a quick prefetch with very short timeout
-  // If it succeeds immediately, it's likely cached
-  try {
-    const SHORT_CHECK_TIMEOUT = 100; // 100ms - if not instant, probably not cached
-
-    const fetchPromise = Image.prefetch(url)
-      .then(() => true)
-      .catch(() => false);
-
-    const timeoutPromise = new Promise<boolean>((resolve) => {
-      setTimeout(() => resolve(false), SHORT_CHECK_TIMEOUT);
-    });
-
-    return await Promise.race([fetchPromise, timeoutPromise]);
-  } catch (error) {
-    return false;
-  }
-};
-
-/**
- * Validates an icon URL by checking native cache and prefetching if needed
- *
- * This function provides multi-level caching:
- * 1. First checks if the image is already in native iOS/Android cache
- * 2. If not cached, uses Image.prefetch() to download and cache to disk
- * 3. The cached image persists across app sessions until cleared by OS
- *
- * @param {string} url - The URL to validate
- * @returns {Promise<boolean>} True if the URL is valid and accessible (or already cached)
- *
- * @example
- * // Validate a remote image URL
- * const isValid = await validateIconUrl("https://example.com/logo.png");
- *
- * @example
- * // Local resources are automatically considered valid
- * const isValid = await validateIconUrl("https://assets.example.com/local-logo.png");
+ * @param url - The URL to validate
+ * @returns `true` if the image is reachable and has been queued for caching
  */
 export const validateIconUrl = async (url: string): Promise<boolean> => {
-  // Empty URL is invalid
-  if (!url) return false;
+  if (!url || typeof url !== "string") return false;
 
-  // If it's not a remote URL (http/https), assume it's valid (local resource or data URI)
-  if (
-    typeof url !== "string" ||
-    (!url.startsWith("http") && !url.startsWith("https"))
-  ) {
-    return true;
+  // Allow data: URIs only for image content.  Non-image data URIs
+  // (text/html, application/javascript, etc.) are rejected.
+  if (url.startsWith("data:")) {
+    return url.startsWith("data:image/");
   }
 
-  // Use Image.prefetch to validate and cache the image
+  // Reject any scheme that is not http or https.
+  if (!url.startsWith("http://") && !url.startsWith("https://")) {
+    return false;
+  }
+
   try {
-    // Create a timeout promise that explicitly rejects after ICON_VALIDATION_TIMEOUT
-    // This ensures we don't wait for Image.prefetch indefinitely
+    // Timeout rejects so the outer catch returns false.
     const timeoutPromise = new Promise<boolean>((_, reject) => {
-      setTimeout(() => {
-        reject(new Error(`Icon validation timeout for ${url}`));
-      }, ICON_VALIDATION_TIMEOUT);
+      setTimeout(
+        () => reject(new Error(`Icon validation timeout for ${url}`)),
+        ICON_VALIDATION_TIMEOUT,
+      );
     });
 
-    const fetchPromise = Image.prefetch(url)
-      .then(() => {
-        debug("validateIconUrl", `Image prefetched and cached: ${url}`);
-        return true;
-      })
-      .catch((error) => {
+    const fetchPromise = fetch(url, { method: "HEAD" })
+      .then((response) => {
+        if (response.ok) {
+          debug("validateIconUrl", `Validated: ${url}`);
+          // Pre-warm FastImage's SDWebImage/Glide cache so the first render
+          // loads from disk rather than the network.
+          FastImage.preload([{ uri: url }]);
+          return true as boolean;
+        }
         debug(
           "validateIconUrl",
-          `Image prefetch failed for ${url}: ${String(error)}`,
+          `Validation failed for ${url}: ${response.status}`,
         );
-        return false;
+        return false as boolean;
+      })
+      .catch((error: unknown) => {
+        debug("validateIconUrl", `Fetch failed for ${url}: ${String(error)}`);
+        return false as boolean;
       });
 
-    // Race between fetch and timeout
-    // If timeout rejects first, it will be caught and return false
     return await Promise.race([fetchPromise, timeoutPromise]);
   } catch (error) {
-    // Timeout or any other error = invalid
-    debug("validateIconUrl", `Validation failed for ${url}: ${String(error)}`);
+    debug("validateIconUrl", `Validation error for ${url}: ${String(error)}`);
     return false;
   }
 };

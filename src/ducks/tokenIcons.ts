@@ -15,7 +15,7 @@ import { useVerifiedTokensStore } from "ducks/verifiedTokens";
 import { getTokenIdentifier, isLiquidityPool } from "helpers/balances";
 import { debug } from "helpers/debug";
 import { getIconUrl } from "helpers/getIconUrl";
-import { validateIconUrl, isIconCached } from "helpers/validateIconUrl";
+import { validateIconUrl } from "helpers/validateIconUrl";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
@@ -111,25 +111,18 @@ const BATCH_SIZE = 3;
 const BATCH_DELAY = 1000;
 
 /**
- * Processes a batch of icons for refresh in a low-priority background task
+ * Processes icons for refresh in batches with a delay between each batch
+ * to keep the work low-priority. Failed validations are reset so they are
+ * retried on next access.
  *
- * This function:
- * 1. Takes a batch of icons from the input array
- * 2. Processes them in parallel
- * 3. Updates the store with refreshed icons
- * 4. Schedules the next batch with a delay
- *
- * @param {Object} params - Function parameters
- * @param {[string, Icon][]} params.entries - Array of icon entries to process
- * @param {number} params.batchIndex - Current batch index for debugging
- * @param {Record<string, Icon>} params.updatedIcons - Accumulator for updated icons
- * @param {number} params.startTime - Start time of the refresh operation
- * @param {Function} params.set - Zustand set function to update store
+ * @param params.entries       - Remaining [cacheKey, Icon] pairs to process
+ * @param params.batchIndex    - Index used for debug logging
+ * @param params.startTime     - Refresh-cycle start time
+ * @param params.set           - Zustand set function
  */
 const processIconBatches = async (params: {
   entries: [string, Icon][];
   batchIndex: number;
-  updatedIcons: Record<string, Icon>;
   startTime: number;
   set: (
     partial:
@@ -140,76 +133,72 @@ const processIconBatches = async (params: {
         ) => TokenIconsState | Partial<TokenIconsState>),
   ) => void;
 }) => {
-  const { entries, batchIndex, updatedIcons, startTime, set } = params;
+  const { entries, batchIndex, startTime, set } = params;
   const batch = entries.slice(0, BATCH_SIZE);
   const remainingEntries = entries.slice(BATCH_SIZE);
 
-  // Process current batch
+  // Per-batch accumulator — isolated so earlier batches can't overwrite later ones.
+  const batchUpdates: Record<string, Icon> = {};
+
   await Promise.all(
     batch.map(async ([cacheKey, icon]) => {
       try {
-        // Parse the cache key to get token details
-        const [tokenCode, issuerKey] = cacheKey.split(":");
+        // Derive token code and issuer from the cache key.
+        // indexOf + slice is used instead of split(":") so that tokens whose
+        // issuer key itself contains a colon (rare but possible in theory)
+        // aren't silently truncated by a destructuring split.
+        const colonIdx = cacheKey.indexOf(":");
+        const tokenCode = cacheKey.slice(0, colonIdx);
+        const issuerKey = cacheKey.slice(colonIdx + 1);
         const imageUrl = await getIconUrl({
-          asset: {
-            code: tokenCode,
-            issuer: issuerKey,
-          },
+          asset: { code: tokenCode, issuer: issuerKey },
           network: icon.network,
         });
 
-        // Only reset validation state if the URL or network changed
-        // This preserves validation state for unchanged URLs, preventing flashing
-        const urlUnchanged = imageUrl === icon.imageUrl;
-
         if (!imageUrl && icon.lastValidImageUrl) {
-          updatedIcons[cacheKey] = {
-            ...icon,
-          };
+          // No new URL — keep existing icon.
+          batchUpdates[cacheKey] = { ...icon };
           return;
         }
 
-        updatedIcons[cacheKey] = {
+        const urlUnchanged = imageUrl === icon.imageUrl;
+        // Reset validation when the URL changed or the last result was a failure,
+        // so validateIconOnAccess will retry on next access.
+        const wasFailedValidation = icon.isValid === false;
+        const shouldResetValidation = !urlUnchanged || wasFailedValidation;
+
+        batchUpdates[cacheKey] = {
           imageUrl,
           network: icon.network,
-          isValidated: urlUnchanged ? icon.isValidated : false,
-          isValid: urlUnchanged ? icon.isValid : null,
+          isValidated: shouldResetValidation ? false : icon.isValidated,
+          isValid: shouldResetValidation ? null : icon.isValid,
           lastValidImageUrl:
             icon.lastValidImageUrl ??
             (icon.isValid ? icon.imageUrl : undefined),
         };
-      } catch (error) {
-        // Keep the existing icon URL and validation state if refresh fails
-        updatedIcons[cacheKey] = {
-          ...icon,
-        };
+      } catch {
+        // Network error during refresh — preserve current state.
+        batchUpdates[cacheKey] = { ...icon };
       }
     }),
   );
 
-  // Update icons after each batch
+  // Apply only this batch's updates.
   set((state) => ({
-    icons: {
-      ...state.icons,
-      ...updatedIcons,
-    },
+    icons: { ...state.icons, ...batchUpdates },
   }));
 
-  // Process next batch if there are remaining entries
   if (remainingEntries.length > 0) {
     setTimeout(() => {
       processIconBatches({
         entries: remainingEntries,
         batchIndex: batchIndex + 1,
-        updatedIcons,
         startTime,
         set,
       });
     }, BATCH_DELAY);
   } else {
-    // All batches completed, update lastRefreshed
-    const now = Date.now();
-    set({ lastRefreshed: now });
+    set({ lastRefreshed: Date.now() });
   }
 };
 
@@ -520,16 +509,13 @@ export const useTokenIconsStore = create<TokenIconsState>()(
         const now = Date.now();
         const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
-        // If lastRefreshed is not set yet, this means we're starting fresh
-        // and the app will already fetch all icons from scratch so let's
-        // simply set the lastRefreshed timestamp to now to avoid unnecessarily
-        // going through the refresh api requests below
+        // First run — icons will be fetched fresh; just record the timestamp.
         if (!lastRefreshed) {
           set({ lastRefreshed: now });
           return;
         }
 
-        // Check if we've refreshed in the last 24 hours
+        // Skip if refreshed within the last 24 hours.
         if (now - lastRefreshed < ONE_DAY_MS) {
           return;
         }
@@ -540,14 +526,14 @@ export const useTokenIconsStore = create<TokenIconsState>()(
           `Starting icon refresh for ${iconCount} cached icons`,
         );
 
-        const startTime = Date.now();
-        const updatedIcons: Record<string, Icon> = {};
+        // Reset failed tokens so they are retried in this refresh cycle.
+        set({ failedTokenCodes: {} });
 
-        // Start processing the first batch
+        const startTime = Date.now();
+
         processIconBatches({
           entries: Object.entries(icons),
           batchIndex: 0,
-          updatedIcons,
           startTime,
           set,
         });
@@ -556,18 +542,25 @@ export const useTokenIconsStore = create<TokenIconsState>()(
         const icon = get().icons[identifier];
         const tokenCode = identifier.split(":")[0];
 
-        const shouldSkipValidation =
-          !icon || icon.isValidated || (!icon.imageUrl && icon.imageUrl !== "");
+        // Skip if the icon doesn't exist or has already been validated.
+        const shouldSkipValidation = !icon || icon.isValidated;
 
         if (shouldSkipValidation) {
           return;
         }
 
+        // Acquire a lock before any await to prevent concurrent callers
+        // from each triggering their own Image.prefetch for the same token.
+        set((state) => ({
+          icons: {
+            ...state.icons,
+            [identifier]: { ...state.icons[identifier], isValidated: true },
+          },
+        }));
+
         const failedTokenCodes = get().failedTokenCodes ?? {};
 
-        // Skip validation if this token code has already failed on another screen
         if (failedTokenCodes[tokenCode]) {
-          // Mark as validated and invalid without attempting validation
           set((state) => ({
             icons: {
               ...state.icons,
@@ -584,7 +577,6 @@ export const useTokenIconsStore = create<TokenIconsState>()(
         }
 
         if (!icon.imageUrl) {
-          // Add to failed codes and mark as validated with isValid false
           set((state) => ({
             icons: {
               ...state.icons,
@@ -602,40 +594,11 @@ export const useTokenIconsStore = create<TokenIconsState>()(
           return;
         }
 
-        // Check if icon is already in the native cache
-        // If it is, mark as validated immediately without triggering a refetch
-        const isCached = await isIconCached(icon.imageUrl);
-        if (isCached) {
-          set((state) => ({
-            icons: {
-              ...state.icons,
-              [identifier]: {
-                ...state.icons[identifier],
-                isValidated: true,
-                isValid: true,
-                lastValidImageUrl: icon.imageUrl,
-              },
-            },
-          }));
-          return;
-        }
-
-        // Icon not in cache, mark as being validated to prevent concurrent validations
-        // This prevents multiple components from validating the same icon URL simultaneously
-        set((state) => ({
-          icons: {
-            ...state.icons,
-            [identifier]: {
-              ...state.icons[identifier],
-              isValidated: true, // Mark as validated to prevent re-triggers
-            },
-          },
-        }));
-
         const isValid = await validateIconUrl(icon.imageUrl);
+
         set((state) => {
           const currentIcon = state.icons[identifier];
-          // Check if icon still exists and matches
+          // Bail if the icon was replaced or removed since we read it.
           if (!currentIcon || currentIcon.imageUrl !== icon.imageUrl) {
             return state;
           }
@@ -643,13 +606,9 @@ export const useTokenIconsStore = create<TokenIconsState>()(
           const hasValidFallback = !!currentIcon.lastValidImageUrl;
           const nextIsValid = isValid || hasValidFallback;
 
-          // If validation failed, track this token code to prevent re-validation
           const newFailedCodes = isValid
             ? state.failedTokenCodes
-            : {
-                ...state.failedTokenCodes,
-                [tokenCode]: true,
-              };
+            : { ...state.failedTokenCodes, [tokenCode]: true };
 
           return {
             icons: {

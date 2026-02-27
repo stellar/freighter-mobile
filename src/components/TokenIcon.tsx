@@ -160,7 +160,7 @@ const TokenIconWithStore: React.FC<{
   );
 
   const failedTokenCodes = useTokenIconsStore(
-    (state) => state.failedTokenCodes ?? {},
+    (state) => state.failedTokenCodes,
   );
 
   const tokenCode = React.useMemo(
@@ -194,14 +194,22 @@ const TokenIconWithStore: React.FC<{
     tokenCode,
   ]);
 
-  const finalImageUrl = icon?.imageUrl || lastValidImageUrl || iconUrl;
+  // When validation explicitly failed and no prior valid URL exists, pass
+  // undefined so ImageWithFallback shows fallback immediately rather than
+  // firing an HTTP request to a URL the store already knows is bad.
+  const finalImageUrl = React.useMemo(() => {
+    if (icon?.isValid === false) {
+      return icon?.lastValidImageUrl || iconUrl || undefined;
+    }
+    return icon?.imageUrl || lastValidImageUrl || iconUrl;
+  }, [icon, lastValidImageUrl, iconUrl]);
 
-  const tokenSourceToken = token.issuer?.key
-    ? {
-        code: token.code,
-        issuer: token.issuer.key,
-      }
-    : undefined;
+  // Validation lock acquired but prefetch not yet complete.
+  const isStoreValidating =
+    !!icon && icon.isValidated === true && icon.isValid === null;
+
+  // Prefetch confirmed the image is in native cache.
+  const skipLoader = icon?.isValid === true;
 
   return (
     <TokenComponent
@@ -211,7 +219,9 @@ const TokenIconWithStore: React.FC<{
         altText: t("tokenIconAlt", { code: token.code }),
         backgroundColor,
         image: finalImageUrl,
-        token: tokenSourceToken,
+        isLoading: isStoreValidating,
+        skipImageLoader: skipLoader,
+        // token omitted — validation is managed by the effect above.
         renderContent,
       }}
     />

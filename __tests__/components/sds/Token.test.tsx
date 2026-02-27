@@ -204,10 +204,9 @@ describe("Token", () => {
     });
 
     it("shows renderContent when image is whitespace-only string", () => {
-      jest.useFakeTimers();
       const renderContent = () => <Text>Whitespace Image Fallback</Text>;
 
-      const { queryByText, getByText } = render(
+      const { getByText } = render(
         <Token
           variant="single"
           size="md"
@@ -219,14 +218,8 @@ describe("Token", () => {
         />,
       );
 
-      expect(queryByText("Whitespace Image Fallback")).toBeNull();
-
-      act(() => {
-        jest.advanceTimersByTime(3000);
-      });
-
+      // Whitespace-only URL is treated as no URL — fallback visible immediately
       expect(getByText("Whitespace Image Fallback")).toBeTruthy();
-      jest.useRealTimers();
     });
 
     it("shows renderContent when image fails to load", async () => {
@@ -256,10 +249,10 @@ describe("Token", () => {
       expect(getByText("Error Fallback")).toBeTruthy();
     });
 
-    it("does not show renderContent while image is loading", () => {
+    it("shows renderContent as background while image is loading", () => {
       const renderContent = () => <Text>Timeout Fallback</Text>;
 
-      const { getByLabelText, queryByText } = render(
+      const { getByLabelText, getByText } = render(
         <Token
           variant="single"
           size="md"
@@ -271,12 +264,12 @@ describe("Token", () => {
         />,
       );
 
-      // Should show image immediately (lazy validation handles "loading" state logic upstream)
+      // Image is in tree during loading (opacity:0) — accessible for events
       const image = getByLabelText("Token with timeout");
       expect(image).toBeTruthy();
 
-      // Fallback is hidden while loader is active
-      expect(queryByText("Timeout Fallback")).toBeNull();
+      // Fallback is always visible as background until image confirms loaded
+      expect(getByText("Timeout Fallback")).toBeTruthy();
     });
 
     it("hides spinner when image loads successfully", async () => {
@@ -298,7 +291,7 @@ describe("Token", () => {
 
       // Simulate successful image load immediately
       act(() => {
-        fireEvent(image, "loadEnd");
+        fireEvent(image, "load");
       });
 
       // After load, image should still be rendered
@@ -356,7 +349,7 @@ describe("Token", () => {
 
       // Simulate successful image load immediately
       act(() => {
-        fireEvent(image, "loadEnd");
+        fireEvent(image, "load");
       });
 
       // Wait a bit for any async state updates
@@ -372,7 +365,7 @@ describe("Token", () => {
       jest.useFakeTimers();
       const renderContent = () => <Text>Timeout Fallback</Text>;
 
-      const { getByLabelText, getByText, queryByText } = render(
+      const { getByLabelText, queryByLabelText, getByText } = render(
         <Token
           variant="single"
           size="md"
@@ -384,15 +377,16 @@ describe("Token", () => {
         />,
       );
 
-      const image = getByLabelText("Token with timeout");
-      expect(image).toBeTruthy();
-      expect(queryByText("Timeout Fallback")).toBeNull();
+      // During loading: image in tree (opacity:0), fallback visible as background
+      expect(getByLabelText("Token with timeout")).toBeTruthy();
+      expect(getByText("Timeout Fallback")).toBeTruthy();
 
       act(() => {
         jest.advanceTimersByTime(3000);
       });
 
-      expect(getByLabelText("Token with timeout")).toBeTruthy();
+      // After timeout: image removed from tree (prevents RN auto-retry), fallback still visible
+      expect(queryByLabelText("Token with timeout")).toBeNull();
       expect(getByText("Timeout Fallback")).toBeTruthy();
       jest.useRealTimers();
     });
@@ -401,7 +395,7 @@ describe("Token", () => {
       jest.useFakeTimers();
       const renderContent = () => <Text>Loading Fallback</Text>;
 
-      const { getByText, queryByText } = render(
+      const { getByText } = render(
         <Token
           variant="single"
           size="md"
@@ -414,12 +408,14 @@ describe("Token", () => {
         />,
       );
 
-      expect(queryByText("Loading Fallback")).toBeNull();
+      // Fallback visible immediately (loader overlay shown on top)
+      expect(getByText("Loading Fallback")).toBeTruthy();
 
       act(() => {
         jest.advanceTimersByTime(3000);
       });
 
+      // Still visible after timeout
       expect(getByText("Loading Fallback")).toBeTruthy();
       jest.useRealTimers();
     });

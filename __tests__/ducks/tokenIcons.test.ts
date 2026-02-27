@@ -10,7 +10,7 @@ import {
 import { useTokenIconsStore } from "ducks/tokenIcons";
 import { useVerifiedTokensStore } from "ducks/verifiedTokens";
 import { getIconUrl } from "helpers/getIconUrl";
-import { validateIconUrl, isIconCached } from "helpers/validateIconUrl";
+import { validateIconUrl } from "helpers/validateIconUrl";
 import { TokenListReponseItem } from "services/verified-token-lists";
 
 // Mock verified tokens service
@@ -34,10 +34,9 @@ jest.mock("helpers/getIconUrl", () => ({
   getIconUrl: jest.fn(),
 }));
 
-// Mock the validateIconUrl helpers
+// Mock the validateIconUrl helper
 jest.mock("helpers/validateIconUrl", () => ({
   validateIconUrl: jest.fn(),
-  isIconCached: jest.fn(),
 }));
 
 // Mock the logos asset
@@ -57,9 +56,6 @@ describe("tokenIcons store", () => {
   const mockValidateIconUrl = validateIconUrl as jest.MockedFunction<
     typeof validateIconUrl
   >;
-  const mockIsIconCached = isIconCached as jest.MockedFunction<
-    typeof isIconCached
-  >;
   const mockGetVerifiedTokens = jest.fn();
 
   beforeEach(() => {
@@ -75,7 +71,6 @@ describe("tokenIcons store", () => {
     }));
 
     mockValidateIconUrl.mockResolvedValue(true);
-    mockIsIconCached.mockResolvedValue(false);
   });
 
   describe("fetchIconUrl", () => {

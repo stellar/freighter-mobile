@@ -63,21 +63,31 @@ export const useManageToken = ({
     analytics.trackAddTokenConfirmed(token.code);
 
     if (iconUrl) {
-      // Cache token icon immediately to prevent Home Screen fallback (initials)
-      // This uses the icon found during the token search phase, avoiding the need
-      // to wait for the background icon fetch process (which starts after a 5s delay)
+      // Pre-cache the icon found during search so the Home Screen shows it
+      // immediately rather than waiting for the 5-second background refresh.
+      //
+      // Security: `isValidated: false` means the URL goes through the normal
+      // validateIconOnAccess verification path before being trusted.  The
+      // previous pattern (isValidated:true, isValid:true) bypassed all checks,
+      // allowing an attacker-controlled token to insert an unverified external
+      // URL that would be permanently persisted and prefetched on every launch.
       const identifier = `${code}:${issuer}`;
+      const store = useTokenIconsStore.getState();
 
-      useTokenIconsStore.getState().cacheTokenIcons({
+      store.cacheTokenIcons({
         icons: {
           [identifier]: {
             imageUrl: iconUrl,
             network,
-            isValidated: true,
-            isValid: true,
+            isValidated: false,
+            isValid: null,
           },
         },
       });
+
+      // Kick off validation immediately (non-blocking) so the icon doesn't
+      // have to wait for the 5-second background refresh cycle.
+      store.validateIconOnAccess(identifier);
     }
 
     await addTokenAction({

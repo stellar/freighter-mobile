@@ -67,6 +67,7 @@ describe("TokenIcon", () => {
     mockState = {
       icons: {},
       validateIconOnAccess: mockValidateIconOnAccess,
+      failedTokenCodes: {},
     };
 
     // Mock implementation to handle selectors

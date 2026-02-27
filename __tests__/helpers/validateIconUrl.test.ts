@@ -1,12 +1,5 @@
+import FastImage from "@d11/react-native-fast-image";
 import { validateIconUrl } from "helpers/validateIconUrl";
-import { Image } from "react-native";
-
-// Mock React Native Image
-jest.mock("react-native", () => ({
-  Image: {
-    prefetch: jest.fn(),
-  },
-}));
 
 // Mock debug helper
 jest.mock("helpers/debug", () => ({
@@ -17,6 +10,7 @@ describe("validateIconUrl", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useFakeTimers();
+    global.fetch = jest.fn();
   });
 
   afterEach(() => {
@@ -41,16 +35,16 @@ describe("validateIconUrl", () => {
   });
 
   describe("local resources and non-HTTP URLs", () => {
-    it("should return true for local file paths", async () => {
+    it("should return false for local file paths", async () => {
       const result = await validateIconUrl("/assets/logo.png");
-      expect(result).toBe(true);
-      expect(Image.prefetch).not.toHaveBeenCalled();
+      expect(result).toBe(false);
+      expect(global.fetch).not.toHaveBeenCalled();
     });
 
-    it("should return true for relative paths", async () => {
+    it("should return false for relative paths", async () => {
       const result = await validateIconUrl("assets/logo.png");
-      expect(result).toBe(true);
-      expect(Image.prefetch).not.toHaveBeenCalled();
+      expect(result).toBe(false);
+      expect(global.fetch).not.toHaveBeenCalled();
     });
 
     it("should return true for data URIs", async () => {
@@ -58,61 +52,70 @@ describe("validateIconUrl", () => {
         "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
       const result = await validateIconUrl(dataUri);
       expect(result).toBe(true);
-      expect(Image.prefetch).not.toHaveBeenCalled();
+      expect(global.fetch).not.toHaveBeenCalled();
     });
   });
 
   describe("remote HTTPS URLs", () => {
-    it("should prefetch and return true for valid HTTPS URLs", async () => {
-      (Image.prefetch as jest.Mock).mockResolvedValue(undefined);
+    it("should validate and preload for valid HTTPS URLs", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: true, status: 200 });
 
       const result = await validateIconUrl("https://example.com/logo.png");
 
       expect(result).toBe(true);
-      expect(Image.prefetch).toHaveBeenCalledWith(
+      expect(global.fetch).toHaveBeenCalledWith(
         "https://example.com/logo.png",
+        { method: "HEAD" },
       );
+      expect(FastImage.preload).toHaveBeenCalledWith([
+        { uri: "https://example.com/logo.png" },
+      ]);
     });
 
-    it("should return false when prefetch fails", async () => {
-      (Image.prefetch as jest.Mock).mockRejectedValue(
-        new Error("Network error"),
-      );
+    it("should return false when HEAD request fails", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: false, status: 404 });
 
       const result = await validateIconUrl("https://example.com/logo.png");
 
       expect(result).toBe(false);
+      expect(FastImage.preload).not.toHaveBeenCalled();
+    });
+
+    it("should return false when fetch rejects", async () => {
+      (global.fetch as jest.Mock).mockRejectedValue(new Error("Network error"));
+
+      const result = await validateIconUrl("https://example.com/logo.png");
+
+      expect(result).toBe(false);
+      expect(FastImage.preload).not.toHaveBeenCalled();
     });
 
     it("should return false on timeout (after 3 seconds)", async () => {
-      // Mock a never-resolving promise
-      (Image.prefetch as jest.Mock).mockImplementation(
+      (global.fetch as jest.Mock).mockImplementation(
         () =>
           new Promise((resolve) => {
-            setTimeout(() => resolve(undefined), 10000); // Resolves after 10 seconds
+            setTimeout(() => resolve({ ok: true, status: 200 }), 10000);
           }),
       );
 
       const promise = validateIconUrl("https://example.com/slow-logo.png");
 
-      // Fast-forward time to trigger timeout (3000ms)
       jest.advanceTimersByTime(3000);
 
       const result = await promise;
       expect(result).toBe(false);
     });
 
-    it("should return true if prefetch completes before timeout", async () => {
-      (Image.prefetch as jest.Mock).mockImplementation(
+    it("should return true if fetch completes before timeout", async () => {
+      (global.fetch as jest.Mock).mockImplementation(
         () =>
           new Promise((resolve) => {
-            setTimeout(() => resolve(undefined), 500); // Resolves before timeout
+            setTimeout(() => resolve({ ok: true, status: 200 }), 500);
           }),
       );
 
       const promise = validateIconUrl("https://example.com/fast-logo.png");
 
-      // Fast-forward to beyond when prefetch completes
       jest.advanceTimersByTime(600);
 
       const result = await promise;
@@ -121,31 +124,33 @@ describe("validateIconUrl", () => {
   });
 
   describe("remote HTTP URLs", () => {
-    it("should prefetch and return true for valid HTTP URLs", async () => {
-      (Image.prefetch as jest.Mock).mockResolvedValue(undefined);
+    it("should validate and preload for valid HTTP URLs", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: true, status: 200 });
 
       const result = await validateIconUrl("http://example.com/logo.png");
 
       expect(result).toBe(true);
-      expect(Image.prefetch).toHaveBeenCalledWith(
-        "http://example.com/logo.png",
-      );
+      expect(global.fetch).toHaveBeenCalledWith("http://example.com/logo.png", {
+        method: "HEAD",
+      });
+      expect(FastImage.preload).toHaveBeenCalledWith([
+        { uri: "http://example.com/logo.png" },
+      ]);
     });
 
-    it("should return false when HTTP URL prefetch fails", async () => {
-      (Image.prefetch as jest.Mock).mockRejectedValue(
-        new Error("404 Not Found"),
-      );
+    it("should return false when HTTP URL returns error status", async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: false, status: 404 });
 
       const result = await validateIconUrl("http://example.com/missing.png");
 
       expect(result).toBe(false);
+      expect(FastImage.preload).not.toHaveBeenCalled();
     });
   });
 
   describe("error handling", () => {
-    it("should return false if Image.prefetch throws an error", async () => {
-      (Image.prefetch as jest.Mock).mockImplementation(() => {
+    it("should return false if fetch throws synchronously", async () => {
+      (global.fetch as jest.Mock).mockImplementation(() => {
         throw new Error("Unexpected error");
       });
 
@@ -155,7 +160,7 @@ describe("validateIconUrl", () => {
     });
 
     it("should handle network timeout gracefully", async () => {
-      (Image.prefetch as jest.Mock).mockImplementation(
+      (global.fetch as jest.Mock).mockImplementation(
         () =>
           new Promise((_, reject) => {
             setTimeout(() => reject(new Error("Request timeout")), 5000);
@@ -164,7 +169,6 @@ describe("validateIconUrl", () => {
 
       const promise = validateIconUrl("https://example.com/slow-logo.png");
 
-      // Fast-forward past our validation timeout
       jest.advanceTimersByTime(3000);
 
       const result = await promise;
@@ -174,7 +178,7 @@ describe("validateIconUrl", () => {
 
   describe("concurrent validations", () => {
     it("should handle multiple concurrent validations", async () => {
-      (Image.prefetch as jest.Mock).mockResolvedValue(undefined);
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: true, status: 200 });
 
       const urls = [
         "https://example.com/logo1.png",
@@ -185,11 +189,12 @@ describe("validateIconUrl", () => {
       const results = await Promise.all(urls.map(validateIconUrl));
 
       expect(results).toEqual([true, true, true]);
-      expect(Image.prefetch).toHaveBeenCalledTimes(3);
+      expect(global.fetch).toHaveBeenCalledTimes(3);
+      expect(FastImage.preload).toHaveBeenCalledTimes(3);
     });
 
     it("should validate same URL multiple times independently", async () => {
-      (Image.prefetch as jest.Mock).mockResolvedValue(undefined);
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: true, status: 200 });
 
       const url = "https://example.com/logo.png";
       const results = await Promise.all([
@@ -199,27 +204,27 @@ describe("validateIconUrl", () => {
       ]);
 
       expect(results).toEqual([true, true, true]);
-      // Each call should independently call Image.prefetch
-      expect(Image.prefetch).toHaveBeenCalledTimes(3);
+      expect(global.fetch).toHaveBeenCalledTimes(3);
     });
   });
 
   describe("special cases", () => {
     it("should handle URLs with query parameters", async () => {
-      (Image.prefetch as jest.Mock).mockResolvedValue(undefined);
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: true, status: 200 });
 
       const result = await validateIconUrl(
         "https://example.com/logo.png?size=large&format=webp",
       );
 
       expect(result).toBe(true);
-      expect(Image.prefetch).toHaveBeenCalledWith(
+      expect(global.fetch).toHaveBeenCalledWith(
         "https://example.com/logo.png?size=large&format=webp",
+        { method: "HEAD" },
       );
     });
 
     it("should handle URLs with fragments", async () => {
-      (Image.prefetch as jest.Mock).mockResolvedValue(undefined);
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: true, status: 200 });
 
       const result = await validateIconUrl(
         "https://example.com/logo.png#section",
@@ -229,7 +234,7 @@ describe("validateIconUrl", () => {
     });
 
     it("should handle URLs with subdomains", async () => {
-      (Image.prefetch as jest.Mock).mockResolvedValue(undefined);
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: true, status: 200 });
 
       const result = await validateIconUrl(
         "https://cdn.assets.example.com/logo.png",
@@ -239,7 +244,7 @@ describe("validateIconUrl", () => {
     });
 
     it("should handle URLs with port numbers", async () => {
-      (Image.prefetch as jest.Mock).mockResolvedValue(undefined);
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: true, status: 200 });
 
       const result = await validateIconUrl("https://example.com:8080/logo.png");
 
@@ -248,11 +253,11 @@ describe("validateIconUrl", () => {
   });
 
   describe("timeout behavior", () => {
-    it("should complete validation if prefetch completes just before timeout", async () => {
-      (Image.prefetch as jest.Mock).mockImplementation(
+    it("should complete validation if fetch completes just before timeout", async () => {
+      (global.fetch as jest.Mock).mockImplementation(
         () =>
           new Promise((resolve) => {
-            setTimeout(() => resolve(undefined), 2999);
+            setTimeout(() => resolve({ ok: true, status: 200 }), 2999);
           }),
       );
 
@@ -264,11 +269,11 @@ describe("validateIconUrl", () => {
       expect(result).toBe(true);
     });
 
-    it("should timeout if prefetch takes exactly 3 seconds", async () => {
-      (Image.prefetch as jest.Mock).mockImplementation(
+    it("should timeout if fetch takes exactly 3 seconds", async () => {
+      (global.fetch as jest.Mock).mockImplementation(
         () =>
           new Promise((resolve) => {
-            setTimeout(() => resolve(undefined), 3000);
+            setTimeout(() => resolve({ ok: true, status: 200 }), 3000);
           }),
       );
 
@@ -278,7 +283,6 @@ describe("validateIconUrl", () => {
       const result = await promise;
 
       // Result depends on Promise.race behavior - both resolve at same time
-      // In this case, either could win, but we test the behavior
       expect(typeof result).toBe("boolean");
     });
   });
