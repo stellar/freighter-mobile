@@ -97,7 +97,7 @@ platform :ios do
     git_token = ENV.fetch("MATCH_GIT_TOKEN") { raise "MATCH_GIT_TOKEN environment variable is required" }
     git_url = ENV.fetch("FASTLANE_GIT_URL") { raise "FASTLANE_GIT_URL environment variable is required" }
 
-    unless git_url.start_with?("https://github.com/stellar/")
+    unless git_url.match?(/\Ahttps:\/\/github\.com\/stellar\/[a-zA-Z0-9_-]+\z/)
       raise "FASTLANE_GIT_URL must point to a stellar GitHub repository (got: #{git_url})"
     end
 
