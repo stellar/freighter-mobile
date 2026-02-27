@@ -1,9 +1,14 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import ConfirmationModal from "components/ConfirmationModal";
 import { List } from "components/List";
+import Modal from "components/Modal";
 import { BaseLayout } from "components/layout/BaseLayout";
+import { Button } from "components/sds/Button";
+import { Input } from "components/sds/Input";
 import { Toggle } from "components/sds/Toggle";
+import { Text } from "components/sds/Typography";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
+import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBiometrics } from "hooks/useBiometrics";
 import useColors from "hooks/useColors";
@@ -36,13 +41,55 @@ const BiometricsSettingsScreen: React.FC<
     disableBiometrics,
     biometryType,
   } = useBiometrics();
+  const { getKeyFromKeyManager, storeBiometricPassword } =
+    useAuthenticationStore();
   const [shouldTriggerBiometricsDisable, setShouldTriggerBiometricsDisable] =
     useState(false);
   const [modalVisible, setModalVisible] = useState(false);
+  const [reEnableModalVisible, setReEnableModalVisible] = useState(false);
+  const [reEnablePassword, setReEnablePassword] = useState("");
+  const [reEnableError, setReEnableError] = useState<string | undefined>();
+  const [isReEnabling, setIsReEnabling] = useState(false);
+
+  const closeReEnableModal = useCallback(() => {
+    setReEnableModalVisible(false);
+    setReEnablePassword("");
+    setReEnableError(undefined);
+  }, []);
 
   const handleBiometricsEnable = useCallback(async () => {
-    await enableBiometrics();
+    const success = await enableBiometrics();
+    if (!success) {
+      setReEnableModalVisible(true);
+    }
   }, [enableBiometrics]);
+
+  const handleReEnableWithPassword = useCallback(async () => {
+    if (!reEnablePassword) return;
+    setIsReEnabling(true);
+    setReEnableError(undefined);
+    try {
+      await getKeyFromKeyManager(reEnablePassword);
+      await storeBiometricPassword(reEnablePassword);
+      await enableBiometrics();
+      closeReEnableModal();
+    } catch (err) {
+      setReEnableError(
+        err instanceof Error
+          ? err.message
+          : t("authStore.error.invalidPassword"),
+      );
+    } finally {
+      setIsReEnabling(false);
+    }
+  }, [
+    reEnablePassword,
+    getKeyFromKeyManager,
+    storeBiometricPassword,
+    enableBiometrics,
+    closeReEnableModal,
+    t,
+  ]);
 
   useEffect(() => {
     if (shouldTriggerBiometricsDisable) {
@@ -103,6 +150,22 @@ const BiometricsSettingsScreen: React.FC<
       [BIOMETRY_TYPE.FACE]: t("securityScreen.faceBiometrics.description"),
       [BIOMETRY_TYPE.OPTIC_ID]: t("securityScreen.opticId.description"),
       [BIOMETRY_TYPE.IRIS]: t("securityScreen.iris.description"),
+    }),
+    [t],
+  );
+
+  const reEnableDescriptionMap: Record<BIOMETRY_TYPE, string> = useMemo(
+    () => ({
+      [BIOMETRY_TYPE.FACE_ID]: t("securityScreen.faceId.reEnableDescription"),
+      [BIOMETRY_TYPE.FINGERPRINT]: t(
+        "securityScreen.fingerprint.reEnableDescription",
+      ),
+      [BIOMETRY_TYPE.TOUCH_ID]: t("securityScreen.touchId.reEnableDescription"),
+      [BIOMETRY_TYPE.FACE]: t(
+        "securityScreen.faceBiometrics.reEnableDescription",
+      ),
+      [BIOMETRY_TYPE.OPTIC_ID]: t("securityScreen.opticId.reEnableDescription"),
+      [BIOMETRY_TYPE.IRIS]: t("securityScreen.iris.reEnableDescription"),
     }),
     [t],
   );
@@ -168,6 +231,57 @@ const BiometricsSettingsScreen: React.FC<
           cancelText={t("common.cancel")}
           onConfirm={() => setShouldTriggerBiometricsDisable(true)}
         />
+        <Modal visible={reEnableModalVisible} onClose={closeReEnableModal}>
+          <View className="w-full">
+            <Text xl regular>
+              {biometryToggleTitle[biometryType!] ?? ""}
+            </Text>
+            <View className="mt-4">
+              <Text md regular secondary>
+                {reEnableDescriptionMap[biometryType!] ?? ""}
+              </Text>
+            </View>
+            <View className="mt-6 mb-6">
+              <Input
+                autoCapitalize="none"
+                fieldSize="lg"
+                label={t("showRecoveryPhraseScreen.password")}
+                placeholder={t(
+                  "showRecoveryPhraseScreen.passwordInputPlaceholder",
+                )}
+                value={reEnablePassword}
+                onChangeText={(text) => {
+                  setReEnablePassword(text);
+                  setReEnableError(undefined);
+                }}
+                secureTextEntry
+                error={reEnableError}
+              />
+            </View>
+            <View className="flex-row justify-between w-full gap-3">
+              <View className="flex-1">
+                <Button
+                  secondary
+                  isFullWidth
+                  onPress={closeReEnableModal}
+                  disabled={isReEnabling}
+                >
+                  {t("common.cancel")}
+                </Button>
+              </View>
+              <View className="flex-1">
+                <Button
+                  isFullWidth
+                  onPress={handleReEnableWithPassword}
+                  isLoading={isReEnabling}
+                  disabled={!reEnablePassword || isReEnabling}
+                >
+                  {t("common.confirm")}
+                </Button>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </View>
     </BaseLayout>
   );

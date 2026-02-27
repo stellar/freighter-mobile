@@ -124,6 +124,9 @@ export const useBiometrics = () => {
     if (success) {
       setIsBiometricsEnabled(false);
       setSignInMethod(LoginType.PASSWORD);
+      await biometricDataStorage.remove(
+        BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
+      );
     }
     return success;
   }, [verifyBiometrics, setIsBiometricsEnabled, setSignInMethod]);

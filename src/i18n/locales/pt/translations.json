@@ -954,42 +954,48 @@
       "description": "Habilite a autenticação Face ID para uma camada adicional de segurança. Use a autenticação biométrica para desbloquear sua carteira e aprovar transações rapidamente e com segurança.",
       "toggleTitle": "Habilitar Face ID",
       "disableAlertTitle": "Desabilitar Face ID?",
-      "disableAlertMessage": "Tem certeza que deseja desabilitar Face ID?"
+      "disableAlertMessage": "Tem certeza que deseja desabilitar Face ID?",
+      "reEnableDescription": "Digite sua senha para reativar o Face ID."
     },
     "fingerprint": {
       "title": "Autenticação por Impressão Digital",
       "description": "Habilite a autenticação por Impressão Digital para uma camada adicional de segurança. Use a autenticação biométrica para desbloquear sua carteira e aprovar transações rapidamente e com segurança.",
       "toggleTitle": "Habilitar Impressão Digital",
       "disableAlertTitle": "Desabilitar Impressão Digital?",
-      "disableAlertMessage": "Tem certeza que deseja desabilitar Impressão Digital?"
+      "disableAlertMessage": "Tem certeza que deseja desabilitar Impressão Digital?",
+      "reEnableDescription": "Digite sua senha para reativar a Impressão Digital."
     },
     "touchId": {
       "title": "Autenticação Touch ID",
       "description": "Habilite a autenticação Touch ID para uma camada adicional de segurança. Use a autenticação biométrica para desbloquear sua carteira e aprovar transações rapidamente e com segurança.",
       "toggleTitle": "Habilitar Touch ID",
       "disableAlertTitle": "Desabilitar Touch ID?",
-      "disableAlertMessage": "Tem certeza que deseja desabilitar Touch ID?"
+      "disableAlertMessage": "Tem certeza que deseja desabilitar Touch ID?",
+      "reEnableDescription": "Digite sua senha para reativar o Touch ID."
     },
     "faceBiometrics": {
       "title": "Autenticação por Reconhecimento Facial",
       "description": "Habilite a autenticação por Reconhecimento Facial para uma camada adicional de segurança. Use a autenticação biométrica para desbloquear sua carteira e aprovar transações rapidamente e com segurança.",
       "toggleTitle": "Habilitar Reconhecimento Facial",
       "disableAlertTitle": "Desabilitar Reconhecimento Facial?",
-      "disableAlertMessage": "Tem certeza que deseja desabilitar Reconhecimento Facial?"
+      "disableAlertMessage": "Tem certeza que deseja desabilitar Reconhecimento Facial?",
+      "reEnableDescription": "Digite sua senha para reativar o Reconhecimento Facial."
     },
     "opticId": {
       "title": "Autenticação Optic ID",
       "description": "Habilite a autenticação Optic ID para uma camada adicional de segurança. Use a autenticação biométrica para desbloquear sua carteira e aprovar transações rapidamente e com segurança.",
       "toggleTitle": "Habilitar Optic ID",
       "disableAlertTitle": "Desabilitar Optic ID?",
-      "disableAlertMessage": "Tem certeza que deseja desabilitar Optic ID?"
+      "disableAlertMessage": "Tem certeza que deseja desabilitar Optic ID?",
+      "reEnableDescription": "Digite sua senha para reativar o Optic ID."
     },
     "iris": {
       "title": "Autenticação Iris",
       "description": "Habilite a autenticação Iris para uma camada adicional de segurança. Use a autenticação biométrica para desbloquear sua carteira e aprovar transações rapidamente e com segurança.",
       "toggleTitle": "Habilitar Iris",
       "disableAlertTitle": "Desabilitar Iris?",
-      "disableAlertMessage": "Tem certeza que deseja desabilitar Iris?"
+      "disableAlertMessage": "Tem certeza que deseja desabilitar Iris?",
+      "reEnableDescription": "Digite sua senha para reativar o Iris."
     }
   },
   "showRecoveryPhraseScreen": {

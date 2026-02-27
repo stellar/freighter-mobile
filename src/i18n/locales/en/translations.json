@@ -953,42 +953,48 @@
       "description": "Enable Face ID for an added layer of security. Use biometric authentication to unlock your wallet and approve transactions quickly and securely.",
       "toggleTitle": "Enable Face ID",
       "disableAlertTitle": "Disable Face ID?",
-      "disableAlertMessage": "Are you sure you want to disable Face ID?"
+      "disableAlertMessage": "Are you sure you want to disable Face ID?",
+      "reEnableDescription": "Enter your password to re-enable Face ID."
     },
     "fingerprint": {
       "title": "Fingerprint authentication",
       "description": "Enable Fingerprint for an added layer of security. Use biometric authentication to unlock your wallet and approve transactions quickly and securely.",
       "toggleTitle": "Enable Fingerprint",
       "disableAlertTitle": "Disable Fingerprint?",
-      "disableAlertMessage": "Are you sure you want to disable Fingerprint?"
+      "disableAlertMessage": "Are you sure you want to disable Fingerprint?",
+      "reEnableDescription": "Enter your password to re-enable Fingerprint."
     },
     "touchId": {
       "title": "Touch ID authentication",
       "description": "Enable Touch ID for an added layer of security. Use biometric authentication to unlock your wallet and approve transactions quickly and securely.",
       "toggleTitle": "Enable Touch ID",
       "disableAlertTitle": "Disable Touch ID?",
-      "disableAlertMessage": "Are you sure you want to disable Touch ID?"
+      "disableAlertMessage": "Are you sure you want to disable Touch ID?",
+      "reEnableDescription": "Enter your password to re-enable Touch ID."
     },
     "faceBiometrics": {
       "title": "Face Recognition authentication",
       "description": "Enable Face Recognition for an added layer of security. Use biometric authentication to unlock your wallet and approve transactions quickly and securely.",
       "toggleTitle": "Enable Face Recognition",
       "disableAlertTitle": "Disable Face Recognition?",
-      "disableAlertMessage": "Are you sure you want to disable Face Recognition?"
+      "disableAlertMessage": "Are you sure you want to disable Face Recognition?",
+      "reEnableDescription": "Enter your password to re-enable Face Recognition."
     },
     "opticId": {
       "title": "Optic ID authentication",
       "description": "Enable Optic ID for an added layer of security. Use biometric authentication to unlock your wallet and approve transactions quickly and securely.",
       "toggleTitle": "Enable Optic ID",
       "disableAlertTitle": "Disable Optic ID?",
-      "disableAlertMessage": "Are you sure you want to disable Optic ID?"
+      "disableAlertMessage": "Are you sure you want to disable Optic ID?",
+      "reEnableDescription": "Enter your password to re-enable Optic ID."
     },
     "iris": {
       "title": "Iris authentication",
       "description": "Enable Iris for an added layer of security. Use biometric authentication to unlock your wallet and approve transactions quickly and securely.",
       "toggleTitle": "Enable Iris",
       "disableAlertTitle": "Disable Iris?",
-      "disableAlertMessage": "Are you sure you want to disable Iris?"
+      "disableAlertMessage": "Are you sure you want to disable Iris?",
+      "reEnableDescription": "Enter your password to re-enable Iris."
     }
   },
   "showRecoveryPhraseScreen": {
