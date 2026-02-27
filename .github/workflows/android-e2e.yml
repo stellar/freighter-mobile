@@ -1,5 +1,8 @@
 name: Android E2E Tests
 
+permissions:
+  contents: read
+
 on:
   pull_request:
     branches: [main, release, "v*.*.*"]
@@ -75,6 +78,10 @@ env:
 jobs:
   build:
     name: Build Android APK
+    # Security guard: avoid running this job when it's a pull request from a fork.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest-16-cores
     timeout-minutes: 120
     steps:
