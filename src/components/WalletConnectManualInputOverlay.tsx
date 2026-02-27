@@ -65,6 +65,7 @@ export const WalletConnectManualInputOverlay: React.FC<
       </View>
 
       <Input
+        testID="walletconnect-uri-input"
         editable={false}
         placeholder={t("walletConnect.inputPlaceholder")}
         value={manualInput}
@@ -94,6 +95,7 @@ export const WalletConnectManualInputOverlay: React.FC<
       />
 
       <Button
+        testID="walletconnect-connect-button"
         isLoading={isConnecting}
         disabled={isConnecting || !manualInput.trim()}
         xl

@@ -3,7 +3,7 @@ import { EnvConfig } from "config/envConfig";
 import { useAnalyticsStore } from "ducks/analytics";
 import { useAuthenticationStore } from "ducks/auth";
 import { useNetworkStore } from "ducks/networkInfo";
-import { isProd } from "helpers/isEnv";
+import { isProd, isE2ETest } from "helpers/isEnv";
 import { Platform } from "react-native";
 import {
   getVersion,
@@ -91,6 +91,11 @@ export const updateSentryContext = (): void => {
  * Initialize Sentry with privacy-conscious configuration
  */
 export const initializeSentry = (): void => {
+  // Disable Sentry during e2e tests
+  if (isE2ETest) {
+    return;
+  }
+
   Sentry.init({
     dsn: SENTRY_CONFIG.DSN,
     sendDefaultPii: false,

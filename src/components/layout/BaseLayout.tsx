@@ -21,6 +21,7 @@ interface BaseLayoutProps {
   backgroundColor?: string;
   useKeyboardAvoidingView?: boolean;
   insets?: BaseLayoutInsets;
+  testID?: string;
 }
 
 interface StyledViewProps {
@@ -83,6 +84,7 @@ export const BaseLayout = ({
   useKeyboardAvoidingView = false,
   backgroundColor = THEME.colors.background.default,
   insets = DEFAULT_INSETS,
+  testID,
 }: BaseLayoutProps) => {
   const safeAreaInsets = useSafeAreaInsets();
   const isKeyboardVisible = useKeyboardVisible();
@@ -95,6 +97,7 @@ export const BaseLayout = ({
     return (
       <ScrollableKeyboardView>
         <Container
+          testID={testID}
           $insets={safeAreaInsets}
           $backgroundColor={backgroundColor}
           $insetsConfig={mergedInsets}
@@ -108,6 +111,7 @@ export const BaseLayout = ({
 
   return (
     <Container
+      testID={testID}
       $insets={safeAreaInsets}
       $backgroundColor={backgroundColor}
       $insetsConfig={mergedInsets}

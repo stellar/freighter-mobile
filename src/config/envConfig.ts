@@ -3,7 +3,7 @@ import {
   getDevBackendV1Environment,
   getDevBackendV2Environment,
 } from "config/devBackendConfig";
-import { isProd } from "helpers/isEnv";
+import { isE2ETest, isProd } from "helpers/isEnv";
 import Config from "react-native-config";
 
 /**
@@ -90,8 +90,8 @@ const getWalletKitConfig = (isProduction: boolean) => {
  * Get environment-specific configuration based on bundle ID
  */
 const getEnvConfig = (): EnvConfigType => ({
-  // Let's avoid sending events to Amplitude while developing locally
-  AMPLITUDE_API_KEY: __DEV__ ? "" : Config.AMPLITUDE_API_KEY,
+  // Let's avoid sending events to Amplitude while developing locally or during e2e tests
+  AMPLITUDE_API_KEY: __DEV__ || isE2ETest ? "" : Config.AMPLITUDE_API_KEY,
   AMPLITUDE_EXPERIMENT_DEPLOYMENT_KEY:
     Config.AMPLITUDE_EXPERIMENT_DEPLOYMENT_KEY,
 

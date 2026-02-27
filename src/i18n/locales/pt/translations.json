@@ -24,6 +24,7 @@
     "review": "Revisar",
     "and": " e ",
     "yes": "Sim",
+    "message": "Mensagem",
     "allow": "Permitir",
     "skip": "Pular",
     "enable": "Habilitar",
@@ -546,6 +547,8 @@
     "doNotProceed": "Não prossiga",
     "suspiciousRequest": "Solicitação suspeita",
     "proceedWithCaution": "Proceda com cautela",
+    "expectedToFailTitle": "Aviso",
+    "expectedToFailDescription": "Esta transação deve falhar pelos seguintes motivos:",
     "unsafeTransaction": "Esta transação não parece segura pelos seguintes motivos:",
     "token": "Este token não parece seguro pelos seguintes motivos:",
     "cancel": "Cancelar",
@@ -584,6 +587,13 @@
     "cannotSendToSelf": "Não é possível enviar para você mesmo",
     "invalidAddress": "Endereço Stellar inválido",
     "scanQRCodeText": "Escanear um QR Code do Freighter"
+  },
+  "sendSearchContacts": {
+    "unfunded": {
+      "title": "A conta de destino não existe",
+      "action": "Envie pelo menos 1 XLM para criar a conta.",
+      "learnMore": "Saiba mais sobre a criação de contas"
+    }
   },
   "swapScreen": {
     "swapFrom": "Trocar de",
@@ -823,6 +833,7 @@
   "dappRequestBottomSheetContent": {
     "transactionRequest": "Solicitação de transação",
     "confirmTransaction": "Confirmar transação",
+    "signMessage": "Assinar mensagem",
     "cancel": "Cancelar",
     "confirm": "Confirmar",
     "confirmAnyway": "Confirmar mesmo assim",
@@ -837,6 +848,7 @@
     "connectionSuccessfull": "Conexão com {{dappName}} realizada com sucesso!",
     "returnToBrowser": "Você pode agora retornar ao seu navegador",
     "signSuccessfull": "Transação assinada com sucesso!",
+    "signMessageSuccessfull": "Mensagem assinada com sucesso!",
     "signAndSubmitSuccessfull": "Transação assinada e enviada com sucesso!",
     "userRejected": "O usuário rejeitou a solicitação",
     "errorInitializing": "Erro ao inicializar o WalletConnect",
@@ -844,6 +856,10 @@
     "errorNoUriParam": "Nenhum parâmetro URI encontrado no link",
     "errorConnecting": "Erro ao conectar com {{dappName}}",
     "errorSigning": "Erro ao assinar a transação",
+    "errorSigningMessage": "Erro ao assinar a mensagem",
+    "errorInvalidMessage": "Mensagem inválida",
+    "errorEmptyMessage": "Não é possível assinar mensagem vazia",
+    "errorMessageTooLong": "Mensagem muito longa (máximo 1KB)",
     "errorSubmitting": "Erro ao enviar a transação",
     "errorRespondingRequest": "Erro ao responder à solicitação de transação",
     "errorWrongNetwork": "Rede incorreta",
@@ -1116,6 +1132,9 @@
       },
       "transaction": {
         "simulationFailed": "Falha na simulação da transação",
+        "expectedToFail": "Espera-se que esta transação falhe.",
+        "unfundedDestination": "Esta é uma nova conta e precisa de 1 XLM para começar. Qualquer transação para enviar não-XLM para uma conta não financiada falhará.",
+        "unfundedDestinationNative": "Esta é uma nova conta e precisa de pelo menos 1 XLM para ser criada. Enviar menos de 1 XLM para criá-la falhará.",
         "malicious": "Esta transação foi marcada como maliciosa",
         "warning": "Esta transação foi marcada como aviso",
         "unableToSimulate": "Não foi possível simular a transação",

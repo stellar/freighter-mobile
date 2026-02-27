@@ -11,7 +11,7 @@ import { NETWORKS, NETWORK_NAMES } from "config/constants";
 import { ActiveAccount, useAuthenticationStore } from "ducks/auth";
 import { useProtocolsStore } from "ducks/protocols";
 import { WalletKitSessionProposal } from "ducks/walletKit";
-import { findMatchedProtocol, getHostname } from "helpers/protocols";
+import { findMatchedProtocol, getDisplayHost } from "helpers/protocols";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import { useDappMetadata } from "hooks/useDappMetadata";
@@ -70,7 +70,7 @@ const DappConnectionBottomSheetContent: React.FC<
   const { t } = useAppTranslation();
   const { network } = useAuthenticationStore();
   const dappMetadata = useDappMetadata(proposalEvent);
-  const proposalOrigin = proposalEvent?.verifyContext?.verified?.origin ?? "";
+  const proposalOrigin = proposalEvent?.verifyContext?.verified?.origin;
   const { protocols } = useProtocolsStore();
 
   const getBannerText = useMemo(() => {
@@ -142,7 +142,7 @@ const DappConnectionBottomSheetContent: React.FC<
     () =>
       findMatchedProtocol({
         protocols,
-        searchUrl: proposalOrigin,
+        searchUrl: proposalOrigin || "",
       }),
     [protocols, proposalOrigin],
   );
@@ -153,7 +153,7 @@ const DappConnectionBottomSheetContent: React.FC<
     return null;
   }
 
-  const dAppDomain = getHostname(proposalOrigin ?? dappMetadata?.url ?? "");
+  const dAppDomain = getDisplayHost(proposalOrigin || dappMetadata?.url || "");
   const dAppName = matchedProtocol?.name ?? dappMetadata.name;
   const dAppFavicon = matchedProtocol?.iconUrl ?? dappMetadata.icons[0];
 
@@ -180,6 +180,7 @@ const DappConnectionBottomSheetContent: React.FC<
               isFullWidth
               onPress={handleUserCancel}
               disabled={isConnecting}
+              testID="session-proposal-cancel-button"
             >
               {t("common.cancel")}
             </Button>
@@ -193,6 +194,7 @@ const DappConnectionBottomSheetContent: React.FC<
               onPress={() => onConnection()}
               isLoading={isConnecting}
               disabled={isConnecting}
+              testID="session-proposal-confirm-button"
             >
               {t("dappConnectionBottomSheetContent.connect")}
             </Button>
@@ -226,6 +228,7 @@ const DappConnectionBottomSheetContent: React.FC<
               }}
               isLoading={isConnecting}
               disabled={isConnecting}
+              testID="session-proposal-continue-button"
             >
               {t("common.continue")}
             </Button>
@@ -262,12 +265,21 @@ const DappConnectionBottomSheetContent: React.FC<
   };
 
   return (
-    <View className="flex-1 justify-center items-center mt-2 gap-[16px]">
+    <View
+      className="flex-1 justify-center items-center mt-2 gap-[16px]"
+      testID="walletconnect-session-proposal-sheet"
+    >
       <View className="gap-[16px] justify-center items-center">
         <App size="lg" appName={dAppName} favicon={dAppFavicon} />
 
         <View className="justify-center items-center">
-          <Text lg primary medium textAlign="center">
+          <Text
+            lg
+            primary
+            medium
+            textAlign="center"
+            testID="dapp-metadata-name"
+          >
             {dAppName}
           </Text>
           {dAppDomain && (
@@ -288,7 +300,7 @@ const DappConnectionBottomSheetContent: React.FC<
                   />
                 </TouchableOpacity>
               )}
-              <Text sm secondary medium>
+              <Text sm secondary medium testID="dapp-metadata-domain">
                 {dAppDomain}
               </Text>
             </View>

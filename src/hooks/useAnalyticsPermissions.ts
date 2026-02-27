@@ -2,6 +2,7 @@ import { MIN_IOS_VERSION_FOR_ATT_REQUEST } from "config/constants";
 import { logger } from "config/logger";
 import { useAnalyticsStore } from "ducks/analytics";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
+import { isE2ETest } from "helpers/isEnv";
 import useDebounce from "hooks/useDebounce";
 import { useEffect, useRef, useCallback, useState } from "react";
 import { Platform, AppState, AppStateStatus } from "react-native";
@@ -97,6 +98,13 @@ export const useAnalyticsPermissions = ({
         return RESULTS.GRANTED;
       }
 
+      // E2E: Skip native ATT check; we don't use analytics in E2E and avoid unnecessary permission API calls.
+      if (isE2ETest) {
+        analytics.setAnalyticsEnabled(false);
+        setIsPermissionLoading(false);
+        return RESULTS.DENIED;
+      }
+
       const result = await check(PERMISSIONS.IOS.APP_TRACKING_TRANSPARENCY);
       const shouldEnableAnalytics = result === RESULTS.GRANTED;
 
@@ -128,6 +136,13 @@ export const useAnalyticsPermissions = ({
    */
   const requestTrackingPermission = useCallback(async (): Promise<string> => {
     setIsPermissionLoading(true);
+
+    // E2E: Skip ATT prompt entirely; we don't use analytics in E2E and the system dialog causes long delays in automated runs.
+    if (isE2ETest) {
+      analytics.setAttRequested(true);
+      setIsPermissionLoading(false);
+      return RESULTS.DENIED;
+    }
 
     if (isAttRequested) {
       try {
@@ -266,7 +281,8 @@ export const useAnalyticsPermissions = ({
   // Initialize analytics and set up app state monitoring
   useEffect(() => {
     const initializeAnalytics = async (): Promise<void> => {
-      if (isAttSupported() && !isAttRequested) {
+      // E2E: Don't request ATT on launch; the prompt is skipped in requestTrackingPermission when isE2ETest.
+      if (isAttSupported() && !isAttRequested && !isE2ETest) {
         await requestTrackingPermission();
       } else if (isAttSupported()) {
         await checkTrackingPermission();

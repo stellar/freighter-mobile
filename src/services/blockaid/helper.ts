@@ -10,6 +10,7 @@ import {
   TRANSACTION_SECURITY_LEVEL_MESSAGE_KEYS,
   ValidationSeverity,
 } from "services/blockaid/constants";
+import type { SecurityAssessment } from "services/blockaid/types";
 
 // Keep this helper UI-agnostic – no UI imports/hooks here
 
@@ -22,15 +23,19 @@ export interface SecurityWarning {
 }
 
 /**
- * Security assessment result with type-safe level classification
- * Provides consistent interface across all scan types
+ * Transaction context for unfunded destination detection
+ * Avoids parsing error strings by using actual transaction data
  */
-export interface SecurityAssessment {
-  level: SecurityLevel;
-  isSuspicious: boolean;
-  isMalicious: boolean;
-  isUnableToScan: boolean;
-  details?: string;
+export interface UnfundedDestinationContext {
+  /** Asset code being sent (e.g., "USDC", "XLM") */
+  assetCode: string;
+  /** Whether the destination account exists and is funded */
+  isDestinationFunded: boolean;
+  /**
+   * Whether this payment amount can create a new account when asset is XLM.
+   * If false for XLM, we treat the transaction as expected to fail.
+   */
+  canCreateAccountWithAmount?: boolean;
 }
 
 /**
@@ -54,8 +59,10 @@ export const createSecurityAssessment = (
   isSuspicious:
     level !== SecurityLevel.SAFE &&
     level !== SecurityLevel.MALICIOUS &&
-    level !== SecurityLevel.UNABLE_TO_SCAN,
+    level !== SecurityLevel.UNABLE_TO_SCAN &&
+    level !== SecurityLevel.EXPECTED_TO_FAIL,
   isMalicious: level === SecurityLevel.MALICIOUS,
+  isExpectedToFail: level === SecurityLevel.EXPECTED_TO_FAIL,
   isUnableToScan: level === SecurityLevel.UNABLE_TO_SCAN,
   details: messageKey
     ? t(messageKey, { defaultValue: fallbackMessage })
@@ -176,17 +183,46 @@ export const assessSiteSecurity = (
 };
 
 /**
+ * Detects if a transaction is expected to fail due to unfunded destination
+ * Uses transaction context (asset type + destination funding status) instead of error message parsing
+ * This identifies non-XLM transfers to unfunded accounts, which cannot succeed
+ *
+ * @param unfundedContext - Context with asset code and destination funding status
+ * @returns true if sending non-XLM to unfunded destination, false otherwise
+ */
+export const isUnfundedDestinationError = (
+  unfundedContext?: UnfundedDestinationContext,
+): boolean => {
+  if (!unfundedContext) {
+    return false;
+  }
+
+  // Unfunded destination errors occur when destination doesn't exist/funded and
+  // either (a) asset is non-XLM, or (b) asset is XLM but amount cannot create the account.
+  const isDestinationNotFunded = !unfundedContext.isDestinationFunded;
+  const isNonXlm = unfundedContext.assetCode !== "XLM";
+  const canCreateAccount =
+    unfundedContext.assetCode === "XLM" &&
+    unfundedContext.canCreateAccountWithAmount === true;
+
+  return isDestinationNotFunded && (isNonXlm || !canCreateAccount);
+};
+
+/**
  * Transaction Security Assessment
  *
  * Evaluates transaction scan results using simulation + validation for transaction-specific logic.
  * Returns "Unable to scan" state when scanResult is null/undefined (scan failed).
  *
  * @param scanResult - The Blockaid transaction scan result
+ * @param debugOverride - Debug override for testing
+ * @param unfundedContext - Optional context to determine if unfunded destination
  * @returns SecurityAssessment with type-safe level and localized details
  */
 export const assessTransactionSecurity = (
   scanResult?: Blockaid.StellarTransactionScanResponse,
   debugOverride?: SecurityLevel | null,
+  unfundedContext?: UnfundedDestinationContext,
 ): SecurityAssessment => {
   // Check for debug override first
   if (debugOverride) {
@@ -211,8 +247,20 @@ export const assessTransactionSecurity = (
 
   const { simulation, validation } = scanResult;
 
-  // Check for simulation errors = suspicious
+  // Early check: if context says unfunded + cannot create account, mark expected to fail
+  if (isUnfundedDestinationError(unfundedContext)) {
+    const messageKeys =
+      TRANSACTION_SECURITY_LEVEL_MESSAGE_KEYS[SecurityLevel.EXPECTED_TO_FAIL];
+    return createSecurityAssessment(
+      SecurityLevel.EXPECTED_TO_FAIL,
+      messageKeys.title,
+      messageKeys.description,
+    );
+  }
+
+  // Check for simulation errors - classify unfunded destination specially, others as suspicious
   if (simulation && "error" in simulation) {
+    // For other simulation errors, treat as suspicious
     const messageKeys =
       TRANSACTION_SECURITY_LEVEL_MESSAGE_KEYS[SecurityLevel.SUSPICIOUS];
     return createSecurityAssessment(
@@ -260,6 +308,7 @@ export const isBlockaidWarning = (resultType: string): boolean =>
  * Matches extension behavior: sites show simple labels, tokens/transactions show detailed warnings
  *
  * @param scanResult - The Blockaid scan result (token, site, or transaction)
+ * @param unfundedContext - Optional context for detecting unfunded destination
  * @returns Array of security warnings with id and description
  */
 export const extractSecurityWarnings = (
@@ -267,11 +316,24 @@ export const extractSecurityWarnings = (
     | Blockaid.TokenScanResponse
     | Blockaid.SiteScanResponse
     | Blockaid.StellarTransactionScanResponse,
+  unfundedContext?: UnfundedDestinationContext,
 ): Array<SecurityWarning> => {
   const warnings: Array<SecurityWarning> = [];
 
   if (!scanResult) {
     return warnings;
+  }
+
+  // Only check unfunded destination if this is a transaction scan result
+  let isUnfunded = false;
+  let isNativeUnderMinimum = false;
+
+  if ("simulation" in scanResult) {
+    isUnfunded = isUnfundedDestinationError(unfundedContext);
+    isNativeUnderMinimum =
+      isUnfunded &&
+      unfundedContext?.assetCode === "XLM" &&
+      unfundedContext?.canCreateAccountWithAmount === false;
   }
 
   // Handle site scan results
@@ -309,11 +371,31 @@ export const extractSecurityWarnings = (
 
   // Handle transaction scan results
   if ("simulation" in scanResult) {
-    if (scanResult.simulation && "error" in scanResult.simulation) {
+    if (
+      !isUnfunded &&
+      scanResult.simulation &&
+      "error" in scanResult.simulation
+    ) {
       warnings.push({
         id: "simulation-error",
         description: scanResult.simulation.error,
       });
+    }
+
+    // Check if this scan result indicates unfunded destination (transaction expected to fail)
+    if (isUnfunded) {
+      // Only add the detailed explanation - the title already says "Transaction is expected to fail"
+      const descriptionKey = isNativeUnderMinimum
+        ? "blockaid.security.transaction.unfundedDestinationNative"
+        : "blockaid.security.transaction.unfundedDestination";
+
+      warnings.push({
+        id: "unfunded-destination-details",
+        description: t(descriptionKey),
+      });
+
+      // Do not surface Blockaid technical messages for unfunded accounts
+      return warnings;
     }
 
     if (

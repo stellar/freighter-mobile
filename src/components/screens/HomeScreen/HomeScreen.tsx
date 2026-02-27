@@ -2,6 +2,11 @@ import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import { IconButton } from "components/IconButton";
 import { TokensCollectiblesTabs } from "components/TokensCollectiblesTabs";
+import {
+  WalletConnectE2EHelper,
+  WalletConnectE2EHelperTrigger,
+  WalletConnectE2EHelperRef,
+} from "components/WalletConnectE2EHelper";
 import { AnalyticsDebugTrigger } from "components/analytics/AnalyticsDebugTrigger";
 import { DebugBottomSheet } from "components/analytics/DebugBottomSheet";
 import { BaseLayout } from "components/layout/BaseLayout";
@@ -66,6 +71,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
     const { themeColors } = useColors();
     const manageAccountsBottomSheetRef = useRef<BottomSheetModal>(null);
     const analyticsDebugBottomSheetRef = useRef<BottomSheetModal>(null);
+    const walletConnectE2EHelperRef = useRef<WalletConnectE2EHelperRef>(null);
 
     const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -199,6 +205,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
       analyticsDebugBottomSheetRef.current?.dismiss();
     }, []);
 
+    const handleWalletConnectE2EHelperPress = useCallback(() => {
+      walletConnectE2EHelperRef.current?.present();
+    }, []);
+
     const handleRefresh = useCallback(async () => {
       if (!account?.publicKey) return;
 
@@ -230,6 +240,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
 
     return (
       <BaseLayout
+        testID="home-screen"
         insets={{ bottom: false, top: false, left: false, right: false }}
       >
         <WelcomeBannerBottomSheet
@@ -261,7 +272,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
           {/* Header section with account info and actions */}
           <View className="pt-8 w-full items-center">
             <View className="flex-col gap-3 items-center">
-              <TouchableOpacity onPress={handleManageAccountsPress}>
+              <TouchableOpacity
+                onPress={handleManageAccountsPress}
+                testID="home-account-switcher"
+              >
                 <View className="flex-row items-center gap-2">
                   <Avatar size="sm" publicAddress={account?.publicKey ?? ""} />
                   <Text>{account?.accountName ?? t("home.title")}</Text>
@@ -281,12 +295,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
                 Icon={Icon.Plus}
                 title={t("home.buy")}
                 onPress={navigateToBuyXLM}
+                testID="icon-button-buy"
               />
               <IconButton
                 Icon={Icon.ArrowUp}
                 title={t("home.send")}
                 disabled={hasZeroBalance}
                 onPress={handleSendPress}
+                testID="icon-button-send"
               />
               {swapEnabled && (
                 <IconButton
@@ -294,12 +310,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
                   title={t("home.swap")}
                   disabled={hasZeroBalance}
                   onPress={handleSwapPress}
+                  testID="icon-button-swap"
                 />
               )}
               <IconButton
                 Icon={Icon.Copy01}
                 title={t("common.copy")}
                 onPress={() => handleCopyAddress(account?.publicKey)}
+                testID="icon-button-copy"
               />
             </View>
             <View className="w-full border-b mb-4 border-border-primary" />
@@ -325,6 +343,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
           />
         )}
         <AnalyticsDebugTrigger onPress={handleAnalyticsDebugPress} />
+
+        {/* WalletConnect E2E Helper - E2E Test Mode Only */}
+        <WalletConnectE2EHelper ref={walletConnectE2EHelperRef} />
+        <WalletConnectE2EHelperTrigger
+          onPress={handleWalletConnectE2EHelperPress}
+        />
       </BaseLayout>
     );
   },

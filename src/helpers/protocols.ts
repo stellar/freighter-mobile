@@ -56,6 +56,34 @@ export const getHostname = (url: string): string | null => {
 };
 
 /**
+ * Extracts the hostname from a URL for display purposes (UI-friendly).
+ * Less strict than getHostname - allows localhost and http:// in development.
+ * Use this for UI display only, NOT for security-critical operations.
+ *
+ * @param url - The URL to extract the hostname from
+ * @returns The hostname (normalized to lowercase), or null if invalid
+ *
+ * @note
+ * - Allows both HTTP and HTTPS protocols (unlike getHostname)
+ * - Allows localhost and development domains
+ * - Use this only for displaying domain information to users
+ * - Do NOT use this for security checks or protocol matching
+ *
+ * @example
+ * getDisplayHost("https://stellarx.com/path") // returns "stellarx.com"
+ * getDisplayHost("http://localhost:3001") // returns "localhost"
+ * getDisplayHost("http://192.168.1.1:8000") // returns "192.168.1.1"
+ */
+export const getDisplayHost = (url: string): string | null => {
+  try {
+    const parsed = new URL(url);
+    return parsed.hostname;
+  } catch {
+    return null;
+  }
+};
+
+/**
  * Finds a matched protocol based on exact hostname matching (no subdomains).
  * This function uses secure domain parsing to prevent domain impersonation attacks.
  *

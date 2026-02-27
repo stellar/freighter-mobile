@@ -22,6 +22,7 @@ interface AccountItemRowProps {
   handleRenameAccount: (account: Account) => void;
   handleSelectAccount: (publicKey: string) => Promise<void>;
   isSelected: boolean;
+  testID?: string;
 }
 
 const AccountItemRow: React.FC<AccountItemRowProps> = ({
@@ -30,6 +31,7 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
   handleRenameAccount,
   handleSelectAccount,
   isSelected,
+  testID,
 }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
@@ -77,11 +79,15 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
   ];
 
   return (
-    <View className="flex-row justify-between items-center flex-1 h-16 mb-2">
+    <View
+      className="flex-row justify-between items-center flex-1 h-16 mb-2"
+      testID={testID}
+    >
       <TouchableOpacity
         className="flex-row justify-between items-center flex-1"
         onPress={() => handleSelectAccount(account.publicKey)}
         delayPressIn={DEFAULT_PRESS_DELAY}
+        testID={testID ? `${testID}-select` : undefined}
       >
         <View className="flex-row items-center flex-1">
           <Avatar

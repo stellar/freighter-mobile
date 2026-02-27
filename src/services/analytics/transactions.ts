@@ -20,6 +20,16 @@ export const trackSignedTransaction = (data: SignedTransactionEvent): void => {
   });
 };
 
+export const trackSignedMessage = (data: {
+  messageLength: number;
+  dappDomain?: string;
+}): void => {
+  track(AnalyticsEvent.SIGN_MESSAGE_SUCCESS, {
+    messageLength: data.messageLength,
+    ...(data.dappDomain ? { dappDomain: data.dappDomain } : {}),
+  });
+};
+
 export const trackSubmittedTransaction = (
   data: SubmittedTransactionEvent,
 ): void => {

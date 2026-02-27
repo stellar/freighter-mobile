@@ -46,6 +46,7 @@ const ManageAccountBottomSheet: React.FC<ManageAccountBottomSheetProps> = ({
             <TouchableOpacity
               onPress={handleCloseModal}
               className="absolute left-0"
+              testID="manage-accounts-close-button"
             >
               <Icon.X color={themeColors.base[1]} />
             </TouchableOpacity>
@@ -64,7 +65,7 @@ const ManageAccountBottomSheet: React.FC<ManageAccountBottomSheetProps> = ({
             paddingBottom: pxValue(20),
           }}
         >
-          {accounts.map((account) => (
+          {accounts.map((account, index) => (
             <AccountItemRow
               key={account.publicKey}
               account={account}
@@ -72,10 +73,17 @@ const ManageAccountBottomSheet: React.FC<ManageAccountBottomSheetProps> = ({
               handleRenameAccount={handleRenameAccount}
               handleSelectAccount={handleSelectAccount}
               isSelected={account.publicKey === activeAccount?.publicKey}
+              testID={`account-row-${index}`}
             />
           ))}
         </BottomSheetScrollView>
-        <Button tertiary isFullWidth xl onPress={onPressAddAnotherWallet}>
+        <Button
+          tertiary
+          isFullWidth
+          xl
+          onPress={onPressAddAnotherWallet}
+          testID="manage-accounts-add-wallet-button"
+        >
           {t("home.manageAccount.addWallet")}
         </Button>
       </BottomSheetAdaptiveContainer>

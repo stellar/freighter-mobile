@@ -278,7 +278,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   );
 
   return (
-    <View className="flex-1 gap-[12px]">
+    <View className="flex-1 gap-[12px]" testID="send-review-sheet">
       <View className="rounded-[16px] p-[16px] gap-[16px] bg-background-tertiary">
         <Text lg>{t("transactionReviewScreen.title")}</Text>
         <View className="gap-[16px]">
@@ -365,6 +365,7 @@ type SendReviewFooterProps = {
   isValidatingMemo?: boolean;
   isSuspicious?: boolean;
   isUnableToScan?: boolean;
+  isExpectedToFail?: boolean;
   isMuxedAddressWithoutMemoSupport?: boolean;
   onSettingsPress?: () => void;
   amountError?: string | null;
@@ -384,6 +385,7 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
       isValidatingMemo,
       isSuspicious,
       isUnableToScan,
+      isExpectedToFail,
       isMuxedAddressWithoutMemoSupport,
       onSettingsPress,
       amountError,
@@ -393,6 +395,7 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
       !isMalicious &&
       !isSuspicious &&
       !isUnableToScan &&
+      !isExpectedToFail &&
       !isMuxedAddressWithoutMemoSupport;
     const isLoading = isBuilding;
     const isDisabled = !transactionXDR || isLoading;
@@ -429,6 +432,7 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
             tertiary
             xl
             disabled={isConfirmDisabled}
+            testID="send-review-confirm-button"
           >
             {getButtonText()}
           </Button>
@@ -466,12 +470,13 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
       const cancelButton = (
         <View className={`${shouldUseRowLayout ? "flex-1" : "w-full"}`}>
           <Button
-            tertiary={isSuspicious || isUnableToScan}
-            destructive={isMalicious}
+            tertiary={(isSuspicious && !isUnableToScan) || isExpectedToFail}
+            destructive={isMalicious && !shouldUseRowLayout}
             secondary={shouldUseRowLayout}
             isFullWidth
             onPress={onCancel}
             disabled={isDisabled}
+            testID="send-review-cancel-button"
           >
             {t("common.cancel")}
           </Button>
@@ -489,6 +494,7 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
           isLoading={isLoading}
           disabled={isDisabled}
           variant={isMalicious ? "error" : "secondary"}
+          testID="send-review-confirm-anyway-button"
         />
       );
 
@@ -514,6 +520,7 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
       isSuspicious,
       isMalicious,
       isUnableToScan,
+      isExpectedToFail,
       onCancel,
       isRequiredMemoMissing,
       isDisabled,

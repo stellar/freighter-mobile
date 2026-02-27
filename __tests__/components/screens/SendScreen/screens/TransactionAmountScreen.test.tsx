@@ -195,6 +195,7 @@ jest.mock("services/blockaid/helper", () => ({
     isSuspicious: false,
   })),
   extractSecurityWarnings: jest.fn(() => []),
+  isUnfundedDestinationError: jest.fn(() => false),
 }));
 
 // Mock cachedFetch to return memo-required accounts data
@@ -390,6 +391,7 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
       error: null,
       refreshAccount: jest.fn(),
       signTransaction: jest.fn(),
+      signMessage: jest.fn(),
     });
     mockUseBalancesList.mockReturnValue({
       balanceItems: [mockSelectedBalance as any, mockXlmBalance as any],
@@ -987,6 +989,7 @@ describe("TransactionAmountScreen - Address Change Scenarios", () => {
       error: null,
       refreshAccount: jest.fn(),
       signTransaction: jest.fn(),
+      signMessage: jest.fn(),
     });
 
     mockUseBalancesList.mockReturnValue({

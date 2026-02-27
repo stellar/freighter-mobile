@@ -5,7 +5,7 @@ import { BaseLayout } from "components/layout/BaseLayout";
 import CameraNavigationHeader from "components/layout/CameraNavigationHeader";
 import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import Icon from "components/sds/Icon";
-import { getDefaultQRCodeSource } from "config/constants";
+import { getDefaultQRCodeSource, QRCodeSource } from "config/constants";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
@@ -40,8 +40,18 @@ const ScanQRCodeScreen: React.FC<ScanQRCodeScreenProps> = ({ route }) => {
   const { handlers, state, config, ManualInputOverlay } =
     useQRCodeScreenScanner(source);
 
+  // Determine testID based on source
+  const screenTestID =
+    source === QRCodeSource.WALLET_CONNECT
+      ? "walletconnect-input-screen"
+      : "scan-qr-code-screen";
+
   return (
-    <BaseLayout useKeyboardAvoidingView insets={{ top: false }}>
+    <BaseLayout
+      useKeyboardAvoidingView
+      insets={{ top: false }}
+      testID={screenTestID}
+    >
       <CameraNavigationHeader
         headerTitle={state.title}
         headerLeft={() => (
@@ -57,6 +67,7 @@ const ScanQRCodeScreen: React.FC<ScanQRCodeScreenProps> = ({ route }) => {
                   position="right"
                   icon={Icon.QrCode01}
                   onPress={handlers.handleHeaderRight}
+                  testID="qr-scanner-manual-input-button"
                 />
               )
             : undefined

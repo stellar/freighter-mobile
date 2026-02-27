@@ -26,7 +26,7 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
-import React, { ReactNode } from "react";
+import React, { ReactNode, useMemo } from "react";
 import { FlatList, RefreshControl } from "react-native";
 import styled from "styled-components/native";
 
@@ -71,6 +71,8 @@ interface BalancesListProps {
   disableInnerScrolling?: boolean;
   showSpendableAmount?: boolean;
   feeContext?: TransactionContext;
+  /** Optional prefix for BalanceRow testIDs (e.g. "token-option" -> "token-option-XLM") */
+  balanceRowTestIDPrefix?: string;
 }
 
 /**
@@ -98,6 +100,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
   disableInnerScrolling = false,
   showSpendableAmount = false,
   feeContext = TransactionContext.Send,
+  balanceRowTestIDPrefix,
 }) => {
   const { t } = useAppTranslation();
   const { open: openInAppBrowser } = useInAppBrowser();
@@ -126,7 +129,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
   } = useBalancesList({ publicKey, network, searchTerm });
 
   // Filter out excluded tokens and calculate spendable amounts
-  const balanceItems = React.useMemo((): BalanceItemWithSpendable[] => {
+  const balanceItems = useMemo((): BalanceItemWithSpendable[] => {
     const currentFee =
       feeContext === TransactionContext.Swap ? swapFee : transactionFee;
 
@@ -249,6 +252,11 @@ export const BalancesList: React.FC<BalancesListProps> = ({
               renderRightContent ? renderRightContent(item) : undefined
             }
             spendableAmount={item.spendableAmount}
+            testID={
+              balanceRowTestIDPrefix && item.tokenCode
+                ? `${balanceRowTestIDPrefix}-${item.tokenCode}`
+                : undefined
+            }
           />
         ))}
       </ListWrapper>
@@ -275,6 +283,11 @@ export const BalancesList: React.FC<BalancesListProps> = ({
               renderRightContent ? renderRightContent(item) : undefined
             }
             spendableAmount={item.spendableAmount}
+            testID={
+              balanceRowTestIDPrefix && item.tokenCode
+                ? `${balanceRowTestIDPrefix}-${item.tokenCode}`
+                : undefined
+            }
           />
         )}
         keyExtractor={(item) => item.id || `balance-${Math.random()}`}
