@@ -240,6 +240,8 @@ jobs:
 
       - name: Build and Distribute Application
         id: fastlane
+        env:
+          MATCH_GIT_TOKEN: ${{ steps.match-token.outputs.token }}
         run: |
           bundle exec fastlane --version
           bundle exec fastlane ios ${{ env.FASTLANE_LANE }}
