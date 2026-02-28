@@ -176,6 +176,12 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
     setInputUrl(text);
   }, []);
 
+  const handleCancel = useCallback(() => {
+    if (activeTab?.url) {
+      setInputUrl(formatDisplayUrl(activeTab.url));
+    }
+  }, [activeTab?.url]);
+
   const handleShowTabs = useCallback(() => {
     setShowTabOverview(true);
   }, [setShowTabOverview]);
@@ -266,6 +272,7 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
           onInputChange={handleInputChange}
           onUrlSubmit={handleUrlSubmit}
           onShowTabs={handleShowTabs}
+          onCancel={handleCancel}
           tabsCount={tabs.length}
           canGoBack={activeTab.canGoBack}
           onGoBack={browserActions.handleGoBack}
