@@ -8,6 +8,14 @@ import React from "react";
 
 // --- Mocks ---
 
+jest.mock("services/analytics", () => ({
+  analytics: {
+    trackContactBookAdd: jest.fn(),
+    trackContactBookEdit: jest.fn(),
+    trackContactBookDelete: jest.fn(),
+  },
+}));
+
 jest.mock("hooks/useAppTranslation", () => ({
   __esModule: true,
   default: () => ({

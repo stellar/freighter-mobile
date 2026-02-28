@@ -15,6 +15,7 @@ import useColors from "hooks/useColors";
 import { useToast } from "providers/ToastProvider";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { FlatList, Platform, Pressable, View } from "react-native";
+import { analytics } from "services/analytics";
 
 type ContactBookScreenProps = NativeStackScreenProps<
   SettingsStackParamList,
@@ -129,12 +130,14 @@ const ContactBookScreen: React.FC<ContactBookScreenProps> = ({
   const handleSaveContact = useCallback(
     (address: string, name: string, resolvedAddress?: string) => {
       if (cardMode?.type === "edit") {
+        analytics.trackContactBookEdit();
         setContacts((prev) => {
           const result = { ...prev };
           delete result[cardMode.address];
           return { ...result, [address]: { name, resolvedAddress } };
         });
       } else if (cardMode?.type === "add") {
+        analytics.trackContactBookAdd();
         setContacts((prev) => ({
           ...prev,
           [address]: { name, resolvedAddress },
@@ -161,6 +164,7 @@ const ContactBookScreen: React.FC<ContactBookScreenProps> = ({
    */
   const handleDeleteContact = useCallback(
     (address: string) => {
+      analytics.trackContactBookDelete();
       setContacts((prev) => {
         const result = { ...prev };
         delete result[address];
