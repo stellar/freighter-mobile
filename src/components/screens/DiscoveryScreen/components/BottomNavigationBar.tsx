@@ -4,7 +4,7 @@ import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { StyledTextInput } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
-import { isIOS } from "helpers/device";
+import { isAndroid, isIOS } from "helpers/device";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
@@ -117,6 +117,11 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
               </TouchableOpacity>
             )}
 
+            {/* URL display strategy:
+               - iOS: TextInput with lineBreakModeIOS="tail" handles ellipsis natively.
+               - Android: TextInput doesn't support ellipsis, so when unfocused we hide it
+                 and overlay a Text component with numberOfLines={1} (ellipsizeMode defaults
+                 to "tail"). Tapping the overlay focuses the hidden input for editing. */}
             <View className="flex-1 items-center justify-center">
               <StyledTextInput
                 ref={inputRef}
@@ -133,8 +138,33 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
                 style={{
                   textAlign: isFocused ? "left" : "center",
                   fontWeight: "500",
+                  // Hidden on Android when unfocused; Text overlay handles display
+                  ...(!isFocused && isAndroid
+                    ? { opacity: 0, position: "absolute" as const }
+                    : {}),
                 }}
               />
+              {!isFocused && isAndroid && (
+                <TouchableOpacity
+                  onPress={() => inputRef.current?.focus()}
+                  className="flex-1 w-full justify-center items-center"
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    sm
+                    medium
+                    numberOfLines={1}
+                    textAlign="center"
+                    color={
+                      inputUrl
+                        ? themeColors.text.primary
+                        : themeColors.text.secondary
+                    }
+                  >
+                    {inputUrl || t("discovery.urlBarPlaceholder")}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             {isFocused ? (
