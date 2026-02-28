@@ -5,10 +5,17 @@ import Icon from "components/sds/Icon";
 import { StyledTextInput } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
 import { isAndroid, isIOS } from "helpers/device";
+import { getDisplayHost } from "helpers/protocols";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Animated,
   Keyboard,
@@ -51,6 +58,13 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
     const [cursorSelection, setCursorSelection] = useState<
       { start: number; end: number } | undefined
     >(undefined);
+
+    const displayUrl = useMemo(() => {
+      if (!inputUrl) return "";
+      const host = getDisplayHost(inputUrl);
+      if (!host) return inputUrl;
+      return host.replace(/^www\./, "");
+    }, [inputUrl]);
 
     useEffect(() => {
       const showEvent = isIOS ? "keyboardWillShow" : "keyboardDidShow";
@@ -146,7 +160,7 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
               <StyledTextInput
                 ref={inputRef}
                 fieldSize="md"
-                value={inputUrl}
+                value={isFocused ? inputUrl : displayUrl}
                 onChangeText={onInputChange}
                 onSubmitEditing={onUrlSubmit}
                 placeholder={t("discovery.urlBarPlaceholder")}
@@ -183,7 +197,7 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
                         : themeColors.text.secondary
                     }
                   >
-                    {inputUrl || t("discovery.urlBarPlaceholder")}
+                    {displayUrl || t("discovery.urlBarPlaceholder")}
                   </Text>
                 </TouchableOpacity>
               )}
