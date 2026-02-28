@@ -362,6 +362,10 @@ interface InputProps {
   centered?: boolean;
   /** Line break mode for iOS */
   lineBreakModeIOS?: "head" | "middle" | "tail" | "clip";
+  selection?: { start: number; end: number };
+  onSelectionChange?: (event: {
+    nativeEvent: { selection: { start: number; end: number } };
+  }) => void;
 }
 
 /**
@@ -414,10 +418,11 @@ type TextInputComponentProps = Pick<
   | "autoFocus"
   | "keyboardType"
   | "lineBreakModeIOS"
+  | "selection"
+  | "onSelectionChange"
 > & {
   className?: string;
   ref: React.Ref<InputRef>;
-  selection?: { start: number; end: number };
 };
 
 /**

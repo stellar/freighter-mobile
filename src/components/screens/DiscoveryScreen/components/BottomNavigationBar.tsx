@@ -48,6 +48,9 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
     const keyboardOffset = useRef(new Animated.Value(0)).current;
     const inputRef = useRef<TextInput>(null);
     const [isFocused, setIsFocused] = useState(false);
+    const [cursorSelection, setCursorSelection] = useState<
+      { start: number; end: number } | undefined
+    >(undefined);
 
     useEffect(() => {
       const showEvent = isIOS ? "keyboardWillShow" : "keyboardDidShow";
@@ -55,6 +58,15 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
 
       const showListener = Keyboard.addListener(showEvent, (e) => {
         setIsFocused(true);
+
+        // Move cursor to beginning of input on focus. iOS needs a frame
+        // defer to avoid racing with the keyboard animation.
+        const moveCursor = () => setCursorSelection({ start: 0, end: 0 });
+        if (isIOS) {
+          requestAnimationFrame(moveCursor);
+        } else {
+          moveCursor();
+        }
 
         if (isIOS) {
           Animated.timing(keyboardOffset, {
@@ -87,6 +99,14 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
       Keyboard.dismiss();
       onCancel();
     }, [onCancel]);
+
+    // Release controlled selection after native applies cursor position,
+    // so the user can freely move the cursor afterward.
+    const handleSelectionChange = useCallback(() => {
+      if (cursorSelection) {
+        setCursorSelection(undefined);
+      }
+    }, [cursorSelection]);
 
     const handleClear = useCallback(() => {
       onInputChange("");
@@ -135,6 +155,8 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
                 autoCorrect={false}
                 keyboardType="default"
                 lineBreakModeIOS="tail"
+                selection={cursorSelection}
+                onSelectionChange={handleSelectionChange}
                 style={{
                   textAlign: isFocused ? "left" : "center",
                   fontWeight: "500",
