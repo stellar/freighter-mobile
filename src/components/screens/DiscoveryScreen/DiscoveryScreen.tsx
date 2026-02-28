@@ -1,8 +1,7 @@
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import { BaseLayout } from "components/layout/BaseLayout";
 import {
-  UrlBar,
-  BottomNavigation,
+  BottomNavigationBar,
   TabOverview,
   WebViewContainer,
 } from "components/screens/DiscoveryScreen/components";
@@ -244,14 +243,6 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
           },
         ]}
       >
-        <UrlBar
-          inputUrl={inputUrl}
-          onInputChange={handleInputChange}
-          onUrlSubmit={handleUrlSubmit}
-          onShowTabs={handleShowTabs}
-          tabsCount={tabs.length}
-        />
-
         <WebViewContainer
           webViewRef={webViewRef}
           onNavigationStateChange={handleNavigationStateChange}
@@ -260,12 +251,14 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
           domStorageEnabled
         />
 
-        <BottomNavigation
+        <BottomNavigationBar
+          inputUrl={inputUrl}
+          onInputChange={handleInputChange}
+          onUrlSubmit={handleUrlSubmit}
+          onShowTabs={handleShowTabs}
+          tabsCount={tabs.length}
           canGoBack={activeTab.canGoBack}
-          canGoForward={activeTab.canGoForward}
           onGoBack={browserActions.handleGoBack}
-          onGoForward={browserActions.handleGoForward}
-          onNewTab={handleNewTab}
           contextMenuActions={browserActions.contextMenuActions}
         />
       </Animated.View>

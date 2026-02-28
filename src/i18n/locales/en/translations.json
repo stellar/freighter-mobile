@@ -310,7 +310,7 @@
     "legalDisclaimer": "By connecting to these dapps, you acknowledge that you're interacting with them at your own risk. We cannot recover funds. Never share your recovery phrase or private key.",
     "oneTab": "1 Tab",
     "tabs": "{{count}} Tabs",
-    "urlBarPlaceholder": "Search or enter a website",
+    "urlBarPlaceholder": "Search",
     "openInBrowser": "Open in Browser",
     "share": "Share",
     "reload": "Reload",
