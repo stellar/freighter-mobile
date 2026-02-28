@@ -71,6 +71,7 @@ export const SettingsStackNavigator = () => {
           headerTitle: t("settings.preferences"),
         }}
       />
+      {/* Uses a custom close (X) button in headerLeft in place of the default back arrow */}
       <SettingsStack.Screen
         name={SETTINGS_ROUTES.CONTACT_BOOK_SCREEN}
         component={ContactBookScreen}

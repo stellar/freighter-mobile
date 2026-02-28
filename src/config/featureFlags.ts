@@ -4,5 +4,6 @@
  * For remote feature flags, see `ducks/remoteConfig.ts`.
  */
 export const featureFlags = {
+  /** Gates the Contact Book feature in the Settings screen */
   isContactListEnabled: false,
 } as const;

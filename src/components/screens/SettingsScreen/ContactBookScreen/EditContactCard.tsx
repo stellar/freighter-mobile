@@ -11,6 +11,15 @@ import useColors from "hooks/useColors";
 import React, { useRef, useState } from "react";
 import { View } from "react-native";
 
+/**
+ * Props for the EditContactCard component.
+ *
+ * @property title - Title displayed at the top of the card ("Add Contact" or "Edit Contact")
+ * @property address - Pre-populated Stellar address when editing an existing contact
+ * @property name - Pre-populated display name when editing an existing contact
+ * @property existingContacts - Map of contacts used for duplicate detection (excludes the contact being edited)
+ * @property onSave - Callback invoked with the final address, name, and optional resolved address on save
+ */
 interface EditContactCardProps {
   title: string;
   address?: string;
@@ -19,6 +28,10 @@ interface EditContactCardProps {
   onSave: (address: string, name: string, resolvedAddress?: string) => void;
 }
 
+/**
+ * Bottom-sheet form for adding or editing a Stellar contact.
+ * Validates the address (including federation resolution) and name before calling onSave.
+ */
 const EditContactCard: React.FC<EditContactCardProps> = ({
   title: cardTitle,
   address: initialAddress = "",
@@ -46,6 +59,13 @@ const EditContactCard: React.FC<EditContactCardProps> = ({
     !addressValidated ||
     !nameValidated;
 
+  /**
+   * Validates a Stellar address or federation address.
+   * Resolves federation addresses asynchronously, checks address validity, and detects duplicates.
+   *
+   * @param val - The address string to validate
+   * @param options.skipFederation - When true, skips federation resolution (used during typing to avoid excessive network calls)
+   */
   const validateAddress = async (
     val: string,
     { skipFederation = false } = {},
@@ -92,6 +112,11 @@ const EditContactCard: React.FC<EditContactCardProps> = ({
     setAddressValidated(true);
   };
 
+  /**
+   * Validates the contact name by trimming whitespace and checking for duplicates.
+   *
+   * @param val - The name string to validate
+   */
   const validateName = (val: string) => {
     const trimmed = val.trim();
     if (!trimmed) {
@@ -113,6 +138,9 @@ const EditContactCard: React.FC<EditContactCardProps> = ({
     setNameValidated(true);
   };
 
+  /**
+   * Reads the clipboard and sets the address field, then immediately validates it.
+   */
   const handlePaste = async () => {
     const clipboardContent = await Clipboard.getString();
     if (clipboardContent) {
@@ -141,6 +169,12 @@ const EditContactCard: React.FC<EditContactCardProps> = ({
     }
   };
 
+  /**
+   * Performs full pre-save validation of both address and name fields.
+   * Re-resolves federation addresses if needed and checks for duplicates.
+   *
+   * @returns Promise resolving to true if all fields are valid, false otherwise
+   */
   const validate = async (): Promise<boolean> => {
     let isValid = true;
 

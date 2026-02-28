@@ -21,11 +21,21 @@ type ContactBookScreenProps = NativeStackScreenProps<
   typeof SETTINGS_ROUTES.CONTACT_BOOK_SCREEN
 >;
 
+/**
+ * Data stored for a single contact entry.
+ *
+ * @property name - Display name for the contact
+ * @property resolvedAddress - Stellar address resolved from a federation lookup, if applicable
+ */
 export interface ContactData {
   name: string;
   resolvedAddress?: string;
 }
 
+/**
+ * Map of Stellar address → ContactData, keyed by the raw input address
+ * (which may be a federation address or a native Stellar address).
+ */
 export type ContactsMap = Record<string, ContactData>;
 
 // const INITIAL_CONTACTS: ContactsMap = {
@@ -50,10 +60,19 @@ const icons = Platform.select({
   },
 });
 
+/**
+ * Discriminated union describing the current editing state of the contact card.
+ * - `"add"` mode opens a blank form for a new contact.
+ * - `"edit"` mode pre-populates the form with the selected contact's address and data.
+ */
 type CardMode =
   | { type: "add" }
   | { type: "edit"; address: string; data: ContactData };
 
+/**
+ * Screen for managing the user's saved Stellar contacts.
+ * Supports adding, editing, deleting, and copying contact addresses.
+ */
 const ContactBookScreen: React.FC<ContactBookScreenProps> = ({
   navigation,
 }) => {
@@ -85,6 +104,12 @@ const ContactBookScreen: React.FC<ContactBookScreenProps> = ({
     });
   }, [navigation, HeaderRightComponent]);
 
+  /**
+   * Opens the edit card pre-populated with the selected contact's address and data.
+   *
+   * @param address - The address key of the contact to edit
+   * @param data - The current data for the contact
+   */
   const handleEditContact = useCallback(
     (address: string, data: ContactData) => {
       setCardMode({ type: "edit", address, data });
@@ -92,6 +117,15 @@ const ContactBookScreen: React.FC<ContactBookScreenProps> = ({
     [],
   );
 
+  /**
+   * Saves a contact in add or edit mode.
+   * In edit mode, replaces the old address key with the new one.
+   * In add mode, inserts the contact and shows a success toast.
+   *
+   * @param address - The raw Stellar or federation address entered by the user
+   * @param name - The display name for the contact
+   * @param resolvedAddress - Federation-resolved Stellar address, if applicable
+   */
   const handleSaveContact = useCallback(
     (address: string, name: string, resolvedAddress?: string) => {
       if (cardMode?.type === "edit") {
@@ -120,6 +154,11 @@ const ContactBookScreen: React.FC<ContactBookScreenProps> = ({
     [cardMode, showToast, t, themeColors.status.success],
   );
 
+  /**
+   * Removes a contact by address and shows a success toast.
+   *
+   * @param address - The address key of the contact to delete
+   */
   const handleDeleteContact = useCallback(
     (address: string) => {
       setContacts((prev) => {
@@ -146,6 +185,13 @@ const ContactBookScreen: React.FC<ContactBookScreenProps> = ({
     [contacts],
   );
 
+  /**
+   * Builds the context menu action items for a contact row.
+   *
+   * @param address - The contact's Stellar address
+   * @param data - The contact's stored data
+   * @returns Array of menu items for edit, copy, and delete actions
+   */
   const getActions = useCallback(
     (address: string, data: ContactData): MenuItem[] => [
       {

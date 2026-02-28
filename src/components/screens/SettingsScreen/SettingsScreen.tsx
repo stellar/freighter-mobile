@@ -63,6 +63,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
       ),
       testID: "preferences-button",
     },
+    // Contact Book entry is gated by the isContactListEnabled feature flag
     ...(featureFlags.isContactListEnabled
       ? [
           {
