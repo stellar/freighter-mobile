@@ -15,8 +15,9 @@ import { formatDisplayUrl, getFaviconUrl } from "helpers/browser";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBrowserActions } from "hooks/useBrowserActions";
+import useKeyboardVisible from "hooks/useKeyboardVisible";
 import React, { useRef, useState, useCallback, useEffect } from "react";
-import { Animated, View } from "react-native";
+import { Animated, Keyboard, Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView, WebViewNavigation } from "react-native-webview";
 
@@ -32,6 +33,7 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
   const mainContentFadeAnim = useRef(new Animated.Value(1)).current;
   const tabOverviewFadeAnim = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
+  const isKeyboardVisible = useKeyboardVisible();
   const { t } = useAppTranslation();
 
   const {
@@ -243,13 +245,21 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
           },
         ]}
       >
-        <WebViewContainer
-          webViewRef={webViewRef}
-          onNavigationStateChange={handleNavigationStateChange}
-          onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest}
-          javaScriptEnabled
-          domStorageEnabled
-        />
+        <View className="flex-1">
+          <WebViewContainer
+            webViewRef={webViewRef}
+            onNavigationStateChange={handleNavigationStateChange}
+            onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest}
+            javaScriptEnabled
+            domStorageEnabled
+          />
+          {isKeyboardVisible && (
+            <Pressable
+              style={StyleSheet.absoluteFill}
+              onPress={Keyboard.dismiss}
+            />
+          )}
+        </View>
 
         <BottomNavigationBar
           inputUrl={inputUrl}
