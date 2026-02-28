@@ -24,6 +24,8 @@ export interface ToastOptions {
   duration?: number;
   /** Optional ID for the toast. If a toast with the same ID already exists, it will be replaced */
   toastId?: string;
+  /** Whether to show filled background */
+  isFilled?: boolean;
 }
 
 interface ToastContextType {

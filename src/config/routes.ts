@@ -79,6 +79,7 @@ export const MANAGE_TOKENS_ROUTES = {
 export const SETTINGS_ROUTES = {
   SETTINGS_SCREEN: "SettingsScreen",
   PREFERENCES_SCREEN: "PreferencesScreen",
+  CONTACT_BOOK_SCREEN: "ContactBookScreen",
   CHANGE_NETWORK_SCREEN: "ChangeNetworkScreen",
   NETWORK_SETTINGS_SCREEN: "NetworkSettingsScreen",
   SHARE_FEEDBACK_SCREEN: "ShareFeedbackScreen",
@@ -194,6 +195,7 @@ export type ManageTokensStackParamList = {
 export type SettingsStackParamList = {
   [SETTINGS_ROUTES.SETTINGS_SCREEN]: undefined;
   [SETTINGS_ROUTES.PREFERENCES_SCREEN]: undefined;
+  [SETTINGS_ROUTES.CONTACT_BOOK_SCREEN]: undefined;
   [SETTINGS_ROUTES.CHANGE_NETWORK_SCREEN]: undefined;
   [SETTINGS_ROUTES.NETWORK_SETTINGS_SCREEN]: {
     selectedNetwork: NETWORKS;

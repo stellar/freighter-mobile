@@ -8,6 +8,7 @@ import DeleteAccountBottomSheet from "components/screens/SettingsScreen/DeleteAc
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { DEFAULT_PADDING, FREIGHTER_BASE_URL } from "config/constants";
+import { featureFlags } from "config/featureFlags";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import { pxValue } from "helpers/dimensions";
@@ -62,19 +63,21 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
       ),
       testID: "preferences-button",
     },
-  ];
-
-  const midListItems = [
-    {
-      icon: <Icon.Server05 color={themeColors.foreground.primary} />,
-      title: t("settings.network"),
-      titleColor: themeColors.text.primary,
-      onPress: () => navigation.navigate(SETTINGS_ROUTES.CHANGE_NETWORK_SCREEN),
-      trailingContent: (
-        <Icon.ChevronRight color={themeColors.foreground.primary} />
-      ),
-      testID: "change-network-button",
-    },
+    ...(featureFlags.isContactListEnabled
+      ? [
+          {
+            icon: <Icon.Users01 color={themeColors.foreground.primary} />,
+            title: t("settings.contactBook"),
+            titleColor: themeColors.text.primary,
+            onPress: () =>
+              navigation.navigate(SETTINGS_ROUTES.CONTACT_BOOK_SCREEN),
+            trailingContent: (
+              <Icon.ChevronRight color={themeColors.foreground.primary} />
+            ),
+            testID: "contact-book-button",
+          },
+        ]
+      : []),
     {
       icon: <Icon.Shield01 color={themeColors.foreground.primary} />,
       title: t("settings.security"),
@@ -84,6 +87,16 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
         <Icon.ChevronRight color={themeColors.foreground.primary} />
       ),
       testID: "security-button",
+    },
+    {
+      icon: <Icon.Server05 color={themeColors.foreground.primary} />,
+      title: t("settings.network"),
+      titleColor: themeColors.text.primary,
+      onPress: () => navigation.navigate(SETTINGS_ROUTES.CHANGE_NETWORK_SCREEN),
+      trailingContent: (
+        <Icon.ChevronRight color={themeColors.foreground.primary} />
+      ),
+      testID: "change-network-button",
     },
     {
       icon: <Icon.LifeBuoy01 color={themeColors.foreground.primary} />,
@@ -164,7 +177,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
           style={{ marginBottom: insets.bottom + pxValue(DEFAULT_PADDING) }}
         >
           <List items={topListItems} />
-          <List items={midListItems} />
           <List items={bottomListItems} />
           <DeleteAccountButton onPress={handleDeleteAccount} />
         </View>

@@ -340,6 +340,7 @@ interface InputProps {
   value?: string;
   onChangeText?: (text: string) => void;
   onSubmitEditing?: () => void;
+  onBlur?: () => void;
   placeholder?: string;
   placeholderTextColor?: string;
   secureTextEntry?: boolean;
