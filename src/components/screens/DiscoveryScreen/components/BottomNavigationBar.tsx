@@ -58,6 +58,8 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
     const [cursorSelection, setCursorSelection] = useState<
       { start: number; end: number } | undefined
     >(undefined);
+    // Tracks whether the search bar (not a WebView input) opened the keyboard
+    const isSearchBarActive = useRef(false);
 
     const displayUrl = useMemo(() => {
       if (!inputUrl) return "";
@@ -66,11 +68,17 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
       return host.replace(/^www\./, "");
     }, [inputUrl]);
 
+    // Keyboard avoidance animation is iOS only. On Android,
+    // adjustResize in AndroidManifest handles it at the system level.
     useEffect(() => {
       const showEvent = isIOS ? "keyboardWillShow" : "keyboardDidShow";
       const hideEvent = isIOS ? "keyboardWillHide" : "keyboardDidHide";
 
       const showListener = Keyboard.addListener(showEvent, (e) => {
+        // Ignore keyboards opened by WebView inputs
+        if (!inputRef.current?.isFocused()) return;
+
+        isSearchBarActive.current = true;
         setIsFocused(true);
 
         // Move cursor to beginning of input on focus. iOS needs a frame
@@ -92,6 +100,9 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
       });
 
       const hideListener = Keyboard.addListener(hideEvent, (e) => {
+        if (!isSearchBarActive.current) return;
+
+        isSearchBarActive.current = false;
         setIsFocused(false);
 
         if (isIOS) {
