@@ -274,9 +274,8 @@ describe("ContactBookScreen", () => {
       fireEvent.changeText(nameInput, "");
       fireEvent(nameInput, "blur");
 
-      // Empty name blur only validates if name was set — the component checks `if (name)` before validating
-      // So clearing to "" won't trigger validation. Test with whitespace instead.
-      expect(getByText("contactBookScreen.save")).toBeTruthy();
+      // Empty name now shows an error message
+      expect(getByText("contactBookScreen.errors.emptyName")).toBeTruthy();
     });
 
     it("shows duplicate address error", async () => {

@@ -52,6 +52,7 @@ jest.mock("ducks/swapSettings", () => ({
     swapFee: "100",
     swapTimeout: "30",
     swapSlippage: "0.5",
+    saveSwapFee: jest.fn(),
     resetToDefaults: mockResetToDefaults,
   })),
 }));

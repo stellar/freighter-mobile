@@ -42,6 +42,7 @@ const EditContactCard: React.FC<EditContactCardProps> = ({
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const resolvedAddressRef = useRef<string | undefined>(undefined);
+  const validationIdRef = useRef(0);
   const [address, setAddress] = useState(initialAddress);
   const [name, setName] = useState(initialName);
   const [addressError, setAddressError] = useState<string | undefined>();
@@ -70,28 +71,34 @@ const EditContactCard: React.FC<EditContactCardProps> = ({
     val: string,
     { skipFederation = false } = {},
   ) => {
-    if (!val) {
+    const normalized = val.trim();
+    // eslint-disable-next-line no-plusplus
+    const validationId = ++validationIdRef.current;
+
+    if (!normalized) {
       setAddressError(undefined);
       setAddressValidated(false);
       resolvedAddressRef.current = undefined;
       return;
     }
 
-    if (isFederationAddress(val)) {
+    if (isFederationAddress(normalized)) {
       if (skipFederation) {
         setAddressError(undefined);
         setAddressValidated(false);
         return;
       }
       try {
-        const fedResp = await Federation.Server.resolve(val);
+        const fedResp = await Federation.Server.resolve(normalized);
+        if (validationId !== validationIdRef.current) return;
         resolvedAddressRef.current = fedResp.account_id;
       } catch {
+        if (validationId !== validationIdRef.current) return;
         resolvedAddressRef.current = undefined;
         setAddressError(t("contactBookScreen.errors.federationNotFound"));
         return;
       }
-    } else if (!isValidStellarAddress(val)) {
+    } else if (!isValidStellarAddress(normalized)) {
       resolvedAddressRef.current = undefined;
       setAddressError(t("contactBookScreen.errors.invalidAddress"));
       return;
@@ -101,7 +108,7 @@ const EditContactCard: React.FC<EditContactCardProps> = ({
 
     if (
       Object.keys(existingContacts).some(
-        (key) => key.toLowerCase() === val.toLowerCase(),
+        (key) => key.toLowerCase() === normalized.toLowerCase(),
       )
     ) {
       setAddressError(t("contactBookScreen.errors.duplicateAddress"));
@@ -120,7 +127,7 @@ const EditContactCard: React.FC<EditContactCardProps> = ({
   const validateName = (val: string) => {
     const trimmed = val.trim();
     if (!trimmed) {
-      setNameError(undefined);
+      setNameError(t("contactBookScreen.errors.emptyName"));
       setNameValidated(false);
       return;
     }
@@ -164,9 +171,7 @@ const EditContactCard: React.FC<EditContactCardProps> = ({
   };
 
   const handleNameBlur = () => {
-    if (name) {
-      validateName(name);
-    }
+    validateName(name);
   };
 
   /**
@@ -177,17 +182,18 @@ const EditContactCard: React.FC<EditContactCardProps> = ({
    */
   const validate = async (): Promise<boolean> => {
     let isValid = true;
+    const trimmedAddress = address.trim();
 
-    if (isFederationAddress(address)) {
+    if (isFederationAddress(trimmedAddress)) {
       try {
-        const fedResp = await Federation.Server.resolve(address);
+        const fedResp = await Federation.Server.resolve(trimmedAddress);
         resolvedAddressRef.current = fedResp.account_id;
       } catch {
         setAddressError(t("contactBookScreen.errors.federationNotFound"));
         resolvedAddressRef.current = undefined;
         isValid = false;
       }
-    } else if (!isValidStellarAddress(address)) {
+    } else if (!isValidStellarAddress(trimmedAddress)) {
       setAddressError(t("contactBookScreen.errors.invalidAddress"));
       resolvedAddressRef.current = undefined;
       isValid = false;
@@ -196,7 +202,7 @@ const EditContactCard: React.FC<EditContactCardProps> = ({
     if (
       isValid &&
       Object.keys(existingContacts).some(
-        (key) => key.toLowerCase() === address.toLowerCase(),
+        (key) => key.toLowerCase() === trimmedAddress.toLowerCase(),
       )
     ) {
       setAddressError(t("contactBookScreen.errors.duplicateAddress"));
@@ -224,7 +230,7 @@ const EditContactCard: React.FC<EditContactCardProps> = ({
     try {
       const isValid = await validate();
       if (isValid) {
-        onSave(address, name.trim(), resolvedAddressRef.current);
+        onSave(address.trim(), name.trim(), resolvedAddressRef.current);
       }
     } finally {
       setIsValidating(false);

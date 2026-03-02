@@ -19,6 +19,7 @@
     "eslint-plugin-translations/index.js",
     "scripts/**/*.js",
     "**/node_modules",
-    "**/Pods"
+    "**/Pods",
+    "mock-dapp/**"
   ]
 }
