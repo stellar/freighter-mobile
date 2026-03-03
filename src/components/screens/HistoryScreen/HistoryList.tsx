@@ -17,7 +17,7 @@ import {
 import { NetworkDetails } from "config/constants";
 import useAppTranslation from "hooks/useAppTranslation";
 import { HistorySection, HistoryData } from "hooks/useGetHistoryData";
-import React, { useCallback, useEffect, useReducer, useRef } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import {
   RefreshControl,
   SectionList,
@@ -54,13 +54,6 @@ interface HistoryListProps {
 /**
  * Shared component for rendering history lists with transactions
  */
-type SheetState = { detail: TransactionDetails | null };
-
-const sheetReducer = (
-  _: SheetState,
-  detail: TransactionDetails,
-): SheetState => ({ detail });
-
 const HistoryList: React.FC<HistoryListProps> = ({
   historyData,
   isLoading,
@@ -78,9 +71,8 @@ const HistoryList: React.FC<HistoryListProps> = ({
 }) => {
   const { t } = useAppTranslation();
   const { height: windowHeight } = useWindowDimensions();
-  const [sheetState, dispatchSheet] = useReducer(sheetReducer, {
-    detail: null,
-  });
+  const [transactionDetails, setTransactionDetails] =
+    useState<TransactionDetails | null>(null);
   const transactionDetailsBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const sectionListRef = useRef<SectionList>(null);
 
@@ -99,17 +91,12 @@ const HistoryList: React.FC<HistoryListProps> = ({
 
   const handleTransactionDetails = useCallback(
     (transactionDetail: TransactionDetails) => {
-      dispatchSheet(transactionDetail);
+      setTransactionDetails(transactionDetail);
+      transactionDetailsBottomSheetModalRef.current?.present();
       analytics.trackHistoryOpenItem(transactionDetail.operation.id);
     },
     [],
   );
-
-  useEffect(() => {
-    if (sheetState.detail) {
-      transactionDetailsBottomSheetModalRef.current?.present();
-    }
-  }, [sheetState]);
 
   const renderSectionHeader = useCallback(
     ({ section }: { section: SectionListData<Operation> }) => (
@@ -142,10 +129,10 @@ const HistoryList: React.FC<HistoryListProps> = ({
   const renderFooterComponent = useCallback(
     () => (
       <TransactionDetailsFooter
-        externalUrl={sheetState.detail?.externalUrl ?? ""}
+        externalUrl={transactionDetails?.externalUrl ?? ""}
       />
     ),
-    [sheetState.detail?.externalUrl],
+    [transactionDetails?.externalUrl],
   );
 
   const getEmptyListClasses = (
@@ -222,7 +209,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
         maxDynamicContentSize={windowHeight * 0.9}
         customContent={
           <TransactionDetailsBottomSheetCustomContent
-            transactionDetails={sheetState.detail!}
+            transactionDetails={transactionDetails!}
           />
         }
         renderFooterComponent={renderFooterComponent}
