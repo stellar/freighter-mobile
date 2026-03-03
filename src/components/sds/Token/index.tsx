@@ -447,6 +447,10 @@ function iconLoadReducer(
     case IconActionType.START_LOADING:
       return { phase: IconPhase.LOADING, activeUrl: action.url };
     case IconActionType.LOADED:
+      // Guard: don't transition if there's nothing active (e.g. component
+      // already cleared). The key=activeUrl prop on TokenImage forces a
+      // remount whenever the URL changes, so stale onLoad callbacks from
+      // an old source are discarded before they can reach this reducer.
       if (!state.activeUrl) return state;
       return { phase: IconPhase.LOADED, activeUrl: state.activeUrl };
     case IconActionType.FAILED:
@@ -665,9 +669,12 @@ const ImageWithFallback: React.FC<{
       {showLoader && <TokenLoader />}
 
       {/* Image — rendered only while loading / loaded (hidden while loading,
-          removed from tree on fallback to prevent autonomous RN retries). */}
+          removed from tree on fallback to prevent autonomous RN retries).
+          key=activeUrl forces remount when the URL changes, which discards
+          any stale onLoad/onError callbacks from the previous source. */}
       {renderTokenImage && (
         <TokenImage
+          key={state.activeUrl}
           source={
             typeof finalImageUrl === "string"
               ? { uri: finalImageUrl }

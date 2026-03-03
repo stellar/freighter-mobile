@@ -290,8 +290,12 @@ describe("validateIconUrl", () => {
       jest.advanceTimersByTime(3000);
       const result = await promise;
 
-      // Result depends on Promise.race behavior - both resolve at same time
-      expect(typeof result).toBe("boolean");
+      // Both the internal timeout and fetch resolve at 3000ms. The timeout
+      // is registered first (inside validateIconUrl), so it wins the race
+      // and the result is false (timeout). Note: the fetch's .then() still
+      // runs as a microtask, so FastImage.preload may still fire as a
+      // side effect — that is acceptable behaviour.
+      expect(result).toBe(false);
     });
   });
 });

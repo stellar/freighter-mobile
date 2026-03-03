@@ -64,29 +64,28 @@ export const mapSwapHistoryItem = async ({
   const destTokenCodeFinal = destTokenCode || NATIVE_TOKEN_CODE;
   const formattedAmount = `+${formatTokenForDisplay(amount, destTokenCodeFinal)}`;
 
-  // Fetch icon URLs for the source and destination assets.
+  // Fetch icon URLs for the source and destination assets in parallel.
   // Native token icons are omitted — they use hardcoded logos in the row component.
-  const destIcon =
+  const [destIcon, sourceIcon] = await Promise.all([
     destTokenCodeFinal === NATIVE_TOKEN_CODE
-      ? undefined // Native token uses hardcoded logos.stellar inside IconComponent
-      : await getIconUrl({
+      ? Promise.resolve(undefined)
+      : getIconUrl({
           asset: {
             code: destTokenCodeFinal || "",
             issuer: tokenIssuer || "",
           },
           network,
-        });
-
-  const sourceIcon =
+        }),
     srcTokenCode === NATIVE_TOKEN_CODE
-      ? undefined // Native token uses hardcoded logos.stellar inside IconComponent
-      : await getIconUrl({
+      ? Promise.resolve(undefined)
+      : getIconUrl({
           asset: {
             code: srcTokenCode || "",
             issuer: sourceTokenIssuer || "",
           },
           network,
-        });
+        }),
+  ]);
 
   // Create asset diffs for swap: one debit (sent) and one credit (received)
   const assetDiffs: AssetDiffSummary[] = [
