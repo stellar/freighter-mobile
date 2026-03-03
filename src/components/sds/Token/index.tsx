@@ -678,7 +678,7 @@ const ImageWithFallback: React.FC<{
           source={
             typeof finalImageUrl === "string"
               ? { uri: finalImageUrl }
-              : (finalImageUrl as number)
+              : (finalImageUrl as ImageSourcePropType)
           }
           accessibilityLabel={source.altText}
           onError={() => dispatch({ type: IconActionType.FAILED })}

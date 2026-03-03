@@ -596,9 +596,6 @@ export const useTokenIconsStore = create<TokenIconsState>()(
             return state;
           }
 
-          const hasValidFallback = !!currentIcon.lastValidImageUrl;
-          const nextIsValid = isValid || hasValidFallback;
-
           const newFailedCodes = isValid
             ? state.failedTokenCodes
             : { ...state.failedTokenCodes, [identifier]: true };
@@ -608,7 +605,11 @@ export const useTokenIconsStore = create<TokenIconsState>()(
               ...state.icons,
               [identifier]: {
                 ...currentIcon,
-                isValid: nextIsValid,
+                // isValid reflects only whether the current imageUrl passed
+                // validation. Render logic falls back to lastValidImageUrl when
+                // isValid is false, so elevating it via hasValidFallback would
+                // cause the UI to keep retrying a URL that just failed.
+                isValid,
                 lastValidImageUrl: isValid
                   ? currentIcon.imageUrl
                   : currentIcon.lastValidImageUrl,

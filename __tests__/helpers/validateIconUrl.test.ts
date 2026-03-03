@@ -73,7 +73,7 @@ describe("validateIconUrl", () => {
       expect(result).toBe(true);
       expect(global.fetch).toHaveBeenCalledWith(
         "https://example.com/logo.png",
-        { method: "HEAD" },
+        expect.objectContaining({ method: "HEAD" }),
       );
       expect(FastImage.preload).toHaveBeenCalledWith([
         { uri: "https://example.com/logo.png" },
@@ -138,9 +138,10 @@ describe("validateIconUrl", () => {
       const result = await validateIconUrl("http://example.com/logo.png");
 
       expect(result).toBe(true);
-      expect(global.fetch).toHaveBeenCalledWith("http://example.com/logo.png", {
-        method: "HEAD",
-      });
+      expect(global.fetch).toHaveBeenCalledWith(
+        "http://example.com/logo.png",
+        expect.objectContaining({ method: "HEAD" }),
+      );
       expect(FastImage.preload).toHaveBeenCalledWith([
         { uri: "http://example.com/logo.png" },
       ]);
@@ -227,7 +228,7 @@ describe("validateIconUrl", () => {
       expect(result).toBe(true);
       expect(global.fetch).toHaveBeenCalledWith(
         "https://example.com/logo.png?size=large&format=webp",
-        { method: "HEAD" },
+        expect.objectContaining({ method: "HEAD" }),
       );
     });
 

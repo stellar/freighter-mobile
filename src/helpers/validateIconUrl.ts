@@ -19,7 +19,7 @@ export const ICON_VALIDATION_TIMEOUT = 3000;
  *    - HEAD success  → calls FastImage.preload to cache via SDWebImage/Glide,
  *                      returns true
  *    - HEAD failure  → returns false (404, network error, etc.)
- *    - timeout       → returns false (slow or unreachable host)
+ *    - timeout       → aborts the fetch and returns false (slow/unreachable host)
  * 4. Any other scheme (file://, ftp://, javascript:, blob:, etc.) is rejected.
  *    Bundled Metro assets are Numbers, not strings, so they never reach this
  *    function; the only legitimate string values are http(s) URLs and the
@@ -46,17 +46,25 @@ export const validateIconUrl = async (url: string): Promise<boolean> => {
     return false;
   }
 
+  const controller = new AbortController();
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
   try {
-    // Timeout rejects so the outer catch returns false.
+    // Timeout rejects and aborts the in-flight request so we don't waste
+    // bandwidth on slow or unreachable hosts.
     const timeoutPromise = new Promise<boolean>((_, reject) => {
-      setTimeout(
-        () => reject(new Error(`Icon validation timeout for ${url}`)),
-        ICON_VALIDATION_TIMEOUT,
-      );
+      timeoutId = setTimeout(() => {
+        controller.abort();
+        reject(new Error(`Icon validation timeout for ${url}`));
+      }, ICON_VALIDATION_TIMEOUT);
     });
 
-    const fetchPromise = fetch(url, { method: "HEAD" })
+    const fetchPromise = fetch(url, {
+      method: "HEAD",
+      signal: controller.signal,
+    })
       .then((response) => {
+        clearTimeout(timeoutId);
         if (response.ok) {
           debug("validateIconUrl", `Validated: ${url}`);
           // Pre-warm FastImage's SDWebImage/Glide cache so the first render
@@ -71,12 +79,18 @@ export const validateIconUrl = async (url: string): Promise<boolean> => {
         return false as boolean;
       })
       .catch((error: unknown) => {
+        clearTimeout(timeoutId);
+        // AbortError is expected when the timeout fires first — not an error.
+        if (error instanceof Error && error.name === "AbortError") {
+          return false as boolean;
+        }
         debug("validateIconUrl", `Fetch failed for ${url}: ${String(error)}`);
         return false as boolean;
       });
 
     return await Promise.race([fetchPromise, timeoutPromise]);
   } catch (error) {
+    clearTimeout(timeoutId);
     debug("validateIconUrl", `Validation error for ${url}: ${String(error)}`);
     return false;
   }
