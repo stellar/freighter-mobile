@@ -212,6 +212,9 @@ const HistoryList: React.FC<HistoryListProps> = ({
         scrollable
         useInsetsBottomPadding={false}
         maxDynamicContentSize={windowHeight * 0.9}
+        bottomSheetModalProps={{
+          onDismiss: () => setTransactionDetails(null),
+        }}
         customContent={
           <TransactionDetailsBottomSheetCustomContent
             transactionDetails={transactionDetails!}
