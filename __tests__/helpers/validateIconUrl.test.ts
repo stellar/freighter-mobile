@@ -24,13 +24,21 @@ describe("validateIconUrl", () => {
     });
 
     it("should return false for null-like values", async () => {
-      const result = await validateIconUrl("");
-      expect(result).toBe(false);
+      const nullResult = await validateIconUrl(null as unknown as string);
+      expect(nullResult).toBe(false);
+
+      const undefinedResult = await validateIconUrl(
+        undefined as unknown as string,
+      );
+      expect(undefinedResult).toBe(false);
     });
 
     it("should return false for non-string values", async () => {
-      const result = await validateIconUrl("");
-      expect(result).toBe(false);
+      const numberResult = await validateIconUrl(123 as unknown as string);
+      expect(numberResult).toBe(false);
+
+      const booleanResult = await validateIconUrl(true as unknown as string);
+      expect(booleanResult).toBe(false);
     });
   });
 

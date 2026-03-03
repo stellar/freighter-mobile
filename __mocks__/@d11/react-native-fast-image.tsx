@@ -3,6 +3,9 @@ import {
   AccessibilityProps,
   Image,
   ImageRequireSource,
+  ImageSourcePropType,
+  ImageStyle,
+  StyleProp,
   ViewProps,
 } from "react-native";
 
@@ -40,18 +43,15 @@ interface FastImageStaticProperties {
   clearDiskCache: jest.Mock<Promise<void>, []>;
 }
 
-const FastImageMock = React.forwardRef<unknown, FastImageProps>(
+const FastImageMock = React.forwardRef<Image, FastImageProps>(
   (
     { source, style, accessibilityLabel, onLoad, onError, onLoadEnd, ...props },
     ref,
   ) => (
     <Image
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ref={ref as any}
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      source={source as any}
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      style={style as any}
+      ref={ref}
+      source={source as ImageSourcePropType}
+      style={style as StyleProp<ImageStyle>}
       accessibilityLabel={accessibilityLabel}
       onLoad={onLoad}
       onError={onError}

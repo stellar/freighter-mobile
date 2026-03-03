@@ -517,7 +517,7 @@ const ImageWithFallback: React.FC<{
   useEffect(() => {
     if (!tokenCode || !tokenIssuer || icon === null) return;
     if (tokenCode === NATIVE_TOKEN_CODE) return;
-    if (icon && icon.isValidated === false && icon.isValid !== false) {
+    if (icon && icon.isValidated !== true && icon.isValid !== false) {
       validateIconOnAccess(`${tokenCode}:${tokenIssuer}`);
     }
   }, [tokenCode, tokenIssuer, icon, validateIconOnAccess]);

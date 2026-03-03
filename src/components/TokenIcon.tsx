@@ -163,19 +163,14 @@ const TokenIconWithStore: React.FC<{
     (state) => state.failedTokenCodes,
   );
 
-  const tokenCode = React.useMemo(
-    () => tokenIdentifier.split(":")[0],
-    [tokenIdentifier],
-  );
-
   const hasIconToValidate =
     !!icon &&
-    icon.isValidated === false &&
+    icon.isValidated !== true &&
     !!icon.imageUrl &&
     icon.isValid !== false;
 
   const shouldValidateIcon =
-    !iconUrl && hasIconToValidate && !failedTokenCodes[tokenCode];
+    !iconUrl && hasIconToValidate && !failedTokenCodes[tokenIdentifier];
 
   const lastValidImageUrl = icon?.lastValidImageUrl;
 
@@ -191,7 +186,6 @@ const TokenIconWithStore: React.FC<{
     tokenIdentifier,
     validateIconOnAccess,
     failedTokenCodes,
-    tokenCode,
   ]);
 
   // When validation explicitly failed and no prior valid URL exists, pass

@@ -23,10 +23,10 @@ import { persist, createJSONStorage } from "zustand/middleware";
  * Represents a token icon with its source URL and network context
  *
  * Note: While we store the imageUrl in this interface, the actual image data
- * is cached in the native iOS/Android image cache via Image.prefetch().
+ * is cached in the native iOS/Android image cache via FastImage.preload().
  * This provides two-tier caching:
  * 1. URL metadata cached in AsyncStorage (persisted via Zustand)
- * 2. Actual image data cached in native cache (managed by React Native Image)
+ * 2. Actual image data cached in native cache (managed by FastImage/SDWebImage/Glide)
  *
  * @property {string} imageUrl - The URL of the icon image
  * @property {NETWORK_URLS} networkUrl - The network URL where this icon was fetched from
@@ -48,8 +48,8 @@ export const TOKEN_ICONS_STORAGE_KEY = "token-icons-storage";
  * State and actions for managing token icons
  * @property {Record<string, Icon>} icons - Cached icon data mapped by token identifier
  * @property {number | null} lastRefreshed - Timestamp of the last icon refresh operation
- * @property {Record<string, boolean>} failedTokenCodes - Map of token codes that failed validation (e.g., "ARST", "XYZ")
- *   Used to prevent re-validating the same token across different screens/identifiers
+ * @property {Record<string, boolean>} failedTokenCodes - Map of token identifiers (code:issuer) that failed validation
+ *   Used to prevent re-validating the same token icon across different components
  */
 interface TokenIconsState {
   icons: Record<string, Icon>;
@@ -117,13 +117,11 @@ const BATCH_DELAY = 1000;
  *
  * @param params.entries       - Remaining [cacheKey, Icon] pairs to process
  * @param params.batchIndex    - Index used for debug logging
- * @param params.startTime     - Refresh-cycle start time
  * @param params.set           - Zustand set function
  */
 const processIconBatches = async (params: {
   entries: [string, Icon][];
   batchIndex: number;
-  startTime: number;
   set: (
     partial:
       | TokenIconsState
@@ -133,7 +131,7 @@ const processIconBatches = async (params: {
         ) => TokenIconsState | Partial<TokenIconsState>),
   ) => void;
 }) => {
-  const { entries, batchIndex, startTime, set } = params;
+  const { entries, batchIndex, set } = params;
   const batch = entries.slice(0, BATCH_SIZE);
   const remainingEntries = entries.slice(BATCH_SIZE);
 
@@ -193,7 +191,6 @@ const processIconBatches = async (params: {
       processIconBatches({
         entries: remainingEntries,
         batchIndex: batchIndex + 1,
-        startTime,
         set,
       });
     }, BATCH_DELAY);
@@ -245,8 +242,8 @@ export const useTokenIconsStore = create<TokenIconsState>()(
             Object.entries(icons).map(([key, icon]) => {
               const existingIcon = state.icons[key];
               const nextIsValidated =
-                icon.isValidated ?? existingIcon?.isValidated;
-              const nextIsValid = icon.isValid ?? existingIcon?.isValid;
+                icon.isValidated ?? existingIcon?.isValidated ?? false;
+              const nextIsValid = icon.isValid ?? existingIcon?.isValid ?? null;
               const nextIcon = {
                 ...existingIcon,
                 ...icon,
@@ -529,18 +526,14 @@ export const useTokenIconsStore = create<TokenIconsState>()(
         // Reset failed tokens so they are retried in this refresh cycle.
         set({ failedTokenCodes: {} });
 
-        const startTime = Date.now();
-
         processIconBatches({
           entries: Object.entries(icons),
           batchIndex: 0,
-          startTime,
           set,
         });
       },
       validateIconOnAccess: async (identifier) => {
         const icon = get().icons[identifier];
-        const tokenCode = identifier.split(":")[0];
 
         // Skip if the icon doesn't exist or has already been validated.
         const shouldSkipValidation = !icon || icon.isValidated;
@@ -550,7 +543,7 @@ export const useTokenIconsStore = create<TokenIconsState>()(
         }
 
         // Acquire a lock before any await to prevent concurrent callers
-        // from each triggering their own Image.prefetch for the same token.
+        // from each triggering their own FastImage.preload for the same token.
         set((state) => ({
           icons: {
             ...state.icons,
@@ -560,7 +553,7 @@ export const useTokenIconsStore = create<TokenIconsState>()(
 
         const failedTokenCodes = get().failedTokenCodes ?? {};
 
-        if (failedTokenCodes[tokenCode]) {
+        if (failedTokenCodes[identifier]) {
           set((state) => ({
             icons: {
               ...state.icons,
@@ -588,7 +581,7 @@ export const useTokenIconsStore = create<TokenIconsState>()(
             },
             failedTokenCodes: {
               ...state.failedTokenCodes,
-              [tokenCode]: true,
+              [identifier]: true,
             },
           }));
           return;
@@ -608,7 +601,7 @@ export const useTokenIconsStore = create<TokenIconsState>()(
 
           const newFailedCodes = isValid
             ? state.failedTokenCodes
-            : { ...state.failedTokenCodes, [tokenCode]: true };
+            : { ...state.failedTokenCodes, [identifier]: true };
 
           return {
             icons: {

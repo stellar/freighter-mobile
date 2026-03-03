@@ -357,9 +357,12 @@ describe("tokenIcons store", () => {
 
       useTokenIconsStore.getState().cacheTokenIcons({ icons: newIcons });
 
-      expect(useTokenIconsStore.getState().icons["USDC:ISSUER1"]).toEqual(
-        newIcons["USDC:ISSUER1"],
-      );
+      expect(useTokenIconsStore.getState().icons["USDC:ISSUER1"]).toEqual({
+        ...newIcons["USDC:ISSUER1"],
+        isValidated: false,
+        isValid: null,
+        lastValidImageUrl: undefined,
+      });
     });
 
     it("should merge icons without removing existing ones", () => {
@@ -382,8 +385,13 @@ describe("tokenIcons store", () => {
       useTokenIconsStore.getState().cacheTokenIcons({ icons: newIcons });
 
       expect(useTokenIconsStore.getState().icons).toEqual({
-        ...existingIcon,
-        ...newIcons,
+        "BTC:ISSUER2": existingIcon["BTC:ISSUER2"],
+        "USDC:ISSUER1": {
+          ...newIcons["USDC:ISSUER1"],
+          isValidated: false,
+          isValid: null,
+          lastValidImageUrl: undefined,
+        },
       });
     });
   });
