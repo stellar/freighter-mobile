@@ -17,7 +17,7 @@ import {
 import { NetworkDetails } from "config/constants";
 import useAppTranslation from "hooks/useAppTranslation";
 import { HistorySection, HistoryData } from "hooks/useGetHistoryData";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import {
   RefreshControl,
   SectionList,
@@ -92,16 +92,11 @@ const HistoryList: React.FC<HistoryListProps> = ({
   const handleTransactionDetails = useCallback(
     (transactionDetail: TransactionDetails) => {
       setTransactionDetails(transactionDetail);
+      transactionDetailsBottomSheetModalRef.current?.present();
       analytics.trackHistoryOpenItem(transactionDetail.operation.id);
     },
     [],
   );
-
-  useEffect(() => {
-    if (transactionDetails) {
-      transactionDetailsBottomSheetModalRef.current?.present();
-    }
-  }, [transactionDetails]);
 
   const renderSectionHeader = useCallback(
     ({ section }: { section: SectionListData<Operation> }) => (
@@ -212,9 +207,6 @@ const HistoryList: React.FC<HistoryListProps> = ({
         scrollable
         useInsetsBottomPadding={false}
         maxDynamicContentSize={windowHeight * 0.9}
-        bottomSheetModalProps={{
-          onDismiss: () => setTransactionDetails(null),
-        }}
         customContent={
           <TransactionDetailsBottomSheetCustomContent
             transactionDetails={transactionDetails!}
