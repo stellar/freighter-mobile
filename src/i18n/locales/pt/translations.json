@@ -37,7 +37,8 @@
     "copy": "Copiar",
     "name": "Nome",
     "collection": "Coleção",
-    "tokenId": "ID do Token"
+    "tokenId": "ID do Token",
+    "authEntry": "Entrada de Autorização"
   },
   "home": {
     "title": "Início",
@@ -834,6 +835,7 @@
     "transactionRequest": "Solicitação de transação",
     "confirmTransaction": "Confirmar transação",
     "signMessage": "Assinar mensagem",
+    "signAuthEntry": "Assinar entrada de autorização",
     "cancel": "Cancelar",
     "confirm": "Confirmar",
     "confirmAnyway": "Confirmar mesmo assim",
@@ -849,6 +851,7 @@
     "returnToBrowser": "Você pode agora retornar ao seu navegador",
     "signSuccessfull": "Transação assinada com sucesso!",
     "signMessageSuccessfull": "Mensagem assinada com sucesso!",
+    "signAuthEntrySuccessfull": "Entrada de autorização assinada com sucesso!",
     "signAndSubmitSuccessfull": "Transação assinada e enviada com sucesso!",
     "userRejected": "O usuário rejeitou a solicitação",
     "errorInitializing": "Erro ao inicializar o WalletConnect",
@@ -857,7 +860,9 @@
     "errorConnecting": "Erro ao conectar com {{dappName}}",
     "errorSigning": "Erro ao assinar a transação",
     "errorSigningMessage": "Erro ao assinar a mensagem",
+    "errorSigningAuthEntry": "Erro ao assinar a entrada de autorização",
     "errorInvalidMessage": "Mensagem inválida",
+    "errorInvalidAuthEntry": "Entrada de autorização inválida",
     "errorEmptyMessage": "Não é possível assinar mensagem vazia",
     "errorMessageTooLong": "Mensagem muito longa (máximo 1KB)",
     "errorSubmitting": "Erro ao enviar a transação",

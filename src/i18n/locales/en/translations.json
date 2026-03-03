@@ -37,7 +37,8 @@
     "name": "Name",
     "collection": "Collection",
     "tokenId": "Token ID",
-    "message": "Message"
+    "message": "Message",
+    "authEntry": "Auth Entry"
   },
   "home": {
     "title": "Home",
@@ -870,6 +871,7 @@
     "transactionRequest": "Transaction Request",
     "confirmTransaction": "Confirm transaction",
     "signMessage": "Sign Message",
+    "signAuthEntry": "Sign Authorization Entry",
     "cancel": "Cancel",
     "confirm": "Confirm",
     "confirmAnyway": "Confirm anyway",
@@ -885,6 +887,7 @@
     "returnToBrowser": "You can now return to your browser",
     "signSuccessfull": "Transaction successfully signed!",
     "signMessageSuccessfull": "Message successfully signed!",
+    "signAuthEntrySuccessfull": "Authorization entry successfully signed!",
     "signAndSubmitSuccessfull": "Transaction successfully signed and submitted!",
     "userRejected": "User rejected the request",
     "errorInitializing": "Error initializing WalletConnect",
@@ -893,7 +896,9 @@
     "errorConnecting": "{{dappName}} connection failed",
     "errorSigning": "Failed to sign transaction",
     "errorSigningMessage": "Failed to sign message",
+    "errorSigningAuthEntry": "Failed to sign authorization entry",
     "errorInvalidMessage": "Invalid message",
+    "errorInvalidAuthEntry": "Invalid authorization entry",
     "errorEmptyMessage": "Cannot sign empty message",
     "errorMessageTooLong": "Message too long (max 1KB)",
     "errorSubmitting": "Failed to submit transaction",

@@ -2,6 +2,7 @@ import Blockaid from "@blockaid/client";
 import { List } from "components/List";
 import SignTransactionDetails from "components/screens/SignTransactionDetails";
 import { SignTransactionDetailsInterface } from "components/screens/SignTransactionDetails/types";
+import { AuthEntryDisplay } from "components/screens/WalletKit/AuthEntryDisplay";
 import { MessageDisplay } from "components/screens/WalletKit/MessageDisplay";
 import { App } from "components/sds/App";
 import Avatar from "components/sds/Avatar";
@@ -19,6 +20,7 @@ import {
   StellarRpcMethods,
   WalletKitSessionRequest,
   StellarSignMessageParams,
+  StellarSignAuthEntryParams,
 } from "ducks/walletKit";
 import { formatTokenForDisplay } from "helpers/formatAmount";
 import { findMatchedProtocol, getDisplayHost } from "helpers/protocols";
@@ -131,9 +133,26 @@ const DappRequestBottomSheetContent: React.FC<
   const requestMethod = sessionRequest?.request?.method as StellarRpcMethods;
   const requestParams = sessionRequest?.request?.params;
   const isSignMessage = requestMethod === StellarRpcMethods.SIGN_MESSAGE;
+  const isSignAuthEntry = requestMethod === StellarRpcMethods.SIGN_AUTH_ENTRY;
   const messageToSign = isSignMessage
     ? (requestParams as StellarSignMessageParams)?.message
     : undefined;
+  const entryXdrToSign = isSignAuthEntry
+    ? (requestParams as StellarSignAuthEntryParams)?.entryXdr
+    : undefined;
+
+  const requestTitleTestID = (() => {
+    if (isSignMessage) return "sign-message-title";
+    if (isSignAuthEntry) return "sign-auth-entry-title";
+    return "sign-transaction-title";
+  })();
+
+  const requestTitleText = (() => {
+    if (isSignMessage) return t("dappRequestBottomSheetContent.signMessage");
+    if (isSignAuthEntry)
+      return t("dappRequestBottomSheetContent.signAuthEntry");
+    return t("dappRequestBottomSheetContent.confirmTransaction");
+  })();
 
   const accountDetailList = useMemo(
     () => [
@@ -156,8 +175,8 @@ const DappRequestBottomSheetContent: React.FC<
         ),
         titleColor: themeColors.text.secondary,
       },
-      // Only show fee for transaction signing, not message signing
-      ...(!isSignMessage
+      // Only show fee for transaction signing, not message or auth entry signing
+      ...(!isSignMessage && !isSignAuthEntry
         ? [
             {
               icon: (
@@ -182,6 +201,7 @@ const DappRequestBottomSheetContent: React.FC<
       t,
       signTransactionDetails?.summary.feeXlm,
       isSignMessage,
+      isSignAuthEntry,
     ],
   );
 
@@ -315,6 +335,37 @@ const DappRequestBottomSheetContent: React.FC<
     );
   };
 
+  const renderRequestContent = () => {
+    if (isSignMessage && messageToSign) {
+      return (
+        <>
+          <MessageDisplay message={messageToSign} />
+          <List variant="secondary" items={accountDetailList} />
+        </>
+      );
+    }
+    if (isSignAuthEntry && entryXdrToSign) {
+      return (
+        <>
+          <AuthEntryDisplay entryXdr={entryXdrToSign} />
+          <List variant="secondary" items={accountDetailList} />
+        </>
+      );
+    }
+    return (
+      <>
+        <List variant="secondary" items={transactionBalanceListItems} />
+        <List variant="secondary" items={accountDetailList} />
+        {signTransactionDetails && (
+          <SignTransactionDetails
+            data={signTransactionDetails}
+            analyticsEvent={AnalyticsEvent.VIEW_SIGN_DAPP_TRANSACTION_DETAILS}
+          />
+        )}
+      </>
+    );
+  };
+
   return (
     <View
       className="flex-1 justify-center mt-2 gap-[16px]"
@@ -323,16 +374,8 @@ const DappRequestBottomSheetContent: React.FC<
       <View className="flex-row items-center gap-[12px] w-full">
         <App size="lg" appName={dAppName} favicon={dAppFavicon} />
         <View className="ml-2">
-          <Text
-            md
-            primary
-            testID={
-              isSignMessage ? "sign-message-title" : "sign-transaction-title"
-            }
-          >
-            {isSignMessage
-              ? t("dappRequestBottomSheetContent.signMessage")
-              : t("dappRequestBottomSheetContent.confirmTransaction")}
+          <Text md primary testID={requestTitleTestID}>
+            {requestTitleText}
           </Text>
           {dAppDomain && (
             <Text sm secondary>
@@ -355,27 +398,7 @@ const DappRequestBottomSheetContent: React.FC<
           onPress={securityWarningAction}
         />
       )}
-      <View className="gap-[12px]">
-        {isSignMessage && messageToSign ? (
-          <>
-            <MessageDisplay message={messageToSign} />
-            <List variant="secondary" items={accountDetailList} />
-          </>
-        ) : (
-          <>
-            <List variant="secondary" items={transactionBalanceListItems} />
-            <List variant="secondary" items={accountDetailList} />
-            {signTransactionDetails && (
-              <SignTransactionDetails
-                data={signTransactionDetails}
-                analyticsEvent={
-                  AnalyticsEvent.VIEW_SIGN_DAPP_TRANSACTION_DETAILS
-                }
-              />
-            )}
-          </>
-        )}
-      </View>
+      <View className="gap-[12px]">{renderRequestContent()}</View>
 
       {!isMalicious && !isSuspicious && !isUnableToScan && (
         <Text sm secondary textAlign="center">

@@ -10,7 +10,7 @@ export function createRoutes(wcClient: MockWalletConnectClient): Router {
   // Store session metadata
   interface SessionResponse {
     id: string;
-    type: "signMessage" | "signXDR";
+    type: "signMessage" | "signXDR" | "signAuthEntry";
     params: Record<string, string | number | undefined>;
     promise: Promise<unknown>;
     createdAt: number;
@@ -341,6 +341,85 @@ export function createRoutes(wcClient: MockWalletConnectClient): Router {
       });
     }
   });
+
+  /**
+   * Send stellar_signAuthEntry request
+   * POST /session/:id/request/signAuthEntry
+   */
+  router.post(
+    "/session/:id/request/signAuthEntry",
+    (req: Request, res: Response) => {
+      const id = Array.isArray(req.params.id)
+        ? req.params.id[0]
+        : req.params.id;
+      const { entryXdr } = req.body as {
+        entryXdr?: unknown;
+        network?: unknown;
+      };
+      const network = parseNetwork((req.body as { network?: unknown }).network);
+
+      if (!entryXdr || typeof entryXdr !== "string") {
+        return res.status(400).json({
+          error: "Invalid request",
+          message: "entryXdr is required and must be a string",
+        });
+      }
+
+      const entryXdrText = entryXdr;
+      const metadata = sessionMetadata.get(id);
+
+      if (!metadata) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+
+      if (!metadata.topic) {
+        return res.status(400).json({
+          error: "Session not connected",
+          message: "Wait for wallet approval first",
+        });
+      }
+
+      try {
+        const requestPromise = wcClient.requestSignAuthEntry(
+          metadata.topic,
+          { entryXdr: entryXdrText },
+          network,
+        );
+
+        const requestId = `req-${Date.now()}`;
+
+        metadata.responses.push({
+          id: requestId,
+          type: "signAuthEntry",
+          params: { entryXdr, network },
+          promise: requestPromise,
+          createdAt: Date.now(),
+        });
+
+        requestPromise
+          .then((result) => {
+            console.log(`[API] Request ${requestId} completed:`, result);
+          })
+          .catch((error: unknown) => {
+            console.error(`[API] Request ${requestId} failed:`, error);
+          });
+
+        return res.json({
+          requestId,
+          status: "pending",
+          message: "Request sent. Poll /session/:id/response for result.",
+        });
+      } catch (error: unknown) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        console.error("[API] Failed to send signAuthEntry request:", error);
+        return res.status(500).json({
+          error: "Failed to send request",
+          message: errorMessage,
+        });
+      }
+    },
+  );
 
   /**
    * Get the latest response

@@ -30,6 +30,12 @@ export const trackSignedMessage = (data: {
   });
 };
 
+export const trackSignedAuthEntry = (data: { dappDomain?: string }): void => {
+  track(AnalyticsEvent.SIGN_AUTH_ENTRY_SUCCESS, {
+    ...(data.dappDomain ? { dappDomain: data.dappDomain } : {}),
+  });
+};
+
 export const trackSubmittedTransaction = (
   data: SubmittedTransactionEvent,
 ): void => {

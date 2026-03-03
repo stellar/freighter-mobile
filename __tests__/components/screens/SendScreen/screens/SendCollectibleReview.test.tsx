@@ -294,6 +294,7 @@ const setupDefaultMocks = () => {
     refreshAccount: jest.fn(),
     signTransaction: jest.fn(),
     signMessage: jest.fn(),
+    signAuthEntry: jest.fn(),
   });
 
   mockUseRightHeaderMenu.mockReturnValue(undefined);
@@ -426,6 +427,7 @@ describe("SendCollectibleReview - Banner Content", () => {
       refreshAccount: jest.fn(),
       signTransaction: jest.fn(),
       signMessage: jest.fn(),
+      signAuthEntry: jest.fn(),
     });
 
     mockUseRightHeaderMenu.mockReturnValue(undefined);

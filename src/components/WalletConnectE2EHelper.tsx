@@ -67,6 +67,7 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
     const [sessionId, setSessionId] = useState("");
     const [wcUri, setWcUri] = useState("");
     const [message, setMessage] = useState("");
+    const [entryXdr, setEntryXdr] = useState("");
     const [network, setNetwork] = useState("pubnet");
     const [status, setStatus] = useState("");
     const baseUrl = "http://127.0.0.1:3001";
@@ -166,6 +167,60 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
           return;
         }
         setStatus("Sign message request sent!");
+        // Auto-dismiss modal after requesting sign
+        setTimeout(() => handleDismiss(), 500);
+      } catch (error) {
+        const isNetworkError =
+          error instanceof TypeError &&
+          (error.message.includes("Network request failed") ||
+            error.message.includes("fetch"));
+
+        const errorMsg = isNetworkError
+          ? "Mock server is offline"
+          : `Error: ${error instanceof Error ? error.message : String(error)}`;
+
+        setStatus(errorMsg);
+        showToast({
+          title: "Server Offline",
+          message: isNetworkError
+            ? "Mock dApp server is not running"
+            : errorMsg,
+          variant: "error",
+        });
+      }
+    };
+
+    const requestSignAuthEntry = async () => {
+      if (!sessionId) {
+        setStatus("Error: No session ID");
+        showToast({
+          title: "No Session",
+          message: "Create a session first",
+          variant: "error",
+        });
+        return;
+      }
+      try {
+        setStatus("Requesting sign auth entry...");
+        const res = await fetch(
+          `${baseUrl}/session/${sessionId}/request/signAuthEntry`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ entryXdr, network }),
+          },
+        );
+        if (!res.ok) {
+          const errorMsg = `Error: ${res.status} ${res.statusText}`;
+          setStatus(errorMsg);
+          showToast({
+            title: "Request Failed",
+            message: errorMsg,
+            variant: "error",
+          });
+          return;
+        }
+        setStatus("Sign auth entry request sent!");
         // Auto-dismiss modal after requesting sign
         setTimeout(() => handleDismiss(), 500);
       } catch (error) {
@@ -310,6 +365,31 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
                     size="sm"
                   >
                     Request Sign Message
+                  </Button>
+                </View>
+              )}
+
+              {/* Request Sign Auth Entry */}
+              {sessionId && (
+                <View style={{ marginBottom: 16 }}>
+                  <Text style={{ fontWeight: "600", marginBottom: 8 }}>
+                    Request Sign Auth Entry:
+                  </Text>
+
+                  <Input
+                    testID="wc-e2e-auth-entry-input"
+                    placeholder="Authorization Entry XDR (base64)"
+                    value={entryXdr}
+                    onChangeText={setEntryXdr}
+                    style={{ marginBottom: 8 }}
+                  />
+
+                  <Button
+                    testID="wc-e2e-request-sign-auth-entry"
+                    onPress={requestSignAuthEntry}
+                    size="sm"
+                  >
+                    Request Sign Auth Entry
                   </Button>
                 </View>
               )}

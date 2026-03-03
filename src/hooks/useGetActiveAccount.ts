@@ -1,7 +1,10 @@
 import { FeeBumpTransaction, Keypair, Transaction } from "@stellar/stellar-sdk";
 import { navigationRef } from "components/App";
 import { useAuthenticationStore } from "ducks/auth";
-import { signMessage as signMessageHelper } from "helpers/stellar";
+import {
+  signMessage as signMessageHelper,
+  signAuthEntry as signAuthEntryHelper,
+} from "helpers/stellar";
 import { useCallback, useEffect } from "react";
 
 /**
@@ -62,6 +65,23 @@ const useGetActiveAccount = () => {
     [account],
   );
 
+  const signAuthEntry = useCallback(
+    (entryXdr: string, networkPassphrase: string): string | null => {
+      if (!account) return null;
+
+      try {
+        return signAuthEntryHelper(
+          entryXdr,
+          account.privateKey,
+          networkPassphrase,
+        );
+      } catch (err) {
+        return null;
+      }
+    },
+    [account],
+  );
+
   return {
     account,
     isLoading,
@@ -69,6 +89,7 @@ const useGetActiveAccount = () => {
     refreshAccount,
     signTransaction,
     signMessage,
+    signAuthEntry,
   };
 };
 
