@@ -352,12 +352,18 @@ jobs:
           echo "🚀 Starting mock WalletConnect dApp server..."
           ./e2e/scripts/start-mock-server.sh
 
+          # Print server log so it's visible in CI (not just on failure)
+          echo "--- mock-dapp server log ---"
+          cat mock-dapp/.server.log || true
+          echo "----------------------------"
+
           # Store the PID for cleanup
-          if [ -f "e2e/mock-dapp/.server.pid" ]; then
-            echo "✅ Mock server started successfully"
-            cat e2e/mock-dapp/.server.pid > /tmp/mock-server.pid
+          # PID file is written to mock-dapp/.server.pid (repo root / mock-dapp)
+          if [ -f "mock-dapp/.server.pid" ]; then
+            echo "✅ Mock server started successfully (PID: $(cat mock-dapp/.server.pid))"
+            cp mock-dapp/.server.pid /tmp/mock-server.pid
           else
-            echo "❌ Failed to start mock server"
+            echo "❌ Failed to start mock server (PID file not found at mock-dapp/.server.pid)"
             exit 1
           fi
 
