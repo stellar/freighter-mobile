@@ -110,17 +110,12 @@ tags:
 # Wait for modal to open and show inputs
 - scroll
 
-# Fill in message and network (pubnet for mainnet)
+# Fill in message
 - tapOn:
     id: wc-e2e-message-input
 
 - inputText:
     "Hello from E2E test! Please sign this message to verify your wallet."
-
-- tapOn:
-    id: wc-e2e-network-input
-
-- inputText: "pubnet"
 
 - hideKeyboard
 
