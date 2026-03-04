@@ -102,11 +102,13 @@ tags:
 
 # Wait for QR scanner to load - manual input is always visible for WalletConnect
 - extendedWaitUntil:
-    visible: "Paste"
+    visible:
+      id: walletconnect-uri-input-end-button
     timeout: 5000
 
 # Paste WC URI
-- tapOn: "Paste"
+- tapOn:
+    id: walletconnect-uri-input-end-button
 
 # Wait for connect button and tap it
 - extendedWaitUntil:
