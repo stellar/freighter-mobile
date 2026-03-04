@@ -394,7 +394,21 @@ export const approveSessionRequest = async ({
       return;
     }
 
-    const signedAuthEntry = signAuthEntry(entryXdr);
+    let signedAuthEntry: string | null = null;
+    try {
+      signedAuthEntry = signAuthEntry(entryXdr);
+    } catch (e) {
+      const errorMessage =
+        e instanceof Error ? e.message : "Failed to parse auth entry XDR";
+      logger.error("approveSessionRequest", errorMessage, e);
+      showToast({
+        title: t("walletKit.errorSigningAuthEntry"),
+        message: t("walletKit.pleaseTryAgainLater"),
+        variant: "error",
+      });
+      rejectSessionRequest({ sessionRequest, message: errorMessage });
+      return;
+    }
 
     if (!signedAuthEntry) {
       const errorMessage = "Failed to sign auth entry";

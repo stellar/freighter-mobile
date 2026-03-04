@@ -155,6 +155,26 @@ async function startServer(): Promise<void> {
   });
 }
 
+// Keep the server alive through recoverable errors from the WalletConnect library.
+// @walletconnect/utils throws "Proposal expired" inside a setTimeout callback when a
+// session proposal is not approved in time. Because it originates in a timer (not a
+// Promise), Node.js surfaces it as an uncaughtException rather than an
+// unhandledRejection — which would otherwise crash the process.
+process.on("uncaughtException", (error: Error) => {
+  console.error(
+    "[Server] Uncaught exception (server will continue):",
+    error.message,
+  );
+});
+
+process.on("unhandledRejection", (reason: unknown) => {
+  const msg = reason instanceof Error ? reason.message : String(reason);
+  console.error(
+    "[Server] Unhandled promise rejection (server will continue):",
+    msg,
+  );
+});
+
 // Start the server
 startServer().catch((error) => {
   console.error("❌ Fatal error starting server:", error);

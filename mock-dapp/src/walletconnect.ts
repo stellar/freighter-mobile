@@ -73,6 +73,14 @@ export class MockWalletConnectClient {
       this.sessions.delete(topic);
     });
 
+    // Proposal expiry fires from a timer inside @walletconnect/utils. Listening here
+    // prevents the event from going unhandled and surfacing as an uncaughtException.
+    this.client.on("proposal_expire", ({ id }: { id: number }) => {
+      console.log(
+        `[WC] Proposal expired (id: ${id}) — session was not approved in time`,
+      );
+    });
+
     console.log("[WC] SignClient initialized successfully");
   }
 

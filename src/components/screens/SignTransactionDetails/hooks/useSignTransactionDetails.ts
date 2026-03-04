@@ -72,22 +72,29 @@ export const useSignTransactionDetails = ({
 
   if (!xdr) return null;
 
-  const transaction = TransactionBuilder.fromXDR(
-    xdr,
-    networkDetails.networkPassphrase,
-  );
+  try {
+    const transaction = TransactionBuilder.fromXDR(
+      xdr,
+      networkDetails.networkPassphrase,
+    );
 
-  const summary = buildSummary({ transaction, xdr });
-  const authEntries = buildAuthEntries(transaction);
+    const summary = buildSummary({ transaction, xdr });
+    const authEntries = buildAuthEntries(transaction);
 
-  const trustlineChanges = transaction.operations.filter(
-    (op) => op.type === "changeTrust",
-  );
+    const trustlineChanges = transaction.operations.filter(
+      (op) => op.type === "changeTrust",
+    );
 
-  return {
-    summary,
-    authEntries,
-    operations: transaction.operations,
-    hasTrustlineChanges: trustlineChanges.length > 0,
-  };
+    return {
+      summary,
+      authEntries,
+      operations: transaction.operations,
+      hasTrustlineChanges: trustlineChanges.length > 0,
+    };
+  } catch (e) {
+    // Malformed or unsupported XDR — return null so callers degrade gracefully
+    // instead of propagating an uncaught exception through the render cycle.
+    console.warn("[useSignTransactionDetails] Failed to parse XDR:", e);
+    return null;
+  }
 };
