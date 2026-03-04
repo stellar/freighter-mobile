@@ -268,9 +268,21 @@
     <!-- Status Messages -->
     <div id="status-container"></div>
 
-    <!-- Step 1: Session Management -->
+    <!-- Step 1: Select Network -->
     <div class="section">
-      <div class="section-title">1️⃣ Create Session</div>
+      <div class="section-title">1️⃣ Select Network</div>
+      <div class="network-select">
+        <label for="global-network">Network:</label>
+        <select id="global-network">
+          <option value="testnet">Testnet</option>
+          <option value="pubnet">Mainnet</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Step 2: Session Management -->
+    <div class="section">
+      <div class="section-title">2️⃣ Create Session</div>
       <button onclick="createSession()">Create New Session</button>
       <button class="button-secondary" onclick="getSessionStatus()" id="statusBtn" style="display:none;">Check Status</button>
       <button class="button-danger" onclick="disconnect()" id="disconnectBtn" style="display:none;">Disconnect All</button>
@@ -284,7 +296,7 @@
 
     <!-- Step 2: Check Approval -->
     <div class="section" id="approval-section" style="display:none;">
-      <div class="section-title">2️⃣ Check Approval</div>
+      <div class="section-title">3️⃣ Check Approval</div>
       <p style="color: #666; font-size: 14px; margin-bottom: 15px;">Connect your Freighter Mobile wallet to approve this session.</p>
 
       <div class="qr-container" id="qr-container" style="display:none;">
@@ -303,17 +315,9 @@
       </div>
     </div>
 
-    <!-- Step 3: Sign Message -->
+    <!-- Step 4: Sign Message -->
     <div class="section" id="sign-section" style="display:none;">
-      <div class="section-title">3️⃣ Sign Message</div>
-
-      <div class="network-select">
-        <label>Network:</label>
-        <select id="network">
-          <option value="testnet">Testnet</option>
-          <option value="pubnet">Mainnet</option>
-        </select>
-      </div>
+      <div class="section-title">4️⃣ Sign Message</div>
 
       <div class="input-group">
         <label for="message">Message to Sign:</label>
@@ -334,17 +338,9 @@
       </div>
     </div>
 
-    <!-- Step 4: Sign XDR -->
+    <!-- Step 5: Sign XDR -->
     <div class="section" id="sign-xdr-section" style="display:none;">
-      <div class="section-title">4️⃣ Sign XDR</div>
-
-      <div class="network-select">
-        <label>Network:</label>
-        <select id="xdr-network">
-          <option value="testnet">Testnet</option>
-          <option value="pubnet">Mainnet</option>
-        </select>
-      </div>
+      <div class="section-title">5️⃣ Sign XDR</div>
 
       <div class="input-group">
         <label for="xdr">Transaction XDR (base64):</label>
@@ -370,17 +366,9 @@
       </div>
     </div>
 
-    <!-- Step 5: Sign Auth Entry -->
+    <!-- Step 6: Sign Auth Entry -->
     <div class="section" id="sign-auth-entry-section" style="display:none;">
-      <div class="section-title">5️⃣ Sign Auth Entry</div>
-
-      <div class="network-select">
-        <label>Network:</label>
-        <select id="auth-entry-network">
-          <option value="testnet">Testnet</option>
-          <option value="pubnet">Mainnet</option>
-        </select>
-      </div>
+      <div class="section-title">6️⃣ Sign Auth Entry</div>
 
       <div class="input-group">
         <label for="auth-entry-xdr">SorobanAuthorizationEntry XDR (base64):</label>
@@ -403,7 +391,7 @@
 
     <!-- Message Variations for Testing -->
     <div class="section" id="test-section" style="display:none;">
-      <div class="section-title">🧪 Test Message Variations</div>
+      <div class="section-title">7️⃣ Test Message Variations</div>
       <p style="color: #666; font-size: 13px; margin-bottom: 15px;">Quick buttons to test different message types:</p>
 
       <div class="grid">
@@ -591,7 +579,7 @@
       }
 
       const message = document.getElementById('message').value.trim();
-      const network = document.getElementById('network').value;
+      const network = document.getElementById('global-network').value;
 
       if (!message) {
         showStatus('❌ Message cannot be empty', 'error');
@@ -666,7 +654,7 @@
 
       const xdr = document.getElementById('xdr').value.trim();
       const description = document.getElementById('xdr-description').value.trim();
-      const network = document.getElementById('xdr-network').value;
+      const network = document.getElementById('global-network').value;
 
       if (!xdr) {
         showStatus('❌ XDR cannot be empty', 'error');
@@ -719,7 +707,7 @@
       }
 
       const entryXdr = document.getElementById('auth-entry-xdr').value.trim();
-      const network = document.getElementById('auth-entry-network').value;
+      const network = document.getElementById('global-network').value;
 
       if (!entryXdr) {
         showStatus('❌ Auth entry XDR cannot be empty', 'error');
