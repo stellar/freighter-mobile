@@ -12,6 +12,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@stellar/stellar-base": "^14.0.4",
     "@walletconnect/sign-client": "^2.17.2",
     "@walletconnect/types": "^2.17.2",
     "@walletconnect/utils": "^2.17.2",

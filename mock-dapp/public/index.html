@@ -370,12 +370,15 @@
     <div class="section" id="sign-auth-entry-section" style="display:none;">
       <div class="section-title">6️⃣ Sign Auth Entry</div>
 
+      <button onclick="signRandomAuthEntry()">Sign Random Auth Entry</button>
+      <p style="color: #666; font-size: 12px; margin-top: 6px; margin-bottom: 20px;">Server generates a fresh SorobanAuthorizationEntry XDR automatically.</p>
+
       <div class="input-group">
-        <label for="auth-entry-xdr">SorobanAuthorizationEntry XDR (base64):</label>
+        <label for="auth-entry-xdr">Or sign a specific SorobanAuthorizationEntry XDR (base64):</label>
         <textarea id="auth-entry-xdr" placeholder="Enter base64-encoded SorobanAuthorizationEntry XDR..." rows="4"></textarea>
       </div>
 
-      <button onclick="signAuthEntry()">Sign Auth Entry</button>
+      <button onclick="signAuthEntry()">Sign Auth Entry (XDR)</button>
 
       <div id="sign-auth-entry-status" style="display:none; margin-top: 15px;">
         <div class="status-box info">
@@ -745,6 +748,50 @@
         }
       } catch (error) {
         logDebug('Error signing auth entry', error);
+        document.getElementById('signAuthEntryStatusText').textContent = `❌ Error: ${error.message}`;
+        showStatus(`❌ Error: ${error.message}`, 'error');
+      }
+    }
+
+    async function signRandomAuthEntry() {
+      if (!currentSessionId || !isApproved) {
+        showStatus('❌ Session not approved. Wait for approval first.', 'error');
+        return;
+      }
+
+      const network = document.getElementById('global-network').value;
+
+      try {
+        logDebug('Sending sign random auth entry request...');
+        document.getElementById('sign-auth-entry-status').style.display = 'block';
+        document.getElementById('signAuthEntryStatusText').textContent = 'Waiting for signature (random XDR)...';
+
+        const response = await fetch(`${API_BASE}/session/${currentSessionId}/request/signAuthEntry`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ network })
+        });
+        const data = await response.json();
+        logDebug('Sign random auth entry request sent', data);
+
+        const respResponse = await fetch(`${API_BASE}/session/${currentSessionId}/response?wait=true&timeout=60000`);
+        const respData = await respResponse.json();
+        logDebug('Sign random auth entry response', respData);
+
+        if (respData.status === 'approved') {
+          document.getElementById('signAuthEntryStatusText').textContent = '✅ Auth entry signed!';
+          document.getElementById('auth-entry-result').style.display = 'block';
+          document.getElementById('auth-entry-response-json').textContent = JSON.stringify(respData, null, 2);
+          showStatus('✅ Signed auth entry received!', 'success');
+        } else if (respData.status === 'rejected') {
+          document.getElementById('signAuthEntryStatusText').textContent = '❌ Signing rejected by user';
+          showStatus('❌ User rejected the signing request', 'error');
+        } else {
+          document.getElementById('signAuthEntryStatusText').textContent = respData.message || 'Error';
+          showStatus(`❌ ${respData.error || 'Unexpected response'}`, 'error');
+        }
+      } catch (error) {
+        logDebug('Error signing random auth entry', error);
         document.getElementById('signAuthEntryStatusText').textContent = `❌ Error: ${error.message}`;
         showStatus(`❌ Error: ${error.message}`, 'error');
       }

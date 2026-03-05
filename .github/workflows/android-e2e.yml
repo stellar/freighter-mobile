@@ -141,7 +141,6 @@ jobs:
       - name: Build Android APK for emulator
         env:
           SENTRY_DISABLE_AUTO_UPLOAD: "true"
-          E2E_CLEARTEXT_TRAFFIC: "true"
         run: |
           cd android
           ./gradlew assembleDevRelease \
@@ -226,8 +225,8 @@ jobs:
     strategy:
       fail-fast: false
       # Running only WalletConnect mock-dapp E2E tests.
-      # Note: shard-index:0 with any shard-total correctly selects a single
-      # flow when FLOW_NAME filter is active (0 % shard-total == 0 == shard-index).
+      # Other flows (LaunchAndInspect, CreateWallet, ImportWallet, etc.) are
+      # temporarily disabled while mock-dapp auth entry is being stabilised.
       matrix:
         include:
           - shard-index: 0
@@ -316,18 +315,12 @@ jobs:
           echo "🚀 Starting mock WalletConnect dApp server..."
           ./e2e/scripts/start-mock-server.sh
 
-          # Print server log so it's visible in CI (not just on failure)
-          echo "--- mock-dapp server log ---"
-          cat mock-dapp/.server.log || true
-          echo "----------------------------"
-
           # Store the PID for cleanup
-          # PID file is written to mock-dapp/.server.pid (repo root / mock-dapp)
-          if [ -f "mock-dapp/.server.pid" ]; then
-            echo "✅ Mock server started successfully (PID: $(cat mock-dapp/.server.pid))"
-            cp mock-dapp/.server.pid /tmp/mock-server.pid
+          if [ -f "e2e/mock-dapp/.server.pid" ]; then
+            echo "✅ Mock server started successfully"
+            cat e2e/mock-dapp/.server.pid > /tmp/mock-server.pid
           else
-            echo "❌ Failed to start mock server (PID file not found at mock-dapp/.server.pid)"
+            echo "❌ Failed to start mock server"
             exit 1
           fi
 

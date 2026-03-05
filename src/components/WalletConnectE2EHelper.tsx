@@ -73,7 +73,6 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
     const [sessionId, setSessionId] = useState("");
     const [wcUri, setWcUri] = useState("");
     const [message, setMessage] = useState("");
-    const [entryXdr, setEntryXdr] = useState("");
     const [network, setNetwork] = useState("pubnet");
     const [status, setStatus] = useState("");
     const baseUrl = "http://127.0.0.1:3001";
@@ -220,7 +219,7 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ entryXdr, network }),
+            body: JSON.stringify({ network }),
           },
         );
         if (!res.ok) {
@@ -234,15 +233,13 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
           return;
         }
         setStatus("Sign auth entry request sent!");
-        // Android: dismiss immediately so @gorhom/bottom-sheet can appear — a live
-        // React Native Modal blocks it on Android, so we must close before the WC
-        // event arrives. iOS: small delay to let the modal fade-out animation finish
-        // before the bottom sheet presents, avoiding a UIKit animation race condition.
-        if (Platform.OS === "android") {
-          handleDismiss();
-        } else {
-          setTimeout(() => handleDismiss(), 350);
-        }
+        // Dismiss immediately on both platforms. For signAuthEntry the WC relay
+        // round-trip is fast enough that delaying the dismiss (as we do for
+        // signMessage) causes the WC session_request event to arrive BEFORE the
+        // modal is closed, blocking @gorhom/bottom-sheet from presenting on iOS.
+        // Immediate dismiss starts the ~300 ms fade-out animation; by the time the
+        // WC event completes the relay round-trip the animation is already done.
+        handleDismiss();
       } catch (error) {
         const isNetworkError =
           error instanceof TypeError &&
@@ -359,6 +356,22 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
                 </View>
               )}
 
+              {sessionId && (
+                <View style={{ marginBottom: 16 }}>
+                  <Text style={{ fontWeight: "600", marginBottom: 8 }}>
+                    Request Sign Auth Entry:
+                  </Text>
+
+                  <Button
+                    testID="wc-e2e-request-sign-auth-entry"
+                    onPress={requestSignAuthEntry}
+                    size="sm"
+                  >
+                    Request Sign Auth Entry
+                  </Button>
+                </View>
+              )}
+
               {/* Request Sign Message */}
               {sessionId && (
                 <View style={{ marginBottom: 16 }}>
@@ -388,31 +401,6 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
                     size="sm"
                   >
                     Request Sign Message
-                  </Button>
-                </View>
-              )}
-
-              {/* Request Sign Auth Entry */}
-              {sessionId && (
-                <View style={{ marginBottom: 16 }}>
-                  <Text style={{ fontWeight: "600", marginBottom: 8 }}>
-                    Request Sign Auth Entry:
-                  </Text>
-
-                  <Input
-                    testID="wc-e2e-auth-entry-input"
-                    placeholder="Authorization Entry XDR (base64)"
-                    value={entryXdr}
-                    onChangeText={setEntryXdr}
-                    style={{ marginBottom: 8 }}
-                  />
-
-                  <Button
-                    testID="wc-e2e-request-sign-auth-entry"
-                    onPress={requestSignAuthEntry}
-                    size="sm"
-                  >
-                    Request Sign Auth Entry
                   </Button>
                 </View>
               )}

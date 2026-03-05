@@ -1,8 +1,54 @@
 /* eslint-disable @fnando/consistent-import/consistent-import */
 /* eslint-disable no-console */
+import { xdr, Keypair } from "@stellar/stellar-base";
 import { Router, Request, Response } from "express";
 
 import { MockWalletConnectClient } from "./walletconnect";
+
+/**
+ * Generate a fresh SorobanAuthorizationEntry XDR string for E2E testing.
+ * Creates a random keypair so each call produces a unique entry.
+ */
+function generateSorobanAuthEntryXdr(): string {
+  const kp = Keypair.random();
+  // stellar-base v14: xdr.PublicKey.publicKeyTypeEd25519 and
+  // xdr.ScAddress.scAddressTypeContract accept opaque XDR byte-array types
+  // (Buffer<ArrayBufferLike> / Hash). Buffer is wire-compatible; cast via
+  // `as unknown` to bridge the branded-type gap.
+  const addr = xdr.ScAddress.scAddressTypeAccount(
+    xdr.PublicKey.publicKeyTypeEd25519(
+      kp.rawPublicKey() as unknown as Parameters<
+        typeof xdr.PublicKey.publicKeyTypeEd25519
+      >[0],
+    ),
+  );
+  const entry = new xdr.SorobanAuthorizationEntry({
+    credentials: xdr.SorobanCredentials.sorobanCredentialsAddress(
+      new xdr.SorobanAddressCredentials({
+        address: addr,
+        nonce: xdr.Int64.fromString("0"),
+        signatureExpirationLedger: 999999,
+        signature: xdr.ScVal.scvVoid(),
+      }),
+    ),
+    rootInvocation: new xdr.SorobanAuthorizedInvocation({
+      function:
+        xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeContractFn(
+          new xdr.InvokeContractArgs({
+            contractAddress: xdr.ScAddress.scAddressTypeContract(
+              Buffer.alloc(32) as unknown as Parameters<
+                typeof xdr.ScAddress.scAddressTypeContract
+              >[0],
+            ),
+            functionName: "test",
+            args: [],
+          }),
+        ),
+      subInvocations: [],
+    }),
+  });
+  return entry.toXDR("base64");
+}
 
 export function createRoutes(wcClient: MockWalletConnectClient): Router {
   const router = Router();
@@ -269,21 +315,21 @@ export function createRoutes(wcClient: MockWalletConnectClient): Router {
    */
   router.post("/session/:id/request/signXDR", (req: Request, res: Response) => {
     const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-    const { xdr, description } = req.body as {
+    const { xdr: xdrParam, description } = req.body as {
       xdr?: unknown;
       description?: string | number;
       network?: unknown;
     };
     const network = parseNetwork((req.body as { network?: unknown }).network);
 
-    if (!xdr || typeof xdr !== "string") {
+    if (!xdrParam || typeof xdrParam !== "string") {
       return res.status(400).json({
         error: "Invalid request",
         message: "XDR is required and must be a string",
       });
     }
 
-    const xdrText = xdr;
+    const xdrText = xdrParam;
     const descriptionText =
       typeof description === "string" ? description : undefined;
 
@@ -312,7 +358,7 @@ export function createRoutes(wcClient: MockWalletConnectClient): Router {
       metadata.responses.push({
         id: requestId,
         type: "signXDR",
-        params: { xdr, description, network },
+        params: { xdr: xdr as unknown as string, description, network },
         promise: requestPromise,
         createdAt: Date.now(),
       });
@@ -358,14 +404,11 @@ export function createRoutes(wcClient: MockWalletConnectClient): Router {
       };
       const network = parseNetwork((req.body as { network?: unknown }).network);
 
-      if (!entryXdr || typeof entryXdr !== "string") {
-        return res.status(400).json({
-          error: "Invalid request",
-          message: "entryXdr is required and must be a string",
-        });
-      }
-
-      const entryXdrText = entryXdr;
+      // Generate a fresh authorization entry if the caller didn't supply one.
+      const entryXdrText =
+        typeof entryXdr === "string" && entryXdr
+          ? entryXdr
+          : generateSorobanAuthEntryXdr();
       const metadata = sessionMetadata.get(id);
 
       if (!metadata) {
@@ -391,7 +434,7 @@ export function createRoutes(wcClient: MockWalletConnectClient): Router {
         metadata.responses.push({
           id: requestId,
           type: "signAuthEntry",
-          params: { entryXdr, network },
+          params: { entryXdr: entryXdrText, network },
           promise: requestPromise,
           createdAt: Date.now(),
         });

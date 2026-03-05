@@ -8,38 +8,6 @@ tags:
 # SignAuthEntry Mock Dapp E2E Test - Happy Path
 # Tests basic WalletConnect SignAuthEntry flow with approval on mainnet
 #
-# Requires env var: E2E_TEST_SOROBAN_AUTH_ENTRY_XDR
-#   A base64-encoded SorobanAuthorizationEntry XDR with sorobanCredentialsAddress credentials.
-#   Can be generated with:
-#     node -e "
-#       const { xdr, Keypair } = require('@stellar/stellar-sdk');
-#       const kp = Keypair.random();
-#       const addr = xdr.ScAddress.scAddressTypeAccount(
-#         xdr.AccountId.publicKeyTypeEd25519(kp.rawPublicKey())
-#       );
-#       const entry = new xdr.SorobanAuthorizationEntry({
-#         credentials: xdr.SorobanCredentials.sorobanCredentialsAddress(
-#           new xdr.SorobanAddressCredentials({
-#             address: addr,
-#             nonce: xdr.Int64.fromString('0'),
-#             signatureExpirationLedger: 999999,
-#             signature: xdr.ScVal.scvVoid(),
-#           })
-#         ),
-#         rootInvocation: new xdr.SorobanAuthorizedInvocation({
-#           function: xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeContractFn(
-#             new xdr.InvokeContractArgs({
-#               contractAddress: xdr.ScAddress.scAddressTypeContract(Buffer.alloc(32)),
-#               functionName: 'test',
-#               args: [],
-#             })
-#           ),
-#           subInvocations: [],
-#         }),
-#       });
-#       console.log(entry.toXDR('base64'));
-#     "
-
 - runFlow:
     file: ../onboarding/ImportFundedWallet.yaml
 
@@ -139,19 +107,8 @@ tags:
 - tapOn:
     id: wc-e2e-helper-fab
 
-# Wait for modal to open and show inputs
+# Wait for modal to open and scroll to ensure button is in view
 - scroll
-
-# Fill in the auth entry XDR (from env var for CI, or hardcoded for local testing)
-- tapOn:
-    id: wc-e2e-auth-entry-input
-
-- inputText: "${E2E_TEST_SOROBAN_AUTH_ENTRY_XDR}"
-
-# Note: no hideKeyboard here — on Android, hideKeyboard sends KEYCODE_BACK which
-# can trigger onRequestClose on the React Native Modal if the keyboard is already
-# dismissed. The ScrollView uses keyboardShouldPersistTaps="handled" so button
-# taps fire correctly even when the keyboard is visible.
 
 # Request sign auth entry - modal will auto-close after request
 - tapOn:
