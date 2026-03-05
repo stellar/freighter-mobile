@@ -316,11 +316,13 @@ jobs:
           ./e2e/scripts/start-mock-server.sh
 
           # Store the PID for cleanup
-          if [ -f "e2e/mock-dapp/.server.pid" ]; then
-            echo "✅ Mock server started successfully"
-            cat e2e/mock-dapp/.server.pid > /tmp/mock-server.pid
+          # PID file is written to mock-dapp/.server.pid (start-mock-server.sh resolves
+          # relative to the mock-dapp directory which sits at the repo root).
+          if [ -f "mock-dapp/.server.pid" ]; then
+            echo "✅ Mock server started successfully (PID: $(cat mock-dapp/.server.pid))"
+            cp mock-dapp/.server.pid /tmp/mock-server.pid
           else
-            echo "❌ Failed to start mock server"
+            echo "❌ Failed to start mock server (PID file not found at mock-dapp/.server.pid)"
             exit 1
           fi
 

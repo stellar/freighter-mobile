@@ -107,8 +107,13 @@ tags:
 - tapOn:
     id: wc-e2e-helper-fab
 
-# Wait for modal to open and scroll to ensure button is in view
-- scroll
+# Wait for modal to open and button to be visible.
+# Don't scroll — the auth entry button is near the top of the modal content
+# (above the message inputs), so a scroll gesture would move it out of view.
+- extendedWaitUntil:
+    visible:
+      id: wc-e2e-request-sign-auth-entry
+    timeout: 3000
 
 # Request sign auth entry - modal will auto-close after request
 - tapOn:
