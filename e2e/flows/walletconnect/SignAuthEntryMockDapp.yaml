@@ -115,7 +115,7 @@ tags:
       id: wc-e2e-request-sign-auth-entry
     timeout: 3000
 
-# Request sign auth entry  modal will auto-close after request
+# Request sign auth entry - modal will auto-close after request
 - tapOn:
     id: wc-e2e-request-sign-auth-entry
 
