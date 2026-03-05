@@ -2,6 +2,7 @@
 /* eslint-disable no-console */
 import { xdr, Keypair } from "@stellar/stellar-base";
 import { Router, Request, Response } from "express";
+import rateLimit from "express-rate-limit";
 
 import { MockWalletConnectClient } from "./walletconnect";
 
@@ -391,9 +392,19 @@ export function createRoutes(wcClient: MockWalletConnectClient): Router {
   /**
    * Send stellar_signAuthEntry request
    * POST /session/:id/request/signAuthEntry
+   *
+   * Rate-limited to prevent DoS / brute-force abuse (CWE-307, CWE-770).
+   * 30 req/min is well above any E2E test throughput.
    */
+  const signAuthEntryRateLimit = rateLimit({
+    windowMs: 60 * 1000,
+    max: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
   router.post(
     "/session/:id/request/signAuthEntry",
+    signAuthEntryRateLimit,
     (req: Request, res: Response) => {
       const id = Array.isArray(req.params.id)
         ? req.params.id[0]
