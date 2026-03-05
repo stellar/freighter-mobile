@@ -11,7 +11,13 @@ import React, {
   useImperativeHandle,
   forwardRef,
 } from "react";
-import { View, TouchableOpacity, ScrollView, Modal } from "react-native";
+import {
+  View,
+  TouchableOpacity,
+  ScrollView,
+  Modal,
+  Platform,
+} from "react-native";
 
 /**
  * FAB Trigger for WalletConnect E2E Helper
@@ -167,10 +173,15 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
           return;
         }
         setStatus("Sign message request sent!");
-        // Dismiss modal immediately (no delay) so the sign-message bottom sheet
-        // can appear — on Android, a React Native Modal blocks @gorhom/bottom-sheet
-        // from rendering above it, so we must close before the WC event arrives.
-        handleDismiss();
+        // Android: dismiss immediately so @gorhom/bottom-sheet can appear — a live
+        // React Native Modal blocks it on Android, so we must close before the WC
+        // event arrives. iOS: small delay to let the modal fade-out animation finish
+        // before the bottom sheet presents, avoiding a UIKit animation race condition.
+        if (Platform.OS === "android") {
+          handleDismiss();
+        } else {
+          setTimeout(() => handleDismiss(), 350);
+        }
       } catch (error) {
         const isNetworkError =
           error instanceof TypeError &&
@@ -223,10 +234,15 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
           return;
         }
         setStatus("Sign auth entry request sent!");
-        // Dismiss modal immediately (no delay) so the sign-auth-entry bottom sheet
-        // can appear — on Android, a React Native Modal blocks @gorhom/bottom-sheet
-        // from rendering above it, so we must close before the WC event arrives.
-        handleDismiss();
+        // Android: dismiss immediately so @gorhom/bottom-sheet can appear — a live
+        // React Native Modal blocks it on Android, so we must close before the WC
+        // event arrives. iOS: small delay to let the modal fade-out animation finish
+        // before the bottom sheet presents, avoiding a UIKit animation race condition.
+        if (Platform.OS === "android") {
+          handleDismiss();
+        } else {
+          setTimeout(() => handleDismiss(), 350);
+        }
       } catch (error) {
         const isNetworkError =
           error instanceof TypeError &&
