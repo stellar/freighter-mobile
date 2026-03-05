@@ -167,8 +167,10 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
           return;
         }
         setStatus("Sign message request sent!");
-        // Auto-dismiss modal after requesting sign
-        setTimeout(() => handleDismiss(), 500);
+        // Dismiss modal immediately (no delay) so the sign-message bottom sheet
+        // can appear — on Android, a React Native Modal blocks @gorhom/bottom-sheet
+        // from rendering above it, so we must close before the WC event arrives.
+        handleDismiss();
       } catch (error) {
         const isNetworkError =
           error instanceof TypeError &&
@@ -221,8 +223,10 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
           return;
         }
         setStatus("Sign auth entry request sent!");
-        // Auto-dismiss modal after requesting sign
-        setTimeout(() => handleDismiss(), 500);
+        // Dismiss modal immediately (no delay) so the sign-auth-entry bottom sheet
+        // can appear — on Android, a React Native Modal blocks @gorhom/bottom-sheet
+        // from rendering above it, so we must close before the WC event arrives.
+        handleDismiss();
       } catch (error) {
         const isNetworkError =
           error instanceof TypeError &&
@@ -289,7 +293,10 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={{ maxHeight: 500 }}>
+            <ScrollView
+              style={{ maxHeight: 500 }}
+              keyboardShouldPersistTaps="handled"
+            >
               {/* Create Session */}
               <View style={{ marginBottom: 16 }}>
                 <Button

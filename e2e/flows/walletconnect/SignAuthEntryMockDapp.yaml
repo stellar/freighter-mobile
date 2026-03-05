@@ -148,7 +148,10 @@ tags:
 
 - inputText: "${E2E_TEST_SOROBAN_AUTH_ENTRY_XDR}"
 
-- hideKeyboard
+# Note: no hideKeyboard here — on Android, hideKeyboard sends KEYCODE_BACK which
+# can trigger onRequestClose on the React Native Modal if the keyboard is already
+# dismissed. The ScrollView uses keyboardShouldPersistTaps="handled" so button
+# taps fire correctly even when the keyboard is visible.
 
 # Request sign auth entry - modal will auto-close after request
 - tapOn:
