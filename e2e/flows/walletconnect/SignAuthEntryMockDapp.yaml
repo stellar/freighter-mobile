@@ -135,8 +135,8 @@ tags:
 - tapOn:
     id: dapp-request-confirm-button
 
-# Verify we're back on home screen
+# Verify success toast appears
 - extendedWaitUntil:
     visible:
-      id: home-screen
+      textContains: "Authorization entry successfully signed!"
     timeout: 5000
