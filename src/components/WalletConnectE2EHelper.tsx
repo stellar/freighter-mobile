@@ -12,6 +12,8 @@ import React, {
   useCallback,
   useImperativeHandle,
   forwardRef,
+  useEffect,
+  useRef,
 } from "react";
 import { View, TouchableOpacity, ScrollView, Modal } from "react-native";
 
@@ -63,6 +65,26 @@ export type { WalletConnectE2EHelperRef };
  * WalletConnect E2E Helper Modal
  * Uses Modal instead of BottomSheet for Maestro accessibility
  */
+/**
+ * Helper function to make fetch requests with timeout protection
+ * @param url The URL to fetch
+ * @param options Fetch options
+ * @param timeoutMs Timeout in milliseconds (default: 10000)
+ * @returns Promise<Response>
+ */
+const fetchWithTimeout = (
+  url: string,
+  options?: RequestInit,
+  timeoutMs: number = 10000,
+): Promise<Response> => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  return fetch(url, { ...options, signal: controller.signal }).finally(() => {
+    clearTimeout(timeoutId);
+  });
+};
+
 export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
   (_, ref) => {
     const [visible, setVisible] = useState(false);
@@ -74,6 +96,16 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
     const baseUrl = "http://127.0.0.1:3001";
     const { showToast } = useToast();
     const { t } = useAppTranslation();
+    const dismissTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    useEffect(
+      () => () => {
+        if (dismissTimeoutRef.current) {
+          clearTimeout(dismissTimeoutRef.current);
+        }
+      },
+      [],
+    );
 
     const handleDismiss = useCallback(() => {
       setVisible(false);
@@ -91,7 +123,7 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
     const createSession = async () => {
       try {
         setStatus("Creating session...");
-        const res = await fetch(`${baseUrl}/session/create`, {
+        const res = await fetchWithTimeout(`${baseUrl}/session/create`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
         });
@@ -106,19 +138,45 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
           return;
         }
         const data = await res.json();
+        // Validate response structure
+        if (
+          !data ||
+          typeof data !== "object" ||
+          !("sessionId" in data) ||
+          !("uri" in data)
+        ) {
+          const errorMsg = "Invalid response: missing sessionId or uri";
+          setStatus(errorMsg);
+          showToast({
+            title: t("walletKit.e2eHelper.createSessionFailed"),
+            message: errorMsg,
+            variant: "error",
+          });
+          return;
+        }
         const sessionData = data as { sessionId: string; uri: string };
         setSessionId(sessionData.sessionId);
         setWcUri(sessionData.uri);
         setStatus(t("walletKit.e2eHelper.sessionCreated"));
       } catch (error) {
-        const isNetworkError =
-          error instanceof TypeError &&
-          (error.message.includes("Network request failed") ||
-            error.message.includes("fetch"));
+        let isNetworkError = false;
+        let errorMsg = "";
 
-        const errorMsg = isNetworkError
-          ? t("walletKit.e2eHelper.mockServerOfflineStatus")
-          : `Error: ${error instanceof Error ? error.message : String(error)}`;
+        if (error instanceof TypeError) {
+          isNetworkError =
+            error.message.includes("Network request failed") ||
+            error.message.includes("fetch") ||
+            error.message.includes("timeout") ||
+            error.name === "AbortError";
+        }
+
+        if (isNetworkError) {
+          errorMsg = t("walletKit.e2eHelper.mockServerOfflineStatus");
+        } else if (error instanceof Error) {
+          errorMsg = error.message;
+        } else {
+          errorMsg = String(error);
+        }
 
         setStatus(errorMsg);
         showToast({
@@ -135,7 +193,10 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
       Clipboard.setString(wcUri);
       setStatus(t("walletKit.e2eHelper.wcUriCopied"));
       // Auto-dismiss modal after copying
-      setTimeout(() => handleDismiss(), 500);
+      if (dismissTimeoutRef.current) {
+        clearTimeout(dismissTimeoutRef.current);
+      }
+      dismissTimeoutRef.current = setTimeout(() => handleDismiss(), 500);
     };
 
     const requestSignMessage = async () => {
@@ -150,7 +211,7 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
       }
       try {
         setStatus(t("walletKit.e2eHelper.signingMessage"));
-        const res = await fetch(
+        const res = await fetchWithTimeout(
           `${baseUrl}/session/${sessionId}/request/signMessage`,
           {
             method: "POST",
@@ -168,25 +229,51 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
           });
           return;
         }
+        // Validate JSON response
+        try {
+          await res.json();
+        } catch {
+          const errorMsg = "Invalid response: non-JSON data received";
+          setStatus(errorMsg);
+          showToast({
+            title: t("walletKit.e2eHelper.requestFailed"),
+            message: errorMsg,
+            variant: "error",
+          });
+          return;
+        }
         setStatus(t("walletKit.e2eHelper.signingMessage"));
         // Android: dismiss immediately so @gorhom/bottom-sheet can appear — a live
         // React Native Modal blocks it on Android, so we must close before the WC
         // event arrives. iOS: small delay to let the modal fade-out animation finish
         // before the bottom sheet presents, avoiding a UIKit animation race condition.
+        if (dismissTimeoutRef.current) {
+          clearTimeout(dismissTimeoutRef.current);
+        }
         if (isAndroid) {
           handleDismiss();
         } else {
-          setTimeout(() => handleDismiss(), 350);
+          dismissTimeoutRef.current = setTimeout(() => handleDismiss(), 350);
         }
       } catch (error) {
-        const isNetworkError =
-          error instanceof TypeError &&
-          (error.message.includes("Network request failed") ||
-            error.message.includes("fetch"));
+        let isNetworkError = false;
+        let errorMsg = "";
 
-        const errorMsg = isNetworkError
-          ? t("walletKit.e2eHelper.mockServerNotRunning")
-          : `Error: ${error instanceof Error ? error.message : String(error)}`;
+        if (error instanceof TypeError) {
+          isNetworkError =
+            error.message.includes("Network request failed") ||
+            error.message.includes("fetch") ||
+            error.message.includes("timeout") ||
+            error.name === "AbortError";
+        }
+
+        if (isNetworkError) {
+          errorMsg = t("walletKit.e2eHelper.mockServerNotRunning");
+        } else if (error instanceof Error) {
+          errorMsg = error.message;
+        } else {
+          errorMsg = String(error);
+        }
 
         setStatus(errorMsg);
         showToast({
@@ -211,7 +298,7 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
       }
       try {
         setStatus(t("walletKit.e2eHelper.signingAuthEntry"));
-        const res = await fetch(
+        const res = await fetchWithTimeout(
           `${baseUrl}/session/${sessionId}/request/signAuthEntry`,
           {
             method: "POST",
@@ -229,6 +316,19 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
           });
           return;
         }
+        // Validate JSON response
+        try {
+          await res.json();
+        } catch {
+          const errorMsg = "Invalid response: non-JSON data received";
+          setStatus(errorMsg);
+          showToast({
+            title: t("walletKit.e2eHelper.requestFailed"),
+            message: errorMsg,
+            variant: "error",
+          });
+          return;
+        }
         setStatus(t("walletKit.e2eHelper.signingAuthEntry"));
         // Dismiss immediately on both platforms. For signAuthEntry the WC relay
         // round-trip is fast enough that delaying the dismiss (as we do for
@@ -236,16 +336,29 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
         // modal is closed, blocking @gorhom/bottom-sheet from presenting on iOS.
         // Immediate dismiss starts the ~300 ms fade-out animation; by the time the
         // WC event completes the relay round-trip the animation is already done.
+        if (dismissTimeoutRef.current) {
+          clearTimeout(dismissTimeoutRef.current);
+        }
         handleDismiss();
       } catch (error) {
-        const isNetworkError =
-          error instanceof TypeError &&
-          (error.message.includes("Network request failed") ||
-            error.message.includes("fetch"));
+        let isNetworkError = false;
+        let errorMsg = "";
 
-        const errorMsg = isNetworkError
-          ? t("walletKit.e2eHelper.mockServerNotRunning")
-          : `Error: ${error instanceof Error ? error.message : String(error)}`;
+        if (error instanceof TypeError) {
+          isNetworkError =
+            error.message.includes("Network request failed") ||
+            error.message.includes("fetch") ||
+            error.message.includes("timeout") ||
+            error.name === "AbortError";
+        }
+
+        if (isNetworkError) {
+          errorMsg = t("walletKit.e2eHelper.mockServerNotRunning");
+        } else if (error instanceof Error) {
+          errorMsg = error.message;
+        } else {
+          errorMsg = String(error);
+        }
 
         setStatus(errorMsg);
         showToast({

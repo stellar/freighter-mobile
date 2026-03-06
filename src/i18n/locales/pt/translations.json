@@ -1157,7 +1157,7 @@
       },
       "site": {
         "malicious": "Este site foi marcado como malicioso",
-        "suspicious": "Este site não foi encontrado no banco de dados",
+        "suspicious": "Não foi possível verificar este site quanto a comportamento malicioso",
         "confirmTrust": "Só confirme se você confia neste site"
       },
       "transaction": {
