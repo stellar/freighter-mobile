@@ -9,18 +9,101 @@ tags:
 # Tests basic WalletConnect SignMessage flow with approval on mainnet
 
 - runFlow:
-    file: ./WalletConnectMockDappConnect.yaml
+    file: ../onboarding/ImportFundedWallet.yaml
 
-# Pause briefly to ensure home screen and FAB are fully interactive
-- pause:
-    ms: 500
+# Dismiss welcome banner if it appears after import
+- runFlow:
+    when:
+      visible:
+        id: welcome-banner-dismiss-button
+    commands:
+      - tapOn:
+          id: welcome-banner-dismiss-button
+      - extendedWaitUntil:
+          visible:
+            id: home-screen
+          timeout: 5000
 
-# Request sign message using WC E2E Helper
+# Dismiss welcome banner if it appears again
+- runFlow:
+    when:
+      visible:
+        id: welcome-banner-dismiss-button
+    commands:
+      - tapOn:
+          id: welcome-banner-dismiss-button
+      - extendedWaitUntil:
+          visible:
+            id: home-screen
+          timeout: 5000
+
+# Open WC E2E Helper FAB and create session
+- tapOn:
+    id: wc-e2e-helper-fab
+
+# Wait for bottom sheet animation to complete
+- scroll
+
+# Tap Create Session button
+- tapOn:
+    id: wc-e2e-create-session
+
+# Wait for session to be created
 - extendedWaitUntil:
     visible:
-      id: wc-e2e-helper-fab
+      id: wc-e2e-copy-uri
     timeout: 5000
 
+# Copy WC URI to clipboard (modal will auto-close)
+- tapOn:
+    id: wc-e2e-copy-uri
+
+# Wait for modal to close
+- extendedWaitUntil:
+    visible:
+      id: home-screen
+    timeout: 3000
+
+# Navigate to QR scanner
+- tapOn:
+    id: home-screen-scan-button
+
+# Wait for QR scanner to load - manual input is always visible for WalletConnect
+- extendedWaitUntil:
+    visible:
+      id: walletconnect-uri-input-end-button
+    timeout: 5000
+
+# Paste WC URI
+- tapOn:
+    id: walletconnect-uri-input-end-button
+
+# Wait for connect button and tap it
+- extendedWaitUntil:
+    visible:
+      id: walletconnect-connect-button
+    timeout: 3000
+
+- tapOn:
+    id: walletconnect-connect-button
+
+# Wait for session proposal
+- extendedWaitUntil:
+    visible:
+      id: session-proposal-confirm-button
+    timeout: 20000
+
+# Tap confirm button
+- tapOn:
+    id: session-proposal-confirm-button
+
+# Wait for connection approval
+- extendedWaitUntil:
+    visible:
+      id: home-screen
+    timeout: 10000
+
+# Request sign message using WC E2E Helper
 - tapOn:
     id: wc-e2e-helper-fab
 
