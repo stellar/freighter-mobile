@@ -1,6 +1,9 @@
 ---
 name: iOS Release
 
+permissions:
+  contents: read
+
 on:
   workflow_dispatch:
     inputs:
@@ -45,9 +48,8 @@ env:
   APPLE_CONNECT_ISSUER_ID: ${{ secrets.APPLE_CONNECT_ISSUER_ID }}
   APPLE_CONNECT_KEY_CONTENT: ${{ secrets.APPLE_CONNECT_KEY_CONTENT }}
 
-  # Fastlane Match configuration
+  # Fastlane Match configuration (GitHub App token approach)
   FASTLANE_GIT_URL: ${{ vars.FASTLANE_GIT_URL }}
-  FASTLANE_GIT_DEPLOY_KEY: ${{ secrets.FASTLANE_GIT_DEPLOY_KEY }}
   MATCH_PASSWORD: ${{ secrets.FASTLANE_MATCH_PASSWORD }}
 
   # Sentry configuration
@@ -144,6 +146,16 @@ jobs:
         with:
           ref: ${{ env.REF_NAME }}
 
+      - name: Generate Match Repository Token
+        id: match-token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        with:
+          app-id: ${{ vars.MATCH_GITHUB_APP_ID }}
+          private-key: ${{ secrets.MATCH_GITHUB_APP_PRIVATE_KEY }}
+          # It's preferable to hardcode "stellar" here for security reasons instead of "github.repository_owner"
+          owner: stellar
+          repositories: freighter-mobile-fastlane
+
       - name: Make scripts executable
         run: find scripts -type f -exec chmod +x {} \;
 
@@ -180,7 +192,7 @@ jobs:
 
       - name: Decode and save sentry.properties
         run:
-          echo ${{ env.SENTRY_PROPERTIES_CONTENT }} | base64 --decode >
+          echo "$SENTRY_PROPERTIES_CONTENT" | base64 --decode >
           ./ios/sentry.properties
 
       - name: Print Build config
@@ -224,6 +236,8 @@ jobs:
 
       - name: Build and Distribute Application
         id: fastlane
+        env:
+          MATCH_GIT_TOKEN: ${{ steps.match-token.outputs.token }}
         run: |
           bundle exec fastlane --version
           bundle exec fastlane ios ${{ env.FASTLANE_LANE }}
