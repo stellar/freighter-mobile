@@ -63,56 +63,51 @@ jobs:
         with:
           branch_from: ${{ env.BRANCH_FROM }}
 
-      - name: Determine release branch name and base branch
-        id: set_release_branch
+      - name: Determine branch names
+        id: set_branches
         run: |
           BRANCH_FROM="${{ steps.validate_branch_from.outputs.branch_or_tag }}"
           APP_VERSION="${{ steps.normalize_version.outputs.app_version }}"
 
           if [ "$BRANCH_FROM" = "main" ]; then
-            RELEASE_BRANCH="release/v${APP_VERSION}"
-            BASE_BRANCH="main"
+            RELEASE_BRANCH="release"
           else
-            RELEASE_BRANCH="emergency-release/v${APP_VERSION}"
-            # For tags, create a base branch name from the tag
-            # GitHub requires PR base to be a branch, not a tag
-            BASE_BRANCH="base-${BRANCH_FROM}"
+            RELEASE_BRANCH="emergency-release"
           fi
 
-          echo "release_branch=${RELEASE_BRANCH}" >> $GITHUB_OUTPUT
-          echo "base_branch=${BASE_BRANCH}" >> $GITHUB_OUTPUT
-          echo "RELEASE_BRANCH=${RELEASE_BRANCH}" >> $GITHUB_ENV
-          echo "BASE_BRANCH=${BASE_BRANCH}" >> $GITHUB_ENV
-          echo "Using release branch: ${RELEASE_BRANCH}"
-          echo "Using base branch: ${BASE_BRANCH}"
+          VERSION_BRANCH="v${APP_VERSION}"
 
-      - name: Checkout branch_from and create base branch if needed
+          echo "release_branch=${RELEASE_BRANCH}" >> $GITHUB_OUTPUT
+          echo "version_branch=${VERSION_BRANCH}" >> $GITHUB_OUTPUT
+          echo "RELEASE_BRANCH=${RELEASE_BRANCH}" >> $GITHUB_ENV
+          echo "VERSION_BRANCH=${VERSION_BRANCH}" >> $GITHUB_ENV
+          echo "Using release branch: ${RELEASE_BRANCH}"
+          echo "Using version branch: ${VERSION_BRANCH}"
+
+      - name: Create and push release branch
         run: |
           BRANCH_FROM="${{ steps.validate_branch_from.outputs.branch_or_tag }}"
-          BASE_BRANCH="${{ steps.set_release_branch.outputs.base_branch }}"
+          RELEASE_BRANCH="${{ steps.set_branches.outputs.release_branch }}"
 
           if [ "$BRANCH_FROM" = "main" ]; then
             git checkout main
             git pull origin main
           else
-            # For tags, checkout the tag and create a branch from it
+            # For tags, checkout the tag directly
             git checkout "$BRANCH_FROM"
-            # Check if base branch already exists remotely
-            if git ls-remote --heads origin "$BASE_BRANCH" | grep -q "$BASE_BRANCH"; then
-              echo "Base branch $BASE_BRANCH already exists, checking it out"
-              git checkout "$BASE_BRANCH"
-              git pull origin "$BASE_BRANCH"
-            else
-              echo "Creating base branch $BASE_BRANCH from tag $BRANCH_FROM"
-              git checkout -b "$BASE_BRANCH"
-              git push --set-upstream origin "$BASE_BRANCH"
-            fi
           fi
 
-      - name: Create release branch
-        run: |
-          RELEASE_BRANCH="${{ steps.set_release_branch.outputs.release_branch }}"
+          # Remove existing release branch if present (local and remote)
+          git branch -D "$RELEASE_BRANCH" 2>/dev/null || true
+          git push origin --delete "$RELEASE_BRANCH" 2>/dev/null || true
+
           git checkout -b "$RELEASE_BRANCH"
+          git push --set-upstream origin "$RELEASE_BRANCH"
+
+      - name: Create version branch
+        run: |
+          VERSION_BRANCH="${{ steps.set_branches.outputs.version_branch }}"
+          git checkout -b "$VERSION_BRANCH"
 
       - name: Update app version
         run: |
@@ -190,23 +185,23 @@ jobs:
           git add .
           git commit -m "chore: bump app version to v${APP_VERSION}"
 
-      - name: Push release branch
+      - name: Push version branch
         run: |
-          RELEASE_BRANCH="${{ steps.set_release_branch.outputs.release_branch }}"
-          git push --set-upstream origin "$RELEASE_BRANCH"
+          VERSION_BRANCH="${{ steps.set_branches.outputs.version_branch }}"
+          git push --set-upstream origin "$VERSION_BRANCH"
 
       - name: Create pull request
         id: create_pr
         uses: actions/github-script@v8
         env:
           APP_VERSION: ${{ steps.normalize_version.outputs.app_version }}
-          RELEASE_BRANCH: ${{ steps.set_release_branch.outputs.release_branch }}
-          BASE_BRANCH: ${{ steps.set_release_branch.outputs.base_branch }}
+          RELEASE_BRANCH: ${{ steps.set_branches.outputs.release_branch }}
+          VERSION_BRANCH: ${{ steps.set_branches.outputs.version_branch }}
           BRANCH_FROM: ${{ steps.validate_branch_from.outputs.branch_or_tag }}
         with:
           script: |
-            const branch = process.env.RELEASE_BRANCH;
-            const baseBranch = process.env.BASE_BRANCH;
+            const releaseBranch = process.env.RELEASE_BRANCH;
+            const versionBranch = process.env.VERSION_BRANCH;
             const branchFrom = process.env.BRANCH_FROM;
             const isEmergencyRelease = branchFrom !== "main";
             const title = isEmergencyRelease 
@@ -227,8 +222,8 @@ jobs:
               const { data } = await github.rest.pulls.create({
                 owner,
                 repo,
-                head: branch,
-                base: baseBranch,
+                head: versionBranch,
+                base: releaseBranch,
                 title,
                 body
               });
@@ -239,8 +234,8 @@ jobs:
                 const { data: existing } = await github.rest.pulls.list({
                   owner,
                   repo,
-                  head: `${owner}:${branch}`,
-                  base: baseBranch,
+                  head: `${owner}:${versionBranch}`,
+                  base: releaseBranch,
                   state: "open"
                 });
 
@@ -254,7 +249,10 @@ jobs:
               }
             }
 
+      # Bump version on main only for regular releases (not emergency)
+      # to avoid inconsistencies on the main branch
       - name: Create bump-version branch
+        if: env.BRANCH_FROM == 'main'
         run: |
           git checkout main
           git pull origin main
@@ -265,11 +263,13 @@ jobs:
           git checkout -b bump-version
 
       - name: Update app version on bump-version branch
+        if: env.BRANCH_FROM == 'main'
         run: |
           APP_VERSION="${{ steps.normalize_version.outputs.app_version }}"
           node ./scripts/set-app-version "$APP_VERSION"
 
       - name: Commit version bump on bump-version branch
+        if: env.BRANCH_FROM == 'main'
         run: |
           APP_VERSION="${{ steps.normalize_version.outputs.app_version }}"
           git status
@@ -281,10 +281,12 @@ jobs:
           git commit -m "chore: bump app version to v${APP_VERSION}"
 
       - name: Push bump-version branch
+        if: env.BRANCH_FROM == 'main'
         run: |
           git push --set-upstream origin bump-version
 
       - name: Create bump-version pull request
+        if: env.BRANCH_FROM == 'main'
         uses: actions/github-script@v8
         env:
           APP_VERSION: ${{ steps.normalize_version.outputs.app_version }}
@@ -340,10 +342,10 @@ jobs:
         uses: actions/github-script@v8
         env:
           APP_VERSION: ${{ steps.normalize_version.outputs.app_version }}
-          RELEASE_BRANCH: ${{ steps.set_release_branch.outputs.release_branch }}
+          VERSION_BRANCH: ${{ steps.set_branches.outputs.version_branch }}
         with:
           script: |
-            const branch = process.env.RELEASE_BRANCH;
+            const versionBranch = process.env.VERSION_BRANCH;
             const rawNotes = process.env.RELEASE_NOTES || "";
             const releaseNotes = rawNotes.trim().length > 0 ? rawNotes : "";
             const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/");
@@ -353,7 +355,7 @@ jobs:
                 workflow_id: "ios.yml",
                 name: "iOS Release",
                 inputs: {
-                  ref_name: branch,
+                  ref_name: versionBranch,
                   buildEnv: "dev",
                   upload_to_testflight: "yes",
                   release_notes: releaseNotes
@@ -363,7 +365,7 @@ jobs:
                 workflow_id: "android.yml",
                 name: "Android Release",
                 inputs: {
-                  ref_name: branch,
+                  ref_name: versionBranch,
                   buildEnv: "dev",
                   upload_to_google_play: "yes",
                   release_notes: releaseNotes
@@ -376,8 +378,8 @@ jobs:
                 owner,
                 repo,
                 workflow_id: workflow.workflow_id,
-                ref: branch,
+                ref: versionBranch,
                 inputs: workflow.inputs
               });
-              core.notice(`Triggered ${workflow.name} workflow (${workflow.workflow_id}) for ${branch}`);
+              core.notice(`Triggered ${workflow.name} workflow (${workflow.workflow_id}) for ${versionBranch}`);
             }
