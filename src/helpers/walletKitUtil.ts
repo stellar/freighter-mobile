@@ -35,6 +35,7 @@ const stellarNamespaceMethods = [
   StellarRpcMethods.SIGN_XDR,
   StellarRpcMethods.SIGN_AND_SUBMIT_XDR,
   StellarRpcMethods.SIGN_MESSAGE,
+  StellarRpcMethods.SIGN_AUTH_ENTRY,
 ];
 
 /** Supported Stellar RPC events for WalletKit */
@@ -227,6 +228,7 @@ export const approveSessionRequest = async ({
   sessionRequest,
   signTransaction,
   signMessage,
+  signAuthEntry,
   networkPassphrase,
   activeChain,
   showToast,
@@ -237,6 +239,7 @@ export const approveSessionRequest = async ({
     transaction: Transaction | FeeBumpTransaction,
   ) => string | null;
   signMessage: (message: string) => string | null;
+  signAuthEntry: (entryXdr: string) => string | null;
   networkPassphrase: string;
   activeChain: string;
   showToast: (options: ToastOptions) => void;
@@ -355,6 +358,97 @@ export const approveSessionRequest = async ({
 
       showToast({
         title: t("walletKit.signMessageSuccessfull"),
+        message: t("walletKit.returnToBrowser"),
+        variant: "success",
+      });
+    } catch (err) {
+      const errorMsg = t("common.error", {
+        errorMessage:
+          err instanceof Error ? err.message : t("common.unknownError"),
+      });
+
+      showToast({
+        title: t("walletKit.errorRespondingRequest"),
+        message: errorMsg,
+        variant: "error",
+      });
+
+      rejectSessionRequest({ sessionRequest, message: errorMsg });
+    }
+
+    return;
+  }
+
+  // Handle SIGN_AUTH_ENTRY separately (auth entry XDR, not a transaction)
+  if (rpcMethod === StellarRpcMethods.SIGN_AUTH_ENTRY) {
+    const { entryXdr } = requestParams || {};
+
+    if (!entryXdr || typeof entryXdr !== "string") {
+      const errorMessage = t("walletKit.errorInvalidAuthEntry");
+      showToast({
+        title: t("walletKit.errorSigningAuthEntry"),
+        message: errorMessage,
+        variant: "error",
+      });
+      rejectSessionRequest({ sessionRequest, message: errorMessage });
+      return;
+    }
+
+    let signedAuthEntry: string | null = null;
+    try {
+      signedAuthEntry = signAuthEntry(entryXdr);
+    } catch (e) {
+      const errorMessage =
+        e instanceof Error ? e.message : "Failed to parse auth entry XDR";
+      logger.error("approveSessionRequest", errorMessage, e);
+      showToast({
+        title: t("walletKit.errorSigningAuthEntry"),
+        message: t("walletKit.pleaseTryAgainLater"),
+        variant: "error",
+      });
+      rejectSessionRequest({ sessionRequest, message: errorMessage });
+      return;
+    }
+
+    if (!signedAuthEntry) {
+      const errorMessage = "Failed to sign auth entry";
+      logger.error(
+        "approveSessionRequest",
+        errorMessage,
+        new Error(errorMessage),
+      );
+      showToast({
+        title: t("walletKit.errorSigningAuthEntry"),
+        message: t("walletKit.pleaseTryAgainLater"),
+        variant: "error",
+      });
+      rejectSessionRequest({ sessionRequest, message: errorMessage });
+      return;
+    }
+
+    // Get dapp metadata for analytics
+    const { activeSessions } = useWalletKitStore.getState();
+    const dappMetadata = getDappMetadataFromEvent(
+      sessionRequest,
+      activeSessions,
+    );
+    const dappDomain = dappMetadata?.url;
+
+    analytics.trackSignedAuthEntry({
+      ...(dappDomain ? { dappDomain } : {}),
+    });
+
+    const response = {
+      id,
+      result: { signedAuthEntry },
+      jsonrpc: "2.0",
+    };
+
+    try {
+      await walletKit.respondSessionRequest({ topic, response });
+
+      showToast({
+        title: t("walletKit.signAuthEntrySuccessfull"),
         message: t("walletKit.returnToBrowser"),
         variant: "success",
       });

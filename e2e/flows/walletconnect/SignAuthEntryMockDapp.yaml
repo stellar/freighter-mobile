@@ -1,13 +1,13 @@
 appId: org.stellar.freighterdev
 tags:
   - walletconnect
-  - sign-message
+  - sign-auth-entry
   - mock-dapp
   - e2e
 ---
-# SignMessage Mock Dapp E2E Test - Happy Path
-# Tests basic WalletConnect SignMessage flow with approval on mainnet
-
+# SignAuthEntry Mock Dapp E2E Test - Happy Path
+# Tests basic WalletConnect SignAuthEntry flow with approval on mainnet
+#
 - runFlow:
     file: ../onboarding/ImportFundedWallet.yaml
 
@@ -103,38 +103,31 @@ tags:
       id: home-screen
     timeout: 10000
 
-# Request sign message using WC E2E Helper
+# Request sign auth entry using WC E2E Helper
 - tapOn:
     id: wc-e2e-helper-fab
 
-# Wait for modal to open and show inputs
-- scroll
-
-# Fill in message
-- tapOn:
-    id: wc-e2e-message-input
-
-- inputText:
-    "Hello from E2E test! Please sign this message to verify your wallet."
-
-# Dismiss keyboard before tapping the sign button. hideKeyboard is safe here
-# because the keyboard IS visible (just typed text) — on Android KEYCODE_BACK
-# only triggers onRequestClose when the keyboard is already dismissed.
-- hideKeyboard
-
-# Request sign message - modal will auto-close after request
-- tapOn:
-    id: wc-e2e-request-sign
-
-# Wait for SignMessage modal
+# Wait for modal to open and button to be visible.
+# Don't scroll — the auth entry button is near the top of the modal content
+# (above the message inputs), so a scroll gesture would move it out of view.
 - extendedWaitUntil:
     visible:
-      id: sign-message-title
+      id: wc-e2e-request-sign-auth-entry
+    timeout: 3000
+
+# Request sign auth entry - modal will auto-close after request
+- tapOn:
+    id: wc-e2e-request-sign-auth-entry
+
+# Wait for SignAuthEntry modal
+- extendedWaitUntil:
+    visible:
+      id: sign-auth-entry-title
     timeout: 10000
 
-# Verify message and buttons are visible
+# Verify buttons are visible on main confirm screen
 - assertVisible:
-    id: message-display
+    id: dapp-auth-entry-details-button
 - assertVisible:
     id: dapp-request-confirm-button
 
@@ -145,5 +138,5 @@ tags:
 # Verify success toast appears
 - extendedWaitUntil:
     visible:
-      text: "Message successfully signed!"
+      text: "Authorization entry successfully signed!"
     timeout: 5000

@@ -23,6 +23,7 @@ export enum AnalyticsEvent {
   VIEW_GRANT_DAPP_ACCESS = "loaded screen: grant access",
   VIEW_SIGN_DAPP_TRANSACTION = "loaded screen: sign transaction",
   VIEW_SIGN_DAPP_TRANSACTION_DETAILS = "loaded screen: sign transaction details",
+  VIEW_SIGN_DAPP_AUTH_ENTRY_DETAILS = "loaded screen: sign auth entry details",
   VIEW_SEND_SEARCH_CONTACTS = "loaded screen: send payment to",
   VIEW_SEND_AMOUNT = "loaded screen: send payment amount",
   VIEW_SEND_MEMO = "loaded screen: send payment settings",
@@ -98,6 +99,7 @@ export enum AnalyticsEvent {
   SIGN_TRANSACTION_MEMO_REQUIRED_FAIL = "sign transaction: memo required error",
   SUBMIT_TRANSACTION_SUCCESS = "submit transaction: confirmed",
   SIGN_MESSAGE_SUCCESS = "sign message: confirmed",
+  SIGN_AUTH_ENTRY_SUCCESS = "sign auth entry: confirmed",
 
   // Token Management Events
   ADD_TOKEN_SUCCESS = "manage asset: add asset",

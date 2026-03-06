@@ -24,6 +24,7 @@ import {
   StellarRpcMethods,
   StellarSignXDRParams,
 } from "ducks/walletKit";
+import { isE2ETest } from "helpers/isEnv";
 import { getHostname } from "helpers/protocols";
 import {
   approveSessionProposal,
@@ -90,7 +91,8 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 }) => {
   const { themeColors } = useColors();
   const { network, authStatus } = useAuthenticationStore();
-  const { account, signTransaction, signMessage } = useGetActiveAccount();
+  const { account, signTransaction, signMessage, signAuthEntry } =
+    useGetActiveAccount();
   const { overriddenBlockaidResponse } = useDebugStore();
 
   const addMemoExplanationBottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -142,6 +144,16 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     [requestMethod],
   );
 
+  const isSignAuthEntryRequest = useMemo(
+    () => requestMethod === StellarRpcMethods.SIGN_AUTH_ENTRY,
+    [requestMethod],
+  );
+
+  // Both sign_message and sign_auth_entry are non-transaction requests:
+  // they skip memo validation and Blockaid transaction scanning
+  const isNonTransactionRequest =
+    isSignMessageRequest || isSignAuthEntryRequest;
+
   /**
    * Validates transaction memo requirements for incoming dApp transaction requests
    * Uses the useValidateTransactionMemo hook to check if the transaction
@@ -151,8 +163,8 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   const { isMemoMissing: isMemoMissingRaw, isValidatingMemo } =
     useValidateTransactionMemo(xdr);
 
-  // Only apply memo validation to XDR-based requests, not sign_message
-  const isMemoMissing = isSignMessageRequest ? false : isMemoMissingRaw;
+  // Only apply memo validation to XDR-based requests, not sign_message or sign_auth_entry
+  const isMemoMissing = isNonTransactionRequest ? false : isMemoMissingRaw;
 
   const dappConnectionBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const dappRequestBottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -490,6 +502,8 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       sessionRequest: requestEvent,
       signTransaction,
       signMessage,
+      signAuthEntry: (entryXdr: string) =>
+        signAuthEntry(entryXdr, networkDetails.networkPassphrase),
       networkPassphrase: networkDetails.networkPassphrase,
       activeChain,
       showToast,
@@ -746,22 +760,28 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 
       // Validate that the transaction request origin matches an active session
       // The verifyContext.verified.origin should match the hostname of one of our active sessions
+      // Skip this check in E2E test mode since the mock-dapp uses http://localhost which is
+      // correctly rejected by getHostname (HTTPS-only) but is safe for local E2E testing.
+      //
+      // SECURITY: isE2ETest is read from react-native-config (Config.IS_E2E_TEST).
+      // It is a compile-time constant baked into the JS bundle — not injectable at runtime.
+      // IS_E2E_TEST must NEVER be set to "true" in any production or beta build scheme.
       const transactionRequestOrigin =
         sessionRequest.verifyContext?.verified?.origin;
 
-      const isValidTransactionRequestOrigin = Object.values(
-        activeSessions,
-      ).some((session) => {
-        const sessionHostname = getHostname(session.peer?.metadata?.url);
-        const requestHostname = getHostname(transactionRequestOrigin);
+      const isValidTransactionRequestOrigin =
+        isE2ETest ||
+        Object.values(activeSessions).some((session) => {
+          const sessionHostname = getHostname(session.peer?.metadata?.url);
+          const requestHostname = getHostname(transactionRequestOrigin);
 
-        // Reject if either hostname is null/undefined - prevents null === null bypass
-        if (!sessionHostname || !requestHostname) {
-          return false;
-        }
+          // Reject if either hostname is null/undefined - prevents null === null bypass
+          if (!sessionHostname || !requestHostname) {
+            return false;
+          }
 
-        return sessionHostname === requestHostname;
-      });
+          return sessionHostname === requestHostname;
+        });
 
       if (!isValidTransactionRequestOrigin) {
         showToast({
@@ -812,7 +832,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const requestXdr = sessionRequest.params.request.params.xdr as string;
 
-      // Only scan transactions for XDR-based requests (not sign_message)
+      // Only scan transactions for XDR-based requests (not sign_message or sign_auth_entry)
       const isXdrRequest =
         currentRequestMethod === (StellarRpcMethods.SIGN_XDR as string) ||
         currentRequestMethod ===
@@ -853,7 +873,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
             }
           });
       } else {
-        // For sign_message requests, skip transaction scanning and show modal directly
+        // For sign_message and sign_auth_entry requests, skip transaction scanning and show modal directly
         dappRequestBottomSheetModalRef.current?.present();
       }
     }
@@ -923,22 +943,22 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
             onConfirm={handleDappRequest}
             onCancelRequest={handleClearDappRequest}
             isMalicious={
-              isSignMessageRequest
+              isNonTransactionRequest
                 ? false
                 : transactionSecurityAssessment.isMalicious
             }
             isSuspicious={
-              isSignMessageRequest
+              isNonTransactionRequest
                 ? false
                 : transactionSecurityAssessment.isSuspicious
             }
             isUnableToScan={
-              isSignMessageRequest
+              isNonTransactionRequest
                 ? false
                 : transactionSecurityAssessment.isUnableToScan
             }
             transactionScanResult={
-              isSignMessageRequest ? undefined : transactionScanResult
+              isNonTransactionRequest ? undefined : transactionScanResult
             }
             securityWarningAction={() =>
               presentSecurityWarningDetail(SecurityContext.TRANSACTION)

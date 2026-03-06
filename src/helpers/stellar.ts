@@ -4,6 +4,7 @@ import {
   Keypair,
   MuxedAccount,
   StrKey,
+  xdr,
 } from "@stellar/stellar-sdk";
 import { logger } from "config/logger";
 import { isContractId } from "helpers/soroban";
@@ -317,4 +318,74 @@ export const signMessage = (message: string, privateKey: string): string => {
   const encodedMessage = encodeSep53Message(message);
   const signature = keyPair.sign(encodedMessage);
   return signature.toString("base64");
+};
+
+/**
+ * Signs a Soroban authorization entry using the account's private key
+ *
+ * @param entryXdr - Base64-encoded XDR of a SorobanAuthorizationEntry
+ * @param privateKey - Account's secret key (S...)
+ * @param networkPassphrase - Network passphrase used to build the signing preimage
+ * @returns Base64-encoded XDR of the signed SorobanAuthorizationEntry
+ *
+ * @throws {Error} If the entry XDR is invalid or cannot be parsed
+ * @throws {Error} If the entry credentials are not of type sorobanCredentialsAddress
+ * @throws {Error} If the private key is invalid
+ *
+ * @example
+ * const entryXdr = "AAAAAQ..."; // base64 SorobanAuthorizationEntry XDR
+ * const privateKey = "SBXXXX...";
+ * const networkPassphrase = Networks.TESTNET;
+ * const signedEntryXdr = signAuthEntry(entryXdr, privateKey, networkPassphrase);
+ */
+export const signAuthEntry = (
+  entryXdr: string,
+  privateKey: string,
+  networkPassphrase: string,
+): string => {
+  const keyPair = Keypair.fromSecret(privateKey);
+  const entry = xdr.SorobanAuthorizationEntry.fromXDR(entryXdr, "base64");
+
+  const credentialsType = entry.credentials().switch().value;
+
+  if (
+    credentialsType !==
+    xdr.SorobanCredentialsType.sorobanCredentialsAddress().value
+  ) {
+    throw new Error(
+      "signAuthEntry: only sorobanCredentialsAddress entries are supported",
+    );
+  }
+
+  const addressCredentials = entry.credentials().address();
+
+  // Build the preimage that will be hashed and signed
+  const preimage = xdr.HashIdPreimage.envelopeTypeSorobanAuthorization(
+    new xdr.HashIdPreimageSorobanAuthorization({
+      networkId: hash(Buffer.from(networkPassphrase)),
+      nonce: addressCredentials.nonce(),
+      signatureExpirationLedger: addressCredentials.signatureExpirationLedger(),
+      invocation: entry.rootInvocation(),
+    }),
+  );
+
+  const signingPayload = hash(preimage.toXDR());
+  const signature = keyPair.sign(signingPayload);
+
+  // Set the signature as an ScVal map with public_key and signature fields,
+  // following the standard Soroban account auth verification interface
+  addressCredentials.signature(
+    xdr.ScVal.scvMap([
+      new xdr.ScMapEntry({
+        key: xdr.ScVal.scvSymbol("public_key"),
+        val: xdr.ScVal.scvBytes(keyPair.rawPublicKey()),
+      }),
+      new xdr.ScMapEntry({
+        key: xdr.ScVal.scvSymbol("signature"),
+        val: xdr.ScVal.scvBytes(signature),
+      }),
+    ]),
+  );
+
+  return entry.toXDR("base64");
 };

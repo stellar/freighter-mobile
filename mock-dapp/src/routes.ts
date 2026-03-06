@@ -1,8 +1,138 @@
 /* eslint-disable @fnando/consistent-import/consistent-import */
 /* eslint-disable no-console */
+import { xdr, Keypair } from "@stellar/stellar-base";
 import { Router, Request, Response } from "express";
+import rateLimit from "express-rate-limit";
 
 import { MockWalletConnectClient } from "./walletconnect";
+
+/**
+ * Generate a fresh SorobanAuthorizationEntry XDR string for E2E testing.
+ *
+ * Produces a realistic DEX-deposit scenario with 4 nested invocations:
+ *
+ *   deposit(usdc, xlm, 100 USDC, 50 XLM, min_a, min_b, user, deadline)
+ *   ├── approve(user, dex, 100 USDC, expiry=500_000)
+ *   │   └── transfer_from(user, dex, 50 XLM)
+ *   └── approve(user, dex, 50 XLM, expiry=500_000)
+ *
+ * Uses SorobanAddressCredentials with a fresh random keypair so each call
+ * produces a unique, signable entry.
+ *
+ * stellar-base v14: xdr.PublicKey.publicKeyTypeEd25519 and
+ * xdr.ScAddress.scAddressTypeContract accept opaque XDR byte-array types
+ * (Buffer<ArrayBufferLike> / Hash). Buffer is wire-compatible; cast via
+ * `as unknown` to bridge the branded-type gap.
+ */
+function generateSorobanAuthEntryXdr(): string {
+  const kp = Keypair.random();
+
+  type Ed25519Buf = Parameters<typeof xdr.PublicKey.publicKeyTypeEd25519>[0];
+  type ContractBuf = Parameters<typeof xdr.ScAddress.scAddressTypeContract>[0];
+
+  const contractBuf = (seed: number) =>
+    Buffer.alloc(32, seed) as unknown as ContractBuf;
+
+  const scContract = (seed: number) =>
+    xdr.ScVal.scvAddress(
+      xdr.ScAddress.scAddressTypeContract(contractBuf(seed)),
+    );
+
+  const scAcct = () =>
+    xdr.ScVal.scvAddress(
+      xdr.ScAddress.scAddressTypeAccount(
+        xdr.PublicKey.publicKeyTypeEd25519(
+          kp.rawPublicKey() as unknown as Ed25519Buf,
+        ),
+      ),
+    );
+
+  const i128 = (n: bigint) => {
+    const base = 2n ** 64n;
+    return xdr.ScVal.scvI128(
+      new xdr.Int128Parts({
+        hi: xdr.Int64.fromString((n / base).toString()),
+        lo: xdr.Uint64.fromString((n % base).toString()),
+      }),
+    );
+  };
+
+  const u32 = (n: number) => xdr.ScVal.scvU32(n);
+
+  const contractFn = (seed: number, fnName: string, args: xdr.ScVal[]) =>
+    xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeContractFn(
+      new xdr.InvokeContractArgs({
+        contractAddress: xdr.ScAddress.scAddressTypeContract(contractBuf(seed)),
+        functionName: fnName,
+        args,
+      }),
+    );
+
+  // Deepest: XLM token transfer_from(user, dex, 50 XLM)
+  const xlmTransfer = new xdr.SorobanAuthorizedInvocation({
+    function: contractFn(0x30, "transfer_from", [
+      scAcct(),
+      scContract(0x10),
+      i128(500_000_000n),
+    ]),
+    subInvocations: [],
+  });
+
+  // Sub 1: USDC approve(user, dex, 100 USDC, expiry)
+  const usdcApprove = new xdr.SorobanAuthorizedInvocation({
+    function: contractFn(0x20, "approve", [
+      scAcct(),
+      scContract(0x10),
+      i128(100_000_000n),
+      u32(500_000),
+    ]),
+    subInvocations: [xlmTransfer],
+  });
+
+  // Sub 2: XLM approve(user, dex, 50 XLM, expiry)
+  const xlmApprove = new xdr.SorobanAuthorizedInvocation({
+    function: contractFn(0x30, "approve", [
+      scAcct(),
+      scContract(0x10),
+      i128(500_000_000n),
+      u32(500_000),
+    ]),
+    subInvocations: [],
+  });
+
+  // Root: DEX deposit(token_a, token_b, desired_a, desired_b, min_a, min_b, to, deadline)
+  const rootInvocation = new xdr.SorobanAuthorizedInvocation({
+    function: contractFn(0x10, "deposit", [
+      scContract(0x20), // token_a (USDC)
+      scContract(0x30), // token_b (XLM)
+      i128(100_000_000n), // desired_a: 100 USDC (6 decimals)
+      i128(500_000_000n), // desired_b: 50 XLM (7 decimals)
+      i128(99_000_000n), // min_a: 99 USDC
+      i128(490_000_000n), // min_b: 49 XLM
+      scAcct(), // to
+      u32(500_100), // deadline ledger
+    ]),
+    subInvocations: [usdcApprove, xlmApprove],
+  });
+
+  const entry = new xdr.SorobanAuthorizationEntry({
+    credentials: xdr.SorobanCredentials.sorobanCredentialsAddress(
+      new xdr.SorobanAddressCredentials({
+        address: xdr.ScAddress.scAddressTypeAccount(
+          xdr.PublicKey.publicKeyTypeEd25519(
+            kp.rawPublicKey() as unknown as Ed25519Buf,
+          ),
+        ),
+        nonce: xdr.Int64.fromString("0"),
+        signatureExpirationLedger: 999_999,
+        signature: xdr.ScVal.scvVoid(),
+      }),
+    ),
+    rootInvocation,
+  });
+
+  return entry.toXDR("base64");
+}
 
 export function createRoutes(wcClient: MockWalletConnectClient): Router {
   const router = Router();
@@ -10,7 +140,7 @@ export function createRoutes(wcClient: MockWalletConnectClient): Router {
   // Store session metadata
   interface SessionResponse {
     id: string;
-    type: "signMessage" | "signXDR";
+    type: "signMessage" | "signXDR" | "signAuthEntry";
     params: Record<string, string | number | undefined>;
     promise: Promise<unknown>;
     createdAt: number;
@@ -269,21 +399,21 @@ export function createRoutes(wcClient: MockWalletConnectClient): Router {
    */
   router.post("/session/:id/request/signXDR", (req: Request, res: Response) => {
     const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-    const { xdr, description } = req.body as {
+    const { xdr: xdrParam, description } = req.body as {
       xdr?: unknown;
       description?: string | number;
       network?: unknown;
     };
     const network = parseNetwork((req.body as { network?: unknown }).network);
 
-    if (!xdr || typeof xdr !== "string") {
+    if (!xdrParam || typeof xdrParam !== "string") {
       return res.status(400).json({
         error: "Invalid request",
         message: "XDR is required and must be a string",
       });
     }
 
-    const xdrText = xdr;
+    const xdrText = xdrParam;
     const descriptionText =
       typeof description === "string" ? description : undefined;
 
@@ -312,7 +442,7 @@ export function createRoutes(wcClient: MockWalletConnectClient): Router {
       metadata.responses.push({
         id: requestId,
         type: "signXDR",
-        params: { xdr, description, network },
+        params: { xdr: xdr as unknown as string, description, network },
         promise: requestPromise,
         createdAt: Date.now(),
       });
@@ -341,6 +471,92 @@ export function createRoutes(wcClient: MockWalletConnectClient): Router {
       });
     }
   });
+
+  /**
+   * Send stellar_signAuthEntry request
+   * POST /session/:id/request/signAuthEntry
+   *
+   * Rate-limited to prevent DoS / brute-force abuse (CWE-307, CWE-770).
+   * 30 req/min is well above any E2E test throughput.
+   */
+  const signAuthEntryRateLimit = rateLimit({
+    windowMs: 60 * 1000,
+    max: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+  router.post(
+    "/session/:id/request/signAuthEntry",
+    signAuthEntryRateLimit,
+    (req: Request, res: Response) => {
+      const id = Array.isArray(req.params.id)
+        ? req.params.id[0]
+        : req.params.id;
+      const { entryXdr } = req.body as {
+        entryXdr?: unknown;
+        network?: unknown;
+      };
+      const network = parseNetwork((req.body as { network?: unknown }).network);
+
+      // Generate a fresh authorization entry if the caller didn't supply one.
+      const entryXdrText =
+        typeof entryXdr === "string" && entryXdr
+          ? entryXdr
+          : generateSorobanAuthEntryXdr();
+      const metadata = sessionMetadata.get(id);
+
+      if (!metadata) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+
+      if (!metadata.topic) {
+        return res.status(400).json({
+          error: "Session not connected",
+          message: "Wait for wallet approval first",
+        });
+      }
+
+      try {
+        const requestPromise = wcClient.requestSignAuthEntry(
+          metadata.topic,
+          { entryXdr: entryXdrText },
+          network,
+        );
+
+        const requestId = `req-${Date.now()}`;
+
+        metadata.responses.push({
+          id: requestId,
+          type: "signAuthEntry",
+          params: { entryXdr: entryXdrText, network },
+          promise: requestPromise,
+          createdAt: Date.now(),
+        });
+
+        requestPromise
+          .then((result) => {
+            console.log(`[API] Request ${requestId} completed:`, result);
+          })
+          .catch((error: unknown) => {
+            console.error(`[API] Request ${requestId} failed:`, error);
+          });
+
+        return res.json({
+          requestId,
+          status: "pending",
+          message: "Request sent. Poll /session/:id/response for result.",
+        });
+      } catch (error: unknown) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        console.error("[API] Failed to send signAuthEntry request:", error);
+        return res.status(500).json({
+          error: "Failed to send request",
+          message: errorMessage,
+        });
+      }
+    },
+  );
 
   /**
    * Get the latest response

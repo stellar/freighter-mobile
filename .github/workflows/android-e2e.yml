@@ -232,8 +232,10 @@ jobs:
       # - SwitchToTestnet: Switch network to testnet
       # - SendClassicTokenMainnet: Send XLM on mainnet (small amount: 0.000001 XLM)
       # - SwapClassicTokenMainnet: Swap tokens on mainnet (small amount: 0.000001 XLM)
-      # Commented out (can be enabled when needed):
-      # - SignMessageMockDapp: WalletConnect sign message functionality (requires mock server)
+      # - SignMessageMockDapp: WalletConnect sign message (requires mock server)
+      # - SignAuthEntryMockDapp: WalletConnect sign auth entry (requires mock server)
+      # Note: mock-dapp tests use shard-index:0 so flow-name filter + sharding correctly
+      # includes the single filtered file (0 % shard-total == 0 == shard-index).
       matrix:
         include:
           - shard-index: 0
@@ -264,11 +266,14 @@ jobs:
             shard-total: 7
             flow-name: SwapClassicTokenMainnet
             requires-mock-server: false
-          # Commented out - uncomment to enable WalletConnect tests - Disabled until test fixed on CI - runs on localhost
-          # - shard-index: 7
-          #   shard-total: 8
-          #   flow-name: SignMessageMockDapp
-          #   requires-mock-server: true
+          - shard-index: 0
+            shard-total: 9
+            flow-name: SignMessageMockDapp
+            requires-mock-server: true
+          - shard-index: 0
+            shard-total: 9
+            flow-name: SignAuthEntryMockDapp
+            requires-mock-server: true
 
     steps:
       - name: Checkout repo
@@ -317,7 +322,7 @@ jobs:
       - name: Run Yarn Install
         run: yarn install --immutable
 
-      - name: Start Mock WalletConnect Server (for SignMessage tests)
+      - name: Start Mock WalletConnect Server (for WalletConnect tests)
         if: matrix.requires-mock-server
         run: |
           set -euo pipefail
@@ -348,11 +353,13 @@ jobs:
           ./e2e/scripts/start-mock-server.sh
 
           # Store the PID for cleanup
-          if [ -f "e2e/mock-dapp/.server.pid" ]; then
-            echo "✅ Mock server started successfully"
-            cat e2e/mock-dapp/.server.pid > /tmp/mock-server.pid
+          # PID file is written to mock-dapp/.server.pid (start-mock-server.sh resolves
+          # relative to the mock-dapp directory which sits at the repo root).
+          if [ -f "mock-dapp/.server.pid" ]; then
+            echo "✅ Mock server started successfully (PID: $(cat mock-dapp/.server.pid))"
+            cp mock-dapp/.server.pid /tmp/mock-server.pid
           else
-            echo "❌ Failed to start mock server"
+            echo "❌ Failed to start mock server (PID file not found at mock-dapp/.server.pid)"
             exit 1
           fi
 

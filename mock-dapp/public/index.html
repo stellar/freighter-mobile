@@ -268,9 +268,21 @@
     <!-- Status Messages -->
     <div id="status-container"></div>
 
-    <!-- Step 1: Session Management -->
+    <!-- Step 1: Select Network -->
     <div class="section">
-      <div class="section-title">1️⃣ Create Session</div>
+      <div class="section-title">1️⃣ Select Network</div>
+      <div class="network-select">
+        <label for="global-network">Network:</label>
+        <select id="global-network">
+          <option value="testnet">Testnet</option>
+          <option value="pubnet">Mainnet</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Step 2: Session Management -->
+    <div class="section">
+      <div class="section-title">2️⃣ Create Session</div>
       <button onclick="createSession()">Create New Session</button>
       <button class="button-secondary" onclick="getSessionStatus()" id="statusBtn" style="display:none;">Check Status</button>
       <button class="button-danger" onclick="disconnect()" id="disconnectBtn" style="display:none;">Disconnect All</button>
@@ -284,7 +296,7 @@
 
     <!-- Step 2: Check Approval -->
     <div class="section" id="approval-section" style="display:none;">
-      <div class="section-title">2️⃣ Check Approval</div>
+      <div class="section-title">3️⃣ Check Approval</div>
       <p style="color: #666; font-size: 14px; margin-bottom: 15px;">Connect your Freighter Mobile wallet to approve this session.</p>
 
       <div class="qr-container" id="qr-container" style="display:none;">
@@ -298,22 +310,14 @@
 
       <div id="approval-status" style="display:none; margin-top: 15px;">
         <div class="status-box success">
-          ✅ Connection Approved! Ready to sign messages.
+          ✅ Connection Approved! Ready to send requests.
         </div>
       </div>
     </div>
 
-    <!-- Step 3: Sign Message -->
+    <!-- Step 4: Sign Message -->
     <div class="section" id="sign-section" style="display:none;">
-      <div class="section-title">3️⃣ Sign Message</div>
-
-      <div class="network-select">
-        <label>Network:</label>
-        <select id="network">
-          <option value="testnet">Testnet</option>
-          <option value="pubnet">Mainnet</option>
-        </select>
-      </div>
+      <div class="section-title">4️⃣ Sign Message</div>
 
       <div class="input-group">
         <label for="message">Message to Sign:</label>
@@ -334,9 +338,63 @@
       </div>
     </div>
 
+    <!-- Step 5: Sign XDR -->
+    <div class="section" id="sign-xdr-section" style="display:none;">
+      <div class="section-title">5️⃣ Sign XDR</div>
+
+      <div class="input-group">
+        <label for="xdr">Transaction XDR (base64):</label>
+        <textarea id="xdr" placeholder="Enter base64-encoded transaction XDR..." rows="4"></textarea>
+      </div>
+
+      <div class="input-group">
+        <label for="xdr-description">Description (optional):</label>
+        <input type="text" id="xdr-description" placeholder="Human-readable description of the transaction">
+      </div>
+
+      <button onclick="signXDR()">Sign XDR</button>
+
+      <div id="sign-xdr-status" style="display:none; margin-top: 15px;">
+        <div class="status-box info">
+          <strong>Status:</strong> <span id="signXdrStatusText"></span>
+        </div>
+      </div>
+
+      <div id="xdr-result" style="display:none; margin-top: 15px;">
+        <div class="section-title">Signed XDR Result</div>
+        <div class="response-box" id="xdr-response-json"></div>
+      </div>
+    </div>
+
+    <!-- Step 6: Sign Auth Entry -->
+    <div class="section" id="sign-auth-entry-section" style="display:none;">
+      <div class="section-title">6️⃣ Sign Auth Entry</div>
+
+      <button onclick="signRandomAuthEntry()">Sign Random Auth Entry</button>
+      <p style="color: #666; font-size: 12px; margin-top: 6px; margin-bottom: 20px;">Server generates a fresh SorobanAuthorizationEntry XDR automatically.</p>
+
+      <div class="input-group">
+        <label for="auth-entry-xdr">Or sign a specific SorobanAuthorizationEntry XDR (base64):</label>
+        <textarea id="auth-entry-xdr" placeholder="Enter base64-encoded SorobanAuthorizationEntry XDR..." rows="4"></textarea>
+      </div>
+
+      <button onclick="signAuthEntry()">Sign Auth Entry (XDR)</button>
+
+      <div id="sign-auth-entry-status" style="display:none; margin-top: 15px;">
+        <div class="status-box info">
+          <strong>Status:</strong> <span id="signAuthEntryStatusText"></span>
+        </div>
+      </div>
+
+      <div id="auth-entry-result" style="display:none; margin-top: 15px;">
+        <div class="section-title">Signed Auth Entry Result</div>
+        <div class="response-box" id="auth-entry-response-json"></div>
+      </div>
+    </div>
+
     <!-- Message Variations for Testing -->
     <div class="section" id="test-section" style="display:none;">
-      <div class="section-title">🧪 Test Message Variations</div>
+      <div class="section-title">7️⃣ Test Message Variations</div>
       <p style="color: #666; font-size: 13px; margin-bottom: 15px;">Quick buttons to test different message types:</p>
 
       <div class="grid">
@@ -472,8 +530,10 @@
           logDebug('Stored IDs after approval', { sessionId: currentSessionId, topic: currentTopic });
           document.getElementById('approval-status').style.display = 'block';
           document.getElementById('sign-section').style.display = 'block';
+          document.getElementById('sign-xdr-section').style.display = 'block';
+          document.getElementById('sign-auth-entry-section').style.display = 'block';
           document.getElementById('test-section').style.display = 'block';
-          showStatus('✅ Connection approved! Ready to sign messages.', 'success');
+          showStatus('✅ Connection approved! Ready to send requests.', 'success');
         } else {
           showStatus('❌ Connection not approved', 'error');
         }
@@ -503,6 +563,8 @@
           isApproved = true;
           document.getElementById('approval-status').style.display = 'block';
           document.getElementById('sign-section').style.display = 'block';
+          document.getElementById('sign-xdr-section').style.display = 'block';
+          document.getElementById('sign-auth-entry-section').style.display = 'block';
           document.getElementById('test-section').style.display = 'block';
         } else {
           showStatus('⏳ Session waiting for approval...', 'info');
@@ -520,7 +582,7 @@
       }
 
       const message = document.getElementById('message').value.trim();
-      const network = document.getElementById('network').value;
+      const network = document.getElementById('global-network').value;
 
       if (!message) {
         showStatus('❌ Message cannot be empty', 'error');
@@ -587,6 +649,154 @@
       await signMessage();
     }
 
+    async function signXDR() {
+      if (!currentSessionId || !isApproved) {
+        showStatus('❌ Session not approved. Wait for approval first.', 'error');
+        return;
+      }
+
+      const xdr = document.getElementById('xdr').value.trim();
+      const description = document.getElementById('xdr-description').value.trim();
+      const network = document.getElementById('global-network').value;
+
+      if (!xdr) {
+        showStatus('❌ XDR cannot be empty', 'error');
+        return;
+      }
+
+      try {
+        logDebug('Sending sign XDR request...');
+        document.getElementById('sign-xdr-status').style.display = 'block';
+        document.getElementById('signXdrStatusText').textContent = 'Waiting for signature...';
+
+        const body = { xdr, network };
+        if (description) body.description = description;
+
+        const response = await fetch(`${API_BASE}/session/${currentSessionId}/request/signXDR`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const data = await response.json();
+        logDebug('Sign XDR request sent', data);
+
+        const respResponse = await fetch(`${API_BASE}/session/${currentSessionId}/response?wait=true&timeout=60000`);
+        const respData = await respResponse.json();
+        logDebug('Sign XDR response', respData);
+
+        if (respData.status === 'approved') {
+          document.getElementById('signXdrStatusText').textContent = '✅ XDR signed!';
+          document.getElementById('xdr-result').style.display = 'block';
+          document.getElementById('xdr-response-json').textContent = JSON.stringify(respData, null, 2);
+          showStatus('✅ Signed XDR received!', 'success');
+        } else if (respData.status === 'rejected') {
+          document.getElementById('signXdrStatusText').textContent = '❌ Signing rejected by user';
+          showStatus('❌ User rejected the signing request', 'error');
+        } else {
+          document.getElementById('signXdrStatusText').textContent = respData.message || 'Error';
+          showStatus(`❌ ${respData.error || 'Unexpected response'}`, 'error');
+        }
+      } catch (error) {
+        logDebug('Error signing XDR', error);
+        document.getElementById('signXdrStatusText').textContent = `❌ Error: ${error.message}`;
+        showStatus(`❌ Error: ${error.message}`, 'error');
+      }
+    }
+
+    async function signAuthEntry() {
+      if (!currentSessionId || !isApproved) {
+        showStatus('❌ Session not approved. Wait for approval first.', 'error');
+        return;
+      }
+
+      const entryXdr = document.getElementById('auth-entry-xdr').value.trim();
+      const network = document.getElementById('global-network').value;
+
+      if (!entryXdr) {
+        showStatus('❌ Auth entry XDR cannot be empty', 'error');
+        return;
+      }
+
+      try {
+        logDebug('Sending sign auth entry request...');
+        document.getElementById('sign-auth-entry-status').style.display = 'block';
+        document.getElementById('signAuthEntryStatusText').textContent = 'Waiting for signature...';
+
+        const response = await fetch(`${API_BASE}/session/${currentSessionId}/request/signAuthEntry`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ entryXdr, network })
+        });
+        const data = await response.json();
+        logDebug('Sign auth entry request sent', data);
+
+        const respResponse = await fetch(`${API_BASE}/session/${currentSessionId}/response?wait=true&timeout=60000`);
+        const respData = await respResponse.json();
+        logDebug('Sign auth entry response', respData);
+
+        if (respData.status === 'approved') {
+          document.getElementById('signAuthEntryStatusText').textContent = '✅ Auth entry signed!';
+          document.getElementById('auth-entry-result').style.display = 'block';
+          document.getElementById('auth-entry-response-json').textContent = JSON.stringify(respData, null, 2);
+          showStatus('✅ Signed auth entry received!', 'success');
+        } else if (respData.status === 'rejected') {
+          document.getElementById('signAuthEntryStatusText').textContent = '❌ Signing rejected by user';
+          showStatus('❌ User rejected the signing request', 'error');
+        } else {
+          document.getElementById('signAuthEntryStatusText').textContent = respData.message || 'Error';
+          showStatus(`❌ ${respData.error || 'Unexpected response'}`, 'error');
+        }
+      } catch (error) {
+        logDebug('Error signing auth entry', error);
+        document.getElementById('signAuthEntryStatusText').textContent = `❌ Error: ${error.message}`;
+        showStatus(`❌ Error: ${error.message}`, 'error');
+      }
+    }
+
+    async function signRandomAuthEntry() {
+      if (!currentSessionId || !isApproved) {
+        showStatus('❌ Session not approved. Wait for approval first.', 'error');
+        return;
+      }
+
+      const network = document.getElementById('global-network').value;
+
+      try {
+        logDebug('Sending sign random auth entry request...');
+        document.getElementById('sign-auth-entry-status').style.display = 'block';
+        document.getElementById('signAuthEntryStatusText').textContent = 'Waiting for signature (random XDR)...';
+
+        const response = await fetch(`${API_BASE}/session/${currentSessionId}/request/signAuthEntry`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ network })
+        });
+        const data = await response.json();
+        logDebug('Sign random auth entry request sent', data);
+
+        const respResponse = await fetch(`${API_BASE}/session/${currentSessionId}/response?wait=true&timeout=60000`);
+        const respData = await respResponse.json();
+        logDebug('Sign random auth entry response', respData);
+
+        if (respData.status === 'approved') {
+          document.getElementById('signAuthEntryStatusText').textContent = '✅ Auth entry signed!';
+          document.getElementById('auth-entry-result').style.display = 'block';
+          document.getElementById('auth-entry-response-json').textContent = JSON.stringify(respData, null, 2);
+          showStatus('✅ Signed auth entry received!', 'success');
+        } else if (respData.status === 'rejected') {
+          document.getElementById('signAuthEntryStatusText').textContent = '❌ Signing rejected by user';
+          showStatus('❌ User rejected the signing request', 'error');
+        } else {
+          document.getElementById('signAuthEntryStatusText').textContent = respData.message || 'Error';
+          showStatus(`❌ ${respData.error || 'Unexpected response'}`, 'error');
+        }
+      } catch (error) {
+        logDebug('Error signing random auth entry', error);
+        document.getElementById('signAuthEntryStatusText').textContent = `❌ Error: ${error.message}`;
+        showStatus(`❌ Error: ${error.message}`, 'error');
+      }
+    }
+
     async function disconnect() {
       if (!currentSessionId) {
         showStatus('❌ No session to disconnect', 'error');
@@ -608,10 +818,16 @@
         document.getElementById('session-info').style.display = 'none';
         document.getElementById('approval-section').style.display = 'none';
         document.getElementById('sign-section').style.display = 'none';
+        document.getElementById('sign-xdr-section').style.display = 'none';
+        document.getElementById('sign-auth-entry-section').style.display = 'none';
         document.getElementById('test-section').style.display = 'none';
         document.getElementById('approval-status').style.display = 'none';
         document.getElementById('statusBtn').style.display = 'none';
         document.getElementById('disconnectBtn').style.display = 'none';
+        document.getElementById('sign-xdr-status').style.display = 'none';
+        document.getElementById('xdr-result').style.display = 'none';
+        document.getElementById('sign-auth-entry-status').style.display = 'none';
+        document.getElementById('auth-entry-result').style.display = 'none';
 
         showStatus('✅ All sessions disconnected', 'success');
       } catch (error) {

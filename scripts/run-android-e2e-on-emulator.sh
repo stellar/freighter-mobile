@@ -125,6 +125,13 @@ if [ -n "${SHARD_INDEX:-}" ] && [ -z "${E2E_TEST_RECOVERY_PHRASE:-}" ]; then
   exit 1
 fi
 
+# Forward host port 3001 to the emulator so the app can reach the mock WalletConnect
+# dApp server at http://127.0.0.1:3001. On Android, 127.0.0.1 inside the emulator
+# resolves to the emulator's own loopback; adb reverse maps it to the host instead.
+echo "🔀 Setting up port forwarding for mock server (port 3001)..."
+adb reverse tcp:3001 tcp:3001
+echo "✅ Port 3001 forwarded (emulator:127.0.0.1:3001 → host:127.0.0.1:3001)"
+
 # Build E2E script args: --platform android and, when set, --shard-index/--shard-total (CI matrix).
 # FLOW_NAME (CI only) can be passed as positional arg to run a specific flow.
 E2E_ARGS="--platform android"

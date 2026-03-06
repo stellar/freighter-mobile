@@ -332,10 +332,10 @@ if [ -z "$FLOW_FILES" ]; then
   exit 1
 fi
 
-# Check if any flows require mock-dapp server (only SignMessageMockDapp needs it)
+# Check if any flows require mock-dapp server
 NEEDS_MOCK_SERVER=false
 for flow_file in $FLOW_FILES; do
-  if echo "$flow_file" | grep -q "SignMessageMockDapp"; then
+  if echo "$flow_file" | grep -q "MockDapp"; then
     NEEDS_MOCK_SERVER=true
     break
   fi
@@ -346,7 +346,7 @@ if [ "$NEEDS_MOCK_SERVER" = true ]; then
   echo "🔌 Starting mock-dapp server for WalletConnect tests..."
   
   # Check if server is already running
-  if curl -s "http://127.0.0.1:$MOCK_SERVER_PORT/health" >/dev/null 2>&1; then
+  if curl -sf "http://127.0.0.1:$MOCK_SERVER_PORT/health" >/dev/null 2>&1; then
     echo "✅ Mock-dapp server already running on port $MOCK_SERVER_PORT"
   else
     # Start server in background
@@ -359,7 +359,7 @@ if [ "$NEEDS_MOCK_SERVER" = true ]; then
       # Wait for server to be ready (max 10 seconds)
       echo "⏳ Waiting for mock-dapp server to start..."
       for i in $(seq 1 10); do
-        if curl -s "http://127.0.0.1:$MOCK_SERVER_PORT/health" >/dev/null 2>&1; then
+        if curl -sf "http://127.0.0.1:$MOCK_SERVER_PORT/health" >/dev/null 2>&1; then
           echo "✅ Mock-dapp server started successfully (PID: $MOCK_SERVER_PID)"
           break
         fi
@@ -367,7 +367,7 @@ if [ "$NEEDS_MOCK_SERVER" = true ]; then
       done
       
       # Verify it started
-      if ! curl -s "http://127.0.0.1:$MOCK_SERVER_PORT/health" >/dev/null 2>&1; then
+      if ! curl -sf "http://127.0.0.1:$MOCK_SERVER_PORT/health" >/dev/null 2>&1; then
         echo "❌ Error: Mock-dapp server failed to start. Check e2e-artifacts/mock-server.log"
         if [ -n "$MOCK_SERVER_PID" ]; then
           kill "$MOCK_SERVER_PID" 2>/dev/null || true
@@ -422,12 +422,17 @@ for file in $FLOW_FILES; do
   # Pass E2E_TEST_RECOVERY_PHRASE and IS_CI_ENV when set via Maestro's `-e KEY=value`.
   # --debug-output ensures maestro.log is written to FLOW_OUTPUT_DIR (otherwise it goes to ~/.maestro/tests/).
   _ret=0
+  # Each -e flag and its KEY=VALUE argument are separate array elements, so no
+  # word-splitting occurs even for values containing base64 chars (+, /, =).
   MAESTRO_ENV_ARGS=()
   if [ -n "${E2E_TEST_RECOVERY_PHRASE:-}" ]; then
     MAESTRO_ENV_ARGS+=("-e" "E2E_TEST_RECOVERY_PHRASE=$E2E_TEST_RECOVERY_PHRASE")
   fi
   if [ -n "${IS_CI_ENV:-}" ]; then
     MAESTRO_ENV_ARGS+=("-e" "IS_CI_ENV=$IS_CI_ENV")
+  fi
+  if [ -n "${E2E_TEST_FUNDED_RECOVERY_PHRASE:-}" ]; then
+    MAESTRO_ENV_ARGS+=("-e" "E2E_TEST_FUNDED_RECOVERY_PHRASE=$E2E_TEST_FUNDED_RECOVERY_PHRASE")
   fi
 
   # Retry logic for ADB connection issues
