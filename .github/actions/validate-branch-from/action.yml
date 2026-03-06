@@ -1,17 +1,17 @@
 name: "Validate Branch From"
-description: "Validates and provides available tags for branch_from input"
+description: "Validates that branch_from is 'main' or a vX.Y.Z tag and provides available version tags"
 
 inputs:
   branch_from:
-    description: "The branch or tag to branch from"
+    description: "The source ref to branch from: either 'main' or a version tag of the form vX.Y.Z"
     required: true
 
 outputs:
   is_valid:
-    description: "Whether the branch_from input is valid"
+    description: "Whether the branch_from input is a valid 'main' ref or vX.Y.Z tag"
     value: ${{ steps.validate.outputs.is_valid }}
   branch_or_tag:
-    description: "The validated branch or tag name"
+    description: "The validated source ref name ('main' or a vX.Y.Z tag)"
     value: ${{ steps.validate.outputs.branch_or_tag }}
 
 runs:
