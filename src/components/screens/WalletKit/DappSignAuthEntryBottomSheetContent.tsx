@@ -12,7 +12,7 @@ import { WalletKitSessionRequest } from "ducks/walletKit";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useMemo } from "react";
-import { ScrollView, View } from "react-native";
+import { Dimensions, ScrollView, View } from "react-native";
 
 interface DappSignAuthEntryBottomSheetContentProps {
   requestEvent: WalletKitSessionRequest | null;
@@ -113,7 +113,9 @@ export const DappSignAuthEntryBottomSheetContent: React.FC<
             </Text>
           </View>
           <ScrollView
-            style={{ maxHeight: 80 }}
+            style={{
+              maxHeight: Dimensions.get("window").height * 0.2,
+            }}
             showsVerticalScrollIndicator={false}
           >
             <Text
