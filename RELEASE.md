@@ -12,7 +12,7 @@ both standard releases and emergency hotfixes.
 5. [Version Bump Details](#version-bump-details)
 6. [Nightly Builds](#nightly-builds)
 7. [CI/CD and Test Coverage](#cicd-and-test-coverage)
-8. [GitHub App Token Setup](#github-app-token-setup)
+8. [GitHub App Token Setup (Pending)](#github-app-token-setup-pending)
 9. [Workflow Files Reference](#workflow-files-reference)
 
 ## Regular Release Flow
