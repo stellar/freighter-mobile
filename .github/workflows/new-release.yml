@@ -97,9 +97,11 @@ jobs:
             git checkout "$BRANCH_FROM"
           fi
 
-          # Remove existing release branch if present (local and remote)
-          git branch -D "$RELEASE_BRANCH" 2>/dev/null || true
-          git push origin --delete "$RELEASE_BRANCH" 2>/dev/null || true
+          if git ls-remote --heads origin "$RELEASE_BRANCH" | grep -q "$RELEASE_BRANCH"; then
+            echo "❌ Error: Branch '$RELEASE_BRANCH' already exists on remote."
+            echo "Please delete the '$RELEASE_BRANCH' branch before starting a new release."
+            exit 1
+          fi
 
           git checkout -b "$RELEASE_BRANCH"
           git push --set-upstream origin "$RELEASE_BRANCH"
@@ -107,6 +109,13 @@ jobs:
       - name: Create version branch
         run: |
           VERSION_BRANCH="${{ steps.set_branches.outputs.version_branch }}"
+
+          if git ls-remote --heads origin "$VERSION_BRANCH" | grep -q "$VERSION_BRANCH"; then
+            echo "❌ Error: Branch '$VERSION_BRANCH' already exists on remote."
+            echo "Please delete the '$VERSION_BRANCH' branch before starting a new release."
+            exit 1
+          fi
+
           git checkout -b "$VERSION_BRANCH"
 
       - name: Update app version
@@ -256,10 +265,13 @@ jobs:
         run: |
           git checkout main
           git pull origin main
-          # Delete bump-version branch if it exists locally
-          git branch -D bump-version 2>/dev/null || true
-          # Delete bump-version branch if it exists remotely
-          git push origin --delete bump-version 2>/dev/null || true
+
+          if git ls-remote --heads origin bump-version | grep -q bump-version; then
+            echo "❌ Error: Branch 'bump-version' already exists on remote."
+            echo "Please delete the 'bump-version' branch before starting a new release."
+            exit 1
+          fi
+
           git checkout -b bump-version
 
       - name: Update app version on bump-version branch
