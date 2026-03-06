@@ -289,7 +289,9 @@
     "useIrisInstead": "Use Iris instead",
     "enterPasswordInstead": "Use password instead",
     "errorUnlockingWalletTitle": "Error unlocking wallet",
-    "errorUnlockingWalletMessage": "If the problem persists, please tap on \"Forgot password\" and re-import your wallet."
+    "errorUnlockingWalletMessage": "If the problem persists, please tap on \"Forgot password\" and re-import your wallet.",
+    "failedToLoadAccountTitle": "Account not loaded",
+    "failedToLoadAccountMessage": "Your account could not be loaded after sign-in. Please try again."
   },
   "onboarding": {
     "continue": "Continue",

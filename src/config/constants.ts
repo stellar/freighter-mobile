@@ -72,7 +72,7 @@ export const PASSWORD_MAX_LENGTH = 2048;
 export const ACCOUNT_NAME_MIN_LENGTH = 1;
 export const ACCOUNT_NAME_MAX_LENGTH = 24;
 export const ACCOUNTS_TO_VERIFY_ON_EXISTING_MNEMONIC_PHRASE = 6;
-export const HASH_KEY_EXPIRATION_MS = 24 * 60 * 60 * 1000; // 24 hours
+export const HASH_KEY_EXPIRATION_MS = 60 * 1000; // 1 minute FIXME: for testing only. remove before merge
 export const VISUAL_DELAY_MS = 500;
 
 // Recovery phrase validation constants
@@ -309,6 +309,9 @@ export enum SENSITIVE_STORAGE_KEYS {
   TEMPORARY_STORE = "temporaryStore",
   HASH_KEY = "hashKey",
   AUTH_STATUS = "authStatus",
+  // Persisted symmetric encryption key (scrypt output). Derivable from HASH_KEY, so no extra
+  // attack surface. Stored so cold app-opens from LOCKED skip the second scrypt.
+  DERIVED_KEY = "derivedKey",
 }
 
 /**

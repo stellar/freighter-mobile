@@ -40,6 +40,7 @@ export const useAppOpenBiometricsLogin = (initializing: boolean) => {
         }
       }).catch(() => {
         showToast({
+          toastId: "unlock-wallet-error",
           variant: "error",
           title: t("lockScreen.errorUnlockingWalletTitle"),
           message: t("lockScreen.errorUnlockingWalletMessage"),
