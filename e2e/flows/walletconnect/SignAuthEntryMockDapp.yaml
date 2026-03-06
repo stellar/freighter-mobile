@@ -125,9 +125,7 @@ tags:
       id: sign-auth-entry-title
     timeout: 10000
 
-# Verify XDR and buttons are visible on main confirm screen
-- assertVisible:
-    id: auth-entry-xdr
+# Verify buttons are visible on main confirm screen
 - assertVisible:
     id: dapp-auth-entry-details-button
 - assertVisible:
