@@ -220,3 +220,9 @@ To stop the server:
 ```bash
 ./e2e/scripts/stop-mock-server.sh
 ```
+
+## Release Process
+
+See [RELEASE.md](./RELEASE.md) for the full release lifecycle documentation,
+including regular and emergency release flows, post-merge steps, and CI/CD
+configuration.
