@@ -5,6 +5,7 @@ import { Input } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
 import { isAndroid } from "helpers/device";
 import { isE2ETest } from "helpers/isEnv";
+import useAppTranslation from "hooks/useAppTranslation";
 import { useToast } from "providers/ToastProvider";
 import React, {
   useState,
@@ -72,6 +73,7 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
     const [status, setStatus] = useState("");
     const baseUrl = "http://127.0.0.1:3001";
     const { showToast } = useToast();
+    const { t } = useAppTranslation();
 
     const handleDismiss = useCallback(() => {
       setVisible(false);
@@ -97,7 +99,7 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
           const errorMsg = `Error: ${res.status} ${res.statusText}`;
           setStatus(errorMsg);
           showToast({
-            title: "Session Creation Failed",
+            title: t("walletKit.e2eHelper.createSessionFailed"),
             message: errorMsg,
             variant: "error",
           });
@@ -107,7 +109,7 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
         const sessionData = data as { sessionId: string; uri: string };
         setSessionId(sessionData.sessionId);
         setWcUri(sessionData.uri);
-        setStatus("Session created!");
+        setStatus(t("walletKit.e2eHelper.sessionCreated"));
       } catch (error) {
         const isNetworkError =
           error instanceof TypeError &&
@@ -115,14 +117,14 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
             error.message.includes("fetch"));
 
         const errorMsg = isNetworkError
-          ? "Mock server is offline. Please start it with: cd mock-dapp && npm start"
+          ? t("walletKit.e2eHelper.mockServerOfflineStatus")
           : `Error: ${error instanceof Error ? error.message : String(error)}`;
 
         setStatus(errorMsg);
         showToast({
-          title: "Server Offline",
+          title: t("walletKit.e2eHelper.serverOffline"),
           message: isNetworkError
-            ? "Mock dApp server is not running. Start it with 'npm start' in mock-dapp folder."
+            ? t("walletKit.e2eHelper.mockServerNotRunningLong")
             : errorMsg,
           variant: "error",
         });
@@ -131,23 +133,23 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
 
     const copyWcUri = () => {
       Clipboard.setString(wcUri);
-      setStatus("WC URI copied to clipboard!");
+      setStatus(t("walletKit.e2eHelper.wcUriCopied"));
       // Auto-dismiss modal after copying
       setTimeout(() => handleDismiss(), 500);
     };
 
     const requestSignMessage = async () => {
       if (!sessionId) {
-        setStatus("Error: No session ID");
+        setStatus(t("walletKit.e2eHelper.noSession"));
         showToast({
-          title: "No Session",
-          message: "Create a session first",
+          title: t("walletKit.e2eHelper.noSession"),
+          message: t("walletKit.e2eHelper.noSessionMessage"),
           variant: "error",
         });
         return;
       }
       try {
-        setStatus("Requesting sign message...");
+        setStatus(t("walletKit.e2eHelper.signingMessage"));
         const res = await fetch(
           `${baseUrl}/session/${sessionId}/request/signMessage`,
           {
@@ -160,13 +162,13 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
           const errorMsg = `Error: ${res.status} ${res.statusText}`;
           setStatus(errorMsg);
           showToast({
-            title: "Request Failed",
+            title: t("walletKit.e2eHelper.requestFailed"),
             message: errorMsg,
             variant: "error",
           });
           return;
         }
-        setStatus("Sign message request sent!");
+        setStatus(t("walletKit.e2eHelper.signingMessage"));
         // Android: dismiss immediately so @gorhom/bottom-sheet can appear — a live
         // React Native Modal blocks it on Android, so we must close before the WC
         // event arrives. iOS: small delay to let the modal fade-out animation finish
@@ -183,14 +185,14 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
             error.message.includes("fetch"));
 
         const errorMsg = isNetworkError
-          ? "Mock server is offline"
+          ? t("walletKit.e2eHelper.mockServerNotRunning")
           : `Error: ${error instanceof Error ? error.message : String(error)}`;
 
         setStatus(errorMsg);
         showToast({
-          title: "Server Offline",
+          title: t("walletKit.e2eHelper.serverOffline"),
           message: isNetworkError
-            ? "Mock dApp server is not running"
+            ? t("walletKit.e2eHelper.mockServerNotRunning")
             : errorMsg,
           variant: "error",
         });
@@ -199,16 +201,16 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
 
     const requestSignAuthEntry = async () => {
       if (!sessionId) {
-        setStatus("Error: No session ID");
+        setStatus(t("walletKit.e2eHelper.noSession"));
         showToast({
-          title: "No Session",
-          message: "Create a session first",
+          title: t("walletKit.e2eHelper.noSession"),
+          message: t("walletKit.e2eHelper.noSessionMessage"),
           variant: "error",
         });
         return;
       }
       try {
-        setStatus("Requesting sign auth entry...");
+        setStatus(t("walletKit.e2eHelper.signingAuthEntry"));
         const res = await fetch(
           `${baseUrl}/session/${sessionId}/request/signAuthEntry`,
           {
@@ -221,13 +223,13 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
           const errorMsg = `Error: ${res.status} ${res.statusText}`;
           setStatus(errorMsg);
           showToast({
-            title: "Request Failed",
+            title: t("walletKit.e2eHelper.requestFailed"),
             message: errorMsg,
             variant: "error",
           });
           return;
         }
-        setStatus("Sign auth entry request sent!");
+        setStatus(t("walletKit.e2eHelper.signingAuthEntry"));
         // Dismiss immediately on both platforms. For signAuthEntry the WC relay
         // round-trip is fast enough that delaying the dismiss (as we do for
         // signMessage) causes the WC session_request event to arrive BEFORE the
@@ -242,14 +244,14 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
             error.message.includes("fetch"));
 
         const errorMsg = isNetworkError
-          ? "Mock server is offline"
+          ? t("walletKit.e2eHelper.mockServerNotRunning")
           : `Error: ${error instanceof Error ? error.message : String(error)}`;
 
         setStatus(errorMsg);
         showToast({
-          title: "Server Offline",
+          title: t("walletKit.e2eHelper.serverOffline"),
           message: isNetworkError
-            ? "Mock dApp server is not running"
+            ? t("walletKit.e2eHelper.mockServerNotRunning")
             : errorMsg,
           variant: "error",
         });
@@ -291,7 +293,7 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
               }}
             >
               <Text style={{ fontSize: 20, fontWeight: "bold" }}>
-                WC E2E Helper
+                {t("walletKit.e2eHelper.title")}
               </Text>
               <TouchableOpacity
                 testID="wc-e2e-close-modal"
@@ -312,7 +314,7 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
                   onPress={createSession}
                   size="sm"
                 >
-                  Create Session
+                  {t("walletKit.e2eHelper.createSession")}
                 </Button>
               </View>
 
@@ -320,7 +322,7 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
               {sessionId && (
                 <View style={{ marginBottom: 16 }}>
                   <Text style={{ fontWeight: "600", marginBottom: 8 }}>
-                    Session ID:
+                    {t("walletKit.e2eHelper.sessionId")}:
                   </Text>
                   <Text
                     testID="wc-e2e-session-id"
@@ -330,7 +332,7 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
                   </Text>
 
                   <Text style={{ fontWeight: "600", marginBottom: 8 }}>
-                    WC URI:
+                    {t("walletKit.e2eHelper.wcUri")}:
                   </Text>
                   <Text
                     testID="wc-e2e-wc-uri"
@@ -346,7 +348,7 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
                     size="sm"
                     variant="secondary"
                   >
-                    Copy WC URI
+                    {t("walletKit.e2eHelper.copyWcUri")}
                   </Button>
                 </View>
               )}
@@ -354,7 +356,7 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
               {sessionId && (
                 <View style={{ marginBottom: 16 }}>
                   <Text style={{ fontWeight: "600", marginBottom: 8 }}>
-                    Request Sign Auth Entry:
+                    {t("walletKit.e2eHelper.requestSignAuthEntry")}:
                   </Text>
 
                   <Button
@@ -362,7 +364,7 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
                     onPress={requestSignAuthEntry}
                     size="sm"
                   >
-                    Request Sign Auth Entry
+                    {t("walletKit.e2eHelper.requestSignAuthEntry")}
                   </Button>
                 </View>
               )}
@@ -371,12 +373,12 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
               {sessionId && (
                 <View style={{ marginBottom: 16 }}>
                   <Text style={{ fontWeight: "600", marginBottom: 8 }}>
-                    Request Sign:
+                    {t("walletKit.e2eHelper.requestSignMessage")}:
                   </Text>
 
                   <Input
                     testID="wc-e2e-message-input"
-                    placeholder="Message to sign"
+                    placeholder={t("walletKit.e2eHelper.message")}
                     value={message}
                     onChangeText={setMessage}
                     style={{ marginBottom: 8 }}
@@ -384,7 +386,7 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
 
                   <Input
                     testID="wc-e2e-network-input"
-                    placeholder="Network (testnet/pubnet)"
+                    placeholder={t("walletKit.e2eHelper.network")}
                     value={network}
                     onChangeText={setNetwork}
                     style={{ marginBottom: 8 }}
@@ -395,7 +397,7 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
                     onPress={requestSignMessage}
                     size="sm"
                   >
-                    Request Sign Message
+                    {t("walletKit.e2eHelper.requestSignMessage")}
                   </Button>
                 </View>
               )}

@@ -887,7 +887,33 @@
     "walletIsLocked": "Carteira bloqueada",
     "userNotAuthenticated": "Usuário não autenticado",
     "invalidTransactionOrigin": "Domínio de transação não confiável",
-    "invalidTransactionOriginMessage": "Uma solicitação de transação WalletConnect foi recebida de {{transactionRequestOrigin}}, mas este domínio não está conectado na sua carteira Freighter."
+    "invalidTransactionOriginMessage": "Uma solicitação de transação WalletConnect foi recebida de {{transactionRequestOrigin}}, mas este domínio não está conectado na sua carteira Freighter.",
+    "e2eHelper": {
+      "title": "WC E2E Helper",
+      "createSession": "Criar Sessão",
+      "createSessionFailed": "Falha na Criação da Sessão",
+      "copyWcUri": "Copiar URI WC",
+      "requestSignAuthEntry": "Solicitar Assinatura de Entrada de Autorização",
+      "requestSignMessage": "Solicitar Assinatura de Mensagem",
+      "noSession": "Nenhuma Sessão",
+      "noSessionMessage": "Crie uma sessão primeiro",
+      "requestFailed": "Solicitação Falhou",
+      "serverOffline": "Servidor Offline",
+      "mockServerNotRunning": "Servidor Mock dApp não está em execução",
+      "mockServerNotRunningLong": "Servidor Mock dApp não está em execução. Inicie-o com 'npm start' na pasta mock-dapp.",
+      "mockServerOfflineStatus": "Servidor mock está offline. Inicie-o com: cd mock-dapp && npm start",
+      "sessionCreated": "Sessão criada!",
+      "wcUriCopied": "URI WC copiado para a área de transferência!",
+      "signingMessage": "Solicitando assinatura de mensagem...",
+      "signingAuthEntry": "Solicitando assinatura de entrada de autorização...",
+      "sessionId": "ID da Sessão",
+      "wcUri": "URI WC",
+      "message": "Mensagem",
+      "network": "Rede"
+    }
+  },
+  "soroban": {
+    "onlyCredentialsAddressSupported": "signAuthEntry: somente entradas sorobanCredentialsAddress são suportadas"
   },
   "sendRecipient": {
     "error": {
