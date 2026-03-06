@@ -17,6 +17,10 @@ on:
         type: string
         default: "main"
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   create_release_branch:
     name: Prepare Release Branch
@@ -28,8 +32,10 @@ jobs:
     steps:
       - name: Validate and normalize app version
         id: normalize_version
+        env:
+          RAW_APP_VERSION: ${{ inputs.app_version }}
         run: |
-          APP_VERSION="${{ inputs.app_version }}"
+          APP_VERSION="$RAW_APP_VERSION"
           # Remove "v" prefix if user included it
           APP_VERSION=$(echo "$APP_VERSION" | sed 's/^v//')
           # Validate version format (e.g., 1.10.24)
@@ -42,13 +48,13 @@ jobs:
           echo "✓ Using normalized version: ${APP_VERSION}"
 
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
         with:
           fetch-depth: 0
           fetch-tags: true
 
       - name: Set up Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
         with:
           node-version: 20
 
@@ -65,9 +71,14 @@ jobs:
 
       - name: Determine branch names
         id: set_branches
+        env:
+          VALIDATED_BRANCH_FROM:
+            ${{ steps.validate_branch_from.outputs.branch_or_tag }}
+          NORMALIZED_APP_VERSION:
+            ${{ steps.normalize_version.outputs.app_version }}
         run: |
-          BRANCH_FROM="${{ steps.validate_branch_from.outputs.branch_or_tag }}"
-          APP_VERSION="${{ steps.normalize_version.outputs.app_version }}"
+          BRANCH_FROM="$VALIDATED_BRANCH_FROM"
+          APP_VERSION="$NORMALIZED_APP_VERSION"
 
           if [ "$BRANCH_FROM" = "main" ]; then
             RELEASE_BRANCH="release"
@@ -85,9 +96,13 @@ jobs:
           echo "Using version branch: ${VERSION_BRANCH}"
 
       - name: Create and push release branch
+        env:
+          VALIDATED_BRANCH_FROM:
+            ${{ steps.validate_branch_from.outputs.branch_or_tag }}
+          STEP_RELEASE_BRANCH: ${{ steps.set_branches.outputs.release_branch }}
         run: |
-          BRANCH_FROM="${{ steps.validate_branch_from.outputs.branch_or_tag }}"
-          RELEASE_BRANCH="${{ steps.set_branches.outputs.release_branch }}"
+          BRANCH_FROM="$VALIDATED_BRANCH_FROM"
+          RELEASE_BRANCH="$STEP_RELEASE_BRANCH"
 
           if [ "$BRANCH_FROM" = "main" ]; then
             git checkout main
@@ -107,8 +122,10 @@ jobs:
           git push --set-upstream origin "$RELEASE_BRANCH"
 
       - name: Create version branch
+        env:
+          STEP_VERSION_BRANCH: ${{ steps.set_branches.outputs.version_branch }}
         run: |
-          VERSION_BRANCH="${{ steps.set_branches.outputs.version_branch }}"
+          VERSION_BRANCH="$STEP_VERSION_BRANCH"
 
           if git ls-remote --heads origin "$VERSION_BRANCH" | grep -q "$VERSION_BRANCH"; then
             echo "❌ Error: Branch '$VERSION_BRANCH' already exists on remote."
@@ -119,8 +136,11 @@ jobs:
           git checkout -b "$VERSION_BRANCH"
 
       - name: Update app version
+        env:
+          NORMALIZED_APP_VERSION:
+            ${{ steps.normalize_version.outputs.app_version }}
         run: |
-          APP_VERSION="${{ steps.normalize_version.outputs.app_version }}"
+          APP_VERSION="$NORMALIZED_APP_VERSION"
           node ./scripts/set-app-version "$APP_VERSION"
 
       - name: Generate release notes
@@ -128,7 +148,6 @@ jobs:
         run: |
           set -eo pipefail
 
-          BRANCH_FROM="${{ env.BRANCH_FROM }}"
           OUTPUT_DELIM="__RELEASE_DESCRIPTION__"
 
           # For emergency releases (not from main), use simpler release notes
@@ -184,8 +203,11 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - name: Commit changes
+        env:
+          NORMALIZED_APP_VERSION:
+            ${{ steps.normalize_version.outputs.app_version }}
         run: |
-          APP_VERSION="${{ steps.normalize_version.outputs.app_version }}"
+          APP_VERSION="$NORMALIZED_APP_VERSION"
           git status
           if [ -z "$(git status --porcelain)" ]; then
             echo "No changes detected after running set-app-version."
@@ -195,13 +217,15 @@ jobs:
           git commit -m "chore: bump app version to v${APP_VERSION}"
 
       - name: Push version branch
+        env:
+          STEP_VERSION_BRANCH: ${{ steps.set_branches.outputs.version_branch }}
         run: |
-          VERSION_BRANCH="${{ steps.set_branches.outputs.version_branch }}"
+          VERSION_BRANCH="$STEP_VERSION_BRANCH"
           git push --set-upstream origin "$VERSION_BRANCH"
 
       - name: Create pull request
         id: create_pr
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         env:
           APP_VERSION: ${{ steps.normalize_version.outputs.app_version }}
           RELEASE_BRANCH: ${{ steps.set_branches.outputs.release_branch }}
@@ -276,14 +300,20 @@ jobs:
 
       - name: Update app version on bump-version branch
         if: env.BRANCH_FROM == 'main'
+        env:
+          NORMALIZED_APP_VERSION:
+            ${{ steps.normalize_version.outputs.app_version }}
         run: |
-          APP_VERSION="${{ steps.normalize_version.outputs.app_version }}"
+          APP_VERSION="$NORMALIZED_APP_VERSION"
           node ./scripts/set-app-version "$APP_VERSION"
 
       - name: Commit version bump on bump-version branch
         if: env.BRANCH_FROM == 'main'
+        env:
+          NORMALIZED_APP_VERSION:
+            ${{ steps.normalize_version.outputs.app_version }}
         run: |
-          APP_VERSION="${{ steps.normalize_version.outputs.app_version }}"
+          APP_VERSION="$NORMALIZED_APP_VERSION"
           git status
           if [ -z "$(git status --porcelain)" ]; then
             echo "No changes detected after running set-app-version."
@@ -299,7 +329,7 @@ jobs:
 
       - name: Create bump-version pull request
         if: env.BRANCH_FROM == 'main'
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         env:
           APP_VERSION: ${{ steps.normalize_version.outputs.app_version }}
         with:
@@ -351,7 +381,7 @@ jobs:
       # as they should be manually triggered after the emergency fixes are pushed
       - name: Trigger dev builds (initial QA)
         if: env.BRANCH_FROM == 'main'
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         env:
           APP_VERSION: ${{ steps.normalize_version.outputs.app_version }}
           VERSION_BRANCH: ${{ steps.set_branches.outputs.version_branch }}

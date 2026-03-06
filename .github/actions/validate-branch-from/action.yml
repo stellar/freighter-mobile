@@ -46,9 +46,12 @@ runs:
     - name: Validate branch_from
       id: validate
       shell: bash
+      env:
+        RAW_BRANCH_FROM: ${{ inputs.branch_from }}
+        FETCHED_TAGS: ${{ steps.fetch_tags.outputs.tags_list }}
       run: |
-        BRANCH_FROM="${{ inputs.branch_from }}"
-        TAGS="${{ steps.fetch_tags.outputs.tags_list }}"
+        BRANCH_FROM="$RAW_BRANCH_FROM"
+        TAGS="$FETCHED_TAGS"
 
         # Check if it's "main"
         if [ "$BRANCH_FROM" = "main" ]; then
