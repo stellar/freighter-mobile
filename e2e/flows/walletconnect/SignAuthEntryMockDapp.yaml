@@ -11,7 +11,16 @@ tags:
 - runFlow:
     file: ./WalletConnectMockDappConnect.yaml
 
+# Pause briefly to ensure home screen and FAB are fully interactive
+- pause:
+    ms: 500
+
 # Request sign auth entry using WC E2E Helper
+- extendedWaitUntil:
+    visible:
+      id: wc-e2e-helper-fab
+    timeout: 5000
+
 - tapOn:
     id: wc-e2e-helper-fab
 
