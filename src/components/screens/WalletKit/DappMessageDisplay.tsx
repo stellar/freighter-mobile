@@ -6,9 +6,9 @@ import { useTranslation } from "react-i18next";
 import { ScrollView, View } from "react-native";
 
 /**
- * Props for the MessageDisplay component
+ * Props for the DappMessageDisplay component
  */
-interface MessageDisplayProps {
+interface DappMessageDisplayProps {
   /** The message to display */
   message: string;
 }
@@ -26,15 +26,17 @@ const isJsonString = (str: string): boolean => {
 };
 
 /**
- * MessageDisplay component for showing SEP-53 messages
+ * DappMessageDisplay component for showing SEP-53 messages
  * Displays the message with the SEP-53 prefix and handles JSON formatting
  * Dynamically increases height based on message length
  *
  * @component
- * @param {MessageDisplayProps} props - The component props
+ * @param {DappMessageDisplayProps} props - The component props
  * @returns {JSX.Element} The message display component
  */
-export const MessageDisplay: React.FC<MessageDisplayProps> = ({ message }) => {
+export const DappMessageDisplay: React.FC<DappMessageDisplayProps> = ({
+  message,
+}) => {
   const { themeColors } = useColors();
   const isJson = isJsonString(message);
   const { t } = useTranslation();

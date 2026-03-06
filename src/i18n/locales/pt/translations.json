@@ -1249,7 +1249,8 @@
       "source": "Origem",
       "executableType": "Tipo de executável",
       "accountId": "ID da conta",
-      "salt": "Salt"
+      "salt": "Salt",
+      "executableWasmHash": "Hash WASM executável"
     },
     "claimPredicates": {
       "unconditional": "Incondicional",

@@ -87,57 +87,6 @@ if [ -z "${E2E_TEST_FUNDED_RECOVERY_PHRASE:-}" ] && [ -f .env ]; then
   export E2E_TEST_FUNDED_RECOVERY_PHRASE
 fi
 
-# Load E2E_TEST_SOROBAN_AUTH_ENTRY_XDR from .env when not set. CI generates it on the fly.
-if [ -z "${E2E_TEST_SOROBAN_AUTH_ENTRY_XDR:-}" ] && [ -f .env ]; then
-  E2E_TEST_SOROBAN_AUTH_ENTRY_XDR=$(sed -n 's/^E2E_TEST_SOROBAN_AUTH_ENTRY_XDR=//p' .env 2>/dev/null | head -1)
-  export E2E_TEST_SOROBAN_AUTH_ENTRY_XDR
-fi
-
-# Generate E2E_TEST_SOROBAN_AUTH_ENTRY_XDR on the fly if still not set.
-# Uses a minimal SorobanAuthorizationEntry with a random keypair — the address in
-# the entry does not need to match the wallet key; the wallet signs the entry with
-# its active key regardless. This makes the secret optional in CI.
-if [ -z "${E2E_TEST_SOROBAN_AUTH_ENTRY_XDR:-}" ]; then
-  if node -e "require('./node_modules/@stellar/stellar-sdk')" 2>/dev/null; then
-    E2E_TEST_SOROBAN_AUTH_ENTRY_XDR=$(node -e "
-const { xdr, Keypair } = require('./node_modules/@stellar/stellar-sdk');
-const kp = Keypair.random();
-const addr = xdr.ScAddress.scAddressTypeAccount(
-  xdr.AccountId.publicKeyTypeEd25519(kp.rawPublicKey())
-);
-const entry = new xdr.SorobanAuthorizationEntry({
-  credentials: xdr.SorobanCredentials.sorobanCredentialsAddress(
-    new xdr.SorobanAddressCredentials({
-      address: addr,
-      nonce: xdr.Int64.fromString('0'),
-      signatureExpirationLedger: 999999,
-      signature: xdr.ScVal.scvVoid(),
-    })
-  ),
-  rootInvocation: new xdr.SorobanAuthorizedInvocation({
-    function: xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeContractFn(
-      new xdr.InvokeContractArgs({
-        contractAddress: xdr.ScAddress.scAddressTypeContract(Buffer.alloc(32)),
-        functionName: 'test',
-        args: [],
-      })
-    ),
-    subInvocations: [],
-  }),
-});
-process.stdout.write(entry.toXDR('base64'));
-" 2>/dev/null)
-    if [ -n "$E2E_TEST_SOROBAN_AUTH_ENTRY_XDR" ]; then
-      export E2E_TEST_SOROBAN_AUTH_ENTRY_XDR
-      echo "✅ Generated E2E_TEST_SOROBAN_AUTH_ENTRY_XDR on the fly"
-    else
-      echo "⚠️  Failed to generate E2E_TEST_SOROBAN_AUTH_ENTRY_XDR. SignAuthEntry flow will fail."
-    fi
-  else
-    echo "⚠️  stellar-sdk not found in node_modules. Run 'yarn install' first. SignAuthEntry flow will fail."
-  fi
-fi
-
 # Function to ensure stable ADB connection
 ensure_adb_connection() {
   if [ "$PLATFORM" = "android" ] || ( [ -z "$PLATFORM" ] && command -v adb >/dev/null 2>&1 ); then
@@ -481,9 +430,6 @@ for file in $FLOW_FILES; do
   fi
   if [ -n "${IS_CI_ENV:-}" ]; then
     MAESTRO_ENV_ARGS+=("-e" "IS_CI_ENV=$IS_CI_ENV")
-  fi
-  if [ -n "${E2E_TEST_SOROBAN_AUTH_ENTRY_XDR:-}" ]; then
-    MAESTRO_ENV_ARGS+=("-e" "E2E_TEST_SOROBAN_AUTH_ENTRY_XDR=$E2E_TEST_SOROBAN_AUTH_ENTRY_XDR")
   fi
   if [ -n "${E2E_TEST_FUNDED_RECOVERY_PHRASE:-}" ]; then
     MAESTRO_ENV_ARGS+=("-e" "E2E_TEST_FUNDED_RECOVERY_PHRASE=$E2E_TEST_FUNDED_RECOVERY_PHRASE")

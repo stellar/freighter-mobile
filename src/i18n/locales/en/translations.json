@@ -1248,7 +1248,8 @@
       "source": "Source",
       "executableType": "Executable Type",
       "accountId": "Account ID",
-      "salt": "Salt"
+      "salt": "Salt",
+      "executableWasmHash": "Executable WASM Hash"
     },
     "claimPredicates": {
       "unconditional": "Unconditional",
