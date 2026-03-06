@@ -21,15 +21,11 @@ interface ManageAccountBottomSheetProps {
   accounts: Account[];
   activeAccount: ActiveAccount | null;
   handleSelectAccount: (publicKey: string) => Promise<void>;
-  isAccountSwitching: boolean;
-  switchingToPublicKey: string | null;
 }
 
 const SNAP_VALUE_PERCENT = 80;
 
-export const ManageAccountBottomSheet: React.FC<
-  ManageAccountBottomSheetProps
-> = ({
+const ManageAccountBottomSheet: React.FC<ManageAccountBottomSheetProps> = ({
   handleCloseModal,
   onPressAddAnotherWallet,
   handleCopyAddress,
@@ -37,15 +33,12 @@ export const ManageAccountBottomSheet: React.FC<
   accounts,
   activeAccount,
   handleSelectAccount,
-  isAccountSwitching,
-  switchingToPublicKey,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
 
-  // Styles moved to className props below; no StyleSheet used
   return (
-    <View className="flex-1 justify-between items-center w-full relative">
+    <View className="flex-1 justify-between items-center w-full">
       <BottomSheetAdaptiveContainer
         bottomPaddingPx={heightPercentageToDP(100 - SNAP_VALUE_PERCENT)}
         header={
@@ -80,10 +73,6 @@ export const ManageAccountBottomSheet: React.FC<
               handleRenameAccount={handleRenameAccount}
               handleSelectAccount={handleSelectAccount}
               isSelected={account.publicKey === activeAccount?.publicKey}
-              isAccountSwitching={isAccountSwitching}
-              isSwitchingToThisAccount={
-                switchingToPublicKey === account.publicKey
-              }
               testID={`account-row-${index}`}
             />
           ))}
@@ -93,7 +82,6 @@ export const ManageAccountBottomSheet: React.FC<
           isFullWidth
           xl
           onPress={onPressAddAnotherWallet}
-          disabled={isAccountSwitching || switchingToPublicKey !== null}
           testID="manage-accounts-add-wallet-button"
         >
           {t("home.manageAccount.addWallet")}
