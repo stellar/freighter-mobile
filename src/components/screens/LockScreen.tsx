@@ -3,6 +3,8 @@ import InputPasswordTemplate from "components/templates/InputPasswordTemplate";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore, getActiveAccountPublicKey } from "ducks/auth";
+import useAppTranslation from "hooks/useAppTranslation";
+import { useToast } from "providers/ToastProvider";
 import React, { useCallback, useEffect, useState } from "react";
 
 type LockScreenProps = NativeStackScreenProps<
@@ -20,6 +22,8 @@ export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
     clearError,
   } = useAuthenticationStore();
   const [publicKey, setPublicKey] = useState<string | null>(null);
+  const { showToast } = useToast();
+  const { t } = useAppTranslation();
 
   // Monitor auth status changes to navigate when unlocked
   useEffect(() => {
@@ -48,6 +52,18 @@ export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
   useEffect(() => {
     clearError();
   }, [clearError]);
+
+  useEffect(() => {
+    if (error && error !== t("authStore.error.invalidPassword")) {
+      showToast({
+        variant: "error",
+        title: t("lockScreen.errorUnlockingWalletTitle"),
+        message: t("lockScreen.errorUnlockingWalletMessage"),
+        duration: 6000,
+      });
+      clearError();
+    }
+  }, [error, t, showToast, clearError]);
 
   const handleUnlock = useCallback(
     (password: string) => {
