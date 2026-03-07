@@ -131,6 +131,11 @@ export enum AnalyticsEvent {
   HISTORY_OPEN_FULL_HISTORY = "history: opened full history on external website",
   HISTORY_OPEN_ITEM = "history: opened item on external website",
 
+  // Contact Book Events
+  CONTACT_BOOK_ADD = "contact book: added contact",
+  CONTACT_BOOK_EDIT = "contact book: edited contact",
+  CONTACT_BOOK_DELETE = "contact book: deleted contact",
+
   APP_OPENED = "event: App Opened",
 
   // Mobile-Only Events

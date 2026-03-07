@@ -340,6 +340,8 @@ interface InputProps {
   value?: string;
   onChangeText?: (text: string) => void;
   onSubmitEditing?: () => void;
+  /** Callback invoked when the input loses focus */
+  onBlur?: () => void;
   placeholder?: string;
   placeholderTextColor?: string;
   secureTextEntry?: boolean;

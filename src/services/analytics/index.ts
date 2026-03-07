@@ -33,6 +33,9 @@ import {
   trackGrantAccessFail,
   trackHistoryOpenItem,
   trackSendCollectibleSuccess,
+  trackContactBookAdd,
+  trackContactBookEdit,
+  trackContactBookDelete,
 } from "services/analytics/transactions";
 import { identifyUser } from "services/analytics/user";
 
@@ -79,6 +82,11 @@ export interface AnalyticsInstance {
 
   // History analytics
   readonly trackHistoryOpenItem: typeof trackHistoryOpenItem;
+
+  // Contact Book analytics
+  readonly trackContactBookAdd: typeof trackContactBookAdd;
+  readonly trackContactBookEdit: typeof trackContactBookEdit;
+  readonly trackContactBookDelete: typeof trackContactBookDelete;
 
   // Development tools
   readonly getAnalyticsDebugInfo: typeof getAnalyticsDebugInfo;
@@ -132,6 +140,9 @@ export const analytics: AnalyticsInstance = {
   trackGrantAccessSuccess,
   trackGrantAccessFail,
   trackHistoryOpenItem,
+  trackContactBookAdd,
+  trackContactBookEdit,
+  trackContactBookDelete,
 
   // Development tools (only available in __DEV__)
   getAnalyticsDebugInfo,

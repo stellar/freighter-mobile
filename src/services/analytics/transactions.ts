@@ -210,3 +210,19 @@ export const trackQRScanSuccess = (
 export const trackQRScanError = (context: string, error: string): void => {
   track(AnalyticsEvent.QR_SCAN_ERROR, { context, error });
 };
+
+// -----------------------------------------------------------------------------
+// CONTACT BOOK ANALYTICS
+// -----------------------------------------------------------------------------
+
+export const trackContactBookAdd = (): void => {
+  track(AnalyticsEvent.CONTACT_BOOK_ADD);
+};
+
+export const trackContactBookEdit = (): void => {
+  track(AnalyticsEvent.CONTACT_BOOK_EDIT);
+};
+
+export const trackContactBookDelete = (): void => {
+  track(AnalyticsEvent.CONTACT_BOOK_DELETE);
+};

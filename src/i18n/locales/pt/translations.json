@@ -78,7 +78,31 @@
     "deleteAccount": "Excluir conta",
     "deleteAccountDisclaimer": "As contas na rede Stellar são imutáveis e não podem ser excluídas. No entanto, você pode remover qualquer conta do seu aplicativo Freighter a qualquer momento usando a opção 'Excluir conta'. Verifique se sua frase de recuperação funciona antes de fazer isso.",
     "deleteAccountConfirmTitle": "Tem certeza?",
-    "deleteAccountConfirmMessage": "Certifique-se de que você tem sua frase de recuperação em um local seguro. Você não conseguirá recuperar sua carteira sem ela."
+    "deleteAccountConfirmMessage": "Certifique-se de que você tem sua frase de recuperação em um local seguro. Você não conseguirá recuperar sua carteira sem ela.",
+    "contactBook": "Agenda de Contatos"
+  },
+  "contactBookScreen": {
+    "title": "Agenda de Contatos",
+    "empty": "Contatos são carteiras que você reconhece, úteis para envios recorrentes ou confiáveis.",
+    "addContact": "Adicionar um contato",
+    "editContact": "Editar contato",
+    "copyAddress": "Copiar endereço",
+    "deleteContact": "Excluir contato",
+    "editTitle": "Editar um Contato",
+    "addTitle": "Adicionar um Contato",
+    "addressPlaceholder": "Inserir endereço",
+    "namePlaceholder": "Inserir nome",
+    "paste": "Colar",
+    "save": "Salvar",
+    "contactAdded": "Contato adicionado com sucesso",
+    "contactDeleted": "Contato excluído com sucesso",
+    "errors": {
+      "invalidAddress": "Endereço Stellar inválido",
+      "federationNotFound": "Não foi possível resolver o endereço de federação",
+      "duplicateAddress": "Este endereço já existe nos seus contatos",
+      "emptyName": "O nome não pode estar vazio",
+      "duplicateName": "Este nome já existe nos seus contatos"
+    }
   },
   "preferences": {
     "anonymousDataSharing": {
