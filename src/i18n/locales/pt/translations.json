@@ -1066,7 +1066,8 @@
       "actions": "Ações",
       "refresh": "🔄 Atualizar",
       "clearEvents": "Limpar Eventos",
-      "simulateSessionExpiry": "⏰ Simular Expiração de Sessão"
+      "simulateSessionExpiry": "⏰ Simular Expiração de Sessão",
+      "resetIconsCache": "Redefinir Cache de Ícones"
     }
   },
   "debug": {

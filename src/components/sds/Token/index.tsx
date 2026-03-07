@@ -1,8 +1,20 @@
-import Spinner from "components/Spinner";
+import FastImage from "@d11/react-native-fast-image";
+import { logos } from "assets/logos";
+import { Text } from "components/sds/Typography";
+import { NATIVE_TOKEN_CODE } from "config/constants";
 import { THEME } from "config/theme";
+import { useTokenIconsStore } from "ducks/tokenIcons";
 import { px } from "helpers/dimensions";
-import React, { useState, useEffect, useRef } from "react";
-import { ImageSourcePropType, View } from "react-native";
+import { ICON_VALIDATION_TIMEOUT } from "helpers/validateIconUrl";
+import React, { useEffect } from "react";
+import { ImageSourcePropType, StyleSheet, View } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from "react-native-reanimated";
 import styled from "styled-components/native";
 
 // =============================================================================
@@ -104,6 +116,11 @@ type TokenVariant = "single" | "swap" | "pair" | "platform";
  * @property {() => React.ReactNode} [renderContent] - Optional function to render custom content
  *   as a fallback when `image` is not provided or invalid (e.g., for displaying text or other components).
  *   Only rendered if `image` is not available or invalid.
+ * @property {object} [token] - Optional token data for lazy validation
+ *   When provided, the image will be validated and cached using the token icon store
+ *   (similar to TokenIcon behavior). The token code will be used for fallback text.
+ * @property {string} [token.code] - Token code (e.g., "XLM", "ARST")
+ * @property {string} [token.issuer] - Token issuer key
  */
 export type TokenSource = {
   /** Image URL */
@@ -114,6 +131,15 @@ export type TokenSource = {
   backgroundColor?: string;
   /** Custom content renderer */
   renderContent?: () => React.ReactNode;
+  /** Explicit loading state */
+  isLoading?: boolean;
+  /** Whether to skip the internal image loading state (e.g. if pre-fetched) */
+  skipImageLoader?: boolean;
+  /** Optional token data for lazy validation and caching */
+  token?: {
+    code: string;
+    issuer: string;
+  };
 };
 
 /**
@@ -328,106 +354,342 @@ const TokenImageContainer = styled.View<TokenImageContainerProps>`
     getTokenPositionStyle(props.$variant, props.$isSecond)}
 `;
 
-const TokenImage = styled.Image`
+const TokenImage = styled(FastImage)`
   width: 100%;
   height: 100%;
 `;
+
+const TokenLoader: React.FC = () => {
+  const opacity = useSharedValue(0.4);
+
+  useEffect(() => {
+    opacity.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 1000 }),
+        withTiming(0.4, { duration: 1000 }),
+      ),
+      -1,
+      true,
+    );
+  }, [opacity]);
+
+  const style = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+  }));
+
+  return (
+    <Animated.View
+      style={[
+        {
+          ...StyleSheet.absoluteFillObject,
+          backgroundColor: THEME.colors.border.default,
+        },
+        style,
+      ]}
+    />
+  );
+};
 
 // =============================================================================
 // Component
 // =============================================================================
 
-// Component to handle image loading with timeout fallback
+// ---------------------------------------------------------------------------
+// State machine for the image loading lifecycle.
+//
+//   idle     → No URL available.   Show: fallback only.
+//   loading  → URL present, image fetching.  Show: fallback + loader overlay.
+//   loaded   → onLoadEnd confirmed.  Show: image only.
+//   fallback → Load failed / timed out.  Show: fallback only.
+//              <TokenImage> is removed from the tree to prevent React Native
+//              Image from retrying a failed URL autonomously.
+//
+// The same URL in loading/loaded state blocks re-dispatch, preventing flicker
+// and redundant network hits.
+// ---------------------------------------------------------------------------
+
+enum IconPhase {
+  IDLE = "idle",
+  LOADING = "loading",
+  LOADED = "loaded",
+  FALLBACK = "fallback",
+}
+
+enum IconActionType {
+  START_LOADING = "START_LOADING",
+  LOADED = "LOADED",
+  FAILED = "FAILED",
+  TIMEOUT = "TIMEOUT",
+  CLEAR = "CLEAR",
+}
+
+/** Sentinel URL used for Metro-bundled (local) assets that don't need fetching. */
+const LOCAL_ASSET_URL = "__local__";
+
+interface IconLoadState {
+  phase: IconPhase;
+  /** The URL string we most recently dispatched START_LOADING for. */
+  activeUrl: string | undefined;
+}
+
+type IconLoadAction =
+  | { type: IconActionType.START_LOADING; url: string }
+  | { type: IconActionType.LOADED }
+  | { type: IconActionType.FAILED }
+  | { type: IconActionType.TIMEOUT }
+  | { type: IconActionType.CLEAR };
+
+function iconLoadReducer(
+  state: IconLoadState,
+  action: IconLoadAction,
+): IconLoadState {
+  switch (action.type) {
+    case IconActionType.START_LOADING:
+      return { phase: IconPhase.LOADING, activeUrl: action.url };
+    case IconActionType.LOADED:
+      // Guard: don't transition if there's nothing active (e.g. component
+      // already cleared). The key=activeUrl prop on TokenImage forces a
+      // remount whenever the URL changes, so stale onLoad callbacks from
+      // an old source are discarded before they can reach this reducer.
+      if (!state.activeUrl) return state;
+      return { phase: IconPhase.LOADED, activeUrl: state.activeUrl };
+    case IconActionType.FAILED:
+    case IconActionType.TIMEOUT:
+      // Guard: only transition to fallback while actively loading.
+      if (state.phase !== IconPhase.LOADING) return state;
+      return { phase: IconPhase.FALLBACK, activeUrl: state.activeUrl };
+    case IconActionType.CLEAR:
+      return { phase: IconPhase.IDLE, activeUrl: undefined };
+    default:
+      return state;
+  }
+}
+
+// Shared style for hiding the image element while it loads (prevents a white
+// flash before onLoadEnd fires, while keeping the element in the tree so that
+// onLoadEnd / onError callbacks are active).
+const hiddenImageStyle = StyleSheet.create({
+  hidden: { opacity: 0 },
+});
+
+// Component to handle image loading with guaranteed fallback, load-once
+// caching, and animated loader overlay.
 const ImageWithFallback: React.FC<{
   source: TokenSource;
 }> = ({ source }) => {
-  const [showFallback, setShowFallback] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const imageLoadedRef = useRef(false);
-  const imageErroredRef = useRef(false);
+  // Metro-bundled assets are numbers (require() results), not strings.
+  // Start in LOADED immediately to avoid a fallback flash on first render.
+  const isInitiallyLocalAsset =
+    source.image !== undefined && typeof source.image !== "string";
 
-  // Timeout constant: show fallback after 1s if image hasn't loaded
-  const IMAGE_LOAD_TIMEOUT = 1000;
+  const [state, dispatch] = React.useReducer(
+    iconLoadReducer,
+    undefined,
+    (): IconLoadState =>
+      isInitiallyLocalAsset
+        ? { phase: IconPhase.LOADED, activeUrl: LOCAL_ASSET_URL }
+        : { phase: IconPhase.IDLE, activeUrl: undefined },
+  );
 
-  // Check if image is valid (non-empty string or valid ImageSourcePropType)
-  const hasValidImage =
-    source.image &&
-    (typeof source.image === "string"
-      ? source.image.trim().length > 0
-      : !!source.image);
+  // Ref so timeout callbacks always read the current phase without being
+  // listed in the effect dependency array.
+  const stateRef = React.useRef(state);
+  stateRef.current = state;
+
+  // -------------------------------------------------------------------------
+  // Source.token path — used when Token is rendered standalone (not via
+  // TokenIconWithStore, which manages validation externally).
+  // -------------------------------------------------------------------------
+  const tokenCode = source.token?.code;
+  const tokenIssuer = source.token?.issuer;
+
+  const icon = useTokenIconsStore(
+    React.useCallback(
+      (storeState) => {
+        if (!tokenCode || !tokenIssuer) return null;
+        if (tokenCode === NATIVE_TOKEN_CODE) return null;
+        return storeState.icons[`${tokenCode}:${tokenIssuer}`];
+      },
+      [tokenCode, tokenIssuer],
+    ),
+  );
+
+  const validateIconOnAccess = useTokenIconsStore(
+    (storeState) => storeState.validateIconOnAccess,
+  );
 
   useEffect(() => {
-    if (hasValidImage) {
-      imageLoadedRef.current = false;
-      imageErroredRef.current = false;
-      setShowFallback(false);
-      setIsLoading(true);
-
-      timeoutRef.current = setTimeout(() => {
-        if (!imageLoadedRef.current && !imageErroredRef.current) {
-          setShowFallback(true);
-          setIsLoading(false);
-        }
-      }, IMAGE_LOAD_TIMEOUT);
-    } else {
-      setIsLoading(false);
+    if (!tokenCode || !tokenIssuer || icon === null) return;
+    if (tokenCode === NATIVE_TOKEN_CODE) return;
+    if (icon && icon.isValidated !== true && icon.isValid !== false) {
+      validateIconOnAccess(`${tokenCode}:${tokenIssuer}`);
     }
+  }, [tokenCode, tokenIssuer, icon, validateIconOnAccess]);
+  // -------------------------------------------------------------------------
+  // end source.token path
+  // -------------------------------------------------------------------------
 
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
+  // Resolve the final image URL from props or the store.
+  const isNativeToken = tokenCode === NATIVE_TOKEN_CODE;
+
+  const resolvedIconUrl =
+    icon?.isValid === false
+      ? icon?.lastValidImageUrl
+      : icon?.imageUrl || icon?.lastValidImageUrl;
+
+  let finalImageUrl: ImageSourcePropType | string | undefined = source.image;
+  if (isNativeToken) {
+    finalImageUrl = source.image || logos.stellar;
+  } else if (source.token) {
+    // Standalone path: store-resolved URL with source.image as ultimate fallback
+    finalImageUrl = resolvedIconUrl || source.image;
+  }
+  // TokenIconWithStore path: finalImageUrl = source.image (resolved upstream)
+
+  // Local (Metro-bundled) assets are numbers/objects, not strings.
+  // They load from the bundle synchronously — no network, no timeout needed.
+  const isLocalAsset =
+    finalImageUrl !== undefined && typeof finalImageUrl !== "string";
+
+  // String URL driving the state machine.  Trimmed-empty strings → undefined.
+  const targetUrl: string | undefined =
+    typeof finalImageUrl === "string" && finalImageUrl.trim()
+      ? finalImageUrl
+      : undefined;
+
+  // Skip animation for cached images, last-valid-URL fallbacks, and bundled
+  // assets — all load near-instantly with no spinner needed.
+  const isUsingLastValidUrl =
+    !!icon?.lastValidImageUrl &&
+    typeof finalImageUrl === "string" &&
+    finalImageUrl === icon.lastValidImageUrl &&
+    icon?.isValid !== true;
+
+  const skipAnimation =
+    !!source.skipImageLoader || isUsingLastValidUrl || isNativeToken;
+
+  // -------------------------------------------------------------------------
+  // State machine effect — drives icon load/fail/timeout transitions.
+  // -------------------------------------------------------------------------
+  useEffect(() => {
+    // Local assets: always transition to loading so <TokenImage> renders;
+    // onLoadEnd fires immediately and advances to loaded.
+    if (isLocalAsset) {
+      if (stateRef.current.phase !== IconPhase.LOADED) {
+        dispatch({ type: IconActionType.START_LOADING, url: LOCAL_ASSET_URL });
       }
-    };
-  }, [hasValidImage]);
-
-  const handleImageLoad = () => {
-    imageLoadedRef.current = true;
-    setIsLoading(false);
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
+      return undefined;
     }
-  };
 
-  const handleImageError = () => {
-    imageErroredRef.current = true;
-    setIsLoading(false);
-    setShowFallback(true);
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
+    // No URL available — show fallback immediately.
+    if (!targetUrl) {
+      dispatch({ type: IconActionType.CLEAR });
+      return undefined;
     }
-  };
 
-  // If we have a valid image, render the image with spinner overlay
-  if (hasValidImage && !showFallback) {
+    const { phase, activeUrl } = stateRef.current;
+
+    // Same URL already loading, loaded, or failed — no action needed.
+    if (
+      activeUrl === targetUrl &&
+      (phase === IconPhase.LOADING || phase === IconPhase.LOADED)
+    ) {
+      return undefined;
+    }
+
+    if (activeUrl === targetUrl && phase === IconPhase.FALLBACK) {
+      return undefined;
+    }
+
+    // New or changed URL: start loading.
+    dispatch({ type: IconActionType.START_LOADING, url: targetUrl });
+
+    // Cached or bundled images load near-instantly; onError handles failures.
+    if (skipAnimation) {
+      return undefined;
+    }
+
+    // Hard timeout: if onLoadEnd hasn't fired within the window, show fallback.
+    const timeoutId = setTimeout(() => {
+      if (stateRef.current.phase === IconPhase.LOADING) {
+        dispatch({ type: IconActionType.TIMEOUT });
+      }
+    }, ICON_VALIDATION_TIMEOUT);
+
+    return () => clearTimeout(timeoutId);
+  }, [targetUrl, isLocalAsset, skipAnimation]);
+
+  // -------------------------------------------------------------------------
+  // Render
+  // -------------------------------------------------------------------------
+  const { phase } = state;
+
+  // Visible until the image confirms loaded; ensures something is always shown.
+  const showFallback = phase !== IconPhase.LOADED;
+
+  // Pulsing overlay shown while loading or while store validation is in-flight.
+  // Suppressed for cached and bundled assets that appear near-instantly.
+  const showLoader =
+    phase !== IconPhase.LOADED &&
+    !skipAnimation &&
+    (!!source.isLoading || phase === IconPhase.LOADING);
+
+  // Image element present only while loading or loaded; removed on fallback/idle
+  // to prevent React Native Image from retrying a known-failed URL.
+  const renderTokenImage =
+    phase === IconPhase.LOADING || phase === IconPhase.LOADED;
+
+  const fallbackText = source.token?.code?.slice(0, 2) || "?";
+
+  const renderFallbackContent = () => {
+    if (source.renderContent) {
+      const customContent = source.renderContent();
+      if (customContent) {
+        return customContent;
+      }
+    }
+
     return (
-      <View className="w-full h-full relative">
+      <Text xs secondary semiBold>
+        {fallbackText}
+      </Text>
+    );
+  };
+
+  return (
+    <View className="w-full h-full relative items-center justify-center">
+      {/* Fallback content — always visible as background until image loads. */}
+      {showFallback && (
+        <View className="absolute inset-0 items-center justify-center">
+          {renderFallbackContent()}
+        </View>
+      )}
+
+      {/* Loader animation — pulsing overlay on the fallback while loading. */}
+      {showLoader && <TokenLoader />}
+
+      {/* Image — rendered only while loading / loaded (hidden while loading,
+          removed from tree on fallback to prevent autonomous RN retries).
+          key=activeUrl forces remount when the URL changes, which discards
+          any stale onLoad/onError callbacks from the previous source. */}
+      {renderTokenImage && (
         <TokenImage
-          // This will allow handling both local and remote images
+          key={state.activeUrl}
           source={
-            typeof source.image === "string"
-              ? { uri: source.image }
-              : source.image
+            typeof finalImageUrl === "string"
+              ? { uri: finalImageUrl }
+              : (finalImageUrl as ImageSourcePropType)
           }
           accessibilityLabel={source.altText}
-          onLoad={handleImageLoad}
-          onError={handleImageError}
+          onError={() => dispatch({ type: IconActionType.FAILED })}
+          onLoad={() => dispatch({ type: IconActionType.LOADED })}
+          style={
+            phase === IconPhase.LOADED ? undefined : hiddenImageStyle.hidden
+          }
         />
-        {/* Spinner overlay - shown while loading, hidden when image loads */}
-        {isLoading && (
-          <View className="absolute inset-0 justify-center items-center">
-            <Spinner size="small" />
-          </View>
-        )}
-      </View>
-    );
-  }
-
-  // If no valid image or image failed, show fallback
-  return source.renderContent ? <>{source.renderContent()}</> : null;
+      )}
+    </View>
+  );
 };
 
 /**
@@ -530,29 +792,31 @@ const ImageWithFallback: React.FC<{
  *   }}
  * />
  */
-export const Token: React.FC<TokenProps> = ({
-  variant,
-  size = "lg",
-  sourceOne,
-  sourceTwo,
-  testID = "token",
-}: TokenProps) => {
-  const renderImage = (source: TokenSource, isSecond = false) => (
-    <TokenImageContainer
-      $size={size}
-      $variant={variant}
-      $isSecond={isSecond}
-      $backgroundColor={source.backgroundColor}
-      testID={`${testID}-image-${isSecond ? "two" : "one"}`}
-    >
-      <ImageWithFallback source={source} />
-    </TokenImageContainer>
-  );
+export const Token: React.FC<TokenProps> = React.memo(
+  ({
+    variant,
+    size = "lg",
+    sourceOne,
+    sourceTwo,
+    testID = "token",
+  }: TokenProps) => {
+    const renderImage = (source: TokenSource, isSecond = false) => (
+      <TokenImageContainer
+        $size={size}
+        $variant={variant}
+        $isSecond={isSecond}
+        $backgroundColor={source.backgroundColor}
+        testID={`${testID}-image-${isSecond ? "two" : "one"}`}
+      >
+        <ImageWithFallback source={source} />
+      </TokenImageContainer>
+    );
 
-  return (
-    <TokenContainer $size={size} $variant={variant} testID={testID}>
-      {renderImage(sourceOne)}
-      {sourceTwo && renderImage(sourceTwo, true)}
-    </TokenContainer>
-  );
-};
+    return (
+      <TokenContainer $size={size} $variant={variant} testID={testID}>
+        {renderImage(sourceOne)}
+        {sourceTwo && renderImage(sourceTwo, true)}
+      </TokenContainer>
+    );
+  },
+);

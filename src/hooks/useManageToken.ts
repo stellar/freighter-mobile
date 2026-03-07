@@ -2,10 +2,21 @@ import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NETWORKS } from "config/constants";
 import { TokenTypeWithCustomToken } from "config/types";
 import { ActiveAccount } from "ducks/auth";
+import { useTokenIconsStore } from "ducks/tokenIcons";
 import { useManageTokens } from "hooks/useManageTokens";
 import { useCallback } from "react";
 import { analytics } from "services/analytics";
 
+/**
+ * Represents token details for management operations
+ * @property {string} [id] - Optional token identifier (usually code:issuer)
+ * @property {string} code - Token code (e.g., "USDC", "BTC")
+ * @property {number} [decimals] - Number of decimal places for the token
+ * @property {TokenTypeWithCustomToken} [type] - Token type (native, credit, custom, etc.)
+ * @property {string} [name] - Human-readable token name
+ * @property {string} issuer - Token issuer public key
+ * @property {string} [iconUrl] - Icon URL found during token search (used to cache immediately on Home Screen)
+ */
 type TokenDetails = {
   id?: string;
   code: string;
@@ -13,6 +24,7 @@ type TokenDetails = {
   type?: TokenTypeWithCustomToken;
   name?: string;
   issuer: string;
+  iconUrl?: string;
 };
 
 interface ManageTokenProps {
@@ -47,8 +59,36 @@ export const useManageToken = ({
     if (!token) {
       return;
     }
-    const { code, decimals, issuer, name, type } = token;
+    const { code, decimals, issuer, name, type, iconUrl } = token;
     analytics.trackAddTokenConfirmed(token.code);
+
+    if (iconUrl) {
+      // Pre-cache the icon found during search so the Home Screen shows it
+      // immediately rather than waiting for the 5-second background refresh.
+      //
+      // Security: `isValidated: false` means the URL goes through the normal
+      // validateIconOnAccess verification path before being trusted.  The
+      // previous pattern (isValidated:true, isValid:true) bypassed all checks,
+      // allowing an attacker-controlled token to insert an unverified external
+      // URL that would be permanently persisted and prefetched on every launch.
+      const identifier = `${code}:${issuer}`;
+      const store = useTokenIconsStore.getState();
+
+      store.cacheTokenIcons({
+        icons: {
+          [identifier]: {
+            imageUrl: iconUrl,
+            network,
+            isValidated: false,
+            isValid: null,
+          },
+        },
+      });
+
+      // Kick off validation immediately (non-blocking) so the icon doesn't
+      // have to wait for the 5-second background refresh cycle.
+      store.validateIconOnAccess(identifier);
+    }
 
     await addTokenAction({
       decimals,
@@ -61,7 +101,7 @@ export const useManageToken = ({
     if (bottomSheetRefAdd) {
       bottomSheetRefAdd.current?.dismiss();
     }
-  }, [token, addTokenAction, bottomSheetRefAdd]);
+  }, [token, addTokenAction, bottomSheetRefAdd, network]);
 
   const removeToken = useCallback(async () => {
     if (!token) {
