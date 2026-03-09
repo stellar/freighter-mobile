@@ -2,6 +2,7 @@ import { logos } from "assets/logos";
 import SorobanTokenIcon from "assets/logos/icon-soroban.svg";
 import { Token as TokenComponent, TokenSize } from "components/sds/Token";
 import { Text } from "components/sds/Typography";
+import { CIRCLE_USDC_ISSUER, USDC_CODE } from "config/constants";
 import {
   TokenTypeWithCustomToken,
   Balance,
@@ -129,6 +130,24 @@ const NativeTokenIcon: React.FC<
         altText: t("tokenIconAlt", { code: "XLM" }),
         backgroundColor,
         image: logos.stellar,
+      }}
+    />
+  );
+};
+
+const USDCTokenIcon: React.FC<
+  Pick<TokenIconProps, "size" | "backgroundColor">
+> = ({ size = "lg", backgroundColor }) => {
+  const { t } = useTranslation();
+
+  return (
+    <TokenComponent
+      variant="single"
+      size={size}
+      sourceOne={{
+        altText: t("tokenIconAlt", { code: "USDC" }),
+        backgroundColor,
+        image: logos.usdc,
       }}
     />
   );
@@ -291,6 +310,11 @@ export const TokenIcon: React.FC<TokenIconProps> = ({
 
   if (token.type === TokenTypeWithCustomToken.NATIVE) {
     return <NativeTokenIcon size={size} backgroundColor={backgroundColor} />;
+  }
+
+  // Treat Circle USDC like a native asset - always show bundled logo
+  if (token.code === USDC_CODE && token.issuer?.key === CIRCLE_USDC_ISSUER) {
+    return <USDCTokenIcon size={size} backgroundColor={backgroundColor} />;
   }
 
   if (token.type === TokenTypeWithCustomToken.CUSTOM_TOKEN) {

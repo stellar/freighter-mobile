@@ -1,7 +1,11 @@
 import FastImage from "@d11/react-native-fast-image";
 import { logos } from "assets/logos";
 import { Text } from "components/sds/Typography";
-import { NATIVE_TOKEN_CODE } from "config/constants";
+import {
+  CIRCLE_USDC_ISSUER,
+  NATIVE_TOKEN_CODE,
+  USDC_CODE,
+} from "config/constants";
 import { THEME } from "config/theme";
 import { useTokenIconsStore } from "ducks/tokenIcons";
 import { px } from "helpers/dimensions";
@@ -531,6 +535,7 @@ const ImageWithFallback: React.FC<{
 
   // Resolve the final image URL from props or the store.
   const isNativeToken = tokenCode === NATIVE_TOKEN_CODE;
+  const isUSDC = tokenCode === USDC_CODE && tokenIssuer === CIRCLE_USDC_ISSUER;
 
   const resolvedIconUrl =
     icon?.isValid === false
@@ -540,6 +545,9 @@ const ImageWithFallback: React.FC<{
   let finalImageUrl: ImageSourcePropType | string | undefined = source.image;
   if (isNativeToken) {
     finalImageUrl = source.image || logos.stellar;
+  } else if (isUSDC) {
+    // Treat USDC like native - always use bundled logo
+    finalImageUrl = source.image || logos.usdc;
   } else if (source.token) {
     // Standalone path: store-resolved URL with source.image as ultimate fallback
     finalImageUrl = resolvedIconUrl || source.image;
