@@ -5,10 +5,9 @@ permissions:
 
 on:
   pull_request:
-    branches: [main, release, "v*.*.*"]
-    types: [opened, synchronize, reopened, ready_for_review]
+    branches: [main, release, emergency-release, "v*.*.*"]
   push:
-    branches: [main, release, "v*.*.*"]
+    branches: [main, release, emergency-release, "v*.*.*"]
   workflow_dispatch:
     inputs:
       ref:
