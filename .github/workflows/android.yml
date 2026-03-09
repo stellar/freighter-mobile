@@ -195,7 +195,7 @@ jobs:
 
       - name: Decode and save sentry.properties
         run:
-          echo ${{ env.SENTRY_PROPERTIES_CONTENT }} | base64 --decode >
+          echo "$SENTRY_PROPERTIES_CONTENT" | base64 --decode >
           ./android/sentry.properties
 
       - name: Print Build config
