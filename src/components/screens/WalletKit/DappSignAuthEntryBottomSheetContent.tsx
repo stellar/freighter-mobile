@@ -7,6 +7,7 @@ import { App } from "components/sds/App";
 import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
+import { NetworkDetails } from "config/constants";
 import { ActiveAccount } from "ducks/auth";
 import { WalletKitSessionRequest } from "ducks/walletKit";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -17,6 +18,7 @@ import { Dimensions, ScrollView, View } from "react-native";
 interface DappSignAuthEntryBottomSheetContentProps {
   requestEvent: WalletKitSessionRequest | null;
   account: ActiveAccount | null;
+  networkDetails: NetworkDetails;
   entryXdr: string;
   onCancelRequest: () => void;
   onConfirm: () => void;
@@ -33,6 +35,7 @@ export const DappSignAuthEntryBottomSheetContent: React.FC<
 > = ({
   requestEvent,
   account,
+  networkDetails,
   entryXdr,
   onCancelRequest,
   onConfirm,
@@ -67,8 +70,18 @@ export const DappSignAuthEntryBottomSheetContent: React.FC<
         ),
         titleColor: themeColors.text.secondary,
       },
+      {
+        icon: <Icon.Globe02 size={16} color={themeColors.foreground.primary} />,
+        title: t("network"),
+        trailingContent: (
+          <Text md primary>
+            {networkDetails.networkName}
+          </Text>
+        ),
+        titleColor: themeColors.text.secondary,
+      },
     ],
-    [account, themeColors, t],
+    [account, themeColors, t, networkDetails.networkName],
   );
 
   const header = useDappHeader(requestEvent, account);

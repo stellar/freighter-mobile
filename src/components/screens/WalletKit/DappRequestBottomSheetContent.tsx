@@ -3,6 +3,7 @@ import { SignTransactionDetailsInterface } from "components/screens/SignTransact
 import { DappSignAuthEntryBottomSheetContent } from "components/screens/WalletKit/DappSignAuthEntryBottomSheetContent";
 import { DappSignMessageBottomSheetContent } from "components/screens/WalletKit/DappSignMessageBottomSheetContent";
 import { DappSignTransactionBottomSheetContent } from "components/screens/WalletKit/DappSignTransactionBottomSheetContent";
+import { NetworkDetails } from "config/constants";
 import { ActiveAccount } from "ducks/auth";
 import {
   StellarRpcMethods,
@@ -15,6 +16,7 @@ import React from "react";
 interface DappRequestBottomSheetContentProps {
   requestEvent: WalletKitSessionRequest | null;
   account: ActiveAccount | null;
+  networkDetails: NetworkDetails;
   onCancelRequest: () => void;
   onConfirm: () => void;
   isSigning: boolean;

@@ -10,7 +10,7 @@ import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
-import { NATIVE_TOKEN_CODE } from "config/constants";
+import { NATIVE_TOKEN_CODE, NetworkDetails } from "config/constants";
 import { ActiveAccount } from "ducks/auth";
 import { WalletKitSessionRequest } from "ducks/walletKit";
 import { formatTokenForDisplay } from "helpers/formatAmount";
@@ -23,6 +23,7 @@ import { View } from "react-native";
 interface DappSignTransactionBottomSheetContentProps {
   requestEvent: WalletKitSessionRequest | null;
   account: ActiveAccount | null;
+  networkDetails: NetworkDetails;
   onCancelRequest: () => void;
   onConfirm: () => void;
   isSigning: boolean;
@@ -48,6 +49,7 @@ export const DappSignTransactionBottomSheetContent: React.FC<
 > = ({
   requestEvent,
   account,
+  networkDetails,
   onCancelRequest,
   onConfirm,
   isSigning,
@@ -92,6 +94,16 @@ export const DappSignTransactionBottomSheetContent: React.FC<
         titleColor: themeColors.text.secondary,
       },
       {
+        icon: <Icon.Globe02 size={16} color={themeColors.foreground.primary} />,
+        title: t("network"),
+        trailingContent: (
+          <Text md primary>
+            {networkDetails.networkName}
+          </Text>
+        ),
+        titleColor: themeColors.text.secondary,
+      },
+      {
         icon: <Icon.Route size={16} color={themeColors.foreground.primary} />,
         title: t("transactionAmountScreen.details.fee"),
         trailingContent: (
@@ -104,7 +116,13 @@ export const DappSignTransactionBottomSheetContent: React.FC<
         titleColor: themeColors.text.secondary,
       },
     ],
-    [account, themeColors, t, signTransactionDetails?.summary.feeXlm],
+    [
+      account,
+      themeColors,
+      t,
+      networkDetails.networkName,
+      signTransactionDetails?.summary.feeXlm,
+    ],
   );
 
   const header = useDappHeader(requestEvent, account);

@@ -937,6 +937,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
           <DappRequestBottomSheetContent
             account={account}
             requestEvent={requestEvent}
+            networkDetails={networkDetails}
             isSigning={isSigning}
             isValidatingMemo={isValidatingMemo}
             onBannerPress={onOpenAddMemoExplanationBottomSheet}
