@@ -140,12 +140,16 @@ export const useValidateTransactionMemo = (incomingXdr?: string | null) => {
     try {
       transaction = TransactionBuilder.fromXDR(xdr, network);
     } catch (e) {
-      // Malformed XDR — cannot validate memo, skip silently.
+      // Malformed XDR — cannot validate memo, reset state to avoid stale UI
       logger.warn(
         "useValidateTransactionMemo",
         "Failed to parse XDR, skipping memo validation",
         e,
       );
+      // Clear stale state to prevent UI from being blocked on invalid XDR
+      setIsMemoMissing(false);
+      setLocalMemo("");
+      setLocalTransaction(null);
       return;
     }
 

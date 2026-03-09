@@ -442,7 +442,7 @@ export function createRoutes(wcClient: MockWalletConnectClient): Router {
       metadata.responses.push({
         id: requestId,
         type: "signXDR",
-        params: { xdr: xdr as unknown as string, description, network },
+        params: { xdr: xdrText, description, network },
         promise: requestPromise,
         createdAt: Date.now(),
       });
