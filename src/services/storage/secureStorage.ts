@@ -75,10 +75,10 @@ export const createSecureStorage = (serviceName: string) => ({
     } catch (error) {
       logger.error(
         "secureStorage.setItem",
-        `Error storing item in keychain: ${key}`,
+        "Error storing item in keychain",
         error,
       );
-      throw new Error(`Failed to store item in keychain: ${key}`);
+      throw new Error("Failed to store item in keychain");
     }
   },
 
@@ -119,7 +119,7 @@ export const createSecureStorage = (serviceName: string) => ({
     } catch (error) {
       logger.error(
         "secureStorage.getItem",
-        `Error retrieving key from keychain: ${key}`,
+        "Error retrieving item from keychain",
         error,
       );
       return false;
@@ -172,7 +172,7 @@ export const createSecureStorage = (serviceName: string) => ({
     } catch (error) {
       logger.error(
         "secureStorage.checkIfExists",
-        `Error checking if key exists: ${key}`,
+        "Error checking if item exists",
         error,
       );
       return false;
