@@ -496,16 +496,10 @@ describe("tokenIcons store", () => {
 
       const { icons } = useTokenIconsStore.getState();
 
-      // Circle USDC should have the bundled icon
+      // Circle USDC should NOT be cached (uses bundled logo via getIconUrl/component layer)
       expect(
         icons["USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"],
-      ).toEqual({
-        imageUrl: "bundled-usdc-logo.png",
-        network: NETWORKS.PUBLIC,
-        isValidated: true,
-        isValid: true,
-        lastValidImageUrl: "bundled-usdc-logo.png",
-      });
+      ).toBeUndefined();
 
       // Other tokens should have their original token list icons
       expect(icons["BTC:GB456"]).toEqual({
@@ -544,6 +538,7 @@ describe("tokenIcons store", () => {
         network: NETWORKS.TESTNET,
         isValidated: false,
         isValid: null,
+        lastValidImageUrl: undefined,
       });
     });
   });

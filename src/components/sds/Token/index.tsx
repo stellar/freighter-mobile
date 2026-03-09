@@ -3,6 +3,7 @@ import { logos } from "assets/logos";
 import { Text } from "components/sds/Typography";
 import {
   CIRCLE_USDC_ISSUER,
+  CIRCLE_USDC_CONTRACT,
   NATIVE_TOKEN_CODE,
   USDC_CODE,
 } from "config/constants";
@@ -535,7 +536,10 @@ const ImageWithFallback: React.FC<{
 
   // Resolve the final image URL from props or the store.
   const isNativeToken = tokenCode === NATIVE_TOKEN_CODE;
-  const isUSDC = tokenCode === USDC_CODE && tokenIssuer === CIRCLE_USDC_ISSUER;
+  const isUSDC =
+    tokenCode === USDC_CODE &&
+    (tokenIssuer === CIRCLE_USDC_ISSUER ||
+      tokenIssuer === CIRCLE_USDC_CONTRACT);
 
   const resolvedIconUrl =
     icon?.isValid === false

@@ -1,5 +1,4 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { logos } from "assets/logos";
 import {
   CIRCLE_USDC_CONTRACT,
   CIRCLE_USDC_ISSUER,
@@ -281,21 +280,21 @@ export const useTokenIconsStore = create<TokenIconsState>()(
         const iconMap = verifiedTokens.reduce(
           (prev, curr) => {
             if (curr.icon) {
-              let iconUrl = curr.icon;
-              let isValidated = false;
-              let isValid: boolean | null = null;
-              const existingIcon = existingIcons[`${curr.code}:${curr.issuer}`];
-
-              if (
+              // Skip caching mainnet USDC - it uses bundled logo at component layer
+              const isMainnetUSDC =
                 network === NETWORKS.PUBLIC &&
                 curr.code === USDC_CODE &&
                 (curr.issuer === CIRCLE_USDC_ISSUER ||
-                  curr.contract === CIRCLE_USDC_CONTRACT)
-              ) {
-                iconUrl = logos.usdc as unknown as string;
-                isValidated = true;
-                isValid = true;
+                  curr.contract === CIRCLE_USDC_CONTRACT);
+
+              if (isMainnetUSDC) {
+                return prev;
               }
+
+              const iconUrl = curr.icon;
+              const isValidated = false;
+              const isValid: boolean | null = null;
+              const existingIcon = existingIcons[`${curr.code}:${curr.issuer}`];
 
               const shouldUseExistingValidation =
                 existingIcon &&
