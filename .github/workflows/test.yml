@@ -2,9 +2,9 @@ name: Test
 
 on:
   push:
-    branches: [main]
+    branches: [main, release, emergency-release, "v*.*.*"]
   pull_request:
-    branches: [main]
+    branches: [main, release, emergency-release, "v*.*.*"]
 
 env:
   NODE_VERSION: "20"
