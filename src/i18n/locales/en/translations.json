@@ -1071,7 +1071,8 @@
       "actions": "Actions",
       "refresh": "🔄 Refresh",
       "clearEvents": "Clear Events",
-      "simulateSessionExpiry": "⏰ Simulate Session Expiry"
+      "simulateSessionExpiry": "⏰ Simulate Session Expiry",
+      "resetIconsCache": "Reset Icons Cache"
     }
   },
   "debug": {

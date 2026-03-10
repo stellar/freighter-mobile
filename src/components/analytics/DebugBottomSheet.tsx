@@ -1,3 +1,4 @@
+import FastImage from "@d11/react-native-fast-image";
 import { BottomSheetModal, BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import BottomSheet from "components/BottomSheet";
@@ -9,12 +10,13 @@ import { Text } from "components/sds/Typography";
 import { STORAGE_KEYS } from "config/constants";
 import { useAuthenticationStore } from "ducks/auth";
 import { useDebugStore } from "ducks/debug";
+import { TOKEN_ICONS_STORAGE_KEY, useTokenIconsStore } from "ducks/tokenIcons";
 import { formatTimeAgo } from "helpers/date";
 import { toPercent } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useState } from "react";
-import { View, TouchableOpacity } from "react-native";
+import { Alert, View, TouchableOpacity } from "react-native";
 import { getVersion } from "react-native-device-info";
 import { heightPercentageToDP } from "react-native-responsive-screen";
 import { analytics } from "services/analytics";
@@ -43,6 +45,7 @@ const CustomContent: React.FC<{
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
   const { logout, devResetAppAuth } = useAuthenticationStore();
+  const { resetIconsCache } = useTokenIconsStore();
   const {
     overriddenAppVersion,
     setOverriddenAppVersion,
@@ -135,6 +138,17 @@ const CustomContent: React.FC<{
       /* eslint-enable */
     }
     onDismiss();
+  };
+
+  const handleResetIconsCache = async () => {
+    try {
+      resetIconsCache();
+      await AsyncStorage.removeItem(TOKEN_ICONS_STORAGE_KEY);
+      await FastImage.clearMemoryCache();
+      await FastImage.clearDiskCache();
+    } catch (error) {
+      Alert.alert("Cache Reset Failed", String(error));
+    }
   };
 
   const handleClearUpdateDismissalFlag = async () => {
@@ -607,6 +621,9 @@ const CustomContent: React.FC<{
             isFullWidth
           >
             {t("analytics.debug.simulateSessionExpiry")}
+          </Button>
+          <Button secondary md onPress={handleResetIconsCache} isFullWidth>
+            {t("analytics.debug.resetIconsCache")}
           </Button>
           <Button secondary md onPress={handleResetApp} isFullWidth>
             {t("analytics.debug.resetApp")}
