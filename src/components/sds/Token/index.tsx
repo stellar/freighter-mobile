@@ -404,8 +404,8 @@ const TokenLoader: React.FC = () => {
 //
 //   idle     → No URL available.   Show: fallback only.
 //   loading  → URL present, image fetching.  Show: fallback + loader overlay.
-//   loaded   → onLoadEnd confirmed.  Show: image only.
-//   fallback → Load failed / timed out.  Show: fallback only.
+//   loaded   → onLoad callback fired (success).  Show: image only.
+//   fallback → onError fired or timeout.  Show: fallback only.
 //              <TokenImage> is removed from the tree to prevent React Native
 //              Image from retrying a failed URL autonomously.
 //
@@ -471,8 +471,8 @@ function iconLoadReducer(
 }
 
 // Shared style for hiding the image element while it loads (prevents a white
-// flash before onLoadEnd fires, while keeping the element in the tree so that
-// onLoadEnd / onError callbacks are active).
+// flash before onLoad fires, while keeping the element in the tree so that
+// onLoad / onError callbacks are active).
 const hiddenImageStyle = StyleSheet.create({
   hidden: { opacity: 0 },
 });
@@ -585,7 +585,7 @@ const ImageWithFallback: React.FC<{
   // -------------------------------------------------------------------------
   useEffect(() => {
     // Local assets: always transition to loading so <TokenImage> renders;
-    // onLoadEnd fires immediately and advances to loaded.
+    // onLoad fires immediately and advances to loaded.
     if (isLocalAsset) {
       if (stateRef.current.phase !== IconPhase.LOADED) {
         dispatch({ type: IconActionType.START_LOADING, url: LOCAL_ASSET_URL });
@@ -621,7 +621,7 @@ const ImageWithFallback: React.FC<{
       return undefined;
     }
 
-    // Hard timeout: if onLoadEnd hasn't fired within the window, show fallback.
+    // Hard timeout: if onLoad hasn't fired within the window, show fallback.
     const timeoutId = setTimeout(() => {
       if (stateRef.current.phase === IconPhase.LOADING) {
         dispatch({ type: IconActionType.TIMEOUT });

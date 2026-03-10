@@ -622,6 +622,13 @@ export const useTokenIconsStore = create<TokenIconsState>()(
     {
       name: TOKEN_ICONS_STORAGE_KEY,
       storage: createJSONStorage(() => AsyncStorage),
+      partialize: (state) => ({
+        // Only persist icons and lastRefreshed; failedTokenCodes is transient
+        // and should reset with each app session to allow recovery from
+        // temporary validation failures
+        icons: state.icons,
+        lastRefreshed: state.lastRefreshed,
+      }),
     },
   ),
 );
