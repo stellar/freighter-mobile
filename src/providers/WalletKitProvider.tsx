@@ -616,16 +616,18 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       }
 
       // Check if wallet is locked
-      if (authStatus === AUTH_STATUS.HASH_KEY_EXPIRED) {
+      if (
+        authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ||
+        authStatus === AUTH_STATUS.LOCKED
+      ) {
         showToast({
           title: t("walletKit.walletLocked"),
           message: t("walletKit.pleaseUnlockToConnect"),
           variant: "error",
         });
+
         return;
       }
-
-      handleClearDappRequest();
 
       setProposalEvent(sessionProposal);
 
@@ -707,17 +709,25 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       }
 
       // Check if wallet is locked
-      if (authStatus === AUTH_STATUS.HASH_KEY_EXPIRED) {
+      if (
+        authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ||
+        authStatus === AUTH_STATUS.LOCKED
+      ) {
         showToast({
           title: t("walletKit.walletLocked"),
           message: t("walletKit.pleaseUnlockToSignTransaction"),
           variant: "error",
         });
+        isProcessingRequestRef.current = false;
         return;
       }
 
-      // Wait for active sessions to be fetched
+      // Wait for active sessions to be fetched.
+      // Reset the flag so that when activeSessions is populated and the effect
+      // re-fires (activeSessions is a dependency), this request is processed
+      // normally rather than being treated as a concurrent duplicate and queued.
       if (Object.keys(activeSessions).length === 0) {
+        isProcessingRequestRef.current = false;
         return;
       }
 
@@ -741,6 +751,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         });
 
         clearEvent();
+        isProcessingRequestRef.current = false;
         return;
       }
 
@@ -791,6 +802,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         });
 
         clearEvent();
+        isProcessingRequestRef.current = false;
         return;
       }
 

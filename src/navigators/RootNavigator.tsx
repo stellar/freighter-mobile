@@ -77,6 +77,7 @@ export const RootNavigator = () => {
     (state) => state.isInitialized,
   );
   const [initializing, setInitializing] = useState(true);
+  const [isAuthStatusReady, setIsAuthStatusReady] = useState(false);
   const [showForceUpdate, setShowForceUpdate] = useState(false);
   const [isJailbroken, setIsJailbroken] = useState(false);
   const { t } = useAppTranslation();
@@ -90,48 +91,50 @@ export const RootNavigator = () => {
 
   useAppOpenBiometricsLogin(initializing);
 
+  // Run once on mount: check jailbreak, fetch auth status from storage, trigger
+  // face-id onboarding if needed. We intentionally omit deps so this only fires
+  // once — subsequent auth status changes are handled by the RootStack's
+  // conditional screen rendering.
   useEffect(() => {
-    const initializeApp = async (
-      postInitializeCallback?: () => void,
-    ): Promise<void> => {
+    const initializeApp = async (): Promise<void> => {
       const deviceCompromised = isDeviceJailbroken();
       setIsJailbroken(deviceCompromised);
 
       if (deviceCompromised) {
-        setInitializing(false);
+        setIsAuthStatusReady(true);
         RNBootSplash.hide({ fade: true });
-        return; // Block further initialization
+        return;
       }
 
-      await getAuthStatus();
-      if (postInitializeCallback) {
-        postInitializeCallback();
-      }
-    };
+      // Fetch the real auth status from storage and overwrite the initial
+      // NOT_AUTHENTICATED default before any navigation decision is made.
+      const freshAuthStatus = await getAuthStatus();
+      setIsAuthStatusReady(true);
 
-    initializeApp(() => {
       triggerFaceIdOnboarding(
         navigation,
-        authStatus,
+        freshAuthStatus,
         checkBiometrics,
         isBiometricsEnabled ?? false,
       );
-    });
-  }, [
-    getAuthStatus,
-    navigation,
-    authStatus,
-    checkBiometrics,
-    isBiometricsEnabled,
-  ]);
+    };
 
-  // Wait for all initialization states to complete
+    initializeApp();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // intentionally run only once on mount
+
+  // Wait for ALL initialization states to complete before showing any UI.
+  // This prevents a flash of the wrong screen while auth status is loading.
   useEffect(() => {
-    if (isAnalyticsInitialized() && remoteConfigInitialized) {
+    if (
+      isAnalyticsInitialized() &&
+      remoteConfigInitialized &&
+      isAuthStatusReady
+    ) {
       setInitializing(false);
       RNBootSplash.hide({ fade: true });
     }
-  }, [remoteConfigInitialized]);
+  }, [remoteConfigInitialized, isAuthStatusReady]);
 
   // Show force update screen when needed
   useEffect(() => {
@@ -146,7 +149,10 @@ export const RootNavigator = () => {
       return ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK;
     }
 
-    if (authStatus === AUTH_STATUS.HASH_KEY_EXPIRED) {
+    if (
+      authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ||
+      authStatus === AUTH_STATUS.LOCKED
+    ) {
       return ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN;
     }
 
@@ -261,7 +267,8 @@ export const RootNavigator = () => {
             options={getScreenBottomNavigateOptions("")}
           />
         </RootStack.Group>
-      ) : authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ? (
+      ) : authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ||
+        authStatus === AUTH_STATUS.LOCKED ? (
         <RootStack.Screen
           name={ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN}
           component={LockScreen}
