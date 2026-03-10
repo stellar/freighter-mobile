@@ -1,4 +1,5 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { Federation } from "@stellar/stellar-sdk";
 import { act, fireEvent, waitFor } from "@testing-library/react-native";
 import ContactBookScreen from "components/screens/SettingsScreen/ContactBookScreen";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
@@ -323,6 +324,67 @@ describe("ContactBookScreen", () => {
           getByText("contactBookScreen.errors.duplicateAddress"),
         ).toBeTruthy();
       });
+    });
+
+    it("enables Save button when federation address resolves successfully", async () => {
+      const FEDERATION_ADDRESS = "alice*stellar.org";
+      (isFederationAddress as jest.Mock).mockImplementation(
+        (addr: string) => addr === FEDERATION_ADDRESS,
+      );
+      (Federation.Server.resolve as jest.Mock).mockResolvedValueOnce({
+        account_id: VALID_ADDRESS_1,
+      });
+
+      const { getByText, getByPlaceholderText, getByTestId } = renderScreen();
+
+      fireEvent.press(getByText("contactBookScreen.addContact"));
+
+      const addressInput = getByPlaceholderText(
+        "contactBookScreen.addressPlaceholder",
+      );
+      const nameInput = getByPlaceholderText(
+        "contactBookScreen.namePlaceholder",
+      );
+
+      fireEvent.changeText(addressInput, FEDERATION_ADDRESS);
+      fireEvent(addressInput, "blur");
+      fireEvent.changeText(nameInput, "Alice");
+      fireEvent(nameInput, "blur");
+
+      await waitFor(() => {
+        const saveButton = getByTestId("save-button");
+        expect(saveButton.props.accessibilityState?.disabled).toBe(false);
+      });
+    });
+
+    it("shows federation error and keeps Save disabled when address resolution fails", async () => {
+      const FEDERATION_ADDRESS = "alice*stellar.org";
+      (isFederationAddress as jest.Mock).mockImplementation(
+        (addr: string) => addr === FEDERATION_ADDRESS,
+      );
+      (Federation.Server.resolve as jest.Mock).mockRejectedValueOnce(
+        new Error("Not found"),
+      );
+
+      const { getByText, getByPlaceholderText, getByTestId } = renderScreen();
+
+      fireEvent.press(getByText("contactBookScreen.addContact"));
+
+      const addressInput = getByPlaceholderText(
+        "contactBookScreen.addressPlaceholder",
+      );
+
+      fireEvent.changeText(addressInput, FEDERATION_ADDRESS);
+      fireEvent(addressInput, "blur");
+
+      await waitFor(() => {
+        expect(
+          getByText("contactBookScreen.errors.federationNotFound"),
+        ).toBeTruthy();
+      });
+
+      const saveButton = getByTestId("save-button");
+      expect(saveButton.props.accessibilityState?.disabled).toBe(true);
     });
 
     it("shows duplicate name error", async () => {
