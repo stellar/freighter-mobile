@@ -309,6 +309,9 @@ export enum SENSITIVE_STORAGE_KEYS {
   TEMPORARY_STORE = "temporaryStore",
   HASH_KEY = "hashKey",
   AUTH_STATUS = "authStatus",
+  // Persisted symmetric encryption key (scrypt output). Derivable from HASH_KEY, so no extra
+  // attack surface. Stored so cold app-opens from LOCKED skip the second scrypt.
+  DERIVED_KEY = "derivedKey",
 }
 
 /**
