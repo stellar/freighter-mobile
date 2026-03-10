@@ -382,6 +382,7 @@ type InputRef = TextInput | React.ComponentRef<typeof BottomSheetTextInput>;
  * @property {string} [fieldSize] - Size variant of the input field
  * @property {string} [value] - The input value
  * @property {Function} [onChangeText] - Callback when text changes
+ * @property {Function} [onBlur] - Callback invoked when the input loses focus
  * @property {string} [placeholder] - Placeholder text
  * @property {string} [placeholderTextColor] - Color of the placeholder text
  * @property {boolean} [secureTextEntry] - Whether the input is for password entry
@@ -403,6 +404,7 @@ type TextInputComponentProps = Pick<
   | "fieldSize"
   | "value"
   | "onChangeText"
+  | "onBlur"
   | "placeholder"
   | "placeholderTextColor"
   | "secureTextEntry"
