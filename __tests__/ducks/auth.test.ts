@@ -79,6 +79,11 @@ jest.mock("@stablelib/base64", () => ({
   decode: jest.fn((str) => Buffer.from(str, "base64")),
 }));
 
+jest.mock("@stablelib/base64", () => ({
+  encode: jest.fn((data) => Buffer.from(data).toString("base64")),
+  decode: jest.fn((str) => Buffer.from(str, "base64")),
+}));
+
 jest.mock("services/storage/storageFactory", () => ({
   dataStorage: {
     getItem: jest.fn(),
