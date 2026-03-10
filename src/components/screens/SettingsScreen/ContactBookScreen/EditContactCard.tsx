@@ -61,6 +61,47 @@ const EditContactCard: React.FC<EditContactCardProps> = ({
     !nameValidated;
 
   /**
+   * Checks whether a given address (and its optionally resolved account ID) already
+   * exists in the contacts map.  Comparisons are performed at the account level so
+   * that a federation address and the G/M address it resolves to are treated as the
+   * same contact.
+   *
+   * @param normalized - The trimmed address as entered by the user
+   * @param resolvedId - The resolved Stellar account ID when `normalized` is a federation address
+   * @returns `true` if a duplicate contact is found
+   */
+  const isDuplicateAddress = (
+    normalized: string,
+    resolvedId: string | undefined,
+  ): boolean => {
+    const normalizedLower = normalized.toLowerCase();
+    const resolvedLower = resolvedId?.toLowerCase();
+
+    return Object.entries(existingContacts).some(([key, contact]) => {
+      const keyLower = key.toLowerCase();
+      const contactResolvedLower = contact.resolvedAddress?.toLowerCase();
+
+      if (keyLower === normalizedLower) return true;
+
+      if (resolvedLower) {
+        if (contactResolvedLower && contactResolvedLower === resolvedLower)
+          return true;
+        if (isValidStellarAddress(key) && keyLower === resolvedLower)
+          return true;
+      }
+
+      if (
+        contactResolvedLower &&
+        isValidStellarAddress(normalized) &&
+        normalizedLower === contactResolvedLower
+      )
+        return true;
+
+      return false;
+    });
+  };
+
+  /**
    * Validates a Stellar address or federation address.
    * Resolves federation addresses asynchronously, checks address validity, and detects duplicates.
    *
@@ -106,11 +147,7 @@ const EditContactCard: React.FC<EditContactCardProps> = ({
       resolvedAddressRef.current = undefined;
     }
 
-    if (
-      Object.keys(existingContacts).some(
-        (key) => key.toLowerCase() === normalized.toLowerCase(),
-      )
-    ) {
+    if (isDuplicateAddress(normalized, resolvedAddressRef.current)) {
       setAddressError(t("contactBookScreen.errors.duplicateAddress"));
       return;
     }
@@ -185,13 +222,15 @@ const EditContactCard: React.FC<EditContactCardProps> = ({
     const trimmedAddress = address.trim();
 
     if (isFederationAddress(trimmedAddress)) {
-      try {
-        const fedResp = await Federation.Server.resolve(trimmedAddress);
-        resolvedAddressRef.current = fedResp.account_id;
-      } catch {
-        setAddressError(t("contactBookScreen.errors.federationNotFound"));
-        resolvedAddressRef.current = undefined;
-        isValid = false;
+      if (!resolvedAddressRef.current) {
+        try {
+          const fedResp = await Federation.Server.resolve(trimmedAddress);
+          resolvedAddressRef.current = fedResp.account_id;
+        } catch {
+          setAddressError(t("contactBookScreen.errors.federationNotFound"));
+          resolvedAddressRef.current = undefined;
+          isValid = false;
+        }
       }
     } else if (!isValidStellarAddress(trimmedAddress)) {
       setAddressError(t("contactBookScreen.errors.invalidAddress"));
@@ -201,9 +240,7 @@ const EditContactCard: React.FC<EditContactCardProps> = ({
 
     if (
       isValid &&
-      Object.keys(existingContacts).some(
-        (key) => key.toLowerCase() === trimmedAddress.toLowerCase(),
-      )
+      isDuplicateAddress(trimmedAddress, resolvedAddressRef.current)
     ) {
       setAddressError(t("contactBookScreen.errors.duplicateAddress"));
       isValid = false;
@@ -288,6 +325,7 @@ const EditContactCard: React.FC<EditContactCardProps> = ({
             onPress={handleSave}
             isLoading={isValidating}
             disabled={isSaveDisabled}
+            testID="save-button"
           >
             {t("contactBookScreen.save")}
           </Button>

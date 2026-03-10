@@ -207,17 +207,16 @@ describe("ContactBookScreen", () => {
 
   describe("EditContactCard Validation", () => {
     it("Save button is disabled when fields are empty", () => {
-      const { getByText } = renderScreen();
+      const { getByText, getByTestId } = renderScreen();
 
       fireEvent.press(getByText("contactBookScreen.addContact"));
 
-      const saveButton = getByText("contactBookScreen.save");
-      // The button's parent TouchableOpacity should be disabled
-      expect(saveButton).toBeTruthy();
+      const saveButton = getByTestId("save-button");
+      expect(saveButton.props.accessibilityState?.disabled).toBe(true);
     });
 
     it("Save button is disabled when only address is filled", () => {
-      const { getByText, getByPlaceholderText } = renderScreen();
+      const { getByText, getByPlaceholderText, getByTestId } = renderScreen();
 
       fireEvent.press(getByText("contactBookScreen.addContact"));
 
@@ -228,11 +227,12 @@ describe("ContactBookScreen", () => {
       fireEvent(addressInput, "blur");
 
       // Name is still empty, so save should still be disabled
-      expect(getByText("contactBookScreen.save")).toBeTruthy();
+      const saveButton = getByTestId("save-button");
+      expect(saveButton.props.accessibilityState?.disabled).toBe(true);
     });
 
     it("Save button is disabled when only name is filled", () => {
-      const { getByText, getByPlaceholderText } = renderScreen();
+      const { getByText, getByPlaceholderText, getByTestId } = renderScreen();
 
       fireEvent.press(getByText("contactBookScreen.addContact"));
 
@@ -242,7 +242,8 @@ describe("ContactBookScreen", () => {
       fireEvent.changeText(nameInput, "Alice");
       fireEvent(nameInput, "blur");
 
-      expect(getByText("contactBookScreen.save")).toBeTruthy();
+      const saveButton = getByTestId("save-button");
+      expect(saveButton.props.accessibilityState?.disabled).toBe(true);
     });
 
     it("shows error for invalid Stellar address on blur", () => {
