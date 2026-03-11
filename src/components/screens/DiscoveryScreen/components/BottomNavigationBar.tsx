@@ -104,6 +104,11 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
 
         isSearchBarActive.current = false;
         setIsFocused(false);
+        // Explicitly blur so the next focus() call from the overlay isn't a
+        // no-op. Android's hardware back button dismisses the keyboard without
+        // blurring the TextInput, which leaves it in a "focused" state where
+        // calling focus() again does nothing.
+        inputRef.current?.blur();
 
         if (isIOS) {
           Animated.timing(keyboardOffset, {
