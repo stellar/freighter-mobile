@@ -1,5 +1,6 @@
 import Blockaid from "@blockaid/client";
 import BigNumber from "bignumber.js";
+import { DEFAULT_DECIMALS } from "config/constants";
 import { t } from "i18next";
 import {
   BLOCKAID_RESULT_TYPES,
@@ -483,13 +484,20 @@ export interface TransactionBalanceChange {
   assetCode: string;
   assetIssuer?: string;
   isNative: boolean;
-  /** Raw amount from Blockaid (integer scaled by 1e7), not converted/formatted */
+  /** Amount already divided by the asset's decimals */
   amount: BigNumber;
   isCredit: boolean;
 }
 
 type AccountAssetDiff = {
-  asset: { type: "NATIVE" | "ASSET"; code: string; issuer?: string };
+  asset: {
+    type: string;
+    code?: string;
+    symbol?: string;
+    issuer?: string;
+    address?: string;
+    decimals?: number;
+  };
   in?: { raw_value?: number | string | null } | null;
   out?: { raw_value?: number | string | null } | null;
 };
@@ -536,12 +544,18 @@ export const getTransactionBalanceChanges = (
         return undefined;
       }
 
-      const rawValue = hasIn ? inRaw : outRaw;
-      const amount = new BigNumber(rawValue as number | string).dividedBy(1e7);
+      const rawInteger = hasIn ? inRaw : outRaw;
       const isCredit = hasIn;
-      const isNative = diff.asset.type === "NATIVE";
-      const assetCode = diff.asset.code;
-      const assetIssuer = isNative ? undefined : diff.asset.issuer;
+
+      const { asset } = diff;
+
+      const assetCode = asset.symbol ?? asset.code ?? "";
+      const assetIssuer = asset.issuer ?? asset.address;
+      const decimals = asset.decimals ?? DEFAULT_DECIMALS;
+      const isNative = asset.type === "NATIVE";
+      const amount = new BigNumber(rawInteger as number | string).dividedBy(
+        new BigNumber(10).pow(decimals),
+      );
 
       return {
         assetCode,
@@ -549,7 +563,7 @@ export const getTransactionBalanceChanges = (
         isNative,
         amount,
         isCredit,
-      } as TransactionBalanceChange;
+      };
     })
     .filter(Boolean) as TransactionBalanceChange[];
 
