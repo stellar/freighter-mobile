@@ -219,6 +219,7 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
               <TrendingCarousel
                 items={trendingItems}
                 onItemPress={(item) => handleSitePress(item.id)}
+                onScrollEnd={captureScreenshot}
               />
             </View>
           )}

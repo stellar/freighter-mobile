@@ -33,12 +33,13 @@ interface TrendingItem {
 
 interface TrendingCardProps {
   item: TrendingItem;
-  onPress?: (item: TrendingItem) => void;
+  onPress: (item: TrendingItem) => void;
 }
 
 interface TrendingCarouselProps {
   items: TrendingItem[];
-  onItemPress?: (item: TrendingItem) => void;
+  onItemPress: (item: TrendingItem) => void;
+  onScrollEnd: () => Promise<void>;
 }
 
 // =============================================================================
@@ -48,7 +49,7 @@ interface TrendingCarouselProps {
 const TrendingCard: React.FC<TrendingCardProps> = React.memo(
   ({ item, onPress }) => {
     const handlePress = useCallback(() => {
-      onPress?.(item);
+      onPress(item);
     }, [onPress, item]);
 
     return (
@@ -95,7 +96,11 @@ TrendingCard.displayName = "TrendingCard";
 // =============================================================================
 
 const TrendingCarousel: React.FC<TrendingCarouselProps> = React.memo(
-  ({ items, onItemPress }) => {
+  ({ items, onItemPress, onScrollEnd }) => {
+    const handleScrollEnd = useCallback(() => {
+      onScrollEnd();
+    }, [onScrollEnd]);
+
     const renderItem = useCallback(
       // eslint-disable-next-line react/no-unused-prop-types
       ({ item }: { item: TrendingItem }) => (
@@ -118,6 +123,7 @@ const TrendingCarousel: React.FC<TrendingCarouselProps> = React.memo(
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
         showsHorizontalScrollIndicator={false}
+        onScrollEndDrag={handleScrollEnd}
         contentContainerStyle={contentContainerStyle}
       />
     );
