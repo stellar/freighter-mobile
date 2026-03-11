@@ -112,7 +112,8 @@ tags:
 - tapOn:
     id: wc-e2e-message-input
 
-- inputText: "Hello from E2E test! Please sign this message to verify your wallet."
+- inputText:
+    "Hello from E2E test! Please sign this message to verify your wallet."
 
 - tapOn:
     id: wc-e2e-network-input

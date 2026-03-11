@@ -21,6 +21,7 @@ jest.mock("ducks/tokenIcons", () => ({
 jest.mock("assets/logos", () => ({
   logos: {
     stellar: "stellar-logo-url",
+    usdc: "usdc-logo-url",
   },
 }));
 
@@ -59,9 +60,24 @@ describe("TokenIcon", () => {
     typeof useTokenIconsStore
   >;
 
+  const mockValidateIconOnAccess = jest.fn();
+  let mockState: any;
+
   beforeEach(() => {
     jest.clearAllMocks();
-    mockUseTokenIconsStore.mockReturnValue({ icons: {} });
+    mockState = {
+      icons: {},
+      validateIconOnAccess: mockValidateIconOnAccess,
+      failedTokenCodes: {},
+    };
+
+    // Mock implementation to handle selectors
+    mockUseTokenIconsStore.mockImplementation((selector) => {
+      if (typeof selector === "function") {
+        return selector(mockState);
+      }
+      return mockState;
+    });
   });
 
   it("renders Stellar logo for native XLM token", () => {
@@ -84,7 +100,7 @@ describe("TokenIcon", () => {
         token={{
           code: "USDC",
           issuer: {
-            key: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+            key: "GBBD47UZQ2BNSE5O27ZIVVKV4OZVL2D7OEHTASAA5HQYKWNGZFYMHZWZ",
           },
           type: TokenTypeWithCustomToken.CREDIT_ALPHANUM12,
         }}
@@ -92,6 +108,23 @@ describe("TokenIcon", () => {
     );
 
     expect(getByText("US")).toBeTruthy();
+  });
+
+  it("renders Circle USDC with bundled logo", () => {
+    const { getByTestId } = render(
+      <TokenIcon
+        token={{
+          code: "USDC",
+          issuer: {
+            key: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          },
+          type: TokenTypeWithCustomToken.CREDIT_ALPHANUM12,
+        }}
+      />,
+    );
+
+    const imageUrl = getByTestId("image-url");
+    expect(imageUrl.props.children).toBe("usdc-logo-url");
   });
 
   it("renders LP text for liquidity pool tokens", () => {
@@ -102,5 +135,34 @@ describe("TokenIcon", () => {
 
     const { getByText } = render(<TokenIcon token={mockLPBalance} />);
     expect(getByText("LP")).toBeTruthy();
+  });
+
+  it("shows fallback letters while icon is validating", () => {
+    const issuerKey =
+      "GBBD47UZQ2BNSE5O27ZIVVKV4OZVL2D7OEHTASAA5HQYKWNGZFYMHZWZ";
+    const cacheKey = `USDC:${issuerKey}`;
+
+    mockState.icons = {
+      [cacheKey]: {
+        imageUrl: "https://example.com/icon.png",
+        network: "PUBLIC",
+        isValidated: false,
+        isValid: null,
+      },
+    };
+
+    const { getByText } = render(
+      <TokenIcon
+        token={{
+          code: "USDC",
+          issuer: {
+            key: issuerKey,
+          },
+          type: TokenTypeWithCustomToken.CREDIT_ALPHANUM12,
+        }}
+      />,
+    );
+
+    expect(getByText("US")).toBeTruthy();
   });
 });

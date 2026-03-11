@@ -52,6 +52,10 @@ jest.mock("react-native", () => {
   RN.Dimensions = {
     get: jest.fn().mockReturnValue({ width: 400, height: 800 }),
   };
+  RN.Image = {
+    ...RN.Image,
+    prefetch: jest.fn(() => Promise.resolve(true)),
+  };
   return RN;
 });
 

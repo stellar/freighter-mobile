@@ -2032,6 +2032,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@d11/react-native-fast-image@npm:8.13.0":
+  version: 8.13.0
+  resolution: "@d11/react-native-fast-image@npm:8.13.0"
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+  checksum: 10c0/697d43bade639333aad905cff00c315d8a9e3fb1352cec7c70c5100edaae9f9e05da8ddbcdd032820dcb4d4082ebb6290e59b040d9f0f31a64855b34d2a9e66d
+  languageName: node
+  linkType: hard
+
 "@dominicstop/ts-event-emitter@npm:^1.1.0":
   version: 1.1.0
   resolution: "@dominicstop/ts-event-emitter@npm:1.1.0"
@@ -9814,6 +9824,7 @@ __metadata:
     "@babel/preset-env": "npm:7.26.9"
     "@babel/runtime": "npm:7.26.10"
     "@blockaid/client": "npm:0.58.0"
+    "@d11/react-native-fast-image": "npm:8.13.0"
     "@dr.pogodin/react-native-fs": "npm:2.35.1"
     "@eslint/js": "npm:8.57.1"
     "@fnando/eslint-plugin-consistent-import": "npm:*"

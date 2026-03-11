@@ -6,12 +6,13 @@ import {
 } from "services/storage/storageFactory";
 
 /**
- * Clears the hash key and temporary store
+ * Clears the hash key, temporary store, and derived key cache from secure storage
  */
 const clearTemporaryData = async (): Promise<void> => {
   await Promise.all([
     secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.HASH_KEY),
     secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE),
+    secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.DERIVED_KEY),
   ]);
 };
 
