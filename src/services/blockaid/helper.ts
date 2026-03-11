@@ -548,17 +548,52 @@ export const getTransactionBalanceChanges = (
       const isCredit = hasIn;
 
       const { asset } = diff;
-
-      const assetCode = asset.symbol ?? asset.code ?? "";
-      const assetIssuer = asset.issuer ?? asset.address;
-      const decimals = asset.decimals ?? DEFAULT_DECIMALS;
       const isNative = asset.type === "NATIVE";
+
+      let code: string | null;
+      if (typeof asset.symbol === "string") {
+        code = asset.symbol;
+      } else if (typeof asset.code === "string") {
+        code = asset.code;
+      } else {
+        code = null;
+      }
+
+      let assetIssuer: string | null | undefined;
+      if (isNative) {
+        assetIssuer = undefined;
+      } else if (typeof asset.issuer === "string") {
+        assetIssuer = asset.issuer;
+      } else if (typeof asset.address === "string") {
+        assetIssuer = asset.address;
+      } else {
+        assetIssuer = null;
+      }
+
+      if (code === null || assetIssuer === null) {
+        return undefined;
+      }
+
+      const rawDecimals = asset.decimals;
+      if (
+        rawDecimals !== undefined &&
+        !(
+          typeof rawDecimals === "number" &&
+          Number.isFinite(rawDecimals) &&
+          Number.isInteger(rawDecimals) &&
+          rawDecimals >= 0
+        )
+      ) {
+        return undefined;
+      }
+      const decimals = rawDecimals ?? DEFAULT_DECIMALS;
+
       const amount = new BigNumber(rawInteger as number | string).dividedBy(
         new BigNumber(10).pow(decimals),
       );
 
       return {
-        assetCode,
+        assetCode: code,
         assetIssuer,
         isNative,
         amount,
