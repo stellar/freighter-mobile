@@ -283,7 +283,13 @@
     "share": "Compartilhar",
     "reload": "Recarregar",
     "closeAllTabs": "Fechar todas as abas",
-    "closeThisTab": "Fechar esta aba"
+    "closeThisTab": "Fechar esta aba",
+    "defi": "DeFi",
+    "explore": "Explorar",
+    "open": "Abrir",
+    "domain": "Domínio",
+    "tags": "Tags",
+    "description": "Descrição"
   },
   "history": {
     "title": "Histórico",

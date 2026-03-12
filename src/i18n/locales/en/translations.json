@@ -319,7 +319,13 @@
     "share": "Share",
     "reload": "Reload",
     "closeAllTabs": "Close all tabs",
-    "closeThisTab": "Close tab"
+    "closeThisTab": "Close tab",
+    "defi": "DeFi",
+    "explore": "Explore",
+    "open": "Open",
+    "domain": "Domain",
+    "tags": "Tags",
+    "description": "Description"
   },
   "history": {
     "title": "History",

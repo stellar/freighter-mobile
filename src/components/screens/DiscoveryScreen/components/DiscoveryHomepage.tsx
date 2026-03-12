@@ -1,5 +1,11 @@
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { images } from "assets/images";
 import { TrendingCarousel, TrendingItem } from "components/TrendingCarousel";
+import ExpandedSectionView from "components/screens/DiscoveryScreen/components/ExpandedSectionView";
+import ProtocolDetailsBottomSheet from "components/screens/DiscoveryScreen/components/ProtocolDetailsBottomSheet";
+import VerticalListSection, {
+  VerticalListItem,
+} from "components/screens/DiscoveryScreen/components/VerticalListSection";
 import { App } from "components/sds/App";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
@@ -13,12 +19,24 @@ import { useBrowserTabsStore, BrowserTab } from "ducks/browserTabs";
 import { useProtocolsStore } from "ducks/protocols";
 import { getFaviconUrl, isHomepageUrl } from "helpers/browser";
 import { pxValue } from "helpers/dimensions";
-import { findMatchedProtocol } from "helpers/protocols";
+import { findMatchedProtocol, getDisplayHost } from "helpers/protocols";
 import { captureTabScreenshot } from "helpers/screenshots";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
-import React, { useMemo, useRef, useCallback, useEffect } from "react";
-import { View, FlatList, TouchableOpacity } from "react-native";
+import React, {
+  useMemo,
+  useRef,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
+import {
+  Animated,
+  View,
+  FlatList,
+  TouchableOpacity,
+  ScrollView,
+} from "react-native";
 import ViewShot from "react-native-view-shot";
 
 interface DiscoveryHomepageProps {
@@ -34,6 +52,45 @@ interface HorizontalListSectionProps {
   onScrollEnd: () => Promise<void>;
 }
 
+interface ExpandedSection {
+  title: string;
+  items: VerticalListItem[];
+}
+
+interface ProtocolDetailsData {
+  name: string;
+  iconUrl: string;
+  websiteUrl: string;
+  description: string;
+  tags: string[];
+}
+
+const protocolToListItem = (protocol: DiscoverProtocol): VerticalListItem => ({
+  id: protocol.websiteUrl,
+  name: protocol.name,
+  subtitle: protocol.tags[0] ?? "",
+  iconUrl: protocol.iconUrl,
+  websiteUrl: protocol.websiteUrl,
+  description: protocol.description,
+  tags: protocol.tags,
+});
+
+const tabToListItem = (
+  tab: BrowserTab,
+  protocols: DiscoverProtocol[],
+): VerticalListItem => {
+  const matched = findMatchedProtocol({ protocols, searchUrl: tab.url });
+  return {
+    id: tab.id,
+    name: matched?.name ?? tab.title,
+    subtitle: matched?.tags[0] ?? getDisplayHost(tab.url) ?? "",
+    iconUrl: matched?.iconUrl ?? getFaviconUrl(tab.url),
+    websiteUrl: matched?.websiteUrl ?? tab.url,
+    description: matched?.description ?? "",
+    tags: matched?.tags ?? [],
+  };
+};
+
 const HorizontalListSection: React.FC<HorizontalListSectionProps> = React.memo(
   ({ protocols, title, icon, data, onItemPress, onScrollEnd }) => {
     const { themeColors } = useColors();
@@ -42,7 +99,6 @@ const HorizontalListSection: React.FC<HorizontalListSectionProps> = React.memo(
       onScrollEnd();
     }, [onScrollEnd]);
 
-    // Memoize renderSiteItem to avoid unnecessary re-renders
     const renderSiteItem = useCallback(
       (props: { item: DiscoverProtocol | BrowserTab }) => {
         const getSiteName = (
@@ -52,7 +108,6 @@ const HorizontalListSection: React.FC<HorizontalListSectionProps> = React.memo(
             return siteItem.name;
           }
 
-          // Try to relate with some of the known protocols for copy consistency
           const matchedProtocolSite = findMatchedProtocol({
             protocols,
             searchUrl: siteItem.url,
@@ -111,7 +166,6 @@ const HorizontalListSection: React.FC<HorizontalListSectionProps> = React.memo(
       [onItemPress, protocols, themeColors.background.tertiary],
     );
 
-    // Memoize contentContainerStyle to avoid unnecessary re-renders
     const contentContainerStyle = useMemo(
       () => ({
         paddingHorizontal: pxValue(DEFAULT_PADDING),
@@ -155,6 +209,12 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
       useBrowserTabsStore();
     const { protocols } = useProtocolsStore();
     const viewShotRef = useRef<ViewShot>(null);
+    const protocolDetailsRef = useRef<BottomSheetModal>(null);
+    const [expandedSection, setExpandedSection] =
+      useState<ExpandedSection | null>(null);
+    const [selectedProtocol, setSelectedProtocol] =
+      useState<ProtocolDetailsData | null>(null);
+    const expandedFadeAnim = useRef(new Animated.Value(0)).current;
 
     const handleSitePress = useCallback(
       (url: string) => {
@@ -183,6 +243,24 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
       [tabs],
     );
 
+    const recentItems: VerticalListItem[] = useMemo(
+      () => recentTabs.map((tab) => tabToListItem(tab, protocols)),
+      [recentTabs, protocols],
+    );
+
+    const defiItems: VerticalListItem[] = useMemo(
+      () =>
+        protocols
+          .filter((p) => p.tags.includes("DeFi"))
+          .map(protocolToListItem),
+      [protocols],
+    );
+
+    const exploreItems: VerticalListItem[] = useMemo(
+      () => protocols.map(protocolToListItem),
+      [protocols],
+    );
+
     const captureScreenshot = useCallback(async () => {
       await captureTabScreenshot({
         viewShotRef: viewShotRef.current,
@@ -201,6 +279,85 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [showTabOverview]);
 
+    const handleItemOpen = useCallback(
+      (item: VerticalListItem) => {
+        handleSitePress(item.websiteUrl);
+      },
+      [handleSitePress],
+    );
+
+    const handleItemPress = useCallback((item: VerticalListItem) => {
+      setSelectedProtocol({
+        name: item.name,
+        iconUrl: item.iconUrl,
+        websiteUrl: item.websiteUrl,
+        description: item.description,
+        tags: item.tags,
+      });
+      protocolDetailsRef.current?.present();
+    }, []);
+
+    const handleProtocolOpen = useCallback(
+      (url: string) => {
+        handleSitePress(url);
+      },
+      [handleSitePress],
+    );
+
+    const handleExpand = useCallback(
+      (section: ExpandedSection) => {
+        expandedFadeAnim.setValue(0);
+        setExpandedSection(section);
+      },
+      [expandedFadeAnim],
+    );
+
+    // Start fade-in after the expanded view has mounted
+    useEffect(() => {
+      if (expandedSection) {
+        Animated.timing(expandedFadeAnim, {
+          toValue: 1,
+          duration: BROWSER_CONSTANTS.TAB_OPEN_ANIMATION_DURATION,
+          useNativeDriver: true,
+        }).start();
+      }
+    }, [expandedSection, expandedFadeAnim]);
+
+    const handleCollapseSection = useCallback(() => {
+      Animated.timing(expandedFadeAnim, {
+        toValue: 0,
+        duration: BROWSER_CONSTANTS.TAB_CLOSE_ANIMATION_DURATION,
+        useNativeDriver: true,
+      }).start(() => {
+        setExpandedSection(null);
+      });
+    }, [expandedFadeAnim]);
+
+    const handleExpandRecent = useCallback(() => {
+      handleExpand({
+        title: t("discovery.recent"),
+        items: recentItems,
+      });
+    }, [handleExpand, t, recentItems]);
+
+    const handleExpandDefi = useCallback(() => {
+      handleExpand({
+        title: t("discovery.defi"),
+        items: defiItems,
+      });
+    }, [handleExpand, t, defiItems]);
+
+    const handleExpandExplore = useCallback(() => {
+      handleExpand({
+        title: t("discovery.explore"),
+        items: exploreItems,
+      });
+    }, [handleExpand, t, exploreItems]);
+
+    const handleScrollEnd = useCallback(() => {
+      captureScreenshot();
+    }, [captureScreenshot]);
+
     return (
       <ViewShot
         ref={viewShotRef}
@@ -213,7 +370,12 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
         }}
         style={{ flex: 1 }}
       >
-        <View className="flex-1 bg-background-primary">
+        <ScrollView
+          className="flex-1 bg-background-primary"
+          showsVerticalScrollIndicator={false}
+          onScrollEndDrag={handleScrollEnd}
+          pointerEvents={expandedSection ? "none" : "auto"}
+        >
           {trendingItems.length > 0 && (
             <View className="mt-8">
               <TrendingCarousel
@@ -223,6 +385,30 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
               />
             </View>
           )}
+
+          <VerticalListSection
+            title={t("discovery.recent")}
+            items={recentItems}
+            onTitlePress={handleExpandRecent}
+            onItemOpen={handleItemOpen}
+            onItemPress={handleItemPress}
+          />
+
+          <VerticalListSection
+            title={t("discovery.defi")}
+            items={defiItems}
+            onTitlePress={handleExpandDefi}
+            onItemOpen={handleItemOpen}
+            onItemPress={handleItemPress}
+          />
+
+          <VerticalListSection
+            title={t("discovery.explore")}
+            items={exploreItems}
+            onTitlePress={handleExpandExplore}
+            onItemOpen={handleItemOpen}
+            onItemPress={handleItemPress}
+          />
 
           {recentTabs.length > 0 && (
             <HorizontalListSection
@@ -247,14 +433,42 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
           )}
 
           <View
-            className="bg-background-tertiary p-4 pr-5 rounded-2xl mt-4"
+            className="bg-background-tertiary p-4 pr-5 rounded-2xl mt-4 mb-4"
             style={{ marginHorizontal: pxValue(DEFAULT_PADDING) }}
           >
             <Text xs secondary medium>
               {t("discovery.legalDisclaimer")}
             </Text>
           </View>
-        </View>
+        </ScrollView>
+
+        {expandedSection && (
+          <Animated.View
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              opacity: expandedFadeAnim,
+            }}
+          >
+            <ExpandedSectionView
+              title={expandedSection.title}
+              items={expandedSection.items}
+              onBack={handleCollapseSection}
+              onItemOpen={handleItemOpen}
+              onItemPress={handleItemPress}
+              onScrollEnd={handleScrollEnd}
+            />
+          </Animated.View>
+        )}
+
+        <ProtocolDetailsBottomSheet
+          protocol={selectedProtocol}
+          modalRef={protocolDetailsRef}
+          onOpen={handleProtocolOpen}
+        />
       </ViewShot>
     );
   },
