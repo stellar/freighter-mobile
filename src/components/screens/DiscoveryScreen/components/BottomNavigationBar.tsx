@@ -30,6 +30,7 @@ interface BottomNavigationBarProps {
   onUrlSubmit: () => void;
   onShowTabs: () => void;
   onCancel: () => void;
+  onAvatarPress: () => void;
   tabsCount: number;
   canGoBack: boolean;
   onGoBack: () => void;
@@ -43,6 +44,7 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
     onUrlSubmit,
     onShowTabs,
     onCancel,
+    onAvatarPress,
     tabsCount,
     canGoBack,
     onGoBack,
@@ -146,7 +148,9 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
       <Animated.View style={{ transform: [{ translateY: keyboardOffset }] }}>
         <View className="flex-row items-center gap-4 bg-background-primary border-t border-border-primary px-6 py-4">
           {!isFocused && (
-            <Avatar size="lg" publicAddress={account?.publicKey ?? ""} />
+            <TouchableOpacity onPress={onAvatarPress}>
+              <Avatar size="lg" publicAddress={account?.publicKey ?? ""} />
+            </TouchableOpacity>
           )}
 
           <View className="flex-1 h-[40px] flex-row items-center rounded-lg bg-background-tertiary px-3 gap-2">

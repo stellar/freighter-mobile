@@ -1,3 +1,4 @@
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import { BaseLayout } from "components/layout/BaseLayout";
 import {
@@ -5,16 +6,19 @@ import {
   TabOverview,
   WebViewContainer,
 } from "components/screens/DiscoveryScreen/components";
+import ManageAccounts from "components/screens/HomeScreen/ManageAccounts";
 import { Text } from "components/sds/Typography";
 import { BROWSER_CONSTANTS, DEFAULT_PADDING } from "config/constants";
 import { logger } from "config/logger";
 import { MainTabStackParamList, MAIN_TAB_ROUTES } from "config/routes";
+import { useAuthenticationStore } from "ducks/auth";
 import { useBrowserTabsStore } from "ducks/browserTabs";
 import { WALLET_KIT_MT_REDIRECT_NATIVE } from "ducks/walletKit";
 import { formatDisplayUrl, getFaviconUrl } from "helpers/browser";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBrowserActions } from "hooks/useBrowserActions";
+import useGetActiveAccount from "hooks/useGetActiveAccount";
 import useKeyboardVisible from "hooks/useKeyboardVisible";
 import React, { useRef, useState, useCallback, useEffect } from "react";
 import { Animated, Keyboard, Pressable, StyleSheet, View } from "react-native";
@@ -28,6 +32,7 @@ type DiscoveryScreenProps = BottomTabScreenProps<
 
 export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
   const webViewRef = useRef<WebView>(null);
+  const manageAccountsRef = useRef<BottomSheetModal>(null);
   const [inputUrl, setInputUrl] = useState("");
   const [newTabId, setNewTabId] = useState<string | null>(null);
   const mainContentFadeAnim = useRef(new Animated.Value(1)).current;
@@ -35,6 +40,8 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
   const insets = useSafeAreaInsets();
   const isKeyboardVisible = useKeyboardVisible();
   const { t } = useAppTranslation();
+  const { account } = useGetActiveAccount();
+  const { allAccounts } = useAuthenticationStore();
 
   const {
     tabs,
@@ -52,6 +59,10 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
 
   // Get browser actions from custom hook
   const browserActions = useBrowserActions(webViewRef);
+
+  const handleAvatarPress = useCallback(() => {
+    manageAccountsRef.current?.present();
+  }, []);
 
   // Adds a new default homepage tab
   const handleNewTab = useCallback(() => {
@@ -273,6 +284,7 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
           onUrlSubmit={handleUrlSubmit}
           onShowTabs={handleShowTabs}
           onCancel={handleCancel}
+          onAvatarPress={handleAvatarPress}
           tabsCount={tabs.length}
           canGoBack={activeTab.canGoBack}
           onGoBack={browserActions.handleGoBack}
@@ -304,6 +316,13 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
           newTabId={newTabId}
         />
       </Animated.View>
+
+      <ManageAccounts
+        accounts={allAccounts}
+        activeAccount={account}
+        bottomSheetRef={manageAccountsRef}
+        showAddWallet={false}
+      />
     </BaseLayout>
   );
 };
