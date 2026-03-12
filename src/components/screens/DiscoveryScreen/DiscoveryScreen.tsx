@@ -69,7 +69,7 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
     // Clear the new tab ID after animation ends
     setTimeout(() => {
       setNewTabId(null);
-    }, BROWSER_CONSTANTS.TAB_CLOSE_ANIMATION_DURATION);
+    }, BROWSER_CONSTANTS.CLOSE_ANIMATION_DURATION);
   }, [addTab, setShowTabOverview]);
 
   // Initialize with first tab if none exists
@@ -94,12 +94,12 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
       Animated.parallel([
         Animated.timing(mainContentFadeAnim, {
           toValue: 0,
-          duration: BROWSER_CONSTANTS.TAB_OPEN_ANIMATION_DURATION,
+          duration: BROWSER_CONSTANTS.OPEN_ANIMATION_DURATION,
           useNativeDriver: true,
         }),
         Animated.timing(tabOverviewFadeAnim, {
           toValue: 1,
-          duration: BROWSER_CONSTANTS.TAB_OPEN_ANIMATION_DURATION,
+          duration: BROWSER_CONSTANTS.OPEN_ANIMATION_DURATION,
           useNativeDriver: true,
         }),
       ]).start();
@@ -108,12 +108,12 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
       Animated.parallel([
         Animated.timing(mainContentFadeAnim, {
           toValue: 1,
-          duration: BROWSER_CONSTANTS.TAB_CLOSE_ANIMATION_DURATION,
+          duration: BROWSER_CONSTANTS.CLOSE_ANIMATION_DURATION,
           useNativeDriver: true,
         }),
         Animated.timing(tabOverviewFadeAnim, {
           toValue: 0,
-          duration: BROWSER_CONSTANTS.TAB_CLOSE_ANIMATION_DURATION,
+          duration: BROWSER_CONSTANTS.CLOSE_ANIMATION_DURATION,
           useNativeDriver: true,
         }),
       ]).start();

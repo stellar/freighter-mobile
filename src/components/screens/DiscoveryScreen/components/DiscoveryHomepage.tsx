@@ -317,7 +317,7 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
       if (expandedSection) {
         Animated.timing(expandedFadeAnim, {
           toValue: 1,
-          duration: BROWSER_CONSTANTS.TAB_OPEN_ANIMATION_DURATION,
+          duration: BROWSER_CONSTANTS.OPEN_ANIMATION_DURATION,
           useNativeDriver: true,
         }).start();
       }
@@ -326,7 +326,7 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
     const handleCollapseSection = useCallback(() => {
       Animated.timing(expandedFadeAnim, {
         toValue: 0,
-        duration: BROWSER_CONSTANTS.TAB_CLOSE_ANIMATION_DURATION,
+        duration: BROWSER_CONSTANTS.CLOSE_ANIMATION_DURATION,
         useNativeDriver: true,
       }).start(() => {
         setExpandedSection(null);
