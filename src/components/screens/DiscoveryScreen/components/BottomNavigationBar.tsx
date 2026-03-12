@@ -153,18 +153,22 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
             {isFocused ? (
               <Icon.SearchMd size={20} color={themeColors.text.secondary} />
             ) : (
-              <TouchableOpacity
-                onPress={onGoBack}
-                disabled={!canGoBack}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Icon.ChevronLeft
-                  size={20}
-                  color={
-                    canGoBack ? themeColors.base[1] : themeColors.text.secondary
-                  }
-                />
-              </TouchableOpacity>
+              canGoBack && (
+                <TouchableOpacity
+                  onPress={onGoBack}
+                  disabled={!canGoBack}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Icon.ChevronLeft
+                    size={20}
+                    color={
+                      canGoBack
+                        ? themeColors.base[1]
+                        : themeColors.text.secondary
+                    }
+                  />
+                </TouchableOpacity>
+              )
             )}
 
             {/* URL display strategy:
