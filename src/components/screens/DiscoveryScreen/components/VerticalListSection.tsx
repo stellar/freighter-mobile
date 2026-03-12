@@ -1,11 +1,9 @@
 import ProtocolRow from "components/screens/DiscoveryScreen/components/ProtocolRow";
-import Icon from "components/sds/Icon";
-import { Text } from "components/sds/Typography";
-import { DEFAULT_PADDING, DEFAULT_PRESS_DELAY } from "config/constants";
+import SectionTitle from "components/screens/DiscoveryScreen/components/SectionTitle";
+import { DEFAULT_PADDING } from "config/constants";
 import { pxValue } from "helpers/dimensions";
-import useColors from "hooks/useColors";
-import React, { useCallback } from "react";
-import { View, TouchableOpacity } from "react-native";
+import React from "react";
+import { View } from "react-native";
 
 export interface VerticalListItem {
   id: string;
@@ -29,13 +27,7 @@ interface VerticalListSectionProps {
 
 const VerticalListSection: React.FC<VerticalListSectionProps> = React.memo(
   ({ title, items, onTitlePress, onItemOpen, onItemPress }) => {
-    const { themeColors } = useColors();
-
     const visibleItems = items.slice(0, MAX_VISIBLE_ITEMS);
-
-    const handleTitlePress = useCallback(() => {
-      onTitlePress();
-    }, [onTitlePress]);
 
     if (visibleItems.length === 0) return null;
 
@@ -44,16 +36,7 @@ const VerticalListSection: React.FC<VerticalListSectionProps> = React.memo(
         className="mt-8"
         style={{ paddingHorizontal: pxValue(DEFAULT_PADDING) }}
       >
-        <TouchableOpacity
-          className="flex-row items-center gap-1 mb-5"
-          onPress={handleTitlePress}
-          delayPressIn={DEFAULT_PRESS_DELAY}
-        >
-          <Text md semiBold>
-            {title}
-          </Text>
-          <Icon.ChevronRight size={16} color={themeColors.text.primary} />
-        </TouchableOpacity>
+        <SectionTitle title={title} onPress={onTitlePress} className="mb-5" />
 
         <View className="gap-5">
           {visibleItems.map((item) => (

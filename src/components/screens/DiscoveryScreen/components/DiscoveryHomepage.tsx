@@ -3,6 +3,7 @@ import { images } from "assets/images";
 import { TrendingCarousel, TrendingItem } from "components/TrendingCarousel";
 import ExpandedSectionView from "components/screens/DiscoveryScreen/components/ExpandedSectionView";
 import ProtocolDetailsBottomSheet from "components/screens/DiscoveryScreen/components/ProtocolDetailsBottomSheet";
+import SectionTitle from "components/screens/DiscoveryScreen/components/SectionTitle";
 import VerticalListSection, {
   VerticalListItem,
 } from "components/screens/DiscoveryScreen/components/VerticalListSection";
@@ -347,6 +348,13 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
       });
     }, [handleExpand, t, defiItems]);
 
+    const handleExpandTrending = useCallback(() => {
+      handleExpand({
+        title: t("discovery.trending"),
+        items: exploreItems,
+      });
+    }, [handleExpand, t, exploreItems]);
+
     const handleExpandExplore = useCallback(() => {
       handleExpand({
         title: t("discovery.explore"),
@@ -378,6 +386,12 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
         >
           {trendingItems.length > 0 && (
             <View className="mt-8">
+              <SectionTitle
+                title={t("discovery.trending")}
+                onPress={handleExpandTrending}
+                className="mb-3"
+                style={{ paddingLeft: pxValue(DEFAULT_PADDING) }}
+              />
               <TrendingCarousel
                 items={trendingItems}
                 onItemPress={(item) => handleSitePress(item.id)}
