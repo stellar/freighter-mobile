@@ -378,6 +378,12 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
         }}
         style={{ flex: 1 }}
       >
+        <View className="items-center mt-4 pb-4 bg-background-primary">
+          <Text md medium>
+            {t("discovery.discover")}
+          </Text>
+        </View>
+
         <ScrollView
           className="flex-1 bg-background-primary"
           showsVerticalScrollIndicator={false}
@@ -385,7 +391,7 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
           pointerEvents={expandedSection ? "none" : "auto"}
         >
           {trendingItems.length > 0 && (
-            <View className="mt-8">
+            <View>
               <SectionTitle
                 title={t("discovery.trending")}
                 onPress={handleExpandTrending}

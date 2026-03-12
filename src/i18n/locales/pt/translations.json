@@ -272,6 +272,7 @@
     "disconnectAllSessions": "Desconectar todos"
   },
   "discovery": {
+    "discover": "Descobrir",
     "defaultTabTitle": "Nova Aba",
     "recent": "Recentes",
     "trending": "Em Alta",

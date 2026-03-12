@@ -308,6 +308,7 @@
     "disconnectAllSessions": "Disconnect all"
   },
   "discovery": {
+    "discover": "Discover",
     "defaultTabTitle": "New Tab",
     "recent": "Recent",
     "trending": "Trending",
