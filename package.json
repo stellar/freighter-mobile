@@ -65,6 +65,7 @@
     "@amplitude/experiment-react-native-client": "1.5.3",
     "@babel/runtime": "7.26.10",
     "@blockaid/client": "0.58.0",
+    "@d11/react-native-fast-image": "8.13.0",
     "@dr.pogodin/react-native-fs": "2.35.1",
     "@gorhom/bottom-sheet": "5.2.6",
     "@react-native-async-storage/async-storage": "2.2.0",

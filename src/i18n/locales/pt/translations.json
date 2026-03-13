@@ -252,7 +252,11 @@
     "useTouchIdInstead": "Usar Touch ID",
     "useOpticIdInstead": "Usar Optic ID",
     "useIrisInstead": "Usar Iris",
-    "enterPasswordInstead": "Usar senha"
+    "enterPasswordInstead": "Usar senha",
+    "errorUnlockingWalletTitle": "Erro ao desbloquear carteira",
+    "errorUnlockingWalletMessage": "Se o problema persistir, toque em \"Esqueci minha senha\" e reimporte sua carteira.",
+    "failedToLoadAccountTitle": "Conta não carregada",
+    "failedToLoadAccountMessage": "Sua conta não pôde ser carregada após o login. Tente novamente."
   },
   "onboarding": {
     "continue": "Continuar",
@@ -367,7 +371,9 @@
       "invalidMnemonicPhrase": "Frase inválida - as palavras devem estar na ordem correta, em minúsculas e separadas por espaços",
       "failedToCreateAccount": "Falha ao criar conta. Por favor, tente novamente.",
       "accountAlreadyExists": "Conta já existe",
-      "failedToImportSecretKey": "Falha ao importar chave secreta"
+      "failedToImportSecretKey": "Falha ao importar chave secreta",
+      "failedToReEncryptData": "Falha ao re-criptografar dados. Por favor, faça login novamente.",
+      "failedToDecryptData": "Falha ao descriptografar dados. Por favor, faça login novamente."
     },
     "account": "Conta {{number}}",
     "faceId": {
@@ -1097,7 +1103,8 @@
       "actions": "Ações",
       "refresh": "🔄 Atualizar",
       "clearEvents": "Limpar Eventos",
-      "simulateSessionExpiry": "⏰ Simular Expiração de Sessão"
+      "simulateSessionExpiry": "⏰ Simular Expiração de Sessão",
+      "resetIconsCache": "Redefinir Cache de Ícones"
     }
   },
   "debug": {

@@ -1,5 +1,4 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { logos } from "assets/logos";
 import {
   CIRCLE_USDC_CONTRACT,
   CIRCLE_USDC_ISSUER,
@@ -15,27 +14,46 @@ import { useVerifiedTokensStore } from "ducks/verifiedTokens";
 import { getTokenIdentifier, isLiquidityPool } from "helpers/balances";
 import { debug } from "helpers/debug";
 import { getIconUrl } from "helpers/getIconUrl";
+import { validateIconUrl } from "helpers/validateIconUrl";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
 /**
  * Represents a token icon with its source URL and network context
+ *
+ * Note: While we store the imageUrl in this interface, the actual image data
+ * is cached in the native iOS/Android image cache via FastImage.preload().
+ * This provides two-tier caching:
+ * 1. URL metadata cached in AsyncStorage (persisted via Zustand)
+ * 2. Actual image data cached in native cache (managed by FastImage/SDWebImage/Glide)
+ *
  * @property {string} imageUrl - The URL of the icon image
  * @property {NETWORK_URLS} networkUrl - The network URL where this icon was fetched from
+ * @property {boolean} [isValidated] - Whether the icon URL has been validated and cached to native storage
+ * @property {boolean | null} [isValid] - Validation result (null = not validated, true = valid and cached, false = invalid)
+ * @property {string} [lastValidImageUrl] - Last known valid image URL to avoid flashing during refresh/validation
  */
 export interface Icon {
   imageUrl: string;
   network: NETWORKS;
+  isValidated?: boolean;
+  isValid?: boolean | null;
+  lastValidImageUrl?: string;
 }
+
+export const TOKEN_ICONS_STORAGE_KEY = "token-icons-storage";
 
 /**
  * State and actions for managing token icons
  * @property {Record<string, Icon>} icons - Cached icon data mapped by token identifier
  * @property {number | null} lastRefreshed - Timestamp of the last icon refresh operation
+ * @property {Record<string, boolean>} failedTokenCodes - Map of token identifiers (code:issuer) that failed validation
+ *   Used to prevent re-validating the same token icon across different components
  */
 interface TokenIconsState {
   icons: Record<string, Icon>;
   lastRefreshed: number | null;
+  failedTokenCodes: Record<string, boolean>;
   /**
    * Caches a single token icon
    * @param {Object} params - Function parameters
@@ -74,6 +92,16 @@ interface TokenIconsState {
    * Processes icons in batches to avoid overwhelming the network
    */
   refreshIcons: () => void;
+  /**
+   * Lazy validation trigger for a token icon
+   * Only validates if not already validated
+   * @param {string} identifier - The token identifier to validate
+   */
+  validateIconOnAccess: (identifier: string) => Promise<void>;
+  /**
+   * Clears cached icons and validation state (dev/testing)
+   */
+  resetIconsCache: () => void;
 }
 
 /** Number of icons to process in each batch */
@@ -82,26 +110,17 @@ const BATCH_SIZE = 3;
 const BATCH_DELAY = 1000;
 
 /**
- * Processes a batch of icons for refresh in a low-priority background task
+ * Processes icons for refresh in batches with a delay between each batch
+ * to keep the work low-priority. Failed validations are reset so they are
+ * retried on next access.
  *
- * This function:
- * 1. Takes a batch of icons from the input array
- * 2. Processes them in parallel
- * 3. Updates the store with refreshed icons
- * 4. Schedules the next batch with a delay
- *
- * @param {Object} params - Function parameters
- * @param {[string, Icon][]} params.entries - Array of icon entries to process
- * @param {number} params.batchIndex - Current batch index for debugging
- * @param {Record<string, Icon>} params.updatedIcons - Accumulator for updated icons
- * @param {number} params.startTime - Start time of the refresh operation
- * @param {Function} params.set - Zustand set function to update store
+ * @param params.entries       - Remaining [cacheKey, Icon] pairs to process
+ * @param params.batchIndex    - Index used for debug logging
+ * @param params.set           - Zustand set function
  */
 const processIconBatches = async (params: {
   entries: [string, Icon][];
   batchIndex: number;
-  updatedIcons: Record<string, Icon>;
-  startTime: number;
   set: (
     partial:
       | TokenIconsState
@@ -111,58 +130,71 @@ const processIconBatches = async (params: {
         ) => TokenIconsState | Partial<TokenIconsState>),
   ) => void;
 }) => {
-  const { entries, batchIndex, updatedIcons, startTime, set } = params;
+  const { entries, batchIndex, set } = params;
   const batch = entries.slice(0, BATCH_SIZE);
   const remainingEntries = entries.slice(BATCH_SIZE);
 
-  // Process current batch
+  // Per-batch accumulator — isolated so earlier batches can't overwrite later ones.
+  const batchUpdates: Record<string, Icon> = {};
+
   await Promise.all(
     batch.map(async ([cacheKey, icon]) => {
       try {
-        // Parse the cache key to get token details
-        const [tokenCode, issuerKey] = cacheKey.split(":");
+        // Derive token code and issuer from the cache key.
+        // indexOf + slice is used instead of split(":") so that tokens whose
+        // issuer key itself contains a colon (rare but possible in theory)
+        // aren't silently truncated by a destructuring split.
+        const colonIdx = cacheKey.indexOf(":");
+        const tokenCode = cacheKey.slice(0, colonIdx);
+        const issuerKey = cacheKey.slice(colonIdx + 1);
         const imageUrl = await getIconUrl({
-          asset: {
-            code: tokenCode,
-            issuer: issuerKey,
-          },
+          asset: { code: tokenCode, issuer: issuerKey },
           network: icon.network,
         });
 
-        updatedIcons[cacheKey] = {
+        if (!imageUrl && icon.lastValidImageUrl) {
+          // No new URL — keep existing icon.
+          batchUpdates[cacheKey] = { ...icon };
+          return;
+        }
+
+        const urlUnchanged = imageUrl === icon.imageUrl;
+        // Reset validation when the URL changed or the last result was a failure,
+        // so validateIconOnAccess will retry on next access.
+        const wasFailedValidation = icon.isValid === false;
+        const shouldResetValidation = !urlUnchanged || wasFailedValidation;
+
+        batchUpdates[cacheKey] = {
           imageUrl,
           network: icon.network,
+          isValidated: shouldResetValidation ? false : icon.isValidated,
+          isValid: shouldResetValidation ? null : icon.isValid,
+          lastValidImageUrl:
+            icon.lastValidImageUrl ??
+            (icon.isValid ? icon.imageUrl : undefined),
         };
-      } catch (error) {
-        // Keep the existing icon URL if refresh fails
-        updatedIcons[cacheKey] = icon;
+      } catch {
+        // Network error during refresh — preserve current state.
+        batchUpdates[cacheKey] = { ...icon };
       }
     }),
   );
 
-  // Update icons after each batch
+  // Apply only this batch's updates.
   set((state) => ({
-    icons: {
-      ...state.icons,
-      ...updatedIcons,
-    },
+    icons: { ...state.icons, ...batchUpdates },
   }));
 
-  // Process next batch if there are remaining entries
   if (remainingEntries.length > 0) {
     setTimeout(() => {
       processIconBatches({
         entries: remainingEntries,
         batchIndex: batchIndex + 1,
-        updatedIcons,
-        startTime,
         set,
       });
     }, BATCH_DELAY);
   } else {
-    // All batches completed, update lastRefreshed
-    const now = Date.now();
-    set({ lastRefreshed: now });
+    set({ lastRefreshed: Date.now() });
   }
 };
 
@@ -195,40 +227,119 @@ export const useTokenIconsStore = create<TokenIconsState>()(
     (set, get) => ({
       icons: {},
       lastRefreshed: null,
+      failedTokenCodes: {},
+      resetIconsCache: () => {
+        set({
+          icons: {},
+          lastRefreshed: null,
+          failedTokenCodes: {},
+        });
+      },
       cacheTokenIcons: ({ icons }) => {
-        set((state) => ({
-          icons: {
-            ...state.icons,
-            ...icons,
-          },
-        }));
+        set((state) => {
+          const mergedIcons = Object.fromEntries(
+            Object.entries(icons).map(([key, icon]) => {
+              const existingIcon = state.icons[key];
+              const nextIsValidated =
+                icon.isValidated ?? existingIcon?.isValidated ?? false;
+              const nextIsValid = icon.isValid ?? existingIcon?.isValid ?? null;
+              const nextIcon = {
+                ...existingIcon,
+                ...icon,
+                isValidated: nextIsValidated,
+                isValid: nextIsValid,
+              };
+              const nextLastValidImageUrl = nextIsValid
+                ? icon.imageUrl ||
+                  existingIcon?.imageUrl ||
+                  existingIcon?.lastValidImageUrl
+                : (icon.lastValidImageUrl ?? existingIcon?.lastValidImageUrl);
+
+              return [
+                key,
+                {
+                  ...nextIcon,
+                  lastValidImageUrl: nextLastValidImageUrl,
+                },
+              ];
+            }),
+          );
+
+          return {
+            icons: {
+              ...state.icons,
+              ...mergedIcons,
+            },
+          };
+        });
       },
       cacheTokenListIcons: async ({ network }) => {
         const { getVerifiedTokens } = useVerifiedTokensStore.getState();
         const verifiedTokens = await getVerifiedTokens({ network });
+        const existingIcons = get().icons;
         const iconMap = verifiedTokens.reduce(
           (prev, curr) => {
             if (curr.icon) {
-              let iconUrl = curr.icon;
-              if (
+              // Skip caching mainnet USDC - it uses bundled logo at component layer
+              const isMainnetUSDC =
                 network === NETWORKS.PUBLIC &&
                 curr.code === USDC_CODE &&
                 (curr.issuer === CIRCLE_USDC_ISSUER ||
-                  curr.contract === CIRCLE_USDC_CONTRACT)
-              ) {
-                iconUrl = logos.usdc as unknown as string;
+                  curr.contract === CIRCLE_USDC_CONTRACT);
+
+              if (isMainnetUSDC) {
+                return prev;
               }
+
+              const iconUrl = curr.icon;
+              const isValidated = false;
+              const isValid: boolean | null = null;
+              const existingIcon = existingIcons[`${curr.code}:${curr.issuer}`];
+
+              const shouldUseExistingValidation =
+                existingIcon &&
+                existingIcon.imageUrl === iconUrl &&
+                existingIcon.network === network;
+              let lastValidImageUrl = existingIcon?.lastValidImageUrl;
+              if (!shouldUseExistingValidation && isValid) {
+                lastValidImageUrl = iconUrl;
+              }
+
               const icon: Icon = {
                 imageUrl: iconUrl,
                 network,
+                isValidated: shouldUseExistingValidation
+                  ? existingIcon.isValidated
+                  : isValidated,
+                isValid: shouldUseExistingValidation
+                  ? existingIcon.isValid
+                  : isValid,
+                lastValidImageUrl,
               };
               // eslint-disable-next-line no-param-reassign
               prev[`${curr.code}:${curr.issuer}`] = icon;
 
               // We should cache icons by contract ID as well, to be used when adding new tokens by C address.
               if (curr.contract) {
+                const existingContractIcon =
+                  existingIcons[`${curr.code}:${curr.contract}`];
+                const shouldUseExistingContractValidation =
+                  existingContractIcon &&
+                  existingContractIcon.imageUrl === iconUrl &&
+                  existingContractIcon.network === network;
                 // eslint-disable-next-line no-param-reassign
-                prev[`${curr.code}:${curr.contract}`] = icon;
+                prev[`${curr.code}:${curr.contract}`] = {
+                  ...icon,
+                  isValidated: shouldUseExistingContractValidation
+                    ? existingContractIcon.isValidated
+                    : icon.isValidated,
+                  isValid: shouldUseExistingContractValidation
+                    ? existingContractIcon.isValid
+                    : icon.isValid,
+                  lastValidImageUrl: shouldUseExistingContractValidation
+                    ? existingContractIcon.lastValidImageUrl
+                    : icon.lastValidImageUrl,
+                };
               }
             }
             return prev;
@@ -236,12 +347,51 @@ export const useTokenIconsStore = create<TokenIconsState>()(
           {} as Record<string, Icon>,
         );
 
-        set((state) => ({
-          icons: {
-            ...state.icons,
-            ...iconMap,
-          },
-        }));
+        set((state) => {
+          // Only reset validation for icons whose URL actually changed
+          // This prevents unnecessary re-renders and "flashing" of already-validated icons
+          const iconMapWithValidation = Object.fromEntries(
+            Object.entries(iconMap).map(([key, icon]) => {
+              const existingIcon = state.icons[key];
+              const shouldKeepExisting =
+                !icon.imageUrl &&
+                !!existingIcon?.lastValidImageUrl &&
+                existingIcon?.network === icon.network;
+
+              if (shouldKeepExisting) {
+                return [key, { ...existingIcon }];
+              }
+              const urlAndNetworkUnchanged =
+                existingIcon?.imageUrl === icon.imageUrl &&
+                existingIcon?.network === icon.network;
+
+              return [
+                key,
+                {
+                  ...icon,
+                  // Keep existing validation state if URL and network didn't change
+                  isValidated: urlAndNetworkUnchanged
+                    ? existingIcon?.isValidated
+                    : icon.isValidated,
+                  isValid: urlAndNetworkUnchanged
+                    ? existingIcon?.isValid
+                    : icon.isValid,
+                  lastValidImageUrl: urlAndNetworkUnchanged
+                    ? existingIcon?.lastValidImageUrl
+                    : (icon.lastValidImageUrl ??
+                      existingIcon?.lastValidImageUrl),
+                },
+              ];
+            }),
+          );
+
+          return {
+            icons: {
+              ...state.icons,
+              ...iconMapWithValidation,
+            },
+          };
+        });
       },
       fetchIconUrl: async ({ token, network }) => {
         const cacheKey = getTokenIdentifier(token);
@@ -266,6 +416,8 @@ export const useTokenIconsStore = create<TokenIconsState>()(
           const icon: Icon = {
             imageUrl,
             network,
+            isValidated: false,
+            isValid: null,
           };
 
           debug(
@@ -276,18 +428,42 @@ export const useTokenIconsStore = create<TokenIconsState>()(
           );
 
           // Cache the icon URL (even if empty, to avoid re-fetching)
-          set((state) => ({
-            icons: {
-              ...state.icons,
-              [cacheKey]: icon,
-            },
-          }));
+          set((state) => {
+            const currentIcon = state.icons[cacheKey];
+            // If we already have the same icon data, don't update to avoid triggering re-renders
+            // or resetting validation state unnecessarily
+            if (
+              currentIcon &&
+              currentIcon.imageUrl === icon.imageUrl &&
+              currentIcon.network === icon.network
+            ) {
+              return state;
+            }
+
+            if (!icon.imageUrl && currentIcon?.lastValidImageUrl) {
+              return state;
+            }
+
+            return {
+              icons: {
+                ...state.icons,
+                [cacheKey]: icon,
+              },
+            };
+          });
+
+          // Validate in background
+          if (imageUrl) {
+            get().validateIconOnAccess(cacheKey);
+          }
 
           return icon;
         } catch (error) {
           return {
             imageUrl: "",
             network,
+            isValidated: true,
+            isValid: false,
           };
         }
       },
@@ -311,10 +487,16 @@ export const useTokenIconsStore = create<TokenIconsState>()(
 
             // Fetching icon will save it to the cache automatically
             // so that we don't need to return anything
-            await get().fetchIconUrl({
+            const icon = await get().fetchIconUrl({
               token: balance.token,
               network,
             });
+
+            // Validate immediately for user's balances
+            if (icon && icon.imageUrl && !icon.isValidated) {
+              const cacheKey = getTokenIdentifier(balance.token);
+              await get().validateIconOnAccess(cacheKey);
+            }
           }),
         );
       },
@@ -323,16 +505,13 @@ export const useTokenIconsStore = create<TokenIconsState>()(
         const now = Date.now();
         const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
-        // If lastRefreshed is not set yet, this means we're starting fresh
-        // and the app will already fetch all icons from scratch so let's
-        // simply set the lastRefreshed timestamp to now to avoid unnecessarily
-        // going through the refresh api requests below
+        // First run — icons will be fetched fresh; just record the timestamp.
         if (!lastRefreshed) {
           set({ lastRefreshed: now });
           return;
         }
 
-        // Check if we've refreshed in the last 24 hours
+        // Skip if refreshed within the last 24 hours.
         if (now - lastRefreshed < ONE_DAY_MS) {
           return;
         }
@@ -343,22 +522,113 @@ export const useTokenIconsStore = create<TokenIconsState>()(
           `Starting icon refresh for ${iconCount} cached icons`,
         );
 
-        const startTime = Date.now();
-        const updatedIcons: Record<string, Icon> = {};
+        // Reset failed tokens so they are retried in this refresh cycle.
+        set({ failedTokenCodes: {} });
 
-        // Start processing the first batch
         processIconBatches({
           entries: Object.entries(icons),
           batchIndex: 0,
-          updatedIcons,
-          startTime,
           set,
+        });
+      },
+      validateIconOnAccess: async (identifier) => {
+        const icon = get().icons[identifier];
+
+        // Skip if the icon doesn't exist or has already been validated.
+        const shouldSkipValidation = !icon || icon.isValidated;
+
+        if (shouldSkipValidation) {
+          return;
+        }
+
+        // Acquire a lock before any await to prevent concurrent callers
+        // from each triggering their own FastImage.preload for the same token.
+        set((state) => ({
+          icons: {
+            ...state.icons,
+            [identifier]: { ...state.icons[identifier], isValidated: true },
+          },
+        }));
+
+        const failedTokenCodes = get().failedTokenCodes ?? {};
+
+        if (failedTokenCodes[identifier]) {
+          set((state) => ({
+            icons: {
+              ...state.icons,
+              [identifier]: {
+                ...state.icons[identifier],
+                isValidated: true,
+                isValid:
+                  state.icons[identifier]?.isValid ??
+                  !!state.icons[identifier]?.lastValidImageUrl,
+              },
+            },
+          }));
+          return;
+        }
+
+        if (!icon.imageUrl) {
+          set((state) => ({
+            icons: {
+              ...state.icons,
+              [identifier]: {
+                ...state.icons[identifier],
+                isValidated: true,
+                isValid: false,
+              },
+            },
+            failedTokenCodes: {
+              ...state.failedTokenCodes,
+              [identifier]: true,
+            },
+          }));
+          return;
+        }
+
+        const isValid = await validateIconUrl(icon.imageUrl);
+
+        set((state) => {
+          const currentIcon = state.icons[identifier];
+          // Bail if the icon was replaced or removed since we read it.
+          if (!currentIcon || currentIcon.imageUrl !== icon.imageUrl) {
+            return state;
+          }
+
+          const newFailedCodes = isValid
+            ? state.failedTokenCodes
+            : { ...state.failedTokenCodes, [identifier]: true };
+
+          return {
+            icons: {
+              ...state.icons,
+              [identifier]: {
+                ...currentIcon,
+                // isValid reflects only whether the current imageUrl passed
+                // validation. Render logic falls back to lastValidImageUrl when
+                // isValid is false, so elevating it via hasValidFallback would
+                // cause the UI to keep retrying a URL that just failed.
+                isValid,
+                lastValidImageUrl: isValid
+                  ? currentIcon.imageUrl
+                  : currentIcon.lastValidImageUrl,
+              },
+            },
+            failedTokenCodes: newFailedCodes,
+          };
         });
       },
     }),
     {
-      name: "token-icons-storage",
+      name: TOKEN_ICONS_STORAGE_KEY,
       storage: createJSONStorage(() => AsyncStorage),
+      partialize: (state) => ({
+        // Only persist icons and lastRefreshed; failedTokenCodes is transient
+        // and should reset with each app session to allow recovery from
+        // temporary validation failures
+        icons: state.icons,
+        lastRefreshed: state.lastRefreshed,
+      }),
     },
   ),
 );
