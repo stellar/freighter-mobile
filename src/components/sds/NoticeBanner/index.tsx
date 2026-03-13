@@ -2,35 +2,93 @@ import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import useColors from "hooks/useColors";
 import React from "react";
-import { View, TouchableOpacity } from "react-native";
+import { TouchableOpacity, View } from "react-native";
+
+export const NoticeBannerVariants = {
+  PRIMARY: "primary",
+  SECONDARY: "secondary",
+  TERTIARY: "tertiary",
+  WARNING: "warning",
+  ERROR: "error",
+} as const;
+
+export type NoticeBannerVariant =
+  (typeof NoticeBannerVariants)[keyof typeof NoticeBannerVariants];
 
 interface NoticeBannerProps {
   text: string;
   onPress?: () => void;
+  variant?: NoticeBannerVariant;
 }
 
+type VariantConfig = {
+  bg: string;
+  themeColor: "gray" | "lilac" | "amber" | "red";
+  icon: "info" | "infoOctagon";
+};
+
+const VARIANT_CONFIG: Record<NoticeBannerVariant, VariantConfig> = {
+  // primary uses bg-gray-6 and a direct lilac[9] icon color — see renderIcon()
+  primary: { bg: "bg-gray-6", themeColor: "lilac", icon: "info" },
+  secondary: { bg: "bg-lilac-2", themeColor: "lilac", icon: "info" },
+  tertiary: { bg: "bg-gray-3", themeColor: "gray", icon: "info" },
+  warning: { bg: "bg-amber-2", themeColor: "amber", icon: "infoOctagon" },
+  error: { bg: "bg-red-2", themeColor: "red", icon: "infoOctagon" },
+};
+
+const getTextColor = (
+  variant: NoticeBannerVariant,
+  themeColors: ReturnType<typeof useColors>["themeColors"],
+): string => {
+  switch (variant) {
+    case "secondary":
+      return themeColors.lilac[11];
+    case "warning":
+      return themeColors.amber[11];
+    case "error":
+      return themeColors.red[11];
+    case "tertiary":
+      return themeColors.gray[11];
+    case "primary":
+    default:
+      return themeColors.gray[12];
+  }
+};
+
 /**
- * Interactive banner component with info icon and text
- * Used for displaying informational messages like app update notices
- * Can be tapped when onPress is provided
+ * Full-width interactive banner strip with icon and text.
+ * Variant names follow the button/badge system (primary, secondary, tertiary, warning, error).
+ * Defaults to "primary" to preserve backwards compatibility with the app update banner.
  */
 export const NoticeBanner: React.FC<NoticeBannerProps> = ({
   text,
   onPress,
+  variant = NoticeBannerVariants.PRIMARY,
 }) => {
   const { themeColors } = useColors();
+  const config = VARIANT_CONFIG[variant];
+  const textColor = getTextColor(variant, themeColors);
+
+  const renderIcon = () => {
+    // primary matches the original app update banner: InfoCircle with lilac[9] direct color
+    if (variant === NoticeBannerVariants.PRIMARY) {
+      return <Icon.InfoCircle size={16} color={themeColors.lilac[9]} />;
+    }
+    if (config.icon === "infoOctagon") {
+      return <Icon.InfoOctagon size={16} themeColor={config.themeColor} />;
+    }
+    return <Icon.InfoCircle size={16} themeColor={config.themeColor} />;
+  };
 
   return (
     <TouchableOpacity
-      className="bg-gray-6 px-3 py-2"
+      className={`${config.bg} px-3 py-2`}
       onPress={onPress}
       activeOpacity={onPress ? 0.7 : 1}
     >
       <View className="flex-row items-center justify-center mr-3 ml-3">
-        <View className="mr-2">
-          <Icon.InfoCircle size={16} color={themeColors.lilac[9]} />
-        </View>
-        <Text sm color={themeColors.gray[12]}>
+        <View className="mr-2">{renderIcon()}</View>
+        <Text sm color={textColor}>
           {text}
         </Text>
       </View>

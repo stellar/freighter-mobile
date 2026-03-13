@@ -1,18 +1,22 @@
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { BottomTabHeaderProps } from "@react-navigation/bottom-tabs";
 import { NativeStackHeaderProps } from "@react-navigation/native-stack";
 import {
   CustomHeaderButton,
   DEFAULT_HEADER_BUTTON_SIZE,
 } from "components/layout/CustomHeaderButton";
+import MaintenanceBannerBottomSheet from "components/screens/HomeScreen/MaintenanceBannerBottomSheet";
 import { NoticeBanner } from "components/sds/NoticeBanner";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { DEFAULT_PADDING } from "config/constants";
+import { logger } from "config/logger";
 import { pxValue } from "helpers/dimensions";
 import { useAppUpdate } from "hooks/useAppUpdate";
 import useColors from "hooks/useColors";
-import React from "react";
-import { View } from "react-native";
+import { useMaintenanceMode } from "hooks/useMaintenanceMode";
+import React, { useCallback, useRef } from "react";
+import { Linking, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { analytics } from "services/analytics";
 
@@ -26,6 +30,8 @@ const HomeScreenHeader = (
   const insets = useSafeAreaInsets();
   const { showBannerUpdateNotice, updateMessage, openAppStore } =
     useAppUpdate();
+  const { showMaintenanceBanner, bannerContent } = useMaintenanceMode();
+  const maintenanceModalRef = useRef<BottomSheetModal>(null);
   const baseColor = themeColors.base[1];
 
   const handleBannerPress = () => {
@@ -34,10 +40,54 @@ const HomeScreenHeader = (
     });
   };
 
+  const handleMaintenanceBannerPress = useCallback(() => {
+    if (bannerContent.url) {
+      Linking.openURL(bannerContent.url).catch((error) => {
+        logger.error(
+          "HomeScreenHeader",
+          "Failed to open maintenance URL",
+          error,
+        );
+      });
+    } else if (bannerContent.modal) {
+      maintenanceModalRef.current?.present();
+    }
+  }, [bannerContent.url, bannerContent.modal]);
+
+  const handleModalDismiss = useCallback(() => {
+    maintenanceModalRef.current?.dismiss();
+  }, []);
+
   // In case insets.top is not available, let's ensure at least 34px of top
   // padding to avoid touching issues related to the notch and the status bar
   const insetsTop = insets.top || pxValue(MIN_INSETS_TOP - DEFAULT_PADDING);
   const paddingTop = insetsTop + pxValue(DEFAULT_PADDING);
+
+  const hasMaintenanceBannerAction = !!(
+    bannerContent.url || bannerContent.modal
+  );
+
+  const renderBannerContent = () => {
+    if (showMaintenanceBanner) {
+      return (
+        <NoticeBanner
+          text={bannerContent.title}
+          variant={bannerContent.theme}
+          onPress={
+            hasMaintenanceBannerAction
+              ? handleMaintenanceBannerPress
+              : undefined
+          }
+        />
+      );
+    }
+
+    if (showBannerUpdateNotice) {
+      return <NoticeBanner text={updateMessage} onPress={handleBannerPress} />;
+    }
+
+    return null;
+  };
 
   return (
     <View className="bg-background-primary">
@@ -74,9 +124,17 @@ const HomeScreenHeader = (
         )}
       </View>
 
-      {/* Update banner under the header - only show for optional updates */}
-      {showBannerUpdateNotice && (
-        <NoticeBanner text={updateMessage} onPress={handleBannerPress} />
+      {renderBannerContent()}
+
+      {/* Maintenance bottom sheet modal - shown when banner tapped with no URL */}
+      {bannerContent.modal && (
+        <MaintenanceBannerBottomSheet
+          modalRef={maintenanceModalRef}
+          title={bannerContent.modal.title}
+          body={bannerContent.modal.body}
+          variant={bannerContent.theme}
+          onDismiss={handleModalDismiss}
+        />
       )}
     </View>
   );

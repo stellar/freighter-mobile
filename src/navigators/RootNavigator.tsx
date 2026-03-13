@@ -14,6 +14,7 @@ import { ForceUpdateScreen } from "components/screens/ForceUpdateScreen/ForceUpd
 import HiddenCollectiblesScreen from "components/screens/HiddenCollectiblesScreen";
 import { LoadingScreen } from "components/screens/LoadingScreen";
 import { LockScreen } from "components/screens/LockScreen";
+import { MaintenanceScreen } from "components/screens/MaintenanceScreen/MaintenanceScreen";
 import ScanQRCodeScreen from "components/screens/ScanQRCodeScreen";
 import { SecurityBlockScreen } from "components/screens/SecurityBlockScreen";
 import TokenDetailsScreen from "components/screens/TokenDetailsScreen";
@@ -43,6 +44,7 @@ import { useAppOpenBiometricsLogin } from "hooks/useAppOpenBiometricsLogin";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useAppUpdate } from "hooks/useAppUpdate";
 import { useBiometrics } from "hooks/useBiometrics";
+import { useMaintenanceMode } from "hooks/useMaintenanceMode";
 import {
   AuthNavigator,
   AddFundsStackNavigator,
@@ -84,6 +86,7 @@ export const RootNavigator = () => {
   const { checkBiometrics, isBiometricsEnabled } = useBiometrics();
   const { showFullScreenUpdateNotice, dismissFullScreenNotice } =
     useAppUpdate();
+  const { showMaintenanceScreen } = useMaintenanceMode();
   // Use analytics/permissions hook only after splash is hidden
   useAnalyticsPermissions({
     previousState: initializing ? undefined : "none",
@@ -165,6 +168,11 @@ export const RootNavigator = () => {
 
   if (initializing) {
     return <LoadingScreen />;
+  }
+
+  // Maintenance screen takes precedence over force update
+  if (showMaintenanceScreen) {
+    return <MaintenanceScreen />;
   }
 
   // Show force update screen if required

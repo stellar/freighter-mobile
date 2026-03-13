@@ -20,7 +20,11 @@ const BOOLEAN_FLAGS = [
 
 const VERSION_FLAGS = ["required_app_version", "latest_app_version"] as const;
 
-const COMPLEX_FLAGS = ["app_update_banner_text"] as const;
+const COMPLEX_FLAGS = [
+  "app_update_banner_text",
+  "maintenance_banner",
+  "maintenance_screen",
+] as const;
 
 // Derive types from the flag arrays
 type BooleanFeatureFlags = {
@@ -34,7 +38,7 @@ type StringFeatureFlags = {
 type ComplexFeatureFlags = {
   [K in (typeof COMPLEX_FLAGS)[number]]: {
     enabled: boolean;
-    payload: Record<string, string> | undefined;
+    payload: Record<string, unknown> | undefined;
   };
 };
 
@@ -69,6 +73,14 @@ const INITIAL_REMOTE_CONFIG_STATE =
           enabled: false,
           payload: undefined,
         },
+        maintenance_banner: {
+          enabled: false,
+          payload: undefined,
+        },
+        maintenance_screen: {
+          enabled: false,
+          payload: undefined,
+        },
         isInitialized: false,
       }
     : {
@@ -78,6 +90,14 @@ const INITIAL_REMOTE_CONFIG_STATE =
         required_app_version: currentAppVersion,
         latest_app_version: currentAppVersion,
         app_update_banner_text: {
+          enabled: false,
+          payload: undefined,
+        },
+        maintenance_banner: {
+          enabled: false,
+          payload: undefined,
+        },
+        maintenance_screen: {
           enabled: false,
           payload: undefined,
         },
