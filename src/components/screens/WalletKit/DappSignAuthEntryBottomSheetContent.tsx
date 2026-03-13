@@ -11,6 +11,7 @@ import { NetworkDetails } from "config/constants";
 import { ActiveAccount } from "ducks/auth";
 import { WalletKitSessionRequest } from "ducks/walletKit";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import React, { useMemo } from "react";
 import { Dimensions, ScrollView, View } from "react-native";
@@ -48,6 +49,7 @@ export const DappSignAuthEntryBottomSheetContent: React.FC<
 }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
+  const { copyToClipboard } = useClipboard();
 
   const accountList = useMemo(
     () => [
@@ -119,11 +121,18 @@ export const DappSignAuthEntryBottomSheetContent: React.FC<
           className="rounded-[16px] p-[16px] gap-[12px]"
           style={{ backgroundColor: themeColors.background.secondary }}
         >
-          <View className="flex-row items-center gap-[8px]">
-            <Icon.Key01 size={16} color={themeColors.text.secondary} />
-            <Text sm secondary>
-              {t("signTransactionDetails.authorizations.title")}
-            </Text>
+          <View className="flex-row items-center justify-between">
+            <View className="flex-row items-center gap-[8px]">
+              <Icon.Key01 size={16} color={themeColors.text.secondary} />
+              <Text sm secondary>
+                {t("signTransactionDetails.authorizations.title")}
+              </Text>
+            </View>
+            <Icon.Copy01
+              size={14}
+              themeColor="gray"
+              onPress={() => copyToClipboard(entryXdr)}
+            />
           </View>
           <ScrollView
             style={{
