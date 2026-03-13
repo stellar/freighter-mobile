@@ -176,15 +176,23 @@ start_flow_recording() {
     # Respect --platform: only record on the targeted device
     if [ "$PLATFORM" = "android" ]; then
       echo "📱 Recording Android (device: $MAESTRO_DEVICE)"
-      adb -s "$MAESTRO_DEVICE" shell screenrecord /sdcard/test-recording.mp4 &
+      adb -s "$MAESTRO_DEVICE" shell screenrecord --time-limit 600 /sdcard/test-recording.mp4 &
       CURRENT_RECORDING_PID="android"
       CURRENT_RECORDING_ANDROID_DEVICE="$MAESTRO_DEVICE"
       echo "✅ Android recording started"
     elif [ "$PLATFORM" = "ios" ]; then
       echo "📱 Recording iOS (UDID: $MAESTRO_DEVICE)"
+      # Warm up SimRenderServer before recording to prevent SimRenderServer.SimulatorError Code=2
+      xcrun simctl io "$MAESTRO_DEVICE" screenshot /tmp/simctl-warmup.png 2>/dev/null || true
       xcrun simctl io "$MAESTRO_DEVICE" recordVideo --codec=h264 --force "$CURRENT_VIDEO_PATH" &
       CURRENT_RECORDING_PID=$!
-      echo "✅ iOS recording started (PID: $CURRENT_RECORDING_PID)"
+      sleep 1
+      if kill -0 "$CURRENT_RECORDING_PID" 2>/dev/null; then
+        echo "✅ iOS recording started (PID: $CURRENT_RECORDING_PID)"
+      else
+        echo "⚠️  Warning: iOS recording failed to start (SimRenderServer unavailable), continuing without recording"
+        CURRENT_RECORDING_PID=""
+      fi
     fi
     return 0
   fi
@@ -194,22 +202,36 @@ start_flow_recording() {
     echo "📱 Detected Android device/emulator"
     CURRENT_RECORDING_ANDROID_DEVICE=$(adb devices 2>/dev/null | awk '/^[^[:space:]]+[[:space:]]+device$/ { print $1; exit }')
     if [ -n "$CURRENT_RECORDING_ANDROID_DEVICE" ]; then
-      adb -s "$CURRENT_RECORDING_ANDROID_DEVICE" shell screenrecord /sdcard/test-recording.mp4 &
+      adb -s "$CURRENT_RECORDING_ANDROID_DEVICE" shell screenrecord --time-limit 600 /sdcard/test-recording.mp4 &
     else
-      adb shell screenrecord /sdcard/test-recording.mp4 &
+      adb shell screenrecord --time-limit 600 /sdcard/test-recording.mp4 &
     fi
     CURRENT_RECORDING_PID="android"
     echo "✅ Android recording started"
   elif [ -n "${DEVICE_UDID:-}" ] && command -v xcrun >/dev/null 2>&1; then
     echo "📱 Detected iOS simulator (UDID: $DEVICE_UDID)"
+    xcrun simctl io "$DEVICE_UDID" screenshot /tmp/simctl-warmup.png 2>/dev/null || true
     xcrun simctl io "$DEVICE_UDID" recordVideo --codec=h264 --force "$CURRENT_VIDEO_PATH" &
     CURRENT_RECORDING_PID=$!
-    echo "✅ iOS recording started (PID: $CURRENT_RECORDING_PID)"
+    sleep 1
+    if kill -0 "$CURRENT_RECORDING_PID" 2>/dev/null; then
+      echo "✅ iOS recording started (PID: $CURRENT_RECORDING_PID)"
+    else
+      echo "⚠️  Warning: iOS recording failed to start (SimRenderServer unavailable), continuing without recording"
+      CURRENT_RECORDING_PID=""
+    fi
   elif command -v xcrun >/dev/null 2>&1; then
     echo "📱 Detected iOS simulator (booted)"
+    xcrun simctl io booted screenshot /tmp/simctl-warmup.png 2>/dev/null || true
     xcrun simctl io booted recordVideo --codec=h264 --force "$CURRENT_VIDEO_PATH" &
     CURRENT_RECORDING_PID=$!
-    echo "✅ iOS recording started (PID: $CURRENT_RECORDING_PID)"
+    sleep 1
+    if kill -0 "$CURRENT_RECORDING_PID" 2>/dev/null; then
+      echo "✅ iOS recording started (PID: $CURRENT_RECORDING_PID)"
+    else
+      echo "⚠️  Warning: iOS recording failed to start (SimRenderServer unavailable), continuing without recording"
+      CURRENT_RECORDING_PID=""
+    fi
   else
     echo "⚠️  Warning: No device/simulator detected for video recording"
   fi
