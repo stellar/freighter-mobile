@@ -107,8 +107,11 @@ tags:
 - tapOn:
     id: wc-e2e-helper-fab
 
-# Wait for modal to open and show inputs
-- scroll
+# Wait for modal to open and message input to be visible
+- extendedWaitUntil:
+    visible:
+      id: wc-e2e-message-input
+    timeout: 5000
 
 # Fill in message
 - tapOn:
