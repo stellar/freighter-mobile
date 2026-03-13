@@ -96,7 +96,9 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
     const baseUrl = "http://127.0.0.1:3001";
     const { showToast } = useToast();
     const { t } = useAppTranslation();
-    const dismissTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const dismissTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+      null,
+    );
 
     useEffect(
       () => () => {

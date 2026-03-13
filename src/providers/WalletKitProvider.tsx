@@ -24,7 +24,7 @@ import {
   StellarRpcMethods,
   StellarSignXDRParams,
 } from "ducks/walletKit";
-import { isE2ETest } from "helpers/isEnv";
+import { isDev, isE2ETest } from "helpers/isEnv";
 import { getHostname } from "helpers/protocols";
 import {
   approveSessionProposal,
@@ -765,12 +765,13 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       //
       // SECURITY: isE2ETest is read from react-native-config (Config.IS_E2E_TEST).
       // It is a compile-time constant baked into the JS bundle — not injectable at runtime.
-      // IS_E2E_TEST must NEVER be set to "true" in any production or beta build scheme.
+      // The `isDev` guard ensures this bypass can never activate in production or beta
+      // builds even if IS_E2E_TEST is accidentally set in a build scheme.
       const transactionRequestOrigin =
         sessionRequest.verifyContext?.verified?.origin;
 
       const isValidTransactionRequestOrigin =
-        isE2ETest ||
+        (isE2ETest && isDev) ||
         Object.values(activeSessions).some((session) => {
           const sessionHostname = getHostname(session.peer?.metadata?.url);
           const requestHostname = getHostname(transactionRequestOrigin);

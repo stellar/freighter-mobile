@@ -233,8 +233,13 @@ jobs:
       # - SwapClassicTokenMainnet: Swap tokens on mainnet (small amount: 0.000001 XLM)
       # - SignMessageMockDapp: WalletConnect sign message (requires mock server)
       # - SignAuthEntryMockDapp: WalletConnect sign auth entry (requires mock server)
-      # Note: mock-dapp tests use shard-index:0 so flow-name filter + sharding correctly
-      # includes the single filtered file (0 % shard-total == 0 == shard-index).
+      # Note: mock-dapp tests use shard-index:0 because they already specify a
+      # flow-name, which narrows run-e2e-tests.sh to exactly one file (idx=0).
+      # The sharding formula is: include file when (idx % shard-total == shard-index).
+      # idx=0, so 0 % N == 0 for any N, which always equals shard-index:0.
+      # Both mock-dapp entries sharing shard-index:0 is intentional — they run in
+      # separate matrix jobs (separate emulators) so there is no conflict.
+      # shard-total:7 matches the regular test cohort for consistency.
       matrix:
         include:
           - shard-index: 0
@@ -266,11 +271,11 @@ jobs:
             flow-name: SwapClassicTokenMainnet
             requires-mock-server: false
           - shard-index: 0
-            shard-total: 9
+            shard-total: 7
             flow-name: SignMessageMockDapp
             requires-mock-server: true
           - shard-index: 0
-            shard-total: 9
+            shard-total: 7
             flow-name: SignAuthEntryMockDapp
             requires-mock-server: true
 

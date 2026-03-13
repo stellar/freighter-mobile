@@ -176,7 +176,9 @@ start_flow_recording() {
     # Respect --platform: only record on the targeted device
     if [ "$PLATFORM" = "android" ]; then
       echo "📱 Recording Android (device: $MAESTRO_DEVICE)"
-      adb -s "$MAESTRO_DEVICE" shell screenrecord --bugreport /sdcard/test-recording.mp4 &
+      # The --bugreport flag was removed in Android 10 (API 29); use --size to
+      # cap resolution and avoid issues with the headless CI emulator display.
+      adb -s "$MAESTRO_DEVICE" shell screenrecord --size 1280x720 /sdcard/test-recording.mp4 &
       CURRENT_RECORDING_PID="android"
       CURRENT_RECORDING_ANDROID_DEVICE="$MAESTRO_DEVICE"
       echo "✅ Android recording started"
@@ -194,9 +196,9 @@ start_flow_recording() {
     echo "📱 Detected Android device/emulator"
     CURRENT_RECORDING_ANDROID_DEVICE=$(adb devices 2>/dev/null | awk '/^[^[:space:]]+[[:space:]]+device$/ { print $1; exit }')
     if [ -n "$CURRENT_RECORDING_ANDROID_DEVICE" ]; then
-      adb -s "$CURRENT_RECORDING_ANDROID_DEVICE" shell screenrecord --bugreport /sdcard/test-recording.mp4 &
+      adb -s "$CURRENT_RECORDING_ANDROID_DEVICE" shell screenrecord --size 1280x720 /sdcard/test-recording.mp4 &
     else
-      adb shell screenrecord --bugreport /sdcard/test-recording.mp4 &
+      adb shell screenrecord --size 1280x720 /sdcard/test-recording.mp4 &
     fi
     CURRENT_RECORDING_PID="android"
     echo "✅ Android recording started"
@@ -227,12 +229,12 @@ stop_flow_recording() {
     # Android: Stop recording and pull video
     if [ -n "$CURRENT_RECORDING_ANDROID_DEVICE" ]; then
       adb -s "$CURRENT_RECORDING_ANDROID_DEVICE" shell "pkill -INT screenrecord" 2>/dev/null || true
-      sleep 2
+      sleep 4
       adb -s "$CURRENT_RECORDING_ANDROID_DEVICE" pull /sdcard/test-recording.mp4 "$CURRENT_VIDEO_PATH" 2>/dev/null || true
       adb -s "$CURRENT_RECORDING_ANDROID_DEVICE" shell "rm -f /sdcard/test-recording.mp4" 2>/dev/null || true
     else
       adb shell "pkill -INT screenrecord" 2>/dev/null || true
-      sleep 2
+      sleep 4
       adb pull /sdcard/test-recording.mp4 "$CURRENT_VIDEO_PATH" 2>/dev/null || true
       adb shell "rm -f /sdcard/test-recording.mp4" 2>/dev/null || true
     fi

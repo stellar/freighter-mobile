@@ -10,6 +10,7 @@ import {
   SignTransactionSummaryInterface,
 } from "components/screens/SignTransactionDetails/types";
 import { mapNetworkToNetworkDetails, OPERATION_TYPES } from "config/constants";
+import { logger } from "config/logger";
 import { useAuthenticationStore } from "ducks/auth";
 import { stroopToXlm } from "helpers/formatAmount";
 
@@ -94,7 +95,7 @@ export const useSignTransactionDetails = ({
   } catch (e) {
     // Malformed or unsupported XDR — return null so callers degrade gracefully
     // instead of propagating an uncaught exception through the render cycle.
-    console.warn("[useSignTransactionDetails] Failed to parse XDR:", e);
+    logger.warn("useSignTransactionDetails", "Failed to parse XDR", e);
     return null;
   }
 };

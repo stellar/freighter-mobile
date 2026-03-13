@@ -1,5 +1,6 @@
 import { FeeBumpTransaction, Keypair, Transaction } from "@stellar/stellar-sdk";
 import { navigationRef } from "components/App";
+import { logger } from "config/logger";
 import { useAuthenticationStore } from "ducks/auth";
 import {
   signMessage as signMessageHelper,
@@ -59,6 +60,7 @@ const useGetActiveAccount = () => {
       try {
         return signMessageHelper(message, account.privateKey);
       } catch (err) {
+        logger.error("useGetActiveAccount", "signMessage failed", err);
         return null;
       }
     },
@@ -76,6 +78,7 @@ const useGetActiveAccount = () => {
           networkPassphrase,
         );
       } catch (err) {
+        logger.error("useGetActiveAccount", "signAuthEntry failed", err);
         return null;
       }
     },

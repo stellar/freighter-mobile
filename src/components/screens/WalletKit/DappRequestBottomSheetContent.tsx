@@ -45,6 +45,7 @@ const DappRequestBottomSheetContent: React.FC<
     if (message) {
       return <DappSignMessageBottomSheetContent {...props} message={message} />;
     }
+    return null;
   }
 
   if (requestMethod === StellarRpcMethods.SIGN_AUTH_ENTRY) {
@@ -54,6 +55,7 @@ const DappRequestBottomSheetContent: React.FC<
         <DappSignAuthEntryBottomSheetContent {...props} entryXdr={entryXdr} />
       );
     }
+    return null;
   }
 
   return <DappSignTransactionBottomSheetContent {...props} />;

@@ -232,6 +232,7 @@ jobs:
       # - SignAuthEntryMockDapp: WalletConnect sign auth entry (requires mock server)
       # Note: mock-dapp tests use shard-index:0 so flow-name filter + sharding correctly
       # includes the single filtered file (0 % shard-total == 0 == shard-index).
+      # shard-total:7 matches the regular test cohort for consistency.
       matrix:
         include:
           - shard-index: 0
@@ -263,11 +264,11 @@ jobs:
             flow-name: SwapClassicTokenMainnet
             requires-mock-server: false
           - shard-index: 0
-            shard-total: 9
+            shard-total: 7
             flow-name: SignMessageMockDapp
             requires-mock-server: true
           - shard-index: 0
-            shard-total: 9
+            shard-total: 7
             flow-name: SignAuthEntryMockDapp
             requires-mock-server: true
 

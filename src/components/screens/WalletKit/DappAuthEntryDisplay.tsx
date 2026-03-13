@@ -3,7 +3,12 @@ import { KeyValueInvokeHostFnArgs } from "components/screens/SignTransactionDeta
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { logger } from "config/logger";
-import { getInvocationDetails, InvocationArgs } from "helpers/soroban";
+import {
+  getInvocationDetails,
+  InvocationArgs,
+  INVOCATION_TYPE_INVOKE,
+  INVOCATION_TYPE_WASM,
+} from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
@@ -64,19 +69,19 @@ export const DappAuthEntryDisplay: React.FC<DappAuthEntryDisplayProps> = ({
   };
 
   const getDetailKey = (detail: InvocationArgs): string => {
-    if (detail.type === "invoke")
+    if (detail.type === INVOCATION_TYPE_INVOKE)
       return `invoke-${detail.contractId}-${detail.fnName}`;
-    if (detail.type === "wasm") return `wasm-${detail.hash}`;
+    if (detail.type === INVOCATION_TYPE_WASM) return `wasm-${detail.hash}`;
     return `sac-${detail.asset}`;
   };
 
   const renderDetailTitle = (detail: InvocationArgs): string => {
-    if (detail.type === "invoke") return detail.fnName;
+    if (detail.type === INVOCATION_TYPE_INVOKE) return detail.fnName;
     return t("signTransactionDetails.authorizations.contractCreation");
   };
 
   const renderDetailContent = (detail: InvocationArgs) => {
-    if (detail.type === "invoke") {
+    if (detail.type === INVOCATION_TYPE_INVOKE) {
       return (
         <View className="gap-[12px]">
           <View className="gap-[4px]">
