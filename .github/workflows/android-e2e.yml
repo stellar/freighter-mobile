@@ -233,13 +233,8 @@ jobs:
       # - SwapClassicTokenMainnet: Swap tokens on mainnet (small amount: 0.000001 XLM)
       # - SignMessageMockDapp: WalletConnect sign message (requires mock server)
       # - SignAuthEntryMockDapp: WalletConnect sign auth entry (requires mock server)
-      # Note: mock-dapp tests use shard-index:0 because they already specify a
-      # flow-name, which narrows run-e2e-tests.sh to exactly one file (idx=0).
-      # The sharding formula is: include file when (idx % shard-total == shard-index).
-      # idx=0, so 0 % N == 0 for any N, which always equals shard-index:0.
-      # Both mock-dapp entries sharing shard-index:0 is intentional — they run in
-      # separate matrix jobs (separate emulators) so there is no conflict.
-      # shard-total:7 matches the regular test cohort for consistency.
+      # Note: mock-dapp tests use shard-index:0, to run sequentially in isolation,
+      # to avoid e2e test flakiness related to starting/stopping the mock server and potential port conflicts.
       matrix:
         include:
           - shard-index: 0

@@ -24,7 +24,7 @@ import {
   StellarRpcMethods,
   StellarSignXDRParams,
 } from "ducks/walletKit";
-import { isDev, isE2ETest } from "helpers/isEnv";
+import { isE2ETest } from "helpers/isEnv";
 import { getHostname } from "helpers/protocols";
 import {
   approveSessionProposal,
@@ -382,13 +382,10 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     // Also ensure other sheets are closed to avoid any leftovers
     dappRequestBottomSheetModalRef.current?.dismiss();
 
-    setTimeout(() => {
-      setIsConnecting(false);
-      setProposalEvent(null);
-      setSiteScanResult(undefined);
-      setSecurityWarningContext(SecurityContext.SITE);
-      clearEvent();
-    }, 200);
+    setIsConnecting(false);
+    setProposalEvent(null);
+    setSiteScanResult(undefined);
+    clearEvent();
   };
 
   /**
@@ -774,15 +771,13 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       // Skip this check in E2E test mode since the mock-dapp uses http://localhost which is
       // correctly rejected by getHostname (HTTPS-only) but is safe for local E2E testing.
       //
-      // SECURITY: isE2ETest is read from react-native-config (Config.IS_E2E_TEST).
+      // SECURITY: isE2ETest is read from react-native-config (Config.IS_E2E_TEST + isDev).
       // It is a compile-time constant baked into the JS bundle — not injectable at runtime.
-      // The `isDev` guard ensures this bypass can never activate in production or beta
-      // builds even if IS_E2E_TEST is accidentally set in a build scheme.
       const transactionRequestOrigin =
         sessionRequest.verifyContext?.verified?.origin;
 
       const isValidTransactionRequestOrigin =
-        (isE2ETest && isDev) ||
+        isE2ETest ||
         Object.values(activeSessions).some((session) => {
           const sessionHostname = getHostname(session.peer?.metadata?.url);
           const requestHostname = getHostname(transactionRequestOrigin);
@@ -919,6 +914,9 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         modalRef={dappConnectionBottomSheetModalRef}
         handleCloseModal={handleClearDappConnection}
         analyticsEvent={AnalyticsEvent.VIEW_GRANT_DAPP_ACCESS}
+        bottomSheetModalProps={{
+          onDismiss: handleClearDappConnection,
+        }}
         customContent={
           <DappConnectionBottomSheetContent
             account={account}
