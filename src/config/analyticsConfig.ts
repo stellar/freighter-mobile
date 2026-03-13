@@ -99,7 +99,9 @@ export enum AnalyticsEvent {
   SIGN_TRANSACTION_MEMO_REQUIRED_FAIL = "sign transaction: memo required error",
   SUBMIT_TRANSACTION_SUCCESS = "submit transaction: confirmed",
   SIGN_MESSAGE_SUCCESS = "sign message: confirmed",
+  SIGN_MESSAGE_FAIL = "sign message: error",
   SIGN_AUTH_ENTRY_SUCCESS = "sign auth entry: confirmed",
+  SIGN_AUTH_ENTRY_FAIL = "sign auth entry: error",
 
   // Token Management Events
   ADD_TOKEN_SUCCESS = "manage asset: add asset",

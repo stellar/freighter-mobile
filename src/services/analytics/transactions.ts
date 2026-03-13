@@ -36,6 +36,26 @@ export const trackSignedAuthEntry = (data: { dappDomain?: string }): void => {
   });
 };
 
+export const trackSignedMessageError = (data: {
+  error: string;
+  dappDomain?: string;
+}): void => {
+  track(AnalyticsEvent.SIGN_MESSAGE_FAIL, {
+    error: data.error,
+    ...(data.dappDomain ? { dappDomain: data.dappDomain } : {}),
+  });
+};
+
+export const trackSignedAuthEntryError = (data: {
+  error: string;
+  dappDomain?: string;
+}): void => {
+  track(AnalyticsEvent.SIGN_AUTH_ENTRY_FAIL, {
+    error: data.error,
+    ...(data.dappDomain ? { dappDomain: data.dappDomain } : {}),
+  });
+};
+
 export const trackSubmittedTransaction = (
   data: SubmittedTransactionEvent,
 ): void => {

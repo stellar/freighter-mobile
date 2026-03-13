@@ -7,6 +7,7 @@ import {
   signAuthEntry as signAuthEntryHelper,
 } from "helpers/stellar";
 import { useCallback, useEffect } from "react";
+import { analytics } from "services/analytics";
 
 /**
  * Hook that provides access to the active account with loading state
@@ -61,6 +62,7 @@ const useGetActiveAccount = () => {
         return signMessageHelper(message, account.privateKey);
       } catch (err) {
         logger.error("useGetActiveAccount", "signMessage failed", err);
+        analytics.trackSignedMessageError({ error: String(err) });
         return null;
       }
     },
@@ -79,6 +81,7 @@ const useGetActiveAccount = () => {
         );
       } catch (err) {
         logger.error("useGetActiveAccount", "signAuthEntry failed", err);
+        analytics.trackSignedAuthEntryError({ error: String(err) });
         return null;
       }
     },

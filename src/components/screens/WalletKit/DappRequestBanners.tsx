@@ -35,7 +35,7 @@ export const DappRequestBanners: React.FC<DappRequestBannersProps> = ({
 
   return (
     <>
-      {isMemoMissing && (
+      {isMemoMissing && !securityBannerText && (
         <Banner
           variant="error"
           text={t("transactionAmountScreen.errors.memoMissing")}
