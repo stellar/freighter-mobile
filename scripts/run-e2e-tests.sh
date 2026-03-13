@@ -331,11 +331,13 @@ if [ -n "$FLOW_NAME_FILTER" ]; then
   ALL_FLOW_FILES="$_filtered"
 fi
 
-# Now apply sharding to the filtered list
+# Now apply sharding to the filtered list.
+# Skip sharding when a specific flow name was requested — the caller already
+# targeted this worker to run exactly that flow; the modulo would filter it out.
 FLOW_FILES=""
 idx=0
 for file in $ALL_FLOW_FILES; do
-  if [ -n "$SHARD_TOTAL" ] && [ -n "$SHARD_INDEX" ]; then
+  if [ -n "$SHARD_TOTAL" ] && [ -n "$SHARD_INDEX" ] && [ -z "$FLOW_NAME_FILTER" ]; then
     _mod=$(( idx % SHARD_TOTAL ))
     if [ "$_mod" -ne "$SHARD_INDEX" ]; then
       idx=$(( idx + 1 ))
