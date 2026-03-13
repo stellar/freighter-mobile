@@ -326,7 +326,8 @@
     "open": "Open",
     "domain": "Domain",
     "tags": "Tags",
-    "description": "Description"
+    "description": "Description",
+    "clearRecents": "Clear Recents"
   },
   "history": {
     "title": "History",

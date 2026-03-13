@@ -17,10 +17,19 @@ interface ExpandedSectionViewProps {
   onItemOpen: (item: VerticalListItem) => void;
   onItemPress: (item: VerticalListItem) => void;
   onScrollEnd?: () => void;
+  headerRight?: React.ReactNode;
 }
 
 const ExpandedSectionView: React.FC<ExpandedSectionViewProps> = React.memo(
-  ({ title, items, onBack, onItemOpen, onItemPress, onScrollEnd }) => {
+  ({
+    title,
+    items,
+    onBack,
+    onItemOpen,
+    onItemPress,
+    onScrollEnd,
+    headerRight,
+  }) => {
     const renderItem = useCallback(
       // eslint-disable-next-line react/no-unused-prop-types
       ({ item }: { item: VerticalListItem }) => (
@@ -58,7 +67,7 @@ const ExpandedSectionView: React.FC<ExpandedSectionViewProps> = React.memo(
           <Text md semiBold>
             {title}
           </Text>
-          <View className={DEFAULT_HEADER_BUTTON_SIZE} />
+          {headerRight ?? <View className={DEFAULT_HEADER_BUTTON_SIZE} />}
         </View>
 
         <FlatList

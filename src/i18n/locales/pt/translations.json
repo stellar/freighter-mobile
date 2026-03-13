@@ -290,7 +290,8 @@
     "open": "Abrir",
     "domain": "Domínio",
     "tags": "Tags",
-    "description": "Descrição"
+    "description": "Descrição",
+    "clearRecents": "Limpar Recentes"
   },
   "history": {
     "title": "Histórico",

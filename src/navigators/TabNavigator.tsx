@@ -9,6 +9,7 @@ import { MAIN_TAB_ROUTES, MainTabStackParamList } from "config/routes";
 import { THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
 import { useProtocolsStore } from "ducks/protocols";
+import { useRecentProtocolsStore } from "ducks/recentProtocols";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { px, pxValue } from "helpers/dimensions";
 import { useFetchCollectibles } from "hooks/useFetchCollectibles";
@@ -100,9 +101,10 @@ export const TabNavigator = () => {
     network: networkDetails.network,
   });
 
-  // Fetch discover protocols on mount
+  // Fetch discover protocols and hydrate recent protocols store on mount
   useEffect(() => {
     fetchProtocols();
+    useRecentProtocolsStore.persist.rehydrate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

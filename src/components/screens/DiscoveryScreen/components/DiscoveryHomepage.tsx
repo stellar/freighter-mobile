@@ -1,6 +1,8 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { images } from "assets/images";
+import ContextMenuButton, { MenuItem } from "components/ContextMenuButton";
 import { TrendingCarousel, TrendingItem } from "components/TrendingCarousel";
+import { DEFAULT_HEADER_BUTTON_SIZE } from "components/layout/CustomHeaderButton";
 import ExpandedSectionView from "components/screens/DiscoveryScreen/components/ExpandedSectionView";
 import ProtocolDetailsBottomSheet from "components/screens/DiscoveryScreen/components/ProtocolDetailsBottomSheet";
 import SectionTitle from "components/screens/DiscoveryScreen/components/SectionTitle";
@@ -16,11 +18,10 @@ import {
   DEFAULT_PRESS_DELAY,
 } from "config/constants";
 import { DiscoverProtocol } from "config/types";
-import { useBrowserTabsStore, BrowserTab } from "ducks/browserTabs";
+import { useBrowserTabsStore } from "ducks/browserTabs";
 import { useProtocolsStore } from "ducks/protocols";
-import { getFaviconUrl, isHomepageUrl } from "helpers/browser";
+import { useRecentProtocolsStore } from "ducks/recentProtocols";
 import { pxValue } from "helpers/dimensions";
-import { findMatchedProtocol, getDisplayHost } from "helpers/protocols";
 import { captureTabScreenshot } from "helpers/screenshots";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
@@ -45,10 +46,9 @@ interface DiscoveryHomepageProps {
 }
 
 interface HorizontalListSectionProps {
-  protocols: DiscoverProtocol[];
   title: string;
   icon: React.ReactNode;
-  data: (DiscoverProtocol | BrowserTab)[];
+  data: DiscoverProtocol[];
   onItemPress: (url: string) => void;
   onScrollEnd: () => Promise<void>;
 }
@@ -56,6 +56,7 @@ interface HorizontalListSectionProps {
 interface ExpandedSection {
   title: string;
   items: VerticalListItem[];
+  isRecents?: boolean;
 }
 
 interface ProtocolDetailsData {
@@ -76,24 +77,8 @@ const protocolToListItem = (protocol: DiscoverProtocol): VerticalListItem => ({
   tags: protocol.tags,
 });
 
-const tabToListItem = (
-  tab: BrowserTab,
-  protocols: DiscoverProtocol[],
-): VerticalListItem => {
-  const matched = findMatchedProtocol({ protocols, searchUrl: tab.url });
-  return {
-    id: tab.id,
-    name: matched?.name ?? tab.title,
-    subtitle: matched?.tags[0] ?? getDisplayHost(tab.url) ?? "",
-    iconUrl: matched?.iconUrl ?? getFaviconUrl(tab.url),
-    websiteUrl: matched?.websiteUrl ?? tab.url,
-    description: matched?.description ?? "",
-    tags: matched?.tags ?? [],
-  };
-};
-
 const HorizontalListSection: React.FC<HorizontalListSectionProps> = React.memo(
-  ({ protocols, title, icon, data, onItemPress, onScrollEnd }) => {
+  ({ title, icon, data, onItemPress, onScrollEnd }) => {
     const { themeColors } = useColors();
 
     const handleScrollEnd = useCallback(() => {
@@ -101,70 +86,30 @@ const HorizontalListSection: React.FC<HorizontalListSectionProps> = React.memo(
     }, [onScrollEnd]);
 
     const renderSiteItem = useCallback(
-      (props: { item: DiscoverProtocol | BrowserTab }) => {
-        const getSiteName = (
-          siteItem: DiscoverProtocol | BrowserTab,
-        ): string => {
-          if ("name" in siteItem) {
-            return siteItem.name;
-          }
-
-          const matchedProtocolSite = findMatchedProtocol({
-            protocols,
-            searchUrl: siteItem.url,
-          });
-
-          return matchedProtocolSite?.name || siteItem.title;
-        };
-
-        const getSiteUrl = (
-          siteItem: DiscoverProtocol | BrowserTab,
-        ): string => {
-          if ("websiteUrl" in siteItem) {
-            return siteItem.websiteUrl;
-          }
-
-          return siteItem.url;
-        };
-
-        const getFavicon = (
-          siteItem: DiscoverProtocol | BrowserTab,
-        ): string => {
-          if ("iconUrl" in siteItem) {
-            return siteItem.iconUrl;
-          }
-
-          return getFaviconUrl(getSiteUrl(siteItem));
-        };
-
-        const name = getSiteName(props.item);
-        const siteUrl = getSiteUrl(props.item);
-        const favicon = getFavicon(props.item);
-
-        return (
-          <TouchableOpacity
-            className="mr-3 items-center"
-            onPress={() => onItemPress(siteUrl)}
-            delayPressIn={DEFAULT_PRESS_DELAY}
+      // eslint-disable-next-line react/no-unused-prop-types
+      ({ item }: { item: DiscoverProtocol }) => (
+        <TouchableOpacity
+          className="mr-3 items-center"
+          onPress={() => onItemPress(item.websiteUrl)}
+          delayPressIn={DEFAULT_PRESS_DELAY}
+        >
+          <View
+            className="w-[76px] h-[76px] rounded-xl justify-center items-center mb-2"
+            style={{ backgroundColor: themeColors.background.tertiary }}
           >
-            <View
-              className="w-[76px] h-[76px] rounded-xl justify-center items-center mb-2"
-              style={{ backgroundColor: themeColors.background.tertiary }}
-            >
-              <App appName={name} favicon={favicon} size="lg" />
-            </View>
-            <Text
-              sm
-              medium
-              numberOfLines={2}
-              style={{ maxWidth: pxValue(76), textAlign: "center" }}
-            >
-              {name}
-            </Text>
-          </TouchableOpacity>
-        );
-      },
-      [onItemPress, protocols, themeColors.background.tertiary],
+            <App appName={item.name} favicon={item.iconUrl} size="lg" />
+          </View>
+          <Text
+            sm
+            medium
+            numberOfLines={2}
+            style={{ maxWidth: pxValue(76), textAlign: "center" }}
+          >
+            {item.name}
+          </Text>
+        </TouchableOpacity>
+      ),
+      [onItemPress, themeColors.background.tertiary],
     );
 
     const contentContainerStyle = useMemo(
@@ -190,9 +135,7 @@ const HorizontalListSection: React.FC<HorizontalListSectionProps> = React.memo(
           horizontal
           data={data}
           renderItem={renderSiteItem}
-          keyExtractor={(item) =>
-            "websiteUrl" in item ? item.websiteUrl : item.id
-          }
+          keyExtractor={(item) => item.websiteUrl}
           showsHorizontalScrollIndicator={false}
           onScrollEndDrag={handleScrollEnd}
           contentContainerStyle={contentContainerStyle}
@@ -209,6 +152,8 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
     const { goToPage, tabs, updateTab, showTabOverview } =
       useBrowserTabsStore();
     const { protocols } = useProtocolsStore();
+    const { recentProtocols, addRecentProtocol, clearRecentProtocols } =
+      useRecentProtocolsStore();
     const viewShotRef = useRef<ViewShot>(null);
     const protocolDetailsRef = useRef<BottomSheetModal>(null);
     const [expandedSection, setExpandedSection] =
@@ -219,9 +164,10 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
 
     const handleSitePress = useCallback(
       (url: string) => {
+        addRecentProtocol(url, protocols);
         goToPage(tabId, url);
       },
-      [goToPage, tabId],
+      [addRecentProtocol, goToPage, protocols, tabId],
     );
 
     const trendingItems: TrendingItem[] = useMemo(
@@ -235,18 +181,19 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
       [protocols],
     );
 
-    const recentTabs = useMemo(
+    const recentProtocolItems: DiscoverProtocol[] = useMemo(
       () =>
-        tabs
-          .filter((tab) => !isHomepageUrl(tab.url))
-          .sort((a, b) => b.lastAccessed - a.lastAccessed)
-          .slice(0, BROWSER_CONSTANTS.MAX_RECENT_TABS),
-      [tabs],
+        recentProtocols
+          .map((entry) =>
+            protocols.find((p) => p.websiteUrl === entry.websiteUrl),
+          )
+          .filter((p): p is DiscoverProtocol => p !== undefined),
+      [recentProtocols, protocols],
     );
 
     const recentItems: VerticalListItem[] = useMemo(
-      () => recentTabs.map((tab) => tabToListItem(tab, protocols)),
-      [recentTabs, protocols],
+      () => recentProtocolItems.map(protocolToListItem),
+      [recentProtocolItems],
     );
 
     const defiItems: VerticalListItem[] = useMemo(
@@ -338,8 +285,41 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
       handleExpand({
         title: t("discovery.recent"),
         items: recentItems,
+        isRecents: true,
       });
     }, [handleExpand, t, recentItems]);
+
+    const handleClearRecents = useCallback(() => {
+      clearRecentProtocols();
+      handleCollapseSection();
+    }, [clearRecentProtocols, handleCollapseSection]);
+
+    const clearRecentsMenuActions: MenuItem[] = useMemo(
+      () => [
+        {
+          title: t("discovery.clearRecents"),
+          systemIcon: "trash",
+          destructive: true,
+          onPress: handleClearRecents,
+        },
+      ],
+      [t, handleClearRecents],
+    );
+
+    const recentsHeaderRight = useMemo(
+      () => (
+        <ContextMenuButton
+          contextMenuProps={{ actions: clearRecentsMenuActions }}
+        >
+          <View
+            className={`${DEFAULT_HEADER_BUTTON_SIZE} items-center justify-center`}
+          >
+            <Icon.DotsHorizontal color={themeColors.text.primary} size={24} />
+          </View>
+        </ContextMenuButton>
+      ),
+      [clearRecentsMenuActions, themeColors.text.primary],
+    );
 
     const handleExpandDefi = useCallback(() => {
       handleExpand({
@@ -430,12 +410,11 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
             onItemPress={handleItemPress}
           />
 
-          {recentTabs.length > 0 && (
+          {recentProtocolItems.length > 0 && (
             <HorizontalListSection
-              protocols={protocols}
               title={t("discovery.recent")}
               icon={<Icon.ClockRewind color={themeColors.mint[9]} size={16} />}
-              data={recentTabs}
+              data={recentProtocolItems}
               onItemPress={handleSitePress}
               onScrollEnd={captureScreenshot}
             />
@@ -443,7 +422,6 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
 
           {protocols.length > 0 && (
             <HorizontalListSection
-              protocols={protocols}
               title={t("discovery.trending")}
               icon={<Icon.Lightning01 color={themeColors.gold[9]} size={16} />}
               data={protocols}
@@ -480,6 +458,9 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
               onItemOpen={handleItemOpen}
               onItemPress={handleItemPress}
               onScrollEnd={handleScrollEnd}
+              headerRight={
+                expandedSection.isRecents ? recentsHeaderRight : undefined
+              }
             />
           </Animated.View>
         )}
