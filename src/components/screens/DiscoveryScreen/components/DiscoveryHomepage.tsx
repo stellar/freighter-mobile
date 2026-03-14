@@ -9,14 +9,9 @@ import SectionTitle from "components/screens/DiscoveryScreen/components/SectionT
 import VerticalListSection, {
   VerticalListItem,
 } from "components/screens/DiscoveryScreen/components/VerticalListSection";
-import { App } from "components/sds/App";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import {
-  DEFAULT_PADDING,
-  BROWSER_CONSTANTS,
-  DEFAULT_PRESS_DELAY,
-} from "config/constants";
+import { DEFAULT_PADDING, BROWSER_CONSTANTS } from "config/constants";
 import { DiscoverProtocol } from "config/types";
 import { useBrowserTabsStore } from "ducks/browserTabs";
 import { useProtocolsStore } from "ducks/protocols";
@@ -32,25 +27,11 @@ import React, {
   useEffect,
   useState,
 } from "react";
-import {
-  Animated,
-  View,
-  FlatList,
-  TouchableOpacity,
-  ScrollView,
-} from "react-native";
+import { Animated, View, ScrollView } from "react-native";
 import ViewShot from "react-native-view-shot";
 
 interface DiscoveryHomepageProps {
   tabId: string;
-}
-
-interface HorizontalListSectionProps {
-  title: string;
-  icon: React.ReactNode;
-  data: DiscoverProtocol[];
-  onItemPress: (url: string) => void;
-  onScrollEnd: () => Promise<void>;
 }
 
 interface ExpandedSection {
@@ -76,74 +57,6 @@ const protocolToListItem = (protocol: DiscoverProtocol): VerticalListItem => ({
   description: protocol.description,
   tags: protocol.tags,
 });
-
-const HorizontalListSection: React.FC<HorizontalListSectionProps> = React.memo(
-  ({ title, icon, data, onItemPress, onScrollEnd }) => {
-    const { themeColors } = useColors();
-
-    const handleScrollEnd = useCallback(() => {
-      onScrollEnd();
-    }, [onScrollEnd]);
-
-    const renderSiteItem = useCallback(
-      // eslint-disable-next-line react/no-unused-prop-types
-      ({ item }: { item: DiscoverProtocol }) => (
-        <TouchableOpacity
-          className="mr-3 items-center"
-          onPress={() => onItemPress(item.websiteUrl)}
-          delayPressIn={DEFAULT_PRESS_DELAY}
-        >
-          <View
-            className="w-[76px] h-[76px] rounded-xl justify-center items-center mb-2"
-            style={{ backgroundColor: themeColors.background.tertiary }}
-          >
-            <App appName={item.name} favicon={item.iconUrl} size="lg" />
-          </View>
-          <Text
-            sm
-            medium
-            numberOfLines={2}
-            style={{ maxWidth: pxValue(76), textAlign: "center" }}
-          >
-            {item.name}
-          </Text>
-        </TouchableOpacity>
-      ),
-      [onItemPress, themeColors.background.tertiary],
-    );
-
-    const contentContainerStyle = useMemo(
-      () => ({
-        paddingHorizontal: pxValue(DEFAULT_PADDING),
-      }),
-      [],
-    );
-
-    return (
-      <View>
-        <View
-          className="flex-row items-center gap-2 mb-3 mt-8"
-          style={{ paddingLeft: pxValue(DEFAULT_PADDING) }}
-        >
-          {icon}
-          <Text md medium>
-            {title}
-          </Text>
-        </View>
-
-        <FlatList
-          horizontal
-          data={data}
-          renderItem={renderSiteItem}
-          keyExtractor={(item) => item.websiteUrl}
-          showsHorizontalScrollIndicator={false}
-          onScrollEndDrag={handleScrollEnd}
-          contentContainerStyle={contentContainerStyle}
-        />
-      </View>
-    );
-  },
-);
 
 const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
   ({ tabId }) => {
@@ -409,26 +322,6 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
             onItemOpen={handleItemOpen}
             onItemPress={handleItemPress}
           />
-
-          {recentProtocolItems.length > 0 && (
-            <HorizontalListSection
-              title={t("discovery.recent")}
-              icon={<Icon.ClockRewind color={themeColors.mint[9]} size={16} />}
-              data={recentProtocolItems}
-              onItemPress={handleSitePress}
-              onScrollEnd={captureScreenshot}
-            />
-          )}
-
-          {protocols.length > 0 && (
-            <HorizontalListSection
-              title={t("discovery.trending")}
-              icon={<Icon.Lightning01 color={themeColors.gold[9]} size={16} />}
-              data={protocols}
-              onItemPress={handleSitePress}
-              onScrollEnd={captureScreenshot}
-            />
-          )}
 
           <View
             className="bg-background-tertiary p-4 pr-5 rounded-2xl mt-4 mb-4"
