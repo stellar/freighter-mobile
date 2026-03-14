@@ -324,7 +324,7 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
           />
 
           <View
-            className="bg-background-tertiary p-4 pr-5 rounded-2xl mt-4 mb-4"
+            className="bg-background-tertiary p-4 pr-5 rounded-2xl mt-8 mb-8"
             style={{ marginHorizontal: pxValue(DEFAULT_PADDING) }}
           >
             <Text xs secondary medium>
