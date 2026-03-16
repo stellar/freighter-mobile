@@ -386,8 +386,8 @@ jobs:
         uses: futureware-tech/simulator-action@v4
         with:
           model: "iPhone 16e"
-          os_version: "26.2"
-          wait_for_boot: false
+          os_version: "26.1"
+          wait_for_boot: true
           erase_before_boot: false
           shutdown_after_job: false
 
