@@ -73,7 +73,7 @@ jobs:
     if: >-
       github.event_name != 'pull_request' ||
       github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: macos-26.2-xlarge
+    runs-on: macos-26-xlarge
     timeout-minutes: 120
     steps:
       - name: Checkout repo
@@ -87,8 +87,8 @@ jobs:
       - name: Display iOS environment information
         run: ./scripts/display-ios-environment
 
-      - name: Set latest stable Xcode version
-        run: ./scripts/setup-xcode-latest-stable
+      - name: Set Xcode 26.1
+        run: ./scripts/setup-xcode-26.1
 
       - name: Verify selected Xcode Version
         run: xcodebuild -version
@@ -216,7 +216,7 @@ jobs:
   test:
     name: E2E ${{ matrix.flow-name }}
     needs: build
-    runs-on: macos-26.2-xlarge
+    runs-on: macos-26-xlarge
     timeout-minutes: 120
     strategy:
       fail-fast: false
