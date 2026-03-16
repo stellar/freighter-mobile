@@ -184,13 +184,15 @@ start_flow_recording() {
       echo "📱 Recording iOS (UDID: $MAESTRO_DEVICE)"
       # Warm up SimRenderServer before recording to prevent SimRenderServer.SimulatorError Code=2
       xcrun simctl io "$MAESTRO_DEVICE" screenshot /tmp/simctl-warmup.png 2>/dev/null || true
-      xcrun simctl io "$MAESTRO_DEVICE" recordVideo --codec=h264 --force "$CURRENT_VIDEO_PATH" &
+      xcrun simctl io "$MAESTRO_DEVICE" recordVideo --force "$CURRENT_VIDEO_PATH" \
+        2>"$flow_output_dir/recording-error.log" &
       CURRENT_RECORDING_PID=$!
       sleep 1
       if kill -0 "$CURRENT_RECORDING_PID" 2>/dev/null; then
         echo "✅ iOS recording started (PID: $CURRENT_RECORDING_PID)"
       else
-        echo "⚠️  Warning: iOS recording failed to start (SimRenderServer unavailable), continuing without recording"
+        echo "⚠️  Warning: iOS recording failed to start — see recording-error.log"
+        cat "$flow_output_dir/recording-error.log" 2>/dev/null || true
         CURRENT_RECORDING_PID=""
       fi
     fi
@@ -211,25 +213,29 @@ start_flow_recording() {
   elif [ -n "${DEVICE_UDID:-}" ] && command -v xcrun >/dev/null 2>&1; then
     echo "📱 Detected iOS simulator (UDID: $DEVICE_UDID)"
     xcrun simctl io "$DEVICE_UDID" screenshot /tmp/simctl-warmup.png 2>/dev/null || true
-    xcrun simctl io "$DEVICE_UDID" recordVideo --codec=h264 --force "$CURRENT_VIDEO_PATH" &
+    xcrun simctl io "$DEVICE_UDID" recordVideo --force "$CURRENT_VIDEO_PATH" \
+      2>"$flow_output_dir/recording-error.log" &
     CURRENT_RECORDING_PID=$!
     sleep 1
     if kill -0 "$CURRENT_RECORDING_PID" 2>/dev/null; then
       echo "✅ iOS recording started (PID: $CURRENT_RECORDING_PID)"
     else
-      echo "⚠️  Warning: iOS recording failed to start (SimRenderServer unavailable), continuing without recording"
+      echo "⚠️  Warning: iOS recording failed to start — see recording-error.log"
+      cat "$flow_output_dir/recording-error.log" 2>/dev/null || true
       CURRENT_RECORDING_PID=""
     fi
   elif command -v xcrun >/dev/null 2>&1; then
     echo "📱 Detected iOS simulator (booted)"
     xcrun simctl io booted screenshot /tmp/simctl-warmup.png 2>/dev/null || true
-    xcrun simctl io booted recordVideo --codec=h264 --force "$CURRENT_VIDEO_PATH" &
+    xcrun simctl io booted recordVideo --force "$CURRENT_VIDEO_PATH" \
+      2>"$flow_output_dir/recording-error.log" &
     CURRENT_RECORDING_PID=$!
     sleep 1
     if kill -0 "$CURRENT_RECORDING_PID" 2>/dev/null; then
       echo "✅ iOS recording started (PID: $CURRENT_RECORDING_PID)"
     else
-      echo "⚠️  Warning: iOS recording failed to start (SimRenderServer unavailable), continuing without recording"
+      echo "⚠️  Warning: iOS recording failed to start — see recording-error.log"
+      cat "$flow_output_dir/recording-error.log" 2>/dev/null || true
       CURRENT_RECORDING_PID=""
     fi
   else
