@@ -87,8 +87,8 @@ jobs:
       - name: Display iOS environment information
         run: ./scripts/display-ios-environment
 
-      - name: Set Xcode 26.1
-        run: ./scripts/setup-xcode-26.1
+      - name: Set latest stable Xcode version
+        run: ./scripts/setup-xcode-latest-stable
 
       - name: Verify selected Xcode Version
         run: xcodebuild -version
@@ -166,7 +166,7 @@ jobs:
             -scheme freighter-mobile-dev \
             -configuration Release \
             -sdk iphonesimulator \
-            -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2' \
+            -destination 'platform=iOS Simulator,name=iPhone 16e,OS=26.1' \
             -derivedDataPath ./build \
             CODE_SIGNING_ALLOWED=YES \
             CODE_SIGN_IDENTITY="-" \
@@ -386,8 +386,8 @@ jobs:
         uses: futureware-tech/simulator-action@v4
         with:
           model: "iPhone 16e"
-          os_version: "26.1"
-          wait_for_boot: true
+          os_version: "26.2"
+          wait_for_boot: false
           erase_before_boot: false
           shutdown_after_job: false
 

@@ -157,16 +157,60 @@ fi
 CURRENT_RECORDING_PID=""
 CURRENT_RECORDING_ANDROID_DEVICE=""
 CURRENT_VIDEO_PATH=""
+CURRENT_RECORDING_ERROR_LOG=""
 
 # Mock server PID (initialized before trap is set)
 MOCK_SERVER_PID=""
 MOCK_SERVER_PORT=3001
 
+wait_for_ios_recording_start() {
+  local recording_pid="$1"
+  local recording_error_log="$2"
+  local wait_seconds=10
+  local waited=0
+
+  while [ "$waited" -lt "$wait_seconds" ]; do
+    if [ -f "$recording_error_log" ] && grep -q "Recording started" "$recording_error_log" 2>/dev/null; then
+      return 0
+    fi
+
+    if ! kill -0 "$recording_pid" 2>/dev/null; then
+      return 1
+    fi
+
+    sleep 1
+    waited=$((waited + 1))
+  done
+
+  return 1
+}
+
+wait_for_ios_recording_file() {
+  local video_path="$1"
+  local wait_seconds=10
+  local waited=0
+
+  while [ "$waited" -lt "$wait_seconds" ]; do
+    if [ -f "$video_path" ]; then
+      return 0
+    fi
+
+    sleep 1
+    waited=$((waited + 1))
+  done
+
+  return 1
+}
+
 # Function to start video recording for a specific flow
 # Arguments: $1 = output directory for this flow
 start_flow_recording() {
   local flow_output_dir="$1"
-  CURRENT_VIDEO_PATH="$flow_output_dir/recording.mp4"
+  local absolute_flow_output_dir
+
+  absolute_flow_output_dir=$(cd "$flow_output_dir" && pwd)
+  CURRENT_VIDEO_PATH="$absolute_flow_output_dir/recording.mp4"
+  CURRENT_RECORDING_ERROR_LOG="$absolute_flow_output_dir/recording-error.log"
   CURRENT_RECORDING_PID=""
   CURRENT_RECORDING_ANDROID_DEVICE=""
   
@@ -184,15 +228,14 @@ start_flow_recording() {
       echo "📱 Recording iOS (UDID: $MAESTRO_DEVICE)"
       # Warm up SimRenderServer before recording to prevent SimRenderServer.SimulatorError Code=2
       xcrun simctl io "$MAESTRO_DEVICE" screenshot /tmp/simctl-warmup.png 2>/dev/null || true
-      xcrun simctl io "$MAESTRO_DEVICE" recordVideo --force "$CURRENT_VIDEO_PATH" \
-        2>"$flow_output_dir/recording-error.log" &
+      xcrun simctl io "$MAESTRO_DEVICE" recordVideo --codec=h264 --force "$CURRENT_VIDEO_PATH" \
+        2>"$CURRENT_RECORDING_ERROR_LOG" &
       CURRENT_RECORDING_PID=$!
-      sleep 1
-      if kill -0 "$CURRENT_RECORDING_PID" 2>/dev/null; then
+      if wait_for_ios_recording_start "$CURRENT_RECORDING_PID" "$CURRENT_RECORDING_ERROR_LOG"; then
         echo "✅ iOS recording started (PID: $CURRENT_RECORDING_PID)"
       else
         echo "⚠️  Warning: iOS recording failed to start — see recording-error.log"
-        cat "$flow_output_dir/recording-error.log" 2>/dev/null || true
+        cat "$CURRENT_RECORDING_ERROR_LOG" 2>/dev/null || true
         CURRENT_RECORDING_PID=""
       fi
     fi
@@ -213,29 +256,27 @@ start_flow_recording() {
   elif [ -n "${DEVICE_UDID:-}" ] && command -v xcrun >/dev/null 2>&1; then
     echo "📱 Detected iOS simulator (UDID: $DEVICE_UDID)"
     xcrun simctl io "$DEVICE_UDID" screenshot /tmp/simctl-warmup.png 2>/dev/null || true
-    xcrun simctl io "$DEVICE_UDID" recordVideo --force "$CURRENT_VIDEO_PATH" \
-      2>"$flow_output_dir/recording-error.log" &
+    xcrun simctl io "$DEVICE_UDID" recordVideo --codec=h264 --force "$CURRENT_VIDEO_PATH" \
+      2>"$CURRENT_RECORDING_ERROR_LOG" &
     CURRENT_RECORDING_PID=$!
-    sleep 1
-    if kill -0 "$CURRENT_RECORDING_PID" 2>/dev/null; then
+    if wait_for_ios_recording_start "$CURRENT_RECORDING_PID" "$CURRENT_RECORDING_ERROR_LOG"; then
       echo "✅ iOS recording started (PID: $CURRENT_RECORDING_PID)"
     else
       echo "⚠️  Warning: iOS recording failed to start — see recording-error.log"
-      cat "$flow_output_dir/recording-error.log" 2>/dev/null || true
+      cat "$CURRENT_RECORDING_ERROR_LOG" 2>/dev/null || true
       CURRENT_RECORDING_PID=""
     fi
   elif command -v xcrun >/dev/null 2>&1; then
     echo "📱 Detected iOS simulator (booted)"
     xcrun simctl io booted screenshot /tmp/simctl-warmup.png 2>/dev/null || true
-    xcrun simctl io booted recordVideo --force "$CURRENT_VIDEO_PATH" \
-      2>"$flow_output_dir/recording-error.log" &
+    xcrun simctl io booted recordVideo --codec=h264 --force "$CURRENT_VIDEO_PATH" \
+      2>"$CURRENT_RECORDING_ERROR_LOG" &
     CURRENT_RECORDING_PID=$!
-    sleep 1
-    if kill -0 "$CURRENT_RECORDING_PID" 2>/dev/null; then
+    if wait_for_ios_recording_start "$CURRENT_RECORDING_PID" "$CURRENT_RECORDING_ERROR_LOG"; then
       echo "✅ iOS recording started (PID: $CURRENT_RECORDING_PID)"
     else
       echo "⚠️  Warning: iOS recording failed to start — see recording-error.log"
-      cat "$flow_output_dir/recording-error.log" 2>/dev/null || true
+      cat "$CURRENT_RECORDING_ERROR_LOG" 2>/dev/null || true
       CURRENT_RECORDING_PID=""
     fi
   else
@@ -272,12 +313,12 @@ stop_flow_recording() {
   else
     # iOS: Stop recording by killing the process
     kill -INT "$CURRENT_RECORDING_PID" 2>/dev/null || true
-    sleep 3  # Give xcrun simctl io recordVideo time to flush and close the MP4 container
     wait "$CURRENT_RECORDING_PID" 2>/dev/null || true
-    if [ -f "$CURRENT_VIDEO_PATH" ]; then
+    if wait_for_ios_recording_file "$CURRENT_VIDEO_PATH"; then
       echo "✅ Video saved to $CURRENT_VIDEO_PATH"
     else
       echo "⚠️  Warning: Failed to save iOS recording"
+      cat "$CURRENT_RECORDING_ERROR_LOG" 2>/dev/null || true
     fi
   fi
   
@@ -285,6 +326,7 @@ stop_flow_recording() {
   CURRENT_RECORDING_PID=""
   CURRENT_RECORDING_ANDROID_DEVICE=""
   CURRENT_VIDEO_PATH=""
+  CURRENT_RECORDING_ERROR_LOG=""
 }
 
 # Cleanup function to stop recording if script is interrupted
