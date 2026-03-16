@@ -28,7 +28,6 @@ interface DappSignAuthEntryBottomSheetContentProps {
   isSuspicious?: boolean;
   isUnableToScan?: boolean;
   securityWarningAction?: () => void;
-  proceedAnywayAction?: () => void;
 }
 
 export const DappSignAuthEntryBottomSheetContent: React.FC<
@@ -45,7 +44,6 @@ export const DappSignAuthEntryBottomSheetContent: React.FC<
   isSuspicious,
   isUnableToScan,
   securityWarningAction,
-  proceedAnywayAction,
 }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
@@ -174,7 +172,6 @@ export const DappSignAuthEntryBottomSheetContent: React.FC<
           isSigning={isSigning}
           onCancelRequest={onCancelRequest}
           onConfirm={onConfirm}
-          proceedAnywayAction={proceedAnywayAction}
         />
       </View>
     </View>

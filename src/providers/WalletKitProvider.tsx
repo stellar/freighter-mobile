@@ -976,9 +976,6 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
             securityWarningAction={() =>
               presentSecurityWarningDetail(SecurityContext.TRANSACTION)
             }
-            proceedAnywayAction={() =>
-              presentSecurityWarningDetail(SecurityContext.TRANSACTION)
-            }
             signTransactionDetails={signTransactionDetails}
             isMemoMissing={isMemoMissing}
           />

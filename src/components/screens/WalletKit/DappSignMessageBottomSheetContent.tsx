@@ -27,7 +27,6 @@ interface DappSignMessageBottomSheetContentProps {
   isSuspicious?: boolean;
   isUnableToScan?: boolean;
   securityWarningAction?: () => void;
-  proceedAnywayAction?: () => void;
 }
 
 export const DappSignMessageBottomSheetContent: React.FC<
@@ -44,7 +43,6 @@ export const DappSignMessageBottomSheetContent: React.FC<
   isSuspicious,
   isUnableToScan,
   securityWarningAction,
-  proceedAnywayAction,
 }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
@@ -133,7 +131,6 @@ export const DappSignMessageBottomSheetContent: React.FC<
           isSigning={isSigning}
           onCancelRequest={onCancelRequest}
           onConfirm={onConfirm}
-          proceedAnywayAction={proceedAnywayAction}
         />
       </View>
     </View>

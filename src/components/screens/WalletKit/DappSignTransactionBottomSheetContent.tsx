@@ -32,7 +32,6 @@ interface DappSignTransactionBottomSheetContentProps {
   isUnableToScan?: boolean;
   transactionScanResult?: Blockaid.StellarTransactionScanResponse;
   securityWarningAction?: () => void;
-  proceedAnywayAction?: () => void;
   signTransactionDetails?: SignTransactionDetailsInterface | null;
   isMemoMissing?: boolean;
   isValidatingMemo?: boolean;
@@ -58,7 +57,6 @@ export const DappSignTransactionBottomSheetContent: React.FC<
   isUnableToScan,
   transactionScanResult,
   securityWarningAction,
-  proceedAnywayAction,
   signTransactionDetails,
   isMemoMissing,
   isValidatingMemo,
@@ -66,6 +64,8 @@ export const DappSignTransactionBottomSheetContent: React.FC<
 }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
+
+  const memoValue = signTransactionDetails?.summary.memo?.value;
 
   const transactionBalanceListItems = useTransactionBalanceListItems(
     transactionScanResult,
@@ -103,6 +103,37 @@ export const DappSignTransactionBottomSheetContent: React.FC<
         ),
         titleColor: themeColors.text.secondary,
       },
+      ...(isMemoMissing || memoValue
+        ? [
+            {
+              icon: (
+                <Icon.Annotation
+                  size={16}
+                  color={themeColors.foreground.primary}
+                />
+              ),
+              titleComponent: (
+                <View className="flex-row items-center gap-[8px]">
+                  <Text md secondary>
+                    {t("transactionAmountScreen.details.memo")}
+                  </Text>
+                  {isMemoMissing && (
+                    <Icon.AlertTriangle size={16} themeColor="red" />
+                  )}
+                </View>
+              ),
+              trailingContent: memoValue ? (
+                <Text md primary>
+                  {String(memoValue)}
+                </Text>
+              ) : (
+                <Text md secondary>
+                  {t("transactionAmountScreen.details.none")}
+                </Text>
+              ),
+            },
+          ]
+        : []),
       {
         icon: <Icon.Route size={16} color={themeColors.foreground.primary} />,
         title: t("transactionAmountScreen.details.fee"),
@@ -122,6 +153,8 @@ export const DappSignTransactionBottomSheetContent: React.FC<
       t,
       networkDetails.networkName,
       signTransactionDetails?.summary.feeXlm,
+      isMemoMissing,
+      memoValue,
     ],
   );
 
@@ -184,7 +217,6 @@ export const DappSignTransactionBottomSheetContent: React.FC<
           isMemoMissing={isMemoMissing}
           onCancelRequest={onCancelRequest}
           onConfirm={onConfirm}
-          proceedAnywayAction={proceedAnywayAction}
         />
       </View>
     </View>

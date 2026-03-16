@@ -13,7 +13,6 @@ interface DappRequestButtonsProps {
   isMemoMissing?: boolean;
   onCancelRequest: () => void;
   onConfirm: () => void;
-  proceedAnywayAction?: () => void;
 }
 
 export const DappRequestButtons: React.FC<DappRequestButtonsProps> = ({
@@ -25,7 +24,6 @@ export const DappRequestButtons: React.FC<DappRequestButtonsProps> = ({
   isMemoMissing,
   onCancelRequest,
   onConfirm,
-  proceedAnywayAction,
 }) => {
   const { t } = useAppTranslation();
 
@@ -82,7 +80,7 @@ export const DappRequestButtons: React.FC<DappRequestButtonsProps> = ({
             tertiary
             xl
             isFullWidth
-            onPress={() => proceedAnywayAction?.()}
+            onPress={() => onConfirm()}
             isLoading={isSigning || !!isValidatingMemo}
             disabled={!!isMemoMissing || isSigning || !!isValidatingMemo}
           >
@@ -92,6 +90,8 @@ export const DappRequestButtons: React.FC<DappRequestButtonsProps> = ({
       </View>
     );
   }
+
+  const isDisabled = isSigning || !!isValidatingMemo || isMemoMissing;
 
   return (
     <View className="flex-col gap-3">
@@ -113,8 +113,9 @@ export const DappRequestButtons: React.FC<DappRequestButtonsProps> = ({
           biometric
           onPress={() => onConfirm()}
           isLoading={isSigning}
-          disabled={isSigning}
-          variant={isMalicious ? "error" : "secondary"}
+          disabled={isDisabled}
+          className={isDisabled ? "opacity-70" : "opacity-100"}
+          variant={isMalicious && !isDisabled ? "error" : "secondary"}
         />
       </View>
     </View>

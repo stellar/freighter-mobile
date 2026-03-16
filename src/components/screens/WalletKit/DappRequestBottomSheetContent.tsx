@@ -25,7 +25,6 @@ interface DappRequestBottomSheetContentProps {
   isUnableToScan?: boolean;
   transactionScanResult?: Blockaid.StellarTransactionScanResponse;
   securityWarningAction?: () => void;
-  proceedAnywayAction?: () => void;
   signTransactionDetails?: SignTransactionDetailsInterface | null;
   isMemoMissing?: boolean;
   isValidatingMemo?: boolean;
