@@ -1,7 +1,29 @@
 appId: org.stellar.freighterdev
 ---
-# Shared flow: switch active network to Testnet
-# Used by WalletConnect E2E flows since the mock server targets testnet
+# Standalone flow: import a funded wallet and switch the active network to Testnet
+
+# Import funded wallet
+- runFlow:
+    file: ../onboarding/ImportFundedWallet.yaml
+
+# Wait for either home screen or banner to appear
+- extendedWaitUntil:
+    visible:
+      id: home-screen|welcome-banner-dismiss-button
+    timeout: 30000
+
+# Dismiss welcome banner if visible
+- runFlow:
+    when:
+      visible:
+        id: welcome-banner-dismiss-button
+    commands:
+      - tapOn:
+          id: welcome-banner-dismiss-button
+      - extendedWaitUntil:
+          visible:
+            id: home-screen
+          timeout: 30000
 
 # Open settings from the home screen (E2E only button)
 - tapOn:

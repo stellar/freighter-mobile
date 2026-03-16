@@ -176,7 +176,7 @@ start_flow_recording() {
     # Respect --platform: only record on the targeted device
     if [ "$PLATFORM" = "android" ]; then
       echo "📱 Recording Android (device: $MAESTRO_DEVICE)"
-      adb -s "$MAESTRO_DEVICE" shell screenrecord --time-limit 600 /sdcard/test-recording.mp4 &
+      adb -s "$MAESTRO_DEVICE" shell screenrecord /sdcard/test-recording.mp4 &
       CURRENT_RECORDING_PID="android"
       CURRENT_RECORDING_ANDROID_DEVICE="$MAESTRO_DEVICE"
       echo "✅ Android recording started"
@@ -202,9 +202,9 @@ start_flow_recording() {
     echo "📱 Detected Android device/emulator"
     CURRENT_RECORDING_ANDROID_DEVICE=$(adb devices 2>/dev/null | awk '/^[^[:space:]]+[[:space:]]+device$/ { print $1; exit }')
     if [ -n "$CURRENT_RECORDING_ANDROID_DEVICE" ]; then
-      adb -s "$CURRENT_RECORDING_ANDROID_DEVICE" shell screenrecord --time-limit 600 /sdcard/test-recording.mp4 &
+      adb -s "$CURRENT_RECORDING_ANDROID_DEVICE" shell screenrecord /sdcard/test-recording.mp4 &
     else
-      adb shell screenrecord --time-limit 600 /sdcard/test-recording.mp4 &
+      adb shell screenrecord /sdcard/test-recording.mp4 &
     fi
     CURRENT_RECORDING_PID="android"
     echo "✅ Android recording started"
