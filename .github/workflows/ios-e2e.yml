@@ -73,7 +73,7 @@ jobs:
     if: >-
       github.event_name != 'pull_request' ||
       github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: macos-26-xlarge
+    runs-on: macos-26.2-xlarge
     timeout-minutes: 120
     steps:
       - name: Checkout repo
@@ -216,7 +216,7 @@ jobs:
   test:
     name: E2E ${{ matrix.flow-name }}
     needs: build
-    runs-on: macos-26-xlarge
+    runs-on: macos-26.2-xlarge
     timeout-minutes: 120
     strategy:
       fail-fast: false
