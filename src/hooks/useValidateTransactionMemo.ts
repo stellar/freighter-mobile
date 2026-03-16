@@ -147,6 +147,7 @@ export const useValidateTransactionMemo = (incomingXdr?: string | null) => {
         e,
       );
       // Clear stale state to prevent UI from being blocked on invalid XDR
+      setIsValidatingMemo(false);
       setIsMemoMissing(false);
       setLocalMemo("");
       setLocalTransaction(null);

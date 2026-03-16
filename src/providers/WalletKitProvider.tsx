@@ -385,6 +385,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     setIsConnecting(false);
     setProposalEvent(null);
     setSiteScanResult(undefined);
+    setSecurityWarningContext(SecurityContext.SITE);
     clearEvent();
   };
 
