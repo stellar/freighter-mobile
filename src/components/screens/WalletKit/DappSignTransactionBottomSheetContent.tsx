@@ -7,6 +7,7 @@ import { DappRequestButtons } from "components/screens/WalletKit/DappRequestButt
 import { useDappHeader } from "components/screens/WalletKit/useDappHeader";
 import { App } from "components/sds/App";
 import Avatar from "components/sds/Avatar";
+import { Badge, IconPosition } from "components/sds/Badge";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
@@ -118,7 +119,13 @@ export const DappSignTransactionBottomSheetContent: React.FC<
                     {t("transactionAmountScreen.details.memo")}
                   </Text>
                   {isMemoMissing && (
-                    <Icon.AlertTriangle size={16} themeColor="red" />
+                    <Badge
+                      variant="error"
+                      icon={<Icon.AlertTriangle size={14} themeColor="red" />}
+                      iconPosition={IconPosition.LEFT}
+                    >
+                      {t("common.required")}
+                    </Badge>
                   )}
                 </View>
               ),
