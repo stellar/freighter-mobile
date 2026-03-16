@@ -27,13 +27,17 @@ export const useMaintenanceMode = (): UseMaintenanceModeReturn => {
     maintenance_screen: maintenanceScreen,
   } = useRemoteConfigStore();
 
-  const showMaintenanceBanner =
-    maintenanceBanner.enabled && !!maintenanceBanner.payload;
-  const showMaintenanceScreen =
-    maintenanceScreen.enabled && !!maintenanceScreen.payload;
-
   const bannerContent = maintenanceBannerContent(maintenanceBanner);
   const screenContent = maintenanceScreenContent(maintenanceScreen);
+
+  const showMaintenanceBanner =
+    maintenanceBanner.enabled &&
+    !!maintenanceBanner.payload &&
+    !!bannerContent.title;
+  const showMaintenanceScreen =
+    maintenanceScreen.enabled &&
+    !!maintenanceScreen.payload &&
+    !!screenContent.title;
 
   return {
     showMaintenanceBanner,

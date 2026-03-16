@@ -40,7 +40,8 @@ const getLocalizedString = (
 ): string => {
   if (!obj) return fallback;
   const lang = getDeviceLanguage();
-  return obj[lang] || obj.en || fallback;
+  const value = obj[lang] ?? obj.en;
+  return typeof value === "string" ? value : fallback;
 };
 
 const getLocalizedStringArray = (
@@ -49,7 +50,9 @@ const getLocalizedStringArray = (
 ): string[] => {
   if (!obj) return fallback;
   const lang = getDeviceLanguage();
-  return obj[lang] || obj.en || fallback;
+  const value = obj[lang] ?? obj.en;
+  if (!Array.isArray(value)) return fallback;
+  return value.filter((v): v is string => typeof v === "string");
 };
 
 /**

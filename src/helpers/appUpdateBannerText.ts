@@ -19,10 +19,11 @@ export const appUpdateBannerText = (appUpdateText: {
   const currentLanguage = getDeviceLanguage();
 
   // The app_update_banner_text payload is a flat map of language code -> message string
-  const payload = appUpdateText.payload as Record<string, string>;
+  const { payload } = appUpdateText;
+  const candidate = payload[currentLanguage] ?? payload.en;
 
   // Try current language, then English, then fallback to translation
-  return (
-    payload[currentLanguage] || payload.en || t("appUpdate.defaultMessage")
-  );
+  return typeof candidate === "string"
+    ? candidate
+    : t("appUpdate.defaultMessage");
 };

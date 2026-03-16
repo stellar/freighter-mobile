@@ -14,9 +14,10 @@ import { logger } from "config/logger";
 import { pxValue } from "helpers/dimensions";
 import { useAppUpdate } from "hooks/useAppUpdate";
 import useColors from "hooks/useColors";
+import { useInAppBrowser } from "hooks/useInAppBrowser";
 import { useMaintenanceMode } from "hooks/useMaintenanceMode";
 import React, { useCallback, useRef } from "react";
-import { Linking, View } from "react-native";
+import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { analytics } from "services/analytics";
 
@@ -31,6 +32,7 @@ const HomeScreenHeader = (
   const { showBannerUpdateNotice, updateMessage, openAppStore } =
     useAppUpdate();
   const { showMaintenanceBanner, bannerContent } = useMaintenanceMode();
+  const { open: openInBrowser } = useInAppBrowser();
   const maintenanceModalRef = useRef<BottomSheetModal>(null);
   const baseColor = themeColors.base[1];
 
@@ -42,7 +44,21 @@ const HomeScreenHeader = (
 
   const handleMaintenanceBannerPress = useCallback(() => {
     if (bannerContent.url) {
-      Linking.openURL(bannerContent.url).catch((error) => {
+      let isValidHttpsUrl = false;
+      try {
+        isValidHttpsUrl = new URL(bannerContent.url).protocol === "https:";
+      } catch {
+        // malformed URL — do not open
+      }
+      if (!isValidHttpsUrl) {
+        logger.error(
+          "HomeScreenHeader",
+          "Blocked non-https maintenance URL",
+          bannerContent.url,
+        );
+        return;
+      }
+      openInBrowser(bannerContent.url).catch((error) => {
         logger.error(
           "HomeScreenHeader",
           "Failed to open maintenance URL",
@@ -52,7 +68,7 @@ const HomeScreenHeader = (
     } else if (bannerContent.modal) {
       maintenanceModalRef.current?.present();
     }
-  }, [bannerContent.url, bannerContent.modal]);
+  }, [bannerContent.url, bannerContent.modal, openInBrowser]);
 
   const handleModalDismiss = useCallback(() => {
     maintenanceModalRef.current?.dismiss();

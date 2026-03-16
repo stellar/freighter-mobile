@@ -84,6 +84,7 @@ export const NoticeBanner: React.FC<NoticeBannerProps> = ({
     <TouchableOpacity
       className={`${config.bg} px-3 py-2`}
       onPress={onPress}
+      disabled={!onPress}
       activeOpacity={onPress ? 0.7 : 1}
     >
       <View className="flex-row items-center justify-center mr-3 ml-3">
