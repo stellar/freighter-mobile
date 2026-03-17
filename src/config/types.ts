@@ -58,6 +58,8 @@ export const AUTH_STATUS = {
   AUTHENTICATED: "AUTHENTICATED",
   // User is authenticated. Hash key is expired and temporary store is found.
   HASH_KEY_EXPIRED: "HASH_KEY_EXPIRED",
+  // User is locked. Hash key is expired but temporary store with private keys is preserved.
+  LOCKED: "LOCKED",
 } as const;
 
 export type AuthStatus = (typeof AUTH_STATUS)[keyof typeof AUTH_STATUS];

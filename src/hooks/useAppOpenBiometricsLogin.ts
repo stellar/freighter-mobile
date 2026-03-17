@@ -1,6 +1,8 @@
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
+import useAppTranslation from "hooks/useAppTranslation";
 import { useBiometrics } from "hooks/useBiometrics";
+import { useToast } from "providers/ToastProvider";
 import { useEffect } from "react";
 
 export const useAppOpenBiometricsLogin = (initializing: boolean) => {
@@ -12,6 +14,8 @@ export const useAppOpenBiometricsLogin = (initializing: boolean) => {
     setHasTriggeredAppOpenBiometricsLogin,
   } = useAuthenticationStore();
   const { isBiometricsEnabled } = useBiometrics();
+  const { showToast } = useToast();
+  const { t } = useAppTranslation();
 
   useEffect(() => {
     if (initializing) {
@@ -24,7 +28,8 @@ export const useAppOpenBiometricsLogin = (initializing: boolean) => {
     }
 
     if (
-      authStatus === AUTH_STATUS.HASH_KEY_EXPIRED &&
+      (authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ||
+        authStatus === AUTH_STATUS.LOCKED) &&
       !hasTriggeredAppOpenBiometricsLogin
     ) {
       setHasTriggeredAppOpenBiometricsLogin(true);
@@ -33,6 +38,14 @@ export const useAppOpenBiometricsLogin = (initializing: boolean) => {
         if (biometricPassword) {
           await signIn({ password: biometricPassword });
         }
+      }).catch(() => {
+        showToast({
+          toastId: "unlock-wallet-error",
+          variant: "error",
+          title: t("lockScreen.errorUnlockingWalletTitle"),
+          message: t("lockScreen.errorUnlockingWalletMessage"),
+          duration: 6000,
+        });
       });
     }
   }, [
@@ -43,5 +56,7 @@ export const useAppOpenBiometricsLogin = (initializing: boolean) => {
     setHasTriggeredAppOpenBiometricsLogin,
     verifyActionWithBiometrics,
     signIn,
+    showToast,
+    t,
   ]);
 };

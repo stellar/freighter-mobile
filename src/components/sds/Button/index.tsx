@@ -3,7 +3,7 @@ import { Text, TextSize } from "components/sds/Typography";
 import { useAuthenticationStore } from "ducks/auth";
 import { px } from "helpers/dimensions";
 import { useBiometrics } from "hooks/useBiometrics";
-import React from "react";
+import React, { useCallback, useMemo } from "react";
 import { TouchableOpacity, ActivityIndicator } from "react-native";
 import styled from "styled-components/native";
 
@@ -292,7 +292,7 @@ const ButtonBase = ({
   );
   const resolvedSize = getSize({ size, ...props }, ButtonSizes.EXTRA_LARGE);
 
-  const handlePress = React.useCallback(() => {
+  const handlePress = useCallback(() => {
     if (!onPress) return;
     onPress();
   }, [onPress]);
@@ -347,7 +347,7 @@ const withBiometrics =
     const { verifyActionWithBiometrics } = useAuthenticationStore();
     const { getBiometricButtonIcon } = useBiometrics();
 
-    const handleBiometricPress = React.useCallback(() => {
+    const handleBiometricPress = useCallback(() => {
       if (!onPress) return;
 
       verifyActionWithBiometrics(async (...args: unknown[]) => {
@@ -356,7 +356,7 @@ const withBiometrics =
       });
     }, [onPress, verifyActionWithBiometrics]);
 
-    const biometricIcon = React.useMemo(
+    const biometricIcon = useMemo(
       () => getBiometricButtonIcon(iconColor),
       [getBiometricButtonIcon, iconColor],
     );

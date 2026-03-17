@@ -1,6 +1,5 @@
-import buffer from "buffer";
-
 import { Memo, MemoType } from "@stellar/stellar-sdk";
+import buffer from "buffer";
 
 export const decodeMemo = (
   memo: unknown,

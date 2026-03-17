@@ -18,6 +18,7 @@
   "exclude": [
     "eslint-plugin-translations/index.js",
     "scripts/**/*.js",
+    "mock-dapp",
     "**/node_modules",
     "**/Pods",
     "mock-dapp/**"

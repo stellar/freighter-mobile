@@ -311,7 +311,11 @@
     "useTouchIdInstead": "Use Touch ID instead",
     "useOpticIdInstead": "Use Optic ID instead",
     "useIrisInstead": "Use Iris instead",
-    "enterPasswordInstead": "Use password instead"
+    "enterPasswordInstead": "Use password instead",
+    "errorUnlockingWalletTitle": "Error unlocking wallet",
+    "errorUnlockingWalletMessage": "If the problem persists, please tap on \"Forgot password\" and re-import your wallet.",
+    "failedToLoadAccountTitle": "Account not loaded",
+    "failedToLoadAccountMessage": "Your account could not be loaded after sign-in. Please try again."
   },
   "onboarding": {
     "continue": "Continue",
@@ -426,7 +430,9 @@
       "invalidMnemonicPhrase": "Invalid phrase - words must be in the correct order, lowercase, and separated by spaces",
       "failedToCreateAccount": "Failed to create account. Please try again.",
       "accountAlreadyExists": "Account already exists",
-      "failedToImportSecretKey": "Failed to import secret key"
+      "failedToImportSecretKey": "Failed to import secret key",
+      "failedToReEncryptData": "Failed to re-encrypt data. Please sign in again.",
+      "failedToDecryptData": "Failed to decrypt data. Please sign in again."
     },
     "account": "Account {{number}}",
     "faceId": {
@@ -1089,7 +1095,8 @@
       "actions": "Actions",
       "refresh": "🔄 Refresh",
       "clearEvents": "Clear Events",
-      "simulateSessionExpiry": "⏰ Simulate Session Expiry"
+      "simulateSessionExpiry": "⏰ Simulate Session Expiry",
+      "resetIconsCache": "Reset Icons Cache"
     }
   },
   "debug": {

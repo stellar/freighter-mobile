@@ -75,10 +75,10 @@ export const createSecureStorage = (serviceName: string) => ({
     } catch (error) {
       logger.error(
         "secureStorage.setItem",
-        `Error storing item in keychain: ${key}`,
+        "Error storing item in keychain",
         error,
       );
-      throw new Error(`Failed to store item in keychain: ${key}`);
+      throw new Error("Failed to store item in keychain");
     }
   },
 
@@ -119,7 +119,7 @@ export const createSecureStorage = (serviceName: string) => ({
     } catch (error) {
       logger.error(
         "secureStorage.getItem",
-        `Error retrieving key from keychain: ${key}`,
+        "Error retrieving item from keychain",
         error,
       );
       return false;
@@ -172,7 +172,7 @@ export const createSecureStorage = (serviceName: string) => ({
     } catch (error) {
       logger.error(
         "secureStorage.checkIfExists",
-        `Error checking if key exists: ${key}`,
+        "Error checking if item exists",
         error,
       );
       return false;
@@ -180,17 +180,20 @@ export const createSecureStorage = (serviceName: string) => ({
   },
 
   /**
-   * Clears all secure storage
+   * Clears all items managed by this storage instance
    *
-   * Note: This uses the service name only, which may not match all individual entries
-   * depending on how they were stored. For more reliable clearing, use remove() with
-   * specific keys.
+   * Enumerates every keychain entry whose service name starts with
+   * `${serviceName}_` and deletes them. This covers keys from all app
+   * versions without needing a hardcoded list.
    */
   clear: async (): Promise<void> => {
     try {
-      await Keychain.resetGenericPassword({
-        service: serviceName,
-      });
+      const allServices = await Keychain.getAllGenericPasswordServices();
+      const prefix = `${serviceName}_`;
+      const matching = allServices.filter((s) => s.startsWith(prefix));
+      await Promise.all(
+        matching.map((service) => Keychain.resetGenericPassword({ service })),
+      );
     } catch (error) {
       logger.error("secureStorage.clear", "Error clearing keychain", error);
     }
