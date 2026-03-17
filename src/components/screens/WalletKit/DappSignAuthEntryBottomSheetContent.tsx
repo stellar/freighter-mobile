@@ -5,6 +5,7 @@ import { DappRequestButtons } from "components/screens/WalletKit/DappRequestButt
 import { useDappHeader } from "components/screens/WalletKit/useDappHeader";
 import { App } from "components/sds/App";
 import Avatar from "components/sds/Avatar";
+import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { NetworkDetails } from "config/constants";
@@ -85,7 +86,18 @@ export const DappSignAuthEntryBottomSheetContent: React.FC<
   );
 
   const header = useDappHeader(requestEvent, account);
-  if (!header) return null;
+  if (!header) {
+    return (
+      <View className="flex-1 justify-center items-center gap-[16px] mt-2">
+        <Text sm secondary>
+          {t("walletKit.unableToLoadAuthEntry")}
+        </Text>
+        <Button secondary onPress={onCancelRequest}>
+          {t("common.cancel")}
+        </Button>
+      </View>
+    );
+  }
   const { dAppName, dAppFavicon, dAppDomain } = header;
 
   return (
@@ -113,6 +125,16 @@ export const DappSignAuthEntryBottomSheetContent: React.FC<
         isUnableToScan={isUnableToScan}
         securityWarningAction={securityWarningAction}
       />
+
+      <View
+        className="flex-row items-center gap-[8px] rounded-[12px] p-[12px]"
+        style={{ backgroundColor: themeColors.background.secondary }}
+      >
+        <Icon.InfoCircle size={16} color={themeColors.text.secondary} />
+        <Text sm secondary style={{ flex: 1 }}>
+          {t("walletKit.authEntryNotScannedInfo")}
+        </Text>
+      </View>
 
       <View className="gap-[12px]">
         <View

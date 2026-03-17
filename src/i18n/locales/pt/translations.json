@@ -895,6 +895,9 @@
     "userNotAuthenticated": "Usuário não autenticado",
     "invalidTransactionOrigin": "Domínio de transação não confiável",
     "invalidTransactionOriginMessage": "Uma solicitação de transação WalletConnect foi recebida de {{transactionRequestOrigin}}, mas este domínio não está conectado na sua carteira Freighter.",
+    "errorAuthEntryTooLarge": "Entrada de autorização excede o tamanho máximo permitido",
+    "authEntryNotScannedInfo": "Entradas de autorização não são verificadas automaticamente para riscos de segurança",
+    "unableToLoadAuthEntry": "Não foi possível carregar os detalhes da solicitação",
     "e2eHelper": {
       "title": "WC E2E Helper",
       "createSession": "Criar Sessão",

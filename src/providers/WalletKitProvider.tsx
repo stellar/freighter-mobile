@@ -127,6 +127,10 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   // Request queue to prevent concurrent request handling race conditions
   const isProcessingRequestRef = useRef(false);
   const pendingRequestsQueueRef = useRef<WalletKitSessionRequest[]>([]);
+  // Guard against double-reject: set to true once approveSessionRequest has sent
+  // its own response (success or handled error) so handleClearDappRequest doesn't
+  // send a duplicate rejection when it fires via .finally().
+  const hasRespondedRef = useRef(false);
 
   const xdr = useMemo(
     () =>
@@ -400,8 +404,9 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     siteSecurityWarningBottomSheetModalRef.current?.dismiss();
 
     // We need to explicitly reject the request here otherwise
-    // the app will show the request again on next app launch
-    if (requestEvent) {
+    // the app will show the request again on next app launch.
+    // Skip if approveSessionRequest already sent a response.
+    if (requestEvent && !hasRespondedRef.current) {
       rejectSessionRequest({
         sessionRequest: requestEvent,
         message: t("walletKit.userRejected"),
@@ -415,6 +420,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       setSecurityWarningContext(SecurityContext.SITE);
       saveMemo("");
       clearEvent();
+      hasRespondedRef.current = false;
 
       // Mark processing as complete and process pending request if any
       isProcessingRequestRef.current = false;
@@ -506,9 +512,21 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       activeChain,
       showToast,
       t,
-    }).finally(() => {
-      handleClearDappRequest();
-    });
+    })
+      .then(() => {
+        // approveSessionRequest handled the WC response internally (success or
+        // its own rejection). Mark responded so handleClearDappRequest won't
+        // send a duplicate rejection.
+        hasRespondedRef.current = true;
+      })
+      .catch(() => {
+        // Unexpected throw — approveSessionRequest responded via its own catch
+        // blocks, so also mark as responded to avoid double-reject.
+        hasRespondedRef.current = true;
+      })
+      .finally(() => {
+        handleClearDappRequest();
+      });
   };
 
   /**

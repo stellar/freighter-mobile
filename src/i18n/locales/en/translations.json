@@ -931,6 +931,9 @@
     "userNotAuthenticated": "User not authenticated",
     "invalidTransactionOrigin": "Untrusted Transaction Domain",
     "invalidTransactionOriginMessage": "A WalletConnect transaction was received from {{transactionRequestOrigin}}, but this domain is not connected in your Freighter wallet.",
+    "errorAuthEntryTooLarge": "Auth entry exceeds maximum allowed size",
+    "authEntryNotScannedInfo": "Authorization entries are not automatically scanned for security risks",
+    "unableToLoadAuthEntry": "Unable to load request details",
     "e2eHelper": {
       "title": "WC E2E Helper",
       "createSession": "Create Session",

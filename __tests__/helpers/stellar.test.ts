@@ -31,6 +31,7 @@ jest.mock("@stellar/stellar-sdk", () => {
     StrKey: {
       isValidEd25519PublicKey: jest.fn(),
       isValidMed25519PublicKey: jest.fn(),
+      encodeEd25519PublicKey: originalSdk.StrKey.encodeEd25519PublicKey,
     },
     Account: jest.fn().mockImplementation((accountId, sequenceNumber) => ({
       accountId: () => accountId,

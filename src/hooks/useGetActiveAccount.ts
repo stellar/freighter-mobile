@@ -81,7 +81,9 @@ const useGetActiveAccount = () => {
         );
       } catch (err) {
         logger.error("useGetActiveAccount", "signAuthEntry failed", err);
-        analytics.trackSignedAuthEntryError({ error: String(err) });
+        analytics.trackSignedAuthEntryError({
+          error: String(err).slice(0, 200),
+        });
         return null;
       }
     },

@@ -41,6 +41,9 @@ const stellarNamespaceMethods = [
 /** Supported Stellar RPC events for WalletKit */
 const stellarNamespaceEvents = [StellarRpcEvents.ACCOUNTS_CHANGED];
 
+/** Maximum allowed size for auth entry XDR (base64 string length, ~64 KB) */
+const MAX_AUTH_ENTRY_XDR_SIZE = 65536;
+
 /** Global WalletKit instance */
 // eslint-disable-next-line import/no-mutable-exports
 export let walletKit: IWalletKit;
@@ -383,7 +386,7 @@ export const approveSessionRequest = async ({
   if (rpcMethod === StellarRpcMethods.SIGN_AUTH_ENTRY) {
     const { entryXdr } = requestParams || {};
 
-    if (!entryXdr || typeof entryXdr !== "string") {
+    if (!entryXdr || typeof entryXdr !== "string" || !entryXdr.trim()) {
       const errorMessage = t("walletKit.errorInvalidAuthEntry");
       showToast({
         title: t("walletKit.errorSigningAuthEntry"),
@@ -391,6 +394,20 @@ export const approveSessionRequest = async ({
         variant: "error",
       });
       rejectSessionRequest({ sessionRequest, message: errorMessage });
+      return;
+    }
+
+    if (entryXdr.length > MAX_AUTH_ENTRY_XDR_SIZE) {
+      const errorMessage = t("walletKit.errorAuthEntryTooLarge");
+      showToast({
+        title: t("walletKit.errorSigningAuthEntry"),
+        message: errorMessage,
+        variant: "error",
+      });
+      rejectSessionRequest({
+        sessionRequest,
+        message: errorMessage,
+      });
       return;
     }
 
@@ -406,7 +423,10 @@ export const approveSessionRequest = async ({
         message: t("walletKit.pleaseTryAgainLater"),
         variant: "error",
       });
-      rejectSessionRequest({ sessionRequest, message: errorMessage });
+      rejectSessionRequest({
+        sessionRequest,
+        message: "Failed to process auth entry",
+      });
       return;
     }
 

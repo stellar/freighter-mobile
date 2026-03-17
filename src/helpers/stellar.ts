@@ -359,6 +359,18 @@ export const signAuthEntry = (
 
   const addressCredentials = entry.credentials().address();
 
+  // Verify the entry is addressed to the signing key to prevent a malicious
+  // dApp from tricking the wallet into signing an entry for a different account.
+  const entryAddress = addressCredentials.address();
+  if (entryAddress.switch().name === "scAddressTypeAccount") {
+    const entryPubKey = StrKey.encodeEd25519PublicKey(
+      entryAddress.accountId().ed25519(),
+    );
+    if (entryPubKey !== keyPair.publicKey()) {
+      throw new Error("signAuthEntry: entry address does not match signer");
+    }
+  }
+
   // Build the preimage that will be hashed and signed
   const preimage = xdr.HashIdPreimage.envelopeTypeSorobanAuthorization(
     new xdr.HashIdPreimageSorobanAuthorization({
