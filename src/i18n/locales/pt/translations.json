@@ -291,7 +291,10 @@
     "domain": "Domínio",
     "tags": "Tags",
     "description": "Descrição",
-    "clearRecents": "Limpar Recentes"
+    "clearRecents": "Limpar Recentes",
+    "welcomeTitle": "Bem-vindo ao Discover!",
+    "welcomeGateway": "Seu portal para o ecossistema Stellar. Navegue e conecte-se a aplicativos descentralizados construídos na rede Stellar.",
+    "welcomeCta": "Vamos lá"
   },
   "history": {
     "title": "Histórico",

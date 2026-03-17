@@ -327,7 +327,10 @@
     "domain": "Domain",
     "tags": "Tags",
     "description": "Description",
-    "clearRecents": "Clear Recents"
+    "clearRecents": "Clear Recents",
+    "welcomeTitle": "Welcome to Discover!",
+    "welcomeGateway": "Your gateway to the Stellar ecosystem. Browse and connect to decentralized applications built on Stellar.",
+    "welcomeCta": "Let's go"
   },
   "history": {
     "title": "History",
