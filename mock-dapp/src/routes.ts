@@ -24,8 +24,10 @@ import { MockWalletConnectClient } from "./walletconnect";
  * (Buffer<ArrayBufferLike> / Hash). Buffer is wire-compatible; cast via
  * `as unknown` to bridge the branded-type gap.
  */
-function generateSorobanAuthEntryXdr(): string {
-  const kp = Keypair.random();
+function generateSorobanAuthEntryXdr(signerPublicKey?: string): string {
+  const kp = signerPublicKey
+    ? Keypair.fromPublicKey(signerPublicKey)
+    : Keypair.random();
 
   type Ed25519Buf = Parameters<typeof xdr.PublicKey.publicKeyTypeEd25519>[0];
   type ContractBuf = Parameters<typeof xdr.ScAddress.scAddressTypeContract>[0];
@@ -498,11 +500,6 @@ export function createRoutes(wcClient: MockWalletConnectClient): Router {
       };
       const network = parseNetwork((req.body as { network?: unknown }).network);
 
-      // Generate a fresh authorization entry if the caller didn't supply one.
-      const entryXdrText =
-        typeof entryXdr === "string" && entryXdr
-          ? entryXdr
-          : generateSorobanAuthEntryXdr();
       const metadata = sessionMetadata.get(id);
 
       if (!metadata) {
@@ -515,6 +512,23 @@ export function createRoutes(wcClient: MockWalletConnectClient): Router {
           message: "Wait for wallet approval first",
         });
       }
+
+      // Extract signer public key from WC session namespace so the generated
+      // entry's credential address matches the wallet being asked to sign.
+      const session = wcClient.getSession(metadata.topic);
+      const stellarAccounts: string[] =
+        (session?.namespaces?.["stellar"] as { accounts?: string[] })
+          ?.accounts ?? [];
+      const chainPrefix = `stellar:${network}:`;
+      const signerPubKey = stellarAccounts
+        .find((a) => a.startsWith(chainPrefix))
+        ?.slice(chainPrefix.length);
+
+      // Generate a fresh authorization entry if the caller didn't supply one.
+      const entryXdrText =
+        typeof entryXdr === "string" && entryXdr
+          ? entryXdr
+          : generateSorobanAuthEntryXdr(signerPubKey);
 
       try {
         const requestPromise = wcClient.requestSignAuthEntry(
