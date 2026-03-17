@@ -1,5 +1,4 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
-import { images } from "assets/images";
 import ContextMenuButton, { MenuItem } from "components/ContextMenuButton";
 import { TrendingCarousel, TrendingItem } from "components/TrendingCarousel";
 import { DEFAULT_HEADER_BUTTON_SIZE } from "components/layout/CustomHeaderButton";
@@ -89,7 +88,7 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
           id: protocol.websiteUrl,
           title: protocol.name,
           category: protocol.tags[0],
-          imageSource: images.featuredBackgroundPlaceholder,
+          backgroundUrl: protocol.backgroundUrl,
         })),
       [protocols],
     );

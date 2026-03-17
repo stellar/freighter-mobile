@@ -910,6 +910,7 @@ interface ProtocolsResponse {
       name: string;
       website_url: string;
       tags: string[];
+      background_url?: string;
       is_blacklisted?: boolean;
       is_wc_not_supported?: boolean;
     }[];
@@ -965,6 +966,7 @@ export const fetchProtocols = async (): Promise<DiscoverProtocol[]> => {
       name: protocol.name,
       websiteUrl: protocol.website_url,
       tags: protocol.tags,
+      backgroundUrl: protocol.background_url,
     }));
 };
 

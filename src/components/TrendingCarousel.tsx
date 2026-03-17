@@ -1,15 +1,11 @@
+import TrendingCardImage from "components/TrendingCardImage";
 import { Text } from "components/sds/Typography";
 import { DEFAULT_PADDING, DEFAULT_PRESS_DELAY } from "config/constants";
 import { PALETTE } from "config/theme";
 import { pxValue } from "helpers/dimensions";
-import React, { useCallback, useMemo } from "react";
-import {
-  View,
-  FlatList,
-  TouchableOpacity,
-  Image,
-  ImageSourcePropType,
-} from "react-native";
+import useColors from "hooks/useColors";
+import React, { useCallback, useMemo, useState } from "react";
+import { View, FlatList, TouchableOpacity } from "react-native";
 
 // =============================================================================
 // Constants
@@ -28,7 +24,7 @@ interface TrendingItem {
   id: string;
   title: string;
   category?: string;
-  imageSource: ImageSourcePropType;
+  backgroundUrl?: string;
 }
 
 interface TrendingCardProps {
@@ -48,9 +44,29 @@ interface TrendingCarouselProps {
 
 const TrendingCard: React.FC<TrendingCardProps> = React.memo(
   ({ item, onPress }) => {
+    const { themeColors } = useColors();
+    const [showPlaceholder, setShowPlaceholder] = useState(!item.backgroundUrl);
+
     const handlePress = useCallback(() => {
       onPress(item);
     }, [onPress, item]);
+
+    const handleShowPlaceholder = useCallback(() => {
+      setShowPlaceholder(true);
+    }, []);
+
+    const handleHidePlaceholder = useCallback(() => {
+      setShowPlaceholder(false);
+    }, []);
+
+    // Use dark palette colors when image is visible (light text on dark image),
+    // theme-aware colors when showing placeholder
+    const titleColor = showPlaceholder
+      ? themeColors.text.primary
+      : PALETTE.dark.gray[12];
+    const categoryColor = showPlaceholder
+      ? themeColors.text.secondary
+      : PALETTE.dark.gray[11];
 
     return (
       <TouchableOpacity
@@ -60,26 +76,25 @@ const TrendingCard: React.FC<TrendingCardProps> = React.memo(
           height: CARD_HEIGHT,
           borderRadius: CARD_BORDER_RADIUS,
           marginRight: CARD_GAP,
+          backgroundColor: themeColors.background.tertiary,
         }}
         activeOpacity={0.6}
         onPress={handlePress}
         delayPressIn={DEFAULT_PRESS_DELAY}
       >
-        <Image
-          source={item.imageSource}
-          className="absolute inset-0 w-full h-full"
-          resizeMode="cover"
+        <TrendingCardImage
+          backgroundUrl={item.backgroundUrl}
+          showPlaceholder={showPlaceholder}
+          onShowPlaceholder={handleShowPlaceholder}
+          onHidePlaceholder={handleHidePlaceholder}
         />
 
-        {/* Using PALETTE.dark directly instead of useColors() because text is
-            overlaid on a dark static background image, so it must always be
-            light regardless of the active theme */}
         <View className="absolute bottom-0 left-0 right-0 flex-row items-center justify-between px-[16px] pb-[16px]">
-          <Text md medium color={PALETTE.dark.gray[12]}>
+          <Text md medium color={titleColor}>
             {item.title}
           </Text>
           {item.category && (
-            <Text sm medium color={PALETTE.dark.gray[11]}>
+            <Text sm medium color={categoryColor}>
               {item.category}
             </Text>
           )}
