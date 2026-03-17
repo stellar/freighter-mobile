@@ -291,7 +291,10 @@ describe("simulateCollectibleTransfer", () => {
       networkDetails: mockNetworkDetails,
     });
 
-    expect(result).toBe(mockPreparedXdr);
+    expect(result).toEqual({
+      preparedTransaction: mockPreparedXdr,
+      minResourceFee: undefined,
+    });
     expect(backend.simulateTransaction).toHaveBeenCalledWith({
       xdr: mockTransactionXdr,
       network_url: mockNetworkDetails.sorobanRpcUrl,

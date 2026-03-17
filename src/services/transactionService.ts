@@ -732,7 +732,10 @@ export const simulateContractTransfer = async ({
 
     // Use the preparedTransaction XDR directly from the backend
     // The backend builds, simulates, and prepares the transaction
-    return result.preparedTransaction;
+    return {
+      preparedTransaction: result.preparedTransaction,
+      minResourceFee: result.simulationResponse?.minResourceFee,
+    };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
 
@@ -762,7 +765,10 @@ export const simulateCollectibleTransfer = async ({
       network_passphrase: networkDetails.networkPassphrase,
     });
 
-    return result.preparedTransaction;
+    return {
+      preparedTransaction: result.preparedTransaction,
+      minResourceFee: result.simulationResponse?.minResourceFee,
+    };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
 

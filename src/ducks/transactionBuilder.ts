@@ -1,8 +1,12 @@
-import { NETWORKS, mapNetworkToNetworkDetails } from "config/constants";
+import {
+  MIN_TRANSACTION_FEE,
+  NETWORKS,
+  mapNetworkToNetworkDetails,
+} from "config/constants";
 import { logger } from "config/logger";
 import { PricedBalance } from "config/types";
 import { useDebugStore } from "ducks/debug";
-import { xlmToStroop } from "helpers/formatAmount";
+import { stroopToXlm, xlmToStroop } from "helpers/formatAmount";
 import { isContractId } from "helpers/soroban";
 import { isMuxedAccount } from "helpers/stellar";
 import { t } from "i18next";
@@ -30,6 +34,8 @@ interface TransactionBuilderState {
   transactionHash: string | null;
   error: string | null;
   requestId: string | null;
+  sorobanResourceFeeXlm: string | null;
+  sorobanInclusionFeeXlm: string | null;
 
   buildTransaction: (params: {
     tokenAmount: string;
@@ -93,6 +99,8 @@ const initialState: Omit<
   transactionHash: null,
   error: null,
   requestId: null,
+  sorobanResourceFeeXlm: null,
+  sorobanInclusionFeeXlm: null,
 };
 
 // Unique id to correlate async responses to the latest request
@@ -135,6 +143,8 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         }
 
         let finalXdr = builtTxResult.xdr;
+        let sorobanResourceFeeXlm: string | null = null;
+        let sorobanInclusionFeeXlm: string | null = null;
         const isRecipientContract =
           params.recipientAddress && isContractId(params.recipientAddress);
 
@@ -166,7 +176,7 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
             ? ""
             : params.transactionMemo || "";
 
-          finalXdr = await simulateContractTransfer({
+          const simulateResult = await simulateContractTransfer({
             transaction: builtTxResult.tx,
             networkDetails,
             memo: memoForSimulation,
@@ -177,6 +187,16 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
             },
             contractAddress: builtTxResult.contractId!,
           });
+
+          finalXdr = simulateResult.preparedTransaction;
+
+          if (simulateResult.minResourceFee) {
+            sorobanResourceFeeXlm = stroopToXlm(
+              simulateResult.minResourceFee,
+            ).toFixed(7);
+            sorobanInclusionFeeXlm =
+              params.transactionFee || MIN_TRANSACTION_FEE;
+          }
         }
 
         // Only update store if this build request is still the latest one.
@@ -188,6 +208,8 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
             isBuilding: false,
             signedTransactionXDR: null,
             transactionHash: null,
+            sorobanResourceFeeXlm,
+            sorobanInclusionFeeXlm,
           });
         }
 
@@ -319,10 +341,18 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         // Simulate the collectible transfer transaction to get proper fees and resources
         // The transaction XDR already contains the muxed address (if applicable) from buildSendCollectibleTransaction
         // which checks contract muxed support and creates muxed addresses according to the behavior matrix
-        const finalXdr = await simulateCollectibleTransfer({
+        const simulateResult = await simulateCollectibleTransfer({
           transactionXdr: builtTxResult.tx.toXDR(),
           networkDetails,
         });
+
+        const finalXdr = simulateResult.preparedTransaction;
+        const sorobanResourceFeeXlm = simulateResult.minResourceFee
+          ? stroopToXlm(simulateResult.minResourceFee).toFixed(7)
+          : null;
+        const sorobanInclusionFeeXlm = simulateResult.minResourceFee
+          ? params.transactionFee || MIN_TRANSACTION_FEE
+          : null;
 
         // Only update store if this build request is still the latest one.
         // This prevents race conditions where a slow async response from
@@ -333,6 +363,8 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
             isBuilding: false,
             signedTransactionXDR: null,
             transactionHash: null,
+            sorobanResourceFeeXlm,
+            sorobanInclusionFeeXlm,
           });
         }
 

@@ -739,8 +739,12 @@ export interface SimulateTokenTransferParams {
  * @property {string} preparedTransaction - XDR-encoded prepared transaction
  */
 export interface SimulateTransactionResponse {
-  simulationResponse: unknown;
+  simulationResponse: SorobanSimulationResponse;
   preparedTransaction: string;
+}
+
+export interface SorobanSimulationResponse {
+  minResourceFee?: string;
 }
 
 /**

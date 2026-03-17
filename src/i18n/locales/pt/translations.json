@@ -658,6 +658,7 @@
   "transactionSettings": {
     "title": "Configurações da transação",
     "feeTitle": "Taxa da transação",
+    "inclusionFeeTitle": "Taxa de inclusão",
     "memoTitle": "Memo",
     "slippageTitle": "Deslizamento permitido",
     "timeoutTitle": "Tempo limite da transação",
@@ -738,6 +739,9 @@
       "memo": "Memo",
       "none": "Nenhum",
       "fee": "Taxa",
+      "inclusionFee": "Taxa de inclusão",
+      "resourceFee": "Taxa de recursos",
+      "totalFee": "Taxa total",
       "xdr": "XDR"
     },
     "errors": {
@@ -757,6 +761,11 @@
       "suspiciousAsset": "Um ativo foi marcado como suspeito"
     },
     "confirmAnyway": "Confirmar mesmo assim"
+  },
+  "feeBreakdown": {
+    "title": "Taxas",
+    "descriptionClassic": "Essas taxas vão para a rede para processar sua transação.",
+    "descriptionSoroban": "Essas taxas vão para a rede para processar sua transação. Para transações Soroban, executamos uma simulação primeiro, então você pode ver a taxa total ser ajustada."
   },
   "addMemoExplanationBottomSheet": {
     "title": "Memo é obrigatório",

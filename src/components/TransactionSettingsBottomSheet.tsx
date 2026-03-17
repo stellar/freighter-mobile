@@ -53,6 +53,7 @@ type TransactionSettingsBottomSheetProps = {
   onConfirm: () => void;
   context: TransactionContext;
   onSettingsChange?: () => void;
+  onOpenFeeBreakdown?: () => void;
 };
 
 // Constants
@@ -60,7 +61,13 @@ const STEP_SIZE_PERCENT = 0.5;
 
 const TransactionSettingsBottomSheet: React.FC<
   TransactionSettingsBottomSheetProps
-> = ({ onCancel, onConfirm, context, onSettingsChange }) => {
+> = ({
+  onCancel,
+  onConfirm,
+  context,
+  onSettingsChange,
+  onOpenFeeBreakdown,
+}) => {
   // All hooks at the top
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
@@ -491,10 +498,16 @@ const TransactionSettingsBottomSheet: React.FC<
         <View className="flex flex-row items-center justify-between">
           <View className="flex flex-row items-center gap-2">
             <Text sm secondary>
-              {t("transactionSettings.feeTitle")}
+              {isSorobanTransaction
+                ? t("transactionSettings.inclusionFeeTitle")
+                : t("transactionSettings.feeTitle")}
             </Text>
             <TouchableOpacity
-              onPress={() => feeInfoBottomSheetModalRef.current?.present()}
+              onPress={() =>
+                isSorobanTransaction
+                  ? onOpenFeeBreakdown?.()
+                  : feeInfoBottomSheetModalRef.current?.present()
+              }
             >
               <Icon.InfoCircle themeColor="gray" size={16} />
             </TouchableOpacity>
@@ -548,6 +561,8 @@ const TransactionSettingsBottomSheet: React.FC<
       </View>
     ),
     [
+      isSorobanTransaction,
+      onOpenFeeBreakdown,
       localFee,
       feeError,
       t,

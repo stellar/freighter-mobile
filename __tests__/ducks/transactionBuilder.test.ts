@@ -61,7 +61,10 @@ describe("transactionBuilder Duck", () => {
     );
     (
       transactionService.simulateContractTransfer as jest.Mock
-    ).mockResolvedValue(mockPreparedXDR);
+    ).mockResolvedValue({
+      preparedTransaction: mockPreparedXDR,
+      minResourceFee: "100",
+    });
     (stellarServices.signTransaction as jest.Mock).mockReturnValue(
       mockSignedXDR,
     );
@@ -317,7 +320,10 @@ describe("transactionBuilder Duck", () => {
       });
       (
         transactionService.simulateCollectibleTransfer as jest.Mock
-      ).mockResolvedValue(mockPreparedXDR);
+      ).mockResolvedValue({
+        preparedTransaction: mockPreparedXDR,
+        minResourceFee: "100",
+      });
     });
 
     it("should build and simulate a collectible transaction successfully", async () => {
