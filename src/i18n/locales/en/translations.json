@@ -312,7 +312,7 @@
     "defaultTabTitle": "New Tab",
     "recent": "Recent",
     "trending": "Trending",
-    "legalDisclaimer": "By connecting to these dapps, you acknowledge that you're interacting with them at your own risk. We cannot recover funds. Never share your recovery phrase or private key.",
+    "legalDisclaimer": "These services are operated by independent third parties, not by Freighter or SDF. Inclusion here is not an endorsement. DeFi carries risk, including loss of funds. Use at your own risk.",
     "oneTab": "1 Tab",
     "tabs": "{{count}} Tabs",
     "urlBarPlaceholder": "Search",
