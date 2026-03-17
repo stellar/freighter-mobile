@@ -16,20 +16,20 @@ const makeScanResult = (diffs: unknown[]) =>
 
 describe("getTransactionBalanceChanges", () => {
   it.each([
-    [undefined, "scanResult is undefined"],
-    [{} as any, "simulation is missing"],
+    ["scanResult is undefined", undefined],
+    ["simulation is missing", {} as any],
     [
-      { simulation: { error: "simulation failed" } } as any,
       "simulation has an error",
+      { simulation: { error: "simulation failed" } } as any,
     ],
-  ])("returns null when %s", (input) => {
+  ])("returns null when %s", (_description, input) => {
     expect(getTransactionBalanceChanges(input)).toBeNull();
   });
 
   it.each([
-    [{ simulation: {} } as any, "account_assets_diffs is absent"],
-    [makeScanResult([]), "account_assets_diffs is empty"],
-  ])("returns [] when %s", (input) => {
+    ["account_assets_diffs is absent", { simulation: {} } as any],
+    ["account_assets_diffs is empty", makeScanResult([])],
+  ])("returns [] when %s", (_description, input) => {
     expect(getTransactionBalanceChanges(input)).toEqual([]);
   });
 
