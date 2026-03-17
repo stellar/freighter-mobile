@@ -20,7 +20,6 @@
     "scripts/**/*.js",
     "mock-dapp",
     "**/node_modules",
-    "**/Pods",
-    "mock-dapp/**"
+    "**/Pods"
   ]
 }

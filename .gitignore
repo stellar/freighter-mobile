@@ -100,4 +100,3 @@ ios/fastlane/*.p8
 .server.pid
 *.bak
 .env.bak
-package-lock.json
