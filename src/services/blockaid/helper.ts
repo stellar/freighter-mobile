@@ -1,6 +1,6 @@
 import Blockaid from "@blockaid/client";
 import BigNumber from "bignumber.js";
-import { DEFAULT_DECIMALS } from "config/constants";
+import { DEFAULT_DECIMALS, NATIVE_TOKEN_CODE } from "config/constants";
 import { t } from "i18next";
 import {
   BLOCKAID_RESULT_TYPES,
@@ -547,6 +547,14 @@ export const getTransactionBalanceChanges = (
       const rawInteger = hasIn ? inRaw : outRaw;
       const isCredit = hasIn;
 
+      if (
+        (typeof rawInteger !== "number" && typeof rawInteger !== "string") ||
+        rawInteger === "" ||
+        (typeof rawInteger === "number" && !Number.isFinite(rawInteger))
+      ) {
+        return undefined;
+      }
+
       const { asset } = diff;
       const isNative = asset.type === "NATIVE";
 
@@ -556,7 +564,7 @@ export const getTransactionBalanceChanges = (
       } else if (typeof asset.code === "string") {
         code = asset.code;
       } else {
-        code = null;
+        code = isNative ? NATIVE_TOKEN_CODE : null;
       }
 
       let assetIssuer: string | null | undefined;
@@ -581,14 +589,15 @@ export const getTransactionBalanceChanges = (
           typeof rawDecimals === "number" &&
           Number.isFinite(rawDecimals) &&
           Number.isInteger(rawDecimals) &&
-          rawDecimals >= 0
+          rawDecimals >= 0 &&
+          rawDecimals <= 19
         )
       ) {
         return undefined;
       }
       const decimals = rawDecimals ?? DEFAULT_DECIMALS;
 
-      const amount = new BigNumber(rawInteger as number | string).dividedBy(
+      const amount = new BigNumber(rawInteger).dividedBy(
         new BigNumber(10).pow(decimals),
       );
 

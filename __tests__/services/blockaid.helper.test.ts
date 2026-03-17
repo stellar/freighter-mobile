@@ -179,6 +179,35 @@ describe("getTransactionBalanceChanges", () => {
           in: { raw_value: 100 },
           out: null,
         },
+        // decimals above upper bound (20 > 19)
+        {
+          asset: {
+            type: "SEP41",
+            symbol: "TKN",
+            address: CONTRACT_ADDRESS,
+            decimals: 20,
+          },
+          in: { raw_value: 100 },
+          out: null,
+        },
+        // raw_value is boolean
+        {
+          asset: { type: "ASSET", code: "USDC", issuer: USDC_ISSUER },
+          in: { raw_value: true as any },
+          out: null,
+        },
+        // raw_value is object
+        {
+          asset: { type: "ASSET", code: "USDC", issuer: USDC_ISSUER },
+          in: { raw_value: {} as any },
+          out: null,
+        },
+        // raw_value is empty string
+        {
+          asset: { type: "ASSET", code: "USDC", issuer: USDC_ISSUER },
+          in: { raw_value: "" },
+          out: null,
+        },
         // valid anchor — must survive
         {
           asset: {
@@ -196,5 +225,58 @@ describe("getTransactionBalanceChanges", () => {
     expect(result).toHaveLength(1);
     expect(result![0]).toMatchObject({ assetCode: "PBT" });
     expect(result![0].amount).toEqual(new BigNumber("1.029"));
+  });
+
+  it("falls back to XLM for NATIVE asset with no code or symbol", () => {
+    const result = getTransactionBalanceChanges(
+      makeScanResult([
+        {
+          asset: { type: "NATIVE" },
+          in: { raw_value: 10290000 },
+          out: null,
+        },
+      ]),
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result![0]).toMatchObject({
+      assetCode: "XLM",
+      assetIssuer: undefined,
+      isNative: true,
+      isCredit: true,
+    });
+    expect(result![0].amount).toEqual(new BigNumber("1.029"));
+  });
+
+  it("accepts decimals at the upper boundary (19) and rejects above it (20)", () => {
+    const result = getTransactionBalanceChanges(
+      makeScanResult([
+        // decimals: 19 — at the boundary, must be included
+        {
+          asset: {
+            type: "SEP41",
+            symbol: "BOUNDARY",
+            address: CONTRACT_ADDRESS,
+            decimals: 19,
+          },
+          in: { raw_value: 1 },
+          out: null,
+        },
+        // decimals: 20 — above the boundary, must be skipped
+        {
+          asset: {
+            type: "SEP41",
+            symbol: "OVER",
+            address: CONTRACT_ADDRESS,
+            decimals: 20,
+          },
+          in: { raw_value: 1 },
+          out: null,
+        },
+      ]),
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result![0].assetCode).toBe("BOUNDARY");
   });
 });
