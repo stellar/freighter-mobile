@@ -37,7 +37,9 @@
     "name": "Name",
     "collection": "Collection",
     "tokenId": "Token ID",
-    "message": "Message"
+    "message": "Message",
+    "retry": "Check again",
+    "linkOpenError": "Unable to open link"
   },
   "home": {
     "title": "Home",

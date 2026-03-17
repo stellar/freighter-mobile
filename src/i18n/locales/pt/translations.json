@@ -37,7 +37,9 @@
     "copy": "Copiar",
     "name": "Nome",
     "collection": "Coleção",
-    "tokenId": "ID do Token"
+    "tokenId": "ID do Token",
+    "retry": "Verificar novamente",
+    "linkOpenError": "Não foi possível abrir o link"
   },
   "home": {
     "title": "Início",

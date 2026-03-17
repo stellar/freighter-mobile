@@ -12,10 +12,12 @@ import { AnalyticsEvent } from "config/analyticsConfig";
 import { DEFAULT_PADDING } from "config/constants";
 import { logger } from "config/logger";
 import { pxValue } from "helpers/dimensions";
+import useAppTranslation from "hooks/useAppTranslation";
 import { useAppUpdate } from "hooks/useAppUpdate";
 import useColors from "hooks/useColors";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
 import { useMaintenanceMode } from "hooks/useMaintenanceMode";
+import { useToast } from "providers/ToastProvider";
 import React, { useCallback, useRef } from "react";
 import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -29,6 +31,8 @@ const HomeScreenHeader = (
   const { navigation, options = {} } = props;
   const { themeColors } = useColors();
   const insets = useSafeAreaInsets();
+  const { t } = useAppTranslation();
+  const { showToast } = useToast();
   const { showBannerUpdateNotice, updateMessage, openAppStore } =
     useAppUpdate();
   const { showMaintenanceBanner, bannerContent } = useMaintenanceMode();
@@ -53,6 +57,12 @@ const HomeScreenHeader = (
           "Malformed maintenance URL",
           bannerContent.url,
         );
+        showToast({
+          toastId: "maintenance-url-error",
+          variant: "error",
+          title: t("common.linkOpenError"),
+        });
+        return;
       }
       if (!isValidHttpsUrl) {
         logger.error(
@@ -60,6 +70,11 @@ const HomeScreenHeader = (
           "Blocked non-https maintenance URL",
           bannerContent.url,
         );
+        showToast({
+          toastId: "maintenance-url-error",
+          variant: "error",
+          title: t("common.linkOpenError"),
+        });
         return;
       }
       openInBrowser(bannerContent.url).catch((error) => {
@@ -72,7 +87,7 @@ const HomeScreenHeader = (
     } else if (bannerContent.modal) {
       maintenanceModalRef.current?.present();
     }
-  }, [bannerContent.url, bannerContent.modal, openInBrowser]);
+  }, [bannerContent.url, bannerContent.modal, openInBrowser, showToast, t]);
 
   const handleModalDismiss = useCallback(() => {
     maintenanceModalRef.current?.dismiss();
@@ -155,7 +170,7 @@ const HomeScreenHeader = (
       {renderBannerContent()}
 
       {/* Maintenance bottom sheet modal - shown when banner tapped with no URL */}
-      {bannerContent.modal && (
+      {showMaintenanceBanner && bannerContent.modal && (
         <MaintenanceBannerBottomSheet
           modalRef={maintenanceModalRef}
           title={bannerContent.modal.title}

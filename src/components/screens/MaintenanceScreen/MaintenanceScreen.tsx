@@ -23,8 +23,9 @@ export const MaintenanceScreen: React.FC = () => {
         </Text>
 
         <View className="mt-4 gap-3">
-          {screenContent.body.map((paragraph) => (
-            <Text key={paragraph} md regular secondary>
+          {screenContent.body.map((paragraph, index) => (
+            // eslint-disable-next-line react/no-array-index-key --- static body. index as key is correct
+            <Text key={index} md regular secondary>
               {paragraph}
             </Text>
           ))}

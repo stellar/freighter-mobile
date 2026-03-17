@@ -88,8 +88,9 @@ const MaintenanceBannerBottomSheetContent: React.FC<{
       </View>
 
       <View className="gap-3">
-        {body.map((paragraph) => (
-          <Text key={paragraph} md regular secondary>
+        {body.map((paragraph, index) => (
+          // eslint-disable-next-line react/no-array-index-key --- static body. index as key is correct
+          <Text key={index} md regular secondary>
             {paragraph}
           </Text>
         ))}
