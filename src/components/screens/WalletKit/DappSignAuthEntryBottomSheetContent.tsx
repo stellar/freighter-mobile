@@ -126,16 +126,6 @@ export const DappSignAuthEntryBottomSheetContent: React.FC<
         securityWarningAction={securityWarningAction}
       />
 
-      <View
-        className="flex-row items-center gap-[8px] rounded-[12px] p-[12px]"
-        style={{ backgroundColor: themeColors.background.secondary }}
-      >
-        <Icon.InfoCircle size={16} color={themeColors.text.secondary} />
-        <Text sm secondary style={{ flex: 1 }}>
-          {t("walletKit.authEntryNotScannedInfo")}
-        </Text>
-      </View>
-
       <View className="gap-[12px]">
         <View
           className="rounded-[16px] p-[16px] gap-[12px]"

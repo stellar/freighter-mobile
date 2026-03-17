@@ -932,7 +932,6 @@
     "invalidTransactionOrigin": "Untrusted Transaction Domain",
     "invalidTransactionOriginMessage": "A WalletConnect transaction was received from {{transactionRequestOrigin}}, but this domain is not connected in your Freighter wallet.",
     "errorAuthEntryTooLarge": "Auth entry exceeds maximum allowed size",
-    "authEntryNotScannedInfo": "Authorization entries are not automatically scanned for security risks",
     "unableToLoadAuthEntry": "Unable to load request details",
     "failedToProcessAuthEntry": "Failed to process auth entry",
     "e2eHelper": {
