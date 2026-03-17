@@ -17,9 +17,10 @@ interface UseMaintenanceModeReturn {
  * Hook that reads maintenance feature flags from remote config and exposes
  * parsed, localized content for the maintenance banner and maintenance screen.
  *
- * Priority:
- *  - maintenance_screen takes precedence over all other banners/screens
- *  - maintenance_banner takes precedence over the app update banner
+ * Priority (highest to lowest, enforced in RootNavigator):
+ *  - force update screen (required_app_version flag) — shown first, dismissible by the user
+ *  - maintenance_screen — shown when services are degraded (visible once force update is dismissed)
+ *  - maintenance_banner — takes precedence over the app update banner
  */
 export const useMaintenanceMode = (): UseMaintenanceModeReturn => {
   const {

@@ -36,19 +36,23 @@ const HomeScreenHeader = (
   const maintenanceModalRef = useRef<BottomSheetModal>(null);
   const baseColor = themeColors.base[1];
 
-  const handleBannerPress = () => {
+  const handleBannerPress = useCallback(() => {
     openAppStore().then(() => {
       analytics.track(AnalyticsEvent.APP_UPDATE_OPEN_STORE_FROM_BANNER);
     });
-  };
+  }, [openAppStore]);
 
   const handleMaintenanceBannerPress = useCallback(() => {
     if (bannerContent.url) {
       let isValidHttpsUrl = false;
       try {
         isValidHttpsUrl = new URL(bannerContent.url).protocol === "https:";
-      } catch {
-        // malformed URL — do not open
+      } catch (e) {
+        logger.error(
+          "HomeScreenHeader",
+          "Malformed maintenance URL",
+          bannerContent.url,
+        );
       }
       if (!isValidHttpsUrl) {
         logger.error(
@@ -83,7 +87,7 @@ const HomeScreenHeader = (
     bannerContent.url || bannerContent.modal
   );
 
-  const renderBannerContent = () => {
+  const renderBannerContent = useCallback(() => {
     if (showMaintenanceBanner) {
       return (
         <NoticeBanner
@@ -103,7 +107,15 @@ const HomeScreenHeader = (
     }
 
     return null;
-  };
+  }, [
+    showMaintenanceBanner,
+    bannerContent,
+    hasMaintenanceBannerAction,
+    handleMaintenanceBannerPress,
+    showBannerUpdateNotice,
+    updateMessage,
+    handleBannerPress,
+  ]);
 
   return (
     <View className="bg-background-primary">

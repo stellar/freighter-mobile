@@ -58,7 +58,7 @@ const getLocalizedStringArray = (
 /**
  * Parses the maintenance_banner Amplitude flag payload into localized content.
  * Payload shape:
- *   { theme, url?, banner: { title: { en, pt }, modal?: { title: { en, pt }, body: { en: [], pt: [] } } } }
+ *   { theme, url?, banner: { title: { en, pt } }, modal?: { title: { en, pt }, body: { en: [], pt: [] } } }
  */
 export const maintenanceBannerContent = (flag: {
   enabled: boolean;
@@ -68,10 +68,13 @@ export const maintenanceBannerContent = (flag: {
   const banner = payload?.banner as
     | {
         title?: LocalizedString;
-        modal?: {
-          title?: LocalizedString;
-          body?: LocalizedStringArray;
-        };
+      }
+    | undefined;
+
+  const modalPayload = payload?.modal as
+    | {
+        title?: LocalizedString;
+        body?: LocalizedStringArray;
       }
     | undefined;
 
@@ -82,7 +85,6 @@ export const maintenanceBannerContent = (flag: {
 
   const title = getLocalizedString(banner?.title, "");
 
-  const modalPayload = banner?.modal;
   const modal = modalPayload
     ? {
         title: getLocalizedString(modalPayload.title, title),

@@ -26,12 +26,12 @@ const BANNER_PAYLOAD = {
   theme: "warning",
   banner: {
     title: { en: "Some services are down", pt: "Alguns serviços estão fora" },
-    modal: {
-      title: { en: "Modal title", pt: "Título modal" },
-      body: {
-        en: ["Paragraph one", "Paragraph two"],
-        pt: ["Parágrafo um", "Parágrafo dois"],
-      },
+  },
+  modal: {
+    title: { en: "Modal title", pt: "Título modal" },
+    body: {
+      en: ["Paragraph one", "Paragraph two"],
+      pt: ["Parágrafo um", "Parágrafo dois"],
     },
   },
 };
@@ -235,37 +235,35 @@ describe("useMaintenanceMode", () => {
       it.each([
         {
           description: "no modal in payload",
-          banner: { title: BANNER_PAYLOAD.banner.title },
+          modal: undefined,
           expectedModal: undefined,
         },
         {
           description: "all string body values",
-          banner: {
-            title: BANNER_PAYLOAD.banner.title,
-            modal: {
-              title: { en: "Title" },
-              body: { en: ["Line one", "Line two"] },
-            },
+          modal: {
+            title: { en: "Title" },
+            body: { en: ["Line one", "Line two"] },
           },
           expectedModal: { title: "Title", body: ["Line one", "Line two"] },
         },
         {
           description: "filters non-string values from body",
-          banner: {
-            title: BANNER_PAYLOAD.banner.title,
-            modal: {
-              title: { en: "Title" },
-              body: { en: ["valid", 42, null, "also valid"] },
-            },
+          modal: {
+            title: { en: "Title" },
+            body: { en: ["valid", 42, null, "also valid"] },
           },
           expectedModal: { title: "Title", body: ["valid", "also valid"] },
         },
-      ])("$description", ({ banner, expectedModal }) => {
+      ])("$description", ({ modal, expectedModal }) => {
         mockUseRemoteConfigStore.mockReturnValue({
           ...DEFAULT_FLAGS,
           maintenance_banner: {
             enabled: true,
-            payload: { theme: "warning", banner },
+            payload: {
+              theme: "warning",
+              banner: { title: BANNER_PAYLOAD.banner.title },
+              modal,
+            },
           },
         });
 
@@ -350,7 +348,7 @@ describe("useMaintenanceMode", () => {
   });
 
   describe("precedence", () => {
-    it("both flags can be independently active — screen takes precedence in the navigator", () => {
+    it("both flags can be independently active — force update takes precedence, then maintenance screen (enforced in RootNavigator)", () => {
       mockUseRemoteConfigStore.mockReturnValue({
         maintenance_banner: { enabled: true, payload: BANNER_PAYLOAD },
         maintenance_screen: { enabled: true, payload: SCREEN_PAYLOAD },

@@ -170,12 +170,7 @@ export const RootNavigator = () => {
     return <LoadingScreen />;
   }
 
-  // Maintenance screen takes precedence over force update
-  if (showMaintenanceScreen) {
-    return <MaintenanceScreen />;
-  }
-
-  // Show force update screen if required
+  // Force update shown first — dismissible, after which the maintenance screen may appear
   if (showForceUpdate) {
     return (
       <ForceUpdateScreen
@@ -185,6 +180,11 @@ export const RootNavigator = () => {
         }}
       />
     );
+  }
+
+  // Maintenance screen shown when services are degraded (lower priority than force update)
+  if (showMaintenanceScreen) {
+    return <MaintenanceScreen />;
   }
 
   return (
