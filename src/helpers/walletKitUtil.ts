@@ -413,7 +413,7 @@ export const approveSessionRequest = async ({
 
     let signedAuthEntry: string | null = null;
     try {
-      signedAuthEntry = signAuthEntry(entryXdr);
+      signedAuthEntry = signAuthEntry(entryXdr.trim());
     } catch (e) {
       const errorMessage =
         e instanceof Error ? e.message : "Failed to parse auth entry XDR";
@@ -425,7 +425,7 @@ export const approveSessionRequest = async ({
       });
       rejectSessionRequest({
         sessionRequest,
-        message: "Failed to process auth entry",
+        message: t("walletKit.failedToProcessAuthEntry"),
       });
       return;
     }
@@ -484,7 +484,10 @@ export const approveSessionRequest = async ({
         variant: "error",
       });
 
-      rejectSessionRequest({ sessionRequest, message: errorMsg });
+      rejectSessionRequest({
+        sessionRequest,
+        message: t("walletKit.failedToProcessAuthEntry"),
+      });
     }
 
     return;

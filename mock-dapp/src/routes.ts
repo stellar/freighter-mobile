@@ -16,8 +16,9 @@ import { MockWalletConnectClient } from "./walletconnect";
  *   │   └── transfer_from(user, dex, 50 XLM)
  *   └── approve(user, dex, 50 XLM, expiry=500_000)
  *
- * Uses SorobanAddressCredentials with a fresh random keypair so each call
- * produces a unique, signable entry.
+ * Uses the wallet session's public key as the credential address when available
+ * (so the entry is immediately signable by the connected wallet), falling back
+ * to a fresh random keypair when no session key can be resolved.
  *
  * stellar-base v14: xdr.PublicKey.publicKeyTypeEd25519 and
  * xdr.ScAddress.scAddressTypeContract accept opaque XDR byte-array types

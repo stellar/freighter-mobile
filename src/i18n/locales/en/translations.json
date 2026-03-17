@@ -934,6 +934,7 @@
     "errorAuthEntryTooLarge": "Auth entry exceeds maximum allowed size",
     "authEntryNotScannedInfo": "Authorization entries are not automatically scanned for security risks",
     "unableToLoadAuthEntry": "Unable to load request details",
+    "failedToProcessAuthEntry": "Failed to process auth entry",
     "e2eHelper": {
       "title": "WC E2E Helper",
       "createSession": "Create Session",

@@ -898,6 +898,7 @@
     "errorAuthEntryTooLarge": "Entrada de autorização excede o tamanho máximo permitido",
     "authEntryNotScannedInfo": "Entradas de autorização não são verificadas automaticamente para riscos de segurança",
     "unableToLoadAuthEntry": "Não foi possível carregar os detalhes da solicitação",
+    "failedToProcessAuthEntry": "Falha ao processar entrada de autorização",
     "e2eHelper": {
       "title": "WC E2E Helper",
       "createSession": "Criar Sessão",

@@ -256,7 +256,7 @@ export const DappAuthEntryDisplay: React.FC<DappAuthEntryDisplayProps> = ({
               style={{ fontFamily: "monospace" }}
               testID="auth-entry-display-content"
             >
-              {entryXdr}
+              {entryXdr.length > 500 ? `${entryXdr.slice(0, 500)}…` : entryXdr}
             </Text>
           </ScrollView>
         </View>
