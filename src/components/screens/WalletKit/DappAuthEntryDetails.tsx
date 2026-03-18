@@ -11,18 +11,10 @@ import { TouchableOpacity } from "react-native";
 
 interface DappAuthEntryDetailsProps {
   entryXdr: string;
-  isMalicious?: boolean;
-  isSuspicious?: boolean;
-  isUnableToScan?: boolean;
-  securityWarningAction?: () => void;
 }
 
 const DappAuthEntryDetails: React.FC<DappAuthEntryDetailsProps> = ({
   entryXdr,
-  isMalicious,
-  isSuspicious,
-  isUnableToScan,
-  securityWarningAction,
 }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
@@ -52,10 +44,6 @@ const DappAuthEntryDetails: React.FC<DappAuthEntryDetailsProps> = ({
         customContent={
           <DappAuthEntryDetailsBottomSheet
             entryXdr={entryXdr}
-            isMalicious={isMalicious}
-            isSuspicious={isSuspicious}
-            isUnableToScan={isUnableToScan}
-            securityWarningAction={securityWarningAction}
             onDismiss={() => modalRef.current?.dismiss()}
           />
         }

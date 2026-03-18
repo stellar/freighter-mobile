@@ -161,13 +161,7 @@ export const DappSignAuthEntryBottomSheetContent: React.FC<
           </ScrollView>
         </View>
         <List variant="secondary" items={accountList} />
-        <DappAuthEntryDetails
-          entryXdr={entryXdr}
-          isMalicious={isMalicious}
-          isSuspicious={isSuspicious}
-          isUnableToScan={isUnableToScan}
-          securityWarningAction={securityWarningAction}
-        />
+        <DappAuthEntryDetails entryXdr={entryXdr} />
       </View>
 
       {!isMalicious && !isSuspicious && !isUnableToScan && (

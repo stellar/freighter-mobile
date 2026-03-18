@@ -36,6 +36,7 @@ export interface SignXdrResponse {
 
 export interface SignAuthEntryResponse {
   signedAuthEntry: string;
+  signerAddress: string;
 }
 
 /**

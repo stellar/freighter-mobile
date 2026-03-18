@@ -13,19 +13,19 @@ import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { ScrollView, TouchableOpacity, View } from "react-native";
 
 interface DappAuthEntryDisplayProps {
-  /** Base64-encoded SorobanAuthorizationEntry XDR */
+  /** Base64-encoded HashIdPreimage XDR (HashIdPreimage.envelopeTypeSorobanAuthorization) */
   entryXdr: string;
   /** When true all invocation cards start expanded */
   expandAll?: boolean;
 }
 
 /**
- * Decodes a SorobanAuthorizationEntry XDR and renders each invocation as an
- * expandable card — matching the extension's AuthEntries component.
+ * Decodes a HashIdPreimage XDR and renders each invocation as an expandable
+ * card — matching the extension's AuthEntries component.
  *
  * Falls back to a scrollable raw-XDR view if parsing fails.
  */
@@ -41,23 +41,27 @@ export const DappAuthEntryDisplay: React.FC<DappAuthEntryDisplayProps> = ({
   const [expandedIndices, setExpandedIndices] = useState<Set<number>>(() => {
     if (!expandAll) return new Set();
     try {
-      const entry = xdr.SorobanAuthorizationEntry.fromXDR(entryXdr, "base64");
-      const d = getInvocationDetails(entry.rootInvocation());
+      const preimage = xdr.HashIdPreimage.fromXDR(entryXdr, "base64");
+      const d = getInvocationDetails(
+        preimage.sorobanAuthorization().invocation(),
+      );
       return new Set(d.map((_, i) => i));
     } catch {
       return new Set();
     }
   });
 
-  let details: InvocationArgs[] = [];
-  try {
-    const entry = xdr.SorobanAuthorizationEntry.fromXDR(entryXdr, "base64");
-    details = getInvocationDetails(entry.rootInvocation());
-  } catch (e) {
-    logger.warn("DappAuthEntryDisplay", "Failed to parse auth entry XDR", {
-      error: e,
-    });
-  }
+  const details = useMemo<InvocationArgs[]>(() => {
+    try {
+      const preimage = xdr.HashIdPreimage.fromXDR(entryXdr, "base64");
+      return getInvocationDetails(preimage.sorobanAuthorization().invocation());
+    } catch (e) {
+      logger.warn("DappAuthEntryDisplay", "Failed to parse auth entry XDR", {
+        error: e,
+      });
+      return [];
+    }
+  }, [entryXdr]);
 
   const toggleExpanded = (index: number) => {
     setExpandedIndices((prev) => {

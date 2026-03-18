@@ -321,83 +321,38 @@ export const signMessage = (message: string, privateKey: string): string => {
 };
 
 /**
- * Signs a Soroban authorization entry using the account's private key
+ * Signs a Soroban authorization entry preimage using the account's private key.
+ * Implements the SEP-43 stellar_signAuthEntry contract: the dApp provides the
+ * HashIdPreimage XDR, the wallet hashes and signs it, and returns the raw
+ * Ed25519 signature alongside the signer address.
  *
- * @param entryXdr - Base64-encoded XDR of a SorobanAuthorizationEntry
+ * @param preimageXdr - Base64-encoded HashIdPreimage XDR
+ *   (HashIdPreimage.envelopeTypeSorobanAuthorization)
  * @param privateKey - Account's secret key (S...)
- * @param networkPassphrase - Network passphrase used to build the signing preimage
- * @returns Base64-encoded XDR of the signed SorobanAuthorizationEntry
+ * @returns signedAuthEntry (base64 Ed25519 signature) and signerAddress (G... public key)
  *
- * @throws {Error} If the entry XDR is invalid or cannot be parsed
- * @throws {Error} If the entry credentials are not of type sorobanCredentialsAddress
+ * @throws {Error} If the preimage XDR is invalid or cannot be parsed
  * @throws {Error} If the private key is invalid
  *
  * @example
- * const entryXdr = "AAAAAQ..."; // base64 SorobanAuthorizationEntry XDR
+ * const preimageXdr = "AAAAAQ..."; // base64 HashIdPreimage XDR
  * const privateKey = "SBXXXX...";
- * const networkPassphrase = Networks.TESTNET;
- * const signedEntryXdr = signAuthEntry(entryXdr, privateKey, networkPassphrase);
+ * const { signedAuthEntry, signerAddress } = signAuthEntry(preimageXdr, privateKey);
  */
 export const signAuthEntry = (
-  entryXdr: string,
+  preimageXdr: string,
   privateKey: string,
-  networkPassphrase: string,
-): string => {
+): { signedAuthEntry: string; signerAddress: string } => {
+  // Validate that the XDR is a HashIdPreimage.envelopeTypeSorobanAuthorization
+  // before signing — rejects arbitrary blobs that do not conform to SEP-43.
+  xdr.HashIdPreimage.fromXDR(preimageXdr, "base64").sorobanAuthorization();
+
   const keyPair = Keypair.fromSecret(privateKey);
-  const entry = xdr.SorobanAuthorizationEntry.fromXDR(entryXdr, "base64");
-
-  const credentialsType = entry.credentials().switch().value;
-
-  if (
-    credentialsType !==
-    xdr.SorobanCredentialsType.sorobanCredentialsAddress().value
-  ) {
-    throw new Error(
-      "signAuthEntry: only sorobanCredentialsAddress entries are supported",
-    );
-  }
-
-  const addressCredentials = entry.credentials().address();
-
-  // Verify the entry is addressed to the signing key to prevent a malicious
-  // dApp from tricking the wallet into signing an entry for a different account.
-  const entryAddress = addressCredentials.address();
-  if (entryAddress.switch().name === "scAddressTypeAccount") {
-    const entryPubKey = StrKey.encodeEd25519PublicKey(
-      entryAddress.accountId().ed25519(),
-    );
-    if (entryPubKey !== keyPair.publicKey()) {
-      throw new Error("signAuthEntry: entry address does not match signer");
-    }
-  }
-
-  // Build the preimage that will be hashed and signed
-  const preimage = xdr.HashIdPreimage.envelopeTypeSorobanAuthorization(
-    new xdr.HashIdPreimageSorobanAuthorization({
-      networkId: hash(Buffer.from(networkPassphrase)),
-      nonce: addressCredentials.nonce(),
-      signatureExpirationLedger: addressCredentials.signatureExpirationLedger(),
-      invocation: entry.rootInvocation(),
-    }),
-  );
-
-  const signingPayload = hash(preimage.toXDR());
+  // SEP-43: hash the raw preimage bytes and sign — identical to the extension
+  const signingPayload = hash(Buffer.from(preimageXdr, "base64"));
   const signature = keyPair.sign(signingPayload);
-
-  // Set the signature as an ScVal map with public_key and signature fields,
-  // following the standard Soroban account auth verification interface
-  addressCredentials.signature(
-    xdr.ScVal.scvMap([
-      new xdr.ScMapEntry({
-        key: xdr.ScVal.scvSymbol("public_key"),
-        val: xdr.ScVal.scvBytes(keyPair.rawPublicKey()),
-      }),
-      new xdr.ScMapEntry({
-        key: xdr.ScVal.scvSymbol("signature"),
-        val: xdr.ScVal.scvBytes(signature),
-      }),
-    ]),
-  );
-
-  return entry.toXDR("base64");
+  return {
+    signedAuthEntry: signature.toString("base64"),
+    signerAddress: keyPair.publicKey(),
+  };
 };

@@ -1,13 +1,13 @@
 /* eslint-disable @fnando/consistent-import/consistent-import */
 /* eslint-disable no-console */
-import { xdr, Keypair } from "@stellar/stellar-base";
+import { xdr, Networks, hash } from "@stellar/stellar-base";
 import { Router, Request, Response } from "express";
 import rateLimit from "express-rate-limit";
 
 import { MockWalletConnectClient } from "./walletconnect";
 
 /**
- * Generate a fresh SorobanAuthorizationEntry XDR string for E2E testing.
+ * Generate a fresh HashIdPreimage XDR string for E2E testing.
  *
  * Produces a realistic DEX-deposit scenario with 4 nested invocations:
  *
@@ -16,21 +16,16 @@ import { MockWalletConnectClient } from "./walletconnect";
  *   │   └── transfer_from(user, dex, 50 XLM)
  *   └── approve(user, dex, 50 XLM, expiry=500_000)
  *
- * Uses the wallet session's public key as the credential address when available
- * (so the entry is immediately signable by the connected wallet), falling back
- * to a fresh random keypair when no session key can be resolved.
+ * Per SEP-43, the dApp constructs the HashIdPreimage and passes it to the
+ * wallet to hash-and-sign. No signer address is embedded in the preimage.
  *
- * stellar-base v14: xdr.PublicKey.publicKeyTypeEd25519 and
- * xdr.ScAddress.scAddressTypeContract accept opaque XDR byte-array types
- * (Buffer<ArrayBufferLike> / Hash). Buffer is wire-compatible; cast via
- * `as unknown` to bridge the branded-type gap.
+ * stellar-base v14: xdr.ScAddress.scAddressTypeContract accepts opaque
+ * XDR byte-array types. Buffer is wire-compatible; cast via `as unknown`.
  */
-function generateSorobanAuthEntryXdr(signerPublicKey?: string): string {
-  const kp = signerPublicKey
-    ? Keypair.fromPublicKey(signerPublicKey)
-    : Keypair.random();
+function generateAuthPreimageXdr(network: "testnet" | "pubnet"): string {
+  const networkPassphrase =
+    network === "pubnet" ? Networks.PUBLIC : Networks.TESTNET;
 
-  type Ed25519Buf = Parameters<typeof xdr.PublicKey.publicKeyTypeEd25519>[0];
   type ContractBuf = Parameters<typeof xdr.ScAddress.scAddressTypeContract>[0];
 
   const contractBuf = (seed: number) =>
@@ -39,15 +34,6 @@ function generateSorobanAuthEntryXdr(signerPublicKey?: string): string {
   const scContract = (seed: number) =>
     xdr.ScVal.scvAddress(
       xdr.ScAddress.scAddressTypeContract(contractBuf(seed)),
-    );
-
-  const scAcct = () =>
-    xdr.ScVal.scvAddress(
-      xdr.ScAddress.scAddressTypeAccount(
-        xdr.PublicKey.publicKeyTypeEd25519(
-          kp.rawPublicKey() as unknown as Ed25519Buf,
-        ),
-      ),
     );
 
   const i128 = (n: bigint) => {
@@ -74,17 +60,15 @@ function generateSorobanAuthEntryXdr(signerPublicKey?: string): string {
   // Deepest: XLM token transfer_from(user, dex, 50 XLM)
   const xlmTransfer = new xdr.SorobanAuthorizedInvocation({
     function: contractFn(0x30, "transfer_from", [
-      scAcct(),
       scContract(0x10),
       i128(500_000_000n),
     ]),
     subInvocations: [],
   });
 
-  // Sub 1: USDC approve(user, dex, 100 USDC, expiry)
+  // Sub 1: USDC approve(dex, 100 USDC, expiry)
   const usdcApprove = new xdr.SorobanAuthorizedInvocation({
     function: contractFn(0x20, "approve", [
-      scAcct(),
       scContract(0x10),
       i128(100_000_000n),
       u32(500_000),
@@ -92,10 +76,9 @@ function generateSorobanAuthEntryXdr(signerPublicKey?: string): string {
     subInvocations: [xlmTransfer],
   });
 
-  // Sub 2: XLM approve(user, dex, 50 XLM, expiry)
+  // Sub 2: XLM approve(dex, 50 XLM, expiry)
   const xlmApprove = new xdr.SorobanAuthorizedInvocation({
     function: contractFn(0x30, "approve", [
-      scAcct(),
       scContract(0x10),
       i128(500_000_000n),
       u32(500_000),
@@ -103,38 +86,30 @@ function generateSorobanAuthEntryXdr(signerPublicKey?: string): string {
     subInvocations: [],
   });
 
-  // Root: DEX deposit(token_a, token_b, desired_a, desired_b, min_a, min_b, to, deadline)
+  // Root: DEX deposit(token_a, token_b, desired_a, desired_b, min_a, min_b, deadline)
   const rootInvocation = new xdr.SorobanAuthorizedInvocation({
     function: contractFn(0x10, "deposit", [
       scContract(0x20), // token_a (USDC)
       scContract(0x30), // token_b (XLM)
-      i128(100_000_000n), // desired_a: 100 USDC (6 decimals)
-      i128(500_000_000n), // desired_b: 50 XLM (7 decimals)
+      i128(100_000_000n), // desired_a: 100 USDC
+      i128(500_000_000n), // desired_b: 50 XLM
       i128(99_000_000n), // min_a: 99 USDC
       i128(490_000_000n), // min_b: 49 XLM
-      scAcct(), // to
       u32(500_100), // deadline ledger
     ]),
     subInvocations: [usdcApprove, xlmApprove],
   });
 
-  const entry = new xdr.SorobanAuthorizationEntry({
-    credentials: xdr.SorobanCredentials.sorobanCredentialsAddress(
-      new xdr.SorobanAddressCredentials({
-        address: xdr.ScAddress.scAddressTypeAccount(
-          xdr.PublicKey.publicKeyTypeEd25519(
-            kp.rawPublicKey() as unknown as Ed25519Buf,
-          ),
-        ),
-        nonce: xdr.Int64.fromString("0"),
-        signatureExpirationLedger: 999_999,
-        signature: xdr.ScVal.scvVoid(),
-      }),
-    ),
-    rootInvocation,
-  });
-
-  return entry.toXDR("base64");
+  return xdr.HashIdPreimage.envelopeTypeSorobanAuthorization(
+    new xdr.HashIdPreimageSorobanAuthorization({
+      networkId: hash(Buffer.from(networkPassphrase)),
+      // Date.now() provides uniqueness for testing only.
+      // Production dApps MUST use a cryptographically random nonce.
+      nonce: xdr.Int64.fromString(String(Date.now())),
+      signatureExpirationLedger: 999_999,
+      invocation: rootInvocation,
+    }),
+  ).toXDR("base64");
 }
 
 export function createRoutes(wcClient: MockWalletConnectClient): Router {
@@ -514,22 +489,11 @@ export function createRoutes(wcClient: MockWalletConnectClient): Router {
         });
       }
 
-      // Extract signer public key from WC session namespace so the generated
-      // entry's credential address matches the wallet being asked to sign.
-      const session = wcClient.getSession(metadata.topic);
-      const stellarAccounts: string[] =
-        (session?.namespaces?.["stellar"] as { accounts?: string[] })
-          ?.accounts ?? [];
-      const chainPrefix = `stellar:${network}:`;
-      const signerPubKey = stellarAccounts
-        .find((a) => a.startsWith(chainPrefix))
-        ?.slice(chainPrefix.length);
-
-      // Generate a fresh authorization entry if the caller didn't supply one.
+      // Generate a fresh preimage if the caller didn't supply one.
       const entryXdrText =
         typeof entryXdr === "string" && entryXdr
           ? entryXdr
-          : generateSorobanAuthEntryXdr(signerPubKey);
+          : generateAuthPreimageXdr(network);
 
       try {
         const requestPromise = wcClient.requestSignAuthEntry(

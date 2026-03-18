@@ -374,8 +374,8 @@
       <p style="color: #666; font-size: 12px; margin-top: 6px; margin-bottom: 20px;">Server generates a fresh SorobanAuthorizationEntry XDR automatically.</p>
 
       <div class="input-group">
-        <label for="auth-entry-xdr">Or sign a specific SorobanAuthorizationEntry XDR (base64):</label>
-        <textarea id="auth-entry-xdr" placeholder="Enter base64-encoded SorobanAuthorizationEntry XDR..." rows="4"></textarea>
+        <label for="auth-entry-xdr">Or sign a specific HashIdPreimage XDR (base64):</label>
+        <textarea id="auth-entry-xdr" placeholder="Enter base64-encoded HashIdPreimage XDR (preimage)..." rows="4"></textarea>
       </div>
 
       <button onclick="signAuthEntry()">Sign Auth Entry (XDR)</button>
@@ -388,6 +388,10 @@
 
       <div id="auth-entry-result" style="display:none; margin-top: 15px;">
         <div class="section-title">Signed Auth Entry Result</div>
+        <div style="margin-bottom: 8px;">
+          <strong>Signer Address:</strong>
+          <span id="auth-entry-signer-address" style="font-family: monospace; word-break: break-all;"></span>
+        </div>
         <div class="response-box" id="auth-entry-response-json"></div>
       </div>
     </div>
@@ -737,6 +741,7 @@
         if (respData.status === 'approved') {
           document.getElementById('signAuthEntryStatusText').textContent = '✅ Auth entry signed!';
           document.getElementById('auth-entry-result').style.display = 'block';
+          document.getElementById('auth-entry-signer-address').textContent = respData.result?.signerAddress || '';
           document.getElementById('auth-entry-response-json').textContent = JSON.stringify(respData, null, 2);
           showStatus('✅ Signed auth entry received!', 'success');
         } else if (respData.status === 'rejected') {
@@ -781,6 +786,7 @@
         if (respData.status === 'approved') {
           document.getElementById('signAuthEntryStatusText').textContent = '✅ Auth entry signed!';
           document.getElementById('auth-entry-result').style.display = 'block';
+          document.getElementById('auth-entry-signer-address').textContent = respData.result?.signerAddress || '';
           document.getElementById('auth-entry-response-json').textContent = JSON.stringify(respData, null, 2);
           showStatus('✅ Signed auth entry received!', 'success');
         } else if (respData.status === 'rejected') {

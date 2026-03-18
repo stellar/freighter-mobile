@@ -219,41 +219,44 @@ The signature covers the message bytes as defined by SEP-53.
 
 ### `stellar_signAuthEntry`
 
-Signs a
-[Soroban authorization entry](https://developers.stellar.org/docs/smart-contracts/guides/auth/authorization)
-(`SorobanAuthorizationEntry`) and returns the signed entry XDR. Used in
-multi-auth and custom-account smart contract workflows where the wallet must
-co-sign a specific contract invocation without submitting a transaction.
+Signs a Soroban authorization entry **preimage** (`HashIdPreimage` XDR, envelope
+type `envelopeTypeSorobanAuthorization`) and returns the raw Ed25519 signature.
+This follows
+[SEP-43](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0043.md):
+the **dApp** constructs the preimage (network ID + nonce + expiry + invocation),
+and the wallet hashes it (`SHA-256`) and signs the digest. Used in multi-auth
+and custom-account smart contract workflows where the wallet must co-sign a
+specific contract invocation without submitting a transaction.
 
-> **Security note:** Authorization entries are not automatically scanned for
-> security risks (Blockaid scanning is not available for this method). Review
-> the entry's contract address, function name, and subinvocations before
-> signing.
+> **Security note:** Freighter Mobile performs a **Blockaid site scan** before
+> showing the signing sheet. Review the contract address, function name, and
+> subinvocations displayed in the UI before confirming.
 
 **Request params**
 
 ```json
 {
-  "entryXdr": "<base64-encoded SorobanAuthorizationEntry XDR>"
+  "entryXdr": "<base64-encoded HashIdPreimage XDR>"
 }
 ```
 
-| Field      | Type     | Constraints                                                               | Description                                                                                                                  |
-| ---------- | -------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `entryXdr` | `string` | Non-empty, non-whitespace, ≤ 64 KB, `sorobanCredentialsAddress` type only | Base64-encoded `SorobanAuthorizationEntry` XDR. The entry's `credentials.address` must match the wallet's active public key. |
+| Field      | Type     | Constraints               | Description                                                                                                                                                              |
+| ---------- | -------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `entryXdr` | `string` | Non-empty, non-whitespace | Base64-encoded `HashIdPreimage` XDR (envelope type `envelopeTypeSorobanAuthorization`). Build this from the `SorobanAuthorizationEntry` returned by contract simulation. |
 
 **Response**
 
 ```json
 {
-  "signedAuthEntry": "<base64-encoded signed SorobanAuthorizationEntry XDR>"
+  "signedAuthEntry": "<base64-encoded raw Ed25519 signature>",
+  "signerAddress": "<G... Stellar public key>"
 }
 ```
 
-The returned XDR is the same `SorobanAuthorizationEntry` with the
-`credentials.signature` field populated as an `ScVal` map containing
-`public_key` (bytes) and `signature` (bytes), following the standard Soroban
-account auth verification interface.
+| Field             | Description                                                                |
+| ----------------- | -------------------------------------------------------------------------- |
+| `signedAuthEntry` | Base64-encoded 64-byte Ed25519 signature over `SHA-256(preimage)`.         |
+| `signerAddress`   | Stellar public key (G-address) of the account that produced the signature. |
 
 **Full WalletConnect request example**
 
@@ -277,14 +280,26 @@ account auth verification interface.
 **Building the `entryXdr` on your dApp**
 
 ```typescript
-import { xdr, Networks, hash } from "@stellar/stellar-sdk";
+import { xdr, Networks, hash, Keypair } from "@stellar/stellar-sdk";
 
 // Obtain the SorobanAuthorizationEntry from your contract simulation
 const simulationResult = await server.simulateTransaction(tx);
-const authEntries = simulationResult.result.auth;
+const authEntry = simulationResult.result.auth[0]; // SorobanAuthorizationEntry
 
-// Encode the entry that needs the wallet signature
-const entryXdr = authEntries[0].toXDR("base64");
+// Build the HashIdPreimage — this is what the wallet will hash and sign
+const preimage = xdr.HashIdPreimage.envelopeTypeSorobanAuthorization(
+  new xdr.HashIdPreimageSorobanAuthorization({
+    networkId: hash(Buffer.from(Networks.PUBLIC)),
+    nonce: authEntry.credentials().address().nonce(),
+    signatureExpirationLedger: authEntry
+      .credentials()
+      .address()
+      .signatureExpirationLedger(),
+    invocation: authEntry.rootInvocation(),
+  }),
+);
+
+const entryXdr = preimage.toXDR("base64");
 
 // Send via WalletConnect
 const result = await walletKit.request({
@@ -296,20 +311,34 @@ const result = await walletKit.request({
   },
 });
 
-// result.signedAuthEntry is the base64 signed entry
-// Attach it back to your transaction auth array before submission
+// result.signedAuthEntry — base64 raw Ed25519 signature (64 bytes)
+// result.signerAddress  — G-address of the signer
+
+// Attach the signature back to the auth entry before submission
+const signerRawKey = Keypair.fromPublicKey(result.signerAddress).rawPublicKey();
+const signatureScVal = xdr.ScVal.scvMap([
+  new xdr.ScMapEntry({
+    key: xdr.ScVal.scvSymbol("public_key"),
+    val: xdr.ScVal.scvBytes(signerRawKey),
+  }),
+  new xdr.ScMapEntry({
+    key: xdr.ScVal.scvSymbol("signature"),
+    val: xdr.ScVal.scvBytes(Buffer.from(result.signedAuthEntry, "base64")),
+  }),
+]);
+authEntry
+  .credentials()
+  .address()
+  .signature(xdr.ScVal.scvVec([signatureScVal]));
 ```
 
 **Error cases**
 
-| Condition                                          | Error message                                                           |
-| -------------------------------------------------- | ----------------------------------------------------------------------- |
-| Missing, non-string, or whitespace-only `entryXdr` | `"Invalid authorization entry"`                                         |
-| `entryXdr` exceeds 64 KB                           | `"Auth entry exceeds maximum allowed size"`                             |
-| Entry address does not match signer                | `"signAuthEntry: entry address does not match signer"`                  |
-| Non-address credentials type                       | `"signAuthEntry: only sorobanCredentialsAddress entries are supported"` |
-| XDR parse failure                                  | `"Failed to process auth entry"`                                        |
-| User rejected                                      | `"User rejected the request"`                                           |
+| Condition                                          | Error message                    |
+| -------------------------------------------------- | -------------------------------- |
+| Missing, non-string, or whitespace-only `entryXdr` | `"Invalid authorization entry"`  |
+| XDR parse failure                                  | `"Failed to process auth entry"` |
+| User rejected                                      | `"User rejected the request"`    |
 
 ---
 
@@ -341,9 +370,9 @@ params.
 
 All four methods trigger a native bottom sheet in Freighter Mobile for the user
 to review and confirm (or reject) the request. Blockaid security scanning is
-performed for `stellar_signXDR` and `stellar_signAndSubmitXDR`. For
-`stellar_signMessage` and `stellar_signAuthEntry`, no automated scan is
-performed.
+performed for `stellar_signXDR` and `stellar_signAndSubmitXDR` (transaction
+scan) and for `stellar_signAuthEntry` (site scan). For `stellar_signMessage`, no
+automated scan is performed.
 
 ---
 

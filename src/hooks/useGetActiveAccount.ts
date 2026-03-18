@@ -70,15 +70,13 @@ const useGetActiveAccount = () => {
   );
 
   const signAuthEntry = useCallback(
-    (entryXdr: string, networkPassphrase: string): string | null => {
+    (
+      preimageXdr: string,
+    ): { signedAuthEntry: string; signerAddress: string } | null => {
       if (!account) return null;
 
       try {
-        return signAuthEntryHelper(
-          entryXdr,
-          account.privateKey,
-          networkPassphrase,
-        );
+        return signAuthEntryHelper(preimageXdr, account.privateKey);
       } catch (err) {
         logger.error("useGetActiveAccount", "signAuthEntry failed", err);
         analytics.trackSignedAuthEntryError({

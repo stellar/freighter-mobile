@@ -688,18 +688,13 @@ describe("Stellar helpers", () => {
     // Derived public key: GBXFXNDLV4LSWA4VB7YIL5GBD7BVNR22SGBTDKMO2SBZZHDXSKZYCP7L
 
     /**
-     * Build a minimal valid SorobanAuthorizationEntry with address credentials.
-     * The entry has a void signature (pre-signing state).
+     * Build a minimal valid HashIdPreimage XDR for the TESTNET passphrase.
+     * Mirrors the preimage a dApp would construct per SEP-43.
      */
-    const buildTestAuthEntry = (): string => {
-      const keypair = Keypair.fromSecret(seed);
-      const accountAddress = new Address(keypair.publicKey()).toScAddress();
-      const addressCredentials = new xdr.SorobanAddressCredentials({
-        address: accountAddress,
-        nonce: xdr.Int64.fromString("1234567890") as xdr.Int64,
-        signatureExpirationLedger: 999999,
-        signature: xdr.ScVal.scvVoid(),
-      });
+    const buildTestPreimage = (
+      network: string = Networks.TESTNET,
+      nonce: string = "1234567890",
+    ): string => {
       const invocation = new xdr.SorobanAuthorizedInvocation({
         function:
           xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeContractFn(
@@ -713,250 +708,81 @@ describe("Stellar helpers", () => {
           ),
         subInvocations: [],
       });
-      return new xdr.SorobanAuthorizationEntry({
-        credentials:
-          xdr.SorobanCredentials.sorobanCredentialsAddress(addressCredentials),
-        rootInvocation: invocation,
-      }).toXDR("base64");
+      return xdr.HashIdPreimage.envelopeTypeSorobanAuthorization(
+        new xdr.HashIdPreimageSorobanAuthorization({
+          networkId: hash(Buffer.from(network)),
+          nonce: xdr.Int64.fromString(nonce) as xdr.Int64,
+          signatureExpirationLedger: 999999,
+          invocation,
+        }),
+      ).toXDR("base64");
     };
 
     describe("signAuthEntry", () => {
-      it("should return a valid base64-encoded SorobanAuthorizationEntry XDR", () => {
-        const entryXdr = buildTestAuthEntry();
-        const result = signAuthEntry(entryXdr, seed, Networks.TESTNET);
+      it("should return { signedAuthEntry, signerAddress } for a valid preimage", () => {
+        const preimageXdr = buildTestPreimage();
+        const result = signAuthEntry(preimageXdr, seed);
 
-        expect(typeof result).toBe("string");
-        expect(result.length).toBeGreaterThan(0);
-        // Output must be parseable as a SorobanAuthorizationEntry
-        expect(() =>
-          xdr.SorobanAuthorizationEntry.fromXDR(result, "base64"),
-        ).not.toThrow();
+        expect(result).toHaveProperty("signedAuthEntry");
+        expect(result).toHaveProperty("signerAddress");
+        expect(typeof result.signedAuthEntry).toBe("string");
+        expect(typeof result.signerAddress).toBe("string");
       });
 
-      it("should return XDR different from the input (signature was written)", () => {
-        const entryXdr = buildTestAuthEntry();
-        const result = signAuthEntry(entryXdr, seed, Networks.TESTNET);
-
-        // Unsigned entry has scvVoid signature; signed entry has scvMap
-        expect(result).not.toBe(entryXdr);
-      });
-
-      it("should set the signature as an ScVal map with public_key and signature fields", () => {
+      it("should return the signer's public key as signerAddress", () => {
         const keypair = Keypair.fromSecret(seed);
-        const entryXdr = buildTestAuthEntry();
-        const result = signAuthEntry(entryXdr, seed, Networks.TESTNET);
+        const preimageXdr = buildTestPreimage();
+        const result = signAuthEntry(preimageXdr, seed);
 
-        const signedEntry = xdr.SorobanAuthorizationEntry.fromXDR(
-          result,
-          "base64",
-        );
-        const credentials = signedEntry.credentials().address();
-        const sigVal = credentials.signature();
-
-        // Signature must be scvMap
-        expect(sigVal.switch().name).toBe("scvMap");
-
-        const entries = sigVal.map()!;
-        expect(entries.length).toBe(2);
-
-        // First key: "public_key" -> raw public key bytes
-        expect(entries[0].key().sym().toString()).toBe("public_key");
-        expect(entries[0].val().bytes()).toEqual(keypair.rawPublicKey());
-
-        // Second key: "signature" -> 64-byte Ed25519 signature
-        expect(entries[1].key().sym().toString()).toBe("signature");
-        expect(entries[1].val().bytes().length).toBe(64);
+        expect(result.signerAddress).toBe(keypair.publicKey());
       });
 
-      it("should produce a cryptographically verifiable signature", () => {
+      it("should return a cryptographically verifiable Ed25519 signature", () => {
         const keypair = Keypair.fromSecret(seed);
-        const entryXdr = buildTestAuthEntry();
-        const result = signAuthEntry(entryXdr, seed, Networks.TESTNET);
+        const preimageXdr = buildTestPreimage();
+        const result = signAuthEntry(preimageXdr, seed);
 
-        const signedEntry = xdr.SorobanAuthorizationEntry.fromXDR(
-          result,
-          "base64",
-        );
-        const credentials = signedEntry.credentials().address();
+        // Signature must be 64 bytes (88 base64 chars)
+        const sigBytes = Buffer.from(result.signedAuthEntry, "base64");
+        expect(sigBytes.length).toBe(64);
 
-        // Reconstruct the preimage the same way signAuthEntry does
-        const preimage = xdr.HashIdPreimage.envelopeTypeSorobanAuthorization(
-          new xdr.HashIdPreimageSorobanAuthorization({
-            networkId: hash(Buffer.from(Networks.TESTNET)),
-            nonce: credentials.nonce(),
-            signatureExpirationLedger: credentials.signatureExpirationLedger(),
-            invocation: signedEntry.rootInvocation(),
-          }),
-        );
-        const signingPayload = hash(preimage.toXDR());
-        const signatureBytes = credentials.signature().map()![1].val().bytes();
-
-        expect(keypair.verify(signingPayload, signatureBytes)).toBe(true);
+        // Verify: wallet signs hash(raw_preimage_bytes), identical to the extension
+        const expectedPayload = hash(Buffer.from(preimageXdr, "base64"));
+        expect(keypair.verify(expectedPayload, sigBytes)).toBe(true);
       });
 
       it("should be deterministic for the same inputs", () => {
-        const entryXdr = buildTestAuthEntry();
+        const preimageXdr = buildTestPreimage();
 
-        const result1 = signAuthEntry(entryXdr, seed, Networks.TESTNET);
-        const result2 = signAuthEntry(entryXdr, seed, Networks.TESTNET);
+        const result1 = signAuthEntry(preimageXdr, seed);
+        const result2 = signAuthEntry(preimageXdr, seed);
 
-        expect(result1).toBe(result2);
+        expect(result1.signedAuthEntry).toBe(result2.signedAuthEntry);
+        expect(result1.signerAddress).toBe(result2.signerAddress);
       });
 
-      it("should produce different output for different network passphrases", () => {
-        const entryXdr = buildTestAuthEntry();
+      it("should produce different signatures for different preimage inputs", () => {
+        const preimageTestnet = buildTestPreimage(Networks.TESTNET);
+        const preimageMainnet = buildTestPreimage(Networks.PUBLIC);
 
-        const resultTestnet = signAuthEntry(entryXdr, seed, Networks.TESTNET);
-        const resultMainnet = signAuthEntry(entryXdr, seed, Networks.PUBLIC);
+        const resultTestnet = signAuthEntry(preimageTestnet, seed);
+        const resultMainnet = signAuthEntry(preimageMainnet, seed);
 
-        expect(resultTestnet).not.toBe(resultMainnet);
-      });
-
-      it("should preserve all fields of the original entry except the signature", () => {
-        const entryXdr = buildTestAuthEntry();
-        const original = xdr.SorobanAuthorizationEntry.fromXDR(
-          entryXdr,
-          "base64",
-        );
-        const result = signAuthEntry(entryXdr, seed, Networks.TESTNET);
-        const signed = xdr.SorobanAuthorizationEntry.fromXDR(result, "base64");
-
-        const origCreds = original.credentials().address();
-        const signedCreds = signed.credentials().address();
-
-        // Nonce and expiration ledger must be unchanged
-        expect(signedCreds.nonce()).toEqual(origCreds.nonce());
-        expect(signedCreds.signatureExpirationLedger()).toBe(
-          origCreds.signatureExpirationLedger(),
-        );
-        // Root invocation must be unchanged
-        expect(signed.rootInvocation().toXDR("base64")).toBe(
-          original.rootInvocation().toXDR("base64"),
+        expect(resultTestnet.signedAuthEntry).not.toBe(
+          resultMainnet.signedAuthEntry,
         );
       });
 
       it("should throw for an invalid private key", () => {
-        const entryXdr = buildTestAuthEntry();
+        const preimageXdr = buildTestPreimage();
 
-        expect(() =>
-          signAuthEntry(entryXdr, "invalid-key", Networks.TESTNET),
-        ).toThrow();
+        expect(() => signAuthEntry(preimageXdr, "invalid-key")).toThrow();
       });
 
-      it("should throw for an invalid base64 XDR input", () => {
-        expect(() =>
-          signAuthEntry("not-valid-xdr!!", seed, Networks.TESTNET),
-        ).toThrow();
-      });
-
-      it("should throw when credentials are not sorobanCredentialsAddress", () => {
-        // Build an entry using sorobanCredentialsSourceAccount
-        const sourceAccountEntry = new xdr.SorobanAuthorizationEntry({
-          credentials: xdr.SorobanCredentials.sorobanCredentialsSourceAccount(),
-          rootInvocation: new xdr.SorobanAuthorizedInvocation({
-            function:
-              xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeContractFn(
-                new xdr.InvokeContractArgs({
-                  contractAddress: new Address(
-                    "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSC4",
-                  ).toScAddress(),
-                  functionName: "test_function",
-                  args: [],
-                }),
-              ),
-            subInvocations: [],
-          }),
-        });
-
-        expect(() =>
-          signAuthEntry(
-            sourceAccountEntry.toXDR("base64"),
-            seed,
-            Networks.TESTNET,
-          ),
-        ).toThrow(
-          "signAuthEntry: only sorobanCredentialsAddress entries are supported",
-        );
-      });
-
-      it("should throw when entry address does not match signer", () => {
-        // Build an entry where credentials.address is a *different* account
-        const differentKeypair = Keypair.random();
-        const differentAddress = new Address(
-          differentKeypair.publicKey(),
-        ).toScAddress();
-        const addressCredentials = new xdr.SorobanAddressCredentials({
-          address: differentAddress,
-          nonce: xdr.Int64.fromString("1234567890") as xdr.Int64,
-          signatureExpirationLedger: 999999,
-          signature: xdr.ScVal.scvVoid(),
-        });
-        const invocation = new xdr.SorobanAuthorizedInvocation({
-          function:
-            xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeContractFn(
-              new xdr.InvokeContractArgs({
-                contractAddress: new Address(
-                  "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSC4",
-                ).toScAddress(),
-                functionName: "test_function",
-                args: [],
-              }),
-            ),
-          subInvocations: [],
-        });
-        const mismatchedEntryXdr = new xdr.SorobanAuthorizationEntry({
-          credentials:
-            xdr.SorobanCredentials.sorobanCredentialsAddress(
-              addressCredentials,
-            ),
-          rootInvocation: invocation,
-        }).toXDR("base64");
-
-        expect(() =>
-          signAuthEntry(mismatchedEntryXdr, seed, Networks.TESTNET),
-        ).toThrow("signAuthEntry: entry address does not match signer");
-      });
-
-      it("should sign successfully when credentials.address is a contract (scAddressTypeContract)", () => {
-        // Contract addresses bypass the account-address verification and are signed regardless
-        const contractAddress = new Address(
-          "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSC4",
-        ).toScAddress();
-        const addressCredentials = new xdr.SorobanAddressCredentials({
-          address: contractAddress,
-          nonce: xdr.Int64.fromString("9876543210") as xdr.Int64,
-          signatureExpirationLedger: 888888,
-          signature: xdr.ScVal.scvVoid(),
-        });
-        const invocation = new xdr.SorobanAuthorizedInvocation({
-          function:
-            xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeContractFn(
-              new xdr.InvokeContractArgs({
-                contractAddress: new Address(
-                  "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSC4",
-                ).toScAddress(),
-                functionName: "custom_auth",
-                args: [],
-              }),
-            ),
-          subInvocations: [],
-        });
-        const contractEntryXdr = new xdr.SorobanAuthorizationEntry({
-          credentials:
-            xdr.SorobanCredentials.sorobanCredentialsAddress(
-              addressCredentials,
-            ),
-          rootInvocation: invocation,
-        }).toXDR("base64");
-
-        const result = signAuthEntry(contractEntryXdr, seed, Networks.TESTNET);
-
-        // Should return valid signed XDR without throwing
-        expect(typeof result).toBe("string");
-        expect(result.length).toBeGreaterThan(0);
-        expect(() =>
-          xdr.SorobanAuthorizationEntry.fromXDR(result, "base64"),
-        ).not.toThrow();
+      it("should throw for invalid XDR (not a HashIdPreimage)", () => {
+        // signAuthEntry now validates that the input is a valid
+        // HashIdPreimage.envelopeTypeSorobanAuthorization before signing.
+        expect(() => signAuthEntry("not-valid-xdr!!", seed)).toThrow();
       });
     });
   });
