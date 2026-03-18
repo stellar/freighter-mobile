@@ -100,3 +100,4 @@ ios/fastlane/*.p8
 .server.pid
 *.bak
 .env.bak
+settings.local.json
