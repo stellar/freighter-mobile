@@ -723,10 +723,6 @@
       const description = document.getElementById('xdr-description').value.trim();
       const network = document.getElementById('global-network').value;
 
-      if (!xdr) {
-        showStatus('❌ XDR cannot be empty', 'error');
-        return;
-      }
 
       try {
         logDebug('Sending sign XDR request...');

@@ -935,7 +935,7 @@
     "invalidTransactionOriginMessage": "A WalletConnect transaction was received from {{transactionRequestOrigin}}, but this domain is not connected in your Freighter wallet.",
     "errorAuthEntryTooLarge": "Auth entry exceeds maximum allowed size",
     "unableToLoadAuthEntry": "Unable to load request details",
-    "failedToProcessAuthEntry": "Failed to process auth entry",
+    "failedToProcessAuthEntry": "Unable to sign — authorization entry is malformed or invalid",
     "e2eHelper": {
       "title": "WC E2E Helper",
       "createSession": "Create Session",

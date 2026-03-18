@@ -392,7 +392,7 @@ export const approveSessionRequest = async ({
     ) {
       const errorMessage = t("walletKit.errorInvalidAuthEntry");
       showToast({
-        title: t("walletKit.errorSigningAuthEntry"),
+        title: t("walletKit.invalidRequestTitle"),
         message: errorMessage,
         variant: "error",
       });

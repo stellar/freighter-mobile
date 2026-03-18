@@ -1,5 +1,6 @@
 import Blockaid from "@blockaid/client";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
+import { xdr as stellarXdr } from "@stellar/stellar-sdk";
 import AddMemoExplanationBottomSheet from "components/AddMemoExplanationBottomSheet";
 import BottomSheet from "components/BottomSheet";
 import InformationBottomSheet from "components/InformationBottomSheet";
@@ -982,6 +983,24 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
             typeof entryParam !== "string" ||
             entryParam.trim().length === 0
           ) {
+            showToast({
+              title: t("walletKit.invalidRequestTitle"),
+              message: t("walletKit.errorInvalidAuthEntry"),
+              variant: "error",
+            });
+            rejectSessionRequest({
+              sessionRequest,
+              message: t("walletKit.errorInvalidAuthEntry"),
+            });
+            clearEvent();
+            isProcessingRequestRef.current = false;
+            return;
+          }
+
+          // Validate XDR can be parsed as HashIdPreimage (catches malformed XDR, unknown types, etc.)
+          try {
+            stellarXdr.HashIdPreimage.fromXDR(entryParam, "base64");
+          } catch (e) {
             showToast({
               title: t("walletKit.invalidRequestTitle"),
               message: t("walletKit.errorInvalidAuthEntry"),

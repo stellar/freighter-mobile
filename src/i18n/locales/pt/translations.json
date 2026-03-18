@@ -899,7 +899,7 @@
     "invalidTransactionOriginMessage": "Uma solicitação de transação WalletConnect foi recebida de {{transactionRequestOrigin}}, mas este domínio não está conectado na sua carteira Freighter.",
     "errorAuthEntryTooLarge": "Entrada de autorização excede o tamanho máximo permitido",
     "unableToLoadAuthEntry": "Não foi possível carregar os detalhes da solicitação",
-    "failedToProcessAuthEntry": "Falha ao processar entrada de autorização",
+    "failedToProcessAuthEntry": "Não foi possível assinar — a entrada de autorização está malformada ou inválida",
     "e2eHelper": {
       "title": "WC E2E Helper",
       "createSession": "Criar Sessão",
