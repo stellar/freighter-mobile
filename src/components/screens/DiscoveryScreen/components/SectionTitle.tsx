@@ -30,7 +30,7 @@ const SectionTitle: React.FC<SectionTitleProps> = ({
       <Text md semiBold>
         {title}
       </Text>
-      <Icon.ChevronRight size={16} color={themeColors.text.secondary} />
+      <Icon.ChevronRightBold size={16} color={themeColors.text.secondary} />
     </TouchableOpacity>
   );
 };

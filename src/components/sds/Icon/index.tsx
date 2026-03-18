@@ -231,6 +231,7 @@ import ChevronDownDouble from "assets/icons/chevron-down-double.svg";
 import ChevronDown from "assets/icons/chevron-down.svg";
 import ChevronLeftDouble from "assets/icons/chevron-left-double.svg";
 import ChevronLeft from "assets/icons/chevron-left.svg";
+import ChevronRightBold from "assets/icons/chevron-right-bold.svg";
 import ChevronRightDouble from "assets/icons/chevron-right-double.svg";
 import ChevronRight from "assets/icons/chevron-right.svg";
 import ChevronSelectorHorizontal from "assets/icons/chevron-selector-horizontal.svg";
@@ -1417,6 +1418,7 @@ export const Icons = {
   ChevronDown,
   ChevronLeftDouble,
   ChevronLeft,
+  ChevronRightBold,
   ChevronRightDouble,
   ChevronRight,
   ChevronSelectorHorizontal,
