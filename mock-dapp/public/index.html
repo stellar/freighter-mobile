@@ -325,6 +325,7 @@
       </div>
 
       <button onclick="signMessage()">Sign Message</button>
+      <button onclick="sendEmptyMessage()" style="margin-left:8px; background:#888;">Send Empty Message</button>
 
       <div id="sign-status" style="display:none; margin-top: 15px;">
         <div class="status-box info">
@@ -379,6 +380,7 @@
       </div>
 
       <button onclick="signAuthEntry()">Sign Auth Entry (XDR)</button>
+      <button onclick="sendEmptyAuthEntry()" style="margin-left:8px; background:#888;">Send Empty Auth Entry</button>
 
       <div id="sign-auth-entry-status" style="display:none; margin-top: 15px;">
         <div class="status-box info">
@@ -588,11 +590,6 @@
       const message = document.getElementById('message').value.trim();
       const network = document.getElementById('global-network').value;
 
-      if (!message) {
-        showStatus('❌ Message cannot be empty', 'error');
-        return;
-      }
-
       try {
         logDebug('Sending sign message request...');
         logDebug('Using sessionId for request', { sessionId: currentSessionId, topic: currentTopic });
@@ -651,6 +648,69 @@
     async function testCancelSignature() {
       showStatus('⏳ Sending request... Tap "Cancel" in Freighter when signing sheet appears', 'info');
       await signMessage();
+    }
+
+    async function sendEmptyMessage() {
+      if (!currentSessionId || !isApproved) {
+        showStatus('❌ Session not approved. Wait for approval first.', 'error');
+        return;
+      }
+      const network = document.getElementById('global-network').value;
+      try {
+        document.getElementById('sign-status').style.display = 'block';
+        document.getElementById('signStatusText').textContent = 'Waiting for rejection (empty message)...';
+        const response = await fetch(`${API_BASE}/session/${currentSessionId}/request/signMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: '', network })
+        });
+        const data = await response.json();
+        logDebug('Empty message request sent', data);
+        const pollResponse = async () => {
+          const respResponse = await fetch(`${API_BASE}/session/${currentSessionId}/response?wait=true&timeout=60000`);
+          const respData = await respResponse.json();
+          if (respData.status === 'rejected') {
+            document.getElementById('signStatusText').textContent = '✅ Rejected as expected';
+            showStatus('✅ Empty message was rejected by wallet', 'success');
+          } else {
+            document.getElementById('signStatusText').textContent = respData.message || 'Unexpected result';
+            showStatus(`⚠️ Unexpected result: ${respData.status}`, 'error');
+          }
+        };
+        pollResponse();
+      } catch (error) {
+        showStatus(`❌ Error: ${error.message}`, 'error');
+      }
+    }
+
+    async function sendEmptyAuthEntry() {
+      if (!currentSessionId || !isApproved) {
+        showStatus('❌ Session not approved. Wait for approval first.', 'error');
+        return;
+      }
+      const network = document.getElementById('global-network').value;
+      try {
+        document.getElementById('sign-auth-entry-status').style.display = 'block';
+        document.getElementById('signAuthEntryStatusText').textContent = 'Waiting for rejection (empty XDR)...';
+        const response = await fetch(`${API_BASE}/session/${currentSessionId}/request/signAuthEntry`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ entryXdr: '', network })
+        });
+        const data = await response.json();
+        logDebug('Empty auth entry request sent', data);
+        const respResponse = await fetch(`${API_BASE}/session/${currentSessionId}/response?wait=true&timeout=60000`);
+        const respData = await respResponse.json();
+        if (respData.status === 'rejected') {
+          document.getElementById('signAuthEntryStatusText').textContent = '✅ Rejected as expected';
+          showStatus('✅ Empty auth entry was rejected by wallet', 'success');
+        } else {
+          document.getElementById('signAuthEntryStatusText').textContent = respData.message || 'Unexpected result';
+          showStatus(`⚠️ Unexpected result: ${respData.status}`, 'error');
+        }
+      } catch (error) {
+        showStatus(`❌ Error: ${error.message}`, 'error');
+      }
     }
 
     async function signXDR() {
@@ -715,11 +775,6 @@
 
       const entryXdr = document.getElementById('auth-entry-xdr').value.trim();
       const network = document.getElementById('global-network').value;
-
-      if (!entryXdr) {
-        showStatus('❌ Auth entry XDR cannot be empty', 'error');
-        return;
-      }
 
       try {
         logDebug('Sending sign auth entry request...');

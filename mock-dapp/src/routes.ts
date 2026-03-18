@@ -303,14 +303,7 @@ export function createRoutes(wcClient: MockWalletConnectClient): Router {
       const { message } = req.body as { message?: unknown; network?: unknown };
       const network = parseNetwork((req.body as { network?: unknown }).network);
 
-      if (!message || typeof message !== "string") {
-        return res.status(400).json({
-          error: "Invalid request",
-          message: "Message is required and must be a string",
-        });
-      }
-
-      const messageText = message;
+      const messageText = typeof message === "string" ? message : "";
 
       const metadata = sessionMetadata.get(id);
 
@@ -339,7 +332,7 @@ export function createRoutes(wcClient: MockWalletConnectClient): Router {
         metadata.responses.push({
           id: requestId,
           type: "signMessage",
-          params: { message, network },
+          params: { message: messageText, network },
           promise: requestPromise,
           createdAt: Date.now(),
         });
@@ -489,9 +482,10 @@ export function createRoutes(wcClient: MockWalletConnectClient): Router {
         });
       }
 
-      // Generate a fresh preimage if the caller didn't supply one.
+      // Use the supplied XDR (including empty string for testing).
+      // Fall back to a generated preimage only when no entryXdr field was sent at all.
       const entryXdrText =
-        typeof entryXdr === "string" && entryXdr
+        typeof entryXdr === "string"
           ? entryXdr
           : generateAuthPreimageXdr(network);
 

@@ -942,6 +942,61 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       } else {
         // For sign_message and sign_auth_entry requests, skip scanning and show modal directly.
         // The site was already scanned during the WalletConnect session connection.
+        // Validate required params early — reject before the sheet opens so the UI stays clean.
+        if (
+          currentRequestMethod === (StellarRpcMethods.SIGN_MESSAGE as string)
+        ) {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          const msgParam = (
+            sessionRequest.params.request.params as { message?: unknown }
+          ).message;
+          if (
+            !msgParam ||
+            typeof msgParam !== "string" ||
+            msgParam.trim().length === 0
+          ) {
+            showToast({
+              title: t("walletKit.errorSigningMessage"),
+              message: t("walletKit.errorInvalidMessage"),
+              variant: "error",
+            });
+            rejectSessionRequest({
+              sessionRequest,
+              message: t("walletKit.errorInvalidMessage"),
+            });
+            clearEvent();
+            isProcessingRequestRef.current = false;
+            return;
+          }
+        }
+
+        if (
+          currentRequestMethod === (StellarRpcMethods.SIGN_AUTH_ENTRY as string)
+        ) {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          const entryParam = (
+            sessionRequest.params.request.params as { entryXdr?: unknown }
+          ).entryXdr;
+          if (
+            !entryParam ||
+            typeof entryParam !== "string" ||
+            entryParam.trim().length === 0
+          ) {
+            showToast({
+              title: t("walletKit.errorSigningAuthEntry"),
+              message: t("walletKit.errorInvalidAuthEntry"),
+              variant: "error",
+            });
+            rejectSessionRequest({
+              sessionRequest,
+              message: t("walletKit.errorInvalidAuthEntry"),
+            });
+            clearEvent();
+            isProcessingRequestRef.current = false;
+            return;
+          }
+        }
+
         dappRequestBottomSheetModalRef.current?.present();
       }
     }
