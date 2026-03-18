@@ -4,7 +4,7 @@ import { findMatchedProtocol } from "helpers/protocols";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
-const MAX_RECENT_PROTOCOLS = 10;
+const MAX_RECENT_PROTOCOLS = 5;
 
 /**
  * Represents a recently visited protocol.
