@@ -3,9 +3,9 @@ import { Address, Operation, xdr } from "@stellar/stellar-sdk";
 import { List, ListItemProps } from "components/List";
 import Spinner from "components/Spinner";
 import {
+  InlinePublicKeyRow,
   KeyValueListItem,
   KeyValueSigner,
-  KeyValueWithPublicKey,
   PathList,
   KeyValueClaimants,
   KeyValueInvokeHostFn,
@@ -370,18 +370,6 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
 
       const items: ListItemProps[] = [];
 
-      if (signer) {
-        items.push({
-          title: t("signTransactionDetails.operations.signer"),
-          trailingContent: (
-            <View>
-              <KeyValueSigner signer={signer} />
-            </View>
-          ),
-          titleColor: themeColors.text.secondary,
-        });
-      }
-
       if (inflationDest) {
         items.push({
           title: t("signTransactionDetails.operations.inflationDestination"),
@@ -457,7 +445,12 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
         });
       }
 
-      return <List variant="secondary" items={items} />;
+      return (
+        <View className="gap-[16px]">
+          {signer && <KeyValueSigner signer={signer} />}
+          {items.length > 0 && <List variant="secondary" items={items} />}
+        </View>
+      );
     }
     case "changeTrust": {
       const { limit, line } = operation;
@@ -1012,15 +1005,6 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
 
         const items: ListItemProps[] = [
           {
-            title: t("signTransactionDetails.operations.signer"),
-            trailingContent: (
-              <View>
-                <KeyValueSignerKeyOptions signer={signer} />
-              </View>
-            ),
-            titleColor: themeColors.text.secondary,
-          },
-          {
             title: t("signTransactionDetails.operations.account"),
             trailingContent: (
               <View className="flex-row items-center gap-[4px]">
@@ -1032,7 +1016,12 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
           },
         ];
 
-        return <List variant="secondary" items={items} />;
+        return (
+          <View className="gap-[12px]">
+            <KeyValueSignerKeyOptions signer={signer} />
+            <List variant="secondary" items={items} />
+          </View>
+        );
       }
 
       return <View />;
@@ -1182,9 +1171,9 @@ const Operations = ({ operations }: OperationsProps) => {
               <Icon.Cube02 size={16} themeColor="gray" />
               <Text secondary>{OPERATION_TYPES[type] || type}</Text>
             </View>
-            <View>
+            <View className="gap-[16px] mb-4">
               {source && (
-                <KeyValueWithPublicKey
+                <InlinePublicKeyRow
                   operationKey={t("signTransactionDetails.operations.source")}
                   operationValue={source}
                 />

@@ -147,6 +147,19 @@ interface KeyValueWithPublicKeyProps {
   operationValue: string;
 }
 
+export const InlinePublicKeyRow = ({
+  operationKey,
+  operationValue,
+}: KeyValueWithPublicKeyProps) => (
+  <View className="bg-background-secondary rounded-[16px] px-[16px] py-[14px] flex-row items-center justify-between gap-[12px]">
+    <Text>{operationKey}</Text>
+    <View className="flex-1 flex-row items-center justify-end gap-[8px]">
+      <Avatar publicAddress={operationValue} size="sm" hasDarkBackground />
+      <Text>{truncateAddress(operationValue)}</Text>
+    </View>
+  </View>
+);
+
 export const KeyValueWithPublicKey = ({
   operationKey,
   operationValue,
@@ -154,7 +167,10 @@ export const KeyValueWithPublicKey = ({
   <KeyValueListItem
     operationKey={operationKey}
     operationValue={
-      <Avatar publicAddress={operationValue} size="sm" hasDarkBackground />
+      <View className="flex-row items-center gap-[16px]">
+        <Avatar publicAddress={operationValue} size="sm" hasDarkBackground />
+        <Text>{truncateAddress(operationValue)}</Text>
+      </View>
     }
   />
 );
@@ -218,7 +234,7 @@ export const KeyValueSigner = ({ signer }: KeyValueSignerProps) => {
   const renderSignerType = () => {
     if ("ed25519PublicKey" in signer) {
       return (
-        <KeyValueWithPublicKey
+        <InlinePublicKeyRow
           operationKey={t("signTransactionDetails.operations.signer")}
           operationValue={signer.ed25519PublicKey}
         />
@@ -227,7 +243,7 @@ export const KeyValueSigner = ({ signer }: KeyValueSignerProps) => {
 
     if ("sha256Hash" in signer) {
       return (
-        <KeyValueListItem
+        <InlinePublicKeyRow
           operationKey={t("signTransactionDetails.operations.signer")}
           operationValue={formattedBuffer(signer.sha256Hash)}
         />
@@ -236,7 +252,7 @@ export const KeyValueSigner = ({ signer }: KeyValueSignerProps) => {
 
     if ("preAuthTx" in signer) {
       return (
-        <KeyValueListItem
+        <InlinePublicKeyRow
           operationKey={t("signTransactionDetails.operations.signer")}
           operationValue={formattedBuffer(signer.preAuthTx)}
         />
@@ -245,7 +261,7 @@ export const KeyValueSigner = ({ signer }: KeyValueSignerProps) => {
 
     if ("ed25519SignedPayload" in signer) {
       return (
-        <KeyValueListItem
+        <InlinePublicKeyRow
           operationKey={t("signTransactionDetails.operations.signer")}
           operationValue={truncateAddress(signer.ed25519SignedPayload)}
         />
@@ -256,12 +272,16 @@ export const KeyValueSigner = ({ signer }: KeyValueSignerProps) => {
   };
 
   return (
-    <View>
+    <View className="bg-background-secondary rounded-[16px]">
       {renderSignerType()}
-      <KeyValueListItem
-        operationKey={t("signTransactionDetails.operations.signerWeight")}
-        operationValue={signer.weight}
-      />
+      <View className="h-[1px] mx-4 bg-border-primary" />
+      <View className="rounded-[16px] px-[16px] py-[14px] flex-row items-center justify-between gap-[12px] bt">
+        <Text>{t("signTransactionDetails.operations.signerWeight")}</Text>
+        <View className="flex-1 flex-row items-center justify-end gap-[8px]">
+          <View className="h-[1px] mx-4 bg-border-primary" />
+          <Text>{signer.weight}</Text>
+        </View>
+      </View>
     </View>
   );
 };
