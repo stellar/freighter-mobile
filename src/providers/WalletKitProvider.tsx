@@ -519,10 +519,14 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         // send a duplicate rejection.
         hasRespondedRef.current = true;
       })
-      .catch(() => {
-        // Unexpected throw — approveSessionRequest responded via its own catch
-        // blocks, so also mark as responded to avoid double-reject.
-        hasRespondedRef.current = true;
+      .catch((err: unknown) => {
+        // Unexpected throw — leave hasRespondedRef as false so
+        // handleClearDappRequest sends the fallback WC rejection.
+        logger.error(
+          "WalletKitProvider",
+          "handleDappRequest unexpected error",
+          err,
+        );
       })
       .finally(() => {
         handleClearDappRequest();

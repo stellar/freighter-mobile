@@ -126,7 +126,7 @@ export const DappAuthEntryDisplay: React.FC<DappAuthEntryDisplayProps> = ({
       );
     }
 
-    if (detail.type === "wasm") {
+    if (detail.type === INVOCATION_TYPE_WASM) {
       return (
         <View className="gap-[12px]">
           <View className="gap-[4px]">

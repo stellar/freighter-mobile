@@ -37,7 +37,7 @@ const DappAuthEntryDetails: React.FC<DappAuthEntryDetailsProps> = ({
       >
         <Icon.List size={16} themeColor="lilac" />
         <Text color={themeColors.lilac[11]}>
-          {t("dappRequestBottomSheetContent.transactionDetails")}
+          {t("dappRequestBottomSheetContent.authEntryDetails")}
         </Text>
       </TouchableOpacity>
 

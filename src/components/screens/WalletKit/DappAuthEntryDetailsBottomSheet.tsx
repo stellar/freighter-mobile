@@ -47,7 +47,7 @@ const DappAuthEntryDetailsBottomSheet: React.FC<
               />
             </View>
             <Text xl>
-              {t("dappRequestBottomSheetContent.transactionDetails")}
+              {t("dappRequestBottomSheetContent.authEntryDetails")}
             </Text>
           </View>
         }

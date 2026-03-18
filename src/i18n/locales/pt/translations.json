@@ -848,7 +848,8 @@
     "confirmAnyway": "Confirmar mesmo assim",
     "xdrItem": "XDR",
     "itemCopied": "{{itemName}} copiado para a área de transferência!",
-    "transactionDetails": "Detalhes da transação"
+    "transactionDetails": "Detalhes da transação",
+    "authEntryDetails": "Detalhes da entrada de autorização"
   },
   "qrScanner": {
     "cameraNotAvailable": "Câmera não disponível\nou não permitida"

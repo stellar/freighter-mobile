@@ -62,7 +62,7 @@ const useGetActiveAccount = () => {
         return signMessageHelper(message, account.privateKey);
       } catch (err) {
         logger.error("useGetActiveAccount", "signMessage failed", err);
-        analytics.trackSignedMessageError({ error: String(err) });
+        analytics.trackSignedMessageError({ error: String(err).slice(0, 200) });
         return null;
       }
     },
