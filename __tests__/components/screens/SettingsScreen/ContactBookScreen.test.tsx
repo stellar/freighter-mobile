@@ -75,8 +75,12 @@ jest.mock("hooks/useColors", () => ({
   default: () => ({
     themeColors: {
       primary: "#000",
-      foreground: { secondary: "#999" },
+      foreground: { primary: "#000", secondary: "#999" },
+      text: { primary: "#000", secondary: "#999" },
+      background: { tertiary: "#f3f3f3" },
       status: { success: "#0f0" },
+      gray: { 9: "#999" },
+      lilac: { 9: "#8b5cf6" },
     },
   }),
 }));
@@ -121,6 +125,49 @@ const mockClipboard = jest.requireMock<{ getString: jest.Mock }>(
 jest.mock("@react-navigation/elements", () => ({
   useHeaderHeight: () => 44,
 }));
+
+const mockPresent = jest.fn();
+const mockDismiss = jest.fn();
+jest.mock("@gorhom/bottom-sheet", () => ({
+  BottomSheetModal: "View",
+  BottomSheetModalProvider: ({ children }: { children: React.ReactNode }) =>
+    children,
+  BottomSheetView: "View",
+  BottomSheetScrollView: "ScrollView",
+  BottomSheetBackdrop: "View",
+  BottomSheetFooter: "View",
+}));
+
+jest.mock("components/BottomSheet", () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
+  const RN = require("react-native");
+
+  return {
+    __esModule: true,
+    default: ({
+      customContent,
+      modalRef,
+      bottomSheetModalProps,
+    }: {
+      customContent: React.ReactNode;
+      modalRef: React.RefObject<{ present: () => void; dismiss: () => void }>;
+      bottomSheetModalProps?: { onDismiss?: () => void };
+    }) => {
+      // Attach mock methods to the ref so the component can call present/dismiss
+      if (modalRef && typeof modalRef === "object") {
+        // eslint-disable-next-line no-param-reassign
+        (modalRef as { current: unknown }).current = {
+          present: mockPresent,
+          dismiss: () => {
+            mockDismiss();
+            bottomSheetModalProps?.onDismiss?.();
+          },
+        };
+      }
+      return <RN.View testID="bottom-sheet-mock">{customContent}</RN.View>;
+    },
+  };
+});
 
 const mockUseRightHeaderButton = jest.fn();
 jest.mock("hooks/useRightHeader", () => ({
@@ -199,6 +246,7 @@ describe("ContactBookScreen", () => {
 
       fireEvent.press(getByText("contactBookScreen.addContact"));
 
+      expect(mockPresent).toHaveBeenCalled();
       expect(getByText("contactBookScreen.addTitle")).toBeTruthy();
     });
   });
@@ -634,13 +682,25 @@ describe("ContactBookScreen", () => {
   });
 
   describe("Dismiss Card", () => {
-    it("dismisses the card when pressing the backdrop", () => {
+    it("dismisses the card when pressing the cancel button", () => {
+      const { getByText, queryByText } = renderScreen();
+
+      fireEvent.press(getByText("contactBookScreen.addContact"));
+      expect(getByText("contactBookScreen.addTitle")).toBeTruthy();
+
+      fireEvent.press(getByText("contactBookScreen.cancel"));
+
+      expect(mockDismiss).toHaveBeenCalled();
+      expect(queryByText("contactBookScreen.addTitle")).toBeNull();
+    });
+
+    it("dismisses the card when pressing the close (X) button", () => {
       const { getByText, getByTestId, queryByText } = renderScreen();
 
       fireEvent.press(getByText("contactBookScreen.addContact"));
       expect(getByText("contactBookScreen.addTitle")).toBeTruthy();
 
-      fireEvent.press(getByTestId("card-backdrop"));
+      fireEvent.press(getByTestId("close-button"));
 
       expect(queryByText("contactBookScreen.addTitle")).toBeNull();
     });

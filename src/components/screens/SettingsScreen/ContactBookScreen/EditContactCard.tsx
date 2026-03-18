@@ -1,29 +1,15 @@
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
+import BottomSheet from "components/BottomSheet";
+import InformationBottomSheet from "components/InformationBottomSheet";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
-import React from "react";
-import { View } from "react-native";
+import React, { useCallback, useRef } from "react";
+import { Keyboard, TouchableOpacity, View } from "react-native";
 
-/**
- * Props for the EditContactCard component.
- *
- * @property title - Header text displayed at the top of the card (e.g. "Add Contact" or "Edit Contact")
- * @property address - Current value of the Stellar address input
- * @property name - Current value of the contact name input
- * @property addressError - Validation error message for the address field, if any
- * @property nameError - Validation error message for the name field, if any
- * @property isValidating - Whether an async validation (e.g. federation resolution) is in progress
- * @property isSaveDisabled - Whether the save button should be disabled
- * @property onAddressChange - Called when the address input text changes
- * @property onNameChange - Called when the name input text changes
- * @property onAddressBlur - Called when the address input loses focus
- * @property onNameBlur - Called when the name input loses focus
- * @property onPaste - Called when the paste button is pressed
- * @property onSave - Called when the save button is pressed
- */
 interface EditContactCardProps {
   title: string;
   address: string;
@@ -38,11 +24,13 @@ interface EditContactCardProps {
   onNameBlur: () => void;
   onPaste: () => void | Promise<void>;
   onSave: () => void | Promise<void>;
+  onCancel: () => void;
 }
 
 /**
- * Presentational card for adding or editing a Stellar contact.
- * Renders address and name inputs with validation errors, plus paste and save buttons.
+ * Card component for adding or editing a Stellar contact.
+ * Designed to be rendered inside a BottomSheet.
+ * Includes info bottom sheets for field labels.
  * All state and logic are managed externally via props (see {@link useEditContactCard}).
  */
 const EditContactCard: React.FC<EditContactCardProps> = ({
@@ -59,17 +47,54 @@ const EditContactCard: React.FC<EditContactCardProps> = ({
   onNameBlur,
   onPaste,
   onSave,
+  onCancel,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
 
+  const addressInfoRef = useRef<BottomSheetModal>(null);
+  const nameInfoRef = useRef<BottomSheetModal>(null);
+
+  const handleCloseAddressInfo = useCallback(() => {
+    addressInfoRef.current?.dismiss();
+  }, []);
+
+  const handleCloseNameInfo = useCallback(() => {
+    nameInfoRef.current?.dismiss();
+  }, []);
+
   return (
-    <View className="bg-background-primary rounded-3xl p-6 gap-8">
-      <View className="gap-4">
-        <Text lg medium>
+    <View className="gap-6">
+      <View className="flex-row items-center justify-center">
+        <TouchableOpacity
+          onPress={onCancel}
+          className="absolute left-0"
+          hitSlop={8}
+          testID="close-button"
+        >
+          <Icon.X size={24} color={themeColors.text.primary} />
+        </TouchableOpacity>
+        <Text md semiBold>
           {title}
         </Text>
-        <View className="gap-3">
+      </View>
+
+      <View className="gap-6">
+        <View className="gap-2">
+          <View className="flex-row items-center gap-1">
+            <Text sm medium secondary>
+              {t("contactBookScreen.addressLabel")}
+            </Text>
+            <TouchableOpacity
+              onPress={() => {
+                Keyboard.dismiss();
+                addressInfoRef.current?.present();
+              }}
+              hitSlop={8}
+            >
+              <Icon.InfoCircle themeColor="gray" size={16} />
+            </TouchableOpacity>
+          </View>
           <Input
             fieldSize="lg"
             value={address}
@@ -82,10 +107,39 @@ const EditContactCard: React.FC<EditContactCardProps> = ({
                 color={themeColors.foreground.secondary}
               />
             }
+            endButton={{
+              content: (
+                <View className="flex-row items-center gap-1">
+                  <Icon.Clipboard size={16} color={themeColors.text.primary} />
+                  <Text sm semiBold>
+                    {t("contactBookScreen.paste")}
+                  </Text>
+                </View>
+              ),
+              onPress: () => {
+                onPaste();
+              },
+            }}
             autoCapitalize="none"
             autoCorrect={false}
             error={addressError}
           />
+        </View>
+        <View className="gap-2">
+          <View className="flex-row items-center gap-1">
+            <Text sm medium secondary>
+              {t("contactBookScreen.nameLabel")}
+            </Text>
+            <TouchableOpacity
+              onPress={() => {
+                Keyboard.dismiss();
+                nameInfoRef.current?.present();
+              }}
+              hitSlop={8}
+            >
+              <Icon.InfoCircle themeColor="gray" size={16} />
+            </TouchableOpacity>
+          </View>
           <Input
             fieldSize="lg"
             value={name}
@@ -103,8 +157,8 @@ const EditContactCard: React.FC<EditContactCardProps> = ({
 
       <View className="flex-row gap-3">
         <View className="flex-1">
-          <Button xl secondary onPress={onPaste}>
-            {t("contactBookScreen.paste")}
+          <Button xl secondary onPress={onCancel}>
+            {t("contactBookScreen.cancel")}
           </Button>
         </View>
         <View className="flex-1">
@@ -120,6 +174,50 @@ const EditContactCard: React.FC<EditContactCardProps> = ({
           </Button>
         </View>
       </View>
+
+      <BottomSheet
+        modalRef={addressInfoRef}
+        handleCloseModal={handleCloseAddressInfo}
+        customContent={
+          <InformationBottomSheet
+            title={t("contactBookScreen.addressInfo.title")}
+            onClose={handleCloseAddressInfo}
+            headerElement={
+              <View className="bg-lilac-3 p-2 rounded-[8px]">
+                <Icon.Wallet01 color={themeColors.lilac[9]} size={28} />
+              </View>
+            }
+            texts={[
+              {
+                key: "description",
+                value: t("contactBookScreen.addressInfo.description"),
+              },
+            ]}
+          />
+        }
+      />
+
+      <BottomSheet
+        modalRef={nameInfoRef}
+        handleCloseModal={handleCloseNameInfo}
+        customContent={
+          <InformationBottomSheet
+            title={t("contactBookScreen.nameInfo.title")}
+            onClose={handleCloseNameInfo}
+            headerElement={
+              <View className="bg-lilac-3 p-2 rounded-[8px]">
+                <Icon.User01 color={themeColors.lilac[9]} size={28} />
+              </View>
+            }
+            texts={[
+              {
+                key: "description",
+                value: t("contactBookScreen.nameInfo.description"),
+              },
+            ]}
+          />
+        }
+      />
     </View>
   );
 };

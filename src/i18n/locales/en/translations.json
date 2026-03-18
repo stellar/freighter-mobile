@@ -90,12 +90,23 @@
     "deleteContact": "Delete contact",
     "editTitle": "Edit a Contact",
     "addTitle": "Add a Contact",
-    "addressPlaceholder": "Enter address",
-    "namePlaceholder": "Enter name",
+    "addressLabel": "Address",
+    "addressPlaceholder": "G....",
+    "nameLabel": "Name",
+    "namePlaceholder": "Contact name",
     "paste": "Paste",
     "save": "Save",
+    "cancel": "Cancel",
     "contactAdded": "Contact successfully added",
     "contactDeleted": "Contact successfully deleted",
+    "addressInfo": {
+      "title": "What is a Stellar address?",
+      "description": "A Stellar address can be a G address (public key), an M address (muxed account), a C address (contract address), or a federation address (e.g. name*domain.com) that resolves to a public key."
+    },
+    "nameInfo": {
+      "title": "Contact name",
+      "description": "A friendly label to help you identify this contact. This name is stored on our server and is not shared on the network."
+    },
     "errors": {
       "invalidAddress": "Invalid Stellar address",
       "federationNotFound": "Federation address could not be resolved",

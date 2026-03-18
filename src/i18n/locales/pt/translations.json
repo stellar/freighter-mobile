@@ -90,12 +90,23 @@
     "deleteContact": "Excluir contato",
     "editTitle": "Editar um Contato",
     "addTitle": "Adicionar um Contato",
-    "addressPlaceholder": "Inserir endereço",
-    "namePlaceholder": "Inserir nome",
+    "addressLabel": "Endereço",
+    "addressPlaceholder": "G....",
+    "nameLabel": "Nome",
+    "namePlaceholder": "Nome do contato",
     "paste": "Colar",
     "save": "Salvar",
+    "cancel": "Cancelar",
     "contactAdded": "Contato adicionado com sucesso",
     "contactDeleted": "Contato excluído com sucesso",
+    "addressInfo": {
+      "title": "O que é um endereço Stellar?",
+      "description": "Um endereço Stellar pode ser um endereço G (chave pública), um endereço M (conta muxed), um endereço C (endereço de contrato), ou um endereço de federação (ex: nome*dominio.com) que resolve para uma chave pública."
+    },
+    "nameInfo": {
+      "title": "Nome do contato",
+      "description": "Um rótulo amigável para ajudá-lo a identificar este contato. Este nome é armazenado em nosso servidor e não é compartilhado na rede."
+    },
     "errors": {
       "invalidAddress": "Endereço Stellar inválido",
       "federationNotFound": "Não foi possível resolver o endereço de federação",

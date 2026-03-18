@@ -1,4 +1,5 @@
-import { useHeaderHeight } from "@react-navigation/elements";
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
+import BottomSheet from "components/BottomSheet";
 import ContextMenuButton, { MenuItem } from "components/ContextMenuButton";
 import { BaseLayout } from "components/layout/BaseLayout";
 import EditContactCard from "components/screens/SettingsScreen/ContactBookScreen/EditContactCard";
@@ -15,13 +16,7 @@ import useColors from "hooks/useColors";
 import { useRightHeaderButton } from "hooks/useRightHeader";
 import { useToast } from "providers/ToastProvider";
 import React, { useCallback, useMemo, useRef, useState } from "react";
-import {
-  FlatList,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  View,
-} from "react-native";
+import { FlatList, Platform, View } from "react-native";
 import { analytics } from "services/analytics";
 
 /**
@@ -78,7 +73,15 @@ const EditContactCardWithHook: React.FC<{
   initialName?: string;
   existingContacts: ContactsMap;
   onSave: (address: string, name: string, resolvedAddress?: string) => void;
-}> = ({ title, initialAddress, initialName, existingContacts, onSave }) => {
+  onCancel: () => void;
+}> = ({
+  title,
+  initialAddress,
+  initialName,
+  existingContacts,
+  onSave,
+  onCancel,
+}) => {
   const {
     address,
     name,
@@ -114,6 +117,7 @@ const EditContactCardWithHook: React.FC<{
       onNameBlur={handleNameBlur}
       onPaste={handlePaste}
       onSave={handleSave}
+      onCancel={onCancel}
     />
   );
 };
@@ -123,7 +127,6 @@ const EditContactCardWithHook: React.FC<{
  * Supports adding, editing, deleting, and copying contact addresses.
  */
 const ContactBookScreen: React.FC = () => {
-  const headerHeight = useHeaderHeight();
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const { showToast } = useToast();
@@ -131,10 +134,12 @@ const ContactBookScreen: React.FC = () => {
   const [contacts, setContacts] = useState<ContactsMap>({});
   const [cardMode, setCardMode] = useState<CardMode | null>(null);
   const cardModeRef = useRef<CardMode | null>(null);
+  const bottomSheetRef = useRef<BottomSheetModal>(null);
   cardModeRef.current = cardMode;
 
   const handleAddContact = useCallback(() => {
     setCardMode({ type: "add" });
+    bottomSheetRef.current?.present();
   }, []);
 
   useRightHeaderButton({
@@ -151,6 +156,7 @@ const ContactBookScreen: React.FC = () => {
   const handleEditContact = useCallback(
     (address: string, data: ContactData) => {
       setCardMode({ type: "edit", address, data });
+      bottomSheetRef.current?.present();
     },
     [],
   );
@@ -190,7 +196,7 @@ const ContactBookScreen: React.FC = () => {
           toastId: "contact-added",
         });
       }
-      setCardMode(null);
+      bottomSheetRef.current?.dismiss();
     },
     [showToast, t, themeColors.status.success],
   );
@@ -305,7 +311,7 @@ const ContactBookScreen: React.FC = () => {
   );
 
   const handleDismissCard = useCallback(() => {
-    setCardMode(null);
+    bottomSheetRef.current?.dismiss();
   }, []);
 
   const cardTitle =
@@ -332,36 +338,28 @@ const ContactBookScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ gap: pxValue(32), paddingTop: pxValue(16) }}
       />
-      {cardMode && (
-        <Pressable
-          className="absolute inset-0 justify-end"
-          style={{ backgroundColor: "rgba(0, 0, 0, 0.6)" }}
-          onPress={handleDismissCard}
-          testID="card-backdrop"
-        >
-          <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-            keyboardVerticalOffset={headerHeight}
-          >
-            <Pressable
-              onPress={(e) => e.stopPropagation()}
-              className="px-4 pb-4"
-            >
-              <EditContactCardWithHook
-                title={cardTitle}
-                initialAddress={
-                  cardMode.type === "edit" ? cardMode.address : undefined
-                }
-                initialName={
-                  cardMode.type === "edit" ? cardMode.data.name : undefined
-                }
-                existingContacts={existingContacts}
-                onSave={handleSaveContact}
-              />
-            </Pressable>
-          </KeyboardAvoidingView>
-        </Pressable>
-      )}
+      <BottomSheet
+        modalRef={bottomSheetRef}
+        handleCloseModal={handleDismissCard}
+        bottomSheetModalProps={{ onDismiss: () => setCardMode(null) }}
+        enableDynamicSizing
+        customContent={
+          cardMode ? (
+            <EditContactCardWithHook
+              title={cardTitle}
+              initialAddress={
+                cardMode.type === "edit" ? cardMode.address : undefined
+              }
+              initialName={
+                cardMode.type === "edit" ? cardMode.data.name : undefined
+              }
+              existingContacts={existingContacts}
+              onSave={handleSaveContact}
+              onCancel={handleDismissCard}
+            />
+          ) : null
+        }
+      />
     </BaseLayout>
   );
 };
