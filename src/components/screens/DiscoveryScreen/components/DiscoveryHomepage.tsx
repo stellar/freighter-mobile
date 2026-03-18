@@ -169,6 +169,15 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
       protocolDetailsRef.current?.present();
     }, []);
 
+    const handleTrendingItemPress = useCallback(
+      (item: TrendingItem) => {
+        const protocol = protocols.find((p) => p.websiteUrl === item.id);
+        if (!protocol) return;
+        handleItemPress(protocolToListItem(protocol));
+      },
+      [protocols, handleItemPress],
+    );
+
     const handleProtocolOpen = useCallback(
       (url: string) => {
         handleSitePress(url);
@@ -291,7 +300,7 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
             title={t("discovery.trending")}
             items={trendingItems}
             onTitlePress={handleExpandTrending}
-            onItemPress={(item) => handleSitePress(item.id)}
+            onItemPress={handleTrendingItemPress}
             onScrollEnd={captureScreenshot}
           />
 
