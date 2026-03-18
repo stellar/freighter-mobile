@@ -172,7 +172,7 @@ export const InlineHashRow = ({
   <View className="bg-background-secondary rounded-[16px] px-[16px] py-[14px] flex-row items-center justify-between gap-[12px]">
     <Text>{operationKey}</Text>
     <View className="flex-1 flex-row items-center justify-end">
-      <Text>{operationValue}</Text>
+      <Text>{truncateAddress(operationValue)}</Text>
     </View>
   </View>
 );
@@ -262,7 +262,9 @@ export const KeyValueSigner = ({ signer }: KeyValueSignerProps) => {
       return (
         <InlineHashRow
           operationKey={t("signTransactionDetails.operations.signer")}
-          operationValue={formattedBuffer(signer.sha256Hash)}
+          operationValue={Buffer.from(signer.sha256Hash)
+            .toString("hex")
+            .toUpperCase()}
         />
       );
     }
@@ -271,7 +273,9 @@ export const KeyValueSigner = ({ signer }: KeyValueSignerProps) => {
       return (
         <InlineHashRow
           operationKey={t("signTransactionDetails.operations.signer")}
-          operationValue={formattedBuffer(signer.preAuthTx)}
+          operationValue={Buffer.from(signer.preAuthTx)
+            .toString("hex")
+            .toUpperCase()}
         />
       );
     }
@@ -280,7 +284,7 @@ export const KeyValueSigner = ({ signer }: KeyValueSignerProps) => {
       return (
         <InlineHashRow
           operationKey={t("signTransactionDetails.operations.signer")}
-          operationValue={truncateAddress(signer.ed25519SignedPayload)}
+          operationValue={signer.ed25519SignedPayload}
         />
       );
     }
