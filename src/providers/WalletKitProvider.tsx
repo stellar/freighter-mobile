@@ -236,16 +236,19 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   );
 
   // Security assessment props for the request bottom sheet:
-  // sign_auth_entry → site scan, XDR requests → transaction scan, sign_message → no scan
-  const requestIsMalicious = isSignAuthEntryRequest
-    ? siteSecurityAssessment.isMalicious
-    : !isSignMessageRequest && transactionSecurityAssessment.isMalicious;
-  const requestIsSuspicious = isSignAuthEntryRequest
-    ? siteSecurityAssessment.isSuspicious
-    : !isSignMessageRequest && transactionSecurityAssessment.isSuspicious;
-  const requestIsUnableToScan = isSignAuthEntryRequest
-    ? siteSecurityAssessment.isUnableToScan
-    : !isSignMessageRequest && transactionSecurityAssessment.isUnableToScan;
+  // XDR requests → transaction scan, sign_message/sign_auth_entry → no scan (site was scanned at connection)
+  const requestIsMalicious =
+    !isSignMessageRequest &&
+    !isSignAuthEntryRequest &&
+    transactionSecurityAssessment.isMalicious;
+  const requestIsSuspicious =
+    !isSignMessageRequest &&
+    !isSignAuthEntryRequest &&
+    transactionSecurityAssessment.isSuspicious;
+  const requestIsUnableToScan =
+    !isSignMessageRequest &&
+    !isSignAuthEntryRequest &&
+    transactionSecurityAssessment.isUnableToScan;
 
   const signTransactionDetails = useSignTransactionDetails({ xdr });
 
@@ -617,8 +620,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 
     if (
       securityWarningBlocksSheet &&
-      (securityWarningContext === SecurityContext.TRANSACTION ||
-        securityWarningContext === SecurityContext.SITE_REQUEST)
+      securityWarningContext === SecurityContext.TRANSACTION
     ) {
       // Warning was opened as a gate before the request sheet (unable_to_scan path).
       // The request sheet was never shown, so we must fully reject and clean up.
@@ -937,41 +939,9 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
               dappRequestBottomSheetModalRef.current?.present();
             }
           });
-      } else if (
-        currentRequestMethod === (StellarRpcMethods.SIGN_AUTH_ENTRY as string)
-      ) {
-        // For sign_auth_entry requests, run a site scan (matching extension behaviour)
-        scanSite(dappDomain)
-          .then((scanResult) => {
-            setSiteScanResult(scanResult);
-            const securityAssessment = assessSiteSecurity(
-              scanResult,
-              overriddenBlockaidResponse,
-            );
-            if (securityAssessment.isUnableToScan) {
-              setSecurityWarningContext(SecurityContext.SITE_REQUEST);
-              setSecurityWarningBlocksSheet(true);
-              siteSecurityWarningBottomSheetModalRef.current?.present();
-            } else {
-              dappRequestBottomSheetModalRef.current?.present();
-            }
-          })
-          .catch(() => {
-            setSiteScanResult(undefined);
-            const securityAssessment = assessSiteSecurity(
-              undefined,
-              overriddenBlockaidResponse,
-            );
-            if (securityAssessment.isUnableToScan) {
-              setSecurityWarningContext(SecurityContext.SITE_REQUEST);
-              setSecurityWarningBlocksSheet(true);
-              siteSecurityWarningBottomSheetModalRef.current?.present();
-            } else {
-              dappRequestBottomSheetModalRef.current?.present();
-            }
-          });
       } else {
-        // For sign_message requests, skip scanning and show modal directly
+        // For sign_message and sign_auth_entry requests, skip scanning and show modal directly.
+        // The site was already scanned during the WalletConnect session connection.
         dappRequestBottomSheetModalRef.current?.present();
       }
     }
@@ -1051,11 +1021,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
               isNonTransactionRequest ? undefined : transactionScanResult
             }
             securityWarningAction={() =>
-              presentSecurityWarningDetail(
-                isSignAuthEntryRequest
-                  ? SecurityContext.SITE_REQUEST
-                  : SecurityContext.TRANSACTION,
-              )
+              presentSecurityWarningDetail(SecurityContext.TRANSACTION)
             }
             signTransactionDetails={signTransactionDetails}
             isMemoMissing={isMemoMissing}

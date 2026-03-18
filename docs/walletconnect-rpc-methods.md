@@ -369,10 +369,20 @@ params.
 ### User confirmation flow
 
 All four methods trigger a native bottom sheet in Freighter Mobile for the user
-to review and confirm (or reject) the request. Blockaid security scanning is
-performed for `stellar_signXDR` and `stellar_signAndSubmitXDR` (transaction
-scan) and for `stellar_signAuthEntry` (site scan). For `stellar_signMessage`, no
-automated scan is performed.
+to review and confirm (or reject) the request.
+
+**Blockaid security scanning:**
+
+- **Site scan**: Performed once during the WalletConnect session connection
+  (before any signing requests). This protects users from connecting to
+  malicious dApps.
+- **Transaction scan**: Performed for `stellar_signXDR` and
+  `stellar_signAndSubmitXDR` requests, analyzing the transaction XDR for
+  potential risks.
+- **No per-request scan**: For `stellar_signMessage` and
+  `stellar_signAuthEntry`, no additional scan is performed at request time — the
+  site was already scanned during connection. The auth entry structure itself is
+  not scanned
 
 ---
 

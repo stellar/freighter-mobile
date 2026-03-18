@@ -165,8 +165,6 @@ export enum ValidationSeverity {
  */
 export enum SecurityContext {
   SITE = "site",
-  /** Site scan triggered by a sign_auth_entry request (proceeds to request approval, not connection) */
-  SITE_REQUEST = "site_request",
   TRANSACTION = "transaction",
   TOKEN = "token",
 }

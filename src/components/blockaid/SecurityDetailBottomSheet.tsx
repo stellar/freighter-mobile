@@ -168,7 +168,6 @@ export const SecurityDetailBottomSheet: React.FC<
           case SecurityContext.TOKEN:
             return t("securityWarning.token");
           case SecurityContext.SITE:
-          case SecurityContext.SITE_REQUEST:
             return t("blockaid.unableToScan.site.description");
           case SecurityContext.TRANSACTION:
             return t("securityWarning.unsafeTransaction");
@@ -190,7 +189,6 @@ export const SecurityDetailBottomSheet: React.FC<
         case SecurityContext.TOKEN:
           return t("securityWarning.token");
         case SecurityContext.SITE:
-        case SecurityContext.SITE_REQUEST:
         case SecurityContext.TRANSACTION:
           return t("securityWarning.unsafeTransaction");
 
