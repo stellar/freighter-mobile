@@ -52,6 +52,11 @@ const icons = Platform.select({
     copy: "copy",
     delete: "baseline_delete",
   },
+  default: {
+    edit: "pencil",
+    copy: "doc.on.doc",
+    delete: "trash",
+  },
 });
 
 /**
@@ -233,21 +238,21 @@ const ContactBookScreen: React.FC = () => {
     (address: string, data: ContactData): MenuItem[] => [
       {
         title: t("contactBookScreen.editContact"),
-        systemIcon: icons!.edit,
+        systemIcon: icons.edit,
         onPress: () => {
           handleEditContact(address, data);
         },
       },
       {
         title: t("contactBookScreen.copyAddress"),
-        systemIcon: icons!.copy,
+        systemIcon: icons.copy,
         onPress: () => {
           copyToClipboard(address);
         },
       },
       {
         title: t("contactBookScreen.deleteContact"),
-        systemIcon: icons!.delete,
+        systemIcon: icons.delete,
         destructive: true,
         onPress: () => {
           handleDeleteContact(address);

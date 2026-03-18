@@ -115,6 +115,9 @@ jest.mock("@react-native-clipboard/clipboard", () => ({
   getString: jest.fn(() => Promise.resolve("")),
 }));
 
+const mockClipboard = jest.requireMock<{ getString: jest.Mock }>(
+  "@react-native-clipboard/clipboard",
+);
 jest.mock("@react-navigation/elements", () => ({
   useHeaderHeight: () => 44,
 }));
@@ -640,6 +643,112 @@ describe("ContactBookScreen", () => {
       fireEvent.press(getByTestId("card-backdrop"));
 
       expect(queryByText("contactBookScreen.addTitle")).toBeNull();
+    });
+  });
+
+  describe("Paste Flow", () => {
+    it("populates the address field with clipboard content and validates it", async () => {
+      mockClipboard.getString.mockResolvedValueOnce(VALID_ADDRESS_1);
+
+      const { getByText, getByPlaceholderText } = renderScreen();
+
+      fireEvent.press(getByText("contactBookScreen.addContact"));
+      fireEvent.press(getByText("contactBookScreen.paste"));
+
+      await waitFor(() => {
+        const addressInput = getByPlaceholderText(
+          "contactBookScreen.addressPlaceholder",
+        );
+        expect(addressInput.props.value).toBe(VALID_ADDRESS_1);
+      });
+    });
+
+    it("does nothing when clipboard is empty", async () => {
+      mockClipboard.getString.mockResolvedValueOnce("");
+
+      const { getByText, getByPlaceholderText } = renderScreen();
+
+      fireEvent.press(getByText("contactBookScreen.addContact"));
+      fireEvent.press(getByText("contactBookScreen.paste"));
+
+      await waitFor(() => {
+        const addressInput = getByPlaceholderText(
+          "contactBookScreen.addressPlaceholder",
+        );
+        expect(addressInput.props.value).toBe("");
+      });
+    });
+
+    it("enables Save button after pasting a valid Stellar address and filling name", async () => {
+      mockClipboard.getString.mockResolvedValueOnce(VALID_ADDRESS_1);
+
+      const { getByText, getByPlaceholderText, getByTestId } = renderScreen();
+
+      fireEvent.press(getByText("contactBookScreen.addContact"));
+      fireEvent.press(getByText("contactBookScreen.paste"));
+
+      const nameInput = getByPlaceholderText(
+        "contactBookScreen.namePlaceholder",
+      );
+
+      await waitFor(() => {
+        fireEvent.changeText(nameInput, "Alice");
+        fireEvent(nameInput, "blur");
+        const saveButton = getByTestId("save-button");
+        expect(saveButton.props.accessibilityState?.disabled).toBe(false);
+      });
+    });
+
+    it("enables Save button after pasting a federation address that resolves successfully", async () => {
+      const FEDERATION_ADDRESS = "alice*stellar.org";
+      mockClipboard.getString.mockResolvedValueOnce(FEDERATION_ADDRESS);
+      (isFederationAddress as jest.Mock).mockImplementationOnce(
+        (addr: string) => addr === FEDERATION_ADDRESS,
+      );
+      (Federation.Server.resolve as jest.Mock).mockResolvedValueOnce({
+        account_id: VALID_ADDRESS_1,
+      });
+
+      const { getByText, getByPlaceholderText, getByTestId } = renderScreen();
+
+      fireEvent.press(getByText("contactBookScreen.addContact"));
+      fireEvent.press(getByText("contactBookScreen.paste"));
+
+      const nameInput = getByPlaceholderText(
+        "contactBookScreen.namePlaceholder",
+      );
+      fireEvent.changeText(nameInput, "Alice");
+      fireEvent(nameInput, "blur");
+
+      await waitFor(() => {
+        const saveButton = getByTestId("save-button");
+        expect(saveButton.props.accessibilityState?.disabled).toBe(false);
+      });
+    });
+
+    it("shows federation error and keeps Save disabled when pasted federation address fails to resolve", async () => {
+      const FEDERATION_ADDRESS = "alice*stellar.org";
+      mockClipboard.getString.mockResolvedValueOnce(FEDERATION_ADDRESS);
+      (isFederationAddress as jest.Mock).mockImplementationOnce(
+        (addr: string) => addr === FEDERATION_ADDRESS,
+      );
+      (Federation.Server.resolve as jest.Mock).mockRejectedValueOnce(
+        new Error("Not found"),
+      );
+
+      const { getByText, getByTestId } = renderScreen();
+
+      fireEvent.press(getByText("contactBookScreen.addContact"));
+      fireEvent.press(getByText("contactBookScreen.paste"));
+
+      await waitFor(() => {
+        expect(
+          getByText("contactBookScreen.errors.federationNotFound"),
+        ).toBeTruthy();
+      });
+
+      const saveButton = getByTestId("save-button");
+      expect(saveButton.props.accessibilityState?.disabled).toBe(true);
     });
   });
 });
