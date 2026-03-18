@@ -126,15 +126,7 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
       [recentProtocolItems],
     );
 
-    const defiItems: VerticalListItem[] = useMemo(
-      () =>
-        protocols
-          .filter((p) => p.tags.includes("DeFi"))
-          .map(protocolToListItem),
-      [protocols],
-    );
-
-    const exploreItems: VerticalListItem[] = useMemo(
+    const dappsItems: VerticalListItem[] = useMemo(
       () => protocols.map(protocolToListItem),
       [protocols],
     );
@@ -251,26 +243,19 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
       [clearRecentsMenuActions, themeColors.text.primary],
     );
 
-    const handleExpandDefi = useCallback(() => {
-      handleExpand({
-        title: t("discovery.defi"),
-        items: defiItems,
-      });
-    }, [handleExpand, t, defiItems]);
-
     const handleExpandTrending = useCallback(() => {
       handleExpand({
         title: t("discovery.trending"),
-        items: exploreItems,
+        items: dappsItems,
       });
-    }, [handleExpand, t, exploreItems]);
+    }, [handleExpand, t, dappsItems]);
 
-    const handleExpandExplore = useCallback(() => {
+    const handleExpandDapps = useCallback(() => {
       handleExpand({
-        title: t("discovery.explore"),
-        items: exploreItems,
+        title: t("discovery.dapps"),
+        items: dappsItems,
       });
-    }, [handleExpand, t, exploreItems]);
+    }, [handleExpand, t, dappsItems]);
 
     const handleScrollEnd = useCallback(() => {
       captureScreenshot();
@@ -325,17 +310,9 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
           />
 
           <VerticalListSection
-            title={t("discovery.defi")}
-            items={defiItems}
-            onTitlePress={handleExpandDefi}
-            onItemOpen={handleItemOpen}
-            onItemPress={handleItemPress}
-          />
-
-          <VerticalListSection
-            title={t("discovery.explore")}
-            items={exploreItems}
-            onTitlePress={handleExpandExplore}
+            title={t("discovery.dapps")}
+            items={dappsItems}
+            onTitlePress={handleExpandDapps}
             onItemOpen={handleItemOpen}
             onItemPress={handleItemPress}
           />
