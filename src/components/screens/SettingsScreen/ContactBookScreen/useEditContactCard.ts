@@ -108,6 +108,8 @@ const useEditContactCard = ({
         setAddressValidated(false);
         return false;
       }
+      setAddressValidated(false);
+      resolvedAddressRef.current = undefined;
       try {
         const fedResp = await Federation.Server.resolve(normalized);
         if (validationId !== validationIdRef.current) return false;
@@ -156,6 +158,7 @@ const useEditContactCard = ({
       )
     ) {
       setNameError(t("contactBookScreen.errors.duplicateName"));
+      setNameValidated(false);
       return false;
     }
 
