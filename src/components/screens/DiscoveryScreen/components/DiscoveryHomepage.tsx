@@ -1,11 +1,11 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import ContextMenuButton, { MenuItem } from "components/ContextMenuButton";
-import { TrendingCarousel, TrendingItem } from "components/TrendingCarousel";
+import { TrendingItem } from "components/TrendingCarousel";
 import { DEFAULT_HEADER_BUTTON_SIZE } from "components/layout/CustomHeaderButton";
 import DiscoverWelcomeModal from "components/screens/DiscoveryScreen/components/DiscoverWelcomeModal";
 import ExpandedSectionView from "components/screens/DiscoveryScreen/components/ExpandedSectionView";
 import ProtocolDetailsBottomSheet from "components/screens/DiscoveryScreen/components/ProtocolDetailsBottomSheet";
-import SectionTitle from "components/screens/DiscoveryScreen/components/SectionTitle";
+import TrendingCarouselSection from "components/screens/DiscoveryScreen/components/TrendingCarouselSection";
 import VerticalListSection, {
   VerticalListItem,
 } from "components/screens/DiscoveryScreen/components/VerticalListSection";
@@ -287,21 +287,13 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
           onScrollEndDrag={handleScrollEnd}
           pointerEvents={expandedSection ? "none" : "auto"}
         >
-          {trendingItems.length > 0 && (
-            <View>
-              <SectionTitle
-                title={t("discovery.trending")}
-                onPress={handleExpandTrending}
-                className="mt-3 mb-3"
-                style={{ paddingLeft: pxValue(DEFAULT_PADDING) }}
-              />
-              <TrendingCarousel
-                items={trendingItems}
-                onItemPress={(item) => handleSitePress(item.id)}
-                onScrollEnd={captureScreenshot}
-              />
-            </View>
-          )}
+          <TrendingCarouselSection
+            title={t("discovery.trending")}
+            items={trendingItems}
+            onTitlePress={handleExpandTrending}
+            onItemPress={(item) => handleSitePress(item.id)}
+            onScrollEnd={captureScreenshot}
+          />
 
           <VerticalListSection
             title={t("discovery.recent")}
