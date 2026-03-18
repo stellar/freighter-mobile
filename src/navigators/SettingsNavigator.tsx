@@ -1,6 +1,5 @@
 /* eslint-disable react/no-unstable-nested-components */
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import CustomNavigationHeader from "components/layout/CustomNavigationHeader";
 import ChangeNetworkScreen from "components/screens/ChangeNetworkScreen";
 import NetworkSettingsScreen from "components/screens/ChangeNetworkScreen/NetworkSettingsScreen";
@@ -13,7 +12,6 @@ import BiometricsSettingsScreen from "components/screens/SettingsScreen/Security
 import ShowRecoveryPhraseScreen from "components/screens/SettingsScreen/SecurityScreen/ShowRecoveryPhraseScreen";
 import YourRecoveryPhraseScreen from "components/screens/SettingsScreen/SecurityScreen/YourRecoveryPhraseScreen";
 import ShareFeedbackScreen from "components/screens/SettingsScreen/ShareFeedbackScreen";
-import Icon from "components/sds/Icon";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import {
   getScreenBottomNavigateOptions,
@@ -71,13 +69,11 @@ export const SettingsStackNavigator = () => {
           headerTitle: t("settings.preferences"),
         }}
       />
-      {/* Uses a custom close (X) button in headerLeft in place of the default back arrow */}
       <SettingsStack.Screen
         name={SETTINGS_ROUTES.CONTACT_BOOK_SCREEN}
         component={ContactBookScreen}
         options={{
           headerTitle: t("contactBookScreen.title"),
-          headerLeft: () => <CustomHeaderButton icon={Icon.X} />,
         }}
       />
       <SettingsStack.Screen

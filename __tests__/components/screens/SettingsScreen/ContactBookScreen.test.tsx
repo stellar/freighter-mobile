@@ -1,13 +1,54 @@
-import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Federation } from "@stellar/stellar-sdk";
 import { act, fireEvent, waitFor } from "@testing-library/react-native";
 import ContactBookScreen from "components/screens/SettingsScreen/ContactBookScreen";
-import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import { isValidStellarAddress, isFederationAddress } from "helpers/stellar";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 
 // --- Mocks ---
+
+jest.mock("components/primitives/Menu", () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
+  const RN = require("react-native");
+
+  const MenuRoot = ({ children }: { children: React.ReactNode }) => (
+    <RN.View>{children}</RN.View>
+  );
+  const MenuTrigger = ({
+    children,
+    testID,
+  }: {
+    children: React.ReactNode;
+    testID?: string;
+  }) => <RN.Pressable testID={testID}>{children}</RN.Pressable>;
+  const MenuContent = ({ children }: { children: React.ReactNode }) => (
+    <RN.View>{children}</RN.View>
+  );
+  const MenuItemComponent = ({
+    children,
+    onSelect,
+  }: {
+    children: React.ReactNode;
+    onSelect: () => void;
+  }) => <RN.Pressable onPress={onSelect}>{children}</RN.Pressable>;
+  const MenuItemTitle = ({ children }: { children: React.ReactNode }) => (
+    <RN.Text>{children}</RN.Text>
+  );
+  const MenuItemIcon = () => <RN.View />;
+  const MenuGroup = ({ children }: { children: React.ReactNode }) => (
+    <RN.View>{children}</RN.View>
+  );
+
+  return {
+    MenuRoot,
+    MenuTrigger,
+    MenuContent,
+    MenuItem: MenuItemComponent,
+    MenuItemTitle,
+    MenuItemIcon,
+    MenuGroup,
+  };
+});
 
 jest.mock("services/analytics", () => ({
   analytics: {
@@ -16,6 +57,11 @@ jest.mock("services/analytics", () => ({
     trackContactBookDelete: jest.fn(),
   },
 }));
+
+const mockAnalytics =
+  jest.requireMock<typeof import("services/analytics")>(
+    "services/analytics",
+  ).analytics;
 
 jest.mock("hooks/useAppTranslation", () => ({
   __esModule: true,
@@ -35,9 +81,10 @@ jest.mock("hooks/useColors", () => ({
   }),
 }));
 
+const mockCopyToClipboard = jest.fn();
 jest.mock("hooks/useClipboard", () => ({
   useClipboard: () => ({
-    copyToClipboard: jest.fn(),
+    copyToClipboard: mockCopyToClipboard,
   }),
 }));
 
@@ -68,12 +115,16 @@ jest.mock("@react-native-clipboard/clipboard", () => ({
   getString: jest.fn(() => Promise.resolve("")),
 }));
 
-// --- Types ---
+jest.mock("@react-navigation/elements", () => ({
+  useHeaderHeight: () => 44,
+}));
 
-type ContactBookScreenNavigationProp = NativeStackScreenProps<
-  SettingsStackParamList,
-  typeof SETTINGS_ROUTES.CONTACT_BOOK_SCREEN
->["navigation"];
+const mockUseRightHeaderButton = jest.fn();
+jest.mock("hooks/useRightHeader", () => ({
+  useRightHeaderButton: (params: { onPress: () => void }) =>
+    mockUseRightHeaderButton(params),
+  useRightHeaderMenu: jest.fn(),
+}));
 
 // --- Constants ---
 
@@ -84,29 +135,46 @@ const VALID_ADDRESS_2 =
 
 // --- Helpers ---
 
-const mockSetOptions = jest.fn();
-const mockNavigation = {
-  setOptions: mockSetOptions,
-  goBack: jest.fn(),
-} as unknown as ContactBookScreenNavigationProp;
-
 const pressHeaderAddButton = () => {
-  const lastCall =
-    mockSetOptions.mock.calls[mockSetOptions.mock.calls.length - 1];
-  const options = lastCall[0];
-  const headerRight = options.headerRight();
-  headerRight.props.onPress();
+  const lastCall = mockUseRightHeaderButton.mock.calls.at(-1);
+  lastCall[0].onPress();
 };
 
-const mockRoute = {
-  key: "contact-book",
-  name: SETTINGS_ROUTES.CONTACT_BOOK_SCREEN,
-} as any;
+const renderScreen = () => renderWithProviders(<ContactBookScreen />);
 
-const renderScreen = () =>
-  renderWithProviders(
-    <ContactBookScreen navigation={mockNavigation} route={mockRoute} />,
+const addContact = async (
+  getByText: ReturnType<typeof renderScreen>["getByText"],
+  getByPlaceholderText: ReturnType<typeof renderScreen>["getByPlaceholderText"],
+  address: string,
+  name: string,
+  useHeaderButton = false,
+) => {
+  if (useHeaderButton) {
+    act(() => {
+      pressHeaderAddButton();
+    });
+  } else {
+    fireEvent.press(getByText("contactBookScreen.addContact"));
+  }
+
+  const addressInput = getByPlaceholderText(
+    "contactBookScreen.addressPlaceholder",
   );
+  const nameInput = getByPlaceholderText("contactBookScreen.namePlaceholder");
+
+  fireEvent.changeText(addressInput, address);
+  fireEvent(addressInput, "blur");
+  fireEvent.changeText(nameInput, name);
+  fireEvent(nameInput, "blur");
+
+  await waitFor(() => {
+    fireEvent.press(getByText("contactBookScreen.save"));
+  });
+
+  await waitFor(() => {
+    expect(getByText(name)).toBeTruthy();
+  });
+};
 
 describe("ContactBookScreen", () => {
   beforeEach(() => {
@@ -284,28 +352,12 @@ describe("ContactBookScreen", () => {
       const { getByText, getByPlaceholderText } = renderScreen();
 
       // First, add a contact
-      fireEvent.press(getByText("contactBookScreen.addContact"));
-
-      const addressInput = getByPlaceholderText(
-        "contactBookScreen.addressPlaceholder",
+      await addContact(
+        getByText,
+        getByPlaceholderText,
+        VALID_ADDRESS_1,
+        "Alice",
       );
-      const nameInput = getByPlaceholderText(
-        "contactBookScreen.namePlaceholder",
-      );
-
-      fireEvent.changeText(addressInput, VALID_ADDRESS_1);
-      fireEvent(addressInput, "blur");
-      fireEvent.changeText(nameInput, "Alice");
-      fireEvent(nameInput, "blur");
-
-      await waitFor(() => {
-        fireEvent.press(getByText("contactBookScreen.save"));
-      });
-
-      // Wait for contact to be added
-      await waitFor(() => {
-        expect(getByText("Alice")).toBeTruthy();
-      });
 
       // Now try to add a contact with the same address
       act(() => {
@@ -391,27 +443,12 @@ describe("ContactBookScreen", () => {
       const { getByText, getByPlaceholderText } = renderScreen();
 
       // First, add a contact
-      fireEvent.press(getByText("contactBookScreen.addContact"));
-
-      const addressInput = getByPlaceholderText(
-        "contactBookScreen.addressPlaceholder",
+      await addContact(
+        getByText,
+        getByPlaceholderText,
+        VALID_ADDRESS_1,
+        "Alice",
       );
-      const nameInput = getByPlaceholderText(
-        "contactBookScreen.namePlaceholder",
-      );
-
-      fireEvent.changeText(addressInput, VALID_ADDRESS_1);
-      fireEvent(addressInput, "blur");
-      fireEvent.changeText(nameInput, "Alice");
-      fireEvent(nameInput, "blur");
-
-      await waitFor(() => {
-        fireEvent.press(getByText("contactBookScreen.save"));
-      });
-
-      await waitFor(() => {
-        expect(getByText("Alice")).toBeTruthy();
-      });
 
       // Now try to add a contact with the same name
       act(() => {
@@ -434,42 +471,6 @@ describe("ContactBookScreen", () => {
   });
 
   describe("Contact List", () => {
-    const addContact = async (
-      getByText: any,
-      getByPlaceholderText: any,
-      address: string,
-      name: string,
-      useHeaderButton = false,
-    ) => {
-      if (useHeaderButton) {
-        act(() => {
-          pressHeaderAddButton();
-        });
-      } else {
-        fireEvent.press(getByText("contactBookScreen.addContact"));
-      }
-
-      const addressInput = getByPlaceholderText(
-        "contactBookScreen.addressPlaceholder",
-      );
-      const nameInput = getByPlaceholderText(
-        "contactBookScreen.namePlaceholder",
-      );
-
-      fireEvent.changeText(addressInput, address);
-      fireEvent(addressInput, "blur");
-      fireEvent.changeText(nameInput, name);
-      fireEvent(nameInput, "blur");
-
-      await waitFor(() => {
-        fireEvent.press(getByText("contactBookScreen.save"));
-      });
-
-      await waitFor(() => {
-        expect(getByText(name)).toBeTruthy();
-      });
-    };
-
     it("displays contact name and truncated address", async () => {
       const { getByText, getByPlaceholderText } = renderScreen();
 
@@ -508,6 +509,137 @@ describe("ContactBookScreen", () => {
 
       expect(getByText("Alice")).toBeTruthy();
       expect(getByText("Bob")).toBeTruthy();
+    });
+  });
+
+  describe("Edit Contact Flow", () => {
+    it("opens edit card with pre-populated fields via context menu", async () => {
+      const { getByText, getByPlaceholderText, getByTestId } = renderScreen();
+
+      await addContact(
+        getByText,
+        getByPlaceholderText,
+        VALID_ADDRESS_1,
+        "Alice",
+      );
+
+      // Press context menu trigger
+      fireEvent.press(getByTestId(`contact-menu-${VALID_ADDRESS_1}`));
+
+      // Press edit action - context menu actions are called via onPress
+      // Since we're using a mock ContextMenuButton, we need to trigger the action
+      // The context menu renders MenuItems; simulate the edit action
+      fireEvent.press(getByText("contactBookScreen.editContact"));
+
+      // The edit card should show with pre-populated data
+      await waitFor(() => {
+        expect(getByText("contactBookScreen.editTitle")).toBeTruthy();
+        const addressInput = getByPlaceholderText(
+          "contactBookScreen.addressPlaceholder",
+        );
+        expect(addressInput.props.value).toBe(VALID_ADDRESS_1);
+        const nameInput = getByPlaceholderText(
+          "contactBookScreen.namePlaceholder",
+        );
+        expect(nameInput.props.value).toBe("Alice");
+      });
+    });
+
+    it("saves edited contact with updated name", async () => {
+      const { getByText, getByPlaceholderText, getByTestId, queryByText } =
+        renderScreen();
+
+      await addContact(
+        getByText,
+        getByPlaceholderText,
+        VALID_ADDRESS_1,
+        "Alice",
+      );
+
+      fireEvent.press(getByTestId(`contact-menu-${VALID_ADDRESS_1}`));
+      fireEvent.press(getByText("contactBookScreen.editContact"));
+
+      await waitFor(() => {
+        expect(getByText("contactBookScreen.editTitle")).toBeTruthy();
+      });
+
+      const nameInput = getByPlaceholderText(
+        "contactBookScreen.namePlaceholder",
+      );
+      fireEvent.changeText(nameInput, "Alice Updated");
+      fireEvent(nameInput, "blur");
+
+      await waitFor(() => {
+        fireEvent.press(getByText("contactBookScreen.save"));
+      });
+
+      await waitFor(() => {
+        expect(getByText("Alice Updated")).toBeTruthy();
+      });
+      expect(queryByText("Alice")).toBeNull();
+      expect(mockAnalytics.trackContactBookEdit).toHaveBeenCalled();
+    });
+  });
+
+  describe("Delete Contact", () => {
+    it("deletes a contact via context menu and shows toast", async () => {
+      const { getByText, getByPlaceholderText, getByTestId, queryByText } =
+        renderScreen();
+
+      await addContact(
+        getByText,
+        getByPlaceholderText,
+        VALID_ADDRESS_1,
+        "Alice",
+      );
+
+      expect(getByText("Alice")).toBeTruthy();
+
+      fireEvent.press(getByTestId(`contact-menu-${VALID_ADDRESS_1}`));
+      fireEvent.press(getByText("contactBookScreen.deleteContact"));
+
+      await waitFor(() => {
+        expect(queryByText("Alice")).toBeNull();
+      });
+
+      expect(mockShowToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          variant: "success",
+          title: "contactBookScreen.contactDeleted",
+        }),
+      );
+      expect(mockAnalytics.trackContactBookDelete).toHaveBeenCalled();
+    });
+  });
+
+  describe("Copy Address", () => {
+    it("copies contact address via context menu", async () => {
+      const { getByText, getByPlaceholderText, getByTestId } = renderScreen();
+
+      await addContact(
+        getByText,
+        getByPlaceholderText,
+        VALID_ADDRESS_1,
+        "Alice",
+      );
+
+      fireEvent.press(getByTestId(`contact-menu-${VALID_ADDRESS_1}`));
+      fireEvent.press(getByText("contactBookScreen.copyAddress"));
+
+      expect(mockCopyToClipboard).toHaveBeenCalledWith(VALID_ADDRESS_1);
+    });
+  });
+
+  describe("Dismiss Card", () => {
+    it("dismisses the card when pressing the backdrop", () => {
+      const { getByText, getByTestId, queryByText } = renderScreen();
+
+      fireEvent.press(getByText("contactBookScreen.addContact"));
+      expect(getByText("contactBookScreen.addTitle")).toBeTruthy();
+
+      fireEvent.press(getByTestId("card-backdrop"));
+
+      expect(queryByText("contactBookScreen.addTitle")).toBeNull();
     });
   });
 });

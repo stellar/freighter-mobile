@@ -1,26 +1,29 @@
-import { NativeStackScreenProps } from "@react-navigation/native-stack";
+// eslint-disable-next-line import/no-extraneous-dependencies
+import { useHeaderHeight } from "@react-navigation/elements";
 import ContextMenuButton, { MenuItem } from "components/ContextMenuButton";
 import { BaseLayout } from "components/layout/BaseLayout";
-import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import EditContactCard from "components/screens/SettingsScreen/ContactBookScreen/EditContactCard";
+import useEditContactCard from "components/screens/SettingsScreen/ContactBookScreen/useEditContactCard";
 import Avatar from "components/sds/Avatar";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
+import { pxValue } from "helpers/dimensions";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
+import { useRightHeaderButton } from "hooks/useRightHeader";
 import { useToast } from "providers/ToastProvider";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { FlatList, Platform, Pressable, View } from "react-native";
+import React, { useCallback, useMemo, useRef, useState } from "react";
+import {
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  View,
+} from "react-native";
 import { analytics } from "services/analytics";
-
-type ContactBookScreenProps = NativeStackScreenProps<
-  SettingsStackParamList,
-  typeof SETTINGS_ROUTES.CONTACT_BOOK_SCREEN
->;
 
 /**
  * Data stored for a single contact entry.
@@ -38,15 +41,6 @@ export interface ContactData {
  * (which may be a federation address or a native Stellar address).
  */
 export type ContactsMap = Record<string, ContactData>;
-
-// const INITIAL_CONTACTS: ContactsMap = {
-//   GBTYAFHGNZSTE4VBWZYAGB3SRGJEPTI5I4Y22KZ4JTVAN56LESB6JZOF: {
-//     name: "Piyal",
-//   },
-//   GBKWMR7TJ7BBICOOXRY2SWXKCWPTOHZPI6MP4LNNE5A73VP3WADGG3CH: {
-//     name: "Cassio",
-//   },
-// };
 
 const icons = Platform.select({
   ios: {
@@ -71,39 +65,78 @@ type CardMode =
   | { type: "edit"; address: string; data: ContactData };
 
 /**
+ * Wrapper that calls useEditContactCard and passes all state to the
+ * presentational EditContactCard component.
+ */
+const EditContactCardWithHook: React.FC<{
+  title: string;
+  initialAddress?: string;
+  initialName?: string;
+  existingContacts: ContactsMap;
+  onSave: (address: string, name: string, resolvedAddress?: string) => void;
+}> = ({ title, initialAddress, initialName, existingContacts, onSave }) => {
+  const {
+    address,
+    name,
+    addressError,
+    nameError,
+    isValidating,
+    isSaveDisabled,
+    handleAddressChange,
+    handleNameChange,
+    handleAddressBlur,
+    handleNameBlur,
+    handlePaste,
+    handleSave,
+  } = useEditContactCard({
+    initialAddress,
+    initialName,
+    existingContacts,
+    onSave,
+  });
+
+  return (
+    <EditContactCard
+      title={title}
+      address={address}
+      name={name}
+      addressError={addressError}
+      nameError={nameError}
+      isValidating={isValidating}
+      isSaveDisabled={isSaveDisabled}
+      onAddressChange={handleAddressChange}
+      onNameChange={handleNameChange}
+      onAddressBlur={handleAddressBlur}
+      onNameBlur={handleNameBlur}
+      onPaste={handlePaste}
+      onSave={handleSave}
+    />
+  );
+};
+
+/**
  * Screen for managing the user's saved Stellar contacts.
  * Supports adding, editing, deleting, and copying contact addresses.
  */
-const ContactBookScreen: React.FC<ContactBookScreenProps> = ({
-  navigation,
-}) => {
+const ContactBookScreen: React.FC = () => {
+  const headerHeight = useHeaderHeight();
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const { showToast } = useToast();
   const { copyToClipboard } = useClipboard();
   const [contacts, setContacts] = useState<ContactsMap>({});
   const [cardMode, setCardMode] = useState<CardMode | null>(null);
+  const cardModeRef = useRef<CardMode | null>(null);
+  cardModeRef.current = cardMode;
 
   const handleAddContact = useCallback(() => {
     setCardMode({ type: "add" });
   }, []);
 
-  const HeaderRightComponent = useCallback(
-    () => (
-      <CustomHeaderButton
-        position="right"
-        icon={Icon.Plus}
-        onPress={handleAddContact}
-      />
-    ),
-    [handleAddContact],
-  );
-
-  useEffect(() => {
-    navigation.setOptions({
-      headerRight: HeaderRightComponent,
-    });
-  }, [navigation, HeaderRightComponent]);
+  useRightHeaderButton({
+    onPress: handleAddContact,
+    icon: Icon.Plus,
+  });
 
   /**
    * Opens the edit card pre-populated with the selected contact's address and data.
@@ -129,14 +162,15 @@ const ContactBookScreen: React.FC<ContactBookScreenProps> = ({
    */
   const handleSaveContact = useCallback(
     (address: string, name: string, resolvedAddress?: string) => {
-      if (cardMode?.type === "edit") {
+      const currentCardMode = cardModeRef.current;
+      if (currentCardMode?.type === "edit") {
         analytics.trackContactBookEdit();
         setContacts((prev) => {
           const result = { ...prev };
-          delete result[cardMode.address];
+          delete result[currentCardMode.address];
           return { ...result, [address]: { name, resolvedAddress } };
         });
-      } else if (cardMode?.type === "add") {
+      } else if (currentCardMode?.type === "add") {
         analytics.trackContactBookAdd();
         setContacts((prev) => ({
           ...prev,
@@ -154,7 +188,7 @@ const ContactBookScreen: React.FC<ContactBookScreenProps> = ({
       }
       setCardMode(null);
     },
-    [cardMode, showToast, t, themeColors.status.success],
+    [showToast, t, themeColors.status.success],
   );
 
   /**
@@ -292,23 +326,36 @@ const ContactBookScreen: React.FC<ContactBookScreenProps> = ({
         keyExtractor={([address]) => address}
         ListEmptyComponent={renderEmpty}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ gap: 32, paddingTop: 16 }}
+        contentContainerStyle={{ gap: pxValue(32), paddingTop: pxValue(16) }}
       />
       {cardMode && (
         <Pressable
           className="absolute inset-0 justify-end"
           style={{ backgroundColor: "rgba(0, 0, 0, 0.6)" }}
           onPress={handleDismissCard}
+          testID="card-backdrop"
         >
-          <Pressable onPress={(e) => e.stopPropagation()} className="px-4 pb-4">
-            <EditContactCard
-              title={cardTitle}
-              address={cardMode.type === "edit" ? cardMode.address : undefined}
-              name={cardMode.type === "edit" ? cardMode.data.name : undefined}
-              existingContacts={existingContacts}
-              onSave={handleSaveContact}
-            />
-          </Pressable>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            keyboardVerticalOffset={headerHeight}
+          >
+            <Pressable
+              onPress={(e) => e.stopPropagation()}
+              className="px-4 pb-4"
+            >
+              <EditContactCardWithHook
+                title={cardTitle}
+                initialAddress={
+                  cardMode.type === "edit" ? cardMode.address : undefined
+                }
+                initialName={
+                  cardMode.type === "edit" ? cardMode.data.name : undefined
+                }
+                existingContacts={existingContacts}
+                onSave={handleSaveContact}
+              />
+            </Pressable>
+          </KeyboardAvoidingView>
         </Pressable>
       )}
     </BaseLayout>
