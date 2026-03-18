@@ -1,9 +1,16 @@
 import Clipboard from "@react-native-clipboard/clipboard";
 import { Federation } from "@stellar/stellar-sdk";
-import type { ContactsMap } from "components/screens/SettingsScreen/ContactBookScreen/ContactBookScreen";
 import { isFederationAddress, isValidStellarAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useRef, useState } from "react";
+
+interface ContactData {
+  address: string;
+  name: string;
+  resolvedAddress?: string;
+}
+
+type ContactsMap = Record<string, ContactData>;
 
 interface UseEditContactCardParams {
   initialAddress?: string;
