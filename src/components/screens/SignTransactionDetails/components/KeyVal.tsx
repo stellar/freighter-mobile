@@ -243,7 +243,7 @@ export const KeyValueSigner = ({ signer }: KeyValueSignerProps) => {
 
     if ("sha256Hash" in signer) {
       return (
-        <InlinePublicKeyRow
+        <KeyValueListItem
           operationKey={t("signTransactionDetails.operations.signer")}
           operationValue={formattedBuffer(signer.sha256Hash)}
         />
@@ -252,7 +252,7 @@ export const KeyValueSigner = ({ signer }: KeyValueSignerProps) => {
 
     if ("preAuthTx" in signer) {
       return (
-        <InlinePublicKeyRow
+        <KeyValueListItem
           operationKey={t("signTransactionDetails.operations.signer")}
           operationValue={formattedBuffer(signer.preAuthTx)}
         />
@@ -261,7 +261,7 @@ export const KeyValueSigner = ({ signer }: KeyValueSignerProps) => {
 
     if ("ed25519SignedPayload" in signer) {
       return (
-        <InlinePublicKeyRow
+        <KeyValueListItem
           operationKey={t("signTransactionDetails.operations.signer")}
           operationValue={truncateAddress(signer.ed25519SignedPayload)}
         />
