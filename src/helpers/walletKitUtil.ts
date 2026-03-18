@@ -385,7 +385,11 @@ export const approveSessionRequest = async ({
   if (rpcMethod === StellarRpcMethods.SIGN_AUTH_ENTRY) {
     const { entryXdr } = requestParams || {};
 
-    if (!entryXdr || typeof entryXdr !== "string") {
+    if (
+      !entryXdr ||
+      typeof entryXdr !== "string" ||
+      entryXdr.trim().length === 0
+    ) {
       const errorMessage = t("walletKit.errorInvalidAuthEntry");
       showToast({
         title: t("walletKit.errorSigningAuthEntry"),
@@ -400,7 +404,7 @@ export const approveSessionRequest = async ({
     const result = signAuthEntry(entryXdr);
 
     if (!result) {
-      const errorMessage = "Failed to sign auth entry";
+      const errorMessage = t("walletKit.failedToProcessAuthEntry");
       logger.error(
         "approveSessionRequest",
         errorMessage,
@@ -408,7 +412,7 @@ export const approveSessionRequest = async ({
       );
       showToast({
         title: t("walletKit.errorSigningAuthEntry"),
-        message: t("walletKit.failedToProcessAuthEntry"),
+        message: errorMessage,
         variant: "error",
       });
       rejectSessionRequest({ sessionRequest, message: errorMessage });
