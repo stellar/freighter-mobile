@@ -102,12 +102,14 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
 
     const trendingItems: TrendingItem[] = useMemo(
       () =>
-        protocols.map((protocol) => ({
-          id: protocol.websiteUrl,
-          title: protocol.name,
-          category: protocol.tags[0],
-          backgroundUrl: protocol.backgroundUrl,
-        })),
+        protocols
+          .filter((protocol) => protocol.isTrending)
+          .map((protocol) => ({
+            id: protocol.websiteUrl,
+            title: protocol.name,
+            category: protocol.tags[0],
+            backgroundUrl: protocol.backgroundUrl,
+          })),
       [protocols],
     );
 
@@ -273,7 +275,7 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
         }}
         style={{ flex: 1 }}
       >
-        <View className="items-center mt-4 mb-6 bg-background-primary">
+        <View className="items-center mt-4 mb-3 bg-background-primary">
           <Text md medium>
             {t("discovery.discover")}
           </Text>
@@ -290,7 +292,7 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
               <SectionTitle
                 title={t("discovery.trending")}
                 onPress={handleExpandTrending}
-                className="mb-3"
+                className="mt-3 mb-3"
                 style={{ paddingLeft: pxValue(DEFAULT_PADDING) }}
               />
               <TrendingCarousel

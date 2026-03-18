@@ -913,6 +913,7 @@ interface ProtocolsResponse {
       background_url?: string;
       is_blacklisted?: boolean;
       is_wc_not_supported?: boolean;
+      is_trending?: boolean;
     }[];
   };
 }
@@ -967,6 +968,7 @@ export const fetchProtocols = async (): Promise<DiscoverProtocol[]> => {
       websiteUrl: protocol.website_url,
       tags: protocol.tags,
       backgroundUrl: protocol.background_url,
+      isTrending: protocol.is_trending ?? false,
     }));
 };
 
