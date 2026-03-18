@@ -58,7 +58,7 @@ const ProtocolDetailsBottomSheet: React.FC<ProtocolDetailsBottomSheetProps> =
                 {protocol.name}
               </Text>
             </View>
-            <Button tertiary sm onPress={handleOpen}>
+            <Button tertiary lg onPress={handleOpen}>
               {t("discovery.open")}
             </Button>
           </View>
@@ -82,7 +82,7 @@ const ProtocolDetailsBottomSheet: React.FC<ProtocolDetailsBottomSheetProps> =
               </Text>
               <View className="flex-row flex-wrap gap-2">
                 {protocol.tags.map((tag) => (
-                  <Badge key={tag} variant="success" isOutlined>
+                  <Badge key={tag} variant="success" size="lg" isOutlined>
                     {tag}
                   </Badge>
                 ))}

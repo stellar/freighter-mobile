@@ -288,7 +288,7 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
         }}
         style={{ flex: 1 }}
       >
-        <View className="items-center mt-4 pb-4 bg-background-primary">
+        <View className="items-center mt-4 mb-6 bg-background-primary">
           <Text md medium>
             {t("discovery.discover")}
           </Text>

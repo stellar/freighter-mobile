@@ -34,7 +34,7 @@ const ProtocolRow: React.FC<ProtocolRowProps> = React.memo(
           delayPressIn={DEFAULT_PRESS_DELAY}
         >
           <App appName={name} favicon={iconUrl} size="lg" />
-          <View className="ml-3 flex-1">
+          <View className="ml-4 flex-1">
             <Text md medium numberOfLines={1}>
               {name}
             </Text>
@@ -45,7 +45,7 @@ const ProtocolRow: React.FC<ProtocolRowProps> = React.memo(
             )}
           </View>
         </TouchableOpacity>
-        <Button tertiary sm onPress={handleOpen}>
+        <Button secondary lg onPress={handleOpen}>
           {t("discovery.open")}
         </Button>
       </View>
