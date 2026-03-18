@@ -956,7 +956,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
             msgParam.trim().length === 0
           ) {
             showToast({
-              title: t("walletKit.errorSigningMessage"),
+              title: t("walletKit.invalidRequestTitle"),
               message: t("walletKit.errorInvalidMessage"),
               variant: "error",
             });
@@ -983,7 +983,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
             entryParam.trim().length === 0
           ) {
             showToast({
-              title: t("walletKit.errorSigningAuthEntry"),
+              title: t("walletKit.invalidRequestTitle"),
               message: t("walletKit.errorInvalidAuthEntry"),
               variant: "error",
             });

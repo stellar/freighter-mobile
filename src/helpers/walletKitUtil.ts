@@ -296,7 +296,7 @@ export const approveSessionRequest = async ({
     if (!message || typeof message !== "string") {
       const errorMessage = t("walletKit.errorInvalidMessage");
       showToast({
-        title: t("walletKit.errorSigningMessage"),
+        title: t("walletKit.invalidRequestTitle"),
         message: errorMessage,
         variant: "error",
       });
@@ -310,7 +310,7 @@ export const approveSessionRequest = async ({
     if (messageByteLength > 1024) {
       const errorMessage = t("walletKit.errorMessageTooLong");
       showToast({
-        title: t("walletKit.errorSigningMessage"),
+        title: t("walletKit.invalidRequestTitle"),
         message: errorMessage,
         variant: "error",
       });
