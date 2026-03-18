@@ -37,7 +37,7 @@ When proposing a session, include the desired chain(s) in the
         "stellar_signMessage",
         "stellar_signAuthEntry"
       ],
-      "events": ["stellar_accountsChanged"]
+      "events": ["accountsChanged"]
     }
   }
 }
