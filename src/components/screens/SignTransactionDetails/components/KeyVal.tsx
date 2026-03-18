@@ -160,6 +160,23 @@ export const InlinePublicKeyRow = ({
   </View>
 );
 
+interface InlineHashRowProps {
+  operationKey: string;
+  operationValue: string;
+}
+
+export const InlineHashRow = ({
+  operationKey,
+  operationValue,
+}: InlineHashRowProps) => (
+  <View className="bg-background-secondary rounded-[16px] px-[16px] py-[14px] flex-row items-center justify-between gap-[12px]">
+    <Text>{operationKey}</Text>
+    <View className="flex-1 flex-row items-center justify-end">
+      <Text>{operationValue}</Text>
+    </View>
+  </View>
+);
+
 export const KeyValueWithPublicKey = ({
   operationKey,
   operationValue,
@@ -243,7 +260,7 @@ export const KeyValueSigner = ({ signer }: KeyValueSignerProps) => {
 
     if ("sha256Hash" in signer) {
       return (
-        <KeyValueListItem
+        <InlineHashRow
           operationKey={t("signTransactionDetails.operations.signer")}
           operationValue={formattedBuffer(signer.sha256Hash)}
         />
@@ -252,7 +269,7 @@ export const KeyValueSigner = ({ signer }: KeyValueSignerProps) => {
 
     if ("preAuthTx" in signer) {
       return (
-        <KeyValueListItem
+        <InlineHashRow
           operationKey={t("signTransactionDetails.operations.signer")}
           operationValue={formattedBuffer(signer.preAuthTx)}
         />
@@ -261,7 +278,7 @@ export const KeyValueSigner = ({ signer }: KeyValueSignerProps) => {
 
     if ("ed25519SignedPayload" in signer) {
       return (
-        <KeyValueListItem
+        <InlineHashRow
           operationKey={t("signTransactionDetails.operations.signer")}
           operationValue={truncateAddress(signer.ed25519SignedPayload)}
         />
