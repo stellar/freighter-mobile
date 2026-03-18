@@ -275,10 +275,9 @@ export const KeyValueSigner = ({ signer }: KeyValueSignerProps) => {
     <View className="bg-background-secondary rounded-[16px]">
       {renderSignerType()}
       <View className="h-[1px] mx-4 bg-border-primary" />
-      <View className="rounded-[16px] px-[16px] py-[14px] flex-row items-center justify-between gap-[12px] bt">
+      <View className="rounded-[16px] px-[16px] py-[14px] flex-row items-center justify-between gap-[12px]">
         <Text>{t("signTransactionDetails.operations.signerWeight")}</Text>
         <View className="flex-1 flex-row items-center justify-end gap-[8px]">
-          <View className="h-[1px] mx-4 bg-border-primary" />
           <Text>{signer.weight}</Text>
         </View>
       </View>
