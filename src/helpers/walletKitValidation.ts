@@ -93,7 +93,7 @@ export function parseAuthEntryPreimage(
 
 /**
  * Validates that the networkId in the preimage matches the expected network.
- * Returns the sorobanAuthorization on success for further use.
+ * Returns the invocation from the sorobanAuthorization on success.
  */
 export function validateAuthEntryNetwork(
   preimage: xdr.HashIdPreimage,

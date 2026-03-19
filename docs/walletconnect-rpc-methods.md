@@ -334,11 +334,12 @@ authEntry
 
 **Error cases**
 
-| Condition                                          | Error message                    |
-| -------------------------------------------------- | -------------------------------- |
-| Missing, non-string, or whitespace-only `entryXdr` | `"Invalid authorization entry"`  |
-| XDR parse failure                                  | `"Failed to process auth entry"` |
-| User rejected                                      | `"User rejected the request"`    |
+| Condition                                          | Error message                                      |
+| -------------------------------------------------- | -------------------------------------------------- |
+| Missing, non-string, or whitespace-only `entryXdr` | `"Invalid authorization entry"`                    |
+| XDR parse failure                                  | `"Failed to process auth entry"`                   |
+| `networkId` doesn't match active network           | `"Authorization entry is for a different network"` |
+| User rejected                                      | `"User rejected the request"`                      |
 
 ---
 

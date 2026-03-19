@@ -661,10 +661,11 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   const prevalidateSignMessage = (
     sessionRequest: WalletKitSessionRequest,
   ): boolean => {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     const msgParam = (
-      sessionRequest.params.request.params as { message?: unknown }
-    ).message;
+      sessionRequest.params as
+        | { request?: { params?: { message?: unknown } } }
+        | undefined
+    )?.request?.params?.message;
 
     // Step 1: Validate content (presence, type, non-empty)
     const contentResult = validateSignMessageContent(msgParam);
@@ -710,10 +711,11 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   const prevalidateSignAuthEntryContent = (
     sessionRequest: WalletKitSessionRequest,
   ): string | null => {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     const entryParam = (
-      sessionRequest.params.request.params as { entryXdr?: unknown }
-    ).entryXdr;
+      sessionRequest.params as
+        | { request?: { params?: { entryXdr?: unknown } } }
+        | undefined
+    )?.request?.params?.entryXdr;
 
     const result = validateSignAuthEntryContent(entryParam);
     if (!result.valid) {
@@ -1045,10 +1047,11 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       sessionRequest.verifyContext?.verified?.origin ||
       "";
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    const currentRequestMethod = sessionRequest.params.request.method;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    const requestXdr = sessionRequest.params.request.params.xdr as string;
+    const requestParams = sessionRequest.params as
+      | { request?: { method?: string; params?: { xdr?: string } } }
+      | undefined;
+    const currentRequestMethod = requestParams?.request?.method;
+    const requestXdr = requestParams?.request?.params?.xdr;
 
     const isXdrRequest =
       currentRequestMethod === (StellarRpcMethods.SIGN_XDR as string) ||
