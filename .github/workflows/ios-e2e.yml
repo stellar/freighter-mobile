@@ -230,6 +230,7 @@ jobs:
       # - SwapClassicTokenMainnet: Swap tokens on mainnet (small amount: 0.000001 XLM)
       # - SignMessageMockDapp: WalletConnect sign message (requires mock server)
       # - SignAuthEntryMockDapp: WalletConnect sign auth entry (requires mock server)
+      # - SignAuthEntryNetworkMismatchMockDapp: WalletConnect sign auth entry with network mismatch (security test, requires mock server)
       # Note: mock-dapp tests use shard-index:0, to run sequentially in isolation,
       # to avoid e2e test flakiness related to starting/stopping the mock server and potential port conflicts.
       matrix:
@@ -269,6 +270,10 @@ jobs:
           - shard-index: 0
             shard-total: 7
             flow-name: SignAuthEntryMockDapp
+            requires-mock-server: true
+          - shard-index: 0
+            shard-total: 7
+            flow-name: SignAuthEntryNetworkMismatchMockDapp
             requires-mock-server: true
 
     steps:
