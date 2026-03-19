@@ -1,4 +1,5 @@
 import Clipboard from "@react-native-clipboard/clipboard";
+import type { ContactsMap } from "components/screens/SettingsScreen/ContactBookScreen/types";
 import { resolveFederationAddress, sanitizeName } from "helpers/contactList";
 import {
   isFederationAddress,
@@ -9,13 +10,6 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useEffect, useRef, useState } from "react";
 
 const NAME_MAX_LENGTH = 32;
-
-interface ContactData {
-  name: string;
-  resolvedAddress?: string;
-}
-
-type ContactsMap = Record<string, ContactData>;
 
 interface UseEditContactCardParams {
   initialAddress?: string;
@@ -106,11 +100,12 @@ const useEditContactCard = ({
    *
    * @param val - The address string to validate
    * @param options.skipFederation - When true, skips federation resolution (used during typing to avoid excessive network calls)
+   * @param options.skipInvalidAddressError - When true, clears rather than sets the invalidAddress error for non-Stellar addresses (used during typing to avoid premature error messages)
    * @returns `true` if the address is valid
    */
   const validateAddress = async (
     val: string,
-    { skipFederation = false } = {},
+    { skipFederation = false, skipInvalidAddressError = false } = {},
   ): Promise<boolean> => {
     const normalized = val.trim();
     // eslint-disable-next-line no-plusplus
@@ -169,7 +164,14 @@ const useEditContactCard = ({
       }
     } else if (!isValidStellarAddress(normalized)) {
       resolvedAddressRef.current = undefined;
-      setAddressError(t("contactBookScreen.errors.invalidAddress"));
+      if (skipInvalidAddressError) {
+        // Defer the error until blur/submit to avoid showing errors while the
+        // user is still typing a partial G/M/C address
+        setAddressError(undefined);
+      } else {
+        setAddressError(t("contactBookScreen.errors.invalidAddress"));
+      }
+      setAddressValidated(false);
       return false;
     } else {
       resolvedAddressRef.current = undefined;
@@ -233,7 +235,13 @@ const useEditContactCard = ({
     setAddress(text);
     // Cancel any in-flight federation request when the user types
     abortControllerRef.current?.abort();
-    validateAddress(text, { skipFederation: true });
+    // Skip showing the invalidAddress error during typing so the user isn't
+    // interrupted with a premature error while still entering their address.
+    // Errors will be surfaced on blur or submit.
+    validateAddress(text, {
+      skipFederation: true,
+      skipInvalidAddressError: true,
+    });
   };
 
   const handleNameChange = (text: string) => {
