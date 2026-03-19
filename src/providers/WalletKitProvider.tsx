@@ -33,6 +33,13 @@ import {
   rejectSessionRequest,
   rejectSessionProposal,
 } from "helpers/walletKitUtil";
+import {
+  validateSignMessageContent,
+  validateSignMessageLength,
+  validateSignAuthEntryContent,
+  parseAuthEntryPreimage,
+  validateAuthEntryNetwork,
+} from "helpers/walletKitValidation";
 import { useBlockaidSite } from "hooks/blockaid/useBlockaidSite";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -643,381 +650,472 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     verifyDomainBottomSheetModalRef.current?.dismiss();
   }, []);
 
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Pre-validation helpers for WalletKit session requests
+  // ─────────────────────────────────────────────────────────────────────────────
+
   /**
-   * Effect that handles WalletKit events (session proposals and requests).
-   * Processes incoming session proposals and requests, validates authentication status,
-   * scans dApp URLs for security, and presents appropriate bottom sheet modals for user interaction.
-   *
-   * Handles:
-   * - Session proposals: Validates authentication, scans dApp URL, shows dApp connection bottom sheet
-   * - Session requests: Validates session exists and authentication, shows dApp transaction request bottom sheet
-   * - Automatic rejection of invalid requests with appropriate error messages
-   * - Authentication state validation before processing any requests
-   * - Blockaid security scanning before showing connection UI
-   *
-   * @dependencies activeSessions, event.type, authStatus
+   * Validates the message param for sign_message requests.
+   * @returns true if valid, false if invalid (rejection already handled)
    */
+  const prevalidateSignMessage = (
+    sessionRequest: WalletKitSessionRequest,
+  ): boolean => {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    const msgParam = (
+      sessionRequest.params.request.params as { message?: unknown }
+    ).message;
 
-  useEffect(() => {
-    if (event.type === WalletKitEventTypes.SESSION_PROPOSAL) {
-      const sessionProposal = event as WalletKitSessionProposal;
+    // Step 1: Validate content (presence, type, non-empty)
+    const contentResult = validateSignMessageContent(msgParam);
+    if (!contentResult.valid) {
+      showToast({
+        title: t("walletKit.invalidRequestTitle"),
+        message: t(contentResult.errorKey),
+        variant: "error",
+      });
+      rejectSessionRequest({
+        sessionRequest,
+        message: t(contentResult.errorKey),
+      });
+      clearEvent();
+      isProcessingRequestRef.current = false;
+      return false;
+    }
 
-      // Check if user is not authenticated
-      if (authStatus === AUTH_STATUS.NOT_AUTHENTICATED) {
-        showToast({
-          title: t("walletKit.notAuthenticated"),
-          message: t("walletKit.pleaseLoginToConnect"),
-          variant: "error",
-        });
+    // Step 2: Validate message length (1KB limit per SEP-53)
+    const lengthResult = validateSignMessageLength(contentResult.value);
+    if (!lengthResult.valid) {
+      showToast({
+        title: t("walletKit.invalidRequestTitle"),
+        message: t(lengthResult.errorKey),
+        variant: "error",
+      });
+      rejectSessionRequest({
+        sessionRequest,
+        message: t(lengthResult.errorKey),
+      });
+      clearEvent();
+      isProcessingRequestRef.current = false;
+      return false;
+    }
 
-        rejectSessionProposal({
-          sessionProposal,
-          message: t("walletKit.userNotAuthenticated"),
-        });
+    return true;
+  };
 
-        analytics.trackGrantAccessFail(
-          sessionProposal.params.proposer.metadata.url,
-          "user_not_authenticated",
-        );
+  /**
+   * Validates that entryXdr param is present, is a string, and is non-empty.
+   * @returns the entryXdr string if valid, or null if invalid (rejection handled)
+   */
+  const prevalidateSignAuthEntryContent = (
+    sessionRequest: WalletKitSessionRequest,
+  ): string | null => {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    const entryParam = (
+      sessionRequest.params.request.params as { entryXdr?: unknown }
+    ).entryXdr;
 
-        clearEvent();
-        return;
-      }
+    const result = validateSignAuthEntryContent(entryParam);
+    if (!result.valid) {
+      showToast({
+        title: t("walletKit.invalidRequestTitle"),
+        message: t(result.errorKey),
+        variant: "error",
+      });
+      rejectSessionRequest({
+        sessionRequest,
+        message: t(result.errorKey),
+      });
+      clearEvent();
+      isProcessingRequestRef.current = false;
+      return null;
+    }
 
-      // Check if wallet is locked
-      if (
-        authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ||
-        authStatus === AUTH_STATUS.LOCKED
-      ) {
-        showToast({
-          title: t("walletKit.walletLocked"),
-          message: t("walletKit.pleaseUnlockToConnect"),
-          variant: "error",
-        });
+    return result.value;
+  };
 
-        return;
-      }
+  /**
+   * Validates that the entryXdr can be parsed as a HashIdPreimage.
+   * @returns the parsed preimage if valid, or null if invalid (rejection handled)
+   */
+  const prevalidateSignAuthEntryXdrFormat = (
+    sessionRequest: WalletKitSessionRequest,
+    entryXdr: string,
+  ): stellarXdr.HashIdPreimage | null => {
+    const result = parseAuthEntryPreimage(entryXdr);
+    if (!result.valid) {
+      showToast({
+        title: t("walletKit.invalidRequestTitle"),
+        message: t(result.errorKey),
+        variant: "error",
+      });
+      rejectSessionRequest({
+        sessionRequest,
+        message: t(result.errorKey),
+      });
+      clearEvent();
+      isProcessingRequestRef.current = false;
+      return null;
+    }
 
-      setProposalEvent(sessionProposal);
+    return result.value;
+  };
 
-      const dappMetadata = getDappMetadataFromEvent(
+  /**
+   * Validates that the networkId in the preimage matches the wallet's active network.
+   * Prevents signing auth entries destined for a different network than displayed.
+   * @returns true if valid, false if invalid (rejection handled)
+   */
+  const prevalidateSignAuthEntryNetworkId = (
+    sessionRequest: WalletKitSessionRequest,
+    preimage: stellarXdr.HashIdPreimage,
+  ): boolean => {
+    const result = validateAuthEntryNetwork(
+      preimage,
+      networkDetails.networkPassphrase,
+    );
+    if (!result.valid) {
+      showToast({
+        title: t("walletKit.invalidRequestTitle"),
+        message: t(result.errorKey),
+        variant: "error",
+      });
+      rejectSessionRequest({
+        sessionRequest,
+        message: t(result.errorKey),
+      });
+      clearEvent();
+      isProcessingRequestRef.current = false;
+      return false;
+    }
+
+    return true;
+  };
+
+  /**
+   * Orchestrates all sign_auth_entry pre-validations.
+   * @returns true if all validations pass, false if any fail (rejection handled)
+   */
+  const prevalidateSignAuthEntry = (
+    sessionRequest: WalletKitSessionRequest,
+  ): boolean => {
+    // Step 1: Validate content (presence, type, non-empty)
+    const entryXdr = prevalidateSignAuthEntryContent(sessionRequest);
+    if (!entryXdr) {
+      return false;
+    }
+
+    // Step 2: Validate XDR format (can be parsed as HashIdPreimage)
+    const preimage = prevalidateSignAuthEntryXdrFormat(
+      sessionRequest,
+      entryXdr,
+    );
+    if (!preimage) {
+      return false;
+    }
+
+    // Step 3: Validate network (networkId matches wallet's active network)
+    if (!prevalidateSignAuthEntryNetworkId(sessionRequest, preimage)) {
+      return false;
+    }
+
+    return true;
+  };
+
+  /**
+   * Handles SESSION_PROPOSAL events — validates auth, scans site, shows connection sheet.
+   */
+  const handleSessionProposal = (sessionProposal: WalletKitSessionProposal) => {
+    // Check if user is not authenticated
+    if (authStatus === AUTH_STATUS.NOT_AUTHENTICATED) {
+      showToast({
+        title: t("walletKit.notAuthenticated"),
+        message: t("walletKit.pleaseLoginToConnect"),
+        variant: "error",
+      });
+
+      rejectSessionProposal({
         sessionProposal,
-        activeSessions,
-      );
-      const dappDomain = dappMetadata?.url as string;
+        message: t("walletKit.userNotAuthenticated"),
+      });
 
-      scanSite(dappDomain)
+      analytics.trackGrantAccessFail(
+        sessionProposal.params.proposer.metadata.url,
+        "user_not_authenticated",
+      );
+
+      clearEvent();
+      return;
+    }
+
+    // Check if wallet is locked
+    if (
+      authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ||
+      authStatus === AUTH_STATUS.LOCKED
+    ) {
+      showToast({
+        title: t("walletKit.walletLocked"),
+        message: t("walletKit.pleaseUnlockToConnect"),
+        variant: "error",
+      });
+      return;
+    }
+
+    setProposalEvent(sessionProposal);
+
+    const dappMetadata = getDappMetadataFromEvent(
+      sessionProposal,
+      activeSessions,
+    );
+    const dappDomain = dappMetadata?.url as string;
+
+    scanSite(dappDomain)
+      .then((scanResult) => {
+        setSiteScanResult(scanResult);
+        const securityAssessment = assessSiteSecurity(
+          scanResult,
+          overriddenBlockaidResponse,
+        );
+        if (securityAssessment.isUnableToScan) {
+          setSecurityWarningContext(SecurityContext.SITE);
+          siteSecurityWarningBottomSheetModalRef.current?.present();
+        } else {
+          dappConnectionBottomSheetModalRef.current?.present();
+        }
+      })
+      .catch(() => {
+        setSiteScanResult(undefined);
+        const securityAssessment = assessSiteSecurity(
+          undefined,
+          overriddenBlockaidResponse,
+        );
+        if (securityAssessment.isUnableToScan) {
+          setSecurityWarningContext(SecurityContext.SITE);
+          siteSecurityWarningBottomSheetModalRef.current?.present();
+        } else {
+          dappConnectionBottomSheetModalRef.current?.present();
+        }
+      });
+  };
+
+  /**
+   * Handles SESSION_REQUEST events — validates auth/session/origin, pre-validates
+   * request params, scans transactions, and shows the appropriate sheet.
+   */
+  const handleSessionRequest = (sessionRequest: WalletKitSessionRequest) => {
+    // Simple queue: if already processing a request, store this one as pending
+    if (isProcessingRequestRef.current) {
+      logger.warn(
+        "WalletKitProvider",
+        "Request already in progress, queuing new request",
+        {
+          currentRequestId: requestEvent?.id,
+          newRequestId: sessionRequest.id,
+          queueLength: pendingRequestsQueueRef.current.length + 1,
+        },
+      );
+      pendingRequestsQueueRef.current.push(sessionRequest);
+      clearEvent();
+      return;
+    }
+
+    // Mark as processing
+    isProcessingRequestRef.current = true;
+
+    // Check if user is not authenticated
+    if (authStatus === AUTH_STATUS.NOT_AUTHENTICATED) {
+      showToast({
+        title: t("walletKit.notAuthenticated"),
+        message: t("walletKit.pleaseLoginToSignTransaction"),
+        variant: "error",
+      });
+
+      rejectSessionRequest({
+        sessionRequest,
+        message: t("walletKit.userNotAuthenticated"),
+      });
+
+      clearEvent();
+      isProcessingRequestRef.current = false;
+      return;
+    }
+
+    // Check if wallet is locked
+    if (
+      authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ||
+      authStatus === AUTH_STATUS.LOCKED
+    ) {
+      showToast({
+        title: t("walletKit.walletLocked"),
+        message: t("walletKit.pleaseUnlockToSignTransaction"),
+        variant: "error",
+      });
+      isProcessingRequestRef.current = false;
+      return;
+    }
+
+    // Wait for active sessions to be fetched
+    if (Object.keys(activeSessions).length === 0) {
+      isProcessingRequestRef.current = false;
+      return;
+    }
+
+    // Validate that the session exists
+    if (!activeSessions[sessionRequest.topic]) {
+      showToast({
+        title: t("walletKit.connectionNotFound"),
+        message: t("walletKit.connectionNotFoundMessage"),
+        variant: "error",
+      });
+
+      logger.debug(
+        "WalletKitProvider",
+        "Event topic not found in active sessions:",
+        sessionRequest.topic,
+      );
+
+      rejectSessionRequest({
+        sessionRequest,
+        message: `${t("walletKit.connectionNotFound")}. ${t("walletKit.connectionNotFoundMessage")}`,
+      });
+
+      clearEvent();
+      isProcessingRequestRef.current = false;
+      return;
+    }
+
+    // Validate transaction request origin
+    const transactionRequestOrigin =
+      sessionRequest.verifyContext?.verified?.origin;
+
+    const isValidTransactionRequestOrigin =
+      isE2ETest ||
+      Object.values(activeSessions).some((session) => {
+        const sessionHostname = getHostname(session.peer?.metadata?.url);
+        const requestHostname = getHostname(transactionRequestOrigin);
+
+        if (!sessionHostname || !requestHostname) {
+          return false;
+        }
+
+        return sessionHostname === requestHostname;
+      });
+
+    if (!isValidTransactionRequestOrigin) {
+      showToast({
+        title: t("walletKit.invalidTransactionOrigin"),
+        message: t("walletKit.invalidTransactionOriginMessage", {
+          transactionRequestOrigin,
+        }),
+        variant: "error",
+      });
+
+      logger.error(
+        "WalletKitProvider",
+        "Invalid transaction origin",
+        new Error(
+          "Untrusted Transaction Domain. Bad actor potentially found in transaction request.",
+        ),
+        {
+          transactionRequestOrigin,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          xdr: sessionRequest.params?.request?.params?.xdr,
+        },
+      );
+
+      rejectSessionRequest({
+        sessionRequest,
+        message: `${t("walletKit.invalidTransactionOrigin")}: ${transactionRequestOrigin}.`,
+      });
+
+      clearEvent();
+      isProcessingRequestRef.current = false;
+      return;
+    }
+
+    setRequestEvent(sessionRequest);
+
+    // Get dApp metadata
+    const dappMetadata = getDappMetadataFromEvent(
+      sessionRequest,
+      activeSessions,
+    );
+    const dappDomain =
+      (dappMetadata?.url as string) ||
+      sessionRequest.verifyContext?.verified?.origin ||
+      "";
+
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    const currentRequestMethod = sessionRequest.params.request.method;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    const requestXdr = sessionRequest.params.request.params.xdr as string;
+
+    const isXdrRequest =
+      currentRequestMethod === (StellarRpcMethods.SIGN_XDR as string) ||
+      currentRequestMethod ===
+        (StellarRpcMethods.SIGN_AND_SUBMIT_XDR as string);
+
+    if (isXdrRequest && requestXdr) {
+      // XDR-based requests: scan transaction first
+      scanTransaction(requestXdr, dappDomain)
         .then((scanResult) => {
-          setSiteScanResult(scanResult);
-          // Check security assessment inline to decide which sheet to open
-          const securityAssessment = assessSiteSecurity(
+          setTransactionScanResult(scanResult);
+          const securityAssessment = assessTransactionSecurity(
             scanResult,
             overriddenBlockaidResponse,
           );
           if (securityAssessment.isUnableToScan) {
-            // For unable to scan, open security detail sheet first (main sheet not opened yet)
-            setSecurityWarningContext(SecurityContext.SITE);
+            setSecurityWarningContext(SecurityContext.TRANSACTION);
+            setSecurityWarningBlocksSheet(true);
             siteSecurityWarningBottomSheetModalRef.current?.present();
           } else {
-            dappConnectionBottomSheetModalRef.current?.present();
+            dappRequestBottomSheetModalRef.current?.present();
           }
         })
         .catch(() => {
-          setSiteScanResult(undefined);
-          const securityAssessment = assessSiteSecurity(
+          setTransactionScanResult(undefined);
+          const securityAssessment = assessTransactionSecurity(
             undefined,
             overriddenBlockaidResponse,
           );
           if (securityAssessment.isUnableToScan) {
-            setSecurityWarningContext(SecurityContext.SITE);
+            setSecurityWarningContext(SecurityContext.TRANSACTION);
+            setSecurityWarningBlocksSheet(true);
             siteSecurityWarningBottomSheetModalRef.current?.present();
           } else {
-            dappConnectionBottomSheetModalRef.current?.present();
+            dappRequestBottomSheetModalRef.current?.present();
           }
         });
+    } else {
+      // Non-XDR requests (sign_message, sign_auth_entry): validate params first
+      if (currentRequestMethod === (StellarRpcMethods.SIGN_MESSAGE as string)) {
+        if (!prevalidateSignMessage(sessionRequest)) return;
+      }
+
+      if (
+        currentRequestMethod === (StellarRpcMethods.SIGN_AUTH_ENTRY as string)
+      ) {
+        if (!prevalidateSignAuthEntry(sessionRequest)) return;
+      }
+
+      dappRequestBottomSheetModalRef.current?.present();
+    }
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Main WalletKit event handler effect
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Effect that dispatches WalletKit events to their respective handlers.
+   */
+  useEffect(() => {
+    if (event.type === WalletKitEventTypes.SESSION_PROPOSAL) {
+      handleSessionProposal(event as WalletKitSessionProposal);
     }
 
     if (event.type === WalletKitEventTypes.SESSION_REQUEST) {
-      const sessionRequest = event as WalletKitSessionRequest;
-
-      // Simple queue: if already processing a request, store this one as pending
-      if (isProcessingRequestRef.current) {
-        logger.warn(
-          "WalletKitProvider",
-          "Request already in progress, queuing new request",
-          {
-            currentRequestId: requestEvent?.id,
-            newRequestId: sessionRequest.id,
-            queueLength: pendingRequestsQueueRef.current.length + 1,
-          },
-        );
-        pendingRequestsQueueRef.current.push(sessionRequest);
-        clearEvent();
-        return;
-      }
-
-      // Mark as processing
-      isProcessingRequestRef.current = true;
-
-      // Check if user is not authenticated
-      if (authStatus === AUTH_STATUS.NOT_AUTHENTICATED) {
-        showToast({
-          title: t("walletKit.notAuthenticated"),
-          message: t("walletKit.pleaseLoginToSignTransaction"),
-          variant: "error",
-        });
-
-        rejectSessionRequest({
-          sessionRequest,
-          message: t("walletKit.userNotAuthenticated"),
-        });
-
-        clearEvent();
-        isProcessingRequestRef.current = false;
-        return;
-      }
-
-      // Check if wallet is locked
-      if (
-        authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ||
-        authStatus === AUTH_STATUS.LOCKED
-      ) {
-        showToast({
-          title: t("walletKit.walletLocked"),
-          message: t("walletKit.pleaseUnlockToSignTransaction"),
-          variant: "error",
-        });
-        isProcessingRequestRef.current = false;
-        return;
-      }
-
-      // Wait for active sessions to be fetched.
-      // Reset the flag so that when activeSessions is populated and the effect
-      // re-fires (activeSessions is a dependency), this request is processed
-      // normally rather than being treated as a concurrent duplicate and queued.
-      if (Object.keys(activeSessions).length === 0) {
-        isProcessingRequestRef.current = false;
-        return;
-      }
-
-      // Validate that the session exists
-      if (!activeSessions[sessionRequest.topic]) {
-        showToast({
-          title: t("walletKit.connectionNotFound"),
-          message: t("walletKit.connectionNotFoundMessage"),
-          variant: "error",
-        });
-
-        logger.debug(
-          "WalletKitProvider",
-          "Event topic not found in active sessions:",
-          sessionRequest.topic,
-        );
-
-        rejectSessionRequest({
-          sessionRequest,
-          message: `${t("walletKit.connectionNotFound")}. ${t("walletKit.connectionNotFoundMessage")}`,
-        });
-
-        clearEvent();
-        isProcessingRequestRef.current = false;
-        return;
-      }
-
-      // Validate that the transaction request origin matches an active session
-      // The verifyContext.verified.origin should match the hostname of one of our active sessions
-      // Skip this check in E2E test mode since the mock-dapp uses http://localhost which is
-      // correctly rejected by getHostname (HTTPS-only) but is safe for local E2E testing.
-      //
-      // SECURITY: isE2ETest is read from react-native-config (Config.IS_E2E_TEST + isDev).
-      // It is a compile-time constant baked into the JS bundle — not injectable at runtime.
-      const transactionRequestOrigin =
-        sessionRequest.verifyContext?.verified?.origin;
-
-      const isValidTransactionRequestOrigin =
-        isE2ETest ||
-        Object.values(activeSessions).some((session) => {
-          const sessionHostname = getHostname(session.peer?.metadata?.url);
-          const requestHostname = getHostname(transactionRequestOrigin);
-
-          // Reject if either hostname is null/undefined - prevents null === null bypass
-          if (!sessionHostname || !requestHostname) {
-            return false;
-          }
-
-          return sessionHostname === requestHostname;
-        });
-
-      if (!isValidTransactionRequestOrigin) {
-        showToast({
-          title: t("walletKit.invalidTransactionOrigin"),
-          message: t("walletKit.invalidTransactionOriginMessage", {
-            transactionRequestOrigin,
-          }),
-          variant: "error",
-        });
-
-        logger.error(
-          "WalletKitProvider",
-          "Invalid transaction origin",
-          new Error(
-            "Untrusted Transaction Domain. Bad actor potentially found in transaction request.",
-          ),
-          {
-            transactionRequestOrigin,
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-            xdr: sessionRequest.params?.request?.params?.xdr,
-          },
-        );
-
-        rejectSessionRequest({
-          sessionRequest,
-          message: `${t("walletKit.invalidTransactionOrigin")}: ${transactionRequestOrigin}.`,
-        });
-
-        clearEvent();
-        isProcessingRequestRef.current = false;
-        return;
-      }
-
-      setRequestEvent(sessionRequest);
-
-      // Get dApp metadata from active session
-      // If no metadata is found, use the verified origin from WalletConnect as fallback
-      const dappMetadata = getDappMetadataFromEvent(
-        sessionRequest,
-        activeSessions,
-      );
-      const dappDomain =
-        (dappMetadata?.url as string) ||
-        sessionRequest.verifyContext?.verified?.origin ||
-        "";
-
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      const currentRequestMethod = sessionRequest.params.request.method;
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      const requestXdr = sessionRequest.params.request.params.xdr as string;
-
-      // Only scan transactions for XDR-based requests (not sign_message or sign_auth_entry)
-      const isXdrRequest =
-        currentRequestMethod === (StellarRpcMethods.SIGN_XDR as string) ||
-        currentRequestMethod ===
-          (StellarRpcMethods.SIGN_AND_SUBMIT_XDR as string);
-
-      if (isXdrRequest && requestXdr) {
-        scanTransaction(requestXdr, dappDomain)
-          .then((scanResult) => {
-            setTransactionScanResult(scanResult);
-            // Check security assessment inline to decide which sheet to open
-            const securityAssessment = assessTransactionSecurity(
-              scanResult,
-              overriddenBlockaidResponse,
-            );
-            if (securityAssessment.isUnableToScan) {
-              // For unable to scan, open security detail sheet first (main sheet not opened yet)
-              // Don't dismiss request sheet - it hasn't been opened yet and dismissing would cancel it
-              setSecurityWarningContext(SecurityContext.TRANSACTION);
-              setSecurityWarningBlocksSheet(true);
-              siteSecurityWarningBottomSheetModalRef.current?.present();
-            } else {
-              dappRequestBottomSheetModalRef.current?.present();
-            }
-          })
-          .catch(() => {
-            setTransactionScanResult(undefined);
-            // If scan fails, treat as unable to scan
-            const securityAssessment = assessTransactionSecurity(
-              undefined,
-              overriddenBlockaidResponse,
-            );
-            if (securityAssessment.isUnableToScan) {
-              // For unable to scan, open security detail sheet first (main sheet not opened yet)
-              // Don't dismiss request sheet - it hasn't been opened yet and dismissing would cancel it
-              setSecurityWarningContext(SecurityContext.TRANSACTION);
-              setSecurityWarningBlocksSheet(true);
-              siteSecurityWarningBottomSheetModalRef.current?.present();
-            } else {
-              dappRequestBottomSheetModalRef.current?.present();
-            }
-          });
-      } else {
-        // For sign_message and sign_auth_entry requests, skip scanning and show modal directly.
-        // The site was already scanned during the WalletConnect session connection.
-        // Validate required params early — reject before the sheet opens so the UI stays clean.
-        if (
-          currentRequestMethod === (StellarRpcMethods.SIGN_MESSAGE as string)
-        ) {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-          const msgParam = (
-            sessionRequest.params.request.params as { message?: unknown }
-          ).message;
-          if (
-            !msgParam ||
-            typeof msgParam !== "string" ||
-            msgParam.trim().length === 0
-          ) {
-            showToast({
-              title: t("walletKit.invalidRequestTitle"),
-              message: t("walletKit.errorInvalidMessage"),
-              variant: "error",
-            });
-            rejectSessionRequest({
-              sessionRequest,
-              message: t("walletKit.errorInvalidMessage"),
-            });
-            clearEvent();
-            isProcessingRequestRef.current = false;
-            return;
-          }
-        }
-
-        if (
-          currentRequestMethod === (StellarRpcMethods.SIGN_AUTH_ENTRY as string)
-        ) {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-          const entryParam = (
-            sessionRequest.params.request.params as { entryXdr?: unknown }
-          ).entryXdr;
-          if (
-            !entryParam ||
-            typeof entryParam !== "string" ||
-            entryParam.trim().length === 0
-          ) {
-            showToast({
-              title: t("walletKit.invalidRequestTitle"),
-              message: t("walletKit.errorInvalidAuthEntry"),
-              variant: "error",
-            });
-            rejectSessionRequest({
-              sessionRequest,
-              message: t("walletKit.errorInvalidAuthEntry"),
-            });
-            clearEvent();
-            isProcessingRequestRef.current = false;
-            return;
-          }
-
-          // Validate XDR can be parsed as HashIdPreimage (catches malformed XDR, unknown types, etc.)
-          try {
-            stellarXdr.HashIdPreimage.fromXDR(entryParam, "base64");
-          } catch (e) {
-            showToast({
-              title: t("walletKit.invalidRequestTitle"),
-              message: t("walletKit.errorInvalidAuthEntry"),
-              variant: "error",
-            });
-            rejectSessionRequest({
-              sessionRequest,
-              message: t("walletKit.errorInvalidAuthEntry"),
-            });
-            clearEvent();
-            isProcessingRequestRef.current = false;
-            return;
-          }
-        }
-
-        dappRequestBottomSheetModalRef.current?.present();
-      }
+      handleSessionRequest(event as WalletKitSessionRequest);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [

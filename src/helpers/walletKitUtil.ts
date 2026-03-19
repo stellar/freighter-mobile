@@ -24,6 +24,11 @@ import {
   WalletKitSessionRequest,
   useWalletKitStore,
 } from "ducks/walletKit";
+import {
+  validateSignMessageContent,
+  validateSignMessageLength,
+  validateSignAuthEntry,
+} from "helpers/walletKitValidation";
 import { getDappMetadataFromEvent } from "hooks/useDappMetadata";
 import { TFunction } from "i18next";
 import { ToastOptions } from "providers/ToastProvider";
@@ -293,8 +298,9 @@ export const approveSessionRequest = async ({
   if (rpcMethod === StellarRpcMethods.SIGN_MESSAGE) {
     const { message } = requestParams || {};
 
-    if (!message || typeof message !== "string") {
-      const errorMessage = t("walletKit.errorInvalidMessage");
+    const contentResult = validateSignMessageContent(message);
+    if (!contentResult.valid) {
+      const errorMessage = t(contentResult.errorKey);
       showToast({
         title: t("walletKit.invalidRequestTitle"),
         message: errorMessage,
@@ -304,11 +310,9 @@ export const approveSessionRequest = async ({
       return;
     }
 
-    // Validate message length (1KB limit per SEP-53 recommendations)
-    // Use UTF-8 byte length instead of UTF-16 character count
-    const messageByteLength = new TextEncoder().encode(message).length;
-    if (messageByteLength > 1024) {
-      const errorMessage = t("walletKit.errorMessageTooLong");
+    const lengthResult = validateSignMessageLength(contentResult.value);
+    if (!lengthResult.valid) {
+      const errorMessage = t(lengthResult.errorKey);
       showToast({
         title: t("walletKit.invalidRequestTitle"),
         message: errorMessage,
@@ -318,7 +322,7 @@ export const approveSessionRequest = async ({
       return;
     }
 
-    const signedMessage = signMessage(message);
+    const signedMessage = signMessage(contentResult.value);
 
     if (!signedMessage) {
       const errorMessage = "Failed to sign message";
@@ -345,7 +349,7 @@ export const approveSessionRequest = async ({
     const dappDomain = dappMetadata?.url;
 
     analytics.trackSignedMessage({
-      messageLength: message.length,
+      messageLength: contentResult.value.length,
       ...(dappDomain ? { dappDomain } : {}),
     });
 
@@ -385,12 +389,12 @@ export const approveSessionRequest = async ({
   if (rpcMethod === StellarRpcMethods.SIGN_AUTH_ENTRY) {
     const { entryXdr } = requestParams || {};
 
-    if (
-      !entryXdr ||
-      typeof entryXdr !== "string" ||
-      entryXdr.trim().length === 0
-    ) {
-      const errorMessage = t("walletKit.errorInvalidAuthEntry");
+    // Defense-in-depth: validate content, XDR format, and network ID.
+    // These should already be caught by WalletKitProvider pre-validation,
+    // but we re-check at approval time to prevent any bypass.
+    const validationResult = validateSignAuthEntry(entryXdr, networkPassphrase);
+    if (!validationResult.valid) {
+      const errorMessage = t(validationResult.errorKey);
       showToast({
         title: t("walletKit.invalidRequestTitle"),
         message: errorMessage,
@@ -401,7 +405,7 @@ export const approveSessionRequest = async ({
     }
 
     // signAuthEntry catches internally — null return signals failure
-    const result = signAuthEntry(entryXdr);
+    const result = signAuthEntry(entryXdr as string);
 
     if (!result) {
       const errorMessage = t("walletKit.failedToProcessAuthEntry");

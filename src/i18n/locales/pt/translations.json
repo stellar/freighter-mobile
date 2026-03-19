@@ -872,6 +872,7 @@
     "invalidRequestTitle": "Não foi possível processar a solicitação",
     "errorInvalidMessage": "A mensagem está ausente ou vazia",
     "errorInvalidAuthEntry": "O XDR da entrada de autorização está ausente ou malformado",
+    "errorAuthEntryNetworkMismatch": "A entrada de autorização é para uma rede diferente",
     "errorEmptyMessage": "Não é possível assinar mensagem vazia",
     "errorMessageTooLong": "Mensagem muito longa (máximo 1KB)",
     "errorSubmitting": "Erro ao enviar a transação",

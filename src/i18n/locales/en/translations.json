@@ -908,6 +908,7 @@
     "invalidRequestTitle": "Unable to process request",
     "errorInvalidMessage": "Message is missing or empty",
     "errorInvalidAuthEntry": "Authorization entry XDR is missing or malformed",
+    "errorAuthEntryNetworkMismatch": "Authorization entry is for a different network",
     "errorEmptyMessage": "Cannot sign empty message",
     "errorMessageTooLong": "Message too long (max 1KB)",
     "errorSubmitting": "Failed to submit transaction",
