@@ -106,6 +106,8 @@ jest.mock("helpers/stellar", () => ({
   isValidStellarAddress: jest.fn(),
   isFederationAddress: jest.fn(() => false),
   isValidFederatedDomain: jest.fn(() => false),
+  isMuxedAccount: jest.fn(() => false),
+  getBaseAccount: jest.fn((addr: string) => addr),
   truncateAddress: jest.fn(
     (addr: string) => `${addr.slice(0, 4)}...${addr.slice(-4)}`,
   ),

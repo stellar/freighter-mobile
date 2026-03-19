@@ -16,6 +16,9 @@ export const sanitizeName = (value: string) =>
  * Prevents the UI from hanging indefinitely when a federation server is
  * unresponsive, and allows callers to cancel in-flight requests.
  *
+ * Note: aborting the signal prevents the resolved value from being used but
+ * does not cancel the underlying network request made by Federation.Server.resolve.
+ *
  * @param address - The federation address to resolve (e.g. "alice*stellar.org")
  * @param signal  - An AbortSignal to cancel the request early
  * @returns The federation server response containing `account_id`
@@ -25,17 +28,41 @@ export const sanitizeName = (value: string) =>
 export const resolveFederationAddress = (
   address: string,
   signal?: AbortSignal,
-) =>
-  Promise.race([
-    Federation.Server.resolve(address),
-    new Promise<never>((_, reject) => {
-      const timer = setTimeout(
-        () => reject(new Error("Federation resolution timed out")),
-        FEDERATION_TIMEOUT_MS,
-      );
-      signal?.addEventListener("abort", () => {
+): ReturnType<typeof Federation.Server.resolve> => {
+  if (signal?.aborted) {
+    return Promise.reject(new Error("Aborted"));
+  }
+
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let onAbort: (() => void) | undefined;
+
+    const settle = (fn: () => void) => {
+      if (settled) return;
+      settled = true;
+      if (timer !== undefined) {
         clearTimeout(timer);
-        reject(new Error("Aborted"));
-      });
-    }),
-  ]);
+        timer = undefined;
+      }
+      if (onAbort) {
+        signal?.removeEventListener("abort", onAbort);
+      }
+      fn();
+    };
+
+    onAbort = () => settle(() => reject(new Error("Aborted")));
+
+    timer = setTimeout(
+      () => settle(() => reject(new Error("Federation resolution timed out"))),
+      FEDERATION_TIMEOUT_MS,
+    );
+
+    signal?.addEventListener("abort", onAbort);
+
+    Federation.Server.resolve(address).then(
+      (result) => settle(() => resolve(result)),
+      (err) => settle(() => reject(err)),
+    );
+  });
+};

@@ -327,4 +327,60 @@ describe("useEditContactCard", () => {
       expect(true).toBe(true);
     });
   });
+
+  describe("Premature address errors (#4)", () => {
+    it("does not show an error while the user is typing a partial Stellar address", () => {
+      (isValidStellarAddress as jest.Mock).mockReturnValue(false);
+
+      const { result } = renderEditContactCard();
+
+      act(() => {
+        result.current.handleAddressChange("GBTY");
+      });
+
+      expect(result.current.addressError).toBeUndefined();
+    });
+
+    it("shows an error after blur on an invalid Stellar address", () => {
+      (isValidStellarAddress as jest.Mock).mockReturnValue(false);
+
+      const { result } = renderEditContactCard();
+
+      act(() => {
+        result.current.handleAddressChange("GBTY");
+      });
+
+      act(() => {
+        result.current.handleAddressBlur();
+      });
+
+      expect(result.current.addressError).toBe(
+        "contactBookScreen.errors.invalidAddress",
+      );
+    });
+
+    it("clears a previous error when typing resumes after blur", () => {
+      (isValidStellarAddress as jest.Mock).mockReturnValue(false);
+
+      const { result } = renderEditContactCard();
+
+      // Blur to set the error
+      act(() => {
+        result.current.handleAddressChange("GBTY");
+      });
+      act(() => {
+        result.current.handleAddressBlur();
+      });
+      expect(result.current.addressError).toBe(
+        "contactBookScreen.errors.invalidAddress",
+      );
+
+      // Resume typing — error should be cleared
+      act(() => {
+        result.current.handleAddressChange("GBTYC");
+      });
+
+      expect(result.current.addressError).toBeUndefined();
+    });
+  });
 });

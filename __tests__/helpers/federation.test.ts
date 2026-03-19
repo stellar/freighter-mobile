@@ -85,4 +85,25 @@ describe("resolveFederationAddress", () => {
       resolveFederationAddress("unknown*stellar.org"),
     ).rejects.toThrow("Not found");
   });
+
+  it("rejects immediately when signal is already aborted", async () => {
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(
+      resolveFederationAddress("alice*stellar.org", controller.signal),
+    ).rejects.toThrow("Aborted");
+
+    expect(Federation.Server.resolve).not.toHaveBeenCalled();
+  });
+
+  it("clears the timeout timer on successful resolution", async () => {
+    const expected = { account_id: "GABC..." };
+    (Federation.Server.resolve as jest.Mock).mockResolvedValue(expected);
+
+    await resolveFederationAddress("alice*stellar.org");
+
+    // No pending timers should remain after successful resolution
+    expect(jest.getTimerCount()).toBe(0);
+  });
 });

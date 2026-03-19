@@ -3,13 +3,21 @@ import BottomSheet from "components/BottomSheet";
 import ContextMenuButton, { MenuItem } from "components/ContextMenuButton";
 import { BaseLayout } from "components/layout/BaseLayout";
 import EditContactCard from "components/screens/SettingsScreen/ContactBookScreen/EditContactCard";
+import type {
+  ContactData,
+  ContactsMap,
+} from "components/screens/SettingsScreen/ContactBookScreen/types";
 import useEditContactCard from "components/screens/SettingsScreen/ContactBookScreen/useEditContactCard";
 import Avatar from "components/sds/Avatar";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { pxValue } from "helpers/dimensions";
-import { truncateAddress } from "helpers/stellar";
+import {
+  getBaseAccount,
+  isMuxedAccount,
+  truncateAddress,
+} from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
@@ -19,22 +27,7 @@ import React, { useCallback, useMemo, useRef, useState } from "react";
 import { FlatList, Platform, View } from "react-native";
 import { analytics } from "services/analytics";
 
-/**
- * Data stored for a single contact entry.
- *
- * @property name - Display name for the contact
- * @property resolvedAddress - Stellar address resolved from a federation lookup, if applicable
- */
-export interface ContactData {
-  name: string;
-  resolvedAddress?: string;
-}
-
-/**
- * Map of Stellar address → ContactData, keyed by the raw input address
- * (which may be a federation address or a native Stellar address).
- */
-export type ContactsMap = Record<string, ContactData>;
+export type { ContactData, ContactsMap };
 
 const icons = Platform.select({
   ios: {
@@ -271,11 +264,15 @@ const ContactBookScreen: React.FC = () => {
   const renderContactItem = ({ item }: { item: [string, ContactData] }) => {
     const [address, data] = item;
     const slicedAddress = truncateAddress(address, 4, 4);
+    const avatarAddress = data.resolvedAddress || address;
+    const normalizedAvatarAddress = isMuxedAccount(avatarAddress)
+      ? (getBaseAccount(avatarAddress) ?? avatarAddress)
+      : avatarAddress;
 
     return (
       <View className="flex-row items-center">
         <View className="flex-row flex-1 items-center gap-4">
-          <Avatar size="lg" publicAddress={data.resolvedAddress || address} />
+          <Avatar size="lg" publicAddress={normalizedAvatarAddress} />
           <View className="flex-col">
             <Text md medium numberOfLines={1}>
               {data.name}
