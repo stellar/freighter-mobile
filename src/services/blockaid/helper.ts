@@ -1,5 +1,6 @@
 import Blockaid from "@blockaid/client";
 import BigNumber from "bignumber.js";
+import { DEFAULT_DECIMALS, NATIVE_TOKEN_CODE } from "config/constants";
 import { t } from "i18next";
 import {
   BLOCKAID_RESULT_TYPES,
@@ -483,13 +484,20 @@ export interface TransactionBalanceChange {
   assetCode: string;
   assetIssuer?: string;
   isNative: boolean;
-  /** Raw amount from Blockaid (integer scaled by 1e7), not converted/formatted */
+  /** Amount already divided by the asset's decimals */
   amount: BigNumber;
   isCredit: boolean;
 }
 
 type AccountAssetDiff = {
-  asset: { type: "NATIVE" | "ASSET"; code: string; issuer?: string };
+  asset: {
+    type: string;
+    code?: string;
+    symbol?: string;
+    issuer?: string;
+    address?: string;
+    decimals?: number;
+  };
   in?: { raw_value?: number | string | null } | null;
   out?: { raw_value?: number | string | null } | null;
 };
@@ -536,20 +544,70 @@ export const getTransactionBalanceChanges = (
         return undefined;
       }
 
-      const rawValue = hasIn ? inRaw : outRaw;
-      const amount = new BigNumber(rawValue as number | string).dividedBy(1e7);
+      const rawInteger = hasIn ? inRaw : outRaw;
       const isCredit = hasIn;
-      const isNative = diff.asset.type === "NATIVE";
-      const assetCode = diff.asset.code;
-      const assetIssuer = isNative ? undefined : diff.asset.issuer;
+
+      if (
+        (typeof rawInteger !== "number" && typeof rawInteger !== "string") ||
+        rawInteger === "" ||
+        (typeof rawInteger === "number" && !Number.isFinite(rawInteger))
+      ) {
+        return undefined;
+      }
+
+      const { asset } = diff;
+      const isNative = asset.type === "NATIVE";
+
+      let code: string | null;
+      if (typeof asset.symbol === "string") {
+        code = asset.symbol;
+      } else if (typeof asset.code === "string") {
+        code = asset.code;
+      } else {
+        code = isNative ? NATIVE_TOKEN_CODE : null;
+      }
+
+      let assetIssuer: string | null | undefined;
+      if (isNative) {
+        assetIssuer = undefined;
+      } else if (typeof asset.issuer === "string") {
+        assetIssuer = asset.issuer;
+      } else if (typeof asset.address === "string") {
+        assetIssuer = asset.address;
+      } else {
+        assetIssuer = null;
+      }
+
+      if (code === null || assetIssuer === null) {
+        return undefined;
+      }
+
+      const rawDecimals = asset.decimals;
+      if (
+        rawDecimals !== undefined &&
+        !(
+          typeof rawDecimals === "number" &&
+          Number.isFinite(rawDecimals) &&
+          Number.isInteger(rawDecimals) &&
+          rawDecimals >= 0 &&
+          rawDecimals <= 19
+        )
+      ) {
+        return undefined;
+      }
+      const decimals = rawDecimals ?? DEFAULT_DECIMALS;
+
+      const amount = new BigNumber(rawInteger).dividedBy(
+        new BigNumber(10).pow(decimals),
+      );
 
       return {
-        assetCode,
+        assetCode: code,
         assetIssuer,
         isNative,
         amount,
         isCredit,
-      } as TransactionBalanceChange;
+      };
     })
     .filter(Boolean) as TransactionBalanceChange[];
 
