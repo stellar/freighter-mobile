@@ -3,15 +3,12 @@ import BottomSheet from "components/BottomSheet";
 import ContextMenuButton, { MenuItem } from "components/ContextMenuButton";
 import { BaseLayout } from "components/layout/BaseLayout";
 import EditContactCard from "components/screens/SettingsScreen/ContactBookScreen/EditContactCard";
-import type {
-  ContactData,
-  ContactsMap,
-} from "components/screens/SettingsScreen/ContactBookScreen/types";
 import useEditContactCard from "components/screens/SettingsScreen/ContactBookScreen/useEditContactCard";
 import Avatar from "components/sds/Avatar";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
+import type { ContactData, ContactsMap } from "config/types";
 import { pxValue } from "helpers/dimensions";
 import {
   getBaseAccount,
@@ -26,8 +23,6 @@ import { useToast } from "providers/ToastProvider";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { FlatList, Platform, View } from "react-native";
 import { analytics } from "services/analytics";
-
-export type { ContactData, ContactsMap };
 
 const icons = Platform.select({
   ios: {

@@ -1,5 +1,5 @@
 import Clipboard from "@react-native-clipboard/clipboard";
-import type { ContactsMap } from "components/screens/SettingsScreen/ContactBookScreen/types";
+import type { ContactsMap } from "config/types";
 import { resolveFederationAddress, sanitizeName } from "helpers/contactList";
 import {
   isFederationAddress,
