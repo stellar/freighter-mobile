@@ -112,6 +112,7 @@
       "federationNotFound": "Não foi possível resolver o endereço de federação",
       "duplicateAddress": "Este endereço já existe nos seus contatos",
       "emptyName": "O nome não pode estar vazio",
+      "nameTooLong": "O nome é muito longo",
       "duplicateName": "Este nome já existe nos seus contatos"
     }
   },

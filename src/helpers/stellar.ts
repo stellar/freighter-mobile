@@ -20,6 +20,18 @@ export const isFederationAddress = (address: string): boolean => {
 };
 
 /**
+ * Validates whether the domain part of a federation address is a legitimate
+ * domain name (has a valid TLD, no IP literals, no localhost).
+ */
+export const isValidFederatedDomain = (input: string): boolean => {
+  if (!isFederationAddress(input)) return false;
+  const domain = input.split("*")[1];
+  // eslint-disable-next-line no-useless-escape
+  const domainRegex = /^[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,6}$/i;
+  return domainRegex.test(domain);
+};
+
+/**
  * Checks if an address is a muxed account (M... format)
  *
  * @param address The address to check

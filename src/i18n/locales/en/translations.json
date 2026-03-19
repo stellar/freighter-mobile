@@ -112,6 +112,7 @@
       "federationNotFound": "Federation address could not be resolved",
       "duplicateAddress": "This address already exists in your contacts",
       "emptyName": "Name cannot be empty",
+      "nameTooLong": "Name is too long",
       "duplicateName": "This name already exists in your contacts"
     }
   },

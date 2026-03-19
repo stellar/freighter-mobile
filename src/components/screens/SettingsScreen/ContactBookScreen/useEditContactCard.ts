@@ -1,11 +1,16 @@
 import Clipboard from "@react-native-clipboard/clipboard";
-import { Federation } from "@stellar/stellar-sdk";
-import { isFederationAddress, isValidStellarAddress } from "helpers/stellar";
+import { resolveFederationAddress, sanitizeName } from "helpers/contactList";
+import {
+  isFederationAddress,
+  isValidFederatedDomain,
+  isValidStellarAddress,
+} from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+
+const NAME_MAX_LENGTH = 32;
 
 interface ContactData {
-  address: string;
   name: string;
   resolvedAddress?: string;
 }
@@ -28,6 +33,7 @@ const useEditContactCard = ({
   const { t } = useAppTranslation();
   const resolvedAddressRef = useRef<string | undefined>(undefined);
   const validationIdRef = useRef(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const [address, setAddress] = useState(initialAddress);
   const [name, setName] = useState(initialName);
   const [addressError, setAddressError] = useState<string | undefined>();
@@ -35,6 +41,14 @@ const useEditContactCard = ({
   const [isValidating, setIsValidating] = useState(false);
   const [addressValidated, setAddressValidated] = useState(!!initialAddress);
   const [nameValidated, setNameValidated] = useState(!!initialName);
+
+  // Cancel any in-flight federation request on unmount
+  useEffect(
+    () => () => {
+      abortControllerRef.current?.abort();
+    },
+    [],
+  );
 
   const isSaveDisabled =
     isValidating ||
@@ -110,6 +124,14 @@ const useEditContactCard = ({
     }
 
     if (isFederationAddress(normalized)) {
+      // Validate the domain before making any network request
+      if (!isValidFederatedDomain(normalized)) {
+        setAddressError(t("contactBookScreen.errors.invalidAddress"));
+        setAddressValidated(false);
+        resolvedAddressRef.current = undefined;
+        return false;
+      }
+
       if (skipFederation) {
         setAddressError(undefined);
         setAddressValidated(false);
@@ -117,12 +139,30 @@ const useEditContactCard = ({
       }
       setAddressValidated(false);
       resolvedAddressRef.current = undefined;
+
+      // Abort any previous in-flight federation request
+      abortControllerRef.current?.abort();
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
       try {
-        const fedResp = await Federation.Server.resolve(normalized);
-        if (validationId !== validationIdRef.current) return false;
+        const fedResp = await resolveFederationAddress(
+          normalized,
+          controller.signal,
+        );
+
+        if (
+          validationId !== validationIdRef.current ||
+          controller.signal.aborted
+        )
+          return false;
         resolvedAddressRef.current = fedResp.account_id;
       } catch {
-        if (validationId !== validationIdRef.current) return false;
+        if (
+          validationId !== validationIdRef.current ||
+          controller.signal.aborted
+        )
+          return false;
         resolvedAddressRef.current = undefined;
         setAddressError(t("contactBookScreen.errors.federationNotFound"));
         return false;
@@ -146,15 +186,22 @@ const useEditContactCard = ({
   };
 
   /**
-   * Validates the contact name by trimming whitespace and checking for duplicates.
+   * Validates the contact name by trimming whitespace, stripping dangerous
+   * unicode characters, and checking for duplicates.
    *
    * @param val - The name string to validate
    * @returns `true` if the name is valid
    */
   const validateName = (val: string): boolean => {
-    const trimmed = val.trim();
+    const trimmed = sanitizeName(val.trim());
     if (!trimmed) {
       setNameError(t("contactBookScreen.errors.emptyName"));
+      setNameValidated(false);
+      return false;
+    }
+
+    if (trimmed.length > NAME_MAX_LENGTH) {
+      setNameError(t("contactBookScreen.errors.nameTooLong"));
       setNameValidated(false);
       return false;
     }
@@ -184,6 +231,8 @@ const useEditContactCard = ({
 
   const handleAddressChange = (text: string) => {
     setAddress(text);
+    // Cancel any in-flight federation request when the user types
+    abortControllerRef.current?.abort();
     validateAddress(text, { skipFederation: true });
   };
 
@@ -206,7 +255,11 @@ const useEditContactCard = ({
       const addressValid = await validateAddress(address);
       const nameValid = validateName(name);
       if (addressValid && nameValid) {
-        onSave(address.trim(), name.trim(), resolvedAddressRef.current);
+        onSave(
+          address.trim(),
+          sanitizeName(name.trim()),
+          resolvedAddressRef.current,
+        );
       }
     } finally {
       setIsValidating(false);

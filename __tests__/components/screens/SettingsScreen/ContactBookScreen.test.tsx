@@ -1,7 +1,11 @@
 import { Federation } from "@stellar/stellar-sdk";
 import { act, fireEvent, waitFor } from "@testing-library/react-native";
 import ContactBookScreen from "components/screens/SettingsScreen/ContactBookScreen";
-import { isValidStellarAddress, isFederationAddress } from "helpers/stellar";
+import {
+  isValidStellarAddress,
+  isFederationAddress,
+  isValidFederatedDomain,
+} from "helpers/stellar";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 
@@ -101,6 +105,7 @@ jest.mock("providers/ToastProvider", () => ({
 jest.mock("helpers/stellar", () => ({
   isValidStellarAddress: jest.fn(),
   isFederationAddress: jest.fn(() => false),
+  isValidFederatedDomain: jest.fn(() => false),
   truncateAddress: jest.fn(
     (addr: string) => `${addr.slice(0, 4)}...${addr.slice(-4)}`,
   ),
@@ -434,6 +439,9 @@ describe("ContactBookScreen", () => {
       (isFederationAddress as jest.Mock).mockImplementation(
         (addr: string) => addr === FEDERATION_ADDRESS,
       );
+      (isValidFederatedDomain as jest.Mock).mockImplementation(
+        (addr: string) => addr === FEDERATION_ADDRESS,
+      );
       (Federation.Server.resolve as jest.Mock).mockResolvedValueOnce({
         account_id: VALID_ADDRESS_1,
       });
@@ -463,6 +471,9 @@ describe("ContactBookScreen", () => {
     it("shows federation error and keeps Save disabled when address resolution fails", async () => {
       const FEDERATION_ADDRESS = "alice*stellar.org";
       (isFederationAddress as jest.Mock).mockImplementation(
+        (addr: string) => addr === FEDERATION_ADDRESS,
+      );
+      (isValidFederatedDomain as jest.Mock).mockImplementation(
         (addr: string) => addr === FEDERATION_ADDRESS,
       );
       (Federation.Server.resolve as jest.Mock).mockRejectedValueOnce(
@@ -762,7 +773,10 @@ describe("ContactBookScreen", () => {
     it("enables Save button after pasting a federation address that resolves successfully", async () => {
       const FEDERATION_ADDRESS = "alice*stellar.org";
       mockClipboard.getString.mockResolvedValueOnce(FEDERATION_ADDRESS);
-      (isFederationAddress as jest.Mock).mockImplementationOnce(
+      (isFederationAddress as jest.Mock).mockImplementation(
+        (addr: string) => addr === FEDERATION_ADDRESS,
+      );
+      (isValidFederatedDomain as jest.Mock).mockImplementation(
         (addr: string) => addr === FEDERATION_ADDRESS,
       );
       (Federation.Server.resolve as jest.Mock).mockResolvedValueOnce({
@@ -789,7 +803,10 @@ describe("ContactBookScreen", () => {
     it("shows federation error and keeps Save disabled when pasted federation address fails to resolve", async () => {
       const FEDERATION_ADDRESS = "alice*stellar.org";
       mockClipboard.getString.mockResolvedValueOnce(FEDERATION_ADDRESS);
-      (isFederationAddress as jest.Mock).mockImplementationOnce(
+      (isFederationAddress as jest.Mock).mockImplementation(
+        (addr: string) => addr === FEDERATION_ADDRESS,
+      );
+      (isValidFederatedDomain as jest.Mock).mockImplementation(
         (addr: string) => addr === FEDERATION_ADDRESS,
       );
       (Federation.Server.resolve as jest.Mock).mockRejectedValueOnce(

@@ -9,6 +9,7 @@ import {
   isFederationAddress,
   isMuxedAccount,
   isSameAccount,
+  isValidFederatedDomain,
   isValidStellarAddress,
   SIGN_MESSAGE_PREFIX,
   signMessage,
@@ -123,6 +124,30 @@ describe("Stellar helpers", () => {
       expect(isFederationAddress("user*domain*com")).toBe(false);
       expect(isFederationAddress("")).toBe(false);
       expect(isFederationAddress(validEd25519)).toBe(false);
+    });
+  });
+
+  describe("isValidFederatedDomain", () => {
+    it("should return true for valid federation addresses with proper domains", () => {
+      expect(isValidFederatedDomain("user*domain.com")).toBe(true);
+      expect(isValidFederatedDomain("alice*stellar.org")).toBe(true);
+      expect(isValidFederatedDomain("bob*sub.domain.co")).toBe(true);
+      expect(isValidFederatedDomain("test*example.io")).toBe(true);
+    });
+
+    it("should return false for federation addresses with invalid domains", () => {
+      // IP literal
+      expect(isValidFederatedDomain("user*192.168.1.1")).toBe(false);
+      // No TLD
+      expect(isValidFederatedDomain("user*localhost")).toBe(false);
+      // Invalid characters
+      expect(isValidFederatedDomain("user*domain..com")).toBe(false);
+    });
+
+    it("should return false for non-federation addresses", () => {
+      expect(isValidFederatedDomain(validEd25519)).toBe(false);
+      expect(isValidFederatedDomain("not-a-federation-addr")).toBe(false);
+      expect(isValidFederatedDomain("")).toBe(false);
     });
   });
 
