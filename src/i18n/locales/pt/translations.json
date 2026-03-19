@@ -919,6 +919,8 @@
       "wcUriCopied": "URI WC copiado para a área de transferência!",
       "signingMessage": "Solicitando assinatura de mensagem...",
       "signingAuthEntry": "Solicitando assinatura de entrada de autorização...",
+      "requestSignAuthEntryWrongNetwork": "Solicitar Entrada de Autorização Rede Errada",
+      "signingAuthEntryWrongNetwork": "Solicitando assinatura de entrada com rede errada...",
       "sessionId": "ID da Sessão",
       "wcUri": "URI WC",
       "message": "Mensagem",

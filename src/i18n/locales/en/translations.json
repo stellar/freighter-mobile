@@ -955,6 +955,8 @@
       "wcUriCopied": "WC URI copied to clipboard!",
       "signingMessage": "Requesting sign message...",
       "signingAuthEntry": "Requesting sign auth entry...",
+      "requestSignAuthEntryWrongNetwork": "Request Wrong-Network Auth Entry",
+      "signingAuthEntryWrongNetwork": "Requesting wrong-network sign auth entry...",
       "sessionId": "Session ID",
       "wcUri": "WC URI",
       "message": "Message",

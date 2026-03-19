@@ -532,6 +532,92 @@ export function createRoutes(wcClient: MockWalletConnectClient): Router {
   );
 
   /**
+   * Send stellar_signAuthEntry request with a wrong-network preimage (security test)
+   * POST /session/:id/request/signAuthEntryWrongNetwork
+   *
+   * Generates a HashIdPreimage for the OPPOSITE network of the WC session chain.
+   * Used to verify the wallet detects and rejects network-ID mismatch in auth entries.
+   * Example: session on stellar:testnet, preimage built with Networks.PUBLIC networkId.
+   */
+  router.post(
+    "/session/:id/request/signAuthEntryWrongNetwork",
+    signAuthEntryRateLimit,
+    (req: Request, res: Response) => {
+      const id = Array.isArray(req.params.id)
+        ? req.params.id[0]
+        : req.params.id;
+      const network = parseNetwork((req.body as { network?: unknown }).network);
+
+      const metadata = sessionMetadata.get(id);
+
+      if (!metadata) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+
+      if (!metadata.topic) {
+        return res.status(400).json({
+          error: "Session not connected",
+          message: "Wait for wallet approval first",
+        });
+      }
+
+      // Intentionally use the OPPOSITE network to simulate the mismatch attack:
+      // WC chain says stellar:testnet but preimage embeds mainnet networkId (or vice versa).
+      const wrongNetwork: "testnet" | "pubnet" =
+        network === "testnet" ? "pubnet" : "testnet";
+      const entryXdrText = generateAuthPreimageXdr(wrongNetwork);
+
+      try {
+        const requestPromise = wcClient.requestSignAuthEntry(
+          metadata.topic,
+          { entryXdr: entryXdrText },
+          network, // WC chain uses the stated network
+        );
+
+        const requestId = `req-${Date.now()}`;
+
+        metadata.responses.push({
+          id: requestId,
+          type: "signAuthEntry",
+          params: {
+            entryXdr: entryXdrText,
+            network,
+            note: `preimage built with ${wrongNetwork} networkId`,
+          },
+          promise: requestPromise,
+          createdAt: Date.now(),
+        });
+
+        requestPromise
+          .then((result) => {
+            console.log(`[API] Request ${requestId} completed:`, result);
+          })
+          .catch((error: unknown) => {
+            console.error(`[API] Request ${requestId} failed:`, error);
+          });
+
+        return res.json({
+          requestId,
+          status: "pending",
+          message: "Request sent. Poll /session/:id/response for result.",
+          note: `Preimage uses ${wrongNetwork} networkId; WC chain is ${network}. Expect wallet to reject with network mismatch.`,
+        });
+      } catch (error: unknown) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        console.error(
+          "[API] Failed to send signAuthEntryWrongNetwork request:",
+          error,
+        );
+        return res.status(500).json({
+          error: "Failed to send request",
+          message: errorMessage,
+        });
+      }
+    },
+  );
+
+  /**
    * Get the latest response
    * GET /session/:id/response
    */

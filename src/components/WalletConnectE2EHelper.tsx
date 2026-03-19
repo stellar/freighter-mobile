@@ -318,7 +318,6 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
           });
           return;
         }
-        // Validate JSON response
         try {
           await res.json();
         } catch {
@@ -338,6 +337,86 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
         // modal is closed, blocking @gorhom/bottom-sheet from presenting on iOS.
         // Immediate dismiss starts the ~300 ms fade-out animation; by the time the
         // WC event completes the relay round-trip the animation is already done.
+        if (dismissTimeoutRef.current) {
+          clearTimeout(dismissTimeoutRef.current);
+        }
+        handleDismiss();
+      } catch (error) {
+        let isNetworkError = false;
+        let errorMsg = "";
+
+        if (error instanceof TypeError) {
+          isNetworkError =
+            error.message.includes("Network request failed") ||
+            error.message.includes("fetch") ||
+            error.message.includes("timeout") ||
+            error.name === "AbortError";
+        }
+
+        if (isNetworkError) {
+          errorMsg = t("walletKit.e2eHelper.mockServerNotRunning");
+        } else if (error instanceof Error) {
+          errorMsg = error.message;
+        } else {
+          errorMsg = String(error);
+        }
+
+        setStatus(errorMsg);
+        showToast({
+          title: t("walletKit.e2eHelper.serverOffline"),
+          message: isNetworkError
+            ? t("walletKit.e2eHelper.mockServerNotRunning")
+            : errorMsg,
+          variant: "error",
+        });
+      }
+    };
+
+    const requestSignAuthEntryWrongNetwork = async () => {
+      if (!sessionId) {
+        setStatus(t("walletKit.e2eHelper.noSession"));
+        showToast({
+          title: t("walletKit.e2eHelper.noSession"),
+          message: t("walletKit.e2eHelper.noSessionMessage"),
+          variant: "error",
+        });
+        return;
+      }
+      try {
+        setStatus(t("walletKit.e2eHelper.signingAuthEntryWrongNetwork"));
+        const res = await fetchWithTimeout(
+          `${baseUrl}/session/${sessionId}/request/signAuthEntryWrongNetwork`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ network }),
+          },
+        );
+        if (!res.ok) {
+          const errorMsg = `Error: ${res.status} ${res.statusText}`;
+          setStatus(errorMsg);
+          showToast({
+            title: t("walletKit.e2eHelper.requestFailed"),
+            message: errorMsg,
+            variant: "error",
+          });
+          return;
+        }
+        try {
+          await res.json();
+        } catch {
+          const errorMsg = "Invalid response: non-JSON data received";
+          setStatus(errorMsg);
+          showToast({
+            title: t("walletKit.e2eHelper.requestFailed"),
+            message: errorMsg,
+            variant: "error",
+          });
+          return;
+        }
+        setStatus(t("walletKit.e2eHelper.signingAuthEntryWrongNetwork"));
+        // Dismiss immediately — pre-validation will reject this before showing
+        // any sheet, so the modal must be closed before the WC event arrives.
         if (dismissTimeoutRef.current) {
           clearTimeout(dismissTimeoutRef.current);
         }
@@ -481,6 +560,19 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
                   >
                     {t("walletKit.e2eHelper.requestSignAuthEntry")}
                   </Button>
+
+                  <View style={{ marginTop: 8 }}>
+                    <Button
+                      testID="wc-e2e-request-sign-auth-entry-wrong-network"
+                      onPress={requestSignAuthEntryWrongNetwork}
+                      size="sm"
+                      variant="secondary"
+                    >
+                      {t(
+                        "walletKit.e2eHelper.requestSignAuthEntryWrongNetwork",
+                      )}
+                    </Button>
+                  </View>
                 </View>
               )}
 

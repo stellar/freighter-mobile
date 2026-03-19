@@ -381,6 +381,8 @@
 
       <button onclick="signAuthEntry()">Sign Auth Entry (XDR)</button>
       <button onclick="sendEmptyAuthEntry()" style="margin-left:8px; background:#888;">Send Empty Auth Entry</button>
+      <button onclick="sendWrongNetworkAuthEntry()" style="margin-left:8px; background:#c0392b;">Send Wrong-Network Auth Entry</button>
+      <p style="color: #888; font-size: 12px; margin-top: 6px;">Wrong-Network: preimage embeds opposite networkId. Wallet should reject with network mismatch error.</p>
 
       <div id="sign-auth-entry-status" style="display:none; margin-top: 15px;">
         <div class="status-box info">
@@ -707,6 +709,36 @@
         } else {
           document.getElementById('signAuthEntryStatusText').textContent = respData.message || 'Unexpected result';
           showStatus(`⚠️ Unexpected result: ${respData.status}`, 'error');
+        }
+      } catch (error) {
+        showStatus(`❌ Error: ${error.message}`, 'error');
+      }
+    }
+
+    async function sendWrongNetworkAuthEntry() {
+      if (!currentSessionId || !isApproved) {
+        showStatus('❌ Session not approved. Wait for approval first.', 'error');
+        return;
+      }
+      const network = document.getElementById('global-network').value;
+      try {
+        document.getElementById('sign-auth-entry-status').style.display = 'block';
+        document.getElementById('signAuthEntryStatusText').textContent = 'Waiting for rejection (wrong-network preimage)...';
+        const response = await fetch(`${API_BASE}/session/${currentSessionId}/request/signAuthEntryWrongNetwork`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ network })
+        });
+        const data = await response.json();
+        logDebug('Wrong-network auth entry request sent', data);
+        const respResponse = await fetch(`${API_BASE}/session/${currentSessionId}/response?wait=true&timeout=60000`);
+        const respData = await respResponse.json();
+        if (respData.status === 'rejected') {
+          document.getElementById('signAuthEntryStatusText').textContent = '✅ Rejected as expected (network mismatch)';
+          showStatus('✅ Wrong-network auth entry was rejected by wallet', 'success');
+        } else {
+          document.getElementById('signAuthEntryStatusText').textContent = respData.message || 'Unexpected result';
+          showStatus(`⚠️ Unexpected result: ${respData.status} — wallet should have rejected this`, 'error');
         }
       } catch (error) {
         showStatus(`❌ Error: ${error.message}`, 'error');
