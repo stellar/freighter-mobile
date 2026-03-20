@@ -11,14 +11,12 @@ import VerticalListSection, {
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { DEFAULT_PADDING, BROWSER_CONSTANTS } from "config/constants";
-import { DiscoverProtocol } from "config/types";
 import { useBrowserTabsStore } from "ducks/browserTabs";
-import { useProtocolsStore } from "ducks/protocols";
-import { useRecentProtocolsStore } from "ducks/recentProtocols";
 import { pxValue } from "helpers/dimensions";
 import { captureTabScreenshot } from "helpers/screenshots";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
+import useDiscoveryData, { protocolToListItem } from "hooks/useDiscoveryData";
 import React, {
   useMemo,
   useRef,
@@ -49,25 +47,21 @@ interface ProtocolDetailsData {
   tags: string[];
 }
 
-const protocolToListItem = (protocol: DiscoverProtocol): VerticalListItem => ({
-  id: protocol.websiteUrl,
-  name: protocol.name,
-  subtitle: protocol.tags[0] ?? "",
-  iconUrl: protocol.iconUrl,
-  websiteUrl: protocol.websiteUrl,
-  description: protocol.description,
-  tags: protocol.tags,
-});
-
 const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
   ({ tabId }) => {
     const { t } = useAppTranslation();
     const { themeColors } = useColors();
 
     const { goToPage, showTabOverview } = useBrowserTabsStore();
-    const { protocols } = useProtocolsStore();
-    const { recentProtocols, addRecentProtocol, clearRecentProtocols } =
-      useRecentProtocolsStore();
+    const {
+      protocols,
+      trendingCarouselItems,
+      trendingItems,
+      recentItems,
+      dappsItems,
+      addRecentProtocol,
+      clearRecentProtocols,
+    } = useDiscoveryData();
     const viewShotRef = useRef<ViewShot>(null);
     const protocolDetailsRef = useRef<BottomSheetModal>(null);
     const [expandedSection, setExpandedSection] =
@@ -84,44 +78,6 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
         goToPage(tabId, url);
       },
       [addRecentProtocol, goToPage, protocols, tabId],
-    );
-
-    const trendingCarouselItems: TrendingItem[] = useMemo(
-      () =>
-        protocols
-          .filter((protocol) => protocol.isTrending)
-          .map((protocol) => ({
-            id: protocol.websiteUrl,
-            title: protocol.name,
-            category: protocol.tags[0],
-            backgroundUrl: protocol.backgroundUrl,
-          })),
-      [protocols],
-    );
-
-    const recentProtocolItems: DiscoverProtocol[] = useMemo(
-      () =>
-        recentProtocols
-          .map((entry) =>
-            protocols.find((p) => p.websiteUrl === entry.websiteUrl),
-          )
-          .filter((p): p is DiscoverProtocol => p !== undefined),
-      [recentProtocols, protocols],
-    );
-
-    const recentItems: VerticalListItem[] = useMemo(
-      () => recentProtocolItems.map(protocolToListItem),
-      [recentProtocolItems],
-    );
-
-    const dappsItems: VerticalListItem[] = useMemo(
-      () => protocols.map(protocolToListItem),
-      [protocols],
-    );
-
-    const trendingItems: VerticalListItem[] = useMemo(
-      () => protocols.filter((p) => p.isTrending).map(protocolToListItem),
-      [protocols],
     );
 
     // Read tabs/updateTab from the store imperatively (getState) instead of
