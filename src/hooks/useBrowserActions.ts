@@ -1,6 +1,7 @@
 import { logger } from "config/logger";
 import { useBrowserTabsStore } from "ducks/browserTabs";
 import { useProtocolsStore } from "ducks/protocols";
+import { useRecentProtocolsStore } from "ducks/recentProtocols";
 import { normalizeUrl, isHomepageUrl } from "helpers/browser";
 import { isIOS } from "helpers/device";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -40,6 +41,8 @@ export const useBrowserActions = (
 
       if (!isSearch) {
         const { protocols } = useProtocolsStore.getState();
+        const { addRecentProtocol } = useRecentProtocolsStore.getState();
+        addRecentProtocol(url, protocols);
         analytics.trackDiscoverProtocolOpened(
           url,
           DISCOVER_ANALYTICS_SOURCE.URL_BAR,
