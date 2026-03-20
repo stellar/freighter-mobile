@@ -120,7 +120,7 @@ export const Badge: React.FC<BadgeProps> = ({
       primary: "bg-gray-1 border-gray-6",
       secondary: "bg-lilac-2 border-lilac-6",
       tertiary: "bg-gray-3 border-gray-6",
-      success: "bg-lime-4 border-lime-8",
+      success: "bg-lime-2 border-lime-6",
       warning: "bg-amber-2 border-amber-6",
       error: "bg-red-2 border-red-6",
     };

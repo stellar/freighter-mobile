@@ -82,7 +82,7 @@ const ProtocolDetailsBottomSheet: React.FC<ProtocolDetailsBottomSheetProps> =
               </Text>
               <View className="flex-row flex-wrap gap-2">
                 {protocol.tags.map((tag) => (
-                  <Badge key={tag} variant="success" size="lg" isOutlined>
+                  <Badge key={tag} variant="success" size="lg">
                     {tag}
                   </Badge>
                 ))}
