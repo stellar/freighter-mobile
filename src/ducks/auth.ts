@@ -1941,12 +1941,16 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
   },
 
   /**
-   * Logs out the user by clearing sensitive data
+   * Logs out the user by clearing sensitive data.
    *
-   * For accounts with existing accounts, it preserves account data but clears sensitive info,
-   * setting the auth status to HASH_KEY_EXPIRED and navigating to the lock screen.
-   * For lock=true, it preserves private keys and hash key (LOCKED state).
-   * For new users with no accounts, it performs a full logout.
+   * When there are existing accounts and `shouldWipeAllData` is false, it preserves
+   * account data and relevant sensitive info, sets the auth status to
+   * `AUTH_STATUS.LOCKED`, and navigates to the lock screen.
+   * When `shouldWipeAllData` is true or there are no existing accounts, it performs
+   * a full logout and clears all user data.
+   *
+   * @param {boolean} [shouldWipeAllData=false] - If true, performs a full logout and
+   * clears all user data; if false, keeps existing account data and locks the app.
    */
   logout: (shouldWipeAllData = false) => {
     set((state) => ({ ...state, isLoading: true, error: null }));
