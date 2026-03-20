@@ -86,7 +86,7 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
       [addRecentProtocol, goToPage, protocols, tabId],
     );
 
-    const trendingItems: TrendingItem[] = useMemo(
+    const trendingCarouselItems: TrendingItem[] = useMemo(
       () =>
         protocols
           .filter((protocol) => protocol.isTrending)
@@ -116,6 +116,11 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
 
     const dappsItems: VerticalListItem[] = useMemo(
       () => protocols.map(protocolToListItem),
+      [protocols],
+    );
+
+    const trendingItems: VerticalListItem[] = useMemo(
+      () => protocols.filter((p) => p.isTrending).map(protocolToListItem),
       [protocols],
     );
 
@@ -315,9 +320,9 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
         DISCOVER_ANALYTICS_SOURCE.EXPANDED_TRENDING_LIST;
       handleExpand({
         title: t("discovery.trending"),
-        items: dappsItems,
+        items: trendingItems,
       });
-    }, [handleExpand, t, dappsItems]);
+    }, [handleExpand, t, trendingItems]);
 
     const handleExpandDapps = useCallback(() => {
       expandedSourceRef.current = DISCOVER_ANALYTICS_SOURCE.EXPANDED_DAPPS_LIST;
@@ -352,7 +357,7 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
         >
           <TrendingCarouselSection
             title={t("discovery.trending")}
-            items={trendingItems}
+            items={trendingCarouselItems}
             onTitlePress={handleExpandTrending}
             onItemPress={handleTrendingItemPress}
           />
