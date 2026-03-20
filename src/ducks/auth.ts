@@ -37,6 +37,7 @@ import { useCollectiblesStore } from "ducks/collectibles";
 import { useHistoryStore } from "ducks/history";
 import { usePreferencesStore } from "ducks/preferences";
 import { usePricesStore } from "ducks/prices";
+import { useRecentProtocolsStore } from "ducks/recentProtocols";
 import { useWalletKitStore } from "ducks/walletKit";
 import { clearAllWebViewData } from "helpers/browser";
 import {
@@ -2020,6 +2021,9 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
               // Clear all WebView data (cookies and screenshots)
               await clearAllWebViewData();
               useBrowserTabsStore.getState().closeAllTabs();
+
+              // Clear all recent protocols data
+              useRecentProtocolsStore.getState().clearRecentProtocols();
 
               await clearTemporaryData();
               await clearNonSensitiveData();
