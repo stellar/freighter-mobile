@@ -302,6 +302,24 @@ describe("simulateCollectibleTransfer", () => {
     });
   });
 
+  it("should correctly plumb minResourceFee when present in simulationResponse", async () => {
+    const mockResourceFee = "500";
+    (backend.simulateTransaction as jest.Mock).mockResolvedValue({
+      preparedTransaction: mockPreparedXdr,
+      simulationResponse: { minResourceFee: mockResourceFee },
+    });
+
+    const result = await simulateCollectibleTransfer({
+      transactionXdr: mockTransactionXdr,
+      networkDetails: mockNetworkDetails,
+    });
+
+    expect(result).toEqual({
+      preparedTransaction: mockPreparedXdr,
+      minResourceFee: mockResourceFee,
+    });
+  });
+
   it("should throw error if Soroban RPC URL is not defined", async () => {
     const invalidNetworkDetails = {
       ...mockNetworkDetails,

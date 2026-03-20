@@ -53,6 +53,8 @@ describe("transactionBuilder Duck", () => {
         isSubmitting: false,
         transactionHash: null,
         error: null,
+        sorobanResourceFeeXlm: null,
+        sorobanInclusionFeeXlm: null,
       });
     });
 
@@ -137,6 +139,11 @@ describe("transactionBuilder Duck", () => {
     expect(state.error).toBeNull();
     expect(transactionService.buildPaymentTransaction).toHaveBeenCalled();
     expect(transactionService.simulateContractTransfer).toHaveBeenCalled();
+    // Soroban fee fields should be populated from the simulation result
+    expect(state.sorobanResourceFeeXlm).not.toBeNull();
+    expect(typeof state.sorobanResourceFeeXlm).toBe("string");
+    expect(state.sorobanInclusionFeeXlm).not.toBeNull();
+    expect(typeof state.sorobanInclusionFeeXlm).toBe("string");
   });
 
   it("should handle errors during buildTransaction", async () => {

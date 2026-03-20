@@ -12,6 +12,10 @@ import { ActivityIndicator, TouchableOpacity, View } from "react-native";
 
 type FeeBreakdownBottomSheetProps = {
   onClose: () => void;
+  /** Explicit flag for Soroban context. When provided, overrides the inference
+   *  from fee store values so the component is never misclassified before the
+   *  first simulation completes. */
+  isSorobanTransaction?: boolean;
 };
 
 /**
@@ -25,6 +29,7 @@ type FeeBreakdownBottomSheetProps = {
  */
 const FeeBreakdownBottomSheet: React.FC<FeeBreakdownBottomSheetProps> = ({
   onClose,
+  isSorobanTransaction: isSorobanProp,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
@@ -32,8 +37,12 @@ const FeeBreakdownBottomSheet: React.FC<FeeBreakdownBottomSheetProps> = ({
     useTransactionBuilderStore();
   const { transactionFee } = useTransactionSettingsStore();
 
+  // Prefer the explicit prop when provided; fall back to inferring from fee
+  // values so callers that don't (yet) pass the prop continue to work.
   const isSoroban =
-    sorobanResourceFeeXlm !== null && sorobanInclusionFeeXlm !== null;
+    isSorobanProp !== undefined
+      ? isSorobanProp
+      : sorobanResourceFeeXlm !== null && sorobanInclusionFeeXlm !== null;
 
   const totalFeeXlm =
     isSoroban && sorobanInclusionFeeXlm && sorobanResourceFeeXlm

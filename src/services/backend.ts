@@ -735,7 +735,7 @@ export interface SimulateTokenTransferParams {
 /**
  * Response from token transfer simulation
  * @interface SimulateTransactionResponse
- * @property {unknown} simulationResponse - Raw simulation response from backend
+ * @property {SorobanSimulationResponse} simulationResponse - Soroban simulation response from backend
  * @property {string} preparedTransaction - XDR-encoded prepared transaction
  */
 export interface SimulateTransactionResponse {

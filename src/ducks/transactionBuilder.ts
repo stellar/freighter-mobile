@@ -123,8 +123,15 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
       // Tag this build cycle
       const newRequestId = createRequestId();
 
-      // Mark new cycle and reset flags
-      set({ isBuilding: true, error: null, requestId: newRequestId });
+      // Mark new cycle and reset flags (clear stale Soroban fees so UI doesn't
+      // show outdated data while the new build is in progress)
+      set({
+        isBuilding: true,
+        error: null,
+        requestId: newRequestId,
+        sorobanResourceFeeXlm: null,
+        sorobanInclusionFeeXlm: null,
+      });
 
       try {
         const builtTxResult = await buildPaymentTransaction({
@@ -317,8 +324,15 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
       // Tag this build cycle
       const newRequestId = createRequestId();
 
-      // Mark new cycle and reset flags
-      set({ isBuilding: true, error: null, requestId: newRequestId });
+      // Mark new cycle and reset flags (clear stale Soroban fees so UI doesn't
+      // show outdated data while the new build is in progress)
+      set({
+        isBuilding: true,
+        error: null,
+        requestId: newRequestId,
+        sorobanResourceFeeXlm: null,
+        sorobanInclusionFeeXlm: null,
+      });
 
       try {
         const builtTxResult = await buildSendCollectibleTransaction({

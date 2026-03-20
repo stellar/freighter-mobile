@@ -22,6 +22,7 @@ import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { isLiquidityPool } from "helpers/balances";
 import { pxValue } from "helpers/dimensions";
 import { formatTokenForDisplay, formatFiatAmount } from "helpers/formatAmount";
+import { isSorobanTransaction } from "helpers/soroban";
 import { truncateAddress, isMuxedAccount } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
@@ -399,6 +400,10 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
         customContent={
           <FeeBreakdownBottomSheet
             onClose={() => feeBreakdownSheetRef.current?.dismiss()}
+            isSorobanTransaction={
+              isSorobanTransaction(selectedBalance) ||
+              type === SendType.Collectible
+            }
           />
         }
       />

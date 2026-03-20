@@ -631,8 +631,11 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   );
 
   // Auto-simulate Soroban fee breakdown as soon as token + recipient are set.
-  // Soroban resource fees are per-token (not per-amount), so we use a minimal
-  // dummy amount "1" and skip re-simulation when only the amount changes.
+  // Soroban resource fees are per-token (not per-amount), so we use the token's
+  // own available balance as the estimation amount — it's already in the correct
+  // decimal precision and is guaranteed to pass balance validation.
+  // When balance is zero (e.g. the user is about to acquire the token), fall
+  // back to the smallest representable unit derived from the token's decimals.
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
 
@@ -641,8 +644,15 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       recipientAddress &&
       selectedBalance
     ) {
+      const minUnit =
+        "decimals" in selectedBalance
+          ? new BigNumber(1).shiftedBy(-selectedBalance.decimals).toString()
+          : "1";
+      const estimationAmount = selectedBalance.total.isGreaterThan(0)
+        ? selectedBalance.total.toString()
+        : minUnit;
       timer = setTimeout(() => {
-        prepareTransaction(false, "1");
+        prepareTransaction(false, estimationAmount);
       }, 300);
     }
 
@@ -653,12 +663,25 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   }, [selectedBalance?.id, recipientAddress]);
 
   const handleSettingsChange = () => {
-    // For Soroban, fees are per-token so simulate with a dummy amount when the
-    // user hasn't entered one yet (so settings-modal fee changes stay in sync).
+    // For Soroban, fees are per-token so simulate with the available balance
+    // when the user hasn't entered an amount yet. Use the smallest
+    // representable unit (derived from the token's decimals) as a fallback
+    // when the balance is also zero.
     const needsFallback =
       isSorobanTransaction(selectedBalance, recipientAddress) &&
       !new BigNumber(tokenAmount).isGreaterThan(0);
-    prepareTransaction(false, needsFallback ? "1" : undefined);
+    if (needsFallback && selectedBalance) {
+      const minUnit =
+        "decimals" in selectedBalance
+          ? new BigNumber(1).shiftedBy(-selectedBalance.decimals).toString()
+          : "1";
+      const estimationAmount = selectedBalance.total.isGreaterThan(0)
+        ? selectedBalance.total.toString()
+        : minUnit;
+      prepareTransaction(false, estimationAmount);
+    } else {
+      prepareTransaction(false, undefined);
+    }
   };
 
   const handleTransactionConfirmation = useCallback(() => {
@@ -1097,6 +1120,10 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         customContent={
           <FeeBreakdownBottomSheet
             onClose={() => feeBreakdownBottomSheetModalRef.current?.dismiss()}
+            isSorobanTransaction={isSorobanTransaction(
+              selectedBalance,
+              recipientAddress,
+            )}
           />
         }
       />

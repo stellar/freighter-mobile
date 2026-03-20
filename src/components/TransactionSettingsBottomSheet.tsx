@@ -504,8 +504,8 @@ const TransactionSettingsBottomSheet: React.FC<
             </Text>
             <TouchableOpacity
               onPress={() =>
-                isSorobanTransaction
-                  ? onOpenFeeBreakdown?.()
+                isSorobanTransaction && onOpenFeeBreakdown
+                  ? onOpenFeeBreakdown()
                   : feeInfoBottomSheetModalRef.current?.present()
               }
             >
