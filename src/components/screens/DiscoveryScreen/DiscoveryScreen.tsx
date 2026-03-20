@@ -24,6 +24,8 @@ import React, { useRef, useState, useCallback, useEffect } from "react";
 import { Animated, Keyboard, Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView, WebViewNavigation } from "react-native-webview";
+import { analytics } from "services/analytics";
+import { DISCOVER_ANALYTICS_SOURCE } from "services/analytics/discover";
 
 type DiscoveryScreenProps = BottomTabScreenProps<
   MainTabStackParamList,
@@ -65,28 +67,42 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
   }, []);
 
   // Adds a new default homepage tab
-  const handleNewTab = useCallback(() => {
-    addTab(BROWSER_CONSTANTS.HOMEPAGE_URL);
-  }, [addTab]);
+  const handleNewTab = useCallback(
+    (source: string) => {
+      addTab(BROWSER_CONSTANTS.HOMEPAGE_URL);
+      analytics.trackDiscoverTabCreated(
+        useBrowserTabsStore.getState().tabs.length,
+        source,
+      );
+    },
+    [addTab],
+  );
 
   // Handle new tab creation from TabOverview with smooth transition
-  const handleNewTabFromOverview = useCallback(() => {
-    // Create the new tab and get its ID
-    const tabId = addTab(BROWSER_CONSTANTS.HOMEPAGE_URL);
-    // Set the new tab ID to filter it out from TabOverview
-    setNewTabId(tabId);
-    // Hide the tab overview immediately
-    setShowTabOverview(false);
-    // Clear the new tab ID after animation ends
-    setTimeout(() => {
-      setNewTabId(null);
-    }, BROWSER_CONSTANTS.CLOSE_ANIMATION_DURATION);
-  }, [addTab, setShowTabOverview]);
+  const handleNewTabFromOverview = useCallback(
+    (source: string) => {
+      // Create the new tab and get its ID
+      const tabId = addTab(BROWSER_CONSTANTS.HOMEPAGE_URL);
+      analytics.trackDiscoverTabCreated(
+        useBrowserTabsStore.getState().tabs.length,
+        source,
+      );
+      // Set the new tab ID to filter it out from TabOverview
+      setNewTabId(tabId);
+      // Hide the tab overview immediately
+      setShowTabOverview(false);
+      // Clear the new tab ID after animation ends
+      setTimeout(() => {
+        setNewTabId(null);
+      }, BROWSER_CONSTANTS.CLOSE_ANIMATION_DURATION);
+    },
+    [addTab, setShowTabOverview],
+  );
 
-  // Initialize with first tab if none exists
+  // Initialize with homepage tab if no tabs are open (e.g. on app start)
   useEffect(() => {
     if (tabs.length === 0) {
-      handleNewTab();
+      handleNewTab(DISCOVER_ANALYTICS_SOURCE.AUTOMATIC);
     }
   }, [tabs.length, handleNewTab]);
 
@@ -211,15 +227,21 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
 
   const handleCloseSpecificTab = useCallback(
     (tabId: string) => {
+      const currentTabs = useBrowserTabsStore.getState().tabs;
+      const tabToClose = currentTabs.find((tab) => tab.id === tabId);
+      const hadUrl = tabToClose?.url;
+
       closeTab(tabId);
+
+      analytics.trackDiscoverTabClosed(currentTabs.length, hadUrl);
 
       // If it was the last tab, we need to add a new one to display the homepage
       if (tabs.length === 1) {
         // Use correct transition animation depending if closing from tabs grid or browser
         if (showTabOverview) {
-          handleNewTabFromOverview();
+          handleNewTabFromOverview(DISCOVER_ANALYTICS_SOURCE.AUTOMATIC);
         } else {
-          handleNewTab();
+          handleNewTab(DISCOVER_ANALYTICS_SOURCE.AUTOMATIC);
         }
       }
     },
@@ -234,7 +256,7 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
 
   const handleCloseAllTabs = useCallback(() => {
     browserActions.handleCloseAllTabs();
-    handleNewTabFromOverview();
+    handleNewTabFromOverview(DISCOVER_ANALYTICS_SOURCE.AUTOMATIC);
   }, [browserActions, handleNewTabFromOverview]);
 
   if (!activeTab) {
@@ -308,7 +330,9 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
         ]}
       >
         <TabOverview
-          onNewTab={handleNewTabFromOverview}
+          onNewTab={() =>
+            handleNewTabFromOverview(DISCOVER_ANALYTICS_SOURCE.TAB_OVERVIEW)
+          }
           onClose={handleHideTabs}
           onSwitchTab={handleSwitchTab}
           onCloseTab={handleCloseSpecificTab}

@@ -33,6 +33,8 @@ import React, {
 } from "react";
 import { Animated, View, ScrollView } from "react-native";
 import ViewShot from "react-native-view-shot";
+import { analytics } from "services/analytics";
+import { DISCOVER_ANALYTICS_SOURCE } from "services/analytics/discover";
 import { dataStorage } from "services/storage/storageFactory";
 
 interface DiscoveryHomepageProps {
@@ -75,10 +77,12 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
         .then((value) => {
           if (!value) {
             setShowWelcomeModal(true);
+            analytics.trackDiscoverWelcomeModalViewed();
           }
         });
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
     const { goToPage, tabs, updateTab, showTabOverview } =
       useBrowserTabsStore();
     const { protocols } = useProtocolsStore();
@@ -91,6 +95,8 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
     const [selectedProtocol, setSelectedProtocol] =
       useState<ProtocolDetailsData | null>(null);
     const expandedFadeAnim = useRef(new Animated.Value(0)).current;
+    const protocolSourceRef = useRef("");
+    const expandedSourceRef = useRef("");
 
     const handleSitePress = useCallback(
       (url: string) => {
@@ -151,38 +157,98 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [showTabOverview]);
 
-    const handleItemOpen = useCallback(
-      (item: VerticalListItem) => {
+    const handleItemOpenWithSource = useCallback(
+      (item: VerticalListItem, source: string) => {
+        analytics.trackDiscoverProtocolOpened(
+          item.websiteUrl,
+          source,
+          protocols,
+        );
         handleSitePress(item.websiteUrl);
       },
-      [handleSitePress],
+      [handleSitePress, protocols],
     );
 
-    const handleItemPress = useCallback((item: VerticalListItem) => {
-      setSelectedProtocol({
-        name: item.name,
-        iconUrl: item.iconUrl,
-        websiteUrl: item.websiteUrl,
-        description: item.description,
-        tags: item.tags,
-      });
-      protocolDetailsRef.current?.present();
-    }, []);
+    const handleRecentItemOpen = useCallback(
+      (item: VerticalListItem) =>
+        handleItemOpenWithSource(item, DISCOVER_ANALYTICS_SOURCE.RECENT_LIST),
+      [handleItemOpenWithSource],
+    );
+
+    const handleDappsItemOpen = useCallback(
+      (item: VerticalListItem) =>
+        handleItemOpenWithSource(item, DISCOVER_ANALYTICS_SOURCE.DAPPS_LIST),
+      [handleItemOpenWithSource],
+    );
+
+    const handleExpandedItemOpen = useCallback(
+      (item: VerticalListItem) =>
+        handleItemOpenWithSource(item, expandedSourceRef.current),
+      [handleItemOpenWithSource],
+    );
+
+    const openProtocolDetails = useCallback(
+      (item: VerticalListItem, source: string) => {
+        protocolSourceRef.current = source;
+        analytics.trackDiscoverProtocolDetailsViewed(item.name, item.tags);
+        setSelectedProtocol({
+          name: item.name,
+          iconUrl: item.iconUrl,
+          websiteUrl: item.websiteUrl,
+          description: item.description,
+          tags: item.tags,
+        });
+        protocolDetailsRef.current?.present();
+      },
+      [],
+    );
+
+    const handleRecentItemPress = useCallback(
+      (item: VerticalListItem) =>
+        openProtocolDetails(item, DISCOVER_ANALYTICS_SOURCE.RECENT_LIST),
+      [openProtocolDetails],
+    );
+
+    const handleDappsItemPress = useCallback(
+      (item: VerticalListItem) =>
+        openProtocolDetails(item, DISCOVER_ANALYTICS_SOURCE.DAPPS_LIST),
+      [openProtocolDetails],
+    );
+
+    const handleExpandedItemPress = useCallback(
+      (item: VerticalListItem) =>
+        openProtocolDetails(item, expandedSourceRef.current),
+      [openProtocolDetails],
+    );
 
     const handleTrendingItemPress = useCallback(
       (item: TrendingItem) => {
         const protocol = protocols.find((p) => p.websiteUrl === item.id);
         if (!protocol) return;
-        handleItemPress(protocolToListItem(protocol));
+        openProtocolDetails(
+          protocolToListItem(protocol),
+          DISCOVER_ANALYTICS_SOURCE.TRENDING_CAROUSEL,
+        );
       },
-      [protocols, handleItemPress],
+      [protocols, openProtocolDetails],
     );
 
     const handleProtocolOpen = useCallback(
       (url: string) => {
+        if (selectedProtocol) {
+          analytics.trackDiscoverProtocolOpenedFromDetails(
+            selectedProtocol.name,
+            url,
+          );
+        }
+        analytics.trackDiscoverProtocolOpened(
+          url,
+          protocolSourceRef.current,
+          protocols,
+        );
         handleSitePress(url);
       },
-      [handleSitePress],
+      [selectedProtocol, handleSitePress, protocols],
     );
 
     const handleExpand = useCallback(
@@ -215,6 +281,8 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
     }, [expandedFadeAnim]);
 
     const handleExpandRecent = useCallback(() => {
+      expandedSourceRef.current =
+        DISCOVER_ANALYTICS_SOURCE.EXPANDED_RECENT_LIST;
       handleExpand({
         title: t("discovery.recent"),
         items: recentItems,
@@ -255,6 +323,8 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
     );
 
     const handleExpandTrending = useCallback(() => {
+      expandedSourceRef.current =
+        DISCOVER_ANALYTICS_SOURCE.EXPANDED_TRENDING_LIST;
       handleExpand({
         title: t("discovery.trending"),
         items: dappsItems,
@@ -262,6 +332,7 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
     }, [handleExpand, t, dappsItems]);
 
     const handleExpandDapps = useCallback(() => {
+      expandedSourceRef.current = DISCOVER_ANALYTICS_SOURCE.EXPANDED_DAPPS_LIST;
       handleExpand({
         title: t("discovery.dapps"),
         items: dappsItems,
@@ -308,16 +379,16 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
             title={t("discovery.recent")}
             items={recentItems}
             onTitlePress={handleExpandRecent}
-            onItemOpen={handleItemOpen}
-            onItemPress={handleItemPress}
+            onItemOpen={handleRecentItemOpen}
+            onItemPress={handleRecentItemPress}
           />
 
           <VerticalListSection
             title={t("discovery.dapps")}
             items={dappsItems}
             onTitlePress={handleExpandDapps}
-            onItemOpen={handleItemOpen}
-            onItemPress={handleItemPress}
+            onItemOpen={handleDappsItemOpen}
+            onItemPress={handleDappsItemPress}
           />
 
           <View
@@ -345,8 +416,8 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
               title={expandedSection.title}
               items={expandedSection.items}
               onBack={handleCollapseSection}
-              onItemOpen={handleItemOpen}
-              onItemPress={handleItemPress}
+              onItemOpen={handleExpandedItemOpen}
+              onItemPress={handleExpandedItemPress}
               onScrollEnd={handleScrollEnd}
               headerRight={
                 expandedSection.isRecents ? recentsHeaderRight : undefined

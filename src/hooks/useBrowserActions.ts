@@ -1,5 +1,6 @@
 import { logger } from "config/logger";
 import { useBrowserTabsStore } from "ducks/browserTabs";
+import { useProtocolsStore } from "ducks/protocols";
 import { normalizeUrl, isHomepageUrl } from "helpers/browser";
 import { isIOS } from "helpers/device";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -7,6 +8,8 @@ import { useInAppBrowser } from "hooks/useInAppBrowser";
 import { useCallback, useMemo } from "react";
 import { Share, Platform } from "react-native";
 import { WebView } from "react-native-webview";
+import { analytics } from "services/analytics";
+import { DISCOVER_ANALYTICS_SOURCE } from "services/analytics/discover";
 
 /**
  * Custom React hook providing browser tab action handlers for the in-app browser.
@@ -33,7 +36,17 @@ export const useBrowserActions = (
     (inputUrl: string) => {
       if (!activeTabId) return;
 
-      const { url } = normalizeUrl(inputUrl);
+      const { url, isSearch } = normalizeUrl(inputUrl);
+
+      if (!isSearch) {
+        const { protocols } = useProtocolsStore.getState();
+        analytics.trackDiscoverProtocolOpened(
+          url,
+          DISCOVER_ANALYTICS_SOURCE.URL_BAR,
+          protocols,
+        );
+      }
+
       goToPage(activeTabId, url);
     },
     [activeTabId, goToPage],
@@ -70,15 +83,20 @@ export const useBrowserActions = (
   const handleCloseActiveTab = useCallback(() => {
     if (!activeTabId) return;
 
+    const currentTabs = useBrowserTabsStore.getState().tabs;
+    const hadUrl = activeTab?.url;
     closeTab(activeTabId);
-  }, [activeTabId, closeTab]);
+
+    analytics.trackDiscoverTabClosed(currentTabs.length, hadUrl);
+  }, [activeTabId, activeTab?.url, closeTab]);
 
   /**
    * Handler for closing all tabs.
    */
   const handleCloseAllTabs = useCallback(() => {
+    analytics.trackDiscoverAllTabsClosed(tabs.length);
     closeAllTabs();
-  }, [closeAllTabs]);
+  }, [tabs.length, closeAllTabs]);
 
   /**
    * Handler for sharing the current tab's URL and title.

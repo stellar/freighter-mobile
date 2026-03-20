@@ -1,6 +1,7 @@
 import { renderHook } from "@testing-library/react-hooks";
 import { logger } from "config/logger";
 import { useBrowserTabsStore } from "ducks/browserTabs";
+import { useProtocolsStore } from "ducks/protocols";
 import { isHomepageUrl } from "helpers/browser";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBrowserActions } from "hooks/useBrowserActions";
@@ -9,6 +10,14 @@ import { Share, Platform } from "react-native";
 // Mock dependencies
 jest.mock("config/logger");
 jest.mock("ducks/browserTabs");
+jest.mock("ducks/protocols");
+jest.mock("services/analytics", () => ({
+  analytics: {
+    trackDiscoverProtocolOpened: jest.fn(),
+    trackDiscoverTabClosed: jest.fn(),
+    trackDiscoverAllTabsClosed: jest.fn(),
+  },
+}));
 jest.mock("helpers/browser", () => ({
   isHomepageUrl: jest.fn(),
   normalizeUrl: jest.fn((input: string) => ({
@@ -83,6 +92,12 @@ describe("useBrowserActions", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockUseBrowserTabsStore.mockReturnValue(mockStore as any);
+    (mockUseBrowserTabsStore as any).getState = jest
+      .fn()
+      .mockReturnValue(mockStore);
+    (useProtocolsStore as any).getState = jest
+      .fn()
+      .mockReturnValue({ protocols: [] });
     mockUseAppTranslation.mockReturnValue({
       t: jest.fn((key: string) => key),
     } as any);
