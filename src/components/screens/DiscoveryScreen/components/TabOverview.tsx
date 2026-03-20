@@ -94,7 +94,7 @@ const TabOverviewFooter: React.FC<TabOverviewFooterProps> = ({
       <TouchableOpacity
         onPress={onNewTab}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        className="h-[40px] h-[40px] justify-center align-center"
+        className="size-[40px] justify-center items-center"
       >
         <Icon.Plus size={24} color={themeColors.base[1]} />
       </TouchableOpacity>
