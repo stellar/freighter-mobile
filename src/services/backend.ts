@@ -968,7 +968,7 @@ export const fetchProtocols = async (): Promise<DiscoverProtocol[]> => {
       websiteUrl: protocol.website_url,
       tags: protocol.tags,
       backgroundUrl: protocol.background_url,
-      isTrending: protocol.is_trending ?? false,
+      isTrending: protocol.is_trending ?? true,
     }));
 };
 
