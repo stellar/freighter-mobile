@@ -2,7 +2,6 @@ import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import ContextMenuButton, { MenuItem } from "components/ContextMenuButton";
 import { TrendingItem } from "components/TrendingCarousel";
 import { DEFAULT_HEADER_BUTTON_SIZE } from "components/layout/CustomHeaderButton";
-import DiscoverWelcomeModal from "components/screens/DiscoveryScreen/components/DiscoverWelcomeModal";
 import ExpandedSectionView from "components/screens/DiscoveryScreen/components/ExpandedSectionView";
 import ProtocolDetailsBottomSheet from "components/screens/DiscoveryScreen/components/ProtocolDetailsBottomSheet";
 import TrendingCarouselSection from "components/screens/DiscoveryScreen/components/TrendingCarouselSection";
@@ -11,11 +10,7 @@ import VerticalListSection, {
 } from "components/screens/DiscoveryScreen/components/VerticalListSection";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import {
-  STORAGE_KEYS,
-  DEFAULT_PADDING,
-  BROWSER_CONSTANTS,
-} from "config/constants";
+import { DEFAULT_PADDING, BROWSER_CONSTANTS } from "config/constants";
 import { DiscoverProtocol } from "config/types";
 import { useBrowserTabsStore } from "ducks/browserTabs";
 import { useProtocolsStore } from "ducks/protocols";
@@ -35,7 +30,6 @@ import { Animated, View, ScrollView } from "react-native";
 import ViewShot from "react-native-view-shot";
 import { analytics } from "services/analytics";
 import { DISCOVER_ANALYTICS_SOURCE } from "services/analytics/discover";
-import { dataStorage } from "services/storage/storageFactory";
 
 interface DiscoveryHomepageProps {
   tabId: string;
@@ -69,19 +63,6 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
   ({ tabId }) => {
     const { t } = useAppTranslation();
     const { themeColors } = useColors();
-    const [showWelcomeModal, setShowWelcomeModal] = useState(false);
-
-    useEffect(() => {
-      dataStorage
-        .getItem(STORAGE_KEYS.HAS_SEEN_DISCOVER_WELCOME)
-        .then((value) => {
-          if (!value) {
-            setShowWelcomeModal(true);
-            analytics.trackDiscoverWelcomeModalViewed();
-          }
-        });
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
 
     const { goToPage, tabs, updateTab, showTabOverview } =
       useBrowserTabsStore();
@@ -430,14 +411,6 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
           protocol={selectedProtocol}
           modalRef={protocolDetailsRef}
           onOpen={handleProtocolOpen}
-        />
-
-        <DiscoverWelcomeModal
-          visible={showWelcomeModal}
-          onDismiss={() => {
-            dataStorage.setItem(STORAGE_KEYS.HAS_SEEN_DISCOVER_WELCOME, "true");
-            setShowWelcomeModal(false);
-          }}
         />
       </ViewShot>
     );

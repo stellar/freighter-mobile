@@ -6,9 +6,14 @@ import {
   TabOverview,
   WebViewContainer,
 } from "components/screens/DiscoveryScreen/components";
+import DiscoverWelcomeModal from "components/screens/DiscoveryScreen/components/DiscoverWelcomeModal";
 import ManageAccounts from "components/screens/HomeScreen/ManageAccounts";
 import { Text } from "components/sds/Typography";
-import { BROWSER_CONSTANTS, DEFAULT_PADDING } from "config/constants";
+import {
+  BROWSER_CONSTANTS,
+  DEFAULT_PADDING,
+  STORAGE_KEYS,
+} from "config/constants";
 import { logger } from "config/logger";
 import { MainTabStackParamList, MAIN_TAB_ROUTES } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
@@ -26,6 +31,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView, WebViewNavigation } from "react-native-webview";
 import { analytics } from "services/analytics";
 import { DISCOVER_ANALYTICS_SOURCE } from "services/analytics/discover";
+import { dataStorage } from "services/storage/storageFactory";
 
 type DiscoveryScreenProps = BottomTabScreenProps<
   MainTabStackParamList,
@@ -37,6 +43,7 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
   const manageAccountsRef = useRef<BottomSheetModal>(null);
   const [inputUrl, setInputUrl] = useState("");
   const [newTabId, setNewTabId] = useState<string | null>(null);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const mainContentFadeAnim = useRef(new Animated.Value(1)).current;
   const tabOverviewFadeAnim = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
@@ -105,6 +112,19 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
       handleNewTab(DISCOVER_ANALYTICS_SOURCE.AUTOMATIC);
     }
   }, [tabs.length, handleNewTab]);
+
+  // Show welcome modal on first visit
+  useEffect(() => {
+    dataStorage
+      .getItem(STORAGE_KEYS.HAS_SEEN_DISCOVER_WELCOME)
+      .then((value) => {
+        if (!value) {
+          setShowWelcomeModal(true);
+          analytics.trackDiscoverWelcomeModalViewed();
+        }
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Update input URL when active tab changes
   useEffect(() => {
@@ -346,6 +366,14 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
         activeAccount={account}
         bottomSheetRef={manageAccountsRef}
         showAddWallet={false}
+      />
+
+      <DiscoverWelcomeModal
+        visible={showWelcomeModal}
+        onDismiss={() => {
+          dataStorage.setItem(STORAGE_KEYS.HAS_SEEN_DISCOVER_WELCOME, "true");
+          setShowWelcomeModal(false);
+        }}
       />
     </BaseLayout>
   );
