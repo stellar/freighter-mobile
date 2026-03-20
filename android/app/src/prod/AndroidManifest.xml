@@ -1,0 +1,9 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!--
+      Prod-flavor manifest overlay.
+      Explicitly sets networkSecurityConfig to block all cleartext HTTP traffic,
+      making the prod security policy visible in source rather than relying on
+      the API 28+ implicit default.
+    -->
+    <application android:networkSecurityConfig="@xml/network_security_config" />
+</manifest>

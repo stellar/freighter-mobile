@@ -54,6 +54,7 @@ export enum StellarRpcMethods {
   SIGN_XDR = "stellar_signXDR",
   SIGN_AND_SUBMIT_XDR = "stellar_signAndSubmitXDR",
   SIGN_MESSAGE = "stellar_signMessage",
+  SIGN_AUTH_ENTRY = "stellar_signAuthEntry",
 }
 
 /**
@@ -82,6 +83,13 @@ export interface StellarSignMessageParams {
  */
 export interface StellarSignAndSubmitXDRParams {
   xdr: string;
+}
+
+/**
+ * Type representing parameters for stellar_signAuthEntry request
+ */
+export interface StellarSignAuthEntryParams {
+  entryXdr: string;
 }
 
 /**
