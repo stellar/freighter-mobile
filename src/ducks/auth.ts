@@ -1991,6 +1991,8 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
             // visible before the long async cleanup begins.
             clearDerivedKeyCache();
 
+            // Capture navigationRef before ...initialState clears it to null
+            const { navigationRef: navRef } = get();
             clearAccountData();
             set({
               ...initialState,
@@ -1998,7 +2000,6 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
               isLoading: true,
             });
 
-            const { navigationRef: navRef } = get();
             if (navRef && navRef.isReady()) {
               navRef.resetRoot({
                 index: 0,
