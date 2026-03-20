@@ -288,6 +288,7 @@ interface AuthActions {
   createAccount: (password: string) => Promise<void>;
   selectAccount: (publicKey: string) => Promise<void>;
   selectNetwork: (network: NETWORKS) => Promise<void>;
+  initializeNetwork: () => Promise<void>;
 
   enableBiometrics: <T>(
     callback: (biometricPassword?: string) => Promise<T>,
@@ -1879,331 +1880,323 @@ const clearBiometricsData = async (): Promise<void> => {
  * It maintains the authentication status and securely handles sensitive data
  * like private keys and mnemonic phrases through a temporary encrypted store.
  */
-export const useAuthenticationStore = create<AuthStore>()((set, get) => {
-  // Initialize the store when created
-  setTimeout(() => {
-    initializeStore(set);
-  }, 0);
+export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
+  ...initialState,
+  isOnboardingFinished: false,
+  // Default to PUBLIC network
+  network: NETWORKS.PUBLIC,
 
-  return {
-    ...initialState,
-    isOnboardingFinished: false,
-    // Default to PUBLIC network
-    network: NETWORKS.PUBLIC,
+  /**
+   * Verifies if a mnemonic phrase is valid
+   *
+   * @param {string} mnemonicPhrase - The mnemonic phrase to verify
+   * @returns {boolean} True if the mnemonic phrase is valid, false otherwise
+   */
+  verifyMnemonicPhrase: (mnemonicPhrase: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      StellarHDWallet.fromMnemonic(mnemonicPhrase);
+      return true;
+    } catch (error) {
+      logger.error("verifyMnemonicPhrase", "Invalid mnemonic phrase", error);
+      set({
+        error: t("authStore.error.invalidMnemonicPhrase"),
+      });
+      return false;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
 
-    /**
-     * Verifies if a mnemonic phrase is valid
-     *
-     * @param {string} mnemonicPhrase - The mnemonic phrase to verify
-     * @returns {boolean} True if the mnemonic phrase is valid, false otherwise
-     */
-    verifyMnemonicPhrase: (mnemonicPhrase: string) => {
-      set({ isLoading: true, error: null });
-      try {
-        StellarHDWallet.fromMnemonic(mnemonicPhrase);
-        return true;
-      } catch (error) {
-        logger.error("verifyMnemonicPhrase", "Invalid mnemonic phrase", error);
-        set({
-          error: t("authStore.error.invalidMnemonicPhrase"),
-        });
+  storeBiometricPassword: async (password: string) => {
+    await biometricDataStorage.setItem(
+      BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
+      password,
+    );
+  },
+
+  initBiometricPassword: async () => {
+    try {
+      const temporaryStore = await getTemporaryStore(get().authStatus);
+      if (!temporaryStore) {
         return false;
-      } finally {
-        set({ isLoading: false });
       }
-    },
-
-    storeBiometricPassword: async (password: string) => {
+      const { password } = temporaryStore;
+      if (!password) {
+        return false;
+      }
       await biometricDataStorage.setItem(
         BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
         password,
       );
-    },
+      return true;
+    } catch (error) {
+      logger.error(
+        "initBiometricPassword",
+        "Failed to initialize biometric password from temporary store",
+        error,
+      );
+      return false;
+    }
+  },
 
-    initBiometricPassword: async () => {
-      try {
-        const temporaryStore = await getTemporaryStore(get().authStatus);
-        if (!temporaryStore) {
-          return false;
-        }
-        const { password } = temporaryStore;
-        if (!password) {
-          return false;
-        }
-        await biometricDataStorage.setItem(
-          BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
-          password,
-        );
-        return true;
-      } catch (error) {
-        logger.error(
-          "initBiometricPassword",
-          "Failed to initialize biometric password from temporary store",
-          error,
-        );
-        return false;
-      }
-    },
+  /**
+   * Logs out the user by clearing sensitive data
+   *
+   * For accounts with existing accounts, it preserves account data but clears sensitive info,
+   * setting the auth status to HASH_KEY_EXPIRED and navigating to the lock screen.
+   * For lock=true, it preserves private keys and hash key (LOCKED state).
+   * For new users with no accounts, it performs a full logout.
+   */
+  logout: (shouldWipeAllData = false) => {
+    set((state) => ({ ...state, isLoading: true, error: null }));
 
-    /**
-     * Logs out the user by clearing sensitive data
-     *
-     * For accounts with existing accounts, it preserves account data but clears sensitive info,
-     * setting the auth status to HASH_KEY_EXPIRED and navigating to the lock screen.
-     * For lock=true, it preserves private keys and hash key (LOCKED state).
-     * For new users with no accounts, it performs a full logout.
-     */
-    logout: (shouldWipeAllData = false) => {
-      set((state) => ({ ...state, isLoading: true, error: null }));
+    // We'll use setTimeout to handle the async operations
+    // This avoids the issue with void return expectations from zustand
+    setTimeout(() => {
+      (async () => {
+        try {
+          const accountList = await getAllAccounts();
+          const hasAccountList = accountList.length > 0;
 
-      // We'll use setTimeout to handle the async operations
-      // This avoids the issue with void return expectations from zustand
-      setTimeout(() => {
-        (async () => {
-          try {
-            const accountList = await getAllAccounts();
-            const hasAccountList = accountList.length > 0;
-
-            // For logout, preserve private keys and hash key for LOCKED state
-            if (hasAccountList && !shouldWipeAllData) {
-              // Don't expire hash key - preserve temporary store accessibility
-              // Security comes from app being locked, not key expiration
-
-              set({
-                account: null,
-                isLoadingAccount: false,
-                accountError: null,
-                authStatus: AUTH_STATUS.LOCKED,
-                isLoading: false,
-              });
-
-              // This prevents tampering via ADB or rooted devices
-              await secureDataStorage.setItem(
-                SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
-                AUTH_STATUS.LOCKED,
-              );
-
-              // Navigate to lock screen
-              const { navigationRef } = get();
-              if (navigationRef && navigationRef.isReady()) {
-                navigationRef.resetRoot({
-                  index: 0,
-                  routes: [{ name: ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN }],
-                });
-              }
-            } else {
-              // Wipe path: clear derived key cache and use resetRoot so the auth screen is
-              // visible before the long async cleanup begins.
-              clearDerivedKeyCache();
-
-              clearAccountData();
-              set({
-                ...initialState,
-                authStatus: AUTH_STATUS.NOT_AUTHENTICATED,
-                isLoading: true,
-              });
-
-              const { navigationRef: navRef } = get();
-              if (navRef && navRef.isReady()) {
-                navRef.resetRoot({
-                  index: 0,
-                  routes: [{ name: ROOT_NAVIGATOR_ROUTES.AUTH_STACK }],
-                });
-              }
-
-              // Make sure to disconnect all WalletConnect sessions first
-              await useWalletKitStore.getState().disconnectAllSessions();
-
-              // Clear all Wallet Connect storage
-              await clearWalletKitStorage();
-
-              // Clear all WebView data (cookies and screenshots)
-              await clearAllWebViewData();
-              useBrowserTabsStore.getState().closeAllTabs();
-
-              await clearTemporaryData();
-              await clearNonSensitiveData();
-              await dataStorage.remove(STORAGE_KEYS.COLLECTIBLES_LIST);
-
-              await clearBiometricsData();
-
-              set({ isLoading: false });
-            }
-          } catch (error) {
-            logger.error("logout", "Failed to logout", error);
+          // For logout, preserve private keys and hash key for LOCKED state
+          if (hasAccountList && !shouldWipeAllData) {
+            // Don't expire hash key - preserve temporary store accessibility
+            // Security comes from app being locked, not key expiration
 
             set({
-              error:
-                error instanceof Error
-                  ? error.message
-                  : t("authStore.error.failedToLogout"),
+              account: null,
+              isLoadingAccount: false,
+              accountError: null,
+              authStatus: AUTH_STATUS.LOCKED,
               isLoading: false,
             });
-          }
-        })();
-      }, 0);
-    },
 
-    /**
-     * Signs up a new user with the provided credentials
-     *
-     * @param {SignUpParams} params - The signup parameters
-     * @returns {Promise<void>}
-     */
-    signUp: async (params): Promise<void> => {
-      set((state) => ({ ...state, isLoading: true, error: null }));
-      try {
-        await signUp(params);
-        set({
-          ...initialState,
-          isLoading: false,
-          authStatus: AUTH_STATUS.AUTHENTICATED,
-        });
-        // Fetch active account after successful signup
-        await get().fetchActiveAccount();
-      } catch (error) {
-        logger.error("useAuthenticationStore.signUp", "Sign up failed", error);
-        set({
-          error:
-            error instanceof Error
-              ? error.message
-              : t("authStore.error.failedToSignUp"),
-          isLoading: false,
-        });
-      }
-    },
-
-    /**
-     * Signs in a user with the provided password
-     *
-     * @param {SignInParams} params - The signin parameters
-     * @returns {Promise<void>}
-     */
-    signIn: async (params) => {
-      set({ isLoading: true, error: null });
-
-      try {
-        const currentAuthStatus = get().authStatus;
-        const shouldCreateTempStore = currentAuthStatus !== AUTH_STATUS.LOCKED;
-
-        await signIn({ ...params, shouldCreateTempStore });
-
-        // Password verified — unblock navigation immediately.
-        // getActiveAccount is slow (derivePrivateKeyFromMnemonic) so we run it
-        // in the background and let the home screen render with isLoadingAccount=true.
-        analytics.trackReAuthSuccess();
-        set({
-          ...initialState,
-          authStatus: AUTH_STATUS.AUTHENTICATED,
-          isLoading: false,
-          isLoadingAccount: true,
-        });
-
-        getActiveAccount(AUTH_STATUS.AUTHENTICATED)
-          .then((activeAccount) => {
-            if (!activeAccount) {
-              // Sign-in succeeded but no active account was found — lock and
-              // surface an error so the user knows something went wrong.
-              set({
-                isLoadingAccount: false,
-                authStatus: AUTH_STATUS.LOCKED,
-                error: t("authStore.error.failedToLoadAccount"),
-              });
-              get().navigateToLockScreen();
-              return;
-            }
-            set({ account: activeAccount, isLoadingAccount: false });
-          })
-          .catch((accountError) => {
-            logger.error(
-              "useAuthenticationStore.signIn",
-              "Failed to load account in background",
-              accountError,
+            // This prevents tampering via ADB or rooted devices
+            await secureDataStorage.setItem(
+              SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
+              AUTH_STATUS.LOCKED,
             );
+
+            // Navigate to lock screen
+            const { navigationRef } = get();
+            if (navigationRef && navigationRef.isReady()) {
+              navigationRef.resetRoot({
+                index: 0,
+                routes: [{ name: ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN }],
+              });
+            }
+          } else {
+            // Wipe path: clear derived key cache and use resetRoot so the auth screen is
+            // visible before the long async cleanup begins.
+            clearDerivedKeyCache();
+
+            clearAccountData();
+            set({
+              ...initialState,
+              authStatus: AUTH_STATUS.NOT_AUTHENTICATED,
+              isLoading: true,
+            });
+
+            const { navigationRef: navRef } = get();
+            if (navRef && navRef.isReady()) {
+              navRef.resetRoot({
+                index: 0,
+                routes: [{ name: ROOT_NAVIGATOR_ROUTES.AUTH_STACK }],
+              });
+            }
+
+            // Make sure to disconnect all WalletConnect sessions first
+            await useWalletKitStore.getState().disconnectAllSessions();
+
+            // Clear all Wallet Connect storage
+            await clearWalletKitStorage();
+
+            // Clear all WebView data (cookies and screenshots)
+            await clearAllWebViewData();
+            useBrowserTabsStore.getState().closeAllTabs();
+
+            await clearTemporaryData();
+            await clearNonSensitiveData();
+            await dataStorage.remove(STORAGE_KEYS.COLLECTIBLES_LIST);
+
+            await clearBiometricsData();
+
+            set({ isLoading: false });
+          }
+        } catch (error) {
+          logger.error("logout", "Failed to logout", error);
+
+          set({
+            error:
+              error instanceof Error
+                ? error.message
+                : t("authStore.error.failedToLogout"),
+            isLoading: false,
+          });
+        }
+      })();
+    }, 0);
+  },
+
+  /**
+   * Signs up a new user with the provided credentials
+   *
+   * @param {SignUpParams} params - The signup parameters
+   * @returns {Promise<void>}
+   */
+  signUp: async (params): Promise<void> => {
+    set((state) => ({ ...state, isLoading: true, error: null }));
+    try {
+      await signUp(params);
+      set({
+        ...initialState,
+        isLoading: false,
+        authStatus: AUTH_STATUS.AUTHENTICATED,
+      });
+      // Fetch active account after successful signup
+      await get().fetchActiveAccount();
+    } catch (error) {
+      logger.error("useAuthenticationStore.signUp", "Sign up failed", error);
+      set({
+        error:
+          error instanceof Error
+            ? error.message
+            : t("authStore.error.failedToSignUp"),
+        isLoading: false,
+      });
+    }
+  },
+
+  /**
+   * Signs in a user with the provided password
+   *
+   * @param {SignInParams} params - The signin parameters
+   * @returns {Promise<void>}
+   */
+  signIn: async (params) => {
+    set({ isLoading: true, error: null });
+
+    try {
+      const currentAuthStatus = get().authStatus;
+      const shouldCreateTempStore = currentAuthStatus !== AUTH_STATUS.LOCKED;
+
+      await signIn({ ...params, shouldCreateTempStore });
+
+      // Password verified — unblock navigation immediately.
+      // getActiveAccount is slow (derivePrivateKeyFromMnemonic) so we run it
+      // in the background and let the home screen render with isLoadingAccount=true.
+      analytics.trackReAuthSuccess();
+      set({
+        ...initialState,
+        authStatus: AUTH_STATUS.AUTHENTICATED,
+        isLoading: false,
+        isLoadingAccount: true,
+      });
+
+      getActiveAccount(AUTH_STATUS.AUTHENTICATED)
+        .then((activeAccount) => {
+          if (!activeAccount) {
+            // Sign-in succeeded but no active account was found — lock and
+            // surface an error so the user knows something went wrong.
             set({
               isLoadingAccount: false,
               authStatus: AUTH_STATUS.LOCKED,
               error: t("authStore.error.failedToLoadAccount"),
             });
             get().navigateToLockScreen();
-          });
-
-        // Clear persisted auth status in background (non-blocking)
-        secureDataStorage
-          .remove(SENSITIVE_STORAGE_KEYS.AUTH_STATUS)
-          .catch((e) =>
-            logger.debug("signIn", "Failed to clear persisted auth status", e),
+            return;
+          }
+          set({ account: activeAccount, isLoadingAccount: false });
+        })
+        .catch((accountError) => {
+          logger.error(
+            "useAuthenticationStore.signIn",
+            "Failed to load account in background",
+            accountError,
           );
-      } catch (error) {
-        analytics.trackReAuthFail();
-        set({
-          error:
-            error instanceof Error
-              ? error.message
-              : t("authStore.error.failedToSignIn"),
-          isLoading: false,
+          set({
+            isLoadingAccount: false,
+            authStatus: AUTH_STATUS.LOCKED,
+            error: t("authStore.error.failedToLoadAccount"),
+          });
+          get().navigateToLockScreen();
         });
-        throw error;
-      }
-    },
-    /**
-     * Verifies biometric authentication by prompting the user for biometric input
-     *
-     * This function prompts the user to authenticate using their device's biometric
-     * capabilities (Face ID, Touch ID, fingerprint, etc.) and verifies that the
-     * stored biometric password can be retrieved. It's used to confirm the user's
-     * identity before performing sensitive operations.
-     *
-     * @returns {Promise<boolean>} Promise resolving to true if biometric authentication succeeds
-     * @throws {Error} If no biometry type is found or biometric password retrieval fails
-     *
-     * @example
-     * try {
-     *   const isAuthenticated = await verifyBiometrics();
-     *   if (isAuthenticated) {
-     *     // Proceed with sensitive operation
-     *     showRecoveryPhrase();
-     *   }
-     * } catch (error) {
-     *   // Handle authentication failure
-     *   console.error('Biometric verification failed:', error);
-     * }
-     */
-    verifyBiometrics: async () => {
-      const biometryType = await Keychain.getSupportedBiometryType();
 
-      if (!biometryType) {
-        throw new Error("No biometry type found");
-      }
+      // Clear persisted auth status in background (non-blocking)
+      secureDataStorage
+        .remove(SENSITIVE_STORAGE_KEYS.AUTH_STATUS)
+        .catch((e) =>
+          logger.debug("signIn", "Failed to clear persisted auth status", e),
+        );
+    } catch (error) {
+      analytics.trackReAuthFail();
+      set({
+        error:
+          error instanceof Error
+            ? error.message
+            : t("authStore.error.failedToSignIn"),
+        isLoading: false,
+      });
+      throw error;
+    }
+  },
+  /**
+   * Verifies biometric authentication by prompting the user for biometric input
+   *
+   * This function prompts the user to authenticate using their device's biometric
+   * capabilities (Face ID, Touch ID, fingerprint, etc.) and verifies that the
+   * stored biometric password can be retrieved. It's used to confirm the user's
+   * identity before performing sensitive operations.
+   *
+   * @returns {Promise<boolean>} Promise resolving to true if biometric authentication succeeds
+   * @throws {Error} If no biometry type is found or biometric password retrieval fails
+   *
+   * @example
+   * try {
+   *   const isAuthenticated = await verifyBiometrics();
+   *   if (isAuthenticated) {
+   *     // Proceed with sensitive operation
+   *     showRecoveryPhrase();
+   *   }
+   * } catch (error) {
+   *   // Handle authentication failure
+   *   console.error('Biometric verification failed:', error);
+   * }
+   */
+  verifyBiometrics: async () => {
+    const biometryType = await Keychain.getSupportedBiometryType();
 
-      const title: Record<Keychain.BIOMETRY_TYPE, string> = {
-        [Keychain.BIOMETRY_TYPE.FACE_ID]: t("authStore.faceId.signInTitle"),
-        [Keychain.BIOMETRY_TYPE.FINGERPRINT]: t(
-          "authStore.fingerprint.signInTitle",
-        ),
-        [Keychain.BIOMETRY_TYPE.TOUCH_ID]: t("authStore.touchId.signInTitle"),
-        [Keychain.BIOMETRY_TYPE.OPTIC_ID]: t("authStore.opticId.signInTitle"),
-        [Keychain.BIOMETRY_TYPE.IRIS]: t("authStore.iris.signInTitle"),
-        [Keychain.BIOMETRY_TYPE.FACE]: t(
-          "authStore.faceBiometrics.signInTitle",
-        ),
-      };
+    if (!biometryType) {
+      throw new Error("No biometry type found");
+    }
 
-      const item = await biometricDataStorage.getItem(
-        BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
-        {
-          cancel: t("common.cancel"),
-          title: title[biometryType],
-        },
-      );
-      if (!item) {
-        throw new Error("Biometric password not found");
-      }
+    const title: Record<Keychain.BIOMETRY_TYPE, string> = {
+      [Keychain.BIOMETRY_TYPE.FACE_ID]: t("authStore.faceId.signInTitle"),
+      [Keychain.BIOMETRY_TYPE.FINGERPRINT]: t(
+        "authStore.fingerprint.signInTitle",
+      ),
+      [Keychain.BIOMETRY_TYPE.TOUCH_ID]: t("authStore.touchId.signInTitle"),
+      [Keychain.BIOMETRY_TYPE.OPTIC_ID]: t("authStore.opticId.signInTitle"),
+      [Keychain.BIOMETRY_TYPE.IRIS]: t("authStore.iris.signInTitle"),
+      [Keychain.BIOMETRY_TYPE.FACE]: t("authStore.faceBiometrics.signInTitle"),
+    };
 
-      return true;
-    },
+    const item = await biometricDataStorage.getItem(
+      BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
+      {
+        cancel: t("common.cancel"),
+        title: title[biometryType],
+      },
+    );
+    if (!item) {
+      throw new Error("Biometric password not found");
+    }
 
-    /**
+    return true;
+  },
+
+  /**
      * Generic function to verify biometrics and execute an action with the stored password
      *
      * This function intelligently handles biometric authentication based on user preferences
@@ -2308,473 +2301,474 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => {
      *   return Promise.resolve();
      * });
      */
-    enableBiometrics: async <T>(
-      callback: (biometricPassword?: string) => Promise<T>,
-    ): Promise<T> => {
-      try {
-        const biometryType = await Keychain.getSupportedBiometryType();
+  enableBiometrics: async <T>(
+    callback: (biometricPassword?: string) => Promise<T>,
+  ): Promise<T> => {
+    try {
+      const biometryType = await Keychain.getSupportedBiometryType();
 
-        if (!biometryType) {
-          throw new Error("No biometry type found");
-        }
+      if (!biometryType) {
+        throw new Error("No biometry type found");
+      }
 
-        const title: Record<Keychain.BIOMETRY_TYPE, string> = {
-          [Keychain.BIOMETRY_TYPE.FACE_ID]: t("authStore.faceId.signInTitle"),
-          [Keychain.BIOMETRY_TYPE.FINGERPRINT]: t(
-            "authStore.fingerprint.signInTitle",
-          ),
-          [Keychain.BIOMETRY_TYPE.FACE]: t(
-            "authStore.faceBiometrics.signInTitle",
-          ),
-          [Keychain.BIOMETRY_TYPE.TOUCH_ID]: t("authStore.touchId.signInTitle"),
-          [Keychain.BIOMETRY_TYPE.OPTIC_ID]: t("authStore.opticId.signInTitle"),
-          [Keychain.BIOMETRY_TYPE.IRIS]: t("authStore.iris.signInTitle"),
-        };
+      const title: Record<Keychain.BIOMETRY_TYPE, string> = {
+        [Keychain.BIOMETRY_TYPE.FACE_ID]: t("authStore.faceId.signInTitle"),
+        [Keychain.BIOMETRY_TYPE.FINGERPRINT]: t(
+          "authStore.fingerprint.signInTitle",
+        ),
+        [Keychain.BIOMETRY_TYPE.FACE]: t(
+          "authStore.faceBiometrics.signInTitle",
+        ),
+        [Keychain.BIOMETRY_TYPE.TOUCH_ID]: t("authStore.touchId.signInTitle"),
+        [Keychain.BIOMETRY_TYPE.OPTIC_ID]: t("authStore.opticId.signInTitle"),
+        [Keychain.BIOMETRY_TYPE.IRIS]: t("authStore.iris.signInTitle"),
+      };
 
-        // Get the stored password from biometric storage
-        const storedData = await biometricDataStorage.getItem(
-          BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
-          {
-            title: title[biometryType],
-            cancel: t("common.cancel"),
-          },
-        );
-        if (!storedData || !storedData.password) {
-          set({ isLoading: false });
-          throw new Error(
-            "No stored password found for biometric authentication",
-          );
-        }
-
-        // Execute the callback function
-        return await callback(storedData.password);
-      } catch (error) {
-        logger.error(
-          "enableBiometrics",
-          "Biometric authentication failed",
-          error,
-        );
+      // Get the stored password from biometric storage
+      const storedData = await biometricDataStorage.getItem(
+        BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
+        {
+          title: title[biometryType],
+          cancel: t("common.cancel"),
+        },
+      );
+      if (!storedData || !storedData.password) {
         set({ isLoading: false });
-        throw error;
+        throw new Error(
+          "No stored password found for biometric authentication",
+        );
       }
-    },
 
-    /**
-     * Verifies an action with biometric authentication
-     *
-     * This function handles biometric authentication for sensitive actions.
-     * It retrieves the stored password from biometric storage and passes it to the callback.
-     * If biometrics are disabled or unavailable, it falls back to calling the callback
-     * with an undefined password, allowing the action to proceed without biometric verification and letting the caller handle password management.
-     *
-     * @template T - The return type of the callback function
-     * @template P - The parameter types for the callback function
-     * @param {(password?: string, ...args: P) => Promise<T>} callback - The function to execute after successful biometric authentication
-     * @param {...P} args - Additional arguments to pass to the callback function
-     * @returns {Promise<T>} The result of the callback function
-     *
-     * @example
-     * // Example 1: Simple action verification
-     * await verifyActionWithBiometrics(async (password: string) => {
-     *   const key = await getKeyFromKeyManager(password);
-     *   return await performAction(key);
-     * });
-     *
-     * // Example 2: Action with additional parameters
-     * await verifyActionWithBiometrics(
-     *   async (password: string, transaction: Transaction) => {
-     *     const key = await getKeyFromKeyManager(password);
-     *     return await signTransaction(transaction, key.privateKey);
-     *   },
-     *   transaction
-     * );
-     *
-     * // Example 3: Action with multiple additional parameters
-     * await verifyActionWithBiometrics(
-     *   async (password: string, transaction: Transaction, network: string) => {
-     *     const key = await getKeyFromKeyManager(password);
-     *     return await signTransaction(transaction, key.privateKey, network);
-     *   },
-     *   transaction,
-     *   network
-     * );
-     */
-    verifyActionWithBiometrics: async <T, P extends unknown[]>(
-      callback: (password?: string, ...args: P) => Promise<T>,
-      ...args: P
-    ): Promise<T> => {
-      try {
-        const rnBiometrics = new ReactNativeBiometrics({
-          allowDeviceCredentials: true,
-        });
-        // Check if biometrics is enabled first
-        const { isBiometricsEnabled } = usePreferencesStore.getState();
-        const { signInMethod } = get();
+      // Execute the callback function
+      return await callback(storedData.password);
+    } catch (error) {
+      logger.error(
+        "enableBiometrics",
+        "Biometric authentication failed",
+        error,
+      );
+      set({ isLoading: false });
+      throw error;
+    }
+  },
 
-        // If biometrics is not enabled or user opts to use password, call the callback directly with an empty password
-        if (!isBiometricsEnabled || signInMethod === LoginType.PASSWORD) {
-          return await callback(undefined, ...args);
-        }
+  /**
+   * Verifies an action with biometric authentication
+   *
+   * This function handles biometric authentication for sensitive actions.
+   * It retrieves the stored password from biometric storage and passes it to the callback.
+   * If biometrics are disabled or unavailable, it falls back to calling the callback
+   * with an undefined password, allowing the action to proceed without biometric verification and letting the caller handle password management.
+   *
+   * @template T - The return type of the callback function
+   * @template P - The parameter types for the callback function
+   * @param {(password?: string, ...args: P) => Promise<T>} callback - The function to execute after successful biometric authentication
+   * @param {...P} args - Additional arguments to pass to the callback function
+   * @returns {Promise<T>} The result of the callback function
+   *
+   * @example
+   * // Example 1: Simple action verification
+   * await verifyActionWithBiometrics(async (password: string) => {
+   *   const key = await getKeyFromKeyManager(password);
+   *   return await performAction(key);
+   * });
+   *
+   * // Example 2: Action with additional parameters
+   * await verifyActionWithBiometrics(
+   *   async (password: string, transaction: Transaction) => {
+   *     const key = await getKeyFromKeyManager(password);
+   *     return await signTransaction(transaction, key.privateKey);
+   *   },
+   *   transaction
+   * );
+   *
+   * // Example 3: Action with multiple additional parameters
+   * await verifyActionWithBiometrics(
+   *   async (password: string, transaction: Transaction, network: string) => {
+   *     const key = await getKeyFromKeyManager(password);
+   *     return await signTransaction(transaction, key.privateKey, network);
+   *   },
+   *   transaction,
+   *   network
+   * );
+   */
+  verifyActionWithBiometrics: async <T, P extends unknown[]>(
+    callback: (password?: string, ...args: P) => Promise<T>,
+    ...args: P
+  ): Promise<T> => {
+    try {
+      const rnBiometrics = new ReactNativeBiometrics({
+        allowDeviceCredentials: true,
+      });
+      // Check if biometrics is enabled first
+      const { isBiometricsEnabled } = usePreferencesStore.getState();
+      const { signInMethod } = get();
 
-        // Only check sensor availability and biometry type if biometrics are enabled
-        const isSensorAvailable = await rnBiometrics.isSensorAvailable();
-        if (!isSensorAvailable) {
-          return await callback(undefined, ...args);
-        }
+      // If biometrics is not enabled or user opts to use password, call the callback directly with an empty password
+      if (!isBiometricsEnabled || signInMethod === LoginType.PASSWORD) {
+        return await callback(undefined, ...args);
+      }
 
-        const biometryType = await Keychain.getSupportedBiometryType();
-        if (!biometryType) {
-          return await callback(undefined, ...args);
-        }
+      // Only check sensor availability and biometry type if biometrics are enabled
+      const isSensorAvailable = await rnBiometrics.isSensorAvailable();
+      if (!isSensorAvailable) {
+        return await callback(undefined, ...args);
+      }
 
-        const title: Record<Keychain.BIOMETRY_TYPE, string> = {
-          [Keychain.BIOMETRY_TYPE.FACE_ID]: t("authStore.faceId.signInTitle"),
-          [Keychain.BIOMETRY_TYPE.FINGERPRINT]: t(
-            "authStore.fingerprint.signInTitle",
-          ),
-          [Keychain.BIOMETRY_TYPE.FACE]: t(
-            "authStore.faceBiometrics.signInTitle",
-          ),
-          [Keychain.BIOMETRY_TYPE.TOUCH_ID]: t("authStore.touchId.signInTitle"),
-          [Keychain.BIOMETRY_TYPE.OPTIC_ID]: t("authStore.opticId.signInTitle"),
-          [Keychain.BIOMETRY_TYPE.IRIS]: t("authStore.iris.signInTitle"),
-        };
+      const biometryType = await Keychain.getSupportedBiometryType();
+      if (!biometryType) {
+        return await callback(undefined, ...args);
+      }
 
-        // Get the stored password from biometric storage
-        const storedData = await biometricDataStorage.getItem(
-          BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
-          {
-            title: title[biometryType],
-            cancel: t("common.cancel"),
-          },
-        );
+      const title: Record<Keychain.BIOMETRY_TYPE, string> = {
+        [Keychain.BIOMETRY_TYPE.FACE_ID]: t("authStore.faceId.signInTitle"),
+        [Keychain.BIOMETRY_TYPE.FINGERPRINT]: t(
+          "authStore.fingerprint.signInTitle",
+        ),
+        [Keychain.BIOMETRY_TYPE.FACE]: t(
+          "authStore.faceBiometrics.signInTitle",
+        ),
+        [Keychain.BIOMETRY_TYPE.TOUCH_ID]: t("authStore.touchId.signInTitle"),
+        [Keychain.BIOMETRY_TYPE.OPTIC_ID]: t("authStore.opticId.signInTitle"),
+        [Keychain.BIOMETRY_TYPE.IRIS]: t("authStore.iris.signInTitle"),
+      };
 
-        if (!storedData || !storedData.password) {
-          set({ isLoading: false });
-          throw new Error(
-            "No stored password found for biometric authentication",
-          );
-        }
+      // Get the stored password from biometric storage
+      const storedData = await biometricDataStorage.getItem(
+        BIOMETRIC_STORAGE_KEYS.BIOMETRIC_PASSWORD,
+        {
+          title: title[biometryType],
+          cancel: t("common.cancel"),
+        },
+      );
 
-        // Execute the callback function with the retrieved password
-        return await callback(storedData.password, ...args);
-      } catch (error) {
-        logger.error(
-          "verifyActionWithBiometrics",
-          "Biometric authentication failed",
-          error,
-        );
+      if (!storedData || !storedData.password) {
         set({ isLoading: false });
-        throw error;
-      }
-    },
-
-    /**
-     * Imports a wallet with the provided credentials
-     *
-     * @param {ImportWalletParams} params - The wallet import parameters
-     */
-    importWallet: async (params): Promise<boolean> => {
-      set({ isLoading: true, error: null });
-
-      try {
-        await importWallet(params);
-        set({
-          ...initialState,
-          authStatus: AUTH_STATUS.AUTHENTICATED,
-          isLoading: false,
-        });
-
-        // Fetch active account after successful wallet import
-        get().fetchActiveAccount();
-        return true;
-      } catch (error) {
-        logger.error(
-          "useAuthenticationStore.importWallet",
-          "Import wallet failed",
-          error,
+        throw new Error(
+          "No stored password found for biometric authentication",
         );
-        set({
-          error:
-            error instanceof Error
-              ? error.message
-              : t("authStore.error.failedToImportWallet"),
-          isLoading: false,
-        });
-        return false;
-      }
-    },
-
-    /**
-     * Gets the current authentication status
-     *
-     * @returns {Promise<AuthStatus>} The current authentication status
-     */
-    getAuthStatus: async () => {
-      // Always re-validate auth status to ensure consistency
-      // Don't rely on cached status as it may be stale after app updates
-      const authStatus = await getAuthStatus();
-      set({ authStatus });
-
-      // If the hash key is expired, navigate to lock screen
-      if (authStatus === AUTH_STATUS.HASH_KEY_EXPIRED) {
-        get().navigateToLockScreen();
       }
 
-      return authStatus;
-    },
+      // Execute the callback function with the retrieved password
+      return await callback(storedData.password, ...args);
+    } catch (error) {
+      logger.error(
+        "verifyActionWithBiometrics",
+        "Biometric authentication failed",
+        error,
+      );
+      set({ isLoading: false });
+      throw error;
+    }
+  },
 
-    /**
-     * Sets the authentication status
-     *
-     * @param {AuthStatus} authStatus - The authentication status
-     */
-    setAuthStatus: (authStatus: AuthStatus) => {
-      set({ authStatus });
-    },
+  /**
+   * Imports a wallet with the provided credentials
+   *
+   * @param {ImportWalletParams} params - The wallet import parameters
+   */
+  importWallet: async (params): Promise<boolean> => {
+    set({ isLoading: true, error: null });
 
-    /**
-     * Navigates to the lock screen
-     *
-     * Used when authentication expires or user needs to re-authenticate
-     */
-    navigateToLockScreen: () => {
-      const { navigationRef } = get();
-      if (navigationRef && navigationRef.isReady()) {
-        // Check if we're already on the lock screen to prevent navigation loops
-        const currentRoute = navigationRef.getCurrentRoute();
-        if (currentRoute?.name === ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN) {
-          // Already on lock screen, don't navigate again
-          return;
-        }
+    try {
+      await importWallet(params);
+      set({
+        ...initialState,
+        authStatus: AUTH_STATUS.AUTHENTICATED,
+        isLoading: false,
+      });
 
-        // Use resetRoot instead of navigate to avoid warnings with conditional navigators
-        navigationRef.resetRoot({
-          index: 0,
-          routes: [{ name: ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN }],
-        });
-      }
-    },
+      // Fetch active account after successful wallet import
+      get().fetchActiveAccount();
+      return true;
+    } catch (error) {
+      logger.error(
+        "useAuthenticationStore.importWallet",
+        "Import wallet failed",
+        error,
+      );
+      set({
+        error:
+          error instanceof Error
+            ? error.message
+            : t("authStore.error.failedToImportWallet"),
+        isLoading: false,
+      });
+      return false;
+    }
+  },
 
-    /**
-     * Fetches the active account data
-     *
-     * Checks auth status first and redirects to lock screen if hash key is expired
-     *
-     * @returns {Promise<ActiveAccount | null>} The active account or null if not found
-     */
-    fetchActiveAccount: async () => {
-      set({ isLoadingAccount: true, accountError: null });
+  /**
+   * Gets the current authentication status
+   *
+   * @returns {Promise<AuthStatus>} The current authentication status
+   */
+  getAuthStatus: async () => {
+    // Always re-validate auth status to ensure consistency
+    // Don't rely on cached status as it may be stale after app updates
+    const authStatus = await getAuthStatus();
+    set({ authStatus });
 
-      try {
-        // Check auth status first
-        const authStatus = await getAuthStatus();
+    // If the hash key is expired, navigate to lock screen
+    if (authStatus === AUTH_STATUS.HASH_KEY_EXPIRED) {
+      get().navigateToLockScreen();
+    }
 
-        // Security: Block access when hash key is expired or when locked
-        // LOCKED state requires password re-entry before accessing sensitive data
-        if (
-          authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ||
-          authStatus === AUTH_STATUS.LOCKED
-        ) {
-          set({
-            authStatus,
-          });
+    return authStatus;
+  },
 
-          // Navigate to lock screen
-          get().navigateToLockScreen();
+  /**
+   * Sets the authentication status
+   *
+   * @param {AuthStatus} authStatus - The authentication status
+   */
+  setAuthStatus: (authStatus: AuthStatus) => {
+    set({ authStatus });
+  },
 
-          set({ isLoadingAccount: false });
-          return null;
-        }
-
-        // Use the freshly fetched authStatus for consistency
-        const activeAccount = await getActiveAccount(authStatus);
-        set({ account: activeAccount, isLoadingAccount: false });
-        return activeAccount;
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
-        set({ accountError: errorMessage, isLoadingAccount: false });
-        return null;
-      }
-    },
-
-    /**
-     * Refreshes the active account data
-     *
-     * @returns {Promise<ActiveAccount | null>} The active account or null if not found
-     */
-    refreshActiveAccount: () => get().fetchActiveAccount(),
-
-    /**
-     * Sets the navigation reference for navigation actions
-     *
-     * @param {NavigationContainerRef<RootStackParamList>} ref - The navigation reference
-     */
-    setNavigationRef: (ref) => {
-      set({ navigationRef: ref });
-    },
-
-    /**
-     * Renames an account
-     *
-     * @param {RenameAccountParams} params - The rename account parameters
-     */
-    renameAccount: async (params) => {
-      set({ isRenamingAccount: true });
-
-      try {
-        await renameAccount(params);
-        await Promise.all([get().fetchActiveAccount(), get().getAllAccounts()]);
-        set({ isRenamingAccount: false });
-      } catch (error) {
-        logger.error("renameAccount", "Failed to rename account", error);
-
-        set({
-          error:
-            error instanceof Error
-              ? error.message
-              : t("authStore.error.failedToRenameAccount"),
-          isRenamingAccount: false,
-        });
-      }
-    },
-
-    /**
-     * Gets all accounts and updates the store
-     *
-     * @returns {Promise<void>}
-     */
-    getAllAccounts: async () => {
-      set({ isLoadingAllAccounts: true });
-
-      try {
-        const allAccounts = await getAllAccounts();
-        set({ allAccounts });
-      } catch (error) {
-        set({
-          error:
-            error instanceof Error
-              ? error.message
-              : t("authStore.error.failedToGetAllAccounts"),
-          isLoadingAllAccounts: false,
-        });
-      } finally {
-        set({ isLoadingAllAccounts: false });
-      }
-    },
-
-    createAccount: async (password: string) => {
-      set({ isCreatingAccount: true, error: null });
-
-      try {
-        await createAccount(password);
-
-        await Promise.all([get().getAllAccounts(), get().fetchActiveAccount()]);
-
-        set({ isCreatingAccount: false, error: null });
-      } catch (error) {
-        set({
-          error:
-            error instanceof Error
-              ? error.message
-              : t("authStore.error.failedToCreateAccount"),
-          isCreatingAccount: false,
-        });
-        throw error;
-      }
-    },
-
-    selectAccount: async (publicKey: string) => {
-      // Clear previous account data immediately to prevent showing stale data
-      clearAccountData();
-
-      set({ isSwitchingAccount: true, error: null });
-      try {
-        // Security: Check auth status before allowing account switching
-        // Block access when hash key is expired or when locked
-        const authStatus = await getAuthStatus();
-        if (
-          authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ||
-          authStatus === AUTH_STATUS.LOCKED
-        ) {
-          set({ authStatus });
-          get().navigateToLockScreen();
-          set({ isSwitchingAccount: false });
-          return;
-        }
-
-        await selectAccount(publicKey);
-        const activeAccount = await getActiveAccount(authStatus);
-        set({ account: activeAccount, isSwitchingAccount: false });
-      } catch (error) {
-        logger.error(
-          "useAuthenticationStore.selectAccount",
-          "Failed to select account",
-          error,
-        );
-
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
-
-        set({ error: errorMessage, isSwitchingAccount: false });
-      }
-    },
-
-    getTemporaryStore: async () => getTemporaryStore(get().authStatus),
-    clearError: () => {
-      set({ error: null });
-    },
-
-    selectNetwork: async (network: NETWORKS) => {
-      await dataStorage.setItem(STORAGE_KEYS.ACTIVE_NETWORK, network);
-
-      set({ network });
-    },
-
-    getKeyFromKeyManager: async (
-      password: string,
-      activeAccountId?: string | null,
-    ) => getKeyFromKeyManager(password, activeAccountId),
-
-    importSecretKey: async (params: ImportSecretKeyParams) => {
-      set({ isLoading: true, error: null });
-
-      try {
-        await importSecretKeyLocal(params, get().authStatus);
-
-        await Promise.all([get().getAllAccounts(), get().fetchActiveAccount()]);
-
-        set({ isLoading: false, error: null });
-      } catch (error) {
-        set({
-          error:
-            error instanceof Error
-              ? error.message
-              : t("authStore.error.failedToImportSecretKey"),
-          isLoading: false,
-        });
-
-        throw error;
-      }
-    },
-
-    devResetAppAuth: () => {
-      if (!__DEV__) {
+  /**
+   * Navigates to the lock screen
+   *
+   * Used when authentication expires or user needs to re-authenticate
+   */
+  navigateToLockScreen: () => {
+    const { navigationRef } = get();
+    if (navigationRef && navigationRef.isReady()) {
+      // Check if we're already on the lock screen to prevent navigation loops
+      const currentRoute = navigationRef.getCurrentRoute();
+      if (currentRoute?.name === ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN) {
+        // Already on lock screen, don't navigate again
         return;
       }
 
-      set({ ...initialState });
-      dataStorage.clear();
-      get().logout();
-    },
+      // Use resetRoot instead of navigate to avoid warnings with conditional navigators
+      navigationRef.resetRoot({
+        index: 0,
+        routes: [{ name: ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN }],
+      });
+    }
+  },
 
-    setSignInMethod: (method: LoginType) => {
-      set({ signInMethod: method });
-    },
+  /**
+   * Fetches the active account data
+   *
+   * Checks auth status first and redirects to lock screen if hash key is expired
+   *
+   * @returns {Promise<ActiveAccount | null>} The active account or null if not found
+   */
+  fetchActiveAccount: async () => {
+    set({ isLoadingAccount: true, accountError: null });
 
-    setHasTriggeredAppOpenBiometricsLogin: (hasTriggered: boolean) => {
-      set({ hasTriggeredAppOpenBiometricsLogin: hasTriggered });
-    },
-  };
-});
+    try {
+      // Check auth status first
+      const authStatus = await getAuthStatus();
+
+      // Security: Block access when hash key is expired or when locked
+      // LOCKED state requires password re-entry before accessing sensitive data
+      if (
+        authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ||
+        authStatus === AUTH_STATUS.LOCKED
+      ) {
+        set({
+          authStatus,
+        });
+
+        // Navigate to lock screen
+        get().navigateToLockScreen();
+
+        set({ isLoadingAccount: false });
+        return null;
+      }
+
+      // Use the freshly fetched authStatus for consistency
+      const activeAccount = await getActiveAccount(authStatus);
+      set({ account: activeAccount, isLoadingAccount: false });
+      return activeAccount;
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      set({ accountError: errorMessage, isLoadingAccount: false });
+      return null;
+    }
+  },
+
+  /**
+   * Refreshes the active account data
+   *
+   * @returns {Promise<ActiveAccount | null>} The active account or null if not found
+   */
+  refreshActiveAccount: () => get().fetchActiveAccount(),
+
+  /**
+   * Sets the navigation reference for navigation actions
+   *
+   * @param {NavigationContainerRef<RootStackParamList>} ref - The navigation reference
+   */
+  setNavigationRef: (ref) => {
+    set({ navigationRef: ref });
+  },
+
+  /**
+   * Renames an account
+   *
+   * @param {RenameAccountParams} params - The rename account parameters
+   */
+  renameAccount: async (params) => {
+    set({ isRenamingAccount: true });
+
+    try {
+      await renameAccount(params);
+      await Promise.all([get().fetchActiveAccount(), get().getAllAccounts()]);
+      set({ isRenamingAccount: false });
+    } catch (error) {
+      logger.error("renameAccount", "Failed to rename account", error);
+
+      set({
+        error:
+          error instanceof Error
+            ? error.message
+            : t("authStore.error.failedToRenameAccount"),
+        isRenamingAccount: false,
+      });
+    }
+  },
+
+  /**
+   * Gets all accounts and updates the store
+   *
+   * @returns {Promise<void>}
+   */
+  getAllAccounts: async () => {
+    set({ isLoadingAllAccounts: true });
+
+    try {
+      const allAccounts = await getAllAccounts();
+      set({ allAccounts });
+    } catch (error) {
+      set({
+        error:
+          error instanceof Error
+            ? error.message
+            : t("authStore.error.failedToGetAllAccounts"),
+        isLoadingAllAccounts: false,
+      });
+    } finally {
+      set({ isLoadingAllAccounts: false });
+    }
+  },
+
+  createAccount: async (password: string) => {
+    set({ isCreatingAccount: true, error: null });
+
+    try {
+      await createAccount(password);
+
+      await Promise.all([get().getAllAccounts(), get().fetchActiveAccount()]);
+
+      set({ isCreatingAccount: false, error: null });
+    } catch (error) {
+      set({
+        error:
+          error instanceof Error
+            ? error.message
+            : t("authStore.error.failedToCreateAccount"),
+        isCreatingAccount: false,
+      });
+      throw error;
+    }
+  },
+
+  selectAccount: async (publicKey: string) => {
+    // Clear previous account data immediately to prevent showing stale data
+    clearAccountData();
+
+    set({ isSwitchingAccount: true, error: null });
+    try {
+      // Security: Check auth status before allowing account switching
+      // Block access when hash key is expired or when locked
+      const authStatus = await getAuthStatus();
+      if (
+        authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ||
+        authStatus === AUTH_STATUS.LOCKED
+      ) {
+        set({ authStatus });
+        get().navigateToLockScreen();
+        set({ isSwitchingAccount: false });
+        return;
+      }
+
+      await selectAccount(publicKey);
+      const activeAccount = await getActiveAccount(authStatus);
+      set({ account: activeAccount, isSwitchingAccount: false });
+    } catch (error) {
+      logger.error(
+        "useAuthenticationStore.selectAccount",
+        "Failed to select account",
+        error,
+      );
+
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+
+      set({ error: errorMessage, isSwitchingAccount: false });
+    }
+  },
+
+  getTemporaryStore: async () => getTemporaryStore(get().authStatus),
+  clearError: () => {
+    set({ error: null });
+  },
+
+  selectNetwork: async (network: NETWORKS) => {
+    await dataStorage.setItem(STORAGE_KEYS.ACTIVE_NETWORK, network);
+
+    set({ network });
+  },
+
+  initializeNetwork: (): Promise<void> => initializeStore(set),
+
+  getKeyFromKeyManager: async (
+    password: string,
+    activeAccountId?: string | null,
+  ) => getKeyFromKeyManager(password, activeAccountId),
+
+  importSecretKey: async (params: ImportSecretKeyParams) => {
+    set({ isLoading: true, error: null });
+
+    try {
+      await importSecretKeyLocal(params, get().authStatus);
+
+      await Promise.all([get().getAllAccounts(), get().fetchActiveAccount()]);
+
+      set({ isLoading: false, error: null });
+    } catch (error) {
+      set({
+        error:
+          error instanceof Error
+            ? error.message
+            : t("authStore.error.failedToImportSecretKey"),
+        isLoading: false,
+      });
+
+      throw error;
+    }
+  },
+
+  devResetAppAuth: () => {
+    if (!__DEV__) {
+      return;
+    }
+
+    set({ ...initialState });
+    dataStorage.clear();
+    get().logout();
+  },
+
+  setSignInMethod: (method: LoginType) => {
+    set({ signInMethod: method });
+  },
+
+  setHasTriggeredAppOpenBiometricsLogin: (hasTriggered: boolean) => {
+    set({ hasTriggeredAppOpenBiometricsLogin: hasTriggered });
+  },
+}));
