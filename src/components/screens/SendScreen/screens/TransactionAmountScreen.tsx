@@ -644,10 +644,11 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       recipientAddress &&
       selectedBalance
     ) {
-      const minUnit =
+      const decimals =
         "decimals" in selectedBalance
-          ? new BigNumber(1).shiftedBy(-selectedBalance.decimals).toString()
-          : "1";
+          ? selectedBalance.decimals
+          : DEFAULT_DECIMALS;
+      const minUnit = new BigNumber(1).shiftedBy(-decimals).toString();
       const estimationAmount = selectedBalance.total.isGreaterThan(0)
         ? selectedBalance.total.toString()
         : minUnit;
@@ -671,10 +672,11 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       isSorobanTransaction(selectedBalance, recipientAddress) &&
       !new BigNumber(tokenAmount).isGreaterThan(0);
     if (needsFallback && selectedBalance) {
-      const minUnit =
+      const decimals =
         "decimals" in selectedBalance
-          ? new BigNumber(1).shiftedBy(-selectedBalance.decimals).toString()
-          : "1";
+          ? selectedBalance.decimals
+          : DEFAULT_DECIMALS;
+      const minUnit = new BigNumber(1).shiftedBy(-decimals).toString();
       const estimationAmount = selectedBalance.total.isGreaterThan(0)
         ? selectedBalance.total.toString()
         : minUnit;
