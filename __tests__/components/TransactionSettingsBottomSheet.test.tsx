@@ -640,6 +640,7 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
     mockUseTransactionSettingsStore.mockReturnValue(mockState);
     mockIsMuxedAccount.mockReturnValue(false);
     mockIsValidStellarAddress.mockReturnValue(true);
+    mockUseTransactionBuilderStore.mockReturnValue({ isSoroban: true } as any);
     // Contract supports muxed (to_muxed) → memo should be enabled
     mockCheckContractSupportsMuxed.mockResolvedValue(true);
 
