@@ -24,7 +24,6 @@ import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBrowserActions } from "hooks/useBrowserActions";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import useKeyboardVisible from "hooks/useKeyboardVisible";
 import React, { useRef, useState, useCallback, useEffect } from "react";
 import { Animated, Keyboard, Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -47,7 +46,7 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
   const mainContentFadeAnim = useRef(new Animated.Value(1)).current;
   const tabOverviewFadeAnim = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
-  const isKeyboardVisible = useKeyboardVisible();
+  const [isUrlBarFocused, setIsUrlBarFocused] = useState(false);
   const { t } = useAppTranslation();
   const { account } = useGetActiveAccount();
   const { allAccounts } = useAuthenticationStore();
@@ -312,7 +311,7 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
             javaScriptEnabled
             domStorageEnabled
           />
-          {isKeyboardVisible && (
+          {isUrlBarFocused && (
             <Pressable
               style={StyleSheet.absoluteFill}
               onPress={Keyboard.dismiss}
@@ -331,6 +330,7 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
           canGoBack={activeTab.canGoBack}
           onGoBack={browserActions.handleGoBack}
           contextMenuActions={browserActions.contextMenuActions}
+          onFocusChange={setIsUrlBarFocused}
         />
       </Animated.View>
 

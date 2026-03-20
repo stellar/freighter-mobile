@@ -35,6 +35,7 @@ interface BottomNavigationBarProps {
   canGoBack: boolean;
   onGoBack: () => void;
   contextMenuActions: MenuItem[];
+  onFocusChange?: (focused: boolean) => void;
 }
 
 const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
@@ -49,6 +50,7 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
     canGoBack,
     onGoBack,
     contextMenuActions,
+    onFocusChange,
   }) => {
     const { themeColors } = useColors();
     const { account } = useGetActiveAccount();
@@ -82,6 +84,7 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
 
         isSearchBarActive.current = true;
         setIsFocused(true);
+        onFocusChange?.(true);
 
         // Move cursor to beginning of input on focus. iOS needs a frame
         // defer to avoid racing with the keyboard animation.
@@ -106,6 +109,7 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
 
         isSearchBarActive.current = false;
         setIsFocused(false);
+        onFocusChange?.(false);
         // Explicitly blur so the next focus() call from the overlay isn't a
         // no-op. Android's hardware back button dismisses the keyboard without
         // blurring the TextInput, which leaves it in a "focused" state where
@@ -125,7 +129,7 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
         showListener.remove();
         hideListener.remove();
       };
-    }, [keyboardOffset, tabBarHeight]);
+    }, [keyboardOffset, tabBarHeight, onFocusChange]);
 
     const handleCancel = useCallback(() => {
       Keyboard.dismiss();
