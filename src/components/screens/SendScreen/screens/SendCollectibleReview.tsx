@@ -349,15 +349,27 @@ const SendCollectibleReviewScreen: React.FC<
     prepareTransaction(false);
   };
 
+  // Tracks the (recipient, tokenId) pair for which auto-simulation has
+  // already been requested. Prevents re-triggering after isBuilding drops back
+  // to false at the end of the build itself.
+  const lastAutoSimulatedKey = useRef<string | null>(null);
+
   // Auto-simulate to populate the Soroban fee breakdown as soon as the
   // collectible and recipient are available. Collectibles are always Soroban
   // transactions, so fees include an inclusion + resource component.
   useEffect(() => {
-    if (!isBuilding && recipientAddress && selectedCollectible) {
+    const currentKey = `${recipientAddress}|${selectedCollectible?.tokenId}`;
+
+    if (
+      !isBuilding &&
+      recipientAddress &&
+      selectedCollectible &&
+      lastAutoSimulatedKey.current !== currentKey
+    ) {
+      lastAutoSimulatedKey.current = currentKey;
       prepareTransaction(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recipientAddress, selectedCollectible?.tokenId]);
+  }, [recipientAddress, selectedCollectible, isBuilding, prepareTransaction]);
 
   const handleTransactionConfirmation = useCallback(() => {
     setIsProcessing(true);

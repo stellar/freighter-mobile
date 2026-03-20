@@ -53,6 +53,8 @@ describe("transactionBuilder Duck", () => {
         isSubmitting: false,
         transactionHash: null,
         error: null,
+        requestId: null,
+        isSoroban: false,
         sorobanResourceFeeXlm: null,
         sorobanInclusionFeeXlm: null,
       });
@@ -297,6 +299,10 @@ describe("transactionBuilder Duck", () => {
         isSubmitting: false,
         transactionHash: mockTxHash,
         error: "Some previous error",
+        requestId: "some-request-id",
+        isSoroban: true,
+        sorobanResourceFeeXlm: "0.0001000",
+        sorobanInclusionFeeXlm: "0.0001000",
       });
     });
 
@@ -311,6 +317,10 @@ describe("transactionBuilder Duck", () => {
     expect(state.isSubmitting).toBe(false);
     expect(state.transactionHash).toBeNull();
     expect(state.error).toBeNull();
+    expect(state.requestId).toBeNull();
+    expect(state.isSoroban).toBe(false);
+    expect(state.sorobanResourceFeeXlm).toBeNull();
+    expect(state.sorobanInclusionFeeXlm).toBeNull();
   });
 
   describe("buildSendCollectibleTransaction", () => {

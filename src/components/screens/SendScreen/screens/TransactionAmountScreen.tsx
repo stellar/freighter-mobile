@@ -632,18 +632,26 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     ],
   );
 
+  // Tracks the (balanceId, recipient) pair for which auto-simulation has
+  // already been requested. Prevents re-triggering after isBuilding drops back
+  // to false at the end of the estimation build itself.
+  const lastAutoSimulatedKey = useRef<string | null>(null);
+
   // Auto-simulate Soroban fee breakdown as soon as token + recipient are set.
   // Uses /simulate-tx with amount 0 for early fee estimation so the user can
   // see the resource fee breakdown before entering an amount.
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
+    const currentKey = `${selectedBalance?.id}|${recipientAddress}`;
 
     if (
       !isBuilding &&
+      lastAutoSimulatedKey.current !== currentKey &&
       isSorobanTransaction(selectedBalance, recipientAddress) &&
       recipientAddress &&
       selectedBalance
     ) {
+      lastAutoSimulatedKey.current = currentKey;
       timer = setTimeout(() => {
         prepareTransaction(false, "0");
       }, 300);
@@ -652,8 +660,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     return () => {
       if (timer !== undefined) clearTimeout(timer);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedBalance?.id, recipientAddress]);
+  }, [selectedBalance, recipientAddress, isBuilding, prepareTransaction]);
 
   const handleSettingsChange = () => {
     if (isBuilding) return;

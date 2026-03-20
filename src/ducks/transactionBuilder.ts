@@ -229,7 +229,10 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
               params: {
                 publicKey: params.senderAddress,
                 destination: finalDestination,
-                amount: Number(builtTxResult.amountInBaseUnits ?? 0),
+                amount:
+                  builtTxResult.amountInBaseUnits !== undefined
+                    ? String(builtTxResult.amountInBaseUnits)
+                    : "0",
               },
               contractAddress: builtTxResult.contractId!,
             });

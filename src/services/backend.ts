@@ -714,7 +714,7 @@ export const handleContractLookup = async (
  * @property {Object} params - Transfer parameters
  * @property {string} params.publicKey - Sender's public key
  * @property {string} params.destination - Recipient's address
- * @property {number} params.amount - Amount to transfer
+ * @property {string} params.amount - Amount to transfer in base units
  * @property {string} network_url - Network URL for simulation
  * @property {string} network_passphrase - Network passphrase
  */
@@ -726,7 +726,7 @@ export interface SimulateTokenTransferParams {
   params: {
     publicKey: string;
     destination: string;
-    amount: number;
+    amount: string;
   };
   network_url: string;
   network_passphrase: string;
@@ -735,7 +735,7 @@ export interface SimulateTokenTransferParams {
 /**
  * Response from token transfer simulation
  * @interface SimulateTransactionResponse
- * @property {SorobanSimulationResponse} simulationResponse - Soroban simulation response from backend
+ * @property {SorobanSimulationResponse} simulationResponse - Soroban simulation response with fee data
  * @property {string} preparedTransaction - XDR-encoded prepared transaction
  */
 export interface SimulateTransactionResponse {

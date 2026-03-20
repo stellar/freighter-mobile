@@ -19,7 +19,6 @@ import {
 import { NetworkCongestion } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useSwapSettingsStore } from "ducks/swapSettings";
-import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import {
   parseDisplayNumber,
@@ -113,9 +112,6 @@ const TransactionSettingsBottomSheet: React.FC<
     (item) => item.id === (selectedTokenId || NATIVE_TOKEN_CODE),
   );
 
-  // Single source of truth for Soroban state from the transaction builder store
-  const { isSoroban: isSorobanTransaction } = useTransactionBuilderStore();
-
   const isCollectibleTransfer =
     Boolean(selectedCollectibleDetails?.collectionAddress) &&
     Boolean(selectedCollectibleDetails?.tokenId);
@@ -129,6 +125,13 @@ const TransactionSettingsBottomSheet: React.FC<
 
   const isSorobanRecipient = Boolean(
     recipientAddress && isContractId(recipientAddress),
+  );
+
+  // Derived from current context parameters (balance, recipient, collectible)
+  // rather than the builder store, which may be stale or reflect a different
+  // transaction flow (e.g. a previous send or a swap transaction).
+  const isSorobanTransaction = Boolean(
+    isCollectibleTransfer || isCustomToken || isSorobanRecipient,
   );
 
   // Determine contract ID for Soroban transactions

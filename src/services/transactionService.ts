@@ -708,7 +708,7 @@ interface SimulateContractTransferParams {
   params: {
     publicKey: string;
     destination: string;
-    amount: number;
+    amount: string;
   };
   contractAddress: string;
 }
