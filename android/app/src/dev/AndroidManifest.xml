@@ -1,0 +1,9 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!--
+      Dev-flavor manifest overlay.
+      Sets networkSecurityConfig so cleartext HTTP to 127.0.0.1/localhost is allowed
+      (needed for Metro bundler in debug builds and for the WalletConnect mock-dapp
+      server during E2E tests).
+    -->
+    <application android:networkSecurityConfig="@xml/network_security_config" />
+</manifest>

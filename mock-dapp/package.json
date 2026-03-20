@@ -12,10 +12,12 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@stellar/stellar-base": "^14.0.4",
     "@walletconnect/sign-client": "^2.17.2",
     "@walletconnect/types": "^2.17.2",
     "@walletconnect/utils": "^2.17.2",
     "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7"
   },

@@ -157,16 +157,60 @@ fi
 CURRENT_RECORDING_PID=""
 CURRENT_RECORDING_ANDROID_DEVICE=""
 CURRENT_VIDEO_PATH=""
+CURRENT_RECORDING_ERROR_LOG=""
 
 # Mock server PID (initialized before trap is set)
 MOCK_SERVER_PID=""
 MOCK_SERVER_PORT=3001
 
+wait_for_ios_recording_start() {
+  local recording_pid="$1"
+  local recording_error_log="$2"
+  local wait_seconds=10
+  local waited=0
+
+  while [ "$waited" -lt "$wait_seconds" ]; do
+    if [ -f "$recording_error_log" ] && grep -q "Recording started" "$recording_error_log" 2>/dev/null; then
+      return 0
+    fi
+
+    if ! kill -0 "$recording_pid" 2>/dev/null; then
+      return 1
+    fi
+
+    sleep 1
+    waited=$((waited + 1))
+  done
+
+  return 1
+}
+
+wait_for_ios_recording_file() {
+  local video_path="$1"
+  local wait_seconds=10
+  local waited=0
+
+  while [ "$waited" -lt "$wait_seconds" ]; do
+    if [ -f "$video_path" ]; then
+      return 0
+    fi
+
+    sleep 1
+    waited=$((waited + 1))
+  done
+
+  return 1
+}
+
 # Function to start video recording for a specific flow
 # Arguments: $1 = output directory for this flow
 start_flow_recording() {
   local flow_output_dir="$1"
-  CURRENT_VIDEO_PATH="$flow_output_dir/recording.mp4"
+  local absolute_flow_output_dir
+
+  absolute_flow_output_dir=$(cd "$flow_output_dir" && pwd)
+  CURRENT_VIDEO_PATH="$absolute_flow_output_dir/recording.mp4"
+  CURRENT_RECORDING_ERROR_LOG="$absolute_flow_output_dir/recording-error.log"
   CURRENT_RECORDING_PID=""
   CURRENT_RECORDING_ANDROID_DEVICE=""
   
@@ -176,15 +220,24 @@ start_flow_recording() {
     # Respect --platform: only record on the targeted device
     if [ "$PLATFORM" = "android" ]; then
       echo "📱 Recording Android (device: $MAESTRO_DEVICE)"
-      adb -s "$MAESTRO_DEVICE" shell screenrecord --bugreport /sdcard/test-recording.mp4 &
+      adb -s "$MAESTRO_DEVICE" shell screenrecord /sdcard/test-recording.mp4 &
       CURRENT_RECORDING_PID="android"
       CURRENT_RECORDING_ANDROID_DEVICE="$MAESTRO_DEVICE"
       echo "✅ Android recording started"
     elif [ "$PLATFORM" = "ios" ]; then
       echo "📱 Recording iOS (UDID: $MAESTRO_DEVICE)"
-      xcrun simctl io "$MAESTRO_DEVICE" recordVideo --codec=h264 --force "$CURRENT_VIDEO_PATH" &
+      # Warm up SimRenderServer before recording to prevent SimRenderServer.SimulatorError Code=2
+      xcrun simctl io "$MAESTRO_DEVICE" screenshot /tmp/simctl-warmup.png 2>/dev/null || true
+      xcrun simctl io "$MAESTRO_DEVICE" recordVideo --codec=h264 --force "$CURRENT_VIDEO_PATH" \
+        2>"$CURRENT_RECORDING_ERROR_LOG" &
       CURRENT_RECORDING_PID=$!
-      echo "✅ iOS recording started (PID: $CURRENT_RECORDING_PID)"
+      if wait_for_ios_recording_start "$CURRENT_RECORDING_PID" "$CURRENT_RECORDING_ERROR_LOG"; then
+        echo "✅ iOS recording started (PID: $CURRENT_RECORDING_PID)"
+      else
+        echo "⚠️  Warning: iOS recording failed to start — see recording-error.log"
+        cat "$CURRENT_RECORDING_ERROR_LOG" 2>/dev/null || true
+        CURRENT_RECORDING_PID=""
+      fi
     fi
     return 0
   fi
@@ -194,22 +247,38 @@ start_flow_recording() {
     echo "📱 Detected Android device/emulator"
     CURRENT_RECORDING_ANDROID_DEVICE=$(adb devices 2>/dev/null | awk '/^[^[:space:]]+[[:space:]]+device$/ { print $1; exit }')
     if [ -n "$CURRENT_RECORDING_ANDROID_DEVICE" ]; then
-      adb -s "$CURRENT_RECORDING_ANDROID_DEVICE" shell screenrecord --bugreport /sdcard/test-recording.mp4 &
+      adb -s "$CURRENT_RECORDING_ANDROID_DEVICE" shell screenrecord /sdcard/test-recording.mp4 &
     else
-      adb shell screenrecord --bugreport /sdcard/test-recording.mp4 &
+      adb shell screenrecord /sdcard/test-recording.mp4 &
     fi
     CURRENT_RECORDING_PID="android"
     echo "✅ Android recording started"
   elif [ -n "${DEVICE_UDID:-}" ] && command -v xcrun >/dev/null 2>&1; then
     echo "📱 Detected iOS simulator (UDID: $DEVICE_UDID)"
-    xcrun simctl io "$DEVICE_UDID" recordVideo --codec=h264 --force "$CURRENT_VIDEO_PATH" &
+    xcrun simctl io "$DEVICE_UDID" screenshot /tmp/simctl-warmup.png 2>/dev/null || true
+    xcrun simctl io "$DEVICE_UDID" recordVideo --codec=h264 --force "$CURRENT_VIDEO_PATH" \
+      2>"$CURRENT_RECORDING_ERROR_LOG" &
     CURRENT_RECORDING_PID=$!
-    echo "✅ iOS recording started (PID: $CURRENT_RECORDING_PID)"
+    if wait_for_ios_recording_start "$CURRENT_RECORDING_PID" "$CURRENT_RECORDING_ERROR_LOG"; then
+      echo "✅ iOS recording started (PID: $CURRENT_RECORDING_PID)"
+    else
+      echo "⚠️  Warning: iOS recording failed to start — see recording-error.log"
+      cat "$CURRENT_RECORDING_ERROR_LOG" 2>/dev/null || true
+      CURRENT_RECORDING_PID=""
+    fi
   elif command -v xcrun >/dev/null 2>&1; then
     echo "📱 Detected iOS simulator (booted)"
-    xcrun simctl io booted recordVideo --codec=h264 --force "$CURRENT_VIDEO_PATH" &
+    xcrun simctl io booted screenshot /tmp/simctl-warmup.png 2>/dev/null || true
+    xcrun simctl io booted recordVideo --codec=h264 --force "$CURRENT_VIDEO_PATH" \
+      2>"$CURRENT_RECORDING_ERROR_LOG" &
     CURRENT_RECORDING_PID=$!
-    echo "✅ iOS recording started (PID: $CURRENT_RECORDING_PID)"
+    if wait_for_ios_recording_start "$CURRENT_RECORDING_PID" "$CURRENT_RECORDING_ERROR_LOG"; then
+      echo "✅ iOS recording started (PID: $CURRENT_RECORDING_PID)"
+    else
+      echo "⚠️  Warning: iOS recording failed to start — see recording-error.log"
+      cat "$CURRENT_RECORDING_ERROR_LOG" 2>/dev/null || true
+      CURRENT_RECORDING_PID=""
+    fi
   else
     echo "⚠️  Warning: No device/simulator detected for video recording"
   fi
@@ -245,10 +314,11 @@ stop_flow_recording() {
     # iOS: Stop recording by killing the process
     kill -INT "$CURRENT_RECORDING_PID" 2>/dev/null || true
     wait "$CURRENT_RECORDING_PID" 2>/dev/null || true
-    if [ -f "$CURRENT_VIDEO_PATH" ]; then
+    if wait_for_ios_recording_file "$CURRENT_VIDEO_PATH"; then
       echo "✅ Video saved to $CURRENT_VIDEO_PATH"
     else
       echo "⚠️  Warning: Failed to save iOS recording"
+      cat "$CURRENT_RECORDING_ERROR_LOG" 2>/dev/null || true
     fi
   fi
   
@@ -256,6 +326,7 @@ stop_flow_recording() {
   CURRENT_RECORDING_PID=""
   CURRENT_RECORDING_ANDROID_DEVICE=""
   CURRENT_VIDEO_PATH=""
+  CURRENT_RECORDING_ERROR_LOG=""
 }
 
 # Cleanup function to stop recording if script is interrupted
@@ -308,11 +379,13 @@ if [ -n "$FLOW_NAME_FILTER" ]; then
   ALL_FLOW_FILES="$_filtered"
 fi
 
-# Now apply sharding to the filtered list
+# Now apply sharding to the filtered list.
+# Skip sharding when a specific flow name was requested — the caller already
+# targeted this worker to run exactly that flow; the modulo would filter it out.
 FLOW_FILES=""
 idx=0
 for file in $ALL_FLOW_FILES; do
-  if [ -n "$SHARD_TOTAL" ] && [ -n "$SHARD_INDEX" ]; then
+  if [ -n "$SHARD_TOTAL" ] && [ -n "$SHARD_INDEX" ] && [ -z "$FLOW_NAME_FILTER" ]; then
     _mod=$(( idx % SHARD_TOTAL ))
     if [ "$_mod" -ne "$SHARD_INDEX" ]; then
       idx=$(( idx + 1 ))
@@ -332,10 +405,10 @@ if [ -z "$FLOW_FILES" ]; then
   exit 1
 fi
 
-# Check if any flows require mock-dapp server (only SignMessageMockDapp needs it)
+# Check if any flows require mock-dapp server
 NEEDS_MOCK_SERVER=false
 for flow_file in $FLOW_FILES; do
-  if echo "$flow_file" | grep -q "SignMessageMockDapp"; then
+  if echo "$flow_file" | grep -q "MockDapp"; then
     NEEDS_MOCK_SERVER=true
     break
   fi
@@ -346,7 +419,7 @@ if [ "$NEEDS_MOCK_SERVER" = true ]; then
   echo "🔌 Starting mock-dapp server for WalletConnect tests..."
   
   # Check if server is already running
-  if curl -s "http://127.0.0.1:$MOCK_SERVER_PORT/health" >/dev/null 2>&1; then
+  if curl -sf "http://127.0.0.1:$MOCK_SERVER_PORT/health" >/dev/null 2>&1; then
     echo "✅ Mock-dapp server already running on port $MOCK_SERVER_PORT"
   else
     # Start server in background
@@ -359,7 +432,7 @@ if [ "$NEEDS_MOCK_SERVER" = true ]; then
       # Wait for server to be ready (max 10 seconds)
       echo "⏳ Waiting for mock-dapp server to start..."
       for i in $(seq 1 10); do
-        if curl -s "http://127.0.0.1:$MOCK_SERVER_PORT/health" >/dev/null 2>&1; then
+        if curl -sf "http://127.0.0.1:$MOCK_SERVER_PORT/health" >/dev/null 2>&1; then
           echo "✅ Mock-dapp server started successfully (PID: $MOCK_SERVER_PID)"
           break
         fi
@@ -367,7 +440,7 @@ if [ "$NEEDS_MOCK_SERVER" = true ]; then
       done
       
       # Verify it started
-      if ! curl -s "http://127.0.0.1:$MOCK_SERVER_PORT/health" >/dev/null 2>&1; then
+      if ! curl -sf "http://127.0.0.1:$MOCK_SERVER_PORT/health" >/dev/null 2>&1; then
         echo "❌ Error: Mock-dapp server failed to start. Check e2e-artifacts/mock-server.log"
         if [ -n "$MOCK_SERVER_PID" ]; then
           kill "$MOCK_SERVER_PID" 2>/dev/null || true
@@ -422,12 +495,17 @@ for file in $FLOW_FILES; do
   # Pass E2E_TEST_RECOVERY_PHRASE and IS_CI_ENV when set via Maestro's `-e KEY=value`.
   # --debug-output ensures maestro.log is written to FLOW_OUTPUT_DIR (otherwise it goes to ~/.maestro/tests/).
   _ret=0
+  # Each -e flag and its KEY=VALUE argument are separate array elements, so no
+  # word-splitting occurs even for values containing base64 chars (+, /, =).
   MAESTRO_ENV_ARGS=()
   if [ -n "${E2E_TEST_RECOVERY_PHRASE:-}" ]; then
     MAESTRO_ENV_ARGS+=("-e" "E2E_TEST_RECOVERY_PHRASE=$E2E_TEST_RECOVERY_PHRASE")
   fi
   if [ -n "${IS_CI_ENV:-}" ]; then
     MAESTRO_ENV_ARGS+=("-e" "IS_CI_ENV=$IS_CI_ENV")
+  fi
+  if [ -n "${E2E_TEST_FUNDED_RECOVERY_PHRASE:-}" ]; then
+    MAESTRO_ENV_ARGS+=("-e" "E2E_TEST_FUNDED_RECOVERY_PHRASE=$E2E_TEST_FUNDED_RECOVERY_PHRASE")
   fi
 
   # Retry logic for ADB connection issues

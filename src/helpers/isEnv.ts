@@ -10,4 +10,4 @@ export const isDev = (getBundleId() as BundleIds) === BundleIds.freighterDev;
 
 export const isProd = (getBundleId() as BundleIds) === BundleIds.freighterProd;
 
-export const isE2ETest = Config.IS_E2E_TEST === "true";
+export const isE2ETest = isDev && Config.IS_E2E_TEST === "true";

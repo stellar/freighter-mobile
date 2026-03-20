@@ -392,6 +392,7 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
       refreshAccount: jest.fn(),
       signTransaction: jest.fn(),
       signMessage: jest.fn(),
+      signAuthEntry: jest.fn(),
     });
     mockUseBalancesList.mockReturnValue({
       balanceItems: [mockSelectedBalance as any, mockXlmBalance as any],
@@ -990,6 +991,7 @@ describe("TransactionAmountScreen - Address Change Scenarios", () => {
       refreshAccount: jest.fn(),
       signTransaction: jest.fn(),
       signMessage: jest.fn(),
+      signAuthEntry: jest.fn(),
     });
 
     mockUseBalancesList.mockReturnValue({

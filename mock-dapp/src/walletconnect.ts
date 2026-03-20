@@ -20,6 +20,10 @@ export interface SignXdrParams {
   description?: string;
 }
 
+export interface SignAuthEntryParams {
+  entryXdr: string;
+}
+
 export interface SignMessageResponse {
   signature: string;
   signer: string;
@@ -28,6 +32,11 @@ export interface SignMessageResponse {
 export interface SignXdrResponse {
   signedXDR: string;
   signer: string;
+}
+
+export interface SignAuthEntryResponse {
+  signedAuthEntry: string;
+  signerAddress: string;
 }
 
 /**
@@ -65,6 +74,14 @@ export class MockWalletConnectClient {
       this.sessions.delete(topic);
     });
 
+    // Proposal expiry fires from a timer inside @walletconnect/utils. Listening here
+    // prevents the event from going unhandled and surfacing as an uncaughtException.
+    this.client.on("proposal_expire", ({ id }: { id: number }) => {
+      console.log(
+        `[WC] Proposal expired (id: ${id}) — session was not approved in time`,
+      );
+    });
+
     console.log("[WC] SignClient initialized successfully");
   }
 
@@ -87,6 +104,7 @@ export class MockWalletConnectClient {
             "stellar_signMessage",
             "stellar_signXDR",
             "stellar_signAndSubmitXDR",
+            "stellar_signAuthEntry",
           ],
           chains: ["stellar:testnet", "stellar:pubnet"],
           events: ["accountsChanged"],
@@ -212,6 +230,42 @@ export class MockWalletConnectClient {
 
     console.log("[WC] stellar_signAndSubmitXDR response received");
     return result as { hash: string };
+  }
+
+  /**
+   * Send stellar_signAuthEntry request
+   */
+  async requestSignAuthEntry(
+    topic: string,
+    params: SignAuthEntryParams,
+    network: "testnet" | "pubnet" = "testnet",
+  ): Promise<SignAuthEntryResponse> {
+    if (!this.client) {
+      throw new Error("Client not initialized");
+    }
+
+    const session = this.sessions.get(topic);
+    if (!session) {
+      throw new Error(`Session not found: ${topic}`);
+    }
+
+    const chainId = `stellar:${network}`;
+
+    console.log(`[WC] Requesting stellar_signAuthEntry on ${chainId}:`, {
+      entryXdr: `${params.entryXdr.substring(0, 50)}...`,
+    });
+
+    const result = await this.client.request({
+      topic,
+      chainId,
+      request: {
+        method: "stellar_signAuthEntry",
+        params,
+      },
+    });
+
+    console.log("[WC] stellar_signAuthEntry response received");
+    return result as SignAuthEntryResponse;
   }
 
   /**

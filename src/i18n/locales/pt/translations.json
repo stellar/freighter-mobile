@@ -11,6 +11,7 @@
     "paste": "Colar",
     "done": "Concluído",
     "none": "Nenhum",
+    "required": "Obrigatório",
     "cancel": "Cancelar",
     "confirm": "Confirmar",
     "continue": "Continuar",
@@ -37,7 +38,8 @@
     "copy": "Copiar",
     "name": "Nome",
     "collection": "Coleção",
-    "tokenId": "ID do Token"
+    "tokenId": "ID do Token",
+    "authEntry": "Entrada de Autorização"
   },
   "home": {
     "title": "Início",
@@ -850,12 +852,14 @@
     "transactionRequest": "Solicitação de transação",
     "confirmTransaction": "Confirmar transação",
     "signMessage": "Assinar mensagem",
+    "signAuthEntry": "Assinar entrada de autorização",
     "cancel": "Cancelar",
     "confirm": "Confirmar",
     "confirmAnyway": "Confirmar mesmo assim",
     "xdrItem": "XDR",
     "itemCopied": "{{itemName}} copiado para a área de transferência!",
-    "transactionDetails": "Detalhes da transação"
+    "transactionDetails": "Detalhes da transação",
+    "authEntryDetails": "Detalhes da entrada de autorização"
   },
   "qrScanner": {
     "cameraNotAvailable": "Câmera não disponível\nou não permitida"
@@ -865,6 +869,7 @@
     "returnToBrowser": "Você pode agora retornar ao seu navegador",
     "signSuccessfull": "Transação assinada com sucesso!",
     "signMessageSuccessfull": "Mensagem assinada com sucesso!",
+    "signAuthEntrySuccessfull": "Entrada de autorização assinada com sucesso!",
     "signAndSubmitSuccessfull": "Transação assinada e enviada com sucesso!",
     "userRejected": "O usuário rejeitou a solicitação",
     "errorInitializing": "Erro ao inicializar o WalletConnect",
@@ -873,7 +878,11 @@
     "errorConnecting": "Erro ao conectar com {{dappName}}",
     "errorSigning": "Erro ao assinar a transação",
     "errorSigningMessage": "Erro ao assinar a mensagem",
-    "errorInvalidMessage": "Mensagem inválida",
+    "errorSigningAuthEntry": "Erro ao assinar a entrada de autorização",
+    "invalidRequestTitle": "Não foi possível processar a solicitação",
+    "errorInvalidMessage": "A mensagem está ausente ou vazia",
+    "errorInvalidAuthEntry": "O XDR da entrada de autorização está ausente ou malformado",
+    "errorAuthEntryNetworkMismatch": "A entrada de autorização é para uma rede diferente",
     "errorEmptyMessage": "Não é possível assinar mensagem vazia",
     "errorMessageTooLong": "Mensagem muito longa (máximo 1KB)",
     "errorSubmitting": "Erro ao enviar a transação",
@@ -898,7 +907,38 @@
     "walletIsLocked": "Carteira bloqueada",
     "userNotAuthenticated": "Usuário não autenticado",
     "invalidTransactionOrigin": "Domínio de transação não confiável",
-    "invalidTransactionOriginMessage": "Uma solicitação de transação WalletConnect foi recebida de {{transactionRequestOrigin}}, mas este domínio não está conectado na sua carteira Freighter."
+    "invalidTransactionOriginMessage": "Uma solicitação de transação WalletConnect foi recebida de {{transactionRequestOrigin}}, mas este domínio não está conectado na sua carteira Freighter.",
+    "errorAuthEntryTooLarge": "Entrada de autorização excede o tamanho máximo permitido",
+    "unableToLoadAuthEntry": "Não foi possível carregar os detalhes da solicitação",
+    "failedToProcessAuthEntry": "Não foi possível assinar — a entrada de autorização está malformada ou inválida",
+    "e2eHelper": {
+      "title": "WC E2E Helper",
+      "createSession": "Criar Sessão",
+      "createSessionFailed": "Falha na Criação da Sessão",
+      "copyWcUri": "Copiar URI WC",
+      "requestSignAuthEntry": "Solicitar Assinatura de Entrada de Autorização",
+      "requestSignMessage": "Solicitar Assinatura de Mensagem",
+      "noSession": "Nenhuma Sessão",
+      "noSessionMessage": "Crie uma sessão primeiro",
+      "requestFailed": "Solicitação Falhou",
+      "serverOffline": "Servidor Offline",
+      "mockServerNotRunning": "Servidor Mock dApp não está em execução",
+      "mockServerNotRunningLong": "Servidor Mock dApp não está em execução. Inicie-o com 'npm start' na pasta mock-dapp.",
+      "mockServerOfflineStatus": "Servidor mock está offline. Inicie-o com: cd mock-dapp && npm start",
+      "sessionCreated": "Sessão criada!",
+      "wcUriCopied": "URI WC copiado para a área de transferência!",
+      "signingMessage": "Solicitando assinatura de mensagem...",
+      "signingAuthEntry": "Solicitando assinatura de entrada de autorização...",
+      "requestSignAuthEntryWrongNetwork": "Solicitar Entrada de Autorização Rede Errada",
+      "signingAuthEntryWrongNetwork": "Solicitando assinatura de entrada com rede errada...",
+      "sessionId": "ID da Sessão",
+      "wcUri": "URI WC",
+      "message": "Mensagem",
+      "network": "Rede"
+    }
+  },
+  "soroban": {
+    "onlyCredentialsAddressSupported": "signAuthEntry: somente entradas sorobanCredentialsAddress são suportadas"
   },
   "sendRecipient": {
     "error": {
@@ -1143,7 +1183,7 @@
       },
       "site": {
         "malicious": "Este site foi marcado como malicioso",
-        "suspicious": "Este site não foi encontrado no banco de dados",
+        "suspicious": "Não foi possível verificar este site quanto a comportamento malicioso",
         "confirmTrust": "Só confirme se você confia neste site"
       },
       "transaction": {
@@ -1261,7 +1301,8 @@
       "source": "Origem",
       "executableType": "Tipo de executável",
       "accountId": "ID da conta",
-      "salt": "Salt"
+      "salt": "Salt",
+      "executableWasmHash": "Hash WASM executável"
     },
     "claimPredicates": {
       "unconditional": "Incondicional",
