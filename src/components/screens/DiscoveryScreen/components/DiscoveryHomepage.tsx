@@ -208,6 +208,16 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
       [expandedFadeAnim],
     );
 
+    const handleCollapseSection = useCallback(() => {
+      Animated.timing(expandedFadeAnim, {
+        toValue: 0,
+        duration: BROWSER_CONSTANTS.CLOSE_ANIMATION_DURATION,
+        useNativeDriver: true,
+      }).start(() => {
+        setExpandedSection(null);
+      });
+    }, [expandedFadeAnim]);
+
     // Start fade-in after the expanded view has mounted
     useEffect(() => {
       if (expandedSection) {
@@ -218,16 +228,6 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
         }).start();
       }
     }, [expandedSection, expandedFadeAnim]);
-
-    const handleCollapseSection = useCallback(() => {
-      Animated.timing(expandedFadeAnim, {
-        toValue: 0,
-        duration: BROWSER_CONSTANTS.CLOSE_ANIMATION_DURATION,
-        useNativeDriver: true,
-      }).start(() => {
-        setExpandedSection(null);
-      });
-    }, [expandedFadeAnim]);
 
     const handleExpandRecent = useCallback(() => {
       expandedSourceRef.current =
