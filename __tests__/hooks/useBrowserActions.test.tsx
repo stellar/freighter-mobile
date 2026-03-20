@@ -2,10 +2,11 @@ import { renderHook } from "@testing-library/react-hooks";
 import { logger } from "config/logger";
 import { useBrowserTabsStore } from "ducks/browserTabs";
 import { useProtocolsStore } from "ducks/protocols";
-import { isHomepageUrl } from "helpers/browser";
+import { isHomepageUrl, normalizeUrl } from "helpers/browser";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBrowserActions } from "hooks/useBrowserActions";
 import { Share, Platform } from "react-native";
+import { analytics } from "services/analytics";
 
 // Mock dependencies
 jest.mock("config/logger");
@@ -61,6 +62,10 @@ const mockUseAppTranslation = useAppTranslation as jest.MockedFunction<
 >;
 
 const mockShare = Share as jest.Mocked<typeof Share>;
+const mockNormalizeUrl = normalizeUrl as jest.MockedFunction<
+  typeof normalizeUrl
+>;
+const mockAnalytics = analytics as jest.Mocked<typeof analytics>;
 
 describe("useBrowserActions", () => {
   const mockWebViewRef = {
@@ -118,6 +123,31 @@ describe("useBrowserActions", () => {
         "tab-123",
         "https://example.com",
       );
+    });
+
+    it("should track protocol opened via URL bar when input is not a search", () => {
+      const { result } = renderHook(() => useBrowserActions(mockWebViewRef));
+
+      result.current.handleUrlSubmit("example.com");
+
+      expect(mockAnalytics.trackDiscoverProtocolOpened).toHaveBeenCalledWith(
+        "https://example.com",
+        "url_bar",
+        [],
+      );
+    });
+
+    it("should not track protocol opened when input is a search query", () => {
+      mockNormalizeUrl.mockReturnValueOnce({
+        url: "https://google.com/search?q=test",
+        isSearch: true,
+      });
+
+      const { result } = renderHook(() => useBrowserActions(mockWebViewRef));
+
+      result.current.handleUrlSubmit("test query");
+
+      expect(mockAnalytics.trackDiscoverProtocolOpened).not.toHaveBeenCalled();
     });
 
     it("should not call goToPage when no active tab", () => {
@@ -203,6 +233,21 @@ describe("useBrowserActions", () => {
       expect(mockStore.closeTab).toHaveBeenCalledWith("tab-123");
     });
 
+    it("should track tab closed with tab count and active tab URL", () => {
+      (mockUseBrowserTabsStore as any).getState = jest
+        .fn()
+        .mockReturnValue({ tabs: [mockTab] });
+
+      const { result } = renderHook(() => useBrowserActions(mockWebViewRef));
+
+      result.current.handleCloseActiveTab();
+
+      expect(mockAnalytics.trackDiscoverTabClosed).toHaveBeenCalledWith(
+        1,
+        "https://example.com",
+      );
+    });
+
     it("should not call closeTab when no active tab", () => {
       mockUseBrowserTabsStore.mockReturnValue({
         ...mockStore,
@@ -224,6 +269,19 @@ describe("useBrowserActions", () => {
       result.current.handleCloseAllTabs();
 
       expect(mockStore.closeAllTabs).toHaveBeenCalled();
+    });
+
+    it("should track all tabs closed with current tab count", () => {
+      mockUseBrowserTabsStore.mockReturnValue({
+        ...mockStore,
+        tabs: [mockTab, { ...mockTab, id: "tab-456" }],
+      } as any);
+
+      const { result } = renderHook(() => useBrowserActions(mockWebViewRef));
+
+      result.current.handleCloseAllTabs();
+
+      expect(mockAnalytics.trackDiscoverAllTabsClosed).toHaveBeenCalledWith(2);
     });
   });
 
