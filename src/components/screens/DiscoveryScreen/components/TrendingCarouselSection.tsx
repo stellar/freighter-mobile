@@ -10,11 +10,10 @@ interface TrendingCarouselSectionProps {
   items: TrendingItem[];
   onTitlePress: () => void;
   onItemPress: (item: TrendingItem) => void;
-  onScrollEnd: () => Promise<void>;
 }
 
 const TrendingCarouselSection: React.FC<TrendingCarouselSectionProps> =
-  React.memo(({ title, items, onTitlePress, onItemPress, onScrollEnd }) => {
+  React.memo(({ title, items, onTitlePress, onItemPress }) => {
     if (items.length === 0) return null;
 
     return (
@@ -25,11 +24,7 @@ const TrendingCarouselSection: React.FC<TrendingCarouselSectionProps> =
           className="mt-3 mb-3"
           style={{ paddingLeft: pxValue(DEFAULT_PADDING) }}
         />
-        <TrendingCarousel
-          items={items}
-          onItemPress={onItemPress}
-          onScrollEnd={onScrollEnd}
-        />
+        <TrendingCarousel items={items} onItemPress={onItemPress} />
       </View>
     );
   });

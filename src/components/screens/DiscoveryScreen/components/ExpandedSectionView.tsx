@@ -16,20 +16,11 @@ interface ExpandedSectionViewProps {
   onBack: () => void;
   onItemOpen: (item: VerticalListItem) => void;
   onItemPress: (item: VerticalListItem) => void;
-  onScrollEnd?: () => void;
   headerRight?: React.ReactNode;
 }
 
 const ExpandedSectionView: React.FC<ExpandedSectionViewProps> = React.memo(
-  ({
-    title,
-    items,
-    onBack,
-    onItemOpen,
-    onItemPress,
-    onScrollEnd,
-    headerRight,
-  }) => {
+  ({ title, items, onBack, onItemOpen, onItemPress, headerRight }) => {
     const renderItem = useCallback(
       // eslint-disable-next-line react/no-unused-prop-types
       ({ item }: { item: VerticalListItem }) => (
@@ -77,7 +68,7 @@ const ExpandedSectionView: React.FC<ExpandedSectionViewProps> = React.memo(
           showsVerticalScrollIndicator={false}
           contentContainerStyle={contentContainerStyle}
           ItemSeparatorComponent={itemSeparator}
-          onScrollEndDrag={onScrollEnd}
+          removeClippedSubviews
         />
       </View>
     );

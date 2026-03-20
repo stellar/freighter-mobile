@@ -64,8 +64,7 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
     const { t } = useAppTranslation();
     const { themeColors } = useColors();
 
-    const { goToPage, tabs, updateTab, showTabOverview } =
-      useBrowserTabsStore();
+    const { goToPage, showTabOverview } = useBrowserTabsStore();
     const { protocols } = useProtocolsStore();
     const { recentProtocols, addRecentProtocol, clearRecentProtocols } =
       useRecentProtocolsStore();
@@ -120,7 +119,12 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
       [protocols],
     );
 
+    // Read tabs/updateTab from the store imperatively (getState) instead of
+    // subscribing via the hook. Subscribing causes a re-render loop: every
+    // screenshot capture updates the store → re-renders the entire tree,
+    // producing visible flickering.
     const captureScreenshot = useCallback(async () => {
+      const { tabs, updateTab } = useBrowserTabsStore.getState();
       await captureTabScreenshot({
         viewShotRef: viewShotRef.current,
         tabId,
@@ -128,9 +132,12 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
         updateTab,
         source: "DiscoveryHomepage",
       });
-    }, [tabs, tabId, updateTab]);
+    }, [tabId]);
 
-    // Capture screenshot on initial render and when tab overview is closed
+    // Capture screenshot on initial render and when tab overview is closed.
+    // This is the ONLY place screenshots should be triggered — do NOT add
+    // captures on scroll events (onScrollEndDrag, onScrollEnd, etc.) as that
+    // causes a re-render feedback loop and visible flickering.
     useEffect(() => {
       if (!showTabOverview) {
         captureScreenshot();
@@ -320,10 +327,6 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
       });
     }, [handleExpand, t, dappsItems]);
 
-    const handleScrollEnd = useCallback(() => {
-      captureScreenshot();
-    }, [captureScreenshot]);
-
     return (
       <ViewShot
         ref={viewShotRef}
@@ -345,7 +348,6 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
         <ScrollView
           className="flex-1 bg-background-primary"
           showsVerticalScrollIndicator={false}
-          onScrollEndDrag={handleScrollEnd}
           pointerEvents={expandedSection ? "none" : "auto"}
         >
           <TrendingCarouselSection
@@ -353,7 +355,6 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
             items={trendingItems}
             onTitlePress={handleExpandTrending}
             onItemPress={handleTrendingItemPress}
-            onScrollEnd={captureScreenshot}
           />
 
           <VerticalListSection
@@ -399,7 +400,6 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
               onBack={handleCollapseSection}
               onItemOpen={handleExpandedItemOpen}
               onItemPress={handleExpandedItemPress}
-              onScrollEnd={handleScrollEnd}
               headerRight={
                 expandedSection.isRecents ? recentsHeaderRight : undefined
               }

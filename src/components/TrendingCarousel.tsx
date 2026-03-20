@@ -35,7 +35,6 @@ interface TrendingCardProps {
 interface TrendingCarouselProps {
   items: TrendingItem[];
   onItemPress: (item: TrendingItem) => void;
-  onScrollEnd: () => Promise<void>;
 }
 
 // =============================================================================
@@ -111,11 +110,7 @@ TrendingCard.displayName = "TrendingCard";
 // =============================================================================
 
 const TrendingCarousel: React.FC<TrendingCarouselProps> = React.memo(
-  ({ items, onItemPress, onScrollEnd }) => {
-    const handleScrollEnd = useCallback(() => {
-      onScrollEnd();
-    }, [onScrollEnd]);
-
+  ({ items, onItemPress }) => {
     const renderItem = useCallback(
       // eslint-disable-next-line react/no-unused-prop-types
       ({ item }: { item: TrendingItem }) => (
@@ -123,6 +118,8 @@ const TrendingCarousel: React.FC<TrendingCarouselProps> = React.memo(
       ),
       [onItemPress],
     );
+
+    const keyExtractor = useCallback((item: TrendingItem) => item.id, []);
 
     const contentContainerStyle = useMemo(
       () => ({
@@ -136,9 +133,9 @@ const TrendingCarousel: React.FC<TrendingCarouselProps> = React.memo(
         horizontal
         data={items}
         renderItem={renderItem}
-        keyExtractor={(item) => item.id}
+        keyExtractor={keyExtractor}
         showsHorizontalScrollIndicator={false}
-        onScrollEndDrag={handleScrollEnd}
+        removeClippedSubviews
         contentContainerStyle={contentContainerStyle}
       />
     );
