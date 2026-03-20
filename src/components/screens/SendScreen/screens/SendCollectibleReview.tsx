@@ -3,6 +3,7 @@ import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import BottomSheet from "components/BottomSheet";
 import { CollectibleImage } from "components/CollectibleImage";
+import FeeBreakdownBottomSheet from "components/FeeBreakdownBottomSheet";
 import { IconButton } from "components/IconButton";
 import InformationBottomSheet from "components/InformationBottomSheet";
 import { List, ListItemProps } from "components/List";
@@ -131,6 +132,7 @@ const SendCollectibleReviewScreen: React.FC<
   const [isProcessing, setIsProcessing] = useState(false);
   const addMemoExplanationBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const transactionSettingsBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const feeBreakdownBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const muxedAddressInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [transactionScanResult, setTransactionScanResult] = useState<
     Blockaid.StellarTransactionScanResponse | undefined
@@ -346,6 +348,16 @@ const SendCollectibleReviewScreen: React.FC<
     // Settings have changed, rebuild the transaction with new values
     prepareTransaction(false);
   };
+
+  // Auto-simulate to populate the Soroban fee breakdown as soon as the
+  // collectible and recipient are available. Collectibles are always Soroban
+  // transactions, so fees include an inclusion + resource component.
+  useEffect(() => {
+    if (!isBuilding && recipientAddress && selectedCollectible) {
+      prepareTransaction(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recipientAddress, selectedCollectible?.tokenId]);
 
   const handleTransactionConfirmation = useCallback(() => {
     setIsProcessing(true);
@@ -694,6 +706,20 @@ const SendCollectibleReviewScreen: React.FC<
             onCancel={handleCancelTransactionSettings}
             onConfirm={handleConfirmTransactionSettings}
             onSettingsChange={handleSettingsChange}
+            onOpenFeeBreakdown={() =>
+              feeBreakdownBottomSheetModalRef.current?.present()
+            }
+          />
+        }
+      />
+      <BottomSheet
+        modalRef={feeBreakdownBottomSheetModalRef}
+        handleCloseModal={() =>
+          feeBreakdownBottomSheetModalRef.current?.dismiss()
+        }
+        customContent={
+          <FeeBreakdownBottomSheet
+            onClose={() => feeBreakdownBottomSheetModalRef.current?.dismiss()}
           />
         }
       />

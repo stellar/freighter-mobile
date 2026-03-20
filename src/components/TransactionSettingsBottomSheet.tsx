@@ -19,16 +19,14 @@ import {
 import { NetworkCongestion } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useSwapSettingsStore } from "ducks/swapSettings";
+import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import {
   parseDisplayNumber,
   formatNumberForDisplay,
 } from "helpers/formatAmount";
 import { getMemoDisabledState } from "helpers/muxedAddress";
-import {
-  isContractId,
-  isSorobanTransaction as checkIsSorobanTransaction,
-} from "helpers/soroban";
+import { isContractId } from "helpers/soroban";
 import { enforceSettingInputDecimalSeparator } from "helpers/transactionSettingsUtils";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -114,15 +112,13 @@ const TransactionSettingsBottomSheet: React.FC<
   const selectedBalance = balanceItems.find(
     (item) => item.id === (selectedTokenId || NATIVE_TOKEN_CODE),
   );
+
+  // Single source of truth for Soroban state from the transaction builder store
+  const { isSoroban: isSorobanTransaction } = useTransactionBuilderStore();
+
   const isCollectibleTransfer =
     Boolean(selectedCollectibleDetails?.collectionAddress) &&
     Boolean(selectedCollectibleDetails?.tokenId);
-
-  // Soroban transaction: collectible transfer, custom token, or recipient is contract address
-  const isSorobanTransaction = Boolean(
-    isCollectibleTransfer ||
-      checkIsSorobanTransaction(selectedBalance, recipientAddress),
-  );
 
   // Keep isCustomToken for contractId determination below
   const isCustomToken = Boolean(

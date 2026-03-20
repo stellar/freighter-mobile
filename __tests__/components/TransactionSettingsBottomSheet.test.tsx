@@ -4,6 +4,7 @@ import TransactionSettingsBottomSheet from "components/TransactionSettingsBottom
 import { TransactionContext, NETWORKS } from "config/constants";
 import { PricedBalance, TokenTypeWithCustomToken } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
+import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { isContractId, isSorobanTransaction } from "helpers/soroban";
 import { isMuxedAccount, isValidStellarAddress } from "helpers/stellar";
@@ -13,6 +14,11 @@ import React from "react";
 import { checkContractSupportsMuxed } from "services/backend";
 
 jest.mock("ducks/transactionSettings");
+jest.mock("ducks/transactionBuilder", () => ({
+  useTransactionBuilderStore: jest.fn(() => ({
+    isSoroban: false,
+  })),
+}));
 jest.mock("ducks/auth", () => ({
   useAuthenticationStore: jest.fn(),
 }));
@@ -96,6 +102,10 @@ jest.mock("helpers/stellar", () => ({
 const mockUseTransactionSettingsStore =
   useTransactionSettingsStore as jest.MockedFunction<
     typeof useTransactionSettingsStore
+  >;
+const mockUseTransactionBuilderStore =
+  useTransactionBuilderStore as jest.MockedFunction<
+    typeof useTransactionBuilderStore
   >;
 const mockUseAuthenticationStore =
   useAuthenticationStore as jest.MockedFunction<typeof useAuthenticationStore>;
@@ -452,6 +462,7 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
     );
     // Mock isSorobanTransaction to return true when we have a custom token balance
     mockIsSorobanTransaction.mockReturnValue(true);
+    mockUseTransactionBuilderStore.mockReturnValue({ isSoroban: true } as any);
     mockIsMuxedAccount.mockReturnValue(false);
     mockIsValidStellarAddress.mockReturnValue(true);
     // Contract supports muxed (to_muxed) → memo should be enabled
@@ -526,6 +537,7 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
     );
     // Mock isSorobanTransaction to return true when we have a custom token balance
     mockIsSorobanTransaction.mockReturnValue(true);
+    mockUseTransactionBuilderStore.mockReturnValue({ isSoroban: true } as any);
     mockIsMuxedAccount.mockReturnValue(false);
     mockIsValidStellarAddress.mockReturnValue(true);
 
@@ -663,6 +675,7 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
     mockUseTransactionSettingsStore.mockReturnValue(mockState);
     mockIsMuxedAccount.mockReturnValue(false);
     mockIsValidStellarAddress.mockReturnValue(true);
+    mockUseTransactionBuilderStore.mockReturnValue({ isSoroban: true } as any);
     // Contract doesn't support muxed (to_muxed) → memo should be disabled
     mockCheckContractSupportsMuxed.mockReset();
     mockCheckContractSupportsMuxed.mockResolvedValue(false);

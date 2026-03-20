@@ -714,7 +714,7 @@ export const handleContractLookup = async (
  * @property {Object} params - Transfer parameters
  * @property {string} params.publicKey - Sender's public key
  * @property {string} params.destination - Recipient's address
- * @property {string} params.amount - Amount to transfer
+ * @property {number} params.amount - Amount to transfer
  * @property {string} network_url - Network URL for simulation
  * @property {string} network_passphrase - Network passphrase
  */
@@ -726,7 +726,7 @@ export interface SimulateTokenTransferParams {
   params: {
     publicKey: string;
     destination: string;
-    amount: string;
+    amount: number;
   };
   network_url: string;
   network_passphrase: string;

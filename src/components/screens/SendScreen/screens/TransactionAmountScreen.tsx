@@ -95,6 +95,7 @@ type TransactionAmountScreenProps = NativeStackScreenProps<
 const shouldSkipHighlighting = (rawInput: string | null): boolean =>
   // Only skip if it's exactly "0" (no separator, no trailing zeros) or empty
   !rawInput || rawInput === "0" || rawInput === "";
+
 /**
  * TransactionAmountScreen Component
  *
@@ -572,7 +573,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       const hasRequiredParams =
         recipientAddress &&
         selectedBalance &&
-        numberEffectiveAmount.isGreaterThan(0);
+        (feeEstimationAmount !== undefined ||
+          numberEffectiveAmount.isGreaterThan(0));
       if (!hasRequiredParams) {
         return;
       }
@@ -631,29 +633,19 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   );
 
   // Auto-simulate Soroban fee breakdown as soon as token + recipient are set.
-  // Soroban resource fees are per-token (not per-amount), so we use the token's
-  // own available balance as the estimation amount — it's already in the correct
-  // decimal precision and is guaranteed to pass balance validation.
-  // When balance is zero (e.g. the user is about to acquire the token), fall
-  // back to the smallest representable unit derived from the token's decimals.
+  // Uses /simulate-tx with amount 0 for early fee estimation so the user can
+  // see the resource fee breakdown before entering an amount.
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
 
     if (
+      !isBuilding &&
       isSorobanTransaction(selectedBalance, recipientAddress) &&
       recipientAddress &&
       selectedBalance
     ) {
-      const decimals =
-        "decimals" in selectedBalance
-          ? selectedBalance.decimals
-          : DEFAULT_DECIMALS;
-      const minUnit = new BigNumber(1).shiftedBy(-decimals).toString();
-      const estimationAmount = selectedBalance.total.isGreaterThan(0)
-        ? selectedBalance.total.toString()
-        : minUnit;
       timer = setTimeout(() => {
-        prepareTransaction(false, estimationAmount);
+        prepareTransaction(false, "0");
       }, 300);
     }
 
@@ -664,26 +656,12 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   }, [selectedBalance?.id, recipientAddress]);
 
   const handleSettingsChange = () => {
-    // For Soroban, fees are per-token so simulate with the available balance
-    // when the user hasn't entered an amount yet. Use the smallest
-    // representable unit (derived from the token's decimals) as a fallback
-    // when the balance is also zero.
-    const needsFallback =
+    if (isBuilding) return;
+
+    const needsEstimation =
       isSorobanTransaction(selectedBalance, recipientAddress) &&
       !new BigNumber(tokenAmount).isGreaterThan(0);
-    if (needsFallback && selectedBalance) {
-      const decimals =
-        "decimals" in selectedBalance
-          ? selectedBalance.decimals
-          : DEFAULT_DECIMALS;
-      const minUnit = new BigNumber(1).shiftedBy(-decimals).toString();
-      const estimationAmount = selectedBalance.total.isGreaterThan(0)
-        ? selectedBalance.total.toString()
-        : minUnit;
-      prepareTransaction(false, estimationAmount);
-    } else {
-      prepareTransaction(false, undefined);
-    }
+    prepareTransaction(false, needsEstimation ? "0" : undefined);
   };
 
   const handleTransactionConfirmation = useCallback(() => {
@@ -1122,10 +1100,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         customContent={
           <FeeBreakdownBottomSheet
             onClose={() => feeBreakdownBottomSheetModalRef.current?.dismiss()}
-            isSorobanTransaction={isSorobanTransaction(
-              selectedBalance,
-              recipientAddress,
-            )}
           />
         }
       />

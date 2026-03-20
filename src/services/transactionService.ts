@@ -87,6 +87,7 @@ interface IValidateTransactionParams {
   destination: string;
   fee: string;
   timeout: number;
+  skipAmountValidation?: boolean;
 }
 
 /**
@@ -97,8 +98,8 @@ export const validateTransactionParams = (
   params: IValidateTransactionParams,
 ): string | null => {
   const { senderAddress, balance, amount, destination, fee, timeout } = params;
-  // Validate amount is positive
-  if (Number(amount) <= 0) {
+  // Validate amount is positive (skipped for Soroban fee estimation with amount 0)
+  if (!params.skipAmountValidation && Number(amount) <= 0) {
     return t("transaction.errors.amountRequired");
   }
 
@@ -347,6 +348,15 @@ export const buildPaymentTransaction = async (
       throw new Error("Missing required parameters for building transaction");
     }
 
+    // Soroban fee estimation can use amount 0 — resource fees are
+    // independent of the transfer amount. Skip only the amount check;
+    // all other validations (fee, timeout, address, balance) still run.
+    const isSorobanTransfer =
+      (selectedBalance &&
+        "contractId" in selectedBalance &&
+        Boolean(selectedBalance.contractId)) ||
+      isContractId(recipientAddress);
+
     const validationError = validateTransactionParams({
       senderAddress,
       balance: selectedBalance,
@@ -354,6 +364,7 @@ export const buildPaymentTransaction = async (
       destination: recipientAddress,
       fee: transactionFee,
       timeout: transactionTimeout,
+      skipAmountValidation: isSorobanTransfer && Number(amount) === 0,
     });
 
     if (validationError) {
@@ -697,7 +708,7 @@ interface SimulateContractTransferParams {
   params: {
     publicKey: string;
     destination: string;
-    amount: string;
+    amount: number;
   };
   contractAddress: string;
 }
@@ -718,9 +729,9 @@ export const simulateContractTransfer = async ({
   }
 
   try {
-    // Note: If destination is already muxed (from buildPaymentTransaction),
-    // it will be passed through here. The memo parameter is kept for backward compatibility
-    // but for CAP-0067, memo should be embedded in the muxed address.
+    // Follow the extension pattern: use /simulate-token-transfer which
+    // builds and simulates the transaction on the backend.
+    // Amount is passed as a number to match the extension's API contract.
     const result = await simulateTokenTransfer({
       address: contractAddress,
       pub_key: transaction.source,

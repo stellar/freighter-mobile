@@ -22,7 +22,6 @@ import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { isLiquidityPool } from "helpers/balances";
 import { pxValue } from "helpers/dimensions";
 import { formatTokenForDisplay, formatFiatAmount } from "helpers/formatAmount";
-import { isSorobanTransaction } from "helpers/soroban";
 import { truncateAddress, isMuxedAccount } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
@@ -103,6 +102,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
     transactionXDR,
     isBuilding,
     error,
+    isSoroban,
     sorobanResourceFeeXlm,
     sorobanInclusionFeeXlm,
   } = useTransactionBuilderStore();
@@ -267,13 +267,15 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
             />
           ) : (
             <View className="flex-row items-center gap-[8px]">
-              <TouchableOpacity
-                onPress={handleOpenFeeBreakdown}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                className="mt-[2px]"
-              >
-                <Icon.InfoCircle themeColor="gray" size={16} />
-              </TouchableOpacity>
+              {isSoroban && (
+                <TouchableOpacity
+                  onPress={handleOpenFeeBreakdown}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  className="mt-[2px]"
+                >
+                  <Icon.InfoCircle themeColor="gray" size={16} />
+                </TouchableOpacity>
+              )}
               <Text md primary>
                 {formatTokenForDisplay(totalFeeXlm, NATIVE_TOKEN_CODE)}
               </Text>
@@ -306,6 +308,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
       handleCopyXdr,
       handleOpenFeeBreakdown,
       isBuilding,
+      isSoroban,
       renderMemoTitle,
       renderXdrContent,
       t,
@@ -400,10 +403,6 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
         customContent={
           <FeeBreakdownBottomSheet
             onClose={() => feeBreakdownSheetRef.current?.dismiss()}
-            isSorobanTransaction={
-              isSorobanTransaction(selectedBalance) ||
-              type === SendType.Collectible
-            }
           />
         }
       />
