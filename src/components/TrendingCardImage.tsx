@@ -47,8 +47,7 @@ const TrendingCardImage: React.FC<TrendingCardImageProps> = React.memo(
           clearTimeout(timerRef.current);
         }
       };
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [backgroundUrl]);
+    }, [backgroundUrl, onShowPlaceholder, onHidePlaceholder]);
 
     return (
       <>
