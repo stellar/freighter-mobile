@@ -16,12 +16,13 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Keyboard, TextInput, View, TouchableOpacity } from "react-native";
-import Animated, {
-  useAnimatedKeyboard,
-  useAnimatedStyle,
-  useSharedValue,
-} from "react-native-reanimated";
+import {
+  Animated,
+  Keyboard,
+  TextInput,
+  View,
+  TouchableOpacity,
+} from "react-native";
 
 interface BottomNavigationBarProps {
   inputUrl: string;
@@ -55,6 +56,7 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
     const { account } = useGetActiveAccount();
     const { t } = useAppTranslation();
     const tabBarHeight = useBottomTabBarHeight();
+    const keyboardOffset = useRef(new Animated.Value(0)).current;
     const inputRef = useRef<TextInput>(null);
     const [isFocused, setIsFocused] = useState(false);
     const [cursorSelection, setCursorSelection] = useState<
@@ -62,21 +64,6 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
     >(undefined);
     // Tracks whether the search bar (not a WebView input) opened the keyboard
     const isSearchBarActive = useRef(false);
-    const isUrlBarActive = useSharedValue(false);
-
-    // Drives the translateY animation in perfect sync with the keyboard.
-    // On Android adjustResize handles repositioning, so we only offset on iOS.
-    const keyboard = useAnimatedKeyboard();
-    const animatedStyle = useAnimatedStyle(() => {
-      if (!isIOS || !isUrlBarActive.value) {
-        return { transform: [{ translateY: 0 }] };
-      }
-      return {
-        transform: [
-          { translateY: -Math.max(0, keyboard.height.value - tabBarHeight) },
-        ],
-      };
-    });
 
     const displayUrl = useMemo(() => {
       if (!inputUrl) return "";
@@ -85,13 +72,13 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
       return host.replace(/^www\./, "");
     }, [inputUrl]);
 
-    // Track URL bar focus state for UI changes (avatar, cancel button, etc.).
-    // Animation is handled by useAnimatedKeyboard above.
+    // Keyboard avoidance animation is iOS only. On Android,
+    // adjustResize in AndroidManifest handles it at the system level.
     useEffect(() => {
       const showEvent = isIOS ? "keyboardWillShow" : "keyboardDidShow";
       const hideEvent = isIOS ? "keyboardWillHide" : "keyboardDidHide";
 
-      const showListener = Keyboard.addListener(showEvent, () => {
+      const showListener = Keyboard.addListener(showEvent, (e) => {
         // Ignore keyboards opened by WebView inputs
         if (!inputRef.current?.isFocused()) return;
 
@@ -107,13 +94,20 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
         } else {
           moveCursor();
         }
+
+        if (isIOS) {
+          Animated.timing(keyboardOffset, {
+            toValue: -(e.endCoordinates.height - tabBarHeight),
+            duration: e.duration ?? 250,
+            useNativeDriver: true,
+          }).start();
+        }
       });
 
-      const hideListener = Keyboard.addListener(hideEvent, () => {
+      const hideListener = Keyboard.addListener(hideEvent, (e) => {
         if (!isSearchBarActive.current) return;
 
         isSearchBarActive.current = false;
-        isUrlBarActive.value = false;
         setIsFocused(false);
         onFocusChange?.(false);
         // Explicitly blur so the next focus() call from the overlay isn't a
@@ -121,19 +115,21 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
         // blurring the TextInput, which leaves it in a "focused" state where
         // calling focus() again does nothing.
         inputRef.current?.blur();
+
+        if (isIOS) {
+          Animated.timing(keyboardOffset, {
+            toValue: 0,
+            duration: e.duration ?? 250,
+            useNativeDriver: true,
+          }).start();
+        }
       });
 
       return () => {
         showListener.remove();
         hideListener.remove();
       };
-    }, [isUrlBarActive, onFocusChange]);
-
-    // Set isUrlBarActive on focus, before the keyboard starts animating,
-    // so useAnimatedKeyboard tracks the full animation from the start.
-    const handleFocus = useCallback(() => {
-      isUrlBarActive.value = true;
-    }, [isUrlBarActive]);
+    }, [keyboardOffset, tabBarHeight, onFocusChange]);
 
     const handleCancel = useCallback(() => {
       Keyboard.dismiss();
@@ -153,7 +149,7 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
     }, [onInputChange]);
 
     return (
-      <Animated.View style={animatedStyle}>
+      <Animated.View style={{ transform: [{ translateY: keyboardOffset }] }}>
         <View className="flex-row items-center gap-4 bg-background-primary border-t border-border-primary px-6 py-4">
           {!isFocused && (
             <TouchableOpacity onPress={onAvatarPress}>
@@ -202,7 +198,6 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
                 keyboardType="default"
                 lineBreakModeIOS="tail"
                 selection={cursorSelection}
-                onFocus={handleFocus}
                 onSelectionChange={handleSelectionChange}
                 style={{
                   textAlign: isFocused ? "left" : "center",

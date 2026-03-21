@@ -366,7 +366,6 @@ interface InputProps {
   onSelectionChange?: (event: {
     nativeEvent: { selection: { start: number; end: number } };
   }) => void;
-  onFocus?: () => void;
 }
 
 /**
@@ -421,7 +420,6 @@ type TextInputComponentProps = Pick<
   | "lineBreakModeIOS"
   | "selection"
   | "onSelectionChange"
-  | "onFocus"
 > & {
   className?: string;
   ref: React.Ref<InputRef>;
