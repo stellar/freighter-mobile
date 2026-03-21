@@ -2,7 +2,7 @@ import ProtocolRow from "components/screens/DiscoveryScreen/components/ProtocolR
 import SectionTitle from "components/screens/DiscoveryScreen/components/SectionTitle";
 import { DEFAULT_PADDING } from "config/constants";
 import { pxValue } from "helpers/dimensions";
-import React from "react";
+import React, { useCallback } from "react";
 import { View } from "react-native";
 
 export interface VerticalListItem {
@@ -16,6 +16,34 @@ export interface VerticalListItem {
 }
 
 const MAX_VISIBLE_ITEMS = 5;
+
+interface MemoizedProtocolRowProps {
+  item: VerticalListItem;
+  onItemOpen: (item: VerticalListItem) => void;
+  onItemPress: (item: VerticalListItem) => void;
+}
+
+const MemoizedProtocolRow: React.FC<MemoizedProtocolRowProps> = React.memo(
+  ({ item, onItemOpen, onItemPress }) => {
+    const handleOpen = useCallback(() => onItemOpen(item), [onItemOpen, item]);
+    const handlePress = useCallback(
+      () => onItemPress(item),
+      [onItemPress, item],
+    );
+
+    return (
+      <ProtocolRow
+        name={item.name}
+        subtitle={item.subtitle}
+        iconUrl={item.iconUrl}
+        onOpen={handleOpen}
+        onPress={handlePress}
+      />
+    );
+  },
+);
+
+MemoizedProtocolRow.displayName = "MemoizedProtocolRow";
 
 interface VerticalListSectionProps {
   title: string;
@@ -40,13 +68,11 @@ const VerticalListSection: React.FC<VerticalListSectionProps> = React.memo(
 
         <View className="gap-5">
           {visibleItems.map((item) => (
-            <ProtocolRow
+            <MemoizedProtocolRow
               key={item.id}
-              name={item.name}
-              subtitle={item.subtitle}
-              iconUrl={item.iconUrl}
-              onOpen={() => onItemOpen(item)}
-              onPress={() => onItemPress(item)}
+              item={item}
+              onItemOpen={onItemOpen}
+              onItemPress={onItemPress}
             />
           ))}
         </View>
