@@ -578,7 +578,7 @@ const ImageWithFallback: React.FC<{
     icon?.isValid !== true;
 
   const skipAnimation =
-    !!source.skipImageLoader || isUsingLastValidUrl || isNativeToken;
+    !!source.skipImageLoader || isUsingLastValidUrl || isNativeToken || isUSDC;
 
   // -------------------------------------------------------------------------
   // State machine effect — drives icon load/fail/timeout transitions.
