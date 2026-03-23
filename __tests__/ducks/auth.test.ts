@@ -260,6 +260,7 @@ describe("auth duck", () => {
     selectAccount: useAuthenticationStore.getState().selectAccount,
     setNavigationRef: useAuthenticationStore.getState().setNavigationRef,
     signIn: useAuthenticationStore.getState().signIn,
+    initializeNetwork: useAuthenticationStore.getState().initializeNetwork,
   };
 
   beforeEach(() => {
@@ -280,6 +281,7 @@ describe("auth duck", () => {
     useAuthenticationStore.getState().getAllAccounts = jest.fn();
     useAuthenticationStore.getState().selectAccount = jest.fn();
     useAuthenticationStore.getState().clearError = jest.fn();
+    useAuthenticationStore.getState().initializeNetwork = jest.fn();
 
     // Reset the store state
     act(() => {
@@ -1457,6 +1459,53 @@ describe("auth duck", () => {
           STORAGE_KEYS.COLLECTIBLES_LIST,
         );
       });
+
+      it("should call resetRoot to AUTH_STACK on logout(true) even though ...initialState clears navigationRef", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+
+        (dataStorage.getItem as jest.Mock).mockImplementation((key) => {
+          if (key === STORAGE_KEYS.ACCOUNT_LIST) {
+            return Promise.resolve(JSON.stringify([mockAccount]));
+          }
+          return Promise.resolve(null);
+        });
+
+        act(() => {
+          useAuthenticationStore.setState({
+            authStatus: AUTH_STATUS.AUTHENTICATED,
+            account: mockAccount,
+            logout: originalStoreMethods.logout,
+            setNavigationRef: originalStoreMethods.setNavigationRef,
+          });
+        });
+
+        act(() => {
+          result.current.setNavigationRef(mockNavigationRef);
+        });
+
+        // Confirm navigationRef is in the store before calling logout
+        expect(useAuthenticationStore.getState().navigationRef).toBe(
+          mockNavigationRef,
+        );
+
+        await act(async () => {
+          result.current.logout(true);
+          await new Promise((resolve) => {
+            setTimeout(resolve, 300);
+          });
+        });
+
+        // Key regression: navigationRef is captured before ...initialState clears
+        // it to null, so resetRoot must still be called with AUTH_STACK.
+        expect(mockNavigationRef.resetRoot).toHaveBeenCalledWith({
+          index: 0,
+          routes: [{ name: ROOT_NAVIGATOR_ROUTES.AUTH_STACK }],
+        });
+        // State should reflect NOT_AUTHENTICATED after deletion
+        expect(useAuthenticationStore.getState().authStatus).toBe(
+          AUTH_STATUS.NOT_AUTHENTICATED,
+        );
+      });
     });
 
     describe("getAuthStatus with LOCKED state", () => {
@@ -1875,6 +1924,53 @@ describe("auth duck", () => {
         isLoading: false,
         error: null,
       });
+    });
+  });
+
+  describe("initializeNetwork", () => {
+    it("should load TESTNET from ACTIVE_NETWORK storage and update network in store", async () => {
+      const { result } = renderHook(() => useAuthenticationStore());
+
+      (dataStorage.getItem as jest.Mock).mockImplementation((key) => {
+        if (key === STORAGE_KEYS.ACTIVE_NETWORK) {
+          return Promise.resolve(NETWORKS.TESTNET);
+        }
+        return Promise.resolve(null);
+      });
+
+      act(() => {
+        useAuthenticationStore.setState({
+          network: NETWORKS.PUBLIC,
+          initializeNetwork: originalStoreMethods.initializeNetwork,
+        });
+      });
+
+      await act(async () => {
+        await result.current.initializeNetwork();
+      });
+
+      expect(result.current.network).toBe(NETWORKS.TESTNET);
+    });
+
+    it("should keep PUBLIC network when ACTIVE_NETWORK is not in storage", async () => {
+      const { result } = renderHook(() => useAuthenticationStore());
+
+      (dataStorage.getItem as jest.Mock).mockImplementation(() =>
+        Promise.resolve(null),
+      );
+
+      act(() => {
+        useAuthenticationStore.setState({
+          network: NETWORKS.PUBLIC,
+          initializeNetwork: originalStoreMethods.initializeNetwork,
+        });
+      });
+
+      await act(async () => {
+        await result.current.initializeNetwork();
+      });
+
+      expect(result.current.network).toBe(NETWORKS.PUBLIC);
     });
   });
 });

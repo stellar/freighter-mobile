@@ -53,12 +53,14 @@ export class MockWalletConnectClient {
    * Initialize WalletConnect SignClient
    */
   async initialize(): Promise<void> {
+    const dappUrl =
+      process.env.PUBLIC_URL || `http://localhost:${process.env.PORT || 3001}`;
     this.client = await SignClient.init({
       projectId: this.projectId,
       metadata: {
         name: "Mock WalletConnect dApp",
         description: "E2E testing mock dApp for Freighter Mobile",
-        url: "http://localhost:3001",
+        url: dappUrl,
         icons: ["https://docs.freighter.app/images/logo.png"],
       },
     });
