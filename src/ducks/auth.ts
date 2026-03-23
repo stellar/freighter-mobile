@@ -395,7 +395,7 @@ const clearDerivedKeyCache = (): void => {
 /**
  * Initialize the store by loading the active network from storage
  */
-const initializeStore = async (
+const loadPersistedNetwork = async (
   setState: (state: Partial<AuthState>) => void,
 ) => {
   try {
@@ -407,7 +407,11 @@ const initializeStore = async (
       setState({ network: activeNetwork as NETWORKS });
     }
   } catch (error) {
-    logger.error("initializeStore", "Failed to initialize store", error);
+    logger.error(
+      "loadPersistedNetwork",
+      "Failed to load persisted network",
+      error,
+    );
   }
 };
 
@@ -2730,7 +2734,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
     set({ network });
   },
 
-  initializeNetwork: (): Promise<void> => initializeStore(set),
+  initializeNetwork: (): Promise<void> => loadPersistedNetwork(set),
 
   getKeyFromKeyManager: async (
     password: string,
