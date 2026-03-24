@@ -82,6 +82,9 @@ async function startServer(): Promise<void> {
     console.log("🌐 Mock WalletConnect dApp Server");
     console.log("━".repeat(60));
     console.log(`📍 URL:        http://${HOST}:${PORT}`);
+    if (process.env.PUBLIC_URL) {
+      console.log(`🌍 Public URL: ${process.env.PUBLIC_URL}`);
+    }
     console.log(`🔌 Project ID: ${PROJECT_ID!.substring(0, 12)}...`);
     console.log(
       `📱 App Scheme: ${process.env.MOBILE_APP_SCHEME || "freighterdev"}`,
