@@ -12,6 +12,13 @@ import { ActivityIndicator, TouchableOpacity, View } from "react-native";
 
 type FeeBreakdownBottomSheetProps = {
   onClose: () => void;
+  /**
+   * Whether the current transaction is Soroban-type (C-token, C-address, or
+   * collectible), derived from the sending context rather than the builder
+   * store. Controls row visibility and description text independently of
+   * whether simulation has completed yet.
+   */
+  isSorobanContext: boolean;
 };
 
 /**
@@ -25,6 +32,7 @@ type FeeBreakdownBottomSheetProps = {
  */
 const FeeBreakdownBottomSheet: React.FC<FeeBreakdownBottomSheetProps> = ({
   onClose,
+  isSorobanContext,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
@@ -129,7 +137,7 @@ const FeeBreakdownBottomSheet: React.FC<FeeBreakdownBottomSheetProps> = ({
       <View className="mt-[24px] pr-8">
         <Text md regular secondary textAlign="left">
           {t(
-            isSoroban
+            isSorobanContext
               ? "feeBreakdown.descriptionSoroban"
               : "feeBreakdown.descriptionClassic",
           )}

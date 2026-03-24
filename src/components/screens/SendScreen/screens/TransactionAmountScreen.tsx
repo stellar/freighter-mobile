@@ -1107,6 +1107,10 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         customContent={
           <FeeBreakdownBottomSheet
             onClose={() => feeBreakdownBottomSheetModalRef.current?.dismiss()}
+            isSorobanContext={isSorobanTransaction(
+              selectedBalance,
+              recipientAddress,
+            )}
           />
         }
       />

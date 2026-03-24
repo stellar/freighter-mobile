@@ -732,6 +732,7 @@ const SendCollectibleReviewScreen: React.FC<
         customContent={
           <FeeBreakdownBottomSheet
             onClose={() => feeBreakdownBottomSheetModalRef.current?.dismiss()}
+            isSorobanContext
           />
         }
       />
