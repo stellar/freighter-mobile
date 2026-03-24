@@ -9921,6 +9921,7 @@ __metadata:
     react-native-inappbrowser-reborn: "npm:3.7.0"
     react-native-ios-context-menu: "npm:3.2.1"
     react-native-ios-utilities: "npm:5.2.0"
+    react-native-keyboard-controller: "npm:1.21.2"
     react-native-keychain: "npm:10.0.0"
     react-native-level-fs: "npm:2.0.0"
     react-native-localize: "npm:3.5.2"
@@ -15096,6 +15097,19 @@ __metadata:
     react: "*"
     react-native: "*"
   checksum: 10c0/87d20b900aded7d44c90afb946a7aa03c23a94ca3dd547bdddc2303b85357e4aab22567a57b19f1558d6c8be7058e3dcf34faa1e15182d1604f90974266d9a1d
+  languageName: node
+  linkType: hard
+
+"react-native-keyboard-controller@npm:1.21.2":
+  version: 1.21.2
+  resolution: "react-native-keyboard-controller@npm:1.21.2"
+  dependencies:
+    react-native-is-edge-to-edge: "npm:^1.2.1"
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+    react-native-reanimated: ">=3.0.0"
+  checksum: 10c0/4de5bc8c2b3dcede64862d5fa3cab5ad753301236292de9e671cdbc85005cae5b77637b9a68a378d12462c5bb3e72f52373f5d516f3455a5067467ef0669d61f
   languageName: node
   linkType: hard
 

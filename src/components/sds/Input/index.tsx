@@ -366,6 +366,8 @@ interface InputProps {
   onSelectionChange?: (event: {
     nativeEvent: { selection: { start: number; end: number } };
   }) => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
 }
 
 /**

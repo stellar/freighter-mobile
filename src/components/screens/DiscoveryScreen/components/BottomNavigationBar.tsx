@@ -9,20 +9,17 @@ import { getDisplayHost } from "helpers/protocols";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
+import { Keyboard, TextInput, View, TouchableOpacity } from "react-native";
 import {
-  Animated,
-  Keyboard,
-  TextInput,
-  View,
-  TouchableOpacity,
-} from "react-native";
+  useKeyboardHandler,
+  useReanimatedKeyboardAnimation,
+} from "react-native-keyboard-controller";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+} from "react-native-reanimated";
+import { scheduleOnRN } from "react-native-worklets";
 
 interface BottomNavigationBarProps {
   inputUrl: string;
@@ -56,14 +53,17 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
     const { account } = useGetActiveAccount();
     const { t } = useAppTranslation();
     const tabBarHeight = useBottomTabBarHeight();
-    const keyboardOffset = useRef(new Animated.Value(0)).current;
+    const { height: keyboardHeight } = useReanimatedKeyboardAnimation();
     const inputRef = useRef<TextInput>(null);
     const [isFocused, setIsFocused] = useState(false);
     const [cursorSelection, setCursorSelection] = useState<
       { start: number; end: number } | undefined
     >(undefined);
-    // Tracks whether the search bar (not a WebView input) opened the keyboard
-    const isSearchBarActive = useRef(false);
+    // Whether our search bar TextInput triggered the current keyboard.
+    // Used to defer the layout-changing setIsFocused(true) until after
+    // the keyboard animation finishes, so the component tree swap
+    // (avatar hides, cancel appears) doesn't disrupt the slide animation.
+    const pendingFocus = useSharedValue(false);
 
     const displayUrl = useMemo(() => {
       if (!inputUrl) return "";
@@ -72,64 +72,49 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
       return host.replace(/^www\./, "");
     }, [inputUrl]);
 
-    // Keyboard avoidance animation is iOS only. On Android,
-    // adjustResize in AndroidManifest handles it at the system level.
-    useEffect(() => {
-      const showEvent = isIOS ? "keyboardWillShow" : "keyboardDidShow";
-      const hideEvent = isIOS ? "keyboardWillHide" : "keyboardDidHide";
+    // keyboardHeight.value is updated every frame on the UI thread during
+    // the native keyboard transition (0 when closed, negative when open).
+    const animatedStyle = useAnimatedStyle(() => {
+      const offset = Math.min(0, keyboardHeight.value + tabBarHeight);
+      return { transform: [{ translateY: offset }] };
+    });
 
-      const showListener = Keyboard.addListener(showEvent, (e) => {
-        // Ignore keyboards opened by WebView inputs
-        if (!inputRef.current?.isFocused()) return;
+    const applyFocusedLayout = useCallback(() => {
+      setIsFocused(true);
+      onFocusChange?.(true);
 
-        isSearchBarActive.current = true;
-        setIsFocused(true);
-        onFocusChange?.(true);
+      const moveCursor = () => setCursorSelection({ start: 0, end: 0 });
+      if (isIOS) {
+        requestAnimationFrame(moveCursor);
+      } else {
+        moveCursor();
+      }
+    }, [onFocusChange]);
 
-        // Move cursor to beginning of input on focus. iOS needs a frame
-        // defer to avoid racing with the keyboard animation.
-        const moveCursor = () => setCursorSelection({ start: 0, end: 0 });
-        if (isIOS) {
-          requestAnimationFrame(moveCursor);
-        } else {
-          moveCursor();
-        }
+    // Defer the layout swap until the keyboard animation finishes.
+    useKeyboardHandler(
+      {
+        onEnd: () => {
+          "worklet";
 
-        if (isIOS) {
-          Animated.timing(keyboardOffset, {
-            toValue: -(e.endCoordinates.height - tabBarHeight),
-            duration: e.duration ?? 250,
-            useNativeDriver: true,
-          }).start();
-        }
-      });
+          if (pendingFocus.value) {
+            pendingFocus.value = false;
+            scheduleOnRN(applyFocusedLayout);
+          }
+        },
+      },
+      [applyFocusedLayout],
+    );
 
-      const hideListener = Keyboard.addListener(hideEvent, (e) => {
-        if (!isSearchBarActive.current) return;
+    const handleInputFocus = useCallback(() => {
+      pendingFocus.value = true;
+    }, [pendingFocus]);
 
-        isSearchBarActive.current = false;
-        setIsFocused(false);
-        onFocusChange?.(false);
-        // Explicitly blur so the next focus() call from the overlay isn't a
-        // no-op. Android's hardware back button dismisses the keyboard without
-        // blurring the TextInput, which leaves it in a "focused" state where
-        // calling focus() again does nothing.
-        inputRef.current?.blur();
-
-        if (isIOS) {
-          Animated.timing(keyboardOffset, {
-            toValue: 0,
-            duration: e.duration ?? 250,
-            useNativeDriver: true,
-          }).start();
-        }
-      });
-
-      return () => {
-        showListener.remove();
-        hideListener.remove();
-      };
-    }, [keyboardOffset, tabBarHeight, onFocusChange]);
+    const handleInputBlur = useCallback(() => {
+      pendingFocus.value = false;
+      setIsFocused(false);
+      onFocusChange?.(false);
+    }, [pendingFocus, onFocusChange]);
 
     const handleCancel = useCallback(() => {
       Keyboard.dismiss();
@@ -149,7 +134,7 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
     }, [onInputChange]);
 
     return (
-      <Animated.View style={{ transform: [{ translateY: keyboardOffset }] }}>
+      <Animated.View style={animatedStyle}>
         <View className="flex-row items-center gap-4 bg-background-primary border-t border-border-primary px-6 py-4">
           {!isFocused && (
             <TouchableOpacity onPress={onAvatarPress}>
@@ -191,6 +176,8 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
                 value={isFocused ? inputUrl : displayUrl}
                 onChangeText={onInputChange}
                 onSubmitEditing={onUrlSubmit}
+                onFocus={handleInputFocus}
+                onBlur={handleInputBlur}
                 placeholder={t("discovery.urlBarPlaceholder")}
                 placeholderTextColor={themeColors.text.secondary}
                 autoCapitalize="none"
