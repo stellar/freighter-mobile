@@ -312,15 +312,19 @@ export const formatTokenForDisplay = (amount: BigNumber, decimals: number) => {
   return formatted;
 };
 
+export const INVOCATION_TYPE_INVOKE = "invoke" as const;
+export const INVOCATION_TYPE_WASM = "wasm" as const;
+export const INVOCATION_TYPE_SAC = "sac" as const;
+
 export interface FnArgsInvoke {
-  type: "invoke";
+  type: typeof INVOCATION_TYPE_INVOKE;
   fnName: string;
   contractId: string;
   args: xdr.ScVal[];
 }
 
 export interface FnArgsCreateWasm {
-  type: "wasm";
+  type: typeof INVOCATION_TYPE_WASM;
   salt: string;
   hash: string;
   address: string;
@@ -328,7 +332,7 @@ export interface FnArgsCreateWasm {
 }
 
 export interface FnArgsCreateSac {
-  type: "sac";
+  type: typeof INVOCATION_TYPE_SAC;
   asset: string;
   args?: xdr.ScVal[];
 }
@@ -353,7 +357,7 @@ export const getInvocationArgs = (
       ).toString();
       const fnName = invocationItem.functionName().toString();
       const args = invocationItem.args();
-      return { fnName, contractId, args, type: "invoke" };
+      return { fnName, contractId, args, type: INVOCATION_TYPE_INVOKE };
     }
 
     // sorobanAuthorizedFunctionTypeCreateContractV2HostFn
@@ -375,7 +379,7 @@ export const getInvocationArgs = (
           const details = preimage.fromAddress();
 
           const contractDetails = {
-            type: "wasm",
+            type: INVOCATION_TYPE_WASM,
             salt: details.salt().toString("hex"),
             hash: exec.wasmHash().toString("hex"),
             address: Address.fromScAddress(details.address()).toString(),
@@ -393,7 +397,7 @@ export const getInvocationArgs = (
         // contractExecutableStellarAsset
         case 1: {
           const sacDetails = {
-            type: "sac",
+            type: INVOCATION_TYPE_SAC,
             asset: SdkToken.fromOperation(preimage.fromAsset()).toString(),
           } as FnArgsCreateSac;
 

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Network security config for the dev flavor only.
+  Allows cleartext HTTP to loopback addresses so the WalletConnect mock-dapp
+  server at http://127.0.0.1:3001 is reachable from the emulator during E2E tests,
+  and so Metro bundler at http://localhost:8081 works in debug builds.
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+    </domain-config>
+</network-security-config>

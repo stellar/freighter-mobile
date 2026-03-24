@@ -1,4 +1,12 @@
-import { MuxedAccount, StrKey, hash } from "@stellar/stellar-sdk";
+import {
+  Address,
+  Keypair,
+  MuxedAccount,
+  Networks,
+  StrKey,
+  hash,
+  xdr,
+} from "@stellar/stellar-sdk";
 import { logger } from "config/logger";
 import { isContractId } from "helpers/soroban";
 import {
@@ -11,6 +19,7 @@ import {
   isSameAccount,
   isValidStellarAddress,
   SIGN_MESSAGE_PREFIX,
+  signAuthEntry,
   signMessage,
   truncateAddress,
 } from "helpers/stellar";
@@ -22,6 +31,7 @@ jest.mock("@stellar/stellar-sdk", () => {
     StrKey: {
       isValidEd25519PublicKey: jest.fn(),
       isValidMed25519PublicKey: jest.fn(),
+      encodeEd25519PublicKey: originalSdk.StrKey.encodeEd25519PublicKey,
     },
     Account: jest.fn().mockImplementation((accountId, sequenceNumber) => ({
       accountId: () => accountId,
@@ -668,6 +678,111 @@ describe("Stellar helpers", () => {
     describe("SIGN_MESSAGE_PREFIX constant", () => {
       it("should have the correct SEP-53 prefix value", () => {
         expect(SIGN_MESSAGE_PREFIX).toBe("Stellar Signed Message:\n");
+      });
+    });
+  });
+
+  describe("Soroban Auth Entry Signing", () => {
+    // Use the same seed as signMessage tests for consistency
+    const seed = "SAKICEVQLYWGSOJS4WW7HZJWAHZVEEBS527LHK5V4MLJALYKICQCJXMW";
+    // Derived public key: GBXFXNDLV4LSWA4VB7YIL5GBD7BVNR22SGBTDKMO2SBZZHDXSKZYCP7L
+
+    /**
+     * Build a minimal valid HashIdPreimage XDR for the TESTNET passphrase.
+     * Mirrors the preimage a dApp would construct per SEP-43.
+     */
+    const buildTestPreimage = (
+      network: string = Networks.TESTNET,
+      nonce: string = "1234567890",
+    ): string => {
+      const invocation = new xdr.SorobanAuthorizedInvocation({
+        function:
+          xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeContractFn(
+            new xdr.InvokeContractArgs({
+              contractAddress: new Address(
+                "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSC4",
+              ).toScAddress(),
+              functionName: "test_function",
+              args: [],
+            }),
+          ),
+        subInvocations: [],
+      });
+      return xdr.HashIdPreimage.envelopeTypeSorobanAuthorization(
+        new xdr.HashIdPreimageSorobanAuthorization({
+          networkId: hash(Buffer.from(network)),
+          nonce: xdr.Int64.fromString(nonce) as xdr.Int64,
+          signatureExpirationLedger: 999999,
+          invocation,
+        }),
+      ).toXDR("base64");
+    };
+
+    describe("signAuthEntry", () => {
+      it("should return { signedAuthEntry, signerAddress } for a valid preimage", () => {
+        const preimageXdr = buildTestPreimage();
+        const result = signAuthEntry(preimageXdr, seed);
+
+        expect(result).toHaveProperty("signedAuthEntry");
+        expect(result).toHaveProperty("signerAddress");
+        expect(typeof result.signedAuthEntry).toBe("string");
+        expect(typeof result.signerAddress).toBe("string");
+      });
+
+      it("should return the signer's public key as signerAddress", () => {
+        const keypair = Keypair.fromSecret(seed);
+        const preimageXdr = buildTestPreimage();
+        const result = signAuthEntry(preimageXdr, seed);
+
+        expect(result.signerAddress).toBe(keypair.publicKey());
+      });
+
+      it("should return a cryptographically verifiable Ed25519 signature", () => {
+        const keypair = Keypair.fromSecret(seed);
+        const preimageXdr = buildTestPreimage();
+        const result = signAuthEntry(preimageXdr, seed);
+
+        // Signature must be 64 bytes (88 base64 chars)
+        const sigBytes = Buffer.from(result.signedAuthEntry, "base64");
+        expect(sigBytes.length).toBe(64);
+
+        // Verify: wallet signs hash(raw_preimage_bytes), identical to the extension
+        const expectedPayload = hash(Buffer.from(preimageXdr, "base64"));
+        expect(keypair.verify(expectedPayload, sigBytes)).toBe(true);
+      });
+
+      it("should be deterministic for the same inputs", () => {
+        const preimageXdr = buildTestPreimage();
+
+        const result1 = signAuthEntry(preimageXdr, seed);
+        const result2 = signAuthEntry(preimageXdr, seed);
+
+        expect(result1.signedAuthEntry).toBe(result2.signedAuthEntry);
+        expect(result1.signerAddress).toBe(result2.signerAddress);
+      });
+
+      it("should produce different signatures for different preimage inputs", () => {
+        const preimageTestnet = buildTestPreimage(Networks.TESTNET);
+        const preimageMainnet = buildTestPreimage(Networks.PUBLIC);
+
+        const resultTestnet = signAuthEntry(preimageTestnet, seed);
+        const resultMainnet = signAuthEntry(preimageMainnet, seed);
+
+        expect(resultTestnet.signedAuthEntry).not.toBe(
+          resultMainnet.signedAuthEntry,
+        );
+      });
+
+      it("should throw for an invalid private key", () => {
+        const preimageXdr = buildTestPreimage();
+
+        expect(() => signAuthEntry(preimageXdr, "invalid-key")).toThrow();
+      });
+
+      it("should throw for invalid XDR (not a HashIdPreimage)", () => {
+        // signAuthEntry now validates that the input is a valid
+        // HashIdPreimage.envelopeTypeSorobanAuthorization before signing.
+        expect(() => signAuthEntry("not-valid-xdr!!", seed)).toThrow();
       });
     });
   });

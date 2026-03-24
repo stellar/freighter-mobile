@@ -34,7 +34,6 @@ interface UseAnalyticsPermissionsReturn {
 
 type PermissionAction = "enable" | "disable";
 
-const DEFAULT_PREVIOUS_STATE = "none";
 const SYNC_DEBOUNCE_DELAY = 100;
 
 const shouldMarkAttAsRequested = (result: string): boolean =>
@@ -69,7 +68,7 @@ const isAttSupported = (): boolean =>
  * ```
  */
 export const useAnalyticsPermissions = ({
-  previousState = DEFAULT_PREVIOUS_STATE,
+  previousState,
 }: UseAnalyticsPermissionsParams = {}): UseAnalyticsPermissionsReturn => {
   const isAttRequested = useAnalyticsStore((state) => state.attRequested);
   const isEnabled = useAnalyticsStore((state) => state.isEnabled);
@@ -292,7 +291,13 @@ export const useAnalyticsPermissions = ({
 
       await analytics.identifyUser();
 
-      analytics.trackAppOpened({ previousState });
+      // Only track app-opened once the app is fully initialized (network + auth
+      // status loaded). RootNavigator passes `undefined` while initializing and
+      // a real value ("none") once ready, so this prevents a spurious event
+      // with the wrong network context.
+      if (previousState !== undefined) {
+        analytics.trackAppOpened({ previousState });
+      }
 
       // Initialize feature flags after analytics is ready
       useRemoteConfigStore.getState().initFetchFeatureFlagsPoll();

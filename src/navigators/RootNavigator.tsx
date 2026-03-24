@@ -74,7 +74,8 @@ export const RootNavigator = () => {
     useNavigation<
       NativeStackNavigationProp<RootStackParamList & AuthStackParamList>
     >();
-  const { authStatus, getAuthStatus } = useAuthenticationStore();
+  const { authStatus, getAuthStatus, initializeNetwork } =
+    useAuthenticationStore();
   const remoteConfigInitialized = useRemoteConfigStore(
     (state) => state.isInitialized,
   );
@@ -108,6 +109,10 @@ export const RootNavigator = () => {
         RNBootSplash.hide({ fade: true });
         return;
       }
+
+      // Load persisted network preference before any auth or data fetching
+      // so components always read the correct network from the start.
+      await initializeNetwork();
 
       // Fetch the real auth status from storage and overwrite the initial
       // NOT_AUTHENTICATED default before any navigation decision is made.

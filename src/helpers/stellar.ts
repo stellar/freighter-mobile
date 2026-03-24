@@ -4,6 +4,7 @@ import {
   Keypair,
   MuxedAccount,
   StrKey,
+  xdr,
 } from "@stellar/stellar-sdk";
 import { logger } from "config/logger";
 import { isContractId } from "helpers/soroban";
@@ -317,4 +318,41 @@ export const signMessage = (message: string, privateKey: string): string => {
   const encodedMessage = encodeSep53Message(message);
   const signature = keyPair.sign(encodedMessage);
   return signature.toString("base64");
+};
+
+/**
+ * Signs a Soroban authorization entry preimage using the account's private key.
+ * Implements the SEP-43 stellar_signAuthEntry contract: the dApp provides the
+ * HashIdPreimage XDR, the wallet hashes and signs it, and returns the raw
+ * Ed25519 signature alongside the signer address.
+ *
+ * @param preimageXdr - Base64-encoded HashIdPreimage XDR
+ *   (HashIdPreimage.envelopeTypeSorobanAuthorization)
+ * @param privateKey - Account's secret key (S...)
+ * @returns signedAuthEntry (base64 Ed25519 signature) and signerAddress (G... public key)
+ *
+ * @throws {Error} If the preimage XDR is invalid or cannot be parsed
+ * @throws {Error} If the private key is invalid
+ *
+ * @example
+ * const preimageXdr = "AAAAAQ..."; // base64 HashIdPreimage XDR
+ * const privateKey = "SBXXXX...";
+ * const { signedAuthEntry, signerAddress } = signAuthEntry(preimageXdr, privateKey);
+ */
+export const signAuthEntry = (
+  preimageXdr: string,
+  privateKey: string,
+): { signedAuthEntry: string; signerAddress: string } => {
+  // Validate that the XDR is a HashIdPreimage.envelopeTypeSorobanAuthorization
+  // before signing — rejects arbitrary blobs that do not conform to SEP-43.
+  xdr.HashIdPreimage.fromXDR(preimageXdr, "base64").sorobanAuthorization();
+
+  const keyPair = Keypair.fromSecret(privateKey);
+  // SEP-43: hash the raw preimage bytes and sign — identical to the extension
+  const signingPayload = hash(Buffer.from(preimageXdr, "base64"));
+  const signature = keyPair.sign(signingPayload);
+  return {
+    signedAuthEntry: signature.toString("base64"),
+    signerAddress: keyPair.publicKey(),
+  };
 };

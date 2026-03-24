@@ -1,8 +1,13 @@
 import { FeeBumpTransaction, Keypair, Transaction } from "@stellar/stellar-sdk";
 import { navigationRef } from "components/App";
+import { logger } from "config/logger";
 import { useAuthenticationStore } from "ducks/auth";
-import { signMessage as signMessageHelper } from "helpers/stellar";
+import {
+  signMessage as signMessageHelper,
+  signAuthEntry as signAuthEntryHelper,
+} from "helpers/stellar";
 import { useCallback, useEffect } from "react";
+import { analytics } from "services/analytics";
 
 /**
  * Hook that provides access to the active account with loading state
@@ -56,6 +61,27 @@ const useGetActiveAccount = () => {
       try {
         return signMessageHelper(message, account.privateKey);
       } catch (err) {
+        logger.error("useGetActiveAccount", "signMessage failed", err);
+        analytics.trackSignedMessageError({ error: String(err).slice(0, 200) });
+        return null;
+      }
+    },
+    [account],
+  );
+
+  const signAuthEntry = useCallback(
+    (
+      preimageXdr: string,
+    ): { signedAuthEntry: string; signerAddress: string } | null => {
+      if (!account) return null;
+
+      try {
+        return signAuthEntryHelper(preimageXdr, account.privateKey);
+      } catch (err) {
+        logger.error("useGetActiveAccount", "signAuthEntry failed", err);
+        analytics.trackSignedAuthEntryError({
+          error: String(err).slice(0, 200),
+        });
         return null;
       }
     },
@@ -69,6 +95,7 @@ const useGetActiveAccount = () => {
     refreshAccount,
     signTransaction,
     signMessage,
+    signAuthEntry,
   };
 };
 

@@ -7,7 +7,13 @@ import {
 } from "components/screens/SignTransactionDetails/components/KeyVal";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { getInvocationDetails, InvocationArgs } from "helpers/soroban";
+import {
+  getInvocationDetails,
+  InvocationArgs,
+  INVOCATION_TYPE_INVOKE,
+  INVOCATION_TYPE_SAC,
+  INVOCATION_TYPE_WASM,
+} from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
 import { useClipboard } from "hooks/useClipboard";
 import { t } from "i18next";
@@ -25,11 +31,11 @@ const SignTransactionAuthorizations = ({
 
   const getAuthEntryTitle = (detail: InvocationArgs) => {
     switch (detail.type) {
-      case "invoke": {
+      case INVOCATION_TYPE_INVOKE: {
         return detail.fnName;
       }
-      case "sac":
-      case "wasm": {
+      case INVOCATION_TYPE_SAC:
+      case INVOCATION_TYPE_WASM: {
         return t("signTransactionDetails.authorizations.contractCreation");
       }
       default: {
@@ -40,12 +46,12 @@ const SignTransactionAuthorizations = ({
 
   const getAuthEntryKey = (detail: InvocationArgs) => {
     switch (detail.type) {
-      case "invoke": {
+      case INVOCATION_TYPE_INVOKE: {
         return `${detail.type}-${detail.contractId}-${detail.fnName}`;
       }
-      case "sac":
+      case INVOCATION_TYPE_SAC:
         return `${detail.type}-${detail.asset}`;
-      case "wasm":
+      case INVOCATION_TYPE_WASM:
         return `${detail.type}-${detail.hash}`;
       default:
         return `unknown-${JSON.stringify(detail)}`;
@@ -54,7 +60,7 @@ const SignTransactionAuthorizations = ({
 
   const getAuthEntryContent = (detail: InvocationArgs) => {
     switch (detail.type) {
-      case "invoke": {
+      case INVOCATION_TYPE_INVOKE: {
         return (
           <View className="gap-[12px]">
             <View className="bg-background-secondary rounded-[16px] p-[16px] gap-[12px]">
@@ -93,7 +99,7 @@ const SignTransactionAuthorizations = ({
           </View>
         );
       }
-      case "sac": {
+      case INVOCATION_TYPE_SAC: {
         return (
           <View className="gap-[12px]">
             <View className="bg-background-secondary rounded-[16px] p-[16px] gap-[12px]">
@@ -116,7 +122,7 @@ const SignTransactionAuthorizations = ({
           </View>
         );
       }
-      case "wasm": {
+      case INVOCATION_TYPE_WASM: {
         return (
           <View className="gap-[12px]">
             <View className="bg-background-secondary rounded-[16px] p-[16px] gap-[12px]">

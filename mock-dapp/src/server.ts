@@ -82,6 +82,9 @@ async function startServer(): Promise<void> {
     console.log("🌐 Mock WalletConnect dApp Server");
     console.log("━".repeat(60));
     console.log(`📍 URL:        http://${HOST}:${PORT}`);
+    if (process.env.PUBLIC_URL) {
+      console.log(`🌍 Public URL: ${process.env.PUBLIC_URL}`);
+    }
     console.log(`🔌 Project ID: ${PROJECT_ID!.substring(0, 12)}...`);
     console.log(
       `📱 App Scheme: ${process.env.MOBILE_APP_SCHEME || "freighterdev"}`,
@@ -154,6 +157,54 @@ async function startServer(): Promise<void> {
     shutdown();
   });
 }
+
+// Keep the server alive through recoverable errors from the WalletConnect library.
+// @walletconnect/utils throws "Proposal expired" inside a setTimeout callback when a
+// session proposal is not approved in time. Because it originates in a timer (not a
+// Promise), Node.js surfaces it as an uncaughtException rather than an
+// unhandledRejection — which would otherwise crash the process.
+const WALLETCONNECT_PROPOSAL_EXPIRED_MESSAGE = "Proposal expired";
+
+function isWalletConnectProposalExpiredError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  return error.message.includes(WALLETCONNECT_PROPOSAL_EXPIRED_MESSAGE);
+}
+
+process.on("uncaughtException", (error: Error) => {
+  if (isWalletConnectProposalExpiredError(error)) {
+    console.error(
+      "[Server] Uncaught WalletConnect 'proposal expired' exception (server will continue):",
+      error.message,
+    );
+    return;
+  }
+
+  console.error(
+    "[Server] Unexpected uncaught exception (server will exit):",
+    error,
+  );
+  process.exit(1);
+});
+
+process.on("unhandledRejection", (reason: unknown) => {
+  if (isWalletConnectProposalExpiredError(reason)) {
+    const msg = (reason as Error).message;
+    console.error(
+      "[Server] Unhandled WalletConnect 'proposal expired' rejection (server will continue):",
+      msg,
+    );
+    return;
+  }
+
+  const msg = reason instanceof Error ? reason.message : String(reason);
+  console.error(
+    "[Server] Unexpected unhandled promise rejection (server will exit):",
+    msg,
+  );
+  process.exit(1);
+});
 
 // Start the server
 startServer().catch((error) => {

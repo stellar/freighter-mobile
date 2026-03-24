@@ -11,6 +11,7 @@
     "paste": "Paste",
     "done": "Done",
     "none": "None",
+    "required": "Required",
     "cancel": "Cancel",
     "confirm": "Confirm",
     "continue": "Continue",
@@ -39,7 +40,8 @@
     "tokenId": "Token ID",
     "message": "Message",
     "retry": "Check again",
-    "linkOpenError": "Unable to open link"
+    "linkOpenError": "Unable to open link",
+    "authEntry": "Auth Entry"
   },
   "home": {
     "title": "Home",
@@ -878,12 +880,14 @@
     "transactionRequest": "Transaction Request",
     "confirmTransaction": "Confirm transaction",
     "signMessage": "Sign Message",
+    "signAuthEntry": "Sign Authorization Entry",
     "cancel": "Cancel",
     "confirm": "Confirm",
     "confirmAnyway": "Confirm anyway",
     "xdrItem": "XDR",
     "itemCopied": "{{itemName}} copied to clipboard!",
-    "transactionDetails": "Transaction details"
+    "transactionDetails": "Transaction details",
+    "authEntryDetails": "Authorization Entry Details"
   },
   "qrScanner": {
     "cameraNotAvailable": "Camera not permitted\nor not available"
@@ -893,6 +897,7 @@
     "returnToBrowser": "You can now return to your browser",
     "signSuccessfull": "Transaction successfully signed!",
     "signMessageSuccessfull": "Message successfully signed!",
+    "signAuthEntrySuccessfull": "Authorization entry successfully signed!",
     "signAndSubmitSuccessfull": "Transaction successfully signed and submitted!",
     "userRejected": "User rejected the request",
     "errorInitializing": "Error initializing WalletConnect",
@@ -901,7 +906,11 @@
     "errorConnecting": "{{dappName}} connection failed",
     "errorSigning": "Failed to sign transaction",
     "errorSigningMessage": "Failed to sign message",
-    "errorInvalidMessage": "Invalid message",
+    "errorSigningAuthEntry": "Failed to sign authorization entry",
+    "invalidRequestTitle": "Unable to process request",
+    "errorInvalidMessage": "Message is missing or empty",
+    "errorInvalidAuthEntry": "Authorization entry XDR is missing or malformed",
+    "errorAuthEntryNetworkMismatch": "Authorization entry is for a different network",
     "errorEmptyMessage": "Cannot sign empty message",
     "errorMessageTooLong": "Message too long (max 1KB)",
     "errorSubmitting": "Failed to submit transaction",
@@ -926,7 +935,38 @@
     "walletIsLocked": "Wallet is locked",
     "userNotAuthenticated": "User not authenticated",
     "invalidTransactionOrigin": "Untrusted Transaction Domain",
-    "invalidTransactionOriginMessage": "A WalletConnect transaction was received from {{transactionRequestOrigin}}, but this domain is not connected in your Freighter wallet."
+    "invalidTransactionOriginMessage": "A WalletConnect transaction was received from {{transactionRequestOrigin}}, but this domain is not connected in your Freighter wallet.",
+    "errorAuthEntryTooLarge": "Auth entry exceeds maximum allowed size",
+    "unableToLoadAuthEntry": "Unable to load request details",
+    "failedToProcessAuthEntry": "Unable to sign — authorization entry is malformed or invalid",
+    "e2eHelper": {
+      "title": "WC E2E Helper",
+      "createSession": "Create Session",
+      "createSessionFailed": "Session Creation Failed",
+      "copyWcUri": "Copy WC URI",
+      "requestSignAuthEntry": "Request Sign Auth Entry",
+      "requestSignMessage": "Request Sign Message",
+      "noSession": "No Session",
+      "noSessionMessage": "Create a session first",
+      "requestFailed": "Request Failed",
+      "serverOffline": "Server Offline",
+      "mockServerNotRunning": "Mock dApp server is not running",
+      "mockServerNotRunningLong": "Mock dApp server is not running. Start it with 'npm start' in mock-dapp folder.",
+      "mockServerOfflineStatus": "Mock server is offline. Please start it with: cd mock-dapp && npm start",
+      "sessionCreated": "Session created!",
+      "wcUriCopied": "WC URI copied to clipboard!",
+      "signingMessage": "Requesting sign message...",
+      "signingAuthEntry": "Requesting sign auth entry...",
+      "requestSignAuthEntryWrongNetwork": "Request Wrong-Network Auth Entry",
+      "signingAuthEntryWrongNetwork": "Requesting wrong-network sign auth entry...",
+      "sessionId": "Session ID",
+      "wcUri": "WC URI",
+      "message": "Message",
+      "network": "Network"
+    }
+  },
+  "soroban": {
+    "onlyCredentialsAddressSupported": "signAuthEntry: only sorobanCredentialsAddress entries are supported"
   },
   "sendRecipient": {
     "error": {
@@ -1252,7 +1292,8 @@
       "source": "Source",
       "executableType": "Executable Type",
       "accountId": "Account ID",
-      "salt": "Salt"
+      "salt": "Salt",
+      "executableWasmHash": "Executable WASM Hash"
     },
     "claimPredicates": {
       "unconditional": "Unconditional",

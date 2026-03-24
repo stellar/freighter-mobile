@@ -12,6 +12,9 @@ import {
 import {
   trackSignedTransaction,
   trackSignedMessage,
+  trackSignedAuthEntry,
+  trackSignedMessageError,
+  trackSignedAuthEntryError,
   trackSubmittedTransaction,
   trackSimulationError,
   trackReAuthSuccess,
@@ -52,6 +55,9 @@ export interface AnalyticsInstance {
   // Transaction analytics
   readonly trackSignedTransaction: typeof trackSignedTransaction;
   readonly trackSignedMessage: typeof trackSignedMessage;
+  readonly trackSignedAuthEntry: typeof trackSignedAuthEntry;
+  readonly trackSignedMessageError: typeof trackSignedMessageError;
+  readonly trackSignedAuthEntryError: typeof trackSignedAuthEntryError;
   readonly trackSubmittedTransaction: typeof trackSubmittedTransaction;
   readonly trackSimulationError: typeof trackSimulationError;
   readonly trackCopyPublicKey: typeof trackCopyPublicKey;
@@ -113,6 +119,9 @@ export const analytics: AnalyticsInstance = {
   trackReAuthFail,
   trackSignedTransaction,
   trackSignedMessage,
+  trackSignedAuthEntry,
+  trackSignedMessageError,
+  trackSignedAuthEntryError,
   trackSubmittedTransaction,
   trackSimulationError,
   trackCopyPublicKey,

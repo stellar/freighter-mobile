@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Network security config for the prod flavor.
+  Explicitly blocks all cleartext HTTP traffic. This mirrors the API 28+ default
+  but makes the policy visible in source so it is clear and auditable.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+</network-security-config>
