@@ -523,8 +523,8 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
       const cancelButton = (
         <View className={`${shouldUseRowLayout ? "flex-1" : "w-full"}`}>
           <Button
-            tertiary={(isSuspicious && !isUnableToScan) || isExpectedToFail}
-            destructive={isMalicious && !shouldUseRowLayout}
+            tertiary={isSuspicious || isUnableToScan || isExpectedToFail}
+            destructive={isMalicious}
             secondary={shouldUseRowLayout}
             isFullWidth
             onPress={onCancel}
