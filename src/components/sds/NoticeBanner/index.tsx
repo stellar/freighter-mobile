@@ -36,25 +36,6 @@ const VARIANT_CONFIG: Record<NoticeBannerVariant, VariantConfig> = {
   error: { bg: "bg-red-2", themeColor: "red", icon: "infoOctagon" },
 };
 
-const getTextColor = (
-  variant: NoticeBannerVariant,
-  themeColors: ReturnType<typeof useColors>["themeColors"],
-): string => {
-  switch (variant) {
-    case "secondary":
-      return themeColors.lilac[11];
-    case "warning":
-      return themeColors.amber[11];
-    case "error":
-      return themeColors.red[11];
-    case "tertiary":
-      return themeColors.gray[11];
-    case "primary":
-    default:
-      return themeColors.gray[12];
-  }
-};
-
 /**
  * Full-width interactive banner strip with icon and text.
  * Variant names follow the button/badge system (primary, secondary, tertiary, warning, error).
@@ -67,7 +48,6 @@ export const NoticeBanner: React.FC<NoticeBannerProps> = ({
 }) => {
   const { themeColors } = useColors();
   const config = VARIANT_CONFIG[variant];
-  const textColor = getTextColor(variant, themeColors);
 
   const renderIcon = () => {
     // primary matches the original app update banner: InfoCircle with lilac[9] direct color
@@ -89,7 +69,7 @@ export const NoticeBanner: React.FC<NoticeBannerProps> = ({
     >
       <View className="flex-row items-center justify-center mr-3 ml-3">
         <View className="mr-2">{renderIcon()}</View>
-        <Text sm color={textColor}>
+        <Text sm color={themeColors.gray[12]}>
           {text}
         </Text>
       </View>
