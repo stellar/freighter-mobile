@@ -356,6 +356,7 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
 
       {/* Tabs overview overlay that fades out when tabs are hidden */}
       <Animated.View
+        pointerEvents={showTabOverview ? "auto" : "none"}
         style={[
           {
             position: "absolute",
@@ -365,7 +366,6 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
             bottom: 0,
             left: 0,
             zIndex: 50,
-            pointerEvents: showTabOverview ? "auto" : "none",
           },
         ]}
       >
