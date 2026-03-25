@@ -120,8 +120,7 @@ export const App: React.FC<AppProps> = ({
 
     // Fallback to the favicon url
     return favicon;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appName, favicon, protocols]);
+  }, [favicon, protocols]);
 
   // If there is an image and no error, render it
   if (imageUri && !imageError) {
