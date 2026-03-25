@@ -47,6 +47,7 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
   const tabOverviewFadeAnim = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
   const [isUrlBarFocused, setIsUrlBarFocused] = useState(false);
+  const overlayFadeAnim = useRef(new Animated.Value(0)).current;
   const { t } = useAppTranslation();
   const { account } = useGetActiveAccount();
   const { allAccounts } = useAuthenticationStore();
@@ -124,6 +125,17 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Fade the dark overlay in/out when the search bar gains/loses focus.
+  useEffect(() => {
+    Animated.timing(overlayFadeAnim, {
+      toValue: isUrlBarFocused ? 1 : 0,
+      duration: isUrlBarFocused
+        ? BROWSER_CONSTANTS.OPEN_ANIMATION_DURATION
+        : BROWSER_CONSTANTS.CLOSE_ANIMATION_DURATION,
+      useNativeDriver: true,
+    }).start();
+  }, [isUrlBarFocused, overlayFadeAnim]);
 
   // Update input URL when active tab changes
   useEffect(() => {
@@ -311,19 +323,20 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
             javaScriptEnabled
             domStorageEnabled
           />
-          {isUrlBarFocused && (
-            <Pressable
-              style={{
-                position: "absolute",
-                top: -2 * insets.top,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                backgroundColor: "rgba(0, 0, 0, 0.9)",
-              }}
-              onPress={Keyboard.dismiss}
-            />
-          )}
+          <Animated.View
+            style={{
+              position: "absolute",
+              top: -2 * insets.top,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(0, 0, 0, 0.9)",
+              opacity: overlayFadeAnim,
+            }}
+            pointerEvents={isUrlBarFocused ? "auto" : "none"}
+          >
+            <Pressable style={{ flex: 1 }} onPress={Keyboard.dismiss} />
+          </Animated.View>
         </View>
 
         <BottomNavigationBar
