@@ -12,7 +12,10 @@ import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { Keyboard, TextInput, View, TouchableOpacity } from "react-native";
 import { useReanimatedKeyboardAnimation } from "react-native-keyboard-controller";
-import Animated, { useAnimatedStyle } from "react-native-reanimated";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+} from "react-native-reanimated";
 
 interface BottomNavigationBarProps {
   inputUrl: string;
@@ -53,6 +56,9 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
     // Visual transitions (avatar, icons, buttons) are driven by the keyboard
     // progress SharedValue so they animate in sync with the keyboard slide.
     const [isFocused, setIsFocused] = useState(false);
+    // SharedValue mirror of isFocused so worklets can distinguish between
+    // the search bar owning the keyboard vs a WebView input.
+    const isOwnKeyboard = useSharedValue(false);
     const [cursorSelection, setCursorSelection] = useState<
       { start: number; end: number } | undefined
     >(undefined);
@@ -66,32 +72,52 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
 
     // -- Animated styles driven by keyboard progress (0 = closed, 1 = open) --
 
-    // Slide the entire bar up/down in sync with the keyboard.
-    // On iOS, add extra offset for the gap between bar and keyboard.
+    // When the search bar owns the keyboard, slide up in sync.
+    // When a WebView input opens the keyboard, fade out and disable touches.
     const IOS_GAP = 10;
     const slideStyle = useAnimatedStyle(() => {
-      const gap = isIOS ? IOS_GAP * progress.value : 0;
-      const offset = Math.min(0, keyboardHeight.value + tabBarHeight - gap);
-      return { transform: [{ translateY: offset }] };
+      if (isOwnKeyboard.value) {
+        const gap = isIOS ? IOS_GAP * progress.value : 0;
+        const offset = Math.min(0, keyboardHeight.value + tabBarHeight - gap);
+        return {
+          transform: [{ translateY: offset }],
+          opacity: 1,
+          pointerEvents: "auto" as const,
+        };
+      }
+      // WebView keyboard — fade out
+      return {
+        transform: [{ translateY: 0 }],
+        opacity: 1 - progress.value,
+        pointerEvents:
+          progress.value > 0.5 ? ("none" as const) : ("auto" as const),
+      };
     });
 
     // Elements visible when keyboard is closed (unfocused state).
-    const unfocusedStyle = useAnimatedStyle(() => ({
-      opacity: 1 - progress.value,
-      pointerEvents: progress.value < 0.5 ? "auto" : "none",
-    }));
+    // Only transition when the search bar owns the keyboard.
+    const unfocusedStyle = useAnimatedStyle(() => {
+      const p = isOwnKeyboard.value ? progress.value : 0;
+      return {
+        opacity: 1 - p,
+        pointerEvents: p < 0.5 ? "auto" : "none",
+      };
+    });
 
     // Elements visible when keyboard is open (focused state).
-    const focusedStyle = useAnimatedStyle(() => ({
-      opacity: progress.value,
-      pointerEvents: progress.value > 0.5 ? "auto" : "none",
-    }));
+    const focusedStyle = useAnimatedStyle(() => {
+      const p = isOwnKeyboard.value ? progress.value : 0;
+      return {
+        opacity: p,
+        pointerEvents: p > 0.5 ? "auto" : "none",
+      };
+    });
 
     // On iOS, the bar gets rounded corners and side/bottom borders when
     // focused to match the iOS 26 keyboard style.
     const barContainerStyle = useAnimatedStyle(() => {
       if (!isIOS) return {};
-      const p = progress.value;
+      const p = isOwnKeyboard.value ? progress.value : 0;
       return {
         borderRadius: 20 * p,
         marginHorizontal: 6 * p,
@@ -104,28 +130,36 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
 
     // Search bar left margin: 16px when unfocused (space after avatar),
     // 0px when focused (avatar is gone).
-    const searchBarStyle = useAnimatedStyle(() => ({
-      marginLeft: 16 * (1 - progress.value),
-    }));
+    const searchBarStyle = useAnimatedStyle(() => {
+      const p = isOwnKeyboard.value ? progress.value : 0;
+      return { marginLeft: 16 * (1 - p) };
+    });
 
     // Right button container: 40px when unfocused (matches tab count),
     // expands to fit cancel label when focused. Keeps a left margin so
     // there's always spacing between the search bar and this button.
-    const rightButtonStyle = useAnimatedStyle(() => ({
-      maxWidth: 40 + 60 * progress.value,
-      overflow: "hidden" as const,
-      marginLeft: 16,
-    }));
+    const rightButtonStyle = useAnimatedStyle(() => {
+      const p = isOwnKeyboard.value ? progress.value : 0;
+      return {
+        maxWidth: 40 + 60 * p,
+        overflow: "hidden" as const,
+        marginLeft: 16,
+      };
+    });
 
     // Avatar fades out and shrinks so the input can reclaim its space.
-    const avatarStyle = useAnimatedStyle(() => ({
-      opacity: 1 - progress.value,
-      transform: [{ scale: 1 - progress.value }],
-      width: 40 * (1 - progress.value),
-      pointerEvents: progress.value < 0.5 ? "auto" : "none",
-    }));
+    const avatarStyle = useAnimatedStyle(() => {
+      const p = isOwnKeyboard.value ? progress.value : 0;
+      return {
+        opacity: 1 - p,
+        transform: [{ scale: 1 - p }],
+        width: 40 * (1 - p),
+        pointerEvents: p < 0.5 ? "auto" : "none",
+      };
+    });
 
     const handleInputFocus = useCallback(() => {
+      isOwnKeyboard.value = true;
       setIsFocused(true);
       onFocusChange?.(true);
 
@@ -137,12 +171,13 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
       } else {
         moveCursor();
       }
-    }, [onFocusChange]);
+    }, [isOwnKeyboard, onFocusChange]);
 
     const handleInputBlur = useCallback(() => {
+      isOwnKeyboard.value = false;
       setIsFocused(false);
       onFocusChange?.(false);
-    }, [onFocusChange]);
+    }, [isOwnKeyboard, onFocusChange]);
 
     const handleCancel = useCallback(() => {
       Keyboard.dismiss();
