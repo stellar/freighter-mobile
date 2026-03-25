@@ -91,15 +91,31 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
     // focused to match the iOS 26 keyboard style.
     const barContainerStyle = useAnimatedStyle(() => {
       if (!isIOS) return {};
+      const p = progress.value;
       return {
-        borderRadius: 20 * progress.value,
-        marginHorizontal: 6 * progress.value,
+        borderRadius: 20 * p,
+        marginHorizontal: 6 * p,
         overflow: "hidden" as const,
-        borderLeftWidth: progress.value,
-        borderRightWidth: progress.value,
-        borderBottomWidth: progress.value,
+        borderLeftWidth: p,
+        borderRightWidth: p,
+        borderBottomWidth: p,
       };
     });
+
+    // Search bar left margin: 16px when unfocused (space after avatar),
+    // 0px when focused (avatar is gone).
+    const searchBarStyle = useAnimatedStyle(() => ({
+      marginLeft: 16 * (1 - progress.value),
+    }));
+
+    // Right button container: 40px when unfocused (matches tab count),
+    // expands to fit cancel label when focused. Keeps a left margin so
+    // there's always spacing between the search bar and this button.
+    const rightButtonStyle = useAnimatedStyle(() => ({
+      maxWidth: 40 + 60 * progress.value,
+      overflow: "hidden" as const,
+      marginLeft: 16,
+    }));
 
     // Avatar fades out and shrinks so the input can reclaim its space.
     const avatarStyle = useAnimatedStyle(() => ({
@@ -149,7 +165,7 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
       <Animated.View style={slideStyle}>
         <Animated.View
           style={barContainerStyle}
-          className="flex-row items-center gap-4 bg-background-primary border-t border-border-primary px-6 py-4"
+          className="flex-row items-center bg-background-primary border-t border-border-primary px-6 py-4"
         >
           {/* Avatar — fades out and shrinks during keyboard open */}
           <Animated.View style={avatarStyle}>
@@ -158,7 +174,10 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
             </TouchableOpacity>
           </Animated.View>
 
-          <View className="flex-1 h-[40px] flex-row items-center rounded-lg bg-background-tertiary px-3 gap-2">
+          <Animated.View
+            style={searchBarStyle}
+            className="flex-1 h-[40px] flex-row items-center rounded-lg bg-background-tertiary px-3 gap-2"
+          >
             {/* Left icon area — cross-fade between search icon and back button */}
             <View className="w-[20px] h-[40px] items-center justify-center">
               <Animated.View style={focusedStyle}>
@@ -269,10 +288,17 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
                 </ContextMenuButton>
               </Animated.View>
             </View>
-          </View>
+          </Animated.View>
 
-          {/* Right button area — cross-fade between cancel and tab count */}
-          <View className="h-[40px] justify-center">
+          {/* Right button area — cross-fade between cancel and tab count.
+               When unfocused, container is clamped to 40px (matching tab count).
+               When focused, it expands to fit the cancel label naturally. */}
+          <Animated.View
+            style={[
+              { height: 40, justifyContent: "center" as const },
+              rightButtonStyle,
+            ]}
+          >
             <Animated.View style={focusedStyle}>
               <TouchableOpacity onPress={handleCancel}>
                 <Text md medium>
@@ -285,14 +311,14 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
             >
               <TouchableOpacity
                 onPress={onShowTabs}
-                className="w-[40px] h-[40px] bg-background-tertiary justify-center items-center rounded-lg"
+                className="size-[40px] bg-background-tertiary justify-center items-center rounded-lg"
               >
                 <Text sm semiBold>
                   {tabsCount > 9 ? "9+" : tabsCount}
                 </Text>
               </TouchableOpacity>
             </Animated.View>
-          </View>
+          </Animated.View>
         </Animated.View>
       </Animated.View>
     );
