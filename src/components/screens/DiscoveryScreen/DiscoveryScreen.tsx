@@ -25,7 +25,7 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useBrowserActions } from "hooks/useBrowserActions";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React, { useRef, useState, useCallback, useEffect } from "react";
-import { Animated, Keyboard, Pressable, StyleSheet, View } from "react-native";
+import { Animated, Keyboard, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView, WebViewNavigation } from "react-native-webview";
 import { analytics } from "services/analytics";
@@ -313,7 +313,14 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
           />
           {isUrlBarFocused && (
             <Pressable
-              style={StyleSheet.absoluteFill}
+              style={{
+                position: "absolute",
+                top: -2 * insets.top,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: "rgba(0, 0, 0, 0.9)",
+              }}
               onPress={Keyboard.dismiss}
             />
           )}

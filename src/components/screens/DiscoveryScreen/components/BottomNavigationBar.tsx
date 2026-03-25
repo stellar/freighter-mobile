@@ -67,8 +67,11 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
     // -- Animated styles driven by keyboard progress (0 = closed, 1 = open) --
 
     // Slide the entire bar up/down in sync with the keyboard.
+    // On iOS, add extra offset for the gap between bar and keyboard.
+    const IOS_GAP = 10;
     const slideStyle = useAnimatedStyle(() => {
-      const offset = Math.min(0, keyboardHeight.value + tabBarHeight);
+      const gap = isIOS ? IOS_GAP * progress.value : 0;
+      const offset = Math.min(0, keyboardHeight.value + tabBarHeight - gap);
       return { transform: [{ translateY: offset }] };
     });
 
@@ -83,6 +86,20 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
       opacity: progress.value,
       pointerEvents: progress.value > 0.5 ? "auto" : "none",
     }));
+
+    // On iOS, the bar gets rounded corners and side/bottom borders when
+    // focused to match the iOS 26 keyboard style.
+    const barContainerStyle = useAnimatedStyle(() => {
+      if (!isIOS) return {};
+      return {
+        borderRadius: 20 * progress.value,
+        marginHorizontal: 6 * progress.value,
+        overflow: "hidden" as const,
+        borderLeftWidth: progress.value,
+        borderRightWidth: progress.value,
+        borderBottomWidth: progress.value,
+      };
+    });
 
     // Avatar fades out and shrinks so the input can reclaim its space.
     const avatarStyle = useAnimatedStyle(() => ({
@@ -130,7 +147,10 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
 
     return (
       <Animated.View style={slideStyle}>
-        <View className="flex-row items-center gap-4 bg-background-primary border-t border-border-primary px-6 py-4">
+        <Animated.View
+          style={barContainerStyle}
+          className="flex-row items-center gap-4 bg-background-primary border-t border-border-primary px-6 py-4"
+        >
           {/* Avatar — fades out and shrinks during keyboard open */}
           <Animated.View style={avatarStyle}>
             <TouchableOpacity onPress={onAvatarPress}>
@@ -273,7 +293,7 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
               </TouchableOpacity>
             </Animated.View>
           </View>
-        </View>
+        </Animated.View>
       </Animated.View>
     );
   },
