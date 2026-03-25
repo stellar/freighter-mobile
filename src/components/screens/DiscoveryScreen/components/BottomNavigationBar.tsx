@@ -9,7 +9,13 @@ import { getDisplayHost } from "helpers/protocols";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Keyboard, TextInput, View, TouchableOpacity } from "react-native";
 import { useReanimatedKeyboardAnimation } from "react-native-keyboard-controller";
 import Animated, {
@@ -173,16 +179,33 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
       }
     }, [isOwnKeyboard, onFocusChange]);
 
+    // onCancel is called on blur so that every dismiss path (Cancel button,
+    // tap outside, Android hardware back button) restores the URL.
     const handleInputBlur = useCallback(() => {
       isOwnKeyboard.value = false;
       setIsFocused(false);
       onFocusChange?.(false);
-    }, [isOwnKeyboard, onFocusChange]);
+      onCancel();
+    }, [isOwnKeyboard, onFocusChange, onCancel]);
 
     const handleCancel = useCallback(() => {
       Keyboard.dismiss();
-      onCancel();
-    }, [onCancel]);
+      // onCancel() will fire via handleInputBlur when the dismiss triggers blur.
+    }, []);
+
+    // On Android, the hardware back button dismisses the keyboard but does
+    // NOT blur the TextInput. Listen for keyboard hide to trigger cancel.
+    useEffect(() => {
+      if (!isAndroid) return undefined;
+
+      const sub = Keyboard.addListener("keyboardDidHide", () => {
+        if (inputRef.current?.isFocused()) {
+          inputRef.current.blur();
+        }
+      });
+
+      return () => sub.remove();
+    }, []);
 
     // Release controlled selection after native applies cursor position,
     // so the user can freely move the cursor afterward.
