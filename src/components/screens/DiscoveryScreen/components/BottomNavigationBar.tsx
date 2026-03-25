@@ -23,6 +23,23 @@ import Animated, {
   useSharedValue,
 } from "react-native-reanimated";
 
+/** Size of the avatar and tab count button */
+const BUTTON_SIZE = 40;
+/** Height of the search bar input area */
+const INPUT_HEIGHT = 40;
+/** Size of icons inside the search bar */
+const ICON_SIZE = 20;
+/** Spacing between bar children (avatar, search bar, right button) */
+const BAR_SPACING = 16;
+/** Max extra width the right button container gains when showing cancel */
+const CANCEL_EXTRA_WIDTH = 60;
+/** Bottom margin of the bar container when fully focused on iOS */
+const IOS_FOCUSED_MARGIN_BOTTOM = 10;
+/** Horizontal margin of the bar container when fully focused on iOS */
+const IOS_FOCUSED_MARGIN_HORIZONTAL = 6;
+/** Border radius of the bar container when fully focused on iOS */
+const IOS_FOCUSED_BORDER_RADIUS = 20;
+
 interface BottomNavigationBarProps {
   inputUrl: string;
   onInputChange: (text: string) => void;
@@ -80,10 +97,9 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
 
     // When the search bar owns the keyboard, slide up in sync.
     // When a WebView input opens the keyboard, fade out and disable touches.
-    const IOS_GAP = 10;
     const slideStyle = useAnimatedStyle(() => {
       if (isOwnKeyboard.value) {
-        const gap = isIOS ? IOS_GAP * progress.value : 0;
+        const gap = isIOS ? IOS_FOCUSED_MARGIN_BOTTOM * progress.value : 0;
         const offset = Math.min(0, keyboardHeight.value + tabBarHeight - gap);
         return {
           transform: [{ translateY: offset }],
@@ -125,8 +141,8 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
       if (!isIOS) return {};
       const p = isOwnKeyboard.value ? progress.value : 0;
       return {
-        borderRadius: 20 * p,
-        marginHorizontal: 6 * p,
+        borderRadius: IOS_FOCUSED_BORDER_RADIUS * p,
+        marginHorizontal: IOS_FOCUSED_MARGIN_HORIZONTAL * p,
         overflow: "hidden" as const,
         borderLeftWidth: p,
         borderRightWidth: p,
@@ -138,7 +154,7 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
     // 0px when focused (avatar is gone).
     const searchBarStyle = useAnimatedStyle(() => {
       const p = isOwnKeyboard.value ? progress.value : 0;
-      return { marginLeft: 16 * (1 - p) };
+      return { marginLeft: BAR_SPACING * (1 - p) };
     });
 
     // Right button container: 40px when unfocused (matches tab count),
@@ -147,9 +163,9 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
     const rightButtonStyle = useAnimatedStyle(() => {
       const p = isOwnKeyboard.value ? progress.value : 0;
       return {
-        maxWidth: 40 + 60 * p,
+        maxWidth: BUTTON_SIZE + CANCEL_EXTRA_WIDTH * p,
         overflow: "hidden" as const,
-        marginLeft: 16,
+        marginLeft: BAR_SPACING,
       };
     });
 
@@ -159,7 +175,7 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
       return {
         opacity: 1 - p,
         transform: [{ scale: 1 - p }],
-        width: 40 * (1 - p),
+        width: BUTTON_SIZE * (1 - p),
         pointerEvents: p < 0.5 ? "auto" : "none",
       };
     });
@@ -233,13 +249,19 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
           </Animated.View>
 
           <Animated.View
-            style={searchBarStyle}
-            className="flex-1 h-[40px] flex-row items-center rounded-lg bg-background-tertiary px-3 gap-2"
+            style={[searchBarStyle, { height: INPUT_HEIGHT }]}
+            className="flex-1 flex-row items-center rounded-lg bg-background-tertiary px-3 gap-2"
           >
             {/* Left icon area — cross-fade between search icon and back button */}
-            <View className="w-[20px] h-[40px] items-center justify-center">
+            <View
+              style={{ width: ICON_SIZE, height: INPUT_HEIGHT }}
+              className="items-center justify-center"
+            >
               <Animated.View style={focusedStyle}>
-                <Icon.SearchMd size={20} color={themeColors.text.secondary} />
+                <Icon.SearchMd
+                  size={ICON_SIZE}
+                  color={themeColors.text.secondary}
+                />
               </Animated.View>
               {canGoBack && (
                 <Animated.View
@@ -251,7 +273,7 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   >
                     <Icon.ChevronLeft
-                      size={20}
+                      size={ICON_SIZE}
                       color={themeColors.text.secondary}
                     />
                   </TouchableOpacity>
@@ -314,7 +336,10 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
             </View>
 
             {/* Right icon area — cross-fade between clear button and context menu */}
-            <View className="w-[20px] h-[40px] items-center justify-center">
+            <View
+              style={{ width: ICON_SIZE, height: INPUT_HEIGHT }}
+              className="items-center justify-center"
+            >
               {inputUrl.length > 0 && (
                 <Animated.View style={focusedStyle}>
                   <TouchableOpacity
@@ -322,7 +347,7 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   >
                     <Icon.XCircle
-                      size={20}
+                      size={ICON_SIZE}
                       color={themeColors.text.secondary}
                     />
                   </TouchableOpacity>
@@ -340,7 +365,7 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
                   sideOffset={8}
                 >
                   <Icon.DotsHorizontal
-                    size={20}
+                    size={ICON_SIZE}
                     color={themeColors.text.secondary}
                   />
                 </ContextMenuButton>
@@ -353,7 +378,7 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
                When focused, it expands to fit the cancel label naturally. */}
           <Animated.View
             style={[
-              { height: 40, justifyContent: "center" as const },
+              { height: BUTTON_SIZE, justifyContent: "center" as const },
               rightButtonStyle,
             ]}
           >
@@ -369,7 +394,8 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
             >
               <TouchableOpacity
                 onPress={onShowTabs}
-                className="size-[40px] bg-background-tertiary justify-center items-center rounded-lg"
+                style={{ width: BUTTON_SIZE, height: BUTTON_SIZE }}
+                className="bg-background-tertiary justify-center items-center rounded-lg"
               >
                 <Text sm semiBold>
                   {tabsCount > 9 ? "9+" : tabsCount}
