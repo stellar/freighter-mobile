@@ -27,7 +27,10 @@ import React, {
 import { Animated, View, ScrollView } from "react-native";
 import ViewShot from "react-native-view-shot";
 import { analytics } from "services/analytics";
-import { DISCOVER_ANALYTICS_SOURCE } from "services/analytics/discover";
+import {
+  DISCOVER_ANALYTICS_SOURCE,
+  DiscoverAnalyticsSource,
+} from "services/analytics/discover";
 
 interface DiscoveryHomepageProps {
   tabId: string;
@@ -69,8 +72,12 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
     const [selectedProtocol, setSelectedProtocol] =
       useState<ProtocolDetailsData | null>(null);
     const expandedFadeAnim = useRef(new Animated.Value(0)).current;
-    const protocolSourceRef = useRef("");
-    const expandedSourceRef = useRef("");
+    const protocolSourceRef = useRef<DiscoverAnalyticsSource>(
+      DISCOVER_ANALYTICS_SOURCE.DAPPS_LIST,
+    );
+    const expandedSourceRef = useRef<DiscoverAnalyticsSource>(
+      DISCOVER_ANALYTICS_SOURCE.EXPANDED_DAPPS_LIST,
+    );
 
     const handleSitePress = useCallback(
       (url: string) => {
@@ -107,7 +114,7 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
     }, [showTabOverview]);
 
     const handleItemOpenWithSource = useCallback(
-      (item: VerticalListItem, source: string) => {
+      (item: VerticalListItem, source: DiscoverAnalyticsSource) => {
         analytics.trackDiscoverProtocolOpened(
           item.websiteUrl,
           source,
@@ -137,7 +144,7 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
     );
 
     const openProtocolDetails = useCallback(
-      (item: VerticalListItem, source: string) => {
+      (item: VerticalListItem, source: DiscoverAnalyticsSource) => {
         protocolSourceRef.current = source;
         analytics.trackDiscoverProtocolDetailsViewed(item.name, item.tags);
         setSelectedProtocol({

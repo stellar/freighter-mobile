@@ -29,7 +29,10 @@ import { Animated, Keyboard, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView, WebViewNavigation } from "react-native-webview";
 import { analytics } from "services/analytics";
-import { DISCOVER_ANALYTICS_SOURCE } from "services/analytics/discover";
+import {
+  DISCOVER_ANALYTICS_SOURCE,
+  DiscoverAnalyticsSource,
+} from "services/analytics/discover";
 import { dataStorage } from "services/storage/storageFactory";
 
 type DiscoveryScreenProps = BottomTabScreenProps<
@@ -75,7 +78,7 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
 
   // Adds a new default homepage tab
   const handleNewTab = useCallback(
-    (source: string) => {
+    (source: DiscoverAnalyticsSource) => {
       addTab(BROWSER_CONSTANTS.HOMEPAGE_URL);
       analytics.trackDiscoverTabCreated(
         useBrowserTabsStore.getState().tabs.length,
@@ -87,7 +90,7 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
 
   // Handle new tab creation from TabOverview with smooth transition
   const handleNewTabFromOverview = useCallback(
-    (source: string) => {
+    (source: DiscoverAnalyticsSource) => {
       // Create the new tab and get its ID
       const tabId = addTab(BROWSER_CONSTANTS.HOMEPAGE_URL);
       analytics.trackDiscoverTabCreated(

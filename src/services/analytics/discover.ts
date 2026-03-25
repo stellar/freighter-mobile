@@ -19,13 +19,16 @@ export const DISCOVER_ANALYTICS_SOURCE = {
   AUTOMATIC: "automatic",
 } as const;
 
+export type DiscoverAnalyticsSource =
+  (typeof DISCOVER_ANALYTICS_SOURCE)[keyof typeof DISCOVER_ANALYTICS_SOURCE];
+
 // -----------------------------------------------------------------------------
 // DISCOVER ANALYTICS
 // -----------------------------------------------------------------------------
 
 export const trackDiscoverProtocolOpened = (
   url: string,
-  source: string,
+  source: DiscoverAnalyticsSource,
   protocols: DiscoverProtocol[],
 ): void => {
   const matchedProtocol = findMatchedProtocol({ protocols, searchUrl: url });
@@ -59,7 +62,7 @@ export const trackDiscoverProtocolOpenedFromDetails = (
 
 export const trackDiscoverTabCreated = (
   tabCount: number,
-  source: string,
+  source: DiscoverAnalyticsSource,
 ): void => {
   // Skip automatic tabs (e.g. replacement after closing the last tab) —
   // only track intentional user-initiated tab creations.
