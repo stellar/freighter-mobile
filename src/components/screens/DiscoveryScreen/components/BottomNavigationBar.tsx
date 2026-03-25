@@ -75,12 +75,14 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
     const { height: keyboardHeight, progress } =
       useReanimatedKeyboardAnimation();
     const inputRef = useRef<TextInput>(null);
-    // isFocused is only used for input value/alignment and Android overlay.
-    // Visual transitions (avatar, icons, buttons) are driven by the keyboard
-    // progress SharedValue so they animate in sync with the keyboard slide.
+    // React state for the input value/alignment switch and Android overlay.
+    // Visual transitions (avatar, icons, buttons, corners) are driven by
+    // the keyboard progress SharedValue so they animate in sync with the
+    // keyboard slide — isFocused is NOT used for those.
     const [isFocused, setIsFocused] = useState(false);
-    // SharedValue mirror of isFocused so worklets can distinguish between
-    // the search bar owning the keyboard vs a WebView input.
+    // Tracks whether the search bar (not a WebView input) triggered the
+    // keyboard. Used in worklets to decide between slide-up (own keyboard)
+    // and fade-out (WebView keyboard) behavior.
     const isOwnKeyboard = useSharedValue(false);
     const [cursorSelection, setCursorSelection] = useState<
       { start: number; end: number } | undefined
@@ -281,11 +283,10 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
               )}
             </View>
 
-            {/* URL display strategy:
-               - iOS: TextInput with lineBreakModeIOS="tail" handles ellipsis natively.
-               - Android: TextInput doesn't support ellipsis, so when unfocused we hide it
-                 and overlay a Text component with numberOfLines={1} (ellipsizeMode defaults
-                 to "tail"). Tapping the overlay focuses the hidden input for editing. */}
+            {/* URL input area. The TextInput value and alignment switch via
+               isFocused (full URL left-aligned when focused, display URL
+               centered when unfocused). On Android, an additional Text overlay
+               handles ellipsis since TextInput doesn't support it natively. */}
             <View className="flex-1 items-center justify-center">
               <StyledTextInput
                 ref={inputRef}
@@ -306,7 +307,6 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
                 style={{
                   textAlign: isFocused ? "left" : "center",
                   fontWeight: "500",
-                  // Hidden on Android when unfocused; Text overlay handles display
                   ...(!isFocused && isAndroid
                     ? { opacity: 0, position: "absolute" as const }
                     : {}),
