@@ -81,7 +81,7 @@ const AppInitials: React.FC<{
  * @component App
  * @description
  * This component displays an application icon with the following priority order:
- * 1. Protocol icon (if app name/URL matches known protocols)
+ * 1. Protocol icon (favicon URL matches known protocols)
  * 2. Provided favicon URL
  * 3. App initials as a fallback when image loading fails
  *
