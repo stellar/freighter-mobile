@@ -76,6 +76,8 @@ tags:
       - tapOn:
           id: import-wallet-input
       - inputText: "${E2E_TEST_RECOVERY_PHRASE}"
+      - waitForAnimationToEnd:
+          timeout: 2000
       # Only hide keyboard if button is not visible (suggesting keyboard is blocking it)
       # This prevents calling hideKeyboard when keyboard is already hidden (which causes navigation issues)
       - runFlow:
