@@ -7,7 +7,7 @@ import { StyleProp, ViewStyle, TouchableOpacity } from "react-native";
 
 interface SectionTitleProps {
   title: string;
-  onPress: () => void;
+  onPress?: () => void;
   className?: string;
   style?: StyleProp<ViewStyle>;
 }
@@ -25,12 +25,15 @@ const SectionTitle: React.FC<SectionTitleProps> = ({
       className={`flex-row items-center gap-1 ${className ?? ""}`}
       style={style}
       onPress={onPress}
+      disabled={!onPress}
       delayPressIn={DEFAULT_PRESS_DELAY}
     >
       <Text md semiBold>
         {title}
       </Text>
-      <Icon.ChevronRightBold size={16} color={themeColors.text.secondary} />
+      {onPress && (
+        <Icon.ChevronRightBold size={16} color={themeColors.text.secondary} />
+      )}
     </TouchableOpacity>
   );
 };

@@ -8,7 +8,7 @@ import { View } from "react-native";
 interface TrendingCarouselSectionProps {
   title: string;
   items: TrendingItem[];
-  onTitlePress: () => void;
+  onTitlePress?: () => void;
   onItemPress: (item: TrendingItem) => void;
 }
 
