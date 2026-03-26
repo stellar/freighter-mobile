@@ -19,7 +19,11 @@ import { MainTabStackParamList, MAIN_TAB_ROUTES } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import { useBrowserTabsStore } from "ducks/browserTabs";
 import { WALLET_KIT_MT_REDIRECT_NATIVE } from "ducks/walletKit";
-import { formatDisplayUrl, getFaviconUrl } from "helpers/browser";
+import {
+  formatDisplayUrl,
+  getFaviconUrl,
+  isHomepageUrl,
+} from "helpers/browser";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBrowserActions } from "hooks/useBrowserActions";
@@ -353,6 +357,7 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
           canGoBack={activeTab.canGoBack}
           onGoBack={browserActions.handleGoBack}
           contextMenuActions={browserActions.contextMenuActions}
+          isHomePage={isHomepageUrl(activeTab.url)}
           onFocusChange={setIsUrlBarFocused}
         />
       </Animated.View>

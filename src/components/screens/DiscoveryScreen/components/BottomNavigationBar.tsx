@@ -51,6 +51,7 @@ interface BottomNavigationBarProps {
   canGoBack: boolean;
   onGoBack: () => void;
   contextMenuActions: MenuItem[];
+  isHomePage: boolean;
   onFocusChange?: (focused: boolean) => void;
 }
 
@@ -66,6 +67,7 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
     canGoBack,
     onGoBack,
     contextMenuActions,
+    isHomePage,
     onFocusChange,
   }) => {
     const { themeColors } = useColors();
@@ -353,23 +355,25 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
                   </TouchableOpacity>
                 </Animated.View>
               )}
-              <Animated.View
-                style={[unfocusedStyle, { position: "absolute" as const }]}
-              >
-                <ContextMenuButton
-                  contextMenuProps={{
-                    actions: contextMenuActions,
-                  }}
-                  side="top"
-                  align="end"
-                  sideOffset={8}
+              {!isHomePage && (
+                <Animated.View
+                  style={[unfocusedStyle, { position: "absolute" as const }]}
                 >
-                  <Icon.DotsHorizontal
-                    size={ICON_SIZE}
-                    color={themeColors.text.secondary}
-                  />
-                </ContextMenuButton>
-              </Animated.View>
+                  <ContextMenuButton
+                    contextMenuProps={{
+                      actions: contextMenuActions,
+                    }}
+                    side="top"
+                    align="end"
+                    sideOffset={8}
+                  >
+                    <Icon.DotsHorizontal
+                      size={ICON_SIZE}
+                      color={themeColors.text.secondary}
+                    />
+                  </ContextMenuButton>
+                </Animated.View>
+              )}
             </View>
           </Animated.View>
 
