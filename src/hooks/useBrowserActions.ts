@@ -1,3 +1,4 @@
+import { BROWSER_CONSTANTS } from "config/constants";
 import { logger } from "config/logger";
 import { useBrowserTabsStore } from "ducks/browserTabs";
 import { useProtocolsStore } from "ducks/protocols";
@@ -59,10 +60,26 @@ export const useBrowserActions = (
    * Handler for navigating back in the current tab's history.
    */
   const handleGoBack = useCallback(() => {
-    if (!activeTab?.canGoBack) return;
+    if (!activeTabId) return;
 
-    webViewRef.current?.goBack();
-  }, [activeTab?.canGoBack, webViewRef]);
+    // If the WebView has its own back history, use it.
+    if (activeTab?.canGoBack) {
+      webViewRef.current?.goBack();
+      return;
+    }
+
+    // Otherwise, if the tab originally came from the homepage,
+    // navigate back to it (the homepage is not in WebView history).
+    if (activeTab?.cameFromHomepage) {
+      goToPage(activeTabId, BROWSER_CONSTANTS.HOMEPAGE_URL);
+    }
+  }, [
+    activeTab?.canGoBack,
+    activeTab?.cameFromHomepage,
+    activeTabId,
+    goToPage,
+    webViewRef,
+  ]);
 
   /**
    * Handler for navigating forward in the current tab's history.

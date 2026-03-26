@@ -354,7 +354,7 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
           onCancel={handleCancel}
           onAvatarPress={handleAvatarPress}
           tabsCount={tabs.length}
-          canGoBack={activeTab.canGoBack}
+          canGoBack={activeTab.canGoBack || !!activeTab.cameFromHomepage}
           onGoBack={browserActions.handleGoBack}
           contextMenuActions={browserActions.contextMenuActions}
           isHomePage={isHomepageUrl(activeTab.url)}
