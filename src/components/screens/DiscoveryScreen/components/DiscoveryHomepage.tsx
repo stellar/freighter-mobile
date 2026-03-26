@@ -24,7 +24,7 @@ import React, {
   useEffect,
   useState,
 } from "react";
-import { Animated, View, ScrollView } from "react-native";
+import { Animated, Dimensions, View, ScrollView } from "react-native";
 import ViewShot from "react-native-view-shot";
 import { analytics } from "services/analytics";
 import {
@@ -70,7 +70,7 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
       useState<ExpandedSection | null>(null);
     const [selectedProtocol, setSelectedProtocol] =
       useState<ProtocolDetailsData | null>(null);
-    const expandedFadeAnim = useRef(new Animated.Value(0)).current;
+    const expandedSlideAnim = useRef(new Animated.Value(1)).current;
     const protocolSourceRef = useRef<DiscoverAnalyticsSource>(
       DISCOVER_ANALYTICS_SOURCE.DAPPS_LIST,
     );
@@ -208,32 +208,32 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
 
     const handleExpand = useCallback(
       (section: ExpandedSection) => {
-        expandedFadeAnim.setValue(0);
+        expandedSlideAnim.setValue(1);
         setExpandedSection(section);
       },
-      [expandedFadeAnim],
+      [expandedSlideAnim],
     );
 
     const handleCollapseSection = useCallback(() => {
-      Animated.timing(expandedFadeAnim, {
-        toValue: 0,
+      Animated.timing(expandedSlideAnim, {
+        toValue: 1,
         duration: BROWSER_CONSTANTS.CLOSE_ANIMATION_DURATION,
         useNativeDriver: true,
       }).start(() => {
         setExpandedSection(null);
       });
-    }, [expandedFadeAnim]);
+    }, [expandedSlideAnim]);
 
-    // Start fade-in after the expanded view has mounted
+    // Start slide-in after the expanded view has mounted
     useEffect(() => {
       if (expandedSection) {
-        Animated.timing(expandedFadeAnim, {
-          toValue: 1,
+        Animated.timing(expandedSlideAnim, {
+          toValue: 0,
           duration: BROWSER_CONSTANTS.OPEN_ANIMATION_DURATION,
           useNativeDriver: true,
         }).start();
       }
-    }, [expandedSection, expandedFadeAnim]);
+    }, [expandedSection, expandedSlideAnim]);
 
     const handleExpandRecent = useCallback(() => {
       expandedSourceRef.current =
@@ -297,48 +297,62 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
         }}
         style={{ flex: 1 }}
       >
-        <View className="items-center mt-4 mb-3 bg-background-primary">
-          <Text md medium>
-            {t("discovery.discover")}
-          </Text>
-        </View>
-
-        <ScrollView
-          className="flex-1 bg-background-primary"
-          showsVerticalScrollIndicator={false}
-          pointerEvents={expandedSection ? "none" : "auto"}
+        <Animated.View
+          style={{
+            flex: 1,
+            transform: [
+              {
+                translateX: expandedSlideAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [-Dimensions.get("window").width / 3, 0],
+                }),
+              },
+            ],
+          }}
         >
-          <TrendingCarouselSection
-            title={t("discovery.trending")}
-            items={trendingCarouselItems}
-            onItemPress={handleTrendingItemPress}
-          />
-
-          <VerticalListSection
-            title={t("discovery.recent")}
-            items={recentItems}
-            onTitlePress={handleExpandRecent}
-            onItemOpen={handleRecentItemOpen}
-            onItemPress={handleRecentItemPress}
-          />
-
-          <VerticalListSection
-            title={t("discovery.dapps")}
-            items={dappsItems}
-            onTitlePress={handleExpandDapps}
-            onItemOpen={handleDappsItemOpen}
-            onItemPress={handleDappsItemPress}
-          />
-
-          <View
-            className="bg-background-tertiary p-4 pr-5 rounded-2xl mt-8 mb-8"
-            style={{ marginHorizontal: pxValue(DEFAULT_PADDING) }}
-          >
-            <Text xs secondary medium>
-              {t("discovery.legalDisclaimer")}
+          <View className="items-center mt-4 mb-3 bg-background-primary">
+            <Text md medium>
+              {t("discovery.discover")}
             </Text>
           </View>
-        </ScrollView>
+
+          <ScrollView
+            className="flex-1 bg-background-primary"
+            showsVerticalScrollIndicator={false}
+            pointerEvents={expandedSection ? "none" : "auto"}
+          >
+            <TrendingCarouselSection
+              title={t("discovery.trending")}
+              items={trendingCarouselItems}
+              onItemPress={handleTrendingItemPress}
+            />
+
+            <VerticalListSection
+              title={t("discovery.recent")}
+              items={recentItems}
+              onTitlePress={handleExpandRecent}
+              onItemOpen={handleRecentItemOpen}
+              onItemPress={handleRecentItemPress}
+            />
+
+            <VerticalListSection
+              title={t("discovery.dapps")}
+              items={dappsItems}
+              onTitlePress={handleExpandDapps}
+              onItemOpen={handleDappsItemOpen}
+              onItemPress={handleDappsItemPress}
+            />
+
+            <View
+              className="bg-background-tertiary p-4 pr-5 rounded-2xl mt-8 mb-8"
+              style={{ marginHorizontal: pxValue(DEFAULT_PADDING) }}
+            >
+              <Text xs secondary medium>
+                {t("discovery.legalDisclaimer")}
+              </Text>
+            </View>
+          </ScrollView>
+        </Animated.View>
 
         {expandedSection && (
           <Animated.View
@@ -348,7 +362,14 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
               left: 0,
               right: 0,
               bottom: 0,
-              opacity: expandedFadeAnim,
+              transform: [
+                {
+                  translateX: expandedSlideAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, Dimensions.get("window").width],
+                  }),
+                },
+              ],
             }}
           >
             <ExpandedSectionView
