@@ -39,7 +39,6 @@
     "name": "Nome",
     "collection": "Coleção",
     "tokenId": "ID do Token",
-    "retry": "Verificar novamente",
     "linkOpenError": "Não foi possível abrir o link",
     "authEntry": "Entrada de Autorização"
   },

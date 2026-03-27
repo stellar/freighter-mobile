@@ -5,6 +5,7 @@ import {
   type MaintenanceBannerContent,
   type MaintenanceScreenContent,
 } from "helpers/maintenanceContent";
+import { useMemo } from "react";
 
 interface UseMaintenanceModeReturn {
   showMaintenanceBanner: boolean;
@@ -28,8 +29,14 @@ export const useMaintenanceMode = (): UseMaintenanceModeReturn => {
     maintenance_screen: maintenanceScreen,
   } = useRemoteConfigStore();
 
-  const bannerContent = maintenanceBannerContent(maintenanceBanner);
-  const screenContent = maintenanceScreenContent(maintenanceScreen);
+  const bannerContent = useMemo(
+    () => maintenanceBannerContent(maintenanceBanner),
+    [maintenanceBanner],
+  );
+  const screenContent = useMemo(
+    () => maintenanceScreenContent(maintenanceScreen),
+    [maintenanceScreen],
+  );
 
   const showMaintenanceBanner =
     maintenanceBanner.enabled &&

@@ -39,7 +39,6 @@
     "collection": "Collection",
     "tokenId": "Token ID",
     "message": "Message",
-    "retry": "Check again",
     "linkOpenError": "Unable to open link",
     "authEntry": "Auth Entry"
   },
