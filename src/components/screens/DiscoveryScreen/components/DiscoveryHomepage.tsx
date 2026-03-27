@@ -24,7 +24,7 @@ import React, {
   useEffect,
   useState,
 } from "react";
-import { Animated, Dimensions, View, ScrollView } from "react-native";
+import { Animated, View, ScrollView, useWindowDimensions } from "react-native";
 import ViewShot from "react-native-view-shot";
 import { analytics } from "services/analytics";
 import {
@@ -54,6 +54,7 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
   ({ tabId }) => {
     const { t } = useAppTranslation();
     const { themeColors } = useColors();
+    const { width: windowWidth } = useWindowDimensions();
 
     const { goToPage, showTabOverview } = useBrowserTabsStore();
     const {
@@ -304,7 +305,7 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
               {
                 translateX: expandedSlideAnim.interpolate({
                   inputRange: [0, 1],
-                  outputRange: [-Dimensions.get("window").width / 3, 0],
+                  outputRange: [-windowWidth / 3, 0],
                 }),
               },
             ],
@@ -366,7 +367,7 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
                 {
                   translateX: expandedSlideAnim.interpolate({
                     inputRange: [0, 1],
-                    outputRange: [0, Dimensions.get("window").width],
+                    outputRange: [0, windowWidth],
                   }),
                 },
               ],
