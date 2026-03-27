@@ -33,15 +33,18 @@ const useDiscoveryData = () => {
     [protocols],
   );
 
+  const protocolsByUrl = useMemo(
+    () => new Map(protocols.map((p) => [p.websiteUrl, p])),
+    [protocols],
+  );
+
   const recentItems: VerticalListItem[] = useMemo(
     () =>
       recentProtocols
-        .map((entry) =>
-          protocols.find((p) => p.websiteUrl === entry.websiteUrl),
-        )
+        .map((entry) => protocolsByUrl.get(entry.websiteUrl))
         .filter((p): p is DiscoverProtocol => p !== undefined)
         .map(protocolToListItem),
-    [recentProtocols, protocols],
+    [recentProtocols, protocolsByUrl],
   );
 
   const dappsItems: VerticalListItem[] = useMemo(
