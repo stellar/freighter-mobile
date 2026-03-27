@@ -39,6 +39,12 @@ const IOS_FOCUSED_MARGIN_BOTTOM = 10;
 const IOS_FOCUSED_MARGIN_HORIZONTAL = 6;
 /** Border radius of the bar container when fully focused on iOS */
 const IOS_FOCUSED_BORDER_RADIUS = 20;
+/**
+ * Keyboard progress threshold at which pointer events swap between
+ * focused and unfocused UI elements. At 50% progress the elements are
+ * equally transparent, so this is the natural switch point.
+ */
+const POINTER_EVENTS_THRESHOLD = 0.5;
 
 interface BottomNavigationBarProps {
   inputUrl: string;
@@ -116,7 +122,9 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
         transform: [{ translateY: 0 }],
         opacity: 1 - progress.value,
         pointerEvents:
-          progress.value > 0.5 ? ("none" as const) : ("auto" as const),
+          progress.value > POINTER_EVENTS_THRESHOLD
+          ? ("none" as const)
+          : ("auto" as const),
       };
     });
 
@@ -126,7 +134,7 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
       const p = isOwnKeyboard.value ? progress.value : 0;
       return {
         opacity: 1 - p,
-        pointerEvents: p < 0.5 ? "auto" : "none",
+        pointerEvents: p < POINTER_EVENTS_THRESHOLD ? "auto" : "none",
       };
     });
 
@@ -135,7 +143,7 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
       const p = isOwnKeyboard.value ? progress.value : 0;
       return {
         opacity: p,
-        pointerEvents: p > 0.5 ? "auto" : "none",
+        pointerEvents: p > POINTER_EVENTS_THRESHOLD ? "auto" : "none",
       };
     });
 
@@ -180,7 +188,7 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
         opacity: 1 - p,
         transform: [{ scale: 1 - p }],
         width: BUTTON_SIZE * (1 - p),
-        pointerEvents: p < 0.5 ? "auto" : "none",
+        pointerEvents: p < POINTER_EVENTS_THRESHOLD ? "auto" : "none",
       };
     });
 
