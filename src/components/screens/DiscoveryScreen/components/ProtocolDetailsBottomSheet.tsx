@@ -32,7 +32,8 @@ const ProtocolDetailsBottomSheet: React.FC<ProtocolDetailsBottomSheetProps> =
 
     const handleClose = useCallback(() => {
       modalRef.current?.dismiss();
-    }, [modalRef]);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const handleOpen = useCallback(() => {
       if (protocol) {
