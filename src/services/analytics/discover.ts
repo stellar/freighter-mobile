@@ -74,18 +74,20 @@ export const trackDiscoverTabCreated = (
 };
 
 export const trackDiscoverTabClosed = (
-  tabCount: number,
+  tabCountBeforeClose: number,
   hadUrl: string | undefined,
 ): void => {
   track(AnalyticsEvent.DISCOVER_TAB_CLOSED, {
-    tab_count: tabCount,
+    tab_count_before_close: tabCountBeforeClose,
     had_url: hadUrl,
   });
 };
 
-export const trackDiscoverAllTabsClosed = (tabCount: number): void => {
+export const trackDiscoverAllTabsClosed = (
+  tabCountBeforeClose: number,
+): void => {
   track(AnalyticsEvent.DISCOVER_ALL_TABS_CLOSED, {
-    tab_count: tabCount,
+    tab_count_before_close: tabCountBeforeClose,
   });
 };
 
