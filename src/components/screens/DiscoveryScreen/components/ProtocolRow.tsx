@@ -24,6 +24,9 @@ const ProtocolRow: React.FC<ProtocolRowProps> = React.memo(
           className="flex-row items-center flex-1 mr-3"
           onPress={onPress}
           delayPressIn={DEFAULT_PRESS_DELAY}
+          accessibilityRole="button"
+          accessibilityLabel={name}
+          accessibilityHint={t("discovery.viewProtocolDetails")}
         >
           <App appName={name} favicon={iconUrl} size="lg" />
           <View className="ml-4 flex-1">
