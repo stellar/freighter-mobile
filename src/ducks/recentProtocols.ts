@@ -35,12 +35,12 @@ export const useRecentProtocolsStore = create<RecentProtocolsState>()(
       recentProtocols: [],
 
       addRecentProtocol: (url: string, protocols: DiscoverProtocol[]) => {
-        const matched = findMatchedProtocol({ protocols, searchUrl: url });
-        if (!matched) {
-          return;
-        }
-
         set((state) => {
+          const matched = findMatchedProtocol({ protocols, searchUrl: url });
+          if (!matched) {
+            return state;
+          }
+
           const filtered = state.recentProtocols.filter(
             (entry) => entry.websiteUrl !== matched.websiteUrl,
           );
