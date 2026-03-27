@@ -129,6 +129,11 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
           setShowWelcomeModal(true);
           analytics.trackDiscoverWelcomeModalViewed();
         }
+      })
+      .catch((error) => {
+        logger.error("Failed to read HAS_SEEN_DISCOVER_WELCOME from storage", {
+          error,
+        });
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

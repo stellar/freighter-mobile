@@ -70,23 +70,6 @@ describe("useDiscoveryData", () => {
     });
   });
 
-  describe("trendingItems", () => {
-    it("should return only trending protocols as VerticalListItem", () => {
-      const { result } = renderHook(() => useDiscoveryData());
-
-      expect(result.current.trendingItems).toHaveLength(2);
-      expect(result.current.trendingItems[0]).toEqual({
-        id: "https://alpha.com",
-        name: "Alpha",
-        subtitle: "defi",
-        iconUrl: "https://example.com/icon.png",
-        websiteUrl: "https://alpha.com",
-        description: "A protocol",
-        tags: ["defi", "swap"],
-      });
-    });
-  });
-
   describe("dappsItems", () => {
     it("should return all protocols as VerticalListItem", () => {
       const { result } = renderHook(() => useDiscoveryData());

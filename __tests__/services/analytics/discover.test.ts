@@ -45,7 +45,6 @@ describe("Discover Analytics", () => {
         TRENDING_CAROUSEL: "trending_carousel",
         RECENT_LIST: "recent_list",
         DAPPS_LIST: "dapps_list",
-        EXPANDED_TRENDING_LIST: "expanded_trending_list",
         EXPANDED_RECENT_LIST: "expanded_recent_list",
         EXPANDED_DAPPS_LIST: "expanded_dapps_list",
         URL_BAR: "url_bar",

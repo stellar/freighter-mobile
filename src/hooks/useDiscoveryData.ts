@@ -33,11 +33,6 @@ const useDiscoveryData = () => {
     [protocols],
   );
 
-  const trendingItems: VerticalListItem[] = useMemo(
-    () => protocols.filter((p) => p.isTrending).map(protocolToListItem),
-    [protocols],
-  );
-
   const recentItems: VerticalListItem[] = useMemo(
     () =>
       recentProtocols
@@ -57,7 +52,6 @@ const useDiscoveryData = () => {
   return {
     protocols,
     trendingCarouselItems,
-    trendingItems,
     recentItems,
     dappsItems,
     addRecentProtocol,
