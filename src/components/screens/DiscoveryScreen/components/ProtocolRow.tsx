@@ -3,7 +3,7 @@ import { Button } from "components/sds/Button";
 import { Text } from "components/sds/Typography";
 import { DEFAULT_PRESS_DELAY } from "config/constants";
 import useAppTranslation from "hooks/useAppTranslation";
-import React, { useCallback } from "react";
+import React from "react";
 import { View, TouchableOpacity } from "react-native";
 
 interface ProtocolRowProps {
@@ -18,19 +18,11 @@ const ProtocolRow: React.FC<ProtocolRowProps> = React.memo(
   ({ name, subtitle, iconUrl, onOpen, onPress }) => {
     const { t } = useAppTranslation();
 
-    const handleOpen = useCallback(() => {
-      onOpen();
-    }, [onOpen]);
-
-    const handlePress = useCallback(() => {
-      onPress();
-    }, [onPress]);
-
     return (
       <View className="flex-row items-center">
         <TouchableOpacity
           className="flex-row items-center flex-1 mr-3"
-          onPress={handlePress}
+          onPress={onPress}
           delayPressIn={DEFAULT_PRESS_DELAY}
         >
           <App appName={name} favicon={iconUrl} size="lg" />
@@ -45,7 +37,7 @@ const ProtocolRow: React.FC<ProtocolRowProps> = React.memo(
             )}
           </View>
         </TouchableOpacity>
-        <Button secondary lg onPress={handleOpen}>
+        <Button secondary lg onPress={onOpen}>
           {t("discovery.open")}
         </Button>
       </View>
