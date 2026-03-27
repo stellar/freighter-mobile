@@ -10,6 +10,38 @@ import { pxValue } from "helpers/dimensions";
 import React, { useCallback, useMemo } from "react";
 import { View, FlatList } from "react-native";
 
+const ITEM_HORIZONTAL_PADDING = pxValue(DEFAULT_PADDING);
+
+interface ExpandedListItemProps {
+  item: VerticalListItem;
+  onItemOpen: (item: VerticalListItem) => void;
+  onItemPress: (item: VerticalListItem) => void;
+}
+
+const ExpandedListItem: React.FC<ExpandedListItemProps> = React.memo(
+  ({ item, onItemOpen, onItemPress }) => {
+    const handleOpen = useCallback(() => onItemOpen(item), [onItemOpen, item]);
+    const handlePress = useCallback(
+      () => onItemPress(item),
+      [onItemPress, item],
+    );
+
+    return (
+      <View style={{ paddingHorizontal: ITEM_HORIZONTAL_PADDING }}>
+        <ProtocolRow
+          name={item.name}
+          subtitle={item.subtitle}
+          iconUrl={item.iconUrl}
+          onOpen={handleOpen}
+          onPress={handlePress}
+        />
+      </View>
+    );
+  },
+);
+
+ExpandedListItem.displayName = "ExpandedListItem";
+
 interface ExpandedSectionViewProps {
   title: string;
   items: VerticalListItem[];
@@ -24,15 +56,11 @@ const ExpandedSectionView: React.FC<ExpandedSectionViewProps> = React.memo(
     const renderItem = useCallback(
       // eslint-disable-next-line react/no-unused-prop-types
       ({ item }: { item: VerticalListItem }) => (
-        <View style={{ paddingHorizontal: pxValue(DEFAULT_PADDING) }}>
-          <ProtocolRow
-            name={item.name}
-            subtitle={item.subtitle}
-            iconUrl={item.iconUrl}
-            onOpen={() => onItemOpen(item)}
-            onPress={() => onItemPress(item)}
-          />
-        </View>
+        <ExpandedListItem
+          item={item}
+          onItemOpen={onItemOpen}
+          onItemPress={onItemPress}
+        />
       ),
       [onItemOpen, onItemPress],
     );
