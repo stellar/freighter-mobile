@@ -247,7 +247,11 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
         >
           {/* Avatar — fades out and shrinks during keyboard open */}
           <Animated.View style={avatarStyle}>
-            <TouchableOpacity onPress={onAvatarPress}>
+            <TouchableOpacity
+              onPress={onAvatarPress}
+              accessibilityRole="button"
+              accessibilityLabel={t("discovery.switchAccount")}
+            >
               <Avatar size="lg" publicAddress={account?.publicKey ?? ""} />
             </TouchableOpacity>
           </Animated.View>
@@ -275,6 +279,8 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
                     onPress={onGoBack}
                     disabled={!canGoBack}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    accessibilityRole="button"
+                    accessibilityLabel={t("discovery.goBack")}
                   >
                     <Icon.ChevronLeft
                       size={ICON_SIZE}
@@ -347,6 +353,8 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
                   <TouchableOpacity
                     onPress={handleClear}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    accessibilityRole="button"
+                    accessibilityLabel={t("common.clear")}
                   >
                     <Icon.XCircle
                       size={ICON_SIZE}
@@ -387,7 +395,11 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
             ]}
           >
             <Animated.View style={focusedStyle}>
-              <TouchableOpacity onPress={handleCancel}>
+              <TouchableOpacity
+                onPress={handleCancel}
+                accessibilityRole="button"
+                accessibilityLabel={t("common.cancel")}
+              >
                 <Text md medium>
                   {t("common.cancel")}
                 </Text>
@@ -400,6 +412,10 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
                 onPress={onShowTabs}
                 style={{ width: BUTTON_SIZE, height: BUTTON_SIZE }}
                 className="bg-background-tertiary justify-center items-center rounded-lg"
+                accessibilityRole="button"
+                accessibilityLabel={t("discovery.showTabs", {
+                  count: tabsCount,
+                })}
               >
                 <Text sm semiBold>
                   {tabsCount > 9 ? "9+" : tabsCount}
