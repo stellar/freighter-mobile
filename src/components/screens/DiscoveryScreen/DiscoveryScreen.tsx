@@ -279,7 +279,7 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
       analytics.trackDiscoverTabClosed(currentTabs.length, hadUrl);
 
       // If it was the last tab, we need to add a new one to display the homepage
-      if (tabs.length === 1) {
+      if (currentTabs.length === 1) {
         // Use correct transition animation depending if closing from tabs grid or browser
         if (showTabOverview) {
           handleNewTabFromOverview(DISCOVER_ANALYTICS_SOURCE.AUTOMATIC);
@@ -288,13 +288,7 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
         }
       }
     },
-    [
-      closeTab,
-      tabs.length,
-      showTabOverview,
-      handleNewTab,
-      handleNewTabFromOverview,
-    ],
+    [closeTab, showTabOverview, handleNewTab, handleNewTabFromOverview],
   );
 
   const handleCloseAllTabs = useCallback(() => {
