@@ -316,10 +316,16 @@ describe("useBrowserActions", () => {
     });
 
     it("should track all tabs closed with current tab count", () => {
-      mockUseBrowserTabsStore.mockReturnValue({
+      const storeWithTabs = {
         ...mockStore,
         tabs: [mockTab, { ...mockTab, id: "tab-456" }],
-      } as any);
+      };
+      mockUseBrowserTabsStore.mockImplementation((selector?: any) => {
+        if (typeof selector === "function") {
+          return selector(storeWithTabs);
+        }
+        return storeWithTabs;
+      });
 
       const { result } = renderHook(() => useBrowserActions(mockWebViewRef));
 
