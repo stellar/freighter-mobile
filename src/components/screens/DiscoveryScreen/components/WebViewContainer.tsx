@@ -3,24 +3,13 @@ import { DiscoveryHomepage } from "components/screens/DiscoveryScreen/components
 import { APP_VERSION, BROWSER_CONSTANTS } from "config/constants";
 import { logger } from "config/logger";
 import { useBrowserTabsStore } from "ducks/browserTabs";
-import { isHomepageUrl } from "helpers/browser";
+import { isDangerousScheme, isHomepageUrl } from "helpers/browser";
 import { captureTabScreenshot } from "helpers/screenshots";
 import useColors from "hooks/useColors";
 import React, { useRef, useCallback, useEffect, useState } from "react";
 import { View, Animated } from "react-native";
 import ViewShot from "react-native-view-shot";
 import { WebView, WebViewNavigation } from "react-native-webview";
-
-/** Block dangerous URL schemes that can execute arbitrary code. */
-const isDangerousScheme = (url: string): boolean => {
-  const lowered = url.toLowerCase();
-  return (
-    lowered.startsWith("javascript:") ||
-    lowered.startsWith("data:") ||
-    lowered.startsWith("blob:") ||
-    lowered.startsWith("vbscript:")
-  );
-};
 
 interface WebViewContainerProps {
   webViewRef: React.RefObject<WebView | null>;

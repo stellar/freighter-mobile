@@ -22,6 +22,7 @@ import { WALLET_KIT_MT_REDIRECT_NATIVE } from "ducks/walletKit";
 import {
   formatDisplayUrl,
   getFaviconUrl,
+  isDangerousScheme,
   isHomepageUrl,
 } from "helpers/browser";
 import { pxValue } from "helpers/dimensions";
@@ -227,13 +228,7 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
       );
 
       // Block dangerous URL schemes that could execute arbitrary code
-      const lowered = request.url.toLowerCase();
-      if (
-        lowered.startsWith("javascript:") ||
-        lowered.startsWith("data:") ||
-        lowered.startsWith("blob:") ||
-        lowered.startsWith("vbscript:")
-      ) {
+      if (isDangerousScheme(request.url)) {
         logger.debug(
           "WebViewContainer",
           "Blocked navigation to dangerous scheme:",

@@ -12,6 +12,21 @@ export const isHomepageUrl = (url: string): boolean =>
   !url || url === BROWSER_CONSTANTS.HOMEPAGE_URL;
 
 /**
+ * Checks if a URL uses a dangerous scheme that can execute arbitrary code.
+ * @param url - The URL to check
+ * @returns True if the URL uses javascript:, data:, blob:, or vbscript: scheme
+ */
+export const isDangerousScheme = (url: string): boolean => {
+  const lowered = url.toLowerCase();
+  return (
+    lowered.startsWith("javascript:") ||
+    lowered.startsWith("data:") ||
+    lowered.startsWith("blob:") ||
+    lowered.startsWith("vbscript:")
+  );
+};
+
+/**
  * Generates a favicon URL from a website URL.
  * @param url - The website URL
  * @returns The favicon URL, or an empty string if invalid
