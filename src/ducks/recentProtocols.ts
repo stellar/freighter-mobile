@@ -27,6 +27,11 @@ interface RecentProtocolsState {
   addRecentProtocol: (url: string, protocols: DiscoverProtocol[]) => void;
   /** Clears all recent protocols. */
   clearRecentProtocols: () => void;
+  /**
+   * Removes entries whose websiteUrl no longer matches any known protocol.
+   * Call once on app launch after protocols have been fetched.
+   */
+  pruneStaleProtocols: (protocols: DiscoverProtocol[]) => void;
 }
 
 export const useRecentProtocolsStore = create<RecentProtocolsState>()(
@@ -56,6 +61,15 @@ export const useRecentProtocolsStore = create<RecentProtocolsState>()(
 
       clearRecentProtocols: () => {
         set({ recentProtocols: [] });
+      },
+
+      pruneStaleProtocols: (protocols: DiscoverProtocol[]) => {
+        const knownUrls = new Set(protocols.map((p) => p.websiteUrl));
+        set((state) => ({
+          recentProtocols: state.recentProtocols.filter((entry) =>
+            knownUrls.has(entry.websiteUrl),
+          ),
+        }));
       },
     }),
     {
