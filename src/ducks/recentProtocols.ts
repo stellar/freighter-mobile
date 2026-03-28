@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { STORAGE_KEYS } from "config/constants";
 import { DiscoverProtocol } from "config/types";
 import { findMatchedProtocol } from "helpers/protocols";
 import { create } from "zustand";
@@ -59,7 +60,7 @@ export const useRecentProtocolsStore = create<RecentProtocolsState>()(
       },
     }),
     {
-      name: "recent-protocols-storage",
+      name: STORAGE_KEYS.RECENT_PROTOCOLS_STORAGE,
       storage: createJSONStorage(() => AsyncStorage),
     },
   ),
