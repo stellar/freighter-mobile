@@ -19,6 +19,7 @@ export const isHomepageUrl = (url: string): boolean =>
 export const isDangerousScheme = (url: string): boolean => {
   const lowered = url.trim().toLowerCase();
   return (
+    // eslint-disable-next-line no-script-url
     lowered.startsWith("javascript:") ||
     lowered.startsWith("data:") ||
     lowered.startsWith("blob:") ||
