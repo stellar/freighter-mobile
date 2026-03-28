@@ -17,7 +17,8 @@ const isDangerousScheme = (url: string): boolean => {
   return (
     lowered.startsWith("javascript:") ||
     lowered.startsWith("data:") ||
-    lowered.startsWith("blob:")
+    lowered.startsWith("blob:") ||
+    lowered.startsWith("vbscript:")
   );
 };
 

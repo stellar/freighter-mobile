@@ -231,7 +231,8 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
       if (
         lowered.startsWith("javascript:") ||
         lowered.startsWith("data:") ||
-        lowered.startsWith("blob:")
+        lowered.startsWith("blob:") ||
+        lowered.startsWith("vbscript:")
       ) {
         logger.debug(
           "WebViewContainer",
