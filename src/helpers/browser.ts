@@ -42,6 +42,10 @@ export const normalizeUrl = (
 ): { url: string; isSearch: boolean } => {
   const trimmed = input.trim();
 
+  if (!trimmed) {
+    return { url: "", isSearch: false };
+  }
+
   // Check if it's already a valid URL
   if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
     return { url: trimmed, isSearch: false };

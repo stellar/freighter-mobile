@@ -40,6 +40,7 @@ export const useBrowserActions = (
       if (!activeTabId) return;
 
       const { url, isSearch } = normalizeUrl(inputUrl);
+      if (!url) return;
 
       if (!isSearch) {
         const { protocols } = useProtocolsStore.getState();
