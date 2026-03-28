@@ -132,9 +132,11 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
         }
       })
       .catch((error) => {
-        logger.error("Failed to read HAS_SEEN_DISCOVER_WELCOME from storage", {
+        logger.error(
+          "DiscoveryScreen",
+          "Failed to read HAS_SEEN_DISCOVER_WELCOME from storage",
           error,
-        });
+        );
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

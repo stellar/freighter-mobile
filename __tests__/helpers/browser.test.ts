@@ -122,8 +122,8 @@ describe("browser helpers", () => {
 
     it("should handle empty input", () => {
       expect(normalizeUrl("")).toEqual({
-        url: `${BROWSER_CONSTANTS.GOOGLE_SEARCH_BASE_URL}`,
-        isSearch: true,
+        url: "",
+        isSearch: false,
       });
     });
 
