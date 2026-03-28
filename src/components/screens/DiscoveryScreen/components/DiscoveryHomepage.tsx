@@ -207,14 +207,11 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
       [selectedProtocol, handleSitePress, protocols, protocolSource],
     );
 
-    const handleExpand = useCallback(
-      (section: ExpandedSection) => {
-        expandedSlideAnim.stopAnimation();
-        expandedSlideAnim.setValue(1);
-        setExpandedSection(section);
-      },
-      [expandedSlideAnim],
-    );
+    const handleExpand = (section: ExpandedSection) => {
+      expandedSlideAnim.stopAnimation();
+      expandedSlideAnim.setValue(1);
+      setExpandedSection(section);
+    };
 
     const handleCollapseSection = useCallback(() => {
       expandedSlideAnim.stopAnimation();
@@ -245,7 +242,7 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
         items: recentItems,
         isRecents: true,
       });
-    }, [handleExpand, t, recentItems]);
+    }, [t, recentItems]);
 
     const handleClearRecents = useCallback(() => {
       clearRecentProtocols();
@@ -285,7 +282,7 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
         title: t("discovery.dapps"),
         items: dappsItems,
       });
-    }, [handleExpand, t, dappsItems]);
+    }, [t, dappsItems]);
 
     return (
       <ViewShot
