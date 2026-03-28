@@ -72,12 +72,12 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
     const [selectedProtocol, setSelectedProtocol] =
       useState<ProtocolDetailsData | null>(null);
     const expandedSlideAnim = useRef(new Animated.Value(1)).current;
-    const [protocolSource, setProtocolSource] = useState<DiscoverAnalyticsSource>(
-      DISCOVER_ANALYTICS_SOURCE.DAPPS_LIST,
-    );
-    const [expandedSource, setExpandedSource] = useState<DiscoverAnalyticsSource>(
-      DISCOVER_ANALYTICS_SOURCE.EXPANDED_DAPPS_LIST,
-    );
+    const [protocolSource, setProtocolSource] =
+      useState<DiscoverAnalyticsSource>(DISCOVER_ANALYTICS_SOURCE.DAPPS_LIST);
+    const [expandedSource, setExpandedSource] =
+      useState<DiscoverAnalyticsSource>(
+        DISCOVER_ANALYTICS_SOURCE.EXPANDED_DAPPS_LIST,
+      );
 
     const handleSitePress = useCallback(
       (url: string) => {
@@ -172,8 +172,7 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
     );
 
     const handleExpandedItemPress = useCallback(
-      (item: VerticalListItem) =>
-        openProtocolDetails(item, expandedSource),
+      (item: VerticalListItem) => openProtocolDetails(item, expandedSource),
       [openProtocolDetails, expandedSource],
     );
 
@@ -197,11 +196,7 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
             url,
           );
         }
-        analytics.trackDiscoverProtocolOpened(
-          url,
-          protocolSource,
-          protocols,
-        );
+        analytics.trackDiscoverProtocolOpened(url, protocolSource, protocols);
         handleSitePress(url);
       },
       [selectedProtocol, handleSitePress, protocols, protocolSource],
@@ -242,6 +237,7 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
         items: recentItems,
         isRecents: true,
       });
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- handleExpand only depends on expandedSlideAnim (a ref), so it's stable
     }, [t, recentItems]);
 
     const handleClearRecents = useCallback(() => {
@@ -282,6 +278,7 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
         title: t("discovery.dapps"),
         items: dappsItems,
       });
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- handleExpand only depends on expandedSlideAnim (a ref), so it's stable
     }, [t, dappsItems]);
 
     return (

@@ -1,8 +1,3 @@
-import { isIOS } from "helpers/device";
-import { ViewStyle } from "react-native";
-import { SharedValue } from "react-native-reanimated";
-import Animated, { useAnimatedStyle } from "react-native-reanimated";
-
 import {
   BAR_SPACING,
   BUTTON_SIZE,
@@ -11,7 +6,10 @@ import {
   IOS_FOCUSED_MARGIN_BOTTOM,
   IOS_FOCUSED_MARGIN_HORIZONTAL,
   POINTER_EVENTS_THRESHOLD,
-} from "./constants";
+} from "components/screens/DiscoveryScreen/components/BottomNavigationBar/constants";
+import { isIOS } from "helpers/device";
+import { ViewStyle } from "react-native";
+import { SharedValue, useAnimatedStyle } from "react-native-reanimated";
 
 interface UseAnimatedBarStylesParams {
   isOwnKeyboard: SharedValue<boolean>;
