@@ -37,8 +37,11 @@ const ProtocolDetailsBottomSheet: React.FC<ProtocolDetailsBottomSheetProps> =
 
     const handleOpen = useCallback(() => {
       if (protocol) {
+        const { websiteUrl } = protocol;
         handleClose();
-        onOpen(protocol.websiteUrl);
+        // Defer navigation slightly so the dismiss animation can start
+        // before the full state change from onOpen triggers a re-render.
+        requestAnimationFrame(() => onOpen(websiteUrl));
       }
     }, [protocol, onOpen, handleClose]);
 
