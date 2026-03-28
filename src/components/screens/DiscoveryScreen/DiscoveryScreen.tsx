@@ -236,6 +236,22 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
         );
         return false;
       }
+
+      // Block dangerous URL schemes (javascript:, data:, etc.)
+      const url = request.url.toLowerCase();
+      if (
+        !url.startsWith("https://") &&
+        !url.startsWith("http://") &&
+        !url.startsWith("about:")
+      ) {
+        logger.debug(
+          "WebViewContainer",
+          "Blocked navigation to disallowed scheme:",
+          request.url,
+        );
+        return false;
+      }
+
       return true;
     },
     [],
