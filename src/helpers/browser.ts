@@ -102,9 +102,7 @@ export const formatDisplayUrl = (url: string): string => {
  * Generates a unique tab ID based on the current timestamp.
  * @returns A string representing the unique tab ID
  */
-let tabIdCounter = 0;
-export const generateTabId = (): string =>
-  `${Date.now()}-${++tabIdCounter}`;
+export const generateTabId = (): string => Date.now().toString();
 
 /**
  * Clears all cookies from WebView instances. Called during logout for security reasons.
