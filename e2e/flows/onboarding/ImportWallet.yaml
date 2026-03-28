@@ -68,6 +68,11 @@ tags:
           commands:
             - tapOn:
                 text: "Allow Paste"
+            # Wait for the allow paste dialog to fully dismiss
+            - extendedWaitUntil:
+                notVisible:
+                  text: "Allow Paste|Don't Allow Paste"
+                timeout: 5000
 # Android: inputText approach
 - runFlow:
     when:
