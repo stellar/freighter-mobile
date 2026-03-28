@@ -60,7 +60,7 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
      * Clears WebView cache for a specific WebView instance without affecting cookies
      * @param webViewInstance - The WebView instance to clear cache for
      */
-    const clearWebViewCache = useCallback((webViewInstance: WebView | null) => {
+    const clearWebViewCache = (webViewInstance: WebView | null) => {
       if (!webViewInstance) return;
 
       try {
@@ -68,7 +68,7 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
       } catch (error) {
         logger.warn("WebViewContainer", "Failed to clear WebView cache", error);
       }
-    }, []);
+    };
 
     /**
      * Determines if a WebView should be rendered based on WebView limit management
@@ -76,42 +76,32 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
      * @param tabId - The tab ID to check
      * @returns true if the WebView should be rendered, false otherwise
      */
-    const shouldRenderWebView = useCallback(
-      (tabId: string) => isTabActive(tabId) || activeWebViewIds.includes(tabId),
-      [isTabActive, activeWebViewIds],
-    );
+    const shouldRenderWebView = (tabId: string) =>
+      isTabActive(tabId) || activeWebViewIds.includes(tabId);
 
     /**
      * Handles WebView registration when a WebView is mounted
      * @param tabId - The tab ID to register
      */
-    const handleWebViewMount = useCallback(
-      (tabId: string) => {
-        // Read tabs from the store imperatively to avoid a stale closure.
-        // Using the `tabs` hook value here would recreate this callback on
-        // every tab update and could still be one render behind.
-        const currentTabs = useBrowserTabsStore.getState().tabs;
-        const tab = currentTabs.find((t) => t.id === tabId);
-        const isHomepage = tab ? isHomepageUrl(tab.url) : false;
+    const handleWebViewMount = (tabId: string) => {
+      // Read tabs from the store imperatively to avoid a stale closure.
+      const currentTabs = useBrowserTabsStore.getState().tabs;
+      const tab = currentTabs.find((t) => t.id === tabId);
+      const isHomepage = tab ? isHomepageUrl(tab.url) : false;
 
-        // Don't register homepage as it doesn't use WebView
-        if (!isHomepage) {
-          registerWebView(tabId);
-        }
-      },
-      [registerWebView],
-    );
+      // Don't register homepage as it doesn't use WebView
+      if (!isHomepage) {
+        registerWebView(tabId);
+      }
+    };
 
     /**
      * Handles WebView unregistration when a WebView is unmounted
      * @param tabId - The tab ID to unregister
      */
-    const handleWebViewUnmount = useCallback(
-      (tabId: string) => {
-        unregisterWebView(tabId);
-      },
-      [unregisterWebView],
-    );
+    const handleWebViewUnmount = (tabId: string) => {
+      unregisterWebView(tabId);
+    };
 
     /**
      * Properly disposes of WebView instances to prevent memory leaks
