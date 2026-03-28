@@ -96,7 +96,12 @@ describe("useBrowserActions", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockUseBrowserTabsStore.mockReturnValue(mockStore as any);
+    mockUseBrowserTabsStore.mockImplementation((selector?: any) => {
+      if (typeof selector === "function") {
+        return selector(mockStore);
+      }
+      return mockStore;
+    });
     (mockUseBrowserTabsStore as any).getState = jest
       .fn()
       .mockReturnValue(mockStore);
@@ -186,6 +191,45 @@ describe("useBrowserActions", () => {
       result.current.handleGoBack();
 
       expect(mockWebViewRef.current?.goBack).not.toHaveBeenCalled();
+    });
+
+    it("should navigate to homepage when canGoBack is false but cameFromHomepage is true", () => {
+      mockUseBrowserTabsStore.mockReturnValue({
+        ...mockStore,
+        getActiveTab: jest.fn().mockReturnValue({
+          ...mockTab,
+          canGoBack: false,
+          cameFromHomepage: true,
+        }),
+      } as any);
+
+      const { result } = renderHook(() => useBrowserActions(mockWebViewRef));
+
+      result.current.handleGoBack();
+
+      expect(mockWebViewRef.current?.goBack).not.toHaveBeenCalled();
+      expect(mockStore.goToPage).toHaveBeenCalledWith(
+        "tab-123",
+        "freighter://discovery-homepage",
+      );
+    });
+
+    it("should do nothing when canGoBack is false and cameFromHomepage is false", () => {
+      mockUseBrowserTabsStore.mockReturnValue({
+        ...mockStore,
+        getActiveTab: jest.fn().mockReturnValue({
+          ...mockTab,
+          canGoBack: false,
+          cameFromHomepage: false,
+        }),
+      } as any);
+
+      const { result } = renderHook(() => useBrowserActions(mockWebViewRef));
+
+      result.current.handleGoBack();
+
+      expect(mockWebViewRef.current?.goBack).not.toHaveBeenCalled();
+      expect(mockStore.goToPage).not.toHaveBeenCalled();
     });
   });
 
