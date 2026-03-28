@@ -164,7 +164,7 @@ describe("Discover Analytics", () => {
       trackDiscoverTabClosed(2, "https://example.com");
 
       expect(track).toHaveBeenCalledWith(AnalyticsEvent.DISCOVER_TAB_CLOSED, {
-        tab_count: 2,
+        tab_count_before_close: 2,
         had_url: "https://example.com",
       });
     });
@@ -173,7 +173,7 @@ describe("Discover Analytics", () => {
       trackDiscoverTabClosed(1, undefined);
 
       expect(track).toHaveBeenCalledWith(AnalyticsEvent.DISCOVER_TAB_CLOSED, {
-        tab_count: 1,
+        tab_count_before_close: 1,
         had_url: undefined,
       });
     });
@@ -186,7 +186,7 @@ describe("Discover Analytics", () => {
       expect(track).toHaveBeenCalledWith(
         AnalyticsEvent.DISCOVER_ALL_TABS_CLOSED,
         {
-          tab_count: 5,
+          tab_count_before_close: 5,
         },
       );
     });
