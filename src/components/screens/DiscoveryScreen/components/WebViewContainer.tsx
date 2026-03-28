@@ -11,6 +11,16 @@ import { View, Animated } from "react-native";
 import ViewShot from "react-native-view-shot";
 import { WebView, WebViewNavigation } from "react-native-webview";
 
+/** Block dangerous URL schemes that can execute arbitrary code. */
+const isDangerousScheme = (url: string): boolean => {
+  const lowered = url.toLowerCase();
+  return (
+    lowered.startsWith("javascript:") ||
+    lowered.startsWith("data:") ||
+    lowered.startsWith("blob:")
+  );
+};
+
 interface WebViewContainerProps {
   webViewRef: React.RefObject<WebView | null>;
   onNavigationStateChange: (navState: WebViewNavigation) => void;
@@ -368,7 +378,9 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
                           isActive ? onNavigationStateChange : undefined
                         }
                         onShouldStartLoadWithRequest={
-                          isActive ? onShouldStartLoadWithRequest : () => true
+                          isActive
+                            ? onShouldStartLoadWithRequest
+                            : (req) => !isDangerousScheme(req.url)
                         }
                         onLoadStart={() => handleWebViewMount(tab.id)}
                         onError={() => handleWebViewUnmount(tab.id)}
