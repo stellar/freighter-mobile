@@ -359,7 +359,12 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
             }}
             pointerEvents={isUrlBarFocused ? "auto" : "none"}
           >
-            <Pressable style={{ flex: 1 }} onPress={Keyboard.dismiss} />
+            <Pressable
+              style={{ flex: 1 }}
+              onPress={Keyboard.dismiss}
+              accessibilityRole="button"
+              accessibilityLabel={t("common.cancel")}
+            />
           </Animated.View>
         </View>
 

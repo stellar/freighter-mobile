@@ -332,7 +332,8 @@
     "clearRecents": "Clear Recents",
     "welcomeTitle": "Welcome to Discover!",
     "welcomeGateway": "Your gateway to the Stellar ecosystem. Browse and connect to decentralized applications built on Stellar.",
-    "welcomeCta": "Let's go"
+    "welcomeCta": "Let's go",
+    "newTab": "New tab"
   },
   "history": {
     "title": "History",
