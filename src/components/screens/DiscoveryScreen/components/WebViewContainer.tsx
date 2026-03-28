@@ -87,7 +87,11 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
      */
     const handleWebViewMount = useCallback(
       (tabId: string) => {
-        const tab = tabs.find((t) => t.id === tabId);
+        // Read tabs from the store imperatively to avoid a stale closure.
+        // Using the `tabs` hook value here would recreate this callback on
+        // every tab update and could still be one render behind.
+        const currentTabs = useBrowserTabsStore.getState().tabs;
+        const tab = currentTabs.find((t) => t.id === tabId);
         const isHomepage = tab ? isHomepageUrl(tab.url) : false;
 
         // Don't register homepage as it doesn't use WebView
@@ -95,7 +99,7 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
           registerWebView(tabId);
         }
       },
-      [tabs, registerWebView],
+      [registerWebView],
     );
 
     /**
