@@ -1,5 +1,13 @@
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import ContextMenuButton from "components/ContextMenuButton";
+import {
+  BUTTON_SIZE,
+  ICON_SIZE,
+  INPUT_HEIGHT,
+  BottomNavigationBarProps,
+} from "components/screens/DiscoveryScreen/components/BottomNavigationBar/constants";
+import useAnimatedBarStyles from "components/screens/DiscoveryScreen/components/BottomNavigationBar/useAnimatedBarStyles";
+import useKeyboardHandling from "components/screens/DiscoveryScreen/components/BottomNavigationBar/useKeyboardHandling";
 import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { StyledTextInput } from "components/sds/Input";
@@ -13,10 +21,6 @@ import React, { useMemo } from "react";
 import { View, TouchableOpacity } from "react-native";
 import { useReanimatedKeyboardAnimation } from "react-native-keyboard-controller";
 import Animated, { useSharedValue } from "react-native-reanimated";
-
-import { BUTTON_SIZE, ICON_SIZE, INPUT_HEIGHT, BottomNavigationBarProps } from "./constants";
-import useAnimatedBarStyles from "./useAnimatedBarStyles";
-import useKeyboardHandling from "./useKeyboardHandling";
 
 const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
   ({

@@ -1,4 +1,5 @@
 import { renderHook, act } from "@testing-library/react-hooks";
+import { useCallback, useRef, useState } from "react";
 import { Keyboard } from "react-native";
 
 // Mock dependencies
@@ -26,8 +27,6 @@ const useKeyboardHandling = ({
   onCancel: () => void;
   onInputChange: (text: string) => void;
 }) => {
-  const { useCallback, useRef, useState } = require("react");
-
   const inputRef = useRef(null);
   const [isFocused, setIsFocused] = useState(false);
   const [cursorSelection, setCursorSelection] = useState<
@@ -35,6 +34,7 @@ const useKeyboardHandling = ({
   >(undefined);
 
   const handleInputFocus = useCallback(() => {
+    // eslint-disable-next-line no-param-reassign
     isOwnKeyboard.value = true;
     setIsFocused(true);
     onFocusChange?.(true);
@@ -44,6 +44,7 @@ const useKeyboardHandling = ({
   }, [isOwnKeyboard, onFocusChange]);
 
   const handleInputBlur = useCallback(() => {
+    // eslint-disable-next-line no-param-reassign
     isOwnKeyboard.value = false;
     setIsFocused(false);
     onFocusChange?.(false);

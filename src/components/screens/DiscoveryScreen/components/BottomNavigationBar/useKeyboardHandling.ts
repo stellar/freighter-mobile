@@ -33,6 +33,7 @@ const useKeyboardHandling = ({
   >(undefined);
 
   const handleInputFocus = useCallback(() => {
+    // eslint-disable-next-line no-param-reassign
     isOwnKeyboard.value = true;
     setIsFocused(true);
     onFocusChange?.(true);
@@ -50,6 +51,7 @@ const useKeyboardHandling = ({
   // onCancel is called on blur so that every dismiss path (Cancel button,
   // tap outside, Android hardware back button) restores the URL.
   const handleInputBlur = useCallback(() => {
+    // eslint-disable-next-line no-param-reassign
     isOwnKeyboard.value = false;
     setIsFocused(false);
     onFocusChange?.(false);
