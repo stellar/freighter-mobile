@@ -22,8 +22,9 @@ import { DISCOVER_ANALYTICS_SOURCE } from "services/analytics/discover";
 export const useBrowserActions = (
   webViewRef: React.RefObject<WebView | null>,
 ) => {
-  const { tabs, activeTabId, goToPage, closeTab, closeAllTabs, getActiveTab } =
+  const { activeTabId, goToPage, closeTab, closeAllTabs, getActiveTab } =
     useBrowserTabsStore();
+  const tabCount = useBrowserTabsStore((state) => state.tabCount);
 
   const { t } = useAppTranslation();
   const { open: openInAppBrowser } = useInAppBrowser();
@@ -114,9 +115,9 @@ export const useBrowserActions = (
    * Handler for closing all tabs.
    */
   const handleCloseAllTabs = useCallback(() => {
-    analytics.trackDiscoverAllTabsClosed(tabs.length);
+    analytics.trackDiscoverAllTabsClosed(tabCount);
     closeAllTabs();
-  }, [tabs.length, closeAllTabs]);
+  }, [tabCount, closeAllTabs]);
 
   /**
    * Handler for sharing the current tab's URL and title.
@@ -156,7 +157,7 @@ export const useBrowserActions = (
     // If on homepage, only show close actions
     if (isOnHomepage) {
       const homepageActions = [
-        ...(tabs.length > 1
+        ...(tabCount > 1
           ? [
               {
                 title: t("discovery.closeAllTabs"),
@@ -232,7 +233,7 @@ export const useBrowserActions = (
     return isIOS ? allActions.reverse() : allActions;
   }, [
     isOnHomepage,
-    tabs.length,
+    tabCount,
     t,
     handleOpenInBrowser,
     handleShare,
