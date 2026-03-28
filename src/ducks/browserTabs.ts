@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { BROWSER_CONSTANTS, STORAGE_KEYS } from "config/constants";
+import { BROWSER_CONSTANTS } from "config/constants";
 import { generateTabId, isHomepageUrl } from "helpers/browser";
 import {
   findTabScreenshot,
@@ -300,7 +300,7 @@ export const useBrowserTabsStore = create<BrowserTabsState>()(
       },
     }),
     {
-      name: STORAGE_KEYS.BROWSER_TABS_STORAGE,
+      name: "browser-tabs-storage",
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
         tabs: state.tabs.map((tab) => ({
