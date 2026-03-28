@@ -101,9 +101,14 @@ export const TabNavigator = () => {
     network: networkDetails.network,
   });
 
-  // Fetch discover protocols and hydrate recent protocols store on mount
+  // Fetch discover protocols and hydrate recent protocols store on mount.
+  // After protocols are fetched, prune any stale recent protocol entries
+  // whose websiteUrl no longer matches a known protocol.
   useEffect(() => {
-    fetchProtocols();
+    fetchProtocols().then(() => {
+      const { protocols } = useProtocolsStore.getState();
+      useRecentProtocolsStore.getState().pruneStaleProtocols(protocols);
+    });
     useRecentProtocolsStore.persist.rehydrate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
