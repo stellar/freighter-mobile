@@ -81,6 +81,11 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
     manageAccountsRef.current?.present();
   }, []);
 
+  const handleDismissWelcomeModal = useCallback(() => {
+    dataStorage.setItem(STORAGE_KEYS.HAS_SEEN_DISCOVER_WELCOME, "true");
+    setShowWelcomeModal(false);
+  }, []);
+
   // Adds a new default homepage tab
   const handleNewTab = useCallback(
     (source: DiscoverAnalyticsSource) => {
@@ -422,10 +427,7 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
 
       <DiscoverWelcomeModal
         visible={showWelcomeModal}
-        onDismiss={() => {
-          dataStorage.setItem(STORAGE_KEYS.HAS_SEEN_DISCOVER_WELCOME, "true");
-          setShowWelcomeModal(false);
-        }}
+        onDismiss={handleDismissWelcomeModal}
       />
     </BaseLayout>
   );
