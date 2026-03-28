@@ -396,4 +396,6 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
   },
 );
 
+DiscoveryHomepage.displayName = "DiscoveryHomepage";
+
 export default DiscoveryHomepage;
