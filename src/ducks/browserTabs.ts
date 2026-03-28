@@ -208,15 +208,15 @@ export const useBrowserTabsStore = create<BrowserTabsState>()(
       },
 
       loadScreenshots: async () => {
-        const { tabs } = get();
+        const state = get();
+        const updatedTabs = [...state.tabs];
 
-        // Load screenshots in parallel, collecting results into a map
-        const screenshotMap = new Map<string, string>();
-        const screenshotPromises = tabs.map(async (tab) => {
+        // Use Promise.all to load screenshots in parallel
+        const screenshotPromises = updatedTabs.map(async (tab, index) => {
           try {
             const screenshot = await findTabScreenshot(tab.id);
             if (screenshot) {
-              screenshotMap.set(tab.id, screenshot.uri);
+              updatedTabs[index] = { ...tab, screenshot: screenshot.uri };
             }
           } catch (error) {
             // Ignore errors when loading screenshots
@@ -224,15 +224,7 @@ export const useBrowserTabsStore = create<BrowserTabsState>()(
         });
 
         await Promise.all(screenshotPromises);
-
-        // Merge screenshots into the current state (not the stale snapshot)
-        // to avoid overwriting tab mutations that occurred during loading
-        set((state) => ({
-          tabs: state.tabs.map((tab) => {
-            const uri = screenshotMap.get(tab.id);
-            return uri ? { ...tab, screenshot: uri } : tab;
-          }),
-        }));
+        set({ tabs: updatedTabs });
 
         // Make sure to remove unused screenshots from storage
         get().cleanupScreenshots();
