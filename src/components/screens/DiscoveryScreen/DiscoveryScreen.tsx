@@ -47,6 +47,7 @@ type DiscoveryScreenProps = BottomTabScreenProps<
 export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
   const webViewRef = useRef<WebView>(null);
   const manageAccountsRef = useRef<BottomSheetModal>(null);
+  const newTabTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [inputUrl, setInputUrl] = useState("");
   const [newTabId, setNewTabId] = useState<string | null>(null);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
@@ -106,12 +107,25 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
       // Hide the tab overview immediately
       setShowTabOverview(false);
       // Clear the new tab ID after animation ends
-      setTimeout(() => {
+      if (newTabTimerRef.current) {
+        clearTimeout(newTabTimerRef.current);
+      }
+      newTabTimerRef.current = setTimeout(() => {
         setNewTabId(null);
+        newTabTimerRef.current = null;
       }, BROWSER_CONSTANTS.CLOSE_ANIMATION_DURATION);
     },
     [addTab, setShowTabOverview],
   );
+
+  // Clean up the new tab timer on unmount
+  useEffect(() => {
+    return () => {
+      if (newTabTimerRef.current) {
+        clearTimeout(newTabTimerRef.current);
+      }
+    };
+  }, []);
 
   // Initialize with homepage tab if no tabs are open (e.g. on app start)
   useEffect(() => {
