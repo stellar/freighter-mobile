@@ -209,6 +209,7 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
 
     const handleExpand = useCallback(
       (section: ExpandedSection) => {
+        expandedSlideAnim.stopAnimation();
         expandedSlideAnim.setValue(1);
         setExpandedSection(section);
       },
@@ -216,6 +217,7 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
     );
 
     const handleCollapseSection = useCallback(() => {
+      expandedSlideAnim.stopAnimation();
       Animated.timing(expandedSlideAnim, {
         toValue: 1,
         duration: BROWSER_CONSTANTS.CLOSE_ANIMATION_DURATION,
