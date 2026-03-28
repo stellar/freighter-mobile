@@ -296,6 +296,8 @@ export enum STORAGE_KEYS {
   HAS_SEEN_BIOMETRICS_ENABLE_SCREEN = "hasSeenBiometricsEnableScreen",
   HAS_SEEN_DISCOVER_WELCOME = "hasSeenDiscoverWelcome",
   APP_UPDATE_DISMISSED_REQUIRED_VERSION = "appUpdateDismissedRequiredVersion",
+  RECENT_PROTOCOLS_STORAGE = "recent-protocols-storage",
+  BROWSER_TABS_STORAGE = "browser-tabs-storage",
 }
 
 /**
