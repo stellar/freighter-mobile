@@ -4,6 +4,21 @@ import { findMatchedProtocol } from "helpers/protocols";
 import { track } from "services/analytics/core";
 
 // -----------------------------------------------------------------------------
+// HELPERS
+// -----------------------------------------------------------------------------
+
+/** Strip query parameters and fragments from a URL to avoid leaking
+ *  sensitive data (tokens, session IDs) to the analytics backend. */
+const stripQueryParams = (url: string): string => {
+  try {
+    const parsed = new URL(url);
+    return `${parsed.protocol}//${parsed.host}${parsed.pathname}`;
+  } catch {
+    return url;
+  }
+};
+
+// -----------------------------------------------------------------------------
 // SOURCE CONSTANTS
 // -----------------------------------------------------------------------------
 
@@ -32,7 +47,7 @@ export const trackDiscoverProtocolOpened = (
 ): void => {
   const matchedProtocol = findMatchedProtocol({ protocols, searchUrl: url });
   track(AnalyticsEvent.DISCOVER_PROTOCOL_OPENED, {
-    url,
+    url: stripQueryParams(url),
     protocol_name: matchedProtocol?.name,
     source,
     is_known_protocol: !!matchedProtocol,
@@ -55,7 +70,7 @@ export const trackDiscoverProtocolOpenedFromDetails = (
 ): void => {
   track(AnalyticsEvent.DISCOVER_PROTOCOL_OPENED_FROM_DETAILS, {
     protocol_name: protocolName,
-    url,
+    url: stripQueryParams(url),
   });
 };
 
@@ -79,7 +94,7 @@ export const trackDiscoverTabClosed = (
 ): void => {
   track(AnalyticsEvent.DISCOVER_TAB_CLOSED, {
     tab_count_before_close: tabCountBeforeClose,
-    had_url: hadUrl,
+    had_url: hadUrl ? stripQueryParams(hadUrl) : undefined,
   });
 };
 
