@@ -27,7 +27,7 @@ const useDiscoveryData = () => {
         .map((protocol) => ({
           id: protocol.websiteUrl,
           title: protocol.name,
-          category: protocol.tags[0],
+          category: protocol.tags[0] ?? "",
           backgroundUrl: protocol.backgroundUrl,
         })),
     [protocols],
