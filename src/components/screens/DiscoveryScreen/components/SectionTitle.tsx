@@ -12,7 +12,7 @@ interface SectionTitleProps {
   style?: StyleProp<ViewStyle>;
 }
 
-const SectionTitle: React.FC<SectionTitleProps> = ({
+const SectionTitle: React.FC<SectionTitleProps> = React.memo(({
   title,
   onPress,
   className,
@@ -36,7 +36,7 @@ const SectionTitle: React.FC<SectionTitleProps> = ({
       )}
     </TouchableOpacity>
   );
-};
+});
 
 SectionTitle.displayName = "SectionTitle";
 
