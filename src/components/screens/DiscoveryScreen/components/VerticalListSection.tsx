@@ -2,7 +2,7 @@ import ProtocolRow from "components/screens/DiscoveryScreen/components/ProtocolR
 import SectionTitle from "components/screens/DiscoveryScreen/components/SectionTitle";
 import { DEFAULT_PADDING } from "config/constants";
 import { pxValue } from "helpers/dimensions";
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 import { View } from "react-native";
 
 export interface VerticalListItem {
@@ -55,7 +55,10 @@ interface VerticalListSectionProps {
 
 const VerticalListSection: React.FC<VerticalListSectionProps> = React.memo(
   ({ title, items, onTitlePress, onItemOpen, onItemPress }) => {
-    const visibleItems = items.slice(0, MAX_VISIBLE_ITEMS);
+    const visibleItems = useMemo(
+      () => items.slice(0, MAX_VISIBLE_ITEMS),
+      [items],
+    );
 
     if (visibleItems.length === 0) return null;
 
