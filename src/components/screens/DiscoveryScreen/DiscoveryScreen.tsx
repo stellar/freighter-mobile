@@ -226,6 +226,21 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
         request,
       );
 
+      // Block dangerous URL schemes that could execute arbitrary code
+      const lowered = request.url.toLowerCase();
+      if (
+        lowered.startsWith("javascript:") ||
+        lowered.startsWith("data:") ||
+        lowered.startsWith("blob:")
+      ) {
+        logger.debug(
+          "WebViewContainer",
+          "Blocked navigation to dangerous scheme:",
+          request.url,
+        );
+        return false;
+      }
+
       // We should not handle WalletConnect URIs here
       // let's handle them in the useWalletKitEventsManager hook instead
       if (request.url.includes(WALLET_KIT_MT_REDIRECT_NATIVE)) {
