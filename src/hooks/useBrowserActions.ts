@@ -24,7 +24,7 @@ export const useBrowserActions = (
 ) => {
   const { activeTabId, goToPage, closeTab, closeAllTabs, getActiveTab } =
     useBrowserTabsStore();
-  const tabCount = useBrowserTabsStore((state) => state.tabCount);
+  const tabCount = useBrowserTabsStore((state) => state.tabs.length);
 
   const { t } = useAppTranslation();
   const { open: openInAppBrowser } = useInAppBrowser();
