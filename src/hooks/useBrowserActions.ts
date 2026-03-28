@@ -146,10 +146,7 @@ export const useBrowserActions = (
   }, [activeTab, openInAppBrowser]);
 
   // Check if current tab is on homepage
-  const isOnHomepage = useMemo(
-    () => (activeTab ? isHomepageUrl(activeTab.url) : false),
-    [activeTab],
-  );
+  const isOnHomepage = activeTab ? isHomepageUrl(activeTab.url) : false;
 
   /**
    * Array of context menu actions for the current tab, including reload, share, open in browser, and close actions.
