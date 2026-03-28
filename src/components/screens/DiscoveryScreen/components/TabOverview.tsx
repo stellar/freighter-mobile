@@ -95,6 +95,8 @@ const TabOverviewFooter: React.FC<TabOverviewFooterProps> = ({
         onPress={onNewTab}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         className="size-[40px] justify-center items-center"
+        accessibilityRole="button"
+        accessibilityLabel={t("discovery.newTab")}
       >
         <Icon.Plus size={24} color={themeColors.base[1]} />
       </TouchableOpacity>
@@ -103,6 +105,8 @@ const TabOverviewFooter: React.FC<TabOverviewFooterProps> = ({
         <TouchableOpacity
           onPress={onClose}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityRole="button"
+          accessibilityLabel={t("common.done")}
         >
           <Text md medium>
             {t("common.done")}

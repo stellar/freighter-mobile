@@ -27,6 +27,8 @@ const SectionTitle: React.FC<SectionTitleProps> = React.memo(({
       onPress={onPress}
       disabled={!onPress}
       delayPressIn={DEFAULT_PRESS_DELAY}
+      accessibilityRole={onPress ? "button" : "text"}
+      accessibilityLabel={title}
     >
       <Text md semiBold>
         {title}

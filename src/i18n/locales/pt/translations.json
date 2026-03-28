@@ -296,7 +296,8 @@
     "clearRecents": "Limpar Recentes",
     "welcomeTitle": "Bem-vindo ao Discover!",
     "welcomeGateway": "Seu portal para o ecossistema Stellar. Navegue e conecte-se a aplicativos descentralizados construídos na rede Stellar.",
-    "welcomeCta": "Vamos lá"
+    "welcomeCta": "Vamos lá",
+    "newTab": "Nova aba"
   },
   "history": {
     "title": "Histórico",
