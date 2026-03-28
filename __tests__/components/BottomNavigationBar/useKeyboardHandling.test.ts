@@ -1,5 +1,5 @@
 import { renderHook, act } from "@testing-library/react-hooks";
-import { useCallback, useRef, useState } from "react";
+import useKeyboardHandling from "components/screens/DiscoveryScreen/components/BottomNavigationBar/useKeyboardHandling";
 import { Keyboard } from "react-native";
 
 // Mock dependencies
@@ -14,69 +14,6 @@ global.requestAnimationFrame = jest.fn((cb) => {
   return 0;
 });
 
-// Inline the hook to avoid module resolution issues in tests
-// This mirrors the logic from useKeyboardHandling.ts
-const useKeyboardHandling = ({
-  isOwnKeyboard,
-  onFocusChange,
-  onCancel,
-  onInputChange,
-}: {
-  isOwnKeyboard: { value: boolean };
-  onFocusChange?: (focused: boolean) => void;
-  onCancel: () => void;
-  onInputChange: (text: string) => void;
-}) => {
-  const inputRef = useRef(null);
-  const [isFocused, setIsFocused] = useState(false);
-  const [cursorSelection, setCursorSelection] = useState<
-    { start: number; end: number } | undefined
-  >(undefined);
-
-  const handleInputFocus = useCallback(() => {
-    // eslint-disable-next-line no-param-reassign
-    isOwnKeyboard.value = true;
-    setIsFocused(true);
-    onFocusChange?.(true);
-
-    const moveCursor = () => setCursorSelection({ start: 0, end: 0 });
-    requestAnimationFrame(moveCursor);
-  }, [isOwnKeyboard, onFocusChange]);
-
-  const handleInputBlur = useCallback(() => {
-    // eslint-disable-next-line no-param-reassign
-    isOwnKeyboard.value = false;
-    setIsFocused(false);
-    onFocusChange?.(false);
-    onCancel();
-  }, [isOwnKeyboard, onFocusChange, onCancel]);
-
-  const handleCancel = useCallback(() => {
-    Keyboard.dismiss();
-  }, []);
-
-  const handleSelectionChange = useCallback(() => {
-    if (cursorSelection) {
-      setCursorSelection(undefined);
-    }
-  }, [cursorSelection]);
-
-  const handleClear = useCallback(() => {
-    onInputChange("");
-  }, [onInputChange]);
-
-  return {
-    inputRef,
-    isFocused,
-    cursorSelection,
-    handleInputFocus,
-    handleInputBlur,
-    handleCancel,
-    handleSelectionChange,
-    handleClear,
-  };
-};
-
 describe("useKeyboardHandling", () => {
   const mockIsOwnKeyboard = { value: false };
   const mockOnFocusChange = jest.fn();
@@ -84,7 +21,7 @@ describe("useKeyboardHandling", () => {
   const mockOnInputChange = jest.fn();
 
   const defaultParams = {
-    isOwnKeyboard: mockIsOwnKeyboard,
+    isOwnKeyboard: mockIsOwnKeyboard as any,
     onFocusChange: mockOnFocusChange,
     onCancel: mockOnCancel,
     onInputChange: mockOnInputChange,

@@ -131,6 +131,58 @@ describe("recentProtocols store", () => {
     });
   });
 
+  describe("pruneStaleProtocols", () => {
+    it("should remove entries whose protocol no longer exists", () => {
+      const { result } = renderHook(() => useRecentProtocolsStore());
+
+      act(() => {
+        result.current.addRecentProtocol("https://alpha.com", protocols);
+        result.current.addRecentProtocol("https://beta.com", protocols);
+      });
+
+      expect(result.current.recentProtocols).toHaveLength(2);
+
+      // Prune with only alpha remaining in the known list
+      act(() => {
+        result.current.pruneStaleProtocols([protocols[0]]);
+      });
+
+      expect(result.current.recentProtocols).toHaveLength(1);
+      expect(result.current.recentProtocols[0].websiteUrl).toBe(
+        "https://alpha.com",
+      );
+    });
+
+    it("should keep all entries when all protocols still exist", () => {
+      const { result } = renderHook(() => useRecentProtocolsStore());
+
+      act(() => {
+        result.current.addRecentProtocol("https://alpha.com", protocols);
+        result.current.addRecentProtocol("https://beta.com", protocols);
+      });
+
+      act(() => {
+        result.current.pruneStaleProtocols(protocols);
+      });
+
+      expect(result.current.recentProtocols).toHaveLength(2);
+    });
+
+    it("should clear all entries when no protocols exist", () => {
+      const { result } = renderHook(() => useRecentProtocolsStore());
+
+      act(() => {
+        result.current.addRecentProtocol("https://alpha.com", protocols);
+      });
+
+      act(() => {
+        result.current.pruneStaleProtocols([]);
+      });
+
+      expect(result.current.recentProtocols).toEqual([]);
+    });
+  });
+
   describe("clearRecentProtocols", () => {
     it("should clear all recent protocols", () => {
       const { result } = renderHook(() => useRecentProtocolsStore());

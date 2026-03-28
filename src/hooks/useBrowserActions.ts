@@ -3,7 +3,11 @@ import { logger } from "config/logger";
 import { useBrowserTabsStore } from "ducks/browserTabs";
 import { useProtocolsStore } from "ducks/protocols";
 import { useRecentProtocolsStore } from "ducks/recentProtocols";
-import { normalizeUrl, isHomepageUrl } from "helpers/browser";
+import {
+  normalizeUrl,
+  isHomepageUrl,
+  isDangerousScheme,
+} from "helpers/browser";
 import { isIOS } from "helpers/device";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
@@ -38,6 +42,7 @@ export const useBrowserActions = (
   const handleUrlSubmit = useCallback(
     (inputUrl: string) => {
       if (!activeTabId) return;
+      if (isDangerousScheme(inputUrl)) return;
 
       const { url, isSearch } = normalizeUrl(inputUrl);
       if (!url) return;

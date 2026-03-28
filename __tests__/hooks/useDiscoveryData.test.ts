@@ -142,14 +142,35 @@ describe("useDiscoveryData", () => {
   });
 
   describe("passthrough actions", () => {
-    it("should expose addRecentProtocol from the store", () => {
+    it("should delegate addRecentProtocol to the store", () => {
       const { result } = renderHook(() => useDiscoveryData());
-      expect(typeof result.current.addRecentProtocol).toBe("function");
+
+      act(() => {
+        result.current.addRecentProtocol("https://beta.com", protocols);
+      });
+
+      const { recentProtocols } = useRecentProtocolsStore.getState();
+      expect(recentProtocols).toHaveLength(1);
+      expect(recentProtocols[0].websiteUrl).toBe("https://beta.com");
     });
 
-    it("should expose clearRecentProtocols from the store", () => {
+    it("should delegate clearRecentProtocols to the store", () => {
+      act(() => {
+        useRecentProtocolsStore.setState({
+          recentProtocols: [
+            { websiteUrl: "https://alpha.com", lastAccessed: 1000 },
+          ],
+        });
+      });
+
       const { result } = renderHook(() => useDiscoveryData());
-      expect(typeof result.current.clearRecentProtocols).toBe("function");
+
+      act(() => {
+        result.current.clearRecentProtocols();
+      });
+
+      const { recentProtocols } = useRecentProtocolsStore.getState();
+      expect(recentProtocols).toEqual([]);
     });
   });
 });

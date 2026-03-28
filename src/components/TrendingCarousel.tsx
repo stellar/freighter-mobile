@@ -80,6 +80,8 @@ const TrendingCard: React.FC<TrendingCardProps> = React.memo(
         activeOpacity={0.6}
         onPress={handlePress}
         delayPressIn={DEFAULT_PRESS_DELAY}
+        accessibilityRole="button"
+        accessibilityLabel={item.title}
       >
         <TrendingCardImage
           backgroundUrl={item.backgroundUrl}

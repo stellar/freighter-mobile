@@ -101,15 +101,17 @@ export const TabNavigator = () => {
     network: networkDetails.network,
   });
 
-  // Fetch discover protocols and hydrate recent protocols store on mount.
-  // After protocols are fetched, prune any stale recent protocol entries
-  // whose websiteUrl no longer matches a known protocol.
+  // Hydrate the recent protocols store first, then fetch protocols and
+  // prune any stale entries. Ordering matters: if fetchProtocols resolves
+  // before rehydrate completes, pruneStaleProtocols would run against an
+  // empty list and miss stale entries.
   useEffect(() => {
-    fetchProtocols().then(() => {
-      const { protocols } = useProtocolsStore.getState();
-      useRecentProtocolsStore.getState().pruneStaleProtocols(protocols);
+    Promise.resolve(useRecentProtocolsStore.persist.rehydrate()).then(() => {
+      fetchProtocols().then(() => {
+        const { protocols } = useProtocolsStore.getState();
+        useRecentProtocolsStore.getState().pruneStaleProtocols(protocols);
+      });
     });
-    useRecentProtocolsStore.persist.rehydrate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

@@ -2,6 +2,7 @@ import { renderHook } from "@testing-library/react-hooks";
 import { logger } from "config/logger";
 import { useBrowserTabsStore } from "ducks/browserTabs";
 import { useProtocolsStore } from "ducks/protocols";
+import { useRecentProtocolsStore } from "ducks/recentProtocols";
 import { isHomepageUrl, normalizeUrl } from "helpers/browser";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBrowserActions } from "hooks/useBrowserActions";
@@ -12,6 +13,7 @@ import { analytics } from "services/analytics";
 jest.mock("config/logger");
 jest.mock("ducks/browserTabs");
 jest.mock("ducks/protocols");
+jest.mock("ducks/recentProtocols");
 jest.mock("services/analytics", () => ({
   analytics: {
     trackDiscoverProtocolOpened: jest.fn(),
@@ -21,6 +23,7 @@ jest.mock("services/analytics", () => ({
 }));
 jest.mock("helpers/browser", () => ({
   isHomepageUrl: jest.fn(),
+  isDangerousScheme: jest.fn(() => false),
   normalizeUrl: jest.fn((input: string) => ({
     url: `https://${input}`,
     isSearch: false,
@@ -108,6 +111,10 @@ describe("useBrowserActions", () => {
     (useProtocolsStore as any).getState = jest
       .fn()
       .mockReturnValue({ protocols: [] });
+    const mockAddRecentProtocol = jest.fn();
+    (useRecentProtocolsStore as any).getState = jest
+      .fn()
+      .mockReturnValue({ addRecentProtocol: mockAddRecentProtocol });
     mockUseAppTranslation.mockReturnValue({
       t: jest.fn((key: string) => key),
     } as any);
@@ -140,6 +147,29 @@ describe("useBrowserActions", () => {
         "url_bar",
         [],
       );
+    });
+
+    it("should call addRecentProtocol when input is not a search", () => {
+      const { result } = renderHook(() => useBrowserActions(mockWebViewRef));
+
+      result.current.handleUrlSubmit("example.com");
+
+      const { addRecentProtocol } = (useRecentProtocolsStore as any).getState();
+      expect(addRecentProtocol).toHaveBeenCalledWith("https://example.com", []);
+    });
+
+    it("should not call addRecentProtocol when input is a search query", () => {
+      mockNormalizeUrl.mockReturnValueOnce({
+        url: "https://google.com/search?q=test",
+        isSearch: true,
+      });
+
+      const { result } = renderHook(() => useBrowserActions(mockWebViewRef));
+
+      result.current.handleUrlSubmit("test query");
+
+      const { addRecentProtocol } = (useRecentProtocolsStore as any).getState();
+      expect(addRecentProtocol).not.toHaveBeenCalled();
     });
 
     it("should not track protocol opened when input is a search query", () => {

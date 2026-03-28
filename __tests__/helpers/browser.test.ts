@@ -3,6 +3,7 @@ import { BROWSER_CONSTANTS } from "config/constants";
 import { logger } from "config/logger";
 import {
   isHomepageUrl,
+  isDangerousScheme,
   getFaviconUrl,
   normalizeUrl,
   extractSearchQuery,
@@ -51,6 +52,43 @@ describe("browser helpers", () => {
     it("should return false for other URLs", () => {
       expect(isHomepageUrl("https://example.com")).toBe(false);
       expect(isHomepageUrl("http://google.com")).toBe(false);
+    });
+  });
+
+  describe("isDangerousScheme", () => {
+    /* eslint-disable no-script-url */
+    it("should detect javascript: scheme", () => {
+      expect(isDangerousScheme("javascript:alert(1)")).toBe(true);
+    });
+
+    it("should detect data: scheme", () => {
+      expect(isDangerousScheme("data:text/html,<h1>Hi</h1>")).toBe(true);
+    });
+
+    it("should detect blob: scheme", () => {
+      expect(isDangerousScheme("blob:https://example.com/id")).toBe(true);
+    });
+
+    it("should detect vbscript: scheme", () => {
+      expect(isDangerousScheme("vbscript:MsgBox")).toBe(true);
+    });
+
+    it("should be case-insensitive", () => {
+      expect(isDangerousScheme("JAVASCRIPT:alert(1)")).toBe(true);
+      expect(isDangerousScheme("JavaScript:void(0)")).toBe(true);
+      expect(isDangerousScheme("DATA:text/html,test")).toBe(true);
+    });
+
+    it("should ignore leading whitespace", () => {
+      expect(isDangerousScheme("  javascript:alert(1)")).toBe(true);
+      expect(isDangerousScheme("\tdata:text/html,test")).toBe(true);
+    });
+    /* eslint-enable no-script-url */
+
+    it("should return false for safe schemes", () => {
+      expect(isDangerousScheme("https://example.com")).toBe(false);
+      expect(isDangerousScheme("http://example.com")).toBe(false);
+      expect(isDangerousScheme("")).toBe(false);
     });
   });
 

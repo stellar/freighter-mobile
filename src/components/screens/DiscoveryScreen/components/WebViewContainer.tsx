@@ -31,7 +31,6 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
     const {
       tabs,
       isTabActive,
-      updateTab,
       activeTabId,
       activeWebViewIds,
       registerWebView,
@@ -210,18 +209,21 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
       }
     }, [tabs, disposeWebViews]);
 
-    const captureScreenshot = useCallback(
-      async (tabId: string) => {
-        await captureTabScreenshot({
-          viewShotRef: viewShotRefs.current[tabId],
-          tabId,
-          tabs,
-          updateTab,
-          source: "WebViewContainer",
-        });
-      },
-      [tabs, updateTab],
-    );
+    // Read tabs/updateTab from the store imperatively (getState) instead of
+    // subscribing via the hook. Subscribing causes a re-render loop: every
+    // screenshot capture updates the store → re-renders the entire tree,
+    // recreating captureScreenshot → cascading to handleScroll/handleLoadEnd.
+    const captureScreenshot = useCallback(async (tabId: string) => {
+      const { tabs: currentTabs, updateTab: storeUpdateTab } =
+        useBrowserTabsStore.getState();
+      await captureTabScreenshot({
+        viewShotRef: viewShotRefs.current[tabId],
+        tabId,
+        tabs: currentTabs,
+        updateTab: storeUpdateTab,
+        source: "WebViewContainer",
+      });
+    }, []);
 
     const handleScroll = useCallback(
       (tabId: string) => {
