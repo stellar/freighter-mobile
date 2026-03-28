@@ -3,7 +3,6 @@ import useColors from "hooks/useColors";
 import React, { useEffect, useRef } from "react";
 import { Image, View } from "react-native";
 
-const IMAGE_LOAD_TIMEOUT = 500;
 const PLACEHOLDER_ICON_SIZE = 45;
 
 interface TrendingCardImageProps {
@@ -21,33 +20,15 @@ const TrendingCardImage: React.FC<TrendingCardImageProps> = React.memo(
     onHidePlaceholder,
   }) => {
     const { themeColors } = useColors();
-    const timerRef = useRef<NodeJS.Timeout | null>(null);
     const imageLoadedRef = useRef(false);
 
+    // Always show placeholder until the image confirms it loaded via onLoad.
+    // This avoids a flash of empty space between setting backgroundUrl
+    // and the image actually rendering.
     useEffect(() => {
-      if (!backgroundUrl) {
-        onShowPlaceholder();
-      } else {
-        onHidePlaceholder();
-        imageLoadedRef.current = false;
-
-        if (timerRef.current) {
-          clearTimeout(timerRef.current);
-        }
-
-        timerRef.current = setTimeout(() => {
-          if (!imageLoadedRef.current) {
-            onShowPlaceholder();
-          }
-        }, IMAGE_LOAD_TIMEOUT);
-      }
-
-      return () => {
-        if (timerRef.current) {
-          clearTimeout(timerRef.current);
-        }
-      };
-    }, [backgroundUrl, onShowPlaceholder, onHidePlaceholder]);
+      imageLoadedRef.current = false;
+      onShowPlaceholder();
+    }, [backgroundUrl, onShowPlaceholder]);
 
     return (
       <>
@@ -68,9 +49,6 @@ const TrendingCardImage: React.FC<TrendingCardImageProps> = React.memo(
             onError={onShowPlaceholder}
             onLoad={() => {
               imageLoadedRef.current = true;
-              if (timerRef.current) {
-                clearTimeout(timerRef.current);
-              }
               onHidePlaceholder();
             }}
           />
