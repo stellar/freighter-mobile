@@ -17,7 +17,7 @@ export const isHomepageUrl = (url: string): boolean =>
  * @returns True if the URL uses javascript:, data:, blob:, or vbscript: scheme
  */
 export const isDangerousScheme = (url: string): boolean => {
-  const lowered = url.toLowerCase();
+  const lowered = url.trim().toLowerCase();
   return (
     lowered.startsWith("javascript:") ||
     lowered.startsWith("data:") ||
