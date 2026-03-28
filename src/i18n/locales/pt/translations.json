@@ -297,7 +297,11 @@
     "welcomeTitle": "Bem-vindo ao Descobrir!",
     "welcomeGateway": "Seu portal para o ecossistema Stellar. Navegue e conecte-se a aplicativos descentralizados construídos na rede Stellar.",
     "welcomeCta": "Vamos lá",
-    "newTab": "Nova aba"
+    "newTab": "Nova aba",
+    "viewProtocolDetails": "Ver detalhes do protocolo",
+    "switchAccount": "Trocar conta",
+    "goBack": "Voltar",
+    "showTabs": "Mostrar {{count}} abas"
   },
   "history": {
     "title": "Histórico",
