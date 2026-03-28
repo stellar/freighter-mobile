@@ -173,6 +173,10 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
 
   // Animate tab overview screen with proper fade-in and fade-out
   useEffect(() => {
+    // Stop any in-flight animations to prevent races on rapid toggle
+    mainContentFadeAnim.stopAnimation();
+    tabOverviewFadeAnim.stopAnimation();
+
     if (showTabOverview) {
       // Fade out main content and fade in tab overview
       Animated.parallel([
