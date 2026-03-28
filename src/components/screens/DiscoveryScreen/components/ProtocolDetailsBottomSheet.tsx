@@ -8,7 +8,7 @@ import { Text } from "components/sds/Typography";
 import { getDisplayHost } from "helpers/protocols";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback } from "react";
 import { View } from "react-native";
 
 interface ProtocolDetails {
@@ -45,12 +45,9 @@ const ProtocolDetailsBottomSheet: React.FC<ProtocolDetailsBottomSheetProps> =
       }
     }, [protocol, onOpen, handleClose]);
 
-    const domain = useMemo(
-      () => (protocol ? getDisplayHost(protocol.websiteUrl) : null),
-      [protocol],
-    );
+    const domain = protocol ? getDisplayHost(protocol.websiteUrl) : null;
 
-    const content = useMemo(() => {
+    const content = (() => {
       if (!protocol) return null;
 
       return (
@@ -104,7 +101,7 @@ const ProtocolDetailsBottomSheet: React.FC<ProtocolDetailsBottomSheetProps> =
           )}
         </View>
       );
-    }, [protocol, domain, handleOpen, t, themeColors.text.secondary]);
+    })();
 
     return (
       <BottomSheet
