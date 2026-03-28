@@ -266,10 +266,13 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
   }, []);
 
   const handleCancel = useCallback(() => {
-    if (activeTab?.url) {
-      setInputUrl(formatDisplayUrl(activeTab.url));
+    // Read the current URL from the store imperatively to avoid showing
+    // a stale URL when blur fires right after a URL submission.
+    const currentTab = useBrowserTabsStore.getState().getActiveTab();
+    if (currentTab?.url) {
+      setInputUrl(formatDisplayUrl(currentTab.url));
     }
-  }, [activeTab?.url]);
+  }, []);
 
   const handleShowTabs = useCallback(() => {
     setShowTabOverview(true);
