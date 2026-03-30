@@ -19,13 +19,14 @@ import React, { useCallback, useState } from "react";
 import { analytics } from "services/analytics";
 
 interface ManageAccountsProps {
-  navigation: BottomTabNavigationProp<
+  navigation?: BottomTabNavigationProp<
     MainTabStackParamList & RootStackParamList,
     typeof MAIN_TAB_ROUTES.TAB_HOME
   >;
   accounts: Account[];
   activeAccount: ActiveAccount | null;
   bottomSheetRef: React.RefObject<BottomSheetModal | null>;
+  showAddWallet?: boolean;
 }
 
 const SNAP_VALUE_PERCENT = 80;
@@ -36,6 +37,7 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
   accounts,
   activeAccount,
   bottomSheetRef,
+  showAddWallet = true,
 }) => {
   const {
     renameAccount,
@@ -67,6 +69,8 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
   );
 
   const handleAddAnotherWallet = useCallback(() => {
+    if (!navigation) return;
+
     analytics.track(AnalyticsEvent.ACCOUNT_SCREEN_ADD_ACCOUNT);
 
     bottomSheetRef.current?.dismiss();
@@ -146,6 +150,7 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
             handleSelectAccount={handleSelectAccount}
             isAccountSwitching={isSwitchingAccount}
             switchingToPublicKey={switchingToPublicKey}
+            showAddWallet={showAddWallet}
           />
         }
       />

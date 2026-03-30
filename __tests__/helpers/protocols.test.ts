@@ -9,6 +9,7 @@ describe("Protocols Helper", () => {
       iconUrl: "https://stellarx.com/icon.png",
       websiteUrl: "https://stellarx.com",
       tags: ["dex", "trading"],
+      isTrending: false,
     },
     {
       name: "Aquarius",
@@ -16,6 +17,7 @@ describe("Protocols Helper", () => {
       iconUrl: "https://aquarius.com/icon.png",
       websiteUrl: "https://aquarius.com",
       tags: ["liquidity", "amm"],
+      isTrending: false,
     },
     {
       name: "Blend",
@@ -23,6 +25,7 @@ describe("Protocols Helper", () => {
       iconUrl: "https://blend.com/icon.png",
       websiteUrl: "https://blend.com",
       tags: ["lending", "defi"],
+      isTrending: false,
     },
   ];
 
@@ -80,6 +83,7 @@ describe("Protocols Helper", () => {
           iconUrl: "https://stellar-x.com/icon.png",
           websiteUrl: "https://stellar-x.com",
           tags: ["dex"],
+          isTrending: false,
         },
         {
           name: "Stellar_X",
@@ -87,6 +91,7 @@ describe("Protocols Helper", () => {
           iconUrl: "https://stellar_x.com/icon.png",
           websiteUrl: "https://stellar_x.com",
           tags: ["dex"],
+          isTrending: false,
         },
       ];
 
@@ -124,6 +129,7 @@ describe("Protocols Helper", () => {
           iconUrl: "https://stellarx.com/icon.png",
           websiteUrl: "https://stellarx.com",
           tags: ["dex", "trading"],
+          isTrending: false,
         },
         {
           name: "OtherApp",
@@ -131,6 +137,7 @@ describe("Protocols Helper", () => {
           iconUrl: "https://other.com/icon.png",
           websiteUrl: "https://stellarx.com", // Same domain as StellarX
           tags: ["other"],
+          isTrending: false,
         },
       ];
 
@@ -233,6 +240,7 @@ describe("Protocols Helper", () => {
             iconUrl: "https://app.stellarx.com/icon.png",
             websiteUrl: "https://app.stellarx.com",
             tags: ["dex", "trading"],
+            isTrending: false,
           },
         ];
 

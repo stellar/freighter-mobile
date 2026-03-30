@@ -44,6 +44,7 @@ describe("Protocols Store", () => {
           name: "TestProtocol1",
           websiteUrl: "https://test1.example.com",
           tags: ["test", "protocol"],
+          isTrending: false,
         },
         {
           description: "Test Protocol 2",
@@ -51,6 +52,7 @@ describe("Protocols Store", () => {
           name: "TestProtocol2",
           websiteUrl: "https://test2.example.com",
           tags: ["test", "protocol"],
+          isTrending: false,
         },
       ];
 
@@ -97,6 +99,7 @@ describe("Protocols Store", () => {
             name: "TestProtocol",
             websiteUrl: "https://test.example.com",
             tags: ["test"],
+            isTrending: false,
           },
         ]);
       });
@@ -120,6 +123,7 @@ describe("Protocols Store", () => {
             name: "ExistingProtocol",
             websiteUrl: "https://existing.example.com",
             tags: ["existing"],
+            isTrending: false,
           },
         ];
       });
@@ -137,6 +141,7 @@ describe("Protocols Store", () => {
           name: "ExistingProtocol",
           websiteUrl: "https://existing.example.com",
           tags: ["existing"],
+          isTrending: false,
         },
       ]);
       expect(result.current.isLoading).toBe(false);
@@ -150,6 +155,7 @@ describe("Protocols Store", () => {
           name: "TestProtocol",
           websiteUrl: "https://test.example.com",
           tags: ["test"],
+          isTrending: false,
         },
       ];
 
@@ -179,6 +185,7 @@ describe("Protocols Store", () => {
           name: "FirstProtocol",
           websiteUrl: "https://first.example.com",
           tags: ["first"],
+          isTrending: false,
         },
       ];
 
@@ -189,6 +196,7 @@ describe("Protocols Store", () => {
           name: "SecondProtocol",
           websiteUrl: "https://second.example.com",
           tags: ["second"],
+          isTrending: false,
         },
       ];
 

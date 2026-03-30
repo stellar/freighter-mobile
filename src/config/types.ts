@@ -384,6 +384,8 @@ export type DiscoverProtocol = {
   name: string;
   websiteUrl: string;
   tags: string[];
+  backgroundUrl?: string;
+  isTrending: boolean;
 };
 
 export interface MemoRequiredAccount {

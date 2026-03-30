@@ -4,7 +4,7 @@ import {
   NativeStackNavigationProp,
   NativeStackScreenProps,
 } from "@react-navigation/native-stack";
-import iPhoneFrameImage from "assets/iphone-frame.png";
+import { images } from "assets/images";
 import { OnboardLayout } from "components/layout/OnboardLayout";
 import { IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
@@ -307,7 +307,7 @@ export const BiometricsOnboardingScreen: React.FC<
     <View className="items-center justify-center -mt-[64px] relative z-0">
       <View className="relative">
         <Image
-          source={iPhoneFrameImage}
+          source={images.iPhoneFrame}
           style={iPhoneFrameDimensions}
           resizeMode="contain"
         />

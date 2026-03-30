@@ -23,6 +23,7 @@ interface ManageAccountBottomSheetProps {
   handleSelectAccount: (publicKey: string) => Promise<void>;
   isAccountSwitching: boolean;
   switchingToPublicKey: string | null;
+  showAddWallet?: boolean;
 }
 
 const SNAP_VALUE_PERCENT = 80;
@@ -39,6 +40,7 @@ export const ManageAccountBottomSheet: React.FC<
   handleSelectAccount,
   isAccountSwitching,
   switchingToPublicKey,
+  showAddWallet = true,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
@@ -88,16 +90,18 @@ export const ManageAccountBottomSheet: React.FC<
             />
           ))}
         </BottomSheetScrollView>
-        <Button
-          tertiary
-          isFullWidth
-          xl
-          onPress={onPressAddAnotherWallet}
-          disabled={isAccountSwitching || switchingToPublicKey !== null}
-          testID="manage-accounts-add-wallet-button"
-        >
-          {t("home.manageAccount.addWallet")}
-        </Button>
+        {showAddWallet && (
+          <Button
+            tertiary
+            isFullWidth
+            xl
+            onPress={onPressAddAnotherWallet}
+            disabled={isAccountSwitching || switchingToPublicKey !== null}
+            testID="manage-accounts-add-wallet-button"
+          >
+            {t("home.manageAccount.addWallet")}
+          </Button>
+        )}
       </BottomSheetAdaptiveContainer>
     </View>
   );
