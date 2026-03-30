@@ -153,7 +153,7 @@ describe("Discover Analytics", () => {
       trackDiscoverTabCreated(3, DISCOVER_ANALYTICS_SOURCE.TAB_OVERVIEW);
 
       expect(track).toHaveBeenCalledWith(AnalyticsEvent.DISCOVER_TAB_CREATED, {
-        tab_count: 3,
+        tab_count_after_create: 3,
         source: "tab_overview",
       });
     });

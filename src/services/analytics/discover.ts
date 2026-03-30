@@ -83,7 +83,7 @@ export const trackDiscoverTabCreated = (
   if (source === DISCOVER_ANALYTICS_SOURCE.AUTOMATIC) return;
 
   track(AnalyticsEvent.DISCOVER_TAB_CREATED, {
-    tab_count: tabCount,
+    tab_count_after_create: tabCount,
     source,
   });
 };
