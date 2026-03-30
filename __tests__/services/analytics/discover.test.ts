@@ -68,14 +68,14 @@ describe("Discover Analytics", () => {
         AnalyticsEvent.DISCOVER_PROTOCOL_OPENED,
         {
           url: "https://stellarx.com/",
-          protocol_name: "StellarX",
+          protocolName: "StellarX",
           source: "trending_carousel",
-          is_known_protocol: true,
+          isKnownProtocol: true,
         },
       );
     });
 
-    it("should track with is_known_protocol false when URL does not match", () => {
+    it("should track with isKnownProtocol false when URL does not match", () => {
       findMatchedProtocol.mockReturnValue(undefined);
 
       trackDiscoverProtocolOpened(
@@ -88,9 +88,9 @@ describe("Discover Analytics", () => {
         AnalyticsEvent.DISCOVER_PROTOCOL_OPENED,
         {
           url: "https://unknown-site.com/",
-          protocol_name: undefined,
+          protocolName: undefined,
           source: "url_bar",
-          is_known_protocol: false,
+          isKnownProtocol: false,
         },
       );
     });
@@ -118,7 +118,7 @@ describe("Discover Analytics", () => {
       expect(track).toHaveBeenCalledWith(
         AnalyticsEvent.DISCOVER_PROTOCOL_DETAILS_VIEWED,
         {
-          protocol_name: "StellarX",
+          protocolName: "StellarX",
           tags: ["DEX", "Swap"],
         },
       );
@@ -135,7 +135,7 @@ describe("Discover Analytics", () => {
       expect(track).toHaveBeenCalledWith(
         AnalyticsEvent.DISCOVER_PROTOCOL_OPENED_FROM_DETAILS,
         {
-          protocol_name: "StellarX",
+          protocolName: "StellarX",
           url: "https://stellarx.com/",
         },
       );
@@ -215,28 +215,28 @@ describe("Discover Analytics", () => {
       trackDiscoverTabCreated(3, DISCOVER_ANALYTICS_SOURCE.TAB_OVERVIEW);
 
       expect(track).toHaveBeenCalledWith(AnalyticsEvent.DISCOVER_TAB_CREATED, {
-        tab_count_after_create: 3,
+        tabCountAfterCreate: 3,
         source: "tab_overview",
       });
     });
   });
 
   describe("trackDiscoverTabClosed", () => {
-    it("should track with tab count and had_url", () => {
+    it("should track with tab count and hadUrl", () => {
       trackDiscoverTabClosed(2, "https://example.com");
 
       expect(track).toHaveBeenCalledWith(AnalyticsEvent.DISCOVER_TAB_CLOSED, {
-        tab_count_before_close: 2,
-        had_url: "https://example.com/",
+        tabCountBeforeClose: 2,
+        hadUrl: "https://example.com/",
       });
     });
 
-    it("should track with undefined had_url when tab had no URL", () => {
+    it("should track with undefined hadUrl when tab had no URL", () => {
       trackDiscoverTabClosed(1, undefined);
 
       expect(track).toHaveBeenCalledWith(AnalyticsEvent.DISCOVER_TAB_CLOSED, {
-        tab_count_before_close: 1,
-        had_url: undefined,
+        tabCountBeforeClose: 1,
+        hadUrl: undefined,
       });
     });
   });
@@ -248,7 +248,7 @@ describe("Discover Analytics", () => {
       expect(track).toHaveBeenCalledWith(
         AnalyticsEvent.DISCOVER_ALL_TABS_CLOSED,
         {
-          tab_count_before_close: 5,
+          tabCountBeforeClose: 5,
         },
       );
     });

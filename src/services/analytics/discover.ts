@@ -49,9 +49,9 @@ export const trackDiscoverProtocolOpened = (
   const matchedProtocol = findMatchedProtocol({ protocols, searchUrl: url });
   track(AnalyticsEvent.DISCOVER_PROTOCOL_OPENED, {
     url: stripQueryParams(url),
-    protocol_name: matchedProtocol?.name,
+    protocolName: matchedProtocol?.name,
     source,
-    is_known_protocol: !!matchedProtocol,
+    isKnownProtocol: !!matchedProtocol,
   });
 };
 
@@ -60,7 +60,7 @@ export const trackDiscoverProtocolDetailsViewed = (
   tags: string[],
 ): void => {
   track(AnalyticsEvent.DISCOVER_PROTOCOL_DETAILS_VIEWED, {
-    protocol_name: protocolName,
+    protocolName,
     tags,
   });
 };
@@ -70,7 +70,7 @@ export const trackDiscoverProtocolOpenedFromDetails = (
   url: string,
 ): void => {
   track(AnalyticsEvent.DISCOVER_PROTOCOL_OPENED_FROM_DETAILS, {
-    protocol_name: protocolName,
+    protocolName,
     url: stripQueryParams(url),
   });
 };
@@ -84,7 +84,7 @@ export const trackDiscoverTabCreated = (
   if (source === DISCOVER_ANALYTICS_SOURCE.AUTOMATIC) return;
 
   track(AnalyticsEvent.DISCOVER_TAB_CREATED, {
-    tab_count_after_create: tabCount,
+    tabCountAfterCreate: tabCount,
     source,
   });
 };
@@ -94,8 +94,8 @@ export const trackDiscoverTabClosed = (
   hadUrl: string | undefined,
 ): void => {
   track(AnalyticsEvent.DISCOVER_TAB_CLOSED, {
-    tab_count_before_close: tabCountBeforeClose,
-    had_url: hadUrl ? stripQueryParams(hadUrl) : undefined,
+    tabCountBeforeClose,
+    hadUrl: hadUrl ? stripQueryParams(hadUrl) : undefined,
   });
 };
 
@@ -103,7 +103,7 @@ export const trackDiscoverAllTabsClosed = (
   tabCountBeforeClose: number,
 ): void => {
   track(AnalyticsEvent.DISCOVER_ALL_TABS_CLOSED, {
-    tab_count_before_close: tabCountBeforeClose,
+    tabCountBeforeClose,
   });
 };
 
