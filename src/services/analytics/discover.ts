@@ -14,7 +14,8 @@ const stripQueryParams = (url: string): string => {
     const parsed = new URL(url);
     return `${parsed.protocol}//${parsed.host}${parsed.pathname}`;
   } catch {
-    return url;
+    // fallback still strips everything after ? or # via a simple string split
+    return url.split(/[?#]/)[0];
   }
 };
 

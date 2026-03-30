@@ -142,6 +142,68 @@ describe("Discover Analytics", () => {
     });
   });
 
+  describe("stripQueryParams (via trackDiscoverProtocolOpenedFromDetails)", () => {
+    it("should strip query parameters from a valid URL", () => {
+      trackDiscoverProtocolOpenedFromDetails(
+        "StellarX",
+        "https://stellarx.com/swap?token=XLM&session=abc123",
+      );
+
+      expect(track).toHaveBeenCalledWith(
+        AnalyticsEvent.DISCOVER_PROTOCOL_OPENED_FROM_DETAILS,
+        expect.objectContaining({ url: "https://stellarx.com/swap" }),
+      );
+    });
+
+    it("should strip fragments from a valid URL", () => {
+      trackDiscoverProtocolOpenedFromDetails(
+        "StellarX",
+        "https://stellarx.com/swap#secret-section",
+      );
+
+      expect(track).toHaveBeenCalledWith(
+        AnalyticsEvent.DISCOVER_PROTOCOL_OPENED_FROM_DETAILS,
+        expect.objectContaining({ url: "https://stellarx.com/swap" }),
+      );
+    });
+
+    it("should strip query params and fragments from a valid URL", () => {
+      trackDiscoverProtocolOpenedFromDetails(
+        "StellarX",
+        "https://stellarx.com/swap?token=XLM#section",
+      );
+
+      expect(track).toHaveBeenCalledWith(
+        AnalyticsEvent.DISCOVER_PROTOCOL_OPENED_FROM_DETAILS,
+        expect.objectContaining({ url: "https://stellarx.com/swap" }),
+      );
+    });
+
+    it("should strip query params from a malformed URL via fallback", () => {
+      trackDiscoverProtocolOpenedFromDetails(
+        "StellarX",
+        "not-a-valid-url?token=secret",
+      );
+
+      expect(track).toHaveBeenCalledWith(
+        AnalyticsEvent.DISCOVER_PROTOCOL_OPENED_FROM_DETAILS,
+        expect.objectContaining({ url: "not-a-valid-url" }),
+      );
+    });
+
+    it("should strip fragments from a malformed URL via fallback", () => {
+      trackDiscoverProtocolOpenedFromDetails(
+        "StellarX",
+        "not-a-valid-url#secret-section",
+      );
+
+      expect(track).toHaveBeenCalledWith(
+        AnalyticsEvent.DISCOVER_PROTOCOL_OPENED_FROM_DETAILS,
+        expect.objectContaining({ url: "not-a-valid-url" }),
+      );
+    });
+  });
+
   describe("trackDiscoverTabCreated", () => {
     it("should skip tracking when source is automatic", () => {
       trackDiscoverTabCreated(3, DISCOVER_ANALYTICS_SOURCE.AUTOMATIC);
