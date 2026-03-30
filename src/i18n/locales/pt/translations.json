@@ -78,7 +78,43 @@
     "deleteAccount": "Excluir conta",
     "deleteAccountDisclaimer": "As contas na rede Stellar são imutáveis e não podem ser excluídas. No entanto, você pode remover qualquer conta do seu aplicativo Freighter a qualquer momento usando a opção 'Excluir conta'. Verifique se sua frase de recuperação funciona antes de fazer isso.",
     "deleteAccountConfirmTitle": "Tem certeza?",
-    "deleteAccountConfirmMessage": "Certifique-se de que você tem sua frase de recuperação em um local seguro. Você não conseguirá recuperar sua carteira sem ela."
+    "deleteAccountConfirmMessage": "Certifique-se de que você tem sua frase de recuperação em um local seguro. Você não conseguirá recuperar sua carteira sem ela.",
+    "contactBook": "Agenda de Contatos"
+  },
+  "contactBookScreen": {
+    "title": "Agenda de Contatos",
+    "empty": "Contatos são carteiras que você reconhece, úteis para envios recorrentes ou confiáveis.",
+    "addContact": "Adicionar um contato",
+    "editContact": "Editar contato",
+    "copyAddress": "Copiar endereço",
+    "deleteContact": "Excluir contato",
+    "editTitle": "Editar um Contato",
+    "addTitle": "Adicionar um Contato",
+    "addressLabel": "Endereço",
+    "addressPlaceholder": "G....",
+    "nameLabel": "Nome",
+    "namePlaceholder": "Nome do contato",
+    "paste": "Colar",
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "contactAdded": "Contato adicionado com sucesso",
+    "contactDeleted": "Contato excluído com sucesso",
+    "addressInfo": {
+      "title": "O que é um endereço Stellar?",
+      "description": "Um endereço Stellar pode ser um endereço G (chave pública), um endereço M (conta muxed), um endereço C (endereço de contrato), ou um endereço de federação (ex: nome*dominio.com) que resolve para uma chave pública."
+    },
+    "nameInfo": {
+      "title": "Nome do contato",
+      "description": "Um rótulo amigável para ajudá-lo a identificar este contato. Este nome é armazenado em nosso servidor e não é compartilhado na rede."
+    },
+    "errors": {
+      "invalidAddress": "Endereço Stellar inválido",
+      "federationNotFound": "Não foi possível resolver o endereço de federação",
+      "duplicateAddress": "Este endereço já existe nos seus contatos",
+      "emptyName": "O nome não pode estar vazio",
+      "nameTooLong": "O nome é muito longo",
+      "duplicateName": "Este nome já existe nos seus contatos"
+    }
   },
   "preferences": {
     "anonymousDataSharing": {

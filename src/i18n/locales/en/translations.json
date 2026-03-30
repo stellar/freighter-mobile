@@ -78,7 +78,43 @@
     "deleteAccount": "Delete account",
     "deleteAccountDisclaimer": "Accounts on the Stellar network are immutable and cannot be deleted. However you can remove any account from your Freighter App at any time using the 'Delete account' option. Verify your recovery phrase works before you do this.",
     "deleteAccountConfirmTitle": "Are you sure?",
-    "deleteAccountConfirmMessage": "Make sure you have your recovery phrase in a safe place. You will not be able to recover your wallet without it."
+    "deleteAccountConfirmMessage": "Make sure you have your recovery phrase in a safe place. You will not be able to recover your wallet without it.",
+    "contactBook": "Contact Book"
+  },
+  "contactBookScreen": {
+    "title": "Contact Book",
+    "empty": "Contacts are wallets you recognize, helpful for recurring or trusted sends.",
+    "addContact": "Add a contact",
+    "editContact": "Edit contact",
+    "copyAddress": "Copy address",
+    "deleteContact": "Delete contact",
+    "editTitle": "Edit a Contact",
+    "addTitle": "Add a Contact",
+    "addressLabel": "Address",
+    "addressPlaceholder": "G....",
+    "nameLabel": "Name",
+    "namePlaceholder": "Contact name",
+    "paste": "Paste",
+    "save": "Save",
+    "cancel": "Cancel",
+    "contactAdded": "Contact successfully added",
+    "contactDeleted": "Contact successfully deleted",
+    "addressInfo": {
+      "title": "What is a Stellar address?",
+      "description": "A Stellar address can be a G address (public key), an M address (muxed account), a C address (contract address), or a federation address (e.g. name*domain.com) that resolves to a public key."
+    },
+    "nameInfo": {
+      "title": "Contact name",
+      "description": "A friendly label to help you identify this contact. This name is stored on our server and is not shared on the network."
+    },
+    "errors": {
+      "invalidAddress": "Invalid Stellar address",
+      "federationNotFound": "Federation address could not be resolved",
+      "duplicateAddress": "This address already exists in your contacts",
+      "emptyName": "Name cannot be empty",
+      "nameTooLong": "Name is too long",
+      "duplicateName": "This name already exists in your contacts"
+    }
   },
   "preferences": {
     "anonymousDataSharing": {

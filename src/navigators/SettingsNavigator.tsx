@@ -5,6 +5,7 @@ import ChangeNetworkScreen from "components/screens/ChangeNetworkScreen";
 import NetworkSettingsScreen from "components/screens/ChangeNetworkScreen/NetworkSettingsScreen";
 import SettingsScreen from "components/screens/SettingsScreen";
 import AboutScreen from "components/screens/SettingsScreen/AboutScreen";
+import ContactBookScreen from "components/screens/SettingsScreen/ContactBookScreen";
 import PreferencesScreen from "components/screens/SettingsScreen/PreferencesScreen";
 import SecurityScreen from "components/screens/SettingsScreen/SecurityScreen";
 import BiometricsSettingsScreen from "components/screens/SettingsScreen/SecurityScreen/BiometricsSettingsScreen";
@@ -66,6 +67,13 @@ export const SettingsStackNavigator = () => {
         component={PreferencesScreen}
         options={{
           headerTitle: t("settings.preferences"),
+        }}
+      />
+      <SettingsStack.Screen
+        name={SETTINGS_ROUTES.CONTACT_BOOK_SCREEN}
+        component={ContactBookScreen}
+        options={{
+          headerTitle: t("contactBookScreen.title"),
         }}
       />
       <SettingsStack.Screen
