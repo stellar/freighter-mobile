@@ -3,6 +3,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Keyboard, TextInput } from "react-native";
 import { SharedValue } from "react-native-reanimated";
 
+const BLOCK_FOCUS_TIMEOUT_MS = 300;
+
 interface UseKeyboardHandlingParams {
   isOwnKeyboard: SharedValue<boolean>;
   onFocusChange?: (focused: boolean) => void;
@@ -32,7 +34,18 @@ const useKeyboardHandling = ({
     { start: number; end: number } | undefined
   >(undefined);
 
+  // Temporary guard used on Android to reject a single spurious focus event
+  // caused by the OS auto-focusing the search bar when the WebView unmounts
+  // during back-navigation to the homepage.
+  const blockNextFocusRef = useRef(false);
+
   const handleInputFocus = useCallback(() => {
+    if (isAndroid && blockNextFocusRef.current) {
+      blockNextFocusRef.current = false;
+      inputRef.current?.blur();
+      return;
+    }
+
     // eslint-disable-next-line no-param-reassign
     isOwnKeyboard.value = true;
     setIsFocused(true);
@@ -89,6 +102,17 @@ const useKeyboardHandling = ({
     onInputChange("");
   }, [onInputChange]);
 
+  // Arms the focus guard so the next spurious focus event is rejected.
+  // Automatically disarms after BLOCK_FOCUS_TIMEOUT_MS in case no focus event arrives.
+  const blockFocusTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const blockNextFocus = useCallback(() => {
+    blockNextFocusRef.current = true;
+    clearTimeout(blockFocusTimeoutRef.current);
+    blockFocusTimeoutRef.current = setTimeout(() => {
+      blockNextFocusRef.current = false;
+    }, BLOCK_FOCUS_TIMEOUT_MS);
+  }, []);
+
   return {
     inputRef,
     isFocused,
@@ -98,6 +122,7 @@ const useKeyboardHandling = ({
     handleCancel,
     handleSelectionChange,
     handleClear,
+    blockNextFocus,
   };
 };
 

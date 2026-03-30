@@ -76,6 +76,7 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
       handleCancel,
       handleSelectionChange,
       handleClear,
+      blockNextFocus,
     } = useKeyboardHandling({
       isOwnKeyboard,
       onFocusChange,
@@ -120,7 +121,13 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
                   style={[unfocusedStyle, { position: "absolute" as const }]}
                 >
                   <TouchableOpacity
-                    onPress={onGoBack}
+                    onPress={() => {
+                      // On Android, navigating back to the homepage unmounts the
+                      // WebView which can cause the OS to auto-focus the search bar.
+                      // Arm the guard so the spurious focus event is rejected.
+                      if (isAndroid) blockNextFocus();
+                      onGoBack();
+                    }}
                     disabled={!canGoBack}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     accessibilityRole="button"
