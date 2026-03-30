@@ -39,6 +39,7 @@
     "collection": "Collection",
     "tokenId": "Token ID",
     "message": "Message",
+    "linkOpenError": "Unable to open link",
     "authEntry": "Auth Entry"
   },
   "home": {
