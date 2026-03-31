@@ -317,7 +317,6 @@ jest.mock("services/analytics/debug", () => ({
     environment: "test",
     amplitudeKey: "test-key...",
   })),
-  logAnalyticsDebugInfo: jest.fn(),
   DEBUG_CONSTANTS: {
     API_KEY_NOT_SET: "Not set",
   },
