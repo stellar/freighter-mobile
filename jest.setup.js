@@ -286,6 +286,7 @@ jest.mock("services/analytics", () => ({
       hasInitialized: false,
       environment: "test",
       amplitudeKey: "test-key...",
+      isSendingToAmplitude: false,
     })),
   },
   TransactionType: {
