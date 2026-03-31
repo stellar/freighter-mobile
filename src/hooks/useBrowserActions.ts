@@ -1,12 +1,21 @@
+import { BROWSER_CONSTANTS } from "config/constants";
 import { logger } from "config/logger";
 import { useBrowserTabsStore } from "ducks/browserTabs";
-import { normalizeUrl, isHomepageUrl } from "helpers/browser";
+import { useProtocolsStore } from "ducks/protocols";
+import { useRecentProtocolsStore } from "ducks/recentProtocols";
+import {
+  normalizeUrl,
+  isHomepageUrl,
+  isDangerousScheme,
+} from "helpers/browser";
 import { isIOS } from "helpers/device";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
 import { useCallback, useMemo } from "react";
 import { Share, Platform } from "react-native";
 import { WebView } from "react-native-webview";
+import { analytics } from "services/analytics";
+import { DISCOVER_ANALYTICS_SOURCE } from "services/analytics/discover";
 
 /**
  * Custom React hook providing browser tab action handlers for the in-app browser.
@@ -17,8 +26,9 @@ import { WebView } from "react-native-webview";
 export const useBrowserActions = (
   webViewRef: React.RefObject<WebView | null>,
 ) => {
-  const { tabs, activeTabId, goToPage, closeTab, closeAllTabs, getActiveTab } =
+  const { activeTabId, goToPage, closeTab, closeAllTabs, getActiveTab } =
     useBrowserTabsStore();
+  const tabCount = useBrowserTabsStore((state) => state.tabs.length);
 
   const { t } = useAppTranslation();
   const { open: openInAppBrowser } = useInAppBrowser();
@@ -32,8 +42,22 @@ export const useBrowserActions = (
   const handleUrlSubmit = useCallback(
     (inputUrl: string) => {
       if (!activeTabId) return;
+      if (isDangerousScheme(inputUrl)) return;
 
-      const { url } = normalizeUrl(inputUrl);
+      const { url, isSearch } = normalizeUrl(inputUrl);
+      if (!url) return;
+
+      if (!isSearch) {
+        const { protocols } = useProtocolsStore.getState();
+        const { addRecentProtocol } = useRecentProtocolsStore.getState();
+        addRecentProtocol(url, protocols);
+        analytics.trackDiscoverProtocolOpened(
+          url,
+          DISCOVER_ANALYTICS_SOURCE.URL_BAR,
+          protocols,
+        );
+      }
+
       goToPage(activeTabId, url);
     },
     [activeTabId, goToPage],
@@ -43,10 +67,26 @@ export const useBrowserActions = (
    * Handler for navigating back in the current tab's history.
    */
   const handleGoBack = useCallback(() => {
-    if (!activeTab?.canGoBack) return;
+    if (!activeTabId) return;
 
-    webViewRef.current?.goBack();
-  }, [activeTab?.canGoBack, webViewRef]);
+    // If the WebView has its own back history, use it.
+    if (activeTab?.canGoBack) {
+      webViewRef.current?.goBack();
+      return;
+    }
+
+    // Otherwise, if the tab originally came from the homepage,
+    // navigate back to it (the homepage is not in WebView history).
+    if (activeTab?.cameFromHomepage) {
+      goToPage(activeTabId, BROWSER_CONSTANTS.HOMEPAGE_URL);
+    }
+  }, [
+    activeTab?.canGoBack,
+    activeTab?.cameFromHomepage,
+    activeTabId,
+    goToPage,
+    webViewRef,
+  ]);
 
   /**
    * Handler for navigating forward in the current tab's history.
@@ -70,15 +110,20 @@ export const useBrowserActions = (
   const handleCloseActiveTab = useCallback(() => {
     if (!activeTabId) return;
 
+    const currentTabs = useBrowserTabsStore.getState().tabs;
+    const hadUrl = activeTab?.url;
     closeTab(activeTabId);
-  }, [activeTabId, closeTab]);
+
+    analytics.trackDiscoverTabClosed(currentTabs.length, hadUrl);
+  }, [activeTabId, activeTab?.url, closeTab]);
 
   /**
    * Handler for closing all tabs.
    */
   const handleCloseAllTabs = useCallback(() => {
+    analytics.trackDiscoverAllTabsClosed(tabCount);
     closeAllTabs();
-  }, [closeAllTabs]);
+  }, [tabCount, closeAllTabs]);
 
   /**
    * Handler for sharing the current tab's URL and title.
@@ -118,7 +163,7 @@ export const useBrowserActions = (
     // If on homepage, only show close actions
     if (isOnHomepage) {
       const homepageActions = [
-        ...(tabs.length > 1
+        ...(tabCount > 1
           ? [
               {
                 title: t("discovery.closeAllTabs"),
@@ -194,7 +239,7 @@ export const useBrowserActions = (
     return isIOS ? allActions.reverse() : allActions;
   }, [
     isOnHomepage,
-    tabs.length,
+    tabCount,
     t,
     handleOpenInBrowser,
     handleShare,

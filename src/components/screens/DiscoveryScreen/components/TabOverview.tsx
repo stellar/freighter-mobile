@@ -1,6 +1,5 @@
-import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
+import ContextMenuButton, { MenuItem } from "components/ContextMenuButton";
 import { TabPreview } from "components/screens/DiscoveryScreen/components";
-import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import {
@@ -13,35 +12,107 @@ import { isHomepageUrl } from "helpers/browser";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
-import React from "react";
-import { View, TouchableOpacity, FlatList } from "react-native";
+import React, { useCallback, useMemo } from "react";
+import { Platform, View, TouchableOpacity, FlatList } from "react-native";
 
 interface TabOverviewHeaderProps {
   tabsCount: number;
-  onClose: () => void;
-  onNewTab: () => void;
 }
 
-const TabOverviewHeader: React.FC<TabOverviewHeaderProps> = ({
-  tabsCount,
-  onClose,
-  onNewTab,
-}) => {
+const TabOverviewHeader: React.FC<TabOverviewHeaderProps> = ({ tabsCount }) => {
   const { t } = useAppTranslation();
 
   return (
-    <View className="flex-row items-center justify-between px-6 py-4">
-      <CustomHeaderButton position="left" icon={Icon.X} onPress={onClose} />
-      <Text lg semiBold>
+    <View className="items-center px-6 py-4">
+      <Text md medium>
         {tabsCount > 1
           ? t("discovery.tabs", { count: tabsCount })
           : t("discovery.oneTab")}
       </Text>
-      <CustomHeaderButton
-        position="right"
-        icon={Icon.Plus}
+    </View>
+  );
+};
+
+interface TabOverviewFooterProps {
+  onClose: () => void;
+  onNewTab: () => void;
+  onCloseActiveTab: () => void;
+  onCloseAllTabs: () => void;
+  showCloseAllOption: boolean;
+}
+
+const TabOverviewFooter: React.FC<TabOverviewFooterProps> = ({
+  onClose,
+  onNewTab,
+  onCloseActiveTab,
+  onCloseAllTabs,
+  showCloseAllOption,
+}) => {
+  const { t } = useAppTranslation();
+  const { themeColors } = useColors();
+
+  const contextMenuActions: MenuItem[] = useMemo(() => {
+    const actions: MenuItem[] = [
+      {
+        title: t("discovery.closeThisTab"),
+        systemIcon: Platform.select({
+          ios: "xmark.circle",
+          android: "close",
+        }),
+        onPress: onCloseActiveTab,
+      },
+    ];
+
+    if (showCloseAllOption) {
+      actions.push({
+        title: t("discovery.closeAllTabs"),
+        systemIcon: Platform.select({
+          ios: "xmark.circle.fill",
+          android: "close",
+        }),
+        onPress: onCloseAllTabs,
+        destructive: true,
+      });
+    }
+
+    return actions;
+  }, [t, onCloseActiveTab, onCloseAllTabs, showCloseAllOption]);
+
+  return (
+    <View className="flex-row items-center border-t border-border-primary bg-background-primary px-6 py-4">
+      <View className="flex-1 items-start">
+        <ContextMenuButton
+          contextMenuProps={{ actions: contextMenuActions }}
+          side="top"
+          align="start"
+          sideOffset={8}
+        >
+          <Icon.DotsHorizontal size={24} color={themeColors.base[1]} />
+        </ContextMenuButton>
+      </View>
+
+      <TouchableOpacity
         onPress={onNewTab}
-      />
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        className="size-[40px] justify-center items-center"
+        accessibilityRole="button"
+        accessibilityLabel={t("discovery.newTab")}
+      >
+        <Icon.Plus size={24} color={themeColors.base[1]} />
+      </TouchableOpacity>
+
+      <View className="flex-1 items-end">
+        <TouchableOpacity
+          onPress={onClose}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityRole="button"
+          accessibilityLabel={t("common.done")}
+        >
+          <Text md medium>
+            {t("common.done")}
+          </Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
@@ -65,9 +136,7 @@ const TabOverview: React.FC<TabOverviewProps> = React.memo(
     onCloseAllTabs,
     newTabId,
   }) => {
-    const { tabs, isTabActive } = useBrowserTabsStore();
-    const { t } = useAppTranslation();
-    const { themeColors } = useColors();
+    const { tabs, activeTabId, isTabActive } = useBrowserTabsStore();
 
     // Filter out the specific new tab being added to prevent showing
     // its preview while it's being added so we have a smoother UI transition
@@ -75,18 +144,20 @@ const TabOverview: React.FC<TabOverviewProps> = React.memo(
       ? tabs.filter((tab) => tab.id !== newTabId)
       : tabs;
 
-    // Check if we should show the "Close all tabs" button
+    // Check if we should show the "Close all tabs" option in the context menu
     // Hide it if there's only 1 tab and it's the homepage
-    const shouldShowCloseAllButton =
+    const shouldShowCloseAllOption =
       tabs.length > 1 || (tabs.length === 1 && !isHomepageUrl(tabs[0]?.url));
 
+    const handleCloseActiveTab = useCallback(() => {
+      if (activeTabId) {
+        onCloseTab(activeTabId);
+      }
+    }, [activeTabId, onCloseTab]);
+
     return (
-      <View className="relative flex-1">
-        <TabOverviewHeader
-          tabsCount={tabs.length}
-          onClose={onClose}
-          onNewTab={onNewTab}
-        />
+      <View className="flex-1">
+        <TabOverviewHeader tabsCount={tabs.length} />
 
         {/* Tabs Grid */}
         <FlatList
@@ -96,24 +167,6 @@ const TabOverview: React.FC<TabOverviewProps> = React.memo(
             justifyContent: "space-between",
             marginBottom: pxValue(16),
           }}
-          ListFooterComponent={
-            shouldShowCloseAllButton ? (
-              <View className="mx-auto mt-3 mb-1">
-                <Button
-                  secondary
-                  icon={
-                    <Icon.XCircle
-                      color={themeColors.foreground.primary}
-                      size={18}
-                    />
-                  }
-                  onPress={onCloseAllTabs}
-                >
-                  {t("discovery.closeAllTabs")}
-                </Button>
-              </View>
-            ) : null
-          }
           contentContainerStyle={{ padding: pxValue(DEFAULT_PADDING) }}
           keyExtractor={(tab) => tab.id}
           renderItem={({ item: tab }) => (
@@ -140,6 +193,14 @@ const TabOverview: React.FC<TabOverviewProps> = React.memo(
           maxToRenderPerBatch={10}
           // Reduced out-of-bounds window size to improve performance (default is 21)
           windowSize={5}
+        />
+
+        <TabOverviewFooter
+          onClose={onClose}
+          onNewTab={onNewTab}
+          onCloseActiveTab={handleCloseActiveTab}
+          onCloseAllTabs={onCloseAllTabs}
+          showCloseAllOption={shouldShowCloseAllOption}
         />
       </View>
     );

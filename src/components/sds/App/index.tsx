@@ -1,4 +1,3 @@
-import { APP_DATA } from "components/sds/App/data";
 import { Text } from "components/sds/Typography";
 import { useProtocolsStore } from "ducks/protocols";
 import { pxValue } from "helpers/dimensions";
@@ -44,26 +43,6 @@ const sizeMap = {
 };
 
 /**
- * Finds the matching app data key based on the app name
- * @function getAppDataKey
- * @param {string} appName - The name of the application
- * @param {string} [favicon] - Optional favicon URL to match against
- * @returns {string | undefined} The matching app data key or undefined if no match found
- */
-const getAppDataKey = (
-  appName: string,
-  favicon?: string,
-): string | undefined => {
-  const appDataKey = Object.keys(APP_DATA).find((key) => {
-    const appDataName = APP_DATA[key].name.toLowerCase();
-    const matchedName = appName.toLowerCase().includes(appDataName);
-    const matchedFavicon = favicon?.toLowerCase().includes(appDataName);
-    return matchedName || matchedFavicon;
-  });
-  return appDataKey;
-};
-
-/**
  * Component that displays app initials as a fallback when image loading fails
  * @component AppInitials
  * @param {Object} props - Component props
@@ -102,10 +81,9 @@ const AppInitials: React.FC<{
  * @component App
  * @description
  * This component displays an application icon with the following priority order:
- * 1. Local app data image (if app name/URL matches known apps)
- * 2. Protocol icon (if app name/URL matches known protocols)
- * 3. Provided favicon URL
- * 4. App initials as a fallback when image loading fails
+ * 1. Protocol icon (favicon URL matches known protocols)
+ * 2. Provided favicon URL
+ * 3. App initials as a fallback when image loading fails
  *
  * The component supports both PNG and SVG images, with automatic format detection.
  * If image loading fails, it gracefully falls back to displaying the first two letters
@@ -131,14 +109,7 @@ export const App: React.FC<AppProps> = ({
 
   // Memoize imageUri calculation for performance
   const imageUri = useMemo(() => {
-    // Give priority to the local app data image
-    const appDataKey = getAppDataKey(appName, favicon);
-    const appData = APP_DATA[appDataKey || ""];
-    if (appData) {
-      return appData.src;
-    }
-
-    // Try to relate with some of the known protocols
+    // Try to match with some of the known protocols
     const matchedProtocolSite = findMatchedProtocol({
       protocols,
       searchUrl: favicon,
@@ -147,10 +118,9 @@ export const App: React.FC<AppProps> = ({
       return matchedProtocolSite.iconUrl;
     }
 
-    // Fallback to the original favicon url
+    // Fallback to the favicon url
     return favicon;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appName, favicon, protocols]);
+  }, [favicon, protocols]);
 
   // If there is an image and no error, render it
   if (imageUri && !imageError) {

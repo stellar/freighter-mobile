@@ -125,6 +125,12 @@ tags:
 # only triggers onRequestClose when the keyboard is already dismissed.
 - hideKeyboard
 
+# Make sure the sign button is visible (scroll if needed) and tap it to send the WC request
+- scrollUntilVisible:
+    element:
+      id: wc-e2e-request-sign
+    direction: DOWN
+
 # Request sign message - modal will auto-close after request
 - tapOn:
     id: wc-e2e-request-sign

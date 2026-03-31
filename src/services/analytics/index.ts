@@ -7,6 +7,15 @@ import {
 } from "services/analytics/core";
 import { getAnalyticsDebugInfo } from "services/analytics/debug";
 import {
+  trackDiscoverProtocolOpened,
+  trackDiscoverProtocolDetailsViewed,
+  trackDiscoverProtocolOpenedFromDetails,
+  trackDiscoverTabCreated,
+  trackDiscoverTabClosed,
+  trackDiscoverAllTabsClosed,
+  trackDiscoverWelcomeModalViewed,
+} from "services/analytics/discover";
+import {
   trackSignedTransaction,
   trackSignedMessage,
   trackSignedAuthEntry,
@@ -83,6 +92,15 @@ export interface AnalyticsInstance {
   // History analytics
   readonly trackHistoryOpenItem: typeof trackHistoryOpenItem;
 
+  // Discover analytics
+  readonly trackDiscoverProtocolOpened: typeof trackDiscoverProtocolOpened;
+  readonly trackDiscoverProtocolDetailsViewed: typeof trackDiscoverProtocolDetailsViewed;
+  readonly trackDiscoverProtocolOpenedFromDetails: typeof trackDiscoverProtocolOpenedFromDetails;
+  readonly trackDiscoverTabCreated: typeof trackDiscoverTabCreated;
+  readonly trackDiscoverTabClosed: typeof trackDiscoverTabClosed;
+  readonly trackDiscoverAllTabsClosed: typeof trackDiscoverAllTabsClosed;
+  readonly trackDiscoverWelcomeModalViewed: typeof trackDiscoverWelcomeModalViewed;
+
   // Development tools
   readonly getAnalyticsDebugInfo: typeof getAnalyticsDebugInfo;
 }
@@ -137,6 +155,13 @@ export const analytics: AnalyticsInstance = {
   trackGrantAccessSuccess,
   trackGrantAccessFail,
   trackHistoryOpenItem,
+  trackDiscoverProtocolOpened,
+  trackDiscoverProtocolDetailsViewed,
+  trackDiscoverProtocolOpenedFromDetails,
+  trackDiscoverTabCreated,
+  trackDiscoverTabClosed,
+  trackDiscoverAllTabsClosed,
+  trackDiscoverWelcomeModalViewed,
 
   // Development tools (only available in __DEV__)
   getAnalyticsDebugInfo,

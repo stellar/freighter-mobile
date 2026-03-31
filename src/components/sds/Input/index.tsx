@@ -353,7 +353,8 @@ interface InputProps {
     | "decimal-pad"
     | "numeric"
     | "email-address"
-    | "phone-pad";
+    | "phone-pad"
+    | "web-search";
   isBottomSheetInput?: boolean;
   style?: ViewStyle | TextStyle;
   /** Text to display as suffix after the input value (e.g., "XLM") */
@@ -362,6 +363,16 @@ interface InputProps {
   centered?: boolean;
   /** Line break mode for iOS */
   lineBreakModeIOS?: "head" | "middle" | "tail" | "clip";
+  selection?: { start: number; end: number };
+  onSelectionChange?: (event: {
+    nativeEvent: { selection: { start: number; end: number } };
+  }) => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
+  keyboardAppearance?: "default" | "light" | "dark";
+  spellCheck?: boolean;
+  textContentType?: "none" | "URL" | "emailAddress" | "password" | "username";
+  inputAccessoryViewID?: string;
 }
 
 /**
@@ -413,11 +424,18 @@ type TextInputComponentProps = Pick<
   | "autoCapitalize"
   | "autoFocus"
   | "keyboardType"
+  | "keyboardAppearance"
   | "lineBreakModeIOS"
+  | "selection"
+  | "onSelectionChange"
+  | "onFocus"
+  | "onBlur"
+  | "spellCheck"
+  | "textContentType"
+  | "inputAccessoryViewID"
 > & {
   className?: string;
   ref: React.Ref<InputRef>;
-  selection?: { start: number; end: number };
 };
 
 /**

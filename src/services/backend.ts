@@ -899,8 +899,10 @@ export const submitTransaction = async (body: SubmitTransactionBody) => {
  * @property {string} data.protocols[].name - Protocol name
  * @property {string} data.protocols[].website_url - Protocol website URL
  * @property {string[]} data.protocols[].tags - Protocol tags/categories
+ * @property {string} [data.protocols[].background_url] - Protocol background image URL for cards/carousels
  * @property {boolean} [data.protocols[].is_blacklisted] - Whether protocol is blacklisted
  * @property {boolean} [data.protocols[].is_wc_not_supported] - Whether protocol supports WalletConnect
+ * @property {boolean} [data.protocols[].is_trending] - Whether protocol is featured in the trending carousel
  */
 interface ProtocolsResponse {
   data: {
@@ -910,8 +912,10 @@ interface ProtocolsResponse {
       name: string;
       website_url: string;
       tags: string[];
+      background_url?: string;
       is_blacklisted?: boolean;
       is_wc_not_supported?: boolean;
+      is_trending?: boolean;
     }[];
   };
 }
@@ -965,6 +969,8 @@ export const fetchProtocols = async (): Promise<DiscoverProtocol[]> => {
       name: protocol.name,
       websiteUrl: protocol.website_url,
       tags: protocol.tags,
+      backgroundUrl: protocol.background_url,
+      isTrending: protocol.is_trending ?? false,
     }));
 };
 
