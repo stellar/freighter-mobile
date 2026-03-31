@@ -1093,26 +1093,7 @@
   "analytics": {
     "debug": {
       "resetApp": "Reiniciar Estado da Aplicação",
-      "title": "📊 Debug Analytics",
-      "status": "Status",
-      "enabled": "✅ Habilitado",
-      "disabled": "❌ Desabilitado",
-      "initialized": "🚀 Inicializado",
-      "notInitialized": "⏳ Não Inicializado",
-      "sending": "📤 Enviando para Amplitude",
-      "notSending": "📝 Apenas registrando (não enviando)",
-      "apiKeyMissing": "⚠️ Chave da API Ausente",
-      "apiKeyMissingWarning": "Os eventos estão sendo registrados para desenvolvimento, mas NÃO enviados para o Amplitude porque a chave da API não está configurada.",
-      "userId": "ID do Usuário: {{userId}}",
-      "userIdNotSet": "ID do Usuário: Não definido",
-      "environment": "Ambiente: {{environment}}",
-      "apiKey": "Chave da API: {{apiKey}}",
-      "recentEvents": "Eventos Recentes ({{count}})",
-      "clear": "Limpar",
-      "noRecentEvents": "Nenhum evento recente",
       "actions": "Ações",
-      "refresh": "🔄 Atualizar",
-      "clearEvents": "Limpar Eventos",
       "simulateSessionExpiry": "⏰ Simular Expiração de Sessão",
       "resetIconsCache": "Redefinir Cache de Ícones"
     }

@@ -286,9 +286,7 @@ jest.mock("services/analytics", () => ({
       hasInitialized: false,
       environment: "test",
       amplitudeKey: "test-key...",
-      recentEvents: [],
     })),
-    clearRecentEvents: jest.fn(),
   },
   TransactionType: {
     Classic: "classic",
@@ -318,11 +316,11 @@ jest.mock("services/analytics/debug", () => ({
     hasInitialized: false,
     environment: "test",
     amplitudeKey: "test-key...",
-    recentEvents: [],
   })),
-  clearRecentEvents: jest.fn(),
   logAnalyticsDebugInfo: jest.fn(),
-  addToRecentEvents: jest.fn(),
+  DEBUG_CONSTANTS: {
+    API_KEY_NOT_SET: "Not set",
+  },
 }));
 
 jest.mock("react-native-permissions", () => ({

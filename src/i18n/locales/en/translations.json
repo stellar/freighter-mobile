@@ -1092,26 +1092,7 @@
   "analytics": {
     "debug": {
       "resetApp": "Reset App State",
-      "title": "📊 Analytics Debug",
-      "status": "Status",
-      "enabled": "✅ Enabled",
-      "disabled": "❌ Disabled",
-      "initialized": "🚀 Initialized",
-      "notInitialized": "⏳ Not Initialized",
-      "sending": "📤 Sending to Amplitude",
-      "notSending": "📝 Logging only (not sending)",
-      "apiKeyMissing": "⚠️ API Key Missing",
-      "apiKeyMissingWarning": "Events are being logged for development but NOT sent to Amplitude because the API key is not configured.",
-      "userId": "User ID: {{userId}}",
-      "userIdNotSet": "User ID: Not set",
-      "environment": "Environment: {{environment}}",
-      "apiKey": "API Key: {{apiKey}}",
-      "recentEvents": "Recent Events ({{count}})",
-      "clear": "Clear",
-      "noRecentEvents": "No recent events",
       "actions": "Actions",
-      "refresh": "🔄 Refresh",
-      "clearEvents": "Clear Events",
       "simulateSessionExpiry": "⏰ Simulate Session Expiry",
       "resetIconsCache": "Reset Icons Cache"
     }

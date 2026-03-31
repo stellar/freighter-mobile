@@ -77,9 +77,4 @@ export interface AnalyticsDebugInfo {
   environment: "development" | "production" | "test";
   amplitudeKey: string;
   isSendingToAmplitude: boolean;
-  recentEvents: Array<{
-    event: string;
-    timestamp: number;
-    props?: Record<string, unknown>;
-  }>;
 }

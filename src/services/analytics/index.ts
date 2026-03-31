@@ -5,10 +5,7 @@ import {
   track,
   trackAppOpened,
 } from "services/analytics/core";
-import {
-  getAnalyticsDebugInfo,
-  clearRecentEvents,
-} from "services/analytics/debug";
+import { getAnalyticsDebugInfo } from "services/analytics/debug";
 import {
   trackSignedTransaction,
   trackSignedMessage,
@@ -88,7 +85,6 @@ export interface AnalyticsInstance {
 
   // Development tools
   readonly getAnalyticsDebugInfo: typeof getAnalyticsDebugInfo;
-  readonly clearRecentEvents: typeof clearRecentEvents;
 }
 
 /**
@@ -144,7 +140,6 @@ export const analytics: AnalyticsInstance = {
 
   // Development tools (only available in __DEV__)
   getAnalyticsDebugInfo,
-  clearRecentEvents,
 } as const;
 
 export { TransactionType } from "services/analytics/types";
