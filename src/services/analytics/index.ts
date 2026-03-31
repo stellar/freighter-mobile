@@ -5,7 +5,6 @@ import {
   track,
   trackAppOpened,
 } from "services/analytics/core";
-import { getAnalyticsDebugInfo } from "services/analytics/debug";
 import {
   trackDiscoverProtocolOpened,
   trackDiscoverProtocolDetailsViewed,
@@ -100,9 +99,6 @@ export interface AnalyticsInstance {
   readonly trackDiscoverTabClosed: typeof trackDiscoverTabClosed;
   readonly trackDiscoverAllTabsClosed: typeof trackDiscoverAllTabsClosed;
   readonly trackDiscoverWelcomeModalViewed: typeof trackDiscoverWelcomeModalViewed;
-
-  // Development tools
-  readonly getAnalyticsDebugInfo: typeof getAnalyticsDebugInfo;
 }
 
 /**
@@ -162,9 +158,6 @@ export const analytics: AnalyticsInstance = {
   trackDiscoverTabClosed,
   trackDiscoverAllTabsClosed,
   trackDiscoverWelcomeModalViewed,
-
-  // Development tools (only available in __DEV__)
-  getAnalyticsDebugInfo,
 } as const;
 
 export { TransactionType } from "services/analytics/types";
