@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-unsafe-enum-comparison */
 import { Horizon } from "@stellar/stellar-sdk";
+import { TransactionType } from "components/screens/HistoryScreen/types";
 import Icon from "components/sds/Icon";
 import { OPERATION_TYPES } from "config/constants";
 import { SorobanTokenInterface } from "helpers/soroban";
@@ -93,3 +94,20 @@ export const isSorobanTokenMint = (fnName: string | undefined): boolean =>
  */
 export const isSorobanTokenTransfer = (fnName: string | undefined): boolean =>
   fnName === SorobanTokenInterface.transfer;
+
+/**
+ * Determines if the memo field should be displayed for a transaction.
+ * Memo is only relevant for classic Send/Receive operations (Payment and
+ * CreateAccount). It is also hidden when the destination is a muxed address
+ * because the memo is encoded in the address itself.
+ */
+export const shouldShowMemo = (
+  transactionType: TransactionType,
+  isDestinationMuxed: boolean,
+): boolean => {
+  const isClassicSendReceive =
+    transactionType === TransactionType.PAYMENT ||
+    transactionType === TransactionType.CREATE_ACCOUNT;
+
+  return isClassicSendReceive && !isDestinationMuxed;
+};
