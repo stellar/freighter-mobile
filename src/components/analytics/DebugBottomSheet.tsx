@@ -464,7 +464,7 @@ const CustomContent: React.FC<{
 
           <View className="gap-3">
             <Text lg medium>
-              {t("analytics.debug.actions")}
+              {t("debug.actions")}
             </Text>
             <Button
               secondary
@@ -472,13 +472,13 @@ const CustomContent: React.FC<{
               onPress={handleSimulateSessionExpiry}
               isFullWidth
             >
-              {t("analytics.debug.simulateSessionExpiry")}
+              {t("debug.simulateSessionExpiry")}
             </Button>
             <Button secondary md onPress={handleResetIconsCache} isFullWidth>
-              {t("analytics.debug.resetIconsCache")}
+              {t("debug.resetIconsCache")}
             </Button>
             <Button secondary md onPress={handleResetApp} isFullWidth>
-              {t("analytics.debug.resetApp")}
+              {t("debug.resetApp")}
             </Button>
           </View>
           <View className="h-10" />

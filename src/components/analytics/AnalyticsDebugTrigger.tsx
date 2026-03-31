@@ -20,7 +20,7 @@ export const AnalyticsDebugTrigger: React.FC<AnalyticsDebugTriggerProps> = ({
       onPress={onPress}
       className="absolute bottom-4 right-4 z-50 w-12 h-12 rounded-full items-center justify-center bg-black/80 border border-gray-700"
     >
-      <Text md>📊</Text>
+      <Text md>🐛</Text>
     </TouchableOpacity>
   );
 };

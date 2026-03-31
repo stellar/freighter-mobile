@@ -1106,16 +1106,12 @@
     "confirm": "Entendi, continuar",
     "cancel": "Voltar"
   },
-  "analytics": {
-    "debug": {
-      "resetApp": "Reiniciar Estado da Aplicação",
-      "actions": "Ações",
-      "simulateSessionExpiry": "⏰ Simular Expiração de Sessão",
-      "resetIconsCache": "Redefinir Cache de Ícones"
-    }
-  },
   "debug": {
     "title": "Debug",
+    "actions": "Ações",
+    "resetApp": "Reiniciar Estado da Aplicação",
+    "simulateSessionExpiry": "⏰ Simular Expiração de Sessão",
+    "resetIconsCache": "Redefinir Cache de Ícones",
     "appVersionOverride": {
       "title": "Substituição da Versão do App",
       "description": "Substituir versão do app para testar atualizações (apenas DEV)",

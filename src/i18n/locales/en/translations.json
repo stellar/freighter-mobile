@@ -1105,16 +1105,12 @@
     "confirm": "I understand, continue",
     "cancel": "Go back"
   },
-  "analytics": {
-    "debug": {
-      "resetApp": "Reset App State",
-      "actions": "Actions",
-      "simulateSessionExpiry": "⏰ Simulate Session Expiry",
-      "resetIconsCache": "Reset Icons Cache"
-    }
-  },
   "debug": {
     "title": "Debug",
+    "actions": "Actions",
+    "resetApp": "Reset App State",
+    "simulateSessionExpiry": "⏰ Simulate Session Expiry",
+    "resetIconsCache": "Reset Icons Cache",
     "appVersionOverride": {
       "title": "App Version Override",
       "description": "Override app version for testing updates (DEV only)",
