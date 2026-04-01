@@ -65,21 +65,3 @@ export interface QRScanEvent {
   timeToScan?: number;
   error?: string;
 }
-
-// -----------------------------------------------------------------------------
-// DEBUG TYPES
-// -----------------------------------------------------------------------------
-
-export interface AnalyticsDebugInfo {
-  isEnabled: boolean;
-  userId: string | null;
-  hasInitialized: boolean;
-  environment: "development" | "production" | "test";
-  amplitudeKey: string;
-  isSendingToAmplitude: boolean;
-  recentEvents: Array<{
-    event: string;
-    timestamp: number;
-    props?: Record<string, unknown>;
-  }>;
-}

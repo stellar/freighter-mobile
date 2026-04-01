@@ -119,6 +119,7 @@
     "react-native-inappbrowser-reborn": "3.7.0",
     "react-native-ios-context-menu": "3.2.1",
     "react-native-ios-utilities": "5.2.0",
+    "react-native-keyboard-controller": "1.21.2",
     "react-native-keychain": "10.0.0",
     "react-native-level-fs": "2.0.0",
     "react-native-localize": "3.5.2",
@@ -245,5 +246,5 @@
     "@types/react": "^19.1.0",
     "@types/react-test-renderer": "^19.1.0"
   },
-  "packageManager": "yarn@4.9.4"
+  "packageManager": "yarn@4.10.0"
 }

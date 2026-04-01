@@ -9,6 +9,7 @@ import { MAIN_TAB_ROUTES, MainTabStackParamList } from "config/routes";
 import { THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
 import { useProtocolsStore } from "ducks/protocols";
+import { useRecentProtocolsStore } from "ducks/recentProtocols";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { px, pxValue } from "helpers/dimensions";
 import { useFetchCollectibles } from "hooks/useFetchCollectibles";
@@ -100,9 +101,17 @@ export const TabNavigator = () => {
     network: networkDetails.network,
   });
 
-  // Fetch discover protocols on mount
+  // Hydrate the recent protocols store first, then fetch protocols and
+  // prune any stale entries. Ordering matters: if fetchProtocols resolves
+  // before rehydrate completes, pruneStaleProtocols would run against an
+  // empty list and miss stale entries.
   useEffect(() => {
-    fetchProtocols();
+    Promise.resolve(useRecentProtocolsStore.persist.rehydrate()).then(() => {
+      fetchProtocols().then(() => {
+        const { protocols } = useProtocolsStore.getState();
+        useRecentProtocolsStore.getState().pruneStaleProtocols(protocols);
+      });
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

@@ -26,6 +26,7 @@ export interface BrowserTab {
   title: string;
   canGoBack: boolean;
   canGoForward: boolean;
+  cameFromHomepage?: boolean; // True when the tab navigated away from the homepage
   screenshot?: string; // Base64 encoded screenshot of the website
   logoUrl?: string; // Favicon URL
   lastAccessed: number; // Timestamp for sorting
@@ -178,17 +179,22 @@ export const useBrowserTabsStore = create<BrowserTabsState>()(
                   lastAccessed: Date.now(),
                   canGoBack: false,
                   canGoForward: false,
+                  cameFromHomepage: false,
                   screenshot: undefined,
                   logoUrl: undefined,
                 };
               }
 
-              // Otherwise we should just update the url so that the webview can navigate to it
+              // When leaving the homepage, flag the tab so the back button
+              // can return to the homepage (which is not in WebView history).
+              const leavingHomepage = isHomepageUrl(tab.url);
+
               return {
                 ...tab,
                 url,
                 screenshot: undefined,
                 lastAccessed: Date.now(),
+                ...(leavingHomepage && { cameFromHomepage: true }),
               };
             }
 

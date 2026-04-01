@@ -158,6 +158,15 @@ export enum AnalyticsEvent {
   // Jailbreak Events
   DEVICE_JAILBREAK_DETECTED = "device security: jailbreak detected",
   DEVICE_JAILBREAK_FAILED = "device security: jailbreak detection failed",
+
+  // Discover Events
+  DISCOVER_PROTOCOL_OPENED = "discover: protocol opened",
+  DISCOVER_PROTOCOL_DETAILS_VIEWED = "discover: protocol details viewed",
+  DISCOVER_PROTOCOL_OPENED_FROM_DETAILS = "discover: protocol opened from details",
+  DISCOVER_TAB_CREATED = "discover: tab created",
+  DISCOVER_TAB_CLOSED = "discover: tab closed",
+  DISCOVER_ALL_TABS_CLOSED = "discover: all tabs closed",
+  DISCOVER_WELCOME_MODAL_VIEWED = "discover: welcome modal viewed",
 }
 
 /**

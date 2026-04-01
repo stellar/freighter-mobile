@@ -1,176 +1,98 @@
-import { App } from "components/sds/App";
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
+import ContextMenuButton, { MenuItem } from "components/ContextMenuButton";
+import { TrendingItem } from "components/TrendingCarousel";
+import { DEFAULT_HEADER_BUTTON_SIZE } from "components/layout/CustomHeaderButton";
+import ExpandedSectionView from "components/screens/DiscoveryScreen/components/ExpandedSectionView";
+import ProtocolDetailsBottomSheet from "components/screens/DiscoveryScreen/components/ProtocolDetailsBottomSheet";
+import TrendingCarouselSection from "components/screens/DiscoveryScreen/components/TrendingCarouselSection";
+import VerticalListSection, {
+  VerticalListItem,
+} from "components/screens/DiscoveryScreen/components/VerticalListSection";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import {
-  DEFAULT_PADDING,
-  BROWSER_CONSTANTS,
-  DEFAULT_PRESS_DELAY,
-} from "config/constants";
-import { DiscoverProtocol } from "config/types";
-import { useBrowserTabsStore, BrowserTab } from "ducks/browserTabs";
-import { useProtocolsStore } from "ducks/protocols";
-import { getFaviconUrl, isHomepageUrl } from "helpers/browser";
+import { DEFAULT_PADDING, BROWSER_CONSTANTS } from "config/constants";
+import { useBrowserTabsStore } from "ducks/browserTabs";
 import { pxValue } from "helpers/dimensions";
-import { findMatchedProtocol } from "helpers/protocols";
 import { captureTabScreenshot } from "helpers/screenshots";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
-import React, { useMemo, useRef, useCallback, useEffect } from "react";
-import { View, FlatList, TouchableOpacity } from "react-native";
+import useDiscoveryData, { protocolToListItem } from "hooks/useDiscoveryData";
+import React, {
+  useMemo,
+  useRef,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
+import { Animated, View, ScrollView, useWindowDimensions } from "react-native";
 import ViewShot from "react-native-view-shot";
+import { analytics } from "services/analytics";
+import {
+  DISCOVER_ANALYTICS_SOURCE,
+  DiscoverAnalyticsSource,
+} from "services/analytics/discover";
 
 interface DiscoveryHomepageProps {
   tabId: string;
 }
 
-interface HorizontalListSectionProps {
-  protocols: DiscoverProtocol[];
+interface ExpandedSection {
   title: string;
-  icon: React.ReactNode;
-  data: (DiscoverProtocol | BrowserTab)[];
-  onItemPress: (url: string) => void;
-  onScrollEnd: () => Promise<void>;
+  items: VerticalListItem[];
+  isRecents?: boolean;
 }
 
-const HorizontalListSection: React.FC<HorizontalListSectionProps> = React.memo(
-  ({ protocols, title, icon, data, onItemPress, onScrollEnd }) => {
-    const { themeColors } = useColors();
-
-    const handleScrollEnd = useCallback(() => {
-      onScrollEnd();
-    }, [onScrollEnd]);
-
-    // Memoize renderSiteItem to avoid unnecessary re-renders
-    const renderSiteItem = useCallback(
-      (props: { item: DiscoverProtocol | BrowserTab }) => {
-        const getSiteName = (
-          siteItem: DiscoverProtocol | BrowserTab,
-        ): string => {
-          if ("name" in siteItem) {
-            return siteItem.name;
-          }
-
-          // Try to relate with some of the known protocols for copy consistency
-          const matchedProtocolSite = findMatchedProtocol({
-            protocols,
-            searchUrl: siteItem.url,
-          });
-
-          return matchedProtocolSite?.name || siteItem.title;
-        };
-
-        const getSiteUrl = (
-          siteItem: DiscoverProtocol | BrowserTab,
-        ): string => {
-          if ("websiteUrl" in siteItem) {
-            return siteItem.websiteUrl;
-          }
-
-          return siteItem.url;
-        };
-
-        const getFavicon = (
-          siteItem: DiscoverProtocol | BrowserTab,
-        ): string => {
-          if ("iconUrl" in siteItem) {
-            return siteItem.iconUrl;
-          }
-
-          return getFaviconUrl(getSiteUrl(siteItem));
-        };
-
-        const name = getSiteName(props.item);
-        const siteUrl = getSiteUrl(props.item);
-        const favicon = getFavicon(props.item);
-
-        return (
-          <TouchableOpacity
-            className="mr-3 items-center"
-            onPress={() => onItemPress(siteUrl)}
-            delayPressIn={DEFAULT_PRESS_DELAY}
-          >
-            <View
-              className="w-[76px] h-[76px] rounded-xl justify-center items-center mb-2"
-              style={{ backgroundColor: themeColors.background.tertiary }}
-            >
-              <App appName={name} favicon={favicon} size="lg" />
-            </View>
-            <Text
-              sm
-              medium
-              numberOfLines={2}
-              style={{ maxWidth: pxValue(76), textAlign: "center" }}
-            >
-              {name}
-            </Text>
-          </TouchableOpacity>
-        );
-      },
-      [onItemPress, protocols, themeColors.background.tertiary],
-    );
-
-    // Memoize contentContainerStyle to avoid unnecessary re-renders
-    const contentContainerStyle = useMemo(
-      () => ({
-        paddingHorizontal: pxValue(DEFAULT_PADDING),
-      }),
-      [],
-    );
-
-    return (
-      <View>
-        <View
-          className="flex-row items-center gap-2 mb-3 mt-8"
-          style={{ paddingLeft: pxValue(DEFAULT_PADDING) }}
-        >
-          {icon}
-          <Text md medium>
-            {title}
-          </Text>
-        </View>
-
-        <FlatList
-          horizontal
-          data={data}
-          renderItem={renderSiteItem}
-          keyExtractor={(item) =>
-            "websiteUrl" in item ? item.websiteUrl : item.id
-          }
-          showsHorizontalScrollIndicator={false}
-          onScrollEndDrag={handleScrollEnd}
-          contentContainerStyle={contentContainerStyle}
-        />
-      </View>
-    );
-  },
-);
+interface ProtocolDetailsData {
+  name: string;
+  iconUrl: string;
+  websiteUrl: string;
+  description: string;
+  tags: string[];
+}
 
 const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
   ({ tabId }) => {
     const { t } = useAppTranslation();
     const { themeColors } = useColors();
-    const { goToPage, tabs, updateTab, showTabOverview } =
-      useBrowserTabsStore();
-    const { protocols } = useProtocolsStore();
+    const { width: windowWidth } = useWindowDimensions();
+
+    const { goToPage, showTabOverview } = useBrowserTabsStore();
+    const {
+      protocols,
+      trendingCarouselItems,
+      recentItems,
+      dappsItems,
+      addRecentProtocol,
+      clearRecentProtocols,
+    } = useDiscoveryData();
     const viewShotRef = useRef<ViewShot>(null);
+    const protocolDetailsRef = useRef<BottomSheetModal>(null);
+    const [expandedSection, setExpandedSection] =
+      useState<ExpandedSection | null>(null);
+    const [selectedProtocol, setSelectedProtocol] =
+      useState<ProtocolDetailsData | null>(null);
+    const expandedSlideAnim = useRef(new Animated.Value(1)).current;
+    const [protocolSource, setProtocolSource] =
+      useState<DiscoverAnalyticsSource>(DISCOVER_ANALYTICS_SOURCE.DAPPS_LIST);
+    const [expandedSource, setExpandedSource] =
+      useState<DiscoverAnalyticsSource>(
+        DISCOVER_ANALYTICS_SOURCE.EXPANDED_DAPPS_LIST,
+      );
 
     const handleSitePress = useCallback(
       (url: string) => {
+        addRecentProtocol(url, protocols);
         goToPage(tabId, url);
       },
-      [goToPage, tabId],
+      [addRecentProtocol, goToPage, protocols, tabId],
     );
 
-    const recentTabs = useMemo(
-      () =>
-        tabs
-          .filter((tab) => !isHomepageUrl(tab.url))
-          .sort((a, b) => b.lastAccessed - a.lastAccessed)
-          .slice(0, BROWSER_CONSTANTS.MAX_RECENT_TABS),
-      [tabs],
-    );
-
+    // Read tabs/updateTab from the store imperatively (getState) instead of
+    // subscribing via the hook. Subscribing causes a re-render loop: every
+    // screenshot capture updates the store → re-renders the entire tree,
+    // producing visible flickering.
     const captureScreenshot = useCallback(async () => {
+      const { tabs, updateTab } = useBrowserTabsStore.getState();
       await captureTabScreenshot({
         viewShotRef: viewShotRef.current,
         tabId,
@@ -178,15 +100,186 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
         updateTab,
         source: "DiscoveryHomepage",
       });
-    }, [tabs, tabId, updateTab]);
+    }, [tabId]);
 
-    // Capture screenshot on initial render and when tab overview is closed
+    // Capture screenshot on initial render and when tab overview is closed.
+    // This is the ONLY place screenshots should be triggered — do NOT add
+    // captures on scroll events (onScrollEndDrag, onScrollEnd, etc.) as that
+    // causes a re-render feedback loop and visible flickering.
     useEffect(() => {
       if (!showTabOverview) {
         captureScreenshot();
       }
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [showTabOverview]);
+
+    const handleItemOpenWithSource = useCallback(
+      (item: VerticalListItem, source: DiscoverAnalyticsSource) => {
+        analytics.trackDiscoverProtocolOpened(
+          item.websiteUrl,
+          source,
+          protocols,
+        );
+        handleSitePress(item.websiteUrl);
+      },
+      [handleSitePress, protocols],
+    );
+
+    const handleRecentItemOpen = useCallback(
+      (item: VerticalListItem) =>
+        handleItemOpenWithSource(item, DISCOVER_ANALYTICS_SOURCE.RECENT_LIST),
+      [handleItemOpenWithSource],
+    );
+
+    const handleDappsItemOpen = useCallback(
+      (item: VerticalListItem) =>
+        handleItemOpenWithSource(item, DISCOVER_ANALYTICS_SOURCE.DAPPS_LIST),
+      [handleItemOpenWithSource],
+    );
+
+    const handleExpandedItemOpen = useCallback(
+      (item: VerticalListItem) =>
+        handleItemOpenWithSource(item, expandedSource),
+      [handleItemOpenWithSource, expandedSource],
+    );
+
+    const openProtocolDetails = useCallback(
+      (item: VerticalListItem, source: DiscoverAnalyticsSource) => {
+        setProtocolSource(source);
+        analytics.trackDiscoverProtocolDetailsViewed(item.name, item.tags);
+        setSelectedProtocol({
+          name: item.name,
+          iconUrl: item.iconUrl,
+          websiteUrl: item.websiteUrl,
+          description: item.description,
+          tags: item.tags,
+        });
+        protocolDetailsRef.current?.present();
+      },
+      [],
+    );
+
+    const handleRecentItemPress = useCallback(
+      (item: VerticalListItem) =>
+        openProtocolDetails(item, DISCOVER_ANALYTICS_SOURCE.RECENT_LIST),
+      [openProtocolDetails],
+    );
+
+    const handleDappsItemPress = useCallback(
+      (item: VerticalListItem) =>
+        openProtocolDetails(item, DISCOVER_ANALYTICS_SOURCE.DAPPS_LIST),
+      [openProtocolDetails],
+    );
+
+    const handleExpandedItemPress = useCallback(
+      (item: VerticalListItem) => openProtocolDetails(item, expandedSource),
+      [openProtocolDetails, expandedSource],
+    );
+
+    const handleTrendingItemPress = useCallback(
+      (item: TrendingItem) => {
+        const protocol = protocols.find((p) => p.websiteUrl === item.id);
+        if (!protocol) return;
+        openProtocolDetails(
+          protocolToListItem(protocol),
+          DISCOVER_ANALYTICS_SOURCE.TRENDING_CAROUSEL,
+        );
+      },
+      [protocols, openProtocolDetails],
+    );
+
+    const handleProtocolOpen = useCallback(
+      (url: string) => {
+        if (selectedProtocol) {
+          analytics.trackDiscoverProtocolOpenedFromDetails(
+            selectedProtocol.name,
+            url,
+          );
+        }
+        analytics.trackDiscoverProtocolOpened(url, protocolSource, protocols);
+        handleSitePress(url);
+      },
+      [selectedProtocol, handleSitePress, protocols, protocolSource],
+    );
+
+    const handleExpand = (section: ExpandedSection) => {
+      expandedSlideAnim.stopAnimation();
+      expandedSlideAnim.setValue(1);
+      setExpandedSection(section);
+    };
+
+    const handleCollapseSection = useCallback(() => {
+      expandedSlideAnim.stopAnimation();
+      Animated.timing(expandedSlideAnim, {
+        toValue: 1,
+        duration: BROWSER_CONSTANTS.CLOSE_ANIMATION_DURATION,
+        useNativeDriver: true,
+      }).start(() => {
+        setExpandedSection(null);
+      });
+    }, [expandedSlideAnim]);
+
+    // Start slide-in after the expanded view has mounted
+    useEffect(() => {
+      if (expandedSection) {
+        Animated.timing(expandedSlideAnim, {
+          toValue: 0,
+          duration: BROWSER_CONSTANTS.OPEN_ANIMATION_DURATION,
+          useNativeDriver: true,
+        }).start();
+      }
+    }, [expandedSection, expandedSlideAnim]);
+
+    const handleExpandRecent = useCallback(() => {
+      setExpandedSource(DISCOVER_ANALYTICS_SOURCE.EXPANDED_RECENT_LIST);
+      handleExpand({
+        title: t("discovery.recent"),
+        items: recentItems,
+        isRecents: true,
+      });
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- handleExpand only depends on expandedSlideAnim (a ref), so it's stable
+    }, [t, recentItems]);
+
+    const handleClearRecents = useCallback(() => {
+      clearRecentProtocols();
+      handleCollapseSection();
+    }, [clearRecentProtocols, handleCollapseSection]);
+
+    const clearRecentsMenuActions: MenuItem[] = useMemo(
+      () => [
+        {
+          title: t("discovery.clearRecents"),
+          systemIcon: "trash",
+          destructive: true,
+          onPress: handleClearRecents,
+        },
+      ],
+      [t, handleClearRecents],
+    );
+
+    const recentsHeaderRight = useMemo(
+      () => (
+        <ContextMenuButton
+          contextMenuProps={{ actions: clearRecentsMenuActions }}
+        >
+          <View
+            className={`${DEFAULT_HEADER_BUTTON_SIZE} items-center justify-center`}
+          >
+            <Icon.DotsHorizontal color={themeColors.text.primary} size={24} />
+          </View>
+        </ContextMenuButton>
+      ),
+      [clearRecentsMenuActions, themeColors.text.primary],
+    );
+
+    const handleExpandDapps = useCallback(() => {
+      setExpandedSource(DISCOVER_ANALYTICS_SOURCE.EXPANDED_DAPPS_LIST);
+      handleExpand({
+        title: t("discovery.dapps"),
+        items: dappsItems,
+      });
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- handleExpand only depends on expandedSlideAnim (a ref), so it's stable
+    }, [t, dappsItems]);
 
     return (
       <ViewShot
@@ -200,41 +293,104 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
         }}
         style={{ flex: 1 }}
       >
-        <View className="flex-1 bg-background-primary">
-          {recentTabs.length > 0 && (
-            <HorizontalListSection
-              protocols={protocols}
-              title={t("discovery.recent")}
-              icon={<Icon.ClockRewind color={themeColors.mint[9]} size={16} />}
-              data={recentTabs}
-              onItemPress={handleSitePress}
-              onScrollEnd={captureScreenshot}
-            />
-          )}
-
-          {protocols.length > 0 && (
-            <HorizontalListSection
-              protocols={protocols}
-              title={t("discovery.trending")}
-              icon={<Icon.Lightning01 color={themeColors.gold[9]} size={16} />}
-              data={protocols}
-              onItemPress={handleSitePress}
-              onScrollEnd={captureScreenshot}
-            />
-          )}
-
-          <View
-            className="bg-background-tertiary p-4 pr-5 rounded-2xl mt-4"
-            style={{ marginHorizontal: pxValue(DEFAULT_PADDING) }}
-          >
-            <Text xs secondary medium>
-              {t("discovery.legalDisclaimer")}
+        <Animated.View
+          style={{
+            flex: 1,
+            transform: [
+              {
+                translateX: expandedSlideAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [-windowWidth / 3, 0],
+                }),
+              },
+            ],
+          }}
+        >
+          <View className="items-center mt-4 mb-3 bg-background-primary">
+            <Text md medium>
+              {t("discovery.discover")}
             </Text>
           </View>
-        </View>
+
+          <ScrollView
+            className="flex-1 bg-background-primary"
+            showsVerticalScrollIndicator={false}
+            pointerEvents={expandedSection ? "none" : "auto"}
+          >
+            <TrendingCarouselSection
+              title={t("discovery.trending")}
+              items={trendingCarouselItems}
+              onItemPress={handleTrendingItemPress}
+            />
+
+            <VerticalListSection
+              title={t("discovery.recent")}
+              items={recentItems}
+              onTitlePress={handleExpandRecent}
+              onItemOpen={handleRecentItemOpen}
+              onItemPress={handleRecentItemPress}
+            />
+
+            <VerticalListSection
+              title={t("discovery.dapps")}
+              items={dappsItems}
+              onTitlePress={handleExpandDapps}
+              onItemOpen={handleDappsItemOpen}
+              onItemPress={handleDappsItemPress}
+            />
+
+            <View
+              className="bg-background-tertiary p-4 pr-5 rounded-2xl mt-8 mb-8"
+              style={{ marginHorizontal: pxValue(DEFAULT_PADDING) }}
+            >
+              <Text xs secondary medium>
+                {t("discovery.legalDisclaimer")}
+              </Text>
+            </View>
+          </ScrollView>
+        </Animated.View>
+
+        {expandedSection && (
+          <Animated.View
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              transform: [
+                {
+                  translateX: expandedSlideAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, windowWidth],
+                  }),
+                },
+              ],
+            }}
+          >
+            <ExpandedSectionView
+              title={expandedSection.title}
+              items={expandedSection.items}
+              onBack={handleCollapseSection}
+              onItemOpen={handleExpandedItemOpen}
+              onItemPress={handleExpandedItemPress}
+              headerRight={
+                expandedSection.isRecents ? recentsHeaderRight : undefined
+              }
+            />
+          </Animated.View>
+        )}
+
+        <ProtocolDetailsBottomSheet
+          protocol={selectedProtocol}
+          modalRef={protocolDetailsRef}
+          onOpen={handleProtocolOpen}
+        />
       </ViewShot>
     );
   },
 );
+
+DiscoveryHomepage.displayName = "DiscoveryHomepage";
 
 export default DiscoveryHomepage;

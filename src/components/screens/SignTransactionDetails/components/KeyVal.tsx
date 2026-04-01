@@ -19,7 +19,7 @@ import { Text } from "components/sds/Typography";
 import { CLAIM_PREDICATES, mapNetworkToNetworkDetails } from "config/constants";
 import { useAuthenticationStore } from "ducks/auth";
 import { getCreateContractArgs, scValByType } from "helpers/soroban";
-import { formattedBuffer, truncateAddress } from "helpers/stellar";
+import { truncateAddress } from "helpers/stellar";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import { t } from "i18next";

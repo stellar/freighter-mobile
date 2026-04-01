@@ -68,6 +68,11 @@ tags:
           commands:
             - tapOn:
                 text: "Allow Paste"
+            # Wait for the allow paste dialog to fully dismiss
+            - extendedWaitUntil:
+                notVisible:
+                  text: "Allow Paste|Don't Allow Paste"
+                timeout: 5000
 # Android: inputText approach
 - runFlow:
     when:
@@ -76,14 +81,7 @@ tags:
       - tapOn:
           id: import-wallet-input
       - inputText: "${E2E_TEST_RECOVERY_PHRASE}"
-      # Only hide keyboard if button is not visible (suggesting keyboard is blocking it)
-      # This prevents calling hideKeyboard when keyboard is already hidden (which causes navigation issues)
-      - runFlow:
-          when:
-            notVisible:
-              id: default-action-button
-          commands:
-            - hideKeyboard
+      - hideKeyboard
 # Tap continue/import button
 - tapOn:
     id: default-action-button

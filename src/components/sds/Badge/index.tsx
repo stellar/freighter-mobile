@@ -120,7 +120,7 @@ export const Badge: React.FC<BadgeProps> = ({
       primary: "bg-gray-1 border-gray-6",
       secondary: "bg-lilac-2 border-lilac-6",
       tertiary: "bg-gray-3 border-gray-6",
-      success: "bg-green-2 border-green-6",
+      success: "bg-lime-2 border-lime-6",
       warning: "bg-amber-2 border-amber-6",
       error: "bg-red-2 border-red-6",
     };
@@ -129,7 +129,7 @@ export const Badge: React.FC<BadgeProps> = ({
       primary: "bg-transparent border-gray-8",
       secondary: "bg-transparent border-lilac-8",
       tertiary: "bg-transparent border-gray-8",
-      success: "bg-transparent border-green-8",
+      success: "bg-transparent border-lime-8",
       warning: "bg-transparent border-amber-8",
       error: "bg-transparent border-red-8",
     };
@@ -152,7 +152,7 @@ export const Badge: React.FC<BadgeProps> = ({
       primary: "bg-green-9",
       secondary: "bg-lilac-9",
       tertiary: "bg-gray-9",
-      success: "bg-green-9",
+      success: "bg-lime-9",
       warning: "bg-amber-9",
       error: "bg-red-9",
     };
@@ -165,7 +165,7 @@ export const Badge: React.FC<BadgeProps> = ({
       primary: themeColors.gray[12],
       secondary: themeColors.lilac[11],
       tertiary: themeColors.gray[11],
-      success: themeColors.green[11],
+      success: themeColors.lime[11],
       warning: themeColors.amber[11],
       error: themeColors.red[11],
     };

@@ -3,7 +3,7 @@ import { DiscoveryHomepage } from "components/screens/DiscoveryScreen/components
 import { APP_VERSION, BROWSER_CONSTANTS } from "config/constants";
 import { logger } from "config/logger";
 import { useBrowserTabsStore } from "ducks/browserTabs";
-import { isHomepageUrl } from "helpers/browser";
+import { isDangerousScheme, isHomepageUrl } from "helpers/browser";
 import { captureTabScreenshot } from "helpers/screenshots";
 import useColors from "hooks/useColors";
 import React, { useRef, useCallback, useEffect, useState } from "react";
@@ -31,7 +31,6 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
     const {
       tabs,
       isTabActive,
-      updateTab,
       activeTabId,
       activeWebViewIds,
       registerWebView,
@@ -60,7 +59,7 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
      * Clears WebView cache for a specific WebView instance without affecting cookies
      * @param webViewInstance - The WebView instance to clear cache for
      */
-    const clearWebViewCache = useCallback((webViewInstance: WebView | null) => {
+    const clearWebViewCache = (webViewInstance: WebView | null) => {
       if (!webViewInstance) return;
 
       try {
@@ -68,7 +67,7 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
       } catch (error) {
         logger.warn("WebViewContainer", "Failed to clear WebView cache", error);
       }
-    }, []);
+    };
 
     /**
      * Determines if a WebView should be rendered based on WebView limit management
@@ -76,38 +75,32 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
      * @param tabId - The tab ID to check
      * @returns true if the WebView should be rendered, false otherwise
      */
-    const shouldRenderWebView = useCallback(
-      (tabId: string) => isTabActive(tabId) || activeWebViewIds.includes(tabId),
-      [isTabActive, activeWebViewIds],
-    );
+    const shouldRenderWebView = (tabId: string) =>
+      isTabActive(tabId) || activeWebViewIds.includes(tabId);
 
     /**
      * Handles WebView registration when a WebView is mounted
      * @param tabId - The tab ID to register
      */
-    const handleWebViewMount = useCallback(
-      (tabId: string) => {
-        const tab = tabs.find((t) => t.id === tabId);
-        const isHomepage = tab ? isHomepageUrl(tab.url) : false;
+    const handleWebViewMount = (tabId: string) => {
+      // Read tabs from the store imperatively to avoid a stale closure.
+      const currentTabs = useBrowserTabsStore.getState().tabs;
+      const tab = currentTabs.find((t) => t.id === tabId);
+      const isHomepage = tab ? isHomepageUrl(tab.url) : false;
 
-        // Don't register homepage as it doesn't use WebView
-        if (!isHomepage) {
-          registerWebView(tabId);
-        }
-      },
-      [tabs, registerWebView],
-    );
+      // Don't register homepage as it doesn't use WebView
+      if (!isHomepage) {
+        registerWebView(tabId);
+      }
+    };
 
     /**
      * Handles WebView unregistration when a WebView is unmounted
      * @param tabId - The tab ID to unregister
      */
-    const handleWebViewUnmount = useCallback(
-      (tabId: string) => {
-        unregisterWebView(tabId);
-      },
-      [unregisterWebView],
-    );
+    const handleWebViewUnmount = (tabId: string) => {
+      unregisterWebView(tabId);
+    };
 
     /**
      * Properly disposes of WebView instances to prevent memory leaks
@@ -216,18 +209,21 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
       }
     }, [tabs, disposeWebViews]);
 
-    const captureScreenshot = useCallback(
-      async (tabId: string) => {
-        await captureTabScreenshot({
-          viewShotRef: viewShotRefs.current[tabId],
-          tabId,
-          tabs,
-          updateTab,
-          source: "WebViewContainer",
-        });
-      },
-      [tabs, updateTab],
-    );
+    // Read tabs/updateTab from the store imperatively (getState) instead of
+    // subscribing via the hook. Subscribing causes a re-render loop: every
+    // screenshot capture updates the store → re-renders the entire tree,
+    // recreating captureScreenshot → cascading to handleScroll/handleLoadEnd.
+    const captureScreenshot = useCallback(async (tabId: string) => {
+      const { tabs: currentTabs, updateTab: storeUpdateTab } =
+        useBrowserTabsStore.getState();
+      await captureTabScreenshot({
+        viewShotRef: viewShotRefs.current[tabId],
+        tabId,
+        tabs: currentTabs,
+        updateTab: storeUpdateTab,
+        source: "WebViewContainer",
+      });
+    }, []);
 
     const handleScroll = useCallback(
       (tabId: string) => {
@@ -364,7 +360,9 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
                           isActive ? onNavigationStateChange : undefined
                         }
                         onShouldStartLoadWithRequest={
-                          isActive ? onShouldStartLoadWithRequest : () => true
+                          isActive
+                            ? onShouldStartLoadWithRequest
+                            : (req) => !isDangerousScheme(req.url)
                         }
                         onLoadStart={() => handleWebViewMount(tab.id)}
                         onError={() => handleWebViewUnmount(tab.id)}

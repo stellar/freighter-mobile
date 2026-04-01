@@ -20,6 +20,7 @@ import React, { useEffect } from "react";
 import { I18nextProvider } from "react-i18next";
 import { Appearance, StatusBar } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { getUserId } from "services/analytics/user";
 
@@ -51,32 +52,34 @@ export const App = (): React.JSX.Element => {
   }, []);
 
   return (
-    <GestureHandlerRootView>
-      <SafeAreaProvider>
-        <ToastProvider>
-          <BottomSheetModalProvider>
-            <I18nextProvider i18n={i18n}>
-              <NavigationContainer
-                ref={navigationRef}
-                onStateChange={onStateChange}
-              >
-                <AuthCheckProvider>
-                  <NetworkProvider>
-                    <StatusBar
-                      backgroundColor={THEME.colors.background.default}
-                      barStyle="light-content"
-                    />
-                    <WalletKitProvider>
-                      <RootNavigator />
-                    </WalletKitProvider>
-                  </NetworkProvider>
-                </AuthCheckProvider>
-              </NavigationContainer>
-            </I18nextProvider>
-          </BottomSheetModalProvider>
-        </ToastProvider>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <KeyboardProvider>
+      <GestureHandlerRootView>
+        <SafeAreaProvider>
+          <ToastProvider>
+            <BottomSheetModalProvider>
+              <I18nextProvider i18n={i18n}>
+                <NavigationContainer
+                  ref={navigationRef}
+                  onStateChange={onStateChange}
+                >
+                  <AuthCheckProvider>
+                    <NetworkProvider>
+                      <StatusBar
+                        backgroundColor={THEME.colors.background.default}
+                        barStyle="light-content"
+                      />
+                      <WalletKitProvider>
+                        <RootNavigator />
+                      </WalletKitProvider>
+                    </NetworkProvider>
+                  </AuthCheckProvider>
+                </NavigationContainer>
+              </I18nextProvider>
+            </BottomSheetModalProvider>
+          </ToastProvider>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    </KeyboardProvider>
   );
 };
 

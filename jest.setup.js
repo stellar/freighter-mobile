@@ -280,15 +280,6 @@ jest.mock("services/analytics", () => ({
     trackCopyBackupPhrase: jest.fn(),
     trackQRScanSuccess: jest.fn(),
     trackQRScanError: jest.fn(),
-    getAnalyticsDebugInfo: jest.fn(() => ({
-      isEnabled: false,
-      userId: null,
-      hasInitialized: false,
-      environment: "test",
-      amplitudeKey: "test-key...",
-      recentEvents: [],
-    })),
-    clearRecentEvents: jest.fn(),
   },
   TransactionType: {
     Classic: "classic",
@@ -309,20 +300,6 @@ jest.mock("services/analytics/core", () => ({
 jest.mock("services/analytics/user", () => ({
   identifyUser: jest.fn(),
   getUserId: jest.fn(() => Promise.resolve("test-user-id")),
-}));
-
-jest.mock("services/analytics/debug", () => ({
-  getAnalyticsDebugInfo: jest.fn(() => ({
-    isEnabled: false,
-    userId: null,
-    hasInitialized: false,
-    environment: "test",
-    amplitudeKey: "test-key...",
-    recentEvents: [],
-  })),
-  clearRecentEvents: jest.fn(),
-  logAnalyticsDebugInfo: jest.fn(),
-  addToRecentEvents: jest.fn(),
 }));
 
 jest.mock("react-native-permissions", () => ({
