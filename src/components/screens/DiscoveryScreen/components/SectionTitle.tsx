@@ -12,33 +12,30 @@ interface SectionTitleProps {
   style?: StyleProp<ViewStyle>;
 }
 
-const SectionTitle: React.FC<SectionTitleProps> = React.memo(({
-  title,
-  onPress,
-  className,
-  style,
-}) => {
-  const { themeColors } = useColors();
+const SectionTitle: React.FC<SectionTitleProps> = React.memo(
+  ({ title, onPress, className, style }) => {
+    const { themeColors } = useColors();
 
-  return (
-    <TouchableOpacity
-      className={`flex-row items-center gap-1 ${className ?? ""}`}
-      style={style}
-      onPress={onPress}
-      disabled={!onPress}
-      delayPressIn={DEFAULT_PRESS_DELAY}
-      accessibilityRole={onPress ? "button" : "text"}
-      accessibilityLabel={title}
-    >
-      <Text md semiBold>
-        {title}
-      </Text>
-      {onPress && (
-        <Icon.ChevronRightBold size={16} color={themeColors.text.secondary} />
-      )}
-    </TouchableOpacity>
-  );
-});
+    return (
+      <TouchableOpacity
+        className={`flex-row items-center gap-1 ${className ?? ""}`}
+        style={style}
+        onPress={onPress}
+        disabled={!onPress}
+        delayPressIn={DEFAULT_PRESS_DELAY}
+        accessibilityRole={onPress ? "button" : "text"}
+        accessibilityLabel={title}
+      >
+        <Text md semiBold>
+          {title}
+        </Text>
+        {onPress && (
+          <Icon.ChevronRightBold size={16} color={themeColors.text.secondary} />
+        )}
+      </TouchableOpacity>
+    );
+  },
+);
 
 SectionTitle.displayName = "SectionTitle";
 
