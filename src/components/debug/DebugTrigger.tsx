@@ -3,13 +3,11 @@ import useColors from "hooks/useColors";
 import React from "react";
 import { TouchableOpacity } from "react-native";
 
-interface AnalyticsDebugTriggerProps {
+interface DebugTriggerProps {
   onPress: () => void;
 }
 
-export const AnalyticsDebugTrigger: React.FC<AnalyticsDebugTriggerProps> = ({
-  onPress,
-}) => {
+export const DebugTrigger: React.FC<DebugTriggerProps> = ({ onPress }) => {
   const { themeColors } = useColors();
 
   // Only render in development mode
@@ -19,7 +17,7 @@ export const AnalyticsDebugTrigger: React.FC<AnalyticsDebugTriggerProps> = ({
 
   return (
     <TouchableOpacity
-      testID="analytics-debug-trigger"
+      testID="debug-trigger"
       onPress={onPress}
       className="absolute bottom-4 right-4 z-50 w-16 h-16 rounded-full items-center justify-center bg-black border border-purple-900"
     >
