@@ -246,5 +246,5 @@
     "@types/react": "^19.1.0",
     "@types/react-test-renderer": "^19.1.0"
   },
-  "packageManager": "yarn@4.9.4"
+  "packageManager": "yarn@4.10.0"
 }
