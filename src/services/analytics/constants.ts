@@ -30,7 +30,6 @@ export const TIMING = {
 // -----------------------------------------------------------------------------
 
 export const DEBUG_CONFIG = {
-  MAX_RECENT_EVENTS: 50,
   LOG_PREFIX: "Analytics",
 } as const;
 

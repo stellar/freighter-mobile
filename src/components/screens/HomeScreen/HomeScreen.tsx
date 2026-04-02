@@ -7,8 +7,8 @@ import {
   WalletConnectE2EHelperTrigger,
   WalletConnectE2EHelperRef,
 } from "components/WalletConnectE2EHelper";
-import { AnalyticsDebugTrigger } from "components/analytics/AnalyticsDebugTrigger";
 import { DebugBottomSheet } from "components/analytics/DebugBottomSheet";
+import { DebugTrigger } from "components/debug/DebugTrigger";
 import { BaseLayout } from "components/layout/BaseLayout";
 import ManageAccounts from "components/screens/HomeScreen/ManageAccounts";
 import WelcomeBannerBottomSheet from "components/screens/HomeScreen/WelcomeBannerBottomSheet";
@@ -71,7 +71,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
       useAuthenticationStore();
     const { themeColors } = useColors();
     const manageAccountsBottomSheetRef = useRef<BottomSheetModal>(null);
-    const analyticsDebugBottomSheetRef = useRef<BottomSheetModal>(null);
+    const debugBottomSheetRef = useRef<BottomSheetModal>(null);
     const walletConnectE2EHelperRef = useRef<WalletConnectE2EHelperRef>(null);
 
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -199,12 +199,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
       manageAccountsBottomSheetRef.current?.present();
     }, []);
 
-    const handleAnalyticsDebugPress = useCallback(() => {
-      analyticsDebugBottomSheetRef.current?.present();
+    const handleDebugPress = useCallback(() => {
+      debugBottomSheetRef.current?.present();
     }, []);
 
-    const handleAnalyticsDebugDismiss = useCallback(() => {
-      analyticsDebugBottomSheetRef.current?.dismiss();
+    const handleDebugDismiss = useCallback(() => {
+      debugBottomSheetRef.current?.dismiss();
     }, []);
 
     const handleWalletConnectE2EHelperPress = useCallback(() => {
@@ -337,14 +337,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
           />
         </ScrollView>
 
-        {/* Analytics Debug - Development Only */}
+        {/* Debug - Development Only */}
         {__DEV__ && (
           <DebugBottomSheet
-            modalRef={analyticsDebugBottomSheetRef}
-            onDismiss={handleAnalyticsDebugDismiss}
+            modalRef={debugBottomSheetRef}
+            onDismiss={handleDebugDismiss}
           />
         )}
-        <AnalyticsDebugTrigger onPress={handleAnalyticsDebugPress} />
+        <DebugTrigger onPress={handleDebugPress} />
 
         {/* WalletConnect E2E Helper - E2E Test Mode Only */}
         <WalletConnectE2EHelper ref={walletConnectE2EHelperRef} />

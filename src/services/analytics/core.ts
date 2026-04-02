@@ -6,6 +6,7 @@ import { useAnalyticsStore } from "ducks/analytics";
 import { useAuthenticationStore } from "ducks/auth";
 import { useNetworkStore } from "ducks/networkInfo";
 import { isE2ETest } from "helpers/isEnv";
+import { truncateAddress } from "helpers/stellar";
 import { throttle, memoize } from "lodash";
 import { Platform } from "react-native";
 import {
@@ -20,7 +21,6 @@ import {
   TIMING,
   ANALYTICS_CONFIG,
 } from "services/analytics/constants";
-import { addToRecentEvents } from "services/analytics/debug";
 import type {
   AnalyticsEventName,
   AnalyticsProps,
@@ -203,7 +203,7 @@ const buildCommonContext = (): Record<string, unknown> => {
   const { network, account } = useAuthenticationStore.getState();
 
   const context: Record<string, unknown> = {
-    publicKey: account?.publicKey ?? "N/A",
+    publicKey: truncateAddress(account?.publicKey ?? "N/A"),
     platform: Platform.OS,
     platformVersion: Platform.Version,
     network: network.toUpperCase(), // Stellar network (TESTNET, PUBLIC, FUTURENET)
@@ -235,9 +235,6 @@ const dispatchUnthrottled = (
   const eventData = ANALYTICS_CONFIG.INCLUDE_COMMON_CONTEXT
     ? { ...buildCommonContext(), ...props }
     : props;
-
-  // Always add to debug buffer for development visibility
-  addToRecentEvents(event, eventData);
 
   // Only send to Amplitude if conditions are met
   if (!isEnabled) {
