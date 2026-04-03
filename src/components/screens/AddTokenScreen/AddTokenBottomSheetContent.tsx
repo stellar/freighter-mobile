@@ -166,6 +166,9 @@ const AddTokenBottomSheetContent: React.FC<AddTokenBottomSheetContentProps> = ({
     const getTokenContractId = () => {
       if (isContractId(token.issuer)) return token.issuer;
       if (isContractId(token.tokenCode)) return token.tokenCode;
+
+      // without the above guard, `new Asset()` would
+      // throw because contract IDs exceed the 12-char asset code limit
       return new Asset(token.tokenCode, token.issuer).contractId(
         networkPassphrase,
       );
