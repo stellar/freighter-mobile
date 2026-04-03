@@ -157,18 +157,20 @@ const AddTokenBottomSheetContent: React.FC<AddTokenBottomSheetContentProps> = ({
   const listItems = useMemo(() => {
     if (!token) return [];
 
-    // For contract tokens (Soroban), the contract ID is stored in `issuer`.
-    // The `tokenCode` check is a safety fallback: stellar.expert can return
-    // contract tokens where `asset` is the raw contract ID. If our upstream
-    // parsing ever fails to move it into `issuer`, `tokenCode` would hold
-    // the contract ID instead — without this guard, `new Asset()` would
-    // throw because contract IDs exceed the 12-char asset code limit.
-    const tokenContractId =
-      isContractId(token.issuer) || isContractId(token.tokenCode)
-        ? token.issuer || token.tokenCode
-        : new Asset(token.tokenCode, token.issuer).contractId(
-            networkPassphrase,
-          );
+    // For contract tokens (Soroban), the contract ID is typically stored in
+    // `issuer`. As a safety fallback, stellar.expert can return contract
+    // tokens where `asset` is the raw contract ID, so `tokenCode` may hold
+    // the contract ID instead. Select the contract-bearing field explicitly:
+    // a non-empty classic issuer must not override a contract ID found in
+    // `tokenCode`.
+    const getTokenContractId = () => {
+      if (isContractId(token.issuer)) return token.issuer;
+      if (isContractId(token.tokenCode)) return token.tokenCode;
+      return new Asset(token.tokenCode, token.issuer).contractId(
+        networkPassphrase,
+      );
+    };
+    const tokenContractId = getTokenContractId();
 
     const items = [
       {
