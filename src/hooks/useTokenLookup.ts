@@ -135,7 +135,21 @@ export const useTokenLookup = ({
     return !!matchingBalance;
   };
 
-  // Format tokens from different sources while preserving original order
+  // Format tokens from different sources while preserving original order.
+  //
+  // Three paths depending on the result origin:
+  //
+  // 1. freighter-backend (contract ID search via handleContractLookup)
+  //    → Already a FormattedSearchTokenRecord, just enrich with icon and trustline info.
+  //
+  // 2. stellar.expert — Soroban contract token
+  //    → `asset` is a raw contract ID (e.g. "CC64WB...QYGSL").
+  //      Token metadata comes from top-level fields (`code`, `decimals`, `token_name`)
+  //      with `tomlInfo` as fallback.
+  //
+  // 3. stellar.expert — Classic asset
+  //    → `asset` is "CODE-ISSUER-TYPE" (e.g. "USDC-GA5ZSE...R5E-1").
+  //      Split by "-" to extract code and issuer.
   const formatTokensFromSearchResults = (
     rawSearchResults:
       | SearchTokenResponse["_embedded"]["records"]
@@ -144,8 +158,8 @@ export const useTokenLookup = ({
     icons: Record<string, Icon> = {},
   ): FormattedSearchTokenRecord[] =>
     rawSearchResults.map((result) => {
+      // Path 1: Already formatted by freighter-backend (contract ID search)
       if ("tokenCode" in result) {
-        // came from freighter-backend
         const tokenIdentifier = getTokenIdentifier({
           type: TokenTypeWithCustomToken.CUSTOM_TOKEN,
           code: result.tokenCode,
@@ -165,7 +179,43 @@ export const useTokenLookup = ({
         };
       }
 
-      // came from stellar.expert
+      // Path 2: stellar.expert — Soroban contract token
+      // Contract tokens have no "-" in the asset field (it's just the contract ID).
+      // Metadata (symbol, decimals, name) comes from top-level fields with
+      // tomlInfo as fallback.
+      const isContract = isContractId(result.asset);
+
+      if (isContract) {
+        const contractId = result.asset;
+        const tokenCode = result.code ?? result.tomlInfo?.code ?? contractId;
+        const tokenIdentifier = getTokenIdentifier({
+          type: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+          code: tokenCode,
+          issuer: {
+            key: contractId,
+          },
+        });
+        const iconUrl =
+          icons[tokenIdentifier]?.imageUrl ?? result.tomlInfo?.image;
+
+        return {
+          tokenCode,
+          domain: result.domain ?? "",
+          hasTrustline: hasExistingTrustline(
+            userBalances,
+            tokenCode,
+            contractId,
+          ),
+          iconUrl,
+          issuer: contractId,
+          isNative: false,
+          tokenType: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+          decimals: result.decimals ?? result.tomlInfo?.decimals,
+          name: result.token_name ?? result.tomlInfo?.name,
+        };
+      }
+
+      // Path 3: stellar.expert — Classic asset (asset format: "CODE-ISSUER-TYPE")
       const [tokenCode, issuer] = result.asset.split("-");
       const tokenIdentifier = getTokenIdentifier({
         type: TokenTypeWithCustomToken.CUSTOM_TOKEN,
@@ -243,31 +293,30 @@ export const useTokenLookup = ({
 
         icons = resJson?.reduce(
           (prev, curr) => {
+            if (!curr.tomlInfo) return prev;
+
             const tokenIdentifier = getTokenIdentifier({
               type: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
-              code: curr.tomlInfo?.code,
+              code: curr.tomlInfo.code,
               issuer: {
-                key: curr.tomlInfo?.issuer,
+                key: curr.tomlInfo.issuer,
               },
             });
 
             // Apply USDC special case logic inline
-            let imageUrl = curr.tomlInfo?.image;
+            let imageUrl = curr.tomlInfo.image;
             if (
               network === NETWORKS.PUBLIC &&
-              curr.tomlInfo?.code === USDC_CODE &&
-              curr.tomlInfo?.issuer === CIRCLE_USDC_ISSUER
+              curr.tomlInfo.code === USDC_CODE &&
+              curr.tomlInfo.issuer === CIRCLE_USDC_ISSUER
             ) {
               imageUrl = logos.usdc as unknown as string;
             }
 
-            const icon = {
-              imageUrl,
-              network,
-            };
+            if (!imageUrl) return prev;
 
             // eslint-disable-next-line no-param-reassign
-            prev[tokenIdentifier] = icon;
+            prev[tokenIdentifier] = { imageUrl, network };
             return prev;
           },
           {} as Record<string, Icon>,
