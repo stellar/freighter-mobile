@@ -280,7 +280,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         duration: 0,
       });
     }
-  }, [pathError, sourceAmount, destinationTokenId, activeError]);
+  }, [pathError, sourceAmount, destinationTokenId]);
 
   const handleSettingsPress = useCallback(() => {
     transactionSettingsBottomSheetModalRef.current?.present();
