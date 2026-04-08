@@ -107,8 +107,8 @@ summary.
   `corepack enable && corepack prepare yarn@4.10.0 --activate`
 - **Watchman**: `brew install watchman` (macOS) or build from source on Linux
 - **rbenv + Ruby**:
-  `brew install rbenv && rbenv install 3.4.5 && rbenv global 3.4.5` (macOS) or
-  use system package manager on Linux
+  `brew install rbenv && rbenv install 3.1.4 && rbenv global 3.1.4` (macOS) or
+  use system package manager on Linux. **3.1.4 is the CI-validated version.**
 - **Bundler**: `gem install bundler`
 - **JDK 17**: `brew install openjdk@17` (macOS) or
   `sudo apt install openjdk-17-jdk` (Linux)
@@ -138,7 +138,7 @@ summary.
 ## Step 4: Run initial setup
 
 ```bash
-nvm use              # Use version from .nvmrc (or nvm install 20 if not set)
+nvm install 20 && nvm use 20   # No .nvmrc — use explicit version
 bundle install       # Ruby deps (Fastlane, CocoaPods — no separate pod install needed)
 yarn install         # Node deps (postinstall handles Husky, polyfills, pods)
 ```
