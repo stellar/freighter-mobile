@@ -1,0 +1,201 @@
+---
+name: freighter-dev-setup
+description:
+  Check, install, and configure all prerequisites for Freighter Mobile
+  development. Use when a contributor says "set up my dev environment", "quick
+  setup", "check my setup", "what do I need to install", or encounters build
+  failures from missing dependencies. Also use when someone clones the repo for
+  the first time.
+---
+
+# Freighter Mobile Dev Setup
+
+Evaluate the contributor's machine against all prerequisites for Freighter
+Mobile (React Native), install what's missing, and run the initial setup.
+
+## Step 1: Check all prerequisites
+
+Run every check below and collect results. Report all at once — don't stop at
+the first failure.
+
+For each tool, try the version command first. If it fails (e.g., sandbox
+restrictions), fall back to `which <tool>` to confirm presence.
+
+```bash
+# Node.js >= 22
+node --version 2>&1 || which node
+
+# Corepack
+corepack --version 2>&1 || which corepack
+
+# Yarn 4.10.0
+yarn --version 2>&1 || which yarn
+
+# Homebrew
+brew --version 2>&1 || which brew
+
+# Ruby >= 2.6.10
+ruby --version 2>&1 || which ruby
+
+# Bundler
+bundle --version 2>&1 || which bundle
+
+# Watchman
+watchman --version 2>&1 || which watchman
+
+# JDK 17
+java -version 2>&1
+
+# nvm (needed for node version management)
+command -v nvm 2>&1 || test -d "$HOME/.nvm" && echo "nvm found"
+
+# Xcode CLI Tools (macOS)
+xcode-select -p 2>&1
+
+# CocoaPods >= 1.13 (not 1.15.0, not 1.15.1)
+pod --version 2>&1 || which pod
+
+# ANDROID_HOME set
+echo "ANDROID_HOME=$ANDROID_HOME"
+
+# Android SDK components
+if [ -n "$ANDROID_HOME" ]; then
+  $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --list 2>/dev/null | grep -E "platforms;android-36|build-tools;36.0.0|ndk;28.2.13676358" || echo "sdkmanager not available — check Android Studio SDK Manager manually"
+fi
+
+# Maestro (optional — only needed for e2e tests)
+maestro --version 2>&1 || which maestro || echo "not installed (optional)"
+```
+
+## Step 2: Present results
+
+Show a clear summary with status for each tool:
+
+```
+Freighter Mobile — Prerequisites Check
+========================================
+  Node.js        v22.x.x        >= 22 required        OK
+  Corepack       0.x.x          any                   OK
+  Yarn           4.10.0         4.10.0 required       OK
+  Homebrew       4.x.x          any                   OK
+  Ruby           3.x.x          >= 2.6.10 required    OK
+  Bundler        2.x.x          any                   OK
+  Watchman       2024.x         any                   OK
+  JDK            17.0.x         17 required           OK
+  nvm            found          any                   OK
+  Xcode CLI      /path          any                   OK
+  CocoaPods      1.16.x         >= 1.13               OK
+  ANDROID_HOME   /path/to/sdk   must be set           OK
+  SDK Platform 36               -                     OK
+  Build-Tools 36.0.0            -                     MISSING
+  NDK 28.2.13676358             -                     MISSING
+  Maestro        not found      optional              SKIP
+```
+
+## Step 3: Install missing tools
+
+Present the missing tools grouped by auto-installable vs manual. Then ask the
+user: "I can install [list] automatically. Want me to proceed?"
+
+If the user confirms, **run the install commands** for each missing tool. After
+each install, re-check the version to confirm it succeeded. If an install fails,
+report the error and continue with the next tool.
+
+If the user declines, skip to Step 4 and note the missing tools in the final
+summary.
+
+**Auto-installable (run after user confirms):**
+
+| Missing tool           | Install command                                                                                                     |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------- | ------------------ | ------- | --------------------------------------------------------- | ------------------ | ------- | --------------------------------------------- |
+| Homebrew               | `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"`                   |
+| nvm                    | `curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh \| bash`                                  |
+| Node.js 22             | `nvm install 22`                                                                                                    |
+| Corepack + Yarn        | `corepack enable && corepack prepare yarn@4.10.0 --activate`                                                        |
+| Watchman               | `brew install watchman`                                                                                             |
+| rbenv + Ruby           | `brew install rbenv && rbenv install $(rbenv install -l 2>/dev/null                                                 | grep -E '^\s\*3\.' | tail -1 | tr -d ' ') && rbenv global $(rbenv install -l 2>/dev/null | grep -E '^\s\*3\.' | tail -1 | tr -d ' ')` (installs latest stable Ruby 3.x) |
+| Bundler                | `gem install bundler`                                                                                               |
+| JDK 17                 | `brew install openjdk@17`                                                                                           |
+| Maestro                | `brew install mobile-dev-inc/tap/maestro`                                                                           |
+| Android SDK components | `$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;28.2.13676358"` |
+
+**Manual — guide the user:**
+
+- **Xcode**: Install from Mac App Store, then:
+  `xcode-select --install && sudo xcodebuild -license accept`
+- **Android Studio**: Install from developer.android.com, then open SDK Manager
+  for SDK 36 + Build-Tools 36.0.0 + NDK 28.2.13676358
+- **ANDROID_HOME** — add to `~/.zshrc`:
+  ```bash
+  export ANDROID_HOME=$HOME/Library/Android/sdk
+  export PATH=$PATH:$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools
+  ```
+- **JAVA_HOME** — if JDK 17 installed via Homebrew:
+  ```bash
+  export JAVA_HOME=$(/usr/libexec/java_home -v 17)
+  ```
+
+## Step 4: Run initial setup
+
+```bash
+nvm use 22           # Ensure correct Node version
+bundle install       # Ruby deps (Fastlane, CocoaPods — no separate pod install needed)
+yarn install         # Node deps (postinstall handles Husky, polyfills, pods)
+```
+
+## Step 5: Configure environment
+
+Check if `.env` exists. If not:
+
+```bash
+cp .env.example .env
+```
+
+Then read `.env` and check which required variables are empty. For each empty
+required variable, tell the user the value or how to set it up:
+
+| Variable                            | Value or setup                                                                                                                                         |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `FREIGHTER_BACKEND_V1_DEV_URL`      | `https://freighter-backend-dev.stellar.org/api/v1` (preferred). Fallback: `-stg` or `-prd` if dev is unavailable                                       |
+| `FREIGHTER_BACKEND_V2_DEV_URL`      | `https://freighter-backend-v2-dev.stellar.org/api/v1` (preferred). Fallback: `-stg` or prod (`freighter-backend-v2.stellar.org`) if dev is unavailable |
+| `WALLET_KIT_PROJECT_ID_DEV`         | Create free project at [dashboard.reown.com](https://dashboard.reown.com) (type: Wallet), copy Project ID                                              |
+| `WALLET_KIT_MT_NAME_DEV`            | Your project name from Reown dashboard                                                                                                                 |
+| `WALLET_KIT_MT_DESCRIPTION_DEV`     | Your project description                                                                                                                               |
+| `WALLET_KIT_MT_URL_DEV`             | Your project URL                                                                                                                                       |
+| `WALLET_KIT_MT_ICON_DEV`            | Your project icon URL                                                                                                                                  |
+| `WALLET_KIT_MT_REDIRECT_NATIVE_DEV` | Deep link scheme matching your dev bundle ID                                                                                                           |
+| `ANDROID_DEBUG_KEYSTORE_PASSWORD`   | `android` (default)                                                                                                                                    |
+| `ANDROID_DEBUG_KEYSTORE_ALIAS`      | `androiddebugkey` (default)                                                                                                                            |
+| `ANDROID_DEV_KEYSTORE_PASSWORD`     | Generate: `keytool -genkey -v -keystore dev.keystore -alias dev -keyalg RSA -keysize 2048 -validity 10000`                                             |
+| `ANDROID_DEV_KEYSTORE_ALIAS`        | The alias from your keystore (e.g., `dev`)                                                                                                             |
+
+Skip any variable that already has a value.
+
+## Step 6: Verify
+
+```bash
+yarn check            # TypeScript + ESLint + Prettier
+yarn test             # Jest unit tests
+```
+
+If both pass, tell the user they're ready: `yarn ios` or `yarn android`.
+
+If something fails, read the error and diagnose — common causes are missing env
+vars, wrong SDK version, or stale pods/gradle cache.
+
+## Step 7: Summary
+
+At the end, produce a final summary:
+
+```
+Setup Complete
+==============
+  Installed: [list of tools installed]
+  Configured: .env with X/Y required variables filled
+
+  Manual action needed:
+  - [ ] Create WalletConnect project at dashboard.reown.com and fill WALLET_KIT_* vars
+  - [ ] Generate Android dev keystore and fill ANDROID_DEV_KEYSTORE_* vars
+
+  Ready to run: yarn ios / yarn android
+```
