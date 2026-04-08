@@ -22,7 +22,7 @@ For each tool, try the version command first. If it fails (e.g., sandbox
 restrictions), fall back to `which <tool>` to confirm presence.
 
 ```bash
-# Node.js >= 22
+# Node.js >= 20
 node --version 2>&1 || which node
 
 # Corepack
@@ -44,10 +44,10 @@ bundle --version 2>&1 || which bundle
 watchman --version 2>&1 || which watchman
 
 # JDK 17
-java -version 2>&1
+java -version 2>&1 || which java
 
 # nvm (needed for node version management)
-command -v nvm 2>&1 || test -d "$HOME/.nvm" && echo "nvm found"
+if command -v nvm >/dev/null 2>&1 || test -d "$HOME/.nvm"; then echo "nvm found"; else echo "nvm missing"; fi
 
 # Xcode CLI Tools (macOS)
 xcode-select -p 2>&1
@@ -74,7 +74,7 @@ Show a clear summary with status for each tool:
 ```
 Freighter Mobile — Prerequisites Check
 ========================================
-  Node.js        v22.x.x        >= 22 required        OK
+  Node.js        v22.x.x        >= 20 required        OK
   Corepack       0.x.x          any                   OK
   Yarn           4.10.0         4.10.0 required       OK
   Homebrew       4.x.x          any                   OK
@@ -106,39 +106,49 @@ summary.
 
 **Auto-installable (run after user confirms):**
 
-| Missing tool           | Install command                                                                                                     |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------- | ------------------ | ------- | --------------------------------------------------------- | ------------------ | ------- | --------------------------------------------- |
-| Homebrew               | `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"`                   |
-| nvm                    | `curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh \| bash`                                  |
-| Node.js 22             | `nvm install 22`                                                                                                    |
-| Corepack + Yarn        | `corepack enable && corepack prepare yarn@4.10.0 --activate`                                                        |
-| Watchman               | `brew install watchman`                                                                                             |
-| rbenv + Ruby           | `brew install rbenv && rbenv install $(rbenv install -l 2>/dev/null                                                 | grep -E '^\s\*3\.' | tail -1 | tr -d ' ') && rbenv global $(rbenv install -l 2>/dev/null | grep -E '^\s\*3\.' | tail -1 | tr -d ' ')` (installs latest stable Ruby 3.x) |
-| Bundler                | `gem install bundler`                                                                                               |
-| JDK 17                 | `brew install openjdk@17`                                                                                           |
-| Maestro                | `brew install mobile-dev-inc/tap/maestro`                                                                           |
-| Android SDK components | `$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;28.2.13676358"` |
+- **Homebrew**:
+  `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"`
+- **nvm**:
+  `curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash`
+  — then source nvm before continuing:
+  `export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"`
+- **Node.js 20**: `nvm install 20`
+- **Corepack + Yarn**:
+  `corepack enable && corepack prepare yarn@4.10.0 --activate`
+- **Watchman**: `brew install watchman` (macOS) or build from source on Linux
+- **rbenv + Ruby**:
+  `brew install rbenv && rbenv install 3.4.5 && rbenv global 3.4.5` (macOS) or
+  use system package manager on Linux
+- **Bundler**: `gem install bundler`
+- **JDK 17**: `brew install openjdk@17` (macOS) or
+  `sudo apt install openjdk-17-jdk` (Linux)
+- **Maestro**: `brew install mobile-dev-inc/tap/maestro` (macOS) or
+  `curl -Ls "https://get.maestro.mobile.dev" | bash` (Linux)
+- **Android SDK components**:
+  `$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;28.2.13676358"`
 
 **Manual — guide the user:**
 
-- **Xcode**: Install from Mac App Store, then:
+- **Xcode** (macOS only): Install from Mac App Store, then:
   `xcode-select --install && sudo xcodebuild -license accept`
 - **Android Studio**: Install from developer.android.com, then open SDK Manager
   for SDK 36 + Build-Tools 36.0.0 + NDK 28.2.13676358
-- **ANDROID_HOME** — add to `~/.zshrc`:
+- **ANDROID_HOME** — add to shell profile:
   ```bash
+  # macOS
   export ANDROID_HOME=$HOME/Library/Android/sdk
+  # Linux
+  # export ANDROID_HOME=$HOME/Android/Sdk
   export PATH=$PATH:$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools
   ```
-- **JAVA_HOME** — if JDK 17 installed via Homebrew:
-  ```bash
-  export JAVA_HOME=$(/usr/libexec/java_home -v 17)
-  ```
+- **JAVA_HOME** — macOS with Homebrew:
+  `export JAVA_HOME=$(/usr/libexec/java_home -v 17)`. Linux: usually
+  auto-configured by package manager.
 
 ## Step 4: Run initial setup
 
 ```bash
-nvm use 22           # Ensure correct Node version
+nvm use              # Use version from .nvmrc (or nvm install 20 if not set)
 bundle install       # Ruby deps (Fastlane, CocoaPods — no separate pod install needed)
 yarn install         # Node deps (postinstall handles Husky, polyfills, pods)
 ```
@@ -154,20 +164,20 @@ cp .env.example .env
 Then read `.env` and check which required variables are empty. For each empty
 required variable, tell the user the value or how to set it up:
 
-| Variable                            | Value or setup                                                                                                                                         |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `FREIGHTER_BACKEND_V1_DEV_URL`      | `https://freighter-backend-dev.stellar.org/api/v1` (preferred). Fallback: `-stg` or `-prd` if dev is unavailable                                       |
-| `FREIGHTER_BACKEND_V2_DEV_URL`      | `https://freighter-backend-v2-dev.stellar.org/api/v1` (preferred). Fallback: `-stg` or prod (`freighter-backend-v2.stellar.org`) if dev is unavailable |
-| `WALLET_KIT_PROJECT_ID_DEV`         | Create free project at [dashboard.reown.com](https://dashboard.reown.com) (type: Wallet), copy Project ID                                              |
-| `WALLET_KIT_MT_NAME_DEV`            | Your project name from Reown dashboard                                                                                                                 |
-| `WALLET_KIT_MT_DESCRIPTION_DEV`     | Your project description                                                                                                                               |
-| `WALLET_KIT_MT_URL_DEV`             | Your project URL                                                                                                                                       |
-| `WALLET_KIT_MT_ICON_DEV`            | Your project icon URL                                                                                                                                  |
-| `WALLET_KIT_MT_REDIRECT_NATIVE_DEV` | Deep link scheme matching your dev bundle ID                                                                                                           |
-| `ANDROID_DEBUG_KEYSTORE_PASSWORD`   | `android` (default)                                                                                                                                    |
-| `ANDROID_DEBUG_KEYSTORE_ALIAS`      | `androiddebugkey` (default)                                                                                                                            |
-| `ANDROID_DEV_KEYSTORE_PASSWORD`     | Generate: `keytool -genkey -v -keystore dev.keystore -alias dev -keyalg RSA -keysize 2048 -validity 10000`                                             |
-| `ANDROID_DEV_KEYSTORE_ALIAS`        | The alias from your keystore (e.g., `dev`)                                                                                                             |
+| Variable                            | Value or setup                                                                                                                                                     |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `FREIGHTER_BACKEND_V1_DEV_URL`      | `https://freighter-backend-dev.stellar.org/api/v1` (preferred). Fallback: `-stg` or `-prd` if dev is unavailable                                                   |
+| `FREIGHTER_BACKEND_V2_DEV_URL`      | `https://freighter-backend-v2-dev.stellar.org/api/v1` (preferred). Fallback: `-stg` or prod (`freighter-backend-v2.stellar.org`) if dev is unavailable             |
+| `WALLET_KIT_PROJECT_ID_DEV`         | Create free project at [dashboard.reown.com](https://dashboard.reown.com) (type: Wallet), copy Project ID                                                          |
+| `WALLET_KIT_MT_NAME_DEV`            | Your project name from Reown dashboard                                                                                                                             |
+| `WALLET_KIT_MT_DESCRIPTION_DEV`     | Your project description                                                                                                                                           |
+| `WALLET_KIT_MT_URL_DEV`             | Your project URL                                                                                                                                                   |
+| `WALLET_KIT_MT_ICON_DEV`            | Your project icon URL                                                                                                                                              |
+| `WALLET_KIT_MT_REDIRECT_NATIVE_DEV` | Deep link scheme matching your dev bundle ID                                                                                                                       |
+| `ANDROID_DEBUG_KEYSTORE_PASSWORD`   | `android` (default)                                                                                                                                                |
+| `ANDROID_DEBUG_KEYSTORE_ALIAS`      | `androiddebugkey` (default)                                                                                                                                        |
+| `ANDROID_DEV_KEYSTORE_PASSWORD`     | Generate: `mkdir -p android/keystores && keytool -genkey -v -keystore android/keystores/dev-release.keystore -alias dev -keyalg RSA -keysize 2048 -validity 10000` |
+| `ANDROID_DEV_KEYSTORE_ALIAS`        | The alias from your keystore (e.g., `dev`)                                                                                                                         |
 
 Skip any variable that already has a value.
 

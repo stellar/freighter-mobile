@@ -41,12 +41,12 @@ guide.
 
 ### Quick Setup with an LLM
 
-If you use [Claude Code](https://claude.ai/code) or another LLM-powered coding
-assistant, you can automate the setup. The repo includes a skill that checks
-your environment, installs missing tools, configures `.env`, and verifies the
-build.
+If you use an LLM-powered coding assistant, you can automate the setup. The repo
+includes a setup skill (`.claude/skills/freighter-dev-setup/SKILL.md`) that
+checks your environment, installs missing tools, configures `.env`, and verifies
+the build.
 
-After cloning the repo, run:
+Point your LLM assistant at the skill file, or if using Claude Code:
 
 ```bash
 claude "/freighter-dev-setup"
@@ -61,7 +61,7 @@ The skill will:
    remaining variables
 5. Run verification to confirm the build works
 
-If you don't use Claude Code, follow the manual setup below.
+If you don't use an LLM assistant, follow the manual setup below.
 
 ### Manual Setup
 
