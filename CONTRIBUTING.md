@@ -10,7 +10,7 @@ For the Stellar organization's general contribution guidelines, see the
 
 | Tool           | Version       | Install                                                           |
 | -------------- | ------------- | ----------------------------------------------------------------- |
-| Node.js        | >= 22         | [nodejs.org](https://nodejs.org) or `nvm install 22`              |
+| Node.js        | >= 20         | [nodejs.org](https://nodejs.org) or `nvm install 20`              |
 | Yarn           | 4.10.0        | `corepack enable && corepack prepare yarn@4.10.0 --activate`      |
 | Ruby           | >= 2.6.10     | [rbenv](https://github.com/rbenv/rbenv) or [rvm](https://rvm.io/) |
 | Watchman       | Latest        | `brew install watchman`                                           |
@@ -26,7 +26,10 @@ For the Stellar organization's general contribution guidelines, see the
 **Shell environment** — add to `~/.zshrc` or `~/.bashrc`:
 
 ```bash
+# macOS
 export ANDROID_HOME=$HOME/Library/Android/sdk
+# Linux
+# export ANDROID_HOME=$HOME/Android/Sdk
 export PATH=$PATH:$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools
 ```
 
@@ -89,7 +92,7 @@ Copy `.env.example` to `.env` and fill in the values. The `.env` file must
 | `WALLET_KIT_MT_REDIRECT_NATIVE_DEV` | Deep link scheme matching your dev bundle ID                                                                                                                                                                             |
 | `ANDROID_DEBUG_KEYSTORE_PASSWORD`   | Android Studio's default: `android`                                                                                                                                                                                      |
 | `ANDROID_DEBUG_KEYSTORE_ALIAS`      | Android Studio's default: `androiddebugkey`                                                                                                                                                                              |
-| `ANDROID_DEV_KEYSTORE_PASSWORD`     | Generate your own keystore with `keytool -genkey -v -keystore dev.keystore -alias dev -keyalg RSA -keysize 2048 -validity 10000`, then use the password you set                                                          |
+| `ANDROID_DEV_KEYSTORE_PASSWORD`     | Generate your own keystore: `mkdir -p android/keystores && keytool -genkey -v -keystore android/keystores/dev-release.keystore -alias dev -keyalg RSA -keysize 2048 -validity 10000`, then use the password you set      |
 | `ANDROID_DEV_KEYSTORE_ALIAS`        | The alias you chose when generating the keystore (e.g., `dev`)                                                                                                                                                           |
 
 **Optional — features degrade gracefully without these:**

@@ -9,7 +9,7 @@ Mobile.
 
 ### Prerequisites
 
-- **Node.js** >= 22: [nodejs.org](https://nodejs.org/) or `nvm install 22`
+- **Node.js** >= 20: [nodejs.org](https://nodejs.org/) or `nvm install 20`
 - **Yarn** 4.10.0: `corepack enable && corepack prepare yarn@4.10.0 --activate`
 - **Ruby** >= 2.6.10: [rbenv](https://github.com/rbenv/rbenv) or
   [rvm](https://rvm.io/)
