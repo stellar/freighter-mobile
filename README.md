@@ -19,7 +19,7 @@ Mobile.
 - **Android Studio**: SDK 36, Build-Tools 36.0.0, NDK 28.2.13676358
 
 For the full list of prerequisites, environment variable setup, and LLM-assisted
-setup, see [CONTRIBUTING.md](CONTRIBUTING.md).
+quick setup, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ### Platform Specific Setup
 
