@@ -48,6 +48,9 @@ the build.
 
 Point your LLM assistant at `LLM-QUICK-START.md` and ask it to follow the steps.
 
+For detailed best practices and coding guidelines when working with an LLM, see
+[`docs/skills/freighter-mobile-best-practices`](docs/skills/freighter-mobile-best-practices/).
+
 The skill will:
 
 1. Check all prerequisites (Node, Yarn, Ruby, JDK, Xcode, Android SDK, etc.)
@@ -279,14 +282,15 @@ security model.
 
 ## Further Reading
 
-| Topic                     | Location                                                                 |
-| ------------------------- | ------------------------------------------------------------------------ |
-| Auth architecture         | [`docs/auth_flow_diagram.md`](docs/auth_flow_diagram.md)                 |
-| WalletConnect RPC methods | [`docs/walletconnect-rpc-methods.md`](docs/walletconnect-rpc-methods.md) |
-| E2E testing (6 guides)    | [`e2e/docs/`](e2e/docs/)                                                 |
-| Mock dApp for testing     | [`mock-dapp/README.md`](mock-dapp/README.md)                             |
-| Release process           | [`RELEASE.md`](RELEASE.md)                                               |
-| All scripts & commands    | `package.json`                                                           |
+| Topic                      | Location                                                                                      |
+| -------------------------- | --------------------------------------------------------------------------------------------- |
+| Auth architecture          | [`docs/auth_flow_diagram.md`](docs/auth_flow_diagram.md)                                      |
+| WalletConnect RPC methods  | [`docs/walletconnect-rpc-methods.md`](docs/walletconnect-rpc-methods.md)                      |
+| E2E testing (6 guides)     | [`e2e/docs/`](e2e/docs/)                                                                      |
+| Mock dApp for testing      | [`mock-dapp/README.md`](mock-dapp/README.md)                                                  |
+| Release process            | [`RELEASE.md`](RELEASE.md)                                                                    |
+| All scripts & commands     | `package.json`                                                                                |
+| Best practices (LLM guide) | [`docs/skills/freighter-mobile-best-practices`](docs/skills/freighter-mobile-best-practices/) |
 
 **Questions?** Open a
 [GitHub Discussion](https://github.com/stellar/freighter-mobile/discussions) or
