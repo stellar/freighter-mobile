@@ -53,26 +53,17 @@ guide for iOS and Android.
        touch .env
        ```
 
-    2. Add the required environment variables:
+    2. Add the required environment variables for **local development** (DEV
+       variant):
 
        ```
-       FREIGHTER_BACKEND_V1_PROD_URL=your_backend_v1_prod_url_here
-       FREIGHTER_BACKEND_V2_PROD_URL=your_backend_v2_prod_url_here
-
-       WALLET_KIT_PROJECT_ID_PROD=your_prod_project_id_here
-       other variables...
+       FREIGHTER_BACKEND_V1_DEV_URL=https://freighter-backend-dev.stellar.org/api/v1
+       FREIGHTER_BACKEND_V2_DEV_URL=https://freighter-backend-v2-dev.stellar.org/api/v1
+       WALLET_KIT_PROJECT_ID_DEV=your_reown_project_id
        ```
 
-    3. Update the `.env.example` file for documentation, add the same variables
-       without values:
-
-       ```
-       FREIGHTER_BACKEND_V1_PROD_URL=
-       FREIGHTER_BACKEND_V2_PROD_URL=
-
-       WALLET_KIT_PROJECT_ID_PROD=
-       other variables...
-       ```
+       See [CONTRIBUTING.md](CONTRIBUTING.md#environment-variables) for the full
+       list and how to obtain each value.
 
     **Important:**
 
