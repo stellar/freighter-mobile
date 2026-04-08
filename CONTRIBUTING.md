@@ -42,15 +42,11 @@ guide.
 ### Quick Setup with an LLM
 
 If you use an LLM-powered coding assistant, you can automate the setup. The repo
-includes a setup skill (`.claude/skills/freighter-dev-setup/SKILL.md`) that
+includes a quick start guide ([`LLM-QUICK-START.md`](LLM-QUICK-START.md)) that
 checks your environment, installs missing tools, configures `.env`, and verifies
 the build.
 
-Point your LLM assistant at the skill file, or if using Claude Code:
-
-```bash
-claude "/freighter-dev-setup"
-```
+Point your LLM assistant at `LLM-QUICK-START.md` and ask it to follow the steps.
 
 The skill will:
 
@@ -80,20 +76,20 @@ Copy `.env.example` to `.env` and fill in the values. The `.env` file must
 
 **Required — app won't build or function without these:**
 
-| Variable                            | How to set up                                                                                                                                                                                                            |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `FREIGHTER_BACKEND_V1_DEV_URL`      | `https://freighter-backend-dev.stellar.org/api/v1`. If unavailable, use `-stg` or `-prd`. Or run your own from [stellar/wallet-backend](https://github.com/stellar/wallet-backend)                                       |
-| `FREIGHTER_BACKEND_V2_DEV_URL`      | `https://freighter-backend-v2-dev.stellar.org/api/v1`. If unavailable, use `-stg` or prod (`freighter-backend-v2.stellar.org`). Or run your own from [stellar/wallet-backend](https://github.com/stellar/wallet-backend) |
-| `WALLET_KIT_PROJECT_ID_DEV`         | Create a free project at [dashboard.reown.com](https://dashboard.reown.com) — sign up, create a new project (type: Wallet), copy the Project ID                                                                          |
-| `WALLET_KIT_MT_NAME_DEV`            | Your project name from the Reown dashboard                                                                                                                                                                               |
-| `WALLET_KIT_MT_DESCRIPTION_DEV`     | Your project description                                                                                                                                                                                                 |
-| `WALLET_KIT_MT_URL_DEV`             | Your project URL                                                                                                                                                                                                         |
-| `WALLET_KIT_MT_ICON_DEV`            | Your project icon URL                                                                                                                                                                                                    |
-| `WALLET_KIT_MT_REDIRECT_NATIVE_DEV` | Deep link scheme matching your dev bundle ID                                                                                                                                                                             |
-| `ANDROID_DEBUG_KEYSTORE_PASSWORD`   | Android Studio's default: `android`                                                                                                                                                                                      |
-| `ANDROID_DEBUG_KEYSTORE_ALIAS`      | Android Studio's default: `androiddebugkey`                                                                                                                                                                              |
-| `ANDROID_DEV_KEYSTORE_PASSWORD`     | Generate your own keystore: `mkdir -p android/keystores && keytool -genkey -v -keystore android/keystores/dev-release.keystore -alias dev -keyalg RSA -keysize 2048 -validity 10000`, then use the password you set      |
-| `ANDROID_DEV_KEYSTORE_ALIAS`        | The alias you chose when generating the keystore (e.g., `dev`)                                                                                                                                                           |
+| Variable                            | How to set up                                                                                                                                                                                                                        |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `FREIGHTER_BACKEND_V1_DEV_URL`      | `https://freighter-backend-dev.stellar.org/api/v1`. If unavailable, use `-stg` or `-prd`. Or run your own from [stellar/freighter-backend](https://github.com/stellar/freighter-backend)                                             |
+| `FREIGHTER_BACKEND_V2_DEV_URL`      | `https://freighter-backend-v2-dev.stellar.org/api/v1`. If unavailable, use `-stg` or prod (`freighter-backend-v2.stellar.org`). Or run your own from [stellar/freighter-backend-v2](https://github.com/stellar/freighter-backend-v2) |
+| `WALLET_KIT_PROJECT_ID_DEV`         | Create a free project at [dashboard.reown.com](https://dashboard.reown.com) — sign up, create a new project (type: Wallet), copy the Project ID                                                                                      |
+| `WALLET_KIT_MT_NAME_DEV`            | Your project name from the Reown dashboard                                                                                                                                                                                           |
+| `WALLET_KIT_MT_DESCRIPTION_DEV`     | Your project description                                                                                                                                                                                                             |
+| `WALLET_KIT_MT_URL_DEV`             | Your project URL                                                                                                                                                                                                                     |
+| `WALLET_KIT_MT_ICON_DEV`            | Your project icon URL                                                                                                                                                                                                                |
+| `WALLET_KIT_MT_REDIRECT_NATIVE_DEV` | Deep link scheme matching your dev bundle ID                                                                                                                                                                                         |
+| `ANDROID_DEBUG_KEYSTORE_PASSWORD`   | Android Studio's default: `android`                                                                                                                                                                                                  |
+| `ANDROID_DEBUG_KEYSTORE_ALIAS`      | Android Studio's default: `androiddebugkey`                                                                                                                                                                                          |
+| `ANDROID_DEV_KEYSTORE_PASSWORD`     | Generate your own keystore: `mkdir -p android/keystores && keytool -genkey -v -keystore android/keystores/dev-release.keystore -alias dev -keyalg RSA -keysize 2048 -validity 10000`, then use the password you set                  |
+| `ANDROID_DEV_KEYSTORE_ALIAS`        | The alias you chose when generating the keystore (e.g., `dev`)                                                                                                                                                                       |
 
 **Optional — features degrade gracefully without these:**
 
@@ -151,6 +147,27 @@ yarn r-install        # Nuclear: reset env + rebuild everything
 
 See `package.json` for the complete list of scripts.
 
+## Repository Structure
+
+```
+freighter-mobile/
+├── src/
+│   ├── components/       # React Native components (screens, templates, primitives)
+│   ├── ducks/            # Zustand state stores
+│   ├── hooks/            # Custom React hooks
+│   ├── helpers/          # Utility functions
+│   ├── services/         # Business logic & API calls
+│   ├── navigators/       # React Navigation stack/tab definitions
+│   ├── providers/        # Context providers
+│   ├── config/           # App configuration
+│   ├── types/            # TypeScript type definitions
+│   └── i18n/             # Translations (i18next)
+├── __tests__/            # Jest unit tests (mirrors src/)
+├── e2e/                  # Maestro e2e tests + docs
+├── ios/ / android/       # Native projects
+└── scripts/              # Build and setup scripts
+```
+
 ## Code Conventions
 
 - **Formatting:** Double quotes, 2-space indent, trailing commas, 80-char width,
@@ -186,6 +203,48 @@ setup, writing tests, and debugging.
 
 **Before submitting a PR:** `yarn test` + `yarn lint:ts` must pass. Test on both
 iOS and Android, including small screens.
+
+## Adding Features
+
+### Adding a new screen
+
+1. Create the screen component in `src/components/screens/`
+2. Add the route to `src/config/routes.ts`
+3. Register in the appropriate navigator in `src/navigators/`
+4. Add translations for all user-facing strings in `src/i18n/`
+5. Add tests in `__tests__/`
+
+### Adding a new Zustand store
+
+1. Create the store file in `src/ducks/` (e.g., `src/ducks/myFeature.ts`)
+2. Define the store using Zustand's `create` with typed state and actions
+3. Export a hook for consuming the store (e.g., `useMyFeatureStore`)
+4. Add tests in `__tests__/ducks/`
+
+### Platform-specific code
+
+- Use `Platform.OS` checks for small differences
+- Use `.ios.tsx` / `.android.tsx` file extensions for larger divergences
+- Test on **both platforms** — especially native module interactions, gestures,
+  and keyboard behavior
+
+## Running the Backend Locally
+
+The app connects to two separate backend services:
+
+- **V1**
+  ([stellar/freighter-backend](https://github.com/stellar/freighter-backend),
+  TypeScript) — balances, subscriptions, feature flags, notifications
+- **V2**
+  ([stellar/freighter-backend-v2](https://github.com/stellar/freighter-backend-v2),
+  Go) — collectibles, RPC health, ledger keys, protocols
+
+To run your own:
+
+1. Clone the repo for the backend you need (V1, V2, or both)
+2. Follow its README for setup
+3. Point `FREIGHTER_BACKEND_V1_DEV_URL` and/or `FREIGHTER_BACKEND_V2_DEV_URL` in
+   your `.env` at your local instance
 
 ## Pull Requests
 
