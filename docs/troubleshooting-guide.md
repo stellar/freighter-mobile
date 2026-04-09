@@ -14,7 +14,9 @@ Common issues and solutions when developing Freighter Mobile.
 **Solution:**
 
 ```bash
-yarn r-install    # Full reset: cleans node_modules, reinstalls everything
+yarn reset-env                 # Clears node_modules and other generated state
+yarn install                   # Reinstall JavaScript dependencies
+yarn rebuild freighter-mobile  # Rebuild the app package
 ```
 
 ### CocoaPods installation fails (iOS)
@@ -30,8 +32,11 @@ cd ..
 yarn pod-install         # Reinstall
 ```
 
-> **Warning:** Do not run `pod deintegrate` — it strips the entire Xcode project
-> integration. Clean cache + reinstall is sufficient.
+> **Note:** For routine `pod install` failures (version conflicts, missing
+> specs), clean cache + reinstall is usually sufficient. Use `pod deintegrate`
+> only if the CocoaPods/Xcode project integration is actually broken — it strips
+> the entire integration and requires a full re-run of `pod install` to
+> reconstruct it.
 
 If still failing, check your Ruby version. CocoaPods works best with
 rbenv-managed Ruby 3.1-3.3.
@@ -117,7 +122,7 @@ project config:
    > Code Quality Tools > ESLint → "Automatic ESLint configuration".
 3. **Validate manually:**
    ```bash
-   npx eslint src/components/sds/Button.tsx
+   npx eslint src/components/sds/Button/index.tsx
    ```
    If this errors, fix the ESLint config before relying on IDE integration.
 4. **Prettier plugin:** Install the
@@ -264,9 +269,9 @@ final failure message.
    yarn ios
    ```
 
-   > **Warning:** Do not run `pod deintegrate` — it strips the entire Xcode
-   > project integration and can break the setup in ways that are hard to
-   > recover from. Cleaning the pod cache and reinstalling is sufficient.
+   > **Note:** For routine pod sync issues, clean cache + reinstall is
+   > sufficient. Use `pod deintegrate` only if the Xcode project integration
+   > itself is broken.
 
 3. **Wrong Xcode version or command-line tools:** After macOS or Xcode update.
 
@@ -512,12 +517,12 @@ function. **Do not remove this setting** — it is required for WalletConnect,
 ### CocoaPods version lockfile mismatch
 
 **Symptom:** Warning: "The version of CocoaPods used to generate the lockfile
-(1.16.2) is higher than the version of the current executable."
+(1.15.2) is higher than the version of the current executable."
 
 **Solution:** Ensure all team members use the same CocoaPods version:
 
 ```bash
-gem install cocoapods -v 1.16.2    # Match the lockfile version
+gem install cocoapods -v 1.15.2    # Match the lockfile version
 ```
 
 Or update the lockfile to match your installed version by running `pod install`
