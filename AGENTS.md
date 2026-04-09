@@ -161,18 +161,19 @@ yarn test                         # Unit tests must pass
 
 Read the relevant file when working in that area:
 
-| Concern              | Entry Point                                                                | When to Read                                        |
-| -------------------- | -------------------------------------------------------------------------- | --------------------------------------------------- |
-| Code Style           | `docs/skills/freighter-mobile-best-practices/references/code-style.md`     | Writing or reviewing any code                       |
-| Architecture         | `docs/skills/freighter-mobile-best-practices/references/architecture.md`   | Adding features, understanding state/nav structure  |
-| Styling              | `docs/skills/freighter-mobile-best-practices/references/styling.md`        | Creating or modifying UI components                 |
-| Security             | `docs/skills/freighter-mobile-best-practices/references/security.md`       | Touching keys, auth, storage, or dApp interactions  |
-| Testing              | `docs/skills/freighter-mobile-best-practices/references/testing.md`        | Writing or fixing tests                             |
-| Performance          | `docs/skills/freighter-mobile-best-practices/references/performance.md`    | Optimizing renders, lists, images, or startup       |
-| Error Handling       | `docs/skills/freighter-mobile-best-practices/references/error-handling.md` | Adding error states, retries, or user-facing errors |
-| Internationalization | `docs/skills/freighter-mobile-best-practices/references/i18n.md`           | Adding or modifying user-facing strings             |
-| WalletConnect        | `docs/skills/freighter-mobile-best-practices/references/walletconnect.md`  | Working with dApp connections or RPC methods        |
-| Navigation           | `docs/skills/freighter-mobile-best-practices/references/navigation.md`     | Adding screens, deep links, or navigation flows     |
-| Git & PR Workflow    | `docs/skills/freighter-mobile-best-practices/references/git-workflow.md`   | Branching, committing, opening PRs, CI, releases    |
-| Dependencies         | `docs/skills/freighter-mobile-best-practices/references/dependencies.md`   | Adding, updating, or auditing packages              |
-| Anti-Patterns        | `docs/skills/freighter-mobile-best-practices/references/anti-patterns.md`  | Code review, avoiding common mistakes               |
+| Concern              | Entry Point                                                                | When to Read                                         |
+| -------------------- | -------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Code Style           | `docs/skills/freighter-mobile-best-practices/references/code-style.md`     | Writing or reviewing any code                        |
+| Architecture         | `docs/skills/freighter-mobile-best-practices/references/architecture.md`   | Adding features, understanding state/nav structure   |
+| Styling              | `docs/skills/freighter-mobile-best-practices/references/styling.md`        | Creating or modifying UI components                  |
+| Security             | `docs/skills/freighter-mobile-best-practices/references/security.md`       | Touching keys, auth, storage, or dApp interactions   |
+| Testing              | `docs/skills/freighter-mobile-best-practices/references/testing.md`        | Writing or fixing tests                              |
+| Performance          | `docs/skills/freighter-mobile-best-practices/references/performance.md`    | Optimizing renders, lists, images, or startup        |
+| Error Handling       | `docs/skills/freighter-mobile-best-practices/references/error-handling.md` | Adding error states, retries, or user-facing errors  |
+| Internationalization | `docs/skills/freighter-mobile-best-practices/references/i18n.md`           | Adding or modifying user-facing strings              |
+| WalletConnect        | `docs/skills/freighter-mobile-best-practices/references/walletconnect.md`  | Working with dApp connections or RPC methods         |
+| Navigation           | `docs/skills/freighter-mobile-best-practices/references/navigation.md`     | Adding screens, deep links, or navigation flows      |
+| Git & PR Workflow    | `docs/skills/freighter-mobile-best-practices/references/git-workflow.md`   | Branching, committing, opening PRs, CI, releases     |
+| Dependencies         | `docs/skills/freighter-mobile-best-practices/references/dependencies.md`   | Adding, updating, or auditing packages               |
+| Anti-Patterns        | `docs/skills/freighter-mobile-best-practices/references/anti-patterns.md`  | Code review, avoiding common mistakes                |
+| Troubleshooting      | `docs/troubleshooting-guide.md`                                            | Build failures, setup issues, known bugs and gotchas |
