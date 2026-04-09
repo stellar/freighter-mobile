@@ -393,6 +393,43 @@ and the detailed guides in `e2e/docs/`.
   `e2e/docs/artifacts-and-debugging.md` to diagnose failures you can't reproduce
   locally
 
+### iOS simulator does not paste from Mac clipboard
+
+**Symptom:** Copying text on your Mac (e.g. a test mnemonic, `.env` value, or
+address) and pressing Cmd+V inside the iOS Simulator does nothing, or the paste
+option is greyed out.
+
+**Root cause:** Since Xcode 14, the simulator uses an isolated pasteboard by
+default and does not automatically sync with the Mac clipboard. macOS 14+
+(Sonoma) also shows a one-time permission prompt when the Simulator first
+requests clipboard access — if dismissed, sync stops working silently.
+
+**Solutions:**
+
+1. **Enable automatic pasteboard sync (most common fix):** In the Simulator menu
+   bar, go to **Edit > Automatically Sync Pasteboard**. This must be checked for
+   Mac → Simulator paste to work. It resets per Simulator session.
+
+2. **macOS permission was denied:** If you previously dismissed the _"Simulator
+   would like to access your clipboard"_ system prompt, re-grant it:
+
+   - Open **System Settings > Privacy & Security > Pasteboard** and confirm
+     Simulator is allowed
+   - If it doesn't appear there, quit and relaunch the Simulator — the prompt
+     will reappear on next clipboard access
+
+3. **Manual paste via menu:** Even without auto-sync, you can paste discrete
+   values using the Simulator's **Edit > Paste** menu item (or Cmd+Shift+V),
+   which pushes the current Mac clipboard into the simulator and pastes it in
+   the focused field.
+
+4. **Paste via simctl (scriptable):** Push a value directly to the simulator
+   pasteboard from the terminal:
+   ```bash
+   xcrun simctl pasteboard sync booted
+   ```
+   Run this after copying on the Mac, then paste normally in the simulator.
+
 ## iOS 26 / Xcode 26 Compatibility Issues
 
 These issues affect builds and runtime when targeting iOS 26 or using Xcode 26+.
@@ -451,211 +488,7 @@ doesn't properly terminate.
 for workarounds. As a temporary fix, build from Xcode directly
 (`open ios/freighter-mobile.xcworkspace`) and launch from there.
 
-### SceneDelegate adoption warning
-
-**Symptom:** Xcode 26 shows a warning: "UIScene lifecycle must be supported.
-Failure to adopt will result in an assert in the future."
-
-**Current status:** The project does not yet use `SceneDelegate`. This is a
-warning for now, but Apple will enforce it in a future iOS version. Track
-[facebook/react-native#53602](https://github.com/facebook/react-native/issues/53602)
-for React Native's official adoption.
-
-### react-native-keychain not working on iOS 26
-
-**Symptom:** Keychain storage operations fail silently on iOS 26
-devices/simulators.
-
-**Tracked at:**
-[oblador/react-native-keychain#771](https://github.com/oblador/react-native-keychain/issues/771)
-
-**Impact:** This is critical for Freighter since all secure storage (keys,
-seeds) goes through Keychain. If you're testing on iOS 26, verify that keychain
-read/write operations work before merging auth or storage changes.
-
-### WebView touch regression on iOS 26
-
-**Symptom:** Some buttons inside `react-native-webview` are not clickable on
-iOS 26. Device rotation temporarily restores touch functionality.
-
-**Root cause:** This is an Apple-level bug affecting all WebView implementations
-(including Flutter). Not a react-native-webview issue.
-
-**Tracked at:**
-[react-native-webview/react-native-webview#3920](https://github.com/react-native-webview/react-native-webview/issues/3920)
-
-**Impact:** Affects WalletConnect dApp interactions that use WebView and any
-in-app browser flows.
-
-### TurboModule crash on iOS 26.1
-
-**Symptom:** App crashes on startup with `performVoidMethodInvocation` SIGABRT.
-
-**Tracked at:**
-[facebook/react-native#54859](https://github.com/facebook/react-native/issues/54859)
-
-**Impact:** If this affects your iOS 26.1 simulator/device, try updating to the
-latest RN 0.81.x patch release.
-
-### iOS 26 "Liquid Glass" visual changes
-
-**Symptom:** Navigation bars, tab bars, toolbars, and alerts look different on
-iOS 26 — translucent with a frosted glass effect — even though no code changed.
-
-**Root cause:** iOS 26 introduced the "Liquid Glass" UIKit redesign (WWDC 2025).
-All native UIKit components get this new appearance by default. Since
-`react-native-screens` uses native `UINavigationController` under the hood, the
-visual change propagates automatically.
-
-**Impact:** Mostly cosmetic, but custom navigation bar styling may conflict with
-the new defaults. Review the app's navigation headers and tab bar on an iOS 26
-simulator to check for visual regressions. If needed, opt out of Liquid Glass on
-specific views via UIKit appearance APIs.
-
-## Android 16 (SDK 36) Compatibility Issues
-
-### Edge-to-edge display is now mandatory
-
-**Symptom:** App layout looks broken on Android 16 — content renders behind the
-status bar or navigation bar.
-
-**Root cause:** Android 16 (API 36) enforces edge-to-edge display with no
-opt-out. React Native has deprecated `<SafeAreaView>` for this reason.
-
-**Current status:** The project uses `SafeAreaView` in
-`src/components/layout/BaseLayout.tsx` and
-`src/components/TokensCollectiblesTabs.tsx`. These should be migrated to
-`react-native-safe-area-context`'s `SafeAreaView` (which is edge-to-edge aware)
-if not already.
-
-**Reference:**
-[Android 16 changes impacting React Native](https://github.com/react-native-community/discussions-and-proposals/discussions/921)
-
-### Android 16 predictive back gesture
-
-**Symptom:** Back navigation behaves unexpectedly — the system shows a preview
-animation of the destination before committing, and custom `BackHandler` logic
-may not fire as expected.
-
-**Root cause:** Android 16 enables the predictive back gesture by default for
-apps targeting SDK 36. The system intercepts back gestures to show a preview
-animation before dispatching the back event.
-
-**Impact:** React Navigation should handle this for standard screen transitions.
-However, custom back handling (e.g., WalletConnect signing flows, transaction
-confirmation modals, or any screen with `BackHandler.addEventListener`) should
-be tested on Android 16 to ensure the back behavior is correct.
-
-### Google Play 16KB page size requirement
-
-**Symptom:** Google Play rejects APK/AAB uploads or shows compliance warnings
-about 16KB page size support.
-
-**Root cause:** Starting November 2025 (extended to May 2026), all apps
-targeting Android 15+ must support 16KB page sizes. Native libraries (`.so`
-files) must be aligned to 16KB boundaries.
-
-**Current status:** The project has a patch for `react-native-fast-opencv` that
-adds `ANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON`
-(`patches/react-native-fast-opencv+0.4.6.patch`). However, this flag is not
-globally applied — other native libraries (especially
-`react-native-vision-camera`, see
-[mrousavy/react-native-vision-camera#3630](https://github.com/mrousavy/react-native-vision-camera/issues/3630))
-may also need it.
-
-**To verify compliance:**
-
-```bash
-# Check all .so files for 16KB alignment
-python3 -c "
-import subprocess, pathlib
-for so in pathlib.Path('android').rglob('*.so'):
-    result = subprocess.run(['file', str(so)], capture_output=True, text=True)
-    print(f'{so.name}: {result.stdout.strip()}')"
-```
-
-## Dependency Compatibility Issues
-
-These are known compatibility issues between the project's current package
-versions.
-
-### react-native-reanimated 4 migration notes
-
-**Version:** 4.1.2 (current)
-
-**Key changes from Reanimated 3:**
-
-- Worklet scheduling moved to `react-native-worklets` (installed as 0.5.1)
-- `useWorkletCallback` removed — use standard worklet callbacks
-- `runOnJS` / `runOnUI` API changes may affect custom gesture handlers
-
-**Known issue:** Some users report entire UI freezing after upgrading from v3 to
-v4
-([software-mansion/react-native-reanimated#8967](https://github.com/software-mansion/react-native-reanimated/issues/8967)).
-If you encounter this, ensure `react-native-worklets` is properly linked and the
-babel plugin is correct.
-
-**Current babel config:** Uses `react-native-reanimated/plugin` in
-`babel.config.js`. This should continue to work with Reanimated 4.1.x, but if
-you encounter worklet compilation errors, check if migration to
-`react-native-worklets/plugin` is needed per the
-[migration guide](https://docs.swmansion.com/react-native-reanimated/docs/guides/migration-from-3.x/).
-
-### @gorhom/bottom-sheet + Reanimated 4
-
-**Version:** 5.2.6 (current)
-
-**Status:** Compatible. Bottom-sheet 5.1.8+ is required for Reanimated 4
-support. The project's 5.2.6 meets this requirement.
-
-**If bottom-sheet becomes unresponsive:** This was a common issue with
-bottom-sheet < 5.1.8 on Reanimated 4. If you see the sheet not opening or not
-responding to gestures after a dependency update, verify that bottom-sheet
-hasn't been downgraded below 5.1.8.
-
-### NativeWind / react-native-css-interop + React 19
-
-**Version:** NativeWind 4.1.23 with react-native-css-interop (patched)
-
-**Known issues:**
-
-- **Ref forwarding:** React 19 passes refs as props instead of the second
-  argument. The project has a patch
-  (`patches/react-native-css-interop+0.1.22.patch`) that fixes the `interop`
-  function to forward `props.ref` correctly. If you update NativeWind or
-  css-interop, verify this patch still applies.
-- **CSS interop race condition:** NativeWind's CSS interop can cause a race
-  condition with React Navigation, where utility classes trigger runtime CSS
-  parsing during render and delay navigation context initialization
-  ([nativewind/nativewind#1536](https://github.com/nativewind/nativewind/issues/1536)).
-  If you see navigation-related crashes on app start, this may be the cause.
-- **NativeWind v5 migration:** NativeWind v5 renames `react-native-css-interop`
-  to `react-native-css` and makes it a peer dependency. When upgrading, the
-  patch will need to be re-evaluated.
-
-### react-native-vision-camera on Android 16
-
-**Version:** 4.7.2 (current)
-
-**Known issues:**
-
-- **16KB page size compliance:** Google Play compliance warnings have been
-  reported
-  ([mrousavy/react-native-vision-camera#3630](https://github.com/mrousavy/react-native-vision-camera/issues/3630))
-- **Camera blur on Android 16:** Reduced image quality reported on Pixel 7 and
-  Samsung S24 Ultra running Android 16 after updating to vision-camera 4.7.2
-  ([mrousavy/react-native-vision-camera#3676](https://github.com/mrousavy/react-native-vision-camera/issues/3676))
-- **Kotlin compilation errors with RN 0.81:** Return type mismatches in
-  `CameraViewManager.kt` and unresolved references in `CameraViewModule.kt`
-  ([mrousavy/react-native-vision-camera#3601](https://github.com/mrousavy/react-native-vision-camera/issues/3601))
-
-### react-native-screens + iOS 26
-
-**Tracked at:**
-[software-mansion/react-native-screens#3641](https://github.com/software-mansion/react-native-screens/issues/3641)
-
-If you encounter navigation rendering glitches or crashes on iOS 26 simulators,
-check this issue for compatibility fixes.
+## Dependency & Package Issues
 
 ### Metro package exports + rn-nodeify conflict
 
@@ -689,96 +522,3 @@ gem install cocoapods -v 1.16.2    # Match the lockfile version
 
 Or update the lockfile to match your installed version by running `pod install`
 and committing the updated `Podfile.lock`.
-
-## Known Issues & Active Development Areas
-
-These are issues that have been encountered or are areas of active development.
-Understanding them helps avoid re-introducing bugs or wasting time on known
-causes.
-
-### Blockaid asset scanning in search flow
-
-**Status:** Active development (tracked as GitHub issue #210).
-
-The asset search flow is being enhanced with Blockaid integration to flag
-malicious assets. When working on the search/add-asset flow, be aware that scam
-token detection is being built into this path. Red badges will appear on asset
-icons when Blockaid flags them as malicious.
-
-### WalletConnect session edge cases
-
-**Known areas of complexity:**
-
-- Session reconnection after app backgrounding — WalletConnect sessions can
-  silently disconnect when the app is in the background too long
-- Network mismatch — dApp may request signing on a different network than the
-  user's active network. The app must validate this before processing.
-- Duplicate response guard — Use `hasRespondedRef` to prevent sending duplicate
-  WalletConnect responses on rapid approve/reject taps
-
-**If you're debugging WalletConnect issues:**
-
-1. Check `src/hooks/useWalletKitEventsManager.ts` for event listener setup
-2. Check `src/providers/WalletKitProvider.tsx` for request handling
-3. Use the mock dApp (`mock-dapp/`) for reproducible testing
-4. Review `e2e/docs/walletconnect-e2e-testing.md` for the full test setup
-
-### Minimum balance confusion (user-facing)
-
-**Frequency:** Common user-reported issue. Users don't understand why they can't
-send all their XLM.
-
-**Root cause:** Stellar requires a minimum balance (1 XLM base + 0.5 XLM per
-trustline/offer/signer). This XLM is locked and can't be sent.
-
-**If you're working on the send flow:** The `calculateSpendableAmount()` helper
-in the transaction amount screen already accounts for reserves. Ensure any
-balance display clearly shows "available" vs "total" balance.
-
-### Biometric auth after OS updates
-
-**Known issue:** After iOS or Android OS updates, biometric authentication can
-fail silently because the Keychain/Keystore access conditions changed.
-
-**If you're working with biometric flows:** Always handle the fallback to PIN
-gracefully. Test biometric flows after simulator/emulator OS version changes.
-
-## Common Development Pitfalls
-
-### Forgetting to test on both platforms
-
-The PR template requires testing on both iOS and Android, including small
-screens. React Native components can behave differently between platforms —
-always test both before opening a PR.
-
-### Using AsyncStorage for sensitive data
-
-Never use `AsyncStorage` for private keys, seed phrases, or tokens. Use the
-platform's secure storage (iOS Keychain / Android Keystore) via the appropriate
-service in `src/services/`.
-
-### Relative imports
-
-The project enforces absolute imports from the `src/` root. ESLint will fail on
-relative imports:
-
-```typescript
-// Wrong
-import { something } from "../../helpers/something";
-
-// Correct
-import { something } from "helpers/something";
-```
-
-### Pre-commit hook is slow
-
-The pre-commit hook runs `lint-staged` (ESLint + Prettier on staged files), the
-full Jest test suite, and a TypeScript check. On large changesets this can take
-minutes. This is intentional — it catches issues before they reach CI. If you
-need to commit work-in-progress, the hooks still need to pass.
-
-### Forgetting JSDoc
-
-The PR template requires JSDoc on new functions and updated JSDoc on modified
-functions. The codebase currently has very few JSDoc comments — help us improve
-this by adding documentation as you work.
