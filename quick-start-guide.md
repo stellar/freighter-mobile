@@ -1,4 +1,4 @@
-# Freighter Mobile — LLM Quick Start
+# Freighter Mobile — Quick Start Guide
 
 Evaluate the contributor's machine against all prerequisites for Freighter
 Mobile (React Native), install what's missing, and run the initial setup.

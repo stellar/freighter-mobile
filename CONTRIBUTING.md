@@ -42,11 +42,12 @@ guide.
 ### Quick Setup with an LLM
 
 If you use an LLM-powered coding assistant, you can automate the setup. The repo
-includes a quick start guide ([`LLM-QUICK-START.md`](LLM-QUICK-START.md)) that
-checks your environment, installs missing tools, configures `.env`, and verifies
-the build.
+includes a quick start guide ([`quick-start-guide.md`](quick-start-guide.md))
+that checks your environment, installs missing tools, configures `.env`, and
+verifies the build.
 
-Point your LLM assistant at `LLM-QUICK-START.md` and ask it to follow the steps.
+Point your coding assistant at `quick-start-guide.md` and ask it to follow the
+steps.
 
 For detailed best practices and coding guidelines when working with an LLM, see
 [`docs/skills/freighter-mobile-best-practices`](docs/skills/freighter-mobile-best-practices/).
