@@ -65,7 +65,7 @@ it("should update state", () => {
 
 Maestro provides YAML-based e2e test flows located in `e2e/flows/`:
 
-### Available Test Flows (7 total)
+### Available Test Flows
 
 1. `CreateWallet` — Full wallet creation flow
 2. `ImportWallet` — Import via recovery phrase

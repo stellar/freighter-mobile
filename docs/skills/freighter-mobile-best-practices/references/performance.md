@@ -1,7 +1,6 @@
 # Performance -- Freighter Mobile
 
-Based on analysis of 436 React Native files. Current performance score:
-**6.8/10**.
+Performance guidelines for the Freighter Mobile React Native codebase.
 
 ## React.memo -- 28 usages across 25 files (GOOD)
 
@@ -90,11 +89,10 @@ performance props.
 />
 ```
 
-**Missing optimization in:**
-
-- `BalancesList.tsx` — missing windowSize, maxToRenderPerBatch
-- `CollectiblesGrid.tsx` — missing keyExtractor, windowSize, maxToRenderPerBatch
-- `ValidateRecoveryPhraseScreen.tsx` — missing performance props
+**Missing optimization:** Some FlatList usages in the codebase are still missing
+required performance props. Audit any FlatList to ensure it includes stable
+`keyExtractor`, `windowSize`, `maxToRenderPerBatch`, and `removeClippedSubviews`
+as applicable.
 
 **RULE: Never use ScrollView for lists exceeding ~50 items. Use FlatList with
 virtualization.**

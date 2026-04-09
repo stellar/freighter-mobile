@@ -27,9 +27,8 @@
 
 ## Key Concepts
 - React Native app with Zustand state management (ducks pattern)
-- 434 TypeScript files, ~73,500 LOC
 - Navigation: React Navigation with nested navigators
 - dApp integration: WalletConnect v2 (4 RPC methods)
-- Testing: Jest (unit) + Maestro (e2e, 6 test flows)
+- Testing: Jest (unit) + Maestro (e2e)
 - Dual bundle IDs: dev (freighterdev) and prod (freighterwallet)
 - Build: Metro, Fastlane, Gradle (Android), Xcode (iOS)

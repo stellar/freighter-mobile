@@ -70,11 +70,12 @@ should include them. Help improve this incrementally.
 
 ## Floating Promises
 
-`@typescript-eslint/no-floating-promises` is enforced. Every promise must be
+Even though `@typescript-eslint/no-floating-promises` is not currently enforced
+in ESLint, avoid floating promises as a best practice. Every promise should be
 `await`ed or have a `.catch()` handler.
 
 ```tsx
-// Wrong - will fail lint
+// Wrong - unhandled promise
 fetchBalances(publicKey);
 
 // Correct
