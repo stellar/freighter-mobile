@@ -30,6 +30,8 @@ For the Stellar organization's general contribution guidelines, see the
 export ANDROID_HOME=$HOME/Library/Android/sdk
 # Linux
 # export ANDROID_HOME=$HOME/Android/Sdk
+# Windows (Git Bash / WSL)
+# export ANDROID_HOME=$HOME/AppData/Local/Android/Sdk
 export PATH=$PATH:$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools
 ```
 

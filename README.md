@@ -47,23 +47,14 @@ guide for iOS and Android.
     The project uses `react-native-config` for environment variables. You'll
     need to set up your environment variables before running the app:
 
-    1. Create a `.env` file in the project root:
+    1. Copy the example file and fill in the required values:
 
        ```bash
-       touch .env
-       ```
-
-    2. Add the required environment variables for **local development** (DEV
-       variant):
-
-       ```
-       FREIGHTER_BACKEND_V1_DEV_URL=https://freighter-backend-dev.stellar.org/api/v1
-       FREIGHTER_BACKEND_V2_DEV_URL=https://freighter-backend-v2-dev.stellar.org/api/v1
-       WALLET_KIT_PROJECT_ID_DEV=your_reown_project_id
+       cp .env.example .env
        ```
 
        See [CONTRIBUTING.md](CONTRIBUTING.md#environment-variables) for the full
-       list and how to obtain each value.
+       list of required variables and how to obtain each value.
 
     **Important:**
 

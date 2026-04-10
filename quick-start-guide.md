@@ -50,7 +50,15 @@ echo "ANDROID_HOME=$ANDROID_HOME"
 
 # Android SDK components
 if [ -n "$ANDROID_HOME" ]; then
-  $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --list 2>/dev/null | grep -E "platforms;android-36|build-tools;36.0.0|ndk;28.2.13676358" || echo "sdkmanager not available — check Android Studio SDK Manager manually"
+  sdkmanager_bin="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+  if [ -x "$sdkmanager_bin" ]; then
+    sdkmanager_list="$("$sdkmanager_bin" --list 2>/dev/null)"
+    printf '%s\n' "$sdkmanager_list" | grep -Eq "platforms;android-36([[:space:]]|$)" && echo "SDK Platform 36: OK" || echo "SDK Platform 36: MISSING"
+    printf '%s\n' "$sdkmanager_list" | grep -Eq "build-tools;36\.0\.0([[:space:]]|$)" && echo "Build-Tools 36.0.0: OK" || echo "Build-Tools 36.0.0: MISSING"
+    printf '%s\n' "$sdkmanager_list" | grep -Eq "ndk;28\.2\.13676358([[:space:]]|$)" && echo "NDK 28.2.13676358: OK" || echo "NDK 28.2.13676358: MISSING"
+  else
+    echo "sdkmanager not available — check Android Studio SDK Manager manually"
+  fi
 fi
 
 # Maestro (optional — only needed for e2e tests)
@@ -129,6 +137,8 @@ summary.
   export ANDROID_HOME=$HOME/Library/Android/sdk
   # Linux
   # export ANDROID_HOME=$HOME/Android/Sdk
+  # Windows (Git Bash / WSL)
+  # export ANDROID_HOME=$HOME/AppData/Local/Android/Sdk
   export PATH=$PATH:$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools
   ```
 - **JAVA_HOME** — macOS with Homebrew:
