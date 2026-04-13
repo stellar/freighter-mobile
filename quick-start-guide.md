@@ -72,7 +72,7 @@ Show a clear summary with status for each tool:
 ```
 Freighter Mobile — Prerequisites Check
 ========================================
-  Node.js        v22.x.x        >= 20 required        OK
+  Node.js        v20.x.x        >= 20 required        OK
   Corepack       0.x.x          any                   OK
   Yarn           4.10.0         4.10.0 required       OK
   Homebrew       4.x.x          any                   OK
@@ -131,7 +131,8 @@ summary.
   `xcode-select --install && sudo xcodebuild -license accept`
 - **Android Studio**: Install from developer.android.com, then open SDK Manager
   for SDK 36 + Build-Tools 36.0.0 + NDK 28.2.13676358
-- **ANDROID_HOME** — add to shell profile:
+- **ANDROID_HOME** — add to shell profile (choose the `ANDROID_HOME` line for
+  your OS, comment out the others):
   ```bash
   # macOS
   export ANDROID_HOME=$HOME/Library/Android/sdk
@@ -139,7 +140,9 @@ summary.
   # export ANDROID_HOME=$HOME/Android/Sdk
   # Windows (Git Bash / WSL)
   # export ANDROID_HOME=$HOME/AppData/Local/Android/Sdk
-  export PATH=$PATH:$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools
+  export PATH=$PATH:$ANDROID_HOME/emulator
+  export PATH=$PATH:$ANDROID_HOME/tools
+  export PATH=$PATH:$ANDROID_HOME/platform-tools
   ```
 - **JAVA_HOME** — macOS with Homebrew:
   `export JAVA_HOME=$(/usr/libexec/java_home -v 17)`. Linux: usually

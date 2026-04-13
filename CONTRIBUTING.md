@@ -23,7 +23,8 @@ For the Stellar organization's general contribution guidelines, see the
 
 - SDK Platform API 36, Build-Tools 36.0.0, NDK 28.2.13676358
 
-**Shell environment** — add to `~/.zshrc` or `~/.bashrc`:
+**Shell environment** — add to `~/.zshrc` or `~/.bashrc` (choose the
+`ANDROID_HOME` line for your OS, comment out the others):
 
 ```bash
 # macOS
@@ -32,7 +33,9 @@ export ANDROID_HOME=$HOME/Library/Android/sdk
 # export ANDROID_HOME=$HOME/Android/Sdk
 # Windows (Git Bash / WSL)
 # export ANDROID_HOME=$HOME/AppData/Local/Android/Sdk
-export PATH=$PATH:$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools
+export PATH=$PATH:$ANDROID_HOME/emulator
+export PATH=$PATH:$ANDROID_HOME/tools
+export PATH=$PATH:$ANDROID_HOME/platform-tools
 ```
 
 For full platform setup, see the
@@ -109,6 +112,10 @@ Copy `.env.example` to `.env` and fill in the values. The `.env` file must
 | `MP_COLLECTIONS_ADDRESSES`                   | Comma-separated list — leave empty if not working on collectibles                          |
 
 **E2E testing only:**
+
+> ⚠️ **Security warning**: The recovery phrase used for E2E tests must be from a
+> wallet with **no real funds**. Never use a mainnet-funded wallet for automated
+> testing.
 
 | Variable                          | Notes                                                                                                                                                                                                                                                                                                                                           |
 | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
