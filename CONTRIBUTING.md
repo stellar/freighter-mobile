@@ -106,7 +106,7 @@ Copy `.env.example` to `.env` and fill in the values. The `.env` file must
 | -------------------------------------------- | ------------------------------------------------------------------------------------------ |
 | `AMPLITUDE_API_KEY`                          | Auto-disabled in `__DEV__` mode — not needed for local dev                                 |
 | `SENTRY_DSN`                                 | Leave empty — errors log to console instead                                                |
-| `FREIGHTER_BACKEND_*_STG_URL` / `*_PROD_URL` | Only needed for staging/prod builds. Same public endpoints with `-stg` or `-prd` subdomain |
+| `FREIGHTER_BACKEND_*_STG_URL` / `*_PROD_URL` | Only needed for staging/prod builds. Run your own backend from [stellar/freighter-backend](https://github.com/stellar/freighter-backend) and backend-v2 from [stellar/freighter-backend-v2](https://github.com/stellar/freighter-backend-v2)  |
 | `WALLET_KIT_*_PROD` (6 vars)                 | Only needed for prod builds — same setup as dev vars above                                 |
 | `ANDROID_PROD_KEYSTORE_*`                    | Only needed for release builds — generate a separate keystore                              |
 | `MP_COLLECTIONS_ADDRESSES`                   | Comma-separated list — leave empty if not working on collectibles                          |
