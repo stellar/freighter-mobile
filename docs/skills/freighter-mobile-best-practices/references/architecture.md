@@ -146,8 +146,7 @@ The app maintains separate identities for development and production:
 | ---------------- | -------------------------- | ----------------------------- |
 | Bundle ID        | `org.stellar.freighterdev` | `org.stellar.freighterwallet` |
 | Signing          | Dev certificates           | Prod certificates             |
-| Push tokens      | Separate                   | Separate                      |
-| Deep link scheme | `freighterdev://`          | `freighterwallet://`          |
+| Deep link scheme | Separate per environment   | Separate per environment      |
 | Keychain entries | Isolated                   | Isolated                      |
 
 This isolation ensures dev builds never interfere with production data or

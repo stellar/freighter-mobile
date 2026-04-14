@@ -71,7 +71,7 @@ Additional WalletConnect validations:
 - Validate all URL parameters before processing
 - Only accept known deep link formats
 - Never execute arbitrary code from deep link parameters
-- Separate schemes for dev (`freighterdev://`) and prod (`freighterwallet://`)
+- Dev and prod use separate deep-link schemes (see native project config)
 
 ## Dual Bundle ID Isolation
 

@@ -71,12 +71,12 @@ Available route enum groups:
 
 ## Deep Linking
 
-| Environment | Scheme               |
-| ----------- | -------------------- |
-| Dev         | `freighterdev://`    |
-| Prod        | `freighterwallet://` |
+Dev and prod use separate deep-link schemes (configured in the Xcode/Gradle
+build settings and the WalletConnect dashboard). WalletConnect deep links follow
+the format: `<scheme>://wc?uri=...`
 
-WalletConnect deep links follow the format: `freighterdev://wc?uri=...`
+See the native project configuration for the actual scheme values — do not
+hard-code them in documentation to avoid wallet impersonation risks.
 
 ## App Initialization Sequence
 
