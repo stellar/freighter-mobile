@@ -5,9 +5,7 @@ import {
   BottomSheetModalProps,
   BottomSheetView,
   BottomSheetScrollView,
-  BottomSheetFooter,
 } from "@gorhom/bottom-sheet";
-import { BottomSheetDefaultFooterProps } from "@gorhom/bottom-sheet/lib/typescript/components/bottomSheetFooter/types";
 import { BottomSheetViewProps } from "@gorhom/bottom-sheet/lib/typescript/components/bottomSheetView/types";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
@@ -67,7 +65,7 @@ export type BottomSheetProps = {
   useInsetsBottomPadding?: boolean;
   analyticsEvent?: AnalyticsEvent;
   analyticsProps?: AnalyticsProps;
-  renderFooterComponent?: () => React.ReactNode;
+  scrollViewFooterComponent?: () => React.ReactNode;
   scrollable?: boolean;
 };
 
@@ -89,9 +87,15 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
   useInsetsBottomPadding = true,
   analyticsEvent,
   analyticsProps,
-  renderFooterComponent = undefined,
+  scrollViewFooterComponent = undefined,
   scrollable = false,
 }) => {
+  if (scrollable && snapPoints) {
+    throw new Error(
+      "BottomSheet: `scrollable` and `snapPoints` cannot be used together.",
+    );
+  }
+
   const { themeColors } = useColors();
   const IconData = icon ? Icons[icon] : Icons.Announcement;
   const insets = useSafeAreaInsets();
@@ -196,19 +200,6 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
     [],
   );
 
-  const renderFooterWithLayout = useCallback(
-    (props: BottomSheetDefaultFooterProps) => {
-      if (!renderFooterComponent) return null;
-
-      return (
-        <BottomSheetFooter {...props}>
-          <View onLayout={handleFooterLayout}>{renderFooterComponent()}</View>
-        </BottomSheetFooter>
-      );
-    },
-    [renderFooterComponent, handleFooterLayout],
-  );
-
   return (
     <BottomSheetModal
       ref={modalRef}
@@ -220,7 +211,6 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
       snapPoints={snapPoints}
       backdropComponent={renderBackdrop}
       handleComponent={renderHandle}
-      footerComponent={renderFooterWithLayout}
       backgroundStyle={{
         backgroundColor: themeColors.background.primary,
       }}
@@ -228,20 +218,36 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
       onChange={handleChange}
     >
       {scrollable ? (
-        <BottomSheetScrollView
-          className="bg-background-primary pl-6 pr-6 pt-6 gap-6"
-          showsVerticalScrollIndicator={false}
-          style={{
-            paddingBottom: useInsetsBottomPadding
-              ? insets.bottom + pxValue(DEFAULT_PADDING)
-              : 0,
-          }}
-          {...bottomSheetViewProps}
-        >
-          {renderContent()}
-          {/* workaround to add the fother height to the bottom sheet, as it's not included as part of the library calcs */}
-          {footerHeight > 0 && <View style={{ height: footerHeight }} />}
-        </BottomSheetScrollView>
+        <View>
+          <BottomSheetScrollView
+            className="bg-background-primary pl-6 pr-6 pt-6 gap-6"
+            showsVerticalScrollIndicator={false}
+            style={{
+              paddingTop: insets.top,
+              paddingBottom: useInsetsBottomPadding
+                ? insets.bottom + pxValue(DEFAULT_PADDING)
+                : 0,
+            }}
+            {...bottomSheetViewProps}
+          >
+            {renderContent()}
+            {/* Spacer to prevent content from hiding behind the absolute-positioned footer */}
+            {footerHeight > 0 && <View style={{ height: footerHeight }} />}
+          </BottomSheetScrollView>
+          {scrollViewFooterComponent && (
+            <View
+              onLayout={handleFooterLayout}
+              style={{
+                position: "absolute",
+                bottom: 0,
+                left: 0,
+                right: 0,
+              }}
+            >
+              {scrollViewFooterComponent()}
+            </View>
+          )}
+        </View>
       ) : (
         <BottomSheetView
           className="bg-background-primary pl-6 pr-6 pt-6 gap-6"
