@@ -141,10 +141,11 @@ const handlePress = useCallback(
 <ContactRow onPress={handlePress} />;
 ```
 
-## Image Optimization -- Score: 4/10
+## Image Optimization
 
-No FastImage adoption despite availability. React Native's default Image has no
-HTTP caching.
+FastImage (`@d11/react-native-fast-image`) is already adopted and used for
+remote images (see `src/components/sds/Token/index.tsx`,
+`src/helpers/validateIconUrl.ts`, `src/ducks/tokenIcons.ts`).
 
 **RULE: Use FastImage for ALL remote images (token icons, NFTs, profile
 images).**
@@ -212,10 +213,10 @@ const useAccountData = (publicKey: string) => {
 
 ## Performance Priority Actions
 
-| Priority | Action                                                 | Impact                                    | Score Impact |
-| -------- | ------------------------------------------------------ | ----------------------------------------- | ------------ |
-| **P0**   | Implement Zustand selective subscriptions              | Prevents re-renders across 85 files       | 2/10 → 8/10  |
-| **P0**   | Add FlatList optimization props to all lists           | Improves scroll perf on 9 list components | 6/10 → 9/10  |
-| **P1**   | Adopt FastImage for remote images                      | Adds HTTP caching for all images          | 4/10 → 8/10  |
-| **P1**   | Extract 123 inline handlers to useCallback             | Stabilizes reference equality             | 6/10 → 8/10  |
-| **P2**   | Memoize list item components (HistoryItem, BalanceRow) | Prevents unnecessary list item re-renders | 7/10 → 9/10  |
+| Priority | Action                                                   | Impact                                    | Score Impact |
+| -------- | -------------------------------------------------------- | ----------------------------------------- | ------------ |
+| **P0**   | Implement Zustand selective subscriptions                | Prevents re-renders across 85 files       | 2/10 → 8/10  |
+| **P0**   | Add FlatList optimization props to all lists             | Improves scroll perf on 9 list components | 6/10 → 9/10  |
+| **P1**   | Ensure all remote images use FastImage (already adopted) | Consistent HTTP caching for all images    | —            |
+| **P1**   | Extract 123 inline handlers to useCallback               | Stabilizes reference equality             | 6/10 → 8/10  |
+| **P2**   | Memoize list item components (HistoryItem, BalanceRow)   | Prevents unnecessary list item re-renders | 7/10 → 9/10  |
