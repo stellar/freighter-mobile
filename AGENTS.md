@@ -112,8 +112,7 @@ State lives in isolated Zustand ducks (`src/ducks/`). Key stores: `auth`,
 `networkInfo`, `history`. Access via hooks (`useAuthStore`, etc.).
 
 Navigation uses nested React Navigation 7 navigators. Entry point:
-`RootNavigator` → `AuthNavigator` or `TabNavigator` → feature navigators. Deep
-links: `freighterdev://` (dev) / `freighterwallet://` (prod).
+`RootNavigator` → `AuthNavigator` or `TabNavigator` → feature navigators.
 
 dApp connectivity via WalletConnect v2 (`src/providers/WalletKitProvider.tsx`).
 4 RPC methods: `stellar_signXDR`, `stellar_signAndSubmitXDR`,
