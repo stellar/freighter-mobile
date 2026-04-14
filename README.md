@@ -9,10 +9,11 @@ Mobile.
 
 ### Prerequisites
 
-- **Node.js** >= 20: [nodejs.org](https://nodejs.org/) or `nvm install 20`
+- **Node.js** >= 22: [nodejs.org](https://nodejs.org/) or `nvm install 22`
 - **Yarn** 4.10.0: `corepack enable && corepack prepare yarn@4.10.0 --activate`
-- **Ruby** >= 2.6.10: [rbenv](https://github.com/rbenv/rbenv) or
+- **Ruby** >= 3.1.4: [rbenv](https://github.com/rbenv/rbenv) or
   [rvm](https://rvm.io/)
+- **CocoaPods** 1.15.2: `gem install cocoapods -v 1.15.2`
 - **Watchman**: `brew install watchman` (macOS)
 - **JDK 17**: Required for Android builds
 - **Xcode**: Latest stable (iOS, macOS only)
@@ -61,7 +62,7 @@ guide for iOS and Android.
     - Never commit the `.env` file to version control
     - Keep `.env.example` updated with any new environment variables
     - See [CONTRIBUTING.md](CONTRIBUTING.md#environment-variables) for how to
-      obtain each variable (public endpoints, Reown dashboard, keystore
+      obtain each variable (public endpoints, WalletConnect dashboard, keystore
       generation)
 
 **Important**

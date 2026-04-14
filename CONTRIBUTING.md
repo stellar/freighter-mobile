@@ -13,6 +13,7 @@ For the Stellar organization's general contribution guidelines, see the
 | Node.js        | >= 22         | [nodejs.org](https://nodejs.org) or `nvm install 22` — team runs v22 locally                |
 | Yarn           | 4.10.0        | `corepack enable && corepack prepare yarn@4.10.0 --activate`                                |
 | Ruby           | 3.1.4         | [rbenv](https://github.com/rbenv/rbenv) or [rvm](https://rvm.io/) — team runs 3.1.4 locally |
+| CocoaPods      | 1.15.2        | `gem install cocoapods -v 1.15.2` — must match `Podfile.lock` version                       |
 | Watchman       | Latest        | `brew install watchman`                                                                     |
 | JDK            | 17            | [Adoptium](https://adoptium.net/) or Android Studio                                         |
 | Xcode          | Latest stable | Mac App Store (iOS only)                                                                    |
@@ -94,7 +95,7 @@ Copy `.env.example` to `.env` and fill in the values. The `.env` file must
 | `WALLET_KIT_MT_DESCRIPTION_DEV`     | Your project description                                                                                                                                        |
 | `WALLET_KIT_MT_URL_DEV`             | Your project URL                                                                                                                                                |
 | `WALLET_KIT_MT_ICON_DEV`            | Your project icon URL                                                                                                                                           |
-| `WALLET_KIT_MT_REDIRECT_NATIVE_DEV` | Deep link scheme matching your dev bundle ID                                                                                                                    |
+| `WALLET_KIT_MT_REDIRECT_NATIVE_DEV` | Deep link matching what you've configured on the WalletConnect dashboard                                                                                        |
 | `ANDROID_DEBUG_KEYSTORE_PASSWORD`   | Android Studio's default: `android`                                                                                                                             |
 | `ANDROID_DEBUG_KEYSTORE_ALIAS`      | Android Studio's default: `androiddebugkey`                                                                                                                     |
 
@@ -237,7 +238,7 @@ iOS and Android, including small screens.
 
 ### Platform-specific code
 
-- Use `Platform.OS` checks for small differences
+- Use the existing `isIOS` and `isAndroid` helpers for platform checks
 - Use `.ios.tsx` / `.android.tsx` file extensions for larger divergences
 - Test on **both platforms** — especially native module interactions, gestures,
   and keyboard behavior
@@ -248,10 +249,11 @@ The app connects to two separate backend services:
 
 - **V1**
   ([stellar/freighter-backend](https://github.com/stellar/freighter-backend),
-  TypeScript) — balances, subscriptions, feature flags, notifications
+  TypeScript) — balances, token prices, token details, remote config,
+  transaction simulation, transaction submission
 - **V2**
   ([stellar/freighter-backend-v2](https://github.com/stellar/freighter-backend-v2),
-  Go) — collectibles, RPC health, ledger keys, protocols
+  Go) — protocols (Discovery screen), collectibles
 
 To run your own:
 
@@ -288,14 +290,13 @@ Freighter handles private keys and signs transactions. When contributing:
   [Stellar Security Policy](https://github.com/stellar/.github/blob/master/SECURITY.md)
   — not public issues
 
-See [`docs/auth_flow_diagram.md`](docs/auth_flow_diagram.md) for the full auth
-security model.
+For the auth security model, read `src/ducks/auth.ts` directly — it is the
+source of truth for the authentication state machine.
 
 ## Further Reading
 
 | Topic                      | Location                                                                                      |
 | -------------------------- | --------------------------------------------------------------------------------------------- |
-| Auth architecture          | [`docs/auth_flow_diagram.md`](docs/auth_flow_diagram.md)                                      |
 | WalletConnect RPC methods  | [`docs/walletconnect-rpc-methods.md`](docs/walletconnect-rpc-methods.md)                      |
 | E2E testing (6 guides)     | [`e2e/docs/`](e2e/docs/)                                                                      |
 | Mock dApp for testing      | [`mock-dapp/README.md`](mock-dapp/README.md)                                                  |

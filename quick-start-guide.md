@@ -12,7 +12,7 @@ For each tool, try the version command first. If it fails (e.g., sandbox
 restrictions), fall back to `which <tool>` to confirm presence.
 
 ```bash
-# Node.js >= 20
+# Node.js >= 22
 node --version 2>&1 || which node
 
 # Corepack
@@ -24,7 +24,7 @@ yarn --version 2>&1 || which yarn
 # Homebrew
 brew --version 2>&1 || which brew
 
-# Ruby >= 2.6.10
+# Ruby >= 3.1.4
 ruby --version 2>&1 || which ruby
 
 # Bundler
@@ -72,7 +72,7 @@ Show a clear summary with status for each tool:
 ```
 Freighter Mobile — Prerequisites Check
 ========================================
-  Node.js        v20.x.x        >= 20 required        OK
+  Node.js        v22.x.x        >= 22 required        OK
   Corepack       0.x.x          any                   OK
   Yarn           4.10.0         4.10.0 required       OK
   Homebrew       4.x.x          any                   OK
@@ -82,7 +82,7 @@ Freighter Mobile — Prerequisites Check
   JDK            17.0.x         17 required           OK
   nvm            found          any                   OK
   Xcode CLI      /path          any                   OK
-  CocoaPods      1.16.x         >= 1.13               OK
+  CocoaPods      1.15.x         >= 1.13               OK
   ANDROID_HOME   /path/to/sdk   must be set           OK
   SDK Platform 36               -                     OK
   Build-Tools 36.0.0            -                     MISSING
@@ -110,7 +110,8 @@ summary.
   `curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash`
   — then source nvm before continuing:
   `export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"`
-- **Node.js 20**: `nvm install 20`
+- **Node.js 22**: `nvm install 22`
+- **CocoaPods**: `gem install cocoapods -v 1.15.2` — must match `Podfile.lock`
 - **Corepack + Yarn**:
   `corepack enable && corepack prepare yarn@4.10.0 --activate`
 - **Watchman**: `brew install watchman` (macOS) or build from source on Linux
@@ -151,7 +152,7 @@ summary.
 ## Step 4: Run initial setup
 
 ```bash
-nvm install 20 && nvm use 20   # No .nvmrc — use explicit version
+nvm install 22 && nvm use 22   # No .nvmrc — use explicit version
 bundle install       # Ruby deps (Fastlane, CocoaPods — no separate pod install needed)
 yarn install         # Node deps (postinstall handles Husky, polyfills, pods)
 ```
@@ -167,20 +168,25 @@ cp .env.example .env
 Then read `.env` and check which required variables are empty. For each empty
 required variable, tell the user the value or how to set it up:
 
-| Variable                            | Value or setup                                                                                                                                                     |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `FREIGHTER_BACKEND_V1_DEV_URL`      | Run your own backend from [stellar/freighter-backend](https://github.com/stellar/freighter-backend) and point this to your local instance                          |
-| `FREIGHTER_BACKEND_V2_DEV_URL`      | Run your own backend from [stellar/freighter-backend-v2](https://github.com/stellar/freighter-backend-v2) and point this to your local instance                    |
-| `WALLET_KIT_PROJECT_ID_DEV`         | Create free project at [dashboard.reown.com](https://dashboard.reown.com) (type: Wallet), copy Project ID                                                          |
-| `WALLET_KIT_MT_NAME_DEV`            | Your project name from Reown dashboard                                                                                                                             |
-| `WALLET_KIT_MT_DESCRIPTION_DEV`     | Your project description                                                                                                                                           |
-| `WALLET_KIT_MT_URL_DEV`             | Your project URL                                                                                                                                                   |
-| `WALLET_KIT_MT_ICON_DEV`            | Your project icon URL                                                                                                                                              |
-| `WALLET_KIT_MT_REDIRECT_NATIVE_DEV` | Deep link scheme matching your dev bundle ID                                                                                                                       |
-| `ANDROID_DEBUG_KEYSTORE_PASSWORD`   | `android` (default)                                                                                                                                                |
-| `ANDROID_DEBUG_KEYSTORE_ALIAS`      | `androiddebugkey` (default)                                                                                                                                        |
-| `ANDROID_DEV_KEYSTORE_PASSWORD`     | Generate: `mkdir -p android/keystores && keytool -genkey -v -keystore android/keystores/dev-release.keystore -alias dev -keyalg RSA -keysize 2048 -validity 10000` |
-| `ANDROID_DEV_KEYSTORE_ALIAS`        | The alias from your keystore (e.g., `dev`)                                                                                                                         |
+| Variable                            | Value or setup                                                                                                                                  |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `FREIGHTER_BACKEND_V1_DEV_URL`      | Run your own backend from [stellar/freighter-backend](https://github.com/stellar/freighter-backend) and point this to your local instance       |
+| `FREIGHTER_BACKEND_V2_DEV_URL`      | Run your own backend from [stellar/freighter-backend-v2](https://github.com/stellar/freighter-backend-v2) and point this to your local instance |
+| `WALLET_KIT_PROJECT_ID_DEV`         | Create free project at [dashboard.walletconnect.com](https://dashboard.walletconnect.com) (type: Wallet), copy Project ID                       |
+| `WALLET_KIT_MT_NAME_DEV`            | Your project name from WalletConnect dashboard                                                                                                  |
+| `WALLET_KIT_MT_DESCRIPTION_DEV`     | Your project description                                                                                                                        |
+| `WALLET_KIT_MT_URL_DEV`             | Your project URL                                                                                                                                |
+| `WALLET_KIT_MT_ICON_DEV`            | Your project icon URL                                                                                                                           |
+| `WALLET_KIT_MT_REDIRECT_NATIVE_DEV` | Deep link matching what you've configured on the WalletConnect dashboard                                                                        |
+| `ANDROID_DEBUG_KEYSTORE_PASSWORD`   | `android` (default)                                                                                                                             |
+| `ANDROID_DEBUG_KEYSTORE_ALIAS`      | `androiddebugkey` (default)                                                                                                                     |
+
+**Optional — only needed for dev release builds (e.g., E2E tests):**
+
+| Variable                        | Value or setup                                                                                                                                                     |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ANDROID_DEV_KEYSTORE_PASSWORD` | Generate: `mkdir -p android/keystores && keytool -genkey -v -keystore android/keystores/dev-release.keystore -alias dev -keyalg RSA -keysize 2048 -validity 10000` |
+| `ANDROID_DEV_KEYSTORE_ALIAS`    | The alias from your keystore (e.g., `dev`)                                                                                                                         |
 
 Skip any variable that already has a value.
 
@@ -207,7 +213,7 @@ Setup Complete
   Configured: .env with X/Y required variables filled
 
   Manual action needed:
-  - [ ] Create WalletConnect project at dashboard.reown.com and fill WALLET_KIT_* vars
+  - [ ] Create WalletConnect project at dashboard.walletconnect.com and fill WALLET_KIT_* vars
   - [ ] Generate Android dev keystore and fill ANDROID_DEV_KEYSTORE_* vars
 
   Ready to run: yarn ios / yarn android
