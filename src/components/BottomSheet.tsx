@@ -90,7 +90,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
   scrollViewFooterComponent = undefined,
   scrollable = false,
 }) => {
-  if (scrollable && snapPoints) {
+  if (__DEV__ && scrollable && snapPoints) {
     throw new Error(
       "BottomSheet: `scrollable` and `snapPoints` cannot be used together.",
     );
@@ -209,6 +209,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
       maxDynamicContentSize={maxDynamicContentSize}
       enableOverDrag={false}
       snapPoints={snapPoints}
+      topInset={scrollable ? insets.top : undefined}
       backdropComponent={renderBackdrop}
       handleComponent={renderHandle}
       backgroundStyle={{
@@ -223,7 +224,6 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
             className="bg-background-primary pl-6 pr-6 pt-6 gap-6"
             showsVerticalScrollIndicator={false}
             style={{
-              paddingTop: insets.top,
               paddingBottom: useInsetsBottomPadding
                 ? insets.bottom + pxValue(DEFAULT_PADDING)
                 : 0,
