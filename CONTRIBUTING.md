@@ -8,16 +8,16 @@ For the Stellar organization's general contribution guidelines, see the
 
 ## Prerequisites
 
-| Tool           | Version       | Install                                                           |
-| -------------- | ------------- | ----------------------------------------------------------------- |
-| Node.js        | >= 20         | [nodejs.org](https://nodejs.org) or `nvm install 20`              |
-| Yarn           | 4.10.0        | `corepack enable && corepack prepare yarn@4.10.0 --activate`      |
-| Ruby           | >= 2.6.10     | [rbenv](https://github.com/rbenv/rbenv) or [rvm](https://rvm.io/) |
-| Watchman       | Latest        | `brew install watchman`                                           |
-| JDK            | 17            | [Adoptium](https://adoptium.net/) or Android Studio               |
-| Xcode          | Latest stable | Mac App Store (iOS only)                                          |
-| Android Studio | Latest stable | [developer.android.com](https://developer.android.com/studio)     |
-| Maestro CLI    | Latest        | `brew install mobile-dev-inc/tap/maestro` (e2e tests only)        |
+| Tool           | Version       | Install                                                                                     |
+| -------------- | ------------- | ------------------------------------------------------------------------------------------- |
+| Node.js        | >= 22         | [nodejs.org](https://nodejs.org) or `nvm install 22` — team runs v22 locally                |
+| Yarn           | 4.10.0        | `corepack enable && corepack prepare yarn@4.10.0 --activate`                                |
+| Ruby           | 3.1.4         | [rbenv](https://github.com/rbenv/rbenv) or [rvm](https://rvm.io/) — team runs 3.1.4 locally |
+| Watchman       | Latest        | `brew install watchman`                                                                     |
+| JDK            | 17            | [Adoptium](https://adoptium.net/) or Android Studio                                         |
+| Xcode          | Latest stable | Mac App Store (iOS only)                                                                    |
+| Android Studio | Latest stable | [developer.android.com](https://developer.android.com/studio)                               |
+| Maestro CLI    | Latest        | `brew install mobile-dev-inc/tap/maestro` (e2e tests only)                                  |
 
 **Android SDK requirements** (install via Android Studio SDK Manager):
 
@@ -85,31 +85,31 @@ Copy `.env.example` to `.env` and fill in the values. The `.env` file must
 
 **Required — app won't build or function without these:**
 
-| Variable                            | How to set up                                                                                                                                                                                                                        |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `FREIGHTER_BACKEND_V1_DEV_URL`      | Run your own backend from [stellar/freighter-backend](https://github.com/stellar/freighter-backend)                                             |
-| `FREIGHTER_BACKEND_V2_DEV_URL`      | Run your own backend-v2 from [stellar/freighter-backend-v2](https://github.com/stellar/freighter-backend-v2) |
-| `WALLET_KIT_PROJECT_ID_DEV`         | Create a free project at [dashboard.reown.com](https://dashboard.reown.com) — sign up, create a new project (type: Wallet), copy the Project ID                                                                                      |
-| `WALLET_KIT_MT_NAME_DEV`            | Your project name from the Reown dashboard                                                                                                                                                                                           |
-| `WALLET_KIT_MT_DESCRIPTION_DEV`     | Your project description                                                                                                                                                                                                             |
-| `WALLET_KIT_MT_URL_DEV`             | Your project URL                                                                                                                                                                                                                     |
-| `WALLET_KIT_MT_ICON_DEV`            | Your project icon URL                                                                                                                                                                                                                |
-| `WALLET_KIT_MT_REDIRECT_NATIVE_DEV` | Deep link scheme matching your dev bundle ID                                                                                                                                                                                         |
-| `ANDROID_DEBUG_KEYSTORE_PASSWORD`   | Android Studio's default: `android`                                                                                                                                                                                                  |
-| `ANDROID_DEBUG_KEYSTORE_ALIAS`      | Android Studio's default: `androiddebugkey`                                                                                                                                                                                          |
-| `ANDROID_DEV_KEYSTORE_PASSWORD`     | Generate your own keystore: `mkdir -p android/keystores && keytool -genkey -v -keystore android/keystores/dev-release.keystore -alias dev -keyalg RSA -keysize 2048 -validity 10000`, then use the password you set                  |
-| `ANDROID_DEV_KEYSTORE_ALIAS`        | The alias you chose when generating the keystore (e.g., `dev`)                                                                                                                                                                       |
+| Variable                            | How to set up                                                                                                                                                   |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `FREIGHTER_BACKEND_V1_DEV_URL`      | Run your own backend from [stellar/freighter-backend](https://github.com/stellar/freighter-backend)                                                             |
+| `FREIGHTER_BACKEND_V2_DEV_URL`      | Run your own backend-v2 from [stellar/freighter-backend-v2](https://github.com/stellar/freighter-backend-v2)                                                    |
+| `WALLET_KIT_PROJECT_ID_DEV`         | Create a free project at [dashboard.walletconnect.com](https://dashboard.walletconnect.com) — sign up, create a new project (type: Wallet), copy the Project ID |
+| `WALLET_KIT_MT_NAME_DEV`            | Your project name from the WalletConnect dashboard                                                                                                              |
+| `WALLET_KIT_MT_DESCRIPTION_DEV`     | Your project description                                                                                                                                        |
+| `WALLET_KIT_MT_URL_DEV`             | Your project URL                                                                                                                                                |
+| `WALLET_KIT_MT_ICON_DEV`            | Your project icon URL                                                                                                                                           |
+| `WALLET_KIT_MT_REDIRECT_NATIVE_DEV` | Deep link scheme matching your dev bundle ID                                                                                                                    |
+| `ANDROID_DEBUG_KEYSTORE_PASSWORD`   | Android Studio's default: `android`                                                                                                                             |
+| `ANDROID_DEBUG_KEYSTORE_ALIAS`      | Android Studio's default: `androiddebugkey`                                                                                                                     |
 
 **Optional — features degrade gracefully without these:**
 
-| Variable                                     | Notes                                                                                      |
-| -------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `AMPLITUDE_API_KEY`                          | Auto-disabled in `__DEV__` mode — not needed for local dev                                 |
-| `SENTRY_DSN`                                 | Leave empty — errors log to console instead                                                |
-| `FREIGHTER_BACKEND_*_STG_URL` / `*_PROD_URL` | Only needed for staging/prod builds. Run your own backend from [stellar/freighter-backend](https://github.com/stellar/freighter-backend) and backend-v2 from [stellar/freighter-backend-v2](https://github.com/stellar/freighter-backend-v2)  |
-| `WALLET_KIT_*_PROD` (6 vars)                 | Only needed for prod builds — same setup as dev vars above                                 |
-| `ANDROID_PROD_KEYSTORE_*`                    | Only needed for release builds — generate a separate keystore                              |
-| `MP_COLLECTIONS_ADDRESSES`                   | Comma-separated list — leave empty if not working on collectibles                          |
+| Variable                                     | Notes                                                                                                                                                                                                                                        |
+| -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AMPLITUDE_API_KEY`                          | Auto-disabled in `__DEV__` mode — not needed for local dev                                                                                                                                                                                   |
+| `SENTRY_DSN`                                 | Leave empty — errors log to console instead                                                                                                                                                                                                  |
+| `FREIGHTER_BACKEND_*_STG_URL` / `*_PROD_URL` | Only needed for staging/prod builds. Run your own backend from [stellar/freighter-backend](https://github.com/stellar/freighter-backend) and backend-v2 from [stellar/freighter-backend-v2](https://github.com/stellar/freighter-backend-v2) |
+| `WALLET_KIT_*_PROD` (6 vars)                 | Only needed for prod builds — same setup as dev vars above                                                                                                                                                                                   |
+| `ANDROID_PROD_KEYSTORE_*`                    | Only needed for release builds — generate a separate keystore                                                                                                                                                                                |
+| `ANDROID_DEV_KEYSTORE_PASSWORD`              | Only needed for dev release builds — generate: `mkdir -p android/keystores && keytool -genkey -v -keystore android/keystores/dev-release.keystore -alias dev -keyalg RSA -keysize 2048 -validity 10000`                                      |
+| `ANDROID_DEV_KEYSTORE_ALIAS`                 | The alias from your keystore (e.g., `dev`) — only needed for dev release builds                                                                                                                                                              |
+| `MP_COLLECTIONS_ADDRESSES`                   | Comma-separated list — leave empty if not working on collectibles                                                                                                                                                                            |
 
 **E2E testing only:**
 
@@ -153,6 +153,7 @@ yarn test:e2e:android <flow> # Maestro e2e (Android)
 ```bash
 yarn start-c          # Clear Metro cache
 yarn pod-install      # Reinstall CocoaPods
+yarn gradle-clean     # Clean Gradle build cache (Android)
 yarn node-c-install   # Remove node_modules + reinstall
 yarn c-install        # Full clean (Gradle + node_modules + reinstall)
 yarn r-install        # Nuclear: reset env + rebuild everything
