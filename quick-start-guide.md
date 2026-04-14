@@ -169,8 +169,8 @@ required variable, tell the user the value or how to set it up:
 
 | Variable                            | Value or setup                                                                                                                                                     |
 | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `FREIGHTER_BACKEND_V1_DEV_URL`      | `https://freighter-backend-dev.stellar.org/api/v1` (preferred). Fallback: `-stg` or `-prd` if dev is unavailable                                                   |
-| `FREIGHTER_BACKEND_V2_DEV_URL`      | `https://freighter-backend-v2-dev.stellar.org/api/v1` (preferred). Fallback: `-stg` or prod (`freighter-backend-v2.stellar.org`) if dev is unavailable             |
+| `FREIGHTER_BACKEND_V1_DEV_URL`      | Run your own backend from [stellar/freighter-backend](https://github.com/stellar/freighter-backend) and point this to your local instance                          |
+| `FREIGHTER_BACKEND_V2_DEV_URL`      | Run your own backend from [stellar/freighter-backend-v2](https://github.com/stellar/freighter-backend-v2) and point this to your local instance                    |
 | `WALLET_KIT_PROJECT_ID_DEV`         | Create free project at [dashboard.reown.com](https://dashboard.reown.com) (type: Wallet), copy Project ID                                                          |
 | `WALLET_KIT_MT_NAME_DEV`            | Your project name from Reown dashboard                                                                                                                             |
 | `WALLET_KIT_MT_DESCRIPTION_DEV`     | Your project description                                                                                                                                           |
