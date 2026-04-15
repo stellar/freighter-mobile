@@ -9,8 +9,8 @@
  * @exodus/patch-broken-hermes-typed-arrays package fixes this at runtime.
  *
  * In Jest (V8), these methods already work correctly. These tests document
- * the behavioral contract that must hold on Hermes as well, and will catch
- * regressions if the polyfill is accidentally removed.
+ * the behavioral contract that must hold on Hermes as well, but they do not
+ * by themselves verify that the Hermes polyfill is required or loaded.
  */
 
 import { Buffer } from "buffer";
