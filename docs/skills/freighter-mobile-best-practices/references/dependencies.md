@@ -22,18 +22,8 @@ When adding a package with native code, you must rebuild both platforms.
 
 ## iOS Dependencies (CocoaPods)
 
-After adding a native dependency:
-
-```bash
-yarn pod-install
-```
-
-To clean and reinstall CocoaPods (when encountering pod issues):
-
-```bash
-cd ios && pod deintegrate && pod cache clean --all
-cd .. && yarn pod-install
-```
+`yarn install` automatically installs CocoaPods dependencies. Use
+`yarn pod-install` only when you need to reinstall pods independently.
 
 ## Android Dependencies (Gradle)
 
@@ -68,9 +58,8 @@ This runs `react-native start --reset-cache`.
 ## Adding a Native Dependency
 
 1. Add the package to `package.json`
-2. Run `yarn install`
-3. Run `yarn pod-install` (for iOS)
-4. Rebuild both platforms and verify
+2. Run `yarn install` (this also installs CocoaPods automatically)
+3. Rebuild both platforms and verify
 
 ## Upgrading React Native
 

@@ -83,7 +83,7 @@ await fetchBalances(publicKey);
 
 // Also correct
 fetchBalances(publicKey).catch((error) => {
-  Sentry.captureException(normalizeError(error));
+  logger.error(normalizeError(error));
 });
 ```
 
@@ -137,7 +137,7 @@ try {
 try {
   await riskyOp();
 } catch (error) {
-  Sentry.captureException(normalizeError(error));
+  logger.error(normalizeError(error));
 }
 ```
 

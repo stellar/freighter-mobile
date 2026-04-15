@@ -73,7 +73,7 @@ Available route enum groups:
 
 Dev and prod use separate deep-link schemes (configured in the Xcode/Gradle
 build settings and the WalletConnect dashboard). WalletConnect deep links follow
-the format: `<scheme>://wc?uri=...`
+the format: `<deep-link-scheme>://<optional-path>/wc?uri=wc:...`
 
 See the native project configuration for the actual scheme values — do not
 hard-code them in documentation to avoid wallet impersonation risks.

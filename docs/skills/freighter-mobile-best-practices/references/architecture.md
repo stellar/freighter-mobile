@@ -135,7 +135,7 @@ Services live in `src/services/` and handle all external API communication:
 
 ## Config
 
-`src/config/` holds constants, feature flags, and environment-specific values
+`src/config/` holds constants, colors, theme, and environment-specific values
 used across the app.
 
 ## Dual Bundle IDs
