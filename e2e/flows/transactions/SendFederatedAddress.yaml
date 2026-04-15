@@ -1,0 +1,130 @@
+appId: org.stellar.freighterdev
+tags:
+  - transactions
+  - send
+  - federation
+  - mainnet
+---
+# Send 0.000001 XLM on mainnet to a federated address (gcewqz*lobstr.co).
+# Verifies that federation address resolution works end-to-end:
+# search → resolve → review → confirm → sent.
+#
+# Uses a small amount to avoid wasting mainnet funds.
+
+# Import funded wallet
+- runFlow:
+    file: ../onboarding/ImportFundedWallet.yaml
+
+# Wait for either home screen or banner to appear
+- extendedWaitUntil:
+    visible:
+      id: home-screen|welcome-banner-dismiss-button
+    timeout: 30000
+
+# Dismiss welcome banner if visible
+- runFlow:
+    when:
+      visible:
+        id: welcome-banner-dismiss-button
+    commands:
+      - tapOn:
+          id: welcome-banner-dismiss-button
+      - extendedWaitUntil:
+          visible:
+            id: home-screen
+          timeout: 30000
+
+# Stay on mainnet (no network switch)
+
+# Verify we're on home screen after import
+- assertVisible:
+    id: home-screen
+
+# Wait for accounts and balances to load
+- extendedWaitUntil:
+    visible:
+      id: home-account-switcher
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: icon-button-send
+    timeout: 15000
+
+# Navigate to send flow
+- tapOn:
+    id: icon-button-send
+# Tap recipient row to open search
+- tapOn:
+    id: send-recipient-row
+# Wait for recipient search screen
+- extendedWaitUntil:
+    visible:
+      id: send-search-contacts-screen
+    timeout: 15000
+
+# Type a federation address (LOBSTR federation)
+- tapOn:
+    id: send-recipient-input
+- inputText: gcewqz*lobstr.co
+
+# Wait for federation resolution and search suggestion to appear
+- extendedWaitUntil:
+    visible:
+      id: search-suggestion-0
+    timeout: 30000
+- tapOn:
+    id: search-suggestion-0
+
+# Verify we're on amount screen (federation resolved successfully)
+- extendedWaitUntil:
+    visible:
+      id: send-amount-screen
+    timeout: 15000
+
+# Enter amount: 0.000001 XLM (minimal to avoid wasting mainnet funds)
+- tapOn:
+    id: numeric-key-0
+- tapOn:
+    id: numeric-key-decimal
+- repeat:
+    times: 5
+    commands:
+      - tapOn:
+          id: numeric-key-0
+- tapOn:
+    id: numeric-key-1
+
+# Tap Review button - this is where the bug manifested (federation address
+# was passed to buildPaymentTransaction instead of the resolved G... key)
+- tapOn:
+    id: send-continue-button
+
+# Verify review sheet is visible (confirms federation address was correctly
+# resolved to a G... public key for transaction building)
+- extendedWaitUntil:
+    visible:
+      id: send-review-sheet
+    timeout: 30000
+# Verify the federation address is displayed in the review sheet
+- assertVisible:
+    text: "gcewqz*lobstr.co"
+# Confirm the transaction
+- tapOn:
+    id: send-review-confirm-button
+# Verify processing screen
+- extendedWaitUntil:
+    visible:
+      id: send-processing-screen
+    timeout: 30000
+# Wait for completion and tap Done
+- extendedWaitUntil:
+    visible:
+      id: send-processing-done-button
+    timeout: 30000
+- tapOn:
+    id: send-processing-done-button
+# Verify we're back on history screen with transaction visible
+# Note: optional because the transaction might not be immediately rendered in the view
+- assertVisible:
+    text: "XLM"
+    optional: true

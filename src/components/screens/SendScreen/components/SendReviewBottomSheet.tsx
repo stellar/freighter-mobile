@@ -90,8 +90,12 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
-  const { recipientAddress, transactionMemo, transactionFee } =
-    useTransactionSettingsStore();
+  const {
+    recipientAddress,
+    federationAddress,
+    transactionMemo,
+    transactionFee,
+  } = useTransactionSettingsStore();
   const { account } = useGetActiveAccount();
   const { copyToClipboard } = useClipboard();
   const slicedAddress = truncateAddress(recipientAddress, 4, 4);
@@ -338,9 +342,20 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
               hasDarkBackground
             />
             <View className="flex-1">
-              <Text xl medium>
-                {slicedAddress}
-              </Text>
+              {federationAddress ? (
+                <>
+                  <Text xl medium>
+                    {federationAddress}
+                  </Text>
+                  <Text md medium secondary>
+                    {slicedAddress}
+                  </Text>
+                </>
+              ) : (
+                <Text xl medium>
+                  {slicedAddress}
+                </Text>
+              )}
             </View>
           </View>
         </View>

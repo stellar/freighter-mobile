@@ -115,6 +115,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const {
     transactionFee,
     recipientAddress,
+    federationAddress,
     selectedTokenId,
     transactionMemo,
     saveSelectedTokenId,
@@ -931,6 +932,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
               isSingleRow
               onPress={navigateToSelectContactScreen}
               address={recipientAddress}
+              name={federationAddress || undefined}
               testID="send-recipient-row"
               rightElement={
                 <IconButton

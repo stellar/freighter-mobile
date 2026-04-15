@@ -20,12 +20,13 @@ import {
 import { useQRDataStore } from "ducks/qrData";
 import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
+import { isFederationAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
 import { useRightHeaderButton } from "hooks/useRightHeader";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { View } from "react-native";
 import { analytics } from "services/analytics";
 
@@ -53,6 +54,7 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
   const [address, setAddress] = useState("");
   const {
     saveRecipientAddress,
+    saveFederationAddress,
     selectedCollectibleDetails,
     saveSelectedCollectibleDetails,
   } = useTransactionSettingsStore();
@@ -63,6 +65,7 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
     recentAddresses,
     searchResults,
     searchError,
+    isSearching,
     loadRecentAddresses,
     searchAddress,
     setDestinationAddress,
@@ -90,18 +93,39 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
     [clearQRData, saveSelectedCollectibleDetails],
   );
 
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const SEARCH_DEBOUNCE_MS = 300;
+
   /**
-   * Handles search input changes and updates suggestions
+   * Handles search input changes with debounce to prevent flickering
+   * messages and unnecessary intermediate requests while typing.
    *
    * @param {string} text - The search text entered by user
    */
   const handleSearch = useCallback(
     (text: string) => {
       setAddress(text);
-      // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      searchAddress(text);
+
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+      }
+
+      searchDebounceRef.current = setTimeout(() => {
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
+        searchAddress(text);
+      }, SEARCH_DEBOUNCE_MS);
     },
     [searchAddress],
+  );
+
+  // Clean up debounce timer on unmount
+  useEffect(
+    () => () => {
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+      }
+    },
+    [],
   );
 
   /**
@@ -114,11 +138,25 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
       if (recentAddresses.some((c) => c.address === contactAddress)) {
         analytics.track(AnalyticsEvent.SEND_PAYMENT_RECENT_ADDRESS);
       }
+
+      // For federation addresses resolved via search, use the resolved G...
+      // public key for the transaction and keep the federation address for display
+      const { destinationAddress: resolvedAddress } =
+        useSendRecipientStore.getState();
+
+      const isFederation = isFederationAddress(contactAddress);
+      const addressForTransaction =
+        isFederation && resolvedAddress ? resolvedAddress : contactAddress;
+
       // Save to both stores for different purposes
       // Send store is for contact management
-      setDestinationAddress(contactAddress);
+      setDestinationAddress(
+        addressForTransaction,
+        isFederation ? contactAddress : undefined,
+      );
       // Transaction settings store is for the transaction flow
-      saveRecipientAddress(contactAddress);
+      saveRecipientAddress(addressForTransaction);
+      saveFederationAddress(isFederation ? contactAddress : "");
 
       if (selectedCollectibleDetails.tokenId) {
         // Use popTo for collectible flow
@@ -136,6 +174,7 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
       recentAddresses,
       setDestinationAddress,
       saveRecipientAddress,
+      saveFederationAddress,
       navigation,
       selectedCollectibleDetails,
     ],
@@ -181,7 +220,7 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
             value={address}
           />
 
-          {searchError && (
+          {searchError && !isSearching && (
             <View className="mt-4">
               <Text sm secondary>
                 {searchError}
@@ -189,6 +228,7 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
             </View>
           )}
           {!searchError &&
+            !isSearching &&
             isValidDestination &&
             isDestinationFunded === false && (
               <View className="mt-4">
