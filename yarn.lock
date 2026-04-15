@@ -4643,7 +4643,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@stellar/freighter-api@npm:^6.0.1":
+"@stellar/freighter-api@npm:6.0.1":
   version: 6.0.1
   resolution: "@stellar/freighter-api@npm:6.0.1"
   dependencies:
@@ -4718,23 +4718,23 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@stellar/typescript-wallet-sdk-km@npm:3.0.0-beta.1776281445723":
-  version: 3.0.0-beta.1776281445723
-  resolution: "@stellar/typescript-wallet-sdk-km@npm:3.0.0-beta.1776281445723"
+"@stellar/typescript-wallet-sdk-km@npm:3.0.0":
+  version: 3.0.0
+  resolution: "@stellar/typescript-wallet-sdk-km@npm:3.0.0"
   dependencies:
     "@albedo-link/intent": "npm:^0.12.0"
     "@ledgerhq/hw-app-str": "npm:^6.28.4"
     "@ledgerhq/hw-transport-u2f": "npm:^5.36.0-deprecated"
     "@stablelib/base64": "npm:^2.0.0"
     "@stablelib/utf8": "npm:^2.0.0"
-    "@stellar/freighter-api": "npm:^6.0.1"
+    "@stellar/freighter-api": "npm:6.0.1"
     "@stellar/stellar-sdk": "npm:15.0.1"
     "@trezor/connect-plugin-stellar": "npm:^9.0.2"
     bignumber.js: "npm:^9.1.2"
     scrypt-async: "npm:^2.0.1"
     trezor-connect: "npm:^8.2.12"
     tweetnacl: "npm:^1.0.3"
-  checksum: 10c0/0591b1ff045ab162e09b37a29ca4584a98a462805dae55c7b27461dde90f581d773fff976418a6dc81dad8612ddf567db108014b0a7e2e326d2c2126d22488aa
+  checksum: 10c0/70d77de834ca0fc9d090949470618741cc1448d87e00b9a012195bdbafc437fc8333933d815ec212fb61f373104952ac4364f63622db802f068f93c62912d4d2
   languageName: node
   linkType: hard
 
@@ -9862,7 +9862,7 @@ __metadata:
     "@stablelib/base64": "npm:2.0.1"
     "@stablelib/utf8": "npm:2.0.1"
     "@stellar/stellar-sdk": "npm:15.0.1"
-    "@stellar/typescript-wallet-sdk-km": "npm:3.0.0-beta.1776281445723"
+    "@stellar/typescript-wallet-sdk-km": "npm:3.0.0"
     "@testing-library/jest-native": "npm:5.4.3"
     "@testing-library/react-hooks": "npm:8.0.1"
     "@testing-library/react-native": "npm:13.3.3"

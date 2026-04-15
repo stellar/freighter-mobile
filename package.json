@@ -86,7 +86,7 @@
     "@stablelib/base64": "2.0.1",
     "@stablelib/utf8": "2.0.1",
     "@stellar/stellar-sdk": "15.0.1",
-    "@stellar/typescript-wallet-sdk-km": "3.0.0-beta.1776281445723",
+    "@stellar/typescript-wallet-sdk-km": "3.0.0",
     "@tradle/react-native-http": "2.0.0",
     "@walletconnect/core": "2.23.1",
     "@walletconnect/react-native-compat": "2.23.1",
