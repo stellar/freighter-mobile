@@ -76,7 +76,7 @@ build settings and the WalletConnect dashboard). WalletConnect deep links follow
 the format: `<deep-link-scheme>://<optional-path>/wc?uri=wc:...`
 
 See the native project configuration for the actual scheme values — do not
-hard-code them in documentation to avoid wallet impersonation risks.
+hard-code them in documentation.
 
 ## App Initialization Sequence
 
