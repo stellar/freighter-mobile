@@ -135,32 +135,26 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
   /**
    * Handles when a contact or address is selected
    *
-   * @param {string} contactAddress - The selected contact address
+   * @param {string} contactAddress - The selected contact address (G... public key)
+   * @param {string} [contactName] - The federation address if applicable
    */
   const handleContactPress = useCallback(
-    (contactAddress: string) => {
+    (contactAddress: string, contactName?: string) => {
       if (recentAddresses.some((c) => c.address === contactAddress)) {
         analytics.track(AnalyticsEvent.SEND_PAYMENT_RECENT_ADDRESS);
       }
 
-      // For federation addresses resolved via search, use the resolved G...
-      // public key for the transaction and keep the federation address for display
-      const { destinationAddress: resolvedAddress } =
-        useSendRecipientStore.getState();
-
-      const isFederation = isFederationAddress(contactAddress);
-      const addressForTransaction =
-        isFederation && resolvedAddress ? resolvedAddress : contactAddress;
+      const isFederation = !!contactName && isFederationAddress(contactName);
 
       // Save to both stores for different purposes
       // Send store is for contact management
       setDestinationAddress(
-        addressForTransaction,
-        isFederation ? contactAddress : undefined,
+        contactAddress,
+        isFederation ? contactName : undefined,
       );
       // Transaction settings store is for the transaction flow
-      saveRecipientAddress(addressForTransaction);
-      saveFederationAddress(isFederation ? contactAddress : "");
+      saveRecipientAddress(contactAddress);
+      saveFederationAddress(isFederation ? contactName : "");
 
       if (selectedCollectibleDetails.tokenId) {
         // Use popTo for collectible flow

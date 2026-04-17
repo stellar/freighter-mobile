@@ -63,23 +63,25 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
       const storedAddresses = await dataStorage.getItem(
         STORAGE_KEYS.RECENT_ADDRESSES,
       );
-      const parsedAddresses: string[] = storedAddresses
-        ? JSON.parse(storedAddresses)
-        : [];
+      const parsedData: (string | { address: string; name?: string })[] =
+        storedAddresses ? JSON.parse(storedAddresses) : [];
 
       // Get current active account public key
       const activePublicKey = await getActiveAccountPublicKey();
 
       // Transform to the Contact format, filtering out the current account
-      const contactList: Contact[] = parsedAddresses
+      // Supports both old format (string[]) and new format ({address, name}[])
+      const contactList: Contact[] = parsedData
+        .map((entry, index: number) => {
+          const addr = typeof entry === "string" ? entry : entry.address;
+          const name = typeof entry === "string" ? undefined : entry.name;
+          return { id: `recent-${index}`, address: addr, name };
+        })
         .filter(
-          (address) =>
-            !activePublicKey || !isSameAccount(address, activePublicKey),
-        )
-        .map((address: string, index: number) => ({
-          id: `recent-${index}`,
-          address,
-        }));
+          (contact) =>
+            !activePublicKey ||
+            !isSameAccount(contact.address, activePublicKey),
+        );
 
       set({ recentAddresses: contactList });
     } catch (error) {
@@ -107,12 +109,13 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
 
         set({ recentAddresses: updatedAddresses });
 
-        const addressesOnly = updatedAddresses.map(
-          (contact) => contact.address,
-        );
+        const addressData = updatedAddresses.map((contact) => ({
+          address: contact.address,
+          ...(contact.name ? { name: contact.name } : {}),
+        }));
         await dataStorage.setItem(
           STORAGE_KEYS.RECENT_ADDRESSES,
-          JSON.stringify(addressesOnly),
+          JSON.stringify(addressData),
         );
       }
     } catch (error) {
@@ -231,7 +234,8 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
 
       const result: Contact = {
         id: `search-${Date.now()}`,
-        address: searchTerm,
+        address: resolvedAddress,
+        name: fedAddress || undefined,
       };
 
       set({

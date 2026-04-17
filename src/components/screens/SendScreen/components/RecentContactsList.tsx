@@ -15,7 +15,7 @@ interface RecentContact {
 
 interface RecentContactsListProps {
   transactions: RecentContact[];
-  onContactPress: (address: string) => void;
+  onContactPress: (address: string, name?: string) => void;
   testID?: string;
 }
 
@@ -70,7 +70,7 @@ export const RecentContactsList: React.FC<RecentContactsListProps> = ({
             <ContactRow
               address={item.address}
               name={item.name}
-              onPress={() => onContactPress(item.address)}
+              onPress={() => onContactPress(item.address, item.name)}
               className="mb-[24px]"
               testID={`recent-contact-${index}`}
             />
