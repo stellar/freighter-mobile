@@ -511,10 +511,7 @@ const SendCollectibleReviewScreen: React.FC<
     isExpectedToFail: transactionSecurityAssessment.isExpectedToFail,
     isUnableToScan: transactionSecurityAssessment.isUnableToScan,
     isMuxedAddressWithoutMemoSupport,
-    // Collectible (SAC/Soroban) transfers write balances into contract storage
-    // keyed by address — the recipient doesn't need to be a funded Stellar
-    // account. Skip unfunded destination detection; defer to Blockaid.
-    unfundedContext: undefined,
+    unfundedContext: undefined, // see comment above getTransactionSecurity
     onSecurityWarningPress: openSecurityWarningBottomSheet,
     onMuxedAddressWithoutMemoSupportPress: openMuxedAddressWarningBottomSheet,
   });
