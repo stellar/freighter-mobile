@@ -249,8 +249,8 @@ The app connects to two separate backend services:
 
 - **V1**
   ([stellar/freighter-backend](https://github.com/stellar/freighter-backend),
-  TypeScript) — balances, token prices, token details, remote config,
-  transaction simulation, transaction submission
+  TypeScript) — balances, token prices, token details, account history, contract
+  specs, transaction simulation, transaction submission
 - **V2**
   ([stellar/freighter-backend-v2](https://github.com/stellar/freighter-backend-v2),
   Go) — protocols (Discovery screen), collectibles
