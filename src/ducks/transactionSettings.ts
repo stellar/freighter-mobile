@@ -37,7 +37,7 @@ const INITIAL_TRANSACTION_SETTINGS_STATE = {
  * @property {Function} saveRecipientAddress - Function to save the recipient address
  * @property {Function} saveFederationAddress - Function to save the federation address
  * @property {Function} saveSelectedTokenId - Function to save the selected token ID
- * @property {Function} saveSelectedCollectibleDetails - Function to save the selected collectilbe details
+ * @property {Function} saveSelectedCollectibleDetails - Function to save the selected collectible details
  * @property {Function} resetSettings - Function to reset all settings to default values
  */
 interface TransactionSettingsState {
@@ -97,7 +97,8 @@ export const useTransactionSettingsStore = create<TransactionSettingsState>(
      * Saves the recipient address for the transaction
      * @param {string} address - The recipient address (resolved G... public key)
      */
-    saveRecipientAddress: (address) => set({ recipientAddress: address }),
+    saveRecipientAddress: (address) =>
+      set({ recipientAddress: address, federationAddress: "" }),
 
     /**
      * Saves the original federation address for display purposes

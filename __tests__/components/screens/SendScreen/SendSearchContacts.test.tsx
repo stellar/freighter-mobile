@@ -77,6 +77,7 @@ const getSendStoreMock = (overrides = {}) =>
     searchAddress: mockSearchAddress,
     addRecentAddress: mockAddRecentAddress,
     setDestinationAddress: mockSetDestinationAddress,
+    clearSearchState: jest.fn(),
     resetSendRecipient: mockReset,
     ...overrides,
   });

@@ -68,6 +68,7 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
     isSearching,
     loadRecentAddresses,
     searchAddress,
+    clearSearchState,
     setDestinationAddress,
     resetSendRecipient,
     isValidDestination,
@@ -110,12 +111,15 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
         clearTimeout(searchDebounceRef.current);
       }
 
+      // Clear stale results/errors immediately so they don't linger during debounce
+      clearSearchState();
+
       searchDebounceRef.current = setTimeout(() => {
         // eslint-disable-next-line @typescript-eslint/no-floating-promises
         searchAddress(text);
       }, SEARCH_DEBOUNCE_MS);
     },
-    [searchAddress],
+    [searchAddress, clearSearchState],
   );
 
   // Clean up debounce timer on unmount
