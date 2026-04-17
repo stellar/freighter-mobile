@@ -1,60 +1,49 @@
-# Performance -- Freighter Mobile
+# Performance
 
 Performance guidelines for the Freighter Mobile React Native codebase.
 
-## React.memo -- 28 usages across 25 files (GOOD)
+> **Stack context.** The app runs the New Architecture (Fabric + TurboModules
+>
+> - JSI, `newArchEnabled=true`) on **React 19.1.0**. The React Compiler is not
+>   enabled — manual `useMemo` / `useCallback` / `React.memo` are required.
 
-Memoization is used for list items and screen components. No custom comparators
-found.
+## React.memo
 
-**RULE: Memoize ALL components rendered in FlatList/SectionList/map() renders.**
+**RULE: Memoize ALL components rendered in `FlatList` / `SectionList` / `map()`
+renders.**
 
 ```tsx
-// REQUIRED for list items
 export const ProtocolRow = React.memo(({ item, onPress }: ProtocolRowProps) => {
   return <TouchableOpacity onPress={onPress}>...</TouchableOpacity>;
 });
-
-// Missing memoization candidates:
-// - HistoryItem (rendered in SectionList)
-// - BalanceRow (rendered in FlatList)
 ```
 
-## useMemo -- 169 occurrences across 73 files (GOOD)
+## useMemo
 
-Well-used for derived display values, theme configs, filter results, and style
-objects.
-
-**RULE: Wrap in useMemo when:**
+**RULE: Wrap in `useMemo` when:**
 
 1. Computing derived values from store data (filtered lists, formatted amounts)
 2. Creating objects/arrays passed as props to memoized children
 3. Computing style objects inside component bodies
 
 ```tsx
-// REQUIRED — derived list
 const visibleCollectibles = useMemo(
   () => collectibles.filter((c) => !c.isHidden),
   [collectibles],
 );
 
-// REQUIRED — style object
 const trackStyle = useMemo(
   () => ({ backgroundColor: isChecked ? colors.active : colors.inactive }),
   [isChecked, colors],
 );
 ```
 
-## useCallback -- 331 occurrences across 85 files (GOOD)
+## useCallback
 
-Strong adoption. Used for event handlers, filter callbacks, modal handlers, and
-renderItem.
-
-**RULE: ALL callbacks passed to child components or used in FlatList MUST use
-useCallback.**
+**RULE: ALL callbacks passed to child components or used in `FlatList` MUST use
+`useCallback`.**
 
 ```tsx
-// REQUIRED — renderItem for FlatList
 const renderItem = useCallback(
   ({ item }: { item: Operation }) => (
     <HistoryItem operation={item} onPress={handleDetails} />
@@ -62,17 +51,12 @@ const renderItem = useCallback(
   [handleDetails],
 );
 
-// REQUIRED — event handler passed as prop
 const handleRefresh = useCallback(async () => {
   await fetchBalances(publicKey);
 }, [fetchBalances, publicKey]);
 ```
 
-## FlatList Optimization -- 23 FlatLists, 63 ScrollViews
-
-Some FlatLists are well-optimized (TabOverview has `windowSize`,
-`maxToRenderPerBatch`, `removeClippedSubviews`), but others are missing
-performance props.
+## FlatList Optimization
 
 **RULE: Every FlatList MUST include these props:**
 
@@ -89,30 +73,46 @@ performance props.
 />
 ```
 
-**Missing optimization:** Some FlatList usages in the codebase are still missing
-required performance props. Audit any FlatList to ensure it includes stable
-`keyExtractor`, `windowSize`, `maxToRenderPerBatch`, and `removeClippedSubviews`
-as applicable.
+**RULE: Never use `ScrollView` for lists exceeding ~50 items. Use `FlatList`
+with virtualization.**
 
-**RULE: Never use ScrollView for lists exceeding ~50 items. Use FlatList with
-virtualization.**
+### FlashList for heavy lists
 
-## Zustand Selector Patterns -- CRITICAL GAP (Score: 2/10)
+For lists exceeding ~100 items or with complex item layouts (e.g., balances and
+history), prefer **`@shopify/flash-list`**. FlashList uses cell recycling and
+outperforms `FlatList` significantly on long lists. Requires the
+`estimatedItemSize` prop.
 
-Current pattern destructures entire store, causing re-renders on ANY state
-change:
+## Key Props
+
+**RULE: Never use `Math.random()` in `key` or `keyExtractor`.** It generates a
+new key on every render, forcing React to unmount and remount every item — far
+worse than `index` as key.
 
 ```tsx
-// ANTI-PATTERN — subscribes to entire store (current codebase pattern)
+// WRONG — generates a new key every render, forces full remount
+keyExtractor={(item) => item.id || `balance-${Math.random()}`}
+
+// CORRECT — stable fallback chain
+keyExtractor={(item) => item.id ?? item.tokenCode ?? `${item.index}`}
+```
+
+**RULE: Never use array index as key.** Use stable unique identifiers.
+
+## Zustand Selector Patterns
+
+**RULE: Use Zustand selectors to subscribe ONLY to the state your component
+needs. Never destructure the entire store** — destructuring re-renders the
+component on any state change in that store.
+
+```tsx
+// WRONG — subscribes to the entire store
 const { tabs, activeTabId, isTabActive } = useBrowserTabsStore();
 
-// CORRECT — selective subscription, only re-renders when selected state changes
+// CORRECT — selective subscription
 const tabs = useBrowserTabsStore((state) => state.tabs);
 const activeTabId = useBrowserTabsStore((state) => state.activeTabId);
 ```
-
-**RULE: Use Zustand selectors to subscribe ONLY to the state your component
-needs. Never destructure the entire store.**
 
 For multiple fields, use shallow comparison:
 
@@ -124,13 +124,13 @@ const { tabs, activeTabId } = useBrowserTabsStore(
 );
 ```
 
-## Inline Functions in JSX -- 123 onPress inline, 110 inline styles
+## Inline Functions in JSX
 
-**RULE: Extract inline handlers to useCallback. Extract inline styles to useMemo
-or constants.**
+**RULE: Extract inline handlers to `useCallback`. Extract inline styles to
+`useMemo` or constants.**
 
 ```tsx
-// WRONG — 123 occurrences found
+// WRONG
 <ContactRow onPress={() => onContactPress(item.address)} />;
 
 // CORRECT
@@ -143,12 +143,8 @@ const handlePress = useCallback(
 
 ## Image Optimization
 
-FastImage (`@d11/react-native-fast-image`) is already adopted and used for
-remote images (see `src/components/sds/Token/index.tsx`,
-`src/helpers/validateIconUrl.ts`, `src/ducks/tokenIcons.ts`).
-
-**RULE: Use FastImage for ALL remote images (token icons, NFTs, profile
-images).**
+**RULE: Use `FastImage` (`@d11/react-native-fast-image`) for ALL remote images
+(token icons, NFTs, profile images).**
 
 ```tsx
 import FastImage from "@d11/react-native-fast-image";
@@ -160,15 +156,14 @@ import FastImage from "@d11/react-native-fast-image";
 />;
 ```
 
-Always specify `resizeMode`. Implement loading placeholders with Animated
-opacity fade (see `Token/index.tsx` for reference pattern).
+Always specify `resizeMode`. Implement loading placeholders with `Animated`
+opacity fade. See `src/components/sds/Token/index.tsx` for the reference
+pattern.
 
-## Reanimated Patterns -- 15 useAnimatedStyle, 6 useSharedValue (GOOD)
-
-Well-implemented in Toggle, Token, and BottomNavigationBar components.
+## Reanimated Patterns
 
 **RULE: Use Reanimated for animations that need 60fps. Keep animation logic in
-useAnimatedStyle worklets. Never animate on the JS thread.**
+`useAnimatedStyle` worklets. Never animate on the JS thread.**
 
 ```tsx
 // CORRECT — runs on UI thread
@@ -180,21 +175,17 @@ const animatedStyle = useAnimatedStyle(() => ({
 const [opacity] = useState(new Animated.Value(0));
 ```
 
-## useEffect Patterns -- 127 effects, 69 with cleanup (EXCELLENT)
+## useEffect Patterns
 
-**RULE: Every useEffect with subscriptions, timers, or listeners MUST return a
+**RULE: Every `useEffect` with subscriptions, timers, or listeners MUST return a
 cleanup function.**
 
 ```tsx
 useEffect(() => {
   const subscription = Keyboard.addListener("keyboardDidShow", handler);
-  return () => subscription.remove(); // REQUIRED cleanup
+  return () => subscription.remove();
 }, []);
 ```
-
-## Key Props -- 2 index-as-key anti-patterns
-
-**RULE: Never use array index as key. Use stable unique identifiers.**
 
 ## Hook Return Memoization
 
@@ -211,12 +202,46 @@ const useAccountData = (publicKey: string) => {
 };
 ```
 
-## Performance Priority Actions
+## Defer Work Off the Critical Path
 
-| Priority | Action                                                   | Impact                                    | Score Impact |
-| -------- | -------------------------------------------------------- | ----------------------------------------- | ------------ |
-| **P0**   | Implement Zustand selective subscriptions                | Prevents re-renders across 85 files       | 2/10 → 8/10  |
-| **P0**   | Add FlatList optimization props to all lists             | Improves scroll perf on 9 list components | 6/10 → 9/10  |
-| **P1**   | Ensure all remote images use FastImage (already adopted) | Consistent HTTP caching for all images    | —            |
-| **P1**   | Extract 123 inline handlers to useCallback               | Stabilizes reference equality             | 6/10 → 8/10  |
-| **P2**   | Memoize list item components (HistoryItem, BalanceRow)   | Prevents unnecessary list item re-renders | 7/10 → 9/10  |
+Use `InteractionManager.runAfterInteractions()` to defer non-urgent work
+(analytics, large reductions, secondary fetches) until after navigation
+transitions complete:
+
+```tsx
+useEffect(() => {
+  const task = InteractionManager.runAfterInteractions(() => {
+    runExpensiveBackground();
+  });
+  return () => task.cancel();
+}, []);
+```
+
+## Navigation Performance
+
+The project uses `react-native-screens`:
+
+- **`enableFreeze()`** — call once at app entry to suspend offscreen screens and
+  prevent them from re-rendering when invisible.
+- **`useFocusEffect`** — scope work to screen visibility. For visibility-tied
+  polling, use the existing `useFocusedPolling` hook.
+
+## Pagination for Unbounded Lists
+
+For lists that grow indefinitely (e.g., transaction history), implement
+pagination / infinite scroll instead of fetching the full list. Couple
+`FlatList`'s `onEndReached` with a backend cursor and append batches.
+
+## Measuring Performance
+
+Verify perf changes with measurement, not intuition:
+
+- **React DevTools Profiler** — flame graphs of component renders.
+- **`<React.Profiler>`** — programmatic per-render timings around suspect
+  subtrees.
+- **Reanimated FPS monitor** — confirm animations stay on the UI thread at
+  60fps.
+- **Hermes / Flipper trace** — for startup and TTI (time-to-interactive)
+  regressions.
+
+Measure before and after every perf change.

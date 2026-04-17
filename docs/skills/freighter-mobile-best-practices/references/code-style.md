@@ -56,9 +56,8 @@ import { useAuth } from "../../hooks/useAuth";
 sibling > index. Newlines required between groups. Alphabetical sorting within
 each group.
 
-**No floating promises**: `@typescript-eslint/no-floating-promises` is currently
-**disabled** (`"off"` in eslint.config.mjs). Promises are not required to be
-awaited or caught by lint, but best practice is to always handle them.
+**No floating promises**: Always `await` promises or attach a `.catch()`
+handler. See `anti-patterns.md` for examples.
 
 **No unsafe assignments/calls/returns**: Enforced in production code. Relaxed
 only in test files.
@@ -97,8 +96,7 @@ Three checks run in sequence on every commit:
 
 ## Code Review Guidelines
 
-The following conventions are enforced during code review (not automated via
-ESLint plugins):
+The following conventions are enforced during code review:
 
 - **enum-over-type** -- prefer enums over type union literals for finite named
   sets
@@ -110,116 +108,98 @@ ESLint plugins):
 The custom ESLint plugin at `src/eslint-plugin-translations/` enforces
 translation key presence automatically.
 
-## Detailed Patterns (Based on 434-file Analysis)
+## Detailed Patterns
 
 ### Destructuring
 
-Inline parameter destructuring is the dominant pattern (90%+):
+Use inline parameter destructuring for component props:
 
 ```tsx
-// STANDARD — inline destructuring (90%+ of components)
 const BalanceRow = ({ balance, scanResult }: BalanceRowProps) => { ... };
-
-// LESS COMMON — separate destructuring
-const BalanceRow = (props: BalanceRowProps) => {
-  const { balance, scanResult } = props;
-};
 ```
 
-For Zustand stores, direct hook calls dominate (70%) over selectors (30%):
+For Zustand stores, subscribe with selectors rather than destructuring the whole
+store. Destructuring re-renders on every store update; selectors re-render only
+when the selected slice changes.
 
 ```tsx
-// DOMINANT (70%) — direct hook call
+// Avoid — re-renders on every store update
 const { balances, isLoading } = useBalancesStore();
 
-// USED FOR PERF (30%) — selector to subscribe to specific data
+// Prefer — re-renders only when balances change
 const balances = useBalancesStore((state) => state.balances);
 ```
 
 ### Optional Chaining and Nullish Coalescing
 
-`&&` is 1.9x more common than `?.` (2700+ vs 921 occurrences). Both are
-acceptable:
+- Use `&&` for conditional rendering.
+- Use `?.` for safe property access.
+- Use `??` (not `||`) when you need to preserve `0` or `""` as valid values.
 
 ```tsx
-// Conditional rendering — always use &&
 {
   isMalicious && <WarningBadge />;
 }
 
-// Property access — use ?.
 const fiatTotal = balance?.fiatTotal;
-```
 
-Nullish coalescing `??` (175 occurrences) is preferred over `||` for new code
-when preserving `0`/`""`:
-
-```tsx
-const timeout = config.timeout ?? DEFAULT_TIMEOUT; // PREFERRED
+const timeout = config.timeout ?? DEFAULT_TIMEOUT;
 ```
 
 ### Export Patterns
 
-Named exports dominate (70%), default exports for screens (30%):
+- **Screens** — default export
+- **Hooks, helpers, services, components** — named exports
 
 ```tsx
-// SCREENS — default export (100% of screens)
 export default HomeScreen;
 
-// HOOKS/HELPERS/SERVICES — named export (95%+)
 export const useColors = () => { ... };
 export const fetchBalances = async () => { ... };
 ```
 
 ### Component Prop Types
 
-Separate interfaces are standard (95%+). `React.FC<Props>` is used in ~45% of
-components — both patterns are acceptable:
+Use a separate `Props` interface (or type) for every component. Both
+`React.FC<Props>` and inline annotation are acceptable:
 
 ```tsx
-// BOTH ACCEPTABLE
 const BalanceRow: React.FC<BalanceRowProps> = ({ balance }) => { ... };
 const BalanceRow = ({ balance }: BalanceRowProps) => { ... };
 ```
 
-### Naming Deep Dive
+### Naming
 
-| Category          | Convention                                          | Evidence                    |
-| ----------------- | --------------------------------------------------- | --------------------------- |
-| Screen components | `XxxScreen` suffix always                           | 40+ screens, 100% adherence |
-| Hooks             | `useXxx` always                                     | 57 hooks, 100% adherence    |
-| Zustand stores    | `useXxxStore`                                       | 24 ducks, 100% adherence    |
-| Store actions     | verb + noun (`fetchBalances`, `clearData`)          | 95%+                        |
-| Constants         | SCREAMING_SNAKE_CASE in `config/constants.ts`       | 95%+                        |
-| Types/Interfaces  | PascalCase with `Props`, `State`, `Config` suffixes | 500+ types, 100%            |
-| Enum values       | Mixed PascalCase/SCREAMING_SNAKE per enum           | Context-dependent           |
+| Category          | Convention                                          |
+| ----------------- | --------------------------------------------------- |
+| Screen components | `XxxScreen` suffix                                  |
+| Hooks             | `useXxx`                                            |
+| Zustand stores    | `useXxxStore`                                       |
+| Store actions     | verb + noun (`fetchBalances`, `clearData`)          |
+| Constants         | `SCREAMING_SNAKE_CASE` in `config/constants.ts`     |
+| Types/Interfaces  | PascalCase with `Props`, `State`, `Config` suffixes |
+| Enum values       | PascalCase or `SCREAMING_SNAKE_CASE` per enum       |
 
 ### Conditional Rendering
 
-`&&` pattern dominates (70%), ternary for either/or (25%), early returns rare
-(5%):
-
 ```tsx
-// MOST COMMON (70%)
+// Conditional render
 {item.icon && <View>{item.icon}</View>}
 
-// FOR EITHER/OR (25%)
+// Either/or
 {isLoading ? <Spinner /> : <Content />}
 
-// RARE — early returns in hooks, not components
+// Early return in hooks
 if (!data) return <EmptyState />;
 ```
 
 ### Async Patterns
 
-`async/await` (85%) over `.then()` (15%). `Promise.all` used in 27 occurrences
-(13 files):
+Use `async/await`. Use `Promise.all` to parallelize independent fetches:
 
 ```tsx
-// STANDARD
 const balances = await fetchBalances(publicKey);
 
-// PARALLEL FETCHING
 const [balances, prices] = await Promise.all([
   fetchBalances(publicKey),
   fetchPrices(assetCodes),
@@ -228,39 +208,34 @@ const [balances, prices] = await Promise.all([
 
 ### Type Assertions and Generics
 
-Always `as Type` (TSX requirement). Prefer descriptive generic names (60%) over
-single letters (40%):
+Always use `as Type` (TSX requirement). Prefer descriptive generic names:
 
 ```tsx
-// PREFERRED
 create<BalancesState>((set, get) => ({ ... }));
 
-// ACCEPTABLE for simple cases
 function identity<T>(value: T): T { return value; }
 ```
 
-`any` count: 139 occurrences across 70 files (~3%) — mostly external API
-integrations. Use `unknown` for new code.
+Avoid `any` — use `unknown` and narrow with type guards.
 
-### Styling Split
+### Styling
 
-| Approach              | Usage                 | When                                |
-| --------------------- | --------------------- | ----------------------------------- |
-| NativeWind (Tailwind) | 45% (921 occurrences) | Layout, spacing, simple styles      |
-| Inline style props    | 50%                   | Dynamic styles, conditional styling |
-| styled-components     | 4% (18 occurrences)   | Complex themed components           |
-| StyleSheet.create     | <1% (1 occurrence)    | Avoid for new code                  |
+| Approach            | When                                 |
+| ------------------- | ------------------------------------ |
+| NativeWind          | Layout, spacing, simple styles       |
+| `StyleSheet.create` | Dynamic / prop-driven complex styles |
 
-### String/Number Patterns
+See `styling.md` for examples.
 
-Template literals near-universal (95%+). All magic numbers extracted to
-`config/constants.ts`:
+### Strings and Numbers
+
+Use template literals for string composition. Extract magic numbers into named
+constants in `config/constants.ts`:
 
 ```tsx
-// ALL constants go in config/constants.ts
 export const DEFAULT_PADDING = 24;
 export const DEFAULT_ICON_SIZE = 24;
 export const NATIVE_TOKEN_CODE = "XLM";
 ```
 
-Error messages use i18n (`t()`) — no hardcoded error strings.
+User-facing error messages must use i18n (`t()`) — never hardcoded strings.

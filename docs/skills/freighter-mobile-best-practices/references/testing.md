@@ -71,7 +71,7 @@ Maestro provides YAML-based e2e test flows located in `e2e/flows/`:
 2. `ImportWallet` — Import via recovery phrase
 3. `ImportFundedWallet` — Import a pre-funded wallet
 4. `SwitchToTestnet` — Import a funded wallet and switch active network to
-   Testnet
+   Testnet (lives in both `e2e/flows/onboarding/` and `e2e/flows/shared/`)
 5. `SendClassicTokenMainnet` — Send a classic Stellar token on mainnet
 6. `SwapClassicTokenMainnet` — Swap tokens on mainnet
 7. `SignMessageMockDapp` — Sign a message via WalletConnect mock dApp
@@ -89,7 +89,7 @@ Maestro provides YAML-based e2e test flows located in `e2e/flows/`:
 
 ### E2E Documentation
 
-Six guides are available in `e2e/docs/`:
+Some guides are available in `e2e/docs/`. E.g.:
 
 - `ci-and-triggers` — CI pipeline configuration
 - `local-setup-and-env` — Local environment setup

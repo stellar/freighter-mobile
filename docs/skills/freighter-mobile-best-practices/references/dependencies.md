@@ -73,7 +73,7 @@ This runs `react-native start --reset-cache`.
 ## Environment Variables
 
 - Configuration lives in `.env` (created from `.env.example`)
-- The `.env.example` template contains 48 variables
+- `.env.example` is the source of truth for the full variable list
 - **Never commit `.env`** — it may contain secrets
 - Keep `.env.example` updated when adding new variables
 - E2E test variables (`IS_E2E_TEST`, `E2E_TEST_RECOVERY_PHRASE`, etc.) are also

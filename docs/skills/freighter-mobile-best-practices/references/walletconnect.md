@@ -106,7 +106,7 @@ Every dApp transaction is scanned by Blockaid:
 
 | Result        | Behavior                          |
 | ------------- | --------------------------------- |
-| `malicious`   | Auto-reject the transaction       |
+| `malicious`   | Show warning banner, user decides |
 | `suspicious`  | Show warning banner, user decides |
 | `benign`      | Process normally, no warnings     |
 | `scan-failed` | Show warning banner, user decides |

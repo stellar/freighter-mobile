@@ -18,24 +18,42 @@ Use NativeWind for the majority of layout and styling needs.
 
 ## Complex Styled Components
 
-For components with dynamic, prop-driven styling that goes beyond what utility
-classes handle cleanly, use `styled-components/native` with typed props:
+For dynamic, prop-driven styling beyond what NativeWind handles cleanly, use
+React Native `StyleSheet` with computed style objects. Do not use
+`styled-components/native`.
 
 ```tsx
-import styled from "styled-components/native";
+import { StyleSheet, TouchableOpacity } from "react-native";
 
-interface StyledButtonProps {
+interface PrimaryButtonProps {
   variant: "primary" | "secondary";
   isDisabled?: boolean;
 }
 
-const StyledButton = styled(TouchableOpacity)<StyledButtonProps>`
-  background-color: ${({ variant }) =>
-    variant === "primary" ? "#5C63FF" : "transparent"};
-  opacity: ${({ isDisabled }) => (isDisabled ? 0.5 : 1)};
-  border-radius: 8px;
-  padding: 12px 24px;
-`;
+const PrimaryButton: React.FC<PrimaryButtonProps> = ({
+  variant,
+  isDisabled,
+  children,
+  onPress,
+}) => (
+  <TouchableOpacity
+    onPress={onPress}
+    style={[
+      styles.base,
+      variant === "primary" ? styles.primary : styles.secondary,
+      isDisabled && styles.disabled,
+    ]}
+  >
+    {children}
+  </TouchableOpacity>
+);
+
+const styles = StyleSheet.create({
+  base: { borderRadius: 8, paddingHorizontal: 24, paddingVertical: 12 },
+  primary: { backgroundColor: "#5C63FF" },
+  secondary: { backgroundColor: "transparent" },
+  disabled: { opacity: 0.5 },
+});
 ```
 
 ## Design System (SDS)
@@ -88,8 +106,8 @@ platforms.
 
 ## Platform-Specific Styling
 
-Use `Platform.select()` or `Platform.OS` checks only when truly needed for
-platform differences. Prefer cross-platform styles as the default:
+Use `Platform.select()` or the `isIOS` / `isAndroid` helpers only when truly
+needed for platform differences. Prefer cross-platform styles as the default:
 
 ```tsx
 // Only when necessary

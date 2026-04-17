@@ -31,27 +31,32 @@ Always clear the error state before starting a new request (`error: null`).
 - React Native event objects (extracts meaningful info)
 - Nested error objects (unwraps to find the root cause)
 
+Use `logger.error()` to report errors — it normalizes and forwards to Sentry
+internally. **Do not call `Sentry.captureException()` directly.**
+
 ```tsx
-import { normalizeError } from "config/logger";
+import { logger, normalizeError } from "config/logger";
 
 try {
   await riskyOperation();
 } catch (error) {
   const normalized = normalizeError(error);
-  Sentry.captureException(normalized);
+  logger.error("featureName.riskyOperation", "Operation failed", error);
   set({ error: normalized.message, isLoading: false });
 }
 ```
 
 ## Type Guards
 
-Use runtime type guards for discriminating between different data shapes:
+Use runtime type guards to discriminate between balance shapes from the network:
 
-- `isNativeBalance()` — checks if a balance is the native XLM asset
-- `isClassicBalance()` — checks if a balance is a classic Stellar asset
+- `isNativeBalance()` (in `src/services/transactionService.ts`) — checks if a
+  balance is the native XLM asset
+- `isLiquidityPool()` (in `src/helpers/balances.ts`) — checks if a balance
+  represents a liquidity pool share
 
-These prevent runtime type errors when handling polymorphic data from the
-network.
+Add new type guards in the same files when you introduce new polymorphic data
+shapes.
 
 ## Network Retry
 
@@ -69,23 +74,25 @@ Maximum of 5 retry attempts before giving up and surfacing the error.
 
 ## Toast Notifications
 
-Surface user-facing errors via the toast system, not native alerts:
+Surface user-facing errors via the toast system. **Never use `Alert.alert()`** —
+the app uses toasts and bottom sheets for all user-facing messaging:
 
 ```tsx
 // Correct - use toast for errors
 showToast({ message: t("send.errors.insufficientBalance"), type: "error" });
 
-// Wrong - avoid alert() for routine errors
+// Wrong - never use Alert.alert() in app code
 Alert.alert("Error", "Insufficient balance");
 ```
 
-Reserve `Alert.alert()` for critical confirmations only (e.g., "Are you sure you
-want to delete this account?").
+For confirmations (e.g., "Are you sure you want to delete this account?"), use a
+bottom sheet, not a native alert.
 
 ## Transaction Validation
 
-Use `validateTransactionParams()` before building any transaction. It returns an
-error message string or `null`:
+`validateTransactionParams()` is used by the Send flow's `buildTransaction()` in
+`src/services/transactionService.ts`. Call it before building any transaction.
+It returns an error message string or `null`:
 
 ```tsx
 const validationError = validateTransactionParams({
@@ -134,7 +141,13 @@ reports.
 ## Rules
 
 - **Never** use empty catch blocks. Always handle or log the error.
-- **Never** silently swallow errors. At minimum, use `normalizeError()` +
-  Sentry.
+- **Never** silently swallow errors. At minimum, log with `logger.error()`.
 - **Never** show generic "Something went wrong" without additional context.
   Include what operation failed.
+- **Never** use `Alert.alert()` — surface errors via toasts and confirmations
+  via bottom sheets.
+- **Never** call `Sentry.captureException()` directly — go through
+  `logger.error()` so the context tag and normalization are consistent.
+- **Be selective about what reaches Sentry.** Validation failures, user
+  cancellations, and expected network failures (timeouts, offline) are noise.
+  Reserve Sentry for unexpected errors and bugs that need engineering action.

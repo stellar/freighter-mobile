@@ -34,8 +34,7 @@ export const MyComponent: React.FC<Props> = ({ title }) => {
 
 ## Class Components
 
-Class components are not used anywhere in the codebase. Always use functional
-components with hooks.
+Always use functional components with hooks. Do not introduce class components.
 
 ## Magic Strings in Navigation
 
@@ -43,10 +42,13 @@ Never use raw strings for route names. Always use route enum constants.
 
 ```tsx
 // Wrong
-navigation.navigate("EnterAmount");
+navigation.navigate("TransactionAmountScreen");
 
 // Correct
-navigation.navigate(SEND_PAYMENT_ROUTES.ENTER_AMOUNT);
+navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN, {
+  tokenId,
+  tokenSymbol,
+});
 ```
 
 ## AsyncStorage for Sensitive Data
@@ -65,14 +67,14 @@ bypass TypeScript safety and can cause runtime crashes.
 ## Missing JSDoc
 
 The PR template requires JSDoc on new functions and updated JSDoc on modified
-functions. While the codebase currently has few JSDoc comments, all new code
-should include them. Help improve this incrementally.
+functions. Include JSDoc on every new public function and on any function whose
+signature or behavior you change.
 
 ## Floating Promises
 
-Even though `@typescript-eslint/no-floating-promises` is not currently enforced
-in ESLint, avoid floating promises as a best practice. Every promise should be
-`await`ed or have a `.catch()` handler.
+Every promise must be `await`ed or have a `.catch()` handler. Floating promises
+hide failures and break the loading/error state contract used by Zustand
+actions.
 
 ```tsx
 // Wrong - unhandled promise
@@ -83,7 +85,7 @@ await fetchBalances(publicKey);
 
 // Also correct
 fetchBalances(publicKey).catch((error) => {
-  logger.error(normalizeError(error));
+  logger.error("balances.fetchBalances", "Background fetch failed", error);
 });
 ```
 
@@ -125,7 +127,8 @@ compose at the hook or component level instead.
 
 ## Empty Catch Blocks
 
-Always handle or log errors. At minimum, use `normalizeError()` + Sentry.
+Always handle or log errors. Use `logger.error()` so the error is normalized and
+routed to Sentry consistently.
 
 ```tsx
 // Wrong
@@ -137,19 +140,24 @@ try {
 try {
   await riskyOp();
 } catch (error) {
-  logger.error(normalizeError(error));
+  logger.error("featureName.riskyOp", "Operation failed", error);
 }
 ```
 
 ## Hardcoding Test Data
 
-Use environment variables for test secrets. Never hardcode recovery phrases,
-private keys, or test passwords in source code.
+Never hardcode recovery phrases, private keys, or test passwords in source code.
+
+In app code, read env values via the `Config` object from `react-native-config`:
 
 ```tsx
-// Wrong
-const testPhrase = "abandon abandon abandon ...";
+import Config from "react-native-config";
 
-// Correct
-const testPhrase = process.env.E2E_TEST_RECOVERY_PHRASE;
+const testPhrase = Config.E2E_TEST_RECOVERY_PHRASE;
+```
+
+In Maestro e2e flows, reference the same env var with template syntax:
+
+```yaml
+- inputText: ${E2E_TEST_RECOVERY_PHRASE}
 ```

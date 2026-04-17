@@ -43,7 +43,7 @@ export const usePricesStore = create<PricesState>((set, get) => ({
   error: null,
 
   fetchPrices: async (assetCodes) => {
-    const requestId = generateRequestId();
+    const requestId = createRequestId();
     set({ isLoading: true, error: null, currentRequestId: requestId });
 
     try {
@@ -69,12 +69,9 @@ Async actions follow this general sequence:
 2. Call the service layer
 3. Set result or error state
 
-For actions prone to race conditions (e.g., `transactionBuilder.ts`), a
-`generateRequestId()` pattern is used to check staleness before applying
-results. This pattern is NOT universal — most stores (like `prices.ts`,
-`balances.ts`) use simpler try/catch without request IDs. Use the request ID
-pattern only when concurrent calls to the same action could produce stale
-results.
+Use the `createRequestId()` staleness pattern only when concurrent calls to the
+same action could produce stale results (e.g., `transactionBuilder.ts`). For all
+other async actions, simple try/catch is sufficient.
 
 ### Store Interaction
 
@@ -88,18 +85,11 @@ results.
 Each screen follows a consistent directory layout:
 
 ```
-src/screens/SendPayment/
+src/components/screens/SendPayment/
   index.tsx                    # Screen entry point / coordinator
   screens/                     # Sub-screens for multi-step flows
-    SelectAsset.tsx
-    EnterAmount.tsx
-    ConfirmTransaction.tsx
   components/                  # Screen-specific UI components
-    RecipientInput.tsx
-    AmountDisplay.tsx
   hooks/                       # Screen-specific logic hooks
-    useSendPaymentFlow.ts
-    useValidateRecipient.ts
 ```
 
 ## Hook Composition
