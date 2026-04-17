@@ -268,11 +268,11 @@ jobs:
             flow-name: SendFederatedAddress
             requires-mock-server: false
           - shard-index: 0
-            shard-total: 7
+            shard-total: 8
             flow-name: SignMessageMockDapp
             requires-mock-server: true
           - shard-index: 0
-            shard-total: 7
+            shard-total: 8
             flow-name: SignAuthEntryMockDapp
             requires-mock-server: true
 
