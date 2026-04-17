@@ -43,7 +43,7 @@
 			<false/>
 		</dict>
 		<key>NSCameraUsageDescription</key>
-		<string>Freighter needs access to your Camera to scan QR codes.</string>
+		<string>Freighter uses your camera to connect to dApps and scan account addresses.</string>
 		<key>NSFaceIDUsageDescription</key>
 		<string>Freighter needs access to your Face ID to securely log in and approve transactions.</string>
 		<key>NSPhotoLibraryAddUsageDescription</key>
