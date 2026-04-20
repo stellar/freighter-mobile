@@ -1,4 +1,5 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import ForgotPasswordWarningModal from "components/screens/ForgotPasswordWarningModal";
 import InputPasswordTemplate from "components/templates/InputPasswordTemplate";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
 import { AUTH_STATUS } from "config/types";
@@ -42,6 +43,8 @@ export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
     clearError,
   } = useAuthenticationStore();
   const [publicKey, setPublicKey] = useState<string | null>(null);
+  const [isForgotPasswordModalVisible, setIsForgotPasswordModalVisible] =
+    useState(false);
   const { showToast } = useToast();
   const { t } = useAppTranslation();
 
@@ -109,13 +112,36 @@ export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
     [signIn, isSigningIn],
   );
 
+  const handleForgotPassword = useCallback(() => {
+    setIsForgotPasswordModalVisible(true);
+  }, []);
+
+  const cancelForgotPassword = useCallback(() => {
+    setIsForgotPasswordModalVisible(false);
+  }, []);
+
+  const confirmForgotPassword = useCallback(() => {
+    setIsForgotPasswordModalVisible(false);
+    logout(true);
+  }, [logout]);
+
   return (
-    <InputPasswordTemplate
-      publicKey={publicKey}
-      error={error}
-      isLoading={isSigningIn}
-      handleContinue={handleUnlock}
-      handleLogout={() => logout(true)}
-    />
+    <>
+      <InputPasswordTemplate
+        publicKey={publicKey}
+        error={error}
+        isLoading={isSigningIn}
+        handleContinue={handleUnlock}
+        handleLogout={handleForgotPassword}
+        testID="lock-screen"
+        continueButtonTestID="unlock-button"
+        logoutButtonTestID="forgot-password-button"
+      />
+      <ForgotPasswordWarningModal
+        visible={isForgotPasswordModalVisible}
+        onCancel={cancelForgotPassword}
+        onConfirm={confirmForgotPassword}
+      />
+    </>
   );
 };

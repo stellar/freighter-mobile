@@ -295,7 +295,12 @@
     "errorUnlockingWalletTitle": "Error unlocking wallet",
     "errorUnlockingWalletMessage": "If the problem persists, please tap on \"Forgot password\" and re-import your wallet.",
     "failedToLoadAccountTitle": "Account not loaded",
-    "failedToLoadAccountMessage": "Your account could not be loaded after sign-in. Please try again."
+    "failedToLoadAccountMessage": "Your account could not be loaded after sign-in. Please try again.",
+    "forgotPasswordWarningTitle": "Are you sure?",
+    "forgotPasswordWarningMessage1": "We cannot recover your password for you. This process will erase your wallet and you'll need to go through the import wallet flow to re-import your wallet with your recovery phrase.",
+    "forgotPasswordWarningMessage2": "You will permanently lose access to the account currently stored in Freighter.",
+    "forgotPasswordWarningMessage3": "Only do this if you have your phrase backed up safely somewhere else.",
+    "forgotPasswordWarningContinueButton": "Continue to restore"
   },
   "onboarding": {
     "continue": "Continue",
