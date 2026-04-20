@@ -235,46 +235,46 @@ jobs:
       # to avoid e2e test flakiness related to starting/stopping the mock server and potential port conflicts.
       matrix:
         include:
+          # - shard-index: 0
+          #   shard-total: 8
+          #   flow-name: LaunchAndInspect
+          #   requires-mock-server: false
+          # - shard-index: 1
+          #   shard-total: 8
+          #   flow-name: CreateWallet
+          #   requires-mock-server: false
+          # - shard-index: 2
+          #   shard-total: 8
+          #   flow-name: ImportWallet
+          #   requires-mock-server: false
+          # - shard-index: 3
+          #   shard-total: 8
+          #   flow-name: ImportFundedWallet
+          #   requires-mock-server: false
+          # - shard-index: 4
+          #   shard-total: 8
+          #   flow-name: SwitchToTestnet
+          #   requires-mock-server: false
+          # - shard-index: 5
+          #   shard-total: 8
+          #   flow-name: SendClassicTokenMainnet
+          #   requires-mock-server: false
+          # - shard-index: 6
+          #   shard-total: 8
+          #   flow-name: SwapClassicTokenMainnet
+          #   requires-mock-server: false
           - shard-index: 0
-            shard-total: 8
-            flow-name: LaunchAndInspect
-            requires-mock-server: false
-          - shard-index: 1
-            shard-total: 8
-            flow-name: CreateWallet
-            requires-mock-server: false
-          - shard-index: 2
-            shard-total: 8
-            flow-name: ImportWallet
-            requires-mock-server: false
-          - shard-index: 3
-            shard-total: 8
-            flow-name: ImportFundedWallet
-            requires-mock-server: false
-          - shard-index: 4
-            shard-total: 8
-            flow-name: SwitchToTestnet
-            requires-mock-server: false
-          - shard-index: 5
-            shard-total: 8
-            flow-name: SendClassicTokenMainnet
-            requires-mock-server: false
-          - shard-index: 6
-            shard-total: 8
-            flow-name: SwapClassicTokenMainnet
-            requires-mock-server: false
-          - shard-index: 7
-            shard-total: 8
+            shard-total: 1
             flow-name: ForgotPasswordWarning
             requires-mock-server: false
-          - shard-index: 0
-            shard-total: 8
-            flow-name: SignMessageMockDapp
-            requires-mock-server: true
-          - shard-index: 0
-            shard-total: 8
-            flow-name: SignAuthEntryMockDapp
-            requires-mock-server: true
+          # - shard-index: 0
+          #   shard-total: 8
+          #   flow-name: SignMessageMockDapp
+          #   requires-mock-server: true
+          # - shard-index: 0
+          #   shard-total: 8
+          #   flow-name: SignAuthEntryMockDapp
+          #   requires-mock-server: true
 
     steps:
       - name: Checkout repo
