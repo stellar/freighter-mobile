@@ -32,7 +32,7 @@ interface InputPasswordTemplateProps {
   insets?: BaseLayoutInsets;
   testID?: string;
   continueButtonTestID?: string;
-  logoutButtonTestID?: string;
+  forgotPasswordButtonTestID?: string;
 }
 
 const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
@@ -48,7 +48,7 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
   showLogo = true,
   testID,
   continueButtonTestID,
-  logoutButtonTestID,
+  forgotPasswordButtonTestID,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
@@ -146,7 +146,7 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
               secondary
               xl
               onPress={handleLogout}
-              testID={logoutButtonTestID}
+              testID={forgotPasswordButtonTestID}
             >
               {t("lockScreen.forgotPasswordButtonText")}
             </Button>

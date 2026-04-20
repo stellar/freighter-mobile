@@ -135,7 +135,7 @@ export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
         handleLogout={handleForgotPassword}
         testID="lock-screen"
         continueButtonTestID="unlock-button"
-        logoutButtonTestID="forgot-password-button"
+        forgotPasswordButtonTestID="forgot-password-button"
       />
       <ForgotPasswordWarningModal
         visible={isForgotPasswordModalVisible}

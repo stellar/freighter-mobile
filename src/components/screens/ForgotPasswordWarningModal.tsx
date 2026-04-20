@@ -4,7 +4,7 @@ import { Text } from "components/sds/Typography";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React from "react";
-import { Modal as RNModal, View } from "react-native";
+import { Modal as RNModal, ScrollView, View } from "react-native";
 
 interface ForgotPasswordWarningModalProps {
   visible: boolean;
@@ -43,23 +43,25 @@ const ForgotPasswordWarningModal: React.FC<ForgotPasswordWarningModalProps> = ({
             <Icon.AlertCircle size={20} themeColor="red" />
           </View>
 
-          <View className="gap-2">
-            <Text xl medium primary>
-              {t("lockScreen.forgotPasswordWarningTitle")}
-            </Text>
+          <ScrollView className="flex-shrink">
+            <View className="gap-2">
+              <Text xl medium primary>
+                {t("lockScreen.forgotPasswordWarningTitle")}
+              </Text>
 
-            <View className="gap-6">
-              <Text md regular secondary>
-                {t("lockScreen.forgotPasswordWarningMessage1")}
-              </Text>
-              <Text md regular secondary>
-                {t("lockScreen.forgotPasswordWarningMessage2")}
-              </Text>
-              <Text md medium primary>
-                {t("lockScreen.forgotPasswordWarningMessage3")}
-              </Text>
+              <View className="gap-6">
+                <Text md regular secondary>
+                  {t("lockScreen.forgotPasswordWarningMessage1")}
+                </Text>
+                <Text md regular secondary>
+                  {t("lockScreen.forgotPasswordWarningMessage2")}
+                </Text>
+                <Text md medium primary>
+                  {t("lockScreen.forgotPasswordWarningMessage3")}
+                </Text>
+              </View>
             </View>
-          </View>
+          </ScrollView>
 
           <View className="gap-3">
             <Button
