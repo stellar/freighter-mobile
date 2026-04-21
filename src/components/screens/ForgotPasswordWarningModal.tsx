@@ -34,13 +34,13 @@ const ForgotPasswordWarningModal: React.FC<ForgotPasswordWarningModalProps> = ({
       >
         <View className="w-full bg-background-tertiary rounded-[24px] p-6 gap-6">
           <View
-            className="size-10 rounded-full items-center justify-center border"
+            className="size-12 rounded-full items-center justify-center border"
             style={{
               backgroundColor: themeColors.red[3],
               borderColor: themeColors.red[6],
             }}
           >
-            <Icon.AlertCircle size={20} themeColor="red" />
+            <Icon.AlertCircle size={24} themeColor="red" />
           </View>
 
           <ScrollView className="flex-shrink">
