@@ -24,7 +24,6 @@ const ForgotPasswordWarningModal: React.FC<ForgotPasswordWarningModalProps> = ({
     <RNModal
       visible={visible}
       animationType="fade"
-      transparent
       presentationStyle="overFullScreen"
       onRequestClose={onCancel}
     >
