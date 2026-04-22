@@ -58,7 +58,8 @@ const AccountQRCodeScreen: React.FC<AccountQRCodeScreenProps> = ({
     showNavigationAsCloseButton ? Icon.Scan : Icon.HelpCircle;
 
   const handleWalletConnectNavigation = () => {
-    // TODO: add comment to link with navigation.replace(ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN) on useWalletConnectQrCodeScanner
+    // Paired with the replace in useWalletConnectQrCodeScanner.handleHeaderRight,
+    // which fades from ScanQRCodeScreen back to this screen.
     navigation.replace(ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN, {
       source: QRCodeSource.WALLET_CONNECT,
       transition: "fade",
