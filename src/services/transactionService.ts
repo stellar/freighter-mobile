@@ -731,7 +731,6 @@ export const simulateContractTransfer = async ({
   try {
     // Follow the extension pattern: use /simulate-token-transfer which
     // builds and simulates the transaction on the backend.
-    // Amount is passed as a number to match the extension's API contract.
     const result = await simulateTokenTransfer({
       address: contractAddress,
       pub_key: transaction.source,

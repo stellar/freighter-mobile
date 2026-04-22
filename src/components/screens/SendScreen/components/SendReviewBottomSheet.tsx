@@ -22,7 +22,7 @@ import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { isLiquidityPool } from "helpers/balances";
 import { pxValue } from "helpers/dimensions";
 import { formatTokenForDisplay, formatFiatAmount } from "helpers/formatAmount";
-import { isSorobanTransaction } from "helpers/soroban";
+import { computeTotalFeeXlm, isSorobanTransaction } from "helpers/soroban";
 import { truncateAddress, isMuxedAccount } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
@@ -114,13 +114,11 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
     feeBreakdownSheetRef.current?.present();
   }, []);
 
-  // For Soroban: total = inclusion + resource. For classic: flat transactionFee.
-  const totalFeeXlm =
-    sorobanInclusionFeeXlm && sorobanResourceFeeXlm
-      ? new BigNumber(sorobanInclusionFeeXlm)
-          .plus(sorobanResourceFeeXlm)
-          .toString()
-      : transactionFee;
+  const totalFeeXlm = computeTotalFeeXlm(
+    sorobanInclusionFeeXlm,
+    sorobanResourceFeeXlm,
+    transactionFee,
+  );
 
   // Derived from current context (collectible or Soroban token/address) rather
   // than the builder store so the fee breakdown sheet shows Soroban rows and

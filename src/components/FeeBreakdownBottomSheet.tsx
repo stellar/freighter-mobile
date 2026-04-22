@@ -1,10 +1,10 @@
-import BigNumber from "bignumber.js";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { formatTokenForDisplay } from "helpers/formatAmount";
+import { computeTotalFeeXlm } from "helpers/soroban";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React from "react";
@@ -36,20 +36,15 @@ const FeeBreakdownBottomSheet: React.FC<FeeBreakdownBottomSheetProps> = ({
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
-  const {
-    isSoroban,
-    sorobanResourceFeeXlm,
-    sorobanInclusionFeeXlm,
-    isBuilding,
-  } = useTransactionBuilderStore();
+  const { sorobanResourceFeeXlm, sorobanInclusionFeeXlm, isBuilding } =
+    useTransactionBuilderStore();
   const { transactionFee } = useTransactionSettingsStore();
 
-  const totalFeeXlm =
-    isSoroban && sorobanInclusionFeeXlm && sorobanResourceFeeXlm
-      ? new BigNumber(sorobanInclusionFeeXlm)
-          .plus(sorobanResourceFeeXlm)
-          .toString()
-      : transactionFee;
+  const totalFeeXlm = computeTotalFeeXlm(
+    sorobanInclusionFeeXlm,
+    sorobanResourceFeeXlm,
+    transactionFee,
+  );
 
   return (
     <View className="flex-1">
@@ -75,12 +70,12 @@ const FeeBreakdownBottomSheet: React.FC<FeeBreakdownBottomSheetProps> = ({
 
       {/* Fee rows card */}
       <View className="mt-[16px] rounded-[12px] overflow-hidden bg-background-tertiary">
-        {isSoroban && (
+        {isSorobanContext && (
           <View className="flex-row justify-between items-center px-[16px] py-[12px] border-b border-gray-6">
             <Text md secondary>
               {t("transactionAmountScreen.details.inclusionFee")}
             </Text>
-            {isBuilding || !sorobanInclusionFeeXlm ? (
+            {isBuilding ? (
               <ActivityIndicator
                 size="small"
                 color={themeColors.text.secondary}
@@ -88,29 +83,31 @@ const FeeBreakdownBottomSheet: React.FC<FeeBreakdownBottomSheetProps> = ({
             ) : (
               <Text md primary>
                 {formatTokenForDisplay(
-                  sorobanInclusionFeeXlm,
+                  sorobanInclusionFeeXlm ?? transactionFee,
                   NATIVE_TOKEN_CODE,
                 )}
               </Text>
             )}
           </View>
         )}
-        {isSoroban && (
+        {isSorobanContext && (
           <View className="flex-row justify-between items-center px-[16px] py-[12px] border-b border-gray-6">
             <Text md secondary>
               {t("transactionAmountScreen.details.resourceFee")}
             </Text>
-            {isBuilding || !sorobanResourceFeeXlm ? (
+            {isBuilding ? (
               <ActivityIndicator
                 size="small"
                 color={themeColors.text.secondary}
               />
             ) : (
               <Text md primary>
-                {formatTokenForDisplay(
-                  sorobanResourceFeeXlm,
-                  NATIVE_TOKEN_CODE,
-                )}
+                {sorobanResourceFeeXlm
+                  ? formatTokenForDisplay(
+                      sorobanResourceFeeXlm,
+                      NATIVE_TOKEN_CODE,
+                    )
+                  : "--"}
               </Text>
             )}
           </View>
