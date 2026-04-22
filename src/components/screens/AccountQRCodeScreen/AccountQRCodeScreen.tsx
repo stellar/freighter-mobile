@@ -55,23 +55,10 @@ const AccountQRCodeScreen: React.FC<AccountQRCodeScreenProps> = ({
     showNavigationAsCloseButton ? Icon.Scan : Icon.HelpCircle;
 
   const handleWalletConnectNavigation = () => {
-    // WalletConnect flow: Navigate between QR Scan and QR Address screens
-    const routes = navigation.getState()?.routes ?? [];
-    const scanRouteIndex = routes.findIndex(
-      (r) => r.name === ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN,
-    );
-
-    // If the scan route is already in the stack, pop to it
-    // Otherwise, navigate to it
-    if (scanRouteIndex !== -1) {
-      navigation.replace(ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN, {
-        source: QRCodeSource.WALLET_CONNECT,
-      });
-    } else {
-      navigation.navigate(ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN, {
-        source: QRCodeSource.WALLET_CONNECT,
-      });
-    }
+    // TODO: add comment to link with navigation.replace(ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN) on useWalletConnectQrCodeScanner
+    navigation.replace(ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN, {
+      source: QRCodeSource.WALLET_CONNECT,
+    });
   };
 
   const handleHelpModalPress = () => {
