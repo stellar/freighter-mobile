@@ -47,6 +47,26 @@ const Icons = {
   },
 } as const;
 
+/**
+ * Props for the shared BottomSheet wrapper.
+ *
+ * **Content modes** (mutually exclusive):
+ * - Default (non-scrollable): renders content inside a `BottomSheetView` with
+ *   dynamic sizing. Use for short, fixed-height content.
+ * - `scrollable`: renders content inside a `BottomSheetScrollView`. Required
+ *   when content can overflow the sheet height. Cannot be combined with
+ *   `snapPoints` — dynamic sizing is used instead.
+ *
+ * **Footer** (`scrollViewFooterComponent`): only valid in scrollable mode.
+ * Rendered absolutely at the bottom of the sheet; a matching spacer is
+ * injected into the scroll content so nothing is obscured.
+ *
+ * **Snap points** (`snapPoints`): fixes the sheet at explicit heights. Disables
+ * dynamic sizing. Cannot be combined with `scrollable`.
+ *
+ * **Analytics**: pass `analyticsEvent` (and optionally `analyticsProps`) to
+ * fire a single tracking event the first time the sheet is presented.
+ */
 export type BottomSheetProps = {
   title?: string;
   description?: string;
@@ -235,11 +255,15 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
             {footerHeight > 0 && <View style={{ height: footerHeight }} />}
           </BottomSheetScrollView>
           {scrollViewFooterComponent && (
+            // onLayout measures the footer height so the scroll spacer above
+            // (`footerHeight > 0 && <View style={{ height: footerHeight }}`)
+            // can reserve exactly enough room to keep content from sliding
+            // behind this absolutely-positioned footer.
             <View
               onLayout={handleFooterLayout}
               style={{
                 position: "absolute",
-                bottom: 0,
+                bottom: keyboardHeight > 0 ? keyboardHeight - insets.bottom : 0,
                 left: 0,
                 right: 0,
               }}
