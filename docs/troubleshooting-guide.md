@@ -1,4 +1,4 @@
-# N10 — Troubleshooting Guide: Freighter Mobile
+# Troubleshooting Guide: Freighter Mobile
 
 _Last updated: 2026-04-08_
 
@@ -305,7 +305,7 @@ lines above the `exit code 65` message.
 1. Open `ios/freighter-mobile.xcworkspace` in Xcode
 2. Select the project target
 3. Under "Signing & Capabilities", select your development team
-4. Use the dev scheme (`freighter-mobile-Dev`)
+4. Use the dev scheme (`freighter-mobile-dev`)
 
 ### Android emulator out of memory / long error cascade
 
