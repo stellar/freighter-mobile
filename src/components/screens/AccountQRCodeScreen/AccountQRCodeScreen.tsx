@@ -58,6 +58,7 @@ const AccountQRCodeScreen: React.FC<AccountQRCodeScreenProps> = ({
     // TODO: add comment to link with navigation.replace(ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN) on useWalletConnectQrCodeScanner
     navigation.replace(ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN, {
       source: QRCodeSource.WALLET_CONNECT,
+      transition: "fade",
     });
   };
 
