@@ -76,7 +76,7 @@ Freighter Mobile — Prerequisites Check
   Corepack       0.x.x          any                   OK
   Yarn           4.10.0         4.10.0 required       OK
   Homebrew       4.x.x          any                   OK
-  Ruby           3.x.x          >= 2.6.10 required    OK
+  Ruby           3.x.x          >= 3.1.4 required     OK
   Bundler        2.x.x          any                   OK
   Watchman       2024.x         any                   OK
   JDK            17.0.x         17 required           OK

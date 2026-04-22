@@ -63,8 +63,8 @@ The skill will:
 1. Check all prerequisites (Node, Yarn, Ruby, JDK, Xcode, Android SDK, etc.)
 2. Install what it can automatically (with your confirmation)
 3. Produce a list of manual steps for anything it couldn't install
-4. Set up `.env` with public backend endpoints and guide you through the
-   remaining variables
+4. Guide you through setting up `.env` — what each variable is and how to obtain
+   it (WalletConnect dashboard, your own backend instances, etc.)
 5. Run verification to confirm the build works
 
 If you don't use an LLM assistant, follow the manual setup below.
