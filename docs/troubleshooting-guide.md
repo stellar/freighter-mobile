@@ -33,10 +33,9 @@ yarn pod-install         # Reinstall
 ```
 
 > **Note:** For routine `pod install` failures (version conflicts, missing
-> specs), clean cache + reinstall is usually sufficient. Use `pod deintegrate`
-> only if the CocoaPods/Xcode project integration is actually broken — it strips
-> the entire integration and requires a full re-run of `pod install` to
-> reconstruct it.
+> specs), clean cache + reinstall is usually sufficient. Do **not** run
+> `pod deintegrate` — it strips the entire CocoaPods integration and is not a
+> recommended recovery step for this project.
 
 If still failing, check your Ruby version. CocoaPods works best with
 rbenv-managed Ruby 3.1-3.3.
@@ -104,31 +103,6 @@ nvm use
 ls -la .husky/pre-commit    # Should show -rwxr-xr-x
 chmod +x .husky/pre-commit  # Fix if not executable
 ```
-
-### IDE and ESLint plugins not loading
-
-**Symptom:** ESLint errors not shown in the editor, or the IDE reports "ESLint
-server failed to start" / "No ESLint configuration found".
-
-**Solution:** Ensure the ESLint IDE extension is installed and pointing to the
-project config:
-
-1. **VS Code:** Install the
-   [ESLint extension](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint)
-   (≥3.0.10 for flat config support). Confirm it activates on `.ts`/`.tsx`
-   files.
-2. **WebStorm/IntelliJ:** Enable ESLint under Languages & Frameworks >
-   JavaScript
-   > Code Quality Tools > ESLint → "Automatic ESLint configuration".
-3. **Validate manually:**
-   ```bash
-   npx eslint src/components/sds/Button/index.tsx
-   ```
-   If this errors, fix the ESLint config before relying on IDE integration.
-4. **Prettier plugin:** Install the
-   [Prettier extension](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode)
-   and set `"editor.defaultFormatter": "esbenp.prettier-vscode"` in VS Code
-   settings to match what `lint-staged` applies on commit.
 
 ### Metro bundler won't start or crashes
 
@@ -215,6 +189,7 @@ or linker failures) right after a macOS or Xcode update.
 1. Ensure Metro is running (`yarn start`)
 2. If Metro is running, try: `yarn ios` (rebuilds the native project)
 3. Check that your `.env` file exists and has required values
+4. Check that `ios/sentry.properties` exists (it is gitignored)
 
 ### Android build succeeds but app crashes on launch
 
@@ -224,7 +199,8 @@ or linker failures) right after a macOS or Xcode update.
 
 1. Check `adb logcat` for the crash reason
 2. Common cause: missing or invalid `.env` values
-3. Try a clean build:
+3. Check that `android/sentry.properties` exists (it is gitignored)
+4. Try a clean build:
 
 ```bash
 yarn android-dev-clean    # Clean build + run
@@ -270,8 +246,7 @@ final failure message.
    ```
 
    > **Note:** For routine pod sync issues, clean cache + reinstall is
-   > sufficient. Use `pod deintegrate` only if the Xcode project integration
-   > itself is broken.
+   > sufficient. Do **not** run `pod deintegrate`.
 
 3. **Wrong Xcode version or command-line tools:** After macOS or Xcode update.
 
