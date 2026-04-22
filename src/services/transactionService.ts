@@ -36,6 +36,7 @@ import {
 } from "helpers/stellar";
 import { t } from "i18next";
 import { analytics } from "services/analytics";
+import { SimulationTransactionType } from "services/analytics/types";
 import { simulateTokenTransfer, simulateTransaction } from "services/backend";
 import { stellarSdkServer } from "services/stellar";
 
@@ -749,7 +750,10 @@ export const simulateContractTransfer = async ({
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
 
-    analytics.trackSimulationError(errorMessage, "contract_transfer");
+    analytics.trackSimulationError(
+      errorMessage,
+      SimulationTransactionType.ContractTransfer,
+    );
 
     throw error;
   }
@@ -758,11 +762,13 @@ export const simulateContractTransfer = async ({
 interface SimulateCollectibleTransferParams {
   transactionXdr: string;
   networkDetails: NetworkDetails;
+  analyticsCategory?: SimulationTransactionType;
 }
 
 export const simulateCollectibleTransfer = async ({
   transactionXdr,
   networkDetails,
+  analyticsCategory = SimulationTransactionType.CollectibleTransfer,
 }: SimulateCollectibleTransferParams) => {
   if (!networkDetails.sorobanRpcUrl) {
     throw new Error("Soroban RPC URL is not defined for this network");
@@ -782,7 +788,7 @@ export const simulateCollectibleTransfer = async ({
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
 
-    analytics.trackSimulationError(errorMessage, "collectible_transfer");
+    analytics.trackSimulationError(errorMessage, analyticsCategory);
     throw error;
   }
 };

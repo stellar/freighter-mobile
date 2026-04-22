@@ -11,6 +11,7 @@ import { stroopToXlm } from "helpers/formatAmount";
 import { isContractId } from "helpers/soroban";
 import { isMuxedAccount } from "helpers/stellar";
 import { t } from "i18next";
+import { SimulationTransactionType } from "services/analytics/types";
 import { signTransaction, submitTx } from "services/stellar";
 import {
   buildPaymentTransaction,
@@ -202,7 +203,10 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
           const networkDetails = mapNetworkToNetworkDetails(params.network);
           const isFeeEstimation = Number(params.tokenAmount) === 0;
 
-          let simulateResult;
+          let simulateResult: {
+            preparedTransaction: string;
+            minResourceFee?: string;
+          };
 
           if (isFeeEstimation) {
             // Fee estimation with amount 0: use /simulate-tx with the
@@ -211,6 +215,7 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
             simulateResult = await simulateCollectibleTransfer({
               transactionXdr: builtTxResult.xdr,
               networkDetails,
+              analyticsCategory: SimulationTransactionType.ContractTransfer,
             });
           } else {
             // Real amount: use /simulate-token-transfer matching the
@@ -243,12 +248,12 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
           }
           finalXdr = simulateResult.preparedTransaction;
 
+          sorobanInclusionFeeXlm = params.transactionFee || MIN_TRANSACTION_FEE;
+
           if (simulateResult.minResourceFee) {
             const resourceFeeBn = new BigNumber(simulateResult.minResourceFee);
             if (!resourceFeeBn.isNaN()) {
               sorobanResourceFeeXlm = stroopToXlm(resourceFeeBn).toFixed(7);
-              sorobanInclusionFeeXlm =
-                params.transactionFee || MIN_TRANSACTION_FEE;
             }
           }
         }
