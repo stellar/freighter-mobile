@@ -2,7 +2,7 @@
 
 ## Layer Structure
 
-The codebase follows a layered architecture with a strict downward import
+The codebase follows a layered architecture with a generally downward import
 direction:
 
 ```
@@ -14,13 +14,23 @@ components (UI)
                     -> types
 ```
 
-Each layer may import from the layers below it but never from the layers above.
-This ensures a clean dependency graph and prevents circular imports.
+Each layer generally imports from the layers below it. Services may read from
+ducks via `getState()` when they need app state (e.g., analytics services read
+`useAnalyticsStore`, `useAuthenticationStore`, `useNetworkStore`). Ducks must
+not import from hooks or components.
 
 ## Zustand Duck Pattern
 
 State management uses Zustand with a "duck" pattern. Each store (duck) lives in
 `src/ducks/` and follows this structure:
+
+### Persistence
+
+For state that should survive app restarts (user preferences, cached metadata),
+Zustand's `persist` middleware with `AsyncStorage` is a common option — see
+`src/ducks/preferences.ts` for an example. It's not required for every store;
+evaluate case by case whether the state needs to outlive the session. Do not
+persist sensitive data — use `secureDataStorage` instead (see `security.md`).
 
 ```tsx
 // src/ducks/prices.ts

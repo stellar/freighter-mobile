@@ -46,6 +46,11 @@ try {
 }
 ```
 
+Note: `logger.error()` normalizes the error internally — the explicit
+`normalizeError()` call here is only needed to extract the `.message` string for
+store state. Do not call both unless you need the message string for a separate
+purpose.
+
 ## Type Guards
 
 Use runtime type guards to discriminate between balance shapes from the network:
@@ -74,8 +79,11 @@ Maximum of 5 retry attempts before giving up and surfacing the error.
 
 ## Toast Notifications
 
-Surface user-facing errors via the toast system. **Never use `Alert.alert()`** —
-the app uses toasts and bottom sheets for all user-facing messaging:
+Surface user-facing errors via the toast system. **Never use `Alert.alert()`**
+in production app code — the app uses toasts and bottom sheets for all
+user-facing messaging. Exception:
+`src/components/analytics/DebugBottomSheet.tsx` uses `Alert.alert()` for a
+dev-only cache reset confirmation; this is an intentional debug carve-out.
 
 ```tsx
 // Correct - use toast for errors

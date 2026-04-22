@@ -57,7 +57,10 @@ sibling > index. Newlines required between groups. Alphabetical sorting within
 each group.
 
 **No floating promises**: Always `await` promises or attach a `.catch()`
-handler. See `anti-patterns.md` for examples.
+handler. See `anti-patterns.md` for examples. Note:
+`@typescript-eslint/no-floating-promises` is disabled in ESLint
+(`eslint.config.mjs`) — this is a reviewer-enforced convention, not a
+linter-enforced rule.
 
 **No unsafe assignments/calls/returns**: Enforced in production code. Relaxed
 only in test files.
@@ -118,15 +121,18 @@ Use inline parameter destructuring for component props:
 const BalanceRow = ({ balance, scanResult }: BalanceRowProps) => { ... };
 ```
 
-For Zustand stores, subscribe with selectors rather than destructuring the whole
-store. Destructuring re-renders on every store update; selectors re-render only
-when the selected slice changes.
+For Zustand stores, prefer selectors over destructuring the whole store.
+Destructuring re-renders on every store update; selectors re-render only when
+the selected slice changes. Note: most existing code still uses destructuring —
+migrate to selectors in new components and hot paths (lists, frequently-rendered
+screens). Don't refactor existing destructuring unless you're already touching
+the component for other reasons.
 
 ```tsx
 // Avoid — re-renders on every store update
 const { balances, isLoading } = useBalancesStore();
 
-// Prefer — re-renders only when balances change
+// Prefer for new code — re-renders only when balances change
 const balances = useBalancesStore((state) => state.balances);
 ```
 

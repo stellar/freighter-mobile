@@ -19,8 +19,12 @@ Use NativeWind for the majority of layout and styling needs.
 ## Complex Styled Components
 
 For dynamic, prop-driven styling beyond what NativeWind handles cleanly, use
-React Native `StyleSheet` with computed style objects. Do not use
-`styled-components/native`.
+React Native `StyleSheet` with computed style objects. Do not introduce new
+`styled-components/native` usage. Existing SDS primitives (`Button`,
+`Typography`, `Token`, `Toast`, `Notification`) and layout wrappers
+(`BaseLayout`, `OnboardLayout`, `ScrollableKeyboardView`) retain their
+`styled-components` usage until a coordinated migration — do not refactor them
+unless that migration is the explicit goal.
 
 ```tsx
 import { StyleSheet, TouchableOpacity } from "react-native";
@@ -102,7 +106,9 @@ bottom sheet visibility via state booleans.
 
 Use the custom `Modal` component (overlay-based), not React Native's built-in
 `Modal`. The custom implementation provides consistent behavior across
-platforms.
+platforms. Exception: `WalletConnectE2EHelper.tsx` uses React Native's built-in
+`Modal` intentionally for Maestro e2e accessibility — this is a test-helper
+carve-out, not a pattern to follow in production code.
 
 ## Platform-Specific Styling
 
