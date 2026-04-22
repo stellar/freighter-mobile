@@ -96,17 +96,12 @@ export const isSorobanTokenTransfer = (fnName: string | undefined): boolean =>
   fnName === SorobanTokenInterface.transfer;
 
 /**
- * Determines if the memo field should be displayed for a transaction.
- * Memo is only relevant for classic Send/Receive operations (Payment and
- * CreateAccount). It is also hidden when the destination is a muxed address
- * Determines if the memo field should be displayed in the History details UI
- * for a given transaction.
+ * Determines whether the memo field should be displayed in the History
+ * details UI for a transaction.
  *
- * Although Stellar allows attaching a memo to any transaction, this screen
- * currently only shows the memo for classic Send/Receive operations
- * (Payment and CreateAccount). The memo is also hidden when the destination
- * is a muxed address, since the destination address already encodes the
- * memo-like data.
+ * The memo is shown only for classic Send/Receive operations (Payment and
+ * CreateAccount) and is hidden when the destination is a muxed address,
+ * since the destination already encodes memo-like data.
  */
 export const shouldShowMemo = (
   transactionType: TransactionType,

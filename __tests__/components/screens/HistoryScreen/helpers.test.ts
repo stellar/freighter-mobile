@@ -22,7 +22,7 @@ describe("shouldShowMemo", () => {
     });
   });
 
-  describe("returns false (hide memo) for non-classic transaction types", () => {
+  describe("returns false (hide memo) for non-classic-payment transaction types", () => {
     const nonClassicTypes = [
       TransactionType.SWAP,
       TransactionType.CHANGE_TRUST,
