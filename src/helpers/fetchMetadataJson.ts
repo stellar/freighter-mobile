@@ -19,8 +19,9 @@ export const METADATA_FETCH_TIMEOUT_MS = 5000;
  * sensible defaults for bounded, resilient reads.
  *
  * Behavior:
- * 1. URL scheme is restricted to `https://`. Other schemes (including
- *    cleartext `http`) are rejected before any network call.
+ * 1. URL scheme is restricted to `https:` (parsed via `new URL`, so the
+ *    check is case-insensitive and rejects malformed URLs). Other schemes
+ *    (including cleartext `http`) are rejected before any network call.
  * 2. A 5-second AbortController-backed timeout bounds how long we wait.
  * 3. `Content-Length` is pre-checked — if the server advertises a body larger
  *    than MAX_METADATA_BYTES the request fails fast.
@@ -29,16 +30,26 @@ export const METADATA_FETCH_TIMEOUT_MS = 5000;
  *    and the call fails. This keeps memory bounded even when
  *    `Content-Length` is absent or inaccurate.
  * 5. If `response.body.getReader` is unavailable in the current runtime, the
- *    helper falls back to `response.text()` with a post-download byte-length
- *    check. The fallback remains bounded by the Content-Length pre-check and
- *    the AbortController timeout.
+ *    helper falls back to `response.text()` followed by a byte-length check.
+ *    In that fallback the body is fully buffered before the size check runs,
+ *    so the only up-front bounds are the Content-Length pre-check (when the
+ *    server advertises it) and the AbortController timeout; the post-download
+ *    check is a secondary gate. React Native 0.81+ exposes `getReader`, so in
+ *    practice the fallback path is rare.
  */
 export const fetchMetadataJson = async <T>(url: string): Promise<T> => {
   if (!url || typeof url !== "string") {
     throw new Error("fetchMetadataJson: url must be a non-empty string");
   }
 
-  if (!url.startsWith("https://")) {
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(url);
+  } catch {
+    throw new Error("fetchMetadataJson: url is not a valid URL");
+  }
+
+  if (parsedUrl.protocol !== "https:") {
     throw new Error(
       "fetchMetadataJson: url scheme must be https — got a different scheme",
     );

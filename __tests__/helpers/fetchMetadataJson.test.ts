@@ -141,6 +141,26 @@ describe("fetchMetadataJson", () => {
         expect.objectContaining({ signal: expect.any(AbortSignal) }),
       );
     });
+
+    it("accepts mixed-case HTTPS:// URLs (scheme check is case-insensitive)", async () => {
+      const body = '{"name":"ok"}';
+      (global.fetch as jest.Mock).mockResolvedValue(
+        makeResponse({ reader: makeReader([encode(body)]) }),
+      );
+
+      const result = await fetchMetadataJson<{ name: string }>(
+        "HTTPS://example.com/metadata.json",
+      );
+
+      expect(result).toEqual({ name: "ok" });
+    });
+
+    it("rejects malformed URLs", async () => {
+      await expect(fetchMetadataJson("not a url")).rejects.toThrow(
+        /not a valid URL/,
+      );
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
   });
 
   describe("response handling", () => {
