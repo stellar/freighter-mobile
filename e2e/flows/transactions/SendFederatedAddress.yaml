@@ -112,7 +112,7 @@ tags:
     timeout: 30000
 # Verify the federation address is displayed in the review sheet
 - assertVisible:
-    text: "freighter.pb*lobstr.co"
+    text: "freighter.p…*lobstr.co"
 - tapOn:
     id: send-review-confirm-button
 # Verify processing screen
@@ -208,7 +208,7 @@ tags:
       id: send-review-sheet
     timeout: 30000
 - assertVisible:
-    text: "freighter.pb*lobstr.co"
+    text: "freighter.p…*lobstr.co"
 - tapOn:
     id: send-review-confirm-button
 - extendedWaitUntil:
