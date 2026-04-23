@@ -2,5 +2,5 @@
 
 export LANG=en_US.UTF-8
 echo '   Removing Gradle cache and build artifacts...'
-(cd android && rm -rf .gradle && rm -rf app/.cxx && rm -rf app/build && ./gradlew clean) || true
+(cd android && rm -rf .gradle && rm -rf app/.cxx && rm -rf app/build && rm -rf build && ./gradlew clean) || true
 echo '   ✅ Gradle clean complete'

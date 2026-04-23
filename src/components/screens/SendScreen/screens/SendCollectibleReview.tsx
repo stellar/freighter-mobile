@@ -613,7 +613,7 @@ const SendCollectibleReviewScreen: React.FC<
             signTransactionDetails={signTransactionDetails}
           />
         }
-        renderFooterComponent={renderFooterComponent}
+        scrollViewFooterComponent={renderFooterComponent}
       />
       <BottomSheet
         modalRef={addMemoExplanationBottomSheetModalRef}
