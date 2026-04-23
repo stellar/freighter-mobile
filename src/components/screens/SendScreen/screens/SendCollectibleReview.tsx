@@ -189,7 +189,7 @@ const SendCollectibleReviewScreen: React.FC<
     transactionSecuritySeverity,
   } = useMemo(
     // Collectible (SAC/Soroban) transfers write balances into contract storage
-    // keyed by address — the recipient G-address doesn't need to be a funded
+    // keyed by address — the recipient address doesn't need to be a funded
     // Stellar account. Defer entirely to Blockaid's simulation/validation.
     () =>
       getTransactionSecurity(transactionScanResult, overriddenBlockaidResponse),
@@ -511,7 +511,7 @@ const SendCollectibleReviewScreen: React.FC<
     isExpectedToFail: transactionSecurityAssessment.isExpectedToFail,
     isUnableToScan: transactionSecurityAssessment.isUnableToScan,
     isMuxedAddressWithoutMemoSupport,
-    unfundedContext: undefined, // see comment above getTransactionSecurity
+    unfundedContext: undefined,
     onSecurityWarningPress: openSecurityWarningBottomSheet,
     onMuxedAddressWithoutMemoSupportPress: openMuxedAddressWarningBottomSheet,
   });
