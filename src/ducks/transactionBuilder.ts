@@ -36,6 +36,7 @@ interface TransactionBuilderState {
     selectedBalance?: PricedBalance;
     recipientAddress?: string;
     transactionMemo?: string;
+    transactionMemoType?: string;
     transactionFee?: string;
     transactionTimeout?: number;
     network?: NETWORKS;
@@ -124,6 +125,7 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
           selectedBalance: params.selectedBalance,
           recipientAddress: params.recipientAddress,
           transactionMemo: params.transactionMemo,
+          transactionMemoType: params.transactionMemoType,
           transactionFee: params.transactionFee,
           transactionTimeout: params.transactionTimeout,
           network: params.network,

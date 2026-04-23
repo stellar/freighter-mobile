@@ -6,6 +6,7 @@ import { create } from "zustand";
 
 const INITIAL_TRANSACTION_SETTINGS_STATE = {
   transactionMemo: "",
+  transactionMemoType: "",
   transactionFee: MIN_TRANSACTION_FEE,
   transactionTimeout: DEFAULT_TRANSACTION_TIMEOUT,
   recipientAddress: "",
@@ -25,6 +26,7 @@ const INITIAL_TRANSACTION_SETTINGS_STATE = {
  *
  * @interface TransactionSettingsState
  * @property {string} transactionMemo - Memo text to include with the transaction
+ * @property {string} transactionMemoType - Memo type: "text" | "id" | "hash" | "" (from federation record)
  * @property {string} transactionFee - Fee amount for the transaction (in XLM)
  * @property {number} transactionTimeout - Timeout in seconds for the transaction
  * @property {string} recipientAddress - Recipient address for the transaction (resolved G... public key)
@@ -32,6 +34,7 @@ const INITIAL_TRANSACTION_SETTINGS_STATE = {
  * @property {string} selectedTokenId - ID of the token selected for the transaction
  * @property {string} selectedCollectibleDetails - collection ID and token ID of the collectible selected for the transaction
  * @property {Function} saveMemo - Function to save the memo value
+ * @property {Function} saveMemoType - Function to save the memo type
  * @property {Function} saveTransactionFee - Function to save the transaction fee value
  * @property {Function} saveTransactionTimeout - Function to save the transaction timeout value
  * @property {Function} saveRecipientAddress - Function to save the recipient address
@@ -42,6 +45,7 @@ const INITIAL_TRANSACTION_SETTINGS_STATE = {
  */
 interface TransactionSettingsState {
   transactionMemo: string;
+  transactionMemoType: string;
   transactionFee: string;
   transactionTimeout: number;
   recipientAddress: string;
@@ -53,6 +57,7 @@ interface TransactionSettingsState {
   };
 
   saveMemo: (memo: string) => void;
+  saveMemoType: (memoType: string) => void;
   saveTransactionFee: (fee: string) => void;
   saveTransactionTimeout: (timeout: number) => void;
   saveRecipientAddress: (address: string) => void;
@@ -81,6 +86,12 @@ export const useTransactionSettingsStore = create<TransactionSettingsState>(
     saveMemo: (transactionMemo) => set({ transactionMemo }),
 
     /**
+     * Saves the memo type for a transaction (from federation record or user selection)
+     * @param {string} memoType - "text" | "id" | "hash" | ""
+     */
+    saveMemoType: (memoType) => set({ transactionMemoType: memoType }),
+
+    /**
      * Saves the transaction fee amount
      * @param {string} fee - The fee amount to save (in XLM)
      */
@@ -97,8 +108,7 @@ export const useTransactionSettingsStore = create<TransactionSettingsState>(
      * Saves the recipient address for the transaction
      * @param {string} address - The recipient address (resolved G... public key)
      */
-    saveRecipientAddress: (address) =>
-      set({ recipientAddress: address, federationAddress: "" }),
+    saveRecipientAddress: (address) => set({ recipientAddress: address }),
 
     /**
      * Saves the original federation address for display purposes

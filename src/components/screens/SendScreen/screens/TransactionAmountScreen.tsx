@@ -578,6 +578,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         // Get fresh settings values each time the function is called
         const {
           transactionMemo: freshTransactionMemo,
+          transactionMemoType: freshTransactionMemoType,
           transactionFee: freshTransactionFee,
           transactionTimeout: freshTransactionTimeout,
           recipientAddress: storeRecipientAddress,
@@ -588,6 +589,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           selectedBalance,
           recipientAddress: storeRecipientAddress,
           transactionMemo: freshTransactionMemo,
+          transactionMemoType: freshTransactionMemoType,
           transactionFee: freshTransactionFee,
           transactionTimeout: freshTransactionTimeout,
           network,

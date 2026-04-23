@@ -27,7 +27,7 @@ import useColors from "hooks/useColors";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
 import { useRightHeaderButton } from "hooks/useRightHeader";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { View } from "react-native";
+import { ActivityIndicator, View } from "react-native";
 import { analytics } from "services/analytics";
 
 type SendSearchContactsProps = NativeStackScreenProps<
@@ -56,6 +56,7 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
     saveRecipientAddress,
     saveFederationAddress,
     saveMemo,
+    saveMemoType,
     selectedCollectibleDetails,
     saveSelectedCollectibleDetails,
   } = useTransactionSettingsStore();
@@ -74,7 +75,6 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
     resetSendRecipient,
     isValidDestination,
     isDestinationFunded,
-    federationMemo,
   } = useSendRecipientStore();
 
   // Load recent addresses when component mounts
@@ -141,26 +141,48 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
    * @param {string} [contactName] - The federation address if applicable
    */
   const handleContactPress = useCallback(
-    (contactAddress: string, contactName?: string) => {
+    async (contactAddress: string, contactName?: string) => {
       if (recentAddresses.some((c) => c.address === contactAddress)) {
         analytics.track(AnalyticsEvent.SEND_PAYMENT_RECENT_ADDRESS);
       }
 
       const isFederation = !!contactName && isFederationAddress(contactName);
 
+      let resolvedAddress = contactAddress;
+
+      // Re-resolve recent federation contacts to pick up any address remapping (H3)
+      const isRecentContact = recentAddresses.some(
+        (c) => c.address === contactAddress,
+      );
+      if (isFederation && isRecentContact) {
+        setAddress(contactName);
+        await searchAddress(contactName);
+        const state = useSendRecipientStore.getState();
+        if (state.searchError || state.searchResults.length === 0) {
+          // searchError is shown in the UI; abort navigation
+          return;
+        }
+        resolvedAddress = state.searchResults[0].address;
+      }
+
+      // Read federation memo/type from store — always fresh after any resolution above
+      const {
+        federationMemo: resolvedMemo,
+        federationMemoType: resolvedMemoType,
+      } = useSendRecipientStore.getState();
+
       // Save to both stores for different purposes
       // Send store is for contact management
       setDestinationAddress(
-        contactAddress,
+        resolvedAddress,
         isFederation ? contactName : undefined,
       );
       // Transaction settings store is for the transaction flow
-      saveRecipientAddress(contactAddress);
+      saveRecipientAddress(resolvedAddress);
       saveFederationAddress(isFederation ? contactName : "");
-      // Pre-populate memo required by the federation server (e.g. exchange routing memo)
-      if (isFederation && federationMemo) {
-        saveMemo(federationMemo);
-      }
+      // Apply federation memo and type; clear both for non-federation contacts (H2)
+      saveMemo(isFederation && resolvedMemo ? resolvedMemo : "");
+      saveMemoType(isFederation && resolvedMemoType ? resolvedMemoType : "");
 
       if (selectedCollectibleDetails.tokenId) {
         // Use popTo for collectible flow
@@ -180,7 +202,8 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
       saveRecipientAddress,
       saveFederationAddress,
       saveMemo,
-      federationMemo,
+      saveMemoType,
+      searchAddress,
       navigation,
       selectedCollectibleDetails,
     ],
@@ -226,6 +249,14 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
             value={address}
           />
 
+          {isSearching && address.length > 0 && (
+            <View className="mt-8 items-center">
+              <ActivityIndicator
+                size="small"
+                color={themeColors.foreground.primary}
+              />
+            </View>
+          )}
           {searchError && !isSearching && (
             <View className="mt-4">
               <Text sm secondary>
@@ -263,13 +294,17 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
         {searchResults.length > 0 ? (
           <SearchSuggestionsList
             suggestions={searchResults}
-            onContactPress={handleContactPress}
+            onContactPress={(contactAddress, name) => {
+              handleContactPress(contactAddress, name);
+            }}
           />
         ) : (
           recentAddresses.length > 0 && (
             <RecentContactsList
               transactions={recentAddresses}
-              onContactPress={handleContactPress}
+              onContactPress={(contactAddress, name) => {
+                handleContactPress(contactAddress, name);
+              }}
             />
           )
         )}
