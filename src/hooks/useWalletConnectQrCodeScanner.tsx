@@ -138,8 +138,11 @@ export const useWalletConnectQrCodeScanner = (): QRCodeScreenReturn => {
 
   // Handle header right button press (for wallet connect)
   const handleHeaderRight = useCallback(() => {
-    navigation.navigate(ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN, {
+    // Paired with the replace in AccountQRCodeScreen.handleWalletConnectNavigation,
+    // which fades from AccountQRCodeScreen back to this screen.
+    navigation.replace(ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN, {
       showNavigationAsCloseButton: true,
+      transition: "fade",
     });
   }, [navigation]);
 
