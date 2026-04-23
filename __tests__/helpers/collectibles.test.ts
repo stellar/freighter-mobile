@@ -13,6 +13,7 @@ import {
   saveHiddenCollectiblesStorage,
   transformBackendCollections,
 } from "helpers/collectibles";
+import { fetchMetadataJson } from "helpers/fetchMetadataJson";
 import { dataStorage } from "services/storage/storageFactory";
 
 // Mock dependencies
@@ -44,8 +45,11 @@ jest.mock("i18next", () => ({
   }),
 }));
 
-// Mock fetch globally
-global.fetch = jest.fn();
+// Mock metadata fetch helper so these tests stay focused on
+// transformation behavior rather than network details.
+jest.mock("helpers/fetchMetadataJson", () => ({
+  fetchMetadataJson: jest.fn(),
+}));
 
 describe("collectibles helpers", () => {
   beforeEach(() => {
@@ -491,10 +495,7 @@ describe("collectibles helpers", () => {
     };
 
     beforeEach(() => {
-      (global.fetch as jest.Mock).mockResolvedValue({
-        ok: true,
-        json: jest.fn().mockResolvedValue(mockMetadata),
-      });
+      (fetchMetadataJson as jest.Mock).mockResolvedValue(mockMetadata);
     });
 
     it("transforms backend collections to frontend format", async () => {
@@ -540,7 +541,9 @@ describe("collectibles helpers", () => {
     });
 
     it("handles metadata fetch failure with fallback", async () => {
-      (global.fetch as jest.Mock).mockRejectedValue(new Error("Network error"));
+      (fetchMetadataJson as jest.Mock).mockRejectedValue(
+        new Error("Network error"),
+      );
 
       const result = await transformBackendCollections(mockBackendCollections);
 
@@ -572,10 +575,7 @@ describe("collectibles helpers", () => {
         ],
       };
 
-      (global.fetch as jest.Mock).mockResolvedValue({
-        ok: true,
-        json: jest.fn().mockResolvedValue(incompleteMetadata),
-      });
+      (fetchMetadataJson as jest.Mock).mockResolvedValue(incompleteMetadata);
 
       const result = await transformBackendCollections(mockBackendCollections);
 
@@ -596,10 +596,9 @@ describe("collectibles helpers", () => {
     });
 
     it("handles HTTP error responses", async () => {
-      (global.fetch as jest.Mock).mockResolvedValue({
-        ok: false,
-        statusText: "Not Found",
-      });
+      (fetchMetadataJson as jest.Mock).mockRejectedValue(
+        new Error("fetchMetadataJson: request failed with 404 Not Found"),
+      );
 
       const result = await transformBackendCollections(mockBackendCollections);
 
