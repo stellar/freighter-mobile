@@ -17,9 +17,11 @@ import {
   SEND_PAYMENT_ROUTES,
   SendPaymentStackParamList,
 } from "config/routes";
+import { TokenTypeWithCustomToken } from "config/types";
 import { useQRDataStore } from "ducks/qrData";
 import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
+import { getTokenType } from "helpers/balances";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
@@ -55,7 +57,17 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
     saveRecipientAddress,
     selectedCollectibleDetails,
     saveSelectedCollectibleDetails,
+    selectedTokenId,
   } = useTransactionSettingsStore();
+
+  // The "destination is unfunded" notice is only relevant for classic Stellar
+  // payments. Soroban contract tokens and collectibles transfer via contract
+  // invocation and don't require a funded classic destination account.
+  const isCollectibleSend = Boolean(selectedCollectibleDetails.tokenId);
+  const isContractTokenSend =
+    !!selectedTokenId &&
+    getTokenType(selectedTokenId) === TokenTypeWithCustomToken.CUSTOM_TOKEN;
+  const shouldShowUnfundedNotice = !isCollectibleSend && !isContractTokenSend;
 
   const { clearQRData } = useQRDataStore();
 
@@ -190,7 +202,8 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
           )}
           {!searchError &&
             isValidDestination &&
-            isDestinationFunded === false && (
+            isDestinationFunded === false &&
+            shouldShowUnfundedNotice && (
               <View className="mt-4">
                 <Notification
                   variant="primary"

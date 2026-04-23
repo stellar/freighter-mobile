@@ -1,5 +1,8 @@
 import BigNumber from "bignumber.js";
-import { getTransactionBalanceChanges } from "services/blockaid/helper";
+import {
+  getTransactionBalanceChanges,
+  isUnfundedDestinationError,
+} from "services/blockaid/helper";
 
 const CONTRACT_ADDRESS =
   "CAZXRTOKNUQ2JQQF3NCRU7GYMDJNZ2NMQN6IGN4FCT5DWPODMPVEXSND";
@@ -278,5 +281,73 @@ describe("getTransactionBalanceChanges", () => {
 
     expect(result).toHaveLength(1);
     expect(result![0].assetCode).toBe("BOUNDARY");
+  });
+});
+
+describe("isUnfundedDestinationError", () => {
+  it("returns false when no context is provided", () => {
+    expect(isUnfundedDestinationError(undefined)).toBe(false);
+  });
+
+  it("returns false for contract tokens sent to unfunded destinations", () => {
+    expect(
+      isUnfundedDestinationError({
+        assetCode: "PBT",
+        isDestinationFunded: false,
+        isClassicAsset: false,
+      }),
+    ).toBe(false);
+  });
+
+  it("returns false for collectibles sent to unfunded destinations", () => {
+    expect(
+      isUnfundedDestinationError({
+        assetCode: "collectible",
+        isDestinationFunded: false,
+        isClassicAsset: false,
+      }),
+    ).toBe(false);
+  });
+
+  it("returns true for classic non-XLM asset sent to unfunded destination", () => {
+    expect(
+      isUnfundedDestinationError({
+        assetCode: "USDC",
+        isDestinationFunded: false,
+        isClassicAsset: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("returns true for XLM below create-account minimum to unfunded destination", () => {
+    expect(
+      isUnfundedDestinationError({
+        assetCode: "XLM",
+        isDestinationFunded: false,
+        canCreateAccountWithAmount: false,
+        isClassicAsset: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("returns false for XLM at/above create-account minimum to unfunded destination", () => {
+    expect(
+      isUnfundedDestinationError({
+        assetCode: "XLM",
+        isDestinationFunded: false,
+        canCreateAccountWithAmount: true,
+        isClassicAsset: true,
+      }),
+    ).toBe(false);
+  });
+
+  it("returns false when destination is already funded", () => {
+    expect(
+      isUnfundedDestinationError({
+        assetCode: "USDC",
+        isDestinationFunded: true,
+        isClassicAsset: true,
+      }),
+    ).toBe(false);
   });
 });

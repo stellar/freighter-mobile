@@ -189,14 +189,15 @@ const SendCollectibleReviewScreen: React.FC<
     transactionSecurityWarnings,
     transactionSecuritySeverity,
   } = useMemo(() => {
-    // Build context for unfunded destination detection
-    // For collectibles, we don't have a traditional asset code, so use the collection address as identifier
+    // Build context for unfunded destination detection.
+    // Collectibles transfer via Soroban contract invocation, so the
+    // destination doesn't need to be a funded classic account.
     const unfundedCtx: UnfundedDestinationContext | undefined =
       selectedCollectible && isDestinationFunded !== null
         ? {
-            // Use the collection contract ID as the asset identifier
             assetCode: selectedCollectible.collectionAddress || "collectible",
             isDestinationFunded,
+            isClassicAsset: false,
           }
         : undefined;
 
@@ -247,13 +248,13 @@ const SendCollectibleReviewScreen: React.FC<
 
   const handleTransactionScanSuccess = useCallback(
     (scanResult: Blockaid.StellarTransactionScanResponse | undefined) => {
-      // Build context for unfunded destination detection
+      // Collectibles transfer via Soroban; destination funding doesn't apply.
       const unfundedCtx: UnfundedDestinationContext | undefined =
         selectedCollectible && isDestinationFunded !== null
           ? {
-              // Use the collection contract ID as the asset identifier
               assetCode: selectedCollectible.collectionAddress || "collectible",
               isDestinationFunded,
+              isClassicAsset: false,
             }
           : undefined;
 
@@ -541,9 +542,10 @@ const SendCollectibleReviewScreen: React.FC<
     unfundedContext:
       selectedCollectible && isDestinationFunded !== null
         ? {
-            // Collectibles (Soroban) require funded destination accounts.
+            // Collectibles transfer via Soroban; destination funding doesn't apply.
             assetCode: selectedCollectible.collectionAddress || "collectible",
             isDestinationFunded,
+            isClassicAsset: false,
           }
         : undefined,
     onSecurityWarningPress: openSecurityWarningBottomSheet,

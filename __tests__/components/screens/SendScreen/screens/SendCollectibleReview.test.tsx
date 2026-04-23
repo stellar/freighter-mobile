@@ -666,6 +666,37 @@ describe("SendCollectibleReview - Banner Content", () => {
     const reviewButton = getByText("transactionAmountScreen.reviewButton");
     expect(reviewButton).toBeTruthy();
   });
+
+  it("passes isClassicAsset: false to the security assessment for collectible sends to unfunded destinations", () => {
+    // Collectibles are always pure Soroban (never SACs), so the
+    // "expected to fail" warning must never fire for them. This guards
+    // the three call sites in SendCollectibleReview that build an
+    // UnfundedDestinationContext — if any of them drift back to the
+    // classic default, this assertion fails.
+    mockUseSendRecipientStore.mockReturnValue({
+      resetSendRecipient: jest.fn(),
+      isDestinationFunded: false,
+    });
+
+    renderWithProviders(
+      <SendCollectibleReviewScreen
+        navigation={mockNavigation}
+        route={mockRoute}
+      />,
+    );
+
+    expect(mockAssessTransactionSecurity).toHaveBeenCalled();
+    const contexts = mockAssessTransactionSecurity.mock.calls
+      .map((call) => call[2])
+      .filter((ctx): ctx is NonNullable<typeof ctx> => ctx !== undefined);
+    expect(contexts.length).toBeGreaterThan(0);
+    contexts.forEach((ctx) => {
+      expect(ctx).toMatchObject({
+        isDestinationFunded: false,
+        isClassicAsset: false,
+      });
+    });
+  });
 });
 
 describe("SendCollectibleReview - Unable to Scan States", () => {
