@@ -985,7 +985,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         modalRef={reviewBottomSheetModalRef}
         handleCloseModal={() => reviewBottomSheetModalRef.current?.dismiss()}
         analyticsEvent={AnalyticsEvent.VIEW_SEND_CONFIRM}
-        snapPoints={["80%"]}
         scrollable
         bottomSheetModalProps={{ accessible: false }}
         customContent={
@@ -1002,7 +1001,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             amountError={amountError}
           />
         }
-        renderFooterComponent={renderFooterComponent}
+        scrollViewFooterComponent={renderFooterComponent}
       />
       <BottomSheet
         modalRef={addMemoExplanationBottomSheetModalRef}
