@@ -212,7 +212,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
             transactionDetails={transactionDetails!}
           />
         }
-        renderFooterComponent={renderFooterComponent}
+        scrollViewFooterComponent={renderFooterComponent}
       />
 
       <View className="flex-1 relative">
