@@ -647,7 +647,8 @@
     "suggestions": "Suggestions",
     "cannotSendToSelf": "Cannot send to yourself",
     "invalidAddress": "Invalid Stellar address",
-    "scanQRCodeText": "Scan a Freighter QR Code"
+    "scanQRCodeText": "Scan a Freighter QR Code",
+    "requiredByRecipient": "Required by recipient"
   },
   "sendSearchContacts": {
     "unfunded": {

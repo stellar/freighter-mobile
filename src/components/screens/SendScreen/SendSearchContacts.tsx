@@ -20,7 +20,6 @@ import {
 import { useQRDataStore } from "ducks/qrData";
 import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
-import { isFederationAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
@@ -70,7 +69,7 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
     isSearching,
     loadRecentAddresses,
     searchAddress,
-    clearSearchState,
+    prepareForSearch,
     setDestinationAddress,
     resetSendRecipient,
     isValidDestination,
@@ -114,14 +113,14 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
       }
 
       // Clear stale results/errors immediately so they don't linger during debounce
-      clearSearchState();
+      prepareForSearch();
 
       searchDebounceRef.current = setTimeout(() => {
         // eslint-disable-next-line @typescript-eslint/no-floating-promises
         searchAddress(text);
       }, SEARCH_DEBOUNCE_MS);
     },
-    [searchAddress, clearSearchState],
+    [searchAddress, prepareForSearch],
   );
 
   // Clean up debounce timer on unmount
@@ -146,7 +145,7 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
         analytics.track(AnalyticsEvent.SEND_PAYMENT_RECENT_ADDRESS);
       }
 
-      const isFederation = !!contactName && isFederationAddress(contactName);
+      const isFederation = !!contactName;
 
       let resolvedAddress = contactAddress;
 

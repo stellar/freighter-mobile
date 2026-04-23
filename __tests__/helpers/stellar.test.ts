@@ -22,6 +22,7 @@ import {
   signAuthEntry,
   signMessage,
   truncateAddress,
+  truncateFedAddress,
 } from "helpers/stellar";
 
 jest.mock("@stellar/stellar-sdk", () => {
@@ -290,6 +291,44 @@ describe("Stellar helpers", () => {
       expect(truncateAddress("")).toBe("");
       expect(truncateAddress(null as unknown as string)).toBe("");
       expect(truncateAddress(undefined as unknown as string)).toBe("");
+    });
+  });
+
+  describe("truncateFedAddress", () => {
+    it("should return the address unchanged if short enough", () => {
+      expect(truncateFedAddress("user*domain.com")).toBe("user*domain.com");
+    });
+
+    it("should truncate a long local part", () => {
+      expect(truncateFedAddress("averylongusername*domain.com")).toBe(
+        "averylongu…*domain.com",
+      );
+    });
+
+    it("should truncate a long domain part", () => {
+      expect(truncateFedAddress("user*averylongdomainname.com")).toBe(
+        "user*averylongdom…",
+      );
+    });
+
+    it("should truncate both parts when both are long", () => {
+      expect(
+        truncateFedAddress("averylongusername*averylongdomainname.com"),
+      ).toBe("averylongu…*averylongdom…");
+    });
+
+    it("should respect custom maxLocal and maxDomain params", () => {
+      expect(truncateFedAddress("abcdefgh*domain.com", 4, 6)).toBe(
+        "abcd…*domain…",
+      );
+    });
+
+    it("should return the input unchanged if it has no star", () => {
+      expect(truncateFedAddress("nodomain")).toBe("nodomain");
+    });
+
+    it("should return the input unchanged for empty string", () => {
+      expect(truncateFedAddress("")).toBe("");
     });
   });
 

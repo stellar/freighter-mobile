@@ -611,7 +611,8 @@
     "suggestions": "Sugestões",
     "cannotSendToSelf": "Não é possível enviar para você mesmo",
     "invalidAddress": "Endereço Stellar inválido",
-    "scanQRCodeText": "Escanear um QR Code do Freighter"
+    "scanQRCodeText": "Escanear um QR Code do Freighter",
+    "requiredByRecipient": "Exigido pelo destinatário"
   },
   "sendSearchContacts": {
     "unfunded": {

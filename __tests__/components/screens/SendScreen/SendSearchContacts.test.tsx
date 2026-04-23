@@ -78,11 +78,12 @@ const getSendStoreMock = (overrides = {}) =>
     isValidDestination: false,
     isDestinationFunded: null,
     federationMemo: "",
+    federationMemoType: "",
     loadRecentAddresses: mockLoadRecentAddresses,
     searchAddress: mockSearchAddress,
     addRecentAddress: mockAddRecentAddress,
     setDestinationAddress: mockSetDestinationAddress,
-    clearSearchState: jest.fn(),
+    prepareForSearch: jest.fn(),
     resetSendRecipient: mockReset,
     ...overrides,
   });

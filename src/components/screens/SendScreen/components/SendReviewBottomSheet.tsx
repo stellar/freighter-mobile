@@ -19,7 +19,11 @@ import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { isLiquidityPool } from "helpers/balances";
 import { pxValue } from "helpers/dimensions";
 import { formatTokenForDisplay, formatFiatAmount } from "helpers/formatAmount";
-import { truncateAddress, isMuxedAccount } from "helpers/stellar";
+import {
+  truncateAddress,
+  truncateFedAddress,
+  isMuxedAccount,
+} from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
@@ -96,6 +100,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
     transactionMemo,
     transactionFee,
   } = useTransactionSettingsStore();
+  const isFederationMemo = !!federationAddress && !!transactionMemo;
   const { account } = useGetActiveAccount();
   const { copyToClipboard } = useClipboard();
   const slicedAddress = truncateAddress(recipientAddress, 4, 4);
@@ -228,9 +233,16 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
               ),
               titleComponent: renderMemoTitle(),
               trailingContent: (
-                <Text md secondary={!transactionMemo}>
-                  {transactionMemo || t("common.none")}
-                </Text>
+                <View className="items-end gap-[2px]">
+                  <Text md secondary={!transactionMemo}>
+                    {transactionMemo || t("common.none")}
+                  </Text>
+                  {isFederationMemo && (
+                    <Text xs secondary>
+                      {t("sendPaymentScreen.requiredByRecipient")}
+                    </Text>
+                  )}
+                </View>
               ),
             }
           : undefined,
@@ -278,6 +290,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
       transactionMemo,
       transactionXDR,
       isRecipientMuxed,
+      isFederationMemo,
     ],
   );
 
@@ -345,7 +358,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
               {federationAddress ? (
                 <>
                   <Text xl medium>
-                    {federationAddress}
+                    {truncateFedAddress(federationAddress)}
                   </Text>
                   <Text md medium secondary>
                     {slicedAddress}

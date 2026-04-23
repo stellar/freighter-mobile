@@ -386,10 +386,19 @@ export const buildPaymentTransaction = async (
     if (memo && !shouldUseSorobanTransfer && !isRecipientMuxed) {
       // Honour the memo type returned by the federation server so that exchange
       // destinations that require memo_type:"id" receive the correct Stellar memo.
-      if (memoType === "id") {
+      if (memoType === "id" && /^\d+$/.test(memo)) {
         transactionBuilder.addMemo(Memo.id(memo));
       } else if (memoType === "hash") {
-        transactionBuilder.addMemo(Memo.hash(Buffer.from(memo, "base64")));
+        try {
+          const hashBytes = Buffer.from(memo, "base64");
+          if (hashBytes.length === 32) {
+            transactionBuilder.addMemo(Memo.hash(hashBytes));
+          } else {
+            transactionBuilder.addMemo(Memo.text(memo));
+          }
+        } catch {
+          transactionBuilder.addMemo(Memo.text(memo));
+        }
       } else {
         transactionBuilder.addMemo(Memo.text(memo));
       }

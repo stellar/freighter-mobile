@@ -21,6 +21,28 @@ export const isFederationAddress = (address: string): boolean => {
 };
 
 /**
+ * Truncates a long federation address for display.
+ * Keeps the local part up to maxLocal chars and the domain up to maxDomain chars.
+ * e.g. "averylongusername*averylongdomain.com" → "averylon…*averylon…"
+ */
+export const truncateFedAddress = (
+  address: string,
+  maxLocal = 10,
+  maxDomain = 12,
+): string => {
+  if (!address) return address;
+  const starIdx = address.indexOf("*");
+  if (starIdx === -1) return address;
+  const local = address.slice(0, starIdx);
+  const domain = address.slice(starIdx + 1);
+  const truncLocal =
+    local.length > maxLocal ? `${local.slice(0, maxLocal)}…` : local;
+  const truncDomain =
+    domain.length > maxDomain ? `${domain.slice(0, maxDomain)}…` : domain;
+  return `${truncLocal}*${truncDomain}`;
+};
+
+/**
  * Checks if an address is a muxed account (M... format)
  *
  * @param address The address to check

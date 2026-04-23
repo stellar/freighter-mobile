@@ -34,7 +34,7 @@ interface SendStore {
   addRecentAddress: (address: string, name?: string) => Promise<void>;
   searchAddress: (searchTerm: string) => Promise<void>;
   setDestinationAddress: (address: string, fedAddress?: string) => void;
-  clearSearchState: () => void;
+  prepareForSearch: () => void;
   resetSendRecipient: () => void;
 }
 
@@ -44,7 +44,7 @@ const initialState: Omit<
   | "addRecentAddress"
   | "searchAddress"
   | "setDestinationAddress"
-  | "clearSearchState"
+  | "prepareForSearch"
   | "resetSendRecipient"
 > = {
   recentAddresses: [],
@@ -74,7 +74,7 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
       const activePublicKey = await getActiveAccountPublicKey();
 
       // Transform to the Contact format, filtering out the current account
-      // Supports both old format (string[]) and new format ({address, name}[])
+      // Supports both old format (string[]) and new format ({address, name?}[])
       const contactList: Contact[] = parsedData
         .map((entry, index: number) => {
           const addr = typeof entry === "string" ? entry : entry.address;
@@ -103,6 +103,9 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
     try {
       const { recentAddresses } = get();
 
+      // Normalize federation address to lowercase (SEP-0002: case-insensitive)
+      const normalizedName = name?.toLowerCase();
+
       const existingIndex = recentAddresses.findIndex(
         (contact) => contact.address === address,
       );
@@ -110,17 +113,19 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
       let updatedAddresses: Contact[];
 
       if (existingIndex === -1) {
-        const newContact = { id: `recent-${Date.now()}`, address, name };
-        updatedAddresses = [newContact, ...recentAddresses];
-      } else if (name && recentAddresses[existingIndex].name !== name) {
-        // Update the federation name if it has changed or was previously missing
-        const updated = { ...recentAddresses[existingIndex], name };
         updatedAddresses = [
-          updated,
-          ...recentAddresses.filter((_, i) => i !== existingIndex),
+          { id: `recent-${Date.now()}`, address, name: normalizedName },
+          ...recentAddresses,
         ];
       } else {
-        return;
+        const existing = recentAddresses[existingIndex];
+        if (existing.name === normalizedName) {
+          return;
+        }
+        updatedAddresses = [
+          { ...existing, name: normalizedName },
+          ...recentAddresses.filter((_, i) => i !== existingIndex),
+        ];
       }
 
       set({ recentAddresses: updatedAddresses });
@@ -198,7 +203,8 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
           }
 
           resolvedAddress = fedRecord.account_id;
-          fedAddress = searchTerm;
+          // Normalize to lowercase per SEP-0002 (federation addresses are case-insensitive)
+          fedAddress = searchTerm.toLowerCase();
           fedMemo = fedRecord.memo ?? "";
           fedMemoType = fedRecord.memo_type ?? "";
 
@@ -331,7 +337,7 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
     })();
   },
 
-  clearSearchState: () => {
+  prepareForSearch: () => {
     set({
       searchResults: [],
       searchError: null,
