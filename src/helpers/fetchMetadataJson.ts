@@ -1,0 +1,122 @@
+import { Buffer } from "buffer";
+
+/**
+ * Maximum size (in bytes) of a metadata response body we read. Real NFT
+ * metadata JSON is typically well under 10 KB; 1 MB provides generous
+ * headroom while keeping memory usage bounded.
+ */
+export const MAX_METADATA_BYTES = 1024 * 1024;
+
+/**
+ * Hard timeout for a metadata fetch. If the request does not complete within
+ * this window the in-flight fetch is aborted via AbortController so slow or
+ * unreachable hosts do not leave work hanging.
+ */
+export const METADATA_FETCH_TIMEOUT_MS = 5000;
+
+/**
+ * Fetches and parses a JSON metadata document from a remote URL with
+ * sensible defaults for bounded, resilient reads.
+ *
+ * Behavior:
+ * 1. URL scheme is restricted to `https://`. Other schemes (including
+ *    cleartext `http`) are rejected before any network call.
+ * 2. A 5-second AbortController-backed timeout bounds how long we wait.
+ * 3. `Content-Length` is pre-checked — if the server advertises a body larger
+ *    than MAX_METADATA_BYTES the request fails fast.
+ * 4. The body is read via `response.body.getReader()` with a byte counter;
+ *    if accumulated bytes exceed MAX_METADATA_BYTES the reader is cancelled
+ *    and the call fails. This keeps memory bounded even when
+ *    `Content-Length` is absent or inaccurate.
+ * 5. If `response.body.getReader` is unavailable in the current runtime, the
+ *    helper falls back to `response.text()` with a post-download byte-length
+ *    check. The fallback remains bounded by the Content-Length pre-check and
+ *    the AbortController timeout.
+ */
+export const fetchMetadataJson = async <T>(url: string): Promise<T> => {
+  if (!url || typeof url !== "string") {
+    throw new Error("fetchMetadataJson: url must be a non-empty string");
+  }
+
+  if (!url.startsWith("https://")) {
+    throw new Error(
+      "fetchMetadataJson: url scheme must be https — got a different scheme",
+    );
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(
+    () => controller.abort(),
+    METADATA_FETCH_TIMEOUT_MS,
+  );
+
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+
+    if (!response.ok) {
+      throw new Error(
+        `fetchMetadataJson: request failed with ${response.status} ${response.statusText}`,
+      );
+    }
+
+    const contentLengthHeader = response.headers.get("content-length");
+    if (contentLengthHeader !== null) {
+      const contentLength = parseInt(contentLengthHeader, 10);
+      if (
+        Number.isFinite(contentLength) &&
+        contentLength > MAX_METADATA_BYTES
+      ) {
+        throw new Error(
+          `fetchMetadataJson: response too large (${contentLength} bytes, max ${MAX_METADATA_BYTES})`,
+        );
+      }
+    }
+
+    const reader = response.body?.getReader?.() as
+      | ReadableStreamDefaultReader<Uint8Array>
+      | undefined;
+    let text: string;
+
+    if (reader) {
+      const chunks: Uint8Array[] = [];
+      let totalBytes = 0;
+      let done = false;
+      // Sequential reads are inherent to streaming — we cannot parallelize.
+      /* eslint-disable no-await-in-loop */
+      while (!done) {
+        const chunk = await reader.read();
+        done = chunk.done;
+        if (chunk.value) {
+          totalBytes += chunk.value.byteLength;
+          if (totalBytes > MAX_METADATA_BYTES) {
+            await reader.cancel();
+            throw new Error(
+              `fetchMetadataJson: response too large (>${MAX_METADATA_BYTES} bytes)`,
+            );
+          }
+          chunks.push(chunk.value);
+        }
+      }
+      /* eslint-enable no-await-in-loop */
+      const merged = new Uint8Array(totalBytes);
+      let offset = 0;
+      chunks.forEach((chunk) => {
+        merged.set(chunk, offset);
+        offset += chunk.byteLength;
+      });
+      text = Buffer.from(merged).toString("utf-8");
+    } else {
+      text = await response.text();
+      const byteLength = Buffer.byteLength(text, "utf-8");
+      if (byteLength > MAX_METADATA_BYTES) {
+        throw new Error(
+          `fetchMetadataJson: response too large (${byteLength} bytes, max ${MAX_METADATA_BYTES})`,
+        );
+      }
+    }
+
+    return JSON.parse(text) as T;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
