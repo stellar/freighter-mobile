@@ -228,7 +228,7 @@ jobs:
       # - SwitchToTestnet: Switch network to testnet
       # - SendClassicTokenMainnet: Send XLM on mainnet (small amount: 0.000001 XLM)
       # - SwapClassicTokenMainnet: Swap tokens on mainnet (small amount: 0.000001 XLM)
-      # - SendFederatedAddress: Send XLM to a federated address on mainnet (small amount: 0.000001 XLM)
+      # - SendFederatedAddress: Send XLM and USDC to a federated address on mainnet (small amount: 0.000001 each)
       # - SignMessageMockDapp: WalletConnect sign message (requires mock server)
       # - SignAuthEntryMockDapp: WalletConnect sign auth entry (requires mock server)
       # Note: mock-dapp tests use shard-index:0, to run sequentially in isolation,

@@ -30,6 +30,7 @@ jest.mock("@gorhom/bottom-sheet", () => ({
 // Mock stellar helpers
 jest.mock("helpers/stellar", () => ({
   isValidStellarAddress: jest.fn().mockReturnValue(true),
+  isFederationAddress: jest.fn().mockReturnValue(false),
   truncateAddress: jest.fn(
     (address) => `${address.slice(0, 4)}...${address.slice(-4)}`,
   ),
@@ -73,6 +74,10 @@ const getSendStoreMock = (overrides = {}) =>
     recentAddresses: [],
     searchResults: [],
     searchError: null,
+    isSearching: false,
+    isValidDestination: false,
+    isDestinationFunded: null,
+    federationMemo: "",
     loadRecentAddresses: mockLoadRecentAddresses,
     searchAddress: mockSearchAddress,
     addRecentAddress: mockAddRecentAddress,

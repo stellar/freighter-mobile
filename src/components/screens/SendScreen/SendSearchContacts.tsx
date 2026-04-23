@@ -55,6 +55,7 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
   const {
     saveRecipientAddress,
     saveFederationAddress,
+    saveMemo,
     selectedCollectibleDetails,
     saveSelectedCollectibleDetails,
   } = useTransactionSettingsStore();
@@ -73,6 +74,7 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
     resetSendRecipient,
     isValidDestination,
     isDestinationFunded,
+    federationMemo,
   } = useSendRecipientStore();
 
   // Load recent addresses when component mounts
@@ -155,6 +157,10 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
       // Transaction settings store is for the transaction flow
       saveRecipientAddress(contactAddress);
       saveFederationAddress(isFederation ? contactName : "");
+      // Pre-populate memo required by the federation server (e.g. exchange routing memo)
+      if (isFederation && federationMemo) {
+        saveMemo(federationMemo);
+      }
 
       if (selectedCollectibleDetails.tokenId) {
         // Use popTo for collectible flow
@@ -173,6 +179,8 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
       setDestinationAddress,
       saveRecipientAddress,
       saveFederationAddress,
+      saveMemo,
+      federationMemo,
       navigation,
       selectedCollectibleDetails,
     ],

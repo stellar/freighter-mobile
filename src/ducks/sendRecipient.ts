@@ -1,4 +1,4 @@
-import { Federation } from "@stellar/stellar-sdk";
+import { Federation, StrKey } from "@stellar/stellar-sdk";
 import { STORAGE_KEYS } from "config/constants";
 import { logger } from "config/logger";
 import { getActiveAccountPublicKey, useAuthenticationStore } from "ducks/auth";
@@ -23,6 +23,8 @@ interface SendStore {
   searchResults: Contact[];
   destinationAddress: string;
   federationAddress: string;
+  federationMemo: string;
+  federationMemoType: string;
   isSearching: boolean;
   searchError: string | null;
   isValidDestination: boolean;
@@ -49,6 +51,8 @@ const initialState: Omit<
   searchResults: [],
   destinationAddress: "",
   federationAddress: "",
+  federationMemo: "",
+  federationMemoType: "",
   isSearching: false,
   searchError: null,
   isValidDestination: false,
@@ -99,25 +103,36 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
     try {
       const { recentAddresses } = get();
 
-      const exists = recentAddresses.some(
+      const existingIndex = recentAddresses.findIndex(
         (contact) => contact.address === address,
       );
 
-      if (!exists) {
+      let updatedAddresses: Contact[];
+
+      if (existingIndex === -1) {
         const newContact = { id: `recent-${Date.now()}`, address, name };
-        const updatedAddresses = [newContact, ...recentAddresses];
-
-        set({ recentAddresses: updatedAddresses });
-
-        const addressData = updatedAddresses.map((contact) => ({
-          address: contact.address,
-          ...(contact.name ? { name: contact.name } : {}),
-        }));
-        await dataStorage.setItem(
-          STORAGE_KEYS.RECENT_ADDRESSES,
-          JSON.stringify(addressData),
-        );
+        updatedAddresses = [newContact, ...recentAddresses];
+      } else if (name && recentAddresses[existingIndex].name !== name) {
+        // Update the federation name if it has changed or was previously missing
+        const updated = { ...recentAddresses[existingIndex], name };
+        updatedAddresses = [
+          updated,
+          ...recentAddresses.filter((_, i) => i !== existingIndex),
+        ];
+      } else {
+        return;
       }
+
+      set({ recentAddresses: updatedAddresses });
+
+      const addressData = updatedAddresses.map((contact) => ({
+        address: contact.address,
+        ...(contact.name ? { name: contact.name } : {}),
+      }));
+      await dataStorage.setItem(
+        STORAGE_KEYS.RECENT_ADDRESSES,
+        JSON.stringify(addressData),
+      );
     } catch (error) {
       logger.error("[sendRecipient]", "Failed to add recent address:", error);
     }
@@ -164,13 +179,28 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
 
       let resolvedAddress = searchTerm;
       let fedAddress = "";
+      let fedMemo = "";
+      let fedMemoType = "";
       let isFunded: boolean | null = null;
 
       if (isFederationAddress(searchTerm)) {
         try {
-          const fedRecord = await Federation.Server.resolve(searchTerm);
+          const fedRecord = await Federation.Server.resolve(searchTerm, {
+            timeout: 10000,
+          });
+
+          if (!StrKey.isValidEd25519PublicKey(fedRecord.account_id)) {
+            set({
+              isSearching: false,
+              searchError: t("sendRecipient.error.federationNotFound"),
+            });
+            return;
+          }
+
           resolvedAddress = fedRecord.account_id;
           fedAddress = searchTerm;
+          fedMemo = fedRecord.memo ?? "";
+          fedMemoType = fedRecord.memo_type ?? "";
 
           // Re-check if resolved address is the user's own account
           if (
@@ -244,6 +274,8 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
         isDestinationFunded: isFunded,
         destinationAddress: resolvedAddress,
         federationAddress: fedAddress,
+        federationMemo: fedMemo,
+        federationMemoType: fedMemoType,
         isSearching: false,
         searchError: null,
       });

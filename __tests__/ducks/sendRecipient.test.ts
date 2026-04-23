@@ -1,4 +1,4 @@
-import { Federation } from "@stellar/stellar-sdk";
+import { Federation, StrKey } from "@stellar/stellar-sdk";
 import { act } from "@testing-library/react-hooks";
 import { STORAGE_KEYS } from "config/constants";
 import { getActiveAccountPublicKey } from "ducks/auth";
@@ -44,6 +44,9 @@ jest.mock("@stellar/stellar-sdk", () => ({
       resolve: jest.fn(),
     },
   },
+  StrKey: {
+    isValidEd25519PublicKey: jest.fn(),
+  },
   Networks: jest.requireActual("@stellar/stellar-sdk").Networks,
 }));
 
@@ -82,6 +85,8 @@ describe("sendRecipient Duck", () => {
         searchResults: [],
         destinationAddress: "",
         federationAddress: "",
+        federationMemo: "",
+        federationMemoType: "",
         isSearching: false,
         searchError: null,
         isValidDestination: false,
@@ -97,6 +102,7 @@ describe("sendRecipient Duck", () => {
     (stellarHelpers.isFederationAddress as jest.Mock).mockReturnValue(false);
     (getAccount as jest.Mock).mockResolvedValue({ id: mockPublicKey });
     (getActiveAccountPublicKey as jest.Mock).mockResolvedValue("DIFFERENT_KEY");
+    (StrKey.isValidEd25519PublicKey as jest.Mock).mockReturnValue(true);
   });
 
   it("should have correct initial state", () => {
@@ -139,14 +145,16 @@ describe("sendRecipient Duck", () => {
     expect(dataStorage.setItem).toHaveBeenCalled();
   });
 
-  it("should not add duplicate address", async () => {
+  it("should not write to storage when address already exists with the same name", async () => {
     act(() => {
       store.setState({
-        recentAddresses: [{ id: "recent-1", address: "existingAddress" }],
+        recentAddresses: [
+          { id: "recent-1", address: "existingAddress", name: "alice*fed.com" },
+        ],
       });
     });
 
-    await store.getState().addRecentAddress("existingAddress");
+    await store.getState().addRecentAddress("existingAddress", "alice*fed.com");
 
     expect(dataStorage.setItem).not.toHaveBeenCalled();
   });
@@ -170,6 +178,104 @@ describe("sendRecipient Duck", () => {
 
     expect(store.getState().destinationAddress).toBe(mockPublicKey);
     expect(store.getState().federationAddress).toBe(mockFederationAddress);
+    expect(store.getState().federationMemo).toBe("");
+    expect(store.getState().federationMemoType).toBe("");
+  });
+
+  it("should capture federation memo and memo_type when server returns them", async () => {
+    (stellarHelpers.isFederationAddress as jest.Mock).mockReturnValue(true);
+    (Federation.Server.resolve as jest.Mock).mockResolvedValue({
+      account_id: mockPublicKey,
+      memo: "12345",
+      memo_type: "id",
+    });
+
+    await store.getState().searchAddress(mockFederationAddress);
+
+    expect(store.getState().destinationAddress).toBe(mockPublicKey);
+    expect(store.getState().federationMemo).toBe("12345");
+    expect(store.getState().federationMemoType).toBe("id");
+  });
+
+  it("should error when federation server returns a malformed account_id", async () => {
+    (stellarHelpers.isFederationAddress as jest.Mock).mockReturnValue(true);
+    (Federation.Server.resolve as jest.Mock).mockResolvedValue({
+      account_id: "not-a-valid-key",
+    });
+    (StrKey.isValidEd25519PublicKey as jest.Mock).mockReturnValue(false);
+
+    await store.getState().searchAddress(mockFederationAddress);
+
+    expect(store.getState().searchError).toBe(
+      "sendRecipient.error.federationNotFound",
+    );
+    expect(store.getState().isValidDestination).toBe(false);
+    expect(store.getState().destinationAddress).toBe("");
+  });
+
+  it("should error when Federation.Server.resolve rejects", async () => {
+    (stellarHelpers.isFederationAddress as jest.Mock).mockReturnValue(true);
+    (Federation.Server.resolve as jest.Mock).mockRejectedValue(
+      new Error("DNS failure"),
+    );
+
+    await store.getState().searchAddress(mockFederationAddress);
+
+    expect(store.getState().searchError).toBe(
+      "sendRecipient.error.federationNotFound",
+    );
+    expect(store.getState().isSearching).toBe(false);
+    expect(store.getState().isValidDestination).toBe(false);
+  });
+
+  it("should error when resolved federation address is the user's own account", async () => {
+    (stellarHelpers.isFederationAddress as jest.Mock).mockReturnValue(true);
+    (Federation.Server.resolve as jest.Mock).mockResolvedValue({
+      account_id: mockPublicKey,
+    });
+    (getActiveAccountPublicKey as jest.Mock).mockResolvedValue(mockPublicKey);
+    // First call: federation string vs own key → false (different format, no match)
+    // Second call: resolved G... key vs own key → true (it is the same account)
+    (stellarHelpers.isSameAccount as jest.Mock)
+      .mockReturnValueOnce(false)
+      .mockReturnValueOnce(true);
+
+    await store.getState().searchAddress(mockFederationAddress);
+
+    expect(store.getState().searchError).toBe(
+      "sendRecipient.error.sendToSelfFederation",
+    );
+    expect(store.getState().isValidDestination).toBe(false);
+  });
+
+  it("should call Federation.Server.resolve with a 10 second timeout", async () => {
+    (stellarHelpers.isFederationAddress as jest.Mock).mockReturnValue(true);
+    (Federation.Server.resolve as jest.Mock).mockResolvedValue({
+      account_id: mockPublicKey,
+    });
+
+    await store.getState().searchAddress(mockFederationAddress);
+
+    expect(Federation.Server.resolve).toHaveBeenCalledWith(
+      mockFederationAddress,
+      { timeout: 10000 },
+    );
+  });
+
+  it("should update federation name on existing recent address", async () => {
+    act(() => {
+      store.setState({
+        recentAddresses: [{ id: "recent-1", address: "existingAddress" }],
+      });
+    });
+
+    await store.getState().addRecentAddress("existingAddress", "alice*fed.com");
+
+    const updated = store
+      .getState()
+      .recentAddresses.find((c) => c.address === "existingAddress");
+    expect(updated?.name).toBe("alice*fed.com");
+    expect(dataStorage.setItem).toHaveBeenCalled();
   });
 
   it("should handle invalid address format", async () => {

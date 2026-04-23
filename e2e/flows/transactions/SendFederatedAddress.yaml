@@ -5,8 +5,9 @@ tags:
   - federation
   - mainnet
 ---
-# Send 0.000001 XLM on mainnet to a federated address (gcewqz*lobstr.co).
-# Verifies that federation address resolution works end-to-end:
+# Send 0.000001 XLM and 0.000001 USDC on mainnet to a federated address
+# (freighter.pb*lobstr.co). Verifies that federation address resolution works
+# end-to-end for both native and classic tokens:
 # search → resolve → review → confirm → sent.
 #
 # Uses a small amount to avoid wasting mainnet funds.
@@ -40,6 +41,10 @@ tags:
 - assertVisible:
     id: home-screen
 
+# Ensure we're on the Home tab (funded wallets open on History)
+- tapOn:
+    id: tab-home
+
 # Wait for accounts and balances to load
 - extendedWaitUntil:
     visible:
@@ -65,7 +70,7 @@ tags:
 # Type a federation address (LOBSTR federation)
 - tapOn:
     id: send-recipient-input
-- inputText: gcewqz*lobstr.co
+- inputText: freighter.pb*lobstr.co
 
 # Wait for federation resolution and search suggestion to appear
 - extendedWaitUntil:
@@ -107,8 +112,7 @@ tags:
     timeout: 30000
 # Verify the federation address is displayed in the review sheet
 - assertVisible:
-    text: "gcewqz*lobstr.co"
-# Confirm the transaction
+    text: "freighter.pb*lobstr.co"
 - tapOn:
     id: send-review-confirm-button
 # Verify processing screen
@@ -127,4 +131,96 @@ tags:
 # Note: optional because the transaction might not be immediately rendered in the view
 - assertVisible:
     text: "XLM"
+    optional: true
+
+# ── USDC send ──────────────────────────────────────────────────────────────
+# Start a second send to the same federation address using USDC.
+
+# Navigate back to Home tab (processing screen returns to History)
+- tapOn:
+    id: tab-home
+- extendedWaitUntil:
+    visible:
+      id: icon-button-send
+    timeout: 15000
+
+# Navigate to send flow
+- tapOn:
+    id: icon-button-send
+# On TransactionAmountScreen, tap token row to change asset
+- extendedWaitUntil:
+    visible:
+      id: send-amount-screen
+    timeout: 15000
+- tapOn:
+    id: send-token-row
+# Wait for token selection screen
+- extendedWaitUntil:
+    visible:
+      id: token-option-USDC
+    timeout: 15000
+# Select USDC
+- tapOn:
+    id: token-option-USDC
+# Verify we're on the amount screen with USDC selected
+- extendedWaitUntil:
+    visible:
+      id: send-amount-screen
+    timeout: 15000
+# Open recipient search and type the same federation address
+- tapOn:
+    id: send-recipient-row
+- extendedWaitUntil:
+    visible:
+      id: send-search-contacts-screen
+    timeout: 15000
+- tapOn:
+    id: send-recipient-input
+- inputText: freighter.pb*lobstr.co
+# Wait for federation resolution
+- extendedWaitUntil:
+    visible:
+      id: search-suggestion-0
+    timeout: 30000
+- tapOn:
+    id: search-suggestion-0
+# Back on amount screen — enter 0.000001 USDC
+- extendedWaitUntil:
+    visible:
+      id: send-amount-screen
+    timeout: 15000
+- tapOn:
+    id: numeric-key-0
+- tapOn:
+    id: numeric-key-decimal
+- repeat:
+    times: 5
+    commands:
+      - tapOn:
+          id: numeric-key-0
+- tapOn:
+    id: numeric-key-1
+# Review and confirm
+- tapOn:
+    id: send-continue-button
+- extendedWaitUntil:
+    visible:
+      id: send-review-sheet
+    timeout: 30000
+- assertVisible:
+    text: "freighter.pb*lobstr.co"
+- tapOn:
+    id: send-review-confirm-button
+- extendedWaitUntil:
+    visible:
+      id: send-processing-screen
+    timeout: 30000
+- extendedWaitUntil:
+    visible:
+      id: send-processing-done-button
+    timeout: 30000
+- tapOn:
+    id: send-processing-done-button
+- assertVisible:
+    text: "USDC"
     optional: true
