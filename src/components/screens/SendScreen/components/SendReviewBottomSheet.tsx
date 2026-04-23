@@ -100,7 +100,6 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
     transactionMemo,
     transactionFee,
   } = useTransactionSettingsStore();
-  const isFederationMemo = !!federationAddress && !!transactionMemo;
   const { account } = useGetActiveAccount();
   const { copyToClipboard } = useClipboard();
   const slicedAddress = truncateAddress(recipientAddress, 4, 4);
@@ -233,16 +232,9 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
               ),
               titleComponent: renderMemoTitle(),
               trailingContent: (
-                <View className="items-end gap-[2px]">
-                  <Text md secondary={!transactionMemo}>
-                    {transactionMemo || t("common.none")}
-                  </Text>
-                  {isFederationMemo && (
-                    <Text xs secondary>
-                      {t("sendPaymentScreen.requiredByRecipient")}
-                    </Text>
-                  )}
-                </View>
+                <Text md secondary={!transactionMemo}>
+                  {transactionMemo || t("common.none")}
+                </Text>
               ),
             }
           : undefined,
@@ -290,7 +282,6 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
       transactionMemo,
       transactionXDR,
       isRecipientMuxed,
-      isFederationMemo,
     ],
   );
 
