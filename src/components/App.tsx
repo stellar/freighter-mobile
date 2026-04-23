@@ -53,7 +53,11 @@ export const App = (): React.JSX.Element => {
 
   return (
     <KeyboardProvider>
-      <GestureHandlerRootView>
+      {/* Paints the area behind transparent system bars under Android 15+
+          enforced edge-to-edge so the status/nav strips match app chrome. */}
+      <GestureHandlerRootView
+        style={{ flex: 1, backgroundColor: THEME.colors.background.default }}
+      >
         <SafeAreaProvider>
           <ToastProvider>
             <BottomSheetModalProvider>
