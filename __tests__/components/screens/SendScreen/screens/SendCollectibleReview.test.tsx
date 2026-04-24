@@ -666,37 +666,6 @@ describe("SendCollectibleReview - Banner Content", () => {
     const reviewButton = getByText("transactionAmountScreen.reviewButton");
     expect(reviewButton).toBeTruthy();
   });
-
-  it("passes isClassicAsset: false to the security assessment for collectible sends to unfunded destinations", () => {
-    // Collectibles are always pure Soroban (never SACs), so the
-    // "expected to fail" warning must never fire for them. This guards
-    // the three call sites in SendCollectibleReview that build an
-    // UnfundedDestinationContext — if any of them drift back to the
-    // classic default, this assertion fails.
-    mockUseSendRecipientStore.mockReturnValue({
-      resetSendRecipient: jest.fn(),
-      isDestinationFunded: false,
-    });
-
-    renderWithProviders(
-      <SendCollectibleReviewScreen
-        navigation={mockNavigation}
-        route={mockRoute}
-      />,
-    );
-
-    expect(mockAssessTransactionSecurity).toHaveBeenCalled();
-    const contexts = mockAssessTransactionSecurity.mock.calls
-      .map((call) => call[2])
-      .filter((ctx): ctx is NonNullable<typeof ctx> => ctx !== undefined);
-    expect(contexts.length).toBeGreaterThan(0);
-    contexts.forEach((ctx) => {
-      expect(ctx).toMatchObject({
-        isDestinationFunded: false,
-        isClassicAsset: false,
-      });
-    });
-  });
 });
 
 describe("SendCollectibleReview - Unable to Scan States", () => {
@@ -780,5 +749,66 @@ describe("SendCollectibleReview - Unable to Scan States", () => {
     expect(mockSecurityDetailBottomSheetProps.proceedAnywayText).toBe(
       "common.continue",
     );
+  });
+});
+
+describe("SendCollectibleReview - Unfunded Recipient Handling", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    setupDefaultMocks();
+  });
+
+  it("should not show expected-to-fail warning for unfunded recipient when Blockaid reports safe", () => {
+    // SAC/Soroban transfers don't require the recipient to be a funded account.
+    // When Blockaid reports the transaction as safe, no warning should appear.
+    mockAssessTransactionSecurity.mockReturnValue({
+      level: SecurityLevel.SAFE,
+      isMalicious: false,
+      isSuspicious: false,
+      isExpectedToFail: false,
+      isUnableToScan: false,
+    });
+
+    renderWithProviders(
+      <SendCollectibleReviewScreen
+        navigation={mockNavigation}
+        route={mockRoute}
+      />,
+    );
+
+    expect(mockSendReviewBottomSheetProps.bannerText).toBeUndefined();
+    expect(mockSendReviewBottomSheetProps.bannerVariant).toBeUndefined();
+  });
+
+  it("should show expected-to-fail warning when Blockaid simulation reports the transaction will fail", () => {
+    // Blockaid's simulation result is the sole source of truth for collectible sends.
+    // If Blockaid reports expected to fail, the warning must still render.
+    mockAssessTransactionSecurity.mockReturnValue({
+      level: SecurityLevel.EXPECTED_TO_FAIL,
+      isMalicious: false,
+      isSuspicious: false,
+      isExpectedToFail: true,
+      isUnableToScan: false,
+    });
+
+    mockExtractSecurityWarnings.mockReturnValue([
+      {
+        id: "expected-to-fail",
+        description: "Transaction is expected to fail",
+      },
+    ]);
+
+    renderWithProviders(
+      <SendCollectibleReviewScreen
+        navigation={mockNavigation}
+        route={mockRoute}
+      />,
+    );
+
+    expect(mockSendReviewBottomSheetProps.bannerText).toBe(
+      "blockaid.security.transaction.expectedToFail",
+    );
+    expect(mockSendReviewBottomSheetProps.bannerVariant).toBe("warning");
+    expect(mockSendReviewBottomSheetProps.onBannerPress).toBeDefined();
   });
 });

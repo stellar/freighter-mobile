@@ -64,7 +64,6 @@ import React, {
 import { View } from "react-native";
 import { analytics } from "services/analytics";
 import { TransactionOperationType } from "services/analytics/types";
-import { type UnfundedDestinationContext } from "services/blockaid/helper";
 
 type SendCollectibleReviewScreenProps = NativeStackScreenProps<
   SendPaymentStackParamList,
@@ -91,7 +90,7 @@ const SendCollectibleReviewScreen: React.FC<
     useTransactionSettingsStore();
   const { getCollectible } = useCollectiblesStore();
   const { overriddenBlockaidResponse } = useDebugStore();
-  const { resetSendRecipient, isDestinationFunded } = useSendRecipientStore();
+  const { resetSendRecipient } = useSendRecipientStore();
   const { fetchAccountHistory } = useHistoryStore();
 
   useEffect(() => {
@@ -188,30 +187,14 @@ const SendCollectibleReviewScreen: React.FC<
     transactionSecurityAssessment,
     transactionSecurityWarnings,
     transactionSecuritySeverity,
-  } = useMemo(() => {
-    // Build context for unfunded destination detection.
-    // Collectibles transfer via Soroban contract invocation, so the
-    // destination doesn't need to be a funded classic account.
-    const unfundedCtx: UnfundedDestinationContext | undefined =
-      selectedCollectible && isDestinationFunded !== null
-        ? {
-            assetCode: selectedCollectible.collectionAddress || "collectible",
-            isDestinationFunded,
-            isClassicAsset: false,
-          }
-        : undefined;
-
-    return getTransactionSecurity(
-      transactionScanResult,
-      overriddenBlockaidResponse,
-      unfundedCtx,
-    );
-  }, [
-    transactionScanResult,
-    overriddenBlockaidResponse,
-    selectedCollectible,
-    isDestinationFunded,
-  ]);
+  } = useMemo(
+    // Collectible (SAC/Soroban) transfers write balances into contract storage
+    // keyed by address — the recipient address doesn't need to be a funded
+    // Stellar account. Defer entirely to Blockaid's simulation/validation.
+    () =>
+      getTransactionSecurity(transactionScanResult, overriddenBlockaidResponse),
+    [transactionScanResult, overriddenBlockaidResponse],
+  );
 
   // Check if recipient is M address
   const isRecipientMuxed = Boolean(
@@ -248,20 +231,9 @@ const SendCollectibleReviewScreen: React.FC<
 
   const handleTransactionScanSuccess = useCallback(
     (scanResult: Blockaid.StellarTransactionScanResponse | undefined) => {
-      // Collectibles transfer via Soroban; destination funding doesn't apply.
-      const unfundedCtx: UnfundedDestinationContext | undefined =
-        selectedCollectible && isDestinationFunded !== null
-          ? {
-              assetCode: selectedCollectible.collectionAddress || "collectible",
-              isDestinationFunded,
-              isClassicAsset: false,
-            }
-          : undefined;
-
       const security = getTransactionSecurity(
         scanResult,
         overriddenBlockaidResponse,
-        unfundedCtx,
       );
       if (security.transactionSecurityAssessment.isUnableToScan) {
         transactionSecurityWarningBottomSheetModalRef.current?.present();
@@ -269,7 +241,7 @@ const SendCollectibleReviewScreen: React.FC<
         reviewBottomSheetModalRef.current?.present();
       }
     },
-    [overriddenBlockaidResponse, selectedCollectible, isDestinationFunded],
+    [overriddenBlockaidResponse],
   );
 
   const handleTransactionScanError = useCallback(() => {
@@ -539,15 +511,7 @@ const SendCollectibleReviewScreen: React.FC<
     isExpectedToFail: transactionSecurityAssessment.isExpectedToFail,
     isUnableToScan: transactionSecurityAssessment.isUnableToScan,
     isMuxedAddressWithoutMemoSupport,
-    unfundedContext:
-      selectedCollectible && isDestinationFunded !== null
-        ? {
-            // Collectibles transfer via Soroban; destination funding doesn't apply.
-            assetCode: selectedCollectible.collectionAddress || "collectible",
-            isDestinationFunded,
-            isClassicAsset: false,
-          }
-        : undefined,
+    unfundedContext: undefined,
     onSecurityWarningPress: openSecurityWarningBottomSheet,
     onMuxedAddressWithoutMemoSupportPress: openMuxedAddressWarningBottomSheet,
   });
