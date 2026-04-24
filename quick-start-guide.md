@@ -42,7 +42,7 @@ if command -v nvm >/dev/null 2>&1 || test -d "$HOME/.nvm"; then echo "nvm found"
 # Xcode CLI Tools (macOS)
 xcode-select -p 2>&1
 
-# CocoaPods >= 1.13 (not 1.15.0, not 1.15.1)
+# CocoaPods 1.15.2
 pod --version 2>&1 || which pod
 
 # ANDROID_HOME set
@@ -82,7 +82,7 @@ Freighter Mobile — Prerequisites Check
   JDK            17.0.x         17 required           OK
   nvm            found          any                   OK
   Xcode CLI      /path          any                   OK
-  CocoaPods      1.15.x         >= 1.13               OK
+  CocoaPods      1.15.2         1.15.2 required       OK
   ANDROID_HOME   /path/to/sdk   must be set           OK
   SDK Platform 36               -                     OK
   Build-Tools 36.0.0            -                     MISSING
@@ -181,13 +181,6 @@ required variable, tell the user the value or how to set it up:
 | `ANDROID_DEBUG_KEYSTORE_PASSWORD`   | `android` (default)                                                                                                                             |
 | `ANDROID_DEBUG_KEYSTORE_ALIAS`      | `androiddebugkey` (default)                                                                                                                     |
 
-**Optional — only needed for dev release builds (e.g., E2E tests):**
-
-| Variable                        | Value or setup                                                                                                                                                     |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `ANDROID_DEV_KEYSTORE_PASSWORD` | Generate: `mkdir -p android/keystores && keytool -genkey -v -keystore android/keystores/dev-release.keystore -alias dev -keyalg RSA -keysize 2048 -validity 10000` |
-| `ANDROID_DEV_KEYSTORE_ALIAS`    | The alias from your keystore (e.g., `dev`)                                                                                                                         |
-
 Skip any variable that already has a value.
 
 ## Step 6: Verify
@@ -214,7 +207,5 @@ Setup Complete
 
   Manual action needed:
   - [ ] Create WalletConnect project at dashboard.walletconnect.com and fill WALLET_KIT_* vars
-  - [ ] Generate Android dev keystore and fill ANDROID_DEV_KEYSTORE_* vars
-
   Ready to run: yarn ios / yarn android
 ```
