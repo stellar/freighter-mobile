@@ -31,7 +31,7 @@ yarn pod-install
 To clean and reinstall CocoaPods (when encountering pod issues):
 
 ```bash
-cd ios && pod deintegrate && pod cache clean --all
+cd ios && pod cache clean --all
 cd .. && yarn pod-install
 ```
 
@@ -50,10 +50,10 @@ JDK 17+ is recommended for Android builds.
 When things go wrong, do a full reset:
 
 ```bash
-yarn r-install
+yarn reset-env    # Clears node_modules and other generated state
+yarn install      # Reinstall JavaScript dependencies
+yarn rebuild freighter-mobile
 ```
-
-This resets the environment and rebuilds everything from scratch.
 
 ## Metro Cache
 

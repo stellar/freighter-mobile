@@ -166,17 +166,13 @@ or linker failures) right after a macOS or Xcode update.
 
 1. First try the standard Xcode fix: `xcode-select --install` and clean derived
    data (see "Xcode build fails after updating macOS or Xcode" above).
-2. If that doesn't resolve it, try using **Xcode Beta** — Apple sometimes ships
-   toolchain fixes in beta before the stable release catches up:
-   ```bash
-   sudo xcode-select --switch /Applications/Xcode-beta.app
-   yarn pod-install
-   yarn ios
-   ```
-3. Once a stable Xcode update resolves the issue, switch back:
-   ```bash
-   sudo xcode-select --switch /Applications/Xcode.app
-   ```
+2. If that doesn't resolve it, check the React Native GitHub issues for a known
+   fix or workaround targeting your Xcode version. The CI release pipeline
+   tracks a specific stable Xcode version — avoid switching to a different major
+   version locally to keep your environment aligned with CI.
+3. As a last resort while waiting for an upstream fix, build directly from Xcode
+   (`open ios/freighter-mobile.xcworkspace`) which sometimes bypasses toolchain
+   issues that affect the command-line build.
 
 ## Build Issues
 
