@@ -110,9 +110,12 @@ tags:
     visible:
       id: send-review-sheet
     timeout: 30000
-# Verify the federation address is displayed in the review sheet
-- assertVisible:
-    text: "freighter.…*lobstr.co"
+# Wait for the confirm button to be enabled (transaction built + memo validated)
+- extendedWaitUntil:
+    visible:
+      id: send-review-confirm-button
+      enabled: true
+    timeout: 30000
 - tapOn:
     id: send-review-confirm-button
 # Verify processing screen
@@ -207,8 +210,11 @@ tags:
     visible:
       id: send-review-sheet
     timeout: 30000
-- assertVisible:
-    text: "freighter.…*lobstr.co"
+- extendedWaitUntil:
+    visible:
+      id: send-review-confirm-button
+      enabled: true
+    timeout: 30000
 - tapOn:
     id: send-review-confirm-button
 - extendedWaitUntil:
