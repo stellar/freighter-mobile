@@ -15,10 +15,47 @@ import { isContractId } from "helpers/soroban";
  * @param address The address to check
  * @returns True if the address is a federation address
  */
+const hasInvalidFederationChars = (value: string): boolean =>
+  value.split("").some((char) => char === "@" || char === "*" || char <= " ");
+
 export const isFederationAddress = (address: string): boolean => {
+  if (!address) {
+    return false;
+  }
+
   // Reject non-ASCII to prevent homoglyph spoofing (SEP-0002 addresses are ASCII-only)
-  if (address.split("").some((c) => c.charCodeAt(0) > 127)) return false;
-  return /^[^*@\s]+\*[^*@\s]+(\.[^*@\s]+)+$/.test(address);
+  if (address.split("").some((char) => char.charCodeAt(0) > 127)) {
+    return false;
+  }
+
+  const separatorIndex = address.indexOf("*");
+
+  if (
+    separatorIndex <= 0 ||
+    separatorIndex !== address.lastIndexOf("*") ||
+    separatorIndex === address.length - 1
+  ) {
+    return false;
+  }
+
+  const localPart = address.slice(0, separatorIndex);
+  const domainPart = address.slice(separatorIndex + 1);
+
+  if (
+    hasInvalidFederationChars(localPart) ||
+    hasInvalidFederationChars(domainPart)
+  ) {
+    return false;
+  }
+
+  const domainLabels = domainPart.split(".");
+
+  return (
+    domainLabels.length > 1 &&
+    domainLabels.every(
+      (label) => label.length > 0 && !hasInvalidFederationChars(label),
+    )
+  );
 };
 
 /**

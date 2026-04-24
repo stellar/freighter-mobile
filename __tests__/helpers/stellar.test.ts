@@ -132,6 +132,8 @@ describe("Stellar helpers", () => {
       expect(isFederationAddress("user*domain")).toBe(false);
       expect(isFederationAddress("userdomain.com")).toBe(false);
       expect(isFederationAddress("user*domain*com")).toBe(false);
+      expect(isFederationAddress("user*domain..com")).toBe(false);
+      expect(isFederationAddress("user*domain .com")).toBe(false);
       expect(isFederationAddress("")).toBe(false);
       expect(isFederationAddress(validEd25519)).toBe(false);
     });
