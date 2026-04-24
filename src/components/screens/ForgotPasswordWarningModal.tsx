@@ -25,7 +25,6 @@ const ForgotPasswordWarningModal: React.FC<ForgotPasswordWarningModalProps> = ({
     <Modal
       visible={visible}
       onClose={onCancel}
-      backdropColor={themeColors.background.primary}
       contentClassName="w-full bg-background-tertiary rounded-[24px] p-6 gap-6"
       testID="forgot-password-warning-modal"
     >
@@ -36,7 +35,7 @@ const ForgotPasswordWarningModal: React.FC<ForgotPasswordWarningModalProps> = ({
           borderColor: themeColors.red[6],
         }}
       >
-        <Icon.AlertCircle size={24} themeColor="red" />
+        <Icon.InfoCircle size={24} themeColor="red" />
       </View>
 
       <ScrollView className="flex-shrink">
@@ -61,7 +60,7 @@ const ForgotPasswordWarningModal: React.FC<ForgotPasswordWarningModalProps> = ({
 
       <View className="gap-4">
         <Button
-          secondary
+          tertiary
           xl
           onPress={onCancel}
           testID="forgot-password-warning-cancel-button"
@@ -74,7 +73,7 @@ const ForgotPasswordWarningModal: React.FC<ForgotPasswordWarningModalProps> = ({
           onPress={onConfirm}
           testID="forgot-password-warning-continue-button"
         >
-          {t("lockScreen.forgotPasswordWarningContinueButton")}
+          {t("lockScreen.forgotPasswordWarningResetButton")}
         </Button>
       </View>
     </Modal>
