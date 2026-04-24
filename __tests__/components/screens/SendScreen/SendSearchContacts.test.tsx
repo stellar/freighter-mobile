@@ -8,7 +8,7 @@ import {
   SendPaymentStackParamList,
 } from "config/routes";
 import * as sendDuck from "ducks/sendRecipient";
-import { useTransactionSettingsStore } from "ducks/transactionSettings";
+import * as transactionSettingsDuck from "ducks/transactionSettings";
 import { renderWithProviders } from "helpers/testUtils";
 import React, { ReactNode } from "react";
 import { View } from "react-native";
@@ -86,21 +86,30 @@ jest.mock("ducks/sendRecipient", () => ({
   useSendRecipientStore: getSendStoreMock(),
 }));
 
-jest.mock("ducks/transactionSettings");
-jest.mock("ducks/qrData", () => ({
-  useQRDataStore: jest.fn().mockReturnValue({ clearQRData: jest.fn() }),
+const getTransactionSettingsStoreMock = (overrides = {}) => ({
+  saveRecipientAddress: jest.fn(),
+  saveSelectedCollectibleDetails: jest.fn(),
+  selectedCollectibleDetails: { collectionAddress: "", tokenId: "" },
+  selectedTokenId: "",
+  ...overrides,
+});
+
+jest.mock("ducks/transactionSettings", () => ({
+  useTransactionSettingsStore: jest.fn().mockReturnValue({
+    saveRecipientAddress: jest.fn(),
+    saveSelectedCollectibleDetails: jest.fn(),
+    selectedCollectibleDetails: { collectionAddress: "", tokenId: "" },
+    selectedTokenId: "",
+  }),
 }));
 
-const mockUseTransactionSettingsStore =
-  useTransactionSettingsStore as jest.MockedFunction<
-    typeof useTransactionSettingsStore
-  >;
+jest.mock("ducks/qrData", () => ({
+  useQRDataStore: () => ({ clearQRData: jest.fn() }),
+}));
 
-const defaultTransactionSettingsState = {
-  saveRecipientAddress: jest.fn(),
-  selectedCollectibleDetails: { tokenId: "", collectionAddress: "" },
-  saveSelectedCollectibleDetails: jest.fn(),
-};
+jest.mock("hooks/useInAppBrowser", () => ({
+  useInAppBrowser: () => ({ open: jest.fn() }),
+}));
 
 // Mock the useRightHeader hook to avoid navigation.setOptions issues
 jest.mock("hooks/useRightHeader", () => ({
@@ -153,6 +162,11 @@ jest.mock("hooks/useAppTranslation", () => () => ({
       "sendPaymentScreen.recents": "Recent",
       "sendPaymentScreen.suggestions": "Suggestions",
       "common.paste": "Paste",
+      "sendSearchContacts.unfunded.title":
+        "The destination account doesn't exist",
+      "sendSearchContacts.unfunded.action":
+        "Send at least 1 XLM to create the account.",
+      "sendSearchContacts.unfunded.learnMore": "Learn more",
     };
     return translations[key] || key;
   },
@@ -167,9 +181,6 @@ describe("SendSearchContacts", () => {
         recentAddresses: mockRecentAddresses,
         loadRecentAddresses: mockLoadRecentAddresses,
       }),
-    );
-    mockUseTransactionSettingsStore.mockReturnValue(
-      defaultTransactionSettingsState,
     );
   });
 
@@ -243,61 +254,115 @@ describe("SendSearchContacts", () => {
       expect(mockSearchAddress).toHaveBeenCalledWith("test");
     });
   });
-});
 
-describe("SendSearchContacts - Unfunded Warning", () => {
-  const unfundedStoreMock = getSendStoreMock({
-    recentAddresses: [],
-    loadRecentAddresses: mockLoadRecentAddresses,
-    isValidDestination: true,
-    isDestinationFunded: false,
-  });
+  describe("unfunded destination notification", () => {
+    const unfundedStoreOverrides = {
+      recentAddresses: mockRecentAddresses,
+      loadRecentAddresses: mockLoadRecentAddresses,
+      isValidDestination: true,
+      isDestinationFunded: false,
+    };
 
-  beforeEach(() => {
-    jest.clearAllMocks();
-    jest
-      .spyOn(sendDuck, "useSendRecipientStore")
-      .mockImplementation(unfundedStoreMock);
-  });
+    const unfundedTitle = "The destination account doesn't exist";
 
-  it("shows unfunded warning for token send to unfunded address", async () => {
-    mockUseTransactionSettingsStore.mockReturnValue({
-      ...defaultTransactionSettingsState,
-      selectedCollectibleDetails: { tokenId: "", collectionAddress: "" },
+    it("shows the unfunded notice for a classic asset send", async () => {
+      jest
+        .spyOn(sendDuck, "useSendRecipientStore")
+        .mockImplementation(getSendStoreMock(unfundedStoreOverrides));
+      jest
+        .spyOn(transactionSettingsDuck, "useTransactionSettingsStore")
+        .mockReturnValue(
+          getTransactionSettingsStoreMock({ selectedTokenId: "XLM" }),
+        );
+
+      renderWithProviders(
+        <NavigationContainer>
+          <SendSearchContacts navigation={mockNavigation} route={mockRoute} />
+        </NavigationContainer>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText(unfundedTitle)).toBeTruthy();
+      });
     });
 
-    renderWithProviders(
-      <NavigationContainer>
-        <SendSearchContacts navigation={mockNavigation} route={mockRoute} />
-      </NavigationContainer>,
-    );
+    it("shows the unfunded notice for a SAC-wrapped classic asset (classic G-issuer)", async () => {
+      // SACs are normalized at import to a classic G-issuer identifier,
+      // so getTokenType classifies them as CREDIT_ALPHANUM — not CUSTOM_TOKEN.
+      jest
+        .spyOn(sendDuck, "useSendRecipientStore")
+        .mockImplementation(getSendStoreMock(unfundedStoreOverrides));
+      jest
+        .spyOn(transactionSettingsDuck, "useTransactionSettingsStore")
+        .mockReturnValue(
+          getTransactionSettingsStoreMock({
+            selectedTokenId:
+              "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          }),
+        );
 
-    await waitFor(() => {
-      expect(
-        screen.getByText("sendSearchContacts.unfunded.title"),
-      ).toBeTruthy();
+      renderWithProviders(
+        <NavigationContainer>
+          <SendSearchContacts navigation={mockNavigation} route={mockRoute} />
+        </NavigationContainer>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText(unfundedTitle)).toBeTruthy();
+      });
     });
-  });
 
-  it("hides unfunded warning in collectible send flow", async () => {
-    mockUseTransactionSettingsStore.mockReturnValue({
-      ...defaultTransactionSettingsState,
-      selectedCollectibleDetails: {
-        tokenId: "42",
-        collectionAddress: "CABC123",
-      },
+    it("hides the unfunded notice for a pure Soroban custom token (contract C-issuer)", async () => {
+      jest
+        .spyOn(sendDuck, "useSendRecipientStore")
+        .mockImplementation(getSendStoreMock(unfundedStoreOverrides));
+      jest
+        .spyOn(transactionSettingsDuck, "useTransactionSettingsStore")
+        .mockReturnValue(
+          getTransactionSettingsStoreMock({
+            selectedTokenId:
+              "PBT:CAZXRTOKNUQ2JQQF3NCRU7GYMDJNZ2NMQN6IGN4FCT5DWPODMPVEXSND",
+          }),
+        );
+
+      renderWithProviders(
+        <NavigationContainer>
+          <SendSearchContacts navigation={mockNavigation} route={mockRoute} />
+        </NavigationContainer>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText("Enter address")).toBeTruthy();
+      });
+      expect(screen.queryByText(unfundedTitle)).toBeNull();
     });
 
-    renderWithProviders(
-      <NavigationContainer>
-        <SendSearchContacts navigation={mockNavigation} route={mockRoute} />
-      </NavigationContainer>,
-    );
+    it("hides the unfunded notice when the user is in the collectible send flow", async () => {
+      jest
+        .spyOn(sendDuck, "useSendRecipientStore")
+        .mockImplementation(getSendStoreMock(unfundedStoreOverrides));
+      jest
+        .spyOn(transactionSettingsDuck, "useTransactionSettingsStore")
+        .mockReturnValue(
+          getTransactionSettingsStoreMock({
+            selectedCollectibleDetails: {
+              collectionAddress:
+                "CAZXRTOKNUQ2JQQF3NCRU7GYMDJNZ2NMQN6IGN4FCT5DWPODMPVEXSND",
+              tokenId: "42",
+            },
+          }),
+        );
 
-    await waitFor(() => {
-      expect(
-        screen.queryByText("sendSearchContacts.unfunded.title"),
-      ).toBeNull();
+      renderWithProviders(
+        <NavigationContainer>
+          <SendSearchContacts navigation={mockNavigation} route={mockRoute} />
+        </NavigationContainer>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText("Enter address")).toBeTruthy();
+      });
+      expect(screen.queryByText(unfundedTitle)).toBeNull();
     });
   });
 });
