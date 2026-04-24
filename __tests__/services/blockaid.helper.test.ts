@@ -295,6 +295,7 @@ describe("isUnfundedDestinationError", () => {
         assetCode: "PBT",
         isDestinationFunded: false,
         isClassicAsset: false,
+        isContractDestination: false,
       }),
     ).toBe(false);
   });
@@ -305,6 +306,7 @@ describe("isUnfundedDestinationError", () => {
         assetCode: "collectible",
         isDestinationFunded: false,
         isClassicAsset: false,
+        isContractDestination: false,
       }),
     ).toBe(false);
   });
@@ -315,6 +317,7 @@ describe("isUnfundedDestinationError", () => {
         assetCode: "USDC",
         isDestinationFunded: false,
         isClassicAsset: true,
+        isContractDestination: false,
       }),
     ).toBe(true);
   });
@@ -326,6 +329,7 @@ describe("isUnfundedDestinationError", () => {
         isDestinationFunded: false,
         canCreateAccountWithAmount: false,
         isClassicAsset: true,
+        isContractDestination: false,
       }),
     ).toBe(true);
   });
@@ -337,6 +341,7 @@ describe("isUnfundedDestinationError", () => {
         isDestinationFunded: false,
         canCreateAccountWithAmount: true,
         isClassicAsset: true,
+        isContractDestination: false,
       }),
     ).toBe(false);
   });
@@ -347,6 +352,33 @@ describe("isUnfundedDestinationError", () => {
         assetCode: "USDC",
         isDestinationFunded: true,
         isClassicAsset: true,
+        isContractDestination: false,
+      }),
+    ).toBe(false);
+  });
+
+  it("returns false for a classic non-XLM asset sent to a contract destination", () => {
+    // A C... destination isn't a classic account — the token contract
+    // holds the balance entry — so the unfunded warning shouldn't fire
+    // even for a classic asset like USDC.
+    expect(
+      isUnfundedDestinationError({
+        assetCode: "USDC",
+        isDestinationFunded: false,
+        isClassicAsset: true,
+        isContractDestination: true,
+      }),
+    ).toBe(false);
+  });
+
+  it("returns false for XLM below create-account minimum sent to a contract destination", () => {
+    expect(
+      isUnfundedDestinationError({
+        assetCode: "XLM",
+        isDestinationFunded: false,
+        canCreateAccountWithAmount: false,
+        isClassicAsset: true,
+        isContractDestination: true,
       }),
     ).toBe(false);
   });

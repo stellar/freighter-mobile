@@ -343,6 +343,7 @@ describe("SendScreen Helpers", () => {
         isDestinationFunded: false,
         canCreateAccountWithAmount: true,
         isClassicAsset: true,
+        isContractDestination: false,
       });
     });
 
@@ -361,6 +362,45 @@ describe("SendScreen Helpers", () => {
         isDestinationFunded: false,
         canCreateAccountWithAmount: false,
         isClassicAsset: true,
+        isContractDestination: false,
+      });
+    });
+
+    it("flags a contract (C...) recipient as a contract destination", () => {
+      expect(
+        buildUnfundedContext({
+          selectedBalance: {
+            tokenCode: "USDC",
+            tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+          },
+          isDestinationFunded: false,
+          tokenAmount: "10",
+          recipientAddress:
+            "CAZXRTOKNUQ2JQQF3NCRU7GYMDJNZ2NMQN6IGN4FCT5DWPODMPVEXSND",
+        }),
+      ).toMatchObject({
+        assetCode: "USDC",
+        isClassicAsset: true,
+        isContractDestination: true,
+      });
+    });
+
+    it("flags a G-address recipient as a classic destination", () => {
+      expect(
+        buildUnfundedContext({
+          selectedBalance: {
+            tokenCode: "USDC",
+            tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+          },
+          isDestinationFunded: false,
+          tokenAmount: "10",
+          recipientAddress:
+            "GACJYENHYW2LGHBNNGNZ4NCBGZYVTGTZM4CJLQIOQQ5IUZU3SYWOW5EK",
+        }),
+      ).toMatchObject({
+        assetCode: "USDC",
+        isClassicAsset: true,
+        isContractDestination: false,
       });
     });
 
