@@ -83,7 +83,7 @@ Dev and prod builds use completely separate keychain entries. This means:
 
 - Installing the dev build cannot read prod secrets
 - Testing never touches production credentials
-- Push tokens and deep links are isolated per environment
+- Deep links are isolated per environment
 
 ## Common Security Mistakes to Avoid
 
