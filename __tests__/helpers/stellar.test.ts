@@ -135,6 +135,15 @@ describe("Stellar helpers", () => {
       expect(isFederationAddress("")).toBe(false);
       expect(isFederationAddress(validEd25519)).toBe(false);
     });
+
+    it("should reject non-ASCII characters to prevent homoglyph spoofing", () => {
+      // Cyrillic lookalike for 'a' (U+0430)
+      expect(isFederationAddress("userа*domain.com")).toBe(false);
+      // Ellipsis character (U+2026)
+      expect(isFederationAddress("user…*domain.com")).toBe(false);
+      // Unicode asterisk lookalike (U+204E)
+      expect(isFederationAddress("user⁎domain.com")).toBe(false);
+    });
   });
 
   describe("isMuxedAccount", () => {

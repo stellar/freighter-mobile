@@ -16,8 +16,9 @@ import { isContractId } from "helpers/soroban";
  * @returns True if the address is a federation address
  */
 export const isFederationAddress = (address: string): boolean => {
-  const federationAddressRegex = /^[^*@]+\*[^*@]+(\.[^*@]+)+$/;
-  return federationAddressRegex.test(address);
+  // Reject non-ASCII to prevent homoglyph spoofing (SEP-0002 addresses are ASCII-only)
+  if (address.split("").some((c) => c.charCodeAt(0) > 127)) return false;
+  return /^[^*@\s]+\*[^*@\s]+(\.[^*@\s]+)+$/.test(address);
 };
 
 /**
