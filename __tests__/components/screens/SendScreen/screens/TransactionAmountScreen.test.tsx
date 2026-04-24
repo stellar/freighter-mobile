@@ -1559,4 +1559,93 @@ describe("TransactionAmountScreen - Address Change Scenarios", () => {
 
     expect(mockCachedFetch).toHaveBeenCalled();
   });
+
+  it("auto-simulates Soroban fee estimation again when the recipient changes", async () => {
+    const sorobanBalance = {
+      ...mockSelectedBalance,
+      id: "USDC:custom-contract",
+      tokenId: "USDC:custom-contract",
+      contractId: "CBU5Q4M5R5K3M6UNYFJQ3UGIY7JZ3YQYHWEY6EJQJQGZQ5JQ4L2S6SAX",
+    };
+
+    const mockBuildTransactionFn = jest.fn().mockResolvedValue("mockXdr");
+
+    mockUseTransactionBuilderStore.mockReturnValue({
+      ...mockTransactionBuilderState,
+      buildTransaction: mockBuildTransactionFn,
+    });
+    mockUseBalancesList.mockReturnValue({
+      balanceItems: [sorobanBalance as any, mockXlmBalance as any],
+      scanResults: {} as any,
+      isLoading: false,
+      error: null,
+      noBalances: false,
+      isRefreshing: false,
+      isFunded: true,
+      handleRefresh: jest.fn(),
+    });
+
+    let settingsState = {
+      ...mockTransactionSettingsState,
+      selectedTokenId: sorobanBalance.id,
+      recipientAddress:
+        "GA6SXIZIKLJHCZI2KEOBEUUOFMM4JUPPM2UTWX6STAWT25JWIEUFIMFF",
+      transactionFee: "0.1234567",
+    };
+
+    mockUseTransactionSettingsStore.mockReturnValue(settingsState);
+    Object.assign(useTransactionSettingsStore, {
+      getState: jest.fn(() => settingsState),
+    });
+
+    const { rerender } = renderWithProviders(
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+
+    await act(async () => {
+      await new Promise<void>((resolve) => {
+        setTimeout(() => resolve(), 400);
+      });
+    });
+
+    expect(mockBuildTransactionFn).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        tokenAmount: "0",
+        recipientAddress: settingsState.recipientAddress,
+        transactionFee: "0.1234567",
+      }),
+    );
+
+    settingsState = {
+      ...settingsState,
+      recipientAddress:
+        "GDIQJ6G5D4EZLZ3ZXFL225R5OYS5J6GVEDWAPLEQPZON2W5DR25WZ3B2",
+    };
+
+    mockUseTransactionSettingsStore.mockReturnValue(settingsState);
+    Object.assign(useTransactionSettingsStore, {
+      getState: jest.fn(() => settingsState),
+    });
+
+    rerender(
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+
+    await act(async () => {
+      await new Promise<void>((resolve) => {
+        setTimeout(() => resolve(), 400);
+      });
+    });
+
+    expect(mockBuildTransactionFn).toHaveBeenCalledTimes(2);
+    expect(mockBuildTransactionFn).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        tokenAmount: "0",
+        recipientAddress: settingsState.recipientAddress,
+        transactionFee: "0.1234567",
+      }),
+    );
+  });
 });
