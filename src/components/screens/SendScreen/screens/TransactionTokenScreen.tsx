@@ -48,7 +48,7 @@ const TransactionTokenScreen: React.FC<TransactionTokenScreenProps> = ({
         collectibleDetails,
       );
     } else {
-      navigation.navigate(SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN);
+      navigation.goBack();
     }
   };
 
