@@ -190,7 +190,8 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
           )}
           {!searchError &&
             isValidDestination &&
-            isDestinationFunded === false && (
+            isDestinationFunded === false &&
+            !selectedCollectibleDetails.tokenId && (
               <View className="mt-4">
                 <Notification
                   variant="primary"

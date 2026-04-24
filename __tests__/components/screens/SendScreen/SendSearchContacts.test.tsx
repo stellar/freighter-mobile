@@ -8,6 +8,7 @@ import {
   SendPaymentStackParamList,
 } from "config/routes";
 import * as sendDuck from "ducks/sendRecipient";
+import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { renderWithProviders } from "helpers/testUtils";
 import React, { ReactNode } from "react";
 import { View } from "react-native";
@@ -85,6 +86,22 @@ jest.mock("ducks/sendRecipient", () => ({
   useSendRecipientStore: getSendStoreMock(),
 }));
 
+jest.mock("ducks/transactionSettings");
+jest.mock("ducks/qrData", () => ({
+  useQRDataStore: jest.fn().mockReturnValue({ clearQRData: jest.fn() }),
+}));
+
+const mockUseTransactionSettingsStore =
+  useTransactionSettingsStore as jest.MockedFunction<
+    typeof useTransactionSettingsStore
+  >;
+
+const defaultTransactionSettingsState = {
+  saveRecipientAddress: jest.fn(),
+  selectedCollectibleDetails: { tokenId: "", collectionAddress: "" },
+  saveSelectedCollectibleDetails: jest.fn(),
+};
+
 // Mock the useRightHeader hook to avoid navigation.setOptions issues
 jest.mock("hooks/useRightHeader", () => ({
   useRightHeaderButton: jest.fn(),
@@ -150,6 +167,9 @@ describe("SendSearchContacts", () => {
         recentAddresses: mockRecentAddresses,
         loadRecentAddresses: mockLoadRecentAddresses,
       }),
+    );
+    mockUseTransactionSettingsStore.mockReturnValue(
+      defaultTransactionSettingsState,
     );
   });
 
@@ -221,6 +241,63 @@ describe("SendSearchContacts", () => {
 
     await waitFor(() => {
       expect(mockSearchAddress).toHaveBeenCalledWith("test");
+    });
+  });
+});
+
+describe("SendSearchContacts - Unfunded Warning", () => {
+  const unfundedStoreMock = getSendStoreMock({
+    recentAddresses: [],
+    loadRecentAddresses: mockLoadRecentAddresses,
+    isValidDestination: true,
+    isDestinationFunded: false,
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest
+      .spyOn(sendDuck, "useSendRecipientStore")
+      .mockImplementation(unfundedStoreMock);
+  });
+
+  it("shows unfunded warning for token send to unfunded address", async () => {
+    mockUseTransactionSettingsStore.mockReturnValue({
+      ...defaultTransactionSettingsState,
+      selectedCollectibleDetails: { tokenId: "", collectionAddress: "" },
+    });
+
+    renderWithProviders(
+      <NavigationContainer>
+        <SendSearchContacts navigation={mockNavigation} route={mockRoute} />
+      </NavigationContainer>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("sendSearchContacts.unfunded.title"),
+      ).toBeTruthy();
+    });
+  });
+
+  it("hides unfunded warning in collectible send flow", async () => {
+    mockUseTransactionSettingsStore.mockReturnValue({
+      ...defaultTransactionSettingsState,
+      selectedCollectibleDetails: {
+        tokenId: "42",
+        collectionAddress: "CABC123",
+      },
+    });
+
+    renderWithProviders(
+      <NavigationContainer>
+        <SendSearchContacts navigation={mockNavigation} route={mockRoute} />
+      </NavigationContainer>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText("sendSearchContacts.unfunded.title"),
+      ).toBeNull();
     });
   });
 });
