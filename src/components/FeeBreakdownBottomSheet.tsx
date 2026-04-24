@@ -28,6 +28,7 @@ type FeeBreakdownBottomSheetProps = {
  * For Soroban transactions: shows Inclusion Fee + Resource Fee + Total Fee rows.
  * For classic transactions: shows only the Total Fee row.
  * Shows ActivityIndicator while a build is in progress.
+ * Shows an error notification when simulation failed.
  * Includes a contextual description (different text for Soroban vs classic).
  */
 const FeeBreakdownBottomSheet: React.FC<FeeBreakdownBottomSheetProps> = ({
@@ -36,8 +37,12 @@ const FeeBreakdownBottomSheet: React.FC<FeeBreakdownBottomSheetProps> = ({
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
-  const { sorobanResourceFeeXlm, sorobanInclusionFeeXlm, isBuilding } =
-    useTransactionBuilderStore();
+  const {
+    sorobanResourceFeeXlm,
+    sorobanInclusionFeeXlm,
+    isBuilding,
+    error: builderError,
+  } = useTransactionBuilderStore();
   const { transactionFee } = useTransactionSettingsStore();
 
   const totalFeeXlm = computeTotalFeeXlm(
@@ -45,6 +50,15 @@ const FeeBreakdownBottomSheet: React.FC<FeeBreakdownBottomSheetProps> = ({
     sorobanResourceFeeXlm,
     transactionFee,
   );
+
+  // When simulation has failed the stored fee fields are null — show a dash
+  // instead of the misleading base fee for Soroban rows.
+  const hasBuildError = isSorobanContext && !!builderError && !isBuilding;
+
+  const getResourceFeeDisplay = () => {
+    if (hasBuildError || !sorobanResourceFeeXlm) return "-";
+    return formatTokenForDisplay(sorobanResourceFeeXlm, NATIVE_TOKEN_CODE);
+  };
 
   return (
     <View className="flex-1">
@@ -82,10 +96,12 @@ const FeeBreakdownBottomSheet: React.FC<FeeBreakdownBottomSheetProps> = ({
               />
             ) : (
               <Text md primary>
-                {formatTokenForDisplay(
-                  sorobanInclusionFeeXlm ?? transactionFee,
-                  NATIVE_TOKEN_CODE,
-                )}
+                {hasBuildError
+                  ? "—"
+                  : formatTokenForDisplay(
+                      sorobanInclusionFeeXlm ?? transactionFee,
+                      NATIVE_TOKEN_CODE,
+                    )}
               </Text>
             )}
           </View>
@@ -102,12 +118,7 @@ const FeeBreakdownBottomSheet: React.FC<FeeBreakdownBottomSheetProps> = ({
               />
             ) : (
               <Text md primary>
-                {sorobanResourceFeeXlm
-                  ? formatTokenForDisplay(
-                      sorobanResourceFeeXlm,
-                      NATIVE_TOKEN_CODE,
-                    )
-                  : "--"}
+                {getResourceFeeDisplay()}
               </Text>
             )}
           </View>
@@ -124,7 +135,9 @@ const FeeBreakdownBottomSheet: React.FC<FeeBreakdownBottomSheetProps> = ({
             />
           ) : (
             <Text md medium color={themeColors.lilac[11]}>
-              {formatTokenForDisplay(totalFeeXlm, NATIVE_TOKEN_CODE)}
+              {hasBuildError
+                ? "—"
+                : formatTokenForDisplay(totalFeeXlm, NATIVE_TOKEN_CODE)}
             </Text>
           )}
         </View>
