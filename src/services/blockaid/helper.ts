@@ -37,6 +37,15 @@ export interface UnfundedDestinationContext {
    * If false for XLM, we treat the transaction as expected to fail.
    */
   canCreateAccountWithAmount?: boolean;
+  /**
+   * True when the send uses classic Stellar account semantics: native XLM,
+   * credit_alphanum assets, or a Stellar Asset Contract (SAC) wrapping one
+   * of those — all of which require a funded classic destination account.
+   * False for pure Soroban custom tokens and collectibles, whose contract
+   * `transfer` doesn't require the destination to exist on the classic
+   * ledger.
+   */
+  isClassicAsset: boolean;
 }
 
 /**
@@ -195,6 +204,15 @@ export const isUnfundedDestinationError = (
   unfundedContext?: UnfundedDestinationContext,
 ): boolean => {
   if (!unfundedContext) {
+    return false;
+  }
+
+  // Pure Soroban custom tokens and collectibles transfer via contract
+  // invocation without touching the classic account ledger, so an unfunded
+  // destination is not a failure condition for them. SACs are considered
+  // classic here (see isClassicAsset docs) because their `transfer` still
+  // requires a funded classic destination.
+  if (!unfundedContext.isClassicAsset) {
     return false;
   }
 
