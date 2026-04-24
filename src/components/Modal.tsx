@@ -1,6 +1,8 @@
 import React from "react";
 import {
+  type StyleProp,
   View,
+  type ViewStyle,
   Modal as RNModal,
   TouchableWithoutFeedback,
   KeyboardAvoidingView,
@@ -11,6 +13,10 @@ interface ModalProps {
   onClose: () => void;
   children: React.ReactNode;
   closeOnOverlayPress?: boolean;
+  backdropColor?: string;
+  contentClassName?: string;
+  contentStyle?: StyleProp<ViewStyle>;
+  testID?: string;
 }
 
 const Modal: React.FC<ModalProps> = ({
@@ -18,11 +24,15 @@ const Modal: React.FC<ModalProps> = ({
   onClose,
   children,
   closeOnOverlayPress = false,
+  backdropColor = "rgba(0, 0, 0, 0.9)",
+  contentClassName,
+  contentStyle,
+  testID,
 }) => (
   <RNModal
     animationType="fade"
     transparent={false}
-    backdropColor="rgba(0, 0, 0, 0.9)"
+    backdropColor={backdropColor}
     visible={visible}
     presentationStyle="overFullScreen"
     onRequestClose={() => {
@@ -41,7 +51,11 @@ const Modal: React.FC<ModalProps> = ({
       </TouchableWithoutFeedback>
 
       <View className="flex-1 items-center justify-center mx-6">
-        <View className="py-8 px-6 bg-background-primary rounded-[32px]">
+        <View
+          className={`py-8 px-6 bg-background-primary rounded-[32px] ${contentClassName ?? ""}`}
+          style={contentStyle}
+          testID={testID}
+        >
           {children}
         </View>
       </View>

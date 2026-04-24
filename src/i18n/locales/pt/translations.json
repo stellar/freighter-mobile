@@ -261,9 +261,9 @@
     "failedToLoadAccountTitle": "Conta não carregada",
     "failedToLoadAccountMessage": "Sua conta não pôde ser carregada após o login. Tente novamente.",
     "forgotPasswordWarningTitle": "Tem certeza?",
-    "forgotPasswordWarningMessage1": "Não podemos recuperar sua senha para você. Este processo apagará sua carteira e você precisará passar pelo fluxo de importação de carteira para reimportar sua carteira com sua frase de recuperação.",
+    "forgotPasswordWarningMessage1": "Não podemos recuperar sua senha para você. Este processo apagará sua carteira, e você precisará passar pelo fluxo de importação da carteira novamente usando sua frase de recuperação.",
     "forgotPasswordWarningMessage2": "Você perderá permanentemente o acesso à conta atualmente armazenada no Freighter.",
-    "forgotPasswordWarningMessage3": "Só faça isso se você tiver sua frase guardada em segurança em outro lugar.",
+    "forgotPasswordWarningMessage3": "Só faça isso se você tiver sua frase de recuperação guardada em segurança em outro lugar.",
     "forgotPasswordWarningContinueButton": "Continuar para restaurar"
   },
   "onboarding": {
