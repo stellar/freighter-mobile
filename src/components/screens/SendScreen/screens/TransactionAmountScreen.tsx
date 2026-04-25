@@ -367,8 +367,9 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         selectedBalance,
         isDestinationFunded,
         tokenAmount,
+        recipientAddress,
       }),
-    [selectedBalance, isDestinationFunded, tokenAmount],
+    [selectedBalance, isDestinationFunded, tokenAmount, recipientAddress],
   );
 
   const {

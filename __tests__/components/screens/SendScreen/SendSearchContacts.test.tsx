@@ -286,6 +286,35 @@ describe("SendSearchContacts", () => {
       });
     });
 
+    it("hides the unfunded notice when the destination is a contract (C...) address", async () => {
+      // Classic-asset sends to a C address go via Soroban `transfer`; the
+      // balance lives in the token contract's storage, so there's no
+      // classic account to be unfunded.
+      jest.spyOn(sendDuck, "useSendRecipientStore").mockImplementation(
+        getSendStoreMock({
+          ...unfundedStoreOverrides,
+          destinationAddress:
+            "CAZXRTOKNUQ2JQQF3NCRU7GYMDJNZ2NMQN6IGN4FCT5DWPODMPVEXSND",
+        }),
+      );
+      jest
+        .spyOn(transactionSettingsDuck, "useTransactionSettingsStore")
+        .mockReturnValue(
+          getTransactionSettingsStoreMock({ selectedTokenId: "XLM" }),
+        );
+
+      renderWithProviders(
+        <NavigationContainer>
+          <SendSearchContacts navigation={mockNavigation} route={mockRoute} />
+        </NavigationContainer>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText("Enter address")).toBeTruthy();
+      });
+      expect(screen.queryByText(unfundedTitle)).toBeNull();
+    });
+
     it("shows the unfunded notice for a SAC-wrapped classic asset (classic G-issuer)", async () => {
       // SACs are normalized at import to a classic G-issuer identifier,
       // so getTokenType classifies them as CREDIT_ALPHANUM — not CUSTOM_TOKEN.
