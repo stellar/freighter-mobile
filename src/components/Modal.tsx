@@ -52,7 +52,9 @@ const Modal: React.FC<ModalProps> = ({
 
       <View className="flex-1 items-center justify-center mx-6">
         <View
-          className={`py-8 px-6 bg-background-primary rounded-[32px] ${contentClassName ?? ""}`}
+          className={
+            contentClassName ?? "py-8 px-6 bg-background-primary rounded-[32px]"
+          }
           style={contentStyle}
           testID={testID}
         >
