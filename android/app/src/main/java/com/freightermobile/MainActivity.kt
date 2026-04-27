@@ -25,10 +25,13 @@ class MainActivity : ReactActivity() {
       DefaultReactActivityDelegate(this, mainComponentName, fabricEnabled)
 
   /**
-   * react-native-screens package requires this override to properly work on Android devices.
+   * Pass null to super.onCreate to prevent Android from restoring react-native-screens
+   * fragments — they intentionally throw on restoration (process death, config change in
+   * background) and crash the app on relaunch.
+   * https://github.com/software-mansion/react-native-screens/issues/17#issuecomment-424704067
    */
   override fun onCreate(savedInstanceState: Bundle?) {
     RNBootSplash.init(this, R.style.BootTheme)
-    super.onCreate(savedInstanceState)
+    super.onCreate(null)
   }
 }
