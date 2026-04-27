@@ -706,6 +706,7 @@ interface SimulateContractTransferParams {
   transaction: Transaction;
   networkDetails: NetworkDetails;
   memo: string;
+  fee?: string;
   params: {
     publicKey: string;
     destination: string;
@@ -718,6 +719,7 @@ export const simulateContractTransfer = async ({
   transaction,
   networkDetails,
   memo,
+  fee,
   params,
   contractAddress,
 }: SimulateContractTransferParams) => {
@@ -736,6 +738,7 @@ export const simulateContractTransfer = async ({
       address: contractAddress,
       pub_key: transaction.source,
       memo, // This may be redundant if destination is muxed, but kept for compatibility
+      fee: fee ? xlmToStroop(fee).toString() : undefined,
       params,
       network_url: networkDetails.sorobanRpcUrl,
       network_passphrase: networkDetails.networkPassphrase,

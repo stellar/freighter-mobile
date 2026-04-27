@@ -106,6 +106,7 @@ describe("transactionBuilder Duck", () => {
     expect(state.signedTransactionXDR).toBeNull();
     expect(state.transactionHash).toBeNull();
     expect(state.error).toBeNull();
+    expect(state.isSoroban).toBe(false);
     expect(transactionService.buildPaymentTransaction).toHaveBeenCalledWith(
       expect.objectContaining({
         tokenAmount: mockTokenValue,

@@ -231,6 +231,7 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
               transaction: builtTxResult.tx,
               networkDetails,
               memo: memoForSimulation,
+              fee: params.transactionFee,
               params: {
                 publicKey: params.senderAddress,
                 destination: finalDestination,
