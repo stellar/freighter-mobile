@@ -21,6 +21,7 @@ import { SendType } from "components/screens/SendScreen/components/SendReviewBot
 import {
   useSendBannerContent,
   getTransactionSecurity,
+  buildUnfundedContext,
 } from "components/screens/SendScreen/helpers";
 import { TransactionProcessingScreen } from "components/screens/SendScreen/screens";
 import { useSignTransactionDetails } from "components/screens/SignTransactionDetails/hooks/useSignTransactionDetails";
@@ -30,7 +31,6 @@ import { Display, Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import {
   DEFAULT_DECIMALS,
-  MINIMUM_CREATE_ACCOUNT_XLM,
   NATIVE_TOKEN_CODE,
   TransactionContext,
   mapNetworkToNetworkDetails,
@@ -368,27 +368,16 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     updateFiatDisplay,
   } = useTokenFiatConverter({ selectedBalance });
 
-  // Build context for unfunded destination detection (used by Blockaid warnings)
-  const unfundedContext: UnfundedDestinationContext | undefined =
-    useMemo(() => {
-      if (!selectedBalance || isDestinationFunded === null) {
-        return undefined;
-      }
-
-      const assetCode = selectedBalance.tokenCode || "unknown";
-      const canCreateAccountWithAmount =
-        assetCode === NATIVE_TOKEN_CODE
-          ? BigNumber(tokenAmount).isGreaterThanOrEqualTo(
-              MINIMUM_CREATE_ACCOUNT_XLM,
-            )
-          : undefined;
-
-      return {
-        assetCode,
+  const unfundedContext: UnfundedDestinationContext | undefined = useMemo(
+    () =>
+      buildUnfundedContext({
+        selectedBalance,
         isDestinationFunded,
-        canCreateAccountWithAmount,
-      };
-    }, [selectedBalance, isDestinationFunded, tokenAmount]);
+        tokenAmount,
+        recipientAddress,
+      }),
+    [selectedBalance, isDestinationFunded, tokenAmount, recipientAddress],
+  );
 
   const {
     transactionSecurityAssessment,

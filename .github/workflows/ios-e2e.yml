@@ -228,6 +228,7 @@ jobs:
       # - SwitchToTestnet: Switch network to testnet
       # - SendClassicTokenMainnet: Send XLM on mainnet (small amount: 0.000001 XLM)
       # - SwapClassicTokenMainnet: Swap tokens on mainnet (small amount: 0.000001 XLM)
+      # - ForgotPasswordWarning: Lock screen forgot password confirmation modal
       # - SendFederatedAddress: Send XLM and USDC to a federated address on mainnet (small amount: 0.000001 each)
       # - SignMessageMockDapp: WalletConnect sign message (requires mock server)
       # - SignAuthEntryMockDapp: WalletConnect sign auth entry (requires mock server)
@@ -265,6 +266,10 @@ jobs:
             requires-mock-server: false
           - shard-index: 7
             shard-total: 8
+            flow-name: ForgotPasswordWarning
+            requires-mock-server: false
+          - shard-index: 8
+            shard-total: 9
             flow-name: SendFederatedAddress
             requires-mock-server: false
           - shard-index: 0
