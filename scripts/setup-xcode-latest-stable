@@ -6,7 +6,7 @@ set -e
 
 # Maximum allowed Xcode major.minor version.
 # Bump this once all Pods (especially `fmt`) compile cleanly on the next Xcode.
-MAX_XCODE_VERSION="26.3"
+MAX_XCODE_VERSION="26.4"
 
 # Find all beta/RC Xcode versions to identify base versions to exclude
 BETA_XCODE_PATHS=$(ls -1d /Applications/Xcode*.app 2>/dev/null | grep -E "(Release_Candidate|RC|beta|Beta)" || true)
