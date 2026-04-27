@@ -65,7 +65,6 @@ import React, {
 import { View } from "react-native";
 import { analytics } from "services/analytics";
 import { TransactionOperationType } from "services/analytics/types";
-import { type UnfundedDestinationContext } from "services/blockaid/helper";
 
 type SendCollectibleReviewScreenProps = NativeStackScreenProps<
   SendPaymentStackParamList,
@@ -92,7 +91,7 @@ const SendCollectibleReviewScreen: React.FC<
     useTransactionSettingsStore();
   const { getCollectible } = useCollectiblesStore();
   const { overriddenBlockaidResponse } = useDebugStore();
-  const { resetSendRecipient, isDestinationFunded } = useSendRecipientStore();
+  const { resetSendRecipient } = useSendRecipientStore();
   const { fetchAccountHistory } = useHistoryStore();
 
   useEffect(() => {
@@ -190,29 +189,14 @@ const SendCollectibleReviewScreen: React.FC<
     transactionSecurityAssessment,
     transactionSecurityWarnings,
     transactionSecuritySeverity,
-  } = useMemo(() => {
-    // Build context for unfunded destination detection
-    // For collectibles, we don't have a traditional asset code, so use the collection address as identifier
-    const unfundedCtx: UnfundedDestinationContext | undefined =
-      selectedCollectible && isDestinationFunded !== null
-        ? {
-            // Use the collection contract ID as the asset identifier
-            assetCode: selectedCollectible.collectionAddress || "collectible",
-            isDestinationFunded,
-          }
-        : undefined;
-
-    return getTransactionSecurity(
-      transactionScanResult,
-      overriddenBlockaidResponse,
-      unfundedCtx,
-    );
-  }, [
-    transactionScanResult,
-    overriddenBlockaidResponse,
-    selectedCollectible,
-    isDestinationFunded,
-  ]);
+  } = useMemo(
+    // Collectible (SAC/Soroban) transfers write balances into contract storage
+    // keyed by address — the recipient address doesn't need to be a funded
+    // Stellar account. Defer entirely to Blockaid's simulation/validation.
+    () =>
+      getTransactionSecurity(transactionScanResult, overriddenBlockaidResponse),
+    [transactionScanResult, overriddenBlockaidResponse],
+  );
 
   // Check if recipient is M address
   const isRecipientMuxed = Boolean(
@@ -249,20 +233,9 @@ const SendCollectibleReviewScreen: React.FC<
 
   const handleTransactionScanSuccess = useCallback(
     (scanResult: Blockaid.StellarTransactionScanResponse | undefined) => {
-      // Build context for unfunded destination detection
-      const unfundedCtx: UnfundedDestinationContext | undefined =
-        selectedCollectible && isDestinationFunded !== null
-          ? {
-              // Use the collection contract ID as the asset identifier
-              assetCode: selectedCollectible.collectionAddress || "collectible",
-              isDestinationFunded,
-            }
-          : undefined;
-
       const security = getTransactionSecurity(
         scanResult,
         overriddenBlockaidResponse,
-        unfundedCtx,
       );
       if (security.transactionSecurityAssessment.isUnableToScan) {
         transactionSecurityWarningBottomSheetModalRef.current?.present();
@@ -270,7 +243,7 @@ const SendCollectibleReviewScreen: React.FC<
         reviewBottomSheetModalRef.current?.present();
       }
     },
-    [overriddenBlockaidResponse, selectedCollectible, isDestinationFunded],
+    [overriddenBlockaidResponse],
   );
 
   const handleTransactionScanError = useCallback(() => {
@@ -562,14 +535,7 @@ const SendCollectibleReviewScreen: React.FC<
     isExpectedToFail: transactionSecurityAssessment.isExpectedToFail,
     isUnableToScan: transactionSecurityAssessment.isUnableToScan,
     isMuxedAddressWithoutMemoSupport,
-    unfundedContext:
-      selectedCollectible && isDestinationFunded !== null
-        ? {
-            // Collectibles (Soroban) require funded destination accounts.
-            assetCode: selectedCollectible.collectionAddress || "collectible",
-            isDestinationFunded,
-          }
-        : undefined,
+    unfundedContext: undefined,
     onSecurityWarningPress: openSecurityWarningBottomSheet,
     onMuxedAddressWithoutMemoSupportPress: openMuxedAddressWarningBottomSheet,
   });
@@ -671,7 +637,7 @@ const SendCollectibleReviewScreen: React.FC<
             signTransactionDetails={signTransactionDetails}
           />
         }
-        renderFooterComponent={renderFooterComponent}
+        scrollViewFooterComponent={renderFooterComponent}
       />
       <BottomSheet
         modalRef={addMemoExplanationBottomSheetModalRef}
