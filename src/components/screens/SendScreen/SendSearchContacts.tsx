@@ -23,6 +23,7 @@ import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { getTokenType } from "helpers/balances";
 import { isContractId } from "helpers/soroban";
+import { isFederationAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
@@ -165,7 +166,7 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
         analytics.track(AnalyticsEvent.SEND_PAYMENT_RECENT_ADDRESS);
       }
 
-      const isFederation = !!contactName;
+      const isFederation = !!contactName && isFederationAddress(contactName);
 
       let resolvedAddress = contactAddress;
 

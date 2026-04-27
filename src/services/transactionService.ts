@@ -387,7 +387,12 @@ export const buildPaymentTransaction = async (
       // Honour the memo type returned by the federation server so that exchange
       // destinations that require memo_type:"id" receive the correct Stellar memo.
       if (memoType === "id" && /^\d+$/.test(memo)) {
-        transactionBuilder.addMemo(Memo.id(memo));
+        // Memo.id validates numeric range (0..2^64-1); wrap to avoid crash on out-of-range values
+        try {
+          transactionBuilder.addMemo(Memo.id(memo));
+        } catch {
+          transactionBuilder.addMemo(Memo.text(memo));
+        }
       } else if (memoType === "hash") {
         try {
           const hashBytes = Buffer.from(memo, "base64");

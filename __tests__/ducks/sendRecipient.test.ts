@@ -2,7 +2,7 @@ import { Federation, StrKey } from "@stellar/stellar-sdk";
 import { act } from "@testing-library/react-hooks";
 import { STORAGE_KEYS } from "config/constants";
 import { getActiveAccountPublicKey } from "ducks/auth";
-import { useSendRecipientStore } from "ducks/sendRecipient";
+import { ContactType, useSendRecipientStore } from "ducks/sendRecipient";
 import * as stellarHelpers from "helpers/stellar";
 import { getAccount } from "services/stellar";
 import { dataStorage } from "services/storage/storageFactory";
@@ -149,7 +149,12 @@ describe("sendRecipient Duck", () => {
     act(() => {
       store.setState({
         recentAddresses: [
-          { id: "recent-1", address: "existingAddress", name: "alice*fed.com" },
+          {
+            id: "recent-1",
+            address: "existingAddress",
+            name: "alice*fed.com",
+            type: ContactType.Federation,
+          },
         ],
       });
     });
@@ -265,7 +270,13 @@ describe("sendRecipient Duck", () => {
   it("should update federation name on existing recent address", async () => {
     act(() => {
       store.setState({
-        recentAddresses: [{ id: "recent-1", address: "existingAddress" }],
+        recentAddresses: [
+          {
+            id: "recent-1",
+            address: "existingAddress",
+            type: ContactType.Address,
+          },
+        ],
       });
     });
 
@@ -318,7 +329,9 @@ describe("sendRecipient Duck", () => {
   it("should reset all search-related state", () => {
     act(() => {
       store.setState({
-        searchResults: [{ id: "1", address: "address" }],
+        searchResults: [
+          { id: "1", address: "address", type: ContactType.Address },
+        ],
         destinationAddress: "address",
         federationAddress: "fed*address",
         isSearching: true,

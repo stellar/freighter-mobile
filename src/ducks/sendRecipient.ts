@@ -1,4 +1,4 @@
-import { Federation, StrKey } from "@stellar/stellar-sdk";
+import { Federation as StellarFederation, StrKey } from "@stellar/stellar-sdk";
 import { STORAGE_KEYS } from "config/constants";
 import { logger } from "config/logger";
 import { getActiveAccountPublicKey, useAuthenticationStore } from "ducks/auth";
@@ -12,10 +12,16 @@ import { getAccount } from "services/stellar";
 import { dataStorage } from "services/storage/storageFactory";
 import { create } from "zustand";
 
+export enum ContactType {
+  Federation = "federation",
+  Address = "address",
+}
+
 interface Contact {
   id: string;
   address: string;
   name?: string;
+  type: ContactType;
 }
 
 interface SendStore {
@@ -79,7 +85,15 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
         .map((entry, index: number) => {
           const addr = typeof entry === "string" ? entry : entry.address;
           const name = typeof entry === "string" ? undefined : entry.name;
-          return { id: `recent-${index}`, address: addr, name };
+          return {
+            id: `recent-${index}`,
+            address: addr,
+            name,
+            type:
+              name && isFederationAddress(name)
+                ? ContactType.Federation
+                : ContactType.Address,
+          } as Contact;
         })
         .filter(
           (contact) =>
@@ -112,9 +126,19 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
 
       let updatedAddresses: Contact[];
 
+      const federationType =
+        normalizedName && isFederationAddress(normalizedName)
+          ? ContactType.Federation
+          : ContactType.Address;
+
       if (existingIndex === -1) {
         updatedAddresses = [
-          { id: `recent-${Date.now()}`, address, name: normalizedName },
+          {
+            id: `recent-${Date.now()}`,
+            address,
+            name: normalizedName,
+            type: federationType,
+          },
           ...recentAddresses,
         ];
       } else {
@@ -123,7 +147,7 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
           return;
         }
         updatedAddresses = [
-          { ...existing, name: normalizedName },
+          { ...existing, name: normalizedName, type: federationType },
           ...recentAddresses.filter((_, i) => i !== existingIndex),
         ];
       }
@@ -190,7 +214,7 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
 
       if (isFederationAddress(searchTerm)) {
         try {
-          const fedRecord = await Federation.Server.resolve(searchTerm, {
+          const fedRecord = await StellarFederation.Server.resolve(searchTerm, {
             timeout: 10000,
           });
 
@@ -272,6 +296,7 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
         id: `search-${Date.now()}`,
         address: resolvedAddress,
         name: fedAddress || undefined,
+        type: fedAddress ? ContactType.Federation : ContactType.Address,
       };
 
       set({
