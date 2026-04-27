@@ -123,6 +123,7 @@ describe("transactionBuilder Duck", () => {
       xdr: mockBuiltXDR,
       tx: { sequence: "1" },
       contractId: mockContractAddress,
+      amountInBaseUnits: 1000000,
     });
 
     await act(async () => {
@@ -142,11 +143,35 @@ describe("transactionBuilder Duck", () => {
     expect(state.error).toBeNull();
     expect(transactionService.buildPaymentTransaction).toHaveBeenCalled();
     expect(transactionService.simulateContractTransfer).toHaveBeenCalled();
-    // Soroban fee fields should be populated from the simulation result
-    expect(state.sorobanResourceFeeXlm).not.toBeNull();
-    expect(typeof state.sorobanResourceFeeXlm).toBe("string");
-    expect(state.sorobanInclusionFeeXlm).not.toBeNull();
-    expect(typeof state.sorobanInclusionFeeXlm).toBe("string");
+    // Soroban fee fields: resource derived from mocked minResourceFee "100" stroops,
+    // inclusion falls back to MIN_TRANSACTION_FEE when no transactionFee is passed.
+    expect(state.sorobanResourceFeeXlm).toBe("0.0000100");
+    expect(state.sorobanInclusionFeeXlm).toBe("0.00001");
+  });
+
+  it("should error when Soroban build result is missing amountInBaseUnits", async () => {
+    (
+      transactionService.buildPaymentTransaction as jest.Mock
+    ).mockResolvedValueOnce({
+      xdr: mockBuiltXDR,
+      tx: { sequence: "1" },
+      contractId: mockContractAddress,
+      // amountInBaseUnits intentionally omitted
+    });
+
+    await act(async () => {
+      await store.getState().buildTransaction({
+        tokenAmount: mockTokenValue,
+        recipientAddress: mockContractAddress,
+        senderAddress: mockPublicKey,
+        network: mockNetwork,
+      });
+    });
+
+    const state = store.getState();
+    expect(state.isBuilding).toBe(false);
+    expect(state.transactionXDR).toBeNull();
+    expect(state.error).toContain("amountInBaseUnits");
   });
 
   it("should handle errors during buildTransaction", async () => {

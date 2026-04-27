@@ -227,6 +227,11 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
               ? ""
               : params.transactionMemo || "";
 
+            if (builtTxResult.amountInBaseUnits === undefined) {
+              throw new Error(
+                "simulateContractTransfer requires amountInBaseUnits — cannot simulate with an undefined amount",
+              );
+            }
             simulateResult = await simulateContractTransfer({
               transaction: builtTxResult.tx,
               networkDetails,
@@ -235,10 +240,7 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
               params: {
                 publicKey: params.senderAddress,
                 destination: finalDestination,
-                amount:
-                  builtTxResult.amountInBaseUnits !== undefined
-                    ? String(builtTxResult.amountInBaseUnits)
-                    : "0",
+                amount: String(builtTxResult.amountInBaseUnits),
               },
               contractAddress: builtTxResult.contractId!,
             });
