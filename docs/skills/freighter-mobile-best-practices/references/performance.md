@@ -2,10 +2,10 @@
 
 Performance guidelines for the Freighter Mobile React Native codebase.
 
-> **Stack context.** The app runs the New Architecture (Fabric + TurboModules
->
-> - JSI, `newArchEnabled=true`) on **React 19.1.0**. The React Compiler is not
->   enabled — manual `useMemo` / `useCallback` / `React.memo` are required.
+> **Stack context.** The app runs the New Architecture (Fabric + TurboModules /
+> JSI, `newArchEnabled=true`). Check `package.json` for the exact React version.
+> The React Compiler is **not enabled** — manual `useMemo` / `useCallback` /
+> `React.memo` are required until that changes.
 
 ## React.memo
 
@@ -69,7 +69,7 @@ const handleRefresh = useCallback(async () => {
   maxToRenderPerBatch={10} // REQUIRED — batch size
   removeClippedSubviews // REQUIRED for long lists
   initialNumToRender={10} // RECOMMENDED
-  getItemLayout={getItemLayout} // REQUIRED for fixed-height items
+  getItemLayout={getItemLayout} // RECOMMENDED for fixed-height items (improves scroll-to-index perf)
 />
 ```
 
@@ -101,15 +101,18 @@ keyExtractor={(item) => item.id ?? item.tokenCode ?? `${item.index}`}
 
 ## Zustand Selector Patterns
 
-**RULE: Use Zustand selectors to subscribe ONLY to the state your component
-needs. Never destructure the entire store** — destructuring re-renders the
-component on any state change in that store.
+**RULE: Prefer Zustand selectors over destructuring the entire store for new
+components and hot paths** (lists, frequently-rendered screens). Destructuring
+re-renders on any state change in that store. Most existing code uses
+destructuring — migrate to selectors in new components and hot paths; don't
+refactor existing destructuring unless you're already touching the component for
+another reason.
 
 ```tsx
-// WRONG — subscribes to the entire store
+// Avoid for new components and hot paths — subscribes to the entire store
 const { tabs, activeTabId, isTabActive } = useBrowserTabsStore();
 
-// CORRECT — selective subscription
+// Prefer — selective subscription
 const tabs = useBrowserTabsStore((state) => state.tabs);
 const activeTabId = useBrowserTabsStore((state) => state.activeTabId);
 ```
@@ -163,7 +166,7 @@ pattern.
 ## Reanimated Patterns
 
 **RULE: Use Reanimated for animations that need 60fps. Keep animation logic in
-`useAnimatedStyle` worklets. Never animate on the JS thread.**
+`useAnimatedStyle` worklets. Don't introduce new JS-thread animations.**
 
 ```tsx
 // CORRECT — runs on UI thread
@@ -171,9 +174,13 @@ const animatedStyle = useAnimatedStyle(() => ({
   opacity: withTiming(isVisible.value ? 1 : 0),
 }));
 
-// WRONG — runs on JS thread
+// Avoid for new animations — runs on JS thread
 const [opacity] = useState(new Animated.Value(0));
 ```
+
+> Some existing code still uses `Animated` from React Native. Don't refactor it
+> unless you're already touching the component; prefer Reanimated for any new
+> animation work.
 
 ## useEffect Patterns
 
@@ -221,8 +228,9 @@ useEffect(() => {
 
 The project uses `react-native-screens`:
 
-- **`enableFreeze()`** — call once at app entry to suspend offscreen screens and
-  prevent them from re-rendering when invisible.
+- **`enableFreeze()`** — not currently enabled; consider adding it at app entry
+  to suspend offscreen screens and prevent them from re-rendering when
+  invisible.
 - **`useFocusEffect`** — scope work to screen visibility. For visibility-tied
   polling, use the existing `useFocusedPolling` hook.
 

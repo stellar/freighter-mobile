@@ -60,12 +60,13 @@ Full RPC specification is documented in `docs/walletconnect-rpc-methods.md`.
 
 `walletKitValidation.ts` provides validation functions:
 
-| Function                       | What It Validates                              |
-| ------------------------------ | ---------------------------------------------- |
-| `validateSignMessageContent()` | Message content is safe and well-formed        |
-| `validateSignMessageLength()`  | Message does not exceed size limits            |
-| `validateSignAuthEntry()`      | Auth entry structure is valid                  |
-| `validateAuthEntryNetwork()`   | Auth entry targets the correct Stellar network |
+| Function                         | What It Validates                              |
+| -------------------------------- | ---------------------------------------------- |
+| `validateSignMessageContent()`   | Message content is safe and well-formed        |
+| `validateSignMessageLength()`    | Message does not exceed size limits            |
+| `validateSignAuthEntryContent()` | Auth entry XDR is a non-empty string           |
+| `validateSignAuthEntry()`        | Auth entry structure and network validity      |
+| `validateAuthEntryNetwork()`     | Auth entry targets the correct Stellar network |
 
 ## Anti-Replay Protection
 

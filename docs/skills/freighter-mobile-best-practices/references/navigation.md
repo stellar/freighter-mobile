@@ -66,12 +66,8 @@ navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN, {
 navigation.navigate("TransactionAmountScreen", { tokenId, tokenSymbol });
 ```
 
-Available route enum groups:
-
-- `ROOT_NAVIGATOR_ROUTES`
-- `MAIN_TAB_ROUTES`
-- `SEND_PAYMENT_ROUTES`
-- And others per feature area
+All route enum groups are defined in `src/config/routes.ts` — check that file
+for the complete current list. Each feature area has its own enum constant.
 
 ## Deep Linking
 

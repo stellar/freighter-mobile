@@ -62,17 +62,51 @@ const styles = StyleSheet.create({
 
 ## Design System (SDS)
 
-The Stellar Design System components live in `src/components/sds/` and provide
-typed component variants for common UI elements:
+**RULE: Before writing any UI element, check `src/components/sds/` first. If an
+SDS component covers the use case, use it — do not recreate it, do not reach for
+the raw React Native primitive.**
 
-- Buttons
-- Text / Typography
-- Cards
-- Inputs
-- And more
+Available SDS components:
 
-**Always check SDS first** before creating custom styled components. Use SDS
-components as the foundation and extend only when necessary.
+- Buttons (`Button`, `TextButton`, `BiometricToggleButton`)
+- Text / Typography (`Typography`)
+- Inputs (`Input`, `Textarea`)
+- Banners / Notices (`Banner`, `NoticeBanner`)
+- Feedback (`Badge`, `Notification`, `Toast`)
+- Controls (`Toggle`, `SegmentedControl`)
+- Media (`Avatar`, `Token`, `Icon`)
+
+Common violations to avoid:
+
+```tsx
+// WRONG — raw RN primitive when SDS covers it
+<TouchableOpacity onPress={onPress}>
+  <Text>Submit</Text>
+</TouchableOpacity>
+
+// CORRECT
+<Button onPress={onPress} title="Submit" />
+
+// WRONG — raw Text with manual font/color styling
+<Text style={{ fontSize: 16, fontWeight: "600", color: "#fff" }}>
+  Account Balance
+</Text>
+
+// CORRECT
+<Typography size="md" semiBold secondary>Account Balance</Typography>
+
+// WRONG — custom inline badge
+<View style={{ backgroundColor: "red", borderRadius: 12 }}>
+  <Text>New</Text>
+</View>
+
+// CORRECT
+<Badge label="New" variant="error" />
+```
+
+Only build a custom component when the SDS has no equivalent. When you do,
+follow the same prop-typing and variant patterns used in the SDS so it can be
+promoted later.
 
 ## Bottom Sheets
 

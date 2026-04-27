@@ -92,7 +92,7 @@ other async actions, simple try/catch is sufficient.
 
 ## Screen Structure
 
-Each screen follows a consistent directory layout:
+Complex screens use a directory layout that scales to the flow's complexity:
 
 ```
 src/components/screens/SendPayment/
@@ -101,6 +101,10 @@ src/components/screens/SendPayment/
   components/                  # Screen-specific UI components
   hooks/                       # Screen-specific logic hooks
 ```
+
+Simple, single-view screens may be a single file — the structure above is a
+pattern, not a requirement. Add subdirectories only when the screen grows to
+need them.
 
 ## Hook Composition
 
@@ -129,9 +133,10 @@ Services live in `src/services/` and handle all external API communication:
 
 `src/providers/` contains app-wide context providers:
 
-- `WalletKitProvider` for WalletConnect
-- Theme provider
-- Other app-wide concerns
+- `AuthCheckProvider` — gates navigation based on authentication state
+- `NetworkProvider` — tracks active Stellar network (mainnet / testnet)
+- `ToastProvider` — app-wide toast notification system
+- `WalletKitProvider` — WalletConnect session management
 
 ## Config
 

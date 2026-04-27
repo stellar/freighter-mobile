@@ -76,6 +76,10 @@ Every promise must be `await`ed or have a `.catch()` handler. Floating promises
 hide failures and break the loading/error state contract used by Zustand
 actions.
 
+> **Note:** `@typescript-eslint/no-floating-promises` is disabled in ESLint
+> config. This rule is reviewer-enforced, not linter-enforced — catch it in code
+> review.
+
 ```tsx
 // Wrong - unhandled promise
 fetchBalances(publicKey);

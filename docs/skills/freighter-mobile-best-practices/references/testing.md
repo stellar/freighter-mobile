@@ -19,10 +19,10 @@ structure:
 
 ```
 src/
-  hooks/useAuth.ts
+  hooks/useGetActiveAccount.ts
   ducks/prices.ts
 __tests__/
-  hooks/useAuth.test.ts
+  hooks/useGetActiveAccount.test.ts
   ducks/prices.test.ts
 ```
 
@@ -47,7 +47,9 @@ jest.mock("ducks/prices", () => ({
 ### Testing Zustand stores
 
 ```tsx
-import { renderHook, act } from "@testing-library/react-hooks";
+// Use @testing-library/react-native (preferred) — @testing-library/react-hooks
+// is deprecated and should not be used for new tests.
+import { renderHook, act } from "@testing-library/react-native";
 import { useMyStore } from "ducks/myStore";
 
 it("should update state", () => {
@@ -67,18 +69,9 @@ Maestro provides YAML-based e2e test flows located in `e2e/flows/`:
 
 ### Available Test Flows
 
-1. `CreateWallet` — Full wallet creation flow
-2. `ImportWallet` — Import via recovery phrase
-3. `ImportFundedWallet` — Import a pre-funded wallet
-4. `SwitchToTestnet` — Import a funded wallet and switch active network to
-   Testnet (lives in both `e2e/flows/onboarding/` and `e2e/flows/shared/`)
-5. `SendClassicTokenMainnet` — Send a classic Stellar token on mainnet
-6. `SwapClassicTokenMainnet` — Swap tokens on mainnet
-7. `SignMessageMockDapp` — Sign a message via WalletConnect mock dApp
-8. `SignAuthEntryMockDapp` — Sign a Soroban auth entry via WalletConnect mock
-   dApp
-9. `LaunchAndInspect` — Debug utility: launch app with clean state for
-   inspection
+See `e2e/flows/` for the current set of flows, organized by subdirectory:
+`onboarding/`, `transactions/`, `walletconnect/`, `shared/`, `debug/`. Each YAML
+file is a runnable flow named after its test scenario.
 
 ### E2E Prerequisites
 
