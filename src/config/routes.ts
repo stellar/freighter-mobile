@@ -1,10 +1,13 @@
 import { NavigatorScreenParams } from "@react-navigation/native";
+import { NativeStackNavigationOptions } from "@react-navigation/native-stack";
 import {
   BiometricsSource,
   NETWORKS,
   QRCodeSource,
   SWAP_SELECTION_TYPES,
 } from "config/constants";
+
+export type ScreenTransition = NativeStackNavigationOptions["animation"];
 
 /**
  * ROUTE NAMING CONVENTIONS FOR ANALYTICS
@@ -142,9 +145,11 @@ export type RootStackParamList = {
   [ROOT_NAVIGATOR_ROUTES.SETTINGS_STACK]: undefined;
   [ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN]: {
     showNavigationAsCloseButton?: boolean;
+    transition?: ScreenTransition;
   };
   [ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN]: {
     source?: QRCodeSource;
+    transition?: ScreenTransition;
   };
   [ROOT_NAVIGATOR_ROUTES.CONNECTED_APPS_SCREEN]: undefined;
   [ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK]: NavigatorScreenParams<AddFundsStackParamList>;

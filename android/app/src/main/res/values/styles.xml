@@ -2,6 +2,14 @@
     <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
         <!-- Customize your theme here. -->
         <item name="android:editTextBackground">@drawable/rn_edit_text_material</item>
+        <!--
+          Paint the window backdrop with the app's dark chrome color. Under Android 15+
+          enforced edge-to-edge, the system bars are transparent and show this window
+          background. Without this, Theme.AppCompat.DayNight resolves to the system's
+          light background on a light-mode phone, leaving white strips at the top and
+          bottom of the screen.
+        -->
+        <item name="android:windowBackground">@color/bootsplash_background</item>
     </style>
 
     <style name="BootTheme" parent="Theme.BootSplash">

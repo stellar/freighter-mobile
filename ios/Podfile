@@ -76,6 +76,14 @@ target 'freighter-mobile' do
         if config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'].to_f < 12.0
           config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '12.0'
         end
+
+        # Xcode 26.4 / Apple clang 21 rejects fmt 11.0.2's FMT_STRING consteval
+        # call sites in format-inl.h. Drop the fmt pod to C++17 to skip the
+        # consteval path. Remove once RN bumps the pinned fmt version.
+        # See: https://github.com/facebook/react-native/issues/55601
+        if target.name == 'fmt'
+          config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
+        end
       end
     end
   end

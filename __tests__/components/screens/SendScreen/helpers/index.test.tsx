@@ -3,7 +3,9 @@ import { renderHook } from "@testing-library/react-native";
 import {
   useSendBannerContent,
   getTransactionSecurity,
+  buildUnfundedContext,
 } from "components/screens/SendScreen/helpers";
+import { TokenTypeWithCustomToken } from "config/types";
 import { SecurityLevel } from "services/blockaid/constants";
 import * as blockaidHelper from "services/blockaid/helper";
 
@@ -299,6 +301,183 @@ describe("SendScreen Helpers", () => {
         variant: "warning",
         onPress: onSecurityWarningPress,
       });
+    });
+  });
+
+  describe("buildUnfundedContext", () => {
+    it("returns undefined when no balance is selected", () => {
+      expect(
+        buildUnfundedContext({
+          selectedBalance: undefined,
+          isDestinationFunded: false,
+          tokenAmount: "1",
+        }),
+      ).toBeUndefined();
+    });
+
+    it("returns undefined when destination funding status is unknown", () => {
+      expect(
+        buildUnfundedContext({
+          selectedBalance: {
+            tokenCode: "XLM",
+            tokenType: TokenTypeWithCustomToken.NATIVE,
+          },
+          isDestinationFunded: null,
+          tokenAmount: "1",
+        }),
+      ).toBeUndefined();
+    });
+
+    it("flags native XLM as classic and computes canCreateAccountWithAmount", () => {
+      expect(
+        buildUnfundedContext({
+          selectedBalance: {
+            tokenCode: "XLM",
+            tokenType: TokenTypeWithCustomToken.NATIVE,
+          },
+          isDestinationFunded: false,
+          tokenAmount: "5",
+        }),
+      ).toEqual({
+        assetCode: "XLM",
+        isDestinationFunded: false,
+        canCreateAccountWithAmount: true,
+        isClassicAsset: true,
+        isContractDestination: false,
+      });
+    });
+
+    it("reports canCreateAccountWithAmount=false for native XLM below the reserve", () => {
+      expect(
+        buildUnfundedContext({
+          selectedBalance: {
+            tokenCode: "XLM",
+            tokenType: TokenTypeWithCustomToken.NATIVE,
+          },
+          isDestinationFunded: false,
+          tokenAmount: "0.5",
+        }),
+      ).toEqual({
+        assetCode: "XLM",
+        isDestinationFunded: false,
+        canCreateAccountWithAmount: false,
+        isClassicAsset: true,
+        isContractDestination: false,
+      });
+    });
+
+    it("flags a contract (C...) recipient as a contract destination", () => {
+      expect(
+        buildUnfundedContext({
+          selectedBalance: {
+            tokenCode: "USDC",
+            tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+          },
+          isDestinationFunded: false,
+          tokenAmount: "10",
+          recipientAddress:
+            "CAZXRTOKNUQ2JQQF3NCRU7GYMDJNZ2NMQN6IGN4FCT5DWPODMPVEXSND",
+        }),
+      ).toMatchObject({
+        assetCode: "USDC",
+        isClassicAsset: true,
+        isContractDestination: true,
+      });
+    });
+
+    it("flags a G-address recipient as a classic destination", () => {
+      expect(
+        buildUnfundedContext({
+          selectedBalance: {
+            tokenCode: "USDC",
+            tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+          },
+          isDestinationFunded: false,
+          tokenAmount: "10",
+          recipientAddress:
+            "GACJYENHYW2LGHBNNGNZ4NCBGZYVTGTZM4CJLQIOQQ5IUZU3SYWOW5EK",
+        }),
+      ).toMatchObject({
+        assetCode: "USDC",
+        isClassicAsset: true,
+        isContractDestination: false,
+      });
+    });
+
+    it("flags classic credit_alphanum4 assets (e.g. USDC) as classic", () => {
+      expect(
+        buildUnfundedContext({
+          selectedBalance: {
+            tokenCode: "USDC",
+            tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+          },
+          isDestinationFunded: false,
+          tokenAmount: "10",
+        }),
+      ).toMatchObject({
+        assetCode: "USDC",
+        isClassicAsset: true,
+        canCreateAccountWithAmount: undefined,
+      });
+    });
+
+    it("flags credit_alphanum12 assets as classic", () => {
+      expect(
+        buildUnfundedContext({
+          selectedBalance: {
+            tokenCode: "LONGCODE12",
+            tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM12,
+          },
+          isDestinationFunded: false,
+          tokenAmount: "10",
+        }),
+      ).toMatchObject({ assetCode: "LONGCODE12", isClassicAsset: true });
+    });
+
+    it("flags SAC-wrapped classic assets as classic (critical for SAC transfer semantics)", () => {
+      // A SAC balance keeps the classic tokenType (NATIVE / CREDIT_ALPHANUM*)
+      // even though it has a contractId — the wallet normalizes this at
+      // import time. SAC transfers fail to unfunded G-accounts, so the
+      // warning must fire.
+      expect(
+        buildUnfundedContext({
+          selectedBalance: {
+            tokenCode: "USDC",
+            tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+          },
+          isDestinationFunded: false,
+          tokenAmount: "10",
+        }),
+      ).toMatchObject({ isClassicAsset: true });
+    });
+
+    it("flags pure Soroban custom tokens as non-classic", () => {
+      expect(
+        buildUnfundedContext({
+          selectedBalance: {
+            tokenCode: "PBT",
+            tokenType: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+          },
+          isDestinationFunded: false,
+          tokenAmount: "10",
+        }),
+      ).toMatchObject({
+        assetCode: "PBT",
+        isClassicAsset: false,
+        canCreateAccountWithAmount: undefined,
+      });
+    });
+
+    it("falls back to 'unknown' asset code when tokenCode is missing", () => {
+      expect(
+        buildUnfundedContext({
+          selectedBalance: {
+            tokenType: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+          },
+          isDestinationFunded: false,
+          tokenAmount: "1",
+        }),
+      ).toMatchObject({ assetCode: "unknown", isClassicAsset: false });
     });
   });
 });
