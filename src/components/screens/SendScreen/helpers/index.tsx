@@ -5,6 +5,7 @@ import {
   NATIVE_TOKEN_CODE,
 } from "config/constants";
 import { TokenTypeWithCustomToken } from "config/types";
+import { isContractId } from "helpers/soroban";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useMemo } from "react";
 import { SecurityLevel } from "services/blockaid/constants";
@@ -29,6 +30,7 @@ export interface BuildUnfundedContextParams {
     | undefined;
   isDestinationFunded: boolean | null;
   tokenAmount: BigNumber.Value;
+  recipientAddress?: string;
 }
 
 /**
@@ -42,11 +44,17 @@ export interface BuildUnfundedContextParams {
  * unfunded G-account). Only pure Soroban custom tokens qualify as
  * non-classic; the wallet tags those with tokenType === CUSTOM_TOKEN at
  * import time (see backend.getTokenMetadata).
+ *
+ * The `isContractDestination` flag is true when the recipient is a
+ * contract (C...) address. Contract destinations never trigger the
+ * warning because their balances live in the token contract's storage —
+ * there's no classic account to be "unfunded".
  */
 export function buildUnfundedContext({
   selectedBalance,
   isDestinationFunded,
   tokenAmount,
+  recipientAddress,
 }: BuildUnfundedContextParams): UnfundedDestinationContext | undefined {
   if (!selectedBalance || isDestinationFunded === null) {
     return undefined;
@@ -63,11 +71,16 @@ export function buildUnfundedContext({
   const isClassicAsset =
     selectedBalance.tokenType !== TokenTypeWithCustomToken.CUSTOM_TOKEN;
 
+  const isContractDestination = Boolean(
+    recipientAddress && isContractId(recipientAddress),
+  );
+
   return {
     assetCode,
     isDestinationFunded,
     canCreateAccountWithAmount,
     isClassicAsset,
+    isContractDestination,
   };
 }
 
