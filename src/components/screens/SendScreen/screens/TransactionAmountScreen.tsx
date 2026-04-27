@@ -651,8 +651,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       recipientAddress &&
       selectedBalance
     ) {
-      lastAutoSimulatedKey.current = currentKey;
       timer = setTimeout(() => {
+        lastAutoSimulatedKey.current = currentKey;
         prepareTransaction(false, "0");
       }, 300);
     }

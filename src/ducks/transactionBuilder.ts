@@ -303,8 +303,15 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
       // Tag this build cycle
       const newRequestId = createRequestId();
 
-      // Mark new cycle and reset flags
-      set({ isBuilding: true, error: null, requestId: newRequestId });
+      // Mark new cycle and reset flags (include Soroban fields so they don't carry over from a prior Soroban build)
+      set({
+        isBuilding: true,
+        error: null,
+        requestId: newRequestId,
+        isSoroban: false,
+        sorobanResourceFeeXlm: null,
+        sorobanInclusionFeeXlm: null,
+      });
 
       try {
         // Check debug override for forced build failure

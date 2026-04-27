@@ -99,6 +99,7 @@ const FeeBreakdownBottomSheet: React.FC<FeeBreakdownBottomSheetProps> = ({
                 {hasBuildError
                   ? "—"
                   : formatTokenForDisplay(
+                      // Pre-simulation: show the user-selected base fee; post-simulation: show the simulated inclusion fee
                       sorobanInclusionFeeXlm ?? transactionFee,
                       NATIVE_TOKEN_CODE,
                     )}
