@@ -799,20 +799,9 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     return (
       !!amountError ||
       BigNumber(tokenAmount).isLessThanOrEqualTo(0) ||
-      isBuilding ||
-      // Disable Continue when a Soroban fee simulation failed — the fee
-      // display would show misleading values (base fee only) if we proceed.
-      (!!transactionBuilderError &&
-        isSorobanTransaction(selectedBalance, recipientAddress))
+      isBuilding
     );
-  }, [
-    amountError,
-    tokenAmount,
-    isBuilding,
-    recipientAddress,
-    transactionBuilderError,
-    selectedBalance,
-  ]);
+  }, [amountError, tokenAmount, isBuilding, recipientAddress]);
 
   const handleConfirmAnyway = useCallback(() => {
     transactionSecurityWarningBottomSheetModalRef.current?.dismiss();

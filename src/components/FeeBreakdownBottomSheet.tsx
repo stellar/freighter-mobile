@@ -28,7 +28,8 @@ type FeeBreakdownBottomSheetProps = {
  * For Soroban transactions: shows Inclusion Fee + Resource Fee + Total Fee rows.
  * For classic transactions: shows only the Total Fee row.
  * Shows ActivityIndicator while a build is in progress.
- * Shows an error notification when simulation failed.
+ * When Soroban simulation fails and fee fields are unavailable, shows dashes
+ * for the affected fee values instead of displaying misleading amounts.
  * Includes a contextual description (different text for Soroban vs classic).
  */
 const FeeBreakdownBottomSheet: React.FC<FeeBreakdownBottomSheetProps> = ({

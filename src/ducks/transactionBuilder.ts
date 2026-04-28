@@ -429,9 +429,13 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
           );
         }
         const finalXdr = simulateResult.preparedTransaction;
-        const sorobanResourceFeeXlm = simulateResult.minResourceFee
-          ? stroopToXlm(new BigNumber(simulateResult.minResourceFee)).toFixed(7)
-          : null;
+        let sorobanResourceFeeXlm: string | null = null;
+        if (simulateResult.minResourceFee) {
+          const resourceFeeBn = new BigNumber(simulateResult.minResourceFee);
+          if (!resourceFeeBn.isNaN()) {
+            sorobanResourceFeeXlm = stroopToXlm(resourceFeeBn).toFixed(7);
+          }
+        }
         const sorobanInclusionFeeXlm =
           params.transactionFee || MIN_TRANSACTION_FEE;
 
