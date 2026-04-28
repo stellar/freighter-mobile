@@ -17,11 +17,8 @@ type TransactionTokenScreenProps = NativeStackScreenProps<
 const TransactionTokenScreen: React.FC<TransactionTokenScreenProps> = ({
   navigation,
 }) => {
-  const {
-    recipientAddress,
-    saveSelectedTokenId,
-    saveSelectedCollectibleDetails,
-  } = useTransactionSettingsStore();
+  const { saveSelectedTokenId, saveSelectedCollectibleDetails } =
+    useTransactionSettingsStore();
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
   const publicKey = account?.publicKey;
@@ -42,14 +39,10 @@ const TransactionTokenScreen: React.FC<TransactionTokenScreenProps> = ({
     // Clear token selection when selecting a collectible to prevent cross-flow contamination
     saveSelectedTokenId("");
 
-    if (recipientAddress) {
-      navigation.navigate(
-        SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW,
-        collectibleDetails,
-      );
-    } else {
-      navigation.goBack();
-    }
+    navigation.navigate(
+      SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW,
+      collectibleDetails,
+    );
   };
 
   return (
