@@ -91,14 +91,14 @@ describe("FeeBreakdownBottomSheet", () => {
       ).toBeTruthy();
     });
 
-    it("shows base fee as inclusion fee and - for resource fee", () => {
+    it("shows base fee as inclusion fee and None for resource fee", () => {
       const { getAllByText, getByText } = render(
         <FeeBreakdownBottomSheet onClose={mockOnClose} isSorobanContext />,
       );
       // Inclusion and total both show base fee (two elements with same text)
       expect(getAllByText(`${BASE_FEE} XLM`).length).toBeGreaterThanOrEqual(2);
-      // Resource row shows - when no resource fee data yet
-      expect(getByText("-")).toBeTruthy();
+      // Resource row shows None when no resource fee data yet
+      expect(getByText("transactionAmountScreen.details.none")).toBeTruthy();
     });
 
     it("shows base fee as total fee when no simulation data", () => {
@@ -137,7 +137,7 @@ describe("FeeBreakdownBottomSheet", () => {
       ).toBeTruthy();
       // Fee values are not rendered while building (replaced by ActivityIndicator)
       expect(queryByText(`${BASE_FEE} XLM`)).toBeNull();
-      expect(queryByText("-")).toBeNull();
+      expect(queryByText("transactionAmountScreen.details.none")).toBeNull();
     });
   });
 
@@ -164,7 +164,7 @@ describe("FeeBreakdownBottomSheet", () => {
       const { queryByText } = render(
         <FeeBreakdownBottomSheet onClose={mockOnClose} isSorobanContext />,
       );
-      expect(queryByText("-")).toBeNull();
+      expect(queryByText("transactionAmountScreen.details.none")).toBeNull();
     });
 
     it("shows Soroban description text", () => {
@@ -227,15 +227,15 @@ describe("FeeBreakdownBottomSheet", () => {
       } as any);
     });
 
-    it("shows em-dashes for inclusion and total, dash for resource on simulation error", () => {
+    it("shows em-dashes for inclusion and total, None for resource on simulation error", () => {
       const { getAllByText, queryByText } = render(
         <FeeBreakdownBottomSheet onClose={mockOnClose} isSorobanContext />,
       );
       // Inclusion and total rows show em-dash on error
       const emDashes = getAllByText("—");
       expect(emDashes.length).toBeGreaterThanOrEqual(2);
-      // Resource row shows "-" (same as pre-simulation no-data state)
-      expect(queryByText("-")).toBeTruthy();
+      // Resource row shows None (same as pre-simulation no-data state)
+      expect(queryByText("transactionAmountScreen.details.none")).toBeTruthy();
       // No actual fee values shown
       expect(queryByText(`${BASE_FEE} XLM`)).toBeNull();
     });

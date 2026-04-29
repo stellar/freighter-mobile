@@ -57,7 +57,9 @@ const FeeBreakdownBottomSheet: React.FC<FeeBreakdownBottomSheetProps> = ({
   const hasBuildError = isSorobanContext && !!builderError && !isBuilding;
 
   const getResourceFeeDisplay = () => {
-    if (hasBuildError || !sorobanResourceFeeXlm) return "-";
+    if (hasBuildError || !sorobanResourceFeeXlm) {
+      return t("transactionAmountScreen.details.none");
+    }
     return formatTokenForDisplay(sorobanResourceFeeXlm, NATIVE_TOKEN_CODE);
   };
 
