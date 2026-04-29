@@ -3,6 +3,7 @@ import { List, ListItemProps } from "components/List";
 import {
   renderActionIcon,
   renderIconComponent,
+  shouldShowMemo,
 } from "components/screens/HistoryScreen/helpers";
 import { CreateAccountTransactionDetailsContent } from "components/screens/HistoryScreen/mappers/createAccount";
 import { PaymentTransactionDetailsContent } from "components/screens/HistoryScreen/mappers/payment";
@@ -164,8 +165,9 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
             </Text>
           ),
         },
-        // Hide memo line for M addresses (memo is encoded in the address)
-        !isDestinationMuxed
+        // Show memo only for classic Send/Receive (Payment/CreateAccount) operations
+        // and hide for M addresses (memo is encoded in the address)
+        shouldShowMemo(transactionDetails.transactionType, isDestinationMuxed)
           ? {
               icon: (
                 <Icon.File02 size={16} color={themeColors.foreground.primary} />
