@@ -410,64 +410,6 @@ requests clipboard access — if dismissed, sync stops working silently.
    ```
    Run this after copying on the Mac, then paste normally in the simulator.
 
-## iOS 26 / Xcode 26 Compatibility Issues
-
-These issues affect builds and runtime when targeting iOS 26 or using Xcode 26+.
-
-### Xcode 26.4 fmt/consteval compilation errors
-
-**Symptom:** Build fails with compilation errors from the `fmt` C++ formatting
-library, e.g., errors around `consteval` keyword in `RCT-Folly` or
-`react-native-skia`.
-
-**Root cause:** Xcode 26 ships with a new Clang version that reports `consteval`
-support but fails to properly handle it, breaking the `fmt` library's
-compile-time checks.
-
-**Solution:** Update the `fmt` dependency. Apply the RCT-Folly pod spec
-modification to use fmt 12.1.0:
-
-1. Check
-   [facebook/react-native#55601](https://github.com/facebook/react-native/issues/55601)
-   for the latest patch
-2. If a patch isn't available yet, downgrade to Xcode 26.3 as a temporary
-   workaround
-
-**Affected libraries:** `react-native-skia`
-([Shopify/react-native-skia#3782](https://github.com/Shopify/react-native-skia/issues/3782)),
-`RCT-Folly`, and any pod using `fmt`
-
-### Xcode 26 precompiled builds fail (Swift explicit modules)
-
-**Symptom:** Build fails when using precompiled pods or frameworks with Xcode
-26, with errors about Swift module compilation.
-
-**Solution:** Xcode 26 enables Swift explicit modules by default. Disable it in
-your Xcode project:
-
-```
-SWIFT_ENABLE_EXPLICIT_MODULES = NO
-```
-
-Or add to `post_install` in `ios/Podfile`:
-
-```ruby
-config.build_settings['SWIFT_ENABLE_EXPLICIT_MODULES'] = 'NO'
-```
-
-### xcodebuild hangs after BUILD SUCCEEDED on macOS 26.3
-
-**Symptom:** `react-native run-ios` hangs indefinitely after the build succeeds.
-The `xcodebuild` process never exits.
-
-**Root cause:** A regression in macOS 26.3 + Xcode 26.2+ where `xcodebuild`
-doesn't properly terminate.
-
-**Solution:** See
-[react-native-community/cli#2768](https://github.com/react-native-community/cli/issues/2768)
-for workarounds. As a temporary fix, build from Xcode directly
-(`open ios/freighter-mobile.xcworkspace`) and launch from there.
-
 ## Dependency & Package Issues
 
 ### Metro package exports + rn-nodeify conflict
