@@ -4,6 +4,7 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BigNumber } from "bignumber.js";
 import { BalanceRow } from "components/BalanceRow";
 import BottomSheet from "components/BottomSheet";
+import FeeBreakdownBottomSheet from "components/FeeBreakdownBottomSheet";
 import { IconButton } from "components/IconButton";
 import InformationBottomSheet from "components/InformationBottomSheet";
 import MuxedAddressWarningBottomSheet from "components/MuxedAddressWarningBottomSheet";
@@ -55,6 +56,7 @@ import {
   formatFiatInputDisplay,
 } from "helpers/formatAmount";
 import { checkContractMuxedSupport } from "helpers/muxedAddress";
+import { isSorobanTransaction } from "helpers/soroban";
 import { isMuxedAccount } from "helpers/stellar";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -93,6 +95,7 @@ type TransactionAmountScreenProps = NativeStackScreenProps<
 const shouldSkipHighlighting = (rawInput: string | null): boolean =>
   // Only skip if it's exactly "0" (no separator, no trailing zeros) or empty
   !rawInput || rawInput === "0" || rawInput === "";
+
 /**
  * TransactionAmountScreen Component
  *
@@ -215,6 +218,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const isSmallScreen = deviceSize === DeviceSize.XS;
   const addMemoExplanationBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const transactionSettingsBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const feeBreakdownBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const muxedAddressInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [transactionScanResult, setTransactionScanResult] = useState<
     Blockaid.StellarTransactionScanResponse | undefined
@@ -551,13 +555,15 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   );
 
   const prepareTransaction = useCallback(
-    async (shouldOpenReview = false) => {
-      const numberTokenAmount = new BigNumber(tokenAmount);
+    async (shouldOpenReview = false, feeEstimationAmount?: string) => {
+      const effectiveAmount = feeEstimationAmount ?? tokenAmount;
+      const numberEffectiveAmount = new BigNumber(effectiveAmount);
 
       const hasRequiredParams =
         recipientAddress &&
         selectedBalance &&
-        numberTokenAmount.isGreaterThan(0);
+        (feeEstimationAmount !== undefined ||
+          numberEffectiveAmount.isGreaterThan(0));
       if (!hasRequiredParams) {
         return;
       }
@@ -572,7 +578,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         } = useTransactionSettingsStore.getState();
 
         const finalXDR = await buildTransaction({
-          tokenAmount,
+          tokenAmount: effectiveAmount,
           selectedBalance,
           recipientAddress: storeRecipientAddress,
           transactionMemo: freshTransactionMemo,
@@ -581,6 +587,10 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           network,
           senderAddress: publicKey,
         });
+
+        // Skip scan when building only for fee estimation (dummy amount).
+        // A scan result from a non-real amount would be meaningless.
+        if (feeEstimationAmount) return;
 
         if (!finalXDR) return;
 
@@ -611,9 +621,43 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     ],
   );
 
+  // Tracks the (balanceId, recipient) pair for which auto-simulation has
+  // already been requested. Prevents re-triggering after isBuilding drops back
+  // to false at the end of the estimation build itself.
+  const lastAutoSimulatedKey = useRef<string | null>(null);
+
+  // Auto-simulate Soroban fee breakdown as soon as token + recipient are set.
+  // Uses /simulate-tx with amount 0 for early fee estimation so the user can
+  // see the resource fee breakdown before entering an amount.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const currentKey = `${selectedBalance?.id}|${recipientAddress}`;
+
+    if (
+      !isBuilding &&
+      lastAutoSimulatedKey.current !== currentKey &&
+      isSorobanTransaction(selectedBalance, recipientAddress) &&
+      recipientAddress &&
+      selectedBalance
+    ) {
+      timer = setTimeout(() => {
+        lastAutoSimulatedKey.current = currentKey;
+        prepareTransaction(false, "0");
+      }, 300);
+    }
+
+    return () => {
+      if (timer !== undefined) clearTimeout(timer);
+    };
+  }, [selectedBalance, recipientAddress, isBuilding, prepareTransaction]);
+
   const handleSettingsChange = () => {
-    // Settings have changed, rebuild the transaction with new values
-    prepareTransaction(false);
+    if (isBuilding) return;
+
+    const needsEstimation =
+      isSorobanTransaction(selectedBalance, recipientAddress) &&
+      !new BigNumber(tokenAmount).isGreaterThan(0);
+    prepareTransaction(false, needsEstimation ? "0" : undefined);
   };
 
   const handleTransactionConfirmation = useCallback(() => {
@@ -1037,6 +1081,24 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             onCancel={handleCancelTransactionSettings}
             onConfirm={handleConfirmTransactionSettings}
             onSettingsChange={handleSettingsChange}
+            onOpenFeeBreakdown={() =>
+              feeBreakdownBottomSheetModalRef.current?.present()
+            }
+          />
+        }
+      />
+      <BottomSheet
+        modalRef={feeBreakdownBottomSheetModalRef}
+        handleCloseModal={() =>
+          feeBreakdownBottomSheetModalRef.current?.dismiss()
+        }
+        customContent={
+          <FeeBreakdownBottomSheet
+            onClose={() => feeBreakdownBottomSheetModalRef.current?.dismiss()}
+            isSorobanContext={isSorobanTransaction(
+              selectedBalance,
+              recipientAddress,
+            )}
           />
         }
       />

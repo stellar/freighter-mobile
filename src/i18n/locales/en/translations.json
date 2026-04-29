@@ -719,6 +719,7 @@
   "transactionSettings": {
     "title": "Transaction settings",
     "feeTitle": "Transaction fee",
+    "inclusionFeeTitle": "Inclusion fee",
     "memoTitle": "Memo",
     "slippageTitle": "Slippage",
     "timeoutTitle": "Transaction timeout",
@@ -799,6 +800,9 @@
       "memo": "Memo",
       "none": "None",
       "fee": "Fee",
+      "inclusionFee": "Inclusion fee",
+      "resourceFee": "Resource fee",
+      "totalFee": "Total fee",
       "xdr": "XDR"
     },
     "errors": {
@@ -818,6 +822,11 @@
       "suspiciousAsset": "An asset was flagged as suspicious"
     },
     "confirmAnyway": "Confirm anyway"
+  },
+  "feeBreakdown": {
+    "title": "Fees",
+    "descriptionClassic": "These fees go to the network to process your transaction.",
+    "descriptionSoroban": "These fees go to the network to process your transaction. For Soroban transactions, we run a quick simulation first, so you might see the total fee adjust."
   },
   "addMemoExplanationBottomSheet": {
     "title": "Memo is required",

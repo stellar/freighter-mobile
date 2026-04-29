@@ -1,5 +1,8 @@
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import BigNumber from "bignumber.js";
+import BottomSheet from "components/BottomSheet";
 import { CollectibleImage } from "components/CollectibleImage";
+import FeeBreakdownBottomSheet from "components/FeeBreakdownBottomSheet";
 import { List, ListItemProps } from "components/List";
 import { TokenIcon } from "components/TokenIcon";
 import SignTransactionDetails from "components/screens/SignTransactionDetails";
@@ -19,12 +22,13 @@ import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { isLiquidityPool } from "helpers/balances";
 import { pxValue } from "helpers/dimensions";
 import { formatTokenForDisplay, formatFiatAmount } from "helpers/formatAmount";
+import { computeTotalFeeXlm, isSorobanTransaction } from "helpers/soroban";
 import { truncateAddress, isMuxedAccount } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useMemo, useRef } from "react";
 import { ActivityIndicator, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -95,7 +99,33 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   const { account } = useGetActiveAccount();
   const { copyToClipboard } = useClipboard();
   const slicedAddress = truncateAddress(recipientAddress, 4, 4);
-  const { transactionXDR, isBuilding, error } = useTransactionBuilderStore();
+  const {
+    transactionXDR,
+    isBuilding,
+    error,
+    isSoroban,
+    sorobanResourceFeeXlm,
+    sorobanInclusionFeeXlm,
+  } = useTransactionBuilderStore();
+
+  const feeBreakdownSheetRef = useRef<BottomSheetModal>(null);
+
+  const handleOpenFeeBreakdown = useCallback(() => {
+    feeBreakdownSheetRef.current?.present();
+  }, []);
+
+  const totalFeeXlm = computeTotalFeeXlm(
+    sorobanInclusionFeeXlm,
+    sorobanResourceFeeXlm,
+    transactionFee,
+  );
+
+  // Derived from current context (collectible or Soroban token/address) rather
+  // than the builder store so the fee breakdown sheet shows Soroban rows and
+  // description even before simulation has completed.
+  const isSorobanContext =
+    type === SendType.Collectible ||
+    isSorobanTransaction(selectedBalance, recipientAddress);
 
   // Use amountError from props (calculated in parent component)
   const amountError = propAmountError;
@@ -230,14 +260,32 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
               ),
             }
           : undefined,
+        // Single fee row — total fee on the right with an info icon that opens
+        // FeeBreakdownBottomSheet (where the inclusion/resource split lives).
         {
           icon: <Icon.Route size={16} color={themeColors.foreground.primary} />,
           title: t("transactionAmountScreen.details.fee"),
           titleColor: themeColors.text.secondary,
-          trailingContent: (
-            <Text md primary>
-              {formatTokenForDisplay(transactionFee, NATIVE_TOKEN_CODE)}
-            </Text>
+          trailingContent: isBuilding ? (
+            <ActivityIndicator
+              size="small"
+              color={themeColors.text.secondary}
+            />
+          ) : (
+            <View className="flex-row items-center gap-[8px]">
+              {isSoroban && (
+                <TouchableOpacity
+                  onPress={handleOpenFeeBreakdown}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  className="mt-[2px]"
+                >
+                  <Icon.InfoCircle themeColor="gray" size={16} />
+                </TouchableOpacity>
+              )}
+              <Text md primary>
+                {formatTokenForDisplay(totalFeeXlm, NATIVE_TOKEN_CODE)}
+              </Text>
+            </View>
           ),
         },
         {
@@ -264,13 +312,15 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
       account?.accountName,
       account?.publicKey,
       handleCopyXdr,
+      handleOpenFeeBreakdown,
       isBuilding,
+      isSoroban,
       renderMemoTitle,
       renderXdrContent,
       t,
       themeColors.foreground.primary,
       themeColors.text.secondary,
-      transactionFee,
+      totalFeeXlm,
       transactionMemo,
       transactionXDR,
       isRecipientMuxed,
@@ -353,6 +403,16 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
           analyticsEvent={AnalyticsEvent.VIEW_SEND_TRANSACTION_DETAILS}
         />
       )}
+      <BottomSheet
+        modalRef={feeBreakdownSheetRef}
+        handleCloseModal={() => feeBreakdownSheetRef.current?.dismiss()}
+        customContent={
+          <FeeBreakdownBottomSheet
+            onClose={() => feeBreakdownSheetRef.current?.dismiss()}
+            isSorobanContext={isSorobanContext}
+          />
+        }
+      />
     </View>
   );
 };
@@ -470,8 +530,8 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
       const cancelButton = (
         <View className={`${shouldUseRowLayout ? "flex-1" : "w-full"}`}>
           <Button
-            tertiary={(isSuspicious && !isUnableToScan) || isExpectedToFail}
-            destructive={isMalicious && !shouldUseRowLayout}
+            tertiary={isSuspicious || isUnableToScan || isExpectedToFail}
+            destructive={isMalicious}
             secondary={shouldUseRowLayout}
             isFullWidth
             onPress={onCancel}

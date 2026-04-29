@@ -291,11 +291,32 @@ describe("simulateCollectibleTransfer", () => {
       networkDetails: mockNetworkDetails,
     });
 
-    expect(result).toBe(mockPreparedXdr);
+    expect(result).toEqual({
+      preparedTransaction: mockPreparedXdr,
+      minResourceFee: undefined,
+    });
     expect(backend.simulateTransaction).toHaveBeenCalledWith({
       xdr: mockTransactionXdr,
       network_url: mockNetworkDetails.sorobanRpcUrl,
       network_passphrase: mockNetworkDetails.networkPassphrase,
+    });
+  });
+
+  it("should correctly plumb minResourceFee when present in simulationResponse", async () => {
+    const mockResourceFee = "500";
+    (backend.simulateTransaction as jest.Mock).mockResolvedValue({
+      preparedTransaction: mockPreparedXdr,
+      simulationResponse: { minResourceFee: mockResourceFee },
+    });
+
+    const result = await simulateCollectibleTransfer({
+      transactionXdr: mockTransactionXdr,
+      networkDetails: mockNetworkDetails,
+    });
+
+    expect(result).toEqual({
+      preparedTransaction: mockPreparedXdr,
+      minResourceFee: mockResourceFee,
     });
   });
 
