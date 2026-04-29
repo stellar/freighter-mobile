@@ -141,8 +141,13 @@ export const TabNavigator = () => {
       <MainTab.Screen
         name={MAIN_TAB_ROUTES.TAB_HISTORY}
         component={HistoryScreen}
+        options={{ tabBarButtonTestID: "tab-history" }}
       />
-      <MainTab.Screen name={MAIN_TAB_ROUTES.TAB_HOME} component={HomeScreen} />
+      <MainTab.Screen
+        name={MAIN_TAB_ROUTES.TAB_HOME}
+        component={HomeScreen}
+        options={{ tabBarButtonTestID: "tab-home" }}
+      />
       {discoverEnabled && (
         <MainTab.Screen
           name={MAIN_TAB_ROUTES.TAB_DISCOVERY}

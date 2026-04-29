@@ -23,13 +23,14 @@ import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { getTokenType } from "helpers/balances";
 import { isContractId } from "helpers/soroban";
+import { isFederationAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
 import { useRightHeaderButton } from "hooks/useRightHeader";
-import React, { useCallback, useEffect, useState } from "react";
-import { View } from "react-native";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { ActivityIndicator, View } from "react-native";
 import { analytics } from "services/analytics";
 
 type SendSearchContactsProps = NativeStackScreenProps<
@@ -56,6 +57,9 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
   const [address, setAddress] = useState("");
   const {
     saveRecipientAddress,
+    saveFederationAddress,
+    saveMemo,
+    saveMemoType,
     selectedCollectibleDetails,
     saveSelectedCollectibleDetails,
     selectedTokenId,
@@ -67,8 +71,10 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
     recentAddresses,
     searchResults,
     searchError,
+    isSearching,
     loadRecentAddresses,
     searchAddress,
+    prepareForSearch,
     setDestinationAddress,
     resetSendRecipient,
     isValidDestination,
@@ -110,35 +116,93 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
     [clearQRData, saveSelectedCollectibleDetails],
   );
 
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const SEARCH_DEBOUNCE_MS = 300;
+
   /**
-   * Handles search input changes and updates suggestions
+   * Handles search input changes with debounce to prevent flickering
+   * messages and unnecessary intermediate requests while typing.
    *
    * @param {string} text - The search text entered by user
    */
   const handleSearch = useCallback(
     (text: string) => {
       setAddress(text);
-      // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      searchAddress(text);
+
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+      }
+
+      // Clear stale results/errors immediately so they don't linger during debounce
+      prepareForSearch();
+
+      searchDebounceRef.current = setTimeout(() => {
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
+        searchAddress(text);
+      }, SEARCH_DEBOUNCE_MS);
     },
-    [searchAddress],
+    [searchAddress, prepareForSearch],
+  );
+
+  // Clean up debounce timer on unmount
+  useEffect(
+    () => () => {
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+      }
+    },
+    [],
   );
 
   /**
    * Handles when a contact or address is selected
    *
-   * @param {string} contactAddress - The selected contact address
+   * @param {string} contactAddress - The selected contact address (G... public key)
+   * @param {string} [contactName] - The federation address if applicable
    */
   const handleContactPress = useCallback(
-    (contactAddress: string) => {
+    async (contactAddress: string, contactName?: string) => {
       if (recentAddresses.some((c) => c.address === contactAddress)) {
         analytics.track(AnalyticsEvent.SEND_PAYMENT_RECENT_ADDRESS);
       }
+
+      const isFederation = !!contactName && isFederationAddress(contactName);
+
+      let resolvedAddress = contactAddress;
+
+      // Re-resolve recent federation contacts to pick up any address remapping (H3)
+      const isRecentContact = recentAddresses.some(
+        (c) => c.address === contactAddress,
+      );
+      if (isFederation && isRecentContact) {
+        setAddress(contactName);
+        await searchAddress(contactName);
+        const state = useSendRecipientStore.getState();
+        if (state.searchError || state.searchResults.length === 0) {
+          // searchError is shown in the UI; abort navigation
+          return;
+        }
+        resolvedAddress = state.searchResults[0].address;
+      }
+
+      // Read federation memo/type from store — always fresh after any resolution above
+      const {
+        federationMemo: resolvedMemo,
+        federationMemoType: resolvedMemoType,
+      } = useSendRecipientStore.getState();
+
       // Save to both stores for different purposes
       // Send store is for contact management
-      setDestinationAddress(contactAddress);
+      setDestinationAddress(
+        resolvedAddress,
+        isFederation ? contactName : undefined,
+      );
       // Transaction settings store is for the transaction flow
-      saveRecipientAddress(contactAddress);
+      saveRecipientAddress(resolvedAddress);
+      saveFederationAddress(isFederation ? contactName : "");
+      // Apply federation memo and type; clear both for non-federation contacts (H2)
+      saveMemo(isFederation && resolvedMemo ? resolvedMemo : "");
+      saveMemoType(isFederation && resolvedMemoType ? resolvedMemoType : "");
 
       if (selectedCollectibleDetails.tokenId) {
         // Use popTo for collectible flow
@@ -156,6 +220,10 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
       recentAddresses,
       setDestinationAddress,
       saveRecipientAddress,
+      saveFederationAddress,
+      saveMemo,
+      saveMemoType,
+      searchAddress,
       navigation,
       selectedCollectibleDetails,
     ],
@@ -201,7 +269,15 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
             value={address}
           />
 
-          {searchError && (
+          {isSearching && address.length > 0 && (
+            <View className="mt-8 items-center">
+              <ActivityIndicator
+                size="small"
+                color={themeColors.foreground.primary}
+              />
+            </View>
+          )}
+          {searchError && !isSearching && (
             <View className="mt-4">
               <Text sm secondary>
                 {searchError}
@@ -209,6 +285,7 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
             </View>
           )}
           {!searchError &&
+            !isSearching &&
             isValidDestination &&
             isDestinationFunded === false &&
             shouldShowUnfundedNotice && (
@@ -238,13 +315,17 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
         {searchResults.length > 0 ? (
           <SearchSuggestionsList
             suggestions={searchResults}
-            onContactPress={handleContactPress}
+            onContactPress={(contactAddress, name) => {
+              handleContactPress(contactAddress, name);
+            }}
           />
         ) : (
           recentAddresses.length > 0 && (
             <RecentContactsList
               transactions={recentAddresses}
-              onContactPress={handleContactPress}
+              onContactPress={(contactAddress, name) => {
+                handleContactPress(contactAddress, name);
+              }}
             />
           )
         )}

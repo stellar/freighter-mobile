@@ -44,6 +44,7 @@ export interface BuildPaymentTransactionParams {
   selectedBalance?: PricedBalance;
   recipientAddress?: string;
   transactionMemo?: string;
+  transactionMemoType?: string;
   transactionFee?: string;
   transactionTimeout?: number;
   network?: NETWORKS;
@@ -330,6 +331,7 @@ export const buildPaymentTransaction = async (
     selectedBalance,
     recipientAddress,
     transactionMemo: memo,
+    transactionMemoType: memoType,
     transactionFee,
     transactionTimeout,
     network,
@@ -382,7 +384,29 @@ export const buildPaymentTransaction = async (
     // For normal transactions (non-Soroban), only add memo if recipient is not M address
     // For Soroban transactions, memo handling is done in buildSorobanTransferOperation
     if (memo && !shouldUseSorobanTransfer && !isRecipientMuxed) {
-      transactionBuilder.addMemo(new Memo(Memo.text(memo).type, memo));
+      // Honour the memo type returned by the federation server so that exchange
+      // destinations that require memo_type:"id" receive the correct Stellar memo.
+      if (memoType === "id" && /^\d+$/.test(memo)) {
+        // Memo.id validates numeric range (0..2^64-1); wrap to avoid crash on out-of-range values
+        try {
+          transactionBuilder.addMemo(Memo.id(memo));
+        } catch {
+          transactionBuilder.addMemo(Memo.text(memo));
+        }
+      } else if (memoType === "hash") {
+        try {
+          const hashBytes = Buffer.from(memo, "base64");
+          if (hashBytes.length === 32) {
+            transactionBuilder.addMemo(Memo.hash(hashBytes));
+          } else {
+            transactionBuilder.addMemo(Memo.text(memo));
+          }
+        } catch {
+          transactionBuilder.addMemo(Memo.text(memo));
+        }
+      } else {
+        transactionBuilder.addMemo(Memo.text(memo));
+      }
     }
 
     if (shouldUseSorobanTransfer) {

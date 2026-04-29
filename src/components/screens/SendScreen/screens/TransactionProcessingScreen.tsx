@@ -65,7 +65,7 @@ const TransactionProcessingScreen: React.FC<
   const navigation = useNavigation();
   const { network } = useAuthenticationStore();
 
-  const { recipientAddress } = useTransactionSettingsStore();
+  const { recipientAddress, federationAddress } = useTransactionSettingsStore();
 
   const {
     isSubmitting,
@@ -103,7 +103,7 @@ const TransactionProcessingScreen: React.FC<
       setStatus(TransactionStatus.FAILED);
     } else if (transactionHash) {
       setStatus(TransactionStatus.SENT);
-      addRecentAddress(recipientAddress);
+      addRecentAddress(recipientAddress, federationAddress || undefined);
     } else if (isContractAddress && !isSubmitting) {
       setStatus(TransactionStatus.UNSUPPORTED);
     }
@@ -116,6 +116,7 @@ const TransactionProcessingScreen: React.FC<
     isContractAddress,
     network,
     recipientAddress,
+    federationAddress,
     addRecentAddress,
   ]);
 
