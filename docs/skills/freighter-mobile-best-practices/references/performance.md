@@ -199,12 +199,11 @@ useEffect(() => {
 **RULE: Custom hooks returning objects MUST memoize the return value.**
 
 ```tsx
-const useAccountData = (publicKey: string) => {
+const useAccountData = () => {
   const balances = useBalancesStore((state) => state.balances);
-  const items = useMemo(
-    () => balances.filter((b) => b.publicKey === publicKey),
-    [balances, publicKey],
-  );
+  const isLoading = useBalancesStore((state) => state.isLoading);
+  // BalanceMap is keyed by token identifier — convert to array for rendering
+  const items = useMemo(() => Object.values(balances), [balances]);
   return useMemo(() => ({ items, isLoading }), [items, isLoading]);
 };
 ```

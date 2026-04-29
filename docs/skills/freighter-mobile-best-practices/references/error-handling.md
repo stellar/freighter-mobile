@@ -67,15 +67,16 @@ shapes.
 
 Horizon transaction submissions retry on HTTP 504 with exponential backoff:
 
-| Attempt | Delay      |
-| ------- | ---------- |
-| 1       | 1 second   |
-| 2       | 2 seconds  |
-| 3       | 4 seconds  |
-| 4       | 8 seconds  |
-| 5       | 16 seconds |
+| Attempt | Delay            |
+| ------- | ---------------- |
+| 1       | 1 second, retry  |
+| 2       | 2 seconds, retry |
+| 3       | 4 seconds, retry |
+| 4       | 8 seconds, retry |
+| 5       | — (throws error) |
 
-Maximum of 5 retry attempts before giving up and surfacing the error.
+4 retries with exponential backoff (`attempt < SUBMIT_BACKOFF_MAX_ATTEMPTS`),
+then the error is surfaced on attempt 5.
 
 ## Toast Notifications
 
@@ -86,8 +87,9 @@ user-facing messaging. Exception:
 dev-only cache reset confirmation; this is an intentional debug carve-out.
 
 ```tsx
-// Correct - use toast for errors
-showToast({ message: t("send.errors.insufficientBalance"), type: "error" });
+// Correct - use toast for errors (variant + title are required)
+const { showToast } = useToast();
+showToast({ variant: "error", title: t("send.errors.insufficientBalance") });
 
 // Wrong - never use Alert.alert() in app code
 Alert.alert("Error", "Insufficient balance");
@@ -119,16 +121,16 @@ if (validationError) {
 
 ## WalletConnect Error Responses
 
-When rejecting a WalletConnect request, respond with an error message:
+When rejecting a WalletConnect request, use the `rejectSessionRequest` helper
+from `helpers/walletKitUtil` — it handles the `respondSessionRequest` call and
+error shape internally:
 
 ```tsx
-await walletKit.respondSessionRequest({
-  topic: session.topic,
-  response: {
-    id: request.id,
-    jsonrpc: "2.0",
-    error: { code: 5000, message: "User rejected the request" },
-  },
+import { rejectSessionRequest } from "helpers/walletKitUtil";
+
+await rejectSessionRequest({
+  sessionRequest,
+  message: "User rejected the request",
 });
 ```
 
@@ -137,7 +139,7 @@ Use `hasRespondedRef` to prevent duplicate responses to the same request:
 ```tsx
 if (hasRespondedRef.current) return;
 hasRespondedRef.current = true;
-await walletKit.respondSessionRequest({ ... });
+await rejectSessionRequest({ sessionRequest, message });
 ```
 
 ## Sentry Integration

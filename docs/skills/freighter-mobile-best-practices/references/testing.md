@@ -33,7 +33,7 @@ __tests__/
 ```tsx
 jest.mock("services/backend", () => ({
   fetchBalances: jest.fn().mockResolvedValue([]),
-  fetchPrices: jest.fn().mockResolvedValue({}),
+  fetchTokenPrices: jest.fn().mockResolvedValue({}),
 }));
 
 jest.mock("ducks/prices", () => ({

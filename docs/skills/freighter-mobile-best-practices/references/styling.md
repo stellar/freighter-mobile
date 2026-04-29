@@ -69,7 +69,7 @@ the raw React Native primitive.**
 Available SDS components:
 
 - Buttons (`Button`, `TextButton`, `BiometricToggleButton`)
-- Text / Typography (`Typography`)
+- Text / Typography (`Text`, `Display`)
 - Inputs (`Input`, `Textarea`)
 - Banners / Notices (`Banner`, `NoticeBanner`)
 - Feedback (`Badge`, `Notification`, `Toast`)
@@ -85,7 +85,7 @@ Common violations to avoid:
 </TouchableOpacity>
 
 // CORRECT
-<Button onPress={onPress} title="Submit" />
+<Button onPress={onPress}>Submit</Button>
 
 // WRONG — raw Text with manual font/color styling
 <Text style={{ fontSize: 16, fontWeight: "600", color: "#fff" }}>
@@ -93,7 +93,7 @@ Common violations to avoid:
 </Text>
 
 // CORRECT
-<Typography size="md" semiBold secondary>Account Balance</Typography>
+<Text md semiBold secondary>Account Balance</Text>
 
 // WRONG — custom inline badge
 <View style={{ backgroundColor: "red", borderRadius: 12 }}>
@@ -101,7 +101,7 @@ Common violations to avoid:
 </View>
 
 // CORRECT
-<Badge label="New" variant="error" />
+<Badge variant="error">New</Badge>
 ```
 
 Only build a custom component when the SDS has no equivalent. When you do,
@@ -124,7 +124,7 @@ const MyScreen: React.FC = () => {
 
   return (
     <>
-      <Button onPress={openSheet} title="Open" />
+      <Button onPress={openSheet}>Open</Button>
       <BottomSheetModal ref={bottomSheetRef} snapPoints={["50%"]}>
         <SheetContent onClose={closeSheet} />
       </BottomSheetModal>

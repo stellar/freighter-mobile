@@ -41,6 +41,7 @@ interface PricesState {
   prices: Record<string, number>;
   isLoading: boolean;
   error: string | null;
+  currentRequestId: string | null;
 
   // Actions
   fetchPrices: (assetCodes: string[]) => Promise<void>;
@@ -51,6 +52,7 @@ export const usePricesStore = create<PricesState>((set, get) => ({
   prices: {},
   isLoading: false,
   error: null,
+  currentRequestId: null,
 
   fetchPrices: async (assetCodes) => {
     const requestId = createRequestId();
@@ -95,7 +97,7 @@ other async actions, simple try/catch is sufficient.
 Complex screens use a directory layout that scales to the flow's complexity:
 
 ```
-src/components/screens/SendPayment/
+src/components/screens/SendScreen/
   index.tsx                    # Screen entry point / coordinator
   screens/                     # Sub-screens for multi-step flows
   components/                  # Screen-specific UI components
@@ -112,11 +114,13 @@ Reusable hooks live in `src/hooks/` and encapsulate common logic. Screens
 compose multiple hooks together:
 
 ```tsx
-const SendPaymentScreen: React.FC = () => {
-  const { activeAccount } = useGetActiveAccount();
-  const { buildTransaction } = useTransactionBuilderStore();
-  const { validateMemo } = useValidateTransactionMemo();
-  const { scanResult } = useBlockaidTransaction();
+const TransactionAmountScreen: React.FC = () => {
+  const { account } = useGetActiveAccount();
+  const { buildTransaction, transactionXDR, isBuilding, error } =
+    useTransactionBuilderStore();
+  const { isValidatingMemo, isMemoMissing } =
+    useValidateTransactionMemo(transactionXDR);
+  const { scanTransaction } = useBlockaidTransaction();
   // ... compose the flow
 };
 ```
