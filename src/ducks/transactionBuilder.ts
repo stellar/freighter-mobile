@@ -1,11 +1,17 @@
-import { NETWORKS, mapNetworkToNetworkDetails } from "config/constants";
+import BigNumber from "bignumber.js";
+import {
+  MIN_TRANSACTION_FEE,
+  NETWORKS,
+  mapNetworkToNetworkDetails,
+} from "config/constants";
 import { logger } from "config/logger";
 import { PricedBalance } from "config/types";
 import { useDebugStore } from "ducks/debug";
-import { xlmToStroop } from "helpers/formatAmount";
+import { stroopToXlm } from "helpers/formatAmount";
 import { isContractId } from "helpers/soroban";
 import { isMuxedAccount } from "helpers/stellar";
 import { t } from "i18next";
+import { SimulationTransactionType } from "services/analytics/types";
 import { signTransaction, submitTx } from "services/stellar";
 import {
   buildPaymentTransaction,
@@ -15,6 +21,24 @@ import {
   simulateContractTransfer,
 } from "services/transactionService";
 import { create } from "zustand";
+
+/**
+ * Extracts a human-readable error message from any thrown value.
+ * Handles native Error instances, ApiError plain objects (from apiFactory),
+ * and arbitrary values. Prevents "[object Object]" from reaching the UI.
+ */
+const extractErrorMessage = (error: unknown): string => {
+  if (error instanceof Error) return error.message;
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof (error as { message: unknown }).message === "string"
+  ) {
+    return (error as { message: string }).message;
+  }
+  return String(error);
+};
 
 /**
  * TransactionBuilderState Interface
@@ -30,6 +54,9 @@ interface TransactionBuilderState {
   transactionHash: string | null;
   error: string | null;
   requestId: string | null;
+  isSoroban: boolean;
+  sorobanResourceFeeXlm: string | null;
+  sorobanInclusionFeeXlm: string | null;
 
   buildTransaction: (params: {
     tokenAmount: string;
@@ -93,6 +120,9 @@ const initialState: Omit<
   transactionHash: null,
   error: null,
   requestId: null,
+  isSoroban: false,
+  sorobanResourceFeeXlm: null,
+  sorobanInclusionFeeXlm: null,
 };
 
 // Unique id to correlate async responses to the latest request
@@ -115,8 +145,26 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
       // Tag this build cycle
       const newRequestId = createRequestId();
 
-      // Mark new cycle and reset flags
-      set({ isBuilding: true, error: null, requestId: newRequestId });
+      // Determine Soroban status early from params so the UI can show the
+      // correct fee label ("Inclusion Fee" vs "Transaction Fee") before
+      // the build/simulation completes.
+      const isSorobanTx = Boolean(
+        (params.selectedBalance &&
+          "contractId" in params.selectedBalance &&
+          params.selectedBalance.contractId) ||
+          (params.recipientAddress && isContractId(params.recipientAddress)),
+      );
+
+      // Mark new cycle and reset flags (clear stale Soroban fees so UI doesn't
+      // show outdated data while the new build is in progress)
+      set({
+        isBuilding: true,
+        error: null,
+        requestId: newRequestId,
+        isSoroban: isSorobanTx,
+        sorobanResourceFeeXlm: null,
+        sorobanInclusionFeeXlm: null,
+      });
 
       try {
         const builtTxResult = await buildPaymentTransaction({
@@ -135,6 +183,8 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         }
 
         let finalXdr = builtTxResult.xdr;
+        let sorobanResourceFeeXlm: string | null = null;
+        let sorobanInclusionFeeXlm: string | null = null;
         const isRecipientContract =
           params.recipientAddress && isContractId(params.recipientAddress);
 
@@ -144,10 +194,6 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
           "contractId" in params.selectedBalance &&
           params.selectedBalance.contractId;
 
-        // Use the final destination from buildPaymentTransaction if available (may be muxed)
-        const finalDestination =
-          builtTxResult.finalDestination || params.recipientAddress!;
-
         // If sending to a contract OR using a custom token, prepare (simulate) the transaction
         // Custom tokens (SorobanBalance) always need simulation for proper fees and resources
         const shouldSimulate =
@@ -155,28 +201,64 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
 
         if (shouldSimulate && params.network && params.senderAddress) {
           const networkDetails = mapNetworkToNetworkDetails(params.network);
+          const isFeeEstimation = Number(params.tokenAmount) === 0;
 
-          const amountForSimulation =
-            isCustomToken && builtTxResult.amountInBaseUnits
-              ? builtTxResult.amountInBaseUnits
-              : xlmToStroop(params.tokenAmount).toString();
+          let simulateResult: {
+            preparedTransaction: string;
+            minResourceFee?: string;
+          };
 
-          const isDestinationMuxed = isMuxedAccount(finalDestination);
-          const memoForSimulation = isDestinationMuxed
-            ? ""
-            : params.transactionMemo || "";
+          if (isFeeEstimation) {
+            // Fee estimation with amount 0: use /simulate-tx with the
+            // locally-built XDR. The /simulate-token-transfer endpoint
+            // rejects amount 0 because it rebuilds the tx server-side.
+            simulateResult = await simulateCollectibleTransfer({
+              transactionXdr: builtTxResult.xdr,
+              networkDetails,
+              analyticsCategory: SimulationTransactionType.ContractTransfer,
+            });
+          } else {
+            // Real amount: use /simulate-token-transfer matching the
+            // extension's flow (backend builds + simulates the tx).
+            const finalDestination =
+              builtTxResult.finalDestination || params.recipientAddress!;
+            const isDestinationMuxed = isMuxedAccount(finalDestination);
+            const memoForSimulation = isDestinationMuxed
+              ? ""
+              : params.transactionMemo || "";
 
-          finalXdr = await simulateContractTransfer({
-            transaction: builtTxResult.tx,
-            networkDetails,
-            memo: memoForSimulation,
-            params: {
-              publicKey: params.senderAddress,
-              destination: finalDestination,
-              amount: amountForSimulation,
-            },
-            contractAddress: builtTxResult.contractId!,
-          });
+            if (builtTxResult.amountInBaseUnits === undefined) {
+              throw new Error(
+                "simulateContractTransfer requires amountInBaseUnits — cannot simulate with an undefined amount",
+              );
+            }
+            simulateResult = await simulateContractTransfer({
+              transaction: builtTxResult.tx,
+              networkDetails,
+              memo: memoForSimulation,
+              fee: params.transactionFee,
+              params: {
+                publicKey: params.senderAddress,
+                destination: finalDestination,
+                amount: String(builtTxResult.amountInBaseUnits),
+              },
+              contractAddress: builtTxResult.contractId!,
+            });
+          }
+
+          if (!simulateResult.preparedTransaction) {
+            throw new Error("Simulation returned no prepared transaction XDR");
+          }
+          finalXdr = simulateResult.preparedTransaction;
+
+          sorobanInclusionFeeXlm = params.transactionFee || MIN_TRANSACTION_FEE;
+
+          if (simulateResult.minResourceFee) {
+            const resourceFeeBn = new BigNumber(simulateResult.minResourceFee);
+            if (!resourceFeeBn.isNaN()) {
+              sorobanResourceFeeXlm = stroopToXlm(resourceFeeBn).toFixed(7);
+            }
+          }
         }
 
         // Only update store if this build request is still the latest one.
@@ -188,13 +270,15 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
             isBuilding: false,
             signedTransactionXDR: null,
             transactionHash: null,
+            isSoroban: Boolean(shouldSimulate),
+            sorobanResourceFeeXlm,
+            sorobanInclusionFeeXlm,
           });
         }
 
         return finalXdr;
       } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
+        const errorMessage = extractErrorMessage(error);
 
         logger.error(
           "TransactionBuilderStore",
@@ -222,8 +306,15 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
       // Tag this build cycle
       const newRequestId = createRequestId();
 
-      // Mark new cycle and reset flags
-      set({ isBuilding: true, error: null, requestId: newRequestId });
+      // Mark new cycle and reset flags (include Soroban fields so they don't carry over from a prior Soroban build)
+      set({
+        isBuilding: true,
+        error: null,
+        requestId: newRequestId,
+        isSoroban: false,
+        sorobanResourceFeeXlm: null,
+        sorobanInclusionFeeXlm: null,
+      });
 
       try {
         // Check debug override for forced build failure
@@ -266,8 +357,7 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
 
         return finalXdr;
       } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
+        const errorMessage = extractErrorMessage(error);
         logger.error(
           "TransactionBuilderStore",
           "Failed to build swap transaction",
@@ -295,8 +385,17 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
       // Tag this build cycle
       const newRequestId = createRequestId();
 
-      // Mark new cycle and reset flags
-      set({ isBuilding: true, error: null, requestId: newRequestId });
+      // Mark new cycle and reset flags (clear stale Soroban fees so UI doesn't
+      // show outdated data while the new build is in progress)
+      // Collectibles are always Soroban transactions.
+      set({
+        isBuilding: true,
+        error: null,
+        requestId: newRequestId,
+        isSoroban: true,
+        sorobanResourceFeeXlm: null,
+        sorobanInclusionFeeXlm: null,
+      });
 
       try {
         const builtTxResult = await buildSendCollectibleTransaction({
@@ -319,10 +418,26 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         // Simulate the collectible transfer transaction to get proper fees and resources
         // The transaction XDR already contains the muxed address (if applicable) from buildSendCollectibleTransaction
         // which checks contract muxed support and creates muxed addresses according to the behavior matrix
-        const finalXdr = await simulateCollectibleTransfer({
+        const simulateResult = await simulateCollectibleTransfer({
           transactionXdr: builtTxResult.tx.toXDR(),
           networkDetails,
         });
+
+        if (!simulateResult.preparedTransaction) {
+          throw new Error(
+            "Collectible simulation returned no prepared transaction XDR",
+          );
+        }
+        const finalXdr = simulateResult.preparedTransaction;
+        let sorobanResourceFeeXlm: string | null = null;
+        if (simulateResult.minResourceFee) {
+          const resourceFeeBn = new BigNumber(simulateResult.minResourceFee);
+          if (!resourceFeeBn.isNaN()) {
+            sorobanResourceFeeXlm = stroopToXlm(resourceFeeBn).toFixed(7);
+          }
+        }
+        const sorobanInclusionFeeXlm =
+          params.transactionFee || MIN_TRANSACTION_FEE;
 
         // Only update store if this build request is still the latest one.
         // This prevents race conditions where a slow async response from
@@ -333,13 +448,15 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
             isBuilding: false,
             signedTransactionXDR: null,
             transactionHash: null,
+            isSoroban: true,
+            sorobanResourceFeeXlm,
+            sorobanInclusionFeeXlm,
           });
         }
 
         return finalXdr;
       } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
+        const errorMessage = extractErrorMessage(error);
         logger.error(
           "TransactionBuilderStore",
           "Failed to build send collectible transaction",
@@ -386,8 +503,7 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         set({ signedTransactionXDR: signedXDR });
         return signedXDR;
       } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
+        const errorMessage = extractErrorMessage(error);
         logger.error(
           "TransactionBuilderStore",
           "Failed to sign transaction",
@@ -455,8 +571,7 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
 
         return hash;
       } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
+        const errorMessage = extractErrorMessage(error);
         logger.error(
           "TransactionBuilderStore",
           "Failed to submit transaction",
