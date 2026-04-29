@@ -165,3 +165,6 @@ See
 for the full best-practices skill, including per-concern reference files (code
 style, architecture, styling, security, testing, performance, error handling,
 i18n, WalletConnect, navigation, git workflow, dependencies, anti-patterns).
+
+For build failures, setup issues, and known bugs, see
+[`docs/troubleshooting-guide.md`](./docs/troubleshooting-guide.md).

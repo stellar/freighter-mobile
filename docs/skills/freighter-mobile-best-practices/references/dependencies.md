@@ -40,10 +40,10 @@ JDK 17+ is recommended for Android builds.
 When things go wrong, do a full reset:
 
 ```bash
-yarn r-install
+yarn reset-env    # Clears node_modules and other generated state
+yarn install      # Reinstall JavaScript dependencies
+yarn rebuild freighter-mobile
 ```
-
-This resets the environment and rebuilds everything from scratch.
 
 ## Metro Cache
 
