@@ -1,0 +1,80 @@
+# Dependencies
+
+## Package Manager
+
+**Yarn** is the package manager. Do not use npm.
+
+## Node Version
+
+Node >= 20 is required (specified in `package.json` engines). CI uses Node 20.
+
+## Native Dependencies
+
+These packages require native linking and affect both iOS and Android build
+configurations:
+
+- `react-native-keychain` — Secure storage (Keychain/Keystore)
+- `@d11/react-native-fast-image` — Cached image loading
+- `react-native-reanimated` — Animation library
+- And others
+
+When adding a package with native code, you must rebuild both platforms.
+
+## iOS Dependencies (CocoaPods)
+
+`yarn install` automatically installs CocoaPods dependencies. Use
+`yarn pod-install` only when you need to reinstall pods independently.
+
+## Android Dependencies (Gradle)
+
+Clean the Android build:
+
+```bash
+yarn gradle-clean
+```
+
+JDK 17+ is recommended for Android builds.
+
+## Full Environment Reset
+
+When things go wrong, do a full reset:
+
+```bash
+yarn reset-env    # Clears node_modules and other generated state
+yarn install      # Reinstall JavaScript dependencies
+yarn rebuild freighter-mobile
+```
+
+## Metro Cache
+
+Start Metro bundler with a clean cache:
+
+```bash
+yarn start-c
+```
+
+This runs `react-native start --reset-cache`.
+
+## Adding a Native Dependency
+
+1. Add the package to `package.json`
+2. Run `yarn install` (this also installs CocoaPods automatically)
+3. Rebuild both platforms and verify
+
+## Upgrading React Native
+
+1. Follow the official
+   [React Native Upgrade Helper](https://react-native-community.github.io/upgrade-helper/)
+2. Test thoroughly on both iOS and Android
+3. Check all native module compatibility with the new RN version
+4. Pay special attention to `react-native-reanimated`, `react-native-keychain`,
+   and other native modules
+
+## Environment Variables
+
+- Configuration lives in `.env` (created from `.env.example`)
+- `.env.example` is the source of truth for the full variable list
+- **Never commit `.env`** — it may contain secrets
+- Keep `.env.example` updated when adding new variables
+- E2E test variables (`IS_E2E_TEST`, `E2E_TEST_RECOVERY_PHRASE`, etc.) are also
+  configured here
