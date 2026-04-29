@@ -18,39 +18,95 @@ Use NativeWind for the majority of layout and styling needs.
 
 ## Complex Styled Components
 
-For components with dynamic, prop-driven styling that goes beyond what utility
-classes handle cleanly, use `styled-components/native` with typed props:
+For dynamic, prop-driven styling beyond what NativeWind handles cleanly, use
+React Native `StyleSheet` with computed style objects. Do not introduce new
+`styled-components/native` usage. Existing SDS primitives (`Button`,
+`Typography`, `Token`, `Toast`, `Notification`) and layout wrappers
+(`BaseLayout`, `OnboardLayout`, `ScrollableKeyboardView`) retain their
+`styled-components` usage until a coordinated migration — do not refactor them
+unless that migration is the explicit goal.
 
 ```tsx
-import styled from "styled-components/native";
+import { StyleSheet, TouchableOpacity } from "react-native";
 
-interface StyledButtonProps {
+interface PrimaryButtonProps {
   variant: "primary" | "secondary";
   isDisabled?: boolean;
 }
 
-const StyledButton = styled(TouchableOpacity)<StyledButtonProps>`
-  background-color: ${({ variant }) =>
-    variant === "primary" ? "#5C63FF" : "transparent"};
-  opacity: ${({ isDisabled }) => (isDisabled ? 0.5 : 1)};
-  border-radius: 8px;
-  padding: 12px 24px;
-`;
+const PrimaryButton: React.FC<PrimaryButtonProps> = ({
+  variant,
+  isDisabled,
+  children,
+  onPress,
+}) => (
+  <TouchableOpacity
+    onPress={onPress}
+    style={[
+      styles.base,
+      variant === "primary" ? styles.primary : styles.secondary,
+      isDisabled && styles.disabled,
+    ]}
+  >
+    {children}
+  </TouchableOpacity>
+);
+
+const styles = StyleSheet.create({
+  base: { borderRadius: 8, paddingHorizontal: 24, paddingVertical: 12 },
+  primary: { backgroundColor: "#5C63FF" },
+  secondary: { backgroundColor: "transparent" },
+  disabled: { opacity: 0.5 },
+});
 ```
 
 ## Design System (SDS)
 
-The Stellar Design System components live in `src/components/sds/` and provide
-typed component variants for common UI elements:
+**RULE: Before writing any UI element, check `src/components/sds/` first. If an
+SDS component covers the use case, use it — do not recreate it, do not reach for
+the raw React Native primitive.**
 
-- Buttons
-- Text / Typography
-- Cards
-- Inputs
-- And more
+Available SDS components:
 
-**Always check SDS first** before creating custom styled components. Use SDS
-components as the foundation and extend only when necessary.
+- Buttons (`Button`, `TextButton`, `BiometricToggleButton`)
+- Text / Typography (`Text`, `Display`)
+- Inputs (`Input`, `Textarea`)
+- Banners / Notices (`Banner`, `NoticeBanner`)
+- Feedback (`Badge`, `Notification`, `Toast`)
+- Controls (`Toggle`, `SegmentedControl`)
+- Media (`Avatar`, `Token`, `Icon`)
+
+Common violations to avoid:
+
+```tsx
+// WRONG — raw RN primitive when SDS covers it
+<TouchableOpacity onPress={onPress}>
+  <Text>Submit</Text>
+</TouchableOpacity>
+
+// CORRECT
+<Button onPress={onPress}>Submit</Button>
+
+// WRONG — raw Text with manual font/color styling
+<Text style={{ fontSize: 16, fontWeight: "600", color: "#fff" }}>
+  Account Balance
+</Text>
+
+// CORRECT
+<Text md semiBold secondary>Account Balance</Text>
+
+// WRONG — custom inline badge
+<View style={{ backgroundColor: "red", borderRadius: 12 }}>
+  <Text>New</Text>
+</View>
+
+// CORRECT
+<Badge variant="error">New</Badge>
+```
+
+Only build a custom component when the SDS has no equivalent. When you do,
+follow the same prop-typing and variant patterns used in the SDS so it can be
+promoted later.
 
 ## Bottom Sheets
 
@@ -68,7 +124,7 @@ const MyScreen: React.FC = () => {
 
   return (
     <>
-      <Button onPress={openSheet} title="Open" />
+      <Button onPress={openSheet}>Open</Button>
       <BottomSheetModal ref={bottomSheetRef} snapPoints={["50%"]}>
         <SheetContent onClose={closeSheet} />
       </BottomSheetModal>
@@ -84,12 +140,14 @@ bottom sheet visibility via state booleans.
 
 Use the custom `Modal` component (overlay-based), not React Native's built-in
 `Modal`. The custom implementation provides consistent behavior across
-platforms.
+platforms. Exception: `WalletConnectE2EHelper.tsx` uses React Native's built-in
+`Modal` intentionally for Maestro e2e accessibility — this is a test-helper
+carve-out, not a pattern to follow in production code.
 
 ## Platform-Specific Styling
 
-Use `Platform.select()` or `Platform.OS` checks only when truly needed for
-platform differences. Prefer cross-platform styles as the default:
+Use `Platform.select()` or the `isIOS` / `isAndroid` helpers only when truly
+needed for platform differences. Prefer cross-platform styles as the default:
 
 ```tsx
 // Only when necessary

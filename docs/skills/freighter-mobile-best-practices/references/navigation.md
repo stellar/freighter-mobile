@@ -27,8 +27,9 @@ import wallet, set password, etc.).
 
 ### Specialized Navigators
 
-Approximately 7 additional navigators handle specific feature areas (send
-payment, swap, settings, etc.). Each manages its own stack of screens.
+6 feature navigators handle specific areas (`AddFunds`, `ManageTokens`,
+`ManageWallets`, `SendPayment`, `Settings`, `Swap`). Each manages its own stack
+of screens.
 
 ## Typed Route Parameters
 
@@ -56,27 +57,26 @@ Always use named route enums instead of magic strings:
 
 ```tsx
 // Correct
-navigation.navigate(SEND_PAYMENT_ROUTES.ENTER_AMOUNT, { assetCode: "XLM" });
+navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN, {
+  tokenId,
+  tokenSymbol,
+});
 
 // Wrong
-navigation.navigate("EnterAmount", { assetCode: "XLM" });
+navigation.navigate("TransactionAmountScreen", { tokenId, tokenSymbol });
 ```
 
-Available route enum groups:
-
-- `ROOT_NAVIGATOR_ROUTES`
-- `MAIN_TAB_ROUTES`
-- `SEND_PAYMENT_ROUTES`
-- And others per feature area
+All route enum groups are defined in `src/config/routes.ts` — check that file
+for the complete current list. Each feature area has its own enum constant.
 
 ## Deep Linking
 
-| Environment | Scheme               |
-| ----------- | -------------------- |
-| Dev         | `freighterdev://`    |
-| Prod        | `freighterwallet://` |
+Dev and prod use separate deep-link schemes (configured in the Xcode/Gradle
+build settings and the WalletConnect dashboard). WalletConnect deep links follow
+the format: `<deep-link-scheme>://<optional-path>/wc?uri=wc:...`
 
-WalletConnect deep links follow the format: `freighterdev://wc?uri=...`
+See the native project configuration for the actual scheme values — do not
+hard-code them in documentation.
 
 ## App Initialization Sequence
 
@@ -92,17 +92,20 @@ The `RootNavigator` orchestrates the startup sequence:
 
 ## Screen Parameters
 
-Always type screen params via the param list types. Optional params are marked
-with `?`:
+Always type screen params via the param list types in `src/config/routes.ts`,
+and use the route enum values as keys via computed properties. `undefined` is
+the correct value for screens that take no params:
 
 ```tsx
-type SendPaymentParamList = {
-  SelectAsset: undefined;
-  EnterAmount: { assetCode: string; assetIssuer?: string };
-  ConfirmTransaction: {
-    amount: string;
-    destination: string;
-    assetCode: string;
+export type SendPaymentStackParamList = {
+  [SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN]: undefined;
+  [SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN]: {
+    tokenId: string;
+    tokenSymbol: string;
+  };
+  [SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW]: {
+    contractId: string;
+    tokenId: string;
   };
 };
 ```

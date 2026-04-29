@@ -31,61 +31,78 @@ Always clear the error state before starting a new request (`error: null`).
 - React Native event objects (extracts meaningful info)
 - Nested error objects (unwraps to find the root cause)
 
+Use `logger.error()` to report errors — it normalizes and forwards to Sentry
+internally. **Do not call `Sentry.captureException()` directly.**
+
 ```tsx
-import { normalizeError } from "config/logger";
+import { logger, normalizeError } from "config/logger";
 
 try {
   await riskyOperation();
 } catch (error) {
   const normalized = normalizeError(error);
-  Sentry.captureException(normalized);
+  logger.error("featureName.riskyOperation", "Operation failed", error);
   set({ error: normalized.message, isLoading: false });
 }
 ```
 
+Note: `logger.error()` normalizes the error internally — the explicit
+`normalizeError()` call here is only needed to extract the `.message` string for
+store state. Do not call both unless you need the message string for a separate
+purpose.
+
 ## Type Guards
 
-Use runtime type guards for discriminating between different data shapes:
+Use runtime type guards to discriminate between balance shapes from the network:
 
-- `isNativeBalance()` — checks if a balance is the native XLM asset
-- `isClassicBalance()` — checks if a balance is a classic Stellar asset
+- `isNativeBalance()` (in `src/services/transactionService.ts`) — checks if a
+  balance is the native XLM asset
+- `isLiquidityPool()` (in `src/helpers/balances.ts`) — checks if a balance
+  represents a liquidity pool share
 
-These prevent runtime type errors when handling polymorphic data from the
-network.
+Add new type guards in the same files when you introduce new polymorphic data
+shapes.
 
 ## Network Retry
 
 Horizon transaction submissions retry on HTTP 504 with exponential backoff:
 
-| Attempt | Delay      |
-| ------- | ---------- |
-| 1       | 1 second   |
-| 2       | 2 seconds  |
-| 3       | 4 seconds  |
-| 4       | 8 seconds  |
-| 5       | 16 seconds |
+| Attempt | Delay            |
+| ------- | ---------------- |
+| 1       | 1 second, retry  |
+| 2       | 2 seconds, retry |
+| 3       | 4 seconds, retry |
+| 4       | 8 seconds, retry |
+| 5       | — (throws error) |
 
-Maximum of 5 retry attempts before giving up and surfacing the error.
+4 retries with exponential backoff (`attempt < SUBMIT_BACKOFF_MAX_ATTEMPTS`),
+then the error is surfaced on attempt 5.
 
 ## Toast Notifications
 
-Surface user-facing errors via the toast system, not native alerts:
+Surface user-facing errors via the toast system. **Never use `Alert.alert()`**
+in production app code — the app uses toasts and bottom sheets for all
+user-facing messaging. Exception:
+`src/components/analytics/DebugBottomSheet.tsx` uses `Alert.alert()` for a
+dev-only cache reset confirmation; this is an intentional debug carve-out.
 
 ```tsx
-// Correct - use toast for errors
-showToast({ message: t("send.errors.insufficientBalance"), type: "error" });
+// Correct - use toast for errors (variant + title are required)
+const { showToast } = useToast();
+showToast({ variant: "error", title: t("send.errors.insufficientBalance") });
 
-// Wrong - avoid alert() for routine errors
+// Wrong - never use Alert.alert() in app code
 Alert.alert("Error", "Insufficient balance");
 ```
 
-Reserve `Alert.alert()` for critical confirmations only (e.g., "Are you sure you
-want to delete this account?").
+For confirmations (e.g., "Are you sure you want to delete this account?"), use a
+bottom sheet, not a native alert.
 
 ## Transaction Validation
 
-Use `validateTransactionParams()` before building any transaction. It returns an
-error message string or `null`:
+`validateTransactionParams()` is used by the Send flow's `buildTransaction()` in
+`src/services/transactionService.ts`. Call it before building any transaction.
+It returns an error message string or `null`:
 
 ```tsx
 const validationError = validateTransactionParams({
@@ -104,16 +121,16 @@ if (validationError) {
 
 ## WalletConnect Error Responses
 
-When rejecting a WalletConnect request, respond with an error message:
+When rejecting a WalletConnect request, use the `rejectSessionRequest` helper
+from `helpers/walletKitUtil` — it handles the `respondSessionRequest` call and
+error shape internally:
 
 ```tsx
-await walletKit.respondSessionRequest({
-  topic: session.topic,
-  response: {
-    id: request.id,
-    jsonrpc: "2.0",
-    error: { code: 5000, message: "User rejected the request" },
-  },
+import { rejectSessionRequest } from "helpers/walletKitUtil";
+
+await rejectSessionRequest({
+  sessionRequest,
+  message: "User rejected the request",
 });
 ```
 
@@ -122,7 +139,7 @@ Use `hasRespondedRef` to prevent duplicate responses to the same request:
 ```tsx
 if (hasRespondedRef.current) return;
 hasRespondedRef.current = true;
-await walletKit.respondSessionRequest({ ... });
+await rejectSessionRequest({ sessionRequest, message });
 ```
 
 ## Sentry Integration
@@ -134,7 +151,13 @@ reports.
 ## Rules
 
 - **Never** use empty catch blocks. Always handle or log the error.
-- **Never** silently swallow errors. At minimum, use `normalizeError()` +
-  Sentry.
+- **Never** silently swallow errors. At minimum, log with `logger.error()`.
 - **Never** show generic "Something went wrong" without additional context.
   Include what operation failed.
+- **Never** use `Alert.alert()` — surface errors via toasts and confirmations
+  via bottom sheets.
+- **Never** call `Sentry.captureException()` directly — go through
+  `logger.error()` so the context tag and normalization are consistent.
+- **Be selective about what reaches Sentry.** Validation failures, user
+  cancellations, and expected network failures (timeouts, offline) are noise.
+  Reserve Sentry for unexpected errors and bugs that need engineering action.

@@ -51,40 +51,8 @@ The PR template includes a comprehensive checklist. Key requirements:
 
 All checks must pass before merging.
 
-## Release Process (RELEASE.md)
+## Release Process
 
-### Standard Release
-
-1. Triggered from `main` via GitHub Actions
-2. Creates a release branch
-3. Bumps version in 5 files:
-   - `package.json`
-   - `build.gradle` (Android)
-   - `Info.plist` (iOS prod)
-   - `Info-Dev.plist` (iOS dev)
-   - `project.pbxproj` (Xcode)
-4. Auto-generates release notes from commit history
-
-### Emergency Release
-
-1. Triggered from a previous tag (not `main`)
-2. Creates an `emergency-release` branch
-3. Cherry-picks the necessary fixes
-4. Follows the same version bump process
-
-### Post-Merge Steps
-
-1. Create a manual git tag for the release
-2. Trigger iOS and Android builds via GitHub Actions
-3. Promote builds in App Store Connect (iOS) and Google Play Console (Android)
-
-## Nightly Builds
-
-- Run daily at 8 AM UTC
-- Automatically skipped when a release branch is active
-- Useful for catching integration issues early
-
-## Branch Cleanup
-
-Delete `release/` and `emergency-release/` branches after they are merged back
-to `main`.
+See [`RELEASE.md`](../../../../RELEASE.md) — it is the source of truth for the
+release lifecycle (standard release, emergency release, post-merge steps,
+nightly builds, and branch cleanup).

@@ -259,7 +259,12 @@
     "errorUnlockingWalletTitle": "Erro ao desbloquear carteira",
     "errorUnlockingWalletMessage": "Se o problema persistir, toque em \"Esqueci minha senha\" e reimporte sua carteira.",
     "failedToLoadAccountTitle": "Conta não carregada",
-    "failedToLoadAccountMessage": "Sua conta não pôde ser carregada após o login. Tente novamente."
+    "failedToLoadAccountMessage": "Sua conta não pôde ser carregada após o login. Tente novamente.",
+    "forgotPasswordWarningTitle": "Tem certeza?",
+    "forgotPasswordWarningMessage1": "Não podemos recuperar sua senha para você. Este processo apagará sua carteira e você precisará passar pelo fluxo de importação da carteira para reimportá-la com sua frase de recuperação.",
+    "forgotPasswordWarningMessage2": "Você perderá permanentemente o acesso à conta atualmente armazenada no Freighter.",
+    "forgotPasswordWarningMessage3": "Só faça isso se você tiver sua frase guardada em segurança em outro lugar.",
+    "forgotPasswordWarningResetButton": "Redefinir Freighter"
   },
   "onboarding": {
     "continue": "Continuar",
@@ -652,7 +657,8 @@
       "insufficientBalance": "Saldo insuficiente. Máximo disponível: {{amount}} {{symbol}}",
       "insufficientXlmForFees": "XLM insuficiente para taxas de transação. Você precisa de pelo menos {{fee}} XLM para pagar a taxa de transação.",
       "noPathFound": "Nenhum caminho encontrado entre estes tokens",
-      "pathFindFailed": "Não foi possível buscar o caminho de troca. Tente novamente."
+      "pathFindFailed": "Não foi possível buscar o caminho de troca. Tente novamente.",
+      "customTokenSwapNotSupported": "Troca de tokens customizados ainda não é suportada"
     },
     "proceedAnyway": "Prosseguir mesmo assim"
   },

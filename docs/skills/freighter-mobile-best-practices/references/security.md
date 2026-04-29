@@ -23,7 +23,11 @@ Passwords are encrypted using the Stellar TypeScript wallet SDK:
 
 ## Auth State Machine
 
-Authentication uses a state machine with the `AUTH_STATUS` enum:
+Authentication uses a state machine. `AUTH_STATUS` (in `src/config/types.ts`) is
+a `const` object with `as const` (not a TypeScript `enum`) — read values via
+`AUTH_STATUS.AUTHENTICATED`, etc., and reference its type via
+`(typeof AUTH_STATUS)[keyof typeof AUTH_STATUS]`. Do not declare a new
+`enum AUTH_STATUS`.
 
 | Status              | Meaning                                    |
 | ------------------- | ------------------------------------------ |
@@ -53,7 +57,7 @@ Every dApp transaction goes through Blockaid security scanning:
 
 | Scan Result   | Action                        |
 | ------------- | ----------------------------- |
-| `malicious`   | Auto-reject the transaction   |
+| `malicious`   | Show warning, let user decide |
 | `suspicious`  | Show warning, let user decide |
 | `benign`      | Process normally              |
 | `scan-failed` | Show warning, let user decide |
@@ -71,7 +75,7 @@ Additional WalletConnect validations:
 - Validate all URL parameters before processing
 - Only accept known deep link formats
 - Never execute arbitrary code from deep link parameters
-- Separate schemes for dev (`freighterdev://`) and prod (`freighterwallet://`)
+- Dev and prod use separate deep-link schemes (see native project config)
 
 ## Dual Bundle ID Isolation
 
@@ -79,7 +83,7 @@ Dev and prod builds use completely separate keychain entries. This means:
 
 - Installing the dev build cannot read prod secrets
 - Testing never touches production credentials
-- Push tokens and deep links are isolated per environment
+- Deep links are isolated per environment
 
 ## Common Security Mistakes to Avoid
 

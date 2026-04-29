@@ -17,7 +17,7 @@
 		<key>CFBundlePackageType</key>
 		<string>APPL</string>
 		<key>CFBundleShortVersionString</key>
-		<string>1.13.25</string>
+		<string>1.17.26</string>
 		<key>CFBundleSignature</key>
 		<string>????</string>
 		<key>CFBundleURLTypes</key>
@@ -43,7 +43,7 @@
 			<false />
 		</dict>
 		<key>NSCameraUsageDescription</key>
-		<string>Freighter Dev needs access to your Camera to scan QR codes.</string>
+		<string>Freighter Dev uses your camera to connect to dApps and scan account addresses.</string>
 		<key>NSFaceIDUsageDescription</key>
 		<string>Freighter Dev needs access to your Face ID to securely log in and approve transactions.</string>
 		<key>UIAppFonts</key>
