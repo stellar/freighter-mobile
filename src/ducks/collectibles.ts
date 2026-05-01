@@ -375,15 +375,15 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
           const isMPCollection = EnvConfig.MP_COLLECTIONS_ADDRESSES.includes(
             error.collection_address,
           );
-          const isNoCollectblesFetchedError = error.error_message?.includes(
-            "no collectibles fetched for contract",
-          );
+          const isNoCollectiblesAvailableError = error.error_message
+            ?.toLowerCase()
+            .includes("no collectibles available for this collection");
 
-          // Let's prevent flooding Sentry with "no collectibles fetched for contract" errors
-          // since the backend has a few hardcoded collection contracts which errors for most
-          // users since they are not owners of collectibles on those contracts.
-          const isMPNoCollectblesFetchedError =
-            isMPCollection && isNoCollectblesFetchedError;
+          // Let's prevent flooding Sentry with "No collectibles available for this collection."
+          // errors since the backend has a few hardcoded collection contracts which errors for
+          // most users since they are not owners of collectibles on those contracts.
+          const isMPNoCollectiblesAvailableError =
+            isMPCollection && isNoCollectiblesAvailableError;
 
           // Let's silently log the backend errors so we keep track of it on Sentry
           if (
@@ -398,7 +398,7 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
                 token.error_message,
               );
             });
-          } else if (!isMPNoCollectblesFetchedError) {
+          } else if (!isMPNoCollectiblesAvailableError) {
             logger.error(
               "fetchCollectibles",
               `Error in collection ${error.collection_address}`,
