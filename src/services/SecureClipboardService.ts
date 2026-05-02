@@ -39,8 +39,11 @@ export class SecureClipboardService {
         Clipboard.setString(text);
       }
     } catch (error) {
-      // Fallback to standard clipboard if native module fails
-      logger.warn(
+      // Fallback to standard clipboard if native module fails -
+      // routine fallback path, not error-adjacent (the native module
+      // simply isn't always available depending on Android version /
+      // iOS quirks). Stay info to avoid filling the breadcrumb buffer.
+      logger.info(
         "SecureClipboardService.copyToClipboard",
         "Native module failed, falling back to standard clipboard",
         error,
@@ -60,8 +63,11 @@ export class SecureClipboardService {
         Clipboard.setString("");
       }
     } catch (error) {
-      // Fallback to standard clipboard if native module fails
-      logger.warn(
+      // Fallback to standard clipboard if native module fails -
+      // routine fallback path, not error-adjacent (the native module
+      // simply isn't always available depending on Android version /
+      // iOS quirks). Stay info to avoid filling the breadcrumb buffer.
+      logger.info(
         "SecureClipboardService.clearClipboard",
         "Native clear failed, falling back to standard clipboard",
         error,
@@ -80,8 +86,11 @@ export class SecureClipboardService {
       }
       return await Clipboard.getString();
     } catch (error) {
-      // Fallback to standard clipboard if native module fails
-      logger.warn(
+      // Fallback to standard clipboard if native module fails -
+      // routine fallback path, not error-adjacent (the native module
+      // simply isn't always available depending on Android version /
+      // iOS quirks). Stay info to avoid filling the breadcrumb buffer.
+      logger.info(
         "SecureClipboardService.getClipboardText",
         "Native getString failed, falling back to standard clipboard",
         error,

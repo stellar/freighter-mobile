@@ -82,7 +82,7 @@ const mockNativeClearString =
     typeof SecureClipboardModule.clearString
   >;
 
-const mockLoggerWarn = logger.warn as jest.MockedFunction<typeof logger.warn>;
+const mockLoggerInfo = logger.info as jest.MockedFunction<typeof logger.info>;
 
 describe("useSecureClipboard", () => {
   beforeEach(() => {
@@ -177,7 +177,7 @@ describe("useSecureClipboard", () => {
 
     expect(mockNativeSetString).toHaveBeenCalledWith(text, 30000);
     expect(mockSetString).toHaveBeenCalledWith(text); // Should fallback to standard clipboard
-    expect(mockLoggerWarn).toHaveBeenCalledWith(
+    expect(mockLoggerInfo).toHaveBeenCalledWith(
       "SecureClipboardService.copyToClipboard",
       "Native module failed, falling back to standard clipboard",
       expect.any(Error),
