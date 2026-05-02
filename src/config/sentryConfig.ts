@@ -107,6 +107,15 @@ export const initializeSentry = (): void => {
     // Performance monitoring - equivalent to browserTracingIntegration
     tracesSampleRate: 1.0,
 
+    // iOS-only main-thread monitor. Default is 2 seconds, which catches
+    // a lot of natural transition stalls (clipboard reads via
+    // RNCClipboard.getString, GPU shader compilation on cold start,
+    // Fabric mount work) that aren't actionable bugs in our code.
+    // 5 seconds keeps the genuinely-bad hangs visible while dropping
+    // the bulk of the noise (FREIGHTER-MOBILE-4A / Q5 / TF / T7,
+    // ~244 events / ~65 users).
+    appHangTimeoutInterval: 5,
+
     beforeSend(event) {
       // Update context on each event to ensure freshness
       Sentry.setContext("appContext", buildSentryContext());
