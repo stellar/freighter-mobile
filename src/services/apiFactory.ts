@@ -161,9 +161,15 @@ export function createApiService(options: ApiServiceOptions) {
     (response) => response,
     /* eslint-disable @typescript-eslint/no-unsafe-member-access */
     (error) => {
+      // When the server didn't respond at all (offline, DNS, TLS failure,
+      // captive portal, request aborted before headers), use 0 as the status
+      // to match the ApiError JSDoc ("HTTP status code (or 0 if no response)").
+      // The previous fallback of 500 made connectivity failures look like real
+      // backend 500s in Sentry — they ended up grouped together, hiding both
+      // the actual offline volume and any real server bugs.
       const apiError: ApiError = {
         message: error.message || "An error occurred",
-        status: error.response?.status || 500,
+        status: error.response?.status ?? 0,
         data: error.response?.data,
         isNetworkError: !error.response,
       };
