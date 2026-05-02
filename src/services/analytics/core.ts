@@ -257,7 +257,10 @@ const dispatchUnthrottled = (
   }
 
   if (!hasInitialised) {
-    logger.warn(
+    // Fires for every analytics event before init completes - high
+    // per-session volume, not error-adjacent. Stay info to avoid
+    // flooding the breadcrumb ring buffer.
+    logger.info(
       DEBUG_CONFIG.LOG_PREFIX,
       `Analytics not initialized, skipping: ${event}`,
     );

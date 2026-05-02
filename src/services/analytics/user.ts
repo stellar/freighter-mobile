@@ -43,7 +43,9 @@ export const getUserId = async (): Promise<string> => {
 
       return newId;
     } catch (setError) {
-      logger.warn(
+      // Session-only fallback is in place; not actionable as a
+      // breadcrumb for downstream errors.
+      logger.info(
         DEBUG_CONFIG.LOG_PREFIX,
         "Failed to persist user ID, using session-only",
         setError,
@@ -119,7 +121,8 @@ export const identifyUser = async (): Promise<void> => {
 
       lastIdentifiedUserId = userId;
 
-      logger.warn(
+      // Local storage succeeded; not actionable as a breadcrumb.
+      logger.info(
         DEBUG_CONFIG.LOG_PREFIX,
         "Failed to set user ID in Amplitude, but stored locally",
         { userId, amplitudeError },
