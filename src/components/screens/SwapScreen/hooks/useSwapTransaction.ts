@@ -163,12 +163,12 @@ export const useSwapTransaction = ({
       });
     } catch (error) {
       setIsProcessing(false);
-      logger.error("SwapTransaction", "Swap failed", error);
-
-      // Debug: Log the actual error object and message
-      if (error instanceof Error) {
-        logger.error("SwapTransaction", "Error message:", error.message);
-      }
+      // No logger.error here — the inner submitTransaction / signTransaction
+      // already log the underlying failure (Horizon protocol rejections are
+      // demoted to warn there, real bugs surface as error). Re-logging here
+      // produced two extra Sentry groups per swap failure
+      // (FREIGHTER-MOBILE-RQ swap re-throw + FREIGHTER-MOBILE-RW debug log
+      // tripping the string branch of normalizeError).
 
       analytics.trackTransactionError({
         error: error instanceof Error ? error.message : String(error),

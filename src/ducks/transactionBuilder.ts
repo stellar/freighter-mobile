@@ -12,7 +12,7 @@ import { isContractId } from "helpers/soroban";
 import { isMuxedAccount } from "helpers/stellar";
 import { t } from "i18next";
 import { SimulationTransactionType } from "services/analytics/types";
-import { signTransaction, submitTx } from "services/stellar";
+import { isHorizonError, signTransaction, submitTx } from "services/stellar";
 import {
   buildPaymentTransaction,
   buildSendCollectibleTransaction,
@@ -572,11 +572,41 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         return hash;
       } catch (error) {
         const errorMessage = extractErrorMessage(error);
-        logger.error(
-          "TransactionBuilderStore",
-          "Failed to submit transaction",
-          error,
-        );
+
+        // Horizon protocol rejections (HTTP 4xx with a result_codes body —
+        // tx_bad_seq, tx_insufficient_balance, op_underfunded,
+        // op_under_dest_min, etc.) are expected, handled failures, not bugs.
+        // The user already sees a toast with the underlying message and
+        // analytics.trackTransactionError records the failure. Demote to
+        // warn so they appear as breadcrumb context without creating
+        // top-level Sentry issues (FREIGHTER-MOBILE-1B, ~1.5K events).
+        // Real submit-time bugs (bad XDR encoding, network unreachable,
+        // SDK exceptions) still surface as logger.error.
+        if (isHorizonError(error)) {
+          const horizonStatus = error.response.status;
+          // result_codes (tx_bad_seq, op_under_dest_min, etc.) live on
+          // error.response.data.extras.result_codes from the underlying
+          // Horizon SDK error, but the project's narrow HorizonError
+          // type guard only exposes status. Pull through the data
+          // optionally without widening the type guard.
+          /* eslint-disable @typescript-eslint/no-explicit-any */
+          /* eslint-disable @typescript-eslint/no-unsafe-member-access */
+          const resultCodes = (error.response as any).data?.extras
+            ?.result_codes;
+          /* eslint-enable @typescript-eslint/no-unsafe-member-access */
+          /* eslint-enable @typescript-eslint/no-explicit-any */
+          logger.warn(
+            "TransactionBuilderStore",
+            `Network rejected transaction (HTTP ${horizonStatus})`,
+            resultCodes,
+          );
+        } else {
+          logger.error(
+            "TransactionBuilderStore",
+            "Failed to submit transaction",
+            error,
+          );
+        }
 
         // Only set error state if this submit request is still current.
         // Prevents stale submit error from affecting newer transaction flows.
