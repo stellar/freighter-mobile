@@ -146,11 +146,8 @@ export const initializeSentry = (): void => {
       }
 
       // Android biometric cancellations. Same family, different vendor
-      // wording (FREIGHTER-MOBILE-AW / MR / MM / MB / TR, ~50 events).
+      // wording (FREIGHTER-MOBILE-AW / MR / MM / MB, ~50 events).
       if (/Fingerprint operation canc(elled|eled)/i.test(noiseMessage)) {
-        return null;
-      }
-      if (noiseMessage.includes("지문 인식 작업이 취소되었습니다")) {
         return null;
       }
 
