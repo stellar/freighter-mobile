@@ -117,6 +117,90 @@ export const initializeSentry = (): void => {
     appHangTimeoutInterval: 5,
 
     beforeSend(event) {
+      // Drop / downgrade known-noise patterns at the gate before any PII
+      // scrubbing or context updates. Keep this list small and specific —
+      // each entry should describe a known noise source documented in
+      // #814's noise-filter analysis. Source-level fixes are preferred
+      // over filtering here; these are the residual patterns that we
+      // can't easily fix at the source (third-party libraries, native
+      // events, user-initiated cancellations).
+      const noiseMessage =
+        event.message || event.exception?.values?.[0]?.value || "";
+
+      // ---- Drop entirely (no diagnostic value) ----
+
+      // WalletConnect session lifecycle - the SDK throws when looking up
+      // a record that has just been cleaned up. Normal lifecycle, not a
+      // bug (FREIGHTER-MOBILE-DM / 2Q / FM, ~14K events).
+      if (noiseMessage.includes("Record was recently deleted")) return null;
+
+      // User-initiated biometric / auth cancellations on iOS. The user
+      // pressed Cancel, switched away, the system invalidated the prompt,
+      // or retry-limit hit. Not bugs (FREIGHTER-MOBILE-14 / FA / BZ / HS /
+      // T8 / TQ / T1, ~370 events).
+      if (
+        noiseMessage.includes("com.apple.LocalAuthentication") &&
+        /Code=(-4|-1003|-1004|6)\b/.test(noiseMessage)
+      ) {
+        return null;
+      }
+
+      // Android biometric cancellations. Same family, different vendor
+      // wording (FREIGHTER-MOBILE-AW / MR / MM / MB / TR, ~50 events).
+      if (/Fingerprint operation canc(elled|eled)/i.test(noiseMessage)) {
+        return null;
+      }
+      if (noiseMessage.includes("지문 인식 작업이 취소되었습니다")) {
+        return null;
+      }
+
+      // ---- Downgrade to breadcrumb (keep for context, no new issue) ----
+      // Sentry has no built-in "convert event to breadcrumb" - we add a
+      // breadcrumb for any subsequent event in the same session and drop
+      // the current one.
+
+      // User typed a wrong mnemonic / password - handled errors from user
+      // input, not bugs (FREIGHTER-MOBILE-Q / 3H, ~5K events).
+      if (
+        noiseMessage.includes("Invalid mnemonic") ||
+        noiseMessage.includes("Invalid password")
+      ) {
+        Sentry.addBreadcrumb({
+          category: "user-input-validation",
+          message: noiseMessage,
+          level: "info",
+        });
+        return null;
+      }
+
+      // Mobile network timeouts - expected on poor connections
+      // (FREIGHTER-MOBILE-BM and similar).
+      if (/timeout of \d+ms exceeded/.test(noiseMessage)) {
+        Sentry.addBreadcrumb({
+          category: "network-timeout",
+          message: noiseMessage,
+          level: "info",
+        });
+        return null;
+      }
+
+      // Recoverable biometric state mismatch - the user enabled
+      // biometrics but the keychain entry is missing (e.g. cleared by
+      // OS, app reinstall). User can re-enter password and re-enable
+      // (FREIGHTER-MOBILE-13, ~1K events).
+      if (
+        noiseMessage.includes(
+          "No stored password found for biometric authentication",
+        )
+      ) {
+        Sentry.addBreadcrumb({
+          category: "biometric-state",
+          message: noiseMessage,
+          level: "info",
+        });
+        return null;
+      }
+
       // Update context on each event to ensure freshness
       Sentry.setContext("appContext", buildSentryContext());
 
