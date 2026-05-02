@@ -1012,11 +1012,20 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         variant: "error",
       });
 
+      // The Sentry-side message used to read "Bad actor potentially
+      // found in transaction request" - alarmist phrasing that turned out
+      // to be misleading in practice: every flagged origin we have
+      // inspected so far has been a legitimate dApp or developer
+      // environment (Script3 governance, Afreum, Vercel preview deploys,
+      // localhost). The exact-hostname comparison above produces false
+      // positives on legitimate subdomain drift. Fixing the validator
+      // (eTLD+1 match, trusting verifyContext.verified.validation) is a
+      // security-affecting change and intentionally out of scope here.
       logger.error(
         "WalletKitProvider",
         "Invalid transaction origin",
         new Error(
-          "Untrusted Transaction Domain. Bad actor potentially found in transaction request.",
+          "WalletConnect transaction request origin does not match any active session hostname",
         ),
         {
           transactionRequestOrigin,
