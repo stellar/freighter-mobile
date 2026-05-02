@@ -907,7 +907,8 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   const handleSessionRequest = (sessionRequest: WalletKitSessionRequest) => {
     // Simple queue: if already processing a request, store this one as pending
     if (isProcessingRequestRef.current) {
-      logger.warn(
+      // Normal queue flow, not an error condition.
+      logger.info(
         "WalletKitProvider",
         "Request already in progress, queuing new request",
         {
