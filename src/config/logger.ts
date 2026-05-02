@@ -416,13 +416,21 @@ export const sanitizeLogData = (data: unknown): unknown => {
 const sentryAdapter: LoggerAdapter = {
   debug: () => {},
   info: () => {},
-  warn: (context: string, message: string) => {
+  warn: (context: string, message: string, ...args: unknown[]) => {
     // Skip Sentry during e2e tests
     if (isE2ETest) {
       return;
     }
-    // capture a message for warning level
-    Sentry.captureMessage(`[${context}] ${message}`, "warning");
+    // Add as a breadcrumb so the warning is attached to any subsequent
+    // captured event without creating its own top-level Sentry issue.
+    // Breadcrumbs sit in an in-memory ring buffer (default 100) and are
+    // only sent when an error/message is captured — no extra quota cost.
+    Sentry.addBreadcrumb({
+      category: context,
+      message,
+      level: "warning",
+      data: args.length > 0 ? { args: sanitizeLogData(args) } : undefined,
+    });
   },
   error: (
     context: string,
