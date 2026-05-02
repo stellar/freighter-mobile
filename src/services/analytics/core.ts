@@ -98,9 +98,15 @@ export const initAnalytics = (): void => {
         "Experiment client initialized with deployment key",
       );
     } else {
-      logger.warn(
+      // Feature flags are load-bearing for the app's runtime behavior
+      // (gating features, A/B tests, killswitches). If the experiment
+      // deployment key is missing we silently fall back to defaults,
+      // which can mask real config problems - report as error so we
+      // catch deployment-time misconfigurations.
+      logger.error(
         DEBUG_CONFIG.LOG_PREFIX,
         "Experiment deployment key missing, feature flags will use defaults",
+        new Error("Experiment deployment key missing"),
       );
     }
 

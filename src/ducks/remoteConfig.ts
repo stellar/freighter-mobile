@@ -183,7 +183,12 @@ export const useRemoteConfigStore = create<RemoteConfigState>()((set, get) => ({
       // Mark as initialized after successful fetch
       set({ isInitialized: true });
     } catch (error) {
-      logger.warn(
+      // Feature flags are load-bearing for runtime behavior - if the
+      // fetch fails the app silently falls back to defaults, which can
+      // mask broken backend config or token-list outages. Surface as
+      // error so we have visibility when behavior anomalies trace back
+      // to a stale flag set.
+      logger.error(
         "remoteConfig.fetchFeatureFlags",
         "Failed to fetch feature flags",
         error,
