@@ -587,21 +587,21 @@ const getTemporaryStore = async (
     const hashKey = await getHashKey();
 
     if (!hashKey) {
-      logger.error(
+      // No hashKey means the user is locked / has never signed in.
+      // This is the expected unauthenticated state, not an error -
+      // the caller checks for null and prompts the user to unlock.
+      logger.info(
         "[getTemporaryStore]",
         "Hash key not found - user must sign in",
-        undefined,
       );
 
       return null;
     }
 
     if (isHashKeyExpired(hashKey)) {
-      logger.error(
-        "[getTemporaryStore]",
-        "Hash key has expired, access denied",
-        undefined,
-      );
+      // Hash key TTL expired - the security policy is forcing
+      // re-authentication. Expected lifecycle behavior.
+      logger.info("[getTemporaryStore]", "Hash key has expired, access denied");
 
       return null;
     }
@@ -609,11 +609,9 @@ const getTemporaryStore = async (
       SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE,
     );
     if (!temporaryStore) {
-      logger.error(
-        "[getTemporaryStore]",
-        "Temporary store data not found",
-        undefined,
-      );
+      // No in-memory unlocked-wallet cache means the user is locked -
+      // expected on cold start before they enter their password.
+      logger.info("[getTemporaryStore]", "Temporary store data not found");
 
       return null;
     }
@@ -1321,7 +1319,19 @@ const signIn = async ({
   let account = accountList.find((a) => a.id === activeAccountId);
 
   if (!account) {
-    logger.error("signIn", "Account not found in account list", null);
+    // Keychain has a key for activeAccountId but the AsyncStorage
+    // ACCOUNT_LIST doesn't have a matching entry - keychain/AsyncStorage
+    // drift. The next 4 lines recover by recreating the account from the
+    // loaded key. Worth a breadcrumb (warn) so we have visibility if the
+    // recovery itself ever fails downstream, but not an error since
+    // the user-visible flow keeps working.
+    //
+    // NOTE: a related drift bug where ACTIVE_ACCOUNT_ID itself is missing
+    // (FREIGHTER-MOBILE-6Z) is tracked in #851 - it is NOT fixed here.
+    logger.warn(
+      "signIn",
+      "Active account ID missing from account list, recreating from keychain key",
+    );
 
     account = {
       id: loadedKey.id,
