@@ -21,6 +21,7 @@ import {
   OPERATION_TYPES,
   VISUAL_DELAY_MS,
 } from "config/constants";
+import { logger } from "config/logger";
 import { useAuthenticationStore } from "ducks/auth";
 import { formatTokenForDisplay, formatFiatAmount } from "helpers/formatAmount";
 import { getCreateContractArgs } from "helpers/soroban";
@@ -96,7 +97,16 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
       }
     };
 
-    scanOperationTokens();
+    // Pre-flight informational scan: failures are non-fatal and the user
+    // still proceeds with sign. Wrap to avoid an unhandled promise rejection
+    // bubbling to the global handler (mechanism=onunhandledrejection).
+    scanOperationTokens().catch((error) => {
+      logger.warn(
+        "Operations",
+        "Pre-flight token scan failed",
+        error instanceof Error ? error.message : String(error),
+      );
+    });
   }, [type, networkDetails.network, operation]);
 
   switch (type) {
@@ -1073,7 +1083,16 @@ const RenderOperationArgsByType = ({ operation }: { operation: Operation }) => {
       }
     };
 
-    scanOperationTokens();
+    // Pre-flight informational scan: failures are non-fatal and the user
+    // still proceeds with sign. Wrap to avoid an unhandled promise rejection
+    // bubbling to the global handler (mechanism=onunhandledrejection).
+    scanOperationTokens().catch((error) => {
+      logger.warn(
+        "Operations",
+        "Pre-flight token scan failed",
+        error instanceof Error ? error.message : String(error),
+      );
+    });
   }, [type, networkDetails.network, operation]);
 
   switch (type) {
