@@ -297,7 +297,26 @@ export const captureTabScreenshot = async ({
       }
     }
   } catch (error) {
-    logger.error(source, "Failed to capture screenshot:", error);
+    // Browser-tab thumbnails are a non-essential UX nicety. The capture
+    // can fail for a few reasons that are all environmental races, not
+    // bugs in our code:
+    //   - "Failed to capture view snapshot" (FREIGHTER-MOBILE-2V) — the
+    //     bitmap render fails, usually because of low memory or
+    //     hardware-accelerated WebView surfaces.
+    //   - "No view found with reactTag: NNNN" (FREIGHTER-MOBILE-7K) —
+    //     the React Native view was already unmounted by the time native
+    //     code looked it up (tab disposal, navigation away mid-capture).
+    //   - "drawViewHierarchyInRect was not successful"
+    //     (FREIGHTER-MOBILE-84) — iOS-specific variant for offscreen /
+    //     mid-transition views.
+    // When the capture fails, the tab switcher just falls back to
+    // favicon/URL — already graceful. Use info so this stays local-only
+    // and doesn't take up a Sentry breadcrumb slot for an unrelated error
+    // later in the session.
+    logger.info(
+      source,
+      `Failed to capture screenshot for tab ${tabId}: ${error instanceof Error ? error.message : String(error)}`,
+    );
   } finally {
     // Clear OpenCV buffers
     // otherwise it will cause a memory leak
