@@ -1,4 +1,3 @@
-import { EnvConfig } from "config/envConfig";
 import { logger } from "config/logger";
 import {
   retrieveCollectiblesContracts,
@@ -372,37 +371,29 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
         errorCollections.forEach((errorCollection) => {
           const { error } = errorCollection;
 
-          const isMPCollection = EnvConfig.MP_COLLECTIONS_ADDRESSES.includes(
-            error.collection_address,
-          );
-          const isNoCollectiblesAvailableError = error.error_message
-            ?.toLowerCase()
-            .includes("no collectibles available for this collection");
-
-          // Let's prevent flooding Sentry with "No collectibles available for this collection."
-          // errors since the backend has a few hardcoded collection contracts which errors for
-          // most users since they are not owners of collectibles on those contracts.
-          const isMPNoCollectiblesAvailableError =
-            isMPCollection && isNoCollectiblesAvailableError;
-
-          // Let's silently log the backend errors so we keep track of it on Sentry
+          // Backend-supplied per-collection / per-token errors are part of
+          // the API contract — they fire for expected conditions (empty
+          // collections on hardcoded MP contracts, IPFS gateways timing
+          // out for individual NFT metadata, malformed token URIs, etc.).
+          // The user-visible behavior is graceful (no thumbnail or traits
+          // for that one item), and the backend already has visibility
+          // into the upstream failure. Logging them as Sentry errors just
+          // floods the dashboard. Use info so they stay local-only.
           if (
             error.tokens &&
             Array.isArray(error.tokens) &&
             error.tokens.length > 0
           ) {
             error.tokens.forEach((token) => {
-              logger.error(
+              logger.info(
                 "fetchCollectibles",
-                `Error in token ${token.token_id} of collection ${error.collection_address}`,
-                token.error_message,
+                `Error in token ${token.token_id} of collection ${error.collection_address}: ${token.error_message}`,
               );
             });
-          } else if (!isMPNoCollectiblesAvailableError) {
-            logger.error(
+          } else {
+            logger.info(
               "fetchCollectibles",
-              `Error in collection ${error.collection_address}`,
-              error.error_message,
+              `Error in collection ${error.collection_address}: ${error.error_message}`,
             );
           }
         });
