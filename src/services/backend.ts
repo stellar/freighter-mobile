@@ -32,7 +32,11 @@ import {
 import { getTokenType } from "helpers/balances";
 import { bigize } from "helpers/bigize";
 import { getNativeContractDetails } from "helpers/soroban";
-import { createApiService, isRequestCanceled } from "services/apiFactory";
+import {
+  createApiService,
+  isApiNetworkError,
+  isRequestCanceled,
+} from "services/apiFactory";
 
 // Create dedicated API services for backend operations
 export const freighterBackendV1 = createApiService({
@@ -1115,11 +1119,23 @@ export const fetchCollectibles = async ({
 
     return data.data.collections;
   } catch (error) {
-    logger.error(
-      "backendApi.fetchCollectibles",
-      "Error fetching collectibles",
-      error,
-    );
+    // Connectivity failures (offline, DNS, TLS, captive portal) are not
+    // backend bugs — demote to warn so they remain as breadcrumb context
+    // without creating top-level Sentry issues. Real failures (4xx/5xx
+    // responses, malformed payloads, the "Invalid response from server"
+    // throw above) still surface as logger.error.
+    if (isApiNetworkError(error)) {
+      logger.warn(
+        "backendApi.fetchCollectibles",
+        "Network unreachable while fetching collectibles",
+      );
+    } else {
+      logger.error(
+        "backendApi.fetchCollectibles",
+        "Error fetching collectibles",
+        error,
+      );
+    }
 
     throw error;
   }

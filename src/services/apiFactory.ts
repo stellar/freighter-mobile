@@ -412,3 +412,18 @@ export function isRequestCanceled(error: unknown): boolean {
       error.message === "canceled")
   );
 }
+
+/**
+ * Type guard for ApiError values produced by the apiFactory response
+ * interceptor when the server didn't respond at all (offline, DNS, TLS,
+ * captive portal, etc.). Use this to branch error handling so connectivity
+ * failures don't get logged with the same severity as real backend bugs.
+ */
+export function isApiNetworkError(error: unknown): error is ApiError {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "isNetworkError" in error &&
+    (error as ApiError).isNetworkError === true
+  );
+}

@@ -1,6 +1,6 @@
 import { NETWORKS } from "config/constants";
 import { logger } from "config/logger";
-import { createApiService } from "services/apiFactory";
+import { createApiService, isApiNetworkError } from "services/apiFactory";
 import { DEFAULT_TOKENS_LISTS } from "services/verified-token-lists/constants";
 import {
   TokenListReponseItem,
@@ -31,11 +31,22 @@ export const fetchVerifiedTokens = async ({
       const res = await service.get<TokenListResponse>("");
       return res.data;
     } catch (err) {
-      logger.error(
-        "fetchVerifiedTokens",
-        `Error retrieving verified tokens from token list: ${service.getInstance().getUri()}`,
-        err,
-      );
+      // Connectivity failures (offline, DNS, TLS, captive portal) are not
+      // backend bugs — demote to warn so they remain as breadcrumb context
+      // without creating top-level Sentry issues. Real failures (4xx/5xx
+      // responses, malformed payloads) still surface as logger.error.
+      if (isApiNetworkError(err)) {
+        logger.warn(
+          "fetchVerifiedTokens",
+          `Network unreachable for token list: ${service.getInstance().getUri()}`,
+        );
+      } else {
+        logger.error(
+          "fetchVerifiedTokens",
+          `Error retrieving verified tokens from token list: ${service.getInstance().getUri()}`,
+          err,
+        );
+      }
       return null;
     }
   });
