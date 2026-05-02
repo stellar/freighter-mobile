@@ -29,6 +29,22 @@ export const SECURE_STORAGE_SERVICE = "freighter_secure_storage";
 export const BIOMETRIC_STORAGE_SERVICE = "freighter_biometric_storage";
 
 /**
+ * react-native-keychain's iOS bridge translates the Security framework's
+ * errSecInteractionNotAllowed (-25308) status code into this exact string.
+ * It fires when the device is locked or the app is backgrounded and our
+ * BIOMETRY_ANY_OR_DEVICE_PASSCODE access control can't surface a prompt.
+ *
+ * This is an environmental condition (Zustand rehydration on cold start
+ * before unlock, WalletConnect session restore, push notification
+ * handlers reaching for stored credentials), not a real failure — the
+ * caller already handles the empty result gracefully.
+ */
+const IOS_INTERACTION_NOT_ALLOWED = "User interaction is not allowed.";
+
+const isInteractionNotAllowed = (error: unknown): boolean =>
+  error instanceof Error && error.message === IOS_INTERACTION_NOT_ALLOWED;
+
+/**
  * Options for storing/retrieving items from secure storage
  */
 export interface SecureStorageOptions {
@@ -73,11 +89,18 @@ export const createSecureStorage = (serviceName: string) => ({
 
       await Keychain.setGenericPassword(key, value, storageOptions);
     } catch (error) {
-      logger.error(
-        "secureStorage.setItem",
-        "Error storing item in keychain",
-        error,
-      );
+      if (isInteractionNotAllowed(error)) {
+        logger.warn(
+          "secureStorage.setItem",
+          "Keychain write blocked - app likely backgrounded or device locked",
+        );
+      } else {
+        logger.error(
+          "secureStorage.setItem",
+          "Error storing item in keychain",
+          error,
+        );
+      }
       throw new Error("Failed to store item in keychain");
     }
   },
@@ -117,11 +140,18 @@ export const createSecureStorage = (serviceName: string) => ({
       const result = await Keychain.getGenericPassword(getOptions);
       return result;
     } catch (error) {
-      logger.error(
-        "secureStorage.getItem",
-        "Error retrieving item from keychain",
-        error,
-      );
+      if (isInteractionNotAllowed(error)) {
+        logger.warn(
+          "secureStorage.getItem",
+          "Keychain read blocked - app likely backgrounded or device locked",
+        );
+      } else {
+        logger.error(
+          "secureStorage.getItem",
+          "Error retrieving item from keychain",
+          error,
+        );
+      }
       return false;
     }
   },
@@ -148,11 +178,18 @@ export const createSecureStorage = (serviceName: string) => ({
         service: `${serviceName}_${keys}`,
       });
     } catch (error) {
-      logger.error(
-        "secureStorage.remove",
-        "Error removing keys from keychain",
-        error,
-      );
+      if (isInteractionNotAllowed(error)) {
+        logger.warn(
+          "secureStorage.remove",
+          "Keychain remove blocked - app likely backgrounded or device locked",
+        );
+      } else {
+        logger.error(
+          "secureStorage.remove",
+          "Error removing keys from keychain",
+          error,
+        );
+      }
       // Don't throw since removal failures shouldn't block execution
     }
   },
@@ -170,11 +207,18 @@ export const createSecureStorage = (serviceName: string) => ({
       });
       return result;
     } catch (error) {
-      logger.error(
-        "secureStorage.checkIfExists",
-        "Error checking if item exists",
-        error,
-      );
+      if (isInteractionNotAllowed(error)) {
+        logger.warn(
+          "secureStorage.checkIfExists",
+          "Keychain check blocked - app likely backgrounded or device locked",
+        );
+      } else {
+        logger.error(
+          "secureStorage.checkIfExists",
+          "Error checking if item exists",
+          error,
+        );
+      }
       return false;
     }
   },
@@ -195,7 +239,14 @@ export const createSecureStorage = (serviceName: string) => ({
         matching.map((service) => Keychain.resetGenericPassword({ service })),
       );
     } catch (error) {
-      logger.error("secureStorage.clear", "Error clearing keychain", error);
+      if (isInteractionNotAllowed(error)) {
+        logger.warn(
+          "secureStorage.clear",
+          "Keychain clear blocked - app likely backgrounded or device locked",
+        );
+      } else {
+        logger.error("secureStorage.clear", "Error clearing keychain", error);
+      }
     }
   },
 });
