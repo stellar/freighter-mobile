@@ -98,6 +98,32 @@ Alert.alert("Error", "Insufficient balance");
 For confirmations (e.g., "Are you sure you want to delete this account?"), use a
 bottom sheet, not a native alert.
 
+**Stores set `error` state — components call `showToast`.** `useToast()` is a
+React hook and cannot be called inside a Zustand store action. The correct
+pattern is:
+
+1. Store catch block: `set({ error: normalizeError(error).message, isLoading: false })`
+2. Component: watch the `error` field and call `showToast` in a `useEffect` or
+   event handler when it becomes non-null
+
+```tsx
+// In the store action (correct)
+} catch (error) {
+  const normalized = normalizeError(error);
+  logger.error("store.fetchData", "Fetch failed", error);
+  set({ error: normalized.message, isLoading: false });
+}
+
+// In the component (correct)
+const error = useMyStore((state) => state.error);
+const { showToast } = useToast();
+useEffect(() => {
+  if (error) {
+    showToast({ variant: "error", title: error });
+  }
+}, [error, showToast]);
+```
+
 ## Transaction Validation
 
 `validateTransactionParams()` is used by the Send flow's `buildTransaction()` in

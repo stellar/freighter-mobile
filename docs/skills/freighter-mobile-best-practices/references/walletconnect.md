@@ -58,7 +58,9 @@ Full RPC specification is documented in `docs/walletconnect-rpc-methods.md`.
 
 ## Validation
 
-`walletKitValidation.ts` provides validation functions:
+**Always validate all WalletConnect request parameters using functions from
+`walletKitValidation.ts` before processing any session request.** Do not write
+custom validation logic — use these functions:
 
 | Function                         | What It Validates                              |
 | -------------------------------- | ---------------------------------------------- |
