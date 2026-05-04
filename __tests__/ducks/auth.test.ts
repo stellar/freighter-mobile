@@ -1297,11 +1297,17 @@ describe("auth duck", () => {
           });
         }
 
-        // Should log suspicious repeated failures after threshold
+        // Should log suspicious repeated failures after threshold.
+        // Stable Error message + variable count moved to extra args
+        // so events group as a single Sentry issue across counts.
         expect(logger.error).toHaveBeenCalledWith(
           "[getTemporaryStore]",
-          "Repeated failures detected",
-          expect.stringContaining("Multiple unauthorized access attempts"),
+          expect.stringContaining("Repeated decryption failures"),
+          expect.any(Error),
+          expect.objectContaining({
+            failureCount: expect.any(Number),
+            windowMs: expect.any(Number),
+          }),
         );
       });
 

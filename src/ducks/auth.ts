@@ -655,10 +655,19 @@ const getTemporaryStore = async (
     lastFailureTimestamp = now;
 
     if (getTemporaryStoreFailureCount >= SUSPICIOUS_FAILURE_THRESHOLD) {
+      // Pass a real Error with a stable message so all events group as
+      // a single Sentry issue. The variable failure count and window
+      // go into extra args (Sentry's "extra" payload) for diagnostics
+      // - inlining them into the message would interpolate the count
+      // into the title and split the group on every distinct count.
       logger.error(
         "[getTemporaryStore]",
-        "Repeated failures detected",
-        `Multiple unauthorized access attempts (${getTemporaryStoreFailureCount}) within ${FAILURE_RESET_WINDOW_MS}ms`,
+        "Repeated decryption failures detected within failure window",
+        new Error("Repeated decryption failures detected"),
+        {
+          failureCount: getTemporaryStoreFailureCount,
+          windowMs: FAILURE_RESET_WINDOW_MS,
+        },
       );
     }
     clearDerivedKeyCache();
