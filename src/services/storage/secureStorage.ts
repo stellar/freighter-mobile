@@ -89,18 +89,16 @@ export const createSecureStorage = (serviceName: string) => ({
 
       await Keychain.setGenericPassword(key, value, storageOptions);
     } catch (error) {
-      if (isInteractionNotAllowed(error)) {
-        logger.warn(
-          "secureStorage.setItem",
-          "Keychain write blocked - app likely backgrounded or device locked",
-        );
-      } else {
-        logger.error(
-          "secureStorage.setItem",
-          "Error storing item in keychain",
-          error,
-        );
-      }
+      // Writes happen on auth-critical paths (createTemporaryStore,
+      // biometricDataStorage.setItem during sign-in/import). The user is
+      // in foreground when these run, so errSecInteractionNotAllowed here
+      // is unusual and indicates a real failure to persist credentials -
+      // keep on logger.error so we have visibility on auth-flow regressions.
+      logger.error(
+        "secureStorage.setItem",
+        "Error storing item in keychain",
+        error,
+      );
       throw new Error("Failed to store item in keychain");
     }
   },
@@ -178,18 +176,14 @@ export const createSecureStorage = (serviceName: string) => ({
         service: `${serviceName}_${keys}`,
       });
     } catch (error) {
-      if (isInteractionNotAllowed(error)) {
-        logger.warn(
-          "secureStorage.remove",
-          "Keychain remove blocked - app likely backgrounded or device locked",
-        );
-      } else {
-        logger.error(
-          "secureStorage.remove",
-          "Error removing keys from keychain",
-          error,
-        );
-      }
+      // Removal failures are security-relevant (used to delete sensitive
+      // keys during logout / wipe / account deletion). Silent failures
+      // would leave stale credentials on device - keep on logger.error.
+      logger.error(
+        "secureStorage.remove",
+        "Error removing keys from keychain",
+        error,
+      );
       // Don't throw since removal failures shouldn't block execution
     }
   },
@@ -239,14 +233,11 @@ export const createSecureStorage = (serviceName: string) => ({
         matching.map((service) => Keychain.resetGenericPassword({ service })),
       );
     } catch (error) {
-      if (isInteractionNotAllowed(error)) {
-        logger.warn(
-          "secureStorage.clear",
-          "Keychain clear blocked - app likely backgrounded or device locked",
-        );
-      } else {
-        logger.error("secureStorage.clear", "Error clearing keychain", error);
-      }
+      // clear() is part of the logout / wipe path. If keychain deletion
+      // is blocked the method swallows the failure (no throw) and logout
+      // proceeds, leaving credentials on device. That's security-relevant
+      // and we want full visibility - keep on logger.error.
+      logger.error("secureStorage.clear", "Error clearing keychain", error);
     }
   },
 });
