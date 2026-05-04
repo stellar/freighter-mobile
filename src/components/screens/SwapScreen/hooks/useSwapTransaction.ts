@@ -164,9 +164,12 @@ export const useSwapTransaction = ({
     } catch (error) {
       setIsProcessing(false);
       // The inner submitTransaction / signTransaction in transactionBuilder
-      // already log the underlying failure to Sentry, so don't logger.error
-      // again here - re-logging would create duplicate Sentry events for
-      // each swap failure.
+      // is the single source of truth for logging submit failures
+      // (4xx Horizon rejections → warn breadcrumb, 5xx + non-Horizon
+      // errors → logger.error). Re-logging here would either produce
+      // duplicate Sentry events (5xx and SDK errors) or pollute
+      // breadcrumbs (4xx). The user-visible toast and analytics call
+      // below are the right places to react to the failure here.
 
       analytics.trackTransactionError({
         error: error instanceof Error ? error.message : String(error),
