@@ -1306,7 +1306,7 @@ describe("auth duck", () => {
           expect.any(Error),
           expect.objectContaining({
             failureCount: expect.any(Number),
-            windowMs: expect.any(Number),
+            failureResetWindowMs: expect.any(Number),
           }),
         );
       });

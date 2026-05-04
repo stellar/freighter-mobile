@@ -666,7 +666,7 @@ const getTemporaryStore = async (
         new Error("Repeated decryption failures detected"),
         {
           failureCount: getTemporaryStoreFailureCount,
-          windowMs: FAILURE_RESET_WINDOW_MS,
+          failureResetWindowMs: FAILURE_RESET_WINDOW_MS,
         },
       );
     }
