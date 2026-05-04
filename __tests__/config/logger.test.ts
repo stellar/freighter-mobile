@@ -19,6 +19,7 @@ const {
   logger,
   initializeSentryLogger,
   normalizeError,
+  sanitizeLogData,
   // eslint-disable-next-line @typescript-eslint/no-require-imports
 } = jest.requireActual("config/logger");
 
@@ -197,6 +198,36 @@ describe("logger", () => {
       expect(mockedSentry.captureMessage).not.toHaveBeenCalled();
       expect(mockedSentry.captureException).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe("sanitizeLogData depth cap", () => {
+  it("replaces values past the depth cap with a sentinel string (not the original reference)", () => {
+    // 9 levels of nesting - one past the depth cap of 8.
+    const deep = {
+      a: { b: { c: { d: { e: { f: { g: { h: { i: "leaf" } } } } } } } },
+    };
+
+    const sanitized = sanitizeLogData(deep) as { a: { b: { c: any } } };
+
+    // The path up to depth 8 is preserved, but the value at depth 8
+    // is the sentinel, not the original sub-object reference.
+    expect(typeof sanitized.a.b.c.d.e.f.g.h).toBe("string");
+    expect(sanitized.a.b.c.d.e.f.g.h).toBe("[MAX_DEPTH_EXCEEDED]");
+  });
+
+  it("does not let cyclic objects escape into the sanitized payload", () => {
+    // obj.self = obj - the classic cyclic structure that would crash
+    // JSON.stringify() and corrupt Sentry breadcrumbs / extras.
+    const obj: Record<string, unknown> = { foo: "bar" };
+    obj.self = obj;
+
+    const sanitized = sanitizeLogData(obj);
+
+    // Sentry will serialize the breadcrumb / extra payload via
+    // JSON.stringify - if a cycle escaped, this would throw with
+    // "Converting circular structure to JSON".
+    expect(() => JSON.stringify(sanitized)).not.toThrow();
   });
 });
 

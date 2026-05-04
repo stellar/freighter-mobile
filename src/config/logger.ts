@@ -390,6 +390,7 @@ const PII_FIELDS_LOWER = [
 ].map((f) => f.toLowerCase());
 
 const MAX_SANITIZE_DEPTH = 8;
+const MAX_DEPTH_SENTINEL = "[MAX_DEPTH_EXCEEDED]";
 
 /**
  * Sanitize data to redact potential PII before sending to Sentry.
@@ -399,12 +400,14 @@ const MAX_SANITIZE_DEPTH = 8;
  * logger forwards a variadic argument list whose items contain
  * objects). Values are otherwise preserved.
  *
- * Bounded recursion (depth-limited) protects against malformed or
- * cyclic input structures.
+ * At the depth cap, return a sentinel string rather than the
+ * original reference so cyclic structures (e.g. obj.self = obj)
+ * can't escape into Sentry serialization and crash the breadcrumb
+ * payload.
  */
 export const sanitizeLogData = (data: unknown, depth = 0): unknown => {
   if (depth >= MAX_SANITIZE_DEPTH) {
-    return data;
+    return MAX_DEPTH_SENTINEL;
   }
 
   if (Array.isArray(data)) {
