@@ -42,4 +42,36 @@ describe("Verified Token Lists", () => {
 
     loggerSpy.mockRestore();
   });
+
+  it("logs a warning (not error) when the failure is a connectivity error from apiFactory", async () => {
+    // apiFactory throws a plain ApiError object (not an Error instance) when
+    // axios sees no response - offline, DNS, TLS, captive portal, etc.
+    // The catch in fetchVerifiedTokens should branch on isApiNetworkError
+    // and demote to logger.warn so we don't generate Sentry errors for
+    // every offline user.
+    const networkError = {
+      message: "Network Error",
+      status: 0,
+      isNetworkError: true,
+    };
+    (mockApiService.get as jest.Mock).mockRejectedValue(networkError);
+
+    const errorSpy = jest.spyOn(logger, "error").mockImplementation(() => {});
+    const warnSpy = jest.spyOn(logger, "warn").mockImplementation(() => {});
+
+    const verifiedAssets = await fetchVerifiedTokens({
+      tokenListsApiServices: { [NETWORKS.TESTNET]: [mockApiService] },
+      network: NETWORKS.TESTNET,
+    });
+
+    expect(verifiedAssets).toEqual([]);
+    expect(warnSpy).toHaveBeenCalledWith(
+      "fetchVerifiedTokens",
+      expect.stringContaining("Network unreachable"),
+    );
+    expect(errorSpy).not.toHaveBeenCalled();
+
+    errorSpy.mockRestore();
+    warnSpy.mockRestore();
+  });
 });
