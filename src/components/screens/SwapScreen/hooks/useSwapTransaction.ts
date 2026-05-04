@@ -188,7 +188,11 @@ export const useSwapTransaction = ({
         duration: 0,
       });
 
-      throw error;
+      // Don't rethrow - the catch fully handles the failure (toast + analytics
+      // + isProcessing reset), and SwapAmountScreen calls executeSwap()
+      // fire-and-forget without a .catch(). Rethrowing here would just
+      // produce an unhandled promise rejection at the global handler -
+      // exactly the kind of extra Sentry issue this PR is removing.
     }
   }, [
     account,
