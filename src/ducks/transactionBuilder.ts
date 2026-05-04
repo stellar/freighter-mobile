@@ -580,10 +580,20 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         // analytics.trackTransactionError records the failure. Demote to
         // warn so they appear as breadcrumb context without creating
         // top-level Sentry issues (FREIGHTER-MOBILE-1B, ~1.5K events).
-        // Real submit-time bugs (bad XDR encoding, network unreachable,
-        // SDK exceptions) still surface as logger.error.
-        if (isHorizonError(error)) {
-          const horizonStatus = error.response.status;
+        //
+        // ONLY 4xx is demoted. Horizon 5xx (server overload, outages —
+        // submitTx already retries 504 a few times before bubbling)
+        // remains a logger.error so we keep visibility on real Horizon
+        // problems. Submit-time bugs that aren't HorizonError shape
+        // (bad XDR encoding, network unreachable, SDK exceptions) also
+        // stay as logger.error.
+        const isHorizonProtocolRejection =
+          isHorizonError(error) &&
+          error.response.status >= 400 &&
+          error.response.status < 500;
+        if (isHorizonProtocolRejection) {
+          const horizonStatus = (error as { response: { status: number } })
+            .response.status;
           // result_codes (tx_bad_seq, op_under_dest_min, etc.) live on
           // error.response.data.extras.result_codes from the underlying
           // Horizon SDK error, but the project's narrow HorizonError
@@ -591,7 +601,7 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
           // optionally without widening the type guard.
           /* eslint-disable @typescript-eslint/no-explicit-any */
           /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-          const resultCodes = (error.response as any).data?.extras
+          const resultCodes = (error as any).response.data?.extras
             ?.result_codes;
           /* eslint-enable @typescript-eslint/no-unsafe-member-access */
           /* eslint-enable @typescript-eslint/no-explicit-any */
