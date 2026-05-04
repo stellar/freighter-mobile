@@ -45,39 +45,77 @@ describe("logger", () => {
       expect(mockedSentry.captureMessage).not.toHaveBeenCalled();
     });
 
-    it("attaches variadic args as breadcrumb data", () => {
+    it("attaches variadic args as breadcrumb data preserving array shape", () => {
       logger.warn("ContextA", "something happened", { foo: "bar" }, 42);
 
-      // sanitizeLogData spreads the rest array into a numeric-keyed
-      // object - that's existing logger behavior we're documenting here,
-      // not redesigning. The args are still inspectable in the breadcrumb.
       expect(mockedSentry.addBreadcrumb).toHaveBeenCalledWith(
         expect.objectContaining({
           category: "ContextA",
           message: "something happened",
           level: "warning",
-          data: { args: { 0: { foo: "bar" }, 1: 42 } },
+          data: { args: [{ foo: "bar" }, 42] },
         }),
       );
     });
 
-    it("redacts known top-level PII keys (e.g. password) when args is a flat object", () => {
-      // sanitizeLogData only redacts at the top level of its input;
-      // because it spreads the rest array, the redactable keys are the
-      // numeric indices ("0", "1") not the inner object's keys. So
-      // password / publicKey nested inside an arg object are NOT
-      // redacted today. Document the limitation by passing a top-level
-      // string arg with a key that DOES match (top-level), via the args
-      // array spread becoming { "0": { ... } }.
-      //
-      // This test verifies the contract reaches addBreadcrumb intact -
-      // tightening the recursion is a separate concern.
-      logger.warn("ContextA", "something happened", { password: "secret" });
+    it("redacts PII keys nested inside variadic arg objects", () => {
+      logger.warn("ContextA", "something happened", {
+        password: "secret",
+        publicKey: "GA...",
+        normalField: "ok",
+      });
 
       const call = mockedSentry.addBreadcrumb.mock.calls[0][0];
-      // Existing behavior: the inner object's "password" survives.
       expect(call.data).toEqual({
-        args: { 0: { password: "secret" } },
+        args: [
+          {
+            password: "[REDACTED]",
+            publicKey: "GA...",
+            normalField: "ok",
+          },
+        ],
+      });
+    });
+
+    it("recurses into deeply nested objects to redact PII", () => {
+      logger.warn("ContextA", "something happened", {
+        outer: {
+          inner: {
+            mnemonic: "word word word",
+            other: "ok",
+          },
+        },
+      });
+
+      const call = mockedSentry.addBreadcrumb.mock.calls[0][0];
+      expect(call.data).toEqual({
+        args: [
+          {
+            outer: {
+              inner: {
+                mnemonic: "[REDACTED]",
+                other: "ok",
+              },
+            },
+          },
+        ],
+      });
+    });
+
+    it("redacts PII inside arrays of objects (e.g. account list)", () => {
+      logger.warn("ContextA", "something happened", [
+        { id: "a", privateKey: "S1" },
+        { id: "b", privateKey: "S2" },
+      ]);
+
+      const call = mockedSentry.addBreadcrumb.mock.calls[0][0];
+      expect(call.data).toEqual({
+        args: [
+          [
+            { id: "a", privateKey: "[REDACTED]" },
+            { id: "b", privateKey: "[REDACTED]" },
+          ],
+        ],
       });
     });
   });

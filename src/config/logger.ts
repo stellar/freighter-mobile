@@ -356,57 +356,73 @@ class Logger {
  */
 export const logger = Logger.getInstance();
 
+// Common PII / secret fields to redact from logged payloads. Match
+// case-insensitively. Keep this list conservative - it's safer to
+// over-redact than to leak.
+const PII_FIELDS_LOWER = [
+  "email",
+  "phone",
+  "address",
+  "name",
+  "firstName",
+  "lastName",
+  "username",
+  "userId",
+  "accountId",
+  "privateKey",
+  "seed",
+  "mnemonic",
+  "password",
+  "token",
+  "jwt",
+  "session",
+  "ip",
+  "ipAddress",
+  "location",
+  "coordinates",
+  "auth",
+  "key",
+  "secret",
+  "secretKey",
+  "recovery",
+  "recoveryPhrase",
+  "mnemonicPhrase",
+].map((f) => f.toLowerCase());
+
+const MAX_SANITIZE_DEPTH = 8;
+
 /**
- * Sanitize data to remove potential PII before sending to Sentry
- * Add or remove fields on the list if necessary
+ * Sanitize data to redact potential PII before sending to Sentry.
+ *
+ * Recurses into nested objects and arrays so a key like `password`
+ * is redacted no matter how deep it is in the payload (e.g. when
+ * logger forwards a variadic argument list whose items contain
+ * objects). Values are otherwise preserved.
+ *
+ * Bounded recursion (depth-limited) protects against malformed or
+ * cyclic input structures.
  */
-export const sanitizeLogData = (data: unknown): unknown => {
+export const sanitizeLogData = (data: unknown, depth = 0): unknown => {
+  if (depth >= MAX_SANITIZE_DEPTH) {
+    return data;
+  }
+
+  if (Array.isArray(data)) {
+    return data.map((item) => sanitizeLogData(item, depth + 1));
+  }
+
   if (!data || typeof data !== "object") {
     return data;
   }
 
-  const sanitized = { ...(data as Record<string, unknown>) };
-
-  // Remove common PII fields
-  const piiFields = [
-    "email",
-    "phone",
-    "address",
-    "name",
-    "firstName",
-    "lastName",
-    "username",
-    "userId",
-    "accountId",
-    "privateKey",
-    "seed",
-    "mnemonic",
-    "password",
-    "token",
-    "jwt",
-    "session",
-    "ip",
-    "ipAddress",
-    "location",
-    "coordinates",
-    "auth",
-    "key",
-    "secret",
-    "secretKey",
-    "recovery",
-    "recoveryPhrase",
-    "mnemonicPhrase",
-  ];
-
-  const sanitizedKeys = Object.keys(sanitized);
-  const piiFieldsLower = piiFields.map((field) => field.toLowerCase());
-
-  sanitizedKeys.forEach((key) => {
-    if (piiFieldsLower.includes(key.toLowerCase())) {
+  const sanitized: Record<string, unknown> = {};
+  Object.entries(data as Record<string, unknown>).forEach(([key, value]) => {
+    if (PII_FIELDS_LOWER.includes(key.toLowerCase())) {
       sanitized[key] = "[REDACTED]";
+    } else {
+      sanitized[key] = sanitizeLogData(value, depth + 1);
     }
   });
-
   return sanitized;
 };
 
