@@ -1,20 +1,28 @@
 import { Networks, xdr } from "@stellar/stellar-sdk";
-import { NETWORK_URLS } from "config/constants";
+import { NETWORK_URLS, NETWORKS } from "config/constants";
+import { logger } from "config/logger";
 import {
+  fetchCollectibles,
   freighterBackendV1,
+  freighterBackendV2,
   simulateTransaction,
   submitTransaction,
   SimulateTransactionParams,
   SubmitTransactionBody,
 } from "services/backend";
 
-jest.mock("services/apiFactory", () => ({
-  createApiService: jest.fn(() => ({
-    get: jest.fn(),
-    post: jest.fn(),
-  })),
-  isRequestCanceled: jest.fn(),
-}));
+jest.mock("services/apiFactory", () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports, global-require
+  const actual = jest.requireActual("services/apiFactory");
+  return {
+    ...actual,
+    createApiService: jest.fn(() => ({
+      get: jest.fn(),
+      post: jest.fn(),
+    })),
+    isRequestCanceled: jest.fn(),
+  };
+});
 
 jest.mock("config/logger", () => ({
   logger: {
@@ -570,5 +578,89 @@ describe("Backend Service - Transaction Operations", () => {
       expect(submitResult.successful).toBe(true);
       expect(mockPost).toHaveBeenCalledTimes(2);
     });
+  });
+});
+
+describe("Backend Service - fetchCollectibles severity split", () => {
+  let mockV2Post: jest.MockedFunction<any>;
+  let warnSpy: jest.SpyInstance;
+  let errorSpy: jest.SpyInstance;
+
+  const params = {
+    owner: "GCMTT4N6CZ5CU7JTKDLVUCDK4JZVFQCRUVQJ7BMKYSJWCSIDG3BIW4PH",
+    contracts: [{ id: "C...", token_ids: ["abc"] }],
+    network: NETWORKS.PUBLIC,
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockV2Post = freighterBackendV2.post as jest.MockedFunction<any>;
+    warnSpy = jest.spyOn(logger, "warn").mockImplementation(() => {});
+    errorSpy = jest.spyOn(logger, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    warnSpy.mockRestore();
+    errorSpy.mockRestore();
+  });
+
+  it("logs warn (not error) on connectivity failures from apiFactory", async () => {
+    // apiFactory throws a plain ApiError object on no-response failures
+    // (offline, DNS, TLS, captive portal). isApiNetworkError matches that
+    // shape, so the catch should demote to logger.warn.
+    const networkError = {
+      message: "Network Error",
+      status: 0,
+      isNetworkError: true,
+    };
+    mockV2Post.mockRejectedValue(networkError);
+
+    await expect(fetchCollectibles(params)).rejects.toEqual(networkError);
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      "backendApi.fetchCollectibles",
+      expect.stringContaining("Network unreachable"),
+    );
+    expect(errorSpy).not.toHaveBeenCalled();
+  });
+
+  it("logs error on backend response errors (4xx/5xx)", async () => {
+    const backendError = {
+      message: "Internal Server Error",
+      status: 500,
+      isNetworkError: false,
+    };
+    mockV2Post.mockRejectedValue(backendError);
+
+    await expect(fetchCollectibles(params)).rejects.toEqual(backendError);
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      "backendApi.fetchCollectibles",
+      "Error fetching collectibles",
+      backendError,
+    );
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it("logs error on malformed response (data.collections missing)", async () => {
+    // Server returned 200 but the payload is missing the expected
+    // collections field. This is a contract violation, not a
+    // connectivity failure - keep it as logger.error.
+    mockV2Post.mockResolvedValue({
+      data: { data: {} },
+      status: 200,
+      statusText: "OK",
+    });
+
+    await expect(fetchCollectibles(params)).rejects.toThrow(
+      "Invalid response from server",
+    );
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      "backendApi.fetchCollectibles",
+      "Invalid response from server",
+      expect.any(Object),
+    );
+    expect(warnSpy).not.toHaveBeenCalled();
   });
 });
