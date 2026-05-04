@@ -163,12 +163,10 @@ export const useSwapTransaction = ({
       });
     } catch (error) {
       setIsProcessing(false);
-      // No logger.error here — the inner submitTransaction / signTransaction
-      // already log the underlying failure (Horizon protocol rejections are
-      // demoted to warn there, real bugs surface as error). Re-logging here
-      // produced two extra Sentry groups per swap failure
-      // (FREIGHTER-MOBILE-RQ swap re-throw + FREIGHTER-MOBILE-RW debug log
-      // tripping the string branch of normalizeError).
+      // The inner submitTransaction / signTransaction in transactionBuilder
+      // already log the underlying failure to Sentry, so don't logger.error
+      // again here - re-logging would create duplicate Sentry events for
+      // each swap failure.
 
       analytics.trackTransactionError({
         error: error instanceof Error ? error.message : String(error),
@@ -188,11 +186,10 @@ export const useSwapTransaction = ({
         duration: 0,
       });
 
-      // Don't rethrow - the catch fully handles the failure (toast + analytics
-      // + isProcessing reset), and SwapAmountScreen calls executeSwap()
-      // fire-and-forget without a .catch(). Rethrowing here would just
-      // produce an unhandled promise rejection at the global handler -
-      // exactly the kind of extra Sentry issue this PR is removing.
+      // Don't rethrow - this catch is the terminal handler (toast,
+      // analytics, isProcessing reset) and the only caller invokes
+      // executeSwap() fire-and-forget. Rethrowing would surface as an
+      // unhandled promise rejection at the global handler.
     }
   }, [
     account,

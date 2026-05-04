@@ -107,37 +107,33 @@ export const initializeSentry = (): void => {
     // Performance monitoring - equivalent to browserTracingIntegration
     tracesSampleRate: 1.0,
 
-    // iOS-only main-thread monitor. Default is 2 seconds, which catches
-    // a lot of natural transition stalls (clipboard reads via
+    // iOS-only main-thread monitor. The default of 2 seconds catches a
+    // lot of natural transition stalls (clipboard reads via
     // RNCClipboard.getString, GPU shader compilation on cold start,
     // Fabric mount work) that aren't actionable bugs in our code.
-    // 5 seconds keeps the genuinely-bad hangs visible while dropping
-    // the bulk of the noise (FREIGHTER-MOBILE-4A / Q5 / TF / T7,
-    // ~244 events / ~65 users).
+    // 5 seconds keeps the genuinely-bad hangs visible while skipping
+    // those routine stalls.
     appHangTimeoutInterval: 5,
 
     beforeSend(event) {
-      // Drop / downgrade known-noise patterns at the gate before any PII
-      // scrubbing or context updates. Keep this list small and specific —
-      // each entry should describe a known noise source documented in
-      // #814's noise-filter analysis. Source-level fixes are preferred
-      // over filtering here; these are the residual patterns that we
-      // can't easily fix at the source (third-party libraries, native
-      // events, user-initiated cancellations).
+      // Drop or downgrade known-noise patterns before any PII scrubbing
+      // or context updates. Each entry should describe a noise source
+      // we've seen in production (third-party SDK quirks, native auth
+      // cancellations, user-typed validation failures). Prefer fixing
+      // at the source over adding entries here.
       const noiseMessage =
         event.message || event.exception?.values?.[0]?.value || "";
 
       // ---- Drop entirely (no diagnostic value) ----
 
-      // WalletConnect session lifecycle - the SDK throws when looking up
+      // WalletConnect session lifecycle: the SDK throws when looking up
       // a record that has just been cleaned up. Normal lifecycle, not a
-      // bug (FREIGHTER-MOBILE-DM / 2Q / FM, ~14K events).
+      // bug.
       if (noiseMessage.includes("Record was recently deleted")) return null;
 
       // User-initiated biometric / auth cancellations on iOS. The user
       // pressed Cancel, switched away, the system invalidated the prompt,
-      // or retry-limit hit. Not bugs (FREIGHTER-MOBILE-14 / FA / BZ / HS /
-      // T8 / TQ / T1, ~370 events).
+      // or retry-limit hit. Not bugs.
       if (
         noiseMessage.includes("com.apple.LocalAuthentication") &&
         /Code=(-4|-1003|-1004|6)\b/.test(noiseMessage)
@@ -145,19 +141,19 @@ export const initializeSentry = (): void => {
         return null;
       }
 
-      // Android biometric cancellations. Same family, different vendor
-      // wording (FREIGHTER-MOBILE-AW / MR / MM / MB, ~50 events).
+      // Android biometric cancellations - same family, different vendor
+      // wording.
       if (/Fingerprint operation canc(elled|eled)/i.test(noiseMessage)) {
         return null;
       }
 
       // ---- Downgrade to breadcrumb (keep for context, no new issue) ----
-      // Sentry has no built-in "convert event to breadcrumb" - we add a
+      // Sentry has no built-in "convert event to breadcrumb" so we add a
       // breadcrumb for any subsequent event in the same session and drop
       // the current one.
 
-      // User typed a wrong mnemonic / password - handled errors from user
-      // input, not bugs (FREIGHTER-MOBILE-Q / 3H, ~5K events).
+      // User typed a wrong mnemonic / password - handled errors from
+      // user input, not bugs.
       if (
         noiseMessage.includes("Invalid mnemonic") ||
         noiseMessage.includes("Invalid password")
@@ -170,10 +166,10 @@ export const initializeSentry = (): void => {
         return null;
       }
 
-      // Recoverable biometric state mismatch - the user enabled
+      // Recoverable biometric state mismatch: the user enabled
       // biometrics but the keychain entry is missing (e.g. cleared by
-      // OS, app reinstall). User can re-enter password and re-enable
-      // (FREIGHTER-MOBILE-13, ~1K events).
+      // OS, app reinstall). User can re-enter their password and
+      // re-enable biometrics, so this is recoverable.
       if (
         noiseMessage.includes(
           "No stored password found for biometric authentication",

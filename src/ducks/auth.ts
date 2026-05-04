@@ -1321,13 +1321,10 @@ const signIn = async ({
   if (!account) {
     // Keychain has a key for activeAccountId but the AsyncStorage
     // ACCOUNT_LIST doesn't have a matching entry - keychain/AsyncStorage
-    // drift. The next 4 lines recover by recreating the account from the
+    // drift. The next lines recover by recreating the account from the
     // loaded key. Worth a breadcrumb (warn) so we have visibility if the
     // recovery itself ever fails downstream, but not an error since
     // the user-visible flow keeps working.
-    //
-    // NOTE: a related drift bug where ACTIVE_ACCOUNT_ID itself is missing
-    // (FREIGHTER-MOBILE-6Z) is tracked in #851 - it is NOT fixed here.
     logger.warn(
       "signIn",
       "Active account ID missing from account list, recreating from keychain key",

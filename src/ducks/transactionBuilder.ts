@@ -573,15 +573,15 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
       } catch (error) {
         const errorMessage = extractErrorMessage(error);
 
-        // Horizon protocol rejections (HTTP 4xx with a result_codes body —
-        // tx_bad_seq, tx_insufficient_balance, op_underfunded,
-        // op_under_dest_min, etc.) are expected, handled failures, not bugs.
-        // The user already sees a toast with the underlying message and
-        // analytics.trackTransactionError records the failure. Demote to
-        // warn so they appear as breadcrumb context without creating
-        // top-level Sentry issues (FREIGHTER-MOBILE-1B, ~1.5K events).
+        // Horizon protocol rejections (HTTP 4xx with a result_codes
+        // body - tx_bad_seq, tx_insufficient_balance, op_underfunded,
+        // op_under_dest_min, etc.) are expected, handled failures, not
+        // bugs. The user already sees a toast with the underlying
+        // message and analytics.trackTransactionError records the
+        // failure. Demote to warn so these stay as breadcrumb context
+        // without creating Sentry issues.
         //
-        // ONLY 4xx is demoted. Horizon 5xx (server overload, outages —
+        // ONLY 4xx is demoted. Horizon 5xx (server overload, outages -
         // submitTx already retries 504 a few times before bubbling)
         // remains a logger.error so we keep visibility on real Horizon
         // problems. Submit-time bugs that aren't HorizonError shape
