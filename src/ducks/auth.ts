@@ -587,12 +587,15 @@ const getTemporaryStore = async (
     const hashKey = await getHashKey();
 
     if (!hashKey) {
-      // No hashKey means the user is locked / has never signed in.
-      // This is the expected unauthenticated state, not an error -
-      // the caller checks for null and prompts the user to unlock.
-      logger.info(
+      // The security check above already filters NOT_AUTHENTICATED, so
+      // we're in AUTHENTICATED or LOCKED state - both should carry a
+      // valid hashKey. Missing here indicates storage corruption /
+      // keychain ↔ AsyncStorage drift, which downstream callers will
+      // treat as a hard auth failure.
+      logger.error(
         "[getTemporaryStore]",
-        "Hash key not found - user must sign in",
+        "Hash key missing for an active session - possible storage corruption",
+        new Error("Hash key missing in active session"),
       );
 
       return null;
@@ -600,7 +603,8 @@ const getTemporaryStore = async (
 
     if (isHashKeyExpired(hashKey)) {
       // Hash key TTL expired - the security policy is forcing
-      // re-authentication. Expected lifecycle behavior.
+      // re-authentication. Expected lifecycle behavior; the security
+      // check at the top normally catches this transition.
       logger.info("[getTemporaryStore]", "Hash key has expired, access denied");
 
       return null;
@@ -609,9 +613,16 @@ const getTemporaryStore = async (
       SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE,
     );
     if (!temporaryStore) {
-      // No in-memory unlocked-wallet cache means the user is locked -
-      // expected on cold start before they enter their password.
-      logger.info("[getTemporaryStore]", "Temporary store data not found");
+      // We have a valid hashKey but the encrypted temporary store is
+      // gone - real storage corruption, not the normal locked state
+      // (the security check above already filtered NOT_AUTHENTICATED).
+      // Downstream callers throw on null, so surface this so the
+      // regression doesn't disappear from Sentry.
+      logger.error(
+        "[getTemporaryStore]",
+        "Temporary store data not found for an active session - possible storage corruption",
+        new Error("Temporary store missing in active session"),
+      );
 
       return null;
     }

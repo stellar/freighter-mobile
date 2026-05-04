@@ -1,5 +1,7 @@
 /* eslint-disable @fnando/consistent-import/consistent-import */
 import { act, renderHook } from "@testing-library/react-hooks";
+import { logger } from "config/logger";
+import { useNetworkStore } from "ducks/networkInfo";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { getExperimentClient } from "services/analytics/core";
 
@@ -19,6 +21,10 @@ jest.mock("config/logger", () => ({
     warn: jest.fn(),
     error: jest.fn(),
   },
+}));
+
+jest.mock("ducks/networkInfo", () => ({
+  useNetworkStore: { getState: jest.fn(() => ({ isOffline: false })) },
 }));
 
 jest.mock("helpers/device", () => ({
@@ -217,6 +223,50 @@ describe("remoteConfig duck", () => {
       expect(result.current.swap_enabled).toBe(false);
       expect(result.current.discover_enabled).toBe(false);
       expect(result.current.onramp_enabled).toBe(false);
+    });
+
+    it("logs as logger.warn when the device is offline (avoid hourly polling noise)", async () => {
+      (useNetworkStore.getState as jest.Mock).mockReturnValue({
+        isOffline: true,
+      });
+      const mockClient = createMockExperimentClient();
+      mockClient.fetch.mockRejectedValue(new Error("Network down"));
+      mockGetExperimentClient.mockReturnValue(mockClient);
+
+      const { result } = renderHook(() => useRemoteConfigStore());
+
+      await act(async () => {
+        await result.current.fetchFeatureFlags();
+      });
+
+      expect(logger.warn).toHaveBeenCalledWith(
+        "remoteConfig.fetchFeatureFlags",
+        expect.stringContaining("offline"),
+      );
+      expect(logger.error).not.toHaveBeenCalled();
+    });
+
+    it("logs as logger.error when the device is online (real SDK / config / outage)", async () => {
+      (useNetworkStore.getState as jest.Mock).mockReturnValue({
+        isOffline: false,
+      });
+      const mockClient = createMockExperimentClient();
+      const realError = new Error("Amplitude SDK error");
+      mockClient.fetch.mockRejectedValue(realError);
+      mockGetExperimentClient.mockReturnValue(mockClient);
+
+      const { result } = renderHook(() => useRemoteConfigStore());
+
+      await act(async () => {
+        await result.current.fetchFeatureFlags();
+      });
+
+      expect(logger.error).toHaveBeenCalledWith(
+        "remoteConfig.fetchFeatureFlags",
+        "Failed to fetch feature flags",
+        realError,
+      );
+      expect(logger.warn).not.toHaveBeenCalled();
     });
 
     it("should handle variant errors gracefully", async () => {

@@ -1,4 +1,5 @@
 import { logger } from "config/logger";
+import { useNetworkStore } from "ducks/networkInfo";
 import { isAndroid } from "helpers/device";
 import { isE2ETest } from "helpers/isEnv";
 import { getBundleId, getVersion } from "react-native-device-info";
@@ -183,16 +184,26 @@ export const useRemoteConfigStore = create<RemoteConfigState>()((set, get) => ({
       // Mark as initialized after successful fetch
       set({ isInitialized: true });
     } catch (error) {
-      // Feature flags are load-bearing for runtime behavior - if the
-      // fetch fails the app silently falls back to defaults, which can
-      // mask broken backend config or token-list outages. Surface as
-      // error so we have visibility when behavior anomalies trace back
-      // to a stale flag set.
-      logger.error(
-        "remoteConfig.fetchFeatureFlags",
-        "Failed to fetch feature flags",
-        error,
-      );
+      // Feature flags are load-bearing for runtime behavior - we want
+      // visibility on real SDK / backend / config failures - but the
+      // poll runs hourly, so reporting every transient connectivity
+      // loss as an error would generate exactly the noise pattern we
+      // are trying to remove. Split: device offline → warn breadcrumb
+      // (not actionable, self-resolves when connectivity returns); any
+      // other failure → logger.error (real SDK / config / outage).
+      const { isOffline } = useNetworkStore.getState();
+      if (isOffline) {
+        logger.warn(
+          "remoteConfig.fetchFeatureFlags",
+          "Failed to fetch feature flags (device offline)",
+        );
+      } else {
+        logger.error(
+          "remoteConfig.fetchFeatureFlags",
+          "Failed to fetch feature flags",
+          error,
+        );
+      }
 
       // Mark as initialized even on error to prevent infinite loading
       set({ isInitialized: true });
