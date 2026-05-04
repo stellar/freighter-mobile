@@ -141,6 +141,44 @@ describe("logger", () => {
       expect(captured).toBeInstanceOf(Error);
       expect((captured as Error).message).toBe("string error");
     });
+
+    it("forwards the caller's `message` arg into Sentry extras (not just console)", () => {
+      // The Sentry title comes from the Error.message (preserves
+      // grouping), but the caller's intent string ("operation failed")
+      // would otherwise be lost on the Sentry path. It's inspectable
+      // in the event extras now.
+      const err = new Error("boom");
+
+      logger.error("ContextA", "Failed at step 2 (token refresh)", err);
+
+      expect(mockedSentry.captureException).toHaveBeenCalledWith(
+        err,
+        expect.objectContaining({
+          tags: { context: "ContextA" },
+          extra: expect.objectContaining({
+            message: "Failed at step 2 (token refresh)",
+          }),
+        }),
+      );
+    });
+
+    it("merges `message` and `args` into a single extras object", () => {
+      const err = new Error("boom");
+
+      logger.error("ContextA", "User-friendly description", err, {
+        userId: "x",
+      });
+
+      expect(mockedSentry.captureException).toHaveBeenCalledWith(
+        err,
+        expect.objectContaining({
+          extra: {
+            message: "User-friendly description",
+            args: [{ userId: "[REDACTED]" }],
+          },
+        }),
+      );
+    });
   });
 
   describe("info() / debug() Sentry severity", () => {

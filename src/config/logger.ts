@@ -460,10 +460,18 @@ const sentryAdapter: LoggerAdapter = {
     }
     const normalizedError = normalizeError(error);
 
-    // capture the error with context and sanitized extra data
+    // Include the caller-supplied `message` in the event extras so the
+    // intent isn't lost - Sentry's issue title still comes from the
+    // Error's own message (preserves grouping), but the message arg is
+    // inspectable in the event payload alongside any extra args.
+    const extra: Record<string, unknown> = { message };
+    if (args.length > 0) {
+      extra.args = sanitizeLogData(args);
+    }
+
     Sentry.captureException(normalizedError, {
       tags: { context },
-      extra: args.length > 0 ? { args: sanitizeLogData(args) } : undefined,
+      extra,
     });
   },
 };
