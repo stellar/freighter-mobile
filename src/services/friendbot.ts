@@ -1,6 +1,6 @@
 import { FRIENDBOT_URLS, NETWORKS } from "config/constants";
 import { logger } from "config/logger";
-import { createApiService } from "services/apiFactory";
+import { createApiService, isApiNetworkError } from "services/apiFactory";
 
 // Create a dedicated API service for backend operations
 const friendBotTestnet = createApiService({
@@ -24,6 +24,10 @@ export const fundAccount = async (publicKey: string, network: NETWORKS) => {
   try {
     await friendBot.get(`?addr=${encodeURIComponent(publicKey)}`);
   } catch (error) {
-    logger.error("friendbot", "Error funding account", error);
+    if (isApiNetworkError(error)) {
+      logger.warn("friendbot", "Network unreachable while funding account");
+    } else {
+      logger.error("friendbot", "Error funding account", error);
+    }
   }
 };

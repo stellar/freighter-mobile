@@ -472,11 +472,23 @@ export const getTokenDetails = async ({
     }
 
     if (!isRequestCanceled(error)) {
-      logger.error(
-        "backendApi.getTokenDetails",
-        "Error fetching token details",
-        error,
-      );
+      // Connectivity failures (offline, DNS, TLS, captive portal,
+      // axios client-side timeout) - demote to warn so they remain as
+      // breadcrumb context without creating top-level Sentry issues.
+      // Real backend bugs (4xx/5xx responses, malformed payloads)
+      // still surface as logger.error.
+      if (isApiNetworkError(error)) {
+        logger.warn(
+          "backendApi.getTokenDetails",
+          "Network unreachable while fetching token details",
+        );
+      } else {
+        logger.error(
+          "backendApi.getTokenDetails",
+          "Error fetching token details",
+          error,
+        );
+      }
     }
 
     return null;
@@ -529,11 +541,18 @@ export const isSacContractExecutable = async (
 
     return response.data.isSacContract;
   } catch (error) {
-    logger.error(
-      "backendApi.isSacContractExecutable",
-      "Error fetching sac contract executable",
-      error,
-    );
+    if (isApiNetworkError(error)) {
+      logger.warn(
+        "backendApi.isSacContractExecutable",
+        "Network unreachable while checking SAC contract",
+      );
+    } else {
+      logger.error(
+        "backendApi.isSacContractExecutable",
+        "Error fetching sac contract executable",
+        error,
+      );
+    }
 
     return false;
   }
@@ -587,11 +606,18 @@ export const getIndexerAccountHistory = async ({
 
     return response.data;
   } catch (error) {
-    logger.error(
-      "backendApi.getAccountHistory",
-      "Error fetching account history",
-      error,
-    );
+    if (isApiNetworkError(error)) {
+      logger.warn(
+        "backendApi.getAccountHistory",
+        "Network unreachable while fetching account history",
+      );
+    } else {
+      logger.error(
+        "backendApi.getAccountHistory",
+        "Error fetching account history",
+        error,
+      );
+    }
 
     return [];
   }
