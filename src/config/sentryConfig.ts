@@ -170,17 +170,6 @@ export const initializeSentry = (): void => {
         return null;
       }
 
-      // Mobile network timeouts - expected on poor connections
-      // (FREIGHTER-MOBILE-BM and similar).
-      if (/timeout of \d+ms exceeded/.test(noiseMessage)) {
-        Sentry.addBreadcrumb({
-          category: "network-timeout",
-          message: noiseMessage,
-          level: "info",
-        });
-        return null;
-      }
-
       // Recoverable biometric state mismatch - the user enabled
       // biometrics but the keychain entry is missing (e.g. cleared by
       // OS, app reinstall). User can re-enter password and re-enable
