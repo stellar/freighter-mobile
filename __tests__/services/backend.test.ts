@@ -689,7 +689,13 @@ describe("Backend Service - fetchCollectibles severity split", () => {
     expect(warnSpy).toHaveBeenCalledWith(
       "backendApi.fetchCollectibles",
       expect.stringContaining("Invalid response shape"),
-      expect.objectContaining({ data: expect.anything() }),
+      // Args carry only the payload SHAPE (key names) - no values,
+      // so a malformed payload can't smuggle account IDs through
+      // breadcrumb data on opt-out users' Sentry events.
+      expect.objectContaining({
+        topLevelKeys: expect.any(Array),
+        innerKeys: expect.any(Array),
+      }),
     );
     expect(errorSpy).toHaveBeenCalledTimes(1);
     expect(errorSpy).toHaveBeenCalledWith(

@@ -1141,12 +1141,16 @@ export const fetchCollectibles = async ({
       // Demote this inner log to a breadcrumb so it doesn't fire its
       // own captureException - the catch below already logs the
       // thrown Error once. Without this, one bad payload produced
-      // two Sentry events. The breadcrumb keeps the raw payload
-      // visible on the captured event for shape inspection.
+      // two Sentry events. Capture only the payload shape (top-level
+      // and inner keys) so we can recognize a backend contract change
+      // without uploading user-identifying values like account IDs.
       logger.warn(
         "backendApi.fetchCollectibles",
         "Invalid response shape - missing data.collections",
-        { data },
+        {
+          topLevelKeys: Object.keys(data ?? {}),
+          innerKeys: Object.keys((data as { data?: unknown })?.data ?? {}),
+        },
       );
 
       throw new Error("Invalid response from server");
