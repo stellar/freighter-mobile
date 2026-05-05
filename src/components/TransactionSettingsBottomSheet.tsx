@@ -25,10 +25,7 @@ import {
   formatNumberForDisplay,
 } from "helpers/formatAmount";
 import { getMemoDisabledState } from "helpers/muxedAddress";
-import {
-  isContractId,
-  isSorobanTransaction as checkIsSorobanTransaction,
-} from "helpers/soroban";
+import { isContractId } from "helpers/soroban";
 import { enforceSettingInputDecimalSeparator } from "helpers/transactionSettingsUtils";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -53,6 +50,7 @@ type TransactionSettingsBottomSheetProps = {
   onConfirm: () => void;
   context: TransactionContext;
   onSettingsChange?: () => void;
+  onOpenFeeBreakdown?: () => void;
 };
 
 // Constants
@@ -60,7 +58,13 @@ const STEP_SIZE_PERCENT = 0.5;
 
 const TransactionSettingsBottomSheet: React.FC<
   TransactionSettingsBottomSheetProps
-> = ({ onCancel, onConfirm, context, onSettingsChange }) => {
+> = ({
+  onCancel,
+  onConfirm,
+  context,
+  onSettingsChange,
+  onOpenFeeBreakdown,
+}) => {
   // All hooks at the top
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
@@ -107,15 +111,10 @@ const TransactionSettingsBottomSheet: React.FC<
   const selectedBalance = balanceItems.find(
     (item) => item.id === (selectedTokenId || NATIVE_TOKEN_CODE),
   );
+
   const isCollectibleTransfer =
     Boolean(selectedCollectibleDetails?.collectionAddress) &&
     Boolean(selectedCollectibleDetails?.tokenId);
-
-  // Soroban transaction: collectible transfer, custom token, or recipient is contract address
-  const isSorobanTransaction = Boolean(
-    isCollectibleTransfer ||
-      checkIsSorobanTransaction(selectedBalance, recipientAddress),
-  );
 
   // Keep isCustomToken for contractId determination below
   const isCustomToken = Boolean(
@@ -126,6 +125,13 @@ const TransactionSettingsBottomSheet: React.FC<
 
   const isSorobanRecipient = Boolean(
     recipientAddress && isContractId(recipientAddress),
+  );
+
+  // Derived from current context parameters (balance, recipient, collectible)
+  // rather than the builder store, which may be stale or reflect a different
+  // transaction flow (e.g. a previous send or a swap transaction).
+  const isSorobanTransaction = Boolean(
+    isCollectibleTransfer || isCustomToken || isSorobanRecipient,
   );
 
   // Determine contract ID for Soroban transactions
@@ -491,10 +497,16 @@ const TransactionSettingsBottomSheet: React.FC<
         <View className="flex flex-row items-center justify-between">
           <View className="flex flex-row items-center gap-2">
             <Text sm secondary>
-              {t("transactionSettings.feeTitle")}
+              {isSorobanTransaction
+                ? t("transactionSettings.inclusionFeeTitle")
+                : t("transactionSettings.feeTitle")}
             </Text>
             <TouchableOpacity
-              onPress={() => feeInfoBottomSheetModalRef.current?.present()}
+              onPress={() =>
+                isSorobanTransaction && onOpenFeeBreakdown
+                  ? onOpenFeeBreakdown()
+                  : feeInfoBottomSheetModalRef.current?.present()
+              }
             >
               <Icon.InfoCircle themeColor="gray" size={16} />
             </TouchableOpacity>
@@ -548,6 +560,8 @@ const TransactionSettingsBottomSheet: React.FC<
       </View>
     ),
     [
+      isSorobanTransaction,
+      onOpenFeeBreakdown,
       localFee,
       feeError,
       t,

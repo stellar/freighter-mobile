@@ -84,6 +84,21 @@ export const isSorobanTransaction = (
       (recipientAddress && isContractId(recipientAddress)),
   );
 
+/**
+ * Returns the total fee in XLM for display.
+ * For Soroban: inclusion + resource. For classic: the flat transactionFee.
+ */
+export const computeTotalFeeXlm = (
+  sorobanInclusionFeeXlm: string | null,
+  sorobanResourceFeeXlm: string | null,
+  transactionFee: string,
+): string =>
+  sorobanInclusionFeeXlm && sorobanResourceFeeXlm
+    ? new BigNumber(sorobanInclusionFeeXlm)
+        .plus(sorobanResourceFeeXlm)
+        .toString()
+    : transactionFee;
+
 export const getNativeContractDetails = (network: NETWORKS) => {
   const NATIVE_CONTRACT_DEFAULTS = {
     code: NATIVE_TOKEN_CODE,

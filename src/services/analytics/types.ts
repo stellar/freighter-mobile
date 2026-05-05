@@ -37,6 +37,11 @@ export enum TransactionOperationType {
   SendCollectible = "sendCollectible",
 }
 
+export enum SimulationTransactionType {
+  ContractTransfer = "contract_transfer",
+  CollectibleTransfer = "collectible_transfer",
+}
+
 export interface TransactionSuccessEvent {
   collectionAddress?: string;
   tokenId?: string;
