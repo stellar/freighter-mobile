@@ -368,6 +368,20 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
         (collection) => "error" in collection,
       );
       if (errorCollections.length > 0) {
+        // If every collection in the fetch came back as an error, that's
+        // a likely systemic backend regression (metadata service down,
+        // parser bug, gateway outage) and the gallery would otherwise
+        // render empty silently. Surface a single Sentry event for the
+        // outage signal - per-collection breadcrumbs below give the
+        // forensic detail.
+        if (errorCollections.length === collections.length) {
+          logger.error(
+            "fetchCollectibles",
+            "All collections returned backend errors",
+            { count: collections.length },
+          );
+        }
+
         errorCollections.forEach((errorCollection) => {
           const { error } = errorCollection;
 
@@ -377,8 +391,14 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
           // out for individual NFT metadata, malformed token URIs, etc.).
           // The user-visible behavior is graceful (no thumbnail or traits
           // for that one item), and the backend already has visibility
-          // into the upstream failure. Logging them as Sentry errors just
-          // floods the dashboard. Use info so they stay local-only.
+          // into the upstream failure.
+          //
+          // Per-token failures stay at info: a single collection can have
+          // hundreds of tokens, and emitting one breadcrumb per token
+          // would blow the Sentry breadcrumb buffer (capped at ~100/session)
+          // for galleries with widespread metadata issues. Per-collection
+          // failures emit at warn so the breadcrumb chain on a captured
+          // event has the collection-level failure pattern.
           if (
             error.tokens &&
             Array.isArray(error.tokens) &&
@@ -391,10 +411,10 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
               );
             });
           } else {
-            logger.info(
-              "fetchCollectibles",
-              `Error in collection ${error.collection_address}: ${error.error_message}`,
-            );
+            logger.warn("fetchCollectibles", "Backend error for collection", {
+              collectionAddress: error.collection_address,
+              errorMessage: error.error_message,
+            });
           }
         });
       }
