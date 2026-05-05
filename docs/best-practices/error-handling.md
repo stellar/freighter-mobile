@@ -169,22 +169,135 @@ hasRespondedRef.current = true;
 await rejectSessionRequest({ sessionRequest, message });
 ```
 
-## Sentry Integration
+## Logger severity
 
-Sentry receives normalized errors automatically when you call `logger.error()` —
-the logger normalizes via `normalizeError()` and forwards internally. You don't
-need to call Sentry yourself.
+Each level has different Sentry behavior. Pick the one that matches the
+failure's actionability — the goal is that **anything that reaches Sentry as a
+top-level event is something an engineer should look at**.
+
+| Level            | Sentry behavior                                                                     | Use for                                                                                                  |
+| ---------------- | ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `logger.error()` | Top-level Sentry issue (`captureException`). Counts against quota. Pages on alerts. | Real bugs and load-bearing failures that need engineering action.                                        |
+| `logger.warn()`  | Sentry breadcrumb. Ships only attached to a real captured event. Zero quota cost.   | Expected-but-noteworthy conditions that provide forensic context if something downstream goes wrong.     |
+| `logger.info()`  | Console only. Never reaches Sentry.                                                 | Routine operational signal useful for local dev. Also use to protect the breadcrumb buffer in hot loops. |
+| `logger.debug()` | Console only.                                                                       | Verbose diagnostic during development.                                                                   |
+
+### Choosing the level
+
+Ask three questions in order:
+
+1. **Is this a real bug or load-bearing failure?** → `error`. Examples: 5xx
+   backend response, malformed payload, keychain write failure, feature-flag
+   fetch failure when the device is online, systemic outage detected via an
+   aggregate signal (e.g. every item in a batch fetch returned an error).
+2. **Is this expected but worth keeping as forensic context if a downstream
+   event captures?** → `warn`. Examples: connectivity failures (offline, DNS,
+   TLS), 4xx Horizon protocol rejections, keychain read blocked because the app
+   was backgrounded, pre-flight informational scan failure.
+3. **Is this routine, high-volume, or only useful in local dev?** → `info` /
+   `debug`. Examples: per-token failures inside a many-token loop (where one
+   breadcrumb per token would blow the ~100/session buffer), hash-key TTL
+   expiration, debug observations.
+
+### Patterns established in this codebase
+
+| Failure                                               | Level                                   | Why                                                                                                    |
+| ----------------------------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Connectivity (offline, DNS, TLS, captive portal)      | `warn`                                  | Self-resolves; not actionable. Branch on `isApiNetworkError` from `services/apiFactory`.               |
+| Axios timeout (`ECONNABORTED`)                        | `error`                                 | Backend latency regression — carved out of `isApiNetworkError` so it stays visible.                    |
+| Backend 5xx                                           | `error`                                 | Real outage.                                                                                           |
+| Horizon 4xx protocol rejection                        | `warn`                                  | User-correctable (`tx_bad_seq`, `op_underfunded`). User toast + analytics handle the user-facing side. |
+| Keychain WRITE / REMOVE / CLEAR                       | `error`                                 | Security-relevant; silent failure could leave stale credentials.                                       |
+| Keychain READ blocked (`errSecInteractionNotAllowed`) | `warn`                                  | Expected when app is backgrounded or device is locked.                                                 |
+| Per-item failure inside a hot loop                    | `info`                                  | Volume control — breadcrumb buffer cap is ~100/session.                                                |
+| Per-collection failure (aggregate)                    | `warn` per-item + `error` when ALL fail | Surface systemic outage as one event; keep per-item context as breadcrumbs.                            |
+| User-typo validation failure                          | `warn` at source                        | Not a bug; expected user input. Some are also filtered in `beforeSend`.                                |
+| Auth state guard ("Attempted access in LOCKED state") | `warn`                                  | Recoverable; security-relevant signal but not actionable.                                              |
+| Hash-key TTL expiration                               | `info`                                  | Expected lifecycle event.                                                                              |
+
+### Logger anti-patterns
+
+**Don't interpolate identifiers into the log message string.** PublicKeys,
+WalletConnect topics, account IDs, etc. bypass `sanitizeLogData` (which only
+walks object keys, not message text) and ship verbatim. Use structured args
+instead so the sanitizer can redact PII fields:
+
+```tsx
+// Wrong: identifier embedded in message; bypasses redaction
+logger.error("ctx", `Failed for publicKey ${publicKey}`, error);
+
+// Right: identifier in structured args; publicKey is in PII_FIELDS_LOWER
+logger.error("ctx", "Failed for account", error, { publicKey });
+```
+
+For values that aren't strict PII but shouldn't ship in full (WalletConnect
+session topics, opaque correlation IDs), truncate inline:
+
+```tsx
+logger.error("ctx", `Failed. topic: ${topic.slice(0, 8)}...`, error);
+```
+
+**Don't pass a non-Error as the third arg to `logger.error()`.** That slot is
+the captured-exception. A plain object like `{ count: 5 }` gets wrapped into a
+generic Error whose message embeds the count value, fragmenting Sentry's issue
+grouping into one issue per distinct value:
+
+```tsx
+// Wrong: { count } as captured exception → fragments by count
+logger.error("ctx", "All collections failed", { count });
+
+// Right: stable Error for grouping, structured context in args
+logger.error(
+  "ctx",
+  "All collections failed",
+  new Error("All collections failed"),
+  { count },
+);
+```
+
+**Don't double-log on a single failure.** A `logger.error` inside a `try`
+followed by another `logger.error` in the surrounding `catch` produces two
+Sentry events for one failure:
+
+```tsx
+// Wrong: 2 Sentry events for 1 bad payload
+try {
+  if (malformed) {
+    logger.error("ctx", "Invalid response", data);
+    throw new Error("Invalid response");
+  }
+} catch (err) {
+  logger.error("ctx", "Failed", err); // ← duplicates the inner log
+}
+
+// Right: warn for inner context (breadcrumb only), error only in the catch
+try {
+  if (malformed) {
+    logger.warn("ctx", "Invalid response", { data });
+    throw new Error("Invalid response");
+  }
+} catch (err) {
+  logger.error("ctx", "Failed", err);
+}
+```
+
+**Don't wrap every catch in `logger.error`.** Many catches are routine lifecycle
+(offline, biometric cancelled, hash key expired) — those want `warn` or `info`.
+`error` is for failures that need engineering action.
 
 ## Rules
 
-- **Never** use empty catch blocks. Always handle or log the error.
-- **Never** silently swallow errors. At minimum, log with `logger.error()`.
-- **Never** show generic "Something went wrong" without additional context.
-  Include what operation failed.
+- **Avoid** silently swallowing errors (including empty catch blocks). Default
+  to logging at the appropriate severity (see the table above) — `info` for
+  routine lifecycle, `warn` for forensic context, `error` for failures that need
+  engineering action.
+- **Avoid** generic "Something went wrong" messages. Include what operation
+  failed unless surfacing the underlying detail would expose internals or
+  confuse the user.
 - **Never** use `Alert.alert()` — surface errors via toasts and confirmations
   via bottom sheets.
 - **Never** call `Sentry.captureException()` directly — go through
   `logger.error()` so the context tag and normalization are consistent.
-- **Be selective about what reaches Sentry.** Validation failures, user
-  cancellations, and expected network failures (timeouts, offline) are noise.
-  Reserve Sentry for unexpected errors and bugs that need engineering action.
+- **Be selective about what reaches Sentry.** Anything that reaches Sentry as a
+  top-level event should be actionable. Use the severity table above; default to
+  `warn` if you're unsure (forensic context without quota cost).
