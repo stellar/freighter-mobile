@@ -111,17 +111,28 @@ need them.
 ## Hook Composition
 
 Reusable hooks live in `src/hooks/` and encapsulate common logic. Screens
-compose multiple hooks together:
+compose multiple hooks together. Navigation screens receive `route` and
+`navigation` props for screen-specific context:
 
 ```tsx
-const TransactionAmountScreen: React.FC = () => {
+import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { useTransactionSettingsStore } from "ducks/transactionSettings";
+import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
+import { useGetActiveAccount } from "hooks/useGetActiveAccount";
+
+type TransactionAmountScreenProps = NativeStackScreenProps<
+  SendPaymentStackParamList,
+  "TransactionAmount"
+>;
+
+const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
+  navigation,
+  route,
+}) => {
   const { account } = useGetActiveAccount();
-  const { buildTransaction, transactionXDR, isBuilding, error } =
-    useTransactionBuilderStore();
-  const { isValidatingMemo, isMemoMissing } =
-    useValidateTransactionMemo(transactionXDR);
+  const { recipientAddress, transactionFee } = useTransactionSettingsStore();
   const { scanTransaction } = useBlockaidTransaction();
-  // ... compose the flow
+  // Compose hooks for the flow
 };
 ```
 

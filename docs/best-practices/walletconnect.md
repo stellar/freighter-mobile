@@ -76,9 +76,11 @@ custom validation logic — use these functions:
 WalletConnect request. Always check and set this ref before responding:
 
 ```tsx
+import { rejectSessionRequest } from "helpers/walletKitUtil";
+
 if (hasRespondedRef.current) return;
 hasRespondedRef.current = true;
-await walletKit.respondSessionRequest({ ... });
+await rejectSessionRequest({ sessionRequest, message: "User rejected the request" });
 ```
 
 ## Session State

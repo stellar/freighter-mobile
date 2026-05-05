@@ -102,7 +102,8 @@ bottom sheet, not a native alert.
 React hook and cannot be called inside a Zustand store action. The correct
 pattern is:
 
-1. Store catch block: `set({ error: normalizeError(error).message, isLoading: false })`
+1. Store catch block:
+   `set({ error: normalizeError(error).message, isLoading: false })`
 2. Component: watch the `error` field and call `showToast` in a `useEffect` or
    event handler when it becomes non-null
 
@@ -170,9 +171,9 @@ await rejectSessionRequest({ sessionRequest, message });
 
 ## Sentry Integration
 
-`normalizeError()` feeds directly into Sentry for crash reporting. Always
-normalize errors before sending to Sentry to ensure consistent, actionable
-reports.
+Sentry receives normalized errors automatically when you call `logger.error()` —
+the logger normalizes via `normalizeError()` and forwards internally. You don't
+need to call Sentry yourself.
 
 ## Rules
 
