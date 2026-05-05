@@ -1134,10 +1134,15 @@ export const fetchCollectibles = async ({
     );
 
     if (!data.data || !data.data.collections) {
-      logger.error(
+      // Demote this inner log to a breadcrumb so it doesn't fire its
+      // own captureException - the catch below already logs the
+      // thrown Error once. Without this, one bad payload produced
+      // two Sentry events. The breadcrumb keeps the raw payload
+      // visible on the captured event for shape inspection.
+      logger.warn(
         "backendApi.fetchCollectibles",
-        "Invalid response from server",
-        data,
+        "Invalid response shape - missing data.collections",
+        { data },
       );
 
       throw new Error("Invalid response from server");

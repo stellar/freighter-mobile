@@ -642,10 +642,14 @@ describe("Backend Service - fetchCollectibles severity split", () => {
     expect(warnSpy).not.toHaveBeenCalled();
   });
 
-  it("logs error on malformed response (data.collections missing)", async () => {
+  it("logs malformed response (data.collections missing) exactly once", async () => {
     // Server returned 200 but the payload is missing the expected
     // collections field. This is a contract violation, not a
-    // connectivity failure - keep it as logger.error.
+    // connectivity failure. Inner shape mismatch should ship as a
+    // warn breadcrumb (with the raw payload for inspection); the
+    // outer catch fires a single logger.error for the thrown Error.
+    // Earlier this path produced TWO Sentry events for one bad
+    // payload (inner logger.error + catch logger.error).
     mockV2Post.mockResolvedValue({
       data: { data: {} },
       status: 200,
@@ -656,11 +660,16 @@ describe("Backend Service - fetchCollectibles severity split", () => {
       "Invalid response from server",
     );
 
+    expect(warnSpy).toHaveBeenCalledWith(
+      "backendApi.fetchCollectibles",
+      expect.stringContaining("Invalid response shape"),
+      expect.objectContaining({ data: expect.anything() }),
+    );
+    expect(errorSpy).toHaveBeenCalledTimes(1);
     expect(errorSpy).toHaveBeenCalledWith(
       "backendApi.fetchCollectibles",
-      "Invalid response from server",
-      expect.any(Object),
+      "Error fetching collectibles",
+      expect.any(Error),
     );
-    expect(warnSpy).not.toHaveBeenCalled();
   });
 });
