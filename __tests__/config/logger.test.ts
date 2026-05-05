@@ -46,6 +46,23 @@ describe("logger", () => {
       expect(mockedSentry.captureMessage).not.toHaveBeenCalled();
     });
 
+    it("preserves Error message and stack when an Error is passed as a variadic arg", () => {
+      // Regression: callers like `logger.warn(ctx, "Failed", err)` rely
+      // on the breadcrumb carrying err.message / err.stack. Without
+      // the Error special case in sanitizeLogData, the breadcrumb
+      // would ship `{ args: [{}] }` because Error fields are
+      // non-enumerable, silently dropping the diagnostic.
+      const err = new Error("token refresh failed");
+      logger.warn("AuthFlow", "step 2 failed", err);
+
+      const call = mockedSentry.addBreadcrumb.mock.calls[0][0];
+      const { args } = call.data as {
+        args: Array<{ message?: string; stack?: string }>;
+      };
+      expect(args[0].message).toBe("token refresh failed");
+      expect(typeof args[0].stack).toBe("string");
+    });
+
     it("attaches variadic args as breadcrumb data preserving array shape", () => {
       logger.warn("ContextA", "something happened", { foo: "bar" }, 42);
 
@@ -198,6 +215,37 @@ describe("logger", () => {
       expect(mockedSentry.captureMessage).not.toHaveBeenCalled();
       expect(mockedSentry.captureException).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe("sanitizeLogData Error preservation", () => {
+  it("preserves message and stack from a bare Error (non-enumerable per spec)", () => {
+    const err = new Error("boom");
+
+    const sanitized = sanitizeLogData(err) as {
+      name: string;
+      message: string;
+      stack: string;
+    };
+
+    expect(sanitized.name).toBe("Error");
+    expect(sanitized.message).toBe("boom");
+    expect(typeof sanitized.stack).toBe("string");
+    expect(sanitized.stack).toContain("boom");
+  });
+
+  it("preserves Error fields when nested inside the variadic args array", () => {
+    // The actual logger.warn / logger.error path: callers pass an Error
+    // as a variadic arg, sanitizeLogData walks the args ARRAY, then
+    // reaches each Error. Must produce a useful object, not `{}`.
+    const err = new Error("nested boom");
+
+    const sanitized = sanitizeLogData([err, { ok: true }]) as Array<{
+      message?: string;
+    }>;
+
+    expect(sanitized[0].message).toBe("nested boom");
+    expect(sanitized[1]).toEqual({ ok: true });
   });
 });
 

@@ -410,6 +410,18 @@ export const sanitizeLogData = (data: unknown, depth = 0): unknown => {
     return MAX_DEPTH_SENTINEL;
   }
 
+  // Error instances need explicit handling - `name`, `message`, and
+  // `stack` are non-enumerable per spec, so a generic `Object.entries`
+  // walk would drop them and produce `{}`. That silently strips the
+  // diagnostic detail every time a caller passes an error as a warn arg.
+  if (data instanceof Error) {
+    return {
+      name: data.name,
+      message: data.message,
+      stack: data.stack,
+    };
+  }
+
   if (Array.isArray(data)) {
     return data.map((item) => sanitizeLogData(item, depth + 1));
   }
