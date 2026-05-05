@@ -472,11 +472,12 @@ export const getTokenDetails = async ({
     }
 
     if (!isRequestCanceled(error)) {
-      // Connectivity failures (offline, DNS, TLS, captive portal,
-      // axios client-side timeout) - demote to warn so they remain as
-      // breadcrumb context without creating top-level Sentry issues.
-      // Real backend bugs (4xx/5xx responses, malformed payloads)
-      // still surface as logger.error.
+      // Connectivity failures (offline, DNS, TLS, captive portal) -
+      // demote to warn so they remain as breadcrumb context without
+      // creating top-level Sentry issues. Backend bugs (4xx/5xx
+      // responses, malformed payloads) and axios client-side timeouts
+      // (carved out of isApiNetworkError so latency regressions stay
+      // visible) still surface as logger.error.
       if (isApiNetworkError(error)) {
         logger.warn(
           "backendApi.getTokenDetails",
@@ -1152,9 +1153,11 @@ export const fetchCollectibles = async ({
   } catch (error) {
     // Connectivity failures (offline, DNS, TLS, captive portal) are not
     // backend bugs — demote to warn so they remain as breadcrumb context
-    // without creating top-level Sentry issues. Real failures (4xx/5xx
+    // without creating top-level Sentry issues. Backend bugs (4xx/5xx
     // responses, malformed payloads, the "Invalid response from server"
-    // throw above) still surface as logger.error.
+    // throw above) and axios client-side timeouts (carved out of
+    // isApiNetworkError so latency regressions stay visible) still
+    // surface as logger.error.
     if (isApiNetworkError(error)) {
       logger.warn(
         "backendApi.fetchCollectibles",
