@@ -42,8 +42,11 @@ export class SecureClipboardService {
       // Fallback to standard clipboard if native module fails -
       // routine fallback path, not error-adjacent (the native module
       // simply isn't always available depending on Android version /
-      // iOS quirks). Stay info to avoid filling the breadcrumb buffer.
-      logger.info(
+      // iOS quirks). Use warn so we have a Sentry breadcrumb if
+      // mnemonic copy/paste flows ever regress on a supported device:
+      // production has shown 0 events in 90 days and the call sites
+      // are onboarding-only, so buffer pressure is not a concern.
+      logger.warn(
         "SecureClipboardService.copyToClipboard",
         "Native module failed, falling back to standard clipboard",
         error,
@@ -66,8 +69,11 @@ export class SecureClipboardService {
       // Fallback to standard clipboard if native module fails -
       // routine fallback path, not error-adjacent (the native module
       // simply isn't always available depending on Android version /
-      // iOS quirks). Stay info to avoid filling the breadcrumb buffer.
-      logger.info(
+      // iOS quirks). Use warn so we have a Sentry breadcrumb if
+      // mnemonic copy/paste flows ever regress on a supported device:
+      // production has shown 0 events in 90 days and the call sites
+      // are onboarding-only, so buffer pressure is not a concern.
+      logger.warn(
         "SecureClipboardService.clearClipboard",
         "Native clear failed, falling back to standard clipboard",
         error,
@@ -89,8 +95,11 @@ export class SecureClipboardService {
       // Fallback to standard clipboard if native module fails -
       // routine fallback path, not error-adjacent (the native module
       // simply isn't always available depending on Android version /
-      // iOS quirks). Stay info to avoid filling the breadcrumb buffer.
-      logger.info(
+      // iOS quirks). Use warn so we have a Sentry breadcrumb if
+      // mnemonic copy/paste flows ever regress on a supported device:
+      // production has shown 0 events in 90 days and the call sites
+      // are onboarding-only, so buffer pressure is not a concern.
+      logger.warn(
         "SecureClipboardService.getClipboardText",
         "Native getString failed, falling back to standard clipboard",
         error,
