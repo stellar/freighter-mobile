@@ -375,9 +375,15 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
         // outage signal - per-collection breadcrumbs below give the
         // forensic detail.
         if (errorCollections.length === collections.length) {
+          // Pass an Error as the third arg (the captured-exception slot)
+          // so Sentry's grouping uses the stable Error.message. Putting
+          // `{ count }` directly in that slot would normalize to a
+          // generic Error embedding the count, fragmenting the outage
+          // into one issue per collection count.
           logger.error(
             "fetchCollectibles",
             "All collections returned backend errors",
+            new Error("All collections returned backend errors"),
             { count: collections.length },
           );
         }
