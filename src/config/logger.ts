@@ -360,19 +360,36 @@ class Logger {
 export const logger = Logger.getInstance();
 
 // Common PII / secret fields to redact from logged payloads. Match
-// case-insensitively. Keep this list conservative - it's safer to
+// case-insensitively against the literal lowercased key. The list
+// includes both camelCase (frontend-shaped) and snake_case
+// (backend-shaped) variants since payloads from the Freighter
+// backend / Horizon arrive snake_case and would slip past a
+// camelCase-only list. Keep this conservative - it's safer to
 // over-redact than to leak.
+//
+// publicKey is included because, while Stellar public keys are not
+// strictly secret, this codebase deliberately gates them on the
+// analytics opt-in (see buildSentryContext in sentryConfig.ts).
+// Redacting them in logger payloads keeps that opt-out promise on
+// breadcrumbs and event extras as well as the appContext block.
 const PII_FIELDS_LOWER = [
   "email",
   "phone",
   "address",
   "name",
   "firstName",
+  "first_name",
   "lastName",
+  "last_name",
   "username",
   "userId",
+  "user_id",
   "accountId",
+  "account_id",
+  "publicKey",
+  "public_key",
   "privateKey",
+  "private_key",
   "seed",
   "mnemonic",
   "password",
@@ -381,16 +398,21 @@ const PII_FIELDS_LOWER = [
   "session",
   "ip",
   "ipAddress",
+  "ip_address",
   "location",
   "coordinates",
   "auth",
   "key",
   "apiKey",
+  "api_key",
   "secret",
   "secretKey",
+  "secret_key",
   "recovery",
   "recoveryPhrase",
+  "recovery_phrase",
   "mnemonicPhrase",
+  "mnemonic_phrase",
 ].map((f) => f.toLowerCase());
 
 const MAX_SANITIZE_DEPTH = 8;

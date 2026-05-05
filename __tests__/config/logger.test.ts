@@ -79,7 +79,6 @@ describe("logger", () => {
     it("redacts PII keys nested inside variadic arg objects", () => {
       logger.warn("ContextA", "something happened", {
         password: "secret",
-        publicKey: "GA...",
         normalField: "ok",
       });
 
@@ -88,7 +87,54 @@ describe("logger", () => {
         args: [
           {
             password: "[REDACTED]",
-            publicKey: "GA...",
+            normalField: "ok",
+          },
+        ],
+      });
+    });
+
+    it("redacts publicKey (camelCase) and public_key (snake_case)", () => {
+      // publicKey isn't strictly secret, but the codebase gates it on
+      // the analytics opt-in (see buildSentryContext). Redact in logger
+      // payloads to extend that opt-out promise to breadcrumbs / extras.
+      // Backend payloads arrive snake_case, so both forms must redact.
+      logger.warn("ContextA", "something happened", {
+        publicKey: "GA_CAMEL",
+        public_key: "GA_SNAKE",
+        normalField: "ok",
+      });
+
+      const call = mockedSentry.addBreadcrumb.mock.calls[0][0];
+      expect(call.data).toEqual({
+        args: [
+          {
+            publicKey: "[REDACTED]",
+            public_key: "[REDACTED]",
+            normalField: "ok",
+          },
+        ],
+      });
+    });
+
+    it("redacts other snake_case PII variants (account_id, private_key, etc.)", () => {
+      logger.warn("ContextA", "something happened", {
+        account_id: "GA...",
+        private_key: "S...",
+        secret_key: "S...",
+        api_key: "ak_...",
+        ip_address: "1.2.3.4",
+        normalField: "ok",
+      });
+
+      const call = mockedSentry.addBreadcrumb.mock.calls[0][0];
+      expect(call.data).toEqual({
+        args: [
+          {
+            account_id: "[REDACTED]",
+            private_key: "[REDACTED]",
+            secret_key: "[REDACTED]",
+            api_key: "[REDACTED]",
+            ip_address: "[REDACTED]",
             normalField: "ok",
           },
         ],
