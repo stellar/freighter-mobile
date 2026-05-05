@@ -120,16 +120,21 @@ export const identifyUser = async (): Promise<void> => {
 
       logger.debug(DEBUG_CONFIG.LOG_PREFIX, `✅ User identified: ${userId}`);
     } catch (amplitudeError) {
-      // Store user ID even if amplitude fails
+      // Update the local store so other consumers see the resolved
+      // user ID, but do NOT mark the user as identified - leaving
+      // `lastIdentifiedUserId` unchanged means the next identifyUser
+      // call retries the Amplitude side instead of being skipped by
+      // the dedup check. Otherwise a single Amplitude failure breaks
+      // user attribution for the rest of the session.
       setUserId(userId);
 
-      lastIdentifiedUserId = userId;
-
-      // Local storage succeeded; not actionable as a breadcrumb.
-      logger.info(
+      // Warn so a downstream captured event can pick up this
+      // breadcrumb. info would be a no-op on production builds.
+      logger.warn(
         DEBUG_CONFIG.LOG_PREFIX,
         "Failed to set user ID in Amplitude, but stored locally",
-        { userId, amplitudeError },
+        amplitudeError,
+        { userId },
       );
     }
   } catch (userIdError) {
