@@ -22,7 +22,11 @@ describe("Verified Token Lists", () => {
     expect(verifiedTokens).toEqual(MOCK_TOKEN_LIST_RESPONSE.assets);
   });
 
-  it("logs an error when fetching a list fails", async () => {
+  it("logs an error with the URL as a structured arg (not interpolated into the message)", async () => {
+    // The URL must NOT be in the message string - interpolating it
+    // would fragment Sentry grouping into one issue per token-list
+    // URL. It belongs in the args extras, where Sentry can show it
+    // per-event without splitting the issue.
     const error = new Error("Network error");
     (mockApiService.get as jest.Mock).mockRejectedValue(error);
 
@@ -36,8 +40,9 @@ describe("Verified Token Lists", () => {
     expect(verifiedAssets).toEqual([]);
     expect(loggerSpy).toHaveBeenCalledWith(
       "fetchVerifiedTokens",
-      expect.stringContaining("Error retrieving verified tokens"),
+      "Error retrieving verified tokens from token list",
       error,
+      { url: "mock://uri" },
     );
 
     loggerSpy.mockRestore();
@@ -48,7 +53,7 @@ describe("Verified Token Lists", () => {
     // axios sees no response - offline, DNS, TLS, captive portal, etc.
     // The catch in fetchVerifiedTokens should branch on isApiNetworkError
     // and demote to logger.warn so we don't generate Sentry errors for
-    // every offline user.
+    // every offline user. URL goes in the args extras, not the message.
     const networkError = {
       message: "Network Error",
       status: 0,
@@ -67,7 +72,8 @@ describe("Verified Token Lists", () => {
     expect(verifiedAssets).toEqual([]);
     expect(warnSpy).toHaveBeenCalledWith(
       "fetchVerifiedTokens",
-      expect.stringContaining("Network unreachable"),
+      "Network unreachable for token list",
+      { url: "mock://uri" },
     );
     expect(errorSpy).not.toHaveBeenCalled();
 
