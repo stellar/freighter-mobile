@@ -167,11 +167,18 @@ export function createApiService(options: ApiServiceOptions) {
       // if no response)"). Avoid defaulting to a real HTTP code like
       // 500: that would make connectivity failures indistinguishable
       // from genuine backend errors in error reporting.
+      //
+      // `isNetworkError` is reserved for genuine connectivity failures
+      // (offline, DNS, TLS, captive portal). Axios timeouts also have
+      // `error.response === undefined` but represent backend latency,
+      // not connectivity - they are deliberately excluded so consumers
+      // branching on `isApiNetworkError` route them to `logger.error`
+      // and preserve Sentry visibility for latency regressions.
       const apiError: ApiError = {
         message: error.message || "An error occurred",
         status: error.response?.status ?? 0,
         data: error.response?.data,
-        isNetworkError: !error.response,
+        isNetworkError: !error.response && error.code !== "ECONNABORTED",
       };
       /* eslint-enable @typescript-eslint/no-unsafe-member-access */
 

@@ -36,10 +36,14 @@ describe("apiFactory", () => {
       }
     });
 
-    it("axios timeouts (no response) are treated as network errors (status: 0)", async () => {
-      // axios surfaces timeouts as `Error: timeout of Xms exceeded` with
-      // no `response` field - same shape as offline. Pin this so callers
-      // branching on isApiNetworkError pick up timeouts too.
+    it("axios timeouts (ECONNABORTED) are NOT treated as network errors", async () => {
+      // axios timeouts share the no-response shape with true connectivity
+      // failures, but they represent backend latency, not connectivity.
+      // The interceptor uses `error.code === "ECONNABORTED"` to carve
+      // them out so consumers branching on isApiNetworkError route
+      // timeouts to logger.error and preserve Sentry visibility for
+      // latency regressions (rather than silently demoting them to
+      // breadcrumbs alongside offline events).
       const timeoutAdapter: AxiosAdapter = () =>
         Promise.reject(
           Object.assign(new Error("timeout of 15000ms exceeded"), {
@@ -54,8 +58,9 @@ describe("apiFactory", () => {
       } catch (caught) {
         const apiError = caught as ApiError;
         expect(apiError.status).toBe(0);
-        expect(apiError.isNetworkError).toBe(true);
-        expect(isApiNetworkError(apiError)).toBe(true);
+        expect(apiError.message).toBe("timeout of 15000ms exceeded");
+        expect(apiError.isNetworkError).toBe(false);
+        expect(isApiNetworkError(apiError)).toBe(false);
       }
     });
 

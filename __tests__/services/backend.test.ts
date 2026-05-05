@@ -624,6 +624,31 @@ describe("Backend Service - fetchCollectibles severity split", () => {
     expect(errorSpy).not.toHaveBeenCalled();
   });
 
+  it("logs error (NOT warn) on axios timeouts so latency regressions stay visible in Sentry", async () => {
+    // apiFactory carves timeouts out of the isNetworkError bucket
+    // (status: 0, isNetworkError: false, message: "timeout of ...").
+    // A timeout is backend latency, not connectivity, so the
+    // fetchCollectibles catch must take the error branch - not the
+    // warn branch shared with offline events. Without this carve-out
+    // we'd silently demote slow/hung backends and lose Sentry signal
+    // for latency regressions.
+    const timeoutError = {
+      message: "timeout of 15000ms exceeded",
+      status: 0,
+      isNetworkError: false,
+    };
+    mockV2Post.mockRejectedValue(timeoutError);
+
+    await expect(fetchCollectibles(params)).rejects.toEqual(timeoutError);
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      "backendApi.fetchCollectibles",
+      "Error fetching collectibles",
+      timeoutError,
+    );
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
   it("logs error on backend response errors (4xx/5xx)", async () => {
     const backendError = {
       message: "Internal Server Error",
