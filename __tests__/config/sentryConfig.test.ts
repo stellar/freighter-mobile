@@ -1,7 +1,11 @@
 /* eslint-disable @fnando/consistent-import/consistent-import */
 import type { ErrorEvent } from "@sentry/core";
 import * as Sentry from "@sentry/react-native";
-import { PASSWORD_TYPO_MESSAGES, initializeSentry } from "config/sentryConfig";
+import {
+  PASSWORD_TYPO_MESSAGES,
+  initializeSentry,
+  scrubStrKeys,
+} from "config/sentryConfig";
 import enTranslations from "i18n/locales/en/translations.json";
 import ptTranslations from "i18n/locales/pt/translations.json";
 
@@ -57,6 +61,20 @@ const runBeforeSend = (message: string): ErrorEvent | null => {
   } as unknown as ErrorEvent;
   // The hint argument is unused by the filter logic; pass an empty obj.
   return initOpts.beforeSend(event, {}) as ErrorEvent | null;
+};
+
+/**
+ * Drive beforeSend with a fully-shaped synthetic event so we can
+ * assert scrub behavior on event.message, event.exception values,
+ * and event.extra.message simultaneously.
+ */
+const runBeforeSendWith = (event: Partial<ErrorEvent>): ErrorEvent | null => {
+  initializeSentry();
+  const initOpts = mockedSentry.init.mock.calls[0]?.[0];
+  if (!initOpts?.beforeSend) {
+    throw new Error("beforeSend not configured");
+  }
+  return initOpts.beforeSend(event as ErrorEvent, {}) as ErrorEvent | null;
 };
 
 describe("sentryConfig.beforeSend filters", () => {
@@ -185,6 +203,128 @@ describe("sentryConfig.beforeSend filters", () => {
       const result = runBeforeSend("Error: timeout of 15000ms exceeded");
       expect(result).not.toBeNull();
       expect(mockedSentry.addBreadcrumb).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("scrubStrKeys (Stellar StrKey identifier scrubber)", () => {
+    // Real-shape Stellar StrKey samples for the regex (G/S + 55 base32).
+    const PUBLIC_KEY = `G${"A".repeat(55)}`;
+    const PUBLIC_KEY_2 = `G${"Z".repeat(55)}`;
+    const SECRET_SEED = `S${"A".repeat(55)}`;
+
+    describe("unit: scrubStrKeys helper", () => {
+      it("replaces a publicKey with G***", () => {
+        expect(scrubStrKeys(`Account ${PUBLIC_KEY} not found`)).toBe(
+          "Account G*** not found",
+        );
+      });
+
+      it("replaces a secret seed with S*** (defense-in-depth)", () => {
+        // Secret seeds should NEVER reach this code path - they're meant
+        // to stay encrypted in the keychain. This is a last-line defense.
+        expect(scrubStrKeys(`Decryption failed for ${SECRET_SEED}`)).toBe(
+          "Decryption failed for S***",
+        );
+      });
+
+      it("replaces multiple StrKeys in the same string", () => {
+        expect(scrubStrKeys(`From ${PUBLIC_KEY} to ${PUBLIC_KEY_2}`)).toBe(
+          "From G*** to G***",
+        );
+      });
+
+      it("returns undefined for undefined input", () => {
+        expect(scrubStrKeys(undefined)).toBeUndefined();
+      });
+
+      it("returns the string unchanged when no StrKey is present", () => {
+        const msg = "Failed to fetch token details";
+        expect(scrubStrKeys(msg)).toBe(msg);
+      });
+
+      it("does NOT match wrong prefix (e.g. A-prefixed 56-char string)", () => {
+        const fake = `A${PUBLIC_KEY.slice(1)}`; // 56 chars, wrong prefix
+        expect(scrubStrKeys(`Foo ${fake} bar`)).toBe(`Foo ${fake} bar`);
+      });
+
+      it("does NOT match wrong length (54 or 57 chars with G prefix)", () => {
+        const tooShort = PUBLIC_KEY.slice(0, -1); // 55 chars
+        const tooLong = `${PUBLIC_KEY}A`; // 57 chars
+        expect(scrubStrKeys(`${tooShort} ${tooLong}`)).toBe(
+          `${tooShort} ${tooLong}`,
+        );
+      });
+
+      it("does NOT match a 56-char run embedded inside a longer alphanumeric string", () => {
+        // Word-boundary anchors prevent partial matches inside larger
+        // alphanumeric runs (e.g. URL slugs without separators).
+        const embedded = `XXX${PUBLIC_KEY}XXX`;
+        expect(scrubStrKeys(embedded)).toBe(embedded);
+      });
+
+      it("matches a StrKey embedded in URL-shaped paths (separators are non-word chars)", () => {
+        expect(
+          scrubStrKeys(
+            `https://horizon.stellar.org/accounts/${PUBLIC_KEY}/operations`,
+          ),
+        ).toBe("https://horizon.stellar.org/accounts/G***/operations");
+      });
+    });
+
+    describe("integration: beforeSend applies scrub to event surfaces", () => {
+      it("scrubs event.exception.values[].value", () => {
+        const result = runBeforeSendWith({
+          type: undefined,
+          exception: {
+            values: [
+              {
+                type: "Error",
+                value: `Failed for ${PUBLIC_KEY}`,
+              },
+            ],
+          },
+        }) as ErrorEvent;
+
+        expect(result?.exception?.values?.[0].value).toBe("Failed for G***");
+      });
+
+      it("scrubs event.message (captureMessage path)", () => {
+        const result = runBeforeSendWith({
+          type: undefined,
+          message: `Operation failed for account ${PUBLIC_KEY}`,
+        }) as ErrorEvent;
+
+        expect(result?.message).toBe("Operation failed for account G***");
+      });
+
+      it("scrubs event.extra.message (the logger.error message-into-extras path)", () => {
+        const result = runBeforeSendWith({
+          type: undefined,
+          exception: { values: [{ type: "Error", value: "boom" }] },
+          extra: {
+            message: `User-friendly description for ${PUBLIC_KEY}`,
+          },
+        }) as ErrorEvent;
+
+        expect(result?.extra?.message).toBe(
+          "User-friendly description for G***",
+        );
+      });
+
+      it("does NOT mutate event.contexts (opt-in users keep their unredacted publicKey for triage)", () => {
+        // The scrub targets raw message surfaces. The deliberate
+        // appContext.publicKey set by buildSentryContext is on a
+        // different field path and should be untouched.
+        const result = runBeforeSendWith({
+          type: undefined,
+          exception: { values: [{ type: "Error", value: "boom" }] },
+          contexts: {
+            appContext: { publicKey: PUBLIC_KEY },
+          },
+        }) as ErrorEvent;
+
+        expect(result?.contexts?.appContext?.publicKey).toBe(PUBLIC_KEY);
+      });
     });
   });
 });

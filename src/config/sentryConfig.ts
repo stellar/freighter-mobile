@@ -55,6 +55,33 @@ export const PASSWORD_TYPO_MESSAGES = [
 ];
 
 /**
+ * Stellar StrKey identifiers (publicKeys `G...` and secret seeds
+ * `S...`) are base32-encoded with a fixed prefix and exact 56-char
+ * length. The pattern is anchored on word boundaries so a 56-char
+ * substring inside a longer alphanumeric run does not match.
+ *
+ * Anything matching this pattern is scrubbed from event message
+ * surfaces in `beforeSend` (event.message, exception values,
+ * extras.message) so identifiers that get interpolated into log
+ * messages or embedded in thrown Error.message strings cannot
+ * leak verbatim to Sentry.
+ *
+ * Object-key redaction (sanitizeLogData with PII_FIELDS_LOWER)
+ * handles structured payloads. This pattern handles raw strings
+ * the key-based redactor can't reach.
+ */
+const STELLAR_STRKEY_PATTERN = /\b[GS][A-Z2-7]{55}\b/g;
+
+/**
+ * Replace any embedded Stellar StrKey with a short prefix sentinel
+ * ("G***" / "S***"). Preserves the prefix so triage can still
+ * distinguish a publicKey leak from a secret-seed leak (the latter
+ * is a critical bug — secrets should never reach this code path).
+ */
+export const scrubStrKeys = (s: string | undefined): string | undefined =>
+  s?.replace(STELLAR_STRKEY_PATTERN, (match) => `${match[0]}***`);
+
+/**
  * Builds common context data for Sentry events (similar to analytics).
  *
  * When analytics are enabled: Full context including connectivity info and public key
@@ -227,6 +254,25 @@ export const initializeSentry = (): void => {
 
         // eslint-disable-next-line no-param-reassign
         event.contexts.appContext = minimalContext;
+      }
+
+      // Defense-in-depth scrub for Stellar StrKey identifiers that
+      // may have been interpolated into log messages or embedded in
+      // thrown Error.message strings (libraries we don't control,
+      // future regressions in our own code). Object-key redaction
+      // already covers structured payloads; this catches the raw
+      // string surfaces it can't reach.
+      if (typeof event.message === "string") {
+        // eslint-disable-next-line no-param-reassign
+        event.message = scrubStrKeys(event.message);
+      }
+      event.exception?.values?.forEach((v) => {
+        // eslint-disable-next-line no-param-reassign
+        v.value = scrubStrKeys(v.value);
+      });
+      if (event.extra && typeof event.extra.message === "string") {
+        // eslint-disable-next-line no-param-reassign
+        event.extra.message = scrubStrKeys(event.extra.message);
       }
 
       return event;
