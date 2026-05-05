@@ -81,6 +81,39 @@ const STELLAR_STRKEY_PATTERN = /\b[GS][A-Z2-7]{55}\b/g;
 export const scrubStrKeys = (s: string | undefined): string | undefined =>
   s?.replace(STELLAR_STRKEY_PATTERN, (match) => `${match[0]}***`);
 
+const MAX_DEEP_SCRUB_DEPTH = 8;
+
+/**
+ * Recursively walk a structured value and scrub Stellar StrKeys from
+ * every string descendant. Used to defend against StrKeys embedded in
+ * structured payloads (event.extra.args, breadcrumb data) where field
+ * names alone can't predict every leak surface — e.g. a backend
+ * response with `owner` / `from` / `recipient` fields holding
+ * account IDs.
+ *
+ * Bounded recursion (depth cap) protects against malformed or
+ * cyclic input.
+ */
+const deepScrubStrKeys = (data: unknown, depth = 0): unknown => {
+  if (depth >= MAX_DEEP_SCRUB_DEPTH) {
+    return data;
+  }
+  if (typeof data === "string") {
+    return scrubStrKeys(data);
+  }
+  if (Array.isArray(data)) {
+    return data.map((item) => deepScrubStrKeys(item, depth + 1));
+  }
+  if (data && typeof data === "object") {
+    const out: Record<string, unknown> = {};
+    Object.entries(data as Record<string, unknown>).forEach(([k, v]) => {
+      out[k] = deepScrubStrKeys(v, depth + 1);
+    });
+    return out;
+  }
+  return data;
+};
+
 /**
  * Builds common context data for Sentry events (similar to analytics).
  *
@@ -260,7 +293,7 @@ export const initializeSentry = (): void => {
       // may have been interpolated into log messages or embedded in
       // thrown Error.message strings (libraries we don't control,
       // future regressions in our own code). Object-key redaction
-      // already covers structured payloads; this catches the raw
+      // already covers known PII fields; this catches the raw
       // string surfaces it can't reach.
       if (typeof event.message === "string") {
         // eslint-disable-next-line no-param-reassign
@@ -270,10 +303,21 @@ export const initializeSentry = (): void => {
         // eslint-disable-next-line no-param-reassign
         v.value = scrubStrKeys(v.value);
       });
-      if (event.extra && typeof event.extra.message === "string") {
+      // Deep-scrub structured payloads: event.extra (logger.error
+      // extras) and breadcrumb data (logger.warn args). Catches
+      // StrKeys nested in fields that aren't in PII_FIELDS_LOWER -
+      // e.g. backend response shapes with `owner` / `from` /
+      // `recipient` holding account IDs.
+      if (event.extra) {
         // eslint-disable-next-line no-param-reassign
-        event.extra.message = scrubStrKeys(event.extra.message);
+        event.extra = deepScrubStrKeys(event.extra) as Record<string, unknown>;
       }
+      event.breadcrumbs?.forEach((bc) => {
+        if (bc.data) {
+          // eslint-disable-next-line no-param-reassign
+          bc.data = deepScrubStrKeys(bc.data) as Record<string, unknown>;
+        }
+      });
 
       return event;
     },

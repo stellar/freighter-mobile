@@ -326,5 +326,122 @@ describe("sentryConfig.beforeSend filters", () => {
         expect(result?.contexts?.appContext?.publicKey).toBe(PUBLIC_KEY);
       });
     });
+
+    describe("deep scrub: event.extra.args (recursive walk)", () => {
+      // Object-key redaction (PII_FIELDS_LOWER) catches known field
+      // names. The deep scrub catches StrKeys embedded in any string
+      // value, regardless of field name - the leak surface for
+      // backend payload shapes with `owner` / `from` / `recipient`.
+
+      it("scrubs StrKey nested inside event.extra.args (logger.error structured args)", () => {
+        const result = runBeforeSendWith({
+          type: undefined,
+          exception: { values: [{ type: "Error", value: "boom" }] },
+          extra: {
+            args: [{ owner: PUBLIC_KEY, otherField: "ok" }],
+          },
+        }) as ErrorEvent;
+
+        const args = (
+          result?.extra?.args as Array<{
+            owner?: string;
+            otherField?: string;
+          }>
+        )[0];
+        expect(args.owner).toBe("G***");
+        expect(args.otherField).toBe("ok");
+      });
+
+      it("scrubs StrKeys at depth (nested objects and arrays)", () => {
+        const result = runBeforeSendWith({
+          type: undefined,
+          exception: { values: [{ type: "Error", value: "boom" }] },
+          extra: {
+            payload: {
+              data: {
+                collections: [
+                  { collectibles: [{ owner: PUBLIC_KEY, name: "ok" }] },
+                ],
+              },
+            },
+          },
+        }) as ErrorEvent;
+
+        const { owner } = (
+          result?.extra?.payload as {
+            data: {
+              collections: Array<{ collectibles: Array<{ owner: string }> }>;
+            };
+          }
+        ).data.collections[0].collectibles[0];
+        expect(owner).toBe("G***");
+      });
+
+      it("preserves non-string types (numbers, booleans, null) in extras", () => {
+        const result = runBeforeSendWith({
+          type: undefined,
+          exception: { values: [{ type: "Error", value: "boom" }] },
+          extra: {
+            count: 42,
+            enabled: true,
+            ratio: null,
+            note: `account ${PUBLIC_KEY}`,
+          },
+        }) as ErrorEvent;
+
+        expect(result?.extra?.count).toBe(42);
+        expect(result?.extra?.enabled).toBe(true);
+        expect(result?.extra?.ratio).toBeNull();
+        expect(result?.extra?.note).toBe("account G***");
+      });
+
+      it("scrubs StrKeys inside breadcrumb.data (logger.warn args path)", () => {
+        // logger.warn ships args as breadcrumb data. A backend
+        // payload shape with `owner` would slip past sanitizeLogData's
+        // field-name redaction.
+        const result = runBeforeSendWith({
+          type: undefined,
+          exception: { values: [{ type: "Error", value: "boom" }] },
+          breadcrumbs: [
+            {
+              category: "fetchCollectibles",
+              message: "Backend error for collection",
+              level: "warning",
+              data: {
+                args: [
+                  {
+                    collection: { owner: PUBLIC_KEY, name: "Soroban Frogs" },
+                  },
+                ],
+              },
+            },
+          ],
+        }) as ErrorEvent;
+
+        const { owner } = (
+          result?.breadcrumbs?.[0].data?.args as Array<{
+            collection: { owner: string };
+          }>
+        )[0].collection;
+        expect(owner).toBe("G***");
+      });
+
+      it("does not throw on cyclic structures (depth-cap behavior)", () => {
+        // Defense: a cyclic value should not crash the scrubber.
+        // Sentry's serializer would also fail on cycles, but if
+        // anything ever passes one through to beforeSend we must not
+        // throw and drop the event entirely.
+        const cyclic: Record<string, unknown> = { a: PUBLIC_KEY };
+        cyclic.self = cyclic;
+
+        expect(() =>
+          runBeforeSendWith({
+            type: undefined,
+            exception: { values: [{ type: "Error", value: "boom" }] },
+            extra: { cyclic },
+          }),
+        ).not.toThrow();
+      });
+    });
   });
 });
