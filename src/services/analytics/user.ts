@@ -43,9 +43,13 @@ export const getUserId = async (): Promise<string> => {
 
       return newId;
     } catch (setError) {
-      // Session-only fallback is in place; not actionable as a
-      // breadcrumb for downstream errors.
-      logger.info(
+      // Session-only fallback is in place, but if AsyncStorage
+      // rejects writes in production, every launch generates a
+      // fresh session ID and we lose cross-session analytics +
+      // Sentry user correlation. Warn so we have a breadcrumb
+      // signal of that drift without flooding Sentry (this fires
+      // at most once per launch).
+      logger.warn(
         DEBUG_CONFIG.LOG_PREFIX,
         "Failed to persist user ID, using session-only",
         setError,
