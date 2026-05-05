@@ -368,26 +368,10 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
         (collection) => "error" in collection,
       );
       if (errorCollections.length > 0) {
-        // If every collection in the fetch came back as an error, that's
-        // a likely systemic backend regression (metadata service down,
-        // parser bug, gateway outage) and the gallery would otherwise
-        // render empty silently. Surface a single Sentry event for the
-        // outage signal - per-collection breadcrumbs below give the
-        // forensic detail.
-        if (errorCollections.length === collections.length) {
-          // Pass an Error as the third arg (the captured-exception slot)
-          // so Sentry's grouping uses the stable Error.message. Putting
-          // `{ count }` directly in that slot would normalize to a
-          // generic Error embedding the count, fragmenting the outage
-          // into one issue per collection count.
-          logger.error(
-            "fetchCollectibles",
-            "All collections returned backend errors",
-            new Error("All collections returned backend errors"),
-            { count: collections.length },
-          );
-        }
-
+        // Per-collection breadcrumbs first - Sentry breadcrumbs only
+        // attach to events captured AFTER them, so emitting these
+        // before any aggregate logger.error below ensures the
+        // breadcrumb chain shows up on the captured event.
         errorCollections.forEach((errorCollection) => {
           const { error } = errorCollection;
           const tokenErrors = Array.isArray(error.tokens) ? error.tokens : [];
@@ -402,7 +386,7 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
           //
           // Always emit a per-collection breadcrumb so the collection
           // address is captured on any downstream Sentry event - including
-          // the all-failed aggregate above. Without this, an outage where
+          // the all-failed aggregate below. Without this, an outage where
           // every collection fails via the per-token shape would surface
           // only the aggregate event with no breadcrumb chain showing
           // which collections were affected.
@@ -415,8 +399,8 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
           // Per-token failures stay at info: a single collection can have
           // hundreds of tokens, and emitting one breadcrumb per token
           // would blow the Sentry breadcrumb buffer (~100/session cap)
-          // for galleries with widespread metadata issues. Console-only
-          // diagnostic for local dev.
+          // for galleries with widespread metadata issues. Dev-only
+          // console output (no-op in production).
           tokenErrors.forEach((token) => {
             logger.info(
               "fetchCollectibles",
@@ -424,6 +408,40 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
             );
           });
         });
+
+        // If every collection in the fetch came back as a REAL error,
+        // that's a likely systemic backend regression (metadata service
+        // down, parser bug, gateway outage). Filter out the backend's
+        // expected empty-collection signal so the aggregate doesn't
+        // fire on the routine empty-gallery path: the backend always
+        // tries hardcoded MP contracts, and a user who owns no MP NFTs
+        // sees every collection come back with "No collectibles
+        // available for this collection.", which is not an outage.
+        // Case-insensitive match in case the backend ever shifts
+        // casing on the prefix.
+        const EMPTY_COLLECTION_PATTERN = /no collectibles available/i;
+        const realFailureCollections = errorCollections.filter(
+          (errorCollection) =>
+            !EMPTY_COLLECTION_PATTERN.test(
+              errorCollection.error.error_message ?? "",
+            ),
+        );
+        if (
+          realFailureCollections.length === collections.length &&
+          collections.length > 0
+        ) {
+          // Pass an Error as the third arg (the captured-exception slot)
+          // so Sentry's grouping uses the stable Error.message. Putting
+          // `{ count }` directly in that slot would normalize to a
+          // generic Error embedding the count, fragmenting the outage
+          // into one issue per collection count.
+          logger.error(
+            "fetchCollectibles",
+            "All collections returned backend errors",
+            new Error("All collections returned backend errors"),
+            { count: collections.length },
+          );
+        }
       }
 
       // Filter collections that are owned by the publicKey
