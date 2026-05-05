@@ -175,12 +175,12 @@ Each level has different Sentry behavior. Pick the one that matches the
 failure's actionability — the goal is that **anything that reaches Sentry as a
 top-level event is something an engineer should look at**.
 
-| Level            | Sentry behavior                                                                     | Use for                                                                                                  |
-| ---------------- | ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `logger.error()` | Top-level Sentry issue (`captureException`). Counts against quota. Pages on alerts. | Real bugs and load-bearing failures that need engineering action.                                        |
-| `logger.warn()`  | Sentry breadcrumb. Ships only attached to a real captured event. Zero quota cost.   | Expected-but-noteworthy conditions that provide forensic context if something downstream goes wrong.     |
-| `logger.info()`  | Console only. Never reaches Sentry.                                                 | Routine operational signal useful for local dev. Also use to protect the breadcrumb buffer in hot loops. |
-| `logger.debug()` | Console only.                                                                       | Verbose diagnostic during development.                                                                   |
+| Level            | Sentry behavior                                                                                        | Use for                                                                                                  |
+| ---------------- | ------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| `logger.error()` | Top-level Sentry issue (`captureException`). Counts against quota. Pages on alerts.                    | Real bugs and load-bearing failures that need engineering action.                                        |
+| `logger.warn()`  | Sentry breadcrumb. Ships only attached to a real captured event. Zero quota cost.                      | Expected-but-noteworthy conditions that provide forensic context if something downstream goes wrong.     |
+| `logger.info()`  | Dev-only console output. **No-op in production builds** (the production Sentry adapter discards them). | Routine operational signal useful for local dev. Also use to protect the breadcrumb buffer in hot loops. |
+| `logger.debug()` | Dev-only console output. **No-op in production builds.**                                               | Verbose diagnostic during development.                                                                   |
 
 ### Choosing the level
 
