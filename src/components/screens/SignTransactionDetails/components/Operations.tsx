@@ -101,11 +101,10 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
     // still proceeds with sign. Wrap to avoid an unhandled promise rejection
     // bubbling to the global handler (mechanism=onunhandledrejection).
     scanOperationTokens().catch((error) => {
-      logger.warn(
-        "Operations",
-        "Pre-flight token scan failed",
-        error instanceof Error ? error.message : String(error),
-      );
+      // Pass the Error through directly - sanitizeLogData extracts
+      // name/message/stack so the breadcrumb keeps the full
+      // diagnostic instead of just the message string.
+      logger.warn("Operations", "Pre-flight token scan failed", error);
     });
   }, [type, networkDetails.network, operation]);
 
@@ -1087,11 +1086,10 @@ const RenderOperationArgsByType = ({ operation }: { operation: Operation }) => {
     // still proceeds with sign. Wrap to avoid an unhandled promise rejection
     // bubbling to the global handler (mechanism=onunhandledrejection).
     scanOperationTokens().catch((error) => {
-      logger.warn(
-        "Operations",
-        "Pre-flight token scan failed",
-        error instanceof Error ? error.message : String(error),
-      );
+      // Pass the Error through directly - sanitizeLogData extracts
+      // name/message/stack so the breadcrumb keeps the full
+      // diagnostic instead of just the message string.
+      logger.warn("Operations", "Pre-flight token scan failed", error);
     });
   }, [type, networkDetails.network, operation]);
 
