@@ -12,16 +12,10 @@ import { getAccount } from "services/stellar";
 import { dataStorage } from "services/storage/storageFactory";
 import { create } from "zustand";
 
-export enum ContactType {
-  Federation = "federation",
-  Address = "address",
-}
-
 interface Contact {
   id: string;
   address: string;
   name?: string;
-  type: ContactType;
 }
 
 interface SendStore {
@@ -89,10 +83,6 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
             id: `recent-${index}`,
             address: addr,
             name,
-            type:
-              name && isFederationAddress(name)
-                ? ContactType.Federation
-                : ContactType.Address,
           } as Contact;
         })
         .filter(
@@ -126,18 +116,12 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
 
       let updatedAddresses: Contact[];
 
-      const federationType =
-        normalizedName && isFederationAddress(normalizedName)
-          ? ContactType.Federation
-          : ContactType.Address;
-
       if (existingIndex === -1) {
         updatedAddresses = [
           {
             id: `recent-${Date.now()}`,
             address,
             name: normalizedName,
-            type: federationType,
           },
           ...recentAddresses,
         ];
@@ -147,7 +131,7 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
           return;
         }
         updatedAddresses = [
-          { ...existing, name: normalizedName, type: federationType },
+          { ...existing, name: normalizedName },
           ...recentAddresses.filter((_, i) => i !== existingIndex),
         ];
       }
@@ -296,7 +280,6 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
         id: `search-${Date.now()}`,
         address: resolvedAddress,
         name: fedAddress || undefined,
-        type: fedAddress ? ContactType.Federation : ContactType.Address,
       };
 
       set({

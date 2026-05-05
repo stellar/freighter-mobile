@@ -2,7 +2,7 @@ import { Federation, StrKey } from "@stellar/stellar-sdk";
 import { act } from "@testing-library/react-hooks";
 import { STORAGE_KEYS } from "config/constants";
 import { getActiveAccountPublicKey } from "ducks/auth";
-import { ContactType, useSendRecipientStore } from "ducks/sendRecipient";
+import { useSendRecipientStore } from "ducks/sendRecipient";
 import * as stellarHelpers from "helpers/stellar";
 import { getAccount } from "services/stellar";
 import { dataStorage } from "services/storage/storageFactory";
@@ -153,7 +153,6 @@ describe("sendRecipient Duck", () => {
             id: "recent-1",
             address: "existingAddress",
             name: "alice*fed.com",
-            type: ContactType.Federation,
           },
         ],
       });
@@ -274,7 +273,6 @@ describe("sendRecipient Duck", () => {
           {
             id: "recent-1",
             address: "existingAddress",
-            type: ContactType.Address,
           },
         ],
       });
@@ -330,7 +328,7 @@ describe("sendRecipient Duck", () => {
     act(() => {
       store.setState({
         searchResults: [
-          { id: "1", address: "address", type: ContactType.Address },
+          { id: "1", address: "address" },
         ],
         destinationAddress: "address",
         federationAddress: "fed*address",
