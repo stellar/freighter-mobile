@@ -114,7 +114,10 @@ export const normalizeError = (error: unknown): Error => {
   // Network errors (fetch, axios, etc.)
   if ("code" in error || "status" in error || "statusCode" in error) {
     const errorObj = error as Record<string, unknown>;
-    const code = errorObj.code || errorObj.status || errorObj.statusCode;
+    // Use `??` so a numeric `status: 0` (apiFactory's "no response"
+    // sentinel) flows through as "Network error 0: ..." rather than
+    // falling through to undefined.
+    const code = errorObj.code ?? errorObj.status ?? errorObj.statusCode;
     const message =
       errorObj.message || errorObj.error || "Network request failed";
 

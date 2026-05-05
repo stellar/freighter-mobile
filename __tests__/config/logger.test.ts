@@ -300,4 +300,19 @@ describe("normalizeError", () => {
     expect(result.message).toContain("Network error 500");
     expect(result.message).toContain("Network Error");
   });
+
+  it("formats apiFactory's no-response ApiError (status: 0) as 'Network error 0:', not 'Network error undefined:'", () => {
+    // apiFactory throws ApiError with `status: 0` and
+    // `isNetworkError: true` when axios sees no response. The fallback
+    // chain in normalizeError must use `??` (not `||`) so the
+    // numeric 0 is preserved and the captured Error.message tells the
+    // truth about what failed.
+    const apiError = {
+      message: "Network Error",
+      status: 0,
+      isNetworkError: true,
+    };
+    const result = normalizeError(apiError);
+    expect(result.message).toBe("Network error 0: Network Error");
+  });
 });
