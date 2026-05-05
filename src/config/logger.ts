@@ -385,6 +385,7 @@ const PII_FIELDS_LOWER = [
   "coordinates",
   "auth",
   "key",
+  "apiKey",
   "secret",
   "secretKey",
   "recovery",
