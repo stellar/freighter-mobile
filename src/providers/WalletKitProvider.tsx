@@ -1028,11 +1028,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         new Error(
           "WalletConnect transaction request origin does not match any active session hostname",
         ),
-        {
-          transactionRequestOrigin,
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-          xdr: sessionRequest.params?.request?.params?.xdr,
-        },
+        { transactionRequestOrigin },
       );
 
       rejectSessionRequest({
