@@ -1,7 +1,9 @@
 /* eslint-disable @fnando/consistent-import/consistent-import */
 import type { ErrorEvent } from "@sentry/core";
 import * as Sentry from "@sentry/react-native";
-import { initializeSentry } from "config/sentryConfig";
+import { PASSWORD_TYPO_MESSAGES, initializeSentry } from "config/sentryConfig";
+import enTranslations from "i18n/locales/en/translations.json";
+import ptTranslations from "i18n/locales/pt/translations.json";
 
 jest.mock("@sentry/react-native", () => ({
   init: jest.fn(),
@@ -101,16 +103,26 @@ describe("sentryConfig.beforeSend filters", () => {
   });
 
   describe("breadcrumb-downgrade patterns (drop event, add breadcrumb)", () => {
-    it("downgrades 'Invalid password' to a breadcrumb", () => {
-      expect(
-        runBeforeSend("Error: Invalid password. Please try again."),
-      ).toBeNull();
-      expect(mockedSentry.addBreadcrumb).toHaveBeenCalledWith(
-        expect.objectContaining({
-          category: "user-input-validation",
-          level: "info",
-        }),
-      );
+    it.each(PASSWORD_TYPO_MESSAGES.map((m) => [m]))(
+      "downgrades the user-typo password message %s to a breadcrumb",
+      (message) => {
+        expect(runBeforeSend(message)).toBeNull();
+        expect(mockedSentry.addBreadcrumb).toHaveBeenCalledWith(
+          expect.objectContaining({
+            category: "user-input-validation",
+            level: "info",
+          }),
+        );
+      },
+    );
+
+    it("does NOT drop the corruption signal 'Invalid password or corrupted data.'", () => {
+      // encryptPassword.ts throws this exact message when decryption
+      // fails - real signal of storage loss / data corruption, must
+      // not be swallowed by the user-typo filter.
+      const result = runBeforeSend("Invalid password or corrupted data.");
+      expect(result).not.toBeNull();
+      expect(mockedSentry.addBreadcrumb).not.toHaveBeenCalled();
     });
 
     it("downgrades 'No stored password found for biometric authentication' to a breadcrumb", () => {
@@ -144,6 +156,24 @@ describe("sentryConfig.beforeSend filters", () => {
       const result = runBeforeSend(msg);
       expect(result).not.toBeNull();
       expect(mockedSentry.addBreadcrumb).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("PASSWORD_TYPO_MESSAGES stay in sync with i18n source", () => {
+    // Tripwire: if someone changes the user-facing copy in
+    // `translations.json` without also updating PASSWORD_TYPO_MESSAGES,
+    // the noise filter would silently stop matching and these typos
+    // would start landing in Sentry. Fail the build instead.
+    it("contains the English authStore.error.invalidPassword string", () => {
+      expect(PASSWORD_TYPO_MESSAGES).toContain(
+        enTranslations.authStore.error.invalidPassword,
+      );
+    });
+
+    it("contains the Portuguese authStore.error.invalidPassword string", () => {
+      expect(PASSWORD_TYPO_MESSAGES).toContain(
+        ptTranslations.authStore.error.invalidPassword,
+      );
     });
   });
 

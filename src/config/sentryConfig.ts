@@ -28,6 +28,33 @@ export const SENTRY_CONFIG = {
 } as const;
 
 /**
+ * User-typo password messages we downgrade in `beforeSend`.
+ *
+ * A cleaner long-term fix would be at source: `useAuthenticationStore.signIn`
+ * (`ducks/auth.ts`) rethrows on wrong-password and the LockScreen caller
+ * is fire-and-forget, so the rejection ends up at Sentry's global
+ * handler. Removing that rethrow (or having LockScreen catch it) would
+ * stop the events from ever reaching Sentry. We don't do that here
+ * because changing the action's throw contract risks affecting other
+ * auth flows (biometric login, settings password gates, re-auth) and
+ * wants its own focused review. This filter is a contained workaround
+ * until the long-term fix is implemented.
+ *
+ * Kept as exact strings (not substrings) because a substring match on
+ * "Invalid password" would also catch "Invalid password or corrupted
+ * data." from `helpers/encryptPassword.ts`, which is a real corruption
+ * signal, not a user typo.
+ *
+ * The corresponding `sentryConfig.test.ts` block asserts these stay in
+ * sync with the i18n source so a copy change in `translations.json`
+ * will trip the test rather than silently disabling the filter.
+ */
+export const PASSWORD_TYPO_MESSAGES = [
+  "Invalid password. Please try again.",
+  "Senha inválida. Por favor, tente novamente.",
+];
+
+/**
  * Builds common context data for Sentry events (similar to analytics).
  *
  * When analytics are enabled: Full context including connectivity info and public key
@@ -152,12 +179,11 @@ export const initializeSentry = (): void => {
       // breadcrumb for any subsequent event in the same session and drop
       // the current one.
 
-      // User typed a wrong password - handled error from user input,
-      // not a bug. The mnemonic case is handled at source
-      // (verifyMnemonicPhrase logs at warn), so any "Invalid mnemonic"
-      // event reaching here is from a post-validation path (e.g.
-      // corrupted stored mnemonic) and should pass through.
-      if (noiseMessage.includes("Invalid password")) {
+      // User typed a wrong password - see PASSWORD_TYPO_MESSAGES above
+      // for the source-fix tradeoff. Match against exact strings to
+      // avoid catching neighbouring messages like "Invalid password or
+      // corrupted data." (a real corruption signal).
+      if (PASSWORD_TYPO_MESSAGES.includes(noiseMessage)) {
         Sentry.addBreadcrumb({
           category: "user-input-validation",
           message: noiseMessage,
