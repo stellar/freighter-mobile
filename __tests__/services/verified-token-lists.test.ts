@@ -73,6 +73,7 @@ describe("Verified Token Lists", () => {
     expect(warnSpy).toHaveBeenCalledWith(
       "fetchVerifiedTokens",
       "Network unreachable for token list",
+      networkError,
       { url: "mock://uri" },
     );
     expect(errorSpy).not.toHaveBeenCalled();

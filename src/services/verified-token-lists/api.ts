@@ -44,9 +44,8 @@ export const fetchVerifiedTokens = async ({
         logger.warn(
           "fetchVerifiedTokens",
           "Network unreachable for token list",
-          {
-            url,
-          },
+          err,
+          { url },
         );
       } else {
         logger.error(

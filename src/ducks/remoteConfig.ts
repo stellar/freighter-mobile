@@ -196,6 +196,7 @@ export const useRemoteConfigStore = create<RemoteConfigState>()((set, get) => ({
         logger.warn(
           "remoteConfig.fetchFeatureFlags",
           "Failed to fetch feature flags (device offline)",
+          error,
         );
       } else {
         logger.error(

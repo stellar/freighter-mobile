@@ -620,6 +620,7 @@ describe("Backend Service - fetchCollectibles severity split", () => {
     expect(warnSpy).toHaveBeenCalledWith(
       "backendApi.fetchCollectibles",
       expect.stringContaining("Network unreachable"),
+      networkError,
     );
     expect(errorSpy).not.toHaveBeenCalled();
   });

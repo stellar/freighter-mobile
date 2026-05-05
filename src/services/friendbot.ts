@@ -25,7 +25,11 @@ export const fundAccount = async (publicKey: string, network: NETWORKS) => {
     await friendBot.get(`?addr=${encodeURIComponent(publicKey)}`);
   } catch (error) {
     if (isApiNetworkError(error)) {
-      logger.warn("friendbot", "Network unreachable while funding account");
+      logger.warn(
+        "friendbot",
+        "Network unreachable while funding account",
+        error,
+      );
     } else {
       logger.error("friendbot", "Error funding account", error);
     }

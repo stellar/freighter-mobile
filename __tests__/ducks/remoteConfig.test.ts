@@ -242,6 +242,7 @@ describe("remoteConfig duck", () => {
       expect(logger.warn).toHaveBeenCalledWith(
         "remoteConfig.fetchFeatureFlags",
         expect.stringContaining("offline"),
+        expect.any(Error),
       );
       expect(logger.error).not.toHaveBeenCalled();
     });

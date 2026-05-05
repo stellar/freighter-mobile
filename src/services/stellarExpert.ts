@@ -46,7 +46,11 @@ export const searchToken = async (
     }
 
     if (isApiNetworkError(error)) {
-      logger.warn("stellarExpert", "Network unreachable while searching token");
+      logger.warn(
+        "stellarExpert",
+        "Network unreachable while searching token",
+        error,
+      );
     } else {
       logger.error("stellarExpert", "Error searching token", error);
     }

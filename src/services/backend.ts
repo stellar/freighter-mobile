@@ -482,6 +482,7 @@ export const getTokenDetails = async ({
         logger.warn(
           "backendApi.getTokenDetails",
           "Network unreachable while fetching token details",
+          error,
         );
       } else {
         logger.error(
@@ -546,6 +547,7 @@ export const isSacContractExecutable = async (
       logger.warn(
         "backendApi.isSacContractExecutable",
         "Network unreachable while checking SAC contract",
+        error,
       );
     } else {
       logger.error(
@@ -611,6 +613,7 @@ export const getIndexerAccountHistory = async ({
       logger.warn(
         "backendApi.getAccountHistory",
         "Network unreachable while fetching account history",
+        error,
       );
     } else {
       logger.error(
@@ -1162,6 +1165,7 @@ export const fetchCollectibles = async ({
       logger.warn(
         "backendApi.fetchCollectibles",
         "Network unreachable while fetching collectibles",
+        error,
       );
     } else {
       logger.error(
