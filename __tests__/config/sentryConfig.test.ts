@@ -110,7 +110,7 @@ describe("sentryConfig.beforeSend filters", () => {
         expect(mockedSentry.addBreadcrumb).toHaveBeenCalledWith(
           expect.objectContaining({
             category: "user-input-validation",
-            level: "info",
+            level: "warning",
           }),
         );
       },
@@ -134,7 +134,7 @@ describe("sentryConfig.beforeSend filters", () => {
       expect(mockedSentry.addBreadcrumb).toHaveBeenCalledWith(
         expect.objectContaining({
           category: "biometric-state",
-          level: "info",
+          level: "warning",
         }),
       );
     });

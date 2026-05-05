@@ -187,7 +187,7 @@ export const initializeSentry = (): void => {
         Sentry.addBreadcrumb({
           category: "user-input-validation",
           message: noiseMessage,
-          level: "info",
+          level: "warning",
         });
         return null;
       }
@@ -204,7 +204,7 @@ export const initializeSentry = (): void => {
         Sentry.addBreadcrumb({
           category: "biometric-state",
           message: noiseMessage,
-          level: "info",
+          level: "warning",
         });
         return null;
       }
