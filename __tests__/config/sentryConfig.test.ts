@@ -426,21 +426,46 @@ describe("sentryConfig.beforeSend filters", () => {
         expect(owner).toBe("G***");
       });
 
-      it("does not throw on cyclic structures (depth-cap behavior)", () => {
-        // Defense: a cyclic value should not crash the scrubber.
-        // Sentry's serializer would also fail on cycles, but if
-        // anything ever passes one through to beforeSend we must not
-        // throw and drop the event entirely.
+      it("replaces cyclic substructures with a sentinel instead of returning the original reference", () => {
+        // At the depth cap the walker must return a sentinel string,
+        // not the original subtree, otherwise a cyclic ref escapes
+        // into event.extra (defense-in-depth even if Sentry's
+        // serializer would also handle cycles). The positive
+        // guarantee here is that the post-scrub event payload is
+        // JSON-serializable - no live cycles survived.
         const cyclic: Record<string, unknown> = { a: PUBLIC_KEY };
         cyclic.self = cyclic;
 
-        expect(() =>
-          runBeforeSendWith({
-            type: undefined,
-            exception: { values: [{ type: "Error", value: "boom" }] },
-            extra: { cyclic },
-          }),
-        ).not.toThrow();
+        const result = runBeforeSendWith({
+          type: undefined,
+          exception: { values: [{ type: "Error", value: "boom" }] },
+          extra: { cyclic },
+        }) as ErrorEvent;
+
+        expect(() => JSON.stringify(result?.extra)).not.toThrow();
+      });
+
+      it("replaces values past the depth cap with a sentinel string (so deep StrKeys cannot leak)", () => {
+        // The walker enters event.extra at depth 0; each property
+        // descent increments depth. With MAX_DEEP_SCRUB_DEPTH = 8,
+        // a value reached at depth 8 is replaced with the sentinel
+        // (not the original subtree).
+        const deep = {
+          a: { b: { c: { d: { e: { f: { g: { h: { i: PUBLIC_KEY } } } } } } } },
+        };
+
+        const result = runBeforeSendWith({
+          type: undefined,
+          exception: { values: [{ type: "Error", value: "boom" }] },
+          extra: { deep },
+        }) as ErrorEvent;
+
+        // The strongest leak guarantee: the original publicKey
+        // string must not appear ANYWHERE in the serialized payload.
+        // The depth cap clips the subtree before it can be walked
+        // for StrKey replacement.
+        expect(JSON.stringify(result?.extra)).not.toContain(PUBLIC_KEY);
+        expect(JSON.stringify(result?.extra)).toContain("[MAX_DEPTH_EXCEEDED]");
       });
     });
   });

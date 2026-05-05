@@ -82,6 +82,7 @@ export const scrubStrKeys = (s: string | undefined): string | undefined =>
   s?.replace(STELLAR_STRKEY_PATTERN, (match) => `${match[0]}***`);
 
 const MAX_DEEP_SCRUB_DEPTH = 8;
+const DEEP_SCRUB_DEPTH_SENTINEL = "[MAX_DEPTH_EXCEEDED]";
 
 /**
  * Recursively walk a structured value and scrub Stellar StrKeys from
@@ -91,12 +92,13 @@ const MAX_DEEP_SCRUB_DEPTH = 8;
  * response with `owner` / `from` / `recipient` fields holding
  * account IDs.
  *
- * Bounded recursion (depth cap) protects against malformed or
- * cyclic input.
+ * At the depth cap, return a sentinel string instead of the original
+ * subtree so cyclic structures cannot escape into the Sentry payload
+ * and StrKeys nested past the cap cannot leak unscrubbed.
  */
 const deepScrubStrKeys = (data: unknown, depth = 0): unknown => {
   if (depth >= MAX_DEEP_SCRUB_DEPTH) {
-    return data;
+    return DEEP_SCRUB_DEPTH_SENTINEL;
   }
   if (typeof data === "string") {
     return scrubStrKeys(data);
