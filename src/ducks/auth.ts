@@ -613,12 +613,15 @@ const getTemporaryStore = async (
       SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE,
     );
     if (!temporaryStore) {
-      // We have a valid hashKey but the encrypted temporary store is
-      // gone - real storage corruption, not the normal locked state
-      // (the security check above already filtered NOT_AUTHENTICATED).
-      // Downstream callers throw on null, so surface this so the
-      // regression doesn't disappear from Sentry.
-      logger.error(
+      // Fires transiently during fresh-account creation: the signup
+      // flow wipes prior account state but persisted authStatus +
+      // hashKey can be momentarily out of sync with the cleared
+      // temporary store. Real corruption signals still leave a
+      // breadcrumb on any downstream captured event - the user gets
+      // bounced to the lock screen and the auth-failure path fires
+      // its own logger calls. Warn preserves that visibility without
+      // firing one top-level Sentry event per signup.
+      logger.warn(
         "[getTemporaryStore]",
         "Temporary store data not found for an active session - possible storage corruption",
         new Error("Temporary store missing in active session"),
