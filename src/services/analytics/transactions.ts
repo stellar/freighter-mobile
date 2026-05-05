@@ -2,6 +2,7 @@ import { AnalyticsEvent } from "config/analyticsConfig";
 import { track } from "services/analytics/core";
 import type {
   SignedTransactionEvent,
+  SimulationTransactionType,
   SubmittedTransactionEvent,
   TransactionSuccessEvent,
   SwapSuccessEvent,
@@ -68,7 +69,7 @@ export const trackSubmittedTransaction = (
 
 export const trackSimulationError = (
   error: string,
-  transactionType: string,
+  transactionType: SimulationTransactionType,
 ): void => {
   track(AnalyticsEvent.SIMULATE_TOKEN_PAYMENT_ERROR, {
     error,
