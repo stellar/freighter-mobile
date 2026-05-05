@@ -390,6 +390,7 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
 
         errorCollections.forEach((errorCollection) => {
           const { error } = errorCollection;
+          const tokenErrors = Array.isArray(error.tokens) ? error.tokens : [];
 
           // Backend-supplied per-collection / per-token errors are part of
           // the API contract — they fire for expected conditions (empty
@@ -399,29 +400,29 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
           // for that one item), and the backend already has visibility
           // into the upstream failure.
           //
+          // Always emit a per-collection breadcrumb so the collection
+          // address is captured on any downstream Sentry event - including
+          // the all-failed aggregate above. Without this, an outage where
+          // every collection fails via the per-token shape would surface
+          // only the aggregate event with no breadcrumb chain showing
+          // which collections were affected.
+          logger.warn("fetchCollectibles", "Backend error for collection", {
+            collectionAddress: error.collection_address,
+            errorMessage: error.error_message,
+            tokenErrorCount: tokenErrors.length,
+          });
+
           // Per-token failures stay at info: a single collection can have
           // hundreds of tokens, and emitting one breadcrumb per token
-          // would blow the Sentry breadcrumb buffer (capped at ~100/session)
-          // for galleries with widespread metadata issues. Per-collection
-          // failures emit at warn so the breadcrumb chain on a captured
-          // event has the collection-level failure pattern.
-          if (
-            error.tokens &&
-            Array.isArray(error.tokens) &&
-            error.tokens.length > 0
-          ) {
-            error.tokens.forEach((token) => {
-              logger.info(
-                "fetchCollectibles",
-                `Error in token ${token.token_id} of collection ${error.collection_address}: ${token.error_message}`,
-              );
-            });
-          } else {
-            logger.warn("fetchCollectibles", "Backend error for collection", {
-              collectionAddress: error.collection_address,
-              errorMessage: error.error_message,
-            });
-          }
+          // would blow the Sentry breadcrumb buffer (~100/session cap)
+          // for galleries with widespread metadata issues. Console-only
+          // diagnostic for local dev.
+          tokenErrors.forEach((token) => {
+            logger.info(
+              "fetchCollectibles",
+              `Error in token ${token.token_id} of collection ${error.collection_address}: ${token.error_message}`,
+            );
+          });
         });
       }
 
