@@ -152,12 +152,12 @@ export const initializeSentry = (): void => {
       // breadcrumb for any subsequent event in the same session and drop
       // the current one.
 
-      // User typed a wrong mnemonic / password - handled errors from
-      // user input, not bugs.
-      if (
-        noiseMessage.includes("Invalid mnemonic") ||
-        noiseMessage.includes("Invalid password")
-      ) {
+      // User typed a wrong password - handled error from user input,
+      // not a bug. The mnemonic case is handled at source
+      // (verifyMnemonicPhrase logs at warn), so any "Invalid mnemonic"
+      // event reaching here is from a post-validation path (e.g.
+      // corrupted stored mnemonic) and should pass through.
+      if (noiseMessage.includes("Invalid password")) {
         Sentry.addBreadcrumb({
           category: "user-input-validation",
           message: noiseMessage,

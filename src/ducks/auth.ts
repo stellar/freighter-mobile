@@ -1930,7 +1930,12 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
       StellarHDWallet.fromMnemonic(mnemonicPhrase);
       return true;
     } catch (error) {
-      logger.error("verifyMnemonicPhrase", "Invalid mnemonic phrase", error);
+      // User-typed mnemonic validation. Invalid input here is the
+      // expected failure mode (this is the verify step), not a bug -
+      // the caller displays the error via the store's `error` field.
+      // Emit only a breadcrumb so the diagnostic is preserved if a
+      // downstream auth event captures it.
+      logger.warn("verifyMnemonicPhrase", "Invalid mnemonic phrase", error);
       set({
         error: t("authStore.error.invalidMnemonicPhrase"),
       });

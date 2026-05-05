@@ -101,16 +101,6 @@ describe("sentryConfig.beforeSend filters", () => {
   });
 
   describe("breadcrumb-downgrade patterns (drop event, add breadcrumb)", () => {
-    it("downgrades 'Invalid mnemonic' to a breadcrumb", () => {
-      expect(runBeforeSend("Error: Invalid mnemonic (see bip39)")).toBeNull();
-      expect(mockedSentry.addBreadcrumb).toHaveBeenCalledWith(
-        expect.objectContaining({
-          category: "user-input-validation",
-          level: "info",
-        }),
-      );
-    });
-
     it("downgrades 'Invalid password' to a breadcrumb", () => {
       expect(
         runBeforeSend("Error: Invalid password. Please try again."),
@@ -145,6 +135,11 @@ describe("sentryConfig.beforeSend filters", () => {
       ["Error: Network error 504: Request failed with status code 504"],
       ["Error: Failed to set key 0.123: User canceled the operation."],
       ["Error: WalletConnect transaction request origin does not match"],
+      // bip39's "Invalid mnemonic" - the verifyMnemonicPhrase path
+      // logs at warn (no Sentry event), so any "Invalid mnemonic"
+      // event reaching beforeSend is from a post-validation path
+      // (e.g. corrupted stored mnemonic) and is a real signal.
+      ["Invalid mnemonic"],
     ])("does NOT filter real error %s", (msg) => {
       const result = runBeforeSend(msg);
       expect(result).not.toBeNull();
