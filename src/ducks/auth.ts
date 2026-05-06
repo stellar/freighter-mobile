@@ -561,8 +561,22 @@ const SUSPICIOUS_FAILURE_THRESHOLD = 3; // Log warning after 3 failures
  * @param {AuthStatus} authStatus - Current auth status to validate before decryption
  * @returns {Promise<TemporaryStore | null>} The decrypted temporary store or null if retrieval failed
  */
+/**
+ * Options for `getTemporaryStore`.
+ *
+ * `allowMissing`: caller expects the store may legitimately not exist
+ * (e.g. running mid-signup, BEFORE the new store has been written).
+ * Suppresses the "missing in active session" error log for that case.
+ * Default false — real corruption signals on the unlock / decrypt
+ * paths still fire `logger.error`.
+ */
+type GetTemporaryStoreOptions = {
+  allowMissing?: boolean;
+};
+
 const getTemporaryStore = async (
   authStatus: AuthStatus,
+  { allowMissing = false }: GetTemporaryStoreOptions = {},
 ): Promise<TemporaryStore | null> => {
   try {
     // Security check: Only allow decryption if user can actually access the data
@@ -613,19 +627,32 @@ const getTemporaryStore = async (
       SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE,
     );
     if (!temporaryStore) {
-      // Fires transiently during fresh-account creation: the signup
-      // flow wipes prior account state but persisted authStatus +
-      // hashKey can be momentarily out of sync with the cleared
-      // temporary store. Real corruption signals still leave a
-      // breadcrumb on any downstream captured event - the user gets
-      // bounced to the lock screen and the auth-failure path fires
-      // its own logger calls. Warn preserves that visibility without
-      // firing one top-level Sentry event per signup.
-      logger.warn(
-        "[getTemporaryStore]",
-        "Temporary store data not found for an active session - possible storage corruption",
-        new Error("Temporary store missing in active session"),
-      );
+      if (allowMissing) {
+        // Caller legitimately expects the store may not exist (e.g.
+        // mid-signup, before the new store is written). Emit a warn
+        // breadcrumb so the missing-store state is still visible on
+        // any downstream captured event for forensic context, but
+        // don't fire a top-level Sentry event. Pass the authStatus
+        // as a structured arg so triage can tell whether the caller
+        // was in AUTHENTICATED or LOCKED at the moment.
+        logger.warn(
+          "[getTemporaryStore]",
+          "Temporary store not found (caller opted into allowMissing)",
+          { authStatus },
+        );
+      } else {
+        // Real corruption signal on the unlock / decrypt paths:
+        // hashKey is valid but the encrypted store is gone. The
+        // downstream callers (getActiveAccount, fetchActiveAccount,
+        // initBiometricPassword) treat the null return as a hard
+        // failure but do NOT fire their own Sentry event — without
+        // this log the regression would disappear silently.
+        logger.error(
+          "[getTemporaryStore]",
+          "Temporary store data not found for an active session - possible storage corruption",
+          new Error("Temporary store missing in active session"),
+        );
+      }
 
       return null;
     }
@@ -1073,8 +1100,13 @@ const verifyAndCreateExistingAccountsOnNetwork = async (
   password: string,
   authStatus: AuthStatus,
 ): Promise<void> => {
-  // Check what accounts we already have locally before hitting the network
-  const temporaryStore = await getTemporaryStore(authStatus);
+  // Check what accounts we already have locally before hitting the network.
+  // The signup path arrives here mid-flow (clearAllData has wiped the
+  // previous store and the new one hasn't been written yet), so a missing
+  // store is expected control flow - opt out of the corruption log.
+  const temporaryStore = await getTemporaryStore(authStatus, {
+    allowMissing: true,
+  });
   const existingAccounts = await getAllAccounts();
 
   // Get public keys from temporary store
