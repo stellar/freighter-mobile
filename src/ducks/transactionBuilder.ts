@@ -573,25 +573,18 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
       } catch (error) {
         const errorMessage = extractErrorMessage(error);
 
-        // Horizon protocol rejections (HTTP 4xx with a result_codes
-        // body - tx_bad_seq, tx_insufficient_balance, op_underfunded,
-        // op_under_dest_min, etc.) are expected, handled failures, not
-        // bugs. The user already sees a toast with the underlying
-        // message and analytics.trackTransactionError records the
-        // failure. Demote to warn so these stay as breadcrumb context
-        // without creating Sentry issues.
+        // Demote ONLY user-correctable Horizon protocol rejections
+        // (HTTP 4xx with `result_codes` populated — tx_bad_seq,
+        // op_underfunded, op_under_dest_min, etc.). The user sees a
+        // toast and analytics.trackTransactionError fires, so a
+        // breadcrumb is enough.
         //
-        // ONLY 4xx is demoted. Horizon 5xx (server overload, outages -
-        // submitTx already retries 504 a few times before bubbling)
-        // remains a logger.error so we keep visibility on real Horizon
-        // problems. Submit-time bugs that aren't HorizonError shape
-        // (bad XDR encoding, network unreachable, SDK exceptions) also
-        // stay as logger.error.
-        // Demote ONLY user-correctable protocol rejections (HTTP 4xx
-        // with `result_codes` populated — tx_bad_seq, op_underfunded,
-        // op_under_dest_min, etc.). 4xx WITHOUT result_codes are
-        // operational failures (403/429/proxy, generic auth) that we
-        // want to keep visible in Sentry as logger.error.
+        // 4xx WITHOUT result_codes are operational failures
+        // (403/429/proxy, generic auth) and stay as logger.error.
+        // 5xx (server overload, outages — submitTx already retries
+        // 504 before bubbling) and non-Horizon errors (bad XDR,
+        // network unreachable, SDK exceptions) also stay as
+        // logger.error.
         //
         // result_codes lives on `error.response.data.extras.result_codes`
         // from the underlying Horizon SDK error, but the project's

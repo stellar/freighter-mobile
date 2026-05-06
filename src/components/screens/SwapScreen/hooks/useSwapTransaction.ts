@@ -163,13 +163,10 @@ export const useSwapTransaction = ({
       });
     } catch (error) {
       setIsProcessing(false);
-      // The inner submitTransaction / signTransaction in transactionBuilder
-      // is the single source of truth for logging submit failures
-      // (4xx Horizon rejections → warn breadcrumb, 5xx + non-Horizon
-      // errors → logger.error). Re-logging here would either produce
-      // duplicate Sentry events (5xx and SDK errors) or pollute
-      // breadcrumbs (4xx). The user-visible toast and analytics call
-      // below are the right places to react to the failure here.
+      // transactionBuilder.submitTransaction logs submit failures at
+      // the appropriate severity (4xx-with-result_codes → warn
+      // breadcrumb, everything else → logger.error). Re-logging here
+      // would either duplicate Sentry events or pollute breadcrumbs.
 
       analytics.trackTransactionError({
         error: error instanceof Error ? error.message : String(error),

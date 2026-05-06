@@ -60,11 +60,11 @@ export const PASSWORD_TYPO_MESSAGES = [
  * length. The pattern is anchored on word boundaries so a 56-char
  * substring inside a longer alphanumeric run does not match.
  *
- * Anything matching this pattern is scrubbed from event message
- * surfaces in `beforeSend` (event.message, exception values,
- * extras.message) so identifiers that get interpolated into log
- * messages or embedded in thrown Error.message strings cannot
- * leak verbatim to Sentry.
+ * Anything matching this pattern is scrubbed in `beforeSend` from
+ * event.message, exception values, and recursively from the entire
+ * `event.extra` subtree and breadcrumb data — so identifiers that
+ * get interpolated into log messages or embedded in thrown
+ * Error.message strings cannot leak verbatim to Sentry.
  *
  * Object-key redaction (sanitizeLogData with PII_FIELDS_LOWER)
  * handles structured payloads. This pattern handles raw strings

@@ -618,10 +618,10 @@ const getTemporaryStore = async (
       // fully completed when the new account write begins, leaving
       // a brief window where authStatus + hashKey are present but
       // TEMPORARY_STORE has been removed and not yet rewritten. Rare
-      // in practice (~1 in 10 fresh creations during testing) and
-      // self-resolves on the next read, so we keep the log at error
-      // (downstream callers swallow the null silently) to monitor in
-      // case it starts happening more than expected.
+      // in practice and self-resolves on the next read, so we keep
+      // the log at error (downstream callers swallow the null
+      // silently) to monitor in case it starts happening more than
+      // expected.
       logger.error(
         "[getTemporaryStore]",
         "Temporary store missing in active session",
