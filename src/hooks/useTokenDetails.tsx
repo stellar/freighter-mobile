@@ -56,9 +56,11 @@ const useTokenDetails = ({
           });
         }
       } catch (error) {
-        // UI display fallback in place; unlikely to correlate with
-        // downstream errors.
-        logger.info("useTokenDetails", "Failed to fetch token details", error);
+        // UI display falls back to the basic token info, so this
+        // doesn't block the user. Log as error anyway so escalating
+        // gives us visibility if the contract-spec / token-details
+        // fetch layer ever starts failing.
+        logger.error("useTokenDetails", "Failed to fetch token details", error);
       }
     };
 

@@ -594,7 +594,7 @@ const getTemporaryStore = async (
       // treat as a hard auth failure.
       logger.error(
         "[getTemporaryStore]",
-        "Hash key missing for an active session - possible storage corruption",
+        "Hash key missing in active session",
         new Error("Hash key missing in active session"),
       );
 
@@ -603,9 +603,11 @@ const getTemporaryStore = async (
 
     if (isHashKeyExpired(hashKey)) {
       // Hash key TTL expired - the security policy is forcing
-      // re-authentication. Expected lifecycle behavior; the security
-      // check at the top normally catches this transition.
-      logger.info("[getTemporaryStore]", "Hash key has expired, access denied");
+      // re-authentication. Expected lifecycle, normally caught by
+      // the security check at the top. Warn so the breadcrumb is
+      // available for debugging if it ever fires off the expected
+      // path; fires at most once per session, no buffer concern.
+      logger.warn("[getTemporaryStore]", "Hash key has expired, access denied");
 
       return null;
     }

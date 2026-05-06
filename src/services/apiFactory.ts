@@ -178,6 +178,12 @@ export function createApiService(options: ApiServiceOptions) {
         message: error.message || "An error occurred",
         status: error.response?.status ?? 0,
         data: error.response?.data,
+        // ECONNABORTED is the axios code for "request aborted by the
+        // client" - which in practice almost always means the
+        // configured `timeout` elapsed before the server responded.
+        // Excluding it from `isNetworkError` keeps timeouts on the
+        // logger.error path (real backend latency) rather than the
+        // logger.warn / connectivity path.
         isNetworkError: !error.response && error.code !== "ECONNABORTED",
       };
       /* eslint-enable @typescript-eslint/no-unsafe-member-access */
