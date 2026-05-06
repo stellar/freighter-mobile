@@ -69,6 +69,30 @@ describe("secureStorage interaction-not-allowed branching", () => {
       );
       expect(mockedLogger.error).not.toHaveBeenCalled();
     });
+
+    it("getItem: matches interaction-not-allowed when the rejection is a plain object (not an Error instance)", async () => {
+      // RN's bridge wraps native rejections in Error instances on the
+      // current version, but the predicate intentionally accepts any
+      // object with the matching `message` so a future bridge change
+      // (or vendor patch) that ships a plain `{ code, message }` shape
+      // still routes errSecInteractionNotAllowed to the warn path.
+      const plainObjectRejection = {
+        code: "-25308",
+        message: "User interaction is not allowed.",
+      };
+      (mockedKeychain.getGenericPassword as jest.Mock).mockRejectedValue(
+        plainObjectRejection,
+      );
+
+      const result = await storage.getItem("k");
+
+      expect(result).toBe(false);
+      expect(mockedLogger.warn).toHaveBeenCalledWith(
+        "secureStorage.getItem",
+        expect.stringContaining("Keychain read blocked"),
+      );
+      expect(mockedLogger.error).not.toHaveBeenCalled();
+    });
   });
 
   describe("write paths (always logger.error - auth-critical / security-relevant)", () => {

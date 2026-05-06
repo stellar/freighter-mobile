@@ -41,8 +41,12 @@ export const BIOMETRIC_STORAGE_SERVICE = "freighter_biometric_storage";
  */
 const IOS_INTERACTION_NOT_ALLOWED = "User interaction is not allowed.";
 
-const isInteractionNotAllowed = (error: unknown): boolean =>
-  error instanceof Error && error.message === IOS_INTERACTION_NOT_ALLOWED;
+const isInteractionNotAllowed = (error: unknown): boolean => {
+  if (!error || typeof error !== "object") return false;
+  return (
+    (error as { message?: unknown }).message === IOS_INTERACTION_NOT_ALLOWED
+  );
+};
 
 /**
  * Options for storing/retrieving items from secure storage
