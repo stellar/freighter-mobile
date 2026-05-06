@@ -227,12 +227,22 @@ export type AddFundsStackParamList = {
 };
 
 export type SendPaymentStackParamList = {
-  [SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN]: undefined;
+  [SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN]:
+    | {
+        returnToAmount?: boolean;
+        transition?: "slide_from_bottom" | "slide_from_right" | "default";
+      }
+    | undefined;
   [SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW]: {
     tokenId: string;
     collectionAddress: string;
   };
-  [SEND_PAYMENT_ROUTES.TRANSACTION_TOKEN_SCREEN]: undefined;
+  [SEND_PAYMENT_ROUTES.TRANSACTION_TOKEN_SCREEN]:
+    | {
+        returnToAmount?: boolean;
+        transition?: "slide_from_bottom" | "slide_from_right" | "default";
+      }
+    | undefined;
   [SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN]: {
     tokenId: string;
     recipientAddress?: string;

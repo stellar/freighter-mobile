@@ -7,6 +7,8 @@ import {
   SEND_PAYMENT_ROUTES,
   SendPaymentStackParamList,
 } from "config/routes";
+import { Account } from "config/types";
+import { useAuthenticationStore } from "ducks/auth";
 import * as sendDuck from "ducks/sendRecipient";
 import * as transactionSettingsDuck from "ducks/transactionSettings";
 import { renderWithProviders } from "helpers/testUtils";
@@ -107,6 +109,10 @@ jest.mock("ducks/qrData", () => ({
   useQRDataStore: () => ({ clearQRData: jest.fn() }),
 }));
 
+jest.mock("ducks/auth", () => ({
+  useAuthenticationStore: jest.fn(),
+}));
+
 jest.mock("hooks/useInAppBrowser", () => ({
   useInAppBrowser: () => ({ open: jest.fn() }),
 }));
@@ -162,6 +168,7 @@ jest.mock("hooks/useAppTranslation", () => () => ({
       "sendPaymentScreen.recents": "Recent",
       "sendPaymentScreen.suggestions": "Suggestions",
       "common.paste": "Paste",
+      "sendSearchContacts.myWallets": "My Wallets",
       "sendSearchContacts.unfunded.title":
         "The destination account doesn't exist",
       "sendSearchContacts.unfunded.action":
@@ -171,6 +178,25 @@ jest.mock("hooks/useAppTranslation", () => () => ({
     return translations[key] || key;
   },
 }));
+
+const mockUseAuthenticationStore =
+  useAuthenticationStore as jest.MockedFunction<typeof useAuthenticationStore>;
+
+const mockAccounts: Account[] = [
+  {
+    id: "wallet-1",
+    name: "My Second Wallet",
+    publicKey: "GBLS3IXAFSUWBSW3RXJMNXEGCHXEUL6VMBLFGVFPW47X2OL7BG7QQMUQ",
+  },
+  {
+    id: "wallet-2",
+    name: "Savings",
+    publicKey: "GACJYENHYW2LGHBNNGNZ4NCBGZYVTGTZM4CJLQIOQQ5IUZU3SYWOW5EK",
+  },
+];
+
+const activePublicKey =
+  "GDAS7BS4XKW27H2K5C25V6ZU46FCFGBTFQGFDZURAKVPA6QYQG4GTWBC";
 
 describe("SendSearchContacts", () => {
   beforeEach(() => {
@@ -182,6 +208,10 @@ describe("SendSearchContacts", () => {
         loadRecentAddresses: mockLoadRecentAddresses,
       }),
     );
+    mockUseAuthenticationStore.mockReturnValue({
+      allAccounts: mockAccounts,
+      account: { publicKey: activePublicKey } as any,
+    } as any);
   });
 
   it("renders correctly with the search input", async () => {
@@ -392,6 +422,107 @@ describe("SendSearchContacts", () => {
         expect(screen.getByPlaceholderText("Enter address")).toBeTruthy();
       });
       expect(screen.queryByText(unfundedTitle)).toBeNull();
+    });
+  });
+
+  describe("My Wallets section", () => {
+    beforeEach(() => {
+      jest.spyOn(sendDuck, "useSendRecipientStore").mockImplementation(
+        getSendStoreMock({
+          recentAddresses: [],
+          loadRecentAddresses: mockLoadRecentAddresses,
+        }),
+      );
+      mockUseAuthenticationStore.mockReturnValue({
+        allAccounts: mockAccounts,
+        account: { publicKey: activePublicKey } as any,
+      } as any);
+    });
+
+    it("renders rows for wallets other than active account", async () => {
+      renderWithProviders(
+        <NavigationContainer>
+          <SendSearchContacts navigation={mockNavigation} route={mockRoute} />
+        </NavigationContainer>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("My Second Wallet")).toBeTruthy();
+        expect(screen.getByText("Savings")).toBeTruthy();
+      });
+    });
+
+    it("does not render active account row", async () => {
+      mockUseAuthenticationStore.mockReturnValue({
+        allAccounts: [
+          ...mockAccounts,
+          { id: "active", name: "Active Wallet", publicKey: activePublicKey },
+        ],
+        account: { publicKey: activePublicKey } as any,
+      } as any);
+
+      renderWithProviders(
+        <NavigationContainer>
+          <SendSearchContacts navigation={mockNavigation} route={mockRoute} />
+        </NavigationContainer>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("My Second Wallet")).toBeTruthy();
+      });
+      expect(screen.queryByText("Active Wallet")).toBeNull();
+    });
+
+    it("sets destination address when wallet row is tapped", async () => {
+      renderWithProviders(
+        <NavigationContainer>
+          <SendSearchContacts navigation={mockNavigation} route={mockRoute} />
+        </NavigationContainer>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("My Second Wallet")).toBeTruthy();
+      });
+
+      await userEvent.press(screen.getByTestId("my-wallet-row-wallet-1"));
+
+      await waitFor(() => {
+        expect(mockSetDestinationAddress).toHaveBeenCalledWith(
+          "GBLS3IXAFSUWBSW3RXJMNXEGCHXEUL6VMBLFGVFPW47X2OL7BG7QQMUQ",
+        );
+      });
+    });
+
+    it("shows My Wallets header when other accounts exist", async () => {
+      renderWithProviders(
+        <NavigationContainer>
+          <SendSearchContacts navigation={mockNavigation} route={mockRoute} />
+        </NavigationContainer>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("My Wallets")).toBeTruthy();
+      });
+    });
+
+    it("hides My Wallets section when there are no other accounts", async () => {
+      mockUseAuthenticationStore.mockReturnValue({
+        allAccounts: [
+          { id: "active", name: "Active Wallet", publicKey: activePublicKey },
+        ],
+        account: { publicKey: activePublicKey } as any,
+      } as any);
+
+      renderWithProviders(
+        <NavigationContainer>
+          <SendSearchContacts navigation={mockNavigation} route={mockRoute} />
+        </NavigationContainer>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText("Enter address")).toBeTruthy();
+      });
+      expect(screen.queryByText("My Wallets")).toBeNull();
     });
   });
 });

@@ -2,6 +2,7 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BaseLayout } from "components/layout/BaseLayout";
 import {
+  ContactRow,
   RecentContactsList,
   SearchSuggestionsList,
 } from "components/screens/SendScreen/components";
@@ -10,14 +11,19 @@ import { Input } from "components/sds/Input";
 import { Notification } from "components/sds/Notification";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
-import { CREATE_ACCOUNT_TUTORIAL_URL, QRCodeSource } from "config/constants";
+import {
+  CREATE_ACCOUNT_TUTORIAL_URL,
+  NATIVE_TOKEN_CODE,
+  QRCodeSource,
+} from "config/constants";
 import {
   ROOT_NAVIGATOR_ROUTES,
   RootStackParamList,
   SEND_PAYMENT_ROUTES,
   SendPaymentStackParamList,
 } from "config/routes";
-import { TokenTypeWithCustomToken } from "config/types";
+import { Account, TokenTypeWithCustomToken } from "config/types";
+import { useAuthenticationStore } from "ducks/auth";
 import { useQRDataStore } from "ducks/qrData";
 import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
@@ -29,7 +35,7 @@ import useColors from "hooks/useColors";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
 import { useRightHeaderButton } from "hooks/useRightHeader";
 import React, { useCallback, useEffect, useState } from "react";
-import { View } from "react-native";
+import { ScrollView, View } from "react-native";
 import { analytics } from "services/analytics";
 
 type SendSearchContactsProps = NativeStackScreenProps<
@@ -48,9 +54,11 @@ type SendSearchContactsProps = NativeStackScreenProps<
  */
 const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
   navigation,
+  route,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
+  const { allAccounts, account: activeAccount } = useAuthenticationStore();
   const { open: openInAppBrowser } = useInAppBrowser();
   const { getClipboardText } = useClipboard();
   const [address, setAddress] = useState("");
@@ -90,6 +98,10 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
     !!destinationAddress && isContractId(destinationAddress);
   const shouldShowUnfundedNotice =
     !isCollectibleSend && !isContractTokenSend && !isContractDestination;
+
+  const myWallets: Account[] = (allAccounts ?? []).filter(
+    (acc) => acc.publicKey !== activeAccount?.publicKey,
+  );
 
   // Load recent addresses when component mounts
   useEffect(() => {
@@ -141,15 +153,25 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
       saveRecipientAddress(contactAddress);
 
       if (selectedCollectibleDetails.tokenId) {
-        // Use popTo for collectible flow
-        // If Review exists in stack, pops back to it; otherwise adds it
-        navigation.popTo(
-          SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW,
-          selectedCollectibleDetails,
-        );
-      } else {
-        // For token sends, go back to the TransactionAmountScreen
+        if (typeof navigation.popTo === "function") {
+          // If Review exists in stack, pop back to it.
+          navigation.popTo(
+            SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW,
+            selectedCollectibleDetails,
+          );
+        } else {
+          navigation.navigate(
+            SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW,
+            selectedCollectibleDetails,
+          );
+        }
+      } else if (route.params?.returnToAmount) {
         navigation.goBack();
+      } else {
+        navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN, {
+          tokenId: selectedTokenId || NATIVE_TOKEN_CODE,
+          recipientAddress: contactAddress,
+        });
       }
     },
     [
@@ -157,7 +179,9 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
       setDestinationAddress,
       saveRecipientAddress,
       navigation,
+      route.params,
       selectedCollectibleDetails,
+      selectedTokenId,
     ],
   );
 
@@ -178,6 +202,8 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
     icon: Icon.Scan,
     iconSize: 20,
   });
+
+  const hasActiveSearch = address.trim().length > 0;
 
   return (
     <BaseLayout insets={{ top: false }}>
@@ -235,18 +261,72 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
             )}
         </View>
 
-        {searchResults.length > 0 ? (
+        {hasActiveSearch ? (
           <SearchSuggestionsList
             suggestions={searchResults}
             onContactPress={handleContactPress}
           />
         ) : (
-          recentAddresses.length > 0 && (
-            <RecentContactsList
-              transactions={recentAddresses}
-              onContactPress={handleContactPress}
-            />
-          )
+          <ScrollView showsVerticalScrollIndicator={false}>
+            {recentAddresses.length > 0 && (
+              <RecentContactsList
+                transactions={recentAddresses}
+                onContactPress={handleContactPress}
+              />
+            )}
+            {myWallets.length > 0 && (
+              <View>
+                <View className="flex-row items-center gap-[6px] mb-[12px]">
+                  <View className="w-[24px] h-[24px] rounded-[6px] items-center justify-center bg-gray-3">
+                    <Icon.Wallet01
+                      size={14}
+                      color={themeColors.text.secondary}
+                    />
+                  </View>
+                  <Text sm semiBold secondary>
+                    {t("sendSearchContacts.myWallets")}
+                  </Text>
+                </View>
+                {myWallets.map((wallet) => (
+                  <ContactRow
+                    key={wallet.id}
+                    testID={`my-wallet-row-${wallet.id}`}
+                    address={wallet.publicKey}
+                    name={wallet.name}
+                    onPress={() => {
+                      setDestinationAddress(wallet.publicKey);
+                      saveRecipientAddress(wallet.publicKey);
+
+                      if (selectedCollectibleDetails.tokenId) {
+                        if (typeof navigation.popTo === "function") {
+                          navigation.popTo(
+                            SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW,
+                            selectedCollectibleDetails,
+                          );
+                        } else {
+                          navigation.navigate(
+                            SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW,
+                            selectedCollectibleDetails,
+                          );
+                        }
+                      } else if (route.params?.returnToAmount) {
+                        navigation.goBack();
+                      } else {
+                        navigation.navigate(
+                          SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN,
+                          {
+                            tokenId: selectedTokenId || NATIVE_TOKEN_CODE,
+                            recipientAddress: wallet.publicKey,
+                          },
+                        );
+                      }
+                    }}
+                    className="mb-[24px]"
+                  />
+                ))}
+              </View>
+            )}
+          </ScrollView>
         )}
       </View>
     </BaseLayout>

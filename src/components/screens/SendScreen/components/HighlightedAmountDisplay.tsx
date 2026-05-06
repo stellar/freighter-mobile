@@ -100,6 +100,8 @@ interface HighlightedAmountDisplayProps {
   highlightColor: string;
   normalColor: string;
   secondaryColor: string;
+  align?: "left" | "center";
+  size?: "xs" | "lg" | "xl";
 }
 
 /**
@@ -116,6 +118,8 @@ export const HighlightedAmountDisplay: React.FC<
   highlightColor,
   normalColor,
   secondaryColor,
+  align = "center",
+  size,
 }) => {
   const { matches, nonMatchingDecimals } = findMatchingCharacters(
     rawInput || "",
@@ -126,11 +130,14 @@ export const HighlightedAmountDisplay: React.FC<
   const nonMatchingStartIndex =
     formattedDisplay.length - nonMatchingDecimals.length;
 
+  const displaySize = size ?? (isSmallScreen ? "lg" : "xl");
+  const alignmentClass = align === "left" ? "items-start" : "items-center";
+
   return (
-    <View className="relative items-center justify-center">
+    <View className={`relative ${alignmentClass} justify-center w-full`}>
       {/* Background display - only shown when rawInput is empty, hidden when user starts typing to avoid overlapping with the overlay */}
       <Display
-        size={isSmallScreen ? "lg" : "xl"}
+        size={displaySize}
         medium
         adjustsFontSizeToFit
         numberOfLines={1}
@@ -143,11 +150,11 @@ export const HighlightedAmountDisplay: React.FC<
       {/* Overlay with highlighted characters - only shown when rawInput exists */}
       {rawInput && (
         <View
-          className="absolute inset-0 items-center justify-center"
+          className={`absolute inset-0 ${alignmentClass} justify-center`}
           pointerEvents="none"
         >
           <Display
-            size={isSmallScreen ? "lg" : "xl"}
+            size={displaySize}
             medium
             adjustsFontSizeToFit
             numberOfLines={1}

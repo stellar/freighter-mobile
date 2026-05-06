@@ -1,5 +1,5 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { act, render } from "@testing-library/react-native";
+import { act, fireEvent, render } from "@testing-library/react-native";
 import { BigNumber } from "bignumber.js";
 import TransactionAmountScreen from "components/screens/SendScreen/screens/TransactionAmountScreen";
 import { NETWORKS } from "config/constants";
@@ -55,6 +55,7 @@ jest.mock("services/analytics", () => ({
 jest.mock("helpers/balances", () => ({
   calculateSpendableAmount: jest.fn(),
   hasXLMForFees: jest.fn(),
+  isLiquidityPool: jest.fn(() => false),
 }));
 const mockCheckContractMuxedSupport = jest.fn().mockResolvedValue(false);
 
@@ -93,6 +94,11 @@ jest.mock("providers/ToastProvider");
 // Component mocks
 jest.mock("components/BalanceRow", () => ({
   BalanceRow: "View",
+}));
+jest.mock("components/TokenIcon", () => ({
+  TokenIcon: function MockTokenIcon() {
+    return null;
+  },
 }));
 jest.mock("components/screens/SendScreen/components", () => ({
   SendReviewBottomSheet: function MockSendReviewBottomSheet() {
@@ -1564,5 +1570,196 @@ describe("TransactionAmountScreen - Address Change Scenarios", () => {
     }, Promise.resolve());
 
     expect(mockCachedFetch).toHaveBeenCalled();
+  });
+});
+
+describe("TransactionAmountScreen - Native keyboard input", () => {
+  const mockHandleDisplayAmountChange = jest.fn();
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    mockUsePreferencesStore.mockReturnValue({
+      isMemoValidationEnabled: true,
+    });
+
+    mockStellarSdkServer.mockReturnValue({
+      checkMemoRequired: jest.fn().mockResolvedValue(undefined),
+    });
+
+    jest.doMock("services/stellar", () => ({
+      stellarSdkServer: mockStellarSdkServer,
+    }));
+
+    mockUseTokenFiatConverter.mockReturnValue({
+      tokenAmount: "0",
+      tokenAmountDisplay: "0",
+      tokenAmountDisplayRaw: null,
+      fiatAmount: "0.00",
+      fiatAmountDisplay: "0.00",
+      fiatAmountDisplayRaw: null,
+      showFiatAmount: false,
+      setTokenAmount: jest.fn(),
+      setFiatAmount: jest.fn(),
+      setShowFiatAmount: jest.fn(),
+      handleDisplayAmountChange: mockHandleDisplayAmountChange,
+      updateFiatDisplay: jest.fn(),
+    });
+
+    mockUseTransactionBuilderStore.mockReturnValue({
+      buildTransaction: jest.fn(),
+      signTransaction: jest.fn(),
+      submitTransaction: jest.fn(),
+      resetTransaction: jest.fn(),
+      isBuilding: false,
+      isSigning: false,
+      isSubmitting: false,
+      transactionXDR: null,
+      transactionHash: null,
+      error: null,
+      network: NETWORKS.TESTNET,
+      transaction: null,
+    } as any);
+
+    mockUseTransactionSettingsStore.mockReturnValue({
+      transactionMemo: "",
+      transactionFee: "0.00001",
+      transactionTimeout: 30,
+      recipientAddress:
+        "GA6SXIZIKLJHCZI2KEOBEUUOFMM4JUPPM2UTWX6STAWT25JWIEUFIMFF",
+      selectedTokenId:
+        "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+      federationAddress: "",
+      saveMemo: jest.fn(),
+      saveTransactionFee: jest.fn(),
+      saveTransactionTimeout: jest.fn(),
+      saveRecipientAddress: jest.fn(),
+      saveSelectedTokenId: jest.fn(),
+      saveFederationAddress: jest.fn(),
+      saveMemoType: jest.fn(),
+      saveSelectedCollectibleDetails: jest.fn(),
+      resetSettings: jest.fn(),
+    } as any);
+
+    mockUseAuthenticationStore.mockReturnValue({
+      publicKey: "GDNF5WJ2BEPABVBXCF4C7KZKM3XYXP27VUE3SCGPZA3VXWWZ7OFA3VPM",
+      network: NETWORKS.TESTNET,
+    } as any);
+
+    mockUseGetActiveAccount.mockReturnValue({
+      account: {
+        publicKey: "GDNF5WJ2BEPABVBXCF4C7KZKM3XYXP27VUE3SCGPZA3VXWWZ7OFA3VPM",
+        privateKey: "mockPrivateKey",
+        accountName: "Test Account",
+        id: "test-id",
+        subentryCount: 0,
+      } as ActiveAccount,
+      isLoading: false,
+      error: null,
+      refreshAccount: jest.fn(),
+      signTransaction: jest.fn(),
+      signMessage: jest.fn(),
+      signAuthEntry: jest.fn(),
+    });
+
+    mockUseBalancesList.mockReturnValue({
+      balanceItems: [
+        {
+          id: "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          tokenId:
+            "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          total: "1000",
+          available: "1000",
+          token: {
+            code: "USDC",
+            issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          },
+        } as any,
+      ],
+      scanResults: {} as any,
+      isLoading: false,
+      error: null,
+      noBalances: false,
+      isRefreshing: false,
+      isFunded: true,
+      handleRefresh: jest.fn(),
+    });
+
+    mockCalculateSpendableAmount.mockReturnValue(new BigNumber("1000"));
+    mockHasXLMForFees.mockReturnValue(true);
+    mockUseDeviceSize.mockReturnValue(DeviceSize.MD);
+    mockUseRightHeaderMenu.mockReturnValue(undefined);
+    mockUseToast.mockReturnValue({
+      showToast: jest.fn(),
+      dismissToast: jest.fn(),
+    });
+    mockUseHistoryStore.mockReturnValue({ fetchAccountHistory: jest.fn() });
+    mockUseSendRecipientStore.mockReturnValue({
+      resetSendRecipient: jest.fn(),
+      isDestinationFunded: true,
+    } as any);
+    mockScanTransaction.mockReturnValue({
+      scanTransaction: jest.fn().mockResolvedValue({ warnings: [] }),
+    } as any);
+    mockCachedFetch.mockResolvedValue({ _embedded: { records: [] } } as any);
+    jest
+      .spyOn(useValidateTransactionMemo, "useValidateTransactionMemo")
+      .mockReturnValue({ isValidatingMemo: false, isMemoMissing: false });
+  });
+
+  it("renders hidden amount TextInput", () => {
+    const { getByTestId } = render(
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+
+    expect(getByTestId("amount-text-input")).toBeTruthy();
+  });
+
+  it("calls handleDisplayAmountChange with typed character", () => {
+    const { getByTestId } = render(
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+
+    fireEvent.changeText(getByTestId("amount-text-input"), "5");
+    expect(mockHandleDisplayAmountChange).toHaveBeenCalledWith("5");
+  });
+
+  it("calls handleDisplayAmountChange with empty string on delete", () => {
+    mockUseTokenFiatConverter.mockReturnValue({
+      tokenAmount: "5",
+      tokenAmountDisplay: "5",
+      tokenAmountDisplayRaw: "5",
+      fiatAmount: "0.50",
+      fiatAmountDisplay: "0.50",
+      fiatAmountDisplayRaw: null,
+      showFiatAmount: false,
+      setTokenAmount: jest.fn(),
+      setFiatAmount: jest.fn(),
+      setShowFiatAmount: jest.fn(),
+      handleDisplayAmountChange: mockHandleDisplayAmountChange,
+      updateFiatDisplay: jest.fn(),
+    });
+
+    const { getByTestId } = render(
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+
+    fireEvent.changeText(getByTestId("amount-text-input"), "");
+    expect(mockHandleDisplayAmountChange).toHaveBeenCalledWith("");
+  });
+
+  it("calls handleDisplayAmountChange for each pasted character", () => {
+    const { getByTestId } = render(
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+
+    fireEvent.changeText(getByTestId("amount-text-input"), "123");
+    // The current display starts as "0", so the handler first issues one backspace,
+    // then applies each pasted digit.
+    expect(mockHandleDisplayAmountChange).toHaveBeenCalledTimes(4);
+    expect(mockHandleDisplayAmountChange).toHaveBeenNthCalledWith(1, "");
+    expect(mockHandleDisplayAmountChange).toHaveBeenNthCalledWith(2, "1");
+    expect(mockHandleDisplayAmountChange).toHaveBeenNthCalledWith(3, "2");
+    expect(mockHandleDisplayAmountChange).toHaveBeenNthCalledWith(4, "3");
   });
 });

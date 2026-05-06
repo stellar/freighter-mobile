@@ -8,7 +8,7 @@ import {
 } from "components/screens/SendScreen/screens";
 import SendCollectibleReviewScreen from "components/screens/SendScreen/screens/SendCollectibleReview";
 import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
-import { getScreenBottomNavigateOptions } from "helpers/navigationOptions";
+import { withTransitionOverride } from "helpers/navigationOptions";
 import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
 
@@ -27,14 +27,26 @@ export const SendPaymentStackNavigator = () => {
       <SendPaymentStack.Screen
         name={SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN}
         component={SendSearchContacts}
-        options={getScreenBottomNavigateOptions(t("sendPaymentScreen.title"))}
+        options={({ route }) =>
+          withTransitionOverride(
+            {
+              headerTitle: t("sendPaymentScreen.title"),
+            },
+            route,
+          )
+        }
       />
       <SendPaymentStack.Screen
         name={SEND_PAYMENT_ROUTES.TRANSACTION_TOKEN_SCREEN}
         component={TransactionTokenScreen}
-        options={{
-          headerTitle: t("transactionTokenScreen.title"),
-        }}
+        options={({ route }) =>
+          withTransitionOverride(
+            {
+              headerTitle: t("transactionTokenScreen.title"),
+            },
+            route,
+          )
+        }
       />
       <SendPaymentStack.Screen
         name={SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN}

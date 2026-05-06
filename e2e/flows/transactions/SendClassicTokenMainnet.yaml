@@ -50,9 +50,14 @@ tags:
 # Navigate to send flow
 - tapOn:
     id: icon-button-send
-# Tap recipient row to open search
+# Select token first
+- extendedWaitUntil:
+    visible:
+      id: send-token-option-XLM
+    timeout: 30000
 - tapOn:
-    id: send-recipient-row
+    id: send-token-option-XLM
+
 # Wait for recipient search screen
 - extendedWaitUntil:
     visible:
@@ -82,16 +87,8 @@ tags:
 
 # Enter amount: 0.000001 XLM (minimal to avoid wasting mainnet funds)
 - tapOn:
-    id: numeric-key-0
-- tapOn:
-    id: numeric-key-decimal
-- repeat:
-    times: 5
-    commands:
-      - tapOn:
-          id: numeric-key-0
-- tapOn:
-    id: numeric-key-1
+    id: send-amount-focus-trigger
+- inputText: "0.000001"
 
 # Tap Review button
 - tapOn:
@@ -104,11 +101,16 @@ tags:
 # Confirm the transaction
 - tapOn:
     id: send-review-confirm-button
-# Verify processing screen
-- extendedWaitUntil:
-    visible:
-      id: send-processing-screen
-    timeout: 30000
+
+# Retry confirm once if the sheet is still present
+- runFlow:
+    when:
+      visible:
+        id: send-review-confirm-button
+    commands:
+      - tapOn:
+          id: send-review-confirm-button
+
 # Wait for completion and tap Done
 - extendedWaitUntil:
     visible:

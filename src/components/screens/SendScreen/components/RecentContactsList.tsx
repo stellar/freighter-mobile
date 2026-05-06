@@ -1,11 +1,10 @@
-import { DefaultListFooter } from "components/DefaultListFooter";
 import { ContactRow } from "components/screens/SendScreen/components";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React from "react";
-import { FlatList, View, KeyboardAvoidingView, Platform } from "react-native";
+import { View } from "react-native";
 
 interface RecentContact {
   id: string;
@@ -29,10 +28,12 @@ const ListHeader = () => {
   const { themeColors } = useColors();
 
   return (
-    <View className="mb-[24px]">
-      <View className="flex-row items-center gap-2">
-        <Icon.Clock size={16} color={themeColors.foreground.primary} />
-        <Text md medium secondary>
+    <View className="mb-[12px]">
+      <View className="flex-row items-center gap-[6px]">
+        <View className="w-[24px] h-[24px] rounded-[6px] items-center justify-center bg-gray-3">
+          <Icon.Clock size={14} color={themeColors.text.secondary} />
+        </View>
+        <Text sm semiBold secondary>
           {t("sendPaymentScreen.recents")}
         </Text>
       </View>
@@ -56,28 +57,18 @@ export const RecentContactsList: React.FC<RecentContactsListProps> = ({
   }
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      className="flex-1"
-      testID={testID}
-    >
-      <View className="flex-1">
-        <FlatList
-          data={transactions}
-          ListHeaderComponent={ListHeader}
-          ListFooterComponent={DefaultListFooter}
-          renderItem={({ item, index }) => (
-            <ContactRow
-              address={item.address}
-              name={item.name}
-              onPress={() => onContactPress(item.address)}
-              className="mb-[24px]"
-              testID={`recent-contact-${index}`}
-            />
-          )}
-          keyExtractor={(item) => item.id}
+    <View testID={testID}>
+      <ListHeader />
+      {transactions.map((item, index) => (
+        <ContactRow
+          key={item.id}
+          address={item.address}
+          name={item.name}
+          onPress={() => onContactPress(item.address)}
+          className="mb-[24px]"
+          testID={`recent-contact-${index}`}
         />
-      </View>
-    </KeyboardAvoidingView>
+      ))}
+    </View>
   );
 };

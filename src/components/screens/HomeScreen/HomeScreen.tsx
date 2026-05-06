@@ -183,8 +183,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
 
     const handleSendPress = useCallback(() => {
       navigation.navigate(ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK, {
-        screen: SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN,
-        params: { tokenId: NATIVE_TOKEN_CODE },
+        screen: SEND_PAYMENT_ROUTES.TRANSACTION_TOKEN_SCREEN,
       });
     }, [navigation]);
 

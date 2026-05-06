@@ -655,6 +655,7 @@
     "scanQRCodeText": "Scan a Freighter QR Code"
   },
   "sendSearchContacts": {
+    "myWallets": "My Wallets",
     "unfunded": {
       "title": "The destination account doesn’t exist",
       "action": "Send at least 1 XLM to create the account.",
@@ -781,6 +782,7 @@
   },
   "transactionAmountScreen": {
     "title": "Send",
+    "availableBalance": "{{amount}} available",
     "percentageButtons": {
       "twentyFive": "25%",
       "fifty": "50%",
@@ -788,8 +790,8 @@
       "max": "Max"
     },
     "chooseRecipient": "Choose recipient",
-    "setAmount": "Set amount",
-    "reviewButton": "Review",
+    "setAmount": "Enter an amount",
+    "reviewButton": "Review send",
     "menu": {
       "fee": "Fee: {{fee}} XLM",
       "timeout": "Timeout: {{timeout}}(s)",
