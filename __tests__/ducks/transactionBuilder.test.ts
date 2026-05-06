@@ -358,6 +358,33 @@ describe("transactionBuilder Duck", () => {
       expect(logger.error).not.toHaveBeenCalled();
     });
 
+    it("keeps Horizon 4xx WITHOUT result_codes as logger.error (operational failures, not user-correctable)", async () => {
+      // 4xx responses from Horizon / proxies that don't carry the
+      // protocol-rejection `result_codes` (rate limits, auth failures,
+      // generic gateway errors) are operational, not user-correctable
+      // - they need Sentry visibility, not the warn breadcrumb path.
+      const horizon4xxNoResultCodes = {
+        response: {
+          status: 429,
+          data: { detail: "Too many requests" },
+        },
+      };
+      (stellarServices.submitTx as jest.Mock).mockRejectedValue(
+        horizon4xxNoResultCodes,
+      );
+
+      await act(async () => {
+        await store.getState().submitTransaction({ network: mockNetwork });
+      });
+
+      expect(logger.error).toHaveBeenCalledWith(
+        "TransactionBuilderStore",
+        expect.stringContaining("Failed to submit transaction"),
+        horizon4xxNoResultCodes,
+      );
+      expect(logger.warn).not.toHaveBeenCalled();
+    });
+
     it("keeps Horizon 5xx server errors as logger.error (e.g. submitted-then-overloaded)", async () => {
       const horizon5xxError = {
         response: { status: 504 },

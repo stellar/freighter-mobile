@@ -587,28 +587,33 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         // problems. Submit-time bugs that aren't HorizonError shape
         // (bad XDR encoding, network unreachable, SDK exceptions) also
         // stay as logger.error.
-        const isHorizonProtocolRejection =
+        // Demote ONLY user-correctable protocol rejections (HTTP 4xx
+        // with `result_codes` populated — tx_bad_seq, op_underfunded,
+        // op_under_dest_min, etc.). 4xx WITHOUT result_codes are
+        // operational failures (403/429/proxy, generic auth) that we
+        // want to keep visible in Sentry as logger.error.
+        //
+        // result_codes lives on `error.response.data.extras.result_codes`
+        // from the underlying Horizon SDK error, but the project's
+        // narrow HorizonError type guard only exposes status. Pull
+        // through the data optionally without widening the type guard.
+        /* eslint-disable @typescript-eslint/no-explicit-any */
+        /* eslint-disable @typescript-eslint/no-unsafe-member-access */
+        const horizon4xxResultCodes =
           isHorizonError(error) &&
           error.response.status >= 400 &&
-          error.response.status < 500;
-        if (isHorizonProtocolRejection) {
+          error.response.status < 500
+            ? (error as any).response.data?.extras?.result_codes
+            : undefined;
+        /* eslint-enable @typescript-eslint/no-unsafe-member-access */
+        /* eslint-enable @typescript-eslint/no-explicit-any */
+        if (horizon4xxResultCodes) {
           const horizonStatus = (error as { response: { status: number } })
             .response.status;
-          // result_codes (tx_bad_seq, op_under_dest_min, etc.) live on
-          // error.response.data.extras.result_codes from the underlying
-          // Horizon SDK error, but the project's narrow HorizonError
-          // type guard only exposes status. Pull through the data
-          // optionally without widening the type guard.
-          /* eslint-disable @typescript-eslint/no-explicit-any */
-          /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-          const resultCodes = (error as any).response.data?.extras
-            ?.result_codes;
-          /* eslint-enable @typescript-eslint/no-unsafe-member-access */
-          /* eslint-enable @typescript-eslint/no-explicit-any */
           logger.warn(
             "TransactionBuilderStore",
             `Network rejected transaction (HTTP ${horizonStatus})`,
-            resultCodes,
+            horizon4xxResultCodes,
           );
         } else {
           logger.error(
