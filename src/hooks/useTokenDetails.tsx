@@ -58,7 +58,7 @@ const useTokenDetails = ({
       } catch (error) {
         // UI display fallback in place; unlikely to correlate with
         // downstream errors.
-        logger.info("Failed to fetch token details:", String(error));
+        logger.info("useTokenDetails", "Failed to fetch token details", error);
       }
     };
 
