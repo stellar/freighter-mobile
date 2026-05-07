@@ -14,7 +14,7 @@ const StyledKeyboardAvoidingView = styled(KeyboardAvoidingView).attrs(
   (props: KeyboardAvoidingViewProps) => ({
     behavior: Platform.select({
       ios: "padding",
-      android: "height",
+      android: "padding",
     }),
     contentContainerStyle: {
       flex: 1,
