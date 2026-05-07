@@ -32,6 +32,7 @@ jest.mock("ducks/transactionSettings", () => ({
   useTransactionSettingsStore: jest.fn(() => ({
     recipientAddress:
       "GA6SXIZIKLJHCZI2KEOBEUUOFMM4JUPPM2UTWX6STAWT25JWIEUFIMFF",
+    recipientName: "",
     memo: "",
     isMemoRequired: false,
     transactionFee: "0.00001",
@@ -82,6 +83,15 @@ describe("SendReviewBottomSheet", () => {
       );
 
       expect(getByText("Test Account")).toBeTruthy();
+    });
+
+    it("displays recipient name above the truncated address when provided", () => {
+      const { getByText } = renderWithProviders(
+        <SendReviewBottomSheet {...defaultProps} recipientName="Account 2" />,
+      );
+
+      expect(getByText("Account 2")).toBeTruthy();
+      expect(getByText("GA6S...IMFF")).toBeTruthy();
     });
   });
 

@@ -55,7 +55,7 @@ import {
 } from "helpers/formatAmount";
 import { checkContractMuxedSupport } from "helpers/muxedAddress";
 import { isSorobanTransaction } from "helpers/soroban";
-import { isMuxedAccount, truncateAddress } from "helpers/stellar";
+import { isMuxedAccount } from "helpers/stellar";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -107,7 +107,11 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   navigation,
   route,
 }) => {
-  const { tokenId, recipientAddress: routeRecipientAddress } = route.params;
+  const {
+    tokenId,
+    recipientAddress: routeRecipientAddress,
+    recipientName: routeRecipientName,
+  } = route.params;
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const { account } = useGetActiveAccount();
@@ -116,10 +120,12 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const {
     transactionFee,
     recipientAddress,
+    recipientName,
     selectedTokenId,
     transactionMemo,
     saveSelectedTokenId,
     saveRecipientAddress,
+    saveRecipientName,
     saveSelectedCollectibleDetails,
     saveMemo,
     resetSettings,
@@ -135,6 +141,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     saveSelectedCollectibleDetails({ collectionAddress: "", tokenId: "" });
     // Clear recipient address when entering the screen
     saveRecipientAddress("");
+    saveRecipientName("");
 
     if (tokenId) {
       saveSelectedTokenId(tokenId);
@@ -146,13 +153,20 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     saveSelectedTokenId,
     saveSelectedCollectibleDetails,
     saveRecipientAddress,
+    saveRecipientName,
   ]);
 
   useEffect(() => {
     if (routeRecipientAddress && typeof routeRecipientAddress === "string") {
       saveRecipientAddress(routeRecipientAddress);
     }
-  }, [routeRecipientAddress, saveRecipientAddress]);
+    saveRecipientName(routeRecipientName ?? "");
+  }, [
+    routeRecipientAddress,
+    routeRecipientName,
+    saveRecipientAddress,
+    saveRecipientName,
+  ]);
 
   const {
     buildTransaction,
@@ -171,6 +185,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       resetTransaction();
       saveSelectedTokenId("");
       saveRecipientAddress("");
+      saveRecipientName("");
       resetSendRecipient();
       resetSettings();
     },
@@ -178,6 +193,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       resetTransaction,
       saveSelectedTokenId,
       saveRecipientAddress,
+      saveRecipientName,
       resetSendRecipient,
       resetSettings,
     ],
@@ -959,6 +975,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     !!availableAmountText &&
     secondaryConversionAmount.length + availableAmountText.length > 34;
 
+  const recipientDisplayName = recipientName || federationAddress || undefined;
+
   return (
     <BaseLayout useKeyboardAvoidingView insets={{ top: false }}>
       <View className="flex-1" testID="send-amount-screen">
@@ -969,11 +987,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
               hasDarkBackground
               onPress={navigateToSelectContactScreen}
               address={recipientAddress}
-              name={
-                federationAddress
-                  ? truncateAddress(federationAddress)
-                  : undefined
-              }
+              name={recipientDisplayName}
               testID="send-recipient-row"
               rightElement={
                 <Icon.ChevronRight
@@ -1182,6 +1196,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             type={SendType.Token}
             selectedBalance={selectedBalance}
             tokenAmount={tokenAmount}
+            recipientName={recipientDisplayName}
             onBannerPress={bannerContent?.onPress}
             // is passed here so the entire layout is ready when modal mounts, otherwise leaves a gap at the bottom related to the warning size
             isRequiredMemoMissing={isRequiredMemoMissing}

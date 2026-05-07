@@ -246,6 +246,7 @@ export type SendPaymentStackParamList = {
   [SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN]: {
     tokenId: string;
     recipientAddress?: string;
+    recipientName?: string;
   };
 };
 

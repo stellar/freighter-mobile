@@ -9,6 +9,7 @@ const INITIAL_TRANSACTION_SETTINGS_STATE = {
   transactionFee: MIN_TRANSACTION_FEE,
   transactionTimeout: DEFAULT_TRANSACTION_TIMEOUT,
   recipientAddress: "",
+  recipientName: "",
   selectedTokenId: "",
   selectedCollectibleDetails: {
     collectionAddress: "",
@@ -43,6 +44,7 @@ interface TransactionSettingsState {
   transactionFee: string;
   transactionTimeout: number;
   recipientAddress: string;
+  recipientName: string;
   selectedTokenId: string;
   selectedCollectibleDetails: {
     collectionAddress: string;
@@ -54,6 +56,7 @@ interface TransactionSettingsState {
   saveTransactionFee: (fee: string) => void;
   saveTransactionTimeout: (timeout: number) => void;
   saveRecipientAddress: (address: string) => void;
+  saveRecipientName: (name: string) => void;
   saveSelectedTokenId: (tokenId: string) => void;
   saveSelectedCollectibleDetails: (collectibleDetails: {
     collectionAddress: string;
@@ -96,6 +99,12 @@ export const useTransactionSettingsStore = create<TransactionSettingsState>(
      * @param {string} address - The recipient address
      */
     saveRecipientAddress: (address) => set({ recipientAddress: address }),
+
+    /**
+     * Saves the recipient display name for the transaction
+     * @param {string} name - The recipient display name
+     */
+    saveRecipientName: (name) => set({ recipientName: name }),
 
     /**
      * Saves the selected token ID for the transaction

@@ -13,6 +13,7 @@ import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import {
   CREATE_ACCOUNT_TUTORIAL_URL,
+  DEFAULT_DEBOUNCE_DELAY,
   NATIVE_TOKEN_CODE,
   QRCodeSource,
 } from "config/constants";
@@ -29,9 +30,11 @@ import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { getTokenType } from "helpers/balances";
 import { isContractId } from "helpers/soroban";
+import { isFederationAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
+import useDebounce from "hooks/useDebounce";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
 import { useRightHeaderButton } from "hooks/useRightHeader";
 import React, { useCallback, useEffect, useState } from "react";
@@ -64,6 +67,7 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
   const [address, setAddress] = useState("");
   const {
     saveRecipientAddress,
+    saveRecipientName,
     selectedCollectibleDetails,
     saveSelectedCollectibleDetails,
     selectedTokenId,
@@ -77,6 +81,7 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
     searchError,
     loadRecentAddresses,
     searchAddress,
+    prepareForSearch,
     setDestinationAddress,
     resetSendRecipient,
     isValidDestination,
@@ -102,6 +107,10 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
   const myWallets: Account[] = (allAccounts ?? []).filter(
     (acc) => acc.publicKey !== activeAccount?.publicKey,
   );
+
+  const debouncedSearchAddress = useDebounce((searchTerm: string) => {
+    searchAddress(searchTerm);
+  }, DEFAULT_DEBOUNCE_DELAY);
 
   // Load recent addresses when component mounts
   useEffect(() => {
@@ -130,10 +139,19 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
   const handleSearch = useCallback(
     (text: string) => {
       setAddress(text);
-      // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      searchAddress(text);
+      debouncedSearchAddress.cancel();
+
+      const trimmedText = text.trim();
+
+      if (!trimmedText) {
+        resetSendRecipient();
+        return;
+      }
+
+      prepareForSearch();
+      debouncedSearchAddress(trimmedText);
     },
-    [searchAddress],
+    [debouncedSearchAddress, prepareForSearch, resetSendRecipient],
   );
 
   /**
@@ -142,15 +160,20 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
    * @param {string} contactAddress - The selected contact address
    */
   const handleContactPress = useCallback(
-    (contactAddress: string) => {
+    (contactAddress: string, contactName?: string) => {
       if (recentAddresses.some((c) => c.address === contactAddress)) {
         analytics.track(AnalyticsEvent.SEND_PAYMENT_RECENT_ADDRESS);
       }
+      const federationLabel =
+        contactName && isFederationAddress(contactName) ? contactName : "";
+      const recipientLabel = federationLabel ? "" : (contactName ?? "");
+
       // Save to both stores for different purposes
       // Send store is for contact management
-      setDestinationAddress(contactAddress);
+      setDestinationAddress(contactAddress, federationLabel || undefined);
       // Transaction settings store is for the transaction flow
       saveRecipientAddress(contactAddress);
+      saveRecipientName(recipientLabel);
 
       if (selectedCollectibleDetails.tokenId) {
         if (typeof navigation.popTo === "function") {
@@ -171,6 +194,7 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
         navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN, {
           tokenId: selectedTokenId || NATIVE_TOKEN_CODE,
           recipientAddress: contactAddress,
+          recipientName: recipientLabel || undefined,
         });
       }
     },
@@ -178,6 +202,7 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
       recentAddresses,
       setDestinationAddress,
       saveRecipientAddress,
+      saveRecipientName,
       navigation,
       route.params,
       selectedCollectibleDetails,
@@ -203,7 +228,8 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
     iconSize: 20,
   });
 
-  const hasActiveSearch = address.trim().length > 0;
+  const shouldShowSuggestions = isValidDestination;
+  const shouldShowSearchError = address.trim().length > 0 && !!searchError;
 
   return (
     <BaseLayout insets={{ top: false }}>
@@ -227,13 +253,13 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
             value={address}
           />
 
-          {searchError && (
-            <View className="mt-4">
+          <View className="mt-4 min-h-[20px] justify-center">
+            {shouldShowSearchError && (
               <Text sm secondary>
                 {searchError}
               </Text>
-            </View>
-          )}
+            )}
+          </View>
           {!searchError &&
             isValidDestination &&
             isDestinationFunded === false &&
@@ -261,7 +287,7 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
             )}
         </View>
 
-        {hasActiveSearch ? (
+        {shouldShowSuggestions ? (
           <SearchSuggestionsList
             suggestions={searchResults}
             onContactPress={handleContactPress}
@@ -296,6 +322,7 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
                     onPress={() => {
                       setDestinationAddress(wallet.publicKey);
                       saveRecipientAddress(wallet.publicKey);
+                      saveRecipientName(wallet.name);
 
                       if (selectedCollectibleDetails.tokenId) {
                         if (typeof navigation.popTo === "function") {
@@ -317,6 +344,7 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
                           {
                             tokenId: selectedTokenId || NATIVE_TOKEN_CODE,
                             recipientAddress: wallet.publicKey,
+                            recipientName: wallet.name,
                           },
                         );
                       }

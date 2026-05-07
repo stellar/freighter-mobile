@@ -41,6 +41,7 @@ type SendReviewBottomSheetProps = {
   type: SendType;
   selectedBalance?: PricedBalance;
   tokenAmount?: string;
+  recipientName?: string;
   selectedCollectible?: CollectibleType;
   /**
    * Indicates if a required memo is missing from the transaction
@@ -84,6 +85,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   type,
   selectedBalance,
   tokenAmount,
+  recipientName,
   selectedCollectible,
   isRequiredMemoMissing,
   onBannerPress,
@@ -388,9 +390,14 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
               hasDarkBackground
             />
             <View className="flex-1">
-              <Text xl medium>
-                {slicedAddress}
+              <Text xl medium numberOfLines={1}>
+                {recipientName || slicedAddress}
               </Text>
+              {recipientName && (
+                <Text md medium secondary numberOfLines={1}>
+                  {slicedAddress}
+                </Text>
+              )}
             </View>
           </View>
         </View>

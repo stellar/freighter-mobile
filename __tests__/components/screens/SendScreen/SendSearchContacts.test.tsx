@@ -1,6 +1,12 @@
 import { NavigationContainer, RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { screen, userEvent, waitFor } from "@testing-library/react-native";
+import {
+  act,
+  fireEvent,
+  screen,
+  userEvent,
+  waitFor,
+} from "@testing-library/react-native";
 import { SendSearchContacts } from "components/screens/SendScreen";
 import {
   RootStackParamList,
@@ -50,6 +56,7 @@ const mockLoadRecentAddresses = jest.fn();
 const mockSearchAddress = jest.fn();
 const mockAddRecentAddress = jest.fn();
 const mockSetDestinationAddress = jest.fn();
+const mockPrepareForSearch = jest.fn();
 const mockReset = jest.fn();
 
 // Create mock data
@@ -80,7 +87,12 @@ const getSendStoreMock = (overrides = {}) =>
     searchAddress: mockSearchAddress,
     addRecentAddress: mockAddRecentAddress,
     setDestinationAddress: mockSetDestinationAddress,
+    prepareForSearch: mockPrepareForSearch,
     resetSendRecipient: mockReset,
+    isSearching: false,
+    isValidDestination: false,
+    isDestinationFunded: null,
+    destinationAddress: "",
     ...overrides,
   });
 
@@ -90,6 +102,7 @@ jest.mock("ducks/sendRecipient", () => ({
 
 const getTransactionSettingsStoreMock = (overrides = {}) => ({
   saveRecipientAddress: jest.fn(),
+  saveRecipientName: jest.fn(),
   saveSelectedCollectibleDetails: jest.fn(),
   selectedCollectibleDetails: { collectionAddress: "", tokenId: "" },
   selectedTokenId: "",
@@ -99,6 +112,7 @@ const getTransactionSettingsStoreMock = (overrides = {}) => ({
 jest.mock("ducks/transactionSettings", () => ({
   useTransactionSettingsStore: jest.fn().mockReturnValue({
     saveRecipientAddress: jest.fn(),
+    saveRecipientName: jest.fn(),
     saveSelectedCollectibleDetails: jest.fn(),
     selectedCollectibleDetails: { collectionAddress: "", tokenId: "" },
     selectedTokenId: "",
@@ -262,6 +276,8 @@ describe("SendSearchContacts", () => {
   });
 
   it("shows search suggestions when text is entered", async () => {
+    jest.useFakeTimers();
+
     // Setup the mock to return search results for this specific test
     jest.spyOn(sendDuck, "useSendRecipientStore").mockImplementation(
       getSendStoreMock({
@@ -278,10 +294,67 @@ describe("SendSearchContacts", () => {
     );
 
     const input = await screen.findByPlaceholderText("Enter address");
-    await userEvent.type(input, "test");
+    fireEvent.changeText(input, "test");
+
+    expect(mockPrepareForSearch).toHaveBeenCalled();
+    expect(mockSearchAddress).not.toHaveBeenCalled();
+
+    act(() => {
+      jest.runAllTimers();
+    });
 
     await waitFor(() => {
       expect(mockSearchAddress).toHaveBeenCalledWith("test");
+    });
+
+    jest.useRealTimers();
+  });
+
+  it("keeps recents and wallets visible while typing an invalid address", async () => {
+    jest.spyOn(sendDuck, "useSendRecipientStore").mockImplementation(
+      getSendStoreMock({
+        searchResults: mockSearchResults,
+        recentAddresses: mockRecentAddresses,
+        loadRecentAddresses: mockLoadRecentAddresses,
+        isValidDestination: false,
+      }),
+    );
+
+    renderWithProviders(
+      <NavigationContainer>
+        <SendSearchContacts navigation={mockNavigation} route={mockRoute} />
+      </NavigationContainer>,
+    );
+
+    const input = await screen.findByPlaceholderText("Enter address");
+    await userEvent.type(input, "GABC");
+
+    await waitFor(() => {
+      expect(screen.getByText("Recent Contact")).toBeTruthy();
+      expect(screen.getByText("My Second Wallet")).toBeTruthy();
+    });
+  });
+
+  it("hides recents and wallets once a valid destination is found", async () => {
+    jest.spyOn(sendDuck, "useSendRecipientStore").mockImplementation(
+      getSendStoreMock({
+        searchResults: mockSearchResults,
+        recentAddresses: mockRecentAddresses,
+        loadRecentAddresses: mockLoadRecentAddresses,
+        isValidDestination: true,
+      }),
+    );
+
+    renderWithProviders(
+      <NavigationContainer>
+        <SendSearchContacts navigation={mockNavigation} route={mockRoute} />
+      </NavigationContainer>,
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByText("Recent Contact")).toBeNull();
+      expect(screen.queryByText("My Second Wallet")).toBeNull();
+      expect(screen.getByText("Search Result")).toBeTruthy();
     });
   });
 

@@ -65,7 +65,7 @@ const TransactionProcessingScreen: React.FC<
   const navigation = useNavigation();
   const { network } = useAuthenticationStore();
 
-  const { recipientAddress } = useTransactionSettingsStore();
+  const { recipientAddress, recipientName } = useTransactionSettingsStore();
 
   const {
     isSubmitting,
@@ -74,7 +74,7 @@ const TransactionProcessingScreen: React.FC<
     resetTransaction,
   } = useTransactionBuilderStore();
 
-  const { addRecentAddress } = useSendRecipientStore();
+  const { addRecentAddress, federationAddress } = useSendRecipientStore();
 
   const slicedAddress = truncateAddress(recipientAddress, 4, 4);
   const [status, setStatus] = useState<TransactionStatusType>(
@@ -103,7 +103,10 @@ const TransactionProcessingScreen: React.FC<
       setStatus(TransactionStatus.FAILED);
     } else if (transactionHash) {
       setStatus(TransactionStatus.SENT);
-      addRecentAddress(recipientAddress);
+      addRecentAddress(
+        recipientAddress,
+        recipientName || federationAddress || undefined,
+      );
     } else if (isContractAddress && !isSubmitting) {
       setStatus(TransactionStatus.UNSUPPORTED);
     }
@@ -116,7 +119,9 @@ const TransactionProcessingScreen: React.FC<
     isContractAddress,
     network,
     recipientAddress,
+    recipientName,
     addRecentAddress,
+    federationAddress,
   ]);
 
   const handleClose = () => {

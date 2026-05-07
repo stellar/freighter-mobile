@@ -20,6 +20,7 @@ describe("transactionSettings Duck", () => {
     expect(initialState.transactionFee).toBe(MIN_TRANSACTION_FEE);
     expect(initialState.transactionTimeout).toBe(DEFAULT_TRANSACTION_TIMEOUT);
     expect(initialState.recipientAddress).toBe("");
+    expect(initialState.recipientName).toBe("");
     expect(initialState.selectedTokenId).toBe("");
   });
 
@@ -56,6 +57,16 @@ describe("transactionSettings Duck", () => {
     expect(store.getState().recipientAddress).toBe(newAddress);
   });
 
+  it("should save recipient name", () => {
+    const newName = "Account 2";
+
+    act(() => {
+      store.getState().saveRecipientName(newName);
+    });
+
+    expect(store.getState().recipientName).toBe(newName);
+  });
+
   it("should save selected token ID", () => {
     const newTokenId =
       "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
@@ -71,6 +82,7 @@ describe("transactionSettings Duck", () => {
     const newTimeout = 600;
     const newAddress =
       "GCVOLU545KR4QKJ5J57Q4AP3ZT6M2PX5FQOOWEVJ6VAMSHMWWUH4Y3QF";
+    const newName = "Account 2";
     const newTokenId = "TEST:TEST";
 
     act(() => {
@@ -78,6 +90,7 @@ describe("transactionSettings Duck", () => {
       store.getState().saveTransactionFee(newFee);
       store.getState().saveTransactionTimeout(newTimeout);
       store.getState().saveRecipientAddress(newAddress);
+      store.getState().saveRecipientName(newName);
       store.getState().saveSelectedTokenId(newTokenId);
     });
 
@@ -85,6 +98,7 @@ describe("transactionSettings Duck", () => {
     expect(store.getState().transactionFee).toBe(newFee);
     expect(store.getState().transactionTimeout).toBe(newTimeout);
     expect(store.getState().recipientAddress).toBe(newAddress);
+    expect(store.getState().recipientName).toBe(newName);
     expect(store.getState().selectedTokenId).toBe(newTokenId);
 
     act(() => {
@@ -97,6 +111,7 @@ describe("transactionSettings Duck", () => {
       DEFAULT_TRANSACTION_TIMEOUT,
     );
     expect(store.getState().recipientAddress).toBe("");
+    expect(store.getState().recipientName).toBe("");
     expect(store.getState().selectedTokenId).toBe("");
   });
 

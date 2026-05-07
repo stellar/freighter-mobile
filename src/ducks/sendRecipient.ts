@@ -32,6 +32,7 @@ interface SendStore {
   addRecentAddress: (address: string, name?: string) => Promise<void>;
   searchAddress: (searchTerm: string) => Promise<void>;
   setDestinationAddress: (address: string, fedAddress?: string) => void;
+  prepareForSearch: () => void;
   resetSendRecipient: () => void;
 }
 
@@ -41,6 +42,7 @@ const initialState: Omit<
   | "addRecentAddress"
   | "searchAddress"
   | "setDestinationAddress"
+  | "prepareForSearch"
   | "resetSendRecipient"
 > = {
   recentAddresses: [],
@@ -291,6 +293,16 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
         });
       }
     })();
+  },
+
+  prepareForSearch: () => {
+    set({
+      searchResults: [],
+      searchError: null,
+      isValidDestination: false,
+      isDestinationFunded: null,
+      isSearching: true,
+    });
   },
 
   resetSendRecipient: () => {
