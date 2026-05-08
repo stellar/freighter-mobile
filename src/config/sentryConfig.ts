@@ -30,6 +30,19 @@ export const SENTRY_CONFIG = {
 } as const;
 
 /**
+ * Centralized registry of breadcrumb categories used by `Sentry.addBreadcrumb`
+ * call sites in this file.
+ *
+ * Note: the `sentryAdapter.warn` path in `logger.ts` uses the caller-supplied
+ * `context` argument as the breadcrumb category and is intentionally not
+ * enumerated here (callers can pick any module-scoped name).
+ */
+export const SENTRY_BREADCRUMB_CATEGORIES = {
+  USER_INPUT_VALIDATION: "user-input-validation",
+  BIOMETRIC_STATE: "biometric-state",
+} as const;
+
+/**
  * User-typo password messages we downgrade in `beforeSend`.
  *
  * A cleaner long-term fix would be at source: `useAuthenticationStore.signIn`
@@ -244,7 +257,7 @@ export const initializeSentry = (): void => {
       // corrupted data." (a real corruption signal).
       if (PASSWORD_TYPO_MESSAGES.includes(noiseMessage)) {
         Sentry.addBreadcrumb({
-          category: "user-input-validation",
+          category: SENTRY_BREADCRUMB_CATEGORIES.USER_INPUT_VALIDATION,
           message: noiseMessage,
           level: "warning",
         });
@@ -261,7 +274,7 @@ export const initializeSentry = (): void => {
         )
       ) {
         Sentry.addBreadcrumb({
-          category: "biometric-state",
+          category: SENTRY_BREADCRUMB_CATEGORIES.BIOMETRIC_STATE,
           message: noiseMessage,
           level: "warning",
         });
