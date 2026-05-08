@@ -907,7 +907,8 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   const handleSessionRequest = (sessionRequest: WalletKitSessionRequest) => {
     // Simple queue: if already processing a request, store this one as pending
     if (isProcessingRequestRef.current) {
-      logger.warn(
+      // Normal queue flow, not an error condition.
+      logger.info(
         "WalletKitProvider",
         "Request already in progress, queuing new request",
         {
@@ -1012,17 +1013,19 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         variant: "error",
       });
 
+      // The exact-hostname comparison above produces false positives
+      // on legitimate subdomain drift — every flagged origin
+      // inspected so far has been a legitimate dApp or developer
+      // environment. The factual message + the
+      // transactionRequestOrigin arg below are enough to triage which
+      // dApp tripped the check.
       logger.error(
         "WalletKitProvider",
         "Invalid transaction origin",
         new Error(
-          "Untrusted Transaction Domain. Bad actor potentially found in transaction request.",
+          "WalletConnect transaction request origin does not match any active session hostname",
         ),
-        {
-          transactionRequestOrigin,
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-          xdr: sessionRequest.params?.request?.params?.xdr,
-        },
+        { transactionRequestOrigin },
       );
 
       rejectSessionRequest({

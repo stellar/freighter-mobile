@@ -118,7 +118,10 @@ export const getSorobanRpcServer = (network: NETWORKS) => {
       allowHttp: getIsAllowHttp(sorobanRpcUrl),
     });
   } catch (serverError) {
-    logger.warn("StellarService", "Failed to instantiate Soroban RPC Server", {
+    // Soroban RPC isn't available on every network/configuration; the
+    // null return is checked by callers and the app falls back to
+    // non-Soroban code paths. Not actionable as a breadcrumb.
+    logger.info("StellarService", "Failed to instantiate Soroban RPC Server", {
       error: String(serverError),
     });
     return null;
