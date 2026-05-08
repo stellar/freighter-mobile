@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from "axios";
+import { logger } from "config/logger";
 import { debug } from "helpers/debug";
 
 /**
@@ -443,3 +444,28 @@ export function isApiNetworkError(error: unknown): error is ApiError {
     (error as ApiError).isNetworkError === true
   );
 }
+
+/**
+ * Routes an API error to `logger.warn` (connectivity failures) or
+ * `logger.error` (real backend bugs / timeouts) based on
+ * `isApiNetworkError`.
+ *
+ * @param context     Logger context (typically the module/function name)
+ * @param warnMessage Message used when the failure is a connectivity issue
+ * @param errorMessage Message used when the failure is a real backend bug
+ * @param error       The thrown value from the API call
+ * @param args        Optional structured args forwarded to the logger
+ */
+export const logApiError = (
+  context: string,
+  warnMessage: string,
+  errorMessage: string,
+  error: unknown,
+  ...args: unknown[]
+): void => {
+  if (isApiNetworkError(error)) {
+    logger.warn(context, warnMessage, error, ...args);
+  } else {
+    logger.error(context, errorMessage, error, ...args);
+  }
+};

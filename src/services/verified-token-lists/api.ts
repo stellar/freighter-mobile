@@ -1,6 +1,5 @@
 import { NETWORKS } from "config/constants";
-import { logger } from "config/logger";
-import { createApiService, isApiNetworkError } from "services/apiFactory";
+import { createApiService, logApiError } from "services/apiFactory";
 import { DEFAULT_TOKENS_LISTS } from "services/verified-token-lists/constants";
 import {
   TokenListReponseItem,
@@ -40,21 +39,13 @@ export const fetchVerifiedTokens = async ({
       // structured arg instead — interpolating it would fragment Sentry
       // grouping into one issue per token-list URL.
       const url = service.getInstance().getUri();
-      if (isApiNetworkError(err)) {
-        logger.warn(
-          "fetchVerifiedTokens",
-          "Network unreachable for token list",
-          err,
-          { url },
-        );
-      } else {
-        logger.error(
-          "fetchVerifiedTokens",
-          "Error retrieving verified tokens from token list",
-          err,
-          { url },
-        );
-      }
+      logApiError(
+        "fetchVerifiedTokens",
+        "Network unreachable for token list",
+        "Error retrieving verified tokens from token list",
+        err,
+        { url },
+      );
       return null;
     }
   });

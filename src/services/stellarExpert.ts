@@ -1,12 +1,12 @@
 /* eslint-disable no-underscore-dangle */
 import { NETWORKS } from "config/constants";
-import { logger, normalizeError } from "config/logger";
+import { normalizeError } from "config/logger";
 import { SearchTokenResponse } from "config/types";
 import { getApiStellarExpertUrl } from "helpers/stellarExpert";
 import {
   createApiService,
-  isApiNetworkError,
   isRequestCanceled,
+  logApiError,
 } from "services/apiFactory";
 
 const stellarExpertApiTestnet = createApiService({
@@ -45,15 +45,12 @@ export const searchToken = async (
       return null;
     }
 
-    if (isApiNetworkError(error)) {
-      logger.warn(
-        "stellarExpert",
-        "Network unreachable while searching token",
-        error,
-      );
-    } else {
-      logger.error("stellarExpert", "Error searching token", error);
-    }
+    logApiError(
+      "stellarExpert",
+      "Network unreachable while searching token",
+      "Error searching token",
+      error,
+    );
 
     return null;
   }

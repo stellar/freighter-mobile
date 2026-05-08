@@ -1,10 +1,20 @@
 /* eslint-disable @fnando/consistent-import/consistent-import */
 import { AxiosAdapter } from "axios";
+import { logger } from "config/logger";
 import {
   ApiError,
   createApiService,
   isApiNetworkError,
+  logApiError,
 } from "services/apiFactory";
+
+jest.mock("config/logger", () => ({
+  logger: {
+    warn: jest.fn(),
+    error: jest.fn(),
+  },
+  normalizeError: jest.fn((e) => e),
+}));
 
 describe("apiFactory", () => {
   describe("response interceptor: error transformation contract", () => {
@@ -134,6 +144,69 @@ describe("apiFactory", () => {
       expect(isApiNetworkError({ isNetworkError: 1 })).toBe(false);
       expect(isApiNetworkError({ isNetworkError: "true" })).toBe(false);
       expect(isApiNetworkError({ isNetworkError: undefined })).toBe(false);
+    });
+  });
+
+  describe("logApiError", () => {
+    const mockedLogger = logger as unknown as {
+      warn: jest.Mock;
+      error: jest.Mock;
+    };
+
+    beforeEach(() => {
+      mockedLogger.warn.mockClear();
+      mockedLogger.error.mockClear();
+    });
+
+    it("routes connectivity failures to logger.warn with the warn message", () => {
+      const networkError: ApiError = {
+        message: "Network Error",
+        status: 0,
+        isNetworkError: true,
+      };
+
+      logApiError("ctx", "warn-msg", "error-msg", networkError, { extra: 1 });
+
+      expect(mockedLogger.warn).toHaveBeenCalledWith(
+        "ctx",
+        "warn-msg",
+        networkError,
+        { extra: 1 },
+      );
+      expect(mockedLogger.error).not.toHaveBeenCalled();
+    });
+
+    it("routes real backend errors (isNetworkError: false) to logger.error with the error message", () => {
+      const backendError: ApiError = {
+        message: "Bad Request",
+        status: 400,
+        isNetworkError: false,
+        data: { result_codes: { transaction: "tx_bad_seq" } },
+      };
+
+      logApiError("ctx", "warn-msg", "error-msg", backendError);
+
+      expect(mockedLogger.error).toHaveBeenCalledWith(
+        "ctx",
+        "error-msg",
+        backendError,
+      );
+      expect(mockedLogger.warn).not.toHaveBeenCalled();
+    });
+
+    it("routes non-axios throws to logger.error (not misclassified as network)", () => {
+      // A bare Error has no isNetworkError flag; isApiNetworkError returns
+      // false, so logApiError should pick the error path.
+      const bareError = new Error("something blew up");
+
+      logApiError("ctx", "warn-msg", "error-msg", bareError);
+
+      expect(mockedLogger.error).toHaveBeenCalledWith(
+        "ctx",
+        "error-msg",
+        bareError,
+      );
+      expect(mockedLogger.warn).not.toHaveBeenCalled();
     });
   });
 });

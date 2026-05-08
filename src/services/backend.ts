@@ -34,8 +34,8 @@ import { bigize } from "helpers/bigize";
 import { getNativeContractDetails } from "helpers/soroban";
 import {
   createApiService,
-  isApiNetworkError,
   isRequestCanceled,
+  logApiError,
 } from "services/apiFactory";
 
 // Create dedicated API services for backend operations
@@ -478,19 +478,12 @@ export const getTokenDetails = async ({
       // responses, malformed payloads) and axios client-side timeouts
       // (carved out of isApiNetworkError so latency regressions stay
       // visible) still surface as logger.error.
-      if (isApiNetworkError(error)) {
-        logger.warn(
-          "backendApi.getTokenDetails",
-          "Network unreachable while fetching token details",
-          error,
-        );
-      } else {
-        logger.error(
-          "backendApi.getTokenDetails",
-          "Error fetching token details",
-          error,
-        );
-      }
+      logApiError(
+        "backendApi.getTokenDetails",
+        "Network unreachable while fetching token details",
+        "Error fetching token details",
+        error,
+      );
     }
 
     return null;
@@ -543,19 +536,12 @@ export const isSacContractExecutable = async (
 
     return response.data.isSacContract;
   } catch (error) {
-    if (isApiNetworkError(error)) {
-      logger.warn(
-        "backendApi.isSacContractExecutable",
-        "Network unreachable while checking SAC contract",
-        error,
-      );
-    } else {
-      logger.error(
-        "backendApi.isSacContractExecutable",
-        "Error fetching sac contract executable",
-        error,
-      );
-    }
+    logApiError(
+      "backendApi.isSacContractExecutable",
+      "Network unreachable while checking SAC contract",
+      "Error fetching sac contract executable",
+      error,
+    );
 
     return false;
   }
@@ -609,19 +595,12 @@ export const getIndexerAccountHistory = async ({
 
     return response.data;
   } catch (error) {
-    if (isApiNetworkError(error)) {
-      logger.warn(
-        "backendApi.getAccountHistory",
-        "Network unreachable while fetching account history",
-        error,
-      );
-    } else {
-      logger.error(
-        "backendApi.getAccountHistory",
-        "Error fetching account history",
-        error,
-      );
-    }
+    logApiError(
+      "backendApi.getAccountHistory",
+      "Network unreachable while fetching account history",
+      "Error fetching account history",
+      error,
+    );
 
     return [];
   }
@@ -1165,19 +1144,12 @@ export const fetchCollectibles = async ({
     // throw above) and axios client-side timeouts (carved out of
     // isApiNetworkError so latency regressions stay visible) still
     // surface as logger.error.
-    if (isApiNetworkError(error)) {
-      logger.warn(
-        "backendApi.fetchCollectibles",
-        "Network unreachable while fetching collectibles",
-        error,
-      );
-    } else {
-      logger.error(
-        "backendApi.fetchCollectibles",
-        "Error fetching collectibles",
-        error,
-      );
-    }
+    logApiError(
+      "backendApi.fetchCollectibles",
+      "Network unreachable while fetching collectibles",
+      "Error fetching collectibles",
+      error,
+    );
 
     throw error;
   }
