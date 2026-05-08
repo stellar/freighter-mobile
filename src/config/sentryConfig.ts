@@ -4,6 +4,8 @@ import { useAnalyticsStore } from "ducks/analytics";
 import { useAuthenticationStore } from "ducks/auth";
 import { useNetworkStore } from "ducks/networkInfo";
 import { isProd, isE2ETest } from "helpers/isEnv";
+import enTranslations from "i18n/locales/en/translations.json";
+import ptTranslations from "i18n/locales/pt/translations.json";
 import { Platform } from "react-native";
 import {
   getVersion,
@@ -40,18 +42,13 @@ export const SENTRY_CONFIG = {
  * wants its own focused review. This filter is a contained workaround
  * until the long-term fix is implemented.
  *
- * Kept as exact strings (not substrings) because a substring match on
- * "Invalid password" would also catch "Invalid password or corrupted
- * data." from `helpers/encryptPassword.ts`, which is a real corruption
- * signal, not a user typo.
- *
- * The corresponding `sentryConfig.test.ts` block asserts these stay in
- * sync with the i18n source so a copy change in `translations.json`
- * will trip the test rather than silently disabling the filter.
+ * Sourced from i18n translation files so a copy change in
+ * `translations.json` automatically updates this filter — no separate
+ * sync step.
  */
 export const PASSWORD_TYPO_MESSAGES = [
-  "Invalid password. Please try again.",
-  "Senha inválida. Por favor, tente novamente.",
+  enTranslations.authStore.error.invalidPassword,
+  ptTranslations.authStore.error.invalidPassword,
 ];
 
 /**

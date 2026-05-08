@@ -6,8 +6,6 @@ import {
   initializeSentry,
   scrubStrKeys,
 } from "config/sentryConfig";
-import enTranslations from "i18n/locales/en/translations.json";
-import ptTranslations from "i18n/locales/pt/translations.json";
 
 jest.mock("@sentry/react-native", () => ({
   init: jest.fn(),
@@ -174,24 +172,6 @@ describe("sentryConfig.beforeSend filters", () => {
       const result = runBeforeSend(msg);
       expect(result).not.toBeNull();
       expect(mockedSentry.addBreadcrumb).not.toHaveBeenCalled();
-    });
-  });
-
-  describe("PASSWORD_TYPO_MESSAGES stay in sync with i18n source", () => {
-    // Tripwire: if someone changes the user-facing copy in
-    // `translations.json` without also updating PASSWORD_TYPO_MESSAGES,
-    // the noise filter would silently stop matching and these typos
-    // would start landing in Sentry. Fail the build instead.
-    it("contains the English authStore.error.invalidPassword string", () => {
-      expect(PASSWORD_TYPO_MESSAGES).toContain(
-        enTranslations.authStore.error.invalidPassword,
-      );
-    });
-
-    it("contains the Portuguese authStore.error.invalidPassword string", () => {
-      expect(PASSWORD_TYPO_MESSAGES).toContain(
-        ptTranslations.authStore.error.invalidPassword,
-      );
     });
   });
 
