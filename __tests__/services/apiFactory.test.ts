@@ -21,7 +21,10 @@ describe("apiFactory", () => {
       // with no `response` field on the error.
       const noResponseAdapter: AxiosAdapter = () =>
         Promise.reject(
-          Object.assign(new Error("Network Error"), { response: undefined }),
+          Object.assign(new Error("Network Error"), {
+            isAxiosError: true,
+            response: undefined,
+          }),
         );
 
       try {
@@ -47,6 +50,7 @@ describe("apiFactory", () => {
       const timeoutAdapter: AxiosAdapter = () =>
         Promise.reject(
           Object.assign(new Error("timeout of 15000ms exceeded"), {
+            isAxiosError: true,
             code: "ECONNABORTED",
             response: undefined,
           }),

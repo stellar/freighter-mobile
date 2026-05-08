@@ -184,7 +184,10 @@ export function createApiService(options: ApiServiceOptions) {
         // Excluding it from `isNetworkError` keeps timeouts on the
         // logger.error path (real backend latency) rather than the
         // logger.warn / connectivity path.
-        isNetworkError: !error.response && error.code !== "ECONNABORTED",
+        isNetworkError:
+          axios.isAxiosError(error) &&
+          !error.response &&
+          error.code !== "ECONNABORTED",
       };
       /* eslint-enable @typescript-eslint/no-unsafe-member-access */
 
