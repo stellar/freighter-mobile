@@ -101,6 +101,14 @@ jest.mock("components/TokenIcon", () => ({
   },
 }));
 jest.mock("components/screens/SendScreen/components", () => ({
+  AmountAlignment: {
+    Left: "left",
+    Right: "right",
+  },
+  AmountDisplaySize: {
+    XS: "xs",
+    MD: "md",
+  },
   SendReviewBottomSheet: function MockSendReviewBottomSheet() {
     return null;
   },
@@ -273,11 +281,15 @@ const mockStellarSdkServer = jest.fn();
 const mockGoBack = jest.fn();
 const mockNavigate = jest.fn();
 const mockReset = jest.fn();
+const mockSetOptions = jest.fn();
+const mockParentGoBack = jest.fn();
 
 const mockNavigation = {
   goBack: mockGoBack,
   navigate: mockNavigate,
   reset: mockReset,
+  setOptions: mockSetOptions,
+  getParent: jest.fn(() => ({ goBack: mockParentGoBack })),
 } as unknown as TransactionAmountScreenProps["navigation"];
 
 const mockRoute = {
@@ -1754,18 +1766,63 @@ describe("TransactionAmountScreen - Native keyboard input", () => {
     expect(mockHandleDisplayAmountChange).toHaveBeenCalledWith("");
   });
 
-  it("calls handleDisplayAmountChange for each pasted character", () => {
+  it("calls handleDisplayAmountChange once with full pasted text", () => {
     const { getByTestId } = render(
       <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
     );
 
     fireEvent.changeText(getByTestId("amount-text-input"), "123");
-    // The current display starts as "0", so the handler first issues one backspace,
-    // then applies each pasted digit.
-    expect(mockHandleDisplayAmountChange).toHaveBeenCalledTimes(4);
+    expect(mockHandleDisplayAmountChange).toHaveBeenCalledTimes(1);
+    expect(mockHandleDisplayAmountChange).toHaveBeenCalledWith("123");
+  });
+
+  it("sanitizes mixed pasted input before forwarding", () => {
+    const { getByTestId } = render(
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+
+    fireEvent.changeText(getByTestId("amount-text-input"), "$12a,3b4");
+    expect(mockHandleDisplayAmountChange).toHaveBeenCalledWith("12,34");
+  });
+
+  it("maps comma deletion sequence to backspace calls", () => {
+    const { getByTestId } = render(
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+
+    fireEvent.changeText(getByTestId("amount-text-input"), "0,1");
+    fireEvent.changeText(getByTestId("amount-text-input"), "0,");
+    fireEvent.changeText(getByTestId("amount-text-input"), "0");
+
+    expect(mockHandleDisplayAmountChange).toHaveBeenNthCalledWith(1, "0,1");
+    expect(mockHandleDisplayAmountChange).toHaveBeenNthCalledWith(2, "");
+    expect(mockHandleDisplayAmountChange).toHaveBeenNthCalledWith(3, "");
+  });
+
+  it("allows retyping in fiat mode after deleting to partial zero", () => {
+    mockUseTokenFiatConverter.mockReturnValue({
+      tokenAmount: "0",
+      tokenAmountDisplay: "0",
+      tokenAmountDisplayRaw: null,
+      fiatAmount: "0",
+      fiatAmountDisplay: "0,00",
+      fiatAmountDisplayRaw: "0,0",
+      showFiatAmount: true,
+      setTokenAmount: jest.fn(),
+      setFiatAmount: jest.fn(),
+      setShowFiatAmount: jest.fn(),
+      handleDisplayAmountChange: mockHandleDisplayAmountChange,
+      updateFiatDisplay: jest.fn(),
+    });
+
+    const { getByTestId } = render(
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+
+    fireEvent.changeText(getByTestId("amount-text-input"), "0,");
+    fireEvent.changeText(getByTestId("amount-text-input"), "1");
+
     expect(mockHandleDisplayAmountChange).toHaveBeenNthCalledWith(1, "");
     expect(mockHandleDisplayAmountChange).toHaveBeenNthCalledWith(2, "1");
-    expect(mockHandleDisplayAmountChange).toHaveBeenNthCalledWith(3, "2");
-    expect(mockHandleDisplayAmountChange).toHaveBeenNthCalledWith(4, "3");
   });
 });

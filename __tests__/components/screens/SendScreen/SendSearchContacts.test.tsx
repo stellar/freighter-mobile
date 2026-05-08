@@ -17,6 +17,7 @@ import { Account } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import * as sendDuck from "ducks/sendRecipient";
 import * as transactionSettingsDuck from "ducks/transactionSettings";
+import { isFederationAddress } from "helpers/stellar";
 import { renderWithProviders } from "helpers/testUtils";
 import React, { ReactNode } from "react";
 import { View } from "react-native";
@@ -39,6 +40,7 @@ jest.mock("@gorhom/bottom-sheet", () => ({
 // Mock stellar helpers
 jest.mock("helpers/stellar", () => ({
   isValidStellarAddress: jest.fn().mockReturnValue(true),
+  isFederationAddress: jest.fn().mockReturnValue(false),
   truncateAddress: jest.fn(
     (address) => `${address.slice(0, 4)}...${address.slice(-4)}`,
   ),
@@ -166,6 +168,7 @@ const mockNavigation = {
   reset: jest.fn(),
   replace: jest.fn(),
   popToTop: jest.fn(),
+  popTo: jest.fn(),
   setParams: jest.fn(),
 } as unknown as SendSearchContactsNavigationProp;
 
@@ -563,6 +566,57 @@ describe("SendSearchContacts", () => {
         expect(mockSetDestinationAddress).toHaveBeenCalledWith(
           "GBLS3IXAFSUWBSW3RXJMNXEGCHXEUL6VMBLFGVFPW47X2OL7BG7QQMUQ",
         );
+      });
+    });
+
+    it("does not save recipientName when contact name is federation address", async () => {
+      const mockSaveRecipientAddress = jest.fn();
+      const mockSaveRecipientName = jest.fn();
+
+      (isFederationAddress as jest.Mock).mockImplementation((value: string) =>
+        value.includes("*"),
+      );
+
+      jest
+        .spyOn(transactionSettingsDuck, "useTransactionSettingsStore")
+        .mockReturnValue(
+          getTransactionSettingsStoreMock({
+            saveRecipientAddress: mockSaveRecipientAddress,
+            saveRecipientName: mockSaveRecipientName,
+          }),
+        );
+
+      jest.spyOn(sendDuck, "useSendRecipientStore").mockImplementation(
+        getSendStoreMock({
+          recentAddresses: [
+            {
+              id: "recent-fed",
+              address:
+                "GDAS7BS4XKW27H2K5C25V6ZU46FCFGBTFQGFDZURAKVPA6QYQG4GTWBC",
+              name: "alice*example.com",
+            },
+          ],
+          loadRecentAddresses: mockLoadRecentAddresses,
+        }),
+      );
+
+      renderWithProviders(
+        <NavigationContainer>
+          <SendSearchContacts navigation={mockNavigation} route={mockRoute} />
+        </NavigationContainer>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("alice*example.com")).toBeTruthy();
+      });
+
+      await userEvent.press(screen.getByText("alice*example.com"));
+
+      await waitFor(() => {
+        expect(mockSaveRecipientAddress).toHaveBeenCalledWith(
+          "GDAS7BS4XKW27H2K5C25V6ZU46FCFGBTFQGFDZURAKVPA6QYQG4GTWBC",
+        );
+        expect(mockSaveRecipientName).toHaveBeenCalledWith("");
       });
     });
 

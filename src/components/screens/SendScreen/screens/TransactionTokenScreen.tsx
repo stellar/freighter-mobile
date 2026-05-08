@@ -2,12 +2,15 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { TokensCollectiblesInline } from "components/TokensCollectiblesInline";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { TransactionContext } from "config/constants";
-import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
+import {
+  SEND_PAYMENT_ROUTES,
+  ScreenTransition,
+  SendPaymentStackParamList,
+} from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
-import useAppTranslation from "hooks/useAppTranslation";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React, { useLayoutEffect } from "react";
+import React from "react";
 import { View } from "react-native";
 
 type TransactionTokenScreenProps = NativeStackScreenProps<
@@ -19,16 +22,11 @@ const TransactionTokenScreen: React.FC<TransactionTokenScreenProps> = ({
   navigation,
   route,
 }) => {
-  const { t } = useAppTranslation();
   const { saveSelectedTokenId, saveSelectedCollectibleDetails } =
     useTransactionSettingsStore();
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
   const publicKey = account?.publicKey;
-
-  useLayoutEffect(() => {
-    navigation.setOptions({ title: t("transactionTokenScreen.title") });
-  }, [navigation, t]);
 
   const handleTokenPress = (tokenId: string) => {
     saveSelectedTokenId(tokenId);
@@ -40,7 +38,9 @@ const TransactionTokenScreen: React.FC<TransactionTokenScreenProps> = ({
       return;
     }
 
-    navigation.navigate(SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN);
+    navigation.navigate(SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN, {
+      transition: ScreenTransition.SlideFromRight,
+    });
   };
 
   const handleCollectiblePress = (collectibleDetails: {

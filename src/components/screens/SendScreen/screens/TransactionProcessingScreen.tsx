@@ -19,7 +19,7 @@ import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { formatTokenForDisplay } from "helpers/formatAmount";
 import { isContractId } from "helpers/soroban";
-import { truncateAddress } from "helpers/stellar";
+import { isSameAccount, truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -63,7 +63,7 @@ const TransactionProcessingScreen: React.FC<
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const navigation = useNavigation();
-  const { network } = useAuthenticationStore();
+  const { network, allAccounts } = useAuthenticationStore();
 
   const { recipientAddress, recipientName } = useTransactionSettingsStore();
 
@@ -74,9 +74,12 @@ const TransactionProcessingScreen: React.FC<
     resetTransaction,
   } = useTransactionBuilderStore();
 
-  const { addRecentAddress, federationAddress } = useSendRecipientStore();
+  const { addRecentAddress } = useSendRecipientStore();
 
   const slicedAddress = truncateAddress(recipientAddress, 4, 4);
+  const isSelfOwnedRecipient = (allAccounts ?? []).some((account) =>
+    isSameAccount(account.publicKey, recipientAddress),
+  );
   const [status, setStatus] = useState<TransactionStatusType>(
     TransactionStatus.SENDING,
   );
@@ -103,10 +106,9 @@ const TransactionProcessingScreen: React.FC<
       setStatus(TransactionStatus.FAILED);
     } else if (transactionHash) {
       setStatus(TransactionStatus.SENT);
-      addRecentAddress(
-        recipientAddress,
-        recipientName || federationAddress || undefined,
-      );
+      if (!isSelfOwnedRecipient) {
+        addRecentAddress(recipientAddress, recipientName || undefined);
+      }
     } else if (isContractAddress && !isSubmitting) {
       setStatus(TransactionStatus.UNSUPPORTED);
     }
@@ -120,8 +122,8 @@ const TransactionProcessingScreen: React.FC<
     network,
     recipientAddress,
     recipientName,
+    isSelfOwnedRecipient,
     addRecentAddress,
-    federationAddress,
   ]);
 
   const handleClose = () => {
@@ -234,7 +236,7 @@ const TransactionProcessingScreen: React.FC<
                     {getMessageText()}
                   </Text>
                   <Text xl medium primary>
-                    {slicedAddress}
+                    {recipientName || slicedAddress}
                   </Text>
                 </View>
               </View>

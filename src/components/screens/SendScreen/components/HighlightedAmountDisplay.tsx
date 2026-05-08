@@ -100,8 +100,19 @@ interface HighlightedAmountDisplayProps {
   highlightColor: string;
   normalColor: string;
   secondaryColor: string;
-  align?: "left" | "center";
-  size?: "xs" | "lg" | "xl";
+  align?: AmountAlignment;
+  size?: AmountDisplaySize;
+}
+
+export enum AmountAlignment {
+  Left = "left",
+  Center = "center",
+}
+
+export enum AmountDisplaySize {
+  XS = "xs",
+  LG = "lg",
+  XL = "xl",
 }
 
 /**
@@ -118,7 +129,7 @@ export const HighlightedAmountDisplay: React.FC<
   highlightColor,
   normalColor,
   secondaryColor,
-  align = "center",
+  align = AmountAlignment.Center,
   size,
 }) => {
   const { matches, nonMatchingDecimals } = findMatchingCharacters(
@@ -130,8 +141,10 @@ export const HighlightedAmountDisplay: React.FC<
   const nonMatchingStartIndex =
     formattedDisplay.length - nonMatchingDecimals.length;
 
-  const displaySize = size ?? (isSmallScreen ? "lg" : "xl");
-  const alignmentClass = align === "left" ? "items-start" : "items-center";
+  const displaySize =
+    size ?? (isSmallScreen ? AmountDisplaySize.LG : AmountDisplaySize.XL);
+  const alignmentClass =
+    align === AmountAlignment.Left ? "items-start" : "items-center";
 
   return (
     <View className={`relative ${alignmentClass} justify-center w-full`}>

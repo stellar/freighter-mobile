@@ -98,18 +98,14 @@ tags:
     visible:
       id: send-review-sheet
     timeout: 30000
+# Wait for confirm button to be ready before tapping
+- extendedWaitUntil:
+    visible:
+      id: send-review-confirm-button
+    timeout: 30000
 # Confirm the transaction
 - tapOn:
     id: send-review-confirm-button
-
-# Retry confirm once if the sheet is still present
-- runFlow:
-    when:
-      visible:
-        id: send-review-confirm-button
-    commands:
-      - tapOn:
-          id: send-review-confirm-button
 
 # Wait for completion and tap Done
 - extendedWaitUntil:

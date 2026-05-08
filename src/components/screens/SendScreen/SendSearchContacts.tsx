@@ -17,6 +17,7 @@ import {
   NATIVE_TOKEN_CODE,
   QRCodeSource,
 } from "config/constants";
+import { logger } from "config/logger";
 import {
   ROOT_NAVIGATOR_ROUTES,
   RootStackParamList,
@@ -37,7 +38,7 @@ import useColors from "hooks/useColors";
 import useDebounce from "hooks/useDebounce";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
 import { useRightHeaderButton } from "hooks/useRightHeader";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ScrollView, View } from "react-native";
 import { analytics } from "services/analytics";
 
@@ -57,7 +58,6 @@ type SendSearchContactsProps = NativeStackScreenProps<
  */
 const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
   navigation,
-  route,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
@@ -104,12 +104,22 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
   const shouldShowUnfundedNotice =
     !isCollectibleSend && !isContractTokenSend && !isContractDestination;
 
-  const myWallets: Account[] = (allAccounts ?? []).filter(
-    (acc) => acc.publicKey !== activeAccount?.publicKey,
+  const myWallets: Account[] = useMemo(
+    () =>
+      (allAccounts ?? []).filter(
+        (acc) => acc.publicKey !== activeAccount?.publicKey,
+      ),
+    [allAccounts, activeAccount?.publicKey],
   );
 
   const debouncedSearchAddress = useDebounce((searchTerm: string) => {
-    searchAddress(searchTerm);
+    Promise.resolve(searchAddress(searchTerm)).catch((error) => {
+      logger.warn(
+        "SendSearchContacts",
+        "Debounced recipient search failed",
+        error,
+      );
+    });
   }, DEFAULT_DEBOUNCE_DELAY);
 
   // Load recent addresses when component mounts
@@ -154,6 +164,25 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
     [debouncedSearchAddress, prepareForSearch, resetSendRecipient],
   );
 
+  const proceedAfterRecipientSelection = useCallback(
+    (contactAddress: string, name?: string) => {
+      if (selectedCollectibleDetails.tokenId) {
+        // If Review exists in stack, pop back to it.
+        navigation.popTo(
+          SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW,
+          selectedCollectibleDetails,
+        );
+      } else {
+        navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN, {
+          tokenId: selectedTokenId || NATIVE_TOKEN_CODE,
+          recipientAddress: contactAddress,
+          recipientName: name,
+        });
+      }
+    },
+    [navigation, selectedCollectibleDetails, selectedTokenId],
+  );
+
   /**
    * Handles when a contact or address is selected
    *
@@ -164,8 +193,12 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
       if (recentAddresses.some((c) => c.address === contactAddress)) {
         analytics.track(AnalyticsEvent.SEND_PAYMENT_RECENT_ADDRESS);
       }
-      const federationLabel =
-        contactName && isFederationAddress(contactName) ? contactName : "";
+      let federationLabel = "";
+      if (isFederationAddress(contactAddress)) {
+        federationLabel = contactAddress;
+      } else if (contactName && isFederationAddress(contactName)) {
+        federationLabel = contactName;
+      }
       const recipientLabel = federationLabel ? "" : (contactName ?? "");
 
       // Save to both stores for different purposes
@@ -175,38 +208,17 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
       saveRecipientAddress(contactAddress);
       saveRecipientName(recipientLabel);
 
-      if (selectedCollectibleDetails.tokenId) {
-        if (typeof navigation.popTo === "function") {
-          // If Review exists in stack, pop back to it.
-          navigation.popTo(
-            SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW,
-            selectedCollectibleDetails,
-          );
-        } else {
-          navigation.navigate(
-            SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW,
-            selectedCollectibleDetails,
-          );
-        }
-      } else if (route.params?.returnToAmount) {
-        navigation.goBack();
-      } else {
-        navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN, {
-          tokenId: selectedTokenId || NATIVE_TOKEN_CODE,
-          recipientAddress: contactAddress,
-          recipientName: recipientLabel || undefined,
-        });
-      }
+      proceedAfterRecipientSelection(
+        contactAddress,
+        recipientLabel || undefined,
+      );
     },
     [
       recentAddresses,
       setDestinationAddress,
       saveRecipientAddress,
       saveRecipientName,
-      navigation,
-      route.params,
-      selectedCollectibleDetails,
-      selectedTokenId,
+      proceedAfterRecipientSelection,
     ],
   );
 
@@ -293,7 +305,10 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
             onContactPress={handleContactPress}
           />
         ) : (
-          <ScrollView showsVerticalScrollIndicator={false}>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
             {recentAddresses.length > 0 && (
               <RecentContactsList
                 transactions={recentAddresses}
@@ -324,30 +339,10 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
                       saveRecipientAddress(wallet.publicKey);
                       saveRecipientName(wallet.name);
 
-                      if (selectedCollectibleDetails.tokenId) {
-                        if (typeof navigation.popTo === "function") {
-                          navigation.popTo(
-                            SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW,
-                            selectedCollectibleDetails,
-                          );
-                        } else {
-                          navigation.navigate(
-                            SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW,
-                            selectedCollectibleDetails,
-                          );
-                        }
-                      } else if (route.params?.returnToAmount) {
-                        navigation.goBack();
-                      } else {
-                        navigation.navigate(
-                          SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN,
-                          {
-                            tokenId: selectedTokenId || NATIVE_TOKEN_CODE,
-                            recipientAddress: wallet.publicKey,
-                            recipientName: wallet.name,
-                          },
-                        );
-                      }
+                      proceedAfterRecipientSelection(
+                        wallet.publicKey,
+                        wallet.name,
+                      );
                     }}
                     className="mb-[24px]"
                   />

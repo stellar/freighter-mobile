@@ -1,5 +1,6 @@
 /* eslint-disable react/no-unstable-nested-components */
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import CustomNavigationHeader from "components/layout/CustomNavigationHeader";
 import { SendSearchContacts } from "components/screens/SendScreen";
 import {
@@ -7,6 +8,7 @@ import {
   TransactionAmountScreen,
 } from "components/screens/SendScreen/screens";
 import SendCollectibleReviewScreen from "components/screens/SendScreen/screens/SendCollectibleReview";
+import Icon from "components/sds/Icon";
 import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
 import { withTransitionOverride } from "helpers/navigationOptions";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -39,11 +41,21 @@ export const SendPaymentStackNavigator = () => {
       <SendPaymentStack.Screen
         name={SEND_PAYMENT_ROUTES.TRANSACTION_TOKEN_SCREEN}
         component={TransactionTokenScreen}
-        options={({ route }) =>
+        options={({ route, navigation }) =>
           withTransitionOverride(
-            {
-              headerTitle: t("transactionTokenScreen.title"),
-            },
+            route.params?.returnToAmount
+              ? {
+                  headerTitle: t("transactionTokenScreen.title"),
+                }
+              : {
+                  headerTitle: t("transactionTokenScreen.title"),
+                  headerLeft: () => (
+                    <CustomHeaderButton
+                      icon={Icon.X}
+                      onPress={() => navigation.getParent()?.goBack()}
+                    />
+                  ),
+                },
             route,
           )
         }

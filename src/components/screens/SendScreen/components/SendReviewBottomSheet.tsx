@@ -390,11 +390,11 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
               hasDarkBackground
             />
             <View className="flex-1">
-              <Text xl medium numberOfLines={1}>
+              <Text xl medium numberOfLines={recipientName ? 2 : 1}>
                 {recipientName || slicedAddress}
               </Text>
               {recipientName && (
-                <Text md medium secondary numberOfLines={1}>
+                <Text md medium secondary numberOfLines={2}>
                   {slicedAddress}
                 </Text>
               )}

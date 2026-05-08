@@ -1,5 +1,4 @@
 import { NavigatorScreenParams } from "@react-navigation/native";
-import { NativeStackNavigationOptions } from "@react-navigation/native-stack";
 import {
   BiometricsSource,
   NETWORKS,
@@ -7,7 +6,12 @@ import {
   SWAP_SELECTION_TYPES,
 } from "config/constants";
 
-export type ScreenTransition = NativeStackNavigationOptions["animation"];
+export enum ScreenTransition {
+  Fade = "fade",
+  SlideFromBottom = "slide_from_bottom",
+  SlideFromRight = "slide_from_right",
+  Default = "default",
+}
 
 /**
  * ROUTE NAMING CONVENTIONS FOR ANALYTICS
@@ -230,7 +234,7 @@ export type SendPaymentStackParamList = {
   [SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN]:
     | {
         returnToAmount?: boolean;
-        transition?: "slide_from_bottom" | "slide_from_right" | "default";
+        transition?: ScreenTransition;
       }
     | undefined;
   [SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW]: {
@@ -240,7 +244,7 @@ export type SendPaymentStackParamList = {
   [SEND_PAYMENT_ROUTES.TRANSACTION_TOKEN_SCREEN]:
     | {
         returnToAmount?: boolean;
-        transition?: "slide_from_bottom" | "slide_from_right" | "default";
+        transition?: ScreenTransition;
       }
     | undefined;
   [SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN]: {

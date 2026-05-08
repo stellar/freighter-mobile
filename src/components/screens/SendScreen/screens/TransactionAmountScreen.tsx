@@ -1,5 +1,6 @@
 import Blockaid from "@blockaid/client";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
+import { useNavigation } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BigNumber } from "bignumber.js";
 import BottomSheet from "components/BottomSheet";
@@ -10,7 +11,10 @@ import { TokenIcon } from "components/TokenIcon";
 import TransactionSettingsBottomSheet from "components/TransactionSettingsBottomSheet";
 import SecurityDetailBottomSheet from "components/blockaid/SecurityDetailBottomSheet";
 import { BaseLayout } from "components/layout/BaseLayout";
+import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import {
+  AmountAlignment,
+  AmountDisplaySize,
   ContactRow,
   HighlightedAmountDisplay,
   SendReviewBottomSheet,
@@ -36,6 +40,7 @@ import {
 } from "config/constants";
 import { logger } from "config/logger";
 import {
+  ScreenTransition,
   SEND_PAYMENT_ROUTES,
   SendPaymentStackParamList,
   ROOT_NAVIGATOR_ROUTES,
@@ -70,6 +75,7 @@ import { useToast } from "providers/ToastProvider";
 import React, {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -85,6 +91,17 @@ type TransactionAmountScreenProps = NativeStackScreenProps<
   typeof SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN
 >;
 
+const SendFlowCloseHeaderButton = () => {
+  const navigation = useNavigation();
+
+  return (
+    <CustomHeaderButton
+      icon={Icon.X}
+      onPress={() => navigation.getParent()?.goBack()}
+    />
+  );
+};
+
 /**
  * Checks if a raw input value should skip highlighting.
  * Only skip if it's exactly "0" (no decimal separator or trailing characters).
@@ -93,6 +110,9 @@ type TransactionAmountScreenProps = NativeStackScreenProps<
 const shouldSkipHighlighting = (rawInput: string | null): boolean =>
   // Only skip if it's exactly "0" (no separator, no trailing zeros) or empty
   !rawInput || rawInput === "0" || rawInput === "";
+
+const SECONDARY_AMOUNT_STACK_CHAR_THRESHOLD = 34;
+const HIDDEN_INPUT_OPACITY = 0.01;
 
 /**
  * TransactionAmountScreen Component
@@ -139,31 +159,22 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   useEffect(() => {
     // Clear collectible details when entering token flow to prevent cross-flow contamination
     saveSelectedCollectibleDetails({ collectionAddress: "", tokenId: "" });
-    // Clear recipient address when entering the screen
-    saveRecipientAddress("");
-    saveRecipientName("");
 
-    if (tokenId) {
-      saveSelectedTokenId(tokenId);
-    } else {
-      saveSelectedTokenId("");
-    }
-  }, [
-    tokenId,
-    saveSelectedTokenId,
-    saveSelectedCollectibleDetails,
-    saveRecipientAddress,
-    saveRecipientName,
-  ]);
+    saveSelectedTokenId(tokenId || "");
 
-  useEffect(() => {
     if (routeRecipientAddress && typeof routeRecipientAddress === "string") {
       saveRecipientAddress(routeRecipientAddress);
     }
-    saveRecipientName(routeRecipientName ?? "");
+
+    if (routeRecipientName !== undefined) {
+      saveRecipientName(routeRecipientName);
+    }
   }, [
+    tokenId,
     routeRecipientAddress,
     routeRecipientName,
+    saveSelectedTokenId,
+    saveSelectedCollectibleDetails,
     saveRecipientAddress,
     saveRecipientName,
   ]);
@@ -179,26 +190,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     error: transactionBuilderError,
   } = useTransactionBuilderStore();
 
-  // Reset transaction, recipient, and token on unmount
-  useEffect(
-    () => () => {
-      resetTransaction();
-      saveSelectedTokenId("");
-      saveRecipientAddress("");
-      saveRecipientName("");
-      resetSendRecipient();
-      resetSettings();
-    },
-    [
-      resetTransaction,
-      saveSelectedTokenId,
-      saveRecipientAddress,
-      saveRecipientName,
-      resetSendRecipient,
-      resetSettings,
-    ],
-  );
-
   const { isValidatingMemo, isMemoMissing } =
     useValidateTransactionMemo(transactionXDR);
 
@@ -209,10 +200,20 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
   const publicKey = account?.publicKey;
   const amountInputRef = useRef<TextInput>(null);
+  const previousNativeInputRef = useRef<string>("0");
+  const focusRetryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const reviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [amountError, setAmountError] = useState<string | null>(null);
   const { showToast } = useToast();
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerLeft: SendFlowCloseHeaderButton,
+    });
+  }, [navigation]);
 
   // Show toast when transaction builder error occurs
   const previousErrorRef = useRef<string | null>(null);
@@ -258,13 +259,26 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const focusAmountInput = useCallback(() => {
     amountInputRef.current?.focus();
 
+    if (focusRetryTimeoutRef.current) {
+      clearTimeout(focusRetryTimeoutRef.current);
+    }
+
     // iOS can occasionally ignore focus on fully hidden inputs; retry on next tick.
-    setTimeout(() => {
+    focusRetryTimeoutRef.current = setTimeout(() => {
       if (!amountInputRef.current?.isFocused()) {
         amountInputRef.current?.focus();
       }
     }, 0);
   }, []);
+
+  useEffect(
+    () => () => {
+      if (focusRetryTimeoutRef.current) {
+        clearTimeout(focusRetryTimeoutRef.current);
+      }
+    },
+    [],
+  );
 
   const onConfirmAddMemo = useCallback(() => {
     addMemoExplanationBottomSheetModalRef.current?.dismiss();
@@ -291,16 +305,16 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   };
 
   const navigateToSelectTokenScreen = () => {
-    navigation.push(SEND_PAYMENT_ROUTES.TRANSACTION_TOKEN_SCREEN, {
+    navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_TOKEN_SCREEN, {
       returnToAmount: true,
-      transition: "slide_from_bottom",
+      transition: ScreenTransition.SlideFromBottom,
     });
   };
 
   const navigateToSelectContactScreen = () => {
-    navigation.push(SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN, {
+    navigation.navigate(SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN, {
       returnToAmount: true,
-      transition: "slide_from_bottom",
+      transition: ScreenTransition.SlideFromBottom,
     });
   };
 
@@ -391,6 +405,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const {
     tokenAmount,
     tokenAmountDisplay,
+    tokenAmountDisplayRaw,
     fiatAmountDisplay,
     fiatAmountDisplayRaw,
     showFiatAmount,
@@ -405,37 +420,49 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   // (for example, percentage buttons), because raw can be null while the
   // displayed amount is non-empty.
   const amountInputValue = showFiatAmount
-    ? fiatAmountDisplay
-    : tokenAmountDisplay;
+    ? (fiatAmountDisplayRaw ?? fiatAmountDisplay)
+    : (tokenAmountDisplayRaw ?? tokenAmountDisplay);
+
+  useEffect(() => {
+    previousNativeInputRef.current = amountInputValue.replace(/[^0-9.,]/g, "");
+  }, [amountInputValue]);
 
   const handleNativeAmountChange = useCallback(
     (text: string) => {
-      const currentValue = amountInputValue;
+      const sanitizedText = text.replace(/[^0-9.,]/g, "");
+      const previousText = previousNativeInputRef.current;
 
-      if (text.startsWith(currentValue) && text.length >= currentValue.length) {
-        text
-          .slice(currentValue.length)
-          .split("")
-          .forEach((char) => handleDisplayAmountChange(char));
+      if (sanitizedText === previousText) {
         return;
       }
 
-      if (currentValue.startsWith(text) && currentValue.length >= text.length) {
-        Array.from({ length: currentValue.length - text.length }).forEach(
-          () => {
-            handleDisplayAmountChange("");
-          },
-        );
-        return;
+      // Use key/backspace semantics for one-char diffs to preserve reducer behavior,
+      // and fallback to full-text path for paste/replace edits.
+      if (
+        sanitizedText.length > previousText.length &&
+        sanitizedText.startsWith(previousText)
+      ) {
+        const appendedText = sanitizedText.slice(previousText.length);
+        if (appendedText.length === 1) {
+          handleDisplayAmountChange(appendedText);
+        } else {
+          handleDisplayAmountChange(sanitizedText);
+        }
+      } else if (
+        sanitizedText.length < previousText.length &&
+        previousText.startsWith(sanitizedText)
+      ) {
+        const deleteCount = previousText.length - sanitizedText.length;
+        for (let i = 0; i < deleteCount; i += 1) {
+          handleDisplayAmountChange("");
+        }
+      } else {
+        handleDisplayAmountChange(sanitizedText);
       }
 
-      Array.from({ length: currentValue.length }).forEach(() => {
-        handleDisplayAmountChange("");
-      });
-
-      text.split("").forEach((char) => handleDisplayAmountChange(char));
+      previousNativeInputRef.current = sanitizedText;
     },
-    [amountInputValue, handleDisplayAmountChange],
+    [handleDisplayAmountChange],
   );
 
   const unfundedContext: UnfundedDestinationContext | undefined = useMemo(
@@ -973,7 +1000,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   // For very long values, stack into two rows: conversion on top, swap+available below.
   const shouldSplitSecondaryAmounts =
     !!availableAmountText &&
-    secondaryConversionAmount.length + availableAmountText.length > 34;
+    secondaryConversionAmount.length + availableAmountText.length >
+      SECONDARY_AMOUNT_STACK_CHAR_THRESHOLD;
 
   const recipientDisplayName = recipientName || federationAddress || undefined;
 
@@ -1006,45 +1034,54 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             <View className="flex-row items-center justify-between">
               <TouchableOpacity
                 className="flex-1 relative"
-                onPress={focusAmountInput}
                 onPressIn={focusAmountInput}
                 activeOpacity={1}
+                accessible={false}
                 testID="send-amount-focus-trigger"
               >
-                {showFiatAmount ? (
-                  <HighlightedAmountDisplay
-                    rawInput={
-                      fiatAmountDisplayRaw !== null &&
-                      !shouldSkipHighlighting(fiatAmountDisplayRaw)
-                        ? fiatAmountDisplayRaw
-                        : null
-                    }
-                    formattedDisplay={formatFiatInputDisplay(fiatAmountDisplay)}
-                    isSmallScreen={isSmallScreen}
-                    align="left"
-                    size="xs"
-                    highlightColor={themeColors.text.primary}
-                    normalColor={themeColors.text.primary}
-                    secondaryColor={themeColors.text.secondary}
-                  />
-                ) : (
-                  <Display
-                    size="xs"
-                    medium
-                    adjustsFontSizeToFit
-                    numberOfLines={1}
-                    minimumFontScale={0.6}
-                    {...(Number(tokenAmount) > 0
-                      ? { primary: true }
-                      : { secondary: true })}
-                  >
-                    {tokenAmountDisplay}
-                  </Display>
-                )}
+                <View
+                  accessibilityElementsHidden
+                  importantForAccessibility="no-hide-descendants"
+                >
+                  {showFiatAmount ? (
+                    <HighlightedAmountDisplay
+                      rawInput={
+                        fiatAmountDisplayRaw !== null &&
+                        !shouldSkipHighlighting(fiatAmountDisplayRaw)
+                          ? fiatAmountDisplayRaw
+                          : null
+                      }
+                      formattedDisplay={formatFiatInputDisplay(
+                        fiatAmountDisplay,
+                      )}
+                      isSmallScreen={isSmallScreen}
+                      align={AmountAlignment.Left}
+                      size={AmountDisplaySize.XS}
+                      highlightColor={themeColors.text.primary}
+                      normalColor={themeColors.text.primary}
+                      secondaryColor={themeColors.text.secondary}
+                    />
+                  ) : (
+                    <Display
+                      size="xs"
+                      medium
+                      adjustsFontSizeToFit
+                      numberOfLines={1}
+                      minimumFontScale={0.6}
+                      {...(Number(tokenAmount) > 0
+                        ? { primary: true }
+                        : { secondary: true })}
+                    >
+                      {tokenAmountDisplay}
+                    </Display>
+                  )}
+                </View>
 
                 <TextInput
                   ref={amountInputRef}
                   testID="amount-text-input"
+                  accessibilityLabel={t("transactionAmountScreen.setAmount")}
+                  accessibilityHint={t("transactionAmountScreen.title")}
                   keyboardType="decimal-pad"
                   showSoftInputOnFocus
                   autoFocus
@@ -1056,7 +1093,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
                     right: 0,
                     bottom: 0,
                     left: 0,
-                    opacity: 0.01,
+                    opacity: HIDDEN_INPUT_OPACITY,
                   }}
                   caretHidden
                 />
@@ -1137,7 +1174,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
                     style={{
                       flexShrink: 1,
                       textAlign: "right",
-                      maxWidth: "55%",
                     }}
                   >
                     {availableAmountText}
