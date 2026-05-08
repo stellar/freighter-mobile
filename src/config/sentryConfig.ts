@@ -102,6 +102,14 @@ const DEEP_SCRUB_DEPTH_SENTINEL = "[MAX_DEPTH_EXCEEDED]";
  * response with `owner` / `from` / `recipient` fields holding
  * account IDs.
  *
+ * This complements `sanitizeLogData()` in `config/logger`, rather than
+ * duplicating it:
+ * - `sanitizeLogData()` is key-name based and replaces known PII fields
+ *   such as `password`, `mnemonic`, and `publicKey` with `[REDACTED]`.
+ * - `deepScrubStrKeys()` is content-based and catches Stellar account /
+ *   secret keys inside arbitrary strings or unknown field names that the
+ *   logger-side key list can never enumerate exhaustively.
+ *
  * At the depth cap, return a sentinel string instead of the original
  * subtree so cyclic structures cannot escape into the Sentry payload
  * and StrKeys nested past the cap cannot leak unscrubbed.

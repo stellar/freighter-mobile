@@ -215,6 +215,14 @@ Ask three questions in order:
 | Auth state guard ("Attempted access in LOCKED state") | `warn`                                  | Recoverable; security-relevant signal but not actionable.                                              |
 | Hash-key TTL expiration                               | `info`                                  | Expected lifecycle event.                                                                              |
 
+When in doubt between relying on Sentry's auto HTTP breadcrumbs vs adding a
+manual `logger.warn()` breadcrumb, prefer the manual breadcrumb for
+domain-specific failures such as Horizon 4xx rejections. The SDK's network
+breadcrumbs are transport-level and may be absent, sampled differently, or lack
+the user-facing context we care about (`tx_bad_seq`, `op_underfunded`, retry
+exhaustion, etc.). A manual warn breadcrumb keeps the severity policy explicit
+and preserves the application-level reason even when the HTTP layer doesn't.
+
 ### Logger anti-patterns
 
 **Don't interpolate identifiers into the log message string.** PublicKeys,
