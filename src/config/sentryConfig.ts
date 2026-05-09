@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/react-native";
 import { EnvConfig } from "config/envConfig";
+import { MAX_DEPTH_SENTINEL, MAX_RECURSIVE_DEPTH } from "config/logger";
 import { useAnalyticsStore } from "ducks/analytics";
 import { useAuthenticationStore } from "ducks/auth";
 import { useNetworkStore } from "ducks/networkInfo";
@@ -91,9 +92,6 @@ const STELLAR_STRKEY_PATTERN = /\b[GS][A-Z2-7]{55}\b/g;
 export const scrubStrKeys = (s: string | undefined): string | undefined =>
   s?.replace(STELLAR_STRKEY_PATTERN, (match) => `${match[0]}***`);
 
-const MAX_DEEP_SCRUB_DEPTH = 8;
-const DEEP_SCRUB_DEPTH_SENTINEL = "[MAX_DEPTH_EXCEEDED]";
-
 /**
  * Recursively walk a structured value and scrub Stellar StrKeys from
  * every string descendant. Used to defend against StrKeys embedded in
@@ -107,8 +105,8 @@ const DEEP_SCRUB_DEPTH_SENTINEL = "[MAX_DEPTH_EXCEEDED]";
  * and StrKeys nested past the cap cannot leak unscrubbed.
  */
 const deepScrubStrKeys = (data: unknown, depth = 0): unknown => {
-  if (depth >= MAX_DEEP_SCRUB_DEPTH) {
-    return DEEP_SCRUB_DEPTH_SENTINEL;
+  if (depth >= MAX_RECURSIVE_DEPTH) {
+    return MAX_DEPTH_SENTINEL;
   }
   if (typeof data === "string") {
     return scrubStrKeys(data);

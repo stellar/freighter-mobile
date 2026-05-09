@@ -139,6 +139,8 @@ jest.mock("config/logger", () => ({
     warn: jest.fn(),
     debug: jest.fn(),
   },
+  MAX_RECURSIVE_DEPTH: 8,
+  MAX_DEPTH_SENTINEL: "[MAX_DEPTH_EXCEEDED]",
 }));
 
 jest.mock("react-native-scrypt", () => {

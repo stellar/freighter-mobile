@@ -415,8 +415,14 @@ const PII_FIELDS_LOWER = [
   "mnemonic_phrase",
 ].map((f) => f.toLowerCase());
 
-const MAX_SANITIZE_DEPTH = 8;
-const MAX_DEPTH_SENTINEL = "[MAX_DEPTH_EXCEEDED]";
+/**
+ * Shared depth cap for recursive structured-data walks (sanitization here
+ * and StrKey scrubbing in `sentryConfig.deepScrubStrKeys`). Both walks need
+ * to stop at the same point: deep enough to cover realistic payloads, but
+ * shallow enough that cyclic structures cannot escape into Sentry.
+ */
+export const MAX_RECURSIVE_DEPTH = 8;
+export const MAX_DEPTH_SENTINEL = "[MAX_DEPTH_EXCEEDED]";
 
 /**
  * Sanitize data to redact potential PII before sending to Sentry.
@@ -432,7 +438,7 @@ const MAX_DEPTH_SENTINEL = "[MAX_DEPTH_EXCEEDED]";
  * payload.
  */
 export const sanitizeLogData = (data: unknown, depth = 0): unknown => {
-  if (depth >= MAX_SANITIZE_DEPTH) {
+  if (depth >= MAX_RECURSIVE_DEPTH) {
     return MAX_DEPTH_SENTINEL;
   }
 
