@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from "axios";
+import { logger } from "config/logger";
 import { debug } from "helpers/debug";
 
 /**
@@ -161,11 +162,33 @@ export function createApiService(options: ApiServiceOptions) {
     (response) => response,
     /* eslint-disable @typescript-eslint/no-unsafe-member-access */
     (error) => {
+      // When the server didn't respond at all (offline, DNS, TLS failure,
+      // captive portal, request aborted before headers), use 0 as the
+      // status to match the ApiError contract ("HTTP status code (or 0
+      // if no response)"). Avoid defaulting to a real HTTP code like
+      // 500: that would make connectivity failures indistinguishable
+      // from genuine backend errors in error reporting.
+      //
+      // `isNetworkError` is reserved for genuine connectivity failures
+      // (offline, DNS, TLS, captive portal). Axios timeouts also have
+      // `error.response === undefined` but represent backend latency,
+      // not connectivity - they are deliberately excluded so consumers
+      // branching on `isApiNetworkError` route them to `logger.error`
+      // and preserve Sentry visibility for latency regressions.
       const apiError: ApiError = {
         message: error.message || "An error occurred",
-        status: error.response?.status || 500,
+        status: error.response?.status ?? 0,
         data: error.response?.data,
-        isNetworkError: !error.response,
+        // ECONNABORTED is the axios code for "request aborted by the
+        // client" - which in practice almost always means the
+        // configured `timeout` elapsed before the server responded.
+        // Excluding it from `isNetworkError` keeps timeouts on the
+        // logger.error path (real backend latency) rather than the
+        // logger.warn / connectivity path.
+        isNetworkError:
+          axios.isAxiosError(error) &&
+          !error.response &&
+          error.code !== "ECONNABORTED",
       };
       /* eslint-enable @typescript-eslint/no-unsafe-member-access */
 
@@ -406,3 +429,43 @@ export function isRequestCanceled(error: unknown): boolean {
       error.message === "canceled")
   );
 }
+
+/**
+ * Type guard for ApiError values produced by the apiFactory response
+ * interceptor when the server didn't respond at all (offline, DNS, TLS,
+ * captive portal, etc.). Use this to branch error handling so connectivity
+ * failures don't get logged with the same severity as real backend bugs.
+ */
+export function isApiNetworkError(error: unknown): error is ApiError {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "isNetworkError" in error &&
+    (error as ApiError).isNetworkError === true
+  );
+}
+
+/**
+ * Routes an API error to `logger.warn` (connectivity failures) or
+ * `logger.error` (real backend bugs / timeouts) based on
+ * `isApiNetworkError`.
+ *
+ * @param context     Logger context (typically the module/function name)
+ * @param warnMessage Message used when the failure is a connectivity issue
+ * @param errorMessage Message used when the failure is a real backend bug
+ * @param error       The thrown value from the API call
+ * @param args        Optional structured args forwarded to the logger
+ */
+export const logApiError = (
+  context: string,
+  warnMessage: string,
+  errorMessage: string,
+  error: unknown,
+  ...args: unknown[]
+): void => {
+  if (isApiNetworkError(error)) {
+    logger.warn(context, warnMessage, error, ...args);
+  } else {
+    logger.error(context, errorMessage, error, ...args);
+  }
+};
