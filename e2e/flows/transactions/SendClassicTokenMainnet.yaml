@@ -90,6 +90,13 @@ tags:
     id: send-amount-focus-trigger
 - inputText: "0.000001"
 
+# Dismiss the keyboard on Android so the Review button is not obscured
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+
 # Tap Review button
 - tapOn:
     id: send-continue-button

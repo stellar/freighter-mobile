@@ -58,6 +58,7 @@ type SendSearchContactsProps = NativeStackScreenProps<
  */
 const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
   navigation,
+  route,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
@@ -184,6 +185,10 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
           SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW,
           selectedCollectibleDetails,
         );
+      } else if (route.params?.returnToSendScreen) {
+        // Opened as an overlay from TransactionAmountScreen (SlideFromBottom).
+        // Stores are already updated above — just dismiss back down.
+        navigation.goBack();
       } else {
         navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN, {
           tokenId: selectedTokenId || NATIVE_TOKEN_CODE,
@@ -192,7 +197,12 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
         });
       }
     },
-    [navigation, selectedCollectibleDetails, selectedTokenId],
+    [
+      navigation,
+      route.params?.returnToSendScreen,
+      selectedCollectibleDetails,
+      selectedTokenId,
+    ],
   );
 
   /**

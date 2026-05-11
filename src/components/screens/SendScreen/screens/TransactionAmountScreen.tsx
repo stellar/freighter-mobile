@@ -1070,6 +1070,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
                     placeholder="0"
                     placeholderTextColor={themeColors.text.secondary}
                     onChangeText={handleNativeAmountChange}
+                    onSubmitEditing={() => Keyboard.dismiss()}
                     underlineColorAndroid="transparent"
                     style={{
                       flex: 1,
