@@ -190,7 +190,9 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
   fetchAccountHistory: async (params) => {
     try {
       if (!params.publicKey) {
-        logger.warn("fetchAccountHistory", "No public key provided");
+        // Pre-call guardrail; caller has already returned early or
+        // shown an empty state. Not error-adjacent.
+        logger.info("fetchAccountHistory", "No public key provided");
         return;
       }
 

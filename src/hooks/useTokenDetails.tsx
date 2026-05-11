@@ -56,7 +56,11 @@ const useTokenDetails = ({
           });
         }
       } catch (error) {
-        logger.warn("Failed to fetch token details:", String(error));
+        // UI display falls back to the basic token info, so this
+        // doesn't block the user. Log as error anyway so escalating
+        // gives us visibility if the contract-spec / token-details
+        // fetch layer ever starts failing.
+        logger.error("useTokenDetails", "Failed to fetch token details", error);
       }
     };
 

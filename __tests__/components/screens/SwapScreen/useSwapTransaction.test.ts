@@ -1,0 +1,170 @@
+/* eslint-disable @fnando/consistent-import/consistent-import */
+import { renderHook, act } from "@testing-library/react-hooks";
+import { useSwapTransaction } from "components/screens/SwapScreen/hooks/useSwapTransaction";
+import { NETWORKS } from "config/constants";
+import type { ActiveAccount } from "ducks/auth";
+
+const mockSignTransaction = jest.fn();
+const mockSubmitTransaction = jest.fn();
+const mockBuildSwapTransaction = jest.fn().mockResolvedValue("xdr");
+const mockShowToast = jest.fn();
+const mockTrackTransactionError = jest.fn();
+const mockTrackSwapSuccess = jest.fn();
+const mockScanTransaction = jest.fn().mockResolvedValue({});
+
+jest.mock("ducks/transactionBuilder", () => ({
+  useTransactionBuilderStore: Object.assign(
+    () => ({
+      buildSwapTransaction: mockBuildSwapTransaction,
+      signTransaction: mockSignTransaction,
+      submitTransaction: mockSubmitTransaction,
+    }),
+    {
+      getState: () => ({ error: "Submit error from store" }),
+    },
+  ),
+}));
+
+jest.mock("ducks/swapSettings", () => ({
+  useSwapSettingsStore: Object.assign(() => ({}), {
+    getState: () => ({
+      swapFee: "100",
+      swapTimeout: "30",
+      swapSlippage: "0.5",
+    }),
+  }),
+}));
+
+jest.mock("ducks/history", () => ({
+  useHistoryStore: () => ({ fetchAccountHistory: jest.fn() }),
+}));
+
+jest.mock("hooks/blockaid/useBlockaidTransaction", () => ({
+  useBlockaidTransaction: () => ({ scanTransaction: mockScanTransaction }),
+}));
+
+jest.mock("hooks/useAppTranslation", () => ({
+  __esModule: true,
+  default: () => ({
+    t: (key: string) => key,
+  }),
+}));
+
+jest.mock("providers/ToastProvider", () => ({
+  useToast: () => ({ showToast: mockShowToast }),
+}));
+
+jest.mock("services/analytics", () => ({
+  analytics: {
+    trackTransactionError: jest.fn((...args) =>
+      mockTrackTransactionError(...args),
+    ),
+    trackSwapSuccess: jest.fn((...args) => mockTrackSwapSuccess(...args)),
+  },
+}));
+
+const mockNavigation = {
+  reset: jest.fn(),
+} as unknown as Parameters<typeof useSwapTransaction>[0]["navigation"];
+
+const baseParams: Parameters<typeof useSwapTransaction>[0] = {
+  sourceAmount: "1",
+  sourceBalance: { tokenCode: "XLM" } as never,
+  destinationBalance: { tokenCode: "USDC" } as never,
+  pathResult: {
+    path: [],
+    destinationAmount: "1",
+    destinationAmountMin: "0.99",
+  } as never,
+  account: {
+    publicKey: "GA...",
+    privateKey: "SA...",
+  } as ActiveAccount,
+  network: NETWORKS.PUBLIC,
+  navigation: mockNavigation,
+};
+
+describe("useSwapTransaction", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe("executeSwap rejection contract", () => {
+    it("does NOT reject when submitTransaction returns null (failure)", async () => {
+      // submitTransaction returns null on failure - the hook reads the
+      // error from the store and throws inside the try, where the catch
+      // handles toast / analytics. The catch must NOT rethrow, otherwise
+      // SwapAmountScreen's fire-and-forget call site would surface an
+      // unhandled promise rejection at the global handler.
+      mockSignTransaction.mockReturnValue("signed-xdr");
+      mockSubmitTransaction.mockResolvedValue(null);
+
+      const { result } = renderHook(() => useSwapTransaction(baseParams));
+
+      // Should resolve, not reject.
+      let didReject = false;
+      await act(async () => {
+        await result.current.executeSwap().catch(() => {
+          didReject = true;
+        });
+      });
+
+      expect(didReject).toBe(false);
+      // Side effects should still run despite no rethrow.
+      expect(mockTrackTransactionError).toHaveBeenCalledWith(
+        expect.objectContaining({ isSwap: true }),
+      );
+      expect(mockShowToast).toHaveBeenCalledWith(
+        expect.objectContaining({ variant: "error" }),
+      );
+    });
+
+    it("does NOT reject when submitTransaction throws synchronously", async () => {
+      mockSignTransaction.mockReturnValue("signed-xdr");
+      mockSubmitTransaction.mockRejectedValue(new Error("Submit failed"));
+
+      const { result } = renderHook(() => useSwapTransaction(baseParams));
+
+      let didReject = false;
+      await act(async () => {
+        await result.current.executeSwap().catch(() => {
+          didReject = true;
+        });
+      });
+
+      expect(didReject).toBe(false);
+      expect(mockTrackTransactionError).toHaveBeenCalled();
+      expect(mockShowToast).toHaveBeenCalled();
+    });
+
+    it("does NOT reject when signTransaction returns null", async () => {
+      mockSignTransaction.mockReturnValue(null);
+
+      const { result } = renderHook(() => useSwapTransaction(baseParams));
+
+      let didReject = false;
+      await act(async () => {
+        await result.current.executeSwap().catch(() => {
+          didReject = true;
+        });
+      });
+
+      expect(didReject).toBe(false);
+      expect(mockShowToast).toHaveBeenCalled();
+    });
+
+    it("resolves successfully on a successful swap (sanity check)", async () => {
+      mockSignTransaction.mockReturnValue("signed-xdr");
+      mockSubmitTransaction.mockResolvedValue("tx-hash");
+
+      const { result } = renderHook(() => useSwapTransaction(baseParams));
+
+      await act(async () => {
+        await result.current.executeSwap();
+      });
+
+      expect(mockTrackSwapSuccess).toHaveBeenCalled();
+      expect(mockTrackTransactionError).not.toHaveBeenCalled();
+    });
+  });
+});
