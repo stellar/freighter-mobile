@@ -38,27 +38,20 @@ on:
 permissions: {}
 
 jobs:
-  debug-context:
-    name: DEBUG dump github.event (temporary)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Dump key fields
-        run: |
-          echo "github.event_name = ${{ github.event_name }}"
-          echo "github.event.action = ${{ github.event.action }}"
-          echo "github.repository = ${{ github.repository }}"
-          echo "github.event.pull_request.head.repo.full_name = ${{ github.event.pull_request.head.repo.full_name }}"
-          echo "github.event.pull_request.author_association = ${{ github.event.pull_request.author_association }}"
-          echo "head_match: ${{ github.event.pull_request.head.repo.full_name == github.repository }}"
-          echo "is_member_or_owner: ${{ contains(fromJSON('["MEMBER", "OWNER"]'), github.event.pull_request.author_association) }}"
-          echo "action_not_closed: ${{ github.event.action != 'closed' }}"
-
   build:
     name: Build iOS Simulator .app for PR Preview
+    # Two-layer gate evaluated BEFORE any secret is injected:
+    #   1. Skip on PR close (handled by cleanup job)
+    #   2. Reject fork PRs (defense-in-depth — platform also withholds secrets)
+    # NOTE: we don't gate on author_association because the field in the
+    # webhook event payload only reflects PUBLIC org membership; SDF members
+    # with private memberships show as CONTRIBUTOR, which would lock them
+    # out. Non-SDF gating is handled by the org-level "Require approval
+    # for outside collaborators" setting plus the platform-level fork-PR
+    # secret-withholding.
     if: >-
       github.event.action != 'closed' &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      contains(fromJSON('["MEMBER", "OWNER"]'), github.event.pull_request.author_association)
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: macos-26-xlarge
     timeout-minutes: 45
     permissions:
@@ -260,8 +253,7 @@ jobs:
     name: Cleanup PR Preview Draft Release (iOS)
     if: >-
       github.event.action == 'closed' &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      contains(fromJSON('["MEMBER", "OWNER"]'), github.event.pull_request.author_association)
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
