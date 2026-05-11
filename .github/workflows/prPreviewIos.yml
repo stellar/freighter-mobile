@@ -228,7 +228,7 @@ jobs:
           3. Drag the unzipped \`.app\` onto the Simulator window
           4. The app launches automatically
 
-          ⚠️ Use a fresh wallet — never enter real keys into a preview build.
+          ⚠️ This code is still under review and may contain bugs that haven't been caught yet. Use caution before signing transactions with real funds — consider testing with a testnet wallet instead.
 
           _Physical-device iOS testing returns in Phase 3 (Tailscale + TestFlight) — not available today._
           EOF
