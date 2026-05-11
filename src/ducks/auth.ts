@@ -587,21 +587,27 @@ const getTemporaryStore = async (
     const hashKey = await getHashKey();
 
     if (!hashKey) {
+      // The security check above already filters NOT_AUTHENTICATED, so
+      // we're in AUTHENTICATED or LOCKED state - both should carry a
+      // valid hashKey. Missing here indicates storage corruption /
+      // keychain ↔ AsyncStorage drift, which downstream callers will
+      // treat as a hard auth failure.
       logger.error(
         "[getTemporaryStore]",
-        "Hash key not found - user must sign in",
-        undefined,
+        "Hash key missing in active session",
+        new Error("Hash key missing in active session"),
       );
 
       return null;
     }
 
     if (isHashKeyExpired(hashKey)) {
-      logger.error(
-        "[getTemporaryStore]",
-        "Hash key has expired, access denied",
-        undefined,
-      );
+      // Hash key TTL expired - the security policy is forcing
+      // re-authentication. Expected lifecycle, normally caught by
+      // the security check at the top. Warn so the breadcrumb is
+      // available for debugging if it ever fires off the expected
+      // path; fires at most once per session, no buffer concern.
+      logger.warn("[getTemporaryStore]", "Hash key has expired, access denied");
 
       return null;
     }
@@ -609,10 +615,19 @@ const getTemporaryStore = async (
       SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE,
     );
     if (!temporaryStore) {
+      // Can fire transiently during the delete-account → create-new-
+      // account flow: the previous account's cleanup may not have
+      // fully completed when the new account write begins, leaving
+      // a brief window where authStatus + hashKey are present but
+      // TEMPORARY_STORE has been removed and not yet rewritten. Rare
+      // in practice and self-resolves on the next read, so we keep
+      // the log at error (downstream callers swallow the null
+      // silently) to monitor in case it starts happening more than
+      // expected.
       logger.error(
         "[getTemporaryStore]",
-        "Temporary store data not found",
-        undefined,
+        "Temporary store missing in active session",
+        new Error("Temporary store missing in active session"),
       );
 
       return null;
@@ -646,10 +661,19 @@ const getTemporaryStore = async (
     lastFailureTimestamp = now;
 
     if (getTemporaryStoreFailureCount >= SUSPICIOUS_FAILURE_THRESHOLD) {
+      // Pass a real Error with a stable message so all events group as
+      // a single Sentry issue. The variable failure count and window
+      // go into extra args (Sentry's "extra" payload) for diagnostics
+      // - inlining them into the message would interpolate the count
+      // into the title and split the group on every distinct count.
       logger.error(
         "[getTemporaryStore]",
-        "Repeated failures detected",
-        `Multiple unauthorized access attempts (${getTemporaryStoreFailureCount}) within ${FAILURE_RESET_WINDOW_MS}ms`,
+        "Repeated decryption failures detected within failure window",
+        new Error("Repeated decryption failures detected"),
+        {
+          failureCount: getTemporaryStoreFailureCount,
+          failureResetWindowMs: FAILURE_RESET_WINDOW_MS,
+        },
       );
     }
     clearDerivedKeyCache();
@@ -1321,7 +1345,16 @@ const signIn = async ({
   let account = accountList.find((a) => a.id === activeAccountId);
 
   if (!account) {
-    logger.error("signIn", "Account not found in account list", null);
+    // Keychain has a key for activeAccountId but the AsyncStorage
+    // ACCOUNT_LIST doesn't have a matching entry - keychain/AsyncStorage
+    // drift. The next lines recover by recreating the account from the
+    // loaded key. Worth a breadcrumb (warn) so we have visibility if the
+    // recovery itself ever fails downstream, but not an error since
+    // the user-visible flow keeps working.
+    logger.warn(
+      "signIn",
+      "Active account ID missing from account list, recreating from keychain key",
+    );
 
     account = {
       id: loadedKey.id,
@@ -1903,7 +1936,12 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
       StellarHDWallet.fromMnemonic(mnemonicPhrase);
       return true;
     } catch (error) {
-      logger.error("verifyMnemonicPhrase", "Invalid mnemonic phrase", error);
+      // User-typed mnemonic validation. Invalid input here is the
+      // expected failure mode (this is the verify step), not a bug -
+      // the caller displays the error via the store's `error` field.
+      // Emit only a breadcrumb so the diagnostic is preserved if a
+      // downstream auth event captures it.
+      logger.warn("verifyMnemonicPhrase", "Invalid mnemonic phrase", error);
       set({
         error: t("authStore.error.invalidMnemonicPhrase"),
       });
