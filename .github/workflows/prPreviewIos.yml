@@ -38,6 +38,21 @@ on:
 permissions: {}
 
 jobs:
+  debug-context:
+    name: DEBUG dump github.event (temporary)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dump key fields
+        run: |
+          echo "github.event_name = ${{ github.event_name }}"
+          echo "github.event.action = ${{ github.event.action }}"
+          echo "github.repository = ${{ github.repository }}"
+          echo "github.event.pull_request.head.repo.full_name = ${{ github.event.pull_request.head.repo.full_name }}"
+          echo "github.event.pull_request.author_association = ${{ github.event.pull_request.author_association }}"
+          echo "head_match: ${{ github.event.pull_request.head.repo.full_name == github.repository }}"
+          echo "is_member_or_owner: ${{ contains(fromJSON('["MEMBER", "OWNER"]'), github.event.pull_request.author_association) }}"
+          echo "action_not_closed: ${{ github.event.action != 'closed' }}"
+
   build:
     name: Build iOS Simulator .app for PR Preview
     if: >-
