@@ -391,7 +391,8 @@ jobs:
           ram-size: 4096
           emulator-options:
             "-no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio
-            -no-boot-anim -partition-size 4096 -cache-size 1024 -accel on"
+            -no-boot-anim -no-keyboard -partition-size 4096 -cache-size 1024
+            -accel on"
           disable-animations: true
           script: ./scripts/run-android-e2e-on-emulator.sh
 
