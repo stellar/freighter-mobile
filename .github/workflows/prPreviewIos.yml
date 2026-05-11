@@ -40,7 +40,7 @@ permissions: {}
 jobs:
   build:
     name: Build iOS Simulator .app for PR Preview
-    if: |
+    if: >-
       github.event.action != 'closed' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       contains(fromJSON('["MEMBER", "OWNER"]'), github.event.pull_request.author_association)
@@ -243,7 +243,7 @@ jobs:
 
   cleanup:
     name: Cleanup PR Preview Draft Release (iOS)
-    if: |
+    if: >-
       github.event.action == 'closed' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       contains(fromJSON('["MEMBER", "OWNER"]'), github.event.pull_request.author_association)
