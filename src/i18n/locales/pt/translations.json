@@ -745,8 +745,8 @@
     }
   },
   "transactionAmountScreen": {
-    "title": "Enviar",
-    "availableBalance": "{{amount}} disponível",
+    "title": "Enviando",
+    "availableBalance": "{{amount}}",
     "percentageButtons": {
       "twentyFive": "25%",
       "fifty": "50%",

@@ -1021,10 +1021,12 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
               name={recipientDisplayName}
               testID="send-recipient-row"
               rightElement={
-                <Icon.ChevronRight
-                  size={16}
-                  color={themeColors.text.secondary}
-                />
+                <View className="w-[36px] h-[36px] items-center justify-center rounded-full bg-background-primary">
+                  <Icon.ChevronRight
+                    size={14}
+                    color={themeColors.text.secondary}
+                  />
+                </View>
               }
             />
           </View>
@@ -1083,7 +1085,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
               <TouchableOpacity
                 onPress={navigateToSelectTokenScreen}
-                className="flex-row items-center gap-[6px] ml-[12px]"
+                className="flex-row items-center gap-[6px] ml-[12px] rounded-full bg-background-primary px-[12px] py-[8px]"
                 testID="send-token-row"
               >
                 {selectedBalance && (
@@ -1092,7 +1094,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
                 <Text md medium>
                   {selectedBalance?.tokenCode}
                 </Text>
-                <Icon.ChevronDown size={16} color={themeColors.text.primary} />
+                <Icon.ChevronDown size={18} color={themeColors.text.primary} />
               </TouchableOpacity>
             </View>
 
@@ -1192,7 +1194,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         </View>
       </View>
 
-      <View className="w-full mt-auto mb-4">
+      <View className="w-full mt-auto mb-[8px]">
         <Button
           tertiary
           xl
