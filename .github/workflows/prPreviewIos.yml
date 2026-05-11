@@ -1,0 +1,263 @@
+# ----------------------------------------------------------------------
+# SECURITY INVARIANT — read before editing.
+#
+# This workflow builds an UNSIGNED iOS Simulator .app for PR review.
+# It deliberately uses NO Apple Developer credentials — no App Store
+# Connect API key, no Match cert, no provisioning profile. If you find
+# yourself wanting to add any of those, you are turning this into a
+# TestFlight workflow; that's a Phase 3 problem with a different
+# threat model. Stop and read § Phase 3 in the design doc first.
+#
+# Do NOT add any of these triggers:
+#   issue_comment, pull_request_target, pull_request_review,
+#   pull_request_review_comment, workflow_run
+# These triggers run with FULL repo secrets and a writable GITHUB_TOKEN
+# even when activity originates from a fork PR — combined with
+# checkout-of-PR-head + execute-code-from-PR (yarn lifecycle scripts,
+# ./scripts/gh-ios-env), they enable Remote Code Execution by anyone
+# who can comment on a PR or open one. This is the same class of
+# vulnerability that was reported against this repo's e2e workflows
+# (Q2 2026, since fixed).
+#
+# The job-level `if:` gate must run BEFORE secrets are injected.
+# `if:` on a job is evaluated by GitHub before the job's `env:` is
+# materialized, so an `if:` that fails skips the job entirely with no
+# secret exposure. Do not move the gate to a step `if:` — by then,
+# secrets are already in scope.
+#
+# See "Fullstack PR Preview Flow" design doc, § Security and
+# § Pathways → Mobile → iOS for the rationale.
+# ----------------------------------------------------------------------
+---
+name: PR Preview iOS Simulator
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+
+permissions: {}
+
+jobs:
+  build:
+    name: Build iOS Simulator .app for PR Preview
+    if: |
+      github.event.action != 'closed' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      contains(fromJSON('["MEMBER", "OWNER"]'), github.event.pull_request.author_association)
+    runs-on: macos-26-xlarge
+    timeout-minutes: 45
+    permissions:
+      contents: write       # draft release create/delete + tag operations
+      pull-requests: write  # sticky preview-link comment
+    concurrency:
+      group: pr-preview-ios-simulator-build-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    env:
+      NODE_VERSION: "20"
+      RUBY_VERSION: 3.1.4
+      # === Telemetry intentionally disabled in previews ===
+      SENTRY_PROPERTIES_CONTENT: "disabled-for-preview"
+      SENTRY_DSN: "disabled-for-preview"
+      AMPLITUDE_API_KEY: "disabled-for-preview"
+      AMPLITUDE_EXPERIMENT_DEPLOYMENT_KEY: "disabled-for-preview"
+      # === Backend URLs — staging only for Phase 1 (Phase 2 adds freighter-config sandbox URLs) ===
+      FREIGHTER_BACKEND_V1_PROD_URL: ${{ vars.FREIGHTER_BACKEND_V1_STG_URL }}
+      FREIGHTER_BACKEND_V1_STG_URL: ${{ vars.FREIGHTER_BACKEND_V1_STG_URL }}
+      FREIGHTER_BACKEND_V1_DEV_URL: ${{ vars.FREIGHTER_BACKEND_V1_STG_URL }}
+      FREIGHTER_BACKEND_V2_PROD_URL: ${{ vars.FREIGHTER_BACKEND_V2_STG_URL }}
+      FREIGHTER_BACKEND_V2_STG_URL: ${{ vars.FREIGHTER_BACKEND_V2_STG_URL }}
+      FREIGHTER_BACKEND_V2_DEV_URL: ${{ vars.FREIGHTER_BACKEND_V2_STG_URL }}
+      # === WalletKit dev keys (existing isolation; production keys never injected) ===
+      WALLET_KIT_PROJECT_ID_PROD: ${{ secrets.WALLET_KIT_PROJECT_ID_DEV }}
+      WALLET_KIT_MT_NAME_PROD: ${{ vars.WALLET_KIT_MT_NAME_DEV }}
+      WALLET_KIT_MT_DESCRIPTION_PROD: ${{ vars.WALLET_KIT_MT_DESCRIPTION_DEV }}
+      WALLET_KIT_MT_URL_PROD: ${{ vars.WALLET_KIT_MT_URL_DEV }}
+      WALLET_KIT_MT_ICON_PROD: ${{ vars.WALLET_KIT_MT_ICON_DEV }}
+      WALLET_KIT_MT_REDIRECT_NATIVE_PROD: ${{ vars.WALLET_KIT_MT_REDIRECT_NATIVE_DEV }}
+      WALLET_KIT_PROJECT_ID_DEV: ${{ secrets.WALLET_KIT_PROJECT_ID_DEV }}
+      WALLET_KIT_MT_NAME_DEV: ${{ vars.WALLET_KIT_MT_NAME_DEV }}
+      WALLET_KIT_MT_DESCRIPTION_DEV: ${{ vars.WALLET_KIT_MT_DESCRIPTION_DEV }}
+      WALLET_KIT_MT_URL_DEV: ${{ vars.WALLET_KIT_MT_URL_DEV }}
+      WALLET_KIT_MT_ICON_DEV: ${{ vars.WALLET_KIT_MT_ICON_DEV }}
+      WALLET_KIT_MT_REDIRECT_NATIVE_DEV: ${{ vars.WALLET_KIT_MT_REDIRECT_NATIVE_DEV }}
+      MP_COLLECTIONS_ADDRESSES: ${{ vars.MP_COLLECTIONS_ADDRESSES }}
+      IS_E2E_TEST: "false"
+      E2E_TEST_RECOVERY_PHRASE: ""
+
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Make scripts executable
+        run: find scripts -type f -exec chmod +x {} \;
+
+      - name: Display iOS environment information
+        run: ./scripts/display-ios-environment
+
+      - name: Set latest stable Xcode version
+        run: ./scripts/setup-xcode-latest-stable
+
+      - name: Verify selected Xcode version
+        run: xcodebuild -version
+
+      - name: Set env (preview routing)
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          export IOS_SCHEME="freighter-mobile-dev"
+          ./scripts/gh-ios-env >> $GITHUB_ENV
+          echo "PR_NUMBER=${PR_NUMBER}" >> $GITHUB_ENV
+          echo "PR_HEAD_SHA=${PR_HEAD_SHA}" >> $GITHUB_ENV
+
+      - name: Stub sentry.properties (no real telemetry in previews)
+        run: echo "disabled-for-preview" > ./ios/sentry.properties
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "yarn"
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          bundler-cache: true
+
+      - name: Cache Cocoapods
+        uses: actions/cache@v4
+        with:
+          path: |
+            ios/Pods
+            ~/Library/Caches/CocoaPods
+            ~/.cocoapods
+          key: ${{ runner.os }}-pods-${{ hashFiles('ios/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pods-
+
+      - name: Run Yarn Install
+        run: yarn install --immutable
+
+      - name: Run Post Install
+        run: yarn postinstall
+
+      - name: Build iOS Simulator .app (unsigned, universal)
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -workspace ios/freighter-mobile.xcworkspace \
+            -scheme "${IOS_SCHEME}" \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -derivedDataPath /tmp/build \
+            -arch arm64 -arch x86_64 \
+            ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Locate and zip .app
+        id: pack
+        env:
+          PR_NUMBER: ${{ env.PR_NUMBER }}
+        run: |
+          set -euo pipefail
+          APP_PATH=$(find /tmp/build/Build/Products -name "*.app" -type d -maxdepth 3 | head -1)
+          if [ -z "$APP_PATH" ]; then
+            echo "::error::No .app bundle found in build output"
+            find /tmp/build -name "*.app" -type d | head -10
+            exit 1
+          fi
+          APP_NAME=$(basename "$APP_PATH")
+          ZIP_NAME="freighter-simulator-pr-${PR_NUMBER}.zip"
+          (cd "$(dirname "$APP_PATH")" && zip -qq -r "/tmp/${ZIP_NAME}" "${APP_NAME}")
+          ls -lh "/tmp/${ZIP_NAME}"
+          echo "zip_path=/tmp/${ZIP_NAME}" >> "$GITHUB_OUTPUT"
+          echo "app_name=${APP_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Delete existing preview release (idempotent)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ env.PR_NUMBER }}
+        run: gh release delete "pr-preview-${PR_NUMBER}" --yes --cleanup-tag || true
+
+      - name: Create draft preview release
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ env.PR_NUMBER }}
+          ZIP_PATH: ${{ steps.pack.outputs.zip_path }}
+        run: |
+          set -euo pipefail
+          URL=$(gh release create "pr-preview-${PR_NUMBER}" \
+            "${ZIP_PATH}" \
+            --title "PR Preview #${PR_NUMBER} (iOS Simulator)" \
+            --notes "Internal preview iOS Simulator build for PR #${PR_NUMBER}. SDF collaborators only — non-collaborators get 404. Auto-deleted on PR close. Backend: staging." \
+            --draft)
+          echo "url=${URL}" >> "$GITHUB_OUTPUT"
+
+      - name: Post/update sticky PR comment with download link
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ env.PR_NUMBER }}
+          PR_HEAD_SHA: ${{ env.PR_HEAD_SHA }}
+          RELEASE_URL: ${{ steps.release.outputs.url }}
+        run: |
+          set -euo pipefail
+          MARKER="<!-- pr-preview-ios-simulator-comment -->"
+          BODY=$(cat <<EOF
+          $MARKER
+          ### Freighter iOS Simulator PR Preview
+
+          **Download:** [freighter-simulator-pr-${PR_NUMBER}.zip](${RELEASE_URL})
+          **Visibility:** SDF collaborators only — non-SDF GitHub users get 404 on this URL.
+          **Commit:** ${PR_HEAD_SHA}
+          **Backend:** staging
+
+          **How to install (macOS, requires Xcode):**
+          1. Download and unzip the asset
+          2. Open the Simulator app (Xcode → Open Developer Tool → Simulator, or run \`open -a Simulator\`)
+          3. Drag the unzipped \`.app\` onto the Simulator window
+          4. The app launches automatically
+
+          ⚠️ Use a fresh wallet — never enter real keys into a preview build.
+
+          _Physical-device iOS testing returns in Phase 3 (Tailscale + TestFlight) — not available today._
+          EOF
+          )
+          EXISTING=$(gh api "repos/${GH_REPO}/issues/${PR_NUMBER}/comments" \
+            --jq ".[] | select(.body | startswith(\"${MARKER}\")) | .id" | head -1)
+          if [ -n "$EXISTING" ]; then
+            gh api -X PATCH "repos/${GH_REPO}/issues/comments/${EXISTING}" -f body="$BODY"
+          else
+            gh pr comment "${PR_NUMBER}" --body "$BODY"
+          fi
+
+  cleanup:
+    name: Cleanup PR Preview Draft Release (iOS)
+    if: |
+      github.event.action == 'closed' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      contains(fromJSON('["MEMBER", "OWNER"]'), github.event.pull_request.author_association)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    concurrency:
+      group: pr-preview-ios-simulator-cleanup-${{ github.event.pull_request.number }}
+      cancel-in-progress: false
+    steps:
+      - name: Delete draft release and tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: gh release delete "pr-preview-${PR_NUMBER}" --yes --cleanup-tag || true
