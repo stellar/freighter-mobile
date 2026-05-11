@@ -13,10 +13,7 @@ import SecurityDetailBottomSheet from "components/blockaid/SecurityDetailBottomS
 import { BaseLayout } from "components/layout/BaseLayout";
 import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import {
-  AmountAlignment,
-  AmountDisplaySize,
   ContactRow,
-  HighlightedAmountDisplay,
   SendReviewBottomSheet,
   SendReviewFooter,
 } from "components/screens/SendScreen/components";
@@ -53,7 +50,6 @@ import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { calculateSpendableAmount, hasXLMForFees } from "helpers/balances";
-import { useDeviceSize, DeviceSize } from "helpers/deviceSize";
 import {
   formatTokenForDisplay,
   formatFiatInputDisplay,
@@ -107,17 +103,7 @@ const SendFlowCloseHeaderButton = () => {
   return <CustomHeaderButton icon={Icon.X} onPress={handleClosePress} />;
 };
 
-/**
- * Checks if a raw input value should skip highlighting.
- * Only skip if it's exactly "0" (no decimal separator or trailing characters).
- * Values like "0,", "0,00", ",00" should be highlighted.
- */
-const shouldSkipHighlighting = (rawInput: string | null): boolean =>
-  // Only skip if it's exactly "0" (no separator, no trailing zeros) or empty
-  !rawInput || rawInput === "0" || rawInput === "";
-
 const SECONDARY_AMOUNT_STACK_CHAR_THRESHOLD = 34; // Threshold for when to split secondary amounts (token + available text) across multiple lines
-const HIDDEN_INPUT_OPACITY = 0.01;
 
 /**
  * TransactionAmountScreen Component
@@ -236,8 +222,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       });
     }
   }, [transactionBuilderError, showToast]);
-  const deviceSize = useDeviceSize();
-  const isSmallScreen = deviceSize === DeviceSize.XS;
   const addMemoExplanationBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const transactionSettingsBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const feeBreakdownBottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -420,10 +404,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     updateFiatDisplay,
   } = useTokenFiatConverter({ selectedBalance });
 
-  // Keep hidden TextInput value aligned with the visible formatted value.
-  // Using only raw buffers breaks token editing after programmatic updates
-  // (for example, percentage buttons), because raw can be null while the
-  // displayed amount is non-empty.
+  // Raw fallback ensures programmatic updates (e.g. percentage buttons) still populate
+  // the input when tokenAmountDisplayRaw is null but display is non-empty.
   const amountInputValue = showFiatAmount
     ? (fiatAmountDisplayRaw ?? fiatAmountDisplay)
     : (tokenAmountDisplayRaw ?? tokenAmountDisplay);
@@ -431,6 +413,22 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   useEffect(() => {
     previousNativeInputRef.current = amountInputValue.replace(/[^0-9.,]/g, "");
   }, [amountInputValue]);
+
+  // Empty when tokenAmount is 0 AND the user has no active raw input beyond plain "0".
+  // This lets partial inputs like "0," or "0,2" show while still displaying the
+  // placeholder for the initial/reset state (tokenAmountDisplayRaw === null).
+  const isAmountEmpty = showFiatAmount
+    ? BigNumber(tokenAmount).isLessThanOrEqualTo(0) &&
+      (fiatAmountDisplayRaw === null || fiatAmountDisplayRaw === "0")
+    : BigNumber(tokenAmount).isLessThanOrEqualTo(0) &&
+      (tokenAmountDisplayRaw === null || tokenAmountDisplayRaw === "0");
+
+  const getAmountFontSize = () => {
+    const len = amountInputValue.length;
+    if (len <= 9) return 32;
+    if (len <= 15) return 24;
+    return 18;
+  };
 
   const handleNativeAmountChange = useCallback(
     (text: string) => {
@@ -1038,71 +1036,49 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
             <View className="flex-row items-center justify-between">
               <TouchableOpacity
-                className="flex-1 relative"
-                // Use press-in to focus immediately so the keyboard appears reliably
-                // while this touch target is rendering a custom amount display.
+                className="flex-1"
                 onPressIn={focusAmountInput}
                 activeOpacity={1}
                 accessible={false}
                 testID="send-amount-focus-trigger"
               >
-                <View
-                  accessibilityElementsHidden
-                  importantForAccessibility="no-hide-descendants"
-                >
-                  {showFiatAmount ? (
-                    <HighlightedAmountDisplay
-                      rawInput={
-                        fiatAmountDisplayRaw !== null &&
-                        !shouldSkipHighlighting(fiatAmountDisplayRaw)
-                          ? fiatAmountDisplayRaw
-                          : null
-                      }
-                      formattedDisplay={formatFiatInputDisplay(
-                        fiatAmountDisplay,
-                      )}
-                      isSmallScreen={isSmallScreen}
-                      align={AmountAlignment.Left}
-                      size={AmountDisplaySize.XS}
-                      highlightColor={themeColors.text.primary}
-                      normalColor={themeColors.text.primary}
-                      secondaryColor={themeColors.text.secondary}
-                    />
-                  ) : (
+                <View className="flex-row items-center">
+                  {showFiatAmount && (
                     <Display
-                      size="xs"
-                      medium
-                      adjustsFontSizeToFit
-                      numberOfLines={1}
-                      minimumFontScale={0.6}
-                      {...(Number(tokenAmount) > 0
-                        ? { primary: true }
-                        : { secondary: true })}
+                      style={{
+                        fontSize: getAmountFontSize(),
+                        fontWeight: "500",
+                        color: isAmountEmpty
+                          ? themeColors.text.secondary
+                          : themeColors.text.primary,
+                      }}
                     >
-                      {tokenAmountDisplay}
+                      $
                     </Display>
                   )}
+                  <TextInput
+                    ref={amountInputRef}
+                    testID="amount-text-input"
+                    accessibilityLabel={t("transactionAmountScreen.setAmount")}
+                    accessibilityHint={t("transactionAmountScreen.title")}
+                    keyboardType="decimal-pad"
+                    showSoftInputOnFocus
+                    autoFocus
+                    value={isAmountEmpty ? "" : amountInputValue}
+                    placeholder="0"
+                    placeholderTextColor={themeColors.text.secondary}
+                    onChangeText={handleNativeAmountChange}
+                    underlineColorAndroid="transparent"
+                    style={{
+                      flex: 1,
+                      fontSize: getAmountFontSize(),
+                      fontWeight: "500",
+                      color: themeColors.text.primary,
+                      padding: 0,
+                      includeFontPadding: false,
+                    }}
+                  />
                 </View>
-
-                <TextInput
-                  ref={amountInputRef}
-                  testID="amount-text-input"
-                  accessibilityLabel={t("transactionAmountScreen.setAmount")}
-                  accessibilityHint={t("transactionAmountScreen.title")}
-                  keyboardType="decimal-pad"
-                  showSoftInputOnFocus
-                  autoFocus
-                  value={amountInputValue}
-                  onChangeText={handleNativeAmountChange}
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    right: 0,
-                    bottom: 0,
-                    left: 0,
-                    opacity: HIDDEN_INPUT_OPACITY,
-                  }}
-                />
               </TouchableOpacity>
 
               <TouchableOpacity
