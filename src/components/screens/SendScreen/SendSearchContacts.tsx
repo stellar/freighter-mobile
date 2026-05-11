@@ -238,8 +238,8 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
       saveRecipientName(recipientLabel);
 
       proceedAfterRecipientSelection(
-        contactAddress,
-        recipientLabel || undefined,
+        addressToSave,
+        federationLabel || recipientLabel || undefined,
       );
     },
     [

@@ -12,6 +12,8 @@ import { getAccount } from "services/stellar";
 import { dataStorage } from "services/storage/storageFactory";
 import { create } from "zustand";
 
+const MAX_RECENT_ADDRESSES = 10;
+
 interface Contact {
   id: string;
   address: string;
@@ -113,7 +115,10 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
 
       if (!exists) {
         const newContact = { id: `recent-${Date.now()}`, address, name };
-        const updatedAddresses = [newContact, ...recentAddresses];
+        const updatedAddresses = [newContact, ...recentAddresses].slice(
+          0,
+          MAX_RECENT_ADDRESSES,
+        );
 
         set({ recentAddresses: updatedAddresses });
 
