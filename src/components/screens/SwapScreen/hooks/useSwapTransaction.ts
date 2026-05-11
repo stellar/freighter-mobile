@@ -163,12 +163,10 @@ export const useSwapTransaction = ({
       });
     } catch (error) {
       setIsProcessing(false);
-      logger.error("SwapTransaction", "Swap failed", error);
-
-      // Debug: Log the actual error object and message
-      if (error instanceof Error) {
-        logger.error("SwapTransaction", "Error message:", error.message);
-      }
+      // transactionBuilder.submitTransaction logs submit failures at
+      // the appropriate severity (4xx-with-result_codes → warn
+      // breadcrumb, everything else → logger.error). Re-logging here
+      // would either duplicate Sentry events or pollute breadcrumbs.
 
       analytics.trackTransactionError({
         error: error instanceof Error ? error.message : String(error),
@@ -188,7 +186,10 @@ export const useSwapTransaction = ({
         duration: 0,
       });
 
-      throw error;
+      // Don't rethrow - this catch is the terminal handler (toast,
+      // analytics, isProcessing reset) and the only caller invokes
+      // executeSwap() fire-and-forget. Rethrowing would surface as an
+      // unhandled promise rejection at the global handler.
     }
   }, [
     account,

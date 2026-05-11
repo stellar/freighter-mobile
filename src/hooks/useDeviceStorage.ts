@@ -42,7 +42,8 @@ const getImageExtensionFromUrl = (imageUrl: string): string => {
       }
     }
   } catch (error) {
-    logger.warn("DeviceStorage", "Failed to extract extension from URL", {
+    // Utility edge case with a "jpg" fallback - not actionable.
+    logger.info("DeviceStorage", "Failed to extract extension from URL", {
       imageUrl,
       error,
     });
