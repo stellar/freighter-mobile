@@ -233,7 +233,7 @@ export type AddFundsStackParamList = {
 export type SendPaymentStackParamList = {
   [SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN]:
     | {
-        returnToAmount?: boolean;
+        returnToSendScreen?: boolean;
         transition?: ScreenTransition;
       }
     | undefined;
@@ -243,7 +243,7 @@ export type SendPaymentStackParamList = {
   };
   [SEND_PAYMENT_ROUTES.TRANSACTION_TOKEN_SCREEN]:
     | {
-        returnToAmount?: boolean;
+        returnToSendScreen?: boolean;
         transition?: ScreenTransition;
       }
     | undefined;

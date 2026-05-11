@@ -2,6 +2,7 @@ import { NativeStackNavigationOptions } from "@react-navigation/native-stack";
 import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import CustomNavigationHeader from "components/layout/CustomNavigationHeader";
 import Icon from "components/sds/Icon";
+import { ScreenTransition } from "config/routes";
 import React from "react";
 
 /**
@@ -69,9 +70,14 @@ export const getScreenOptionsNoHeader = (): NativeStackNavigationOptions => ({
 export const withTransitionOverride = (
   options: NativeStackNavigationOptions,
   route: {
-    params?: { transition?: NativeStackNavigationOptions["animation"] };
+    params?: { transition?: ScreenTransition };
   },
 ): NativeStackNavigationOptions => {
   const transition = route.params?.transition;
-  return transition ? { ...options, animation: transition } : options;
+  return transition
+    ? {
+        ...options,
+        animation: transition as NativeStackNavigationOptions["animation"],
+      }
+    : options;
 };

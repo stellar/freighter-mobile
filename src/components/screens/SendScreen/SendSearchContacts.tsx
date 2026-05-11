@@ -110,7 +110,7 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
         (acc) => acc.publicKey !== activeAccount?.publicKey,
       ),
     [allAccounts, activeAccount?.publicKey],
-  );
+  ); // Already using useMemo to prevent keystroke-hot-path recomputation
 
   const debouncedSearchAddress = useDebounce((searchTerm: string) => {
     Promise.resolve(searchAddress(searchTerm)).catch((error) => {
@@ -154,14 +154,26 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
       const trimmedText = text.trim();
 
       if (!trimmedText) {
-        resetSendRecipient();
+        // Reset search state but preserve recent addresses for display
+        const { recentAddresses: currentRecents } =
+          useSendRecipientStore.getState();
+        useSendRecipientStore.setState({
+          searchResults: [],
+          searchError: null,
+          isValidDestination: false,
+          isDestinationFunded: null,
+          destinationAddress: "",
+          federationAddress: "",
+          isSearching: false,
+          recentAddresses: currentRecents,
+        });
         return;
       }
 
       prepareForSearch();
       debouncedSearchAddress(trimmedText);
     },
-    [debouncedSearchAddress, prepareForSearch, resetSendRecipient],
+    [debouncedSearchAddress, prepareForSearch],
   );
 
   const proceedAfterRecipientSelection = useCallback(
@@ -201,11 +213,18 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
       }
       const recipientLabel = federationLabel ? "" : (contactName ?? "");
 
+      // If contactAddress is a federation address (from search), use destinationAddress
+      // (which was resolved during searchAddress). Otherwise, contactAddress is already
+      // resolved (from recent contacts or direct public key), so use it as-is.
+      const addressToSave = isFederationAddress(contactAddress)
+        ? destinationAddress
+        : contactAddress;
+
       // Save to both stores for different purposes
       // Send store is for contact management
-      setDestinationAddress(contactAddress, federationLabel || undefined);
+      setDestinationAddress(addressToSave, federationLabel || undefined);
       // Transaction settings store is for the transaction flow
-      saveRecipientAddress(contactAddress);
+      saveRecipientAddress(addressToSave);
       saveRecipientName(recipientLabel);
 
       proceedAfterRecipientSelection(
@@ -215,6 +234,7 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
     },
     [
       recentAddresses,
+      destinationAddress,
       setDestinationAddress,
       saveRecipientAddress,
       saveRecipientName,

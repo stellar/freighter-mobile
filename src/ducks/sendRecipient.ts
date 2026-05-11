@@ -36,6 +36,16 @@ interface SendStore {
   resetSendRecipient: () => void;
 }
 
+// Shared search state reset fields used by both prepareForSearch and searchAddress.
+// Extracted here so both paths stay in sync if fields are added or renamed.
+const SEARCH_RESET_STATE = {
+  searchResults: [] as Contact[],
+  searchError: null as string | null,
+  isValidDestination: false,
+  isDestinationFunded: null as boolean | null,
+  isSearching: true,
+};
+
 const initialState: Omit<
   SendStore,
   | "loadRecentAddresses"
@@ -121,13 +131,7 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
   },
 
   searchAddress: async (searchTerm: string) => {
-    set({
-      isSearching: true,
-      searchError: null,
-      isValidDestination: false,
-      isDestinationFunded: null,
-      searchResults: [],
-    });
+    set(SEARCH_RESET_STATE);
 
     try {
       const { network } = useAuthenticationStore.getState();
@@ -296,13 +300,7 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
   },
 
   prepareForSearch: () => {
-    set({
-      searchResults: [],
-      searchError: null,
-      isValidDestination: false,
-      isDestinationFunded: null,
-      isSearching: true,
-    });
+    set(SEARCH_RESET_STATE);
   },
 
   resetSendRecipient: () => {

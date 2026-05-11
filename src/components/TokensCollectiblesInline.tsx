@@ -96,6 +96,8 @@ export const TokensCollectiblesInline: React.FC<
       showsVerticalScrollIndicator={false}
       stickySectionHeadersEnabled={false}
       contentContainerStyle={{ paddingHorizontal: pxValue(DEFAULT_PADDING) }}
+      // Keep token balances visible in the header while collectibles are loading/error;
+      // only the collectibles sections switch to empty/error/loading states.
       sections={isLoading || !!error ? [] : collectibleSections}
       keyExtractor={(item) => `${item.collectionAddress}-${item.tokenId}`}
       ListHeaderComponent={

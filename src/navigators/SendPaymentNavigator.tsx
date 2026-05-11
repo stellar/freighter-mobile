@@ -29,11 +29,21 @@ export const SendPaymentStackNavigator = () => {
       <SendPaymentStack.Screen
         name={SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN}
         component={SendSearchContacts}
-        options={({ route }) =>
+        options={({ route, navigation }) =>
           withTransitionOverride(
-            {
-              headerTitle: t("sendPaymentScreen.title"),
-            },
+            route.params?.returnToSendScreen
+              ? {
+                  headerTitle: t("sendPaymentScreen.title"),
+                  headerLeft: () => (
+                    <CustomHeaderButton
+                      icon={Icon.X}
+                      onPress={() => navigation.goBack()}
+                    />
+                  ),
+                }
+              : {
+                  headerTitle: t("sendPaymentScreen.title"),
+                },
             route,
           )
         }
@@ -43,19 +53,15 @@ export const SendPaymentStackNavigator = () => {
         component={TransactionTokenScreen}
         options={({ route, navigation }) =>
           withTransitionOverride(
-            route.params?.returnToAmount
-              ? {
-                  headerTitle: t("transactionTokenScreen.title"),
-                }
-              : {
-                  headerTitle: t("transactionTokenScreen.title"),
-                  headerLeft: () => (
-                    <CustomHeaderButton
-                      icon={Icon.X}
-                      onPress={() => navigation.getParent()?.goBack()}
-                    />
-                  ),
-                },
+            {
+              headerTitle: t("transactionTokenScreen.title"),
+              headerLeft: () => (
+                <CustomHeaderButton
+                  icon={Icon.X}
+                  onPress={() => navigation.goBack()}
+                />
+              ),
+            },
             route,
           )
         }

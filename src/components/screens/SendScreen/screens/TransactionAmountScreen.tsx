@@ -94,12 +94,17 @@ type TransactionAmountScreenProps = NativeStackScreenProps<
 const SendFlowCloseHeaderButton = () => {
   const navigation = useNavigation();
 
-  return (
-    <CustomHeaderButton
-      icon={Icon.X}
-      onPress={() => navigation.getParent()?.goBack()}
-    />
-  );
+  const handleClosePress = () => {
+    // Clean up state before exiting the send flow to prevent stale data.
+    // Use .getState() to avoid adding more hooks here — this component renders
+    // inside a navigator options callback and the hook count must stay stable.
+    useSendRecipientStore.getState().resetSendRecipient();
+    useTransactionSettingsStore.getState().resetSettings();
+    useTransactionBuilderStore.getState().resetTransaction();
+    navigation.getParent()?.goBack();
+  };
+
+  return <CustomHeaderButton icon={Icon.X} onPress={handleClosePress} />;
 };
 
 /**
@@ -111,7 +116,7 @@ const shouldSkipHighlighting = (rawInput: string | null): boolean =>
   // Only skip if it's exactly "0" (no separator, no trailing zeros) or empty
   !rawInput || rawInput === "0" || rawInput === "";
 
-const SECONDARY_AMOUNT_STACK_CHAR_THRESHOLD = 34;
+const SECONDARY_AMOUNT_STACK_CHAR_THRESHOLD = 34; // Threshold for when to split secondary amounts (token + available text) across multiple lines
 const HIDDEN_INPUT_OPACITY = 0.01;
 
 /**
@@ -159,16 +164,16 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   useEffect(() => {
     // Clear collectible details when entering token flow to prevent cross-flow contamination
     saveSelectedCollectibleDetails({ collectionAddress: "", tokenId: "" });
-
     saveSelectedTokenId(tokenId || "");
 
-    if (routeRecipientAddress && typeof routeRecipientAddress === "string") {
-      saveRecipientAddress(routeRecipientAddress);
-    }
-
-    if (routeRecipientName !== undefined) {
-      saveRecipientName(routeRecipientName);
-    }
+    // Explicitly set or clear recipient fields based on route params to avoid stale state
+    // from previous screens. If route params are missing, clear the store fields.
+    saveRecipientAddress(
+      typeof routeRecipientAddress === "string" ? routeRecipientAddress : "",
+    );
+    saveRecipientName(
+      routeRecipientName !== undefined ? routeRecipientName : "",
+    );
   }, [
     tokenId,
     routeRecipientAddress,
@@ -306,14 +311,14 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
   const navigateToSelectTokenScreen = () => {
     navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_TOKEN_SCREEN, {
-      returnToAmount: true,
+      returnToSendScreen: true,
       transition: ScreenTransition.SlideFromBottom,
     });
   };
 
   const navigateToSelectContactScreen = () => {
     navigation.navigate(SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN, {
-      returnToAmount: true,
+      returnToSendScreen: true,
       transition: ScreenTransition.SlideFromBottom,
     });
   };
@@ -1034,6 +1039,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             <View className="flex-row items-center justify-between">
               <TouchableOpacity
                 className="flex-1 relative"
+                // Use press-in to focus immediately so the keyboard appears reliably
+                // while this touch target is rendering a custom amount display.
                 onPressIn={focusAmountInput}
                 activeOpacity={1}
                 accessible={false}
@@ -1095,7 +1102,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
                     left: 0,
                     opacity: HIDDEN_INPUT_OPACITY,
                   }}
-                  caretHidden
                 />
               </TouchableOpacity>
 
