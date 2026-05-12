@@ -1,10 +1,11 @@
+import { DefaultListFooter } from "components/DefaultListFooter";
 import { ContactRow } from "components/screens/SendScreen/components";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React from "react";
-import { View } from "react-native";
+import { FlatList, View } from "react-native";
 
 interface RecentContact {
   id: string;
@@ -57,18 +58,24 @@ export const RecentContactsList: React.FC<RecentContactsListProps> = ({
   }
 
   return (
-    <View testID={testID}>
-      <ListHeader />
-      {transactions.map((item, index) => (
-        <ContactRow
-          key={item.id}
-          address={item.address}
-          name={item.name}
-          onPress={() => onContactPress(item.address, item.name)}
-          className="mb-[24px]"
-          testID={`recent-contact-${index}`}
-        />
-      ))}
+    <View testID={testID} className="flex-1">
+      <FlatList
+        data={transactions}
+        keyExtractor={(item) => item.id}
+        ListHeaderComponent={ListHeader}
+        ListFooterComponent={DefaultListFooter}
+        renderItem={({ item, index }) => (
+          <ContactRow
+            address={item.address}
+            name={item.name}
+            onPress={() => onContactPress(item.address, item.name)}
+            className="mb-[24px]"
+            testID={`recent-contact-${index}`}
+          />
+        )}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      />
     </View>
   );
 };

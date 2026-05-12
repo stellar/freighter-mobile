@@ -1,9 +1,8 @@
-/* eslint-disable react/no-unstable-nested-components */
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { DefaultListFooter } from "components/DefaultListFooter";
 import { BaseLayout } from "components/layout/BaseLayout";
 import {
   ContactRow,
-  RecentContactsList,
   SearchSuggestionsList,
 } from "components/screens/SendScreen/components";
 import Icon from "components/sds/Icon";
@@ -39,13 +38,37 @@ import useDebounce from "hooks/useDebounce";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
 import { useRightHeaderButton } from "hooks/useRightHeader";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { ScrollView, View } from "react-native";
+import { FlatList, ListRenderItemInfo, View } from "react-native";
 import { analytics } from "services/analytics";
 
 type SendSearchContactsProps = NativeStackScreenProps<
   RootStackParamList & SendPaymentStackParamList,
   typeof SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN
 >;
+
+enum ContactListItemType {
+  RecentHeader = "recent-header",
+  Recent = "recent",
+  WalletsHeader = "wallets-header",
+  Wallet = "wallet",
+}
+
+type ContactListItem =
+  | { type: ContactListItemType.RecentHeader }
+  | {
+      type: ContactListItemType.Recent;
+      id: string;
+      address: string;
+      name?: string;
+      itemIndex: number;
+    }
+  | { type: ContactListItemType.WalletsHeader }
+  | {
+      type: ContactListItemType.Wallet;
+      id: string;
+      publicKey: string;
+      name: string;
+    };
 
 /**
  * SendSearchContacts Component
@@ -252,6 +275,103 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
     ],
   );
 
+  const listData = useMemo<ContactListItem[]>(() => {
+    const items: ContactListItem[] = [];
+
+    if (recentAddresses.length > 0) {
+      items.push({ type: ContactListItemType.RecentHeader });
+      recentAddresses.forEach((addr, itemIndex) => {
+        items.push({ type: ContactListItemType.Recent, ...addr, itemIndex });
+      });
+    }
+
+    if (myWallets.length > 0) {
+      items.push({ type: ContactListItemType.WalletsHeader });
+      myWallets.forEach((wallet) => {
+        items.push({
+          type: ContactListItemType.Wallet,
+          id: wallet.id,
+          publicKey: wallet.publicKey,
+          name: wallet.name,
+        });
+      });
+    }
+
+    return items;
+  }, [recentAddresses, myWallets]);
+
+  const renderContactItem = useCallback(
+    ({ item }: ListRenderItemInfo<ContactListItem>) => {
+      if (item.type === ContactListItemType.RecentHeader) {
+        return (
+          <View className="mb-[12px]">
+            <View className="flex-row items-center gap-[6px]">
+              <View className="w-[24px] h-[24px] rounded-[6px] items-center justify-center bg-gray-3">
+                <Icon.Clock size={14} color={themeColors.text.secondary} />
+              </View>
+              <Text sm semiBold secondary>
+                {t("sendPaymentScreen.recents")}
+              </Text>
+            </View>
+          </View>
+        );
+      }
+
+      if (item.type === ContactListItemType.Recent) {
+        return (
+          <ContactRow
+            address={item.address}
+            name={item.name}
+            onPress={() => handleContactPress(item.address, item.name)}
+            className="mb-[24px]"
+            testID={`recent-contact-${item.itemIndex}`}
+          />
+        );
+      }
+
+      if (item.type === ContactListItemType.WalletsHeader) {
+        return (
+          <View className="flex-row items-center gap-[6px] mb-[12px]">
+            <View className="w-[24px] h-[24px] rounded-[6px] items-center justify-center bg-gray-3">
+              <Icon.Wallet01 size={14} color={themeColors.text.secondary} />
+            </View>
+            <Text sm semiBold secondary>
+              {t("sendSearchContacts.myWallets")}
+            </Text>
+          </View>
+        );
+      }
+
+      if (item.type === ContactListItemType.Wallet) {
+        return (
+          <ContactRow
+            testID={`my-wallet-row-${item.id}`}
+            address={item.publicKey}
+            name={item.name}
+            onPress={() => {
+              setDestinationAddress(item.publicKey);
+              saveRecipientAddress(item.publicKey);
+              saveRecipientName(item.name);
+              proceedAfterRecipientSelection(item.publicKey, item.name);
+            }}
+            className="mb-[24px]"
+          />
+        );
+      }
+
+      return null;
+    },
+    [
+      handleContactPress,
+      proceedAfterRecipientSelection,
+      saveRecipientAddress,
+      saveRecipientName,
+      setDestinationAddress,
+      t,
+      themeColors.text.secondary,
+    ],
+  );
+
   const handlePasteFromClipboard = () => {
     getClipboardText().then(handleSearch);
   };
@@ -335,51 +455,19 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
             onContactPress={handleContactPress}
           />
         ) : (
-          <ScrollView
-            showsVerticalScrollIndicator={false}
+          <FlatList
+            data={listData}
+            renderItem={renderContactItem}
+            keyExtractor={(item) =>
+              item.type === ContactListItemType.Recent ||
+              item.type === ContactListItemType.Wallet
+                ? item.id
+                : item.type
+            }
             keyboardShouldPersistTaps="handled"
-          >
-            {recentAddresses.length > 0 && (
-              <RecentContactsList
-                transactions={recentAddresses}
-                onContactPress={handleContactPress}
-              />
-            )}
-            {myWallets.length > 0 && (
-              <View>
-                <View className="flex-row items-center gap-[6px] mb-[12px]">
-                  <View className="w-[24px] h-[24px] rounded-[6px] items-center justify-center bg-gray-3">
-                    <Icon.Wallet01
-                      size={14}
-                      color={themeColors.text.secondary}
-                    />
-                  </View>
-                  <Text sm semiBold secondary>
-                    {t("sendSearchContacts.myWallets")}
-                  </Text>
-                </View>
-                {myWallets.map((wallet) => (
-                  <ContactRow
-                    key={wallet.id}
-                    testID={`my-wallet-row-${wallet.id}`}
-                    address={wallet.publicKey}
-                    name={wallet.name}
-                    onPress={() => {
-                      setDestinationAddress(wallet.publicKey);
-                      saveRecipientAddress(wallet.publicKey);
-                      saveRecipientName(wallet.name);
-
-                      proceedAfterRecipientSelection(
-                        wallet.publicKey,
-                        wallet.name,
-                      );
-                    }}
-                    className="mb-[24px]"
-                  />
-                ))}
-              </View>
-            )}
-          </ScrollView>
+            showsVerticalScrollIndicator={false}
+            ListFooterComponent={DefaultListFooter}
+          />
         )}
       </View>
     </BaseLayout>
