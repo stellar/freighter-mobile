@@ -189,10 +189,17 @@ jobs:
           SENTRY_DISABLE_AUTO_UPLOAD: "true"
         run: |
           set -euo pipefail
+          # IMPORTANT: configuration is Release, NOT Debug. Release triggers
+          # React Native's "Bundle React Native code and images" build phase,
+          # which embeds the JS bundle into the .app. Debug skips that phase
+          # and expects a Metro dev server at runtime — which would force
+          # reviewers to maintain a local freighter-mobile checkout + run
+          # Metro to launch the app. Release makes the .app self-contained.
+          # Matches fastlane dev lane (fastlane/Fastfile :dev lane).
           xcodebuild \
             -workspace ios/freighter-mobile.xcworkspace \
             -scheme "${IOS_SCHEME}" \
-            -configuration Debug \
+            -configuration Release \
             -sdk iphonesimulator \
             -derivedDataPath /tmp/build \
             -arch arm64 -arch x86_64 \
