@@ -223,13 +223,34 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ env.PR_NUMBER }}
+          PR_HEAD_SHA: ${{ env.PR_HEAD_SHA }}
           ZIP_PATH: ${{ steps.pack.outputs.zip_path }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
         run: |
           set -euo pipefail
+          NOTES=$(cat <<EOF
+          Internal preview iOS Simulator build for PR [#${PR_NUMBER}](${PR_URL}). SDF collaborators only — non-SDF GitHub users get 404 on this page. Auto-deleted when the PR is closed.
+
+          **Commit:** ${PR_HEAD_SHA}
+          **Backend:** staging
+
+          ### How to install (macOS, requires Xcode)
+
+          1. Download the \`.zip\` from the Assets section below and unzip it
+          2. Open the Simulator app (Xcode → Open Developer Tool → Simulator, or run \`open -a Simulator\`)
+          3. Drag the unzipped \`.app\` onto the Simulator window — the app launches automatically
+
+          ### Important
+
+          This code is still under review and may contain bugs that haven't been caught yet. **Use caution before signing transactions with real funds** — consider testing with a testnet wallet instead.
+
+          _Physical-device iOS testing returns in Phase 3 (Tailscale + TestFlight) — not available today._
+          EOF
+          )
           URL=$(gh release create "pr-preview-${PR_NUMBER}" \
             "${ZIP_PATH}" \
             --title "PR Preview #${PR_NUMBER} (iOS Simulator)" \
-            --notes "Internal preview iOS Simulator build for PR #${PR_NUMBER}. SDF collaborators only — non-collaborators get 404. Auto-deleted on PR close. Backend: staging." \
+            --notes "${NOTES}" \
             --draft)
           echo "url=${URL}" >> "$GITHUB_OUTPUT"
 
@@ -238,31 +259,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           PR_NUMBER: ${{ env.PR_NUMBER }}
-          PR_HEAD_SHA: ${{ env.PR_HEAD_SHA }}
           RELEASE_URL: ${{ steps.release.outputs.url }}
         run: |
           set -euo pipefail
           MARKER="<!-- pr-preview-ios-simulator-comment -->"
-          BODY=$(cat <<EOF
-          $MARKER
-          ### Freighter iOS Simulator PR Preview
+          BODY="${MARKER}"$'\n'"iOS Simulator preview build is ready: ${RELEASE_URL} (SDF collaborators only — install instructions in the release description)"
 
-          **Download:** [freighter-simulator-pr-${PR_NUMBER}.zip](${RELEASE_URL})
-          **Visibility:** SDF collaborators only — non-SDF GitHub users get 404 on this URL.
-          **Commit:** ${PR_HEAD_SHA}
-          **Backend:** staging
-
-          **How to install (macOS, requires Xcode):**
-          1. Download and unzip the asset
-          2. Open the Simulator app (Xcode → Open Developer Tool → Simulator, or run \`open -a Simulator\`)
-          3. Drag the unzipped \`.app\` onto the Simulator window
-          4. The app launches automatically
-
-          ⚠️ This code is still under review and may contain bugs that haven't been caught yet. Use caution before signing transactions with real funds — consider testing with a testnet wallet instead.
-
-          _Physical-device iOS testing returns in Phase 3 (Tailscale + TestFlight) — not available today._
-          EOF
-          )
           EXISTING=$(gh api "repos/${GH_REPO}/issues/${PR_NUMBER}/comments" \
             --jq ".[] | select(.body | startswith(\"${MARKER}\")) | .id" | head -1)
           if [ -n "$EXISTING" ]; then
