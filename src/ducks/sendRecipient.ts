@@ -107,11 +107,11 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
     try {
       const { recentAddresses } = get();
 
-      const exists = recentAddresses.some(
+      const existingContact = recentAddresses.find(
         (contact) => contact.address === address,
       );
 
-      if (!exists) {
+      if (!existingContact) {
         const newContact = { id: `recent-${Date.now()}`, address, name };
         const updatedAddresses = [newContact, ...recentAddresses];
 
@@ -124,6 +124,14 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
           STORAGE_KEYS.RECENT_ADDRESSES,
           JSON.stringify(addressesOnly),
         );
+        return;
+      }
+
+      if (name && name !== existingContact.name) {
+        const updatedAddresses = recentAddresses.map((contact) =>
+          contact.address === address ? { ...contact, name } : contact,
+        );
+        set({ recentAddresses: updatedAddresses });
       }
     } catch (error) {
       logger.error("[sendRecipient]", "Failed to add recent address:", error);

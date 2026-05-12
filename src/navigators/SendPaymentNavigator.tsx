@@ -9,7 +9,11 @@ import {
 } from "components/screens/SendScreen/screens";
 import SendCollectibleReviewScreen from "components/screens/SendScreen/screens/SendCollectibleReview";
 import Icon from "components/sds/Icon";
-import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
+import {
+  ScreenTransition,
+  SEND_PAYMENT_ROUTES,
+  SendPaymentStackParamList,
+} from "config/routes";
 import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
@@ -26,8 +30,12 @@ const closeSendFlow = (
     getParent: () => { goBack: () => void } | undefined;
   },
   dismissToPreviousScreen?: boolean,
+  transition?: ScreenTransition,
 ) => {
-  if (dismissToPreviousScreen) {
+  const isBottomSheetOverlay =
+    dismissToPreviousScreen && transition === ScreenTransition.SlideFromBottom;
+
+  if (isBottomSheetOverlay) {
     navigation.goBack();
     return;
   }
@@ -83,6 +91,7 @@ export const SendPaymentStackNavigator = () => {
                     closeSendFlow(
                       navigation,
                       route.params?.dismissToPreviousScreen,
+                      route.params?.transition,
                     )
                   }
                 />
@@ -113,6 +122,7 @@ export const SendPaymentStackNavigator = () => {
                     closeSendFlow(
                       navigation,
                       route.params?.dismissToPreviousScreen,
+                      route.params?.transition,
                     )
                   }
                 />

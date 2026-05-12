@@ -1,6 +1,5 @@
 import Blockaid from "@blockaid/client";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
-import { useNavigation } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BigNumber } from "bignumber.js";
 import BottomSheet from "components/BottomSheet";
@@ -86,22 +85,6 @@ type TransactionAmountScreenProps = NativeStackScreenProps<
   SendPaymentStackParamList,
   typeof SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN
 >;
-
-const SendFlowCloseHeaderButton = () => {
-  const navigation = useNavigation();
-
-  const handleClosePress = () => {
-    // Clean up state before exiting the send flow to prevent stale data.
-    // Use .getState() to avoid adding more hooks here — this component renders
-    // inside a navigator options callback and the hook count must stay stable.
-    useSendRecipientStore.getState().resetSendRecipient();
-    useTransactionSettingsStore.getState().resetSettings();
-    useTransactionBuilderStore.getState().resetTransaction();
-    navigation.getParent()?.goBack();
-  };
-
-  return <CustomHeaderButton icon={Icon.X} onPress={handleClosePress} />;
-};
 
 const SECONDARY_AMOUNT_STACK_CHAR_THRESHOLD = 34; // Threshold for when to split secondary amounts (token + available text) across multiple lines
 
@@ -200,11 +183,24 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const [amountError, setAmountError] = useState<string | null>(null);
   const { showToast } = useToast();
 
+  const handleCloseSendFlow = useCallback(() => {
+    // Clean up state before exiting the send flow to prevent stale data.
+    useSendRecipientStore.getState().resetSendRecipient();
+    useTransactionSettingsStore.getState().resetSettings();
+    useTransactionBuilderStore.getState().resetTransaction();
+    navigation.getParent()?.goBack();
+  }, [navigation]);
+
+  const renderCloseHeaderButton = useCallback(
+    () => <CustomHeaderButton icon={Icon.X} onPress={handleCloseSendFlow} />,
+    [handleCloseSendFlow],
+  );
+
   useLayoutEffect(() => {
     navigation.setOptions({
-      headerLeft: SendFlowCloseHeaderButton,
+      headerLeft: renderCloseHeaderButton,
     });
-  }, [navigation]);
+  }, [navigation, renderCloseHeaderButton]);
 
   // Show toast when transaction builder error occurs
   const previousErrorRef = useRef<string | null>(null);
