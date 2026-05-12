@@ -33,7 +33,7 @@ const TransactionTokenScreen: React.FC<TransactionTokenScreenProps> = ({
     // Clear collectible details when selecting a token to prevent cross-flow contamination
     saveSelectedCollectibleDetails({ collectionAddress: "", tokenId: "" });
 
-    if (route.params?.returnToSendScreen) {
+    if (route.params?.dismissToPreviousScreen) {
       navigation.goBack();
       return;
     }

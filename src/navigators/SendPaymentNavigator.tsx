@@ -25,9 +25,9 @@ const closeSendFlow = (
     goBack: () => void;
     getParent: () => { goBack: () => void } | undefined;
   },
-  returnToSendScreen?: boolean,
+  dismissToPreviousScreen?: boolean,
 ) => {
-  if (returnToSendScreen) {
+  if (dismissToPreviousScreen) {
     navigation.goBack();
     return;
   }
@@ -52,7 +52,7 @@ export const SendPaymentStackNavigator = () => {
         component={SendSearchContacts}
         options={({ route, navigation }) =>
           withTransitionOverride(
-            route.params?.returnToSendScreen
+            route.params?.dismissToPreviousScreen
               ? {
                   headerTitle: t("sendPaymentScreen.title"),
                   headerLeft: () => (
@@ -80,7 +80,10 @@ export const SendPaymentStackNavigator = () => {
                 <CustomHeaderButton
                   icon={Icon.X}
                   onPress={() =>
-                    closeSendFlow(navigation, route.params?.returnToSendScreen)
+                    closeSendFlow(
+                      navigation,
+                      route.params?.dismissToPreviousScreen,
+                    )
                   }
                 />
               ),
@@ -107,7 +110,10 @@ export const SendPaymentStackNavigator = () => {
                 <CustomHeaderButton
                   icon={Icon.X}
                   onPress={() =>
-                    closeSendFlow(navigation, route.params?.returnToSendScreen)
+                    closeSendFlow(
+                      navigation,
+                      route.params?.dismissToPreviousScreen,
+                    )
                   }
                 />
               ),

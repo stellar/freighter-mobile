@@ -295,14 +295,14 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
   const navigateToSelectTokenScreen = () => {
     navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_TOKEN_SCREEN, {
-      returnToSendScreen: true,
+      dismissToPreviousScreen: true,
       transition: ScreenTransition.SlideFromBottom,
     });
   };
 
   const navigateToSelectContactScreen = () => {
     navigation.navigate(SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN, {
-      returnToSendScreen: true,
+      dismissToPreviousScreen: true,
       transition: ScreenTransition.SlideFromBottom,
     });
   };

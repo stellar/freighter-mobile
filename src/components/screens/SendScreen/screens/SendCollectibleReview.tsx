@@ -181,7 +181,7 @@ const SendCollectibleReviewScreen: React.FC<
   const navigateToSelectContactScreen = () => {
     // Navigate to SearchContacts with slide from bottom transition
     navigation.navigate(SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN, {
-      returnToSendScreen: true,
+      dismissToPreviousScreen: true,
       transition: ScreenTransition.SlideFromBottom,
     });
   };

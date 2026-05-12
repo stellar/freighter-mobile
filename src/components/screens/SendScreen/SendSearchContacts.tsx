@@ -17,6 +17,7 @@ import { logger } from "config/logger";
 import {
   ROOT_NAVIGATOR_ROUTES,
   RootStackParamList,
+  ScreenTransition,
   SEND_PAYMENT_ROUTES,
   SendPaymentStackParamList,
 } from "config/routes";
@@ -208,16 +209,23 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
 
   const proceedAfterRecipientSelection = useCallback(
     (contactAddress: string, name?: string) => {
+      const isBottomSheetOverlay =
+        route.params?.dismissToPreviousScreen &&
+        route.params?.transition === ScreenTransition.SlideFromBottom;
+
+      if (isBottomSheetOverlay) {
+        // Opened as an overlay from review screens (SlideFromBottom).
+        // Stores are already updated above — just dismiss back down.
+        navigation.goBack();
+        return;
+      }
+
       if (selectedCollectibleDetails.tokenId) {
         // Navigate to collectible review screen after selecting recipient
         navigation.navigate(
           SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW,
           selectedCollectibleDetails,
         );
-      } else if (route.params?.returnToSendScreen) {
-        // Opened as an overlay from TransactionAmountScreen (SlideFromBottom).
-        // Stores are already updated above — just dismiss back down.
-        navigation.goBack();
       } else {
         navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN, {
           tokenId: selectedTokenId || NATIVE_TOKEN_CODE,
@@ -228,7 +236,8 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
     },
     [
       navigation,
-      route.params?.returnToSendScreen,
+      route.params?.dismissToPreviousScreen,
+      route.params?.transition,
       selectedCollectibleDetails,
       selectedTokenId,
     ],
