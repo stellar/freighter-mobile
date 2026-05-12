@@ -10,12 +10,33 @@ import {
 import SendCollectibleReviewScreen from "components/screens/SendScreen/screens/SendCollectibleReview";
 import Icon from "components/sds/Icon";
 import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
+import { useSendRecipientStore } from "ducks/sendRecipient";
+import { useTransactionBuilderStore } from "ducks/transactionBuilder";
+import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { withTransitionOverride } from "helpers/navigationOptions";
 import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
 
 const SendPaymentStack =
   createNativeStackNavigator<SendPaymentStackParamList>();
+
+const closeSendFlow = (
+  navigation: {
+    goBack: () => void;
+    getParent: () => { goBack: () => void } | undefined;
+  },
+  returnToSendScreen?: boolean,
+) => {
+  if (returnToSendScreen) {
+    navigation.goBack();
+    return;
+  }
+
+  useSendRecipientStore.getState().resetSendRecipient();
+  useTransactionSettingsStore.getState().resetSettings();
+  useTransactionBuilderStore.getState().resetTransaction();
+  navigation.getParent()?.goBack();
+};
 
 export const SendPaymentStackNavigator = () => {
   const { t } = useAppTranslation();
@@ -58,7 +79,9 @@ export const SendPaymentStackNavigator = () => {
               headerLeft: () => (
                 <CustomHeaderButton
                   icon={Icon.X}
-                  onPress={() => navigation.goBack()}
+                  onPress={() =>
+                    closeSendFlow(navigation, route.params?.returnToSendScreen)
+                  }
                 />
               ),
             },
