@@ -1,5 +1,6 @@
 import { act } from "@testing-library/react-hooks";
 import { NETWORKS } from "config/constants";
+import { logger } from "config/logger";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import * as sorobanHelpers from "helpers/soroban";
 import * as stellarServices from "services/stellar";
@@ -314,6 +315,111 @@ describe("transactionBuilder Duck", () => {
     expect(state.isSubmitting).toBe(false);
     expect(state.transactionHash).toBeNull();
     expect(state.error).toBe(submitError.message);
+  });
+
+  describe("submitTransaction logger severity (Horizon error split)", () => {
+    beforeEach(() => {
+      act(() => {
+        store.setState({ signedTransactionXDR: mockSignedXDR });
+      });
+      // Treat the test errors as HorizonError shapes so the duck's branch
+      // can read .response.status off them.
+      (
+        stellarServices.isHorizonError as unknown as jest.Mock
+      ).mockImplementation(
+        (val: unknown) =>
+          typeof val === "object" &&
+          val !== null &&
+          "response" in val &&
+          typeof (val as { response: unknown }).response === "object",
+      );
+    });
+
+    it("demotes Horizon 4xx protocol rejections to warn (e.g. tx_bad_seq)", async () => {
+      const horizon4xxError = {
+        response: {
+          status: 400,
+          data: { extras: { result_codes: { transaction: "tx_bad_seq" } } },
+        },
+      };
+      (stellarServices.submitTx as jest.Mock).mockRejectedValue(
+        horizon4xxError,
+      );
+
+      await act(async () => {
+        await store.getState().submitTransaction({ network: mockNetwork });
+      });
+
+      expect(logger.warn).toHaveBeenCalledWith(
+        "TransactionBuilderStore",
+        expect.stringContaining("Network rejected transaction (HTTP 400)"),
+        { transaction: "tx_bad_seq" },
+      );
+      expect(logger.error).not.toHaveBeenCalled();
+    });
+
+    it("keeps Horizon 4xx WITHOUT result_codes as logger.error (operational failures, not user-correctable)", async () => {
+      // 4xx responses from Horizon / proxies that don't carry the
+      // protocol-rejection `result_codes` (rate limits, auth failures,
+      // generic gateway errors) are operational, not user-correctable
+      // - they need Sentry visibility, not the warn breadcrumb path.
+      const horizon4xxNoResultCodes = {
+        response: {
+          status: 429,
+          data: { detail: "Too many requests" },
+        },
+      };
+      (stellarServices.submitTx as jest.Mock).mockRejectedValue(
+        horizon4xxNoResultCodes,
+      );
+
+      await act(async () => {
+        await store.getState().submitTransaction({ network: mockNetwork });
+      });
+
+      expect(logger.error).toHaveBeenCalledWith(
+        "TransactionBuilderStore",
+        expect.stringContaining("Failed to submit transaction"),
+        horizon4xxNoResultCodes,
+      );
+      expect(logger.warn).not.toHaveBeenCalled();
+    });
+
+    it("keeps Horizon 5xx server errors as logger.error (e.g. submitted-then-overloaded)", async () => {
+      const horizon5xxError = {
+        response: { status: 504 },
+      };
+      (stellarServices.submitTx as jest.Mock).mockRejectedValue(
+        horizon5xxError,
+      );
+
+      await act(async () => {
+        await store.getState().submitTransaction({ network: mockNetwork });
+      });
+
+      expect(logger.error).toHaveBeenCalledWith(
+        "TransactionBuilderStore",
+        expect.stringContaining("Failed to submit transaction"),
+        horizon5xxError,
+      );
+      expect(logger.warn).not.toHaveBeenCalled();
+    });
+
+    it("keeps non-Horizon errors as logger.error (bad XDR, network unreachable, SDK exception)", async () => {
+      const sdkError = new Error("Bad XDR encoding");
+      (stellarServices.submitTx as jest.Mock).mockRejectedValue(sdkError);
+
+      await act(async () => {
+        await store.getState().submitTransaction({ network: mockNetwork });
+      });
+
+      expect(logger.error).toHaveBeenCalledWith(
+        "TransactionBuilderStore",
+        expect.stringContaining("Failed to submit transaction"),
+        sdkError,
+      );
+      expect(logger.warn).not.toHaveBeenCalled();
+    });
   });
 
   it("should reset the transaction state", () => {

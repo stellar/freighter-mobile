@@ -41,11 +41,15 @@ export const App = (): React.JSX.Element => {
     const initSentry = async () => {
       initializeSentry();
 
+      // Switch the logger to its Sentry-aware adapter before any
+      // subsequent async work. Otherwise warn / error calls fired
+      // during getUserId / setUser run on the default consoleAdapter
+      // and produce no breadcrumb or captured event in production.
+      initializeSentryLogger();
+
       const userId = await getUserId();
 
       Sentry.setUser({ id: userId });
-
-      initializeSentryLogger();
     };
 
     initSentry();

@@ -138,7 +138,10 @@ export const clearAllCookies = async (): Promise<boolean> => {
     if (result) {
       logger.debug("clearAllCookies", "All cookies cleared successfully");
     } else {
-      logger.warn("clearAllCookies", "Cookie cleanup may have failed");
+      // Best-effort cleanup - the "may have failed" wording reflects
+      // CookieManager's fuzzy success signal. Not actionable as a
+      // breadcrumb for downstream errors.
+      logger.info("clearAllCookies", "Cookie cleanup may have failed");
     }
 
     return result;
@@ -170,7 +173,8 @@ export const clearAllWebViewData = async (): Promise<boolean> => {
         "WebView data cleanup completed successfully",
       );
     } else {
-      logger.warn(
+      // Best-effort cleanup - same shape as clearAllCookies above.
+      logger.info(
         "clearAllWebViewData",
         "WebView data cleanup may have failed",
       );

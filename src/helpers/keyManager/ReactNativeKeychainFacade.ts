@@ -84,7 +84,10 @@ export class ReactNativeKeychainFacade {
     } catch (error) {
       logger.error(
         "ReactNativeKeychainKeyStore.getKey",
-        `Error getting key ${id}:`,
+        // Truncate the keychain id - it's a per-account correlation
+        // token and shouldn't ship verbatim. Prefix is enough for
+        // intra-session log correlation.
+        `Error getting key ${id.slice(0, 8)}...:`,
         error,
       );
 
@@ -120,7 +123,8 @@ export class ReactNativeKeychainFacade {
     } catch (error) {
       logger.error(
         "ReactNativeKeychainKeyStore.removeKey",
-        `Error removing key ${id}:`,
+        // Truncate the keychain id - same reasoning as getKey above.
+        `Error removing key ${id.slice(0, 8)}...:`,
         error,
       );
       // Don't throw here, as the key might not exist

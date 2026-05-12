@@ -1,9 +1,13 @@
 /* eslint-disable no-underscore-dangle */
 import { NETWORKS } from "config/constants";
-import { logger, normalizeError } from "config/logger";
+import { normalizeError } from "config/logger";
 import { SearchTokenResponse } from "config/types";
 import { getApiStellarExpertUrl } from "helpers/stellarExpert";
-import { createApiService, isRequestCanceled } from "services/apiFactory";
+import {
+  createApiService,
+  isRequestCanceled,
+  logApiError,
+} from "services/apiFactory";
 
 const stellarExpertApiTestnet = createApiService({
   baseURL: getApiStellarExpertUrl(NETWORKS.TESTNET),
@@ -37,9 +41,16 @@ export const searchToken = async (
 
     return response.data;
   } catch (error) {
-    if (!isRequestCanceled(error)) {
-      logger.error("stellarExpert", "Error searching token", error);
+    if (isRequestCanceled(error)) {
+      return null;
     }
+
+    logApiError(
+      "stellarExpert",
+      "Network unreachable while searching token",
+      "Error searching token",
+      error,
+    );
 
     return null;
   }
