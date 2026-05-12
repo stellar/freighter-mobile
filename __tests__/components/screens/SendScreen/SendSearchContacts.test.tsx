@@ -78,6 +78,8 @@ const getSendStoreMock = (overrides = {}) =>
     isSearching: false,
     isValidDestination: false,
     isDestinationFunded: null,
+    destinationAddress: "",
+    federationAddress: "",
     federationMemo: "",
     federationMemoType: "",
     loadRecentAddresses: mockLoadRecentAddresses,
@@ -95,6 +97,9 @@ jest.mock("ducks/sendRecipient", () => ({
 
 const getTransactionSettingsStoreMock = (overrides = {}) => ({
   saveRecipientAddress: jest.fn(),
+  saveFederationAddress: jest.fn(),
+  saveMemo: jest.fn(),
+  saveMemoType: jest.fn(),
   saveSelectedCollectibleDetails: jest.fn(),
   selectedCollectibleDetails: { collectionAddress: "", tokenId: "" },
   selectedTokenId: "",
@@ -104,6 +109,9 @@ const getTransactionSettingsStoreMock = (overrides = {}) => ({
 jest.mock("ducks/transactionSettings", () => ({
   useTransactionSettingsStore: jest.fn().mockReturnValue({
     saveRecipientAddress: jest.fn(),
+    saveFederationAddress: jest.fn(),
+    saveMemo: jest.fn(),
+    saveMemoType: jest.fn(),
     saveSelectedCollectibleDetails: jest.fn(),
     selectedCollectibleDetails: { collectionAddress: "", tokenId: "" },
     selectedTokenId: "",

@@ -398,23 +398,30 @@ export const buildPaymentTransaction = async (
     if (memo && !shouldUseSorobanTransfer && !isRecipientMuxed) {
       // Honour the memo type returned by the federation server so that exchange
       // destinations that require memo_type:"id" receive the correct Stellar memo.
-      if (memoType === "id" && /^\d+$/.test(memo)) {
-        // Memo.id validates numeric range (0..2^64-1); wrap to avoid crash on out-of-range values
+      if (memoType === "id") {
+        // Memo.id validates numeric range (0..2^64-1); throw on invalid value so
+        // the send is aborted rather than silently downgraded to a text memo.
+        // A silent downgrade would cause exchange deposits to arrive at the omnibus
+        // address without being credited to the user's sub-account.
+        if (!/^\d+$/.test(memo)) {
+          throw new Error(t("transaction.errors.invalidFederationMemo"));
+        }
         try {
           transactionBuilder.addMemo(Memo.id(memo));
         } catch {
-          transactionBuilder.addMemo(Memo.text(memo));
+          throw new Error(t("transaction.errors.invalidFederationMemo"));
         }
       } else if (memoType === "hash") {
         try {
           const hashBytes = Buffer.from(memo, "base64");
-          if (hashBytes.length === 32) {
-            transactionBuilder.addMemo(Memo.hash(hashBytes));
-          } else {
-            transactionBuilder.addMemo(Memo.text(memo));
+          if (hashBytes.length !== 32) {
+            throw new Error(t("transaction.errors.invalidFederationMemo"));
           }
-        } catch {
-          transactionBuilder.addMemo(Memo.text(memo));
+          transactionBuilder.addMemo(Memo.hash(hashBytes));
+        } catch (error) {
+          throw error instanceof Error
+            ? error
+            : new Error(t("transaction.errors.invalidFederationMemo"));
         }
       } else {
         transactionBuilder.addMemo(Memo.text(memo));

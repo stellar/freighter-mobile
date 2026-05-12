@@ -158,6 +158,10 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
       isValidDestination: false,
       isDestinationFunded: null,
       searchResults: [],
+      destinationAddress: "",
+      federationAddress: "",
+      federationMemo: "",
+      federationMemoType: "",
     });
 
     try {
@@ -352,6 +356,10 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
       isValidDestination: false,
       isDestinationFunded: null,
       isSearching: true,
+      destinationAddress: "",
+      federationAddress: "",
+      federationMemo: "",
+      federationMemoType: "",
     });
   },
 
