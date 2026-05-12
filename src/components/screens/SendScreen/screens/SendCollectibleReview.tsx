@@ -37,6 +37,7 @@ import {
   SendPaymentStackParamList,
   ROOT_NAVIGATOR_ROUTES,
   MAIN_TAB_ROUTES,
+  ScreenTransition,
 } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import { useCollectiblesStore } from "ducks/collectibles";
@@ -82,7 +83,10 @@ type SendCollectibleReviewScreenProps = NativeStackScreenProps<
 const SendCollectibleReviewScreen: React.FC<
   SendCollectibleReviewScreenProps
 > = ({ navigation, route }) => {
-  const { tokenId, collectionAddress } = route.params;
+  const { tokenId, collectionAddress } = route.params ?? {
+    tokenId: "",
+    collectionAddress: "",
+  };
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const { account } = useGetActiveAccount();
@@ -175,9 +179,11 @@ const SendCollectibleReviewScreen: React.FC<
   };
 
   const navigateToSelectContactScreen = () => {
-    // Use popTo to navigate back to SearchContacts
-    // If SearchContacts exists in stack, pops back to it; otherwise adds it
-    navigation.popTo(SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN);
+    // Navigate to SearchContacts with slide from bottom transition
+    navigation.navigate(SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN, {
+      returnToSendScreen: true,
+      transition: ScreenTransition.SlideFromBottom,
+    });
   };
 
   const selectedCollectible = useMemo(

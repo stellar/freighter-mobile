@@ -237,10 +237,14 @@ export type SendPaymentStackParamList = {
         transition?: ScreenTransition;
       }
     | undefined;
-  [SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW]: {
-    tokenId: string;
-    collectionAddress: string;
-  };
+  [SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW]:
+    | {
+        tokenId: string;
+        collectionAddress: string;
+        returnToSendScreen?: boolean;
+        transition?: ScreenTransition;
+      }
+    | undefined;
   [SEND_PAYMENT_ROUTES.TRANSACTION_TOKEN_SCREEN]:
     | {
         returnToSendScreen?: boolean;

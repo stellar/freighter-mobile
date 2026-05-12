@@ -99,9 +99,22 @@ export const SendPaymentStackNavigator = () => {
       <SendPaymentStack.Screen
         name={SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW}
         component={SendCollectibleReviewScreen}
-        options={{
-          headerTitle: t("transactionAmountScreen.title"),
-        }}
+        options={({ route, navigation }) =>
+          withTransitionOverride(
+            {
+              headerTitle: t("transactionAmountScreen.title"),
+              headerLeft: () => (
+                <CustomHeaderButton
+                  icon={Icon.X}
+                  onPress={() =>
+                    closeSendFlow(navigation, route.params?.returnToSendScreen)
+                  }
+                />
+              ),
+            },
+            route,
+          )
+        }
       />
     </SendPaymentStack.Navigator>
   );

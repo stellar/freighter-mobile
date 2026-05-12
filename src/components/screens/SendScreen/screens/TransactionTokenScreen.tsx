@@ -51,10 +51,9 @@ const TransactionTokenScreen: React.FC<TransactionTokenScreenProps> = ({
     // Clear token selection when selecting a collectible to prevent cross-flow contamination
     saveSelectedTokenId("");
 
-    navigation.navigate(
-      SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW,
-      collectibleDetails,
-    );
+    navigation.navigate(SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN, {
+      transition: ScreenTransition.SlideFromRight,
+    });
   };
 
   return (

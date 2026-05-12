@@ -209,8 +209,8 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
   const proceedAfterRecipientSelection = useCallback(
     (contactAddress: string, name?: string) => {
       if (selectedCollectibleDetails.tokenId) {
-        // If Review exists in stack, pop back to it.
-        navigation.popTo(
+        // Navigate to collectible review screen after selecting recipient
+        navigation.navigate(
           SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW,
           selectedCollectibleDetails,
         );
