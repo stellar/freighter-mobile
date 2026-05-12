@@ -150,9 +150,31 @@ jobs:
             ${{ runner.os }}-pods-
 
       - name: Run Yarn Install
+        # WORKAROUND for a bug in scripts/build-scrypt-16kb-aligned.js (invoked
+        # via package.json postinstall, which yarn install triggers). The script
+        # reads ANDROID_NDK_HOME / ANDROID_NDK_ROOT and expects them to point at
+        # the PARENT `ndk/` directory so it can readdirSync and pick the latest
+        # NDK version. The macos-26-xlarge runner image sets ANDROID_NDK_ROOT
+        # to a specific version subdirectory (e.g. .../ndk/27.3.13750724),
+        # which makes the script's version-detection fail with
+        # "Error: No NDK version found in ...".
+        #
+        # We override here to point at the parent directory. Other repo
+        # workflows (ios.yml, ios-e2e.yml) will hit the same error once their
+        # next runner-image refresh picks up this env-var default — the proper
+        # fix is to patch build-scrypt-16kb-aligned.js to handle a
+        # version-pinned NDK path (just use it directly if the path is already
+        # a valid NDK version dir instead of trying to readdirSync).
+        # That patch is out of scope for this PR; track separately.
+        env:
+          ANDROID_NDK_HOME: /Users/runner/Library/Android/sdk/ndk
+          ANDROID_NDK_ROOT: /Users/runner/Library/Android/sdk/ndk
         run: yarn install --immutable
 
       - name: Run Post Install
+        env:
+          ANDROID_NDK_HOME: /Users/runner/Library/Android/sdk/ndk
+          ANDROID_NDK_ROOT: /Users/runner/Library/Android/sdk/ndk
         run: yarn postinstall
 
       - name: Build iOS Simulator .app (unsigned, universal)
