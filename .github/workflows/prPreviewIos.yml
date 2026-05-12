@@ -178,6 +178,15 @@ jobs:
         run: yarn postinstall
 
       - name: Build iOS Simulator .app (unsigned, universal)
+        env:
+          # The Xcode project has a Sentry "Upload Debug Symbols" build phase
+          # that calls sentry-cli with the SENTRY_PROPERTIES_CONTENT / SENTRY_DSN
+          # env. Preview builds intentionally disable Sentry (see workflow env
+          # above), but the build phase still tries to upload and fails the
+          # build with "An organization ID or slug is required". Setting this
+          # env var tells the Sentry build phase to skip the upload entirely.
+          # Mirrors ios-e2e.yml's pattern.
+          SENTRY_DISABLE_AUTO_UPLOAD: "true"
         run: |
           set -euo pipefail
           xcodebuild \
