@@ -37,6 +37,16 @@ on:
 
 permissions: {}
 
+# Single concurrency group across build and cleanup. When a PR closes
+# mid-build, the close-event cleanup job cancels the still-running build
+# (cancel-in-progress: true) so the build can't finish and create an
+# orphaned release after the cleanup has already deleted whatever was
+# there. The next build's "Delete existing preview release" step is
+# idempotent, so a cancelled cleanup leaves no permanent half-state.
+concurrency:
+  group: pr-preview-ios-simulator-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   build:
     name: Build iOS Simulator .app for PR Preview
@@ -57,9 +67,6 @@ jobs:
     permissions:
       contents: write       # draft release create/delete + tag operations
       pull-requests: write  # sticky preview-link comment
-    concurrency:
-      group: pr-preview-ios-simulator-build-${{ github.event.pull_request.number }}
-      cancel-in-progress: true
     env:
       NODE_VERSION: "20"
       RUBY_VERSION: 3.1.4
@@ -215,7 +222,9 @@ jobs:
           PR_NUMBER: ${{ env.PR_NUMBER }}
         run: |
           set -euo pipefail
-          APP_PATH=$(find /tmp/build/Build/Products -name "*.app" -type d -maxdepth 3 | head -1)
+          # -maxdepth must come before other predicates on BSD/macOS find,
+          # otherwise it is silently ignored or rejected.
+          APP_PATH=$(find /tmp/build/Build/Products -maxdepth 3 -name "*.app" -type d | head -1)
           if [ -z "$APP_PATH" ]; then
             echo "::error::No .app bundle found in build output"
             find /tmp/build -name "*.app" -type d | head -10
@@ -265,11 +274,18 @@ jobs:
 
           _Physical-device iOS testing returns in Phase 3 (Tailscale + TestFlight) — not available today._
           EOF
-          URL=$(gh release create "pr-preview-${PR_NUMBER}" \
+          # Don't capture stdout from `gh release create` — it can include
+          # progress/status lines, not just the URL. Query the URL with a
+          # dedicated `gh release view --json url` call instead.
+          # Pass --target so if the draft is ever manually published, the
+          # resulting git tag points at the PR's HEAD commit, not main.
+          gh release create "pr-preview-${PR_NUMBER}" \
             "${ZIP_PATH}" \
             --title "PR Preview #${PR_NUMBER} (iOS Simulator)" \
             --notes-file /tmp/release-notes.md \
-            --draft)
+            --target "${PR_HEAD_SHA}" \
+            --draft > /dev/null
+          URL=$(gh release view "pr-preview-${PR_NUMBER}" --json url --jq '.url')
           echo "url=${URL}" >> "$GITHUB_OUTPUT"
 
       - name: Post/update sticky PR comment with download link
@@ -283,7 +299,10 @@ jobs:
           MARKER="<!-- pr-preview-ios-simulator-comment -->"
           BODY="${MARKER}"$'\n'"iOS Simulator preview build is ready: ${RELEASE_URL} (SDF collaborators only — install instructions in the release description)"
 
-          EXISTING=$(gh api "repos/${GH_REPO}/issues/${PR_NUMBER}/comments" \
+          # --paginate so this works on PRs with >30 comments (default page
+          # size). Without it, the marker comment can fall off a later page
+          # and we'd post a duplicate instead of editing in place.
+          EXISTING=$(gh api --paginate "repos/${GH_REPO}/issues/${PR_NUMBER}/comments" \
             --jq ".[] | select(.body | startswith(\"${MARKER}\")) | .id" | head -1)
           if [ -n "$EXISTING" ]; then
             gh api -X PATCH "repos/${GH_REPO}/issues/comments/${EXISTING}" -f body="$BODY"
@@ -293,6 +312,10 @@ jobs:
 
   cleanup:
     name: Cleanup PR Preview Draft Release (iOS)
+    # Shares the workflow-level concurrency group with the build job so a
+    # close-event cancels any in-flight build before deleting the release —
+    # prevents the build from finishing AFTER cleanup and re-creating an
+    # orphaned release.
     if: >-
       github.event.action == 'closed' &&
       github.event.pull_request.head.repo.full_name == github.repository
@@ -300,9 +323,6 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: write
-    concurrency:
-      group: pr-preview-ios-simulator-cleanup-${{ github.event.pull_request.number }}
-      cancel-in-progress: false
     steps:
       - name: Delete draft release and tag
         env:
