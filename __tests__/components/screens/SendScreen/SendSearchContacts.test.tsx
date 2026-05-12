@@ -338,29 +338,6 @@ describe("SendSearchContacts", () => {
     });
   });
 
-  it("hides recents and wallets once a valid destination is found", async () => {
-    jest.spyOn(sendDuck, "useSendRecipientStore").mockImplementation(
-      getSendStoreMock({
-        searchResults: mockSearchResults,
-        recentAddresses: mockRecentAddresses,
-        loadRecentAddresses: mockLoadRecentAddresses,
-        isValidDestination: true,
-      }),
-    );
-
-    renderWithProviders(
-      <NavigationContainer>
-        <SendSearchContacts navigation={mockNavigation} route={mockRoute} />
-      </NavigationContainer>,
-    );
-
-    await waitFor(() => {
-      expect(screen.queryByText("Recent Contact")).toBeNull();
-      expect(screen.queryByText("My Second Wallet")).toBeNull();
-      expect(screen.getByText("Search Result")).toBeTruthy();
-    });
-  });
-
   describe("unfunded destination notification", () => {
     const unfundedStoreOverrides = {
       recentAddresses: mockRecentAddresses,

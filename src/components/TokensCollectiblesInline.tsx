@@ -119,7 +119,7 @@ export const TokensCollectiblesInline: React.FC<
             balanceRowTestIDPrefix={balanceRowTestIDPrefix}
           />
 
-          <View className="flex-row items-center gap-2 mt-6 mb-3">
+          <View className="flex-row items-center gap-2 mt-8 mb-3">
             <Icon.Image01 size={16} color={themeColors.text.secondary} />
             <Text medium secondary>
               {t("collectiblesGrid.title")}
@@ -129,13 +129,11 @@ export const TokensCollectiblesInline: React.FC<
       }
       ListEmptyComponent={renderCollectiblesEmptyState()}
       renderSectionHeader={({ section }) => (
-        <View className="flex-row items-center justify-between mb-3 mt-1">
-          <View className="flex-row items-center gap-2 flex-1 min-w-0">
-            <Icon.Grid01 size={14} color={themeColors.text.secondary} />
-            <Text md secondary numberOfLines={1} style={{ flexShrink: 1 }}>
-              {section.title}
-            </Text>
-          </View>
+        <View className="flex-row items-center gap-[12px] mb-3 mt-3">
+          <Text md secondary numberOfLines={1}>
+            {section.title}
+          </Text>
+          <View className="flex-1 h-[1px] bg-gray-3" />
           <Text md secondary>
             {section.data.length}
           </Text>
@@ -151,11 +149,11 @@ export const TokensCollectiblesInline: React.FC<
             })
           }
         >
-          <View className="w-[44px] h-[44px] rounded-[10px] overflow-hidden bg-background-tertiary">
+          <View className="w-[40px] h-[40px] rounded-[8px] overflow-hidden bg-background-tertiary">
             <CollectibleImage imageUri={item.image} placeholderIconSize={20} />
           </View>
 
-          <Text lg medium numberOfLines={1} style={{ flexShrink: 1 }}>
+          <Text md medium numberOfLines={1} style={{ flexShrink: 1 }}>
             {item.name || `${section.title} #${item.tokenId}`}
           </Text>
         </TouchableOpacity>

@@ -1,10 +1,7 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { DefaultListFooter } from "components/DefaultListFooter";
 import { BaseLayout } from "components/layout/BaseLayout";
-import {
-  ContactRow,
-  SearchSuggestionsList,
-} from "components/screens/SendScreen/components";
+import { ContactRow } from "components/screens/SendScreen/components";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
 import { Notification } from "components/sds/Notification";
@@ -47,6 +44,8 @@ type SendSearchContactsProps = NativeStackScreenProps<
 >;
 
 enum ContactListItemType {
+  ResultsHeader = "results-header",
+  Suggestion = "suggestion",
   RecentHeader = "recent-header",
   Recent = "recent",
   WalletsHeader = "wallets-header",
@@ -54,6 +53,13 @@ enum ContactListItemType {
 }
 
 type ContactListItem =
+  | { type: ContactListItemType.ResultsHeader }
+  | {
+      type: ContactListItemType.Suggestion;
+      id: string;
+      address: string;
+      name?: string;
+    }
   | { type: ContactListItemType.RecentHeader }
   | {
       type: ContactListItemType.Recent;
@@ -277,6 +283,14 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
 
   const listData = useMemo<ContactListItem[]>(() => {
     const items: ContactListItem[] = [];
+    const isTyping = address.trim().length > 0;
+
+    if (isTyping && searchResults.length > 0) {
+      items.push({ type: ContactListItemType.ResultsHeader });
+      searchResults.forEach((result) => {
+        items.push({ type: ContactListItemType.Suggestion, ...result });
+      });
+    }
 
     if (recentAddresses.length > 0) {
       items.push({ type: ContactListItemType.RecentHeader });
@@ -298,10 +312,36 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
     }
 
     return items;
-  }, [recentAddresses, myWallets]);
+  }, [address, searchResults, recentAddresses, myWallets]);
 
   const renderContactItem = useCallback(
     ({ item }: ListRenderItemInfo<ContactListItem>) => {
+      if (item.type === ContactListItemType.ResultsHeader) {
+        return (
+          <View className="mb-[12px]">
+            <View className="flex-row items-center gap-[6px]">
+              <View className="w-[24px] h-[24px] rounded-[6px] items-center justify-center bg-gray-3">
+                <Icon.SearchMd size={14} color={themeColors.text.secondary} />
+              </View>
+              <Text sm semiBold secondary>
+                {t("sendPaymentScreen.suggestions")}
+              </Text>
+            </View>
+          </View>
+        );
+      }
+
+      if (item.type === ContactListItemType.Suggestion) {
+        return (
+          <ContactRow
+            address={item.address}
+            name={item.name}
+            onPress={() => handleContactPress(item.address, item.name)}
+            className="mb-[24px]"
+          />
+        );
+      }
+
       if (item.type === ContactListItemType.RecentHeader) {
         return (
           <View className="mb-[12px]">
@@ -390,7 +430,6 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
     iconSize: 20,
   });
 
-  const shouldShowSuggestions = isValidDestination;
   const shouldShowSearchError = address.trim().length > 0 && !!searchError;
 
   return (
@@ -415,13 +454,13 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
             value={address}
           />
 
-          <View className="mt-4 min-h-[20px] justify-center">
-            {shouldShowSearchError && (
+          {shouldShowSearchError && (
+            <View className="mt-4">
               <Text sm secondary>
                 {searchError}
               </Text>
-            )}
-          </View>
+            </View>
+          )}
           {!searchError &&
             isValidDestination &&
             isDestinationFunded === false &&
@@ -449,26 +488,20 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
             )}
         </View>
 
-        {shouldShowSuggestions ? (
-          <SearchSuggestionsList
-            suggestions={searchResults}
-            onContactPress={handleContactPress}
-          />
-        ) : (
-          <FlatList
-            data={listData}
-            renderItem={renderContactItem}
-            keyExtractor={(item) =>
-              item.type === ContactListItemType.Recent ||
-              item.type === ContactListItemType.Wallet
-                ? item.id
-                : item.type
-            }
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-            ListFooterComponent={DefaultListFooter}
-          />
-        )}
+        <FlatList
+          data={listData}
+          renderItem={renderContactItem}
+          keyExtractor={(item) =>
+            item.type === ContactListItemType.Recent ||
+            item.type === ContactListItemType.Wallet ||
+            item.type === ContactListItemType.Suggestion
+              ? item.id
+              : item.type
+          }
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          ListFooterComponent={DefaultListFooter}
+        />
       </View>
     </BaseLayout>
   );
