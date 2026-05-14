@@ -184,7 +184,7 @@ jobs:
           ANDROID_NDK_ROOT: /Users/runner/Library/Android/sdk/ndk
         run: yarn postinstall
 
-      - name: Build iOS Simulator .app (unsigned, universal)
+      - name: Build iOS Simulator .app (ad-hoc signed for entitlements)
         env:
           # The Xcode project has a Sentry "Upload Debug Symbols" build phase
           # that calls sentry-cli with the SENTRY_PROPERTIES_CONTENT / SENTRY_DSN
@@ -203,6 +203,15 @@ jobs:
           # reviewers to maintain a local freighter-mobile checkout + run
           # Metro to launch the app. Release makes the .app self-contained.
           # Matches fastlane dev lane (fastlane/Fastfile :dev lane).
+          #
+          # SIGNING: ad-hoc (CODE_SIGN_IDENTITY="-") rather than no-signing.
+          # The entitlements file declares keychain-access-groups, which
+          # iOS only honors when the binary is signed (even ad-hoc). Without
+          # signing, the app cannot write to the org.stellar.freighterdev
+          # keychain group and react-native-keychain throws
+          # "Failed to set key ${id}" on every key write. Ad-hoc signing is
+          # sufficient for the iOS Simulator to embed and enforce the
+          # entitlements, without needing a real cert or provisioning profile.
           xcodebuild \
             -workspace ios/freighter-mobile.xcworkspace \
             -scheme "${IOS_SCHEME}" \
@@ -211,9 +220,13 @@ jobs:
             -derivedDataPath /tmp/build \
             -arch arm64 -arch x86_64 \
             ONLY_ACTIVE_ARCH=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=YES \
+            CODE_SIGNING_ALLOWED=YES \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_ENTITLEMENTS=ios/freighter-mobile/freighter-mobile-dev.entitlements \
+            DEVELOPMENT_TEAM="" \
+            PROVISIONING_PROFILE_SPECIFIER="" \
             build
 
       - name: Locate and zip .app
