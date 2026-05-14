@@ -132,7 +132,21 @@ jobs:
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           export IOS_SCHEME="freighter-mobile-dev"
-          ./scripts/gh-ios-env >> $GITHUB_ENV
+          # Allowlist what scripts/gh-ios-env can write into $GITHUB_ENV.
+          # The script is PR-controlled code that runs before any privileged
+          # step; without this filter, a modified script could inject
+          # arbitrary env (e.g., PATH=/tmp/evil:$PATH) that poisons later
+          # steps' shell resolution and exfils GH_TOKEN through a shim.
+          # This is NOT a primary security control — a write-access attacker
+          # can submit a PR that both modifies the script AND removes this
+          # filter in the same diff (pull_request workflows run from PR
+          # HEAD's YAML). The real defenses are CODEOWNERS on .github/**
+          # and code-review discipline on CI changes. This filter is a
+          # tripwire / narrow-scenario defense / documentation of the
+          # script's expected output contract.
+          ./scripts/gh-ios-env \
+            | grep -E '^(IOS_SCHEME|FASTLANE_LANE|APP_ID|APP_VERSION|APP_NAME|BUILD_VERSION|ENVFILE)=' \
+            >> $GITHUB_ENV
           echo "PR_NUMBER=${PR_NUMBER}" >> $GITHUB_ENV
           echo "PR_HEAD_SHA=${PR_HEAD_SHA}" >> $GITHUB_ENV
 
