@@ -75,13 +75,23 @@ jobs:
       SENTRY_DSN: "disabled-for-preview"
       AMPLITUDE_API_KEY: "disabled-for-preview"
       AMPLITUDE_EXPERIMENT_DEPLOYMENT_KEY: "disabled-for-preview"
-      # === Backend URLs — staging only for Phase 1 (Phase 2 adds freighter-config sandbox URLs) ===
-      FREIGHTER_BACKEND_V1_PROD_URL: ${{ vars.FREIGHTER_BACKEND_V1_STG_URL }}
-      FREIGHTER_BACKEND_V1_STG_URL: ${{ vars.FREIGHTER_BACKEND_V1_STG_URL }}
-      FREIGHTER_BACKEND_V1_DEV_URL: ${{ vars.FREIGHTER_BACKEND_V1_STG_URL }}
-      FREIGHTER_BACKEND_V2_PROD_URL: ${{ vars.FREIGHTER_BACKEND_V2_STG_URL }}
-      FREIGHTER_BACKEND_V2_STG_URL: ${{ vars.FREIGHTER_BACKEND_V2_STG_URL }}
-      FREIGHTER_BACKEND_V2_DEV_URL: ${{ vars.FREIGHTER_BACKEND_V2_STG_URL }}
+      # === Backend URLs — PROD freighter-backend in Phase 1 (Phase 2 adds freighter-config sandbox URLs) ===
+      # NOTE: previews point at PROD backend URLs, not staging. Reason:
+      # v1 staging does NOT have a public DNS entry (only the kube-internal
+      # freighter-backend-stg.kube001-dev.services.stellar-ops.com, which
+      # requires sshuttle). Pointing at prod keeps previews reachable
+      # without VPN, at the cost of read-only prod backend traffic.
+      # freighter-backend is a read-side indexer (balances, assets,
+      # history); the wallet submits txs directly to Horizon/RPC, so
+      # the choice of backend here doesn't affect write paths.
+      # When v1 stg gets a public ingress (Ops follow-up), swap back to
+      # the _STG_URL variants.
+      FREIGHTER_BACKEND_V1_PROD_URL: ${{ vars.FREIGHTER_BACKEND_V1_PROD_URL }}
+      FREIGHTER_BACKEND_V1_STG_URL: ${{ vars.FREIGHTER_BACKEND_V1_PROD_URL }}
+      FREIGHTER_BACKEND_V1_DEV_URL: ${{ vars.FREIGHTER_BACKEND_V1_PROD_URL }}
+      FREIGHTER_BACKEND_V2_PROD_URL: ${{ vars.FREIGHTER_BACKEND_V2_PROD_URL }}
+      FREIGHTER_BACKEND_V2_STG_URL: ${{ vars.FREIGHTER_BACKEND_V2_PROD_URL }}
+      FREIGHTER_BACKEND_V2_DEV_URL: ${{ vars.FREIGHTER_BACKEND_V2_PROD_URL }}
       # === WalletKit dev keys (existing isolation; production keys never injected) ===
       WALLET_KIT_PROJECT_ID_PROD: ${{ secrets.WALLET_KIT_PROJECT_ID_DEV }}
       WALLET_KIT_MT_NAME_PROD: ${{ vars.WALLET_KIT_MT_NAME_DEV }}
@@ -282,7 +292,7 @@ jobs:
           Internal preview iOS Simulator build for PR [#${PR_NUMBER}](${PR_URL}). SDF collaborators only — non-SDF GitHub users get 404 on this page. Auto-deleted when the PR is closed.
 
           **Commit:** ${PR_HEAD_SHA}
-          **Backend:** staging
+          **Backend:** production (read-only indexer; wallet writes go direct to Horizon/RPC)
 
           ### How to install (macOS, requires Xcode)
 
