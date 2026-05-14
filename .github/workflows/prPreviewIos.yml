@@ -212,6 +212,16 @@ jobs:
           # "Failed to set key ${id}" on every key write. Ad-hoc signing is
           # sufficient for the iOS Simulator to embed and enforce the
           # entitlements, without needing a real cert or provisioning profile.
+          #
+          # We do NOT pass CODE_SIGN_ENTITLEMENTS on the command line — that
+          # applies the override to EVERY target in the workspace, including
+          # Pods/* targets that resolve the relative path from their own
+          # source directory and fail with:
+          #   error: Build input file cannot be found:
+          #     '.../ios/Pods/ios/freighter-mobile/freighter-mobile-dev.entitlements'
+          # The main app target already declares CODE_SIGN_ENTITLEMENTS in
+          # its .pbxproj; leaving it alone lets each target use the
+          # entitlements file (or lack thereof) it's configured for.
           xcodebuild \
             -workspace ios/freighter-mobile.xcworkspace \
             -scheme "${IOS_SCHEME}" \
@@ -224,7 +234,6 @@ jobs:
             CODE_SIGNING_REQUIRED=YES \
             CODE_SIGNING_ALLOWED=YES \
             CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_ENTITLEMENTS=ios/freighter-mobile/freighter-mobile-dev.entitlements \
             DEVELOPMENT_TEAM="" \
             PROVISIONING_PROFILE_SPECIFIER="" \
             build
