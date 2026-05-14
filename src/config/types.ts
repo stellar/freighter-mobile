@@ -252,35 +252,43 @@ export interface SearchTokenResponse {
   _embedded: {
     records: {
       asset: string;
-      supply: number;
+      supply: string;
       traded_amount: number;
       payments_amount: number;
-      created: number;
-      trustlines: number[];
       payments: number;
+      trades: number;
+      trustlines: number[];
+      price: number;
+      created: number;
       domain?: string;
+      price7d?: [timestamp: number, price: number][];
+      volume7d?: number;
       rating: {
         age: number;
-        trades: number;
-        payments: number;
+        activity: number;
         trustlines: number;
+        liquidity: number;
         volume7d: number;
         interop: number;
-        liquidity: number;
         average: number;
       };
-      score: number;
       paging_token: number;
       tomlInfo?: {
         code: string;
-        image?: string;
         issuer: string;
+        image?: string;
         decimals?: number;
         name?: string;
+        status?: string;
+        anchorAssetType?: string;
+        anchorAsset?: string;
+        orgName?: string;
+        orgLogo?: string;
       };
       code?: string;
       token_name?: string;
       decimals?: number;
+      features?: string[];
     }[];
   };
 }
