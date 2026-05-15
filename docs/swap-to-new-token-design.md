@@ -3,7 +3,7 @@
 > **Status:** Draft for team review · **Author:** Cassio Goulart · **Date:**
 > 2026-05-14
 >
-> **Companion PRD:**
+> **Companion PRD:** >
 > https://docs.google.com/document/d/1NC6Kn0reWqQHS6Mh0Ys3dz87VqCnybF6i_UGO2nY3-c/edit?tab=t.0#heading=h.lucjtj7l2jky
 >
 > All Figma links on this design doc open specific mocks in the
@@ -72,8 +72,8 @@ flowchart TD
     SwapScreen -->|tap Receive dropdown<br/>or 'Select a token' CTA| Picker["SwapToScreen — NEW<br/>replaces current picker<br/>—<br/>Search input · debounced 500ms<br/>idle → Your tokens + Popular tokens<br/>active → single 'Results' section"]
     Picker -->|select token| SwapScreen
 
-    SwapScreen -->|tap Trending row| TrendDetail["TrendingTokenDetailBottomSheet — NEW<br/>issuer · domain · 'Buy {code}'"]
-    TrendDetail -->|'Buy {code}'| SwapScreen
+    SwapScreen -->|tap Trending row| TrendDetail["TrendingTokenDetailBottomSheet — NEW<br/>issuer · domain · 'Buy tokenCode'"]
+    TrendDetail -->|'Buy tokenCode'| SwapScreen
 
     SwapScreen -->|CTA: 'Enter an amount'<br/>focus Sell TextInput · system numeric keyboard up| AmountEntry["User enters Sell amount<br/>useTokenFiatConverter · 25 / 50 / 75 / Max chips<br/>Horizon strictSendPaths simulates Receive<br/>CTA → 'Insufficient balance' or 'Review swap'"]
 
