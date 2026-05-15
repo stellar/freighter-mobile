@@ -1,0 +1,427 @@
+# ----------------------------------------------------------------------
+# SECURITY INVARIANT — read before editing.
+#
+# This workflow builds an UNSIGNED iOS Simulator .app for PR review.
+# It deliberately uses NO Apple Developer credentials — no App Store
+# Connect API key, no Match cert, no provisioning profile. If you find
+# yourself wanting to add any of those, you are turning this into a
+# TestFlight workflow; that's a Phase 3 problem with a different
+# threat model. Stop and read § Phase 3 in the design doc first.
+#
+# Do NOT add any of these triggers:
+#   issue_comment, pull_request_target, pull_request_review,
+#   pull_request_review_comment, workflow_run
+# These triggers run with FULL repo secrets and a writable GITHUB_TOKEN
+# even when activity originates from a fork PR — combined with
+# checkout-of-PR-head + execute-code-from-PR (yarn lifecycle scripts,
+# ./scripts/gh-ios-env), they enable Remote Code Execution by anyone
+# who can comment on a PR or open one. This is the same class of
+# vulnerability that was reported against this repo's e2e workflows
+# (Q2 2026, since fixed).
+#
+# The job-level `if:` gate must run BEFORE secrets are injected.
+# `if:` on a job is evaluated by GitHub before the job's `env:` is
+# materialized, so an `if:` that fails skips the job entirely with no
+# secret exposure. Do not move the gate to a step `if:` — by then,
+# secrets are already in scope.
+#
+# See "Fullstack PR Preview Flow" design doc, § Security and
+# § Pathways → Mobile → iOS for the rationale.
+# ----------------------------------------------------------------------
+---
+name: PR Preview iOS Simulator
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+
+permissions: {}
+
+# Single concurrency group across build and cleanup. When a PR closes
+# mid-build, the close-event cleanup job cancels the still-running build
+# (cancel-in-progress: true) so the build can't finish and create an
+# orphaned release after the cleanup has already deleted whatever was
+# there. The next build's "Delete existing preview release" step is
+# idempotent, so a cancelled cleanup leaves no permanent half-state.
+concurrency:
+  group: pr-preview-ios-simulator-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build iOS Simulator .app for PR Preview
+    # Two-layer gate evaluated BEFORE any secret is injected:
+    #   1. Skip on PR close (handled by cleanup job)
+    #   2. Reject fork PRs (defense-in-depth — platform also withholds secrets)
+    # NOTE: we don't gate on author_association because the field in the
+    # webhook event payload only reflects PUBLIC org membership; SDF members
+    # with private memberships show as CONTRIBUTOR, which would lock them
+    # out. Non-SDF gating is handled by the org-level "Require approval
+    # for outside collaborators" setting plus the platform-level fork-PR
+    # secret-withholding.
+    if: >-
+      github.event.action != 'closed' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: macos-26-xlarge
+    timeout-minutes: 45
+    permissions:
+      contents: write       # draft release create/delete + tag operations
+      pull-requests: write  # sticky preview-link comment
+    env:
+      NODE_VERSION: "20"
+      RUBY_VERSION: 3.1.4
+      # === Telemetry intentionally disabled in previews ===
+      SENTRY_PROPERTIES_CONTENT: "disabled-for-preview"
+      SENTRY_DSN: "disabled-for-preview"
+      AMPLITUDE_API_KEY: "disabled-for-preview"
+      AMPLITUDE_EXPERIMENT_DEPLOYMENT_KEY: "disabled-for-preview"
+      # === Backend URLs — V1 PROD, V2 STG in Phase 1 (Phase 2 adds freighter-config sandbox URLs) ===
+      # V1: PROD. V1 staging does NOT have a public DNS entry — the only
+      #   v1 stg ingress is kube-internal (freighter-backend-stg.kube001-
+      #   dev.services.stellar-ops.com, sshuttle-required). When v1 stg
+      #   gets a public ingress (Ops follow-up), swap back to V1_STG.
+      # V2: STG. freighter-backend-v2-stg.stellar.org IS publicly
+      #   reachable and is the right target for preview-stage testing.
+      # freighter-backend is a read-side indexer (balances, assets,
+      # history); the wallet submits txs directly to Horizon/RPC, so the
+      # backend choice here doesn't affect write paths.
+      FREIGHTER_BACKEND_V1_PROD_URL: ${{ vars.FREIGHTER_BACKEND_V1_PROD_URL }}
+      FREIGHTER_BACKEND_V1_STG_URL: ${{ vars.FREIGHTER_BACKEND_V1_PROD_URL }}
+      FREIGHTER_BACKEND_V1_DEV_URL: ${{ vars.FREIGHTER_BACKEND_V1_PROD_URL }}
+      FREIGHTER_BACKEND_V2_PROD_URL: ${{ vars.FREIGHTER_BACKEND_V2_STG_URL }}
+      FREIGHTER_BACKEND_V2_STG_URL: ${{ vars.FREIGHTER_BACKEND_V2_STG_URL }}
+      FREIGHTER_BACKEND_V2_DEV_URL: ${{ vars.FREIGHTER_BACKEND_V2_STG_URL }}
+      # === WalletKit dev keys (existing isolation; production keys never injected) ===
+      WALLET_KIT_PROJECT_ID_PROD: ${{ secrets.WALLET_KIT_PROJECT_ID_DEV }}
+      WALLET_KIT_MT_NAME_PROD: ${{ vars.WALLET_KIT_MT_NAME_DEV }}
+      WALLET_KIT_MT_DESCRIPTION_PROD: ${{ vars.WALLET_KIT_MT_DESCRIPTION_DEV }}
+      WALLET_KIT_MT_URL_PROD: ${{ vars.WALLET_KIT_MT_URL_DEV }}
+      WALLET_KIT_MT_ICON_PROD: ${{ vars.WALLET_KIT_MT_ICON_DEV }}
+      WALLET_KIT_MT_REDIRECT_NATIVE_PROD: ${{ vars.WALLET_KIT_MT_REDIRECT_NATIVE_DEV }}
+      WALLET_KIT_PROJECT_ID_DEV: ${{ secrets.WALLET_KIT_PROJECT_ID_DEV }}
+      WALLET_KIT_MT_NAME_DEV: ${{ vars.WALLET_KIT_MT_NAME_DEV }}
+      WALLET_KIT_MT_DESCRIPTION_DEV: ${{ vars.WALLET_KIT_MT_DESCRIPTION_DEV }}
+      WALLET_KIT_MT_URL_DEV: ${{ vars.WALLET_KIT_MT_URL_DEV }}
+      WALLET_KIT_MT_ICON_DEV: ${{ vars.WALLET_KIT_MT_ICON_DEV }}
+      WALLET_KIT_MT_REDIRECT_NATIVE_DEV: ${{ vars.WALLET_KIT_MT_REDIRECT_NATIVE_DEV }}
+      MP_COLLECTIONS_ADDRESSES: ${{ vars.MP_COLLECTIONS_ADDRESSES }}
+      IS_E2E_TEST: "false"
+      E2E_TEST_RECOVERY_PHRASE: ""
+
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          # Default leaves a GITHUB_TOKEN auth header in .git/config for
+          # the rest of the job. With contents:write granted, any later
+          # code execution (yarn lifecycle scripts, build scripts) could
+          # `git push` using those persisted creds. `gh` uses GH_TOKEN env
+          # separately so disabling this doesn't affect the release flow.
+          persist-credentials: false
+
+      - name: Make scripts executable
+        run: find scripts -type f -exec chmod +x {} \;
+
+      - name: Display iOS environment information
+        run: ./scripts/display-ios-environment
+
+      - name: Set latest stable Xcode version
+        run: ./scripts/setup-xcode-latest-stable
+
+      - name: Verify selected Xcode version
+        run: xcodebuild -version
+
+      - name: Set env (preview routing)
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          export IOS_SCHEME="freighter-mobile-dev"
+          # Allowlist what scripts/gh-ios-env can write into $GITHUB_ENV.
+          # The script is PR-controlled code that runs before any privileged
+          # step; without this filter, a modified script could inject
+          # arbitrary env (e.g., PATH=/tmp/evil:$PATH) that poisons later
+          # steps' shell resolution and exfils GH_TOKEN through a shim.
+          # This is NOT a primary security control — a write-access attacker
+          # can submit a PR that both modifies the script AND removes this
+          # filter in the same diff (pull_request workflows run from PR
+          # HEAD's YAML). The real defenses are CODEOWNERS on .github/**
+          # and code-review discipline on CI changes. This filter is a
+          # tripwire / narrow-scenario defense / documentation of the
+          # script's expected output contract.
+          ./scripts/gh-ios-env \
+            | grep -E '^(IOS_SCHEME|FASTLANE_LANE|APP_ID|APP_VERSION|APP_NAME|BUILD_VERSION|ENVFILE)=' \
+            >> $GITHUB_ENV
+          echo "PR_NUMBER=${PR_NUMBER}" >> $GITHUB_ENV
+          echo "PR_HEAD_SHA=${PR_HEAD_SHA}" >> $GITHUB_ENV
+
+      - name: Stub sentry.properties (no real telemetry in previews)
+        run: echo "disabled-for-preview" > ./ios/sentry.properties
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Set up Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "yarn"
+
+      - name: Set up Ruby
+        # ruby/setup-ruby uses a `v1` branch (not a tag) as its stable pointer;
+        # we pin the SHA the branch currently points at.
+        uses: ruby/setup-ruby@6aaa311d81eba98ae12eaffbcb63296ace0efcde # v1
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          bundler-cache: true
+
+      - name: Cache Cocoapods
+        # Scope the cache to this PR so a poisoned Podfile.lock from one
+        # PR cannot contaminate another build via the prefix `restore-keys`
+        # fallback. Pre-fix layout used a bare `${{ runner.os }}-pods-`
+        # prefix which let any branch's cache restore into any other
+        # branch's build. PR-scoped keys cost one cache miss on the first
+        # build of each new PR; thereafter the same PR reuses its own
+        # cache across pushes.
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ios/Pods
+            ~/Library/Caches/CocoaPods
+            ~/.cocoapods
+          key: ${{ runner.os }}-pods-pr-${{ github.event.pull_request.number }}-${{ hashFiles('ios/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pods-pr-${{ github.event.pull_request.number }}-
+
+      - name: Run Yarn Install
+        # WORKAROUND for a bug in scripts/build-scrypt-16kb-aligned.js (invoked
+        # via package.json postinstall, which yarn install triggers). The script
+        # reads ANDROID_NDK_HOME / ANDROID_NDK_ROOT and expects them to point at
+        # the PARENT `ndk/` directory so it can readdirSync and pick the latest
+        # NDK version. The macos-26-xlarge runner image sets ANDROID_NDK_ROOT
+        # to a specific version subdirectory (e.g. .../ndk/27.3.13750724),
+        # which makes the script's version-detection fail with
+        # "Error: No NDK version found in ...".
+        #
+        # We override here to point at the parent directory. Other repo
+        # workflows (ios.yml, ios-e2e.yml) will hit the same error once their
+        # next runner-image refresh picks up this env-var default — the proper
+        # fix is to patch build-scrypt-16kb-aligned.js to handle a
+        # version-pinned NDK path (just use it directly if the path is already
+        # a valid NDK version dir instead of trying to readdirSync).
+        # That patch is out of scope for this PR; track separately.
+        env:
+          ANDROID_NDK_HOME: /Users/runner/Library/Android/sdk/ndk
+          ANDROID_NDK_ROOT: /Users/runner/Library/Android/sdk/ndk
+        run: yarn install --immutable
+
+      - name: Run Post Install
+        env:
+          ANDROID_NDK_HOME: /Users/runner/Library/Android/sdk/ndk
+          ANDROID_NDK_ROOT: /Users/runner/Library/Android/sdk/ndk
+        run: yarn postinstall
+
+      - name: Build iOS Simulator .app (ad-hoc signed for entitlements)
+        env:
+          # The Xcode project has a Sentry "Upload Debug Symbols" build phase
+          # that calls sentry-cli with the SENTRY_PROPERTIES_CONTENT / SENTRY_DSN
+          # env. Preview builds intentionally disable Sentry (see workflow env
+          # above), but the build phase still tries to upload and fails the
+          # build with "An organization ID or slug is required". Setting this
+          # env var tells the Sentry build phase to skip the upload entirely.
+          # Mirrors ios-e2e.yml's pattern.
+          SENTRY_DISABLE_AUTO_UPLOAD: "true"
+        run: |
+          set -euo pipefail
+          # IMPORTANT: configuration is Release, NOT Debug. Release triggers
+          # React Native's "Bundle React Native code and images" build phase,
+          # which embeds the JS bundle into the .app. Debug skips that phase
+          # and expects a Metro dev server at runtime — which would force
+          # reviewers to maintain a local freighter-mobile checkout + run
+          # Metro to launch the app. Release makes the .app self-contained.
+          # Matches fastlane dev lane (fastlane/Fastfile :dev lane).
+          #
+          # SIGNING: ad-hoc (CODE_SIGN_IDENTITY="-") rather than no-signing.
+          # The entitlements file declares keychain-access-groups, which
+          # iOS only honors when the binary is signed (even ad-hoc). Without
+          # signing, the app cannot write to the org.stellar.freighterdev
+          # keychain group and react-native-keychain throws
+          # "Failed to set key ${id}" on every key write. Ad-hoc signing is
+          # sufficient for the iOS Simulator to embed and enforce the
+          # entitlements, without needing a real cert or provisioning profile.
+          #
+          # We do NOT pass CODE_SIGN_ENTITLEMENTS on the command line — that
+          # applies the override to EVERY target in the workspace, including
+          # Pods/* targets that resolve the relative path from their own
+          # source directory and fail with:
+          #   error: Build input file cannot be found:
+          #     '.../ios/Pods/ios/freighter-mobile/freighter-mobile-dev.entitlements'
+          # The main app target already declares CODE_SIGN_ENTITLEMENTS in
+          # its .pbxproj; leaving it alone lets each target use the
+          # entitlements file (or lack thereof) it's configured for.
+          xcodebuild \
+            -workspace ios/freighter-mobile.xcworkspace \
+            -scheme "${IOS_SCHEME}" \
+            -configuration Release \
+            -sdk iphonesimulator \
+            -derivedDataPath /tmp/build \
+            -arch arm64 -arch x86_64 \
+            ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=YES \
+            CODE_SIGNING_ALLOWED=YES \
+            CODE_SIGN_STYLE=Manual \
+            DEVELOPMENT_TEAM="" \
+            PROVISIONING_PROFILE_SPECIFIER="" \
+            build
+
+      - name: Locate and zip .app
+        id: pack
+        env:
+          PR_NUMBER: ${{ env.PR_NUMBER }}
+        run: |
+          set -euo pipefail
+          # -maxdepth must come before other predicates on BSD/macOS find,
+          # otherwise it is silently ignored or rejected.
+          APP_PATH=$(find /tmp/build/Build/Products -maxdepth 3 -name "*.app" -type d | head -1)
+          if [ -z "$APP_PATH" ]; then
+            echo "::error::No .app bundle found in build output"
+            find /tmp/build -name "*.app" -type d | head -10
+            exit 1
+          fi
+          APP_NAME=$(basename "$APP_PATH")
+          ZIP_NAME="freighter-simulator-pr-${PR_NUMBER}.zip"
+          (cd "$(dirname "$APP_PATH")" && zip -qq -r "/tmp/${ZIP_NAME}" "${APP_NAME}")
+          ls -lh "/tmp/${ZIP_NAME}"
+          echo "zip_path=/tmp/${ZIP_NAME}" >> "$GITHUB_OUTPUT"
+          echo "app_name=${APP_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Delete existing preview release (idempotent)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ env.PR_NUMBER }}
+        # Check-then-delete instead of `|| true`. `|| true` would also
+        # swallow transient API errors (network, 422 tag-conflict) and let
+        # the subsequent `gh release create` silently reuse a stale tag
+        # pointing at an old commit.
+        run: |
+          if gh release view "pr-preview-${PR_NUMBER}" > /dev/null 2>&1; then
+            # `--cleanup-tag` 422s on draft releases because drafts don't
+            # create the git tag until publish. Branch on isDraft so we
+            # only ask for tag-cleanup when there is actually a tag.
+            IS_DRAFT=$(gh release view "pr-preview-${PR_NUMBER}" --json isDraft --jq '.isDraft')
+            if [ "$IS_DRAFT" = "true" ]; then
+              gh release delete "pr-preview-${PR_NUMBER}" --yes
+            else
+              gh release delete "pr-preview-${PR_NUMBER}" --yes --cleanup-tag
+            fi
+          fi
+
+      - name: Create draft preview release
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ env.PR_NUMBER }}
+          PR_HEAD_SHA: ${{ env.PR_HEAD_SHA }}
+          ZIP_PATH: ${{ steps.pack.outputs.zip_path }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          set -euo pipefail
+          # Write notes to a file rather than $(cat <<EOF) because bash's
+          # command-substitution parser tokenizes single quotes inside the
+          # heredoc body, breaking on apostrophes in prose (e.g., "haven't").
+          cat > /tmp/release-notes.md <<EOF
+          Internal preview iOS Simulator build for PR [#${PR_NUMBER}](${PR_URL}). SDF collaborators only — non-SDF GitHub users get 404 on this page. Auto-deleted when the PR is closed.
+
+          **Commit:** ${PR_HEAD_SHA}
+          **Backend:** V1 production, V2 staging/beta (read-only indexer; wallet writes go direct to Horizon/RPC)
+
+          ### How to install (macOS, requires Xcode)
+
+          1. Download the \`.zip\` from the Assets section below and unzip it
+          2. Open the Simulator app (Xcode → Open Developer Tool → Simulator, or run \`open -a Simulator\`)
+          3. Drag the unzipped \`.app\` onto the Simulator window — the app launches automatically
+
+          ### Important
+
+          This code is still under review and may contain bugs that have not been caught yet. **Use caution before signing transactions with real funds** — consider testing with a testnet wallet instead.
+
+          _Physical-device iOS testing returns in Phase 3 (Tailscale + TestFlight) — not available today._
+          EOF
+          # Don't capture stdout from `gh release create` — it can include
+          # progress/status lines, not just the URL. Query the URL with a
+          # dedicated `gh release view --json url` call instead.
+          #
+          # No --target: if the draft is ever manually published, the tag
+          # falls back to main HEAD (reviewed code) rather than the PR's
+          # HEAD commit (unreviewed). Dropping the targeted-tag property
+          # closes a one-click escalation path where any account that can
+          # click "Publish release" on a draft mints an official-looking
+          # release containing arbitrary PR-head code; branch-protection
+          # rules do not extend to release publication. The PR's HEAD
+          # commit is still recorded in the release notes for traceability.
+          gh release create "pr-preview-${PR_NUMBER}" \
+            "${ZIP_PATH}" \
+            --title "PR Preview #${PR_NUMBER} (iOS Simulator)" \
+            --notes-file /tmp/release-notes.md \
+            --draft > /dev/null
+          URL=$(gh release view "pr-preview-${PR_NUMBER}" --json url --jq '.url')
+          echo "url=${URL}" >> "$GITHUB_OUTPUT"
+
+      - name: Post/update sticky PR comment with download link
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ env.PR_NUMBER }}
+          RELEASE_URL: ${{ steps.release.outputs.url }}
+        run: |
+          set -euo pipefail
+          MARKER="<!-- pr-preview-ios-simulator-comment -->"
+          BODY="${MARKER}"$'\n'"iOS Simulator preview build is ready: ${RELEASE_URL} (SDF collaborators only — install instructions in the release description)"
+
+          # --paginate so this works on PRs with >30 comments (default page
+          # size). Without it, the marker comment can fall off a later page
+          # and we'd post a duplicate instead of editing in place.
+          EXISTING=$(gh api --paginate "repos/${GH_REPO}/issues/${PR_NUMBER}/comments" \
+            --jq ".[] | select(.body | startswith(\"${MARKER}\")) | .id" | head -1)
+          if [ -n "$EXISTING" ]; then
+            gh api -X PATCH "repos/${GH_REPO}/issues/comments/${EXISTING}" -f body="$BODY"
+          else
+            gh pr comment "${PR_NUMBER}" --body "$BODY"
+          fi
+
+  cleanup:
+    name: Cleanup PR Preview Draft Release (iOS)
+    # Shares the workflow-level concurrency group with the build job so a
+    # close-event cancels any in-flight build before deleting the release —
+    # prevents the build from finishing AFTER cleanup and re-creating an
+    # orphaned release.
+    if: >-
+      github.event.action == 'closed' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: Delete draft release and tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        # Skip silently if the release doesn't exist (race with a cancelled
+        # build), but fail loudly on any other delete error rather than
+        # masking it with `|| true`.
+        run: |
+          if gh release view "pr-preview-${PR_NUMBER}" > /dev/null 2>&1; then
+            # `--cleanup-tag` 422s on draft releases because drafts don't
+            # create the git tag until publish. Branch on isDraft so we
+            # only ask for tag-cleanup when there is actually a tag.
+            IS_DRAFT=$(gh release view "pr-preview-${PR_NUMBER}" --json isDraft --jq '.isDraft')
+            if [ "$IS_DRAFT" = "true" ]; then
+              gh release delete "pr-preview-${PR_NUMBER}" --yes
+            else
+              gh release delete "pr-preview-${PR_NUMBER}" --yes --cleanup-tag
+            fi
+          fi
