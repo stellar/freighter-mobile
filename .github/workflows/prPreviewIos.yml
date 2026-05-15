@@ -113,6 +113,12 @@ jobs:
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
         with:
           ref: ${{ github.event.pull_request.head.sha }}
+          # Default leaves a GITHUB_TOKEN auth header in .git/config for
+          # the rest of the job. With contents:write granted, any later
+          # code execution (yarn lifecycle scripts, build scripts) could
+          # `git push` using those persisted creds. `gh` uses GH_TOKEN env
+          # separately so disabling this doesn't affect the release flow.
+          persist-credentials: false
 
       - name: Make scripts executable
         run: find scripts -type f -exec chmod +x {} \;
@@ -171,15 +177,22 @@ jobs:
           bundler-cache: true
 
       - name: Cache Cocoapods
+        # Scope the cache to this PR so a poisoned Podfile.lock from one
+        # PR cannot contaminate another build via the prefix `restore-keys`
+        # fallback. Pre-fix layout used a bare `${{ runner.os }}-pods-`
+        # prefix which let any branch's cache restore into any other
+        # branch's build. PR-scoped keys cost one cache miss on the first
+        # build of each new PR; thereafter the same PR reuses its own
+        # cache across pushes.
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: |
             ios/Pods
             ~/Library/Caches/CocoaPods
             ~/.cocoapods
-          key: ${{ runner.os }}-pods-${{ hashFiles('ios/Podfile.lock') }}
+          key: ${{ runner.os }}-pods-pr-${{ github.event.pull_request.number }}-${{ hashFiles('ios/Podfile.lock') }}
           restore-keys: |
-            ${{ runner.os }}-pods-
+            ${{ runner.os }}-pods-pr-${{ github.event.pull_request.number }}-
 
       - name: Run Yarn Install
         # WORKAROUND for a bug in scripts/build-scrypt-16kb-aligned.js (invoked
@@ -288,7 +301,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ env.PR_NUMBER }}
-        run: gh release delete "pr-preview-${PR_NUMBER}" --yes --cleanup-tag || true
+        # Check-then-delete instead of `|| true`. `|| true` would also
+        # swallow transient API errors (network, 422 tag-conflict) and let
+        # the subsequent `gh release create` silently reuse a stale tag
+        # pointing at an old commit.
+        run: |
+          if gh release view "pr-preview-${PR_NUMBER}" > /dev/null 2>&1; then
+            gh release delete "pr-preview-${PR_NUMBER}" --yes --cleanup-tag
+          fi
 
       - name: Create draft preview release
         id: release
@@ -324,13 +344,19 @@ jobs:
           # Don't capture stdout from `gh release create` — it can include
           # progress/status lines, not just the URL. Query the URL with a
           # dedicated `gh release view --json url` call instead.
-          # Pass --target so if the draft is ever manually published, the
-          # resulting git tag points at the PR's HEAD commit, not main.
+          #
+          # No --target: if the draft is ever manually published, the tag
+          # falls back to main HEAD (reviewed code) rather than the PR's
+          # HEAD commit (unreviewed). Dropping the targeted-tag property
+          # closes a one-click escalation path where any account that can
+          # click "Publish release" on a draft mints an official-looking
+          # release containing arbitrary PR-head code; branch-protection
+          # rules do not extend to release publication. The PR's HEAD
+          # commit is still recorded in the release notes for traceability.
           gh release create "pr-preview-${PR_NUMBER}" \
             "${ZIP_PATH}" \
             --title "PR Preview #${PR_NUMBER} (iOS Simulator)" \
             --notes-file /tmp/release-notes.md \
-            --target "${PR_HEAD_SHA}" \
             --draft > /dev/null
           URL=$(gh release view "pr-preview-${PR_NUMBER}" --json url --jq '.url')
           echo "url=${URL}" >> "$GITHUB_OUTPUT"
@@ -376,4 +402,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: gh release delete "pr-preview-${PR_NUMBER}" --yes --cleanup-tag || true
+        # Skip silently if the release doesn't exist (race with a cancelled
+        # build), but fail loudly on any other delete error rather than
+        # masking it with `|| true`.
+        run: |
+          if gh release view "pr-preview-${PR_NUMBER}" > /dev/null 2>&1; then
+            gh release delete "pr-preview-${PR_NUMBER}" --yes --cleanup-tag
+          fi
