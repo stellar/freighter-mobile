@@ -14,7 +14,7 @@ import {
   sortBalances,
 } from "helpers/balances";
 import { isMainnet } from "helpers/networks";
-import { ApiError } from "services/apiFactory";
+import { ApiError, logApiError } from "services/apiFactory";
 import { fetchBalances } from "services/backend";
 import { dataStorage } from "services/storage/storageFactory";
 import { create } from "zustand";
@@ -364,8 +364,9 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
         apiError?.message ??
         (error instanceof Error ? error.message : "Failed to fetch balances");
 
-      logger.error(
+      logApiError(
         "balances.fetchAccountBalances",
+        "Network unreachable while fetching account balances",
         "Failed to fetch account balances",
         error,
         {
