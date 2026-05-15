@@ -37,6 +37,7 @@ import {
   getStackBottomNavigateOptions,
   getScreenOptionsNoHeader,
   getScreenBottomNavigateOptions,
+  withTransitionOverride,
 } from "helpers/navigationOptions";
 import { triggerFaceIdOnboarding } from "helpers/postOnboardingBiometrics";
 import { useAnalyticsPermissions } from "hooks/useAnalyticsPermissions";
@@ -231,14 +232,19 @@ export const RootNavigator = () => {
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN}
             component={AccountQRCodeScreen}
-            options={getScreenBottomNavigateOptions(
-              t("accountQRCodeScreen.title"),
-            )}
+            options={({ route }) =>
+              withTransitionOverride(
+                getScreenBottomNavigateOptions(t("accountQRCodeScreen.title")),
+                route,
+              )
+            }
           />
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN}
             component={ScanQRCodeScreen}
-            options={getScreenOptionsNoHeader()}
+            options={({ route }) =>
+              withTransitionOverride(getScreenOptionsNoHeader(), route)
+            }
           />
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.CONNECTED_APPS_SCREEN}

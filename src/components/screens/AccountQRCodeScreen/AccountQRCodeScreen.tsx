@@ -15,6 +15,7 @@ import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
 import { pxValue } from "helpers/dimensions";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useClearTransitionParam } from "hooks/useClearTransitionParam";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
@@ -39,6 +40,8 @@ const AccountQRCodeScreen: React.FC<AccountQRCodeScreenProps> = ({
   const { copyToClipboard } = useClipboard();
   const explanationModalRef = useRef<BottomSheetModal>(null);
 
+  useClearTransitionParam(navigation, route.params?.transition);
+
   // useLayoutEffect is the official recommended hook to use for setting up
   // the navigation headers to prevent UI flickering.
   useLayoutEffect(() => {
@@ -55,23 +58,12 @@ const AccountQRCodeScreen: React.FC<AccountQRCodeScreenProps> = ({
     showNavigationAsCloseButton ? Icon.Scan : Icon.HelpCircle;
 
   const handleWalletConnectNavigation = () => {
-    // WalletConnect flow: Navigate between QR Scan and QR Address screens
-    const routes = navigation.getState()?.routes ?? [];
-    const scanRouteIndex = routes.findIndex(
-      (r) => r.name === ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN,
-    );
-
-    // If the scan route is already in the stack, pop to it
-    // Otherwise, navigate to it
-    if (scanRouteIndex !== -1) {
-      navigation.replace(ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN, {
-        source: QRCodeSource.WALLET_CONNECT,
-      });
-    } else {
-      navigation.navigate(ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN, {
-        source: QRCodeSource.WALLET_CONNECT,
-      });
-    }
+    // Paired with the replace in useWalletConnectQrCodeScanner.handleHeaderRight,
+    // which fades from ScanQRCodeScreen back to this screen.
+    navigation.replace(ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN, {
+      source: QRCodeSource.WALLET_CONNECT,
+      transition: "fade",
+    });
   };
 
   const handleHelpModalPress = () => {

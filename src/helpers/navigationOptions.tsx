@@ -59,3 +59,19 @@ export const getScreenOptionsNoHeader = (): NativeStackNavigationOptions => ({
   headerShown: false,
   ...getStackBottomNavigateOptions(),
 });
+
+/**
+ * Wrap navigation options so a route can override the animation by passing
+ * `transition` in its params. Used for ad-hoc transition overrides (e.g. the
+ * fade between `ScanQRCodeScreen` and `AccountQRCodeScreen`) without changing
+ * the defaults for other entry points into the same screen.
+ */
+export const withTransitionOverride = (
+  options: NativeStackNavigationOptions,
+  route: {
+    params?: { transition?: NativeStackNavigationOptions["animation"] };
+  },
+): NativeStackNavigationOptions => {
+  const transition = route.params?.transition;
+  return transition ? { ...options, animation: transition } : options;
+};

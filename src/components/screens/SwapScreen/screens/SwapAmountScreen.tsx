@@ -280,7 +280,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         duration: 0,
       });
     }
-  }, [pathError, sourceAmount, destinationTokenId, activeError]);
+  }, [pathError, sourceAmount, destinationTokenId]);
 
   const handleSettingsPress = useCallback(() => {
     transactionSettingsBottomSheetModalRef.current?.present();
@@ -745,7 +745,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           // Clear all errors when review is closed
           setActiveError(null);
         }}
-        snapPoints={["80%"]}
         scrollable
         analyticsEvent={AnalyticsEvent.VIEW_SWAP_CONFIRM}
         customContent={
@@ -766,7 +765,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
             }
           />
         }
-        renderFooterComponent={renderFooterComponent}
+        scrollViewFooterComponent={renderFooterComponent}
       />
       <BottomSheet
         modalRef={transactionSecurityWarningBottomSheetModalRef}

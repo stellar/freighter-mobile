@@ -109,6 +109,46 @@ jest.mock("services/stellarExpert", () => ({
         },
       });
     }
+    if (searchTerm === "dejaaa") {
+      return Promise.resolve({
+        _embedded: {
+          records: [
+            {
+              asset: "CC64WBDGS6QQP22QTTIACYIXT3WF7BBQEYOQPLTP7GTKYY7PZ74QYGSL",
+              domain: "centrifuge.io",
+              code: "deJAAA",
+              token_name: "deJAAA",
+              decimals: 18,
+              tomlInfo: {
+                code: "deJAAA",
+                issuer:
+                  "CBSZNRNQIFHKHBHPZEHJFWGTJMPLYN4NJYGTLEJBHUVQTTOQ2WSQ6OMV",
+                image:
+                  "https://stellar.myfilebase.com/ipfs/QmXu7RUtm2zhGDhk1ScDSWH587xccMm8ewprrFr4rYX6F3",
+                name: "deJAAA",
+                decimals: 18,
+              },
+            },
+            {
+              asset:
+                "DEJAAA-GASIX3XBHMFJGHOMC2FEELMO2E6JYE5LL2V2QBW3GX23GJI2EHWM4R5E-2",
+            },
+          ],
+        },
+      });
+    }
+    if (searchTerm === "contract-only") {
+      return Promise.resolve({
+        _embedded: {
+          records: [
+            {
+              asset: "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC",
+              domain: "example.com",
+            },
+          ],
+        },
+      });
+    }
     if (searchTerm === "error") {
       return Promise.reject(new Error("Search failed"));
     }
@@ -292,6 +332,76 @@ describe("useTokenLookup", () => {
     const tokens = result.current.searchResults.map((t) => t.tokenCode);
     expect(tokens).toContain("USDC");
     expect(tokens).not.toContain("FOO");
+  });
+
+  it("should parse contract tokens from stellar.expert search results", async () => {
+    const { result } = renderHook(() =>
+      useTokenLookup({
+        network: mockNetwork,
+        publicKey: mockPublicKey,
+        balanceItems: mockBalanceItems,
+      }),
+    );
+
+    await act(async () => {
+      result.current.handleSearch("dejaaa");
+      await flushPromises();
+    });
+
+    expect(result.current.status).toBe(HookStatus.SUCCESS);
+    expect(result.current.searchResults).toHaveLength(2);
+
+    // First result: contract token — should use top-level `code`, not the raw contract ID
+    const contractToken = result.current.searchResults[0];
+    expect(contractToken.tokenCode).toBe("deJAAA");
+    expect(contractToken.issuer).toBe(
+      "CC64WBDGS6QQP22QTTIACYIXT3WF7BBQEYOQPLTP7GTKYY7PZ74QYGSL",
+    );
+    expect(contractToken.domain).toBe("centrifuge.io");
+    expect(contractToken.tokenType).toBe(TokenTypeWithCustomToken.CUSTOM_TOKEN);
+    expect(contractToken.decimals).toBe(18);
+    expect(contractToken.name).toBe("deJAAA");
+    expect(contractToken.iconUrl).toBe(
+      "https://stellar.myfilebase.com/ipfs/QmXu7RUtm2zhGDhk1ScDSWH587xccMm8ewprrFr4rYX6F3",
+    );
+
+    // Second result: classic asset — should be parsed with split("-")
+    const classicToken = result.current.searchResults[1];
+    expect(classicToken.tokenCode).toBe("DEJAAA");
+    expect(classicToken.issuer).toBe(
+      "GASIX3XBHMFJGHOMC2FEELMO2E6JYE5LL2V2QBW3GX23GJI2EHWM4R5E",
+    );
+  });
+
+  it("should fall back to contract ID as tokenCode when metadata is missing", async () => {
+    const { result } = renderHook(() =>
+      useTokenLookup({
+        network: mockNetwork,
+        publicKey: mockPublicKey,
+        balanceItems: mockBalanceItems,
+      }),
+    );
+
+    await act(async () => {
+      result.current.handleSearch("contract-only");
+      await flushPromises();
+    });
+
+    expect(result.current.status).toBe(HookStatus.SUCCESS);
+    expect(result.current.searchResults).toHaveLength(1);
+
+    const token = result.current.searchResults[0];
+    // No `code` or `tomlInfo.code` — falls back to contract ID
+    expect(token.tokenCode).toBe(
+      "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC",
+    );
+    expect(token.issuer).toBe(
+      "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC",
+    );
+    expect(token.domain).toBe("example.com");
+    expect(token.tokenType).toBe(TokenTypeWithCustomToken.CUSTOM_TOKEN);
+    expect(token.decimals).toBeUndefined();
+    expect(token.iconUrl).toBeUndefined();
   });
 
   it("should handle contract ID search", async () => {

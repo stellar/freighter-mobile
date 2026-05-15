@@ -98,7 +98,13 @@ jest.mock("components/screens/SendScreen/components", () => ({
   SendReviewBottomSheet: function MockSendReviewBottomSheet() {
     return null;
   },
+  SendReviewFooter: function MockSendReviewFooter() {
+    return null;
+  },
   ContactRow: function MockContactRow() {
+    return null;
+  },
+  HighlightedAmountDisplay: function MockHighlightedAmountDisplay() {
     return null;
   },
 }));

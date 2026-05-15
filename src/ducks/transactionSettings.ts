@@ -14,6 +14,7 @@ const INITIAL_TRANSACTION_SETTINGS_STATE = {
     collectionAddress: "",
     tokenId: "",
   },
+  feeManuallyChanged: false,
 };
 
 /**
@@ -47,6 +48,7 @@ interface TransactionSettingsState {
     collectionAddress: string;
     tokenId: string;
   };
+  feeManuallyChanged: boolean;
 
   saveMemo: (memo: string) => void;
   saveTransactionFee: (fee: string) => void;
@@ -57,6 +59,7 @@ interface TransactionSettingsState {
     collectionAddress: string;
     tokenId: string;
   }) => void;
+  markFeeManuallyChanged: () => void;
   resetSettings: () => void;
 }
 
@@ -108,6 +111,12 @@ export const useTransactionSettingsStore = create<TransactionSettingsState>(
       collectionAddress: string;
       tokenId: string;
     }) => set({ selectedCollectibleDetails: collectibleDetails }),
+
+    /**
+     * Marks the fee as manually changed by the user, preventing automatic
+     * overwrites when the recommended fee updates.
+     */
+    markFeeManuallyChanged: () => set({ feeManuallyChanged: true }),
 
     /**
      * Resets all transaction settings to their default values

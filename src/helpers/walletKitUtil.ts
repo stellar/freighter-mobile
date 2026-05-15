@@ -685,7 +685,10 @@ export const disconnectSession = async (topic: string): Promise<void> => {
   } catch (error) {
     logger.error(
       "disconnectSession",
-      `Failed to disconnect session. topic: ${topic}`,
+      // Truncate the WC topic - it's a session-scoped token, not
+      // useful in full and unnecessary to ship verbatim to Sentry.
+      // Prefix is enough for cross-log correlation within a session.
+      `Failed to disconnect session. topic: ${topic.slice(0, 8)}...`,
       error,
     );
   }
@@ -733,11 +736,15 @@ export const disconnectAllSessions = async (
       "All sessions disconnected successfully",
     );
   } catch (error) {
-    // Let's not block the user from logging out if this fails
+    // Let's not block the user from logging out if this fails.
+    // publicKey goes through the args extras so sanitizeLogData can
+    // redact it for opt-out users (interpolating it into the message
+    // would bypass the redactor and ship it to Sentry verbatim).
     logger.error(
       "disconnectAllSessions",
-      `Failed to disconnect all sessions. publicKey: ${publicKey}, network: ${network}`,
+      "Failed to disconnect all sessions",
       error,
+      { publicKey, network },
     );
   }
 };

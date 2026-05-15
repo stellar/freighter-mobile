@@ -1,11 +1,12 @@
 import { TransactionContext } from "config/constants";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 
 /**
  * Hook to automatically initialize fee with recommended fee if it's still at default
- * Uses a ref to track if fee was manually changed to prevent overwriting user input
+ * Uses a global store flag to track if fee was manually changed to prevent overwriting
+ * user input even when the hook is mounted in multiple places simultaneously.
  *
  * @param recommendedFee - The recommended fee from the network
  * @param context - The transaction context (Send or Swap)
@@ -14,23 +15,33 @@ export const useInitialRecommendedFee = (
   recommendedFee: string,
   context: TransactionContext,
 ) => {
-  const hasManuallyChangedRef = useRef(false);
+  const isSwap = context === TransactionContext.Swap;
 
-  const { saveTransactionFee } = useTransactionSettingsStore();
-  const { saveSwapFee } = useSwapSettingsStore();
+  const {
+    feeManuallyChanged: txFeeManuallyChanged,
+    markFeeManuallyChanged: markTxFeeManuallyChanged,
+    saveTransactionFee,
+  } = useTransactionSettingsStore();
 
-  const saveFee =
-    context === TransactionContext.Swap ? saveSwapFee : saveTransactionFee;
+  const {
+    feeManuallyChanged: swapFeeManuallyChanged,
+    markFeeManuallyChanged: markSwapFeeManuallyChanged,
+    saveSwapFee,
+  } = useSwapSettingsStore();
+
+  const feeManuallyChanged = isSwap
+    ? swapFeeManuallyChanged
+    : txFeeManuallyChanged;
+  const markAsManuallyChanged = isSwap
+    ? markSwapFeeManuallyChanged
+    : markTxFeeManuallyChanged;
+  const saveFee = isSwap ? saveSwapFee : saveTransactionFee;
 
   useEffect(() => {
-    if (recommendedFee && !hasManuallyChangedRef.current) {
+    if (recommendedFee && !feeManuallyChanged) {
       saveFee(recommendedFee);
     }
-  }, [recommendedFee, saveFee]);
-
-  const markAsManuallyChanged = () => {
-    hasManuallyChangedRef.current = true;
-  };
+  }, [recommendedFee, saveFee, feeManuallyChanged]);
 
   return { markAsManuallyChanged };
 };

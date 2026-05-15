@@ -9,6 +9,7 @@ import { logger } from "config/logger";
 import { PricedBalance } from "config/types";
 import { useDebugStore } from "ducks/debug";
 import { formatBigNumberForDisplay } from "helpers/formatAmount";
+import { isContractId } from "helpers/soroban";
 import { t } from "i18next";
 import { getTokenForPayment } from "services/transactionService";
 import { create } from "zustand";
@@ -182,6 +183,23 @@ export const useSwapStore = create<SwapState>((set) => ({
 
       if (forceSwapPathFailure) {
         throw new Error(t("debug.debugMessages.swapPathFailure"));
+      }
+
+      // Custom/Soroban tokens cannot be swapped via Horizon's classic DEX
+      const isSourceCustom =
+        "contractId" in sourceBalance ||
+        ("id" in sourceBalance && isContractId(sourceBalance.id ?? ""));
+      const isDestCustom =
+        "contractId" in destinationBalance ||
+        ("id" in destinationBalance &&
+          isContractId(destinationBalance.id ?? ""));
+
+      if (isSourceCustom || isDestCustom) {
+        set({
+          isLoadingPath: false,
+          pathError: t("swapScreen.errors.customTokenSwapNotSupported"),
+        });
+        return;
       }
 
       // For now, we only support classic path payments

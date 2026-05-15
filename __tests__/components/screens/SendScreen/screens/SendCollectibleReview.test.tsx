@@ -751,3 +751,64 @@ describe("SendCollectibleReview - Unable to Scan States", () => {
     );
   });
 });
+
+describe("SendCollectibleReview - Unfunded Recipient Handling", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    setupDefaultMocks();
+  });
+
+  it("should not show expected-to-fail warning for unfunded recipient when Blockaid reports safe", () => {
+    // SAC/Soroban transfers don't require the recipient to be a funded account.
+    // When Blockaid reports the transaction as safe, no warning should appear.
+    mockAssessTransactionSecurity.mockReturnValue({
+      level: SecurityLevel.SAFE,
+      isMalicious: false,
+      isSuspicious: false,
+      isExpectedToFail: false,
+      isUnableToScan: false,
+    });
+
+    renderWithProviders(
+      <SendCollectibleReviewScreen
+        navigation={mockNavigation}
+        route={mockRoute}
+      />,
+    );
+
+    expect(mockSendReviewBottomSheetProps.bannerText).toBeUndefined();
+    expect(mockSendReviewBottomSheetProps.bannerVariant).toBeUndefined();
+  });
+
+  it("should show expected-to-fail warning when Blockaid simulation reports the transaction will fail", () => {
+    // Blockaid's simulation result is the sole source of truth for collectible sends.
+    // If Blockaid reports expected to fail, the warning must still render.
+    mockAssessTransactionSecurity.mockReturnValue({
+      level: SecurityLevel.EXPECTED_TO_FAIL,
+      isMalicious: false,
+      isSuspicious: false,
+      isExpectedToFail: true,
+      isUnableToScan: false,
+    });
+
+    mockExtractSecurityWarnings.mockReturnValue([
+      {
+        id: "expected-to-fail",
+        description: "Transaction is expected to fail",
+      },
+    ]);
+
+    renderWithProviders(
+      <SendCollectibleReviewScreen
+        navigation={mockNavigation}
+        route={mockRoute}
+      />,
+    );
+
+    expect(mockSendReviewBottomSheetProps.bannerText).toBe(
+      "blockaid.security.transaction.expectedToFail",
+    );
+    expect(mockSendReviewBottomSheetProps.bannerVariant).toBe("warning");
+    expect(mockSendReviewBottomSheetProps.onBannerPress).toBeDefined();
+  });
+});

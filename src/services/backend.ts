@@ -32,7 +32,11 @@ import {
 import { getTokenType } from "helpers/balances";
 import { bigize } from "helpers/bigize";
 import { getNativeContractDetails } from "helpers/soroban";
-import { createApiService, isRequestCanceled } from "services/apiFactory";
+import {
+  createApiService,
+  isRequestCanceled,
+  logApiError,
+} from "services/apiFactory";
 
 // Create dedicated API services for backend operations
 export const freighterBackendV1 = createApiService({
@@ -468,8 +472,15 @@ export const getTokenDetails = async ({
     }
 
     if (!isRequestCanceled(error)) {
-      logger.error(
+      // Connectivity failures (offline, DNS, TLS, captive portal) -
+      // demote to warn so they remain as breadcrumb context without
+      // creating top-level Sentry issues. Backend bugs (4xx/5xx
+      // responses, malformed payloads) and axios client-side timeouts
+      // (carved out of isApiNetworkError so latency regressions stay
+      // visible) still surface as logger.error.
+      logApiError(
         "backendApi.getTokenDetails",
+        "Network unreachable while fetching token details",
         "Error fetching token details",
         error,
       );
@@ -525,8 +536,9 @@ export const isSacContractExecutable = async (
 
     return response.data.isSacContract;
   } catch (error) {
-    logger.error(
+    logApiError(
       "backendApi.isSacContractExecutable",
+      "Network unreachable while checking SAC contract",
       "Error fetching sac contract executable",
       error,
     );
@@ -583,8 +595,9 @@ export const getIndexerAccountHistory = async ({
 
     return response.data;
   } catch (error) {
-    logger.error(
+    logApiError(
       "backendApi.getAccountHistory",
+      "Network unreachable while fetching account history",
       "Error fetching account history",
       error,
     );
@@ -714,7 +727,7 @@ export const handleContractLookup = async (
  * @property {Object} params - Transfer parameters
  * @property {string} params.publicKey - Sender's public key
  * @property {string} params.destination - Recipient's address
- * @property {string} params.amount - Amount to transfer
+ * @property {string} params.amount - Amount to transfer in base units
  * @property {string} network_url - Network URL for simulation
  * @property {string} network_passphrase - Network passphrase
  */
@@ -735,12 +748,16 @@ export interface SimulateTokenTransferParams {
 /**
  * Response from token transfer simulation
  * @interface SimulateTransactionResponse
- * @property {unknown} simulationResponse - Raw simulation response from backend
+ * @property {SorobanSimulationResponse} simulationResponse - Soroban simulation response with fee data
  * @property {string} preparedTransaction - XDR-encoded prepared transaction
  */
 export interface SimulateTransactionResponse {
-  simulationResponse: unknown;
+  simulationResponse: SorobanSimulationResponse;
   preparedTransaction: string;
+}
+
+export interface SorobanSimulationResponse {
+  minResourceFee?: string;
 }
 
 /**
@@ -1100,10 +1117,19 @@ export const fetchCollectibles = async ({
     );
 
     if (!data.data || !data.data.collections) {
-      logger.error(
+      // Demote this inner log to a breadcrumb so it doesn't fire its
+      // own captureException - the catch below already logs the
+      // thrown Error once. Without this, one bad payload produced
+      // two Sentry events. Capture only the payload shape (top-level
+      // and inner keys) so we can recognize a backend contract change
+      // without uploading user-identifying values like account IDs.
+      logger.warn(
         "backendApi.fetchCollectibles",
-        "Invalid response from server",
-        data,
+        "Invalid response shape - missing data.collections",
+        {
+          topLevelKeys: Object.keys(data ?? {}),
+          innerKeys: Object.keys((data as { data?: unknown })?.data ?? {}),
+        },
       );
 
       throw new Error("Invalid response from server");
@@ -1111,8 +1137,16 @@ export const fetchCollectibles = async ({
 
     return data.data.collections;
   } catch (error) {
-    logger.error(
+    // Connectivity failures (offline, DNS, TLS, captive portal) are not
+    // backend bugs — demote to warn so they remain as breadcrumb context
+    // without creating top-level Sentry issues. Backend bugs (4xx/5xx
+    // responses, malformed payloads, the "Invalid response from server"
+    // throw above) and axios client-side timeouts (carved out of
+    // isApiNetworkError so latency regressions stay visible) still
+    // surface as logger.error.
+    logApiError(
       "backendApi.fetchCollectibles",
+      "Network unreachable while fetching collectibles",
       "Error fetching collectibles",
       error,
     );

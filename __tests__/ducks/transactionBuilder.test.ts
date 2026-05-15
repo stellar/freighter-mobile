@@ -1,5 +1,6 @@
 import { act } from "@testing-library/react-hooks";
 import { NETWORKS } from "config/constants";
+import { logger } from "config/logger";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import * as sorobanHelpers from "helpers/soroban";
 import * as stellarServices from "services/stellar";
@@ -53,6 +54,10 @@ describe("transactionBuilder Duck", () => {
         isSubmitting: false,
         transactionHash: null,
         error: null,
+        requestId: null,
+        isSoroban: false,
+        sorobanResourceFeeXlm: null,
+        sorobanInclusionFeeXlm: null,
       });
     });
 
@@ -61,7 +66,10 @@ describe("transactionBuilder Duck", () => {
     );
     (
       transactionService.simulateContractTransfer as jest.Mock
-    ).mockResolvedValue(mockPreparedXDR);
+    ).mockResolvedValue({
+      preparedTransaction: mockPreparedXDR,
+      minResourceFee: "100",
+    });
     (stellarServices.signTransaction as jest.Mock).mockReturnValue(
       mockSignedXDR,
     );
@@ -99,6 +107,7 @@ describe("transactionBuilder Duck", () => {
     expect(state.signedTransactionXDR).toBeNull();
     expect(state.transactionHash).toBeNull();
     expect(state.error).toBeNull();
+    expect(state.isSoroban).toBe(false);
     expect(transactionService.buildPaymentTransaction).toHaveBeenCalledWith(
       expect.objectContaining({
         tokenAmount: mockTokenValue,
@@ -115,6 +124,7 @@ describe("transactionBuilder Duck", () => {
       xdr: mockBuiltXDR,
       tx: { sequence: "1" },
       contractId: mockContractAddress,
+      amountInBaseUnits: 1000000,
     });
 
     await act(async () => {
@@ -134,6 +144,35 @@ describe("transactionBuilder Duck", () => {
     expect(state.error).toBeNull();
     expect(transactionService.buildPaymentTransaction).toHaveBeenCalled();
     expect(transactionService.simulateContractTransfer).toHaveBeenCalled();
+    // Soroban fee fields: resource derived from mocked minResourceFee "100" stroops,
+    // inclusion falls back to MIN_TRANSACTION_FEE when no transactionFee is passed.
+    expect(state.sorobanResourceFeeXlm).toBe("0.0000100");
+    expect(state.sorobanInclusionFeeXlm).toBe("0.00001");
+  });
+
+  it("should error when Soroban build result is missing amountInBaseUnits", async () => {
+    (
+      transactionService.buildPaymentTransaction as jest.Mock
+    ).mockResolvedValueOnce({
+      xdr: mockBuiltXDR,
+      tx: { sequence: "1" },
+      contractId: mockContractAddress,
+      // amountInBaseUnits intentionally omitted
+    });
+
+    await act(async () => {
+      await store.getState().buildTransaction({
+        tokenAmount: mockTokenValue,
+        recipientAddress: mockContractAddress,
+        senderAddress: mockPublicKey,
+        network: mockNetwork,
+      });
+    });
+
+    const state = store.getState();
+    expect(state.isBuilding).toBe(false);
+    expect(state.transactionXDR).toBeNull();
+    expect(state.error).toContain("amountInBaseUnits");
   });
 
   it("should handle errors during buildTransaction", async () => {
@@ -278,6 +317,111 @@ describe("transactionBuilder Duck", () => {
     expect(state.error).toBe(submitError.message);
   });
 
+  describe("submitTransaction logger severity (Horizon error split)", () => {
+    beforeEach(() => {
+      act(() => {
+        store.setState({ signedTransactionXDR: mockSignedXDR });
+      });
+      // Treat the test errors as HorizonError shapes so the duck's branch
+      // can read .response.status off them.
+      (
+        stellarServices.isHorizonError as unknown as jest.Mock
+      ).mockImplementation(
+        (val: unknown) =>
+          typeof val === "object" &&
+          val !== null &&
+          "response" in val &&
+          typeof (val as { response: unknown }).response === "object",
+      );
+    });
+
+    it("demotes Horizon 4xx protocol rejections to warn (e.g. tx_bad_seq)", async () => {
+      const horizon4xxError = {
+        response: {
+          status: 400,
+          data: { extras: { result_codes: { transaction: "tx_bad_seq" } } },
+        },
+      };
+      (stellarServices.submitTx as jest.Mock).mockRejectedValue(
+        horizon4xxError,
+      );
+
+      await act(async () => {
+        await store.getState().submitTransaction({ network: mockNetwork });
+      });
+
+      expect(logger.warn).toHaveBeenCalledWith(
+        "TransactionBuilderStore",
+        expect.stringContaining("Network rejected transaction (HTTP 400)"),
+        { transaction: "tx_bad_seq" },
+      );
+      expect(logger.error).not.toHaveBeenCalled();
+    });
+
+    it("keeps Horizon 4xx WITHOUT result_codes as logger.error (operational failures, not user-correctable)", async () => {
+      // 4xx responses from Horizon / proxies that don't carry the
+      // protocol-rejection `result_codes` (rate limits, auth failures,
+      // generic gateway errors) are operational, not user-correctable
+      // - they need Sentry visibility, not the warn breadcrumb path.
+      const horizon4xxNoResultCodes = {
+        response: {
+          status: 429,
+          data: { detail: "Too many requests" },
+        },
+      };
+      (stellarServices.submitTx as jest.Mock).mockRejectedValue(
+        horizon4xxNoResultCodes,
+      );
+
+      await act(async () => {
+        await store.getState().submitTransaction({ network: mockNetwork });
+      });
+
+      expect(logger.error).toHaveBeenCalledWith(
+        "TransactionBuilderStore",
+        expect.stringContaining("Failed to submit transaction"),
+        horizon4xxNoResultCodes,
+      );
+      expect(logger.warn).not.toHaveBeenCalled();
+    });
+
+    it("keeps Horizon 5xx server errors as logger.error (e.g. submitted-then-overloaded)", async () => {
+      const horizon5xxError = {
+        response: { status: 504 },
+      };
+      (stellarServices.submitTx as jest.Mock).mockRejectedValue(
+        horizon5xxError,
+      );
+
+      await act(async () => {
+        await store.getState().submitTransaction({ network: mockNetwork });
+      });
+
+      expect(logger.error).toHaveBeenCalledWith(
+        "TransactionBuilderStore",
+        expect.stringContaining("Failed to submit transaction"),
+        horizon5xxError,
+      );
+      expect(logger.warn).not.toHaveBeenCalled();
+    });
+
+    it("keeps non-Horizon errors as logger.error (bad XDR, network unreachable, SDK exception)", async () => {
+      const sdkError = new Error("Bad XDR encoding");
+      (stellarServices.submitTx as jest.Mock).mockRejectedValue(sdkError);
+
+      await act(async () => {
+        await store.getState().submitTransaction({ network: mockNetwork });
+      });
+
+      expect(logger.error).toHaveBeenCalledWith(
+        "TransactionBuilderStore",
+        expect.stringContaining("Failed to submit transaction"),
+        sdkError,
+      );
+      expect(logger.warn).not.toHaveBeenCalled();
+    });
+  });
+
   it("should reset the transaction state", () => {
     act(() => {
       store.setState({
@@ -287,6 +431,10 @@ describe("transactionBuilder Duck", () => {
         isSubmitting: false,
         transactionHash: mockTxHash,
         error: "Some previous error",
+        requestId: "some-request-id",
+        isSoroban: true,
+        sorobanResourceFeeXlm: "0.0001000",
+        sorobanInclusionFeeXlm: "0.0001000",
       });
     });
 
@@ -301,6 +449,10 @@ describe("transactionBuilder Duck", () => {
     expect(state.isSubmitting).toBe(false);
     expect(state.transactionHash).toBeNull();
     expect(state.error).toBeNull();
+    expect(state.requestId).toBeNull();
+    expect(state.isSoroban).toBe(false);
+    expect(state.sorobanResourceFeeXlm).toBeNull();
+    expect(state.sorobanInclusionFeeXlm).toBeNull();
   });
 
   describe("buildSendCollectibleTransaction", () => {
@@ -317,7 +469,10 @@ describe("transactionBuilder Duck", () => {
       });
       (
         transactionService.simulateCollectibleTransfer as jest.Mock
-      ).mockResolvedValue(mockPreparedXDR);
+      ).mockResolvedValue({
+        preparedTransaction: mockPreparedXDR,
+        minResourceFee: "100",
+      });
     });
 
     it("should build and simulate a collectible transaction successfully", async () => {

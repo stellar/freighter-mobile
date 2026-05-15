@@ -8,6 +8,7 @@ import Icon from "components/sds/Icon";
 import { getDefaultQRCodeSource, QRCodeSource } from "config/constants";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useClearTransitionParam } from "hooks/useClearTransitionParam";
 import useColors from "hooks/useColors";
 import { useQRCodeScreenScanner } from "hooks/useQRCodeScreenScanner";
 import React from "react";
@@ -29,9 +30,14 @@ type ScanQRCodeScreenProps = NativeStackScreenProps<
  * @param {ScanQRCodeScreenProps} props - Component props including navigation
  * @returns {JSX.Element} The rendered component
  */
-const ScanQRCodeScreen: React.FC<ScanQRCodeScreenProps> = ({ route }) => {
+const ScanQRCodeScreen: React.FC<ScanQRCodeScreenProps> = ({
+  route,
+  navigation,
+}) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
+
+  useClearTransitionParam(navigation, route.params?.transition);
 
   // Get the source from route params, default to address_input
   const source = route.params?.source || getDefaultQRCodeSource();

@@ -11,6 +11,11 @@
  * DO NOT MODIFY THE IMPORT ORDER IN THIS FILE.
  */
 
+// Fix broken Hermes TypedArray methods (subarray, map, filter, slice).
+// Must run before any code that touches TypedArrays or Buffer.
+// See: https://github.com/nicolo-ribaudo/tc39-proposal-fix-typedarray-constructor
+require("@exodus/patch-broken-hermes-typed-arrays");
+
 // First, load polyfills
 require("./src/bootstrap.js");
 

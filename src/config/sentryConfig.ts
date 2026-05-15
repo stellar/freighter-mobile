@@ -1,9 +1,12 @@
 import * as Sentry from "@sentry/react-native";
 import { EnvConfig } from "config/envConfig";
+import { MAX_DEPTH_SENTINEL, MAX_RECURSIVE_DEPTH } from "config/logger";
 import { useAnalyticsStore } from "ducks/analytics";
 import { useAuthenticationStore } from "ducks/auth";
 import { useNetworkStore } from "ducks/networkInfo";
 import { isProd, isE2ETest } from "helpers/isEnv";
+import enTranslations from "i18n/locales/en/translations.json";
+import ptTranslations from "i18n/locales/pt/translations.json";
 import { Platform } from "react-native";
 import {
   getVersion,
@@ -26,6 +29,100 @@ export const SENTRY_CONFIG = {
     "bundleId",
   ] as const,
 } as const;
+
+/**
+ * Centralized registry of breadcrumb categories used by `Sentry.addBreadcrumb`
+ * call sites in this file.
+ *
+ * Note: the `sentryAdapter.warn` path in `logger.ts` uses the caller-supplied
+ * `context` argument as the breadcrumb category and is intentionally not
+ * enumerated here (callers can pick any module-scoped name).
+ */
+export const SENTRY_BREADCRUMB_CATEGORIES = {
+  USER_INPUT_VALIDATION: "user-input-validation",
+  BIOMETRIC_STATE: "biometric-state",
+} as const;
+
+/**
+ * User-typo password messages we downgrade in `beforeSend`.
+ *
+ * A cleaner long-term fix would be at source: `useAuthenticationStore.signIn`
+ * (`ducks/auth.ts`) rethrows on wrong-password and the LockScreen caller
+ * is fire-and-forget, so the rejection ends up at Sentry's global
+ * handler. Removing that rethrow (or having LockScreen catch it) would
+ * stop the events from ever reaching Sentry. We don't do that here
+ * because changing the action's throw contract risks affecting other
+ * auth flows (biometric login, settings password gates, re-auth) and
+ * wants its own focused review. This filter is a contained workaround
+ * until the long-term fix is implemented.
+ *
+ * Sourced from i18n translation files so a copy change in
+ * `translations.json` automatically updates this filter — no separate
+ * sync step.
+ */
+export const PASSWORD_TYPO_MESSAGES = [
+  enTranslations.authStore.error.invalidPassword,
+  ptTranslations.authStore.error.invalidPassword,
+];
+
+/**
+ * Stellar StrKey identifiers (publicKeys `G...` and secret seeds
+ * `S...`) are base32-encoded with a fixed prefix and exact 56-char
+ * length. The pattern is anchored on word boundaries so a 56-char
+ * substring inside a longer alphanumeric run does not match.
+ *
+ * Anything matching this pattern is scrubbed in `beforeSend` from
+ * event.message, exception values, and recursively from the entire
+ * `event.extra` subtree and breadcrumb data — so identifiers that
+ * get interpolated into log messages or embedded in thrown
+ * Error.message strings cannot leak verbatim to Sentry.
+ *
+ * Object-key redaction (sanitizeLogData with PII_FIELDS_LOWER)
+ * handles structured payloads. This pattern handles raw strings
+ * the key-based redactor can't reach.
+ */
+const STELLAR_STRKEY_PATTERN = /\b[GS][A-Z2-7]{55}\b/g;
+
+/**
+ * Replace any embedded Stellar StrKey with a short prefix sentinel
+ * ("G***" / "S***"). Preserves the prefix so triage can still
+ * distinguish a publicKey leak from a secret-seed leak (the latter
+ * is a critical bug — secrets should never reach this code path).
+ */
+export const scrubStrKeys = (s: string | undefined): string | undefined =>
+  s?.replace(STELLAR_STRKEY_PATTERN, (match) => `${match[0]}***`);
+
+/**
+ * Recursively walk a structured value and scrub Stellar StrKeys from
+ * every string descendant. Used to defend against StrKeys embedded in
+ * structured payloads (event.extra.args, breadcrumb data) where field
+ * names alone can't predict every leak surface — e.g. a backend
+ * response with `owner` / `from` / `recipient` fields holding
+ * account IDs.
+ *
+ * At the depth cap, return a sentinel string instead of the original
+ * subtree so cyclic structures cannot escape into the Sentry payload
+ * and StrKeys nested past the cap cannot leak unscrubbed.
+ */
+const deepScrubStrKeys = (data: unknown, depth = 0): unknown => {
+  if (depth >= MAX_RECURSIVE_DEPTH) {
+    return MAX_DEPTH_SENTINEL;
+  }
+  if (typeof data === "string") {
+    return scrubStrKeys(data);
+  }
+  if (Array.isArray(data)) {
+    return data.map((item) => deepScrubStrKeys(item, depth + 1));
+  }
+  if (data && typeof data === "object") {
+    const out: Record<string, unknown> = {};
+    Object.entries(data as Record<string, unknown>).forEach(([k, v]) => {
+      out[k] = deepScrubStrKeys(v, depth + 1);
+    });
+    return out;
+  }
+  return data;
+};
 
 /**
  * Builds common context data for Sentry events (similar to analytics).
@@ -107,7 +204,81 @@ export const initializeSentry = (): void => {
     // Performance monitoring - equivalent to browserTracingIntegration
     tracesSampleRate: 1.0,
 
+    // iOS-only main-thread monitor. The default of 2 seconds catches a
+    // lot of natural transition stalls (clipboard reads via
+    // RNCClipboard.getString, GPU shader compilation on cold start,
+    // Fabric mount work) that aren't actionable bugs in our code.
+    // 5 seconds keeps the genuinely-bad hangs visible while skipping
+    // those routine stalls.
+    appHangTimeoutInterval: 5,
+
     beforeSend(event) {
+      // Drop or downgrade known-noise patterns before any PII scrubbing
+      // or context updates. Each entry should describe a noise source
+      // we've seen in production (third-party SDK quirks, native auth
+      // cancellations, user-typed validation failures). Prefer fixing
+      // at the source over adding entries here.
+      const noiseMessage =
+        event.message || event.exception?.values?.[0]?.value || "";
+
+      // ---- Drop entirely (no diagnostic value) ----
+
+      // WalletConnect session lifecycle: the SDK throws when looking up
+      // a record that has just been cleaned up. Normal lifecycle, not a
+      // bug.
+      if (noiseMessage.includes("Record was recently deleted")) return null;
+
+      // User-initiated biometric / auth cancellations on iOS. The user
+      // pressed Cancel, switched away, the system invalidated the prompt,
+      // or retry-limit hit. Not bugs.
+      if (
+        noiseMessage.includes("com.apple.LocalAuthentication") &&
+        /Code=(-4|-1003|-1004|6)\b/.test(noiseMessage)
+      ) {
+        return null;
+      }
+
+      // Android biometric cancellations - same family, different vendor
+      // wording.
+      if (/Fingerprint operation canc(elled|eled)/i.test(noiseMessage)) {
+        return null;
+      }
+
+      // ---- Downgrade to breadcrumb (keep for context, no new issue) ----
+      // Sentry has no built-in "convert event to breadcrumb" so we add a
+      // breadcrumb for any subsequent event in the same session and drop
+      // the current one.
+
+      // User typed a wrong password - see PASSWORD_TYPO_MESSAGES above
+      // for the source-fix tradeoff. Match against exact strings to
+      // avoid catching neighbouring messages like "Invalid password or
+      // corrupted data." (a real corruption signal).
+      if (PASSWORD_TYPO_MESSAGES.includes(noiseMessage)) {
+        Sentry.addBreadcrumb({
+          category: SENTRY_BREADCRUMB_CATEGORIES.USER_INPUT_VALIDATION,
+          message: noiseMessage,
+          level: "warning",
+        });
+        return null;
+      }
+
+      // Recoverable biometric state mismatch: the user enabled
+      // biometrics but the keychain entry is missing (e.g. cleared by
+      // OS, app reinstall). User can re-enter their password and
+      // re-enable biometrics, so this is recoverable.
+      if (
+        noiseMessage.includes(
+          "No stored password found for biometric authentication",
+        )
+      ) {
+        Sentry.addBreadcrumb({
+          category: SENTRY_BREADCRUMB_CATEGORIES.BIOMETRIC_STATE,
+          message: noiseMessage,
+          level: "warning",
+        });
+        return null;
+      }
+
       // Update context on each event to ensure freshness
       Sentry.setContext("appContext", buildSentryContext());
 
@@ -127,6 +298,36 @@ export const initializeSentry = (): void => {
         // eslint-disable-next-line no-param-reassign
         event.contexts.appContext = minimalContext;
       }
+
+      // Defense-in-depth scrub for Stellar StrKey identifiers that
+      // may have been interpolated into log messages or embedded in
+      // thrown Error.message strings (libraries we don't control,
+      // future regressions in our own code). Object-key redaction
+      // already covers known PII fields; this catches the raw
+      // string surfaces it can't reach.
+      if (typeof event.message === "string") {
+        // eslint-disable-next-line no-param-reassign
+        event.message = scrubStrKeys(event.message);
+      }
+      event.exception?.values?.forEach((v) => {
+        // eslint-disable-next-line no-param-reassign
+        v.value = scrubStrKeys(v.value);
+      });
+      // Deep-scrub structured payloads: event.extra (logger.error
+      // extras) and breadcrumb data (logger.warn args). Catches
+      // StrKeys nested in fields that aren't in PII_FIELDS_LOWER -
+      // e.g. backend response shapes with `owner` / `from` /
+      // `recipient` holding account IDs.
+      if (event.extra) {
+        // eslint-disable-next-line no-param-reassign
+        event.extra = deepScrubStrKeys(event.extra) as Record<string, unknown>;
+      }
+      event.breadcrumbs?.forEach((bc) => {
+        if (bc.data) {
+          // eslint-disable-next-line no-param-reassign
+          bc.data = deepScrubStrKeys(bc.data) as Record<string, unknown>;
+        }
+      });
 
       return event;
     },

@@ -7,6 +7,7 @@ import {
   TokenTypeWithCustomToken,
 } from "config/types";
 import {
+  computeTotalFeeXlm,
   getArgsForTokenInvocation,
   SorobanTokenInterface,
   addressToString,
@@ -232,6 +233,43 @@ describe("soroban helpers", () => {
       expect(result).toBeTruthy();
       // Should start with 'C' for contract addresses
       expect(result[0]).toBe("C");
+    });
+  });
+
+  describe("computeTotalFeeXlm", () => {
+    const CLASSIC_FEE = "0.00001";
+
+    it("returns the sum of inclusion and resource fees for Soroban", () => {
+      expect(computeTotalFeeXlm("0.00001", "0.00123", CLASSIC_FEE)).toBe(
+        "0.00124",
+      );
+    });
+
+    it("returns transactionFee when inclusionFee is null", () => {
+      expect(computeTotalFeeXlm(null, "0.00123", CLASSIC_FEE)).toBe(
+        CLASSIC_FEE,
+      );
+    });
+
+    it("returns transactionFee when resourceFee is null", () => {
+      expect(computeTotalFeeXlm("0.00001", null, CLASSIC_FEE)).toBe(
+        CLASSIC_FEE,
+      );
+    });
+
+    it("returns transactionFee when both fees are null", () => {
+      expect(computeTotalFeeXlm(null, null, CLASSIC_FEE)).toBe(CLASSIC_FEE);
+    });
+
+    it("preserves BigNumber precision for very small Soroban fees", () => {
+      expect(computeTotalFeeXlm("0.0000100", "0.0000001", CLASSIC_FEE)).toBe(
+        "0.0000101",
+      );
+    });
+
+    it("returns transactionFee when either fee is an empty string (falsy)", () => {
+      expect(computeTotalFeeXlm("", "0.00123", CLASSIC_FEE)).toBe(CLASSIC_FEE);
+      expect(computeTotalFeeXlm("0.00001", "", CLASSIC_FEE)).toBe(CLASSIC_FEE);
     });
   });
 

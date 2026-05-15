@@ -36,6 +36,7 @@ import {
 } from "helpers/stellar";
 import { t } from "i18next";
 import { analytics } from "services/analytics";
+import { SimulationTransactionType } from "services/analytics/types";
 import { simulateTokenTransfer, simulateTransaction } from "services/backend";
 import { stellarSdkServer } from "services/stellar";
 
@@ -87,6 +88,7 @@ interface IValidateTransactionParams {
   destination: string;
   fee: string;
   timeout: number;
+  skipAmountValidation?: boolean;
 }
 
 /**
@@ -97,8 +99,8 @@ export const validateTransactionParams = (
   params: IValidateTransactionParams,
 ): string | null => {
   const { senderAddress, balance, amount, destination, fee, timeout } = params;
-  // Validate amount is positive
-  if (Number(amount) <= 0) {
+  // Validate amount is positive (skipped for Soroban fee estimation with amount 0)
+  if (!params.skipAmountValidation && Number(amount) <= 0) {
     return t("transaction.errors.amountRequired");
   }
 
@@ -347,6 +349,15 @@ export const buildPaymentTransaction = async (
       throw new Error("Missing required parameters for building transaction");
     }
 
+    // Soroban fee estimation can use amount 0 — resource fees are
+    // independent of the transfer amount. Skip only the amount check;
+    // all other validations (fee, timeout, address, balance) still run.
+    const isSorobanTransfer =
+      (selectedBalance &&
+        "contractId" in selectedBalance &&
+        Boolean(selectedBalance.contractId)) ||
+      isContractId(recipientAddress);
+
     const validationError = validateTransactionParams({
       senderAddress,
       balance: selectedBalance,
@@ -354,6 +365,7 @@ export const buildPaymentTransaction = async (
       destination: recipientAddress,
       fee: transactionFee,
       timeout: transactionTimeout,
+      skipAmountValidation: isSorobanTransfer && Number(amount) === 0,
     });
 
     if (validationError) {
@@ -694,6 +706,7 @@ interface SimulateContractTransferParams {
   transaction: Transaction;
   networkDetails: NetworkDetails;
   memo: string;
+  fee?: string;
   params: {
     publicKey: string;
     destination: string;
@@ -706,6 +719,7 @@ export const simulateContractTransfer = async ({
   transaction,
   networkDetails,
   memo,
+  fee,
   params,
   contractAddress,
 }: SimulateContractTransferParams) => {
@@ -718,13 +732,13 @@ export const simulateContractTransfer = async ({
   }
 
   try {
-    // Note: If destination is already muxed (from buildPaymentTransaction),
-    // it will be passed through here. The memo parameter is kept for backward compatibility
-    // but for CAP-0067, memo should be embedded in the muxed address.
+    // Follow the extension pattern: use /simulate-token-transfer which
+    // builds and simulates the transaction on the backend.
     const result = await simulateTokenTransfer({
       address: contractAddress,
       pub_key: transaction.source,
       memo, // This may be redundant if destination is muxed, but kept for compatibility
+      fee: fee ? xlmToStroop(fee).toString() : undefined,
       params,
       network_url: networkDetails.sorobanRpcUrl,
       network_passphrase: networkDetails.networkPassphrase,
@@ -732,11 +746,17 @@ export const simulateContractTransfer = async ({
 
     // Use the preparedTransaction XDR directly from the backend
     // The backend builds, simulates, and prepares the transaction
-    return result.preparedTransaction;
+    return {
+      preparedTransaction: result.preparedTransaction,
+      minResourceFee: result.simulationResponse?.minResourceFee,
+    };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
 
-    analytics.trackSimulationError(errorMessage, "contract_transfer");
+    analytics.trackSimulationError(
+      errorMessage,
+      SimulationTransactionType.ContractTransfer,
+    );
 
     throw error;
   }
@@ -745,11 +765,13 @@ export const simulateContractTransfer = async ({
 interface SimulateCollectibleTransferParams {
   transactionXdr: string;
   networkDetails: NetworkDetails;
+  analyticsCategory?: SimulationTransactionType;
 }
 
 export const simulateCollectibleTransfer = async ({
   transactionXdr,
   networkDetails,
+  analyticsCategory = SimulationTransactionType.CollectibleTransfer,
 }: SimulateCollectibleTransferParams) => {
   if (!networkDetails.sorobanRpcUrl) {
     throw new Error("Soroban RPC URL is not defined for this network");
@@ -762,11 +784,14 @@ export const simulateCollectibleTransfer = async ({
       network_passphrase: networkDetails.networkPassphrase,
     });
 
-    return result.preparedTransaction;
+    return {
+      preparedTransaction: result.preparedTransaction,
+      minResourceFee: result.simulationResponse?.minResourceFee,
+    };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
 
-    analytics.trackSimulationError(errorMessage, "collectible_transfer");
+    analytics.trackSimulationError(errorMessage, analyticsCategory);
     throw error;
   }
 };

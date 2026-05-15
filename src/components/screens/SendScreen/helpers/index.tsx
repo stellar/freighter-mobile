@@ -1,4 +1,11 @@
 import Blockaid from "@blockaid/client";
+import BigNumber from "bignumber.js";
+import {
+  MINIMUM_CREATE_ACCOUNT_XLM,
+  NATIVE_TOKEN_CODE,
+} from "config/constants";
+import { TokenTypeWithCustomToken } from "config/types";
+import { isContractId } from "helpers/soroban";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useMemo } from "react";
 import { SecurityLevel } from "services/blockaid/constants";
@@ -8,6 +15,74 @@ import {
   isUnfundedDestinationError,
   type UnfundedDestinationContext,
 } from "services/blockaid/helper";
+
+/**
+ * Inputs needed to classify a send for the unfunded-destination warning.
+ * Kept minimal so the helper can be exercised directly in unit tests
+ * without standing up a full PricedBalance fixture.
+ */
+export interface BuildUnfundedContextParams {
+  selectedBalance:
+    | {
+        tokenCode?: string;
+        tokenType: TokenTypeWithCustomToken;
+      }
+    | undefined;
+  isDestinationFunded: boolean | null;
+  tokenAmount: BigNumber.Value;
+  recipientAddress?: string;
+}
+
+/**
+ * Builds the UnfundedDestinationContext that feeds the Blockaid
+ * "expected to fail" check. Returns undefined while inputs aren't ready
+ * (no balance selected, or destination funding status unknown).
+ *
+ * The `isClassicAsset` flag must be true whenever the send uses classic
+ * Stellar account semantics — native XLM, credit_alphanum assets, AND
+ * SAC-wrapped classic assets (a SAC's `transfer` still fails to an
+ * unfunded G-account). Only pure Soroban custom tokens qualify as
+ * non-classic; the wallet tags those with tokenType === CUSTOM_TOKEN at
+ * import time (see backend.getTokenMetadata).
+ *
+ * The `isContractDestination` flag is true when the recipient is a
+ * contract (C...) address. Contract destinations never trigger the
+ * warning because their balances live in the token contract's storage —
+ * there's no classic account to be "unfunded".
+ */
+export function buildUnfundedContext({
+  selectedBalance,
+  isDestinationFunded,
+  tokenAmount,
+  recipientAddress,
+}: BuildUnfundedContextParams): UnfundedDestinationContext | undefined {
+  if (!selectedBalance || isDestinationFunded === null) {
+    return undefined;
+  }
+
+  const assetCode = selectedBalance.tokenCode || "unknown";
+  const canCreateAccountWithAmount =
+    assetCode === NATIVE_TOKEN_CODE
+      ? new BigNumber(tokenAmount).isGreaterThanOrEqualTo(
+          MINIMUM_CREATE_ACCOUNT_XLM,
+        )
+      : undefined;
+
+  const isClassicAsset =
+    selectedBalance.tokenType !== TokenTypeWithCustomToken.CUSTOM_TOKEN;
+
+  const isContractDestination = Boolean(
+    recipientAddress && isContractId(recipientAddress),
+  );
+
+  return {
+    assetCode,
+    isDestinationFunded,
+    canCreateAccountWithAmount,
+    isClassicAsset,
+    isContractDestination,
+  };
+}
 
 function getTransactionSecurityWarnings(
   assessment: ReturnType<typeof assessTransactionSecurity>,
