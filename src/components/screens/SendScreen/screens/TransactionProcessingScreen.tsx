@@ -65,7 +65,8 @@ const TransactionProcessingScreen: React.FC<
   const navigation = useNavigation();
   const { network, allAccounts } = useAuthenticationStore();
 
-  const { recipientAddress, recipientName } = useTransactionSettingsStore();
+  const { recipientAddress, federationAddress, recipientName } =
+    useTransactionSettingsStore();
 
   const {
     isSubmitting,
@@ -107,7 +108,12 @@ const TransactionProcessingScreen: React.FC<
     } else if (transactionHash) {
       setStatus(TransactionStatus.SENT);
       if (!isSelfOwnedRecipient) {
-        addRecentAddress(recipientAddress, recipientName || undefined);
+        // Persist the most meaningful label: custom recipient name first,
+        // then federation address as a fallback.
+        addRecentAddress(
+          recipientAddress,
+          recipientName || federationAddress || undefined,
+        );
       }
     } else if (isContractAddress && !isSubmitting) {
       setStatus(TransactionStatus.UNSUPPORTED);
@@ -121,6 +127,7 @@ const TransactionProcessingScreen: React.FC<
     isContractAddress,
     network,
     recipientAddress,
+    federationAddress,
     recipientName,
     isSelfOwnedRecipient,
     addRecentAddress,
@@ -236,7 +243,7 @@ const TransactionProcessingScreen: React.FC<
                     {getMessageText()}
                   </Text>
                   <Text xl medium primary>
-                    {recipientName || slicedAddress}
+                    {recipientName || federationAddress || slicedAddress}
                   </Text>
                 </View>
               </View>

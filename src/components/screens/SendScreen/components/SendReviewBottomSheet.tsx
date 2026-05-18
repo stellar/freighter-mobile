@@ -23,7 +23,11 @@ import { isLiquidityPool } from "helpers/balances";
 import { pxValue } from "helpers/dimensions";
 import { formatTokenForDisplay, formatFiatAmount } from "helpers/formatAmount";
 import { computeTotalFeeXlm, isSorobanTransaction } from "helpers/soroban";
-import { truncateAddress, isMuxedAccount } from "helpers/stellar";
+import {
+  truncateAddress,
+  truncateFedAddress,
+  isMuxedAccount,
+} from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
@@ -41,7 +45,6 @@ type SendReviewBottomSheetProps = {
   type: SendType;
   selectedBalance?: PricedBalance;
   tokenAmount?: string;
-  recipientName?: string;
   selectedCollectible?: CollectibleType;
   /**
    * Indicates if a required memo is missing from the transaction
@@ -85,7 +88,6 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   type,
   selectedBalance,
   tokenAmount,
-  recipientName,
   selectedCollectible,
   isRequiredMemoMissing,
   onBannerPress,
@@ -96,8 +98,13 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
-  const { recipientAddress, transactionMemo, transactionFee } =
-    useTransactionSettingsStore();
+  const {
+    recipientAddress,
+    federationAddress,
+    recipientName,
+    transactionMemo,
+    transactionFee,
+  } = useTransactionSettingsStore();
   const { account } = useGetActiveAccount();
   const { copyToClipboard } = useClipboard();
   const slicedAddress = truncateAddress(recipientAddress, 4, 4);
@@ -225,6 +232,44 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
    */
 
   const isRecipientMuxed = isMuxedAccount(recipientAddress);
+
+  /**
+   * Renders the recipient display label. Priority order:
+   * 1. recipientName (wallet nicknames or custom contact labels)
+   * 2. federationAddress (truncated, when no custom name is set)
+   * 3. The truncated public key alone (fallback)
+   */
+  const renderRecipientLabel = () => {
+    if (recipientName) {
+      return (
+        <>
+          <Text xl medium numberOfLines={2}>
+            {recipientName}
+          </Text>
+          <Text md medium secondary numberOfLines={1}>
+            {slicedAddress}
+          </Text>
+        </>
+      );
+    }
+    if (federationAddress) {
+      return (
+        <>
+          <Text xl medium>
+            {truncateFedAddress(federationAddress)}
+          </Text>
+          <Text md medium secondary>
+            {slicedAddress}
+          </Text>
+        </>
+      );
+    }
+    return (
+      <Text xl medium>
+        {slicedAddress}
+      </Text>
+    );
+  };
 
   const transactionDetailsList: ListItemProps[] = useMemo(
     () =>
@@ -389,16 +434,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
               publicAddress={recipientAddress}
               hasDarkBackground
             />
-            <View className="flex-1">
-              <Text xl medium numberOfLines={recipientName ? 2 : 1}>
-                {recipientName || slicedAddress}
-              </Text>
-              {recipientName && (
-                <Text md medium secondary numberOfLines={2}>
-                  {slicedAddress}
-                </Text>
-              )}
-            </View>
+            <View className="flex-1">{renderRecipientLabel()}</View>
           </View>
         </View>
       </View>

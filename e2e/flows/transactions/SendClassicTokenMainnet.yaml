@@ -53,10 +53,10 @@ tags:
 # Select token first
 - extendedWaitUntil:
     visible:
-      id: send-token-option-XLM
+      id: token-option-XLM
     timeout: 30000
 - tapOn:
-    id: send-token-option-XLM
+    id: token-option-XLM
 
 # Wait for recipient search screen
 - extendedWaitUntil:

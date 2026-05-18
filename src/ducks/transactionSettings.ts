@@ -6,9 +6,11 @@ import { create } from "zustand";
 
 const INITIAL_TRANSACTION_SETTINGS_STATE = {
   transactionMemo: "",
+  transactionMemoType: "",
   transactionFee: MIN_TRANSACTION_FEE,
   transactionTimeout: DEFAULT_TRANSACTION_TIMEOUT,
   recipientAddress: "",
+  federationAddress: "",
   recipientName: "",
   selectedTokenId: "",
   selectedCollectibleDetails: {
@@ -26,24 +28,32 @@ const INITIAL_TRANSACTION_SETTINGS_STATE = {
  *
  * @interface TransactionSettingsState
  * @property {string} transactionMemo - Memo text to include with the transaction
+ * @property {string} transactionMemoType - Memo type: "text" | "id" | "hash" | "" (from federation record)
  * @property {string} transactionFee - Fee amount for the transaction (in XLM)
  * @property {number} transactionTimeout - Timeout in seconds for the transaction
- * @property {string} recipientAddress - Recipient address for the transaction
+ * @property {string} recipientAddress - Recipient address for the transaction (resolved G... public key)
+ * @property {string} federationAddress - Original federation address (user*domain) if applicable
+ * @property {string} recipientName - Display name for the recipient contact (e.g. wallet name)
  * @property {string} selectedTokenId - ID of the token selected for the transaction
  * @property {string} selectedCollectibleDetails - collection ID and token ID of the collectible selected for the transaction
  * @property {Function} saveMemo - Function to save the memo value
+ * @property {Function} saveMemoType - Function to save the memo type
  * @property {Function} saveTransactionFee - Function to save the transaction fee value
  * @property {Function} saveTransactionTimeout - Function to save the transaction timeout value
  * @property {Function} saveRecipientAddress - Function to save the recipient address
+ * @property {Function} saveFederationAddress - Function to save the federation address
+ * @property {Function} saveRecipientName - Function to save the recipient display name
  * @property {Function} saveSelectedTokenId - Function to save the selected token ID
- * @property {Function} saveSelectedCollectibleDetails - Function to save the selected collectilbe details
+ * @property {Function} saveSelectedCollectibleDetails - Function to save the selected collectible details
  * @property {Function} resetSettings - Function to reset all settings to default values
  */
 interface TransactionSettingsState {
   transactionMemo: string;
+  transactionMemoType: string;
   transactionFee: string;
   transactionTimeout: number;
   recipientAddress: string;
+  federationAddress: string;
   recipientName: string;
   selectedTokenId: string;
   selectedCollectibleDetails: {
@@ -53,9 +63,11 @@ interface TransactionSettingsState {
   feeManuallyChanged: boolean;
 
   saveMemo: (memo: string) => void;
+  saveMemoType: (memoType: string) => void;
   saveTransactionFee: (fee: string) => void;
   saveTransactionTimeout: (timeout: number) => void;
   saveRecipientAddress: (address: string) => void;
+  saveFederationAddress: (address: string) => void;
   saveRecipientName: (name: string) => void;
   saveSelectedTokenId: (tokenId: string) => void;
   saveSelectedCollectibleDetails: (collectibleDetails: {
@@ -82,6 +94,12 @@ export const useTransactionSettingsStore = create<TransactionSettingsState>(
     saveMemo: (transactionMemo) => set({ transactionMemo }),
 
     /**
+     * Saves the memo type for a transaction (from federation record or user selection)
+     * @param {string} memoType - "text" | "id" | "hash" | ""
+     */
+    saveMemoType: (memoType) => set({ transactionMemoType: memoType }),
+
+    /**
      * Saves the transaction fee amount
      * @param {string} fee - The fee amount to save (in XLM)
      */
@@ -96,12 +114,18 @@ export const useTransactionSettingsStore = create<TransactionSettingsState>(
 
     /**
      * Saves the recipient address for the transaction
-     * @param {string} address - The recipient address
+     * @param {string} address - The recipient address (resolved G... public key)
      */
     saveRecipientAddress: (address) => set({ recipientAddress: address }),
 
     /**
-     * Saves the recipient display name for the transaction
+     * Saves the original federation address for display purposes
+     * @param {string} address - The federation address (user*domain)
+     */
+    saveFederationAddress: (address) => set({ federationAddress: address }),
+
+    /**
+     * Saves the recipient display name (e.g. wallet name or contact name)
      * @param {string} name - The recipient display name
      */
     saveRecipientName: (name) => set({ recipientName: name }),

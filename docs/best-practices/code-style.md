@@ -62,6 +62,29 @@ handler. See `anti-patterns.md` for examples. Note:
 (`eslint.config.mjs`) — this is a reviewer-enforced convention, not a
 linter-enforced rule.
 
+**Async event handlers**: When a component prop expects a `void`-returning
+callback (e.g. `onPress`, `onChangeText`) but the work is async, wrap the call
+in a block-bodied arrow function so the handler returns `undefined`, then attach
+a `.catch()` for error handling. Never use the `void` operator to swallow the
+promise — it bypasses the floating-promise convention above.
+
+```tsx
+// Wrong — `no-misused-promises` will flag this, the implicit return is the promise
+<Button onPress={() => handleAsyncAction(id)} />
+
+// Wrong — uses `void` to suppress the lint error and silently drops failures
+<Button onPress={() => void handleAsyncAction(id)} />
+
+// Correct — block body returns undefined; .catch() reports failures
+<Button
+  onPress={() => {
+    handleAsyncAction(id).catch((error) => {
+      logger.warn("Component", "Action failed", error);
+    });
+  }}
+/>
+```
+
 **No unsafe assignments/calls/returns**: Enforced in production code. Relaxed
 only in test files.
 

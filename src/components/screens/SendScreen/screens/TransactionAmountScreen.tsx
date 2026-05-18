@@ -55,7 +55,11 @@ import {
 } from "helpers/formatAmount";
 import { checkContractMuxedSupport } from "helpers/muxedAddress";
 import { isSorobanTransaction } from "helpers/soroban";
-import { isMuxedAccount } from "helpers/stellar";
+import {
+  isFederationAddress,
+  isMuxedAccount,
+  truncateFedAddress,
+} from "helpers/stellar";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -114,19 +118,21 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const {
     transactionFee,
     recipientAddress,
+    federationAddress,
     recipientName,
     selectedTokenId,
     transactionMemo,
     saveSelectedTokenId,
     saveRecipientAddress,
+    saveFederationAddress,
     saveRecipientName,
+    saveMemoType,
     saveSelectedCollectibleDetails,
     saveMemo,
     resetSettings,
   } = useTransactionSettingsStore();
 
-  const { resetSendRecipient, isDestinationFunded, federationAddress } =
-    useSendRecipientStore();
+  const { resetSendRecipient, isDestinationFunded } = useSendRecipientStore();
   const { fetchAccountHistory } = useHistoryStore();
 
   // Ensure defaults when entering the screen
@@ -140,9 +146,17 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     saveRecipientAddress(
       typeof routeRecipientAddress === "string" ? routeRecipientAddress : "",
     );
-    saveRecipientName(
-      routeRecipientName !== undefined ? routeRecipientName : "",
-    );
+    // routeRecipientName carries a display label. Route it to federationAddress
+    // when it looks like a federation address (user*domain), otherwise treat it
+    // as a wallet/contact nickname.
+    if (routeRecipientName && isFederationAddress(routeRecipientName)) {
+      saveFederationAddress(routeRecipientName);
+      saveRecipientName("");
+    } else {
+      saveFederationAddress("");
+      saveRecipientName(routeRecipientName ?? "");
+    }
+    saveMemoType("");
   }, [
     tokenId,
     routeRecipientAddress,
@@ -150,7 +164,9 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     saveSelectedTokenId,
     saveSelectedCollectibleDetails,
     saveRecipientAddress,
+    saveFederationAddress,
     saveRecipientName,
+    saveMemoType,
   ]);
 
   const {
@@ -671,6 +687,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         // Get fresh settings values each time the function is called
         const {
           transactionMemo: freshTransactionMemo,
+          transactionMemoType: freshTransactionMemoType,
           transactionFee: freshTransactionFee,
           transactionTimeout: freshTransactionTimeout,
           recipientAddress: storeRecipientAddress,
@@ -681,6 +698,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           selectedBalance,
           recipientAddress: storeRecipientAddress,
           transactionMemo: freshTransactionMemo,
+          transactionMemoType: freshTransactionMemoType,
           transactionFee: freshTransactionFee,
           transactionTimeout: freshTransactionTimeout,
           network,
@@ -1002,7 +1020,13 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     secondaryConversionAmount.length + availableAmountText.length >
       SECONDARY_AMOUNT_STACK_CHAR_THRESHOLD;
 
-  const recipientDisplayName = recipientName || federationAddress || undefined;
+  // recipientName takes priority — it carries wallet nicknames and future
+  // user-editable custom labels. Falls back to the federation address when
+  // no custom name is set, then to undefined (the row will show the truncated
+  // public key on its own).
+  const recipientDisplayName =
+    recipientName ||
+    (federationAddress ? truncateFedAddress(federationAddress) : undefined);
 
   return (
     <BaseLayout useKeyboardAvoidingView insets={{ top: false }}>
@@ -1213,7 +1237,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             type={SendType.Token}
             selectedBalance={selectedBalance}
             tokenAmount={tokenAmount}
-            recipientName={recipientDisplayName}
             onBannerPress={bannerContent?.onPress}
             // is passed here so the entire layout is ready when modal mounts, otherwise leaves a gap at the bottom related to the warning size
             isRequiredMemoMissing={isRequiredMemoMissing}

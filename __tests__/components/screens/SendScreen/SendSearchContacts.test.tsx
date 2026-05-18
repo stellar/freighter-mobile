@@ -80,23 +80,32 @@ const mockSearchResults = [
 ];
 
 // Create a function to get the useSendStore implementation
-const getSendStoreMock = (overrides = {}) =>
-  jest.fn().mockReturnValue({
+const getSendStoreMock = (overrides = {}) => {
+  const state = {
     recentAddresses: [],
     searchResults: [],
     searchError: null,
+    isSearching: false,
+    isValidDestination: false,
+    isDestinationFunded: null,
+    destinationAddress: "",
+    federationAddress: "",
+    federationMemo: "",
+    federationMemoType: "",
     loadRecentAddresses: mockLoadRecentAddresses,
     searchAddress: mockSearchAddress,
     addRecentAddress: mockAddRecentAddress,
     setDestinationAddress: mockSetDestinationAddress,
     prepareForSearch: mockPrepareForSearch,
     resetSendRecipient: mockReset,
-    isSearching: false,
-    isValidDestination: false,
-    isDestinationFunded: null,
-    destinationAddress: "",
     ...overrides,
-  });
+  };
+  const fn = jest.fn().mockReturnValue(state) as jest.Mock & {
+    getState: jest.Mock;
+  };
+  fn.getState = jest.fn().mockReturnValue(state);
+  return fn;
+};
 
 jest.mock("ducks/sendRecipient", () => ({
   useSendRecipientStore: getSendStoreMock(),
@@ -104,7 +113,10 @@ jest.mock("ducks/sendRecipient", () => ({
 
 const getTransactionSettingsStoreMock = (overrides = {}) => ({
   saveRecipientAddress: jest.fn(),
+  saveFederationAddress: jest.fn(),
   saveRecipientName: jest.fn(),
+  saveMemo: jest.fn(),
+  saveMemoType: jest.fn(),
   saveSelectedCollectibleDetails: jest.fn(),
   selectedCollectibleDetails: { collectionAddress: "", tokenId: "" },
   selectedTokenId: "",
@@ -114,7 +126,10 @@ const getTransactionSettingsStoreMock = (overrides = {}) => ({
 jest.mock("ducks/transactionSettings", () => ({
   useTransactionSettingsStore: jest.fn().mockReturnValue({
     saveRecipientAddress: jest.fn(),
+    saveFederationAddress: jest.fn(),
     saveRecipientName: jest.fn(),
+    saveMemo: jest.fn(),
+    saveMemoType: jest.fn(),
     saveSelectedCollectibleDetails: jest.fn(),
     selectedCollectibleDetails: { collectionAddress: "", tokenId: "" },
     selectedTokenId: "",
@@ -546,6 +561,38 @@ describe("SendSearchContacts", () => {
       });
     });
 
+    it("saves the wallet nickname as recipientName when wallet row is tapped", async () => {
+      const mockSaveRecipientName = jest.fn();
+      const mockSaveFederationAddress = jest.fn();
+
+      jest
+        .spyOn(transactionSettingsDuck, "useTransactionSettingsStore")
+        .mockReturnValue(
+          getTransactionSettingsStoreMock({
+            saveRecipientName: mockSaveRecipientName,
+            saveFederationAddress: mockSaveFederationAddress,
+          }),
+        );
+
+      renderWithProviders(
+        <NavigationContainer>
+          <SendSearchContacts navigation={mockNavigation} route={mockRoute} />
+        </NavigationContainer>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("My Second Wallet")).toBeTruthy();
+      });
+
+      await userEvent.press(screen.getByTestId("my-wallet-row-wallet-1"));
+
+      await waitFor(() => {
+        // Wallet nicknames go into recipientName, not federationAddress
+        expect(mockSaveRecipientName).toHaveBeenCalledWith("My Second Wallet");
+        expect(mockSaveFederationAddress).toHaveBeenCalledWith("");
+      });
+    });
+
     it("does not save recipientName when contact name is federation address", async () => {
       const mockSaveRecipientAddress = jest.fn();
       const mockSaveRecipientName = jest.fn();
@@ -563,19 +610,35 @@ describe("SendSearchContacts", () => {
           }),
         );
 
-      jest.spyOn(sendDuck, "useSendRecipientStore").mockImplementation(
-        getSendStoreMock({
-          recentAddresses: [
-            {
-              id: "recent-fed",
-              address:
-                "GDAS7BS4XKW27H2K5C25V6ZU46FCFGBTFQGFDZURAKVPA6QYQG4GTWBC",
-              name: "alice*example.com",
-            },
-          ],
-          loadRecentAddresses: mockLoadRecentAddresses,
-        }),
-      );
+      const sendStoreMock = getSendStoreMock({
+        recentAddresses: [
+          {
+            id: "recent-fed",
+            address: "GDAS7BS4XKW27H2K5C25V6ZU46FCFGBTFQGFDZURAKVPA6QYQG4GTWBC",
+            name: "alice*example.com",
+          },
+        ],
+        // Re-resolution returns the same address; handleContactPress reads
+        // searchResults via useSendRecipientStore.getState() to pick the
+        // (possibly remapped) resolved key.
+        searchResults: [
+          {
+            id: "search-fed",
+            address: "GDAS7BS4XKW27H2K5C25V6ZU46FCFGBTFQGFDZURAKVPA6QYQG4GTWBC",
+            name: "alice*example.com",
+          },
+        ],
+        loadRecentAddresses: mockLoadRecentAddresses,
+      });
+      jest
+        .spyOn(sendDuck, "useSendRecipientStore")
+        .mockImplementation(sendStoreMock);
+      // jest.spyOn replaces the hook function but not the static .getState
+      // helper attached to it; re-bind it so the source's getState() call
+      // returns the same overridden state.
+      (
+        sendDuck.useSendRecipientStore as unknown as { getState: jest.Mock }
+      ).getState = sendStoreMock.getState;
 
       renderWithProviders(
         <NavigationContainer>

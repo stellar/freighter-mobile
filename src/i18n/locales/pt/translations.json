@@ -1102,7 +1102,8 @@
       "transactionTimeoutRequired": "Tempo limite da transação é obrigatório",
       "networkRequired": "Rede é obrigatória",
       "minimumXlmForNewAccount": "Mínimo de 1 XLM necessário para criar uma nova conta",
-      "invalidDecimals": "Decimais inválidos ou ausentes para token personalizado"
+      "invalidDecimals": "Decimais inválidos ou ausentes para token personalizado",
+      "invalidFederationMemo": "O servidor de federação retornou um memo inválido. Por favor, verifique o endereço e tente novamente."
     }
   },
   "welcomeBanner": {

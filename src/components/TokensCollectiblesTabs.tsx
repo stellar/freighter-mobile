@@ -64,7 +64,7 @@ interface Props {
   feeContext?: TransactionContext;
   /** Whether to disable inner scrolling for both the tokens and collectibles grids */
   disableInnerScrolling?: boolean;
-  /** Optional prefix for balance row testIDs (e.g. "home-token" → "home-token-XLM") */
+  /** Optional testID prefix forwarded to each balance row (e.g. "token-option" → "token-option-XLM") */
   balanceRowTestIDPrefix?: string;
 }
 
