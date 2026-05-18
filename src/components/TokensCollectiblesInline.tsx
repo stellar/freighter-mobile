@@ -95,13 +95,17 @@ export const TokensCollectiblesInline: React.FC<
       className="flex-1"
       showsVerticalScrollIndicator={false}
       stickySectionHeadersEnabled={false}
-      contentContainerStyle={{ paddingHorizontal: pxValue(DEFAULT_PADDING) }}
+      keyboardShouldPersistTaps="handled"
+      contentContainerStyle={{
+        paddingHorizontal: pxValue(DEFAULT_PADDING),
+        flexGrow: 1,
+      }}
       // Keep token balances visible in the header while collectibles are loading/error;
       // only the collectibles sections switch to empty/error/loading states.
       sections={isLoading || !!error ? [] : collectibleSections}
       keyExtractor={(item) => `${item.collectionAddress}-${item.tokenId}`}
       ListHeaderComponent={
-        <>
+        <View>
           <View className="flex-row items-center gap-2 mb-3">
             <Icon.Coins03 size={16} color={themeColors.text.secondary} />
             <Text medium secondary>
@@ -125,7 +129,7 @@ export const TokensCollectiblesInline: React.FC<
               {t("collectiblesGrid.title")}
             </Text>
           </View>
-        </>
+        </View>
       }
       ListEmptyComponent={renderCollectiblesEmptyState()}
       renderSectionHeader={({ section }) => (

@@ -141,7 +141,10 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
 
   return (
     <BaseLayout insets={{ top: false, bottom: false }}>
-      <View className="flex-1 gap-8 mt-5 max-xs:mt-2 max-xs:gap-4">
+      <View
+        testID="token-details-screen"
+        className="flex-1 gap-8 mt-5 max-xs:mt-2 max-xs:gap-4"
+      >
         <TokenBalanceHeader
           tokenId={tokenId}
           tokenSymbol={tokenSymbol}
@@ -194,7 +197,13 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
             </View>
           )}
           <View className="flex-1">
-            <Button tertiary xl isFullWidth onPress={handleSendPress}>
+            <Button
+              tertiary
+              xl
+              isFullWidth
+              onPress={handleSendPress}
+              testID="token-details-send-button"
+            >
               {t("tokenDetailsScreen.send")}
             </Button>
           </View>

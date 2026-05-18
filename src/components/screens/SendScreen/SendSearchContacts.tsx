@@ -60,6 +60,7 @@ type ContactListItem =
       id: string;
       address: string;
       name?: string;
+      itemIndex: number;
     }
   | { type: ContactListItemType.RecentHeader }
   | {
@@ -296,8 +297,12 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
 
     if (isTyping && searchResults.length > 0) {
       items.push({ type: ContactListItemType.ResultsHeader });
-      searchResults.forEach((result) => {
-        items.push({ type: ContactListItemType.Suggestion, ...result });
+      searchResults.forEach((result, itemIndex) => {
+        items.push({
+          type: ContactListItemType.Suggestion,
+          ...result,
+          itemIndex,
+        });
       });
     }
 
@@ -347,6 +352,7 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
             name={item.name}
             onPress={() => handleContactPress(item.address, item.name)}
             className="mb-[24px]"
+            testID={`search-suggestion-${item.itemIndex}`}
           />
         );
       }

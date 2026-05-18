@@ -333,6 +333,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
             network={network}
             onTokenPress={handleTokenPress}
             onCollectiblePress={handleCollectiblePress}
+            balanceRowTestIDPrefix="home-token"
           />
         </ScrollView>
 

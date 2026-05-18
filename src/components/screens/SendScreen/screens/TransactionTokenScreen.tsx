@@ -38,7 +38,7 @@ const TransactionTokenScreen: React.FC<TransactionTokenScreenProps> = ({
       return;
     }
 
-    navigation.navigate(SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN, {
+    navigation.push(SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN, {
       transition: ScreenTransition.SlideFromRight,
     });
   };
@@ -51,7 +51,7 @@ const TransactionTokenScreen: React.FC<TransactionTokenScreenProps> = ({
     // Clear token selection when selecting a collectible to prevent cross-flow contamination
     saveSelectedTokenId("");
 
-    navigation.navigate(SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN, {
+    navigation.push(SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN, {
       transition: ScreenTransition.SlideFromRight,
     });
   };
