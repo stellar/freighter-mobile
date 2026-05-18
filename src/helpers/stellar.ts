@@ -15,9 +15,69 @@ import { isContractId } from "helpers/soroban";
  * @param address The address to check
  * @returns True if the address is a federation address
  */
+const hasInvalidFederationChars = (value: string): boolean =>
+  value.split("").some((char) => char === "@" || char === "*" || char <= " ");
+
 export const isFederationAddress = (address: string): boolean => {
-  const federationAddressRegex = /^[^*@]+\*[^*@]+(\.[^*@]+)+$/;
-  return federationAddressRegex.test(address);
+  if (!address) {
+    return false;
+  }
+
+  // Reject non-ASCII to prevent homoglyph spoofing (SEP-0002 addresses are ASCII-only)
+  if (address.split("").some((char) => char.charCodeAt(0) > 127)) {
+    return false;
+  }
+
+  const separatorIndex = address.indexOf("*");
+
+  if (
+    separatorIndex <= 0 ||
+    separatorIndex !== address.lastIndexOf("*") ||
+    separatorIndex === address.length - 1
+  ) {
+    return false;
+  }
+
+  const localPart = address.slice(0, separatorIndex);
+  const domainPart = address.slice(separatorIndex + 1);
+
+  if (
+    hasInvalidFederationChars(localPart) ||
+    hasInvalidFederationChars(domainPart)
+  ) {
+    return false;
+  }
+
+  const domainLabels = domainPart.split(".");
+
+  return (
+    domainLabels.length > 1 &&
+    domainLabels.every(
+      (label) => label.length > 0 && !hasInvalidFederationChars(label),
+    )
+  );
+};
+
+/**
+ * Truncates a long federation address for display.
+ * Keeps the local part up to maxLocal chars and the domain up to maxDomain chars.
+ * e.g. "averylongusername*averylongdomain.com" → "averylon…*averylon…"
+ */
+export const truncateFedAddress = (
+  address: string,
+  maxLocal = 10,
+  maxDomain = 12,
+): string => {
+  if (!address) return address;
+  const starIdx = address.indexOf("*");
+  if (starIdx === -1) return address;
+  const local = address.slice(0, starIdx);
+  const domain = address.slice(starIdx + 1);
+  const truncLocal =
+    local.length > maxLocal ? `${local.slice(0, maxLocal)}…` : local;
+  const truncDomain =
+    domain.length > maxDomain ? `${domain.slice(0, maxDomain)}…` : domain;
+  return `${truncLocal}*${truncDomain}`;
 };
 
 /**

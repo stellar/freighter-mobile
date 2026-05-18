@@ -23,7 +23,11 @@ import { isLiquidityPool } from "helpers/balances";
 import { pxValue } from "helpers/dimensions";
 import { formatTokenForDisplay, formatFiatAmount } from "helpers/formatAmount";
 import { computeTotalFeeXlm, isSorobanTransaction } from "helpers/soroban";
-import { truncateAddress, isMuxedAccount } from "helpers/stellar";
+import {
+  truncateAddress,
+  truncateFedAddress,
+  isMuxedAccount,
+} from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
@@ -94,8 +98,12 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
-  const { recipientAddress, transactionMemo, transactionFee } =
-    useTransactionSettingsStore();
+  const {
+    recipientAddress,
+    federationAddress,
+    transactionMemo,
+    transactionFee,
+  } = useTransactionSettingsStore();
   const { account } = useGetActiveAccount();
   const { copyToClipboard } = useClipboard();
   const slicedAddress = truncateAddress(recipientAddress, 4, 4);
@@ -388,9 +396,20 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
               hasDarkBackground
             />
             <View className="flex-1">
-              <Text xl medium>
-                {slicedAddress}
-              </Text>
+              {federationAddress ? (
+                <>
+                  <Text xl medium>
+                    {truncateFedAddress(federationAddress)}
+                  </Text>
+                  <Text md medium secondary>
+                    {slicedAddress}
+                  </Text>
+                </>
+              ) : (
+                <Text xl medium>
+                  {slicedAddress}
+                </Text>
+              )}
             </View>
           </View>
         </View>

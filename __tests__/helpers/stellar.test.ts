@@ -22,6 +22,7 @@ import {
   signAuthEntry,
   signMessage,
   truncateAddress,
+  truncateFedAddress,
 } from "helpers/stellar";
 
 jest.mock("@stellar/stellar-sdk", () => {
@@ -131,8 +132,19 @@ describe("Stellar helpers", () => {
       expect(isFederationAddress("user*domain")).toBe(false);
       expect(isFederationAddress("userdomain.com")).toBe(false);
       expect(isFederationAddress("user*domain*com")).toBe(false);
+      expect(isFederationAddress("user*domain..com")).toBe(false);
+      expect(isFederationAddress("user*domain .com")).toBe(false);
       expect(isFederationAddress("")).toBe(false);
       expect(isFederationAddress(validEd25519)).toBe(false);
+    });
+
+    it("should reject non-ASCII characters to prevent homoglyph spoofing", () => {
+      // Cyrillic lookalike for 'a' (U+0430)
+      expect(isFederationAddress("userа*domain.com")).toBe(false);
+      // Ellipsis character (U+2026)
+      expect(isFederationAddress("user…*domain.com")).toBe(false);
+      // Unicode asterisk lookalike (U+204E)
+      expect(isFederationAddress("user⁎domain.com")).toBe(false);
     });
   });
 
@@ -290,6 +302,44 @@ describe("Stellar helpers", () => {
       expect(truncateAddress("")).toBe("");
       expect(truncateAddress(null as unknown as string)).toBe("");
       expect(truncateAddress(undefined as unknown as string)).toBe("");
+    });
+  });
+
+  describe("truncateFedAddress", () => {
+    it("should return the address unchanged if short enough", () => {
+      expect(truncateFedAddress("user*domain.com")).toBe("user*domain.com");
+    });
+
+    it("should truncate a long local part", () => {
+      expect(truncateFedAddress("averylongusername*domain.com")).toBe(
+        "averylongu…*domain.com",
+      );
+    });
+
+    it("should truncate a long domain part", () => {
+      expect(truncateFedAddress("user*averylongdomainname.com")).toBe(
+        "user*averylongdom…",
+      );
+    });
+
+    it("should truncate both parts when both are long", () => {
+      expect(
+        truncateFedAddress("averylongusername*averylongdomainname.com"),
+      ).toBe("averylongu…*averylongdom…");
+    });
+
+    it("should respect custom maxLocal and maxDomain params", () => {
+      expect(truncateFedAddress("abcdefgh*domain.com", 4, 6)).toBe(
+        "abcd…*domain…",
+      );
+    });
+
+    it("should return the input unchanged if it has no star", () => {
+      expect(truncateFedAddress("nodomain")).toBe("nodomain");
+    });
+
+    it("should return the input unchanged for empty string", () => {
+      expect(truncateFedAddress("")).toBe("");
     });
   });
 
