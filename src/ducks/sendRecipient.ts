@@ -101,8 +101,10 @@ export const useSendRecipientStore = create<SendStore>((set, get) => ({
         })
         .filter(
           (contact) =>
-            !activePublicKey ||
-            !isSameAccount(contact.address, activePublicKey),
+            typeof contact.address === "string" &&
+            contact.address.length > 0 &&
+            (!activePublicKey ||
+              !isSameAccount(contact.address, activePublicKey)),
         );
 
       set({ recentAddresses: contactList });
