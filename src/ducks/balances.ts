@@ -14,6 +14,7 @@ import {
   sortBalances,
 } from "helpers/balances";
 import { isMainnet } from "helpers/networks";
+import { ApiError, logApiError } from "services/apiFactory";
 import { fetchBalances } from "services/backend";
 import { dataStorage } from "services/storage/storageFactory";
 import { create } from "zustand";
@@ -349,9 +350,37 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
         error: null,
       });
     } catch (error) {
+      // Backend API errors come from the axios interceptor as plain ApiError
+      // objects (not Error instances) with the server's reason in `data`.
+      const apiError =
+        typeof error === "object" &&
+        error !== null &&
+        "isNetworkError" in error &&
+        "status" in error
+          ? (error as ApiError)
+          : null;
+
+      const message =
+        apiError?.message ??
+        (error instanceof Error ? error.message : "Failed to fetch balances");
+
+      logApiError(
+        "balances.fetchAccountBalances",
+        "Network unreachable while fetching account balances",
+        "Failed to fetch account balances",
+        error,
+        {
+          network: params.network,
+          ...(apiError && {
+            status: apiError.status,
+            isNetworkError: apiError.isNetworkError,
+            responseData: apiError.data,
+          }),
+        },
+      );
+
       set({
-        error:
-          error instanceof Error ? error.message : "Failed to fetch balances",
+        error: message,
         isLoading: false,
       });
     }
