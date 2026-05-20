@@ -232,6 +232,7 @@ jobs:
       # - SendClassicTokenMainnet: Send XLM on mainnet (small amount: 0.000001 XLM)
       # - SwapClassicTokenMainnet: Swap tokens on mainnet (small amount: 0.000001 XLM)
       # - ForgotPasswordWarning: Lock screen forgot password confirmation modal
+      # - SendFederatedAddress: Send XLM and USDC to a federated address on mainnet (small amount: 0.000001 each)
       # - SignMessageMockDapp: WalletConnect sign message (requires mock server)
       # - SignAuthEntryMockDapp: WalletConnect sign auth entry (requires mock server)
       # Note: mock-dapp tests use shard-index:0, to run sequentially in isolation,
@@ -239,43 +240,47 @@ jobs:
       matrix:
         include:
           - shard-index: 0
-            shard-total: 8
+            shard-total: 9
             flow-name: LaunchAndInspect
             requires-mock-server: false
           - shard-index: 1
-            shard-total: 8
+            shard-total: 9
             flow-name: CreateWallet
             requires-mock-server: false
           - shard-index: 2
-            shard-total: 8
+            shard-total: 9
             flow-name: ImportWallet
             requires-mock-server: false
           - shard-index: 3
-            shard-total: 8
+            shard-total: 9
             flow-name: ImportFundedWallet
             requires-mock-server: false
           - shard-index: 4
-            shard-total: 8
+            shard-total: 9
             flow-name: SwitchToTestnet
             requires-mock-server: false
           - shard-index: 5
-            shard-total: 8
+            shard-total: 9
             flow-name: SendClassicTokenMainnet
             requires-mock-server: false
           - shard-index: 6
-            shard-total: 8
+            shard-total: 9
             flow-name: SwapClassicTokenMainnet
             requires-mock-server: false
           - shard-index: 7
-            shard-total: 8
+            shard-total: 9
             flow-name: ForgotPasswordWarning
             requires-mock-server: false
+          - shard-index: 8
+            shard-total: 9
+            flow-name: SendFederatedAddress
+            requires-mock-server: false
           - shard-index: 0
-            shard-total: 8
+            shard-total: 9
             flow-name: SignMessageMockDapp
             requires-mock-server: true
           - shard-index: 0
-            shard-total: 8
+            shard-total: 9
             flow-name: SignAuthEntryMockDapp
             requires-mock-server: true
 

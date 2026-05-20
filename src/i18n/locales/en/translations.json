@@ -1099,7 +1099,8 @@
       "transactionTimeoutRequired": "Transaction timeout is required",
       "networkRequired": "Network is required",
       "minimumXlmForNewAccount": "Minimum of 1 XLM required to create a new account",
-      "invalidDecimals": "Invalid or missing decimals for custom token"
+      "invalidDecimals": "Invalid or missing decimals for custom token",
+      "invalidFederationMemo": "The federation server returned an invalid memo. Please verify the address and try again."
     }
   },
   "welcomeBanner": {

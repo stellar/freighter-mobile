@@ -31,6 +31,7 @@ jest.mock("@gorhom/bottom-sheet", () => ({
 // Mock stellar helpers
 jest.mock("helpers/stellar", () => ({
   isValidStellarAddress: jest.fn().mockReturnValue(true),
+  isFederationAddress: jest.fn().mockReturnValue(false),
   truncateAddress: jest.fn(
     (address) => `${address.slice(0, 4)}...${address.slice(-4)}`,
   ),
@@ -74,10 +75,18 @@ const getSendStoreMock = (overrides = {}) =>
     recentAddresses: [],
     searchResults: [],
     searchError: null,
+    isSearching: false,
+    isValidDestination: false,
+    isDestinationFunded: null,
+    destinationAddress: "",
+    federationAddress: "",
+    federationMemo: "",
+    federationMemoType: "",
     loadRecentAddresses: mockLoadRecentAddresses,
     searchAddress: mockSearchAddress,
     addRecentAddress: mockAddRecentAddress,
     setDestinationAddress: mockSetDestinationAddress,
+    prepareForSearch: jest.fn(),
     resetSendRecipient: mockReset,
     ...overrides,
   });
@@ -88,6 +97,9 @@ jest.mock("ducks/sendRecipient", () => ({
 
 const getTransactionSettingsStoreMock = (overrides = {}) => ({
   saveRecipientAddress: jest.fn(),
+  saveFederationAddress: jest.fn(),
+  saveMemo: jest.fn(),
+  saveMemoType: jest.fn(),
   saveSelectedCollectibleDetails: jest.fn(),
   selectedCollectibleDetails: { collectionAddress: "", tokenId: "" },
   selectedTokenId: "",
@@ -97,6 +109,9 @@ const getTransactionSettingsStoreMock = (overrides = {}) => ({
 jest.mock("ducks/transactionSettings", () => ({
   useTransactionSettingsStore: jest.fn().mockReturnValue({
     saveRecipientAddress: jest.fn(),
+    saveFederationAddress: jest.fn(),
+    saveMemo: jest.fn(),
+    saveMemoType: jest.fn(),
     saveSelectedCollectibleDetails: jest.fn(),
     selectedCollectibleDetails: { collectionAddress: "", tokenId: "" },
     selectedTokenId: "",

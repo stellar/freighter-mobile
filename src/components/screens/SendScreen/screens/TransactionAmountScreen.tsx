@@ -57,7 +57,7 @@ import {
 } from "helpers/formatAmount";
 import { checkContractMuxedSupport } from "helpers/muxedAddress";
 import { isSorobanTransaction } from "helpers/soroban";
-import { isMuxedAccount } from "helpers/stellar";
+import { isMuxedAccount, truncateFedAddress } from "helpers/stellar";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -118,10 +118,13 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const {
     transactionFee,
     recipientAddress,
+    federationAddress,
     selectedTokenId,
     transactionMemo,
     saveSelectedTokenId,
     saveRecipientAddress,
+    saveFederationAddress,
+    saveMemoType,
     saveSelectedCollectibleDetails,
     saveMemo,
     resetSettings,
@@ -134,8 +137,10 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   useEffect(() => {
     // Clear collectible details when entering token flow to prevent cross-flow contamination
     saveSelectedCollectibleDetails({ collectionAddress: "", tokenId: "" });
-    // Clear recipient address when entering the screen
+    // Clear recipient, federation, and memo state when entering the screen
     saveRecipientAddress("");
+    saveFederationAddress("");
+    saveMemoType("");
 
     if (tokenId) {
       saveSelectedTokenId(tokenId);
@@ -147,6 +152,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     saveSelectedTokenId,
     saveSelectedCollectibleDetails,
     saveRecipientAddress,
+    saveFederationAddress,
+    saveMemoType,
   ]);
 
   useEffect(() => {
@@ -572,6 +579,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         // Get fresh settings values each time the function is called
         const {
           transactionMemo: freshTransactionMemo,
+          transactionMemoType: freshTransactionMemoType,
           transactionFee: freshTransactionFee,
           transactionTimeout: freshTransactionTimeout,
           recipientAddress: storeRecipientAddress,
@@ -582,6 +590,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           selectedBalance,
           recipientAddress: storeRecipientAddress,
           transactionMemo: freshTransactionMemo,
+          transactionMemoType: freshTransactionMemoType,
           transactionFee: freshTransactionFee,
           transactionTimeout: freshTransactionTimeout,
           network,
@@ -964,6 +973,11 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
               isSingleRow
               onPress={navigateToSelectContactScreen}
               address={recipientAddress}
+              name={
+                federationAddress
+                  ? truncateFedAddress(federationAddress)
+                  : undefined
+              }
               testID="send-recipient-row"
               rightElement={
                 <IconButton

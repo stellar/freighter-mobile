@@ -64,6 +64,8 @@ interface Props {
   feeContext?: TransactionContext;
   /** Whether to disable inner scrolling for both the tokens and collectibles grids */
   disableInnerScrolling?: boolean;
+  /** Optional testID prefix forwarded to each balance row (e.g. "token-option" → "token-option-XLM") */
+  balanceRowTestIDPrefix?: string;
 }
 
 /**
@@ -98,6 +100,7 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
     showSpendableAmount = false,
     feeContext = TransactionContext.Send,
     disableInnerScrolling = false,
+    balanceRowTestIDPrefix,
   }) => {
     const navigation = useNavigation<NavigationProp<RootStackParamList>>();
     const { t } = useAppTranslation();
@@ -199,6 +202,7 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
           disableInnerScrolling={disableInnerScrolling}
           showSpendableAmount={showSpendableAmount}
           feeContext={feeContext}
+          balanceRowTestIDPrefix={balanceRowTestIDPrefix}
         />
       ),
       [
@@ -208,6 +212,7 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
         showSpendableAmount,
         feeContext,
         disableInnerScrolling,
+        balanceRowTestIDPrefix,
       ],
     );
 

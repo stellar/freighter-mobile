@@ -45,6 +45,7 @@ export interface BuildPaymentTransactionParams {
   selectedBalance?: PricedBalance;
   recipientAddress?: string;
   transactionMemo?: string;
+  transactionMemoType?: string;
   transactionFee?: string;
   transactionTimeout?: number;
   network?: NETWORKS;
@@ -332,6 +333,7 @@ export const buildPaymentTransaction = async (
     selectedBalance,
     recipientAddress,
     transactionMemo: memo,
+    transactionMemoType: memoType,
     transactionFee,
     transactionTimeout,
     network,
@@ -394,7 +396,36 @@ export const buildPaymentTransaction = async (
     // For normal transactions (non-Soroban), only add memo if recipient is not M address
     // For Soroban transactions, memo handling is done in buildSorobanTransferOperation
     if (memo && !shouldUseSorobanTransfer && !isRecipientMuxed) {
-      transactionBuilder.addMemo(new Memo(Memo.text(memo).type, memo));
+      // Honour the memo type returned by the federation server so that exchange
+      // destinations that require memo_type:"id" receive the correct Stellar memo.
+      if (memoType === "id") {
+        // Memo.id validates numeric range (0..2^64-1); throw on invalid value so
+        // the send is aborted rather than silently downgraded to a text memo.
+        // A silent downgrade would cause exchange deposits to arrive at the omnibus
+        // address without being credited to the user's sub-account.
+        if (!/^\d+$/.test(memo)) {
+          throw new Error(t("transaction.errors.invalidFederationMemo"));
+        }
+        try {
+          transactionBuilder.addMemo(Memo.id(memo));
+        } catch {
+          throw new Error(t("transaction.errors.invalidFederationMemo"));
+        }
+      } else if (memoType === "hash") {
+        try {
+          const hashBytes = Buffer.from(memo, "base64");
+          if (hashBytes.length !== 32) {
+            throw new Error(t("transaction.errors.invalidFederationMemo"));
+          }
+          transactionBuilder.addMemo(Memo.hash(hashBytes));
+        } catch (error) {
+          throw error instanceof Error
+            ? error
+            : new Error(t("transaction.errors.invalidFederationMemo"));
+        }
+      } else {
+        transactionBuilder.addMemo(Memo.text(memo));
+      }
     }
 
     if (shouldUseSorobanTransfer) {
