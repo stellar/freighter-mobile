@@ -67,36 +67,43 @@ inline. All links open the same Figma file.
 ```mermaid
 flowchart TD
     Home([Home / Token Details])
-    Home --> SwapScreen["SwapAmountScreen<br/>existing · modified<br/>—<br/>Sell · useTokenFiatConverter<br/>Receive · read-only simulated value<br/>25 / 50 / 75 / Max chips<br/>Trending Tokens list — NEW"]
+    Home -->|tap 'Swap'| Swap[Swap screen — \nSell section, Receive section, 'Trending Tokens', 'Enter an amount' button]
 
-    SwapScreen -->|tap Receive dropdown<br/>or 'Select a token' CTA| Picker["SwapToScreen — NEW<br/>replaces current picker<br/>—<br/>Search input · debounced 500ms<br/>idle → Your tokens + Popular tokens<br/>active → single 'Results' section"]
-    Picker -->|select token| SwapScreen
+    Swap --->|tap Sell dropdown| SellPicker[List — 'Your tokens', balances search bar]
+    SellPicker -->|pick a token| Swap
 
-    SwapScreen -->|tap Trending row| TrendDetail["TrendingTokenDetailBottomSheet — NEW<br/>issuer · domain · 'Buy tokenCode'"]
-    TrendDetail -->|'Buy tokenCode'| SwapScreen
+    Swap --->|tap Receive dropdown, or tap 'Select a token' button| DestPicker[List — 'Your tokens', 'Popular tokens', Stellar Expert search bar]
+    DestPicker -->|pick a token| Swap
 
-    SwapScreen -->|CTA: 'Enter an amount'<br/>focus Sell TextInput · system numeric keyboard up| AmountEntry["User enters Sell amount<br/>useTokenFiatConverter · 25 / 50 / 75 / Max chips<br/>Horizon strictSendPaths simulates Receive<br/>CTA → 'Insufficient balance' or 'Review swap'"]
+    Swap --->|tap a Trending Tokens row| TrendDetail[Trending token details — name, price, issuer, domain and 'Buy' button]
+    TrendDetail -->|tap 'Buy'| Swap
 
-    AmountEntry -->|tap 'Review swap'| ReserveCheck{Enough XLM<br/>for new trustline?}
-    ReserveCheck -->|No · new trustline needed| XlmSheet["XlmReserveBottomSheet — NEW<br/>design TBD<br/>swap-for-XLM · copy address · cancel"]
-    ReserveCheck -->|Yes| Review["SwapReviewBottomSheet — existing · extended<br/>+ purple trustline banner<br/>+ Blockaid token / tx warnings"]
+    Swap -->|tap 'Enter an amount' or tap the Sell input| AmountEntry[System numeric keyboard — 'Review swap' button]
+    AmountEntry -->|tap 'Review swap'| ReserveCheck{Enough XLM for new trustline reserve?}
+    ReserveCheck -->|No| XlmSheet[Add XLM bottom sheet — swap-for-XLM, copy wallet address, cancel buttons]
+    ReserveCheck -->|Yes| Review[Review swap sheet — amounts, trustline banner, Blockaid warnings, details]
 
-    Review -->|tap trustline banner| TrustInfo["TrustlineInfoBottomSheet — NEW"]
+    Review -->|tap trustline banner| TrustInfo[Trustline info sheet]
+    Review -->|tap 'Confirm'| Build[/Build transaction\]
 
-    Review -->|Confirm| Build[/buildSwapTransaction\]
-    Build -->|destinationToken.isNew| ChangeTrust["op 0 · changeTrust"]
-    Build --> Path["op 1 · pathPaymentStrictSend"]
-    ChangeTrust --> Submit([Single atomic transaction])
-    Path --> Submit
-    Submit --> Processing["SwapProcessingScreen<br/>existing · unchanged"]
+    Build --> TrustlineCheck{New trustline needed?}
+    TrustlineCheck -->|Yes| ChangeTrust[Add trustline op \n Add path payment op]
+    TrustlineCheck -->|No| PathOnly[Add path payment op]
+    ChangeTrust --> Submit([Submit single atomic transaction])
+    PathOnly --> Submit
+    Submit --> Processing[Swap in progress... existing flow]
 
     classDef new fill:#5b3aa8,stroke:#a48cd9,color:#fff
     classDef existing fill:#1f2937,stroke:#6b7280,color:#fff
     classDef decision fill:#3b3120,stroke:#d97706,color:#fff
-    class Picker,TrendDetail,XlmSheet,TrustInfo new
-    class SwapScreen,AmountEntry,Review,Processing existing
-    class ReserveCheck decision
+    class DestPicker,TrendDetail,AmountEntry,XlmSheet,TrustInfo,ChangeTrust new
+    class Home,Swap,SellPicker,Review,Build,PathOnly,Submit,Processing existing
+    class ReserveCheck,TrustlineCheck decision
 ```
+
+**Legend:** Purple = new screen / sheet / step. Slate = exists today (kept or
+extended for this work). What each screen does, what it renders, and how state
+flows through it is in §6 — this diagram is the navigation graph only.
 
 ## 5. Data sources & flow
 
