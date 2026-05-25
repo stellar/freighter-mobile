@@ -1235,6 +1235,7 @@
       "destination": "Destination",
       "startingBalance": "Starting Balance",
       "tokenCode": "Token Code",
+      "assetIssuer": "Asset Issuer",
       "token": "Token",
       "amount": "Amount",
       "sendMax": "Send Max",

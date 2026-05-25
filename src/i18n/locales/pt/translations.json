@@ -1236,6 +1236,7 @@
       "destination": "Destino",
       "startingBalance": "Saldo inicial",
       "tokenCode": "Código do token",
+      "assetIssuer": "Emissor do ativo",
       "token": "Token",
       "amount": "Valor",
       "sendMax": "Enviar máximo",
