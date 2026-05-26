@@ -63,7 +63,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { View } from "react-native";
+import { Keyboard, View } from "react-native";
 import { analytics } from "services/analytics";
 import { TransactionOperationType } from "services/analytics/types";
 
@@ -239,6 +239,7 @@ const SendCollectibleReviewScreen: React.FC<
 
   const handleTransactionScanSuccess = useCallback(
     (scanResult: Blockaid.StellarTransactionScanResponse | undefined) => {
+      Keyboard.dismiss();
       const security = getTransactionSecurity(
         scanResult,
         overriddenBlockaidResponse,
@@ -553,6 +554,7 @@ const SendCollectibleReviewScreen: React.FC<
       !transactionScanResult || transactionSecurityAssessment.isUnableToScan;
 
     if (isUnableToScan) {
+      Keyboard.dismiss();
       reviewBottomSheetModalRef.current?.present();
     } else {
       handleTransactionConfirmation();

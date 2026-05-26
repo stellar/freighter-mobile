@@ -42,6 +42,7 @@ import {
   ListRenderItemInfo,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { analytics } from "services/analytics";
 
 type SendSearchContactsProps = NativeStackScreenProps<
@@ -98,6 +99,7 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
+  const { bottom: bottomInset } = useSafeAreaInsets();
   const { allAccounts, account: activeAccount } = useAuthenticationStore();
   const { open: openInAppBrowser } = useInAppBrowser();
   const { getClipboardText } = useClipboard();
@@ -363,12 +365,10 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
     ({ item }: ListRenderItemInfo<ContactListItem>) => {
       if (item.type === ContactListItemType.ResultsHeader) {
         return (
-          <View className="mb-[12px]">
-            <View className="flex-row items-center gap-[6px]">
-              <View className="w-[24px] h-[24px] rounded-[6px] items-center justify-center bg-gray-3">
-                <Icon.SearchMd size={14} color={themeColors.text.secondary} />
-              </View>
-              <Text sm semiBold secondary>
+          <View className="mb-[24px]">
+            <View className="flex-row items-center gap-[8px]">
+              <Icon.SearchMd size={16} color={themeColors.text.secondary} />
+              <Text md medium secondary>
                 {t("sendPaymentScreen.suggestions")}
               </Text>
             </View>
@@ -398,12 +398,10 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
 
       if (item.type === ContactListItemType.RecentHeader) {
         return (
-          <View className="mb-[12px]">
-            <View className="flex-row items-center gap-[6px]">
-              <View className="w-[24px] h-[24px] rounded-[6px] items-center justify-center bg-gray-3">
-                <Icon.Clock size={14} color={themeColors.text.secondary} />
-              </View>
-              <Text sm semiBold secondary>
+          <View className="mb-[24px] mt-[8px]">
+            <View className="flex-row items-center gap-[8px]">
+              <Icon.Clock size={16} color={themeColors.text.secondary} />
+              <Text md medium secondary>
                 {t("sendPaymentScreen.recents")}
               </Text>
             </View>
@@ -433,11 +431,9 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
 
       if (item.type === ContactListItemType.WalletsHeader) {
         return (
-          <View className="flex-row items-center gap-[6px] mb-[12px]">
-            <View className="w-[24px] h-[24px] rounded-[6px] items-center justify-center bg-gray-3">
-              <Icon.Wallet01 size={14} color={themeColors.text.secondary} />
-            </View>
-            <Text sm semiBold secondary>
+          <View className="flex-row items-center gap-[8px] mb-[24px] mt-[8px]">
+            <Icon.Wallet01 size={16} color={themeColors.text.secondary} />
+            <Text md medium secondary>
               {t("sendSearchContacts.myWallets")}
             </Text>
           </View>
@@ -499,7 +495,7 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
   });
 
   return (
-    <BaseLayout insets={{ top: false }}>
+    <BaseLayout insets={{ top: false, bottom: false }}>
       <View className="flex-1" testID="send-search-contacts-screen">
         <View className="mb-8">
           <Input
@@ -576,6 +572,7 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           ListFooterComponent={DefaultListFooter}
+          contentContainerStyle={{ paddingBottom: bottomInset }}
         />
       </View>
     </BaseLayout>

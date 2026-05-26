@@ -133,9 +133,9 @@ export const TokensCollectiblesInline: React.FC<
       keyboardShouldPersistTaps="handled"
       contentContainerStyle={{ paddingHorizontal: pxValue(DEFAULT_PADDING) }}
     >
-      <View className="flex-row items-center gap-2 mb-3">
+      <View className="flex-row items-center gap-2 mb-6">
         <Icon.Coins03 size={16} color={themeColors.text.secondary} />
-        <Text medium secondary>
+        <Text md medium secondary>
           {t("balancesList.title")}
         </Text>
       </View>
@@ -150,9 +150,9 @@ export const TokensCollectiblesInline: React.FC<
         balanceRowTestIDPrefix={balanceRowTestIDPrefix}
       />
 
-      <View className="flex-row items-center gap-2 mt-8 mb-3">
+      <View className="flex-row items-center gap-2 mt-8 mb-6">
         <Icon.Image01 size={16} color={themeColors.text.secondary} />
-        <Text medium secondary>
+        <Text md medium secondary>
           {t("collectiblesGrid.title")}
         </Text>
       </View>

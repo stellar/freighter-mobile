@@ -634,6 +634,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       setTransactionScanResult(scanResult);
 
       if (shouldOpenReview) {
+        amountInputRef.current?.blur();
+        Keyboard.dismiss();
         const security = getTransactionSecurity(
           scanResult,
           overriddenBlockaidResponse,
@@ -653,6 +655,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     (shouldOpenReview: boolean) => {
       setTransactionScanResult(undefined);
       if (shouldOpenReview) {
+        amountInputRef.current?.blur();
+        Keyboard.dismiss();
         // When scan fails, treat as unable to scan and open security detail sheet
         const security = getTransactionSecurity(
           undefined,
@@ -928,6 +932,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       !transactionScanResult || transactionSecurityAssessment.isUnableToScan;
 
     if (isUnableToScan) {
+      amountInputRef.current?.blur();
+      Keyboard.dismiss();
       reviewBottomSheetModalRef.current?.present();
     } else {
       handleTransactionConfirmation();
@@ -985,6 +991,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       return;
     }
 
+    amountInputRef.current?.blur();
     Keyboard.dismiss();
     prepareTransaction(true);
   };
@@ -1006,12 +1013,10 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     : formatFiatInputDisplay(fiatAmountDisplay);
 
   const availableAmountText = spendableBalance
-    ? t("transactionAmountScreen.availableBalance", {
-        amount: formatTokenForDisplay(
-          spendableBalance.toString(),
-          selectedBalance?.tokenCode,
-        ),
-      })
+    ? formatTokenForDisplay(
+        spendableBalance.toString(),
+        selectedBalance?.tokenCode,
+      )
     : null;
 
   // For very long values, stack into two rows: conversion on top, swap+available below.
@@ -1121,10 +1126,16 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
             {shouldSplitSecondaryAmounts ? (
               <View className="gap-[4px]">
-                <Text sm medium secondary numberOfLines={1}>
-                  {secondaryConversionAmount}
-                </Text>
                 <View className="flex-row items-center gap-[8px]">
+                  <Text
+                    sm
+                    medium
+                    secondary
+                    numberOfLines={1}
+                    style={{ flexShrink: 1 }}
+                  >
+                    {secondaryConversionAmount}
+                  </Text>
                   <TouchableOpacity
                     hitSlop={10}
                     onPress={() => setShowFiatAmount(!showFiatAmount)}
@@ -1134,18 +1145,12 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
                       color={themeColors.text.secondary}
                     />
                   </TouchableOpacity>
-                  {!!availableAmountText && (
-                    <Text
-                      sm
-                      medium
-                      secondary
-                      numberOfLines={1}
-                      style={{ flexShrink: 1 }}
-                    >
-                      {availableAmountText}
-                    </Text>
-                  )}
                 </View>
+                {!!availableAmountText && (
+                  <Text sm medium secondary numberOfLines={1}>
+                    {availableAmountText}
+                  </Text>
+                )}
               </View>
             ) : (
               <View className="flex-row items-center justify-between gap-[8px]">
