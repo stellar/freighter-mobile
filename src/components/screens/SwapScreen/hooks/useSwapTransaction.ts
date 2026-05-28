@@ -83,21 +83,18 @@ export const useSwapTransaction = ({
     const { destinationToken } = useSwapStore.getState();
     let includeTrustline: { tokenCode: string; issuer: string } | undefined;
     if (destinationToken?.isNew) {
-      if (destinationToken.issuer) {
-        includeTrustline = {
-          tokenCode: destinationToken.tokenCode,
-          issuer: destinationToken.issuer,
-        };
-      } else {
-        // Defense-in-depth: a non-native classic descriptor without an issuer
-        // shouldn't be reachable (the picker filters Soroban; native XLM is
-        // never isNew). If we ever land here, log and skip the trustline op.
-        logger.error(
-          "useSwapTransaction",
-          "isNew=true but issuer missing on destinationToken",
-          { destinationToken },
+      if (!destinationToken.issuer) {
+        // Unreachable in practice: native XLM can't be isNew, and the picker
+        // filters out Soroban. Fail fast so the bug surfaces here rather than
+        // submitting a doomed transaction that fails on-chain with tx_no_trust.
+        throw new Error(
+          `useSwapTransaction: isNew=true but issuer missing on destinationToken (id=${destinationToken.id})`,
         );
       }
+      includeTrustline = {
+        tokenCode: destinationToken.tokenCode,
+        issuer: destinationToken.issuer,
+      };
     }
 
     const transactionXDR = await buildSwapTransaction({

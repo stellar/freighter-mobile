@@ -82,6 +82,7 @@ interface TransactionBuilderState {
     transactionTimeout?: number;
     network?: NETWORKS;
     senderAddress?: string;
+    /** When present, a changeTrust op for the destination asset is prepended atomically. */
     includeTrustline?: { tokenCode: string; issuer: string };
   }) => Promise<string | null>;
 

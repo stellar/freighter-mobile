@@ -2,7 +2,6 @@
 import { renderHook, act } from "@testing-library/react-hooks";
 import { useSwapTransaction } from "components/screens/SwapScreen/hooks/useSwapTransaction";
 import { NETWORKS } from "config/constants";
-import { logger } from "config/logger";
 import { TokenTypeWithCustomToken } from "config/types";
 import type { ActiveAccount } from "ducks/auth";
 import { useSwapStore } from "ducks/swap";
@@ -86,16 +85,6 @@ const baseParams: Parameters<typeof useSwapTransaction>[0] = {
   network: NETWORKS.PUBLIC,
   navigation: mockNavigation,
 };
-
-// Also mock config/logger so we can spy on logger.error
-jest.mock("config/logger", () => ({
-  logger: {
-    error: jest.fn(),
-    warn: jest.fn(),
-    info: jest.fn(),
-    debug: jest.fn(),
-  },
-}));
 
 describe("useSwapTransaction", () => {
   beforeEach(() => {
@@ -240,7 +229,7 @@ describe("useSwapTransaction", () => {
       expect(callArgs.includeTrustline).toBeUndefined();
     });
 
-    it("omits includeTrustline and logs error when isNew=true but issuer is missing", async () => {
+    it("throws when isNew=true but issuer is missing on destinationToken", async () => {
       act(() => {
         useSwapStore.setState({
           destinationToken: {
@@ -256,19 +245,14 @@ describe("useSwapTransaction", () => {
 
       const { result } = renderHook(() => useSwapTransaction(baseParams));
 
-      await act(async () => {
-        await result.current.setupSwapTransaction();
-      });
+      await expect(
+        act(async () => {
+          await result.current.setupSwapTransaction();
+        }),
+      ).rejects.toThrow(/isNew=true but issuer missing/);
 
-      expect(mockBuildSwapTransaction).toHaveBeenCalled();
-      const callArgs = mockBuildSwapTransaction.mock.calls[0][0];
-      expect(callArgs.includeTrustline).toBeUndefined();
-
-      expect(jest.mocked(logger.error)).toHaveBeenCalledWith(
-        expect.stringContaining("useSwapTransaction"),
-        expect.stringContaining("isNew=true but issuer missing"),
-        expect.anything(),
-      );
+      // mockBuildSwapTransaction should NOT have been called — we threw before reaching it
+      expect(mockBuildSwapTransaction).not.toHaveBeenCalled();
     });
   });
 });
