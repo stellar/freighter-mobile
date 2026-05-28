@@ -171,7 +171,16 @@ contract tokens are filtered out. So a SAC paste typically resolves to its
 wrapped classic (and is swappable); a pure Soroban paste yields nothing; an
 unusual paste that incidentally matches TOML metadata may show one or more
 Classic results, which is acceptable behaviour. We do not special-case the `C…`
-shape — the upstream is fuzzy, and our filter keeps the results honest.
+shape upstream — the search is fuzzy, and our filter keeps the results honest.
+
+**Empty-state copy for `C…` pastes that yield zero results.** When
+`isContractId(term)` is true and the filtered result list is empty, the picker
+shows **"Soroban contract tokens are not supported yet."** in place of the
+generic "No tokens match {term}" empty state. The simple `isContractId` check
+covers both pure-Soroban pastes (the intended case) and the rare "unrelated `C…`
+that matched nothing" case — both end up with the same message, which is still
+defensible: we don't support either as a swap destination today. No extra
+network call is made to verify the contract is actually a SEP-41 token.
 
 **Blockaid scanning** — for both surfaces, every token that isn't already in the
 user's balances (which already carries `blockaidData` from the balance
@@ -586,9 +595,12 @@ re-implementing them; the trustline-reserve pre-flight check lives inline in
 - **Empty states**: idle picker with no held tokens (new account) renders only
   the "Popular tokens" section. Search-with-no-results renders an empty
   "Results" header with a short "No tokens match {term}" line, reusing the same
-  empty-state pattern from `AddTokenScreen`. Trending list on testnet, where
-  stellar.expert returns mainnet-only data, is hidden behind a network check so
-  we don't render a confusing empty list.
+  empty-state pattern from `AddTokenScreen`. When the search term is a `C…`
+  contract address (`isContractId(term)`) and the filtered result list is empty,
+  the message becomes **"Soroban contract tokens are not supported yet."**
+  instead of the generic line — see §5.1 for the full rationale. Trending list
+  on testnet, where stellar.expert returns mainnet-only data, is hidden behind a
+  network check so we don't render a confusing empty list.
 
 ## 9. Security
 
@@ -677,10 +689,11 @@ existing `services/stellarExpert.ts` pattern).
      banner in review.
   9. Paste a `G…` account address → Results lists the classic assets that
      account issues. Paste a SAC `C…` (e.g. AQUA's SAC, see §5.1 sample link) →
-     Results contains the wrapped Classic asset. Paste a pure-Soroban `C…` →
-     Results is empty (Soroban token filtered out). Acceptable that an unusual
-     `C…` could match incidental TOML metadata and yield >1 Classic results —
-     confirm the classic-only filter still applies in that case.
+     Results contains the wrapped Classic asset. Paste a pure-Soroban `C…` → in
+     place of Results, picker shows **"Soroban contract tokens are not supported
+     yet."** Acceptable that an unusual `C…` could match incidental TOML
+     metadata and yield >1 Classic results — confirm the classic-only filter
+     still applies in that case.
   10. Soroban assets never appear in either picker section, including during
       search.
   11. Switch network to **testnet** and repeat steps 1–8 with testnet token
