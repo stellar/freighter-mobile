@@ -675,6 +675,13 @@
       "title": "O que é uma trustline?",
       "body": "Adicionar uma trustline reserva 0,5 XLM do saldo da sua conta. Este é um custo único, reembolsável ao remover a trustline.",
       "confirm": "Entendi"
+    },
+    "xlmReserve": {
+      "title": "Mais XLM necessário",
+      "body": "Uma nova trustline reserva 0,5 XLM do saldo da sua conta — um bloqueio único, não uma taxa por troca. Você não tem XLM suficiente agora.",
+      "swapXlm": "Trocar para XLM",
+      "copyAddress": "Copiar endereço da carteira para depósito de XLM",
+      "whyDoINeedXlm": "Por que preciso de XLM?"
     }
   },
   "swapProcessingScreen": {

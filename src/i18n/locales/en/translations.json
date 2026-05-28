@@ -711,6 +711,13 @@
       "title": "What is a trustline?",
       "body": "Adding a trustline locks 0.5 XLM of your account's reserve. This is a one-time cost, refundable when you remove the trustline.",
       "confirm": "Got it"
+    },
+    "xlmReserve": {
+      "title": "More XLM needed",
+      "body": "A new trustline reserves 0.5 XLM of your account balance — a one-time lock, not a per-swap fee. You don't have enough XLM right now.",
+      "swapXlm": "Swap to XLM",
+      "copyAddress": "Copy wallet address for XLM deposit",
+      "whyDoINeedXlm": "Why do I need XLM?"
     }
   },
   "swapProcessingScreen": {

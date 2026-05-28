@@ -17,3 +17,7 @@ export {
   TrustlineInfoBottomSheet,
   type TrustlineInfoBottomSheetProps,
 } from "./TrustlineInfoBottomSheet";
+export {
+  XlmReserveBottomSheet,
+  type XlmReserveBottomSheetProps,
+} from "./XlmReserveBottomSheet";
