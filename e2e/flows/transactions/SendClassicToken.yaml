@@ -98,6 +98,9 @@ tags:
 # Tap Review button
 - tapOn:
     id: send-continue-button
+# Dismiss Blockaid "Proceed with caution" sheet on testnet
+- runFlow:
+    file: ../shared/HandleUnableToScan.yaml
 # Verify review sheet is visible
 - extendedWaitUntil:
     visible:

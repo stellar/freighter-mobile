@@ -98,6 +98,9 @@ tags:
 # Review and confirm swap
 - tapOn:
     id: swap-continue-button
+# Dismiss Blockaid "Proceed with caution" sheet on testnet
+- runFlow:
+    file: ../shared/HandleUnableToScan.yaml
 # Verify review sheet is visible
 - extendedWaitUntil:
     visible:

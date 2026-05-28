@@ -105,6 +105,9 @@ tags:
 # was passed to buildPaymentTransaction instead of the resolved G... key)
 - tapOn:
     id: send-continue-button
+# Dismiss Blockaid "Proceed with caution" sheet on testnet
+- runFlow:
+    file: ../shared/HandleUnableToScan.yaml
 
 # Verify review sheet is visible (confirms federation address was correctly
 # resolved to a G... public key for transaction building)
@@ -208,6 +211,9 @@ tags:
 # Review and confirm
 - tapOn:
     id: send-continue-button
+# Dismiss Blockaid "Proceed with caution" sheet on testnet
+- runFlow:
+    file: ../shared/HandleUnableToScan.yaml
 - extendedWaitUntil:
     visible:
       id: send-review-sheet

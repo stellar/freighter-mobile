@@ -1,0 +1,13 @@
+appId: org.stellar.freighterdev
+---
+# Testnet transactions can't be scanned by Blockaid, so the app shows a
+# "Proceed with caution — Unable to scan transaction" bottom sheet before
+# the review/confirm sheet. Tap its "Continue" button to proceed.
+# No-op when the sheet isn't shown (e.g. mainnet scans succeed).
+- runFlow:
+    when:
+      visible:
+        text: "Proceed with caution"
+    commands:
+      - tapOn:
+          text: "Continue"
