@@ -1013,6 +1013,13 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     return t("transactionAmountScreen.reviewButton");
   };
 
+  const hasUsdPrice =
+    !!selectedBalance?.currentPrice && !selectedBalance.currentPrice.isZero();
+
+  if (!hasUsdPrice && showFiatAmount) {
+    setShowFiatAmount(false);
+  }
+
   const secondaryConversionAmount = showFiatAmount
     ? formatTokenForDisplay(tokenAmount, selectedBalance?.tokenCode)
     : formatFiatInputDisplay(fiatAmountDisplay);
@@ -1088,7 +1095,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
               )}
             </View>
 
-            <View className="flex-row items-center justify-between">
+            <View className="flex-row items-center justify-between mb-2">
               <TouchableOpacity
                 className="flex-1"
                 onPressIn={focusAmountInput}
@@ -1151,26 +1158,28 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
               </TouchableOpacity>
             </View>
 
-            <View className="flex-row items-center gap-[4px] mb-1">
-              <Text
-                sm
-                medium
-                secondary
-                numberOfLines={1}
-                style={{ flexShrink: 1 }}
-              >
-                {secondaryConversionAmount}
-              </Text>
-              <TouchableOpacity
-                hitSlop={10}
-                onPress={() => setShowFiatAmount(!showFiatAmount)}
-              >
-                <Icon.RefreshCcw03
-                  size={14}
-                  color={themeColors.text.secondary}
-                />
-              </TouchableOpacity>
-            </View>
+            {hasUsdPrice && (
+              <View className="flex-row items-center gap-[4px] mb-1">
+                <Text
+                  sm
+                  medium
+                  secondary
+                  numberOfLines={1}
+                  style={{ flexShrink: 1 }}
+                >
+                  {secondaryConversionAmount}
+                </Text>
+                <TouchableOpacity
+                  hitSlop={10}
+                  onPress={() => setShowFiatAmount(!showFiatAmount)}
+                >
+                  <Icon.RefreshCcw03
+                    size={14}
+                    color={themeColors.text.secondary}
+                  />
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         </View>
 
