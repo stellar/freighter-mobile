@@ -59,6 +59,7 @@ const TransactionTokenScreen: React.FC<TransactionTokenScreenProps> = ({
           onCollectiblePress={handleCollectiblePress}
           showSpendableAmount
           feeContext={TransactionContext.Send}
+          balanceRowTestIDPrefix="token-option"
         />
       </View>
     </BaseLayout>

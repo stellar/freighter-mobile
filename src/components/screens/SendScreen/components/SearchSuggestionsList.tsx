@@ -15,7 +15,7 @@ interface SearchSuggestion {
 
 interface SearchSuggestionsListProps {
   suggestions: SearchSuggestion[];
-  onContactPress: (address: string) => void;
+  onContactPress: (address: string, name?: string) => void;
   testID?: string;
 }
 
@@ -54,7 +54,7 @@ export const SearchSuggestionsList: React.FC<SearchSuggestionsListProps> = ({
           <ContactRow
             address={item.address}
             name={item.name}
-            onPress={() => onContactPress(item.address)}
+            onPress={() => onContactPress(item.address, item.name)}
             testID={`search-suggestion-${index}`}
           />
         )}
