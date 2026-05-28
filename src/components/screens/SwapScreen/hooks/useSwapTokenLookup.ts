@@ -1,0 +1,467 @@
+/* eslint-disable no-underscore-dangle */
+import { NATIVE_TOKEN_CODE, NETWORKS } from "config/constants";
+import {
+  FormattedSearchTokenRecord,
+  HookStatus,
+  PricedBalance,
+  SearchTokenResponse,
+  TokenTypeWithCustomToken,
+} from "config/types";
+import { useDebugStore } from "ducks/debug";
+import { formatTokenIdentifier, getTokenType } from "helpers/balances";
+import { isMainnet } from "helpers/networks";
+import { isContractId } from "helpers/soroban";
+import { splitVerifiedTokens } from "helpers/splitVerifiedTokens";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { scanBulkTokens } from "services/blockaid/api";
+import {
+  assessTokenSecurity,
+  extractSecurityWarnings,
+} from "services/blockaid/helper";
+import { fetchTrendingAssets, searchToken } from "services/stellarExpert";
+
+export interface SwapTokenLookupResult {
+  /** Idle: "Your tokens" section. Active: held matches at the top of searchResults. */
+  yourTokens: Array<PricedBalance & { id: string }>;
+  /** Idle: top stellar.expert assets sorted by volume7d, EXCLUDING held tokens. Active: []. */
+  popularTokens: FormattedSearchTokenRecord[];
+  /** Same as popularTokens but INCLUDES held tokens too. Consumed by SwapAmountScreen's Trending list. */
+  trendingTokens: FormattedSearchTokenRecord[];
+  /** Active: single flat array — held > verified > stellar.expert remainder. Idle: []. */
+  searchResults: FormattedSearchTokenRecord[];
+  /**
+   * True when the pre-filter result set contained Soroban contract tokens
+   * that matched the term AND the filtered (classic-only) list ended up
+   * empty. Lets the picker swap its empty-state copy for a Soroban-specific
+   * notice when this is the reason nothing showed up.
+   */
+  hadSorobanMatches: boolean;
+  /** True when the latest stellar.expert call failed (network/timeout/5xx). */
+  stellarExpertDown: boolean;
+  status: HookStatus;
+  searchTerm: string;
+  handleSearch: (term: string) => void;
+  resetSearch: () => void;
+}
+
+export interface UseSwapTokenLookupProps {
+  network: NETWORKS;
+  publicKey?: string;
+  balanceItems: Array<PricedBalance & { id: string }>;
+}
+
+/**
+ * Minimal shape we need from the stellar.expert /asset response.
+ * Mirrors `SearchTokenResponse._embedded.records[number]` but kept loose
+ * so we don't have to import the full shape just for typing.
+ */
+type StellarExpertRecord = SearchTokenResponse["_embedded"]["records"][number];
+
+/** Canonical CODE:ISSUER identifier used for dedupe across sources. */
+const canonicalId = (tokenCode: string, issuer: string): string =>
+  issuer ? `${tokenCode}:${issuer}` : tokenCode;
+
+/**
+ * Format a stellar.expert classic-asset record into a FormattedSearchTokenRecord.
+ *
+ * Mirrors path-3 of `useTokenLookup`'s formatter, but stripped of the
+ * Soroban-contract branch since the swap surface filters those out
+ * upstream.
+ */
+const formatClassicRecord = (
+  record: StellarExpertRecord,
+  hasTrustline: boolean,
+): FormattedSearchTokenRecord => {
+  const [tokenCode, issuer] = record.asset.split("-");
+  return {
+    tokenCode,
+    domain: record.domain ?? "",
+    hasTrustline,
+    iconUrl: record.tomlInfo?.image,
+    issuer: issuer ?? "",
+    isNative: record.asset === NATIVE_TOKEN_CODE,
+    tokenType: getTokenType(
+      issuer ? `${tokenCode}:${issuer}` : NATIVE_TOKEN_CODE,
+    ),
+  };
+};
+
+/**
+ * Returns true when a stellar.expert record is a Soroban contract token
+ * (raw contract ID in `asset`). Classic records use "CODE-ISSUER-TYPE".
+ */
+const isSorobanRecord = (record: StellarExpertRecord): boolean =>
+  isContractId(record.asset);
+
+/**
+ * Returns true when a (formatted) token is classic — i.e. not a Soroban
+ * custom token and has a structurally valid issuer (G…).
+ */
+const isClassicTokenType = (
+  tokenType: TokenTypeWithCustomToken | undefined,
+): boolean =>
+  tokenType === TokenTypeWithCustomToken.NATIVE ||
+  tokenType === TokenTypeWithCustomToken.CREDIT_ALPHANUM4 ||
+  tokenType === TokenTypeWithCustomToken.CREDIT_ALPHANUM12;
+
+/** Partial-match: does `text` contain `term` (case-insensitive)? */
+const matchesTerm = (text: string | undefined, term: string): boolean => {
+  if (!text) return false;
+  return text.toLowerCase().includes(term.toLowerCase());
+};
+
+export const useSwapTokenLookup = ({
+  network,
+  // `publicKey` is part of the public hook contract for parity with
+  // `useTokenLookup` (and for the eventual G… issuer-lookup branch) — it
+  // isn't read directly today because the swap surface only fans out to
+  // stellar.expert and the user's existing balances. eslint-disable below
+  // keeps the parameter named for type-doc clarity.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  publicKey,
+  balanceItems,
+}: UseSwapTokenLookupProps): SwapTokenLookupResult => {
+  const latestRequestRef = useRef(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const trendingAbortRef = useRef<AbortController | null>(null);
+  // Hold the live balanceItems in a ref so `performSearch`'s identity stays
+  // stable across renders even when the caller passes a fresh array literal
+  // (very common for the empty-balance case). Without this the debounce
+  // useEffect would tear down its timer on every render.
+  const balanceItemsRef = useRef(balanceItems);
+  balanceItemsRef.current = balanceItems;
+
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [trendingTokens, setTrendingTokens] = useState<
+    FormattedSearchTokenRecord[]
+  >([]);
+  const [searchResults, setSearchResults] = useState<
+    FormattedSearchTokenRecord[]
+  >([]);
+  const [hadSorobanMatches, setHadSorobanMatches] = useState<boolean>(false);
+  const [stellarExpertDown, setStellarExpertDown] = useState<boolean>(false);
+  const [status, setStatus] = useState<HookStatus>(HookStatus.IDLE);
+
+  const { overriddenBlockaidResponse } = useDebugStore();
+
+  // Apply Blockaid security info to a list of formatted records. On testnet
+  // the API throws — callers swallow that and continue without security data.
+  const enhanceWithSecurityInfo = useCallback(
+    async (
+      tokens: FormattedSearchTokenRecord[],
+      signal: AbortSignal,
+    ): Promise<FormattedSearchTokenRecord[]> => {
+      if (tokens.length === 0 || !isMainnet(network)) {
+        return tokens;
+      }
+      try {
+        const addressList = tokens
+          .filter((t) => t.issuer)
+          .map((t) => `${t.tokenCode}-${t.issuer}`);
+        if (addressList.length === 0) return tokens;
+        const bulkScanResult = await scanBulkTokens(
+          { addressList, network },
+          signal,
+        );
+        if (signal.aborted) return tokens;
+        return tokens.map((token) => {
+          const key = token.issuer
+            ? `${token.tokenCode}-${token.issuer}`
+            : token.tokenCode;
+          const scanResult = bulkScanResult.results?.[key];
+          const securityInfo = assessTokenSecurity(
+            scanResult,
+            overriddenBlockaidResponse,
+          );
+          return {
+            ...token,
+            isSuspicious: securityInfo.isSuspicious,
+            isMalicious: securityInfo.isMalicious,
+            isUnableToScan: securityInfo.isUnableToScan,
+            securityLevel: securityInfo.level,
+            securityWarnings: extractSecurityWarnings(scanResult),
+          };
+        });
+      } catch {
+        // Bulk scan failed (network error, non-mainnet, etc.). Continue
+        // without security info — the swap picker still shows results.
+        return tokens;
+      }
+    },
+    [network, overriddenBlockaidResponse],
+  );
+
+  // Build a memoized set of canonical "CODE:ISSUER" identifiers for the
+  // held balances. We key effects on the joined string instead of the
+  // array reference so callers don't have to hand us a referentially
+  // stable list — passing `[]` inline at each render is fine.
+  const heldIdsKey = useMemo(
+    () =>
+      balanceItems
+        .map((b) => {
+          const { tokenCode, issuer } = formatTokenIdentifier(b.id);
+          return canonicalId(tokenCode, issuer ?? "");
+        })
+        .sort()
+        .join("|"),
+    [balanceItems],
+  );
+
+  const hasExistingTrustline = useCallback(
+    (tokenCode: string, issuer: string): boolean => {
+      const id = canonicalId(tokenCode, issuer);
+      // Re-derive the set from the cached key string to avoid a separate ref.
+      if (!heldIdsKey) return false;
+      return heldIdsKey.split("|").includes(id);
+    },
+    [heldIdsKey],
+  );
+
+  // -- Idle surface ---------------------------------------------------------
+  //
+  // Fetch trending assets once per (network, balanceItems) change while no
+  // active search is in flight. `popularTokens` excludes held tokens; the
+  // `trendingTokens` array keeps them.
+  useEffect(() => {
+    // Cancel any prior trending request
+    trendingAbortRef.current?.abort();
+    const controller = new AbortController();
+    trendingAbortRef.current = controller;
+    const { signal } = controller;
+    let cancelled = false;
+
+    (async () => {
+      const response = await fetchTrendingAssets({ network, signal });
+      if (cancelled || signal.aborted) return;
+
+      if (!response) {
+        setStellarExpertDown(true);
+        setTrendingTokens([]);
+        return;
+      }
+
+      const records = response._embedded?.records ?? [];
+      // Classic-only filter (Soroban contracts dropped); skip records
+      // missing an issuer.
+      const classicRecords = records.filter((r) => {
+        if (isSorobanRecord(r)) return false;
+        const [tokenCode, issuer] = r.asset.split("-");
+        if (!issuer && r.asset !== NATIVE_TOKEN_CODE) return false;
+        const tokenType = getTokenType(
+          issuer ? `${tokenCode}:${issuer}` : NATIVE_TOKEN_CODE,
+        );
+        return isClassicTokenType(tokenType);
+      });
+
+      const formatted = classicRecords.map((r) => {
+        const [tokenCode, issuer] = r.asset.split("-");
+        return formatClassicRecord(
+          r,
+          hasExistingTrustline(tokenCode, issuer ?? ""),
+        );
+      });
+
+      // Dedupe by canonical id, preserving stellar.expert's order.
+      const seen = new Set<string>();
+      const deduped = formatted.filter((t) => {
+        const id = canonicalId(t.tokenCode, t.issuer);
+        if (seen.has(id)) return false;
+        seen.add(id);
+        return true;
+      });
+
+      const enhanced = await enhanceWithSecurityInfo(deduped, signal);
+      if (cancelled || signal.aborted) return;
+
+      setStellarExpertDown(false);
+      setTrendingTokens(enhanced);
+    })();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+    // We intentionally re-run when `network` or the held-set composition
+    // changes (heldIdsKey), not on every new array identity passed in.
+    // hasExistingTrustline / enhanceWithSecurityInfo are stable callbacks.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [network, heldIdsKey, enhanceWithSecurityInfo]);
+
+  // -- Active-search surface ------------------------------------------------
+  //
+  // Runs whenever `searchTerm` changes to a non-empty value. Builds a single
+  // ordered Results array: held > verified > stellar.expert remainder, all
+  // deduped by CODE:ISSUER and classic-only.
+  const performSearch = useCallback(
+    async (term: string) => {
+      const requestId = ++latestRequestRef.current;
+      abortControllerRef.current?.abort();
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+      const { signal } = controller;
+
+      if (!term) {
+        if (latestRequestRef.current === requestId) {
+          setStatus(HookStatus.IDLE);
+          setSearchResults([]);
+          setHadSorobanMatches(false);
+        }
+        return;
+      }
+
+      setStatus(HookStatus.LOADING);
+      setHadSorobanMatches(false);
+
+      // 1) Held matches — partial match against tokenCode or displayName.
+      const heldMatches: FormattedSearchTokenRecord[] = balanceItemsRef.current
+        .filter(
+          (b) =>
+            matchesTerm(b.tokenCode, term) || matchesTerm(b.displayName, term),
+        )
+        .map((b) => {
+          const { tokenCode, issuer } = formatTokenIdentifier(b.id);
+          const resolvedIssuer = issuer ?? "";
+          return {
+            tokenCode,
+            domain: "",
+            hasTrustline: true,
+            issuer: resolvedIssuer,
+            isNative: b.id === "native",
+            tokenType: resolvedIssuer
+              ? getTokenType(`${tokenCode}:${resolvedIssuer}`)
+              : TokenTypeWithCustomToken.NATIVE,
+          };
+        })
+        .filter((t) => isClassicTokenType(t.tokenType));
+
+      // 2) Cross-network search via stellar.expert.
+      const response = await searchToken(term, network, signal);
+      if (signal.aborted || latestRequestRef.current !== requestId) return;
+
+      if (!response) {
+        // stellar.expert down — fall back to held-only results.
+        setStellarExpertDown(true);
+        const enhancedHeld = await enhanceWithSecurityInfo(heldMatches, signal);
+        if (signal.aborted || latestRequestRef.current !== requestId) return;
+        setSearchResults(enhancedHeld);
+        setHadSorobanMatches(false);
+        setStatus(HookStatus.SUCCESS);
+        return;
+      }
+
+      setStellarExpertDown(false);
+      const rawRecords = response._embedded?.records ?? [];
+
+      // Track whether the pre-filter set had any Soroban records before we
+      // drop them. The flag is only meaningful when the filtered list is
+      // empty (see hadSorobanMatches doc).
+      const preFilterHadSoroban = rawRecords.some((r) => isSorobanRecord(r));
+
+      const classicRecords = rawRecords.filter((r) => {
+        if (isSorobanRecord(r)) return false;
+        const [tokenCode, issuer] = r.asset.split("-");
+        if (!issuer && r.asset !== NATIVE_TOKEN_CODE) return false;
+        const tokenType = getTokenType(
+          issuer ? `${tokenCode}:${issuer}` : NATIVE_TOKEN_CODE,
+        );
+        return isClassicTokenType(tokenType);
+      });
+
+      const formatted = classicRecords.map((r) => {
+        const [tokenCode, issuer] = r.asset.split("-");
+        return formatClassicRecord(
+          r,
+          hasExistingTrustline(tokenCode, issuer ?? ""),
+        );
+      });
+
+      // 3) Verified vs unverified split.
+      const { verified, unverified } = await splitVerifiedTokens({
+        tokens: formatted,
+        network,
+      });
+      if (signal.aborted || latestRequestRef.current !== requestId) return;
+
+      // Dedupe across sources: held first, then verified, then unverified.
+      const seen = new Set<string>();
+      const ordered: FormattedSearchTokenRecord[] = [];
+      const pushUnique = (token: FormattedSearchTokenRecord) => {
+        const id = canonicalId(token.tokenCode, token.issuer);
+        if (seen.has(id)) return;
+        seen.add(id);
+        ordered.push(token);
+      };
+      heldMatches.forEach(pushUnique);
+      verified.forEach(pushUnique);
+      unverified.forEach(pushUnique);
+
+      const enhanced = await enhanceWithSecurityInfo(ordered, signal);
+      if (signal.aborted || latestRequestRef.current !== requestId) return;
+
+      setSearchResults(enhanced);
+      setHadSorobanMatches(enhanced.length === 0 && preFilterHadSoroban);
+      setStatus(HookStatus.SUCCESS);
+    },
+    // balanceItems is read via balanceItemsRef (so callers can pass `[]`
+    // inline without thrashing the callback identity). hasExistingTrustline
+    // is the held-set fingerprint; enhanceWithSecurityInfo carries the
+    // network + Blockaid debug-override fingerprint.
+    [enhanceWithSecurityInfo, hasExistingTrustline, network],
+  );
+
+  // Debounce wiring: a user keystroke updates `searchTerm` immediately so the
+  // input stays responsive; the network call is debounced via a timer.
+  // We use a plain setTimeout instead of the `useDebounce` helper because
+  // the trailing-keystroke cancellation needs to share the same
+  // AbortController lifecycle as the in-flight fetch.
+  useEffect(() => {
+    if (searchTerm === "") {
+      // Empty term — nothing to do here. resetSearch / handleSearch("") are
+      // responsible for clearing active-search state synchronously, so we
+      // don't re-clear here (which would race with set-after-update writes
+      // from in-flight performSearch resolutions).
+      return undefined;
+    }
+
+    const timer = setTimeout(() => {
+      performSearch(searchTerm);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm, performSearch]);
+
+  const handleSearch = useCallback((term: string) => {
+    setSearchTerm(term);
+  }, []);
+
+  const resetSearch = useCallback(() => {
+    abortControllerRef.current?.abort();
+    setSearchTerm("");
+    setSearchResults([]);
+    setHadSorobanMatches(false);
+    setStatus(HookStatus.IDLE);
+  }, []);
+
+  // Idle outputs
+  const yourTokens = balanceItems;
+  const popularTokens = useMemo(
+    () =>
+      trendingTokens.filter(
+        (t) => !hasExistingTrustline(t.tokenCode, t.issuer),
+      ),
+    [trendingTokens, hasExistingTrustline],
+  );
+
+  return {
+    yourTokens,
+    popularTokens,
+    trendingTokens,
+    searchResults: searchTerm ? searchResults : [],
+    hadSorobanMatches: searchTerm ? hadSorobanMatches : false,
+    stellarExpertDown,
+    status,
+    searchTerm,
+    handleSearch,
+    resetSearch,
+  };
+};
