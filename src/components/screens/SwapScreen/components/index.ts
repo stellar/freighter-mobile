@@ -13,3 +13,7 @@ export {
   TrendingTokenDetailBottomSheet,
   type TrendingTokenDetailBottomSheetProps,
 } from "./TrendingTokenDetailBottomSheet";
+export {
+  TrustlineInfoBottomSheet,
+  type TrustlineInfoBottomSheetProps,
+} from "./TrustlineInfoBottomSheet";

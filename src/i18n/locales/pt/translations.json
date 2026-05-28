@@ -670,6 +670,11 @@
     "resultsSection": "Resultados",
     "trendingDetail": {
       "buy": "Comprar {{tokenCode}}"
+    },
+    "trustlineInfo": {
+      "title": "O que é uma trustline?",
+      "body": "Adicionar uma trustline reserva 0,5 XLM do saldo da sua conta. Este é um custo único, reembolsável ao remover a trustline.",
+      "confirm": "Entendi"
     }
   },
   "swapProcessingScreen": {

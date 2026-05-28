@@ -706,6 +706,11 @@
     "resultsSection": "Results",
     "trendingDetail": {
       "buy": "Buy {{tokenCode}}"
+    },
+    "trustlineInfo": {
+      "title": "What is a trustline?",
+      "body": "Adding a trustline locks 0.5 XLM of your account's reserve. This is a one-time cost, refundable when you remove the trustline.",
+      "confirm": "Got it"
     }
   },
   "swapProcessingScreen": {
