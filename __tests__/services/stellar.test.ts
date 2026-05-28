@@ -3,7 +3,7 @@
  * and buildChangeTrustOperation helper.
  * This test uses the actual functions from stellar.ts
  */
-import { Operation } from "@stellar/stellar-sdk";
+import { Asset as SdkToken, Operation } from "@stellar/stellar-sdk";
 import {
   buildChangeTrustOperation,
   calculateBackoffDelay,
@@ -64,26 +64,34 @@ describe("stellar service - submitTx retry logic", () => {
 });
 
 describe("buildChangeTrustOperation", () => {
-  it("returns a changeTrust operation for a classic asset with no limit", () => {
-    const op = buildChangeTrustOperation({
-      tokenCode: "USDC",
-      issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
-    });
+  const ISSUER = "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
 
-    // Verify it's a changeTrust op
-    expect(op).toBeTruthy();
-    const xdr = op.toXDR("base64");
-    expect(xdr).toBeTruthy();
-    expect(typeof xdr).toBe("string");
+  it("returns a changeTrust operation for the requested asset with no explicit limit", () => {
+    const op = buildChangeTrustOperation({ tokenCode: "USDC", issuer: ISSUER });
+    const decoded = Operation.fromXDRObject(op);
+
+    expect(decoded.type).toBe("changeTrust");
+    expect((decoded as any).line).toBeInstanceOf(SdkToken);
+    expect((decoded as any).line.code).toBe("USDC");
+    expect((decoded as any).line.issuer).toBe(ISSUER);
+    // No `limit` argument was passed — SDK defaults to the max trustline limit.
+    // We don't pin that string here, but we assert the limit is not 0,
+    // which is the remove-path sentinel.
+    expect(parseFloat((decoded as any).limit)).toBeGreaterThan(0);
   });
 
-  it("sets limit to '0' when isRemove is true", () => {
+  it("sets limit to '0' when isRemove is true (remove-trustline op)", () => {
     const op = buildChangeTrustOperation({
       tokenCode: "USDC",
-      issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+      issuer: ISSUER,
       isRemove: true,
     });
-    expect(op).toBeTruthy();
-    expect(Operation.changeTrust).toBeDefined();
+    const decoded = Operation.fromXDRObject(op);
+
+    expect(decoded.type).toBe("changeTrust");
+    // The Stellar SDK normalizes the limit to 7 decimal places on decode.
+    expect(parseFloat((decoded as any).limit)).toBe(0);
+    expect((decoded as any).line.code).toBe("USDC");
+    expect((decoded as any).line.issuer).toBe(ISSUER);
   });
 });
