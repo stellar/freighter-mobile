@@ -9,3 +9,7 @@ export {
   type SwapTokenRowProps,
   type SwapTokenRowVariant,
 } from "./SwapTokenRow";
+export {
+  TrendingTokenDetailBottomSheet,
+  type TrendingTokenDetailBottomSheetProps,
+} from "./TrendingTokenDetailBottomSheet";

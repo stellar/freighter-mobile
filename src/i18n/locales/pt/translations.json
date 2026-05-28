@@ -667,7 +667,10 @@
     "noResults": "Nenhum token corresponde a {{term}}",
     "yourTokensSection": "Seus tokens",
     "popularTokensSection": "Tokens populares",
-    "resultsSection": "Resultados"
+    "resultsSection": "Resultados",
+    "trendingDetail": {
+      "buy": "Comprar {{tokenCode}}"
+    }
   },
   "swapProcessingScreen": {
     "swapping": "Trocando",

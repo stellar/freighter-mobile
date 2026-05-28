@@ -703,7 +703,10 @@
     "noResults": "No tokens match {{term}}",
     "yourTokensSection": "Your tokens",
     "popularTokensSection": "Popular tokens",
-    "resultsSection": "Results"
+    "resultsSection": "Results",
+    "trendingDetail": {
+      "buy": "Buy {{tokenCode}}"
+    }
   },
   "swapProcessingScreen": {
     "swapping": "Swapping",
