@@ -17,6 +17,45 @@ const stellarExpertApiPublic = createApiService({
   baseURL: getApiStellarExpertUrl(NETWORKS.PUBLIC),
 });
 
+export const fetchTrendingAssets = async ({
+  network,
+  signal,
+}: {
+  network: NETWORKS;
+  signal?: AbortSignal;
+}) => {
+  const stellarExpertApi =
+    network === NETWORKS.TESTNET
+      ? stellarExpertApiTestnet
+      : stellarExpertApiPublic;
+
+  try {
+    const response = await stellarExpertApi.get<SearchTokenResponse>("/asset", {
+      params: { sort: "volume7d", order: "desc", limit: 50 },
+      signal,
+    });
+
+    if (!response.data || !response.data._embedded) {
+      throw normalizeError(response);
+    }
+
+    return response.data;
+  } catch (error) {
+    if (isRequestCanceled(error)) {
+      return null;
+    }
+
+    logApiError(
+      "stellarExpert",
+      "Network unreachable while fetching trending assets",
+      "Error fetching trending assets",
+      error,
+    );
+
+    return null;
+  }
+};
+
 export const searchToken = async (
   token: string,
   network: NETWORKS,
