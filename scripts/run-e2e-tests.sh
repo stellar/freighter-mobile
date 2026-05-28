@@ -470,12 +470,25 @@ provision_flags_for_flow() {
 failed=0
 failed_tests=""
 
+# Preserve the original funded phrase so provisioned flows (which overwrite
+# E2E_TEST_FUNDED_RECOVERY_PHRASE with an ephemeral mnemonic) don't leak it into
+# later non-provisioned flows in the same local run.
+_ORIG_FUNDED_PHRASE="${E2E_TEST_FUNDED_RECOVERY_PHRASE:-}"
+
 for file in $FLOW_FILES; do
   # Extract flow name from file path (e.g., "CreateWallet" from "e2e/flows/onboarding/CreateWallet.yaml")
   FLOW_NAME=$(basename "$file" .yaml)
 
   # Reset per-flow provisioning vars so values never leak between flows.
   unset E2E_TEST_RECIPIENT_ADDRESS E2E_TEST_USDC_CODE E2E_TEST_USDC_ISSUER
+  # Restore the original funded phrase; provisioning (below) overwrites it only
+  # for provisioned flows. Without this, an ephemeral mnemonic from a previous
+  # provisioned flow would leak into later non-provisioned flows.
+  if [ -n "$_ORIG_FUNDED_PHRASE" ]; then
+    export E2E_TEST_FUNDED_RECOVERY_PHRASE="$_ORIG_FUNDED_PHRASE"
+  else
+    unset E2E_TEST_FUNDED_RECOVERY_PHRASE
+  fi
 
   # Provision a fresh, isolated testnet account for transaction flows so
   # concurrent runs never share a source-account sequence number (tx_bad_seq).
