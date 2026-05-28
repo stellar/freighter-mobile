@@ -283,10 +283,16 @@ export const destinationAsBalanceLike = (
     } as unknown as PricedBalance;
   }
 
+  if (!descriptor.issuer) {
+    throw new Error(
+      `destinationAsBalanceLike: non-native descriptor missing issuer (id=${descriptor.id})`,
+    );
+  }
+
   return {
     token: {
       code: descriptor.tokenCode,
-      issuer: { key: descriptor.issuer! },
+      issuer: { key: descriptor.issuer },
       type: descriptor.tokenType,
     },
   } as unknown as PricedBalance;

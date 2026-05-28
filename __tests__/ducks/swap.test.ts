@@ -87,4 +87,17 @@ describe("destinationAsBalanceLike", () => {
       type: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
     });
   });
+
+  it("throws when a non-native descriptor is missing issuer", () => {
+    expect(() =>
+      destinationAsBalanceLike({
+        id: "USDC:GA5Z...",
+        tokenCode: "USDC",
+        // issuer intentionally omitted
+        decimals: 7,
+        tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+        isNew: true,
+      }),
+    ).toThrow(/missing issuer/);
+  });
 });
