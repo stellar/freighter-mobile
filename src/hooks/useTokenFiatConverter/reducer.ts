@@ -21,6 +21,7 @@ export enum TokenFiatConverterActionType {
   UPDATE_FIAT_DISPLAY = "UPDATE_FIAT_DISPLAY",
   CONVERT_TOKEN_TO_FIAT = "CONVERT_TOKEN_TO_FIAT",
   CONVERT_FIAT_TO_TOKEN = "CONVERT_FIAT_TO_TOKEN",
+  SET_DISPLAY_AMOUNT_FROM_TEXT = "SET_DISPLAY_AMOUNT_FROM_TEXT",
 }
 
 export interface SetTokenAmountAction {
@@ -63,6 +64,11 @@ export interface ConvertFiatToTokenAction {
   payload: { fiatAmount: string; tokenPrice: BigNumber };
 }
 
+export interface SetDisplayAmountFromTextAction {
+  type: TokenFiatConverterActionType.SET_DISPLAY_AMOUNT_FROM_TEXT;
+  payload: { text: string };
+}
+
 export type TokenFiatConverterAction =
   | SetTokenAmountAction
   | SetFiatAmountAction
@@ -71,7 +77,8 @@ export type TokenFiatConverterAction =
   | HandleFiatInputAction
   | UpdateFiatDisplayAction
   | ConvertTokenToFiatAction
-  | ConvertFiatToTokenAction;
+  | ConvertFiatToTokenAction
+  | SetDisplayAmountFromTextAction;
 
 export const initialState: TokenFiatConverterState = {
   tokenAmount: "0",
@@ -659,6 +666,56 @@ export const createTokenFiatConverterReducer =
           fiatAmount,
           tokenAmount,
           fiatAmountDisplayRaw: null,
+        };
+      }
+
+      case TokenFiatConverterActionType.SET_DISPLAY_AMOUNT_FROM_TEXT: {
+        const { text } = action.payload;
+
+        if (state.showFiatAmount) {
+          // Fiat side: normalise the text using the same helper as HANDLE_FIAT_INPUT
+          const internalAmount = normalizeInternalAmount(text);
+
+          // Convert to token
+          let { tokenAmount } = state;
+          if (tokenPrice && !tokenPrice.isZero()) {
+            tokenAmount = recalculateTokenAmountFromFiat(
+              internalAmount,
+              tokenPrice,
+              tokenDecimals,
+            );
+          }
+
+          return {
+            ...state,
+            fiatAmount: internalAmount,
+            fiatAmountDisplayRaw: text,
+            tokenAmount,
+          };
+        }
+
+        // Token side: normalise using the same helper as HANDLE_TOKEN_INPUT
+        const internalAmount = parseDisplayNumber(text, tokenDecimals);
+
+        // Convert to fiat
+        let { fiatAmount } = state;
+        if (tokenPrice && !tokenPrice.isZero()) {
+          const bnTokenAmount = new BigNumber(internalAmount);
+          if (bnTokenAmount.isFinite() && !bnTokenAmount.isZero()) {
+            fiatAmount = recalculateFiatAmountFromToken(
+              internalAmount,
+              tokenPrice,
+            );
+          } else {
+            fiatAmount = "0";
+          }
+        }
+
+        return {
+          ...state,
+          tokenAmount: internalAmount,
+          tokenAmountDisplayRaw: text,
+          fiatAmount,
         };
       }
 

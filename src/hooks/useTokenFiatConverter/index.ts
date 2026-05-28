@@ -30,6 +30,7 @@ interface UseTokenFiatConverterResult {
   setTokenAmount: (amount: string) => void;
   setFiatAmount: (amount: string) => void;
   updateFiatDisplay: (amount: string) => void;
+  setDisplayAmountFromText: (text: string) => void;
 }
 
 /**
@@ -239,6 +240,13 @@ export const useTokenFiatConverter = ({
     });
   }, []);
 
+  const setDisplayAmountFromText = useCallback((text: string) => {
+    dispatch({
+      type: TokenFiatConverterActionType.SET_DISPLAY_AMOUNT_FROM_TEXT,
+      payload: { text },
+    });
+  }, []);
+
   return {
     tokenAmount: state.tokenAmount,
     tokenAmountDisplay,
@@ -252,5 +260,6 @@ export const useTokenFiatConverter = ({
     setTokenAmount: handleSetTokenAmount,
     setFiatAmount: handleSetFiatAmount,
     updateFiatDisplay,
+    setDisplayAmountFromText,
   };
 };

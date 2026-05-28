@@ -430,6 +430,7 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
       setShowFiatAmount: jest.fn(),
       handleDisplayAmountChange: jest.fn(),
       updateFiatDisplay: jest.fn(),
+      setDisplayAmountFromText: jest.fn(),
     });
     mockUseDeviceSize.mockReturnValue(DeviceSize.MD);
     mockUseRightHeaderMenu.mockReturnValue(undefined);
@@ -812,6 +813,7 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
       setShowFiatAmount: jest.fn(),
       handleDisplayAmountChange: jest.fn(),
       updateFiatDisplay: jest.fn(),
+      setDisplayAmountFromText: jest.fn(),
     });
 
     const settingsStateWithMemo = {
@@ -867,6 +869,7 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
       setShowFiatAmount: jest.fn(),
       handleDisplayAmountChange: jest.fn(),
       updateFiatDisplay: jest.fn(),
+      setDisplayAmountFromText: jest.fn(),
     });
 
     const settingsStateWithoutMemo = {
@@ -1032,6 +1035,7 @@ describe("TransactionAmountScreen - Address Change Scenarios", () => {
       setShowFiatAmount: jest.fn(),
       handleDisplayAmountChange: jest.fn(),
       updateFiatDisplay: jest.fn(),
+      setDisplayAmountFromText: jest.fn(),
     });
     mockUseDeviceSize.mockReturnValue(DeviceSize.MD);
     mockUseRightHeaderMenu.mockReturnValue(undefined);

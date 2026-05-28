@@ -1248,6 +1248,94 @@ describe("useTokenFiatConverter", () => {
   });
 });
 
+describe("useTokenFiatConverter.setDisplayAmountFromText", () => {
+  const createMockBalance = (price: number | string) =>
+    ({
+      total: new BigNumber(100),
+      currentPrice: new BigNumber(price),
+      percentagePriceChange24h: new BigNumber(0),
+      tokenCode: "USDC",
+      fiatCode: "USD",
+      fiatTotal: new BigNumber(100).multipliedBy(new BigNumber(price)),
+      displayName: "USD Coin",
+      token: {
+        type: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+        code: "USDC",
+        issuer: {
+          key: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+        },
+      },
+      available: new BigNumber(100),
+      limit: new BigNumber(1000),
+      buyingLiabilities: "0",
+      sellingLiabilities: "0",
+    }) as PricedBalance;
+
+  it("sets the token-side display from a full text string", () => {
+    const mockBalance = createMockBalance(1.0);
+    const { result } = renderHook(() =>
+      useTokenFiatConverter({ selectedBalance: mockBalance }),
+    );
+
+    act(() => {
+      result.current.setDisplayAmountFromText("12.34");
+    });
+
+    expect(result.current.tokenAmountDisplay).toBe("12.34");
+    expect(result.current.tokenAmount).toBe("12.34");
+  });
+
+  it("sets the fiat-side display when showFiatAmount is true", () => {
+    const mockBalance = createMockBalance(1.0);
+    const { result } = renderHook(() =>
+      useTokenFiatConverter({ selectedBalance: mockBalance }),
+    );
+
+    act(() => {
+      result.current.setShowFiatAmount(true);
+    });
+    act(() => {
+      result.current.setDisplayAmountFromText("50");
+    });
+
+    expect(result.current.fiatAmountDisplay).toBe("50");
+  });
+
+  it("recalculates the opposite side after setDisplayAmountFromText", () => {
+    const mockBalance = createMockBalance(1.0);
+    const { result } = renderHook(() =>
+      useTokenFiatConverter({ selectedBalance: mockBalance }),
+    );
+
+    act(() => {
+      result.current.setDisplayAmountFromText("10");
+    });
+
+    // At $1 price, 10 USDC = $10
+    // recalculateFiatAmountFromToken returns toFixed(FIAT_DECIMALS) = "10.00"
+    expect(["10", "10.00"]).toContain(result.current.fiatAmount);
+  });
+
+  it("recalculates token side from fiat when showFiatAmount is true", () => {
+    const mockBalance = createMockBalance(2.0);
+    const { result } = renderHook(() =>
+      useTokenFiatConverter({ selectedBalance: mockBalance }),
+    );
+
+    act(() => {
+      result.current.setShowFiatAmount(true);
+    });
+    act(() => {
+      result.current.setDisplayAmountFromText("20");
+    });
+
+    // $20 at $2/token = 10 tokens
+    expect(result.current.tokenAmount).toBe(
+      new BigNumber(10).toFixed(DEFAULT_DECIMALS),
+    );
+  });
+});
+
 describe("useTokenFiatConverter - Custom Token with 4 Decimals", () => {
   // Helper to create mock SorobanBalance with 4 decimals
   const createMockSorobanBalance = (
