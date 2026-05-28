@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   TESTNET_USDC_CODE,
   TESTNET_USDC_ISSUER,
+  TESTNET_USDC,
   generateMnemonic,
   deriveKeypairFromMnemonic,
   formatProvisionOutput,
@@ -15,6 +16,11 @@ describe("pinned constants", () => {
       TESTNET_USDC_ISSUER,
       "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5",
     );
+  });
+
+  it("constructs the TESTNET_USDC asset with the right code and issuer", () => {
+    assert.equal(TESTNET_USDC.getCode(), TESTNET_USDC_CODE);
+    assert.equal(TESTNET_USDC.getIssuer(), TESTNET_USDC_ISSUER);
   });
 });
 
@@ -29,7 +35,10 @@ describe("deriveKeypairFromMnemonic", () => {
       publicKey,
       "GDRXE2BQUC3AZNPVFSCEZ76NJ3WWL25FYFK6RGZGIEKWE4SOOHSUJUJ6",
     );
-    assert.ok(secret.startsWith("S") && secret.length === 56);
+    assert.equal(
+      secret,
+      "SBGWSG6BTNCKCOB3DIFBGCVMUPQFYPA2G4O34RMTB343OYPXU5DJDVMN",
+    );
   });
 
   it("is deterministic and returns a valid G/S keypair for a generated mnemonic", () => {
