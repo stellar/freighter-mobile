@@ -15,6 +15,20 @@ import useColors from "hooks/useColors";
 import React from "react";
 import { TouchableOpacity, View } from "react-native";
 
+/**
+ * Compare two optional BigNumbers. Treats `undefined` and `null` as distinct
+ * from `BigNumber(0)`. Returns true only when both sides are nullish OR both
+ * sides are non-null and numerically equal.
+ */
+const bigEq = (
+  a: BigNumber | null | undefined,
+  b: BigNumber | null | undefined,
+): boolean => {
+  if (a == null && b == null) return true;
+  if (a == null || b == null) return false;
+  return a.eq(b);
+};
+
 export type SwapTokenRowVariant = "held" | "non-held" | "trending";
 
 export interface SwapTokenRowProps {
@@ -197,9 +211,8 @@ export const SwapTokenRow = React.memo(SwapTokenRowComponent, (prev, next) => {
     if (!pb || !nb) return false;
     return (
       pb.id === nb.id &&
-      (pb.fiatTotal?.eq(nb.fiatTotal ?? 0) ?? nb.fiatTotal == null) &&
-      (pb.percentagePriceChange24h?.eq(nb.percentagePriceChange24h ?? 0) ??
-        nb.percentagePriceChange24h == null)
+      bigEq(pb.fiatTotal, nb.fiatTotal) &&
+      bigEq(pb.percentagePriceChange24h, nb.percentagePriceChange24h)
     );
   }
 
@@ -211,13 +224,14 @@ export const SwapTokenRow = React.memo(SwapTokenRowComponent, (prev, next) => {
   }
 
   // trending
-  const priceEq =
-    prev.priceInfo?.currentPrice?.eq(next.priceInfo?.currentPrice ?? 0) ??
-    next.priceInfo?.currentPrice == null;
-  const pctEq =
-    prev.priceInfo?.percentagePriceChange24h?.eq(
-      next.priceInfo?.percentagePriceChange24h ?? 0,
-    ) ?? next.priceInfo?.percentagePriceChange24h == null;
+  const priceEq = bigEq(
+    prev.priceInfo?.currentPrice,
+    next.priceInfo?.currentPrice,
+  );
+  const pctEq = bigEq(
+    prev.priceInfo?.percentagePriceChange24h,
+    next.priceInfo?.percentagePriceChange24h,
+  );
   return (
     prev.record?.tokenCode === next.record?.tokenCode &&
     prev.record?.issuer === next.record?.issuer &&

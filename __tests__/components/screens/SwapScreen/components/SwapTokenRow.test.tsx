@@ -127,4 +127,35 @@ describe("SwapTokenRow", () => {
     fireEvent.press(getByText("AQUA"));
     expect(onPress).toHaveBeenCalled();
   });
+
+  it("re-renders when priceInfo changes from BigNumber(0) to undefined (memo comparator regression)", () => {
+    const onPress = jest.fn();
+    const { rerender, queryByText, getByText } = render(
+      <SwapTokenRow
+        variant="trending"
+        record={mockSearchRecord}
+        priceInfo={{ currentPrice: new BigNumber("0") }}
+        network={NETWORKS.PUBLIC}
+        onPress={onPress}
+      />,
+    );
+
+    // Initially: price is $0.00 — rendered via formatFiatAmount(BigNumber(0))
+    expect(getByText(/\$0/)).toBeTruthy();
+
+    rerender(
+      <SwapTokenRow
+        variant="trending"
+        record={mockSearchRecord}
+        priceInfo={{}}
+        network={NETWORKS.PUBLIC}
+        onPress={onPress}
+      />,
+    );
+
+    // After re-render: currentPrice is undefined → component should render "--"
+    // and the "$0" text should no longer be present.
+    expect(queryByText(/\$0/)).toBeNull();
+    expect(getByText("--")).toBeTruthy();
+  });
 });
