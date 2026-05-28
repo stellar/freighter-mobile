@@ -40,3 +40,117 @@ export function formatProvisionOutput({ mnemonic, recipient, usdcCode, usdcIssue
   if (usdcIssuer) lines.push(`E2E_TEST_USDC_ISSUER=${usdcIssuer}`);
   return lines.join("\n");
 }
+
+// ── Live testnet I/O helpers (real network calls) ────────────────────────────
+
+import {
+  Horizon,
+  Keypair,
+  TransactionBuilder,
+  Operation,
+  Networks,
+  BASE_FEE,
+} from "@stellar/stellar-sdk";
+
+const server = new Horizon.Server(HORIZON_URL);
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/** Fund a public key via friendbot, with bounded retries for friendbot flakiness. */
+export async function fundWithFriendbot(publicKey, { retries = 5 } = {}) {
+  let lastErr;
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(`${FRIENDBOT_URL}?addr=${encodeURIComponent(publicKey)}`);
+      if (res.ok) return;
+      lastErr = new Error(`friendbot HTTP ${res.status}`);
+    } catch (e) {
+      lastErr = e;
+    }
+    if (attempt < retries) await sleep(attempt * 2000);
+  }
+  throw new Error(`friendbot failed for ${publicKey} after ${retries} attempts: ${lastErr}`);
+}
+
+/** Poll Horizon until the account is visible (friendbot funding settled). */
+export async function waitForAccount(publicKey, { retries = 10 } = {}) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      return await server.loadAccount(publicKey);
+    } catch {
+      if (attempt === retries) {
+        throw new Error(`account ${publicKey} not found on testnet after ${retries} polls`);
+      }
+      await sleep(1500);
+    }
+  }
+}
+
+/** Sign + submit a transaction built from the given source keypair. */
+async function submit(builderFn, sourceKeypair) {
+  const account = await server.loadAccount(sourceKeypair.publicKey());
+  const tx = builderFn(
+    new TransactionBuilder(account, {
+      fee: BASE_FEE,
+      networkPassphrase: Networks.TESTNET,
+    }),
+  )
+    .setTimeout(60)
+    .build();
+  tx.sign(sourceKeypair);
+  return server.submitTransaction(tx);
+}
+
+/** Create + friendbot-fund a brand-new account; returns its keypair. */
+export async function createFundedAccount() {
+  const kp = Keypair.random();
+  await fundWithFriendbot(kp.publicKey());
+  await waitForAccount(kp.publicKey());
+  return kp;
+}
+
+/** Add a trustline to the pinned testnet USDC asset for the given account. */
+export async function addUsdcTrustline(sourceKeypair) {
+  await submit(
+    (b) => b.addOperation(Operation.changeTrust({ asset: TESTNET_USDC })),
+    sourceKeypair,
+  );
+}
+
+/**
+ * Acquire a small USDC balance by swapping XLM via a strict-receive path payment
+ * to self. Requires the trustline to already exist. `usdcAmount` is a decimal
+ * string (e.g. "0.01").
+ */
+export async function swapXlmToUsdc(sourceKeypair, usdcAmount) {
+  const paths = await server
+    .strictReceivePaths([Asset.native()], TESTNET_USDC, usdcAmount)
+    .call();
+  if (!paths.records.length) {
+    throw new Error("no XLM→USDC strict-receive path found on testnet");
+  }
+  // Cheapest path first; add a generous sendMax (2x) to tolerate price drift.
+  const best = paths.records.reduce((a, b) =>
+    Number(a.source_amount) <= Number(b.source_amount) ? a : b,
+  );
+  const sendMax = (Number(best.source_amount) * 2).toFixed(7);
+  const path = best.path.map((p) =>
+    p.asset_type === "native"
+      ? Asset.native()
+      : new Asset(p.asset_code, p.asset_issuer),
+  );
+  await submit(
+    (b) =>
+      b.addOperation(
+        Operation.pathPaymentStrictReceive({
+          sendAsset: Asset.native(),
+          sendMax,
+          destination: sourceKeypair.publicKey(),
+          destAsset: TESTNET_USDC,
+          destAmount: usdcAmount,
+          path,
+        }),
+      ),
+    sourceKeypair,
+  );
+}
