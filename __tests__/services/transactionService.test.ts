@@ -1,4 +1,5 @@
 import {
+  Asset,
   Keypair,
   Networks,
   TransactionBuilder,
@@ -494,6 +495,13 @@ describe("buildSwapTransaction — includeTrustline", () => {
     expect(tx.operations).toHaveLength(2);
     expect(tx.operations[0].type).toBe("changeTrust");
     expect(tx.operations[1].type).toBe("pathPaymentStrictSend");
+
+    const trustlineOp = tx.operations[0] as Operation.ChangeTrust;
+    const trustlineAsset = trustlineOp.line as Asset;
+    expect(trustlineAsset.code).toBe("USDC");
+    expect(trustlineAsset.issuer).toBe(
+      "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+    );
   });
 
   it("builds a single pathPaymentStrictSend op when includeTrustline is omitted (regression)", async () => {
