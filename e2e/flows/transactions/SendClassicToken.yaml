@@ -6,7 +6,7 @@ tags:
   - testnet
 ---
 # Send 0.000001 XLM on testnet to E2E_TEST_RECIPIENT_ADDRESS (a freshly provisioned account).
-# Uses a small amount to avoid wasting mainnet funds.
+# Uses a small amount to keep the test cheap.
 #
 # Import funded wallet
 - runFlow:
@@ -82,7 +82,7 @@ tags:
       id: send-amount-screen
     timeout: 15000
 
-# Enter amount: 0.000001 XLM (minimal to avoid wasting mainnet funds)
+# Enter amount: 0.000001 XLM (minimal, keeps the test cheap)
 - tapOn:
     id: numeric-key-0
 - tapOn:
