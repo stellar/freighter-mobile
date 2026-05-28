@@ -1071,7 +1071,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             />
           </View>
 
-          <View className="rounded-[12px] gap-[12px] py-[12px] max-xs:py-[8px] px-[16px] max-xs:px-[12px] bg-background-tertiary w-full pt-5">
+          <View className="rounded-[12px] gap-[12px] py-[12px] max-xs:py-[8px] px-[16px] max-xs:px-[12px] bg-background-tertiary w-full pt-5 pb-4">
             <View className="flex-row items-end justify-between">
               <Text md secondary style={{ lineHeight: pxValue(16) }}>
                 {t("transactionAmountScreen.sendingLabel")}
@@ -1095,7 +1095,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
               )}
             </View>
 
-            <View className="flex-row items-center justify-between mb-2">
+            <View className="flex-row items-center justify-between">
               <TouchableOpacity
                 className="flex-1"
                 onPressIn={focusAmountInput}
