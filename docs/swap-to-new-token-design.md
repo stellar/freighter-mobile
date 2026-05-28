@@ -176,12 +176,12 @@ shape upstream — the search is fuzzy, and our filter keeps the results honest.
 
 **Empty-state copy for `C…` pastes that yield zero results.** When
 `isContractId(term)` is true and the filtered result list is empty, the picker
-shows **"Soroban contract tokens are not supported yet."** in place of the
-generic "No tokens match {term}" empty state. The simple `isContractId` check
-covers both pure-Soroban pastes (the intended case) and the rare "unrelated `C…`
-that matched nothing" case — both end up with the same message, which is still
-defensible: we don't support either as a swap destination today. No extra
-network call is made to verify the contract is actually a SEP-41 token.
+shows **"Swapping with Soroban contract tokens is not supported yet."** in place
+of the generic "No tokens match {term}" empty state. The simple `isContractId`
+check covers both pure-Soroban pastes (the intended case) and the rare
+"unrelated `C…` that matched nothing" case — both end up with the same message,
+which is still defensible: we don't support either as a swap destination today.
+No extra network call is made to verify the contract is actually a SEP-41 token.
 
 **Blockaid scanning** — for both surfaces, every token that isn't already in the
 user's balances (which already carries `blockaidData` from the balance
@@ -638,10 +638,10 @@ re-implementing them; the trustline-reserve pre-flight check lives inline in
   "Results" header with a short "No tokens match {term}" line, reusing the same
   empty-state pattern from `AddTokenScreen`. When the search term is a `C…`
   contract address (`isContractId(term)`) and the filtered result list is empty,
-  the message becomes **"Soroban contract tokens are not supported yet."**
-  instead of the generic line — see §5.1 for the full rationale. Trending list
-  on testnet, where stellar.expert returns mainnet-only data, is hidden behind a
-  network check so we don't render a confusing empty list.
+  the message becomes **"Swapping with Soroban contract tokens is not supported
+  yet."** instead of the generic line — see §5.1 for the full rationale.
+  Trending list on testnet, where stellar.expert returns mainnet-only data, is
+  hidden behind a network check so we don't render a confusing empty list.
 
 ## 9. Security
 
