@@ -37,11 +37,25 @@ jest.mock("helpers/soroban", () => ({
   }),
 }));
 
-jest.mock("helpers/splitVerifiedTokens", () => ({
-  splitVerifiedTokens: ({ tokens }: { tokens: unknown[] }) =>
+// Default: treat every token as verified; individual tests may override via
+// mockSplitVerifiedTokens.mockImplementation(…).
+// NOTE: variable must be prefixed "mock" so Jest's hoisting allows the
+// jest.mock factory to reference it.
+const mockSplitVerifiedTokens = jest.fn(
+  ({
+    tokens,
+  }: {
+    tokens: unknown[];
+  }): Promise<{ verified: unknown[]; unverified: unknown[] }> =>
     // Treat every token as verified for these unit tests; the held>verified
     // ordering still falls out because the held-first dedupe wins.
     Promise.resolve({ verified: tokens, unverified: [] }),
+);
+
+jest.mock("helpers/splitVerifiedTokens", () => ({
+  get splitVerifiedTokens() {
+    return mockSplitVerifiedTokens;
+  },
 }));
 
 jest.mock("ducks/verifiedTokens", () => ({
@@ -236,6 +250,64 @@ describe("useSwapTokenLookup — idle mode", () => {
     expect(result.current.popularTokens).toEqual([]);
     expect(result.current.trendingTokens).toEqual([]);
     expect(result.current.yourTokens).toHaveLength(2);
+  });
+
+  it("includes only verified tokens in popularTokens (intersection with verified lists)", async () => {
+    // fetchTrendingAssets returns three classic records: AQUA (unverified in
+    // this scenario), USDC (verified), and a third token FOO (unverified).
+    const trendingWithFoo = [
+      {
+        asset: `AQUA-${AQUA_ISSUER}-1`,
+        domain: "aqua.network",
+        tomlInfo: { code: "AQUA", issuer: AQUA_ISSUER, image: "aqua-image" },
+      },
+      {
+        asset: `USDC-${USDC_ISSUER}-1`,
+        domain: "circle.com",
+        tomlInfo: { code: "USDC", issuer: USDC_ISSUER, image: "usdc-image" },
+      },
+      {
+        asset: `FOO-${FOO_ISSUER}-1`,
+        domain: "foo.com",
+        tomlInfo: { code: "FOO", issuer: FOO_ISSUER, image: "foo-image" },
+      },
+    ];
+    (stellarExpert.fetchTrendingAssets as jest.Mock).mockResolvedValue({
+      _embedded: { records: trendingWithFoo },
+      _links: {},
+    });
+
+    // Override splitVerifiedTokens: only USDC is verified; AQUA + FOO are not.
+    mockSplitVerifiedTokens.mockImplementationOnce(
+      ({ tokens }: { tokens: unknown[] }) => {
+        const tokenList = tokens as Array<{ tokenCode: string }>;
+        const verified = tokenList.filter((t) => t.tokenCode === "USDC");
+        const unverified = tokenList.filter((t) => t.tokenCode !== "USDC");
+        return Promise.resolve({ verified, unverified });
+      },
+    );
+
+    const { result } = renderHook(() =>
+      useSwapTokenLookup({ network: NETWORKS.PUBLIC, balanceItems: [] }),
+    );
+
+    await act(async () => {
+      await settleAsync();
+    });
+
+    // trendingTokens must include ALL three classic records (unverified included)
+    const trendingCodes = result.current.trendingTokens.map((t) => t.tokenCode);
+    expect(trendingCodes).toContain("AQUA");
+    expect(trendingCodes).toContain("USDC");
+    expect(trendingCodes).toContain("FOO");
+
+    // popularTokens must be the verified subset only (no held tokens to
+    // exclude here, so all three verified tokens would appear — but only
+    // USDC is verified in this mock).
+    const popularCodes = result.current.popularTokens.map((t) => t.tokenCode);
+    expect(popularCodes).toContain("USDC");
+    expect(popularCodes).not.toContain("AQUA");
+    expect(popularCodes).not.toContain("FOO");
   });
 });
 

@@ -1,5 +1,9 @@
 /* eslint-disable no-underscore-dangle */
-import { NATIVE_TOKEN_CODE, NETWORKS } from "config/constants";
+import {
+  DEFAULT_DEBOUNCE_DELAY,
+  NATIVE_TOKEN_CODE,
+  NETWORKS,
+} from "config/constants";
 import {
   FormattedSearchTokenRecord,
   HookStatus,
@@ -135,6 +139,9 @@ export const useSwapTokenLookup = ({
   const [trendingTokens, setTrendingTokens] = useState<
     FormattedSearchTokenRecord[]
   >([]);
+  const [verifiedTrendingTokens, setVerifiedTrendingTokens] = useState<
+    FormattedSearchTokenRecord[]
+  >([]);
   const [searchResults, setSearchResults] = useState<
     FormattedSearchTokenRecord[]
   >([]);
@@ -237,6 +244,7 @@ export const useSwapTokenLookup = ({
       if (!response) {
         setStellarExpertDown(true);
         setTrendingTokens([]);
+        setVerifiedTrendingTokens([]);
         return;
       }
 
@@ -273,8 +281,19 @@ export const useSwapTokenLookup = ({
       const enhanced = await enhanceWithSecurityInfo(deduped, signal);
       if (cancelled || signal.aborted) return;
 
+      // §5.1: popularTokens must be the intersection of stellar.expert top-50
+      // AND the runtime verified-tokens list. Split here so trendingTokens
+      // keeps the full classic set (verified + unverified) while
+      // verifiedTrendingTokens exposes only the verified subset.
+      const { verified } = await splitVerifiedTokens({
+        tokens: enhanced,
+        network,
+      });
+      if (cancelled || signal.aborted) return;
+
       setStellarExpertDown(false);
       setTrendingTokens(enhanced);
+      setVerifiedTrendingTokens(verified);
     })();
 
     return () => {
@@ -425,7 +444,7 @@ export const useSwapTokenLookup = ({
 
     const timer = setTimeout(() => {
       performSearch(searchTerm);
-    }, 500);
+    }, DEFAULT_DEBOUNCE_DELAY);
 
     return () => clearTimeout(timer);
   }, [searchTerm, performSearch]);
@@ -444,12 +463,15 @@ export const useSwapTokenLookup = ({
 
   // Idle outputs
   const yourTokens = balanceItems;
+  // §5.1: popularTokens = INTERSECTION of stellar.expert top-50 AND
+  // verified-tokens list, EXCLUDING held tokens. verifiedTrendingTokens
+  // already holds the verified subset; we filter out held tokens here.
   const popularTokens = useMemo(
     () =>
-      trendingTokens.filter(
+      verifiedTrendingTokens.filter(
         (t) => !hasExistingTrustline(t.tokenCode, t.issuer),
       ),
-    [trendingTokens, hasExistingTrustline],
+    [verifiedTrendingTokens, hasExistingTrustline],
   );
 
   return {
