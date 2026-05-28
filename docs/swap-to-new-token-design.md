@@ -174,14 +174,28 @@ unusual paste that incidentally matches TOML metadata may show one or more
 Classic results, which is acceptable behaviour. We do not special-case the `C…`
 shape upstream — the search is fuzzy, and our filter keeps the results honest.
 
-**Empty-state copy for `C…` pastes that yield zero results.** When
-`isContractId(term)` is true and the filtered result list is empty, the picker
-shows **"Swapping with Soroban contract tokens is not supported yet."** in place
-of the generic "No tokens match {term}" empty state. The simple `isContractId`
-check covers both pure-Soroban pastes (the intended case) and the rare
-"unrelated `C…` that matched nothing" case — both end up with the same message,
-which is still defensible: we don't support either as a swap destination today.
-No extra network call is made to verify the contract is actually a SEP-41 token.
+**Empty-state copy when the user was searching for a Soroban token.** The picker
+swaps the generic "No tokens match {term}" line for **"Soroban contract tokens
+aren't supported for swaps yet. Try searching for a Classic token instead."**
+whenever the filtered result list is empty **and** either of the following
+holds:
+
+- **The search term is a contract address** (`isContractId(term)`). Covers pure
+  Soroban pastes (the intended case) and the rare "unrelated `C…` that matched
+  nothing" case — both land on the same message, which is still defensible: we
+  don't support either as a swap destination today. No extra network call to
+  verify the contract is actually a SEP-41 token.
+- **The pre-filter result set contained one or more Soroban contract tokens that
+  matched the term**, tracked via a `hadSorobanMatches` flag on the
+  `useSwapTokenLookup` state. Covers the name/symbol case: e.g. searching for a
+  Soroban-only project by name returns Soroban records from stellar.expert that
+  the classic-only filter drops, leaving an empty Results section that would
+  otherwise look like "nothing matched".
+
+When both classic and Soroban records match a term (e.g. a generic query like
+"USD"), the classic results render normally and no notice is shown — the user
+gets useful results. The Soroban message is reserved for the truly empty Results
+state.
 
 **Blockaid scanning** — for both surfaces, every token that isn't already in the
 user's balances (which already carries `blockaidData` from the balance
@@ -637,11 +651,13 @@ re-implementing them; the trustline-reserve pre-flight check lives inline in
   the "Popular tokens" section. Search-with-no-results renders an empty
   "Results" header with a short "No tokens match {term}" line, reusing the same
   empty-state pattern from `AddTokenScreen`. When the search term is a `C…`
-  contract address (`isContractId(term)`) and the filtered result list is empty,
-  the message becomes **"Swapping with Soroban contract tokens is not supported
-  yet."** instead of the generic line — see §5.1 for the full rationale.
-  Trending list on testnet, where stellar.expert returns mainnet-only data, is
-  hidden behind a network check so we don't render a confusing empty list.
+  contract address **or** the pre-filter result set contained Soroban contract
+  tokens that matched the term, and the filtered list is empty, the message
+  becomes **"Soroban contract tokens aren't supported for swaps yet. Try
+  searching for a Classic token instead."** instead of the generic line — see
+  §5.1 for the full trigger logic. Trending list on testnet, where
+  stellar.expert returns mainnet-only data, is hidden behind a network check so
+  we don't render a confusing empty list.
 
 ## 9. Security
 
@@ -731,10 +747,15 @@ existing `services/stellarExpert.ts` pattern).
   9. Paste a `G…` account address → Results lists the classic assets that
      account issues. Paste a SAC `C…` (e.g. AQUA's SAC, see §5.1 sample link) →
      Results contains the wrapped Classic asset. Paste a pure-Soroban `C…` → in
-     place of Results, picker shows **"Soroban contract tokens are not supported
-     yet."** Acceptable that an unusual `C…` could match incidental TOML
-     metadata and yield >1 Classic results — confirm the classic-only filter
-     still applies in that case.
+     place of Results, picker shows **"Soroban contract tokens aren't supported
+     for swaps yet. Try searching for a Classic token instead."** Search a
+     Soroban-only project name (e.g. a name known to match only Soroban records
+     on stellar.expert) → same message appears, driven by the
+     `hadSorobanMatches` flag (§5.1). Acceptable that an unusual `C…` could
+     match incidental TOML metadata and yield >1 Classic results — confirm the
+     classic-only filter still applies in that case. Acceptable that a generic
+     search matching both classic and Soroban tokens (e.g. "USD") shows the
+     classics only, with no Soroban-hidden footnote.
   10. Soroban assets never appear in either picker section, including during
       search.
   11. Switch network to **testnet** and repeat steps 1–8 with testnet token
