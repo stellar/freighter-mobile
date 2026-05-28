@@ -230,7 +230,7 @@ jobs:
       # - ImportFundedWallet: Import wallet with funded account
       # - SwitchToTestnet: Switch network to testnet
       # - SendClassicToken: Send XLM on testnet (small amount: 0.000001 XLM)
-      # - SwapClassicTokenMainnet: Swap tokens on mainnet (small amount: 0.000001 XLM)
+      # - SwapClassicToken: Swap tokens on testnet (small amount: 0.000001 XLM)
       # - ForgotPasswordWarning: Lock screen forgot password confirmation modal
       # - SendFederatedAddress: Send XLM and USDC to a federated address on mainnet (small amount: 0.000001 each)
       # - SignMessageMockDapp: WalletConnect sign message (requires mock server)
@@ -265,7 +265,7 @@ jobs:
             requires-mock-server: false
           - shard-index: 6
             shard-total: 9
-            flow-name: SwapClassicTokenMainnet
+            flow-name: SwapClassicToken
             requires-mock-server: false
           - shard-index: 7
             shard-total: 9

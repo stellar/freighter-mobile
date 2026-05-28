@@ -19,7 +19,7 @@ e2e-artifacts/
 │   └── (same structure as above)
 ├── SendClassicToken-<timestamp>/
 │   └── (same structure as above)
-└── SwapClassicTokenMainnet-<timestamp>/
+└── SwapClassicToken-<timestamp>/
     └── (same structure as above)
 ```
 

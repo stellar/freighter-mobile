@@ -46,7 +46,7 @@ Pass the **flow name** (filename without `.yaml`) as a positional argument:
 yarn test:e2e:ios CreateWallet
 yarn test:e2e:ios ImportWallet
 yarn test:e2e:ios SendClassicToken  # Send on testnet (0.000001 XLM)
-yarn test:e2e:ios SwapClassicTokenMainnet  # Swap on mainnet (0.000001 XLM)
+yarn test:e2e:ios SwapClassicToken  # Swap on testnet (0.000001 XLM)
 ```
 
 ```bash

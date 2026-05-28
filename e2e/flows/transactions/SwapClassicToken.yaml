@@ -3,10 +3,9 @@ tags:
   - transactions
   - swap
   - classic-token
-  - mainnet
+  - testnet
 ---
-# Swap 0.000001 XLM → USDC on mainnet.
-# Mainnet has real liquidity so path finding should succeed.
+# Swap 0.000001 XLM → USDC on testnet.
 #
 # Import funded wallet
 - runFlow:
@@ -31,11 +30,13 @@ tags:
             id: home-screen
           timeout: 30000
 
-# Stay on mainnet (no network switch)
-
 # Verify we're on home screen after import
 - assertVisible:
     id: home-screen
+
+# Switch to Testnet (account is provisioned on testnet)
+- runFlow:
+    file: ../shared/SwitchToTestnet.yaml
 
 # Wait for accounts and balances to load
 - extendedWaitUntil:
@@ -79,7 +80,7 @@ tags:
 - tapOn:
     id: token-option-USDC
 
-# Enter amount: 0.000001 XLM (minimal to avoid wasting mainnet funds)
+# Enter amount: 0.000001 XLM (minimal, keeps the test cheap)
 - assertVisible:
     id: swap-amount-screen
 - tapOn:
@@ -105,7 +106,7 @@ tags:
 # Confirm the swap
 - tapOn:
     id: swap-review-confirm-button
-# Verify swap processing (may timeout if mainnet API is slow/unavailable)
+# Verify swap processing (may timeout if testnet API is slow/unavailable)
 - extendedWaitUntil:
     visible:
       id: swap-processing-screen

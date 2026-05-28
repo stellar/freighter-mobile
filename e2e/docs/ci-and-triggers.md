@@ -51,12 +51,12 @@ flowchart LR
   - Shard 1 → `ImportWallet` - Wallet import with recovery phrase
   - Shard 2 → `SignMessageMockDapp` - WalletConnect sign message flow
 
-**Note:** `SendClassicToken` and `SendFederatedAddress` are part of the CI
-matrix and now run on testnet (small amount: 0.000001 XLM) using a freshly
-provisioned sender and recipient. `SwapClassicTokenMainnet` is also in the CI
-matrix but still tests mainnet transactions (small amounts: 0.000001 XLM); it
-has not yet been migrated to testnet. You can also run any of these locally,
-e.g. `yarn test:e2e:ios SendClassicToken`.
+**Note:** `SendClassicToken`, `SendFederatedAddress`, and `SwapClassicToken` are
+all part of the CI matrix and now run on testnet (small amount: 0.000001 XLM)
+using freshly provisioned accounts (`SwapClassicToken` uses a sender with a
+pre-provisioned USDC trustline). All three transaction flows are migrated to
+testnet. You can also run any of these locally, e.g.
+`yarn test:e2e:ios SendClassicToken`.
 
 Matrix is **fail-fast: false**, so one failing flow does not cancel the others.
 Each matrix job uploads its own artifacts (see
