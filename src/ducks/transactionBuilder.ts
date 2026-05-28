@@ -82,6 +82,7 @@ interface TransactionBuilderState {
     transactionTimeout?: number;
     network?: NETWORKS;
     senderAddress?: string;
+    includeTrustline?: { tokenCode: string; issuer: string };
   }) => Promise<string | null>;
 
   buildSendCollectibleTransaction: (params: {
@@ -337,6 +338,7 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
           transactionTimeout: params.transactionTimeout,
           network: params.network,
           senderAddress: params.senderAddress,
+          includeTrustline: params.includeTrustline,
         });
 
         if (!builtTxResult) {

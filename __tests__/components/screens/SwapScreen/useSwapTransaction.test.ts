@@ -2,7 +2,10 @@
 import { renderHook, act } from "@testing-library/react-hooks";
 import { useSwapTransaction } from "components/screens/SwapScreen/hooks/useSwapTransaction";
 import { NETWORKS } from "config/constants";
+import { logger } from "config/logger";
+import { TokenTypeWithCustomToken } from "config/types";
 import type { ActiveAccount } from "ducks/auth";
+import { useSwapStore } from "ducks/swap";
 
 const mockSignTransaction = jest.fn();
 const mockSubmitTransaction = jest.fn();
@@ -84,9 +87,22 @@ const baseParams: Parameters<typeof useSwapTransaction>[0] = {
   navigation: mockNavigation,
 };
 
+// Also mock config/logger so we can spy on logger.error
+jest.mock("config/logger", () => ({
+  logger: {
+    error: jest.fn(),
+    warn: jest.fn(),
+    info: jest.fn(),
+    debug: jest.fn(),
+  },
+}));
+
 describe("useSwapTransaction", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    act(() => {
+      useSwapStore.getState().resetSwap();
+    });
   });
 
   describe("executeSwap rejection contract", () => {
@@ -165,6 +181,94 @@ describe("useSwapTransaction", () => {
 
       expect(mockTrackSwapSuccess).toHaveBeenCalled();
       expect(mockTrackTransactionError).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("setupSwapTransaction — includeTrustline wiring", () => {
+    it("passes includeTrustline when destinationToken.isNew is true", async () => {
+      act(() => {
+        useSwapStore.setState({
+          destinationToken: {
+            id: "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+            tokenCode: "USDC",
+            issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+            decimals: 7,
+            tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+            isNew: true,
+          },
+        } as never);
+      });
+
+      const { result } = renderHook(() => useSwapTransaction(baseParams));
+
+      await act(async () => {
+        await result.current.setupSwapTransaction();
+      });
+
+      expect(mockBuildSwapTransaction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          includeTrustline: {
+            tokenCode: "USDC",
+            issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          },
+        }),
+      );
+    });
+
+    it("omits includeTrustline when destinationToken.isNew is false", async () => {
+      act(() => {
+        useSwapStore.setState({
+          destinationToken: {
+            id: "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+            tokenCode: "USDC",
+            issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+            decimals: 7,
+            tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+            isNew: false,
+          },
+        } as never);
+      });
+
+      const { result } = renderHook(() => useSwapTransaction(baseParams));
+
+      await act(async () => {
+        await result.current.setupSwapTransaction();
+      });
+
+      expect(mockBuildSwapTransaction).toHaveBeenCalled();
+      const callArgs = mockBuildSwapTransaction.mock.calls[0][0];
+      expect(callArgs.includeTrustline).toBeUndefined();
+    });
+
+    it("omits includeTrustline and logs error when isNew=true but issuer is missing", async () => {
+      act(() => {
+        useSwapStore.setState({
+          destinationToken: {
+            id: "BROKEN",
+            tokenCode: "BROKEN",
+            // issuer intentionally omitted
+            decimals: 7,
+            tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+            isNew: true,
+          },
+        } as never);
+      });
+
+      const { result } = renderHook(() => useSwapTransaction(baseParams));
+
+      await act(async () => {
+        await result.current.setupSwapTransaction();
+      });
+
+      expect(mockBuildSwapTransaction).toHaveBeenCalled();
+      const callArgs = mockBuildSwapTransaction.mock.calls[0][0];
+      expect(callArgs.includeTrustline).toBeUndefined();
+
+      expect(jest.mocked(logger.error)).toHaveBeenCalledWith(
+        expect.stringContaining("useSwapTransaction"),
+        expect.stringContaining("isNew=true but issuer missing"),
+        expect.anything(),
+      );
     });
   });
 });

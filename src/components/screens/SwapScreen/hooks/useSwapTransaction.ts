@@ -12,7 +12,7 @@ import {
 import { PricedBalance, NativeToken, NonNativeToken } from "config/types";
 import { ActiveAccount } from "ducks/auth";
 import { useHistoryStore } from "ducks/history";
-import { SwapPathResult } from "ducks/swap";
+import { SwapPathResult, useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
@@ -77,6 +77,29 @@ export const useSwapTransaction = ({
     const { swapFee: freshSwapFee, swapTimeout: freshSwapTimeout } =
       useSwapSettingsStore.getState();
 
+    // Derive includeTrustline from the swap store's destinationToken.
+    // When isNew === true the user doesn't yet hold a trustline for the
+    // destination asset; the changeTrust op is prepended atomically.
+    const { destinationToken } = useSwapStore.getState();
+    let includeTrustline: { tokenCode: string; issuer: string } | undefined;
+    if (destinationToken?.isNew) {
+      if (destinationToken.issuer) {
+        includeTrustline = {
+          tokenCode: destinationToken.tokenCode,
+          issuer: destinationToken.issuer,
+        };
+      } else {
+        // Defense-in-depth: a non-native classic descriptor without an issuer
+        // shouldn't be reachable (the picker filters Soroban; native XLM is
+        // never isNew). If we ever land here, log and skip the trustline op.
+        logger.error(
+          "useSwapTransaction",
+          "isNew=true but issuer missing on destinationToken",
+          { destinationToken },
+        );
+      }
+    }
+
     const transactionXDR = await buildSwapTransaction({
       sourceAmount,
       sourceBalance,
@@ -88,6 +111,7 @@ export const useSwapTransaction = ({
       transactionTimeout: freshSwapTimeout,
       network,
       senderAddress: account.publicKey,
+      includeTrustline,
     });
 
     if (!transactionXDR) {
