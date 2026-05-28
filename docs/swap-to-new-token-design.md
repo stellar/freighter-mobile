@@ -431,8 +431,13 @@ Calls `setDestinationToken(descriptor)` with the result and dismisses.
 ([`src/components/screens/SwapScreen/components/TrustlineInfoBottomSheet.tsx`](../src/components/screens/SwapScreen/components/TrustlineInfoBottomSheet.tsx)
 — NEW)
 
-Static informational sheet (title, body, "Got it"). Triggered from the purple
-banner.
+Static informational sheet triggered from the purple banner on the review sheet.
+Per the updated Figma
+([11697-19790](https://www.figma.com/design/KwkHXQxbNmDllwermJtnRu/Freighter-Mobile?node-id=11697-19790)),
+the copy explains both what a trustline is and that adding one locks **0.5 XLM**
+of the account's reserve (one-time, refundable when the trustline is removed),
+so users understand the cost up-front before tapping Confirm. Single "Got it"
+dismissal button.
 
 **`XlmReserveBottomSheet`**
 ([`src/components/screens/SwapScreen/components/XlmReserveBottomSheet.tsx`](../src/components/screens/SwapScreen/components/XlmReserveBottomSheet.tsx)
