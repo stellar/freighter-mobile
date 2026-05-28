@@ -108,7 +108,7 @@ tags:
     timeout: 30000
 # Confirm the transaction
 - tapOn:
-    id: send-review-confirm-button
+    id: send-review-confirm-anyway-button
 # Verify processing screen
 - extendedWaitUntil:
     visible:

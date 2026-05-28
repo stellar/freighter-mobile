@@ -278,6 +278,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
 
       {(isMalicious || isSuspicious || isUnableToScanToken) && (
         <Banner
+          testID="security-warning-banner"
           className="mt-[16px]"
           variant={isSuspicious || isUnableToScanToken ? "warning" : "error"}
           text={bannerText}

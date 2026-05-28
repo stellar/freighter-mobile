@@ -118,11 +118,11 @@ tags:
 # Wait for the confirm button to be enabled (transaction built + memo validated)
 - extendedWaitUntil:
     visible:
-      id: send-review-confirm-button
+      id: send-review-confirm-anyway-button
       enabled: true
     timeout: 30000
 - tapOn:
-    id: send-review-confirm-button
+    id: send-review-confirm-anyway-button
 # Verify processing screen
 - extendedWaitUntil:
     visible:
@@ -220,11 +220,11 @@ tags:
     timeout: 30000
 - extendedWaitUntil:
     visible:
-      id: send-review-confirm-button
+      id: send-review-confirm-anyway-button
       enabled: true
     timeout: 30000
 - tapOn:
-    id: send-review-confirm-button
+    id: send-review-confirm-anyway-button
 - extendedWaitUntil:
     visible:
       id: send-processing-screen
