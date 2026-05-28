@@ -100,4 +100,15 @@ describe("TokenIconWithBadge", () => {
     );
     expect(getByTestId("alert-circle-red")).toBeTruthy();
   });
+
+  it("renders an amber badge for EXPECTED_TO_FAIL level (matches isSuspicious semantic)", () => {
+    const { getByTestId } = render(
+      <TokenIconWithBadge
+        token={mockToken}
+        securityLevel={SecurityLevel.EXPECTED_TO_FAIL}
+      />,
+    );
+    expect(getByTestId("token-icon-badge")).toBeTruthy();
+    expect(getByTestId("alert-circle-amber")).toBeTruthy();
+  });
 });
