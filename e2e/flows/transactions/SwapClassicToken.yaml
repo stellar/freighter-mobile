@@ -108,7 +108,7 @@ tags:
     timeout: 30000
 # Confirm the swap
 - tapOn:
-    id: swap-review-confirm-anyway-button
+    id: swap-review-confirm-button
 # Verify swap processing (may timeout if testnet API is slow/unavailable)
 - extendedWaitUntil:
     visible:
