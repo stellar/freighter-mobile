@@ -253,6 +253,7 @@ export type SendPaymentStackParamList = {
     tokenId: string;
     recipientAddress?: string;
     recipientName?: string;
+    transition?: ScreenTransition;
   };
 };
 

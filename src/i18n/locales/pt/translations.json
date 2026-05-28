@@ -25,6 +25,7 @@
     "unknownError": "Erro desconhecido",
     "review": "Revisar",
     "and": " e ",
+    "available": "disponível",
     "yes": "Sim",
     "message": "Mensagem",
     "allow": "Permitir",
@@ -746,6 +747,7 @@
   },
   "transactionAmountScreen": {
     "title": "Enviar",
+    "sendingLabel": "Enviando",
     "percentageButtons": {
       "twentyFive": "25%",
       "fifty": "50%",

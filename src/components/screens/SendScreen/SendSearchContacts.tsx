@@ -235,15 +235,16 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
 
       if (selectedCollectibleDetails.tokenId) {
         // Navigate to collectible review screen after selecting recipient
-        navigation.navigate(
-          SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW,
-          selectedCollectibleDetails,
-        );
+        navigation.navigate(SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW, {
+          ...selectedCollectibleDetails,
+          transition: ScreenTransition.SlideFromBottom,
+        });
       } else {
         navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN, {
           tokenId: selectedTokenId || NATIVE_TOKEN_CODE,
           recipientAddress: contactAddress,
           recipientName: name,
+          transition: ScreenTransition.SlideFromBottom,
         });
       }
     },

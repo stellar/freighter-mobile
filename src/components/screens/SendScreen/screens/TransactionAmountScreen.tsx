@@ -49,6 +49,7 @@ import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { calculateSpendableAmount, hasXLMForFees } from "helpers/balances";
+import { fsValue, pxValue } from "helpers/dimensions";
 import {
   formatTokenForDisplay,
   formatFiatInputDisplay,
@@ -90,7 +91,11 @@ type TransactionAmountScreenProps = NativeStackScreenProps<
   typeof SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN
 >;
 
-const SECONDARY_AMOUNT_STACK_CHAR_THRESHOLD = 34; // Threshold for when to split secondary amounts (token + available text) across multiple lines
+const AVAILABLE_BALANCE_FONT_SIZES = [
+  { maxLen: 28, size: fsValue(16) },
+  { maxLen: 42, size: fsValue(14) },
+  { maxLen: Infinity, size: fsValue(12) },
+] as const;
 
 /**
  * TransactionAmountScreen Component
@@ -1019,11 +1024,14 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       )
     : null;
 
-  // For very long values, stack into two rows: conversion on top, swap+available below.
-  const shouldSplitSecondaryAmounts =
-    !!availableAmountText &&
-    secondaryConversionAmount.length + availableAmountText.length >
-      SECONDARY_AMOUNT_STACK_CHAR_THRESHOLD;
+  const availableBalanceText = availableAmountText
+    ? `${availableAmountText} ${t("common.available")}`
+    : null;
+
+  const getAvailableBalanceFontSize = () =>
+    AVAILABLE_BALANCE_FONT_SIZES.find(
+      ({ maxLen }) => (availableBalanceText?.length ?? 0) <= maxLen,
+    )!.size;
 
   // recipientName takes priority — it carries wallet nicknames and future
   // user-editable custom labels. Falls back to the federation address when
@@ -1037,7 +1045,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     <BaseLayout useKeyboardAvoidingView insets={{ top: false }}>
       <View className="flex-1" testID="send-amount-screen">
         <View className="items-center gap-[12px] max-xs:gap-[6px]">
-          <View className="rounded-[16px] py-[12px] px-[16px] bg-background-tertiary max-xs:mt-[4px] w-full">
+          <View className="rounded-[12px] py-[12px] px-[16px] bg-background-tertiary max-xs:mt-[4px] w-full">
             <ContactRow
               isSingleRow
               hasDarkBackground
@@ -1056,10 +1064,29 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             />
           </View>
 
-          <View className="rounded-[16px] gap-[8px] py-[12px] max-xs:py-[8px] px-[16px] max-xs:px-[12px] bg-background-tertiary w-full">
-            <Text sm secondary>
-              {t("transactionAmountScreen.title")}
-            </Text>
+          <View className="rounded-[12px] gap-[12px] py-[12px] max-xs:py-[8px] px-[16px] max-xs:px-[12px] bg-background-tertiary w-full pt-5">
+            <View className="flex-row items-end justify-between">
+              <Text md secondary style={{ lineHeight: pxValue(16) }}>
+                {t("transactionAmountScreen.sendingLabel")}
+              </Text>
+              {!!availableBalanceText && (
+                <Text
+                  medium
+                  secondary
+                  numberOfLines={1}
+                  textAlign="right"
+                  style={{
+                    fontSize: getAvailableBalanceFontSize(),
+                    lineHeight: getAvailableBalanceFontSize(),
+                    flexShrink: 1,
+                    marginLeft: pxValue(8),
+                    marginRight: pxValue(4),
+                  }}
+                >
+                  {availableBalanceText}
+                </Text>
+              )}
+            </View>
 
             <View className="flex-row items-center justify-between">
               <TouchableOpacity
@@ -1124,73 +1151,26 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
               </TouchableOpacity>
             </View>
 
-            {shouldSplitSecondaryAmounts ? (
-              <View className="gap-[4px]">
-                <View className="flex-row items-center gap-[8px]">
-                  <Text
-                    sm
-                    medium
-                    secondary
-                    numberOfLines={1}
-                    style={{ flexShrink: 1 }}
-                  >
-                    {secondaryConversionAmount}
-                  </Text>
-                  <TouchableOpacity
-                    hitSlop={10}
-                    onPress={() => setShowFiatAmount(!showFiatAmount)}
-                  >
-                    <Icon.RefreshCcw03
-                      size={14}
-                      color={themeColors.text.secondary}
-                    />
-                  </TouchableOpacity>
-                </View>
-                {!!availableAmountText && (
-                  <Text sm medium secondary numberOfLines={1}>
-                    {availableAmountText}
-                  </Text>
-                )}
-              </View>
-            ) : (
-              <View className="flex-row items-center justify-between gap-[8px]">
-                <View className="flex-row items-center gap-[4px] flex-1 min-w-0">
-                  <Text
-                    sm
-                    medium
-                    secondary
-                    numberOfLines={1}
-                    style={{ flexShrink: 1 }}
-                  >
-                    {secondaryConversionAmount}
-                  </Text>
-                  <TouchableOpacity
-                    hitSlop={10}
-                    onPress={() => setShowFiatAmount(!showFiatAmount)}
-                  >
-                    <Icon.RefreshCcw03
-                      size={14}
-                      color={themeColors.text.secondary}
-                    />
-                  </TouchableOpacity>
-                </View>
-
-                {!!availableAmountText && (
-                  <Text
-                    sm
-                    medium
-                    secondary
-                    numberOfLines={1}
-                    style={{
-                      flexShrink: 1,
-                      textAlign: "right",
-                    }}
-                  >
-                    {availableAmountText}
-                  </Text>
-                )}
-              </View>
-            )}
+            <View className="flex-row items-center gap-[4px] mb-1">
+              <Text
+                sm
+                medium
+                secondary
+                numberOfLines={1}
+                style={{ flexShrink: 1 }}
+              >
+                {secondaryConversionAmount}
+              </Text>
+              <TouchableOpacity
+                hitSlop={10}
+                onPress={() => setShowFiatAmount(!showFiatAmount)}
+              >
+                <Icon.RefreshCcw03
+                  size={14}
+                  color={themeColors.text.secondary}
+                />
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
 

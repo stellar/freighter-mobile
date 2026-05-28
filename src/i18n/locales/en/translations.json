@@ -25,6 +25,7 @@
     "unknownError": "Unknown error",
     "review": "Review",
     "and": " and ",
+    "available": "available",
     "addMemoShorthand": "Add memo",
     "addMemo": "Add memo",
     "yes": "Yes",
@@ -782,6 +783,7 @@
   },
   "transactionAmountScreen": {
     "title": "Send",
+    "sendingLabel": "Sending",
     "percentageButtons": {
       "twentyFive": "25%",
       "fifty": "50%",

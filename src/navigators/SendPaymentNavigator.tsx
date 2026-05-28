@@ -104,9 +104,14 @@ export const SendPaymentStackNavigator = () => {
       <SendPaymentStack.Screen
         name={SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN}
         component={TransactionAmountScreen}
-        options={{
-          headerTitle: t("transactionAmountScreen.title"),
-        }}
+        options={({ route }) =>
+          withTransitionOverride(
+            {
+              headerTitle: t("transactionAmountScreen.title"),
+            },
+            route,
+          )
+        }
       />
       <SendPaymentStack.Screen
         name={SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW}
