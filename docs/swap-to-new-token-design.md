@@ -233,6 +233,38 @@ Prices for the Trending list are fetched in one batched call when the swap
 screen mounts (or when the Trending list resolves), reusing
 `usePricesStore.fetchPricesForTokenIds`.
 
+### 5.4 Fallback when stellar.expert is unreachable
+
+Three of the new surfaces depend on stellar.expert: the Trending Tokens list on
+`SwapAmountScreen`, the "Popular tokens" section in the picker, and the
+cross-network search results in the picker. When the request fails (network
+error, 5xx, timeout) we degrade gracefully so the user can still complete a swap
+between tokens they hold:
+
+- **Trending Tokens list** — hidden on `SwapAmountScreen`. The screen renders
+  Sell / Receive / chips / CTA only; the FlatList body is empty so the layout
+  collapses cleanly.
+- **"Popular tokens" section in the picker** — omitted. The picker shows only
+  the "Your tokens" section.
+- **Cross-network search in the picker** — `Results` falls back to held-token
+  matches only (the in-memory filter against `balanceItems` from §5.1's active
+  surface step 1). The verified-tokens list match (step 2) and the
+  stellar.expert fetch (step 3) are skipped.
+- **A subtle inline notice** is rendered at the top of the picker when this
+  fallback is active: "Token discovery is temporarily unavailable. You can still
+  swap between tokens you already hold." We treat this as a soft error state,
+  not a blocking modal — the user retains full agency over held-only swaps.
+
+The Trending fetch and the picker's stellar.expert calls are independent in
+`useSwapTokenLookup`, so a failure on one (e.g. the trending endpoint) does not
+suppress the other. Each surface tracks its own `HookStatus` and renders the
+notice only when its own data source is in `ERROR` state. Errors are still
+logged via `logger.error` so we can monitor stellar.expert availability over
+time.
+
+Held-to-held swaps — the primary existing flow — continue to work fully because
+path-finding goes through Horizon's `strictSendPaths`, not stellar.expert.
+
 ## 6. State & screens
 
 ### 6.1 `useSwapStore` ([`src/ducks/swap.ts`](../src/ducks/swap.ts)) — extensions
@@ -588,10 +620,12 @@ re-implementing them; the trustline-reserve pre-flight check lives inline in
 - **Failure modes**: `useSwapTokenLookup` inherits the existing `useTokenLookup`
   pattern — stellar.expert / Blockaid errors are caught and surfaced via
   `status: HookStatus.ERROR`, with held tokens still rendered from
-  `useBalancesList` so the picker never goes blank. Search continues to work
-  without Blockaid signals on testnet (where bulk-scan is unsupported), with
-  `securityLevel = UNABLE_TO_SCAN` driving the same warning treatment as the
-  Add-Token flow.
+  `useBalancesList` so the picker never goes blank. When stellar.expert is
+  unreachable, the full fallback strategy (Trending hidden, Popular omitted,
+  Search degrades to held-only, soft inline notice in the picker) is described
+  in §5.4. Search continues to work without Blockaid signals on testnet (where
+  bulk-scan is unsupported), with `securityLevel = UNABLE_TO_SCAN` driving the
+  same warning treatment as the Add-Token flow.
 - **Empty states**: idle picker with no held tokens (new account) renders only
   the "Popular tokens" section. Search-with-no-results renders an empty
   "Results" header with a short "No tokens match {term}" line, reusing the same
@@ -700,6 +734,12 @@ existing `services/stellarExpert.ts` pattern).
       issuers (e.g. SRT). Trending list hits `/explorer/testnet/asset`; search
       hits `/explorer/testnet/asset?search=…`; Blockaid badges are absent
       (mainnet-only) and the warning state is "unable to scan", as today.
+  12. **stellar.expert downtime drill** — point the stellar.expert base URL at a
+      sink (e.g. `https://httpbin.org/status/503`) or block the host via a proxy
+      and reload Swap. Verify per §5.4: Trending list is hidden on the swap
+      screen; picker shows only "Your tokens"; search results fall back to
+      held-only matches; the soft inline notice is visible at the top of the
+      picker; held-to-held swap still completes end-to-end.
 
 - **Regression**
   - Existing held-to-held swap (no trustline addition) still works end-to-end
