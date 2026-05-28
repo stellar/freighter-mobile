@@ -1,6 +1,6 @@
 import { BigNumber } from "bignumber.js";
 import { DEFAULT_DECIMALS, NETWORKS } from "config/constants";
-import { PricedBalance } from "config/types";
+import { TokenTypeWithCustomToken } from "config/types";
 import { formatTokenForDisplay } from "helpers/formatAmount";
 import { getNativeContractDetails } from "helpers/soroban";
 
@@ -16,8 +16,35 @@ interface CalculateMinimumReceivedParams {
   minimumReceived?: string;
 }
 
+/**
+ * Minimum fields needed to derive a token's contract address and
+ * stellar.expert URL. Both PricedBalance and FormattedSearchTokenRecord
+ * project into this shape.
+ */
+export type TokenReference = {
+  /** Unique balance identifier (e.g. "XLM", "USDC:GA5Z..."). Present on PricedBalance. */
+  id?: string;
+  /** Short code for the token (e.g. "XLM", "USDC"). */
+  tokenCode?: string;
+  /** Flat issuer public key string. Present on FormattedSearchTokenRecord. */
+  issuer?: string;
+  /** Soroban contract ID. Present on SorobanBalance and CustomToken search results. */
+  contractId?: string;
+  /** Token type discriminator. */
+  tokenType?: TokenTypeWithCustomToken;
+  /**
+   * Nested token object present on PricedBalance (ClassicBalance / SorobanBalance).
+   * Carries the issuer key under `token.issuer.key`.
+   */
+  token?: {
+    issuer?: {
+      key: string;
+    };
+  };
+};
+
 interface GetContractAddressParams {
-  balance: PricedBalance;
+  balance: TokenReference;
   network: NETWORKS;
 }
 
@@ -68,19 +95,28 @@ export const calculateMinimumReceived = ({
 };
 
 /**
- * Gets contract address from different balance types
- * For native XLM, returns the network-specific Stellar Token Contract address
+ * Gets contract address from different token reference shapes.
+ * For native XLM, returns the network-specific Stellar Token Contract address.
+ *
+ * Handles both PricedBalance (nested `token.issuer.key`) and
+ * FormattedSearchTokenRecord (flat `issuer` string).
  */
 export const getContractAddress = ({
   balance,
   network,
 }: GetContractAddressParams): string | null => {
-  if ("contractId" in balance && balance.contractId) {
+  if (balance.contractId) {
     return balance.contractId;
   }
 
-  if ("token" in balance && balance.token && "issuer" in balance.token) {
+  // PricedBalance (ClassicBalance / SorobanBalance) path: nested issuer key
+  if (balance.token?.issuer?.key) {
     return balance.token.issuer.key;
+  }
+
+  // FormattedSearchTokenRecord path: flat issuer string
+  if (balance.issuer) {
+    return balance.issuer;
   }
 
   if (balance.id === "native") {

@@ -1,9 +1,11 @@
 import ContextMenuButton, { MenuItem } from "components/ContextMenuButton";
-import { getContractAddress } from "components/screens/SwapScreen/helpers";
+import {
+  getContractAddress,
+  TokenReference,
+} from "components/screens/SwapScreen/helpers";
 import Icon from "components/sds/Icon";
 import { NATIVE_TOKEN_CODE, NETWORKS } from "config/constants";
 import { logger } from "config/logger";
-import { PricedBalance } from "config/types";
 import { getStellarExpertUrl } from "helpers/stellarExpert";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
@@ -13,12 +15,12 @@ import React from "react";
 import { Platform, TouchableOpacity } from "react-native";
 
 interface TokenContextMenuProps {
-  balance: PricedBalance;
+  token: TokenReference;
   network: NETWORKS;
 }
 
 const TokenContextMenu: React.FC<TokenContextMenuProps> = ({
-  balance,
+  token,
   network,
 }) => {
   const { themeColors } = useColors();
@@ -27,7 +29,7 @@ const TokenContextMenu: React.FC<TokenContextMenuProps> = ({
   const { open: openInAppBrowser } = useInAppBrowser();
 
   const handleCopyContractAddress = () => {
-    const contractAddress = getContractAddress({ balance, network });
+    const contractAddress = getContractAddress({ balance: token, network });
 
     if (contractAddress) {
       copyToClipboard(contractAddress, {
@@ -37,17 +39,17 @@ const TokenContextMenu: React.FC<TokenContextMenuProps> = ({
   };
 
   const handleViewOnStellarExpert = async () => {
-    const contractAddress = getContractAddress({ balance, network });
+    const contractAddress = getContractAddress({ balance: token, network });
 
     let url: string | undefined;
 
     if (contractAddress) {
-      if ("contractId" in balance && balance.contractId) {
+      if (token.contractId) {
         url = `${getStellarExpertUrl(network)}/contract/${contractAddress}`;
       } else {
-        url = `${getStellarExpertUrl(network)}/asset/${balance.tokenCode}-${contractAddress}`;
+        url = `${getStellarExpertUrl(network)}/asset/${token.tokenCode}-${contractAddress}`;
       }
-    } else if (balance.id === "native") {
+    } else if (token.id === "native") {
       url = `${getStellarExpertUrl(network)}/asset/${NATIVE_TOKEN_CODE}`;
     }
 
@@ -107,4 +109,5 @@ const TokenContextMenu: React.FC<TokenContextMenuProps> = ({
   );
 };
 
+export { TokenContextMenu };
 export default TokenContextMenu;
