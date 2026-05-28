@@ -61,6 +61,7 @@ inline. All links open the same Figma file.
 | Review with trustline banner | [11684-25339](https://www.figma.com/design/KwkHXQxbNmDllwermJtnRu/Freighter-Mobile?node-id=11684-25339)   | "You are swapping" + purple banner        |
 | Trustline info sheet         | [11697-19790](https://www.figma.com/design/KwkHXQxbNmDllwermJtnRu/Freighter-Mobile?node-id=11697-19790)   | Tappable explanation                      |
 | Review with Blockaid warning | [11310-100817](https://www.figma.com/design/KwkHXQxbNmDllwermJtnRu/Freighter-Mobile?node-id=11310-100817) | Suspicious/malicious destination          |
+| Add XLM bottom sheet         | [11821-35601](https://www.figma.com/design/KwkHXQxbNmDllwermJtnRu/Freighter-Mobile?node-id=11821-35601)   | Insufficient XLM for trustline reserve    |
 
 ## 4. High-level architecture
 
@@ -484,15 +485,21 @@ dismissal button.
 ([`src/components/screens/SwapScreen/components/XlmReserveBottomSheet.tsx`](../src/components/screens/SwapScreen/components/XlmReserveBottomSheet.tsx)
 — NEW)
 
-Renders when the pre-flight reserve check fails (see §6.5). Designs TBD; we can
-ship with a functional layout and refit when Figma is ready. It should contain:
-a short explainer that the 0.5 XLM trustline reserve is a one-time lock (not a
-per-swap fee), plus three buttons —
+Renders when the pre-flight reserve check fails (see §6.5). Designs landed at
+Figma node
+[11821-35601](https://www.figma.com/design/KwkHXQxbNmDllwermJtnRu/Freighter-Mobile?node-id=11821-35601).
+Contains a short explainer that the 0.5 XLM trustline reserve is a one-time lock
+(not a per-swap fee), plus four affordances —
 
 - **"Swap XLM"** — sets XLM as the _Receive_ token and dismisses, so the user
   can swap any held token for XLM and try again.
 - **"Copy wallet address for XLM deposit"** — copies the active account's `G…`
   so the user can fund it from another wallet or exchange.
+- **"Why do I need XLM?"** — opens the help article
+  [help.freighter.app — How much XLM do I need in my wallet](https://help.freighter.app/article/xjlva9dxov-how-much-xlm-do-i-need-in-my-wallet)
+  via [`useInAppBrowser`](../src/hooks/useInAppBrowser.ts), same pattern as the
+  other in-app browser usages (e.g. `BalancesList`,
+  `TransactionDetailsBottomSheet`).
 - **"Cancel"** — dismisses without changes.
 
 ### 6.4 `SwapReviewBottomSheet` extensions
