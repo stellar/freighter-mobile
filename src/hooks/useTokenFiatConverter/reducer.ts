@@ -673,14 +673,19 @@ export const createTokenFiatConverterReducer =
         const { text } = action.payload;
 
         if (state.showFiatAmount) {
-          // Fiat side: normalise the text using the same helper as HANDLE_FIAT_INPUT
-          const internalAmount = normalizeInternalAmount(text);
+          // Fiat side: text is the assembled display value (system keyboard delivers
+          // the whole string). Strip trailing separator via normalizeInternalAmount to
+          // get the canonical internal amount.
+          const rawInternal = normalizeInternalAmount(text);
+          const bnInternal = new BigNumber(rawInternal);
+          const safeInternal = bnInternal.isFinite() ? rawInternal : "0";
+          const safeDisplay = bnInternal.isFinite() ? text : "";
 
           // Convert to token
           let { tokenAmount } = state;
           if (tokenPrice && !tokenPrice.isZero()) {
             tokenAmount = recalculateTokenAmountFromFiat(
-              internalAmount,
+              safeInternal,
               tokenPrice,
               tokenDecimals,
             );
@@ -688,8 +693,8 @@ export const createTokenFiatConverterReducer =
 
           return {
             ...state,
-            fiatAmount: internalAmount,
-            fiatAmountDisplayRaw: text,
+            fiatAmount: safeInternal,
+            fiatAmountDisplayRaw: safeDisplay,
             tokenAmount,
           };
         }

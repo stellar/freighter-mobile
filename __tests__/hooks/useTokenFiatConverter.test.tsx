@@ -1313,7 +1313,7 @@ describe("useTokenFiatConverter.setDisplayAmountFromText", () => {
 
     // At $1 price, 10 USDC = $10
     // recalculateFiatAmountFromToken returns toFixed(FIAT_DECIMALS) = "10.00"
-    expect(["10", "10.00"]).toContain(result.current.fiatAmount);
+    expect(result.current.fiatAmount).toBe("10.00");
   });
 
   it("recalculates token side from fiat when showFiatAmount is true", () => {
@@ -1333,6 +1333,57 @@ describe("useTokenFiatConverter.setDisplayAmountFromText", () => {
     expect(result.current.tokenAmount).toBe(
       new BigNumber(10).toFixed(DEFAULT_DECIMALS),
     );
+  });
+
+  it("clears token amount to '0' on empty string in token mode", () => {
+    const mockBalance = createMockBalance(1.0);
+    const { result } = renderHook(() =>
+      useTokenFiatConverter({ selectedBalance: mockBalance }),
+    );
+
+    act(() => {
+      result.current.setDisplayAmountFromText("42");
+    });
+    act(() => {
+      result.current.setDisplayAmountFromText("");
+    });
+
+    expect(result.current.tokenAmount).toBe("0");
+  });
+
+  it("clears fiat amount to '0' on empty string in fiat mode", () => {
+    const mockBalance = createMockBalance(1.0);
+    const { result } = renderHook(() =>
+      useTokenFiatConverter({ selectedBalance: mockBalance }),
+    );
+
+    act(() => {
+      result.current.setShowFiatAmount(true);
+    });
+    act(() => {
+      result.current.setDisplayAmountFromText("42");
+    });
+    act(() => {
+      result.current.setDisplayAmountFromText("");
+    });
+
+    expect(result.current.fiatAmount).toBe("0");
+  });
+
+  it("clamps malformed input (e.g. '12.34.56') to '0' in fiat mode", () => {
+    const mockBalance = createMockBalance(1.0);
+    const { result } = renderHook(() =>
+      useTokenFiatConverter({ selectedBalance: mockBalance }),
+    );
+
+    act(() => {
+      result.current.setShowFiatAmount(true);
+    });
+    act(() => {
+      result.current.setDisplayAmountFromText("12.34.56");
+    });
+
+    expect(result.current.fiatAmount).toBe("0");
   });
 });
 

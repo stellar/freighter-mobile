@@ -26,10 +26,12 @@ interface UseTokenFiatConverterResult {
   fiatAmountDisplayRaw: string | null; // Raw input when typing
   showFiatAmount: boolean;
   setShowFiatAmount: (show: boolean) => void;
+  /** Per-key input from the custom keyboard (Send flow). */
   handleDisplayAmountChange: (key: string) => void;
   setTokenAmount: (amount: string) => void;
   setFiatAmount: (amount: string) => void;
   updateFiatDisplay: (amount: string) => void;
+  /** Full-text input from system TextInput.onChangeText (Swap flow). */
   setDisplayAmountFromText: (text: string) => void;
 }
 
