@@ -772,12 +772,18 @@ existing `services/stellarExpert.ts` pattern).
 - Coordinate the backend proxy GH issue as a separate stream; the frontend flow
   can be initially merged using stellar.expert directly.
 
-## 14. Open questions
+## 14. Open questions resolved
 
-1. **Trending price fallback** — when `/token-prices` lacks a token, do we show
-   stellar.expert's `price` with no 24h %, or hide the price entirely? Current
-   proposal: show price, hide %.
-2. **`XlmReserveBottomSheet` design** — designs TBD. We can start with a
-   functional layout and update when Figma is ready.
-3. **Backend proxy timing** — fine to ship the frontend flow first and migrate
-   once the proxy is live?
+All three questions raised during drafting were resolved by the team review:
+
+1. **Trending price fallback** — when `/token-prices` lacks a token, show
+   stellar.expert's `price` with no 24h %. The `%` chip is hidden in the
+   fallback case (§5.3).
+2. **`XlmReserveBottomSheet` design** — design landed at Figma node
+   [11821-35601](https://www.figma.com/design/KwkHXQxbNmDllwermJtnRu/Freighter-Mobile?node-id=11821-35601),
+   including a new "Why do I need XLM?" affordance linking to the
+   [help article](https://help.freighter.app/article/xjlva9dxov-how-much-xlm-do-i-need-in-my-wallet).
+   Details in §6.3.
+3. **Backend proxy timing** — ship the frontend flow first against
+   stellar.expert directly; migrate to the `freighter-backend-v2` proxy (§5.2 /
+   §11) once it's live.
