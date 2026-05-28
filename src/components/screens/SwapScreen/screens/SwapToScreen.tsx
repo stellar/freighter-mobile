@@ -81,7 +81,10 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
       });
     }
 
-    if (popularTokens.length > 0) {
+    if (
+      popularTokens.length > 0 &&
+      selectionType === SWAP_SELECTION_TYPES.DESTINATION
+    ) {
       out.push({
         title: t("swapScreen.popularTokensSection"),
         data: popularTokens,
@@ -89,7 +92,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
     }
 
     return out;
-  }, [searchTerm, searchResults, yourTokens, popularTokens, t]);
+  }, [searchTerm, searchResults, yourTokens, popularTokens, selectionType, t]);
 
   // Soroban empty-state: search has term, no results, and either there were
   // Soroban matches filtered out OR the term itself looks like a contract ID.
@@ -97,6 +100,11 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
     searchTerm.length > 0 &&
     searchResults.length === 0 &&
     (hadSorobanMatches || isContractId(searchTerm));
+
+  // No-results empty-state: search has term, no results, and NOT a Soroban
+  // case (which has its own dedicated message).
+  const showNoResults =
+    searchTerm.length > 0 && searchResults.length === 0 && !showSorobanEmpty;
 
   const handleHeldPress = (balance: PricedBalance & { id: string }) => {
     if (selectionType === SWAP_SELECTION_TYPES.SOURCE) {
@@ -146,13 +154,23 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
         </View>
       )}
 
-      {showSorobanEmpty ? (
+      {showSorobanEmpty && (
         <View className="px-4 py-8">
           <Text sm secondary>
             {t("swapScreen.sorobanEmptyState")}
           </Text>
         </View>
-      ) : (
+      )}
+
+      {showNoResults && (
+        <View className="px-4 py-8">
+          <Text sm secondary>
+            {t("swapScreen.noResults", { term: searchTerm })}
+          </Text>
+        </View>
+      )}
+
+      {!showSorobanEmpty && !showNoResults && (
         <SectionList
           sections={sections}
           keyExtractor={getItemKey}

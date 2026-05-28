@@ -63,6 +63,11 @@ const mockNavProps = {
   route: makeRoute(SWAP_SELECTION_TYPES.DESTINATION),
 };
 
+const makeProps = (selectionType: SWAP_SELECTION_TYPES) => ({
+  navigation: makeNavigation(),
+  route: makeRoute(selectionType),
+});
+
 const mockHeldBalance = {
   id: "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
   tokenCode: "USDC",
@@ -188,5 +193,37 @@ describe("SwapToScreen", () => {
 
     expect(getByText("Your tokens")).toBeTruthy();
     expect(queryByText("Popular tokens")).toBeNull();
+  });
+
+  it("hides the 'Popular tokens' section header in source mode", () => {
+    (useSwapTokenLookupModule.useSwapTokenLookup as jest.Mock).mockReturnValue({
+      ...defaultLookupResult,
+      yourTokens: [mockHeldBalance],
+      popularTokens: [mockPopularRecord],
+    });
+
+    const { queryByText, getByText } = renderWithProviders(
+      <SwapToScreen {...makeProps(SWAP_SELECTION_TYPES.SOURCE)} />,
+    );
+
+    expect(getByText("Your tokens")).toBeTruthy();
+    expect(queryByText("Popular tokens")).toBeNull();
+  });
+
+  it("renders the 'No tokens match' message for a search with zero classic results and no Soroban matches", () => {
+    (useSwapTokenLookupModule.useSwapTokenLookup as jest.Mock).mockReturnValue({
+      ...defaultLookupResult,
+      yourTokens: [],
+      popularTokens: [],
+      searchResults: [],
+      hadSorobanMatches: false,
+      searchTerm: "zloto",
+    });
+
+    const { getByText } = renderWithProviders(
+      <SwapToScreen {...makeProps(SWAP_SELECTION_TYPES.DESTINATION)} />,
+    );
+
+    expect(getByText(/No tokens match zloto/i)).toBeTruthy();
   });
 });
