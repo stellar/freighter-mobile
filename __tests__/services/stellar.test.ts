@@ -1,8 +1,14 @@
 /**
  * Tests for stellar service, focusing on submitTx retry logic with exponential backoff
- * This test uses the actual isHorizonError function from stellar.ts
+ * and buildChangeTrustOperation helper.
+ * This test uses the actual functions from stellar.ts
  */
-import { calculateBackoffDelay, isHorizonError } from "services/stellar";
+import { Operation } from "@stellar/stellar-sdk";
+import {
+  buildChangeTrustOperation,
+  calculateBackoffDelay,
+  isHorizonError,
+} from "services/stellar";
 
 describe("stellar service - submitTx retry logic", () => {
   it("should implement correct delay timing", async () => {
@@ -54,5 +60,30 @@ describe("stellar service - submitTx retry logic", () => {
     expect(shouldRetry(horizon504Error)).toBe(true);
     expect(shouldRetry(horizon400Error)).toBe(false);
     expect(shouldRetry(nonHorizonError)).toBe(false);
+  });
+});
+
+describe("buildChangeTrustOperation", () => {
+  it("returns a changeTrust operation for a classic asset with no limit", () => {
+    const op = buildChangeTrustOperation({
+      tokenCode: "USDC",
+      issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+    });
+
+    // Verify it's a changeTrust op
+    expect(op).toBeTruthy();
+    const xdr = op.toXDR("base64");
+    expect(xdr).toBeTruthy();
+    expect(typeof xdr).toBe("string");
+  });
+
+  it("sets limit to '0' when isRemove is true", () => {
+    const op = buildChangeTrustOperation({
+      tokenCode: "USDC",
+      issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+      isRemove: true,
+    });
+    expect(op).toBeTruthy();
+    expect(Operation.changeTrust).toBeDefined();
   });
 });

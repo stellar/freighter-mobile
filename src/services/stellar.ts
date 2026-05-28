@@ -190,6 +190,26 @@ export const getNetworkFees = async (server: Horizon.Server) => {
   return { recommendedFee, networkCongestion };
 };
 
+/**
+ * Builds a single `changeTrust` operation for a classic asset.
+ * Shared by the Add-Token flow (via `buildChangeTrustTx`) and the
+ * Swap-to-new-token flow (via `buildSwapTransaction` with `includeTrustline`).
+ */
+export const buildChangeTrustOperation = ({
+  tokenCode,
+  issuer,
+  isRemove = false,
+}: {
+  tokenCode: string;
+  issuer: string;
+  isRemove?: boolean;
+}) =>
+  Operation.changeTrust({
+    asset: new SdkToken(tokenCode, issuer),
+    // Setting the limit to 0 will remove the trustline.
+    ...(isRemove && { limit: "0" }),
+  });
+
 export const buildChangeTrustTx = async (input: BuildChangeTrustTxParams) => {
   const { network, publicKey, tokenIdentifier, isRemove = false } = input;
   const { tokenCode, issuer } = formatTokenIdentifier(tokenIdentifier);
@@ -205,13 +225,7 @@ export const buildChangeTrustTx = async (input: BuildChangeTrustTxParams) => {
   });
 
   txBuilder
-    .addOperation(
-      Operation.changeTrust({
-        asset: new SdkToken(tokenCode, issuer),
-        // Setting the limit to 0 will remove the trustline.
-        ...(isRemove && { limit: "0" }),
-      }),
-    )
+    .addOperation(buildChangeTrustOperation({ tokenCode, issuer, isRemove }))
     .setTimeout(DEFAULT_TRANSACTION_TIMEOUT);
 
   return txBuilder.build().toXDR();
