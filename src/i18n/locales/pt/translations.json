@@ -660,7 +660,14 @@
       "pathFindFailed": "Não foi possível buscar o caminho de troca. Tente novamente.",
       "customTokenSwapNotSupported": "Troca de tokens customizados ainda não é suportada"
     },
-    "proceedAnyway": "Prosseguir mesmo assim"
+    "proceedAnyway": "Prosseguir mesmo assim",
+    "searchPlaceholder": "Buscar tokens",
+    "stellarExpertDown": "A descoberta de tokens está temporariamente indisponível. Você ainda pode trocar entre tokens que já possui.",
+    "sorobanEmptyState": "Tokens de contrato Soroban não são suportados para trocas ainda. Tente buscar por um token Clássico.",
+    "noResults": "Nenhum token corresponde a {{term}}",
+    "yourTokensSection": "Seus tokens",
+    "popularTokensSection": "Tokens populares",
+    "resultsSection": "Resultados"
   },
   "swapProcessingScreen": {
     "swapping": "Trocando",

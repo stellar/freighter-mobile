@@ -696,7 +696,14 @@
       "pathFindFailed": "Couldn't fetch swap path. Please try again.",
       "customTokenSwapNotSupported": "Swapping custom tokens is not supported yet"
     },
-    "proceedAnyway": "Proceed anyway"
+    "proceedAnyway": "Proceed anyway",
+    "searchPlaceholder": "Search tokens",
+    "stellarExpertDown": "Token discovery is temporarily unavailable. You can still swap between tokens you already hold.",
+    "sorobanEmptyState": "Soroban contract tokens aren't supported for swaps yet. Try searching for a Classic token instead.",
+    "noResults": "No tokens match {{term}}",
+    "yourTokensSection": "Your tokens",
+    "popularTokensSection": "Popular tokens",
+    "resultsSection": "Results"
   },
   "swapProcessingScreen": {
     "swapping": "Swapping",
