@@ -63,7 +63,8 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
     destinationAmount,
     pathResult,
     sourceTokenSymbol,
-    destinationTokenSymbol,
+    sourceTokenId,
+    destinationToken: destinationTokenDescriptor,
   } = useSwapStore();
   const { transactionXDR } = useTransactionBuilderStore();
   const transactionDetails = useSignTransactionDetails({
@@ -98,14 +99,13 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
       const formattedRate = formatConversionRate({
         rate: currentConversionRate,
         sourceSymbol: sourceTokenSymbol,
-        destinationSymbol: destinationTokenSymbol,
+        destinationSymbol: destinationTokenDescriptor?.tokenCode ?? "",
       });
 
       setStableConversionRate(formattedRate);
     }
-  }, [currentConversionRate, sourceTokenSymbol, destinationTokenSymbol]);
+  }, [currentConversionRate, sourceTokenSymbol, destinationTokenDescriptor]);
 
-  const { sourceTokenId, destinationTokenId } = useSwapStore();
   const { balanceItems } = useBalancesList({
     publicKey: account?.publicKey ?? "",
     network,
@@ -117,8 +117,11 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
   );
 
   const destinationBalance = useMemo(
-    () => balanceItems.find((item) => item.id === destinationTokenId),
-    [balanceItems, destinationTokenId],
+    () =>
+      destinationTokenDescriptor
+        ? balanceItems.find((item) => item.id === destinationTokenDescriptor.id)
+        : undefined,
+    [balanceItems, destinationTokenDescriptor],
   );
 
   const sourceToken = getTokenFromBalance(sourceBalance);
@@ -173,7 +176,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
     (sourceSecurityAssessment.isUnableToScan &&
       sourceTokenId !== NATIVE_TOKEN_CODE) ||
     (destSecurityAssessment.isUnableToScan &&
-      destinationTokenId !== NATIVE_TOKEN_CODE);
+      destinationTokenDescriptor?.id !== NATIVE_TOKEN_CODE);
 
   const bannerText = useMemo(() => {
     if (isTxMalicious) {
@@ -265,7 +268,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
               <Text xl medium>
                 {formatTokenForDisplay(
                   destinationAmount,
-                  destinationTokenSymbol,
+                  destinationTokenDescriptor?.tokenCode ?? "",
                 )}
               </Text>
               <Text md medium secondary>

@@ -17,7 +17,9 @@ type BalanceInput = PricedBalance & {
   decimals?: number;
   tokenType?: TokenTypeWithCustomToken;
   token?: {
-    type?: TokenTypeWithCustomToken;
+    // Widened to string to accommodate NativeToken.type = "native" literal
+    // which TypeScript does not automatically treat as TokenTypeWithCustomToken.NATIVE.
+    type?: TokenTypeWithCustomToken | string;
     code?: string;
     issuer?: { key: string };
   };
@@ -54,7 +56,10 @@ export const descriptorFromBalance = (
     tokenCode: tokenCode || balance.tokenCode || "",
     issuer: issuer || undefined,
     decimals: balance.decimals ?? DEFAULT_DECIMALS,
-    tokenType: balance.token?.type ?? balance.tokenType ?? getTokenType(id),
+    tokenType:
+      (balance.token?.type as TokenTypeWithCustomToken | undefined) ??
+      balance.tokenType ??
+      getTokenType(id),
     isNew: false,
   };
 };

@@ -29,10 +29,15 @@ jest.mock("ducks/swap", () => ({
   useSwapStore: jest.fn(() => ({
     sourceTokenId:
       "USDC:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
-    destinationTokenId:
-      "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+    destinationToken: {
+      id: "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+      tokenCode: "FTT",
+      issuer: "GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+      decimals: 7,
+      tokenType: "credit_alphanum4",
+      isNew: false,
+    },
     sourceTokenSymbol: "USDC",
-    destinationTokenSymbol: "FTT",
     sourceAmount: "1",
     destinationAmount: "2",
     setSourceToken: mockSetSourceToken,
@@ -124,7 +129,7 @@ describe("SwapAmountScreen", () => {
       <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
     );
     expect(mockSetSourceToken).toHaveBeenCalledWith("SRC", "XLM");
-    expect(mockSetDestinationToken).toHaveBeenCalledWith("", "");
+    expect(mockSetDestinationToken).toHaveBeenCalledWith(null);
     expect(mockSetSourceAmount).toHaveBeenCalledWith("0");
   });
 

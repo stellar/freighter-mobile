@@ -109,7 +109,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
 
   const {
     sourceTokenId,
-    destinationTokenId,
+    destinationToken: destinationTokenDescriptor,
     sourceTokenSymbol,
     sourceAmount,
     sourceAmountDisplay,
@@ -131,8 +131,11 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   );
 
   const destinationBalance = useMemo(
-    () => balanceItems.find((item) => item.id === destinationTokenId),
-    [balanceItems, destinationTokenId],
+    () =>
+      destinationTokenDescriptor
+        ? balanceItems.find((item) => item.id === destinationTokenDescriptor.id)
+        : undefined,
+    [balanceItems, destinationTokenDescriptor],
   );
 
   const spendableAmount = useMemo(() => {
@@ -243,7 +246,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     if (swapFromTokenId && swapFromTokenSymbol) {
       setSourceToken(swapFromTokenId, swapFromTokenSymbol);
       setSourceAmount("0");
-      setDestinationToken("", "");
+      setDestinationToken(null); // cleared on source-token change; Task 17 wires non-held destinations
     }
   }, [
     swapFromTokenId,
@@ -270,7 +273,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   // Show persistent toast for path-related errors when user has entered amount and selected destination token
   useEffect(() => {
     const hasAmount = sourceAmount && Number(sourceAmount) > 0;
-    const hasDestinationToken = !!destinationTokenId;
+    const hasDestinationToken = !!destinationTokenDescriptor;
 
     // Only show toast when there's an actual pathError (not just a missing pathResult)
     if (pathError && hasAmount && hasDestinationToken) {
@@ -280,7 +283,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         duration: 0,
       });
     }
-  }, [pathError, sourceAmount, destinationTokenId]);
+  }, [pathError, sourceAmount, destinationTokenDescriptor]);
 
   const handleSettingsPress = useCallback(() => {
     transactionSettingsBottomSheetModalRef.current?.present();
@@ -432,8 +435,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const showSecurityWarningForDestination = useMemo(
     () =>
       destBalanceSecurityAssessment.isUnableToScan &&
-      destinationTokenId !== NATIVE_TOKEN_CODE,
-    [destBalanceSecurityAssessment.isUnableToScan, destinationTokenId],
+      destinationTokenDescriptor?.id !== NATIVE_TOKEN_CODE,
+    [destBalanceSecurityAssessment.isUnableToScan, destinationTokenDescriptor],
   );
 
   const handleMainButtonPress = useCallback(async () => {

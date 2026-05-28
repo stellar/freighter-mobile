@@ -13,6 +13,7 @@ import { mockGestureHandler } from "../../../../__mocks__/gesture-handler";
 const TEST_SYMBOL = "SRC";
 const TEST_KEY = "GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH";
 const TEST_TOKEN_ID = `${TEST_SYMBOL}:${TEST_KEY}`;
+const DST_TOKEN_ID = `DST:${TEST_KEY}`;
 
 const MockView = View;
 const MockTouchable = TouchableOpacity;
@@ -26,9 +27,43 @@ jest.mock("ducks/swap", () => ({
     setSourceToken: mockSetSourceToken,
     setDestinationToken: mockSetDestinationToken,
     sourceTokenId: TEST_TOKEN_ID,
-    destinationTokenId:
-      "DST:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+    destinationToken: {
+      id: DST_TOKEN_ID,
+      tokenCode: "DST",
+      issuer: TEST_KEY,
+      decimals: 7,
+      // Use string literal to avoid jest.mock out-of-scope variable restriction
+      tokenType: "credit_alphanum4",
+      isNew: false,
+    },
   })),
+}));
+
+jest.mock("hooks/useBalancesList", () => ({
+  useBalancesList: jest.fn(() => ({
+    balanceItems: [
+      {
+        id: TEST_TOKEN_ID,
+        token: {
+          // Use string literal to avoid jest.mock out-of-scope variable restriction
+          type: "credit_alphanum4",
+          code: TEST_SYMBOL,
+          issuer: { key: TEST_KEY },
+        },
+        decimals: 7,
+      },
+    ],
+  })),
+}));
+
+jest.mock("hooks/useGetActiveAccount", () => () => ({
+  account: {
+    publicKey: "GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+  },
+}));
+
+jest.mock("ducks/auth", () => ({
+  useAuthenticationStore: jest.fn(() => ({ network: "testnet" })),
 }));
 
 jest.mock("components/screens/SwapScreen/components", () => ({
@@ -94,9 +129,15 @@ describe("SwapScreen", () => {
 
     fireEvent.press(getByTestId("token-button"));
 
+    // The component resolves the balance from balanceItems and projects it to a
+    // DestinationTokenDescriptor (descriptorFromBalance). isNew is always false
+    // for held balances.
     expect(mockSetDestinationToken).toHaveBeenCalledWith(
-      TEST_TOKEN_ID,
-      TEST_SYMBOL,
+      expect.objectContaining({
+        id: TEST_TOKEN_ID,
+        tokenCode: TEST_SYMBOL,
+        isNew: false,
+      }),
     );
     expect(mockGoBack).toHaveBeenCalled();
   });

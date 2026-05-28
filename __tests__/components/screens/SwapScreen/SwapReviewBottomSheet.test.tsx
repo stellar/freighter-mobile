@@ -64,10 +64,15 @@ jest.mock("ducks/swap", () => ({
       conversionRate: 0.5,
     },
     sourceTokenSymbol: "XLM",
-    destinationTokenSymbol: "USDC",
     sourceTokenId: "XLM",
-    destinationTokenId:
-      "USDC:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+    destinationToken: {
+      id: "USDC:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+      tokenCode: "USDC",
+      issuer: "GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+      decimals: 7,
+      tokenType: "credit_alphanum4",
+      isNew: false,
+    },
   })),
 }));
 

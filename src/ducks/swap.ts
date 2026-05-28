@@ -1,12 +1,13 @@
 import { Horizon } from "@stellar/stellar-sdk";
 import BigNumber from "bignumber.js";
+import { DestinationTokenDescriptor } from "components/screens/SwapScreen/helpers";
 import {
   DEFAULT_DECIMALS,
   NETWORKS,
   mapNetworkToNetworkDetails,
 } from "config/constants";
 import { logger } from "config/logger";
-import { PricedBalance } from "config/types";
+import { PricedBalance, TokenTypeWithCustomToken } from "config/types";
 import { useDebugStore } from "ducks/debug";
 import { formatBigNumberForDisplay } from "helpers/formatAmount";
 import { isContractId } from "helpers/soroban";
@@ -37,9 +38,8 @@ interface SwapPathData {
 
 interface SwapState {
   sourceTokenId: string;
-  destinationTokenId: string;
   sourceTokenSymbol: string;
-  destinationTokenSymbol: string;
+  destinationToken: DestinationTokenDescriptor | null;
   sourceAmount: string; // Internal value (dot notation)
   sourceAmountDisplay: string; // Display value (locale formatted)
   destinationAmount: string;
@@ -50,7 +50,7 @@ interface SwapState {
   buildError: string | null;
 
   setSourceToken: (tokenId: string, tokenSymbol: string) => void;
-  setDestinationToken: (tokenId: string, tokenSymbol: string) => void;
+  setDestinationToken: (descriptor: DestinationTokenDescriptor | null) => void;
   setSourceAmount: (amount: string, preserveDisplay?: boolean) => void;
   setSourceAmountDisplay: (displayAmount: string) => void;
   findSwapPath: (params: {
@@ -67,9 +67,8 @@ interface SwapState {
 
 const initialState = {
   sourceTokenId: "",
-  destinationTokenId: "",
   sourceTokenSymbol: "",
-  destinationTokenSymbol: "",
+  destinationToken: null as DestinationTokenDescriptor | null,
   sourceAmount: "0",
   sourceAmountDisplay: "0",
   destinationAmount: "0",
@@ -147,8 +146,7 @@ export const useSwapStore = create<SwapState>((set) => ({
   setSourceToken: (tokenId, tokenSymbol) =>
     set({ sourceTokenId: tokenId, sourceTokenSymbol: tokenSymbol }),
 
-  setDestinationToken: (tokenId, tokenSymbol) =>
-    set({ destinationTokenId: tokenId, destinationTokenSymbol: tokenSymbol }),
+  setDestinationToken: (descriptor) => set({ destinationToken: descriptor }),
 
   setSourceAmount: (amount, preserveDisplay = false) => {
     // Expect internal dot notation input, convert to display format
@@ -261,3 +259,35 @@ export const useSwapStore = create<SwapState>((set) => ({
 
   resetSwap: () => set(initialState),
 }));
+
+/**
+ * Adapter for path-finding: gives getTokenForPayment what it needs
+ * (just a `token` shape) without requiring a full PricedBalance.
+ *
+ * This is a deliberately narrow projection — the only consumer is
+ * `findSwapPath`'s call to `getTokenForPayment(destination)`, which
+ * reads ONLY the `token` field. The `as unknown as PricedBalance`
+ * cast is the contract: callers other than findSwapPath should pass
+ * a real PricedBalance, not this projection.
+ *
+ * NOTE: Not yet wired into findSwapPath consumers — Task 17
+ * (SwapAmountScreen rebuild) introduces non-held destinations and
+ * will use this adapter to feed findSwapPath.
+ */
+export const destinationAsBalanceLike = (
+  descriptor: DestinationTokenDescriptor,
+): PricedBalance => {
+  if (descriptor.tokenType === TokenTypeWithCustomToken.NATIVE) {
+    return {
+      token: { type: "native", code: "XLM" },
+    } as unknown as PricedBalance;
+  }
+
+  return {
+    token: {
+      code: descriptor.tokenCode,
+      issuer: { key: descriptor.issuer! },
+      type: descriptor.tokenType,
+    },
+  } as unknown as PricedBalance;
+};
