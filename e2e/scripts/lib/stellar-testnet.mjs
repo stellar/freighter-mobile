@@ -1,5 +1,13 @@
 import StellarHDWallet from "stellar-hd-wallet";
-import { Asset } from "@stellar/stellar-sdk";
+import {
+  Asset,
+  Horizon,
+  Keypair,
+  TransactionBuilder,
+  Operation,
+  Networks,
+  BASE_FEE,
+} from "@stellar/stellar-sdk";
 
 // ── Pinned testnet config (see spec "Verified testnet facts") ────────────────
 export const HORIZON_URL = "https://horizon-testnet.stellar.org";
@@ -43,16 +51,11 @@ export function formatProvisionOutput({ mnemonic, recipient, usdcCode, usdcIssue
 
 // ── Live testnet I/O helpers (real network calls) ────────────────────────────
 
-import {
-  Horizon,
-  Keypair,
-  TransactionBuilder,
-  Operation,
-  Networks,
-  BASE_FEE,
-} from "@stellar/stellar-sdk";
-
 const server = new Horizon.Server(HORIZON_URL);
+
+// 10× base fee: cheap on friendbot-funded accounts, but survives testnet fee surges
+// that would otherwise fail provisioning with tx_insufficient_fee (a flakiness source).
+const PROVISION_FEE = String(10 * Number(BASE_FEE));
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -77,9 +80,11 @@ export async function waitForAccount(publicKey, { retries = 10 } = {}) {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       return await server.loadAccount(publicKey);
-    } catch {
+    } catch (e) {
       if (attempt === retries) {
-        throw new Error(`account ${publicKey} not found on testnet after ${retries} polls`);
+        throw new Error(
+          `account ${publicKey} not found on testnet after ${retries} polls: ${e?.message ?? e}`,
+        );
       }
       await sleep(1500);
     }
@@ -91,7 +96,7 @@ async function submit(builderFn, sourceKeypair) {
   const account = await server.loadAccount(sourceKeypair.publicKey());
   const tx = builderFn(
     new TransactionBuilder(account, {
-      fee: BASE_FEE,
+      fee: PROVISION_FEE,
       networkPassphrase: Networks.TESTNET,
     }),
   )
