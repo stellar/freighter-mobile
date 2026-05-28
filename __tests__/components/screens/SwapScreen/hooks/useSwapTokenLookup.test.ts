@@ -252,6 +252,84 @@ describe("useSwapTokenLookup — idle mode", () => {
     expect(result.current.yourTokens).toHaveLength(2);
   });
 
+  it("excludes XLM from popularTokens when the user holds it (native canonical ID)", async () => {
+    // stellar.expert returns XLM as one of the trending records. The native
+    // balance has id "native" (Horizon convention) but the stellar.expert
+    // record uses asset "XLM". Before the fix, heldIdsKey stored "native"
+    // for the native balance, which did NOT match the "XLM" canonical ID
+    // derived from the stellar.expert record — so XLM was not excluded from
+    // popularTokens for users already holding it.
+    (stellarExpert.fetchTrendingAssets as jest.Mock).mockResolvedValue({
+      _embedded: {
+        records: [
+          // Native XLM record — asset field is just "XLM" (no issuer segment)
+          { asset: "XLM", domain: "stellar.org", tomlInfo: undefined },
+          // One other classic token
+          {
+            asset: `USDC-${USDC_ISSUER}-1`,
+            domain: "circle.com",
+            tomlInfo: {
+              code: "USDC",
+              issuer: USDC_ISSUER,
+              image: "usdc-image",
+            },
+          },
+        ],
+      },
+      _links: {},
+    });
+
+    // Mark both XLM and USDC as verified so they would appear in popularTokens
+    // if NOT held.
+    mockSplitVerifiedTokens.mockImplementationOnce(
+      ({ tokens }: { tokens: unknown[] }) =>
+        Promise.resolve({ verified: tokens, unverified: [] }),
+    );
+
+    // Held balances include native XLM — id must be "native" (Horizon convention)
+    const heldWithXLM: (PricedBalance & { id: string })[] = [
+      {
+        id: "native",
+        total: new BigNumber("100"),
+        available: new BigNumber("99"),
+        minimumBalance: new BigNumber("1"),
+        buyingLiabilities: "0",
+        sellingLiabilities: "0",
+        token: { code: "XLM", type: "native" as const },
+        tokenCode: "XLM",
+        fiatCode: "USD",
+        fiatTotal: new BigNumber("50"),
+        displayName: "Stellar Lumens",
+        currentPrice: new BigNumber("0.5"),
+        percentagePriceChange24h: new BigNumber("2.5"),
+      },
+    ];
+
+    const { result } = renderHook(() =>
+      useSwapTokenLookup({
+        network: NETWORKS.PUBLIC,
+        balanceItems: heldWithXLM,
+      }),
+    );
+
+    await act(async () => {
+      await settleAsync();
+    });
+
+    // XLM should NOT appear in popularTokens (user already holds it)
+    expect(result.current.popularTokens.map((t) => t.tokenCode)).not.toContain(
+      "XLM",
+    );
+    // XLM SHOULD appear in trendingTokens (held-inclusive list)
+    expect(result.current.trendingTokens.map((t) => t.tokenCode)).toContain(
+      "XLM",
+    );
+    // USDC (not held) should still appear in popularTokens
+    expect(result.current.popularTokens.map((t) => t.tokenCode)).toContain(
+      "USDC",
+    );
+  });
+
   it("includes only verified tokens in popularTokens (intersection with verified lists)", async () => {
     // fetchTrendingAssets returns three classic records: AQUA (unverified in
     // this scenario), USDC (verified), and a third token FOO (unverified).

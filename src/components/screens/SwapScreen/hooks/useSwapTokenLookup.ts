@@ -42,9 +42,13 @@ export interface SwapTokenLookupResult {
   hadSorobanMatches: boolean;
   /** True when the latest stellar.expert call failed (network/timeout/5xx). */
   stellarExpertDown: boolean;
+  /** Hook lifecycle status — IDLE / LOADING / SUCCESS / ERROR. Reflects the latest fetch. */
   status: HookStatus;
+  /** Current search term (synced with handleSearch input). Empty string = idle mode. */
   searchTerm: string;
+  /** Update the search term; triggers debounced active-search fetch. */
   handleSearch: (term: string) => void;
+  /** Clear the search term and return to idle mode. */
   resetSearch: () => void;
 }
 
@@ -116,11 +120,8 @@ const matchesTerm = (text: string | undefined, term: string): boolean => {
 
 export const useSwapTokenLookup = ({
   network,
-  // `publicKey` is part of the public hook contract for parity with
-  // `useTokenLookup` (and for the eventual G… issuer-lookup branch) — it
-  // isn't read directly today because the swap surface only fans out to
-  // stellar.expert and the user's existing balances. eslint-disable below
-  // keeps the parameter named for type-doc clarity.
+  // publicKey is reserved for future use (e.g., issuer-address resolution path);
+  // useTokenLookup uses it for that path. Kept for interface parity.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   publicKey,
   balanceItems,
@@ -206,6 +207,7 @@ export const useSwapTokenLookup = ({
     () =>
       balanceItems
         .map((b) => {
+          if (b.id === "native") return NATIVE_TOKEN_CODE; // XLM
           const { tokenCode, issuer } = formatTokenIdentifier(b.id);
           return canonicalId(tokenCode, issuer ?? "");
         })
