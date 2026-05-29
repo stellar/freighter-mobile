@@ -484,11 +484,27 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
           },
         );
       } else {
-        items.push({
-          title: t("signTransactionDetails.operations.tokenCode"),
-          trailingContent: <Text>{line.code}</Text>,
-          titleColor: themeColors.text.secondary,
-        });
+        items.push(
+          {
+            title: t("signTransactionDetails.operations.tokenCode"),
+            trailingContent: <Text>{line.code}</Text>,
+            titleColor: themeColors.text.secondary,
+          },
+          {
+            title: t("signTransactionDetails.operations.assetIssuer"),
+            trailingContent: (
+              <View className="flex-row items-center gap-[8px]">
+                <Icon.Copy01
+                  size={16}
+                  themeColor="gray"
+                  onPress={() => copyToClipboard(line.issuer)}
+                />
+                <Text>{truncateAddress(line.issuer)}</Text>
+              </View>
+            ),
+            titleColor: themeColors.text.secondary,
+          },
+        );
       }
 
       items.push({
