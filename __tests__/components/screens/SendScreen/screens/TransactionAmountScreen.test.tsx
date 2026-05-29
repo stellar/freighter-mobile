@@ -101,14 +101,6 @@ jest.mock("components/TokenIcon", () => ({
   },
 }));
 jest.mock("components/screens/SendScreen/components", () => ({
-  AmountAlignment: {
-    Left: "left",
-    Right: "right",
-  },
-  AmountDisplaySize: {
-    XS: "xs",
-    MD: "md",
-  },
   SendReviewBottomSheet: function MockSendReviewBottomSheet() {
     return null;
   },
@@ -116,9 +108,6 @@ jest.mock("components/screens/SendScreen/components", () => ({
     return null;
   },
   ContactRow: function MockContactRow() {
-    return null;
-  },
-  HighlightedAmountDisplay: function MockHighlightedAmountDisplay() {
     return null;
   },
 }));
@@ -912,11 +901,7 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
     expect(buttonElement?.props.accessibilityState?.disabled).toBe(false);
   });
 
-  it("does not call saveMemoType on mount — preserves federation memo type set before navigation", () => {
-    // Regression test for: TransactionAmountScreen mount effect previously called saveMemoType("")
-    // unconditionally, wiping the memo type set by handleContactPress before navigating here.
-    // For exchange deposit addresses (Kraken, Binance, etc.) this silently downgraded
-    // Memo.id to Memo.text, causing funds to land at the omnibus address without sub-account credit.
+  it("does not reset memo type on mount for federation recipients", () => {
     const saveMemoTypeMock = jest.fn();
     mockUseTransactionSettingsStore.mockReturnValue({
       ...mockTransactionSettingsState,
@@ -945,7 +930,7 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
     expect(saveMemoTypeMock).not.toHaveBeenCalled();
   });
 
-  it("does not call saveMemoType for hash memo type either", () => {
+  it("does not reset memo type on mount for federation recipients with hash memo type", () => {
     const saveMemoTypeMock = jest.fn();
     mockUseTransactionSettingsStore.mockReturnValue({
       ...mockTransactionSettingsState,
