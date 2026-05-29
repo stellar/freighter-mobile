@@ -116,6 +116,27 @@ const makeDefaultSwapState = (): SwapStoreState => ({
 
 jest.mock("ducks/swap", () => ({
   useSwapStore: jest.fn(),
+  // Pass-through adapter — tests can inspect the call by passing in a
+  // descriptor that doesn't match any held balance and asserting that the
+  // useSwapPathFinding mock receives an object with `tokenCode`/`id` from
+  // the descriptor.
+  destinationAsBalanceLike: jest.fn(
+    (descriptor: {
+      id: string;
+      tokenCode: string;
+      tokenType: string;
+      issuer?: string;
+    }) => ({
+      id: descriptor.id,
+      tokenCode: descriptor.tokenCode,
+      tokenType: descriptor.tokenType,
+      token: {
+        code: descriptor.tokenCode,
+        issuer: descriptor.issuer ? { key: descriptor.issuer } : undefined,
+        type: descriptor.tokenType,
+      },
+    }),
+  ),
 }));
 
 const setSwapStoreState = (patch: Partial<SwapStoreState>): void => {
@@ -152,6 +173,14 @@ jest.mock("components/screens/SwapScreen/hooks/useSwapTransaction", () => ({
   })),
 }));
 jest.mock("hooks/useBalancesList");
+
+// Mock useSwapPathFinding so tests can assert what destinationBalance it was
+// invoked with. The hook itself is a debounced effect; we don't care about
+// its internals here.
+const mockUseSwapPathFinding = jest.fn();
+jest.mock("components/screens/SwapScreen/hooks/useSwapPathFinding", () => ({
+  useSwapPathFinding: (...args: unknown[]) => mockUseSwapPathFinding(...args),
+}));
 
 // Default mocks for the Trending list infrastructure. Tests can override the
 // useSwapTokenLookup return via the helper below.
@@ -621,6 +650,83 @@ describe("SwapAmountScreen", () => {
         <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
       );
       expect(queryByText("Trending tokens")).toBeNull();
+    });
+  });
+
+  describe("Non-held destination path finding", () => {
+    beforeEach(() => {
+      mockUseSwapPathFinding.mockClear();
+    });
+
+    it("invokes useSwapPathFinding with the adapter-built balance-like for a non-held destination", () => {
+      // Destination id "AQUA:..." is NOT in mockBalances — so the screen's
+      // destinationBalance memo returns undefined and the adapter projection
+      // is fed to useSwapPathFinding instead of the matching held balance.
+      setSwapStoreState({
+        sourceAmount: "1",
+        destinationToken: {
+          id: "AQUA:GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+          tokenCode: "AQUA",
+          issuer: "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+          decimals: 7,
+          tokenType: "credit_alphanum4",
+          isNew: true,
+        },
+      });
+
+      renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      expect(mockUseSwapPathFinding).toHaveBeenCalled();
+      const lastCall = mockUseSwapPathFinding.mock.calls.at(-1) as
+        | [{ destinationBalance?: Record<string, unknown> }]
+        | undefined;
+      expect(lastCall?.[0]?.destinationBalance).toEqual(
+        expect.objectContaining({
+          id: "AQUA:GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+          tokenCode: "AQUA",
+          token: expect.objectContaining({
+            code: "AQUA",
+            type: "credit_alphanum4",
+          }),
+        }),
+      );
+    });
+
+    it("uses the held PricedBalance directly when the destination is held", () => {
+      // mockBalances contains FTT — destinationBalance memo will resolve to
+      // it directly and useSwapPathFinding receives the full PricedBalance,
+      // not the adapter projection.
+      setSwapStoreState({
+        sourceAmount: "1",
+        destinationToken: {
+          id: "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+          tokenCode: "FTT",
+          issuer: "GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+          decimals: 7,
+          tokenType: "credit_alphanum4",
+          isNew: false,
+        },
+      });
+
+      renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      expect(mockUseSwapPathFinding).toHaveBeenCalled();
+      const lastCall = mockUseSwapPathFinding.mock.calls.at(-1) as
+        | [{ destinationBalance?: Record<string, unknown> }]
+        | undefined;
+      // Held balance carries `total` and `available` BigNumbers (from
+      // mockBalances); the adapter projection does not.
+      expect(lastCall?.[0]?.destinationBalance).toEqual(
+        expect.objectContaining({
+          id: "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+          total: expect.anything(),
+          available: expect.anything(),
+        }),
+      );
     });
   });
 });

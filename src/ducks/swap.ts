@@ -279,6 +279,9 @@ export const destinationAsBalanceLike = (
 ): PricedBalance => {
   if (descriptor.tokenType === TokenTypeWithCustomToken.NATIVE) {
     return {
+      id: "native",
+      tokenCode: "XLM",
+      tokenType: TokenTypeWithCustomToken.NATIVE,
       token: { type: "native", code: "XLM" },
     } as unknown as PricedBalance;
   }
@@ -290,6 +293,9 @@ export const destinationAsBalanceLike = (
   }
 
   return {
+    id: descriptor.id,
+    tokenCode: descriptor.tokenCode,
+    tokenType: descriptor.tokenType,
     token: {
       code: descriptor.tokenCode,
       issuer: { key: descriptor.issuer },

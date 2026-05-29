@@ -36,7 +36,7 @@ import { FormattedSearchTokenRecord } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useDebugStore } from "ducks/debug";
 import { usePricesStore } from "ducks/prices";
-import { useSwapStore } from "ducks/swap";
+import { destinationAsBalanceLike, useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import {
@@ -242,9 +242,27 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     balanceItems,
   ]);
 
+  // For held destinations, useSwapPathFinding / useSwapTransaction receive
+  // the matching `destinationBalance`. For non-held destinations the balance
+  // list doesn't include the token; we feed them a minimal balance-shaped
+  // projection of the descriptor instead. The projection covers exactly the
+  // fields findSwapPath / buildSwapTransaction read (token.code/issuer/type
+  // + id + tokenCode + tokenType).
+  // Cast: the held side is a full PricedBalance from balanceItems (which
+  // always carries tokenType); the adapter projects the required subset.
+  // Downstream consumers only read the documented fields.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const destinationForPath: any = useMemo(() => {
+    if (destinationBalance) return destinationBalance;
+    if (destinationTokenDescriptor) {
+      return destinationAsBalanceLike(destinationTokenDescriptor);
+    }
+    return undefined;
+  }, [destinationBalance, destinationTokenDescriptor]);
+
   useSwapPathFinding({
     sourceBalance,
-    destinationBalance,
+    destinationBalance: destinationForPath,
     sourceAmount,
     swapSlippage,
     network,
@@ -263,7 +281,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   } = useSwapTransaction({
     sourceAmount,
     sourceBalance,
-    destinationBalance,
+    destinationBalance: destinationForPath,
     pathResult,
 
     account,
