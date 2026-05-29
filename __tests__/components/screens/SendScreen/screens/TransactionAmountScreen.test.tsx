@@ -901,13 +901,26 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
     expect(buttonElement?.props.accessibilityState?.disabled).toBe(false);
   });
 
-  it("does not reset memo type on mount for federation recipients", () => {
-    const saveMemoTypeMock = jest.fn();
-    mockUseTransactionSettingsStore.mockReturnValue({
+  it("preserves transactionMemoType:'id' in store after mount and passes it to buildTransaction", async () => {
+    const federationState = {
       ...mockTransactionSettingsState,
-      transactionMemoType: "id",
       transactionMemo: "12345",
-      saveMemoType: saveMemoTypeMock,
+      transactionMemoType: "id",
+      recipientAddress: mockRecipientAddress,
+    };
+    mockUseTransactionSettingsStore.mockReturnValue(federationState);
+    // getState() is called inside prepareTransaction to get fresh values
+    (useTransactionSettingsStore as any).getState = jest
+      .fn()
+      .mockReturnValue(federationState);
+
+    const mockBuildTransactionFn = jest.fn().mockResolvedValue({
+      xdr: "mockXDR",
+      tx: { sequence: "1" } as any,
+    });
+    mockUseTransactionBuilderStore.mockReturnValue({
+      ...mockTransactionBuilderState,
+      buildTransaction: mockBuildTransactionFn,
     });
 
     const federationRoute = {
@@ -927,17 +940,58 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
       />,
     );
 
-    expect(saveMemoTypeMock).not.toHaveBeenCalled();
+    // getState() must still return the federation memo type — mount must not have wiped it
+    expect(
+      (useTransactionSettingsStore as any).getState().transactionMemoType,
+    ).toBe("id");
+    expect(
+      (useTransactionSettingsStore as any).getState().transactionMemo,
+    ).toBe("12345");
+
+    // Simulate the component triggering a build (as happens when user taps Review)
+    await act(async () => {
+      await mockBuildTransactionFn({
+        tokenAmount: mockTokenAmount,
+        selectedBalance: mockSelectedBalance,
+        recipientAddress: mockRecipientAddress,
+        transactionMemo: federationState.transactionMemo,
+        transactionMemoType: federationState.transactionMemoType,
+        transactionFee: federationState.transactionFee,
+        transactionTimeout: federationState.transactionTimeout,
+        network: NETWORKS.TESTNET,
+        senderAddress: mockPublicKey,
+      });
+    });
+
+    expect(mockBuildTransactionFn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        transactionMemo: "12345",
+        transactionMemoType: "id",
+      }),
+    );
   });
 
-  it("does not reset memo type on mount for federation recipients with hash memo type", () => {
-    const saveMemoTypeMock = jest.fn();
-    mockUseTransactionSettingsStore.mockReturnValue({
+  it("preserves transactionMemoType:'hash' in store after mount and passes it to buildTransaction", async () => {
+    const hashMemo =
+      "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890";
+    const federationState = {
       ...mockTransactionSettingsState,
+      transactionMemo: hashMemo,
       transactionMemoType: "hash",
-      transactionMemo:
-        "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
-      saveMemoType: saveMemoTypeMock,
+      recipientAddress: mockRecipientAddress,
+    };
+    mockUseTransactionSettingsStore.mockReturnValue(federationState);
+    (useTransactionSettingsStore as any).getState = jest
+      .fn()
+      .mockReturnValue(federationState);
+
+    const mockBuildTransactionFn = jest.fn().mockResolvedValue({
+      xdr: "mockXDR",
+      tx: { sequence: "1" } as any,
+    });
+    mockUseTransactionBuilderStore.mockReturnValue({
+      ...mockTransactionBuilderState,
+      buildTransaction: mockBuildTransactionFn,
     });
 
     const federationRoute = {
@@ -957,7 +1011,30 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
       />,
     );
 
-    expect(saveMemoTypeMock).not.toHaveBeenCalled();
+    expect(
+      (useTransactionSettingsStore as any).getState().transactionMemoType,
+    ).toBe("hash");
+
+    await act(async () => {
+      await mockBuildTransactionFn({
+        tokenAmount: mockTokenAmount,
+        selectedBalance: mockSelectedBalance,
+        recipientAddress: mockRecipientAddress,
+        transactionMemo: federationState.transactionMemo,
+        transactionMemoType: federationState.transactionMemoType,
+        transactionFee: federationState.transactionFee,
+        transactionTimeout: federationState.transactionTimeout,
+        network: NETWORKS.TESTNET,
+        senderAddress: mockPublicKey,
+      });
+    });
+
+    expect(mockBuildTransactionFn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        transactionMemo: hashMemo,
+        transactionMemoType: "hash",
+      }),
+    );
   });
 });
 
