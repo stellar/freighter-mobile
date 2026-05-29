@@ -1,5 +1,6 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import BigNumber from "bignumber.js";
 import { BalanceRow } from "components/BalanceRow";
 import BottomSheet from "components/BottomSheet";
 import { IconButton } from "components/IconButton";
@@ -91,6 +92,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const transactionSecurityWarningBottomSheetModalRef =
     useRef<BottomSheetModal>(null);
   const transactionSettingsBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const amountInputRef = useRef<TextInput>(null);
   const [amountError, setAmountError] = useState<string | null>(null);
   const [activeError, setActiveError] = useState<{
     message: string;
@@ -259,13 +261,66 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     navigation,
   });
 
-  const isButtonDisabled = destinationBalance
-    ? isBuilding ||
-      !!amountError ||
-      !!pathError ||
-      Number(sourceAmount) <= 0 ||
-      !pathResult
-    : false;
+  // CTA state machine — see design doc §6.6.
+  //
+  //   select       no destination yet  ──► navigate to SwapToScreen
+  //   enter        destination set, amount == 0  ──► focus the Sell input
+  //   insufficient amount exceeds spendable  ──► disabled
+  //   loading      path-finding in flight  ──► spinner
+  //   review       path resolved, amount valid  ──► open Review sheet
+  type CtaState =
+    | { kind: "select" }
+    | { kind: "enter" }
+    | { kind: "insufficient" }
+    | { kind: "loading" }
+    | { kind: "review" };
+
+  const ctaState: CtaState = useMemo(() => {
+    if (!destinationTokenDescriptor) return { kind: "select" };
+
+    const amountBN = new BigNumber(sourceAmount || "0");
+    if (amountBN.isZero() || amountBN.isNaN()) return { kind: "enter" };
+
+    if (spendableAmount && amountBN.gt(spendableAmount)) {
+      return { kind: "insufficient" };
+    }
+
+    if (isLoadingPath || isBuilding) return { kind: "loading" };
+
+    if (pathResult && !pathError) return { kind: "review" };
+
+    // Path-finding finished without a result (or threw) — keep the user on
+    // the amount step. The persistent toast (set up below) already surfaces
+    // `pathError` when present, so we don't need a dedicated CTA state.
+    return { kind: "enter" };
+  }, [
+    destinationTokenDescriptor,
+    sourceAmount,
+    spendableAmount,
+    isLoadingPath,
+    isBuilding,
+    pathResult,
+    pathError,
+  ]);
+
+  const ctaLabel = useMemo(() => {
+    switch (ctaState.kind) {
+      case "select":
+        return t("swapScreen.cta.select");
+      case "enter":
+        return t("swapScreen.cta.enterAmount");
+      case "insufficient":
+        return t("swapScreen.cta.insufficientBalance");
+      case "loading":
+        return t("swapScreen.cta.review");
+      case "review":
+      default:
+        return t("swapScreen.cta.review");
+    }
+  }, [ctaState, t]);
+
+  const isCtaDisabled =
+    ctaState.kind === "insufficient" || !!amountError || !!pathError;
 
   useEffect(() => {
     if (swapFromTokenId && swapFromTokenSymbol) {
@@ -446,21 +501,33 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   );
 
   const handleMainButtonPress = useCallback(async () => {
-    if (destinationBalance) {
-      const isUnableToScan =
-        showSecurityWarningForSource || showSecurityWarningForDestination;
-
-      if (isUnableToScan) {
-        await prepareSwapTransaction(false);
-        transactionSecurityWarningBottomSheetModalRef.current?.present();
-      } else {
-        await prepareSwapTransaction(true);
-      }
-    } else {
+    if (ctaState.kind === "select") {
       navigateToSelectDestinationTokenScreen();
+      return;
+    }
+
+    if (ctaState.kind === "enter") {
+      amountInputRef.current?.focus();
+      return;
+    }
+
+    if (ctaState.kind === "insufficient" || ctaState.kind === "loading") {
+      // disabled / no-op
+      return;
+    }
+
+    // review
+    const isUnableToScan =
+      showSecurityWarningForSource || showSecurityWarningForDestination;
+
+    if (isUnableToScan) {
+      await prepareSwapTransaction(false);
+      transactionSecurityWarningBottomSheetModalRef.current?.present();
+    } else {
+      await prepareSwapTransaction(true);
     }
   }, [
-    destinationBalance,
+    ctaState,
     prepareSwapTransaction,
     navigateToSelectDestinationTokenScreen,
     showSecurityWarningForDestination,
@@ -622,6 +689,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         <View className="flex-none items-center py-[24px] max-xs:py-[16px] px-6">
           <View className="flex-row items-center gap-1">
             <TextInput
+              ref={amountInputRef}
               testID="swap-amount-input"
               value={showFiatAmount ? fiatAmountDisplay : tokenAmountDisplay}
               onChangeText={setDisplayAmountFromText}
@@ -754,13 +822,11 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
             <Button
               tertiary
               onPress={handleMainButtonPress}
-              disabled={isButtonDisabled}
-              isLoading={isLoadingPath || isBuilding}
+              disabled={isCtaDisabled}
+              isLoading={ctaState.kind === "loading"}
               testID="swap-continue-button"
             >
-              {destinationBalance
-                ? t("common.review")
-                : t("swapScreen.selectToken")}
+              {ctaLabel}
             </Button>
           </View>
         </View>

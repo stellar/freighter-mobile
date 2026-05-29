@@ -634,6 +634,12 @@
     "receive": "Receber",
     "chooseToken": "Escolher token",
     "selectToken": "Selecionar um token",
+    "cta": {
+      "select": "Selecionar um token",
+      "enterAmount": "Insira um valor",
+      "insufficientBalance": "Saldo insuficiente",
+      "review": "Revisar troca"
+    },
     "swapScreenTokenListTitle": "Seus tokens",
     "copyContractAddress": "Copiar endereço do contrato",
     "viewOnStellarExpert": "Ver no stellar.expert",

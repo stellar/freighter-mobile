@@ -1,9 +1,11 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable @fnando/consistent-import/consistent-import */
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { fireEvent } from "@testing-library/react-native";
 import SwapAmountScreen from "components/screens/SwapScreen/screens/SwapAmountScreen";
 import Icon from "components/sds/Icon";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
+import { useSwapStore } from "ducks/swap";
 import { renderWithProviders } from "helpers/testUtils";
 import { useBalancesList } from "hooks/useBalancesList";
 import React, { act } from "react";
@@ -26,32 +28,67 @@ const mockSetupSwapTransaction = jest.fn().mockResolvedValue(undefined);
 
 mockGestureHandler();
 mockUseColors();
+
+type SwapStoreState = {
+  sourceTokenId: string;
+  destinationToken: null | {
+    id: string;
+    tokenCode: string;
+    issuer?: string;
+    decimals: number;
+    tokenType: string;
+    isNew: boolean;
+  };
+  sourceTokenSymbol: string;
+  sourceAmount: string;
+  sourceAmountDisplay: string;
+  destinationAmount: string;
+  pathResult: null | { destinationAmount: string };
+  isLoadingPath: boolean;
+  pathError: string | null;
+  setSourceToken: jest.Mock;
+  setDestinationToken: jest.Mock;
+  setSourceAmount: jest.Mock;
+  setSourceAmountDisplay: jest.Mock;
+  resetSwap: jest.Mock;
+};
+
+const makeDefaultSwapState = (): SwapStoreState => ({
+  sourceTokenId:
+    "USDC:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+  destinationToken: {
+    id: "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+    tokenCode: "FTT",
+    issuer: "GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+    decimals: 7,
+    tokenType: "credit_alphanum4",
+    isNew: false,
+  },
+  sourceTokenSymbol: "USDC",
+  sourceAmount: "1",
+  sourceAmountDisplay: "1",
+  destinationAmount: "2",
+  pathResult: null,
+  isLoadingPath: false,
+  pathError: null,
+  setSourceToken: mockSetSourceToken,
+  setDestinationToken: mockSetDestinationToken,
+  setSourceAmount: mockSetSourceAmount,
+  setSourceAmountDisplay: mockSetSourceAmountDisplay,
+  resetSwap: mockResetSwap,
+});
+
 jest.mock("ducks/swap", () => ({
-  useSwapStore: jest.fn(() => ({
-    sourceTokenId:
-      "USDC:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
-    destinationToken: {
-      id: "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
-      tokenCode: "FTT",
-      issuer: "GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
-      decimals: 7,
-      tokenType: "credit_alphanum4",
-      isNew: false,
-    },
-    sourceTokenSymbol: "USDC",
-    sourceAmount: "1",
-    sourceAmountDisplay: "1",
-    destinationAmount: "2",
-    pathResult: null,
-    isLoadingPath: false,
-    pathError: null,
-    setSourceToken: mockSetSourceToken,
-    setDestinationToken: mockSetDestinationToken,
-    setSourceAmount: mockSetSourceAmount,
-    setSourceAmountDisplay: mockSetSourceAmountDisplay,
-    resetSwap: mockResetSwap,
-  })),
+  useSwapStore: jest.fn(),
 }));
+
+const setSwapStoreState = (patch: Partial<SwapStoreState>): void => {
+  (useSwapStore as unknown as jest.Mock).mockImplementation(() => ({
+    ...makeDefaultSwapState(),
+    ...patch,
+  }));
+};
+
 jest.mock("ducks/transactionBuilder", () => ({
   useTransactionBuilderStore: jest.fn(() => ({
     isBuilding: false,
@@ -79,9 +116,13 @@ jest.mock("components/screens/SwapScreen/hooks/useSwapTransaction", () => ({
   })),
 }));
 jest.mock("hooks/useBalancesList");
-jest.mock("hooks/useGetActiveAccount", () => () => ({
-  account: { publicKey: "abc", subentryCount: 0 },
-}));
+// Cache the return value so account / spendableAmount memos stay stable across
+// re-renders — otherwise the amountError useEffect can re-fire forever when
+// sourceAmount exceeds spendable.
+jest.mock("hooks/useGetActiveAccount", () => {
+  const stable = { account: { publicKey: "abc", subentryCount: 0 } };
+  return () => stable;
+});
 jest.mock("hooks/useRightHeader", () => ({
   useRightHeaderMenu: jest.fn(),
   useRightHeaderButton: jest.fn(),
@@ -111,26 +152,45 @@ const makeRoute = () =>
     params: { tokenId: "SRC", tokenSymbol: "XLM" },
   }) as unknown as Props["route"];
 
+const mockBalancesListReturn = (
+  scanResults: Record<string, { result_type: string }> = {},
+) => {
+  (useBalancesList as jest.Mock).mockImplementation(() => ({
+    balanceItems: mockBalances,
+    scanResults,
+    isLoading: false,
+    error: null,
+    noBalances: false,
+    isRefreshing: false,
+    isFunded: true,
+    handleRefresh: jest.fn(),
+  }));
+};
+
 describe("SwapAmountScreen", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    // Only clear call history; clearAllMocks would also drop the mock impls
+    // set in the top-level jest.mock factories.
+    mockSetSourceToken.mockClear();
+    mockSetDestinationToken.mockClear();
+    mockSetSourceAmount.mockClear();
+    mockSetSourceAmountDisplay.mockClear();
+    mockResetSwap.mockClear();
+    mockResetTransaction.mockClear();
+    mockResetToDefaults.mockClear();
+    mockExecuteSwap.mockClear();
+    mockSetupSwapTransaction.mockClear();
+    mockShowToast.mockClear();
+    setSwapStoreState({});
+    mockBalancesListReturn();
   });
 
   it("initializes source token from route params", () => {
-    (useBalancesList as jest.Mock).mockImplementation(() => ({
-      balanceItems: mockBalances,
-      scanResults: {
-        "USDC-GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH": {
-          result_type: "Malicious",
-        },
+    mockBalancesListReturn({
+      "USDC-GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH": {
+        result_type: "Malicious",
       },
-      isLoading: false,
-      error: null,
-      noBalances: false,
-      isRefreshing: false,
-      isFunded: true,
-      handleRefresh: jest.fn(),
-    }));
+    });
     renderWithProviders(
       <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
     );
@@ -140,20 +200,11 @@ describe("SwapAmountScreen", () => {
   });
 
   it("renders security warnings for malicious states", () => {
-    (useBalancesList as jest.Mock).mockImplementation(() => ({
-      balanceItems: mockBalances,
-      scanResults: {
-        "USDC-GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH": {
-          result_type: "Malicious",
-        },
+    mockBalancesListReturn({
+      "USDC-GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH": {
+        result_type: "Malicious",
       },
-      isLoading: false,
-      error: null,
-      noBalances: false,
-      isRefreshing: false,
-      isFunded: true,
-      handleRefresh: jest.fn(),
-    }));
+    });
     const { UNSAFE_getByType } = renderWithProviders(
       <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
     );
@@ -163,20 +214,11 @@ describe("SwapAmountScreen", () => {
   });
 
   it("renders security warnings for suspicious states", () => {
-    (useBalancesList as jest.Mock).mockImplementation(() => ({
-      balanceItems: mockBalances,
-      scanResults: {
-        "USDC-GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH": {
-          result_type: "Warning",
-        },
+    mockBalancesListReturn({
+      "USDC-GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH": {
+        result_type: "Warning",
       },
-      isLoading: false,
-      error: null,
-      noBalances: false,
-      isRefreshing: false,
-      isFunded: true,
-      handleRefresh: jest.fn(),
-    }));
+    });
     const { UNSAFE_getByType } = renderWithProviders(
       <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
     );
@@ -195,5 +237,73 @@ describe("SwapAmountScreen", () => {
     expect(mockResetSwap).toHaveBeenCalled();
     expect(mockResetTransaction).toHaveBeenCalled();
     expect(mockResetToDefaults).toHaveBeenCalled();
+  });
+
+  describe("CTA state machine", () => {
+    it("shows 'Select a token' when no destination is set", () => {
+      setSwapStoreState({ destinationToken: null, sourceAmount: "0" });
+
+      const navigation = makeNavigation();
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={navigation} route={makeRoute()} />,
+      );
+
+      const cta = getByTestId("swap-continue-button");
+      expect(cta).toHaveTextContent("Select a token");
+
+      fireEvent.press(cta);
+      expect(navigation.navigate).toHaveBeenCalledWith(
+        SWAP_ROUTES.SWAP_SCREEN,
+        { selectionType: "destination" },
+      );
+    });
+
+    it("shows 'Enter an amount' when destination is set but amount is zero", () => {
+      setSwapStoreState({ sourceAmount: "0" });
+
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+      const cta = getByTestId("swap-continue-button");
+      expect(cta).toHaveTextContent("Enter an amount");
+    });
+
+    it("shows 'Insufficient balance' (disabled) when amount > spendable", () => {
+      // USDC available is 10 (per mockBalances). Source amount 9999 forces insufficient.
+      setSwapStoreState({ sourceAmount: "9999" });
+
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+      const cta = getByTestId("swap-continue-button");
+      expect(cta).toHaveTextContent("Insufficient balance");
+      expect(cta.props.accessibilityState?.disabled).toBe(true);
+    });
+
+    it("shows 'Review swap' with a spinner while path-finding is loading", () => {
+      setSwapStoreState({ sourceAmount: "1", isLoadingPath: true });
+
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+      // Loading state still renders the Review label per the design doc; the
+      // spinner is rendered by the SDS Button when isLoading=true.
+      const cta = getByTestId("swap-continue-button");
+      expect(cta).toHaveTextContent("Review swap");
+    });
+
+    it("shows 'Review swap' (enabled) when path-finding succeeds", () => {
+      setSwapStoreState({
+        sourceAmount: "1",
+        pathResult: { destinationAmount: "2" },
+      });
+
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+      const cta = getByTestId("swap-continue-button");
+      expect(cta).toHaveTextContent("Review swap");
+      expect(cta.props.accessibilityState?.disabled).toBeFalsy();
+    });
   });
 });
