@@ -10,6 +10,7 @@ import { BaseLayout } from "components/layout/BaseLayout";
 import {
   SwapReviewBottomSheet,
   SwapReviewFooter,
+  XlmReserveBottomSheet,
 } from "components/screens/SwapScreen/components";
 import { useSwapPathFinding } from "components/screens/SwapScreen/hooks";
 import { useSwapTransaction } from "components/screens/SwapScreen/hooks/useSwapTransaction";
@@ -19,6 +20,7 @@ import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import {
+  BASE_RESERVE,
   DEFAULT_DECIMALS,
   NATIVE_TOKEN_CODE,
   SWAP_SELECTION_TYPES,
@@ -92,6 +94,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const transactionSecurityWarningBottomSheetModalRef =
     useRef<BottomSheetModal>(null);
   const transactionSettingsBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const xlmReserveBottomSheetRef = useRef<BottomSheetModal>(null);
   const amountInputRef = useRef<TextInput>(null);
   const [amountError, setAmountError] = useState<string | null>(null);
   const [activeError, setActiveError] = useState<{
@@ -517,6 +520,28 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     }
 
     // review
+
+    // Pre-flight XLM reserve check (design doc §6.5):
+    // When the destination is a new token (trustline must be added) the user
+    // needs at least 0.5 XLM spendable to cover the reserve bump. If not,
+    // surface the XlmReserveBottomSheet instead of the review sheet.
+    if (destinationTokenDescriptor?.isNew) {
+      // The native XLM balance uses id "native" in production data, but some
+      // fixtures key it as "XLM" — match either to keep the check robust.
+      const xlmBalance = balanceItems.find(
+        (b) => b.id === "native" || b.id === NATIVE_TOKEN_CODE,
+      );
+      const xlmAvailableRaw =
+        xlmBalance && "available" in xlmBalance
+          ? (xlmBalance as { available?: BigNumber | string }).available
+          : undefined;
+      const xlmAvailable = new BigNumber(xlmAvailableRaw?.toString() ?? "0");
+      if (xlmAvailable.lt(BASE_RESERVE)) {
+        xlmReserveBottomSheetRef.current?.present();
+        return;
+      }
+    }
+
     const isUnableToScan =
       showSecurityWarningForSource || showSecurityWarningForDestination;
 
@@ -532,6 +557,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     navigateToSelectDestinationTokenScreen,
     showSecurityWarningForDestination,
     showSecurityWarningForSource,
+    destinationTokenDescriptor,
+    balanceItems,
   ]);
 
   // Reset everything on unmount
@@ -891,6 +918,16 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
             onCancel={handleCancelTransactionSettings}
             onConfirm={handleConfirmTransactionSettings}
             onSettingsChange={handleSettingsChange}
+          />
+        }
+      />
+      <BottomSheet
+        modalRef={xlmReserveBottomSheetRef}
+        handleCloseModal={() => xlmReserveBottomSheetRef.current?.dismiss()}
+        customContent={
+          <XlmReserveBottomSheet
+            publicKey={account?.publicKey ?? ""}
+            bottomSheetModalRef={xlmReserveBottomSheetRef}
           />
         }
       />
