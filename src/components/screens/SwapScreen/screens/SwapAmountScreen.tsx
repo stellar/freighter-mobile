@@ -3,7 +3,6 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BalanceRow } from "components/BalanceRow";
 import BottomSheet from "components/BottomSheet";
 import { IconButton } from "components/IconButton";
-import NumericKeyboard from "components/NumericKeyboard";
 import TransactionSettingsBottomSheet from "components/TransactionSettingsBottomSheet";
 import { SecurityDetailBottomSheet } from "components/blockaid";
 import { BaseLayout } from "components/layout/BaseLayout";
@@ -37,11 +36,7 @@ import {
   hasXLMForFees,
 } from "helpers/balances";
 import { useDeviceSize, DeviceSize } from "helpers/deviceSize";
-import {
-  formatBigNumberForDisplay,
-  parseDisplayNumberToBigNumber,
-} from "helpers/formatAmount";
-import { formatNumericInput } from "helpers/numericInput";
+import { formatBigNumberForDisplay } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
@@ -49,6 +44,7 @@ import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useInitialRecommendedFee } from "hooks/useInitialRecommendedFee";
 import { useNetworkFees } from "hooks/useNetworkFees";
 import { useRightHeaderButton } from "hooks/useRightHeader";
+import { useTokenFiatConverter } from "hooks/useTokenFiatConverter";
 import { useToast } from "providers/ToastProvider";
 import React, {
   useEffect,
@@ -57,7 +53,12 @@ import React, {
   useState,
   useCallback,
 } from "react";
-import { View, Text as RNText, TouchableOpacity } from "react-native";
+import {
+  TextInput,
+  View,
+  Text as RNText,
+  TouchableOpacity,
+} from "react-native";
 import { analytics } from "services/analytics";
 import { SecurityLevel } from "services/blockaid/constants";
 import {
@@ -112,7 +113,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     destinationToken: destinationTokenDescriptor,
     sourceTokenSymbol,
     sourceAmount,
-    sourceAmountDisplay,
     destinationAmount,
     pathResult,
     isLoadingPath,
@@ -121,7 +121,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     setDestinationToken,
     setSourceAmount,
     setSourceAmountDisplay,
-
     resetSwap,
   } = useSwapStore();
 
@@ -147,6 +146,32 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       transactionFee: swapFee,
     });
   }, [sourceBalance, account, swapFee]);
+
+  // Token/fiat amount input is driven by the system keyboard via TextInput.
+  // We mirror the converter's tokenAmount back into the swap store so that
+  // the existing path-finding effect (keyed on sourceAmount) still fires.
+  const {
+    tokenAmount,
+    tokenAmountDisplay,
+    fiatAmountDisplay,
+    showFiatAmount,
+    setShowFiatAmount,
+    setTokenAmount,
+    setDisplayAmountFromText,
+  } = useTokenFiatConverter({ selectedBalance: sourceBalance });
+
+  // Sync the converter's token amount back into the swap store. The store's
+  // sourceAmount stays the single source of truth for path-finding so
+  // useSwapPathFinding can keep its existing dependency list.
+  useEffect(() => {
+    setSourceAmount(tokenAmount);
+    setSourceAmountDisplay(tokenAmountDisplay);
+  }, [
+    tokenAmount,
+    tokenAmountDisplay,
+    setSourceAmount,
+    setSourceAmountDisplay,
+  ]);
 
   useEffect(() => {
     if (!sourceBalance || !sourceAmount || sourceAmount === "0") {
@@ -306,38 +331,19 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     });
   }, [navigation]);
 
-  const handleDisplayAmountChange = useCallback(
-    (key: string) => {
-      const newAmount = formatNumericInput(
-        sourceAmountDisplay,
-        key,
-        DEFAULT_DECIMALS,
-      );
-      // Update display value immediately to preserve formatting
-      setSourceAmountDisplay(newAmount);
-      // Convert locale-formatted input to internal dot notation
-      const internalAmount = parseDisplayNumberToBigNumber(newAmount);
-      // Update internal value for calculations, preserving display value
-      setSourceAmount(internalAmount.toString(), true);
-    },
-    [setSourceAmount, setSourceAmountDisplay, sourceAmountDisplay],
-  );
-
   const handlePercentagePress = useCallback(
     (percentage: number) => {
       if (!spendableAmount) return;
 
       if (percentage === 100) {
-        if (spendableAmount) {
-          analytics.track(AnalyticsEvent.SEND_PAYMENT_SET_MAX);
-          setSourceAmount(spendableAmount.toString());
-        }
+        analytics.track(AnalyticsEvent.SEND_PAYMENT_SET_MAX);
+        setTokenAmount(spendableAmount.toString());
       } else {
         const targetAmount = spendableAmount.multipliedBy(percentage / 100);
-        setSourceAmount(targetAmount.toFixed(DEFAULT_DECIMALS));
+        setTokenAmount(targetAmount.toFixed(DEFAULT_DECIMALS));
       }
     },
-    [spendableAmount, setSourceAmount],
+    [spendableAmount, setTokenAmount],
   );
 
   const prepareSwapTransaction = useCallback(
@@ -615,6 +621,22 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       <View className="flex-1" testID="swap-amount-screen">
         <View className="flex-none items-center py-[24px] max-xs:py-[16px] px-6">
           <View className="flex-row items-center gap-1">
+            <TextInput
+              testID="swap-amount-input"
+              value={showFiatAmount ? fiatAmountDisplay : tokenAmountDisplay}
+              onChangeText={setDisplayAmountFromText}
+              keyboardType="decimal-pad"
+              inputMode="decimal"
+              placeholder="0"
+              placeholderTextColor={themeColors.text.secondary}
+              style={{
+                fontSize: isSmallScreen ? 44 : 56,
+                color: themeColors.text.primary,
+                minWidth: 40,
+                padding: 0,
+                textAlign: "center",
+              }}
+            />
             <Display
               size={isSmallScreen ? "lg" : "xl"}
               medium
@@ -622,12 +644,19 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
               numberOfLines={1}
               minimumFontScale={0.6}
             >
-              {sourceAmountDisplay}{" "}
               <RNText style={{ color: themeColors.text.secondary }}>
                 {sourceTokenSymbol}
               </RNText>
             </Display>
           </View>
+          <TouchableOpacity
+            testID="swap-amount-fiat-toggle"
+            className="mt-2 flex-row items-center"
+            hitSlop={10}
+            onPress={() => setShowFiatAmount(!showFiatAmount)}
+          >
+            <Icon.RefreshCw03 size={16} color={themeColors.text.secondary} />
+          </TouchableOpacity>
         </View>
 
         <View className="flex-none gap-3 mt-[16px]">
@@ -720,9 +749,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
                 {t("transactionAmountScreen.percentageButtons.max")}
               </Button>
             </View>
-          </View>
-          <View className="w-full">
-            <NumericKeyboard onPress={handleDisplayAmountChange} />
           </View>
           <View className="w-full mt-auto mb-4">
             <Button

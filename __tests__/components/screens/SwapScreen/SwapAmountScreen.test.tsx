@@ -17,6 +17,7 @@ const MockView = View;
 const mockSetSourceToken = jest.fn();
 const mockSetDestinationToken = jest.fn();
 const mockSetSourceAmount = jest.fn();
+const mockSetSourceAmountDisplay = jest.fn();
 const mockResetSwap = jest.fn();
 const mockResetTransaction = jest.fn();
 const mockResetToDefaults = jest.fn();
@@ -39,10 +40,15 @@ jest.mock("ducks/swap", () => ({
     },
     sourceTokenSymbol: "USDC",
     sourceAmount: "1",
+    sourceAmountDisplay: "1",
     destinationAmount: "2",
+    pathResult: null,
+    isLoadingPath: false,
+    pathError: null,
     setSourceToken: mockSetSourceToken,
     setDestinationToken: mockSetDestinationToken,
     setSourceAmount: mockSetSourceAmount,
+    setSourceAmountDisplay: mockSetSourceAmountDisplay,
     resetSwap: mockResetSwap,
   })),
 }));
