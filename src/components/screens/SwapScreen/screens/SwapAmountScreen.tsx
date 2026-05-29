@@ -64,6 +64,8 @@ import React, {
 } from "react";
 import {
   FlatList,
+  KeyboardAvoidingView,
+  Platform,
   TextInput,
   View,
   Text as RNText,
@@ -960,7 +962,10 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ paddingBottom: 16 }}
         />
-        <View className="px-6 pb-4">
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          className="px-6 pb-4"
+        >
           <Button
             tertiary
             onPress={handleMainButtonPress}
@@ -970,7 +975,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           >
             {ctaLabel}
           </Button>
-        </View>
+        </KeyboardAvoidingView>
       </View>
 
       {/* Clear errors when review is closed */}
