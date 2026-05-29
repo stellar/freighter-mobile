@@ -10,9 +10,12 @@ import { BaseLayout } from "components/layout/BaseLayout";
 import {
   SwapReviewBottomSheet,
   SwapReviewFooter,
+  SwapTokenRow,
+  TrendingTokenDetailBottomSheet,
   XlmReserveBottomSheet,
 } from "components/screens/SwapScreen/components";
 import { useSwapPathFinding } from "components/screens/SwapScreen/hooks";
+import { useSwapTokenLookup } from "components/screens/SwapScreen/hooks/useSwapTokenLookup";
 import { useSwapTransaction } from "components/screens/SwapScreen/hooks/useSwapTransaction";
 import { SwapProcessingScreen } from "components/screens/SwapScreen/screens";
 import { Button } from "components/sds/Button";
@@ -23,13 +26,16 @@ import {
   BASE_RESERVE,
   DEFAULT_DECIMALS,
   NATIVE_TOKEN_CODE,
+  NETWORKS,
   SWAP_SELECTION_TYPES,
   TransactionContext,
 } from "config/constants";
 import { logger } from "config/logger";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
+import { FormattedSearchTokenRecord } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useDebugStore } from "ducks/debug";
+import { usePricesStore } from "ducks/prices";
 import { useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
@@ -57,6 +63,7 @@ import React, {
   useCallback,
 } from "react";
 import {
+  FlatList,
   TextInput,
   View,
   Text as RNText,
@@ -263,6 +270,52 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     network,
     navigation,
   });
+
+  // Trending Tokens list (design doc §5.3 + §6.1). The list is held-inclusive
+  // and rendered as the body of the screen's FlatList. It is hidden when:
+  //   - we are not on PUBLIC (stellar.expert only indexes mainnet); or
+  //   - stellar.expert is down (the source array is empty in either case).
+  const { trendingTokens, stellarExpertDown } = useSwapTokenLookup({
+    network,
+    publicKey: account?.publicKey,
+    balanceItems,
+  });
+
+  const showTrending =
+    network === NETWORKS.PUBLIC &&
+    !stellarExpertDown &&
+    trendingTokens.length > 0;
+
+  // Batch-fetch token prices when the Trending list updates so SwapTokenRow
+  // can display the price + 24h chip via priceInfo.
+  const fetchPricesForTokenIds = usePricesStore(
+    (state) => state.fetchPricesForTokenIds,
+  );
+  const prices = usePricesStore((state) => state.prices);
+
+  useEffect(() => {
+    if (!showTrending || trendingTokens.length === 0) return;
+    const ids = trendingTokens.map(
+      (token) => `${token.tokenCode}:${token.issuer}`,
+    );
+    fetchPricesForTokenIds({ tokens: ids });
+  }, [showTrending, trendingTokens, fetchPricesForTokenIds]);
+
+  // Detail sheet for a tapped Trending row. The sheet is always mounted so
+  // its imperative ref is available; we just toggle which record it renders.
+  const trendingDetailSheetRef = useRef<BottomSheetModal>(null);
+  const [selectedTrendingRecord, setSelectedTrendingRecord] =
+    useState<FormattedSearchTokenRecord | null>(null);
+
+  // Present the detail sheet after the record has propagated into the JSX.
+  // Calling present() inline from the row press would target a sheet whose
+  // ref is still null on first selection (the conditional render only runs
+  // after the state update flushes).
+  useEffect(() => {
+    if (selectedTrendingRecord) {
+      trendingDetailSheetRef.current?.present();
+    }
+  }, [selectedTrendingRecord]);
 
   // CTA state machine — see design doc §6.6.
   //
@@ -710,152 +763,195 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     );
   }
 
-  return (
-    <BaseLayout insets={{ top: false }}>
-      <View className="flex-1" testID="swap-amount-screen">
-        <View className="flex-none items-center py-[24px] max-xs:py-[16px] px-6">
-          <View className="flex-row items-center gap-1">
-            <TextInput
-              ref={amountInputRef}
-              testID="swap-amount-input"
-              value={showFiatAmount ? fiatAmountDisplay : tokenAmountDisplay}
-              onChangeText={setDisplayAmountFromText}
-              keyboardType="decimal-pad"
-              inputMode="decimal"
-              placeholder="0"
-              placeholderTextColor={themeColors.text.secondary}
-              style={{
-                fontSize: isSmallScreen ? 44 : 56,
-                color: themeColors.text.primary,
-                minWidth: 40,
-                padding: 0,
-                textAlign: "center",
-              }}
-            />
-            <Display
-              size={isSmallScreen ? "lg" : "xl"}
-              medium
-              adjustsFontSizeToFit
-              numberOfLines={1}
-              minimumFontScale={0.6}
-            >
-              <RNText style={{ color: themeColors.text.secondary }}>
-                {sourceTokenSymbol}
-              </RNText>
-            </Display>
-          </View>
-          <TouchableOpacity
-            testID="swap-amount-fiat-toggle"
-            className="mt-2 flex-row items-center"
-            hitSlop={10}
-            onPress={() => setShowFiatAmount(!showFiatAmount)}
+  const listHeader = (
+    <View>
+      <View className="flex-none items-center py-[24px] max-xs:py-[16px] px-6">
+        <View className="flex-row items-center gap-1">
+          <TextInput
+            ref={amountInputRef}
+            testID="swap-amount-input"
+            value={showFiatAmount ? fiatAmountDisplay : tokenAmountDisplay}
+            onChangeText={setDisplayAmountFromText}
+            keyboardType="decimal-pad"
+            inputMode="decimal"
+            placeholder="0"
+            placeholderTextColor={themeColors.text.secondary}
+            style={{
+              fontSize: isSmallScreen ? 44 : 56,
+              color: themeColors.text.primary,
+              minWidth: 40,
+              padding: 0,
+              textAlign: "center",
+            }}
+          />
+          <Display
+            size={isSmallScreen ? "lg" : "xl"}
+            medium
+            adjustsFontSizeToFit
+            numberOfLines={1}
+            minimumFontScale={0.6}
           >
-            <Icon.RefreshCw03 size={16} color={themeColors.text.secondary} />
-          </TouchableOpacity>
+            <RNText style={{ color: themeColors.text.secondary }}>
+              {sourceTokenSymbol}
+            </RNText>
+          </Display>
         </View>
+        <TouchableOpacity
+          testID="swap-amount-fiat-toggle"
+          className="mt-2 flex-row items-center"
+          hitSlop={10}
+          onPress={() => setShowFiatAmount(!showFiatAmount)}
+        >
+          <Icon.RefreshCw03 size={16} color={themeColors.text.secondary} />
+        </TouchableOpacity>
+      </View>
 
-        <View className="flex-none gap-3 mt-[16px]">
-          <View className="rounded-[16px] py-[12px] px-[16px] bg-background-tertiary">
-            {sourceBalance && (
-              <BalanceRow
-                isSingleRow
-                balance={sourceBalance}
-                scanResult={scanResults[sourceBalance.id.replace(":", "-")]}
-                onPress={navigateToSelectSourceTokenScreen}
-                spendableAmount={spendableAmount || undefined}
-                testID="swap-from-token-row"
-                rightContent={
-                  <IconButton
-                    Icon={Icon.ChevronRight}
-                    size="sm"
-                    variant="ghost"
-                  />
-                }
-              />
-            )}
-          </View>
-
-          <View className="rounded-[16px] py-[12px] px-[16px] bg-background-tertiary">
-            {destinationBalance ? (
-              <BalanceRow
-                isSingleRow
-                balance={destinationBalance}
-                scanResult={
-                  scanResults[destinationBalance.id.replace(":", "-")]
-                }
-                onPress={navigateToSelectDestinationTokenScreen}
-                testID="swap-to-token-row"
-                rightContent={
-                  <IconButton
-                    Icon={Icon.ChevronRight}
-                    size="sm"
-                    variant="ghost"
-                  />
-                }
-              />
-            ) : (
-              <TouchableOpacity
-                className="flex-row w-full h-[44px] justify-between items-center"
-                onPress={navigateToSelectDestinationTokenScreen}
-                testID="swap-to-choose-token"
-              >
-                <View className="flex-row items-center flex-1 mr-4">
-                  <View className="flex-row items-center gap-16px">
-                    <View className="w-[40px] h-[40px] rounded-full border justify-center items-center mr-4 bg-gray-3 border-gray-6 p-[7.5px]">
-                      <Icon.Plus size={25} themeColor="gray" />
-                    </View>
-                    <View className="flex-col flex-1">
-                      <Text>{t("swapScreen.receive")}</Text>
-                      <Text sm secondary>
-                        {t("swapScreen.chooseToken")}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
+      <View className="flex-none gap-3 mt-[16px] px-6">
+        <View className="rounded-[16px] py-[12px] px-[16px] bg-background-tertiary">
+          {sourceBalance && (
+            <BalanceRow
+              isSingleRow
+              balance={sourceBalance}
+              scanResult={scanResults[sourceBalance.id.replace(":", "-")]}
+              onPress={navigateToSelectSourceTokenScreen}
+              spendableAmount={spendableAmount || undefined}
+              testID="swap-from-token-row"
+              rightContent={
                 <IconButton
                   Icon={Icon.ChevronRight}
                   size="sm"
                   variant="ghost"
                 />
-              </TouchableOpacity>
-            )}
-          </View>
+              }
+            />
+          )}
         </View>
 
-        <View className="flex-1 items-center mt-[24px] gap-[24px]">
-          <View className="flex-row gap-[8px]">
-            <View className="flex-1">
-              <Button secondary onPress={() => handlePercentagePress(25)}>
-                {t("transactionAmountScreen.percentageButtons.twentyFive")}
-              </Button>
-            </View>
-            <View className="flex-1">
-              <Button secondary onPress={() => handlePercentagePress(50)}>
-                {t("transactionAmountScreen.percentageButtons.fifty")}
-              </Button>
-            </View>
-            <View className="flex-1">
-              <Button secondary onPress={() => handlePercentagePress(75)}>
-                {t("transactionAmountScreen.percentageButtons.seventyFive")}
-              </Button>
-            </View>
-            <View className="flex-1">
-              <Button secondary onPress={() => handlePercentagePress(100)}>
-                {t("transactionAmountScreen.percentageButtons.max")}
-              </Button>
-            </View>
-          </View>
-          <View className="w-full mt-auto mb-4">
-            <Button
-              tertiary
-              onPress={handleMainButtonPress}
-              disabled={isCtaDisabled}
-              isLoading={ctaState.kind === "loading"}
-              testID="swap-continue-button"
+        <View className="rounded-[16px] py-[12px] px-[16px] bg-background-tertiary">
+          {destinationBalance ? (
+            <BalanceRow
+              isSingleRow
+              balance={destinationBalance}
+              scanResult={scanResults[destinationBalance.id.replace(":", "-")]}
+              onPress={navigateToSelectDestinationTokenScreen}
+              testID="swap-to-token-row"
+              rightContent={
+                <IconButton
+                  Icon={Icon.ChevronRight}
+                  size="sm"
+                  variant="ghost"
+                />
+              }
+            />
+          ) : (
+            <TouchableOpacity
+              className="flex-row w-full h-[44px] justify-between items-center"
+              onPress={navigateToSelectDestinationTokenScreen}
+              testID="swap-to-choose-token"
             >
-              {ctaLabel}
+              <View className="flex-row items-center flex-1 mr-4">
+                <View className="flex-row items-center gap-16px">
+                  <View className="w-[40px] h-[40px] rounded-full border justify-center items-center mr-4 bg-gray-3 border-gray-6 p-[7.5px]">
+                    <Icon.Plus size={25} themeColor="gray" />
+                  </View>
+                  <View className="flex-col flex-1">
+                    <Text>{t("swapScreen.receive")}</Text>
+                    <Text sm secondary>
+                      {t("swapScreen.chooseToken")}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+              <IconButton Icon={Icon.ChevronRight} size="sm" variant="ghost" />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      <View className="items-center mt-[24px] px-6">
+        <View className="flex-row gap-[8px] w-full">
+          <View className="flex-1">
+            <Button secondary onPress={() => handlePercentagePress(25)}>
+              {t("transactionAmountScreen.percentageButtons.twentyFive")}
             </Button>
           </View>
+          <View className="flex-1">
+            <Button secondary onPress={() => handlePercentagePress(50)}>
+              {t("transactionAmountScreen.percentageButtons.fifty")}
+            </Button>
+          </View>
+          <View className="flex-1">
+            <Button secondary onPress={() => handlePercentagePress(75)}>
+              {t("transactionAmountScreen.percentageButtons.seventyFive")}
+            </Button>
+          </View>
+          <View className="flex-1">
+            <Button secondary onPress={() => handlePercentagePress(100)}>
+              {t("transactionAmountScreen.percentageButtons.max")}
+            </Button>
+          </View>
+        </View>
+      </View>
+
+      {showTrending && (
+        <View className="mt-[24px] px-6">
+          <Text md medium primary>
+            {t("swapScreen.trendingTokensSection")}
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+
+  const renderTrendingItem = ({
+    item,
+  }: {
+    item: FormattedSearchTokenRecord;
+  }) => {
+    const tokenId = `${item.tokenCode}:${item.issuer}`;
+    const priceInfo = prices[tokenId] ?? {};
+    return (
+      <View className="px-6">
+        <SwapTokenRow
+          variant="trending"
+          record={item}
+          priceInfo={{
+            currentPrice: priceInfo.currentPrice ?? undefined,
+            percentagePriceChange24h:
+              priceInfo.percentagePriceChange24h ?? undefined,
+          }}
+          network={network}
+          onPress={() => {
+            setSelectedTrendingRecord(item);
+            // present() fires via useEffect once the ref is mounted.
+          }}
+        />
+      </View>
+    );
+  };
+
+  return (
+    <BaseLayout insets={{ top: false }}>
+      <View className="flex-1" testID="swap-amount-screen">
+        <FlatList
+          testID="swap-amount-trending-list"
+          data={showTrending ? trendingTokens : []}
+          keyExtractor={(item) => `${item.tokenCode}:${item.issuer}`}
+          ListHeaderComponent={listHeader}
+          renderItem={renderTrendingItem}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ paddingBottom: 16 }}
+        />
+        <View className="px-6 pb-4">
+          <Button
+            tertiary
+            onPress={handleMainButtonPress}
+            disabled={isCtaDisabled}
+            isLoading={ctaState.kind === "loading"}
+            testID="swap-continue-button"
+          >
+            {ctaLabel}
+          </Button>
         </View>
       </View>
 
@@ -931,6 +1027,33 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           />
         }
       />
+      {selectedTrendingRecord && (
+        <BottomSheet
+          modalRef={trendingDetailSheetRef}
+          handleCloseModal={() => {
+            trendingDetailSheetRef.current?.dismiss();
+            setSelectedTrendingRecord(null);
+          }}
+          customContent={
+            <TrendingTokenDetailBottomSheet
+              record={selectedTrendingRecord}
+              priceInfo={(() => {
+                const p =
+                  prices[
+                    `${selectedTrendingRecord.tokenCode}:${selectedTrendingRecord.issuer}`
+                  ];
+                return {
+                  currentPrice: p?.currentPrice ?? undefined,
+                  percentagePriceChange24h:
+                    p?.percentagePriceChange24h ?? undefined,
+                };
+              })()}
+              balanceItems={balanceItems}
+              bottomSheetModalRef={trendingDetailSheetRef}
+            />
+          }
+        />
+      )}
     </BaseLayout>
   );
 };

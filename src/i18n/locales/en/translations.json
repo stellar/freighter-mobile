@@ -710,6 +710,7 @@
     "yourTokensSection": "Your tokens",
     "popularTokensSection": "Popular tokens",
     "resultsSection": "Results",
+    "trendingTokensSection": "Trending tokens",
     "trendingDetail": {
       "buy": "Buy {{tokenCode}}"
     },

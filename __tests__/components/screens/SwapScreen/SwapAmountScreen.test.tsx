@@ -152,6 +152,62 @@ jest.mock("components/screens/SwapScreen/hooks/useSwapTransaction", () => ({
   })),
 }));
 jest.mock("hooks/useBalancesList");
+
+// Default mocks for the Trending list infrastructure. Tests can override the
+// useSwapTokenLookup return via the helper below.
+type TrendingFixture = {
+  tokenCode: string;
+  domain: string;
+  hasTrustline: boolean;
+  iconUrl?: string;
+  issuer: string;
+  isNative: boolean;
+};
+type SwapTokenLookupReturn = {
+  yourTokens: TrendingFixture[];
+  popularTokens: TrendingFixture[];
+  trendingTokens: TrendingFixture[];
+  searchResults: TrendingFixture[];
+  hadSorobanMatches: boolean;
+  stellarExpertDown: boolean;
+  status: string;
+  searchTerm: string;
+  handleSearch: jest.Mock;
+  resetSearch: jest.Mock;
+};
+const mockUseSwapTokenLookup = jest.fn<SwapTokenLookupReturn, []>(() => ({
+  yourTokens: [],
+  popularTokens: [],
+  trendingTokens: [],
+  searchResults: [],
+  hadSorobanMatches: false,
+  stellarExpertDown: false,
+  status: "idle",
+  searchTerm: "",
+  handleSearch: jest.fn(),
+  resetSearch: jest.fn(),
+}));
+jest.mock("components/screens/SwapScreen/hooks/useSwapTokenLookup", () => ({
+  useSwapTokenLookup: (
+    ...args: unknown[]
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ) => (mockUseSwapTokenLookup as any)(...args),
+}));
+
+const mockFetchPricesForTokenIds = jest.fn();
+const mockPrices: Record<
+  string,
+  { currentPrice?: unknown; percentagePriceChange24h?: unknown }
+> = {};
+jest.mock("ducks/prices", () => ({
+  usePricesStore: (selector?: (s: unknown) => unknown): unknown => {
+    const state = {
+      prices: mockPrices,
+      fetchPricesForTokenIds: mockFetchPricesForTokenIds,
+    };
+    return selector ? selector(state) : state;
+  },
+}));
 // Cache the return value so account / spendableAmount memos stay stable across
 // re-renders — otherwise the amountError useEffect can re-fire forever when
 // sourceAmount exceeds spendable.
@@ -441,6 +497,130 @@ describe("SwapAmountScreen", () => {
       });
 
       expect(mockSetupSwapTransaction).toHaveBeenCalled();
+    });
+  });
+
+  describe("Trending list", () => {
+    const trendingFixture = [
+      {
+        tokenCode: "AQUA",
+        domain: "aqua.network",
+        hasTrustline: false,
+        iconUrl: undefined,
+        issuer: "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+        isNative: false,
+      },
+      {
+        tokenCode: "yXLM",
+        domain: "ultrastellar.com",
+        hasTrustline: true,
+        iconUrl: undefined,
+        issuer: "GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55",
+        isNative: false,
+      },
+    ];
+
+    beforeEach(() => {
+      mockUseSwapTokenLookup.mockReturnValue({
+        yourTokens: [],
+        popularTokens: [],
+        trendingTokens: trendingFixture,
+        searchResults: [],
+        hadSorobanMatches: false,
+        stellarExpertDown: false,
+        status: "idle",
+        searchTerm: "",
+        handleSearch: jest.fn(),
+        resetSearch: jest.fn(),
+      });
+      mockFetchPricesForTokenIds.mockClear();
+    });
+
+    it("renders trending rows when network is PUBLIC and stellarExpertDown is false", () => {
+      const { queryAllByText, getByText } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+      expect(getByText("Trending tokens")).toBeTruthy();
+      // Both fixture rows render — confirm by token code.
+      expect(queryAllByText("AQUA").length).toBeGreaterThan(0);
+      expect(queryAllByText("yXLM").length).toBeGreaterThan(0);
+    });
+
+    it("calls fetchPricesForTokenIds for the trending list", () => {
+      renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+      expect(mockFetchPricesForTokenIds).toHaveBeenCalledWith({
+        tokens: [
+          "AQUA:GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+          "yXLM:GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55",
+        ],
+      });
+    });
+
+    it("opens TrendingTokenDetailBottomSheet when a row is tapped", () => {
+      // eslint-disable-next-line no-underscore-dangle
+      globalThis.__mockSheetRefs = [];
+      const { getByText } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+      // eslint-disable-next-line no-underscore-dangle
+      const sheetsBeforeTap = globalThis.__mockSheetRefs.length;
+
+      // Tap the AQUA row — the SwapTokenRow renders the tokenCode as the
+      // primary text node, so the trending row is findable that way.
+      act(() => {
+        fireEvent.press(getByText("AQUA"));
+      });
+
+      // Tapping a trending row sets selectedTrendingRecord, which renders
+      // the TrendingTokenDetailBottomSheet via its own <BottomSheet>. The
+      // sheet stub registers a new spy ref on mount.
+      // eslint-disable-next-line no-underscore-dangle
+      expect(globalThis.__mockSheetRefs.length).toBeGreaterThan(
+        sheetsBeforeTap,
+      );
+      // eslint-disable-next-line no-underscore-dangle
+      const newestSheet = globalThis.__mockSheetRefs.at(-1);
+      expect(newestSheet?.present).toHaveBeenCalled();
+    });
+
+    it("hides the trending list when stellarExpertDown is true", () => {
+      mockUseSwapTokenLookup.mockReturnValue({
+        yourTokens: [],
+        popularTokens: [],
+        trendingTokens: trendingFixture,
+        searchResults: [],
+        hadSorobanMatches: false,
+        stellarExpertDown: true,
+        status: "error",
+        searchTerm: "",
+        handleSearch: jest.fn(),
+        resetSearch: jest.fn(),
+      });
+      const { queryByText } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+      expect(queryByText("Trending tokens")).toBeNull();
+    });
+
+    it("hides the trending list when trendingTokens is empty", () => {
+      mockUseSwapTokenLookup.mockReturnValue({
+        yourTokens: [],
+        popularTokens: [],
+        trendingTokens: [],
+        searchResults: [],
+        hadSorobanMatches: false,
+        stellarExpertDown: false,
+        status: "idle",
+        searchTerm: "",
+        handleSearch: jest.fn(),
+        resetSearch: jest.fn(),
+      });
+      const { queryByText } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+      expect(queryByText("Trending tokens")).toBeNull();
     });
   });
 });
