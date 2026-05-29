@@ -34,7 +34,12 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
 }) => {
   const { t } = useAppTranslation();
   const { selectionType } = route.params;
-  const { setSourceToken, setDestinationToken } = useSwapStore();
+  const {
+    setSourceToken,
+    setDestinationToken,
+    sourceTokenId,
+    destinationToken,
+  } = useSwapStore();
   const { network } = useAuthenticationStore();
   const { account } = useGetActiveAccount();
   const { balanceItems } = useBalancesList({
@@ -56,15 +61,42 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
     balanceItems,
   });
 
+  // Compute the id of the token that should be hidden from this picker.
+  // When choosing the source token, hide the current destination (if any).
+  // When choosing the destination token, hide the current source (if any).
+  const excludeId = useMemo(() => {
+    if (selectionType === SWAP_SELECTION_TYPES.SOURCE) {
+      return destinationToken?.id ?? null;
+    }
+    return sourceTokenId || null;
+  }, [selectionType, destinationToken, sourceTokenId]);
+
   // Section data: idle = "Your tokens" + "Popular tokens"; active = "Results"
   const sections = useMemo(() => {
+    // Helper: does a held-balance item match the excluded id?
+    const isExcludedHeld = (item: PricedBalance & { id: string }) =>
+      excludeId !== null && item.id === excludeId;
+
+    // Helper: does a search/popular record match the excluded id?
+    const isExcludedRecord = (record: FormattedSearchTokenRecord) => {
+      if (excludeId === null) return false;
+      if (record.isNative) return excludeId === "native" || excludeId === "XLM";
+      return excludeId === `${record.tokenCode}:${record.issuer}`;
+    };
+
     if (searchTerm) {
       return [
         {
           title: t("swapScreen.resultsSection"),
-          data: searchResults as Array<
-            (PricedBalance & { id: string }) | FormattedSearchTokenRecord
-          >,
+          data: (
+            searchResults as Array<
+              (PricedBalance & { id: string }) | FormattedSearchTokenRecord
+            >
+          ).filter((item) => {
+            if ("id" in item)
+              return !isExcludedHeld(item as PricedBalance & { id: string });
+            return !isExcludedRecord(item);
+          }),
         },
       ];
     }
@@ -76,10 +108,14 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
       >;
     }> = [];
 
-    if (yourTokens.length > 0) {
+    const filteredYourTokens = yourTokens.filter(
+      (item) => !isExcludedHeld(item),
+    );
+
+    if (filteredYourTokens.length > 0) {
       out.push({
         title: t("swapScreen.yourTokensSection"),
-        data: yourTokens,
+        data: filteredYourTokens,
       });
     }
 
@@ -87,14 +123,27 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
       popularTokens.length > 0 &&
       selectionType === SWAP_SELECTION_TYPES.DESTINATION
     ) {
-      out.push({
-        title: t("swapScreen.popularTokensSection"),
-        data: popularTokens,
-      });
+      const filteredPopular = popularTokens.filter(
+        (item) => !isExcludedRecord(item),
+      );
+      if (filteredPopular.length > 0) {
+        out.push({
+          title: t("swapScreen.popularTokensSection"),
+          data: filteredPopular,
+        });
+      }
     }
 
     return out;
-  }, [searchTerm, searchResults, yourTokens, popularTokens, selectionType, t]);
+  }, [
+    searchTerm,
+    searchResults,
+    yourTokens,
+    popularTokens,
+    selectionType,
+    excludeId,
+    t,
+  ]);
 
   // Soroban empty-state: search has term, no results, and either there were
   // Soroban matches filtered out OR the term itself looks like a contract ID.

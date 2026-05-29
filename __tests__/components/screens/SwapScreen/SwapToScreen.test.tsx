@@ -7,6 +7,7 @@ import { AnalyticsEvent } from "config/analyticsConfig";
 import { SWAP_SELECTION_TYPES } from "config/constants";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import { HookStatus, TokenTypeWithCustomToken } from "config/types";
+import { useSwapStore } from "ducks/swap";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 import { analytics } from "services/analytics";
@@ -228,6 +229,152 @@ describe("SwapToScreen", () => {
     );
 
     expect(getByText(/No tokens match zloto/i)).toBeTruthy();
+  });
+
+  describe("Opposite-token exclusion", () => {
+    const defaultStoreState = {
+      setSourceToken: jest.fn(),
+      setDestinationToken: jest.fn(),
+      sourceTokenId: "XLM",
+      destinationToken: null,
+    };
+
+    afterEach(() => {
+      // Restore the default store state so tests outside this describe block
+      // are not affected by the overrides in individual tests.
+      (useSwapStore as unknown as jest.Mock).mockReturnValue(defaultStoreState);
+    });
+
+    const usdcBalance = {
+      id: "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+      tokenCode: "USDC",
+      token: {
+        type: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+        code: "USDC",
+        issuer: {
+          key: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+        },
+      },
+      decimals: 7,
+    } as any;
+
+    const xlmBalance = {
+      id: "XLM",
+      tokenCode: "XLM",
+      token: { type: "native" as const, code: "XLM" as const },
+      decimals: 7,
+    } as any;
+
+    it("excludes the currently-selected source token from the destination picker (held balance)", () => {
+      // sourceTokenId is USDC; we are picking the destination — USDC should
+      // be hidden from the "Your tokens" list.
+      (useSwapStore as unknown as jest.Mock).mockReturnValue({
+        setSourceToken: jest.fn(),
+        setDestinationToken: jest.fn(),
+        sourceTokenId:
+          "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+        destinationToken: null,
+      });
+
+      (
+        useSwapTokenLookupModule.useSwapTokenLookup as jest.Mock
+      ).mockReturnValue({
+        ...defaultLookupResult,
+        // yourTokens contains USDC (the source) and XLM
+        yourTokens: [usdcBalance, xlmBalance],
+        popularTokens: [],
+      });
+
+      const { queryByText, getByText } = renderWithProviders(
+        <SwapToScreen {...makeProps(SWAP_SELECTION_TYPES.DESTINATION)} />,
+      );
+
+      // XLM is still visible
+      expect(getByText("XLM")).toBeTruthy();
+      // USDC (the source token) must NOT appear
+      expect(queryByText("USDC")).toBeNull();
+    });
+
+    it("excludes the currently-selected destination token from the source picker (held balance)", () => {
+      // destinationToken is XLM; we are picking the source — XLM should be
+      // hidden from the "Your tokens" list.
+      (useSwapStore as unknown as jest.Mock).mockReturnValue({
+        setSourceToken: jest.fn(),
+        setDestinationToken: jest.fn(),
+        sourceTokenId: null,
+        destinationToken: {
+          id: "XLM",
+          tokenCode: "XLM",
+          issuer: undefined,
+          decimals: 7,
+          tokenType: "native",
+          isNew: false,
+        },
+      });
+
+      (
+        useSwapTokenLookupModule.useSwapTokenLookup as jest.Mock
+      ).mockReturnValue({
+        ...defaultLookupResult,
+        yourTokens: [usdcBalance, xlmBalance],
+        popularTokens: [],
+      });
+
+      const { queryByText, getByText } = renderWithProviders(
+        <SwapToScreen {...makeProps(SWAP_SELECTION_TYPES.SOURCE)} />,
+      );
+
+      // USDC is still visible
+      expect(getByText("USDC")).toBeTruthy();
+      // XLM (the destination token) must NOT appear
+      expect(queryByText("XLM")).toBeNull();
+    });
+
+    it("excludes the source token from popular tokens section in destination mode", () => {
+      const aquaRecord = {
+        tokenCode: "AQUA",
+        issuer: "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+        isNative: false,
+        tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+        hasTrustline: false,
+        domain: "aqua.network",
+      };
+
+      // sourceTokenId is USDC; picking destination — USDC in popularTokens
+      // should be excluded; AQUA should remain.
+      (useSwapStore as unknown as jest.Mock).mockReturnValue({
+        setSourceToken: jest.fn(),
+        setDestinationToken: jest.fn(),
+        sourceTokenId:
+          "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+        destinationToken: null,
+      });
+
+      (
+        useSwapTokenLookupModule.useSwapTokenLookup as jest.Mock
+      ).mockReturnValue({
+        ...defaultLookupResult,
+        yourTokens: [],
+        popularTokens: [
+          {
+            tokenCode: "USDC",
+            issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+            isNative: false,
+            tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+            hasTrustline: true,
+            domain: "centre.io",
+          },
+          aquaRecord,
+        ],
+      });
+
+      const { queryByText, getByText } = renderWithProviders(
+        <SwapToScreen {...makeProps(SWAP_SELECTION_TYPES.DESTINATION)} />,
+      );
+
+      expect(getByText("AQUA")).toBeTruthy();
+      expect(queryByText("USDC")).toBeNull();
+    });
   });
 
   describe("Analytics events", () => {
