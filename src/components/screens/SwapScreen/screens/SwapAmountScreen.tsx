@@ -402,7 +402,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     if (swapFromTokenId && swapFromTokenSymbol) {
       setSourceToken(swapFromTokenId, swapFromTokenSymbol);
       setSourceAmount("0");
-      setDestinationToken(null); // cleared on source-token change; Task 17 wires non-held destinations
+      setDestinationToken(null); // cleared on source-token change
     }
   }, [
     swapFromTokenId,
