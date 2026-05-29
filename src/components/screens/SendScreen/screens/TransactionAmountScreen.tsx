@@ -131,7 +131,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     saveRecipientAddress,
     saveFederationAddress,
     saveRecipientName,
-    saveMemoType,
     saveSelectedCollectibleDetails,
     saveMemo,
     resetSettings,
@@ -161,7 +160,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       saveFederationAddress("");
       saveRecipientName(routeRecipientName ?? "");
     }
-    saveMemoType("");
   }, [
     tokenId,
     routeRecipientAddress,
@@ -171,7 +169,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     saveRecipientAddress,
     saveFederationAddress,
     saveRecipientName,
-    saveMemoType,
   ]);
 
   const {

@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
-import { TokensCollectiblesInline } from "components/TokensCollectiblesInline";
+import { TokensCollectiblesInline } from "components/screens/SendScreen/components/TokensCollectiblesInline";
 import { NETWORKS, TransactionContext } from "config/constants";
 import { useCollectiblesStore } from "ducks/collectibles";
 import { useFilteredCollectibles } from "hooks/useFilteredCollectibles";

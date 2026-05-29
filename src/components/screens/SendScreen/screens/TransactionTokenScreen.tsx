@@ -1,6 +1,6 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { TokensCollectiblesInline } from "components/TokensCollectiblesInline";
 import { BaseLayout } from "components/layout/BaseLayout";
+import { TokensCollectiblesInline } from "components/screens/SendScreen/components/TokensCollectiblesInline";
 import { TransactionContext } from "config/constants";
 import {
   SEND_PAYMENT_ROUTES,

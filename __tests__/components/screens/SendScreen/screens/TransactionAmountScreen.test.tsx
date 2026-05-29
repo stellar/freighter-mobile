@@ -911,6 +911,69 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
     // The button is a TouchableOpacity with disabled state in accessibilityState
     expect(buttonElement?.props.accessibilityState?.disabled).toBe(false);
   });
+
+  it("does not call saveMemoType on mount — preserves federation memo type set before navigation", () => {
+    // Regression test for: TransactionAmountScreen mount effect previously called saveMemoType("")
+    // unconditionally, wiping the memo type set by handleContactPress before navigating here.
+    // For exchange deposit addresses (Kraken, Binance, etc.) this silently downgraded
+    // Memo.id to Memo.text, causing funds to land at the omnibus address without sub-account credit.
+    const saveMemoTypeMock = jest.fn();
+    mockUseTransactionSettingsStore.mockReturnValue({
+      ...mockTransactionSettingsState,
+      transactionMemoType: "id",
+      transactionMemo: "12345",
+      saveMemoType: saveMemoTypeMock,
+    });
+
+    const federationRoute = {
+      params: {
+        tokenId: "XLM",
+        recipientAddress: mockRecipientAddress,
+        recipientName: "alice*kraken.com",
+      },
+      key: "transaction-amount",
+      name: SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN,
+    } as unknown as TransactionAmountScreenProps["route"];
+
+    render(
+      <TransactionAmountScreen
+        navigation={mockNavigation}
+        route={federationRoute}
+      />,
+    );
+
+    expect(saveMemoTypeMock).not.toHaveBeenCalled();
+  });
+
+  it("does not call saveMemoType for hash memo type either", () => {
+    const saveMemoTypeMock = jest.fn();
+    mockUseTransactionSettingsStore.mockReturnValue({
+      ...mockTransactionSettingsState,
+      transactionMemoType: "hash",
+      transactionMemo:
+        "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+      saveMemoType: saveMemoTypeMock,
+    });
+
+    const federationRoute = {
+      params: {
+        tokenId: "XLM",
+        recipientAddress: mockRecipientAddress,
+        recipientName: "bob*bitfinex.com",
+      },
+      key: "transaction-amount",
+      name: SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN,
+    } as unknown as TransactionAmountScreenProps["route"];
+
+    render(
+      <TransactionAmountScreen
+        navigation={mockNavigation}
+        route={federationRoute}
+      />,
+    );
+
+    expect(saveMemoTypeMock).not.toHaveBeenCalled();
+  });
 });
 
 describe("TransactionAmountScreen - Address Change Scenarios", () => {
