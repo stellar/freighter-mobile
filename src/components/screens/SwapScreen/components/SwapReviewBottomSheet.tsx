@@ -5,6 +5,7 @@ import { List } from "components/List";
 import { TokenIcon } from "components/TokenIcon";
 import SignTransactionDetailsBottomSheet from "components/screens/SignTransactionDetails/components/SignTransactionDetailsBottomSheet";
 import { useSignTransactionDetails } from "components/screens/SignTransactionDetails/hooks/useSignTransactionDetails";
+import { TrustlineInfoBottomSheet } from "components/screens/SwapScreen/components/TrustlineInfoBottomSheet";
 import {
   formatConversionRate,
   getTokenFromBalance,
@@ -72,6 +73,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
   });
   const swapTransactionDetailsBottomSheetModalRef =
     useRef<BottomSheetModal>(null);
+  const trustlineInfoRef = useRef<BottomSheetModal>(null);
 
   const handleOpenTransactionDetails = () => {
     swapTransactionDetailsBottomSheetModalRef.current?.present();
@@ -279,6 +281,24 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
         </View>
       </View>
 
+      {destinationTokenDescriptor?.isNew && (
+        <TouchableOpacity
+          className="flex-row items-center gap-[8px] rounded-[16px] bg-lilac-3 px-[16px] py-[12px] mt-[16px]"
+          onPress={() => trustlineInfoRef.current?.present()}
+          testID="trustline-banner"
+        >
+          <Icon.InfoCircle size={16} themeColor="lilac" />
+          <View className="flex-1">
+            <Text color={themeColors.lilac[11]}>
+              {t("swapScreen.trustlineBanner", {
+                tokenCode: destinationTokenDescriptor.tokenCode,
+              })}
+            </Text>
+          </View>
+          <Icon.ChevronRight size={16} themeColor="lilac" />
+        </TouchableOpacity>
+      )}
+
       {(isMalicious || isSuspicious || isUnableToScanToken) && (
         <Banner
           className="mt-[16px]"
@@ -362,6 +382,13 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
           }
         />
       )}
+      <BottomSheet
+        modalRef={trustlineInfoRef}
+        handleCloseModal={() => trustlineInfoRef.current?.dismiss()}
+        customContent={
+          <TrustlineInfoBottomSheet bottomSheetModalRef={trustlineInfoRef} />
+        }
+      />
     </View>
   );
 };

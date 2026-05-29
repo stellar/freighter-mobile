@@ -2,6 +2,7 @@
 import Blockaid from "@blockaid/client";
 import { userEvent } from "@testing-library/react-native";
 import SwapReviewBottomSheet from "components/screens/SwapScreen/components/SwapReviewBottomSheet";
+import { useSwapStore } from "ducks/swap";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 
@@ -377,6 +378,73 @@ describe("SwapReviewBottomSheet", () => {
       );
 
       expect(getByText("An asset was flagged as malicious")).toBeTruthy();
+    });
+  });
+
+  describe("trustline banner", () => {
+    const baseSwapState = {
+      sourceAmount: "10",
+      destinationAmount: "5",
+      pathResult: {
+        sourceAmount: "10",
+        destinationAmount: "5",
+        conversionRate: 0.5,
+      },
+      sourceTokenSymbol: "XLM",
+      sourceTokenId: "XLM",
+    };
+
+    it("renders the purple banner when destinationToken.isNew is true", () => {
+      (useSwapStore as unknown as jest.Mock).mockReturnValue({
+        ...baseSwapState,
+        destinationToken: {
+          id: "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVV",
+          tokenCode: "USDC",
+          issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVV",
+          decimals: 7,
+          tokenType: "credit_alphanum4",
+          isNew: true,
+        },
+      });
+
+      const { getByText } = renderWithProviders(
+        <SwapReviewBottomSheet {...defaultProps} />,
+      );
+
+      expect(getByText(/This will add a trustline to USDC/)).toBeTruthy();
+    });
+
+    it("does NOT render the banner when destinationToken.isNew is false", () => {
+      (useSwapStore as unknown as jest.Mock).mockReturnValue({
+        ...baseSwapState,
+        destinationToken: {
+          id: "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVV",
+          tokenCode: "USDC",
+          issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVV",
+          decimals: 7,
+          tokenType: "credit_alphanum4",
+          isNew: false,
+        },
+      });
+
+      const { queryByText } = renderWithProviders(
+        <SwapReviewBottomSheet {...defaultProps} />,
+      );
+
+      expect(queryByText(/This will add a trustline/)).toBeNull();
+    });
+
+    it("does NOT render the banner when destinationToken is null", () => {
+      (useSwapStore as unknown as jest.Mock).mockReturnValue({
+        ...baseSwapState,
+        destinationToken: null,
+      });
+
+      const { queryByText } = renderWithProviders(
+        <SwapReviewBottomSheet {...defaultProps} />,
+      );
+
+      expect(queryByText(/This will add a trustline/)).toBeNull();
     });
   });
 });
