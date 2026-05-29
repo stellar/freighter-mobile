@@ -4,6 +4,7 @@ import BigNumber from "bignumber.js";
 import { BalanceRow } from "components/BalanceRow";
 import BottomSheet from "components/BottomSheet";
 import { IconButton } from "components/IconButton";
+import Spinner from "components/Spinner";
 import { TokenIcon } from "components/TokenIcon";
 import TransactionSettingsBottomSheet from "components/TransactionSettingsBottomSheet";
 import { SecurityDetailBottomSheet } from "components/blockaid";
@@ -296,16 +297,25 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   // and rendered as the body of the screen's FlatList. It is hidden when:
   //   - we are not on PUBLIC (stellar.expert only indexes mainnet); or
   //   - stellar.expert is down (the source array is empty in either case).
-  const { trendingTokens, stellarExpertDown } = useSwapTokenLookup({
-    network,
-    publicKey: account?.publicKey,
-    balanceItems,
-  });
+  const { trendingTokens, stellarExpertDown, isTrendingLoading } =
+    useSwapTokenLookup({
+      network,
+      publicKey: account?.publicKey,
+      balanceItems,
+    });
 
   const showTrending =
     network === NETWORKS.PUBLIC &&
     !stellarExpertDown &&
     trendingTokens.length > 0;
+
+  // Show the trending section header + spinner placeholder when the fetch is
+  // in flight and we don't have data yet (mainnet only, SE not down).
+  const showTrendingSpinner =
+    network === NETWORKS.PUBLIC &&
+    !stellarExpertDown &&
+    isTrendingLoading &&
+    trendingTokens.length === 0;
 
   // Batch-fetch token prices when the Trending list updates so SwapTokenRow
   // can display the price + 24h chip via priceInfo.
@@ -966,7 +976,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         </View>
       </View>
 
-      {showTrending && (
+      {(showTrending || showTrendingSpinner) && (
         <View className="mt-[24px] px-6">
           <Text md medium primary>
             {t("swapScreen.trendingTokensSection")}
@@ -1017,6 +1027,13 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           data={showTrending ? trendingTokens : []}
           keyExtractor={(item) => `${item.tokenCode}:${item.issuer}`}
           ListHeaderComponent={listHeader}
+          ListEmptyComponent={
+            showTrendingSpinner ? (
+              <View className="items-center py-6">
+                <Spinner size="large" testID="trending-loading-spinner" />
+              </View>
+            ) : null
+          }
           renderItem={renderTrendingItem}
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ paddingBottom: 16 }}

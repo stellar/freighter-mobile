@@ -102,6 +102,7 @@ const defaultLookupResult = {
   hadSorobanMatches: false,
   stellarExpertDown: false,
   status: HookStatus.SUCCESS,
+  isTrendingLoading: false,
   searchTerm: "",
   handleSearch: jest.fn(),
   resetSearch: jest.fn(),
@@ -229,6 +230,30 @@ describe("SwapToScreen", () => {
     );
 
     expect(getByText(/No tokens match zloto/i)).toBeTruthy();
+  });
+
+  it("shows a loading spinner while the active search is fetching (takes precedence over empty-state copy)", () => {
+    (useSwapTokenLookupModule.useSwapTokenLookup as jest.Mock).mockReturnValue({
+      ...defaultLookupResult,
+      yourTokens: [],
+      popularTokens: [],
+      searchResults: [],
+      hadSorobanMatches: false,
+      status: HookStatus.LOADING,
+      searchTerm: "usd",
+    });
+
+    const { getByTestId, queryByText } = renderWithProviders(
+      <SwapToScreen {...makeProps(SWAP_SELECTION_TYPES.DESTINATION)} />,
+    );
+
+    // Spinner must be visible
+    expect(getByTestId("search-loading-spinner")).toBeTruthy();
+    // Neither the Soroban message nor the no-results message should appear
+    expect(queryByText(/Soroban contract tokens aren't supported/)).toBeNull();
+    expect(queryByText(/No tokens match/i)).toBeNull();
+    // The Results section header must not appear while still loading
+    expect(queryByText("Results")).toBeNull();
   });
 
   describe("Opposite-token exclusion", () => {

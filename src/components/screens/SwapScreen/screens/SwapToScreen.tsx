@@ -1,5 +1,6 @@
 /* eslint-disable react/no-unstable-nested-components */
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import Spinner from "components/Spinner";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { SwapTokenRow } from "components/screens/SwapScreen/components/SwapTokenRow";
 import {
@@ -12,7 +13,11 @@ import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { SWAP_SELECTION_TYPES } from "config/constants";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
-import { FormattedSearchTokenRecord, PricedBalance } from "config/types";
+import {
+  FormattedSearchTokenRecord,
+  HookStatus,
+  PricedBalance,
+} from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useSwapStore } from "ducks/swap";
 import { isContractId } from "helpers/soroban";
@@ -53,6 +58,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
     searchResults,
     hadSorobanMatches,
     stellarExpertDown,
+    status,
     searchTerm,
     handleSearch,
   } = useSwapTokenLookup({
@@ -145,17 +151,29 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
     t,
   ]);
 
+  // True while the user's debounced search is fetching (takes precedence over
+  // empty-state branches so the user doesn't see "no results" mid-fetch).
+  const isSearching =
+    searchTerm.length > 0 &&
+    status === HookStatus.LOADING &&
+    searchResults.length === 0;
+
   // Soroban empty-state: search has term, no results, and either there were
   // Soroban matches filtered out OR the term itself looks like a contract ID.
+  // Only shown when we are NOT actively fetching.
   const showSorobanEmpty =
+    !isSearching &&
     searchTerm.length > 0 &&
     searchResults.length === 0 &&
     (hadSorobanMatches || isContractId(searchTerm));
 
   // No-results empty-state: search has term, no results, and NOT a Soroban
-  // case (which has its own dedicated message).
+  // case (which has its own dedicated message). Only shown when not fetching.
   const showNoResults =
-    searchTerm.length > 0 && searchResults.length === 0 && !showSorobanEmpty;
+    !isSearching &&
+    searchTerm.length > 0 &&
+    searchResults.length === 0 &&
+    !showSorobanEmpty;
 
   const handleHeldPress = (
     balance: PricedBalance & { id: string },
@@ -223,6 +241,12 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
         </View>
       )}
 
+      {isSearching && (
+        <View className="items-center py-8">
+          <Spinner size="large" testID="search-loading-spinner" />
+        </View>
+      )}
+
       {showSorobanEmpty && (
         <View className="px-4 py-8">
           <Text sm secondary>
@@ -239,7 +263,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
         </View>
       )}
 
-      {!showSorobanEmpty && !showNoResults && (
+      {!isSearching && !showSorobanEmpty && !showNoResults && (
         <SectionList
           sections={sections}
           keyExtractor={getItemKey}

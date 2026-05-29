@@ -202,6 +202,7 @@ type SwapTokenLookupReturn = {
   hadSorobanMatches: boolean;
   stellarExpertDown: boolean;
   status: string;
+  isTrendingLoading: boolean;
   searchTerm: string;
   handleSearch: jest.Mock;
   resetSearch: jest.Mock;
@@ -214,6 +215,7 @@ const mockUseSwapTokenLookup = jest.fn<SwapTokenLookupReturn, []>(() => ({
   hadSorobanMatches: false,
   stellarExpertDown: false,
   status: "idle",
+  isTrendingLoading: false,
   searchTerm: "",
   handleSearch: jest.fn(),
   resetSearch: jest.fn(),
@@ -560,6 +562,7 @@ describe("SwapAmountScreen", () => {
         hadSorobanMatches: false,
         stellarExpertDown: false,
         status: "idle",
+        isTrendingLoading: false,
         searchTerm: "",
         handleSearch: jest.fn(),
         resetSearch: jest.fn(),
@@ -625,6 +628,7 @@ describe("SwapAmountScreen", () => {
         hadSorobanMatches: false,
         stellarExpertDown: true,
         status: "error",
+        isTrendingLoading: false,
         searchTerm: "",
         handleSearch: jest.fn(),
         resetSearch: jest.fn(),
@@ -644,6 +648,7 @@ describe("SwapAmountScreen", () => {
         hadSorobanMatches: false,
         stellarExpertDown: false,
         status: "idle",
+        isTrendingLoading: false,
         searchTerm: "",
         handleSearch: jest.fn(),
         resetSearch: jest.fn(),
@@ -652,6 +657,26 @@ describe("SwapAmountScreen", () => {
         <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
       );
       expect(queryByText("Trending tokens")).toBeNull();
+    });
+
+    it("shows a loading spinner while trendingTokens is empty and isTrendingLoading is true", () => {
+      mockUseSwapTokenLookup.mockReturnValue({
+        yourTokens: [],
+        popularTokens: [],
+        trendingTokens: [],
+        searchResults: [],
+        hadSorobanMatches: false,
+        stellarExpertDown: false,
+        status: "idle",
+        isTrendingLoading: true,
+        searchTerm: "",
+        handleSearch: jest.fn(),
+        resetSearch: jest.fn(),
+      });
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+      expect(getByTestId("trending-loading-spinner")).toBeTruthy();
     });
   });
 
@@ -868,6 +893,7 @@ describe("SwapAmountScreen", () => {
         hadSorobanMatches: false,
         stellarExpertDown: false,
         status: "idle",
+        isTrendingLoading: false,
         searchTerm: "",
         handleSearch: jest.fn(),
         resetSearch: jest.fn(),

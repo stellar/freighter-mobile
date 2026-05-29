@@ -44,6 +44,8 @@ export interface SwapTokenLookupResult {
   stellarExpertDown: boolean;
   /** Hook lifecycle status — IDLE / LOADING / SUCCESS / ERROR. Reflects the latest fetch. */
   status: HookStatus;
+  /** True while the trending stellar.expert fetch is in flight (idle mode). */
+  isTrendingLoading: boolean;
   /** Current search term (synced with handleSearch input). Empty string = idle mode. */
   searchTerm: string;
   /** Update the search term; triggers debounced active-search fetch. */
@@ -149,6 +151,7 @@ export const useSwapTokenLookup = ({
   const [hadSorobanMatches, setHadSorobanMatches] = useState<boolean>(false);
   const [stellarExpertDown, setStellarExpertDown] = useState<boolean>(false);
   const [status, setStatus] = useState<HookStatus>(HookStatus.IDLE);
+  const [isTrendingLoading, setIsTrendingLoading] = useState<boolean>(false);
 
   const { overriddenBlockaidResponse } = useDebugStore();
 
@@ -239,63 +242,69 @@ export const useSwapTokenLookup = ({
     const { signal } = controller;
     let cancelled = false;
 
+    setIsTrendingLoading(true);
+
     (async () => {
-      const response = await fetchTrendingAssets({ network, signal });
-      if (cancelled || signal.aborted) return;
+      try {
+        const response = await fetchTrendingAssets({ network, signal });
+        if (cancelled || signal.aborted) return;
 
-      if (!response) {
-        setStellarExpertDown(true);
-        setTrendingTokens([]);
-        setVerifiedTrendingTokens([]);
-        return;
+        if (!response) {
+          setStellarExpertDown(true);
+          setTrendingTokens([]);
+          setVerifiedTrendingTokens([]);
+          return;
+        }
+
+        const records = response._embedded?.records ?? [];
+        // Classic-only filter (Soroban contracts dropped); skip records
+        // missing an issuer.
+        const classicRecords = records.filter((r) => {
+          if (isSorobanRecord(r)) return false;
+          const [tokenCode, issuer] = r.asset.split("-");
+          if (!issuer && r.asset !== NATIVE_TOKEN_CODE) return false;
+          const tokenType = getTokenType(
+            issuer ? `${tokenCode}:${issuer}` : NATIVE_TOKEN_CODE,
+          );
+          return isClassicTokenType(tokenType);
+        });
+
+        const formatted = classicRecords.map((r) => {
+          const [tokenCode, issuer] = r.asset.split("-");
+          return formatClassicRecord(
+            r,
+            hasExistingTrustline(tokenCode, issuer ?? ""),
+          );
+        });
+
+        // Dedupe by canonical id, preserving stellar.expert's order.
+        const seen = new Set<string>();
+        const deduped = formatted.filter((t) => {
+          const id = canonicalId(t.tokenCode, t.issuer);
+          if (seen.has(id)) return false;
+          seen.add(id);
+          return true;
+        });
+
+        const enhanced = await enhanceWithSecurityInfo(deduped, signal);
+        if (cancelled || signal.aborted) return;
+
+        // §5.1: popularTokens must be the intersection of stellar.expert top-50
+        // AND the runtime verified-tokens list. Split here so trendingTokens
+        // keeps the full classic set (verified + unverified) while
+        // verifiedTrendingTokens exposes only the verified subset.
+        const { verified } = await splitVerifiedTokens({
+          tokens: enhanced,
+          network,
+        });
+        if (cancelled || signal.aborted) return;
+
+        setStellarExpertDown(false);
+        setTrendingTokens(enhanced);
+        setVerifiedTrendingTokens(verified);
+      } finally {
+        if (!cancelled) setIsTrendingLoading(false);
       }
-
-      const records = response._embedded?.records ?? [];
-      // Classic-only filter (Soroban contracts dropped); skip records
-      // missing an issuer.
-      const classicRecords = records.filter((r) => {
-        if (isSorobanRecord(r)) return false;
-        const [tokenCode, issuer] = r.asset.split("-");
-        if (!issuer && r.asset !== NATIVE_TOKEN_CODE) return false;
-        const tokenType = getTokenType(
-          issuer ? `${tokenCode}:${issuer}` : NATIVE_TOKEN_CODE,
-        );
-        return isClassicTokenType(tokenType);
-      });
-
-      const formatted = classicRecords.map((r) => {
-        const [tokenCode, issuer] = r.asset.split("-");
-        return formatClassicRecord(
-          r,
-          hasExistingTrustline(tokenCode, issuer ?? ""),
-        );
-      });
-
-      // Dedupe by canonical id, preserving stellar.expert's order.
-      const seen = new Set<string>();
-      const deduped = formatted.filter((t) => {
-        const id = canonicalId(t.tokenCode, t.issuer);
-        if (seen.has(id)) return false;
-        seen.add(id);
-        return true;
-      });
-
-      const enhanced = await enhanceWithSecurityInfo(deduped, signal);
-      if (cancelled || signal.aborted) return;
-
-      // §5.1: popularTokens must be the intersection of stellar.expert top-50
-      // AND the runtime verified-tokens list. Split here so trendingTokens
-      // keeps the full classic set (verified + unverified) while
-      // verifiedTrendingTokens exposes only the verified subset.
-      const { verified } = await splitVerifiedTokens({
-        tokens: enhanced,
-        network,
-      });
-      if (cancelled || signal.aborted) return;
-
-      setStellarExpertDown(false);
-      setTrendingTokens(enhanced);
-      setVerifiedTrendingTokens(verified);
     })();
 
     return () => {
@@ -484,6 +493,7 @@ export const useSwapTokenLookup = ({
     hadSorobanMatches: searchTerm ? hadSorobanMatches : false,
     stellarExpertDown,
     status,
+    isTrendingLoading,
     searchTerm,
     handleSearch,
     resetSearch,
