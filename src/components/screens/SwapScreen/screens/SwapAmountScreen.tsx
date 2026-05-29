@@ -4,6 +4,7 @@ import BigNumber from "bignumber.js";
 import { BalanceRow } from "components/BalanceRow";
 import BottomSheet from "components/BottomSheet";
 import { IconButton } from "components/IconButton";
+import { TokenIcon } from "components/TokenIcon";
 import TransactionSettingsBottomSheet from "components/TransactionSettingsBottomSheet";
 import { SecurityDetailBottomSheet } from "components/blockaid";
 import { BaseLayout } from "components/layout/BaseLayout";
@@ -795,6 +796,82 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     );
   }
 
+  // Separate render function to avoid nested ternaries (no-nested-ternary).
+  const renderReceiveSlot = () => {
+    if (destinationBalance) {
+      return (
+        <BalanceRow
+          isSingleRow
+          balance={destinationBalance}
+          scanResult={scanResults[destinationBalance.id.replace(":", "-")]}
+          onPress={handleDestinationDropdownPress}
+          testID="swap-to-token-row"
+          rightContent={
+            <IconButton Icon={Icon.ChevronRight} size="sm" variant="ghost" />
+          }
+        />
+      );
+    }
+
+    if (destinationTokenDescriptor) {
+      // Non-held destination: the user selected a token they don't hold yet
+      // (a trustline will be added). Show its icon + code so they have visual
+      // confirmation of their selection instead of falling back to the
+      // "Choose token" placeholder.
+      const descriptorToken = destinationTokenDescriptor.issuer
+        ? {
+            type: destinationTokenDescriptor.tokenType,
+            code: destinationTokenDescriptor.tokenCode,
+            issuer: { key: destinationTokenDescriptor.issuer },
+          }
+        : ({ type: "native" as const, code: "XLM" as const } as const);
+
+      return (
+        <TouchableOpacity
+          className="flex-row w-full h-[44px] justify-between items-center"
+          onPress={handleDestinationDropdownPress}
+          testID="swap-to-non-held-selection"
+        >
+          <View className="flex-row items-center flex-1 mr-4">
+            <View className="flex-row items-center gap-16px">
+              <TokenIcon token={descriptorToken} />
+              <View className="flex-col flex-1">
+                <Text>{t("swapScreen.receive")}</Text>
+                <Text sm secondary>
+                  {destinationTokenDescriptor.tokenCode}
+                </Text>
+              </View>
+            </View>
+          </View>
+          <IconButton Icon={Icon.ChevronRight} size="sm" variant="ghost" />
+        </TouchableOpacity>
+      );
+    }
+
+    return (
+      <TouchableOpacity
+        className="flex-row w-full h-[44px] justify-between items-center"
+        onPress={handleDestinationDropdownPress}
+        testID="swap-to-choose-token"
+      >
+        <View className="flex-row items-center flex-1 mr-4">
+          <View className="flex-row items-center gap-16px">
+            <View className="w-[40px] h-[40px] rounded-full border justify-center items-center mr-4 bg-gray-3 border-gray-6 p-[7.5px]">
+              <Icon.Plus size={25} themeColor="gray" />
+            </View>
+            <View className="flex-col flex-1">
+              <Text>{t("swapScreen.receive")}</Text>
+              <Text sm secondary>
+                {t("swapScreen.chooseToken")}
+              </Text>
+            </View>
+          </View>
+        </View>
+        <IconButton Icon={Icon.ChevronRight} size="sm" variant="ghost" />
+      </TouchableOpacity>
+    );
+  };
+
   const listHeader = (
     <View>
       <View className="flex-none items-center py-[24px] max-xs:py-[16px] px-6">
@@ -860,43 +937,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         </View>
 
         <View className="rounded-[16px] py-[12px] px-[16px] bg-background-tertiary">
-          {destinationBalance ? (
-            <BalanceRow
-              isSingleRow
-              balance={destinationBalance}
-              scanResult={scanResults[destinationBalance.id.replace(":", "-")]}
-              onPress={handleDestinationDropdownPress}
-              testID="swap-to-token-row"
-              rightContent={
-                <IconButton
-                  Icon={Icon.ChevronRight}
-                  size="sm"
-                  variant="ghost"
-                />
-              }
-            />
-          ) : (
-            <TouchableOpacity
-              className="flex-row w-full h-[44px] justify-between items-center"
-              onPress={handleDestinationDropdownPress}
-              testID="swap-to-choose-token"
-            >
-              <View className="flex-row items-center flex-1 mr-4">
-                <View className="flex-row items-center gap-16px">
-                  <View className="w-[40px] h-[40px] rounded-full border justify-center items-center mr-4 bg-gray-3 border-gray-6 p-[7.5px]">
-                    <Icon.Plus size={25} themeColor="gray" />
-                  </View>
-                  <View className="flex-col flex-1">
-                    <Text>{t("swapScreen.receive")}</Text>
-                    <Text sm secondary>
-                      {t("swapScreen.chooseToken")}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-              <IconButton Icon={Icon.ChevronRight} size="sm" variant="ghost" />
-            </TouchableOpacity>
-          )}
+          {renderReceiveSlot()}
         </View>
       </View>
 

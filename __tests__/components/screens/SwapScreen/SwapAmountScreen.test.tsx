@@ -732,6 +732,78 @@ describe("SwapAmountScreen", () => {
     });
   });
 
+  describe("Non-held destination Receive slot", () => {
+    it("shows the descriptor tokenCode (AQUA) in the Receive slot when destination is non-held", () => {
+      // AQUA is not in mockBalances, so destinationBalance will be undefined.
+      // The Receive slot should render the descriptor's tokenCode instead of
+      // falling through to the 'Choose token' placeholder.
+      setSwapStoreState({
+        sourceAmount: "1",
+        destinationToken: {
+          id: "AQUA:GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+          tokenCode: "AQUA",
+          issuer: "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+          decimals: 7,
+          tokenType: "credit_alphanum4",
+          isNew: true,
+        },
+      });
+
+      const { getByTestId, queryByTestId, queryAllByText } =
+        renderWithProviders(
+          <SwapAmountScreen
+            navigation={makeNavigation()}
+            route={makeRoute()}
+          />,
+        );
+
+      // The non-held slot should be rendered
+      expect(getByTestId("swap-to-non-held-selection")).toBeTruthy();
+      // The 'Choose token' placeholder must NOT appear
+      expect(queryByTestId("swap-to-choose-token")).toBeNull();
+      // The descriptor's tokenCode must be visible to the user
+      expect(queryAllByText("AQUA").length).toBeGreaterThan(0);
+    });
+
+    it("shows the 'Choose token' placeholder when no destination is selected", () => {
+      setSwapStoreState({ destinationToken: null, sourceAmount: "0" });
+
+      const { getByTestId, queryByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      expect(getByTestId("swap-to-choose-token")).toBeTruthy();
+      expect(queryByTestId("swap-to-non-held-selection")).toBeNull();
+    });
+
+    it("fires SWAP_TO_PICKER_OPENED with source:dropdown when the non-held slot is tapped", () => {
+      jest.spyOn(analytics, "track").mockClear();
+
+      setSwapStoreState({
+        sourceAmount: "1",
+        destinationToken: {
+          id: "AQUA:GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+          tokenCode: "AQUA",
+          issuer: "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+          decimals: 7,
+          tokenType: "credit_alphanum4",
+          isNew: true,
+        },
+      });
+
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      fireEvent.press(getByTestId("swap-to-non-held-selection"));
+
+      expect(analytics.track).toHaveBeenCalledWith(
+        AnalyticsEvent.SWAP_TO_PICKER_OPENED,
+        { source: "dropdown" },
+      );
+    });
+  });
+
   describe("Analytics events", () => {
     beforeEach(() => {
       jest.spyOn(analytics, "track").mockClear();
