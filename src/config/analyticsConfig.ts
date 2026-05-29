@@ -82,6 +82,12 @@ export enum AnalyticsEvent {
   SEND_PAYMENT_RECENT_ADDRESS = "send payment: recent address",
   SWAP_SUCCESS = "swap: success",
   SWAP_FAIL = "swap: error",
+  SWAP_TO_PICKER_OPENED = "swap: to-picker opened",
+  SWAP_TRENDING_TOKEN_TAPPED = "swap: trending token tapped",
+  SWAP_TRENDING_BUY_PRESSED = "swap: trending buy pressed",
+  SWAP_DESTINATION_SELECTED = "swap: destination selected",
+  SWAP_TRUSTLINE_ADDED = "swap: trustline added",
+  SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN = "swap: xlm reserve insufficient shown",
 
   // Send Collectible Events
   SEND_COLLECTIBLE_SUCCESS = "send collectible: success",

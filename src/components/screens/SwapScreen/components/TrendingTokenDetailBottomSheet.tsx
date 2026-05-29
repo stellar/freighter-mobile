@@ -7,6 +7,7 @@ import {
 } from "components/screens/SwapScreen/helpers";
 import { Button } from "components/sds/Button";
 import { Text } from "components/sds/Typography";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import { POSITIVE_PRICE_CHANGE_THRESHOLD } from "config/constants";
 import {
   FormattedSearchTokenRecord,
@@ -21,6 +22,7 @@ import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React from "react";
 import { TouchableOpacity, View } from "react-native";
+import { analytics } from "services/analytics";
 
 export interface TrendingTokenDetailBottomSheetProps {
   record: FormattedSearchTokenRecord;
@@ -46,14 +48,24 @@ export const TrendingTokenDetailBottomSheet: React.FC<
   };
 
   const handleBuy = () => {
+    analytics.track(AnalyticsEvent.SWAP_TRENDING_BUY_PRESSED, {
+      tokenCode: record.tokenCode,
+    });
     const heldMatch = balanceItems.find(
       (b) => b.id === `${record.tokenCode}:${record.issuer}`,
     );
+    let descriptor;
     if (heldMatch) {
-      setDestinationToken(descriptorFromBalance(heldMatch));
+      descriptor = descriptorFromBalance(heldMatch);
     } else {
-      setDestinationToken(descriptorFromSearchRecord(record));
+      descriptor = descriptorFromSearchRecord(record);
     }
+    analytics.track(AnalyticsEvent.SWAP_DESTINATION_SELECTED, {
+      tokenCode: record.tokenCode,
+      isNew: descriptor.isNew,
+      source: "trending",
+    });
+    setDestinationToken(descriptor);
     bottomSheetModalRef?.current?.dismiss();
   };
 

@@ -9,6 +9,7 @@ import {
 import { useSwapTokenLookup } from "components/screens/SwapScreen/hooks/useSwapTokenLookup";
 import { Input } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import { SWAP_SELECTION_TYPES } from "config/constants";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import { FormattedSearchTokenRecord, PricedBalance } from "config/types";
@@ -20,6 +21,7 @@ import { useBalancesList } from "hooks/useBalancesList";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React, { useMemo } from "react";
 import { SectionList, View } from "react-native";
+import { analytics } from "services/analytics";
 
 type SwapToScreenProps = NativeStackScreenProps<
   SwapStackParamList,
@@ -106,11 +108,20 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
   const showNoResults =
     searchTerm.length > 0 && searchResults.length === 0 && !showSorobanEmpty;
 
-  const handleHeldPress = (balance: PricedBalance & { id: string }) => {
+  const handleHeldPress = (
+    balance: PricedBalance & { id: string },
+    source: "balances" | "popular" | "search",
+  ) => {
+    const descriptor = descriptorFromBalance(balance);
     if (selectionType === SWAP_SELECTION_TYPES.SOURCE) {
       setSourceToken(balance.id, balance.tokenCode ?? "");
     } else {
-      setDestinationToken(descriptorFromBalance(balance));
+      analytics.track(AnalyticsEvent.SWAP_DESTINATION_SELECTED, {
+        tokenCode: balance.tokenCode ?? "",
+        isNew: descriptor.isNew,
+        source,
+      });
+      setDestinationToken(descriptor);
     }
     navigation.goBack();
   };
@@ -118,8 +129,17 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
   // Non-held tokens only appear in destination mode (popularTokens / non-held
   // search results). The source picker lists held tokens only, so this handler
   // is always destination-mode.
-  const handleRecordPress = (record: FormattedSearchTokenRecord) => {
-    setDestinationToken(descriptorFromSearchRecord(record));
+  const handleRecordPress = (
+    record: FormattedSearchTokenRecord,
+    source: "popular" | "search",
+  ) => {
+    const descriptor = descriptorFromSearchRecord(record);
+    analytics.track(AnalyticsEvent.SWAP_DESTINATION_SELECTED, {
+      tokenCode: record.tokenCode,
+      isNew: descriptor.isNew,
+      source,
+    });
+    setDestinationToken(descriptor);
     navigation.goBack();
   };
 
@@ -183,6 +203,8 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
             </View>
           )}
           renderItem={({ item, section }) => {
+            const isSearchActive = !!searchTerm;
+
             // "Your tokens" section always uses the held variant
             if (
               section.title === t("swapScreen.yourTokensSection") &&
@@ -193,7 +215,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
                   variant="held"
                   balance={item}
                   network={network}
-                  onPress={() => handleHeldPress(item)}
+                  onPress={() => handleHeldPress(item, "balances")}
                 />
               );
             }
@@ -213,7 +235,12 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
                     variant="held"
                     balance={heldMatch}
                     network={network}
-                    onPress={() => handleHeldPress(heldMatch)}
+                    onPress={() =>
+                      handleHeldPress(
+                        heldMatch,
+                        isSearchActive ? "search" : "popular",
+                      )
+                    }
                   />
                 );
               }
@@ -228,7 +255,12 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
                   variant="non-held"
                   record={record}
                   network={network}
-                  onPress={() => handleRecordPress(record)}
+                  onPress={() =>
+                    handleRecordPress(
+                      record,
+                      isSearchActive ? "search" : "popular",
+                    )
+                  }
                 />
               );
             }
@@ -240,7 +272,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
                   variant="held"
                   balance={item}
                   network={network}
-                  onPress={() => handleHeldPress(item)}
+                  onPress={() => handleHeldPress(item, "balances")}
                 />
               );
             }

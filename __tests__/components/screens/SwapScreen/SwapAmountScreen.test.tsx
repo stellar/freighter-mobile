@@ -5,12 +5,14 @@ import { fireEvent } from "@testing-library/react-native";
 import BigNumber from "bignumber.js";
 import SwapAmountScreen from "components/screens/SwapScreen/screens/SwapAmountScreen";
 import Icon from "components/sds/Icon";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import { useSwapStore } from "ducks/swap";
 import { renderWithProviders } from "helpers/testUtils";
 import { useBalancesList } from "hooks/useBalancesList";
 import React, { act } from "react";
 import { View } from "react-native";
+import { analytics } from "services/analytics";
 
 import { mockBalances } from "../../../../__mocks__/balances";
 import { mockGestureHandler } from "../../../../__mocks__/gesture-handler";
@@ -726,6 +728,90 @@ describe("SwapAmountScreen", () => {
           total: expect.anything(),
           available: expect.anything(),
         }),
+      );
+    });
+  });
+
+  describe("Analytics events", () => {
+    beforeEach(() => {
+      jest.spyOn(analytics, "track").mockClear();
+    });
+
+    it("fires SWAP_TO_PICKER_OPENED with source:cta when the 'Select a token' CTA is pressed", () => {
+      setSwapStoreState({ destinationToken: null, sourceAmount: "0" });
+
+      const navigation = makeNavigation();
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={navigation} route={makeRoute()} />,
+      );
+
+      fireEvent.press(getByTestId("swap-continue-button"));
+
+      expect(analytics.track).toHaveBeenCalledWith(
+        AnalyticsEvent.SWAP_TO_PICKER_OPENED,
+        { source: "cta" },
+      );
+    });
+
+    it("fires SWAP_TO_PICKER_OPENED with source:dropdown when the Receive dropdown is tapped", () => {
+      // destinationToken is null so the "choose token" placeholder is rendered
+      setSwapStoreState({ destinationToken: null, sourceAmount: "0" });
+
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      fireEvent.press(getByTestId("swap-to-choose-token"));
+
+      expect(analytics.track).toHaveBeenCalledWith(
+        AnalyticsEvent.SWAP_TO_PICKER_OPENED,
+        { source: "dropdown" },
+      );
+    });
+
+    it("fires SWAP_TRENDING_TOKEN_TAPPED with tokenCode and position when a trending row is tapped", () => {
+      const trendingFixture = [
+        {
+          tokenCode: "AQUA",
+          domain: "aqua.network",
+          hasTrustline: false,
+          iconUrl: undefined,
+          issuer: "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+          isNative: false,
+        },
+        {
+          tokenCode: "yXLM",
+          domain: "ultrastellar.com",
+          hasTrustline: true,
+          iconUrl: undefined,
+          issuer: "GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55",
+          isNative: false,
+        },
+      ];
+      mockUseSwapTokenLookup.mockReturnValue({
+        yourTokens: [],
+        popularTokens: [],
+        trendingTokens: trendingFixture,
+        searchResults: [],
+        hadSorobanMatches: false,
+        stellarExpertDown: false,
+        status: "idle",
+        searchTerm: "",
+        handleSearch: jest.fn(),
+        resetSearch: jest.fn(),
+      });
+
+      const { getByText } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      act(() => {
+        fireEvent.press(getByText("AQUA"));
+      });
+
+      expect(analytics.track).toHaveBeenCalledWith(
+        AnalyticsEvent.SWAP_TRENDING_TOKEN_TAPPED,
+        { tokenCode: "AQUA", position: 0 },
       );
     });
   });

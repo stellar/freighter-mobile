@@ -1,12 +1,15 @@
 /* eslint-disable @fnando/consistent-import/consistent-import */
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { fireEvent } from "@testing-library/react-native";
 import * as useSwapTokenLookupModule from "components/screens/SwapScreen/hooks/useSwapTokenLookup";
 import { SwapToScreen } from "components/screens/SwapScreen/screens/SwapToScreen";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import { SWAP_SELECTION_TYPES } from "config/constants";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import { HookStatus, TokenTypeWithCustomToken } from "config/types";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
+import { analytics } from "services/analytics";
 
 import { mockGestureHandler } from "../../../../__mocks__/gesture-handler";
 
@@ -225,5 +228,76 @@ describe("SwapToScreen", () => {
     );
 
     expect(getByText(/No tokens match zloto/i)).toBeTruthy();
+  });
+
+  describe("Analytics events", () => {
+    beforeEach(() => {
+      jest.spyOn(analytics, "track").mockClear();
+    });
+
+    it("fires SWAP_DESTINATION_SELECTED with source:balances when a held token in 'Your tokens' is tapped", () => {
+      (
+        useSwapTokenLookupModule.useSwapTokenLookup as jest.Mock
+      ).mockReturnValue({
+        ...defaultLookupResult,
+        yourTokens: [mockHeldBalance],
+        popularTokens: [],
+      });
+
+      const { getByText } = renderWithProviders(
+        <SwapToScreen {...mockNavProps} />,
+      );
+
+      fireEvent.press(getByText("USDC"));
+
+      expect(analytics.track).toHaveBeenCalledWith(
+        AnalyticsEvent.SWAP_DESTINATION_SELECTED,
+        expect.objectContaining({ source: "balances" }),
+      );
+    });
+
+    it("fires SWAP_DESTINATION_SELECTED with source:popular when a non-held popular token is tapped", () => {
+      (
+        useSwapTokenLookupModule.useSwapTokenLookup as jest.Mock
+      ).mockReturnValue({
+        ...defaultLookupResult,
+        yourTokens: [],
+        popularTokens: [mockPopularRecord],
+      });
+
+      const { getByText } = renderWithProviders(
+        <SwapToScreen {...mockNavProps} />,
+      );
+
+      fireEvent.press(getByText("AQUA"));
+
+      expect(analytics.track).toHaveBeenCalledWith(
+        AnalyticsEvent.SWAP_DESTINATION_SELECTED,
+        expect.objectContaining({ source: "popular", tokenCode: "AQUA" }),
+      );
+    });
+
+    it("fires SWAP_DESTINATION_SELECTED with source:search when a result is tapped during active search", () => {
+      (
+        useSwapTokenLookupModule.useSwapTokenLookup as jest.Mock
+      ).mockReturnValue({
+        ...defaultLookupResult,
+        yourTokens: [],
+        popularTokens: [],
+        searchResults: [mockPopularRecord],
+        searchTerm: "aqua",
+      });
+
+      const { getByText } = renderWithProviders(
+        <SwapToScreen {...mockNavProps} />,
+      );
+
+      fireEvent.press(getByText("AQUA"));
+
+      expect(analytics.track).toHaveBeenCalledWith(
+        AnalyticsEvent.SWAP_DESTINATION_SELECTED,
+        expect.objectContaining({ source: "search", tokenCode: "AQUA" }),
+      );
+    });
   });
 });

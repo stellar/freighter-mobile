@@ -1,6 +1,7 @@
 /* eslint-disable @fnando/consistent-import/consistent-import */
 import { renderHook, act } from "@testing-library/react-hooks";
 import { useSwapTransaction } from "components/screens/SwapScreen/hooks/useSwapTransaction";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import { NETWORKS } from "config/constants";
 import { TokenTypeWithCustomToken } from "config/types";
 import type { ActiveAccount } from "ducks/auth";
@@ -12,6 +13,7 @@ const mockBuildSwapTransaction = jest.fn().mockResolvedValue("xdr");
 const mockShowToast = jest.fn();
 const mockTrackTransactionError = jest.fn();
 const mockTrackSwapSuccess = jest.fn();
+const mockTrack = jest.fn();
 const mockScanTransaction = jest.fn().mockResolvedValue({});
 
 jest.mock("ducks/transactionBuilder", () => ({
@@ -58,6 +60,7 @@ jest.mock("providers/ToastProvider", () => ({
 
 jest.mock("services/analytics", () => ({
   analytics: {
+    track: jest.fn((...args) => mockTrack(...args)),
     trackTransactionError: jest.fn((...args) =>
       mockTrackTransactionError(...args),
     ),
@@ -253,6 +256,70 @@ describe("useSwapTransaction", () => {
 
       // mockBuildSwapTransaction should NOT have been called — we threw before reaching it
       expect(mockBuildSwapTransaction).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("SWAP_TRUSTLINE_ADDED analytics", () => {
+    beforeEach(() => {
+      mockTrack.mockClear();
+    });
+
+    it("fires SWAP_TRUSTLINE_ADDED when the swap succeeds and destinationToken.isNew is true", async () => {
+      act(() => {
+        useSwapStore.setState({
+          destinationToken: {
+            id: "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+            tokenCode: "USDC",
+            issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+            decimals: 7,
+            tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+            isNew: true,
+          },
+        } as never);
+      });
+
+      mockSignTransaction.mockReturnValue("signed-xdr");
+      mockSubmitTransaction.mockResolvedValue("tx-hash");
+
+      const { result } = renderHook(() => useSwapTransaction(baseParams));
+
+      await act(async () => {
+        await result.current.executeSwap();
+      });
+
+      expect(mockTrack).toHaveBeenCalledWith(
+        AnalyticsEvent.SWAP_TRUSTLINE_ADDED,
+        { tokenCode: "USDC" },
+      );
+    });
+
+    it("does NOT fire SWAP_TRUSTLINE_ADDED when the swap succeeds but destinationToken.isNew is false", async () => {
+      act(() => {
+        useSwapStore.setState({
+          destinationToken: {
+            id: "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+            tokenCode: "USDC",
+            issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+            decimals: 7,
+            tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+            isNew: false,
+          },
+        } as never);
+      });
+
+      mockSignTransaction.mockReturnValue("signed-xdr");
+      mockSubmitTransaction.mockResolvedValue("tx-hash");
+
+      const { result } = renderHook(() => useSwapTransaction(baseParams));
+
+      await act(async () => {
+        await result.current.executeSwap();
+      });
+
+      expect(mockTrack).not.toHaveBeenCalledWith(
+        AnalyticsEvent.SWAP_TRUSTLINE_ADDED,
+        expect.anything(),
+      );
     });
   });
 });

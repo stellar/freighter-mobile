@@ -450,13 +450,25 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     onPress: handleSettingsPress,
   });
 
-  const navigateToSelectDestinationTokenScreen = useCallback(() => {
-    navigation.navigate(SWAP_ROUTES.SWAP_SCREEN, {
-      selectionType: SWAP_SELECTION_TYPES.DESTINATION,
-    });
-  }, [navigation]);
+  const navigateToSelectDestinationTokenScreen = useCallback(
+    (source: "cta" | "dropdown" = "dropdown") => {
+      analytics.track(AnalyticsEvent.SWAP_TO_PICKER_OPENED, { source });
+      navigation.navigate(SWAP_ROUTES.SWAP_SCREEN, {
+        selectionType: SWAP_SELECTION_TYPES.DESTINATION,
+      });
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [navigation],
+  );
+
+  const handleDestinationDropdownPress = useCallback(() => {
+    navigateToSelectDestinationTokenScreen("dropdown");
+  }, [navigateToSelectDestinationTokenScreen]);
 
   const navigateToSelectSourceTokenScreen = useCallback(() => {
+    analytics.track(AnalyticsEvent.SWAP_TO_PICKER_OPENED, {
+      source: "dropdown",
+    });
     navigation.navigate(SWAP_ROUTES.SWAP_SCREEN, {
       selectionType: SWAP_SELECTION_TYPES.SOURCE,
     });
@@ -578,7 +590,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
 
   const handleMainButtonPress = useCallback(async () => {
     if (ctaState.kind === "select") {
-      navigateToSelectDestinationTokenScreen();
+      navigateToSelectDestinationTokenScreen("cta");
       return;
     }
 
@@ -853,7 +865,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
               isSingleRow
               balance={destinationBalance}
               scanResult={scanResults[destinationBalance.id.replace(":", "-")]}
-              onPress={navigateToSelectDestinationTokenScreen}
+              onPress={handleDestinationDropdownPress}
               testID="swap-to-token-row"
               rightContent={
                 <IconButton
@@ -866,7 +878,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           ) : (
             <TouchableOpacity
               className="flex-row w-full h-[44px] justify-between items-center"
-              onPress={navigateToSelectDestinationTokenScreen}
+              onPress={handleDestinationDropdownPress}
               testID="swap-to-choose-token"
             >
               <View className="flex-row items-center flex-1 mr-4">
@@ -925,8 +937,10 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
 
   const renderTrendingItem = ({
     item,
+    index,
   }: {
     item: FormattedSearchTokenRecord;
+    index: number;
   }) => {
     const tokenId = `${item.tokenCode}:${item.issuer}`;
     const priceInfo = prices[tokenId] ?? {};
@@ -942,6 +956,10 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           }}
           network={network}
           onPress={() => {
+            analytics.track(AnalyticsEvent.SWAP_TRENDING_TOKEN_TAPPED, {
+              tokenCode: item.tokenCode,
+              position: index,
+            });
             setSelectedTrendingRecord(item);
             // present() fires via useEffect once the ref is mounted.
           }}

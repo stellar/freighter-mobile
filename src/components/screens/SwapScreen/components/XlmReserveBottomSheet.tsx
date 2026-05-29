@@ -1,14 +1,16 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { Button } from "components/sds/Button";
 import { Text } from "components/sds/Typography";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import { TokenTypeWithCustomToken } from "config/types";
 import { useSwapStore } from "ducks/swap";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
-import React from "react";
+import React, { useEffect } from "react";
 import { View } from "react-native";
+import { analytics } from "services/analytics";
 
 const HELP_ARTICLE_URL =
   "https://help.freighter.app/article/xjlva9dxov-how-much-xlm-do-i-need-in-my-wallet";
@@ -26,6 +28,10 @@ export const XlmReserveBottomSheet: React.FC<XlmReserveBottomSheetProps> = ({
   const { setDestinationToken } = useSwapStore();
   const { copyToClipboard } = useClipboard();
   const { open: openInAppBrowser } = useInAppBrowser();
+
+  useEffect(() => {
+    analytics.track(AnalyticsEvent.SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN);
+  }, []);
 
   const handleSwapXlm = () => {
     setDestinationToken({

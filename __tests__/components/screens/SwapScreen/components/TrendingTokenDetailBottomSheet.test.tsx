@@ -1,10 +1,12 @@
 import { fireEvent } from "@testing-library/react-native";
 import { BigNumber } from "bignumber.js";
 import { TrendingTokenDetailBottomSheet } from "components/screens/SwapScreen/components/TrendingTokenDetailBottomSheet";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import { TokenTypeWithCustomToken } from "config/types";
 import { useSwapStore } from "ducks/swap";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
+import { analytics } from "services/analytics";
 
 jest.mock("hooks/useColors", () => () => ({
   themeColors: {
@@ -106,5 +108,41 @@ describe("TrendingTokenDetailBottomSheet", () => {
     expect(setDestSpy).toHaveBeenCalledWith(
       expect.objectContaining({ tokenCode: "AQUA", isNew: false }),
     );
+  });
+
+  describe("Analytics events", () => {
+    beforeEach(() => {
+      jest.spyOn(analytics, "track").mockClear();
+    });
+
+    it("fires SWAP_TRENDING_BUY_PRESSED with tokenCode when the Buy CTA is pressed", () => {
+      const { getByText } = renderWithProviders(
+        <TrendingTokenDetailBottomSheet
+          record={mockRecord}
+          priceInfo={{}}
+          balanceItems={[]}
+        />,
+      );
+      fireEvent.press(getByText(/Buy AQUA/i));
+      expect(analytics.track).toHaveBeenCalledWith(
+        AnalyticsEvent.SWAP_TRENDING_BUY_PRESSED,
+        { tokenCode: "AQUA" },
+      );
+    });
+
+    it("fires SWAP_DESTINATION_SELECTED with source:trending when the Buy CTA is pressed", () => {
+      const { getByText } = renderWithProviders(
+        <TrendingTokenDetailBottomSheet
+          record={mockRecord}
+          priceInfo={{}}
+          balanceItems={[]}
+        />,
+      );
+      fireEvent.press(getByText(/Buy AQUA/i));
+      expect(analytics.track).toHaveBeenCalledWith(
+        AnalyticsEvent.SWAP_DESTINATION_SELECTED,
+        expect.objectContaining({ tokenCode: "AQUA", source: "trending" }),
+      );
+    });
   });
 });

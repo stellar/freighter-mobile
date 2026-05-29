@@ -1,10 +1,12 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { fireEvent } from "@testing-library/react-native";
 import { XlmReserveBottomSheet } from "components/screens/SwapScreen/components/XlmReserveBottomSheet";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import { TokenTypeWithCustomToken } from "config/types";
 import { useSwapStore } from "ducks/swap";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
+import { analytics } from "services/analytics";
 
 const mockCopyToClipboard = jest.fn();
 const mockOpenInAppBrowser = jest.fn();
@@ -86,6 +88,14 @@ describe("XlmReserveBottomSheet", () => {
     fireEvent.press(getByText(/Why do I need XLM\?/i));
     expect(mockOpenInAppBrowser).toHaveBeenCalledWith(
       "https://help.freighter.app/article/xjlva9dxov-how-much-xlm-do-i-need-in-my-wallet",
+    );
+  });
+
+  it("fires SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN on mount", () => {
+    jest.spyOn(analytics, "track").mockClear();
+    renderWithProviders(<XlmReserveBottomSheet publicKey={TEST_PUBLIC_KEY} />);
+    expect(analytics.track).toHaveBeenCalledWith(
+      AnalyticsEvent.SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN,
     );
   });
 });

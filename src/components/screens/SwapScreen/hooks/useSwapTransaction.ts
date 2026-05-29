@@ -1,6 +1,7 @@
 import Blockaid from "@blockaid/client";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { getTokenFromBalance } from "components/screens/SwapScreen/helpers";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import { NETWORKS } from "config/constants";
 import { logger } from "config/logger";
 import {
@@ -182,6 +183,15 @@ export const useSwapTransaction = ({
         allowedSlippage: freshSwapSlippage?.toString(),
         isSwap: true,
       });
+
+      // Fire SWAP_TRUSTLINE_ADDED when the combined changeTrust +
+      // pathPaymentStrictSend transaction confirmed a new trustline.
+      const { destinationToken: swappedDestination } = useSwapStore.getState();
+      if (swappedDestination?.isNew) {
+        analytics.track(AnalyticsEvent.SWAP_TRUSTLINE_ADDED, {
+          tokenCode: destinationBalance.tokenCode,
+        });
+      }
     } catch (error) {
       setIsProcessing(false);
       // transactionBuilder.submitTransaction logs submit failures at
