@@ -1,6 +1,7 @@
 /* eslint-disable @fnando/consistent-import/consistent-import */
 import Blockaid from "@blockaid/client";
 import { userEvent } from "@testing-library/react-native";
+import { TokenIcon } from "components/TokenIcon";
 import SwapReviewBottomSheet from "components/screens/SwapScreen/components/SwapReviewBottomSheet";
 import { useSwapStore } from "ducks/swap";
 import { renderWithProviders } from "helpers/testUtils";
@@ -378,6 +379,53 @@ describe("SwapReviewBottomSheet", () => {
       );
 
       expect(getByText("An asset was flagged as malicious")).toBeTruthy();
+    });
+  });
+
+  describe("non-held destination token icon", () => {
+    const baseSwapState = {
+      sourceAmount: "10",
+      destinationAmount: "5",
+      pathResult: {
+        sourceAmount: "10",
+        destinationAmount: "5",
+        conversionRate: 0.5,
+      },
+      sourceTokenSymbol: "XLM",
+      sourceTokenId: "XLM",
+    };
+
+    it("renders the USDC token icon (not XLM) when the destination is a non-held USDC", () => {
+      // Use an issuer that is NOT present in mockBalances so destinationBalance
+      // resolves to undefined — this is the exact bug scenario.
+      const nonHeldUsdcIssuer =
+        "GCOIN000000000000000000000000000000000000000000000000000NOT";
+      (useSwapStore as unknown as jest.Mock).mockReturnValue({
+        ...baseSwapState,
+        destinationToken: {
+          id: `USDC:${nonHeldUsdcIssuer}`,
+          tokenCode: "USDC",
+          issuer: nonHeldUsdcIssuer,
+          decimals: 7,
+          tokenType: "credit_alphanum4",
+          isNew: true,
+        },
+      });
+
+      // eslint-disable-next-line @typescript-eslint/naming-convention
+      const { UNSAFE_getAllByType: getAllByComponentType } =
+        renderWithProviders(<SwapReviewBottomSheet {...defaultProps} />);
+
+      // The sheet renders two TokenIcon instances: [0] = source, [1] = destination.
+      // Before the fix, [1].props.token.type was "native" (XLM fallback).
+      // After the fix, it must be "credit_alphanum4" with code "USDC".
+      const tokenIcons = getAllByComponentType(TokenIcon);
+      // There are at least 2 icons (source + destination)
+      expect(tokenIcons.length).toBeGreaterThanOrEqual(2);
+
+      const destIconToken = tokenIcons[1].props.token;
+      expect(destIconToken.type).not.toBe("native");
+      expect(destIconToken.code).toBe("USDC");
     });
   });
 

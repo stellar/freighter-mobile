@@ -20,6 +20,7 @@ import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { DEFAULT_PADDING, NATIVE_TOKEN_CODE } from "config/constants";
 import { THEME } from "config/theme";
+import { TokenTypeWithCustomToken } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useDebugStore } from "ducks/debug";
 import { useSwapStore } from "ducks/swap";
@@ -127,7 +128,25 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
   );
 
   const sourceToken = getTokenFromBalance(sourceBalance);
-  const destinationToken = getTokenFromBalance(destinationBalance);
+
+  // For non-held destinations `destinationBalance` is undefined (the user
+  // doesn't have a trustline yet). Falling back to getTokenFromBalance(undefined)
+  // returns the XLM native token, which renders the wrong icon. Instead, build
+  // the token object directly from the descriptor when no balance is found.
+  const destinationToken = useMemo(() => {
+    if (destinationBalance) return getTokenFromBalance(destinationBalance);
+    if (
+      !destinationTokenDescriptor ||
+      destinationTokenDescriptor.tokenType === TokenTypeWithCustomToken.NATIVE
+    ) {
+      return { type: "native" as const, code: "XLM" as const };
+    }
+    return {
+      type: destinationTokenDescriptor.tokenType,
+      code: destinationTokenDescriptor.tokenCode,
+      issuer: { key: destinationTokenDescriptor.issuer! },
+    };
+  }, [destinationBalance, destinationTokenDescriptor]);
 
   const sourceTokenFiatAmountValue = calculateTokenFiatAmount({
     token: sourceToken,
