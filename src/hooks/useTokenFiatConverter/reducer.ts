@@ -700,13 +700,19 @@ export const createTokenFiatConverterReducer =
         }
 
         // Token side: normalise using the same helper as HANDLE_TOKEN_INPUT
-        const internalAmount = parseDisplayNumber(text, tokenDecimals);
+        const rawInternal = parseDisplayNumber(text, tokenDecimals);
+        // Guard non-finite values (e.g. user pasted "1e999" → Infinity, or
+        // a malformed input that returns NaN) so the store never holds a
+        // string that would crash BigNumber arithmetic downstream or get
+        // serialized into a Horizon strictSendPaths request.
+        const bnInternal = new BigNumber(rawInternal);
+        const internalAmount = bnInternal.isFinite() ? rawInternal : "0";
+        const tokenAmountDisplayRaw = bnInternal.isFinite() ? text : "";
 
         // Convert to fiat
         let { fiatAmount } = state;
         if (tokenPrice && !tokenPrice.isZero()) {
-          const bnTokenAmount = new BigNumber(internalAmount);
-          if (bnTokenAmount.isFinite() && !bnTokenAmount.isZero()) {
+          if (bnInternal.isFinite() && !bnInternal.isZero()) {
             fiatAmount = recalculateFiatAmountFromToken(
               internalAmount,
               tokenPrice,
@@ -719,7 +725,7 @@ export const createTokenFiatConverterReducer =
         return {
           ...state,
           tokenAmount: internalAmount,
-          tokenAmountDisplayRaw: text,
+          tokenAmountDisplayRaw,
           fiatAmount,
         };
       }
