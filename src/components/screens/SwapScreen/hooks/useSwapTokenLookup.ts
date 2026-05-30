@@ -11,18 +11,19 @@ import {
   SearchTokenResponse,
   TokenTypeWithCustomToken,
 } from "config/types";
+import { useBlockaidTokenScansStore } from "ducks/blockaidTokenScans";
 import { useDebugStore } from "ducks/debug";
+import { useTrendingTokensStore } from "ducks/trendingTokens";
 import { formatTokenIdentifier, getTokenType } from "helpers/balances";
 import { isMainnet } from "helpers/networks";
 import { isContractId } from "helpers/soroban";
 import { splitVerifiedTokens } from "helpers/splitVerifiedTokens";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { scanBulkTokens } from "services/blockaid/api";
 import {
   assessTokenSecurity,
   extractSecurityWarnings,
 } from "services/blockaid/helper";
-import { fetchTrendingAssets, searchToken } from "services/stellarExpert";
+import { searchToken } from "services/stellarExpert";
 
 export interface SwapTokenLookupResult {
   /** Idle: "Your tokens" section. Active: held matches at the top of searchResults. */
@@ -170,10 +171,9 @@ export const useSwapTokenLookup = ({
           .filter((t) => t.issuer)
           .map((t) => `${t.tokenCode}-${t.issuer}`);
         if (addressList.length === 0) return tokens;
-        const bulkScanResult = await scanBulkTokens(
-          { addressList, network },
-          signal,
-        );
+        const bulkScanResult = await useBlockaidTokenScansStore
+          .getState()
+          .scanBulkWithCache({ addressList, network });
         if (signal.aborted) return tokens;
         return tokens.map((token) => {
           const key = token.issuer
@@ -246,7 +246,9 @@ export const useSwapTokenLookup = ({
 
     (async () => {
       try {
-        const response = await fetchTrendingAssets({ network, signal });
+        const response = await useTrendingTokensStore
+          .getState()
+          .getTrendingTokens({ network });
         if (cancelled || signal.aborted) return;
 
         if (!response) {

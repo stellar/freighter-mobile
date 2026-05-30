@@ -3,16 +3,30 @@ import BigNumber from "bignumber.js";
 import { useSwapTokenLookup } from "components/screens/SwapScreen/hooks/useSwapTokenLookup";
 import { NETWORKS } from "config/constants";
 import { PricedBalance, TokenTypeWithCustomToken } from "config/types";
-import * as blockaidApi from "services/blockaid/api";
 import * as stellarExpert from "services/stellarExpert";
 
-jest.mock("services/stellarExpert", () => ({
-  fetchTrendingAssets: jest.fn(),
-  searchToken: jest.fn(),
+// Shared holders for store method mocks. Arrow (not jest.fn) wrappers are used
+// in the jest.mock factories below so clearAllMocks doesn't wipe the wrappers;
+// the inner jest.fn references are reset manually in beforeEach.
+const mockStores = {
+  getTrendingTokens: jest.fn(),
+  scanBulkWithCache: jest.fn(),
+};
+
+jest.mock("ducks/trendingTokens", () => ({
+  useTrendingTokensStore: {
+    getState: () => ({ getTrendingTokens: mockStores.getTrendingTokens }),
+  },
 }));
 
-jest.mock("services/blockaid/api", () => ({
-  scanBulkTokens: jest.fn(),
+jest.mock("ducks/blockaidTokenScans", () => ({
+  useBlockaidTokenScansStore: {
+    getState: () => ({ scanBulkWithCache: mockStores.scanBulkWithCache }),
+  },
+}));
+
+jest.mock("services/stellarExpert", () => ({
+  searchToken: jest.fn(),
 }));
 
 jest.mock("helpers/balances", () => {
@@ -164,13 +178,15 @@ describe("useSwapTokenLookup — idle mode", () => {
   beforeEach(() => {
     jest.useFakeTimers();
     jest.clearAllMocks();
-    (stellarExpert.fetchTrendingAssets as jest.Mock).mockResolvedValue({
+    mockStores.getTrendingTokens.mockResolvedValue({
       _embedded: { records: mockTrendingRecords },
-      _links: {},
+      _links: {
+        self: { href: "" },
+        prev: { href: "" },
+        next: { href: "" },
+      },
     });
-    (blockaidApi.scanBulkTokens as jest.Mock).mockResolvedValue({
-      results: {},
-    });
+    mockStores.scanBulkWithCache.mockResolvedValue({ results: {} });
   });
 
   afterEach(() => {
@@ -236,7 +252,7 @@ describe("useSwapTokenLookup — idle mode", () => {
   });
 
   it("sets stellarExpertDown=true and degrades gracefully on fetch failure", async () => {
-    (stellarExpert.fetchTrendingAssets as jest.Mock).mockResolvedValue(null);
+    mockStores.getTrendingTokens.mockResolvedValue(null);
     const held = buildHeldBalances();
     const { result } = renderHook(() =>
       useSwapTokenLookup({ network: NETWORKS.PUBLIC, balanceItems: held }),
@@ -259,7 +275,7 @@ describe("useSwapTokenLookup — idle mode", () => {
     // for the native balance, which did NOT match the "XLM" canonical ID
     // derived from the stellar.expert record — so XLM was not excluded from
     // popularTokens for users already holding it.
-    (stellarExpert.fetchTrendingAssets as jest.Mock).mockResolvedValue({
+    mockStores.getTrendingTokens.mockResolvedValue({
       _embedded: {
         records: [
           // Native XLM record — asset field is just "XLM" (no issuer segment)
@@ -276,7 +292,7 @@ describe("useSwapTokenLookup — idle mode", () => {
           },
         ],
       },
-      _links: {},
+      _links: { self: { href: "" }, prev: { href: "" }, next: { href: "" } },
     });
 
     // Mark both XLM and USDC as verified so they would appear in popularTokens
@@ -350,9 +366,9 @@ describe("useSwapTokenLookup — idle mode", () => {
         tomlInfo: { code: "FOO", issuer: FOO_ISSUER, image: "foo-image" },
       },
     ];
-    (stellarExpert.fetchTrendingAssets as jest.Mock).mockResolvedValue({
+    mockStores.getTrendingTokens.mockResolvedValue({
       _embedded: { records: trendingWithFoo },
-      _links: {},
+      _links: { self: { href: "" }, prev: { href: "" }, next: { href: "" } },
     });
 
     // Override splitVerifiedTokens: only USDC is verified; AQUA + FOO are not.
@@ -393,13 +409,11 @@ describe("useSwapTokenLookup — active search", () => {
   beforeEach(() => {
     jest.useFakeTimers();
     jest.clearAllMocks();
-    (stellarExpert.fetchTrendingAssets as jest.Mock).mockResolvedValue({
+    mockStores.getTrendingTokens.mockResolvedValue({
       _embedded: { records: [] },
-      _links: {},
+      _links: { self: { href: "" }, prev: { href: "" }, next: { href: "" } },
     });
-    (blockaidApi.scanBulkTokens as jest.Mock).mockResolvedValue({
-      results: {},
-    });
+    mockStores.scanBulkWithCache.mockResolvedValue({ results: {} });
   });
 
   afterEach(() => {
