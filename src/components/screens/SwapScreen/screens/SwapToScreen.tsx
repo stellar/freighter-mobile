@@ -6,6 +6,7 @@ import { SwapTokenRow } from "components/screens/SwapScreen/components/SwapToken
 import {
   descriptorFromBalance,
   descriptorFromSearchRecord,
+  recordTokenId,
 } from "components/screens/SwapScreen/helpers";
 import { useSwapTokenLookup } from "components/screens/SwapScreen/hooks/useSwapTokenLookup";
 import { Input } from "components/sds/Input";
@@ -87,7 +88,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
     const isExcludedRecord = (record: FormattedSearchTokenRecord) => {
       if (excludeId === null) return false;
       if (record.isNative) return excludeId === "native" || excludeId === "XLM";
-      return excludeId === `${record.tokenCode}:${record.issuer}`;
+      return excludeId === recordTokenId(record);
     };
 
     if (searchTerm) {
@@ -220,7 +221,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
     if (isHeldToken(item)) {
       return item.id;
     }
-    return `${item.tokenCode}:${item.issuer ?? ""}`;
+    return recordTokenId(item);
   };
 
   return (
@@ -298,7 +299,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
               const record = item;
               const heldMatch = balanceItems.find(
                 (b) =>
-                  b.id === `${record.tokenCode}:${record.issuer}` ||
+                  b.id === recordTokenId(record) ||
                   (record.isNative && b.id === "native"),
               );
 

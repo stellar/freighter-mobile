@@ -1,11 +1,34 @@
 import { BigNumber } from "bignumber.js";
+import { NATIVE_TOKEN_CODE } from "config/constants";
 import {
+  FormattedSearchTokenRecord,
   NativeToken,
   NonNativeToken,
   PricedBalance,
+  TokenIdentifier,
   TokenPricesMap,
 } from "config/types";
 import { getTokenIdentifier, getTokenPriceFromBalance } from "helpers/balances";
+
+/**
+ * Canonical token identifier for a stellar.expert / search record.
+ *
+ * Native XLM → "XLM" (no colon); classic → "CODE:ISSUER".
+ *
+ * Use this everywhere on the swap surface that needs to interop with the
+ * balance-side identifiers from `getTokenIdentifier`. Building the id
+ * manually as `${tokenCode}:${issuer}` produces "XLM:" for native, which
+ * the freighter-backend /token-prices endpoint rejects with HTTP 400 and
+ * never matches the balance-side "XLM" key in the prices map.
+ */
+export const recordTokenId = (
+  record: FormattedSearchTokenRecord,
+): TokenIdentifier => {
+  if (record.isNative) return NATIVE_TOKEN_CODE;
+  return record.issuer
+    ? `${record.tokenCode}:${record.issuer}`
+    : record.tokenCode;
+};
 
 interface FindBalanceForTokenParams {
   token: NonNativeToken | NativeToken;

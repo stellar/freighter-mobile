@@ -17,6 +17,7 @@ import {
   TrendingTokenDetailBottomSheet,
   XlmReserveBottomSheet,
 } from "components/screens/SwapScreen/components";
+import { recordTokenId } from "components/screens/SwapScreen/helpers";
 import { useSwapPathFinding } from "components/screens/SwapScreen/hooks";
 import { useSwapTokenLookup } from "components/screens/SwapScreen/hooks/useSwapTokenLookup";
 import { useSwapTransaction } from "components/screens/SwapScreen/hooks/useSwapTransaction";
@@ -328,9 +329,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
 
   useEffect(() => {
     if (!showTrending || trendingTokens.length === 0) return;
-    const ids = trendingTokens.map(
-      (token) => `${token.tokenCode}:${token.issuer}`,
-    );
+    const ids = trendingTokens.map(recordTokenId);
     fetchPricesForTokenIds({ tokens: ids });
   }, [showTrending, trendingTokens, fetchPricesForTokenIds]);
 
@@ -995,7 +994,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     item: FormattedSearchTokenRecord;
     index: number;
   }) => {
-    const tokenId = `${item.tokenCode}:${item.issuer}`;
+    const tokenId = recordTokenId(item);
     const priceInfo = prices[tokenId] ?? {};
     return (
       <View>
@@ -1037,7 +1036,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         <FlatList
           testID="swap-amount-trending-list"
           data={showTrending ? trendingTokens : []}
-          keyExtractor={(item) => `${item.tokenCode}:${item.issuer}`}
+          keyExtractor={recordTokenId}
           ListHeaderComponent={listHeader}
           ListEmptyComponent={
             showTrendingSpinner ? (
@@ -1145,10 +1144,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
             <TrendingTokenDetailBottomSheet
               record={selectedTrendingRecord}
               priceInfo={(() => {
-                const p =
-                  prices[
-                    `${selectedTrendingRecord.tokenCode}:${selectedTrendingRecord.issuer}`
-                  ];
+                const p = prices[recordTokenId(selectedTrendingRecord)];
                 return {
                   currentPrice: p?.currentPrice ?? undefined,
                   percentagePriceChange24h:

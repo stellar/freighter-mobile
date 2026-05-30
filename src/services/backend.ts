@@ -355,53 +355,12 @@ export const fetchTokenPrices = async ({
     );
   });
 
-  // TEMP DEBUG: trace which tokens go in and what comes back, to diagnose
-  // why /token-prices returns no prices for trending tokens but does for
-  // held tokens. Remove once root cause is found.
-  // eslint-disable-next-line no-console
-  console.log("[fetchTokenPrices] request", {
-    inputCount: tokens.length,
-    filteredCount: filteredTokens.length,
-    dropped: tokens.filter((t) => !filteredTokens.includes(t)),
-    filteredTokens,
-  });
-
-  let data: TokenPricesResponse;
-  try {
-    const res = await freighterBackendV1.post<TokenPricesResponse>(
-      "/token-prices",
-      {
-        tokens: filteredTokens,
-      },
-    );
-    data = res.data;
-  } catch (e) {
-    // eslint-disable-next-line no-console
-    console.log("[fetchTokenPrices] POST failed", e);
-    if (e instanceof AxiosError) {
-      // eslint-disable-next-line no-console
-      console.log("[fetchTokenPrices] failure detail", {
-        status: e.response?.status,
-        body: e.response?.data,
-        sentTokens: filteredTokens,
-        sentCount: filteredTokens.length,
-      });
-    }
-    throw e;
-  }
-
-  // eslint-disable-next-line no-console
-  console.log("[fetchTokenPrices] response", {
-    requested: filteredTokens.length,
-    rawData: data,
-    keys: Object.keys(data?.data ?? {}),
-    realPrices: Object.entries(data?.data ?? {})
-      .filter(([, v]) => v && v.currentPrice != null)
-      .map(([k]) => k),
-    nulls: Object.entries(data?.data ?? {})
-      .filter(([, v]) => !v || v.currentPrice == null)
-      .map(([k]) => k),
-  });
+  const { data } = await freighterBackendV1.post<TokenPricesResponse>(
+    "/token-prices",
+    {
+      tokens: filteredTokens,
+    },
+  );
 
   /*
   // ========================================================
