@@ -654,9 +654,16 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       // account in the swap. Subtract it so the gate evaluates post-swap headroom.
       const isXlmSource =
         sourceTokenId === "native" || sourceTokenId === NATIVE_TOKEN_CODE;
-      const projectedSpendable = isXlmSource
-        ? xlmSpendable.minus(new BigNumber(sourceAmount || "0"))
-        : xlmSpendable;
+      // The combined trustline + path-payment tx has 2 ops, so the actual fee
+      // is 2× the per-op fee. calculateSpendableAmount only deducted one op's
+      // worth (via the transactionFee parameter), so deduct one more here so
+      // the gate doesn't pass an account that lacks fee headroom for op #1.
+      const extraTrustlineOpFee = new BigNumber(swapFee);
+      const projectedSpendable = (
+        isXlmSource
+          ? xlmSpendable.minus(new BigNumber(sourceAmount || "0"))
+          : xlmSpendable
+      ).minus(extraTrustlineOpFee);
 
       // Use lte so the exact-boundary case (spendable === BASE_RESERVE) routes
       // to the reserve sheet — the user has zero margin after the trustline.
