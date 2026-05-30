@@ -631,6 +631,8 @@
     "title": "Trocar",
     "searchTokenInputPlaceholder": "Pesq. por nome ou endereço",
     "setMax": "Definir máximo",
+    "youSell": "Você vende",
+    "youReceive": "Você recebe",
     "receive": "Receber",
     "chooseToken": "Escolher token",
     "selectToken": "Selecionar um token",

@@ -854,10 +854,10 @@ describe("SwapAmountScreen", () => {
   });
 
   describe("Non-held destination Receive slot", () => {
-    it("shows the descriptor tokenCode (AQUA) in the Receive slot when destination is non-held", () => {
+    it("shows the descriptor tokenCode (AQUA) in the Receive pill when destination is non-held", () => {
       // AQUA is not in mockBalances, so destinationBalance will be undefined.
-      // The Receive slot should render the descriptor's tokenCode instead of
-      // falling through to the 'Choose token' placeholder.
+      // The Receive pill should render the descriptor's tokenCode instead of
+      // falling through to the 'Select a token' placeholder pill.
       setSwapStoreState({
         sourceAmount: "1",
         destinationToken: {
@@ -878,26 +878,26 @@ describe("SwapAmountScreen", () => {
           />,
         );
 
-      // The non-held slot should be rendered
-      expect(getByTestId("swap-to-non-held-selection")).toBeTruthy();
-      // The 'Choose token' placeholder must NOT appear
-      expect(queryByTestId("swap-to-choose-token")).toBeNull();
+      // The Receive pill should be rendered with the descriptor's tokenCode
+      expect(getByTestId("swap-receive-pill")).toBeTruthy();
+      // The 'Select a token' placeholder pill must NOT appear
+      expect(queryByTestId("swap-receive-choose-pill")).toBeNull();
       // The descriptor's tokenCode must be visible to the user
       expect(queryAllByText("AQUA").length).toBeGreaterThan(0);
     });
 
-    it("shows the 'Choose token' placeholder when no destination is selected", () => {
+    it("shows the 'Select a token' placeholder pill when no destination is selected", () => {
       setSwapStoreState({ destinationToken: null, sourceAmount: "0" });
 
       const { getByTestId, queryByTestId } = renderWithProviders(
         <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
       );
 
-      expect(getByTestId("swap-to-choose-token")).toBeTruthy();
-      expect(queryByTestId("swap-to-non-held-selection")).toBeNull();
+      expect(getByTestId("swap-receive-choose-pill")).toBeTruthy();
+      expect(queryByTestId("swap-receive-pill")).toBeNull();
     });
 
-    it("fires SWAP_TO_PICKER_OPENED with source:dropdown when the non-held slot is tapped", () => {
+    it("fires SWAP_TO_PICKER_OPENED with source:dropdown when the Receive pill is tapped", () => {
       jest.spyOn(analytics, "track").mockClear();
 
       setSwapStoreState({
@@ -916,12 +916,93 @@ describe("SwapAmountScreen", () => {
         <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
       );
 
-      fireEvent.press(getByTestId("swap-to-non-held-selection"));
+      fireEvent.press(getByTestId("swap-receive-pill"));
 
       expect(analytics.track).toHaveBeenCalledWith(
         AnalyticsEvent.SWAP_TO_PICKER_OPENED,
         { source: "dropdown" },
       );
+    });
+  });
+
+  describe("Swap-direction toggle (Figma 11310-94387)", () => {
+    // mockBalances uses id: "XLM" for native and a specific issuer for USDC;
+    // re-use those exact values so balanceItems.find resolves correctly.
+    const HELD_USDC = mockBalances.find((b) => b.id?.startsWith("USDC:"))!;
+
+    it("renders the toggle and Sell pill alongside Receive pill in the card layout", () => {
+      setSwapStoreState({
+        sourceTokenId: "XLM",
+        sourceTokenSymbol: "XLM",
+        sourceAmount: "1",
+        destinationToken: {
+          id: HELD_USDC.id,
+          tokenCode: "USDC",
+          issuer: HELD_USDC.id.split(":")[1],
+          decimals: 7,
+          tokenType: "credit_alphanum4",
+          isNew: false,
+        },
+      });
+
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      expect(getByTestId("swap-sell-card")).toBeTruthy();
+      expect(getByTestId("swap-receive-card")).toBeTruthy();
+      expect(getByTestId("swap-sell-pill")).toBeTruthy();
+      expect(getByTestId("swap-receive-pill")).toBeTruthy();
+      expect(getByTestId("swap-direction-toggle")).toBeTruthy();
+    });
+
+    it("tapping the Sell pill navigates to the source picker", () => {
+      setSwapStoreState({
+        sourceTokenId: "XLM",
+        sourceTokenSymbol: "XLM",
+      });
+      const navigation = makeNavigation();
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={navigation} route={makeRoute()} />,
+      );
+      fireEvent.press(getByTestId("swap-sell-pill"));
+      expect(navigation.navigate).toHaveBeenCalled();
+    });
+
+    it("swap-direction toggle bails out when destination is non-held", () => {
+      // AQUA is not in mockBalances → destinationBalance is undefined → the
+      // handler should early-return without calling either setter.
+      const setSourceTokenSpy = jest.fn();
+      const setDestinationTokenSpy = jest.fn();
+      setSwapStoreState({
+        sourceTokenId: "XLM",
+        sourceTokenSymbol: "XLM",
+        destinationToken: {
+          id: "AQUA:GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+          tokenCode: "AQUA",
+          issuer: "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+          decimals: 7,
+          tokenType: "credit_alphanum4",
+          isNew: true,
+        },
+        setSourceToken: setSourceTokenSpy,
+        setDestinationToken: setDestinationTokenSpy,
+      } as Partial<SwapStoreState>);
+
+      // The init-effect bootstrap from swapFromTokenId/swapFromTokenSymbol
+      // calls setSourceToken once on mount — we only care about whether the
+      // direction toggle adds a second call. Tap, then assert no toggle-driven
+      // call landed.
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+      setSourceTokenSpy.mockClear();
+      setDestinationTokenSpy.mockClear();
+
+      fireEvent.press(getByTestId("swap-direction-toggle"));
+
+      expect(setSourceTokenSpy).not.toHaveBeenCalled();
+      expect(setDestinationTokenSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -947,14 +1028,14 @@ describe("SwapAmountScreen", () => {
     });
 
     it("fires SWAP_TO_PICKER_OPENED with source:dropdown when the Receive dropdown is tapped", () => {
-      // destinationToken is null so the "choose token" placeholder is rendered
+      // destinationToken is null so the "Select a token" placeholder pill is rendered
       setSwapStoreState({ destinationToken: null, sourceAmount: "0" });
 
       const { getByTestId } = renderWithProviders(
         <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
       );
 
-      fireEvent.press(getByTestId("swap-to-choose-token"));
+      fireEvent.press(getByTestId("swap-receive-choose-pill"));
 
       expect(analytics.track).toHaveBeenCalledWith(
         AnalyticsEvent.SWAP_TO_PICKER_OPENED,

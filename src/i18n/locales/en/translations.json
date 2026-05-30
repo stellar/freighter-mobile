@@ -667,6 +667,8 @@
     "title": "Swap",
     "searchTokenInputPlaceholder": "Token name or address",
     "setMax": "Set max",
+    "youSell": "You sell",
+    "youReceive": "You receive",
     "receive": "Receive",
     "chooseToken": "Choose token",
     "selectToken": "Select a token",
