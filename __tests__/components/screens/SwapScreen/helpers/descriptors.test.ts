@@ -92,4 +92,19 @@ describe("descriptorFromSearchRecord", () => {
 
     expect(descriptorFromSearchRecord(record).decimals).toBe(7);
   });
+
+  it("carries securityLevel from the record (set by useSwapTokenLookup's bulk scan)", () => {
+    const record = {
+      tokenCode: "EVIL",
+      issuer: "GBADGUY...",
+      isNative: false,
+      tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+      hasTrustline: false,
+      securityLevel: SecurityLevel.MALICIOUS,
+    } as any;
+
+    expect(descriptorFromSearchRecord(record).securityLevel).toBe(
+      SecurityLevel.MALICIOUS,
+    );
+  });
 });

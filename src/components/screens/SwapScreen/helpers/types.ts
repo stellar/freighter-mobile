@@ -1,4 +1,5 @@
 import { TokenTypeWithCustomToken } from "config/types";
+import { SecurityLevel } from "services/blockaid/constants";
 
 /**
  * Narrow descriptor for the destination side of a swap.
@@ -20,4 +21,12 @@ export type DestinationTokenDescriptor = {
   tokenType: TokenTypeWithCustomToken;
   /** `false` when the user already has a trustline; `true` for new tokens. */
   isNew: boolean;
+  /**
+   * Blockaid security level for the destination token, when known. Carried on
+   * the descriptor so the in-place Receive-icon badge renders without a
+   * separate scan lookup (spec §9 + Figma 11310-104182). Only populated when
+   * the descriptor comes from a scanned search record; held tokens already
+   * render their badge through `BalanceRow`/`assessTokenSecurity`.
+   */
+  securityLevel?: SecurityLevel;
 };

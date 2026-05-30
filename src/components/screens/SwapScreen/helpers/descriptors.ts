@@ -94,5 +94,6 @@ export const descriptorFromSearchRecord = (
         ? TokenTypeWithCustomToken.CREDIT_ALPHANUM4
         : TokenTypeWithCustomToken.CREDIT_ALPHANUM12),
     isNew: !record.hasTrustline,
+    securityLevel: record.securityLevel,
   };
 };

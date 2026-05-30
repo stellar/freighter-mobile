@@ -6,7 +6,7 @@ import { BalanceRow } from "components/BalanceRow";
 import BottomSheet from "components/BottomSheet";
 import { IconButton } from "components/IconButton";
 import Spinner from "components/Spinner";
-import { TokenIcon } from "components/TokenIcon";
+import { TokenIconWithBadge } from "components/TokenIconWithBadge";
 import TransactionSettingsBottomSheet from "components/TransactionSettingsBottomSheet";
 import { SecurityDetailBottomSheet } from "components/blockaid";
 import { BaseLayout } from "components/layout/BaseLayout";
@@ -866,7 +866,10 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         >
           <View className="flex-row items-center flex-1 mr-4">
             <View className="flex-row items-center gap-16px">
-              <TokenIcon token={descriptorToken} />
+              <TokenIconWithBadge
+                token={descriptorToken}
+                securityLevel={destinationTokenDescriptor.securityLevel}
+              />
               <View className="flex-col flex-1">
                 <Text>{t("swapScreen.receive")}</Text>
                 <Text sm secondary>
