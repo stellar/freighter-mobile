@@ -6,6 +6,7 @@ import {
   TokenTypeWithCustomToken,
 } from "config/types";
 import { getTokenType } from "helpers/balances";
+import { assessTokenSecurity } from "services/blockaid/helper";
 
 /**
  * Extended balance descriptor that captures the optional fields that callers
@@ -23,6 +24,7 @@ type BalanceInput = PricedBalance & {
     code?: string;
     issuer?: { key: string };
   };
+  blockaidData?: unknown;
 };
 
 /**
@@ -51,6 +53,17 @@ export const descriptorFromBalance = (
     ? id.split(":")
     : [balance.tokenCode ?? "", ""];
 
+  // Project Blockaid signal from the held balance's bulk-scan blob (set by
+  // useBalancesList) so downstream callers see a consistent securityLevel
+  // shape regardless of whether the descriptor came from a balance or a
+  // search record (spec §9: "same assessTokenSecurity output keyed by
+  // CODE-ISSUER").
+  const heldSecurityLevel = balance.blockaidData
+    ? assessTokenSecurity(
+        balance.blockaidData as Parameters<typeof assessTokenSecurity>[0],
+      ).level
+    : undefined;
+
   return {
     id,
     tokenCode: tokenCode || balance.tokenCode || "",
@@ -61,6 +74,7 @@ export const descriptorFromBalance = (
       balance.tokenType ??
       getTokenType(id),
     isNew: false,
+    securityLevel: heldSecurityLevel,
   };
 };
 

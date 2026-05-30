@@ -3,6 +3,10 @@ import {
   descriptorFromSearchRecord,
 } from "components/screens/SwapScreen/helpers/descriptors";
 import { TokenTypeWithCustomToken } from "config/types";
+import {
+  BLOCKAID_RESULT_TYPES,
+  SecurityLevel,
+} from "services/blockaid/constants";
 
 describe("descriptorFromBalance", () => {
   it("projects a native XLM balance", () => {
@@ -43,6 +47,39 @@ describe("descriptorFromBalance", () => {
       tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
       isNew: false,
     });
+  });
+
+  it("carries securityLevel from balance.blockaidData when present", () => {
+    const balance = {
+      id: "USDC:GA5Z...",
+      tokenCode: "USDC",
+      token: {
+        code: "USDC",
+        issuer: { key: "GA5Z..." },
+        type: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+      },
+      decimals: 7,
+      blockaidData: { result_type: BLOCKAID_RESULT_TYPES.MALICIOUS },
+    } as any;
+
+    expect(descriptorFromBalance(balance).securityLevel).toBe(
+      SecurityLevel.MALICIOUS,
+    );
+  });
+
+  it("omits securityLevel when balance has no blockaidData", () => {
+    const balance = {
+      id: "USDC:GA5Z...",
+      tokenCode: "USDC",
+      token: {
+        code: "USDC",
+        issuer: { key: "GA5Z..." },
+        type: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+      },
+      decimals: 7,
+    } as any;
+
+    expect(descriptorFromBalance(balance).securityLevel).toBeUndefined();
   });
 });
 
