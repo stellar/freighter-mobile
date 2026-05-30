@@ -451,8 +451,23 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         toastId: "swap-path-error",
         duration: 0,
       });
+    } else if (
+      !pathError &&
+      pathResult &&
+      activeError?.toastId === "swap-path-error"
+    ) {
+      // A subsequent path-finding cycle resolved successfully — dismiss the
+      // lingering path-error toast so it doesn't cover the keyboard while
+      // the user is typing a valid amount.
+      setActiveError(null);
     }
-  }, [pathError, sourceAmount, destinationTokenDescriptor]);
+  }, [
+    pathError,
+    pathResult,
+    sourceAmount,
+    destinationTokenDescriptor,
+    activeError?.toastId,
+  ]);
 
   const handleSettingsPress = useCallback(() => {
     transactionSettingsBottomSheetModalRef.current?.present();
