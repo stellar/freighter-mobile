@@ -712,7 +712,12 @@
     "resultsSection": "Results",
     "trendingTokensSection": "Trending Tokens",
     "trendingDetail": {
-      "buy": "Buy {{tokenCode}}"
+      "buy": "Buy {{tokenCode}}",
+      "issuer": "Issuer",
+      "type": "Type",
+      "domain": "Domain",
+      "stellarClassic": "Stellar Classic",
+      "stellarNative": "Stellar Native"
     },
     "trustlineInfo": {
       "title": "What is a trustline?",

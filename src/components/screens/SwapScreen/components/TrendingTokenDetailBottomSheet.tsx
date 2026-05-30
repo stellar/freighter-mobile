@@ -6,7 +6,7 @@ import {
   descriptorFromSearchRecord,
 } from "components/screens/SwapScreen/helpers";
 import { Button } from "components/sds/Button";
-import { Text } from "components/sds/Typography";
+import { Display, Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { POSITIVE_PRICE_CHANGE_THRESHOLD } from "config/constants";
 import {
@@ -21,7 +21,7 @@ import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React from "react";
-import { TouchableOpacity, View } from "react-native";
+import { View } from "react-native";
 import { analytics } from "services/analytics";
 
 export interface TrendingTokenDetailBottomSheetProps {
@@ -33,6 +33,13 @@ export interface TrendingTokenDetailBottomSheetProps {
   balanceItems: Array<PricedBalance & { id: string }>;
   bottomSheetModalRef?: React.RefObject<BottomSheetModal | null>;
 }
+
+/** Format a BigNumber as a USD delta string with 4 decimal places, e.g. "$0.0602" */
+const formatDeltaUsd = (delta: BigNumber): string => {
+  const abs = delta.abs();
+  const fixed = abs.toFixed(4);
+  return `$${fixed}`;
+};
 
 export const TrendingTokenDetailBottomSheet: React.FC<
   TrendingTokenDetailBottomSheetProps
@@ -71,63 +78,101 @@ export const TrendingTokenDetailBottomSheet: React.FC<
 
   const { currentPrice, percentagePriceChange24h } = priceInfo;
 
+  const isPositive =
+    percentagePriceChange24h !== undefined &&
+    percentagePriceChange24h.gte(POSITIVE_PRICE_CHANGE_THRESHOLD);
+
+  const deltaUsd =
+    currentPrice !== undefined && percentagePriceChange24h !== undefined
+      ? currentPrice.times(percentagePriceChange24h).div(100)
+      : undefined;
+
+  const deltaString =
+    deltaUsd !== undefined && percentagePriceChange24h !== undefined
+      ? `${isPositive ? "+" : ""}${formatDeltaUsd(deltaUsd)} (${formatPercentageAmount(percentagePriceChange24h)})`
+      : undefined;
+
+  const tokenType = record.isNative
+    ? t("swapScreen.trendingDetail.stellarNative")
+    : t("swapScreen.trendingDetail.stellarClassic");
+
   return (
-    <View className="gap-[16px] p-[4px]">
-      <View className="flex-row items-center gap-[12px]">
+    <View className="gap-[24px] p-[4px]">
+      {/* Header block: icon, then text stack below */}
+      <View className="flex-col gap-[16px]">
         <TokenIconWithBadge
           token={token}
           iconUrl={record.iconUrl}
           securityLevel={record.securityLevel}
+          size="lg"
         />
-        <View className="flex-1">
-          <Text md primary medium>
-            {record.tokenCode}
+        <View className="flex-col gap-[8px]">
+          <Text md medium secondary>
+            {record.name ?? record.tokenCode}
           </Text>
-          {record.domain ? (
-            <Text sm secondary numberOfLines={1}>
-              {record.domain}
+          {currentPrice !== undefined ? (
+            <Display sm regular primary>
+              {formatFiatAmount(currentPrice)}
+            </Display>
+          ) : null}
+          {deltaString !== undefined ? (
+            <Text
+              md
+              medium
+              color={
+                isPositive
+                  ? themeColors.status.success
+                  : themeColors.text.secondary
+              }
+            >
+              {deltaString}
             </Text>
           ) : null}
         </View>
       </View>
 
-      {record.issuer ? (
-        <View className="flex-row items-center">
-          <Text sm secondary>
-            {truncateAddress(record.issuer)}
+      {/* Info card */}
+      <View className="bg-background-tertiary rounded-[16px] px-[16px] py-[12px] flex-col gap-[12px] w-full">
+        {/* Row: Issuer */}
+        <View className="flex-row items-center justify-between">
+          <Text md medium secondary>
+            {t("swapScreen.trendingDetail.issuer")}
+          </Text>
+          <Text md medium primary numberOfLines={1}>
+            {record.issuer ? truncateAddress(record.issuer) : "—"}
           </Text>
         </View>
-      ) : null}
 
-      {record.name ? (
-        <Text sm secondary>
-          {record.name}
-        </Text>
-      ) : null}
+        <View className="h-px bg-border-primary w-full" />
 
-      <View className="flex-row items-center gap-[8px]">
-        {currentPrice !== undefined ? (
-          <Text md primary medium>
-            {formatFiatAmount(currentPrice)}
+        {/* Row: Type */}
+        <View className="flex-row items-center justify-between">
+          <Text md medium secondary>
+            {t("swapScreen.trendingDetail.type")}
           </Text>
-        ) : null}
-        {percentagePriceChange24h !== undefined ? (
-          <TouchableOpacity activeOpacity={1}>
-            <Text
-              sm
-              medium
-              color={
-                percentagePriceChange24h.gte(POSITIVE_PRICE_CHANGE_THRESHOLD)
-                  ? themeColors.status.success
-                  : themeColors.text.secondary
-              }
-            >
-              {formatPercentageAmount(percentagePriceChange24h)}
-            </Text>
-          </TouchableOpacity>
+          <Text md medium primary>
+            {tokenType}
+          </Text>
+        </View>
+
+        {record.domain ? (
+          <>
+            <View className="h-px bg-border-primary w-full" />
+
+            {/* Row: Domain */}
+            <View className="flex-row items-center justify-between">
+              <Text md medium secondary>
+                {t("swapScreen.trendingDetail.domain")}
+              </Text>
+              <Text md medium primary numberOfLines={1}>
+                {record.domain}
+              </Text>
+            </View>
+          </>
         ) : null}
       </View>
 
+      {/* Buy button */}
       <Button onPress={handleBuy} primary>
         {t("swapScreen.trendingDetail.buy", { tokenCode: record.tokenCode })}
       </Button>

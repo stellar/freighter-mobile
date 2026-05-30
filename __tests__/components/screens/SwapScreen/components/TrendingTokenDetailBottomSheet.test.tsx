@@ -30,7 +30,7 @@ const mockRecord = {
 } as any;
 
 describe("TrendingTokenDetailBottomSheet", () => {
-  it("renders tokenCode, domain, price, and 24h%", () => {
+  it("renders tokenCode, price, and delta", () => {
     const { getByText } = renderWithProviders(
       <TrendingTokenDetailBottomSheet
         record={mockRecord}
@@ -41,15 +41,42 @@ describe("TrendingTokenDetailBottomSheet", () => {
         balanceItems={[]}
       />,
     );
+    // tokenCode shown (as fallback name since no record.name)
     expect(getByText("AQUA")).toBeTruthy();
-    expect(getByText("aqua.network")).toBeTruthy();
     // Price renders via formatFiatAmount — match loosely
     expect(getByText(/0\.05/)).toBeTruthy();
-    // 24h% renders via formatPercentageAmount — match loosely
+    // delta renders with + sign and % — match loosely
     expect(getByText(/3\.4/)).toBeTruthy();
   });
 
-  it("hides the 24h% chip when percentagePriceChange24h is undefined", () => {
+  it("renders domain in the info card row", () => {
+    const { getByText } = renderWithProviders(
+      <TrendingTokenDetailBottomSheet
+        record={mockRecord}
+        priceInfo={{
+          currentPrice: new BigNumber("0.05"),
+          percentagePriceChange24h: new BigNumber("3.4"),
+        }}
+        balanceItems={[]}
+      />,
+    );
+    // Domain is now in the info card, not freestanding
+    expect(getByText("aqua.network")).toBeTruthy();
+  });
+
+  it("renders truncated issuer in the info card row", () => {
+    const { getByText } = renderWithProviders(
+      <TrendingTokenDetailBottomSheet
+        record={mockRecord}
+        priceInfo={{}}
+        balanceItems={[]}
+      />,
+    );
+    // Issuer truncated via truncateAddress (4+4 chars with "...")
+    expect(getByText(/GBN4\.\.\.ZJBJ/)).toBeTruthy();
+  });
+
+  it("hides the delta line when percentagePriceChange24h is undefined", () => {
     const { getByText, queryByText } = renderWithProviders(
       <TrendingTokenDetailBottomSheet
         record={mockRecord}
@@ -60,6 +87,18 @@ describe("TrendingTokenDetailBottomSheet", () => {
     // Price is shown
     expect(getByText(/0\.05/)).toBeTruthy();
     // No % text should be present (formatPercentageAmount always adds %)
+    expect(queryByText(/%/)).toBeNull();
+  });
+
+  it("hides the delta line when currentPrice is undefined", () => {
+    const { queryByText } = renderWithProviders(
+      <TrendingTokenDetailBottomSheet
+        record={mockRecord}
+        priceInfo={{ percentagePriceChange24h: new BigNumber("3.4") }}
+        balanceItems={[]}
+      />,
+    );
+    // No % text (no delta rendered without currentPrice)
     expect(queryByText(/%/)).toBeNull();
   });
 
