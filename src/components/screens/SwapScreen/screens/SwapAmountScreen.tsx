@@ -1036,7 +1036,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ paddingBottom: 16 }}
           style={{ flex: 1 }}
-          scrollEnabled={false}
         />
         <View className="pb-4">
           <Button
