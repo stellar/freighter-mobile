@@ -94,6 +94,7 @@ const formatClassicRecord = (
     tokenType: getTokenType(
       issuer ? `${tokenCode}:${issuer}` : NATIVE_TOKEN_CODE,
     ),
+    price: record.price,
   };
 };
 

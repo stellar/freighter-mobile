@@ -323,6 +323,12 @@ export type FormattedSearchTokenRecord = {
   isUnableToScan?: boolean;
   securityLevel?: SecurityLevel;
   securityWarnings?: SecurityWarning[];
+  /**
+   * Spot price from the stellar.expert search response. Used as a fallback
+   * when the freighter-backend /token-prices endpoint returns no entry for
+   * this token (no 24h % available in this fallback case).
+   */
+  price?: number;
 };
 
 /**
