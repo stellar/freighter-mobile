@@ -1051,17 +1051,15 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           contentContainerStyle={{ paddingBottom: 16 }}
           style={{ flex: 1 }}
         />
-        <View className="pb-4">
-          <Button
-            tertiary
-            onPress={handleMainButtonPress}
-            disabled={isCtaDisabled}
-            isLoading={ctaState.kind === "loading"}
-            testID="swap-continue-button"
-          >
-            {ctaLabel}
-          </Button>
-        </View>
+        <Button
+          tertiary
+          onPress={handleMainButtonPress}
+          disabled={isCtaDisabled}
+          isLoading={ctaState.kind === "loading"}
+          testID="swap-continue-button"
+        >
+          {ctaLabel}
+        </Button>
       </KeyboardAvoidingView>
 
       {/* Clear errors when review is closed */}
