@@ -884,7 +884,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
 
   const listHeader = (
     <View>
-      <View className="flex-none items-center py-[24px] max-xs:py-[16px] px-6">
+      <View className="flex-none items-center py-[24px] max-xs:py-[16px]">
         <View className="flex-row items-center gap-1">
           <TextInput
             ref={amountInputRef}
@@ -925,7 +925,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         </TouchableOpacity>
       </View>
 
-      <View className="flex-none gap-3 mt-[16px] px-6">
+      <View className="flex-none gap-3 mt-[16px]">
         <View className="rounded-[16px] py-[12px] px-[16px] bg-background-tertiary">
           {sourceBalance && (
             <BalanceRow
@@ -951,7 +951,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         </View>
       </View>
 
-      <View className="items-center mt-[24px] px-6">
+      <View className="items-center mt-[24px]">
         <View className="flex-row gap-[8px] w-full">
           <View className="flex-1">
             <Button secondary onPress={() => handlePercentagePress(25)}>
@@ -977,7 +977,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       </View>
 
       {(showTrending || showTrendingSpinner) && (
-        <View className="mt-[24px] px-6">
+        <View className="mt-[24px]">
           <Text md medium primary>
             {t("swapScreen.trendingTokensSection")}
           </Text>
@@ -996,7 +996,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     const tokenId = `${item.tokenCode}:${item.issuer}`;
     const priceInfo = prices[tokenId] ?? {};
     return (
-      <View className="px-6">
+      <View>
         <SwapTokenRow
           variant="trending"
           record={item}
@@ -1040,7 +1040,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         />
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
-          className="px-6 pb-4"
+          className="pb-4"
         >
           <Button
             tertiary
