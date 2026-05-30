@@ -996,13 +996,18 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   }) => {
     const tokenId = recordTokenId(item);
     const priceInfo = prices[tokenId] ?? {};
+    // Fallback to stellar.expert's spot price when /token-prices has no
+    // entry for this token (common for long-tail trending tokens). No 24h%
+    // available in the fallback case — design doc §5.3.
+    const fallbackPrice =
+      item.price !== undefined ? new BigNumber(item.price) : undefined;
     return (
       <View>
         <SwapTokenRow
           variant="trending"
           record={item}
           priceInfo={{
-            currentPrice: priceInfo.currentPrice ?? undefined,
+            currentPrice: priceInfo.currentPrice ?? fallbackPrice,
             percentagePriceChange24h:
               priceInfo.percentagePriceChange24h ?? undefined,
           }}
@@ -1145,8 +1150,12 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
               record={selectedTrendingRecord}
               priceInfo={(() => {
                 const p = prices[recordTokenId(selectedTrendingRecord)];
+                const fallbackPrice =
+                  selectedTrendingRecord.price !== undefined
+                    ? new BigNumber(selectedTrendingRecord.price)
+                    : undefined;
                 return {
-                  currentPrice: p?.currentPrice ?? undefined,
+                  currentPrice: p?.currentPrice ?? fallbackPrice,
                   percentagePriceChange24h:
                     p?.percentagePriceChange24h ?? undefined,
                 };
