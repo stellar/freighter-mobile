@@ -978,7 +978,9 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       </View>
 
       {(showTrending || showTrendingSpinner) && (
-        <View className="mt-[24px]">
+        // Figma node 11310-103377: parent frame has gap-[24px] between
+        // header and each row. Match with 24px above and 24px below the title.
+        <View className="mt-[24px] mb-[24px]">
           <Text md medium secondary>
             {t("swapScreen.trendingTokensSection")}
           </Text>
