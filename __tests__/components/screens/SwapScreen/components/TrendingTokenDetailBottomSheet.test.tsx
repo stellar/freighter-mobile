@@ -7,11 +7,17 @@ import { useSwapStore } from "ducks/swap";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 import { analytics } from "services/analytics";
+import { SecurityLevel } from "services/blockaid/constants";
 
 jest.mock("hooks/useColors", () => () => ({
   themeColors: {
     status: { success: "#00FF00" },
     text: { secondary: "#888888" },
+    // Banner needs red/amber/lime/lilac at index 11 to render text color.
+    red: { 3: "#FFE0E0", 6: "#FFB0B0", 9: "#FF4040", 11: "#CD2B31" },
+    amber: { 3: "#FFF3E0", 6: "#FFD080", 9: "#FFAA40", 11: "#B97E00" },
+    lime: { 3: "#E0FFE0", 6: "#A0F0A0", 9: "#40C040", 11: "#1F9133" },
+    lilac: { 3: "#F2EEFF", 6: "#C5B6FF", 9: "#7B5BD8", 11: "#5746AF" },
   },
 }));
 
@@ -147,6 +153,42 @@ describe("TrendingTokenDetailBottomSheet", () => {
     expect(setDestSpy).toHaveBeenCalledWith(
       expect.objectContaining({ tokenCode: "AQUA", isNew: false }),
     );
+  });
+
+  describe("Blockaid warning banners", () => {
+    it("renders the malicious banner when record.securityLevel === MALICIOUS", () => {
+      const { getByTestId } = renderWithProviders(
+        <TrendingTokenDetailBottomSheet
+          record={{ ...mockRecord, securityLevel: SecurityLevel.MALICIOUS }}
+          priceInfo={{}}
+          balanceItems={[]}
+        />,
+      );
+      expect(getByTestId("trending-detail-malicious-banner")).toBeTruthy();
+    });
+
+    it("renders the suspicious banner when record.securityLevel === SUSPICIOUS", () => {
+      const { getByTestId } = renderWithProviders(
+        <TrendingTokenDetailBottomSheet
+          record={{ ...mockRecord, securityLevel: SecurityLevel.SUSPICIOUS }}
+          priceInfo={{}}
+          balanceItems={[]}
+        />,
+      );
+      expect(getByTestId("trending-detail-suspicious-banner")).toBeTruthy();
+    });
+
+    it("does NOT render a banner when securityLevel is SAFE / UNABLE_TO_SCAN / undefined", () => {
+      const { queryByTestId } = renderWithProviders(
+        <TrendingTokenDetailBottomSheet
+          record={{ ...mockRecord, securityLevel: SecurityLevel.SAFE }}
+          priceInfo={{}}
+          balanceItems={[]}
+        />,
+      );
+      expect(queryByTestId("trending-detail-malicious-banner")).toBeNull();
+      expect(queryByTestId("trending-detail-suspicious-banner")).toBeNull();
+    });
   });
 
   describe("Analytics events", () => {
