@@ -445,6 +445,10 @@ describe("SwapAmountScreen", () => {
 
   describe("Pre-flight XLM reserve check", () => {
     beforeEach(() => {
+      // Reset sheet refs so each test starts with a clean array.
+      // eslint-disable-next-line no-underscore-dangle
+      globalThis.__mockSheetRefs = [];
+      // Create (or recreate) the analytics spy and clear any prior calls.
       jest.spyOn(analytics, "track").mockClear();
     });
 
@@ -460,7 +464,7 @@ describe("SwapAmountScreen", () => {
       //   hasXLMForFees: 100.1 >= 100 → true (no error)
       //   spendable = max(0, 100.1 - 1 - 100) = max(0, -0.9) = 0 < 0.5 → gate trips
       const lowXlmBalances = mockBalances.map((b) => {
-        if (b.id !== "XLM") return b;
+        if (b.token?.type !== "native") return b;
         return {
           ...b,
           total: new BigNumber("100.1"),
@@ -491,9 +495,6 @@ describe("SwapAmountScreen", () => {
         },
       });
 
-      // eslint-disable-next-line no-underscore-dangle
-      globalThis.__mockSheetRefs = [];
-
       const { getByTestId } = renderWithProviders(
         <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
       );
@@ -507,9 +508,11 @@ describe("SwapAmountScreen", () => {
 
       // Gate must have fired: swap transaction must NOT have been initiated.
       expect(mockSetupSwapTransaction).not.toHaveBeenCalled();
-      // Analytics should fire at the present() call site (Bug 2 fix), not on mount.
-      // The sheet's present() is called via xlmReserveBottomSheetRef — verify via
-      // __mockSheetRefs that at least one sheet was presented (the XLM reserve sheet).
+      // The analytics event must fire when the gate trips.
+      expect(analytics.track).toHaveBeenCalledWith(
+        AnalyticsEvent.SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN,
+      );
+      // The XLM reserve sheet's present() must have been called.
       // eslint-disable-next-line no-underscore-dangle
       const presentedSheets = globalThis.__mockSheetRefs.filter(
         (spy) => spy.present.mock.calls.length > 0,
@@ -547,6 +550,82 @@ describe("SwapAmountScreen", () => {
 
       // Gate should NOT have fired — setupSwapTransaction must have been called.
       expect(mockSetupSwapTransaction).toHaveBeenCalled();
+      // Analytics reserve event must NOT fire on the happy path.
+      expect(analytics.track).not.toHaveBeenCalledWith(
+        AnalyticsEvent.SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN,
+      );
+    });
+
+    it("opens XlmReserveBottomSheet when XLM is the source and post-swap spendable < BASE_RESERVE", async () => {
+      // swapFee mock is "100", subentryCount = 0, minimumBalance = 1 XLM.
+      // xlmSpendable = max(0, total - 1 - 100) = total - 101.
+      //
+      // We need:
+      //   (a) sourceAmount <= xlmSpendable  → CTA is in "review" state, not "insufficient"
+      //   (b) xlmSpendable - sourceAmount <= BASE_RESERVE (0.5) → gate fires
+      //
+      // total = 101.9:
+      //   xlmSpendable = 101.9 - 101 = 0.9
+      //   sourceAmount = 0.89  (≤ 0.9 ✓, passes spendable check)
+      //   projectedSpendable = 0.9 - 0.89 = 0.01  (≤ 0.5 ✓, gate fires)
+      //
+      // Without XLM-as-source logic, the gate would compare 0.9 > 0.5 and NOT fire,
+      // so this test specifically validates the new projected-spendable calculation.
+      const xlmAsSourceBalances = mockBalances.map((b) => {
+        if (b.token?.type !== "native") return b;
+        return {
+          ...b,
+          total: new BigNumber("101.9"),
+          available: new BigNumber("0.9"),
+        };
+      });
+      (useBalancesList as jest.Mock).mockImplementation(() => ({
+        balanceItems: xlmAsSourceBalances,
+        scanResults: {},
+        isLoading: false,
+        error: null,
+        noBalances: false,
+        isRefreshing: false,
+        isFunded: true,
+        handleRefresh: jest.fn(),
+      }));
+
+      setSwapStoreState({
+        // sourceTokenId = "XLM" (NATIVE_TOKEN_CODE) — XLM is the source
+        sourceTokenId: "XLM",
+        sourceAmount: "0.89",
+        pathResult: { destinationAmount: "2" },
+        destinationToken: {
+          id: "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+          tokenCode: "FTT",
+          issuer: "GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+          decimals: 7,
+          tokenType: "credit_alphanum4",
+          isNew: true,
+        },
+      });
+
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      await act(async () => {
+        fireEvent.press(getByTestId("swap-continue-button"));
+        await Promise.resolve();
+      });
+
+      // Gate must have fired: swap transaction must NOT have been initiated.
+      expect(mockSetupSwapTransaction).not.toHaveBeenCalled();
+      // Analytics must fire for the XLM-as-source gate trip.
+      expect(analytics.track).toHaveBeenCalledWith(
+        AnalyticsEvent.SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN,
+      );
+      // The XLM reserve sheet's present() must have been called.
+      // eslint-disable-next-line no-underscore-dangle
+      const presentedSheets = globalThis.__mockSheetRefs.filter(
+        (spy) => spy.present.mock.calls.length > 0,
+      );
+      expect(presentedSheets.length).toBeGreaterThan(0);
     });
   });
 

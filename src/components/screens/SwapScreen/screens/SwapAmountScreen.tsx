@@ -638,7 +638,18 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
             transactionFee: swapFee,
           })
         : new BigNumber(0);
-      if (xlmSpendable.lt(BASE_RESERVE)) {
+
+      // When XLM is the source token, the sourceAmount is about to leave the
+      // account in the swap. Subtract it so the gate evaluates post-swap headroom.
+      const isXlmSource =
+        sourceTokenId === "native" || sourceTokenId === NATIVE_TOKEN_CODE;
+      const projectedSpendable = isXlmSource
+        ? xlmSpendable.minus(new BigNumber(sourceAmount || "0"))
+        : xlmSpendable;
+
+      // Use lte so the exact-boundary case (spendable === BASE_RESERVE) routes
+      // to the reserve sheet — the user has zero margin after the trustline.
+      if (projectedSpendable.lte(BASE_RESERVE)) {
         analytics.track(AnalyticsEvent.SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN);
         xlmReserveBottomSheetRef.current?.present();
         return;
@@ -664,6 +675,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     balanceItems,
     swapFee,
     account,
+    sourceTokenId,
+    sourceAmount,
   ]);
 
   // Reset everything on unmount
