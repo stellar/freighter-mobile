@@ -292,6 +292,8 @@ export enum STORAGE_KEYS {
   RECENT_ADDRESSES = "recentAddresses",
   MEMO_REQUIRED_ACCOUNTS = "memoRequiredAccounts",
   VERIFIED_TOKENS_PREFIX = "verifiedTokens_",
+  TRENDING_TOKENS_PREFIX = "trendingTokens_",
+  BLOCKAID_TOKEN_SCANS_PREFIX = "blockaidTokenScans_",
   WELCOME_BANNER_SHOWN_PREFIX = "welcomeBanner_shown_",
   HAS_SEEN_BIOMETRICS_ENABLE_SCREEN = "hasSeenBiometricsEnableScreen",
   HAS_SEEN_DISCOVER_WELCOME = "hasSeenDiscoverWelcome",
