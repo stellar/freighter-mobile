@@ -66,8 +66,6 @@ import React, {
 } from "react";
 import {
   FlatList,
-  KeyboardAvoidingView,
-  Platform,
   TextInput,
   View,
   Text as RNText,
@@ -1020,7 +1018,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   };
 
   return (
-    <BaseLayout insets={{ top: false }}>
+    <BaseLayout insets={{ top: false }} useKeyboardAvoidingView>
       <View className="flex-1" testID="swap-amount-screen">
         <FlatList
           testID="swap-amount-trending-list"
@@ -1037,11 +1035,10 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           renderItem={renderTrendingItem}
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ paddingBottom: 16 }}
+          style={{ flex: 1 }}
+          scrollEnabled={false}
         />
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          className="pb-4"
-        >
+        <View className="pb-4">
           <Button
             tertiary
             onPress={handleMainButtonPress}
@@ -1051,7 +1048,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           >
             {ctaLabel}
           </Button>
-        </KeyboardAvoidingView>
+        </View>
       </View>
 
       {/* Clear errors when review is closed */}
