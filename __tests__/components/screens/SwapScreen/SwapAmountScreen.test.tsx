@@ -444,16 +444,27 @@ describe("SwapAmountScreen", () => {
   });
 
   describe("Pre-flight XLM reserve check", () => {
-    it("opens the XLM reserve sheet when destinationToken.isNew && XLM available < 0.5", async () => {
-      // Adapter: XLM available is `1000.5` in the default mockBalances. Patch
-      // useBalancesList to return an XLM balance below the 0.5 threshold.
+    beforeEach(() => {
+      jest.spyOn(analytics, "track").mockClear();
+    });
+
+    it("opens the XLM reserve sheet when destinationToken.isNew && XLM spendable < 0.5", async () => {
+      // The new check uses calculateSpendableAmount(xlmBalance, subentryCount, swapFee).
+      // swapFee mock is "100", subentryCount is 0.
+      // spendable = total - (2+0)*0.5 - 100 = total - 101.
+      //
+      // We also need total >= 100 to satisfy hasXLMForFees (which checks total >= fee)
+      // so that amountError is not set (which would disable the CTA button).
+      //
+      // total = "100.1":
+      //   hasXLMForFees: 100.1 >= 100 → true (no error)
+      //   spendable = max(0, 100.1 - 1 - 100) = max(0, -0.9) = 0 < 0.5 → gate trips
       const lowXlmBalances = mockBalances.map((b) => {
         if (b.id !== "XLM") return b;
         return {
           ...b,
-          // Source balance display still says 10 USDC; XLM is what we're
-          // checking for the trustline reserve.
-          available: new BigNumber("0.3"),
+          total: new BigNumber("100.1"),
+          available: new BigNumber("0.1"),
         };
       });
       (useBalancesList as jest.Mock).mockImplementation(() => ({
@@ -494,21 +505,22 @@ describe("SwapAmountScreen", () => {
         await Promise.resolve();
       });
 
-      // The XLM reserve sheet's present() should have been called instead
-      // of setupSwapTransaction (which sets up the Review sheet).
-      const presentedSheets =
-        // eslint-disable-next-line no-underscore-dangle
-        globalThis.__mockSheetRefs.filter(
-          (spy) => spy.present.mock.calls.length > 0,
-        );
-      expect(presentedSheets.length).toBeGreaterThan(0);
+      // Gate must have fired: swap transaction must NOT have been initiated.
       expect(mockSetupSwapTransaction).not.toHaveBeenCalled();
+      // Analytics should fire at the present() call site (Bug 2 fix), not on mount.
+      // The sheet's present() is called via xlmReserveBottomSheetRef — verify via
+      // __mockSheetRefs that at least one sheet was presented (the XLM reserve sheet).
+      // eslint-disable-next-line no-underscore-dangle
+      const presentedSheets = globalThis.__mockSheetRefs.filter(
+        (spy) => spy.present.mock.calls.length > 0,
+      );
+      expect(presentedSheets.length).toBeGreaterThan(0);
     });
 
-    it("opens Review sheet when destinationToken.isNew but XLM available >= 0.5", async () => {
-      // XLM available is the default 1000.5 — well above the 0.5 trustline
-      // reserve. The pre-flight gate should NOT fire, so setupSwapTransaction
-      // is called.
+    it("opens Review sheet when destinationToken.isNew but XLM spendable >= 0.5", async () => {
+      // XLM total is the default 1000.5.
+      // spendable = 1000.5 - (2+0)*0.5 - 100 = 899.5 — well above 0.5.
+      // The pre-flight gate should NOT fire, so setupSwapTransaction is called.
       setSwapStoreState({
         sourceAmount: "1",
         pathResult: { destinationAmount: "2" },
@@ -533,6 +545,7 @@ describe("SwapAmountScreen", () => {
         await Promise.resolve();
       });
 
+      // Gate should NOT have fired — setupSwapTransaction must have been called.
       expect(mockSetupSwapTransaction).toHaveBeenCalled();
     });
   });

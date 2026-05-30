@@ -91,10 +91,13 @@ describe("XlmReserveBottomSheet", () => {
     );
   });
 
-  it("fires SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN on mount", () => {
+  it("does NOT fire SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN on mount (tracking moved to call site)", () => {
+    // The analytics event was moved from this component's useEffect to the
+    // present() call site in SwapAmountScreen so it fires only when the user
+    // actually sees the sheet, not on initial screen mount.
     jest.spyOn(analytics, "track").mockClear();
     renderWithProviders(<XlmReserveBottomSheet publicKey={TEST_PUBLIC_KEY} />);
-    expect(analytics.track).toHaveBeenCalledWith(
+    expect(analytics.track).not.toHaveBeenCalledWith(
       AnalyticsEvent.SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN,
     );
   });
