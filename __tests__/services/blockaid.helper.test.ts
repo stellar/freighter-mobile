@@ -1,7 +1,13 @@
 import BigNumber from "bignumber.js";
 import {
+  BLOCKAID_RESULT_TYPES,
+  SecurityLevel,
+} from "services/blockaid/constants";
+import {
+  assessTokenSecurity,
   getTransactionBalanceChanges,
   isUnfundedDestinationError,
+  synthesizeScanFromLevel,
 } from "services/blockaid/helper";
 
 const CONTRACT_ADDRESS =
@@ -381,5 +387,39 @@ describe("isUnfundedDestinationError", () => {
         isContractDestination: true,
       }),
     ).toBe(false);
+  });
+});
+
+describe("synthesizeScanFromLevel", () => {
+  it("returns a Malicious result_type for SecurityLevel.MALICIOUS", () => {
+    const synthetic = synthesizeScanFromLevel(SecurityLevel.MALICIOUS);
+    expect(synthetic?.result_type).toBe(BLOCKAID_RESULT_TYPES.MALICIOUS);
+    // The synthesized object should round-trip through assessTokenSecurity
+    // back to the same SecurityLevel — that's the contract the consumers rely on.
+    expect(assessTokenSecurity(synthetic).isMalicious).toBe(true);
+    expect(assessTokenSecurity(synthetic).level).toBe(SecurityLevel.MALICIOUS);
+  });
+
+  it("returns a Warning result_type for SecurityLevel.SUSPICIOUS", () => {
+    const synthetic = synthesizeScanFromLevel(SecurityLevel.SUSPICIOUS);
+    expect(synthetic?.result_type).toBe(BLOCKAID_RESULT_TYPES.WARNING);
+    expect(assessTokenSecurity(synthetic).isSuspicious).toBe(true);
+    expect(assessTokenSecurity(synthetic).level).toBe(SecurityLevel.SUSPICIOUS);
+  });
+
+  it("returns a Benign result_type for SecurityLevel.SAFE", () => {
+    const synthetic = synthesizeScanFromLevel(SecurityLevel.SAFE);
+    expect(synthetic?.result_type).toBe(BLOCKAID_RESULT_TYPES.BENIGN);
+    expect(assessTokenSecurity(synthetic).level).toBe(SecurityLevel.SAFE);
+  });
+
+  it("returns undefined for UNABLE_TO_SCAN so consumers fall back to default path", () => {
+    expect(
+      synthesizeScanFromLevel(SecurityLevel.UNABLE_TO_SCAN),
+    ).toBeUndefined();
+  });
+
+  it("returns undefined for missing level", () => {
+    expect(synthesizeScanFromLevel(undefined)).toBeUndefined();
   });
 });

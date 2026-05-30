@@ -81,6 +81,7 @@ import {
   assessTokenSecurity,
   assessTransactionSecurity,
   extractSecurityWarnings,
+  synthesizeScanFromLevel,
 } from "services/blockaid/helper";
 
 type SwapAmountScreenProps = NativeStackScreenProps<
@@ -575,15 +576,25 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     [sourceBalance, scanResults, overriddenBlockaidResponse],
   );
 
+  // Non-held destinations have no entry in `scanResults` (that map is the held
+  // bulk-scan keyed by balance.id). Fall back to a scan synthesized from
+  // `descriptor.securityLevel` — set by `useSwapTokenLookup`'s bulk scan
+  // during discovery — so MALICIOUS / SUSPICIOUS signals route through the
+  // same warning logic as held tokens (spec §9 + §6.4).
   const destBalanceSecurityAssessment = useMemo(
     () =>
       assessTokenSecurity(
         destinationBalance
           ? scanResults[destinationBalance.id.replace(":", "-")]
-          : undefined,
+          : synthesizeScanFromLevel(destinationTokenDescriptor?.securityLevel),
         overriddenBlockaidResponse,
       ),
-    [destinationBalance, scanResults, overriddenBlockaidResponse],
+    [
+      destinationBalance,
+      destinationTokenDescriptor?.securityLevel,
+      scanResults,
+      overriddenBlockaidResponse,
+    ],
   );
 
   const showSecurityWarningForSource = useMemo(
@@ -1113,7 +1124,9 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
             destTokenScanResult={
               destinationBalance
                 ? scanResults[destinationBalance.id.replace(":", "-")]
-                : undefined
+                : synthesizeScanFromLevel(
+                    destinationTokenDescriptor?.securityLevel,
+                  )
             }
             onSecurityWarningPress={() =>
               transactionSecurityWarningBottomSheetModalRef.current?.present()

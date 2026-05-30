@@ -90,6 +90,36 @@ export const createSecurityAssessment = (
 });
 
 /**
+ * Build a synthetic Blockaid token scan result from a SecurityLevel.
+ *
+ * Used for non-held swap destinations: the descriptor carries the level from
+ * the bulk scan that ran during token discovery in `useSwapTokenLookup`, but
+ * the standard `scanResults[balance.id]` lookup returns undefined for
+ * non-held tokens (no balance to scan). This helper reconstructs a
+ * `result_type`-shaped object so existing `assessTokenSecurity` consumers
+ * see the correct severity without code-path branching.
+ *
+ * Returns undefined for UNABLE_TO_SCAN / unmapped levels so the consumer's
+ * existing "missing scanResult ⇒ UNABLE_TO_SCAN" path stays the default.
+ */
+export const synthesizeScanFromLevel = (
+  level?: SecurityLevel,
+): Blockaid.TokenScanResponse | undefined => {
+  if (!level) return undefined;
+  let resultType: string | undefined;
+  if (level === SecurityLevel.MALICIOUS) {
+    resultType = BLOCKAID_RESULT_TYPES.MALICIOUS;
+  } else if (level === SecurityLevel.SUSPICIOUS) {
+    resultType = BLOCKAID_RESULT_TYPES.WARNING;
+  } else if (level === SecurityLevel.SAFE) {
+    resultType = BLOCKAID_RESULT_TYPES.BENIGN;
+  }
+  return resultType
+    ? ({ result_type: resultType } as Blockaid.TokenScanResponse)
+    : undefined;
+};
+
+/**
  * Token Security Assessment
  *
  * Evaluates token scan results using result_type for consistent security classification.
