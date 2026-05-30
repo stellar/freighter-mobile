@@ -217,7 +217,10 @@ export const SwapTokenRow = React.memo(SwapTokenRowComponent, (prev, next) => {
   if (prev.variant === "non-held") {
     return (
       prev.record?.tokenCode === next.record?.tokenCode &&
-      prev.record?.issuer === next.record?.issuer
+      prev.record?.issuer === next.record?.issuer &&
+      // Re-render when the Blockaid scan resolves after first paint, otherwise
+      // the in-place badge stays hidden on rows that mounted before scan.
+      prev.record?.securityLevel === next.record?.securityLevel
     );
   }
 
@@ -233,6 +236,9 @@ export const SwapTokenRow = React.memo(SwapTokenRowComponent, (prev, next) => {
   return (
     prev.record?.tokenCode === next.record?.tokenCode &&
     prev.record?.issuer === next.record?.issuer &&
+    // Re-render when the Blockaid scan resolves after first paint, otherwise
+    // the in-place badge stays hidden on rows that mounted before scan.
+    prev.record?.securityLevel === next.record?.securityLevel &&
     priceEq &&
     pctEq
   );
