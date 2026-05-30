@@ -176,6 +176,10 @@ jest.mock("components/screens/SwapScreen/hooks/useSwapTransaction", () => ({
 }));
 jest.mock("hooks/useBalancesList");
 
+jest.mock("@react-navigation/elements", () => ({
+  useHeaderHeight: () => 0,
+}));
+
 // Mock useSwapPathFinding so tests can assert what destinationBalance it was
 // invoked with. The hook itself is a debounced effect; we don't care about
 // its internals here.

@@ -1,4 +1,5 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
+import { useHeaderHeight } from "@react-navigation/elements";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import BigNumber from "bignumber.js";
 import { BalanceRow } from "components/BalanceRow";
@@ -66,6 +67,8 @@ import React, {
 } from "react";
 import {
   FlatList,
+  KeyboardAvoidingView,
+  Platform,
   TextInput,
   View,
   Text as RNText,
@@ -92,6 +95,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     route.params;
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
+  const headerHeight = useHeaderHeight();
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
   const { swapFee, swapSlippage, resetToDefaults } = useSwapSettingsStore();
@@ -1018,8 +1022,18 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   };
 
   return (
-    <BaseLayout insets={{ top: false }} useKeyboardAvoidingView>
-      <View className="flex-1" testID="swap-amount-screen">
+    // Not using BaseLayout's useKeyboardAvoidingView here: it wraps content
+    // in a ScrollView, which nests our virtualized trending FlatList inside
+    // a same-orientation ScrollView and triggers RN's nested-virtualized-list
+    // warning (plus breaks windowing for long lists). We use a manual
+    // KeyboardAvoidingView with the React Navigation header offset instead.
+    <BaseLayout insets={{ top: false }}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={headerHeight}
+        style={{ flex: 1 }}
+        testID="swap-amount-screen"
+      >
         <FlatList
           testID="swap-amount-trending-list"
           data={showTrending ? trendingTokens : []}
@@ -1048,7 +1062,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
             {ctaLabel}
           </Button>
         </View>
-      </View>
+      </KeyboardAvoidingView>
 
       {/* Clear errors when review is closed */}
       <BottomSheet
