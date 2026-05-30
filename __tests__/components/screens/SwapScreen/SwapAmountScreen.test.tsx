@@ -578,7 +578,7 @@ describe("SwapAmountScreen", () => {
       const { queryAllByText, getByText } = renderWithProviders(
         <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
       );
-      expect(getByText("Trending tokens")).toBeTruthy();
+      expect(getByText("Trending Tokens")).toBeTruthy();
       // Both fixture rows render — confirm by token code.
       expect(queryAllByText("AQUA").length).toBeGreaterThan(0);
       expect(queryAllByText("yXLM").length).toBeGreaterThan(0);
@@ -640,7 +640,7 @@ describe("SwapAmountScreen", () => {
       const { queryByText } = renderWithProviders(
         <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
       );
-      expect(queryByText("Trending tokens")).toBeNull();
+      expect(queryByText("Trending Tokens")).toBeNull();
     });
 
     it("hides the trending list when trendingTokens is empty", () => {
@@ -660,7 +660,7 @@ describe("SwapAmountScreen", () => {
       const { queryByText } = renderWithProviders(
         <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
       );
-      expect(queryByText("Trending tokens")).toBeNull();
+      expect(queryByText("Trending Tokens")).toBeNull();
     });
 
     it("shows a loading spinner while trendingTokens is empty and isTrendingLoading is true", () => {

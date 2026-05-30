@@ -979,7 +979,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
 
       {(showTrending || showTrendingSpinner) && (
         <View className="mt-[24px]">
-          <Text md medium primary>
+          <Text md medium secondary>
             {t("swapScreen.trendingTokensSection")}
           </Text>
         </View>
