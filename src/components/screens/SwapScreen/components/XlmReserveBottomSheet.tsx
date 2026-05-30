@@ -23,9 +23,15 @@ export const XlmReserveBottomSheet: React.FC<XlmReserveBottomSheetProps> = ({
   bottomSheetModalRef,
 }) => {
   const { t } = useAppTranslation();
-  const { setDestinationToken } = useSwapStore();
+  const { setDestinationToken, sourceTokenId } = useSwapStore();
   const { copyToClipboard } = useClipboard();
   const { open: openInAppBrowser } = useInAppBrowser();
+
+  // Don't offer "Swap XLM" when the user is already selling XLM — flipping
+  // the destination to XLM would leave source === destination, which path-
+  // finding rejects and strands the user in a self-referential swap.
+  const canOfferSwapToXlm =
+    sourceTokenId !== "native" && sourceTokenId !== NATIVE_TOKEN_CODE;
 
   const handleSwapXlm = () => {
     setDestinationToken({
@@ -60,10 +66,16 @@ export const XlmReserveBottomSheet: React.FC<XlmReserveBottomSheetProps> = ({
       <Text md secondary>
         {t("swapScreen.xlmReserve.body")}
       </Text>
-      <Button onPress={handleSwapXlm} primary>
-        {t("swapScreen.xlmReserve.swapXlm")}
-      </Button>
-      <Button onPress={handleCopyAddress} secondary>
+      {canOfferSwapToXlm && (
+        <Button onPress={handleSwapXlm} primary>
+          {t("swapScreen.xlmReserve.swapXlm")}
+        </Button>
+      )}
+      <Button
+        onPress={handleCopyAddress}
+        primary={!canOfferSwapToXlm}
+        secondary={canOfferSwapToXlm}
+      >
         {t("swapScreen.xlmReserve.copyAddress")}
       </Button>
       <Button onPress={handleWhyXlm} tertiary>

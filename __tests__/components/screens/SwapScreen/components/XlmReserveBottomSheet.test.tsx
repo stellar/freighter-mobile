@@ -91,6 +91,19 @@ describe("XlmReserveBottomSheet", () => {
     );
   });
 
+  it("hides 'Swap to XLM' when the source token is already XLM (prevents source==destination dead-end)", () => {
+    // Force sourceTokenId to native so the guard fires.
+    useSwapStore.setState({ sourceTokenId: "native" } as any);
+    const { queryByText, getByText } = renderWithProviders(
+      <XlmReserveBottomSheet publicKey={TEST_PUBLIC_KEY} />,
+    );
+    expect(queryByText(/Swap to XLM/i)).toBeNull();
+    // The other affordances still show — "Copy wallet address" gets promoted
+    // to primary so the user has a clear next action.
+    expect(getByText(/Copy wallet address/i)).toBeTruthy();
+    expect(getByText(/Cancel/i)).toBeTruthy();
+  });
+
   it("does NOT fire SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN on mount (tracking moved to call site)", () => {
     // The analytics event was moved from this component's useEffect to the
     // present() call site in SwapAmountScreen so it fires only when the user
