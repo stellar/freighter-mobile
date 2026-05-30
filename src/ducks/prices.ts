@@ -106,15 +106,29 @@ export const usePricesStore = create<PricesState>((set, get) => ({
       // Avoid duplicate requests for tokens already loaded
       const existing = get().prices;
       const missing = tokens.filter((t) => !existing[t]);
+      // TEMP DEBUG: trace what we ask for and what survives the "missing" gate.
+      // eslint-disable-next-line no-console
+      console.log("[fetchPricesForTokenIds] called", {
+        requested: tokens,
+        missing,
+        existingKeys: Object.keys(existing),
+      });
       if (missing.length === 0) return;
 
       const response = await fetchTokenPrices({ tokens: missing });
+      // eslint-disable-next-line no-console
+      console.log("[fetchPricesForTokenIds] merging response", {
+        responseKeys: Object.keys(response),
+        sample: Object.entries(response).slice(0, 3),
+      });
       set({
         prices: { ...get().prices, ...response },
         lastUpdated: Date.now(),
       });
     } catch (error) {
-      // Silently keep existing prices on error
+      // TEMP DEBUG: log silenced errors.
+      // eslint-disable-next-line no-console
+      console.log("[fetchPricesForTokenIds] error (swallowed)", error);
       set({ lastUpdated: Date.now() });
     }
   },
