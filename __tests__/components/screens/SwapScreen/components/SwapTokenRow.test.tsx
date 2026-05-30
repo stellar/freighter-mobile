@@ -98,8 +98,8 @@ describe("SwapTokenRow", () => {
     expect(getByText(/-1\.2/)).toBeTruthy();
   });
 
-  it("hides the 24h% chip when percentagePriceChange24h is undefined (fallback case)", () => {
-    const { queryByText, getByText } = render(
+  it("renders '--' for 24h% when percentagePriceChange24h is undefined (same as Home balances)", () => {
+    const { getByText } = render(
       <SwapTokenRow
         variant="trending"
         record={mockSearchRecord}
@@ -109,8 +109,7 @@ describe("SwapTokenRow", () => {
       />,
     );
     expect(getByText(/0\.05/)).toBeTruthy();
-    // No 24h % text rendered
-    expect(queryByText(/%/)).toBeNull();
+    expect(getByText("--")).toBeTruthy();
   });
 
   it("calls onPress when the row is tapped", () => {
@@ -130,7 +129,7 @@ describe("SwapTokenRow", () => {
 
   it("re-renders when priceInfo changes from BigNumber(0) to undefined (memo comparator regression)", () => {
     const onPress = jest.fn();
-    const { rerender, queryByText, getByText } = render(
+    const { rerender, queryByText, getByText, getAllByText } = render(
       <SwapTokenRow
         variant="trending"
         record={mockSearchRecord}
@@ -154,8 +153,9 @@ describe("SwapTokenRow", () => {
     );
 
     // After re-render: currentPrice is undefined → component should render "--"
-    // and the "$0" text should no longer be present.
+    // and the "$0" text should no longer be present. Both the price and the
+    // 24h% slots render "--" when their respective values are missing.
     expect(queryByText(/\$0/)).toBeNull();
-    expect(getByText("--")).toBeTruthy();
+    expect(getAllByText("--").length).toBeGreaterThanOrEqual(1);
   });
 });

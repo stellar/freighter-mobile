@@ -149,19 +149,17 @@ const SwapTokenRowComponent: React.FC<SwapTokenRowProps> = ({
               --
             </Text>
           )}
-          {pct !== undefined && (
-            <Text
-              sm
-              medium
-              color={
-                pct.gte(POSITIVE_PRICE_CHANGE_THRESHOLD)
-                  ? themeColors.status.success
-                  : themeColors.text.secondary
-              }
-            >
-              {formatPercentageAmount(pct)}
-            </Text>
-          )}
+          <Text
+            sm
+            medium
+            color={
+              pct?.gte(POSITIVE_PRICE_CHANGE_THRESHOLD)
+                ? themeColors.status.success
+                : themeColors.text.secondary
+            }
+          >
+            {formatPercentageAmount(pct)}
+          </Text>
         </View>
       );
     }
