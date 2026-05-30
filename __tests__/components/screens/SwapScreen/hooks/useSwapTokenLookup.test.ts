@@ -389,15 +389,15 @@ describe("useSwapTokenLookup — idle mode", () => {
       await settleAsync();
     });
 
-    // trendingTokens must include ALL three classic records (unverified included)
+    // Per design doc §5.1: BOTH trendingTokens and popularTokens are the
+    // intersection of stellar.expert top-50 AND the verified-tokens list.
+    // Only USDC is verified in this mock, so both arrays should contain only
+    // USDC (AQUA + FOO are unverified and dropped).
     const trendingCodes = result.current.trendingTokens.map((t) => t.tokenCode);
-    expect(trendingCodes).toContain("AQUA");
     expect(trendingCodes).toContain("USDC");
-    expect(trendingCodes).toContain("FOO");
+    expect(trendingCodes).not.toContain("AQUA");
+    expect(trendingCodes).not.toContain("FOO");
 
-    // popularTokens must be the verified subset only (no held tokens to
-    // exclude here, so all three verified tokens would appear — but only
-    // USDC is verified in this mock).
     const popularCodes = result.current.popularTokens.map((t) => t.tokenCode);
     expect(popularCodes).toContain("USDC");
     expect(popularCodes).not.toContain("AQUA");

@@ -30,7 +30,12 @@ export interface SwapTokenLookupResult {
   yourTokens: Array<PricedBalance & { id: string }>;
   /** Idle: top stellar.expert assets sorted by volume7d, EXCLUDING held tokens. Active: []. */
   popularTokens: FormattedSearchTokenRecord[];
-  /** Same as popularTokens but INCLUDES held tokens too. Consumed by SwapAmountScreen's Trending list. */
+  /**
+   * Same verified intersection as popularTokens, but INCLUDING held tokens.
+   * Consumed by SwapAmountScreen's Trending list — seeing held tokens'
+   * live price + 24h % there is useful, since the screen has no separate
+   * "Your tokens" section to visually duplicate them with.
+   */
   trendingTokens: FormattedSearchTokenRecord[];
   /** Active: single flat array — held > verified > stellar.expert remainder. Idle: []. */
   searchResults: FormattedSearchTokenRecord[];
@@ -141,10 +146,11 @@ export const useSwapTokenLookup = ({
   balanceItemsRef.current = balanceItems;
 
   const [searchTerm, setSearchTerm] = useState<string>("");
+  // §5.1: trendingTokens = INTERSECTION of stellar.expert top-50 AND the
+  // runtime verified-tokens list (held-INCLUSIVE). popularTokens below
+  // excludes held tokens for the picker; the SwapAmountScreen Trending list
+  // consumes this array as-is.
   const [trendingTokens, setTrendingTokens] = useState<
-    FormattedSearchTokenRecord[]
-  >([]);
-  const [verifiedTrendingTokens, setVerifiedTrendingTokens] = useState<
     FormattedSearchTokenRecord[]
   >([]);
   const [searchResults, setSearchResults] = useState<
@@ -255,7 +261,6 @@ export const useSwapTokenLookup = ({
         if (!response) {
           setStellarExpertDown(true);
           setTrendingTokens([]);
-          setVerifiedTrendingTokens([]);
           return;
         }
 
@@ -292,10 +297,10 @@ export const useSwapTokenLookup = ({
         const enhanced = await enhanceWithSecurityInfo(deduped, signal);
         if (cancelled || signal.aborted) return;
 
-        // §5.1: popularTokens must be the intersection of stellar.expert top-50
-        // AND the runtime verified-tokens list. Split here so trendingTokens
-        // keeps the full classic set (verified + unverified) while
-        // verifiedTrendingTokens exposes only the verified subset.
+        // §5.1: both popularTokens (picker) and trendingTokens (SwapAmountScreen
+        // list) are the intersection of stellar.expert top-50 AND the verified
+        // tokens list. The only difference is held-token exclusion — applied to
+        // popularTokens below. Drop unverified records here.
         const { verified } = await splitVerifiedTokens({
           tokens: enhanced,
           network,
@@ -303,8 +308,7 @@ export const useSwapTokenLookup = ({
         if (cancelled || signal.aborted) return;
 
         setStellarExpertDown(false);
-        setTrendingTokens(enhanced);
-        setVerifiedTrendingTokens(verified);
+        setTrendingTokens(verified);
       } finally {
         if (!cancelled) setIsTrendingLoading(false);
       }
@@ -477,15 +481,14 @@ export const useSwapTokenLookup = ({
 
   // Idle outputs
   const yourTokens = balanceItems;
-  // §5.1: popularTokens = INTERSECTION of stellar.expert top-50 AND
-  // verified-tokens list, EXCLUDING held tokens. verifiedTrendingTokens
-  // already holds the verified subset; we filter out held tokens here.
+  // §5.1: popularTokens is the same verified intersection as trendingTokens,
+  // additionally EXCLUDING held tokens for the picker.
   const popularTokens = useMemo(
     () =>
-      verifiedTrendingTokens.filter(
+      trendingTokens.filter(
         (t) => !hasExistingTrustline(t.tokenCode, t.issuer),
       ),
-    [verifiedTrendingTokens, hasExistingTrustline],
+    [trendingTokens, hasExistingTrustline],
   );
 
   return {
