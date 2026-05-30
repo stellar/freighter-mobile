@@ -378,6 +378,15 @@ export const fetchTokenPrices = async ({
   } catch (e) {
     // eslint-disable-next-line no-console
     console.log("[fetchTokenPrices] POST failed", e);
+    if (e instanceof AxiosError) {
+      // eslint-disable-next-line no-console
+      console.log("[fetchTokenPrices] failure detail", {
+        status: e.response?.status,
+        body: e.response?.data,
+        sentTokens: filteredTokens,
+        sentCount: filteredTokens.length,
+      });
+    }
     throw e;
   }
 
