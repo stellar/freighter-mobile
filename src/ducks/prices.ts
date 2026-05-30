@@ -75,8 +75,12 @@ export const usePricesStore = create<PricesState>((set, get) => ({
       // Fetch prices for these tokens
       const response = await fetchTokenPrices({ tokens });
 
+      // Merge with existing prices instead of replacing — otherwise prices
+      // populated by fetchPricesForTokenIds (e.g., for the Trending tokens
+      // list on SwapAmountScreen, which surfaces non-held tokens) get wiped
+      // every time balances refresh.
       set({
-        prices: response,
+        prices: { ...get().prices, ...response },
         isLoading: false,
         lastUpdated: Date.now(),
       });

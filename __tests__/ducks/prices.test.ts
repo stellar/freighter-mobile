@@ -162,6 +162,32 @@ describe("prices duck", () => {
       expect(typeof result.current.lastUpdated).toBe("number");
     });
 
+    it("should merge with existing prices (preserves non-balance entries)", async () => {
+      const { result } = renderHook(() => usePricesStore());
+
+      // Pre-seed the store with a price for a non-balance token (e.g., a
+      // trending token previously loaded via fetchPricesForTokenIds).
+      act(() => {
+        usePricesStore.setState({
+          prices: {
+            "AQUA:GBN...": {
+              currentPrice: new BigNumber("0.003"),
+              percentagePriceChange24h: new BigNumber("1.2"),
+            },
+          },
+        });
+      });
+
+      // Now fetch balance prices — these are different tokens.
+      await act(async () => {
+        await result.current.fetchPricesForBalances(mockParams);
+      });
+
+      // Both pre-seeded and freshly-fetched prices should be present.
+      expect(result.current.prices["AQUA:GBN..."]).toBeDefined();
+      expect(result.current.prices.XLM).toBeDefined();
+    });
+
     it("should handle empty token list", async () => {
       mockGetTokenIdentifiersFromBalances.mockReturnValueOnce([]);
 
