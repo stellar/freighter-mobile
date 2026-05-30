@@ -720,8 +720,10 @@
       "stellarNative": "Stellar Native"
     },
     "trustlineInfo": {
-      "title": "What is a trustline?",
-      "body": "Adding a trustline locks 0.5 XLM of your account's reserve. This is a one-time cost, refundable when you remove the trustline.",
+      "title": "This will add a trustline to {{tokenCode}}",
+      "bodyPrefix": "To hold {{tokenCode}} in your wallet, Stellar requires a trustline. ",
+      "bodyEmphasis": "0.5 XLM will be reserved",
+      "bodySuffix": " from your balance. You can get it back by removing the trustline after your {{tokenCode}} balance is zero.",
       "confirm": "Got it"
     },
     "trustlineBanner": "This will add a trustline to {{tokenCode}}",

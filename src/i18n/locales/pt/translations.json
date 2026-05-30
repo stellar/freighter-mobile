@@ -684,8 +684,10 @@
       "stellarNative": "Stellar Nativo"
     },
     "trustlineInfo": {
-      "title": "O que é uma trustline?",
-      "body": "Adicionar uma trustline reserva 0,5 XLM do saldo da sua conta. Este é um custo único, reembolsável ao remover a trustline.",
+      "title": "Isto adicionará uma trustline para {{tokenCode}}",
+      "bodyPrefix": "Para manter {{tokenCode}} na sua carteira, a Stellar exige uma trustline. ",
+      "bodyEmphasis": "0,5 XLM serão reservados",
+      "bodySuffix": " do seu saldo. Você poderá recuperá-los removendo a trustline quando o saldo de {{tokenCode}} for zero.",
       "confirm": "Entendi"
     },
     "trustlineBanner": "Isso adicionará uma trustline para {{tokenCode}}",
