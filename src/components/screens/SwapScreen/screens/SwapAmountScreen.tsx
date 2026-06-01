@@ -1062,15 +1062,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         </View>
       </View>
 
-      {/* Swap-direction toggle — Figma node 11444-44174. 40px pill
-          (12px padding around a 16px chevron-down), no border. The
-          wrapper's my-[-14px] subtracts 28px total from the 40px
-          button, so it visually occupies 12px between the cards —
-          keeping the same gap established for the 28px version while
-          matching the larger Figma button. pointerEvents="box-none"
-          lets touches pass to the cards except where the button
-          itself sits. Disabled when destination isn't held since you
-          can't flip a non-held token into the source slot. */}
+      {/* Swaps source ↔ destination. Disabled when destination
+          isn't held — there's no balance to make it the source. */}
       <View className="items-center my-[-14px] z-10" pointerEvents="box-none">
         <TouchableOpacity
           testID="swap-direction-toggle"
