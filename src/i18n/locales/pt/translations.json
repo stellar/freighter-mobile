@@ -694,11 +694,13 @@
     },
     "trustlineBanner": "Isso adicionará uma trustline para {{tokenCode}}",
     "xlmReserve": {
-      "title": "Mais XLM necessário",
-      "body": "Uma nova trustline reserva 0,5 XLM do saldo da sua conta — um bloqueio único, não uma taxa por troca. Você não tem XLM suficiente agora.",
-      "swapXlm": "Trocar para XLM",
-      "copyAddress": "Copiar endereço da carteira para depósito de XLM",
-      "whyDoINeedXlm": "Por que preciso de XLM?"
+      "title": "Você precisa de XLM para criar uma trustline",
+      "bodyPrefix": "Para receber {{tokenCode}}, sua carteira precisa de uma trustline na Stellar. ",
+      "whyDoINeedXlm": "Por que preciso de XLM?",
+      "infoCardTitle": "0,5 XLM necessário",
+      "infoCardBody": "A Stellar exige essa reserva para adicionar {{tokenCode}}. Você pode recuperá-la quando o saldo de {{tokenCode}} for zero.",
+      "swapXlm": "Trocar por 0,5 XLM",
+      "copyAddress": "Copiar meu endereço da carteira"
     }
   },
   "swapProcessingScreen": {

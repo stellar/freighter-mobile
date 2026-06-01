@@ -26,22 +26,42 @@ jest.mock("hooks/useInAppBrowser", () => ({
 const TEST_PUBLIC_KEY =
   "GAZAJVMMEWVIQRP6RXQYTVAITE7SC2CBHALQTVW2N4DYBYPWZUH5VJGG";
 
-describe("XlmReserveBottomSheet", () => {
+describe("XlmReserveBottomSheet (Figma 11821-35684)", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Reset store before each test so prior setState calls don't leak.
+    useSwapStore.setState({
+      sourceTokenId:
+        "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+    } as any);
   });
 
-  it("renders all four affordances", () => {
-    const { getByText } = renderWithProviders(
-      <XlmReserveBottomSheet publicKey={TEST_PUBLIC_KEY} />,
+  it("renders the redesigned content: title, info card, primary CTA, and copy-address minimal CTA", () => {
+    const { getByText, getByTestId } = renderWithProviders(
+      <XlmReserveBottomSheet publicKey={TEST_PUBLIC_KEY} tokenCode="AQUA" />,
     );
-    expect(getByText(/Swap to XLM/i)).toBeTruthy();
-    expect(getByText(/Copy wallet address/i)).toBeTruthy();
-    expect(getByText(/Why do I need XLM\?/i)).toBeTruthy();
-    expect(getByText(/Cancel/i)).toBeTruthy();
+    expect(getByText(/You need XLM to create a trustline/i)).toBeTruthy();
+    expect(getByText(/0\.5 XLM required/i)).toBeTruthy();
+    expect(getByText(/Swap for 0\.5 XLM/i)).toBeTruthy();
+    expect(getByText(/Copy my wallet address/i)).toBeTruthy();
+    // Inline "Why do I need XLM?" link
+    expect(getByTestId("xlm-reserve-why-link")).toBeTruthy();
+    // Top-right circular X close
+    expect(getByTestId("xlm-reserve-close")).toBeTruthy();
   });
 
-  it("'Swap to XLM' dispatches XLM descriptor and dismisses", () => {
+  it("interpolates the destination tokenCode into the body and info-card body", () => {
+    const { getByText } = renderWithProviders(
+      <XlmReserveBottomSheet publicKey={TEST_PUBLIC_KEY} tokenCode="AQUA" />,
+    );
+    // Body prefix: "To receive AQUA, your wallet needs a trustline on Stellar."
+    expect(getByText(/To receive AQUA/i)).toBeTruthy();
+    // Info card body: "Stellar requires this reserve to add AQUA. You can get
+    // it back once your AQUA balance is zero."
+    expect(getByText(/to add AQUA/i)).toBeTruthy();
+  });
+
+  it("'Swap for 0.5 XLM' dispatches XLM descriptor and dismisses", () => {
     const setDestSpy = jest.fn();
     useSwapStore.setState({ setDestinationToken: setDestSpy } as any);
 
@@ -55,10 +75,11 @@ describe("XlmReserveBottomSheet", () => {
     const { getByText } = renderWithProviders(
       <XlmReserveBottomSheet
         publicKey={TEST_PUBLIC_KEY}
+        tokenCode="AQUA"
         bottomSheetModalRef={ref}
       />,
     );
-    fireEvent.press(getByText(/Swap to XLM/i));
+    fireEvent.press(getByText(/Swap for 0\.5 XLM/i));
     expect(setDestSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         tokenCode: "XLM",
@@ -70,44 +91,56 @@ describe("XlmReserveBottomSheet", () => {
     expect(dismissMock).toHaveBeenCalled();
   });
 
-  it("'Copy wallet address' calls copyToClipboard with the publicKey", () => {
+  it("'Copy my wallet address' calls copyToClipboard with the publicKey", () => {
     const { getByText } = renderWithProviders(
       <XlmReserveBottomSheet publicKey={TEST_PUBLIC_KEY} />,
     );
-    fireEvent.press(getByText(/Copy wallet address/i));
+    fireEvent.press(getByText(/Copy my wallet address/i));
     expect(mockCopyToClipboard).toHaveBeenCalledWith(
       TEST_PUBLIC_KEY,
       expect.any(Object),
     );
   });
 
-  it("'Why do I need XLM?' opens the help article URL in the in-app browser", () => {
-    const { getByText } = renderWithProviders(
+  it("inline 'Why do I need XLM?' link opens the help article in the in-app browser", () => {
+    const { getByTestId } = renderWithProviders(
       <XlmReserveBottomSheet publicKey={TEST_PUBLIC_KEY} />,
     );
-    fireEvent.press(getByText(/Why do I need XLM\?/i));
+    fireEvent.press(getByTestId("xlm-reserve-why-link"));
     expect(mockOpenInAppBrowser).toHaveBeenCalledWith(
       "https://help.freighter.app/article/xjlva9dxov-how-much-xlm-do-i-need-in-my-wallet",
     );
   });
 
-  it("hides 'Swap to XLM' when the source token is already XLM (prevents source==destination dead-end)", () => {
-    // Force sourceTokenId to native so the guard fires.
+  it("top-right X close button dismisses the sheet", () => {
+    const dismissMock = jest.fn();
+    const ref = React.createRef<BottomSheetModal>();
+    Object.defineProperty(ref, "current", {
+      value: { dismiss: dismissMock },
+      writable: true,
+    });
+
+    const { getByTestId } = renderWithProviders(
+      <XlmReserveBottomSheet
+        publicKey={TEST_PUBLIC_KEY}
+        bottomSheetModalRef={ref}
+      />,
+    );
+    fireEvent.press(getByTestId("xlm-reserve-close"));
+    expect(dismissMock).toHaveBeenCalled();
+  });
+
+  it("hides 'Swap for 0.5 XLM' when the source token is already XLM", () => {
     useSwapStore.setState({ sourceTokenId: "native" } as any);
     const { queryByText, getByText } = renderWithProviders(
       <XlmReserveBottomSheet publicKey={TEST_PUBLIC_KEY} />,
     );
-    expect(queryByText(/Swap to XLM/i)).toBeNull();
-    // The other affordances still show — "Copy wallet address" gets promoted
-    // to primary so the user has a clear next action.
-    expect(getByText(/Copy wallet address/i)).toBeTruthy();
-    expect(getByText(/Cancel/i)).toBeTruthy();
+    expect(queryByText(/Swap for 0\.5 XLM/i)).toBeNull();
+    // Copy-address remains as the only remaining CTA.
+    expect(getByText(/Copy my wallet address/i)).toBeTruthy();
   });
 
-  it("does NOT fire SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN on mount (tracking moved to call site)", () => {
-    // The analytics event was moved from this component's useEffect to the
-    // present() call site in SwapAmountScreen so it fires only when the user
-    // actually sees the sheet, not on initial screen mount.
+  it("does NOT fire SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN on mount (tracking lives at call site)", () => {
     jest.spyOn(analytics, "track").mockClear();
     renderWithProviders(<XlmReserveBottomSheet publicKey={TEST_PUBLIC_KEY} />);
     expect(analytics.track).not.toHaveBeenCalledWith(

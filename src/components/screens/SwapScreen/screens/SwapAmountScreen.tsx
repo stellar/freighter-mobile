@@ -1318,6 +1318,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         customContent={
           <XlmReserveBottomSheet
             publicKey={account?.publicKey ?? ""}
+            tokenCode={destinationTokenDescriptor?.tokenCode}
             bottomSheetModalRef={xlmReserveBottomSheetRef}
           />
         }
