@@ -38,8 +38,16 @@ export const descriptorFromBalance = (
   const isNative = id === NATIVE_TOKEN_CODE || id === "native";
 
   if (isNative) {
+    // Use NATIVE_TOKEN_CODE ("XLM") not "native" so the descriptor id
+    // matches the production balance store id (services/backend.ts
+    // converts Horizon's "native" → "XLM" before storage). Lookups
+    // like `balanceItems.find(b => b.id === descriptor.id)` then
+    // succeed for XLM-as-destination — without this, the swap-direction
+    // toggle stays disabled and the balance line below the Receive
+    // pill stays empty when XLM is selected. Also matches design doc
+    // §6.1 ("id: string; // 'CODE:ISSUER' or 'XLM'").
     return {
-      id: "native",
+      id: NATIVE_TOKEN_CODE,
       tokenCode: NATIVE_TOKEN_CODE,
       issuer: undefined,
       decimals: DEFAULT_DECIMALS,
@@ -87,8 +95,11 @@ export const descriptorFromSearchRecord = (
   record: FormattedSearchTokenRecord,
 ): DestinationTokenDescriptor => {
   if (record.isNative) {
+    // See descriptorFromBalance's native branch for the rationale —
+    // the canonical native id is NATIVE_TOKEN_CODE ("XLM"), matching
+    // both the production balance store and design doc §6.1.
     return {
-      id: "native",
+      id: NATIVE_TOKEN_CODE,
       tokenCode: NATIVE_TOKEN_CODE,
       issuer: undefined,
       decimals: DEFAULT_DECIMALS,

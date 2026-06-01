@@ -9,7 +9,11 @@ import {
 } from "services/blockaid/constants";
 
 describe("descriptorFromBalance", () => {
-  it("projects a native XLM balance", () => {
+  it("projects a native XLM balance (canonical id is 'XLM', not 'native')", () => {
+    // Accepts a balance with the legacy id="native" (from Horizon raw
+    // response) — the helper canonicalises both forms to NATIVE_TOKEN_CODE
+    // so the descriptor id matches the production balance store, which
+    // converts native → XLM in services/backend.ts before storage.
     const balance = {
       id: "native",
       tokenCode: "XLM",
@@ -18,13 +22,24 @@ describe("descriptorFromBalance", () => {
     } as any;
 
     expect(descriptorFromBalance(balance)).toEqual({
-      id: "native",
+      id: "XLM",
       tokenCode: "XLM",
       issuer: undefined,
       decimals: 7,
       tokenType: TokenTypeWithCustomToken.NATIVE,
       isNew: false,
     });
+  });
+
+  it("projects a native XLM balance when id is already 'XLM' (production form)", () => {
+    const balance = {
+      id: "XLM",
+      tokenCode: "XLM",
+      token: { type: "native", code: "XLM" },
+      decimals: 7,
+    } as any;
+
+    expect(descriptorFromBalance(balance).id).toBe("XLM");
   });
 
   it("projects a classic balance", () => {

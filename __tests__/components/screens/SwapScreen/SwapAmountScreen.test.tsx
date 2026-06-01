@@ -969,6 +969,45 @@ describe("SwapAmountScreen", () => {
       expect(navigation.navigate).toHaveBeenCalled();
     });
 
+    it("swap-direction toggle ENABLED when destination is XLM (regression: descriptor.id 'native' vs balance.id 'XLM')", () => {
+      // Pre-fix, descriptorFromBalance/descriptorFromSearchRecord emitted
+      // id: "native" for XLM. Production balance.id for XLM is "XLM"
+      // (services/backend.ts:298 converts native→XLM). The lookup
+      // balanceItems.find(b => b.id === descriptor.id) returned undefined
+      // → destinationBalance undefined → canSwapDirection false → toggle
+      // stayed disabled and the Receive balance line was hidden.
+      const setSourceTokenSpy = jest.fn();
+      const setDestinationTokenSpy = jest.fn();
+      setSwapStoreState({
+        // Source: held classic token (USDC). Destination: XLM (held native).
+        sourceTokenId:
+          "USDC:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+        sourceTokenSymbol: "USDC",
+        destinationToken: {
+          id: "XLM",
+          tokenCode: "XLM",
+          issuer: undefined,
+          decimals: 7,
+          tokenType: "native",
+          isNew: false,
+        },
+        setSourceToken: setSourceTokenSpy,
+        setDestinationToken: setDestinationTokenSpy,
+      } as Partial<SwapStoreState>);
+
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+      setSourceTokenSpy.mockClear();
+      setDestinationTokenSpy.mockClear();
+
+      fireEvent.press(getByTestId("swap-direction-toggle"));
+
+      // Toggle should fire both setters since XLM is held.
+      expect(setSourceTokenSpy).toHaveBeenCalledWith("XLM", "XLM");
+      expect(setDestinationTokenSpy).toHaveBeenCalledTimes(1);
+    });
+
     it("swap-direction toggle bails out when destination is non-held", () => {
       // AQUA is not in mockBalances → destinationBalance is undefined → the
       // handler should early-return without calling either setter.

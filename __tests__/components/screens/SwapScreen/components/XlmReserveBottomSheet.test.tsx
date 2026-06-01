@@ -62,7 +62,7 @@ describe("XlmReserveBottomSheet", () => {
     expect(setDestSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         tokenCode: "XLM",
-        id: "native",
+        id: "XLM",
         isNew: false,
         tokenType: TokenTypeWithCustomToken.NATIVE,
       }),

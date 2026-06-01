@@ -35,7 +35,7 @@ export const XlmReserveBottomSheet: React.FC<XlmReserveBottomSheetProps> = ({
 
   const handleSwapXlm = () => {
     setDestinationToken({
-      id: "native",
+      id: NATIVE_TOKEN_CODE,
       tokenCode: NATIVE_TOKEN_CODE,
       decimals: 7,
       tokenType: TokenTypeWithCustomToken.NATIVE,
