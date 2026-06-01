@@ -1120,22 +1120,22 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       <View className="items-center mt-[24px]">
         <View className="flex-row gap-[8px] w-full">
           <View className="flex-1">
-            <Button secondary sm onPress={() => handlePercentagePress(25)}>
+            <Button secondary lg onPress={() => handlePercentagePress(25)}>
               {t("transactionAmountScreen.percentageButtons.twentyFive")}
             </Button>
           </View>
           <View className="flex-1">
-            <Button secondary sm onPress={() => handlePercentagePress(50)}>
+            <Button secondary lg onPress={() => handlePercentagePress(50)}>
               {t("transactionAmountScreen.percentageButtons.fifty")}
             </Button>
           </View>
           <View className="flex-1">
-            <Button secondary sm onPress={() => handlePercentagePress(75)}>
+            <Button secondary lg onPress={() => handlePercentagePress(75)}>
               {t("transactionAmountScreen.percentageButtons.seventyFive")}
             </Button>
           </View>
           <View className="flex-1">
-            <Button secondary sm onPress={() => handlePercentagePress(100)}>
+            <Button secondary lg onPress={() => handlePercentagePress(100)}>
               {t("transactionAmountScreen.percentageButtons.max")}
             </Button>
           </View>
