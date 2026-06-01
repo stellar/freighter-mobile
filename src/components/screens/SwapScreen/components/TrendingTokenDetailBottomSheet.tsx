@@ -194,7 +194,7 @@ export const TrendingTokenDetailBottomSheet: React.FC<
       )}
 
       {/* Buy button */}
-      <Button onPress={handleBuy} primary>
+      <Button onPress={handleBuy} tertiary>
         {t("swapScreen.trendingDetail.buy", { tokenCode: record.tokenCode })}
       </Button>
     </View>
