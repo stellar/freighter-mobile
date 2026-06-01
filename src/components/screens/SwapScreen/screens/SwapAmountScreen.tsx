@@ -935,11 +935,20 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const receiveSmallText = showFiatAmount
     ? `${destinationAmountToken} ${destinationTokenLabel}`.trim()
     : destinationFiatString;
+  // formatBalanceAmount returns "<amount> <code>" already — don't append the
+  // code a second time (caused the "123.45 USDC USDC" double-code bug).
   const sourceBalanceRight = sourceBalance
-    ? `${formatBalanceAmount(sourceBalance, sourceBalance.tokenCode ?? sourceTokenSymbol, spendableAmount ?? undefined)} ${sourceTokenSymbol}`
+    ? formatBalanceAmount(
+        sourceBalance,
+        sourceBalance.tokenCode ?? sourceTokenSymbol,
+        spendableAmount ?? undefined,
+      )
     : "";
   const destinationBalanceRight = destinationBalance
-    ? `${formatBalanceAmount(destinationBalance, destinationBalance.tokenCode ?? destinationTokenLabel)} ${destinationTokenLabel}`
+    ? formatBalanceAmount(
+        destinationBalance,
+        destinationBalance.tokenCode ?? destinationTokenLabel,
+      )
     : "";
 
   // Inline pill: TokenIcon + code + chevron-down, tappable to open picker.
