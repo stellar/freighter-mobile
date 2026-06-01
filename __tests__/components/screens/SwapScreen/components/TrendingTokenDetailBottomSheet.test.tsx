@@ -155,6 +155,58 @@ describe("TrendingTokenDetailBottomSheet", () => {
     );
   });
 
+  it("Selection-swap rule: clears source when Buy picks a token that's already the source", () => {
+    // Source is AQUA; user opens the Trending detail sheet for AQUA and
+    // taps Buy. Source must clear so we don't end up with AQUA on both
+    // sides (parity with the SwapToScreen selection-swap rule).
+    const setDestSpy = jest.fn();
+    const setSourceSpy = jest.fn();
+    useSwapStore.setState({
+      setDestinationToken: setDestSpy,
+      setSourceToken: setSourceSpy,
+      // Match mockRecord.issuer exactly so the constructed descriptor.id
+      // collides with sourceTokenId and the selection-swap rule fires.
+      sourceTokenId: `${mockRecord.tokenCode}:${mockRecord.issuer}`,
+    } as any);
+
+    const { getByText } = renderWithProviders(
+      <TrendingTokenDetailBottomSheet
+        record={mockRecord}
+        priceInfo={{}}
+        balanceItems={[]}
+      />,
+    );
+    fireEvent.press(getByText(/Buy AQUA/i));
+
+    expect(setSourceSpy).toHaveBeenCalledWith("", "");
+    expect(setDestSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ tokenCode: "AQUA" }),
+    );
+  });
+
+  it("Selection-swap rule: does NOT clear source when Buy picks a different token", () => {
+    const setDestSpy = jest.fn();
+    const setSourceSpy = jest.fn();
+    useSwapStore.setState({
+      setDestinationToken: setDestSpy,
+      setSourceToken: setSourceSpy,
+      // Source is XLM; user buys AQUA — no collision, source stays.
+      sourceTokenId: "XLM",
+    } as any);
+
+    const { getByText } = renderWithProviders(
+      <TrendingTokenDetailBottomSheet
+        record={mockRecord}
+        priceInfo={{}}
+        balanceItems={[]}
+      />,
+    );
+    fireEvent.press(getByText(/Buy AQUA/i));
+
+    expect(setSourceSpy).not.toHaveBeenCalled();
+    expect(setDestSpy).toHaveBeenCalled();
+  });
+
   describe("Blockaid warning banners", () => {
     it("renders the malicious banner when record.securityLevel === MALICIOUS", () => {
       const { getByTestId } = renderWithProviders(

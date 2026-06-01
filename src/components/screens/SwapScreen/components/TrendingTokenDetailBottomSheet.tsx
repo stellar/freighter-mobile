@@ -48,7 +48,7 @@ export const TrendingTokenDetailBottomSheet: React.FC<
 > = ({ record, priceInfo, balanceItems, bottomSheetModalRef }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
-  const { setDestinationToken } = useSwapStore();
+  const { setDestinationToken, setSourceToken, sourceTokenId } = useSwapStore();
 
   const token: NonNativeToken = {
     type: record.tokenType ?? TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
@@ -74,6 +74,12 @@ export const TrendingTokenDetailBottomSheet: React.FC<
       isNew: descriptor.isNew,
       source: "trending",
     });
+    // Selection-swap rule (spec §12.4 / SwapToScreen parity): if the new
+    // destination equals the current source, clear source so the user
+    // doesn't end up with the same token on both sides.
+    if (sourceTokenId && sourceTokenId === descriptor.id) {
+      setSourceToken("", "");
+    }
     setDestinationToken(descriptor);
     bottomSheetModalRef?.current?.dismiss();
   };
