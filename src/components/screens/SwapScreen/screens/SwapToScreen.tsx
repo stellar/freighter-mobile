@@ -9,6 +9,7 @@ import {
   recordTokenId,
 } from "components/screens/SwapScreen/helpers";
 import { useSwapTokenLookup } from "components/screens/SwapScreen/hooks/useSwapTokenLookup";
+import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
@@ -24,6 +25,7 @@ import { useSwapStore } from "ducks/swap";
 import { isContractId } from "helpers/soroban";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
+import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React, { useMemo } from "react";
 import { SectionList, View } from "react-native";
@@ -39,6 +41,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
   route,
 }) => {
   const { t } = useAppTranslation();
+  const { themeColors } = useColors();
   const { selectionType } = route.params;
   const {
     setSourceToken,
@@ -231,6 +234,12 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
           placeholder={t("swapScreen.searchPlaceholder")}
           value={searchTerm}
           onChangeText={handleSearch}
+          fieldSize="lg"
+          autoCapitalize="none"
+          autoCorrect={false}
+          leftElement={
+            <Icon.SearchMd size={16} color={themeColors.foreground.primary} />
+          }
         />
       </View>
 
