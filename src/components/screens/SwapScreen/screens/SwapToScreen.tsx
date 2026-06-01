@@ -253,6 +253,10 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
         <SectionList
           sections={sections}
           keyExtractor={getItemKey}
+          // Default sticky headers don't match the design — the "Your tokens"
+          // and "Popular tokens" titles should scroll with the rows above
+          // and below them.
+          stickySectionHeadersEnabled={false}
           contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8 }}
           renderSectionHeader={({ section }) => (
             <View className="py-3">
