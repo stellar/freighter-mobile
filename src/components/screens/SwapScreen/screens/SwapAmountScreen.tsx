@@ -1004,10 +1004,14 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       );
     }
 
-    // Receive empty state: "Select a token"
+    // Empty state for either side ("Select"). The Sell side can land here
+    // when the selection-swap rule clears the source after the user picks
+    // the same token on the Receive side (spec §12.4).
     return (
       <TouchableOpacity
-        testID="swap-receive-choose-pill"
+        testID={
+          side === "sell" ? "swap-sell-choose-pill" : "swap-receive-choose-pill"
+        }
         onPress={onPress}
         className="flex-row items-center rounded-full px-[10px] py-[6px] bg-background-secondary gap-[6px]"
       >

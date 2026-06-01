@@ -71,42 +71,18 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
     balanceItems,
   });
 
-  // Compute the id of the token that should be hidden from this picker.
-  // When choosing the source token, hide the current destination (if any).
-  // When choosing the destination token, hide the current source (if any).
-  const excludeId = useMemo(() => {
-    if (selectionType === SWAP_SELECTION_TYPES.SOURCE) {
-      return destinationToken?.id ?? null;
-    }
-    return sourceTokenId || null;
-  }, [selectionType, destinationToken, sourceTokenId]);
-
-  // Section data: idle = "Your tokens" + "Popular tokens"; active = "Results"
+  // Section data: idle = "Your tokens" + "Popular tokens"; active = "Results".
+  // The opposite-side token is NOT excluded here — picking it triggers the
+  // selection-swap rule (spec §12.4): the opposite side clears so the user
+  // can pick a different token there.
   const sections = useMemo(() => {
-    // Helper: does a held-balance item match the excluded id?
-    const isExcludedHeld = (item: PricedBalance & { id: string }) =>
-      excludeId !== null && item.id === excludeId;
-
-    // Helper: does a search/popular record match the excluded id?
-    const isExcludedRecord = (record: FormattedSearchTokenRecord) => {
-      if (excludeId === null) return false;
-      if (record.isNative) return excludeId === "native" || excludeId === "XLM";
-      return excludeId === recordTokenId(record);
-    };
-
     if (searchTerm) {
       return [
         {
           title: t("swapScreen.resultsSection"),
-          data: (
-            searchResults as Array<
-              (PricedBalance & { id: string }) | FormattedSearchTokenRecord
-            >
-          ).filter((item) => {
-            if ("id" in item)
-              return !isExcludedHeld(item as PricedBalance & { id: string });
-            return !isExcludedRecord(item);
-          }),
+          data: searchResults as Array<
+            (PricedBalance & { id: string }) | FormattedSearchTokenRecord
+          >,
         },
       ];
     }
@@ -118,14 +94,10 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
       >;
     }> = [];
 
-    const filteredYourTokens = yourTokens.filter(
-      (item) => !isExcludedHeld(item),
-    );
-
-    if (filteredYourTokens.length > 0) {
+    if (yourTokens.length > 0) {
       out.push({
         title: t("swapScreen.yourTokensSection"),
-        data: filteredYourTokens,
+        data: yourTokens,
       });
     }
 
@@ -133,27 +105,14 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
       popularTokens.length > 0 &&
       selectionType === SWAP_SELECTION_TYPES.DESTINATION
     ) {
-      const filteredPopular = popularTokens.filter(
-        (item) => !isExcludedRecord(item),
-      );
-      if (filteredPopular.length > 0) {
-        out.push({
-          title: t("swapScreen.popularTokensSection"),
-          data: filteredPopular,
-        });
-      }
+      out.push({
+        title: t("swapScreen.popularTokensSection"),
+        data: popularTokens,
+      });
     }
 
     return out;
-  }, [
-    searchTerm,
-    searchResults,
-    yourTokens,
-    popularTokens,
-    selectionType,
-    excludeId,
-    t,
-  ]);
+  }, [searchTerm, searchResults, yourTokens, popularTokens, selectionType, t]);
 
   // True while the user's debounced search is fetching (takes precedence over
   // empty-state branches so the user doesn't see "no results" mid-fetch).
@@ -185,6 +144,12 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
   ) => {
     const descriptor = descriptorFromBalance(balance);
     if (selectionType === SWAP_SELECTION_TYPES.SOURCE) {
+      // Selection-swap rule (spec §12.4): if the new source equals the
+      // current destination, clear destination so the user can pick a
+      // different token there.
+      if (destinationToken && destinationToken.id === balance.id) {
+        setDestinationToken(null);
+      }
       setSourceToken(balance.id, balance.tokenCode ?? "");
     } else {
       analytics.track(AnalyticsEvent.SWAP_DESTINATION_SELECTED, {
@@ -192,6 +157,12 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
         isNew: descriptor.isNew,
         source,
       });
+      // Selection-swap rule (spec §12.4): if the new destination equals
+      // the current source, clear source so the user can pick a different
+      // token there.
+      if (sourceTokenId && sourceTokenId === descriptor.id) {
+        setSourceToken("", "");
+      }
       setDestinationToken(descriptor);
     }
     navigation.goBack();
@@ -210,6 +181,11 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
       isNew: descriptor.isNew,
       source,
     });
+    // Selection-swap rule (spec §12.4): if the new destination equals the
+    // current source, clear source.
+    if (sourceTokenId && sourceTokenId === descriptor.id) {
+      setSourceToken("", "");
+    }
     setDestinationToken(descriptor);
     navigation.goBack();
   };
