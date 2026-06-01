@@ -1062,23 +1062,25 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         </View>
       </View>
 
-      {/* Swap-direction toggle — overlaps the two cards via negative margins.
-          The toggle is 28px tall and my-[-8px] subtracts 16px total, so the
-          wrapper visually occupies 12px between the cards, leaving a clear
-          gap (matches Figma 11310-94387). pointerEvents="box-none" lets
-          touches pass to the cards except where the button itself sits.
-          Disabled when destination isn't held since you can't flip a
-          non-held token into the source slot. */}
-      <View className="items-center my-[-8px] z-10" pointerEvents="box-none">
+      {/* Swap-direction toggle — Figma node 11444-44174. 40px pill
+          (12px padding around a 16px chevron-down), no border. The
+          wrapper's my-[-14px] subtracts 28px total from the 40px
+          button, so it visually occupies 12px between the cards —
+          keeping the same gap established for the 28px version while
+          matching the larger Figma button. pointerEvents="box-none"
+          lets touches pass to the cards except where the button
+          itself sits. Disabled when destination isn't held since you
+          can't flip a non-held token into the source slot. */}
+      <View className="items-center my-[-14px] z-10" pointerEvents="box-none">
         <TouchableOpacity
           testID="swap-direction-toggle"
           onPress={handleSwapDirection}
           disabled={!canSwapDirection}
           hitSlop={10}
-          className="w-[28px] h-[28px] rounded-full items-center justify-center bg-background-secondary border-[3px] border-background-primary"
+          className="w-[40px] h-[40px] rounded-full items-center justify-center bg-background-secondary"
           style={{ opacity: canSwapDirection ? 1 : 0.4 }}
         >
-          <Icon.ChevronDown size={14} color={themeColors.text.primary} />
+          <Icon.ChevronDown size={16} color={themeColors.text.primary} />
         </TouchableOpacity>
       </View>
 
