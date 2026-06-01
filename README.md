@@ -189,3 +189,5 @@ To stop the server:
 See [RELEASE.md](./RELEASE.md) for the full release lifecycle documentation,
 including regular and emergency release flows, post-merge steps, and CI/CD
 configuration.
+
+<!-- ci-smoke-test: no-op change to exercise the Test workflow on a PR -->
