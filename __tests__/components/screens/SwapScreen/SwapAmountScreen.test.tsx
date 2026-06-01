@@ -441,6 +441,49 @@ describe("SwapAmountScreen", () => {
 
       expect(mockSetupSwapTransaction).toHaveBeenCalled();
     });
+
+    it("dismisses the keyboard before opening the Review sheet", async () => {
+      // Regression: the system keyboard previously stayed up when the user
+      // tapped "Review swap", squishing the bottom sheet content.
+      const RN = jest.requireActual("react-native");
+      const dismissSpy = jest.spyOn(RN.Keyboard, "dismiss");
+      dismissSpy.mockClear();
+
+      setSwapStoreState({
+        sourceAmount: "1",
+        pathResult: { destinationAmount: "2" },
+      });
+
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      await act(async () => {
+        fireEvent.press(getByTestId("swap-continue-button"));
+        await Promise.resolve();
+      });
+
+      expect(dismissSpy).toHaveBeenCalled();
+      dismissSpy.mockRestore();
+    });
+
+    it("does NOT dismiss the keyboard on the 'Enter an amount' CTA (it focuses the input)", () => {
+      const RN = jest.requireActual("react-native");
+      const dismissSpy = jest.spyOn(RN.Keyboard, "dismiss");
+      dismissSpy.mockClear();
+
+      // amount=0 → CTA is "Enter an amount", which focuses the TextInput.
+      setSwapStoreState({ sourceAmount: "0" });
+
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      fireEvent.press(getByTestId("swap-continue-button"));
+
+      expect(dismissSpy).not.toHaveBeenCalled();
+      dismissSpy.mockRestore();
+    });
   });
 
   describe("Pre-flight XLM reserve check", () => {

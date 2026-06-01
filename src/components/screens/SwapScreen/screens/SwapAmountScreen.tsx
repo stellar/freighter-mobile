@@ -73,6 +73,7 @@ import React, {
 } from "react";
 import {
   FlatList,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   TextInput,
@@ -683,13 +684,19 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   );
 
   const handleMainButtonPress = useCallback(async () => {
-    if (ctaState.kind === "select") {
-      navigateToSelectDestinationTokenScreen("cta");
+    // "enter" branch focuses the input — let the keyboard rise naturally.
+    if (ctaState.kind === "enter") {
+      amountInputRef.current?.focus();
       return;
     }
 
-    if (ctaState.kind === "enter") {
-      amountInputRef.current?.focus();
+    // Every other branch either navigates to the picker or presents a
+    // bottom sheet. Dismiss the keyboard up front so the sheet doesn't
+    // render squished above it (Review sheet bug).
+    Keyboard.dismiss();
+
+    if (ctaState.kind === "select") {
+      navigateToSelectDestinationTokenScreen("cta");
       return;
     }
 
