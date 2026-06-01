@@ -1,6 +1,7 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { Asset, Horizon } from "@stellar/stellar-sdk";
 import BigNumber from "bignumber.js";
 import BottomSheet from "components/BottomSheet";
 import Spinner from "components/Spinner";
@@ -30,6 +31,7 @@ import { AnalyticsEvent } from "config/analyticsConfig";
 import {
   BASE_RESERVE,
   DEFAULT_DECIMALS,
+  mapNetworkToNetworkDetails,
   NATIVE_TOKEN_CODE,
   NETWORKS,
   SWAP_SELECTION_TYPES,
@@ -37,7 +39,10 @@ import {
 } from "config/constants";
 import { logger } from "config/logger";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
-import { FormattedSearchTokenRecord } from "config/types";
+import {
+  FormattedSearchTokenRecord,
+  TokenTypeWithCustomToken,
+} from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useDebugStore } from "ducks/debug";
 import { usePricesStore } from "ducks/prices";
@@ -171,6 +176,34 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       transactionFee: swapFee,
     });
   }, [sourceBalance, account, swapFee]);
+
+  // Highest-value non-XLM classic balance the user holds. Used by the
+  // XlmReserveBottomSheet's "Swap for 0.5 XLM" affordance — when the user
+  // has no XLM headroom for a new trustline, we offer to swap their most
+  // valuable other token for the needed XLM. Falls back to total when
+  // fiatTotal is missing (e.g. unsupported price). Returns undefined when
+  // the user holds only XLM (or has zero non-XLM classic balance).
+  const bestNonXlmClassicBalance = useMemo(() => {
+    const candidates = balanceItems
+      .filter(
+        (b) =>
+          (b.tokenType === TokenTypeWithCustomToken.CREDIT_ALPHANUM4 ||
+            b.tokenType === TokenTypeWithCustomToken.CREDIT_ALPHANUM12) &&
+          b.id !== "native" &&
+          b.id !== NATIVE_TOKEN_CODE &&
+          b.total?.gt(0),
+      )
+      .sort((a, b) => {
+        const aFiat = a.fiatTotal ?? new BigNumber(0);
+        const bFiat = b.fiatTotal ?? new BigNumber(0);
+        if (!aFiat.eq(bFiat)) return bFiat.comparedTo(aFiat);
+        return (b.total ?? new BigNumber(0)).comparedTo(
+          a.total ?? new BigNumber(0),
+        );
+      });
+    return candidates[0];
+  }, [balanceItems]);
+  const canOfferSwapToXlm = !!bestNonXlmClassicBalance;
 
   // Token/fiat amount input is driven by the system keyboard via TextInput.
   // We mirror the converter's tokenAmount back into the swap store so that
@@ -521,6 +554,64 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     },
     [spendableAmount, setTokenAmount],
   );
+
+  // Tapped from inside XlmReserveBottomSheet. Picks the user's most valuable
+  // non-XLM classic balance as the new Sell token, sets XLM as the Receive
+  // token, and asks Horizon's strictReceivePaths how much of the Sell token
+  // it would take to receive at least 0.5 XLM. If a path exists, the result
+  // is dropped into sourceAmount and the existing path-finding pipeline
+  // re-runs from there (Insufficient balance / Review CTA emerges naturally
+  // depending on whether the chosen source can cover the path).
+  const handleSwapForXlmFromSheet = useCallback(async () => {
+    if (!bestNonXlmClassicBalance) return;
+    const sellTokenCode = bestNonXlmClassicBalance.tokenCode;
+    const sellIssuer =
+      "token" in bestNonXlmClassicBalance &&
+      bestNonXlmClassicBalance.token &&
+      "issuer" in bestNonXlmClassicBalance.token
+        ? bestNonXlmClassicBalance.token.issuer?.key
+        : undefined;
+    if (!sellTokenCode || !sellIssuer) return;
+
+    let receivedSourceAmount: string | null = null;
+    try {
+      const networkDetails = mapNetworkToNetworkDetails(network);
+      const server = new Horizon.Server(networkDetails.networkUrl);
+      const sellAsset = new Asset(sellTokenCode, sellIssuer);
+      const result = await server
+        .strictReceivePaths([sellAsset], Asset.native(), "0.5")
+        .limit(1)
+        .call();
+      receivedSourceAmount = result.records[0]?.source_amount ?? null;
+    } catch (error) {
+      // No path / network error — fall back to setting source+dest without
+      // a pre-filled amount so the user can still adjust manually.
+      logger.error(
+        "SwapAmountScreen.handleSwapForXlmFromSheet",
+        "strictReceivePaths failed",
+        error,
+      );
+    }
+
+    setSourceToken(bestNonXlmClassicBalance.id, sellTokenCode);
+    setDestinationToken({
+      id: NATIVE_TOKEN_CODE,
+      tokenCode: NATIVE_TOKEN_CODE,
+      decimals: DEFAULT_DECIMALS,
+      tokenType: TokenTypeWithCustomToken.NATIVE,
+      isNew: false,
+    });
+    if (receivedSourceAmount) {
+      setTokenAmount(receivedSourceAmount);
+    }
+    xlmReserveBottomSheetRef.current?.dismiss();
+  }, [
+    bestNonXlmClassicBalance,
+    network,
+    setSourceToken,
+    setDestinationToken,
+    setTokenAmount,
+  ]);
 
   // Swap source ↔ destination via the chevron-down button between the cards
   // (Figma 11310-94387). Only sensible when the destination is held — we
@@ -1320,6 +1411,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
             publicKey={account?.publicKey ?? ""}
             tokenCode={destinationTokenDescriptor?.tokenCode}
             bottomSheetModalRef={xlmReserveBottomSheetRef}
+            canOfferSwapToXlm={canOfferSwapToXlm}
+            onSwapForXlm={handleSwapForXlmFromSheet}
           />
         }
       />

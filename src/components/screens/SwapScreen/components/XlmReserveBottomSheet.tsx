@@ -4,13 +4,11 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
-import { TokenTypeWithCustomToken } from "config/types";
-import { useSwapStore } from "ducks/swap";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
-import React from "react";
+import React, { useState } from "react";
 import { TouchableOpacity, View } from "react-native";
 
 const HELP_ARTICLE_URL =
@@ -25,36 +23,45 @@ export interface XlmReserveBottomSheetProps {
    * AQUA, your wallet needs a trustline on Stellar.").
    */
   tokenCode?: string;
+  /**
+   * Controls whether the "Swap for 0.5 XLM" CTA is rendered. The parent
+   * computes this from the user's held balances — true when there's at
+   * least one non-XLM classic balance the user can swap from.
+   */
+  canOfferSwapToXlm: boolean;
+  /**
+   * Async handler invoked when the user taps "Swap for 0.5 XLM". The
+   * parent picks the best non-XLM classic balance, calls Horizon's
+   * strictReceivePaths to size the swap, sets source/destination/amount
+   * on the swap store, and dismisses this sheet. The sheet just tracks
+   * the local pending state for the Button's loading spinner.
+   */
+  onSwapForXlm?: () => void | Promise<void>;
 }
 
 export const XlmReserveBottomSheet: React.FC<XlmReserveBottomSheetProps> = ({
   publicKey,
   bottomSheetModalRef,
   tokenCode,
+  canOfferSwapToXlm,
+  onSwapForXlm,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
-  const { setDestinationToken, sourceTokenId } = useSwapStore();
   const { copyToClipboard } = useClipboard();
   const { open: openInAppBrowser } = useInAppBrowser();
-
-  // Don't offer "Swap for 0.5 XLM" when the user is already selling XLM —
-  // flipping the destination to XLM would leave source === destination,
-  // which path-finding rejects and strands the user.
-  const canOfferSwapToXlm =
-    sourceTokenId !== "native" && sourceTokenId !== NATIVE_TOKEN_CODE;
+  const [isSwapping, setIsSwapping] = useState(false);
 
   const interpolation = { tokenCode: tokenCode ?? "" };
 
-  const handleSwapXlm = () => {
-    setDestinationToken({
-      id: NATIVE_TOKEN_CODE,
-      tokenCode: NATIVE_TOKEN_CODE,
-      decimals: 7,
-      tokenType: TokenTypeWithCustomToken.NATIVE,
-      isNew: false,
-    });
-    bottomSheetModalRef?.current?.dismiss();
+  const handleSwapForXlm = async () => {
+    if (!onSwapForXlm || isSwapping) return;
+    setIsSwapping(true);
+    try {
+      await onSwapForXlm();
+    } finally {
+      setIsSwapping(false);
+    }
   };
 
   const handleCopyAddress = () => {
@@ -120,10 +127,16 @@ export const XlmReserveBottomSheet: React.FC<XlmReserveBottomSheetProps> = ({
         </View>
       </View>
 
-      {/* CTAs — "Swap for 0.5 XLM" (tertiary per design system mapping) and
-          "Copy my wallet address" (minimal text-only treatment). */}
+      {/* CTAs — "Swap for 0.5 XLM" (tertiary per design system mapping) is
+          shown only when the parent says the user has a non-XLM classic
+          balance to swap from. "Copy my wallet address" is always shown. */}
       {canOfferSwapToXlm && (
-        <Button onPress={handleSwapXlm} tertiary>
+        <Button
+          onPress={handleSwapForXlm}
+          tertiary
+          isLoading={isSwapping}
+          testID="xlm-reserve-swap-button"
+        >
           {t("swapScreen.xlmReserve.swapXlm")}
         </Button>
       )}
