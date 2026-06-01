@@ -10,7 +10,11 @@ import {
   PricedBalance,
   TokenTypeWithCustomToken,
 } from "config/types";
-import { formatFiatAmount, formatPercentageAmount } from "helpers/formatAmount";
+import {
+  formatBalanceAmount,
+  formatFiatAmount,
+  formatPercentageAmount,
+} from "helpers/formatAmount";
 import useColors from "hooks/useColors";
 import React from "react";
 import { TouchableOpacity, View } from "react-native";
@@ -183,7 +187,17 @@ const SwapTokenRowComponent: React.FC<SwapTokenRowProps> = ({
           <Text md primary medium numberOfLines={1}>
             {tokenCode}
           </Text>
-          {domain ? (
+          {/* Held rows: show the raw token amount on the second line, matching
+              the BalanceRow pattern used on the Home screen. Non-held rows
+              keep showing the issuer's home domain. Skip the line entirely if
+              `total` is missing (production always has it; defensive for
+              partial test fixtures). */}
+          {variant === "held" && balance?.total ? (
+            <Text sm secondary medium numberOfLines={1}>
+              {formatBalanceAmount(balance, balance.tokenCode)}
+            </Text>
+          ) : null}
+          {variant !== "held" && domain ? (
             <Text sm secondary medium numberOfLines={1}>
               {domain}
             </Text>
@@ -209,6 +223,9 @@ export const SwapTokenRow = React.memo(SwapTokenRowComponent, (prev, next) => {
     if (!pb || !nb) return false;
     return (
       pb.id === nb.id &&
+      // total drives the raw-amount subtitle on the left — re-render when
+      // the balance changes (e.g. after a swap settles or trustline adds).
+      bigEq(pb.total, nb.total) &&
       bigEq(pb.fiatTotal, nb.fiatTotal) &&
       bigEq(pb.percentagePriceChange24h, nb.percentagePriceChange24h)
     );

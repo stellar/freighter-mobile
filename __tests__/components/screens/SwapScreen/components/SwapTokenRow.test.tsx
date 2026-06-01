@@ -53,7 +53,7 @@ const mockSearchRecord = {
 
 describe("SwapTokenRow", () => {
   it("renders fiat total + 24h% for held variant", () => {
-    const { getByText } = render(
+    const { getByText, getAllByText } = render(
       <SwapTokenRow
         variant="held"
         balance={mockHeldBalance}
@@ -62,9 +62,43 @@ describe("SwapTokenRow", () => {
       />,
     );
     expect(getByText("USDC")).toBeTruthy();
-    // The fiat formatting may include $ and comma — match loosely
-    expect(getByText(/100/)).toBeTruthy();
+    // Two "100" matches expected now: the fiat total in the right slot AND
+    // the raw token amount in the left-side subtitle (added to match Home).
+    expect(getAllByText(/100/).length).toBeGreaterThanOrEqual(2);
     expect(getByText(/2\.5/)).toBeTruthy();
+  });
+
+  it("renders raw token amount as the left-side subtitle for held variant (matches Home BalanceRow)", () => {
+    const { getByText } = render(
+      <SwapTokenRow
+        variant="held"
+        balance={mockHeldBalance}
+        network={NETWORKS.PUBLIC}
+        onPress={jest.fn()}
+      />,
+    );
+    // formatBalanceAmount(balance, "USDC") returns "<n> USDC". Match a digit
+    // followed by " USDC" so we don't collide with the bare "USDC" code text.
+    expect(getByText(/\d\s+USDC$/)).toBeTruthy();
+  });
+
+  it("omits the raw-amount subtitle when balance.total is missing (defensive)", () => {
+    const { queryByText } = render(
+      <SwapTokenRow
+        variant="held"
+        balance={
+          {
+            id: "USDC:GA5Z...",
+            tokenCode: "USDC",
+            token: mockHeldBalance.token,
+          } as any
+        }
+        network={NETWORKS.PUBLIC}
+        onPress={jest.fn()}
+      />,
+    );
+    // No "X USDC" subtitle; only the bare code text node.
+    expect(queryByText(/^\d+.*USDC$/)).toBeNull();
   });
 
   it("renders ellipsis (context menu) for non-held variant", () => {

@@ -1,6 +1,7 @@
 /* eslint-disable @fnando/consistent-import/consistent-import */
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { fireEvent } from "@testing-library/react-native";
+import BigNumber from "bignumber.js";
 import * as useSwapTokenLookupModule from "components/screens/SwapScreen/hooks/useSwapTokenLookup";
 import { SwapToScreen } from "components/screens/SwapScreen/screens/SwapToScreen";
 import { AnalyticsEvent } from "config/analyticsConfig";
@@ -282,6 +283,7 @@ describe("SwapToScreen", () => {
           key: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
         },
       },
+      total: new BigNumber("250"),
       decimals: 7,
     } as any;
 
@@ -289,6 +291,7 @@ describe("SwapToScreen", () => {
       id: "XLM",
       tokenCode: "XLM",
       token: { type: "native" as const, code: "XLM" as const },
+      total: new BigNumber("1000"),
       decimals: 7,
     } as any;
 
