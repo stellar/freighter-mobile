@@ -480,7 +480,22 @@ export const useSwapTokenLookup = ({
   }, []);
 
   // Idle outputs
-  const yourTokens = balanceItems;
+  // Filter held balances down to classic-only (native + alphanum4/12).
+  // Liquidity pool shares and Soroban custom tokens are not swappable and
+  // should never surface in the Swap-To picker's "Your tokens" section.
+  // getTokenType expects either NATIVE_TOKEN_CODE ("XLM") or a "CODE:ISSUER"
+  // string. Balance.id is "native" for XLM in this codebase, so normalize
+  // first (same trick at line 220) — otherwise the catch-all classifies it
+  // as LIQUIDITY_POOL_SHARES and filters it out.
+  const yourTokens = useMemo(
+    () =>
+      balanceItems.filter((b) =>
+        isClassicTokenType(
+          getTokenType(b.id === "native" ? NATIVE_TOKEN_CODE : b.id),
+        ),
+      ),
+    [balanceItems],
+  );
   // §5.1: popularTokens is the same verified intersection as trendingTokens,
   // additionally EXCLUDING held tokens for the picker.
   const popularTokens = useMemo(

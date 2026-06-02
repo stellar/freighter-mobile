@@ -214,6 +214,50 @@ describe("useSwapTokenLookup — idle mode", () => {
     ]);
   });
 
+  it("filters liquidity pool shares out of yourTokens", async () => {
+    // Held balances with an LP share token mixed in — getTokenType returns
+    // LIQUIDITY_POOL_SHARES for any id that doesn't match the
+    // native / CODE:ISSUER patterns (the catch-all branch), so LP balances
+    // with a hash-style id like the one Horizon returns must be filtered.
+    const held = [
+      ...buildHeldBalances(),
+      {
+        // Horizon returns LP balances with a 64-char hex hash id (no colons,
+        // no native sentinel). getTokenType falls through to its catch-all
+        // and classifies it as LIQUIDITY_POOL_SHARES.
+        id: "7f5b1e3a8b4d2e1f9a6b3c5d8e2f4a6b8c1d3e5f7a9b1c3d5e7f9a1b3c5d7e9f",
+        token: { type: "liquidity_pool_shares" },
+        tokenCode: "AQUA/USDC",
+        total: "5",
+        available: "5",
+      },
+    ] as any[];
+
+    const { result } = renderHook(() =>
+      useSwapTokenLookup({
+        network: NETWORKS.PUBLIC,
+        publicKey: "GTEST",
+        balanceItems: held,
+      }),
+    );
+
+    await act(async () => {
+      await settleAsync();
+    });
+
+    expect(result.current.yourTokens.map((t) => t.id)).toEqual([
+      "native",
+      `USDC:${USDC_ISSUER}`,
+    ]);
+    expect(
+      result.current.yourTokens.find(
+        (t) =>
+          t.id ===
+          "7f5b1e3a8b4d2e1f9a6b3c5d8e2f4a6b8c1d3e5f7a9b1c3d5e7f9a1b3c5d7e9f",
+      ),
+    ).toBeUndefined();
+  });
+
   it("filters Soroban contracts out of popularTokens and trendingTokens", async () => {
     const { result } = renderHook(() =>
       useSwapTokenLookup({ network: NETWORKS.PUBLIC, balanceItems: [] }),
