@@ -82,6 +82,35 @@ describe("TrendingTokenDetailBottomSheet", () => {
     expect(getByText(/GBN4\.\.\.ZJBJ/)).toBeTruthy();
   });
 
+  it("special-cases native XLM in the info card: Stellar Network / stellar.org / Stellar Classic", () => {
+    const xlmRecord = {
+      tokenCode: "XLM",
+      issuer: "",
+      isNative: true,
+      // Stellar.expert may not return a domain for native — the special
+      // case should display "stellar.org" anyway.
+      domain: "",
+      tokenType: undefined,
+      hasTrustline: true,
+    } as any;
+
+    const { getByText, queryByText } = renderWithProviders(
+      <TrendingTokenDetailBottomSheet
+        record={xlmRecord}
+        priceInfo={{}}
+        balanceItems={[]}
+      />,
+    );
+
+    expect(getByText("Stellar Network")).toBeTruthy();
+    expect(getByText("stellar.org")).toBeTruthy();
+    // Type label is "Stellar Classic" (not "Stellar Native") per spec.
+    expect(getByText("Stellar Classic")).toBeTruthy();
+    expect(queryByText(/Stellar Native/)).toBeNull();
+    // The "—" issuer fallback must NOT appear for XLM.
+    expect(queryByText("—")).toBeNull();
+  });
+
   it("hides the delta line when percentagePriceChange24h is undefined", () => {
     const { getByText, queryByText } = renderWithProviders(
       <TrendingTokenDetailBottomSheet

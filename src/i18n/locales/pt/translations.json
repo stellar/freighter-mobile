@@ -683,7 +683,7 @@
       "type": "Tipo",
       "domain": "Domínio",
       "stellarClassic": "Stellar Classic",
-      "stellarNative": "Stellar Nativo"
+      "stellarNetwork": "Rede Stellar"
     },
     "trustlineInfo": {
       "title": "Isto adicionará uma trustline para {{tokenCode}}",

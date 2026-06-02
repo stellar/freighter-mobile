@@ -100,9 +100,23 @@ export const TrendingTokenDetailBottomSheet: React.FC<
       ? `${isPositive ? "+" : ""}${formatDeltaUsd(deltaUsd)} (${formatPercentageAmount(percentagePriceChange24h)})`
       : undefined;
 
-  const tokenType = record.isNative
-    ? t("swapScreen.trendingDetail.stellarNative")
-    : t("swapScreen.trendingDetail.stellarClassic");
+  // Type label — both native XLM and classic alphanum assets sit on the
+  // Stellar Classic protocol (Soroban contracts are filtered out upstream),
+  // so we always render "Stellar Classic" here.
+  const tokenType = t("swapScreen.trendingDetail.stellarClassic");
+
+  // XLM has no traditional issuer / TOML home_domain — special-case the
+  // canonical "Stellar Network" issuer label and "stellar.org" domain so
+  // the info card stays informative instead of falling through to "—" or
+  // hiding the domain row.
+  const issuerLabel = (() => {
+    if (record.isNative) return t("swapScreen.trendingDetail.stellarNetwork");
+    if (record.issuer) return truncateAddress(record.issuer);
+    return "—";
+  })();
+  const domainLabel = record.isNative
+    ? "stellar.org"
+    : record.domain || undefined;
 
   return (
     <View className="gap-[24px] p-[4px]">
@@ -147,7 +161,7 @@ export const TrendingTokenDetailBottomSheet: React.FC<
             {t("swapScreen.trendingDetail.issuer")}
           </Text>
           <Text md medium primary numberOfLines={1}>
-            {record.issuer ? truncateAddress(record.issuer) : "—"}
+            {issuerLabel}
           </Text>
         </View>
 
@@ -163,7 +177,7 @@ export const TrendingTokenDetailBottomSheet: React.FC<
           </Text>
         </View>
 
-        {record.domain ? (
+        {domainLabel ? (
           <>
             <View className="h-px bg-border-primary w-full" />
 
@@ -173,7 +187,7 @@ export const TrendingTokenDetailBottomSheet: React.FC<
                 {t("swapScreen.trendingDetail.domain")}
               </Text>
               <Text md medium primary numberOfLines={1}>
-                {record.domain}
+                {domainLabel}
               </Text>
             </View>
           </>
