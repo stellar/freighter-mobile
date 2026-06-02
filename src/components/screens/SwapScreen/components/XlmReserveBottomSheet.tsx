@@ -19,8 +19,8 @@ export interface XlmReserveBottomSheetProps {
   bottomSheetModalRef?: React.RefObject<BottomSheetModal | null>;
   /**
    * Destination token code (e.g. "AQUA") — interpolated into the title body
-   * and the info-card body to match Figma node 11821-35684 ("To receive
-   * AQUA, your wallet needs a trustline on Stellar.").
+   * and the info-card body ("To receive AQUA, your wallet needs a trustline
+   * on Stellar.").
    */
   tokenCode?: string;
   /**
@@ -111,12 +111,9 @@ export const XlmReserveBottomSheet: React.FC<XlmReserveBottomSheetProps> = ({
         </Text>
       </View>
 
-      {/* Info card — Figma 11821-35713.
-          - Container: p-[16px] on all sides, rounded-16, bg-background-tertiary
-          - Row: gap-[12px] between the 32×32 XLM icon and the text column
-          - Title: Text/SM/500 (sm medium primary)
-          - Body:  Text/XS/500 (xs medium secondary) — line-heights provide
-                   the vertical rhythm; no explicit gap between the two lines. */}
+      {/* Info card: XLM icon on the left, "0.5 XLM required" title and the
+          per-token body on the right. Title + body line-heights provide the
+          vertical rhythm — no explicit gap between the two text lines. */}
       <View className="rounded-[16px] bg-background-tertiary p-[16px] flex-row items-center gap-[12px]">
         <TokenIcon
           token={{ type: "native", code: NATIVE_TOKEN_CODE }}

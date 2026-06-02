@@ -634,9 +634,9 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     setTokenAmount,
   ]);
 
-  // Swap source ↔ destination via the chevron-down button between the cards
-  // (Figma 11310-94387). Only sensible when the destination is held — we
-  // can't make a non-held token the source, since there's no balance to sell.
+  // Swap source ↔ destination via the chevron-down button between the cards.
+  // Only sensible when the destination is held — we can't make a non-held
+  // token the source, since there's no balance to sell.
   const canSwapDirection = !!sourceBalance && !!destinationBalance;
   const handleSwapDirection = useCallback(() => {
     if (!sourceBalance || !destinationBalance) return;
@@ -1073,7 +1073,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     : "";
 
   // Inline pill: TokenIcon + code + chevron-down, tappable to open picker.
-  // Matches Figma 11310-94387's right-side pill on each Sell/Receive card.
+  // Rendered on the right side of each Sell/Receive card.
   const renderSelectedTokenPill = (
     side: "sell" | "receive",
     onPress: () => void,
@@ -1149,7 +1149,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
 
   const listHeader = (
     <View>
-      {/* Sell card — Figma 11310-94387 / 11738-37895 / 11738-38058 */}
+      {/* Sell card */}
       <View
         testID="swap-sell-card"
         className="rounded-[16px] pt-[12px] pb-[12px] px-[16px] bg-background-tertiary"
@@ -1272,8 +1272,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       </View>
 
       {(showTrending || showTrendingSpinner) && (
-        // Figma node 11310-103377: parent frame has gap-[24px] between
-        // header and each row. Match with 24px above and 24px below the title.
         <View className="mt-[24px] mb-[24px]">
           <Text md medium secondary>
             {t("swapScreen.trendingTokensSection")}

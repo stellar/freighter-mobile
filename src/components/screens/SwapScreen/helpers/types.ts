@@ -24,9 +24,9 @@ export type DestinationTokenDescriptor = {
   /**
    * Blockaid security level for the destination token, when known. Carried on
    * the descriptor so the in-place Receive-icon badge renders without a
-   * separate scan lookup (spec §9 + Figma 11310-104182). Only populated when
-   * the descriptor comes from a scanned search record; held tokens already
-   * render their badge through `BalanceRow`/`assessTokenSecurity`.
+   * separate scan lookup. Only populated when the descriptor comes from a
+   * scanned search record; held tokens already render their badge through
+   * `BalanceRow`/`assessTokenSecurity`.
    */
   securityLevel?: SecurityLevel;
 };

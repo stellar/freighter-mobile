@@ -10,8 +10,8 @@ import { TouchableOpacity, View } from "react-native";
 export interface TrustlineInfoBottomSheetProps {
   bottomSheetModalRef?: React.RefObject<BottomSheetModal | null>;
   /**
-   * Destination token code, interpolated into the title and body so the copy
-   * matches Figma node 11697-19790 ("This will add a trustline to AQUA").
+   * Destination token code, interpolated into the title and body
+   * ("This will add a trustline to AQUA").
    */
   tokenCode?: string;
 }
