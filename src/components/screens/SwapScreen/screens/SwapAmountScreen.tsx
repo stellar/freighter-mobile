@@ -99,6 +99,27 @@ type SwapAmountScreenProps = NativeStackScreenProps<
   typeof SWAP_ROUTES.SWAP_AMOUNT_SCREEN
 >;
 
+/**
+ * Dismiss the keyboard and resolve only AFTER the keyboardDidHide event
+ * fires, so a bottom sheet presented next animates in at its final height
+ * instead of starting at the keyboard-occluded position and jumping down
+ * (the UI glitch users see on tap of "Review swap").
+ *
+ * Resolves immediately when the keyboard isn't visible.
+ */
+const waitForKeyboardDismiss = (): Promise<void> => {
+  if (!Keyboard.isVisible()) {
+    return Promise.resolve();
+  }
+  return new Promise<void>((resolve) => {
+    const sub = Keyboard.addListener("keyboardDidHide", () => {
+      sub.remove();
+      resolve();
+    });
+    Keyboard.dismiss();
+  });
+};
+
 const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   navigation,
   route,
@@ -782,9 +803,11 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     }
 
     // Every other branch either navigates to the picker or presents a
-    // bottom sheet. Dismiss the keyboard up front so the sheet doesn't
-    // render squished above it (Review sheet bug).
-    Keyboard.dismiss();
+    // bottom sheet. Wait for the keyboard's hide animation to finish
+    // before continuing so any sheet we present next opens at its final
+    // position rather than at the keyboard-occluded height first and
+    // then jumping down.
+    await waitForKeyboardDismiss();
 
     if (ctaState.kind === "select") {
       navigateToSelectDestinationTokenScreen("cta");

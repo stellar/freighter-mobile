@@ -369,7 +369,7 @@ describe("SwapAmountScreen", () => {
   });
 
   describe("CTA state machine", () => {
-    it("shows 'Select a token' when no destination is set", () => {
+    it("shows 'Select a token' when no destination is set", async () => {
       setSwapStoreState({ destinationToken: null, sourceAmount: "0" });
 
       const navigation = makeNavigation();
@@ -380,7 +380,12 @@ describe("SwapAmountScreen", () => {
       const cta = getByTestId("swap-continue-button");
       expect(cta).toHaveTextContent("Select a token");
 
-      fireEvent.press(cta);
+      // handleMainButtonPress is now async (awaits waitForKeyboardDismiss)
+      // before navigating, so flush microtasks before asserting.
+      await act(async () => {
+        fireEvent.press(cta);
+        await Promise.resolve();
+      });
       expect(navigation.navigate).toHaveBeenCalledWith(
         SWAP_ROUTES.SWAP_SCREEN,
         { selectionType: "destination" },
@@ -442,12 +447,27 @@ describe("SwapAmountScreen", () => {
       expect(mockSetupSwapTransaction).toHaveBeenCalled();
     });
 
-    it("dismisses the keyboard before opening the Review sheet", async () => {
+    it("dismisses the keyboard AND waits for keyboardDidHide before opening the Review sheet", async () => {
       // Regression: the system keyboard previously stayed up when the user
-      // tapped "Review swap", squishing the bottom sheet content.
+      // tapped "Review swap", squishing the bottom sheet content. Now we
+      // also wait for keyboardDidHide so the sheet animates in at its
+      // final position rather than jumping after the keyboard slides away.
       const RN = jest.requireActual("react-native");
       const dismissSpy = jest.spyOn(RN.Keyboard, "dismiss");
-      dismissSpy.mockClear();
+      const isVisibleSpy = jest
+        .spyOn(RN.Keyboard, "isVisible")
+        .mockReturnValue(true);
+      // Stub addListener so the test can synchronously fire the
+      // keyboardDidHide callback after press, resolving the wait promise.
+      let hideCallback: (() => void) | null = null;
+      const addListenerSpy = jest
+        .spyOn(RN.Keyboard, "addListener")
+        .mockImplementation((...args: unknown[]) => {
+          const event = args[0] as string;
+          const cb = args[1] as () => void;
+          if (event === "keyboardDidHide") hideCallback = cb;
+          return { remove: jest.fn() } as any;
+        });
 
       setSwapStoreState({
         sourceAmount: "1",
@@ -463,8 +483,25 @@ describe("SwapAmountScreen", () => {
         await Promise.resolve();
       });
 
+      // Keyboard.dismiss must have fired, and the listener must have been
+      // registered to wait for keyboardDidHide.
       expect(dismissSpy).toHaveBeenCalled();
+      expect(addListenerSpy).toHaveBeenCalledWith(
+        "keyboardDidHide",
+        expect.any(Function),
+      );
+
+      // Fire the keyboardDidHide callback to resolve the wait, then the
+      // sheet presentation (mockSetupSwapTransaction) is reachable.
+      await act(async () => {
+        hideCallback?.();
+        await Promise.resolve();
+      });
+      expect(mockSetupSwapTransaction).toHaveBeenCalled();
+
       dismissSpy.mockRestore();
+      isVisibleSpy.mockRestore();
+      addListenerSpy.mockRestore();
     });
 
     it("does NOT dismiss the keyboard on the 'Enter an amount' CTA (it focuses the input)", () => {
@@ -1093,7 +1130,7 @@ describe("SwapAmountScreen", () => {
       jest.spyOn(analytics, "track").mockClear();
     });
 
-    it("fires SWAP_TO_PICKER_OPENED with source:cta when the 'Select a token' CTA is pressed", () => {
+    it("fires SWAP_TO_PICKER_OPENED with source:cta when the 'Select a token' CTA is pressed", async () => {
       setSwapStoreState({ destinationToken: null, sourceAmount: "0" });
 
       const navigation = makeNavigation();
@@ -1101,7 +1138,12 @@ describe("SwapAmountScreen", () => {
         <SwapAmountScreen navigation={navigation} route={makeRoute()} />,
       );
 
-      fireEvent.press(getByTestId("swap-continue-button"));
+      // handleMainButtonPress is async (awaits waitForKeyboardDismiss)
+      // — flush microtasks before asserting on the analytics fire.
+      await act(async () => {
+        fireEvent.press(getByTestId("swap-continue-button"));
+        await Promise.resolve();
+      });
 
       expect(analytics.track).toHaveBeenCalledWith(
         AnalyticsEvent.SWAP_TO_PICKER_OPENED,
