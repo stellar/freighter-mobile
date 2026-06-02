@@ -111,17 +111,22 @@ export const XlmReserveBottomSheet: React.FC<XlmReserveBottomSheetProps> = ({
         </Text>
       </View>
 
-      {/* Info card: XLM icon + "0.5 XLM required" + interpolated body */}
-      <View className="rounded-[16px] bg-background-tertiary px-[16px] py-[16px] flex-row items-center gap-[12px]">
+      {/* Info card — Figma 11821-35713.
+          - Container: p-[16px] on all sides, rounded-16, bg-background-tertiary
+          - Row: gap-[12px] between the 32×32 XLM icon and the text column
+          - Title: Text/SM/500 (sm medium primary)
+          - Body:  Text/XS/500 (xs medium secondary) — line-heights provide
+                   the vertical rhythm; no explicit gap between the two lines. */}
+      <View className="rounded-[16px] bg-background-tertiary p-[16px] flex-row items-center gap-[12px]">
         <TokenIcon
           token={{ type: "native", code: NATIVE_TOKEN_CODE }}
           size="sm"
         />
-        <View className="flex-1 gap-[2px]">
+        <View className="flex-1">
           <Text sm medium primary>
             {t("swapScreen.xlmReserve.infoCardTitle")}
           </Text>
-          <Text xs regular secondary>
+          <Text xs medium secondary>
             {t("swapScreen.xlmReserve.infoCardBody", interpolation)}
           </Text>
         </View>
