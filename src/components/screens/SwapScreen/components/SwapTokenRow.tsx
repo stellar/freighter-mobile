@@ -70,15 +70,19 @@ const SwapTokenRowComponent: React.FC<SwapTokenRowProps> = ({
 
   // Derive display values from the appropriate data source
   const tokenCode = variant === "held" ? balance?.tokenCode : record?.tokenCode;
-  // Non-held subtitle fallback chain: domain → record.name → tokenCode.
-  // record.domain is always a string ("" when stellar.expert returns no
-  // home_domain), so the truthy check correctly steps past empty strings
-  // to the name field, which is undefined for classic assets and only
-  // populated for Soroban contracts (via token_name / tomlInfo.name).
-  const nonHeldSubtitle =
-    variant !== "held"
-      ? record?.domain || record?.name || record?.tokenCode
-      : undefined;
+  // Non-held subtitle: native XLM always renders the canonical "Stellar
+  // Lumens" name (matches ducks/balances.ts:84 — the same name shown for
+  // held XLM on the Home screen). All other tokens use the fallback chain
+  // domain → record.name → tokenCode. record.domain is always a string
+  // ("" when stellar.expert returns no home_domain), so the truthy check
+  // correctly steps past empty strings to the name field — which is
+  // undefined for classic assets and only populated for Soroban contracts
+  // (via token_name / tomlInfo.name).
+  const nonHeldSubtitle = (() => {
+    if (variant === "held") return undefined;
+    if (record?.isNative) return "Stellar Lumens";
+    return record?.domain || record?.name || record?.tokenCode;
+  })();
   const iconUrl = variant !== "held" ? record?.iconUrl : undefined;
   const securityLevel = variant !== "held" ? record?.securityLevel : undefined;
 

@@ -160,6 +160,33 @@ describe("SwapTokenRow", () => {
       expect(getByText("aqua.network")).toBeTruthy();
       expect(queryByText("Aquarius")).toBeNull();
     });
+
+    it("special-cases native XLM with 'Stellar Lumens' regardless of domain/name", () => {
+      const { getByText, queryByText } = render(
+        <SwapTokenRow
+          variant="trending"
+          record={
+            {
+              tokenCode: "XLM",
+              issuer: "",
+              isNative: true,
+              // Even if stellar.expert returned a domain or a name, the XLM
+              // row should display the canonical "Stellar Lumens" subtitle.
+              domain: "stellar.org",
+              name: "Some other name",
+              tokenType: undefined,
+              hasTrustline: true,
+            } as any
+          }
+          priceInfo={{ currentPrice: new BigNumber("0.4") }}
+          network={NETWORKS.PUBLIC}
+          onPress={jest.fn()}
+        />,
+      );
+      expect(getByText("Stellar Lumens")).toBeTruthy();
+      expect(queryByText("stellar.org")).toBeNull();
+      expect(queryByText("Some other name")).toBeNull();
+    });
   });
 
   it("renders price + 24h% for trending variant", () => {
