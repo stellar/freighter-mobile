@@ -114,6 +114,54 @@ describe("SwapTokenRow", () => {
     expect(getByText("aqua.network")).toBeTruthy();
   });
 
+  describe("non-held / trending subtitle fallback chain (domain → name → tokenCode)", () => {
+    it("falls back to record.name when domain is empty", () => {
+      const { getByText, queryByText } = render(
+        <SwapTokenRow
+          variant="non-held"
+          record={{ ...mockSearchRecord, domain: "", name: "Aquarius" }}
+          network={NETWORKS.PUBLIC}
+          onPress={jest.fn()}
+        />,
+      );
+      expect(getByText("Aquarius")).toBeTruthy();
+      // The empty-string domain should NOT have rendered.
+      expect(queryByText(/aqua\.network/)).toBeNull();
+    });
+
+    it("falls back to tokenCode when both domain and name are missing", () => {
+      const { getAllByText, queryByText } = render(
+        <SwapTokenRow
+          variant="non-held"
+          record={{ ...mockSearchRecord, domain: "", name: undefined }}
+          network={NETWORKS.PUBLIC}
+          onPress={jest.fn()}
+        />,
+      );
+      // tokenCode appears twice: top-line + fallback subtitle.
+      expect(getAllByText("AQUA").length).toBeGreaterThanOrEqual(2);
+      expect(queryByText(/aqua\.network/)).toBeNull();
+    });
+
+    it("prefers domain over name when both are present (trending variant)", () => {
+      const { getByText, queryByText } = render(
+        <SwapTokenRow
+          variant="trending"
+          record={{
+            ...mockSearchRecord,
+            domain: "aqua.network",
+            name: "Aquarius",
+          }}
+          priceInfo={{ currentPrice: new BigNumber("0.05") }}
+          network={NETWORKS.PUBLIC}
+          onPress={jest.fn()}
+        />,
+      );
+      expect(getByText("aqua.network")).toBeTruthy();
+      expect(queryByText("Aquarius")).toBeNull();
+    });
+  });
+
   it("renders price + 24h% for trending variant", () => {
     const { getByText } = render(
       <SwapTokenRow

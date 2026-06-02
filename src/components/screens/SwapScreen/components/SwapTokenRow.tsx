@@ -70,7 +70,15 @@ const SwapTokenRowComponent: React.FC<SwapTokenRowProps> = ({
 
   // Derive display values from the appropriate data source
   const tokenCode = variant === "held" ? balance?.tokenCode : record?.tokenCode;
-  const domain = variant !== "held" ? record?.domain : undefined;
+  // Non-held subtitle fallback chain: domain → record.name → tokenCode.
+  // record.domain is always a string ("" when stellar.expert returns no
+  // home_domain), so the truthy check correctly steps past empty strings
+  // to the name field, which is undefined for classic assets and only
+  // populated for Soroban contracts (via token_name / tomlInfo.name).
+  const nonHeldSubtitle =
+    variant !== "held"
+      ? record?.domain || record?.name || record?.tokenCode
+      : undefined;
   const iconUrl = variant !== "held" ? record?.iconUrl : undefined;
   const securityLevel = variant !== "held" ? record?.securityLevel : undefined;
 
@@ -197,9 +205,9 @@ const SwapTokenRowComponent: React.FC<SwapTokenRowProps> = ({
               {formatBalanceAmount(balance, balance.tokenCode)}
             </Text>
           ) : null}
-          {variant !== "held" && domain ? (
+          {variant !== "held" && nonHeldSubtitle ? (
             <Text sm secondary medium numberOfLines={1}>
-              {domain}
+              {nonHeldSubtitle}
             </Text>
           ) : null}
         </View>
