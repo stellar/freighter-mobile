@@ -209,7 +209,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
 
   return (
     <BaseLayout insets={{ top: false, bottom: false }}>
-      <View className="px-4 pt-4 pb-2">
+      <View className="px-4 pt-4">
         <Input
           placeholder={t("swapScreen.searchPlaceholder")}
           value={searchTerm}
@@ -222,6 +222,10 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
           }
         />
       </View>
+      {/* 16px gap below the Input — mirrors the <View className="h-4" />
+          spacer used by the Add-a-Token search box so the two pickers feel
+          consistent regardless of which empty-state / list renders next. */}
+      <View className="h-4" />
 
       {stellarExpertDown && (
         <View className="px-4 py-2">
@@ -261,7 +265,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
           // and "Popular tokens" titles should scroll with the rows above
           // and below them.
           stickySectionHeadersEnabled={false}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8 }}
+          contentContainerStyle={{ paddingHorizontal: 16 }}
           renderSectionHeader={({ section }) => (
             <View className="py-3">
               <Text md medium primary>
