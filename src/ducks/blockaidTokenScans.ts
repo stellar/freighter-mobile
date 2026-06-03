@@ -31,6 +31,15 @@ interface BlockaidTokenScansState {
     network: NETWORKS;
     forceRefresh?: boolean;
   }) => Promise<{ results: Record<string, SingleScan> }>;
+  /**
+   * Read the disk cache for the given address list without triggering
+   * a Blockaid call. Returns fresh hits (per the 30-min TTL) plus the
+   * list of addresses that are missing or stale.
+   */
+  readScansFor: (
+    network: NETWORKS,
+    addressList: string[],
+  ) => Promise<{ hits: Record<string, SingleScan>; missing: string[] }>;
 }
 
 const readNetworkCache = async (network: NETWORKS): Promise<NetworkCache> => {
@@ -133,6 +142,24 @@ export const useBlockaidTokenScansStore = create<BlockaidTokenScansState>()(
           ...freshScans.results,
         },
       };
+    },
+    readScansFor: async (network, addressList) => {
+      const now = Date.now();
+      const cache = await readNetworkCache(network);
+      return addressList.reduce<{
+        hits: Record<string, SingleScan>;
+        missing: string[];
+      }>(
+        (acc, id) => {
+          const entry = cache[id];
+          if (entry && isFresh(entry, now)) {
+            const { _cachedAt, ...scan } = entry;
+            return { ...acc, hits: { ...acc.hits, [id]: scan } };
+          }
+          return { ...acc, missing: [...acc.missing, id] };
+        },
+        { hits: {}, missing: [] },
+      );
     },
   }),
 );

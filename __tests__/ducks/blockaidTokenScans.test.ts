@@ -237,4 +237,72 @@ describe("useBlockaidTokenScansStore", () => {
       expect(result.results[TOKEN_A]).toEqual(freshScan);
     });
   });
+
+  describe("readScansFor", () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it("returns empty hits + all addresses missing when cache is absent", async () => {
+      (dataStorage.getItem as jest.Mock).mockResolvedValue(null);
+      const result = await useBlockaidTokenScansStore
+        .getState()
+        .readScansFor(NETWORKS.PUBLIC, ["A-G1", "B-G2"]);
+      expect(result.hits).toEqual({});
+      expect(result.missing).toEqual(["A-G1", "B-G2"]);
+    });
+
+    it("returns fresh hits and reports stale entries as missing", async () => {
+      const now = Date.now();
+      const cache = {
+        "A-G1": { result_type: "Benign", _cachedAt: now - 1000 }, // fresh
+        "B-G2": {
+          result_type: "Benign",
+          _cachedAt: now - 31 * 60 * 1000,
+        }, // stale (>30 min)
+      };
+      (dataStorage.getItem as jest.Mock).mockResolvedValue(
+        JSON.stringify(cache),
+      );
+
+      const result = await useBlockaidTokenScansStore
+        .getState()
+        .readScansFor(NETWORKS.PUBLIC, ["A-G1", "B-G2", "C-G3"]);
+
+      expect(Object.keys(result.hits)).toEqual(["A-G1"]);
+      expect(result.missing.sort()).toEqual(["B-G2", "C-G3"]);
+    });
+
+    it("strips the _cachedAt field from returned hits", async () => {
+      const now = Date.now();
+      const cache = {
+        "A-G1": { result_type: "Benign", _cachedAt: now - 1000 },
+      };
+      (dataStorage.getItem as jest.Mock).mockResolvedValue(
+        JSON.stringify(cache),
+      );
+
+      const result = await useBlockaidTokenScansStore
+        .getState()
+        .readScansFor(NETWORKS.PUBLIC, ["A-G1"]);
+
+      expect(result.hits["A-G1"]).not.toHaveProperty("_cachedAt");
+    });
+
+    it("uses the per-network storage key", async () => {
+      (dataStorage.getItem as jest.Mock).mockResolvedValue(null);
+      await useBlockaidTokenScansStore
+        .getState()
+        .readScansFor(NETWORKS.TESTNET, []);
+      const calls = (dataStorage.getItem as jest.Mock).mock.calls.map(
+        (c) => c[0],
+      );
+      expect(
+        calls.some((k: string) =>
+          k.includes(STORAGE_KEYS.BLOCKAID_TOKEN_SCANS_PREFIX),
+        ),
+      ).toBe(true);
+      expect(calls.some((k: string) => k.includes("TESTNET"))).toBe(true);
+    });
+  });
 });
