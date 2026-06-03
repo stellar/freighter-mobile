@@ -344,10 +344,12 @@ export const useSwapTokenLookup = ({
     };
     // We intentionally re-run when `network` or the held-set composition
     // changes (heldIdsKey), not on every new array identity passed in.
-    // hasExistingTrustline is a stable callback derived from heldIdsKey;
-    // overriddenBlockaidResponse changes only via the debug-screen toggle.
+    // hasExistingTrustline is a stable callback derived from heldIdsKey.
+    // overriddenBlockaidResponse is included so flipping the Debug-screen
+    // Blockaid override re-fires the pipeline and re-applies the override
+    // to the rendered Trending list (QA-only path).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [network, heldIdsKey, holdsOnly]);
+  }, [network, heldIdsKey, holdsOnly, overriddenBlockaidResponse]);
 
   // -- Active-search surface ------------------------------------------------
   //

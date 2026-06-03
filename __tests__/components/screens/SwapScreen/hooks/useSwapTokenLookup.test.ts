@@ -91,8 +91,16 @@ jest.mock("ducks/verifiedTokens", () => ({
   },
 }));
 
+// jest.fn-backed so individual tests can flip the override mid-render to
+// assert the trending effect re-fires (Debug-screen Blockaid override path).
+const mockUseDebugStore = jest.fn<
+  { overriddenBlockaidResponse: string | null },
+  []
+>(() => ({ overriddenBlockaidResponse: null }));
 jest.mock("ducks/debug", () => ({
-  useDebugStore: () => ({ overriddenBlockaidResponse: null }),
+  get useDebugStore() {
+    return mockUseDebugStore;
+  },
 }));
 
 // Sample issuers used in mocks
@@ -817,6 +825,12 @@ describe("useSwapTokenLookup — SWR for trending", () => {
     jest.clearAllMocks();
     mockStores.scanBulkWithCache.mockResolvedValue({ results: {} });
     mockStores.readScansFor.mockResolvedValue({ hits: {}, missing: [] });
+    // clearAllMocks wipes mockUseDebugStore's implementation; restore the
+    // null-override default so unrelated tests keep their pre-existing
+    // assumptions.
+    mockUseDebugStore.mockImplementation(() => ({
+      overriddenBlockaidResponse: null,
+    }));
   });
 
   afterEach(() => {
@@ -974,5 +988,59 @@ describe("useSwapTokenLookup — SWR for trending", () => {
     });
 
     expect(result.current.stellarExpertDown).toBe(true);
+  });
+
+  it("re-fires trending pipeline when overriddenBlockaidResponse changes (Debug toggle)", async () => {
+    // The Debug-screen Blockaid override is consumed by mergeBlockaidScans
+    // inside the trending effect. If overriddenBlockaidResponse is missing
+    // from the dep array, flipping the toggle mid-session won't re-render
+    // the Trending list — a silent regression behind a QA-only path.
+    const held = buildHeldBalances();
+    mockStores.readTopCache.mockResolvedValue({
+      data: {
+        _embedded: {
+          records: [{ asset: `USDC-${USDC_ISSUER}-1`, domain: "circle.com" }],
+        },
+        _links: {},
+      },
+      age: 5 * 60 * 1000,
+    });
+    mockStores.readVerifiedCache.mockResolvedValue({
+      data: [
+        {
+          issuer: USDC_ISSUER,
+          name: "USDC",
+          code: "USDC",
+          domain: "circle.com",
+        },
+      ],
+      age: 5 * 60 * 1000,
+    });
+
+    // Start with no override.
+    mockUseDebugStore.mockImplementation(() => ({
+      overriddenBlockaidResponse: null,
+    }));
+    const { rerender } = renderHook(() =>
+      useSwapTokenLookup({ network: NETWORKS.PUBLIC, balanceItems: held }),
+    );
+    await act(async () => {
+      await settleAsync();
+    });
+    const phaseOneTopCacheCalls = mockStores.readTopCache.mock.calls.length;
+
+    // Flip the override. If overriddenBlockaidResponse is in the deps,
+    // the trending effect must re-run (re-read readCache + re-render).
+    mockUseDebugStore.mockImplementation(() => ({
+      overriddenBlockaidResponse: "MALICIOUS",
+    }));
+    rerender();
+    await act(async () => {
+      await settleAsync();
+    });
+
+    expect(mockStores.readTopCache.mock.calls.length).toBeGreaterThan(
+      phaseOneTopCacheCalls,
+    );
   });
 });
