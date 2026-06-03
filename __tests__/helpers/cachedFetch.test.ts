@@ -1,4 +1,4 @@
-import { cachedFetch } from "helpers/cachedFetch";
+import { cachedFetch, readCachedValue } from "helpers/cachedFetch";
 import { dataStorage } from "services/storage/storageFactory";
 
 jest.mock("services/storage/storageFactory");
@@ -340,5 +340,51 @@ describe("cachedFetch", () => {
       expect(result).toEqual({ data: "test" });
       expect(mockFn).toHaveBeenCalledTimes(1);
     });
+  });
+});
+
+describe("readCachedValue", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (dataStorage.getItem as jest.Mock).mockResolvedValue(null);
+    (dataStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+  });
+
+  it("returns null when the date key is missing", async () => {
+    (dataStorage.getItem as jest.Mock).mockResolvedValue(null);
+    const result = await readCachedValue("missing-key");
+    expect(result).toBeNull();
+  });
+
+  it("returns null when the date is unparseable (0 or NaN)", async () => {
+    (dataStorage.getItem as jest.Mock).mockImplementation((k: string) =>
+      Promise.resolve(k.endsWith("_date") ? "0" : '{"x":1}'),
+    );
+    expect(await readCachedValue("key")).toBeNull();
+  });
+
+  it("returns null when the value is missing even if the date is present", async () => {
+    (dataStorage.getItem as jest.Mock).mockImplementation((k: string) =>
+      Promise.resolve(k.endsWith("_date") ? String(Date.now()) : null),
+    );
+    expect(await readCachedValue("key")).toBeNull();
+  });
+
+  it("returns null when the cached JSON is malformed", async () => {
+    (dataStorage.getItem as jest.Mock).mockImplementation((k: string) =>
+      Promise.resolve(k.endsWith("_date") ? String(Date.now()) : "not json"),
+    );
+    expect(await readCachedValue("key")).toBeNull();
+  });
+
+  it("returns parsed data + age when both keys are present and well-formed", async () => {
+    const cachedAt = Date.now() - 5000; // 5 seconds ago
+    (dataStorage.getItem as jest.Mock).mockImplementation((k: string) =>
+      Promise.resolve(k.endsWith("_date") ? String(cachedAt) : '{"foo":"bar"}'),
+    );
+    const result = await readCachedValue<{ foo: string }>("key");
+    expect(result?.data).toEqual({ foo: "bar" });
+    expect(result?.age).toBeGreaterThanOrEqual(5000);
+    expect(result?.age).toBeLessThan(10_000);
   });
 });

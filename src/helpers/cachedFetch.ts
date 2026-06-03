@@ -101,3 +101,44 @@ export async function cachedFetch<T>(
 
   return cachedResult;
 }
+
+/**
+ * Read a cached value WITHOUT triggering a fetch. Returns the parsed
+ * payload + its age in ms, or null when no cache exists / the data is
+ * unparseable.
+ *
+ * Caller decides whether the value is stale (typically: `age > ttlMs`).
+ * Used by stores that need to support stale-while-revalidate semantics —
+ * render the cached value, then fire `cachedFetch({ forceRefresh: true })`
+ * in the background.
+ *
+ * @example
+ * const cached = await readCachedValue<MyType>("my-cache-key");
+ * if (cached) {
+ *   render(cached.data);
+ *   if (cached.age > TTL) {
+ *     // fire-and-forget background refresh
+ *     cachedFetch({ ..., forceRefresh: true }).then(render);
+ *   }
+ * }
+ */
+export async function readCachedValue<T>(
+  storageKey: string,
+): Promise<{ data: T; age: number } | null> {
+  const cachedDateId = `${storageKey}_date`;
+  const cachedDateStr = await dataStorage.getItem(cachedDateId);
+  if (!cachedDateStr) return null;
+  const cachedDate = Number(cachedDateStr);
+  if (!Number.isFinite(cachedDate) || cachedDate === 0) return null;
+
+  const cachedResultStr = await dataStorage.getItem(storageKey);
+  if (typeof cachedResultStr !== "string") return null;
+
+  try {
+    const data = JSON.parse(cachedResultStr) as T;
+    return { data, age: Date.now() - cachedDate };
+  } catch (e) {
+    logger.error("readCachedValue", "JSON parse error", e);
+    return null;
+  }
+}
