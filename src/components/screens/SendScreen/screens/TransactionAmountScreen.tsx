@@ -49,6 +49,7 @@ import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { calculateSpendableAmount, hasXLMForFees } from "helpers/balances";
+import { waitForKeyboardDismiss } from "helpers/bottomSheet";
 import { fsValue, pxValue } from "helpers/dimensions";
 import {
   formatTokenForDisplay,
@@ -96,8 +97,6 @@ const AVAILABLE_BALANCE_FONT_SIZES = [
   { maxLen: 42, size: fsValue(14) },
   { maxLen: Infinity, size: fsValue(12) },
 ] as const;
-
-const KEYBOARD_DISMISS_DELAY = 250; // ms - to allow keyboard to fully dismiss before opening modals
 
 /**
  * TransactionAmountScreen Component
@@ -257,13 +256,12 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   useRightHeaderButton({
     icon: Icon.Settings04,
     onPress: () => {
-      Keyboard.dismiss();
       amountInputRef.current?.blur();
-      // Allow keyboard to fully dismiss before presenting the sheet to avoid
-      // the modal animating down with the keyboard.
-      setTimeout(() => {
+      // Wait for the keyboard's hide animation before presenting the sheet so
+      // it opens at its final height instead of jumping down.
+      waitForKeyboardDismiss().then(() => {
         transactionSettingsBottomSheetModalRef.current?.present();
-      }, KEYBOARD_DISMISS_DELAY);
+      });
     },
   });
 
@@ -292,14 +290,13 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   );
 
   const onConfirmAddMemo = useCallback(() => {
-    Keyboard.dismiss();
     amountInputRef.current?.blur();
     addMemoExplanationBottomSheetModalRef.current?.dismiss();
-    // Allow keyboard to fully dismiss before presenting the sheet to avoid
-    // the modal animating down with the keyboard.
-    setTimeout(() => {
+    // Wait for the keyboard's hide animation before presenting the sheet so
+    // it opens at its final height instead of jumping down.
+    waitForKeyboardDismiss().then(() => {
       transactionSettingsBottomSheetModalRef.current?.present();
-    }, KEYBOARD_DISMISS_DELAY);
+    });
   }, []);
 
   const onCancelAddMemo = () => {
@@ -311,13 +308,12 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   };
 
   const handleOpenSettingsFromReview = () => {
-    Keyboard.dismiss();
     amountInputRef.current?.blur();
-    // Allow keyboard to fully dismiss before presenting the sheet to avoid
-    // the modal animating down with the keyboard.
-    setTimeout(() => {
+    // Wait for the keyboard's hide animation before presenting the sheet so
+    // it opens at its final height instead of jumping down.
+    waitForKeyboardDismiss().then(() => {
       transactionSettingsBottomSheetModalRef.current?.present();
-    }, KEYBOARD_DISMISS_DELAY);
+    });
   };
 
   const handleCancelTransactionSettings = () => {
