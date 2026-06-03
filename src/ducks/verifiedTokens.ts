@@ -1,5 +1,5 @@
 import { NETWORKS, STORAGE_KEYS } from "config/constants";
-import { cachedFetch } from "helpers/cachedFetch";
+import { cachedFetch, readCachedValue } from "helpers/cachedFetch";
 import {
   TOKEN_LISTS_API_SERVICES,
   fetchVerifiedTokens,
@@ -22,6 +22,15 @@ interface VerifiedTokensState {
     network: NETWORKS;
     forceRefresh?: boolean;
   }) => Promise<TokenListReponseItem[]>;
+  /**
+   * Read the disk cache for a network without triggering a fetch.
+   * Returns the cached payload + its age in ms, or null when the
+   * cache is empty/malformed. Used by Swap's SWR pipeline to render
+   * preliminary content before kicking a background refresh.
+   */
+  readCache: (
+    network: NETWORKS,
+  ) => Promise<{ data: TokenListReponseItem[]; age: number } | null>;
 }
 
 /**
@@ -65,5 +74,9 @@ export const useVerifiedTokensStore = create<VerifiedTokensState>()(() => ({
       ttlMs: CACHE_TTL_MS,
       forceRefresh,
     });
+  },
+  readCache: async (network) => {
+    const storageKey = `${STORAGE_KEYS.VERIFIED_TOKENS_PREFIX}${network}`;
+    return readCachedValue<TokenListReponseItem[]>(storageKey);
   },
 }));
