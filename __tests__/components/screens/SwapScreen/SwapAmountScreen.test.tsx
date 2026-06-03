@@ -412,6 +412,33 @@ describe("SwapAmountScreen", () => {
       );
     });
 
+    it("shows 'Select a token' AND opens the source picker when source is empty", async () => {
+      // sourceTokenId="" mimics the selection-swap rule clearing the source.
+      // sourceBalance lookup misses → CTA goes to "select" / missingSide=source.
+      setSwapStoreState({
+        sourceTokenId: "",
+        sourceTokenSymbol: "",
+        sourceAmount: "0",
+      });
+
+      const navigation = makeNavigation();
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={navigation} route={makeRoute()} />,
+      );
+
+      const cta = getByTestId("swap-continue-button");
+      expect(cta).toHaveTextContent("Select a token");
+
+      await act(async () => {
+        fireEvent.press(cta);
+        await Promise.resolve();
+      });
+      expect(navigation.navigate).toHaveBeenCalledWith(
+        SWAP_ROUTES.SWAP_SCREEN,
+        { selectionType: "source" },
+      );
+    });
+
     it("shows 'Enter an amount' when destination is set but amount is zero", () => {
       setSwapStoreState({ sourceAmount: "0" });
 

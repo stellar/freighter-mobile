@@ -417,14 +417,21 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   //   loading      path-finding in flight  ──► spinner
   //   review       path resolved, amount valid  ──► open Review sheet
   type CtaState =
-    | { kind: "select" }
+    | { kind: "select"; missingSide: "source" | "destination" }
     | { kind: "enter" }
     | { kind: "insufficient" }
     | { kind: "loading" }
     | { kind: "review" };
 
   const ctaState: CtaState = useMemo(() => {
-    if (!destinationTokenDescriptor) return { kind: "select" };
+    // "Select a token" fires whenever EITHER side is empty — picking the
+    // missing side first is what the user expects. Source-first ordering
+    // when both are empty so we resolve the upstream input before the
+    // downstream destination.
+    if (!sourceBalance) return { kind: "select", missingSide: "source" };
+    if (!destinationTokenDescriptor) {
+      return { kind: "select", missingSide: "destination" };
+    }
 
     const amountBN = new BigNumber(sourceAmount || "0");
     if (amountBN.isZero() || amountBN.isNaN()) return { kind: "enter" };
@@ -442,6 +449,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     // `pathError` when present, so we don't need a dedicated CTA state.
     return { kind: "enter" };
   }, [
+    sourceBalance,
     destinationTokenDescriptor,
     sourceAmount,
     spendableAmount,
@@ -552,14 +560,15 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     navigateToSelectDestinationTokenScreen("dropdown");
   }, [navigateToSelectDestinationTokenScreen]);
 
-  const navigateToSelectSourceTokenScreen = useCallback(() => {
-    analytics.track(AnalyticsEvent.SWAP_TO_PICKER_OPENED, {
-      source: "dropdown",
-    });
-    navigation.navigate(SWAP_ROUTES.SWAP_SCREEN, {
-      selectionType: SWAP_SELECTION_TYPES.SOURCE,
-    });
-  }, [navigation]);
+  const navigateToSelectSourceTokenScreen = useCallback(
+    (source: "cta" | "dropdown") => {
+      analytics.track(AnalyticsEvent.SWAP_TO_PICKER_OPENED, { source });
+      navigation.navigate(SWAP_ROUTES.SWAP_SCREEN, {
+        selectionType: SWAP_SELECTION_TYPES.SOURCE,
+      });
+    },
+    [navigation],
+  );
 
   const handlePercentagePress = useCallback(
     (percentage: number) => {
@@ -810,7 +819,11 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     await waitForKeyboardDismiss();
 
     if (ctaState.kind === "select") {
-      navigateToSelectDestinationTokenScreen("cta");
+      if (ctaState.missingSide === "source") {
+        navigateToSelectSourceTokenScreen("cta");
+      } else {
+        navigateToSelectDestinationTokenScreen("cta");
+      }
       return;
     }
 
@@ -879,6 +892,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     ctaState,
     prepareSwapTransaction,
     navigateToSelectDestinationTokenScreen,
+    navigateToSelectSourceTokenScreen,
     showSecurityWarningForDestination,
     showSecurityWarningForSource,
     destinationTokenDescriptor,
@@ -1176,7 +1190,9 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
               marginRight: 12,
             }}
           />
-          {renderSelectedTokenPill("sell", navigateToSelectSourceTokenScreen)}
+          {renderSelectedTokenPill("sell", () =>
+            navigateToSelectSourceTokenScreen("dropdown"),
+          )}
         </View>
         <View className="flex-row items-center justify-between mt-[4px]">
           <TouchableOpacity
