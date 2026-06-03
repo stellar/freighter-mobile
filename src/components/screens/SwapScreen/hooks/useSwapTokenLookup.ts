@@ -1,6 +1,8 @@
 /* eslint-disable no-underscore-dangle */
 import { canonicalId } from "components/screens/SwapScreen/helpers/canonicalId";
+import { computeTrendingIntersection } from "components/screens/SwapScreen/helpers/computeTrendingIntersection";
 import { formatClassicRecord } from "components/screens/SwapScreen/helpers/formatClassicRecord";
+import { mergeBlockaidScans } from "components/screens/SwapScreen/helpers/mergeBlockaidScans";
 import {
   DEFAULT_DEBOUNCE_DELAY,
   NATIVE_TOKEN_CODE,
@@ -16,6 +18,7 @@ import {
 import { useBlockaidTokenScansStore } from "ducks/blockaidTokenScans";
 import { useDebugStore } from "ducks/debug";
 import { useStellarExpertTopTokensStore } from "ducks/stellarExpertTopTokens";
+import { useVerifiedTokensStore } from "ducks/verifiedTokens";
 import { formatTokenIdentifier, getTokenType } from "helpers/balances";
 import { isMainnet } from "helpers/networks";
 import { isContractId } from "helpers/soroban";
@@ -219,9 +222,22 @@ export const useSwapTokenLookup = ({
 
   // -- Idle surface ---------------------------------------------------------
   //
-  // Fetch trending assets once per (network, balanceItems) change while no
-  // active search is in flight. `popularTokens` excludes held tokens; the
-  // `trendingTokens` array keeps them.
+  // Two-phase SWR pipeline for trending tokens.
+  //
+  // Phase 1 (sync-ish): read the top-tokens + verified-tokens disk caches in
+  // parallel. If both are present we intersect them and render preliminary
+  // content immediately, painting Blockaid security info from whichever
+  // scans are also cached. No spinner — the user sees a list right away.
+  //
+  // Phase 2 (async): if either cache layer was missing or stale, fire fresh
+  // fetches in parallel (forceRefresh on the stale layer only), recompute
+  // the intersection, bulk-scan the (smaller) intersection through Blockaid,
+  // and replace the rendered list.
+  //
+  // Failure handling: when the Phase 2 refresh fails AND we already rendered
+  // from cache, we keep the stale list silently. Only flip to the
+  // "stellar.expert down" UI when there was no cache to fall back on
+  // (cold start).
   useEffect(() => {
     // Cancel any prior trending request
     trendingAbortRef.current?.abort();
@@ -237,69 +253,89 @@ export const useSwapTokenLookup = ({
     const { signal } = controller;
     let cancelled = false;
 
+    const CACHE_TTL_MS = 30 * 60 * 1000;
+
+    // Optimistically flag loading until Phase 1 confirms a cache hit. Cold
+    // starts keep this true until Phase 2 finishes; cache hits flip it off
+    // as soon as the preliminary list is rendered.
     setIsTrendingLoading(true);
 
     (async () => {
-      try {
-        const response = await useStellarExpertTopTokensStore
+      // ---- Phase 1: read all caches, render preliminary if possible ----
+      const [topCache, verCache] = await Promise.all([
+        useStellarExpertTopTokensStore.getState().readCache(network),
+        useVerifiedTokensStore.getState().readCache(network),
+      ]);
+      if (cancelled || signal.aborted) return;
+
+      const haveBothCaches = !!topCache && !!verCache;
+      if (haveBothCaches) {
+        // Render preliminary content using whichever Blockaid scans are cached.
+        const intersection = computeTrendingIntersection(
+          topCache.data,
+          verCache.data,
+          hasExistingTrustline,
+        );
+        const addressList = intersection
+          .filter((t) => t.issuer)
+          .map((t) => `${t.tokenCode}-${t.issuer}`);
+        const { hits } = await useBlockaidTokenScansStore
           .getState()
-          .getStellarExpertTopTokens({ network });
+          .readScansFor(network, addressList);
         if (cancelled || signal.aborted) return;
-
-        if (!response) {
-          setStellarExpertDown(true);
-          setTrendingTokens([]);
-          return;
-        }
-
-        const records = response._embedded?.records ?? [];
-        // Classic-only filter (Soroban contracts dropped); skip records
-        // missing an issuer.
-        const classicRecords = records.filter((r) => {
-          if (isSorobanRecord(r)) return false;
-          const [tokenCode, issuer] = r.asset.split("-");
-          if (!issuer && r.asset !== NATIVE_TOKEN_CODE) return false;
-          const tokenType = getTokenType(
-            issuer ? `${tokenCode}:${issuer}` : NATIVE_TOKEN_CODE,
-          );
-          return isClassicTokenType(tokenType);
-        });
-
-        const formatted = classicRecords.map((r) => {
-          const [tokenCode, issuer] = r.asset.split("-");
-          return formatClassicRecord(
-            r,
-            hasExistingTrustline(tokenCode, issuer ?? ""),
-          );
-        });
-
-        // Dedupe by canonical id, preserving stellar.expert's order.
-        const seen = new Set<string>();
-        const deduped = formatted.filter((t) => {
-          const id = canonicalId(t.tokenCode, t.issuer);
-          if (seen.has(id)) return false;
-          seen.add(id);
-          return true;
-        });
-
-        const enhanced = await enhanceWithSecurityInfo(deduped, signal);
-        if (cancelled || signal.aborted) return;
-
-        // §5.1: both popularTokens (picker) and trendingTokens (SwapAmountScreen
-        // list) are the intersection of stellar.expert top-50 AND the verified
-        // tokens list. The only difference is held-token exclusion — applied to
-        // popularTokens below. Drop unverified records here.
-        const { verified } = await splitVerifiedTokens({
-          tokens: enhanced,
-          network,
-        });
-        if (cancelled || signal.aborted) return;
-
         setStellarExpertDown(false);
-        setTrendingTokens(verified);
-      } finally {
-        if (!cancelled) setIsTrendingLoading(false);
+        setTrendingTokens(
+          mergeBlockaidScans(intersection, hits, overriddenBlockaidResponse),
+        );
+        setIsTrendingLoading(false);
       }
+
+      // ---- Phase 2: revalidate when missing or stale ----
+      const topStale = !topCache || topCache.age > CACHE_TTL_MS;
+      const verStale = !verCache || verCache.age > CACHE_TTL_MS;
+      const needRefresh = topStale || verStale;
+      if (!needRefresh) return;
+
+      const [topResp, verSplit] = await Promise.all([
+        useStellarExpertTopTokensStore.getState().getStellarExpertTopTokens({
+          network,
+          forceRefresh: !!topCache && topCache.age > CACHE_TTL_MS,
+        }),
+        useVerifiedTokensStore.getState().getVerifiedTokens({
+          network,
+          forceRefresh: !!verCache && verCache.age > CACHE_TTL_MS,
+        }),
+      ]);
+      if (cancelled || signal.aborted) return;
+
+      if (!topResp || !verSplit) {
+        // Refresh failed. Only escalate to "stellar.expert down" UI when
+        // there was no cache to fall back on; otherwise keep the stale list.
+        if (!haveBothCaches) {
+          setStellarExpertDown(true);
+          setIsTrendingLoading(false);
+        }
+        return;
+      }
+
+      const intersection = computeTrendingIntersection(
+        topResp,
+        verSplit,
+        hasExistingTrustline,
+      );
+      const addressList = intersection
+        .filter((t) => t.issuer)
+        .map((t) => `${t.tokenCode}-${t.issuer}`);
+      const { results } = await useBlockaidTokenScansStore
+        .getState()
+        .scanBulkWithCache({ addressList, network });
+      if (cancelled || signal.aborted) return;
+
+      setStellarExpertDown(false);
+      setTrendingTokens(
+        mergeBlockaidScans(intersection, results, overriddenBlockaidResponse),
+      );
+      setIsTrendingLoading(false);
     })();
 
     return () => {
@@ -308,9 +344,10 @@ export const useSwapTokenLookup = ({
     };
     // We intentionally re-run when `network` or the held-set composition
     // changes (heldIdsKey), not on every new array identity passed in.
-    // hasExistingTrustline / enhanceWithSecurityInfo are stable callbacks.
+    // hasExistingTrustline is a stable callback derived from heldIdsKey;
+    // overriddenBlockaidResponse changes only via the debug-screen toggle.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [network, heldIdsKey, enhanceWithSecurityInfo, holdsOnly]);
+  }, [network, heldIdsKey, holdsOnly]);
 
   // -- Active-search surface ------------------------------------------------
   //

@@ -11,19 +11,27 @@ import * as stellarExpert from "services/stellarExpert";
 const mockStores = {
   getStellarExpertTopTokens: jest.fn(),
   scanBulkWithCache: jest.fn(),
+  readTopCache: jest.fn(),
+  readVerifiedCache: jest.fn(),
+  readScansFor: jest.fn(),
+  getVerifiedTokens: jest.fn(),
 };
 
 jest.mock("ducks/stellarExpertTopTokens", () => ({
   useStellarExpertTopTokensStore: {
     getState: () => ({
       getStellarExpertTopTokens: mockStores.getStellarExpertTopTokens,
+      readCache: mockStores.readTopCache,
     }),
   },
 }));
 
 jest.mock("ducks/blockaidTokenScans", () => ({
   useBlockaidTokenScansStore: {
-    getState: () => ({ scanBulkWithCache: mockStores.scanBulkWithCache }),
+    getState: () => ({
+      scanBulkWithCache: mockStores.scanBulkWithCache,
+      readScansFor: mockStores.readScansFor,
+    }),
   },
 }));
 
@@ -77,7 +85,8 @@ jest.mock("helpers/splitVerifiedTokens", () => ({
 jest.mock("ducks/verifiedTokens", () => ({
   useVerifiedTokensStore: {
     getState: () => ({
-      getVerifiedTokens: jest.fn().mockResolvedValue([]),
+      getVerifiedTokens: mockStores.getVerifiedTokens,
+      readCache: mockStores.readVerifiedCache,
     }),
   },
 }));
@@ -189,6 +198,23 @@ describe("useSwapTokenLookup — idle mode", () => {
       },
     });
     mockStores.scanBulkWithCache.mockResolvedValue({ results: {} });
+    // Cold-start defaults for the SWR pipeline: no cache present, so the
+    // hook falls through to the live fetch path that these tests assert on.
+    mockStores.readTopCache.mockResolvedValue(null);
+    mockStores.readVerifiedCache.mockResolvedValue(null);
+    mockStores.readScansFor.mockResolvedValue({ hits: {}, missing: [] });
+    // computeTrendingIntersection intersects with this list directly.
+    // Mark the assets used in mockTrendingRecords (AQUA + USDC) as verified
+    // by default so the trending list isn't empty for the bulk of tests.
+    mockStores.getVerifiedTokens.mockResolvedValue([
+      { issuer: USDC_ISSUER, name: "USDC", code: "USDC", domain: "circle.com" },
+      {
+        issuer: AQUA_ISSUER,
+        name: "AQUA",
+        code: "AQUA",
+        domain: "aqua.network",
+      },
+    ]);
   });
 
   afterEach(() => {
@@ -342,11 +368,11 @@ describe("useSwapTokenLookup — idle mode", () => {
     });
 
     // Mark both XLM and USDC as verified so they would appear in popularTokens
-    // if NOT held.
-    mockSplitVerifiedTokens.mockImplementationOnce(
-      ({ tokens }: { tokens: unknown[] }) =>
-        Promise.resolve({ verified: tokens, unverified: [] }),
-    );
+    // if NOT held. XLM is intrinsically verified by computeTrendingIntersection
+    // (native check), so we just need USDC in the verified-tokens store.
+    mockStores.getVerifiedTokens.mockResolvedValueOnce([
+      { issuer: USDC_ISSUER, name: "USDC", code: "USDC", domain: "circle.com" },
+    ]);
 
     // Held balances include native XLM — id must be "native" (Horizon convention)
     const heldWithXLM: (PricedBalance & { id: string })[] = [
@@ -417,15 +443,12 @@ describe("useSwapTokenLookup — idle mode", () => {
       _links: { self: { href: "" }, prev: { href: "" }, next: { href: "" } },
     });
 
-    // Override splitVerifiedTokens: only USDC is verified; AQUA + FOO are not.
-    mockSplitVerifiedTokens.mockImplementationOnce(
-      ({ tokens }: { tokens: unknown[] }) => {
-        const tokenList = tokens as Array<{ tokenCode: string }>;
-        const verified = tokenList.filter((t) => t.tokenCode === "USDC");
-        const unverified = tokenList.filter((t) => t.tokenCode !== "USDC");
-        return Promise.resolve({ verified, unverified });
-      },
-    );
+    // The new SWR pipeline intersects with the verified-tokens store directly
+    // (computeTrendingIntersection), so the verified list is sourced from
+    // getVerifiedTokens — not splitVerifiedTokens. Only USDC is verified here.
+    mockStores.getVerifiedTokens.mockResolvedValueOnce([
+      { issuer: USDC_ISSUER, name: "USDC", code: "USDC", domain: "circle.com" },
+    ]);
 
     const { result } = renderHook(() =>
       useSwapTokenLookup({ network: NETWORKS.PUBLIC, balanceItems: [] }),
@@ -460,6 +483,10 @@ describe("useSwapTokenLookup — active search", () => {
       _links: { self: { href: "" }, prev: { href: "" }, next: { href: "" } },
     });
     mockStores.scanBulkWithCache.mockResolvedValue({ results: {} });
+    mockStores.readTopCache.mockResolvedValue(null);
+    mockStores.readVerifiedCache.mockResolvedValue(null);
+    mockStores.readScansFor.mockResolvedValue({ hits: {}, missing: [] });
+    mockStores.getVerifiedTokens.mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -662,6 +689,10 @@ describe("useSwapTokenLookup — holdsOnly (Swap from picker)", () => {
       _links: { self: { href: "" }, prev: { href: "" }, next: { href: "" } },
     });
     mockStores.scanBulkWithCache.mockResolvedValue({ results: {} });
+    mockStores.readTopCache.mockResolvedValue(null);
+    mockStores.readVerifiedCache.mockResolvedValue(null);
+    mockStores.readScansFor.mockResolvedValue({ hits: {}, missing: [] });
+    mockStores.getVerifiedTokens.mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -777,5 +808,171 @@ describe("useSwapTokenLookup — holdsOnly (Swap from picker)", () => {
 
     expect(stellarExpert.searchToken).not.toHaveBeenCalled();
     expect(result.current.searchResults).toEqual([]);
+  });
+});
+
+describe("useSwapTokenLookup — SWR for trending", () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.clearAllMocks();
+    mockStores.scanBulkWithCache.mockResolvedValue({ results: {} });
+    mockStores.readScansFor.mockResolvedValue({ hits: {}, missing: [] });
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it("Phase 1: renders preliminary trending from cache without firing a fetch (fresh caches)", async () => {
+    const held = buildHeldBalances();
+    mockStores.readTopCache.mockResolvedValue({
+      data: {
+        _embedded: {
+          records: [{ asset: `USDC-${USDC_ISSUER}-1`, domain: "circle.com" }],
+        },
+        _links: {},
+      },
+      age: 5 * 60 * 1000, // 5 min — fresh
+    });
+    mockStores.readVerifiedCache.mockResolvedValue({
+      data: [
+        {
+          issuer: USDC_ISSUER,
+          name: "USDC",
+          code: "USDC",
+          domain: "circle.com",
+        },
+      ],
+      age: 5 * 60 * 1000,
+    });
+
+    const { result } = renderHook(() =>
+      useSwapTokenLookup({ network: NETWORKS.PUBLIC, balanceItems: held }),
+    );
+    await act(async () => {
+      await settleAsync();
+    });
+
+    expect(result.current.trendingTokens.map((t) => t.tokenCode)).toContain(
+      "USDC",
+    );
+    expect(mockStores.getStellarExpertTopTokens).not.toHaveBeenCalled();
+    expect(mockStores.getVerifiedTokens).not.toHaveBeenCalled();
+  });
+
+  it("Phase 2: stale cache renders preliminary AND fires forceRefresh on stale layer(s)", async () => {
+    const held = buildHeldBalances();
+    mockStores.readTopCache.mockResolvedValue({
+      data: { _embedded: { records: [] }, _links: {} },
+      age: 31 * 60 * 1000, // stale
+    });
+    mockStores.readVerifiedCache.mockResolvedValue({
+      data: [],
+      age: 1 * 60 * 1000, // fresh
+    });
+    mockStores.getStellarExpertTopTokens.mockResolvedValue({
+      _embedded: { records: [] },
+      _links: {},
+    });
+    mockStores.getVerifiedTokens.mockResolvedValue([]);
+
+    renderHook(() =>
+      useSwapTokenLookup({ network: NETWORKS.PUBLIC, balanceItems: held }),
+    );
+    await act(async () => {
+      await settleAsync();
+    });
+
+    expect(mockStores.getStellarExpertTopTokens).toHaveBeenCalledWith(
+      expect.objectContaining({ forceRefresh: true }),
+    );
+    expect(mockStores.getVerifiedTokens).toHaveBeenCalledWith(
+      expect.objectContaining({ forceRefresh: false }),
+    );
+  });
+
+  it("Cold-start: no cache → shows isTrendingLoading=true, then resolves after fetch", async () => {
+    const held = buildHeldBalances();
+    mockStores.readTopCache.mockResolvedValue(null);
+    mockStores.readVerifiedCache.mockResolvedValue(null);
+    mockStores.getStellarExpertTopTokens.mockResolvedValue({
+      _embedded: {
+        records: [{ asset: `USDC-${USDC_ISSUER}-1`, domain: "circle.com" }],
+      },
+      _links: {},
+    });
+    mockStores.getVerifiedTokens.mockResolvedValue([
+      { issuer: USDC_ISSUER, name: "USDC", code: "USDC", domain: "circle.com" },
+    ]);
+
+    const { result } = renderHook(() =>
+      useSwapTokenLookup({ network: NETWORKS.PUBLIC, balanceItems: held }),
+    );
+
+    // Immediately after first render: loading flag is set.
+    expect(result.current.isTrendingLoading).toBe(true);
+
+    await act(async () => {
+      await settleAsync();
+    });
+
+    expect(result.current.isTrendingLoading).toBe(false);
+    expect(result.current.trendingTokens.map((t) => t.tokenCode)).toContain(
+      "USDC",
+    );
+  });
+
+  it("Phase 2 failure with cached data: keep stale list, do NOT flip stellarExpertDown", async () => {
+    const held = buildHeldBalances();
+    mockStores.readTopCache.mockResolvedValue({
+      data: {
+        _embedded: {
+          records: [{ asset: `USDC-${USDC_ISSUER}-1`, domain: "circle.com" }],
+        },
+        _links: {},
+      },
+      age: 31 * 60 * 1000,
+    });
+    mockStores.readVerifiedCache.mockResolvedValue({
+      data: [
+        {
+          issuer: USDC_ISSUER,
+          name: "USDC",
+          code: "USDC",
+          domain: "circle.com",
+        },
+      ],
+      age: 1 * 60 * 1000,
+    });
+    mockStores.getStellarExpertTopTokens.mockResolvedValue(null); // refresh fails
+
+    const { result } = renderHook(() =>
+      useSwapTokenLookup({ network: NETWORKS.PUBLIC, balanceItems: held }),
+    );
+    await act(async () => {
+      await settleAsync();
+    });
+
+    expect(result.current.stellarExpertDown).toBe(false);
+    expect(result.current.trendingTokens.map((t) => t.tokenCode)).toContain(
+      "USDC",
+    );
+  });
+
+  it("Cold-start failure: no cache + fetch fails → stellarExpertDown=true", async () => {
+    const held = buildHeldBalances();
+    mockStores.readTopCache.mockResolvedValue(null);
+    mockStores.readVerifiedCache.mockResolvedValue(null);
+    mockStores.getStellarExpertTopTokens.mockResolvedValue(null);
+    mockStores.getVerifiedTokens.mockResolvedValue([]);
+
+    const { result } = renderHook(() =>
+      useSwapTokenLookup({ network: NETWORKS.PUBLIC, balanceItems: held }),
+    );
+    await act(async () => {
+      await settleAsync();
+    });
+
+    expect(result.current.stellarExpertDown).toBe(true);
   });
 });
