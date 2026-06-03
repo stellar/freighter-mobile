@@ -1444,6 +1444,16 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
             trendingDetailSheetRef.current?.dismiss();
             setSelectedTrendingRecord(null);
           }}
+          // Clear the selected record on every dismiss path — swipe-down,
+          // backdrop tap, X tap, programmatic dismiss. onChange(index=-1)
+          // fires consistently for all of them. This guarantees the next
+          // tap on the SAME row goes null → record → effect → present()
+          // rather than being a no-op state update.
+          bottomSheetModalProps={{
+            onChange: (index: number) => {
+              if (index === -1) setSelectedTrendingRecord(null);
+            },
+          }}
           customContent={
             <TrendingTokenDetailBottomSheet
               record={selectedTrendingRecord}

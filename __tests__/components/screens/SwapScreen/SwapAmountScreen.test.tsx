@@ -36,7 +36,17 @@ mockUseColors();
 // without depending on @gorhom/bottom-sheet's animated implementation. We
 // stash imperative refs on the global so per-test assertions can target
 // individual sheets by their declaration order.
-type SheetRefSpy = { present: jest.Mock; dismiss: jest.Mock };
+type SheetRefSpy = {
+  present: jest.Mock;
+  dismiss: jest.Mock;
+  /**
+   * Synthetic dismiss: invokes the user-supplied
+   * bottomSheetModalProps.onChange with index=-1, mirroring gorhom's
+   * behavior when the sheet closes (swipe / backdrop / X / programmatic).
+   * Returns true when the sheet had an onChange handler.
+   */
+  fireDismiss: () => boolean;
+};
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace, vars-on-top, no-var, no-underscore-dangle
   var __mockSheetRefs: SheetRefSpy[];
@@ -49,12 +59,22 @@ jest.mock("components/BottomSheet", () => {
   const RNModule = require("react-native");
   /* eslint-enable global-require, @typescript-eslint/no-var-requires, @typescript-eslint/no-shadow */
 
-  const NoopSheet = (props: { modalRef?: React.RefObject<unknown> }) => {
-    const { modalRef } = props;
+  const NoopSheet = (props: {
+    modalRef?: React.RefObject<unknown>;
+    bottomSheetModalProps?: { onChange?: (index: number) => void };
+  }) => {
+    const { modalRef, bottomSheetModalProps } = props;
     ReactModule.useImperativeHandle(modalRef, () => {
       const spy: SheetRefSpy = {
         present: jest.fn(),
         dismiss: jest.fn(),
+        fireDismiss: () => {
+          if (bottomSheetModalProps?.onChange) {
+            bottomSheetModalProps.onChange(-1);
+            return true;
+          }
+          return false;
+        },
       };
       // eslint-disable-next-line no-underscore-dangle
       globalThis.__mockSheetRefs.push(spy);
@@ -793,6 +813,51 @@ describe("SwapAmountScreen", () => {
       // eslint-disable-next-line no-underscore-dangle
       const newestSheet = globalThis.__mockSheetRefs.at(-1);
       expect(newestSheet?.present).toHaveBeenCalled();
+    });
+
+    it("re-opens the same Trending row on a second tap after dismiss", () => {
+      // Regression: tapping the same Trending row twice was a no-op
+      // because setSelectedTrendingRecord with the same object reference
+      // doesn't fire the present-effect. Fix: clear selectedTrendingRecord
+      // on dismiss via bottomSheetModalProps.onChange(-1). The next tap
+      // then goes null → record → effect → present(). Because the sheet
+      // is conditionally mounted, dismissal unmounts it and the second
+      // tap re-mounts a fresh ref — assert via __mockSheetRefs membership.
+      // eslint-disable-next-line no-underscore-dangle
+      globalThis.__mockSheetRefs = [];
+      const { getByText } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      act(() => {
+        fireEvent.press(getByText("AQUA"));
+      });
+      // eslint-disable-next-line no-underscore-dangle
+      const sheetsAfterFirstTap = globalThis.__mockSheetRefs.length;
+      // eslint-disable-next-line no-underscore-dangle
+      const firstSheet = globalThis.__mockSheetRefs.at(-1);
+      expect(firstSheet?.present).toHaveBeenCalledTimes(1);
+
+      // Simulate the user dismissing the sheet (swipe / backdrop / X) —
+      // gorhom fires onChange(-1), which our screen routes to clearing
+      // selectedTrendingRecord.
+      act(() => {
+        firstSheet?.fireDismiss();
+      });
+
+      // Tap the SAME row again — should mount a new sheet ref and call
+      // present() on it.
+      act(() => {
+        fireEvent.press(getByText("AQUA"));
+      });
+      // eslint-disable-next-line no-underscore-dangle
+      expect(globalThis.__mockSheetRefs.length).toBeGreaterThan(
+        sheetsAfterFirstTap,
+      );
+      // eslint-disable-next-line no-underscore-dangle
+      const secondSheet = globalThis.__mockSheetRefs.at(-1);
+      expect(secondSheet?.present).toHaveBeenCalledTimes(1);
+      expect(secondSheet).not.toBe(firstSheet);
     });
 
     it("hides the trending list when stellarExpertDown is true", () => {

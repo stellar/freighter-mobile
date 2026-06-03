@@ -50,7 +50,7 @@ export const TrustlineInfoBottomSheet: React.FC<
         </Text>
         {t("swapScreen.trustlineInfo.bodySuffix", interpolation)}
       </Text>
-      <Button onPress={handleConfirm} primary>
+      <Button onPress={handleConfirm} tertiary>
         {t("swapScreen.trustlineInfo.confirm")}
       </Button>
     </View>
