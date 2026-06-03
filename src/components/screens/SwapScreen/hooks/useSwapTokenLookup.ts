@@ -64,6 +64,14 @@ export interface UseSwapTokenLookupProps {
   network: NETWORKS;
   publicKey?: string;
   balanceItems: Array<PricedBalance & { id: string }>;
+  /**
+   * When true, the hook becomes a pure client-side held-balance lookup:
+   * trending tokens aren't fetched, popular tokens stay empty, and
+   * `searchTerm` filters in-memory across `balanceItems` only (no
+   * stellar.expert search, no Blockaid bulk scan). Use this for the
+   * "Swap from" picker so typing in the search box stays instant.
+   */
+  holdsOnly?: boolean;
 }
 
 /**
@@ -134,6 +142,7 @@ export const useSwapTokenLookup = ({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   publicKey,
   balanceItems,
+  holdsOnly = false,
 }: UseSwapTokenLookupProps): SwapTokenLookupResult => {
   const latestRequestRef = useRef(0);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -244,6 +253,13 @@ export const useSwapTokenLookup = ({
   useEffect(() => {
     // Cancel any prior trending request
     trendingAbortRef.current?.abort();
+    // holdsOnly callers (the "Swap from" picker) never render trending or
+    // popular tokens, so the network call is wasted work — skip entirely.
+    if (holdsOnly) {
+      setIsTrendingLoading(false);
+      setTrendingTokens([]);
+      return undefined;
+    }
     const controller = new AbortController();
     trendingAbortRef.current = controller;
     const { signal } = controller;
@@ -322,7 +338,7 @@ export const useSwapTokenLookup = ({
     // changes (heldIdsKey), not on every new array identity passed in.
     // hasExistingTrustline / enhanceWithSecurityInfo are stable callbacks.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [network, heldIdsKey, enhanceWithSecurityInfo]);
+  }, [network, heldIdsKey, enhanceWithSecurityInfo, holdsOnly]);
 
   // -- Active-search surface ------------------------------------------------
   //
@@ -370,6 +386,18 @@ export const useSwapTokenLookup = ({
           };
         })
         .filter((t) => isClassicTokenType(t.tokenType));
+
+      // holdsOnly short-circuit: the "Swap from" picker only chooses among
+      // tokens the user already holds, so there's no point hitting
+      // stellar.expert / Blockaid on each keystroke. Return the in-memory
+      // matches immediately and bail.
+      if (holdsOnly) {
+        if (latestRequestRef.current !== requestId) return;
+        setSearchResults(heldMatches);
+        setHadSorobanMatches(false);
+        setStatus(HookStatus.SUCCESS);
+        return;
+      }
 
       // 2) Cross-network search via stellar.expert.
       const response = await searchToken(term, network, signal);
@@ -443,7 +471,7 @@ export const useSwapTokenLookup = ({
     // inline without thrashing the callback identity). hasExistingTrustline
     // is the held-set fingerprint; enhanceWithSecurityInfo carries the
     // network + Blockaid debug-override fingerprint.
-    [enhanceWithSecurityInfo, hasExistingTrustline, network],
+    [enhanceWithSecurityInfo, hasExistingTrustline, network, holdsOnly],
   );
 
   // Debounce wiring: a user keystroke updates `searchTerm` immediately so the

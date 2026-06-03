@@ -650,3 +650,92 @@ describe("useSwapTokenLookup — active search", () => {
     expect(tokenCodes).not.toContain("FOO");
   });
 });
+
+describe("useSwapTokenLookup — holdsOnly (Swap from picker)", () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.clearAllMocks();
+    mockStores.getTrendingTokens.mockResolvedValue({
+      _embedded: { records: mockTrendingRecords },
+      _links: { self: { href: "" }, prev: { href: "" }, next: { href: "" } },
+    });
+    mockStores.scanBulkWithCache.mockResolvedValue({ results: {} });
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it("does NOT fetch trending tokens when holdsOnly is true", async () => {
+    const held = buildHeldBalances();
+
+    renderHook(() =>
+      useSwapTokenLookup({
+        network: NETWORKS.PUBLIC,
+        balanceItems: held,
+        holdsOnly: true,
+      }),
+    );
+
+    await act(async () => {
+      await settleAsync();
+    });
+
+    expect(mockStores.getTrendingTokens).not.toHaveBeenCalled();
+  });
+
+  it("returns held-only search results without hitting stellar.expert when holdsOnly is true", async () => {
+    const held = buildHeldBalances();
+
+    const { result } = renderHook(() =>
+      useSwapTokenLookup({
+        network: NETWORKS.PUBLIC,
+        balanceItems: held,
+        holdsOnly: true,
+      }),
+    );
+
+    await act(async () => {
+      await settleAsync();
+    });
+
+    act(() => {
+      result.current.handleSearch("USDC");
+    });
+
+    await settleDebounce();
+
+    // stellar.expert searchToken must NOT have been called — the held
+    // match is computed entirely in-memory.
+    expect(stellarExpert.searchToken).not.toHaveBeenCalled();
+    // The held USDC match comes back as the sole result.
+    expect(result.current.searchResults.length).toBe(1);
+    expect(result.current.searchResults[0].tokenCode).toBe("USDC");
+    expect(result.current.searchResults[0].hasTrustline).toBe(true);
+  });
+
+  it("returns empty results for a search term that doesn't match any held balance", async () => {
+    const held = buildHeldBalances();
+
+    const { result } = renderHook(() =>
+      useSwapTokenLookup({
+        network: NETWORKS.PUBLIC,
+        balanceItems: held,
+        holdsOnly: true,
+      }),
+    );
+
+    await act(async () => {
+      await settleAsync();
+    });
+
+    act(() => {
+      result.current.handleSearch("NONEXISTENT");
+    });
+
+    await settleDebounce();
+
+    expect(stellarExpert.searchToken).not.toHaveBeenCalled();
+    expect(result.current.searchResults).toEqual([]);
+  });
+});

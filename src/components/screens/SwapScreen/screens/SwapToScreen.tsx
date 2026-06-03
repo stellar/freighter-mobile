@@ -69,6 +69,10 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
     network,
     publicKey: account?.publicKey,
     balanceItems,
+    // "Swap from" picker only chooses among held tokens — skip the
+    // trending fetch and the per-keystroke stellar.expert search so
+    // typing in the search box stays instant.
+    holdsOnly: selectionType === SWAP_SELECTION_TYPES.SOURCE,
   });
 
   // Section data: idle = "Your tokens" + "Popular tokens"; active = "Results".
