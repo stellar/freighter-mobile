@@ -1038,7 +1038,10 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
   const availableAmountText = spendableBalance
     ? formatTokenForDisplay(
-        spendableBalance.toString(),
+        (isCustomToken && selectedBalance && "decimals" in selectedBalance
+          ? spendableBalance.shiftedBy(-selectedBalance.decimals)
+          : spendableBalance
+        ).toString(),
         selectedBalance?.tokenCode,
       )
     : null;
