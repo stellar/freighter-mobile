@@ -255,7 +255,13 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   useRightHeaderButton({
     icon: Icon.Settings04,
     onPress: () => {
-      transactionSettingsBottomSheetModalRef.current?.present();
+      Keyboard.dismiss();
+      amountInputRef.current?.blur();
+      // Allow keyboard to fully dismiss before presenting the sheet to avoid
+      // the modal animating down with the keyboard.
+      setTimeout(() => {
+        transactionSettingsBottomSheetModalRef.current?.present();
+      }, 250);
     },
   });
 
@@ -284,8 +290,14 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   );
 
   const onConfirmAddMemo = useCallback(() => {
+    Keyboard.dismiss();
+    amountInputRef.current?.blur();
     addMemoExplanationBottomSheetModalRef.current?.dismiss();
-    transactionSettingsBottomSheetModalRef.current?.present();
+    // Allow keyboard to fully dismiss before presenting the sheet to avoid
+    // the modal animating down with the keyboard.
+    setTimeout(() => {
+      transactionSettingsBottomSheetModalRef.current?.present();
+    }, 250);
   }, []);
 
   const onCancelAddMemo = () => {
@@ -297,7 +309,13 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   };
 
   const handleOpenSettingsFromReview = () => {
-    transactionSettingsBottomSheetModalRef.current?.present();
+    Keyboard.dismiss();
+    amountInputRef.current?.blur();
+    // Allow keyboard to fully dismiss before presenting the sheet to avoid
+    // the modal animating down with the keyboard.
+    setTimeout(() => {
+      transactionSettingsBottomSheetModalRef.current?.present();
+    }, 250);
   };
 
   const handleCancelTransactionSettings = () => {
