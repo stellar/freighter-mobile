@@ -1,6 +1,6 @@
 import { NETWORKS, STORAGE_KEYS } from "config/constants";
 import { SearchTokenResponse } from "config/types";
-import { cachedFetch } from "helpers/cachedFetch";
+import { cachedFetch, readCachedValue } from "helpers/cachedFetch";
 import { fetchTrendingAssets } from "services/stellarExpert";
 import { create } from "zustand";
 
@@ -14,6 +14,15 @@ interface StellarExpertTopTokensState {
     network: NETWORKS;
     forceRefresh?: boolean;
   }) => Promise<SearchTokenResponse | null>;
+  /**
+   * Read the disk cache for a network without triggering a fetch.
+   * Returns the cached payload + its age in ms, or null when the
+   * cache is empty/malformed. Used by Swap's SWR pipeline to render
+   * preliminary content before kicking a background refresh.
+   */
+  readCache: (
+    network: NETWORKS,
+  ) => Promise<{ data: SearchTokenResponse; age: number } | null>;
 }
 
 /**
@@ -59,5 +68,9 @@ export const useStellarExpertTopTokensStore =
         // stellarExpertDown=true via its existing fallback path.
         return null;
       }
+    },
+    readCache: async (network) => {
+      const storageKey = `${STORAGE_KEYS.STELLAR_EXPERT_TOP_TOKENS_PREFIX}${network}`;
+      return readCachedValue<SearchTokenResponse>(storageKey);
     },
   }));

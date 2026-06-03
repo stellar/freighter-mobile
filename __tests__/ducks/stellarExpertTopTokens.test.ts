@@ -205,4 +205,54 @@ describe("useStellarExpertTopTokensStore", () => {
       );
     });
   });
+
+  describe("readCache", () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it("returns null when no cache exists", async () => {
+      (dataStorage.getItem as jest.Mock).mockResolvedValue(null);
+      const result = await useStellarExpertTopTokensStore
+        .getState()
+        .readCache(NETWORKS.PUBLIC);
+      expect(result).toBeNull();
+    });
+
+    it("returns { data, age } when cache exists", async () => {
+      const cachedAt = Date.now() - 2000;
+      const payload = {
+        _embedded: { records: [{ asset: "XLM", domain: "stellar.org" }] },
+        _links: {},
+      };
+      (dataStorage.getItem as jest.Mock).mockImplementation((k: string) =>
+        Promise.resolve(
+          k.endsWith("_date") ? String(cachedAt) : JSON.stringify(payload),
+        ),
+      );
+
+      const result = await useStellarExpertTopTokensStore
+        .getState()
+        .readCache(NETWORKS.PUBLIC);
+
+      expect(result?.data).toEqual(payload);
+      expect(result?.age).toBeGreaterThanOrEqual(2000);
+      expect(result?.age).toBeLessThan(5000);
+    });
+
+    it("uses the per-network storage key", async () => {
+      (dataStorage.getItem as jest.Mock).mockResolvedValue(null);
+      await useStellarExpertTopTokensStore
+        .getState()
+        .readCache(NETWORKS.TESTNET);
+      const calls = (dataStorage.getItem as jest.Mock).mock.calls.map(
+        (c) => c[0],
+      );
+      expect(
+        calls.some((k: string) =>
+          k.includes(`stellarExpertTopTokens_${NETWORKS.TESTNET}`),
+        ),
+      ).toBe(true);
+    });
+  });
 });
