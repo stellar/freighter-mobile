@@ -97,6 +97,8 @@ const AVAILABLE_BALANCE_FONT_SIZES = [
   { maxLen: Infinity, size: fsValue(12) },
 ] as const;
 
+const KEYBOARD_DISMISS_DELAY = 250; // ms - to allow keyboard to fully dismiss before opening modals
+
 /**
  * TransactionAmountScreen Component
  *
@@ -261,7 +263,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       // the modal animating down with the keyboard.
       setTimeout(() => {
         transactionSettingsBottomSheetModalRef.current?.present();
-      }, 250);
+      }, KEYBOARD_DISMISS_DELAY);
     },
   });
 
@@ -297,7 +299,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     // the modal animating down with the keyboard.
     setTimeout(() => {
       transactionSettingsBottomSheetModalRef.current?.present();
-    }, 250);
+    }, KEYBOARD_DISMISS_DELAY);
   }, []);
 
   const onCancelAddMemo = () => {
@@ -315,7 +317,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     // the modal animating down with the keyboard.
     setTimeout(() => {
       transactionSettingsBottomSheetModalRef.current?.present();
-    }, 250);
+    }, KEYBOARD_DISMISS_DELAY);
   };
 
   const handleCancelTransactionSettings = () => {
