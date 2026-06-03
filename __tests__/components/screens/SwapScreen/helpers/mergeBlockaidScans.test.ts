@@ -60,4 +60,16 @@ describe("mergeBlockaidScans", () => {
     });
     expect(result.map((r) => r.tokenCode)).toEqual(["A", "B", "C"]);
   });
+
+  it("propagates the debugOverride into assessTokenSecurity so dev tools work", () => {
+    const records = [make("USDC", "GA5Z")];
+    // Even with a benign scan, the override must take precedence.
+    const result = mergeBlockaidScans(
+      records,
+      { "USDC-GA5Z": buildScan("Benign") },
+      SecurityLevel.MALICIOUS,
+    );
+    expect(result[0].securityLevel).toBe(SecurityLevel.MALICIOUS);
+    expect(result[0].isMalicious).toBe(true);
+  });
 });

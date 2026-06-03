@@ -1,5 +1,6 @@
 import Blockaid from "@blockaid/client";
 import { FormattedSearchTokenRecord } from "config/types";
+import { SecurityLevel } from "services/blockaid/constants";
 import {
   assessTokenSecurity,
   extractSecurityWarnings,
@@ -17,17 +18,23 @@ import {
  * Pure function — no I/O, no React state. Used in both phases of the
  * Trending pipeline (Phase 1 with cached scans, Phase 2 with fresh
  * scans).
+ *
+ * @param debugOverride Optional dev-debug security-level override; when set,
+ *   bypasses scan results to surface the override for every record. Mirrors
+ *   the second arg accepted by assessTokenSecurity so the trending pipeline
+ *   preserves the existing Debug-screen toggle behavior.
  */
 export const mergeBlockaidScans = (
   records: FormattedSearchTokenRecord[],
   scanMap: Record<string, Blockaid.Token.TokenScanResponse>,
+  debugOverride: SecurityLevel | null = null,
 ): FormattedSearchTokenRecord[] =>
   records.map((token) => {
     const key = token.issuer
       ? `${token.tokenCode}-${token.issuer}`
       : token.tokenCode;
     const scan = scanMap[key];
-    const securityInfo = assessTokenSecurity(scan);
+    const securityInfo = assessTokenSecurity(scan, debugOverride);
     return {
       ...token,
       isSuspicious: securityInfo.isSuspicious,
