@@ -12,9 +12,12 @@ import { InteractionManager } from "react-native";
  *   - SwapToScreen's "Popular tokens" section in the picker
  *
  * Deferred via InteractionManager so it doesn't compete with critical-
- * path requests on TabNavigator mount. Single-flight at the cache layer
- * — if the user opens Swap before this finishes, the screen's pipeline
- * attaches to the in-flight promises rather than firing duplicates.
+ * path requests on TabNavigator mount. If the user opens Swap before
+ * this pre-warm completes, the screen's pipeline may fire duplicate
+ * requests — the underlying caches absorb them on the second pass
+ * (each subsequent fetch sees the data the first one wrote). The cost
+ * is at most one extra round-trip per layer during the narrow window
+ * between TabNavigator mount and Swap open.
  *
  * Gates the Blockaid scan on both upstream fetches succeeding so we
  * don't issue a scan with an empty intersection or with no verified
