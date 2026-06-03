@@ -1043,4 +1043,65 @@ describe("useSwapTokenLookup — SWR for trending", () => {
       phaseOneTopCacheCalls,
     );
   });
+
+  it("refreshTrending: force-refreshes all 3 layers and replaces trendingTokens", async () => {
+    const held = buildHeldBalances();
+    mockStores.readTopCache.mockResolvedValue(null);
+    mockStores.readVerifiedCache.mockResolvedValue(null);
+    mockStores.getStellarExpertTopTokens.mockResolvedValue({
+      _embedded: {
+        records: [{ asset: `USDC-${USDC_ISSUER}-1`, domain: "circle.com" }],
+      },
+      _links: {},
+    });
+    mockStores.getVerifiedTokens.mockResolvedValue([
+      { issuer: USDC_ISSUER, name: "USDC", code: "USDC", domain: "circle.com" },
+    ]);
+
+    const { result } = renderHook(() =>
+      useSwapTokenLookup({ network: NETWORKS.PUBLIC, balanceItems: held }),
+    );
+    await act(async () => {
+      await settleAsync();
+    });
+
+    mockStores.getStellarExpertTopTokens.mockClear();
+    mockStores.getVerifiedTokens.mockClear();
+    mockStores.scanBulkWithCache.mockClear();
+
+    await act(async () => {
+      await result.current.refreshTrending();
+    });
+
+    expect(mockStores.getStellarExpertTopTokens).toHaveBeenCalledWith(
+      expect.objectContaining({ forceRefresh: true }),
+    );
+    expect(mockStores.getVerifiedTokens).toHaveBeenCalledWith(
+      expect.objectContaining({ forceRefresh: true }),
+    );
+    expect(mockStores.scanBulkWithCache).toHaveBeenCalledWith(
+      expect.objectContaining({ forceRefresh: true }),
+    );
+  });
+
+  it("refreshTrending: rejects when fetch fails so callers can surface a toast", async () => {
+    const held = buildHeldBalances();
+    mockStores.readTopCache.mockResolvedValue(null);
+    mockStores.readVerifiedCache.mockResolvedValue(null);
+    mockStores.getStellarExpertTopTokens.mockResolvedValue(null);
+    mockStores.getVerifiedTokens.mockResolvedValue([]);
+
+    const { result } = renderHook(() =>
+      useSwapTokenLookup({ network: NETWORKS.PUBLIC, balanceItems: held }),
+    );
+    await act(async () => {
+      await settleAsync();
+    });
+
+    await expect(
+      act(async () => {
+        await result.current.refreshTrending();
+      }),
+    ).rejects.toBeDefined();
+  });
 });

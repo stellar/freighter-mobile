@@ -63,6 +63,14 @@ export interface SwapTokenLookupResult {
   handleSearch: (term: string) => void;
   /** Clear the search term and return to idle mode. */
   resetSearch: () => void;
+  /**
+   * User-initiated pull-to-refresh. Force-refreshes all three trending
+   * cache layers (stellar.expert top tokens, verified tokens, Blockaid
+   * bulk scans) in parallel and re-runs the intersection pipeline.
+   * Resolves on success; rejects when the upstream fetch fails so the
+   * caller can surface a toast.
+   */
+  refreshTrending: () => Promise<void>;
 }
 
 export interface UseSwapTokenLookupProps {
@@ -532,6 +540,52 @@ export const useSwapTokenLookup = ({
     setStatus(HookStatus.IDLE);
   }, []);
 
+  /**
+   * User-initiated pull-to-refresh. Force-refresh all 3 layers in
+   * parallel, then re-run the intersection + Blockaid scan to produce
+   * a fresh trendingTokens. Resolves on success; rejects when the
+   * upstream fetch fails so the caller can surface a toast.
+   */
+  const refreshTrending = useCallback(async () => {
+    trendingAbortRef.current?.abort();
+    const controller = new AbortController();
+    trendingAbortRef.current = controller;
+    const { signal } = controller;
+
+    const [topResp, verSplit] = await Promise.all([
+      useStellarExpertTopTokensStore.getState().getStellarExpertTopTokens({
+        network,
+        forceRefresh: true,
+      }),
+      useVerifiedTokensStore.getState().getVerifiedTokens({
+        network,
+        forceRefresh: true,
+      }),
+    ]);
+    if (signal.aborted) return;
+    if (!topResp || !verSplit) {
+      throw new Error("Failed to refresh trending tokens");
+    }
+
+    const intersection = computeTrendingIntersection(
+      topResp,
+      verSplit,
+      hasExistingTrustline,
+    );
+    const addressList = intersection
+      .filter((t) => t.issuer)
+      .map((t) => `${t.tokenCode}-${t.issuer}`);
+    const { results } = await useBlockaidTokenScansStore
+      .getState()
+      .scanBulkWithCache({ addressList, network, forceRefresh: true });
+    if (signal.aborted) return;
+
+    setStellarExpertDown(false);
+    setTrendingTokens(
+      mergeBlockaidScans(intersection, results, overriddenBlockaidResponse),
+    );
+  }, [network, hasExistingTrustline, overriddenBlockaidResponse]);
+
   // Idle outputs
   // Filter held balances down to classic-only (native + alphanum4/12).
   // Liquidity pool shares and Soroban custom tokens are not swappable and
@@ -571,5 +625,6 @@ export const useSwapTokenLookup = ({
     searchTerm,
     handleSearch,
     resetSearch,
+    refreshTrending,
   };
 };
