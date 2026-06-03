@@ -1,4 +1,5 @@
 /* eslint-disable no-underscore-dangle */
+import { canonicalId } from "components/screens/SwapScreen/helpers/canonicalId";
 import { formatClassicRecord } from "components/screens/SwapScreen/helpers/formatClassicRecord";
 import {
   DEFAULT_DEBOUNCE_DELAY,
@@ -81,10 +82,6 @@ export interface UseSwapTokenLookupProps {
  * so we don't have to import the full shape just for typing.
  */
 type StellarExpertRecord = SearchTokenResponse["_embedded"]["records"][number];
-
-/** Canonical CODE:ISSUER identifier used for dedupe across sources. */
-const canonicalId = (tokenCode: string, issuer: string): string =>
-  issuer ? `${tokenCode}:${issuer}` : tokenCode;
 
 /**
  * Returns true when a stellar.expert record is a Soroban contract token

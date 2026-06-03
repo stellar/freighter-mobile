@@ -1,4 +1,5 @@
 /* eslint-disable no-underscore-dangle */
+import { canonicalId } from "components/screens/SwapScreen/helpers/canonicalId";
 import { formatClassicRecord } from "components/screens/SwapScreen/helpers/formatClassicRecord";
 import {
   isClassicTokenType,
@@ -8,10 +9,6 @@ import { NATIVE_TOKEN_CODE } from "config/constants";
 import { FormattedSearchTokenRecord, SearchTokenResponse } from "config/types";
 import { getTokenType } from "helpers/balances";
 import { TokenListReponseItem } from "services/verified-token-lists/types";
-
-/** Canonical CODE:ISSUER identifier used for dedupe across sources. */
-const canonicalId = (tokenCode: string, issuer: string): string =>
-  `${tokenCode.toLowerCase()}:${(issuer ?? "").toLowerCase()}`;
 
 /**
  * Pure derivation: take the raw stellar.expert top-50 response plus the
