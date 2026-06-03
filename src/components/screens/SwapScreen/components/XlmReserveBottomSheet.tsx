@@ -82,10 +82,10 @@ export const XlmReserveBottomSheet: React.FC<XlmReserveBottomSheetProps> = ({
     <View className="gap-[24px]">
       {/* Header: lilac plus-circle icon tile + circular X close */}
       <View className="flex-row items-center justify-between">
-        <Icon.PlusCircle themeColor="lilac" withBackground square size={24} />
+        <Icon.PlusCircle themeColor="lilac" withBackground square size={26} />
         <TouchableOpacity
           onPress={handleClose}
-          className="size-8 items-center justify-center rounded-full bg-gray-3"
+          className="size-9 items-center justify-center rounded-full bg-gray-3"
           testID="xlm-reserve-close"
         >
           <Icon.X size={20} color={themeColors.gray[9]} />
@@ -114,10 +114,10 @@ export const XlmReserveBottomSheet: React.FC<XlmReserveBottomSheetProps> = ({
       {/* Info card: XLM icon on the left, "0.5 XLM required" title and the
           per-token body on the right. Title + body line-heights provide the
           vertical rhythm — no explicit gap between the two text lines. */}
-      <View className="rounded-[16px] bg-background-tertiary p-[16px] flex-row items-center gap-[12px]">
+      <View className="rounded-[16px] bg-background-tertiary p-4 flex-row items-center gap-3">
         <TokenIcon
           token={{ type: "native", code: NATIVE_TOKEN_CODE }}
-          size="sm"
+          size="lg"
         />
         <View className="flex-1">
           <Text sm medium primary>
