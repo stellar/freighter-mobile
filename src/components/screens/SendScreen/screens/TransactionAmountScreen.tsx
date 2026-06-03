@@ -294,7 +294,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
   const handleConfirmTransactionSettings = () => {
     transactionSettingsBottomSheetModalRef.current?.dismiss();
-    focusAmountInput();
   };
 
   const handleOpenSettingsFromReview = () => {
