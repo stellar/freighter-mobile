@@ -497,6 +497,20 @@ export const useSwapTokenLookup = ({
 
   const handleSearch = useCallback((term: string) => {
     setSearchTerm(term);
+    // Optimistically flip to LOADING and clear stale results the moment the
+    // user types, even before the 500ms debounce kicks the fetch. Otherwise
+    // consumers gate "No tokens match …" on status===LOADING and that
+    // label flashes briefly between keystroke and fetch (or between
+    // keystroke and synchronous holdsOnly resolution).
+    if (term.length > 0) {
+      setStatus(HookStatus.LOADING);
+      setSearchResults([]);
+      setHadSorobanMatches(false);
+    } else {
+      setStatus(HookStatus.IDLE);
+      setSearchResults([]);
+      setHadSorobanMatches(false);
+    }
   }, []);
 
   const resetSearch = useCallback(() => {

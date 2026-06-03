@@ -714,6 +714,44 @@ describe("useSwapTokenLookup — holdsOnly (Swap from picker)", () => {
     expect(result.current.searchResults[0].hasTrustline).toBe(true);
   });
 
+  it("flips status to LOADING synchronously on handleSearch (covers the debounce gap)", async () => {
+    // Regression: consumers gate the "No tokens match …" empty-state on
+    // status !== LOADING. Before this fix, status stayed at SUCCESS/IDLE
+    // during the 500ms debounce window, causing the label to flash with
+    // stale empty results. handleSearch now sets LOADING + clears results
+    // optimistically.
+    const held = buildHeldBalances();
+
+    const { result } = renderHook(() =>
+      useSwapTokenLookup({
+        network: NETWORKS.PUBLIC,
+        balanceItems: held,
+        holdsOnly: true,
+      }),
+    );
+
+    await act(async () => {
+      await settleAsync();
+    });
+
+    // Pre-condition: idle, no search.
+    expect(result.current.status).toBe("idle");
+
+    act(() => {
+      result.current.handleSearch("X");
+    });
+
+    // Synchronously after handleSearch — debounce hasn't fired yet, but
+    // status must already be LOADING so the empty-state label is gated.
+    expect(result.current.status).toBe("loading");
+    expect(result.current.searchResults).toEqual([]);
+
+    // Settle the debounce → status flips to SUCCESS (with empty results
+    // for this non-matching term).
+    await settleDebounce();
+    expect(result.current.status).toBe("success");
+  });
+
   it("returns empty results for a search term that doesn't match any held balance", async () => {
     const held = buildHeldBalances();
 
