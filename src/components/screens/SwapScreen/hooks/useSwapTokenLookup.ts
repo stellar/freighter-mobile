@@ -1,4 +1,5 @@
 /* eslint-disable no-underscore-dangle */
+import { formatClassicRecord } from "components/screens/SwapScreen/helpers/formatClassicRecord";
 import {
   DEFAULT_DEBOUNCE_DELAY,
   NATIVE_TOKEN_CODE,
@@ -86,43 +87,17 @@ const canonicalId = (tokenCode: string, issuer: string): string =>
   issuer ? `${tokenCode}:${issuer}` : tokenCode;
 
 /**
- * Format a stellar.expert classic-asset record into a FormattedSearchTokenRecord.
- *
- * Mirrors path-3 of `useTokenLookup`'s formatter, but stripped of the
- * Soroban-contract branch since the swap surface filters those out
- * upstream.
- */
-const formatClassicRecord = (
-  record: StellarExpertRecord,
-  hasTrustline: boolean,
-): FormattedSearchTokenRecord => {
-  const [tokenCode, issuer] = record.asset.split("-");
-  return {
-    tokenCode,
-    domain: record.domain ?? "",
-    hasTrustline,
-    iconUrl: record.tomlInfo?.image,
-    issuer: issuer ?? "",
-    isNative: record.asset === NATIVE_TOKEN_CODE,
-    tokenType: getTokenType(
-      issuer ? `${tokenCode}:${issuer}` : NATIVE_TOKEN_CODE,
-    ),
-    price: record.price,
-  };
-};
-
-/**
  * Returns true when a stellar.expert record is a Soroban contract token
  * (raw contract ID in `asset`). Classic records use "CODE-ISSUER-TYPE".
  */
-const isSorobanRecord = (record: StellarExpertRecord): boolean =>
+export const isSorobanRecord = (record: StellarExpertRecord): boolean =>
   isContractId(record.asset);
 
 /**
  * Returns true when a (formatted) token is classic — i.e. not a Soroban
  * custom token and has a structurally valid issuer (G…).
  */
-const isClassicTokenType = (
+export const isClassicTokenType = (
   tokenType: TokenTypeWithCustomToken | undefined,
 ): boolean =>
   tokenType === TokenTypeWithCustomToken.NATIVE ||
