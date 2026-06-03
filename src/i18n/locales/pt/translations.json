@@ -634,6 +634,7 @@
     "youSell": "Você vende",
     "youReceive": "Você recebe",
     "receive": "Receber",
+    "refreshFailed": "Não foi possível atualizar — usando dados em cache",
     "chooseToken": "Escolher token",
     "selectToken": "Selecionar",
     "cta": {

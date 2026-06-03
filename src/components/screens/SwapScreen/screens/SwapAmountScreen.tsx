@@ -81,6 +81,7 @@ import {
   Keyboard,
   KeyboardAvoidingView,
   Platform,
+  RefreshControl,
   TextInput,
   TouchableOpacity,
   View,
@@ -360,12 +361,36 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   // and rendered as the body of the screen's FlatList. It is hidden when:
   //   - we are not on PUBLIC (stellar.expert only indexes mainnet); or
   //   - stellar.expert is down (the source array is empty in either case).
-  const { trendingTokens, stellarExpertDown, isTrendingLoading } =
-    useSwapTokenLookup({
-      network,
-      publicKey: account?.publicKey,
-      balanceItems,
-    });
+  const {
+    trendingTokens,
+    stellarExpertDown,
+    isTrendingLoading,
+    refreshTrending,
+  } = useSwapTokenLookup({
+    network,
+    publicKey: account?.publicKey,
+    balanceItems,
+  });
+
+  // Pull-to-refresh state for the Trending list. On failure, surface a
+  // toast so the user knows the cached list they're seeing is stale; on
+  // success, the SWR refresh swaps the data in silently.
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const handlePullToRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await refreshTrending();
+    } catch {
+      showToast({
+        variant: "error",
+        title: t("swapScreen.refreshFailed"),
+        toastId: "trending-refresh-failed",
+        duration: 3000,
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [refreshTrending, showToast, t]);
 
   const showTrending =
     network === NETWORKS.PUBLIC &&
@@ -1364,6 +1389,17 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ paddingBottom: 16 }}
           style={{ flex: 1 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              // Wrap in a void arrow so React Native's onRefresh signature
+              // (() => void) doesn't complain about a returned Promise.
+              onRefresh={() => {
+                handlePullToRefresh();
+              }}
+              tintColor={themeColors.text.secondary}
+            />
+          }
         />
         <Button
           tertiary

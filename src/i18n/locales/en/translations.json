@@ -670,6 +670,7 @@
     "youSell": "You sell",
     "youReceive": "You receive",
     "receive": "Receive",
+    "refreshFailed": "Couldn't refresh — using cached data",
     "chooseToken": "Choose token",
     "selectToken": "Select",
     "cta": {

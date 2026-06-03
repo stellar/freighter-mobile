@@ -230,6 +230,7 @@ type SwapTokenLookupReturn = {
   searchTerm: string;
   handleSearch: jest.Mock;
   resetSearch: jest.Mock;
+  refreshTrending?: jest.Mock;
 };
 const mockUseSwapTokenLookup = jest.fn<SwapTokenLookupReturn, []>(() => ({
   yourTokens: [],
@@ -243,6 +244,7 @@ const mockUseSwapTokenLookup = jest.fn<SwapTokenLookupReturn, []>(() => ({
   searchTerm: "",
   handleSearch: jest.fn(),
   resetSearch: jest.fn(),
+  refreshTrending: jest.fn().mockResolvedValue(undefined),
 }));
 jest.mock("components/screens/SwapScreen/hooks/useSwapTokenLookup", () => ({
   useSwapTokenLookup: (
@@ -925,6 +927,42 @@ describe("SwapAmountScreen", () => {
         <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
       );
       expect(queryByText("Trending Tokens")).toBeNull();
+    });
+
+    it("pull-to-refresh calls refreshTrending and surfaces a toast on failure", async () => {
+      const refreshTrending = jest
+        .fn()
+        .mockRejectedValue(new Error("network down"));
+      mockUseSwapTokenLookup.mockReturnValue({
+        yourTokens: [],
+        popularTokens: [],
+        trendingTokens: trendingFixture,
+        searchResults: [],
+        hadSorobanMatches: false,
+        stellarExpertDown: false,
+        status: "idle",
+        isTrendingLoading: false,
+        searchTerm: "",
+        handleSearch: jest.fn(),
+        resetSearch: jest.fn(),
+        refreshTrending,
+      });
+
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      const list = getByTestId("swap-amount-trending-list");
+      await act(async () => {
+        list.props.refreshControl.props.onRefresh();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      expect(refreshTrending).toHaveBeenCalled();
+      expect(mockShowToast).toHaveBeenCalledWith(
+        expect.objectContaining({ variant: "error" }),
+      );
     });
 
     it("shows a loading spinner while trendingTokens is empty and isTrendingLoading is true", () => {
