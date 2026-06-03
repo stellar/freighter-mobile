@@ -1,6 +1,6 @@
 import { NETWORKS, STORAGE_KEYS } from "config/constants";
 import { SearchTokenResponse } from "config/types";
-import { useTrendingTokensStore } from "ducks/trendingTokens";
+import { useStellarExpertTopTokensStore } from "ducks/stellarExpertTopTokens";
 import { fetchTrendingAssets } from "services/stellarExpert";
 import { dataStorage } from "services/storage/storageFactory";
 
@@ -53,19 +53,22 @@ const mockResponse: SearchTokenResponse = {
   _links: mockLinks,
 };
 
-describe("useTrendingTokensStore", () => {
+describe("useStellarExpertTopTokensStore", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockDataStorage.getItem.mockResolvedValue(null);
     mockDataStorage.setItem.mockResolvedValue();
   });
 
-  describe("getTrendingTokens", () => {
+  describe("getStellarExpertTopTokens", () => {
     it("fetches from service, writes to storage, and returns response on first call (cache miss)", async () => {
       mockFetchTrendingAssets.mockResolvedValue(mockResponse);
 
-      const { getTrendingTokens } = useTrendingTokensStore.getState();
-      const result = await getTrendingTokens({ network: NETWORKS.PUBLIC });
+      const { getStellarExpertTopTokens } =
+        useStellarExpertTopTokensStore.getState();
+      const result = await getStellarExpertTopTokens({
+        network: NETWORKS.PUBLIC,
+      });
 
       expect(result).toEqual(mockResponse);
       expect(mockFetchTrendingAssets).toHaveBeenCalledTimes(1);
@@ -75,12 +78,12 @@ describe("useTrendingTokensStore", () => {
 
       // Verify data was written to storage
       expect(mockDataStorage.setItem).toHaveBeenCalledWith(
-        `${STORAGE_KEYS.TRENDING_TOKENS_PREFIX}${NETWORKS.PUBLIC}`,
+        `${STORAGE_KEYS.STELLAR_EXPERT_TOP_TOKENS_PREFIX}${NETWORKS.PUBLIC}`,
         JSON.stringify(mockResponse),
       );
       // Verify timestamp was written
       expect(mockDataStorage.setItem).toHaveBeenCalledWith(
-        `${STORAGE_KEYS.TRENDING_TOKENS_PREFIX}${NETWORKS.PUBLIC}_date`,
+        `${STORAGE_KEYS.STELLAR_EXPERT_TOP_TOKENS_PREFIX}${NETWORKS.PUBLIC}_date`,
         expect.any(String),
       );
     });
@@ -93,8 +96,11 @@ describe("useTrendingTokensStore", () => {
         .mockResolvedValueOnce((now - 1000).toString()) // cached date
         .mockResolvedValueOnce(JSON.stringify(mockResponse)); // cached result
 
-      const { getTrendingTokens } = useTrendingTokensStore.getState();
-      const result = await getTrendingTokens({ network: NETWORKS.PUBLIC });
+      const { getStellarExpertTopTokens } =
+        useStellarExpertTopTokensStore.getState();
+      const result = await getStellarExpertTopTokens({
+        network: NETWORKS.PUBLIC,
+      });
 
       expect(result).toEqual(mockResponse);
       // Service must NOT be called when cache is fresh
@@ -112,8 +118,11 @@ describe("useTrendingTokensStore", () => {
 
       mockFetchTrendingAssets.mockResolvedValue(mockResponse);
 
-      const { getTrendingTokens } = useTrendingTokensStore.getState();
-      const result = await getTrendingTokens({ network: NETWORKS.PUBLIC });
+      const { getStellarExpertTopTokens } =
+        useStellarExpertTopTokensStore.getState();
+      const result = await getStellarExpertTopTokens({
+        network: NETWORKS.PUBLIC,
+      });
 
       expect(result).toEqual(mockResponse);
       expect(mockFetchTrendingAssets).toHaveBeenCalledTimes(1);
@@ -129,8 +138,9 @@ describe("useTrendingTokensStore", () => {
 
       mockFetchTrendingAssets.mockResolvedValue(mockResponse);
 
-      const { getTrendingTokens } = useTrendingTokensStore.getState();
-      const result = await getTrendingTokens({
+      const { getStellarExpertTopTokens } =
+        useStellarExpertTopTokensStore.getState();
+      const result = await getStellarExpertTopTokens({
         network: NETWORKS.PUBLIC,
         forceRefresh: true,
       });
@@ -146,13 +156,16 @@ describe("useTrendingTokensStore", () => {
       // Service returns null (network down)
       mockFetchTrendingAssets.mockResolvedValue(null);
 
-      const { getTrendingTokens } = useTrendingTokensStore.getState();
-      const result = await getTrendingTokens({ network: NETWORKS.PUBLIC });
+      const { getStellarExpertTopTokens } =
+        useStellarExpertTopTokensStore.getState();
+      const result = await getStellarExpertTopTokens({
+        network: NETWORKS.PUBLIC,
+      });
 
       expect(result).toBeNull();
       // Cache must NOT be poisoned with null
       expect(mockDataStorage.setItem).not.toHaveBeenCalledWith(
-        `${STORAGE_KEYS.TRENDING_TOKENS_PREFIX}${NETWORKS.PUBLIC}`,
+        `${STORAGE_KEYS.STELLAR_EXPERT_TOP_TOKENS_PREFIX}${NETWORKS.PUBLIC}`,
         JSON.stringify(null),
       );
     });
@@ -167,12 +180,13 @@ describe("useTrendingTokensStore", () => {
         .mockResolvedValueOnce(mockResponse)
         .mockResolvedValueOnce(testnetResponse);
 
-      const { getTrendingTokens } = useTrendingTokensStore.getState();
+      const { getStellarExpertTopTokens } =
+        useStellarExpertTopTokensStore.getState();
 
-      const publicResult = await getTrendingTokens({
+      const publicResult = await getStellarExpertTopTokens({
         network: NETWORKS.PUBLIC,
       });
-      const testnetResult = await getTrendingTokens({
+      const testnetResult = await getStellarExpertTopTokens({
         network: NETWORKS.TESTNET,
       });
 
@@ -182,11 +196,11 @@ describe("useTrendingTokensStore", () => {
 
       // Ensure separate storage keys are used
       expect(mockDataStorage.setItem).toHaveBeenCalledWith(
-        `${STORAGE_KEYS.TRENDING_TOKENS_PREFIX}${NETWORKS.PUBLIC}`,
+        `${STORAGE_KEYS.STELLAR_EXPERT_TOP_TOKENS_PREFIX}${NETWORKS.PUBLIC}`,
         JSON.stringify(mockResponse),
       );
       expect(mockDataStorage.setItem).toHaveBeenCalledWith(
-        `${STORAGE_KEYS.TRENDING_TOKENS_PREFIX}${NETWORKS.TESTNET}`,
+        `${STORAGE_KEYS.STELLAR_EXPERT_TOP_TOKENS_PREFIX}${NETWORKS.TESTNET}`,
         JSON.stringify(testnetResponse),
       );
     });

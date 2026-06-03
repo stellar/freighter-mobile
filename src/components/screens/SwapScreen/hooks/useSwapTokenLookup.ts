@@ -13,7 +13,7 @@ import {
 } from "config/types";
 import { useBlockaidTokenScansStore } from "ducks/blockaidTokenScans";
 import { useDebugStore } from "ducks/debug";
-import { useTrendingTokensStore } from "ducks/trendingTokens";
+import { useStellarExpertTopTokensStore } from "ducks/stellarExpertTopTokens";
 import { formatTokenIdentifier, getTokenType } from "helpers/balances";
 import { isMainnet } from "helpers/networks";
 import { isContractId } from "helpers/soroban";
@@ -269,9 +269,9 @@ export const useSwapTokenLookup = ({
 
     (async () => {
       try {
-        const response = await useTrendingTokensStore
+        const response = await useStellarExpertTopTokensStore
           .getState()
-          .getTrendingTokens({ network });
+          .getStellarExpertTopTokens({ network });
         if (cancelled || signal.aborted) return;
 
         if (!response) {

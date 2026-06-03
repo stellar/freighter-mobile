@@ -9,13 +9,15 @@ import * as stellarExpert from "services/stellarExpert";
 // in the jest.mock factories below so clearAllMocks doesn't wipe the wrappers;
 // the inner jest.fn references are reset manually in beforeEach.
 const mockStores = {
-  getTrendingTokens: jest.fn(),
+  getStellarExpertTopTokens: jest.fn(),
   scanBulkWithCache: jest.fn(),
 };
 
-jest.mock("ducks/trendingTokens", () => ({
-  useTrendingTokensStore: {
-    getState: () => ({ getTrendingTokens: mockStores.getTrendingTokens }),
+jest.mock("ducks/stellarExpertTopTokens", () => ({
+  useStellarExpertTopTokensStore: {
+    getState: () => ({
+      getStellarExpertTopTokens: mockStores.getStellarExpertTopTokens,
+    }),
   },
 }));
 
@@ -178,7 +180,7 @@ describe("useSwapTokenLookup — idle mode", () => {
   beforeEach(() => {
     jest.useFakeTimers();
     jest.clearAllMocks();
-    mockStores.getTrendingTokens.mockResolvedValue({
+    mockStores.getStellarExpertTopTokens.mockResolvedValue({
       _embedded: { records: mockTrendingRecords },
       _links: {
         self: { href: "" },
@@ -296,7 +298,7 @@ describe("useSwapTokenLookup — idle mode", () => {
   });
 
   it("sets stellarExpertDown=true and degrades gracefully on fetch failure", async () => {
-    mockStores.getTrendingTokens.mockResolvedValue(null);
+    mockStores.getStellarExpertTopTokens.mockResolvedValue(null);
     const held = buildHeldBalances();
     const { result } = renderHook(() =>
       useSwapTokenLookup({ network: NETWORKS.PUBLIC, balanceItems: held }),
@@ -319,7 +321,7 @@ describe("useSwapTokenLookup — idle mode", () => {
     // for the native balance, which did NOT match the "XLM" canonical ID
     // derived from the stellar.expert record — so XLM was not excluded from
     // popularTokens for users already holding it.
-    mockStores.getTrendingTokens.mockResolvedValue({
+    mockStores.getStellarExpertTopTokens.mockResolvedValue({
       _embedded: {
         records: [
           // Native XLM record — asset field is just "XLM" (no issuer segment)
@@ -410,7 +412,7 @@ describe("useSwapTokenLookup — idle mode", () => {
         tomlInfo: { code: "FOO", issuer: FOO_ISSUER, image: "foo-image" },
       },
     ];
-    mockStores.getTrendingTokens.mockResolvedValue({
+    mockStores.getStellarExpertTopTokens.mockResolvedValue({
       _embedded: { records: trendingWithFoo },
       _links: { self: { href: "" }, prev: { href: "" }, next: { href: "" } },
     });
@@ -453,7 +455,7 @@ describe("useSwapTokenLookup — active search", () => {
   beforeEach(() => {
     jest.useFakeTimers();
     jest.clearAllMocks();
-    mockStores.getTrendingTokens.mockResolvedValue({
+    mockStores.getStellarExpertTopTokens.mockResolvedValue({
       _embedded: { records: [] },
       _links: { self: { href: "" }, prev: { href: "" }, next: { href: "" } },
     });
@@ -655,7 +657,7 @@ describe("useSwapTokenLookup — holdsOnly (Swap from picker)", () => {
   beforeEach(() => {
     jest.useFakeTimers();
     jest.clearAllMocks();
-    mockStores.getTrendingTokens.mockResolvedValue({
+    mockStores.getStellarExpertTopTokens.mockResolvedValue({
       _embedded: { records: mockTrendingRecords },
       _links: { self: { href: "" }, prev: { href: "" }, next: { href: "" } },
     });
@@ -681,7 +683,7 @@ describe("useSwapTokenLookup — holdsOnly (Swap from picker)", () => {
       await settleAsync();
     });
 
-    expect(mockStores.getTrendingTokens).not.toHaveBeenCalled();
+    expect(mockStores.getStellarExpertTopTokens).not.toHaveBeenCalled();
   });
 
   it("returns held-only search results without hitting stellar.expert when holdsOnly is true", async () => {
