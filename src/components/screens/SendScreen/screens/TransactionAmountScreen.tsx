@@ -49,7 +49,7 @@ import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { calculateSpendableAmount, hasXLMForFees } from "helpers/balances";
-import { waitForKeyboardDismiss } from "helpers/bottomSheet";
+import { waitForKeyboardDismiss } from "helpers/keyboard";
 import { fsValue, pxValue } from "helpers/dimensions";
 import {
   formatTokenForDisplay,

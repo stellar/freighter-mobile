@@ -3,27 +3,7 @@ import {
   BOTTOM_SHEET_CONTENT_TOP_PADDING,
   BOTTOM_SHEET_MAX_HEIGHT_RATIO,
 } from "config/constants";
-import { Dimensions, Keyboard } from "react-native";
-
-/**
- * Resolves only after the keyboard has fully hidden, so a bottom sheet
- * presented next animates in at its final height instead of opening at the
- * keyboard-occluded position and visibly jumping down.
- *
- * Resolves immediately when the keyboard is already hidden (no-op path).
- */
-export const waitForKeyboardDismiss = (): Promise<void> => {
-  if (!Keyboard.isVisible()) {
-    return Promise.resolve();
-  }
-  return new Promise<void>((resolve) => {
-    const sub = Keyboard.addListener("keyboardDidHide", () => {
-      sub.remove();
-      resolve();
-    });
-    Keyboard.dismiss();
-  });
-};
+import { Dimensions } from "react-native";
 
 export interface BottomSheetMaxHeightOptions {
   headerHeightPx: number;
