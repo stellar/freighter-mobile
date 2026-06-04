@@ -6,7 +6,6 @@ import BigNumber from "bignumber.js";
 import { AmountCard } from "components/AmountCard";
 import BottomSheet from "components/BottomSheet";
 import Spinner from "components/Spinner";
-import { TokenIconWithBadge } from "components/TokenIconWithBadge";
 import TransactionSettingsBottomSheet from "components/TransactionSettingsBottomSheet";
 import { SecurityDetailBottomSheet } from "components/blockaid";
 import { BaseLayout } from "components/layout/BaseLayout";
@@ -27,7 +26,7 @@ import { useSwapTransaction } from "components/screens/SwapScreen/hooks/useSwapT
 import { SwapProcessingScreen } from "components/screens/SwapScreen/screens";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
-import { Display, Text } from "components/sds/Typography";
+import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import {
   BASE_RESERVE,
@@ -42,6 +41,8 @@ import { logger } from "config/logger";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import {
   FormattedSearchTokenRecord,
+  PricedBalance,
+  Token,
   TokenTypeWithCustomToken,
 } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
@@ -1081,6 +1082,23 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     ? `${tokenAmountDisplay || "0"} ${sourceTokenSymbol}`.trim()
     : formatFiatAmount(new BigNumber(fiatAmountDisplay || "0"));
   const destinationTokenLabel = destinationTokenDescriptor?.tokenCode ?? "";
+
+  // Pick the most-complete token shape we can hand to AmountCard's picker
+  // chip: prefer the held PricedBalance, fall back to a synthetic Token
+  // built from the descriptor (issuer = classic; no issuer = native XLM),
+  // and finally undefined when the user hasn't picked anything yet.
+  let destinationPickerToken: PricedBalance | Token | undefined;
+  if (destinationBalance) {
+    destinationPickerToken = destinationBalance;
+  } else if (destinationTokenDescriptor?.issuer) {
+    destinationPickerToken = {
+      type: destinationTokenDescriptor.tokenType,
+      code: destinationTokenDescriptor.tokenCode,
+      issuer: { key: destinationTokenDescriptor.issuer },
+    } as Token;
+  } else if (destinationTokenDescriptor) {
+    destinationPickerToken = { type: "native", code: "XLM" } as Token;
+  }
   const destinationAmountToken = destinationAmount || "0";
   const destinationFiatString = destinationFiat
     ? formatFiatAmount(destinationFiat)
@@ -1100,88 +1118,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         spendableAmount ?? undefined,
       )
     : "";
-  const destinationBalanceRight = destinationBalance
-    ? formatBalanceAmount(
-        destinationBalance,
-        destinationBalance.tokenCode ?? destinationTokenLabel,
-      )
-    : "";
-
-  // Inline pill: TokenIcon + code + chevron-down, tappable to open picker.
-  // Rendered on the right side of each Sell/Receive card.
-  const renderSelectedTokenPill = (
-    side: "sell" | "receive",
-    onPress: () => void,
-  ) => {
-    if (side === "sell" && sourceBalance) {
-      return (
-        <TouchableOpacity
-          testID="swap-sell-pill"
-          onPress={onPress}
-          className="flex-row items-center rounded-full px-[10px] py-[6px] bg-background-secondary gap-[6px]"
-        >
-          <TokenIconWithBadge
-            token={sourceBalance}
-            size="sm"
-            securityLevel={sourceBalanceSecurityAssessment.level}
-          />
-          <Text md medium primary>
-            {sourceTokenSymbol}
-          </Text>
-          <Icon.ChevronDown size={16} color={themeColors.text.secondary} />
-        </TouchableOpacity>
-      );
-    }
-
-    if (side === "receive" && destinationTokenDescriptor) {
-      const descriptorToken = destinationTokenDescriptor.issuer
-        ? {
-            type: destinationTokenDescriptor.tokenType,
-            code: destinationTokenDescriptor.tokenCode,
-            issuer: { key: destinationTokenDescriptor.issuer },
-          }
-        : ({ type: "native" as const, code: "XLM" as const } as const);
-      return (
-        <TouchableOpacity
-          testID="swap-receive-pill"
-          onPress={onPress}
-          className="flex-row items-center rounded-full px-[10px] py-[6px] bg-background-secondary gap-[6px]"
-        >
-          <TokenIconWithBadge
-            token={descriptorToken}
-            size="sm"
-            securityLevel={destinationTokenDescriptor.securityLevel}
-          />
-          <Text md medium primary>
-            {destinationTokenLabel}
-          </Text>
-          <Icon.ChevronDown size={16} color={themeColors.text.secondary} />
-        </TouchableOpacity>
-      );
-    }
-
-    // Empty state for either side ("Select"). The Sell side can land here
-    // when the selection-swap rule clears the source after the user picks
-    // the same token on the Receive side (spec §12.4).
-    return (
-      <TouchableOpacity
-        testID={
-          side === "sell" ? "swap-sell-choose-pill" : "swap-receive-choose-pill"
-        }
-        onPress={onPress}
-        className="flex-row items-center rounded-full px-[10px] py-[6px] bg-background-secondary gap-[6px]"
-      >
-        <View className="w-[20px] h-[20px] rounded-full items-center justify-center bg-gray-3">
-          <Icon.Plus size={12} themeColor="gray" />
-        </View>
-        <Text md medium primary>
-          {t("swapScreen.selectToken")}
-        </Text>
-        <Icon.ChevronDown size={16} color={themeColors.text.secondary} />
-      </TouchableOpacity>
-    );
-  };
-
   const listHeader = (
     <View>
       {/* Sell card */}
@@ -1225,39 +1161,29 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       </View>
 
       {/* Receive card */}
-      <View
+      <AmountCard
+        mode="readonly"
         testID="swap-receive-card"
-        className="rounded-[16px] pt-[12px] pb-[12px] px-[16px] bg-background-tertiary"
-      >
-        <Text sm secondary>
-          {t("swapScreen.youReceive")}
-        </Text>
-        <View className="flex-row items-center justify-between mt-[4px]">
-          <Display
-            sm
-            medium
-            adjustsFontSizeToFit
-            numberOfLines={1}
-            minimumFontScale={0.6}
-            color={
-              destinationTokenDescriptor
-                ? themeColors.text.primary
-                : themeColors.text.secondary
-            }
-          >
-            {destinationTokenDescriptor ? receiveBigText : "0"}
-          </Display>
-          {renderSelectedTokenPill("receive", handleDestinationDropdownPress)}
-        </View>
-        <View className="flex-row items-center justify-between mt-[4px]">
-          <Text sm secondary numberOfLines={1}>
-            {destinationTokenDescriptor ? receiveSmallText : "$0.00"}
-          </Text>
-          <Text sm secondary numberOfLines={1}>
-            {destinationBalanceRight}
-          </Text>
-        </View>
-      </View>
+        label={t("swapScreen.youReceive")}
+        selectedToken={destinationPickerToken}
+        pickerLabel={
+          destinationTokenDescriptor
+            ? destinationTokenLabel
+            : t("swapScreen.selectToken")
+        }
+        pickerSecurityLevel={destinationTokenDescriptor?.securityLevel}
+        onPickerPress={handleDestinationDropdownPress}
+        pickerTestID={
+          destinationTokenDescriptor
+            ? "swap-receive-pill"
+            : "swap-receive-choose-pill"
+        }
+        primaryAmount={destinationTokenDescriptor ? receiveBigText : "0"}
+        secondaryAmount={
+          destinationTokenDescriptor ? receiveSmallText : "$0.00"
+        }
+        placeholderActive={!destinationTokenDescriptor}
+      />
 
       <View className="items-center mt-[24px]">
         <View className="flex-row gap-[8px] w-full">

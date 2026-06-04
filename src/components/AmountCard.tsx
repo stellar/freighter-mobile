@@ -1,7 +1,7 @@
 import { TokenIconWithBadge } from "components/TokenIconWithBadge";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
-import { PricedBalance } from "config/types";
+import { Balance, PricedBalance, Token } from "config/types";
 import { fsValue, pxValue } from "helpers/dimensions";
 import useColors from "hooks/useColors";
 import { UseTokenFiatConverterResult } from "hooks/useTokenFiatConverter";
@@ -31,10 +31,12 @@ const getAmountFontSize = (textLength: number): number => {
 
 type AmountCardCommonProps = {
   label: string;
-  /** Token used to render the icon inside the picker chip. */
-  selectedToken?: PricedBalance;
+  /** Token used to render the icon inside the picker chip. Accepts a held
+   *  PricedBalance / Balance or a non-held Token descriptor so the same
+   *  chip works on Swap-Receive where the destination has no trustline yet. */
+  selectedToken?: PricedBalance | Balance | Token;
   /** Override for the picker chip's text label (e.g. "Select token" when no
-   *  token is selected). Defaults to selectedToken?.tokenCode. */
+   *  token is selected). Defaults to selectedToken.tokenCode when present. */
   pickerLabel?: string;
   /** Optional Blockaid security level. When set to anything other than SAFE
    *  / UNABLE_TO_SCAN, the picker chip's token icon renders with a warning
@@ -123,13 +125,21 @@ const HeaderRow: React.FC<{
 );
 
 const PickerChip: React.FC<{
-  token?: PricedBalance;
+  token?: PricedBalance | Balance | Token;
   label?: string;
   securityLevel?: SecurityLevel;
   onPress: () => void;
   testID?: string;
 }> = ({ token, label, securityLevel, onPress, testID }) => {
   const { themeColors } = useColors();
+  // PricedBalance / Balance carry `tokenCode`; bare `Token` carries `code`.
+  // Fall back to whichever exists so non-held descriptors still get a label.
+  let fallbackLabel: string | undefined;
+  if (token && "tokenCode" in token) {
+    fallbackLabel = token.tokenCode;
+  } else if (token && "code" in token) {
+    fallbackLabel = token.code;
+  }
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -144,7 +154,7 @@ const PickerChip: React.FC<{
         />
       )}
       <Text md medium>
-        {label ?? token?.tokenCode ?? ""}
+        {label ?? fallbackLabel ?? ""}
       </Text>
       <Icon.ChevronDown size={18} color={themeColors.text.primary} />
     </TouchableOpacity>
@@ -188,7 +198,7 @@ const EditableAmountCard: React.FC<AmountCardEditableProps> = ({
     : (converter.tokenAmountDisplayRaw ?? converter.tokenAmountDisplay);
 
   const amountFontSize = getAmountFontSize(primaryText.length);
-  const resolvedPickerLabel = pickerLabel ?? selectedToken?.tokenCode;
+  // PickerChip resolves its own fallback when pickerLabel is undefined.
 
   const focusInput = () => inputRef?.current?.focus();
 
@@ -246,7 +256,7 @@ const EditableAmountCard: React.FC<AmountCardEditableProps> = ({
 
         <PickerChip
           token={selectedToken}
-          label={resolvedPickerLabel}
+          label={pickerLabel}
           securityLevel={pickerSecurityLevel}
           onPress={onPickerPress}
           testID={pickerTestID}
@@ -288,7 +298,7 @@ const ReadOnlyAmountCard: React.FC<AmountCardReadOnlyProps> = ({
 }) => {
   const { themeColors } = useColors();
   const amountFontSize = getAmountFontSize(primaryAmount.length);
-  const resolvedPickerLabel = pickerLabel ?? selectedToken?.tokenCode;
+  // PickerChip resolves its own fallback when pickerLabel is undefined.
 
   return (
     <CardShell testID={testID}>
@@ -313,7 +323,7 @@ const ReadOnlyAmountCard: React.FC<AmountCardReadOnlyProps> = ({
 
         <PickerChip
           token={selectedToken}
-          label={resolvedPickerLabel}
+          label={pickerLabel}
           securityLevel={pickerSecurityLevel}
           onPress={onPickerPress}
           testID={pickerTestID}
