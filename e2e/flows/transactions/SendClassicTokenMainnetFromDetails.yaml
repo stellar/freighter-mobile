@@ -4,8 +4,10 @@ tags:
   - send
   - classic-token
   - mainnet
+  - from-details
 ---
-# Send 0.000001 XLM on mainnet to E2E_TEST_RECIPIENT_ADDRESS.
+# Send 0.000001 XLM on mainnet starting from the Token Details screen.
+# Verifies the send flow entry point via HomeScreen → TokenDetailsScreen → Send button.
 # Uses a small amount to avoid wasting mainnet funds.
 #
 # Import funded wallet
@@ -31,32 +33,29 @@ tags:
             id: home-screen
           timeout: 30000
 
-# Stay on mainnet (no network switch)
-
 # Verify we're on home screen after import
 - assertVisible:
     id: home-screen
 
-# Wait for accounts and balances to load
+# Wait for balances to load — the XLM balance row must be visible
 - extendedWaitUntil:
     visible:
-      id: home-account-switcher
-    timeout: 15000
+      id: home-token-XLM
+    timeout: 30000
+
+# Navigate to XLM Token Details by tapping the balance row
+- tapOn:
+    id: home-token-XLM
+
+# Verify we're on Token Details screen
 - extendedWaitUntil:
     visible:
-      id: icon-button-send
+      id: token-details-screen
     timeout: 15000
 
-# Navigate to send flow
+# Tap the Send button on Token Details screen
 - tapOn:
-    id: icon-button-send
-# Select token first
-- extendedWaitUntil:
-    visible:
-      id: token-option-XLM
-    timeout: 30000
-- tapOn:
-    id: token-option-XLM
+    id: token-details-send-button
 
 # Wait for recipient search screen
 - extendedWaitUntil:
@@ -70,8 +69,6 @@ tags:
 - inputText: GDAS7BS4XKW27H2K5C25V6ZU46FCFGBTFQGFDZURAKVPA6QYQG4GTWBC
 
 # Wait for search suggestion to appear and select it
-# Note: keyboardShouldPersistTaps="handled" on the FlatList allows tapping
-# suggestions without hiding the keyboard first.
 - extendedWaitUntil:
     visible:
       id: search-suggestion-0
@@ -100,16 +97,19 @@ tags:
 # Tap Review button
 - tapOn:
     id: send-continue-button
+
 # Verify review sheet is visible
 - extendedWaitUntil:
     visible:
       id: send-review-sheet
     timeout: 30000
+
 # Wait for confirm button to be ready before tapping
 - extendedWaitUntil:
     visible:
       id: send-review-confirm-button
     timeout: 30000
+
 # Confirm the transaction
 - tapOn:
     id: send-review-confirm-button
@@ -121,8 +121,8 @@ tags:
     timeout: 30000
 - tapOn:
     id: send-processing-done-button
-# Verify we're back on history screen with transaction visible
-# Note: optional because the transaction might not be immediately rendered in the view
+
+# Verify XLM still visible (back on token details or history)
 - assertVisible:
     text: "XLM"
     optional: true

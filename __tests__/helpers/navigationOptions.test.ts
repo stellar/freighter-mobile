@@ -1,4 +1,5 @@
 import { NativeStackNavigationOptions } from "@react-navigation/native-stack";
+import { ScreenTransition } from "config/routes";
 import { withTransitionOverride } from "helpers/navigationOptions";
 
 describe("withTransitionOverride", () => {
@@ -22,14 +23,14 @@ describe("withTransitionOverride", () => {
 
   it("overrides animation when transition is provided", () => {
     const result = withTransitionOverride(baseOptions, {
-      params: { transition: "fade" },
+      params: { transition: ScreenTransition.Fade },
     });
-    expect(result.animation).toBe("fade");
+    expect(result.animation).toBe(ScreenTransition.Fade);
   });
 
   it("preserves other base options when overriding animation", () => {
     const result = withTransitionOverride(baseOptions, {
-      params: { transition: "fade" },
+      params: { transition: ScreenTransition.Fade },
     });
     expect(result.animationDuration).toBe(300);
     expect(result.animationTypeForReplace).toBe("push");
@@ -37,7 +38,9 @@ describe("withTransitionOverride", () => {
 
   it("does not mutate the base options object", () => {
     const snapshot = { ...baseOptions };
-    withTransitionOverride(baseOptions, { params: { transition: "fade" } });
+    withTransitionOverride(baseOptions, {
+      params: { transition: ScreenTransition.Fade },
+    });
     expect(baseOptions).toEqual(snapshot);
   });
 });

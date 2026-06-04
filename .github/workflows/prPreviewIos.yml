@@ -65,8 +65,8 @@ jobs:
     runs-on: macos-26-xlarge
     timeout-minutes: 45
     permissions:
-      contents: write       # draft release create/delete + tag operations
-      pull-requests: write  # sticky preview-link comment
+      contents: write # draft release create/delete + tag operations
+      pull-requests: write # sticky preview-link comment
     env:
       NODE_VERSION: "20"
       RUBY_VERSION: 3.1.4
@@ -97,13 +97,15 @@ jobs:
       WALLET_KIT_MT_DESCRIPTION_PROD: ${{ vars.WALLET_KIT_MT_DESCRIPTION_DEV }}
       WALLET_KIT_MT_URL_PROD: ${{ vars.WALLET_KIT_MT_URL_DEV }}
       WALLET_KIT_MT_ICON_PROD: ${{ vars.WALLET_KIT_MT_ICON_DEV }}
-      WALLET_KIT_MT_REDIRECT_NATIVE_PROD: ${{ vars.WALLET_KIT_MT_REDIRECT_NATIVE_DEV }}
+      WALLET_KIT_MT_REDIRECT_NATIVE_PROD:
+        ${{ vars.WALLET_KIT_MT_REDIRECT_NATIVE_DEV }}
       WALLET_KIT_PROJECT_ID_DEV: ${{ secrets.WALLET_KIT_PROJECT_ID_DEV }}
       WALLET_KIT_MT_NAME_DEV: ${{ vars.WALLET_KIT_MT_NAME_DEV }}
       WALLET_KIT_MT_DESCRIPTION_DEV: ${{ vars.WALLET_KIT_MT_DESCRIPTION_DEV }}
       WALLET_KIT_MT_URL_DEV: ${{ vars.WALLET_KIT_MT_URL_DEV }}
       WALLET_KIT_MT_ICON_DEV: ${{ vars.WALLET_KIT_MT_ICON_DEV }}
-      WALLET_KIT_MT_REDIRECT_NATIVE_DEV: ${{ vars.WALLET_KIT_MT_REDIRECT_NATIVE_DEV }}
+      WALLET_KIT_MT_REDIRECT_NATIVE_DEV:
+        ${{ vars.WALLET_KIT_MT_REDIRECT_NATIVE_DEV }}
       MP_COLLECTIONS_ADDRESSES: ${{ vars.MP_COLLECTIONS_ADDRESSES }}
       IS_E2E_TEST: "false"
       E2E_TEST_RECOVERY_PHRASE: ""
@@ -190,7 +192,9 @@ jobs:
             ios/Pods
             ~/Library/Caches/CocoaPods
             ~/.cocoapods
-          key: ${{ runner.os }}-pods-pr-${{ github.event.pull_request.number }}-${{ hashFiles('ios/Podfile.lock') }}
+          key:
+            ${{ runner.os }}-pods-pr-${{ github.event.pull_request.number }}-${{
+            hashFiles('ios/Podfile.lock') }}
           restore-keys: |
             ${{ runner.os }}-pods-pr-${{ github.event.pull_request.number }}-
 

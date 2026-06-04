@@ -374,9 +374,9 @@ const TransactionSettingsBottomSheet: React.FC<
     // Notify that settings have changed
     onSettingsChange?.();
 
-    // Dismiss the sheet and keyboard together
-    onConfirm();
+    // Dismiss keyboard before onConfirm so any focus side-effects don't reopen it
     Keyboard.dismiss();
+    onConfirm();
   };
 
   // Render functions
