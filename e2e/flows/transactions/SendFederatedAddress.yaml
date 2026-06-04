@@ -3,14 +3,14 @@ tags:
   - transactions
   - send
   - federation
-  - mainnet
+  - testnet
 ---
-# Send 0.000001 XLM and 0.000001 USDC on mainnet to a federated address
-# (freighter.pb*lobstr.co). Verifies that federation address resolution works
+# Send 0.000001 XLM and 0.000001 USDC on testnet to a federated address
+# (freighter.c7*lobstr.co). Verifies that federation address resolution works
 # end-to-end for both native and classic tokens:
 # search → resolve → review → confirm → sent.
 #
-# Uses a small amount to avoid wasting mainnet funds.
+# Uses a small amount to keep the test cheap.
 
 # Import funded wallet
 - runFlow:
@@ -35,11 +35,13 @@ tags:
             id: home-screen
           timeout: 30000
 
-# Stay on mainnet (no network switch)
-
 # Verify we're on home screen after import
 - assertVisible:
     id: home-screen
+
+# Switch to Testnet (account is provisioned on testnet)
+- runFlow:
+    file: ../shared/SwitchToTestnet.yaml
 
 # Ensure we're on the Home tab (funded wallets open on History)
 - tapOn:
@@ -70,7 +72,7 @@ tags:
 # Type a federation address (LOBSTR federation)
 - tapOn:
     id: send-recipient-input
-- inputText: freighter.pb*lobstr.co
+- inputText: freighter.c7*lobstr.co
 
 # Wait for federation resolution and search suggestion to appear
 - extendedWaitUntil:
@@ -86,7 +88,7 @@ tags:
       id: send-amount-screen
     timeout: 15000
 
-# Enter amount: 0.000001 XLM (minimal to avoid wasting mainnet funds)
+# Enter amount: 0.000001 XLM (minimal, keeps the test cheap)
 - tapOn:
     id: numeric-key-0
 - tapOn:
@@ -103,6 +105,9 @@ tags:
 # was passed to buildPaymentTransaction instead of the resolved G... key)
 - tapOn:
     id: send-continue-button
+# Dismiss Blockaid "Proceed with caution" sheet on testnet
+- runFlow:
+    file: ../shared/HandleUnableToScan.yaml
 
 # Verify review sheet is visible (confirms federation address was correctly
 # resolved to a G... public key for transaction building)
@@ -113,11 +118,11 @@ tags:
 # Wait for the confirm button to be enabled (transaction built + memo validated)
 - extendedWaitUntil:
     visible:
-      id: send-review-confirm-button
+      id: send-review-confirm-anyway-button
       enabled: true
     timeout: 30000
 - tapOn:
-    id: send-review-confirm-button
+    id: send-review-confirm-anyway-button
 # Verify processing screen
 - extendedWaitUntil:
     visible:
@@ -179,7 +184,7 @@ tags:
     timeout: 15000
 - tapOn:
     id: send-recipient-input
-- inputText: freighter.pb*lobstr.co
+- inputText: freighter.c7*lobstr.co
 # Wait for federation resolution
 - extendedWaitUntil:
     visible:
@@ -206,17 +211,20 @@ tags:
 # Review and confirm
 - tapOn:
     id: send-continue-button
+# Dismiss Blockaid "Proceed with caution" sheet on testnet
+- runFlow:
+    file: ../shared/HandleUnableToScan.yaml
 - extendedWaitUntil:
     visible:
       id: send-review-sheet
     timeout: 30000
 - extendedWaitUntil:
     visible:
-      id: send-review-confirm-button
+      id: send-review-confirm-anyway-button
       enabled: true
     timeout: 30000
 - tapOn:
-    id: send-review-confirm-button
+    id: send-review-confirm-anyway-button
 - extendedWaitUntil:
     visible:
       id: send-processing-screen

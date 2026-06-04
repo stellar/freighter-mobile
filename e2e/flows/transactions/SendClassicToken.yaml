@@ -3,10 +3,10 @@ tags:
   - transactions
   - send
   - classic-token
-  - mainnet
+  - testnet
 ---
-# Send 0.000001 XLM on mainnet to E2E_TEST_RECIPIENT_ADDRESS.
-# Uses a small amount to avoid wasting mainnet funds.
+# Send 0.000001 XLM on testnet to E2E_TEST_RECIPIENT_ADDRESS (a freshly provisioned account).
+# Uses a small amount to keep the test cheap.
 #
 # Import funded wallet
 - runFlow:
@@ -31,11 +31,13 @@ tags:
             id: home-screen
           timeout: 30000
 
-# Stay on mainnet (no network switch)
-
 # Verify we're on home screen after import
 - assertVisible:
     id: home-screen
+
+# Switch to Testnet (account is provisioned on testnet)
+- runFlow:
+    file: ../shared/SwitchToTestnet.yaml
 
 # Wait for accounts and balances to load
 - extendedWaitUntil:
@@ -62,7 +64,7 @@ tags:
 # Type the recipient address
 - tapOn:
     id: send-recipient-input
-- inputText: GDAS7BS4XKW27H2K5C25V6ZU46FCFGBTFQGFDZURAKVPA6QYQG4GTWBC
+- inputText: ${E2E_TEST_RECIPIENT_ADDRESS}
 
 # Wait for search suggestion to appear and select it
 # Note: keyboardShouldPersistTaps="handled" on the FlatList allows tapping
@@ -80,7 +82,7 @@ tags:
       id: send-amount-screen
     timeout: 15000
 
-# Enter amount: 0.000001 XLM (minimal to avoid wasting mainnet funds)
+# Enter amount: 0.000001 XLM (minimal, keeps the test cheap)
 - tapOn:
     id: numeric-key-0
 - tapOn:
@@ -96,6 +98,9 @@ tags:
 # Tap Review button
 - tapOn:
     id: send-continue-button
+# Dismiss Blockaid "Proceed with caution" sheet on testnet
+- runFlow:
+    file: ../shared/HandleUnableToScan.yaml
 # Verify review sheet is visible
 - extendedWaitUntil:
     visible:
@@ -103,7 +108,7 @@ tags:
     timeout: 30000
 # Confirm the transaction
 - tapOn:
-    id: send-review-confirm-button
+    id: send-review-confirm-anyway-button
 # Verify processing screen
 - extendedWaitUntil:
     visible:

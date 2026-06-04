@@ -116,7 +116,13 @@ export const SecurityDetailBottomSheet: React.FC<
         <View className="flex-row gap-3">
           {onCancel && (
             <View className="flex-1">
-              <Button xl isFullWidth onPress={onCancel} variant="secondary">
+              <Button
+                xl
+                isFullWidth
+                onPress={onCancel}
+                variant="secondary"
+                testID="security-warning-cancel-button"
+              >
                 {t("common.cancel")}
               </Button>
             </View>
@@ -128,6 +134,7 @@ export const SecurityDetailBottomSheet: React.FC<
                 isFullWidth
                 onPress={onProceedAnyway}
                 variant="tertiary"
+                testID="security-warning-proceed-button"
               >
                 {proceedAnywayText}
               </Button>
@@ -146,6 +153,7 @@ export const SecurityDetailBottomSheet: React.FC<
             isFullWidth
             onPress={onCancel}
             variant={isMalicious ? "destructive" : "tertiary"}
+            testID="security-warning-cancel-button"
           >
             {t("common.cancel")}
           </Button>
@@ -155,6 +163,7 @@ export const SecurityDetailBottomSheet: React.FC<
             text={proceedAnywayText}
             onPress={onProceedAnyway}
             variant={isMalicious ? "error" : "secondary"}
+            testID="security-warning-proceed-button"
           />
         )}
       </View>

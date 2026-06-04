@@ -19,6 +19,8 @@ export interface BannerProps {
   icon?: React.ReactNode;
   /** Whether to show the chevron right icon (default: true) */
   showChevron?: boolean;
+  /** Optional test ID for testing */
+  testID?: string;
 }
 
 /**
@@ -53,6 +55,7 @@ export const Banner: React.FC<BannerProps> = ({
   className = "",
   icon,
   showChevron = true,
+  testID,
 }) => {
   const { themeColors } = useColors();
 
@@ -132,6 +135,7 @@ export const Banner: React.FC<BannerProps> = ({
       <TouchableOpacity
         onPress={onPress}
         className={`px-[16px] py-[12px] rounded-[16px] w-full ${backgroundClass} ${className}`}
+        testID={testID}
       >
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center flex-1 gap-[8px]">
@@ -151,6 +155,7 @@ export const Banner: React.FC<BannerProps> = ({
   return (
     <View
       className={`px-[16px] py-[12px] rounded-[16px] w-full ${backgroundClass} ${className}`}
+      testID={testID}
     >
       <View className="flex-row items-center justify-between">
         <View

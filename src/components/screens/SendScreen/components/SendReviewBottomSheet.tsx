@@ -214,6 +214,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
 
     return (
       <Banner
+        testID="security-warning-banner"
         variant={displayBannerVariant}
         text={displayBannerText}
         onPress={amountError ? undefined : onBannerPress}
