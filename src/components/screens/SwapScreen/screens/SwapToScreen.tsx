@@ -284,7 +284,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
           />
         }
       />
-      <View className="px-4 pt-4">
+      <View className="pt-4">
         <Input
           placeholder={t("swapScreen.searchPlaceholder")}
           value={searchTerm}
@@ -303,7 +303,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
       <View className="h-4" />
 
       {stellarExpertDown && (
-        <View className="px-4 py-2">
+        <View className="py-2">
           <Text sm secondary>
             {t("swapScreen.stellarExpertDown")}
           </Text>
@@ -317,7 +317,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
       )}
 
       {showSorobanEmpty && (
-        <View className="px-4 py-8">
+        <View className="py-8">
           <Text sm secondary>
             {t("swapScreen.sorobanEmptyState")}
           </Text>
@@ -325,7 +325,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
       )}
 
       {showNoResults && (
-        <View className="px-4 py-8">
+        <View className="py-8">
           <Text sm secondary>
             {t("swapScreen.noResults", { term: searchTerm })}
           </Text>
@@ -340,7 +340,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
           // and "Popular tokens" titles should scroll with the rows above
           // and below them.
           stickySectionHeadersEnabled={false}
-          contentContainerStyle={{ paddingHorizontal: 16 }}
+          showsVerticalScrollIndicator={false}
           renderSectionHeader={({ section }) => {
             let infoRef: React.RefObject<BottomSheetModal | null> | null = null;
             if (section.kind === "verified") {
