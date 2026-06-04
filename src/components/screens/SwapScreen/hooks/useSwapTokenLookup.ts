@@ -33,7 +33,7 @@ import {
 import { searchToken } from "services/stellarExpert";
 
 export interface SwapTokenLookupResult {
-  /** Idle: "Your tokens" section. Active: held matches at the top of searchResults. */
+  /** Idle: "Your tokens" section. Active mode uses heldSearchMatches instead. */
   yourTokens: Array<PricedBalance & { id: string }>;
   /** Idle: top stellar.expert assets sorted by volume7d, EXCLUDING held tokens. Active: []. */
   popularTokens: FormattedSearchTokenRecord[];
@@ -44,8 +44,12 @@ export interface SwapTokenLookupResult {
    * "Your tokens" section to visually duplicate them with.
    */
   trendingTokens: FormattedSearchTokenRecord[];
-  /** Active: single flat array — held > verified > stellar.expert remainder. Idle: []. */
-  searchResults: FormattedSearchTokenRecord[];
+  /** Active: held tokens matching the search term (always classic, balance-value ordered). Idle: []. */
+  heldSearchMatches: FormattedSearchTokenRecord[];
+  /** Active: SDF-verified non-held matches from stellar.expert (deduped against heldSearchMatches). Idle: []. */
+  verifiedSearchMatches: FormattedSearchTokenRecord[];
+  /** Active: unverified non-held matches from stellar.expert (deduped against held + verified). Idle: []. */
+  unverifiedSearchMatches: FormattedSearchTokenRecord[];
   /**
    * True when the pre-filter result set contained Soroban contract tokens
    * that matched the term AND the filtered (classic-only) list ended up
@@ -132,9 +136,11 @@ export const useSwapTokenLookup = ({
   const [trendingTokens, setTrendingTokens] = useState<
     FormattedSearchTokenRecord[]
   >([]);
-  const [searchResults, setSearchResults] = useState<
-    FormattedSearchTokenRecord[]
-  >([]);
+  const [searchPartition, setSearchPartition] = useState<{
+    held: FormattedSearchTokenRecord[];
+    verified: FormattedSearchTokenRecord[];
+    unverified: FormattedSearchTokenRecord[];
+  }>({ held: [], verified: [], unverified: [] });
   const [hadSorobanMatches, setHadSorobanMatches] = useState<boolean>(false);
   const [stellarExpertDown, setStellarExpertDown] = useState<boolean>(false);
   const [status, setStatus] = useState<HookStatus>(HookStatus.IDLE);
@@ -348,9 +354,10 @@ export const useSwapTokenLookup = ({
 
   // -- Active-search surface ------------------------------------------------
   //
-  // Runs whenever `searchTerm` changes to a non-empty value. Builds a single
-  // ordered Results array: held > verified > stellar.expert remainder, all
-  // deduped by CODE:ISSUER and classic-only.
+  // Runs whenever `searchTerm` changes to a non-empty value. Builds three
+  // deduped buckets — held / verified / unverified — sharing a single `seen`
+  // set so a held token can never duplicate into Verified or Unverified.
+  // Classic-only on all three.
   const performSearch = useCallback(
     async (term: string) => {
       const requestId = ++latestRequestRef.current;
@@ -362,7 +369,7 @@ export const useSwapTokenLookup = ({
       if (!term) {
         if (latestRequestRef.current === requestId) {
           setStatus(HookStatus.IDLE);
-          setSearchResults([]);
+          setSearchPartition({ held: [], verified: [], unverified: [] });
           setHadSorobanMatches(false);
         }
         return;
@@ -399,7 +406,11 @@ export const useSwapTokenLookup = ({
       // matches immediately and bail.
       if (holdsOnly) {
         if (latestRequestRef.current !== requestId) return;
-        setSearchResults(heldMatches);
+        setSearchPartition({
+          held: heldMatches,
+          verified: [],
+          unverified: [],
+        });
         setHadSorobanMatches(false);
         setStatus(HookStatus.SUCCESS);
         return;
@@ -414,7 +425,11 @@ export const useSwapTokenLookup = ({
         setStellarExpertDown(true);
         const enhancedHeld = await enhanceWithSecurityInfo(heldMatches, signal);
         if (signal.aborted || latestRequestRef.current !== requestId) return;
-        setSearchResults(enhancedHeld);
+        setSearchPartition({
+          held: enhancedHeld,
+          verified: [],
+          unverified: [],
+        });
         setHadSorobanMatches(false);
         setStatus(HookStatus.SUCCESS);
         return;
@@ -453,23 +468,45 @@ export const useSwapTokenLookup = ({
       });
       if (signal.aborted || latestRequestRef.current !== requestId) return;
 
-      // Dedupe across sources: held first, then verified, then unverified.
+      // Dedupe across sources into three buckets via a shared `seen` set so
+      // a held token can never duplicate into Verified or Unverified.
       const seen = new Set<string>();
-      const ordered: FormattedSearchTokenRecord[] = [];
-      const pushUnique = (token: FormattedSearchTokenRecord) => {
+      const heldDeduped: FormattedSearchTokenRecord[] = [];
+      const verifiedDeduped: FormattedSearchTokenRecord[] = [];
+      const unverifiedDeduped: FormattedSearchTokenRecord[] = [];
+
+      const pushDeduped = (
+        bucket: FormattedSearchTokenRecord[],
+        token: FormattedSearchTokenRecord,
+      ) => {
         const id = canonicalId(token.tokenCode, token.issuer);
         if (seen.has(id)) return;
         seen.add(id);
-        ordered.push(token);
+        bucket.push(token);
       };
-      heldMatches.forEach(pushUnique);
-      verified.forEach(pushUnique);
-      unverified.forEach(pushUnique);
 
-      const enhanced = await enhanceWithSecurityInfo(ordered, signal);
+      heldMatches.forEach((t) => pushDeduped(heldDeduped, t));
+      verified.forEach((t) => pushDeduped(verifiedDeduped, t));
+      unverified.forEach((t) => pushDeduped(unverifiedDeduped, t));
+
+      // Single Blockaid call against the concat keeps the network footprint
+      // flat; re-split the enhanced result by index range. enhanceWithSecurityInfo
+      // preserves order (it `.map`s the input array), so this is safe.
+      const concat = [...heldDeduped, ...verifiedDeduped, ...unverifiedDeduped];
+      const enhanced = await enhanceWithSecurityInfo(concat, signal);
       if (signal.aborted || latestRequestRef.current !== requestId) return;
 
-      setSearchResults(enhanced);
+      const heldEnd = heldDeduped.length;
+      const verifiedEnd = heldEnd + verifiedDeduped.length;
+      const enhancedHeld = enhanced.slice(0, heldEnd);
+      const enhancedVerified = enhanced.slice(heldEnd, verifiedEnd);
+      const enhancedUnverified = enhanced.slice(verifiedEnd);
+
+      setSearchPartition({
+        held: enhancedHeld,
+        verified: enhancedVerified,
+        unverified: enhancedUnverified,
+      });
       setHadSorobanMatches(enhanced.length === 0 && preFilterHadSoroban);
       setStatus(HookStatus.SUCCESS);
     },
@@ -510,11 +547,11 @@ export const useSwapTokenLookup = ({
     // keystroke and synchronous holdsOnly resolution).
     if (term.length > 0) {
       setStatus(HookStatus.LOADING);
-      setSearchResults([]);
+      setSearchPartition({ held: [], verified: [], unverified: [] });
       setHadSorobanMatches(false);
     } else {
       setStatus(HookStatus.IDLE);
-      setSearchResults([]);
+      setSearchPartition({ held: [], verified: [], unverified: [] });
       setHadSorobanMatches(false);
     }
   }, []);
@@ -522,7 +559,7 @@ export const useSwapTokenLookup = ({
   const resetSearch = useCallback(() => {
     abortControllerRef.current?.abort();
     setSearchTerm("");
-    setSearchResults([]);
+    setSearchPartition({ held: [], verified: [], unverified: [] });
     setHadSorobanMatches(false);
     setStatus(HookStatus.IDLE);
   }, []);
@@ -623,7 +660,9 @@ export const useSwapTokenLookup = ({
     yourTokens,
     popularTokens,
     trendingTokens,
-    searchResults: searchTerm ? searchResults : [],
+    heldSearchMatches: searchTerm ? searchPartition.held : [],
+    verifiedSearchMatches: searchTerm ? searchPartition.verified : [],
+    unverifiedSearchMatches: searchTerm ? searchPartition.unverified : [],
     hadSorobanMatches: searchTerm ? hadSorobanMatches : false,
     stellarExpertDown,
     status,

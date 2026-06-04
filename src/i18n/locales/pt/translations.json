@@ -677,6 +677,8 @@
     "yourTokensSection": "Seus tokens",
     "popularTokensSection": "Tokens populares",
     "resultsSection": "Resultados",
+    "verifiedSection": "Verificado",
+    "unverifiedSection": "Não verificado",
     "trendingTokensSection": "Tokens em alta",
     "trendingDetail": {
       "buy": "Comprar {{tokenCode}}",

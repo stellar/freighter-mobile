@@ -99,7 +99,9 @@ const defaultLookupResult = {
   yourTokens: [],
   popularTokens: [],
   trendingTokens: [],
-  searchResults: [],
+  heldSearchMatches: [],
+  verifiedSearchMatches: [],
+  unverifiedSearchMatches: [],
   hadSorobanMatches: false,
   stellarExpertDown: false,
   status: HookStatus.SUCCESS,
@@ -129,30 +131,77 @@ describe("SwapToScreen", () => {
     expect(getByText("Popular tokens")).toBeTruthy();
   });
 
-  it("renders 'Results' header (only) in active search mode", () => {
+  it("renders Your tokens / Verified / Unverified section headers in active search mode", () => {
+    const mockHeldRecord = {
+      tokenCode: "USDC",
+      issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+      isNative: false,
+      tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+      hasTrustline: true,
+      domain: "circle.com",
+    };
+    const mockUnverifiedRecord = {
+      tokenCode: "FOO",
+      issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4FOOO",
+      isNative: false,
+      tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+      hasTrustline: false,
+      domain: "foo.com",
+    };
     (useSwapTokenLookupModule.useSwapTokenLookup as jest.Mock).mockReturnValue({
       ...defaultLookupResult,
-      yourTokens: [mockHeldBalance],
-      popularTokens: [mockPopularRecord],
-      searchResults: [mockPopularRecord],
-      searchTerm: "aqua",
+      heldSearchMatches: [mockHeldRecord],
+      verifiedSearchMatches: [mockPopularRecord],
+      unverifiedSearchMatches: [mockUnverifiedRecord],
+      searchTerm: "u",
     });
 
     const { getByText, queryByText } = renderWithProviders(
       <SwapToScreen {...mockNavProps} />,
     );
 
-    expect(getByText("Results")).toBeTruthy();
-    expect(queryByText("Your tokens")).toBeNull();
+    expect(getByText("Your tokens")).toBeTruthy();
+    expect(getByText("Verified")).toBeTruthy();
+    expect(getByText("Unverified")).toBeTruthy();
+    // The single flat "Results" header is gone now.
+    expect(queryByText("Results")).toBeNull();
+    // Idle-only "Popular tokens" header must not appear in active search.
     expect(queryByText("Popular tokens")).toBeNull();
   });
 
-  it("renders the Soroban empty-state when hadSorobanMatches=true and searchResults is empty", () => {
+  it("omits empty section headers in active search mode", () => {
+    const mockHeldRecord = {
+      tokenCode: "USDC",
+      issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+      isNative: false,
+      tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+      hasTrustline: true,
+      domain: "circle.com",
+    };
+    // Only held bucket populated; verified + unverified empty.
+    (useSwapTokenLookupModule.useSwapTokenLookup as jest.Mock).mockReturnValue({
+      ...defaultLookupResult,
+      heldSearchMatches: [mockHeldRecord],
+      verifiedSearchMatches: [],
+      unverifiedSearchMatches: [],
+      searchTerm: "usdc",
+    });
+
+    const { getByText, queryByText } = renderWithProviders(
+      <SwapToScreen {...mockNavProps} />,
+    );
+
+    expect(getByText("Your tokens")).toBeTruthy();
+    // Empty buckets must not render their section headers.
+    expect(queryByText("Verified")).toBeNull();
+    expect(queryByText("Unverified")).toBeNull();
+  });
+
+  it("renders the Soroban empty-state when hadSorobanMatches=true and all search buckets are empty", () => {
     (useSwapTokenLookupModule.useSwapTokenLookup as jest.Mock).mockReturnValue({
       ...defaultLookupResult,
       yourTokens: [],
       popularTokens: [],
-      searchResults: [],
       hadSorobanMatches: true,
       searchTerm: "soroswap",
     });
@@ -221,7 +270,6 @@ describe("SwapToScreen", () => {
       ...defaultLookupResult,
       yourTokens: [],
       popularTokens: [],
-      searchResults: [],
       hadSorobanMatches: false,
       searchTerm: "zloto",
     });
@@ -238,7 +286,6 @@ describe("SwapToScreen", () => {
       ...defaultLookupResult,
       yourTokens: [],
       popularTokens: [],
-      searchResults: [],
       hadSorobanMatches: false,
       status: HookStatus.LOADING,
       searchTerm: "usd",
@@ -494,7 +541,7 @@ describe("SwapToScreen", () => {
         ...defaultLookupResult,
         yourTokens: [],
         popularTokens: [],
-        searchResults: [mockPopularRecord],
+        verifiedSearchMatches: [mockPopularRecord],
         searchTerm: "aqua",
       });
 

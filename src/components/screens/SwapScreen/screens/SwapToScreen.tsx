@@ -59,7 +59,9 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
   const {
     yourTokens,
     popularTokens,
-    searchResults,
+    heldSearchMatches,
+    verifiedSearchMatches,
+    unverifiedSearchMatches,
     hadSorobanMatches,
     stellarExpertDown,
     status,
@@ -75,28 +77,40 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
     holdsOnly: selectionType === SWAP_SELECTION_TYPES.SOURCE,
   });
 
-  // Section data: idle = "Your tokens" + "Popular tokens"; active = "Results".
-  // The opposite-side token is NOT excluded here — picking it triggers the
-  // selection-swap rule (spec §12.4): the opposite side clears so the user
-  // can pick a different token there.
+  // Section data: idle = "Your tokens" + "Popular tokens"; active = three
+  // sections ("Your tokens" / "Verified" / "Unverified") — each omitted when
+  // its bucket is empty. The opposite-side token is NOT excluded here —
+  // picking it triggers the selection-swap rule (spec §12.4): the opposite
+  // side clears so the user can pick a different token there.
   const sections = useMemo(() => {
-    if (searchTerm) {
-      return [
-        {
-          title: t("swapScreen.resultsSection"),
-          data: searchResults as Array<
-            (PricedBalance & { id: string }) | FormattedSearchTokenRecord
-          >,
-        },
-      ];
-    }
-
     const out: Array<{
       title: string;
       data: Array<
         (PricedBalance & { id: string }) | FormattedSearchTokenRecord
       >;
     }> = [];
+
+    if (searchTerm) {
+      if (heldSearchMatches.length > 0) {
+        out.push({
+          title: t("swapScreen.yourTokensSection"),
+          data: heldSearchMatches,
+        });
+      }
+      if (verifiedSearchMatches.length > 0) {
+        out.push({
+          title: t("swapScreen.verifiedSection"),
+          data: verifiedSearchMatches,
+        });
+      }
+      if (unverifiedSearchMatches.length > 0) {
+        out.push({
+          title: t("swapScreen.unverifiedSection"),
+          data: unverifiedSearchMatches,
+        });
+      }
+      return out;
+    }
 
     if (yourTokens.length > 0) {
       out.push({
@@ -116,14 +130,31 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
     }
 
     return out;
-  }, [searchTerm, searchResults, yourTokens, popularTokens, selectionType, t]);
+  }, [
+    searchTerm,
+    heldSearchMatches,
+    verifiedSearchMatches,
+    unverifiedSearchMatches,
+    yourTokens,
+    popularTokens,
+    selectionType,
+    t,
+  ]);
+
+  // Total active-search result count across all three buckets — used to gate
+  // the loading / empty-state branches the same way the old flat
+  // searchResults.length did.
+  const totalSearchResults =
+    heldSearchMatches.length +
+    verifiedSearchMatches.length +
+    unverifiedSearchMatches.length;
 
   // True while the user's debounced search is fetching (takes precedence over
   // empty-state branches so the user doesn't see "no results" mid-fetch).
   const isSearching =
     searchTerm.length > 0 &&
     status === HookStatus.LOADING &&
-    searchResults.length === 0;
+    totalSearchResults === 0;
 
   // Soroban empty-state: search has term, no results, and either there were
   // Soroban matches filtered out OR the term itself looks like a contract ID.
@@ -131,7 +162,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
   const showSorobanEmpty =
     !isSearching &&
     searchTerm.length > 0 &&
-    searchResults.length === 0 &&
+    totalSearchResults === 0 &&
     (hadSorobanMatches || isContractId(searchTerm));
 
   // No-results empty-state: search has term, no results, and NOT a Soroban
@@ -139,7 +170,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
   const showNoResults =
     !isSearching &&
     searchTerm.length > 0 &&
-    searchResults.length === 0 &&
+    totalSearchResults === 0 &&
     !showSorobanEmpty;
 
   const handleHeldPress = (

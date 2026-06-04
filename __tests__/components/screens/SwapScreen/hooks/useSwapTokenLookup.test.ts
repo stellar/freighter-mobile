@@ -501,7 +501,7 @@ describe("useSwapTokenLookup — active search", () => {
     jest.useRealTimers();
   });
 
-  it("returns held > verified > stellar.expert order in a single Results array", async () => {
+  it("places held matches in heldSearchMatches and non-held in verifiedSearchMatches (held wins)", async () => {
     const held = buildHeldBalances();
     (stellarExpert.searchToken as jest.Mock).mockResolvedValue({
       _embedded: {
@@ -527,11 +527,13 @@ describe("useSwapTokenLookup — active search", () => {
 
     await settleDebounce();
 
-    expect(result.current.searchResults.length).toBeGreaterThan(0);
-    // Held USDC must be first (held precedence over verified/remainder)
-    expect(result.current.searchResults[0].tokenCode).toBe("USDC");
-    expect(result.current.searchResults[0].issuer).toBe(USDC_ISSUER);
-    expect(result.current.searchResults[0].hasTrustline).toBe(true);
+    // Held USDC lives in the held bucket with hasTrustline=true.
+    expect(result.current.heldSearchMatches.length).toBeGreaterThan(0);
+    expect(result.current.heldSearchMatches[0].tokenCode).toBe("USDC");
+    expect(result.current.heldSearchMatches[0].issuer).toBe(USDC_ISSUER);
+    expect(result.current.heldSearchMatches[0].hasTrustline).toBe(true);
+    // Verified bucket has the non-held matches (e.g., FOO).
+    expect(result.current.verifiedSearchMatches.length).toBeGreaterThan(0);
   });
 
   it("dedupes by CODE:ISSUER across sources", async () => {
@@ -561,10 +563,25 @@ describe("useSwapTokenLookup — active search", () => {
 
     await settleDebounce();
 
-    const usdcMatches = result.current.searchResults.filter(
-      (t) => t.tokenCode === "USDC",
-    );
+    const allMatches = [
+      ...result.current.heldSearchMatches,
+      ...result.current.verifiedSearchMatches,
+      ...result.current.unverifiedSearchMatches,
+    ];
+    const usdcMatches = allMatches.filter((t) => t.tokenCode === "USDC");
     expect(usdcMatches).toHaveLength(1);
+    // Held wins: USDC must be in heldSearchMatches, NOT in verified/unverified.
+    expect(
+      result.current.heldSearchMatches.some((t) => t.tokenCode === "USDC"),
+    ).toBe(true);
+    expect(
+      result.current.verifiedSearchMatches.some((t) => t.tokenCode === "USDC"),
+    ).toBe(false);
+    expect(
+      result.current.unverifiedSearchMatches.some(
+        (t) => t.tokenCode === "USDC",
+      ),
+    ).toBe(false);
   });
 
   it("sets hadSorobanMatches=true when name search returns only Soroban records and filtered list is empty", async () => {
@@ -595,7 +612,9 @@ describe("useSwapTokenLookup — active search", () => {
 
     await settleDebounce();
 
-    expect(result.current.searchResults).toHaveLength(0);
+    expect(result.current.heldSearchMatches).toHaveLength(0);
+    expect(result.current.verifiedSearchMatches).toHaveLength(0);
+    expect(result.current.unverifiedSearchMatches).toHaveLength(0);
     expect(result.current.hadSorobanMatches).toBe(true);
   });
 
@@ -628,7 +647,11 @@ describe("useSwapTokenLookup — active search", () => {
 
     await settleDebounce();
 
-    expect(result.current.searchResults.length).toBeGreaterThan(0);
+    const total =
+      result.current.heldSearchMatches.length +
+      result.current.verifiedSearchMatches.length +
+      result.current.unverifiedSearchMatches.length;
+    expect(total).toBeGreaterThan(0);
     expect(result.current.hadSorobanMatches).toBe(false);
   });
 
@@ -682,9 +705,121 @@ describe("useSwapTokenLookup — active search", () => {
     // Settle the new debounce and let the second fetch finish
     await settleDebounce();
 
-    const tokenCodes = result.current.searchResults.map((t) => t.tokenCode);
-    expect(tokenCodes).toContain("USDC");
-    expect(tokenCodes).not.toContain("FOO");
+    // splitVerifiedTokens defaults all results to verified, so the USDC
+    // record from the SECOND (successful) fetch lands in verifiedSearchMatches.
+    // FOO came from the FIRST (cancelled) fetch — it must not appear in any bucket.
+    const allCodes = [
+      ...result.current.heldSearchMatches,
+      ...result.current.verifiedSearchMatches,
+      ...result.current.unverifiedSearchMatches,
+    ].map((t) => t.tokenCode);
+    expect(allCodes).toContain("USDC");
+    expect(allCodes).not.toContain("FOO");
+  });
+
+  it("partitions active-search results into held / verified / unverified buckets", async () => {
+    // Held: USDC (always lands in heldSearchMatches by virtue of being held).
+    // stellar.expert returns AQUA (verified) + FOO (unverified). The
+    // splitVerifiedTokens mock decides which of the two non-held records is
+    // verified vs unverified.
+    const held = buildHeldBalances();
+    (stellarExpert.searchToken as jest.Mock).mockResolvedValue({
+      _embedded: {
+        records: [
+          { asset: `USDC-${USDC_ISSUER}-1`, domain: "circle.com" },
+          { asset: `AQUA-${AQUA_ISSUER}-1`, domain: "aqua.network" },
+          { asset: `FOO-${FOO_ISSUER}-1`, domain: "foo.com" },
+        ],
+      },
+      _links: {},
+    });
+
+    // Route AQUA to verified, FOO to unverified for this test. USDC is also
+    // returned by stellar.expert but the held-first dedupe means it never
+    // reaches the verified/unverified buckets either way — we treat it as
+    // verified here so the implementation has to actively dedupe it out.
+    mockSplitVerifiedTokens.mockImplementationOnce(
+      ({ tokens }: { tokens: any[] }) =>
+        Promise.resolve({
+          verified: tokens.filter(
+            (t) => t.tokenCode === "USDC" || t.tokenCode === "AQUA",
+          ),
+          unverified: tokens.filter((t) => t.tokenCode === "FOO"),
+        }),
+    );
+
+    const { result } = renderHook(() =>
+      useSwapTokenLookup({ network: NETWORKS.PUBLIC, balanceItems: held }),
+    );
+
+    await act(async () => {
+      await settleAsync();
+    });
+
+    act(() => {
+      // Term matches the displayName of held USDC ("USD Coin") and the
+      // stellar.expert response gives us AQUA + FOO too.
+      result.current.handleSearch("U");
+    });
+
+    await settleDebounce();
+
+    // Held bucket holds USDC (and not duplicated elsewhere).
+    expect(result.current.heldSearchMatches.map((t) => t.tokenCode)).toContain(
+      "USDC",
+    );
+    // Verified bucket holds AQUA (USDC dedup'd out by held).
+    expect(
+      result.current.verifiedSearchMatches.map((t) => t.tokenCode),
+    ).toContain("AQUA");
+    expect(
+      result.current.verifiedSearchMatches.map((t) => t.tokenCode),
+    ).not.toContain("USDC");
+    // Unverified bucket holds FOO.
+    expect(
+      result.current.unverifiedSearchMatches.map((t) => t.tokenCode),
+    ).toContain("FOO");
+  });
+
+  it("dedupes a held token out of verified/unverified buckets when held + stellar.expert both surface it", async () => {
+    // Held includes USDC; stellar.expert ALSO returns USDC. The held-first
+    // dedupe must keep USDC in heldSearchMatches and drop it from the
+    // verified bucket entirely.
+    const held = buildHeldBalances();
+    (stellarExpert.searchToken as jest.Mock).mockResolvedValue({
+      _embedded: {
+        records: [{ asset: `USDC-${USDC_ISSUER}-1`, domain: "circle.com" }],
+      },
+      _links: {},
+    });
+    // Default mockSplitVerifiedTokens treats every token as verified — so
+    // without the dedupe, USDC would land in verifiedSearchMatches too.
+
+    const { result } = renderHook(() =>
+      useSwapTokenLookup({ network: NETWORKS.PUBLIC, balanceItems: held }),
+    );
+
+    await act(async () => {
+      await settleAsync();
+    });
+
+    act(() => {
+      result.current.handleSearch("USDC");
+    });
+
+    await settleDebounce();
+
+    expect(result.current.heldSearchMatches.map((t) => t.tokenCode)).toContain(
+      "USDC",
+    );
+    expect(
+      result.current.verifiedSearchMatches.some((t) => t.tokenCode === "USDC"),
+    ).toBe(false);
+    expect(
+      result.current.unverifiedSearchMatches.some(
+        (t) => t.tokenCode === "USDC",
+      ),
+    ).toBe(false);
   });
 });
 
@@ -749,10 +884,13 @@ describe("useSwapTokenLookup — holdsOnly (Swap from picker)", () => {
     // stellar.expert searchToken must NOT have been called — the held
     // match is computed entirely in-memory.
     expect(stellarExpert.searchToken).not.toHaveBeenCalled();
-    // The held USDC match comes back as the sole result.
-    expect(result.current.searchResults.length).toBe(1);
-    expect(result.current.searchResults[0].tokenCode).toBe("USDC");
-    expect(result.current.searchResults[0].hasTrustline).toBe(true);
+    // The held USDC match comes back as the sole heldSearchMatches entry.
+    expect(result.current.heldSearchMatches.length).toBe(1);
+    expect(result.current.heldSearchMatches[0].tokenCode).toBe("USDC");
+    expect(result.current.heldSearchMatches[0].hasTrustline).toBe(true);
+    // holdsOnly never populates verified/unverified.
+    expect(result.current.verifiedSearchMatches).toEqual([]);
+    expect(result.current.unverifiedSearchMatches).toEqual([]);
   });
 
   it("flips status to LOADING synchronously on handleSearch (covers the debounce gap)", async () => {
@@ -785,7 +923,9 @@ describe("useSwapTokenLookup — holdsOnly (Swap from picker)", () => {
     // Synchronously after handleSearch — debounce hasn't fired yet, but
     // status must already be LOADING so the empty-state label is gated.
     expect(result.current.status).toBe("loading");
-    expect(result.current.searchResults).toEqual([]);
+    expect(result.current.heldSearchMatches).toEqual([]);
+    expect(result.current.verifiedSearchMatches).toEqual([]);
+    expect(result.current.unverifiedSearchMatches).toEqual([]);
 
     // Settle the debounce → status flips to SUCCESS (with empty results
     // for this non-matching term).
@@ -815,7 +955,9 @@ describe("useSwapTokenLookup — holdsOnly (Swap from picker)", () => {
     await settleDebounce();
 
     expect(stellarExpert.searchToken).not.toHaveBeenCalled();
-    expect(result.current.searchResults).toEqual([]);
+    expect(result.current.heldSearchMatches).toEqual([]);
+    expect(result.current.verifiedSearchMatches).toEqual([]);
+    expect(result.current.unverifiedSearchMatches).toEqual([]);
   });
 });
 
