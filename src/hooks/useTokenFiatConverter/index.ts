@@ -17,7 +17,7 @@ interface UseTokenFiatConverterProps {
   tokenDecimals?: number;
 }
 
-interface UseTokenFiatConverterResult {
+export interface UseTokenFiatConverterResult {
   tokenAmount: string; // Internal value (dot notation)
   tokenAmountDisplay: string; // Display value (locale-formatted, derived)
   tokenAmountDisplayRaw: string | null; // Raw input when typing
