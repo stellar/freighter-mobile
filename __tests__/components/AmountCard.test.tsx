@@ -187,6 +187,48 @@ describe("AmountCard", () => {
       expect(queryByText("$")).toBeNull();
     });
 
+    it("keeps a typed '0' visible (NOT treated as the empty/placeholder state)", () => {
+      // Regression: a literal user-typed "0" used to be treated as empty,
+      // forcing TextInput.value="" — so the next keystroke (e.g. ".")
+      // replaced the "0" instead of appending to it, blocking sub-1 fractions.
+      const { getByTestId } = renderWithProviders(
+        <AmountCard
+          mode="editable"
+          label="Sending"
+          selectedToken={mockBalance}
+          onPickerPress={jest.fn()}
+          inputTestID="amount-input"
+          converter={makeConverter({
+            tokenAmount: "0",
+            tokenAmountDisplayRaw: "0",
+          })}
+          hasUsdPrice
+        />,
+      );
+
+      // The input must show the typed "0", not be forced to empty.
+      expect(getByTestId("amount-input").props.value).toBe("0");
+    });
+
+    it("forces TextInput value to empty when raw is null (true placeholder state)", () => {
+      const { getByTestId } = renderWithProviders(
+        <AmountCard
+          mode="editable"
+          label="Sending"
+          selectedToken={mockBalance}
+          onPickerPress={jest.fn()}
+          inputTestID="amount-input"
+          converter={makeConverter({
+            tokenAmount: "0",
+            tokenAmountDisplayRaw: null,
+          })}
+          hasUsdPrice
+        />,
+      );
+
+      expect(getByTestId("amount-input").props.value).toBe("");
+    });
+
     it("calls inputRef.current.focus() when the focus-trigger area is pressed", () => {
       const inputRef = React.createRef<TextInput>();
       const { getByTestId } = renderWithProviders(

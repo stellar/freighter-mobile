@@ -769,15 +769,26 @@ export const createTokenFiatConverterReducer =
           };
         }
 
-        // Token side: normalise using the same helper as HANDLE_TOKEN_INPUT
-        const rawInternal = parseDisplayNumber(text, tokenDecimals);
+        // Token side: normalise using the same helper as HANDLE_TOKEN_INPUT.
+        // A bare decimal separator ("." or the locale variant) is a partial
+        // input the system keyboard delivers when the user starts a fraction
+        // before typing a leading digit — treat it like "0." so the next
+        // keystroke can append digits ("0.5", etc.).
+        const { decimalSeparator } = getNumberFormatSettings();
+        const normalizedText =
+          text === "." || text === "," || text === decimalSeparator
+            ? `0${decimalSeparator}`
+            : text;
+        const rawInternal = parseDisplayNumber(normalizedText, tokenDecimals);
         // Guard non-finite values (e.g. user pasted "1e999" → Infinity, or
         // a malformed input that returns NaN) so the store never holds a
         // string that would crash BigNumber arithmetic downstream or get
         // serialized into a Horizon strictSendPaths request.
         const bnInternal = new BigNumber(rawInternal);
         const internalAmount = bnInternal.isFinite() ? rawInternal : "0";
-        const tokenAmountDisplayRaw = bnInternal.isFinite() ? text : "";
+        const tokenAmountDisplayRaw = bnInternal.isFinite()
+          ? normalizedText
+          : "";
 
         // Convert to fiat
         let { fiatAmount } = state;

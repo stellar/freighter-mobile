@@ -193,14 +193,13 @@ const EditableAmountCard: React.FC<AmountCardEditableProps> = ({
 }) => {
   const { themeColors } = useColors();
 
-  // Empty when the underlying token amount is 0 AND the user has no active
-  // raw input beyond plain "0". This lets partial inputs like "0," or "0,2"
-  // show the typed value while still hiding it for the initial/reset state.
+  // Empty when the underlying token amount is 0 AND the user hasn't actively
+  // typed anything (raw display === null). A raw display of "0" means the
+  // user typed a literal "0" — we keep that visible so the next keystroke
+  // (e.g. ".") appends to it instead of replacing it.
   const rawIsEmpty = converter.showFiatAmount
-    ? converter.fiatAmountDisplayRaw === null ||
-      converter.fiatAmountDisplayRaw === "0"
-    : converter.tokenAmountDisplayRaw === null ||
-      converter.tokenAmountDisplayRaw === "0";
+    ? converter.fiatAmountDisplayRaw === null
+    : converter.tokenAmountDisplayRaw === null;
   // BigNumber comparison (vs string === "0") so programmatic setTokenAmount
   // calls that pass non-canonical zeros like "0.0000000" (e.g. percentage
   // buttons with a zero spendable balance) still route to the placeholder.

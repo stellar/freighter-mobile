@@ -1401,6 +1401,53 @@ describe("useTokenFiatConverter.setDisplayAmountFromText", () => {
 
     expect(result.current.fiatAmount).toBe("0");
   });
+
+  it("normalizes a bare '.' to '0.' so users can type sub-1 fractions", () => {
+    const mockBalance = createMockBalance(1.0);
+    const { result } = renderHook(() =>
+      useTokenFiatConverter({ selectedBalance: mockBalance }),
+    );
+
+    act(() => {
+      result.current.setDisplayAmountFromText(".");
+    });
+
+    // The raw display must persist as a partial fraction so the next
+    // keystroke ("5") can append to it.
+    expect(result.current.tokenAmountDisplayRaw).toMatch(/^0[.,]$/);
+    expect(result.current.tokenAmount).toBe("0");
+  });
+
+  it("preserves '0.' as a typed partial fraction in token mode", () => {
+    const mockBalance = createMockBalance(1.0);
+    const { result } = renderHook(() =>
+      useTokenFiatConverter({ selectedBalance: mockBalance }),
+    );
+
+    act(() => {
+      result.current.setDisplayAmountFromText("0.");
+    });
+
+    expect(result.current.tokenAmountDisplayRaw).toBe("0.");
+    expect(result.current.tokenAmount).toBe("0");
+  });
+
+  it("treats a typed '0' as a literal value (raw='0', not null)", () => {
+    // The AmountCard treats raw === null as the placeholder state and any
+    // typed input — including a single "0" — as a real value so the next
+    // keystroke (e.g. ".") appends instead of replacing.
+    const mockBalance = createMockBalance(1.0);
+    const { result } = renderHook(() =>
+      useTokenFiatConverter({ selectedBalance: mockBalance }),
+    );
+
+    act(() => {
+      result.current.setDisplayAmountFromText("0");
+    });
+
+    expect(result.current.tokenAmountDisplayRaw).toBe("0");
+    expect(result.current.tokenAmount).toBe("0");
+  });
 });
 
 describe("useTokenFiatConverter - Custom Token with 4 Decimals", () => {
