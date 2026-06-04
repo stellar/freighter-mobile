@@ -2,11 +2,11 @@ import Blockaid from "@blockaid/client";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BigNumber } from "bignumber.js";
+import { AmountCard } from "components/AmountCard";
 import BottomSheet from "components/BottomSheet";
 import FeeBreakdownBottomSheet from "components/FeeBreakdownBottomSheet";
 import InformationBottomSheet from "components/InformationBottomSheet";
 import MuxedAddressWarningBottomSheet from "components/MuxedAddressWarningBottomSheet";
-import { TokenIcon } from "components/TokenIcon";
 import TransactionSettingsBottomSheet from "components/TransactionSettingsBottomSheet";
 import SecurityDetailBottomSheet from "components/blockaid/SecurityDetailBottomSheet";
 import { BaseLayout } from "components/layout/BaseLayout";
@@ -26,7 +26,6 @@ import { TransactionProcessingScreen } from "components/screens/SendScreen/scree
 import { useSignTransactionDetails } from "components/screens/SignTransactionDetails/hooks/useSignTransactionDetails";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
-import { Display, Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import {
   DEFAULT_DECIMALS,
@@ -49,7 +48,6 @@ import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { calculateSpendableAmount, hasXLMForFees } from "helpers/balances";
-import { fsValue, pxValue } from "helpers/dimensions";
 import {
   formatTokenForDisplay,
   formatFiatInputDisplay,
@@ -81,7 +79,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Keyboard, TextInput, TouchableOpacity, View } from "react-native";
+import { Keyboard, TextInput, View } from "react-native";
 import { analytics } from "services/analytics";
 import { TransactionOperationType } from "services/analytics/types";
 import { SecurityContext } from "services/blockaid/constants";
@@ -91,12 +89,6 @@ type TransactionAmountScreenProps = NativeStackScreenProps<
   SendPaymentStackParamList,
   typeof SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN
 >;
-
-const AVAILABLE_BALANCE_FONT_SIZES = [
-  { maxLen: 28, size: fsValue(16) },
-  { maxLen: 42, size: fsValue(14) },
-  { maxLen: Infinity, size: fsValue(12) },
-] as const;
 
 /**
  * TransactionAmountScreen Component
@@ -193,7 +185,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
   const publicKey = account?.publicKey;
   const amountInputRef = useRef<TextInput>(null);
-  const previousNativeInputRef = useRef<string>("0");
   const focusRetryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
@@ -420,82 +411,15 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     return result;
   }, [selectedBalance, account, transactionFee]);
 
+  const converter = useTokenFiatConverter({ selectedBalance });
   const {
     tokenAmount,
-    tokenAmountDisplay,
-    tokenAmountDisplayRaw,
     fiatAmountDisplay,
-    fiatAmountDisplayRaw,
     showFiatAmount,
     setShowFiatAmount,
-    handleDisplayAmountChange,
     setTokenAmount,
     updateFiatDisplay,
-  } = useTokenFiatConverter({ selectedBalance });
-
-  // Raw fallback ensures programmatic updates (e.g. percentage buttons) still populate
-  // the input when tokenAmountDisplayRaw is null but display is non-empty.
-  const amountInputValue = showFiatAmount
-    ? (fiatAmountDisplayRaw ?? fiatAmountDisplay)
-    : (tokenAmountDisplayRaw ?? tokenAmountDisplay);
-
-  useEffect(() => {
-    previousNativeInputRef.current = amountInputValue.replace(/[^0-9.,]/g, "");
-  }, [amountInputValue]);
-
-  // Empty when tokenAmount is 0 AND the user has no active raw input beyond plain "0".
-  // This lets partial inputs like "0," or "0,2" show while still displaying the
-  // placeholder for the initial/reset state (tokenAmountDisplayRaw === null).
-  const isAmountEmpty = showFiatAmount
-    ? BigNumber(tokenAmount).isLessThanOrEqualTo(0) &&
-      (fiatAmountDisplayRaw === null || fiatAmountDisplayRaw === "0")
-    : BigNumber(tokenAmount).isLessThanOrEqualTo(0) &&
-      (tokenAmountDisplayRaw === null || tokenAmountDisplayRaw === "0");
-
-  const getAmountFontSize = () => {
-    const len = amountInputValue.length;
-    if (len <= 9) return 32;
-    if (len <= 15) return 24;
-    return 18;
-  };
-
-  const handleNativeAmountChange = useCallback(
-    (text: string) => {
-      const sanitizedText = text.replace(/[^0-9.,]/g, "");
-      const previousText = previousNativeInputRef.current;
-
-      if (sanitizedText === previousText) {
-        return;
-      }
-
-      // Use key/backspace semantics for one-char diffs to preserve reducer behavior,
-      // and fallback to full-text path for paste/replace edits.
-      if (
-        sanitizedText.length > previousText.length &&
-        sanitizedText.startsWith(previousText)
-      ) {
-        const appendedText = sanitizedText.slice(previousText.length);
-        if (appendedText.length === 1) {
-          handleDisplayAmountChange(appendedText);
-        } else {
-          handleDisplayAmountChange(sanitizedText);
-        }
-      } else if (
-        sanitizedText.length < previousText.length &&
-        previousText.startsWith(sanitizedText)
-      ) {
-        const deleteCount = previousText.length - sanitizedText.length;
-        for (let i = 0; i < deleteCount; i += 1) {
-          handleDisplayAmountChange("");
-        }
-      } else {
-        handleDisplayAmountChange(sanitizedText);
-      }
-
-      previousNativeInputRef.current = sanitizedText;
-    },
-    [handleDisplayAmountChange],
-  );
+  } = converter;
 
   const unfundedContext: UnfundedDestinationContext | undefined = useMemo(
     () =>
@@ -1050,11 +974,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     ? `${availableAmountText} ${t("common.available")}`
     : null;
 
-  const getAvailableBalanceFontSize = () =>
-    AVAILABLE_BALANCE_FONT_SIZES.find(
-      ({ maxLen }) => (availableBalanceText?.length ?? 0) <= maxLen,
-    )!.size;
-
   // recipientName takes priority — it carries wallet nicknames and future
   // user-editable custom labels. Falls back to the federation address when
   // no custom name is set, then to undefined (the row will show the truncated
@@ -1086,116 +1005,23 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             />
           </View>
 
-          <View className="rounded-[12px] gap-[12px] py-[12px] max-xs:py-[8px] px-[16px] max-xs:px-[12px] bg-background-tertiary w-full pt-5 pb-4">
-            <View className="flex-row items-end justify-between">
-              <Text md secondary style={{ lineHeight: pxValue(16) }}>
-                {t("transactionAmountScreen.sendingLabel")}
-              </Text>
-              {!!availableBalanceText && (
-                <Text
-                  medium
-                  secondary
-                  numberOfLines={1}
-                  textAlign="right"
-                  style={{
-                    fontSize: getAvailableBalanceFontSize(),
-                    lineHeight: getAvailableBalanceFontSize(),
-                    flexShrink: 1,
-                    marginLeft: pxValue(8),
-                    marginRight: pxValue(4),
-                  }}
-                >
-                  {availableBalanceText}
-                </Text>
-              )}
-            </View>
-
-            <View className="flex-row items-center justify-between">
-              <TouchableOpacity
-                className="flex-1"
-                onPressIn={focusAmountInput}
-                activeOpacity={1}
-                accessible={false}
-                testID="send-amount-focus-trigger"
-              >
-                <View className="flex-row items-center">
-                  {showFiatAmount && (
-                    <Display
-                      style={{
-                        fontSize: getAmountFontSize(),
-                        fontWeight: "500",
-                        color: isAmountEmpty
-                          ? themeColors.text.secondary
-                          : themeColors.text.primary,
-                      }}
-                    >
-                      $
-                    </Display>
-                  )}
-                  <TextInput
-                    ref={amountInputRef}
-                    testID="amount-text-input"
-                    accessibilityLabel={t("transactionAmountScreen.setAmount")}
-                    accessibilityHint={t("transactionAmountScreen.title")}
-                    keyboardType="decimal-pad"
-                    showSoftInputOnFocus
-                    autoFocus
-                    value={isAmountEmpty ? "" : amountInputValue}
-                    placeholder="0"
-                    placeholderTextColor={themeColors.text.secondary}
-                    onChangeText={handleNativeAmountChange}
-                    onSubmitEditing={() => Keyboard.dismiss()}
-                    underlineColorAndroid="transparent"
-                    style={{
-                      flex: 1,
-                      fontSize: getAmountFontSize(),
-                      fontWeight: "500",
-                      color: themeColors.text.primary,
-                      padding: 0,
-                      includeFontPadding: false,
-                    }}
-                  />
-                </View>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={navigateToSelectTokenScreen}
-                className="flex-row items-center gap-[6px] ml-[12px] rounded-full bg-background-primary px-[12px] py-[8px]"
-                testID="send-token-row"
-              >
-                {selectedBalance && (
-                  <TokenIcon token={selectedBalance} size="md" />
-                )}
-                <Text md medium>
-                  {selectedBalance?.tokenCode}
-                </Text>
-                <Icon.ChevronDown size={18} color={themeColors.text.primary} />
-              </TouchableOpacity>
-            </View>
-
-            {hasUsdPrice && (
-              <View className="flex-row items-center gap-[4px] mb-1">
-                <Text
-                  sm
-                  medium
-                  secondary
-                  numberOfLines={1}
-                  style={{ flexShrink: 1 }}
-                >
-                  {secondaryConversionAmount}
-                </Text>
-                <TouchableOpacity
-                  hitSlop={10}
-                  onPress={() => setShowFiatAmount(!showFiatAmount)}
-                >
-                  <Icon.RefreshCcw03
-                    size={14}
-                    color={themeColors.text.secondary}
-                  />
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
+          <AmountCard
+            mode="editable"
+            label={t("transactionAmountScreen.sendingLabel")}
+            selectedToken={selectedBalance}
+            onPickerPress={navigateToSelectTokenScreen}
+            pickerTestID="send-token-row"
+            inputTestID="amount-text-input"
+            focusTriggerTestID="send-amount-focus-trigger"
+            inputRef={amountInputRef}
+            autoFocus
+            accessibilityLabel={t("transactionAmountScreen.setAmount")}
+            accessibilityHint={t("transactionAmountScreen.title")}
+            availableBalanceText={availableBalanceText}
+            converter={converter}
+            hasUsdPrice={hasUsdPrice}
+            secondaryAmountText={secondaryConversionAmount}
+          />
         </View>
 
         <View className="flex-1 items-center mt-[24px] gap-[24px]">
