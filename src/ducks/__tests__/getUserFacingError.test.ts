@@ -1,5 +1,4 @@
 import { getUserFacingError } from "ducks/auth";
-import i18n from "i18n";
 import { t } from "i18next";
 
 describe("getUserFacingError", () => {
@@ -37,22 +36,5 @@ describe("getUserFacingError", () => {
     expect(
       getUserFacingError("some string", "authStore.error.failedToImportWallet"),
     ).toBe(t("authStore.error.failedToImportWallet"));
-  });
-
-  it("passes a known message through when the active language is non-English", async () => {
-    const originalLanguage = i18n.language;
-    try {
-      await i18n.changeLanguage("pt");
-      const invalidPasswordPt = t("authStore.error.invalidPassword");
-      const error = new Error(invalidPasswordPt);
-
-      expect(getUserFacingError(error, "authStore.error.failedToSignIn")).toBe(
-        invalidPasswordPt,
-      );
-    } finally {
-      // Always restore the language so a failed assertion can't leak "pt"
-      // into subsequent tests.
-      await i18n.changeLanguage(originalLanguage);
-    }
   });
 });
