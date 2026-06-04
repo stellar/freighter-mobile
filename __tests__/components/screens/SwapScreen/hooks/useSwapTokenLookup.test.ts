@@ -1104,4 +1104,74 @@ describe("useSwapTokenLookup — SWR for trending", () => {
       }),
     ).rejects.toBeDefined();
   });
+
+  it("refreshTrending: preserves the original error via Error.cause on Promise.all rejection", async () => {
+    // Regression: refreshTrending used to throw a generic
+    // "Failed to refresh trending tokens" with no link to the actual
+    // network error. Sentry breadcrumbs need the underlying cause to
+    // be useful for debugging.
+    const held = buildHeldBalances();
+    mockStores.readTopCache.mockResolvedValue(null);
+    mockStores.readVerifiedCache.mockResolvedValue(null);
+    // Let the mount-effect SWR pipeline succeed first, then queue the
+    // rejection for the user-initiated refresh call.
+    mockStores.getStellarExpertTopTokens.mockResolvedValueOnce({
+      _embedded: { records: [] },
+      _links: {},
+    });
+    mockStores.getVerifiedTokens.mockResolvedValueOnce([]);
+
+    const { result } = renderHook(() =>
+      useSwapTokenLookup({ network: NETWORKS.PUBLIC, balanceItems: held }),
+    );
+    await act(async () => {
+      await settleAsync();
+    });
+
+    const underlyingError = new Error("ENETDOWN");
+    mockStores.getStellarExpertTopTokens.mockRejectedValueOnce(underlyingError);
+    mockStores.getVerifiedTokens.mockResolvedValueOnce([]);
+
+    let caught: unknown;
+    try {
+      await act(async () => {
+        await result.current.refreshTrending();
+      });
+    } catch (e) {
+      caught = e;
+    }
+    expect(caught).toBeInstanceOf(Error);
+    expect((caught as Error).message).toMatch(/refresh trending tokens/i);
+    expect((caught as Error & { cause?: unknown }).cause).toBe(underlyingError);
+  });
+
+  it("refreshTrending: names the missing layer when a fetch returns null", async () => {
+    // Distinguish "stellar.expert returned null" from
+    // "verified-tokens returned null" so the error message points to
+    // the actual culprit.
+    const held = buildHeldBalances();
+    mockStores.readTopCache.mockResolvedValue(null);
+    mockStores.readVerifiedCache.mockResolvedValue(null);
+    mockStores.getStellarExpertTopTokens.mockResolvedValue(null);
+    mockStores.getVerifiedTokens.mockResolvedValue([
+      { issuer: USDC_ISSUER, name: "USDC", code: "USDC", domain: "" },
+    ] as any);
+
+    const { result } = renderHook(() =>
+      useSwapTokenLookup({ network: NETWORKS.PUBLIC, balanceItems: held }),
+    );
+    await act(async () => {
+      await settleAsync();
+    });
+
+    let caught: unknown;
+    try {
+      await act(async () => {
+        await result.current.refreshTrending();
+      });
+    } catch (e) {
+      caught = e;
+    }
+    expect((caught as Error).message).toMatch(/stellar\.expert returned null/);
+  });
 });

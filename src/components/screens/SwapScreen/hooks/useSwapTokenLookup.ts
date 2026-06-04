@@ -543,19 +543,38 @@ export const useSwapTokenLookup = ({
     refreshAbortRef.current = controller;
     const { signal } = controller;
 
-    const [topResp, verSplit] = await Promise.all([
-      useStellarExpertTopTokensStore.getState().getStellarExpertTopTokens({
-        network,
-        forceRefresh: true,
-      }),
-      useVerifiedTokensStore.getState().getVerifiedTokens({
-        network,
-        forceRefresh: true,
-      }),
-    ]);
+    // Wrap Promise.all so a fetch rejection is re-thrown with the
+    // original error attached via Error.cause — Sentry breadcrumbs and
+    // the toast caller both get the actual upstream failure instead of
+    // just the generic wrapper.
+    let topResp;
+    let verSplit;
+    try {
+      [topResp, verSplit] = await Promise.all([
+        useStellarExpertTopTokensStore.getState().getStellarExpertTopTokens({
+          network,
+          forceRefresh: true,
+        }),
+        useVerifiedTokensStore.getState().getVerifiedTokens({
+          network,
+          forceRefresh: true,
+        }),
+      ]);
+    } catch (cause) {
+      // The ErrorOptions ({ cause }) constructor overload needs lib
+      // es2022.error which this tsconfig doesn't expose, so assign
+      // .cause manually after construction. Sentry's Error-chain
+      // breadcrumbs walk this field.
+      const wrapped = new Error("Failed to refresh trending tokens");
+      (wrapped as Error & { cause?: unknown }).cause = cause;
+      throw wrapped;
+    }
     if (signal.aborted) return;
     if (!topResp || !verSplit) {
-      throw new Error("Failed to refresh trending tokens");
+      const missing = !topResp ? "stellar.expert" : "verified-tokens";
+      throw new Error(
+        `Failed to refresh trending tokens (${missing} returned null)`,
+      );
     }
 
     const intersection = computeTrendingIntersection(
