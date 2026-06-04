@@ -1135,8 +1135,12 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           sourceBalance ? "swap-sell-pill" : "swap-sell-choose-pill"
         }
         inputTestID="swap-amount-input"
+        focusTriggerTestID="swap-amount-focus-trigger"
         fiatToggleTestID="swap-amount-fiat-toggle"
         inputRef={amountInputRef}
+        autoFocus
+        accessibilityLabel={t("swapScreen.cta.enterAmount")}
+        accessibilityHint={t("swapScreen.title")}
         availableBalanceText={sourceBalanceRight || null}
         converter={converter}
         hasUsdPrice={

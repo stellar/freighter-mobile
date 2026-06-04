@@ -1,3 +1,4 @@
+import BigNumber from "bignumber.js";
 import { TokenIconWithBadge } from "components/TokenIconWithBadge";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
@@ -5,7 +6,7 @@ import { Balance, PricedBalance, Token } from "config/types";
 import { fsValue, pxValue } from "helpers/dimensions";
 import useColors from "hooks/useColors";
 import { UseTokenFiatConverterResult } from "hooks/useTokenFiatConverter";
-import React from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import { Keyboard, TextInput, TouchableOpacity, View } from "react-native";
 import { SecurityLevel } from "services/blockaid/constants";
 
@@ -88,9 +89,11 @@ const CardShell: React.FC<{
   testID?: string;
   children: React.ReactNode;
 }> = ({ testID, children }) => (
+  // pt-5 / pb-4 (20/16) win over the earlier py-[12px] / max-xs:py-[8px], so
+  // those were dead — only the asymmetric vertical pair remains.
   <View
     testID={testID}
-    className="rounded-[12px] gap-[12px] py-[12px] max-xs:py-[8px] px-[16px] max-xs:px-[12px] bg-background-tertiary w-full pt-5 pb-4"
+    className="rounded-[12px] gap-[12px] px-[16px] max-xs:px-[12px] bg-background-tertiary w-full pt-5 pb-4"
   >
     {children}
   </View>
@@ -146,12 +149,19 @@ const PickerChip: React.FC<{
       className="flex-row items-center gap-[6px] ml-[12px] rounded-full bg-background-primary px-[12px] py-[8px]"
       testID={testID}
     >
-      {token && (
+      {token ? (
         <TokenIconWithBadge
           token={token}
           size="md"
           securityLevel={securityLevel}
         />
+      ) : (
+        // Empty-state affordance: a Plus-in-circle to signal "tap to add a
+        // token". Matches the legacy Swap empty-state pill so the user keeps
+        // that visual cue when no token has been picked yet.
+        <View className="w-[20px] h-[20px] rounded-full items-center justify-center bg-gray-3">
+          <Icon.Plus size={12} themeColor="gray" />
+        </View>
       )}
       <Text md medium>
         {label ?? fallbackLabel ?? ""}
@@ -191,7 +201,13 @@ const EditableAmountCard: React.FC<AmountCardEditableProps> = ({
       converter.fiatAmountDisplayRaw === "0"
     : converter.tokenAmountDisplayRaw === null ||
       converter.tokenAmountDisplayRaw === "0";
-  const isEmpty = converter.tokenAmount === "0" && rawIsEmpty;
+  // BigNumber comparison (vs string === "0") so programmatic setTokenAmount
+  // calls that pass non-canonical zeros like "0.0000000" (e.g. percentage
+  // buttons with a zero spendable balance) still route to the placeholder.
+  const tokenAmountIsZero = new BigNumber(
+    converter.tokenAmount,
+  ).isLessThanOrEqualTo(0);
+  const isEmpty = tokenAmountIsZero && rawIsEmpty;
 
   const primaryText = converter.showFiatAmount
     ? (converter.fiatAmountDisplayRaw ?? converter.fiatAmountDisplay)
@@ -200,7 +216,31 @@ const EditableAmountCard: React.FC<AmountCardEditableProps> = ({
   const amountFontSize = getAmountFontSize(primaryText.length);
   // PickerChip resolves its own fallback when pickerLabel is undefined.
 
-  const focusInput = () => inputRef?.current?.focus();
+  // iOS focus-retry workaround: focus() can silently drop when the input is
+  // hidden/animated; re-attempt on the next tick if isFocused() is still
+  // false. Mirrors the pre-extraction Send behavior.
+  const focusRetryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  useEffect(
+    () => () => {
+      if (focusRetryTimeoutRef.current) {
+        clearTimeout(focusRetryTimeoutRef.current);
+      }
+    },
+    [],
+  );
+  const focusInput = useCallback(() => {
+    inputRef?.current?.focus();
+    if (focusRetryTimeoutRef.current) {
+      clearTimeout(focusRetryTimeoutRef.current);
+    }
+    focusRetryTimeoutRef.current = setTimeout(() => {
+      if (!inputRef?.current?.isFocused()) {
+        inputRef?.current?.focus();
+      }
+    }, 0);
+  }, [inputRef]);
 
   return (
     <CardShell testID={testID}>
