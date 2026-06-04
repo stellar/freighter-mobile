@@ -7,3 +7,8 @@ export { formatClassicRecord } from "./formatClassicRecord";
 export { computeTrendingIntersection } from "./computeTrendingIntersection";
 export { canonicalId } from "./canonicalId";
 export { mergeBlockaidScans } from "./mergeBlockaidScans";
+export {
+  isClassicTokenType,
+  isSorobanRecord,
+  type StellarExpertRecord,
+} from "./recordPredicates";

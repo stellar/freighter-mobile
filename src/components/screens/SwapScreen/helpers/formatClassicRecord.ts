@@ -1,13 +1,7 @@
+import { StellarExpertRecord } from "components/screens/SwapScreen/helpers/recordPredicates";
 import { NATIVE_TOKEN_CODE } from "config/constants";
-import { FormattedSearchTokenRecord, SearchTokenResponse } from "config/types";
+import { FormattedSearchTokenRecord } from "config/types";
 import { getTokenType } from "helpers/balances";
-
-/**
- * Minimal shape we need from the stellar.expert /asset response.
- * Mirrors `SearchTokenResponse._embedded.records[number]` but kept loose
- * so consumers don't have to import the full shape just for typing.
- */
-type StellarExpertRecord = SearchTokenResponse["_embedded"]["records"][number];
 
 /**
  * Format a stellar.expert classic-asset record into a FormattedSearchTokenRecord.

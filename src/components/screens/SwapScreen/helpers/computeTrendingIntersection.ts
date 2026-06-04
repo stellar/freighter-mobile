@@ -4,7 +4,7 @@ import { formatClassicRecord } from "components/screens/SwapScreen/helpers/forma
 import {
   isClassicTokenType,
   isSorobanRecord,
-} from "components/screens/SwapScreen/hooks/useSwapTokenLookup";
+} from "components/screens/SwapScreen/helpers/recordPredicates";
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import { FormattedSearchTokenRecord, SearchTokenResponse } from "config/types";
 import { getTokenType } from "helpers/balances";

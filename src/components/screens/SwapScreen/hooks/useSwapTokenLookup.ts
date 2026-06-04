@@ -4,6 +4,10 @@ import { computeTrendingIntersection } from "components/screens/SwapScreen/helpe
 import { formatClassicRecord } from "components/screens/SwapScreen/helpers/formatClassicRecord";
 import { mergeBlockaidScans } from "components/screens/SwapScreen/helpers/mergeBlockaidScans";
 import {
+  isClassicTokenType,
+  isSorobanRecord,
+} from "components/screens/SwapScreen/helpers/recordPredicates";
+import {
   DEFAULT_DEBOUNCE_DELAY,
   NATIVE_TOKEN_CODE,
   NETWORKS,
@@ -12,7 +16,6 @@ import {
   FormattedSearchTokenRecord,
   HookStatus,
   PricedBalance,
-  SearchTokenResponse,
   TokenTypeWithCustomToken,
 } from "config/types";
 import { useBlockaidTokenScansStore } from "ducks/blockaidTokenScans";
@@ -21,7 +24,6 @@ import { useStellarExpertTopTokensStore } from "ducks/stellarExpertTopTokens";
 import { useVerifiedTokensStore } from "ducks/verifiedTokens";
 import { formatTokenIdentifier, getTokenType } from "helpers/balances";
 import { isMainnet } from "helpers/networks";
-import { isContractId } from "helpers/soroban";
 import { splitVerifiedTokens } from "helpers/splitVerifiedTokens";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -92,25 +94,10 @@ export interface UseSwapTokenLookupProps {
  * Mirrors `SearchTokenResponse._embedded.records[number]` but kept loose
  * so we don't have to import the full shape just for typing.
  */
-type StellarExpertRecord = SearchTokenResponse["_embedded"]["records"][number];
-
-/**
- * Returns true when a stellar.expert record is a Soroban contract token
- * (raw contract ID in `asset`). Classic records use "CODE-ISSUER-TYPE".
- */
-export const isSorobanRecord = (record: StellarExpertRecord): boolean =>
-  isContractId(record.asset);
-
-/**
- * Returns true when a (formatted) token is classic — i.e. not a Soroban
- * custom token and has a structurally valid issuer (G…).
- */
-export const isClassicTokenType = (
-  tokenType: TokenTypeWithCustomToken | undefined,
-): boolean =>
-  tokenType === TokenTypeWithCustomToken.NATIVE ||
-  tokenType === TokenTypeWithCustomToken.CREDIT_ALPHANUM4 ||
-  tokenType === TokenTypeWithCustomToken.CREDIT_ALPHANUM12;
+// isSorobanRecord + isClassicTokenType + StellarExpertRecord moved to
+// src/components/screens/SwapScreen/helpers/recordPredicates.ts so pure
+// helpers like computeTrendingIntersection don't have to reach back into
+// this hook file.
 
 /** Partial-match: does `text` contain `term` (case-insensitive)? */
 const matchesTerm = (text: string | undefined, term: string): boolean => {
