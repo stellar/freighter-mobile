@@ -415,22 +415,21 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
                 )}
                 {verifiedTokens.length > 0 && (
                   <>
-                    <View className="mt-4 mb-6 flex-row items-center gap-2">
-                      <TouchableOpacity
-                        hitSlop={10}
-                        onPress={() =>
-                          moreInfoBottomSheetModalRef.current?.present()
-                        }
-                      >
-                        <Icon.InfoCircle
-                          size={16}
-                          color={themeColors.foreground.secondary}
-                        />
-                      </TouchableOpacity>
+                    <TouchableOpacity
+                      className="mt-4 mb-6 flex-row items-center gap-2 self-start"
+                      hitSlop={10}
+                      onPress={() =>
+                        moreInfoBottomSheetModalRef.current?.present()
+                      }
+                    >
                       <Text md medium secondary>
                         {t("addTokenScreen.verified")}
                       </Text>
-                    </View>
+                      <Icon.InfoCircle
+                        size={16}
+                        color={themeColors.foreground.secondary}
+                      />
+                    </TouchableOpacity>
                     {verifiedTokens.map((token) => (
                       <TokenItem
                         key={`${token.tokenCode}:${token.issuer}`}
@@ -443,22 +442,21 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
                 )}
                 {unverifiedTokens.length > 0 && (
                   <>
-                    <View className="mt-4 mb-8 flex-row items-center gap-2">
-                      <TouchableOpacity
-                        hitSlop={10}
-                        onPress={() =>
-                          moreInfoBottomSheetModalRef.current?.present()
-                        }
-                      >
-                        <Icon.InfoCircle
-                          size={16}
-                          color={themeColors.foreground.secondary}
-                        />
-                      </TouchableOpacity>
+                    <TouchableOpacity
+                      className="mt-4 mb-6 flex-row items-center gap-2 self-start"
+                      hitSlop={10}
+                      onPress={() =>
+                        moreInfoBottomSheetModalRef.current?.present()
+                      }
+                    >
                       <Text md medium secondary>
                         {t("addTokenScreen.unverified")}
                       </Text>
-                    </View>
+                      <Icon.InfoCircle
+                        size={16}
+                        color={themeColors.foreground.secondary}
+                      />
+                    </TouchableOpacity>
                     {unverifiedTokens.map((token) => (
                       <TokenItem
                         key={`${token.tokenCode}:${token.issuer}`}

@@ -127,8 +127,64 @@ describe("SwapToScreen", () => {
       <SwapToScreen {...mockNavProps} />,
     );
 
-    expect(getByText("Your tokens")).toBeTruthy();
+    expect(getByText("Your token")).toBeTruthy();
     expect(getByText("Popular tokens")).toBeTruthy();
+  });
+
+  it("uses the plural 'Your tokens' title when the held bucket has 2+ entries", () => {
+    const extraHeldBalance = {
+      ...mockHeldBalance,
+      id: "XLM",
+      tokenCode: "XLM",
+    };
+    (useSwapTokenLookupModule.useSwapTokenLookup as jest.Mock).mockReturnValue({
+      ...defaultLookupResult,
+      yourTokens: [mockHeldBalance, extraHeldBalance],
+      popularTokens: [],
+    });
+
+    const { getByText, queryByText } = renderWithProviders(
+      <SwapToScreen {...mockNavProps} />,
+    );
+
+    expect(getByText("Your tokens")).toBeTruthy();
+    expect(queryByText("Your token")).toBeNull();
+  });
+
+  it("renders (i) info buttons on the Verified and Unverified section headers only", () => {
+    const mockHeldRecord = {
+      tokenCode: "USDC",
+      issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+      isNative: false,
+      tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+      hasTrustline: true,
+      domain: "circle.com",
+    };
+    const mockUnverifiedRecord = {
+      tokenCode: "FOO",
+      issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4FOOO",
+      isNative: false,
+      tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+      hasTrustline: false,
+      domain: "foo.com",
+    };
+    (useSwapTokenLookupModule.useSwapTokenLookup as jest.Mock).mockReturnValue({
+      ...defaultLookupResult,
+      heldSearchMatches: [mockHeldRecord],
+      verifiedSearchMatches: [mockPopularRecord],
+      unverifiedSearchMatches: [mockUnverifiedRecord],
+      searchTerm: "u",
+    });
+
+    const { getByTestId, queryByTestId } = renderWithProviders(
+      <SwapToScreen {...mockNavProps} />,
+    );
+
+    expect(getByTestId("swap-to-verified-info-button")).toBeTruthy();
+    expect(getByTestId("swap-to-unverified-info-button")).toBeTruthy();
+    // No (i) button next to "Your token" / "Popular tokens".
+    expect(queryByTestId("swap-to-held-info-button")).toBeNull();
+    expect(queryByTestId("swap-to-popular-info-button")).toBeNull();
   });
 
   it("renders Your tokens / Verified / Unverified section headers in active search mode", () => {
@@ -160,7 +216,7 @@ describe("SwapToScreen", () => {
       <SwapToScreen {...mockNavProps} />,
     );
 
-    expect(getByText("Your tokens")).toBeTruthy();
+    expect(getByText("Your token")).toBeTruthy();
     expect(getByText("Verified")).toBeTruthy();
     expect(getByText("Unverified")).toBeTruthy();
     // The single flat "Results" header is gone now.
@@ -191,7 +247,7 @@ describe("SwapToScreen", () => {
       <SwapToScreen {...mockNavProps} />,
     );
 
-    expect(getByText("Your tokens")).toBeTruthy();
+    expect(getByText("Your token")).toBeTruthy();
     // Empty buckets must not render their section headers.
     expect(queryByText("Verified")).toBeNull();
     expect(queryByText("Unverified")).toBeNull();
@@ -246,7 +302,7 @@ describe("SwapToScreen", () => {
       <SwapToScreen {...mockNavProps} />,
     );
 
-    expect(getByText("Your tokens")).toBeTruthy();
+    expect(getByText("Your token")).toBeTruthy();
     expect(queryByText("Popular tokens")).toBeNull();
   });
 
@@ -261,7 +317,7 @@ describe("SwapToScreen", () => {
       <SwapToScreen {...makeProps(SWAP_SELECTION_TYPES.SOURCE)} />,
     );
 
-    expect(getByText("Your tokens")).toBeTruthy();
+    expect(getByText("Your token")).toBeTruthy();
     expect(queryByText("Popular tokens")).toBeNull();
   });
 

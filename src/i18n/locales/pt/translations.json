@@ -674,11 +674,20 @@
     "stellarExpertDown": "A descoberta de tokens está temporariamente indisponível. Você ainda pode trocar entre tokens que já possui.",
     "sorobanEmptyState": "Tokens de contrato Soroban não são suportados para trocas ainda. Tente buscar por um token Clássico.",
     "noResults": "Nenhum token corresponde a {{term}}",
+    "yourTokenSection": "Seu token",
     "yourTokensSection": "Seus tokens",
     "popularTokensSection": "Tokens populares",
     "verifiedSection": "Verificado",
     "unverifiedSection": "Não verificado",
     "trendingTokensSection": "Tokens em alta",
+    "verifiedInfo": {
+      "title": "Token verificado",
+      "body": "Das listas de tokens confiáveis do ecossistema Stellar."
+    },
+    "unverifiedInfo": {
+      "title": "Token não verificado",
+      "body": "Não está nas listas de tokens confiáveis. Tenha cuidado ao adicionar ou transacionar."
+    },
     "trendingDetail": {
       "buy": "Comprar {{tokenCode}}",
       "issuer": "Emissor",

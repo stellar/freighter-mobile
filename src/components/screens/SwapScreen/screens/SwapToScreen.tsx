@@ -1,8 +1,12 @@
 /* eslint-disable react/no-unstable-nested-components */
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import BottomSheet from "components/BottomSheet";
 import Spinner from "components/Spinner";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { SwapTokenRow } from "components/screens/SwapScreen/components/SwapTokenRow";
+import { UnverifiedTokenInfoBottomSheet } from "components/screens/SwapScreen/components/UnverifiedTokenInfoBottomSheet";
+import { VerifiedTokenInfoBottomSheet } from "components/screens/SwapScreen/components/VerifiedTokenInfoBottomSheet";
 import {
   descriptorFromBalance,
   descriptorFromSearchRecord,
@@ -27,8 +31,8 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React, { useMemo } from "react";
-import { SectionList, View } from "react-native";
+import React, { useMemo, useRef } from "react";
+import { SectionList, TouchableOpacity, View } from "react-native";
 import { analytics } from "services/analytics";
 
 type SwapToScreenProps = NativeStackScreenProps<
@@ -77,35 +81,55 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
     holdsOnly: selectionType === SWAP_SELECTION_TYPES.SOURCE,
   });
 
+  const verifiedInfoSheetRef = useRef<BottomSheetModal>(null);
+  const unverifiedInfoSheetRef = useRef<BottomSheetModal>(null);
+
+  // Section.kind drives both the header and the row variant for that section
+  // — keeping title resolution (singular / plural) decoupled from row logic
+  // so renderItem doesn't need to match against translated strings.
+  type SectionKind = "held" | "popular" | "verified" | "unverified";
+
   // Section data: idle = "Your tokens" + "Popular tokens"; active = three
   // sections ("Your tokens" / "Verified" / "Unverified") — each omitted when
   // its bucket is empty. The opposite-side token is NOT excluded here —
   // picking it triggers the selection-swap rule (spec §12.4): the opposite
   // side clears so the user can pick a different token there.
   const sections = useMemo(() => {
-    const out: Array<{
+    type SwapSection = {
       title: string;
+      kind: SectionKind;
       data: Array<
         (PricedBalance & { id: string }) | FormattedSearchTokenRecord
       >;
-    }> = [];
+    };
+    const out: SwapSection[] = [];
+
+    // "Your token" (singular) when exactly one row is in the bucket — switches
+    // to "Your tokens" otherwise.
+    const heldTitle = (count: number) =>
+      count === 1
+        ? t("swapScreen.yourTokenSection")
+        : t("swapScreen.yourTokensSection");
 
     if (searchTerm) {
       if (heldSearchMatches.length > 0) {
         out.push({
-          title: t("swapScreen.yourTokensSection"),
+          title: heldTitle(heldSearchMatches.length),
+          kind: "held",
           data: heldSearchMatches,
         });
       }
       if (verifiedSearchMatches.length > 0) {
         out.push({
           title: t("swapScreen.verifiedSection"),
+          kind: "verified",
           data: verifiedSearchMatches,
         });
       }
       if (unverifiedSearchMatches.length > 0) {
         out.push({
           title: t("swapScreen.unverifiedSection"),
+          kind: "unverified",
           data: unverifiedSearchMatches,
         });
       }
@@ -114,7 +138,8 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
 
     if (yourTokens.length > 0) {
       out.push({
-        title: t("swapScreen.yourTokensSection"),
+        title: heldTitle(yourTokens.length),
+        kind: "held",
         data: yourTokens,
       });
     }
@@ -125,6 +150,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
     ) {
       out.push({
         title: t("swapScreen.popularTokensSection"),
+        kind: "popular",
         data: popularTokens,
       });
     }
@@ -240,6 +266,24 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
 
   return (
     <BaseLayout insets={{ top: false, bottom: false }}>
+      <BottomSheet
+        modalRef={verifiedInfoSheetRef}
+        handleCloseModal={() => verifiedInfoSheetRef.current?.dismiss()}
+        customContent={
+          <VerifiedTokenInfoBottomSheet
+            bottomSheetModalRef={verifiedInfoSheetRef}
+          />
+        }
+      />
+      <BottomSheet
+        modalRef={unverifiedInfoSheetRef}
+        handleCloseModal={() => unverifiedInfoSheetRef.current?.dismiss()}
+        customContent={
+          <UnverifiedTokenInfoBottomSheet
+            bottomSheetModalRef={unverifiedInfoSheetRef}
+          />
+        }
+      />
       <View className="px-4 pt-4">
         <Input
           placeholder={t("swapScreen.searchPlaceholder")}
@@ -297,21 +341,47 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
           // and below them.
           stickySectionHeadersEnabled={false}
           contentContainerStyle={{ paddingHorizontal: 16 }}
-          renderSectionHeader={({ section }) => (
-            <View className="py-3">
-              <Text md medium primary>
-                {section.title}
-              </Text>
-            </View>
-          )}
+          renderSectionHeader={({ section }) => {
+            let infoRef: React.RefObject<BottomSheetModal | null> | null = null;
+            if (section.kind === "verified") {
+              infoRef = verifiedInfoSheetRef;
+            } else if (section.kind === "unverified") {
+              infoRef = unverifiedInfoSheetRef;
+            }
+            if (infoRef) {
+              // Tappable region spans the whole header (title + (i)) so the
+              // user doesn't have to hit the small 16px icon. 16-top / 24-bot
+              // matches the Figma spec and Add-a-Token's section-title spacing.
+              return (
+                <TouchableOpacity
+                  className="mt-4 mb-6 flex-row items-center gap-2 self-start"
+                  hitSlop={10}
+                  onPress={() => infoRef.current?.present()}
+                  testID={`swap-to-${section.kind}-info-button`}
+                >
+                  <Text md medium secondary>
+                    {section.title}
+                  </Text>
+                  <Icon.InfoCircle
+                    size={16}
+                    color={themeColors.foreground.secondary}
+                  />
+                </TouchableOpacity>
+              );
+            }
+            return (
+              <View className="mt-4 mb-6 flex-row items-center gap-2">
+                <Text md medium secondary>
+                  {section.title}
+                </Text>
+              </View>
+            );
+          }}
           renderItem={({ item, section }) => {
             const isSearchActive = !!searchTerm;
 
             // "Your tokens" section always uses the held variant
-            if (
-              section.title === t("swapScreen.yourTokensSection") &&
-              isHeldToken(item)
-            ) {
+            if (section.kind === "held" && isHeldToken(item)) {
               return (
                 <SwapTokenRow
                   variant="held"

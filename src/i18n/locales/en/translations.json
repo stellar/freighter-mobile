@@ -710,11 +710,20 @@
     "stellarExpertDown": "Token discovery is temporarily unavailable. You can still swap between tokens you already hold.",
     "sorobanEmptyState": "Soroban contract tokens aren't supported for swaps yet. Try searching for a Classic token instead.",
     "noResults": "No tokens match {{term}}",
+    "yourTokenSection": "Your token",
     "yourTokensSection": "Your tokens",
     "popularTokensSection": "Popular tokens",
     "verifiedSection": "Verified",
     "unverifiedSection": "Unverified",
     "trendingTokensSection": "Trending Tokens",
+    "verifiedInfo": {
+      "title": "Verified token",
+      "body": "From trusted token lists in the Stellar ecosystem."
+    },
+    "unverifiedInfo": {
+      "title": "Unverified token",
+      "body": "Not from trusted token lists. Use caution when adding or transacting."
+    },
     "trendingDetail": {
       "buy": "Buy {{tokenCode}}",
       "issuer": "Issuer",
