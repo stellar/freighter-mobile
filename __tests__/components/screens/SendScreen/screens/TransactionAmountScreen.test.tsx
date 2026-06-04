@@ -1754,6 +1754,7 @@ describe("TransactionAmountScreen - Native keyboard input", () => {
       setFiatAmount: jest.fn(),
       setShowFiatAmount: jest.fn(),
       handleDisplayAmountChange: mockHandleDisplayAmountChange,
+      setDisplayAmountFromText: jest.fn(),
       updateFiatDisplay: jest.fn(),
     });
 
@@ -1890,6 +1891,7 @@ describe("TransactionAmountScreen - Native keyboard input", () => {
       setFiatAmount: jest.fn(),
       setShowFiatAmount: jest.fn(),
       handleDisplayAmountChange: mockHandleDisplayAmountChange,
+      setDisplayAmountFromText: jest.fn(),
       updateFiatDisplay: jest.fn(),
     });
 
@@ -1947,6 +1949,7 @@ describe("TransactionAmountScreen - Native keyboard input", () => {
       setFiatAmount: jest.fn(),
       setShowFiatAmount: jest.fn(),
       handleDisplayAmountChange: mockHandleDisplayAmountChange,
+      setDisplayAmountFromText: jest.fn(),
       updateFiatDisplay: jest.fn(),
     });
 
