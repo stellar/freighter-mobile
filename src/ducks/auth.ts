@@ -1909,13 +1909,10 @@ const clearBiometricsData = async (): Promise<void> => {
 };
 
 /**
- * Resolves a user-facing error message from a thrown error.
- *
- * Intentional auth failures are thrown as `new Error(t("authStore.error.*"))`,
- * so their message is an already-translated, user-safe string and is passed
- * through unchanged. Anything else (raw native keychain / storage errors) must
- * not reach the UI verbatim, so it is replaced with the generic fallback while
- * the technical detail is logged to Sentry by the caller.
+ * Returns a user-safe error message. Known translated auth errors (thrown as
+ * `new Error(t("authStore.error.*"))`) are passed through; anything else is
+ * replaced with the generic `fallbackKey`. The caller logs the raw error to
+ * Sentry.
  */
 export const getUserFacingError = (
   error: unknown,

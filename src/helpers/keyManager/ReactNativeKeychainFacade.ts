@@ -87,7 +87,7 @@ export class ReactNativeKeychainFacade {
         // Truncate the keychain id - it's a per-account correlation
         // token and shouldn't ship verbatim. Prefix is enough for
         // intra-session log correlation.
-        `Error getting key ${id.slice(0, 8)}...:`,
+        `Keychain read failed for key ${id.slice(0, 8)}...:`,
         error,
       );
 
@@ -108,14 +108,15 @@ export class ReactNativeKeychainFacade {
 
       await Keychain.setGenericPassword(id, JSON.stringify(key), setOptions);
     } catch (error) {
-      // Preserve the native cause (and drop the per-account key id) so Sentry
-      // groups these failures by root cause rather than by key. The id is
-      // omitted to avoid shipping a per-account correlation token.
-      throw new Error(
-        `Failed to set key: ${
+      // Preserve the native cause (without the key id) so Sentry groups by
+      // root cause, and attach the original error as `cause`.
+      const wrappedError = new Error(
+        `Keychain write rejected: ${
           error instanceof Error ? error.message : String(error)
         }`,
       );
+      (wrappedError as Error & { cause?: unknown }).cause = error;
+      throw wrappedError;
     }
   }
 
@@ -131,7 +132,7 @@ export class ReactNativeKeychainFacade {
       logger.error(
         "ReactNativeKeychainFacade.removeKey",
         // Truncate the keychain id - same reasoning as getKey above.
-        `Error removing key ${id.slice(0, 8)}...:`,
+        `Keychain remove failed for key ${id.slice(0, 8)}...:`,
         error,
       );
       // Don't throw here, as the key might not exist

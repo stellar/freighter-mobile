@@ -39,15 +39,20 @@ describe("getUserFacingError", () => {
     ).toBe(t("authStore.error.failedToImportWallet"));
   });
 
-  it("keeps known messages safe even after a language switch", async () => {
-    await i18n.changeLanguage("pt");
-    const invalidPasswordPt = t("authStore.error.invalidPassword");
-    const error = new Error(invalidPasswordPt);
+  it("passes a known message through when the active language is non-English", async () => {
+    const originalLanguage = i18n.language;
+    try {
+      await i18n.changeLanguage("pt");
+      const invalidPasswordPt = t("authStore.error.invalidPassword");
+      const error = new Error(invalidPasswordPt);
 
-    expect(getUserFacingError(error, "authStore.error.failedToSignIn")).toBe(
-      invalidPasswordPt,
-    );
-
-    await i18n.changeLanguage("en");
+      expect(getUserFacingError(error, "authStore.error.failedToSignIn")).toBe(
+        invalidPasswordPt,
+      );
+    } finally {
+      // Always restore the language so a failed assertion can't leak "pt"
+      // into subsequent tests.
+      await i18n.changeLanguage(originalLanguage);
+    }
   });
 });
