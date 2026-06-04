@@ -12,7 +12,6 @@ import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { calculateSpendableAmount, hasXLMForFees } from "helpers/balances";
 import { cachedFetch } from "helpers/cachedFetch";
-import { useDeviceSize, DeviceSize } from "helpers/deviceSize";
 import { renderWithProviders } from "helpers/testUtils";
 import * as blockaidService from "hooks/blockaid/useBlockaidTransaction";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -64,7 +63,6 @@ jest.mock("helpers/muxedAddress", () => ({
     mockCheckContractMuxedSupport(...args),
 }));
 jest.mock("helpers/cachedFetch");
-jest.mock("helpers/deviceSize");
 
 // Hook mocks
 jest.mock("hooks/useGetActiveAccount");
@@ -238,9 +236,6 @@ const mockUseBalancesList = useBalancesList as jest.MockedFunction<
 >;
 const mockUseTokenFiatConverter = useTokenFiatConverter as jest.MockedFunction<
   typeof useTokenFiatConverter
->;
-const mockUseDeviceSize = useDeviceSize as jest.MockedFunction<
-  typeof useDeviceSize
 >;
 const mockUseRightHeaderMenu = useRightHeaderMenu as jest.MockedFunction<
   typeof useRightHeaderMenu
@@ -441,7 +436,6 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
       updateFiatDisplay: jest.fn(),
       setDisplayAmountFromText: jest.fn(),
     });
-    mockUseDeviceSize.mockReturnValue(DeviceSize.MD);
     mockUseRightHeaderMenu.mockReturnValue(undefined);
     mockUseToast.mockReturnValue({
       showToast: jest.fn(),
@@ -1184,7 +1178,6 @@ describe("TransactionAmountScreen - Address Change Scenarios", () => {
       updateFiatDisplay: jest.fn(),
       setDisplayAmountFromText: jest.fn(),
     });
-    mockUseDeviceSize.mockReturnValue(DeviceSize.MD);
     mockUseRightHeaderMenu.mockReturnValue(undefined);
     mockUseToast.mockReturnValue({
       showToast: jest.fn(),
@@ -1841,7 +1834,6 @@ describe("TransactionAmountScreen - Native keyboard input", () => {
 
     mockCalculateSpendableAmount.mockReturnValue(new BigNumber("1000"));
     mockHasXLMForFees.mockReturnValue(true);
-    mockUseDeviceSize.mockReturnValue(DeviceSize.MD);
     mockUseRightHeaderMenu.mockReturnValue(undefined);
     mockUseToast.mockReturnValue({
       showToast: jest.fn(),
