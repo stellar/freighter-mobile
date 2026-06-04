@@ -1418,6 +1418,23 @@ describe("useTokenFiatConverter.setDisplayAmountFromText", () => {
     expect(result.current.tokenAmount).toBe("0");
   });
 
+  it("normalizes a bare '.' to '0.' on the FIAT side too (sub-1 fractions in fiat mode)", () => {
+    const mockBalance = createMockBalance(1.0);
+    const { result } = renderHook(() =>
+      useTokenFiatConverter({ selectedBalance: mockBalance }),
+    );
+
+    act(() => {
+      result.current.setShowFiatAmount(true);
+    });
+    act(() => {
+      result.current.setDisplayAmountFromText(".");
+    });
+
+    expect(result.current.fiatAmountDisplayRaw).toMatch(/^0[.,]$/);
+    expect(result.current.fiatAmount).toBe("0");
+  });
+
   it("preserves '0.' as a typed partial fraction in token mode", () => {
     const mockBalance = createMockBalance(1.0);
     const { result } = renderHook(() =>

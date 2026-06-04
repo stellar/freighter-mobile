@@ -741,15 +741,25 @@ export const createTokenFiatConverterReducer =
 
       case TokenFiatConverterActionType.SET_DISPLAY_AMOUNT_FROM_TEXT: {
         const { text } = action.payload;
+        const { decimalSeparator } = getNumberFormatSettings();
+        // A bare decimal separator ("." or the locale variant) is a partial
+        // input the system keyboard delivers when the user starts a fraction
+        // before typing a leading digit — treat it like "0." so the next
+        // keystroke can append digits ("0.5", etc.). Applied to both the
+        // fiat and token branches.
+        const normalizedText =
+          text === "." || text === "," || text === decimalSeparator
+            ? `0${decimalSeparator}`
+            : text;
 
         if (state.showFiatAmount) {
           // Fiat side: text is the assembled display value (system keyboard delivers
           // the whole string). Strip trailing separator via normalizeInternalAmount to
           // get the canonical internal amount.
-          const rawInternal = normalizeInternalAmount(text);
+          const rawInternal = normalizeInternalAmount(normalizedText);
           const bnInternal = new BigNumber(rawInternal);
           const safeInternal = bnInternal.isFinite() ? rawInternal : "0";
-          const safeDisplay = bnInternal.isFinite() ? text : "";
+          const safeDisplay = bnInternal.isFinite() ? normalizedText : "";
 
           // Convert to token
           let { tokenAmount } = state;
@@ -770,15 +780,6 @@ export const createTokenFiatConverterReducer =
         }
 
         // Token side: normalise using the same helper as HANDLE_TOKEN_INPUT.
-        // A bare decimal separator ("." or the locale variant) is a partial
-        // input the system keyboard delivers when the user starts a fraction
-        // before typing a leading digit — treat it like "0." so the next
-        // keystroke can append digits ("0.5", etc.).
-        const { decimalSeparator } = getNumberFormatSettings();
-        const normalizedText =
-          text === "." || text === "," || text === decimalSeparator
-            ? `0${decimalSeparator}`
-            : text;
         const rawInternal = parseDisplayNumber(normalizedText, tokenDecimals);
         // Guard non-finite values (e.g. user pasted "1e999" → Infinity, or
         // a malformed input that returns NaN) so the store never holds a
