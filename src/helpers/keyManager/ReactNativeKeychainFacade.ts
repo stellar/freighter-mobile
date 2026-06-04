@@ -54,7 +54,7 @@ export class ReactNativeKeychainFacade {
       return result !== false;
     } catch (error) {
       logger.error(
-        "ReactNativeKeychainKeyStore.hasKey",
+        "ReactNativeKeychainFacade.hasKey",
         "Error checking key existence:",
         error,
       );
@@ -83,7 +83,7 @@ export class ReactNativeKeychainFacade {
       return JSON.parse(result.password) as EncryptedKey;
     } catch (error) {
       logger.error(
-        "ReactNativeKeychainKeyStore.getKey",
+        "ReactNativeKeychainFacade.getKey",
         // Truncate the keychain id - it's a per-account correlation
         // token and shouldn't ship verbatim. Prefix is enough for
         // intra-session log correlation.
@@ -108,7 +108,14 @@ export class ReactNativeKeychainFacade {
 
       await Keychain.setGenericPassword(id, JSON.stringify(key), setOptions);
     } catch (error) {
-      throw new Error(`Failed to set key ${id}`);
+      // Preserve the native cause (and drop the per-account key id) so Sentry
+      // groups these failures by root cause rather than by key. The id is
+      // omitted to avoid shipping a per-account correlation token.
+      throw new Error(
+        `Failed to set key: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
     }
   }
 
@@ -122,7 +129,7 @@ export class ReactNativeKeychainFacade {
       });
     } catch (error) {
       logger.error(
-        "ReactNativeKeychainKeyStore.removeKey",
+        "ReactNativeKeychainFacade.removeKey",
         // Truncate the keychain id - same reasoning as getKey above.
         `Error removing key ${id.slice(0, 8)}...:`,
         error,
@@ -157,7 +164,7 @@ export class ReactNativeKeychainFacade {
       }
     } catch (error) {
       logger.error(
-        "ReactNativeKeychainKeyStore.getAllKeys",
+        "ReactNativeKeychainFacade.getAllKeys",
         "Error getting all keys:",
         error,
       );
@@ -198,7 +205,7 @@ export class ReactNativeKeychainFacade {
     } catch (error) {
       // If index doesn't exist yet, create it
       logger.error(
-        "ReactNativeKeychainKeyStore.addToKeyIndex",
+        "ReactNativeKeychainFacade.addToKeyIndex",
         "Error adding to key index, creating new index:",
         error,
       );
@@ -240,7 +247,7 @@ export class ReactNativeKeychainFacade {
       }
     } catch (error) {
       logger.error(
-        "ReactNativeKeychainKeyStore.removeFromKeyIndex",
+        "ReactNativeKeychainFacade.removeFromKeyIndex",
         "Error removing from key index:",
         error,
       );

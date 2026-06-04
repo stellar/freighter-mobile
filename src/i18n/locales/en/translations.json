@@ -432,7 +432,10 @@
       "accountAlreadyExists": "Account already exists",
       "failedToImportSecretKey": "Failed to import secret key",
       "failedToReEncryptData": "Failed to re-encrypt data. Please sign in again.",
-      "failedToDecryptData": "Failed to decrypt data. Please sign in again."
+      "failedToDecryptData": "Failed to decrypt data. Please sign in again.",
+      "failedToRenameAccount": "Failed to rename account",
+      "failedToGetAllAccounts": "Failed to load accounts",
+      "failedToSelectAccount": "Failed to select account"
     },
     "account": "Account {{number}}",
     "faceId": {
