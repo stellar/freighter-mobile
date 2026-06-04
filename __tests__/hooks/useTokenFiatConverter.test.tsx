@@ -1491,6 +1491,227 @@ describe("useTokenFiatConverter.setDisplayAmountFromText", () => {
   });
 });
 
+describe("useTokenFiatConverter.setDisplayAmountFromText - input validation", () => {
+  const classicMock = {
+    total: new BigNumber(100),
+    currentPrice: new BigNumber(1),
+    percentagePriceChange24h: new BigNumber(0),
+    tokenCode: "USDC",
+    fiatCode: "USD",
+    fiatTotal: new BigNumber(100),
+    displayName: "USD Coin",
+    token: {
+      type: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+      code: "USDC",
+      issuer: {
+        key: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+      },
+    },
+    available: new BigNumber(100),
+    limit: new BigNumber("1000000000000"),
+    buyingLiabilities: "0",
+    sellingLiabilities: "0",
+  } as PricedBalance;
+
+  const sorobanMock = (decimals: number) =>
+    ({
+      total: new BigNumber(100),
+      currentPrice: new BigNumber(1),
+      percentagePriceChange24h: new BigNumber(0),
+      tokenCode: `CUSTOM${decimals}`,
+      fiatCode: "USD",
+      fiatTotal: new BigNumber(100),
+      displayName: `Custom Token ${decimals}d`,
+      token: {
+        type: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+        code: `CUSTOM${decimals}`,
+        issuer: { key: `${decimals}_ISSUER` },
+      },
+      available: new BigNumber(100),
+      limit: new BigNumber("1000000000000"),
+      buyingLiabilities: "0",
+      sellingLiabilities: "0",
+      contractId: `CUSTOM${decimals}_CONTRACT`,
+      name: `Custom Token ${decimals}d`,
+      symbol: `CUSTOM${decimals}`,
+      decimals,
+    }) as PricedBalance;
+
+  describe("at most one decimal separator", () => {
+    it("rejects '0..' on the token side", () => {
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({ selectedBalance: classicMock }),
+      );
+      act(() => {
+        result.current.setDisplayAmountFromText("1.5");
+      });
+      act(() => {
+        // Attempting to type a second separator: state must NOT update.
+        result.current.setDisplayAmountFromText("1.5.");
+      });
+      expect(result.current.tokenAmountDisplayRaw).toBe("1.5");
+    });
+
+    it("rejects '0.1.2.3' on the token side", () => {
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({ selectedBalance: classicMock }),
+      );
+      act(() => {
+        result.current.setDisplayAmountFromText("0.1");
+      });
+      act(() => {
+        result.current.setDisplayAmountFromText("0.1.2.3");
+      });
+      expect(result.current.tokenAmountDisplayRaw).toBe("0.1");
+    });
+
+    it("rejects mixed separators like '0.5,1'", () => {
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({ selectedBalance: classicMock }),
+      );
+      act(() => {
+        result.current.setDisplayAmountFromText("0.5");
+      });
+      act(() => {
+        result.current.setDisplayAmountFromText("0.5,1");
+      });
+      expect(result.current.tokenAmountDisplayRaw).toBe("0.5");
+    });
+
+    it("also rejects multi-separator input on the fiat side", () => {
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({ selectedBalance: classicMock }),
+      );
+      act(() => {
+        result.current.setShowFiatAmount(true);
+      });
+      act(() => {
+        result.current.setDisplayAmountFromText("1.5");
+      });
+      act(() => {
+        result.current.setDisplayAmountFromText("1.5.6");
+      });
+      expect(result.current.fiatAmountDisplayRaw).toBe("1.5");
+    });
+  });
+
+  describe("decimal precision limit", () => {
+    it("classic (decimals=7): accepts 7 decimals, rejects an 8th", () => {
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({ selectedBalance: classicMock }),
+      );
+      act(() => {
+        result.current.setDisplayAmountFromText("1.1234567");
+      });
+      expect(result.current.tokenAmountDisplayRaw).toBe("1.1234567");
+      act(() => {
+        result.current.setDisplayAmountFromText("1.12345678");
+      });
+      // State unchanged — the 8th decimal was rejected.
+      expect(result.current.tokenAmountDisplayRaw).toBe("1.1234567");
+    });
+
+    it("soroban (decimals=3): accepts 3 decimals, rejects a 4th", () => {
+      const balance = sorobanMock(3);
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({ selectedBalance: balance }),
+      );
+      act(() => {
+        result.current.setDisplayAmountFromText("1.123");
+      });
+      expect(result.current.tokenAmountDisplayRaw).toBe("1.123");
+      act(() => {
+        result.current.setDisplayAmountFromText("1.1234");
+      });
+      expect(result.current.tokenAmountDisplayRaw).toBe("1.123");
+    });
+
+    it("soroban (decimals=12): accepts 12 decimals, rejects a 13th", () => {
+      const balance = sorobanMock(12);
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({ selectedBalance: balance }),
+      );
+      act(() => {
+        result.current.setDisplayAmountFromText("1.123456789012");
+      });
+      expect(result.current.tokenAmountDisplayRaw).toBe("1.123456789012");
+      act(() => {
+        result.current.setDisplayAmountFromText("1.1234567890123");
+      });
+      expect(result.current.tokenAmountDisplayRaw).toBe("1.123456789012");
+    });
+
+    it("fiat side respects FIAT_DECIMALS (2)", () => {
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({ selectedBalance: classicMock }),
+      );
+      act(() => {
+        result.current.setShowFiatAmount(true);
+      });
+      act(() => {
+        result.current.setDisplayAmountFromText("1.23");
+      });
+      expect(result.current.fiatAmountDisplayRaw).toBe("1.23");
+      act(() => {
+        result.current.setDisplayAmountFromText("1.234");
+      });
+      expect(result.current.fiatAmountDisplayRaw).toBe("1.23");
+    });
+  });
+
+  describe("classic absolute max (922337203685.4775808)", () => {
+    it("accepts exactly the int64-scaled max for a classic token", () => {
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({ selectedBalance: classicMock }),
+      );
+      act(() => {
+        result.current.setDisplayAmountFromText("922337203685.4775808");
+      });
+      expect(result.current.tokenAmountDisplayRaw).toBe("922337203685.4775808");
+    });
+
+    it("rejects input one ulp above the classic max", () => {
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({ selectedBalance: classicMock }),
+      );
+      act(() => {
+        result.current.setDisplayAmountFromText("1");
+      });
+      act(() => {
+        // Just over max — should be rejected, state unchanged.
+        result.current.setDisplayAmountFromText("922337203685.4775809");
+      });
+      expect(result.current.tokenAmountDisplayRaw).toBe("1");
+    });
+
+    it("rejects amounts well above the classic max", () => {
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({ selectedBalance: classicMock }),
+      );
+      act(() => {
+        result.current.setDisplayAmountFromText("100");
+      });
+      act(() => {
+        result.current.setDisplayAmountFromText("9999999999999999");
+      });
+      expect(result.current.tokenAmountDisplayRaw).toBe("100");
+    });
+
+    it("does NOT enforce the classic max for soroban / custom tokens", () => {
+      const balance = sorobanMock(6);
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({ selectedBalance: balance }),
+      );
+      act(() => {
+        // Above the classic cap — soroban tokens have no protocol-level max
+        // here, so the input should still be accepted.
+        result.current.setDisplayAmountFromText("1000000000000.123456");
+      });
+      expect(result.current.tokenAmountDisplayRaw).toBe("1000000000000.123456");
+    });
+  });
+});
+
 describe("useTokenFiatConverter - Custom Token with 4 Decimals", () => {
   // Helper to create mock SorobanBalance with 4 decimals
   const createMockSorobanBalance = (

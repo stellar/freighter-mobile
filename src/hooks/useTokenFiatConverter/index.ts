@@ -1,5 +1,5 @@
 import BigNumber from "bignumber.js";
-import { DEFAULT_DECIMALS } from "config/constants";
+import { CLASSIC_TOKEN_MAX_AMOUNT, DEFAULT_DECIMALS } from "config/constants";
 import { PricedBalance } from "config/types";
 import { hasDecimals } from "helpers/balances";
 import { formatBigNumberForDisplay } from "helpers/formatAmount";
@@ -68,9 +68,18 @@ export const useTokenFiatConverter = ({
     [selectedBalance, tokenDecimals],
   );
 
+  // Classic Stellar tokens have a fixed protocol cap; Soroban / custom
+  // tokens (the ones that carry their own `decimals`) don't.
+  const maxTokenAmount = useMemo(() => {
+    if (selectedBalance && !hasDecimals(selectedBalance)) {
+      return new BigNumber(CLASSIC_TOKEN_MAX_AMOUNT);
+    }
+    return undefined;
+  }, [selectedBalance]);
+
   const reducer = useMemo(
-    () => createTokenFiatConverterReducer(tokenPrice, decimals),
-    [tokenPrice, decimals],
+    () => createTokenFiatConverterReducer(tokenPrice, decimals, maxTokenAmount),
+    [tokenPrice, decimals, maxTokenAmount],
   );
 
   const [state, dispatch] = useReducer(reducer, initialState);

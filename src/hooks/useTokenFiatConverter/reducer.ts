@@ -443,7 +443,17 @@ export const determineFiatDisplayRaw = (
  * @returns {Function} The reducer function
  */
 export const createTokenFiatConverterReducer =
-  (tokenPrice: BigNumber, tokenDecimals: number = DEFAULT_DECIMALS) =>
+  (
+    tokenPrice: BigNumber,
+    tokenDecimals: number = DEFAULT_DECIMALS,
+    /**
+     * Absolute cap on the token amount. SET_DISPLAY_AMOUNT_FROM_TEXT rejects
+     * input whose magnitude exceeds this. Currently set for classic Stellar
+     * tokens via the hook; Soroban / custom tokens leave this undefined
+     * (no protocol-level cap in our flow).
+     */
+    maxTokenAmount?: BigNumber,
+  ) =>
   (
     state: TokenFiatConverterState,
     action: TokenFiatConverterAction,
@@ -754,7 +764,24 @@ export const createTokenFiatConverterReducer =
             ? `0${decimalSeparator}`
             : text;
 
+        // Reject inputs with more than one decimal separator ("..", "0..1",
+        // "0.1.2", "0,5.1" etc.). Returning the unchanged state makes the
+        // controlled TextInput roll back to the previous valid value.
+        const separatorCount = (normalizedText.match(/[.,]/g) || []).length;
+        if (separatorCount > 1) {
+          return state;
+        }
+
+        // Count digits typed after the (single) separator. Used to cap
+        // precision to the active mode's allowed decimal places.
+        const sepIdx = normalizedText.search(/[.,]/);
+        const fractionalDigits =
+          sepIdx === -1 ? 0 : normalizedText.length - sepIdx - 1;
+
         if (state.showFiatAmount) {
+          if (fractionalDigits > FIAT_DECIMALS) {
+            return state;
+          }
           // Fiat side: text is the assembled display value (system keyboard delivers
           // the whole string). Strip trailing separator via normalizeInternalAmount to
           // get the canonical internal amount.
@@ -781,6 +808,12 @@ export const createTokenFiatConverterReducer =
           };
         }
 
+        // Token side: enforce the token's `decimals` (set per balance by the
+        // hook — 7 for classic, the balance's own value for Soroban tokens).
+        if (fractionalDigits > tokenDecimals) {
+          return state;
+        }
+
         // Token side: normalise using the same helper as HANDLE_TOKEN_INPUT.
         const rawInternal = parseDisplayNumber(normalizedText, tokenDecimals);
         // Guard non-finite values (e.g. user pasted "1e999" → Infinity, or
@@ -788,6 +821,24 @@ export const createTokenFiatConverterReducer =
         // string that would crash BigNumber arithmetic downstream or get
         // serialized into a Horizon strictSendPaths request.
         const bnInternal = new BigNumber(rawInternal);
+
+        // Reject amounts above the protocol-level cap when a maxTokenAmount
+        // is in force (currently: classic Stellar tokens are bounded by the
+        // int64-scaled limit; Soroban / custom tokens have no max here).
+        // parseDisplayNumber goes through parseFloat which loses precision
+        // near the int64 max, so build the BigNumber for this check directly
+        // from the normalized text to preserve the exact decimal value.
+        const bnFromText = new BigNumber(
+          normalizedText.replace(decimalSeparator, "."),
+        );
+        if (
+          maxTokenAmount &&
+          bnFromText.isFinite() &&
+          bnFromText.isGreaterThan(maxTokenAmount)
+        ) {
+          return state;
+        }
+
         const internalAmount = bnInternal.isFinite() ? rawInternal : "0";
         const tokenAmountDisplayRaw = bnInternal.isFinite()
           ? normalizedText
