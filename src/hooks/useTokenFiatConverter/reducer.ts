@@ -423,10 +423,12 @@ export const determineFiatDisplayRaw = (
     // If it's a whole number, set display to integer part for easier editing
     fiatAmountDisplayRaw = bnFiat.toFixed(0);
   } else if (bnFiat.isZero()) {
-    // If token amount is 0, set fiat to "0" (not "0.00") to allow fresh input
+    // If token amount is 0, set fiat to "0" (not "0.00") and leave the raw
+    // display null so the input renders the secondary-color placeholder
+    // instead of a primary-color "0" the moment the user switches modes.
+    // The user can still type freely from this state.
     fiatAmount = "0";
-    // Set fiatAmountDisplayRaw to "0" so user can start typing fresh
-    fiatAmountDisplayRaw = "0";
+    fiatAmountDisplayRaw = null;
   }
 
   return { fiatAmount, fiatAmountDisplayRaw };

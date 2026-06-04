@@ -1228,11 +1228,17 @@ describe("useTokenFiatConverter", () => {
         result.current.setShowFiatAmount(true);
       });
 
-      // Type "0" - starts from "0"
+      // Type "0" - starts from "0".
+      // Toggling to fiat now leaves fiatAmountDisplayRaw=null (so the input
+      // renders a placeholder "0" rather than a white "0"), so the derived
+      // display is just "0" until the user produces a state-altering key.
+      // The end-to-end "0,01" check below is what actually validates the
+      // bug fix; this intermediate assertion just documents the resting
+      // state.
       act(() => {
         result.current.handleDisplayAmountChange("0");
       });
-      expect(result.current.fiatAmountDisplay).toMatch(/^0[.,]00$/);
+      expect(result.current.fiatAmountDisplay).toMatch(/^0[.,]?(00)?$/);
 
       // Type "," - should preserve "0," in raw input (display may format to "0,00")
       act(() => {
@@ -1416,6 +1422,24 @@ describe("useTokenFiatConverter.setDisplayAmountFromText", () => {
     // keystroke ("5") can append to it.
     expect(result.current.tokenAmountDisplayRaw).toMatch(/^0[.,]$/);
     expect(result.current.tokenAmount).toBe("0");
+  });
+
+  it("leaves fiatAmountDisplayRaw null after toggling to fiat with a zero token amount", () => {
+    // Regression: previously determineFiatDisplayRaw returned raw="0" for the
+    // zero case, which (after the AmountCard isEmpty fix) made the toggle
+    // render a primary-color "0" instead of the secondary-color placeholder.
+    // The placeholder belongs there until the user actually types.
+    const mockBalance = createMockBalance(1.0);
+    const { result } = renderHook(() =>
+      useTokenFiatConverter({ selectedBalance: mockBalance }),
+    );
+
+    act(() => {
+      result.current.setShowFiatAmount(true);
+    });
+
+    expect(result.current.fiatAmountDisplayRaw).toBeNull();
+    expect(result.current.fiatAmount).toBe("0");
   });
 
   it("normalizes a bare '.' to '0.' on the FIAT side too (sub-1 fractions in fiat mode)", () => {
