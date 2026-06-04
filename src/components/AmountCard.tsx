@@ -1,4 +1,4 @@
-import { TokenIcon } from "components/TokenIcon";
+import { TokenIconWithBadge } from "components/TokenIconWithBadge";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
 import { PricedBalance } from "config/types";
@@ -7,6 +7,7 @@ import useColors from "hooks/useColors";
 import { UseTokenFiatConverterResult } from "hooks/useTokenFiatConverter";
 import React from "react";
 import { Keyboard, TextInput, TouchableOpacity, View } from "react-native";
+import { SecurityLevel } from "services/blockaid/constants";
 
 const AVAILABLE_BALANCE_FONT_SIZES = [
   { maxLen: 28, size: fsValue(16) },
@@ -35,6 +36,10 @@ type AmountCardCommonProps = {
   /** Override for the picker chip's text label (e.g. "Select token" when no
    *  token is selected). Defaults to selectedToken?.tokenCode. */
   pickerLabel?: string;
+  /** Optional Blockaid security level. When set to anything other than SAFE
+   *  / UNABLE_TO_SCAN, the picker chip's token icon renders with a warning
+   *  badge overlay. */
+  pickerSecurityLevel?: SecurityLevel;
   onPickerPress: () => void;
   pickerTestID?: string;
   testID?: string;
@@ -120,9 +125,10 @@ const HeaderRow: React.FC<{
 const PickerChip: React.FC<{
   token?: PricedBalance;
   label?: string;
+  securityLevel?: SecurityLevel;
   onPress: () => void;
   testID?: string;
-}> = ({ token, label, onPress, testID }) => {
+}> = ({ token, label, securityLevel, onPress, testID }) => {
   const { themeColors } = useColors();
   return (
     <TouchableOpacity
@@ -130,7 +136,13 @@ const PickerChip: React.FC<{
       className="flex-row items-center gap-[6px] ml-[12px] rounded-full bg-background-primary px-[12px] py-[8px]"
       testID={testID}
     >
-      {token && <TokenIcon token={token} size="md" />}
+      {token && (
+        <TokenIconWithBadge
+          token={token}
+          size="md"
+          securityLevel={securityLevel}
+        />
+      )}
       <Text md medium>
         {label ?? token?.tokenCode ?? ""}
       </Text>
@@ -143,6 +155,7 @@ const EditableAmountCard: React.FC<AmountCardEditableProps> = ({
   label,
   selectedToken,
   pickerLabel,
+  pickerSecurityLevel,
   onPickerPress,
   pickerTestID,
   testID,
@@ -234,6 +247,7 @@ const EditableAmountCard: React.FC<AmountCardEditableProps> = ({
         <PickerChip
           token={selectedToken}
           label={resolvedPickerLabel}
+          securityLevel={pickerSecurityLevel}
           onPress={onPickerPress}
           testID={pickerTestID}
         />
@@ -263,6 +277,7 @@ const ReadOnlyAmountCard: React.FC<AmountCardReadOnlyProps> = ({
   label,
   selectedToken,
   pickerLabel,
+  pickerSecurityLevel,
   onPickerPress,
   pickerTestID,
   testID,
@@ -299,6 +314,7 @@ const ReadOnlyAmountCard: React.FC<AmountCardReadOnlyProps> = ({
         <PickerChip
           token={selectedToken}
           label={resolvedPickerLabel}
+          securityLevel={pickerSecurityLevel}
           onPress={onPickerPress}
           testID={pickerTestID}
         />

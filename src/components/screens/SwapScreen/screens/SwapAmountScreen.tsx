@@ -3,6 +3,7 @@ import { useHeaderHeight } from "@react-navigation/elements";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Asset, Horizon } from "@stellar/stellar-sdk";
 import BigNumber from "bignumber.js";
+import { AmountCard } from "components/AmountCard";
 import BottomSheet from "components/BottomSheet";
 import Spinner from "components/Spinner";
 import { TokenIconWithBadge } from "components/TokenIconWithBadge";
@@ -54,7 +55,6 @@ import {
   isAmountSpendable,
   hasXLMForFees,
 } from "helpers/balances";
-import { useDeviceSize, DeviceSize } from "helpers/deviceSize";
 import {
   formatBalanceAmount,
   formatBigNumberForDisplay,
@@ -150,8 +150,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     duration: number;
   } | null>(null);
   const { showToast } = useToast();
-  const deviceSize = useDeviceSize();
-  const isSmallScreen = deviceSize === DeviceSize.XS;
 
   const { balanceItems, scanResults } = useBalancesList({
     publicKey: account?.publicKey ?? "",
@@ -230,15 +228,14 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   // Token/fiat amount input is driven by the system keyboard via TextInput.
   // We mirror the converter's tokenAmount back into the swap store so that
   // the existing path-finding effect (keyed on sourceAmount) still fires.
+  const converter = useTokenFiatConverter({ selectedBalance: sourceBalance });
   const {
     tokenAmount,
     tokenAmountDisplay,
     fiatAmountDisplay,
     showFiatAmount,
-    setShowFiatAmount,
     setTokenAmount,
-    setDisplayAmountFromText,
-  } = useTokenFiatConverter({ selectedBalance: sourceBalance });
+  } = converter;
 
   // Sync the converter's token amount back into the swap store. The store's
   // sourceAmount stays the single source of truth for path-finding so
@@ -1077,10 +1074,9 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     );
   }
 
-  // Sell card amounts: big = active mode (token/fiat), small = opposite mode.
+  // Sell card secondary amount: opposite of the active editable mode.
   // Receive card amounts: big = destinationAmount (token mode) or its fiat
   // equivalent (fiat mode); small = the opposite.
-  const sellBigText = showFiatAmount ? fiatAmountDisplay : tokenAmountDisplay;
   const sellSmallText = showFiatAmount
     ? `${tokenAmountDisplay || "0"} ${sourceTokenSymbol}`.trim()
     : formatFiatAmount(new BigNumber(fiatAmountDisplay || "0"));
@@ -1189,53 +1185,29 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const listHeader = (
     <View>
       {/* Sell card */}
-      <View
+      <AmountCard
+        mode="editable"
         testID="swap-sell-card"
-        className="rounded-[16px] pt-[12px] pb-[12px] px-[16px] bg-background-tertiary"
-      >
-        <Text sm secondary>
-          {t("swapScreen.youSell")}
-        </Text>
-        <View className="flex-row items-center justify-between mt-[4px]">
-          <TextInput
-            ref={amountInputRef}
-            testID="swap-amount-input"
-            value={sellBigText}
-            onChangeText={setDisplayAmountFromText}
-            keyboardType="decimal-pad"
-            inputMode="decimal"
-            placeholder="0"
-            placeholderTextColor={themeColors.text.secondary}
-            style={{
-              fontSize: isSmallScreen ? 28 : 32,
-              fontWeight: "500",
-              color: themeColors.text.primary,
-              padding: 0,
-              flex: 1,
-              marginRight: 12,
-            }}
-          />
-          {renderSelectedTokenPill("sell", () =>
-            navigateToSelectSourceTokenScreen("dropdown"),
-          )}
-        </View>
-        <View className="flex-row items-center justify-between mt-[4px]">
-          <TouchableOpacity
-            testID="swap-amount-fiat-toggle"
-            className="flex-row items-center gap-[6px]"
-            hitSlop={10}
-            onPress={() => setShowFiatAmount(!showFiatAmount)}
-          >
-            <Text sm secondary numberOfLines={1}>
-              {sellSmallText}
-            </Text>
-            <Icon.RefreshCw03 size={12} color={themeColors.text.secondary} />
-          </TouchableOpacity>
-          <Text sm secondary numberOfLines={1}>
-            {sourceBalanceRight}
-          </Text>
-        </View>
-      </View>
+        label={t("swapScreen.youSell")}
+        selectedToken={sourceBalance ?? undefined}
+        pickerLabel={
+          sourceBalance ? sourceTokenSymbol : t("swapScreen.selectToken")
+        }
+        pickerSecurityLevel={sourceBalanceSecurityAssessment.level}
+        onPickerPress={() => navigateToSelectSourceTokenScreen("dropdown")}
+        pickerTestID={
+          sourceBalance ? "swap-sell-pill" : "swap-sell-choose-pill"
+        }
+        inputTestID="swap-amount-input"
+        fiatToggleTestID="swap-amount-fiat-toggle"
+        inputRef={amountInputRef}
+        availableBalanceText={sourceBalanceRight || null}
+        converter={converter}
+        hasUsdPrice={
+          !!sourceBalance?.currentPrice && !sourceBalance.currentPrice.isZero()
+        }
+        secondaryAmountText={sellSmallText}
+      />
 
       {/* Swaps source ↔ destination. Disabled when destination
           isn't held — there's no balance to make it the source. */}
