@@ -1626,6 +1626,25 @@ describe("useTokenFiatConverter.setDisplayAmountFromText - input validation", ()
       expect(result.current.tokenAmountDisplayRaw).toBe("1.123");
     });
 
+    it("soroban (decimals=0): rejects ANY fractional digit", () => {
+      // Regression: hasDecimals used to require decimals > 0, which made the
+      // hook fall back to the 7-decimal default for integer-only Soroban
+      // tokens. With the >= 0 guard, decimals=0 is honored.
+      const balance = sorobanMock(0);
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({ selectedBalance: balance }),
+      );
+      act(() => {
+        result.current.setDisplayAmountFromText("42");
+      });
+      expect(result.current.tokenAmountDisplayRaw).toBe("42");
+      act(() => {
+        // Even a single decimal digit must be rejected for decimals=0 tokens.
+        result.current.setDisplayAmountFromText("42.1");
+      });
+      expect(result.current.tokenAmountDisplayRaw).toBe("42");
+    });
+
     it("soroban (decimals=12): accepts 12 decimals, rejects a 13th", () => {
       const balance = sorobanMock(12);
       const { result } = renderHook(() =>
@@ -1708,6 +1727,22 @@ describe("useTokenFiatConverter.setDisplayAmountFromText - input validation", ()
         result.current.setDisplayAmountFromText("1000000000000.123456");
       });
       expect(result.current.tokenAmountDisplayRaw).toBe("1000000000000.123456");
+    });
+
+    it("does NOT enforce the classic max for soroban tokens with decimals=0", () => {
+      // The classic cap is gated by the absence of an explicit `decimals`
+      // field. A decimals=0 Soroban token must still be recognized as
+      // Soroban — not misidentified as classic.
+      const balance = sorobanMock(0);
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({ selectedBalance: balance }),
+      );
+      act(() => {
+        // Above the classic cap — should be accepted because this is a
+        // Soroban token (no protocol-level max in our flow).
+        result.current.setDisplayAmountFromText("999999999999999");
+      });
+      expect(result.current.tokenAmountDisplayRaw).toBe("999999999999999");
     });
   });
 });
