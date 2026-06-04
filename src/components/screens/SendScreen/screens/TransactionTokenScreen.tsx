@@ -1,8 +1,12 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { TokensCollectiblesTabs } from "components/TokensCollectiblesTabs";
 import { BaseLayout } from "components/layout/BaseLayout";
+import { TokensCollectiblesInline } from "components/screens/SendScreen/components/TokensCollectiblesInline";
 import { TransactionContext } from "config/constants";
-import { SEND_PAYMENT_ROUTES, SendPaymentStackParamList } from "config/routes";
+import {
+  SEND_PAYMENT_ROUTES,
+  ScreenTransition,
+  SendPaymentStackParamList,
+} from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
@@ -16,6 +20,7 @@ type TransactionTokenScreenProps = NativeStackScreenProps<
 
 const TransactionTokenScreen: React.FC<TransactionTokenScreenProps> = ({
   navigation,
+  route,
 }) => {
   const { saveSelectedTokenId, saveSelectedCollectibleDetails } =
     useTransactionSettingsStore();
@@ -28,7 +33,14 @@ const TransactionTokenScreen: React.FC<TransactionTokenScreenProps> = ({
     // Clear collectible details when selecting a token to prevent cross-flow contamination
     saveSelectedCollectibleDetails({ collectionAddress: "", tokenId: "" });
 
-    navigation.goBack();
+    if (route.params?.dismissToPreviousScreen) {
+      navigation.goBack();
+      return;
+    }
+
+    navigation.push(SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN, {
+      transition: ScreenTransition.SlideFromRight,
+    });
   };
 
   const handleCollectiblePress = (collectibleDetails: {
@@ -39,10 +51,9 @@ const TransactionTokenScreen: React.FC<TransactionTokenScreenProps> = ({
     // Clear token selection when selecting a collectible to prevent cross-flow contamination
     saveSelectedTokenId("");
 
-    navigation.navigate(
-      SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW,
-      collectibleDetails,
-    );
+    navigation.push(SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN, {
+      transition: ScreenTransition.SlideFromRight,
+    });
   };
 
   return (
@@ -50,9 +61,7 @@ const TransactionTokenScreen: React.FC<TransactionTokenScreenProps> = ({
       insets={{ top: false, bottom: false, left: false, right: false }}
     >
       <View className="flex-1">
-        <TokensCollectiblesTabs
-          showTokensSettings={false}
-          showCollectiblesSettings={false}
+        <TokensCollectiblesInline
           publicKey={publicKey ?? ""}
           network={network}
           onTokenPress={handleTokenPress}

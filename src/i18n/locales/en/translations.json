@@ -25,6 +25,7 @@
     "unknownError": "Unknown error",
     "review": "Review",
     "and": " and ",
+    "available": "available",
     "addMemoShorthand": "Add memo",
     "addMemo": "Add memo",
     "yes": "Yes",
@@ -655,6 +656,7 @@
     "scanQRCodeText": "Scan a Freighter QR Code"
   },
   "sendSearchContacts": {
+    "myWallets": "My Wallets",
     "unfunded": {
       "title": "The destination account doesn’t exist",
       "action": "Send at least 1 XLM to create the account.",
@@ -833,6 +835,7 @@
   },
   "transactionAmountScreen": {
     "title": "Send",
+    "sendingLabel": "Sending",
     "percentageButtons": {
       "twentyFive": "25%",
       "fifty": "50%",
@@ -840,8 +843,8 @@
       "max": "Max"
     },
     "chooseRecipient": "Choose recipient",
-    "setAmount": "Set amount",
-    "reviewButton": "Review",
+    "setAmount": "Enter an amount",
+    "reviewButton": "Review send",
     "menu": {
       "fee": "Fee: {{fee}} XLM",
       "timeout": "Timeout: {{timeout}}(s)",

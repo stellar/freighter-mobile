@@ -20,6 +20,7 @@ import {
 import { useAuthenticationStore } from "ducks/auth";
 import { useDebugStore } from "ducks/debug";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
+import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
@@ -52,6 +53,8 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
   const { width } = Dimensions.get("window");
   const { swap_enabled: swapEnabled } = useRemoteConfigStore();
   const { overriddenBlockaidResponse } = useDebugStore();
+  const { saveSelectedTokenId, saveSelectedCollectibleDetails } =
+    useTransactionSettingsStore();
   const securityWarningBottomSheetModalRef = useRef<BottomSheetModal>(null);
 
   const { actualTokenDetails, displayTitle } = useTokenDetails({
@@ -102,9 +105,13 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
   };
 
   const handleSendPress = () => {
+    saveSelectedTokenId(tokenId);
+    saveSelectedCollectibleDetails({ collectionAddress: "", tokenId: "" });
     navigation.navigate(ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK, {
-      screen: SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN,
-      params: { tokenId },
+      screen: SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN,
+      params: {
+        dismissToPreviousScreen: true,
+      },
     });
   };
   const scanResult = scanResults[tokenId.replace(":", "-")];
@@ -134,7 +141,10 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
 
   return (
     <BaseLayout insets={{ top: false, bottom: false }}>
-      <View className="flex-1 gap-8 mt-5 max-xs:mt-2 max-xs:gap-4">
+      <View
+        testID="token-details-screen"
+        className="flex-1 gap-8 mt-5 max-xs:mt-2 max-xs:gap-4"
+      >
         <TokenBalanceHeader
           tokenId={tokenId}
           tokenSymbol={tokenSymbol}
@@ -187,7 +197,13 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
             </View>
           )}
           <View className="flex-1">
-            <Button tertiary xl isFullWidth onPress={handleSendPress}>
+            <Button
+              tertiary
+              xl
+              isFullWidth
+              onPress={handleSendPress}
+              testID="token-details-send-button"
+            >
               {t("tokenDetailsScreen.send")}
             </Button>
           </View>

@@ -185,6 +185,16 @@ export const useTokenFiatConverter = ({
 
   const handleDisplayAmountChange = useCallback(
     (key: string) => {
+      if (key.length > 1) {
+        dispatch({
+          type: state.showFiatAmount
+            ? TokenFiatConverterActionType.SET_FIAT_DISPLAY_FROM_TEXT
+            : TokenFiatConverterActionType.SET_TOKEN_DISPLAY_FROM_TEXT,
+          payload: key,
+        });
+        return;
+      }
+
       if (state.showFiatAmount) {
         const currentDisplay =
           state.fiatAmountDisplayRaw !== null

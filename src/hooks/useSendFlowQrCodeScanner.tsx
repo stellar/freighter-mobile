@@ -84,7 +84,7 @@ export const useSendFlowQrCodeScanner = (): QRCodeScreenReturn => {
     isSearching,
     destinationAddress,
   } = useSendRecipientStore();
-  const { saveRecipientAddress, selectedTokenId } =
+  const { saveRecipientAddress, selectedTokenId, selectedCollectibleDetails } =
     useTransactionSettingsStore();
 
   // Configuration for Send Flow
@@ -159,16 +159,30 @@ export const useSendFlowQrCodeScanner = (): QRCodeScreenReturn => {
       // The send recipient store already has the correct address from the search
       saveRecipientAddress(destinationAddress);
 
-      // Navigate directly to transaction amount screen with the selected token
       // Pop to main tab first to remove the QR scanner screen from the stack, then navigate to send payment stack
       navigation.popToTop();
-      navigation.navigate(ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK, {
-        screen: SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN,
-        params: {
-          tokenId: selectedTokenId,
-          recipientAddress: destinationAddress,
-        },
-      });
+
+      const isCollectibleFlow = !!selectedCollectibleDetails?.tokenId;
+
+      if (isCollectibleFlow) {
+        // Route collectible sends to the collectible review screen,
+        // not the token amount screen (which would force-select XLM).
+        navigation.navigate(ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK, {
+          screen: SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW,
+          params: {
+            collectionAddress: selectedCollectibleDetails.collectionAddress,
+            tokenId: selectedCollectibleDetails.tokenId,
+          },
+        });
+      } else {
+        navigation.navigate(ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK, {
+          screen: SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN,
+          params: {
+            tokenId: selectedTokenId,
+            recipientAddress: destinationAddress,
+          },
+        });
+      }
 
       // Reset the processing flag
       setIsProcessingQRScan(false);
@@ -181,6 +195,7 @@ export const useSendFlowQrCodeScanner = (): QRCodeScreenReturn => {
     destinationAddress,
     saveRecipientAddress,
     selectedTokenId,
+    selectedCollectibleDetails,
     navigation,
   ]);
 
