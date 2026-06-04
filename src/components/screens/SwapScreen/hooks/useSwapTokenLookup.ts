@@ -117,10 +117,6 @@ export const useSwapTokenLookup = ({
   const latestRequestRef = useRef(0);
   const abortControllerRef = useRef<AbortController | null>(null);
   const trendingAbortRef = useRef<AbortController | null>(null);
-  // refreshTrending uses its own AbortController so a user-initiated
-  // pull-to-refresh and the silent SWR trending effect don't stomp on
-  // each other's cancellation lifecycles.
-  const refreshAbortRef = useRef<AbortController | null>(null);
   // Hold the live balanceItems in a ref so `performSearch`'s identity stays
   // stable across renders even when the caller passes a fresh array literal
   // (very common for the empty-balance case). Without this the debounce
@@ -538,9 +534,9 @@ export const useSwapTokenLookup = ({
    * upstream fetch fails so the caller can surface a toast.
    */
   const refreshTrending = useCallback(async () => {
-    refreshAbortRef.current?.abort();
+    trendingAbortRef.current?.abort();
     const controller = new AbortController();
-    refreshAbortRef.current = controller;
+    trendingAbortRef.current = controller;
     const { signal } = controller;
 
     // Wrap Promise.all so a fetch rejection is re-thrown with the
