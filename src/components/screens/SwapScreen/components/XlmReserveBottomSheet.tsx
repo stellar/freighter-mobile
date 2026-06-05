@@ -82,13 +82,15 @@ export const XlmReserveBottomSheet: React.FC<XlmReserveBottomSheetProps> = ({
     <View className="gap-[24px]">
       {/* Header: lilac plus-circle icon tile + circular X close */}
       <View className="flex-row items-center justify-between">
-        <Icon.PlusCircle themeColor="lilac" withBackground square size={26} />
-        <TouchableOpacity
-          onPress={handleClose}
-          className="size-9 items-center justify-center rounded-full bg-gray-3"
-          testID="xlm-reserve-close"
-        >
-          <Icon.X size={20} color={themeColors.gray[9]} />
+        <Icon.PlusCircle themeColor="lilac" withBackground square size={28} />
+        <TouchableOpacity onPress={handleClose} testID="xlm-reserve-close">
+          <Icon.X
+            color={themeColors.foreground.secondary}
+            size={22}
+            circle
+            circleBorder={themeColors.background.tertiary}
+            circleBackground={themeColors.background.tertiary}
+          />
         </TouchableOpacity>
       </View>
 
