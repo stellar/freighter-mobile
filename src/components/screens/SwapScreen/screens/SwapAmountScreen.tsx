@@ -1245,6 +1245,10 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
               tokenCode: item.tokenCode,
               position: index,
             });
+            // Dismiss the keyboard so the trending detail sheet has full
+            // unblocked space; otherwise the sheet pops over a raised
+            // keyboard and the Buy CTA sits under it.
+            Keyboard.dismiss();
             setSelectedTrendingRecord(item);
             // present() fires via useEffect once the ref is mounted.
           }}
