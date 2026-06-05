@@ -109,6 +109,36 @@ const matchesTerm = (text: string | undefined, term: string): boolean => {
   return text.toLowerCase().includes(term.toLowerCase());
 };
 
+// Module-scoped in-memory cache of the computed (Blockaid-merged,
+// held-INCLUSIVE) trending list, keyed by network. Survives component
+// remount within a single app session, so navigating Swap → Home →
+// Swap paints the trending section with data immediately instead of
+// flashing the spinner while the SWR pipeline re-reads its disk
+// caches.
+//
+// Why this matters: useSwapTokenLookup holds trendingTokens in
+// component-instance state, so every remount starts from []. The SWR
+// effect below then sets isTrendingLoading=true synchronously before
+// the async cache read can flip it back off — producing a visible
+// spinner flash on every Swap-screen entry.
+//
+// First visit per app session still flashes briefly while the
+// AsyncStorage read resolves; that's an acceptable cost since the
+// common case is "user keeps coming back to the Swap screen".
+const trendingMemoryCacheByNetwork = new Map<
+  NETWORKS,
+  FormattedSearchTokenRecord[]
+>();
+
+/**
+ * Test-only: reset the module-scoped trending memory cache so suites
+ * that exercise the SWR pipeline don't inherit a populated map from
+ * sibling tests.
+ */
+export const resetTrendingMemoryCacheForTests = (): void => {
+  trendingMemoryCacheByNetwork.clear();
+};
+
 export const useSwapTokenLookup = ({
   network,
   // publicKey is reserved for future use (e.g., issuer-address resolution path);
@@ -135,7 +165,7 @@ export const useSwapTokenLookup = ({
   // consumes this array as-is.
   const [trendingTokens, setTrendingTokens] = useState<
     FormattedSearchTokenRecord[]
-  >([]);
+  >(() => trendingMemoryCacheByNetwork.get(network) ?? []);
   const [searchPartition, setSearchPartition] = useState<{
     held: FormattedSearchTokenRecord[];
     verified: FormattedSearchTokenRecord[];
@@ -145,6 +175,17 @@ export const useSwapTokenLookup = ({
   const [stellarExpertDown, setStellarExpertDown] = useState<boolean>(false);
   const [status, setStatus] = useState<HookStatus>(HookStatus.IDLE);
   const [isTrendingLoading, setIsTrendingLoading] = useState<boolean>(false);
+
+  // Co-mutate the module-scoped trending cache alongside React state so
+  // future mounts hydrate synchronously from memory. Pass the same
+  // value you'd pass to setTrendingTokens.
+  const writeTrendingTokens = useCallback(
+    (tokens: FormattedSearchTokenRecord[]) => {
+      trendingMemoryCacheByNetwork.set(network, tokens);
+      setTrendingTokens(tokens);
+    },
+    [network],
+  );
 
   const { overriddenBlockaidResponse } = useDebugStore();
 
@@ -256,10 +297,15 @@ export const useSwapTokenLookup = ({
 
     const CACHE_TTL_MS = 30 * 60 * 1000;
 
-    // Optimistically flag loading until Phase 1 confirms a cache hit. Cold
-    // starts keep this true until Phase 2 finishes; cache hits flip it off
-    // as soon as the preliminary list is rendered.
-    setIsTrendingLoading(true);
+    // Only flip to the loading state when we don't already have a list
+    // for this network in the module-scoped memory cache. Repeat visits
+    // within an app session paint instantly from the cached intersection
+    // and let Phase 2 silently revalidate; the visible spinner stays
+    // reserved for first-visit-per-session cold starts.
+    const hasMemoryHit = trendingMemoryCacheByNetwork.has(network);
+    if (!hasMemoryHit) {
+      setIsTrendingLoading(true);
+    }
 
     (async () => {
       // ---- Phase 1: read all caches, render preliminary if possible ----
@@ -285,7 +331,7 @@ export const useSwapTokenLookup = ({
           .readScansFor(network, addressList);
         if (cancelled || signal.aborted) return;
         setStellarExpertDown(false);
-        setTrendingTokens(
+        writeTrendingTokens(
           mergeBlockaidScans(intersection, hits, overriddenBlockaidResponse),
         );
         setIsTrendingLoading(false);
@@ -333,7 +379,7 @@ export const useSwapTokenLookup = ({
       if (cancelled || signal.aborted) return;
 
       setStellarExpertDown(false);
-      setTrendingTokens(
+      writeTrendingTokens(
         mergeBlockaidScans(intersection, results, overriddenBlockaidResponse),
       );
       setIsTrendingLoading(false);

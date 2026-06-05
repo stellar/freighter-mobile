@@ -1,9 +1,20 @@
 import { renderHook, act } from "@testing-library/react-hooks";
 import BigNumber from "bignumber.js";
-import { useSwapTokenLookup } from "components/screens/SwapScreen/hooks/useSwapTokenLookup";
+import {
+  useSwapTokenLookup,
+  resetTrendingMemoryCacheForTests,
+} from "components/screens/SwapScreen/hooks/useSwapTokenLookup";
 import { NETWORKS } from "config/constants";
 import { PricedBalance, TokenTypeWithCustomToken } from "config/types";
 import * as stellarExpert from "services/stellarExpert";
+
+// The hook holds a module-scoped trending memory cache so component
+// remounts within an app session paint instantly. Reset it between
+// every test so earlier cases can't leak a populated map into later
+// cases asserting on an empty trending list or a cold-start spinner.
+beforeEach(() => {
+  resetTrendingMemoryCacheForTests();
+});
 
 // Shared holders for store method mocks. Arrow (not jest.fn) wrappers are used
 // in the jest.mock factories below so clearAllMocks doesn't wipe the wrappers;
