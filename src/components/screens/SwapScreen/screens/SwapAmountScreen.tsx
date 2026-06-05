@@ -199,12 +199,12 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     });
   }, [sourceBalance, account, swapFee]);
 
-  // Highest-value non-XLM classic balance the user holds. Used by the
-  // XlmReserveBottomSheet's "Swap for 0.5 XLM" affordance — when the user
-  // has no XLM headroom for a new trustline, we offer to swap their most
-  // valuable other token for the needed XLM. Falls back to total when
-  // fiatTotal is missing (e.g. unsupported price). Returns undefined when
-  // the user holds only XLM (or has zero non-XLM classic balance).
+  // Highest-value non-XLM classic balance the user holds. Used as the
+  // fallback sell token for the "Swap for 0.5 XLM" affordance when the
+  // current source is XLM (or unset). When the current source is already
+  // a non-XLM classic token, the affordance reuses it and never touches
+  // this fallback. Falls back to total when fiatTotal is missing (e.g.
+  // unsupported price). Returns undefined when the user holds only XLM.
   const bestNonXlmClassicBalance = useMemo(() => {
     const candidates = balanceItems
       .filter(
@@ -225,7 +225,27 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       });
     return candidates[0];
   }, [balanceItems]);
-  const canOfferSwapToXlm = !!bestNonXlmClassicBalance;
+
+  // Gate for the XlmReserveBottomSheet's "Swap for 0.5 XLM" affordance.
+  // Two modes are supported:
+  //   1. Current source is a non-XLM classic token → reuse it as the
+  //      sell side, only flip the receive side to XLM. The pre-filled
+  //      amount survives because the source token didn't change.
+  //   2. Current source is XLM (or unset) → fall back to the user's
+  //      best non-XLM classic balance for the sell side. The amount
+  //      resets per the converter rule, which is an acceptable trade-off
+  //      since the user wouldn't have a meaningful pre-filled amount
+  //      tied to that fallback token anyway.
+  // The CTA is hidden when neither mode applies (e.g. user holds only XLM
+  // with XLM as source) — they're left with the wallet-address copy.
+  const isCurrentSourceNonXlmClassic =
+    !!sourceBalance &&
+    sourceBalance.id !== "native" &&
+    sourceBalance.id !== NATIVE_TOKEN_CODE &&
+    (sourceBalance.tokenType === TokenTypeWithCustomToken.CREDIT_ALPHANUM4 ||
+      sourceBalance.tokenType === TokenTypeWithCustomToken.CREDIT_ALPHANUM12);
+  const canOfferSwapToXlm =
+    isCurrentSourceNonXlmClassic || !!bestNonXlmClassicBalance;
 
   // Token/fiat amount input is driven by the system keyboard via TextInput.
   // We mirror the converter's tokenAmount back into the swap store so that
@@ -609,21 +629,30 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     [spendableAmount, setTokenAmount],
   );
 
-  // Tapped from inside XlmReserveBottomSheet. Picks the user's most valuable
-  // non-XLM classic balance as the new Sell token, sets XLM as the Receive
-  // token, and asks Horizon's strictReceivePaths how much of the Sell token
-  // it would take to receive at least 0.5 XLM. If a path exists, the result
-  // is dropped into sourceAmount and the existing path-finding pipeline
-  // re-runs from there (Insufficient balance / Review CTA emerges naturally
-  // depending on whether the chosen source can cover the path).
+  // Tapped from inside XlmReserveBottomSheet. Picks the sell token,
+  // sets XLM as the Receive token, and asks Horizon's strictReceivePaths
+  // how much of the sell token it would take to receive at least 0.5 XLM.
+  //
+  // Sell-token resolution:
+  //   - If the current source is a non-XLM classic token, reuse it. The
+  //     amount survives the call because the source token didn't change
+  //     (the converter's reset-on-selected-token-change rule is keyed on
+  //     the token code, see useTokenFiatConverter:101).
+  //   - Otherwise (source is XLM or unset) fall back to the user's best
+  //     non-XLM classic balance. The pre-filled amount will be wiped by
+  //     the converter's reset on the next render — acceptable here since
+  //     any prior amount was denominated in the now-replaced source.
   const handleSwapForXlmFromSheet = useCallback(async () => {
-    if (!bestNonXlmClassicBalance) return;
-    const sellTokenCode = bestNonXlmClassicBalance.tokenCode;
+    const sellBalance = isCurrentSourceNonXlmClassic
+      ? sourceBalance
+      : bestNonXlmClassicBalance;
+    if (!sellBalance) return;
+    const sellTokenCode = sellBalance.tokenCode;
     const sellIssuer =
-      "token" in bestNonXlmClassicBalance &&
-      bestNonXlmClassicBalance.token &&
-      "issuer" in bestNonXlmClassicBalance.token
-        ? bestNonXlmClassicBalance.token.issuer?.key
+      "token" in sellBalance &&
+      sellBalance.token &&
+      "issuer" in sellBalance.token
+        ? sellBalance.token.issuer?.key
         : undefined;
     if (!sellTokenCode || !sellIssuer) return;
 
@@ -647,7 +676,11 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       );
     }
 
-    setSourceToken(bestNonXlmClassicBalance.id, sellTokenCode);
+    // Only swap the source token when we're falling back — otherwise the
+    // converter would reset the amount we're about to set.
+    if (!isCurrentSourceNonXlmClassic) {
+      setSourceToken(sellBalance.id, sellTokenCode);
+    }
     setDestinationToken({
       id: NATIVE_TOKEN_CODE,
       tokenCode: NATIVE_TOKEN_CODE,
@@ -660,6 +693,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     }
     xlmReserveBottomSheetRef.current?.dismiss();
   }, [
+    isCurrentSourceNonXlmClassic,
+    sourceBalance,
     bestNonXlmClassicBalance,
     network,
     setSourceToken,
