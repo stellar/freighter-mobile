@@ -1274,6 +1274,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           testID="swap-amount-trending-list"
           data={showTrending ? trendingTokens : []}
           keyExtractor={recordTokenId}
+          showsVerticalScrollIndicator={false}
           ListHeaderComponent={listHeader}
           ListEmptyComponent={
             showTrendingSpinner ? (
