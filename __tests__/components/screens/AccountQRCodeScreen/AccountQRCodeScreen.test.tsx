@@ -48,6 +48,8 @@ jest.mock("hooks/useAppTranslation", () => () => ({
       "accountQRCodeScreen.helperText": "Helper Text",
       "accountQRCodeScreen.bottomSheet.title": "Bottom Sheet Title",
       "accountQRCodeScreen.bottomSheet.description": "Bottom Sheet Description",
+      "accountQRCodeScreen.tabs.receive": "Receive",
+      "accountQRCodeScreen.tabs.scan": "Scan",
     };
     return translations[key] || key;
   },
@@ -60,10 +62,12 @@ type AccountQRCodeScreenProps = NativeStackScreenProps<
 
 const mockGoBack = jest.fn();
 const mockSetOptions = jest.fn();
+const mockReplace = jest.fn();
 
 const mockNavigation = {
   goBack: mockGoBack,
   setOptions: mockSetOptions,
+  replace: mockReplace,
 } as unknown as AccountQRCodeScreenProps["navigation"];
 
 const mockRoute = {
@@ -115,5 +119,55 @@ describe("AccountQRCodeScreen", () => {
         headerLeft: expect.any(Function),
       }),
     );
+  });
+
+  it("renders segmented control when showTabs is true", () => {
+    const routeWithTabs = {
+      ...mockRoute,
+      params: { showTabs: true, showNavigationAsCloseButton: true },
+    } as unknown as AccountQRCodeScreenProps["route"];
+
+    const { getByText } = renderWithProviders(
+      <AccountQRCodeScreen
+        navigation={mockNavigation}
+        route={routeWithTabs}
+      />,
+    );
+
+    expect(getByText("Receive")).toBeTruthy();
+    expect(getByText("Scan")).toBeTruthy();
+  });
+
+  it("navigates to HOME_SCANNER when Scan tab is pressed", () => {
+    const routeWithTabs = {
+      ...mockRoute,
+      params: { showTabs: true, showNavigationAsCloseButton: true },
+    } as unknown as AccountQRCodeScreenProps["route"];
+
+    const { getByText } = renderWithProviders(
+      <AccountQRCodeScreen
+        navigation={mockNavigation}
+        route={routeWithTabs}
+      />,
+    );
+
+    const scanTab = getByText("Scan");
+    fireEvent.press(scanTab);
+
+    expect(mockReplace).toHaveBeenCalledWith(
+      "ScanQRCodeScreen",
+      expect.objectContaining({
+        source: "home_scanner",
+      }),
+    );
+  });
+
+  it("does not render segmented control when showTabs is false", () => {
+    const { queryByText } = renderWithProviders(
+      <AccountQRCodeScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+
+    expect(queryByText("Receive")).toBeNull();
+    expect(queryByText("Scan")).toBeNull();
   });
 });
