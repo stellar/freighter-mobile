@@ -174,7 +174,7 @@ const PickerChip: React.FC<{
   return (
     <TouchableOpacity
       onPress={onPress}
-      className="flex-row items-center gap-[4px] rounded-full bg-background-secondary px-[10px] py-[4px]"
+      className="flex-row items-center gap-[4px] rounded-full bg-background-secondary px-[10px] py-[8px]"
       testID={testID}
     >
       {token ? (
@@ -192,8 +192,8 @@ const PickerChip: React.FC<{
         // Empty-state affordance: a Plus-in-circle to signal "tap to add a
         // token". Matches the legacy Swap empty-state pill so the user keeps
         // that visual cue when no token has been picked yet.
-        <View className="w-[16px] h-[16px] rounded-full items-center justify-center bg-gray-3">
-          <Icon.Plus size={12} themeColor="gray" />
+        <View className="w-[20px] h-[20px] rounded-full items-center justify-center bg-gray-3">
+          <Icon.Plus size={16} themeColor="gray" />
         </View>
       )}
       <Text md medium>
