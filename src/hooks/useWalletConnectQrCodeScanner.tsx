@@ -8,7 +8,7 @@ import {
   ScreenTransition,
 } from "config/routes";
 import { useQRDataStore } from "ducks/qrData";
-import { isValidWalletConnectURI } from "helpers/qrValidation";
+import { isValidWalletConnectURI, parseQRPayload } from "helpers/qrValidation";
 import { walletKit } from "helpers/walletKitUtil";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
@@ -94,7 +94,9 @@ interface QRCodeScreenReturn {
  *
  * @returns Object containing handlers, state, and configuration
  */
-export const useWalletConnectQrCodeScanner = (): QRCodeScreenReturn => {
+export const useWalletConnectQrCodeScanner = (
+  enabled: boolean,
+): QRCodeScreenReturn => {
   const { t } = useAppTranslation();
   const { getClipboardText } = useClipboard();
   const { showToast } = useToast();
@@ -189,12 +191,13 @@ export const useWalletConnectQrCodeScanner = (): QRCodeScreenReturn => {
   // Handle QR code scanning
   const handleQRCodeScanned = useCallback(
     (data: string) => {
-      // Validate that the scanned data is a valid WalletConnect URI
-      if (isValidWalletConnectURI(data)) {
+      const payload = parseQRPayload(data);
+
+      if (payload.type === "wallet_connect") {
         // Reset error code since we have a valid different code
         setLastErrorCode(null);
         // Set the scanned data in the store so the useEffect can process it
-        setScannedData(data, QRCodeSource.WALLET_CONNECT);
+        setScannedData(payload.uri, QRCodeSource.WALLET_CONNECT);
         return;
       }
 
@@ -248,6 +251,7 @@ export const useWalletConnectQrCodeScanner = (): QRCodeScreenReturn => {
 
   // Handle scanned QR data when available
   useEffect(() => {
+    if (!enabled) return;
     if (
       scannedData &&
       storedSource === QRCodeSource.WALLET_CONNECT &&
@@ -263,7 +267,7 @@ export const useWalletConnectQrCodeScanner = (): QRCodeScreenReturn => {
       // Always clear the QR data to allow continuous scanning
       clearQRData();
     }
-  }, [scannedData, storedSource, isConsumed, clearQRData, handleConnect]);
+  }, [enabled, scannedData, storedSource, isConsumed, clearQRData, handleConnect]);
 
   // Clear QR data when component unmounts
   useEffect(() => clearQRData(), [clearQRData]);

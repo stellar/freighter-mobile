@@ -2,6 +2,7 @@ import {
   isValidWalletConnectURI,
   isValidStellarAddressForQR,
   validateQRCodeWalletAddress,
+  parseQRPayload,
 } from "helpers/qrValidation";
 import { isValidStellarAddress } from "helpers/stellar";
 
@@ -208,6 +209,56 @@ describe("QR Validation", () => {
       expect(result.type).toBe("stellar_address");
       expect(result.content).toBe(validEd25519); // trimmed content
       expect(mockedIsValidStellarAddress).toHaveBeenCalledWith(validEd25519);
+    });
+  });
+
+  describe("parseQRPayload", () => {
+    it("returns wallet_connect for valid WC URIs", () => {
+      const wcUri =
+        "wc:abc123@2?relay-protocol=irn&symKey=deadbeef1234567890abcdef1234567890abcdef1234567890abcdef12345678";
+      const result = parseQRPayload(wcUri);
+      expect(result.type).toBe("wallet_connect");
+      if (result.type === "wallet_connect") {
+        expect(result.uri).toBe(wcUri);
+      }
+    });
+
+    it("returns stellar_address for valid Stellar addresses", () => {
+      mockedIsValidStellarAddress.mockReturnValueOnce(true);
+      const result = parseQRPayload(validEd25519);
+      expect(result.type).toBe("stellar_address");
+      if (result.type === "stellar_address") {
+        expect(result.address).toBe(validEd25519);
+      }
+    });
+
+    it("returns stellar_address for trimmed input", () => {
+      mockedIsValidStellarAddress.mockReturnValueOnce(true);
+      const result = parseQRPayload(`  ${validEd25519}  `);
+      expect(result.type).toBe("stellar_address");
+      if (result.type === "stellar_address") {
+        expect(result.address).toBe(validEd25519);
+      }
+    });
+
+    it("returns invalid for random strings", () => {
+      mockedIsValidStellarAddress.mockReturnValueOnce(false);
+      const result = parseQRPayload("random-garbage-string");
+      expect(result.type).toBe("invalid");
+    });
+
+    it("returns invalid for empty string", () => {
+      mockedIsValidStellarAddress.mockReturnValueOnce(false);
+      const result = parseQRPayload("");
+      expect(result.type).toBe("invalid");
+    });
+
+    it("prioritizes WalletConnect over Stellar check", () => {
+      const wcUri =
+        "wc:abc123@2?relay-protocol=irn&symKey=deadbeef1234567890abcdef1234567890abcdef1234567890abcdef12345678";
+      const result = parseQRPayload(wcUri);
+      expect(result.type).toBe("wallet_connect");
+      expect(mockedIsValidStellarAddress).not.toHaveBeenCalled();
     });
   });
 });

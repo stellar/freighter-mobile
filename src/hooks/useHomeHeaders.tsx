@@ -114,7 +114,7 @@ export const useHomeHeaders = ({ navigation }: UseHomeHeadersProps) => {
         testID="home-screen-scan-button"
         onPress={() =>
           navigation.navigate(ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN, {
-            source: QRCodeSource.WALLET_CONNECT,
+            source: QRCodeSource.HOME_SCANNER,
           })
         }
       />

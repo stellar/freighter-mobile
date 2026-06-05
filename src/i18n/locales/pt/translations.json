@@ -979,6 +979,10 @@
     "title": "Receber fundos",
     "copyButton": "Copiar endereço",
     "helperText": "Digitalize o código QR ou \n copie seu endereço",
+    "tabs": {
+      "receive": "Receber",
+      "scan": "Escanear"
+    },
     "bottomSheet": {
       "title": "QR Code",
       "description": "Peça ao remetente para digitalizar o código QR em seu aplicativo Freighter para recuperar seu endereço de carteira com segurança."
@@ -996,6 +1000,10 @@
   },
   "qrCodeScannerScreen": {
     "title": "Escanear para enviar"
+  },
+  "homeScanner": {
+    "title": "Escanear Código QR",
+    "scanQRCodeText": "Escaneie um endereço Stellar ou código QR do WalletConnect"
   },
   "addFundsScreen": {
     "title": "Adicionar fundos",

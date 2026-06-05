@@ -413,6 +413,8 @@ export enum QRCodeSource {
   ADDRESS_INPUT = "address_input",
   /** For scanning WalletConnect URIs */
   WALLET_CONNECT = "wallet_connect",
+  /** For scanning from the home screen (handles both addresses and WalletConnect) */
+  HOME_SCANNER = "home_scanner",
   /** For scanning wallet import data */
   IMPORT_WALLET = "import_wallet",
 }

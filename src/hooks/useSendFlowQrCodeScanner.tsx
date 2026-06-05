@@ -1,6 +1,6 @@
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { QRCodeSource, QRCodeError } from "config/constants";
+import { QRCodeSource } from "config/constants";
 import {
   RootStackParamList,
   ROOT_NAVIGATOR_ROUTES,
@@ -10,7 +10,7 @@ import { useAuthenticationStore } from "ducks/auth";
 import { useQRDataStore } from "ducks/qrData";
 import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
-import { validateQRCodeWalletAddress } from "helpers/qrValidation";
+import { parseQRPayload } from "helpers/qrValidation";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useToast } from "providers/ToastProvider";
 import { useCallback, useEffect, useState } from "react";
@@ -65,7 +65,9 @@ interface QRCodeScreenReturn {
  *
  * @returns Object containing handlers, state, and configuration
  */
-export const useSendFlowQrCodeScanner = (): QRCodeScreenReturn => {
+export const useSendFlowQrCodeScanner = (
+  enabled: boolean,
+): QRCodeScreenReturn => {
   const { t } = useAppTranslation();
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -117,38 +119,46 @@ export const useSendFlowQrCodeScanner = (): QRCodeScreenReturn => {
   // Handle QR code scanning
   const handleQRCodeScanned = useCallback(
     (data: string) => {
-      const validation = validateQRCodeWalletAddress(data, account?.publicKey);
+      const payload = parseQRPayload(data);
 
       // Handle valid Stellar address
-      if (validation.isValid) {
+      if (payload.type === "stellar_address") {
+        // Check for self-send
+        if (payload.address === account?.publicKey) {
+          if (lastErrorCode !== data) {
+            showToast({
+              variant: "error",
+              title: t("sendPaymentScreen.cannotSendToSelf"),
+              duration: 3000,
+            });
+            setLastErrorCode(data);
+          }
+          return;
+        }
+
         setLastErrorCode(null);
         setIsProcessingQRScan(true);
-        searchAddress(data);
+        searchAddress(payload.address);
         analytics.trackQRScanSuccess(QRCodeSource.ADDRESS_INPUT);
         return;
       }
 
-      // Handle errors - self-send or invalid format
+      // Handle errors - invalid format (including WC URIs in send flow)
       if (lastErrorCode !== data) {
         showToast({
           variant: "error",
-          title:
-            validation.error === QRCodeError.SELF_SEND
-              ? t("sendPaymentScreen.cannotSendToSelf")
-              : t("sendPaymentScreen.invalidAddress"),
+          title: t("sendPaymentScreen.invalidAddress"),
           duration: 3000,
         });
         setLastErrorCode(data);
       }
-
-      // For WalletConnect URIs, let the QR scanner continue scanning
-      // (this shouldn't happen in send flow, but just in case)
     },
     [searchAddress, account?.publicKey, showToast, t, lastErrorCode],
   );
 
   // Handle search results when QR scan is processed
   useEffect(() => {
+    if (!enabled) return;
     if (
       isProcessingQRScan &&
       isValidDestination &&
@@ -188,6 +198,7 @@ export const useSendFlowQrCodeScanner = (): QRCodeScreenReturn => {
       setIsProcessingQRScan(false);
     }
   }, [
+    enabled,
     isProcessingQRScan,
     isValidDestination,
     isSearching,

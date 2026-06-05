@@ -133,7 +133,7 @@ export const QRScanner: React.FC<QRScannerProps> = ({
     // Track error if permissions denied or camera unavailable (mobile-specific feature)
     if (device == null || !hasPermission) {
       const error = device == null ? "camera_unavailable" : "permission_denied";
-      analytics.trackQRScanError(error, context);
+      analytics.trackQRScanError(context, error);
     }
   }, [hasMounted, device, hasPermission, context]);
 

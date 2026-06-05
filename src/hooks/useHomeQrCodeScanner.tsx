@@ -1,0 +1,256 @@
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { NATIVE_TOKEN_CODE, QRCodeSource } from "config/constants";
+import {
+  RootStackParamList,
+  ROOT_NAVIGATOR_ROUTES,
+  SEND_PAYMENT_ROUTES,
+  ScreenTransition,
+} from "config/routes";
+import { useAuthenticationStore } from "ducks/auth";
+import { useQRDataStore } from "ducks/qrData";
+import { useSendRecipientStore } from "ducks/sendRecipient";
+import { useTransactionSettingsStore } from "ducks/transactionSettings";
+import { parseQRPayload } from "helpers/qrValidation";
+import { walletKit } from "helpers/walletKitUtil";
+import useAppTranslation from "hooks/useAppTranslation";
+import { useToast } from "providers/ToastProvider";
+import { useCallback, useEffect, useState } from "react";
+import { analytics } from "services/analytics";
+
+interface QRCodeScreenHandlers {
+  handleQRCodeScanned: (data: string) => void;
+  handleClose: () => void;
+  handleHeaderLeft: () => void;
+  handleHeaderRight: () => void;
+}
+
+interface QRCodeScreenState {
+  manualInput: string;
+  isConnecting: boolean;
+  error: string;
+  showManualInput: false;
+  title: string;
+  scannerTitle: string;
+  context: QRCodeSource.HOME_SCANNER;
+}
+
+interface QRCodeScreenConfig {
+  showHeaderRight: true;
+}
+
+interface QRCodeScreenReturn {
+  handlers: QRCodeScreenHandlers;
+  state: QRCodeScreenState;
+  config: QRCodeScreenConfig;
+  ManualInputOverlay?: undefined;
+}
+
+const PAIRING_SUCCESS_DELAY_MS = 1000;
+const PAIRING_ERROR_DELAY_MS = 500;
+
+/**
+ * Hook for the home screen QR code scanner.
+ *
+ * Handles both Stellar addresses (routes to send flow with XLM)
+ * and WalletConnect URIs (pairs with dApp).
+ *
+ * @param enabled - When false, all effects are no-ops (used by useQRCodeScreenScanner
+ *   to prevent inactive hooks from firing side effects)
+ */
+export const useHomeQrCodeScanner = (
+  enabled: boolean,
+): QRCodeScreenReturn => {
+  const { t } = useAppTranslation();
+  const { showToast } = useToast();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
+  const [isProcessingAddress, setIsProcessingAddress] = useState(false);
+  const [isConnectingWC, setIsConnectingWC] = useState(false);
+  const [lastErrorCode, setLastErrorCode] = useState<string | null>(null);
+
+  const { clearQRData } = useQRDataStore();
+  const { account } = useAuthenticationStore();
+
+  const {
+    searchAddress,
+    isValidDestination,
+    isSearching,
+    searchResults,
+    searchError,
+    destinationAddress,
+    resetSendRecipient,
+  } = useSendRecipientStore();
+  const { saveRecipientAddress } = useTransactionSettingsStore();
+
+  const config: QRCodeScreenConfig = {
+    showHeaderRight: true,
+  };
+
+  const state: QRCodeScreenState = {
+    manualInput: "",
+    isConnecting: isConnectingWC || (isProcessingAddress && isSearching),
+    error: "",
+    showManualInput: false,
+    title: t("homeScanner.title"),
+    scannerTitle: t("homeScanner.scanQRCodeText"),
+    context: QRCodeSource.HOME_SCANNER,
+  };
+
+  const handleClose = useCallback(() => {
+    navigation.popToTop();
+  }, [navigation]);
+
+  const handleHeaderLeft = useCallback(() => {
+    handleClose();
+  }, [handleClose]);
+
+  const handleHeaderRight = useCallback(() => {
+    navigation.replace(ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN, {
+      showTabs: true,
+      showNavigationAsCloseButton: true,
+      transition: ScreenTransition.Fade,
+    });
+  }, [navigation]);
+
+  const handleQRCodeScanned = useCallback(
+    (data: string) => {
+      const payload = parseQRPayload(data, account?.publicKey);
+
+      switch (payload.type) {
+        case "stellar_address":
+          setLastErrorCode(null);
+          setIsProcessingAddress(true);
+          searchAddress(payload.address);
+          break;
+
+        case "wallet_connect":
+          setLastErrorCode(null);
+          setIsConnectingWC(true);
+          walletKit
+            .pair({ uri: payload.uri })
+            .then(() => {
+              analytics.trackQRScanSuccess(QRCodeSource.HOME_SCANNER);
+              setTimeout(() => {
+                handleClose();
+              }, PAIRING_SUCCESS_DELAY_MS);
+            })
+            .catch((err) => {
+              setTimeout(() => {
+                setIsConnectingWC(false);
+                showToast({
+                  variant: "error",
+                  title:
+                    err instanceof Error
+                      ? err.message
+                      : t("walletConnect.pairingError"),
+                  duration: 3000,
+                });
+                analytics.trackQRScanError(
+                  QRCodeSource.HOME_SCANNER,
+                  "wallet_connect_pairing_failed",
+                );
+              }, PAIRING_ERROR_DELAY_MS);
+            });
+          break;
+
+        case "invalid":
+          if (lastErrorCode !== data) {
+            showToast({
+              variant: "error",
+              title:
+                payload.error === "self_send"
+                  ? t("sendPaymentScreen.cannotSendToSelf")
+                  : t("sendPaymentScreen.invalidAddress"),
+              duration: 3000,
+            });
+            analytics.trackQRScanError(
+              QRCodeSource.HOME_SCANNER,
+              payload.error,
+            );
+            setLastErrorCode(data);
+          }
+          break;
+      }
+    },
+    [
+      account?.publicKey,
+      searchAddress,
+      handleClose,
+      showToast,
+      t,
+      lastErrorCode,
+    ],
+  );
+
+  // Handle successful address resolution
+  useEffect(() => {
+    if (!enabled || !isProcessingAddress) return;
+
+    if (isValidDestination && !isSearching && searchResults.length > 0) {
+      saveRecipientAddress(destinationAddress);
+      analytics.trackQRScanSuccess(QRCodeSource.HOME_SCANNER);
+
+      navigation.popToTop();
+      navigation.navigate(ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK, {
+        screen: SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN,
+        params: {
+          tokenId: NATIVE_TOKEN_CODE,
+          recipientAddress: destinationAddress,
+        },
+      });
+
+      setIsProcessingAddress(false);
+    }
+  }, [
+    enabled,
+    isProcessingAddress,
+    isValidDestination,
+    isSearching,
+    searchResults,
+    destinationAddress,
+    saveRecipientAddress,
+    navigation,
+  ]);
+
+  // Handle address resolution errors
+  useEffect(() => {
+    if (!enabled || !isProcessingAddress) return;
+
+    if (searchError && !isSearching) {
+      showToast({
+        variant: "error",
+        title: searchError,
+        duration: 3000,
+      });
+      analytics.trackQRScanError(
+        QRCodeSource.HOME_SCANNER,
+        "address_validation_failed",
+      );
+      setIsProcessingAddress(false);
+    }
+  }, [enabled, isProcessingAddress, searchError, isSearching, showToast]);
+
+  // Reset search state on mount and clear QR data on unmount
+  useEffect(() => {
+    if (enabled) {
+      resetSendRecipient();
+    }
+  }, [enabled, resetSendRecipient]);
+
+  useEffect(() => clearQRData(), [clearQRData]);
+
+  const handlers: QRCodeScreenHandlers = {
+    handleQRCodeScanned,
+    handleClose,
+    handleHeaderLeft,
+    handleHeaderRight,
+  };
+
+  return {
+    handlers,
+    state,
+    config,
+  };
+};

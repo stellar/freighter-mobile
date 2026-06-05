@@ -1,5 +1,6 @@
 import { QRCodeSource } from "config/constants";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useHomeQrCodeScanner } from "hooks/useHomeQrCodeScanner";
 import { useSendFlowQrCodeScanner } from "hooks/useSendFlowQrCodeScanner";
 import { useWalletConnectQrCodeScanner } from "hooks/useWalletConnectQrCodeScanner";
 import React from "react";
@@ -78,15 +79,25 @@ interface QRCodeScreenReturn {
  * based on the source parameter. Each context has its own specialized hook
  * that provides the appropriate functionality.
  *
+ * Each hook receives an `enabled` flag so that only the active hook's
+ * side effects (useEffects with navigation, store subscriptions) fire.
+ *
  * @param source - The source/context of the QR scanner
  * @returns Object containing handlers, state, and configuration
  */
 export const useQRCodeScreenScanner = (
   source: QRCodeSource,
 ): QRCodeScreenReturn => {
-  // Call all hooks to satisfy React Hooks rules
-  const walletConnectResult = useWalletConnectQrCodeScanner();
-  const sendFlowResult = useSendFlowQrCodeScanner();
+  // Call all hooks unconditionally (React rules) with enabled gates
+  const walletConnectResult = useWalletConnectQrCodeScanner(
+    source === QRCodeSource.WALLET_CONNECT,
+  );
+  const sendFlowResult = useSendFlowQrCodeScanner(
+    source === QRCodeSource.ADDRESS_INPUT,
+  );
+  const homeResult = useHomeQrCodeScanner(
+    source === QRCodeSource.HOME_SCANNER,
+  );
 
   // Return the appropriate result based on source
   switch (source) {
@@ -96,11 +107,13 @@ export const useQRCodeScreenScanner = (
     case QRCodeSource.ADDRESS_INPUT:
       return sendFlowResult;
 
+    case QRCodeSource.HOME_SCANNER:
+      return homeResult;
+
     case QRCodeSource.IMPORT_WALLET:
       throw new Error("Import wallet QR code scanner not implemented");
 
     default:
-      // Default to send flow for unknown sources
       return sendFlowResult;
   }
 };
