@@ -25,11 +25,13 @@ import {
   SEND_PAYMENT_ROUTES,
   SWAP_ROUTES,
 } from "config/routes";
+import { TokenTypeWithCustomToken } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
 import { useCollectiblesStore } from "ducks/collectibles";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { useWalletKitStore } from "ducks/walletKit";
+import { getTokenType } from "helpers/balances";
 import { isContractId } from "helpers/soroban";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
@@ -144,6 +146,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
 
     const handleTokenPress = useCallback(
       (tokenId: string) => {
+        // Liquidity-pool rows don't have a useful TokenDetailsScreen layout
+        // yet, so a tap from the Home list is a no-op. The row is still
+        // displayed; we just don't navigate.
+        if (
+          getTokenType(tokenId) ===
+          TokenTypeWithCustomToken.LIQUIDITY_POOL_SHARES
+        ) {
+          return;
+        }
+
         let tokenSymbol: string;
 
         if (tokenId === "native") {
