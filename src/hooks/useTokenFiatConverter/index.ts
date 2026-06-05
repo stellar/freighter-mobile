@@ -89,29 +89,18 @@ export const useTokenFiatConverter = ({
     selectedBalance?.tokenCode,
   );
 
-  // Reset fiat amount when token changes or has no price
+  // Reset both amounts when the selected token changes. The new token may
+  // carry tighter decimal / magnitude constraints than the previous one, so
+  // preserving the typed value across a swap would risk leaving the input
+  // in a state the new token's validation would otherwise reject. The
+  // showFiatAmount mode flag is intentionally preserved.
   useEffect(() => {
     const currentTokenCode = selectedBalance?.tokenCode;
-    const tokenChanged = previousTokenCodeRef.current !== currentTokenCode;
-
-    if (tokenChanged) {
+    if (previousTokenCodeRef.current !== currentTokenCode) {
       previousTokenCodeRef.current = currentTokenCode;
-
-      // If token has no price, reset fiat to 0
-      if (!selectedBalance?.currentPrice || tokenPrice.isZero()) {
-        dispatch({
-          type: TokenFiatConverterActionType.SET_FIAT_AMOUNT,
-          payload: "0",
-        });
-      } else {
-        // If token has price, recalculate fiat from current token amount
-        dispatch({
-          type: TokenFiatConverterActionType.SET_TOKEN_AMOUNT,
-          payload: state.tokenAmount,
-        });
-      }
+      dispatch({ type: TokenFiatConverterActionType.RESET_AMOUNTS });
     }
-  }, [selectedBalance, tokenPrice, state.tokenAmount]);
+  }, [selectedBalance]);
 
   // Format token amount display: trim trailing zeros and use locale separator when NOT in fiat mode
   const tokenAmountDisplayDerived = useMemo(() => {

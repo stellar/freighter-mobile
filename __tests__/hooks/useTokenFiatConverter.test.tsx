@@ -1729,6 +1729,48 @@ describe("useTokenFiatConverter.setDisplayAmountFromText - input validation", ()
       expect(result.current.tokenAmountDisplayRaw).toBe("1000000000000.123456");
     });
 
+    it("resets both amounts and both raw displays when the selected token changes", () => {
+      // Typing on token A then swapping the picker to token B with different
+      // decimal constraints must clear the input — otherwise a value typed
+      // under A's 7-decimal allowance could survive into a 3-decimal token
+      // and bypass the precision cap.
+      const { result, rerender } = renderHook(
+        ({ balance }: { balance: PricedBalance }) =>
+          useTokenFiatConverter({ selectedBalance: balance }),
+        { initialProps: { balance: classicMock } },
+      );
+
+      act(() => {
+        result.current.setDisplayAmountFromText("1.2345678");
+      });
+      expect(result.current.tokenAmount).toBe("1.2345678");
+      expect(result.current.tokenAmountDisplayRaw).toBe("1.2345678");
+
+      // Swap to a Soroban token (decimals=3).
+      rerender({ balance: sorobanMock(3) });
+
+      expect(result.current.tokenAmount).toBe("0");
+      expect(result.current.fiatAmount).toBe("0");
+      expect(result.current.tokenAmountDisplayRaw).toBeNull();
+      expect(result.current.fiatAmountDisplayRaw).toBeNull();
+    });
+
+    it("preserves showFiatAmount mode across token changes", () => {
+      const { result, rerender } = renderHook(
+        ({ balance }: { balance: PricedBalance }) =>
+          useTokenFiatConverter({ selectedBalance: balance }),
+        { initialProps: { balance: classicMock } },
+      );
+
+      act(() => {
+        result.current.setShowFiatAmount(true);
+      });
+      expect(result.current.showFiatAmount).toBe(true);
+
+      rerender({ balance: sorobanMock(3) });
+      expect(result.current.showFiatAmount).toBe(true);
+    });
+
     it("does NOT enforce the classic max for soroban tokens with decimals=0", () => {
       // The classic cap is gated by the absence of an explicit `decimals`
       // field. A decimals=0 Soroban token must still be recognized as

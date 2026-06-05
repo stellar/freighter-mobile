@@ -24,6 +24,11 @@ export enum TokenFiatConverterActionType {
   CONVERT_TOKEN_TO_FIAT = "CONVERT_TOKEN_TO_FIAT",
   CONVERT_FIAT_TO_TOKEN = "CONVERT_FIAT_TO_TOKEN",
   SET_DISPLAY_AMOUNT_FROM_TEXT = "SET_DISPLAY_AMOUNT_FROM_TEXT",
+  /** Reset both amounts + both raw displays to the initial state. The
+   *  showFiatAmount mode flag is preserved. Used when the selected token
+   *  changes so a previously-typed amount can't survive into a token with
+   *  different decimal / precision constraints. */
+  RESET_AMOUNTS = "RESET_AMOUNTS",
 }
 
 export interface SetTokenAmountAction {
@@ -81,6 +86,10 @@ export interface SetDisplayAmountFromTextAction {
   payload: { text: string };
 }
 
+export interface ResetAmountsAction {
+  type: TokenFiatConverterActionType.RESET_AMOUNTS;
+}
+
 export type TokenFiatConverterAction =
   | SetTokenAmountAction
   | SetFiatAmountAction
@@ -92,7 +101,8 @@ export type TokenFiatConverterAction =
   | UpdateFiatDisplayAction
   | ConvertTokenToFiatAction
   | ConvertFiatToTokenAction
-  | SetDisplayAmountFromTextAction;
+  | SetDisplayAmountFromTextAction
+  | ResetAmountsAction;
 
 export const initialState: TokenFiatConverterState = {
   tokenAmount: "0",
@@ -862,6 +872,16 @@ export const createTokenFiatConverterReducer =
           tokenAmount: internalAmount,
           tokenAmountDisplayRaw,
           fiatAmount,
+        };
+      }
+
+      case TokenFiatConverterActionType.RESET_AMOUNTS: {
+        return {
+          ...state,
+          tokenAmount: "0",
+          fiatAmount: "0",
+          tokenAmountDisplayRaw: null,
+          fiatAmountDisplayRaw: null,
         };
       }
 
