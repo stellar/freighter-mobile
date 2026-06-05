@@ -120,12 +120,18 @@ export const TrendingTokenDetailBottomSheet: React.FC<
     <View className="gap-[24px] p-[4px]">
       {/* Header block: icon, then text stack below */}
       <View className="flex-col gap-[16px]">
-        <TokenIconWithBadge
-          token={token}
-          iconUrl={record.iconUrl}
-          securityLevel={record.securityLevel}
-          size="lg"
-        />
+        {/* self-start so the TokenIconWithBadge wrapper hugs the icon's
+            intrinsic width instead of stretching to the column's cross axis
+            — otherwise the badge's `right-0` anchors to the row's far
+            edge instead of the icon's bottom-right corner. */}
+        <View className="self-start">
+          <TokenIconWithBadge
+            token={token}
+            iconUrl={record.iconUrl}
+            securityLevel={record.securityLevel}
+            size="lg"
+          />
+        </View>
         <View className="flex-col gap-[8px]">
           <Text md medium secondary>
             {record.name ?? record.tokenCode}
