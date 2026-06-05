@@ -185,10 +185,10 @@ export const TrendingTokenDetailBottomSheet: React.FC<
                 })
               }
             >
+              <Icon.Copy01 size={16} color={themeColors.foreground.primary} />
               <Text md medium primary numberOfLines={1}>
                 {issuerLabel}
               </Text>
-              <Icon.Copy01 size={16} color={themeColors.foreground.primary} />
             </TouchableOpacity>
           )}
         </View>
