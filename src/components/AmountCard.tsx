@@ -178,9 +178,14 @@ const PickerChip: React.FC<{
       testID={testID}
     >
       {token ? (
+        // size="md" (24×24) — the 16px Blockaid badge overlay is sized
+        // proportionally to this larger icon; with size="sm" (16×16) the
+        // badge nearly covers the whole icon. Chip height stays 32px
+        // because the `<Text md>` lineHeight (24) already dominates the
+        // row.
         <TokenIconWithBadge
           token={token}
-          size="sm"
+          size="md"
           securityLevel={securityLevel}
         />
       ) : (
