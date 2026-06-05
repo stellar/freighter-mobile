@@ -7,8 +7,24 @@ import { fsValue, pxValue } from "helpers/dimensions";
 import useColors from "hooks/useColors";
 import { UseTokenFiatConverterResult } from "hooks/useTokenFiatConverter";
 import React, { useCallback, useEffect, useRef } from "react";
-import { Keyboard, TextInput, TouchableOpacity, View } from "react-native";
+import {
+  Keyboard,
+  Platform,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SecurityLevel } from "services/blockaid/constants";
+
+// SDS Display uses `Inter-Variable` (iOS) / `Inter-Medium` (Android). A
+// plain RN TextInput falls back to the system font (SF Pro / Roboto), which
+// has different vertical metrics than Inter — so the "$" prefix Display sat
+// below the digits' baseline. Forcing the same fontFamily on the TextInput
+// lines them up.
+const AMOUNT_FONT_FAMILY = Platform.select({
+  ios: "Inter-Variable",
+  android: "Inter-Medium",
+});
 
 // Balance text size curve. Figma specs 14/20 (Text sm) for the common case;
 // the longer-string branches keep the lineHeight at 20 (see HeaderRow) and
@@ -297,6 +313,7 @@ const EditableAmountCard: React.FC<AmountCardEditableProps> = ({
               underlineColorAndroid="transparent"
               style={{
                 flex: 1,
+                fontFamily: AMOUNT_FONT_FAMILY,
                 fontSize: amountFontSize,
                 lineHeight: pxValue(AMOUNT_LINE_HEIGHT),
                 letterSpacing: AMOUNT_LETTER_SPACING,
