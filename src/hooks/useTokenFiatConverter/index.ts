@@ -91,9 +91,13 @@ export const useTokenFiatConverter = ({
 
   // Reset both amounts when the selected token changes. The new token may
   // carry tighter decimal / magnitude constraints than the previous one, so
-  // preserving the typed value across a swap would risk leaving the input
-  // in a state the new token's validation would otherwise reject. The
-  // showFiatAmount mode flag is intentionally preserved.
+  // preserving the typed value across the picker change would risk leaving
+  // the input in a state the new token's validation would otherwise reject.
+  // This matters most in the Send flow today — it supports Soroban / custom
+  // tokens with arbitrary decimals, where switching between e.g. a 7-decimal
+  // classic and a 3-decimal Soroban makes the existing value invalid. Swap
+  // hasn't opened to Soroban yet but the same guarantee applies once it
+  // does. The showFiatAmount mode flag is intentionally preserved.
   useEffect(() => {
     const currentTokenCode = selectedBalance?.tokenCode;
     if (previousTokenCodeRef.current !== currentTokenCode) {

@@ -1730,10 +1730,11 @@ describe("useTokenFiatConverter.setDisplayAmountFromText - input validation", ()
     });
 
     it("resets both amounts and both raw displays when the selected token changes", () => {
-      // Typing on token A then swapping the picker to token B with different
-      // decimal constraints must clear the input — otherwise a value typed
-      // under A's 7-decimal allowance could survive into a 3-decimal token
-      // and bypass the precision cap.
+      // Typing on token A then picking a token B with different decimal
+      // constraints must clear the input — otherwise a value typed under A's
+      // 7-decimal allowance could survive into a 3-decimal token and bypass
+      // the precision cap. This is the Send flow's situation today: Send
+      // already supports Soroban / custom tokens with arbitrary decimals.
       const { result, rerender } = renderHook(
         ({ balance }: { balance: PricedBalance }) =>
           useTokenFiatConverter({ selectedBalance: balance }),

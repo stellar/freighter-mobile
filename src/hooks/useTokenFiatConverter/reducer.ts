@@ -26,8 +26,9 @@ export enum TokenFiatConverterActionType {
   SET_DISPLAY_AMOUNT_FROM_TEXT = "SET_DISPLAY_AMOUNT_FROM_TEXT",
   /** Reset both amounts + both raw displays to the initial state. The
    *  showFiatAmount mode flag is preserved. Used when the selected token
-   *  changes so a previously-typed amount can't survive into a token with
-   *  different decimal / precision constraints. */
+   *  changes (currently the Send flow, which already supports Soroban
+   *  tokens with arbitrary decimals) so a previously-typed amount can't
+   *  survive into a token with tighter decimal / precision constraints. */
   RESET_AMOUNTS = "RESET_AMOUNTS",
 }
 
