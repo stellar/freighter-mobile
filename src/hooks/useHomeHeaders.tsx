@@ -14,6 +14,7 @@ import {
   RootStackParamList,
   MAIN_TAB_ROUTES,
 } from "config/routes";
+import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { isE2ETest } from "helpers/isEnv";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
@@ -30,6 +31,8 @@ interface UseHomeHeadersProps {
 export const useHomeHeaders = ({ navigation }: UseHomeHeadersProps) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
+  const { scan_qr_home_screen: scanQrHomeScreenEnabled } =
+    useRemoteConfigStore();
 
   const menuActions = useMemo(
     () => [
@@ -107,19 +110,20 @@ export const useHomeHeaders = ({ navigation }: UseHomeHeadersProps) => {
   );
 
   const HeaderRightComponent = useCallback(
-    () => (
-      <CustomHeaderButton
-        position="right"
-        icon={Icon.Scan}
-        testID="home-screen-scan-button"
-        onPress={() =>
-          navigation.navigate(ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN, {
-            source: QRCodeSource.HOME_SCANNER,
-          })
-        }
-      />
-    ),
-    [navigation],
+    () =>
+      scanQrHomeScreenEnabled ? (
+        <CustomHeaderButton
+          position="right"
+          icon={Icon.Scan}
+          testID="home-screen-scan-button"
+          onPress={() =>
+            navigation.navigate(ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN, {
+              source: QRCodeSource.HOME_SCANNER,
+            })
+          }
+        />
+      ) : null,
+    [navigation, scanQrHomeScreenEnabled],
   );
 
   // useLayoutEffect is the official recommended hook to use for setting up
