@@ -1,6 +1,6 @@
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { NATIVE_TOKEN_CODE, QRCodeSource } from "config/constants";
+import { NATIVE_TOKEN_CODE, QRCodeError, QRCodeSource } from "config/constants";
 import {
   RootStackParamList,
   ROOT_NAVIGATOR_ROUTES,
@@ -160,7 +160,7 @@ export const useHomeQrCodeScanner = (
             showToast({
               variant: "error",
               title:
-                payload.error === "self_send"
+                payload.error === QRCodeError.SELF_SEND
                   ? t("sendPaymentScreen.cannotSendToSelf")
                   : t("sendPaymentScreen.invalidAddress"),
               duration: 3000,
@@ -171,6 +171,9 @@ export const useHomeQrCodeScanner = (
             );
             setLastErrorCode(data);
           }
+          break;
+
+        default:
           break;
       }
     },

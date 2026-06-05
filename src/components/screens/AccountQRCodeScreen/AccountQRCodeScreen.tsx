@@ -83,7 +83,10 @@ const AccountQRCodeScreen: React.FC<AccountQRCodeScreenProps> = ({
   };
 
   const handleRightHeaderPress = () => {
-    if (showNavigationAsCloseButton) {
+    if (showTabs) {
+      // In tabbed mode (from home scanner), the header right opens the unified scanner
+      handleScanNavigation();
+    } else if (showNavigationAsCloseButton) {
       handleWalletConnectNavigation();
     } else {
       handleHelpModalPress();
