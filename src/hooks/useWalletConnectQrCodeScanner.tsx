@@ -270,7 +270,7 @@ export const useWalletConnectQrCodeScanner = (
   }, [enabled, scannedData, storedSource, isConsumed, clearQRData, handleConnect]);
 
   // Clear QR data when component unmounts
-  useEffect(() => clearQRData(), [clearQRData]);
+  useEffect(() => () => clearQRData(), [clearQRData]);
 
   // Build handlers object
   const handlers: QRCodeScreenHandlers = {

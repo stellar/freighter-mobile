@@ -134,10 +134,6 @@
     "title": "Receive funds",
     "copyButton": "Copy address",
     "helperText": "Scan the QR code or \ncopy your address",
-    "tabs": {
-      "receive": "Receive",
-      "scan": "Scan"
-    },
     "bottomSheet": {
       "title": "QR Code",
       "description": "Have the sender scan the QR code on their Freighter app to retrieve your wallet address securely."
@@ -157,8 +153,8 @@
     "title": "Scan to send"
   },
   "homeScanner": {
-    "title": "Scan QR Code",
-    "scanQRCodeText": "Scan a Stellar address or WalletConnect QR code"
+    "title": "Scan a QR code",
+    "scanQRCodeText": "Scan a QR code to send or connect"
   },
   "addFundsScreen": {
     "title": "Add funds",

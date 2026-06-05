@@ -4,6 +4,7 @@ import {
   validateQRCodeWalletAddress,
   parseQRPayload,
 } from "helpers/qrValidation";
+import { QRCodeError } from "config/constants";
 import { isValidStellarAddress } from "helpers/stellar";
 
 // Mock the stellar helper to use the same mocks as the existing stellar tests
@@ -259,6 +260,23 @@ describe("QR Validation", () => {
       const result = parseQRPayload(wcUri);
       expect(result.type).toBe("wallet_connect");
       expect(mockedIsValidStellarAddress).not.toHaveBeenCalled();
+    });
+
+    it("returns invalid with SELF_SEND error when address matches currentPublicKey", () => {
+      mockedIsValidStellarAddress.mockReturnValueOnce(true);
+      const result = parseQRPayload(validEd25519, validEd25519);
+      expect(result.type).toBe("invalid");
+      if (result.type === "invalid") {
+        expect(result.error).toBe(QRCodeError.SELF_SEND);
+      }
+    });
+
+    it("returns stellar_address when currentPublicKey differs", () => {
+      mockedIsValidStellarAddress.mockReturnValueOnce(true);
+      const differentKey =
+        "GBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
+      const result = parseQRPayload(validEd25519, differentKey);
+      expect(result.type).toBe("stellar_address");
     });
   });
 });

@@ -142,7 +142,6 @@ export const ALL_ROUTES_OBJECT = [
 
 export type AccountQRCodeScreenParams = {
   showNavigationAsCloseButton?: boolean;
-  showTabs?: boolean;
   transition?: ScreenTransition;
 };
 

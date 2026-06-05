@@ -5,7 +5,6 @@ import {
   RootStackParamList,
   ROOT_NAVIGATOR_ROUTES,
   SEND_PAYMENT_ROUTES,
-  ScreenTransition,
 } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import { useQRDataStore } from "ducks/qrData";
@@ -22,7 +21,6 @@ interface QRCodeScreenHandlers {
   handleQRCodeScanned: (data: string) => void;
   handleClose: () => void;
   handleHeaderLeft: () => void;
-  handleHeaderRight: () => void;
 }
 
 interface QRCodeScreenState {
@@ -36,7 +34,7 @@ interface QRCodeScreenState {
 }
 
 interface QRCodeScreenConfig {
-  showHeaderRight: true;
+  showHeaderRight: false;
 }
 
 interface QRCodeScreenReturn {
@@ -80,12 +78,15 @@ export const useHomeQrCodeScanner = (
     searchResults,
     searchError,
     destinationAddress,
+    federationMemo,
+    federationMemoType,
     resetSendRecipient,
   } = useSendRecipientStore();
-  const { saveRecipientAddress } = useTransactionSettingsStore();
+  const { saveRecipientAddress, saveMemo, saveMemoType } =
+    useTransactionSettingsStore();
 
   const config: QRCodeScreenConfig = {
-    showHeaderRight: true,
+    showHeaderRight: false,
   };
 
   const state: QRCodeScreenState = {
@@ -105,14 +106,6 @@ export const useHomeQrCodeScanner = (
   const handleHeaderLeft = useCallback(() => {
     handleClose();
   }, [handleClose]);
-
-  const handleHeaderRight = useCallback(() => {
-    navigation.replace(ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN, {
-      showTabs: true,
-      showNavigationAsCloseButton: true,
-      transition: ScreenTransition.Fade,
-    });
-  }, [navigation]);
 
   const handleQRCodeScanned = useCallback(
     (data: string) => {
@@ -193,6 +186,10 @@ export const useHomeQrCodeScanner = (
 
     if (isValidDestination && !isSearching && searchResults.length > 0) {
       saveRecipientAddress(destinationAddress);
+      if (federationMemo) {
+        saveMemo(federationMemo);
+        saveMemoType(federationMemoType);
+      }
       analytics.trackQRScanSuccess(QRCodeSource.HOME_SCANNER);
 
       navigation.popToTop();
@@ -213,7 +210,11 @@ export const useHomeQrCodeScanner = (
     isSearching,
     searchResults,
     destinationAddress,
+    federationMemo,
+    federationMemoType,
     saveRecipientAddress,
+    saveMemo,
+    saveMemoType,
     navigation,
   ]);
 
@@ -242,13 +243,12 @@ export const useHomeQrCodeScanner = (
     }
   }, [enabled, resetSendRecipient]);
 
-  useEffect(() => clearQRData(), [clearQRData]);
+  useEffect(() => () => clearQRData(), [clearQRData]);
 
   const handlers: QRCodeScreenHandlers = {
     handleQRCodeScanned,
     handleClose,
     handleHeaderLeft,
-    handleHeaderRight,
   };
 
   return {

@@ -9,7 +9,6 @@ import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import { Avatar } from "components/sds/Avatar";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
-import SegmentedControl from "components/sds/SegmentedControl";
 import { Text } from "components/sds/Typography";
 import { QRCodeSource } from "config/constants";
 import {
@@ -39,7 +38,7 @@ const AccountQRCodeScreen: React.FC<AccountQRCodeScreenProps> = ({
   navigation,
 }) => {
   const { account } = useGetActiveAccount();
-  const { showNavigationAsCloseButton, showTabs } = route.params || {};
+  const { showNavigationAsCloseButton } = route.params || {};
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
   const { copyToClipboard } = useClipboard();
@@ -62,13 +61,6 @@ const AccountQRCodeScreen: React.FC<AccountQRCodeScreenProps> = ({
   const getRightHeaderIcon = () =>
     showNavigationAsCloseButton ? Icon.Scan : Icon.HelpCircle;
 
-  const handleScanNavigation = () => {
-    navigation.replace(ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN, {
-      source: QRCodeSource.HOME_SCANNER,
-      transition: ScreenTransition.Fade,
-    });
-  };
-
   const handleWalletConnectNavigation = () => {
     // Paired with the replace in useWalletConnectQrCodeScanner.handleHeaderRight,
     // which fades from ScanQRCodeScreen back to this screen.
@@ -83,10 +75,7 @@ const AccountQRCodeScreen: React.FC<AccountQRCodeScreenProps> = ({
   };
 
   const handleRightHeaderPress = () => {
-    if (showTabs) {
-      // In tabbed mode (from home scanner), the header right opens the unified scanner
-      handleScanNavigation();
-    } else if (showNavigationAsCloseButton) {
+    if (showNavigationAsCloseButton) {
       handleWalletConnectNavigation();
     } else {
       handleHelpModalPress();
@@ -98,32 +87,9 @@ const AccountQRCodeScreen: React.FC<AccountQRCodeScreenProps> = ({
     onPress: handleRightHeaderPress,
   });
 
-  const tabOptions = [
-    {
-      label: t("accountQRCodeScreen.tabs.receive"),
-      value: "receive",
-    },
-    { label: t("accountQRCodeScreen.tabs.scan"), value: "scan" },
-  ];
-
-  const handleTabChange = (value: string | number) => {
-    if (value === "scan") {
-      handleScanNavigation();
-    }
-  };
-
   return (
     <BaseLayout>
       <View className="flex-1 gap-[32px]">
-        {showTabs && (
-          <View className="items-center">
-            <SegmentedControl
-              options={tabOptions}
-              selectedValue="receive"
-              onValueChange={handleTabChange}
-            />
-          </View>
-        )}
         <View className="gap-[16px] items-center">
           <Avatar size="xl" publicAddress={account?.publicKey ?? ""} />
           <View>

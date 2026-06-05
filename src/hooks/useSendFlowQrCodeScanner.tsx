@@ -84,6 +84,7 @@ export const useSendFlowQrCodeScanner = (
     searchResults,
     isValidDestination,
     isSearching,
+    searchError,
     destinationAddress,
   } = useSendRecipientStore();
   const { saveRecipientAddress, selectedTokenId, selectedCollectibleDetails } =
@@ -210,8 +211,22 @@ export const useSendFlowQrCodeScanner = (
     navigation,
   ]);
 
+  // Handle search errors (e.g., unresolvable federation address, destination checks)
+  useEffect(() => {
+    if (!enabled) return;
+    if (isProcessingQRScan && searchError && !isSearching) {
+      showToast({
+        variant: "error",
+        title: searchError,
+        duration: 3000,
+      });
+      analytics.trackQRScanError(QRCodeSource.ADDRESS_INPUT, "search_failed");
+      setIsProcessingQRScan(false);
+    }
+  }, [enabled, isProcessingQRScan, searchError, isSearching, showToast]);
+
   // Clear QR data when component unmounts
-  useEffect(() => clearQRData(), [clearQRData]);
+  useEffect(() => () => clearQRData(), [clearQRData]);
 
   // Build handlers object
   const handlers: QRCodeScreenHandlers = {
