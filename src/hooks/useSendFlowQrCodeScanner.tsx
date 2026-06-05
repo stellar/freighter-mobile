@@ -76,6 +76,7 @@ export const useSendFlowQrCodeScanner = (
     isSearching,
     searchError,
     destinationAddress,
+    federationAddress,
   } = useSendRecipientStore();
   const { saveRecipientAddress, selectedTokenId, selectedCollectibleDetails } =
     useTransactionSettingsStore();
@@ -175,6 +176,7 @@ export const useSendFlowQrCodeScanner = (
           params: {
             tokenId: selectedTokenId,
             recipientAddress: destinationAddress,
+            recipientName: federationAddress || undefined,
           },
         });
       }
@@ -189,6 +191,7 @@ export const useSendFlowQrCodeScanner = (
     isSearching,
     searchResults,
     destinationAddress,
+    federationAddress,
     saveRecipientAddress,
     selectedTokenId,
     selectedCollectibleDetails,

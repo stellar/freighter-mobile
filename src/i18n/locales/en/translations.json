@@ -140,14 +140,7 @@
     }
   },
   "walletConnect": {
-    "title": "Scan to Connect",
-    "scanWCQrCode": "Scan a WalletConnect QR code",
-    "connectWithWalletConnect": "Paste a WalletConnect URI",
-    "inputPlaceholder": "WalletConnect URI",
-    "connect": "Connect",
-    "pairingError": "Failed to pair",
-    "invalidUriError": "Please enter a valid QR Code URI",
-    "invalidQrScanUriError": "Invalid WalletConnect Address"
+    "pairingError": "Failed to pair"
   },
   "qrCodeScannerScreen": {
     "title": "Scan to send"
