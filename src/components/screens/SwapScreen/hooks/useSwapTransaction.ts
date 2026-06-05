@@ -180,6 +180,8 @@ export const useSwapTransaction = ({
       analytics.trackSwapSuccess({
         sourceToken: sourceBalance.tokenCode,
         destToken: destinationBalance.tokenCode,
+        sourceAmount,
+        destAmount: pathResult?.destinationAmount,
         allowedSlippage: freshSwapSlippage?.toString(),
         isSwap: true,
       });
@@ -203,6 +205,10 @@ export const useSwapTransaction = ({
       analytics.trackTransactionError({
         error: error instanceof Error ? error.message : String(error),
         isSwap: true,
+        sourceToken: sourceBalance?.tokenCode,
+        destToken: destinationBalance?.tokenCode,
+        sourceAmount,
+        destAmount: pathResult?.destinationAmount,
       });
 
       // Show error toast that persists even if component unmounts
@@ -227,6 +233,8 @@ export const useSwapTransaction = ({
     account,
     sourceBalance?.tokenCode,
     destinationBalance?.tokenCode,
+    sourceAmount,
+    pathResult?.destinationAmount,
     signTransaction,
     network,
     submitTransaction,

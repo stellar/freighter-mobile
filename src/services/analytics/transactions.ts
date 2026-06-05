@@ -99,6 +99,8 @@ export const trackSwapSuccess = (data: SwapSuccessEvent): void => {
   track(AnalyticsEvent.SWAP_SUCCESS, {
     sourceAsset: data.sourceToken,
     destinationAsset: data.destToken,
+    sourceAmount: data.sourceAmount,
+    destinationAmount: data.destAmount,
     allowedSlippage: data.allowedSlippage,
     isSwap: data.isSwap,
   });
@@ -114,6 +116,10 @@ export const trackTransactionError = (data: TransactionErrorEvent): void => {
     errorCode: data.errorCode,
     operationType: data.operationType,
     isSwap: data.isSwap,
+    sourceAsset: data.sourceToken,
+    destinationAsset: data.destToken,
+    sourceAmount: data.sourceAmount,
+    destinationAmount: data.destAmount,
   });
 };
 

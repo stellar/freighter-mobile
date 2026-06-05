@@ -120,7 +120,13 @@ describe("useSwapTransaction", () => {
       expect(didReject).toBe(false);
       // Side effects should still run despite no rethrow.
       expect(mockTrackTransactionError).toHaveBeenCalledWith(
-        expect.objectContaining({ isSwap: true }),
+        expect.objectContaining({
+          isSwap: true,
+          sourceToken: "XLM",
+          destToken: "USDC",
+          sourceAmount: "1",
+          destAmount: "1",
+        }),
       );
       expect(mockShowToast).toHaveBeenCalledWith(
         expect.objectContaining({ variant: "error" }),
@@ -171,7 +177,15 @@ describe("useSwapTransaction", () => {
         await result.current.executeSwap();
       });
 
-      expect(mockTrackSwapSuccess).toHaveBeenCalled();
+      expect(mockTrackSwapSuccess).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sourceToken: "XLM",
+          destToken: "USDC",
+          sourceAmount: "1",
+          destAmount: "1",
+          isSwap: true,
+        }),
+      );
       expect(mockTrackTransactionError).not.toHaveBeenCalled();
     });
   });

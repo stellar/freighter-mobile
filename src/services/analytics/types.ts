@@ -54,6 +54,8 @@ export interface TransactionSuccessEvent {
 export interface SwapSuccessEvent {
   sourceToken: string;
   destToken: string;
+  sourceAmount?: string;
+  destAmount?: string;
   allowedSlippage?: string;
   isSwap: true;
 }
@@ -63,6 +65,10 @@ export interface TransactionErrorEvent {
   errorCode?: string;
   operationType?: TransactionOperationType;
   isSwap?: boolean;
+  sourceToken?: string;
+  destToken?: string;
+  sourceAmount?: string;
+  destAmount?: string;
 }
 
 export interface QRScanEvent {
