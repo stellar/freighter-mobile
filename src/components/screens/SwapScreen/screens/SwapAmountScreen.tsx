@@ -62,6 +62,7 @@ import {
   formatBigNumberForDisplay,
   formatFiatAmount,
 } from "helpers/formatAmount";
+import { waitForKeyboardDismiss } from "helpers/keyboard";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
@@ -101,27 +102,6 @@ type SwapAmountScreenProps = NativeStackScreenProps<
   SwapStackParamList,
   typeof SWAP_ROUTES.SWAP_AMOUNT_SCREEN
 >;
-
-/**
- * Dismiss the keyboard and resolve only AFTER the keyboardDidHide event
- * fires, so a bottom sheet presented next animates in at its final height
- * instead of starting at the keyboard-occluded position and jumping down
- * (the UI glitch users see on tap of "Review swap").
- *
- * Resolves immediately when the keyboard isn't visible.
- */
-const waitForKeyboardDismiss = (): Promise<void> => {
-  if (!Keyboard.isVisible()) {
-    return Promise.resolve();
-  }
-  return new Promise<void>((resolve) => {
-    const sub = Keyboard.addListener("keyboardDidHide", () => {
-      sub.remove();
-      resolve();
-    });
-    Keyboard.dismiss();
-  });
-};
 
 const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   navigation,
