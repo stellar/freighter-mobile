@@ -7,6 +7,7 @@ import BottomSheet from "components/BottomSheet";
 import FeeBreakdownBottomSheet from "components/FeeBreakdownBottomSheet";
 import InformationBottomSheet from "components/InformationBottomSheet";
 import MuxedAddressWarningBottomSheet from "components/MuxedAddressWarningBottomSheet";
+import { PercentageButtons } from "components/PercentageButtons";
 import TransactionSettingsBottomSheet from "components/TransactionSettingsBottomSheet";
 import SecurityDetailBottomSheet from "components/blockaid/SecurityDetailBottomSheet";
 import { BaseLayout } from "components/layout/BaseLayout";
@@ -1025,28 +1026,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         </View>
 
         <View className="flex-1 items-center mt-[24px] gap-[24px]">
-          <View className="flex-row gap-[8px]">
-            <View className="flex-1">
-              <Button secondary xl onPress={() => handlePercentagePress(25)}>
-                {t("transactionAmountScreen.percentageButtons.twentyFive")}
-              </Button>
-            </View>
-            <View className="flex-1">
-              <Button secondary xl onPress={() => handlePercentagePress(50)}>
-                {t("transactionAmountScreen.percentageButtons.fifty")}
-              </Button>
-            </View>
-            <View className="flex-1">
-              <Button secondary xl onPress={() => handlePercentagePress(75)}>
-                {t("transactionAmountScreen.percentageButtons.seventyFive")}
-              </Button>
-            </View>
-            <View className="flex-1">
-              <Button secondary xl onPress={() => handlePercentagePress(100)}>
-                {t("transactionAmountScreen.percentageButtons.max")}
-              </Button>
-            </View>
-          </View>
+          <PercentageButtons onPress={handlePercentagePress} />
         </View>
       </View>
 
