@@ -1301,6 +1301,73 @@ describe("SwapAmountScreen", () => {
       );
     });
 
+    it("fires SWAP_DIRECTION_TOGGLED with previous source/destination codes + issuers when the toggle is pressed", () => {
+      setSwapStoreState({
+        sourceTokenId: "XLM",
+        sourceTokenSymbol: "XLM",
+        destinationToken: {
+          id: "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          tokenCode: "USDC",
+          issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          decimals: 7,
+          tokenType: "credit_alphanum4",
+          isNew: false,
+        },
+      } as Partial<SwapStoreState>);
+
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      fireEvent.press(getByTestId("swap-direction-toggle"));
+
+      expect(analytics.track).toHaveBeenCalledWith(
+        AnalyticsEvent.SWAP_DIRECTION_TOGGLED,
+        expect.objectContaining({
+          previousSourceTokenCode: "XLM",
+          previousSourceTokenIssuer: "",
+          previousDestinationTokenCode: "USDC",
+          previousDestinationTokenIssuer:
+            "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+        }),
+      );
+    });
+
+    it("fires SWAP_DIRECTION_TOGGLED capturing non-held destination from the store descriptor (regression: AQUA is absent from balanceItems)", () => {
+      // Non-held destination (AQUA absent from mockBalances) + cleared
+      // source. The destination payload must come from the store descriptor
+      // — destinationBalance is undefined for non-held tokens.
+      setSwapStoreState({
+        sourceTokenId: "",
+        sourceTokenSymbol: "",
+        destinationToken: {
+          id: "AQUA:GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+          tokenCode: "AQUA",
+          issuer: "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+          decimals: 7,
+          tokenType: "credit_alphanum4",
+          isNew: true,
+        },
+      } as Partial<SwapStoreState>);
+
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      fireEvent.press(getByTestId("swap-direction-toggle"));
+
+      expect(analytics.track).toHaveBeenCalledWith(
+        AnalyticsEvent.SWAP_DIRECTION_TOGGLED,
+        expect.objectContaining({
+          previousSourceTokenCode: "",
+          previousSourceTokenIssuer: "",
+          previousDestinationTokenCode: "AQUA",
+          previousDestinationTokenIssuer:
+            "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+        }),
+      );
+    });
+
     it("fires SWAP_TRENDING_TOKEN_TAPPED with tokenCode and position when a trending row is tapped", () => {
       const trendingFixture = [
         {

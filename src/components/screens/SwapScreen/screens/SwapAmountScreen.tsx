@@ -673,6 +673,24 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   // when it's held (there's a balance to sell from). Otherwise the sell
   // side resets to the "Select" empty state.
   const handleSwapDirection = useCallback(() => {
+    // Snapshot the pre-swap state so analytics reflects what the user
+    // toggled from. Source side reads from the held balance (source picker
+    // is holdsOnly); destination reads from the store descriptor so the
+    // payload captures non-held destinations too (those have no entry in
+    // balanceItems and would otherwise report "").
+    const previousSourceIssuer = sourceBalance
+      ? (descriptorFromBalance(sourceBalance).issuer ?? "")
+      : "";
+    const swapDirectionPayload = {
+      previousSourceTokenCode: sourceBalance?.tokenCode ?? "",
+      previousSourceTokenIssuer: previousSourceIssuer,
+      previousDestinationTokenCode: destinationTokenDescriptor?.tokenCode ?? "",
+      previousDestinationTokenIssuer: destinationTokenDescriptor?.issuer ?? "",
+    };
+    analytics.track(
+      AnalyticsEvent.SWAP_DIRECTION_TOGGLED,
+      swapDirectionPayload,
+    );
     // Sell slot gets the previous destination IF that destination is held.
     if (destinationBalance) {
       setSourceToken(
@@ -694,6 +712,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   }, [
     sourceBalance,
     destinationBalance,
+    destinationTokenDescriptor?.tokenCode,
+    destinationTokenDescriptor?.issuer,
     setSourceToken,
     setDestinationToken,
     setTokenAmount,
