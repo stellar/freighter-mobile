@@ -1298,6 +1298,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
             />
           }
         />
+        {/* 16px spacer above the CTA, mirroring Add-a-Token's Paste button. */}
+        <View className="h-4" />
         <Button
           tertiary
           onPress={handleMainButtonPress}
