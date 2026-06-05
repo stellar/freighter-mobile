@@ -21,7 +21,7 @@ export const VerifiedTokenInfoBottomSheet: React.FC<
           themeColor="lilac"
           withBackground
           square
-          size={24}
+          size={28}
         />
       }
       title={t("swapScreen.verifiedInfo.title")}

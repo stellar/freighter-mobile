@@ -63,8 +63,9 @@ const InformationBottomSheet = ({
         <TouchableOpacity onPress={onClose} className="absolute right-0">
           <Icon.X
             color={themeColors.foreground.secondary}
-            size={24}
+            size={22}
             circle
+            circleBorder={themeColors.background.tertiary}
             circleBackground={themeColors.background.tertiary}
           />
         </TouchableOpacity>
