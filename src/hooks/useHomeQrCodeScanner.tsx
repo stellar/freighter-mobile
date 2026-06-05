@@ -33,15 +33,9 @@ interface QRCodeScreenState {
   context: QRCodeSource.HOME_SCANNER;
 }
 
-interface QRCodeScreenConfig {
-  showHeaderRight: false;
-}
-
 interface QRCodeScreenReturn {
   handlers: QRCodeScreenHandlers;
   state: QRCodeScreenState;
-  config: QRCodeScreenConfig;
-  ManualInputOverlay?: undefined;
 }
 
 const PAIRING_SUCCESS_DELAY_MS = 1000;
@@ -78,16 +72,13 @@ export const useHomeQrCodeScanner = (
     searchResults,
     searchError,
     destinationAddress,
+    federationAddress,
     federationMemo,
     federationMemoType,
     resetSendRecipient,
   } = useSendRecipientStore();
   const { saveRecipientAddress, saveMemo, saveMemoType } =
     useTransactionSettingsStore();
-
-  const config: QRCodeScreenConfig = {
-    showHeaderRight: false,
-  };
 
   const state: QRCodeScreenState = {
     manualInput: "",
@@ -189,6 +180,11 @@ export const useHomeQrCodeScanner = (
       if (federationMemo) {
         saveMemo(federationMemo);
         saveMemoType(federationMemoType);
+      } else {
+        // Clear stale memos from previous sends to prevent old memo
+        // from being carried into new send when scanned address has none
+        saveMemo("");
+        saveMemoType("");
       }
       analytics.trackQRScanSuccess(QRCodeSource.HOME_SCANNER);
 
@@ -198,6 +194,9 @@ export const useHomeQrCodeScanner = (
         params: {
           tokenId: NATIVE_TOKEN_CODE,
           recipientAddress: destinationAddress,
+          // Pass federation address as recipientName so TransactionAmountScreen
+          // displays user*domain label instead of raw G address
+          recipientName: federationAddress || undefined,
         },
       });
 
@@ -210,6 +209,7 @@ export const useHomeQrCodeScanner = (
     isSearching,
     searchResults,
     destinationAddress,
+    federationAddress,
     federationMemo,
     federationMemoType,
     saveRecipientAddress,
@@ -254,6 +254,5 @@ export const useHomeQrCodeScanner = (
   return {
     handlers,
     state,
-    config,
   };
 };

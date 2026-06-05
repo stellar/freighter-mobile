@@ -140,10 +140,7 @@ export const ALL_ROUTES_OBJECT = [
   SWAP_ROUTES,
 ] as const;
 
-export type AccountQRCodeScreenParams = {
-  showNavigationAsCloseButton?: boolean;
-  transition?: ScreenTransition;
-};
+export type AccountQRCodeScreenParams = undefined;
 
 export type RootStackParamList = {
   [ROOT_NAVIGATOR_ROUTES.AUTH_STACK]: undefined;

@@ -48,8 +48,6 @@ jest.mock("hooks/useAppTranslation", () => () => ({
       "accountQRCodeScreen.helperText": "Helper Text",
       "accountQRCodeScreen.bottomSheet.title": "Bottom Sheet Title",
       "accountQRCodeScreen.bottomSheet.description": "Bottom Sheet Description",
-      "accountQRCodeScreen.tabs.receive": "Receive",
-      "accountQRCodeScreen.tabs.scan": "Scan",
     };
     return translations[key] || key;
   },
@@ -62,16 +60,14 @@ type AccountQRCodeScreenProps = NativeStackScreenProps<
 
 const mockGoBack = jest.fn();
 const mockSetOptions = jest.fn();
-const mockReplace = jest.fn();
 
 const mockNavigation = {
   goBack: mockGoBack,
   setOptions: mockSetOptions,
-  replace: mockReplace,
 } as unknown as AccountQRCodeScreenProps["navigation"];
 
 const mockRoute = {
-  params: { showNavigationAsCloseButton: false },
+  params: undefined,
   key: "account-qr",
   name: ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN,
 } as unknown as AccountQRCodeScreenProps["route"];
@@ -99,25 +95,5 @@ describe("AccountQRCodeScreen", () => {
     fireEvent.press(copyButton);
 
     expect(mockCopyToClipboard).toHaveBeenCalledWith(mockAccount.publicKey);
-  });
-
-  it("shows close button when showNavigationAsCloseButton is true", () => {
-    const routeWithCloseButton = {
-      ...mockRoute,
-      params: { showNavigationAsCloseButton: true },
-    } as unknown as AccountQRCodeScreenProps["route"];
-
-    renderWithProviders(
-      <AccountQRCodeScreen
-        navigation={mockNavigation}
-        route={routeWithCloseButton}
-      />,
-    );
-
-    expect(mockSetOptions).toHaveBeenCalledWith(
-      expect.objectContaining({
-        headerLeft: expect.any(Function),
-      }),
-    );
   });
 });

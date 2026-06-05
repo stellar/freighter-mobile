@@ -42,19 +42,9 @@ interface QRCodeScreenState {
   context: QRCodeSource.ADDRESS_INPUT;
 }
 
-interface QRCodeScreenConfig {
-  /** Whether to show header right button */
-  showHeaderRight: false;
-  /** Whether to use popToTop for closing */
-  usePopToTop: false;
-}
-
 interface QRCodeScreenReturn {
   handlers: QRCodeScreenHandlers;
   state: QRCodeScreenState;
-  config: QRCodeScreenConfig;
-  /** Manual input overlay component (not used for send flow) */
-  ManualInputOverlay?: undefined;
 }
 
 /**
@@ -89,12 +79,6 @@ export const useSendFlowQrCodeScanner = (
   } = useSendRecipientStore();
   const { saveRecipientAddress, selectedTokenId, selectedCollectibleDetails } =
     useTransactionSettingsStore();
-
-  // Configuration for Send Flow
-  const config: QRCodeScreenConfig = {
-    showHeaderRight: false,
-    usePopToTop: false,
-  };
 
   // State for Send Flow
   const state: QRCodeScreenState = {
@@ -238,6 +222,5 @@ export const useSendFlowQrCodeScanner = (
   return {
     handlers,
     state,
-    config,
   };
 };

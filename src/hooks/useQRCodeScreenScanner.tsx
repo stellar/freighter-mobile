@@ -1,9 +1,6 @@
 import { QRCodeSource } from "config/constants";
-import useAppTranslation from "hooks/useAppTranslation";
 import { useHomeQrCodeScanner } from "hooks/useHomeQrCodeScanner";
 import { useSendFlowQrCodeScanner } from "hooks/useSendFlowQrCodeScanner";
-import { useWalletConnectQrCodeScanner } from "hooks/useWalletConnectQrCodeScanner";
-import React from "react";
 
 interface QRCodeScreenHandlers {
   /** Function to handle QR code scanning */
@@ -12,16 +9,6 @@ interface QRCodeScreenHandlers {
   handleClose: () => void;
   /** Function to handle header left button press */
   handleHeaderLeft: () => void;
-  /** Function to handle header right button press (if applicable) */
-  handleHeaderRight?: () => void;
-  /** Function to handle manual input changes */
-  handleManualInputChange?: (text: string) => void;
-  /** Function to handle connect button press (if applicable) */
-  handleConnect?: () => void;
-  /** Function to handle clear input (if applicable) */
-  handleClearInput?: () => void;
-  /** Function to handle paste from clipboard (if applicable) */
-  handlePasteFromClipboard?: () => void;
 }
 
 interface QRCodeScreenState {
@@ -41,35 +28,9 @@ interface QRCodeScreenState {
   context: QRCodeSource;
 }
 
-interface QRCodeScreenConfig {
-  /** Whether to show header right button */
-  showHeaderRight: boolean;
-}
-
 interface QRCodeScreenReturn {
   handlers: QRCodeScreenHandlers;
   state: QRCodeScreenState;
-  config: QRCodeScreenConfig;
-  /** Manual input overlay component (only for WALLET_CONNECT context) */
-  ManualInputOverlay?: React.ComponentType<{
-    manualInput: string;
-    onManualInputChange: (text: string) => void;
-    onConnect: () => void;
-    onClearInput: () => void;
-    onPasteFromClipboard: () => void;
-    isConnecting: boolean;
-    error: string;
-    themeColors: {
-      text: {
-        primary: string;
-        secondary: string;
-      };
-      background: {
-        secondary: string;
-      };
-    };
-    t: ReturnType<typeof useAppTranslation>["t"];
-  }>;
 }
 
 /**
@@ -89,9 +50,6 @@ export const useQRCodeScreenScanner = (
   source: QRCodeSource,
 ): QRCodeScreenReturn => {
   // Call all hooks unconditionally (React rules) with enabled gates
-  const walletConnectResult = useWalletConnectQrCodeScanner(
-    source === QRCodeSource.WALLET_CONNECT,
-  );
   const sendFlowResult = useSendFlowQrCodeScanner(
     source === QRCodeSource.ADDRESS_INPUT,
   );
@@ -101,9 +59,6 @@ export const useQRCodeScreenScanner = (
 
   // Return the appropriate result based on source
   switch (source) {
-    case QRCodeSource.WALLET_CONNECT:
-      return walletConnectResult;
-
     case QRCodeSource.ADDRESS_INPUT:
       return sendFlowResult;
 

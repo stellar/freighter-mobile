@@ -66,13 +66,13 @@ type QRScannerProps = {
  *     console.log('Scanned QR code:', data);
  *     // Handle the scanned QR code data
  *   }}
- *   context="wallet_connect"
+ *   context="home_scanner"
  * />
  * ```
  */
 export const QRScanner: React.FC<QRScannerProps> = ({
   onRead,
-  context = QRCodeSource.WALLET_CONNECT,
+  context = QRCodeSource.HOME_SCANNER,
   title,
 }) => {
   const { hasPermission, requestPermission } = useCameraPermission();

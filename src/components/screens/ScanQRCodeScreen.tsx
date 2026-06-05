@@ -5,11 +5,9 @@ import { BaseLayout } from "components/layout/BaseLayout";
 import CameraNavigationHeader from "components/layout/CameraNavigationHeader";
 import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import Icon from "components/sds/Icon";
-import { getDefaultQRCodeSource, QRCodeSource } from "config/constants";
+import { getDefaultQRCodeSource } from "config/constants";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
-import useAppTranslation from "hooks/useAppTranslation";
 import { useClearTransitionParam } from "hooks/useClearTransitionParam";
-import useColors from "hooks/useColors";
 import { useQRCodeScreenScanner } from "hooks/useQRCodeScreenScanner";
 import React from "react";
 
@@ -23,7 +21,7 @@ type ScanQRCodeScreenProps = NativeStackScreenProps<
  *
  * A flexible QR code scanning screen that can be used for different purposes:
  * - "address_input": For scanning addresses in Send flow
- * - "wallet_connect": For scanning WalletConnect URIs
+ * - "home_scanner": For scanning both Stellar addresses and WalletConnect URIs from home
  *
  * The screen uses the useQRCodeScreenScanner hook to handle all logic based on the source parameter.
  *
@@ -34,29 +32,19 @@ const ScanQRCodeScreen: React.FC<ScanQRCodeScreenProps> = ({
   route,
   navigation,
 }) => {
-  const { t } = useAppTranslation();
-  const { themeColors } = useColors();
-
   useClearTransitionParam(navigation, route.params?.transition);
 
   // Get the source from route params, default to address_input
   const source = route.params?.source || getDefaultQRCodeSource();
 
   // Use the custom hook to get all handlers, state, and configuration
-  const { handlers, state, config, ManualInputOverlay } =
-    useQRCodeScreenScanner(source);
-
-  // Determine testID based on source
-  const screenTestID =
-    source === QRCodeSource.WALLET_CONNECT
-      ? "walletconnect-input-screen"
-      : "scan-qr-code-screen";
+  const { handlers, state } = useQRCodeScreenScanner(source);
 
   return (
     <BaseLayout
       useKeyboardAvoidingView
       insets={{ top: false }}
-      testID={screenTestID}
+      testID="scan-qr-code-screen"
     >
       <CameraNavigationHeader
         headerTitle={state.title}
@@ -66,35 +54,7 @@ const ScanQRCodeScreen: React.FC<ScanQRCodeScreenProps> = ({
             onPress={handlers.handleHeaderLeft}
           />
         )}
-        headerRight={
-          config.showHeaderRight && handlers.handleHeaderRight
-            ? () => (
-                <CustomHeaderButton
-                  position="right"
-                  icon={Icon.QrCode01}
-                  onPress={handlers.handleHeaderRight}
-                  testID="qr-scanner-manual-input-button"
-                />
-              )
-            : undefined
-        }
       />
-
-      {state.showManualInput &&
-        handlers.handleManualInputChange &&
-        ManualInputOverlay && (
-          <ManualInputOverlay
-            manualInput={state.manualInput}
-            onManualInputChange={handlers.handleManualInputChange}
-            onConnect={handlers.handleConnect!}
-            onClearInput={handlers.handleClearInput!}
-            onPasteFromClipboard={handlers.handlePasteFromClipboard!}
-            isConnecting={state.isConnecting}
-            error={state.error}
-            themeColors={themeColors}
-            t={t}
-          />
-        )}
 
       <QRScanner
         onRead={handlers.handleQRCodeScanned}

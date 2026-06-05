@@ -50,9 +50,7 @@ export const useHomeHeaders = ({ navigation }: UseHomeHeadersProps) => {
           android: "qr_code_scanner",
         }),
         onPress: () =>
-          navigation.navigate(ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN, {
-            showNavigationAsCloseButton: false,
-          }),
+          navigation.navigate(ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN),
       },
     ],
     [t, navigation],

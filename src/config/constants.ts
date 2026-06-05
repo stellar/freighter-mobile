@@ -411,8 +411,6 @@ export const FINGERPRINT_BIOMETRY_TYPES = [
 export enum QRCodeSource {
   /** For scanning addresses in Send flow */
   ADDRESS_INPUT = "address_input",
-  /** For scanning WalletConnect URIs */
-  WALLET_CONNECT = "wallet_connect",
   /** For scanning from the home screen (handles both addresses and WalletConnect) */
   HOME_SCANNER = "home_scanner",
   /** For scanning wallet import data */
