@@ -1,10 +1,10 @@
+import { QRCodeError } from "config/constants";
 import {
   isValidWalletConnectURI,
   isValidStellarAddressForQR,
   validateQRCodeWalletAddress,
   parseQRPayload,
 } from "helpers/qrValidation";
-import { QRCodeError } from "config/constants";
 import { isValidStellarAddress } from "helpers/stellar";
 
 // Mock the stellar helper to use the same mocks as the existing stellar tests

@@ -259,10 +259,6 @@ export const useHomeQrCodeScanner = (
   useEffect(() => () => clearQRData(), [clearQRData]);
 
   // Dev-mode manual WC input handlers
-  const handleHeaderRight = useCallback(() => {
-    // Toggle is not needed - in dev mode the overlay is always visible
-  }, []);
-
   const handleManualInputChange = useCallback(
     (text: string) => {
       setManualInput(text);
@@ -320,7 +316,6 @@ export const useHomeQrCodeScanner = (
     handleClose,
     handleHeaderLeft,
     ...__DEV__ && {
-      handleHeaderRight,
       handleManualInputChange,
       handleConnect,
       handleClearInput,

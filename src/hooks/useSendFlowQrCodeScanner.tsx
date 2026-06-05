@@ -77,9 +77,16 @@ export const useSendFlowQrCodeScanner = (
     searchError,
     destinationAddress,
     federationAddress,
+    federationMemo,
+    federationMemoType,
   } = useSendRecipientStore();
-  const { saveRecipientAddress, selectedTokenId, selectedCollectibleDetails } =
-    useTransactionSettingsStore();
+  const {
+    saveRecipientAddress,
+    saveMemo,
+    saveMemoType,
+    selectedTokenId,
+    selectedCollectibleDetails,
+  } = useTransactionSettingsStore();
 
   // State for Send Flow
   const state: QRCodeScreenState = {
@@ -155,6 +162,15 @@ export const useSendFlowQrCodeScanner = (
       // The send recipient store already has the correct address from the search
       saveRecipientAddress(destinationAddress);
 
+      // Save or clear federation memo so stale memos don't leak between sends
+      if (federationMemo) {
+        saveMemo(federationMemo);
+        saveMemoType(federationMemoType);
+      } else {
+        saveMemo("");
+        saveMemoType("");
+      }
+
       // Pop to main tab first to remove the QR scanner screen from the stack, then navigate to send payment stack
       navigation.popToTop();
 
@@ -192,7 +208,11 @@ export const useSendFlowQrCodeScanner = (
     searchResults,
     destinationAddress,
     federationAddress,
+    federationMemo,
+    federationMemoType,
     saveRecipientAddress,
+    saveMemo,
+    saveMemoType,
     selectedTokenId,
     selectedCollectibleDetails,
     navigation,
