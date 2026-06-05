@@ -215,6 +215,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
     } else {
       analytics.track(AnalyticsEvent.SWAP_DESTINATION_SELECTED, {
         tokenCode: balance.tokenCode ?? "",
+        tokenIssuer: descriptor.issuer ?? "",
         isNew: descriptor.isNew,
         source,
       });
@@ -239,6 +240,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
     const descriptor = descriptorFromSearchRecord(record);
     analytics.track(AnalyticsEvent.SWAP_DESTINATION_SELECTED, {
       tokenCode: record.tokenCode,
+      tokenIssuer: descriptor.issuer ?? "",
       isNew: descriptor.isNew,
       source,
     });

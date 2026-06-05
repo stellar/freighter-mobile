@@ -311,7 +311,10 @@ describe("TrendingTokenDetailBottomSheet", () => {
       fireEvent.press(getByText(/Buy AQUA/i));
       expect(analytics.track).toHaveBeenCalledWith(
         AnalyticsEvent.SWAP_TRENDING_BUY_PRESSED,
-        { tokenCode: "AQUA" },
+        expect.objectContaining({
+          tokenCode: "AQUA",
+          tokenIssuer: mockRecord.issuer,
+        }),
       );
     });
 

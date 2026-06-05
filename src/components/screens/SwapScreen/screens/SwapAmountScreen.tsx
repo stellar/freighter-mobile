@@ -1243,6 +1243,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           onPress={() => {
             analytics.track(AnalyticsEvent.SWAP_TRENDING_TOKEN_TAPPED, {
               tokenCode: item.tokenCode,
+              tokenIssuer: item.issuer ?? "",
               position: index,
             });
             // Dismiss the keyboard so the trending detail sheet has full

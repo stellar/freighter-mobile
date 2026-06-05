@@ -289,7 +289,10 @@ describe("useSwapTransaction", () => {
 
       expect(mockTrack).toHaveBeenCalledWith(
         AnalyticsEvent.SWAP_TRUSTLINE_ADDED,
-        { tokenCode: "USDC" },
+        expect.objectContaining({
+          tokenCode: "USDC",
+          tokenIssuer: expect.any(String),
+        }),
       );
     });
 

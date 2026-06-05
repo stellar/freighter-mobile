@@ -190,6 +190,7 @@ export const useSwapTransaction = ({
       if (swappedDestination?.isNew) {
         analytics.track(AnalyticsEvent.SWAP_TRUSTLINE_ADDED, {
           tokenCode: destinationBalance.tokenCode,
+          tokenIssuer: swappedDestination.issuer ?? "",
         });
       }
     } catch (error) {

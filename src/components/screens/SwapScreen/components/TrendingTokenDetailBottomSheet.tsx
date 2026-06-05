@@ -60,6 +60,7 @@ export const TrendingTokenDetailBottomSheet: React.FC<
   const handleBuy = () => {
     analytics.track(AnalyticsEvent.SWAP_TRENDING_BUY_PRESSED, {
       tokenCode: record.tokenCode,
+      tokenIssuer: record.issuer ?? "",
     });
     const heldMatch = balanceItems.find(
       (b) => b.id === `${record.tokenCode}:${record.issuer}`,
@@ -72,6 +73,7 @@ export const TrendingTokenDetailBottomSheet: React.FC<
     }
     analytics.track(AnalyticsEvent.SWAP_DESTINATION_SELECTED, {
       tokenCode: record.tokenCode,
+      tokenIssuer: descriptor.issuer ?? "",
       isNew: descriptor.isNew,
       source: "trending",
     });

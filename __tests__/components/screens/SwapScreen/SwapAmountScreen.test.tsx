@@ -1344,7 +1344,11 @@ describe("SwapAmountScreen", () => {
 
       expect(analytics.track).toHaveBeenCalledWith(
         AnalyticsEvent.SWAP_TRENDING_TOKEN_TAPPED,
-        { tokenCode: "AQUA", position: 0 },
+        expect.objectContaining({
+          tokenCode: "AQUA",
+          position: 0,
+          tokenIssuer: expect.any(String),
+        }),
       );
     });
   });
