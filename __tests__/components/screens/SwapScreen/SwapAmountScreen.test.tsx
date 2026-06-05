@@ -1218,9 +1218,11 @@ describe("SwapAmountScreen", () => {
       expect(setDestinationTokenSpy).toHaveBeenCalledTimes(1);
     });
 
-    it("swap-direction toggle bails out when destination is non-held", () => {
-      // AQUA is not in mockBalances → destinationBalance is undefined → the
-      // handler should early-return without calling either setter.
+    it("swap-direction toggle resets sell to 'Select' when destination is non-held", () => {
+      // AQUA is not in mockBalances → destinationBalance is undefined. The
+      // new contract: the held source still moves DOWN to the receive slot,
+      // and the sell slot resets to the empty "Select" state (no balance to
+      // sell from the non-held token).
       const setSourceTokenSpy = jest.fn();
       const setDestinationTokenSpy = jest.fn();
       setSwapStoreState({
@@ -1238,10 +1240,6 @@ describe("SwapAmountScreen", () => {
         setDestinationToken: setDestinationTokenSpy,
       } as Partial<SwapStoreState>);
 
-      // The init-effect bootstrap from swapFromTokenId/swapFromTokenSymbol
-      // calls setSourceToken once on mount — we only care about whether the
-      // direction toggle adds a second call. Tap, then assert no toggle-driven
-      // call landed.
       const { getByTestId } = renderWithProviders(
         <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
       );
@@ -1250,8 +1248,14 @@ describe("SwapAmountScreen", () => {
 
       fireEvent.press(getByTestId("swap-direction-toggle"));
 
-      expect(setSourceTokenSpy).not.toHaveBeenCalled();
-      expect(setDestinationTokenSpy).not.toHaveBeenCalled();
+      // Sell slot cleared (Select state).
+      expect(setSourceTokenSpy).toHaveBeenCalledWith("", "");
+      // Receive slot gets the descriptor of the held source (XLM).
+      expect(setDestinationTokenSpy).toHaveBeenCalledTimes(1);
+      const [descriptor] = setDestinationTokenSpy.mock.calls[0];
+      expect(descriptor).toEqual(
+        expect.objectContaining({ tokenCode: "XLM", isNew: false }),
+      );
     });
   });
 

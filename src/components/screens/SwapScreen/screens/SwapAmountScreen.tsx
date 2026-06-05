@@ -668,17 +668,28 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   ]);
 
   // Swap source ↔ destination via the chevron-down button between the cards.
-  // Only sensible when the destination is held — we can't make a non-held
-  // token the source, since there's no balance to sell.
-  const canSwapDirection = !!sourceBalance && !!destinationBalance;
+  // Always enabled: the held source token can always be moved down to the
+  // receive slot. The receive-side token only moves UP to the sell slot
+  // when it's held (there's a balance to sell from). Otherwise the sell
+  // side resets to the "Select" empty state.
   const handleSwapDirection = useCallback(() => {
-    if (!sourceBalance || !destinationBalance) return;
-    const nextDestination = descriptorFromBalance(sourceBalance);
-    setSourceToken(
-      destinationBalance.id,
-      destinationBalance.tokenCode ?? destinationBalance.displayName ?? "",
-    );
-    setDestinationToken(nextDestination);
+    // Sell slot gets the previous destination IF that destination is held.
+    if (destinationBalance) {
+      setSourceToken(
+        destinationBalance.id,
+        destinationBalance.tokenCode ?? destinationBalance.displayName ?? "",
+      );
+    } else {
+      // Previous destination is non-held — clear sell so the chip renders
+      // its "Select" empty state. The picker stays tappable.
+      setSourceToken("", "");
+    }
+    // Receive slot gets the previous source's descriptor (if there was one).
+    if (sourceBalance) {
+      setDestinationToken(descriptorFromBalance(sourceBalance));
+    } else {
+      setDestinationToken(null);
+    }
     setTokenAmount("0");
   }, [
     sourceBalance,
@@ -1152,16 +1163,15 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         secondaryAmountText={sellSmallText}
       />
 
-      {/* Swaps source ↔ destination. Disabled when destination
-          isn't held — there's no balance to make it the source. */}
+      {/* Swaps source ↔ destination. Always enabled — when the previous
+          destination is non-held the sell side resets to "Select" rather
+          than being prevented. */}
       <View className="items-center my-[-14px] z-10" pointerEvents="box-none">
         <TouchableOpacity
           testID="swap-direction-toggle"
           onPress={handleSwapDirection}
-          disabled={!canSwapDirection}
           hitSlop={10}
           className="w-[40px] h-[40px] rounded-full items-center justify-center bg-background-secondary"
-          style={{ opacity: canSwapDirection ? 1 : 0.4 }}
         >
           <Icon.ChevronDown size={16} color={themeColors.text.primary} />
         </TouchableOpacity>
