@@ -89,11 +89,11 @@ const CardShell: React.FC<{
   testID?: string;
   children: React.ReactNode;
 }> = ({ testID, children }) => (
-  // pt-5 / pb-4 (20/16) win over the earlier py-[12px] / max-xs:py-[8px], so
-  // those were dead — only the asymmetric vertical pair remains.
+  // 12px symmetric vertical padding matches Figma; collapses to 8px on xs
+  // screens. (The previous `pt-5 pb-4` made the card 12px taller than spec.)
   <View
     testID={testID}
-    className="rounded-[12px] gap-[12px] px-[16px] max-xs:px-[12px] bg-background-tertiary w-full pt-5 pb-4"
+    className="rounded-[12px] gap-[12px] py-[12px] max-xs:py-[8px] px-[16px] max-xs:px-[12px] bg-background-tertiary w-full"
   >
     {children}
   </View>
