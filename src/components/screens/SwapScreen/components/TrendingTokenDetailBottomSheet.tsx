@@ -5,7 +5,6 @@ import {
   descriptorFromBalance,
   descriptorFromSearchRecord,
 } from "components/screens/SwapScreen/helpers";
-import { Banner } from "components/sds/Banner";
 import { Button } from "components/sds/Button";
 import { Display, Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
@@ -24,7 +23,6 @@ import useColors from "hooks/useColors";
 import React from "react";
 import { View } from "react-native";
 import { analytics } from "services/analytics";
-import { SecurityLevel } from "services/blockaid/constants";
 
 export interface TrendingTokenDetailBottomSheetProps {
   record: FormattedSearchTokenRecord;
@@ -194,24 +192,10 @@ export const TrendingTokenDetailBottomSheet: React.FC<
         ) : null}
       </View>
 
-      {/* Blockaid warning banner — surfaces MALICIOUS / SUSPICIOUS before the
-          user taps Buy so they can't slip through to the review sheet without
-          seeing the risk. UNABLE_TO_SCAN intentionally doesn't show a banner
-          here because every non-mainnet path lands there and the picker
-          already shows the icon's lack-of-badge for that case. */}
-      {record.securityLevel === SecurityLevel.MALICIOUS && (
-        <View testID="trending-detail-malicious-banner">
-          <Banner variant="error" text={t("addTokenScreen.maliciousToken")} />
-        </View>
-      )}
-      {record.securityLevel === SecurityLevel.SUSPICIOUS && (
-        <View testID="trending-detail-suspicious-banner">
-          <Banner
-            variant="warning"
-            text={t("addTokenScreen.suspiciousToken")}
-          />
-        </View>
-      )}
+      {/* Note: no inline security banner here. The Blockaid scan still
+          surfaces MALICIOUS / SUSPICIOUS in the swap review sheet (a full
+          transaction-level rescan runs there); this sheet just keeps the
+          icon's small badge overlay as a hint via TokenIconWithBadge above. */}
 
       {/* Buy button */}
       <Button onPress={handleBuy} tertiary>
