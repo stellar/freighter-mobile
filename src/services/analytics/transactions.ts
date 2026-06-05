@@ -116,10 +116,17 @@ export const trackTransactionError = (data: TransactionErrorEvent): void => {
     errorCode: data.errorCode,
     operationType: data.operationType,
     isSwap: data.isSwap,
-    sourceAsset: data.sourceToken,
-    destinationAsset: data.destToken,
-    sourceAmount: data.sourceAmount,
-    destinationAmount: data.destAmount,
+    // Swap-specific fields are gated so SEND_PAYMENT_FAIL events from
+    // non-swap callers don't get polluted with undefined sourceAsset /
+    // destinationAsset / sourceAmount / destinationAmount keys.
+    ...(data.isSwap
+      ? {
+          sourceAsset: data.sourceToken,
+          destinationAsset: data.destToken,
+          sourceAmount: data.sourceAmount,
+          destinationAmount: data.destAmount,
+        }
+      : {}),
   });
 };
 

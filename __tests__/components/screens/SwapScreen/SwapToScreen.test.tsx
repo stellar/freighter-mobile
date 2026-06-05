@@ -612,5 +612,36 @@ describe("SwapToScreen", () => {
         expect.objectContaining({ source: "search", tokenCode: "AQUA" }),
       );
     });
+
+    it("fires SWAP_SOURCE_SELECTED (not SWAP_DESTINATION_SELECTED) with source:balances when a held token is tapped in SOURCE mode", () => {
+      (
+        useSwapTokenLookupModule.useSwapTokenLookup as jest.Mock
+      ).mockReturnValue({
+        ...defaultLookupResult,
+        yourTokens: [mockHeldBalance],
+        popularTokens: [],
+      });
+
+      const { getByText } = renderWithProviders(
+        <SwapToScreen {...makeProps(SWAP_SELECTION_TYPES.SOURCE)} />,
+      );
+
+      fireEvent.press(getByText("USDC"));
+
+      expect(analytics.track).toHaveBeenCalledWith(
+        AnalyticsEvent.SWAP_SOURCE_SELECTED,
+        expect.objectContaining({
+          source: "balances",
+          tokenCode: "USDC",
+          tokenIssuer:
+            "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+        }),
+      );
+      // Negative: SOURCE-mode press must NOT fire the destination event.
+      expect(analytics.track).not.toHaveBeenCalledWith(
+        AnalyticsEvent.SWAP_DESTINATION_SELECTED,
+        expect.anything(),
+      );
+    });
   });
 });

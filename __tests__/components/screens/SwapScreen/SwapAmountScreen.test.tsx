@@ -1301,6 +1301,33 @@ describe("SwapAmountScreen", () => {
       );
     });
 
+    it("fires SWAP_FROM_PICKER_OPENED with source:dropdown when the Sell pill is tapped", () => {
+      // Held source (XLM) → "swap-sell-pill" is rendered; press routes
+      // through navigateToSelectSourceTokenScreen which is the only call
+      // site for the source-side picker event.
+      setSwapStoreState({
+        sourceTokenId: "XLM",
+        sourceTokenSymbol: "XLM",
+      } as Partial<SwapStoreState>);
+
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      fireEvent.press(getByTestId("swap-sell-pill"));
+
+      expect(analytics.track).toHaveBeenCalledWith(
+        AnalyticsEvent.SWAP_FROM_PICKER_OPENED,
+        { source: "dropdown" },
+      );
+      // Negative assertion: source picker MUST NOT reuse the destination
+      // event after the caa4aeab split.
+      expect(analytics.track).not.toHaveBeenCalledWith(
+        AnalyticsEvent.SWAP_TO_PICKER_OPENED,
+        { source: "dropdown" },
+      );
+    });
+
     it("fires SWAP_DIRECTION_TOGGLED with previous source/destination codes + issuers when the toggle is pressed", () => {
       setSwapStoreState({
         sourceTokenId: "XLM",
@@ -1329,6 +1356,43 @@ describe("SwapAmountScreen", () => {
           previousDestinationTokenCode: "USDC",
           previousDestinationTokenIssuer:
             "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+        }),
+      );
+    });
+
+    it("fires SWAP_DIRECTION_TOGGLED with a real source issuer when the source is a held classic asset (exercises descriptorFromBalance lookup)", () => {
+      // Held USDC source — exercises the descriptorFromBalance(sourceBalance)
+      // ?? "" branch with a non-empty issuer string. The two sibling tests
+      // both pin previousSourceTokenIssuer: "" (XLM / cleared), so without
+      // this case a regression that flattens the issuer to "" goes unnoticed.
+      const HELD_USDC_ID =
+        "USDC:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH";
+      setSwapStoreState({
+        sourceTokenId: HELD_USDC_ID,
+        sourceTokenSymbol: "USDC",
+        destinationToken: {
+          id: "XLM",
+          tokenCode: "XLM",
+          decimals: 7,
+          tokenType: "native",
+          isNew: false,
+        },
+      } as Partial<SwapStoreState>);
+
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      fireEvent.press(getByTestId("swap-direction-toggle"));
+
+      expect(analytics.track).toHaveBeenCalledWith(
+        AnalyticsEvent.SWAP_DIRECTION_TOGGLED,
+        expect.objectContaining({
+          previousSourceTokenCode: "USDC",
+          previousSourceTokenIssuer:
+            "GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+          previousDestinationTokenCode: "XLM",
+          previousDestinationTokenIssuer: "",
         }),
       );
     });

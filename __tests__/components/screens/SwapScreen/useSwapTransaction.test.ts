@@ -73,13 +73,17 @@ const mockNavigation = {
 } as unknown as Parameters<typeof useSwapTransaction>[0]["navigation"];
 
 const baseParams: Parameters<typeof useSwapTransaction>[0] = {
+  // Source and destination amounts use distinct values so payload
+  // assertions can detect a silent source/dest swap regression — using
+  // "1" for both would let `sourceAmount` and `destAmount` be transposed
+  // without any test failing.
   sourceAmount: "1",
   sourceBalance: { tokenCode: "XLM" } as never,
   destinationBalance: { tokenCode: "USDC" } as never,
   pathResult: {
     path: [],
-    destinationAmount: "1",
-    destinationAmountMin: "0.99",
+    destinationAmount: "2.5",
+    destinationAmountMin: "2.4",
   } as never,
   account: {
     publicKey: "GA...",
@@ -125,7 +129,7 @@ describe("useSwapTransaction", () => {
           sourceToken: "XLM",
           destToken: "USDC",
           sourceAmount: "1",
-          destAmount: "1",
+          destAmount: "2.5",
         }),
       );
       expect(mockShowToast).toHaveBeenCalledWith(
@@ -147,7 +151,18 @@ describe("useSwapTransaction", () => {
       });
 
       expect(didReject).toBe(false);
-      expect(mockTrackTransactionError).toHaveBeenCalled();
+      // Failure-path analytics still carry the swap context on a synchronous
+      // throw — a regression that strips the payload on this branch alone
+      // would have gone unnoticed without an explicit assertion.
+      expect(mockTrackTransactionError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          isSwap: true,
+          sourceToken: "XLM",
+          destToken: "USDC",
+          sourceAmount: "1",
+          destAmount: "2.5",
+        }),
+      );
       expect(mockShowToast).toHaveBeenCalled();
     });
 
@@ -164,6 +179,15 @@ describe("useSwapTransaction", () => {
       });
 
       expect(didReject).toBe(false);
+      expect(mockTrackTransactionError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          isSwap: true,
+          sourceToken: "XLM",
+          destToken: "USDC",
+          sourceAmount: "1",
+          destAmount: "2.5",
+        }),
+      );
       expect(mockShowToast).toHaveBeenCalled();
     });
 
@@ -182,7 +206,7 @@ describe("useSwapTransaction", () => {
           sourceToken: "XLM",
           destToken: "USDC",
           sourceAmount: "1",
-          destAmount: "1",
+          destAmount: "2.5",
           isSwap: true,
         }),
       );
