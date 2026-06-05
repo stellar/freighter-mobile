@@ -1,11 +1,9 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
-import { Button } from "components/sds/Button";
+import InformationBottomSheet from "components/InformationBottomSheet";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import useAppTranslation from "hooks/useAppTranslation";
-import useColors from "hooks/useColors";
 import React from "react";
-import { TouchableOpacity, View } from "react-native";
 
 export interface TrustlineInfoBottomSheetProps {
   bottomSheetModalRef?: React.RefObject<BottomSheetModal | null>;
@@ -20,7 +18,6 @@ export const TrustlineInfoBottomSheet: React.FC<
   TrustlineInfoBottomSheetProps
 > = ({ bottomSheetModalRef, tokenCode }) => {
   const { t } = useAppTranslation();
-  const { themeColors } = useColors();
 
   const handleConfirm = () => {
     bottomSheetModalRef?.current?.dismiss();
@@ -29,31 +26,34 @@ export const TrustlineInfoBottomSheet: React.FC<
   const interpolation = { tokenCode: tokenCode ?? "" };
 
   return (
-    <View className="gap-[16px]">
-      <View className="flex-row items-center justify-between">
-        <Icon.PlusCircle themeColor="lilac" withBackground square size={24} />
-        <TouchableOpacity
-          onPress={handleConfirm}
-          className="size-10 items-center justify-center rounded-full bg-gray-3"
-          testID="trustline-info-close"
-        >
-          <Icon.X color={themeColors.gray[9]} />
-        </TouchableOpacity>
-      </View>
-      <Text xl medium>
-        {t("swapScreen.trustlineInfo.title", interpolation)}
-      </Text>
-      <Text md regular secondary>
-        {t("swapScreen.trustlineInfo.bodyPrefix", interpolation)}
-        <Text md medium>
-          {t("swapScreen.trustlineInfo.bodyEmphasis")}
-        </Text>
-        {t("swapScreen.trustlineInfo.bodySuffix", interpolation)}
-      </Text>
-      <Button onPress={handleConfirm} tertiary>
-        {t("swapScreen.trustlineInfo.confirm")}
-      </Button>
-    </View>
+    <InformationBottomSheet
+      onClose={handleConfirm}
+      onConfirm={handleConfirm}
+      confirmLabel={t("swapScreen.trustlineInfo.confirm")}
+      closeTestID="trustline-info-close"
+      headerElement={
+        <Icon.PlusCircle themeColor="lilac" withBackground square size={28} />
+      }
+      title={t("swapScreen.trustlineInfo.title", interpolation)}
+      texts={[
+        {
+          key: "body",
+          // Inline emphasis in the middle of the paragraph — passed as
+          // ReactNode so the medium-weight span survives. Nested <Text>
+          // inherits the parent's `md regular secondary` styling and
+          // overrides only the weight on the emphasized span.
+          value: (
+            <>
+              {t("swapScreen.trustlineInfo.bodyPrefix", interpolation)}
+              <Text md medium>
+                {t("swapScreen.trustlineInfo.bodyEmphasis")}
+              </Text>
+              {t("swapScreen.trustlineInfo.bodySuffix", interpolation)}
+            </>
+          ),
+        },
+      ]}
+    />
   );
 };
 
