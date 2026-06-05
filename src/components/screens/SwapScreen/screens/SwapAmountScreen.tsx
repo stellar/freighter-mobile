@@ -1111,13 +1111,15 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     ? `${destinationAmountToken} ${destinationTokenLabel}`.trim()
     : destinationFiatString;
   // formatBalanceAmount returns "<amount> <code>" already — don't append the
-  // code a second time (caused the "123.45 USDC USDC" double-code bug).
+  // code a second time (caused the "123.45 USDC USDC" double-code bug). The
+  // trailing " available" string matches the Send card's wording for
+  // cross-flow consistency.
   const sourceBalanceRight = sourceBalance
-    ? formatBalanceAmount(
+    ? `${formatBalanceAmount(
         sourceBalance,
         sourceBalance.tokenCode ?? sourceTokenSymbol,
         spendableAmount ?? undefined,
-      )
+      )} ${t("common.available")}`
     : "";
   const listHeader = (
     <View>
