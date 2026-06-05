@@ -10,10 +10,13 @@ import React, { useCallback, useEffect, useRef } from "react";
 import { Keyboard, TextInput, TouchableOpacity, View } from "react-native";
 import { SecurityLevel } from "services/blockaid/constants";
 
+// Balance text size curve. Figma specs 14/20 (Text sm) for the common case;
+// the longer-string branches keep the lineHeight at 20 (see HeaderRow) and
+// shrink the font so the line still fits the 20px band on narrow widths.
 const AVAILABLE_BALANCE_FONT_SIZES = [
-  { maxLen: 28, size: fsValue(16) },
-  { maxLen: 42, size: fsValue(14) },
-  { maxLen: Infinity, size: fsValue(12) },
+  { maxLen: 28, size: fsValue(14) },
+  { maxLen: 42, size: fsValue(12) },
+  { maxLen: Infinity, size: fsValue(10) },
 ] as const;
 
 const getAvailableBalanceFontSize = (text: string | null | undefined): number =>
@@ -22,13 +25,21 @@ const getAvailableBalanceFontSize = (text: string | null | undefined): number =>
   )!.size;
 
 // Dynamic amount font: shrink as the displayed amount string grows so that
-// very long numbers don't overflow the row. Mirrors the sizing curve Send
-// used before extraction.
+// very long numbers don't overflow the row. Figma specs the common case at
+// 24/32 (Display/XS). Long-amount branches step down to keep the row in
+// its 32px band.
 const getAmountFontSize = (textLength: number): number => {
-  if (textLength <= 9) return fsValue(32);
-  if (textLength <= 15) return fsValue(24);
-  return fsValue(18);
+  if (textLength <= 9) return fsValue(24);
+  if (textLength <= 15) return fsValue(20);
+  return fsValue(16);
 };
+
+// Amount letter-spacing matches Figma's Display/XS spec (-0.04em on a 24px
+// font → -0.96px).
+const AMOUNT_LETTER_SPACING = -0.96;
+// Amount row line-height. Figma's Display/XS line-height is 32, same as the
+// row band (no extra vertical padding around the digits).
+const AMOUNT_LINE_HEIGHT = 32;
 
 type AmountCardCommonProps = {
   label: string;
@@ -103,8 +114,8 @@ const HeaderRow: React.FC<{
   label: string;
   availableBalanceText?: string | null;
 }> = ({ label, availableBalanceText }) => (
-  <View className="flex-row items-end justify-between">
-    <Text md secondary style={{ lineHeight: pxValue(16) }}>
+  <View className="flex-row items-center justify-between gap-[12px]">
+    <Text sm medium secondary style={{ lineHeight: pxValue(20) }}>
       {label}
     </Text>
     {!!availableBalanceText && (
@@ -115,10 +126,11 @@ const HeaderRow: React.FC<{
         textAlign="right"
         style={{
           fontSize: getAvailableBalanceFontSize(availableBalanceText),
-          lineHeight: getAvailableBalanceFontSize(availableBalanceText),
+          // Figma keeps the balance line in a 20px band regardless of how
+          // small the font has to shrink — line-height is fixed, font-size
+          // is the only thing that scales.
+          lineHeight: pxValue(20),
           flexShrink: 1,
-          marginLeft: pxValue(8),
-          marginRight: pxValue(4),
         }}
       >
         {availableBalanceText}
@@ -146,27 +158,27 @@ const PickerChip: React.FC<{
   return (
     <TouchableOpacity
       onPress={onPress}
-      className="flex-row items-center gap-[6px] ml-[12px] rounded-full bg-background-primary px-[12px] py-[8px]"
+      className="flex-row items-center gap-[4px] rounded-full bg-background-secondary px-[10px] py-[4px]"
       testID={testID}
     >
       {token ? (
         <TokenIconWithBadge
           token={token}
-          size="md"
+          size="sm"
           securityLevel={securityLevel}
         />
       ) : (
         // Empty-state affordance: a Plus-in-circle to signal "tap to add a
         // token". Matches the legacy Swap empty-state pill so the user keeps
         // that visual cue when no token has been picked yet.
-        <View className="w-[20px] h-[20px] rounded-full items-center justify-center bg-gray-3">
+        <View className="w-[16px] h-[16px] rounded-full items-center justify-center bg-gray-3">
           <Icon.Plus size={12} themeColor="gray" />
         </View>
       )}
       <Text md medium>
         {label ?? fallbackLabel ?? ""}
       </Text>
-      <Icon.ChevronDown size={18} color={themeColors.text.primary} />
+      <Icon.ChevronDown size={16} color={themeColors.text.primary} />
     </TouchableOpacity>
   );
 };
@@ -258,6 +270,8 @@ const EditableAmountCard: React.FC<AmountCardEditableProps> = ({
               <Display
                 style={{
                   fontSize: amountFontSize,
+                  lineHeight: pxValue(AMOUNT_LINE_HEIGHT),
+                  letterSpacing: AMOUNT_LETTER_SPACING,
                   fontWeight: "500",
                   color: isEmpty
                     ? themeColors.text.secondary
@@ -284,6 +298,8 @@ const EditableAmountCard: React.FC<AmountCardEditableProps> = ({
               style={{
                 flex: 1,
                 fontSize: amountFontSize,
+                lineHeight: pxValue(AMOUNT_LINE_HEIGHT),
+                letterSpacing: AMOUNT_LETTER_SPACING,
                 fontWeight: "500",
                 color: themeColors.text.primary,
                 padding: 0,
@@ -303,8 +319,14 @@ const EditableAmountCard: React.FC<AmountCardEditableProps> = ({
       </View>
 
       {hasUsdPrice && (
-        <View className="flex-row items-center gap-[4px] mb-1">
-          <Text sm medium secondary numberOfLines={1} style={{ flexShrink: 1 }}>
+        <View className="flex-row items-center gap-[4px]">
+          <Text
+            sm
+            medium
+            secondary
+            numberOfLines={1}
+            style={{ flexShrink: 1, lineHeight: pxValue(20) }}
+          >
             {secondaryAmountText ?? ""}
           </Text>
           <TouchableOpacity
@@ -348,6 +370,8 @@ const ReadOnlyAmountCard: React.FC<AmountCardReadOnlyProps> = ({
           style={{
             flex: 1,
             fontSize: amountFontSize,
+            lineHeight: pxValue(AMOUNT_LINE_HEIGHT),
+            letterSpacing: AMOUNT_LETTER_SPACING,
             fontWeight: "500",
             color: placeholderActive
               ? themeColors.text.secondary
@@ -370,8 +394,14 @@ const ReadOnlyAmountCard: React.FC<AmountCardReadOnlyProps> = ({
       </View>
 
       {!!secondaryAmount && (
-        <View className="flex-row items-center mb-1">
-          <Text sm medium secondary numberOfLines={1} style={{ flexShrink: 1 }}>
+        <View className="flex-row items-center">
+          <Text
+            sm
+            medium
+            secondary
+            numberOfLines={1}
+            style={{ flexShrink: 1, lineHeight: pxValue(20) }}
+          >
             {secondaryAmount}
           </Text>
         </View>
