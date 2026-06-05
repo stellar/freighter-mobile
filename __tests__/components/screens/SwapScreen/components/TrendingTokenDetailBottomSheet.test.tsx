@@ -12,11 +12,17 @@ jest.mock("hooks/useColors", () => () => ({
   themeColors: {
     status: { success: "#00FF00" },
     text: { secondary: "#888888" },
+    foreground: { primary: "#707070" },
   },
 }));
 
 jest.mock("components/TokenIconWithBadge", () => ({
   TokenIconWithBadge: () => null,
+}));
+
+const mockCopyToClipboard = jest.fn();
+jest.mock("hooks/useClipboard", () => ({
+  useClipboard: () => ({ copyToClipboard: mockCopyToClipboard }),
 }));
 
 const mockRecord = {
@@ -228,6 +234,47 @@ describe("TrendingTokenDetailBottomSheet", () => {
 
     expect(setSourceSpy).not.toHaveBeenCalled();
     expect(setDestSpy).toHaveBeenCalled();
+  });
+
+  describe("copy issuer key", () => {
+    beforeEach(() => {
+      mockCopyToClipboard.mockClear();
+    });
+
+    it("copies the FULL issuer key (not the truncated label) when the issuer row is tapped", () => {
+      const { getByTestId } = renderWithProviders(
+        <TrendingTokenDetailBottomSheet
+          record={mockRecord}
+          priceInfo={{}}
+          balanceItems={[]}
+        />,
+      );
+      fireEvent.press(getByTestId("trending-detail-copy-issuer"));
+      expect(mockCopyToClipboard).toHaveBeenCalledTimes(1);
+      expect(mockCopyToClipboard).toHaveBeenCalledWith(
+        mockRecord.issuer,
+        expect.objectContaining({ notificationMessage: expect.any(String) }),
+      );
+    });
+
+    it("does NOT render a copy button when the record is native XLM (no issuer key to copy)", () => {
+      const xlmRecord = {
+        tokenCode: "XLM",
+        issuer: "",
+        isNative: true,
+        domain: "",
+        tokenType: undefined,
+        hasTrustline: true,
+      } as any;
+      const { queryByTestId } = renderWithProviders(
+        <TrendingTokenDetailBottomSheet
+          record={xlmRecord}
+          priceInfo={{}}
+          balanceItems={[]}
+        />,
+      );
+      expect(queryByTestId("trending-detail-copy-issuer")).toBeNull();
+    });
   });
 
   describe("Blockaid security signal", () => {

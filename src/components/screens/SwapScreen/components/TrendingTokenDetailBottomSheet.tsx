@@ -6,6 +6,7 @@ import {
   descriptorFromSearchRecord,
 } from "components/screens/SwapScreen/helpers";
 import { Button } from "components/sds/Button";
+import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { POSITIVE_PRICE_CHANGE_THRESHOLD } from "config/constants";
@@ -19,9 +20,10 @@ import { useSwapStore } from "ducks/swap";
 import { formatFiatAmount, formatPercentageAmount } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import React from "react";
-import { View } from "react-native";
+import { TouchableOpacity, View } from "react-native";
 import { analytics } from "services/analytics";
 
 export interface TrendingTokenDetailBottomSheetProps {
@@ -46,6 +48,7 @@ export const TrendingTokenDetailBottomSheet: React.FC<
 > = ({ record, priceInfo, balanceItems, bottomSheetModalRef }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
+  const { copyToClipboard } = useClipboard();
   const { setDestinationToken, setSourceToken, sourceTokenId } = useSwapStore();
 
   const token: NonNativeToken = {
@@ -159,14 +162,35 @@ export const TrendingTokenDetailBottomSheet: React.FC<
 
       {/* Info card */}
       <View className="bg-background-tertiary rounded-[16px] px-[16px] py-[12px] flex-col gap-[12px] w-full">
-        {/* Row: Issuer */}
+        {/* Row: Issuer.
+            Native XLM has no issuer key — render the label only and skip
+            the copy button. For classic assets the truncated label is for
+            display; copy always sends the full G-address. */}
         <View className="flex-row items-center justify-between">
           <Text md medium secondary>
             {t("swapScreen.trendingDetail.issuer")}
           </Text>
-          <Text md medium primary numberOfLines={1}>
-            {issuerLabel}
-          </Text>
+          {record.isNative || !record.issuer ? (
+            <Text md medium primary numberOfLines={1}>
+              {issuerLabel}
+            </Text>
+          ) : (
+            <TouchableOpacity
+              testID="trending-detail-copy-issuer"
+              className="flex-row items-center gap-[8px]"
+              hitSlop={10}
+              onPress={() =>
+                copyToClipboard(record.issuer, {
+                  notificationMessage: t("common.copied"),
+                })
+              }
+            >
+              <Text md medium primary numberOfLines={1}>
+                {issuerLabel}
+              </Text>
+              <Icon.Copy01 size={16} color={themeColors.foreground.primary} />
+            </TouchableOpacity>
+          )}
         </View>
 
         <View className="h-px bg-border-primary w-full" />
