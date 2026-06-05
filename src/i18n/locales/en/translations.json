@@ -435,7 +435,10 @@
       "failedToDecryptData": "Failed to decrypt data. Please sign in again.",
       "failedToRenameAccount": "Failed to rename account",
       "failedToGetAllAccounts": "Failed to load accounts",
-      "failedToSelectAccount": "Failed to select account"
+      "failedToSelectAccount": "Failed to select account",
+      "notificationTitle": "Something went wrong",
+      "setupFailedTitle": "Couldn't complete setup",
+      "setupFailedMessage": "We couldn't finish setting up your wallet. Please try again."
     },
     "account": "Account {{number}}",
     "faceId": {

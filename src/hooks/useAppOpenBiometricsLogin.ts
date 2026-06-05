@@ -1,6 +1,7 @@
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
+import { AUTH_ERROR_TOAST_ID } from "hooks/useAuthErrorToast";
 import { useBiometrics } from "hooks/useBiometrics";
 import { useToast } from "providers/ToastProvider";
 import { useEffect } from "react";
@@ -40,7 +41,7 @@ export const useAppOpenBiometricsLogin = (initializing: boolean) => {
         }
       }).catch(() => {
         showToast({
-          toastId: "unlock-wallet-error",
+          toastId: AUTH_ERROR_TOAST_ID,
           variant: "error",
           title: t("lockScreen.errorUnlockingWalletTitle"),
           message: t("lockScreen.errorUnlockingWalletMessage"),

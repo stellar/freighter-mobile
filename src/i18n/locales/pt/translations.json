@@ -399,7 +399,10 @@
       "failedToDecryptData": "Falha ao descriptografar dados. Por favor, faça login novamente.",
       "failedToRenameAccount": "Falha ao renomear conta",
       "failedToGetAllAccounts": "Falha ao carregar contas",
-      "failedToSelectAccount": "Falha ao selecionar conta"
+      "failedToSelectAccount": "Falha ao selecionar conta",
+      "notificationTitle": "Algo deu errado",
+      "setupFailedTitle": "Não foi possível concluir a configuração",
+      "setupFailedMessage": "Não conseguimos concluir a configuração da sua carteira. Por favor, tente novamente."
     },
     "account": "Conta {{number}}",
     "faceId": {

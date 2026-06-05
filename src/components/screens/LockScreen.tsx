@@ -4,34 +4,12 @@ import InputPasswordTemplate from "components/templates/InputPasswordTemplate";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore, getActiveAccountPublicKey } from "ducks/auth";
-import useAppTranslation from "hooks/useAppTranslation";
-import { useToast } from "providers/ToastProvider";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 type LockScreenProps = NativeStackScreenProps<
   RootStackParamList,
   typeof ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN
 >;
-
-type TFunction = ReturnType<typeof useAppTranslation>["t"];
-
-function getErrorToastContent(
-  error: string,
-  t: TFunction,
-): { title: string; message: string } {
-  switch (error) {
-    case t("authStore.error.failedToLoadAccount"):
-      return {
-        title: t("lockScreen.failedToLoadAccountTitle"),
-        message: t("lockScreen.failedToLoadAccountMessage"),
-      };
-    default:
-      return {
-        title: t("lockScreen.errorUnlockingWalletTitle"),
-        message: t("lockScreen.errorUnlockingWalletMessage"),
-      };
-  }
-}
 
 export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
   const {
@@ -45,12 +23,10 @@ export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
   const [publicKey, setPublicKey] = useState<string | null>(null);
   const [isForgotPasswordModalVisible, setIsForgotPasswordModalVisible] =
     useState(false);
-  const { showToast } = useToast();
-  const { t } = useAppTranslation();
 
-  // Capture whether an error was set before this screen mounted (e.g. a failed
-  // account load after sign-in). The clearError-on-mount effect must not wipe
-  // it before the toast effect has a chance to display it.
+  // Capture whether an error was already present when this screen mounted so
+  // the clear-on-mount effect doesn't wipe it (e.g. an inline invalid-password
+  // message). Non-inline errors are surfaced app-wide by AuthErrorToastListener.
   const hasInitialError = useRef(Boolean(error));
 
   // Monitor auth status changes to navigate when unlocked
@@ -85,20 +61,6 @@ export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
       clearError();
     }
   }, [clearError]);
-
-  useEffect(() => {
-    if (error && error !== t("authStore.error.invalidPassword")) {
-      const { title, message } = getErrorToastContent(error, t);
-      showToast({
-        toastId: "unlock-wallet-error",
-        variant: "error",
-        title,
-        message,
-        duration: 6000,
-      });
-      clearError();
-    }
-  }, [error, t, showToast, clearError]);
 
   const handleUnlock = useCallback(
     (password: string) => {

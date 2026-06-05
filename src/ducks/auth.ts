@@ -278,7 +278,7 @@ interface ImportSecretKeyParams {
  */
 interface AuthActions {
   logout: (shouldWipeAllData?: boolean) => void;
-  signUp: (params: SignUpParams) => Promise<void>;
+  signUp: (params: SignUpParams) => Promise<boolean>;
   signIn: (params: SignInParams) => Promise<void>;
   importWallet: (params: ImportWalletParams) => Promise<boolean>;
   verifyMnemonicPhrase: (mnemonicPhrase: string) => boolean;
@@ -312,6 +312,7 @@ interface AuthActions {
   ) => Promise<Key>;
 
   clearError: () => void;
+  clearAccountError: () => void;
   devResetAppAuth: () => void;
   setAuthStatus: (authStatus: AuthStatus) => void;
 
@@ -2122,9 +2123,9 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
    * Signs up a new user with the provided credentials
    *
    * @param {SignUpParams} params - The signup parameters
-   * @returns {Promise<void>}
+   * @returns {Promise<boolean>} `true` on success, `false` on failure
    */
-  signUp: async (params): Promise<void> => {
+  signUp: async (params): Promise<boolean> => {
     set((state) => ({ ...state, isLoading: true, error: null }));
     try {
       await signUp(params);
@@ -2135,12 +2136,14 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
       });
       // Fetch active account after successful signup
       await get().fetchActiveAccount();
+      return true;
     } catch (error) {
       logger.error("useAuthenticationStore.signUp", "Sign up failed", error);
       set({
         error: getUserFacingError(error, "authStore.error.failedToSignUp"),
         isLoading: false,
       });
+      return false;
     }
   },
 
@@ -2813,6 +2816,9 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
   getTemporaryStore: async () => getTemporaryStore(get().authStatus),
   clearError: () => {
     set({ error: null });
+  },
+  clearAccountError: () => {
+    set({ accountError: null });
   },
 
   selectNetwork: async (network: NETWORKS) => {

@@ -62,7 +62,7 @@ jest.mock("hooks/useAppTranslation", () => () => ({
   },
 }));
 
-const mockSignUp = jest.fn(() => Promise.resolve());
+const mockSignUp = jest.fn(() => Promise.resolve(true));
 let mockIsLoading = false;
 let mockError: string | null = null;
 
@@ -73,6 +73,7 @@ jest.mock("ducks/auth", () => ({
         signUp: mockSignUp,
         error: mockError,
         isLoading: mockIsLoading,
+        clearError: jest.fn(),
         setSignInMethod: jest.fn(),
         storeBiometricPassword: jest.fn(() => Promise.resolve()),
       });
@@ -81,6 +82,7 @@ jest.mock("ducks/auth", () => ({
       signUp: mockSignUp,
       error: mockError,
       isLoading: mockIsLoading,
+      clearError: jest.fn(),
       setSignInMethod: jest.fn(),
       storeBiometricPassword: jest.fn(() => Promise.resolve()),
     };
