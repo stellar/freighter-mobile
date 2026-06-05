@@ -10,6 +10,11 @@ import React, { useCallback, useEffect, useRef } from "react";
 import {
   Keyboard,
   Platform,
+  // Raw RN Text used for the editable "$" prefix so it renders through the
+  // same native primitive as the adjacent TextInput — picking up the same
+  // baseline metrics. The styled-component `<Display>` (used elsewhere) has
+  // subtly different vertical metrics that drifted the "$" off the digits.
+  Text as RNText,
   TextInput,
   TouchableOpacity,
   View,
@@ -288,19 +293,28 @@ const EditableAmountCard: React.FC<AmountCardEditableProps> = ({
         >
           <View className="flex-row items-center">
             {converter.showFiatAmount && (
-              <Display
+              <RNText
                 style={{
+                  // Match the TextInput style exactly. lineHeight and
+                  // textAlignVertical are intentionally omitted — RN
+                  // TextInput's placeholder uses different metrics than its
+                  // value when lineHeight is explicit, causing a few-pixel
+                  // vertical jump when the user starts typing; aligning by
+                  // natural metrics (no lineHeight) keeps both states stable
+                  // and the "$" baseline pinned to the digits.
+                  fontFamily: AMOUNT_FONT_FAMILY,
                   fontSize: amountFontSize,
-                  lineHeight: pxValue(AMOUNT_LINE_HEIGHT),
                   letterSpacing: AMOUNT_LETTER_SPACING,
                   fontWeight: "500",
                   color: isEmpty
                     ? themeColors.text.secondary
                     : themeColors.text.primary,
+                  padding: 0,
+                  includeFontPadding: false,
                 }}
               >
                 $
-              </Display>
+              </RNText>
             )}
             <TextInput
               ref={inputRef}
@@ -320,7 +334,6 @@ const EditableAmountCard: React.FC<AmountCardEditableProps> = ({
                 flex: 1,
                 fontFamily: AMOUNT_FONT_FAMILY,
                 fontSize: amountFontSize,
-                lineHeight: pxValue(AMOUNT_LINE_HEIGHT),
                 letterSpacing: AMOUNT_LETTER_SPACING,
                 fontWeight: "500",
                 color: themeColors.text.primary,
