@@ -586,7 +586,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
 
   const navigateToSelectSourceTokenScreen = useCallback(
     (source: "cta" | "dropdown") => {
-      analytics.track(AnalyticsEvent.SWAP_TO_PICKER_OPENED, { source });
+      analytics.track(AnalyticsEvent.SWAP_FROM_PICKER_OPENED, { source });
       navigation.navigate(SWAP_ROUTES.SWAP_SCREEN, {
         selectionType: SWAP_SELECTION_TYPES.SOURCE,
       });

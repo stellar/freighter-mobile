@@ -205,6 +205,16 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
   ) => {
     const descriptor = descriptorFromBalance(balance);
     if (selectionType === SWAP_SELECTION_TYPES.SOURCE) {
+      // Source picker is holdsOnly, so `source` is either "balances" (idle)
+      // or "search" (active-search match against a held token). "popular"
+      // never reaches the source picker.
+      const sourceSource: "balances" | "search" =
+        source === "search" ? "search" : "balances";
+      analytics.track(AnalyticsEvent.SWAP_SOURCE_SELECTED, {
+        tokenCode: balance.tokenCode ?? "",
+        tokenIssuer: descriptor.issuer ?? "",
+        source: sourceSource,
+      });
       // Selection-swap rule (spec §12.4): if the new source equals the
       // current destination, clear destination so the user can pick a
       // different token there.
