@@ -140,8 +140,6 @@ export const ALL_ROUTES_OBJECT = [
   SWAP_ROUTES,
 ] as const;
 
-export type AccountQRCodeScreenParams = undefined;
-
 export type RootStackParamList = {
   [ROOT_NAVIGATOR_ROUTES.AUTH_STACK]: undefined;
   [ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK]: undefined;
@@ -149,7 +147,7 @@ export type RootStackParamList = {
   [ROOT_NAVIGATOR_ROUTES.MANAGE_WALLETS_STACK]: undefined;
   [ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN]: undefined;
   [ROOT_NAVIGATOR_ROUTES.SETTINGS_STACK]: undefined;
-  [ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN]: AccountQRCodeScreenParams;
+  [ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN]: undefined;
   [ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN]: {
     source?: QRCodeSource;
     transition?: ScreenTransition;
@@ -224,7 +222,7 @@ export type AddFundsStackParamList = {
   [ADD_FUNDS_ROUTES.ADD_FUNDS_SCREEN]: {
     isUnfunded: boolean;
   };
-  [ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN]: AccountQRCodeScreenParams;
+  [ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN]: undefined;
 };
 
 export type SendPaymentStackParamList = {

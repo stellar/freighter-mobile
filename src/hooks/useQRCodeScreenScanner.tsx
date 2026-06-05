@@ -1,6 +1,8 @@
+import { WalletConnectManualInputOverlay } from "components/WalletConnectManualInputOverlay";
 import { QRCodeSource } from "config/constants";
 import { useHomeQrCodeScanner } from "hooks/useHomeQrCodeScanner";
 import { useSendFlowQrCodeScanner } from "hooks/useSendFlowQrCodeScanner";
+import React from "react";
 
 interface QRCodeScreenHandlers {
   /** Function to handle QR code scanning */
@@ -9,6 +11,16 @@ interface QRCodeScreenHandlers {
   handleClose: () => void;
   /** Function to handle header left button press */
   handleHeaderLeft: () => void;
+  /** Function to handle header right button press (dev mode) */
+  handleHeaderRight?: () => void;
+  /** Function to handle manual input changes (dev mode) */
+  handleManualInputChange?: (text: string) => void;
+  /** Function to handle connect button press (dev mode) */
+  handleConnect?: () => void;
+  /** Function to handle clear input (dev mode) */
+  handleClearInput?: () => void;
+  /** Function to handle paste from clipboard (dev mode) */
+  handlePasteFromClipboard?: () => void;
 }
 
 interface QRCodeScreenState {
@@ -31,6 +43,10 @@ interface QRCodeScreenState {
 interface QRCodeScreenReturn {
   handlers: QRCodeScreenHandlers;
   state: QRCodeScreenState;
+  /** Manual input overlay component (available in dev mode for home scanner) */
+  ManualInputOverlay?: React.ComponentType<
+    React.ComponentProps<typeof WalletConnectManualInputOverlay>
+  >;
 }
 
 /**

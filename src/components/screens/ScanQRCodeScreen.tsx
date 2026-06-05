@@ -7,7 +7,9 @@ import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import Icon from "components/sds/Icon";
 import { getDefaultQRCodeSource } from "config/constants";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
+import useAppTranslation from "hooks/useAppTranslation";
 import { useClearTransitionParam } from "hooks/useClearTransitionParam";
+import useColors from "hooks/useColors";
 import { useQRCodeScreenScanner } from "hooks/useQRCodeScreenScanner";
 import React from "react";
 
@@ -32,13 +34,17 @@ const ScanQRCodeScreen: React.FC<ScanQRCodeScreenProps> = ({
   route,
   navigation,
 }) => {
+  const { t } = useAppTranslation();
+  const { themeColors } = useColors();
+
   useClearTransitionParam(navigation, route.params?.transition);
 
   // Get the source from route params, default to address_input
   const source = route.params?.source || getDefaultQRCodeSource();
 
   // Use the custom hook to get all handlers, state, and configuration
-  const { handlers, state } = useQRCodeScreenScanner(source);
+  const { handlers, state, ManualInputOverlay } =
+    useQRCodeScreenScanner(source);
 
   return (
     <BaseLayout
@@ -54,7 +60,35 @@ const ScanQRCodeScreen: React.FC<ScanQRCodeScreenProps> = ({
             onPress={handlers.handleHeaderLeft}
           />
         )}
+        headerRight={
+          state.showManualInput && handlers.handleHeaderRight
+            ? () => (
+                <CustomHeaderButton
+                  position="right"
+                  icon={Icon.QrCode01}
+                  onPress={handlers.handleHeaderRight}
+                  testID="qr-scanner-manual-input-button"
+                />
+              )
+            : undefined
+        }
       />
+
+      {state.showManualInput &&
+        handlers.handleManualInputChange &&
+        ManualInputOverlay && (
+          <ManualInputOverlay
+            manualInput={state.manualInput}
+            onManualInputChange={handlers.handleManualInputChange}
+            onConnect={handlers.handleConnect!}
+            onClearInput={handlers.handleClearInput!}
+            onPasteFromClipboard={handlers.handlePasteFromClipboard!}
+            isConnecting={state.isConnecting}
+            error={state.error}
+            themeColors={themeColors}
+            t={t}
+          />
+        )}
 
       <QRScanner
         onRead={handlers.handleQRCodeScanned}

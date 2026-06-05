@@ -1,5 +1,6 @@
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { WalletConnectManualInputOverlay } from "components/WalletConnectManualInputOverlay";
 import { NATIVE_TOKEN_CODE, QRCodeError, QRCodeSource } from "config/constants";
 import {
   RootStackParamList,
@@ -10,24 +11,30 @@ import { useAuthenticationStore } from "ducks/auth";
 import { useQRDataStore } from "ducks/qrData";
 import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
-import { parseQRPayload } from "helpers/qrValidation";
+import { isValidWalletConnectURI, parseQRPayload } from "helpers/qrValidation";
 import { walletKit } from "helpers/walletKitUtil";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useClipboard } from "hooks/useClipboard";
 import { useToast } from "providers/ToastProvider";
-import { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { analytics } from "services/analytics";
 
 interface QRCodeScreenHandlers {
   handleQRCodeScanned: (data: string) => void;
   handleClose: () => void;
   handleHeaderLeft: () => void;
+  handleHeaderRight?: () => void;
+  handleManualInputChange?: (text: string) => void;
+  handleConnect?: () => void;
+  handleClearInput?: () => void;
+  handlePasteFromClipboard?: () => void;
 }
 
 interface QRCodeScreenState {
   manualInput: string;
   isConnecting: boolean;
   error: string;
-  showManualInput: false;
+  showManualInput: boolean;
   title: string;
   scannerTitle: string;
   context: QRCodeSource.HOME_SCANNER;
@@ -36,6 +43,9 @@ interface QRCodeScreenState {
 interface QRCodeScreenReturn {
   handlers: QRCodeScreenHandlers;
   state: QRCodeScreenState;
+  ManualInputOverlay?: React.ComponentType<
+    React.ComponentProps<typeof WalletConnectManualInputOverlay>
+  >;
 }
 
 const PAIRING_SUCCESS_DELAY_MS = 1000;
@@ -54,6 +64,7 @@ export const useHomeQrCodeScanner = (
   enabled: boolean,
 ): QRCodeScreenReturn => {
   const { t } = useAppTranslation();
+  const { getClipboardText } = useClipboard();
   const { showToast } = useToast();
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -61,6 +72,8 @@ export const useHomeQrCodeScanner = (
   const [isProcessingAddress, setIsProcessingAddress] = useState(false);
   const [isConnectingWC, setIsConnectingWC] = useState(false);
   const [lastErrorCode, setLastErrorCode] = useState<string | null>(null);
+  const [manualInput, setManualInput] = useState("");
+  const [manualInputError, setManualInputError] = useState("");
 
   const { clearQRData } = useQRDataStore();
   const { account } = useAuthenticationStore();
@@ -81,10 +94,10 @@ export const useHomeQrCodeScanner = (
     useTransactionSettingsStore();
 
   const state: QRCodeScreenState = {
-    manualInput: "",
+    manualInput,
     isConnecting: isConnectingWC || (isProcessingAddress && isSearching),
-    error: "",
-    showManualInput: false,
+    error: manualInputError,
+    showManualInput: __DEV__,
     title: t("homeScanner.title"),
     scannerTitle: t("homeScanner.scanQRCodeText"),
     context: QRCodeSource.HOME_SCANNER,
@@ -245,14 +258,79 @@ export const useHomeQrCodeScanner = (
 
   useEffect(() => () => clearQRData(), [clearQRData]);
 
+  // Dev-mode manual WC input handlers
+  const handleHeaderRight = useCallback(() => {
+    // Toggle is not needed - in dev mode the overlay is always visible
+  }, []);
+
+  const handleManualInputChange = useCallback(
+    (text: string) => {
+      setManualInput(text);
+      if (text.trim() && !isValidWalletConnectURI(text)) {
+        setManualInputError(t("walletConnect.invalidUriError"));
+      } else {
+        setManualInputError("");
+      }
+    },
+    [t],
+  );
+
+  const handleConnect = useCallback(() => {
+    if (!manualInput.trim()) return;
+    setIsConnectingWC(true);
+    setManualInputError("");
+    walletKit
+      .pair({ uri: manualInput })
+      .then(() => {
+        analytics.trackQRScanSuccess(QRCodeSource.HOME_SCANNER);
+        setTimeout(() => {
+          handleClose();
+        }, PAIRING_SUCCESS_DELAY_MS);
+      })
+      .catch((err) => {
+        setTimeout(() => {
+          setIsConnectingWC(false);
+          setManualInputError(
+            err instanceof Error
+              ? err.message
+              : t("walletConnect.pairingError"),
+          );
+        }, PAIRING_ERROR_DELAY_MS);
+      });
+  }, [manualInput, handleClose, t]);
+
+  const handleClearInput = useCallback(() => {
+    setManualInput("");
+    setManualInputError("");
+  }, []);
+
+  const handlePasteFromClipboard = useCallback(() => {
+    getClipboardText().then((text) => {
+      setManualInput(text);
+      if (text.trim() && !isValidWalletConnectURI(text)) {
+        setManualInputError(t("walletConnect.invalidUriError"));
+      } else {
+        setManualInputError("");
+      }
+    });
+  }, [getClipboardText, t]);
+
   const handlers: QRCodeScreenHandlers = {
     handleQRCodeScanned,
     handleClose,
     handleHeaderLeft,
+    ...__DEV__ && {
+      handleHeaderRight,
+      handleManualInputChange,
+      handleConnect,
+      handleClearInput,
+      handlePasteFromClipboard,
+    },
   };
 
   return {
     handlers,
     state,
+    ...(__DEV__ && { ManualInputOverlay: WalletConnectManualInputOverlay }),
   };
 };

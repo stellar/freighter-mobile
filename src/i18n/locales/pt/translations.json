@@ -237,7 +237,6 @@
       "footerNoteText": "Você pode alterar isso mais tarde nas Configurações."
     }
   },
-
   "importWalletScreen": {
     "title": "Importar Carteira",
     "textAreaPlaceholder": "Digite a frase de recuperação",
@@ -985,7 +984,11 @@
     }
   },
   "walletConnect": {
-    "pairingError": "Falha ao parear"
+    "pairingError": "Falha ao parear",
+    "connect": "Conectar",
+    "connectWithWalletConnect": "Cole um URI do WalletConnect",
+    "inputPlaceholder": "URI do WalletConnect",
+    "invalidUriError": "Por favor, insira um URI do WalletConnect válido"
   },
   "qrCodeScannerScreen": {
     "title": "Escanear para enviar"
