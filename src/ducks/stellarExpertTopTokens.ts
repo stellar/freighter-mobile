@@ -1,3 +1,4 @@
+/* eslint-disable no-underscore-dangle */
 import { NETWORKS, STORAGE_KEYS } from "config/constants";
 import { SearchTokenResponse } from "config/types";
 import { cachedFetch, readCachedValue } from "helpers/cachedFetch";
@@ -31,6 +32,34 @@ interface StellarExpertTopTokensState {
 const CACHE_TTL_MS = 30 * 60 * 1000;
 
 /**
+ * Minimum 7-day volume (USD, scaled by 10^7 — stellar.expert's native
+ * representation) for a token to appear in the trending list. Tokens
+ * below this floor are dropped before the response is cached so they
+ * don't surface in the Swap picker. 70_000_000_000 == $7,000 USD.
+ */
+const MIN_TRENDING_VOLUME7D = 70_000_000_000;
+
+/**
+ * Drop low-volume records (volume7d < MIN_TRENDING_VOLUME7D, or missing).
+ * The filter runs inside the cached-fetch closure so the cached payload
+ * already excludes them — consumers don't need to re-filter, and the
+ * disk cache stays small.
+ */
+const filterLowVolumeRecords = (
+  response: SearchTokenResponse,
+): SearchTokenResponse => ({
+  ...response,
+  _embedded: {
+    ...response._embedded,
+    records: response._embedded.records.filter(
+      (record) =>
+        typeof record.volume7d === "number" &&
+        record.volume7d >= MIN_TRENDING_VOLUME7D,
+    ),
+  },
+});
+
+/**
  * Stellar.expert Top Tokens Store
  *
  * Caches the stellar.expert top-tokens response (sorted by 7-day volume) per
@@ -57,7 +86,7 @@ export const useStellarExpertTopTokensStore =
               // The hook's existing null-handling will run the fallback.
               throw new Error("stellar.expert top-tokens fetch returned null");
             }
-            return result;
+            return filterLowVolumeRecords(result);
           },
           storageKey,
           ttlMs: CACHE_TTL_MS,

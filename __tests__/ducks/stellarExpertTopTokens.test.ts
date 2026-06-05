@@ -1,3 +1,4 @@
+/* eslint-disable no-underscore-dangle */
 import { NETWORKS, STORAGE_KEYS } from "config/constants";
 import { SearchTokenResponse } from "config/types";
 import { useStellarExpertTopTokensStore } from "ducks/stellarExpertTopTokens";
@@ -14,6 +15,12 @@ const mockDataStorage = dataStorage as jest.Mocked<typeof dataStorage>;
 
 const THIRTY_MINUTES = 30 * 60 * 1000;
 
+// MIN_TRENDING_VOLUME7D in src/ducks/stellarExpertTopTokens.ts = 70_000_000_000
+// (USD 7,000 with stellar.expert's 10^7 scaling). Tests use values either side
+// of this threshold.
+const VOLUME7D_ABOVE_THRESHOLD = 100_000_000_000; // ~$10,000
+const VOLUME7D_BELOW_THRESHOLD = 50_000_000_000; //  ~$5,000
+
 const mockRecord = {
   asset: "USDC-GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN-1",
   supply: "1000000",
@@ -25,6 +32,7 @@ const mockRecord = {
   price: 1.0,
   created: 1000000,
   domain: "circle.com",
+  volume7d: VOLUME7D_ABOVE_THRESHOLD,
   rating: {
     age: 5,
     activity: 8,
@@ -253,6 +261,80 @@ describe("useStellarExpertTopTokensStore", () => {
           k.includes(`stellarExpertTopTokens_${NETWORKS.TESTNET}`),
         ),
       ).toBe(true);
+    });
+  });
+
+  describe("low-volume filter (MIN_TRENDING_VOLUME7D)", () => {
+    it("drops records with volume7d below the threshold", async () => {
+      const lowVolumeRecord = {
+        ...mockRecord,
+        asset: "LOW-GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH-1",
+        volume7d: VOLUME7D_BELOW_THRESHOLD,
+      };
+      mockFetchTrendingAssets.mockResolvedValue({
+        ...mockResponse,
+        _embedded: { records: [mockRecord, lowVolumeRecord] },
+      });
+
+      const { getStellarExpertTopTokens } =
+        useStellarExpertTopTokensStore.getState();
+      const result = await getStellarExpertTopTokens({
+        network: NETWORKS.PUBLIC,
+      });
+
+      // Only the above-threshold record survives.
+      expect(result?._embedded.records).toHaveLength(1);
+      expect(result?._embedded.records[0]?.asset).toBe(mockRecord.asset);
+    });
+
+    it("drops records with no volume7d field", async () => {
+      // Build a record without `volume7d` set at all. The optional shape on
+      // SearchTokenResponse permits this; the duck should still exclude it
+      // from the trending list.
+      const withoutVolume7d = Object.fromEntries(
+        Object.entries(mockRecord).filter(([key]) => key !== "volume7d"),
+      ) as typeof mockRecord;
+      mockFetchTrendingAssets.mockResolvedValue({
+        ...mockResponse,
+        _embedded: { records: [withoutVolume7d] },
+      });
+
+      const { getStellarExpertTopTokens } =
+        useStellarExpertTopTokensStore.getState();
+      const result = await getStellarExpertTopTokens({
+        network: NETWORKS.PUBLIC,
+      });
+
+      expect(result?._embedded.records).toHaveLength(0);
+    });
+
+    it("writes the FILTERED payload to disk (cache holds the post-filter list)", async () => {
+      const lowVolumeRecord = {
+        ...mockRecord,
+        asset: "LOW-GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH-1",
+        volume7d: VOLUME7D_BELOW_THRESHOLD,
+      };
+      mockFetchTrendingAssets.mockResolvedValue({
+        ...mockResponse,
+        _embedded: { records: [mockRecord, lowVolumeRecord] },
+      });
+
+      const { getStellarExpertTopTokens } =
+        useStellarExpertTopTokensStore.getState();
+      await getStellarExpertTopTokens({ network: NETWORKS.PUBLIC });
+
+      // The setItem for the result key should hold the filtered records,
+      // not the raw API payload. Inspect the JSON write.
+      const setItemCalls = mockDataStorage.setItem.mock.calls;
+      const resultCall = setItemCalls.find(
+        ([key]) =>
+          key ===
+          `${STORAGE_KEYS.STELLAR_EXPERT_TOP_TOKENS_PREFIX}${NETWORKS.PUBLIC}`,
+      );
+      expect(resultCall).toBeDefined();
+      const written = JSON.parse(resultCall![1]);
+      expect(written._embedded.records).toHaveLength(1);
+      expect(written._embedded.records[0].asset).toBe(mockRecord.asset);
     });
   });
 });
