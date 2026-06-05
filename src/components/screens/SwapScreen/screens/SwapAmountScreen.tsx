@@ -1152,7 +1152,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         focusTriggerTestID="swap-amount-focus-trigger"
         fiatToggleTestID="swap-amount-fiat-toggle"
         inputRef={amountInputRef}
-        autoFocus
         accessibilityLabel={t("swapScreen.cta.enterAmount")}
         accessibilityHint={t("swapScreen.title")}
         availableBalanceText={sourceBalanceRight || null}
