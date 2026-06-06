@@ -7,10 +7,9 @@ import { useSignTransactionDetails } from "components/screens/SignTransactionDet
 import { SwapReviewTokenRow } from "components/screens/SwapScreen/components/SwapReviewTokenRow";
 import { TrustlineInfoBottomSheet } from "components/screens/SwapScreen/components/TrustlineInfoBottomSheet";
 import {
-  getTokenFromBalance,
-  calculateTokenFiatAmount,
-} from "components/screens/SwapScreen/helpers";
-import { useStableConversionRate } from "components/screens/SwapScreen/hooks";
+  useReviewTokens,
+  useStableConversionRate,
+} from "components/screens/SwapScreen/hooks";
 import Avatar from "components/sds/Avatar";
 import { Banner } from "components/sds/Banner";
 import { Button } from "components/sds/Button";
@@ -20,13 +19,11 @@ import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { DEFAULT_PADDING, NATIVE_TOKEN_CODE } from "config/constants";
 import { THEME } from "config/theme";
-import { TokenTypeWithCustomToken } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useDebugStore } from "ducks/debug";
 import { useSwapStore } from "ducks/swap";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { pxValue } from "helpers/dimensions";
-import { formatFiatAmount } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -94,60 +91,19 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
     network,
   });
 
-  const sourceBalance = useMemo(
-    () => balanceItems.find((item) => item.id === sourceTokenId),
-    [balanceItems, sourceTokenId],
-  );
-
-  const destinationBalance = useMemo(
-    () =>
-      destinationTokenDescriptor
-        ? balanceItems.find((item) => item.id === destinationTokenDescriptor.id)
-        : undefined,
-    [balanceItems, destinationTokenDescriptor],
-  );
-
-  const sourceToken = getTokenFromBalance(sourceBalance);
-
-  // For non-held destinations `destinationBalance` is undefined (the user
-  // doesn't have a trustline yet). Falling back to getTokenFromBalance(undefined)
-  // returns the XLM native token, which renders the wrong icon. Instead, build
-  // the token object directly from the descriptor when no balance is found.
-  const destinationToken = useMemo(() => {
-    if (destinationBalance) return getTokenFromBalance(destinationBalance);
-    if (
-      !destinationTokenDescriptor ||
-      destinationTokenDescriptor.tokenType === TokenTypeWithCustomToken.NATIVE
-    ) {
-      return { type: "native" as const, code: "XLM" as const };
-    }
-    return {
-      type: destinationTokenDescriptor.tokenType,
-      code: destinationTokenDescriptor.tokenCode,
-      issuer: { key: destinationTokenDescriptor.issuer! },
-    };
-  }, [destinationBalance, destinationTokenDescriptor]);
-
-  const sourceTokenFiatAmountValue = calculateTokenFiatAmount({
-    token: sourceToken,
-    amount: pathResult?.sourceAmount || sourceAmount,
+  const {
+    sourceToken,
+    destinationToken,
+    sourceTokenFiatAmount,
+    destinationTokenFiatAmount,
+  } = useReviewTokens({
     balanceItems,
+    sourceTokenId,
+    sourceAmount,
+    destinationAmount,
+    destinationTokenDescriptor,
+    pathResult,
   });
-
-  const sourceTokenFiatAmount =
-    sourceTokenFiatAmountValue !== "--"
-      ? formatFiatAmount(sourceTokenFiatAmountValue)
-      : "--";
-
-  const destinationTokenFiatAmountValue = calculateTokenFiatAmount({
-    token: destinationToken,
-    amount: pathResult?.destinationAmount || destinationAmount,
-    balanceItems,
-  });
-  const destinationTokenFiatAmount =
-    destinationTokenFiatAmountValue !== "--"
-      ? formatFiatAmount(destinationTokenFiatAmountValue)
-      : "--";
 
   const publicKey = account?.publicKey;
 

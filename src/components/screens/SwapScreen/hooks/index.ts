@@ -10,4 +10,5 @@ export {
   type SwapToSection,
   type SwapToSectionKind,
 } from "./useSwapToSections";
+export { useReviewTokens } from "./useReviewTokens";
 export { useStableConversionRate } from "./useStableConversionRate";
