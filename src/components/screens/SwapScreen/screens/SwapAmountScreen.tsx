@@ -30,6 +30,7 @@ import {
   useSwapCtaState,
   useSwapDirectionToggle,
   useSwapPathFinding,
+  useSwapTransactionSettings,
   useSwapTrendingPrices,
 } from "components/screens/SwapScreen/hooks";
 import { useSwapTokenLookup } from "components/screens/SwapScreen/hooks/useSwapTokenLookup";
@@ -73,7 +74,6 @@ import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useInitialRecommendedFee } from "hooks/useInitialRecommendedFee";
 import { useNetworkFees } from "hooks/useNetworkFees";
-import { useRightHeaderButton } from "hooks/useRightHeader";
 import { useTokenFiatConverter } from "hooks/useTokenFiatConverter";
 import { useToast } from "providers/ToastProvider";
 import React, {
@@ -126,7 +126,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const swapReviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const transactionSecurityWarningBottomSheetModalRef =
     useRef<BottomSheetModal>(null);
-  const transactionSettingsBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const xlmReserveBottomSheetRef = useRef<BottomSheetModal>(null);
   const amountInputRef = useRef<TextInput>(null);
   const [amountError, setAmountError] = useState<string | null>(null);
@@ -465,14 +464,12 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     activeError?.toastId,
   ]);
 
-  const handleSettingsPress = useCallback(() => {
-    transactionSettingsBottomSheetModalRef.current?.present();
-  }, []);
-
-  useRightHeaderButton({
-    icon: Icon.Settings04,
-    onPress: handleSettingsPress,
-  });
+  const {
+    transactionSettingsBottomSheetModalRef,
+    openSettings,
+    confirmSettings,
+    cancelSettings,
+  } = useSwapTransactionSettings();
 
   const navigateToSelectDestinationTokenScreen = useCallback(
     (source: SwapPickerEntrypoint = SwapPickerEntrypoint.DROPDOWN) => {
@@ -647,18 +644,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     // so they persist even if this component unmounts
     executeSwap();
   }, [executeSwap]);
-
-  const handleOpenSettings = useCallback(() => {
-    transactionSettingsBottomSheetModalRef.current?.present();
-  }, []);
-
-  const handleConfirmTransactionSettings = useCallback(() => {
-    transactionSettingsBottomSheetModalRef.current?.dismiss();
-  }, []);
-
-  const handleCancelTransactionSettings = useCallback(() => {
-    transactionSettingsBottomSheetModalRef.current?.dismiss();
-  }, []);
 
   const handleSettingsChange = useCallback(() => {
     // Settings have changed, rebuild the swap transaction with new values
@@ -937,7 +922,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       isMalicious,
       isSuspicious,
       transactionXDR: transactionXDR ?? undefined,
-      onSettingsPress: handleOpenSettings,
+      onSettingsPress: openSettings,
     }),
     [
       handleCancelSwap,
@@ -946,7 +931,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       isMalicious,
       isSuspicious,
       transactionXDR,
-      handleOpenSettings,
+      openSettings,
     ],
   );
 
@@ -1238,8 +1223,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         customContent={
           <TransactionSettingsBottomSheet
             context={TransactionContext.Swap}
-            onCancel={handleCancelTransactionSettings}
-            onConfirm={handleConfirmTransactionSettings}
+            onCancel={cancelSettings}
+            onConfirm={confirmSettings}
             onSettingsChange={handleSettingsChange}
           />
         }
