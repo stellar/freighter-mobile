@@ -14,7 +14,10 @@ import {
   isHeldToken,
   recordTokenId,
 } from "components/screens/SwapScreen/helpers";
-import { useSwapToEmptyStates } from "components/screens/SwapScreen/hooks";
+import {
+  useSwapToEmptyStates,
+  useSwapToSections,
+} from "components/screens/SwapScreen/hooks";
 import { useSwapTokenLookup } from "components/screens/SwapScreen/hooks/useSwapTokenLookup";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
@@ -29,7 +32,7 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React, { useMemo, useRef } from "react";
+import React, { useRef } from "react";
 import { SectionList, TouchableOpacity, View } from "react-native";
 import { analytics } from "services/analytics";
 
@@ -82,79 +85,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
   const verifiedInfoSheetRef = useRef<BottomSheetModal>(null);
   const unverifiedInfoSheetRef = useRef<BottomSheetModal>(null);
 
-  // Section.kind drives both the header and the row variant for that section
-  // — keeping title resolution (singular / plural) decoupled from row logic
-  // so renderItem doesn't need to match against translated strings.
-  type SectionKind = "held" | "popular" | "verified" | "unverified";
-
-  // Section data: idle = "Your tokens" + "Popular tokens"; active = three
-  // sections ("Your tokens" / "Verified" / "Unverified") — each omitted when
-  // its bucket is empty. The opposite-side token is NOT excluded here —
-  // picking it triggers the selection-swap rule (spec §12.4): the opposite
-  // side clears so the user can pick a different token there.
-  const sections = useMemo(() => {
-    type SwapSection = {
-      title: string;
-      kind: SectionKind;
-      data: Array<
-        (PricedBalance & { id: string }) | FormattedSearchTokenRecord
-      >;
-    };
-    const out: SwapSection[] = [];
-
-    // "Your token" (singular) when exactly one row is in the bucket — switches
-    // to "Your tokens" otherwise.
-    const heldTitle = (count: number) =>
-      count === 1
-        ? t("swapScreen.yourTokenSection")
-        : t("swapScreen.yourTokensSection");
-
-    if (searchTerm) {
-      if (heldSearchMatches.length > 0) {
-        out.push({
-          title: heldTitle(heldSearchMatches.length),
-          kind: "held",
-          data: heldSearchMatches,
-        });
-      }
-      if (verifiedSearchMatches.length > 0) {
-        out.push({
-          title: t("swapScreen.verifiedSection"),
-          kind: "verified",
-          data: verifiedSearchMatches,
-        });
-      }
-      if (unverifiedSearchMatches.length > 0) {
-        out.push({
-          title: t("swapScreen.unverifiedSection"),
-          kind: "unverified",
-          data: unverifiedSearchMatches,
-        });
-      }
-      return out;
-    }
-
-    if (yourTokens.length > 0) {
-      out.push({
-        title: heldTitle(yourTokens.length),
-        kind: "held",
-        data: yourTokens,
-      });
-    }
-
-    if (
-      popularTokens.length > 0 &&
-      selectionType === SWAP_SELECTION_TYPES.DESTINATION
-    ) {
-      out.push({
-        title: t("swapScreen.popularTokensSection"),
-        kind: "popular",
-        data: popularTokens,
-      });
-    }
-
-    return out;
-  }, [
+  const sections = useSwapToSections({
     searchTerm,
     heldSearchMatches,
     verifiedSearchMatches,
@@ -162,8 +93,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
     yourTokens,
     popularTokens,
     selectionType,
-    t,
-  ]);
+  });
 
   const { isSearching, showSorobanEmpty, showNoResults } = useSwapToEmptyStates(
     {

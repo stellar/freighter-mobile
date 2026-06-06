@@ -5,3 +5,8 @@ export { useSwapDirectionToggle } from "./useSwapDirectionToggle";
 export { useSwapPathFinding } from "./useSwapPathFinding";
 export * from "./useSwapTokenLookup";
 export { useSwapToEmptyStates } from "./useSwapToEmptyStates";
+export {
+  useSwapToSections,
+  type SwapToSection,
+  type SwapToSectionKind,
+} from "./useSwapToSections";
