@@ -23,12 +23,12 @@ import {
   buildSellSecondaryText,
   buildSourceBalanceRight,
   computeDestinationFiat,
-  descriptorFromBalance,
   recordTokenId,
 } from "components/screens/SwapScreen/helpers";
 import {
   useSwapBalances,
   useSwapCtaState,
+  useSwapDirectionToggle,
   useSwapPathFinding,
 } from "components/screens/SwapScreen/hooks";
 import { useSwapTokenLookup } from "components/screens/SwapScreen/hooks/useSwapTokenLookup";
@@ -595,57 +595,18 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     setTokenAmount,
   ]);
 
-  // Swap source ↔ destination via the chevron-down button between the cards.
-  // Always enabled: the held source token can always be moved down to the
-  // receive slot. The receive-side token only moves UP to the sell slot
-  // when it's held (there's a balance to sell from). Otherwise the sell
-  // side resets to the "Select" empty state.
-  const handleSwapDirection = useCallback(() => {
-    // Snapshot the pre-swap state so analytics reflects what the user
-    // toggled from. Source side reads from the held balance (source picker
-    // is holdsOnly); destination reads from the store descriptor so the
-    // payload captures non-held destinations too (those have no entry in
-    // balanceItems and would otherwise report "").
-    const previousSourceIssuer = sourceBalance
-      ? (descriptorFromBalance(sourceBalance).issuer ?? "")
-      : "";
-    const swapDirectionPayload = {
-      previousSourceTokenCode: sourceBalance?.tokenCode ?? "",
-      previousSourceTokenIssuer: previousSourceIssuer,
-      previousDestinationTokenCode: destinationTokenDescriptor?.tokenCode ?? "",
-      previousDestinationTokenIssuer: destinationTokenDescriptor?.issuer ?? "",
-    };
-    analytics.track(
-      AnalyticsEvent.SWAP_DIRECTION_TOGGLED,
-      swapDirectionPayload,
-    );
-    // Sell slot gets the previous destination IF that destination is held.
-    if (destinationBalance) {
-      setSourceToken(
-        destinationBalance.id,
-        destinationBalance.tokenCode ?? destinationBalance.displayName ?? "",
-      );
-    } else {
-      // Previous destination is non-held — clear sell so the chip renders
-      // its "Select" empty state. The picker stays tappable.
-      setSourceToken("", "");
-    }
-    // Receive slot gets the previous source's descriptor (if there was one).
-    if (sourceBalance) {
-      setDestinationToken(descriptorFromBalance(sourceBalance));
-    } else {
-      setDestinationToken(null);
-    }
-    setTokenAmount("0");
-  }, [
+  // Swap source ↔ destination via the chevron-down button between the
+  // cards. Always enabled: the held source token can always be moved down
+  // to the receive slot. The receive-side token only moves UP to the sell
+  // slot when it's held; otherwise the sell side resets to "Select".
+  const { handleSwapDirection } = useSwapDirectionToggle({
     sourceBalance,
     destinationBalance,
-    destinationTokenDescriptor?.tokenCode,
-    destinationTokenDescriptor?.issuer,
+    destinationTokenDescriptor,
     setSourceToken,
     setDestinationToken,
     setTokenAmount,
-  ]);
+  });
 
   const destinationFiat = useMemo(
     () =>
