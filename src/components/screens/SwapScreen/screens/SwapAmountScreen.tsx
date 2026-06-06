@@ -12,7 +12,6 @@ import { SecurityDetailBottomSheet } from "components/blockaid";
 import { BaseLayout } from "components/layout/BaseLayout";
 import {
   SwapReviewBottomSheet,
-  SwapReviewFooter,
   TrendingListItem,
   TrendingTokenDetailBottomSheet,
   XlmReserveBottomSheet,
@@ -30,6 +29,7 @@ import {
   useSwapBalances,
   useSwapCtaState,
   useSwapDirectionToggle,
+  useSwapFooter,
   useSwapNavigation,
   useSwapPathFinding,
   useSwapTransactionSettings,
@@ -865,35 +865,15 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     }
   };
 
-  const handleCancelSwap = useCallback(() => {
-    swapReviewBottomSheetModalRef.current?.dismiss();
-  }, []);
-
-  const footerProps = useMemo(
-    () => ({
-      onCancel: handleCancelSwap,
-      onConfirm: handleConfirmSwap,
-      isBuilding,
-      isMalicious,
-      isSuspicious,
-      transactionXDR: transactionXDR ?? undefined,
-      onSettingsPress: openSettings,
-    }),
-    [
-      handleCancelSwap,
-      handleConfirmSwap,
-      isBuilding,
-      isMalicious,
-      isSuspicious,
-      transactionXDR,
-      openSettings,
-    ],
-  );
-
-  const renderFooterComponent = useCallback(
-    () => <SwapReviewFooter {...footerProps} />,
-    [footerProps],
-  );
+  const { renderFooterComponent } = useSwapFooter({
+    swapReviewBottomSheetModalRef,
+    onConfirm: handleConfirmSwap,
+    isBuilding,
+    isMalicious,
+    isSuspicious,
+    transactionXDR,
+    onSettingsPress: openSettings,
+  });
 
   if (isProcessing) {
     return (
