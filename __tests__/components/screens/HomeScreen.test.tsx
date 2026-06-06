@@ -137,6 +137,18 @@ jest.mock("ducks/walletKit", () => ({
     error: null,
     fetchActiveSessions: mockFetchActiveSessions,
   })),
+  StellarRpcMethods: {
+    SIGN_XDR: "stellar_signXDR",
+    SIGN_AND_SUBMIT_XDR: "stellar_signAndSubmitXDR",
+    SIGN_MESSAGE: "stellar_signMessage",
+    SIGN_AUTH_ENTRY: "stellar_signAuthEntry",
+  },
+  StellarRpcEvents: {
+    ACCOUNTS_CHANGED: "accountsChanged",
+  },
+  StellarRpcChains: {},
+  WALLET_KIT_METADATA: {},
+  WALLET_KIT_PROJECT_ID: "test-project-id",
 }));
 
 jest.mock("ducks/remoteConfig", () => ({
