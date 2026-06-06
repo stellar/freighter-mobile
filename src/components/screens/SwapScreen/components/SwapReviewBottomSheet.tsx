@@ -2,9 +2,9 @@ import Blockaid from "@blockaid/client";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import BottomSheet from "components/BottomSheet";
 import { List } from "components/List";
-import { TokenIcon } from "components/TokenIcon";
 import SignTransactionDetailsBottomSheet from "components/screens/SignTransactionDetails/components/SignTransactionDetailsBottomSheet";
 import { useSignTransactionDetails } from "components/screens/SignTransactionDetails/hooks/useSignTransactionDetails";
+import { SwapReviewTokenRow } from "components/screens/SwapScreen/components/SwapReviewTokenRow";
 import { TrustlineInfoBottomSheet } from "components/screens/SwapScreen/components/TrustlineInfoBottomSheet";
 import {
   formatConversionRate,
@@ -27,7 +27,7 @@ import { useSwapStore } from "ducks/swap";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { calculateSwapRate } from "helpers/balances";
 import { pxValue } from "helpers/dimensions";
-import { formatTokenForDisplay, formatFiatAmount } from "helpers/formatAmount";
+import { formatFiatAmount } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -240,29 +240,14 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
         </Text>
 
         <View className="gap-[16px]">
-          <View className="w-full flex-row items-center gap-4">
-            <View className="relative">
-              <TokenIcon token={sourceToken} />
-              {(isSourceMalicious || isSourceSuspicious) && (
-                <View className="absolute bottom-0 right-0 w-4 h-4 items-center justify-center z-10">
-                  <Icon.AlertCircle
-                    size={8}
-                    testID="alert-icon"
-                    themeColor={isSourceMalicious ? "red" : "amber"}
-                    withBackground
-                  />
-                </View>
-              )}
-            </View>
-            <View className="flex-1">
-              <Text xl medium>
-                {formatTokenForDisplay(sourceAmount, sourceTokenSymbol)}
-              </Text>
-              <Text md medium secondary>
-                {sourceTokenFiatAmount}
-              </Text>
-            </View>
-          </View>
+          <SwapReviewTokenRow
+            token={sourceToken}
+            amount={sourceAmount}
+            symbol={sourceTokenSymbol}
+            fiatString={sourceTokenFiatAmount}
+            isMalicious={isSourceMalicious}
+            isSuspicious={isSourceSuspicious}
+          />
 
           <View className="w-[40px] flex items-center">
             <Icon.ChevronDownDouble
@@ -271,41 +256,19 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
             />
           </View>
 
-          <View className="w-full flex-row items-center gap-4">
-            <View className="relative">
-              <TokenIcon
-                token={destinationToken}
-                // Carry the descriptor's iconUrl (from the search row's
-                // tomlInfo.image) through so non-held destinations render
-                // their logo on the Review sheet instead of a 2-letter
-                // fallback. Same plumbing as the SwapAmountScreen Receive
-                // chip — without this the user sees a logo on the Amount
-                // screen but initials on the confirmation sheet.
-                iconUrl={destinationTokenDescriptor?.iconUrl}
-              />
-              {(isDestMalicious || isDestSuspicious) && (
-                <View className="absolute bottom-0 right-0 w-4 h-4 items-center justify-center z-10">
-                  <Icon.AlertCircle
-                    size={8}
-                    testID="alert-icon"
-                    themeColor={isDestMalicious ? "red" : "amber"}
-                    withBackground
-                  />
-                </View>
-              )}
-            </View>
-            <View className="flex-1">
-              <Text xl medium>
-                {formatTokenForDisplay(
-                  destinationAmount,
-                  destinationTokenDescriptor?.tokenCode ?? "",
-                )}
-              </Text>
-              <Text md medium secondary>
-                {destinationTokenFiatAmount}
-              </Text>
-            </View>
-          </View>
+          <SwapReviewTokenRow
+            token={destinationToken}
+            amount={destinationAmount}
+            symbol={destinationTokenDescriptor?.tokenCode ?? ""}
+            fiatString={destinationTokenFiatAmount}
+            // Carry the descriptor's iconUrl (from the search row's
+            // tomlInfo.image) so non-held destinations render their logo
+            // here instead of a 2-letter fallback. Same plumbing as the
+            // SwapAmountScreen Receive chip.
+            iconUrl={destinationTokenDescriptor?.iconUrl}
+            isMalicious={isDestMalicious}
+            isSuspicious={isDestSuspicious}
+          />
         </View>
       </View>
 
