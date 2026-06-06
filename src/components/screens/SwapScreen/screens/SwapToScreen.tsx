@@ -10,6 +10,8 @@ import { VerifiedTokenInfoBottomSheet } from "components/screens/SwapScreen/comp
 import {
   descriptorFromBalance,
   descriptorFromSearchRecord,
+  getItemKey,
+  isHeldToken,
   recordTokenId,
 } from "components/screens/SwapScreen/helpers";
 import { useSwapTokenLookup } from "components/screens/SwapScreen/hooks/useSwapTokenLookup";
@@ -268,19 +270,6 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
     }
     setDestinationToken(descriptor);
     navigation.goBack();
-  };
-
-  const isHeldToken = (
-    item: (PricedBalance & { id: string }) | FormattedSearchTokenRecord,
-  ): item is PricedBalance & { id: string } => "id" in item;
-
-  const getItemKey = (
-    item: (PricedBalance & { id: string }) | FormattedSearchTokenRecord,
-  ): string => {
-    if (isHeldToken(item)) {
-      return item.id;
-    }
-    return recordTokenId(item);
   };
 
   return (

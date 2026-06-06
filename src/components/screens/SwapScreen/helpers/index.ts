@@ -8,8 +8,11 @@ export { computeTrendingIntersection } from "./computeTrendingIntersection";
 export { canonicalId } from "./canonicalId";
 export { mergeBlockaidScans } from "./mergeBlockaidScans";
 export {
+  getItemKey,
   isClassicTokenType,
+  isHeldToken,
   isSorobanRecord,
   type StellarExpertRecord,
+  type SwapToListItem,
 } from "./recordPredicates";
 export * from "./swapDisplayStrings";
