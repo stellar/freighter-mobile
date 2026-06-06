@@ -75,6 +75,13 @@ type AmountCardCommonProps = {
    *  / UNABLE_TO_SCAN, the picker chip's token icon renders with a warning
    *  badge overlay. */
   pickerSecurityLevel?: SecurityLevel;
+  /** Optional explicit icon URL for the picker chip. Forwarded to
+   *  `TokenIconWithBadge` as a third-priority fallback (after the
+   *  `useTokenIconsStore` cache lookup). Useful for non-held destinations
+   *  selected from a stellar.expert search row whose `tomlInfo.image` URL
+   *  was already known at selection time — without this the chip would fall
+   *  back to a 2-letter avatar until the trustline is added. */
+  pickerIconUrl?: string;
   onPickerPress: () => void;
   pickerTestID?: string;
   testID?: string;
@@ -164,9 +171,10 @@ const PickerChip: React.FC<{
   token?: PricedBalance | Balance | Token;
   label?: string;
   securityLevel?: SecurityLevel;
+  iconUrl?: string;
   onPress: () => void;
   testID?: string;
-}> = ({ token, label, securityLevel, onPress, testID }) => {
+}> = ({ token, label, securityLevel, iconUrl, onPress, testID }) => {
   const { themeColors } = useColors();
   // PricedBalance / Balance carry `tokenCode`; bare `Token` carries `code`.
   // Fall back to whichever exists so non-held descriptors still get a label.
@@ -192,6 +200,7 @@ const PickerChip: React.FC<{
           token={token}
           size="md"
           securityLevel={securityLevel}
+          iconUrl={iconUrl}
         />
       ) : (
         // Empty-state affordance: a Plus-in-circle to signal "tap to add a
@@ -214,6 +223,7 @@ const EditableAmountCard: React.FC<AmountCardEditableProps> = ({
   selectedToken,
   pickerLabel,
   pickerSecurityLevel,
+  pickerIconUrl,
   onPickerPress,
   pickerTestID,
   testID,
@@ -348,6 +358,7 @@ const EditableAmountCard: React.FC<AmountCardEditableProps> = ({
           token={selectedToken}
           label={pickerLabel}
           securityLevel={pickerSecurityLevel}
+          iconUrl={pickerIconUrl}
           onPress={onPickerPress}
           testID={pickerTestID}
         />
@@ -384,6 +395,7 @@ const ReadOnlyAmountCard: React.FC<AmountCardReadOnlyProps> = ({
   selectedToken,
   pickerLabel,
   pickerSecurityLevel,
+  pickerIconUrl,
   onPickerPress,
   pickerTestID,
   testID,
@@ -423,6 +435,7 @@ const ReadOnlyAmountCard: React.FC<AmountCardReadOnlyProps> = ({
           token={selectedToken}
           label={pickerLabel}
           securityLevel={pickerSecurityLevel}
+          iconUrl={pickerIconUrl}
           onPress={onPickerPress}
           testID={pickerTestID}
         />

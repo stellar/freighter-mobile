@@ -1223,6 +1223,12 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
             : t("swapScreen.selectToken")
         }
         pickerSecurityLevel={destinationTokenDescriptor?.securityLevel}
+        // The descriptor carries the search-record's tomlInfo.image so the
+        // Receive chip can render the same logo the picker row already
+        // showed — without this the chip falls back to a 2-letter avatar
+        // for non-held destinations until the trustline is added and the
+        // balances pipeline hydrates useTokenIconsStore.
+        pickerIconUrl={destinationTokenDescriptor?.iconUrl}
         onPickerPress={handleDestinationDropdownPress}
         pickerTestID={
           destinationTokenDescriptor

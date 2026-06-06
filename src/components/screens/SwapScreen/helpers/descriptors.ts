@@ -120,5 +120,11 @@ export const descriptorFromSearchRecord = (
         : TokenTypeWithCustomToken.CREDIT_ALPHANUM12),
     isNew: !record.hasTrustline,
     securityLevel: record.securityLevel,
+    // Carry the search-record's tomlInfo.image-derived iconUrl through to
+    // the swap store so the SwapAmountScreen Receive chip can render the
+    // same logo the picker row already showed. Undefined when stellar.expert
+    // didn't return a tomlInfo.image for the asset (the chip stays on its
+    // 2-letter fallback in that case, matching the picker row).
+    iconUrl: record.iconUrl,
   };
 };

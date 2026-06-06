@@ -29,4 +29,16 @@ export type DestinationTokenDescriptor = {
    * `BalanceRow`/`assessTokenSecurity`.
    */
   securityLevel?: SecurityLevel;
+  /**
+   * Issuer-toml-declared logo URL (stellar.expert's `tomlInfo.image`),
+   * carried through from the search record so the SwapAmountScreen Receive
+   * chip can render the same logo the picker row showed pre-tap. Without
+   * this the chip falls back to a 2-letter avatar until the trustline is
+   * added and the balances pipeline hydrates `useTokenIconsStore`.
+   *
+   * Left undefined by `descriptorFromBalance` — held tokens resolve their
+   * icon through the existing `useTokenIconsStore` lookup keyed by
+   * `code:issuer`, which already works for the held-balance path.
+   */
+  iconUrl?: string;
 };
