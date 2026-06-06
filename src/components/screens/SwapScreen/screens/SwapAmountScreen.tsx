@@ -18,6 +18,10 @@ import {
   XlmReserveBottomSheet,
 } from "components/screens/SwapScreen/components";
 import {
+  buildDestinationPickerToken,
+  buildReceiveTexts,
+  buildSellSecondaryText,
+  buildSourceBalanceRight,
   descriptorFromBalance,
   recordTokenId,
 } from "components/screens/SwapScreen/helpers";
@@ -43,8 +47,6 @@ import { logger } from "config/logger";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import {
   FormattedSearchTokenRecord,
-  PricedBalance,
-  Token,
   TokenTypeWithCustomToken,
 } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
@@ -58,11 +60,7 @@ import {
   isAmountSpendable,
   hasXLMForFees,
 } from "helpers/balances";
-import {
-  formatBalanceAmount,
-  formatBigNumberForDisplay,
-  formatFiatAmount,
-} from "helpers/formatAmount";
+import { formatBigNumberForDisplay } from "helpers/formatAmount";
 import { waitForKeyboardDismiss } from "helpers/keyboard";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -1121,51 +1119,29 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     );
   }
 
-  // Sell card secondary amount: opposite of the active editable mode.
-  // Receive card amounts: big = destinationAmount (token mode) or its fiat
-  // equivalent (fiat mode); small = the opposite.
-  const sellSmallText = showFiatAmount
-    ? `${tokenAmountDisplay || "0"} ${sourceTokenSymbol}`.trim()
-    : formatFiatAmount(new BigNumber(fiatAmountDisplay || "0"));
+  const sellSmallText = buildSellSecondaryText({
+    showFiatAmount,
+    tokenAmountDisplay,
+    sourceTokenSymbol,
+    fiatAmountDisplay,
+  });
   const destinationTokenLabel = destinationTokenDescriptor?.tokenCode ?? "";
-
-  // Pick the most-complete token shape we can hand to AmountCard's picker
-  // chip: prefer the held PricedBalance, fall back to a synthetic Token
-  // built from the descriptor (issuer = classic; no issuer = native XLM),
-  // and finally undefined when the user hasn't picked anything yet.
-  let destinationPickerToken: PricedBalance | Token | undefined;
-  if (destinationBalance) {
-    destinationPickerToken = destinationBalance;
-  } else if (destinationTokenDescriptor?.issuer) {
-    destinationPickerToken = {
-      type: destinationTokenDescriptor.tokenType,
-      code: destinationTokenDescriptor.tokenCode,
-      issuer: { key: destinationTokenDescriptor.issuer },
-    } as Token;
-  } else if (destinationTokenDescriptor) {
-    destinationPickerToken = { type: "native", code: "XLM" } as Token;
-  }
-  const destinationAmountToken = destinationAmount || "0";
-  const destinationFiatString = destinationFiat
-    ? formatFiatAmount(destinationFiat)
-    : "$0.00";
-  const receiveBigText = showFiatAmount
-    ? destinationFiatString
-    : destinationAmountToken;
-  const receiveSmallText = showFiatAmount
-    ? `${destinationAmountToken} ${destinationTokenLabel}`.trim()
-    : destinationFiatString;
-  // formatBalanceAmount returns "<amount> <code>" already — don't append the
-  // code a second time (caused the "123.45 USDC USDC" double-code bug). The
-  // trailing " available" string matches the Send card's wording for
-  // cross-flow consistency.
-  const sourceBalanceRight = sourceBalance
-    ? `${formatBalanceAmount(
-        sourceBalance,
-        sourceBalance.tokenCode ?? sourceTokenSymbol,
-        spendableAmount ?? undefined,
-      )} ${t("common.available")}`
-    : "";
+  const destinationPickerToken = buildDestinationPickerToken({
+    destinationBalance,
+    destinationTokenDescriptor,
+  });
+  const { receiveBigText, receiveSmallText } = buildReceiveTexts({
+    showFiatAmount,
+    destinationAmount,
+    destinationFiat,
+    destinationTokenLabel,
+  });
+  const sourceBalanceRight = buildSourceBalanceRight({
+    sourceBalance,
+    sourceTokenSymbol,
+    spendableAmount,
+    availableLabel: t("common.available"),
+  });
   const listHeader = (
     <View>
       {/* Sell card */}
