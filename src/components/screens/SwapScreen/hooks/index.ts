@@ -10,3 +10,4 @@ export {
   type SwapToSection,
   type SwapToSectionKind,
 } from "./useSwapToSections";
+export { useStableConversionRate } from "./useStableConversionRate";

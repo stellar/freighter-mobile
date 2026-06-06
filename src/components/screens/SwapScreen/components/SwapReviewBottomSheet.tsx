@@ -7,10 +7,10 @@ import { useSignTransactionDetails } from "components/screens/SignTransactionDet
 import { SwapReviewTokenRow } from "components/screens/SwapScreen/components/SwapReviewTokenRow";
 import { TrustlineInfoBottomSheet } from "components/screens/SwapScreen/components/TrustlineInfoBottomSheet";
 import {
-  formatConversionRate,
   getTokenFromBalance,
   calculateTokenFiatAmount,
 } from "components/screens/SwapScreen/helpers";
+import { useStableConversionRate } from "components/screens/SwapScreen/hooks";
 import Avatar from "components/sds/Avatar";
 import { Banner } from "components/sds/Banner";
 import { Button } from "components/sds/Button";
@@ -25,7 +25,6 @@ import { useAuthenticationStore } from "ducks/auth";
 import { useDebugStore } from "ducks/debug";
 import { useSwapStore } from "ducks/swap";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
-import { calculateSwapRate } from "helpers/balances";
 import { pxValue } from "helpers/dimensions";
 import { formatFiatAmount } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
@@ -33,7 +32,7 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React, { useMemo, useState, useEffect, useRef } from "react";
+import React, { useMemo, useRef } from "react";
 import { TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
@@ -84,30 +83,11 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
     swapTransactionDetailsBottomSheetModalRef.current?.dismiss();
   };
 
-  const [stableConversionRate, setStableConversionRate] = useState<string>("");
-
-  const currentConversionRate =
-    pathResult?.conversionRate ||
-    calculateSwapRate(
-      Number(pathResult?.sourceAmount),
-      Number(pathResult?.destinationAmount),
-    );
-
-  useEffect(() => {
-    if (
-      currentConversionRate &&
-      !Number.isNaN(Number(currentConversionRate)) &&
-      Number(currentConversionRate) > 0
-    ) {
-      const formattedRate = formatConversionRate({
-        rate: currentConversionRate,
-        sourceSymbol: sourceTokenSymbol,
-        destinationSymbol: destinationTokenDescriptor?.tokenCode ?? "",
-      });
-
-      setStableConversionRate(formattedRate);
-    }
-  }, [currentConversionRate, sourceTokenSymbol, destinationTokenDescriptor]);
+  const { stableConversionRate } = useStableConversionRate({
+    pathResult,
+    sourceTokenSymbol,
+    destinationTokenSymbol: destinationTokenDescriptor?.tokenCode ?? "",
+  });
 
   const { balanceItems } = useBalancesList({
     publicKey: account?.publicKey ?? "",
