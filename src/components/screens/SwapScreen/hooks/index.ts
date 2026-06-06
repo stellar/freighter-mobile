@@ -4,6 +4,7 @@ export { useSwapCtaState, type SwapCtaState } from "./useSwapCtaState";
 export { useSwapDirectionToggle } from "./useSwapDirectionToggle";
 export { useSwapPathFinding } from "./useSwapPathFinding";
 export * from "./useSwapTokenLookup";
+export { useSwapTrendingPrices } from "./useSwapTrendingPrices";
 export { useSwapToEmptyStates } from "./useSwapToEmptyStates";
 export {
   useSwapToSections,

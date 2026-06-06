@@ -30,6 +30,7 @@ import {
   useSwapCtaState,
   useSwapDirectionToggle,
   useSwapPathFinding,
+  useSwapTrendingPrices,
 } from "components/screens/SwapScreen/hooks";
 import { useSwapTokenLookup } from "components/screens/SwapScreen/hooks/useSwapTokenLookup";
 import { useSwapTransaction } from "components/screens/SwapScreen/hooks/useSwapTransaction";
@@ -56,7 +57,6 @@ import {
 } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useDebugStore } from "ducks/debug";
-import { usePricesStore } from "ducks/prices";
 import { destinationAsBalanceLike, useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
@@ -374,18 +374,10 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     isTrendingLoading &&
     trendingTokens.length === 0;
 
-  // Batch-fetch token prices when the Trending list updates so SwapTokenRow
-  // can display the price + 24h chip via priceInfo.
-  const fetchPricesForTokenIds = usePricesStore(
-    (state) => state.fetchPricesForTokenIds,
-  );
-  const prices = usePricesStore((state) => state.prices);
-
-  useEffect(() => {
-    if (!showTrending || trendingTokens.length === 0) return;
-    const ids = trendingTokens.map(recordTokenId);
-    fetchPricesForTokenIds({ tokens: ids });
-  }, [showTrending, trendingTokens, fetchPricesForTokenIds]);
+  const { prices } = useSwapTrendingPrices({
+    showTrending,
+    trendingTokens,
+  });
 
   // Detail sheet for a tapped Trending row. The sheet is always mounted so
   // its imperative ref is available; we just toggle which record it renders.
