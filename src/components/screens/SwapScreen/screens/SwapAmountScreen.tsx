@@ -29,6 +29,7 @@ import {
   useSwapBalances,
   useSwapCtaState,
   useSwapDirectionToggle,
+  useSwapNavigation,
   useSwapPathFinding,
   useSwapTransactionSettings,
   useSwapTrendingPrices,
@@ -47,7 +48,6 @@ import {
   mapNetworkToNetworkDetails,
   NATIVE_TOKEN_CODE,
   NETWORKS,
-  SWAP_SELECTION_TYPES,
   TransactionContext,
 } from "config/constants";
 import { logger } from "config/logger";
@@ -471,30 +471,11 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     cancelSettings,
   } = useSwapTransactionSettings();
 
-  const navigateToSelectDestinationTokenScreen = useCallback(
-    (source: SwapPickerEntrypoint = SwapPickerEntrypoint.DROPDOWN) => {
-      analytics.track(AnalyticsEvent.SWAP_TO_PICKER_OPENED, { source });
-      navigation.navigate(SWAP_ROUTES.SWAP_SCREEN, {
-        selectionType: SWAP_SELECTION_TYPES.DESTINATION,
-      });
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [navigation],
-  );
-
-  const handleDestinationDropdownPress = useCallback(() => {
-    navigateToSelectDestinationTokenScreen(SwapPickerEntrypoint.DROPDOWN);
-  }, [navigateToSelectDestinationTokenScreen]);
-
-  const navigateToSelectSourceTokenScreen = useCallback(
-    (source: SwapPickerEntrypoint) => {
-      analytics.track(AnalyticsEvent.SWAP_FROM_PICKER_OPENED, { source });
-      navigation.navigate(SWAP_ROUTES.SWAP_SCREEN, {
-        selectionType: SWAP_SELECTION_TYPES.SOURCE,
-      });
-    },
-    [navigation],
-  );
+  const {
+    openDestinationPicker,
+    openDestinationFromDropdown,
+    openSourcePicker,
+  } = useSwapNavigation({ navigation });
 
   const handlePercentagePress = useCallback(
     (percentage: number) => {
@@ -721,9 +702,9 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
 
     if (ctaState.kind === "select") {
       if (ctaState.missingSide === "source") {
-        navigateToSelectSourceTokenScreen(SwapPickerEntrypoint.CTA);
+        openSourcePicker(SwapPickerEntrypoint.CTA);
       } else {
-        navigateToSelectDestinationTokenScreen(SwapPickerEntrypoint.CTA);
+        openDestinationPicker(SwapPickerEntrypoint.CTA);
       }
       return;
     }
@@ -791,8 +772,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   }, [
     ctaState,
     prepareSwapTransaction,
-    navigateToSelectDestinationTokenScreen,
-    navigateToSelectSourceTokenScreen,
+    openDestinationPicker,
+    openSourcePicker,
     showSecurityWarningForDestination,
     showSecurityWarningForSource,
     destinationTokenDescriptor,
@@ -988,9 +969,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           sourceBalance ? sourceTokenSymbol : t("swapScreen.selectToken")
         }
         pickerSecurityLevel={sourceBalanceSecurityAssessment.level}
-        onPickerPress={() =>
-          navigateToSelectSourceTokenScreen(SwapPickerEntrypoint.DROPDOWN)
-        }
+        onPickerPress={() => openSourcePicker(SwapPickerEntrypoint.DROPDOWN)}
         pickerTestID={
           sourceBalance ? "swap-sell-pill" : "swap-sell-choose-pill"
         }
@@ -1040,7 +1019,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         // for non-held destinations until the trustline is added and the
         // balances pipeline hydrates useTokenIconsStore.
         pickerIconUrl={destinationTokenDescriptor?.iconUrl}
-        onPickerPress={handleDestinationDropdownPress}
+        onPickerPress={openDestinationFromDropdown}
         pickerTestID={
           destinationTokenDescriptor
             ? "swap-receive-pill"
