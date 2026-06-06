@@ -26,7 +26,10 @@ import {
   descriptorFromBalance,
   recordTokenId,
 } from "components/screens/SwapScreen/helpers";
-import { useSwapPathFinding } from "components/screens/SwapScreen/hooks";
+import {
+  useSwapBalances,
+  useSwapPathFinding,
+} from "components/screens/SwapScreen/hooks";
 import { useSwapTokenLookup } from "components/screens/SwapScreen/hooks/useSwapTokenLookup";
 import { useSwapTransaction } from "components/screens/SwapScreen/hooks/useSwapTransaction";
 import { SwapProcessingScreen } from "components/screens/SwapScreen/screens";
@@ -156,18 +159,12 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     resetSwap,
   } = useSwapStore();
 
-  const sourceBalance = useMemo(
-    () => balanceItems.find((item) => item.id === sourceTokenId),
-    [balanceItems, sourceTokenId],
-  );
-
-  const destinationBalance = useMemo(
-    () =>
-      destinationTokenDescriptor
-        ? balanceItems.find((item) => item.id === destinationTokenDescriptor.id)
-        : undefined,
-    [balanceItems, destinationTokenDescriptor],
-  );
+  const { sourceBalance, destinationBalance, bestNonXlmClassicBalance } =
+    useSwapBalances({
+      balanceItems,
+      sourceTokenId,
+      destinationTokenDescriptor,
+    });
 
   const spendableAmount = useMemo(() => {
     if (!sourceBalance || !account) return null;
@@ -178,32 +175,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       transactionFee: swapFee,
     });
   }, [sourceBalance, account, swapFee]);
-
-  // Highest-value non-XLM classic balance the user holds. Used as the
-  // fallback sell token for the "Swap for 0.5 XLM" affordance when the
-  // current source is XLM (or unset). When the current source is already
-  // a non-XLM classic token, the affordance reuses it and never touches
-  // this fallback. Falls back to total when fiatTotal is missing (e.g.
-  // unsupported price). Returns undefined when the user holds only XLM.
-  const bestNonXlmClassicBalance = useMemo(() => {
-    const candidates = balanceItems
-      .filter(
-        (b) =>
-          (b.tokenType === TokenTypeWithCustomToken.CREDIT_ALPHANUM4 ||
-            b.tokenType === TokenTypeWithCustomToken.CREDIT_ALPHANUM12) &&
-          !isNativeAssetId(b.id) &&
-          b.total?.gt(0),
-      )
-      .sort((a, b) => {
-        const aFiat = a.fiatTotal ?? new BigNumber(0);
-        const bFiat = b.fiatTotal ?? new BigNumber(0);
-        if (!aFiat.eq(bFiat)) return bFiat.comparedTo(aFiat);
-        return (b.total ?? new BigNumber(0)).comparedTo(
-          a.total ?? new BigNumber(0),
-        );
-      });
-    return candidates[0];
-  }, [balanceItems]);
 
   // Gate for the XlmReserveBottomSheet's "Swap for 0.5 XLM" affordance.
   // Two modes are supported:
