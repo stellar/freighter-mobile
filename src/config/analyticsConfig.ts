@@ -179,6 +179,46 @@ export enum AnalyticsEvent {
 }
 
 /**
+ * Tags how the user reached the Swap source / destination picker, for the
+ * SWAP_FROM_PICKER_OPENED + SWAP_TO_PICKER_OPENED analytics events.
+ *
+ * - CTA: the missing-side prompt button (e.g. "Select a token" / "Sell")
+ *   on SwapAmountScreen fired the navigation.
+ * - DROPDOWN: the picker chip itself was tapped.
+ *
+ * Wire values match the historical inline string union so existing Amplitude
+ * dashboards / funnels keyed on `source: "cta"` / `source: "dropdown"` keep
+ * working unchanged.
+ */
+export enum SwapPickerEntrypoint {
+  CTA = "cta",
+  DROPDOWN = "dropdown",
+}
+
+/**
+ * Tags which list bucket the user picked a swap token from, for the
+ * SWAP_DESTINATION_SELECTED + SWAP_SOURCE_SELECTED analytics events.
+ *
+ * - BALANCES: idle-mode held-tokens list.
+ * - POPULAR: idle-mode non-held popular-tokens list.
+ * - SEARCH: active-search result row.
+ * - TRENDING: the SwapAmountScreen trending list (via the
+ *   TrendingTokenDetailBottomSheet "Buy" CTA).
+ *
+ * Wire values match the historical inline string unions so existing
+ * Amplitude dashboards / funnels keyed on `source: "balances"` etc keep
+ * working unchanged. A single enum anchors all four producers (held-press
+ * + record-press + trending-buy) to one symbol so a typo can't silently
+ * land bad data in the dashboard.
+ */
+export enum SwapSelectionSource {
+  BALANCES = "balances",
+  POPULAR = "popular",
+  SEARCH = "search",
+  TRENDING = "trending",
+}
+
+/**
  * Route-to-Analytics Mapping Configuration
  *
  * This configuration defines how routes are mapped to analytics events.

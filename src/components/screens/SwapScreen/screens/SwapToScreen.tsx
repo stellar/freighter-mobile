@@ -16,7 +16,7 @@ import { useSwapTokenLookup } from "components/screens/SwapScreen/hooks/useSwapT
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
-import { AnalyticsEvent } from "config/analyticsConfig";
+import { AnalyticsEvent, SwapSelectionSource } from "config/analyticsConfig";
 import { SWAP_SELECTION_TYPES } from "config/constants";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import {
@@ -201,15 +201,22 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
 
   const handleHeldPress = (
     balance: PricedBalance & { id: string },
-    source: "balances" | "popular" | "search",
+    source:
+      | SwapSelectionSource.BALANCES
+      | SwapSelectionSource.POPULAR
+      | SwapSelectionSource.SEARCH,
   ) => {
     const descriptor = descriptorFromBalance(balance);
     if (selectionType === SWAP_SELECTION_TYPES.SOURCE) {
-      // Source picker is holdsOnly, so `source` is either "balances" (idle)
-      // or "search" (active-search match against a held token). "popular"
+      // Source picker is holdsOnly, so `source` is either BALANCES (idle)
+      // or SEARCH (active-search match against a held token). POPULAR
       // never reaches the source picker.
-      const sourceSource: "balances" | "search" =
-        source === "search" ? "search" : "balances";
+      const sourceSource:
+        | SwapSelectionSource.BALANCES
+        | SwapSelectionSource.SEARCH =
+        source === SwapSelectionSource.SEARCH
+          ? SwapSelectionSource.SEARCH
+          : SwapSelectionSource.BALANCES;
       analytics.track(AnalyticsEvent.SWAP_SOURCE_SELECTED, {
         tokenCode: balance.tokenCode ?? "",
         tokenIssuer: descriptor.issuer ?? "",
@@ -245,7 +252,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
   // is always destination-mode.
   const handleRecordPress = (
     record: FormattedSearchTokenRecord,
-    source: "popular" | "search",
+    source: SwapSelectionSource.POPULAR | SwapSelectionSource.SEARCH,
   ) => {
     const descriptor = descriptorFromSearchRecord(record);
     analytics.track(AnalyticsEvent.SWAP_DESTINATION_SELECTED, {
@@ -399,7 +406,9 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
                   variant="held"
                   balance={item}
                   network={network}
-                  onPress={() => handleHeldPress(item, "balances")}
+                  onPress={() =>
+                    handleHeldPress(item, SwapSelectionSource.BALANCES)
+                  }
                 />
               );
             }
@@ -422,7 +431,9 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
                     onPress={() =>
                       handleHeldPress(
                         heldMatch,
-                        isSearchActive ? "search" : "popular",
+                        isSearchActive
+                          ? SwapSelectionSource.SEARCH
+                          : SwapSelectionSource.POPULAR,
                       )
                     }
                   />
@@ -442,7 +453,9 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
                   onPress={() =>
                     handleRecordPress(
                       record,
-                      isSearchActive ? "search" : "popular",
+                      isSearchActive
+                        ? SwapSelectionSource.SEARCH
+                        : SwapSelectionSource.POPULAR,
                     )
                   }
                 />
@@ -456,7 +469,9 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
                   variant="held"
                   balance={item}
                   network={network}
-                  onPress={() => handleHeldPress(item, "balances")}
+                  onPress={() =>
+                    handleHeldPress(item, SwapSelectionSource.BALANCES)
+                  }
                 />
               );
             }

@@ -8,7 +8,7 @@ import {
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
-import { AnalyticsEvent } from "config/analyticsConfig";
+import { AnalyticsEvent, SwapSelectionSource } from "config/analyticsConfig";
 import { POSITIVE_PRICE_CHANGE_THRESHOLD } from "config/constants";
 import {
   FormattedSearchTokenRecord,
@@ -75,7 +75,7 @@ export const TrendingTokenDetailBottomSheet: React.FC<
       tokenCode: record.tokenCode,
       tokenIssuer: descriptor.issuer ?? "",
       isNew: descriptor.isNew,
-      source: "trending",
+      source: SwapSelectionSource.TRENDING,
     });
     // Selection-swap rule (spec §12.4 / SwapToScreen parity): if the new
     // destination equals the current source, clear source so the user

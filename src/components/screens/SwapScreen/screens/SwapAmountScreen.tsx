@@ -28,7 +28,7 @@ import { SwapProcessingScreen } from "components/screens/SwapScreen/screens";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { AnalyticsEvent } from "config/analyticsConfig";
+import { AnalyticsEvent, SwapPickerEntrypoint } from "config/analyticsConfig";
 import {
   BASE_RESERVE,
   DEFAULT_DECIMALS,
@@ -570,7 +570,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   });
 
   const navigateToSelectDestinationTokenScreen = useCallback(
-    (source: "cta" | "dropdown" = "dropdown") => {
+    (source: SwapPickerEntrypoint = SwapPickerEntrypoint.DROPDOWN) => {
       analytics.track(AnalyticsEvent.SWAP_TO_PICKER_OPENED, { source });
       navigation.navigate(SWAP_ROUTES.SWAP_SCREEN, {
         selectionType: SWAP_SELECTION_TYPES.DESTINATION,
@@ -581,11 +581,11 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   );
 
   const handleDestinationDropdownPress = useCallback(() => {
-    navigateToSelectDestinationTokenScreen("dropdown");
+    navigateToSelectDestinationTokenScreen(SwapPickerEntrypoint.DROPDOWN);
   }, [navigateToSelectDestinationTokenScreen]);
 
   const navigateToSelectSourceTokenScreen = useCallback(
-    (source: "cta" | "dropdown") => {
+    (source: SwapPickerEntrypoint) => {
       analytics.track(AnalyticsEvent.SWAP_FROM_PICKER_OPENED, { source });
       navigation.navigate(SWAP_ROUTES.SWAP_SCREEN, {
         selectionType: SWAP_SELECTION_TYPES.SOURCE,
@@ -890,9 +890,9 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
 
     if (ctaState.kind === "select") {
       if (ctaState.missingSide === "source") {
-        navigateToSelectSourceTokenScreen("cta");
+        navigateToSelectSourceTokenScreen(SwapPickerEntrypoint.CTA);
       } else {
-        navigateToSelectDestinationTokenScreen("cta");
+        navigateToSelectDestinationTokenScreen(SwapPickerEntrypoint.CTA);
       }
       return;
     }
@@ -1180,7 +1180,9 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           sourceBalance ? sourceTokenSymbol : t("swapScreen.selectToken")
         }
         pickerSecurityLevel={sourceBalanceSecurityAssessment.level}
-        onPickerPress={() => navigateToSelectSourceTokenScreen("dropdown")}
+        onPickerPress={() =>
+          navigateToSelectSourceTokenScreen(SwapPickerEntrypoint.DROPDOWN)
+        }
         pickerTestID={
           sourceBalance ? "swap-sell-pill" : "swap-sell-choose-pill"
         }
