@@ -16,3 +16,4 @@ export {
   type SwapToListItem,
 } from "./recordPredicates";
 export * from "./swapDisplayStrings";
+export { shouldShowXlmReservePreflight } from "./swapPreflight";

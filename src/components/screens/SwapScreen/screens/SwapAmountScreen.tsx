@@ -24,6 +24,7 @@ import {
   buildSourceBalanceRight,
   computeDestinationFiat,
   recordTokenId,
+  shouldShowXlmReservePreflight,
 } from "components/screens/SwapScreen/helpers";
 import {
   useSwapBalances,
@@ -42,7 +43,6 @@ import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent, SwapPickerEntrypoint } from "config/analyticsConfig";
 import {
-  BASE_RESERVE,
   DEFAULT_DECIMALS,
   isNativeAssetId,
   mapNetworkToNetworkDetails,
@@ -716,48 +716,22 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
 
     // review
 
-    // Pre-flight XLM reserve check (design doc §6.5):
-    // When the destination is a new token (trustline must be added) the user
-    // needs at least 0.5 XLM spendable to cover the reserve bump. If not,
-    // surface the XlmReserveBottomSheet instead of the review sheet.
-    if (destinationTokenDescriptor?.isNew) {
-      // Use the same spendable-amount semantics the source-side check uses
-      // (lines 159-167): it subtracts the swap fee and accounts for subentries.
-      // Plain xlmBalance.available is total - sellingLiabilities - minimumBalance
-      // and does NOT include fee headroom, so for most accounts the bare check
-      // never trips even when the user has no real reserve headroom.
-      const xlmBalance = balanceItems.find(
-        (b) => "token" in b && b.token.type === "native",
-      );
-      const xlmSpendable = xlmBalance
-        ? calculateSpendableAmount({
-            balance: xlmBalance,
-            subentryCount: account?.subentryCount ?? 0,
-            transactionFee: swapFee,
-          })
-        : new BigNumber(0);
-
-      // When XLM is the source token, the sourceAmount is about to leave the
-      // account in the swap. Subtract it so the gate evaluates post-swap headroom.
-      const isXlmSource = isNativeAssetId(sourceTokenId);
-      // The combined trustline + path-payment tx has 2 ops, so the actual fee
-      // is 2× the per-op fee. calculateSpendableAmount only deducted one op's
-      // worth (via the transactionFee parameter), so deduct one more here so
-      // the gate doesn't pass an account that lacks fee headroom for op #1.
-      const extraTrustlineOpFee = new BigNumber(swapFee);
-      const projectedSpendable = (
-        isXlmSource
-          ? xlmSpendable.minus(new BigNumber(sourceAmount || "0"))
-          : xlmSpendable
-      ).minus(extraTrustlineOpFee);
-
-      // Use lte so the exact-boundary case (spendable === BASE_RESERVE) routes
-      // to the reserve sheet — the user has zero margin after the trustline.
-      if (projectedSpendable.lte(BASE_RESERVE)) {
-        analytics.track(AnalyticsEvent.SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN);
-        xlmReserveBottomSheetRef.current?.present();
-        return;
-      }
+    // Pre-flight XLM reserve check (design doc §6.5): surface the
+    // XlmReserveBottomSheet instead of Review when adding the trustline
+    // would leave the account below the XLM base reserve.
+    if (
+      shouldShowXlmReservePreflight({
+        balanceItems,
+        subentryCount: account?.subentryCount ?? 0,
+        swapFee,
+        sourceTokenId,
+        sourceAmount,
+        destinationIsNew: !!destinationTokenDescriptor?.isNew,
+      })
+    ) {
+      analytics.track(AnalyticsEvent.SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN);
+      xlmReserveBottomSheetRef.current?.present();
+      return;
     }
 
     const isUnableToScan =
