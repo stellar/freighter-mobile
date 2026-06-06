@@ -11,12 +11,10 @@ export interface PercentageButtonsProps {
 }
 
 /**
- * Row of four amount-shortcut buttons (25% / 50% / 75% / Max) shared between
- * the Send and Swap amount screens.
+ * Row of four amount-shortcut buttons (25% / 50% / 75% / Max).
  *
- * The row stretches to its parent's width — wrap it with `items-center` and
- * whatever vertical margin the screen wants. Uses the `lg` button size that
- * the Swap flow standardised on (the previous Send variant used `xl`).
+ * Stretches to its parent's width — wrap it with `items-center` and whatever
+ * vertical margin the screen wants.
  */
 export const PercentageButtons: React.FC<PercentageButtonsProps> = ({
   onPress,

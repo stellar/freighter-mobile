@@ -11,13 +11,7 @@ import { create } from "zustand";
  * State and actions for managing verified tokens cache
  */
 interface VerifiedTokensState {
-  /**
-   * Fetches verified tokens for a network, using cache if available and fresh
-   * @param {Object} params - Function parameters
-   * @param {NETWORKS} params.network - The network to fetch from
-   * @param {boolean} params.forceRefresh - Force refresh even if cache is fresh (default: false)
-   * @returns {Promise<TokenListReponseItem[]>} The verified tokens list
-   */
+  /** Fetches verified tokens for a network, using cache if available and fresh. */
   getVerifiedTokens: (params: {
     network: NETWORKS;
     forceRefresh?: boolean;
@@ -25,40 +19,18 @@ interface VerifiedTokensState {
   /**
    * Read the disk cache for a network without triggering a fetch.
    * Returns the cached payload + its age in ms, or null when the
-   * cache is empty/malformed. Used by Swap's SWR pipeline to render
-   * preliminary content before kicking a background refresh.
+   * cache is empty/malformed.
    */
   readCache: (
     network: NETWORKS,
   ) => Promise<{ data: TokenListReponseItem[]; age: number } | null>;
 }
 
-/**
- * Cache TTL in milliseconds (30 minutes)
- */
 const CACHE_TTL_MS = 30 * 60 * 1000;
 
 /**
- * Verified Tokens Store
- *
- * Manages and caches verified tokens from token lists using cachedFetch for shared caching.
- *
- * Features:
- * - Caches verified tokens to avoid unnecessary API calls
- * - Uses shared cache mechanism (cachedFetch) so tokenIcons and verifiedTokens use the same cache
- * - Refreshes cache after 30 minutes
- * - Can force refresh when needed
- *
- * @example
- * // Get verified tokens (uses cache if available)
- * const { getVerifiedTokens } = useVerifiedTokensStore();
- * const tokens = await getVerifiedTokens({ network: NETWORKS.PUBLIC });
- *
- * // Force refresh
- * const freshTokens = await getVerifiedTokens({
- *   network: NETWORKS.PUBLIC,
- *   forceRefresh: true
- * });
+ * Manages and caches verified tokens from token lists. Shares the
+ * cachedFetch store so tokenIcons and verifiedTokens hit the same cache.
  */
 export const useVerifiedTokensStore = create<VerifiedTokensState>()(() => ({
   getVerifiedTokens: async ({ network, forceRefresh = false }) => {

@@ -6,7 +6,7 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useMemo } from "react";
 
 /**
- * CTA state-machine — see design doc §6.6.
+ * CTA state-machine.
  *
  *   select       either side empty  ──► navigate to the missing picker
  *   enter        sides set, amount == 0  ──► focus the Sell input

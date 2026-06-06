@@ -35,27 +35,8 @@ type SwapBalanceItem = PricedBalance & {
 };
 
 /**
- * Owns the SwapAmountScreen's amount-error state machine:
- *
- *   - `amountError` — inline error string for the Sell card (drives
- *     the CTA's disabled gate via useSwapCtaState).
- *   - `activeError` — toast-shaped error: rendered via showToast on
- *     change. Three internal writers:
- *       (1) Input-validation effect: XLM-for-fees gate fires
- *           SWAP_TOAST_IDS.INSUFFICIENT_XLM_FOR_FEES (3s); over-
- *           spendable fires SWAP_TOAST_IDS.INSUFFICIENT_BALANCE (3s);
- *           otherwise clears amountError.
- *       (2) Path-error effect: fires SWAP_TOAST_IDS.SWAP_PATH_ERROR
- *           (persistent — duration 0) when pathError + amount entered
- *           + destination set; AUTO-DISMISSES when a subsequent
- *           pathResult arrives without a pathError.
- *       (3) The returned `setActiveError` setter, so external code
- *           (prepareSwapTransaction's catch block) can set its own
- *           SWAP_TOAST_IDS.FAILED_TO_SETUP_TRANSACTION error without
- *           the hook owning that one site too.
- *
- * The toastId values are EXPORTED so call-site tests + downstream
- * routing can reference them by symbol instead of by literal string.
+ * Owns the swap amount-error state: returns an inline `amountError`
+ * for the Sell card and a `setActiveError` setter that drives toasts.
  */
 export const useSwapAmountError = ({
   sourceBalance,

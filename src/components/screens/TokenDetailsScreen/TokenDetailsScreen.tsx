@@ -199,10 +199,6 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
       </View>
       <View className="mt-7 pb-3 gap-7">
         <View className="flex-row gap-3">
-          {/* Swap is only available for classic Stellar assets (native +
-              alphanum4/12). Soroban custom tokens and liquidity-pool shares
-              aren't supported by the swap path-finding flow today, so the
-              CTA is hidden for those token types. */}
           {swapEnabled && isClassicAsset && (
             <View className="flex-1">
               <Button tertiary xl isFullWidth onPress={handleSwapPress}>

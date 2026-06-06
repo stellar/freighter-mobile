@@ -2,20 +2,12 @@ import { FormattedSearchTokenRecord, HookStatus } from "config/types";
 import { isContractId } from "helpers/soroban";
 
 /**
- * Derives the four interlocking booleans that gate which empty-state
- * branch SwapToScreen renders when the user's debounced search returns
- * empty. The booleans are mutually-exclusive by construction:
+ * Derives the empty-state booleans for the swap-to search. Mutually
+ * exclusive by construction:
  *
  *   isSearching       — debounced search is mid-fetch (takes precedence)
  *   showSorobanEmpty  — term has results filtered out as Soroban / contract id
  *   showNoResults     — term has no results, NOT a Soroban case
- *
- * `totalSearchResults` is exposed too so the caller can avoid re-summing
- * the three bucket lengths.
- *
- * Plain derivation — no useMemo needed (the inputs are primitive
- * lengths + a string + an enum + an array literal that re-renders the
- * screen anyway).
  */
 export const useSwapToEmptyStates = ({
   searchTerm,

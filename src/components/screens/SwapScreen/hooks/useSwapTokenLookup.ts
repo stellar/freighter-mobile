@@ -93,16 +93,6 @@ export interface UseSwapTokenLookupProps {
   holdsOnly?: boolean;
 }
 
-/**
- * Minimal shape we need from the stellar.expert /asset response.
- * Mirrors `SearchTokenResponse._embedded.records[number]` but kept loose
- * so we don't have to import the full shape just for typing.
- */
-// isSorobanRecord + isClassicTokenType + StellarExpertRecord moved to
-// src/components/screens/SwapScreen/helpers/recordPredicates.ts so pure
-// helpers like computeTrendingIntersection don't have to reach back into
-// this hook file.
-
 /** Partial-match: does `text` contain `term` (case-insensitive)? */
 const matchesTerm = (text: string | undefined, term: string): boolean => {
   if (!text) return false;
@@ -159,10 +149,9 @@ export const useSwapTokenLookup = ({
   balanceItemsRef.current = balanceItems;
 
   const [searchTerm, setSearchTerm] = useState<string>("");
-  // §5.1: trendingTokens = INTERSECTION of stellar.expert top-50 AND the
-  // runtime verified-tokens list (held-INCLUSIVE). popularTokens below
-  // excludes held tokens for the picker; the SwapAmountScreen Trending list
-  // consumes this array as-is.
+  // trendingTokens = INTERSECTION of stellar.expert top-50 AND the runtime
+  // verified-tokens list (held-INCLUSIVE). popularTokens below excludes held
+  // tokens for the picker; the trending list consumes this array as-is.
   const [trendingTokens, setTrendingTokens] = useState<
     FormattedSearchTokenRecord[]
   >(() => trendingMemoryCacheByNetwork.get(network) ?? []);
@@ -610,12 +599,6 @@ export const useSwapTokenLookup = ({
     setStatus(HookStatus.IDLE);
   }, []);
 
-  /**
-   * User-initiated pull-to-refresh. Force-refresh all 3 layers in
-   * parallel, then re-run the intersection + Blockaid scan to produce
-   * a fresh trendingTokens. Resolves on success; rejects when the
-   * upstream fetch fails so the caller can surface a toast.
-   */
   const refreshTrending = useCallback(async () => {
     trendingAbortRef.current?.abort();
     const controller = new AbortController();
@@ -681,8 +664,8 @@ export const useSwapTokenLookup = ({
   // should never surface in the Swap-To picker's "Your tokens" section.
   // getTokenType expects either NATIVE_TOKEN_CODE ("XLM") or a "CODE:ISSUER"
   // string. Balance.id is "native" for XLM in this codebase, so normalize
-  // first (same trick at line 220) — otherwise the catch-all classifies it
-  // as LIQUIDITY_POOL_SHARES and filters it out.
+  // first — otherwise the catch-all classifies it as LIQUIDITY_POOL_SHARES
+  // and filters it out.
   const yourTokens = useMemo(
     () =>
       balanceItems.filter((b) =>
@@ -692,7 +675,7 @@ export const useSwapTokenLookup = ({
       ),
     [balanceItems],
   );
-  // §5.1: popularTokens is the same verified intersection as trendingTokens,
+  // popularTokens is the same verified intersection as trendingTokens,
   // additionally EXCLUDING held tokens for the picker.
   const popularTokens = useMemo(
     () =>

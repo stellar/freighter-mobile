@@ -22,16 +22,10 @@ export interface TokenIconWithBadgeProps {
 /**
  * TokenIcon with an optional Blockaid security badge overlay.
  *
- * The badge is rendered as a small AlertCircle icon at the bottom-right
- * of the token icon — red for MALICIOUS, amber for any other "not safe"
- * level (SUSPICIOUS, EXPECTED_TO_FAIL). No badge for SAFE, UNABLE_TO_SCAN,
- * or undefined.
- *
- * This matches the isSuspicious semantic in services/blockaid/helper.ts:
- * any level except SAFE / UNABLE_TO_SCAN / undefined surfaces a warning.
- *
- * Extracted from AddTokenScreen/TokenItem so the SwapScreen rows and
- * Sell/Receive controls can reuse the same overlay pattern.
+ * Badge is a small AlertCircle at bottom-right — red for MALICIOUS, amber
+ * for other unsafe levels (SUSPICIOUS, EXPECTED_TO_FAIL). No badge for
+ * SAFE, UNABLE_TO_SCAN, or undefined. Mirrors the isSuspicious semantic
+ * in services/blockaid/helper.ts.
  */
 export const TokenIconWithBadge: React.FC<TokenIconWithBadgeProps> = ({
   securityLevel,

@@ -15,7 +15,7 @@ import { TouchableOpacity, View } from "react-native";
  * @property {React.ReactNode} [headerElement] - Optional custom header element (e.g., icon with background)
  * @property {Array<{ key: string; value: React.ReactNode }>} texts - Array of paragraphs to display. `value` accepts plain text or rich content (e.g. nested `<Text>` for inline emphasis); rendered inside the shared paragraph `<Text>` wrapper so RN's nested-Text inheritance keeps fonts consistent.
  * @property {string} [confirmLabel] - Optional label for the confirmation button (defaults to "Add memo")
- * @property {string} [closeTestID] - Optional testID forwarded to the close (X) TouchableOpacity, so callers can preserve component-specific selectors (e.g. `trustline-info-close`).
+ * @property {string} [closeTestID] - Optional testID for the close (X) button.
  */
 type InformationBottomSheetProps = {
   onConfirm?: () => void;

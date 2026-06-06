@@ -70,14 +70,10 @@ const SwapTokenRowComponent: React.FC<SwapTokenRowProps> = ({
 
   // Derive display values from the appropriate data source
   const tokenCode = variant === "held" ? balance?.tokenCode : record?.tokenCode;
-  // Non-held subtitle: native XLM always renders the canonical "Stellar
-  // Lumens" name (matches ducks/balances.ts:84 — the same name shown for
-  // held XLM on the Home screen). All other tokens use the fallback chain
-  // domain → record.name → tokenCode. record.domain is always a string
-  // ("" when stellar.expert returns no home_domain), so the truthy check
-  // correctly steps past empty strings to the name field — which is
-  // undefined for classic assets and only populated for Soroban contracts
-  // (via token_name / tomlInfo.name).
+  // Native XLM renders the canonical "Stellar Lumens" name. For all other
+  // tokens, record.domain is always a string ("" when stellar.expert returns
+  // no home_domain), so the truthy check correctly skips empty domains to
+  // fall through to name → tokenCode.
   const nonHeldSubtitle = (() => {
     if (variant === "held") return undefined;
     if (record?.isNative) return "Stellar Lumens";
@@ -114,7 +110,6 @@ const SwapTokenRowComponent: React.FC<SwapTokenRowProps> = ({
         }
       : undefined;
 
-  // Right-slot rendering
   const renderRightSlot = () => {
     if (variant === "held" && balance) {
       return (
@@ -199,11 +194,9 @@ const SwapTokenRowComponent: React.FC<SwapTokenRowProps> = ({
           <Text md primary medium numberOfLines={1}>
             {tokenCode}
           </Text>
-          {/* Held rows: show the raw token amount on the second line, matching
-              the BalanceRow pattern used on the Home screen. Non-held rows
-              keep showing the issuer's home domain. Skip the line entirely if
-              `total` is missing (production always has it; defensive for
-              partial test fixtures). */}
+          {/* Held rows show the raw token amount; non-held rows show the
+              issuer's home domain. Skip when `total` is missing (defensive
+              for partial test fixtures). */}
           {variant === "held" && balance?.total ? (
             <Text sm secondary medium numberOfLines={1}>
               {formatBalanceAmount(balance, balance.tokenCode)}

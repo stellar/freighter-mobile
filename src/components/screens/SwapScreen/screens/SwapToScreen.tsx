@@ -129,9 +129,8 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
         tokenIssuer: descriptor.issuer ?? "",
         source: sourceSource,
       });
-      // Selection-swap rule (spec §12.4): if the new source equals the
-      // current destination, clear destination so the user can pick a
-      // different token there.
+      // If the new source equals the current destination, clear destination
+      // so the user can pick a different token there.
       if (destinationToken && destinationToken.id === balance.id) {
         setDestinationToken(null);
       }
@@ -143,9 +142,8 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
         isNew: descriptor.isNew,
         source,
       });
-      // Selection-swap rule (spec §12.4): if the new destination equals
-      // the current source, clear source so the user can pick a different
-      // token there.
+      // If the new destination equals the current source, clear source so
+      // the user can pick a different token there.
       if (sourceTokenId && sourceTokenId === descriptor.id) {
         setSourceToken("", "");
       }
@@ -168,8 +166,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
       isNew: descriptor.isNew,
       source,
     });
-    // Selection-swap rule (spec §12.4): if the new destination equals the
-    // current source, clear source.
+    // If the new destination equals the current source, clear source.
     if (sourceTokenId && sourceTokenId === descriptor.id) {
       setSourceToken("", "");
     }
@@ -263,8 +260,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
             }
             if (infoRef) {
               // Tappable region spans the whole header (title + (i)) so the
-              // user doesn't have to hit the small 16px icon. 16-top / 24-bot
-              // matches the Figma spec and Add-a-Token's section-title spacing.
+              // user doesn't have to hit the small 16px icon.
               return (
                 <TouchableOpacity
                   className="mt-4 mb-6 flex-row items-center gap-2 self-start"

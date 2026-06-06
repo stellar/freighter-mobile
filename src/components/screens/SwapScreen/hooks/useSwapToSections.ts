@@ -27,11 +27,8 @@ export type SwapToSection = {
  *     / "Unverified") — each omitted when its bucket is empty.
  *
  * The opposite-side token is NOT excluded here — picking it triggers the
- * selection-swap rule (spec §12.4): the opposite side clears so the user
- * can pick a different token there.
- *
- * "Your token" (singular) when exactly one row is in the bucket; switches
- * to "Your tokens" otherwise.
+ * selection-swap rule: the opposite side clears so the user can pick a
+ * different token there.
  */
 export const useSwapToSections = ({
   searchTerm,

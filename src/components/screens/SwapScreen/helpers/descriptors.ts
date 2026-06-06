@@ -48,8 +48,7 @@ export const descriptorFromBalance = (
     // like `balanceItems.find(b => b.id === descriptor.id)` then
     // succeed for XLM-as-destination — without this, the swap-direction
     // toggle stays disabled and the balance line below the Receive
-    // pill stays empty when XLM is selected. Also matches design doc
-    // §6.1 ("id: string; // 'CODE:ISSUER' or 'XLM'").
+    // pill stays empty when XLM is selected.
     return {
       id: NATIVE_TOKEN_CODE,
       tokenCode: NATIVE_TOKEN_CODE,
@@ -65,11 +64,9 @@ export const descriptorFromBalance = (
     ? id.split(":")
     : [balance.tokenCode ?? "", ""];
 
-  // Project Blockaid signal from the held balance's bulk-scan blob (set by
-  // useBalancesList) so downstream callers see a consistent securityLevel
-  // shape regardless of whether the descriptor came from a balance or a
-  // search record (spec §9: "same assessTokenSecurity output keyed by
-  // CODE-ISSUER").
+  // Project Blockaid signal from the held balance's bulk-scan blob so
+  // downstream callers see a consistent securityLevel shape regardless
+  // of whether the descriptor came from a balance or a search record.
   const heldSecurityLevel = balance.blockaidData
     ? assessTokenSecurity(
         balance.blockaidData as Parameters<typeof assessTokenSecurity>[0],
@@ -101,7 +98,7 @@ export const descriptorFromSearchRecord = (
   if (record.isNative) {
     // See descriptorFromBalance's native branch for the rationale —
     // the canonical native id is NATIVE_TOKEN_CODE ("XLM"), matching
-    // both the production balance store and design doc §6.1.
+    // the production balance store.
     return {
       id: NATIVE_TOKEN_CODE,
       tokenCode: NATIVE_TOKEN_CODE,

@@ -9,7 +9,7 @@ type BalanceItem = PricedBalance & {
 };
 
 /**
- * Pure pre-flight predicate (design doc §6.5): when the destination is a
+ * Pure pre-flight predicate: when the destination is a
  * new token (a trustline must be added), the user needs at least
  * BASE_RESERVE (0.5 XLM) of spendable headroom AFTER the swap to cover
  * the new trustline's reserve bump. If they don't, the caller surfaces

@@ -7,15 +7,11 @@ import React from "react";
 import { View } from "react-native";
 
 /**
- * One row of the Sell/Receive summary on the swap review sheet. Render
- * shape is identical for both sides: a TokenIcon (with an optional
- * iconUrl forwarded by the destination side so non-held tokens still
- * show their search-row logo), an absolute-positioned AlertCircle
- * overlay when Blockaid flagged the asset, and a two-line
- * amount + fiat block.
+ * One row of the Sell/Receive summary on the swap review sheet.
  *
- * `isMalicious` takes precedence over `isSuspicious` for the badge
- * colour — same precedence as the rest of the swap UI.
+ * `iconUrl` lets non-held tokens (destination side) reuse their search-row
+ * logo. `isMalicious` takes precedence over `isSuspicious` for the badge
+ * colour.
  */
 export const SwapReviewTokenRow: React.FC<{
   token: NonNativeToken | NativeToken;

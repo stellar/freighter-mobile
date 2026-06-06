@@ -18,17 +18,13 @@ interface StellarExpertTopTokensState {
   /**
    * Read the disk cache for a network without triggering a fetch.
    * Returns the cached payload + its age in ms, or null when the
-   * cache is empty/malformed. Used by Swap's SWR pipeline to render
-   * preliminary content before kicking a background refresh.
+   * cache is empty/malformed.
    */
   readCache: (
     network: NETWORKS,
   ) => Promise<{ data: SearchTokenResponse; age: number } | null>;
 }
 
-/**
- * Cache TTL in milliseconds (30 minutes)
- */
 const CACHE_TTL_MS = 30 * 60 * 1000;
 
 /**

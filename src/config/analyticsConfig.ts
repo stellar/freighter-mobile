@@ -196,20 +196,9 @@ export enum SwapPickerEntrypoint {
 }
 
 /**
- * Tags which list bucket the user picked a swap token from, for the
- * SWAP_DESTINATION_SELECTED + SWAP_SOURCE_SELECTED analytics events.
- *
- * - BALANCES: idle-mode held-tokens list.
- * - POPULAR: idle-mode non-held popular-tokens list.
- * - SEARCH: active-search result row.
- * - TRENDING: the SwapAmountScreen trending list (via the
- *   TrendingTokenDetailBottomSheet "Buy" CTA).
- *
- * Wire values match the historical inline string unions so existing
- * Amplitude dashboards / funnels keyed on `source: "balances"` etc keep
- * working unchanged. A single enum anchors all four producers (held-press
- * + record-press + trending-buy) to one symbol so a typo can't silently
- * land bad data in the dashboard.
+ * Tags which list bucket the user picked a swap token from. Wire values are
+ * an Amplitude dashboard contract -- do not rename without coordinating with
+ * analytics.
  */
 export enum SwapSelectionSource {
   BALANCES = "balances",

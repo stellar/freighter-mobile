@@ -1,10 +1,6 @@
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { QRCodeSource } from "config/constants";
 
-// -----------------------------------------------------------------------------
-// CORE TYPES
-// -----------------------------------------------------------------------------
-
 export enum TransactionType {
   Classic = "classic",
   Soroban = "soroban",
@@ -12,10 +8,6 @@ export enum TransactionType {
 
 export type AnalyticsEventName = AnalyticsEvent;
 export type AnalyticsProps = Record<string, unknown> | undefined;
-
-// -----------------------------------------------------------------------------
-// EVENT INTERFACES
-// -----------------------------------------------------------------------------
 
 export interface SignedTransactionEvent {
   transactionHash: string;

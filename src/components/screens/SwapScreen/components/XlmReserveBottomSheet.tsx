@@ -17,25 +17,11 @@ const HELP_ARTICLE_URL =
 export interface XlmReserveBottomSheetProps {
   publicKey: string;
   bottomSheetModalRef?: React.RefObject<BottomSheetModal | null>;
-  /**
-   * Destination token code (e.g. "AQUA") — interpolated into the title body
-   * and the info-card body ("To receive AQUA, your wallet needs a trustline
-   * on Stellar.").
-   */
+  /** Destination token code (e.g. "AQUA") interpolated into the title and info-card body. */
   tokenCode?: string;
-  /**
-   * Controls whether the "Swap for 0.5 XLM" CTA is rendered. The parent
-   * computes this from the user's held balances — true when there's at
-   * least one non-XLM classic balance the user can swap from.
-   */
+  /** When true, renders the "Swap for 0.5 XLM" CTA. */
   canOfferSwapToXlm: boolean;
-  /**
-   * Async handler invoked when the user taps "Swap for 0.5 XLM". The
-   * parent picks the best non-XLM classic balance, calls Horizon's
-   * strictReceivePaths to size the swap, sets source/destination/amount
-   * on the swap store, and dismisses this sheet. The sheet just tracks
-   * the local pending state for the Button's loading spinner.
-   */
+  /** Async handler for the "Swap for 0.5 XLM" CTA; the sheet tracks local pending state for the spinner. */
   onSwapForXlm?: () => void | Promise<void>;
 }
 
@@ -80,7 +66,6 @@ export const XlmReserveBottomSheet: React.FC<XlmReserveBottomSheetProps> = ({
 
   return (
     <View className="gap-[24px]">
-      {/* Header: lilac plus-circle icon tile + circular X close */}
       <View className="flex-row items-center justify-between">
         <Icon.PlusCircle themeColor="lilac" withBackground square size={28} />
         <TouchableOpacity onPress={handleClose} testID="xlm-reserve-close">
@@ -94,7 +79,6 @@ export const XlmReserveBottomSheet: React.FC<XlmReserveBottomSheetProps> = ({
         </TouchableOpacity>
       </View>
 
-      {/* Title + body with inline "Why do I need XLM?" link */}
       <View className="gap-[8px]">
         <Text xl medium>
           {t("swapScreen.xlmReserve.title")}
@@ -113,9 +97,6 @@ export const XlmReserveBottomSheet: React.FC<XlmReserveBottomSheetProps> = ({
         </Text>
       </View>
 
-      {/* Info card: XLM icon on the left, "0.5 XLM required" title and the
-          per-token body on the right. Title + body line-heights provide the
-          vertical rhythm — no explicit gap between the two text lines. */}
       <View className="rounded-[16px] bg-background-tertiary p-4 flex-row items-center gap-3">
         <TokenIcon
           token={{ type: "native", code: NATIVE_TOKEN_CODE }}
@@ -131,9 +112,6 @@ export const XlmReserveBottomSheet: React.FC<XlmReserveBottomSheetProps> = ({
         </View>
       </View>
 
-      {/* CTAs — "Swap for 0.5 XLM" (tertiary per design system mapping) is
-          shown only when the parent says the user has a non-XLM classic
-          balance to swap from. "Copy my wallet address" is always shown. */}
       {canOfferSwapToXlm && (
         <Button
           onPress={handleSwapForXlm}

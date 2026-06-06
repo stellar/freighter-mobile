@@ -26,9 +26,8 @@ export enum TokenFiatConverterActionType {
   SET_DISPLAY_AMOUNT_FROM_TEXT = "SET_DISPLAY_AMOUNT_FROM_TEXT",
   /** Reset both amounts + both raw displays to the initial state. The
    *  showFiatAmount mode flag is preserved. Used when the selected token
-   *  changes (currently the Send flow, which already supports Soroban
-   *  tokens with arbitrary decimals) so a previously-typed amount can't
-   *  survive into a token with tighter decimal / precision constraints. */
+   *  changes, so a previously-typed amount can't survive into a token with
+   *  tighter decimal / precision constraints. */
   RESET_AMOUNTS = "RESET_AMOUNTS",
 }
 
@@ -825,7 +824,6 @@ export const createTokenFiatConverterReducer =
           return state;
         }
 
-        // Token side: normalise using the same helper as HANDLE_TOKEN_INPUT.
         const rawInternal = parseDisplayNumber(normalizedText, tokenDecimals);
         // Guard non-finite values (e.g. user pasted "1e999" → Infinity, or
         // a malformed input that returns NaN) so the store never holds a

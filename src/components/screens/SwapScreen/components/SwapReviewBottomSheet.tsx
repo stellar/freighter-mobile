@@ -151,10 +151,8 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
             amount={destinationAmount}
             symbol={destinationTokenDescriptor?.tokenCode ?? ""}
             fiatString={destinationTokenFiatAmount}
-            // Carry the descriptor's iconUrl (from the search row's
-            // tomlInfo.image) so non-held destinations render their logo
-            // here instead of a 2-letter fallback. Same plumbing as the
-            // SwapAmountScreen Receive chip.
+            // Carry the descriptor's iconUrl so non-held destinations render
+            // their logo instead of a 2-letter fallback.
             iconUrl={destinationTokenDescriptor?.iconUrl}
             isMalicious={isDestMalicious}
             isSuspicious={isDestSuspicious}

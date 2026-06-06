@@ -77,9 +77,8 @@ export const TrendingTokenDetailBottomSheet: React.FC<
       isNew: descriptor.isNew,
       source: SwapSelectionSource.TRENDING,
     });
-    // Selection-swap rule (spec §12.4 / SwapToScreen parity): if the new
-    // destination equals the current source, clear source so the user
-    // doesn't end up with the same token on both sides.
+    // If the new destination equals the current source, clear source so
+    // the user doesn't end up with the same token on both sides.
     if (sourceTokenId && sourceTokenId === descriptor.id) {
       setSourceToken("", "");
     }
@@ -123,7 +122,6 @@ export const TrendingTokenDetailBottomSheet: React.FC<
 
   return (
     <View className="gap-[24px] p-[4px]">
-      {/* Header block: icon, then text stack below */}
       <View className="flex-col gap-[16px]">
         {/* self-start so the TokenIconWithBadge wrapper hugs the icon's
             intrinsic width instead of stretching to the column's cross axis
@@ -162,10 +160,8 @@ export const TrendingTokenDetailBottomSheet: React.FC<
         </View>
       </View>
 
-      {/* Info card */}
       <View className="bg-background-tertiary rounded-[16px] px-[16px] py-[12px] flex-col gap-[12px] w-full">
-        {/* Row: Issuer.
-            Native XLM has no issuer key — render the label only and skip
+        {/* Native XLM has no issuer key — render the label only and skip
             the copy button. For classic assets the truncated label is for
             display; copy always sends the full G-address. */}
         <View className="flex-row items-center justify-between">
@@ -197,7 +193,6 @@ export const TrendingTokenDetailBottomSheet: React.FC<
 
         <View className="h-px bg-border-primary w-full" />
 
-        {/* Row: Type */}
         <View className="flex-row items-center justify-between">
           <Text md medium secondary>
             {t("swapScreen.trendingDetail.type")}
@@ -211,7 +206,6 @@ export const TrendingTokenDetailBottomSheet: React.FC<
           <>
             <View className="h-px bg-border-primary w-full" />
 
-            {/* Row: Domain */}
             <View className="flex-row items-center justify-between">
               <Text md medium secondary>
                 {t("swapScreen.trendingDetail.domain")}
@@ -229,7 +223,6 @@ export const TrendingTokenDetailBottomSheet: React.FC<
           transaction-level rescan runs there); this sheet just keeps the
           icon's small badge overlay as a hint via TokenIconWithBadge above. */}
 
-      {/* Buy button */}
       <Button onPress={handleBuy} tertiary>
         {t("swapScreen.trendingDetail.buy", { tokenCode: record.tokenCode })}
       </Button>

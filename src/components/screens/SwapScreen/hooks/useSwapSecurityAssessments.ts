@@ -34,8 +34,7 @@ type SwapBalanceItem = PricedBalance & {
  *      `synthesizeScanFromLevel(descriptor.securityLevel)` — the
  *      level surfaced by `useSwapTokenLookup`'s discovery-time bulk
  *      scan — so MALICIOUS / SUSPICIOUS signals route through the
- *      same `assessTokenSecurity` consumer as held tokens (spec §9 +
- *      §6.4).
+ *      same `assessTokenSecurity` consumer as held tokens.
  *
  *   2. **Native-XLM exclusion.** `isUnableToScan` is the gate that
  *      forces the safety-net flow. XLM is the native asset and is

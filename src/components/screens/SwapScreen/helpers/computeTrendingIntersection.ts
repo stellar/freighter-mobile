@@ -22,7 +22,7 @@ import { TokenListReponseItem } from "services/verified-token-lists/types";
  *   3. Format each surviving record (sets hasTrustline via the callback).
  *   4. Dedupe by canonical CODE:ISSUER, preserving stellar.expert's order.
  *   5. Intersect with verified issuers (native XLM is always considered
- *      verified — matches splitVerifiedTokens' policy).
+ *      verified).
  */
 export const computeTrendingIntersection = (
   topTokensResp: SearchTokenResponse,

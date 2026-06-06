@@ -32,15 +32,7 @@ export interface SwapProcessingScreenProps {
   sourceToken: NonNativeToken | NativeToken;
   destinationAmount: string;
   destinationToken: NonNativeToken | NativeToken;
-  /**
-   * Optional iconUrl for the destination token, forwarded to the
-   * destination `<TokenIcon>` so non-held destinations render the
-   * search-row logo on the processing / success / detail surfaces
-   * instead of falling back to a 2-letter avatar until the trustline
-   * lands. Pulled from `destinationTokenDescriptor.iconUrl` by
-   * `SwapAmountScreen`; undefined for held destinations (those resolve
-   * via the existing `useTokenIconsStore` lookup).
-   */
+  /** Forwarded to the destination `<TokenIcon>` so non-held destinations render a logo instead of a 2-letter avatar until the trustline lands. */
   destinationIconUrl?: string;
 }
 

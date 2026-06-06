@@ -58,8 +58,7 @@ export const getTokenFromBalance = (
 };
 
 /**
- * Finds a balance item that matches the given token using multiple strategies
- * This is more robust than simple ID matching as it tries multiple approaches
+ * Finds a balance item that matches the given token using multiple strategies.
  */
 export const findBalanceForToken = ({
   token: incomingToken,
@@ -113,8 +112,7 @@ export const findBalanceForToken = ({
 };
 
 /**
- * Calculates fiat amount for a token using multiple price sources
- * This provides robust price calculation with fallbacks
+ * Calculates fiat amount for a token using multiple price sources, with fallbacks.
  */
 export const calculateTokenFiatAmount = ({
   token: incomingToken,
@@ -152,6 +150,5 @@ export const calculateTokenFiatAmount = ({
     }
   }
 
-  // No price data available
   return "--";
 };

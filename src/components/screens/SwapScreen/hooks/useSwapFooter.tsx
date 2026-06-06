@@ -3,20 +3,7 @@ import { SwapReviewFooter } from "components/screens/SwapScreen/components";
 import React, { useCallback, useMemo } from "react";
 
 /**
- * Owns the SwapAmountScreen's review-footer view-model:
- *
- *   - `handleCancelSwap` — dismisses the review bottom sheet (kept
- *     internal; the hook returns the resulting renderer, not this
- *     callback, so consumers never wire it manually).
- *   - `footerProps` — the memoised prop bag SwapReviewFooter needs
- *     (cancel, confirm, isBuilding, isMalicious, isSuspicious,
- *     transactionXDR, onSettingsPress).
- *   - `renderFooterComponent` — the no-arg renderer the screen passes
- *     to `BaseLayout.scrollViewFooterComponent`.
- *
- * Returning the renderer (not the prop bag) keeps the footer's
- * SwapReviewFooter import out of the screen file once the screen no
- * longer uses it directly.
+ * Builds the memoised renderer for the swap review bottom-sheet footer.
  */
 export const useSwapFooter = ({
   swapReviewBottomSheetModalRef,

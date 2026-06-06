@@ -15,10 +15,6 @@ import {
  * assessTokenSecurity contract — that's also what the live pipeline
  * produces today when Blockaid returns no entry for a token.
  *
- * Pure function — no I/O, no React state. Used in both phases of the
- * Trending pipeline (Phase 1 with cached scans, Phase 2 with fresh
- * scans).
- *
  * @param debugOverride Optional dev-debug security-level override; when set,
  *   bypasses scan results to surface the override for every record. Mirrors
  *   the second arg accepted by assessTokenSecurity so the trending pipeline

@@ -136,17 +136,15 @@ export const getContractAddress = ({
 /**
  * Fiat equivalent of the simulated destination amount for the Receive
  * card. Held tokens read currentPrice off the PricedBalance; non-held
- * tokens read from the prices store (already populated for trending
- * tokens, with stellar.expert as a fallback in the upstream pipeline).
+ * tokens read from the prices store.
  *
  * Returns undefined when:
  * - destination amount is empty / "0"
  * - the parsed BigNumber is non-finite or zero
  * - neither a held-balance currentPrice nor a prices-store entry exists
  *
- * The "<code>:<issuer>" prices-map key matches the format the
- * SwapAmountScreen's pricesStore consumer writes (issuer omitted for
- * native XLM).
+ * The prices-map key is "<code>:<issuer>", with issuer omitted for
+ * native XLM.
  */
 export const computeDestinationFiat = ({
   destinationAmount,

@@ -9,10 +9,6 @@ import type {
   TransactionErrorEvent,
 } from "services/analytics/types";
 
-// -----------------------------------------------------------------------------
-// TRANSACTION ANALYTICS
-// -----------------------------------------------------------------------------
-
 export const trackSignedTransaction = (data: SignedTransactionEvent): void => {
   track(AnalyticsEvent.SIGN_TRANSACTION_SUCCESS, {
     transactionHash: data.transactionHash,
@@ -130,10 +126,6 @@ export const trackTransactionError = (data: TransactionErrorEvent): void => {
   });
 };
 
-// -----------------------------------------------------------------------------
-// TOKEN MANAGEMENT ANALYTICS
-// -----------------------------------------------------------------------------
-
 export const trackAddTokenConfirmed = (token?: string): void => {
   track(AnalyticsEvent.ADD_TOKEN_CONFIRMED, { asset: token });
 };
@@ -150,10 +142,6 @@ export const trackRemoveTokenRejected = (token?: string): void => {
   track(AnalyticsEvent.REMOVE_TOKEN_REJECTED, { asset: token });
 };
 
-// -----------------------------------------------------------------------------
-// ACCOUNT MANAGEMENT ANALYTICS
-// -----------------------------------------------------------------------------
-
 export const trackAccountScreenImportAccountFail = (error: string): void => {
   track(AnalyticsEvent.ACCOUNT_SCREEN_IMPORT_ACCOUNT_FAIL, { error });
 };
@@ -168,10 +156,6 @@ export const trackViewPublicKeyAccountRenamed = (
   });
 };
 
-// -----------------------------------------------------------------------------
-// WALLETCONNECT/DAPP ANALYTICS
-// -----------------------------------------------------------------------------
-
 export const trackGrantAccessSuccess = (domain?: string): void => {
   track(AnalyticsEvent.GRANT_DAPP_ACCESS_SUCCESS, { domain });
 };
@@ -183,17 +167,9 @@ export const trackGrantAccessFail = (
   track(AnalyticsEvent.GRANT_DAPP_ACCESS_FAIL, { domain, reason });
 };
 
-// -----------------------------------------------------------------------------
-// HISTORY ANALYTICS
-// -----------------------------------------------------------------------------
-
 export const trackHistoryOpenItem = (transactionHash: string): void => {
   track(AnalyticsEvent.HISTORY_OPEN_ITEM, { transactionHash });
 };
-
-// -----------------------------------------------------------------------------
-// AUTHENTICATION ANALYTICS
-// -----------------------------------------------------------------------------
 
 /**
  * Generic helper for authentication events.
@@ -216,10 +192,6 @@ export const trackReAuthSuccess = (): void => {
 export const trackReAuthFail = (): void => {
   trackAuthEvent(AnalyticsEvent.RE_AUTH_FAIL);
 };
-
-// -----------------------------------------------------------------------------
-// USER ACTION ANALYTICS
-// -----------------------------------------------------------------------------
 
 /**
  * Generic helper for simple user actions with context.

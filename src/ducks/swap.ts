@@ -200,8 +200,7 @@ export const useSwapStore = create<SwapState>((set) => ({
         return;
       }
 
-      // For now, we only support classic path payments
-      // TODO: Add Soroswap support for Testnet in future iteration
+      // TODO: Add Soroswap support for Testnet
       const pathResult = await findClassicSwapPath({
         sourceBalance,
         destinationBalance,
@@ -238,7 +237,6 @@ export const useSwapStore = create<SwapState>((set) => ({
 
       logger.error("SwapStore", "Failed to find swap path", error);
 
-      // In dev mode, show the actual error; otherwise show generic message
       const displayError = __DEV__
         ? errorMessage
         : t("swapScreen.errors.pathFindFailed");
@@ -261,18 +259,9 @@ export const useSwapStore = create<SwapState>((set) => ({
 }));
 
 /**
- * Adapter for path-finding: gives getTokenForPayment what it needs
- * (just a `token` shape) without requiring a full PricedBalance.
- *
- * This is a deliberately narrow projection — the only consumer is
- * `findSwapPath`'s call to `getTokenForPayment(destination)`, which
- * reads ONLY the `token` field. The `as unknown as PricedBalance`
- * cast is the contract: callers other than findSwapPath should pass
- * a real PricedBalance, not this projection.
- *
- * NOTE: Not yet wired into findSwapPath consumers — Task 17
- * (SwapAmountScreen rebuild) introduces non-held destinations and
- * will use this adapter to feed findSwapPath.
+ * Narrow projection for path-finding: getTokenForPayment only reads the
+ * `token` field, so the `as unknown as PricedBalance` cast is safe here.
+ * Callers other than findSwapPath should pass a real PricedBalance.
  */
 export const destinationAsBalanceLike = (
   descriptor: DestinationTokenDescriptor,

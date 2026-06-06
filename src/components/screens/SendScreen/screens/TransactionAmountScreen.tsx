@@ -91,15 +91,6 @@ type TransactionAmountScreenProps = NativeStackScreenProps<
   typeof SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN
 >;
 
-/**
- * TransactionAmountScreen Component
- *
- * A screen for entering transaction amounts in either token or fiat currency.
- * Supports switching between token and fiat input modes with automatic conversion.
- *
- * @param {TransactionAmountScreenProps} props - Component props
- * @returns {JSX.Element} The rendered component
- */
 const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   navigation,
   route,

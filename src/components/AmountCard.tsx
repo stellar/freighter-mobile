@@ -31,9 +31,9 @@ const AMOUNT_FONT_FAMILY = Platform.select({
   android: "Inter-Medium",
 });
 
-// Balance text size curve. Figma specs 14/20 (Text sm) for the common case;
-// the longer-string branches keep the lineHeight at 20 (see HeaderRow) and
-// shrink the font so the line still fits the 20px band on narrow widths.
+// Balance text size curve. Common case is 14/20 (Text sm); longer-string
+// branches keep the lineHeight at 20 (see HeaderRow) and shrink the font so
+// the line still fits the 20px band on narrow widths.
 const AVAILABLE_BALANCE_FONT_SIZES = [
   { maxLen: 28, size: fsValue(14) },
   { maxLen: 42, size: fsValue(12) },
@@ -46,20 +46,18 @@ const getAvailableBalanceFontSize = (text: string | null | undefined): number =>
   )!.size;
 
 // Dynamic amount font: shrink as the displayed amount string grows so that
-// very long numbers don't overflow the row. Figma specs the common case at
-// 24/32 (Display/XS). Long-amount branches step down to keep the row in
-// its 32px band.
+// very long numbers don't overflow the row. Common case is 24/32; long-amount
+// branches step down to keep the row in its 32px band.
 const getAmountFontSize = (textLength: number): number => {
   if (textLength <= 9) return fsValue(24);
   if (textLength <= 15) return fsValue(20);
   return fsValue(16);
 };
 
-// Amount letter-spacing matches Figma's Display/XS spec (-0.04em on a 24px
-// font → -0.96px).
+// Amount letter-spacing: -0.04em on a 24px font → -0.96px.
 const AMOUNT_LETTER_SPACING = -0.96;
-// Amount row line-height. Figma's Display/XS line-height is 32, same as the
-// row band (no extra vertical padding around the digits).
+// Amount row line-height matches the row band (no extra vertical padding
+// around the digits).
 const AMOUNT_LINE_HEIGHT = 32;
 
 type AmountCardCommonProps = {
@@ -128,8 +126,7 @@ const CardShell: React.FC<{
   testID?: string;
   children: React.ReactNode;
 }> = ({ testID, children }) => (
-  // 12px symmetric vertical padding matches Figma; collapses to 8px on xs
-  // screens. (The previous `pt-5 pb-4` made the card 12px taller than spec.)
+  // 12px symmetric vertical padding, collapsing to 8px on xs screens.
   <View
     testID={testID}
     className="rounded-[12px] gap-[12px] py-[12px] max-xs:py-[8px] px-[16px] max-xs:px-[12px] bg-background-tertiary w-full"
@@ -154,9 +151,9 @@ const HeaderRow: React.FC<{
         textAlign="right"
         style={{
           fontSize: getAvailableBalanceFontSize(availableBalanceText),
-          // Figma keeps the balance line in a 20px band regardless of how
-          // small the font has to shrink — line-height is fixed, font-size
-          // is the only thing that scales.
+          // Balance line stays in a 20px band regardless of how small the font
+          // has to shrink — line-height is fixed, font-size is the only thing
+          // that scales.
           lineHeight: pxValue(20),
           flexShrink: 1,
         }}
@@ -204,8 +201,7 @@ const PickerChip: React.FC<{
         />
       ) : (
         // Empty-state affordance: a Plus-in-circle to signal "tap to add a
-        // token". Matches the legacy Swap empty-state pill so the user keeps
-        // that visual cue when no token has been picked yet.
+        // token" when no token has been picked yet.
         <View className="w-[20px] h-[20px] rounded-full items-center justify-center bg-gray-3">
           <Icon.Plus size={16} themeColor="gray" />
         </View>
@@ -265,7 +261,7 @@ const EditableAmountCard: React.FC<AmountCardEditableProps> = ({
 
   // iOS focus-retry workaround: focus() can silently drop when the input is
   // hidden/animated; re-attempt on the next tick if isFocused() is still
-  // false. Mirrors the pre-extraction Send behavior.
+  // false.
   const focusRetryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );

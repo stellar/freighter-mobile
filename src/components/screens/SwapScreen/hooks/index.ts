@@ -1,4 +1,3 @@
-// SwapScreen-specific hooks - simplified and professional
 export { useSwapAmountError, SWAP_TOAST_IDS } from "./useSwapAmountError";
 export { useSwapBalances } from "./useSwapBalances";
 export { useSwapCtaState, type SwapCtaState } from "./useSwapCtaState";

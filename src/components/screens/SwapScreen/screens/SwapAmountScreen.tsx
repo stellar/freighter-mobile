@@ -268,10 +268,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     navigation,
   });
 
-  // Trending Tokens list (design doc §5.3 + §6.1). The list is held-inclusive
-  // and rendered as the body of the screen's FlatList. It is hidden when:
-  //   - we are not on PUBLIC (stellar.expert only indexes mainnet); or
-  //   - stellar.expert is down (the source array is empty in either case).
+  // Held-inclusive trending tokens list. Hidden off PUBLIC (stellar.expert
+  // only indexes mainnet) or when stellar.expert is down.
   const {
     trendingTokens,
     stellarExpertDown,
@@ -577,11 +575,9 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       return;
     }
 
-    // review
-
-    // Pre-flight XLM reserve check (design doc §6.5): surface the
-    // XlmReserveBottomSheet instead of Review when adding the trustline
-    // would leave the account below the XLM base reserve.
+    // Pre-flight XLM reserve check: surface the XlmReserveBottomSheet
+    // instead of Review when adding the trustline would leave the account
+    // below the XLM base reserve.
     if (
       shouldShowXlmReservePreflight({
         balanceItems,
@@ -846,7 +842,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
             />
           }
         />
-        {/* 16px spacer above the CTA, mirroring Add-a-Token's Paste button. */}
+        {/* 16px spacer above the CTA */}
         <View className="h-4" />
         <Button
           tertiary
@@ -859,12 +855,10 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         </Button>
       </KeyboardAvoidingView>
 
-      {/* Clear errors when review is closed */}
       <BottomSheet
         modalRef={swapReviewBottomSheetModalRef}
         handleCloseModal={() => {
           swapReviewBottomSheetModalRef.current?.dismiss();
-          // Clear all errors when review is closed
           setActiveError(null);
         }}
         scrollable

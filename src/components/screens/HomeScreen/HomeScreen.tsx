@@ -55,17 +55,11 @@ import {
 } from "react-native";
 import { analytics } from "services/analytics";
 
-/**
- * Top section of the home screen containing account info and actions
- */
 type HomeScreenProps = BottomTabScreenProps<
   MainTabStackParamList & RootStackParamList,
   typeof MAIN_TAB_ROUTES.TAB_HOME
 >;
 
-/**
- * Home screen component displaying account information and balances
- */
 export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
   ({ navigation }) => {
     const { account } = useGetActiveAccount();
@@ -282,7 +276,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
           }
           contentContainerStyle={{ flexGrow: 1 }}
         >
-          {/* Header section with account info and actions */}
           <View className="pt-8 w-full items-center">
             <View className="flex-col gap-3 items-center">
               <TouchableOpacity
@@ -336,7 +329,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
             <View className="w-full border-b mb-4 border-border-primary" />
           </View>
 
-          {/* Tokens and Collectibles tabs content */}
           <TokensCollectiblesTabs
             // Should disable inner scrolling here since the whole Home screen is scrollable
             disableInnerScrolling
@@ -349,7 +341,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
           />
         </ScrollView>
 
-        {/* Debug - Development Only */}
         {__DEV__ && (
           <DebugBottomSheet
             modalRef={debugBottomSheetRef}

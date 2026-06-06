@@ -6,9 +6,8 @@ import { getTokenType } from "helpers/balances";
 /**
  * Format a stellar.expert classic-asset record into a FormattedSearchTokenRecord.
  *
- * Mirrors path-3 of `useTokenLookup`'s formatter, but stripped of the
- * Soroban-contract branch since the swap surface filters those out
- * upstream.
+ * Soroban contracts are filtered upstream on the swap surface, so this
+ * formatter omits the contract branch.
  */
 export const formatClassicRecord = (
   record: StellarExpertRecord,

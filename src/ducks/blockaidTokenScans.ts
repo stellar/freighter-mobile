@@ -97,7 +97,6 @@ export const useBlockaidTokenScansStore = create<BlockaidTokenScansState>()(
         (acc, id) => {
           const entry = cache[id];
           if (entry && isFresh(entry, now)) {
-            // Strip _cachedAt from the returned shape
             const { _cachedAt, ...scan } = entry;
             return { ...acc, hits: { ...acc.hits, [id]: scan } };
           }

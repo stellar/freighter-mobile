@@ -6,9 +6,6 @@ import { dataStorage } from "services/storage/storageFactory";
  */
 const DEFAULT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
-/**
- * Options for cached fetch
- */
 export interface CachedFetchOptions<T> {
   urlOrFn: string | (() => Promise<T>);
   storageKey: string;
@@ -54,10 +51,8 @@ export async function cachedFetch<T>(
   const date = new Date();
   const time = date.getTime();
 
-  // Determine if this is URL mode or function mode
   const isUrlMode = typeof urlOrFn === "string";
 
-  // Extract parameters
   const ttl = ttlMs ?? DEFAULT_TTL_MS;
   const shouldForceRefresh = forceRefresh ?? false;
 
@@ -78,11 +73,9 @@ export async function cachedFetch<T>(
   if (shouldForceRefresh || cachedDate < cacheExpiryTime || !cachedResult) {
     try {
       if (isUrlMode) {
-        // URL mode: fetch from URL
         const res = await fetch(urlOrFn, fetchOptions);
         cachedResult = (await res.json()) as T;
       } else {
-        // Function mode: call the function
         cachedResult = await urlOrFn();
       }
 

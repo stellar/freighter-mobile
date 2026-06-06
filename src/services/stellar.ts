@@ -190,11 +190,7 @@ export const getNetworkFees = async (server: Horizon.Server) => {
   return { recommendedFee, networkCongestion };
 };
 
-/**
- * Builds a single `changeTrust` operation for a classic asset.
- * Shared by the Add-Token flow (via `buildChangeTrustTx`) and the
- * Swap-to-new-token flow (via `buildSwapTransaction` with `includeTrustline`).
- */
+/** Builds a single `changeTrust` operation for a classic asset. */
 export const buildChangeTrustOperation = ({
   tokenCode,
   issuer,

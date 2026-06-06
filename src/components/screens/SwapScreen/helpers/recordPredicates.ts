@@ -7,12 +7,7 @@ import {
 } from "config/types";
 import { isContractId } from "helpers/soroban";
 
-/**
- * One entry inside a stellar.expert /asset response. Aliased here so the
- * predicates + downstream helpers (formatClassicRecord,
- * computeTrendingIntersection) can share the same shape without each
- * redeclaring it.
- */
+/** One entry inside a stellar.expert /asset response. */
 export type StellarExpertRecord =
   SearchTokenResponse["_embedded"]["records"][number];
 
@@ -35,8 +30,8 @@ export const isClassicTokenType = (
   tokenType === TokenTypeWithCustomToken.CREDIT_ALPHANUM12;
 
 /**
- * Union element rendered by SwapToScreen's SectionList: either a held
- * PricedBalance (carries `id`) or a non-held FormattedSearchTokenRecord.
+ * Either a held PricedBalance (carries `id`) or a non-held
+ * FormattedSearchTokenRecord.
  */
 export type SwapToListItem =
   | (PricedBalance & { id: string })
@@ -52,9 +47,8 @@ export const isHeldToken = (
 ): item is PricedBalance & { id: string } => "id" in item;
 
 /**
- * Stable list-row key for SwapToScreen. Held tokens use their balance
- * id; non-held search records use the canonical "CODE:ISSUER" string
- * produced by recordTokenId.
+ * Stable list-row key: held tokens use their balance id; non-held search
+ * records use the canonical "CODE:ISSUER" string from recordTokenId.
  */
 export const getItemKey = (item: SwapToListItem): string => {
   if (isHeldToken(item)) {

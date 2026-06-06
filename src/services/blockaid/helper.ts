@@ -132,7 +132,6 @@ export const assessTokenSecurity = (
   scanResult?: Blockaid.TokenScanResponse,
   debugOverride?: SecurityLevel | null,
 ): SecurityAssessment => {
-  // Check for debug override first
   if (debugOverride) {
     const messageKeys = TOKEN_SECURITY_LEVEL_MESSAGE_KEYS[debugOverride];
     return createSecurityAssessment(
@@ -181,7 +180,6 @@ export const assessSiteSecurity = (
   scanResult?: Blockaid.SiteScanResponse,
   debugOverride?: SecurityLevel | null,
 ): SecurityAssessment => {
-  // Check for debug override first
   if (debugOverride) {
     const messageKeys = SITE_SECURITY_LEVEL_MESSAGE_KEYS[debugOverride];
     return createSecurityAssessment(
@@ -290,7 +288,6 @@ export const assessTransactionSecurity = (
   debugOverride?: SecurityLevel | null,
   unfundedContext?: UnfundedDestinationContext,
 ): SecurityAssessment => {
-  // Check for debug override first
   if (debugOverride) {
     const messageKeys = TRANSACTION_SECURITY_LEVEL_MESSAGE_KEYS[debugOverride];
     return createSecurityAssessment(
@@ -324,9 +321,7 @@ export const assessTransactionSecurity = (
     );
   }
 
-  // Check for simulation errors - classify unfunded destination specially, others as suspicious
   if (simulation && "error" in simulation) {
-    // For other simulation errors, treat as suspicious
     const messageKeys =
       TRANSACTION_SECURITY_LEVEL_MESSAGE_KEYS[SecurityLevel.SUSPICIOUS];
     return createSecurityAssessment(
@@ -336,7 +331,6 @@ export const assessTransactionSecurity = (
     );
   }
 
-  // Check validation result_type
   if (validation && "result_type" in validation) {
     const level = getSecurityLevel(validation.result_type);
     const messageKeys = TRANSACTION_SECURITY_LEVEL_MESSAGE_KEYS[level];
@@ -425,7 +419,6 @@ export const extractSecurityWarnings = (
     return warnings;
   }
 
-  // Handle token scan results
   if ("features" in scanResult && scanResult.features) {
     scanResult.features.forEach((feature) => {
       warnings.push({
@@ -435,7 +428,6 @@ export const extractSecurityWarnings = (
     });
   }
 
-  // Handle transaction scan results
   if ("simulation" in scanResult) {
     if (
       !isUnfunded &&
@@ -486,10 +478,6 @@ export const extractSecurityWarnings = (
   return warnings;
 };
 
-// =============================================================================
-// Transaction validation flagged entities (addresses)
-// =============================================================================
-
 export interface ValidationFlaggedEntity {
   address: string;
   severity: ValidationSeverity;
@@ -531,7 +519,6 @@ export const extractFlaggedEntitiesFromTransaction = (
   const ADDRESS_REGEX = /G[A-Z2-7]{55}/g;
   const matches = description.match(ADDRESS_REGEX) || [];
 
-  // Deduplicate addresses
   const unique = Array.from(new Set(matches));
 
   return unique.map((address) => ({
@@ -540,10 +527,6 @@ export const extractFlaggedEntitiesFromTransaction = (
     classification: validation.classification,
   }));
 };
-
-// =============================================================================
-// Transaction balance changes (domain model)
-// =============================================================================
 
 export interface TransactionBalanceChange {
   assetCode: string;
