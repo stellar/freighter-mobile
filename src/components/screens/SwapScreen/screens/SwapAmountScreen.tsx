@@ -22,6 +22,7 @@ import {
   buildReceiveTexts,
   buildSellSecondaryText,
   buildSourceBalanceRight,
+  computeDestinationFiat,
   descriptorFromBalance,
   recordTokenId,
 } from "components/screens/SwapScreen/helpers";
@@ -731,36 +732,16 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     setTokenAmount,
   ]);
 
-  // Fiat equivalent of the simulated destination amount for the Receive card.
-  // Held: read currentPrice off the balance. Non-held: read from prices store
-  // (already populated for trending tokens, with stellar.expert fallback).
-  const destinationFiat = useMemo(() => {
-    if (!destinationAmount || destinationAmount === "0") return undefined;
-    const amount = new BigNumber(destinationAmount);
-    if (!amount.isFinite() || amount.isZero()) return undefined;
-    if (
-      destinationBalance &&
-      "currentPrice" in destinationBalance &&
-      destinationBalance.currentPrice
-    ) {
-      return amount.times(destinationBalance.currentPrice);
-    }
-    if (destinationTokenDescriptor) {
-      const tokenId = destinationTokenDescriptor.issuer
-        ? `${destinationTokenDescriptor.tokenCode}:${destinationTokenDescriptor.issuer}`
-        : destinationTokenDescriptor.tokenCode;
-      const priceInfo = prices[tokenId];
-      if (priceInfo?.currentPrice) {
-        return amount.times(priceInfo.currentPrice);
-      }
-    }
-    return undefined;
-  }, [
-    destinationAmount,
-    destinationBalance,
-    destinationTokenDescriptor,
-    prices,
-  ]);
+  const destinationFiat = useMemo(
+    () =>
+      computeDestinationFiat({
+        destinationAmount,
+        destinationBalance,
+        destinationTokenDescriptor,
+        prices,
+      }),
+    [destinationAmount, destinationBalance, destinationTokenDescriptor, prices],
+  );
 
   const prepareSwapTransaction = useCallback(
     async (shouldOpenReview = false) => {

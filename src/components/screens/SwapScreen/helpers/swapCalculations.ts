@@ -1,6 +1,11 @@
 import { BigNumber } from "bignumber.js";
+import { DestinationTokenDescriptor } from "components/screens/SwapScreen/helpers/types";
 import { DEFAULT_DECIMALS, isNativeAssetId, NETWORKS } from "config/constants";
-import { TokenTypeWithCustomToken } from "config/types";
+import {
+  PricedBalance,
+  TokenPricesMap,
+  TokenTypeWithCustomToken,
+} from "config/types";
 import { formatTokenForDisplay } from "helpers/formatAmount";
 import { getNativeContractDetails } from "helpers/soroban";
 
@@ -126,4 +131,52 @@ export const getContractAddress = ({
   }
 
   return null;
+};
+
+/**
+ * Fiat equivalent of the simulated destination amount for the Receive
+ * card. Held tokens read currentPrice off the PricedBalance; non-held
+ * tokens read from the prices store (already populated for trending
+ * tokens, with stellar.expert as a fallback in the upstream pipeline).
+ *
+ * Returns undefined when:
+ * - destination amount is empty / "0"
+ * - the parsed BigNumber is non-finite or zero
+ * - neither a held-balance currentPrice nor a prices-store entry exists
+ *
+ * The "<code>:<issuer>" prices-map key matches the format the
+ * SwapAmountScreen's pricesStore consumer writes (issuer omitted for
+ * native XLM).
+ */
+export const computeDestinationFiat = ({
+  destinationAmount,
+  destinationBalance,
+  destinationTokenDescriptor,
+  prices,
+}: {
+  destinationAmount: string;
+  destinationBalance: PricedBalance | undefined;
+  destinationTokenDescriptor: DestinationTokenDescriptor | null;
+  prices: TokenPricesMap;
+}): BigNumber | undefined => {
+  if (!destinationAmount || destinationAmount === "0") return undefined;
+  const amount = new BigNumber(destinationAmount);
+  if (!amount.isFinite() || amount.isZero()) return undefined;
+  if (
+    destinationBalance &&
+    "currentPrice" in destinationBalance &&
+    destinationBalance.currentPrice
+  ) {
+    return amount.times(destinationBalance.currentPrice);
+  }
+  if (destinationTokenDescriptor) {
+    const tokenId = destinationTokenDescriptor.issuer
+      ? `${destinationTokenDescriptor.tokenCode}:${destinationTokenDescriptor.issuer}`
+      : destinationTokenDescriptor.tokenCode;
+    const priceInfo = prices[tokenId];
+    if (priceInfo?.currentPrice) {
+      return amount.times(priceInfo.currentPrice);
+    }
+  }
+  return undefined;
 };
