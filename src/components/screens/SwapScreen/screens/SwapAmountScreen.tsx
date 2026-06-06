@@ -34,6 +34,7 @@ import {
   useSwapFooter,
   useSwapNavigation,
   useSwapPathFinding,
+  useSwapSecurityAssessments,
   useSwapTransactionSettings,
   useSwapTrendingPrices,
 } from "components/screens/SwapScreen/hooks";
@@ -91,13 +92,7 @@ import {
   View,
 } from "react-native";
 import { analytics } from "services/analytics";
-import { SecurityLevel } from "services/blockaid/constants";
-import {
-  assessTokenSecurity,
-  assessTransactionSecurity,
-  extractSecurityWarnings,
-  synthesizeScanFromLevel,
-} from "services/blockaid/helper";
+import { synthesizeScanFromLevel } from "services/blockaid/helper";
 
 type SwapAmountScreenProps = NativeStackScreenProps<
   SwapStackParamList,
@@ -537,60 +532,22 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     prepareSwapTransaction(false);
   }, [prepareSwapTransaction]);
 
-  const transactionSecurityAssessment = useMemo(
-    () =>
-      assessTransactionSecurity(
-        transactionScanResult,
-        overriddenBlockaidResponse,
-      ),
-    [transactionScanResult, overriddenBlockaidResponse],
-  );
-
-  const sourceBalanceSecurityAssessment = useMemo(
-    () =>
-      assessTokenSecurity(
-        sourceBalance
-          ? scanResults[sourceBalance.id.replace(":", "-")]
-          : undefined,
-        overriddenBlockaidResponse,
-      ),
-    [sourceBalance, scanResults, overriddenBlockaidResponse],
-  );
-
-  // Non-held destinations have no entry in `scanResults` (that map is the held
-  // bulk-scan keyed by balance.id). Fall back to a scan synthesized from
-  // `descriptor.securityLevel` — set by `useSwapTokenLookup`'s bulk scan
-  // during discovery — so MALICIOUS / SUSPICIOUS signals route through the
-  // same warning logic as held tokens (spec §9 + §6.4).
-  const destBalanceSecurityAssessment = useMemo(
-    () =>
-      assessTokenSecurity(
-        destinationBalance
-          ? scanResults[destinationBalance.id.replace(":", "-")]
-          : synthesizeScanFromLevel(destinationTokenDescriptor?.securityLevel),
-        overriddenBlockaidResponse,
-      ),
-    [
-      destinationBalance,
-      destinationTokenDescriptor?.securityLevel,
-      scanResults,
-      overriddenBlockaidResponse,
-    ],
-  );
-
-  const showSecurityWarningForSource = useMemo(
-    () =>
-      sourceBalanceSecurityAssessment.isUnableToScan &&
-      sourceTokenId !== NATIVE_TOKEN_CODE,
-    [sourceBalanceSecurityAssessment.isUnableToScan, sourceTokenId],
-  );
-
-  const showSecurityWarningForDestination = useMemo(
-    () =>
-      destBalanceSecurityAssessment.isUnableToScan &&
-      destinationTokenDescriptor?.id !== NATIVE_TOKEN_CODE,
-    [destBalanceSecurityAssessment.isUnableToScan, destinationTokenDescriptor],
-  );
+  const {
+    sourceBalanceSecurityAssessment,
+    isUnableToScan,
+    isMalicious,
+    isSuspicious,
+    transactionSecuritySeverity,
+    securityWarnings,
+  } = useSwapSecurityAssessments({
+    transactionScanResult,
+    overriddenBlockaidResponse,
+    sourceBalance,
+    destinationBalance,
+    destinationTokenDescriptor,
+    scanResults,
+    sourceTokenId,
+  });
 
   const handleMainButtonPress = useCallback(async () => {
     // "enter" branch focuses the input — let the keyboard rise naturally.
@@ -640,9 +597,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       return;
     }
 
-    const isUnableToScan =
-      showSecurityWarningForSource || showSecurityWarningForDestination;
-
     if (isUnableToScan) {
       await prepareSwapTransaction(false);
       transactionSecurityWarningBottomSheetModalRef.current?.present();
@@ -654,8 +608,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     prepareSwapTransaction,
     openDestinationPicker,
     openSourcePicker,
-    showSecurityWarningForDestination,
-    showSecurityWarningForSource,
+    isUnableToScan,
     destinationTokenDescriptor,
     balanceItems,
     swapFee,
@@ -679,92 +632,10 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
   };
 
-  const securityWarnings = useMemo(() => {
-    const warnings = [];
-
-    // Add warnings for malicious and suspicious cases
-    if (
-      transactionSecurityAssessment.isMalicious ||
-      transactionSecurityAssessment.isSuspicious ||
-      sourceBalanceSecurityAssessment.isMalicious ||
-      sourceBalanceSecurityAssessment.isSuspicious ||
-      destBalanceSecurityAssessment.isMalicious ||
-      destBalanceSecurityAssessment.isSuspicious
-    ) {
-      const extractedWarnings = [
-        ...extractSecurityWarnings(transactionScanResult),
-        ...Object.values(scanResults).map((result) =>
-          extractSecurityWarnings(result),
-        ),
-      ].flat();
-
-      if (Array.isArray(extractedWarnings) && extractedWarnings.length > 0) {
-        warnings.push(...extractedWarnings);
-      }
-    }
-
-    if (showSecurityWarningForSource) {
-      warnings.push({
-        id: "unable-to-scan-source",
-        description: t("blockaid.unableToScan.sourceToken"),
-      });
-    }
-
-    if (showSecurityWarningForDestination) {
-      warnings.push({
-        id: "unable-to-scan-destination",
-        description: t("blockaid.unableToScan.destinationToken"),
-      });
-    }
-
-    return warnings;
-  }, [
-    transactionSecurityAssessment.isMalicious,
-    transactionSecurityAssessment.isSuspicious,
-    sourceBalanceSecurityAssessment.isMalicious,
-    sourceBalanceSecurityAssessment.isSuspicious,
-    destBalanceSecurityAssessment.isMalicious,
-    destBalanceSecurityAssessment.isSuspicious,
-    showSecurityWarningForDestination,
-    showSecurityWarningForSource,
-    transactionScanResult,
-    scanResults,
-    t,
-  ]);
-
-  const { isMalicious: isTxMalicious, isSuspicious: isTxSuspicious } =
-    transactionSecurityAssessment;
-  const { isMalicious: isSourceMalicious, isSuspicious: isSourceSuspicious } =
-    sourceBalanceSecurityAssessment;
-  const { isMalicious: isDestMalicious, isSuspicious: isDestSuspicious } =
-    destBalanceSecurityAssessment;
-  const isMalicious = isTxMalicious || isSourceMalicious || isDestMalicious;
-  const isSuspicious = isTxSuspicious || isSourceSuspicious || isDestSuspicious;
-
-  const isUnableToScan =
-    showSecurityWarningForSource || showSecurityWarningForDestination;
-
-  const transactionSecuritySeverity = useMemo(() => {
-    if (transactionSecurityAssessment.isMalicious)
-      return SecurityLevel.MALICIOUS;
-    if (transactionSecurityAssessment.isSuspicious)
-      return SecurityLevel.SUSPICIOUS;
-    if (isUnableToScan) return SecurityLevel.UNABLE_TO_SCAN;
-
-    return undefined;
-  }, [
-    transactionSecurityAssessment.isMalicious,
-    transactionSecurityAssessment.isSuspicious,
-    isUnableToScan,
-  ]);
-
   const handleConfirmAnyway = () => {
     transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
 
-    const isUnableToScanConfirm =
-      showSecurityWarningForSource || showSecurityWarningForDestination;
-
-    if (isUnableToScanConfirm) {
+    if (isUnableToScan) {
       swapReviewBottomSheetModalRef.current?.present();
     } else {
       handleConfirmSwap();

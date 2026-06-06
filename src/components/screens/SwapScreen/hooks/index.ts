@@ -4,6 +4,7 @@ export { useSwapBalances } from "./useSwapBalances";
 export { useSwapCtaState, type SwapCtaState } from "./useSwapCtaState";
 export { useSwapDirectionToggle } from "./useSwapDirectionToggle";
 export { useSwapPathFinding } from "./useSwapPathFinding";
+export { useSwapSecurityAssessments } from "./useSwapSecurityAssessments";
 export * from "./useSwapTokenLookup";
 export { useSwapFooter } from "./useSwapFooter";
 export { useSwapNavigation } from "./useSwapNavigation";
