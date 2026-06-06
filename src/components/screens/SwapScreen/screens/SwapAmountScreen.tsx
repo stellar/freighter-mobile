@@ -13,7 +13,7 @@ import { BaseLayout } from "components/layout/BaseLayout";
 import {
   SwapReviewBottomSheet,
   SwapReviewFooter,
-  SwapTokenRow,
+  TrendingListItem,
   TrendingTokenDetailBottomSheet,
   XlmReserveBottomSheet,
 } from "components/screens/SwapScreen/components";
@@ -1026,42 +1026,26 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   }: {
     item: FormattedSearchTokenRecord;
     index: number;
-  }) => {
-    const tokenId = recordTokenId(item);
-    const priceInfo = prices[tokenId] ?? {};
-    // Fallback to stellar.expert's spot price when /token-prices has no
-    // entry for this token (common for long-tail trending tokens). No 24h%
-    // available in the fallback case — design doc §5.3.
-    const fallbackPrice =
-      item.price !== undefined ? new BigNumber(item.price) : undefined;
-    return (
-      <View>
-        <SwapTokenRow
-          variant="trending"
-          record={item}
-          priceInfo={{
-            currentPrice: priceInfo.currentPrice ?? fallbackPrice,
-            percentagePriceChange24h:
-              priceInfo.percentagePriceChange24h ?? undefined,
-          }}
-          network={network}
-          onPress={() => {
-            analytics.track(AnalyticsEvent.SWAP_TRENDING_TOKEN_TAPPED, {
-              tokenCode: item.tokenCode,
-              tokenIssuer: item.issuer ?? "",
-              position: index,
-            });
-            // Dismiss the keyboard so the trending detail sheet has full
-            // unblocked space; otherwise the sheet pops over a raised
-            // keyboard and the Buy CTA sits under it.
-            Keyboard.dismiss();
-            setSelectedTrendingRecord(item);
-            // present() fires via useEffect once the ref is mounted.
-          }}
-        />
-      </View>
-    );
-  };
+  }) => (
+    <TrendingListItem
+      item={item}
+      prices={prices}
+      network={network}
+      onPress={() => {
+        analytics.track(AnalyticsEvent.SWAP_TRENDING_TOKEN_TAPPED, {
+          tokenCode: item.tokenCode,
+          tokenIssuer: item.issuer ?? "",
+          position: index,
+        });
+        // Dismiss the keyboard so the trending detail sheet has full
+        // unblocked space; otherwise the sheet pops over a raised
+        // keyboard and the Buy CTA sits under it.
+        Keyboard.dismiss();
+        setSelectedTrendingRecord(item);
+        // present() fires via useEffect once the ref is mounted.
+      }}
+    />
+  );
 
   return (
     // Not using BaseLayout's useKeyboardAvoidingView here: it wraps content
