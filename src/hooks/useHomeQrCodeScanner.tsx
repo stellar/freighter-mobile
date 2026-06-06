@@ -11,6 +11,7 @@ import { useAuthenticationStore } from "ducks/auth";
 import { useQRDataStore } from "ducks/qrData";
 import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
+import { isDev } from "helpers/isEnv";
 import { isValidWalletConnectURI, parseQRPayload } from "helpers/qrValidation";
 import { walletKit } from "helpers/walletKitUtil";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -97,7 +98,7 @@ export const useHomeQrCodeScanner = (
     manualInput,
     isConnecting: isConnectingWC || (isProcessingAddress && isSearching),
     error: manualInputError,
-    showManualInput: __DEV__,
+    showManualInput: isDev,
     title: t("homeScanner.title"),
     scannerTitle: t("homeScanner.scanQRCodeText"),
     context: QRCodeSource.HOME_SCANNER,
@@ -315,7 +316,7 @@ export const useHomeQrCodeScanner = (
     handleQRCodeScanned,
     handleClose,
     handleHeaderLeft,
-    ...__DEV__ && {
+    ...isDev && {
       handleManualInputChange,
       handleConnect,
       handleClearInput,
@@ -326,6 +327,6 @@ export const useHomeQrCodeScanner = (
   return {
     handlers,
     state,
-    ...(__DEV__ && { ManualInputOverlay: WalletConnectManualInputOverlay }),
+    ...(isDev && { ManualInputOverlay: WalletConnectManualInputOverlay }),
   };
 };
