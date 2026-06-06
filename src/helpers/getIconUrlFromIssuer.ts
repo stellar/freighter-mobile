@@ -74,10 +74,25 @@ export const getIconUrlFromIssuer = async ({
   try {
     toml = await StellarToml.Resolver.resolve(homeDomain);
   } catch (e) {
+    // Hermes (React Native's JS engine on iOS/Android) caps own-property
+    // count on a single object at 196_607 — when a TOML deserializes into
+    // an object that wide (huge CURRENCIES list, or non-TOML content that
+    // the parser absorbs as a flood of keys) the engine throws RangeError
+    // "Property storage exceeds 196607 properties". The SDK wraps it as
+    // "stellar.toml is invalid - Parsing error on line undefined, column
+    // undefined: ...". Surface it separately from generic TOML failures so
+    // the culprit issuer + domain is easy to spot in dev logs.
+    const errMessage = e?.toString() || "unknown";
+    const hitHermesPropertyCap = errMessage.includes(
+      "Property storage exceeds",
+    );
     debug(
       "getIconUrlFromIssuer",
-      "Failed to resolve TOML",
-      e?.toString() || "unknown",
+      hitHermesPropertyCap
+        ? "TOML parse exceeded Hermes property-storage cap (pathological / non-TOML response)"
+        : "Failed to resolve TOML",
+      errMessage,
+      { issuerKey, tokenCode, homeDomain },
     );
     return "";
   }
