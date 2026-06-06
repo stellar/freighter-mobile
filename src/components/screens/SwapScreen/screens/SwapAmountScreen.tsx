@@ -28,6 +28,7 @@ import {
 } from "components/screens/SwapScreen/helpers";
 import {
   useSwapBalances,
+  useSwapCtaState,
   useSwapPathFinding,
 } from "components/screens/SwapScreen/hooks";
 import { useSwapTokenLookup } from "components/screens/SwapScreen/hooks/useSwapTokenLookup";
@@ -402,46 +403,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     }
   }, [selectedTrendingRecord]);
 
-  // CTA state machine — see design doc §6.6.
-  //
-  //   select       no destination yet  ──► navigate to SwapToScreen
-  //   enter        destination set, amount == 0  ──► focus the Sell input
-  //   insufficient amount exceeds spendable  ──► disabled
-  //   loading      path-finding in flight  ──► spinner
-  //   review       path resolved, amount valid  ──► open Review sheet
-  type CtaState =
-    | { kind: "select"; missingSide: "source" | "destination" }
-    | { kind: "enter" }
-    | { kind: "insufficient" }
-    | { kind: "loading" }
-    | { kind: "review" };
-
-  const ctaState: CtaState = useMemo(() => {
-    // "Select a token" fires whenever EITHER side is empty — picking the
-    // missing side first is what the user expects. Source-first ordering
-    // when both are empty so we resolve the upstream input before the
-    // downstream destination.
-    if (!sourceBalance) return { kind: "select", missingSide: "source" };
-    if (!destinationTokenDescriptor) {
-      return { kind: "select", missingSide: "destination" };
-    }
-
-    const amountBN = new BigNumber(sourceAmount || "0");
-    if (amountBN.isZero() || amountBN.isNaN()) return { kind: "enter" };
-
-    if (spendableAmount && amountBN.gt(spendableAmount)) {
-      return { kind: "insufficient" };
-    }
-
-    if (isLoadingPath || isBuilding) return { kind: "loading" };
-
-    if (pathResult && !pathError) return { kind: "review" };
-
-    // Path-finding finished without a result (or threw) — keep the user on
-    // the amount step. The persistent toast (set up below) already surfaces
-    // `pathError` when present, so we don't need a dedicated CTA state.
-    return { kind: "enter" };
-  }, [
+  const { ctaState, ctaLabel, isCtaDisabled } = useSwapCtaState({
     sourceBalance,
     destinationTokenDescriptor,
     sourceAmount,
@@ -450,26 +412,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     isBuilding,
     pathResult,
     pathError,
-  ]);
-
-  const ctaLabel = useMemo(() => {
-    switch (ctaState.kind) {
-      case "select":
-        return t("swapScreen.cta.select");
-      case "enter":
-        return t("swapScreen.cta.enterAmount");
-      case "insufficient":
-        return t("swapScreen.cta.insufficientBalance");
-      case "loading":
-        return t("swapScreen.cta.review");
-      case "review":
-      default:
-        return t("swapScreen.cta.review");
-    }
-  }, [ctaState, t]);
-
-  const isCtaDisabled =
-    ctaState.kind === "insufficient" || !!amountError || !!pathError;
+    amountError,
+  });
 
   useEffect(() => {
     if (swapFromTokenId && swapFromTokenSymbol) {
