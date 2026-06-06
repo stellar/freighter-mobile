@@ -14,6 +14,7 @@ import {
   isHeldToken,
   recordTokenId,
 } from "components/screens/SwapScreen/helpers";
+import { useSwapToEmptyStates } from "components/screens/SwapScreen/hooks";
 import { useSwapTokenLookup } from "components/screens/SwapScreen/hooks/useSwapTokenLookup";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
@@ -21,14 +22,9 @@ import { Text } from "components/sds/Typography";
 import { AnalyticsEvent, SwapSelectionSource } from "config/analyticsConfig";
 import { isNativeAssetId, SWAP_SELECTION_TYPES } from "config/constants";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
-import {
-  FormattedSearchTokenRecord,
-  HookStatus,
-  PricedBalance,
-} from "config/types";
+import { FormattedSearchTokenRecord, PricedBalance } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useSwapStore } from "ducks/swap";
-import { isContractId } from "helpers/soroban";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
@@ -169,37 +165,16 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
     t,
   ]);
 
-  // Total active-search result count across all three buckets — used to gate
-  // the loading / empty-state branches the same way the old flat
-  // searchResults.length did.
-  const totalSearchResults =
-    heldSearchMatches.length +
-    verifiedSearchMatches.length +
-    unverifiedSearchMatches.length;
-
-  // True while the user's debounced search is fetching (takes precedence over
-  // empty-state branches so the user doesn't see "no results" mid-fetch).
-  const isSearching =
-    searchTerm.length > 0 &&
-    status === HookStatus.LOADING &&
-    totalSearchResults === 0;
-
-  // Soroban empty-state: search has term, no results, and either there were
-  // Soroban matches filtered out OR the term itself looks like a contract ID.
-  // Only shown when we are NOT actively fetching.
-  const showSorobanEmpty =
-    !isSearching &&
-    searchTerm.length > 0 &&
-    totalSearchResults === 0 &&
-    (hadSorobanMatches || isContractId(searchTerm));
-
-  // No-results empty-state: search has term, no results, and NOT a Soroban
-  // case (which has its own dedicated message). Only shown when not fetching.
-  const showNoResults =
-    !isSearching &&
-    searchTerm.length > 0 &&
-    totalSearchResults === 0 &&
-    !showSorobanEmpty;
+  const { isSearching, showSorobanEmpty, showNoResults } = useSwapToEmptyStates(
+    {
+      searchTerm,
+      status,
+      heldSearchMatches,
+      verifiedSearchMatches,
+      unverifiedSearchMatches,
+      hadSorobanMatches,
+    },
+  );
 
   const handleHeldPress = (
     balance: PricedBalance & { id: string },
