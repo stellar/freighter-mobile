@@ -7,6 +7,7 @@ import { useSignTransactionDetails } from "components/screens/SignTransactionDet
 import { SwapReviewTokenRow } from "components/screens/SwapScreen/components/SwapReviewTokenRow";
 import { TrustlineInfoBottomSheet } from "components/screens/SwapScreen/components/TrustlineInfoBottomSheet";
 import {
+  useReviewSecuritySummary,
   useReviewTokens,
   useStableConversionRate,
 } from "components/screens/SwapScreen/hooks";
@@ -17,7 +18,7 @@ import Icon from "components/sds/Icon";
 import { TextButton } from "components/sds/TextButton";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
-import { DEFAULT_PADDING, NATIVE_TOKEN_CODE } from "config/constants";
+import { DEFAULT_PADDING } from "config/constants";
 import { THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
 import { useDebugStore } from "ducks/debug";
@@ -29,13 +30,9 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React, { useMemo, useRef } from "react";
+import React, { useRef } from "react";
 import { TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import {
-  assessTokenSecurity,
-  assessTransactionSecurity,
-} from "services/blockaid/helper";
 
 type SwapReviewBottomSheetProps = {
   onSecurityWarningPress?: () => void;
@@ -107,66 +104,23 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
 
   const publicKey = account?.publicKey;
 
-  const transactionSecurityAssessment = assessTransactionSecurity(
+  const {
+    isMalicious,
+    isSuspicious,
+    isUnableToScanToken,
+    isSourceMalicious,
+    isSourceSuspicious,
+    isDestMalicious,
+    isDestSuspicious,
+    bannerText,
+  } = useReviewSecuritySummary({
     transactionScanResult,
-    overriddenBlockaidResponse,
-  );
-  const sourceSecurityAssessment = assessTokenSecurity(
     sourceTokenScanResult,
-    overriddenBlockaidResponse,
-  );
-  const destSecurityAssessment = assessTokenSecurity(
     destTokenScanResult,
     overriddenBlockaidResponse,
-  );
-
-  const { isMalicious: isTxMalicious, isSuspicious: isTxSuspicious } =
-    transactionSecurityAssessment;
-  const { isMalicious: isSourceMalicious, isSuspicious: isSourceSuspicious } =
-    sourceSecurityAssessment;
-  const { isMalicious: isDestMalicious, isSuspicious: isDestSuspicious } =
-    destSecurityAssessment;
-
-  const isMalicious = isTxMalicious || isSourceMalicious || isDestMalicious;
-  const isSuspicious = isTxSuspicious || isSourceSuspicious || isDestSuspicious;
-  const isUnableToScanToken =
-    (sourceSecurityAssessment.isUnableToScan &&
-      sourceTokenId !== NATIVE_TOKEN_CODE) ||
-    (destSecurityAssessment.isUnableToScan &&
-      destinationTokenDescriptor?.id !== NATIVE_TOKEN_CODE);
-
-  const bannerText = useMemo(() => {
-    if (isTxMalicious) {
-      return t("transactionAmountScreen.errors.malicious");
-    }
-
-    if (isTxSuspicious) {
-      return t("transactionAmountScreen.errors.suspicious");
-    }
-
-    if (isDestMalicious || isSourceMalicious) {
-      return t("transactionAmountScreen.errors.maliciousAsset");
-    }
-
-    if (isDestSuspicious || isSourceSuspicious) {
-      return t("transactionAmountScreen.errors.suspiciousAsset");
-    }
-
-    if (isUnableToScanToken) {
-      return t("securityWarning.proceedWithCaution");
-    }
-
-    return t("transactionAmountScreen.errors.malicious");
-  }, [
-    t,
-    isTxMalicious,
-    isTxSuspicious,
-    isDestMalicious,
-    isSourceMalicious,
-    isDestSuspicious,
-    isSourceSuspicious,
-    isUnableToScanToken,
-  ]);
+    sourceTokenId,
+    destinationTokenDescriptor,
+  });
 
   return (
     <View className="flex-1" testID="swap-review-sheet">
