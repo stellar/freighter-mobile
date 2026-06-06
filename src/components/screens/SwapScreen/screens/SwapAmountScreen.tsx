@@ -1118,6 +1118,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         sourceToken={sourceToken}
         destinationAmount={destinationAmount || "0"}
         destinationToken={destinationToken}
+        destinationIconUrl={destinationTokenDescriptor?.iconUrl}
       />
     );
   }

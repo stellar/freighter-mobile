@@ -273,7 +273,16 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
 
           <View className="w-full flex-row items-center gap-4">
             <View className="relative">
-              <TokenIcon token={destinationToken} />
+              <TokenIcon
+                token={destinationToken}
+                // Carry the descriptor's iconUrl (from the search row's
+                // tomlInfo.image) through so non-held destinations render
+                // their logo on the Review sheet instead of a 2-letter
+                // fallback. Same plumbing as the SwapAmountScreen Receive
+                // chip — without this the user sees a logo on the Amount
+                // screen but initials on the confirmation sheet.
+                iconUrl={destinationTokenDescriptor?.iconUrl}
+              />
               {(isDestMalicious || isDestSuspicious) && (
                 <View className="absolute bottom-0 right-0 w-4 h-4 items-center justify-center z-10">
                   <Icon.AlertCircle
