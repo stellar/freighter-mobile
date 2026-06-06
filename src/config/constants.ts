@@ -37,6 +37,32 @@ export const HISTORY_FETCH_POLLING_INTERVAL = 30000;
 
 // Transaction fee constants
 export const NATIVE_TOKEN_CODE = "XLM";
+/**
+ * Horizon's wire string for the native (XLM) asset's `asset_type` /
+ * `id` representation. This is distinct from `NATIVE_TOKEN_CODE`
+ * ("XLM"): some surfaces of the app see Horizon's raw "native" string
+ * (e.g. unhoisted balance.id straight from `loadAccount`), while
+ * others see the post-normalization "XLM" string (e.g.
+ * `services/backend.ts` rewrites "native" → "XLM" before storing).
+ *
+ * The codebase has historically tested for both inline:
+ *   id === "native" || id === NATIVE_TOKEN_CODE
+ * which is error-prone. Prefer the {@link isNativeAssetId} guard
+ * below so the comparison is centralised and a future single-sentinel
+ * normalisation is a one-line change.
+ */
+export const HORIZON_NATIVE_ASSET_TYPE = "native";
+
+/**
+ * Returns true when the given balance-id / token-id string represents
+ * the native XLM asset, regardless of whether it's the raw Horizon
+ * "native" sentinel or the post-normalisation NATIVE_TOKEN_CODE
+ * ("XLM"). Use this everywhere the question is "does this id refer to
+ * XLM as the native asset?" to keep the dual-sentinel knowledge in
+ * one place.
+ */
+export const isNativeAssetId = (id: string | undefined | null): boolean =>
+  id === HORIZON_NATIVE_ASSET_TYPE || id === NATIVE_TOKEN_CODE;
 export const MIN_TRANSACTION_FEE = "0.00001";
 export const BASE_RESERVE = BigNumber(0.5);
 export const MINIMUM_CREATE_ACCOUNT_XLM = 1;

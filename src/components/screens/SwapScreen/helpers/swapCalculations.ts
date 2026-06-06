@@ -1,5 +1,5 @@
 import { BigNumber } from "bignumber.js";
-import { DEFAULT_DECIMALS, NETWORKS } from "config/constants";
+import { DEFAULT_DECIMALS, isNativeAssetId, NETWORKS } from "config/constants";
 import { TokenTypeWithCustomToken } from "config/types";
 import { formatTokenForDisplay } from "helpers/formatAmount";
 import { getNativeContractDetails } from "helpers/soroban";
@@ -119,7 +119,7 @@ export const getContractAddress = ({
     return balance.issuer;
   }
 
-  if (balance.id === "native") {
+  if (isNativeAssetId(balance.id)) {
     const nativeContractDetails = getNativeContractDetails(network);
 
     return nativeContractDetails.contract || null;

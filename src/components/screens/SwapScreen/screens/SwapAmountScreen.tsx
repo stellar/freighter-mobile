@@ -32,6 +32,7 @@ import { AnalyticsEvent, SwapPickerEntrypoint } from "config/analyticsConfig";
 import {
   BASE_RESERVE,
   DEFAULT_DECIMALS,
+  isNativeAssetId,
   mapNetworkToNetworkDetails,
   NATIVE_TOKEN_CODE,
   NETWORKS,
@@ -191,8 +192,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         (b) =>
           (b.tokenType === TokenTypeWithCustomToken.CREDIT_ALPHANUM4 ||
             b.tokenType === TokenTypeWithCustomToken.CREDIT_ALPHANUM12) &&
-          b.id !== "native" &&
-          b.id !== NATIVE_TOKEN_CODE &&
+          !isNativeAssetId(b.id) &&
           b.total?.gt(0),
       )
       .sort((a, b) => {
@@ -220,8 +220,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   // with XLM as source) — they're left with the wallet-address copy.
   const isCurrentSourceNonXlmClassic =
     !!sourceBalance &&
-    sourceBalance.id !== "native" &&
-    sourceBalance.id !== NATIVE_TOKEN_CODE &&
+    !isNativeAssetId(sourceBalance.id) &&
     (sourceBalance.tokenType === TokenTypeWithCustomToken.CREDIT_ALPHANUM4 ||
       sourceBalance.tokenType === TokenTypeWithCustomToken.CREDIT_ALPHANUM12);
   const canOfferSwapToXlm =
@@ -927,8 +926,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
 
       // When XLM is the source token, the sourceAmount is about to leave the
       // account in the swap. Subtract it so the gate evaluates post-swap headroom.
-      const isXlmSource =
-        sourceTokenId === "native" || sourceTokenId === NATIVE_TOKEN_CODE;
+      const isXlmSource = isNativeAssetId(sourceTokenId);
       // The combined trustline + path-payment tx has 2 ops, so the actual fee
       // is 2× the per-op fee. calculateSpendableAmount only deducted one op's
       // worth (via the transactionFee parameter), so deduct one more here so

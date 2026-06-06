@@ -1,5 +1,9 @@
 import { DestinationTokenDescriptor } from "components/screens/SwapScreen/helpers/types";
-import { DEFAULT_DECIMALS, NATIVE_TOKEN_CODE } from "config/constants";
+import {
+  DEFAULT_DECIMALS,
+  isNativeAssetId,
+  NATIVE_TOKEN_CODE,
+} from "config/constants";
 import {
   FormattedSearchTokenRecord,
   PricedBalance,
@@ -35,7 +39,7 @@ export const descriptorFromBalance = (
   balance: BalanceInput,
 ): DestinationTokenDescriptor => {
   const id = balance.id ?? NATIVE_TOKEN_CODE;
-  const isNative = id === NATIVE_TOKEN_CODE || id === "native";
+  const isNative = isNativeAssetId(id);
 
   if (isNative) {
     // Use NATIVE_TOKEN_CODE ("XLM") not "native" so the descriptor id

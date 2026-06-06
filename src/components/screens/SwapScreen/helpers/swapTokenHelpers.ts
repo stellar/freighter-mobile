@@ -1,5 +1,5 @@
 import { BigNumber } from "bignumber.js";
-import { NATIVE_TOKEN_CODE } from "config/constants";
+import { isNativeAssetId, NATIVE_TOKEN_CODE } from "config/constants";
 import {
   FormattedSearchTokenRecord,
   NativeToken,
@@ -81,7 +81,7 @@ export const findBalanceForToken = ({
       if ("token" in item && item.token.type === "native") {
         return true;
       }
-      return item.id === "native";
+      return isNativeAssetId(item.id);
     });
     if (nativeMatch) return nativeMatch;
   }

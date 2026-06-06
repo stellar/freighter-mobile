@@ -4,7 +4,7 @@ import {
   TokenReference,
 } from "components/screens/SwapScreen/helpers";
 import Icon from "components/sds/Icon";
-import { NATIVE_TOKEN_CODE, NETWORKS } from "config/constants";
+import { isNativeAssetId, NATIVE_TOKEN_CODE, NETWORKS } from "config/constants";
 import { logger } from "config/logger";
 import { getStellarExpertUrl } from "helpers/stellarExpert";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -49,7 +49,7 @@ const TokenContextMenu: React.FC<TokenContextMenuProps> = ({
       } else {
         url = `${getStellarExpertUrl(network)}/asset/${token.tokenCode}-${contractAddress}`;
       }
-    } else if (token.id === "native") {
+    } else if (isNativeAssetId(token.id)) {
       url = `${getStellarExpertUrl(network)}/asset/${NATIVE_TOKEN_CODE}`;
     }
 

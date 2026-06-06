@@ -17,7 +17,7 @@ import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent, SwapSelectionSource } from "config/analyticsConfig";
-import { SWAP_SELECTION_TYPES } from "config/constants";
+import { isNativeAssetId, SWAP_SELECTION_TYPES } from "config/constants";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import {
   FormattedSearchTokenRecord,
@@ -419,7 +419,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
               const heldMatch = balanceItems.find(
                 (b) =>
                   b.id === recordTokenId(record) ||
-                  (record.isNative && b.id === "native"),
+                  (record.isNative && isNativeAssetId(b.id)),
               );
 
               if (heldMatch) {
