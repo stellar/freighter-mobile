@@ -26,6 +26,8 @@ import {
   shouldShowXlmReservePreflight,
 } from "components/screens/SwapScreen/helpers";
 import {
+  SWAP_TOAST_IDS,
+  useSwapAmountError,
   useSwapBalances,
   useSwapCtaState,
   useSwapDirectionToggle,
@@ -61,12 +63,7 @@ import { useDebugStore } from "ducks/debug";
 import { destinationAsBalanceLike, useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
-import {
-  calculateSpendableAmount,
-  isAmountSpendable,
-  hasXLMForFees,
-} from "helpers/balances";
-import { formatBigNumberForDisplay } from "helpers/formatAmount";
+import { calculateSpendableAmount } from "helpers/balances";
 import { waitForKeyboardDismiss } from "helpers/keyboard";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -128,12 +125,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     useRef<BottomSheetModal>(null);
   const xlmReserveBottomSheetRef = useRef<BottomSheetModal>(null);
   const amountInputRef = useRef<TextInput>(null);
-  const [amountError, setAmountError] = useState<string | null>(null);
-  const [activeError, setActiveError] = useState<{
-    message: string;
-    toastId: string;
-    duration: number;
-  } | null>(null);
   const { showToast } = useToast();
 
   const { balanceItems, scanResults } = useBalancesList({
@@ -221,62 +212,19 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     setSourceAmountDisplay,
   ]);
 
-  useEffect(() => {
-    if (!sourceBalance || !sourceAmount || sourceAmount === "0") {
-      setAmountError(null);
-      return;
-    }
-
-    if (!hasXLMForFees(balanceItems, swapFee)) {
-      const errorMessage = t("swapScreen.errors.insufficientXlmForFees", {
-        fee: swapFee,
-      });
-      setAmountError(errorMessage);
-      setActiveError({
-        message: errorMessage,
-        toastId: "insufficient-xlm-for-fees",
-        duration: 3000,
-      });
-      return;
-    }
-
-    if (
-      !isAmountSpendable({
-        amount: sourceAmount,
-        balance: sourceBalance,
-        subentryCount: account?.subentryCount,
-        transactionFee: swapFee,
-      }) &&
-      !transactionHash
-    ) {
-      const errorMessage = t("swapScreen.errors.insufficientBalance", {
-        amount: spendableAmount
-          ? formatBigNumberForDisplay(spendableAmount, {
-              decimalPlaces: DEFAULT_DECIMALS,
-            })
-          : "0",
-        symbol: sourceTokenSymbol,
-      });
-      setAmountError(errorMessage);
-      setActiveError({
-        message: errorMessage,
-        toastId: "insufficient-balance",
-        duration: 3000,
-      });
-    } else {
-      setAmountError(null);
-    }
-  }, [
+  const { amountError, setActiveError } = useSwapAmountError({
+    sourceBalance,
     sourceAmount,
+    balanceItems,
+    swapFee,
+    subentryCount: account?.subentryCount,
+    transactionHash,
     spendableAmount,
     sourceTokenSymbol,
-    t,
-    account?.subentryCount,
-    swapFee,
-    transactionHash,
-    sourceBalance,
-    balanceItems,
-  ]);
+    pathError,
+    pathResult,
+    destinationTokenDescriptor,
+  });
 
   // For held destinations, useSwapPathFinding / useSwapTransaction receive
   // the matching `destinationBalance`. For non-held destinations the balance
@@ -421,48 +369,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   ]);
 
   useInitialRecommendedFee(recommendedFee, TransactionContext.Swap);
-
-  // Unified error toast effect
-  useEffect(() => {
-    if (activeError) {
-      showToast({
-        variant: "error",
-        title: activeError.message,
-        toastId: activeError.toastId,
-        duration: activeError.duration,
-      });
-    }
-  }, [activeError, showToast]);
-
-  // Show persistent toast for path-related errors when user has entered amount and selected destination token
-  useEffect(() => {
-    const hasAmount = sourceAmount && Number(sourceAmount) > 0;
-    const hasDestinationToken = !!destinationTokenDescriptor;
-
-    // Only show toast when there's an actual pathError (not just a missing pathResult)
-    if (pathError && hasAmount && hasDestinationToken) {
-      setActiveError({
-        message: pathError,
-        toastId: "swap-path-error",
-        duration: 0,
-      });
-    } else if (
-      !pathError &&
-      pathResult &&
-      activeError?.toastId === "swap-path-error"
-    ) {
-      // A subsequent path-finding cycle resolved successfully — dismiss the
-      // lingering path-error toast so it doesn't cover the keyboard while
-      // the user is typing a valid amount.
-      setActiveError(null);
-    }
-  }, [
-    pathError,
-    pathResult,
-    sourceAmount,
-    destinationTokenDescriptor,
-    activeError?.toastId,
-  ]);
 
   const {
     transactionSettingsBottomSheetModalRef,
@@ -610,12 +516,12 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
             : t("swapScreen.errors.failedToSetupTransaction");
         setActiveError({
           message: errorMessage,
-          toastId: "failed-to-setup-transaction",
+          toastId: SWAP_TOAST_IDS.FAILED_TO_SETUP_TRANSACTION,
           duration: 0,
         });
       }
     },
-    [setupSwapTransaction, t],
+    [setupSwapTransaction, t, setActiveError],
   );
 
   const handleConfirmSwap = useCallback(() => {
@@ -766,7 +672,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       resetToDefaults();
       setActiveError(null);
     },
-    [resetSwap, resetTransaction, resetToDefaults],
+    [resetSwap, resetTransaction, resetToDefaults, setActiveError],
   );
 
   const handleCancelSecurityWarning = () => {
