@@ -4,10 +4,7 @@ import { xdr as stellarXdr } from "@stellar/stellar-sdk";
 import AddMemoExplanationBottomSheet from "components/AddMemoExplanationBottomSheet";
 import BottomSheet from "components/BottomSheet";
 import InformationBottomSheet from "components/InformationBottomSheet";
-import {
-  SecurityDetailBottomSheet,
-  SecurityDetailFooter,
-} from "components/blockaid";
+import { SecurityDetailBottomSheet } from "components/blockaid";
 import { useSignTransactionDetails } from "components/screens/SignTransactionDetails/hooks/useSignTransactionDetails";
 import DappConnectionBottomSheetContent from "components/screens/WalletKit/DappConnectionBottomSheetContent";
 import DappRequestBottomSheetContent from "components/screens/WalletKit/DappRequestBottomSheetContent";
@@ -655,21 +652,6 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     verifyDomainBottomSheetModalRef.current?.dismiss();
   }, []);
 
-  const renderSecurityDetailFooter = useCallback(
-    () => (
-      <SecurityDetailFooter
-        onCancel={handleCancelSecurityWarning}
-        onProceedAnyway={handleProceedAnyway}
-        severity={getSeverity() ?? SecurityLevel.MALICIOUS}
-        proceedAnywayText={getProceedAnywayText()}
-      />
-    ),
-    // handleCancelSecurityWarning / handleProceedAnyway are stable refs
-    // in this provider's scope (declared above, no useCallback wrapper).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [getSeverity, getProceedAnywayText],
-  );
-
   // ─────────────────────────────────────────────────────────────────────────────
   // Pre-validation helpers for WalletKit session requests
   // ─────────────────────────────────────────────────────────────────────────────
@@ -1240,14 +1222,15 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       <BottomSheet
         modalRef={siteSecurityWarningBottomSheetModalRef}
         handleCloseModal={handleCancelSecurityWarning}
-        scrollable
-        scrollViewFooterComponent={renderSecurityDetailFooter}
         customContent={
           <SecurityDetailBottomSheet
             warnings={getWarnings()}
+            onCancel={handleCancelSecurityWarning}
+            onProceedAnyway={handleProceedAnyway}
             onClose={handleCancelSecurityWarning}
             securityContext={securityWarningContext}
             severity={getSeverity() ?? SecurityLevel.MALICIOUS}
+            proceedAnywayText={getProceedAnywayText()}
           />
         }
       />

@@ -9,10 +9,7 @@ import InformationBottomSheet from "components/InformationBottomSheet";
 import MuxedAddressWarningBottomSheet from "components/MuxedAddressWarningBottomSheet";
 import { PercentageButtons } from "components/PercentageButtons";
 import TransactionSettingsBottomSheet from "components/TransactionSettingsBottomSheet";
-import {
-  SecurityDetailBottomSheet,
-  SecurityDetailFooter,
-} from "components/blockaid";
+import { SecurityDetailBottomSheet } from "components/blockaid";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import {
@@ -884,29 +881,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     transactionSecurityWarningBottomSheetModalRef.current?.present();
   }, []);
 
-  const renderSecurityDetailFooter = useCallback(
-    () => (
-      <SecurityDetailFooter
-        onCancel={handleCancelSecurityWarning}
-        onProceedAnyway={handleConfirmAnyway}
-        severity={transactionSecuritySeverity ?? SecurityLevel.MALICIOUS}
-        proceedAnywayText={
-          transactionSecurityAssessment.isUnableToScan
-            ? t("common.continue")
-            : t("transactionAmountScreen.confirmAnyway")
-        }
-      />
-    ),
-    // handleCancelSecurityWarning is stable (declared without useCallback above).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [
-      handleConfirmAnyway,
-      transactionSecuritySeverity,
-      transactionSecurityAssessment.isUnableToScan,
-      t,
-    ],
-  );
-
   const openAddMemoExplanationBottomSheet = useCallback(() => {
     addMemoExplanationBottomSheetModalRef.current?.present();
   }, []);
@@ -1157,14 +1131,19 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       <BottomSheet
         modalRef={transactionSecurityWarningBottomSheetModalRef}
         handleCloseModal={handleCancelSecurityWarning}
-        scrollable
-        scrollViewFooterComponent={renderSecurityDetailFooter}
         customContent={
           <SecurityDetailBottomSheet
             warnings={transactionSecurityWarnings}
+            onCancel={handleCancelSecurityWarning}
+            onProceedAnyway={handleConfirmAnyway}
             onClose={handleCancelSecurityWarning}
             severity={transactionSecuritySeverity ?? SecurityLevel.MALICIOUS}
             securityContext={SecurityContext.TRANSACTION}
+            proceedAnywayText={
+              transactionSecurityAssessment.isUnableToScan
+                ? t("common.continue")
+                : t("transactionAmountScreen.confirmAnyway")
+            }
           />
         }
       />

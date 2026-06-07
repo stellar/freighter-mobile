@@ -84,24 +84,13 @@ jest.mock(
 );
 jest.mock("components/blockaid/SecurityDetailBottomSheet", () => {
   const MockSecurityDetailBottomSheet = (props: Record<string, unknown>) => {
-    mockSecurityDetailBottomSheetProps = {
-      ...(mockSecurityDetailBottomSheetProps || {}),
-      ...props,
-    };
-    return null;
-  };
-  const MockSecurityDetailFooter = (props: Record<string, unknown>) => {
-    mockSecurityDetailBottomSheetProps = {
-      ...(mockSecurityDetailBottomSheetProps || {}),
-      ...props,
-    };
+    mockSecurityDetailBottomSheetProps = props;
     return null;
   };
   return {
     __esModule: true,
     default: MockSecurityDetailBottomSheet,
     SecurityDetailBottomSheet: MockSecurityDetailBottomSheet,
-    SecurityDetailFooter: MockSecurityDetailFooter,
   };
 });
 jest.mock("components/sds/Icon", () => ({

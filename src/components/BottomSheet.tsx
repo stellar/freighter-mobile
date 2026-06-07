@@ -215,7 +215,11 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
   const handleFooterLayout = useCallback(
     (event: { nativeEvent: { layout: { height: number } } }) => {
       const { height } = event.nativeEvent.layout;
-      setFooterHeight(height);
+      // iOS reports onLayout sub-pixel heights (e.g. 187.333 vs
+      // 187.666) that flip on every re-render. Setting state every
+      // time would loop forever — bail when the change is smaller
+      // than one pixel.
+      setFooterHeight((prev) => (Math.abs(prev - height) < 1 ? prev : height));
     },
     [],
   );
@@ -251,7 +255,11 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
             {...bottomSheetViewProps}
           >
             {renderContent()}
-            {/* Spacer to prevent content from hiding behind the absolute-positioned footer */}
+            {/* Spacer reserves room for the absolutely-positioned footer below.
+                Initially 0 (footer not yet measured); after the footer's
+                onLayout fires, BottomSheetModal's dynamic-sizing
+                listener picks up the contentSize change and grows the
+                sheet to accommodate. */}
             {footerHeight > 0 && <View style={{ height: footerHeight }} />}
           </BottomSheetScrollView>
           {scrollViewFooterComponent && (

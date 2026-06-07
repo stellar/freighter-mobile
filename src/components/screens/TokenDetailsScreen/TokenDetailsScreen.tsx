@@ -228,7 +228,6 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
         handleCloseModal={() =>
           securityWarningBottomSheetModalRef.current?.dismiss()
         }
-        scrollable
         customContent={
           <SecurityDetailBottomSheet
             warnings={securityWarnings}

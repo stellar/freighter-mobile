@@ -4,10 +4,7 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import BigNumber from "bignumber.js";
 import BottomSheet from "components/BottomSheet";
 import Spinner from "components/Spinner";
-import {
-  SecurityDetailBottomSheet,
-  SecurityDetailFooter,
-} from "components/blockaid";
+import { SecurityDetailBottomSheet } from "components/blockaid";
 import { BaseLayout } from "components/layout/BaseLayout";
 import AddTokenBottomSheetContent from "components/screens/AddTokenScreen/AddTokenBottomSheetContent";
 import CannotRemoveTokenBottomSheet, {
@@ -205,24 +202,6 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
     securityWarningBottomSheetModalRef.current?.present();
   }, []);
 
-  const renderSecurityDetailFooter = useCallback(
-    () => (
-      <SecurityDetailFooter
-        onCancel={() => securityWarningBottomSheetModalRef.current?.dismiss()}
-        onProceedAnyway={handleProceedAnyway}
-        severity={
-          securitySeverity as Exclude<SecurityLevel, SecurityLevel.SAFE>
-        }
-        proceedAnywayText={
-          isUnableToScanToken
-            ? t("common.continue")
-            : t("addTokenScreen.approveAnyway")
-        }
-      />
-    ),
-    [handleProceedAnyway, securitySeverity, isUnableToScanToken, t],
-  );
-
   const handleRemoveToken = useCallback((token: FormattedSearchTokenRecord) => {
     setSelectedToken(token);
     removeTokenBottomSheetModalRef.current?.present();
@@ -384,11 +363,13 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
           handleCloseModal={() =>
             securityWarningBottomSheetModalRef.current?.dismiss()
           }
-          scrollable
-          scrollViewFooterComponent={renderSecurityDetailFooter}
           customContent={
             <SecurityDetailBottomSheet
               warnings={securityWarnings}
+              onCancel={() =>
+                securityWarningBottomSheetModalRef.current?.dismiss()
+              }
+              onProceedAnyway={handleProceedAnyway}
               onClose={() =>
                 securityWarningBottomSheetModalRef.current?.dismiss()
               }
@@ -396,6 +377,11 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
                 securitySeverity as Exclude<SecurityLevel, SecurityLevel.SAFE>
               }
               securityContext={SecurityContext.TOKEN}
+              proceedAnywayText={
+                isUnableToScanToken
+                  ? t("common.continue")
+                  : t("addTokenScreen.approveAnyway")
+              }
             />
           }
         />

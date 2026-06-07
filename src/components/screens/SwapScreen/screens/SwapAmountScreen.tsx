@@ -8,10 +8,7 @@ import BottomSheet from "components/BottomSheet";
 import { PercentageButtons } from "components/PercentageButtons";
 import Spinner from "components/Spinner";
 import TransactionSettingsBottomSheet from "components/TransactionSettingsBottomSheet";
-import {
-  SecurityDetailBottomSheet,
-  SecurityDetailFooter,
-} from "components/blockaid";
+import { SecurityDetailBottomSheet } from "components/blockaid";
 import { BaseLayout } from "components/layout/BaseLayout";
 import {
   SwapReviewBottomSheet,
@@ -649,26 +646,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     onSettingsPress: openSettings,
   });
 
-  const renderSecurityDetailFooter = useCallback(
-    () => (
-      <SecurityDetailFooter
-        onCancel={handleCancelSecurityWarning}
-        onProceedAnyway={handleConfirmAnyway}
-        severity={swapSecuritySeverity ?? SecurityLevel.MALICIOUS}
-        proceedAnywayText={
-          isUnableToScan
-            ? t("common.continue")
-            : t("transactionAmountScreen.confirmAnyway")
-        }
-      />
-    ),
-    // handleCancelSecurityWarning / handleConfirmAnyway are stable enough
-    // for this footer; wrapping them in useCallback adds noise without
-    // changing behaviour (the sheet recreates the footer on each open).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [swapSecuritySeverity, isUnableToScan, t],
-  );
-
   if (isProcessing) {
     return (
       <SwapProcessingScreen
@@ -899,13 +876,18 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       <BottomSheet
         modalRef={transactionSecurityWarningBottomSheetModalRef}
         handleCloseModal={handleCancelSecurityWarning}
-        scrollable
-        scrollViewFooterComponent={renderSecurityDetailFooter}
         customContent={
           <SecurityDetailBottomSheet
             warnings={securityWarnings}
+            onCancel={handleCancelSecurityWarning}
+            onProceedAnyway={handleConfirmAnyway}
             onClose={handleCancelSecurityWarning}
             severity={swapSecuritySeverity ?? SecurityLevel.MALICIOUS}
+            proceedAnywayText={
+              isUnableToScan
+                ? t("common.continue")
+                : t("transactionAmountScreen.confirmAnyway")
+            }
           />
         }
       />
