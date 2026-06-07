@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react-hooks";
 import { DestinationTokenDescriptor } from "components/screens/SwapScreen/helpers";
 import { TokenTypeWithCustomToken } from "config/types";
-import { useSwapStore, destinationAsBalanceLike } from "ducks/swap";
+import { useSwapStore, descriptorAsPathBalance } from "ducks/swap";
 
 describe("useSwapStore — destinationToken migration", () => {
   beforeEach(() => {
@@ -57,10 +57,10 @@ describe("useSwapStore — destinationToken migration", () => {
   });
 });
 
-describe("destinationAsBalanceLike", () => {
+describe("descriptorAsPathBalance", () => {
   it("throws on a native descriptor (XLM should always resolve to a held balance before this projector runs)", () => {
     expect(() =>
-      destinationAsBalanceLike({
+      descriptorAsPathBalance({
         id: "native",
         tokenCode: "XLM",
         decimals: 7,
@@ -71,7 +71,7 @@ describe("destinationAsBalanceLike", () => {
   });
 
   it("projects a classic descriptor", () => {
-    const result = destinationAsBalanceLike({
+    const result = descriptorAsPathBalance({
       id: "USDC:GA5Z...",
       tokenCode: "USDC",
       issuer: "GA5Z...",
@@ -89,7 +89,7 @@ describe("destinationAsBalanceLike", () => {
 
   it("throws when a non-native descriptor is missing issuer", () => {
     expect(() =>
-      destinationAsBalanceLike({
+      descriptorAsPathBalance({
         id: "USDC:GA5Z...",
         tokenCode: "USDC",
         // issuer intentionally omitted

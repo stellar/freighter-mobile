@@ -22,10 +22,17 @@ import { useToast } from "providers/ToastProvider";
 import { useState, useCallback } from "react";
 import { analytics } from "services/analytics";
 
+/**
+ * `destinationTokenInput` is either the user's held PricedBalance for
+ * the destination, or a `descriptorAsPathBalance(descriptor)` shim for
+ * non-held destinations. `buildSwapTransaction` only reads the `token`
+ * shape (code/issuer/type) plus `tokenCode` off the value, so the shim
+ * is structurally sufficient; do not treat it as a real holding.
+ */
 interface SwapTransactionParams {
   sourceAmount: string;
   sourceBalance: PricedBalance | undefined;
-  destinationBalance: PricedBalance | undefined;
+  destinationTokenInput: PricedBalance | undefined;
   pathResult: SwapPathResult | null;
   account: ActiveAccount | null;
   network: NETWORKS;
@@ -48,7 +55,7 @@ interface UseSwapTransactionResult {
 export const useSwapTransaction = ({
   sourceAmount,
   sourceBalance,
-  destinationBalance,
+  destinationTokenInput,
   pathResult,
   account,
   network,
@@ -67,7 +74,7 @@ export const useSwapTransaction = ({
   const setupSwapTransaction = useCallback(async () => {
     if (
       !sourceBalance ||
-      !destinationBalance ||
+      !destinationTokenInput ||
       !pathResult ||
       !account?.publicKey
     ) {
@@ -101,7 +108,7 @@ export const useSwapTransaction = ({
     const transactionXDR = await buildSwapTransaction({
       sourceAmount,
       sourceBalance,
-      destinationBalance,
+      destinationBalance: destinationTokenInput,
       path: pathResult.path,
       destinationAmount: pathResult.destinationAmount,
       destinationAmountMin: pathResult.destinationAmountMin,
@@ -125,7 +132,7 @@ export const useSwapTransaction = ({
     }
   }, [
     sourceBalance,
-    destinationBalance,
+    destinationTokenInput,
     pathResult,
     buildSwapTransaction,
     account?.publicKey,
@@ -144,7 +151,7 @@ export const useSwapTransaction = ({
       throw new Error("Source token is required for swap transaction");
     }
 
-    if (!destinationBalance?.tokenCode) {
+    if (!destinationTokenInput?.tokenCode) {
       throw new Error("Destination token is required for swap transaction");
     }
 
@@ -179,7 +186,7 @@ export const useSwapTransaction = ({
 
       analytics.trackSwapSuccess({
         sourceToken: sourceBalance.tokenCode,
-        destToken: destinationBalance.tokenCode,
+        destToken: destinationTokenInput.tokenCode,
         sourceAmount,
         destAmount: pathResult?.destinationAmount,
         allowedSlippage: freshSwapSlippage?.toString(),
@@ -191,7 +198,7 @@ export const useSwapTransaction = ({
       const { destinationToken: swappedDestination } = useSwapStore.getState();
       if (swappedDestination?.isNew) {
         analytics.track(AnalyticsEvent.SWAP_TRUSTLINE_ADDED, {
-          tokenCode: destinationBalance.tokenCode,
+          tokenCode: destinationTokenInput.tokenCode,
           tokenIssuer: swappedDestination.issuer ?? "",
         });
       }
@@ -206,7 +213,7 @@ export const useSwapTransaction = ({
         error: error instanceof Error ? error.message : String(error),
         isSwap: true,
         sourceToken: sourceBalance?.tokenCode,
-        destToken: destinationBalance?.tokenCode,
+        destToken: destinationTokenInput?.tokenCode,
         sourceAmount,
         destAmount: pathResult?.destinationAmount,
       });
@@ -232,7 +239,7 @@ export const useSwapTransaction = ({
   }, [
     account,
     sourceBalance?.tokenCode,
-    destinationBalance?.tokenCode,
+    destinationTokenInput?.tokenCode,
     sourceAmount,
     pathResult?.destinationAmount,
     signTransaction,
@@ -270,7 +277,7 @@ export const useSwapTransaction = ({
   };
 
   const sourceToken = getTokenFromBalance(sourceBalance);
-  const destinationToken = getTokenFromBalance(destinationBalance);
+  const destinationToken = getTokenFromBalance(destinationTokenInput);
 
   return {
     isProcessing,

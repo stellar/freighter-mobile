@@ -79,7 +79,7 @@ const baseParams: Parameters<typeof useSwapTransaction>[0] = {
   // without any test failing.
   sourceAmount: "1",
   sourceBalance: { tokenCode: "XLM" } as never,
-  destinationBalance: { tokenCode: "USDC" } as never,
+  destinationTokenInput: { tokenCode: "USDC" } as never,
   pathResult: {
     path: [],
     destinationAmount: "2.5",

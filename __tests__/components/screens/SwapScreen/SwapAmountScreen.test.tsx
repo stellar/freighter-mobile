@@ -142,7 +142,7 @@ jest.mock("ducks/swap", () => ({
   // descriptor that doesn't match any held balance and asserting that the
   // useSwapPathFinding mock receives an object with `tokenCode`/`id` from
   // the descriptor.
-  destinationAsBalanceLike: jest.fn(
+  descriptorAsPathBalance: jest.fn(
     (descriptor: {
       id: string;
       tokenCode: string;
@@ -1013,9 +1013,9 @@ describe("SwapAmountScreen", () => {
 
       expect(mockUseSwapPathFinding).toHaveBeenCalled();
       const lastCall = mockUseSwapPathFinding.mock.calls.at(-1) as
-        | [{ destinationBalance?: Record<string, unknown> }]
+        | [{ destinationTokenForPath?: Record<string, unknown> }]
         | undefined;
-      expect(lastCall?.[0]?.destinationBalance).toEqual(
+      expect(lastCall?.[0]?.destinationTokenForPath).toEqual(
         expect.objectContaining({
           id: "AQUA:GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
           tokenCode: "AQUA",
@@ -1049,11 +1049,11 @@ describe("SwapAmountScreen", () => {
 
       expect(mockUseSwapPathFinding).toHaveBeenCalled();
       const lastCall = mockUseSwapPathFinding.mock.calls.at(-1) as
-        | [{ destinationBalance?: Record<string, unknown> }]
+        | [{ destinationTokenForPath?: Record<string, unknown> }]
         | undefined;
       // Held balance carries `total` and `available` BigNumbers (from
       // mockBalances); the adapter projection does not.
-      expect(lastCall?.[0]?.destinationBalance).toEqual(
+      expect(lastCall?.[0]?.destinationTokenForPath).toEqual(
         expect.objectContaining({
           id: "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
           total: expect.anything(),

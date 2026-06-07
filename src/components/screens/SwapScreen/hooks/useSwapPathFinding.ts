@@ -9,9 +9,18 @@ type BalanceItem = PricedBalance & {
   tokenType: TokenTypeWithCustomToken;
 };
 
+/**
+ * Debounced path-finder for the swap flow.
+ *
+ * `destinationTokenForPath` is either the user's real held PricedBalance
+ * for the destination, OR a `descriptorAsPathBalance(descriptor)` shim
+ * for non-held destinations. `findSwapPath` only reads the `token` shape
+ * off this argument (code/issuer/type), so the shim is structurally
+ * sufficient. Don't treat the value as a real holding downstream.
+ */
 interface UseSwapPathFindingParams {
   sourceBalance: BalanceItem | undefined;
-  destinationBalance: BalanceItem | undefined;
+  destinationTokenForPath: BalanceItem | undefined;
   sourceAmount: string;
   swapSlippage: number;
   network: NETWORKS;
@@ -21,7 +30,7 @@ interface UseSwapPathFindingParams {
 
 export const useSwapPathFinding = ({
   sourceBalance,
-  destinationBalance,
+  destinationTokenForPath,
   sourceAmount,
   swapSlippage,
   network,
@@ -33,7 +42,7 @@ export const useSwapPathFinding = ({
   const debouncedFindSwapPath = useDebounce(() => {
     if (
       sourceBalance &&
-      destinationBalance &&
+      destinationTokenForPath &&
       sourceAmount &&
       Number(sourceAmount) > 0 &&
       !amountError &&
@@ -41,7 +50,7 @@ export const useSwapPathFinding = ({
     ) {
       findSwapPath({
         sourceBalance,
-        destinationBalance,
+        destinationBalance: destinationTokenForPath,
         sourceAmount,
         slippage: swapSlippage,
         network,
@@ -56,7 +65,7 @@ export const useSwapPathFinding = ({
     debouncedFindSwapPath();
   }, [
     sourceBalance,
-    destinationBalance,
+    destinationTokenForPath,
     sourceAmount,
     swapSlippage,
     network,

@@ -33,9 +33,18 @@ import {
 import { searchToken } from "services/stellarExpert";
 
 export interface SwapTokenLookupResult {
-  /** Idle: "Your tokens" section. Active mode uses heldSearchMatches instead. */
+  /**
+   * Held classic tokens, always populated regardless of search state.
+   * The picker hides this list during active search and reads
+   * `heldSearchMatches` instead, but the value here is unconditional.
+   */
   yourTokens: Array<PricedBalance & { id: string }>;
-  /** Idle: top stellar.expert assets sorted by volume7d, EXCLUDING held tokens. Active: []. */
+  /**
+   * Top stellar.expert assets sorted by volume7d, EXCLUDING held
+   * tokens. Always populated regardless of search state — the picker
+   * hides this list during active search but the value here is
+   * unconditional.
+   */
   popularTokens: FormattedSearchTokenRecord[];
   /**
    * Same verified intersection as popularTokens, but INCLUDING held tokens.

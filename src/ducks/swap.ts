@@ -259,28 +259,31 @@ export const useSwapStore = create<SwapState>((set) => ({
 }));
 
 /**
- * Narrow projection for path-finding: getTokenForPayment only reads the
- * `token` field, so the `as unknown as PricedBalance` cast is safe here.
- * Callers other than findSwapPath should pass a real PricedBalance.
+ * Shim that lets a `DestinationTokenDescriptor` flow through the
+ * path-finding / transaction-building pipelines where they accept a
+ * `PricedBalance`. The pipelines only read `token` (code/issuer/type)
+ * off the value; the `as unknown as PricedBalance` cast is safe here
+ * because of that read-shape contract. Don't treat the shim as a real
+ * holding anywhere else.
  *
  * Native XLM is unreachable: XLM is the user's reserve, always present
  * in `balanceItems`, so the SwapAmountScreen useMemo at the call site
  * resolves `destinationBalance` to the held XLM PricedBalance before
- * this projector is reached. We assert that invariant rather than
- * silently mint a shim.
+ * this shim is reached. We assert that invariant rather than silently
+ * mint a fake.
  */
-export const destinationAsBalanceLike = (
+export const descriptorAsPathBalance = (
   descriptor: DestinationTokenDescriptor,
 ): PricedBalance => {
   if (descriptor.tokenType === TokenTypeWithCustomToken.NATIVE) {
     throw new Error(
-      `destinationAsBalanceLike: native descriptor (id=${descriptor.id}) — XLM should always resolve to a held balance before this projector runs`,
+      `descriptorAsPathBalance: native descriptor (id=${descriptor.id}) — XLM should always resolve to a held balance before this shim runs`,
     );
   }
 
   if (!descriptor.issuer) {
     throw new Error(
-      `destinationAsBalanceLike: non-native descriptor missing issuer (id=${descriptor.id})`,
+      `descriptorAsPathBalance: non-native descriptor missing issuer (id=${descriptor.id})`,
     );
   }
 

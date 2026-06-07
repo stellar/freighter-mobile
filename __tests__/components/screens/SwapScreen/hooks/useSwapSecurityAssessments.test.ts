@@ -80,7 +80,7 @@ describe("useSwapSecurityAssessments", () => {
         }),
       );
 
-      expect(result.current.destBalanceSecurityAssessment.isMalicious).toBe(
+      expect(result.current.destinationSecurityAssessment.isMalicious).toBe(
         true,
       );
       expect(result.current.isMalicious).toBe(true);
@@ -99,7 +99,7 @@ describe("useSwapSecurityAssessments", () => {
         }),
       );
 
-      expect(result.current.destBalanceSecurityAssessment.isSuspicious).toBe(
+      expect(result.current.destinationSecurityAssessment.isSuspicious).toBe(
         true,
       );
       expect(result.current.isSuspicious).toBe(true);
@@ -118,7 +118,7 @@ describe("useSwapSecurityAssessments", () => {
       );
 
       // Missing scanResult → UNABLE_TO_SCAN per assessTokenSecurity contract.
-      expect(result.current.destBalanceSecurityAssessment.isUnableToScan).toBe(
+      expect(result.current.destinationSecurityAssessment.isUnableToScan).toBe(
         true,
       );
     });
@@ -137,9 +137,7 @@ describe("useSwapSecurityAssessments", () => {
       // XLM has no scanResult entry → assessTokenSecurity returns
       // isUnableToScan=true. But the hook suppresses the gate so no
       // "unable-to-scan-source" warning is emitted.
-      expect(
-        result.current.sourceBalanceSecurityAssessment.isUnableToScan,
-      ).toBe(true);
+      expect(result.current.sourceSecurityAssessment.isUnableToScan).toBe(true);
       const ids = result.current.securityWarnings.map((w) => w.id);
       expect(ids).not.toContain("unable-to-scan-source");
     });
@@ -152,7 +150,7 @@ describe("useSwapSecurityAssessments", () => {
         }),
       );
 
-      expect(result.current.destBalanceSecurityAssessment.isUnableToScan).toBe(
+      expect(result.current.destinationSecurityAssessment.isUnableToScan).toBe(
         true,
       );
       const ids = result.current.securityWarnings.map((w) => w.id);
@@ -398,7 +396,7 @@ describe("useSwapSecurityAssessments", () => {
     });
   });
 
-  describe("transactionSecuritySeverity", () => {
+  describe("swapSecuritySeverity", () => {
     it("returns undefined when none of the gates trip", () => {
       const { result } = renderHook(() =>
         useSwapSecurityAssessments({
@@ -409,7 +407,7 @@ describe("useSwapSecurityAssessments", () => {
         }),
       );
 
-      expect(result.current.transactionSecuritySeverity).toBeUndefined();
+      expect(result.current.swapSecuritySeverity).toBeUndefined();
     });
 
     it("returns UNABLE_TO_SCAN when isUnableToScan but tx-level assessment is unable-to-scan (no tx scan)", () => {
@@ -425,7 +423,7 @@ describe("useSwapSecurityAssessments", () => {
       // No transactionScanResult → assessTransactionSecurity returns
       // isMalicious=false, isSuspicious=false, so it falls through to
       // the UNABLE_TO_SCAN branch driven by token-side isUnableToScan.
-      expect(result.current.transactionSecuritySeverity).toBe(
+      expect(result.current.swapSecuritySeverity).toBe(
         SecurityLevel.UNABLE_TO_SCAN,
       );
     });
@@ -439,9 +437,7 @@ describe("useSwapSecurityAssessments", () => {
       );
 
       // Override drives BOTH tx + token assessments to MALICIOUS.
-      expect(result.current.transactionSecuritySeverity).toBe(
-        SecurityLevel.MALICIOUS,
-      );
+      expect(result.current.swapSecuritySeverity).toBe(SecurityLevel.MALICIOUS);
     });
   });
 });

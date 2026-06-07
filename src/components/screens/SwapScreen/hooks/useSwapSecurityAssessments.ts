@@ -60,12 +60,12 @@ export const useSwapSecurityAssessments = ({
   sourceTokenId: string | undefined;
 }): {
   transactionSecurityAssessment: SecurityAssessment;
-  sourceBalanceSecurityAssessment: SecurityAssessment;
-  destBalanceSecurityAssessment: SecurityAssessment;
+  sourceSecurityAssessment: SecurityAssessment;
+  destinationSecurityAssessment: SecurityAssessment;
   isUnableToScan: boolean;
   isMalicious: boolean;
   isSuspicious: boolean;
-  transactionSecuritySeverity:
+  swapSecuritySeverity:
     | SecurityLevel.SUSPICIOUS
     | SecurityLevel.MALICIOUS
     | SecurityLevel.EXPECTED_TO_FAIL
@@ -84,7 +84,7 @@ export const useSwapSecurityAssessments = ({
     [transactionScanResult, overriddenBlockaidResponse],
   );
 
-  const sourceBalanceSecurityAssessment = useMemo(
+  const sourceSecurityAssessment = useMemo(
     () =>
       assessTokenSecurity(
         sourceBalance
@@ -100,7 +100,7 @@ export const useSwapSecurityAssessments = ({
   // (set by `useSwapTokenLookup` at discovery time) — feed that through
   // `assessTokenSecurityFromLevel` directly instead of round-tripping
   // through a synthesized scan object.
-  const destBalanceSecurityAssessment = useMemo(
+  const destinationSecurityAssessment = useMemo(
     () =>
       destinationBalance
         ? assessTokenSecurity(
@@ -121,16 +121,16 @@ export const useSwapSecurityAssessments = ({
 
   const showSecurityWarningForSource = useMemo(
     () =>
-      sourceBalanceSecurityAssessment.isUnableToScan &&
+      sourceSecurityAssessment.isUnableToScan &&
       sourceTokenId !== NATIVE_TOKEN_CODE,
-    [sourceBalanceSecurityAssessment.isUnableToScan, sourceTokenId],
+    [sourceSecurityAssessment.isUnableToScan, sourceTokenId],
   );
 
   const showSecurityWarningForDestination = useMemo(
     () =>
-      destBalanceSecurityAssessment.isUnableToScan &&
+      destinationSecurityAssessment.isUnableToScan &&
       destinationTokenDescriptor?.id !== NATIVE_TOKEN_CODE,
-    [destBalanceSecurityAssessment.isUnableToScan, destinationTokenDescriptor],
+    [destinationSecurityAssessment.isUnableToScan, destinationTokenDescriptor],
   );
 
   const isUnableToScan =
@@ -142,10 +142,10 @@ export const useSwapSecurityAssessments = ({
     if (
       transactionSecurityAssessment.isMalicious ||
       transactionSecurityAssessment.isSuspicious ||
-      sourceBalanceSecurityAssessment.isMalicious ||
-      sourceBalanceSecurityAssessment.isSuspicious ||
-      destBalanceSecurityAssessment.isMalicious ||
-      destBalanceSecurityAssessment.isSuspicious
+      sourceSecurityAssessment.isMalicious ||
+      sourceSecurityAssessment.isSuspicious ||
+      destinationSecurityAssessment.isMalicious ||
+      destinationSecurityAssessment.isSuspicious
     ) {
       // Scope extraction to the actual source + destination scans (plus
       // the tx scan). The previous `Object.values(scanResults).map(...)`
@@ -212,10 +212,10 @@ export const useSwapSecurityAssessments = ({
   }, [
     transactionSecurityAssessment.isMalicious,
     transactionSecurityAssessment.isSuspicious,
-    sourceBalanceSecurityAssessment.isMalicious,
-    sourceBalanceSecurityAssessment.isSuspicious,
-    destBalanceSecurityAssessment.isMalicious,
-    destBalanceSecurityAssessment.isSuspicious,
+    sourceSecurityAssessment.isMalicious,
+    sourceSecurityAssessment.isSuspicious,
+    destinationSecurityAssessment.isMalicious,
+    destinationSecurityAssessment.isSuspicious,
     showSecurityWarningForDestination,
     showSecurityWarningForSource,
     transactionScanResult,
@@ -228,12 +228,12 @@ export const useSwapSecurityAssessments = ({
 
   const isMalicious =
     transactionSecurityAssessment.isMalicious ||
-    sourceBalanceSecurityAssessment.isMalicious ||
-    destBalanceSecurityAssessment.isMalicious;
+    sourceSecurityAssessment.isMalicious ||
+    destinationSecurityAssessment.isMalicious;
   const isSuspicious =
     transactionSecurityAssessment.isSuspicious ||
-    sourceBalanceSecurityAssessment.isSuspicious ||
-    destBalanceSecurityAssessment.isSuspicious;
+    sourceSecurityAssessment.isSuspicious ||
+    destinationSecurityAssessment.isSuspicious;
 
   // Worst-of-three: malicious > suspicious > unable-to-scan. Includes
   // source + destination assessments so a malicious destination paired
@@ -241,7 +241,7 @@ export const useSwapSecurityAssessments = ({
   // copy/colour. The SecurityDetailBottomSheet no longer defaults
   // severity, so the sheet would render in the wrong style if this
   // returned undefined here.
-  const transactionSecuritySeverity = useMemo(() => {
+  const swapSecuritySeverity = useMemo(() => {
     if (isMalicious) return SecurityLevel.MALICIOUS;
     if (isSuspicious) return SecurityLevel.SUSPICIOUS;
     if (isUnableToScan) return SecurityLevel.UNABLE_TO_SCAN;
@@ -250,12 +250,12 @@ export const useSwapSecurityAssessments = ({
 
   return {
     transactionSecurityAssessment,
-    sourceBalanceSecurityAssessment,
-    destBalanceSecurityAssessment,
+    sourceSecurityAssessment,
+    destinationSecurityAssessment,
     isUnableToScan,
     isMalicious,
     isSuspicious,
-    transactionSecuritySeverity,
+    swapSecuritySeverity,
     securityWarnings,
   };
 };

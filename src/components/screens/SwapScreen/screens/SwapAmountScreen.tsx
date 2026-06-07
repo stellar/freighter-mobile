@@ -64,7 +64,7 @@ import {
 } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useDebugStore } from "ducks/debug";
-import { destinationAsBalanceLike, useSwapStore } from "ducks/swap";
+import { descriptorAsPathBalance, useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { calculateSpendableAmount } from "helpers/balances";
@@ -225,26 +225,26 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   });
 
   // For held destinations, useSwapPathFinding / useSwapTransaction receive
-  // the matching `destinationBalance`. For non-held destinations the balance
-  // list doesn't include the token; we feed them a minimal balance-shaped
-  // projection of the descriptor instead. The projection covers exactly the
-  // fields findSwapPath / buildSwapTransaction read (token.code/issuer/type
-  // + id + tokenCode + tokenType).
-  // Cast: the held side is a full PricedBalance from balanceItems (which
-  // always carries tokenType); the adapter projects the required subset.
-  // Downstream consumers only read the documented fields.
+  // the matching held PricedBalance. For non-held destinations the
+  // balance list doesn't include the token; we feed them a minimal
+  // balance-shaped shim of the descriptor instead. The shim covers
+  // exactly the fields findSwapPath / buildSwapTransaction read
+  // (token.code/issuer/type + id + tokenCode + tokenType).
+  // Cast: the held side is a full PricedBalance from balanceItems
+  // (which always carries tokenType); the shim covers the required
+  // subset. Downstream consumers only read the documented fields.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const destinationForPath: any = useMemo(() => {
     if (destinationBalance) return destinationBalance;
     if (destinationTokenDescriptor) {
-      return destinationAsBalanceLike(destinationTokenDescriptor);
+      return descriptorAsPathBalance(destinationTokenDescriptor);
     }
     return undefined;
   }, [destinationBalance, destinationTokenDescriptor]);
 
   useSwapPathFinding({
     sourceBalance,
-    destinationBalance: destinationForPath,
+    destinationTokenForPath: destinationForPath,
     sourceAmount,
     swapSlippage,
     network,
@@ -263,7 +263,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   } = useSwapTransaction({
     sourceAmount,
     sourceBalance,
-    destinationBalance: destinationForPath,
+    destinationTokenInput: destinationForPath,
     pathResult,
 
     account,
@@ -534,12 +534,12 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
 
   const {
     transactionSecurityAssessment,
-    sourceBalanceSecurityAssessment,
-    destBalanceSecurityAssessment,
+    sourceSecurityAssessment,
+    destinationSecurityAssessment,
     isUnableToScan,
     isMalicious,
     isSuspicious,
-    transactionSecuritySeverity,
+    swapSecuritySeverity,
     securityWarnings,
   } = useSwapSecurityAssessments({
     transactionScanResult,
@@ -657,7 +657,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       <SecurityDetailFooter
         onCancel={handleCancelSecurityWarning}
         onProceedAnyway={handleConfirmAnyway}
-        severity={transactionSecuritySeverity ?? SecurityLevel.MALICIOUS}
+        severity={swapSecuritySeverity ?? SecurityLevel.MALICIOUS}
         proceedAnywayText={
           isUnableToScan
             ? t("common.continue")
@@ -669,7 +669,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     // for this footer; wrapping them in useCallback adds noise without
     // changing behaviour (the sheet recreates the footer on each open).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [transactionSecuritySeverity, isUnableToScan, t],
+    [swapSecuritySeverity, isUnableToScan, t],
   );
 
   if (isProcessing) {
@@ -719,7 +719,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         pickerLabel={
           sourceBalance ? sourceTokenSymbol : t("swapScreen.selectToken")
         }
-        pickerSecurityLevel={sourceBalanceSecurityAssessment.level}
+        pickerSecurityLevel={sourceSecurityAssessment.level}
         onPickerPress={() => openSourcePicker(SwapPickerEntrypoint.DROPDOWN)}
         pickerTestID={
           sourceBalance ? "swap-sell-pill" : "swap-sell-choose-pill"
@@ -890,8 +890,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         customContent={
           <SwapReviewBottomSheet
             transactionSecurityAssessment={transactionSecurityAssessment}
-            sourceSecurityAssessment={sourceBalanceSecurityAssessment}
-            destinationSecurityAssessment={destBalanceSecurityAssessment}
+            sourceSecurityAssessment={sourceSecurityAssessment}
+            destinationSecurityAssessment={destinationSecurityAssessment}
             onSecurityWarningPress={() =>
               transactionSecurityWarningBottomSheetModalRef.current?.present()
             }
@@ -908,7 +908,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           <SecurityDetailBottomSheet
             warnings={securityWarnings}
             onClose={handleCancelSecurityWarning}
-            severity={transactionSecuritySeverity ?? SecurityLevel.MALICIOUS}
+            severity={swapSecuritySeverity ?? SecurityLevel.MALICIOUS}
           />
         }
       />

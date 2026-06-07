@@ -43,7 +43,13 @@ interface CalculateTokenFiatAmountParams {
 }
 
 /**
- * Extracts token from balance or creates fallback
+ * Returns the held balance's `token` field, or a native-XLM fallback
+ * when no balance is provided. The fallback is XLM-only — callers
+ * dealing with non-held destinations must NOT pass `undefined` and
+ * expect to derive the destination token shape from this helper, since
+ * they'll silently get XLM. See `useReviewTokens` for the canonical
+ * non-held pattern that builds the token from a
+ * `DestinationTokenDescriptor`.
  */
 export const getTokenFromBalance = (
   balance: PricedBalance | undefined,
