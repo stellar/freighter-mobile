@@ -1,36 +1,38 @@
 import { renderHook, userEvent } from "@testing-library/react-native";
-import { SecurityDetailBottomSheet } from "components/blockaid/SecurityDetailBottomSheet";
+import {
+  SecurityDetailBottomSheet,
+  SecurityDetailFooter,
+} from "components/blockaid/SecurityDetailBottomSheet";
 import { renderWithProviders } from "helpers/testUtils";
 import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
 import { SecurityContext, SecurityLevel } from "services/blockaid/constants";
 import { SecurityWarning } from "services/blockaid/helper";
 
-describe("SecurityDetailBottomSheet", () => {
+describe("SecurityDetailBottomSheet (body)", () => {
   const mockWarnings: SecurityWarning[] = [
     {
       id: "warning-1",
       description: "This token appears to be malicious",
+      severity: "malicious",
     },
     {
       id: "warning-2",
       description: "Domain verification failed",
+      severity: "warning",
     },
   ];
 
   const defaultProps = {
     warnings: mockWarnings,
-    onCancel: jest.fn(),
-    onProceedAnyway: jest.fn(),
     onClose: jest.fn(),
-    proceedAnywayText: "Approve anyway",
   };
 
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it("renders correctly with malicious severity", () => {
+  it("renders both warnings regardless of severity", () => {
     const { getByText } = renderWithProviders(
       <SecurityDetailBottomSheet
         {...defaultProps}
@@ -54,48 +56,7 @@ describe("SecurityDetailBottomSheet", () => {
     expect(getByText("Domain verification failed")).toBeTruthy();
   });
 
-  it("calls onCancel when cancel button is pressed", async () => {
-    const user = userEvent.setup();
-    const { getByText } = renderWithProviders(
-      <SecurityDetailBottomSheet {...defaultProps} />,
-    );
-
-    await user.press(getByText("Cancel"));
-    expect(defaultProps.onCancel).toHaveBeenCalledTimes(1);
-  });
-
-  it("calls onProceedAnyway when proceed anyway text is pressed", async () => {
-    const user = userEvent.setup();
-    const { getByText } = renderWithProviders(
-      <SecurityDetailBottomSheet {...defaultProps} />,
-    );
-
-    await user.press(getByText("Approve anyway"));
-    expect(defaultProps.onProceedAnyway).toHaveBeenCalledTimes(1);
-  });
-
-  it("calls onClose when close button is pressed", () => {
-    const { getByText } = renderWithProviders(
-      <SecurityDetailBottomSheet {...defaultProps} />,
-    );
-
-    // For now, we'll test that the component renders correctly
-    // The close button interaction can be tested in integration tests
-    expect(getByText("This token appears to be malicious")).toBeTruthy();
-  });
-
-  it("uses different proceed anyway text based on proceedAnywayText", () => {
-    const { getByText } = renderWithProviders(
-      <SecurityDetailBottomSheet
-        {...defaultProps}
-        proceedAnywayText="Connect anyway"
-      />,
-    );
-
-    expect(getByText("Connect anyway")).toBeTruthy();
-  });
-
-  it("renders with different variants for malicious vs warning vs expected to fail", () => {
+  it("renders with different titles for malicious vs warning vs expected to fail", () => {
     const { getByText: getByTextMalicious } = renderWithProviders(
       <SecurityDetailBottomSheet
         {...defaultProps}
@@ -103,7 +64,6 @@ describe("SecurityDetailBottomSheet", () => {
       />,
     );
 
-    // Should show "Do not proceed" for malicious
     expect(getByTextMalicious(/do not proceed/i)).toBeTruthy();
 
     const { getByText: getByTextWarning } = renderWithProviders(
@@ -113,7 +73,6 @@ describe("SecurityDetailBottomSheet", () => {
       />,
     );
 
-    // Should show "Suspicious request" for warning
     expect(getByTextWarning(/suspicious request/i)).toBeTruthy();
 
     const { getByText: getByTextExpectedToFail } = renderWithProviders(
@@ -123,7 +82,6 @@ describe("SecurityDetailBottomSheet", () => {
       />,
     );
 
-    // Should show Blockaid-style warning title and expected-to-fail subtitle
     expect(getByTextExpectedToFail(/warning/i)).toBeTruthy();
     expect(
       getByTextExpectedToFail(
@@ -137,6 +95,7 @@ describe("SecurityDetailBottomSheet", () => {
     const tokenContext = renderWithProviders(
       <SecurityDetailBottomSheet
         {...defaultProps}
+        severity={SecurityLevel.MALICIOUS}
         securityContext={SecurityContext.TOKEN}
       />,
     );
@@ -147,6 +106,7 @@ describe("SecurityDetailBottomSheet", () => {
     const siteContext = renderWithProviders(
       <SecurityDetailBottomSheet
         {...defaultProps}
+        severity={SecurityLevel.MALICIOUS}
         securityContext={SecurityContext.SITE}
       />,
     );
@@ -159,6 +119,7 @@ describe("SecurityDetailBottomSheet", () => {
     const transactionContext = renderWithProviders(
       <SecurityDetailBottomSheet
         {...defaultProps}
+        severity={SecurityLevel.MALICIOUS}
         securityContext={SecurityContext.TRANSACTION}
       />,
     );
@@ -168,10 +129,54 @@ describe("SecurityDetailBottomSheet", () => {
       ),
     ).toBeTruthy();
   });
+});
 
-  it("renders correctly when onCancel and onProceedAnyway are not provided", () => {
+describe("SecurityDetailFooter", () => {
+  const defaultProps = {
+    onCancel: jest.fn(),
+    onProceedAnyway: jest.fn(),
+    proceedAnywayText: "Approve anyway",
+    severity: SecurityLevel.MALICIOUS as const,
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("calls onCancel when cancel button is pressed", async () => {
+    const user = userEvent.setup();
+    const { getByText } = renderWithProviders(
+      <SecurityDetailFooter {...defaultProps} />,
+    );
+
+    await user.press(getByText("Cancel"));
+    expect(defaultProps.onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls onProceedAnyway when proceed-anyway text is pressed", async () => {
+    const user = userEvent.setup();
+    const { getByText } = renderWithProviders(
+      <SecurityDetailFooter {...defaultProps} />,
+    );
+
+    await user.press(getByText("Approve anyway"));
+    expect(defaultProps.onProceedAnyway).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses the provided proceedAnywayText", () => {
+    const { getByText } = renderWithProviders(
+      <SecurityDetailFooter
+        {...defaultProps}
+        proceedAnywayText="Connect anyway"
+      />,
+    );
+
+    expect(getByText("Connect anyway")).toBeTruthy();
+  });
+
+  it("renders no buttons when neither handler is provided", () => {
     const { queryByText } = renderWithProviders(
-      <SecurityDetailBottomSheet
+      <SecurityDetailFooter
         {...defaultProps}
         onCancel={undefined}
         onProceedAnyway={undefined}
@@ -179,6 +184,6 @@ describe("SecurityDetailBottomSheet", () => {
     );
 
     expect(queryByText("Cancel")).toBeNull();
-    expect(queryByText(defaultProps.proceedAnywayText)).toBeNull();
+    expect(queryByText("Approve anyway")).toBeNull();
   });
 });

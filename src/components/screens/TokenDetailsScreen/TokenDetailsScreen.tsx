@@ -228,15 +228,15 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
         handleCloseModal={() =>
           securityWarningBottomSheetModalRef.current?.dismiss()
         }
+        scrollable
         customContent={
           <SecurityDetailBottomSheet
             warnings={securityWarnings}
             onClose={() =>
               securityWarningBottomSheetModalRef.current?.dismiss()
             }
-            severity={securitySeverity}
+            severity={securitySeverity ?? SecurityLevel.MALICIOUS}
             securityContext={SecurityContext.TOKEN}
-            proceedAnywayText={t("transactionAmountScreen.confirmAnyway")}
           />
         }
       />

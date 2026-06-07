@@ -9,7 +9,10 @@ import InformationBottomSheet from "components/InformationBottomSheet";
 import { List, ListItemProps } from "components/List";
 import MuxedAddressWarningBottomSheet from "components/MuxedAddressWarningBottomSheet";
 import TransactionSettingsBottomSheet from "components/TransactionSettingsBottomSheet";
-import SecurityDetailBottomSheet from "components/blockaid/SecurityDetailBottomSheet";
+import {
+  SecurityDetailBottomSheet,
+  SecurityDetailFooter,
+} from "components/blockaid";
 import { BaseLayout } from "components/layout/BaseLayout";
 import {
   ContactRow,
@@ -66,6 +69,7 @@ import React, {
 import { Keyboard, View } from "react-native";
 import { analytics } from "services/analytics";
 import { TransactionOperationType } from "services/analytics/types";
+import { SecurityLevel } from "services/blockaid/constants";
 
 type SendCollectibleReviewScreenProps = NativeStackScreenProps<
   SendPaymentStackParamList,
@@ -565,6 +569,29 @@ const SendCollectibleReviewScreen: React.FC<
     transactionSecurityAssessment.isUnableToScan,
   ]);
 
+  const renderSecurityDetailFooter = useCallback(
+    () => (
+      <SecurityDetailFooter
+        onCancel={handleCancelSecurityWarning}
+        onProceedAnyway={handleConfirmAnyway}
+        severity={transactionSecuritySeverity ?? SecurityLevel.MALICIOUS}
+        proceedAnywayText={
+          transactionSecurityAssessment.isUnableToScan
+            ? t("common.continue")
+            : t("transactionAmountScreen.confirmAnyway")
+        }
+      />
+    ),
+    // handleCancelSecurityWarning is stable (declared without useCallback above).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      handleConfirmAnyway,
+      transactionSecuritySeverity,
+      transactionSecurityAssessment.isUnableToScan,
+      t,
+    ],
+  );
+
   if (isProcessing) {
     return (
       <TransactionProcessingScreen
@@ -723,18 +750,13 @@ const SendCollectibleReviewScreen: React.FC<
       <BottomSheet
         modalRef={transactionSecurityWarningBottomSheetModalRef}
         handleCloseModal={handleCancelSecurityWarning}
+        scrollable
+        scrollViewFooterComponent={renderSecurityDetailFooter}
         customContent={
           <SecurityDetailBottomSheet
             warnings={transactionSecurityWarnings}
-            onCancel={handleCancelSecurityWarning}
-            onProceedAnyway={handleConfirmAnyway}
             onClose={handleCancelSecurityWarning}
-            severity={transactionSecuritySeverity}
-            proceedAnywayText={
-              transactionSecurityAssessment.isUnableToScan
-                ? t("common.continue")
-                : t("transactionAmountScreen.confirmAnyway")
-            }
+            severity={transactionSecuritySeverity ?? SecurityLevel.MALICIOUS}
           />
         }
       />

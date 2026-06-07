@@ -15,50 +15,35 @@ import { SecurityWarning } from "services/blockaid/helper";
 
 export interface SecurityDetailBottomSheetProps {
   warnings: SecurityWarning[];
-  onCancel?: () => void;
-  onProceedAnyway?: () => void;
   onClose: () => void;
   securityContext?: SecurityContext;
-  severity?: Exclude<SecurityLevel, SecurityLevel.SAFE>;
+  severity: Exclude<SecurityLevel, SecurityLevel.SAFE>;
+}
+
+export interface SecurityDetailFooterProps {
+  onCancel?: () => void;
+  onProceedAnyway?: () => void;
   /** The text to display for the "proceed anyway" button */
   proceedAnywayText: string;
+  severity: Exclude<SecurityLevel, SecurityLevel.SAFE>;
 }
 
 /**
- * Reusable security detail bottom sheet component for displaying security warnings.
- * Can be used for both token security warnings and dApp connection warnings.
+ * Reusable security detail bottom sheet body (header + warnings list).
  *
- * @example
- * // For Add Token flow
- * <SecurityDetailBottomSheet
- *   warnings={warnings}
- *   onCancel={handleCancel}
- *   onProceedAnyway={handleProceed}
- *   onClose={handleClose}
- *   severity={SecurityLevel.MALICIOUS}
- *   proceedAnywayText={t("addTokenScreen.approveAnyway")}
- * />
- *
- * // For DApp Connection flow
- * <SecurityDetailBottomSheet
- *   warnings={warnings}
- *   onCancel={handleCancel}
- *   onProceedAnyway={handleProceed}
- *   onClose={handleClose}
- *   severity={SecurityLevel.SUSPICIOUS}
- *   proceedAnywayText={t("dappConnectionBottomSheetContent.connectAnyway")}
- * />
+ * Designed to live inside a `<BottomSheet scrollable scrollViewFooterComponent={() => <SecurityDetailFooter ... />} />`
+ * so the warnings list scrolls cleanly when long. Per-row icon is
+ * driven by each warning's own `severity` field, not by this sheet's
+ * sheet-level `severity` prop — the latter only drives the header
+ * icon/copy.
  */
 export const SecurityDetailBottomSheet: React.FC<
   SecurityDetailBottomSheetProps
 > = ({
   warnings,
-  onCancel,
-  onProceedAnyway,
   onClose,
   securityContext = SecurityContext.TRANSACTION,
-  severity = SecurityLevel.MALICIOUS,
-  proceedAnywayText,
+  severity,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
@@ -101,65 +86,18 @@ export const SecurityDetailBottomSheet: React.FC<
 
   const getListItems = () =>
     warnings.map((warning) => ({
+      // Stable React key — falling back to `title` (the description)
+      // caused "Encountered two children with the same key" warnings
+      // when source + destination produced the same feature_id.
+      key: warning.id,
       title: warning.description,
-      icon: isMalicious ? (
-        <Icon.XCircle size={16} themeColor="red" />
-      ) : (
-        <Icon.MinusCircle size={16} themeColor="gray" />
-      ),
+      icon:
+        warning.severity === "malicious" ? (
+          <Icon.XCircle size={16} themeColor="red" />
+        ) : (
+          <Icon.AlertTriangle size={16} themeColor="amber" />
+        ),
     }));
-
-  const renderButtons = () => {
-    // Unable to scan state - side by side without biometrics
-    if (isUnableToScan) {
-      return (
-        <View className="flex-row gap-3">
-          {onCancel && (
-            <View className="flex-1">
-              <Button xl isFullWidth onPress={onCancel} variant="secondary">
-                {t("common.cancel")}
-              </Button>
-            </View>
-          )}
-          {onProceedAnyway && (
-            <View className="flex-1">
-              <Button
-                xl
-                isFullWidth
-                onPress={onProceedAnyway}
-                variant="tertiary"
-              >
-                {proceedAnywayText}
-              </Button>
-            </View>
-          )}
-        </View>
-      );
-    }
-
-    // Malicious/Suspicious state - stacked layout with TextButton
-    return (
-      <View className="gap-[12px]">
-        {onCancel && (
-          <Button
-            xl
-            isFullWidth
-            onPress={onCancel}
-            variant={isMalicious ? "destructive" : "tertiary"}
-          >
-            {t("common.cancel")}
-          </Button>
-        )}
-        {onProceedAnyway && (
-          <TextButton
-            text={proceedAnywayText}
-            onPress={onProceedAnyway}
-            variant={isMalicious ? "error" : "secondary"}
-          />
-        )}
-      </View>
-    );
-  };
 
   const getDescription = useMemo(
     () => () => {
@@ -245,8 +183,67 @@ export const SecurityDetailBottomSheet: React.FC<
           </Text>
         </View>
       </View>
+    </View>
+  );
+};
 
-      {renderButtons()}
+/**
+ * Action-buttons footer for the security-detail bottom sheet. Passed
+ * to `<BottomSheet scrollViewFooterComponent={...} />` so the buttons
+ * stay pinned while the warnings list scrolls.
+ */
+export const SecurityDetailFooter: React.FC<SecurityDetailFooterProps> = ({
+  onCancel,
+  onProceedAnyway,
+  proceedAnywayText,
+  severity,
+}) => {
+  const { t } = useAppTranslation();
+  const isMalicious = severity === SecurityLevel.MALICIOUS;
+  const isUnableToScan = severity === SecurityLevel.UNABLE_TO_SCAN;
+
+  // Unable to scan state - side by side without biometrics
+  if (isUnableToScan) {
+    return (
+      <View className="flex-row gap-3 px-6 pb-6 pt-3 bg-background-primary">
+        {onCancel && (
+          <View className="flex-1">
+            <Button xl isFullWidth onPress={onCancel} variant="secondary">
+              {t("common.cancel")}
+            </Button>
+          </View>
+        )}
+        {onProceedAnyway && (
+          <View className="flex-1">
+            <Button xl isFullWidth onPress={onProceedAnyway} variant="tertiary">
+              {proceedAnywayText}
+            </Button>
+          </View>
+        )}
+      </View>
+    );
+  }
+
+  // Malicious/Suspicious state - stacked layout with TextButton
+  return (
+    <View className="gap-[12px] px-6 pb-6 pt-3 bg-background-primary">
+      {onCancel && (
+        <Button
+          xl
+          isFullWidth
+          onPress={onCancel}
+          variant={isMalicious ? "destructive" : "tertiary"}
+        >
+          {t("common.cancel")}
+        </Button>
+      )}
+      {onProceedAnyway && (
+        <TextButton
+          text={proceedAnywayText}
+          onPress={onProceedAnyway}
+          variant={isMalicious ? "error" : "secondary"}
+        />
+      )}
     </View>
   );
 };

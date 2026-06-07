@@ -215,6 +215,148 @@ describe("useSwapSecurityAssessments", () => {
 
       expect(result.current.securityWarnings).toEqual([]);
     });
+
+    it("does NOT include warnings from non-source/non-dest held tokens (over-aggregation regression)", () => {
+      // This locks in the fix for the original bug:
+      // `Object.values(scanResults).map(extractSecurityWarnings)` used to
+      // dump warnings from EVERY held token's scan, so a swap with a
+      // malicious destination would surface every other held token's
+      // benign features. The fix scopes extraction to source + dest only.
+      const otherHeldTokenScan = {
+        result_type: "Malicious",
+        features: [
+          {
+            feature_id: "KNOWN_MALICIOUS",
+            type: "Malicious",
+            description: "OTHER HELD TOKEN — must not appear in swap warnings",
+          },
+        ],
+      } as never;
+
+      const maliciousDestScan = {
+        result_type: "Malicious",
+        features: [
+          {
+            feature_id: "KNOWN_MALICIOUS",
+            type: "Malicious",
+            description:
+              "An identified malicious address is associated with the token.",
+          },
+        ],
+      } as never;
+
+      const destDescriptor = {
+        ...baseDestinationDescriptor,
+        id: "XRP:GBXRPL45",
+      };
+      const destBalance = {
+        id: "XRP:GBXRPL45",
+        tokenCode: "XRP",
+        tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+      } as never;
+
+      const { result } = renderHook(() =>
+        useSwapSecurityAssessments({
+          ...baseProps,
+          sourceBalance: xlmSourceBalance,
+          sourceTokenId: NATIVE_TOKEN_CODE,
+          destinationBalance: destBalance,
+          destinationTokenDescriptor: destDescriptor,
+          scanResults: {
+            // Scan keyed exactly like balances.ts produces — id.replace(":", "-")
+            "XRP-GBXRPL45": maliciousDestScan,
+            "USDC-GA5": otherHeldTokenScan,
+            "AQUA-GBNZIL": otherHeldTokenScan,
+            "EURC-GDABC": otherHeldTokenScan,
+          },
+        }),
+      );
+
+      const descriptions = result.current.securityWarnings.map(
+        (w) => w.description,
+      );
+      // Only the destination's malicious reason should appear; the
+      // other-held-token reasons must be filtered out.
+      expect(descriptions).toEqual([
+        "An identified malicious address is associated with the token.",
+      ]);
+    });
+
+    it("dedupes by warning id when source and dest yield the same feature_id (keeps malicious over warning on collision)", () => {
+      const sourceScan = {
+        result_type: "Warning",
+        features: [
+          {
+            feature_id: "HIGH_TRANSFER_FEE",
+            type: "Warning",
+            description: "Transfer fee is unusually high",
+          },
+        ],
+      } as never;
+      const destScan = {
+        result_type: "Malicious",
+        features: [
+          {
+            feature_id: "HIGH_TRANSFER_FEE",
+            type: "Malicious",
+            description: "Transfer fee is unusually high",
+          },
+        ],
+      } as never;
+
+      const sourceBalance = {
+        id: "USDC:GA5",
+        tokenCode: "USDC",
+        tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+      } as never;
+      const destBalance = {
+        id: "XRP:GBXRPL45",
+        tokenCode: "XRP",
+        tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+      } as never;
+      const destDescriptor = {
+        ...baseDestinationDescriptor,
+        id: "XRP:GBXRPL45",
+      };
+
+      const { result } = renderHook(() =>
+        useSwapSecurityAssessments({
+          ...baseProps,
+          sourceBalance,
+          sourceTokenId: "USDC",
+          destinationBalance: destBalance,
+          destinationTokenDescriptor: destDescriptor,
+          scanResults: {
+            "USDC-GA5": sourceScan,
+            "XRP-GBXRPL45": destScan,
+          },
+        }),
+      );
+
+      const ids = result.current.securityWarnings.map((w) => w.id);
+      expect(ids).toEqual(["HIGH_TRANSFER_FEE"]);
+      // Malicious wins over Warning on collision (worst-of-N).
+      expect(result.current.securityWarnings[0].severity).toBe("malicious");
+    });
+
+    it('stamps severity="warning" on synthetic unable-to-scan-* warnings', () => {
+      const { result } = renderHook(() =>
+        useSwapSecurityAssessments({
+          ...baseProps,
+          sourceBalance: baseSourceBalance,
+          sourceTokenId: "USDC",
+          destinationTokenDescriptor: { ...baseDestinationDescriptor },
+        }),
+      );
+
+      const synthetic = result.current.securityWarnings.filter((w) =>
+        w.id.startsWith("unable-to-scan-"),
+      );
+      expect(synthetic.length).toBe(2);
+      synthetic.forEach((w) => {
+        expect(w.severity).toBe("warning");
+      });
+    });
   });
 
   describe("transactionSecuritySeverity", () => {

@@ -141,22 +141,45 @@ export const useSwapSecurityAssessments = ({
       destBalanceSecurityAssessment.isMalicious ||
       destBalanceSecurityAssessment.isSuspicious
     ) {
-      const extractedWarnings = [
-        ...extractSecurityWarnings(transactionScanResult),
-        ...Object.values(scanResults).map((result) =>
-          extractSecurityWarnings(result),
-        ),
-      ].flat();
+      // Scope extraction to the actual source + destination scans (plus
+      // the tx scan). The previous `Object.values(scanResults).map(...)`
+      // dumped every held token's features here, which made any benign
+      // feature shared across the user's portfolio appear 6+ times in
+      // the "Do not proceed" sheet (XRP-GBXRPL45 bug).
+      const sourceScan = sourceBalance
+        ? scanResults[sourceBalance.id.replace(":", "-")]
+        : undefined;
+      const destScan = destinationBalance
+        ? scanResults[destinationBalance.id.replace(":", "-")]
+        : synthesizeScanFromLevel(destinationTokenDescriptor?.securityLevel);
 
-      if (extractedWarnings.length > 0) {
-        warnings.push(...extractedWarnings);
-      }
+      const extracted = [
+        ...extractSecurityWarnings(transactionScanResult),
+        ...extractSecurityWarnings(sourceScan),
+        ...extractSecurityWarnings(destScan),
+      ];
+
+      // Dedupe by feature_id; on collision keep the worse severity so
+      // the renderer surfaces the most urgent variant.
+      const byId = new Map<string, SecurityWarning>();
+      extracted.forEach((w) => {
+        const prev = byId.get(w.id);
+        if (
+          !prev ||
+          (prev.severity === "warning" && w.severity === "malicious")
+        ) {
+          byId.set(w.id, w);
+        }
+      });
+
+      warnings.push(...byId.values());
     }
 
     if (showSecurityWarningForSource) {
       warnings.push({
         id: "unable-to-scan-source",
         description: t("blockaid.unableToScan.sourceToken"),
+        severity: "warning",
       });
     }
 
@@ -164,6 +187,7 @@ export const useSwapSecurityAssessments = ({
       warnings.push({
         id: "unable-to-scan-destination",
         description: t("blockaid.unableToScan.destinationToken"),
+        severity: "warning",
       });
     }
 
@@ -178,6 +202,9 @@ export const useSwapSecurityAssessments = ({
     showSecurityWarningForDestination,
     showSecurityWarningForSource,
     transactionScanResult,
+    sourceBalance,
+    destinationBalance,
+    destinationTokenDescriptor?.securityLevel,
     scanResults,
     t,
   ]);
@@ -191,18 +218,18 @@ export const useSwapSecurityAssessments = ({
     sourceBalanceSecurityAssessment.isSuspicious ||
     destBalanceSecurityAssessment.isSuspicious;
 
+  // Worst-of-three: malicious > suspicious > unable-to-scan. Includes
+  // source + destination assessments so a malicious destination paired
+  // with a benign tx scan still drives the "Do not proceed" header
+  // copy/colour. The SecurityDetailBottomSheet no longer defaults
+  // severity, so the sheet would render in the wrong style if this
+  // returned undefined here.
   const transactionSecuritySeverity = useMemo(() => {
-    if (transactionSecurityAssessment.isMalicious)
-      return SecurityLevel.MALICIOUS;
-    if (transactionSecurityAssessment.isSuspicious)
-      return SecurityLevel.SUSPICIOUS;
+    if (isMalicious) return SecurityLevel.MALICIOUS;
+    if (isSuspicious) return SecurityLevel.SUSPICIOUS;
     if (isUnableToScan) return SecurityLevel.UNABLE_TO_SCAN;
     return undefined;
-  }, [
-    transactionSecurityAssessment.isMalicious,
-    transactionSecurityAssessment.isSuspicious,
-    isUnableToScan,
-  ]);
+  }, [isMalicious, isSuspicious, isUnableToScan]);
 
   return {
     transactionSecurityAssessment,

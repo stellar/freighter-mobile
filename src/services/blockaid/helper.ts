@@ -16,11 +16,15 @@ import type { SecurityAssessment } from "services/blockaid/types";
 // Keep this helper UI-agnostic – no UI imports/hooks here
 
 /**
- * Security warning interface for UI display
+ * Security warning interface for UI display. `severity` drives the
+ * per-row icon (red X for malicious, amber triangle for warning) and
+ * the de-dup precedence when source + destination produce the same
+ * `feature_id` — malicious wins over warning.
  */
 export interface SecurityWarning {
   id: string;
   description: string;
+  severity: "warning" | "malicious";
 }
 
 /**
@@ -402,6 +406,7 @@ export const extractSecurityWarnings = (
       warnings.push({
         id: "site-miss",
         description: t("blockaid.security.site.suspicious"),
+        severity: "warning",
       });
 
       return warnings;
@@ -411,6 +416,7 @@ export const extractSecurityWarnings = (
       warnings.push({
         id: "site-malicious",
         description: t("blockaid.security.site.malicious"),
+        severity: "malicious",
       });
 
       return warnings;
@@ -419,11 +425,20 @@ export const extractSecurityWarnings = (
     return warnings;
   }
 
+  // Token-scan features carry their own `type` field. Blockaid uses Benign
+  // and Info for positive trust signals (e.g. HIGH_REPUTATION_TOKEN,
+  // LISTED_ON_CENTRALIZED_EXCHANGE) — those MUST NOT surface as "do not
+  // proceed" reasons. Only Warning and Malicious become rows; severity is
+  // carried forward so the renderer picks the right per-row icon.
   if ("features" in scanResult && scanResult.features) {
     scanResult.features.forEach((feature) => {
+      if (feature.type !== "Warning" && feature.type !== "Malicious") {
+        return;
+      }
       warnings.push({
         id: feature.feature_id,
         description: feature.description,
+        severity: feature.type === "Malicious" ? "malicious" : "warning",
       });
     });
   }
@@ -437,6 +452,7 @@ export const extractSecurityWarnings = (
       warnings.push({
         id: "simulation-error",
         description: scanResult.simulation.error,
+        severity: "malicious",
       });
     }
 
@@ -450,6 +466,7 @@ export const extractSecurityWarnings = (
       warnings.push({
         id: "unfunded-destination-details",
         description: t(descriptionKey),
+        severity: "warning",
       });
 
       // Do not surface Blockaid technical messages for unfunded accounts
@@ -470,6 +487,10 @@ export const extractSecurityWarnings = (
         warnings.push({
           id: `validation-${resultType.toLowerCase()}`,
           description: scanResult.validation.description,
+          severity:
+            resultType === BLOCKAID_RESULT_TYPES.MALICIOUS
+              ? "malicious"
+              : "warning",
         });
       }
     }

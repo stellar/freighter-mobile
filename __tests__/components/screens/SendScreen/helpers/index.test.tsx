@@ -47,7 +47,11 @@ describe("SendScreen Helpers", () => {
       });
 
       mockExtractSecurityWarnings.mockReturnValue([
-        { id: "test-warning", description: "Test warning" },
+        {
+          id: "test-warning",
+          description: "Test warning",
+          severity: "malicious",
+        },
       ]);
 
       const result = getTransactionSecurity(mockScanResult);
@@ -91,7 +95,11 @@ describe("SendScreen Helpers", () => {
       });
 
       mockExtractSecurityWarnings.mockReturnValue([
-        { id: "suspicious-warning", description: "Suspicious activity" },
+        {
+          id: "suspicious-warning",
+          description: "Suspicious activity",
+          severity: "warning",
+        },
       ]);
 
       const result = getTransactionSecurity(mockScanResult);

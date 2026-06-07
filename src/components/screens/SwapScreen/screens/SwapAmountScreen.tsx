@@ -8,7 +8,10 @@ import BottomSheet from "components/BottomSheet";
 import { PercentageButtons } from "components/PercentageButtons";
 import Spinner from "components/Spinner";
 import TransactionSettingsBottomSheet from "components/TransactionSettingsBottomSheet";
-import { SecurityDetailBottomSheet } from "components/blockaid";
+import {
+  SecurityDetailBottomSheet,
+  SecurityDetailFooter,
+} from "components/blockaid";
 import { BaseLayout } from "components/layout/BaseLayout";
 import {
   SwapReviewBottomSheet,
@@ -92,6 +95,7 @@ import {
   View,
 } from "react-native";
 import { analytics } from "services/analytics";
+import { SecurityLevel } from "services/blockaid/constants";
 import { synthesizeScanFromLevel } from "services/blockaid/helper";
 
 type SwapAmountScreenProps = NativeStackScreenProps<
@@ -648,6 +652,26 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     onSettingsPress: openSettings,
   });
 
+  const renderSecurityDetailFooter = useCallback(
+    () => (
+      <SecurityDetailFooter
+        onCancel={handleCancelSecurityWarning}
+        onProceedAnyway={handleConfirmAnyway}
+        severity={transactionSecuritySeverity ?? SecurityLevel.MALICIOUS}
+        proceedAnywayText={
+          isUnableToScan
+            ? t("common.continue")
+            : t("transactionAmountScreen.confirmAnyway")
+        }
+      />
+    ),
+    // handleCancelSecurityWarning / handleConfirmAnyway are stable enough
+    // for this footer; wrapping them in useCallback adds noise without
+    // changing behaviour (the sheet recreates the footer on each open).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [transactionSecuritySeverity, isUnableToScan, t],
+  );
+
   if (isProcessing) {
     return (
       <SwapProcessingScreen
@@ -888,18 +912,13 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       <BottomSheet
         modalRef={transactionSecurityWarningBottomSheetModalRef}
         handleCloseModal={handleCancelSecurityWarning}
+        scrollable
+        scrollViewFooterComponent={renderSecurityDetailFooter}
         customContent={
           <SecurityDetailBottomSheet
             warnings={securityWarnings}
-            onCancel={handleCancelSecurityWarning}
-            onProceedAnyway={handleConfirmAnyway}
             onClose={handleCancelSecurityWarning}
-            severity={transactionSecuritySeverity}
-            proceedAnywayText={
-              isUnableToScan
-                ? t("common.continue")
-                : t("transactionAmountScreen.confirmAnyway")
-            }
+            severity={transactionSecuritySeverity ?? SecurityLevel.MALICIOUS}
           />
         }
       />

@@ -1,2 +1,8 @@
-export { SecurityDetailBottomSheet } from "./SecurityDetailBottomSheet";
-export type { SecurityDetailBottomSheetProps } from "./SecurityDetailBottomSheet";
+export {
+  SecurityDetailBottomSheet,
+  SecurityDetailFooter,
+} from "./SecurityDetailBottomSheet";
+export type {
+  SecurityDetailBottomSheetProps,
+  SecurityDetailFooterProps,
+} from "./SecurityDetailBottomSheet";
