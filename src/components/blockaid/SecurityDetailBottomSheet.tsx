@@ -137,8 +137,13 @@ export const SecurityDetailBottomSheet: React.FC<
     [securityContext, t, isUnableToScan, isExpectedToFail],
   );
 
+  // Body uses natural height (no `flex-1`): the sheet is mounted inside
+  // @gorhom/bottom-sheet's BottomSheetScrollView when the wrapper's
+  // `scrollable` mode is on, where flex-1 collapses to zero because the
+  // scroll view's height is derived from its content (and would crop the
+  // warnings list).
   return (
-    <View className="flex-1 gap-[16px]">
+    <View className="gap-[16px]">
       <View className="flex-row justify-between items-center">
         {getHeaderIcon()}
         <View className="bg-background-tertiary rounded-full p-2 h-[32px] w-[32px] items-center justify-center">
