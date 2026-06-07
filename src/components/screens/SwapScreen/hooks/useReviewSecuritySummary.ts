@@ -69,7 +69,10 @@ export const useReviewSecuritySummary = ({
     if (isUnableToScanToken) {
       return t("securityWarning.proceedWithCaution");
     }
-    return t("transactionAmountScreen.errors.malicious");
+    // Unreachable in practice: the banner is only rendered when one of
+    // the six flags above is true. Return "" rather than a misleading
+    // malicious-fallback string.
+    return "";
   }, [
     t,
     isTxMalicious,

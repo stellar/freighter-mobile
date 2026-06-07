@@ -352,17 +352,15 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
               );
             }
 
-            // Fallback for held items that end up in non-yourTokens sections
-            if (isHeldToken(item)) {
-              return (
-                <SwapTokenRow
-                  variant="held"
-                  balance={item}
-                  network={network}
-                  onPress={() =>
-                    handleHeldPress(item, SwapSelectionSource.BALANCES)
-                  }
-                />
+            // Defensive: a held token leaking outside the yourTokens
+            // section would mean useSwapToSections' classification went
+            // out of sync with this renderer. We don't crash, but we
+            // surface it during development.
+            if (__DEV__ && isHeldToken(item)) {
+              // eslint-disable-next-line no-console
+              console.warn(
+                "SwapToScreen: held token rendered outside yourTokens section",
+                item,
               );
             }
 
