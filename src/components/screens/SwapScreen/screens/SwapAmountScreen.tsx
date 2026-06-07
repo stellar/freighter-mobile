@@ -39,7 +39,7 @@ import {
   useSwapPathFinding,
   useSwapSecurityAssessments,
   useSwapTransactionSettings,
-  useSwapTrendingPrices,
+  useSwapTokenPrices,
 } from "components/screens/SwapScreen/hooks";
 import { useSwapTokenLookup } from "components/screens/SwapScreen/hooks/useSwapTokenLookup";
 import { useSwapTransaction } from "components/screens/SwapScreen/hooks/useSwapTransaction";
@@ -313,9 +313,9 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     isTrendingLoading &&
     trendingTokens.length === 0;
 
-  const { prices } = useSwapTrendingPrices({
-    showTrending,
-    trendingTokens,
+  const { prices } = useSwapTokenPrices({
+    enabled: showTrending,
+    tokens: trendingTokens,
   });
 
   // Detail sheet for a tapped Trending row. The sheet is always mounted so

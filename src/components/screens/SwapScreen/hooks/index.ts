@@ -8,7 +8,7 @@ export * from "./useSwapTokenLookup";
 export { useSwapFooter } from "./useSwapFooter";
 export { useSwapNavigation } from "./useSwapNavigation";
 export { useSwapTransactionSettings } from "./useSwapTransactionSettings";
-export { useSwapTrendingPrices } from "./useSwapTrendingPrices";
+export { useSwapTokenPrices } from "./useSwapTokenPrices";
 export { useSwapToEmptyStates } from "./useSwapToEmptyStates";
 export {
   useSwapToSections,
