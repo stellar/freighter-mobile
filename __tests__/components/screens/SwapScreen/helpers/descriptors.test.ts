@@ -46,6 +46,7 @@ describe("descriptorFromBalance", () => {
     const balance = {
       id: "USDC:GA5Z...",
       tokenCode: "USDC",
+      tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
       token: {
         code: "USDC",
         issuer: { key: "GA5Z..." },

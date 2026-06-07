@@ -1,11 +1,11 @@
 import BigNumber from "bignumber.js";
 import { DestinationTokenDescriptor } from "components/screens/SwapScreen/helpers/types";
 import { DEFAULT_DECIMALS } from "config/constants";
-import { PricedBalance, TokenTypeWithCustomToken } from "config/types";
 import { SwapPathResult } from "ducks/swap";
 import { hasXLMForFees, isAmountSpendable } from "helpers/balances";
 import { formatBigNumberForDisplay } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
+import { type HeldBalanceItem } from "hooks/useBalancesList";
 import { useToast } from "providers/ToastProvider";
 import { useEffect, useState } from "react";
 
@@ -29,11 +29,6 @@ type SwapActiveError = {
   duration: number;
 };
 
-type SwapBalanceItem = PricedBalance & {
-  id: string;
-  tokenType: TokenTypeWithCustomToken;
-};
-
 /**
  * Owns the swap amount-error state: returns an inline `amountError`
  * for the Sell card and a `setActiveError` setter that drives toasts.
@@ -51,9 +46,9 @@ export const useSwapAmountError = ({
   pathResult,
   destinationTokenDescriptor,
 }: {
-  sourceBalance: SwapBalanceItem | undefined;
+  sourceBalance: HeldBalanceItem | undefined;
   sourceAmount: string;
-  balanceItems: SwapBalanceItem[];
+  balanceItems: HeldBalanceItem[];
   swapFee: string;
   subentryCount: number | undefined;
   transactionHash: string | null | undefined;

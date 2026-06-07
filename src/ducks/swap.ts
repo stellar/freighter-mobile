@@ -11,6 +11,7 @@ import { PricedBalance, TokenTypeWithCustomToken } from "config/types";
 import { useDebugStore } from "ducks/debug";
 import { formatBigNumberForDisplay } from "helpers/formatAmount";
 import { isContractId } from "helpers/soroban";
+import { type HeldBalanceItem } from "hooks/useBalancesList";
 import { t } from "i18next";
 import { getTokenForPayment } from "services/transactionService";
 import { create } from "zustand";
@@ -274,7 +275,7 @@ export const useSwapStore = create<SwapState>((set) => ({
  */
 export const descriptorAsPathBalance = (
   descriptor: DestinationTokenDescriptor,
-): PricedBalance => {
+): HeldBalanceItem => {
   if (descriptor.tokenType === TokenTypeWithCustomToken.NATIVE) {
     throw new Error(
       `descriptorAsPathBalance: native descriptor (id=${descriptor.id}) — XLM should always resolve to a held balance before this shim runs`,
@@ -296,5 +297,5 @@ export const descriptorAsPathBalance = (
       issuer: { key: descriptor.issuer },
       type: descriptor.tokenType,
     },
-  } as unknown as PricedBalance;
+  } as unknown as HeldBalanceItem;
 };

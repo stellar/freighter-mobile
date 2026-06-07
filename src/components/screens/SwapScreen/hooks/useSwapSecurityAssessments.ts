@@ -1,8 +1,8 @@
 import Blockaid from "@blockaid/client";
 import { DestinationTokenDescriptor } from "components/screens/SwapScreen/helpers/types";
 import { NATIVE_TOKEN_CODE } from "config/constants";
-import { PricedBalance, TokenTypeWithCustomToken } from "config/types";
 import useAppTranslation from "hooks/useAppTranslation";
+import { type HeldBalanceItem } from "hooks/useBalancesList";
 import { useMemo } from "react";
 import { SecurityLevel } from "services/blockaid/constants";
 import {
@@ -13,11 +13,6 @@ import {
   SecurityWarning,
 } from "services/blockaid/helper";
 import { SecurityAssessment } from "services/blockaid/types";
-
-type SwapBalanceItem = PricedBalance & {
-  id: string;
-  tokenType: TokenTypeWithCustomToken;
-};
 
 /**
  * Owns the swap-side security cluster: three Blockaid assessments
@@ -53,8 +48,8 @@ export const useSwapSecurityAssessments = ({
 }: {
   transactionScanResult: Blockaid.StellarTransactionScanResponse | undefined;
   overriddenBlockaidResponse: SecurityLevel | null;
-  sourceBalance: SwapBalanceItem | undefined;
-  destinationBalance: SwapBalanceItem | undefined;
+  sourceBalance: HeldBalanceItem | undefined;
+  destinationBalance: HeldBalanceItem | undefined;
   destinationTokenDescriptor: DestinationTokenDescriptor | null;
   scanResults: Record<string, Blockaid.TokenScanResponse | undefined>;
   sourceTokenId: string | undefined;

@@ -15,7 +15,6 @@ import {
 import {
   FormattedSearchTokenRecord,
   HookStatus,
-  PricedBalance,
   TokenTypeWithCustomToken,
 } from "config/types";
 import { useBlockaidTokenScansStore } from "ducks/blockaidTokenScans";
@@ -25,6 +24,7 @@ import { useVerifiedTokensStore } from "ducks/verifiedTokens";
 import { formatTokenIdentifier, getTokenType } from "helpers/balances";
 import { isMainnet } from "helpers/networks";
 import { splitVerifiedTokens } from "helpers/splitVerifiedTokens";
+import { type HeldBalanceItem } from "hooks/useBalancesList";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   assessTokenSecurity,
@@ -38,7 +38,7 @@ export interface SwapTokenLookupResult {
    * The picker hides this list during active search and reads
    * `heldSearchMatches` instead, but the value here is unconditional.
    */
-  yourTokens: Array<PricedBalance & { id: string }>;
+  yourTokens: HeldBalanceItem[];
   /**
    * Top stellar.expert assets sorted by volume7d, EXCLUDING held
    * tokens. Always populated regardless of search state — the picker
@@ -90,7 +90,7 @@ export interface SwapTokenLookupResult {
 
 export interface UseSwapTokenLookupProps {
   network: NETWORKS;
-  balanceItems: Array<PricedBalance & { id: string }>;
+  balanceItems: HeldBalanceItem[];
   /**
    * When true, the hook becomes a pure client-side held-balance lookup:
    * trending tokens aren't fetched, popular tokens stay empty, and

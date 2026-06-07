@@ -1,11 +1,11 @@
 import { recordTokenId } from "components/screens/SwapScreen/helpers/swapTokenHelpers";
 import {
   FormattedSearchTokenRecord,
-  PricedBalance,
   SearchTokenResponse,
   TokenTypeWithCustomToken,
 } from "config/types";
 import { isContractId } from "helpers/soroban";
+import { type HeldBalanceItem } from "hooks/useBalancesList";
 
 /** One entry inside a stellar.expert /asset response. */
 export type StellarExpertRecord =
@@ -33,18 +33,15 @@ export const isClassicTokenType = (
  * Either a held PricedBalance (carries `id`) or a non-held
  * FormattedSearchTokenRecord.
  */
-export type SwapToListItem =
-  | (PricedBalance & { id: string })
-  | FormattedSearchTokenRecord;
+export type SwapToListItem = HeldBalanceItem | FormattedSearchTokenRecord;
 
 /**
  * Type-guard discriminating a held PricedBalance from a stellar.expert
  * FormattedSearchTokenRecord. The `id` field is the structural witness
  * — only the balance variant carries it.
  */
-export const isHeldToken = (
-  item: SwapToListItem,
-): item is PricedBalance & { id: string } => "id" in item;
+export const isHeldToken = (item: SwapToListItem): item is HeldBalanceItem =>
+  "id" in item;
 
 /**
  * Stable list-row key: held tokens use their balance id; non-held search

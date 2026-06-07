@@ -5,7 +5,8 @@ import {
   resetTrendingMemoryCacheForTests,
 } from "components/screens/SwapScreen/hooks/useSwapTokenLookup";
 import { NETWORKS } from "config/constants";
-import { PricedBalance, TokenTypeWithCustomToken } from "config/types";
+import { TokenTypeWithCustomToken } from "config/types";
+import { type HeldBalanceItem } from "hooks/useBalancesList";
 import * as stellarExpert from "services/stellarExpert";
 
 // The hook holds a module-scoped trending memory cache so component
@@ -121,9 +122,10 @@ const FOO_ISSUER = "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4FOOO";
 const SOROBAN_CONTRACT =
   "CC64WBDGS6QQP22QTTIACYIXT3WF7BBQEYOQPLTP7GTKYY7PZ74QYGSL";
 
-const buildHeldBalances = (): (PricedBalance & { id: string })[] => [
+const buildHeldBalances = (): HeldBalanceItem[] => [
   {
     id: "native",
+    tokenType: TokenTypeWithCustomToken.NATIVE,
     total: new BigNumber("100"),
     available: new BigNumber("99"),
     minimumBalance: new BigNumber("1"),
@@ -139,6 +141,7 @@ const buildHeldBalances = (): (PricedBalance & { id: string })[] => [
   },
   {
     id: `USDC:${USDC_ISSUER}`,
+    tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
     total: new BigNumber("50"),
     available: new BigNumber("50"),
     limit: new BigNumber("1000000"),
@@ -392,9 +395,10 @@ describe("useSwapTokenLookup — idle mode", () => {
     ]);
 
     // Held balances include native XLM — id must be "native" (Horizon convention)
-    const heldWithXLM: (PricedBalance & { id: string })[] = [
+    const heldWithXLM: HeldBalanceItem[] = [
       {
         id: "native",
+        tokenType: TokenTypeWithCustomToken.NATIVE,
         total: new BigNumber("100"),
         available: new BigNumber("99"),
         minimumBalance: new BigNumber("1"),

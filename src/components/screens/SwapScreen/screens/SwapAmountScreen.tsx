@@ -70,7 +70,7 @@ import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { calculateSpendableAmount } from "helpers/balances";
 import { waitForKeyboardDismiss } from "helpers/keyboard";
 import useAppTranslation from "hooks/useAppTranslation";
-import { useBalancesList } from "hooks/useBalancesList";
+import { type HeldBalanceItem, useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useInitialRecommendedFee } from "hooks/useInitialRecommendedFee";
@@ -224,17 +224,14 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     destinationTokenDescriptor,
   });
 
-  // For held destinations, useSwapPathFinding / useSwapTransaction receive
-  // the matching held PricedBalance. For non-held destinations the
-  // balance list doesn't include the token; we feed them a minimal
-  // balance-shaped shim of the descriptor instead. The shim covers
-  // exactly the fields findSwapPath / buildSwapTransaction read
-  // (token.code/issuer/type + id + tokenCode + tokenType).
-  // Cast: the held side is a full PricedBalance from balanceItems
-  // (which always carries tokenType); the shim covers the required
-  // subset. Downstream consumers only read the documented fields.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const destinationForPath: any = useMemo(() => {
+  // For held destinations, useSwapPathFinding / useSwapTransaction
+  // receive the matching held PricedBalance. For non-held destinations
+  // the balance list doesn't include the token; we feed them a shim of
+  // the descriptor (`descriptorAsPathBalance`) that exposes the same
+  // fields findSwapPath / buildSwapTransaction read (token.code/issuer/
+  // type + id + tokenCode + tokenType). The shim returns PricedBalance
+  // structurally — no `any` cast needed.
+  const destinationForPath: HeldBalanceItem | undefined = useMemo(() => {
     if (destinationBalance) return destinationBalance;
     if (destinationTokenDescriptor) {
       return descriptorAsPathBalance(destinationTokenDescriptor);

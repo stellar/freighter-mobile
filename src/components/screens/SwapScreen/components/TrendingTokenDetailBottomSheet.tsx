@@ -13,13 +13,13 @@ import { POSITIVE_PRICE_CHANGE_THRESHOLD } from "config/constants";
 import {
   FormattedSearchTokenRecord,
   NonNativeToken,
-  PricedBalance,
   TokenTypeWithCustomToken,
 } from "config/types";
 import { useSwapStore } from "ducks/swap";
 import { formatFiatAmount, formatPercentageAmount } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
+import { type HeldBalanceItem } from "hooks/useBalancesList";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import React from "react";
@@ -32,7 +32,7 @@ export interface TrendingTokenDetailBottomSheetProps {
     currentPrice?: BigNumber;
     percentagePriceChange24h?: BigNumber;
   };
-  balanceItems: Array<PricedBalance & { id: string }>;
+  balanceItems: HeldBalanceItem[];
   bottomSheetModalRef?: React.RefObject<BottomSheetModal | null>;
 }
 

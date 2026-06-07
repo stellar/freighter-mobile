@@ -73,16 +73,22 @@ export const useReviewTokens = ({
   // when no balance is found.
   const destinationToken = useMemo<NativeToken | NonNativeToken>(() => {
     if (destinationBalance) return getTokenFromBalance(destinationBalance);
+    // No descriptor OR native → XLM. Non-native without an issuer is
+    // an invalid descriptor (constructors guarantee an issuer for
+    // classic types); fall through to the XLM fallback rather than
+    // silently producing a NonNativeToken with `issuer: undefined`.
     if (
       !destinationTokenDescriptor ||
-      destinationTokenDescriptor.tokenType === TokenTypeWithCustomToken.NATIVE
+      destinationTokenDescriptor.tokenType ===
+        TokenTypeWithCustomToken.NATIVE ||
+      !destinationTokenDescriptor.issuer
     ) {
       return { type: "native" as const, code: NATIVE_TOKEN_CODE as "XLM" };
     }
     return {
       type: destinationTokenDescriptor.tokenType,
       code: destinationTokenDescriptor.tokenCode,
-      issuer: { key: destinationTokenDescriptor.issuer! },
+      issuer: { key: destinationTokenDescriptor.issuer },
     };
   }, [destinationBalance, destinationTokenDescriptor]);
 

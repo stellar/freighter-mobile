@@ -1,6 +1,7 @@
 import { SWAP_SELECTION_TYPES } from "config/constants";
-import { FormattedSearchTokenRecord, PricedBalance } from "config/types";
+import { FormattedSearchTokenRecord } from "config/types";
 import useAppTranslation from "hooks/useAppTranslation";
+import { type HeldBalanceItem } from "hooks/useBalancesList";
 import { useMemo } from "react";
 
 /**
@@ -14,7 +15,7 @@ export type SwapToSectionKind = "held" | "popular" | "verified" | "unverified";
 export type SwapToSection = {
   title: string;
   kind: SwapToSectionKind;
-  data: Array<(PricedBalance & { id: string }) | FormattedSearchTokenRecord>;
+  data: Array<HeldBalanceItem | FormattedSearchTokenRecord>;
 };
 
 /**
@@ -43,7 +44,7 @@ export const useSwapToSections = ({
   heldSearchMatches: FormattedSearchTokenRecord[];
   verifiedSearchMatches: FormattedSearchTokenRecord[];
   unverifiedSearchMatches: FormattedSearchTokenRecord[];
-  yourTokens: Array<PricedBalance & { id: string }>;
+  yourTokens: Array<HeldBalanceItem>;
   popularTokens: FormattedSearchTokenRecord[];
   selectionType: SWAP_SELECTION_TYPES;
 }): SwapToSection[] => {

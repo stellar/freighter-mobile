@@ -6,39 +6,25 @@ import {
 } from "config/constants";
 import {
   FormattedSearchTokenRecord,
-  PricedBalance,
   TokenTypeWithCustomToken,
 } from "config/types";
-import { getTokenType } from "helpers/balances";
+import { type HeldBalanceItem } from "hooks/useBalancesList";
 import { assessTokenSecurity } from "services/blockaid/helper";
 
 /**
- * Extended balance descriptor that captures the optional fields that callers
- * attach to PricedBalance entries before passing them to this helper.
- */
-type BalanceInput = PricedBalance & {
-  id?: string;
-  tokenCode?: string;
-  decimals?: number;
-  tokenType?: TokenTypeWithCustomToken;
-  token?: {
-    // Widened to string to accommodate NativeToken.type = "native" literal
-    // which TypeScript does not automatically treat as TokenTypeWithCustomToken.NATIVE.
-    type?: TokenTypeWithCustomToken | string;
-    code?: string;
-    issuer?: { key: string };
-  };
-  blockaidData?: unknown;
-};
-
-/**
- * Project a held PricedBalance into a DestinationTokenDescriptor.
+ * Project a held balance into a DestinationTokenDescriptor.
  * `isNew` is always false because the user already has a trustline.
+ *
+ * Some PricedBalance variants (Soroban) carry `decimals` / `blockaidData`
+ * that the union doesn't expose unconditionally — we read them via
+ * `in`-narrowing rather than the previous over-permissive BalanceInput
+ * shim that re-declared every field as optional + widened
+ * `token.type` to `string`.
  */
 export const descriptorFromBalance = (
-  balance: BalanceInput,
+  balance: HeldBalanceItem,
 ): DestinationTokenDescriptor => {
-  const id = balance.id ?? NATIVE_TOKEN_CODE;
+  const { id } = balance;
   const isNative = isNativeAssetId(id);
 
   if (isNative) {
@@ -67,21 +53,24 @@ export const descriptorFromBalance = (
   // Project Blockaid signal from the held balance's bulk-scan blob so
   // downstream callers see a consistent securityLevel shape regardless
   // of whether the descriptor came from a balance or a search record.
-  const heldSecurityLevel = balance.blockaidData
-    ? assessTokenSecurity(
-        balance.blockaidData as Parameters<typeof assessTokenSecurity>[0],
-      ).level
-    : undefined;
+  const heldSecurityLevel =
+    "blockaidData" in balance && balance.blockaidData
+      ? assessTokenSecurity(balance.blockaidData).level
+      : undefined;
+
+  // `decimals` lives on SorobanBalance only (the union doesn't expose
+  // it unconditionally); classic + native balances use the default.
+  const decimals =
+    "decimals" in balance && typeof balance.decimals === "number"
+      ? balance.decimals
+      : DEFAULT_DECIMALS;
 
   return {
     id,
     tokenCode: tokenCode || balance.tokenCode || "",
     issuer: issuer || undefined,
-    decimals: balance.decimals ?? DEFAULT_DECIMALS,
-    tokenType:
-      (balance.token?.type as TokenTypeWithCustomToken | undefined) ??
-      balance.tokenType ??
-      getTokenType(id),
+    decimals,
+    tokenType: balance.tokenType,
     isNew: false,
     securityLevel: heldSecurityLevel,
   };

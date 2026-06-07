@@ -1,14 +1,9 @@
 import { descriptorFromBalance } from "components/screens/SwapScreen/helpers";
 import { DestinationTokenDescriptor } from "components/screens/SwapScreen/helpers/types";
 import { AnalyticsEvent } from "config/analyticsConfig";
-import { PricedBalance, TokenTypeWithCustomToken } from "config/types";
+import { type HeldBalanceItem } from "hooks/useBalancesList";
 import { useCallback } from "react";
 import { analytics } from "services/analytics";
-
-type SwapBalanceItem = PricedBalance & {
-  id: string;
-  tokenType: TokenTypeWithCustomToken;
-};
 
 /**
  * Owns the chevron-toggle handler that swaps the Sell ↔ Receive sides on
@@ -35,8 +30,8 @@ export const useSwapDirectionToggle = ({
   setDestinationToken,
   setTokenAmount,
 }: {
-  sourceBalance: SwapBalanceItem | undefined;
-  destinationBalance: SwapBalanceItem | undefined;
+  sourceBalance: HeldBalanceItem | undefined;
+  destinationBalance: HeldBalanceItem | undefined;
   destinationTokenDescriptor: DestinationTokenDescriptor | null;
   setSourceToken: (id: string, symbol: string) => void;
   setDestinationToken: (descriptor: DestinationTokenDescriptor | null) => void;

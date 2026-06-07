@@ -25,10 +25,11 @@ import { Text } from "components/sds/Typography";
 import { AnalyticsEvent, SwapSelectionSource } from "config/analyticsConfig";
 import { isNativeAssetId, SWAP_SELECTION_TYPES } from "config/constants";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
-import { FormattedSearchTokenRecord, PricedBalance } from "config/types";
+import { FormattedSearchTokenRecord } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useSwapStore } from "ducks/swap";
 import useAppTranslation from "hooks/useAppTranslation";
+import { type HeldBalanceItem } from "hooks/useBalancesList";
 import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
@@ -106,7 +107,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
   );
 
   const handleHeldPress = (
-    balance: PricedBalance & { id: string },
+    balance: HeldBalanceItem,
     source:
       | SwapSelectionSource.BALANCES
       | SwapSelectionSource.POPULAR

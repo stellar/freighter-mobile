@@ -1,19 +1,9 @@
 import BigNumber from "bignumber.js";
 import { DestinationTokenDescriptor } from "components/screens/SwapScreen/helpers/types";
 import { isNativeAssetId } from "config/constants";
-import { PricedBalance, TokenTypeWithCustomToken } from "config/types";
+import { TokenTypeWithCustomToken } from "config/types";
+import { type HeldBalanceItem } from "hooks/useBalancesList";
 import { useMemo } from "react";
-
-/**
- * Shape useBalancesList returns: PricedBalance enriched with the
- * runtime-resolved id + tokenType keys. Matches the production
- * `UseBalancesListResult.balanceItems` element type exactly so the
- * tokenType narrowing in the bestNonXlmClassicBalance filter compiles.
- */
-type SwapBalanceItem = PricedBalance & {
-  id: string;
-  tokenType: TokenTypeWithCustomToken;
-};
 
 /**
  * Derives the three balance-keyed selections SwapAmountScreen needs from
@@ -39,13 +29,13 @@ export const useSwapBalances = ({
   sourceTokenId,
   destinationTokenDescriptor,
 }: {
-  balanceItems: SwapBalanceItem[];
+  balanceItems: HeldBalanceItem[];
   sourceTokenId: string | undefined;
   destinationTokenDescriptor: DestinationTokenDescriptor | null;
 }): {
-  sourceBalance: SwapBalanceItem | undefined;
-  destinationBalance: SwapBalanceItem | undefined;
-  bestNonXlmClassicBalance: SwapBalanceItem | undefined;
+  sourceBalance: HeldBalanceItem | undefined;
+  destinationBalance: HeldBalanceItem | undefined;
+  bestNonXlmClassicBalance: HeldBalanceItem | undefined;
 } => {
   const sourceBalance = useMemo(
     () => balanceItems.find((item) => item.id === sourceTokenId),
