@@ -7,9 +7,9 @@ import { useMemo } from "react";
 import { SecurityLevel } from "services/blockaid/constants";
 import {
   assessTokenSecurity,
+  assessTokenSecurityFromLevel,
   assessTransactionSecurity,
   extractSecurityWarnings,
-  synthesizeScanFromLevel,
   SecurityWarning,
 } from "services/blockaid/helper";
 import { SecurityAssessment } from "services/blockaid/types";
@@ -97,14 +97,22 @@ export const useSwapSecurityAssessments = ({
     [sourceBalance, scanResults, overriddenBlockaidResponse],
   );
 
+  // Held destinations have a real Blockaid scan in `scanResults`; non-held
+  // destinations carry a pre-classified `securityLevel` on the descriptor
+  // (set by `useSwapTokenLookup` at discovery time) — feed that through
+  // `assessTokenSecurityFromLevel` directly instead of round-tripping
+  // through a synthesized scan object.
   const destBalanceSecurityAssessment = useMemo(
     () =>
-      assessTokenSecurity(
-        destinationBalance
-          ? scanResults[destinationBalance.id.replace(":", "-")]
-          : synthesizeScanFromLevel(destinationTokenDescriptor?.securityLevel),
-        overriddenBlockaidResponse,
-      ),
+      destinationBalance
+        ? assessTokenSecurity(
+            scanResults[destinationBalance.id.replace(":", "-")],
+            overriddenBlockaidResponse,
+          )
+        : assessTokenSecurityFromLevel(
+            destinationTokenDescriptor?.securityLevel,
+            overriddenBlockaidResponse,
+          ),
     [
       destinationBalance,
       destinationTokenDescriptor?.securityLevel,

@@ -58,17 +58,16 @@ describe("useSwapStore — destinationToken migration", () => {
 });
 
 describe("destinationAsBalanceLike", () => {
-  it("projects a native descriptor", () => {
-    const result = destinationAsBalanceLike({
-      id: "native",
-      tokenCode: "XLM",
-      decimals: 7,
-      tokenType: TokenTypeWithCustomToken.NATIVE,
-      isNew: false,
-    });
-
-    // Only the `token` shape is used by getTokenForPayment — assert that.
-    expect((result as any).token).toEqual({ type: "native", code: "XLM" });
+  it("throws on a native descriptor (XLM should always resolve to a held balance before this projector runs)", () => {
+    expect(() =>
+      destinationAsBalanceLike({
+        id: "native",
+        tokenCode: "XLM",
+        decimals: 7,
+        tokenType: TokenTypeWithCustomToken.NATIVE,
+        isNew: false,
+      }),
+    ).toThrow(/native descriptor/);
   });
 
   it("projects a classic descriptor", () => {

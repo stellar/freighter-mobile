@@ -262,17 +262,20 @@ export const useSwapStore = create<SwapState>((set) => ({
  * Narrow projection for path-finding: getTokenForPayment only reads the
  * `token` field, so the `as unknown as PricedBalance` cast is safe here.
  * Callers other than findSwapPath should pass a real PricedBalance.
+ *
+ * Native XLM is unreachable: XLM is the user's reserve, always present
+ * in `balanceItems`, so the SwapAmountScreen useMemo at the call site
+ * resolves `destinationBalance` to the held XLM PricedBalance before
+ * this projector is reached. We assert that invariant rather than
+ * silently mint a shim.
  */
 export const destinationAsBalanceLike = (
   descriptor: DestinationTokenDescriptor,
 ): PricedBalance => {
   if (descriptor.tokenType === TokenTypeWithCustomToken.NATIVE) {
-    return {
-      id: "native",
-      tokenCode: "XLM",
-      tokenType: TokenTypeWithCustomToken.NATIVE,
-      token: { type: "native", code: "XLM" },
-    } as unknown as PricedBalance;
+    throw new Error(
+      `destinationAsBalanceLike: native descriptor (id=${descriptor.id}) — XLM should always resolve to a held balance before this projector runs`,
+    );
   }
 
   if (!descriptor.issuer) {

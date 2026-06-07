@@ -1,14 +1,10 @@
 import BigNumber from "bignumber.js";
+import { SecurityLevel } from "services/blockaid/constants";
 import {
-  BLOCKAID_RESULT_TYPES,
-  SecurityLevel,
-} from "services/blockaid/constants";
-import {
-  assessTokenSecurity,
+  assessTokenSecurityFromLevel,
   extractSecurityWarnings,
   getTransactionBalanceChanges,
   isUnfundedDestinationError,
-  synthesizeScanFromLevel,
 } from "services/blockaid/helper";
 
 const CONTRACT_ADDRESS =
@@ -391,37 +387,42 @@ describe("isUnfundedDestinationError", () => {
   });
 });
 
-describe("synthesizeScanFromLevel", () => {
-  it("returns a Malicious result_type for SecurityLevel.MALICIOUS", () => {
-    const synthetic = synthesizeScanFromLevel(SecurityLevel.MALICIOUS);
-    expect(synthetic?.result_type).toBe(BLOCKAID_RESULT_TYPES.MALICIOUS);
-    // The synthesized object should round-trip through assessTokenSecurity
-    // back to the same SecurityLevel — that's the contract the consumers rely on.
-    expect(assessTokenSecurity(synthetic).isMalicious).toBe(true);
-    expect(assessTokenSecurity(synthetic).level).toBe(SecurityLevel.MALICIOUS);
+describe("assessTokenSecurityFromLevel", () => {
+  it("returns a Malicious assessment for SecurityLevel.MALICIOUS", () => {
+    const a = assessTokenSecurityFromLevel(SecurityLevel.MALICIOUS);
+    expect(a.level).toBe(SecurityLevel.MALICIOUS);
+    expect(a.isMalicious).toBe(true);
+    expect(a.isSuspicious).toBe(false);
   });
 
-  it("returns a Warning result_type for SecurityLevel.SUSPICIOUS", () => {
-    const synthetic = synthesizeScanFromLevel(SecurityLevel.SUSPICIOUS);
-    expect(synthetic?.result_type).toBe(BLOCKAID_RESULT_TYPES.WARNING);
-    expect(assessTokenSecurity(synthetic).isSuspicious).toBe(true);
-    expect(assessTokenSecurity(synthetic).level).toBe(SecurityLevel.SUSPICIOUS);
+  it("returns a Suspicious assessment for SecurityLevel.SUSPICIOUS", () => {
+    const a = assessTokenSecurityFromLevel(SecurityLevel.SUSPICIOUS);
+    expect(a.level).toBe(SecurityLevel.SUSPICIOUS);
+    expect(a.isSuspicious).toBe(true);
+    expect(a.isMalicious).toBe(false);
   });
 
-  it("returns a Benign result_type for SecurityLevel.SAFE", () => {
-    const synthetic = synthesizeScanFromLevel(SecurityLevel.SAFE);
-    expect(synthetic?.result_type).toBe(BLOCKAID_RESULT_TYPES.BENIGN);
-    expect(assessTokenSecurity(synthetic).level).toBe(SecurityLevel.SAFE);
+  it("returns a Safe assessment for SecurityLevel.SAFE", () => {
+    const a = assessTokenSecurityFromLevel(SecurityLevel.SAFE);
+    expect(a.level).toBe(SecurityLevel.SAFE);
+    expect(a.isMalicious).toBe(false);
+    expect(a.isSuspicious).toBe(false);
+    expect(a.isUnableToScan).toBe(false);
   });
 
-  it("returns undefined for UNABLE_TO_SCAN so consumers fall back to default path", () => {
-    expect(
-      synthesizeScanFromLevel(SecurityLevel.UNABLE_TO_SCAN),
-    ).toBeUndefined();
+  it("defaults to UNABLE_TO_SCAN when no level is provided", () => {
+    const a = assessTokenSecurityFromLevel(undefined);
+    expect(a.level).toBe(SecurityLevel.UNABLE_TO_SCAN);
+    expect(a.isUnableToScan).toBe(true);
   });
 
-  it("returns undefined for missing level", () => {
-    expect(synthesizeScanFromLevel(undefined)).toBeUndefined();
+  it("debugOverride takes precedence over the passed level", () => {
+    const a = assessTokenSecurityFromLevel(
+      SecurityLevel.SAFE,
+      SecurityLevel.MALICIOUS,
+    );
+    expect(a.level).toBe(SecurityLevel.MALICIOUS);
+    expect(a.isMalicious).toBe(true);
   });
 });
 

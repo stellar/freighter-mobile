@@ -96,7 +96,6 @@ import {
 } from "react-native";
 import { analytics } from "services/analytics";
 import { SecurityLevel } from "services/blockaid/constants";
-import { synthesizeScanFromLevel } from "services/blockaid/helper";
 
 type SwapAmountScreenProps = NativeStackScreenProps<
   SwapStackParamList,
@@ -535,7 +534,9 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   }, [prepareSwapTransaction]);
 
   const {
+    transactionSecurityAssessment,
     sourceBalanceSecurityAssessment,
+    destBalanceSecurityAssessment,
     isUnableToScan,
     isMalicious,
     isSuspicious,
@@ -889,19 +890,9 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         analyticsEvent={AnalyticsEvent.VIEW_SWAP_CONFIRM}
         customContent={
           <SwapReviewBottomSheet
-            transactionScanResult={transactionScanResult}
-            sourceTokenScanResult={
-              sourceBalance
-                ? scanResults[sourceBalance.id.replace(":", "-")]
-                : undefined
-            }
-            destTokenScanResult={
-              destinationBalance
-                ? scanResults[destinationBalance.id.replace(":", "-")]
-                : synthesizeScanFromLevel(
-                    destinationTokenDescriptor?.securityLevel,
-                  )
-            }
+            transactionSecurityAssessment={transactionSecurityAssessment}
+            sourceSecurityAssessment={sourceBalanceSecurityAssessment}
+            destinationSecurityAssessment={destBalanceSecurityAssessment}
             onSecurityWarningPress={() =>
               transactionSecurityWarningBottomSheetModalRef.current?.present()
             }

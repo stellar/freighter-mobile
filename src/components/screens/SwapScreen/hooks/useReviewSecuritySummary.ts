@@ -1,28 +1,27 @@
-import Blockaid from "@blockaid/client";
 import { DestinationTokenDescriptor } from "components/screens/SwapScreen/helpers/types";
 import { isNativeAssetId } from "config/constants";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useMemo } from "react";
-import {
-  assessTokenSecurity,
-  assessTransactionSecurity,
-} from "services/blockaid/helper";
+import type { SecurityAssessment } from "services/blockaid/types";
 
 /**
- * Derives the Blockaid-based security flags and banner text used by the swap review sheet.
+ * Derives the banner copy + cross-side flags the swap review sheet renders,
+ * given the three pre-computed Blockaid assessments owned by
+ * `useSwapSecurityAssessments`. No scan-object re-assessment here — the
+ * caller has already mapped each side to its assessment, including the
+ * non-held-destination case (which uses the descriptor's `securityLevel`
+ * directly rather than synthesising a fake scan).
  */
 export const useReviewSecuritySummary = ({
-  transactionScanResult,
-  sourceTokenScanResult,
-  destTokenScanResult,
-  overriddenBlockaidResponse,
+  transactionSecurityAssessment,
+  sourceSecurityAssessment,
+  destinationSecurityAssessment,
   sourceTokenId,
   destinationTokenDescriptor,
 }: {
-  transactionScanResult: Blockaid.StellarTransactionScanResponse | undefined;
-  sourceTokenScanResult: Blockaid.TokenBulkScanResponse.Results | undefined;
-  destTokenScanResult: Blockaid.TokenBulkScanResponse.Results | undefined;
-  overriddenBlockaidResponse: Parameters<typeof assessTokenSecurity>[1];
+  transactionSecurityAssessment: SecurityAssessment;
+  sourceSecurityAssessment: SecurityAssessment;
+  destinationSecurityAssessment: SecurityAssessment;
   sourceTokenId: string | undefined;
   destinationTokenDescriptor: DestinationTokenDescriptor | null;
 }): {
@@ -37,25 +36,12 @@ export const useReviewSecuritySummary = ({
 } => {
   const { t } = useAppTranslation();
 
-  const transactionSecurityAssessment = assessTransactionSecurity(
-    transactionScanResult,
-    overriddenBlockaidResponse,
-  );
-  const sourceSecurityAssessment = assessTokenSecurity(
-    sourceTokenScanResult,
-    overriddenBlockaidResponse,
-  );
-  const destSecurityAssessment = assessTokenSecurity(
-    destTokenScanResult,
-    overriddenBlockaidResponse,
-  );
-
   const { isMalicious: isTxMalicious, isSuspicious: isTxSuspicious } =
     transactionSecurityAssessment;
   const { isMalicious: isSourceMalicious, isSuspicious: isSourceSuspicious } =
     sourceSecurityAssessment;
   const { isMalicious: isDestMalicious, isSuspicious: isDestSuspicious } =
-    destSecurityAssessment;
+    destinationSecurityAssessment;
 
   const isMalicious = isTxMalicious || isSourceMalicious || isDestMalicious;
   const isSuspicious = isTxSuspicious || isSourceSuspicious || isDestSuspicious;
@@ -64,7 +50,7 @@ export const useReviewSecuritySummary = ({
   const isUnableToScanToken =
     (sourceSecurityAssessment.isUnableToScan &&
       !isNativeAssetId(sourceTokenId ?? "")) ||
-    (destSecurityAssessment.isUnableToScan &&
+    (destinationSecurityAssessment.isUnableToScan &&
       !isNativeAssetId(destinationTokenDescriptor?.id ?? ""));
 
   const bannerText = useMemo(() => {

@@ -17,10 +17,10 @@ jest.mock("hooks/useAppTranslation", () => {
 });
 
 // We DON'T mock the blockaid helper itself — its logic IS the contract
-// we're verifying (synthesizeScanFromLevel fallback, isUnableToScan
-// classification, extractSecurityWarnings flattening). Using the real
-// helper makes these tests sensitive to real regressions, which is
-// what we want for a security-critical hook.
+// we're verifying (descriptor.securityLevel fallback for non-held
+// destinations, isUnableToScan classification, extractSecurityWarnings
+// flattening). Using the real helper makes these tests sensitive to
+// real regressions, which is what we want for a security-critical hook.
 
 // Hoisted stable references so the hook's useMemo deps stay stable
 // across renders.
@@ -67,7 +67,7 @@ const baseProps: HookProps = {
 };
 
 describe("useSwapSecurityAssessments", () => {
-  describe("synthesizeScanFromLevel fallback for non-held destinations", () => {
+  describe("descriptor.securityLevel fallback for non-held destinations", () => {
     it("falls back to descriptor.securityLevel=MALICIOUS when destination is non-held", () => {
       const { result } = renderHook(() =>
         useSwapSecurityAssessments({
@@ -342,7 +342,7 @@ describe("useSwapSecurityAssessments", () => {
     it("uses descriptor.securityWarnings for non-held malicious destinations (XRP-GBXRPL45 case)", () => {
       // Non-held destination → scanResults has no entry. The descriptor
       // carries the discovery-time scan's extracted warnings; the hook
-      // must read those instead of relying on synthesizeScanFromLevel
+      // must read those instead of relying on the level alone
       // (which only knows the top-level severity and produces zero
       // feature rows, leaving the sheet's reasons list empty).
       const destDescriptor = {

@@ -1,4 +1,3 @@
-import Blockaid from "@blockaid/client";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import BottomSheet from "components/BottomSheet";
 import { List } from "components/List";
@@ -21,7 +20,6 @@ import { AnalyticsEvent } from "config/analyticsConfig";
 import { DEFAULT_PADDING } from "config/constants";
 import { THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
-import { useDebugStore } from "ducks/debug";
 import { useSwapStore } from "ducks/swap";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { pxValue } from "helpers/dimensions";
@@ -33,25 +31,25 @@ import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React, { useRef } from "react";
 import { TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import type { SecurityAssessment } from "services/blockaid/types";
 
 type SwapReviewBottomSheetProps = {
   onSecurityWarningPress?: () => void;
-  transactionScanResult: Blockaid.StellarTransactionScanResponse | undefined;
-  sourceTokenScanResult: Blockaid.TokenBulkScanResponse.Results | undefined;
-  destTokenScanResult: Blockaid.TokenBulkScanResponse.Results | undefined;
+  transactionSecurityAssessment: SecurityAssessment;
+  sourceSecurityAssessment: SecurityAssessment;
+  destinationSecurityAssessment: SecurityAssessment;
 };
 
 const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
   onSecurityWarningPress,
-  transactionScanResult,
-  sourceTokenScanResult,
-  destTokenScanResult,
+  transactionSecurityAssessment,
+  sourceSecurityAssessment,
+  destinationSecurityAssessment,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
-  const { overriddenBlockaidResponse } = useDebugStore();
 
   const {
     sourceAmount,
@@ -114,10 +112,9 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
     isDestSuspicious,
     bannerText,
   } = useReviewSecuritySummary({
-    transactionScanResult,
-    sourceTokenScanResult,
-    destTokenScanResult,
-    overriddenBlockaidResponse,
+    transactionSecurityAssessment,
+    sourceSecurityAssessment,
+    destinationSecurityAssessment,
     sourceTokenId,
     destinationTokenDescriptor,
   });
