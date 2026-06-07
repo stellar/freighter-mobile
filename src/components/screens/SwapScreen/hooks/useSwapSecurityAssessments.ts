@@ -151,12 +151,23 @@ export const useSwapSecurityAssessments = ({
         : undefined;
       const destScan = destinationBalance
         ? scanResults[destinationBalance.id.replace(":", "-")]
-        : synthesizeScanFromLevel(destinationTokenDescriptor?.securityLevel);
+        : undefined;
+      // For non-held destinations there's no PricedBalance, so the
+      // scanResults map doesn't carry the destination's scan. The
+      // descriptor already carries the real warnings extracted at
+      // discovery time by `useSwapTokenLookup` — fall back to those so
+      // the sheet's reasons list isn't empty. `synthesizeScanFromLevel`
+      // only knows the top-level severity and produces zero feature rows.
+      const descriptorWarnings: SecurityWarning[] =
+        !destinationBalance && destinationTokenDescriptor?.securityWarnings
+          ? destinationTokenDescriptor.securityWarnings
+          : [];
 
       const extracted = [
         ...extractSecurityWarnings(transactionScanResult),
         ...extractSecurityWarnings(sourceScan),
         ...extractSecurityWarnings(destScan),
+        ...descriptorWarnings,
       ];
 
       // Dedupe by feature_id; on collision keep the worse severity so
@@ -204,7 +215,7 @@ export const useSwapSecurityAssessments = ({
     transactionScanResult,
     sourceBalance,
     destinationBalance,
-    destinationTokenDescriptor?.securityLevel,
+    destinationTokenDescriptor?.securityWarnings,
     scanResults,
     t,
   ]);

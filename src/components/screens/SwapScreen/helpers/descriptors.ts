@@ -121,6 +121,11 @@ export const descriptorFromSearchRecord = (
         : TokenTypeWithCustomToken.CREDIT_ALPHANUM12),
     isNew: !record.hasTrustline,
     securityLevel: record.securityLevel,
+    // Real Blockaid warnings from the search record's bulk scan — needed
+    // because the destination side has no PricedBalance for non-held
+    // tokens, so useSwapSecurityAssessments otherwise has to synthesise
+    // a scan from securityLevel alone (which omits the feature rows).
+    securityWarnings: record.securityWarnings,
     // Carry the search-record's tomlInfo.image-derived iconUrl through to
     // the swap store so the SwapAmountScreen Receive chip can render the
     // same logo the picker row already showed. Undefined when stellar.expert

@@ -1,5 +1,6 @@
 import { TokenTypeWithCustomToken } from "config/types";
 import { SecurityLevel } from "services/blockaid/constants";
+import type { SecurityWarning } from "services/blockaid/helper";
 
 /**
  * Narrow descriptor for the destination side of a swap.
@@ -26,6 +27,14 @@ export type DestinationTokenDescriptor = {
    * record; held tokens already render their badge through their balance row.
    */
   securityLevel?: SecurityLevel;
+  /**
+   * Real Blockaid warnings extracted at discovery time (via
+   * `useSwapTokenLookup`'s bulk scan). Carried on the descriptor so the
+   * Swap "Do not proceed" sheet can render the actual feature rows even
+   * for non-held destinations — synthesizeScanFromLevel only knows the
+   * top-level severity and would otherwise leave the warnings list empty.
+   */
+  securityWarnings?: SecurityWarning[];
   /**
    * Issuer-toml-declared logo URL (stellar.expert's `tomlInfo.image`),
    * carried through from the search record so the Receive chip can render

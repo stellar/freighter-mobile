@@ -339,6 +339,41 @@ describe("useSwapSecurityAssessments", () => {
       expect(result.current.securityWarnings[0].severity).toBe("malicious");
     });
 
+    it("uses descriptor.securityWarnings for non-held malicious destinations (XRP-GBXRPL45 case)", () => {
+      // Non-held destination → scanResults has no entry. The descriptor
+      // carries the discovery-time scan's extracted warnings; the hook
+      // must read those instead of relying on synthesizeScanFromLevel
+      // (which only knows the top-level severity and produces zero
+      // feature rows, leaving the sheet's reasons list empty).
+      const destDescriptor = {
+        ...baseDestinationDescriptor,
+        id: "XRP:GBXRPL45",
+        securityLevel: SecurityLevel.MALICIOUS,
+        securityWarnings: [
+          {
+            id: "KNOWN_MALICIOUS",
+            description:
+              "An identified malicious address is associated with the token.",
+            severity: "malicious" as const,
+          },
+        ],
+      };
+
+      const { result } = renderHook(() =>
+        useSwapSecurityAssessments({
+          ...baseProps,
+          sourceBalance: xlmSourceBalance,
+          sourceTokenId: NATIVE_TOKEN_CODE,
+          destinationBalance: undefined,
+          destinationTokenDescriptor: destDescriptor,
+        }),
+      );
+
+      const ids = result.current.securityWarnings.map((w) => w.id);
+      expect(ids).toEqual(["KNOWN_MALICIOUS"]);
+      expect(result.current.securityWarnings[0].severity).toBe("malicious");
+    });
+
     it('stamps severity="warning" on synthetic unable-to-scan-* warnings', () => {
       const { result } = renderHook(() =>
         useSwapSecurityAssessments({
