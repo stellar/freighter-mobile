@@ -227,8 +227,8 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
       )}
 
       {showSorobanEmpty && (
-        <View className="py-8">
-          <Text sm secondary>
+        <View className="bg-background-tertiary rounded-[12px] px-8 py-6 items-center mt-4">
+          <Text sm secondary medium textAlign="center">
             {t("swapScreen.sorobanEmptyState")}
           </Text>
         </View>
