@@ -62,8 +62,6 @@ export const useSwapSecurityAssessments = ({
   transactionSecurityAssessment: SecurityAssessment;
   sourceBalanceSecurityAssessment: SecurityAssessment;
   destBalanceSecurityAssessment: SecurityAssessment;
-  showSecurityWarningForSource: boolean;
-  showSecurityWarningForDestination: boolean;
   isUnableToScan: boolean;
   isMalicious: boolean;
   isSuspicious: boolean;
@@ -254,8 +252,6 @@ export const useSwapSecurityAssessments = ({
     transactionSecurityAssessment,
     sourceBalanceSecurityAssessment,
     destBalanceSecurityAssessment,
-    showSecurityWarningForSource,
-    showSecurityWarningForDestination,
     isUnableToScan,
     isMalicious,
     isSuspicious,

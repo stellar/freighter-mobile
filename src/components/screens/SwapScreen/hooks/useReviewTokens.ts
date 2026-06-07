@@ -46,8 +46,6 @@ export const useReviewTokens = ({
   destinationTokenDescriptor: DestinationTokenDescriptor | null;
   pathResult: SwapPathResult | null;
 }): {
-  sourceBalance: (PricedBalance & { id: string }) | undefined;
-  destinationBalance: (PricedBalance & { id: string }) | undefined;
   sourceToken: NativeToken | NonNativeToken;
   destinationToken: NativeToken | NonNativeToken;
   sourceTokenFiatAmount: string;
@@ -109,8 +107,6 @@ export const useReviewTokens = ({
       : "--";
 
   return {
-    sourceBalance,
-    destinationBalance,
     sourceToken,
     destinationToken,
     sourceTokenFiatAmount,

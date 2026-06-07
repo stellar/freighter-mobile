@@ -81,7 +81,6 @@ export interface SwapTokenLookupResult {
 
 export interface UseSwapTokenLookupProps {
   network: NETWORKS;
-  publicKey?: string;
   balanceItems: Array<PricedBalance & { id: string }>;
   /**
    * When true, the hook becomes a pure client-side held-balance lookup:
@@ -131,10 +130,6 @@ export const resetTrendingMemoryCacheForTests = (): void => {
 
 export const useSwapTokenLookup = ({
   network,
-  // publicKey is reserved for future use (e.g., issuer-address resolution path);
-  // useTokenLookup uses it for that path. Kept for interface parity.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  publicKey,
   balanceItems,
   holdsOnly = false,
 }: UseSwapTokenLookupProps): SwapTokenLookupResult => {

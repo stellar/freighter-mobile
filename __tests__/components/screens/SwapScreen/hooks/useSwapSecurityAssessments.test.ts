@@ -125,7 +125,7 @@ describe("useSwapSecurityAssessments", () => {
   });
 
   describe("native-XLM exclusion from showSecurityWarning*", () => {
-    it("suppresses showSecurityWarningForSource when sourceTokenId === NATIVE_TOKEN_CODE", () => {
+    it("suppresses the source unable-to-scan signal when sourceTokenId === NATIVE_TOKEN_CODE", () => {
       const { result } = renderHook(() =>
         useSwapSecurityAssessments({
           ...baseProps,
@@ -135,14 +135,16 @@ describe("useSwapSecurityAssessments", () => {
       );
 
       // XLM has no scanResult entry → assessTokenSecurity returns
-      // isUnableToScan=true. But the hook suppresses the gate.
+      // isUnableToScan=true. But the hook suppresses the gate so no
+      // "unable-to-scan-source" warning is emitted.
       expect(
         result.current.sourceBalanceSecurityAssessment.isUnableToScan,
       ).toBe(true);
-      expect(result.current.showSecurityWarningForSource).toBe(false);
+      const ids = result.current.securityWarnings.map((w) => w.id);
+      expect(ids).not.toContain("unable-to-scan-source");
     });
 
-    it("suppresses showSecurityWarningForDestination when descriptor.id === NATIVE_TOKEN_CODE", () => {
+    it("suppresses the destination unable-to-scan signal when descriptor.id === NATIVE_TOKEN_CODE", () => {
       const { result } = renderHook(() =>
         useSwapSecurityAssessments({
           ...baseProps,
@@ -153,7 +155,8 @@ describe("useSwapSecurityAssessments", () => {
       expect(result.current.destBalanceSecurityAssessment.isUnableToScan).toBe(
         true,
       );
-      expect(result.current.showSecurityWarningForDestination).toBe(false);
+      const ids = result.current.securityWarnings.map((w) => w.id);
+      expect(ids).not.toContain("unable-to-scan-destination");
     });
 
     it("isUnableToScan is false when both sides are XLM", () => {
@@ -180,8 +183,9 @@ describe("useSwapSecurityAssessments", () => {
         }),
       );
 
-      expect(result.current.showSecurityWarningForSource).toBe(false);
-      expect(result.current.showSecurityWarningForDestination).toBe(true);
+      const ids = result.current.securityWarnings.map((w) => w.id);
+      expect(ids).not.toContain("unable-to-scan-source");
+      expect(ids).toContain("unable-to-scan-destination");
       expect(result.current.isUnableToScan).toBe(true);
     });
   });

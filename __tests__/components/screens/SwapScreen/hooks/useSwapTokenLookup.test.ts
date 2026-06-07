@@ -245,7 +245,6 @@ describe("useSwapTokenLookup — idle mode", () => {
     const { result } = renderHook(() =>
       useSwapTokenLookup({
         network: NETWORKS.PUBLIC,
-        publicKey: "GTEST",
         balanceItems: held,
       }),
     );
@@ -283,7 +282,6 @@ describe("useSwapTokenLookup — idle mode", () => {
     const { result } = renderHook(() =>
       useSwapTokenLookup({
         network: NETWORKS.PUBLIC,
-        publicKey: "GTEST",
         balanceItems: held,
       }),
     );

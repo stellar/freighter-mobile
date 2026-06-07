@@ -280,7 +280,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     refreshTrending,
   } = useSwapTokenLookup({
     network,
-    publicKey: account?.publicKey,
     balanceItems,
   });
 

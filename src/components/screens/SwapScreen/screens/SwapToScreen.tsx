@@ -74,7 +74,6 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
     handleSearch,
   } = useSwapTokenLookup({
     network,
-    publicKey: account?.publicKey,
     balanceItems,
     // "Swap from" picker only chooses among held tokens — skip the
     // trending fetch and the per-keystroke stellar.expert search so
