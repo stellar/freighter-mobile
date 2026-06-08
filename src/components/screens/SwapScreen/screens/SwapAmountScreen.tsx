@@ -704,7 +704,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
 
   const sellSmallText = buildSellSecondaryText({
     showFiatAmount,
-    tokenAmountDisplay,
+    tokenAmount,
     sourceTokenSymbol,
     fiatAmountDisplay,
   });

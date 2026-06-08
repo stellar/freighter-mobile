@@ -16,25 +16,26 @@ import {
  * shows the fiat equivalent. In fiat-input mode the user types a fiat
  * amount, so the secondary line shows the token equivalent ("0.123 USDC").
  *
- * Both branches must be locale-aware. The Send flow uses the same pair
- * of helpers (`formatTokenForDisplay` + `formatFiatInputDisplay`) for
- * its AmountCard secondary line — mirroring it here keeps the two
- * flows visually consistent and avoids the BigNumber("0,12") = NaN
- * trap that produces "$NaN,00" on EU-style locales.
+ * Pass the converter's RAW values (dot-notation), not the locale-
+ * formatted *Display fields. formatTokenForDisplay constructs a
+ * BigNumber internally and would coerce a comma-decimal string to
+ * NaN — same trap formatFiatInputDisplay sidesteps because it
+ * normalises "," to "." up front. Mirrors the Send flow's AmountCard
+ * secondary-line wiring.
  */
 export const buildSellSecondaryText = ({
   showFiatAmount,
-  tokenAmountDisplay,
+  tokenAmount,
   sourceTokenSymbol,
   fiatAmountDisplay,
 }: {
   showFiatAmount: boolean;
-  tokenAmountDisplay: string;
+  tokenAmount: string;
   sourceTokenSymbol: string;
   fiatAmountDisplay: string;
 }): string =>
   showFiatAmount
-    ? formatTokenForDisplay(tokenAmountDisplay || "0", sourceTokenSymbol)
+    ? formatTokenForDisplay(tokenAmount || "0", sourceTokenSymbol)
     : formatFiatInputDisplay(fiatAmountDisplay || "0");
 
 /**
