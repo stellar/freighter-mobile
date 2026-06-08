@@ -19,7 +19,7 @@ export interface SecurityDetailBottomSheetProps {
   onProceedAnyway?: () => void;
   onClose: () => void;
   securityContext?: SecurityContext;
-  severity: Exclude<SecurityLevel, SecurityLevel.SAFE>;
+  severity?: Exclude<SecurityLevel, SecurityLevel.SAFE>;
   /** The text to display for the "proceed anyway" button */
   proceedAnywayText?: string;
 }
@@ -28,9 +28,9 @@ export interface SecurityDetailBottomSheetProps {
  * Reusable security detail bottom sheet for displaying security warnings.
  * Used for token, site, and transaction security warnings.
  *
- * Severity is required and drives the HEADER copy/icon only. Per-row
- * row icons come from each `warning.severity` so a Malicious-level
- * sheet can still show amber Warning-typed rows correctly.
+ * Severity defaults to MALICIOUS (the most cautious header) and drives the
+ * HEADER copy/icon only. Per-row icons come from each `warning.severity` so
+ * a Malicious-level sheet can still show amber Warning-typed rows correctly.
  */
 export const SecurityDetailBottomSheet: React.FC<
   SecurityDetailBottomSheetProps
@@ -40,7 +40,7 @@ export const SecurityDetailBottomSheet: React.FC<
   onProceedAnyway,
   onClose,
   securityContext = SecurityContext.TRANSACTION,
-  severity,
+  severity = SecurityLevel.MALICIOUS,
   proceedAnywayText,
 }) => {
   const { t } = useAppTranslation();

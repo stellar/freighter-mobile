@@ -14,9 +14,8 @@ import { useEffect, useState } from "react";
  * through, so transient nulls don't reach the UI.
  *
  * The hook computes the current rate (path result first, derived
- * source/destination ratio second) and the sticky string in one place,
- * returning both so the caller can use the current value for math and
- * the sticky one for display.
+ * source/destination ratio second) internally and returns only the
+ * sticky string for display.
  */
 export const useStableConversionRate = ({
   pathResult,
@@ -26,7 +25,7 @@ export const useStableConversionRate = ({
   pathResult: SwapPathResult | null;
   sourceTokenSymbol: string;
   destinationTokenSymbol: string;
-}): { currentConversionRate: string; stableConversionRate: string } => {
+}): { stableConversionRate: string } => {
   const [stableConversionRate, setStableConversionRate] = useState<string>("");
 
   const currentConversionRate =
@@ -52,5 +51,5 @@ export const useStableConversionRate = ({
     }
   }, [currentConversionRate, sourceTokenSymbol, destinationTokenSymbol]);
 
-  return { currentConversionRate, stableConversionRate };
+  return { stableConversionRate };
 };

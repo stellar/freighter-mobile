@@ -66,7 +66,6 @@ import React, {
 import { Keyboard, View } from "react-native";
 import { analytics } from "services/analytics";
 import { TransactionOperationType } from "services/analytics/types";
-import { SecurityLevel } from "services/blockaid/constants";
 
 type SendCollectibleReviewScreenProps = NativeStackScreenProps<
   SendPaymentStackParamList,
@@ -730,7 +729,7 @@ const SendCollectibleReviewScreen: React.FC<
             onCancel={handleCancelSecurityWarning}
             onProceedAnyway={handleConfirmAnyway}
             onClose={handleCancelSecurityWarning}
-            severity={transactionSecuritySeverity ?? SecurityLevel.MALICIOUS}
+            severity={transactionSecuritySeverity}
             proceedAnywayText={
               transactionSecurityAssessment.isUnableToScan
                 ? t("common.continue")

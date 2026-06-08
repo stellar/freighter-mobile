@@ -373,9 +373,7 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
               onClose={() =>
                 securityWarningBottomSheetModalRef.current?.dismiss()
               }
-              severity={
-                securitySeverity as Exclude<SecurityLevel, SecurityLevel.SAFE>
-              }
+              severity={securitySeverity}
               securityContext={SecurityContext.TOKEN}
               proceedAnywayText={
                 isUnableToScanToken

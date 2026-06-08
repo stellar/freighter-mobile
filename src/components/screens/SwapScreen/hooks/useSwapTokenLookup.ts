@@ -228,14 +228,18 @@ export const useSwapTokenLookup = ({
     [balanceItems],
   );
 
-  const hasExistingTrustline = useCallback(
-    (tokenCode: string, issuer: string): boolean => {
-      const id = canonicalId(tokenCode, issuer);
-      // Re-derive the set from the cached key string to avoid a separate ref.
-      if (!heldIdsKey) return false;
-      return heldIdsKey.split("|").includes(id);
-    },
+  // Set form of heldIdsKey for O(1) membership checks — hasExistingTrustline
+  // runs per trending/search record. Derived from the same key string so it
+  // stays in lockstep with the effects that depend on heldIdsKey.
+  const heldIdsSet = useMemo(
+    () => new Set(heldIdsKey ? heldIdsKey.split("|") : []),
     [heldIdsKey],
+  );
+
+  const hasExistingTrustline = useCallback(
+    (tokenCode: string, issuer: string): boolean =>
+      heldIdsSet.has(canonicalId(tokenCode, issuer)),
+    [heldIdsSet],
   );
 
   // -- Idle surface ---------------------------------------------------------

@@ -24,7 +24,6 @@ export const useSwapToEmptyStates = ({
   unverifiedSearchMatches: FormattedSearchTokenRecord[];
   hadSorobanMatches: boolean;
 }): {
-  totalSearchResults: number;
   isSearching: boolean;
   showSorobanEmpty: boolean;
   showNoResults: boolean;
@@ -51,5 +50,5 @@ export const useSwapToEmptyStates = ({
     totalSearchResults === 0 &&
     !showSorobanEmpty;
 
-  return { totalSearchResults, isSearching, showSorobanEmpty, showNoResults };
+  return { isSearching, showSorobanEmpty, showNoResults };
 };

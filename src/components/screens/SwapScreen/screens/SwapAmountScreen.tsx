@@ -92,7 +92,6 @@ import {
   View,
 } from "react-native";
 import { analytics } from "services/analytics";
-import { SecurityLevel } from "services/blockaid/constants";
 
 type SwapAmountScreenProps = NativeStackScreenProps<
   SwapStackParamList,
@@ -905,7 +904,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
             onCancel={handleCancelSecurityWarning}
             onProceedAnyway={handleConfirmAnyway}
             onClose={handleCancelSecurityWarning}
-            severity={swapSecuritySeverity ?? SecurityLevel.MALICIOUS}
+            severity={swapSecuritySeverity}
             proceedAnywayText={
               isUnableToScan
                 ? t("common.continue")

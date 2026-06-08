@@ -234,7 +234,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
             onClose={() =>
               securityWarningBottomSheetModalRef.current?.dismiss()
             }
-            severity={securitySeverity ?? SecurityLevel.MALICIOUS}
+            severity={securitySeverity}
             securityContext={SecurityContext.TOKEN}
           />
         }

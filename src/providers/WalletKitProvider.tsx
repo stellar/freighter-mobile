@@ -1229,7 +1229,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
             onProceedAnyway={handleProceedAnyway}
             onClose={handleCancelSecurityWarning}
             securityContext={securityWarningContext}
-            severity={getSeverity() ?? SecurityLevel.MALICIOUS}
+            severity={getSeverity()}
             proceedAnywayText={getProceedAnywayText()}
           />
         }

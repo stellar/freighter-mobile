@@ -83,7 +83,7 @@ import React, {
 import { Keyboard, TextInput, View } from "react-native";
 import { analytics } from "services/analytics";
 import { TransactionOperationType } from "services/analytics/types";
-import { SecurityContext, SecurityLevel } from "services/blockaid/constants";
+import { SecurityContext } from "services/blockaid/constants";
 import { type UnfundedDestinationContext } from "services/blockaid/helper";
 
 type TransactionAmountScreenProps = NativeStackScreenProps<
@@ -1137,7 +1137,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             onCancel={handleCancelSecurityWarning}
             onProceedAnyway={handleConfirmAnyway}
             onClose={handleCancelSecurityWarning}
-            severity={transactionSecuritySeverity ?? SecurityLevel.MALICIOUS}
+            severity={transactionSecuritySeverity}
             securityContext={SecurityContext.TRANSACTION}
             proceedAnywayText={
               transactionSecurityAssessment.isUnableToScan
