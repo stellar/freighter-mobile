@@ -644,10 +644,15 @@ export const useSwapTokenLookup = ({
     if (signal.aborted) return;
 
     setStellarExpertDown(false);
-    setTrendingTokens(
+    writeTrendingTokens(
       mergeBlockaidScans(intersection, results, overriddenBlockaidResponse),
     );
-  }, [network, hasExistingTrustline, overriddenBlockaidResponse]);
+  }, [
+    network,
+    hasExistingTrustline,
+    overriddenBlockaidResponse,
+    writeTrendingTokens,
+  ]);
 
   // Idle outputs
   // Filter held balances down to classic-only (native + alphanum4/12).
