@@ -28,6 +28,7 @@ interface ManageAccountsProps {
   activeAccount: ActiveAccount | null;
   bottomSheetRef: React.RefObject<BottomSheetModal | null>;
   showAddWallet?: boolean;
+  isLoadingAccounts?: boolean;
 }
 
 const SNAP_VALUE_PERCENT = 80;
@@ -39,6 +40,7 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
   activeAccount,
   bottomSheetRef,
   showAddWallet = true,
+  isLoadingAccounts = false,
 }) => {
   const {
     renameAccount,
@@ -59,7 +61,12 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
 
   const handleSheetPresent = useCallback(
     (index: number) => {
-      if (index >= 0 && accounts.length === 0 && activeAccount) {
+      if (
+        index >= 0 &&
+        accounts.length === 0 &&
+        activeAccount &&
+        !isLoadingAccounts
+      ) {
         showToast({
           toastId: "manage-accounts-load-error",
           variant: "error",
@@ -69,7 +76,7 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
         });
       }
     },
-    [accounts.length, activeAccount, showToast, t],
+    [accounts.length, activeAccount, isLoadingAccounts, showToast, t],
   );
 
   const handleCopyAddress = useCallback(
