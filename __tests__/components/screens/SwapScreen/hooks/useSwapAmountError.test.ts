@@ -131,7 +131,7 @@ describe("useSwapAmountError", () => {
       expect(mockShowToast).toHaveBeenCalledWith(
         expect.objectContaining({
           toastId: SWAP_TOAST_IDS.SWAP_PATH_ERROR,
-          duration: 0, // persistent
+          duration: 3000,
           title: "Path-finding failed",
         }),
       );

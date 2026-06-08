@@ -158,7 +158,7 @@ export const useSwapAmountError = ({
       setActiveError({
         message: pathError,
         toastId: SWAP_TOAST_IDS.SWAP_PATH_ERROR,
-        duration: 0,
+        duration: 3000,
       });
     } else if (
       !pathError &&

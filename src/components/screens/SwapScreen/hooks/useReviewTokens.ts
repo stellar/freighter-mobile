@@ -10,6 +10,7 @@ import {
   PricedBalance,
   TokenTypeWithCustomToken,
 } from "config/types";
+import { usePricesStore } from "ducks/prices";
 import { SwapPathResult } from "ducks/swap";
 import { formatFiatAmount } from "helpers/formatAmount";
 import { useMemo } from "react";
@@ -92,10 +93,17 @@ export const useReviewTokens = ({
     };
   }, [destinationBalance, destinationTokenDescriptor]);
 
+  // Pass the live prices map through so non-held destinations resolve
+  // their fiat via the token-id lookup (strategy 3) — without it the
+  // review sheet renders "--" instead of the dollar amount for any
+  // token the user doesn't already hold.
+  const prices = usePricesStore((state) => state.prices);
+
   const sourceTokenFiatAmountValue = calculateTokenFiatAmount({
     token: sourceToken,
     amount: pathResult?.sourceAmount || sourceAmount,
     balanceItems,
+    prices,
   });
   const sourceTokenFiatAmount =
     sourceTokenFiatAmountValue !== "--"
@@ -106,6 +114,7 @@ export const useReviewTokens = ({
     token: destinationToken,
     amount: pathResult?.destinationAmount || destinationAmount,
     balanceItems,
+    prices,
   });
   const destinationTokenFiatAmount =
     destinationTokenFiatAmountValue !== "--"
