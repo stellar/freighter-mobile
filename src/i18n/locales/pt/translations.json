@@ -25,6 +25,7 @@
     "unknownError": "Erro desconhecido",
     "review": "Revisar",
     "and": " e ",
+    "available": "disponível",
     "yes": "Sim",
     "message": "Mensagem",
     "allow": "Permitir",
@@ -643,6 +644,7 @@
     "scanQRCodeText": "Escanear um QR Code do Freighter"
   },
   "sendSearchContacts": {
+    "myWallets": "Minhas carteiras",
     "unfunded": {
       "title": "A conta de destino não existe",
       "action": "Envie pelo menos 1 XLM para criar a conta.",
@@ -769,6 +771,7 @@
   },
   "transactionAmountScreen": {
     "title": "Enviar",
+    "sendingLabel": "Enviando",
     "percentageButtons": {
       "twentyFive": "25%",
       "fifty": "50%",
@@ -776,8 +779,8 @@
       "max": "Máx"
     },
     "chooseRecipient": "Escolher destinatário",
-    "setAmount": "Definir valor",
-    "reviewButton": "Revisar",
+    "setAmount": "Insira um valor",
+    "reviewButton": "Revisar envio",
     "menu": {
       "fee": "Taxa: {{fee}} XLM",
       "timeout": "Tempo limite: {{timeout}}(s)",

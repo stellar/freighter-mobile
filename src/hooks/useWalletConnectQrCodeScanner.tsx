@@ -2,7 +2,11 @@ import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { WalletConnectManualInputOverlay } from "components/WalletConnectManualInputOverlay";
 import { QRCodeSource } from "config/constants";
-import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
+import {
+  ROOT_NAVIGATOR_ROUTES,
+  RootStackParamList,
+  ScreenTransition,
+} from "config/routes";
 import { useQRDataStore } from "ducks/qrData";
 import { isValidWalletConnectURI } from "helpers/qrValidation";
 import { walletKit } from "helpers/walletKitUtil";
@@ -142,7 +146,7 @@ export const useWalletConnectQrCodeScanner = (): QRCodeScreenReturn => {
     // which fades from AccountQRCodeScreen back to this screen.
     navigation.replace(ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN, {
       showNavigationAsCloseButton: true,
-      transition: "fade",
+      transition: ScreenTransition.Fade,
     });
   }, [navigation]);
 

@@ -11,6 +11,7 @@ const INITIAL_TRANSACTION_SETTINGS_STATE = {
   transactionTimeout: DEFAULT_TRANSACTION_TIMEOUT,
   recipientAddress: "",
   federationAddress: "",
+  recipientName: "",
   selectedTokenId: "",
   selectedCollectibleDetails: {
     collectionAddress: "",
@@ -32,6 +33,7 @@ const INITIAL_TRANSACTION_SETTINGS_STATE = {
  * @property {number} transactionTimeout - Timeout in seconds for the transaction
  * @property {string} recipientAddress - Recipient address for the transaction (resolved G... public key)
  * @property {string} federationAddress - Original federation address (user*domain) if applicable
+ * @property {string} recipientName - Display name for the recipient contact (e.g. wallet name)
  * @property {string} selectedTokenId - ID of the token selected for the transaction
  * @property {string} selectedCollectibleDetails - collection ID and token ID of the collectible selected for the transaction
  * @property {Function} saveMemo - Function to save the memo value
@@ -40,6 +42,7 @@ const INITIAL_TRANSACTION_SETTINGS_STATE = {
  * @property {Function} saveTransactionTimeout - Function to save the transaction timeout value
  * @property {Function} saveRecipientAddress - Function to save the recipient address
  * @property {Function} saveFederationAddress - Function to save the federation address
+ * @property {Function} saveRecipientName - Function to save the recipient display name
  * @property {Function} saveSelectedTokenId - Function to save the selected token ID
  * @property {Function} saveSelectedCollectibleDetails - Function to save the selected collectible details
  * @property {Function} resetSettings - Function to reset all settings to default values
@@ -51,6 +54,7 @@ interface TransactionSettingsState {
   transactionTimeout: number;
   recipientAddress: string;
   federationAddress: string;
+  recipientName: string;
   selectedTokenId: string;
   selectedCollectibleDetails: {
     collectionAddress: string;
@@ -64,6 +68,7 @@ interface TransactionSettingsState {
   saveTransactionTimeout: (timeout: number) => void;
   saveRecipientAddress: (address: string) => void;
   saveFederationAddress: (address: string) => void;
+  saveRecipientName: (name: string) => void;
   saveSelectedTokenId: (tokenId: string) => void;
   saveSelectedCollectibleDetails: (collectibleDetails: {
     collectionAddress: string;
@@ -118,6 +123,12 @@ export const useTransactionSettingsStore = create<TransactionSettingsState>(
      * @param {string} address - The federation address (user*domain)
      */
     saveFederationAddress: (address) => set({ federationAddress: address }),
+
+    /**
+     * Saves the recipient display name (e.g. wallet name or contact name)
+     * @param {string} name - The recipient display name
+     */
+    saveRecipientName: (name) => set({ recipientName: name }),
 
     /**
      * Saves the selected token ID for the transaction

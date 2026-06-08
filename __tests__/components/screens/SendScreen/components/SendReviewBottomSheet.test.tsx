@@ -32,6 +32,7 @@ jest.mock("ducks/transactionSettings", () => ({
   useTransactionSettingsStore: jest.fn(() => ({
     recipientAddress:
       "GA6SXIZIKLJHCZI2KEOBEUUOFMM4JUPPM2UTWX6STAWT25JWIEUFIMFF",
+    federationAddress: "",
     memo: "",
     isMemoRequired: false,
     transactionFee: "0.00001",
@@ -82,6 +83,73 @@ describe("SendReviewBottomSheet", () => {
       );
 
       expect(getByText("Test Account")).toBeTruthy();
+    });
+
+    it("displays federation address above the truncated address when provided", () => {
+      (
+        jest.requireMock("ducks/transactionSettings")
+          .useTransactionSettingsStore as jest.Mock
+      ).mockReturnValueOnce({
+        recipientAddress:
+          "GA6SXIZIKLJHCZI2KEOBEUUOFMM4JUPPM2UTWX6STAWT25JWIEUFIMFF",
+        federationAddress: "account2*stellar.org",
+        recipientName: "",
+        memo: "",
+        isMemoRequired: false,
+        transactionFee: "0.00001",
+        transactionMemo: "",
+      });
+      const { getByText } = renderWithProviders(
+        <SendReviewBottomSheet {...defaultProps} />,
+      );
+
+      expect(getByText("account2*stellar.org")).toBeTruthy();
+      expect(getByText("GA6S...IMFF")).toBeTruthy();
+    });
+
+    it("displays the recipient nickname above the truncated address when provided", () => {
+      (
+        jest.requireMock("ducks/transactionSettings")
+          .useTransactionSettingsStore as jest.Mock
+      ).mockReturnValueOnce({
+        recipientAddress:
+          "GA6SXIZIKLJHCZI2KEOBEUUOFMM4JUPPM2UTWX6STAWT25JWIEUFIMFF",
+        federationAddress: "",
+        recipientName: "Account 2",
+        memo: "",
+        isMemoRequired: false,
+        transactionFee: "0.00001",
+        transactionMemo: "",
+      });
+      const { getByText } = renderWithProviders(
+        <SendReviewBottomSheet {...defaultProps} />,
+      );
+
+      expect(getByText("Account 2")).toBeTruthy();
+      expect(getByText("GA6S...IMFF")).toBeTruthy();
+    });
+
+    it("recipientName takes priority over federationAddress when both are set", () => {
+      (
+        jest.requireMock("ducks/transactionSettings")
+          .useTransactionSettingsStore as jest.Mock
+      ).mockReturnValueOnce({
+        recipientAddress:
+          "GA6SXIZIKLJHCZI2KEOBEUUOFMM4JUPPM2UTWX6STAWT25JWIEUFIMFF",
+        federationAddress: "alice*example.com",
+        recipientName: "Alice's wallet",
+        memo: "",
+        isMemoRequired: false,
+        transactionFee: "0.00001",
+        transactionMemo: "",
+      });
+      const { getByText, queryByText } = renderWithProviders(
+        <SendReviewBottomSheet {...defaultProps} />,
+      );
+
+      expect(getByText("Alice's wallet")).toBeTruthy();
+      // Federation address should not appear when a custom name is set
+      expect(queryByText("alice*example.com")).toBeNull();
     });
   });
 

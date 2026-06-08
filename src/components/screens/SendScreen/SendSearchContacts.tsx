@@ -1,23 +1,28 @@
-/* eslint-disable react/no-unstable-nested-components */
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { DefaultListFooter } from "components/DefaultListFooter";
 import { BaseLayout } from "components/layout/BaseLayout";
-import {
-  RecentContactsList,
-  SearchSuggestionsList,
-} from "components/screens/SendScreen/components";
+import { ContactRow } from "components/screens/SendScreen/components";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
 import { Notification } from "components/sds/Notification";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
-import { CREATE_ACCOUNT_TUTORIAL_URL, QRCodeSource } from "config/constants";
+import {
+  CREATE_ACCOUNT_TUTORIAL_URL,
+  DEFAULT_DEBOUNCE_DELAY,
+  NATIVE_TOKEN_CODE,
+  QRCodeSource,
+} from "config/constants";
+import { logger } from "config/logger";
 import {
   ROOT_NAVIGATOR_ROUTES,
   RootStackParamList,
+  ScreenTransition,
   SEND_PAYMENT_ROUTES,
   SendPaymentStackParamList,
 } from "config/routes";
-import { TokenTypeWithCustomToken } from "config/types";
+import { Account, TokenTypeWithCustomToken } from "config/types";
+import { useAuthenticationStore } from "ducks/auth";
 import { useQRDataStore } from "ducks/qrData";
 import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
@@ -27,16 +32,57 @@ import { isFederationAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
+import useDebounce from "hooks/useDebounce";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
 import { useRightHeaderButton } from "hooks/useRightHeader";
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, View } from "react-native";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  FlatList,
+  ListRenderItemInfo,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { analytics } from "services/analytics";
 
 type SendSearchContactsProps = NativeStackScreenProps<
   RootStackParamList & SendPaymentStackParamList,
   typeof SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN
 >;
+
+enum ContactListItemType {
+  ResultsHeader = "results-header",
+  Suggestion = "suggestion",
+  RecentHeader = "recent-header",
+  Recent = "recent",
+  WalletsHeader = "wallets-header",
+  Wallet = "wallet",
+}
+
+type ContactListItem =
+  | { type: ContactListItemType.ResultsHeader }
+  | {
+      type: ContactListItemType.Suggestion;
+      id: string;
+      address: string;
+      name?: string;
+      itemIndex: number;
+    }
+  | { type: ContactListItemType.RecentHeader }
+  | {
+      type: ContactListItemType.Recent;
+      id: string;
+      address: string;
+      name?: string;
+      itemIndex: number;
+    }
+  | { type: ContactListItemType.WalletsHeader }
+  | {
+      type: ContactListItemType.Wallet;
+      id: string;
+      publicKey: string;
+      name: string;
+    };
 
 /**
  * SendSearchContacts Component
@@ -49,15 +95,19 @@ type SendSearchContactsProps = NativeStackScreenProps<
  */
 const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
   navigation,
+  route,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
+  const { bottom: bottomInset } = useSafeAreaInsets();
+  const { allAccounts, account: activeAccount } = useAuthenticationStore();
   const { open: openInAppBrowser } = useInAppBrowser();
   const { getClipboardText } = useClipboard();
   const [address, setAddress] = useState("");
   const {
     saveRecipientAddress,
     saveFederationAddress,
+    saveRecipientName,
     saveMemo,
     saveMemoType,
     selectedCollectibleDetails,
@@ -97,6 +147,24 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
   const shouldShowUnfundedNotice =
     !isCollectibleSend && !isContractTokenSend && !isContractDestination;
 
+  const myWallets: Account[] = useMemo(
+    () =>
+      (allAccounts ?? []).filter(
+        (acc) => acc.publicKey !== activeAccount?.publicKey,
+      ),
+    [allAccounts, activeAccount?.publicKey],
+  ); // Already using useMemo to prevent keystroke-hot-path recomputation
+
+  const debouncedSearchAddress = useDebounce((searchTerm: string) => {
+    Promise.resolve(searchAddress(searchTerm)).catch((error) => {
+      logger.warn(
+        "SendSearchContacts",
+        "Debounced recipient search failed",
+        error,
+      );
+    });
+  }, DEFAULT_DEBOUNCE_DELAY);
+
   // Load recent addresses when component mounts
   useEffect(() => {
     loadRecentAddresses();
@@ -116,9 +184,6 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
     [clearQRData, saveSelectedCollectibleDetails],
   );
 
-  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const SEARCH_DEBOUNCE_MS = 300;
-
   /**
    * Handles search input changes with debounce to prevent flickering
    * messages and unnecessary intermediate requests while typing.
@@ -128,30 +193,68 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
   const handleSearch = useCallback(
     (text: string) => {
       setAddress(text);
+      debouncedSearchAddress.cancel();
 
-      if (searchDebounceRef.current) {
-        clearTimeout(searchDebounceRef.current);
+      const trimmedText = text.trim();
+
+      if (!trimmedText) {
+        // Reset search state but preserve recent addresses for display
+        const { recentAddresses: currentRecents } =
+          useSendRecipientStore.getState();
+        useSendRecipientStore.setState({
+          searchResults: [],
+          searchError: null,
+          isValidDestination: false,
+          isDestinationFunded: null,
+          destinationAddress: "",
+          federationAddress: "",
+          isSearching: false,
+          recentAddresses: currentRecents,
+        });
+        return;
       }
 
-      // Clear stale results/errors immediately so they don't linger during debounce
       prepareForSearch();
-
-      searchDebounceRef.current = setTimeout(() => {
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        searchAddress(text);
-      }, SEARCH_DEBOUNCE_MS);
+      debouncedSearchAddress(trimmedText);
     },
-    [searchAddress, prepareForSearch],
+    [debouncedSearchAddress, prepareForSearch],
   );
 
-  // Clean up debounce timer on unmount
-  useEffect(
-    () => () => {
-      if (searchDebounceRef.current) {
-        clearTimeout(searchDebounceRef.current);
+  const proceedAfterRecipientSelection = useCallback(
+    (contactAddress: string, name?: string) => {
+      const isBottomSheetOverlay =
+        route.params?.dismissToPreviousScreen &&
+        route.params?.transition === ScreenTransition.SlideFromBottom;
+
+      if (isBottomSheetOverlay) {
+        // Opened as an overlay from review screens (SlideFromBottom).
+        // Stores are already updated above — just dismiss back down.
+        navigation.goBack();
+        return;
+      }
+
+      if (selectedCollectibleDetails.tokenId) {
+        // Navigate to collectible review screen after selecting recipient
+        navigation.navigate(SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW, {
+          ...selectedCollectibleDetails,
+          transition: ScreenTransition.SlideFromBottom,
+        });
+      } else {
+        navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN, {
+          tokenId: selectedTokenId || NATIVE_TOKEN_CODE,
+          recipientAddress: contactAddress,
+          recipientName: name,
+          transition: ScreenTransition.SlideFromBottom,
+        });
       }
     },
-    [],
+    [
+      navigation,
+      route.params?.dismissToPreviousScreen,
+      route.params?.transition,
+      selectedCollectibleDetails,
+      selectedTokenId,
+    ],
   );
 
   /**
@@ -200,32 +303,177 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
       // Transaction settings store is for the transaction flow
       saveRecipientAddress(resolvedAddress);
       saveFederationAddress(isFederation ? contactName : "");
+      // For non-federation recent contacts, preserve the stored display name
+      // (e.g. wallet nicknames). Federation contacts use federationAddress for display.
+      saveRecipientName(!isFederation && contactName ? contactName : "");
       // Apply federation memo and type; clear both for non-federation contacts (H2)
       saveMemo(isFederation && resolvedMemo ? resolvedMemo : "");
       saveMemoType(isFederation && resolvedMemoType ? resolvedMemoType : "");
 
-      if (selectedCollectibleDetails.tokenId) {
-        // Use popTo for collectible flow
-        // If Review exists in stack, pops back to it; otherwise adds it
-        navigation.popTo(
-          SEND_PAYMENT_ROUTES.SEND_COLLECTIBLE_REVIEW,
-          selectedCollectibleDetails,
-        );
-      } else {
-        // For token sends, go back to the TransactionAmountScreen
-        navigation.goBack();
-      }
+      proceedAfterRecipientSelection(resolvedAddress, contactName);
     },
     [
       recentAddresses,
       setDestinationAddress,
       saveRecipientAddress,
       saveFederationAddress,
+      saveRecipientName,
       saveMemo,
       saveMemoType,
       searchAddress,
-      navigation,
-      selectedCollectibleDetails,
+      proceedAfterRecipientSelection,
+    ],
+  );
+
+  const listData = useMemo<ContactListItem[]>(() => {
+    const items: ContactListItem[] = [];
+    const isTyping = address.trim().length > 0;
+
+    if (isTyping && searchResults.length > 0) {
+      items.push({ type: ContactListItemType.ResultsHeader });
+      searchResults.forEach((result, itemIndex) => {
+        items.push({
+          type: ContactListItemType.Suggestion,
+          ...result,
+          itemIndex,
+        });
+      });
+    }
+
+    if (recentAddresses.length > 0) {
+      items.push({ type: ContactListItemType.RecentHeader });
+      recentAddresses.forEach((addr, itemIndex) => {
+        items.push({ type: ContactListItemType.Recent, ...addr, itemIndex });
+      });
+    }
+
+    if (myWallets.length > 0) {
+      items.push({ type: ContactListItemType.WalletsHeader });
+      myWallets.forEach((wallet) => {
+        items.push({
+          type: ContactListItemType.Wallet,
+          id: wallet.id,
+          publicKey: wallet.publicKey,
+          name: wallet.name,
+        });
+      });
+    }
+
+    return items;
+  }, [address, searchResults, recentAddresses, myWallets]);
+
+  const renderContactItem = useCallback(
+    ({ item }: ListRenderItemInfo<ContactListItem>) => {
+      if (item.type === ContactListItemType.ResultsHeader) {
+        return (
+          <View className="mb-[24px]">
+            <View className="flex-row items-center gap-[8px]">
+              <Icon.SearchMd size={16} color={themeColors.text.secondary} />
+              <Text md medium secondary>
+                {t("sendPaymentScreen.suggestions")}
+              </Text>
+            </View>
+          </View>
+        );
+      }
+
+      if (item.type === ContactListItemType.Suggestion) {
+        return (
+          <ContactRow
+            address={item.address}
+            name={item.name}
+            onPress={() => {
+              handleContactPress(item.address, item.name).catch((error) => {
+                logger.warn(
+                  "SendSearchContacts",
+                  "Recipient selection failed",
+                  error,
+                );
+              });
+            }}
+            className="mb-[24px]"
+            testID={`search-suggestion-${item.itemIndex}`}
+          />
+        );
+      }
+
+      if (item.type === ContactListItemType.RecentHeader) {
+        return (
+          <View className="mb-[24px] mt-[8px]">
+            <View className="flex-row items-center gap-[8px]">
+              <Icon.Clock size={16} color={themeColors.text.secondary} />
+              <Text md medium secondary>
+                {t("sendPaymentScreen.recents")}
+              </Text>
+            </View>
+          </View>
+        );
+      }
+
+      if (item.type === ContactListItemType.Recent) {
+        return (
+          <ContactRow
+            address={item.address}
+            name={item.name}
+            onPress={() => {
+              handleContactPress(item.address, item.name).catch((error) => {
+                logger.warn(
+                  "SendSearchContacts",
+                  "Recipient selection failed",
+                  error,
+                );
+              });
+            }}
+            className="mb-[24px]"
+            testID={`recent-contact-${item.itemIndex}`}
+          />
+        );
+      }
+
+      if (item.type === ContactListItemType.WalletsHeader) {
+        return (
+          <View className="flex-row items-center gap-[8px] mb-[24px] mt-[8px]">
+            <Icon.Wallet01 size={16} color={themeColors.text.secondary} />
+            <Text md medium secondary>
+              {t("sendSearchContacts.myWallets")}
+            </Text>
+          </View>
+        );
+      }
+
+      if (item.type === ContactListItemType.Wallet) {
+        return (
+          <ContactRow
+            testID={`my-wallet-row-${item.id}`}
+            address={item.publicKey}
+            name={item.name}
+            onPress={() => {
+              setDestinationAddress(item.publicKey);
+              saveRecipientAddress(item.publicKey);
+              saveFederationAddress("");
+              saveRecipientName(item.name);
+              saveMemo("");
+              saveMemoType("");
+              proceedAfterRecipientSelection(item.publicKey, item.name);
+            }}
+            className="mb-[24px]"
+          />
+        );
+      }
+
+      return null;
+    },
+    [
+      handleContactPress,
+      proceedAfterRecipientSelection,
+      saveRecipientAddress,
+      saveFederationAddress,
+      saveRecipientName,
+      saveMemo,
+      saveMemoType,
+      setDestinationAddress,
+      t,
+      themeColors.text.secondary,
     ],
   );
 
@@ -248,7 +496,7 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
   });
 
   return (
-    <BaseLayout insets={{ top: false }}>
+    <BaseLayout insets={{ top: false, bottom: false }}>
       <View className="flex-1" testID="send-search-contacts-screen">
         <View className="mb-8">
           <Input
@@ -312,23 +560,21 @@ const SendSearchContacts: React.FC<SendSearchContactsProps> = ({
             )}
         </View>
 
-        {searchResults.length > 0 ? (
-          <SearchSuggestionsList
-            suggestions={searchResults}
-            onContactPress={(contactAddress, name) => {
-              handleContactPress(contactAddress, name);
-            }}
-          />
-        ) : (
-          recentAddresses.length > 0 && (
-            <RecentContactsList
-              transactions={recentAddresses}
-              onContactPress={(contactAddress, name) => {
-                handleContactPress(contactAddress, name);
-              }}
-            />
-          )
-        )}
+        <FlatList
+          data={listData}
+          renderItem={renderContactItem}
+          keyExtractor={(item) =>
+            item.type === ContactListItemType.Recent ||
+            item.type === ContactListItemType.Wallet ||
+            item.type === ContactListItemType.Suggestion
+              ? item.id
+              : item.type
+          }
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          ListFooterComponent={DefaultListFooter}
+          contentContainerStyle={{ paddingBottom: bottomInset }}
+        />
       </View>
     </BaseLayout>
   );
