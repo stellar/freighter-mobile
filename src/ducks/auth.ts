@@ -47,6 +47,7 @@ import {
   encryptDataWithDerivedKey,
 } from "helpers/encryptPassword";
 import { createKeyManager } from "helpers/keyManager/keyManager";
+import { scrubStrKeys } from "helpers/stellarStrKey";
 import { clearWalletKitStorage } from "helpers/walletKitUtil";
 import { t } from "i18next";
 import ReactNativeBiometrics from "react-native-biometrics";
@@ -1499,8 +1500,13 @@ const importWallet = async ({
 
     analytics.track(AnalyticsEvent.ACCOUNT_SCREEN_IMPORT_ACCOUNT);
   } catch (error) {
+    // Scrub Stellar StrKeys before sending to analytics — this is a
+    // third-party sink (Amplitude) not covered by Sentry's beforeSend, and the
+    // forwarded message can include uncontrolled native error text.
+    const importFailureMessage =
+      error instanceof Error ? error.message : String(error);
     analytics.trackAccountScreenImportAccountFail(
-      error instanceof Error ? error.message : String(error),
+      scrubStrKeys(importFailureMessage) ?? importFailureMessage,
     );
     // Clean up any partial data on error
     clearAccountData();
@@ -1876,8 +1882,12 @@ const importSecretKeyLocal = async (
 
     analytics.track(AnalyticsEvent.ACCOUNT_SCREEN_IMPORT_ACCOUNT);
   } catch (error) {
+    // Scrub Stellar StrKeys before sending to analytics — third-party sink
+    // (Amplitude) not covered by Sentry's beforeSend.
+    const importFailureMessage =
+      error instanceof Error ? error.message : String(error);
     analytics.trackAccountScreenImportAccountFail(
-      error instanceof Error ? error.message : String(error),
+      scrubStrKeys(importFailureMessage) ?? importFailureMessage,
     );
     throw error;
   }

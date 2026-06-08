@@ -1,35 +1,46 @@
+// Initialize the app i18n instance so t() resolves real translations rather
+// than returning undefined (which would make these assertions vacuous).
 import { getUserFacingError } from "ducks/auth";
+import "i18n";
 import { t } from "i18next";
 
 describe("getUserFacingError", () => {
-  it("passes through a known, already-translated auth error message", () => {
+  it("passes an intentionally-thrown auth error message through unchanged", () => {
     const invalidPassword = t("authStore.error.invalidPassword");
-    const error = new Error(invalidPassword);
+    // Guard against a vacuous (undefined === undefined) assertion.
+    expect(invalidPassword).toBeTruthy();
 
-    expect(getUserFacingError(error, "authStore.error.failedToSignIn")).toBe(
-      invalidPassword,
+    const result = getUserFacingError(
+      new Error(invalidPassword),
+      "authStore.error.failedToSignIn",
     );
+
+    expect(result).toBe(invalidPassword);
+    // Must NOT have been downgraded to the generic fallback.
+    expect(result).not.toBe(t("authStore.error.failedToSignIn"));
   });
 
   it("replaces a raw native error message with the generic fallback", () => {
-    const error = new Error(
-      "Keychain write rejected: User interaction is not allowed.",
+    const result = getUserFacingError(
+      new Error("Keychain write rejected: User interaction is not allowed."),
+      "authStore.error.failedToSignIn",
     );
 
-    expect(getUserFacingError(error, "authStore.error.failedToSignIn")).toBe(
-      t("authStore.error.failedToSignIn"),
-    );
+    expect(result).toBe(t("authStore.error.failedToSignIn"));
+    expect(result).toBeTruthy();
   });
 
   it("downgrades a real authStore.error key that is absent from the safe set", () => {
     // failedToSignIn is a generic fallback key, not an intentionally-thrown
     // user-facing message, so it must NOT be passed through even though it is
     // a valid translation. Guards against accidentally widening the safe set.
-    const error = new Error(t("authStore.error.failedToSignIn"));
+    const result = getUserFacingError(
+      new Error(t("authStore.error.failedToSignIn")),
+      "authStore.error.failedToLoadAccount",
+    );
 
-    expect(
-      getUserFacingError(error, "authStore.error.failedToLoadAccount"),
-    ).toBe(t("authStore.error.failedToLoadAccount"));
+    expect(result).toBe(t("authStore.error.failedToLoadAccount"));
+    expect(result).not.toBe(t("authStore.error.failedToSignIn"));
   });
 
   it("uses the fallback for a non-Error throw", () => {

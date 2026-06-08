@@ -108,8 +108,9 @@ export class ReactNativeKeychainFacade {
 
       await Keychain.setGenericPassword(id, JSON.stringify(key), setOptions);
     } catch (error) {
-      // Preserve the native cause (without the key id) so Sentry groups by
-      // root cause, and attach the original error as `cause`.
+      // Stabilize the thrown message to the native cause (without the per-key
+      // id) so Sentry groups by that message instead of a unique key id, and
+      // attach the original error as `cause` to retain its stack/metadata.
       const wrappedError = new Error(
         `Keychain write rejected: ${
           error instanceof Error ? error.message : String(error)

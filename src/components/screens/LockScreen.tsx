@@ -4,6 +4,7 @@ import InputPasswordTemplate from "components/templates/InputPasswordTemplate";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore, getActiveAccountPublicKey } from "ducks/auth";
+import useAppTranslation from "hooks/useAppTranslation";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 type LockScreenProps = NativeStackScreenProps<
@@ -20,13 +21,20 @@ export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
     logout,
     clearError,
   } = useAuthenticationStore();
+  const { t } = useAppTranslation();
   const [publicKey, setPublicKey] = useState<string | null>(null);
   const [isForgotPasswordModalVisible, setIsForgotPasswordModalVisible] =
     useState(false);
 
+  // Only the invalid-password message belongs inline under the password field.
+  // Every other store error is surfaced app-wide by AuthErrorToastListener, so
+  // passing it inline too would double-display it.
+  const inlineError =
+    error === t("authStore.error.invalidPassword") ? error : null;
+
   // Capture whether an error was already present when this screen mounted so
-  // the clear-on-mount effect doesn't wipe it (e.g. an inline invalid-password
-  // message). Non-inline errors are surfaced app-wide by AuthErrorToastListener.
+  // the clear-on-mount effect doesn't wipe it before it can be surfaced (inline
+  // for invalid-password, or app-wide by AuthErrorToastListener).
   const hasInitialError = useRef(Boolean(error));
 
   // Monitor auth status changes to navigate when unlocked
@@ -55,7 +63,7 @@ export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
 
   // Clear any stale error on mount, but skip if there was already an error
   // present when this screen was first rendered (e.g. a failed account load
-  // after sign-in) — the toast effect below needs to display it first.
+  // after sign-in) so AuthErrorToastListener can surface it first.
   useEffect(() => {
     if (!hasInitialError.current) {
       clearError();
@@ -91,7 +99,7 @@ export const LockScreen: React.FC<LockScreenProps> = ({ navigation }) => {
     <>
       <InputPasswordTemplate
         publicKey={publicKey}
-        error={error}
+        error={inlineError}
         isLoading={isSigningIn}
         handleContinue={handleUnlock}
         handleLogout={handleForgotPassword}

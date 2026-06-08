@@ -31,6 +31,7 @@ export const useAuthErrorToast = (): void => {
     // Messages owned by their originating screen — that screen shows them
     // inline or via its own context-specific toast, so don't surface them
     // again generically (e.g. "Failed to sign up" on the Enable Face ID screen).
+    // Left in the store (not cleared) so the owning screen can render them.
     const handledByScreen = [
       t("authStore.error.invalidPassword"), // inline on lock / verify-password
       t("authStore.error.invalidMnemonicPhrase"), // inline on import-wallet
@@ -38,6 +39,19 @@ export const useAuthErrorToast = (): void => {
       t("authStore.error.failedToImportWallet"), // import-wallet inline / biometrics toast
     ];
     if (handledByScreen.includes(error)) {
+      return;
+    }
+
+    // Best-effort / background failures already logged to Sentry — clear them
+    // silently instead of interrupting the user with a toast (e.g. a logout
+    // cleanup failure on the freshly-reset screen, or a background account-list
+    // refresh on every Home mount).
+    const silentlyCleared = [
+      t("authStore.error.failedToLogout"),
+      t("authStore.error.failedToGetAllAccounts"),
+    ];
+    if (silentlyCleared.includes(error)) {
+      clearError();
       return;
     }
 
@@ -69,7 +83,12 @@ export const useAuthErrorToast = (): void => {
         toastId: AUTH_ERROR_TOAST_ID,
         variant: "error",
         title: t("lockScreen.failedToLoadAccountTitle"),
-        message: accountError,
+        // Use the friendlier copy for the canonical load-failure message so the
+        // body matches the `error`-channel failedToLoadAccount toast (G4).
+        message:
+          accountError === t("authStore.error.failedToLoadAccount")
+            ? t("lockScreen.failedToLoadAccountMessage")
+            : accountError,
         duration: 6000,
       });
     }

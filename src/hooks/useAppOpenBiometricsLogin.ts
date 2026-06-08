@@ -11,6 +11,7 @@ export const useAppOpenBiometricsLogin = (initializing: boolean) => {
     authStatus,
     verifyActionWithBiometrics,
     signIn,
+    clearError,
     hasTriggeredAppOpenBiometricsLogin,
     setHasTriggeredAppOpenBiometricsLogin,
   } = useAuthenticationStore();
@@ -40,6 +41,11 @@ export const useAppOpenBiometricsLogin = (initializing: boolean) => {
           await signIn({ password: biometricPassword });
         }
       }).catch(() => {
+        // Clear any store error set by the underlying signIn so the global
+        // AuthErrorToastListener doesn't race this toast on the shared id (and
+        // a biometric-derived invalidPassword doesn't bleed into LockScreen's
+        // inline field). This biometric toast is the single authoritative one.
+        clearError();
         showToast({
           toastId: AUTH_ERROR_TOAST_ID,
           variant: "error",
@@ -57,6 +63,7 @@ export const useAppOpenBiometricsLogin = (initializing: boolean) => {
     setHasTriggeredAppOpenBiometricsLogin,
     verifyActionWithBiometrics,
     signIn,
+    clearError,
     showToast,
     t,
   ]);

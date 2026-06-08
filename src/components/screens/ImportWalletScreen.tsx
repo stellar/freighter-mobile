@@ -62,12 +62,17 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
             });
           });
         } else {
-          // No biometrics available, proceed with normal import
-          await importWallet({
+          // No biometrics available, proceed with normal import.
+          // importWallet returns false (rather than throwing) on failure, so
+          // gate cleanup on the result instead of treating failure as success.
+          // The failure is surfaced inline via the store error.
+          const success = await importWallet({
             mnemonicPhrase: localMnemonicPhrase,
             password: password!,
           });
-          clearLoginData(); // Clear sensitive data after successful import
+          if (success) {
+            clearLoginData(); // Clear sensitive data after successful import
+          }
         }
         setIsImporting(false);
       })();
