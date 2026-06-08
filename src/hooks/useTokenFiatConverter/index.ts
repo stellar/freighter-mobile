@@ -103,6 +103,21 @@ export const useTokenFiatConverter = ({
     }
   }, [selectedBalance]);
 
+  // Fiat mode is meaningless without a price (conversions would divide by
+  // zero) and the "$ / token" toggle is hidden for unpriced tokens. If we
+  // ever end up in fiat mode without a price — e.g. switching from a priced
+  // to an unpriced token, since RESET_AMOUNTS intentionally preserves the
+  // mode flag — snap back to token mode so the input doesn't get stuck
+  // showing a "$" prefix with no toggle to switch back.
+  useEffect(() => {
+    if (state.showFiatAmount && tokenPrice.isZero()) {
+      dispatch({
+        type: TokenFiatConverterActionType.SET_SHOW_FIAT_AMOUNT,
+        payload: false,
+      });
+    }
+  }, [state.showFiatAmount, tokenPrice]);
+
   // Format token amount display: trim trailing zeros and use locale separator when NOT in fiat mode
   const tokenAmountDisplayDerived = useMemo(() => {
     if (state.showFiatAmount) {

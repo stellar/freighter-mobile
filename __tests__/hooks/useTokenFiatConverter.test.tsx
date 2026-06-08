@@ -79,12 +79,13 @@ describe("useTokenFiatConverter", () => {
     expect(result.current.fiatAmount).toBe("50");
   });
 
-  it("should handle zero token price correctly during conversions", () => {
+  it("forces token mode when the selected token has no price", () => {
     const mockBalance = createMockPricedBalance(100, 0);
     const { result } = renderHook(() =>
       useTokenFiatConverter({ selectedBalance: mockBalance }),
     );
 
+    // Token mode works normally; with no price the fiat value stays 0.
     act(() => {
       result.current.setTokenAmount("10");
     });
@@ -92,15 +93,14 @@ describe("useTokenFiatConverter", () => {
       new BigNumber(0).toFixed(FIAT_DECIMALS),
     );
 
+    // Fiat mode is meaningless without a price, so attempting to switch into
+    // it is auto-corrected back to token mode — otherwise the input would get
+    // stuck showing a "$" prefix with no toggle to switch back (the toggle is
+    // hidden for unpriced tokens).
     act(() => {
       result.current.setShowFiatAmount(true);
     });
-    act(() => {
-      result.current.setFiatAmount("50");
-    });
-    expect(result.current.tokenAmount).toBe(
-      new BigNumber(0).toFixed(DEFAULT_DECIMALS),
-    );
+    expect(result.current.showFiatAmount).toBe(false);
   });
 
   it("should toggle display mode without immediately changing the primary value set", () => {
