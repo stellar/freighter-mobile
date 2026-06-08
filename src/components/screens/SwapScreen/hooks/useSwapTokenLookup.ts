@@ -26,10 +26,6 @@ import { isMainnet } from "helpers/networks";
 import { splitVerifiedTokens } from "helpers/splitVerifiedTokens";
 import { type HeldBalanceItem } from "hooks/useBalancesList";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  assessTokenSecurity,
-  extractSecurityWarnings,
-} from "services/blockaid/helper";
 import { searchToken } from "services/stellarExpert";
 
 export interface SwapTokenLookupResult {
@@ -201,24 +197,11 @@ export const useSwapTokenLookup = ({
           .getState()
           .scanBulkWithCache({ addressList, network });
         if (signal.aborted) return tokens;
-        return tokens.map((token) => {
-          const key = token.issuer
-            ? `${token.tokenCode}-${token.issuer}`
-            : token.tokenCode;
-          const scanResult = bulkScanResult.results?.[key];
-          const securityInfo = assessTokenSecurity(
-            scanResult,
-            overriddenBlockaidResponse,
-          );
-          return {
-            ...token,
-            isSuspicious: securityInfo.isSuspicious,
-            isMalicious: securityInfo.isMalicious,
-            isUnableToScan: securityInfo.isUnableToScan,
-            securityLevel: securityInfo.level,
-            securityWarnings: extractSecurityWarnings(scanResult),
-          };
-        });
+        return mergeBlockaidScans(
+          tokens,
+          bulkScanResult.results ?? {},
+          overriddenBlockaidResponse,
+        );
       } catch {
         // Bulk scan failed (network error, non-mainnet, etc.). Continue
         // without security info — the swap picker still shows results.
