@@ -48,4 +48,22 @@ describe("getUserFacingError", () => {
       getUserFacingError("some string", "authStore.error.failedToImportWallet"),
     ).toBe(t("authStore.error.failedToImportWallet"));
   });
+
+  it.each([
+    "authStore.error.hashKeyNotFound",
+    "authStore.error.temporaryStoreNotFound",
+    "authStore.error.privateKeyNotFound",
+  ])(
+    "replaces internal storage error '%s' with the fallback (not whitelisted)",
+    (key) => {
+      const internalMessage = t(key);
+      expect(internalMessage).toBeTruthy();
+
+      const fallback = "authStore.error.failedToLoadAccount";
+      const result = getUserFacingError(new Error(internalMessage), fallback);
+
+      expect(result).toBe(t(fallback));
+      expect(result).not.toBe(internalMessage);
+    },
+  );
 });
