@@ -90,20 +90,17 @@ export const useBlockaidTokenScansStore = create<BlockaidTokenScansState>()(
       const now = Date.now();
       const cache = forceRefresh ? {} : await readNetworkCache(network);
 
-      const { hits, missing } = addressList.reduce<{
-        hits: Record<string, SingleScan>;
-        missing: string[];
-      }>(
-        (acc, id) => {
-          const entry = cache[id];
-          if (entry && isFresh(entry, now)) {
-            const { _cachedAt, ...scan } = entry;
-            return { ...acc, hits: { ...acc.hits, [id]: scan } };
-          }
-          return { ...acc, missing: [...acc.missing, id] };
-        },
-        { hits: {}, missing: [] },
-      );
+      const hits: Record<string, SingleScan> = {};
+      const missing: string[] = [];
+      addressList.forEach((id) => {
+        const entry = cache[id];
+        if (entry && isFresh(entry, now)) {
+          const { _cachedAt, ...scan } = entry;
+          hits[id] = scan;
+        } else {
+          missing.push(id);
+        }
+      });
 
       if (missing.length === 0) {
         return { results: hits };
@@ -123,16 +120,13 @@ export const useBlockaidTokenScansStore = create<BlockaidTokenScansState>()(
       }
 
       // Merge fresh into cache with current timestamp
-      const updatedCache: NetworkCache = missing.reduce<NetworkCache>(
-        (acc, id) => {
-          const scan = freshScans.results[id];
-          if (scan) {
-            return { ...acc, [id]: { ...scan, _cachedAt: now } };
-          }
-          return acc;
-        },
-        { ...cache },
-      );
+      const updatedCache: NetworkCache = { ...cache };
+      missing.forEach((id) => {
+        const scan = freshScans.results[id];
+        if (scan) {
+          updatedCache[id] = { ...scan, _cachedAt: now };
+        }
+      });
       await writeNetworkCache(network, updatedCache);
 
       return {
@@ -145,20 +139,18 @@ export const useBlockaidTokenScansStore = create<BlockaidTokenScansState>()(
     readScansFor: async (network, addressList) => {
       const now = Date.now();
       const cache = await readNetworkCache(network);
-      return addressList.reduce<{
-        hits: Record<string, SingleScan>;
-        missing: string[];
-      }>(
-        (acc, id) => {
-          const entry = cache[id];
-          if (entry && isFresh(entry, now)) {
-            const { _cachedAt, ...scan } = entry;
-            return { ...acc, hits: { ...acc.hits, [id]: scan } };
-          }
-          return { ...acc, missing: [...acc.missing, id] };
-        },
-        { hits: {}, missing: [] },
-      );
+      const hits: Record<string, SingleScan> = {};
+      const missing: string[] = [];
+      addressList.forEach((id) => {
+        const entry = cache[id];
+        if (entry && isFresh(entry, now)) {
+          const { _cachedAt, ...scan } = entry;
+          hits[id] = scan;
+        } else {
+          missing.push(id);
+        }
+      });
+      return { hits, missing };
     },
   }),
 );
