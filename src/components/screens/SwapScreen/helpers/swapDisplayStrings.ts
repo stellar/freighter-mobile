@@ -2,7 +2,12 @@ import BigNumber from "bignumber.js";
 import { DestinationTokenDescriptor } from "components/screens/SwapScreen/helpers/types";
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import { PricedBalance, Token } from "config/types";
-import { formatBalanceAmount, formatFiatAmount } from "helpers/formatAmount";
+import {
+  formatBalanceAmount,
+  formatFiatAmount,
+  formatFiatInputDisplay,
+  formatTokenForDisplay,
+} from "helpers/formatAmount";
 
 /**
  * Sell-card secondary line.
@@ -10,6 +15,12 @@ import { formatBalanceAmount, formatFiatAmount } from "helpers/formatAmount";
  * In token-input mode the user types a token amount, so the secondary line
  * shows the fiat equivalent. In fiat-input mode the user types a fiat
  * amount, so the secondary line shows the token equivalent ("0.123 USDC").
+ *
+ * Both branches must be locale-aware. The Send flow uses the same pair
+ * of helpers (`formatTokenForDisplay` + `formatFiatInputDisplay`) for
+ * its AmountCard secondary line — mirroring it here keeps the two
+ * flows visually consistent and avoids the BigNumber("0,12") = NaN
+ * trap that produces "$NaN,00" on EU-style locales.
  */
 export const buildSellSecondaryText = ({
   showFiatAmount,
@@ -23,8 +34,8 @@ export const buildSellSecondaryText = ({
   fiatAmountDisplay: string;
 }): string =>
   showFiatAmount
-    ? `${tokenAmountDisplay || "0"} ${sourceTokenSymbol}`.trim()
-    : formatFiatAmount(new BigNumber(fiatAmountDisplay || "0"));
+    ? formatTokenForDisplay(tokenAmountDisplay || "0", sourceTokenSymbol)
+    : formatFiatInputDisplay(fiatAmountDisplay || "0");
 
 /**
  * Pick the most-complete token shape we can hand to AmountCard's picker chip:
@@ -74,7 +85,16 @@ export const buildReceiveTexts = ({
   receiveBigText: string;
   receiveSmallText: string;
 } => {
-  const destinationAmountToken = destinationAmount || "0";
+  // `destinationAmount` arrives from Horizon/the path-finder as a raw
+  // dot-notation string ("0.1228789"). Run it through
+  // formatTokenForDisplay so the rendered amount uses the device
+  // locale's decimal separator (e.g. "0,1228789" on EU-style locales).
+  const destinationAmountToken = formatTokenForDisplay(
+    destinationAmount || "0",
+  );
+  const destinationAmountWithCode = destinationTokenLabel
+    ? `${destinationAmountToken} ${destinationTokenLabel}`
+    : destinationAmountToken;
   const destinationFiatString = destinationFiat
     ? formatFiatAmount(destinationFiat)
     : "$0.00";
@@ -85,7 +105,7 @@ export const buildReceiveTexts = ({
       ? destinationFiatString
       : destinationAmountToken,
     receiveSmallText: showFiatAmount
-      ? `${destinationAmountToken} ${destinationTokenLabel}`.trim()
+      ? destinationAmountWithCode
       : destinationFiatString,
   };
 };
