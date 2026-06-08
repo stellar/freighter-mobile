@@ -31,6 +31,7 @@ import { useSwapStore } from "ducks/swap";
 import useAppTranslation from "hooks/useAppTranslation";
 import { type HeldBalanceItem } from "hooks/useBalancesList";
 import { useBalancesList } from "hooks/useBalancesList";
+import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React, { useRef } from "react";
@@ -48,6 +49,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
+  const { getClipboardText } = useClipboard();
   const { selectionType } = route.params;
   const {
     setSourceToken,
@@ -81,6 +83,10 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
     // typing in the search box stays instant.
     holdsOnly: selectionType === SWAP_SELECTION_TYPES.SOURCE,
   });
+
+  const handlePasteFromClipboard = () => {
+    getClipboardText().then(handleSearch);
+  };
 
   const verifiedInfoSheetRef = useRef<BottomSheetModal>(null);
   const unverifiedInfoSheetRef = useRef<BottomSheetModal>(null);
@@ -196,7 +202,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
       />
       <View className="pt-4">
         <Input
-          placeholder={t("swapScreen.searchPlaceholder")}
+          placeholder={t("addTokenScreen.searchPlaceholder")}
           value={searchTerm}
           onChangeText={handleSearch}
           fieldSize="lg"
@@ -205,6 +211,10 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
           leftElement={
             <Icon.SearchMd size={16} color={themeColors.foreground.primary} />
           }
+          endButton={{
+            content: t("common.paste"),
+            onPress: handlePasteFromClipboard,
+          }}
         />
       </View>
       {/* 16px gap below the Input — mirrors the <View className="h-4" />
