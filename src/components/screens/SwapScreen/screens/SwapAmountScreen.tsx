@@ -661,6 +661,34 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     onSettingsPress: openSettings,
   });
 
+  // Memoized so the FlatList doesn't re-render every trending row on each
+  // amount keystroke — renderItem stays referentially stable unless the
+  // prices map or network changes (data changes are handled by FlatList).
+  const renderTrendingItem = useCallback(
+    // eslint-disable-next-line react/no-unused-prop-types
+    ({ item, index }: { item: FormattedSearchTokenRecord; index: number }) => (
+      <TrendingListItem
+        item={item}
+        prices={prices}
+        network={network}
+        onPress={() => {
+          analytics.track(AnalyticsEvent.SWAP_TRENDING_TOKEN_TAPPED, {
+            tokenCode: item.tokenCode,
+            tokenIssuer: item.issuer ?? "",
+            position: index,
+          });
+          // Dismiss the keyboard so the trending detail sheet has full
+          // unblocked space; otherwise the sheet pops over a raised
+          // keyboard and the Buy CTA sits under it.
+          Keyboard.dismiss();
+          setSelectedTrendingRecord(item);
+          // present() fires via useEffect once the ref is mounted.
+        }}
+      />
+    ),
+    [prices, network],
+  );
+
   if (isProcessing) {
     return (
       <SwapProcessingScreen
@@ -784,33 +812,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         </View>
       )}
     </View>
-  );
-
-  const renderTrendingItem = ({
-    item,
-    index,
-  }: {
-    item: FormattedSearchTokenRecord;
-    index: number;
-  }) => (
-    <TrendingListItem
-      item={item}
-      prices={prices}
-      network={network}
-      onPress={() => {
-        analytics.track(AnalyticsEvent.SWAP_TRENDING_TOKEN_TAPPED, {
-          tokenCode: item.tokenCode,
-          tokenIssuer: item.issuer ?? "",
-          position: index,
-        });
-        // Dismiss the keyboard so the trending detail sheet has full
-        // unblocked space; otherwise the sheet pops over a raised
-        // keyboard and the Buy CTA sits under it.
-        Keyboard.dismiss();
-        setSelectedTrendingRecord(item);
-        // present() fires via useEffect once the ref is mounted.
-      }}
-    />
   );
 
   return (

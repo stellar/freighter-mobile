@@ -10,7 +10,7 @@ import { View } from "react-native";
  * Trending-list row. Falls back to the stellar.expert spot price when
  * /token-prices has no entry (no 24h% available in that case).
  */
-export const TrendingListItem: React.FC<{
+const TrendingListItemComponent: React.FC<{
   item: FormattedSearchTokenRecord;
   prices: TokenPricesMap;
   network: NETWORKS;
@@ -36,3 +36,8 @@ export const TrendingListItem: React.FC<{
     </View>
   );
 };
+
+// Memoized so a parent re-render (e.g. amount keystroke) doesn't re-render
+// rows whose inputs are unchanged. Default shallow compare is correct here:
+// item / prices / onPress all get new references when their data changes.
+export const TrendingListItem = React.memo(TrendingListItemComponent);
