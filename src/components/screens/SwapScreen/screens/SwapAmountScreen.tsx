@@ -122,6 +122,12 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const amountInputRef = useRef<TextInput>(null);
   const { showToast } = useToast();
 
+  // Bridges the gap between `setupSwapTransaction` resolving (isBuilding
+  // flips back to false) and the review sheet's mount animation finishing
+  // — without this latch the CTA briefly snaps out of its loading state
+  // while the sheet is still sliding up.
+  const [isOpeningReviewSheet, setIsOpeningReviewSheet] = useState(false);
+
   const { balanceItems, scanResults } = useBalancesList({
     publicKey: account?.publicKey ?? "",
     network,
@@ -337,7 +343,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     sourceAmount,
     spendableAmount,
     isLoadingPath,
-    isBuilding,
+    isBuilding: isBuilding || isOpeningReviewSheet,
     pathResult,
     pathError,
     amountError,
@@ -486,6 +492,11 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
 
   const prepareSwapTransaction = useCallback(
     async (shouldOpenReview = false) => {
+      // Latch the CTA's loading state for the entire prepare + present
+      // span so the spinner stays continuous through the sheet's mount
+      // animation. Cleared by the sheet's onChange below (index >= 0)
+      // or in the catch path.
+      if (shouldOpenReview) setIsOpeningReviewSheet(true);
       try {
         await setupSwapTransaction();
 
@@ -493,6 +504,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           swapReviewBottomSheetModalRef.current?.present();
         }
       } catch (error) {
+        if (shouldOpenReview) setIsOpeningReviewSheet(false);
         logger.error(
           "SwapAmountScreen",
           "Failed to setup swap transaction:",
@@ -860,6 +872,13 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           setActiveError(null);
         }}
         scrollable
+        bottomSheetModalProps={{
+          // Clear the "opening" latch on the sheet's first state change
+          // (visible OR dismissed) so the CTA's spinner stops the moment
+          // the sheet is on screen, and can never get stuck if the user
+          // somehow dismisses before it reaches its snap point.
+          onChange: () => setIsOpeningReviewSheet(false),
+        }}
         analyticsEvent={AnalyticsEvent.VIEW_SWAP_CONFIRM}
         customContent={
           <SwapReviewBottomSheet
