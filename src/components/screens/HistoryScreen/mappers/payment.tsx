@@ -21,7 +21,7 @@ import {
 import { TokenTypeWithCustomToken } from "config/types";
 import { normalizePaymentToAssetDiffs } from "helpers/assetBalanceChanges";
 import { formatTokenForDisplay } from "helpers/formatAmount";
-import { truncateAddress } from "helpers/stellar";
+import { isSameAccount, truncateAddress } from "helpers/stellar";
 import useColors, { ThemeColors } from "hooks/useColors";
 import { t } from "i18next";
 import React from "react";
@@ -72,7 +72,11 @@ export const mapPaymentHistoryItem = async ({
   // Classic tokens support M address + memo, so preserve memo even for M addresses
   const finalMemo = memo;
 
-  const isRecipient = actualDestination === publicKey;
+  // Use isSameAccount so payments received to a muxed (M...) address are still
+  // recognized as belonging to the user's base (G...) account. A strict equality
+  // check would compare the M... address against the G... publicKey and fail,
+  // misclassifying received muxed payments as sent (see issue #617).
+  const isRecipient = isSameAccount(actualDestination, publicKey);
   const paymentDifference = isRecipient ? "+" : "-";
   const formattedAmount = `${paymentDifference}${formatTokenForDisplay(
     new BigNumber(amount).toString(),
