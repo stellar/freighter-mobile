@@ -17,6 +17,8 @@ interface PricesState {
   /** Fetch prices for arbitrary token identifiers (e.g., from Blockaid diffs) */
   fetchPricesForTokenIds: (params: {
     tokens: TokenIdentifier[];
+    /** Refetch even tokens already in the map (e.g. pull-to-refresh). */
+    forceRefresh?: boolean;
   }) => Promise<void>;
 }
 
@@ -65,15 +67,19 @@ export const usePricesStore = create<PricesState>((set, get) => ({
     }
   },
   /** Lightweight fetch for arbitrary tokens */
-  fetchPricesForTokenIds: async ({ tokens }) => {
+  fetchPricesForTokenIds: async ({ tokens, forceRefresh = false }) => {
     try {
       if (!tokens || tokens.length === 0) return;
-      // Avoid duplicate requests for tokens already loaded
+      // Skip tokens already loaded to avoid duplicate requests — unless the
+      // caller forces a refresh (e.g. pull-to-refresh), since otherwise a
+      // price fetched once would never update for the rest of the session.
       const existing = get().prices;
-      const missing = tokens.filter((t) => !existing[t]);
-      if (missing.length === 0) return;
+      const toFetch = forceRefresh
+        ? tokens
+        : tokens.filter((t) => !existing[t]);
+      if (toFetch.length === 0) return;
 
-      const response = await fetchTokenPrices({ tokens: missing });
+      const response = await fetchTokenPrices({ tokens: toFetch });
       set({
         prices: { ...get().prices, ...response },
         lastUpdated: Date.now(),

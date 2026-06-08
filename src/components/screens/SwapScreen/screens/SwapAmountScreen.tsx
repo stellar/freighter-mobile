@@ -283,26 +283,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     balanceItems,
   });
 
-  // Pull-to-refresh state for the Trending list. On failure, surface a
-  // toast so the user knows the cached list they're seeing is stale; on
-  // success, the SWR refresh swaps the data in silently.
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const handlePullToRefresh = useCallback(async () => {
-    setIsRefreshing(true);
-    try {
-      await refreshTrending();
-    } catch {
-      showToast({
-        variant: "error",
-        title: t("swapScreen.refreshFailed"),
-        toastId: "trending-refresh-failed",
-        duration: 3000,
-      });
-    } finally {
-      setIsRefreshing(false);
-    }
-  }, [refreshTrending, showToast, t]);
-
   const showTrending =
     network === NETWORKS.PUBLIC &&
     !stellarExpertDown &&
@@ -316,10 +296,33 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     isTrendingLoading &&
     trendingTokens.length === 0;
 
-  const { prices } = useSwapTokenPrices({
+  const { prices, refreshPrices } = useSwapTokenPrices({
     enabled: showTrending,
     tokens: trendingTokens,
   });
+
+  // Pull-to-refresh state for the Trending list. On failure, surface a
+  // toast so the user knows the cached list they're seeing is stale; on
+  // success, the SWR refresh swaps the data in silently.
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const handlePullToRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      // Refresh the trending list AND force-refresh prices for the tokens
+      // currently shown. fetchPricesForTokenIds dedupes already-loaded ids,
+      // so without forceRefresh the price + 24h% chips would stay frozen.
+      await Promise.all([refreshTrending(), refreshPrices()]);
+    } catch {
+      showToast({
+        variant: "error",
+        title: t("swapScreen.refreshFailed"),
+        toastId: "trending-refresh-failed",
+        duration: 3000,
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [refreshTrending, refreshPrices, showToast, t]);
 
   // Detail sheet for a tapped Trending row. The sheet is always mounted so
   // its imperative ref is available; we just toggle which record it renders.

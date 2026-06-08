@@ -263,6 +263,90 @@ describe("prices duck", () => {
     });
   });
 
+  describe("fetchPricesForTokenIds", () => {
+    const trendingIds = ["AQUA:GBNAQUA", "yXLM:GYXLM"];
+
+    it("only fetches tokens not already in the map", async () => {
+      const { result } = renderHook(() => usePricesStore());
+
+      act(() => {
+        usePricesStore.setState({
+          prices: {
+            "AQUA:GBNAQUA": {
+              currentPrice: new BigNumber("0.003"),
+              percentagePriceChange24h: new BigNumber("1.2"),
+            },
+          },
+        });
+      });
+
+      await act(async () => {
+        await result.current.fetchPricesForTokenIds({ tokens: trendingIds });
+      });
+
+      // Only the missing token is requested.
+      expect(mockFetchTokenPrices).toHaveBeenCalledWith({
+        tokens: ["yXLM:GYXLM"],
+      });
+    });
+
+    it("does not fetch when all tokens are already loaded", async () => {
+      const { result } = renderHook(() => usePricesStore());
+
+      act(() => {
+        usePricesStore.setState({
+          prices: {
+            "AQUA:GBNAQUA": {
+              currentPrice: new BigNumber("0.003"),
+              percentagePriceChange24h: new BigNumber("1.2"),
+            },
+            "yXLM:GYXLM": {
+              currentPrice: new BigNumber("0.4"),
+              percentagePriceChange24h: new BigNumber("0.5"),
+            },
+          },
+        });
+      });
+
+      await act(async () => {
+        await result.current.fetchPricesForTokenIds({ tokens: trendingIds });
+      });
+
+      expect(mockFetchTokenPrices).not.toHaveBeenCalled();
+    });
+
+    it("refetches already-loaded tokens when forceRefresh is true", async () => {
+      const { result } = renderHook(() => usePricesStore());
+
+      act(() => {
+        usePricesStore.setState({
+          prices: {
+            "AQUA:GBNAQUA": {
+              currentPrice: new BigNumber("0.003"),
+              percentagePriceChange24h: new BigNumber("1.2"),
+            },
+            "yXLM:GYXLM": {
+              currentPrice: new BigNumber("0.4"),
+              percentagePriceChange24h: new BigNumber("0.5"),
+            },
+          },
+        });
+      });
+
+      await act(async () => {
+        await result.current.fetchPricesForTokenIds({
+          tokens: trendingIds,
+          forceRefresh: true,
+        });
+      });
+
+      // forceRefresh bypasses the already-loaded skip → both tokens requested.
+      expect(mockFetchTokenPrices).toHaveBeenCalledWith({
+        tokens: trendingIds,
+      });
+    });
+  });
+
   describe("selector hooks", () => {
     it("should have correct state values", () => {
       const mockLastUpdated = Date.now();

@@ -1,7 +1,7 @@
 import { recordTokenId } from "components/screens/SwapScreen/helpers";
 import { FormattedSearchTokenRecord, TokenPricesMap } from "config/types";
 import { usePricesStore } from "ducks/prices";
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 
 /**
  * Batch-fetches prices for a set of token records and returns the live
@@ -11,6 +11,9 @@ import { useEffect } from "react";
  *
  * Gated by `enabled` (typically `showTrending`) so the source picker —
  * which doesn't render the Trending section — doesn't fire a fetch.
+ *
+ * The initial fetch dedupes tokens already in the store; `refreshPrices`
+ * force-refetches them (wired to pull-to-refresh).
  */
 export const useSwapTokenPrices = ({
   enabled,
@@ -18,7 +21,7 @@ export const useSwapTokenPrices = ({
 }: {
   enabled: boolean;
   tokens: FormattedSearchTokenRecord[];
-}): { prices: TokenPricesMap } => {
+}): { prices: TokenPricesMap; refreshPrices: () => Promise<void> } => {
   const fetchPricesForTokenIds = usePricesStore(
     (state) => state.fetchPricesForTokenIds,
   );
@@ -30,5 +33,11 @@ export const useSwapTokenPrices = ({
     fetchPricesForTokenIds({ tokens: ids });
   }, [enabled, tokens, fetchPricesForTokenIds]);
 
-  return { prices };
+  const refreshPrices = useCallback(async () => {
+    if (tokens.length === 0) return;
+    const ids = tokens.map(recordTokenId);
+    await fetchPricesForTokenIds({ tokens: ids, forceRefresh: true });
+  }, [tokens, fetchPricesForTokenIds]);
+
+  return { prices, refreshPrices };
 };
