@@ -81,6 +81,10 @@ export const useAuthErrorToast = (): void => {
         title: t("lockScreen.failedToLoadAccountTitle"),
         message: t("lockScreen.failedToLoadAccountMessage"),
       },
+      [t("authStore.error.authenticationExpired")]: {
+        title: t("authStore.error.sessionExpiredTitle"),
+        message: t("authStore.error.sessionExpiredMessage"),
+      },
     };
 
     const toastContent = errorToast[error] ?? {
