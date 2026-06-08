@@ -65,6 +65,7 @@ import { descriptorAsPathBalance, useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { calculateSpendableAmount } from "helpers/balances";
+import { formatFiatAmount } from "helpers/formatAmount";
 import { waitForKeyboardDismiss } from "helpers/keyboard";
 import useAppTranslation from "hooks/useAppTranslation";
 import { type HeldBalanceItem, useBalancesList } from "hooks/useBalancesList";
@@ -794,7 +795,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         }
         primaryAmount={destinationTokenDescriptor ? receiveBigText : "0"}
         secondaryAmount={
-          destinationTokenDescriptor ? receiveSmallText : "$0.00"
+          destinationTokenDescriptor ? receiveSmallText : formatFiatAmount("0")
         }
         placeholderActive={!destinationTokenDescriptor}
       />

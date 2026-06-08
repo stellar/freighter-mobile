@@ -66,7 +66,8 @@ export const buildDestinationPickerToken = ({
 
 /**
  * Receive-card amount strings: big = active editable mode value (token or
- * fiat); small = the other one. Both default to "0" / "$0.00" if the
+ * fiat); small = the other one. Both default to locale-formatted zero
+ * values (e.g. "0,00" / "$0,00" on EU-style locales) when the
  * destination amount isn't computed yet.
  */
 export const buildReceiveTexts = ({
@@ -95,9 +96,7 @@ export const buildReceiveTexts = ({
   const destinationAmountWithCode = destinationTokenLabel
     ? `${destinationAmountToken} ${destinationTokenLabel}`
     : destinationAmountToken;
-  const destinationFiatString = destinationFiat
-    ? formatFiatAmount(destinationFiat)
-    : "$0.00";
+  const destinationFiatString = formatFiatAmount(destinationFiat ?? "0");
   return {
     destinationAmountToken,
     destinationFiatString,
