@@ -198,6 +198,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     fiatAmountDisplay,
     showFiatAmount,
     setTokenAmount,
+    updateFiatDisplay,
   } = converter;
 
   // Sync the converter's token amount back into the swap store. The store's
@@ -385,15 +386,53 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     (percentage: number) => {
       if (!spendableAmount) return;
 
+      const targetAmount =
+        percentage === 100
+          ? spendableAmount
+          : spendableAmount.multipliedBy(percentage / 100);
+
       if (percentage === 100) {
         analytics.track(AnalyticsEvent.SEND_PAYMENT_SET_MAX);
-        setTokenAmount(spendableAmount.toString());
-      } else {
-        const targetAmount = spendableAmount.multipliedBy(percentage / 100);
-        setTokenAmount(targetAmount.toFixed(DEFAULT_DECIMALS));
       }
+
+      // In fiat-input mode the primary display IS the fiat field, so we
+      // have to update fiatAmountDisplay alongside the token amount —
+      // mirrors the Send flow's handler. Round-trip through the token
+      // price so the displayed fiat never implies more tokens than
+      // `spendableAmount`.
+      if (showFiatAmount && sourceBalance?.currentPrice) {
+        const tokenPrice = sourceBalance.currentPrice;
+        if (!tokenPrice.isZero()) {
+          let fiatAmount = targetAmount.multipliedBy(tokenPrice);
+          let fiatString = fiatAmount.toFixed(2);
+
+          let convertedBack = new BigNumber(fiatString).dividedBy(tokenPrice);
+          if (convertedBack.isGreaterThan(spendableAmount)) {
+            // 2-decimal rounding can tip the fiat string back over
+            // spendable; shave a cent and recompute.
+            fiatAmount = fiatAmount.minus(0.01);
+            fiatString = fiatAmount.toFixed(2);
+            convertedBack = new BigNumber(fiatString).dividedBy(tokenPrice);
+          }
+
+          const finalToken = BigNumber.minimum(convertedBack, spendableAmount);
+          const finalFiat = finalToken.multipliedBy(tokenPrice).toFixed(2);
+
+          updateFiatDisplay(finalFiat);
+          setTokenAmount(finalToken.toFixed(DEFAULT_DECIMALS));
+          return;
+        }
+      }
+
+      setTokenAmount(targetAmount.toFixed(DEFAULT_DECIMALS));
     },
-    [spendableAmount, setTokenAmount],
+    [
+      spendableAmount,
+      showFiatAmount,
+      sourceBalance,
+      setTokenAmount,
+      updateFiatDisplay,
+    ],
   );
 
   // Tapped from inside XlmReserveBottomSheet. Picks the sell token,
