@@ -118,11 +118,13 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
 
   const confirmSkip = useCallback(() => {
     if (biometryType) {
-      storeBiometricPassword(password!).then(() => {
-        navigation.navigate(AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN, {
-          source: BiometricsSource.ONBOARDING,
-        });
-      });
+      storeBiometricPassword(password!)
+        .then(() => {
+          navigation.navigate(AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN, {
+            source: BiometricsSource.ONBOARDING,
+          });
+        })
+        .catch(notifySetupFailed);
     } else {
       // No biometrics available, proceed with normal signup
       signUp({

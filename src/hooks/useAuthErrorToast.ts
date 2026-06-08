@@ -42,29 +42,56 @@ export const useAuthErrorToast = (): void => {
       return;
     }
 
-    // Best-effort / background failures already logged to Sentry — clear them
-    // silently instead of interrupting the user with a toast (e.g. a logout
-    // cleanup failure on the freshly-reset screen, or a background account-list
-    // refresh on every Home mount).
-    const silentlyCleared = [
-      t("authStore.error.failedToLogout"),
-      t("authStore.error.failedToGetAllAccounts"),
-    ];
+    // Background failures that are expected / already logged — clear without
+    // interrupting the user (e.g. a background account-list refresh on every
+    // Home mount; surfaced contextually in ManageAccounts instead).
+    const silentlyCleared = [t("authStore.error.failedToGetAllAccounts")];
     if (silentlyCleared.includes(error)) {
       clearError();
       return;
     }
 
-    const isLoadAccount = error === t("authStore.error.failedToLoadAccount");
+    // Map each known error key to a specific title + message pair.
+    const errorToast: Record<string, { title: string; message: string }> = {
+      [t("authStore.error.failedToSignIn")]: {
+        title: t("authStore.error.signInFailedTitle"),
+        message: t("authStore.error.signInFailedMessage"),
+      },
+      [t("authStore.error.failedToLogout")]: {
+        title: t("authStore.error.logoutFailedTitle"),
+        message: t("authStore.error.logoutFailedMessage"),
+      },
+      [t("authStore.error.failedToCreateAccount")]: {
+        title: t("authStore.error.createAccountFailedTitle"),
+        message: t("authStore.error.createAccountFailedMessage"),
+      },
+      [t("authStore.error.failedToSelectAccount")]: {
+        title: t("authStore.error.selectAccountFailedTitle"),
+        message: t("authStore.error.selectAccountFailedMessage"),
+      },
+      [t("authStore.error.failedToRenameAccount")]: {
+        title: t("authStore.error.renameAccountFailedTitle"),
+        message: t("authStore.error.renameAccountFailedMessage"),
+      },
+      [t("authStore.error.failedToImportSecretKey")]: {
+        title: t("authStore.error.importSecretKeyFailedTitle"),
+        message: t("authStore.error.importSecretKeyFailedMessage"),
+      },
+      [t("authStore.error.failedToLoadAccount")]: {
+        title: t("lockScreen.failedToLoadAccountTitle"),
+        message: t("lockScreen.failedToLoadAccountMessage"),
+      },
+    };
+
+    const toastContent = errorToast[error] ?? {
+      title: t("authStore.error.notificationTitle"),
+      message: error,
+    };
+
     showToast({
       toastId: AUTH_ERROR_TOAST_ID,
       variant: "error",
-      title: isLoadAccount
-        ? t("lockScreen.failedToLoadAccountTitle")
-        : t("authStore.error.notificationTitle"),
-      message: isLoadAccount
-        ? t("lockScreen.failedToLoadAccountMessage")
-        : error,
+      ...toastContent,
       duration: 6000,
     });
     clearError();

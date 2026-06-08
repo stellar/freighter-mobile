@@ -15,6 +15,7 @@ import { ActiveAccount, useAuthenticationStore } from "ducks/auth";
 import { toPercent } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
+import { useToast } from "providers/ToastProvider";
 import React, { useCallback, useState } from "react";
 import { analytics } from "services/analytics";
 
@@ -46,6 +47,7 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
     isSwitchingAccount,
   } = useAuthenticationStore();
   const { copyToClipboard } = useClipboard();
+  const { showToast } = useToast();
   const { t } = useAppTranslation();
 
   const [accountToRename, setAccountToRename] = useState<Account | null>(null);
@@ -54,6 +56,21 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
   const [switchingToPublicKey, setSwitchingToPublicKey] = useState<
     string | null
   >(null);
+
+  const handleSheetPresent = useCallback(
+    (index: number) => {
+      if (index >= 0 && accounts.length === 0 && activeAccount) {
+        showToast({
+          toastId: "manage-accounts-load-error",
+          variant: "error",
+          title: t("authStore.error.getAccountsFailedTitle"),
+          message: t("authStore.error.getAccountsFailedMessage"),
+          duration: 6000,
+        });
+      }
+    },
+    [accounts.length, activeAccount, showToast, t],
+  );
 
   const handleCopyAddress = useCallback(
     (publicKey?: string) => {
@@ -139,6 +156,7 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
         enablePanDownToClose={false}
         enableDynamicSizing={false}
         analyticsEvent={AnalyticsEvent.VIEW_MANAGE_WALLETS}
+        bottomSheetModalProps={{ onChange: handleSheetPresent }}
         customContent={
           <ManageAccountBottomSheet
             handleCloseModal={handleCloseModal}

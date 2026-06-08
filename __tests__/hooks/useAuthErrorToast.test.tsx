@@ -48,10 +48,10 @@ describe("useAuthErrorToast", () => {
     expect(mockClearError).not.toHaveBeenCalled();
   });
 
-  it("silently clears a best-effort error (failedToLogout) without toasting", () => {
+  it("silently clears failedToGetAllAccounts without toasting", () => {
     mockStoreState = {
       ...baseState(),
-      error: "authStore.error.failedToLogout",
+      error: "authStore.error.failedToGetAllAccounts",
     };
     renderHook(() => useAuthErrorToast());
 
@@ -59,7 +59,24 @@ describe("useAuthErrorToast", () => {
     expect(mockClearError).toHaveBeenCalledTimes(1);
   });
 
-  it("toasts a generic error with the generic title, then clears it", () => {
+  it("toasts failedToLogout with its specific title and message", () => {
+    mockStoreState = {
+      ...baseState(),
+      error: "authStore.error.failedToLogout",
+    };
+    renderHook(() => useAuthErrorToast());
+
+    expect(mockShowToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        toastId: AUTH_ERROR_TOAST_ID,
+        title: "authStore.error.logoutFailedTitle",
+        message: "authStore.error.logoutFailedMessage",
+      }),
+    );
+    expect(mockClearError).toHaveBeenCalledTimes(1);
+  });
+
+  it("toasts failedToSignIn with its specific title and message", () => {
     mockStoreState = {
       ...baseState(),
       error: "authStore.error.failedToSignIn",
@@ -69,8 +86,25 @@ describe("useAuthErrorToast", () => {
     expect(mockShowToast).toHaveBeenCalledWith(
       expect.objectContaining({
         toastId: AUTH_ERROR_TOAST_ID,
+        title: "authStore.error.signInFailedTitle",
+        message: "authStore.error.signInFailedMessage",
+      }),
+    );
+    expect(mockClearError).toHaveBeenCalledTimes(1);
+  });
+
+  it("toasts an unknown error with the generic title, then clears it", () => {
+    mockStoreState = {
+      ...baseState(),
+      error: "authStore.error.unknownError",
+    };
+    renderHook(() => useAuthErrorToast());
+
+    expect(mockShowToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        toastId: AUTH_ERROR_TOAST_ID,
         title: "authStore.error.notificationTitle",
-        message: "authStore.error.failedToSignIn",
+        message: "authStore.error.unknownError",
       }),
     );
     expect(mockClearError).toHaveBeenCalledTimes(1);

@@ -2785,9 +2785,6 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
   },
 
   selectAccount: async (publicKey: string) => {
-    // Clear previous account data immediately to prevent showing stale data
-    clearAccountData();
-
     set({ isSwitchingAccount: true, error: null });
     try {
       // Security: Check auth status before allowing account switching
@@ -2803,6 +2800,9 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
         return;
       }
 
+      // Only clear stale data once the switch is confirmed to proceed —
+      // if anything above throws, the previous account's data stays intact.
+      clearAccountData();
       await selectAccount(publicKey);
       const activeAccount = await getActiveAccount(authStatus);
       set({ account: activeAccount, isSwitchingAccount: false });
