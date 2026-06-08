@@ -224,10 +224,12 @@ export const RootNavigator = () => {
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK}
             component={SendPaymentStackNavigator}
+            options={getStackBottomNavigateOptions()}
           />
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.SWAP_STACK}
             component={SwapStackNavigator}
+            options={getStackBottomNavigateOptions()}
           />
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN}

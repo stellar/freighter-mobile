@@ -168,6 +168,22 @@ describe("useTokenFiatConverter", () => {
   });
 
   describe("Mid-typing scenarios", () => {
+    it("should handle full pasted token text through reducer path", () => {
+      const mockBalance = createMockPricedBalance(100, 2.5);
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({
+          selectedBalance: mockBalance,
+        }),
+      );
+
+      act(() => {
+        result.current.handleDisplayAmountChange("0.000001");
+      });
+
+      expect(result.current.tokenAmount).toBe("0.000001");
+      expect(result.current.tokenAmountDisplay).toBe("0.000001");
+    });
+
     it("should preserve typing state when typing '100.' in token amount", () => {
       const mockBalance = createMockPricedBalance(100, 2.5);
       const { result } = renderHook(() =>

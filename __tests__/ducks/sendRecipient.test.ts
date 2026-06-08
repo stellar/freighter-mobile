@@ -327,9 +327,7 @@ describe("sendRecipient Duck", () => {
   it("should reset all search-related state", () => {
     act(() => {
       store.setState({
-        searchResults: [
-          { id: "1", address: "address" },
-        ],
+        searchResults: [{ id: "1", address: "address" }],
         destinationAddress: "address",
         federationAddress: "fed*address",
         isSearching: true,

@@ -101,6 +101,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   const {
     recipientAddress,
     federationAddress,
+    recipientName,
     transactionMemo,
     transactionFee,
   } = useTransactionSettingsStore();
@@ -231,6 +232,44 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
    */
 
   const isRecipientMuxed = isMuxedAccount(recipientAddress);
+
+  /**
+   * Renders the recipient display label. Priority order:
+   * 1. recipientName (wallet nicknames or custom contact labels)
+   * 2. federationAddress (truncated, when no custom name is set)
+   * 3. The truncated public key alone (fallback)
+   */
+  const renderRecipientLabel = () => {
+    if (recipientName) {
+      return (
+        <>
+          <Text xl medium numberOfLines={2}>
+            {recipientName}
+          </Text>
+          <Text md medium secondary numberOfLines={1}>
+            {slicedAddress}
+          </Text>
+        </>
+      );
+    }
+    if (federationAddress) {
+      return (
+        <>
+          <Text xl medium>
+            {truncateFedAddress(federationAddress)}
+          </Text>
+          <Text md medium secondary>
+            {slicedAddress}
+          </Text>
+        </>
+      );
+    }
+    return (
+      <Text xl medium>
+        {slicedAddress}
+      </Text>
+    );
+  };
 
   const transactionDetailsList: ListItemProps[] = useMemo(
     () =>
@@ -395,22 +434,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
               publicAddress={recipientAddress}
               hasDarkBackground
             />
-            <View className="flex-1">
-              {federationAddress ? (
-                <>
-                  <Text xl medium>
-                    {truncateFedAddress(federationAddress)}
-                  </Text>
-                  <Text md medium secondary>
-                    {slicedAddress}
-                  </Text>
-                </>
-              ) : (
-                <Text xl medium>
-                  {slicedAddress}
-                </Text>
-              )}
-            </View>
+            <View className="flex-1">{renderRecipientLabel()}</View>
           </View>
         </View>
       </View>
