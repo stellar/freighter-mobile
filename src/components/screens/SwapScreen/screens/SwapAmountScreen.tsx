@@ -297,9 +297,22 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     isTrendingLoading &&
     trendingTokens.length === 0;
 
+  // Non-held destinations need their price explicitly fetched — the
+  // trending list only covers the stellar.expert top 50. Without this
+  // the receive-card fiat is stuck on "--" for any non-trending token
+  // the user picks, until they add a trustline.
+  const extraPriceIds = useMemo(() => {
+    const ids: string[] = [];
+    if (destinationTokenDescriptor?.id) {
+      ids.push(destinationTokenDescriptor.id);
+    }
+    return ids;
+  }, [destinationTokenDescriptor?.id]);
+
   const { prices, refreshPrices } = useSwapTokenPrices({
     enabled: showTrending,
     tokens: trendingTokens,
+    extraTokenIds: extraPriceIds,
   });
 
   // Pull-to-refresh state for the Trending list. On failure, surface a

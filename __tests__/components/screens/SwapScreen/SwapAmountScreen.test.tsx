@@ -805,7 +805,11 @@ describe("SwapAmountScreen", () => {
       expect(queryAllByText("yXLM").length).toBeGreaterThan(0);
     });
 
-    it("calls fetchPricesForTokenIds for the trending list", () => {
+    it("calls fetchPricesForTokenIds for the trending list + the active destination", () => {
+      // The destination (FTT) is non-held in this fixture, so its price
+      // is appended to the trending-list fetch. Without this the
+      // receive card sits on '--' for any non-trending token the user
+      // picks until they add a trustline.
       renderWithProviders(
         <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
       );
@@ -813,6 +817,7 @@ describe("SwapAmountScreen", () => {
         tokens: [
           "AQUA:GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
           "yXLM:GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55",
+          "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
         ],
       });
     });
