@@ -70,16 +70,23 @@ export const buildDestinationPickerToken = ({
  * fiat); small = the other one. Both default to locale-formatted zero
  * values (e.g. "0,00" / "$0,00" on EU-style locales) when the
  * destination amount isn't computed yet.
+ *
+ * `destinationFiat === undefined` ambiguously covers two cases: the
+ * amount is zero (no fiat to compute yet) AND the token has no known
+ * price. `hasDestinationPrice` resolves that ambiguity — known price +
+ * zero amount stays at "$0.00", unknown price renders "--".
  */
 export const buildReceiveTexts = ({
   showFiatAmount,
   destinationAmount,
   destinationFiat,
+  hasDestinationPrice,
   destinationTokenLabel,
 }: {
   showFiatAmount: boolean;
   destinationAmount: string;
   destinationFiat: BigNumber | undefined;
+  hasDestinationPrice: boolean;
   destinationTokenLabel: string;
 }): {
   destinationAmountToken: string;
@@ -97,14 +104,17 @@ export const buildReceiveTexts = ({
   const destinationAmountWithCode = destinationTokenLabel
     ? `${destinationAmountToken} ${destinationTokenLabel}`
     : destinationAmountToken;
-  // When destinationFiat is undefined the destination has no resolvable
-  // price (not in the prices store and not embedded on the descriptor).
-  // Coercing to 0 would format as "$0.00", which falsely implies the
-  // user is receiving zero value. "--" matches the sentinel we use
-  // elsewhere when a price is genuinely unknown.
-  const destinationFiatString = destinationFiat
-    ? formatFiatAmount(destinationFiat)
-    : "--";
+  let destinationFiatString: string;
+  if (destinationFiat) {
+    destinationFiatString = formatFiatAmount(destinationFiat);
+  } else if (hasDestinationPrice) {
+    // Token has a known price, just no amount to multiply yet — show
+    // zero so the placeholder reads "you'd receive ~$0.00" rather
+    // than the "unknown price" sentinel.
+    destinationFiatString = formatFiatAmount("0");
+  } else {
+    destinationFiatString = "--";
+  }
   return {
     destinationAmountToken,
     destinationFiatString,

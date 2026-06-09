@@ -541,6 +541,28 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     [destinationAmount, destinationBalance, destinationTokenDescriptor, prices],
   );
 
+  // Held balance carries currentPrice when /token-prices has it;
+  // non-held destinations rely on the prices map keyed on
+  // "<code>:<issuer>" (or NATIVE_TOKEN_CODE for XLM). Used to keep the
+  // receive-card fiat at "$0.00" instead of "--" while the user hasn't
+  // typed an amount yet — "--" should be reserved for tokens we
+  // genuinely don't have a price for.
+  const hasDestinationPrice = useMemo(() => {
+    if (
+      destinationBalance?.currentPrice &&
+      !destinationBalance.currentPrice.isZero()
+    ) {
+      return true;
+    }
+    if (destinationTokenDescriptor) {
+      const tokenId = destinationTokenDescriptor.issuer
+        ? `${destinationTokenDescriptor.tokenCode}:${destinationTokenDescriptor.issuer}`
+        : destinationTokenDescriptor.tokenCode;
+      return !!prices[tokenId]?.currentPrice;
+    }
+    return false;
+  }, [destinationBalance, destinationTokenDescriptor, prices]);
+
   const prepareSwapTransaction = useCallback(
     async (shouldOpenReview = false) => {
       // Latch the CTA's loading state for the entire prepare + present
@@ -765,6 +787,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     showFiatAmount,
     destinationAmount,
     destinationFiat,
+    hasDestinationPrice,
     destinationTokenLabel,
   });
   const sourceBalanceRight = buildSourceBalanceRight({
