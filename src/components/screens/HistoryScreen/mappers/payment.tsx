@@ -72,10 +72,8 @@ export const mapPaymentHistoryItem = async ({
   // Classic tokens support M address + memo, so preserve memo even for M addresses
   const finalMemo = memo;
 
-  // Use isSameAccount so payments received to a muxed (M...) address are still
-  // recognized as belonging to the user's base (G...) account. A strict equality
-  // check would compare the M... address against the G... publicKey and fail,
-  // misclassifying received muxed payments as sent (see issue #617).
+  // isSameAccount resolves muxed (M...) addresses to their base (G...) account,
+  // so payments received to the user's muxed address aren't misclassified.
   const isRecipient = isSameAccount(actualDestination, publicKey);
   const paymentDifference = isRecipient ? "+" : "-";
   const formattedAmount = `${paymentDifference}${formatTokenForDisplay(
