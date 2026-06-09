@@ -1,4 +1,5 @@
 /* eslint-disable no-underscore-dangle */
+import FastImage from "@d11/react-native-fast-image";
 import { canonicalId } from "components/screens/SwapScreen/helpers/canonicalId";
 import { computeTrendingIntersection } from "components/screens/SwapScreen/helpers/computeTrendingIntersection";
 import { formatClassicRecord } from "components/screens/SwapScreen/helpers/formatClassicRecord";
@@ -165,13 +166,34 @@ export const useSwapTokenLookup = ({
   const [status, setStatus] = useState<HookStatus>(HookStatus.IDLE);
   const [isTrendingLoading, setIsTrendingLoading] = useState<boolean>(false);
 
+  // Tracks icon URLs we've already pushed to FastImage.preload so we
+  // don't re-call native on every trending-list update. Native dedup
+  // would be cheap, but skipping the bridge hop is cheaper.
+  const preloadedIconUrlsRef = useRef<Set<string>>(new Set());
+
   // Co-mutate the module-scoped trending cache alongside React state so
-  // future mounts hydrate synchronously from memory. Pass the same
-  // value you'd pass to setTrendingTokens.
+  // future mounts hydrate synchronously from memory. Also warm the
+  // native image cache for each row's icon URL — without this, every
+  // trending row mounts a fresh FastImage that races a 3s onLoad
+  // deadline against a parallel-fetch storm of N issuer CDNs. iOS
+  // handles that storm fine, Android's Glide stack times out the
+  // long tail and locks the row into the 2-letter fallback. Preloading
+  // up front lets each row hit the cache instead of the network.
   const writeTrendingTokens = useCallback(
     (tokens: FormattedSearchTokenRecord[]) => {
       trendingMemoryCacheByNetwork.set(network, tokens);
       setTrendingTokens(tokens);
+
+      const toPreload: { uri: string }[] = [];
+      tokens.forEach((t) => {
+        if (t.iconUrl && !preloadedIconUrlsRef.current.has(t.iconUrl)) {
+          preloadedIconUrlsRef.current.add(t.iconUrl);
+          toPreload.push({ uri: t.iconUrl });
+        }
+      });
+      if (toPreload.length > 0) {
+        FastImage.preload(toPreload);
+      }
     },
     [network],
   );
