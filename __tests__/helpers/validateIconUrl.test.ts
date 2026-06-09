@@ -1,5 +1,8 @@
 import FastImage from "@d11/react-native-fast-image";
-import { validateIconUrl } from "helpers/validateIconUrl";
+import {
+  ICON_VALIDATION_TIMEOUT,
+  validateIconUrl,
+} from "helpers/validateIconUrl";
 
 // Mock debug helper
 jest.mock("helpers/debug", () => ({
@@ -98,17 +101,20 @@ describe("validateIconUrl", () => {
       expect(FastImage.preload).not.toHaveBeenCalled();
     });
 
-    it("should return false on timeout (after 3 seconds)", async () => {
+    it("should return false on timeout (after ICON_VALIDATION_TIMEOUT)", async () => {
       (global.fetch as jest.Mock).mockImplementation(
         () =>
           new Promise((resolve) => {
-            setTimeout(() => resolve({ ok: true, status: 200 }), 10000);
+            setTimeout(
+              () => resolve({ ok: true, status: 200 }),
+              ICON_VALIDATION_TIMEOUT * 2,
+            );
           }),
       );
 
       const promise = validateIconUrl("https://example.com/slow-logo.png");
 
-      jest.advanceTimersByTime(3000);
+      jest.advanceTimersByTime(ICON_VALIDATION_TIMEOUT);
 
       const result = await promise;
       expect(result).toBe(false);
@@ -172,13 +178,16 @@ describe("validateIconUrl", () => {
       (global.fetch as jest.Mock).mockImplementation(
         () =>
           new Promise((_, reject) => {
-            setTimeout(() => reject(new Error("Request timeout")), 5000);
+            setTimeout(
+              () => reject(new Error("Request timeout")),
+              ICON_VALIDATION_TIMEOUT * 2,
+            );
           }),
       );
 
       const promise = validateIconUrl("https://example.com/slow-logo.png");
 
-      jest.advanceTimersByTime(3000);
+      jest.advanceTimersByTime(ICON_VALIDATION_TIMEOUT);
 
       const result = await promise;
       expect(result).toBe(false);
@@ -266,29 +275,35 @@ describe("validateIconUrl", () => {
       (global.fetch as jest.Mock).mockImplementation(
         () =>
           new Promise((resolve) => {
-            setTimeout(() => resolve({ ok: true, status: 200 }), 2999);
+            setTimeout(
+              () => resolve({ ok: true, status: 200 }),
+              ICON_VALIDATION_TIMEOUT - 1,
+            );
           }),
       );
 
       const promise = validateIconUrl("https://example.com/logo.png");
 
-      jest.advanceTimersByTime(2999);
+      jest.advanceTimersByTime(ICON_VALIDATION_TIMEOUT - 1);
       const result = await promise;
 
       expect(result).toBe(true);
     });
 
-    it("should timeout if fetch takes exactly 3 seconds", async () => {
+    it("should timeout if fetch takes exactly ICON_VALIDATION_TIMEOUT ms", async () => {
       (global.fetch as jest.Mock).mockImplementation(
         () =>
           new Promise((resolve) => {
-            setTimeout(() => resolve({ ok: true, status: 200 }), 3000);
+            setTimeout(
+              () => resolve({ ok: true, status: 200 }),
+              ICON_VALIDATION_TIMEOUT,
+            );
           }),
       );
 
       const promise = validateIconUrl("https://example.com/logo.png");
 
-      jest.advanceTimersByTime(3000);
+      jest.advanceTimersByTime(ICON_VALIDATION_TIMEOUT);
       const result = await promise;
 
       // Both the internal timeout and fetch resolve at 3000ms. The timeout

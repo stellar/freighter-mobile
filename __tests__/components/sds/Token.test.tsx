@@ -3,6 +3,7 @@
 import { act, fireEvent, render } from "@testing-library/react-native";
 import { Token } from "components/sds/Token";
 import { Text } from "components/sds/Typography";
+import { ICON_VALIDATION_TIMEOUT } from "helpers/validateIconUrl";
 import React from "react";
 
 /**
@@ -361,7 +362,7 @@ describe("Token", () => {
       expect(queryByText("Should Not Show")).toBeFalsy();
     });
 
-    it("keeps fallback visible after 3000ms without load end", () => {
+    it("keeps fallback visible after ICON_VALIDATION_TIMEOUT without load end", () => {
       jest.useFakeTimers();
       const renderContent = () => <Text>Timeout Fallback</Text>;
 
@@ -382,7 +383,7 @@ describe("Token", () => {
       expect(getByText("Timeout Fallback")).toBeTruthy();
 
       act(() => {
-        jest.advanceTimersByTime(3000);
+        jest.advanceTimersByTime(ICON_VALIDATION_TIMEOUT);
       });
 
       // After timeout: image removed from tree (prevents RN auto-retry), fallback still visible
@@ -391,7 +392,7 @@ describe("Token", () => {
       jest.useRealTimers();
     });
 
-    it("keeps fallback visible after 3000ms when source is loading", () => {
+    it("keeps fallback visible after ICON_VALIDATION_TIMEOUT when source is loading", () => {
       jest.useFakeTimers();
       const renderContent = () => <Text>Loading Fallback</Text>;
 
@@ -412,7 +413,7 @@ describe("Token", () => {
       expect(getByText("Loading Fallback")).toBeTruthy();
 
       act(() => {
-        jest.advanceTimersByTime(3000);
+        jest.advanceTimersByTime(ICON_VALIDATION_TIMEOUT);
       });
 
       // Still visible after timeout
