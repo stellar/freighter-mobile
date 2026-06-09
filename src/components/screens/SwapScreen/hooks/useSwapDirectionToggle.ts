@@ -16,11 +16,13 @@ import { analytics } from "services/analytics";
  *   destination was held; otherwise clears so the chip shows "Select".
  * - Receive slot gets the previous source's descriptor IF source was
  *   held; otherwise clears.
- * - Token amount resets to "0" — sourceBalance changed, the converter's
- *   reset-on-token-change rule fires regardless.
- *
- * `setTokenAmount` is the converter setter (typed by the caller so this
- * hook stays unaware of useTokenFiatConverter's internals).
+ * - Both the store's `sourceAmount`/`sourceAmountDisplay` AND the
+ *   converter's `tokenAmount` reset to "0" in the same React batch.
+ *   Setting the store value directly (rather than relying on the
+ *   converter→store mirror effect to catch up next render) is what
+ *   prevents `useSwapAmountError` from firing an INSUFFICIENT_BALANCE
+ *   toast for the OLD amount paired with the NEW source balance during
+ *   the one-render window before the mirror runs.
  */
 export const useSwapDirectionToggle = ({
   sourceBalance,
@@ -28,6 +30,8 @@ export const useSwapDirectionToggle = ({
   destinationTokenDescriptor,
   setSourceToken,
   setDestinationToken,
+  setSourceAmount,
+  setSourceAmountDisplay,
   setTokenAmount,
 }: {
   sourceBalance: HeldBalanceItem | undefined;
@@ -35,6 +39,8 @@ export const useSwapDirectionToggle = ({
   destinationTokenDescriptor: DestinationTokenDescriptor | null;
   setSourceToken: (id: string, symbol: string) => void;
   setDestinationToken: (descriptor: DestinationTokenDescriptor | null) => void;
+  setSourceAmount: (amount: string) => void;
+  setSourceAmountDisplay: (amount: string) => void;
   setTokenAmount: (amount: string) => void;
 }): { handleSwapDirection: () => void } => {
   const handleSwapDirection = useCallback(() => {
@@ -66,6 +72,12 @@ export const useSwapDirectionToggle = ({
     } else {
       setDestinationToken(null);
     }
+    // Reset the store's amount fields in the SAME batch as the token
+    // swap so useSwapAmountError sees (newSourceBalance, "0") together
+    // rather than (newSourceBalance, oldAmount) for the one render
+    // before the converter→store mirror catches up.
+    setSourceAmount("0");
+    setSourceAmountDisplay("0");
     setTokenAmount("0");
   }, [
     sourceBalance,
@@ -74,6 +86,8 @@ export const useSwapDirectionToggle = ({
     destinationTokenDescriptor?.issuer,
     setSourceToken,
     setDestinationToken,
+    setSourceAmount,
+    setSourceAmountDisplay,
     setTokenAmount,
   ]);
 

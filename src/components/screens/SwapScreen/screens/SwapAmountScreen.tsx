@@ -527,6 +527,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     destinationTokenDescriptor,
     setSourceToken,
     setDestinationToken,
+    setSourceAmount,
+    setSourceAmountDisplay,
     setTokenAmount,
   });
 
