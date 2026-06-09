@@ -21,6 +21,37 @@ const DEFAULT_SERVICE = "stellarwallet";
 const DEFAULT_KEY_INDEX = "index";
 
 /**
+ * Flattens a native react-native-keychain error into a plain object carrying its
+ * full technical detail — the `message` plus every enumerable own property
+ * (iOS OSStatus `code`, `domain`, `userInfo`, etc.) — so it can be passed as a
+ * trailing arg to `logger.error` and reach Sentry as structured `extra` data.
+ *
+ * A plain object is required: the shared `sanitizeLogData` collapses an `Error`
+ * to name/message/stack (which would drop `code`), but it walks plain objects
+ * (preserving fields, applying PII redaction). `stack` is omitted — Sentry
+ * already captures the thrown error's stacktrace on the exception. This keeps
+ * the native detail keychain-scoped without touching the shared logger.
+ */
+const keychainErrorDetails = (error: unknown): Record<string, unknown> => {
+  if (!error || typeof error !== "object") {
+    return { message: String(error) };
+  }
+  const err = error as Record<string, unknown> & { message?: unknown };
+  const details: Record<string, unknown> = {};
+  if (err.message !== undefined) {
+    details.message = err.message;
+  }
+  Object.keys(err).forEach((key) => {
+    // `message` handled above; `stack`/`name` omitted (Sentry captures the
+    // stacktrace, and `name` collides with the PII redactor).
+    if (key !== "message" && key !== "stack" && key !== "name") {
+      details[key] = err[key];
+    }
+  });
+  return details;
+};
+
+/**
  * Facade for secure storage using react-native-keychain
  * This provides a simple interface for storing encrypted keys
  */
@@ -57,6 +88,7 @@ export class ReactNativeKeychainFacade {
         "ReactNativeKeychainFacade.hasKey",
         "Error checking key existence:",
         error,
+        keychainErrorDetails(error),
       );
 
       return false;
@@ -89,6 +121,7 @@ export class ReactNativeKeychainFacade {
         // intra-session log correlation.
         `Keychain read failed for key ${id.slice(0, 8)}...:`,
         error,
+        keychainErrorDetails(error),
       );
 
       return null;
@@ -108,15 +141,22 @@ export class ReactNativeKeychainFacade {
 
       await Keychain.setGenericPassword(id, JSON.stringify(key), setOptions);
     } catch (error) {
-      // Stabilize the thrown message to the native cause (without the per-key
-      // id) so Sentry groups by that message instead of a unique key id, and
-      // attach the original error as `cause` to retain its stack/metadata.
+      // Preserve the native reason in the thrown message (without the per-key
+      // id) so Sentry groups by root cause. Report the full native detail
+      // (message, OSStatus `code`, other native props) as structured extra at
+      // the keychain layer so it reaches Sentry without a `.cause` or any change
+      // to the shared logger.
       const wrappedError = new Error(
         `Keychain write rejected: ${
           error instanceof Error ? error.message : String(error)
         }`,
       );
-      (wrappedError as Error & { cause?: unknown }).cause = error;
+      logger.error(
+        "ReactNativeKeychainFacade.setKey",
+        "Keychain write rejected",
+        wrappedError,
+        keychainErrorDetails(error),
+      );
       throw wrappedError;
     }
   }
@@ -135,6 +175,7 @@ export class ReactNativeKeychainFacade {
         // Truncate the keychain id - same reasoning as getKey above.
         `Keychain remove failed for key ${id.slice(0, 8)}...:`,
         error,
+        keychainErrorDetails(error),
       );
       // Don't throw here, as the key might not exist
     }
@@ -169,6 +210,7 @@ export class ReactNativeKeychainFacade {
         "ReactNativeKeychainFacade.getAllKeys",
         "Error getting all keys:",
         error,
+        keychainErrorDetails(error),
       );
       // No index found, return empty array
     }
@@ -210,6 +252,7 @@ export class ReactNativeKeychainFacade {
         "ReactNativeKeychainFacade.addToKeyIndex",
         "Error adding to key index, creating new index:",
         error,
+        keychainErrorDetails(error),
       );
 
       await Keychain.setGenericPassword(
@@ -252,6 +295,7 @@ export class ReactNativeKeychainFacade {
         "ReactNativeKeychainFacade.removeFromKeyIndex",
         "Error removing from key index:",
         error,
+        keychainErrorDetails(error),
       );
       // Index not found, nothing to remove
     }
