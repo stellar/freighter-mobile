@@ -97,7 +97,14 @@ export const buildReceiveTexts = ({
   const destinationAmountWithCode = destinationTokenLabel
     ? `${destinationAmountToken} ${destinationTokenLabel}`
     : destinationAmountToken;
-  const destinationFiatString = formatFiatAmount(destinationFiat ?? "0");
+  // When destinationFiat is undefined the destination has no resolvable
+  // price (not in the prices store and not embedded on the descriptor).
+  // Coercing to 0 would format as "$0.00", which falsely implies the
+  // user is receiving zero value. "--" matches the sentinel we use
+  // elsewhere when a price is genuinely unknown.
+  const destinationFiatString = destinationFiat
+    ? formatFiatAmount(destinationFiat)
+    : "--";
   return {
     destinationAmountToken,
     destinationFiatString,
