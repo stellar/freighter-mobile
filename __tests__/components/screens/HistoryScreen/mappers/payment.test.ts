@@ -86,4 +86,46 @@ describe("mapPaymentHistoryItem - muxed address recipient detection", () => {
     expect(result.isAddingFunds).toBe(false);
     expect(result.amountText?.startsWith("-")).toBe(true);
   });
+
+  it("classifies a payment received from a muxed sender as received", async () => {
+    // Sender used a muxed source address; the user is still the recipient.
+    const result = await mapPaymentHistoryItem(
+      buildPaymentArgs({
+        to: USER_BASE,
+        from: OTHER_BASE,
+        from_muxed: OTHER_MUXED,
+      }),
+    );
+
+    expect(result.isAddingFunds).toBe(true);
+    expect(result.amountText?.startsWith("+")).toBe(true);
+  });
+
+  it("classifies a payment the user sent from their own muxed source as sent", async () => {
+    const result = await mapPaymentHistoryItem(
+      buildPaymentArgs({
+        to: OTHER_BASE,
+        from: USER_BASE,
+        from_muxed: MUXED_OF_USER,
+      }),
+    );
+
+    expect(result.isAddingFunds).toBe(false);
+    expect(result.amountText?.startsWith("-")).toBe(true);
+  });
+
+  it("classifies a payment the user sent to their own muxed address as sent", async () => {
+    // Source and destination share the same base account, so the balance does
+    // not increase (apart from the fee) — this must not be shown as received.
+    const result = await mapPaymentHistoryItem(
+      buildPaymentArgs({
+        to: USER_BASE,
+        to_muxed: MUXED_OF_USER,
+        from: USER_BASE,
+      }),
+    );
+
+    expect(result.isAddingFunds).toBe(false);
+    expect(result.amountText?.startsWith("-")).toBe(true);
+  });
 });

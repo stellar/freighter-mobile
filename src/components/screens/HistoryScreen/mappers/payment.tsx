@@ -64,17 +64,23 @@ export const mapPaymentHistoryItem = async ({
     to,
     to_muxed: toMuxed,
     from,
+    from_muxed: fromMuxed,
   } = operation;
 
   const actualDestination = toMuxed || to;
+  const actualSource = fromMuxed || from;
 
   // Payment mapper handles classic/native tokens only (Soroban payments go to soroban mapper)
   // Classic tokens support M address + memo, so preserve memo even for M addresses
   const finalMemo = memo;
 
   // isSameAccount resolves muxed (M...) addresses to their base (G...) account,
-  // so payments received to the user's muxed address aren't misclassified.
-  const isRecipient = isSameAccount(actualDestination, publicKey);
+  // so payments received to the user's muxed address aren't misclassified. The
+  // source check excludes self-payments (same base on both ends), where the
+  // balance doesn't actually increase.
+  const isRecipient =
+    isSameAccount(actualDestination, publicKey) &&
+    !isSameAccount(actualSource, publicKey);
   const paymentDifference = isRecipient ? "+" : "-";
   const formattedAmount = `${paymentDifference}${formatTokenForDisplay(
     new BigNumber(amount).toString(),
