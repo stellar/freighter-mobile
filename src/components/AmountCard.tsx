@@ -360,17 +360,20 @@ const EditableAmountCard: React.FC<AmountCardEditableProps> = ({
         />
       </View>
 
-      {hasUsdPrice && (
-        <View className="flex-row items-center gap-[4px]">
-          <Text
-            sm
-            medium
-            secondary
-            numberOfLines={1}
-            style={{ flexShrink: 1, lineHeight: pxValue(20) }}
-          >
-            {secondaryAmountText ?? ""}
-          </Text>
+      <View className="flex-row items-center gap-[4px]">
+        <Text
+          sm
+          medium
+          secondary
+          numberOfLines={1}
+          style={{ flexShrink: 1, lineHeight: pxValue(20) }}
+        >
+          {hasUsdPrice ? (secondaryAmountText ?? "") : "--"}
+        </Text>
+        {/* The token/fiat toggle is only meaningful when we have a
+            conversion rate — without one, tapping it would put the
+            user into a fiat-input mode that can't compute anything. */}
+        {hasUsdPrice && (
           <TouchableOpacity
             hitSlop={10}
             onPress={() =>
@@ -380,8 +383,8 @@ const EditableAmountCard: React.FC<AmountCardEditableProps> = ({
           >
             <Icon.RefreshCcw03 size={14} color={themeColors.text.secondary} />
           </TouchableOpacity>
-        </View>
-      )}
+        )}
+      </View>
     </CardShell>
   );
 };
