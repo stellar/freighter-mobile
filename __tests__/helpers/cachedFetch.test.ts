@@ -216,25 +216,50 @@ describe("cachedFetch", () => {
       expect(mockFn).toHaveBeenCalledTimes(1);
     });
 
-    it("returns cached data on error if available (function mode)", async () => {
-      const now = Date.now();
+    it("returns cached data on error during stale-reload (function mode, !forceRefresh)", async () => {
+      // Stale cache (older than TTL) but no explicit refresh request:
+      // the fetch fails and we gracefully fall back to the cached
+      // value rather than surface an error to a passive caller.
       const cachedData = { cached: "data" };
       const error = new Error("Function error");
       const mockFn = jest.fn().mockRejectedValue(error);
 
-      // Mock cached data
+      const staleTime = Date.now() - THIRTY_MINUTES - 1000;
       mockDataStorage.getItem
-        .mockResolvedValueOnce(now.toString()) // cached date
+        .mockResolvedValueOnce(staleTime.toString()) // cached date (stale)
         .mockResolvedValueOnce(JSON.stringify(cachedData)); // cached result
 
       const result = await cachedFetch({
         urlOrFn: mockFn,
         storageKey,
         ttlMs: THIRTY_MINUTES,
-        forceRefresh: true, // Force refresh to trigger function call
       });
 
       expect(result).toEqual(cachedData);
+      expect(mockFn).toHaveBeenCalledTimes(1);
+    });
+
+    it("throws on forceRefresh failure even when cached data exists (function mode)", async () => {
+      // Pull-to-refresh and other explicit forceRefresh callers need to
+      // see the failure (e.g. to toast "couldn't refresh"). Silently
+      // returning the stale cache contradicts the user's intent.
+      const now = Date.now();
+      const cachedData = { cached: "data" };
+      const error = new Error("Function error");
+      const mockFn = jest.fn().mockRejectedValue(error);
+
+      mockDataStorage.getItem
+        .mockResolvedValueOnce(now.toString())
+        .mockResolvedValueOnce(JSON.stringify(cachedData));
+
+      await expect(
+        cachedFetch({
+          urlOrFn: mockFn,
+          storageKey,
+          ttlMs: THIRTY_MINUTES,
+          forceRefresh: true,
+        }),
+      ).rejects.toThrow("Function error");
       expect(mockFn).toHaveBeenCalledTimes(1);
     });
 

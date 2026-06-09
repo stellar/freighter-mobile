@@ -83,8 +83,12 @@ export async function cachedFetch<T>(
       await dataStorage.setItem(cachedDateId, time.toString());
     } catch (e) {
       logger.error("cachedFetch", "Error fetching data", e);
-      // If there's an error and we have cached data, return it (only for function mode)
-      if (!isUrlMode && cachedResult) {
+      // Graceful degradation only when the caller didn't explicitly ask
+      // for fresh data. Pull-to-refresh and other forceRefresh paths
+      // need to see the failure (e.g. to show a "couldn't refresh"
+      // toast) — silently returning the stale cache there contradicts
+      // the user's intent.
+      if (!isUrlMode && cachedResult && !shouldForceRefresh) {
         return cachedResult;
       }
       // For URL mode, re-throw the error to maintain backward compatibility
