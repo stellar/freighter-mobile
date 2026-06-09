@@ -79,7 +79,10 @@ describe("validateIconUrl", () => {
         expect.objectContaining({ method: "HEAD" }),
       );
       expect(FastImage.preload).toHaveBeenCalledWith([
-        { uri: "https://example.com/logo.png" },
+        {
+          uri: "https://example.com/logo.png",
+          priority: FastImage.priority.low,
+        },
       ]);
     });
 
@@ -149,7 +152,10 @@ describe("validateIconUrl", () => {
         expect.objectContaining({ method: "HEAD" }),
       );
       expect(FastImage.preload).toHaveBeenCalledWith([
-        { uri: "http://example.com/logo.png" },
+        {
+          uri: "http://example.com/logo.png",
+          priority: FastImage.priority.low,
+        },
       ]);
     });
 

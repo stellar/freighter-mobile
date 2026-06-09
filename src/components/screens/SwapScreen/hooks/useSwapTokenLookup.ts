@@ -1,5 +1,5 @@
 /* eslint-disable no-underscore-dangle */
-import FastImage from "@d11/react-native-fast-image";
+import FastImage, { type Priority } from "@d11/react-native-fast-image";
 import { canonicalId } from "components/screens/SwapScreen/helpers/canonicalId";
 import { computeTrendingIntersection } from "components/screens/SwapScreen/helpers/computeTrendingIntersection";
 import { formatClassicRecord } from "components/screens/SwapScreen/helpers/formatClassicRecord";
@@ -184,11 +184,13 @@ export const useSwapTokenLookup = ({
       trendingMemoryCacheByNetwork.set(network, tokens);
       setTrendingTokens(tokens);
 
-      const toPreload: { uri: string }[] = [];
+      const toPreload: { uri: string; priority: Priority }[] = [];
       tokens.forEach((t) => {
         if (t.iconUrl && !preloadedIconUrlsRef.current.has(t.iconUrl)) {
           preloadedIconUrlsRef.current.add(t.iconUrl);
-          toPreload.push({ uri: t.iconUrl });
+          // Low priority — visible rows mount with priority='high', so they
+          // leapfrog the preload firehose instead of queueing behind it.
+          toPreload.push({ uri: t.iconUrl, priority: FastImage.priority.low });
         }
       });
       if (toPreload.length > 0) {

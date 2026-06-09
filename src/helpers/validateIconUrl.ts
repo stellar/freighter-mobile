@@ -73,8 +73,10 @@ export const validateIconUrl = async (url: string): Promise<boolean> => {
         if (response.ok) {
           debug("validateIconUrl", `Validated: ${url}`);
           // Pre-warm FastImage's SDWebImage/Glide cache so the first render
-          // loads from disk rather than the network.
-          FastImage.preload([{ uri: url }]);
+          // loads from disk rather than the network. Low priority so visible
+          // rows (which mount with priority='high') leapfrog the preload
+          // queue and aren't blocked behind a still-warming icon.
+          FastImage.preload([{ uri: url, priority: FastImage.priority.low }]);
           return true as boolean;
         }
         debug(

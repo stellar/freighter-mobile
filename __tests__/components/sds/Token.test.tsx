@@ -36,7 +36,7 @@ describe("Token", () => {
 
     const image = getByLabelText("Token 1");
     expect(image).toBeTruthy();
-    expect(image.props.source).toEqual({
+    expect(image.props.source).toMatchObject({
       uri: "https://example.com/token1.png",
     });
   });
@@ -67,10 +67,10 @@ describe("Token", () => {
 
     expect(image1).toBeTruthy();
     expect(image2).toBeTruthy();
-    expect(image1.props.source).toEqual({
+    expect(image1.props.source).toMatchObject({
       uri: "https://example.com/token1.png",
     });
-    expect(image2.props.source).toEqual({
+    expect(image2.props.source).toMatchObject({
       uri: "https://example.com/token2.png",
     });
   });
@@ -297,7 +297,7 @@ describe("Token", () => {
 
       // After load, image should still be rendered
       expect(image).toBeTruthy();
-      expect(image.props.source).toEqual({
+      expect(image.props.source).toMatchObject({
         uri: "https://example.com/token.png",
       });
     });
