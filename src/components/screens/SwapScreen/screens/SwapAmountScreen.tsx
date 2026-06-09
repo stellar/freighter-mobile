@@ -50,7 +50,6 @@ import {
   isNativeAssetId,
   mapNetworkToNetworkDetails,
   NATIVE_TOKEN_CODE,
-  NETWORKS,
   TransactionContext,
 } from "config/constants";
 import { logger } from "config/logger";
@@ -272,8 +271,11 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     navigation,
   });
 
-  // Held-inclusive trending tokens list. Hidden off PUBLIC (stellar.expert
-  // only indexes mainnet) or when stellar.expert is down.
+  // Held-inclusive trending tokens list. Hidden when stellar.expert
+  // is down. On testnet the list is unsorted (testnet volume7d is
+  // always 0) but the verified-list intersection still applies, so we
+  // surface the same picker affordance as on mainnet — Blockaid's
+  // existing "Unable to scan" path covers the missing scan data.
   const {
     trendingTokens,
     stellarExpertDown,
@@ -284,18 +286,12 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     balanceItems,
   });
 
-  const showTrending =
-    network === NETWORKS.PUBLIC &&
-    !stellarExpertDown &&
-    trendingTokens.length > 0;
+  const showTrending = !stellarExpertDown && trendingTokens.length > 0;
 
   // Show the trending section header + spinner placeholder when the fetch is
-  // in flight and we don't have data yet (mainnet only, SE not down).
+  // in flight and we don't have data yet (SE not down).
   const showTrendingSpinner =
-    network === NETWORKS.PUBLIC &&
-    !stellarExpertDown &&
-    isTrendingLoading &&
-    trendingTokens.length === 0;
+    !stellarExpertDown && isTrendingLoading && trendingTokens.length === 0;
 
   // Non-held destinations need their price explicitly fetched — the
   // trending list only covers the stellar.expert top 50. Without this

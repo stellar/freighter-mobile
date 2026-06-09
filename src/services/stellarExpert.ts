@@ -29,9 +29,19 @@ export const fetchTrendingAssets = async ({
       ? stellarExpertApiTestnet
       : stellarExpertApiPublic;
 
+  // stellar.expert testnet always reports volume7d=0, so the
+  // mainnet "sort by 7-day volume, take top 50" yields an arbitrary
+  // ordering AND every record gets dropped by the downstream volume
+  // filter. On testnet pull the unsorted first-page slice instead so
+  // the trending section has something to show.
+  const params =
+    network === NETWORKS.TESTNET
+      ? { limit: 50 }
+      : { sort: "volume7d", order: "desc", limit: 50 };
+
   try {
     const response = await stellarExpertApi.get<SearchTokenResponse>("/asset", {
-      params: { sort: "volume7d", order: "desc", limit: 50 },
+      params,
       signal,
     });
 

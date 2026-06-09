@@ -32,6 +32,9 @@ const CACHE_TTL_MS = 30 * 60 * 1000;
  * representation) for a token to appear in the trending list. Tokens
  * below this floor are dropped before the response is cached so they
  * don't surface in the Swap picker. 70_000_000_000 == $7,000 USD.
+ *
+ * Mainnet-only — stellar.expert testnet always reports volume7d=0, so
+ * applying this filter on testnet would empty the list entirely.
  */
 const MIN_TRENDING_VOLUME7D = 70_000_000_000;
 
@@ -39,21 +42,25 @@ const MIN_TRENDING_VOLUME7D = 70_000_000_000;
  * Drop low-volume records (volume7d < MIN_TRENDING_VOLUME7D, or missing).
  * The filter runs inside the cached-fetch closure so the cached payload
  * already excludes them — consumers don't need to re-filter, and the
- * disk cache stays small.
+ * disk cache stays small. No-op on testnet (see MIN_TRENDING_VOLUME7D).
  */
 const filterLowVolumeRecords = (
+  network: NETWORKS,
   response: SearchTokenResponse,
-): SearchTokenResponse => ({
-  ...response,
-  _embedded: {
-    ...response._embedded,
-    records: response._embedded.records.filter(
-      (record) =>
-        typeof record.volume7d === "number" &&
-        record.volume7d >= MIN_TRENDING_VOLUME7D,
-    ),
-  },
-});
+): SearchTokenResponse => {
+  if (network !== NETWORKS.PUBLIC) return response;
+  return {
+    ...response,
+    _embedded: {
+      ...response._embedded,
+      records: response._embedded.records.filter(
+        (record) =>
+          typeof record.volume7d === "number" &&
+          record.volume7d >= MIN_TRENDING_VOLUME7D,
+      ),
+    },
+  };
+};
 
 /**
  * Stellar.expert Top Tokens Store
@@ -82,7 +89,7 @@ export const useStellarExpertTopTokensStore =
               // The hook's existing null-handling will run the fallback.
               throw new Error("stellar.expert top-tokens fetch returned null");
             }
-            return filterLowVolumeRecords(result);
+            return filterLowVolumeRecords(network, result);
           },
           storageKey,
           ttlMs: CACHE_TTL_MS,
