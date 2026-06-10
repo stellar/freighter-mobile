@@ -158,21 +158,14 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
       </View>
 
       {destinationTokenDescriptor?.isNew && (
-        <TouchableOpacity
-          className="flex-row items-center gap-[8px] rounded-[16px] bg-lilac-3 px-[16px] py-[12px] mt-[16px]"
+        <Banner
+          className="mt-[16px]"
+          variant="highlight"
+          text={t("swapScreen.trustlineBanner", {
+            tokenCode: destinationTokenDescriptor.tokenCode,
+          })}
           onPress={() => trustlineInfoRef.current?.present()}
-          testID="trustline-banner"
-        >
-          <Icon.AlertSquare size={16} themeColor="lilac" />
-          <View className="flex-1">
-            <Text color={themeColors.lilac[11]}>
-              {t("swapScreen.trustlineBanner", {
-                tokenCode: destinationTokenDescriptor.tokenCode,
-              })}
-            </Text>
-          </View>
-          <Icon.ChevronRight size={16} themeColor="lilac" />
-        </TouchableOpacity>
+        />
       )}
 
       {(isMalicious || isSuspicious || isUnableToScanToken) && (

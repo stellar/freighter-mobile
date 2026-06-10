@@ -4,7 +4,12 @@ import useColors from "hooks/useColors";
 import React from "react";
 import { TouchableOpacity, View } from "react-native";
 
-export type BannerVariant = "warning" | "error" | "success" | "info";
+export type BannerVariant =
+  | "warning"
+  | "error"
+  | "success"
+  | "info"
+  | "highlight";
 
 export interface BannerProps {
   /** The variant/type of banner */
@@ -67,6 +72,8 @@ export const Banner: React.FC<BannerProps> = ({
         return "bg-green-3";
       case "info":
         return "bg-navy-3";
+      case "highlight":
+        return "bg-lilac-3";
       default:
         return "bg-gray-3";
     }
@@ -83,13 +90,21 @@ export const Banner: React.FC<BannerProps> = ({
         return themeColors.green[11];
       case "info":
         return themeColors.navy[11];
+      case "highlight":
+        return themeColors.lilac[11];
       default:
         return themeColors.text.secondary;
     }
   };
 
   // Determine theme color for icons based on variant
-  const getThemeColor = (): "red" | "amber" | "green" | "navy" | "gray" => {
+  const getThemeColor = ():
+    | "red"
+    | "amber"
+    | "green"
+    | "navy"
+    | "lilac"
+    | "gray" => {
     switch (variant) {
       case "error":
         return "red";
@@ -99,6 +114,8 @@ export const Banner: React.FC<BannerProps> = ({
         return "green";
       case "info":
         return "navy";
+      case "highlight":
+        return "lilac";
       default:
         return "gray";
     }
@@ -113,6 +130,7 @@ export const Banner: React.FC<BannerProps> = ({
     switch (variant) {
       case "error":
       case "warning":
+      case "highlight":
         return <Icon.AlertSquare size={16} themeColor={themeColor} />;
       case "success":
         return <Icon.CheckCircle size={16} themeColor={themeColor} />;
