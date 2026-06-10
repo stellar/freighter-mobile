@@ -2,6 +2,7 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import BottomSheet from "components/BottomSheet";
+import { DefaultListFooter } from "components/DefaultListFooter";
 import Spinner from "components/Spinner";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { SwapTokenRow } from "components/screens/SwapScreen/components/SwapTokenRow";
@@ -261,6 +262,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
           // and below them.
           stickySectionHeadersEnabled={false}
           showsVerticalScrollIndicator={false}
+          ListFooterComponent={DefaultListFooter}
           renderSectionHeader={({ section }) => {
             let infoRef: React.RefObject<BottomSheetModal | null> | null = null;
             if (section.kind === "verified") {
