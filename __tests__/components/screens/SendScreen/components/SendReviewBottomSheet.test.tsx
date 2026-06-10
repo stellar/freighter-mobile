@@ -333,4 +333,28 @@ describe("SendReviewBottomSheet", () => {
       expect(getByText("Proceed with caution")).toBeTruthy();
     });
   });
+
+  describe("XDR error state", () => {
+    const longErrorMessage =
+      "tx_failed: operation underfunded — the source account does not have enough balance to cover the transaction and its fees, please try a smaller amount";
+
+    it("shows the full error message wrapped instead of cutting it off", () => {
+      (
+        jest.requireMock("ducks/transactionBuilder")
+          .useTransactionBuilderStore as jest.Mock
+      ).mockReturnValueOnce({
+        transactionXDR: "",
+        isBuilding: false,
+        error: longErrorMessage,
+      });
+
+      const { getByText } = renderWithProviders(
+        <SendReviewBottomSheet {...defaultProps} />,
+      );
+
+      // The complete message is rendered (as a wrapping description row), not
+      // truncated, so nothing is cut off in the narrow trailing column.
+      expect(getByText(`Error: ${longErrorMessage}`)).toBeTruthy();
+    });
+  });
 });
