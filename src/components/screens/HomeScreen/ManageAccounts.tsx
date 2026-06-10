@@ -4,6 +4,7 @@ import BottomSheet from "components/BottomSheet";
 import ManageAccountBottomSheet from "components/screens/HomeScreen/ManageAccountBottomSheet";
 import RenameAccountModal from "components/screens/HomeScreen/RenameAccountModal";
 import { AnalyticsEvent } from "config/analyticsConfig";
+import { ERROR_TOAST_DURATION } from "config/constants";
 import {
   MainTabStackParamList,
   RootStackParamList,
@@ -72,7 +73,7 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
           variant: "error",
           title: t("authStore.error.getAccountsFailedTitle"),
           message: t("authStore.error.getAccountsFailedMessage"),
-          duration: 6000,
+          duration: ERROR_TOAST_DURATION,
         });
       }
     },

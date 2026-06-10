@@ -53,8 +53,9 @@ describe("getUserFacingError", () => {
     "authStore.error.hashKeyNotFound",
     "authStore.error.temporaryStoreNotFound",
     "authStore.error.privateKeyNotFound",
+    "authStore.error.noKeyPairFound",
   ])(
-    "replaces internal storage error '%s' with the fallback (not whitelisted)",
+    "replaces cryptographic/internal jargon '%s' with the fallback (not whitelisted)",
     (key) => {
       const internalMessage = t(key);
       expect(internalMessage).toBeTruthy();
@@ -64,6 +65,25 @@ describe("getUserFacingError", () => {
 
       expect(result).toBe(t(fallback));
       expect(result).not.toBe(internalMessage);
+    },
+  );
+
+  it.each([
+    "authStore.error.accountNotFound",
+    "authStore.error.accountListNotFound",
+    "authStore.error.noActiveAccount",
+  ])(
+    "passes through plain user-understandable message '%s' unchanged",
+    (key) => {
+      const message = t(key);
+      expect(message).toBeTruthy();
+
+      const result = getUserFacingError(
+        new Error(message),
+        "authStore.error.failedToLoadAccount",
+      );
+
+      expect(result).toBe(message);
     },
   );
 });

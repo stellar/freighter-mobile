@@ -3,6 +3,7 @@ import ConfirmationModal from "components/ConfirmationModal";
 import { List } from "components/List";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { Toggle } from "components/sds/Toggle";
+import { ERROR_TOAST_DURATION } from "config/constants";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBiometrics } from "hooks/useBiometrics";
@@ -56,7 +57,7 @@ const BiometricsSettingsScreen: React.FC<
             variant: "error",
             title: t("authStore.error.disableBiometricsFailedTitle"),
             message: t("authStore.error.disableBiometricsFailedMessage"),
-            duration: 6000,
+            duration: ERROR_TOAST_DURATION,
           });
         }
       });

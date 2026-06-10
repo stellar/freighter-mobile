@@ -1,3 +1,4 @@
+import { ERROR_TOAST_DURATION } from "config/constants";
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -51,7 +52,7 @@ export const useAppOpenBiometricsLogin = (initializing: boolean) => {
           variant: "error",
           title: t("lockScreen.errorUnlockingWalletTitle"),
           message: t("lockScreen.errorUnlockingWalletMessage"),
-          duration: 6000,
+          duration: ERROR_TOAST_DURATION,
         });
       });
     }

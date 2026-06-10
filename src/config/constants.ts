@@ -21,6 +21,9 @@ export const POSITIVE_PRICE_CHANGE_THRESHOLD = new BigNumber(0.0099999);
 
 export const TOGGLE_ANIMATION_DURATION = 400;
 
+/** Display duration (ms) for error toasts surfaced from auth/account flows. */
+export const ERROR_TOAST_DURATION = 6000;
+
 // This is used to prevent rows from highlighting when the user is scrolling
 export const DEFAULT_PRESS_DELAY = 100;
 

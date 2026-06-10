@@ -1,3 +1,4 @@
+import { ERROR_TOAST_DURATION } from "config/constants";
 import { useAuthenticationStore } from "ducks/auth";
 import useAppTranslation from "hooks/useAppTranslation";
 import { AUTH_ERROR_TOAST_ID } from "hooks/useAuthErrorToast";
@@ -25,7 +26,7 @@ export const useSetupFailedToast = (): (() => void) => {
       variant: "error",
       title: t("authStore.error.setupFailedTitle"),
       message: t("authStore.error.setupFailedMessage"),
-      duration: 6000,
+      duration: ERROR_TOAST_DURATION,
     });
   }, [clearError, showToast, t]);
 };

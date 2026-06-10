@@ -1929,6 +1929,10 @@ export const getUserFacingError = (
   error: unknown,
   fallbackKey: string,
 ): string => {
+  // Plain, user-understandable messages pass through. Cryptographic/internal
+  // jargon (noKeyPairFound, hashKeyNotFound, temporaryStoreNotFound,
+  // privateKeyNotFound) is intentionally excluded so it falls back to the
+  // friendly generic copy instead of surfacing technical terms to the user.
   const safeMessages = new Set<string>([
     t("authStore.error.invalidPassword"),
     t("authStore.error.invalidMnemonicPhrase"),
@@ -1936,7 +1940,6 @@ export const getUserFacingError = (
     t("authStore.error.accountNotFound"),
     t("authStore.error.accountListNotFound"),
     t("authStore.error.noActiveAccount"),
-    t("authStore.error.noKeyPairFound"),
     t("authStore.error.authenticationExpired"),
     t("authStore.error.failedToReEncryptData"),
     t("authStore.error.failedToDecryptData"),
