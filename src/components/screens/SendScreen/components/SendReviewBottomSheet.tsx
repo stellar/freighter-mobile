@@ -332,29 +332,47 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
           icon: (
             <Icon.FileCode02 size={16} color={themeColors.foreground.primary} />
           ),
-          title: t("transactionAmountScreen.details.xdr"),
-          titleColor: themeColors.text.secondary,
-          // On build errors show the full message wrapped on its own line so it
-          // isn't cut off in the narrow trailing column. The copy icon stays so
-          // the error remains copiable (the XDR is null in this state).
-          description: error
-            ? t("common.error", { errorMessage: error })
-            : undefined,
-          descriptionColor: error ? themeColors.text.secondary : undefined,
-          trailingContent: (
-            <TouchableOpacity
-              onPress={error ? handleCopyError : handleCopyXdr}
-              disabled={isBuilding || (!transactionXDR && !error)}
-              className="flex-row items-center gap-[8px]"
-            >
-              <Icon.Copy01 size={16} color={themeColors.foreground.primary} />
-              {!error && (
-                <Text md medium secondary={isBuilding}>
-                  {renderXdrContent()}
-                </Text>
-              )}
-            </TouchableOpacity>
-          ),
+          ...(error
+            ? {
+                titleComponent: (
+                  <TouchableOpacity
+                    onPress={handleCopyError}
+                    className="flex-row items-center gap-[8px]"
+                  >
+                    <Icon.Copy01
+                      size={16}
+                      color={themeColors.foreground.primary}
+                    />
+                    <Text
+                      md
+                      medium
+                      color={themeColors.status.error}
+                      style={{ flex: 1 }}
+                    >
+                      {t("common.error", { errorMessage: error })}
+                    </Text>
+                  </TouchableOpacity>
+                ),
+              }
+            : {
+                title: t("transactionAmountScreen.details.xdr"),
+                titleColor: themeColors.text.secondary,
+                trailingContent: (
+                  <TouchableOpacity
+                    onPress={handleCopyXdr}
+                    disabled={isBuilding || !transactionXDR}
+                    className="flex-row items-center gap-[8px]"
+                  >
+                    <Icon.Copy01
+                      size={16}
+                      color={themeColors.foreground.primary}
+                    />
+                    <Text md medium secondary={isBuilding}>
+                      {renderXdrContent()}
+                    </Text>
+                  </TouchableOpacity>
+                ),
+              }),
         },
       ].filter(Boolean) as ListItemProps[],
     [
@@ -370,6 +388,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
       renderXdrContent,
       t,
       themeColors.foreground.primary,
+      themeColors.status.error,
       themeColors.text.secondary,
       totalFeeXlm,
       transactionMemo,
