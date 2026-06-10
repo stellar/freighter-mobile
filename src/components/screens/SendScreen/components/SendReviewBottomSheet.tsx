@@ -139,6 +139,12 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   // Use amountError from props (calculated in parent component)
   const amountError = propAmountError;
 
+  // Localized build-error string, derived once so the value shown in the XDR
+  // row and the value copied to the clipboard always match.
+  const errorMessage = error
+    ? t("common.error", { errorMessage: error })
+    : null;
+
   const handleCopyXdr = useCallback(() => {
     if (transactionXDR) {
       copyToClipboard(transactionXDR, {
@@ -148,12 +154,12 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   }, [copyToClipboard, t, transactionXDR]);
 
   const handleCopyError = useCallback(() => {
-    if (error) {
-      copyToClipboard(error, {
+    if (errorMessage) {
+      copyToClipboard(errorMessage, {
         notificationMessage: t("common.copied"),
       });
     }
-  }, [copyToClipboard, error, t]);
+  }, [copyToClipboard, errorMessage, t]);
 
   const renderXdrContent = useCallback(() => {
     if (isBuilding) {
@@ -349,7 +355,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
                       color={themeColors.status.error}
                       style={{ flex: 1 }}
                     >
-                      {t("common.error", { errorMessage: error })}
+                      {errorMessage}
                     </Text>
                   </TouchableOpacity>
                 ),
@@ -379,6 +385,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
       account?.accountName,
       account?.publicKey,
       error,
+      errorMessage,
       handleCopyError,
       handleCopyXdr,
       handleOpenFeeBreakdown,
