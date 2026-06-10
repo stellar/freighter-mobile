@@ -163,7 +163,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
           onPress={() => trustlineInfoRef.current?.present()}
           testID="trustline-banner"
         >
-          <Icon.InfoCircle size={16} themeColor="lilac" />
+          <Icon.AlertSquare size={16} themeColor="lilac" />
           <View className="flex-1">
             <Text color={themeColors.lilac[11]}>
               {t("swapScreen.trustlineBanner", {
@@ -197,15 +197,15 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
             ),
             trailingContent: (
               <View className="flex-row items-center gap-[8px]">
-                <Text md medium>
-                  {account?.accountName ||
-                    truncateAddress(publicKey ?? "", 4, 4)}
-                </Text>
                 <Avatar
                   size="sm"
                   publicAddress={publicKey ?? ""}
                   hasDarkBackground
                 />
+                <Text md medium>
+                  {account?.accountName ||
+                    truncateAddress(publicKey ?? "", 4, 4)}
+                </Text>
               </View>
             ),
           },
