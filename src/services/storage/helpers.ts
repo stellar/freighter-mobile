@@ -1,18 +1,20 @@
 import { SENSITIVE_STORAGE_KEYS, STORAGE_KEYS } from "config/constants";
 import { HashKey } from "config/types";
+import { clearScreenshotDek } from "helpers/screenshotCrypto";
 import {
   dataStorage,
   secureDataStorage,
 } from "services/storage/storageFactory";
 
 /**
- * Clears the hash key, temporary store, and derived key cache from secure storage
+ * Clears the hash key, temporary store, derived key cache, and screenshot DEK from secure storage
  */
 const clearTemporaryData = async (): Promise<void> => {
   await Promise.all([
     secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.HASH_KEY),
     secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE),
     secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.DERIVED_KEY),
+    clearScreenshotDek(),
   ]);
 };
 
