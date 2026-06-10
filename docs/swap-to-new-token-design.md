@@ -524,11 +524,13 @@ the FlatList body, see §8)
 
 `SwapAmountScreen` itself becomes a single `FlatList` whose
 `ListHeaderComponent` is the Sell/Receive/chips block and whose `data` is the
-**unfiltered** `popularTokens` array from `useSwapTokenLookup` (the same source
-the picker uses, but without the picker's held-token exclusion). Trending
-therefore shows both held and non-held tokens — useful for seeing live price +
-24h % on tokens the user already holds. `renderItem` returns a `SwapTokenRow`
-with the price/% right-hand variant; tapping a row opens:
+**held-inclusive** `trendingTokens` array from `useSwapTokenLookup` (the
+picker's "Popular tokens" section consumes a separate held-excluded projection
+of the same source). Trending therefore shows both held and non-held tokens —
+useful for seeing live price + 24h % on tokens the user already holds.
+`renderItem` returns a `TrendingListItem` (a small wrapper around
+`SwapTokenRow variant="trending"` that handles the per-row price lookup);
+tapping a row opens:
 
 **`TrendingTokenDetailBottomSheet`**
 ([`src/components/screens/SwapScreen/components/TrendingTokenDetailBottomSheet.tsx`](../src/components/screens/SwapScreen/components/TrendingTokenDetailBottomSheet.tsx)
@@ -645,7 +647,7 @@ relying on Horizon's `tx_insufficient_balance` for a better UX.
 | Enter        | both sides set, amount = 0         | "Enter an amount"                 | focus Sell `TextInput` (system numeric keyboard slides up)                                                                                                                                                                                                                      |
 | Insufficient | amount > spendable                 | "Insufficient balance" (disabled) | —                                                                                                                                                                                                                                                                               |
 | Loading      | path-finding in flight             | spinner                           | —                                                                                                                                                                                                                                                                               |
-| Review       | amount valid & path found          | "Review swap"                     | if `isUnableToScan` → open `SecurityDetailBottomSheet` so the user acknowledges the unable-to-scan warning before proceeding; else if `destinationToken.isNew` and spendable XLM is below the 0.5 XLM reserve → open `XlmReserveBottomSheet`; else open `SwapReviewBottomSheet` |
+| Review       | amount valid & path found          | "Review swap"                     | if `destinationToken.isNew` and spendable XLM is below the 0.5 XLM reserve → open `XlmReserveBottomSheet`; else if `isUnableToScan` → open `SecurityDetailBottomSheet` so the user acknowledges the unable-to-scan warning before proceeding; else open `SwapReviewBottomSheet` |
 
 Implemented as a derived `useMemo` returning a discriminated union; renders the
 SDS `<Button>` accordingly. The reserve-check branch only triggers when
@@ -688,9 +690,9 @@ pre-flight check lives in
   helper — so the trailing-keystroke cancellation shares the same
   `AbortController` lifecycle as the in-flight fetch).
 - **List virtualization**: `SectionList` for the picker (multiple sections). On
-  `SwapAmountScreen` the Trending list shows the full popular-tokens set (up to
-  50 rows, capped by the stellar.expert fetch), so we structure the screen as a
-  **single `FlatList`** whose `ListHeaderComponent` contains the Sell input,
+  `SwapAmountScreen` the Trending list shows the full `trendingTokens` set (up
+  to 50 rows, capped by the stellar.expert fetch), so we structure the screen as
+  a **single `FlatList`** whose `ListHeaderComponent` contains the Sell input,
   swap-direction chevron, Receive display, and 25/50/75/Max chips, with the
   Trending rows as the virtualized body. The top nav bar stays sticky at the top
   (default); the CTA button is rendered as a sibling after the `FlatList` inside
