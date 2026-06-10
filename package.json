@@ -126,7 +126,7 @@
     "react-native-nitro-modules": "^0.31.2",
     "react-native-permissions": "5.4.2",
     "react-native-qrcode-svg": "6.3.15",
-    "react-native-quick-base64": "^2.1.0",
+    "react-native-quick-base64": "^3.0.0",
     "react-native-quick-crypto": "^1.1.5",
     "react-native-randombytes": "3.6.1",
     "react-native-reanimated": "4.1.2",

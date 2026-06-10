@@ -1,6 +1,5 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
-  DocumentDirectoryPath,
+  CachesDirectoryPath,
   exists,
   mkdir,
   readDir,
@@ -8,12 +7,14 @@ import {
   unlink,
   writeFile,
 } from "@dr.pogodin/react-native-fs";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BROWSER_CONSTANTS } from "config/constants";
 import { logger } from "config/logger";
 import { BrowserTab } from "ducks/browserTabs";
 import {
   decryptScreenshot,
   encryptScreenshot,
+  resetScreenshotDek,
 } from "helpers/screenshotCrypto";
 import ViewShot from "react-native-view-shot";
 
@@ -35,8 +36,11 @@ export interface ScreenshotData extends ScreenshotMeta {
   uri: string;
 }
 
+// Caches, not Documents: thumbnails are regenerable, shouldn't ship in
+// iCloud/iTunes backups (they're undecryptable on another device anyway —
+// the DEK is THIS_DEVICE_ONLY), and the OS may reclaim the space.
 const screenshotsDir = (): string =>
-  `${DocumentDirectoryPath}/${BROWSER_CONSTANTS.SCREENSHOT_FILES_DIR}`;
+  `${CachesDirectoryPath}/${BROWSER_CONSTANTS.SCREENSHOT_FILES_DIR}`;
 
 const encFilePath = (fileName: string): string =>
   `${screenshotsDir()}/${fileName}`;
@@ -75,12 +79,10 @@ export const findTabScreenshot = async (
 
     const filePath = encFilePath(meta.file);
     if (!(await exists(filePath))) {
-      // Stale metadata — clean it up silently
-      metaMap.delete(tabId);
-      await AsyncStorage.setItem(
-        BROWSER_CONSTANTS.SCREENSHOT_STORAGE_KEY,
-        JSON.stringify(Object.fromEntries(metaMap)),
-      );
+      // Stale metadata (file missing). Don't rewrite the map here: this runs
+      // in parallel from loadScreenshots and a read-modify-write would race
+      // with other writers. Stale entries are harmless — pruneScreenshots /
+      // the next saveScreenshot for this tab will reconcile them.
       return null;
     }
 
@@ -161,12 +163,12 @@ export const saveScreenshot = async (
           .map((m) => m.tabId),
       );
 
-      for (const [evictedId, evictedMeta] of metaMap.entries()) {
-        if (!kept.has(evictedId)) {
+      Array.from(metaMap.entries())
+        .filter(([evictedId]) => !kept.has(evictedId))
+        .forEach(([evictedId, evictedMeta]) => {
           unlink(encFilePath(evictedMeta.file)).catch(() => {});
           metaMap.delete(evictedId);
-        }
-      }
+        });
     }
 
     await AsyncStorage.setItem(
@@ -213,18 +215,15 @@ export const pruneScreenshots = async (
     const metaMap = await getStoredScreenshots();
     const activeSet = new Set(activeTabIds);
 
-    const deletePromises: Promise<void>[] = [];
-    for (const [tabId, meta] of metaMap.entries()) {
-      if (!activeSet.has(tabId)) {
+    const deletePromises = Array.from(metaMap.entries())
+      .filter(([tabId]) => !activeSet.has(tabId))
+      .map(([tabId, meta]) => {
         const filePath = encFilePath(meta.file);
-        deletePromises.push(
-          exists(filePath).then((fileExists) =>
-            fileExists ? unlink(filePath) : Promise.resolve(),
-          ),
-        );
         metaMap.delete(tabId);
-      }
-    }
+        return exists(filePath).then((fileExists) =>
+          fileExists ? unlink(filePath) : Promise.resolve(),
+        );
+      });
 
     await Promise.all(deletePromises);
     await AsyncStorage.setItem(
@@ -257,9 +256,7 @@ export const migrateOldScreenshots = async (): Promise<void> => {
       entries.length > 0 &&
       entries.some(
         (entry) =>
-          entry !== null &&
-          typeof entry === "object" &&
-          "uri" in (entry as object),
+          entry !== null && typeof entry === "object" && "uri" in entry,
       );
 
     if (isOldFormat) {
@@ -268,6 +265,7 @@ export const migrateOldScreenshots = async (): Promise<void> => {
         "Old unencrypted screenshot blob detected — clearing",
       );
       await AsyncStorage.removeItem(BROWSER_CONSTANTS.SCREENSHOT_STORAGE_KEY);
+      await resetScreenshotDek();
     }
   } catch (error) {
     logger.error(
@@ -275,7 +273,9 @@ export const migrateOldScreenshots = async (): Promise<void> => {
       "Migration check failed — clearing screenshots to be safe:",
       error,
     );
-    await AsyncStorage.removeItem(BROWSER_CONSTANTS.SCREENSHOT_STORAGE_KEY).catch(() => {});
+    await AsyncStorage.removeItem(
+      BROWSER_CONSTANTS.SCREENSHOT_STORAGE_KEY,
+    ).catch(() => {});
   }
 };
 

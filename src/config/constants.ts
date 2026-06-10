@@ -347,7 +347,7 @@ export const BROWSER_CONSTANTS = {
   SCREENSHOT_SCROLL_DELAY: 1000, // Take screenshot after 1s of no-scrolling
   SCREENSHOT_FINAL_DELAY: 2000, // Take screenshot after site animations complete
   SCREENSHOT_DEK_SERVICE: "screenshot_dek", // Keychain service name for the screenshot DEK
-  SCREENSHOT_FILES_DIR: "tab-screenshots", // Subdirectory under DocumentDirectoryPath
+  SCREENSHOT_FILES_DIR: "tab-screenshots", // Subdirectory under CachesDirectoryPath
   OPEN_ANIMATION_DURATION: 200,
   CLOSE_ANIMATION_DURATION: 200,
   TAB_SWITCH_SPINNER_DELAY: 500,

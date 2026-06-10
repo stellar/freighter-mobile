@@ -3,69 +3,19 @@ import { BROWSER_CONSTANTS } from "config/constants";
 import { logger } from "config/logger";
 import * as Keychain from "react-native-keychain";
 import QuickCrypto from "react-native-quick-crypto";
+import type { CryptoKey } from "react-native-quick-crypto";
 import { SCREENSHOT_KEYCHAIN_OPTIONS } from "services/storage/keychainSecurityConfig";
 
 const VERSION_BYTE = 0x01;
 const IV_LENGTH = 12;
 
-// Module-level in-memory cache — cleared on logout wipe, survives the session
-let _dekCache: CryptoKey | null = null;
+// Module-level in-flight promise — memoized so concurrent first-use callers
+// share one Keychain read/generate instead of racing to create different DEKs.
+// Cleared on logout wipe, survives the session.
+let dekPromise: Promise<CryptoKey> | null = null;
 
-/**
- * Returns the screenshot data-encryption key (DEK), creating and persisting it on first use.
- *
- * Flow: memory cache → Keychain → generate fresh.
- * The DEK is a random 256-bit key, independent of the wallet derived key.
- * It is stored under a non-biometric Keychain entry so thumbnails render
- * without prompting the user.
- */
-export const getOrCreateScreenshotDek = async (): Promise<CryptoKey> => {
-  if (_dekCache) {
-    return _dekCache;
-  }
-
-  try {
-    const stored = await Keychain.getGenericPassword({
-      service: BROWSER_CONSTANTS.SCREENSHOT_DEK_SERVICE,
-    });
-
-    if (stored && stored.password) {
-      const dekBytes = decode(stored.password);
-      const key = await QuickCrypto.subtle.importKey(
-        "raw",
-        dekBytes,
-        { name: "AES-GCM", length: 256 },
-        false,
-        ["encrypt", "decrypt"],
-      );
-      _dekCache = key;
-      return key;
-    }
-  } catch (error) {
-    logger.error(
-      "screenshotCrypto",
-      "Failed to read DEK from Keychain, generating new one:",
-      error,
-    );
-  }
-
-  return _generateAndStoreDek();
-};
-
-const _generateAndStoreDek = async (): Promise<CryptoKey> => {
-  const dekBytes = QuickCrypto.getRandomValues(new Uint8Array(32));
-
-  // Persist raw bytes (never the key object itself) to Keychain
-  await Keychain.setGenericPassword(
-    "screenshot_dek",
-    encode(dekBytes),
-    {
-      service: BROWSER_CONSTANTS.SCREENSHOT_DEK_SERVICE,
-      ...SCREENSHOT_KEYCHAIN_OPTIONS,
-    },
-  );
-
-  const key = await QuickCrypto.subtle.importKey(
+const importDek = (dekBytes: Uint8Array): Promise<CryptoKey> =>
+  QuickCrypto.subtle.importKey(
     "raw",
     dekBytes,
     { name: "AES-GCM", length: 256 },
@@ -73,8 +23,53 @@ const _generateAndStoreDek = async (): Promise<CryptoKey> => {
     ["encrypt", "decrypt"],
   );
 
-  _dekCache = key;
-  return key;
+const generateAndStoreDek = async (): Promise<CryptoKey> => {
+  const dekBytes = QuickCrypto.getRandomValues(
+    new Uint8Array(32),
+  ) as Uint8Array;
+
+  // Persist raw bytes (never the key object itself) to Keychain
+  await Keychain.setGenericPassword("screenshot_dek", encode(dekBytes), {
+    service: BROWSER_CONSTANTS.SCREENSHOT_DEK_SERVICE,
+    ...SCREENSHOT_KEYCHAIN_OPTIONS,
+  });
+
+  return importDek(dekBytes);
+};
+
+const loadOrGenerateDek = async (): Promise<CryptoKey> => {
+  // A Keychain read error must NOT fall through to generation: overwriting
+  // an existing DEK would make every stored screenshot permanently
+  // undecryptable. Only generate when the read succeeds and finds no entry;
+  // on error, throw so encrypt/decrypt fail soft for this render.
+  const stored = await Keychain.getGenericPassword({
+    service: BROWSER_CONSTANTS.SCREENSHOT_DEK_SERVICE,
+  });
+
+  if (stored && stored.password) {
+    return importDek(decode(stored.password));
+  }
+
+  return generateAndStoreDek();
+};
+
+/**
+ * Returns the screenshot data-encryption key (DEK), creating and persisting it on first use.
+ *
+ * Flow: memoized promise → Keychain → generate fresh.
+ * The DEK is a random 256-bit key, independent of the wallet derived key.
+ * It is stored under a non-biometric Keychain entry so thumbnails render
+ * without prompting the user.
+ */
+export const getOrCreateScreenshotDek = (): Promise<CryptoKey> => {
+  if (!dekPromise) {
+    dekPromise = loadOrGenerateDek().catch((error) => {
+      // Don't cache failures — let the next caller retry
+      dekPromise = null;
+      throw error;
+    });
+  }
+  return dekPromise;
 };
 
 /**
@@ -121,9 +116,7 @@ export const decryptScreenshot = async (
   const packed = decode(encryptedBase64);
 
   if (packed[0] !== VERSION_BYTE) {
-    throw new Error(
-      `Unknown screenshot encryption version: ${packed[0]}`,
-    );
+    throw new Error(`Unknown screenshot encryption version: ${packed[0]}`);
   }
 
   const iv = packed.slice(1, 1 + IV_LENGTH);
@@ -145,13 +138,17 @@ export const decryptScreenshot = async (
  * Called on wallet wipe (logout with shouldWipeAllData).
  */
 export const clearScreenshotDek = async (): Promise<void> => {
-  _dekCache = null;
+  dekPromise = null;
   try {
     await Keychain.resetGenericPassword({
       service: BROWSER_CONSTANTS.SCREENSHOT_DEK_SERVICE,
     });
   } catch (error) {
-    logger.error("screenshotCrypto", "Failed to clear DEK from Keychain:", error);
+    logger.error(
+      "screenshotCrypto",
+      "Failed to clear DEK from Keychain:",
+      error,
+    );
   }
 };
 
@@ -161,5 +158,5 @@ export const clearScreenshotDek = async (): Promise<void> => {
  */
 export const resetScreenshotDek = async (): Promise<CryptoKey> => {
   await clearScreenshotDek();
-  return _generateAndStoreDek();
+  return getOrCreateScreenshotDek();
 };

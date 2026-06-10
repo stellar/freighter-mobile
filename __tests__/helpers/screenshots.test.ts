@@ -1,7 +1,9 @@
+import * as RNFS from "@dr.pogodin/react-native-fs";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BROWSER_CONSTANTS } from "config/constants";
 import { logger } from "config/logger";
 import { BrowserTab } from "ducks/browserTabs";
+import * as screenshotCrypto from "helpers/screenshotCrypto";
 import {
   getStoredScreenshots,
   findTabScreenshot,
@@ -24,9 +26,10 @@ jest.mock("helpers/screenshotCrypto", () => ({
   decryptScreenshot: jest
     .fn()
     .mockResolvedValue("data:image/jpeg;base64,decrypted"),
+  resetScreenshotDek: jest.fn().mockResolvedValue(undefined),
 }));
 jest.mock("@dr.pogodin/react-native-fs", () => ({
-  DocumentDirectoryPath: "/mock/documents",
+  CachesDirectoryPath: "/mock/caches",
   exists: jest.fn().mockResolvedValue(false),
   mkdir: jest.fn().mockResolvedValue(undefined),
   writeFile: jest.fn().mockResolvedValue(undefined),
@@ -34,9 +37,6 @@ jest.mock("@dr.pogodin/react-native-fs", () => ({
   unlink: jest.fn().mockResolvedValue(undefined),
   readDir: jest.fn().mockResolvedValue([]),
 }));
-
-import * as RNFS from "@dr.pogodin/react-native-fs";
-import * as screenshotCrypto from "helpers/screenshotCrypto";
 
 const mockAsyncStorage = AsyncStorage as jest.Mocked<typeof AsyncStorage>;
 const mockLogger = logger as jest.Mocked<typeof logger>;
@@ -133,8 +133,9 @@ describe("screenshots helpers", () => {
       const result = await findTabScreenshot("tab-123");
 
       expect(result).toBeNull();
-      // Stale metadata should be cleaned up
-      expect(mockAsyncStorage.setItem).toHaveBeenCalled();
+      // Stale metadata must NOT be rewritten here — findTabScreenshot runs in
+      // parallel and a read-modify-write of the map would race other writers
+      expect(mockAsyncStorage.setItem).not.toHaveBeenCalled();
     });
 
     it("should decrypt and return screenshot when file exists", async () => {
@@ -154,7 +155,7 @@ describe("screenshots helpers", () => {
         uri: "data:image/jpeg;base64,decrypted",
       });
       expect(mockRNFS.readFile).toHaveBeenCalledWith(
-        "/mock/documents/tab-screenshots/tab-123.enc",
+        "/mock/caches/tab-screenshots/tab-123.enc",
         "base64",
       );
       expect(mockCrypto.decryptScreenshot).toHaveBeenCalledWith(
@@ -182,16 +183,20 @@ describe("screenshots helpers", () => {
       mockAsyncStorage.getItem.mockResolvedValue(JSON.stringify({}));
       mockCrypto.encryptScreenshot.mockResolvedValue("encrypted-base64");
 
-      await saveScreenshot("tab-123", "https://example.com", "data:image/jpeg;base64,raw");
+      await saveScreenshot(
+        "tab-123",
+        "https://example.com",
+        "data:image/jpeg;base64,raw",
+      );
 
       expect(mockRNFS.mkdir).toHaveBeenCalledWith(
-        "/mock/documents/tab-screenshots",
+        "/mock/caches/tab-screenshots",
       );
       expect(mockCrypto.encryptScreenshot).toHaveBeenCalledWith(
         "data:image/jpeg;base64,raw",
       );
       expect(mockRNFS.writeFile).toHaveBeenCalledWith(
-        "/mock/documents/tab-screenshots/tab-123.enc",
+        "/mock/caches/tab-screenshots/tab-123.enc",
         "encrypted-base64",
         "base64",
       );
@@ -205,7 +210,11 @@ describe("screenshots helpers", () => {
       mockAsyncStorage.getItem.mockResolvedValue(JSON.stringify({}));
       (mockRNFS.exists as jest.Mock).mockResolvedValue(true);
 
-      await saveScreenshot("tab-123", "https://example.com", "data:image/jpeg;base64,raw");
+      await saveScreenshot(
+        "tab-123",
+        "https://example.com",
+        "data:image/jpeg;base64,raw",
+      );
 
       expect(mockRNFS.mkdir).not.toHaveBeenCalled();
     });
@@ -214,14 +223,23 @@ describe("screenshots helpers", () => {
       const manyScreenshots = Object.fromEntries(
         Array.from({ length: 30 }, (_, i) => [
           `tab-${i}`,
-          { tabId: `tab-${i}`, tabUrl: "https://example.com", timestamp: i, file: `tab-${i}.enc` },
+          {
+            tabId: `tab-${i}`,
+            tabUrl: "https://example.com",
+            timestamp: i,
+            file: `tab-${i}.enc`,
+          },
         ]),
       );
       mockAsyncStorage.getItem.mockResolvedValue(
         JSON.stringify(manyScreenshots),
       );
 
-      await saveScreenshot("tab-new", "https://example.com", "data:image/jpeg;base64,raw");
+      await saveScreenshot(
+        "tab-new",
+        "https://example.com",
+        "data:image/jpeg;base64,raw",
+      );
 
       const savedData = JSON.parse(mockAsyncStorage.setItem.mock.calls[0][1]);
       expect(Object.keys(savedData).length).toBeLessThanOrEqual(
@@ -234,7 +252,11 @@ describe("screenshots helpers", () => {
       mockAsyncStorage.getItem.mockRejectedValue(error);
 
       await expect(
-        saveScreenshot("tab-123", "https://example.com", "data:image/jpeg;base64,raw"),
+        saveScreenshot(
+          "tab-123",
+          "https://example.com",
+          "data:image/jpeg;base64,raw",
+        ),
       ).resolves.not.toThrow();
       expect(mockLogger.error).toHaveBeenCalledWith(
         "screenshots",
@@ -247,9 +269,24 @@ describe("screenshots helpers", () => {
   describe("pruneScreenshots", () => {
     it("should delete files and keep only metadata for active tabs", async () => {
       const screenshotsMap = {
-        "tab-1": { tabId: "tab-1", tabUrl: "https://a.com", timestamp: 1, file: "tab-1.enc" },
-        "tab-2": { tabId: "tab-2", tabUrl: "https://b.com", timestamp: 2, file: "tab-2.enc" },
-        "tab-3": { tabId: "tab-3", tabUrl: "https://c.com", timestamp: 3, file: "tab-3.enc" },
+        "tab-1": {
+          tabId: "tab-1",
+          tabUrl: "https://a.com",
+          timestamp: 1,
+          file: "tab-1.enc",
+        },
+        "tab-2": {
+          tabId: "tab-2",
+          tabUrl: "https://b.com",
+          timestamp: 2,
+          file: "tab-2.enc",
+        },
+        "tab-3": {
+          tabId: "tab-3",
+          tabUrl: "https://c.com",
+          timestamp: 3,
+          file: "tab-3.enc",
+        },
       };
       mockAsyncStorage.getItem.mockResolvedValue(
         JSON.stringify(screenshotsMap),
@@ -260,7 +297,7 @@ describe("screenshots helpers", () => {
 
       // tab-2 file should be deleted
       expect(mockRNFS.unlink).toHaveBeenCalledWith(
-        "/mock/documents/tab-screenshots/tab-2.enc",
+        "/mock/caches/tab-screenshots/tab-2.enc",
       );
       const savedData = JSON.parse(mockAsyncStorage.setItem.mock.calls[0][1]);
       expect(savedData["tab-1"]).toBeDefined();
@@ -308,7 +345,7 @@ describe("screenshots helpers", () => {
 
       expect(result).toBe(true);
       expect(mockRNFS.unlink).toHaveBeenCalledWith(
-        "/mock/documents/tab-screenshots/tab-123.enc",
+        "/mock/caches/tab-screenshots/tab-123.enc",
       );
       const savedData = JSON.parse(mockAsyncStorage.setItem.mock.calls[0][1]);
       expect(savedData["tab-123"]).toBeUndefined();
@@ -345,18 +382,18 @@ describe("screenshots helpers", () => {
     it("should delete all files and remove AsyncStorage key", async () => {
       (mockRNFS.exists as jest.Mock).mockResolvedValue(true);
       (mockRNFS.readDir as jest.Mock).mockResolvedValue([
-        { path: "/mock/documents/tab-screenshots/tab-1.enc" },
-        { path: "/mock/documents/tab-screenshots/tab-2.enc" },
+        { path: "/mock/caches/tab-screenshots/tab-1.enc" },
+        { path: "/mock/caches/tab-screenshots/tab-2.enc" },
       ]);
 
       const result = await clearAllScreenshots();
 
       expect(result).toBe(true);
       expect(mockRNFS.unlink).toHaveBeenCalledWith(
-        "/mock/documents/tab-screenshots/tab-1.enc",
+        "/mock/caches/tab-screenshots/tab-1.enc",
       );
       expect(mockRNFS.unlink).toHaveBeenCalledWith(
-        "/mock/documents/tab-screenshots/tab-2.enc",
+        "/mock/caches/tab-screenshots/tab-2.enc",
       );
       expect(mockAsyncStorage.removeItem).toHaveBeenCalledWith(
         BROWSER_CONSTANTS.SCREENSHOT_STORAGE_KEY,
@@ -381,7 +418,7 @@ describe("screenshots helpers", () => {
 
     it("should handle errors gracefully", async () => {
       const error = new Error("Storage error");
-      mockAsyncStorage.removeItem.mockRejectedValue(error);
+      mockAsyncStorage.removeItem.mockRejectedValueOnce(error);
       (mockRNFS.exists as jest.Mock).mockResolvedValue(false);
 
       const result = await clearAllScreenshots();
@@ -398,7 +435,12 @@ describe("screenshots helpers", () => {
   describe("migrateOldScreenshots", () => {
     it("should clear old blob when old uri format detected", async () => {
       const oldFormat = JSON.stringify({
-        "tab-123": { tabId: "tab-123", tabUrl: "https://example.com", uri: "data:image/jpeg;base64,old", timestamp: 1 },
+        "tab-123": {
+          tabId: "tab-123",
+          tabUrl: "https://example.com",
+          uri: "data:image/jpeg;base64,old",
+          timestamp: 1,
+        },
       });
       mockAsyncStorage.getItem.mockResolvedValue(oldFormat);
 
@@ -407,6 +449,7 @@ describe("screenshots helpers", () => {
       expect(mockAsyncStorage.removeItem).toHaveBeenCalledWith(
         BROWSER_CONSTANTS.SCREENSHOT_STORAGE_KEY,
       );
+      expect(mockCrypto.resetScreenshotDek).toHaveBeenCalled();
     });
 
     it("should be a no-op when new file format is present", async () => {
@@ -418,6 +461,7 @@ describe("screenshots helpers", () => {
       await migrateOldScreenshots();
 
       expect(mockAsyncStorage.removeItem).not.toHaveBeenCalled();
+      expect(mockCrypto.resetScreenshotDek).not.toHaveBeenCalled();
     });
 
     it("should be a no-op when AsyncStorage is empty", async () => {
@@ -426,6 +470,7 @@ describe("screenshots helpers", () => {
       await migrateOldScreenshots();
 
       expect(mockAsyncStorage.removeItem).not.toHaveBeenCalled();
+      expect(mockCrypto.resetScreenshotDek).not.toHaveBeenCalled();
     });
   });
 
@@ -453,7 +498,9 @@ describe("screenshots helpers", () => {
       });
 
       expect(mockCrypto.encryptScreenshot).toHaveBeenCalledWith(mockUri);
-      expect(mockUpdateTab).toHaveBeenCalledWith("tab-123", { screenshot: mockUri });
+      expect(mockUpdateTab).toHaveBeenCalledWith("tab-123", {
+        screenshot: mockUri,
+      });
     });
 
     it("should not capture if viewShotRef is null", async () => {
