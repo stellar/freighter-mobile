@@ -36,7 +36,7 @@ PODS:
   - libwebp/sharpyuv (1.5.0)
   - libwebp/webp (1.5.0):
     - libwebp/sharpyuv
-  - NitroModules (0.31.10):
+  - NitroModules (0.33.9):
     - boost
     - DoubleConversion
     - fast_float
@@ -3813,7 +3813,7 @@ SPEC CHECKSUMS:
   libavif: 84bbb62fb232c3018d6f1bab79beea87e35de7b7
   libdav1d: 23581a4d8ec811ff171ed5e2e05cd27bad64c39f
   libwebp: 02b23773aedb6ff1fd38cec7a77b81414c6842a8
-  NitroModules: 5bc319d441f4983894ea66b1d392c519536e6d23
+  NitroModules: 1ef0796714251dbdaea49af187e291d8b6a7c5ea
   OpenSSL-Universal: ecee7b138fa75a74ecf00d7ffd248fb584739b9e
   QuickCrypto: fbb50daf9313753153af0e4f67a9f14ec1a26979
   RCT-Folly: 846fda9475e61ec7bcbf8a3fe81edfcaeb090669
