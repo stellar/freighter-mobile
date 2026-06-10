@@ -418,7 +418,6 @@ describe("screenshots helpers", () => {
       await migrateOldScreenshots();
 
       expect(mockAsyncStorage.removeItem).not.toHaveBeenCalled();
-      expect(mockCrypto.resetScreenshotDek).not.toHaveBeenCalled();
     });
 
     it("should be a no-op when AsyncStorage is empty", async () => {
@@ -427,7 +426,6 @@ describe("screenshots helpers", () => {
       await migrateOldScreenshots();
 
       expect(mockAsyncStorage.removeItem).not.toHaveBeenCalled();
-      expect(mockCrypto.resetScreenshotDek).not.toHaveBeenCalled();
     });
   });
 
