@@ -110,12 +110,17 @@ flows through it is in §6 — this diagram is the navigation graph only.
 
 ### 5.1 Destination-token discovery (`useSwapTokenLookup`)
 
-Rather than calling `useTokenLookup` directly we introduce a thin wrapper,
-`useSwapTokenLookup`, that **composes** the existing primitives and applies
-swap-specific filtering. This avoids leaking swap concerns into the general
-lookup hook (which is shared with the Add-a-Token flow).
+Rather than calling `useTokenLookup` directly we introduce a dedicated hook,
+`useSwapTokenLookup`, that **mirrors `useTokenLookup`'s patterns** (debounce,
+abort, cancellation) but applies swap-specific filtering, two-section output,
+and Blockaid bulk-scanning. It's a parallel implementation rather than a wrapper
+— the swap-specific logic (Soroban filtering, trending intersection,
+`hadSorobanMatches` state, multi-section output, `holdsOnly` mode) made
+composition awkward, and `useTokenLookup`'s shape didn't accommodate the
+held-vs-non-held bifurcation cleanly. This avoids leaking swap concerns into the
+general lookup hook (which is shared with the Add-a-Token flow).
 
-The wrapper exposes two surfaces driven by whether the search term is empty:
+The hook exposes two surfaces driven by whether the search term is empty:
 
 **Idle (no search term)** — produces two ordered sections:
 
@@ -139,20 +144,29 @@ The wrapper exposes two surfaces driven by whether the search term is empty:
    "Your tokens" section above it to visually duplicate, and seeing a held
    token's price + 24h % there can be useful.
 
-**Active (with search term)** — produces one ordered list under a single
-"Results" header:
+**Active (with search term)** — produces three labeled, mutually exclusive
+ordered sections:
 
-1. Held tokens matching `tokenCode` or `displayName` (partial match,
-   balance-value ordered).
-2. Verified-list tokens matching the term (excluding tokens already in step 1).
-3. Remaining stellar.expert `/asset?search=` results (excluding the above).
+1. **Your tokens** — held tokens matching `tokenCode` or `displayName` (partial
+   match, balance-value ordered).
+2. **Verified** — verified-list tokens matching the term (excluding tokens
+   already in step 1). Section header includes a tappable `(i)` info icon
+   explaining what the verified-token lists are.
+3. **Unverified** — remaining stellar.expert `/asset?search=` results (excluding
+   the above). Section header includes its own tappable `(i)` info icon for the
+   "unverified" caveat.
 
-If the term is a `G…` account address we fall through to the issuer-lookup path
-that [`useTokenLookup`](../src/hooks/useTokenLookup.ts) already supports and
-surface the classic assets that address issues. A `C…` contract address is
-**not** a structural issuer filter — stellar.expert's `?search=` is a fuzzy
-full-text match over asset code, issuer, home domain, **and** TOML metadata.
-That means a `C…` query can yield:
+If the term is a `G…` issuer address, it's passed verbatim to stellar.expert's
+fuzzy `?search=`. The index covers issuer fields, so this typically returns the
+classic assets that account issues — the same observed behaviour as a structural
+issuer filter, achieved through fuzzy text matching. `useTokenLookup` behaves
+the same way for `G…`; only the `C…` branch is special-cased there (via the
+freighter-backend `handleContractLookup`), and `useSwapTokenLookup` doesn't
+carry that branch since contract IDs aren't viable swap destinations anyway.
+
+A `C…` contract address is **not** a structural issuer filter — stellar.expert's
+`?search=` is a fuzzy full-text match over asset code, issuer, home domain,
+**and** TOML metadata. That means a `C…` query can yield:
 
 - **0 results** — the contract is a custom Soroban token (not a SAC) and no
   Classic record references it; or the index simply has no match.
@@ -197,18 +211,35 @@ When both classic and Soroban records match a term (e.g. a generic query like
 gets useful results. The Soroban message is reserved for the truly empty Results
 state.
 
+**Caching & freshness** — the hook has a three-layer cache stack:
+
+- Module-scoped `trendingMemoryCacheByNetwork` survives remounts so re-entering
+  the swap flow paints the trending list synchronously without a spinner.
+- Disk-backed caches via `cachedFetch` (30-min TTL) for the trending endpoint,
+  verified-tokens JSON, and Blockaid bulk-scan responses.
+- SWR pipeline: read disk caches → render preliminary list → revalidate in
+  background. Pull-to-refresh (`refreshTrending`) force-revalidates all three
+  layers in parallel.
+
+**`holdsOnly` mode** — the same hook drives the "Swap from" picker by setting
+`holdsOnly: true`, which short-circuits all stellar.expert / Blockaid pipelines
+and returns a pure in-memory filter over balances.
+
 **Blockaid scanning** — for both surfaces, every token that isn't already in the
 user's balances (which already carries `blockaidData` from the balance
 bulk-scan) is run through [`scanBulkTokens`](../src/services/blockaid/api.ts) in
-a single batched call. The result is merged onto each record via
+a single batched call (wrapped by a `scanBulkWithCache` SWR layer in
+`ducks/blockaidTokenScans`). The result is merged onto each record via
 [`assessTokenSecurity`](../src/services/blockaid/helper.ts) using the same
 `securityLevel`, `isMalicious`, `isSuspicious`, `isUnableToScan` flags the
 Add-Token flow uses. This is an important change that **closes a security gap**
 since the current swap picker only assesses tokens already in balances.
 
-**Cancellation & dedup** — the wrapper carries forward `useTokenLookup`'s
+**Cancellation & dedup** — the hook carries forward `useTokenLookup`'s
 `AbortController` + `latestRequestRef` pattern so the trailing keystroke wins;
-it also dedupes by canonical `CODE:ISSUER` identifier before rendering.
+it also dedupes by canonical `CODE:ISSUER` identifier before rendering. The
+trending pipeline keeps a separate `trendingAbortRef` so trending revalidation
+and search-mode fetches don't cancel each other.
 
 ### 5.2 stellar.expert proxy (follow-up)
 
@@ -230,7 +261,11 @@ and mainnet users get mainnet:
 ```ts
 fetchTrendingAssets({ network, signal }): Promise<SearchTokenResponse>
 //  network=PUBLIC  → GET https://api.stellar.expert/explorer/public/asset?sort=volume7d&order=desc&limit=50
-//  network=TESTNET → GET https://api.stellar.expert/explorer/testnet/asset?sort=volume7d&order=desc&limit=50
+//  network=TESTNET → GET https://api.stellar.expert/explorer/testnet/asset?limit=50
+//                    (volume7d is always 0 on testnet, so we omit the sort
+//                     and accept whatever order the API returns —
+//                     verified-tokens intersection is what produces a
+//                     meaningful list there.)
 ```
 
 The search-mode call (`/asset?search=…`) reuses the existing `searchToken`
@@ -246,7 +281,9 @@ stellar.expert so the `%` chip is hidden in the fallback case.
 
 Prices for the Trending list are fetched in one batched call when the swap
 screen mounts (or when the Trending list resolves), reusing
-`usePricesStore.fetchPricesForTokenIds`.
+`usePricesStore.fetchPricesForTokenIds` via the `useSwapTokenPrices` hook. The
+hook also accepts an `extraTokenIds` argument so the selected destination's
+price is always fetched, even when the token isn't on the trending list.
 
 ### 5.4 Fallback when stellar.expert is unreachable
 
@@ -270,11 +307,11 @@ between tokens they hold:
   swap between tokens you already hold." We treat this as a soft error state,
   not a blocking modal — the user retains full agency over held-only swaps.
 
-The Trending fetch and the picker's stellar.expert calls are independent in
-`useSwapTokenLookup`, so a failure on one (e.g. the trending endpoint) does not
-suppress the other. Each surface tracks its own `HookStatus` and renders the
-notice only when its own data source is in `ERROR` state. Errors are still
-logged via `logger.error` so we can monitor stellar.expert availability over
+`stellarExpertDown` is set when either the cold-start trending fetch fails AND
+no cache is available, or when the search-mode call returns null. If a stale
+cache exists, the trending list stays visible and the down notice is suppressed
+— we prefer slightly-stale data over no data. Errors are logged via
+`logger.error` regardless so we can monitor stellar.expert availability over
 time.
 
 Held-to-held swaps — the primary existing flow — continue to work fully because
@@ -305,6 +342,14 @@ export type DestinationTokenDescriptor = {
   decimals: number; // defaults to 7 for classic; tomlInfo.decimals if present
   tokenType: TokenTypeWithCustomToken;
   isNew: boolean; // false when the user already has a trustline
+  // Optional security signals propagated from Blockaid scans so the
+  // Receive chip / review sheet can render warnings without re-scanning.
+  securityLevel?: SecurityLevel;
+  securityWarnings?: SecurityWarning[];
+  // Optional icon URL from search-record `tomlInfo.image` so non-held
+  // destinations render the right icon before the trustline is added
+  // and the balances pipeline hydrates `useTokenIconsStore`.
+  iconUrl?: string;
 };
 ```
 
@@ -327,20 +372,28 @@ interface SwapState {
 }
 ```
 
-`setDestinationToken(descriptor: DestinationTokenDescriptor)` replaces the
-current `(tokenId, tokenSymbol)` signature. Two thin helpers (live next to the
-type) keep call sites tidy and avoid runtime "what shape is this?" branching —
-each is a narrow projection of its source plus `isNew` set from the origin
-(`false` for balances, `true` for search records that aren't already held):
+`setDestinationToken(descriptor: DestinationTokenDescriptor | null)` replaces
+the current `(tokenId, tokenSymbol)` signature (nullable so the picker can clear
+the slot). Two thin helpers (live next to the type) keep call sites tidy and
+avoid runtime "what shape is this?" branching — each is a narrow projection of
+its source plus `isNew` set from the origin (`false` for balances, `true` for
+search records that aren't already held):
 
 ```ts
-descriptorFromBalance(balance: PricedBalance): DestinationTokenDescriptor
+descriptorFromBalance(balance: HeldBalanceItem): DestinationTokenDescriptor
 descriptorFromSearchRecord(record: FormattedSearchTokenRecord): DestinationTokenDescriptor
 ```
 
 The call site always knows which source it has — picker rows under "Your tokens"
 go through the first, picker rows under "Popular tokens" / "Results" and the
 Trending detail sheet go through the second.
+
+For path-finding and transaction-building call sites that still need a
+balance-shaped value, `descriptorAsPathBalance(descriptor)` (in
+[`src/ducks/swap.ts`](../src/ducks/swap.ts)) projects the descriptor into a
+`HeldBalanceItem` so neither `findSwapPath` nor `buildSwapTransaction` needs to
+know about the descriptor type. This shim is load-bearing — it keeps the
+downstream APIs unchanged.
 
 The source side stays as `PricedBalance` — it legitimately needs balance + price
 for spend validation and the fiat toggle.
@@ -424,8 +477,9 @@ avoids introducing a new dependency.
 ([`src/components/screens/SwapScreen/components/SwapTokenRow.tsx`](../src/components/screens/SwapScreen/components/SwapTokenRow.tsx)
 — NEW)
 
-Single row used by both the Swap-To picker and the Trending Tokens list.
-Composes existing primitives:
+Single row used by both the Swap-To picker and the Trending Tokens list, with
+three explicit variants declared on the component:
+`"held" | "non-held" | "trending"`. Composes existing primitives:
 
 - [`<TokenIcon>`](../src/components/TokenIcon.tsx) — already handles
   fallbacks/initials.
@@ -434,28 +488,31 @@ Composes existing primitives:
   [`AddTokenScreen/TokenItem.tsx:43-51`](../src/components/screens/AddTokenScreen/TokenItem.tsx#L43-L51).
   The wrapper lives at `src/components/TokenIconWithBadge.tsx` so the
   Sell/Receive controls can use it.
-- Right-hand slot, depending on context:
-  - **Held tokens** (`Your tokens` section, plus held tokens that match the
+- Right-hand slot, depending on `variant`:
+  - **`"held"`** (`Your tokens` section, plus held tokens that match the
     search): fiat value of the balance (`fiatTotal`) + 24h % change, same layout
     as `BalanceRow` on the Home screen (the token-units amount stays in the
     row's subtitle).
-  - **Non-held tokens** (`Popular tokens` section, plus non-held matches in
-    search `Results`): a `DotsHorizontal` ellipsis that opens the existing
+  - **`"non-held"`** (`Verified` / `Unverified` sections, plus non-held matches
+    in search): a `DotsHorizontal` ellipsis that opens the existing
     [`TokenContextMenu`](../src/components/screens/SwapScreen/components/TokenContextMenu.tsx)
     with "Copy token address" (copies the issuer `G…` for classic assets, the
     `C…` for contracts) and "View on stellar.expert" (opens the asset page via
     [`useInAppBrowser`](../src/hooks/useInAppBrowser.ts), same pattern as
     `BalancesList` and `TransactionDetailsBottomSheet`).
-  - **Trending Tokens list** on the Swap home screen: price + 24h % (no ellipsis
-    — tapping the row opens `TrendingTokenDetailBottomSheet` instead).
+  - **`"trending"`** (Trending Tokens list on `SwapAmountScreen`): price + 24h %
+    (no ellipsis — tapping the row opens `TrendingTokenDetailBottomSheet`
+    instead). Wrapped by a small `TrendingListItem` component at
+    `src/components/screens/SwapScreen/components/TrendingListItem.tsx` that
+    handles the per-row price lookup and renders
+    `<SwapTokenRow variant="trending">`.
 
 `TokenContextMenu` exists today but its prop is typed as `PricedBalance`. We
-widen it to accept a thin reference shape
-(`{ id, tokenCode, issuer?, contractId?, tokenType }`) that both held balances
-and `FormattedSearchTokenRecord`s satisfy, then call the existing
-`getContractAddress` / `getStellarExpertUrl` helpers unchanged. The Add-Token
-flow's call sites are unaffected because the widened prop is still satisfied by
-`PricedBalance`.
+re-type it against a shared `TokenReference` shape (defined alongside swap
+helpers) that both `PricedBalance` and `FormattedSearchTokenRecord` project
+into, then call the existing `getContractAddress` / `getStellarExpertUrl`
+helpers unchanged. The Add-Token flow's call sites pass a projection rather than
+a raw `PricedBalance`, so the menu is consumer-agnostic now.
 
 Memoised on the fields the right-slot variant actually reads —
 `(tokenCode, issuer, securityLevel)` plus
@@ -503,18 +560,22 @@ Renders when the pre-flight reserve check fails (see §6.5). Designs landed at
 Figma node
 [11821-35601](https://www.figma.com/design/KwkHXQxbNmDllwermJtnRu/Freighter-Mobile?node-id=11821-35601).
 Contains a short explainer that the 0.5 XLM trustline reserve is a one-time lock
-(not a per-swap fee), plus four affordances —
+(not a per-swap fee), plus —
 
-- **"Swap XLM"** — sets XLM as the _Receive_ token and dismisses, so the user
-  can swap any held token for XLM and try again.
+- **"Swap XLM"** — rendered only when `canOfferSwapToXlm` is true (current
+  source is a non-XLM classic, or the user has any non-XLM classic balance to
+  use as a fallback source). Sets XLM as the Receive token and dismisses. When
+  neither mode applies (e.g. user holds only XLM with XLM as source) the CTA is
+  hidden and the user falls back to the wallet-address affordance.
 - **"Copy wallet address for XLM deposit"** — copies the active account's `G…`
   so the user can fund it from another wallet or exchange.
-- **"Why do I need XLM?"** — opens the help article
+- **Inline body link "Why do I need XLM?"** — opens the help article
   [help.freighter.app — How much XLM do I need in my wallet](https://help.freighter.app/article/xjlva9dxov-how-much-xlm-do-i-need-in-my-wallet)
   via [`useInAppBrowser`](../src/hooks/useInAppBrowser.ts), same pattern as the
-  other in-app browser usages (e.g. `BalancesList`,
-  `TransactionDetailsBottomSheet`).
-- **"Cancel"** — dismisses without changes.
+  other in-app browser usages. Rendered as an inline link inside the explanatory
+  copy, not as a separate button.
+- **Close icon (top-right)** — the only dismiss affordance. No separate "Cancel"
+  button.
 
 ### 6.4 `SwapReviewBottomSheet` extensions
 
@@ -522,9 +583,13 @@ Existing component at
 [`src/components/screens/SwapScreen/components/SwapReviewBottomSheet.tsx`](../src/components/screens/SwapScreen/components/SwapReviewBottomSheet.tsx).
 We add two pieces:
 
-- A purple inline `<Banner>` rendered when `destinationToken.isNew === true`,
-  with text "This will add a trustline to {tokenCode}" and a chevron — tap opens
-  `TrustlineInfoBottomSheet`.
+- A purple inline `<Banner variant="highlight">` rendered when
+  `destinationToken.isNew === true`, with text "This will add a trustline to
+  {tokenCode}" and a chevron — tap opens `TrustlineInfoBottomSheet`. The
+  `highlight` variant was added to the SDS Banner (alongside
+  warning/error/success/info) so swap-flow callouts and any future lilac/purple
+  banners share the same layout, accessibility, and chevron behaviour as every
+  other Banner in the app.
 - The existing Blockaid token/transaction warning logic (`isDestMalicious`,
   `isDestSuspicious`, `isTxMalicious`, …) already works; we just feed it the new
   destination scan result (see §5.1).
@@ -566,18 +631,21 @@ defence-in-depth on top of the per-token scan.
 compute the new base reserve cost (0.5 XLM per new trustline) and compare to the
 user's spendable XLM (already exposed via `BalancesList` /
 `getSpendableBalance`). If insufficient → open `XlmReserveBottomSheet` and
-abort. We deliberately do this client-side rather than relying on Horizon's
-`tx_insufficient_balance` for a better UX.
+abort. The check lives in
+[`src/components/screens/SwapScreen/helpers/swapPreflight.ts`](../src/components/screens/SwapScreen/helpers/swapPreflight.ts)
+as `shouldShowXlmReservePreflight`, called from `SwapAmountScreen` before
+opening the Review sheet. We deliberately do this client-side rather than
+relying on Horizon's `tx_insufficient_balance` for a better UX.
 
 ### 6.6 CTA state machine on `SwapAmountScreen`
 
-| State        | Condition                   | Label                             | Action on tap                                                                                                                                                                               |
-| ------------ | --------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Select       | no destination selected     | "Select a token"                  | navigate → `SwapToScreen`                                                                                                                                                                   |
-| Enter        | destination set, amount = 0 | "Enter an amount"                 | focus Sell `TextInput` (system numeric keyboard slides up)                                                                                                                                  |
-| Insufficient | amount > spendable          | "Insufficient balance" (disabled) | —                                                                                                                                                                                           |
-| Loading      | path-finding in flight      | spinner                           | —                                                                                                                                                                                           |
-| Review       | amount valid & path found   | "Review swap"                     | run the pre-flight XLM-reserve check (§6.5) — if a trustline is needed and spendable XLM is below the 0.5 XLM reserve, open `XlmReserveBottomSheet`; otherwise open `SwapReviewBottomSheet` |
+| State        | Condition                          | Label                             | Action on tap                                                                                                                                                                                                                                                                   |
+| ------------ | ---------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Select       | source OR destination not selected | "Select a token"                  | navigate → `SwapToScreen` for the missing side (source-first ordering when both are empty)                                                                                                                                                                                      |
+| Enter        | both sides set, amount = 0         | "Enter an amount"                 | focus Sell `TextInput` (system numeric keyboard slides up)                                                                                                                                                                                                                      |
+| Insufficient | amount > spendable                 | "Insufficient balance" (disabled) | —                                                                                                                                                                                                                                                                               |
+| Loading      | path-finding in flight             | spinner                           | —                                                                                                                                                                                                                                                                               |
+| Review       | amount valid & path found          | "Review swap"                     | if `isUnableToScan` → open `SecurityDetailBottomSheet` so the user acknowledges the unable-to-scan warning before proceeding; else if `destinationToken.isNew` and spendable XLM is below the 0.5 XLM reserve → open `XlmReserveBottomSheet`; else open `SwapReviewBottomSheet` |
 
 Implemented as a derived `useMemo` returning a discriminated union; renders the
 SDS `<Button>` accordingly. The reserve-check branch only triggers when
@@ -586,47 +654,51 @@ sheet.
 
 ## 7. Component reuse summary
 
-| Concern                     | Reuse                                                                                                                                                                                       | New                                                                          |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| Token search hook           | [`useTokenLookup`](../src/hooks/useTokenLookup.ts) (core)                                                                                                                                   | `useSwapTokenLookup` (wrapper)                                               |
-| Token↔fiat amount input    | [`useTokenFiatConverter`](../src/hooks/useTokenFiatConverter/index.ts) (extended with `setDisplayAmountFromText`), RN `TextInput` with `keyboardType="decimal-pad"`, `KeyboardAvoidingView` | —                                                                            |
-| Token icon + security badge | [`TokenIcon`](../src/components/TokenIcon.tsx), badge pattern from [`AddTokenScreen/TokenItem`](../src/components/screens/AddTokenScreen/TokenItem.tsx)                                     | `TokenIconWithBadge` (shared wrapper)                                        |
-| Picker layout               | SDS `<Input>`, `SectionList`                                                                                                                                                                | `SwapToScreen`, `SwapTokenRow`                                               |
-| Row context menu            | [`TokenContextMenu`](../src/components/screens/SwapScreen/components/TokenContextMenu.tsx) (widened prop), [`useInAppBrowser`](../src/hooks/useInAppBrowser.ts), `getStellarExpertUrl`      | —                                                                            |
-| Trending list & detail      | `usePricesStore`, `SwapTokenRow`, `FlatList` (as `SwapAmountScreen` body)                                                                                                                   | `TrendingTokenDetailBottomSheet`                                             |
-| Transaction builder         | `pathPaymentStrictSend` path                                                                                                                                                                | `buildChangeTrustOperation` helper (extracted), `includeTrustline` flag      |
-| Review sheet                | [`SwapReviewBottomSheet`](../src/components/screens/SwapScreen/components/SwapReviewBottomSheet.tsx)                                                                                        | inline trustline banner, `TrustlineInfoBottomSheet`, `XlmReserveBottomSheet` |
-| Blockaid scanning           | [`scanBulkTokens`](../src/services/blockaid/api.ts), [`assessTokenSecurity`](../src/services/blockaid/helper.ts), `useBlockaidTransaction`                                                  | — (data flow change only)                                                    |
-| Verified token lists        | [`ducks/verifiedTokens`](../src/ducks/verifiedTokens.ts), `splitVerifiedTokens`                                                                                                             | —                                                                            |
+| Concern                     | Reuse                                                                                                                                                                                                                 | New                                                                     |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Token search hook           | [`useTokenLookup`](../src/hooks/useTokenLookup.ts) for Add-Token; pattern reused                                                                                                                                      | `useSwapTokenLookup` (parallel implementation, swap-specific filtering) |
+| Token↔fiat amount input    | [`useTokenFiatConverter`](../src/hooks/useTokenFiatConverter/index.ts) (extended with `setDisplayAmountFromText`), RN `TextInput` with `keyboardType="decimal-pad"`, `KeyboardAvoidingView`                           | —                                                                       |
+| Token icon + security badge | [`TokenIcon`](../src/components/TokenIcon.tsx), badge pattern from [`AddTokenScreen/TokenItem`](../src/components/screens/AddTokenScreen/TokenItem.tsx)                                                               | `TokenIconWithBadge` (shared wrapper)                                   |
+| Picker layout               | SDS `<Input>`, `SectionList`                                                                                                                                                                                          | `SwapToScreen`, `SwapTokenRow`                                          |
+| Row context menu            | [`TokenContextMenu`](../src/components/screens/SwapScreen/components/TokenContextMenu.tsx) (typed against shared `TokenReference` shape), [`useInAppBrowser`](../src/hooks/useInAppBrowser.ts), `getStellarExpertUrl` | —                                                                       |
+| Trending list & detail      | `usePricesStore`, `SwapTokenRow`, `FlatList` (as `SwapAmountScreen` body)                                                                                                                                             | `TrendingTokenDetailBottomSheet`                                        |
+| Transaction builder         | `pathPaymentStrictSend` path                                                                                                                                                                                          | `buildChangeTrustOperation` helper (extracted), `includeTrustline` flag |
+| Review sheet                | [`SwapReviewBottomSheet`](../src/components/screens/SwapScreen/components/SwapReviewBottomSheet.tsx), SDS `<Banner>` (new `"highlight"` variant)                                                                      | `TrustlineInfoBottomSheet`, `XlmReserveBottomSheet`                     |
+| Blockaid scanning           | [`scanBulkTokens`](../src/services/blockaid/api.ts), [`assessTokenSecurity`](../src/services/blockaid/helper.ts), `useBlockaidTransaction`                                                                            | — (data flow change only)                                               |
+| Verified token lists        | [`ducks/verifiedTokens`](../src/ducks/verifiedTokens.ts), `splitVerifiedTokens`                                                                                                                                       | —                                                                       |
 
-Nothing on this list duplicates an existing component. The six new components
-introduced above (`SwapToScreen`, `SwapTokenRow`,
+Nothing on this list duplicates an existing component. The new components
+introduced above (`SwapToScreen`, `SwapTokenRow`, `TrendingListItem`,
 `TrendingTokenDetailBottomSheet`, `TrustlineInfoBottomSheet`,
 `XlmReserveBottomSheet`, and the shared `TokenIconWithBadge` wrapper) are all
 single-purpose with clear inputs / outputs (a token record + callbacks). The new
-`useSwapTokenLookup` hook composes existing primitives instead of
-re-implementing them; the trustline-reserve pre-flight check lives inline in
-`SwapAmountScreen` as a small helper (no new hook needed for a single use site).
+`useSwapTokenLookup` hook reuses `useTokenLookup`'s cancellation / debouncing
+patterns but is a parallel implementation rather than a wrapper — the
+swap-specific concerns (Soroban filter, trending intersection, multi-section
+output, `holdsOnly` mode) made composition awkward. The trustline-reserve
+pre-flight check lives in
+`src/components/screens/SwapScreen/helpers/swapPreflight.ts` as a small helper.
 
 ## 8. Performance considerations
 
 - **Network calls**: 1 stellar.expert trending call on mount, 1 verified-lists
   call (already 30-min cached), 1 Blockaid bulk scan for non-held tokens. Search
-  adds 1 stellar.expert `/asset?search=` per debounced keystroke (500 ms via the
-  existing [`useDebounce`](../src/hooks/useDebounce.ts) +
-  `DEFAULT_DEBOUNCE_DELAY`), reusing `AbortController`-based cancellation so
-  only the latest request lands.
+  adds 1 stellar.expert `/asset?search=` per debounced keystroke (500 ms via
+  `DEFAULT_DEBOUNCE_DELAY` using a raw `setTimeout` — not the `useDebounce`
+  helper — so the trailing-keystroke cancellation shares the same
+  `AbortController` lifecycle as the in-flight fetch).
 - **List virtualization**: `SectionList` for the picker (multiple sections). On
   `SwapAmountScreen` the Trending list shows the full popular-tokens set (up to
   50 rows, capped by the stellar.expert fetch), so we structure the screen as a
   **single `FlatList`** whose `ListHeaderComponent` contains the Sell input,
   swap-direction chevron, Receive display, and 25/50/75/Max chips, with the
   Trending rows as the virtualized body. The top nav bar stays sticky at the top
-  (default); the CTA button sits in a sticky footer outside the `FlatList`,
-  wrapped in `KeyboardAvoidingView` so it lifts above the system numeric
-  keyboard when the Sell input is focused. This is the same `FlatList` primitive
-  already used by [`BalancesList`](../src/components/BalancesList.tsx) on the
-  Home screen — no nested scroll views, virtualization stays intact, and the
+  (default); the CTA button is rendered as a sibling after the `FlatList` inside
+  `KeyboardAvoidingView` (visually pinned to the bottom, not technically
+  `stickyHeaderIndices`-sticky), so it lifts above the system numeric keyboard
+  when the Sell input is focused. This is the same `FlatList` primitive already
+  used by [`BalancesList`](../src/components/BalancesList.tsx) on the Home
+  screen — no nested scroll views, virtualization stays intact, and the
   Sell/Receive blocks scroll off naturally as the user browses Trending.
 - **Icon caching**: routed through
   [`ducks/tokenIcons`](../src/ducks/tokenIcons.ts) — already handles lazy fetch,
@@ -655,9 +727,10 @@ re-implementing them; the trustline-reserve pre-flight check lives inline in
   tokens that matched the term, and the filtered list is empty, the message
   becomes **"Soroban contract tokens aren't supported for swaps yet. Try
   searching for a Classic token instead."** instead of the generic line — see
-  §5.1 for the full trigger logic. Trending list on testnet, where
-  stellar.expert returns mainnet-only data, is hidden behind a network check so
-  we don't render a confusing empty list.
+  §5.1 for the full trigger logic. Trending list on testnet calls the same
+  endpoint as mainnet (`/explorer/testnet/asset`) but drops the `volume7d` sort
+  (see §5.2) and relies on the verified-tokens intersection to produce a
+  meaningful list — empty only when no testnet verified tokens are returned.
 
 ## 9. Security
 
@@ -684,6 +757,12 @@ colon-prefixed lowercase string for the Amplitude payload (e.g.
 
 - `SWAP_TO_PICKER_OPENED = "swap: to-picker opened"` —
   `{ source: "cta" | "dropdown" }`
+- `SWAP_FROM_PICKER_OPENED = "swap: from-picker opened"` — fired when the
+  Sell-side picker opens.
+- `SWAP_SOURCE_SELECTED = "swap: source selected"` — fired when a token is
+  picked on the Sell side.
+- `SWAP_DIRECTION_TOGGLED = "swap: direction toggled"` — fired on the
+  chevron-down direction swap between Sell and Receive.
 - `SWAP_TRENDING_TOKEN_TAPPED = "swap: trending token tapped"` —
   `{ tokenCode, position }`
 - `SWAP_TRENDING_BUY_PRESSED = "swap: trending buy pressed"` — `{ tokenCode }`
@@ -759,9 +838,13 @@ existing `services/stellarExpert.ts` pattern).
   10. Soroban assets never appear in either picker section, including during
       search.
   11. Switch network to **testnet** and repeat steps 1–8 with testnet token
-      issuers (e.g. SRT). Trending list hits `/explorer/testnet/asset`; search
-      hits `/explorer/testnet/asset?search=…`; Blockaid badges are absent
-      (mainnet-only) and the warning state is "unable to scan", as today.
+      issuers (e.g. SRT). Trending list hits `/explorer/testnet/asset` — note
+      the testnet call drops `sort=volume7d&order=desc` (volume7d is always 0
+      there), so the returned ordering is whatever stellar.expert's testnet
+      asset index provides; the verified-tokens intersection is what produces a
+      meaningful list. Search hits `/explorer/testnet/asset?search=…`; Blockaid
+      badges are absent (mainnet-only) and the warning state is "unable to
+      scan", as today.
   12. **stellar.expert downtime drill** — point the stellar.expert base URL at a
       sink (e.g. `https://httpbin.org/status/503`) or block the host via a proxy
       and reload Swap. Verify per §5.4: Trending list is hidden on the swap
