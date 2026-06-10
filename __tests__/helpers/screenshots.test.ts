@@ -24,7 +24,6 @@ jest.mock("helpers/screenshotCrypto", () => ({
   decryptScreenshot: jest
     .fn()
     .mockResolvedValue("data:image/jpeg;base64,decrypted"),
-  resetScreenshotDek: jest.fn().mockResolvedValue(undefined),
 }));
 jest.mock("@dr.pogodin/react-native-fs", () => ({
   DocumentDirectoryPath: "/mock/documents",
@@ -397,7 +396,7 @@ describe("screenshots helpers", () => {
   });
 
   describe("migrateOldScreenshots", () => {
-    it("should clear old blob and rotate DEK when old uri format detected", async () => {
+    it("should clear old blob when old uri format detected", async () => {
       const oldFormat = JSON.stringify({
         "tab-123": { tabId: "tab-123", tabUrl: "https://example.com", uri: "data:image/jpeg;base64,old", timestamp: 1 },
       });
@@ -408,7 +407,6 @@ describe("screenshots helpers", () => {
       expect(mockAsyncStorage.removeItem).toHaveBeenCalledWith(
         BROWSER_CONSTANTS.SCREENSHOT_STORAGE_KEY,
       );
-      expect(mockCrypto.resetScreenshotDek).toHaveBeenCalled();
     });
 
     it("should be a no-op when new file format is present", async () => {

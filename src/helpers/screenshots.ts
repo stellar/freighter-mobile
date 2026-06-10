@@ -14,7 +14,6 @@ import { BrowserTab } from "ducks/browserTabs";
 import {
   decryptScreenshot,
   encryptScreenshot,
-  resetScreenshotDek,
 } from "helpers/screenshotCrypto";
 import ViewShot from "react-native-view-shot";
 
@@ -266,10 +265,9 @@ export const migrateOldScreenshots = async (): Promise<void> => {
     if (isOldFormat) {
       logger.debug(
         "migrateOldScreenshots",
-        "Old unencrypted screenshot blob detected — clearing and rotating DEK",
+        "Old unencrypted screenshot blob detected — clearing",
       );
       await AsyncStorage.removeItem(BROWSER_CONSTANTS.SCREENSHOT_STORAGE_KEY);
-      await resetScreenshotDek();
     }
   } catch (error) {
     logger.error(
