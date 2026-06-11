@@ -680,7 +680,8 @@
     "minimumReceived": "Mínimo recebido"
   },
   "transactionTokenScreen": {
-    "title": "Enviando"
+    "title": "Enviando",
+    "empty": "Nenhum token ou colecionável para enviar"
   },
   "transactionSettings": {
     "title": "Configurações da transação",

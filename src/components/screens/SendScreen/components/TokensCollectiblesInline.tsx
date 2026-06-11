@@ -11,6 +11,7 @@ import {
 import { useCollectiblesStore } from "ducks/collectibles";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
 import { useFilteredCollectibles } from "hooks/useFilteredCollectibles";
 import React from "react";
@@ -45,39 +46,91 @@ export const TokensCollectiblesInline: React.FC<
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
-  const isLoading = useCollectiblesStore((state) => state.isLoading);
-  const error = useCollectiblesStore((state) => state.error);
+
+  // Tokens state, lifted from the same hook BalancesList uses internally so we
+  // can drive a single page-level spinner/error.
+  const { isLoading: tokensLoading, error: tokensError, noBalances } =
+    useBalancesList({ publicKey, network });
+
+  // Collectibles state.
+  const collectiblesLoading = useCollectiblesStore((state) => state.isLoading);
+  const collectiblesError = useCollectiblesStore((state) => state.error);
   const { visibleCollectibles } = useFilteredCollectibles();
 
-  const renderCollectiblesContent = () => {
-    if (isLoading) {
+  const hasTokens = !noBalances;
+  const hasCollectibles = visibleCollectibles.length > 0;
+
+  // Single spinner: keep it up until both sources finish their initial load.
+  // Gating on the "no data yet" condition (rather than raw isLoading) avoids
+  // the spinner flashing over already-rendered content on background refreshes.
+  const showSpinner =
+    (tokensLoading && noBalances) ||
+    (collectiblesLoading && !hasCollectibles);
+
+  // Single error field: a token error takes precedence over a collectibles
+  // error, and any error replaces the whole view rather than rendering the
+  // section that succeeded.
+  let errorMessage: string | null = null;
+  if (tokensError) {
+    errorMessage = t("balancesList.error");
+  } else if (collectiblesError) {
+    errorMessage = t("collectiblesGrid.error");
+  }
+
+  const renderCollectibles = () =>
+    visibleCollectibles.map((collection) => (
+      <View key={collection.collectionAddress}>
+        <View className="flex-row items-center gap-[12px] mb-3 mt-3">
+          <Text md secondary numberOfLines={1}>
+            {collection.collectionName}
+          </Text>
+          <View className="flex-1 h-[1px] bg-gray-3" />
+          <Text md secondary>
+            {collection.items.length}
+          </Text>
+        </View>
+
+        {collection.items.map((item) => (
+          <TouchableOpacity
+            key={`${item.collectionAddress}-${item.tokenId}`}
+            className="flex-row items-center gap-4 py-3"
+            onPress={() =>
+              onCollectiblePress?.({
+                collectionAddress: item.collectionAddress,
+                tokenId: item.tokenId,
+              })
+            }
+          >
+            <View className="w-[40px] h-[40px] rounded-[8px] overflow-hidden bg-background-tertiary">
+              <CollectibleImage imageUri={item.image} placeholderIconSize={20} />
+            </View>
+
+            <Text md medium numberOfLines={1} style={{ flexShrink: 1 }}>
+              {item.name || `${collection.collectionName} #${item.tokenId}`}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    ));
+
+  const renderContent = () => {
+    if (showSpinner) {
       return (
         <View className="items-center justify-center py-6">
           <Spinner
-            testID="collectibles-inline-spinner"
-            size="small"
+            testID="tokens-collectibles-inline-spinner"
+            size="large"
             color={themeColors.secondary}
           />
         </View>
       );
     }
 
-    if (error) {
+    if (errorMessage) {
       return (
         <View className="py-2">
-          <Text md secondary>
-            {t("collectiblesGrid.error")}
-          </Text>
-        </View>
-      );
-    }
-
-    if (visibleCollectibles.length === 0) {
-      return (
-        <View className="flex-row items-center gap-2 py-2">
-          <Icon.Grid01 size={16} color={themeColors.text.secondary} />
-          <Text md medium secondary>
-            {t("collectiblesGrid.empty")}
+          <Text md secondary testID="tokens-collectibles-inline-error">
+            {errorMessage}
           </Text>
         </View>
       );
@@ -85,43 +138,52 @@ export const TokensCollectiblesInline: React.FC<
 
     return (
       <>
-        {visibleCollectibles.map((collection) => (
-          <View key={collection.collectionAddress}>
-            <View className="flex-row items-center gap-[12px] mb-3 mt-3">
-              <Text md secondary numberOfLines={1}>
-                {collection.collectionName}
-              </Text>
-              <View className="flex-1 h-[1px] bg-gray-3" />
-              <Text md secondary>
-                {collection.items.length}
+        {hasTokens && (
+          <>
+            <View className="flex-row items-center gap-2 mb-6">
+              <Icon.Coins03 size={16} color={themeColors.text.secondary} />
+              <Text md medium secondary>
+                {t("balancesList.title")}
               </Text>
             </View>
 
-            {collection.items.map((item) => (
-              <TouchableOpacity
-                key={`${item.collectionAddress}-${item.tokenId}`}
-                className="flex-row items-center gap-4 py-3"
-                onPress={() =>
-                  onCollectiblePress?.({
-                    collectionAddress: item.collectionAddress,
-                    tokenId: item.tokenId,
-                  })
-                }
-              >
-                <View className="w-[40px] h-[40px] rounded-[8px] overflow-hidden bg-background-tertiary">
-                  <CollectibleImage
-                    imageUri={item.image}
-                    placeholderIconSize={20}
-                  />
-                </View>
+            <BalancesList
+              publicKey={publicKey}
+              network={network}
+              onTokenPress={onTokenPress}
+              disableInnerScrolling
+              showSpendableAmount={showSpendableAmount}
+              feeContext={feeContext}
+              balanceRowTestIDPrefix={balanceRowTestIDPrefix}
+            />
+          </>
+        )}
 
-                <Text md medium numberOfLines={1} style={{ flexShrink: 1 }}>
-                  {item.name || `${collection.collectionName} #${item.tokenId}`}
-                </Text>
-              </TouchableOpacity>
-            ))}
+        {hasCollectibles && (
+          <>
+            <View
+              className={`flex-row items-center gap-2 mb-6 ${
+                hasTokens ? "mt-8" : ""
+              }`}
+            >
+              <Icon.Image01 size={16} color={themeColors.text.secondary} />
+              <Text md medium secondary>
+                {t("collectiblesGrid.title")}
+              </Text>
+            </View>
+
+            {renderCollectibles()}
+          </>
+        )}
+
+        {!hasTokens && !hasCollectibles && (
+          <View className="flex-row items-center gap-2 py-2">
+            <Icon.Grid01 size={16} color={themeColors.text.secondary} />
+            <Text md medium secondary>
+              {t("transactionTokenScreen.empty")}
+            </Text>
           </View>
-        ))}
+        )}
       </>
     );
   };
@@ -133,31 +195,7 @@ export const TokensCollectiblesInline: React.FC<
       keyboardShouldPersistTaps="handled"
       contentContainerStyle={{ paddingHorizontal: pxValue(DEFAULT_PADDING) }}
     >
-      <View className="flex-row items-center gap-2 mb-6">
-        <Icon.Coins03 size={16} color={themeColors.text.secondary} />
-        <Text md medium secondary>
-          {t("balancesList.title")}
-        </Text>
-      </View>
-
-      <BalancesList
-        publicKey={publicKey}
-        network={network}
-        onTokenPress={onTokenPress}
-        disableInnerScrolling
-        showSpendableAmount={showSpendableAmount}
-        feeContext={feeContext}
-        balanceRowTestIDPrefix={balanceRowTestIDPrefix}
-      />
-
-      <View className="flex-row items-center gap-2 mt-8 mb-6">
-        <Icon.Image01 size={16} color={themeColors.text.secondary} />
-        <Text md medium secondary>
-          {t("collectiblesGrid.title")}
-        </Text>
-      </View>
-
-      {renderCollectiblesContent()}
+      {renderContent()}
 
       <View className="pb-4" />
     </ScrollView>
