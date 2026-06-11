@@ -40,12 +40,6 @@ const extractErrorMessage = (error: unknown): string => {
   return String(error);
 };
 
-/**
- * TransactionBuilderState Interface
- *
- * Defines the structure of the transaction builder state using Zustand.
- * This store manages transaction building, signing, and submission.
- */
 interface TransactionBuilderState {
   transactionXDR: string | null;
   signedTransactionXDR: string | null;
@@ -82,6 +76,8 @@ interface TransactionBuilderState {
     transactionTimeout?: number;
     network?: NETWORKS;
     senderAddress?: string;
+    /** When present, a changeTrust op for the destination asset is prepended atomically. */
+    includeTrustline?: { tokenCode: string; issuer: string };
   }) => Promise<string | null>;
 
   buildSendCollectibleTransaction: (params: {
@@ -130,20 +126,11 @@ const initialState: Omit<
 const createRequestId = () =>
   `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-/**
- * Transaction Builder Store
- *
- * A Zustand store that manages transaction building, signing, and submission.
- */
 export const useTransactionBuilderStore = create<TransactionBuilderState>(
   (set, get) => ({
     ...initialState,
 
-    /**
-     * Builds a transaction and stores the XDR
-     */
     buildTransaction: async (params) => {
-      // Tag this build cycle
       const newRequestId = createRequestId();
 
       // Determine Soroban status early from params so the UI can show the
@@ -301,11 +288,7 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
       }
     },
 
-    /**
-     * Builds a swap transaction and stores the XDR
-     */
     buildSwapTransaction: async (params) => {
-      // Tag this build cycle
       const newRequestId = createRequestId();
 
       // Mark new cycle and reset flags (include Soroban fields so they don't carry over from a prior Soroban build)
@@ -319,7 +302,6 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
       });
 
       try {
-        // Check debug override for forced build failure
         const { forceBuildTransactionFailure } = useDebugStore.getState();
 
         if (forceBuildTransactionFailure) {
@@ -337,6 +319,7 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
           transactionTimeout: params.transactionTimeout,
           network: params.network,
           senderAddress: params.senderAddress,
+          includeTrustline: params.includeTrustline,
         });
 
         if (!builtTxResult) {
@@ -380,11 +363,7 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
       }
     },
 
-    /**
-     * Builds a send collectible transaction and stores the XDR
-     */
     buildSendCollectibleTransaction: async (params) => {
-      // Tag this build cycle
       const newRequestId = createRequestId();
 
       // Mark new cycle and reset flags (clear stale Soroban fees so UI doesn't
@@ -478,12 +457,8 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
       }
     },
 
-    /**
-     * Signs a transaction and stores the signed XDR
-     */
     signTransaction: (params) => {
       try {
-        // Check debug override for forced sign failure
         const { forceSignTransactionFailure } = useDebugStore.getState();
 
         if (forceSignTransactionFailure) {
@@ -518,9 +493,6 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
       }
     },
 
-    /**
-     * Submits a transaction and stores the hash
-     */
     submitTransaction: async (params) => {
       // Tag this submit cycle (reuse current id if exists)
       const currentRequestId = get().requestId || createRequestId();
@@ -628,9 +600,6 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
       }
     },
 
-    /**
-     * Resets the transaction state
-     */
     resetTransaction: () => {
       set({
         ...initialState,

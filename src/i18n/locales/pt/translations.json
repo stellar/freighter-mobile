@@ -633,9 +633,18 @@
     "title": "Trocar",
     "searchTokenInputPlaceholder": "Pesq. por nome ou endereço",
     "setMax": "Definir máximo",
+    "youSell": "Você vende",
+    "youReceive": "Você recebe",
     "receive": "Receber",
+    "refreshFailed": "Não foi possível atualizar — usando dados em cache",
     "chooseToken": "Escolher token",
-    "selectToken": "Selecionar um token",
+    "selectToken": "Selecionar",
+    "cta": {
+      "select": "Selecionar um token",
+      "enterAmount": "Insira um valor",
+      "insufficientBalance": "Saldo insuficiente",
+      "review": "Revisar troca"
+    },
     "swapScreenTokenListTitle": "Seus tokens",
     "copyContractAddress": "Copiar endereço do contrato",
     "viewOnStellarExpert": "Ver no stellar.expert",
@@ -662,7 +671,50 @@
       "pathFindFailed": "Não foi possível buscar o caminho de troca. Tente novamente.",
       "customTokenSwapNotSupported": "Troca de tokens customizados ainda não é suportada"
     },
-    "proceedAnyway": "Prosseguir mesmo assim"
+    "proceedAnyway": "Prosseguir mesmo assim",
+    "searchPlaceholder": "Buscar tokens",
+    "stellarExpertDown": "A descoberta de tokens está temporariamente indisponível. Você ainda pode trocar entre tokens que já possui.",
+    "sorobanEmptyState": "Tokens de contrato Soroban não são suportados para trocas ainda. Tente buscar por um token Clássico.",
+    "noResults": "Nenhum token corresponde a {{term}}",
+    "yourTokenSection": "Seu token",
+    "yourTokensSection": "Seus tokens",
+    "popularTokensSection": "Tokens populares",
+    "verifiedSection": "Verificado",
+    "unverifiedSection": "Não verificado",
+    "trendingTokensSection": "Tokens em alta",
+    "verifiedInfo": {
+      "title": "Token verificado",
+      "body": "Das listas de tokens confiáveis do ecossistema Stellar."
+    },
+    "unverifiedInfo": {
+      "title": "Token não verificado",
+      "body": "Não está nas listas de tokens confiáveis. Tenha cuidado ao adicionar ou transacionar."
+    },
+    "trendingDetail": {
+      "buy": "Comprar {{tokenCode}}",
+      "issuer": "Emissor",
+      "type": "Tipo",
+      "domain": "Domínio",
+      "stellarClassic": "Stellar Classic",
+      "stellarNetwork": "Rede Stellar"
+    },
+    "trustlineInfo": {
+      "title": "Isto adicionará uma trustline para {{tokenCode}}",
+      "bodyPrefix": "Para manter {{tokenCode}} na sua carteira, a Stellar exige uma trustline. ",
+      "bodyEmphasis": "0,5 XLM serão reservados",
+      "bodySuffix": " do seu saldo. Você poderá recuperá-los removendo a trustline quando o saldo de {{tokenCode}} for zero.",
+      "confirm": "Entendi"
+    },
+    "trustlineBanner": "Isso adicionará uma trustline para {{tokenCode}}",
+    "xlmReserve": {
+      "title": "Você precisa de XLM para criar uma trustline",
+      "bodyPrefix": "Para receber {{tokenCode}}, sua carteira precisa de uma trustline na Stellar. ",
+      "whyDoINeedXlm": "Por que preciso de XLM?",
+      "infoCardTitle": "0,5 XLM necessário",
+      "infoCardBody": "A Stellar exige essa reserva para adicionar {{tokenCode}}. Você pode recuperá-la quando o saldo de {{tokenCode}} for zero.",
+      "swapXlm": "Trocar por 0,5 XLM",
+      "copyAddress": "Copiar meu endereço da carteira"
+    }
   },
   "swapProcessingScreen": {
     "swapping": "Trocando",

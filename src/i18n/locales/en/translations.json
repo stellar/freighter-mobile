@@ -669,9 +669,18 @@
     "title": "Swap",
     "searchTokenInputPlaceholder": "Token name or address",
     "setMax": "Set max",
+    "youSell": "You sell",
+    "youReceive": "You receive",
     "receive": "Receive",
+    "refreshFailed": "Couldn't refresh — using cached data",
     "chooseToken": "Choose token",
-    "selectToken": "Select a token",
+    "selectToken": "Select",
+    "cta": {
+      "select": "Select a token",
+      "enterAmount": "Enter an amount",
+      "insufficientBalance": "Insufficient balance",
+      "review": "Review swap"
+    },
     "swapScreenTokenListTitle": "Your tokens",
     "copyContractAddress": "Copy contract address",
     "viewOnStellarExpert": "View on stellar.expert",
@@ -698,7 +707,50 @@
       "pathFindFailed": "Couldn't fetch swap path. Please try again.",
       "customTokenSwapNotSupported": "Swapping custom tokens is not supported yet"
     },
-    "proceedAnyway": "Proceed anyway"
+    "proceedAnyway": "Proceed anyway",
+    "searchPlaceholder": "Search tokens",
+    "stellarExpertDown": "Token discovery is temporarily unavailable. You can still swap between tokens you already hold.",
+    "sorobanEmptyState": "Soroban contract tokens aren't supported for swaps yet. Try searching for a Classic token instead.",
+    "noResults": "No tokens match {{term}}",
+    "yourTokenSection": "Your token",
+    "yourTokensSection": "Your tokens",
+    "popularTokensSection": "Popular tokens",
+    "verifiedSection": "Verified",
+    "unverifiedSection": "Unverified",
+    "trendingTokensSection": "Trending Tokens",
+    "verifiedInfo": {
+      "title": "Verified token",
+      "body": "From trusted token lists in the Stellar ecosystem."
+    },
+    "unverifiedInfo": {
+      "title": "Unverified token",
+      "body": "Not from trusted token lists. Use caution when adding or transacting."
+    },
+    "trendingDetail": {
+      "buy": "Buy {{tokenCode}}",
+      "issuer": "Issuer",
+      "type": "Type",
+      "domain": "Domain",
+      "stellarClassic": "Stellar Classic",
+      "stellarNetwork": "Stellar Network"
+    },
+    "trustlineInfo": {
+      "title": "This will add a trustline to {{tokenCode}}",
+      "bodyPrefix": "To hold {{tokenCode}} in your wallet, Stellar requires a trustline. ",
+      "bodyEmphasis": "0.5 XLM will be reserved",
+      "bodySuffix": " from your balance. You can get it back by removing the trustline after your {{tokenCode}} balance is zero.",
+      "confirm": "Got it"
+    },
+    "trustlineBanner": "This will add a trustline to {{tokenCode}}",
+    "xlmReserve": {
+      "title": "You need XLM to create a trustline",
+      "bodyPrefix": "To receive {{tokenCode}}, your wallet needs a trustline on Stellar. ",
+      "whyDoINeedXlm": "Why do I need XLM?",
+      "infoCardTitle": "0.5 XLM required",
+      "infoCardBody": "Stellar requires this reserve to add {{tokenCode}}. You can get it back once your {{tokenCode}} balance is zero.",
+      "swapXlm": "Swap for 0.5 XLM",
+      "copyAddress": "Copy my wallet address"
+    }
   },
   "swapProcessingScreen": {
     "swapping": "Swapping",

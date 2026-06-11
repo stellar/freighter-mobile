@@ -6,9 +6,6 @@ import { dataStorage } from "services/storage/storageFactory";
  */
 const DEFAULT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
-/**
- * Options for cached fetch
- */
 export interface CachedFetchOptions<T> {
   urlOrFn: string | (() => Promise<T>);
   storageKey: string;
@@ -54,10 +51,8 @@ export async function cachedFetch<T>(
   const date = new Date();
   const time = date.getTime();
 
-  // Determine if this is URL mode or function mode
   const isUrlMode = typeof urlOrFn === "string";
 
-  // Extract parameters
   const ttl = ttlMs ?? DEFAULT_TTL_MS;
   const shouldForceRefresh = forceRefresh ?? false;
 
@@ -78,11 +73,9 @@ export async function cachedFetch<T>(
   if (shouldForceRefresh || cachedDate < cacheExpiryTime || !cachedResult) {
     try {
       if (isUrlMode) {
-        // URL mode: fetch from URL
         const res = await fetch(urlOrFn, fetchOptions);
         cachedResult = (await res.json()) as T;
       } else {
-        // Function mode: call the function
         cachedResult = await urlOrFn();
       }
 
@@ -90,8 +83,12 @@ export async function cachedFetch<T>(
       await dataStorage.setItem(cachedDateId, time.toString());
     } catch (e) {
       logger.error("cachedFetch", "Error fetching data", e);
-      // If there's an error and we have cached data, return it (only for function mode)
-      if (!isUrlMode && cachedResult) {
+      // Graceful degradation only when the caller didn't explicitly ask
+      // for fresh data. Pull-to-refresh and other forceRefresh paths
+      // need to see the failure (e.g. to show a "couldn't refresh"
+      // toast) — silently returning the stale cache there contradicts
+      // the user's intent.
+      if (!isUrlMode && cachedResult && !shouldForceRefresh) {
         return cachedResult;
       }
       // For URL mode, re-throw the error to maintain backward compatibility
@@ -100,4 +97,45 @@ export async function cachedFetch<T>(
   }
 
   return cachedResult;
+}
+
+/**
+ * Read a cached value WITHOUT triggering a fetch. Returns the parsed
+ * payload + its age in ms, or null when no cache exists / the data is
+ * unparseable.
+ *
+ * Caller decides whether the value is stale (typically: `age > ttlMs`).
+ * Used by stores that need to support stale-while-revalidate semantics —
+ * render the cached value, then fire `cachedFetch({ forceRefresh: true })`
+ * in the background.
+ *
+ * @example
+ * const cached = await readCachedValue<MyType>("my-cache-key");
+ * if (cached) {
+ *   render(cached.data);
+ *   if (cached.age > TTL) {
+ *     // fire-and-forget background refresh
+ *     cachedFetch({ ..., forceRefresh: true }).then(render);
+ *   }
+ * }
+ */
+export async function readCachedValue<T>(
+  storageKey: string,
+): Promise<{ data: T; age: number } | null> {
+  const cachedDateId = `${storageKey}_date`;
+  const cachedDateStr = await dataStorage.getItem(cachedDateId);
+  if (!cachedDateStr) return null;
+  const cachedDate = Number(cachedDateStr);
+  if (!Number.isFinite(cachedDate) || cachedDate === 0) return null;
+
+  const cachedResultStr = await dataStorage.getItem(storageKey);
+  if (typeof cachedResultStr !== "string") return null;
+
+  try {
+    const data = JSON.parse(cachedResultStr) as T;
+    return { data, age: Date.now() - cachedDate };
+  } catch (e) {
+    logger.error("readCachedValue", "JSON parse error", e);
+    return null;
+  }
 }

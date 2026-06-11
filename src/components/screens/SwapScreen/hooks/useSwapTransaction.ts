@@ -1,6 +1,7 @@
 import Blockaid from "@blockaid/client";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { getTokenFromBalance } from "components/screens/SwapScreen/helpers";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import { NETWORKS } from "config/constants";
 import { logger } from "config/logger";
 import {
@@ -12,7 +13,7 @@ import {
 import { PricedBalance, NativeToken, NonNativeToken } from "config/types";
 import { ActiveAccount } from "ducks/auth";
 import { useHistoryStore } from "ducks/history";
-import { SwapPathResult } from "ducks/swap";
+import { SwapPathResult, useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
@@ -21,10 +22,17 @@ import { useToast } from "providers/ToastProvider";
 import { useState, useCallback } from "react";
 import { analytics } from "services/analytics";
 
+/**
+ * `destinationTokenInput` is either the user's held PricedBalance for
+ * the destination, or a `descriptorAsPathBalance(descriptor)` shim for
+ * non-held destinations. `buildSwapTransaction` only reads the `token`
+ * shape (code/issuer/type) plus `tokenCode` off the value, so the shim
+ * is structurally sufficient; do not treat it as a real holding.
+ */
 interface SwapTransactionParams {
   sourceAmount: string;
   sourceBalance: PricedBalance | undefined;
-  destinationBalance: PricedBalance | undefined;
+  destinationTokenInput: PricedBalance | undefined;
   pathResult: SwapPathResult | null;
   account: ActiveAccount | null;
   network: NETWORKS;
@@ -47,7 +55,7 @@ interface UseSwapTransactionResult {
 export const useSwapTransaction = ({
   sourceAmount,
   sourceBalance,
-  destinationBalance,
+  destinationTokenInput,
   pathResult,
   account,
   network,
@@ -66,7 +74,7 @@ export const useSwapTransaction = ({
   const setupSwapTransaction = useCallback(async () => {
     if (
       !sourceBalance ||
-      !destinationBalance ||
+      !destinationTokenInput ||
       !pathResult ||
       !account?.publicKey
     ) {
@@ -77,10 +85,30 @@ export const useSwapTransaction = ({
     const { swapFee: freshSwapFee, swapTimeout: freshSwapTimeout } =
       useSwapSettingsStore.getState();
 
+    // Derive includeTrustline from the swap store's destinationToken.
+    // When isNew === true the user doesn't yet hold a trustline for the
+    // destination asset; the changeTrust op is prepended atomically.
+    const { destinationToken } = useSwapStore.getState();
+    let includeTrustline: { tokenCode: string; issuer: string } | undefined;
+    if (destinationToken?.isNew) {
+      if (!destinationToken.issuer) {
+        // Unreachable in practice: native XLM can't be isNew, and the picker
+        // filters out Soroban. Fail fast so the bug surfaces here rather than
+        // submitting a doomed transaction that fails on-chain with tx_no_trust.
+        throw new Error(
+          `useSwapTransaction: isNew=true but issuer missing on destinationToken (id=${destinationToken.id})`,
+        );
+      }
+      includeTrustline = {
+        tokenCode: destinationToken.tokenCode,
+        issuer: destinationToken.issuer,
+      };
+    }
+
     const transactionXDR = await buildSwapTransaction({
       sourceAmount,
       sourceBalance,
-      destinationBalance,
+      destinationBalance: destinationTokenInput,
       path: pathResult.path,
       destinationAmount: pathResult.destinationAmount,
       destinationAmountMin: pathResult.destinationAmountMin,
@@ -88,6 +116,7 @@ export const useSwapTransaction = ({
       transactionTimeout: freshSwapTimeout,
       network,
       senderAddress: account.publicKey,
+      includeTrustline,
     });
 
     if (!transactionXDR) {
@@ -103,7 +132,7 @@ export const useSwapTransaction = ({
     }
   }, [
     sourceBalance,
-    destinationBalance,
+    destinationTokenInput,
     pathResult,
     buildSwapTransaction,
     account?.publicKey,
@@ -122,7 +151,7 @@ export const useSwapTransaction = ({
       throw new Error("Source token is required for swap transaction");
     }
 
-    if (!destinationBalance?.tokenCode) {
+    if (!destinationTokenInput?.tokenCode) {
       throw new Error("Destination token is required for swap transaction");
     }
 
@@ -157,10 +186,22 @@ export const useSwapTransaction = ({
 
       analytics.trackSwapSuccess({
         sourceToken: sourceBalance.tokenCode,
-        destToken: destinationBalance.tokenCode,
+        destToken: destinationTokenInput.tokenCode,
+        sourceAmount,
+        destAmount: pathResult?.destinationAmount,
         allowedSlippage: freshSwapSlippage?.toString(),
         isSwap: true,
       });
+
+      // Fire SWAP_TRUSTLINE_ADDED when the combined changeTrust +
+      // pathPaymentStrictSend transaction confirmed a new trustline.
+      const { destinationToken: swappedDestination } = useSwapStore.getState();
+      if (swappedDestination?.isNew) {
+        analytics.track(AnalyticsEvent.SWAP_TRUSTLINE_ADDED, {
+          tokenCode: destinationTokenInput.tokenCode,
+          tokenIssuer: swappedDestination.issuer ?? "",
+        });
+      }
     } catch (error) {
       setIsProcessing(false);
       // transactionBuilder.submitTransaction logs submit failures at
@@ -171,6 +212,10 @@ export const useSwapTransaction = ({
       analytics.trackTransactionError({
         error: error instanceof Error ? error.message : String(error),
         isSwap: true,
+        sourceToken: sourceBalance?.tokenCode,
+        destToken: destinationTokenInput?.tokenCode,
+        sourceAmount,
+        destAmount: pathResult?.destinationAmount,
       });
 
       // Show error toast that persists even if component unmounts
@@ -194,7 +239,9 @@ export const useSwapTransaction = ({
   }, [
     account,
     sourceBalance?.tokenCode,
-    destinationBalance?.tokenCode,
+    destinationTokenInput?.tokenCode,
+    sourceAmount,
+    pathResult?.destinationAmount,
     signTransaction,
     network,
     submitTransaction,
@@ -230,7 +277,7 @@ export const useSwapTransaction = ({
   };
 
   const sourceToken = getTokenFromBalance(sourceBalance);
-  const destinationToken = getTokenFromBalance(destinationBalance);
+  const destinationToken = getTokenFromBalance(destinationTokenInput);
 
   return {
     isProcessing,

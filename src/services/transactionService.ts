@@ -38,7 +38,7 @@ import { t } from "i18next";
 import { analytics } from "services/analytics";
 import { SimulationTransactionType } from "services/analytics/types";
 import { simulateTokenTransfer, simulateTransaction } from "services/backend";
-import { stellarSdkServer } from "services/stellar";
+import { buildChangeTrustOperation, stellarSdkServer } from "services/stellar";
 
 export interface BuildPaymentTransactionParams {
   tokenAmount: string;
@@ -63,6 +63,14 @@ export interface BuildSwapTransactionParams {
   transactionTimeout?: number;
   network?: NETWORKS;
   senderAddress?: string;
+  /**
+   * When present, the builder prepends a `changeTrust` op as op #0 so the
+   * trustline and the path payment submit atomically as a single transaction.
+   * Used for swaps to a new (non-held) destination token. Pass this only when
+   * `destinationToken.isNew === true` (i.e. the user does not yet hold a
+   * trustline for the destination asset).
+   */
+  includeTrustline?: { tokenCode: string; issuer: string };
 }
 
 export interface BuildSendCollectibleParams {
@@ -586,6 +594,7 @@ export const buildSwapTransaction = async (
     transactionTimeout,
     network,
     senderAddress,
+    includeTrustline,
   } = params;
 
   try {
@@ -628,6 +637,17 @@ export const buildSwapTransaction = async (
 
       return new SdkToken(code, issuer);
     });
+
+    // Op ordering is load-bearing: changeTrust must be op #0 so the trustline
+    // is established before the path-payment op consumes the destination asset.
+    if (includeTrustline) {
+      txBuilder.addOperation(
+        buildChangeTrustOperation({
+          tokenCode: includeTrustline.tokenCode,
+          issuer: includeTrustline.issuer,
+        }),
+      );
+    }
 
     txBuilder.addOperation(
       Operation.pathPaymentStrictSend({

@@ -82,15 +82,17 @@ jest.mock(
     })),
   }),
 );
-jest.mock("components/blockaid/SecurityDetailBottomSheet", () => ({
-  __esModule: true,
-  default: function MockSecurityDetailBottomSheet(
-    props: Record<string, unknown>,
-  ) {
+jest.mock("components/blockaid/SecurityDetailBottomSheet", () => {
+  const MockSecurityDetailBottomSheet = (props: Record<string, unknown>) => {
     mockSecurityDetailBottomSheetProps = props;
     return null;
-  },
-}));
+  };
+  return {
+    __esModule: true,
+    default: MockSecurityDetailBottomSheet,
+    SecurityDetailBottomSheet: MockSecurityDetailBottomSheet,
+  };
+});
 jest.mock("components/sds/Icon", () => ({
   __esModule: true,
   default: new Proxy({}, { get: () => "View" }),
@@ -499,6 +501,7 @@ describe("SendCollectibleReview - Banner Content", () => {
       {
         id: "malicious-warning",
         description: "Malicious transaction detected",
+        severity: "malicious",
       },
     ]);
 
@@ -532,6 +535,7 @@ describe("SendCollectibleReview - Banner Content", () => {
       {
         id: "suspicious-warning",
         description: "Suspicious transaction detected",
+        severity: "warning",
       },
     ]);
 
@@ -565,6 +569,7 @@ describe("SendCollectibleReview - Banner Content", () => {
       {
         id: "malicious-warning",
         description: "Malicious transaction detected",
+        severity: "malicious",
       },
     ]);
 
@@ -686,6 +691,7 @@ describe("SendCollectibleReview - Unable to Scan States", () => {
       {
         id: "unable-to-scan",
         description: "Unable to scan transaction",
+        severity: "warning",
       },
     ]);
 
@@ -795,6 +801,7 @@ describe("SendCollectibleReview - Unfunded Recipient Handling", () => {
       {
         id: "expected-to-fail",
         description: "Transaction is expected to fail",
+        severity: "malicious",
       },
     ]);
 

@@ -264,7 +264,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
    * Security warnings extracted from scan result
    * @type {SecurityWarning[]}
    */
-  const siteSecurityWarnings = useMemo(() => {
+  const siteSecurityWarnings = useMemo<SecurityWarning[]>(() => {
     if (siteSecurityAssessment.isUnableToScan) {
       // For "Unable to scan" cases, always provide a warning so the list renders
       return [
@@ -273,6 +273,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
           description:
             siteSecurityAssessment.details ||
             t("blockaid.unableToScan.site.description"),
+          severity: "warning",
         },
       ];
     }
@@ -298,7 +299,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     t,
   ]);
 
-  const transactionSecurityWarnings = useMemo(() => {
+  const transactionSecurityWarnings = useMemo<SecurityWarning[]>(() => {
     if (transactionSecurityAssessment.isUnableToScan) {
       // For "Unable to scan" cases, always provide a warning so the list renders
       return [
@@ -307,6 +308,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
           description:
             transactionSecurityAssessment.details ||
             t("securityWarning.unsafeTransaction"),
+          severity: "warning",
         },
       ];
     }

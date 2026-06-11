@@ -1,8 +1,10 @@
 /* eslint-disable react/no-unstable-nested-components */
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import CustomNavigationHeader from "components/layout/CustomNavigationHeader";
-import SwapScreen from "components/screens/SwapScreen";
-import { SwapAmountScreen } from "components/screens/SwapScreen/screens";
+import {
+  SwapAmountScreen,
+  SwapToScreen,
+} from "components/screens/SwapScreen/screens";
 import { SWAP_SELECTION_TYPES } from "config/constants";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import { getScreenBottomNavigateOptions } from "helpers/navigationOptions";
@@ -22,7 +24,7 @@ export const SwapStackNavigator = () => {
     >
       <SwapStack.Screen
         name={SWAP_ROUTES.SWAP_SCREEN}
-        component={SwapScreen}
+        component={SwapToScreen}
         options={({ route }) =>
           getScreenBottomNavigateOptions(
             route.params.selectionType === SWAP_SELECTION_TYPES.DESTINATION

@@ -1,5 +1,5 @@
 import BigNumber from "bignumber.js";
-import { DEFAULT_DECIMALS } from "config/constants";
+import { CLASSIC_TOKEN_MAX_AMOUNT, DEFAULT_DECIMALS } from "config/constants";
 import { PricedBalance } from "config/types";
 import { hasDecimals } from "helpers/balances";
 import { formatBigNumberForDisplay } from "helpers/formatAmount";
@@ -17,7 +17,7 @@ interface UseTokenFiatConverterProps {
   tokenDecimals?: number;
 }
 
-interface UseTokenFiatConverterResult {
+export interface UseTokenFiatConverterResult {
   tokenAmount: string; // Internal value (dot notation)
   tokenAmountDisplay: string; // Display value (locale-formatted, derived)
   tokenAmountDisplayRaw: string | null; // Raw input when typing
@@ -26,10 +26,13 @@ interface UseTokenFiatConverterResult {
   fiatAmountDisplayRaw: string | null; // Raw input when typing
   showFiatAmount: boolean;
   setShowFiatAmount: (show: boolean) => void;
+  /** Per-key input from the custom keyboard (Send flow). */
   handleDisplayAmountChange: (key: string) => void;
   setTokenAmount: (amount: string) => void;
   setFiatAmount: (amount: string) => void;
   updateFiatDisplay: (amount: string) => void;
+  /** Full-text input from system TextInput.onChangeText (Swap flow). */
+  setDisplayAmountFromText: (text: string) => void;
 }
 
 /**
@@ -65,9 +68,18 @@ export const useTokenFiatConverter = ({
     [selectedBalance, tokenDecimals],
   );
 
+  // Classic Stellar tokens have a fixed protocol cap; Soroban / custom
+  // tokens (the ones that carry their own `decimals`) don't.
+  const maxTokenAmount = useMemo(() => {
+    if (selectedBalance && !hasDecimals(selectedBalance)) {
+      return new BigNumber(CLASSIC_TOKEN_MAX_AMOUNT);
+    }
+    return undefined;
+  }, [selectedBalance]);
+
   const reducer = useMemo(
-    () => createTokenFiatConverterReducer(tokenPrice, decimals),
-    [tokenPrice, decimals],
+    () => createTokenFiatConverterReducer(tokenPrice, decimals, maxTokenAmount),
+    [tokenPrice, decimals, maxTokenAmount],
   );
 
   const [state, dispatch] = useReducer(reducer, initialState);
@@ -77,29 +89,34 @@ export const useTokenFiatConverter = ({
     selectedBalance?.tokenCode,
   );
 
-  // Reset fiat amount when token changes or has no price
+  // Reset both amounts when the selected token changes. The new token may
+  // carry tighter decimal / magnitude constraints than the previous one
+  // (e.g. switching from a 7-decimal classic asset to a 3-decimal Soroban
+  // token), so preserving the typed value would risk leaving the input in a
+  // state the new token's validation would reject. The showFiatAmount mode
+  // flag is intentionally preserved.
   useEffect(() => {
     const currentTokenCode = selectedBalance?.tokenCode;
-    const tokenChanged = previousTokenCodeRef.current !== currentTokenCode;
-
-    if (tokenChanged) {
+    if (previousTokenCodeRef.current !== currentTokenCode) {
       previousTokenCodeRef.current = currentTokenCode;
-
-      // If token has no price, reset fiat to 0
-      if (!selectedBalance?.currentPrice || tokenPrice.isZero()) {
-        dispatch({
-          type: TokenFiatConverterActionType.SET_FIAT_AMOUNT,
-          payload: "0",
-        });
-      } else {
-        // If token has price, recalculate fiat from current token amount
-        dispatch({
-          type: TokenFiatConverterActionType.SET_TOKEN_AMOUNT,
-          payload: state.tokenAmount,
-        });
-      }
+      dispatch({ type: TokenFiatConverterActionType.RESET_AMOUNTS });
     }
-  }, [selectedBalance, tokenPrice, state.tokenAmount]);
+  }, [selectedBalance]);
+
+  // Fiat mode is meaningless without a price (conversions would divide by
+  // zero) and the "$ / token" toggle is hidden for unpriced tokens. If we
+  // ever end up in fiat mode without a price — e.g. switching from a priced
+  // to an unpriced token, since RESET_AMOUNTS intentionally preserves the
+  // mode flag — snap back to token mode so the input doesn't get stuck
+  // showing a "$" prefix with no toggle to switch back.
+  useEffect(() => {
+    if (state.showFiatAmount && tokenPrice.isZero()) {
+      dispatch({
+        type: TokenFiatConverterActionType.SET_SHOW_FIAT_AMOUNT,
+        payload: false,
+      });
+    }
+  }, [state.showFiatAmount, tokenPrice]);
 
   // Format token amount display: trim trailing zeros and use locale separator when NOT in fiat mode
   const tokenAmountDisplayDerived = useMemo(() => {
@@ -249,6 +266,13 @@ export const useTokenFiatConverter = ({
     });
   }, []);
 
+  const setDisplayAmountFromText = useCallback((text: string) => {
+    dispatch({
+      type: TokenFiatConverterActionType.SET_DISPLAY_AMOUNT_FROM_TEXT,
+      payload: { text },
+    });
+  }, []);
+
   return {
     tokenAmount: state.tokenAmount,
     tokenAmountDisplay,
@@ -262,5 +286,6 @@ export const useTokenFiatConverter = ({
     setTokenAmount: handleSetTokenAmount,
     setFiatAmount: handleSetFiatAmount,
     updateFiatDisplay,
+    setDisplayAmountFromText,
   };
 };

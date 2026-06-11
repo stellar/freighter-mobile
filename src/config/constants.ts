@@ -37,6 +37,20 @@ export const HISTORY_FETCH_POLLING_INTERVAL = 30000;
 
 // Transaction fee constants
 export const NATIVE_TOKEN_CODE = "XLM";
+/**
+ * Horizon's wire string for the native (XLM) asset's `asset_type` / `id`.
+ * Distinct from `NATIVE_TOKEN_CODE` ("XLM"): raw Horizon responses use
+ * "native", but normalized surfaces use "XLM". Prefer the
+ * {@link isNativeAssetId} guard over comparing to either sentinel directly.
+ */
+export const HORIZON_NATIVE_ASSET_TYPE = "native";
+
+/**
+ * True if `id` refers to native XLM, matching both Horizon's raw "native"
+ * sentinel and the normalized NATIVE_TOKEN_CODE ("XLM").
+ */
+export const isNativeAssetId = (id: string | undefined | null): boolean =>
+  id === HORIZON_NATIVE_ASSET_TYPE || id === NATIVE_TOKEN_CODE;
 export const MIN_TRANSACTION_FEE = "0.00001";
 export const BASE_RESERVE = BigNumber(0.5);
 export const MINIMUM_CREATE_ACCOUNT_XLM = 1;
@@ -82,6 +96,13 @@ export const VALIDATION_DECOY_WORDS: number = 6;
 
 export const DEFAULT_DECIMALS = 7;
 export const FIAT_DECIMALS = 2;
+
+/**
+ * Absolute maximum amount for a classic Stellar token: 2^63 - 1 scaled by
+ * 10^7 (the protocol's fixed 7-decimal precision). Soroban / custom tokens
+ * have no protocol-level max here and rely on their own `decimals` field.
+ */
+export const CLASSIC_TOKEN_MAX_AMOUNT = "922337203685.4775808";
 
 // Bottom sheet layout defaults
 export const BOTTOM_SHEET_MAX_HEIGHT_RATIO = 0.9;
@@ -292,6 +313,8 @@ export enum STORAGE_KEYS {
   RECENT_ADDRESSES = "recentAddresses",
   MEMO_REQUIRED_ACCOUNTS = "memoRequiredAccounts",
   VERIFIED_TOKENS_PREFIX = "verifiedTokens_",
+  STELLAR_EXPERT_TOP_TOKENS_PREFIX = "stellarExpertTopTokens_",
+  BLOCKAID_TOKEN_SCANS_PREFIX = "blockaidTokenScans_",
   WELCOME_BANNER_SHOWN_PREFIX = "welcomeBanner_shown_",
   HAS_SEEN_BIOMETRICS_ENABLE_SCREEN = "hasSeenBiometricsEnableScreen",
   HAS_SEEN_DISCOVER_WELCOME = "hasSeenDiscoverWelcome",

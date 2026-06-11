@@ -82,6 +82,15 @@ export enum AnalyticsEvent {
   SEND_PAYMENT_RECENT_ADDRESS = "send payment: recent address",
   SWAP_SUCCESS = "swap: success",
   SWAP_FAIL = "swap: error",
+  SWAP_TO_PICKER_OPENED = "swap: to-picker opened",
+  SWAP_FROM_PICKER_OPENED = "swap: from-picker opened",
+  SWAP_DIRECTION_TOGGLED = "swap: direction toggled",
+  SWAP_TRENDING_TOKEN_TAPPED = "swap: trending token tapped",
+  SWAP_TRENDING_BUY_PRESSED = "swap: trending buy pressed",
+  SWAP_DESTINATION_SELECTED = "swap: destination selected",
+  SWAP_SOURCE_SELECTED = "swap: source selected",
+  SWAP_TRUSTLINE_ADDED = "swap: trustline added",
+  SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN = "swap: xlm reserve insufficient shown",
 
   // Send Collectible Events
   SEND_COLLECTIBLE_SUCCESS = "send collectible: success",
@@ -167,6 +176,35 @@ export enum AnalyticsEvent {
   DISCOVER_TAB_CLOSED = "discover: tab closed",
   DISCOVER_ALL_TABS_CLOSED = "discover: all tabs closed",
   DISCOVER_WELCOME_MODAL_VIEWED = "discover: welcome modal viewed",
+}
+
+/**
+ * Tags how the user reached the Swap source / destination picker, for the
+ * SWAP_FROM_PICKER_OPENED + SWAP_TO_PICKER_OPENED analytics events.
+ *
+ * - CTA: the missing-side prompt button (e.g. "Select a token" / "Sell")
+ *   on SwapAmountScreen fired the navigation.
+ * - DROPDOWN: the picker chip itself was tapped.
+ *
+ * Wire values match the historical inline string union so existing Amplitude
+ * dashboards / funnels keyed on `source: "cta"` / `source: "dropdown"` keep
+ * working unchanged.
+ */
+export enum SwapPickerEntrypoint {
+  CTA = "cta",
+  DROPDOWN = "dropdown",
+}
+
+/**
+ * Tags which list bucket the user picked a swap token from. Wire values are
+ * an Amplitude dashboard contract -- do not rename without coordinating with
+ * analytics.
+ */
+export enum SwapSelectionSource {
+  BALANCES = "balances",
+  POPULAR = "popular",
+  SEARCH = "search",
+  TRENDING = "trending",
 }
 
 /**
