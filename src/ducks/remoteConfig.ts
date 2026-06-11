@@ -1,7 +1,7 @@
 import { logger } from "config/logger";
 import { useNetworkStore } from "ducks/networkInfo";
 import { isAndroid } from "helpers/device";
-import { isDev, isE2ETest } from "helpers/isEnv";
+import { isDev } from "helpers/isEnv";
 import { getBundleId, getVersion } from "react-native-device-info";
 import { ANALYTICS_CONFIG } from "services/analytics/constants";
 import { getExperimentClient } from "services/analytics/core";
@@ -60,10 +60,11 @@ interface RemoteConfigState extends FeatureFlags {
 // Get current app version for default values
 const currentAppVersion = getVersion();
 
-// In dev builds (local Metro, CI previews, TestFlight dev) or e2e tests, Amplitude keys
-// are not configured so feature flags can't be fetched — default all features to enabled.
+// In any dev context (the dev app — local Metro, CI previews, TestFlight dev, e2e —
+// or a debug build) Amplitude keys are not configured so feature flags can't be
+// fetched — default all features to enabled. isE2ETest is subsumed by isDev.
 const INITIAL_REMOTE_CONFIG_STATE =
-  isDev || isE2ETest
+  isDev || __DEV__
     ? {
         swap_enabled: true,
         discover_enabled: true,
