@@ -8,6 +8,9 @@ import { SCREENSHOT_KEYCHAIN_OPTIONS } from "services/storage/keychainSecurityCo
 
 const VERSION_BYTE = 0x01;
 const IV_LENGTH = 12;
+const GCM_TAG_LENGTH = 16;
+// Smallest possible valid payload: VERSION(1) + IV(12) + GCM auth tag(16).
+const MIN_PACKED_LENGTH = 1 + IV_LENGTH + GCM_TAG_LENGTH;
 
 // Module-level in-flight promise — memoized so concurrent first-use callers
 // share one Keychain read/generate instead of racing to create different DEKs.
@@ -114,6 +117,15 @@ export const decryptScreenshot = async (
   encryptedBase64: string,
 ): Promise<string> => {
   const packed = decode(encryptedBase64);
+
+  // Guard against truncated/empty files (partial writes, corruption) before
+  // reading the version byte or slicing the IV — otherwise this surfaces as a
+  // confusing "version: undefined" or invalid-IV error downstream.
+  if (packed.length < MIN_PACKED_LENGTH) {
+    throw new Error(
+      `Screenshot ciphertext too short: ${packed.length} bytes (expected at least ${MIN_PACKED_LENGTH})`,
+    );
+  }
 
   if (packed[0] !== VERSION_BYTE) {
     throw new Error(`Unknown screenshot encryption version: ${packed[0]}`);

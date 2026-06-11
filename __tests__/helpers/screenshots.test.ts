@@ -264,6 +264,27 @@ describe("screenshots helpers", () => {
         error,
       );
     });
+
+    it("should remove the written file when metadata write fails", async () => {
+      mockAsyncStorage.getItem.mockResolvedValue(JSON.stringify({}));
+      mockCrypto.encryptScreenshot.mockResolvedValue("encrypted-base64");
+      mockAsyncStorage.setItem.mockRejectedValueOnce(
+        new Error("AsyncStorage write failed"),
+      );
+
+      await expect(
+        saveScreenshot(
+          "tab-123",
+          "https://example.com",
+          "data:image/jpeg;base64,raw",
+        ),
+      ).resolves.not.toThrow();
+
+      // The orphaned file must be cleaned up so it doesn't leak disk space.
+      expect(mockRNFS.unlink).toHaveBeenCalledWith(
+        "/mock/caches/tab-screenshots/tab-123.enc",
+      );
+    });
   });
 
   describe("pruneScreenshots", () => {
@@ -401,6 +422,27 @@ describe("screenshots helpers", () => {
       expect(mockLogger.debug).toHaveBeenCalledWith(
         "clearAllScreenshots",
         "All screenshots cleared successfully",
+      );
+    });
+
+    it("should still clear metadata when a file deletion fails", async () => {
+      // A cache file can be evicted by the OS between readDir and unlink. That
+      // single failure must not leave the metadata key (tab URLs) behind on the
+      // logout / clear-data path.
+      (mockRNFS.exists as jest.Mock).mockResolvedValue(true);
+      (mockRNFS.readDir as jest.Mock).mockResolvedValue([
+        { path: "/mock/caches/tab-screenshots/tab-1.enc" },
+        { path: "/mock/caches/tab-screenshots/tab-2.enc" },
+      ]);
+      (mockRNFS.unlink as jest.Mock)
+        .mockRejectedValueOnce(new Error("File does not exist"))
+        .mockResolvedValueOnce(undefined);
+
+      const result = await clearAllScreenshots();
+
+      expect(result).toBe(true);
+      expect(mockAsyncStorage.removeItem).toHaveBeenCalledWith(
+        BROWSER_CONSTANTS.SCREENSHOT_STORAGE_KEY,
       );
     });
 

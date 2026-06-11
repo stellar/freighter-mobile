@@ -143,7 +143,8 @@ export const saveScreenshot = async (
 
     const encryptedContent = await encryptScreenshot(plaintextUri);
     const fileName = `${tabId}.enc`;
-    await writeFile(encFilePath(fileName), encryptedContent, "base64");
+    const filePath = encFilePath(fileName);
+    await writeFile(filePath, encryptedContent, "base64");
 
     const metaMap = await getStoredScreenshots();
     metaMap.set(tabId, {
@@ -171,10 +172,19 @@ export const saveScreenshot = async (
         });
     }
 
-    await AsyncStorage.setItem(
-      BROWSER_CONSTANTS.SCREENSHOT_STORAGE_KEY,
-      JSON.stringify(Object.fromEntries(metaMap)),
-    );
+    try {
+      await AsyncStorage.setItem(
+        BROWSER_CONSTANTS.SCREENSHOT_STORAGE_KEY,
+        JSON.stringify(Object.fromEntries(metaMap)),
+      );
+    } catch (error) {
+      // Metadata write failed — remove the file we just wrote so it doesn't
+      // become an orphan. pruneScreenshots only deletes files referenced in
+      // metadata, so without this the orphan would leak disk until the next
+      // clearAllScreenshots (or an overwriting save for the same tab).
+      await unlink(filePath).catch(() => {});
+      throw error;
+    }
   } catch (error) {
     logger.error("screenshots", "Failed to save screenshot:", error);
   }
@@ -186,11 +196,35 @@ export const saveScreenshot = async (
 export const clearAllScreenshots = async (): Promise<boolean> => {
   try {
     logger.debug("clearAllScreenshots", "Starting screenshot cleanup");
-    const dir = screenshotsDir();
-    if (await exists(dir)) {
-      const files = await readDir(dir);
-      await Promise.all(files.map((f) => unlink(f.path)));
+
+    // File deletion is best-effort: a single failure (e.g. the OS evicted a
+    // cache file between readDir and unlink — these live in CachesDirectoryPath)
+    // must NOT abort before the metadata key is removed. That key holds tab
+    // URLs and is the privacy-critical part of this cleanup, which runs on the
+    // logout / clear-data path, so it must always be cleared.
+    try {
+      const dir = screenshotsDir();
+      if (await exists(dir)) {
+        const files = await readDir(dir);
+        const results = await Promise.allSettled(
+          files.map((f) => unlink(f.path)),
+        );
+        const failed = results.filter((r) => r.status === "rejected").length;
+        if (failed > 0) {
+          logger.info(
+            "clearAllScreenshots",
+            `Failed to delete ${failed}/${files.length} screenshot file(s); clearing metadata anyway`,
+          );
+        }
+      }
+    } catch (error) {
+      logger.info(
+        "clearAllScreenshots",
+        "Failed to enumerate screenshot files; clearing metadata anyway:",
+        error,
+      );
     }
+
     await AsyncStorage.removeItem(BROWSER_CONSTANTS.SCREENSHOT_STORAGE_KEY);
     logger.debug("clearAllScreenshots", "All screenshots cleared successfully");
     return true;
