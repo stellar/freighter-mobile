@@ -76,7 +76,6 @@ const AddFundsScreen: React.FC<AddFundsScreenProps> = ({
             onPress={() =>
               navigation.navigate(
                 ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN,
-                {},
               )
             }
           >
