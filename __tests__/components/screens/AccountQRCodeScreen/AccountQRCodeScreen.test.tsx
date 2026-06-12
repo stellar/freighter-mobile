@@ -67,7 +67,7 @@ const mockNavigation = {
 } as unknown as AccountQRCodeScreenProps["navigation"];
 
 const mockRoute = {
-  params: { showNavigationAsCloseButton: false },
+  params: undefined,
   key: "account-qr",
   name: ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN,
 } as unknown as AccountQRCodeScreenProps["route"];
@@ -95,25 +95,5 @@ describe("AccountQRCodeScreen", () => {
     fireEvent.press(copyButton);
 
     expect(mockCopyToClipboard).toHaveBeenCalledWith(mockAccount.publicKey);
-  });
-
-  it("shows close button when showNavigationAsCloseButton is true", () => {
-    const routeWithCloseButton = {
-      ...mockRoute,
-      params: { showNavigationAsCloseButton: true },
-    } as unknown as AccountQRCodeScreenProps["route"];
-
-    renderWithProviders(
-      <AccountQRCodeScreen
-        navigation={mockNavigation}
-        route={routeWithCloseButton}
-      />,
-    );
-
-    expect(mockSetOptions).toHaveBeenCalledWith(
-      expect.objectContaining({
-        headerLeft: expect.any(Function),
-      }),
-    );
   });
 });

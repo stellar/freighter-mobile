@@ -54,38 +54,9 @@ tags:
       id: wc-e2e-copy-uri
     timeout: 5000
 
-# Copy WC URI to clipboard (modal will auto-close)
+# Pair directly via WC E2E helper (modal will auto-close after pairing)
 - tapOn:
-    id: wc-e2e-copy-uri
-
-# Wait for modal to close
-- extendedWaitUntil:
-    visible:
-      id: home-screen
-    timeout: 3000
-
-# Navigate to QR scanner
-- tapOn:
-    id: home-screen-scan-button
-
-# Wait for QR scanner to load - manual input is always visible for WalletConnect
-- extendedWaitUntil:
-    visible:
-      id: walletconnect-uri-input-end-button
-    timeout: 5000
-
-# Paste WC URI
-- tapOn:
-    id: walletconnect-uri-input-end-button
-
-# Wait for connect button and tap it
-- extendedWaitUntil:
-    visible:
-      id: walletconnect-connect-button
-    timeout: 3000
-
-- tapOn:
-    id: walletconnect-connect-button
+    id: wc-e2e-pair-uri
 
 # Wait for session proposal
 - extendedWaitUntil:

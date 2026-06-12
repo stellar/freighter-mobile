@@ -5,7 +5,7 @@ import { BaseLayout } from "components/layout/BaseLayout";
 import CameraNavigationHeader from "components/layout/CameraNavigationHeader";
 import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import Icon from "components/sds/Icon";
-import { getDefaultQRCodeSource, QRCodeSource } from "config/constants";
+import { getDefaultQRCodeSource } from "config/constants";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClearTransitionParam } from "hooks/useClearTransitionParam";
@@ -23,7 +23,7 @@ type ScanQRCodeScreenProps = NativeStackScreenProps<
  *
  * A flexible QR code scanning screen that can be used for different purposes:
  * - "address_input": For scanning addresses in Send flow
- * - "wallet_connect": For scanning WalletConnect URIs
+ * - "home_scanner": For scanning both Stellar addresses and WalletConnect URIs from home
  *
  * The screen uses the useQRCodeScreenScanner hook to handle all logic based on the source parameter.
  *
@@ -43,20 +43,14 @@ const ScanQRCodeScreen: React.FC<ScanQRCodeScreenProps> = ({
   const source = route.params?.source || getDefaultQRCodeSource();
 
   // Use the custom hook to get all handlers, state, and configuration
-  const { handlers, state, config, ManualInputOverlay } =
+  const { handlers, state, ManualInputOverlay } =
     useQRCodeScreenScanner(source);
-
-  // Determine testID based on source
-  const screenTestID =
-    source === QRCodeSource.WALLET_CONNECT
-      ? "walletconnect-input-screen"
-      : "scan-qr-code-screen";
 
   return (
     <BaseLayout
       useKeyboardAvoidingView
       insets={{ top: false }}
-      testID={screenTestID}
+      testID="scan-qr-code-screen"
     >
       <CameraNavigationHeader
         headerTitle={state.title}
@@ -67,7 +61,7 @@ const ScanQRCodeScreen: React.FC<ScanQRCodeScreenProps> = ({
           />
         )}
         headerRight={
-          config.showHeaderRight && handlers.handleHeaderRight
+          state.showManualInput && handlers.handleHeaderRight
             ? () => (
                 <CustomHeaderButton
                   position="right"
