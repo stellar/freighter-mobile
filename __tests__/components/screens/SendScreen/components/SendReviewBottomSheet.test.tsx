@@ -4,6 +4,7 @@ import { SendReviewBottomSheet } from "components/screens/SendScreen/components"
 import { SendType } from "components/screens/SendScreen/components/SendReviewBottomSheet";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
+import { StyleSheet } from "react-native";
 
 import { mockBalances } from "../../../../../__mocks__/balances";
 import { mockGestureHandler } from "../../../../../__mocks__/gesture-handler";
@@ -331,6 +332,37 @@ describe("SendReviewBottomSheet", () => {
       );
 
       expect(getByText("Proceed with caution")).toBeTruthy();
+    });
+  });
+
+  describe("XDR error state", () => {
+    const longErrorMessage =
+      "tx_failed: operation underfunded — the source account does not have enough balance to cover the transaction and its fees, please try a smaller amount";
+
+    it("renders the full error message with a flexible, non-truncated layout", () => {
+      (
+        jest.requireMock("ducks/transactionBuilder")
+          .useTransactionBuilderStore as jest.Mock
+      ).mockReturnValueOnce({
+        transactionXDR: "",
+        isBuilding: false,
+        error: longErrorMessage,
+      });
+
+      const { getByText } = renderWithProviders(
+        <SendReviewBottomSheet {...defaultProps} />,
+      );
+
+      // The complete message is rendered (not split or shortened).
+      const errorText = getByText(`Error: ${longErrorMessage}`);
+
+      // Layout assertions that lock in the overflow fix: `flex: 1` lets the
+      // text take the available width and wrap, and the absence of
+      // `numberOfLines` means it is never truncated to a single line.
+      expect(StyleSheet.flatten(errorText.props.style)).toMatchObject({
+        flex: 1,
+      });
+      expect(errorText.props.numberOfLines).toBeUndefined();
     });
   });
 });

@@ -139,6 +139,12 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   // Use amountError from props (calculated in parent component)
   const amountError = propAmountError;
 
+  // Localized build-error string, derived once so the value shown in the XDR
+  // row and the value copied to the clipboard always match.
+  const errorMessage = error
+    ? t("common.error", { errorMessage: error })
+    : null;
+
   const handleCopyXdr = useCallback(() => {
     if (transactionXDR) {
       copyToClipboard(transactionXDR, {
@@ -147,18 +153,18 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
     }
   }, [copyToClipboard, t, transactionXDR]);
 
+  const handleCopyError = useCallback(() => {
+    if (errorMessage) {
+      copyToClipboard(errorMessage, {
+        notificationMessage: t("common.copied"),
+      });
+    }
+  }, [copyToClipboard, errorMessage, t]);
+
   const renderXdrContent = useCallback(() => {
     if (isBuilding) {
       return (
         <ActivityIndicator size="small" color={themeColors.text.secondary} />
-      );
-    }
-
-    if (error) {
-      return (
-        <Text md medium color={themeColors.status.error}>
-          {t("common.error", { errorMessage: error })}
-        </Text>
       );
     }
 
@@ -167,14 +173,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
     }
 
     return t("common.none");
-  }, [
-    error,
-    isBuilding,
-    t,
-    themeColors.status.error,
-    themeColors.text.secondary,
-    transactionXDR,
-  ]);
+  }, [isBuilding, t, themeColors.text.secondary, transactionXDR]);
 
   /**
    * Renders the memo section title with appropriate icon and warning indicator
@@ -339,25 +338,55 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
           icon: (
             <Icon.FileCode02 size={16} color={themeColors.foreground.primary} />
           ),
-          title: t("transactionAmountScreen.details.xdr"),
-          titleColor: themeColors.text.secondary,
-          trailingContent: (
-            <TouchableOpacity
-              onPress={handleCopyXdr}
-              disabled={isBuilding || !transactionXDR}
-              className="flex-row items-center gap-[8px]"
-            >
-              <Icon.Copy01 size={16} color={themeColors.foreground.primary} />
-              <Text md medium secondary={isBuilding}>
-                {renderXdrContent()}
-              </Text>
-            </TouchableOpacity>
-          ),
+          ...(error
+            ? {
+                titleComponent: (
+                  <TouchableOpacity
+                    onPress={handleCopyError}
+                    className="flex-row items-center gap-[8px]"
+                  >
+                    <Icon.Copy01
+                      size={16}
+                      color={themeColors.foreground.primary}
+                    />
+                    <Text
+                      md
+                      medium
+                      color={themeColors.status.error}
+                      style={{ flex: 1 }}
+                    >
+                      {errorMessage}
+                    </Text>
+                  </TouchableOpacity>
+                ),
+              }
+            : {
+                title: t("transactionAmountScreen.details.xdr"),
+                titleColor: themeColors.text.secondary,
+                trailingContent: (
+                  <TouchableOpacity
+                    onPress={handleCopyXdr}
+                    disabled={isBuilding || !transactionXDR}
+                    className="flex-row items-center gap-[8px]"
+                  >
+                    <Icon.Copy01
+                      size={16}
+                      color={themeColors.foreground.primary}
+                    />
+                    <Text md medium secondary={isBuilding}>
+                      {renderXdrContent()}
+                    </Text>
+                  </TouchableOpacity>
+                ),
+              }),
         },
       ].filter(Boolean) as ListItemProps[],
     [
       account?.accountName,
       account?.publicKey,
+      error,
+      errorMessage,
+      handleCopyError,
       handleCopyXdr,
       handleOpenFeeBreakdown,
       isBuilding,
@@ -366,6 +395,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
       renderXdrContent,
       t,
       themeColors.foreground.primary,
+      themeColors.status.error,
       themeColors.text.secondary,
       totalFeeXlm,
       transactionMemo,
@@ -578,7 +608,6 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
             secondary={shouldUseRowLayout}
             isFullWidth
             onPress={onCancel}
-            disabled={isDisabled}
             testID="send-review-cancel-button"
           >
             {t("common.cancel")}
