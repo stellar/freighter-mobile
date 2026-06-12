@@ -340,20 +340,14 @@ export const BROWSER_CONSTANTS = {
   MAX_SCREENSHOTS_STORED: 30,
   MAX_ACTIVE_WEBVIEWS: 10, // Maximum number of active WebView instances
   SCREENSHOT_FORMAT: "jpg",
-  SCREENSHOT_QUALITY: 0.25,
+  SCREENSHOT_QUALITY: 0.5,
   SCREENSHOT_WIDTH: 400,
   SCREENSHOT_HEIGHT: 600,
   SCREENSHOT_ON_LOAD_DELAY: 500, // Take screenshot after site finishes loading
   SCREENSHOT_SCROLL_DELAY: 1000, // Take screenshot after 1s of no-scrolling
   SCREENSHOT_FINAL_DELAY: 2000, // Take screenshot after site animations complete
-  // BLUR STRNGTH NEEDS TO BE ODD NUMBERS, IE 15, 25, 35, 55, 75, 95, etc.
-  SCREENSHOT_BLUR_STRENGTH: {
-    LIGHT: 15,
-    MEDIUM: 25,
-    STRONG: 35,
-    VERY_STRONG: 55,
-    EXTREMELY_STRONG: 151,
-  },
+  SCREENSHOT_DEK_SERVICE: "screenshot_dek", // Keychain service name for the screenshot DEK
+  SCREENSHOT_FILES_DIR: "tab-screenshots", // Subdirectory under CachesDirectoryPath
   OPEN_ANIMATION_DURATION: 200,
   CLOSE_ANIMATION_DURATION: 200,
   TAB_SWITCH_SPINNER_DELAY: 500,
