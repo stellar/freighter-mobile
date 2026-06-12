@@ -7,8 +7,7 @@ import {
   Claimant,
   LiquidityPoolAsset,
   Operation,
-  Signer,
-  SignerKeyOptions,
+  OperationRecord,
   StrKey,
   xdr,
 } from "@stellar/stellar-sdk";
@@ -26,6 +25,23 @@ import { t } from "i18next";
 import React, { useEffect, useState } from "react";
 import { View } from "react-native";
 import { getContractSpecs } from "services/backend";
+
+// v16 no longer exports the signer option types directly; derive them from the
+// parsed-operation union so they track the SDK exactly.
+type SetOptionsSigner = NonNullable<
+  Extract<OperationRecord, { type: "setOptions" }>["signer"]
+>;
+type SignerKeyOptions = Extract<
+  OperationRecord,
+  { type: "revokeSignerSponsorship" }
+>["signer"];
+
+// Signer hash fields (sha256Hash / preAuthTx) parse to a Buffer at runtime but
+// are typed `Buffer | string`; render either as an uppercase hex string.
+const signerKeyToHex = (value: Buffer | string): string =>
+  typeof value === "string"
+    ? value
+    : Buffer.from(value).toString("hex").toUpperCase();
 
 interface KeyValueListItemProps {
   operationKey: string;
@@ -244,12 +260,12 @@ export const PathList = ({ paths }: PathListProps) => {
 };
 
 interface KeyValueSignerProps {
-  signer: Signer;
+  signer: SetOptionsSigner;
 }
 
 export const KeyValueSigner = ({ signer }: KeyValueSignerProps) => {
   const renderSignerType = () => {
-    if ("ed25519PublicKey" in signer) {
+    if (signer.ed25519PublicKey) {
       return (
         <InlinePublicKeyRow
           operationKey={t("signTransactionDetails.operations.signer")}
@@ -258,29 +274,25 @@ export const KeyValueSigner = ({ signer }: KeyValueSignerProps) => {
       );
     }
 
-    if ("sha256Hash" in signer) {
+    if (signer.sha256Hash) {
       return (
         <InlineHashRow
           operationKey={t("signTransactionDetails.operations.signer")}
-          operationValue={Buffer.from(signer.sha256Hash)
-            .toString("hex")
-            .toUpperCase()}
+          operationValue={signerKeyToHex(signer.sha256Hash)}
         />
       );
     }
 
-    if ("preAuthTx" in signer) {
+    if (signer.preAuthTx) {
       return (
         <InlineHashRow
           operationKey={t("signTransactionDetails.operations.signer")}
-          operationValue={Buffer.from(signer.preAuthTx)
-            .toString("hex")
-            .toUpperCase()}
+          operationValue={signerKeyToHex(signer.preAuthTx)}
         />
       );
     }
 
-    if ("ed25519SignedPayload" in signer) {
+    if (signer.ed25519SignedPayload) {
       return (
         <InlineHashRow
           operationKey={t("signTransactionDetails.operations.signer")}
@@ -771,7 +783,7 @@ interface KeyValueSignerKeyOptionsProps {
 export const KeyValueSignerKeyOptions = ({
   signer,
 }: KeyValueSignerKeyOptionsProps) => {
-  if ("ed25519PublicKey" in signer) {
+  if (signer.ed25519PublicKey) {
     return (
       <KeyValueWithPublicKey
         operationKey={t("signTransactionDetails.operations.signerKey")}
@@ -780,25 +792,25 @@ export const KeyValueSignerKeyOptions = ({
     );
   }
 
-  if ("sha256Hash" in signer) {
+  if (signer.sha256Hash) {
     return (
       <KeyValueListItem
         operationKey={t("signTransactionDetails.operations.signerSha256Hash")}
-        operationValue={signer.sha256Hash}
+        operationValue={signerKeyToHex(signer.sha256Hash)}
       />
     );
   }
 
-  if ("preAuthTx" in signer) {
+  if (signer.preAuthTx) {
     return (
       <KeyValueListItem
         operationKey={t("signTransactionDetails.operations.preAuthTransaction")}
-        operationValue={signer.preAuthTx}
+        operationValue={signerKeyToHex(signer.preAuthTx)}
       />
     );
   }
 
-  if ("ed25519SignedPayload" in signer) {
+  if (signer.ed25519SignedPayload) {
     return (
       <KeyValueListItem
         operationKey={t("signTransactionDetails.operations.signedPayload")}

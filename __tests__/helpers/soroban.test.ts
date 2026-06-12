@@ -1,4 +1,4 @@
-import { xdr } from "@stellar/stellar-sdk";
+import { Address, xdr } from "@stellar/stellar-sdk";
 import { BigNumber } from "bignumber.js";
 import {
   ClassicBalance,
@@ -9,6 +9,7 @@ import {
 import {
   computeTotalFeeXlm,
   getArgsForTokenInvocation,
+  getAuthEntryBoundAddress,
   SorobanTokenInterface,
   addressToString,
   isSorobanTransaction,
@@ -233,6 +234,73 @@ describe("soroban helpers", () => {
       expect(result).toBeTruthy();
       // Should start with 'C' for contract addresses
       expect(result[0]).toBe("C");
+    });
+  });
+
+  describe("getAuthEntryBoundAddress", () => {
+    const BOUND_ADDRESS =
+      "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3";
+
+    const rootInvocation = () =>
+      new xdr.SorobanAuthorizedInvocation({
+        function:
+          xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeContractFn(
+            new xdr.InvokeContractArgs({
+              contractAddress: new Address(
+                "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSC4",
+              ).toScAddress(),
+              functionName: "transfer",
+              args: [],
+            }),
+          ),
+        subInvocations: [],
+      });
+
+    const addressCreds = () =>
+      new xdr.SorobanAddressCredentials({
+        address: new Address(BOUND_ADDRESS).toScAddress(),
+        nonce: xdr.Int64.fromString("1") as xdr.Int64,
+        signatureExpirationLedger: 999999,
+        signature: xdr.ScVal.scvVoid(),
+      });
+
+    const buildEntry = (credentials: xdr.SorobanCredentials) =>
+      new xdr.SorobanAuthorizationEntry({
+        credentials,
+        rootInvocation: rootInvocation(),
+      });
+
+    it("returns undefined for source-account credentials", () => {
+      const entry = buildEntry(
+        xdr.SorobanCredentials.sorobanCredentialsSourceAccount(),
+      );
+      expect(getAuthEntryBoundAddress(entry)).toBeUndefined();
+    });
+
+    it("returns the bound address for ADDRESS credentials", () => {
+      const entry = buildEntry(
+        xdr.SorobanCredentials.sorobanCredentialsAddress(addressCreds()),
+      );
+      expect(getAuthEntryBoundAddress(entry)).toBe(BOUND_ADDRESS);
+    });
+
+    it("returns the bound address for ADDRESS_V2 credentials", () => {
+      const entry = buildEntry(
+        xdr.SorobanCredentials.sorobanCredentialsAddressV2(addressCreds()),
+      );
+      expect(getAuthEntryBoundAddress(entry)).toBe(BOUND_ADDRESS);
+    });
+
+    it("returns the top-level bound address for ADDRESS_WITH_DELEGATES credentials", () => {
+      const entry = buildEntry(
+        xdr.SorobanCredentials.sorobanCredentialsAddressWithDelegates(
+          new xdr.SorobanAddressCredentialsWithDelegates({
+            addressCredentials: addressCreds(),
+            delegates: [],
+          }),
+        ),
+      );
+      expect(getAuthEntryBoundAddress(entry)).toBe(BOUND_ADDRESS);
     });
   });
 
