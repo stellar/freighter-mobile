@@ -16,6 +16,7 @@ import { analytics } from "services/analytics";
 
 const MOUNTING_DELAY = 500;
 const SCAN_DEBOUNCE_MS = 1000; // Prevent multiple scans of the same code within 1 second
+const PROCESSED_CODE_EXPIRY_MS = 10_000; // Allow rescanning the same code after 10 seconds
 
 const CUTOUT_TOP_OFFSET = "45%";
 const CUTOUT_SIZE = 232;
@@ -66,13 +67,13 @@ type QRScannerProps = {
  *     console.log('Scanned QR code:', data);
  *     // Handle the scanned QR code data
  *   }}
- *   context="wallet_connect"
+ *   context="home_scanner"
  * />
  * ```
  */
 export const QRScanner: React.FC<QRScannerProps> = ({
   onRead,
-  context = QRCodeSource.WALLET_CONNECT,
+  context = QRCodeSource.HOME_SCANNER,
   title,
 }) => {
   const { hasPermission, requestPermission } = useCameraPermission();
@@ -103,9 +104,19 @@ export const QRScanner: React.FC<QRScannerProps> = ({
         return;
       }
 
-      // Update last scan time and add to processed codes
+      // Update last scan time and add to processed codes (with expiry)
       lastScanTimeRef.current = now;
       setProcessedCodes((prev) => new Set([...prev, codeValue]));
+
+      // Remove from processed codes after expiry to allow rescanning
+      // (e.g. after a WalletConnect pairing failure)
+      setTimeout(() => {
+        setProcessedCodes((prev) => {
+          const next = new Set(prev);
+          next.delete(codeValue);
+          return next;
+        });
+      }, PROCESSED_CODE_EXPIRY_MS);
 
       onRead(codeValue);
     },
@@ -133,7 +144,7 @@ export const QRScanner: React.FC<QRScannerProps> = ({
     // Track error if permissions denied or camera unavailable (mobile-specific feature)
     if (device == null || !hasPermission) {
       const error = device == null ? "camera_unavailable" : "permission_denied";
-      analytics.trackQRScanError(error, context);
+      analytics.trackQRScanError(context, error);
     }
   }, [hasMounted, device, hasPermission, context]);
 
