@@ -717,7 +717,8 @@
     "minimumReceived": "Minimum received"
   },
   "transactionTokenScreen": {
-    "title": "Sending"
+    "title": "Sending",
+    "empty": "No tokens or collectibles to send"
   },
   "transactionSettings": {
     "title": "Transaction settings",
