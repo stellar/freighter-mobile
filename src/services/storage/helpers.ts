@@ -1,20 +1,24 @@
 import { SENSITIVE_STORAGE_KEYS, STORAGE_KEYS } from "config/constants";
 import { HashKey } from "config/types";
-import { clearScreenshotDek } from "helpers/screenshotCrypto";
 import {
   dataStorage,
   secureDataStorage,
 } from "services/storage/storageFactory";
 
 /**
- * Clears the hash key, temporary store, derived key cache, and screenshot DEK from secure storage
+ * Clears the hash key, temporary store, and derived key cache from secure storage.
+ *
+ * Deliberately does NOT touch the screenshot DEK: this also runs on non-wipe
+ * paths (signUp/importWallet via clearAllData, and the repeated-decryption-failure
+ * guard in getTemporaryStore) where browser tabs, cookies, and screenshot files
+ * all survive. The DEK is independent of wallet key material and is cleared on
+ * the logout-wipe path alongside clearAllWebViewData.
  */
 const clearTemporaryData = async (): Promise<void> => {
   await Promise.all([
     secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.HASH_KEY),
     secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE),
     secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.DERIVED_KEY),
-    clearScreenshotDek(),
   ]);
 };
 
