@@ -145,6 +145,24 @@ describe("TokensCollectiblesInline", () => {
     ).toBeTruthy();
   });
 
+  it("does not blank the funded token list while tokens refresh in the background", () => {
+    // tokensLoading is true but balances are present (noBalances false), so the
+    // spinner must NOT show — matching BalancesList's own gate, the funded list
+    // stays visible during a background refresh.
+    setupState({
+      tokensLoading: true,
+      noBalances: false,
+      visibleCollectibles: [],
+    });
+
+    renderComponent();
+
+    expect(
+      screen.queryByTestId("tokens-collectibles-inline-spinner"),
+    ).toBeNull();
+    expect(screen.getByTestId("balances-list-token-row")).toBeTruthy();
+  });
+
   it("shows the collectibles error when only collectibles fail", () => {
     setupState({ collectiblesError: "failed", noBalances: true });
 
@@ -169,6 +187,37 @@ describe("TokensCollectiblesInline", () => {
     expect(screen.queryByTestId("tokens-collectibles-inline-spinner")).toBeNull();
     expect(screen.getByTestId("tokens-collectibles-inline-error")).toBeTruthy();
     expect(screen.getByText("Error loading balances")).toBeTruthy();
+  });
+
+  it("shows the spinner (hiding potentially stale collectibles) while collectibles reload", () => {
+    // The store keeps `collections` from the previous network during a
+    // refetch, so a loading state with collectibles present must show the
+    // spinner rather than rendering the (possibly stale) collectibles.
+    setupState({
+      noBalances: true,
+      collectiblesLoading: true,
+      visibleCollectibles: [
+        {
+          collectionAddress: "CABC",
+          collectionName: "Stale Collection",
+          items: [
+            {
+              collectionAddress: "CABC",
+              tokenId: "1",
+              image: "https://example.com/stale.png",
+              name: "Stale #1",
+            },
+          ],
+        },
+      ],
+    });
+
+    renderComponent();
+
+    expect(
+      screen.getByTestId("tokens-collectibles-inline-spinner"),
+    ).toBeTruthy();
+    expect(screen.queryByText("Stale #1")).toBeNull();
   });
 
   it("suppresses a stale collectibles error while a retry is loading", () => {
@@ -217,8 +266,39 @@ describe("TokensCollectiblesInline", () => {
 
     renderComponent();
 
+    expect(screen.getByText("Tokens")).toBeTruthy();
     expect(screen.getByTestId("balances-list-token-row")).toBeTruthy();
     expect(screen.queryByText("Collectibles")).toBeNull();
+    expect(
+      screen.queryByText("No tokens or collectibles to send"),
+    ).toBeNull();
+  });
+
+  it("renders both the tokens and collectibles sections when both are present", () => {
+    setupState({
+      noBalances: false,
+      visibleCollectibles: [
+        {
+          collectionAddress: "CABC",
+          collectionName: "Cool Collection",
+          items: [
+            {
+              collectionAddress: "CABC",
+              tokenId: "42",
+              image: "https://example.com/item.png",
+              name: "Collectible #42",
+            },
+          ],
+        },
+      ],
+    });
+
+    renderComponent();
+
+    expect(screen.getByText("Tokens")).toBeTruthy();
+    expect(screen.getByTestId("balances-list-token-row")).toBeTruthy();
+    expect(screen.getByText("Collectibles")).toBeTruthy();
+    expect(screen.getByText("Collectible #42")).toBeTruthy();
     expect(
       screen.queryByText("No tokens or collectibles to send"),
     ).toBeNull();

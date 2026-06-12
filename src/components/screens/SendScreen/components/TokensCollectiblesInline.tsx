@@ -60,12 +60,18 @@ export const TokensCollectiblesInline: React.FC<
   const hasTokens = !noBalances;
   const hasCollectibles = visibleCollectibles.length > 0;
 
-  // Single spinner: keep it up until both sources finish their initial load.
-  // Gating on the "no data yet" condition (rather than raw isLoading) avoids
-  // the spinner flashing over already-rendered content on background refreshes.
-  const showSpinner =
-    (tokensLoading && noBalances) ||
-    (collectiblesLoading && !hasCollectibles);
+  // Single spinner: keep it up until both sources finish loading.
+  //
+  // Tokens gate on "no data yet" (noBalances), matching BalancesList's own
+  // spinner condition so an already-funded list isn't blanked on refresh.
+  //
+  // Collectibles gate on raw isLoading. The store doesn't clear `collections`
+  // when the network changes (selectNetwork only swaps the network and the
+  // refetch keeps the old data until it resolves), so `visibleCollectibles`
+  // can still hold NFTs from the previous network mid-fetch. Gating on
+  // !hasCollectibles would render those stale, selectable collectibles; the
+  // spinner hides them until the refetch completes (the original behavior).
+  const showSpinner = (tokensLoading && noBalances) || collectiblesLoading;
 
   // Single error field: a token error takes precedence over a collectibles
   // error, and any error replaces the whole view rather than rendering the
