@@ -171,6 +171,25 @@ describe("TokensCollectiblesInline", () => {
     expect(screen.getByText("Error loading balances")).toBeTruthy();
   });
 
+  it("suppresses a stale collectibles error while a retry is loading", () => {
+    // The collectibles store keeps the old error set while re-fetching, so a
+    // retry-in-flight (loading + stale error) should show the spinner, not the
+    // stale error.
+    setupState({
+      noBalances: true,
+      collectiblesLoading: true,
+      collectiblesError: "stale-failure",
+      visibleCollectibles: [],
+    });
+
+    renderComponent();
+
+    expect(screen.queryByTestId("tokens-collectibles-inline-error")).toBeNull();
+    expect(
+      screen.getByTestId("tokens-collectibles-inline-spinner"),
+    ).toBeTruthy();
+  });
+
   it("prefers the token error over the collectibles error", () => {
     setupState({
       tokensError: "token-failed",

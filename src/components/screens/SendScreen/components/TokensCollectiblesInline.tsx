@@ -70,10 +70,15 @@ export const TokensCollectiblesInline: React.FC<
   // Single error field: a token error takes precedence over a collectibles
   // error, and any error replaces the whole view rather than rendering the
   // section that succeeded.
+  //
+  // The collectibles store keeps the previous error set while a retry is in
+  // flight (it only flips isLoading), so we gate on !collectiblesLoading to
+  // avoid surfacing a stale error during a retry. useBalancesList already
+  // suppresses tokensError while loading, so tokens need no such guard.
   let errorMessage: string | null = null;
   if (tokensError) {
     errorMessage = t("balancesList.error");
-  } else if (collectiblesError) {
+  } else if (collectiblesError && !collectiblesLoading) {
     errorMessage = t("collectiblesGrid.error");
   }
 
