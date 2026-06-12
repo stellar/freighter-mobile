@@ -5,6 +5,7 @@ import { Input } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
 import { isAndroid } from "helpers/device";
 import { isE2ETest } from "helpers/isEnv";
+import { walletKit } from "helpers/walletKitUtil";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useToast } from "providers/ToastProvider";
 import React, {
@@ -199,6 +200,23 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
         clearTimeout(dismissTimeoutRef.current);
       }
       dismissTimeoutRef.current = setTimeout(() => handleDismiss(), 500);
+    };
+
+    const pairWcUri = async () => {
+      if (!wcUri) return;
+      try {
+        setStatus("Pairing...");
+        await walletKit.pair({ uri: wcUri });
+        setStatus("Paired successfully");
+        if (dismissTimeoutRef.current) {
+          clearTimeout(dismissTimeoutRef.current);
+        }
+        dismissTimeoutRef.current = setTimeout(() => handleDismiss(), 500);
+      } catch (error) {
+        const errorMsg =
+          error instanceof Error ? error.message : String(error);
+        setStatus(`Pairing failed: ${errorMsg}`);
+      }
     };
 
     const requestSignMessage = async () => {
@@ -544,6 +562,17 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
                   >
                     {t("walletKit.e2eHelper.copyWcUri")}
                   </Button>
+
+                  <View style={{ marginTop: 8 }}>
+                    <Button
+                      testID="wc-e2e-pair-uri"
+                      onPress={pairWcUri}
+                      size="sm"
+                      variant="primary"
+                    >
+                      Pair
+                    </Button>
+                  </View>
                 </View>
               )}
 
