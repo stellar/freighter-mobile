@@ -21,6 +21,7 @@ import {
   walkInvocationTree,
   xdr,
 } from "@stellar/stellar-sdk";
+import { getAuthEntryBoundAddress } from "helpers/soroban";
 
 describe("Stellar SDK v15 compatibility", () => {
   const networkPassphrase = Networks.TESTNET;
@@ -213,6 +214,65 @@ describe("Stellar SDK v15 compatibility", () => {
         ),
       );
       expect(scAddr.switch().name).toBe("scAddressTypeAccount");
+    });
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // CAP-71 / Protocol 27 — ADDRESS_V2 credentials
+  // ───────────────────────────────────────────────────────────────────────────
+
+  describe("CAP-71 ADDRESS_V2 credentials (Protocol 27)", () => {
+    it("rootInvocation() works on an auth entry with ADDRESS_V2 credentials (transaction review path)", () => {
+      const invocation = new xdr.SorobanAuthorizedInvocation({
+        function:
+          xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeContractFn(
+            new xdr.InvokeContractArgs({
+              contractAddress: new Address(
+                "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSC4",
+              ).toScAddress(),
+              functionName: "transfer",
+              args: [],
+            }),
+          ),
+        subInvocations: [],
+      });
+
+      const credentials = xdr.SorobanCredentials.sorobanCredentialsAddressV2(
+        new xdr.SorobanAddressCredentials({
+          address: new Address(keypair.publicKey()).toScAddress(),
+          nonce: xdr.Int64.fromString("1") as xdr.Int64,
+          signatureExpirationLedger: 999999,
+          signature: xdr.ScVal.scvVoid(),
+        }),
+      );
+
+      const entry = new xdr.SorobanAuthorizationEntry({
+        credentials,
+        rootInvocation: invocation,
+      });
+
+      // The signing-review screens only read rootInvocation() and never
+      // switch on credentials — this locks that assumption for ADDRESS_V2.
+      const roundtripped = xdr.SorobanAuthorizationEntry.fromXDR(
+        entry.toXDR("base64"),
+        "base64",
+      );
+      const root = roundtripped.rootInvocation();
+      expect(root).toBeInstanceOf(xdr.SorobanAuthorizedInvocation);
+      expect(root.function().contractFn().functionName().toString()).toBe(
+        "transfer",
+      );
+
+      // walkInvocationTree (used by getInvocationDetails) traverses it fine
+      const visited: string[] = [];
+      walkInvocationTree(root, (node) => {
+        visited.push(node.function().switch().name);
+        return true;
+      });
+      expect(visited.length).toBe(1);
+
+      // The transaction-review path surfaces the bound address per entry.
+      expect(getAuthEntryBoundAddress(roundtripped)).toBe(keypair.publicKey());
     });
   });
 });
