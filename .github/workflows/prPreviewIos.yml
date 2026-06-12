@@ -68,7 +68,7 @@ jobs:
       contents: write # draft release create/delete + tag operations
       pull-requests: write # sticky preview-link comment
     env:
-      NODE_VERSION: "20"
+      NODE_VERSION: "22"
       RUBY_VERSION: 3.1.4
       # === Telemetry intentionally disabled in previews ===
       SENTRY_PROPERTIES_CONTENT: "disabled-for-preview"

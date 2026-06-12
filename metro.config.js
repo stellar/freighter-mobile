@@ -73,13 +73,18 @@ const config = {
       // `require("bignumber.js")` resolves to {} and the SDK's
       // `_interopDefault(...).default.clone()` throws. Rewrite that one broken
       // target back to the real CJS build. (v9, used by stellar-base, is fine.)
+      // Normalize separators so the match also holds on Windows (backslashes).
+      const resolvedPath = resolved?.filePath?.replace(/\\/g, "/");
       if (
         moduleName === "bignumber.js" &&
-        resolved?.filePath?.endsWith("/dist/bignumber.js")
+        resolvedPath?.endsWith("/dist/bignumber.js")
       ) {
         return {
           ...resolved,
-          filePath: resolved.filePath.replace(/\.js$/, ".cjs"),
+          filePath: resolved.filePath.replace(
+            /bignumber\.js$/,
+            "bignumber.cjs",
+          ),
         };
       }
 
