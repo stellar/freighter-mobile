@@ -156,6 +156,21 @@ describe("TokensCollectiblesInline", () => {
     expect(screen.getByText("Error loading collectibles")).toBeTruthy();
   });
 
+  it("prioritizes an error over the spinner while the other source is still loading", () => {
+    setupState({
+      tokensError: "token-failed",
+      noBalances: true,
+      collectiblesLoading: true,
+      visibleCollectibles: [],
+    });
+
+    renderComponent();
+
+    expect(screen.queryByTestId("tokens-collectibles-inline-spinner")).toBeNull();
+    expect(screen.getByTestId("tokens-collectibles-inline-error")).toBeTruthy();
+    expect(screen.getByText("Error loading balances")).toBeTruthy();
+  });
+
   it("prefers the token error over the collectibles error", () => {
     setupState({
       tokensError: "token-failed",

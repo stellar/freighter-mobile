@@ -114,6 +114,20 @@ export const TokensCollectiblesInline: React.FC<
     ));
 
   const renderContent = () => {
+    // An error from either source replaces the whole view, and takes
+    // precedence over the spinner: if one source fails while the other is
+    // still loading, we surface the error immediately rather than masking it
+    // behind a spinner that could otherwise hang indefinitely.
+    if (errorMessage) {
+      return (
+        <View className="py-2">
+          <Text md secondary testID="tokens-collectibles-inline-error">
+            {errorMessage}
+          </Text>
+        </View>
+      );
+    }
+
     if (showSpinner) {
       return (
         <View className="items-center justify-center py-6">
@@ -122,16 +136,6 @@ export const TokensCollectiblesInline: React.FC<
             size="large"
             color={themeColors.secondary}
           />
-        </View>
-      );
-    }
-
-    if (errorMessage) {
-      return (
-        <View className="py-2">
-          <Text md secondary testID="tokens-collectibles-inline-error">
-            {errorMessage}
-          </Text>
         </View>
       );
     }
