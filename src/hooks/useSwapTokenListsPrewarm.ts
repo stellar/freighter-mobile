@@ -25,33 +25,43 @@ import { InteractionManager } from "react-native";
  */
 export const useSwapTokenListsPrewarm = (network: NETWORKS): void => {
   useEffect(() => {
+    // Best-effort: any rejection (e.g. `getVerifiedTokens` propagating a
+    // cachedFetch throw when offline with no cache, or scanBulkWithCache
+    // failing) is silently swallowed. The Swap screen's own pipeline
+    // retries the same fetches on mount, so a failed pre-warm just means
+    // the user pays the round-trip on Swap open instead of getting it
+    // for free here — never a hard failure or unhandled rejection.
     const task = InteractionManager.runAfterInteractions(async () => {
-      const [topResp, verSplit] = await Promise.all([
-        useStellarExpertTopTokensStore
+      try {
+        const [topResp, verSplit] = await Promise.all([
+          useStellarExpertTopTokensStore
+            .getState()
+            .getStellarExpertTopTokens({ network }),
+          useVerifiedTokensStore.getState().getVerifiedTokens({ network }),
+        ]);
+        // Either fetch failed → intersection would be empty → no Blockaid work.
+        if (!topResp || !verSplit) return;
+
+        // The trustline callback is irrelevant for the pre-warm — Blockaid
+        // scans are keyed on (tokenCode, issuer), not on whether the user
+        // holds the token. Pass a constant false to avoid coupling to
+        // balance items here.
+        const intersection = computeTrendingIntersection(
+          topResp,
+          verSplit,
+          () => false,
+        );
+        const addressList = intersection
+          .filter((t) => t.issuer)
+          .map((t) => `${t.tokenCode}-${t.issuer}`);
+        if (addressList.length === 0) return;
+
+        await useBlockaidTokenScansStore
           .getState()
-          .getStellarExpertTopTokens({ network }),
-        useVerifiedTokensStore.getState().getVerifiedTokens({ network }),
-      ]);
-      // Either fetch failed → intersection would be empty → no Blockaid work.
-      if (!topResp || !verSplit) return;
-
-      // The trustline callback is irrelevant for the pre-warm — Blockaid
-      // scans are keyed on (tokenCode, issuer), not on whether the user
-      // holds the token. Pass a constant false to avoid coupling to
-      // balance items here.
-      const intersection = computeTrendingIntersection(
-        topResp,
-        verSplit,
-        () => false,
-      );
-      const addressList = intersection
-        .filter((t) => t.issuer)
-        .map((t) => `${t.tokenCode}-${t.issuer}`);
-      if (addressList.length === 0) return;
-
-      await useBlockaidTokenScansStore
-        .getState()
-        .scanBulkWithCache({ addressList, network });
+          .scanBulkWithCache({ addressList, network });
+      } catch {
+        // Swallowed — pre-warm is best-effort by design.
+      }
     });
     return () => task.cancel();
   }, [network]);

@@ -87,6 +87,31 @@ describe("useSwapTokenListsPrewarm", () => {
     expect(mockScanBulkWithCache).not.toHaveBeenCalled();
   });
 
+  it("swallows rejections from getVerifiedTokens (no unhandled promise on cold offline mount)", async () => {
+    // Regression: getVerifiedTokens propagates cachedFetch's throws when
+    // there's no cache + the API is down. Pre-warm is best-effort — the
+    // throw must not escape the IIFE as an unhandled rejection on
+    // TabNavigator mount.
+    mockGetStellarExpertTop.mockResolvedValue({
+      _embedded: { records: [] },
+      _links: {},
+    });
+    mockGetVerified.mockRejectedValue(new Error("API down"));
+
+    const unhandled: unknown[] = [];
+    const handler = (e: unknown) => unhandled.push(e);
+    process.on("unhandledRejection", handler);
+
+    renderHook(() => useSwapTokenListsPrewarm(NETWORKS.PUBLIC));
+    await new Promise((r) => {
+      setImmediate(r);
+    });
+
+    process.off("unhandledRejection", handler);
+    expect(unhandled).toHaveLength(0);
+    expect(mockScanBulkWithCache).not.toHaveBeenCalled();
+  });
+
   it("fires Blockaid scan with the intersection address list when both fetches succeed", async () => {
     mockGetStellarExpertTop.mockResolvedValue({
       _embedded: {
