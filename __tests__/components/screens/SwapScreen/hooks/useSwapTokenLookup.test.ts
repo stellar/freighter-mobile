@@ -623,6 +623,54 @@ describe("useSwapTokenLookup — active search", () => {
     ).toBe(false);
   });
 
+  it("falls back to all-unverified when splitVerifiedTokens rejects", async () => {
+    // Regression: getVerifiedTokens (called inside splitVerifiedTokens)
+    // propagates cachedFetch's throws when there's no cache + the API
+    // fails. Before the fix, a throw mid-search exited performSearch
+    // without resolving the buckets, leaving status stuck on LOADING
+    // and the picker showing a permanent spinner with no results.
+    const held = buildHeldBalances();
+    (stellarExpert.searchToken as jest.Mock).mockResolvedValue({
+      _embedded: {
+        records: [
+          { asset: `FOO-${FOO_ISSUER}-1`, domain: "foo.com" },
+          { asset: `USDC-${USDC_ISSUER}-1`, domain: "circle.com" },
+        ],
+      },
+      _links: {},
+    });
+    mockSplitVerifiedTokens.mockRejectedValueOnce(new Error("API down"));
+
+    const { result } = renderHook(() =>
+      useSwapTokenLookup({ network: NETWORKS.PUBLIC, balanceItems: held }),
+    );
+
+    await act(async () => {
+      await settleAsync();
+    });
+
+    act(() => {
+      result.current.handleSearch("USDC");
+    });
+
+    await settleDebounce();
+
+    // Status resolves to success (not stuck on loading).
+    expect(result.current.status).toBe("success");
+
+    // Held USDC still surfaces from the in-memory match.
+    expect(result.current.heldSearchMatches.length).toBeGreaterThan(0);
+    expect(result.current.heldSearchMatches[0].tokenCode).toBe("USDC");
+
+    // With the verified split unavailable, non-held stellar.expert
+    // matches all land in Unverified — none in Verified.
+    expect(result.current.verifiedSearchMatches).toHaveLength(0);
+    expect(result.current.unverifiedSearchMatches.length).toBeGreaterThan(0);
+    expect(
+      result.current.unverifiedSearchMatches.some((t) => t.tokenCode === "FOO"),
+    ).toBe(true);
+  });
+
   it("sets hadSorobanMatches=true when name search returns only Soroban records and filtered list is empty", async () => {
     (stellarExpert.searchToken as jest.Mock).mockResolvedValue({
       _embedded: {

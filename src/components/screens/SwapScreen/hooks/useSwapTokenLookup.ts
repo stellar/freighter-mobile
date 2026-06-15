@@ -520,11 +520,24 @@ export const useSwapTokenLookup = ({
         );
       });
 
-      // 3) Verified vs unverified split.
-      const { verified, unverified } = await splitVerifiedTokens({
-        tokens: formatted,
-        network,
-      });
+      // 3) Verified vs unverified split. If the verified-tokens lookup
+      //    rejects (no cache + network/API down), fall back to treating
+      //    every result as Unverified — held matches still surface from
+      //    heldMatches above, and the Unverified section header's (i)
+      //    icon already explains the caveat. Letting the throw escape
+      //    here would leave the search stuck in LOADING.
+      let verified: FormattedSearchTokenRecord[] = [];
+      let unverified: FormattedSearchTokenRecord[] = formatted;
+      try {
+        const split = await splitVerifiedTokens({
+          tokens: formatted,
+          network,
+        });
+        verified = split.verified;
+        unverified = split.unverified;
+      } catch {
+        // Swallowed — `unverified` was initialised to the full list above.
+      }
       if (signal.aborted || latestRequestRef.current !== requestId) return;
 
       // Dedupe across sources into three buckets via a shared `seen` set so
