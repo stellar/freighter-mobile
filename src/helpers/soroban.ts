@@ -251,13 +251,21 @@ export const getAttrsFromSorobanHorizonOp = (
   return getTokenInvocationArgs(invokeHostFn);
 };
 
+/**
+ * Derive a classic asset's Stellar Asset Contract (SAC) C-address. The SAC
+ * address is deterministic — same (code, issuer, network) always resolves
+ * to the same C-address, regardless of whether the asset has been wrapped
+ * on-chain yet.
+ *
+ * Throws via `new SdkToken(...)` for invalid input (e.g. asset code longer
+ * than 12 chars). Callers that pass user-supplied codes/issuers should
+ * guard with a try/catch.
+ */
 export const getTokenSacAddress = (
-  canonicalName: string,
+  tokenCode: string,
+  issuer: string,
   networkPassphrase: string,
-) =>
-  new SdkToken(...(canonicalName.split(":") as [string, string])).contractId(
-    networkPassphrase,
-  );
+) => new SdkToken(tokenCode, issuer).contractId(networkPassphrase);
 
 /*
   Attempts to match a balance to a related contract ID, expects a token or SAC contract ID.
@@ -270,12 +278,10 @@ export const getBalanceByKey = (
   const foundBalance = balances.find((balance) => {
     const matchesIssuer =
       "contractId" in balance && contractId === balance.contractId;
-    let canonicalName = "";
 
     try {
       // if xlm, check for a SAC match
       if ("token" in balance && balance.token.code === NATIVE_TOKEN_CODE) {
-        canonicalName = "native";
         const matchesSac =
           SdkToken.native().contractId(networkDetails.networkPassphrase) ===
           contractId;
@@ -288,11 +294,9 @@ export const getBalanceByKey = (
         "issuer" in balance.token &&
         !isContractId(balance.token.issuer.key)
       ) {
-        canonicalName = balance.token.issuer.key
-          ? `${balance.token.code}:${balance.token.issuer.key}`
-          : balance.token.code;
         const sacAddress = getTokenSacAddress(
-          canonicalName,
+          balance.token.code,
+          balance.token.issuer.key,
           networkDetails.networkPassphrase,
         );
         const matchesSac = contractId === sacAddress;
