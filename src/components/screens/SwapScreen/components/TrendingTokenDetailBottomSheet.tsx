@@ -39,6 +39,13 @@ export interface TrendingTokenDetailBottomSheetProps {
   };
   balanceItems: HeldBalanceItem[];
   bottomSheetModalRef?: React.RefObject<BottomSheetModal | null>;
+  /**
+   * Fired after the Swap-to CTA sets the destination token (and right before
+   * the sheet dismisses). The parent screen uses this to scroll its trending
+   * list back to the top so the user sees the just-selected token in the
+   * Receive card without having to scroll up manually.
+   */
+  onSelect?: () => void;
 }
 
 /** Format a BigNumber as a USD delta string with 4 decimal places, e.g. "$0.0602" */
@@ -50,7 +57,7 @@ const formatDeltaUsd = (delta: BigNumber): string => {
 
 export const TrendingTokenDetailBottomSheet: React.FC<
   TrendingTokenDetailBottomSheetProps
-> = ({ record, priceInfo, balanceItems, bottomSheetModalRef }) => {
+> = ({ record, priceInfo, balanceItems, bottomSheetModalRef, onSelect }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const { copyToClipboard } = useClipboard();
@@ -109,6 +116,7 @@ export const TrendingTokenDetailBottomSheet: React.FC<
       setSourceToken("", "");
     }
     setDestinationToken(descriptor);
+    onSelect?.();
     bottomSheetModalRef?.current?.dismiss();
   };
 

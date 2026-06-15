@@ -119,6 +119,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     useRef<BottomSheetModal>(null);
   const xlmReserveBottomSheetRef = useRef<BottomSheetModal>(null);
   const amountInputRef = useRef<TextInput>(null);
+  const trendingListRef = useRef<FlatList<FormattedSearchTokenRecord>>(null);
   const { showToast } = useToast();
 
   // Bridges the gap between `setupSwapTransaction` resolving (isBuilding
@@ -901,6 +902,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         testID="swap-amount-screen"
       >
         <FlatList
+          ref={trendingListRef}
           testID="swap-amount-trending-list"
           data={showTrending ? trendingTokens : []}
           keyExtractor={recordTokenId}
@@ -1048,6 +1050,17 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
               })()}
               balanceItems={balanceItems}
               bottomSheetModalRef={trendingDetailSheetRef}
+              // Scroll the trending list back to the top so the user sees the
+              // Receive card (now showing the just-selected token) without
+              // having to scroll up manually. animated=false keeps the
+              // transition from competing visually with the sheet's dismiss
+              // animation.
+              onSelect={() =>
+                trendingListRef.current?.scrollToOffset({
+                  offset: 0,
+                  animated: false,
+                })
+              }
             />
           }
         />
