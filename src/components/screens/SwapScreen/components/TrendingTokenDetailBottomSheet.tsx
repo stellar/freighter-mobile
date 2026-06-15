@@ -9,14 +9,19 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
 import { AnalyticsEvent, SwapSelectionSource } from "config/analyticsConfig";
-import { POSITIVE_PRICE_CHANGE_THRESHOLD } from "config/constants";
+import {
+  mapNetworkToNetworkDetails,
+  POSITIVE_PRICE_CHANGE_THRESHOLD,
+} from "config/constants";
 import {
   FormattedSearchTokenRecord,
   NonNativeToken,
   TokenTypeWithCustomToken,
 } from "config/types";
+import { useAuthenticationStore } from "ducks/auth";
 import { useSwapStore } from "ducks/swap";
 import { formatFiatAmount, formatPercentageAmount } from "helpers/formatAmount";
+import { getTokenSacAddress } from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { type HeldBalanceItem } from "hooks/useBalancesList";
@@ -50,6 +55,27 @@ export const TrendingTokenDetailBottomSheet: React.FC<
   const { themeColors } = useColors();
   const { copyToClipboard } = useClipboard();
   const { setDestinationToken, setSourceToken, sourceTokenId } = useSwapStore();
+  const { network } = useAuthenticationStore();
+  const { networkPassphrase } = mapNetworkToNetworkDetails(network);
+
+  // Derive the deterministic SAC C-address for the classic asset so the
+  // Issuer row exposes the on-chain contract counterpart rather than the
+  // G-address of the asset's issuer account — that's what users typically
+  // need when wiring this token into Soroban contracts or paste into
+  // explorer search bars. Null for XLM (handled by the existing native
+  // special-case) and on derivation failure (e.g. unexpected asset code).
+  const sacAddress = (() => {
+    if (record.isNative || !record.issuer) return null;
+    try {
+      return getTokenSacAddress(
+        record.tokenCode,
+        record.issuer,
+        networkPassphrase,
+      );
+    } catch {
+      return null;
+    }
+  })();
 
   const token: NonNativeToken = {
     type: record.tokenType ?? TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
@@ -106,8 +132,14 @@ export const TrendingTokenDetailBottomSheet: React.FC<
   // canonical "Stellar Network" issuer label and "stellar.org" domain so
   // the info card stays informative instead of falling through to "—" or
   // hiding the domain row.
+  //
+  // For classic non-native assets the Issuer row shows the truncated SAC
+  // C-address (derived via getTokenSacAddress) instead of the G-address.
+  // The G-address is also a valid identifier but the C-address is what
+  // users typically need for Soroban interop / explorer pastes.
   const issuerLabel = (() => {
     if (record.isNative) return t("swapScreen.trendingDetail.stellarNetwork");
+    if (sacAddress) return truncateAddress(sacAddress);
     if (record.issuer) return truncateAddress(record.issuer);
     return "—";
   })();
@@ -158,7 +190,8 @@ export const TrendingTokenDetailBottomSheet: React.FC<
       <View className="bg-background-tertiary rounded-[16px] px-[16px] py-[12px] flex-col gap-[12px] w-full">
         {/* Native XLM has no issuer key — render the label only and skip
             the copy button. For classic assets the truncated label is for
-            display; copy always sends the full G-address. */}
+            display; copy always sends the full SAC C-address (or the
+            G-address if SAC derivation failed). */}
         <View className="flex-row items-center justify-between">
           <Text md medium secondary>
             {t("swapScreen.trendingDetail.issuer")}
@@ -173,7 +206,7 @@ export const TrendingTokenDetailBottomSheet: React.FC<
               className="flex-row items-center gap-[8px]"
               hitSlop={10}
               onPress={() =>
-                copyToClipboard(record.issuer, {
+                copyToClipboard(sacAddress ?? record.issuer, {
                   notificationMessage: t("common.copied"),
                 })
               }
