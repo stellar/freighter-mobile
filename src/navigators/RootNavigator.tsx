@@ -41,7 +41,6 @@ import {
 } from "helpers/navigationOptions";
 import { triggerFaceIdOnboarding } from "helpers/postOnboardingBiometrics";
 import { useAnalyticsPermissions } from "hooks/useAnalyticsPermissions";
-import { useAppOpenBiometricsLogin } from "hooks/useAppOpenBiometricsLogin";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useAppUpdate } from "hooks/useAppUpdate";
 import { useBiometrics } from "hooks/useBiometrics";
@@ -75,7 +74,7 @@ export const RootNavigator = () => {
     useNavigation<
       NativeStackNavigationProp<RootStackParamList & AuthStackParamList>
     >();
-  const { authStatus, getAuthStatus, initializeNetwork } =
+  const { authStatus, isSoftLocked, getAuthStatus, initializeNetwork } =
     useAuthenticationStore();
   const remoteConfigInitialized = useRemoteConfigStore(
     (state) => state.isInitialized,
@@ -93,8 +92,6 @@ export const RootNavigator = () => {
   useAnalyticsPermissions({
     previousState: initializing ? undefined : "none",
   });
-
-  useAppOpenBiometricsLogin(initializing);
 
   // Run once on mount: check jailbreak, fetch auth status from storage, trigger
   // face-id onboarding if needed. We intentionally omit deps so this only fires
@@ -152,9 +149,14 @@ export const RootNavigator = () => {
     }
   }, [showFullScreenUpdateNotice]);
 
+  // Soft lock keeps the authenticated tree mounted (covered by the lock
+  // overlay) so navigation history and in-progress inputs survive the lock.
+  const showAuthenticatedStack =
+    authStatus === AUTH_STATUS.AUTHENTICATED || isSoftLocked;
+
   // Make the stack re-render when auth status changes
   const initialRouteName = useMemo(() => {
-    if (authStatus === AUTH_STATUS.AUTHENTICATED) {
+    if (showAuthenticatedStack) {
       return ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK;
     }
 
@@ -166,7 +168,7 @@ export const RootNavigator = () => {
     }
 
     return ROOT_NAVIGATOR_ROUTES.AUTH_STACK;
-  }, [authStatus]);
+  }, [authStatus, showAuthenticatedStack]);
 
   if (isJailbroken) {
     return <SecurityBlockScreen />;
@@ -200,7 +202,7 @@ export const RootNavigator = () => {
         headerShown: false,
       }}
     >
-      {authStatus === AUTH_STATUS.AUTHENTICATED ? (
+      {showAuthenticatedStack ? (
         <RootStack.Group>
           <RootStack.Screen
             name={ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK}

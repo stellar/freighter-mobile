@@ -75,6 +75,66 @@ export const ACCOUNTS_TO_VERIFY_ON_EXISTING_MNEMONIC_PHRASE = 6;
 export const HASH_KEY_EXPIRATION_MS = 24 * 60 * 60 * 1000; // 24 hours
 export const VISUAL_DELAY_MS = 500;
 
+const SECOND_IN_MS = 1000;
+const MINUTE_IN_MS = 60 * SECOND_IN_MS;
+const HOUR_IN_MS = 60 * MINUTE_IN_MS;
+const YEAR_IN_MS = 365 * 24 * HOUR_IN_MS;
+
+/**
+ * Auto-lock timer options.
+ *
+ * The timer starts counting when the app goes to the background; returning to
+ * the app after the selected duration soft-locks the wallet (AUTH_STATUS.LOCKED,
+ * fast unlock path). Declaration order is the display order on the
+ * Auto-Lock Timer settings screen.
+ */
+export enum AUTO_LOCK_TIMER {
+  IMMEDIATELY = "immediately",
+  ONE_MINUTE = "oneMinute",
+  FIFTEEN_MINUTES = "fifteenMinutes",
+  THIRTY_MINUTES = "thirtyMinutes",
+  ONE_HOUR = "oneHour",
+  TWELVE_HOURS = "twelveHours",
+  TWENTY_FOUR_HOURS = "twentyFourHours",
+  NONE = "none",
+}
+
+export const DEFAULT_AUTO_LOCK_TIMER = AUTO_LOCK_TIMER.TWENTY_FOUR_HOURS;
+
+/** Toast ID used by the lock screen / overlay to surface unlock errors. */
+export const UNLOCK_ERROR_TOAST_ID = "unlock-wallet-error";
+
+/**
+ * Toast IDs allowed to surface while the wallet is soft-locked — the lock
+ * overlay's own messaging. Every other toast is suppressed so the still-
+ * mounted screens underneath the overlay can't surface errors or validation
+ * messages over the lock until the app is usable again.
+ */
+export const SOFT_LOCK_ALLOWED_TOAST_IDS: string[] = [UNLOCK_ERROR_TOAST_ID];
+
+/**
+ * Background duration (in ms) after which each AUTO_LOCK_TIMER option locks
+ * the wallet. `0` locks as soon as the app is backgrounded; `null` never
+ * auto-locks by timer.
+ */
+export const AUTO_LOCK_TIMER_MS: Record<AUTO_LOCK_TIMER, number | null> = {
+  [AUTO_LOCK_TIMER.IMMEDIATELY]: 0,
+  [AUTO_LOCK_TIMER.ONE_MINUTE]: MINUTE_IN_MS,
+  [AUTO_LOCK_TIMER.FIFTEEN_MINUTES]: 15 * MINUTE_IN_MS,
+  [AUTO_LOCK_TIMER.THIRTY_MINUTES]: 30 * MINUTE_IN_MS,
+  [AUTO_LOCK_TIMER.ONE_HOUR]: HOUR_IN_MS,
+  [AUTO_LOCK_TIMER.TWELVE_HOURS]: 12 * HOUR_IN_MS,
+  [AUTO_LOCK_TIMER.TWENTY_FOUR_HOURS]: 24 * HOUR_IN_MS,
+  [AUTO_LOCK_TIMER.NONE]: null,
+};
+
+/**
+ * Hash key TTL used when the auto-lock timer is NONE: the user explicitly
+ * opted out of auto-lock, so the 24h hard-expiry backstop must never force
+ * a re-auth. Effectively "never" while remaining a valid timestamp.
+ */
+export const NEVER_EXPIRE_HASH_KEY_MS = 100 * YEAR_IN_MS;
+
 // Recovery phrase validation constants
 export const VALIDATION_WORDS_PER_ROW: number = 3;
 export const VALIDATION_EXTRA_USER_WORDS: number = 2;
@@ -305,6 +365,8 @@ export enum STORAGE_KEYS {
  * HASH_KEY The hash key and salt in an JSON stryngified object. This is used to encrypt and decrypt the temporary store.
  * HASH_KEY format: { hashKey: string, salt: string, expiresAt: number }
  * AUTH_STATUS The authentication status is stored securely to prevent tampering on rooted/jailbroken devices.
+ * AUTO_LOCK_TIMER_SETTING / AUTO_LOCK_BACKGROUNDED_AT The auto-lock policy inputs are stored
+ * securely for the same reason: tampering them from unencrypted storage must not weaken the lock.
  * */
 export enum SENSITIVE_STORAGE_KEYS {
   TEMPORARY_STORE = "temporaryStore",
@@ -313,6 +375,8 @@ export enum SENSITIVE_STORAGE_KEYS {
   // Persisted symmetric encryption key (scrypt output). Derivable from HASH_KEY, so no extra
   // attack surface. Stored so cold app-opens from LOCKED skip the second scrypt.
   DERIVED_KEY = "derivedKey",
+  AUTO_LOCK_TIMER_SETTING = "autoLockTimer",
+  AUTO_LOCK_BACKGROUNDED_AT = "autoLockBackgroundedAt",
 }
 
 /**

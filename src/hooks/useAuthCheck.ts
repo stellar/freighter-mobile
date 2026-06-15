@@ -1,3 +1,4 @@
+import { AUTO_LOCK_TIMER } from "config/constants";
 import { logger } from "config/logger";
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
@@ -8,6 +9,7 @@ import {
   PanResponder,
   PanResponderInstance,
 } from "react-native";
+import { getAutoLockTimer, recordBackgroundedAt } from "services/autoLock";
 
 // Constants for interval timings (in milliseconds)
 const BACKGROUND_CHECK_INTERVAL = 60000; // Check every minute when in background
@@ -24,8 +26,7 @@ const INITIAL_SETUP_DELAY = 500; // Delay to prevent race conditions during setu
  * It adjusts the check frequency based on the app state and user activity.
  */
 const useAuthCheck = () => {
-  const { getAuthStatus, authStatus, navigateToLockScreen } =
-    useAuthenticationStore();
+  const { getAuthStatus, authStatus } = useAuthenticationStore();
   const [isActive, setIsActive] = useState(true);
 
   // Refs to track app state, last interaction, auth check intervals, and pan responder instance
@@ -52,10 +53,11 @@ const useAuthCheck = () => {
 
     lastCheckRef.current = now;
     try {
-      const status = await getAuthStatus();
-      if (status === AUTH_STATUS.HASH_KEY_EXPIRED) {
-        navigateToLockScreen();
-      }
+      // The store action is the single funnel for lock transitions: it
+      // soft-locks atomically when the auto-lock timer fired (preserving the
+      // mounted screens under the overlay) and navigates to the lock screen
+      // when the hash key hard-expired.
+      await getAuthStatus();
     } catch (error) {
       logger.error(
         "useAuthCheck.checkAuth",
@@ -63,7 +65,7 @@ const useAuthCheck = () => {
         error,
       );
     }
-  }, [getAuthStatus, navigateToLockScreen, authStatus]);
+  }, [getAuthStatus, authStatus]);
 
   /**
    * Setup a periodic interval to check authentication status based on the current app state and user activity.
@@ -99,6 +101,49 @@ const useAuthCheck = () => {
    */
   useEffect(() => {
     const handleAppStateChange = (nextAppState: AppStateStatus) => {
+      // Record when the app goes to the background so the auto-lock timer can
+      // be evaluated on the next foreground or cold start. Intentionally NOT
+      // on "inactive": iOS fires it for control center, app-switcher peeks,
+      // permission dialogs and biometric prompts. NOTE: some Android OEMs
+      // emit "background" when their BiometricPrompt appears — worth keeping
+      // in mind if IMMEDIATELY ever misbehaves around in-app biometric
+      // confirmations on specific devices.
+      const { authStatus: currentAuthStatus, softLock } =
+        useAuthenticationStore.getState();
+      if (
+        nextAppState === "background" &&
+        currentAuthStatus === AUTH_STATUS.AUTHENTICATED
+      ) {
+        recordBackgroundedAt().catch((err) =>
+          logger.error(
+            "handleAppStateChange",
+            "Error recording backgrounded-at timestamp",
+            err,
+          ),
+        );
+
+        // Read from the secure-storage mirror (not the zustand store) so the
+        // IMMEDIATELY lock also fires when backgrounding happens before
+        // zustand rehydration completes.
+        getAutoLockTimer()
+          .then((autoLockTimer) => {
+            if (autoLockTimer === AUTO_LOCK_TIMER.IMMEDIATELY) {
+              // Soft-lock right away: the overlay renders while the app is
+              // backgrounded (no wallet content flashes on return) and the
+              // navigation tree is preserved for after the unlock.
+              return softLock();
+            }
+            return undefined;
+          })
+          .catch((err) =>
+            logger.error(
+              "handleAppStateChange",
+              "Error soft-locking on background",
+              err,
+            ),
+          );
+      }
+
       // When returning to active state, allow a slight delay before checking auth
       if (
         appState.current.match(/inactive|background/) &&

@@ -4,6 +4,7 @@ import {
   createNavigationContainerRef,
 } from "@react-navigation/native";
 import * as Sentry from "@sentry/react-native";
+import { LockScreenOverlay } from "components/LockScreenOverlay";
 import { initializeSentryLogger } from "config/logger";
 import { RootStackParamList } from "config/routes";
 import { initializeSentry } from "config/sentryConfig";
@@ -84,6 +85,15 @@ export const App = (): React.JSX.Element => {
                 </NavigationContainer>
               </I18nextProvider>
             </BottomSheetModalProvider>
+            {/* Soft-lock overlay: rendered after the bottom sheet provider so
+                it covers open sheets too, keeping the navigation tree (and any
+                in-progress inputs) mounted underneath for after the unlock.
+                App-switcher snapshot privacy is handled natively (iOS
+                AppDelegate overlay, Android FLAG_SECURE) — a JS curtain can't
+                beat the OS snapshot. */}
+            <I18nextProvider i18n={i18n}>
+              <LockScreenOverlay />
+            </I18nextProvider>
           </ToastProvider>
         </SafeAreaProvider>
       </GestureHandlerRootView>

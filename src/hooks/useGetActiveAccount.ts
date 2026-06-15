@@ -1,6 +1,7 @@
 import { FeeBumpTransaction, Keypair, Transaction } from "@stellar/stellar-sdk";
 import { navigationRef } from "components/App";
 import { logger } from "config/logger";
+import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import {
   signMessage as signMessageHelper,
@@ -8,6 +9,18 @@ import {
 } from "helpers/stellar";
 import { useCallback, useEffect } from "react";
 import { analytics } from "services/analytics";
+
+/**
+ * Defense-in-depth: signing must only ever happen while the wallet is fully
+ * unlocked. The soft-lock overlay blocks the UI, but the navigation tree
+ * (and these signing callbacks) stay mounted underneath, so guard the key
+ * material directly — never rely on the overlay alone. Read live from the
+ * store so a lock that engaged after the callback was created is respected.
+ */
+const isWalletUnlocked = (): boolean => {
+  const { authStatus, isSoftLocked } = useAuthenticationStore.getState();
+  return authStatus === AUTH_STATUS.AUTHENTICATED && !isSoftLocked;
+};
 
 /**
  * Hook that provides access to the active account with loading state
@@ -43,7 +56,7 @@ const useGetActiveAccount = () => {
 
   const signTransaction = useCallback(
     (transaction: Transaction | FeeBumpTransaction): string | null => {
-      if (!account) return null;
+      if (!account || !isWalletUnlocked()) return null;
 
       const keyPair = Keypair.fromSecret(account.privateKey);
 
@@ -56,7 +69,7 @@ const useGetActiveAccount = () => {
 
   const signMessage = useCallback(
     (message: string): string | null => {
-      if (!account) return null;
+      if (!account || !isWalletUnlocked()) return null;
 
       try {
         return signMessageHelper(message, account.privateKey);
@@ -73,7 +86,7 @@ const useGetActiveAccount = () => {
     (
       preimageXdr: string,
     ): { signedAuthEntry: string; signerAddress: string } | null => {
-      if (!account) return null;
+      if (!account || !isWalletUnlocked()) return null;
 
       try {
         return signAuthEntryHelper(preimageXdr, account.privateKey);
