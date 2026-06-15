@@ -691,7 +691,7 @@
       "body": "Não está nas listas de tokens confiáveis. Tenha cuidado ao adicionar ou transacionar."
     },
     "trendingDetail": {
-      "buy": "Comprar {{tokenCode}}",
+      "swapTo": "Trocar para {{tokenCode}}",
       "issuer": "Emissor",
       "type": "Tipo",
       "domain": "Domínio",

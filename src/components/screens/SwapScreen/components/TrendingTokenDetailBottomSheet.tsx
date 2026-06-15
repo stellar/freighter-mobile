@@ -224,7 +224,7 @@ export const TrendingTokenDetailBottomSheet: React.FC<
           icon's small badge overlay as a hint via TokenIconWithBadge above. */}
 
       <Button onPress={handleBuy} tertiary>
-        {t("swapScreen.trendingDetail.buy", { tokenCode: record.tokenCode })}
+        {t("swapScreen.trendingDetail.swapTo", { tokenCode: record.tokenCode })}
       </Button>
     </View>
   );

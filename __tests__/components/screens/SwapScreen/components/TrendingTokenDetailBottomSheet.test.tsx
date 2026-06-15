@@ -148,7 +148,7 @@ describe("TrendingTokenDetailBottomSheet", () => {
         balanceItems={[]}
       />,
     );
-    fireEvent.press(getByText(/Buy AQUA/i));
+    fireEvent.press(getByText(/Swap to AQUA/i));
     expect(setDestSpy).toHaveBeenCalledWith(
       expect.objectContaining({ tokenCode: "AQUA", isNew: true }),
     );
@@ -178,7 +178,7 @@ describe("TrendingTokenDetailBottomSheet", () => {
         balanceItems={[heldBalance]}
       />,
     );
-    fireEvent.press(getByText(/Buy AQUA/i));
+    fireEvent.press(getByText(/Swap to AQUA/i));
     expect(setDestSpy).toHaveBeenCalledWith(
       expect.objectContaining({ tokenCode: "AQUA", isNew: false }),
     );
@@ -205,7 +205,7 @@ describe("TrendingTokenDetailBottomSheet", () => {
         balanceItems={[]}
       />,
     );
-    fireEvent.press(getByText(/Buy AQUA/i));
+    fireEvent.press(getByText(/Swap to AQUA/i));
 
     expect(setSourceSpy).toHaveBeenCalledWith("", "");
     expect(setDestSpy).toHaveBeenCalledWith(
@@ -230,7 +230,7 @@ describe("TrendingTokenDetailBottomSheet", () => {
         balanceItems={[]}
       />,
     );
-    fireEvent.press(getByText(/Buy AQUA/i));
+    fireEvent.press(getByText(/Swap to AQUA/i));
 
     expect(setSourceSpy).not.toHaveBeenCalled();
     expect(setDestSpy).toHaveBeenCalled();
@@ -308,7 +308,7 @@ describe("TrendingTokenDetailBottomSheet", () => {
           balanceItems={[]}
         />,
       );
-      fireEvent.press(getByText(/Buy AQUA/i));
+      fireEvent.press(getByText(/Swap to AQUA/i));
       expect(analytics.track).toHaveBeenCalledWith(
         AnalyticsEvent.SWAP_TRENDING_BUY_PRESSED,
         expect.objectContaining({
@@ -326,7 +326,7 @@ describe("TrendingTokenDetailBottomSheet", () => {
           balanceItems={[]}
         />,
       );
-      fireEvent.press(getByText(/Buy AQUA/i));
+      fireEvent.press(getByText(/Swap to AQUA/i));
       expect(analytics.track).toHaveBeenCalledWith(
         AnalyticsEvent.SWAP_DESTINATION_SELECTED,
         expect.objectContaining({ tokenCode: "AQUA", source: "trending" }),

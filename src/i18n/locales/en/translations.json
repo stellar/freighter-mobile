@@ -727,7 +727,7 @@
       "body": "Not from trusted token lists. Use caution when adding or transacting."
     },
     "trendingDetail": {
-      "buy": "Buy {{tokenCode}}",
+      "swapTo": "Swap to {{tokenCode}}",
       "issuer": "Issuer",
       "type": "Type",
       "domain": "Domain",
