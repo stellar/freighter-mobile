@@ -5,6 +5,7 @@ import {
   descriptorFromBalance,
   descriptorFromSearchRecord,
 } from "components/screens/SwapScreen/helpers";
+import { Banner } from "components/sds/Banner";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
@@ -30,6 +31,7 @@ import useColors from "hooks/useColors";
 import React from "react";
 import { TouchableOpacity, View } from "react-native";
 import { analytics } from "services/analytics";
+import { SecurityLevel } from "services/blockaid/constants";
 
 export interface TrendingTokenDetailBottomSheetProps {
   record: FormattedSearchTokenRecord;
@@ -155,6 +157,33 @@ export const TrendingTokenDetailBottomSheet: React.FC<
     ? "stellar.org"
     : record.domain || undefined;
 
+  // Mirror SwapReviewBottomSheet: surface Blockaid signals on this sheet
+  // too so the user sees malicious/suspicious / unable-to-scan warnings
+  // BEFORE committing the token as the swap destination (instead of
+  // waiting until the review step). MALICIOUS → red, SUSPICIOUS or
+  // UNABLE_TO_SCAN → amber; SAFE/EXPECTED_TO_FAIL → no banner.
+  const securityBanner = (() => {
+    switch (record.securityLevel) {
+      case SecurityLevel.MALICIOUS:
+        return {
+          variant: "error" as const,
+          text: t("transactionAmountScreen.errors.maliciousAsset"),
+        };
+      case SecurityLevel.SUSPICIOUS:
+        return {
+          variant: "warning" as const,
+          text: t("transactionAmountScreen.errors.suspiciousAsset"),
+        };
+      case SecurityLevel.UNABLE_TO_SCAN:
+        return {
+          variant: "warning" as const,
+          text: t("securityWarning.proceedWithCaution"),
+        };
+      default:
+        return null;
+    }
+  })();
+
   return (
     <View className="gap-[24px] p-[4px]">
       <View className="flex-col gap-[16px]">
@@ -194,6 +223,10 @@ export const TrendingTokenDetailBottomSheet: React.FC<
           ) : null}
         </View>
       </View>
+
+      {securityBanner ? (
+        <Banner variant={securityBanner.variant} text={securityBanner.text} />
+      ) : null}
 
       <View className="bg-background-tertiary rounded-[16px] px-[16px] py-[12px] flex-col gap-[12px] w-full">
         {/* Native XLM has no issuer key — render the label only and skip
@@ -242,11 +275,6 @@ export const TrendingTokenDetailBottomSheet: React.FC<
           </>
         ) : null}
       </View>
-
-      {/* Note: no inline security banner here. The Blockaid scan still
-          surfaces MALICIOUS / SUSPICIOUS in the swap review sheet (a full
-          transaction-level rescan runs there); this sheet just keeps the
-          icon's small badge overlay as a hint via TokenIconWithBadge above. */}
 
       <Button onPress={handleBuy} tertiary>
         {t("swapScreen.trendingDetail.swapTo", { tokenCode: record.tokenCode })}
