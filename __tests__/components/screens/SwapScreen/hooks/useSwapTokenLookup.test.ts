@@ -360,6 +360,32 @@ describe("useSwapTokenLookup — idle mode", () => {
     expect(result.current.yourTokens).toHaveLength(2);
   });
 
+  it("degrades gracefully when getVerifiedTokens throws (e.g. cachedFetch rejects on forceRefresh)", async () => {
+    // Regression: getVerifiedTokens propagates cachedFetch's throws on a
+    // stale-cache forceRefresh failure, whereas getStellarExpertTopTokens
+    // swallows them. Without the .catch(() => null) on the Phase 2 fetch
+    // the Promise.all rejected out of the IIFE, the fallback block never
+    // ran, and isTrendingLoading stayed stuck.
+    mockStores.getStellarExpertTopTokens.mockResolvedValue({
+      _embedded: { records: [] },
+    });
+    mockStores.getVerifiedTokens.mockRejectedValue(new Error("network down"));
+    const held = buildHeldBalances();
+    const { result } = renderHook(() =>
+      useSwapTokenLookup({ network: NETWORKS.PUBLIC, balanceItems: held }),
+    );
+
+    await act(async () => {
+      await settleAsync();
+    });
+
+    expect(result.current.stellarExpertDown).toBe(true);
+    expect(result.current.isTrendingLoading).toBe(false);
+    expect(result.current.popularTokens).toEqual([]);
+    expect(result.current.trendingTokens).toEqual([]);
+    expect(result.current.yourTokens).toHaveLength(2);
+  });
+
   it("excludes XLM from popularTokens when the user holds it (native canonical ID)", async () => {
     // stellar.expert returns XLM as one of the trending records. The native
     // balance has id "native" (Horizon convention) but the stellar.expert

@@ -347,15 +347,24 @@ export const useSwapTokenLookup = ({
       const needRefresh = topStale || verStale;
       if (!needRefresh) return;
 
+      // getStellarExpertTopTokens swallows errors and returns null;
+      // getVerifiedTokens propagates cachedFetch's throws on a stale-cache
+      // forceRefresh failure. .catch(() => null) on the verified-tokens
+      // call converts any rejection into a null result so the existing
+      // `(!topResp || !verSplit)` fallback runs — otherwise an unhandled
+      // rejection escapes the IIFE and `isTrendingLoading` stays stuck.
       const [topResp, verSplit] = await Promise.all([
         useStellarExpertTopTokensStore.getState().getStellarExpertTopTokens({
           network,
           forceRefresh: !!topCache && topCache.age > CACHE_TTL_MS,
         }),
-        useVerifiedTokensStore.getState().getVerifiedTokens({
-          network,
-          forceRefresh: !!verCache && verCache.age > CACHE_TTL_MS,
-        }),
+        useVerifiedTokensStore
+          .getState()
+          .getVerifiedTokens({
+            network,
+            forceRefresh: !!verCache && verCache.age > CACHE_TTL_MS,
+          })
+          .catch(() => null),
       ]);
       if (cancelled || signal.aborted) return;
 
