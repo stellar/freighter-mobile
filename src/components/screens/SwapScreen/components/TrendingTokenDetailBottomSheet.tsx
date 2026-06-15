@@ -102,11 +102,6 @@ export const TrendingTokenDetailBottomSheet: React.FC<
       ? `${isPositive ? "+" : ""}${formatDeltaUsd(deltaUsd)} (${formatPercentageAmount(percentagePriceChange24h)})`
       : undefined;
 
-  // Type label — both native XLM and classic alphanum assets sit on the
-  // Stellar Classic protocol (Soroban contracts are filtered out upstream),
-  // so we always render "Stellar Classic" here.
-  const tokenType = t("swapScreen.trendingDetail.stellarClassic");
-
   // XLM has no traditional issuer / TOML home_domain — special-case the
   // canonical "Stellar Network" issuer label and "stellar.org" domain so
   // the info card stays informative instead of falling through to "—" or
@@ -189,17 +184,6 @@ export const TrendingTokenDetailBottomSheet: React.FC<
               </Text>
             </TouchableOpacity>
           )}
-        </View>
-
-        <View className="h-px bg-border-primary w-full" />
-
-        <View className="flex-row items-center justify-between">
-          <Text md medium secondary>
-            {t("swapScreen.trendingDetail.type")}
-          </Text>
-          <Text md medium primary>
-            {tokenType}
-          </Text>
         </View>
 
         {domainLabel ? (

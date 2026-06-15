@@ -729,9 +729,7 @@
     "trendingDetail": {
       "swapTo": "Swap to {{tokenCode}}",
       "issuer": "Issuer",
-      "type": "Type",
       "domain": "Domain",
-      "stellarClassic": "Stellar Classic",
       "stellarNetwork": "Stellar Network"
     },
     "trustlineInfo": {

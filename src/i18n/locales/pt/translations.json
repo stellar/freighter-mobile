@@ -693,9 +693,7 @@
     "trendingDetail": {
       "swapTo": "Trocar para {{tokenCode}}",
       "issuer": "Emissor",
-      "type": "Tipo",
       "domain": "Domínio",
-      "stellarClassic": "Stellar Classic",
       "stellarNetwork": "Rede Stellar"
     },
     "trustlineInfo": {

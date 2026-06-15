@@ -82,7 +82,7 @@ describe("TrendingTokenDetailBottomSheet", () => {
     expect(getByText(/GBN4\.\.\.ZJBJ/)).toBeTruthy();
   });
 
-  it("special-cases native XLM in the info card: Stellar Network / stellar.org / Stellar Classic", () => {
+  it("special-cases native XLM in the info card: Stellar Network / stellar.org", () => {
     const xlmRecord = {
       tokenCode: "XLM",
       issuer: "",
@@ -104,8 +104,8 @@ describe("TrendingTokenDetailBottomSheet", () => {
 
     expect(getByText("Stellar Network")).toBeTruthy();
     expect(getByText("stellar.org")).toBeTruthy();
-    // Type label is "Stellar Classic" (not "Stellar Native") per spec.
-    expect(getByText("Stellar Classic")).toBeTruthy();
+    // The Type row was dropped — confirm it's no longer rendered.
+    expect(queryByText(/Stellar Classic/)).toBeNull();
     expect(queryByText(/Stellar Native/)).toBeNull();
     // The "—" issuer fallback must NOT appear for XLM.
     expect(queryByText("—")).toBeNull();
