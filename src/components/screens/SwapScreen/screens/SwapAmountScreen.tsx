@@ -150,9 +150,9 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   }, [sourceBalance, account, swapFee]);
 
   useEffect(() => {
-    // Skip while balances are loading (e.g. refetching after the app returns
-    // from background) so a transient balance can't flash a false error.
-    if (isLoadingBalances) {
+    // Skip while balances/account are loading (e.g. after the app returns from
+    // background) so a transient balance can't flash a false error.
+    if (isLoadingBalances || !account) {
       return;
     }
 
@@ -205,7 +205,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     spendableAmount,
     sourceTokenSymbol,
     t,
-    account?.subentryCount,
+    account,
     swapFee,
     transactionHash,
     sourceBalance,

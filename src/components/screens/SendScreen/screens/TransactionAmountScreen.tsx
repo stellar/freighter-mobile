@@ -582,10 +582,16 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   };
 
   useEffect(() => {
-    // Skip while balances are loading/empty (e.g. refetching after the app
-    // returns from background) so a transient empty balance can't flash a
-    // false "amount too high" / "insufficient XLM" error until data arrives.
-    if (isLoadingBalances || balanceItems.length === 0) {
+    // Skip until balances AND the active account are loaded. After the app
+    // returns from background, balances refetch and account reloads (briefly
+    // null during signIn); spendableBalance is 0 without them, which would
+    // flash a false "amount too high" / "insufficient XLM" error + toast.
+    if (
+      isLoadingBalances ||
+      balanceItems.length === 0 ||
+      !account ||
+      !selectedBalance
+    ) {
       return;
     }
 
@@ -642,6 +648,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     spendableBalance,
     balanceItems,
     isLoadingBalances,
+    account,
     transactionFee,
     transactionHash,
     isCustomToken,
