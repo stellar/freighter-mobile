@@ -2,6 +2,7 @@ package org.stellar.freighterwallet
 
 // this import is needed for the onCreate override function
 import android.os.Bundle;
+import android.view.WindowManager
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
@@ -32,6 +33,12 @@ class MainActivity : ReactActivity() {
    */
   override fun onCreate(savedInstanceState: Bundle?) {
     RNBootSplash.init(this, R.style.BootTheme)
+    // Privacy shield: blank wallet content in the recents/app-switcher
+    // thumbnail (also blocks screenshots) when backgrounded
+    window.setFlags(
+      WindowManager.LayoutParams.FLAG_SECURE,
+      WindowManager.LayoutParams.FLAG_SECURE,
+    )
     super.onCreate(null)
   }
 }
