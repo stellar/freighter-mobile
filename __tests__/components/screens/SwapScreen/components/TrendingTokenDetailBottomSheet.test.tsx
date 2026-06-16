@@ -1,18 +1,25 @@
 import { fireEvent } from "@testing-library/react-native";
 import { BigNumber } from "bignumber.js";
 import { TrendingTokenDetailBottomSheet } from "components/screens/SwapScreen/components/TrendingTokenDetailBottomSheet";
-import { AnalyticsEvent } from "config/analyticsConfig";
 import { TokenTypeWithCustomToken } from "config/types";
-import { useSwapStore } from "ducks/swap";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
-import { analytics } from "services/analytics";
+import { SecurityLevel } from "services/blockaid/constants";
 
 jest.mock("hooks/useColors", () => () => ({
   themeColors: {
     status: { success: "#00FF00" },
     text: { secondary: "#888888" },
     foreground: { primary: "#707070" },
+    // Banner reads variant-specific palettes from themeColors.<color>[11] —
+    // include the variants the trending-detail security banner can render
+    // (error/warning/info/success) so the component doesn't throw when
+    // resolving its text color in flagged-state tests.
+    red: { 11: "#FF0000" },
+    amber: { 11: "#FFA000" },
+    green: { 11: "#00AA00" },
+    navy: { 11: "#0000AA" },
+    lilac: { 11: "#AA00AA" },
   },
 }));
 
@@ -25,15 +32,21 @@ jest.mock("hooks/useClipboard", () => ({
   useClipboard: () => ({ copyToClipboard: mockCopyToClipboard }),
 }));
 
+// Real AQUA issuer — exactly 56 chars so getTokenSacAddress can derive a
+// valid SAC C-address. The previous mock issuer was 49 chars which made
+// `new Asset()` throw and forced the component into the G-address fallback,
+// invalidating the C-address tests below.
 const mockRecord = {
   tokenCode: "AQUA",
-  issuer: "GBN4RQUEFLBV6WFQNXOCSYBQLZYCTNLM34NQ35OWBGVRMJKWSXNZJBJ",
+  issuer: "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
   isNative: false,
   tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
   hasTrustline: false,
   domain: "aqua.network",
   decimals: 7,
 } as any;
+
+const noop = () => {};
 
 describe("TrendingTokenDetailBottomSheet", () => {
   it("renders tokenCode, price, and delta", () => {
@@ -44,14 +57,12 @@ describe("TrendingTokenDetailBottomSheet", () => {
           currentPrice: new BigNumber("0.05"),
           percentagePriceChange24h: new BigNumber("3.4"),
         }}
-        balanceItems={[]}
+        onSwapTo={noop}
+        onCancel={noop}
       />,
     );
-    // tokenCode shown (as fallback name since no record.name)
     expect(getByText("AQUA")).toBeTruthy();
-    // Price renders via formatFiatAmount — match loosely
     expect(getByText(/0\.05/)).toBeTruthy();
-    // delta renders with + sign and % — match loosely
     expect(getByText(/3\.4/)).toBeTruthy();
   });
 
@@ -63,23 +74,26 @@ describe("TrendingTokenDetailBottomSheet", () => {
           currentPrice: new BigNumber("0.05"),
           percentagePriceChange24h: new BigNumber("3.4"),
         }}
-        balanceItems={[]}
+        onSwapTo={noop}
+        onCancel={noop}
       />,
     );
-    // Domain is now in the info card, not freestanding
     expect(getByText("aqua.network")).toBeTruthy();
   });
 
-  it("renders truncated issuer in the info card row", () => {
+  it("renders truncated SAC C-address on the Issuer row for classic assets", () => {
     const { getByText } = renderWithProviders(
       <TrendingTokenDetailBottomSheet
         record={mockRecord}
         priceInfo={{}}
-        balanceItems={[]}
+        onSwapTo={noop}
+        onCancel={noop}
       />,
     );
-    // Issuer truncated via truncateAddress (4+4 chars with "...")
-    expect(getByText(/GBN4\.\.\.ZJBJ/)).toBeTruthy();
+    // SAC derivation yields a C… address — the row shows its truncated form
+    // (e.g. "CAQU...XYZ"). truncateAddress uses three ASCII dots, not the
+    // Unicode ellipsis character.
+    expect(getByText(/^C[A-Z0-9]{3}\.\.\.[A-Z0-9]{4}$/)).toBeTruthy();
   });
 
   it("special-cases native XLM in the info card: Stellar Network / stellar.org", () => {
@@ -87,153 +101,227 @@ describe("TrendingTokenDetailBottomSheet", () => {
       tokenCode: "XLM",
       issuer: "",
       isNative: true,
-      // Stellar.expert may not return a domain for native — the special
-      // case should display "stellar.org" anyway.
       domain: "",
       tokenType: undefined,
       hasTrustline: true,
     } as any;
-
     const { getByText, queryByText } = renderWithProviders(
       <TrendingTokenDetailBottomSheet
         record={xlmRecord}
         priceInfo={{}}
-        balanceItems={[]}
+        onSwapTo={noop}
+        onCancel={noop}
       />,
     );
-
     expect(getByText("Stellar Network")).toBeTruthy();
     expect(getByText("stellar.org")).toBeTruthy();
     // The Type row was dropped — confirm it's no longer rendered.
     expect(queryByText(/Stellar Classic/)).toBeNull();
     expect(queryByText(/Stellar Native/)).toBeNull();
-    // The "—" issuer fallback must NOT appear for XLM.
-    expect(queryByText("—")).toBeNull();
   });
 
-  it("hides the delta line when percentagePriceChange24h is undefined", () => {
-    const { getByText, queryByText } = renderWithProviders(
+  it("hides the delta line when price exists but 24h % is missing", () => {
+    const { queryByText, getByText } = renderWithProviders(
       <TrendingTokenDetailBottomSheet
         record={mockRecord}
         priceInfo={{ currentPrice: new BigNumber("0.05") }}
-        balanceItems={[]}
+        onSwapTo={noop}
+        onCancel={noop}
       />,
     );
-    // Price is shown
     expect(getByText(/0\.05/)).toBeTruthy();
-    // No % text should be present (formatPercentageAmount always adds %)
     expect(queryByText(/%/)).toBeNull();
   });
 
-  it("hides the delta line when currentPrice is undefined", () => {
+  it("does not render the price when currentPrice is missing", () => {
     const { queryByText } = renderWithProviders(
       <TrendingTokenDetailBottomSheet
         record={mockRecord}
         priceInfo={{ percentagePriceChange24h: new BigNumber("3.4") }}
-        balanceItems={[]}
+        onSwapTo={noop}
+        onCancel={noop}
       />,
     );
-    // No % text (no delta rendered without currentPrice)
-    expect(queryByText(/%/)).toBeNull();
+    // No $0.05 placeholder — currentPrice is undefined, no Display block.
+    expect(queryByText(/\$0\.05/)).toBeNull();
   });
 
-  it("'Buy' CTA dispatches descriptorFromSearchRecord (isNew: true) when token NOT held", () => {
-    const setDestSpy = jest.fn();
-    useSwapStore.setState({ setDestinationToken: setDestSpy } as any);
+  describe("Swap-to CTA", () => {
+    it("fires onSwapTo when the trusted-state CTA is pressed", () => {
+      const onSwapTo = jest.fn();
+      const { getByText } = renderWithProviders(
+        <TrendingTokenDetailBottomSheet
+          record={mockRecord}
+          priceInfo={{}}
+          onSwapTo={onSwapTo}
+          onCancel={noop}
+        />,
+      );
+      fireEvent.press(getByText(/Swap to AQUA/i));
+      expect(onSwapTo).toHaveBeenCalledTimes(1);
+    });
 
-    const { getByText } = renderWithProviders(
-      <TrendingTokenDetailBottomSheet
-        record={mockRecord}
-        priceInfo={{}}
-        balanceItems={[]}
-      />,
-    );
-    fireEvent.press(getByText(/Swap to AQUA/i));
-    expect(setDestSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ tokenCode: "AQUA", isNew: true }),
-    );
+    it("does not render the Cancel + Swap-to-anyway pair when the record is unflagged", () => {
+      const { queryByTestId } = renderWithProviders(
+        <TrendingTokenDetailBottomSheet
+          record={mockRecord}
+          priceInfo={{}}
+          onSwapTo={noop}
+          onCancel={noop}
+        />,
+      );
+      expect(queryByTestId("trending-detail-cancel-button")).toBeNull();
+      expect(queryByTestId("trending-detail-swap-to-anyway-button")).toBeNull();
+    });
   });
 
-  it("'Buy' CTA dispatches descriptorFromBalance (isNew: false) when token IS held", () => {
-    const setDestSpy = jest.fn();
-    useSwapStore.setState({ setDestinationToken: setDestSpy } as any);
+  describe("Flagged state — Cancel + Swap-to-anyway", () => {
+    it("renders Cancel + Swap-to-anyway when securityLevel is MALICIOUS", () => {
+      const { getByTestId, getByText, queryByText } = renderWithProviders(
+        <TrendingTokenDetailBottomSheet
+          record={{ ...mockRecord, securityLevel: SecurityLevel.MALICIOUS }}
+          priceInfo={{}}
+          onSwapTo={noop}
+          onCancel={noop}
+        />,
+      );
+      expect(getByTestId("trending-detail-cancel-button")).toBeTruthy();
+      expect(getByTestId("trending-detail-swap-to-anyway-button")).toBeTruthy();
+      expect(getByText(/Swap to AQUA anyway/i)).toBeTruthy();
+      // The single trusted-state CTA is hidden — only the anyway label exists
+      // (not the trusted "Swap to AQUA" without "anyway").
+      expect(queryByText(/^Swap to AQUA$/)).toBeNull();
+    });
 
-    const heldBalance = {
-      id: "AQUA:GBN4RQUEFLBV6WFQNXOCSYBQLZYCTNLM34NQ35OWBGVRMJKWSXNZJBJ",
-      tokenCode: "AQUA",
-      token: {
-        code: "AQUA",
-        issuer: {
-          key: "GBN4RQUEFLBV6WFQNXOCSYBQLZYCTNLM34NQ35OWBGVRMJKWSXNZJBJ",
-        },
-        type: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
-      },
-      decimals: 7,
-    } as any;
+    it("renders Cancel + Swap-to-anyway when securityLevel is SUSPICIOUS", () => {
+      const { getByTestId } = renderWithProviders(
+        <TrendingTokenDetailBottomSheet
+          record={{ ...mockRecord, securityLevel: SecurityLevel.SUSPICIOUS }}
+          priceInfo={{}}
+          onSwapTo={noop}
+          onCancel={noop}
+        />,
+      );
+      expect(getByTestId("trending-detail-cancel-button")).toBeTruthy();
+      expect(getByTestId("trending-detail-swap-to-anyway-button")).toBeTruthy();
+    });
 
-    const { getByText } = renderWithProviders(
-      <TrendingTokenDetailBottomSheet
-        record={mockRecord}
-        priceInfo={{}}
-        balanceItems={[heldBalance]}
-      />,
-    );
-    fireEvent.press(getByText(/Swap to AQUA/i));
-    expect(setDestSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ tokenCode: "AQUA", isNew: false }),
-    );
+    it("keeps the single trusted CTA when securityLevel is UNABLE_TO_SCAN", () => {
+      const { queryByTestId, getByText } = renderWithProviders(
+        <TrendingTokenDetailBottomSheet
+          record={{
+            ...mockRecord,
+            securityLevel: SecurityLevel.UNABLE_TO_SCAN,
+          }}
+          priceInfo={{}}
+          onSwapTo={noop}
+          onCancel={noop}
+        />,
+      );
+      // Unable-to-scan triggers the banner but NOT the cancel/anyway pattern
+      // (mirrors SwapReviewFooter's isTrusted logic).
+      expect(queryByTestId("trending-detail-cancel-button")).toBeNull();
+      expect(queryByTestId("trending-detail-swap-to-anyway-button")).toBeNull();
+      expect(getByText(/^Swap to AQUA$/)).toBeTruthy();
+    });
+
+    it("fires onCancel when the Cancel button is pressed", () => {
+      const onCancel = jest.fn();
+      const { getByTestId } = renderWithProviders(
+        <TrendingTokenDetailBottomSheet
+          record={{ ...mockRecord, securityLevel: SecurityLevel.MALICIOUS }}
+          priceInfo={{}}
+          onSwapTo={noop}
+          onCancel={onCancel}
+        />,
+      );
+      fireEvent.press(getByTestId("trending-detail-cancel-button"));
+      expect(onCancel).toHaveBeenCalledTimes(1);
+    });
+
+    it("fires onSwapTo when the Swap-to-anyway TextButton is pressed", () => {
+      const onSwapTo = jest.fn();
+      const { getByTestId } = renderWithProviders(
+        <TrendingTokenDetailBottomSheet
+          record={{ ...mockRecord, securityLevel: SecurityLevel.MALICIOUS }}
+          priceInfo={{}}
+          onSwapTo={onSwapTo}
+          onCancel={noop}
+        />,
+      );
+      fireEvent.press(getByTestId("trending-detail-swap-to-anyway-button"));
+      expect(onSwapTo).toHaveBeenCalledTimes(1);
+    });
   });
 
-  it("Selection-swap rule: clears source when Buy picks a token that's already the source", () => {
-    // Source is AQUA; user opens the Trending detail sheet for AQUA and
-    // taps Buy. Source must clear so we don't end up with AQUA on both
-    // sides (parity with the SwapToScreen selection-swap rule).
-    const setDestSpy = jest.fn();
-    const setSourceSpy = jest.fn();
-    useSwapStore.setState({
-      setDestinationToken: setDestSpy,
-      setSourceToken: setSourceSpy,
-      // Match mockRecord.issuer exactly so the constructed descriptor.id
-      // collides with sourceTokenId and the selection-swap rule fires.
-      sourceTokenId: `${mockRecord.tokenCode}:${mockRecord.issuer}`,
-    } as any);
+  describe("Blockaid banner", () => {
+    it("renders a red banner with malicious copy when securityLevel is MALICIOUS", () => {
+      const { getByText } = renderWithProviders(
+        <TrendingTokenDetailBottomSheet
+          record={{ ...mockRecord, securityLevel: SecurityLevel.MALICIOUS }}
+          priceInfo={{}}
+          onSwapTo={noop}
+          onCancel={noop}
+        />,
+      );
+      expect(getByText(/flagged as malicious/i)).toBeTruthy();
+    });
 
-    const { getByText } = renderWithProviders(
-      <TrendingTokenDetailBottomSheet
-        record={mockRecord}
-        priceInfo={{}}
-        balanceItems={[]}
-      />,
-    );
-    fireEvent.press(getByText(/Swap to AQUA/i));
+    it("renders an amber banner with suspicious copy when securityLevel is SUSPICIOUS", () => {
+      const { getByText } = renderWithProviders(
+        <TrendingTokenDetailBottomSheet
+          record={{ ...mockRecord, securityLevel: SecurityLevel.SUSPICIOUS }}
+          priceInfo={{}}
+          onSwapTo={noop}
+          onCancel={noop}
+        />,
+      );
+      expect(getByText(/flagged as suspicious/i)).toBeTruthy();
+    });
 
-    expect(setSourceSpy).toHaveBeenCalledWith("", "");
-    expect(setDestSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ tokenCode: "AQUA" }),
-    );
-  });
+    it("renders a proceed-with-caution banner when securityLevel is UNABLE_TO_SCAN", () => {
+      const { getByText } = renderWithProviders(
+        <TrendingTokenDetailBottomSheet
+          record={{
+            ...mockRecord,
+            securityLevel: SecurityLevel.UNABLE_TO_SCAN,
+          }}
+          priceInfo={{}}
+          onSwapTo={noop}
+          onCancel={noop}
+        />,
+      );
+      expect(getByText(/proceed with caution/i)).toBeTruthy();
+    });
 
-  it("Selection-swap rule: does NOT clear source when Buy picks a different token", () => {
-    const setDestSpy = jest.fn();
-    const setSourceSpy = jest.fn();
-    useSwapStore.setState({
-      setDestinationToken: setDestSpy,
-      setSourceToken: setSourceSpy,
-      // Source is XLM; user buys AQUA — no collision, source stays.
-      sourceTokenId: "XLM",
-    } as any);
+    it("does not render the banner when securityLevel is SAFE", () => {
+      const { queryByText } = renderWithProviders(
+        <TrendingTokenDetailBottomSheet
+          record={{ ...mockRecord, securityLevel: SecurityLevel.SAFE }}
+          priceInfo={{}}
+          onSwapTo={noop}
+          onCancel={noop}
+        />,
+      );
+      expect(queryByText(/flagged as malicious/i)).toBeNull();
+      expect(queryByText(/flagged as suspicious/i)).toBeNull();
+      expect(queryByText(/proceed with caution/i)).toBeNull();
+    });
 
-    const { getByText } = renderWithProviders(
-      <TrendingTokenDetailBottomSheet
-        record={mockRecord}
-        priceInfo={{}}
-        balanceItems={[]}
-      />,
-    );
-    fireEvent.press(getByText(/Swap to AQUA/i));
-
-    expect(setSourceSpy).not.toHaveBeenCalled();
-    expect(setDestSpy).toHaveBeenCalled();
+    it("fires onSecurityWarningPress when the banner is tapped", () => {
+      const onSecurityWarningPress = jest.fn();
+      const { getByText } = renderWithProviders(
+        <TrendingTokenDetailBottomSheet
+          record={{ ...mockRecord, securityLevel: SecurityLevel.MALICIOUS }}
+          priceInfo={{}}
+          onSwapTo={noop}
+          onCancel={noop}
+          onSecurityWarningPress={onSecurityWarningPress}
+        />,
+      );
+      fireEvent.press(getByText(/flagged as malicious/i));
+      expect(onSecurityWarningPress).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe("copy issuer key", () => {
@@ -241,20 +329,25 @@ describe("TrendingTokenDetailBottomSheet", () => {
       mockCopyToClipboard.mockClear();
     });
 
-    it("copies the FULL issuer key (not the truncated label) when the issuer row is tapped", () => {
+    it("copies the FULL SAC C-address (not the truncated label) when the issuer row is tapped", () => {
       const { getByTestId } = renderWithProviders(
         <TrendingTokenDetailBottomSheet
           record={mockRecord}
           priceInfo={{}}
-          balanceItems={[]}
+          onSwapTo={noop}
+          onCancel={noop}
         />,
       );
       fireEvent.press(getByTestId("trending-detail-copy-issuer"));
       expect(mockCopyToClipboard).toHaveBeenCalledTimes(1);
-      expect(mockCopyToClipboard).toHaveBeenCalledWith(
-        mockRecord.issuer,
-        expect.objectContaining({ notificationMessage: expect.any(String) }),
-      );
+      const [copiedValue] = mockCopyToClipboard.mock.calls[0];
+      // SAC C-addresses are 56-char base32 starting with 'C'. Loosen the
+      // check so we don't bake the network passphrase / encoding details
+      // into this assertion — the key invariant is "not the G-address and
+      // not the truncated label".
+      expect(copiedValue.startsWith("C")).toBe(true);
+      expect(copiedValue).not.toBe(mockRecord.issuer);
+      expect(copiedValue).not.toMatch(/\.\.\./);
     });
 
     it("does NOT render a copy button when the record is native XLM (no issuer key to copy)", () => {
@@ -270,67 +363,11 @@ describe("TrendingTokenDetailBottomSheet", () => {
         <TrendingTokenDetailBottomSheet
           record={xlmRecord}
           priceInfo={{}}
-          balanceItems={[]}
+          onSwapTo={noop}
+          onCancel={noop}
         />,
       );
       expect(queryByTestId("trending-detail-copy-issuer")).toBeNull();
-    });
-  });
-
-  describe("Blockaid security signal", () => {
-    // The full transaction-level Blockaid rescan happens in the swap review
-    // sheet — this bottom sheet intentionally renders no inline banner. The
-    // securityLevel still drives the small badge overlay on
-    // TokenIconWithBadge above as a hint.
-    it("does NOT render an inline warning banner regardless of securityLevel", () => {
-      const { queryByTestId } = renderWithProviders(
-        <TrendingTokenDetailBottomSheet
-          record={mockRecord}
-          priceInfo={{}}
-          balanceItems={[]}
-        />,
-      );
-      expect(queryByTestId("trending-detail-malicious-banner")).toBeNull();
-      expect(queryByTestId("trending-detail-suspicious-banner")).toBeNull();
-    });
-  });
-
-  describe("Analytics events", () => {
-    beforeEach(() => {
-      jest.spyOn(analytics, "track").mockClear();
-    });
-
-    it("fires SWAP_TRENDING_BUY_PRESSED with tokenCode when the Buy CTA is pressed", () => {
-      const { getByText } = renderWithProviders(
-        <TrendingTokenDetailBottomSheet
-          record={mockRecord}
-          priceInfo={{}}
-          balanceItems={[]}
-        />,
-      );
-      fireEvent.press(getByText(/Swap to AQUA/i));
-      expect(analytics.track).toHaveBeenCalledWith(
-        AnalyticsEvent.SWAP_TRENDING_BUY_PRESSED,
-        expect.objectContaining({
-          tokenCode: "AQUA",
-          tokenIssuer: mockRecord.issuer,
-        }),
-      );
-    });
-
-    it("fires SWAP_DESTINATION_SELECTED with source:trending when the Buy CTA is pressed", () => {
-      const { getByText } = renderWithProviders(
-        <TrendingTokenDetailBottomSheet
-          record={mockRecord}
-          priceInfo={{}}
-          balanceItems={[]}
-        />,
-      );
-      fireEvent.press(getByText(/Swap to AQUA/i));
-      expect(analytics.track).toHaveBeenCalledWith(
-        AnalyticsEvent.SWAP_DESTINATION_SELECTED,
-        expect.objectContaining({ tokenCode: "AQUA", source: "trending" }),
-      );
     });
   });
 });

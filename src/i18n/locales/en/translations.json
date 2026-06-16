@@ -728,6 +728,7 @@
     },
     "trendingDetail": {
       "swapTo": "Swap to {{tokenCode}}",
+      "swapToAnyway": "Swap to {{tokenCode}} anyway",
       "issuer": "Issuer",
       "domain": "Domain",
       "stellarNetwork": "Stellar Network"

@@ -22,6 +22,8 @@ import {
   buildSellSecondaryText,
   buildSourceBalanceRight,
   computeDestinationFiat,
+  descriptorFromBalance,
+  descriptorFromSearchRecord,
   recordTokenId,
   shouldShowXlmReservePreflight,
 } from "components/screens/SwapScreen/helpers";
@@ -44,7 +46,11 @@ import { SwapProcessingScreen } from "components/screens/SwapScreen/screens";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { AnalyticsEvent, SwapPickerEntrypoint } from "config/analyticsConfig";
+import {
+  AnalyticsEvent,
+  SwapPickerEntrypoint,
+  SwapSelectionSource,
+} from "config/analyticsConfig";
 import {
   DEFAULT_DECIMALS,
   isNativeAssetId,
@@ -92,6 +98,7 @@ import {
   View,
 } from "react-native";
 import { analytics } from "services/analytics";
+import { SecurityContext, SecurityLevel } from "services/blockaid/constants";
 
 type SwapAmountScreenProps = NativeStackScreenProps<
   SwapStackParamList,
@@ -115,7 +122,12 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const { transactionXDR, transactionHash } = useTransactionBuilderStore();
 
   const swapReviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  // Two separate refs — review's Proceed Anyway submits a tx; trending's
+  // only commits a destination. Kept structurally apart so they can't
+  // share a Proceed Anyway handler by accident.
   const transactionSecurityWarningBottomSheetModalRef =
+    useRef<BottomSheetModal>(null);
+  const trendingSecurityWarningBottomSheetModalRef =
     useRef<BottomSheetModal>(null);
   const xlmReserveBottomSheetRef = useRef<BottomSheetModal>(null);
   const amountInputRef = useRef<TextInput>(null);
@@ -339,6 +351,13 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   // its imperative ref is available; we just toggle which record it renders.
   const trendingDetailSheetRef = useRef<BottomSheetModal>(null);
   const [selectedTrendingRecord, setSelectedTrendingRecord] =
+    useState<FormattedSearchTokenRecord | null>(null);
+
+  // Snapshot captured when the trending security sheet opens. Presenting
+  // that sheet dismisses the detail sheet, whose onChange(-1) nulls
+  // selectedTrendingRecord — so the security sheet can't read from it.
+  // This snapshot keeps the warnings + proceed action stable while it's up.
+  const [trendingSecurityRecord, setTrendingSecurityRecord] =
     useState<FormattedSearchTokenRecord | null>(null);
 
   // Present the detail sheet after the record has propagated into the JSX.
@@ -710,6 +729,42 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     [resetSwap, resetTransaction, resetToDefaults, setActiveError],
   );
 
+  // Shared between the trending sheet's CTA and the trending security
+  // sheet's Proceed Anyway. Takes the record explicitly because each
+  // caller reads from a different source: the detail CTA passes the live
+  // selectedTrendingRecord; the security sheet passes its own snapshot
+  // (selectedTrendingRecord is already null by the time it's tapped).
+  const handleConfirmTrendingSelection = useCallback(
+    (record: FormattedSearchTokenRecord | null) => {
+      if (!record) return;
+      analytics.track(AnalyticsEvent.SWAP_TRENDING_BUY_PRESSED, {
+        tokenCode: record.tokenCode,
+        tokenIssuer: record.issuer ?? "",
+      });
+      const heldMatch = balanceItems.find(
+        (b) => b.id === `${record.tokenCode}:${record.issuer}`,
+      );
+      const descriptor = heldMatch
+        ? descriptorFromBalance(heldMatch)
+        : descriptorFromSearchRecord(record);
+      analytics.track(AnalyticsEvent.SWAP_DESTINATION_SELECTED, {
+        tokenCode: record.tokenCode,
+        tokenIssuer: descriptor.issuer ?? "",
+        isNew: descriptor.isNew,
+        source: SwapSelectionSource.TRENDING,
+      });
+      // If the new destination equals the current source, clear source so
+      // the user doesn't end up with the same token on both sides.
+      if (sourceTokenId && sourceTokenId === descriptor.id) {
+        setSourceToken("", "");
+      }
+      setDestinationToken(descriptor);
+      trendingListRef.current?.scrollToOffset({ offset: 0, animated: false });
+      trendingDetailSheetRef.current?.dismiss();
+    },
+    [balanceItems, sourceTokenId, setSourceToken, setDestinationToken],
+  );
+
   const handleCancelSecurityWarning = () => {
     transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
   };
@@ -722,6 +777,15 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     } else {
       handleConfirmSwap();
     }
+  };
+
+  const handleCancelTrendingSecurityWarning = () => {
+    trendingSecurityWarningBottomSheetModalRef.current?.dismiss();
+  };
+
+  const handleConfirmTrendingAnyway = () => {
+    trendingSecurityWarningBottomSheetModalRef.current?.dismiss();
+    handleConfirmTrendingSelection(trendingSecurityRecord);
   };
 
   const { renderFooterComponent } = useSwapFooter({
@@ -990,6 +1054,36 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         }
       />
       <BottomSheet
+        modalRef={trendingSecurityWarningBottomSheetModalRef}
+        handleCloseModal={handleCancelTrendingSecurityWarning}
+        bottomSheetModalProps={{
+          onChange: (index: number) => {
+            if (index === -1) setTrendingSecurityRecord(null);
+          },
+        }}
+        customContent={
+          <SecurityDetailBottomSheet
+            // TOKEN context → "This token does not appear safe…" copy
+            // (vs the default transaction-level wording).
+            securityContext={SecurityContext.TOKEN}
+            warnings={trendingSecurityRecord?.securityWarnings ?? []}
+            onCancel={handleCancelTrendingSecurityWarning}
+            onProceedAnyway={handleConfirmTrendingAnyway}
+            onClose={handleCancelTrendingSecurityWarning}
+            // The severity prop excludes SAFE; the banner that opens this
+            // sheet is itself gated on a non-SAFE level, so coalesce here.
+            severity={
+              trendingSecurityRecord?.securityLevel === SecurityLevel.SAFE
+                ? undefined
+                : trendingSecurityRecord?.securityLevel
+            }
+            proceedAnywayText={t("swapScreen.trendingDetail.swapToAnyway", {
+              tokenCode: trendingSecurityRecord?.tokenCode ?? "",
+            })}
+          />
+        }
+      />
+      <BottomSheet
         modalRef={transactionSettingsBottomSheetModalRef}
         handleCloseModal={() =>
           transactionSettingsBottomSheetModalRef.current?.dismiss()
@@ -1048,19 +1142,16 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
                     p?.percentagePriceChange24h ?? undefined,
                 };
               })()}
-              balanceItems={balanceItems}
-              bottomSheetModalRef={trendingDetailSheetRef}
-              // Scroll the trending list back to the top so the user sees the
-              // Receive card (now showing the just-selected token) without
-              // having to scroll up manually. animated=false keeps the
-              // transition from competing visually with the sheet's dismiss
-              // animation.
-              onSelect={() =>
-                trendingListRef.current?.scrollToOffset({
-                  offset: 0,
-                  animated: false,
-                })
+              onSwapTo={() =>
+                handleConfirmTrendingSelection(selectedTrendingRecord)
               }
+              onCancel={() => trendingDetailSheetRef.current?.dismiss()}
+              onSecurityWarningPress={() => {
+                // Snapshot before presenting — presenting dismisses this
+                // detail sheet, which nulls selectedTrendingRecord.
+                setTrendingSecurityRecord(selectedTrendingRecord);
+                trendingSecurityWarningBottomSheetModalRef.current?.present();
+              }}
             />
           }
         />

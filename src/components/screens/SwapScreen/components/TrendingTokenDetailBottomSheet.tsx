@@ -1,15 +1,10 @@
-import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import BigNumber from "bignumber.js";
 import { TokenIconWithBadge } from "components/TokenIconWithBadge";
-import {
-  descriptorFromBalance,
-  descriptorFromSearchRecord,
-} from "components/screens/SwapScreen/helpers";
 import { Banner } from "components/sds/Banner";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
+import { TextButton } from "components/sds/TextButton";
 import { Display, Text } from "components/sds/Typography";
-import { AnalyticsEvent, SwapSelectionSource } from "config/analyticsConfig";
 import {
   mapNetworkToNetworkDetails,
   POSITIVE_PRICE_CHANGE_THRESHOLD,
@@ -20,17 +15,14 @@ import {
   TokenTypeWithCustomToken,
 } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
-import { useSwapStore } from "ducks/swap";
 import { formatFiatAmount, formatPercentageAmount } from "helpers/formatAmount";
 import { getTokenSacAddress } from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
-import { type HeldBalanceItem } from "hooks/useBalancesList";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import React from "react";
 import { TouchableOpacity, View } from "react-native";
-import { analytics } from "services/analytics";
 import { SecurityLevel } from "services/blockaid/constants";
 
 export interface TrendingTokenDetailBottomSheetProps {
@@ -39,15 +31,10 @@ export interface TrendingTokenDetailBottomSheetProps {
     currentPrice?: BigNumber;
     percentagePriceChange24h?: BigNumber;
   };
-  balanceItems: HeldBalanceItem[];
-  bottomSheetModalRef?: React.RefObject<BottomSheetModal | null>;
-  /**
-   * Fired after the Swap-to CTA sets the destination token (and right before
-   * the sheet dismisses). The parent screen uses this to scroll its trending
-   * list back to the top so the user sees the just-selected token in the
-   * Receive card without having to scroll up manually.
-   */
-  onSelect?: () => void;
+  onSwapTo: () => void;
+  // Only rendered when the record is flagged (malicious/suspicious).
+  onCancel: () => void;
+  onSecurityWarningPress?: () => void;
 }
 
 /** Format a BigNumber as a USD delta string with 4 decimal places, e.g. "$0.0602" */
@@ -59,11 +46,10 @@ const formatDeltaUsd = (delta: BigNumber): string => {
 
 export const TrendingTokenDetailBottomSheet: React.FC<
   TrendingTokenDetailBottomSheetProps
-> = ({ record, priceInfo, balanceItems, bottomSheetModalRef, onSelect }) => {
+> = ({ record, priceInfo, onSwapTo, onCancel, onSecurityWarningPress }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const { copyToClipboard } = useClipboard();
-  const { setDestinationToken, setSourceToken, sourceTokenId } = useSwapStore();
   const { network } = useAuthenticationStore();
   const { networkPassphrase } = mapNetworkToNetworkDetails(network);
 
@@ -92,35 +78,10 @@ export const TrendingTokenDetailBottomSheet: React.FC<
     issuer: { key: record.issuer },
   };
 
-  const handleBuy = () => {
-    analytics.track(AnalyticsEvent.SWAP_TRENDING_BUY_PRESSED, {
-      tokenCode: record.tokenCode,
-      tokenIssuer: record.issuer ?? "",
-    });
-    const heldMatch = balanceItems.find(
-      (b) => b.id === `${record.tokenCode}:${record.issuer}`,
-    );
-    let descriptor;
-    if (heldMatch) {
-      descriptor = descriptorFromBalance(heldMatch);
-    } else {
-      descriptor = descriptorFromSearchRecord(record);
-    }
-    analytics.track(AnalyticsEvent.SWAP_DESTINATION_SELECTED, {
-      tokenCode: record.tokenCode,
-      tokenIssuer: descriptor.issuer ?? "",
-      isNew: descriptor.isNew,
-      source: SwapSelectionSource.TRENDING,
-    });
-    // If the new destination equals the current source, clear source so
-    // the user doesn't end up with the same token on both sides.
-    if (sourceTokenId && sourceTokenId === descriptor.id) {
-      setSourceToken("", "");
-    }
-    setDestinationToken(descriptor);
-    onSelect?.();
-    bottomSheetModalRef?.current?.dismiss();
-  };
+  // unable-to-scan stays trusted here — the banner alone signals caution.
+  const isMalicious = record.securityLevel === SecurityLevel.MALICIOUS;
+  const isSuspicious = record.securityLevel === SecurityLevel.SUSPICIOUS;
+  const isTrusted = !isMalicious && !isSuspicious;
 
   const { currentPrice, percentagePriceChange24h } = priceInfo;
 
@@ -167,12 +128,12 @@ export const TrendingTokenDetailBottomSheet: React.FC<
       case SecurityLevel.MALICIOUS:
         return {
           variant: "error" as const,
-          text: t("transactionAmountScreen.errors.maliciousAsset"),
+          text: t("blockaid.security.token.malicious"),
         };
       case SecurityLevel.SUSPICIOUS:
         return {
           variant: "warning" as const,
-          text: t("transactionAmountScreen.errors.suspiciousAsset"),
+          text: t("blockaid.security.token.suspicious"),
         };
       case SecurityLevel.UNABLE_TO_SCAN:
         return {
@@ -225,7 +186,11 @@ export const TrendingTokenDetailBottomSheet: React.FC<
       </View>
 
       {securityBanner ? (
-        <Banner variant={securityBanner.variant} text={securityBanner.text} />
+        <Banner
+          variant={securityBanner.variant}
+          text={securityBanner.text}
+          onPress={onSecurityWarningPress}
+        />
       ) : null}
 
       <View className="bg-background-tertiary rounded-[16px] px-[16px] py-[12px] flex-col gap-[12px] w-full">
@@ -276,9 +241,33 @@ export const TrendingTokenDetailBottomSheet: React.FC<
         ) : null}
       </View>
 
-      <Button onPress={handleBuy} tertiary>
-        {t("swapScreen.trendingDetail.swapTo", { tokenCode: record.tokenCode })}
-      </Button>
+      {isTrusted ? (
+        <Button onPress={onSwapTo} tertiary>
+          {t("swapScreen.trendingDetail.swapTo", {
+            tokenCode: record.tokenCode,
+          })}
+        </Button>
+      ) : (
+        <View className="gap-3">
+          <Button
+            tertiary={isSuspicious}
+            destructive={isMalicious}
+            onPress={onCancel}
+            isFullWidth
+            testID="trending-detail-cancel-button"
+          >
+            {t("common.cancel")}
+          </Button>
+          <TextButton
+            text={t("swapScreen.trendingDetail.swapToAnyway", {
+              tokenCode: record.tokenCode,
+            })}
+            onPress={onSwapTo}
+            variant={isMalicious ? "error" : "secondary"}
+            testID="trending-detail-swap-to-anyway-button"
+          />
+        </View>
+      )}
     </View>
   );
 };

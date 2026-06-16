@@ -692,6 +692,7 @@
     },
     "trendingDetail": {
       "swapTo": "Trocar para {{tokenCode}}",
+      "swapToAnyway": "Trocar para {{tokenCode}} mesmo assim",
       "issuer": "Emissor",
       "domain": "Domínio",
       "stellarNetwork": "Rede Stellar"
