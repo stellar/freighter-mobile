@@ -99,6 +99,7 @@ import {
 } from "react-native";
 import { analytics } from "services/analytics";
 import { SecurityContext, SecurityLevel } from "services/blockaid/constants";
+import { SecurityWarning } from "services/blockaid/helper";
 
 type SwapAmountScreenProps = NativeStackScreenProps<
   SwapStackParamList,
@@ -788,6 +789,24 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     handleConfirmTrendingSelection(trendingSecurityRecord);
   };
 
+  const trendingSecurityLevel = trendingSecurityRecord?.securityLevel;
+  const isTrendingUnableToScan =
+    trendingSecurityLevel === SecurityLevel.UNABLE_TO_SCAN;
+
+  // Blockaid returns no feature-level warnings for an unable-to-scan token,
+  // so the record's securityWarnings is empty. Synthesize the same row the
+  // review-side sheet builds (useSwapSecurityAssessments) so the reasons
+  // list isn't blank.
+  const trendingSecurityWarnings: SecurityWarning[] = isTrendingUnableToScan
+    ? [
+        {
+          id: "unable-to-scan-trending-token",
+          description: t("blockaid.unableToScan.token"),
+          severity: "warning",
+        },
+      ]
+    : (trendingSecurityRecord?.securityWarnings ?? []);
+
   const { renderFooterComponent } = useSwapFooter({
     swapReviewBottomSheetModalRef,
     onConfirm: handleConfirmSwap,
@@ -1066,20 +1085,26 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
             // TOKEN context → "This token does not appear safe…" copy
             // (vs the default transaction-level wording).
             securityContext={SecurityContext.TOKEN}
-            warnings={trendingSecurityRecord?.securityWarnings ?? []}
+            warnings={trendingSecurityWarnings}
             onCancel={handleCancelTrendingSecurityWarning}
             onProceedAnyway={handleConfirmTrendingAnyway}
             onClose={handleCancelTrendingSecurityWarning}
             // The severity prop excludes SAFE; the banner that opens this
             // sheet is itself gated on a non-SAFE level, so coalesce here.
             severity={
-              trendingSecurityRecord?.securityLevel === SecurityLevel.SAFE
+              trendingSecurityLevel === SecurityLevel.SAFE
                 ? undefined
-                : trendingSecurityRecord?.securityLevel
+                : trendingSecurityLevel
             }
-            proceedAnywayText={t("swapScreen.trendingDetail.swapToAnyway", {
-              tokenCode: trendingSecurityRecord?.tokenCode ?? "",
-            })}
+            // "Continue" for unable-to-scan (matches the review side);
+            // "Swap to {code} anyway" for the stronger malicious/suspicious.
+            proceedAnywayText={
+              isTrendingUnableToScan
+                ? t("common.continue")
+                : t("swapScreen.trendingDetail.swapToAnyway", {
+                    tokenCode: trendingSecurityRecord?.tokenCode ?? "",
+                  })
+            }
           />
         }
       />
