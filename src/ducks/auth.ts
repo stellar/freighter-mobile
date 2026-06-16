@@ -522,8 +522,14 @@ const getAuthStatus = async (): Promise<AuthStatus> => {
         devAutoLockTimerMs ?? AUTO_LOCK_TIMER_MS[autoLockTimer];
       const elapsedInBackground = Date.now() - backgroundedAt;
 
+      // Only POSITIVE timed durations lock here. IMMEDIATELY (0) is
+      // background-only: it's locked proactively on the background transition
+      // (useAuthCheck) and persisted, so it must NOT be re-derived from a
+      // lingering timestamp — otherwise elapsed >= 0 would re-lock a fresh
+      // foreground session and make the app unusable. NONE (null) never locks.
       if (
         autoLockTimerMs !== null &&
+        autoLockTimerMs > 0 &&
         elapsedInBackground >= autoLockTimerMs &&
         temporaryStore
       ) {

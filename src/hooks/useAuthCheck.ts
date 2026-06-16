@@ -1,4 +1,4 @@
-import { AUTO_LOCK_TIMER } from "config/constants";
+import { AUTO_LOCK_TIMER, AUTO_LOCK_TIMER_MS } from "config/constants";
 import { logger } from "config/logger";
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
@@ -15,6 +15,8 @@ import {
   // TODO/FIXME: dev-only override — remove before production
   getDevAutoLockTimerMs,
   recordBackgroundedAt,
+  // TODO/FIXME: dev-only idle-countdown readout — remove before production
+  recordDevInteraction,
 } from "services/autoLock";
 
 // Delay before lifting the native privacy shield on foreground, giving a
@@ -64,10 +66,33 @@ const useAuthCheck = () => {
     lastCheckRef.current = now;
     try {
       // The store action is the single funnel for lock transitions: it
-      // soft-locks atomically when the auto-lock timer fired (preserving the
-      // mounted screens under the overlay) and navigates to the lock screen
-      // when the hash key hard-expired.
-      await getAuthStatus();
+      // soft-locks atomically when the background auto-lock timer fired
+      // (preserving the mounted screens under the overlay) and navigates to
+      // the lock screen when the hash key hard-expired.
+      const status = await getAuthStatus();
+
+      // Foreground-idle auto-lock: while the app is active, lock after the
+      // configured duration with no user interaction (touches reset
+      // lastInteractionRef via the app-wide PanResponder). Background time is
+      // handled by getAuthStatus above; here we cover an open-but-idle
+      // session. Only timed presets idle-lock — IMMEDIATELY (0, background-
+      // only) and NONE (null) are skipped.
+      if (
+        status === AUTH_STATUS.AUTHENTICATED &&
+        AppState.currentState === "active"
+      ) {
+        const devAutoLockTimerMs = await getDevAutoLockTimerMs();
+        const autoLockTimer = await getAutoLockTimer();
+        const timerMs = devAutoLockTimerMs ?? AUTO_LOCK_TIMER_MS[autoLockTimer];
+
+        if (
+          timerMs !== null &&
+          timerMs > 0 &&
+          Date.now() - lastInteractionRef.current >= timerMs
+        ) {
+          await useAuthenticationStore.getState().softLock();
+        }
+      }
     } catch (error) {
       logger.error(
         "useAuthCheck.checkAuth",
@@ -210,6 +235,22 @@ const useAuthCheck = () => {
   }, [setupCheckInterval, checkAuth]);
 
   /**
+   * Reset the idle clock whenever the wallet becomes unlocked. The user is
+   * actively present at unlock, but the lock screen / overlay sits outside
+   * this provider's PanResponder, so its touches don't update
+   * lastInteractionRef — without this the idle timer would still hold its
+   * pre-lock (often already-elapsed) value and immediately re-lock.
+   */
+  useEffect(() => {
+    if (authStatus === AUTH_STATUS.AUTHENTICATED) {
+      lastInteractionRef.current = Date.now();
+      setIsActive(true);
+      // TODO/FIXME: dev-only — keep the on-screen idle countdown in sync
+      recordDevInteraction();
+    }
+  }, [authStatus]);
+
+  /**
    * Monitor user interaction and update active status accordingly.
    */
   useEffect(() => {
@@ -231,6 +272,8 @@ const useAuthCheck = () => {
     const updateLastInteraction = () => {
       lastInteractionRef.current = Date.now();
       setIsActive(true);
+      // TODO/FIXME: dev-only — feeds the on-screen idle countdown readout
+      recordDevInteraction();
     };
 
     panResponderRef.current = PanResponder.create({

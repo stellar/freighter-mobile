@@ -168,6 +168,15 @@ const setDevHashKeyTtlSeconds = async (seconds: number): Promise<void> => {
     }),
   );
 };
+
+// TEMP/REMOVE: last user-interaction timestamp, mirrored from useAuthCheck so
+// the on-screen dev readout can show the live idle countdown without forcing
+// app-wide re-renders. Module-level on purpose (no React state).
+let devLastInteractionAt = Date.now();
+const recordDevInteraction = (): void => {
+  devLastInteractionAt = Date.now();
+};
+const getDevLastInteractionAt = (): number => devLastInteractionAt;
 /* ====================== END TEMPORARY DEV-ONLY BLOCK ====================== */
 
 export {
@@ -183,4 +192,6 @@ export {
   setDevAutoLockTimerSeconds,
   clearDevAutoLockTimer,
   setDevHashKeyTtlSeconds,
+  recordDevInteraction,
+  getDevLastInteractionAt,
 };

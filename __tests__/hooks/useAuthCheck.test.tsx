@@ -8,12 +8,14 @@ import {
   getAutoLockTimer,
   getDevAutoLockTimerMs,
   recordBackgroundedAt,
+  recordDevInteraction,
 } from "services/autoLock";
 
 jest.mock("services/autoLock", () => ({
   getAutoLockTimer: jest.fn(),
   getDevAutoLockTimerMs: jest.fn().mockResolvedValue(null),
   recordBackgroundedAt: jest.fn().mockResolvedValue(undefined),
+  recordDevInteraction: jest.fn(),
 }));
 
 const flushMicrotasks = async () => {
@@ -170,6 +172,87 @@ describe("useAuthCheck", () => {
     });
 
     expect(mockGetAuthStatus).toHaveBeenCalled();
+    unmount();
+  });
+
+  it("idle-locks while foregrounded after the timer with no interaction", async () => {
+    // Short timer (1s) via the dev override so idle elapses within the test
+    (getDevAutoLockTimerMs as jest.Mock).mockResolvedValue(1000);
+    const { unmount } = renderAuthCheck();
+
+    await act(async () => {
+      jest.advanceTimersByTime(400); // let the periodic check interval set up
+      await flushMicrotasks();
+    });
+    await act(async () => {
+      // No interaction; advance well past the 1s idle timeout so a periodic
+      // check observes the idle and soft-locks
+      jest.advanceTimersByTime(6000);
+      await flushMicrotasks();
+    });
+
+    expect(mockSoftLock).toHaveBeenCalled();
+    unmount();
+  });
+
+  it("does NOT idle-lock before the timer elapses", async () => {
+    // Long timer (100s) so the elapsed idle stays under it
+    (getDevAutoLockTimerMs as jest.Mock).mockResolvedValue(100000);
+    const { unmount } = renderAuthCheck();
+
+    await act(async () => {
+      jest.advanceTimersByTime(400);
+      await flushMicrotasks();
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(6000);
+      await flushMicrotasks();
+    });
+
+    expect(mockSoftLock).not.toHaveBeenCalled();
+    unmount();
+  });
+
+  it("resets the idle clock when the wallet becomes unlocked", async () => {
+    // The lock screen / overlay sits outside this provider's PanResponder, so
+    // its touches don't update the idle clock — unlock must reset it (proxied
+    // here by recordDevInteraction, which the reset effect calls alongside
+    // resetting lastInteractionRef) or a fresh session would re-lock at once.
+    const { unmount } = renderAuthCheck();
+
+    await act(async () => {
+      useAuthenticationStore.setState({ authStatus: AUTH_STATUS.LOCKED });
+      await flushMicrotasks();
+    });
+    (recordDevInteraction as jest.Mock).mockClear();
+
+    await act(async () => {
+      useAuthenticationStore.setState({
+        authStatus: AUTH_STATUS.AUTHENTICATED,
+      });
+      await flushMicrotasks();
+    });
+
+    expect(recordDevInteraction).toHaveBeenCalled();
+    unmount();
+  });
+
+  it("does NOT idle-lock for the NONE / IMMEDIATELY presets", async () => {
+    // No dev override; NONE has a null duration → never idle-locks
+    (getDevAutoLockTimerMs as jest.Mock).mockResolvedValue(null);
+    (getAutoLockTimer as jest.Mock).mockResolvedValue(AUTO_LOCK_TIMER.NONE);
+    const { unmount } = renderAuthCheck();
+
+    await act(async () => {
+      jest.advanceTimersByTime(400);
+      await flushMicrotasks();
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(6000);
+      await flushMicrotasks();
+    });
+
+    expect(mockSoftLock).not.toHaveBeenCalled();
     unmount();
   });
 });
