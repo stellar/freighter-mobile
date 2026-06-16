@@ -61,10 +61,10 @@ export const useReviewSecuritySummary = ({
       return t("transactionAmountScreen.errors.suspicious");
     }
     if (isDestMalicious || isSourceMalicious) {
-      return t("transactionAmountScreen.errors.maliciousAsset");
+      return t("transactionAmountScreen.errors.maliciousToken");
     }
     if (isDestSuspicious || isSourceSuspicious) {
-      return t("transactionAmountScreen.errors.suspiciousAsset");
+      return t("transactionAmountScreen.errors.suspiciousToken");
     }
     if (isUnableToScanToken) {
       return t("securityWarning.proceedWithCaution");

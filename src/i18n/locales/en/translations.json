@@ -506,7 +506,7 @@
     "removeTokenSuccess": "{{tokenCode}} successfully removed",
     "cantRemoveXlm": {
       "title": "Can’t remove XLM",
-      "description": "XLM is the native asset of the Stellar network and cannot be removed. It’s required to maintain your account and pay for transaction fees."
+      "description": "XLM is the native token of the Stellar network and cannot be removed. It’s required to maintain your account and pay for transaction fees."
     },
     "cantRemoveBalance": {
       "title": "Token still has a balance",
@@ -748,8 +748,8 @@
       },
       "malicious": "This address was flagged as malicious",
       "suspicious": "This address was flagged as suspicious",
-      "maliciousAsset": "An asset was flagged as malicious",
-      "suspiciousAsset": "An asset was flagged as suspicious"
+      "maliciousToken": "A token was flagged as malicious",
+      "suspiciousToken": "A token was flagged as suspicious"
     },
     "confirmAnyway": "Confirm anyway"
   },
@@ -1126,7 +1126,7 @@
       "destination": "Destination",
       "startingBalance": "Starting Balance",
       "tokenCode": "Token Code",
-      "assetIssuer": "Asset Issuer",
+      "tokenIssuer": "Token Issuer",
       "token": "Token",
       "amount": "Amount",
       "sendMax": "Send Max",

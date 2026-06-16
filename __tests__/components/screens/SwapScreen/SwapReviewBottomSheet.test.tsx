@@ -187,7 +187,7 @@ describe("SwapReviewBottomSheet", () => {
         />,
       );
 
-      expect(getByText("An asset was flagged as malicious")).toBeTruthy();
+      expect(getByText("A token was flagged as malicious")).toBeTruthy();
     });
 
     it("shows suspicious asset banner when source token is suspicious", () => {
@@ -198,7 +198,7 @@ describe("SwapReviewBottomSheet", () => {
         />,
       );
 
-      expect(getByText("An asset was flagged as suspicious")).toBeTruthy();
+      expect(getByText("A token was flagged as suspicious")).toBeTruthy();
     });
   });
 
@@ -211,7 +211,7 @@ describe("SwapReviewBottomSheet", () => {
         />,
       );
 
-      expect(getByText("An asset was flagged as malicious")).toBeTruthy();
+      expect(getByText("A token was flagged as malicious")).toBeTruthy();
     });
 
     it("shows suspicious asset banner when destination token is suspicious", () => {
@@ -222,7 +222,7 @@ describe("SwapReviewBottomSheet", () => {
         />,
       );
 
-      expect(getByText("An asset was flagged as suspicious")).toBeTruthy();
+      expect(getByText("A token was flagged as suspicious")).toBeTruthy();
     });
   });
 
@@ -328,7 +328,7 @@ describe("SwapReviewBottomSheet", () => {
         />,
       );
 
-      expect(getByText("An asset was flagged as malicious")).toBeTruthy();
+      expect(getByText("A token was flagged as malicious")).toBeTruthy();
     });
   });
 
