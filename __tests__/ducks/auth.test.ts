@@ -1744,6 +1744,37 @@ describe("auth duck", () => {
           previousAppState;
       });
 
+      it("should return HASH_KEY_EXPIRED (not LOCKED) when backgrounded beyond BOTH the timer and the hash-key TTL", async () => {
+        // The reviewer's scenario: the timer branch would otherwise return a
+        // fast-path LOCKED that refreshes the expired key, silently defeating
+        // the 24h hard-expiry backstop. Expiry must win → full re-auth.
+        const { result } = renderHook(() => useAuthenticationStore());
+        restoreGetAuthStatus();
+
+        mockAuthenticatedStorage({
+          backgroundedAt: Date.now() - 2 * ONE_HOUR_MS, // beyond the 1h timer
+          autoLockTimer: AUTO_LOCK_TIMER.ONE_HOUR,
+        });
+
+        // ...and the hash key has hard-expired (beyond its TTL)
+        (getHashKey as jest.Mock).mockResolvedValue({
+          hashKey: "mock-hash-key",
+          salt: "mock-salt",
+          expiresAt: Date.now() - ONE_HOUR_MS,
+        });
+
+        await act(async () => {
+          const status = await result.current.getAuthStatus();
+          expect(status).toBe(AUTH_STATUS.HASH_KEY_EXPIRED);
+        });
+
+        // Must NOT have converted the session to a soft timer lock
+        expect(secureDataStorage.setItem).not.toHaveBeenCalledWith(
+          SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
+          AUTH_STATUS.LOCKED,
+        );
+      });
+
       it("should never soft-lock when the timer is NONE", async () => {
         const { result } = renderHook(() => useAuthenticationStore());
         restoreGetAuthStatus();

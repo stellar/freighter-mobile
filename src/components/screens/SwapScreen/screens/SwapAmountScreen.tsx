@@ -100,7 +100,11 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const deviceSize = useDeviceSize();
   const isSmallScreen = deviceSize === DeviceSize.XS;
 
-  const { balanceItems, scanResults } = useBalancesList({
+  const {
+    balanceItems,
+    scanResults,
+    isLoading: isLoadingBalances,
+  } = useBalancesList({
     publicKey: account?.publicKey ?? "",
     network,
   });
@@ -146,6 +150,12 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   }, [sourceBalance, account, swapFee]);
 
   useEffect(() => {
+    // Skip while balances are loading (e.g. refetching after the app returns
+    // from background) so a transient balance can't flash a false error.
+    if (isLoadingBalances) {
+      return;
+    }
+
     if (!sourceBalance || !sourceAmount || sourceAmount === "0") {
       setAmountError(null);
       return;
@@ -200,6 +210,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     transactionHash,
     sourceBalance,
     balanceItems,
+    isLoadingBalances,
   ]);
 
   useSwapPathFinding({

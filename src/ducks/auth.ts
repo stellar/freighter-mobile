@@ -499,13 +499,18 @@ const getAuthStatus = async (): Promise<AuthStatus> => {
       return AUTH_STATUS.HASH_KEY_EXPIRED;
     }
 
-    // Evaluate the user-configurable auto-lock timer: a timestamp is recorded
-    // when the app goes to the background (useAuthCheck); returning after the
-    // selected duration soft-locks the wallet (LOCKED, fast unlock path).
-    // Covers both warm foreground returns and cold starts.
-    // NOTE: elapsed time uses the wall clock (Date.now()); rolling the device
-    // clock back can dodge the timer. Accepted limitation — the hash key
-    // expiry below still bounds the session.
+    // Hard expiry wins over the soft timer lock: checked before the timer so a
+    // session backgrounded past the hash-key TTL forces a full re-auth instead
+    // of a fast-path LOCKED that would just refresh the expired key. (The
+    // persisted-LOCKED branch above keeps the fast path — there it's intended.)
+    if (hashKey && isHashKeyExpired(hashKey)) {
+      return AUTH_STATUS.HASH_KEY_EXPIRED;
+    }
+
+    // Auto-lock timer: useAuthCheck records a timestamp on background; on
+    // return (warm or cold start), elapsed >= the selected duration soft-locks
+    // via the fast unlock path. Uses wall-clock time, so a clock rollback can
+    // dodge it — the hash-key expiry above still bounds the session.
     const backgroundedAt = await getBackgroundedAt();
     if (backgroundedAt) {
       const autoLockTimer = await getAutoLockTimer();
@@ -526,22 +531,15 @@ const getAuthStatus = async (): Promise<AuthStatus> => {
       }
 
       if (AppState.currentState === "active") {
-        // The user returned within the timer: consume the timestamp so the
-        // foreground check interval can't lock mid-use. The hash key expiry
-        // is deliberately NOT refreshed here — the TTL is only ever anchored
-        // at credential-verified moments (signIn / generateHashKey /
-        // applyAutoLockTimerToHashKey) so key material has a bounded
-        // lifetime no matter how often the app is reopened. "None" keeps its
-        // never-expire TTL because it was set at one of those moments.
+        // Returned within the timer: consume the timestamp so the foreground
+        // interval can't lock mid-use. The hash-key TTL is deliberately NOT
+        // refreshed here — it's only anchored at credential-verified moments
+        // (signIn / generateHashKey / applyAutoLockTimerToHashKey) so key
+        // material stays bounded however often the app is reopened.
         await clearBackgroundedAt();
       }
       // Still backgrounded (periodic background check): leave the timestamp
       // intact so the timer keeps counting from the original moment.
-    }
-
-    // Check if hash key is expired (only relevant when not LOCKED)
-    if (hashKey && isHashKeyExpired(hashKey)) {
-      return AUTH_STATUS.HASH_KEY_EXPIRED;
     }
 
     // All conditions for authentication are met
@@ -2125,9 +2123,8 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
             await clearNonSensitiveData();
             await dataStorage.remove(STORAGE_KEYS.COLLECTIBLES_LIST);
 
-            // Reset the auto-lock timer so a future wallet on this device
-            // doesn't inherit the previous user's preference, and drop any
-            // pending backgrounded-at timestamp
+            // Reset auto-lock so the next wallet on this device doesn't
+            // inherit the previous user's timer
             usePreferencesStore
               .getState()
               .setAutoLockTimer(DEFAULT_AUTO_LOCK_TIMER);
@@ -2155,36 +2152,26 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
   /**
    * Soft-locks the wallet in-process (auto-lock timer / IMMEDIATELY option).
    *
-   * Unlike logout(), this does NOT reset the navigation tree: the mounted
-   * screens (navigation history, route params and in-progress inputs) are
-   * preserved underneath a full-screen lock overlay, so the user resumes
-   * exactly where they were after unlocking. Protection while locked comes
-   * from the lock overlay (covers the UI, swallows back/touch, hides the
-   * tree from accessibility) plus the auth gates on sensitive reads
-   * (getActiveAccount blocks LOCKED; WalletKit rejects requests while
-   * LOCKED). The active account is intentionally LEFT in the store: the
-   * mounted screens keep reading it, so nulling it would make them re-run
-   * validations and surface errors under the overlay. It carries no extra
-   * exposure beyond the derived-key cache, which is deliberately retained
-   * for the fast unlock path (see PR #664). The persisted LOCKED status
-   * covers cold starts (where the overlay is replaced by the regular lock
-   * screen route since process state is gone anyway).
+   * Unlike logout(), keeps the navigation tree mounted under the lock overlay
+   * so the user resumes where they were after unlocking. Sensitive reads stay
+   * gated while LOCKED (getActiveAccount, WalletKit). The active account is
+   * left in the store so the mounted screens don't re-run validations and flash
+   * errors; signing is independently blocked while LOCKED. Persisting LOCKED
+   * covers cold starts (which fall back to the LockScreen route).
    */
   softLock: async () => {
     Keyboard.dismiss();
 
-    // Single atomic update: RootNavigator must never observe
-    // LOCKED && !isSoftLocked, which would unmount the preserved tree
+    // Atomic update: RootNavigator must never see LOCKED && !isSoftLocked,
+    // which would unmount the preserved tree
     set({
       authStatus: AUTH_STATUS.LOCKED,
       isSoftLocked: true,
       isLoading: false,
     });
 
-    // Persist LOCKED so tampering and cold starts are covered (same write
-    // as logout's soft path). Awaited: if the process is killed right after
-    // backgrounding (the common IMMEDIATELY case) the lock must already be
-    // on disk.
+    // Persist LOCKED (covers tampering + cold starts). Awaited so an
+    // immediate post-background process kill still has the lock on disk.
     try {
       await secureDataStorage.setItem(
         SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
@@ -2246,8 +2233,8 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
       analytics.trackReAuthSuccess();
       set({
         ...initialState,
-        // Preserve the navigation ref: nothing remounts to re-set it after a
-        // soft unlock, and later lock navigations would silently no-op
+        // Preserve navigationRef: nothing remounts to re-set it after a soft
+        // unlock, so later lock navigations would otherwise no-op
         navigationRef: get().navigationRef,
         authStatus: AUTH_STATUS.AUTHENTICATED,
         isLoading: false,
@@ -2666,19 +2653,15 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
   },
 
   /**
-   * Gets the current authentication status
+   * Gets the current authentication status.
    *
-   * Single funnel for lock transitions: when a running (AUTHENTICATED)
-   * session is found LOCKED — i.e. the auto-lock timer fired — every caller
-   * (periodic checks, fetchActiveAccount, selectAccount, ...) produces the
-   * same atomic soft lock, preserving the mounted navigation tree under the
-   * lock overlay instead of racing it with navigation resets.
-   *
-   * @returns {Promise<AuthStatus>} The current authentication status
+   * Single funnel for lock transitions: an AUTHENTICATED→LOCKED transition
+   * (auto-lock timer) goes through softLock for every caller (periodic checks,
+   * fetchActiveAccount, selectAccount), keeping the navigation tree mounted
+   * instead of racing it with navigation resets.
    */
   getAuthStatus: async () => {
-    // Always re-validate auth status to ensure consistency
-    // Don't rely on cached status as it may be stale after app updates
+    // Re-validate from storage; cached status may be stale after app updates
     const previousAuthStatus = get().authStatus;
     const authStatus = await getAuthStatus();
 
@@ -2686,17 +2669,14 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
       authStatus === AUTH_STATUS.LOCKED &&
       previousAuthStatus === AUTH_STATUS.AUTHENTICATED
     ) {
-      // In-process lock (auto-lock timer): soft lock sets authStatus and
-      // isSoftLocked in one atomic update so the tree never unmounts
+      // Auto-lock timer fired: soft lock atomically so the tree never unmounts
       await get().softLock();
       return authStatus;
     }
 
-    // Never let a stale read downgrade an active soft lock back to
-    // AUTHENTICATED: a concurrent check that resolved just before the LOCKED
-    // persist landed could otherwise clobber the lock (authStatus would no
-    // longer reflect it for guards that read it). Only a real signIn clears
-    // isSoftLocked. Disk already holds LOCKED, so the next check self-heals.
+    // Don't let a stale read (resolved just before the LOCKED persist landed)
+    // downgrade an active soft lock to AUTHENTICATED. Only signIn clears
+    // isSoftLocked; disk already holds LOCKED, so the next check self-heals.
     if (get().isSoftLocked && authStatus === AUTH_STATUS.AUTHENTICATED) {
       return get().authStatus;
     }
@@ -2760,14 +2740,11 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
     set({ isLoadingAccount: true, accountError: null });
 
     try {
-      // Check auth status through the store funnel so an auto-lock detected
-      // here produces the same atomic soft lock as the periodic checks
-      // (instead of racing them with a navigation reset)
+      // Via the store funnel so an auto-lock here soft-locks atomically
+      // rather than racing a navigation reset
       const authStatus = await get().getAuthStatus();
 
-      // Security: Block access when hash key is expired or when locked
-      // LOCKED state requires password re-entry before accessing sensitive
-      // data. The funnel has already handled the lock transition/navigation.
+      // Block sensitive data while expired/locked (funnel already navigated)
       if (
         authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ||
         authStatus === AUTH_STATUS.LOCKED
@@ -2880,9 +2857,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
 
     set({ isSwitchingAccount: true, error: null });
     try {
-      // Security: Check auth status before allowing account switching.
-      // Goes through the store funnel so an auto-lock detected here produces
-      // the same atomic soft lock as the periodic checks.
+      // Via the store funnel so an auto-lock here soft-locks atomically
       const authStatus = await get().getAuthStatus();
       if (
         authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ||

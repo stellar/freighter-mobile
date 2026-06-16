@@ -336,7 +336,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     });
   };
 
-  const { balanceItems } = useBalancesList({
+  const { balanceItems, isLoading: isLoadingBalances } = useBalancesList({
     publicKey: publicKey ?? "",
     network,
   });
@@ -582,6 +582,13 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   };
 
   useEffect(() => {
+    // Skip while balances are loading/empty (e.g. refetching after the app
+    // returns from background) so a transient empty balance can't flash a
+    // false "amount too high" / "insufficient XLM" error until data arrives.
+    if (isLoadingBalances || balanceItems.length === 0) {
+      return;
+    }
+
     const currentTokenAmount = BigNumber(tokenAmount);
 
     if (!hasXLMForFees(balanceItems, transactionFee)) {
@@ -634,6 +641,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     tokenAmount,
     spendableBalance,
     balanceItems,
+    isLoadingBalances,
     transactionFee,
     transactionHash,
     isCustomToken,
