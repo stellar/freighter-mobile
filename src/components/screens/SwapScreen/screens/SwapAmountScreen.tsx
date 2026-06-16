@@ -1,7 +1,6 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { Asset, Horizon } from "@stellar/stellar-sdk";
 import BigNumber from "bignumber.js";
 import { AmountCard } from "components/AmountCard";
 import BottomSheet from "components/BottomSheet";
@@ -22,8 +21,6 @@ import {
   buildSellSecondaryText,
   buildSourceBalanceRight,
   computeDestinationFiat,
-  descriptorFromBalance,
-  descriptorFromSearchRecord,
   recordTokenId,
   shouldShowXlmReservePreflight,
 } from "components/screens/SwapScreen/helpers";
@@ -34,11 +31,13 @@ import {
   useSwapCtaState,
   useSwapDirectionToggle,
   useSwapFooter,
+  useSwapForXlmReserve,
   useSwapNavigation,
   useSwapPathFinding,
   useSwapSecurityAssessments,
   useSwapTransactionSettings,
   useSwapTokenPrices,
+  useTrendingTokenDetail,
 } from "components/screens/SwapScreen/hooks";
 import { useSwapTokenLookup } from "components/screens/SwapScreen/hooks/useSwapTokenLookup";
 import { useSwapTransaction } from "components/screens/SwapScreen/hooks/useSwapTransaction";
@@ -46,24 +45,11 @@ import { SwapProcessingScreen } from "components/screens/SwapScreen/screens";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import {
-  AnalyticsEvent,
-  SwapPickerEntrypoint,
-  SwapSelectionSource,
-} from "config/analyticsConfig";
-import {
-  DEFAULT_DECIMALS,
-  isNativeAssetId,
-  mapNetworkToNetworkDetails,
-  NATIVE_TOKEN_CODE,
-  TransactionContext,
-} from "config/constants";
+import { AnalyticsEvent, SwapPickerEntrypoint } from "config/analyticsConfig";
+import { DEFAULT_DECIMALS, TransactionContext } from "config/constants";
 import { logger } from "config/logger";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
-import {
-  FormattedSearchTokenRecord,
-  TokenTypeWithCustomToken,
-} from "config/types";
+import { FormattedSearchTokenRecord } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useDebugStore } from "ducks/debug";
 import { descriptorAsPathBalance, useSwapStore } from "ducks/swap";
@@ -89,7 +75,6 @@ import React, {
 } from "react";
 import {
   FlatList,
-  Keyboard,
   KeyboardAvoidingView,
   Platform,
   RefreshControl,
@@ -99,7 +84,6 @@ import {
 } from "react-native";
 import { analytics } from "services/analytics";
 import { SecurityContext, SecurityLevel } from "services/blockaid/constants";
-import { SecurityWarning } from "services/blockaid/helper";
 
 type SwapAmountScreenProps = NativeStackScreenProps<
   SwapStackParamList,
@@ -123,16 +107,12 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const { transactionXDR, transactionHash } = useTransactionBuilderStore();
 
   const swapReviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
-  // Two separate refs — review's Proceed Anyway submits a tx; trending's
-  // only commits a destination. Kept structurally apart so they can't
-  // share a Proceed Anyway handler by accident.
+  // Review-side security sheet — its Proceed Anyway submits a tx. The
+  // trending-detail security sheet is owned by useTrendingTokenDetail and
+  // kept structurally separate so the two can't share a proceed handler.
   const transactionSecurityWarningBottomSheetModalRef =
     useRef<BottomSheetModal>(null);
-  const trendingSecurityWarningBottomSheetModalRef =
-    useRef<BottomSheetModal>(null);
-  const xlmReserveBottomSheetRef = useRef<BottomSheetModal>(null);
   const amountInputRef = useRef<TextInput>(null);
-  const trendingListRef = useRef<FlatList<FormattedSearchTokenRecord>>(null);
   const { showToast } = useToast();
 
   // Bridges the gap between `setupSwapTransaction` resolving (isBuilding
@@ -180,26 +160,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       transactionFee: swapFee,
     });
   }, [sourceBalance, account, swapFee]);
-
-  // Gate for the XlmReserveBottomSheet's "Swap for 0.5 XLM" affordance.
-  // Two modes are supported:
-  //   1. Current source is a non-XLM classic token → reuse it as the
-  //      sell side, only flip the receive side to XLM. The pre-filled
-  //      amount survives because the source token didn't change.
-  //   2. Current source is XLM (or unset) → fall back to the user's
-  //      best non-XLM classic balance for the sell side. The amount
-  //      resets per the converter rule, which is an acceptable trade-off
-  //      since the user wouldn't have a meaningful pre-filled amount
-  //      tied to that fallback token anyway.
-  // The CTA is hidden when neither mode applies (e.g. user holds only XLM
-  // with XLM as source) — they're left with the wallet-address copy.
-  const isCurrentSourceNonXlmClassic =
-    !!sourceBalance &&
-    !isNativeAssetId(sourceBalance.id) &&
-    (sourceBalance.tokenType === TokenTypeWithCustomToken.CREDIT_ALPHANUM4 ||
-      sourceBalance.tokenType === TokenTypeWithCustomToken.CREDIT_ALPHANUM12);
-  const canOfferSwapToXlm =
-    isCurrentSourceNonXlmClassic || !!bestNonXlmClassicBalance;
 
   // Token/fiat amount input is driven by the system keyboard via TextInput.
   // We mirror the converter's tokenAmount back into the swap store so that
@@ -348,28 +308,29 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     }
   }, [refreshTrending, refreshPrices, showToast, t]);
 
-  // Detail sheet for a tapped Trending row. The sheet is always mounted so
-  // its imperative ref is available; we just toggle which record it renders.
-  const trendingDetailSheetRef = useRef<BottomSheetModal>(null);
-  const [selectedTrendingRecord, setSelectedTrendingRecord] =
-    useState<FormattedSearchTokenRecord | null>(null);
-
-  // Snapshot captured when the trending security sheet opens. Presenting
-  // that sheet dismisses the detail sheet, whose onChange(-1) nulls
-  // selectedTrendingRecord — so the security sheet can't read from it.
-  // This snapshot keeps the warnings + proceed action stable while it's up.
-  const [trendingSecurityRecord, setTrendingSecurityRecord] =
-    useState<FormattedSearchTokenRecord | null>(null);
-
-  // Present the detail sheet after the record has propagated into the JSX.
-  // Calling present() inline from the row press would target a sheet whose
-  // ref is still null on first selection (the conditional render only runs
-  // after the state update flushes).
-  useEffect(() => {
-    if (selectedTrendingRecord) {
-      trendingDetailSheetRef.current?.present();
-    }
-  }, [selectedTrendingRecord]);
+  // Trending-token detail sheet + its dedicated security sheet — see hook.
+  const {
+    trendingListRef,
+    trendingDetailSheetRef,
+    trendingSecurityWarningBottomSheetModalRef,
+    selectedTrendingRecord,
+    trendingSecurityRecord,
+    openTrendingDetail,
+    clearSelectedTrendingRecord,
+    clearTrendingSecurityRecord,
+    confirmTrendingSelection,
+    presentTrendingSecurityWarning,
+    handleCancelTrendingSecurityWarning,
+    handleConfirmTrendingAnyway,
+    trendingSecurityLevel,
+    isTrendingUnableToScan,
+    trendingSecurityWarnings,
+  } = useTrendingTokenDetail({
+    balanceItems,
+    sourceTokenId,
+    setSourceToken,
+    setDestinationToken,
+  });
 
   const { ctaState, ctaLabel, isCtaDisabled } = useSwapCtaState({
     sourceBalance,
@@ -465,78 +426,19 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     ],
   );
 
-  // Tapped from inside XlmReserveBottomSheet. Picks the sell token,
-  // sets XLM as the Receive token, and asks Horizon's strictReceivePaths
-  // how much of the sell token it would take to receive at least 0.5 XLM.
-  //
-  // Sell-token resolution:
-  //   - If the current source is a non-XLM classic token, reuse it. The
-  //     amount survives the call because the source token didn't change
-  //     (the converter's reset-on-selected-token-change rule is keyed on
-  //     the token code, see useTokenFiatConverter:101).
-  //   - Otherwise (source is XLM or unset) fall back to the user's best
-  //     non-XLM classic balance. The pre-filled amount will be wiped by
-  //     the converter's reset on the next render — acceptable here since
-  //     any prior amount was denominated in the now-replaced source.
-  const handleSwapForXlmFromSheet = useCallback(async () => {
-    const sellBalance = isCurrentSourceNonXlmClassic
-      ? sourceBalance
-      : bestNonXlmClassicBalance;
-    if (!sellBalance) return;
-    const sellTokenCode = sellBalance.tokenCode;
-    const sellIssuer =
-      "token" in sellBalance &&
-      sellBalance.token &&
-      "issuer" in sellBalance.token
-        ? sellBalance.token.issuer?.key
-        : undefined;
-    if (!sellTokenCode || !sellIssuer) return;
-
-    let receivedSourceAmount: string | null = null;
-    try {
-      const networkDetails = mapNetworkToNetworkDetails(network);
-      const server = new Horizon.Server(networkDetails.networkUrl);
-      const sellAsset = new Asset(sellTokenCode, sellIssuer);
-      const result = await server
-        .strictReceivePaths([sellAsset], Asset.native(), "0.5")
-        .limit(1)
-        .call();
-      receivedSourceAmount = result.records[0]?.source_amount ?? null;
-    } catch (error) {
-      // No path / network error — fall back to setting source+dest without
-      // a pre-filled amount so the user can still adjust manually.
-      logger.error(
-        "SwapAmountScreen.handleSwapForXlmFromSheet",
-        "strictReceivePaths failed",
-        error,
-      );
-    }
-
-    // Only swap the source token when we're falling back — otherwise the
-    // converter would reset the amount we're about to set.
-    if (!isCurrentSourceNonXlmClassic) {
-      setSourceToken(sellBalance.id, sellTokenCode);
-    }
-    setDestinationToken({
-      id: NATIVE_TOKEN_CODE,
-      tokenCode: NATIVE_TOKEN_CODE,
-      decimals: DEFAULT_DECIMALS,
-      tokenType: TokenTypeWithCustomToken.NATIVE,
-      isNew: false,
-    });
-    if (receivedSourceAmount) {
-      setTokenAmount(receivedSourceAmount);
-    }
-    xlmReserveBottomSheetRef.current?.dismiss();
-  }, [
-    isCurrentSourceNonXlmClassic,
+  // XlmReserveBottomSheet's "Swap for 0.5 XLM" affordance — see hook.
+  const {
+    xlmReserveBottomSheetRef,
+    canOfferSwapToXlm,
+    handleSwapForXlmFromSheet,
+  } = useSwapForXlmReserve({
     sourceBalance,
     bestNonXlmClassicBalance,
     network,
     setSourceToken,
     setDestinationToken,
     setTokenAmount,
-  ]);
+  });
 
   // Swap source ↔ destination via the chevron-down button between the
   // cards. Always enabled: the held source token can always be moved down
@@ -717,6 +619,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     account,
     sourceTokenId,
     sourceAmount,
+    xlmReserveBottomSheetRef,
   ]);
 
   // Reset everything on unmount
@@ -728,42 +631,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       setActiveError(null);
     },
     [resetSwap, resetTransaction, resetToDefaults, setActiveError],
-  );
-
-  // Shared between the trending sheet's CTA and the trending security
-  // sheet's Proceed Anyway. Takes the record explicitly because each
-  // caller reads from a different source: the detail CTA passes the live
-  // selectedTrendingRecord; the security sheet passes its own snapshot
-  // (selectedTrendingRecord is already null by the time it's tapped).
-  const handleConfirmTrendingSelection = useCallback(
-    (record: FormattedSearchTokenRecord | null) => {
-      if (!record) return;
-      analytics.track(AnalyticsEvent.SWAP_TRENDING_BUY_PRESSED, {
-        tokenCode: record.tokenCode,
-        tokenIssuer: record.issuer ?? "",
-      });
-      const heldMatch = balanceItems.find(
-        (b) => b.id === `${record.tokenCode}:${record.issuer}`,
-      );
-      const descriptor = heldMatch
-        ? descriptorFromBalance(heldMatch)
-        : descriptorFromSearchRecord(record);
-      analytics.track(AnalyticsEvent.SWAP_DESTINATION_SELECTED, {
-        tokenCode: record.tokenCode,
-        tokenIssuer: descriptor.issuer ?? "",
-        isNew: descriptor.isNew,
-        source: SwapSelectionSource.TRENDING,
-      });
-      // If the new destination equals the current source, clear source so
-      // the user doesn't end up with the same token on both sides.
-      if (sourceTokenId && sourceTokenId === descriptor.id) {
-        setSourceToken("", "");
-      }
-      setDestinationToken(descriptor);
-      trendingListRef.current?.scrollToOffset({ offset: 0, animated: false });
-      trendingDetailSheetRef.current?.dismiss();
-    },
-    [balanceItems, sourceTokenId, setSourceToken, setDestinationToken],
   );
 
   const handleCancelSecurityWarning = () => {
@@ -779,33 +646,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       handleConfirmSwap();
     }
   };
-
-  const handleCancelTrendingSecurityWarning = () => {
-    trendingSecurityWarningBottomSheetModalRef.current?.dismiss();
-  };
-
-  const handleConfirmTrendingAnyway = () => {
-    trendingSecurityWarningBottomSheetModalRef.current?.dismiss();
-    handleConfirmTrendingSelection(trendingSecurityRecord);
-  };
-
-  const trendingSecurityLevel = trendingSecurityRecord?.securityLevel;
-  const isTrendingUnableToScan =
-    trendingSecurityLevel === SecurityLevel.UNABLE_TO_SCAN;
-
-  // Blockaid returns no feature-level warnings for an unable-to-scan token,
-  // so the record's securityWarnings is empty. Synthesize the same row the
-  // review-side sheet builds (useSwapSecurityAssessments) so the reasons
-  // list isn't blank.
-  const trendingSecurityWarnings: SecurityWarning[] = isTrendingUnableToScan
-    ? [
-        {
-          id: "unable-to-scan-trending-token",
-          description: t("blockaid.unableToScan.token"),
-          severity: "warning",
-        },
-      ]
-    : (trendingSecurityRecord?.securityWarnings ?? []);
 
   const { renderFooterComponent } = useSwapFooter({
     swapReviewBottomSheetModalRef,
@@ -827,22 +667,10 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         item={item}
         prices={prices}
         network={network}
-        onPress={() => {
-          analytics.track(AnalyticsEvent.SWAP_TRENDING_TOKEN_TAPPED, {
-            tokenCode: item.tokenCode,
-            tokenIssuer: item.issuer ?? "",
-            position: index,
-          });
-          // Dismiss the keyboard so the trending detail sheet has full
-          // unblocked space; otherwise the sheet pops over a raised
-          // keyboard and the Buy CTA sits under it.
-          Keyboard.dismiss();
-          setSelectedTrendingRecord(item);
-          // present() fires via useEffect once the ref is mounted.
-        }}
+        onPress={() => openTrendingDetail(item, index)}
       />
     ),
-    [prices, network],
+    [prices, network, openTrendingDetail],
   );
 
   if (isProcessing) {
@@ -1077,7 +905,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         handleCloseModal={handleCancelTrendingSecurityWarning}
         bottomSheetModalProps={{
           onChange: (index: number) => {
-            if (index === -1) setTrendingSecurityRecord(null);
+            if (index === -1) clearTrendingSecurityRecord();
           },
         }}
         customContent={
@@ -1140,7 +968,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           modalRef={trendingDetailSheetRef}
           handleCloseModal={() => {
             trendingDetailSheetRef.current?.dismiss();
-            setSelectedTrendingRecord(null);
+            clearSelectedTrendingRecord();
           }}
           // Clear the selected record on every dismiss path — swipe-down,
           // backdrop tap, X tap, programmatic dismiss. onChange(index=-1)
@@ -1149,7 +977,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           // rather than being a no-op state update.
           bottomSheetModalProps={{
             onChange: (index: number) => {
-              if (index === -1) setSelectedTrendingRecord(null);
+              if (index === -1) clearSelectedTrendingRecord();
             },
           }}
           customContent={
@@ -1167,16 +995,9 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
                     p?.percentagePriceChange24h ?? undefined,
                 };
               })()}
-              onSwapTo={() =>
-                handleConfirmTrendingSelection(selectedTrendingRecord)
-              }
+              onSwapTo={confirmTrendingSelection}
               onCancel={() => trendingDetailSheetRef.current?.dismiss()}
-              onSecurityWarningPress={() => {
-                // Snapshot before presenting — presenting dismisses this
-                // detail sheet, which nulls selectedTrendingRecord.
-                setTrendingSecurityRecord(selectedTrendingRecord);
-                trendingSecurityWarningBottomSheetModalRef.current?.present();
-              }}
+              onSecurityWarningPress={presentTrendingSecurityWarning}
             />
           }
         />
