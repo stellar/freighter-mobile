@@ -365,15 +365,16 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
 
   useEffect(() => {
     if (swapFromTokenId && swapFromTokenSymbol) {
+      // setSourceToken resets the amount on a token change (see the swap
+      // store). On mount the store source is "" (unmount runs resetSwap),
+      // so this always resets to a clean zero start.
       setSourceToken(swapFromTokenId, swapFromTokenSymbol);
-      setSourceAmount("0");
       setDestinationToken(null); // cleared on source-token change
     }
   }, [
     swapFromTokenId,
     swapFromTokenSymbol,
     setSourceToken,
-    setSourceAmount,
     setDestinationToken,
   ]);
 
@@ -458,8 +459,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     swapFee,
     setSourceToken,
     setDestinationToken,
-    setSourceAmount,
-    setSourceAmountDisplay,
     setTokenAmount,
     // Scroll the trending list to the top so the updated Sell/Receive
     // cards are visible after the sheet dismisses (mirrors the
@@ -478,8 +477,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     destinationTokenDescriptor,
     setSourceToken,
     setDestinationToken,
-    setSourceAmount,
-    setSourceAmountDisplay,
     setTokenAmount,
   });
 

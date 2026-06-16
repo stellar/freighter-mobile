@@ -553,66 +553,6 @@ describe("SwapToScreen", () => {
         expect.objectContaining({ tokenCode: "USDC" }),
       );
     });
-
-    it("resets the amount when switching to a DIFFERENT source token (avoids insufficient-balance flash)", () => {
-      const setSourceAmountSpy = jest.fn();
-      const setSourceAmountDisplaySpy = jest.fn();
-      (useSwapStore as unknown as jest.Mock).mockReturnValue({
-        setSourceToken: jest.fn(),
-        setDestinationToken: jest.fn(),
-        setSourceAmount: setSourceAmountSpy,
-        setSourceAmountDisplay: setSourceAmountDisplaySpy,
-        // Current source is XLM; the user picks USDC (a different token).
-        sourceTokenId: "XLM",
-        destinationToken: null,
-      });
-      (
-        useSwapTokenLookupModule.useSwapTokenLookup as jest.Mock
-      ).mockReturnValue({
-        ...defaultLookupResult,
-        yourTokens: [mockHeldBalance],
-        popularTokens: [],
-      });
-
-      const { getByText } = renderWithProviders(
-        <SwapToScreen {...makeProps(SWAP_SELECTION_TYPES.SOURCE)} />,
-      );
-
-      fireEvent.press(getByText("USDC"));
-
-      expect(setSourceAmountSpy).toHaveBeenCalledWith("0");
-      expect(setSourceAmountDisplaySpy).toHaveBeenCalledWith("0");
-    });
-
-    it("does NOT reset the amount when re-picking the SAME source token", () => {
-      const setSourceAmountSpy = jest.fn();
-      const setSourceAmountDisplaySpy = jest.fn();
-      (useSwapStore as unknown as jest.Mock).mockReturnValue({
-        setSourceToken: jest.fn(),
-        setDestinationToken: jest.fn(),
-        setSourceAmount: setSourceAmountSpy,
-        setSourceAmountDisplay: setSourceAmountDisplaySpy,
-        // Current source is already USDC — re-picking it must keep the amount.
-        sourceTokenId: mockHeldBalance.id,
-        destinationToken: null,
-      });
-      (
-        useSwapTokenLookupModule.useSwapTokenLookup as jest.Mock
-      ).mockReturnValue({
-        ...defaultLookupResult,
-        yourTokens: [mockHeldBalance],
-        popularTokens: [],
-      });
-
-      const { getByText } = renderWithProviders(
-        <SwapToScreen {...makeProps(SWAP_SELECTION_TYPES.SOURCE)} />,
-      );
-
-      fireEvent.press(getByText("USDC"));
-
-      expect(setSourceAmountSpy).not.toHaveBeenCalled();
-      expect(setSourceAmountDisplaySpy).not.toHaveBeenCalled();
-    });
   });
 
   describe("Analytics events", () => {

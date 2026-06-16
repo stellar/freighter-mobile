@@ -55,8 +55,6 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
   const {
     setSourceToken,
     setDestinationToken,
-    setSourceAmount,
-    setSourceAmountDisplay,
     sourceTokenId,
     destinationToken,
   } = useSwapStore();
@@ -143,18 +141,9 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
       if (destinationToken && destinationToken.id === balance.id) {
         setDestinationToken(null);
       }
-      // Switching to a different source token: reset the amount in the same
-      // batch as the token change. Otherwise the prior amount (e.g. the old
-      // token's Max) is briefly validated against the new token's possibly
-      // smaller balance on SwapAmountScreen, flashing "Insufficient balance"
-      // before the converter's reset-on-token-change lands. Same fix as
-      // useSwapDirectionToggle / useSwapForXlmReserve. Guarded on an actual
-      // token change so re-picking the current source doesn't wipe the
-      // amount out from under the (un-reset) converter.
-      if (balance.id !== sourceTokenId) {
-        setSourceAmount("0");
-        setSourceAmountDisplay("0");
-      }
+      // setSourceToken resets the amount on an actual token change (see the
+      // swap store), preventing the prior amount from briefly tripping the
+      // insufficient-balance check against the new token's balance.
       setSourceToken(balance.id, balance.tokenCode ?? "");
     } else {
       analytics.track(AnalyticsEvent.SWAP_DESTINATION_SELECTED, {

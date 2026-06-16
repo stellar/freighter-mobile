@@ -145,7 +145,23 @@ export const useSwapStore = create<SwapState>((set) => ({
   ...initialState,
 
   setSourceToken: (tokenId, tokenSymbol) =>
-    set({ sourceTokenId: tokenId, sourceTokenSymbol: tokenSymbol }),
+    set((state) =>
+      tokenId === state.sourceTokenId
+        ? { sourceTokenId: tokenId, sourceTokenSymbol: tokenSymbol }
+        : {
+            sourceTokenId: tokenId,
+            sourceTokenSymbol: tokenSymbol,
+            // Reset the amount on an actual source-token change. Centralized
+            // here so every caller is correct by construction: otherwise the
+            // prior amount (e.g. the old token's Max) is briefly validated
+            // against the new token's possibly-smaller balance before the
+            // converter's reset-on-token-change lands, flashing an
+            // "Insufficient balance" error. Skipped when the token is
+            // unchanged so a re-pick doesn't wipe an in-progress amount.
+            sourceAmount: "0",
+            sourceAmountDisplay: "0",
+          },
+    ),
 
   setDestinationToken: (descriptor) => set({ destinationToken: descriptor }),
 

@@ -347,7 +347,6 @@ describe("SwapAmountScreen", () => {
     );
     expect(mockSetSourceToken).toHaveBeenCalledWith("SRC", "XLM");
     expect(mockSetDestinationToken).toHaveBeenCalledWith(null);
-    expect(mockSetSourceAmount).toHaveBeenCalledWith("0");
   });
 
   it("renders security warnings for malicious states", () => {

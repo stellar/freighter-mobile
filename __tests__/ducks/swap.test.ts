@@ -57,6 +57,52 @@ describe("useSwapStore — destinationToken migration", () => {
   });
 });
 
+describe("useSwapStore — setSourceToken amount reset", () => {
+  beforeEach(() => {
+    act(() => {
+      useSwapStore.getState().resetSwap();
+    });
+  });
+
+  it("resets the amount when switching to a different source token", () => {
+    const { result } = renderHook(() => useSwapStore());
+
+    act(() => {
+      result.current.setSourceToken("USDC:GA5Z...", "USDC");
+      result.current.setSourceAmount("100");
+    });
+    expect(result.current.sourceAmount).toBe("100");
+    expect(result.current.sourceAmountDisplay).toBe("100");
+
+    act(() => {
+      result.current.setSourceToken("XLM", "XLM");
+    });
+
+    expect(result.current.sourceTokenId).toBe("XLM");
+    expect(result.current.sourceTokenSymbol).toBe("XLM");
+    expect(result.current.sourceAmount).toBe("0");
+    expect(result.current.sourceAmountDisplay).toBe("0");
+  });
+
+  it("preserves the amount when re-picking the same source token", () => {
+    const { result } = renderHook(() => useSwapStore());
+
+    act(() => {
+      result.current.setSourceToken("USDC:GA5Z...", "USDC");
+      result.current.setSourceAmount("100");
+    });
+
+    act(() => {
+      // Re-picking the current source (e.g. tapping it again in the
+      // picker) must not wipe an in-progress amount.
+      result.current.setSourceToken("USDC:GA5Z...", "USDC");
+    });
+
+    expect(result.current.sourceAmount).toBe("100");
+    expect(result.current.sourceAmountDisplay).toBe("100");
+  });
+});
+
 describe("descriptorAsPathBalance", () => {
   it("throws on a native descriptor (XLM should always resolve to a held balance before this projector runs)", () => {
     expect(() =>
