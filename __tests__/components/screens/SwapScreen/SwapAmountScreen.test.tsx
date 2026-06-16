@@ -685,27 +685,25 @@ describe("SwapAmountScreen", () => {
       );
     });
 
-    it("opens XlmReserveBottomSheet when XLM is the source and post-swap spendable < BASE_RESERVE", async () => {
+    it("opens XlmReserveBottomSheet when XLM is the source and initial spendable < BASE_RESERVE", async () => {
       // swapFee mock is "100", subentryCount = 0, minimumBalance = 1 XLM.
       // xlmSpendable = max(0, total - 1 - 100) = total - 101.
       //
-      // We need:
-      //   (a) sourceAmount <= xlmSpendable  → CTA is in "review" state, not "insufficient"
-      //   (b) xlmSpendable - sourceAmount <= BASE_RESERVE (0.5) → gate fires
+      // For XLM source the 0.5 reserve is normally deducted from spendable
+      // up-front, so the sheet is only the fallback when there isn't even
+      // 0.5 spendable to begin with. Pick total so spendable < 0.5 (no
+      // deduction applied) and an amount within spendable so the CTA is in
+      // "review" state.
       //
-      // total = 101.9:
-      //   xlmSpendable = 101.9 - 101 = 0.9
-      //   sourceAmount = 0.89  (≤ 0.9 ✓, passes spendable check)
-      //   projectedSpendable = 0.9 - 0.89 = 0.01  (≤ 0.5 ✓, gate fires)
-      //
-      // Without XLM-as-source logic, the gate would compare 0.9 > 0.5 and NOT fire,
-      // so this test specifically validates the new projected-spendable calculation.
+      // total = 101.4:
+      //   xlmSpendable = 101.4 - 101 = 0.4  (< 0.5 → no deduction, gate fires)
+      //   sourceAmount = 0.39  (≤ 0.4 ✓, CTA reaches review)
       const xlmAsSourceBalances = mockBalances.map((b) => {
         if (b.token?.type !== "native") return b;
         return {
           ...b,
-          total: new BigNumber("101.9"),
-          available: new BigNumber("0.9"),
+          total: new BigNumber("101.4"),
+          available: new BigNumber("0.4"),
         };
       });
       (useBalancesList as jest.Mock).mockImplementation(() => ({
@@ -722,7 +720,7 @@ describe("SwapAmountScreen", () => {
       setSwapStoreState({
         // sourceTokenId = "XLM" (NATIVE_TOKEN_CODE) — XLM is the source
         sourceTokenId: "XLM",
-        sourceAmount: "0.89",
+        sourceAmount: "0.39",
         pathResult: { destinationAmount: "2" },
         destinationToken: {
           id: "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
@@ -755,6 +753,54 @@ describe("SwapAmountScreen", () => {
         (spy) => spy.present.mock.calls.length > 0,
       );
       expect(presentedSheets.length).toBeGreaterThan(0);
+    });
+
+    it("reserves BASE_RESERVE from spendable when swapping XLM → a new token", () => {
+      // total = 101.9 → xlmSpendable = 0.9. Swapping XLM → a new token
+      // reserves 0.5, so the usable spendable is 0.4. An amount of 0.89
+      // (which would be spendable WITHOUT the reserve) now exceeds it, so
+      // the CTA must read "Insufficient balance" rather than reaching the
+      // review / reserve-sheet path.
+      const xlmAsSourceBalances = mockBalances.map((b) => {
+        if (b.token?.type !== "native") return b;
+        return {
+          ...b,
+          total: new BigNumber("101.9"),
+          available: new BigNumber("0.9"),
+        };
+      });
+      (useBalancesList as jest.Mock).mockImplementation(() => ({
+        balanceItems: xlmAsSourceBalances,
+        scanResults: {},
+        isLoading: false,
+        error: null,
+        noBalances: false,
+        isRefreshing: false,
+        isFunded: true,
+        handleRefresh: jest.fn(),
+      }));
+
+      setSwapStoreState({
+        sourceTokenId: "XLM",
+        sourceAmount: "0.89",
+        pathResult: { destinationAmount: "2" },
+        destinationToken: {
+          id: "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+          tokenCode: "FTT",
+          issuer: "GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+          decimals: 7,
+          tokenType: "credit_alphanum4",
+          isNew: true,
+        },
+      });
+
+      const { getByTestId } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      const cta = getByTestId("swap-continue-button");
+      expect(cta).toHaveTextContent("Insufficient balance");
+      expect(cta.props.accessibilityState?.disabled).toBe(true);
     });
   });
 

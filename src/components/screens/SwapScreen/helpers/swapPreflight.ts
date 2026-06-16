@@ -9,28 +9,31 @@ type BalanceItem = PricedBalance & {
 };
 
 /**
- * Pure pre-flight predicate: when the destination is a
- * new token (a trustline must be added), the user needs at least
- * BASE_RESERVE (0.5 XLM) of spendable headroom AFTER the swap to cover
- * the new trustline's reserve bump. If they don't, the caller surfaces
- * the XlmReserveBottomSheet instead of the review sheet.
+ * Pure pre-flight predicate: when the destination is a new token (a
+ * trustline must be added), the user needs BASE_RESERVE (0.5 XLM) of XLM
+ * headroom to cover the new trustline's reserve bump. If they don't, the
+ * caller surfaces the XlmReserveBottomSheet instead of the review sheet.
  *
- * The math mirrors the source-side spendable-amount check exactly:
- *   - Subtract swap fee + subentries via `calculateSpendableAmount`
- *     (which is what `available - sellingLiabilities - minimumBalance`
- *     would miss).
- *   - When XLM is the source token, the sourceAmount is about to leave
- *     the account in the swap — subtract it from the projected spendable
- *     so the gate evaluates POST-swap headroom.
- *   - The combined trustline + path-payment transaction has 2 ops, so
- *     the actual fee is 2× the per-op fee. calculateSpendableAmount
- *     already deducted one op via the transactionFee parameter — deduct
- *     one more here so the gate doesn't pass an account that lacks fee
- *     headroom for op #1.
+ * Two source cases:
  *
- * The `lte` boundary check is intentional: the exact-boundary case
- * (spendable === BASE_RESERVE) routes to the reserve sheet because the
- * user has zero margin AFTER the trustline.
+ *   - **XLM source.** SwapAmountScreen already deducts BASE_RESERVE from
+ *     the spendable amount up-front (so the percentage buttons + the
+ *     insufficient-balance check exclude it), which is the primary
+ *     mechanism that keeps the reserve intact. The sheet is therefore
+ *     only the fallback for accounts that can't even reserve 0.5 to begin
+ *     with — gate on the INITIAL spendable being below BASE_RESERVE.
+ *     Gating on post-swap headroom here would double-count the reserve and
+ *     surface the sheet at Max even though the deduction already reserved
+ *     the 0.5.
+ *
+ *   - **Non-XLM source.** The reserve comes from the separate XLM balance,
+ *     which the swap amount never touches — so there's no up-front
+ *     deduction. Gate on the XLM balance's spendable headroom, minus one
+ *     extra op fee: the combined trustline + path-payment transaction has
+ *     2 ops, and calculateSpendableAmount only deducted one via the
+ *     transactionFee parameter. The `lte` boundary routes the
+ *     exact-boundary case to the reserve sheet (zero margin after the
+ *     trustline).
  *
  * Returns `false` when the destination isn't `isNew` (no trustline op
  * needed → no reserve concern).
@@ -40,14 +43,12 @@ export const shouldShowXlmReservePreflight = ({
   subentryCount,
   swapFee,
   sourceTokenId,
-  sourceAmount,
   destinationIsNew,
 }: {
   balanceItems: BalanceItem[];
   subentryCount: number;
   swapFee: string;
   sourceTokenId: string | undefined;
-  sourceAmount: string;
   destinationIsNew: boolean;
 }): boolean => {
   if (!destinationIsNew) return false;
@@ -63,13 +64,14 @@ export const shouldShowXlmReservePreflight = ({
       })
     : new BigNumber(0);
 
-  const isXlmSource = isNativeAssetId(sourceTokenId ?? "");
-  const extraTrustlineOpFee = new BigNumber(swapFee);
-  const projectedSpendable = (
-    isXlmSource
-      ? xlmSpendable.minus(new BigNumber(sourceAmount || "0"))
-      : xlmSpendable
-  ).minus(extraTrustlineOpFee);
+  // XLM source: the up-front BASE_RESERVE deduction (SwapAmountScreen)
+  // owns the reserve when there's at least 0.5 spendable. Only fall back
+  // to the sheet when the initial spendable can't cover the reserve.
+  if (isNativeAssetId(sourceTokenId ?? "")) {
+    return xlmSpendable.lt(BASE_RESERVE);
+  }
 
-  return projectedSpendable.lte(BASE_RESERVE);
+  // Non-XLM source: gate on post-fee XLM headroom for the extra op.
+  const extraTrustlineOpFee = new BigNumber(swapFee);
+  return xlmSpendable.minus(extraTrustlineOpFee).lte(BASE_RESERVE);
 };

@@ -46,7 +46,12 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent, SwapPickerEntrypoint } from "config/analyticsConfig";
-import { DEFAULT_DECIMALS, TransactionContext } from "config/constants";
+import {
+  BASE_RESERVE,
+  DEFAULT_DECIMALS,
+  isNativeAssetId,
+  TransactionContext,
+} from "config/constants";
 import { logger } from "config/logger";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import { FormattedSearchTokenRecord } from "config/types";
@@ -154,12 +159,26 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   const spendableAmount = useMemo(() => {
     if (!sourceBalance || !account) return null;
 
-    return calculateSpendableAmount({
+    const baseSpendable = calculateSpendableAmount({
       balance: sourceBalance,
       subentryCount: account.subentryCount || 0,
       transactionFee: swapFee,
     });
-  }, [sourceBalance, account, swapFee]);
+
+    // Swapping XLM → a new token locks BASE_RESERVE (0.5 XLM) for the new
+    // trustline, so that XLM isn't actually spendable. Reserve it up-front
+    // (so the percentage buttons + insufficient-balance check exclude it).
+    // Only when there's at least 0.5 XLM spendable to begin with — below
+    // that, leave the value untouched and let the XlmReserveBottomSheet
+    // pre-flight surface the shortfall as usual.
+    const swappingXlmToNewToken =
+      isNativeAssetId(sourceBalance.id) && !!destinationTokenDescriptor?.isNew;
+    if (swappingXlmToNewToken && baseSpendable.gte(BASE_RESERVE)) {
+      return baseSpendable.minus(BASE_RESERVE);
+    }
+
+    return baseSpendable;
+  }, [sourceBalance, account, swapFee, destinationTokenDescriptor?.isNew]);
 
   // Token/fiat amount input is driven by the system keyboard via TextInput.
   // We mirror the converter's tokenAmount back into the swap store so that
@@ -597,7 +616,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         subentryCount: account?.subentryCount ?? 0,
         swapFee,
         sourceTokenId,
-        sourceAmount,
         destinationIsNew: !!destinationTokenDescriptor?.isNew,
       })
     ) {
@@ -623,7 +641,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     swapFee,
     account,
     sourceTokenId,
-    sourceAmount,
     xlmReserveBottomSheetRef,
   ]);
 
