@@ -1,5 +1,6 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { Asset, Horizon } from "@stellar/stellar-sdk";
+import BigNumber from "bignumber.js";
 import { DestinationTokenDescriptor } from "components/screens/SwapScreen/helpers/types";
 import {
   DEFAULT_DECIMALS,
@@ -10,6 +11,7 @@ import {
 } from "config/constants";
 import { logger } from "config/logger";
 import { TokenTypeWithCustomToken } from "config/types";
+import { calculateSpendableAmount } from "helpers/balances";
 import { type HeldBalanceItem } from "hooks/useBalancesList";
 import { useCallback, useRef } from "react";
 
@@ -17,6 +19,8 @@ interface UseSwapForXlmReserveParams {
   sourceBalance: HeldBalanceItem | undefined;
   bestNonXlmClassicBalance: HeldBalanceItem | undefined;
   network: NETWORKS;
+  subentryCount: number;
+  swapFee: string;
   setSourceToken: (id: string, symbol: string) => void;
   setDestinationToken: (descriptor: DestinationTokenDescriptor | null) => void;
   setTokenAmount: (amount: string) => void;
@@ -47,6 +51,8 @@ export const useSwapForXlmReserve = ({
   sourceBalance,
   bestNonXlmClassicBalance,
   network,
+  subentryCount,
+  swapFee,
   setSourceToken,
   setDestinationToken,
   setTokenAmount,
@@ -121,7 +127,21 @@ export const useSwapForXlmReserve = ({
       isNew: false,
     });
     if (receivedSourceAmount) {
-      setTokenAmount(receivedSourceAmount);
+      // The amount needed to receive 0.5 XLM can exceed what's actually
+      // spendable of the sell token — pre-filling that raw value would
+      // trip the insufficient-balance error. Cap it to the sell token's
+      // spendable (same calc the error check uses) so the pre-fill is
+      // always valid; the user can still get less than 0.5 XLM and adjust.
+      const sellSpendable = calculateSpendableAmount({
+        balance: sellBalance,
+        subentryCount,
+        transactionFee: swapFee,
+      });
+      const cappedAmount = BigNumber.minimum(
+        new BigNumber(receivedSourceAmount),
+        sellSpendable,
+      );
+      setTokenAmount(cappedAmount.toFixed(DEFAULT_DECIMALS));
     }
     xlmReserveBottomSheetRef.current?.dismiss();
     onAfterSwap?.();
@@ -130,6 +150,8 @@ export const useSwapForXlmReserve = ({
     sourceBalance,
     bestNonXlmClassicBalance,
     network,
+    subentryCount,
+    swapFee,
     setSourceToken,
     setDestinationToken,
     setTokenAmount,

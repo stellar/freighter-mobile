@@ -454,6 +454,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     sourceBalance,
     bestNonXlmClassicBalance,
     network,
+    subentryCount: account?.subentryCount ?? 0,
+    swapFee,
     setSourceToken,
     setDestinationToken,
     setTokenAmount,
