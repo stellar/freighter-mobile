@@ -2241,6 +2241,10 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
         // Preserve navigationRef: nothing remounts to re-set it after a soft
         // unlock, so later lock navigations would otherwise no-op
         navigationRef: get().navigationRef,
+        // Preserve signInMethod: resetting it to PASSWORD would make the
+        // still-mounted biometric buttons drop biometric enforcement after a
+        // soft unlock, letting transactions confirm without verification
+        signInMethod: get().signInMethod,
         authStatus: AUTH_STATUS.AUTHENTICATED,
         isLoading: false,
         isLoadingAccount: true,

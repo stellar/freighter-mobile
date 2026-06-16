@@ -4,7 +4,7 @@ import { BaseLayout } from "components/layout/BaseLayout";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
-import { AUTO_LOCK_TIMER } from "config/constants";
+import { AUTO_LOCK_TIMER, DEFAULT_PADDING } from "config/constants";
 import { logger } from "config/logger";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import { usePreferencesStore } from "ducks/preferences";
@@ -13,6 +13,8 @@ import useColors from "hooks/useColors";
 import { useToast } from "providers/ToastProvider";
 import React, { useState } from "react";
 import { View } from "react-native";
+// TODO/FIXME: only needed for the temporary dev inputs — remove with them
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import {
   setDevAutoLockTimerSeconds,
   setDevHashKeyTtlSeconds,
@@ -111,7 +113,17 @@ const AutoLockTimerScreen: React.FC<AutoLockTimerScreenProps> = () => {
 
   return (
     <BaseLayout insets={{ top: false }}>
-      <View className="flex flex-col gap-4 mt-4">
+      {/*
+        TODO / FIXME: the KeyboardAwareScrollView wrapper exists only so the
+        temporary dev inputs below aren't hidden behind the keyboard.
+        REVERT to the plain <View> when removing the dev-only block.
+      */}
+      <KeyboardAwareScrollView
+        contentContainerClassName="flex flex-col gap-4 mt-4"
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        bottomOffset={DEFAULT_PADDING}
+      >
         <List items={listItems} />
         <Text sm secondary>
           {t("autoLockTimerScreen.footer")}
@@ -121,8 +133,9 @@ const AutoLockTimerScreen: React.FC<AutoLockTimerScreenProps> = () => {
           ====================================================================
           TODO / FIXME: TEMPORARY DEV-ONLY testing controls.
           !!! REMOVE THIS ENTIRE BLOCK BEFORE MERGING TO PRODUCTION !!!
-          (also remove the dev helpers in services/autoLock.ts and the
-          getDevAutoLockTimerMs override in ducks/auth.ts)
+          (also remove the dev helpers in services/autoLock.ts, the
+          getDevAutoLockTimerMs override in ducks/auth.ts, and revert the
+          KeyboardAwareScrollView wrapper above back to a plain <View>)
           Lets QA exercise the lock flows in seconds instead of minutes/hours.
           ====================================================================
         */}
@@ -150,7 +163,7 @@ const AutoLockTimerScreen: React.FC<AutoLockTimerScreenProps> = () => {
           />
         </View>
         {/* ================= END TEMPORARY DEV-ONLY BLOCK ================= */}
-      </View>
+      </KeyboardAwareScrollView>
     </BaseLayout>
   );
 };

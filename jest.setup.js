@@ -496,6 +496,11 @@ jest.mock("hooks/useGetActiveAccount", () => ({
   isWalletUnlocked: jest.fn(() => true),
 }));
 
+// react-native-keyboard-controller ships a jest mock for its native bindings
+jest.mock("react-native-keyboard-controller", () =>
+  require("react-native-keyboard-controller/jest"),
+);
+
 jest.mock("hooks/useBalancesList", () => ({
   useBalancesList: jest.fn(() => ({
     balanceItems: [],
