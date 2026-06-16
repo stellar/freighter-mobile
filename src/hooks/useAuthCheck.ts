@@ -2,6 +2,7 @@ import { AUTO_LOCK_TIMER } from "config/constants";
 import { logger } from "config/logger";
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
+import { hidePrivacyShield } from "helpers/privacyShield";
 import { useEffect, useRef, useState, useCallback } from "react";
 import {
   AppState,
@@ -15,6 +16,10 @@ import {
   getDevAutoLockTimerMs,
   recordBackgroundedAt,
 } from "services/autoLock";
+
+// Delay before lifting the native privacy shield on foreground, giving a
+// soft-lock overlay a frame to paint so the unlocked wallet never flashes
+const SHIELD_REVEAL_DELAY = 50;
 
 // Constants for interval timings (in milliseconds)
 const BACKGROUND_CHECK_INTERVAL = 60000; // Check every minute when in background
@@ -155,11 +160,29 @@ const useAuthCheck = () => {
           );
       }
 
-      // When returning to active state, allow a slight delay before checking auth
+      // When returning to active state, resolve the auto-lock decision and
+      // then dismiss the native privacy shield. Running getAuthStatus right
+      // away (instead of only the delayed check below) lets a soft-lock
+      // overlay mount before the shield lifts, so the unlocked wallet never
+      // flashes; the brief delay gives that overlay a frame to paint.
       if (
         appState.current.match(/inactive|background/) &&
         nextAppState === "active"
       ) {
+        useAuthenticationStore
+          .getState()
+          .getAuthStatus()
+          .catch((err) =>
+            logger.error(
+              "handleAppStateChange",
+              "Error checking auth on foreground",
+              err,
+            ),
+          )
+          .finally(() => {
+            setTimeout(hidePrivacyShield, SHIELD_REVEAL_DELAY);
+          });
+
         setTimeout(() => {
           checkAuth().catch((err) =>
             logger.error("handleAppStateChange", "Error checking auth", err),
