@@ -11,11 +11,13 @@ import { usePreferencesStore } from "ducks/preferences";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import { useToast } from "providers/ToastProvider";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View } from "react-native";
 // TODO/FIXME: only needed for the temporary dev inputs — remove with them
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import {
+  clearDevAutoLockTimer,
+  getDevAutoLockTimerMs,
   setDevAutoLockTimerSeconds,
   setDevHashKeyTtlSeconds,
 } from "services/autoLock";
@@ -43,6 +45,15 @@ const AutoLockTimerScreen: React.FC<AutoLockTimerScreenProps> = () => {
   // TODO/FIXME: dev-only state for the testing controls — remove before prod
   const [devTimerSeconds, setDevTimerSecondsInput] = useState("");
   const [devTtlSeconds, setDevTtlSecondsInput] = useState("");
+  // When a custom dev timer is active, the enum options are deselected so the
+  // UI reflects that the override (not a preset) governs the lock.
+  const [isDevTimerActive, setIsDevTimerActive] = useState(false);
+
+  useEffect(() => {
+    getDevAutoLockTimerMs()
+      .then((ms) => setIsDevTimerActive(ms !== null))
+      .catch(() => setIsDevTimerActive(false));
+  }, []);
 
   // TODO/FIXME: dev-only handlers — remove before prod
   const applyDevTimer = () => {
@@ -51,13 +62,14 @@ const AutoLockTimerScreen: React.FC<AutoLockTimerScreenProps> = () => {
       return;
     }
     setDevAutoLockTimerSeconds(seconds)
-      .then(() =>
+      .then(() => {
+        setIsDevTimerActive(true);
         showToast({
           variant: "success",
           title: `Auto-lock timer set to ${seconds}s`,
           toastId: "dev-auto-lock-timer",
-        }),
-      )
+        });
+      })
       .catch((error) =>
         logger.error("AutoLockTimerScreen", "Failed to set dev timer", error),
       );
@@ -99,13 +111,26 @@ const AutoLockTimerScreen: React.FC<AutoLockTimerScreenProps> = () => {
     [AUTO_LOCK_TIMER.NONE]: t("autoLockTimerScreen.options.none"),
   };
 
+  const handleSelectOption = (option: AUTO_LOCK_TIMER) => {
+    setAutoLockTimer(option);
+    // TODO/FIXME: picking a preset clears the dev override so it takes effect
+    setIsDevTimerActive(false);
+    clearDevAutoLockTimer().catch((error) =>
+      logger.error("AutoLockTimerScreen", "Failed to clear dev timer", error),
+    );
+  };
+
   const listItems = Object.values(AUTO_LOCK_TIMER).map((option) => ({
     title: timerLabels[option],
     titleColor: themeColors.text.primary,
-    onPress: () => setAutoLockTimer(option),
+    onPress: () => handleSelectOption(option),
     trailingContent: (
       <Icon.Check
-        color={autoLockTimer === option ? themeColors.base[1] : "transparent"}
+        color={
+          !isDevTimerActive && autoLockTimer === option
+            ? themeColors.base[1]
+            : "transparent"
+        }
       />
     ),
     testID: `auto-lock-option-${option}`,

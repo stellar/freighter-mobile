@@ -4,10 +4,15 @@ import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import useAuthCheck from "hooks/useAuthCheck";
 import { AppState } from "react-native";
-import { getAutoLockTimer, recordBackgroundedAt } from "services/autoLock";
+import {
+  getAutoLockTimer,
+  getDevAutoLockTimerMs,
+  recordBackgroundedAt,
+} from "services/autoLock";
 
 jest.mock("services/autoLock", () => ({
   getAutoLockTimer: jest.fn(),
+  getDevAutoLockTimerMs: jest.fn().mockResolvedValue(null),
   recordBackgroundedAt: jest.fn().mockResolvedValue(undefined),
 }));
 
@@ -34,6 +39,7 @@ describe("useAuthCheck", () => {
     (getAutoLockTimer as jest.Mock).mockResolvedValue(
       AUTO_LOCK_TIMER.TWENTY_FOUR_HOURS,
     );
+    (getDevAutoLockTimerMs as jest.Mock).mockResolvedValue(null);
 
     useAuthenticationStore.setState({
       authStatus: AUTH_STATUS.AUTHENTICATED,
@@ -119,6 +125,26 @@ describe("useAuthCheck", () => {
 
   it("does NOT soft-lock on backgrounding for timed options", async () => {
     (getAutoLockTimer as jest.Mock).mockResolvedValue(AUTO_LOCK_TIMER.ONE_HOUR);
+    const { handlers, unmount } = renderAuthCheck();
+
+    await act(async () => {
+      handlers.forEach((handler) => handler("background"));
+      await flushMicrotasks();
+    });
+
+    expect(recordBackgroundedAt).toHaveBeenCalledTimes(1);
+    expect(mockSoftLock).not.toHaveBeenCalled();
+    unmount();
+  });
+
+  // TODO/FIXME: dev-only override exclusivity — remove with the dev feature
+  it("does NOT instant-lock for IMMEDIATELY when a dev timer override is set", async () => {
+    (getAutoLockTimer as jest.Mock).mockResolvedValue(
+      AUTO_LOCK_TIMER.IMMEDIATELY,
+    );
+    // A custom dev timer (20s) is active — it must win over IMMEDIATELY so the
+    // timed countdown governs instead of an instant lock
+    (getDevAutoLockTimerMs as jest.Mock).mockResolvedValue(20000);
     const { handlers, unmount } = renderAuthCheck();
 
     await act(async () => {

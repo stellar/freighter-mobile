@@ -9,7 +9,12 @@ import {
   PanResponder,
   PanResponderInstance,
 } from "react-native";
-import { getAutoLockTimer, recordBackgroundedAt } from "services/autoLock";
+import {
+  getAutoLockTimer,
+  // TODO/FIXME: dev-only override — remove before production
+  getDevAutoLockTimerMs,
+  recordBackgroundedAt,
+} from "services/autoLock";
 
 // Constants for interval timings (in milliseconds)
 const BACKGROUND_CHECK_INTERVAL = 60000; // Check every minute when in background
@@ -125,9 +130,15 @@ const useAuthCheck = () => {
         // Read from the secure-storage mirror (not the zustand store) so the
         // IMMEDIATELY lock also fires when backgrounding happens before
         // zustand rehydration completes.
-        getAutoLockTimer()
-          .then((autoLockTimer) => {
-            if (autoLockTimer === AUTO_LOCK_TIMER.IMMEDIATELY) {
+        // TODO/FIXME: getDevAutoLockTimerMs is a dev-only override — when set
+        // it must win over the IMMEDIATELY preset (exclusive), so the timed
+        // dev countdown in getAuthStatus governs instead of an instant lock.
+        Promise.all([getDevAutoLockTimerMs(), getAutoLockTimer()])
+          .then(([devAutoLockTimerMs, autoLockTimer]) => {
+            if (
+              devAutoLockTimerMs === null &&
+              autoLockTimer === AUTO_LOCK_TIMER.IMMEDIATELY
+            ) {
               // Soft-lock right away: the overlay renders while the app is
               // backgrounded (no wallet content flashes on return) and the
               // navigation tree is preserved for after the unlock.

@@ -145,6 +145,11 @@ const setDevAutoLockTimerSeconds = async (seconds: number): Promise<void> => {
   );
 };
 
+/** TEMP/REMOVE: clear the dev auto-lock timer override (back to the enum). */
+const clearDevAutoLockTimer = async (): Promise<void> => {
+  await secureDataStorage.remove(DEV_AUTO_LOCK_TIMER_MS_KEY);
+};
+
 /**
  * TEMP/REMOVE: force the current hash key to expire in `seconds` by rewriting
  * its expiresAt, so the hard-expiry (HASH_KEY_EXPIRED) backstop can be tested
@@ -176,5 +181,6 @@ export {
   // TODO/FIXME: remove these dev-only exports before production
   getDevAutoLockTimerMs,
   setDevAutoLockTimerSeconds,
+  clearDevAutoLockTimer,
   setDevHashKeyTtlSeconds,
 };
