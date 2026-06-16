@@ -23,6 +23,8 @@ jest.mock("ducks/swap", () => ({
   useSwapStore: jest.fn(() => ({
     setSourceToken: jest.fn(),
     setDestinationToken: jest.fn(),
+    setSourceAmount: jest.fn(),
+    setSourceAmountDisplay: jest.fn(),
     sourceTokenId: "XLM",
     destinationToken: null,
   })),
@@ -368,6 +370,8 @@ describe("SwapToScreen", () => {
     const defaultStoreState = {
       setSourceToken: jest.fn(),
       setDestinationToken: jest.fn(),
+      setSourceAmount: jest.fn(),
+      setSourceAmountDisplay: jest.fn(),
       sourceTokenId: "XLM",
       destinationToken: null,
     };
@@ -405,6 +409,8 @@ describe("SwapToScreen", () => {
       (useSwapStore as unknown as jest.Mock).mockReturnValue({
         setSourceToken: jest.fn(),
         setDestinationToken: jest.fn(),
+        setSourceAmount: jest.fn(),
+        setSourceAmountDisplay: jest.fn(),
         sourceTokenId:
           "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
         destinationToken: null,
@@ -433,6 +439,8 @@ describe("SwapToScreen", () => {
       (useSwapStore as unknown as jest.Mock).mockReturnValue({
         setSourceToken: setSourceTokenSpy,
         setDestinationToken: setDestinationTokenSpy,
+        setSourceAmount: jest.fn(),
+        setSourceAmountDisplay: jest.fn(),
         // Source is USDC; user opens destination picker and taps USDC.
         sourceTokenId:
           "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
@@ -470,6 +478,8 @@ describe("SwapToScreen", () => {
       (useSwapStore as unknown as jest.Mock).mockReturnValue({
         setSourceToken: setSourceTokenSpy,
         setDestinationToken: setDestinationTokenSpy,
+        setSourceAmount: jest.fn(),
+        setSourceAmountDisplay: jest.fn(),
         // Destination is XLM; user opens source picker and taps XLM.
         sourceTokenId: null,
         destinationToken: {
@@ -517,6 +527,8 @@ describe("SwapToScreen", () => {
       (useSwapStore as unknown as jest.Mock).mockReturnValue({
         setSourceToken: setSourceTokenSpy,
         setDestinationToken: setDestinationTokenSpy,
+        setSourceAmount: jest.fn(),
+        setSourceAmountDisplay: jest.fn(),
         sourceTokenId:
           "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
         destinationToken: null,
@@ -540,6 +552,66 @@ describe("SwapToScreen", () => {
       expect(setDestinationTokenSpy).toHaveBeenCalledWith(
         expect.objectContaining({ tokenCode: "USDC" }),
       );
+    });
+
+    it("resets the amount when switching to a DIFFERENT source token (avoids insufficient-balance flash)", () => {
+      const setSourceAmountSpy = jest.fn();
+      const setSourceAmountDisplaySpy = jest.fn();
+      (useSwapStore as unknown as jest.Mock).mockReturnValue({
+        setSourceToken: jest.fn(),
+        setDestinationToken: jest.fn(),
+        setSourceAmount: setSourceAmountSpy,
+        setSourceAmountDisplay: setSourceAmountDisplaySpy,
+        // Current source is XLM; the user picks USDC (a different token).
+        sourceTokenId: "XLM",
+        destinationToken: null,
+      });
+      (
+        useSwapTokenLookupModule.useSwapTokenLookup as jest.Mock
+      ).mockReturnValue({
+        ...defaultLookupResult,
+        yourTokens: [mockHeldBalance],
+        popularTokens: [],
+      });
+
+      const { getByText } = renderWithProviders(
+        <SwapToScreen {...makeProps(SWAP_SELECTION_TYPES.SOURCE)} />,
+      );
+
+      fireEvent.press(getByText("USDC"));
+
+      expect(setSourceAmountSpy).toHaveBeenCalledWith("0");
+      expect(setSourceAmountDisplaySpy).toHaveBeenCalledWith("0");
+    });
+
+    it("does NOT reset the amount when re-picking the SAME source token", () => {
+      const setSourceAmountSpy = jest.fn();
+      const setSourceAmountDisplaySpy = jest.fn();
+      (useSwapStore as unknown as jest.Mock).mockReturnValue({
+        setSourceToken: jest.fn(),
+        setDestinationToken: jest.fn(),
+        setSourceAmount: setSourceAmountSpy,
+        setSourceAmountDisplay: setSourceAmountDisplaySpy,
+        // Current source is already USDC — re-picking it must keep the amount.
+        sourceTokenId: mockHeldBalance.id,
+        destinationToken: null,
+      });
+      (
+        useSwapTokenLookupModule.useSwapTokenLookup as jest.Mock
+      ).mockReturnValue({
+        ...defaultLookupResult,
+        yourTokens: [mockHeldBalance],
+        popularTokens: [],
+      });
+
+      const { getByText } = renderWithProviders(
+        <SwapToScreen {...makeProps(SWAP_SELECTION_TYPES.SOURCE)} />,
+      );
+
+      fireEvent.press(getByText("USDC"));
+
+      expect(setSourceAmountSpy).not.toHaveBeenCalled();
+      expect(setSourceAmountDisplaySpy).not.toHaveBeenCalled();
     });
   });
 
