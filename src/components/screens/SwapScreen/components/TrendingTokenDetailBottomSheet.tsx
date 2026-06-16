@@ -78,9 +78,14 @@ export const TrendingTokenDetailBottomSheet: React.FC<
     issuer: { key: record.issuer },
   };
 
-  // unable-to-scan stays trusted here — the banner alone signals caution.
-  const isMalicious = record.securityLevel === SecurityLevel.MALICIOUS;
-  const isSuspicious = record.securityLevel === SecurityLevel.SUSPICIOUS;
+  // Native XLM is unscannable by definition and trusted — never surface a
+  // security warning for it (matches useReviewSecuritySummary's
+  // !isNativeAssetId gate). unable-to-scan on a non-native token stays
+  // trusted here too — the banner alone signals caution.
+  const isMalicious =
+    !record.isNative && record.securityLevel === SecurityLevel.MALICIOUS;
+  const isSuspicious =
+    !record.isNative && record.securityLevel === SecurityLevel.SUSPICIOUS;
   const isTrusted = !isMalicious && !isSuspicious;
 
   const { currentPrice, percentagePriceChange24h } = priceInfo;
@@ -124,6 +129,7 @@ export const TrendingTokenDetailBottomSheet: React.FC<
   // waiting until the review step). MALICIOUS → red, SUSPICIOUS or
   // UNABLE_TO_SCAN → amber; SAFE/EXPECTED_TO_FAIL → no banner.
   const securityBanner = (() => {
+    if (record.isNative) return null;
     switch (record.securityLevel) {
       case SecurityLevel.MALICIOUS:
         return {

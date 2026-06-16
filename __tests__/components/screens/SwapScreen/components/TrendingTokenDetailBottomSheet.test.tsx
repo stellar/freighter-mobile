@@ -308,6 +308,33 @@ describe("TrendingTokenDetailBottomSheet", () => {
       expect(queryByText(/proceed with caution/i)).toBeNull();
     });
 
+    it("never renders a banner for native XLM even when unscannable", () => {
+      // Native XLM has no issuer, so the bulk scan can't reach it and the
+      // level falls through to UNABLE_TO_SCAN — but native is trusted by
+      // definition, so no banner (matches useReviewSecuritySummary).
+      const xlmRecord = {
+        tokenCode: "XLM",
+        issuer: "",
+        isNative: true,
+        domain: "",
+        tokenType: undefined,
+        hasTrustline: true,
+        securityLevel: SecurityLevel.UNABLE_TO_SCAN,
+      } as any;
+      const { queryByText, getByText } = renderWithProviders(
+        <TrendingTokenDetailBottomSheet
+          record={xlmRecord}
+          priceInfo={{}}
+          onSwapTo={noop}
+          onCancel={noop}
+        />,
+      );
+      expect(queryByText(/proceed with caution/i)).toBeNull();
+      expect(queryByText(/flagged as/i)).toBeNull();
+      // Trusted single CTA still renders.
+      expect(getByText(/^Swap to XLM$/)).toBeTruthy();
+    });
+
     it("fires onSecurityWarningPress when the banner is tapped", () => {
       const onSecurityWarningPress = jest.fn();
       const { getByText } = renderWithProviders(
