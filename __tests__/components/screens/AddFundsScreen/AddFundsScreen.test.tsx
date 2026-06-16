@@ -88,7 +88,6 @@ describe("AddFundsScreen", () => {
 
       expect(mockNavigate).toHaveBeenCalledWith(
         ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN,
-        {},
       );
     }
   });
