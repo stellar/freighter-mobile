@@ -58,6 +58,8 @@ import {
   clearBackgroundedAt,
   getAutoLockTimer,
   getBackgroundedAt,
+  // TODO/FIXME: dev-only auto-lock timer override — remove before production
+  getDevAutoLockTimerMs,
   getHashKeyExpirationMs,
 } from "services/autoLock";
 import { getAccount } from "services/stellar";
@@ -514,7 +516,10 @@ const getAuthStatus = async (): Promise<AuthStatus> => {
     const backgroundedAt = await getBackgroundedAt();
     if (backgroundedAt) {
       const autoLockTimer = await getAutoLockTimer();
-      const autoLockTimerMs = AUTO_LOCK_TIMER_MS[autoLockTimer];
+      // TODO/FIXME: dev-only override (seconds) — remove before production
+      const devAutoLockTimerMs = await getDevAutoLockTimerMs();
+      const autoLockTimerMs =
+        devAutoLockTimerMs ?? AUTO_LOCK_TIMER_MS[autoLockTimer];
       const elapsedInBackground = Date.now() - backgroundedAt;
 
       if (

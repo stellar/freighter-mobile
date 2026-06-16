@@ -17,7 +17,7 @@ import { analytics } from "services/analytics";
  * material directly — never rely on the overlay alone. Read live from the
  * store so a lock that engaged after the callback was created is respected.
  */
-const isWalletUnlocked = (): boolean => {
+export const isWalletUnlocked = (): boolean => {
   const { authStatus, isSoftLocked } = useAuthenticationStore.getState();
   return authStatus === AUTH_STATUS.AUTHENTICATED && !isSoftLocked;
 };

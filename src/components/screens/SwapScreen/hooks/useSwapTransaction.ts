@@ -17,6 +17,7 @@ import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
+import { isWalletUnlocked } from "hooks/useGetActiveAccount";
 import { useToast } from "providers/ToastProvider";
 import { useState, useCallback } from "react";
 import { analytics } from "services/analytics";
@@ -124,6 +125,11 @@ export const useSwapTransaction = ({
 
     if (!destinationBalance?.tokenCode) {
       throw new Error("Destination token is required for swap transaction");
+    }
+
+    // Block signing if an auto-lock engaged after the swap was prepared
+    if (!isWalletUnlocked()) {
+      throw new Error("Wallet is locked");
     }
 
     setIsProcessing(true);

@@ -66,7 +66,9 @@ import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
-import useGetActiveAccount from "hooks/useGetActiveAccount";
+import useGetActiveAccount, {
+  isWalletUnlocked,
+} from "hooks/useGetActiveAccount";
 import { useInitialRecommendedFee } from "hooks/useInitialRecommendedFee";
 import { useNetworkFees } from "hooks/useNetworkFees";
 import { useRightHeaderButton } from "hooks/useRightHeader";
@@ -821,6 +823,11 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       try {
         if (!account?.privateKey || !selectedBalance || !recipientAddress) {
           throw new Error("Missing account or balance information");
+        }
+
+        // Block signing if an auto-lock engaged while on the review sheet
+        if (!isWalletUnlocked()) {
+          throw new Error("Wallet is locked");
         }
 
         const { privateKey } = account;

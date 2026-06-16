@@ -56,8 +56,13 @@ import {
 } from "navigators";
 import { TabNavigator } from "navigators/TabNavigator";
 import React, { useEffect, useMemo, useState } from "react";
+import { StyleSheet, View } from "react-native";
 import RNBootSplash from "react-native-bootsplash";
 import { isInitialized as isAnalyticsInitialized } from "services/analytics/core";
+
+const styles = StyleSheet.create({
+  flex: { flex: 1 },
+});
 
 const RootStack = createNativeStackNavigator<
   RootStackParamList &
@@ -196,112 +201,124 @@ export const RootNavigator = () => {
   }
 
   return (
-    <RootStack.Navigator
-      initialRouteName={initialRouteName}
-      screenOptions={{
-        headerShown: false,
-      }}
+    // While soft-locked, hide the mounted tree from screen readers
+    // (Android: no-hide-descendants; iOS: accessibilityElementsHidden) so the
+    // overlay — a sibling rendered in App.tsx — isn't bypassed by TalkBack /
+    // VoiceOver. The overlay also sets accessibilityViewIsModal (iOS).
+    <View
+      style={styles.flex}
+      importantForAccessibility={isSoftLocked ? "no-hide-descendants" : "auto"}
+      accessibilityElementsHidden={isSoftLocked}
     >
-      {showAuthenticatedStack ? (
-        <RootStack.Group>
+      <RootStack.Navigator
+        initialRouteName={initialRouteName}
+        screenOptions={{
+          headerShown: false,
+        }}
+      >
+        {showAuthenticatedStack ? (
+          <RootStack.Group>
+            <RootStack.Screen
+              name={ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK}
+              component={TabNavigator}
+            />
+            <RootStack.Screen
+              name={ROOT_NAVIGATOR_ROUTES.MANAGE_TOKENS_STACK}
+              component={ManageTokensStackNavigator}
+              options={getStackBottomNavigateOptions()}
+            />
+            <RootStack.Screen
+              name={ROOT_NAVIGATOR_ROUTES.MANAGE_WALLETS_STACK}
+              component={ManageWalletsStackNavigator}
+              options={getStackBottomNavigateOptions()}
+            />
+            <RootStack.Screen
+              name={ROOT_NAVIGATOR_ROUTES.SETTINGS_STACK}
+              component={SettingsStackNavigator}
+              options={getStackBottomNavigateOptions()}
+            />
+            <RootStack.Screen
+              name={ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK}
+              component={SendPaymentStackNavigator}
+              options={getStackBottomNavigateOptions()}
+            />
+            <RootStack.Screen
+              name={ROOT_NAVIGATOR_ROUTES.SWAP_STACK}
+              component={SwapStackNavigator}
+              options={getStackBottomNavigateOptions()}
+            />
+            <RootStack.Screen
+              name={ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN}
+              component={AccountQRCodeScreen}
+              options={({ route }) =>
+                withTransitionOverride(
+                  getScreenBottomNavigateOptions(
+                    t("accountQRCodeScreen.title"),
+                  ),
+                  route,
+                )
+              }
+            />
+            <RootStack.Screen
+              name={ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN}
+              component={ScanQRCodeScreen}
+              options={({ route }) =>
+                withTransitionOverride(getScreenOptionsNoHeader(), route)
+              }
+            />
+            <RootStack.Screen
+              name={ROOT_NAVIGATOR_ROUTES.CONNECTED_APPS_SCREEN}
+              component={ConnectedAppsScreen}
+              options={getScreenBottomNavigateOptions(t("connectedApps.title"))}
+            />
+            <RootStack.Screen
+              name={ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK}
+              component={AddFundsStackNavigator}
+              options={getStackBottomNavigateOptions()}
+            />
+            <RootStack.Screen
+              name={ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN}
+              component={TokenDetailsScreen}
+              options={getScreenBottomNavigateOptions("")}
+            />
+            <RootStack.Screen
+              name={ROOT_NAVIGATOR_ROUTES.COLLECTIBLE_DETAILS_SCREEN}
+              component={CollectibleDetailsScreen}
+              options={getScreenBottomNavigateOptions("")}
+            />
+            <RootStack.Screen
+              name={ROOT_NAVIGATOR_ROUTES.ADD_COLLECTIBLE_SCREEN}
+              component={AddCollectibleScreen}
+              options={getScreenBottomNavigateOptions(
+                t("addCollectibleScreen.title"),
+              )}
+            />
+            <RootStack.Screen
+              name={ROOT_NAVIGATOR_ROUTES.HIDDEN_COLLECTIBLES_SCREEN}
+              component={HiddenCollectiblesScreen}
+              options={getScreenBottomNavigateOptions(
+                t("hiddenCollectiblesScreen.title"),
+              )}
+            />
+            <RootStack.Screen
+              name={AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN}
+              component={BiometricsOnboardingScreen}
+              options={getScreenBottomNavigateOptions("")}
+            />
+          </RootStack.Group>
+        ) : authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ||
+          authStatus === AUTH_STATUS.LOCKED ? (
           <RootStack.Screen
-            name={ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK}
-            component={TabNavigator}
+            name={ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN}
+            component={LockScreen}
           />
+        ) : (
           <RootStack.Screen
-            name={ROOT_NAVIGATOR_ROUTES.MANAGE_TOKENS_STACK}
-            component={ManageTokensStackNavigator}
-            options={getStackBottomNavigateOptions()}
+            name={ROOT_NAVIGATOR_ROUTES.AUTH_STACK}
+            component={AuthNavigator}
           />
-          <RootStack.Screen
-            name={ROOT_NAVIGATOR_ROUTES.MANAGE_WALLETS_STACK}
-            component={ManageWalletsStackNavigator}
-            options={getStackBottomNavigateOptions()}
-          />
-          <RootStack.Screen
-            name={ROOT_NAVIGATOR_ROUTES.SETTINGS_STACK}
-            component={SettingsStackNavigator}
-            options={getStackBottomNavigateOptions()}
-          />
-          <RootStack.Screen
-            name={ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK}
-            component={SendPaymentStackNavigator}
-            options={getStackBottomNavigateOptions()}
-          />
-          <RootStack.Screen
-            name={ROOT_NAVIGATOR_ROUTES.SWAP_STACK}
-            component={SwapStackNavigator}
-            options={getStackBottomNavigateOptions()}
-          />
-          <RootStack.Screen
-            name={ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN}
-            component={AccountQRCodeScreen}
-            options={({ route }) =>
-              withTransitionOverride(
-                getScreenBottomNavigateOptions(t("accountQRCodeScreen.title")),
-                route,
-              )
-            }
-          />
-          <RootStack.Screen
-            name={ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN}
-            component={ScanQRCodeScreen}
-            options={({ route }) =>
-              withTransitionOverride(getScreenOptionsNoHeader(), route)
-            }
-          />
-          <RootStack.Screen
-            name={ROOT_NAVIGATOR_ROUTES.CONNECTED_APPS_SCREEN}
-            component={ConnectedAppsScreen}
-            options={getScreenBottomNavigateOptions(t("connectedApps.title"))}
-          />
-          <RootStack.Screen
-            name={ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK}
-            component={AddFundsStackNavigator}
-            options={getStackBottomNavigateOptions()}
-          />
-          <RootStack.Screen
-            name={ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN}
-            component={TokenDetailsScreen}
-            options={getScreenBottomNavigateOptions("")}
-          />
-          <RootStack.Screen
-            name={ROOT_NAVIGATOR_ROUTES.COLLECTIBLE_DETAILS_SCREEN}
-            component={CollectibleDetailsScreen}
-            options={getScreenBottomNavigateOptions("")}
-          />
-          <RootStack.Screen
-            name={ROOT_NAVIGATOR_ROUTES.ADD_COLLECTIBLE_SCREEN}
-            component={AddCollectibleScreen}
-            options={getScreenBottomNavigateOptions(
-              t("addCollectibleScreen.title"),
-            )}
-          />
-          <RootStack.Screen
-            name={ROOT_NAVIGATOR_ROUTES.HIDDEN_COLLECTIBLES_SCREEN}
-            component={HiddenCollectiblesScreen}
-            options={getScreenBottomNavigateOptions(
-              t("hiddenCollectiblesScreen.title"),
-            )}
-          />
-          <RootStack.Screen
-            name={AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN}
-            component={BiometricsOnboardingScreen}
-            options={getScreenBottomNavigateOptions("")}
-          />
-        </RootStack.Group>
-      ) : authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ||
-        authStatus === AUTH_STATUS.LOCKED ? (
-        <RootStack.Screen
-          name={ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN}
-          component={LockScreen}
-        />
-      ) : (
-        <RootStack.Screen
-          name={ROOT_NAVIGATOR_ROUTES.AUTH_STACK}
-          component={AuthNavigator}
-        />
-      )}
-    </RootStack.Navigator>
+        )}
+      </RootStack.Navigator>
+    </View>
   );
 };

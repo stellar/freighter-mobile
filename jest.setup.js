@@ -492,6 +492,8 @@ jest.mock("hooks/useGetActiveAccount", () => ({
     refreshAccount: jest.fn(),
     signTransaction: jest.fn(),
   })),
+  // Named guard used at direct signing sites; default to "unlocked" in tests
+  isWalletUnlocked: jest.fn(() => true),
 }));
 
 jest.mock("hooks/useBalancesList", () => ({

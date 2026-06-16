@@ -2,14 +2,21 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { List } from "components/List";
 import { BaseLayout } from "components/layout/BaseLayout";
 import Icon from "components/sds/Icon";
+import { Input } from "components/sds/Input";
 import { Text } from "components/sds/Typography";
 import { AUTO_LOCK_TIMER } from "config/constants";
+import { logger } from "config/logger";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import { usePreferencesStore } from "ducks/preferences";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
-import React from "react";
+import { useToast } from "providers/ToastProvider";
+import React, { useState } from "react";
 import { View } from "react-native";
+import {
+  setDevAutoLockTimerSeconds,
+  setDevHashKeyTtlSeconds,
+} from "services/autoLock";
 
 interface AutoLockTimerScreenProps
   extends NativeStackScreenProps<
@@ -17,10 +24,59 @@ interface AutoLockTimerScreenProps
     typeof SETTINGS_ROUTES.AUTO_LOCK_TIMER_SCREEN
   > {}
 
+// TODO/FIXME: dev-only testing labels — remove with the block below
+const DEV_BANNER = "⚠️ DEV ONLY — remove before production";
+const DEV_TIMER_LABEL = "Auto-lock timer (seconds)";
+const DEV_TTL_LABEL = "Hash key TTL (seconds)";
+const DEV_APPLY = "Apply";
+const DEV_TIMER_PLACEHOLDER = "e.g. 10";
+const DEV_TTL_PLACEHOLDER = "e.g. 30";
+
 const AutoLockTimerScreen: React.FC<AutoLockTimerScreenProps> = () => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
+  const { showToast } = useToast();
   const { autoLockTimer, setAutoLockTimer } = usePreferencesStore();
+
+  // TODO/FIXME: dev-only state for the testing controls — remove before prod
+  const [devTimerSeconds, setDevTimerSecondsInput] = useState("");
+  const [devTtlSeconds, setDevTtlSecondsInput] = useState("");
+
+  // TODO/FIXME: dev-only handlers — remove before prod
+  const applyDevTimer = () => {
+    const seconds = Number(devTimerSeconds);
+    if (!Number.isFinite(seconds) || seconds < 0) {
+      return;
+    }
+    setDevAutoLockTimerSeconds(seconds)
+      .then(() =>
+        showToast({
+          variant: "success",
+          title: `Auto-lock timer set to ${seconds}s`,
+          toastId: "dev-auto-lock-timer",
+        }),
+      )
+      .catch((error) =>
+        logger.error("AutoLockTimerScreen", "Failed to set dev timer", error),
+      );
+  };
+  const applyDevTtl = () => {
+    const seconds = Number(devTtlSeconds);
+    if (!Number.isFinite(seconds) || seconds < 0) {
+      return;
+    }
+    setDevHashKeyTtlSeconds(seconds)
+      .then(() =>
+        showToast({
+          variant: "success",
+          title: `Hash key TTL set to ${seconds}s`,
+          toastId: "dev-hash-key-ttl",
+        }),
+      )
+      .catch((error) =>
+        logger.error("AutoLockTimerScreen", "Failed to set dev TTL", error),
+      );
+  };
 
   const timerLabels: Record<AUTO_LOCK_TIMER, string> = {
     [AUTO_LOCK_TIMER.IMMEDIATELY]: t("autoLockTimerScreen.options.immediately"),
@@ -60,6 +116,40 @@ const AutoLockTimerScreen: React.FC<AutoLockTimerScreenProps> = () => {
         <Text sm secondary>
           {t("autoLockTimerScreen.footer")}
         </Text>
+
+        {/*
+          ====================================================================
+          TODO / FIXME: TEMPORARY DEV-ONLY testing controls.
+          !!! REMOVE THIS ENTIRE BLOCK BEFORE MERGING TO PRODUCTION !!!
+          (also remove the dev helpers in services/autoLock.ts and the
+          getDevAutoLockTimerMs override in ducks/auth.ts)
+          Lets QA exercise the lock flows in seconds instead of minutes/hours.
+          ====================================================================
+        */}
+        <View className="flex flex-col gap-3 mt-6">
+          <Text sm medium color={themeColors.status.error}>
+            {DEV_BANNER}
+          </Text>
+          <Input
+            fieldSize="md"
+            label={DEV_TIMER_LABEL}
+            placeholder={DEV_TIMER_PLACEHOLDER}
+            keyboardType="number-pad"
+            value={devTimerSeconds}
+            onChangeText={setDevTimerSecondsInput}
+            endButton={{ content: DEV_APPLY, onPress: applyDevTimer }}
+          />
+          <Input
+            fieldSize="md"
+            label={DEV_TTL_LABEL}
+            placeholder={DEV_TTL_PLACEHOLDER}
+            keyboardType="number-pad"
+            value={devTtlSeconds}
+            onChangeText={setDevTtlSecondsInput}
+            endButton={{ content: DEV_APPLY, onPress: applyDevTtl }}
+          />
+        </View>
+        {/* ================= END TEMPORARY DEV-ONLY BLOCK ================= */}
       </View>
     </BaseLayout>
   );
