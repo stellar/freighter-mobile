@@ -95,7 +95,7 @@ export const useTrendingTokenDetail = ({
   const applyTrendingSelection = useCallback(
     (record: FormattedSearchTokenRecord | null) => {
       if (!record) return;
-      analytics.track(AnalyticsEvent.SWAP_TRENDING_BUY_PRESSED, {
+      analytics.track(AnalyticsEvent.SWAP_TRENDING_SWAP_TO_PRESSED, {
         tokenCode: record.tokenCode,
         tokenIssuer: record.issuer ?? "",
       });

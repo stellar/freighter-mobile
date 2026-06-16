@@ -86,7 +86,7 @@ export enum AnalyticsEvent {
   SWAP_FROM_PICKER_OPENED = "swap: from-picker opened",
   SWAP_DIRECTION_TOGGLED = "swap: direction toggled",
   SWAP_TRENDING_TOKEN_TAPPED = "swap: trending token tapped",
-  SWAP_TRENDING_BUY_PRESSED = "swap: trending buy pressed",
+  SWAP_TRENDING_SWAP_TO_PRESSED = "swap: trending swap-to pressed",
   SWAP_DESTINATION_SELECTED = "swap: destination selected",
   SWAP_SOURCE_SELECTED = "swap: source selected",
   SWAP_TRUSTLINE_ADDED = "swap: trustline added",
