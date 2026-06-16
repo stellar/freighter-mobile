@@ -20,6 +20,12 @@ interface UseSwapForXlmReserveParams {
   setSourceToken: (id: string, symbol: string) => void;
   setDestinationToken: (descriptor: DestinationTokenDescriptor | null) => void;
   setTokenAmount: (amount: string) => void;
+  /**
+   * Fired after the sheet sets source/destination and dismisses. The screen
+   * uses this to scroll its trending list back to the top so the updated
+   * Sell/Receive cards are visible (mirrors the trending-detail flow).
+   */
+  onAfterSwap?: () => void;
 }
 
 /**
@@ -44,6 +50,7 @@ export const useSwapForXlmReserve = ({
   setSourceToken,
   setDestinationToken,
   setTokenAmount,
+  onAfterSwap,
 }: UseSwapForXlmReserveParams) => {
   const xlmReserveBottomSheetRef = useRef<BottomSheetModal>(null);
 
@@ -117,6 +124,7 @@ export const useSwapForXlmReserve = ({
       setTokenAmount(receivedSourceAmount);
     }
     xlmReserveBottomSheetRef.current?.dismiss();
+    onAfterSwap?.();
   }, [
     isCurrentSourceNonXlmClassic,
     sourceBalance,
@@ -125,6 +133,7 @@ export const useSwapForXlmReserve = ({
     setSourceToken,
     setDestinationToken,
     setTokenAmount,
+    onAfterSwap,
   ]);
 
   return {

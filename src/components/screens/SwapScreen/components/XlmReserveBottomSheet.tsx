@@ -122,7 +122,7 @@ export const XlmReserveBottomSheet: React.FC<XlmReserveBottomSheetProps> = ({
           {t("swapScreen.xlmReserve.swapXlm")}
         </Button>
       )}
-      <Button onPress={handleCopyAddress} minimal>
+      <Button onPress={handleCopyAddress} secondary>
         {t("swapScreen.xlmReserve.copyAddress")}
       </Button>
     </View>

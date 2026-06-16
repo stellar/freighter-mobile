@@ -438,6 +438,11 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     setSourceToken,
     setDestinationToken,
     setTokenAmount,
+    // Scroll the trending list to the top so the updated Sell/Receive
+    // cards are visible after the sheet dismisses (mirrors the
+    // trending-detail selection flow).
+    onAfterSwap: () =>
+      trendingListRef.current?.scrollToOffset({ offset: 0, animated: false }),
   });
 
   // Swap source ↔ destination via the chevron-down button between the
