@@ -23,6 +23,8 @@ interface UseSwapForXlmReserveParams {
   swapFee: string;
   setSourceToken: (id: string, symbol: string) => void;
   setDestinationToken: (descriptor: DestinationTokenDescriptor | null) => void;
+  setSourceAmount: (amount: string) => void;
+  setSourceAmountDisplay: (amount: string) => void;
   setTokenAmount: (amount: string) => void;
   /**
    * Fired after the sheet sets source/destination and dismisses. The screen
@@ -55,6 +57,8 @@ export const useSwapForXlmReserve = ({
   swapFee,
   setSourceToken,
   setDestinationToken,
+  setSourceAmount,
+  setSourceAmountDisplay,
   setTokenAmount,
   onAfterSwap,
 }: UseSwapForXlmReserveParams) => {
@@ -114,11 +118,6 @@ export const useSwapForXlmReserve = ({
       );
     }
 
-    // Only swap the source token when we're falling back — otherwise the
-    // converter would reset the amount we're about to set.
-    if (!isCurrentSourceNonXlmClassic) {
-      setSourceToken(sellBalance.id, sellTokenCode);
-    }
     setDestinationToken({
       id: NATIVE_TOKEN_CODE,
       tokenCode: NATIVE_TOKEN_CODE,
@@ -126,12 +125,27 @@ export const useSwapForXlmReserve = ({
       tokenType: TokenTypeWithCustomToken.NATIVE,
       isNew: false,
     });
-    if (receivedSourceAmount) {
-      // The amount needed to receive 0.5 XLM can exceed what's actually
-      // spendable of the sell token — pre-filling that raw value would
-      // trip the insufficient-balance error. Cap it to the sell token's
-      // spendable (same calc the error check uses) so the pre-fill is
-      // always valid; the user can still get less than 0.5 XLM and adjust.
+
+    if (!isCurrentSourceNonXlmClassic) {
+      // Fallback: swap the sell side to the best non-XLM classic balance.
+      // Changing the source token makes the converter reset the amount to
+      // 0, but the store's sourceAmount lags one render behind that reset
+      // — so reset it (and the display + converter) synchronously here in
+      // the same batch as the token switch. Otherwise the prior XLM amount
+      // is briefly validated against the new (possibly tiny) sell balance
+      // and flashes "Insufficient balance" before the reset lands. Same
+      // fix as useSwapDirectionToggle. The pre-fill amount is intentionally
+      // dropped in this mode (any prior amount was denominated in XLM).
+      setSourceToken(sellBalance.id, sellTokenCode);
+      setSourceAmount("0");
+      setSourceAmountDisplay("0");
+      setTokenAmount("0");
+    } else if (receivedSourceAmount) {
+      // Source reused (no token change → no converter reset): pre-fill the
+      // amount needed to receive 0.5 XLM. That amount can exceed what's
+      // actually spendable of the sell token, so cap it to the sell
+      // token's spendable (same calc the error check uses) — the user may
+      // get less than 0.5 XLM and adjust, but never lands on an error.
       const sellSpendable = calculateSpendableAmount({
         balance: sellBalance,
         subentryCount,
@@ -143,6 +157,7 @@ export const useSwapForXlmReserve = ({
       );
       setTokenAmount(cappedAmount.toFixed(DEFAULT_DECIMALS));
     }
+
     xlmReserveBottomSheetRef.current?.dismiss();
     onAfterSwap?.();
   }, [
@@ -154,6 +169,8 @@ export const useSwapForXlmReserve = ({
     swapFee,
     setSourceToken,
     setDestinationToken,
+    setSourceAmount,
+    setSourceAmountDisplay,
     setTokenAmount,
     onAfterSwap,
   ]);

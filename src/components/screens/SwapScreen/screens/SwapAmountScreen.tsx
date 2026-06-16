@@ -458,6 +458,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     swapFee,
     setSourceToken,
     setDestinationToken,
+    setSourceAmount,
+    setSourceAmountDisplay,
     setTokenAmount,
     // Scroll the trending list to the top so the updated Sell/Receive
     // cards are visible after the sheet dismisses (mirrors the
