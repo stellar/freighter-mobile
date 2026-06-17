@@ -8,6 +8,10 @@ import {
 } from "@stellar/stellar-sdk";
 import { logger } from "config/logger";
 import { isContractId } from "helpers/soroban";
+import {
+  normalizeAuthPreimage,
+  validateAuthEntryAddress,
+} from "helpers/walletKitValidation";
 
 /**
  * Checks if an address is a federation address (username*domain.com format)
@@ -387,7 +391,8 @@ export const signMessage = (message: string, privateKey: string): string => {
  * Ed25519 signature alongside the signer address.
  *
  * @param preimageXdr - Base64-encoded HashIdPreimage XDR
- *   (HashIdPreimage.envelopeTypeSorobanAuthorization)
+ *   (envelopeTypeSorobanAuthorization, or the CAP-71 / Protocol 27
+ *   envelopeTypeSorobanAuthorizationWithAddress sent for ADDRESS_V2 credentials)
  * @param privateKey - Account's secret key (S...)
  * @returns signedAuthEntry (base64 Ed25519 signature) and signerAddress (G... public key)
  *
@@ -403,11 +408,22 @@ export const signAuthEntry = (
   preimageXdr: string,
   privateKey: string,
 ): { signedAuthEntry: string; signerAddress: string } => {
-  // Validate that the XDR is a HashIdPreimage.envelopeTypeSorobanAuthorization
-  // before signing — rejects arbitrary blobs that do not conform to SEP-43.
-  xdr.HashIdPreimage.fromXDR(preimageXdr, "base64").sorobanAuthorization();
+  // Validate that the XDR is a Soroban authorization HashIdPreimage (either
+  // arm) before signing — rejects arbitrary blobs that do not conform to SEP-43.
+  const preimage = xdr.HashIdPreimage.fromXDR(preimageXdr, "base64");
+  if (!normalizeAuthPreimage(preimage)) {
+    throw new Error("Unsupported auth entry preimage type");
+  }
 
   const keyPair = Keypair.fromSecret(privateKey);
+
+  // Defense-in-depth: a CAP-71 (ADDRESS_V2) preimage binds a signer address —
+  // never sign one bound to a different account. Pre-validation should already
+  // have rejected this, so it's a backstop against bypass.
+  if (!validateAuthEntryAddress(preimage, keyPair.publicKey()).valid) {
+    throw new Error("Auth entry is bound to a different account");
+  }
+
   // SEP-43: hash the raw preimage bytes and sign — identical to the extension
   const signingPayload = hash(Buffer.from(preimageXdr, "base64"));
   const signature = keyPair.sign(signingPayload);

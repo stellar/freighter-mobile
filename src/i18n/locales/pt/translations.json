@@ -907,6 +907,7 @@
     "errorInvalidMessage": "A mensagem está ausente ou vazia",
     "errorInvalidAuthEntry": "O XDR da entrada de autorização está ausente ou malformado",
     "errorAuthEntryNetworkMismatch": "A entrada de autorização é para uma rede diferente",
+    "errorAuthEntryAddressMismatch": "A entrada de autorização está vinculada a uma conta diferente",
     "errorEmptyMessage": "Não é possível assinar mensagem vazia",
     "errorMessageTooLong": "Mensagem muito longa (máximo 1KB)",
     "errorSubmitting": "Erro ao enviar a transação",
@@ -1232,7 +1233,8 @@
       "contractId": "ID do Contrato",
       "functionName": "Nome da função",
       "parameters": "Parâmetros",
-      "contractAddress": "Endereço do contrato"
+      "contractAddress": "Endereço do contrato",
+      "address": "Endereço do signatário"
     },
     "operations": {
       "destinationWithNumber": "Destino #{{number}}",

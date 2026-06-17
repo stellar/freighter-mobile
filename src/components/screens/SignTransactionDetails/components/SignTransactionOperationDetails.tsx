@@ -1,15 +1,15 @@
-import { Operation } from "@stellar/stellar-sdk";
+import { OperationRecord } from "@stellar/stellar-sdk";
 import Operations from "components/screens/SignTransactionDetails/components/Operations";
 import React, { useRef } from "react";
 import { View } from "react-native";
 
 interface SignTransactionOperationDetailsProps {
-  operations: Operation[];
+  operations: OperationRecord[];
 }
 
 const SignTransactionOperationDetails =
   React.memo<SignTransactionOperationDetailsProps>(({ operations }) => {
-    const stableOperationsRef = useRef<Operation[]>([]);
+    const stableOperationsRef = useRef<OperationRecord[]>([]);
     const hasInitializedRef = useRef(false);
 
     // Only set operations ONCE, never update them
