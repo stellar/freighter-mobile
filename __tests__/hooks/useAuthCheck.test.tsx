@@ -18,6 +18,19 @@ jest.mock("services/autoLock", () => ({
   recordDevInteraction: jest.fn(),
 }));
 
+// components/App pulls in the full app tree (RootNavigator → native-only
+// modules); stub it to just the navigationRef the hook subscribes to.
+const mockNavUnsubscribe = jest.fn();
+const mockNavAddListener = jest.fn<() => void, [string, () => void]>(
+  () => mockNavUnsubscribe,
+);
+jest.mock("components/App", () => ({
+  navigationRef: {
+    addListener: (event: string, callback: () => void) =>
+      mockNavAddListener(event, callback),
+  },
+}));
+
 const flushMicrotasks = async () => {
   await Promise.resolve();
   await Promise.resolve();
@@ -234,6 +247,44 @@ describe("useAuthCheck", () => {
     });
 
     expect(recordDevInteraction).toHaveBeenCalled();
+    unmount();
+  });
+
+  it("subscribes to navigation changes as an interaction signal", () => {
+    const { unmount } = renderAuthCheck();
+
+    expect(mockNavAddListener).toHaveBeenCalledWith(
+      "state",
+      expect.any(Function),
+    );
+    unmount();
+  });
+
+  it("resets the idle clock on a navigation change so a multi-screen flow is not idle-locked", async () => {
+    // Short timer (1s); the user navigates just before it would elapse
+    (getDevAutoLockTimerMs as jest.Mock).mockResolvedValue(1000);
+    const { unmount } = renderAuthCheck();
+
+    // The hook registers a "state" listener; grab the callback the same way
+    // the navigation container would invoke it on a route change.
+    const navListener = mockNavAddListener.mock.calls.find(
+      ([eventName]) => eventName === "state",
+    )?.[1] as () => void;
+
+    await act(async () => {
+      jest.advanceTimersByTime(800);
+      // A navigation occurs before the 1s idle elapses → resets the clock
+      navListener();
+      await flushMicrotasks();
+    });
+    await act(async () => {
+      // Another 800ms (1.6s total, but only 800ms since the nav) — still under
+      // the timer, so no idle-lock
+      jest.advanceTimersByTime(800);
+      await flushMicrotasks();
+    });
+
+    expect(mockSoftLock).not.toHaveBeenCalled();
     unmount();
   });
 

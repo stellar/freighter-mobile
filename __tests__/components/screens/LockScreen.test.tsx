@@ -65,6 +65,7 @@ describe("LockScreen", () => {
       signInMethod: LoginType.FACE,
       isLoading: false,
       error: null,
+      isForegroundIdleLock: false,
     });
     usePreferencesStore.setState({ isBiometricsEnabled: true });
   });
@@ -100,6 +101,42 @@ describe("LockScreen", () => {
       expect(mockVerifyActionWithBiometrics).not.toHaveBeenCalled();
     });
     expect(mockSignIn).not.toHaveBeenCalled();
+  });
+
+  it("does not auto-prompt on mount for a foreground-idle lock", async () => {
+    // The user stayed in the app and idled out — no unprompted Face ID
+    useAuthenticationStore.setState({ isForegroundIdleLock: true });
+
+    renderLockScreen();
+
+    // Give the mount effect a chance to (not) fire
+    await waitFor(() => {
+      expect(mockSignIn).not.toHaveBeenCalled();
+    });
+    expect(mockVerifyActionWithBiometrics).not.toHaveBeenCalled();
+  });
+
+  it("still re-prompts on return from background after a foreground-idle lock", async () => {
+    useAuthenticationStore.setState({ isForegroundIdleLock: true });
+
+    renderLockScreen();
+
+    // No mount prompt for the idle lock...
+    await waitFor(() => {
+      expect(mockVerifyActionWithBiometrics).not.toHaveBeenCalled();
+    });
+
+    // ...but returning from the background still prompts (coming from bg)
+    const appStateHandlers = (
+      AppState.addEventListener as jest.Mock
+    ).mock.calls.map(([, handler]) => handler as (state: string) => void);
+
+    appStateHandlers.forEach((handler) => handler("background"));
+    appStateHandlers.forEach((handler) => handler("active"));
+
+    await waitFor(() => {
+      expect(mockVerifyActionWithBiometrics).toHaveBeenCalledTimes(1);
+    });
   });
 
   it("re-prompts biometrics when the app returns from the background", async () => {

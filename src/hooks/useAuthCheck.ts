@@ -1,3 +1,4 @@
+import { navigationRef } from "components/App";
 import { AUTO_LOCK_TIMER, AUTO_LOCK_TIMER_MS } from "config/constants";
 import { logger } from "config/logger";
 import { AUTH_STATUS } from "config/types";
@@ -49,6 +50,18 @@ const useAuthCheck = () => {
   const panResponderRef = useRef<PanResponderInstance | null>(null);
 
   /**
+   * Mark "now" as the last user interaction. Called from every activity
+   * signal (touches, navigation, unlock) so the foreground-idle timer only
+   * fires after a genuinely idle stretch.
+   */
+  const recordInteraction = useCallback(() => {
+    lastInteractionRef.current = Date.now();
+    setIsActive(true);
+    // TODO/FIXME: dev-only — feeds the on-screen idle countdown readout
+    recordDevInteraction();
+  }, []);
+
+  /**
    * Check the authentication status and navigate to the lock screen if the auth hash is expired.
    */
   const checkAuth = useCallback(async () => {
@@ -90,7 +103,11 @@ const useAuthCheck = () => {
           timerMs > 0 &&
           Date.now() - lastInteractionRef.current >= timerMs
         ) {
-          await useAuthenticationStore.getState().softLock();
+          // foregroundIdle: the user stayed in the app and idled out — the
+          // lock screen suppresses its biometric auto-prompt for this case.
+          await useAuthenticationStore
+            .getState()
+            .softLock({ foregroundIdle: true });
         }
       }
     } catch (error) {
@@ -243,12 +260,21 @@ const useAuthCheck = () => {
    */
   useEffect(() => {
     if (authStatus === AUTH_STATUS.AUTHENTICATED) {
-      lastInteractionRef.current = Date.now();
-      setIsActive(true);
-      // TODO/FIXME: dev-only — keep the on-screen idle countdown in sync
-      recordDevInteraction();
+      recordInteraction();
     }
-  }, [authStatus]);
+  }, [authStatus, recordInteraction]);
+
+  /**
+   * Treat navigation as user activity. Some controls (gesture-handler-based
+   * buttons, swipeables, bottom sheets) bypass the JS responder system and
+   * never reach the PanResponder below, so a route change is often the only
+   * reliable signal that the user acted — without this a user could move
+   * through several screens and still be idle-locked mid-flow.
+   */
+  useEffect(() => {
+    const unsubscribe = navigationRef.addListener("state", recordInteraction);
+    return unsubscribe;
+  }, [recordInteraction]);
 
   /**
    * Monitor user interaction and update active status accordingly.
@@ -266,23 +292,21 @@ const useAuthCheck = () => {
   }, []);
 
   /**
-   * Initialize PanResponder to capture touch interactions and update the last interaction timestamp.
+   * Initialize PanResponder to observe touch interactions and update the last
+   * interaction timestamp. The *Capture variants run during the capture phase
+   * (root → target) so the root sees EVERY touch start/move — including taps
+   * on buttons and list items that would otherwise claim the responder before
+   * a bubble-phase handler is asked. Returning false means it observes without
+   * stealing the gesture from the child.
    */
   useEffect(() => {
-    const updateLastInteraction = () => {
-      lastInteractionRef.current = Date.now();
-      setIsActive(true);
-      // TODO/FIXME: dev-only — feeds the on-screen idle countdown readout
-      recordDevInteraction();
-    };
-
     panResponderRef.current = PanResponder.create({
-      onStartShouldSetPanResponder: () => {
-        updateLastInteraction();
+      onStartShouldSetPanResponderCapture: () => {
+        recordInteraction();
         return false;
       },
-      onMoveShouldSetPanResponder: () => {
-        updateLastInteraction();
+      onMoveShouldSetPanResponderCapture: () => {
+        recordInteraction();
         return false;
       },
       onPanResponderTerminationRequest: () => true,
@@ -296,7 +320,7 @@ const useAuthCheck = () => {
     }, INITIAL_SETUP_DELAY);
 
     return () => clearTimeout(initialCheckTimeout);
-  }, [checkAuth]);
+  }, [checkAuth, recordInteraction]);
 
   /**
    * Provide a function to manually trigger an auth check.
