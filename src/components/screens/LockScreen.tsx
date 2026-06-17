@@ -179,14 +179,15 @@ export const LockScreenContent: React.FC<LockScreenContentProps> = ({
   ]);
 
   // Auto-prompt biometrics when landing on this screen with the app active
-  // (cold start or a lock that happened while backgrounded). Skipped for a
-  // foreground-idle lock: the user stayed in the app and idled out, so popping
-  // an unprompted Face ID would be jarring — they can tap to unlock, and the
-  // return-from-background effect below re-prompts on the next foreground.
+  // (cold start or a lock that happened while backgrounded). Skipped when the
+  // user was actively present — a foreground-idle timeout or a manual
+  // lock/logout — since popping an unprompted Face ID is jarring there; they
+  // can tap to unlock, and the return-from-background effect below re-prompts
+  // on the next foreground.
   useEffect(() => {
     if (
       AppState.currentState === "active" &&
-      !useAuthenticationStore.getState().isForegroundIdleLock
+      !useAuthenticationStore.getState().suppressBiometricAutoPrompt
     ) {
       attemptBiometricUnlock();
     }

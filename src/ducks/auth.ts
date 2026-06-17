@@ -220,12 +220,12 @@ interface AuthState {
   // IMMEDIATELY on backgrounding): the navigation tree stays mounted under a
   // lock overlay so the user resumes exactly where they were after unlocking.
   isSoftLocked: boolean;
-  // True only when the soft lock was triggered by the foreground-idle timer
-  // (the user stayed in the app and let it idle out). The lock screen uses
-  // this to suppress the biometric auto-prompt: an unprompted Face ID popping
-  // up while the user is sitting in the app is jarring. Biometrics still
-  // auto-prompt on cold start and on return from the background.
-  isForegroundIdleLock: boolean;
+  // True when the lock happened while the user was actively present in the
+  // app — a foreground-idle timeout or a manual lock/logout. The lock screen
+  // uses this to suppress the biometric auto-prompt: an unprompted Face ID is
+  // jarring when the user just locked it themselves or stepped away. The
+  // prompt still fires on cold start and on return from the background.
+  suppressBiometricAutoPrompt: boolean;
   allAccounts: Account[];
 
   // Active account state
@@ -298,7 +298,7 @@ interface ImportSecretKeyParams {
  */
 interface AuthActions {
   logout: (shouldWipeAllData?: boolean) => void;
-  softLock: (options?: { foregroundIdle?: boolean }) => Promise<void>;
+  softLock: (options?: { suppressBiometricPrompt?: boolean }) => Promise<void>;
   signUp: (params: SignUpParams) => Promise<void>;
   signIn: (params: SignInParams) => Promise<void>;
   importWallet: (params: ImportWalletParams) => Promise<boolean>;
@@ -361,7 +361,7 @@ const initialState: Omit<AuthState, "network"> = {
   error: null,
   authStatus: AUTH_STATUS.NOT_AUTHENTICATED,
   isSoftLocked: false,
-  isForegroundIdleLock: false,
+  suppressBiometricAutoPrompt: false,
   allAccounts: [],
   // Active account initial state
   account: null,
@@ -2087,6 +2087,10 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
               isLoadingAccount: false,
               accountError: null,
               authStatus: AUTH_STATUS.LOCKED,
+              // The user locked the app themselves — don't auto-prompt
+              // biometrics on the lock screen; that only fires on cold start
+              // or return from the background.
+              suppressBiometricAutoPrompt: true,
               isLoading: false,
             });
 
@@ -2182,7 +2186,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
    * errors; signing is independently blocked while LOCKED. Persisting LOCKED
    * covers cold starts (which fall back to the LockScreen route).
    */
-  softLock: async (options?: { foregroundIdle?: boolean }) => {
+  softLock: async (options?: { suppressBiometricPrompt?: boolean }) => {
     Keyboard.dismiss();
 
     // Atomic update: RootNavigator must never see LOCKED && !isSoftLocked,
@@ -2190,9 +2194,9 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
     set({
       authStatus: AUTH_STATUS.LOCKED,
       isSoftLocked: true,
-      // Only a foreground-idle lock suppresses the lock screen's biometric
+      // A foreground-idle lock suppresses the lock screen's biometric
       // auto-prompt; background / IMMEDIATELY / cold-start locks still prompt.
-      isForegroundIdleLock: options?.foregroundIdle ?? false,
+      suppressBiometricAutoPrompt: options?.suppressBiometricPrompt ?? false,
       isLoading: false,
     });
 

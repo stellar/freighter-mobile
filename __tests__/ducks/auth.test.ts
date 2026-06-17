@@ -1431,6 +1431,11 @@ describe("auth duck", () => {
           SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
           AUTH_STATUS.LOCKED,
         );
+
+        // A manual lock suppresses the lock screen's biometric auto-prompt
+        expect(
+          useAuthenticationStore.getState().suppressBiometricAutoPrompt,
+        ).toBe(true);
       });
 
       it("should wipe all data on logout when shouldWipeAllData is true", async () => {

@@ -65,7 +65,7 @@ describe("LockScreen", () => {
       signInMethod: LoginType.FACE,
       isLoading: false,
       error: null,
-      isForegroundIdleLock: false,
+      suppressBiometricAutoPrompt: false,
     });
     usePreferencesStore.setState({ isBiometricsEnabled: true });
   });
@@ -103,9 +103,10 @@ describe("LockScreen", () => {
     expect(mockSignIn).not.toHaveBeenCalled();
   });
 
-  it("does not auto-prompt on mount for a foreground-idle lock", async () => {
-    // The user stayed in the app and idled out — no unprompted Face ID
-    useAuthenticationStore.setState({ isForegroundIdleLock: true });
+  it("does not auto-prompt on mount when the lock was user-initiated (idle or manual)", async () => {
+    // The user stayed in the app and idled out, or locked manually — no
+    // unprompted Face ID
+    useAuthenticationStore.setState({ suppressBiometricAutoPrompt: true });
 
     renderLockScreen();
 
@@ -116,8 +117,8 @@ describe("LockScreen", () => {
     expect(mockVerifyActionWithBiometrics).not.toHaveBeenCalled();
   });
 
-  it("still re-prompts on return from background after a foreground-idle lock", async () => {
-    useAuthenticationStore.setState({ isForegroundIdleLock: true });
+  it("still re-prompts on return from background after a user-initiated lock", async () => {
+    useAuthenticationStore.setState({ suppressBiometricAutoPrompt: true });
 
     renderLockScreen();
 

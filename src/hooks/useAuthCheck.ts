@@ -103,11 +103,11 @@ const useAuthCheck = () => {
           timerMs > 0 &&
           Date.now() - lastInteractionRef.current >= timerMs
         ) {
-          // foregroundIdle: the user stayed in the app and idled out — the
-          // lock screen suppresses its biometric auto-prompt for this case.
+          // The user stayed in the app and idled out — suppress the lock
+          // screen's biometric auto-prompt for this case.
           await useAuthenticationStore
             .getState()
-            .softLock({ foregroundIdle: true });
+            .softLock({ suppressBiometricPrompt: true });
         }
       }
     } catch (error) {
