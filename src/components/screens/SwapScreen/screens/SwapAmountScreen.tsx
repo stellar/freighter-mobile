@@ -378,7 +378,18 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     setDestinationToken,
   ]);
 
-  useInitialRecommendedFee(recommendedFee, TransactionContext.Swap);
+  // The network fee auto-refreshes every 30s and is paid in XLM, so a fee
+  // bump would shrink an XLM source's spendable and flash "Insufficient
+  // balance" under an amount the user already committed to (e.g. Max) —
+  // even over the reserve/review sheet. Freeze the fee once an amount is
+  // entered by withholding new recommended values (useInitialRecommendedFee
+  // only saves a truthy fee), so spendable stays put. It resumes updating
+  // when the amount is cleared / the screen resets.
+  const hasEnteredSourceAmount = new BigNumber(sourceAmount || "0").gt(0);
+  useInitialRecommendedFee(
+    hasEnteredSourceAmount ? "" : recommendedFee,
+    TransactionContext.Swap,
+  );
 
   const {
     transactionSettingsBottomSheetModalRef,

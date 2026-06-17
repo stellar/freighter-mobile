@@ -26,6 +26,7 @@ const mockSetSourceAmountDisplay = jest.fn();
 const mockResetSwap = jest.fn();
 const mockResetTransaction = jest.fn();
 const mockResetToDefaults = jest.fn();
+const mockSaveSwapFee = jest.fn();
 const mockExecuteSwap = jest.fn().mockResolvedValue(undefined);
 const mockSetupSwapTransaction = jest.fn().mockResolvedValue(undefined);
 
@@ -180,7 +181,18 @@ jest.mock("ducks/swapSettings", () => ({
     swapTimeout: "30",
     swapSlippage: "0.5",
     resetToDefaults: mockResetToDefaults,
+    saveSwapFee: mockSaveSwapFee,
+    feeManuallyChanged: false,
+    markFeeManuallyChanged: jest.fn(),
   })),
+}));
+// Deterministic network fee so the fee-freeze behavior is testable and
+// independent of the real (or temporarily faked) useNetworkFees module.
+jest.mock("hooks/useNetworkFees", () => ({
+  useNetworkFees: () => ({
+    recommendedFee: "0.001",
+    networkCongestion: "LOW",
+  }),
 }));
 jest.mock("components/screens/SwapScreen/hooks/useSwapTransaction", () => ({
   useSwapTransaction: jest.fn(() => ({
@@ -332,6 +344,7 @@ describe("SwapAmountScreen", () => {
     mockExecuteSwap.mockClear();
     mockSetupSwapTransaction.mockClear();
     mockShowToast.mockClear();
+    mockSaveSwapFee.mockClear();
     setSwapStoreState({});
     mockBalancesListReturn();
   });
@@ -387,6 +400,28 @@ describe("SwapAmountScreen", () => {
     expect(mockResetSwap).toHaveBeenCalled();
     expect(mockResetTransaction).toHaveBeenCalled();
     expect(mockResetToDefaults).toHaveBeenCalled();
+  });
+
+  describe("network fee freeze", () => {
+    it("keeps applying the recommended fee while no source amount is entered", () => {
+      setSwapStoreState({ sourceAmount: "0" });
+
+      renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      expect(mockSaveSwapFee).toHaveBeenCalledWith("0.001");
+    });
+
+    it("freezes the fee (stops applying recommended values) once an amount is entered", () => {
+      setSwapStoreState({ sourceAmount: "1" });
+
+      renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      expect(mockSaveSwapFee).not.toHaveBeenCalled();
+    });
   });
 
   describe("CTA state machine", () => {
