@@ -173,8 +173,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const { scanTransaction } = useBlockaidTransaction();
   const { recommendedFee } = useNetworkFees();
 
-  useInitialRecommendedFee(recommendedFee, TransactionContext.Send);
-
   const publicKey = account?.publicKey;
   const amountInputRef = useRef<TextInput>(null);
   const focusRetryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
@@ -412,6 +410,17 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     setTokenAmount,
     updateFiatDisplay,
   } = converter;
+
+  // Freeze the network fee once an amount is entered. The fee auto-refreshes
+  // every 30s and is paid in XLM, so a bump would shrink an XLM source's
+  // spendable under a committed amount and flash "Insufficient balance".
+  // useInitialRecommendedFee only persists a truthy fee, so withholding it
+  // freezes the value; it resumes when the amount is cleared. Mirrors swap.
+  const hasEnteredAmount = new BigNumber(tokenAmount || "0").isGreaterThan(0);
+  useInitialRecommendedFee(
+    hasEnteredAmount ? "" : recommendedFee,
+    TransactionContext.Send,
+  );
 
   const unfundedContext: UnfundedDestinationContext | undefined = useMemo(
     () =>
