@@ -4732,9 +4732,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@stellar/stellar-sdk@npm:16.0.0-rc.1":
-  version: 16.0.0-rc.1
-  resolution: "@stellar/stellar-sdk@npm:16.0.0-rc.1"
+"@stellar/stellar-sdk@npm:16.0.0":
+  version: 16.0.0
+  resolution: "@stellar/stellar-sdk@npm:16.0.0"
   dependencies:
     "@noble/ed25519": "npm:^3.1.0"
     "@noble/hashes": "npm:^2.2.0"
@@ -4750,7 +4750,7 @@ __metadata:
     uint8array-extras: "npm:^1.5.0"
   bin:
     stellar-js: bin/stellar-js
-  checksum: 10c0/0541092c5c5819d781b6359315a47785757f1c6a0318435b2183c8445b339ecaad147305ce8e204bb0f3ba5ce5bf0e27a491911ac59b7d9262858dfd413687a0
+  checksum: 10c0/d3aa09d009787e147c9a3da4b4bf39d15001112cbd968d658aaea0d32a4c5ed3b8f3bd92b1c76b925a253f4e2c0c718a9737e49367be74e6f5683d9b365bf8a1
   languageName: node
   linkType: hard
 
@@ -9932,7 +9932,7 @@ __metadata:
     "@shopify/react-native-skia": "npm:2.2.21"
     "@stablelib/base64": "npm:2.0.1"
     "@stablelib/utf8": "npm:2.0.1"
-    "@stellar/stellar-sdk": "npm:16.0.0-rc.1"
+    "@stellar/stellar-sdk": "npm:16.0.0"
     "@stellar/typescript-wallet-sdk-km": "npm:3.0.0"
     "@testing-library/jest-native": "npm:5.4.3"
     "@testing-library/react-hooks": "npm:8.0.1"
