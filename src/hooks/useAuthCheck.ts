@@ -3,7 +3,10 @@ import { AUTO_LOCK_TIMER, AUTO_LOCK_TIMER_MS } from "config/constants";
 import { logger } from "config/logger";
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
-import { hidePrivacyShield } from "helpers/privacyShield";
+import {
+  hidePrivacyShield,
+  markPrivacyShieldVisible,
+} from "helpers/privacyShield";
 import { useEffect, useRef, useState, useCallback } from "react";
 import {
   AppState,
@@ -153,6 +156,12 @@ const useAuthCheck = () => {
    */
   useEffect(() => {
     const handleAppStateChange = (nextAppState: AppStateStatus) => {
+      // Mirror the native shield: it's raised whenever the app backgrounds, so
+      // the lock screen can hold its biometric prompt until the shield drops.
+      if (nextAppState === "background") {
+        markPrivacyShieldVisible();
+      }
+
       // Record when the app goes to the background so the auto-lock timer can
       // be evaluated on the next foreground or cold start. Intentionally NOT
       // on "inactive": iOS fires it for control center, app-switcher peeks,

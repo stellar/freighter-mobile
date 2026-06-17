@@ -22,6 +22,24 @@ jest.mock("services/autoLock", () => ({
   applyAutoLockTimerToHashKey: jest.fn().mockResolvedValue(undefined),
 }));
 
+// Controllable privacy-shield state so we can assert the prompt is held until
+// the shield drops on return from background.
+let mockShieldVisible = false;
+const mockShieldHiddenListeners = new Set<() => void>();
+const emitShieldHidden = () => {
+  mockShieldVisible = false;
+  mockShieldHiddenListeners.forEach((listener) => listener());
+};
+jest.mock("helpers/privacyShield", () => ({
+  isPrivacyShieldVisible: () => mockShieldVisible,
+  onPrivacyShieldHidden: (listener: () => void) => {
+    mockShieldHiddenListeners.add(listener);
+    return () => mockShieldHiddenListeners.delete(listener);
+  },
+  markPrivacyShieldVisible: jest.fn(),
+  hidePrivacyShield: jest.fn(),
+}));
+
 type LockScreenNavigationProp = NativeStackScreenProps<
   RootStackParamList,
   typeof ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN
@@ -55,6 +73,8 @@ describe("LockScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (AppState as { currentState: string }).currentState = "active";
+    mockShieldVisible = false;
+    mockShieldHiddenListeners.clear();
 
     useAuthenticationStore.setState({
       signIn: mockSignIn,
@@ -154,6 +174,37 @@ describe("LockScreen", () => {
 
     appStateHandlers.forEach((handler) => handler("background"));
     appStateHandlers.forEach((handler) => handler("active"));
+
+    await waitFor(() => {
+      expect(mockVerifyActionWithBiometrics).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it("holds the biometric prompt until the privacy shield drops on return from background", async () => {
+    renderLockScreen();
+
+    // Mount prompt fires immediately — the shield isn't up at mount
+    await waitFor(() => {
+      expect(mockVerifyActionWithBiometrics).toHaveBeenCalledTimes(1);
+    });
+
+    // App backgrounds (shield raised) and returns to the foreground
+    mockShieldVisible = true;
+    const appStateHandlers = (
+      AppState.addEventListener as jest.Mock
+    ).mock.calls.map(([, handler]) => handler as (state: string) => void);
+
+    appStateHandlers.forEach((handler) => handler("background"));
+    appStateHandlers.forEach((handler) => handler("active"));
+
+    // The prompt is held while the shield still covers the wallet
+    await waitFor(() => {
+      expect(mockVerifyActionWithBiometrics).toHaveBeenCalledTimes(1);
+    });
+
+    // Once the shield drops, the held prompt fires so Face ID appears over
+    // the now-visible lock screen
+    emitShieldHidden();
 
     await waitFor(() => {
       expect(mockVerifyActionWithBiometrics).toHaveBeenCalledTimes(2);

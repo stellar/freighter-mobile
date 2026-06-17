@@ -6,6 +6,10 @@ import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore, getActiveAccountPublicKey } from "ducks/auth";
 import { usePreferencesStore } from "ducks/preferences";
+import {
+  isPrivacyShieldVisible,
+  onPrivacyShieldHidden,
+} from "helpers/privacyShield";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useToast } from "providers/ToastProvider";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -87,6 +91,9 @@ export const LockScreenContent: React.FC<LockScreenContentProps> = ({
   // "inactive" is intentionally ignored: on iOS the biometric overlay itself
   // triggers inactive→active transitions, which would re-prompt on cancel.
   const wasBackgroundedRef = useRef(AppState.currentState !== "active");
+  // True when a prompt was requested while the privacy shield was still up; it
+  // fires once the shield drops so the lock screen is visible behind Face ID.
+  const pendingPromptRef = useRef(false);
 
   // Monitor auth status changes to navigate when unlocked
   useEffect(() => {
@@ -178,6 +185,32 @@ export const LockScreenContent: React.FC<LockScreenContentProps> = ({
     handleUnlock,
   ]);
 
+  /**
+   * Requests the biometric prompt, but holds it while the native privacy
+   * shield is still covering the app (return from background) so Face ID
+   * appears over the visible lock screen rather than the shield. When the
+   * shield is down it prompts immediately.
+   */
+  const requestBiometricPrompt = useCallback(() => {
+    if (isPrivacyShieldVisible()) {
+      pendingPromptRef.current = true;
+      return;
+    }
+    attemptBiometricUnlock();
+  }, [attemptBiometricUnlock]);
+
+  // Fire a held prompt once the privacy shield drops.
+  useEffect(() => {
+    const unsubscribe = onPrivacyShieldHidden(() => {
+      if (pendingPromptRef.current) {
+        pendingPromptRef.current = false;
+        attemptBiometricUnlock();
+      }
+    });
+
+    return unsubscribe;
+  }, [attemptBiometricUnlock]);
+
   // Auto-prompt biometrics when landing on this screen with the app active
   // (cold start or a lock that happened while backgrounded). Skipped when the
   // user was actively present — a foreground-idle timeout or a manual
@@ -189,9 +222,9 @@ export const LockScreenContent: React.FC<LockScreenContentProps> = ({
       AppState.currentState === "active" &&
       !useAuthenticationStore.getState().suppressBiometricAutoPrompt
     ) {
-      attemptBiometricUnlock();
+      requestBiometricPrompt();
     }
-  }, [attemptBiometricUnlock]);
+  }, [requestBiometricPrompt]);
 
   // Re-prompt biometrics when the app returns from the background while this
   // screen is showing — like banking apps do
@@ -206,14 +239,15 @@ export const LockScreenContent: React.FC<LockScreenContentProps> = ({
         // Re-prompting on EVERY return from the background is intentional
         // (banking-app behavior): the user landing on a locked wallet wants
         // to get in, and a cancelled prompt stays cancelled until they leave.
+        // Held until the privacy shield drops so the lock screen is visible.
         wasBackgroundedRef.current = false;
         hasAutoPromptedRef.current = false;
-        attemptBiometricUnlock();
+        requestBiometricPrompt();
       }
     });
 
     return () => subscription.remove();
-  }, [attemptBiometricUnlock]);
+  }, [requestBiometricPrompt]);
 
   const handleForgotPassword = useCallback(() => {
     setIsForgotPasswordModalVisible(true);
