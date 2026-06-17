@@ -3082,6 +3082,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@noble/ed25519@npm:^3.1.0":
+  version: 3.1.0
+  resolution: "@noble/ed25519@npm:3.1.0"
+  checksum: 10c0/6317722130649cf5884eff57d540b36ec1006cf68145b09ff427d88df359a3b12baaaf420aad87b747f49d30c5ae56065bf31e5ebde1a6d59c3ce9d0b6a68fdb
+  languageName: node
+  linkType: hard
+
 "@noble/hashes@npm:1.7.0":
   version: 1.7.0
   resolution: "@noble/hashes@npm:1.7.0"
@@ -3093,6 +3100,13 @@ __metadata:
   version: 1.8.0
   resolution: "@noble/hashes@npm:1.8.0"
   checksum: 10c0/06a0b52c81a6fa7f04d67762e08b2c476a00285858150caeaaff4037356dd5e119f45b2a530f638b77a5eeca013168ec1b655db41bae3236cb2e9d511484fc77
+  languageName: node
+  linkType: hard
+
+"@noble/hashes@npm:^2.2.0":
+  version: 2.2.0
+  resolution: "@noble/hashes@npm:2.2.0"
+  checksum: 10c0/cad8630c504d6b9271984f685cd0af9101b40988fc2dfbe17ccdf068a9941f95cc5c9957d89e9ca4b7ca94c15cb35f93510c5d53a09fbcc83ee503b93d0a1034
   languageName: node
   linkType: hard
 
@@ -4653,17 +4667,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@stellar/js-xdr@npm:4.0.0, @stellar/js-xdr@npm:^4.0.0":
+  version: 4.0.0
+  resolution: "@stellar/js-xdr@npm:4.0.0"
+  checksum: 10c0/617bb3d7fa9fbdb607e5cb42cc032a15ad1c111440c6d7ede40fcecde204e88ed351aebc80ce1e4eedac6c1d949c3da5722696611e2b00569e7edbd5a0634c37
+  languageName: node
+  linkType: hard
+
 "@stellar/js-xdr@npm:^3.1.2":
   version: 3.1.2
   resolution: "@stellar/js-xdr@npm:3.1.2"
   checksum: 10c0/eaa1fc9341b1d1bcaf5c616b9bc0a6dc9a6c7ef7a477f6f6b4cb4206a947cdd3c7e06395ba7be30f6137179eec5f206d75b3ed66fdfe5e2ac54553b7a353130c
-  languageName: node
-  linkType: hard
-
-"@stellar/js-xdr@npm:^4.0.0":
-  version: 4.0.0
-  resolution: "@stellar/js-xdr@npm:4.0.0"
-  checksum: 10c0/617bb3d7fa9fbdb607e5cb42cc032a15ad1c111440c6d7ede40fcecde204e88ed351aebc80ce1e4eedac6c1d949c3da5722696611e2b00569e7edbd5a0634c37
   languageName: node
   linkType: hard
 
@@ -4715,6 +4729,28 @@ __metadata:
   bin:
     stellar-js: bin/stellar-js
   checksum: 10c0/73a5f972db0004492ea8f541ef3e12fa5a6769d6e2affd4535bd4d3680e3828a767bce182d6171dc74cc3e2486d17a9ce1ddc912e94fe73c7fe34f0c1008f5ed
+  languageName: node
+  linkType: hard
+
+"@stellar/stellar-sdk@npm:16.0.0":
+  version: 16.0.0
+  resolution: "@stellar/stellar-sdk@npm:16.0.0"
+  dependencies:
+    "@noble/ed25519": "npm:^3.1.0"
+    "@noble/hashes": "npm:^2.2.0"
+    "@stellar/js-xdr": "npm:4.0.0"
+    axios: "npm:1.16.1"
+    base32.js: "npm:^0.1.0"
+    bignumber.js: "npm:^11.1.1"
+    buffer: "npm:^6.0.3"
+    commander: "npm:^14.0.3"
+    eventsource: "npm:^4.1.0"
+    feaxios: "npm:^0.0.23"
+    smol-toml: "npm:^1.6.1"
+    uint8array-extras: "npm:^1.5.0"
+  bin:
+    stellar-js: bin/stellar-js
+  checksum: 10c0/d3aa09d009787e147c9a3da4b4bf39d15001112cbd968d658aaea0d32a4c5ed3b8f3bd92b1c76b925a253f4e2c0c718a9737e49367be74e6f5683d9b365bf8a1
   languageName: node
   linkType: hard
 
@@ -6632,6 +6668,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"axios@npm:1.16.1":
+  version: 1.16.1
+  resolution: "axios@npm:1.16.1"
+  dependencies:
+    follow-redirects: "npm:^1.16.0"
+    form-data: "npm:^4.0.5"
+    https-proxy-agent: "npm:^5.0.1"
+    proxy-from-env: "npm:^2.1.0"
+  checksum: 10c0/2f77e37e6552bbff8a772d058fb09500198e9188c6b20dc799d82dbe12a8cb506f6eed4e4e62a9ba612a35cbab496faa26d68f9bff14a53af6d15c3e136391a7
+  languageName: node
+  linkType: hard
+
 "axobject-query@npm:^4.1.0":
   version: 4.1.0
   resolution: "axobject-query@npm:4.1.0"
@@ -7032,6 +7080,13 @@ __metadata:
   version: 9.1.2
   resolution: "bignumber.js@npm:9.1.2"
   checksum: 10c0/e17786545433f3110b868725c449fa9625366a6e675cd70eb39b60938d6adbd0158cb4b3ad4f306ce817165d37e63f4aa3098ba4110db1d9a3b9f66abfbaf10d
+  languageName: node
+  linkType: hard
+
+"bignumber.js@npm:^11.1.1":
+  version: 11.1.3
+  resolution: "bignumber.js@npm:11.1.3"
+  checksum: 10c0/5ab91a37ee92d334d7df92b79a0340b559e75d78ed0175f497243b8b043e00368e26b4f5fbed15ab129d922337c22cfe20d8b861cd9ef25e0d4e1dbae6b25c3b
   languageName: node
   linkType: hard
 
@@ -9408,10 +9463,26 @@ __metadata:
   languageName: node
   linkType: hard
 
+"eventsource-parser@npm:^3.0.1":
+  version: 3.1.0
+  resolution: "eventsource-parser@npm:3.1.0"
+  checksum: 10c0/5ab4c6c9a2a042be0b387b6d03810eb580bac4ce90e299ede56458125a97ffe3af8145b2740089fc898a96cfa5aae792ee79f2a06257fba2776b0e7bce037071
+  languageName: node
+  linkType: hard
+
 "eventsource@npm:^2.0.2":
   version: 2.0.2
   resolution: "eventsource@npm:2.0.2"
   checksum: 10c0/0b8c70b35e45dd20f22ff64b001be9d530e33b92ca8bdbac9e004d0be00d957ab02ef33c917315f59bf2f20b178c56af85c52029bc8e6cc2d61c31d87d943573
+  languageName: node
+  linkType: hard
+
+"eventsource@npm:^4.1.0":
+  version: 4.1.0
+  resolution: "eventsource@npm:4.1.0"
+  dependencies:
+    eventsource-parser: "npm:^3.0.1"
+  checksum: 10c0/5d8f0f60fdafc5a3b4ce5d53f6a6c75cf07fbec250cfb870c44ea38d9689b9996e4a6f3779e520a6e7d32fbf398f42ea011a2c10772a9bc932fb419accede73e
   languageName: node
   linkType: hard
 
@@ -9732,7 +9803,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"follow-redirects@npm:^1.15.11":
+"follow-redirects@npm:^1.15.11, follow-redirects@npm:^1.16.0":
   version: 1.16.0
   resolution: "follow-redirects@npm:1.16.0"
   peerDependenciesMeta:
@@ -9861,7 +9932,7 @@ __metadata:
     "@shopify/react-native-skia": "npm:2.2.21"
     "@stablelib/base64": "npm:2.0.1"
     "@stablelib/utf8": "npm:2.0.1"
-    "@stellar/stellar-sdk": "npm:15.0.1"
+    "@stellar/stellar-sdk": "npm:16.0.0"
     "@stellar/typescript-wallet-sdk-km": "npm:3.0.0"
     "@testing-library/jest-native": "npm:5.4.3"
     "@testing-library/react-hooks": "npm:8.0.1"
@@ -10600,7 +10671,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"https-proxy-agent@npm:^5.0.0":
+"https-proxy-agent@npm:^5.0.0, https-proxy-agent@npm:^5.0.1":
   version: 5.0.1
   resolution: "https-proxy-agent@npm:5.0.1"
   dependencies:
@@ -16468,6 +16539,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"smol-toml@npm:^1.6.1":
+  version: 1.6.1
+  resolution: "smol-toml@npm:1.6.1"
+  checksum: 10c0/511a78722f99c7616fdb46af708de3d7e81434b5a3d58061166da73f28bfc6cae4f0cd04683f60515b9c490cd10152fce72287c960b337419c0299cc1f0f2a22
+  languageName: node
+  linkType: hard
+
 "snake-case@npm:^3.0.4":
   version: 3.0.4
   resolution: "snake-case@npm:3.0.4"
@@ -17642,6 +17720,13 @@ __metadata:
   version: 1.6.1
   resolution: "ufo@npm:1.6.1"
   checksum: 10c0/5a9f041e5945fba7c189d5410508cbcbefef80b253ed29aa2e1f8a2b86f4bd51af44ee18d4485e6d3468c92be9bf4a42e3a2b72dcaf27ce39ce947ec994f1e6b
+  languageName: node
+  linkType: hard
+
+"uint8array-extras@npm:^1.5.0":
+  version: 1.5.0
+  resolution: "uint8array-extras@npm:1.5.0"
+  checksum: 10c0/0e74641ac7dadb02eadefc1ccdadba6010e007757bda824960de3c72bbe2b04e6d3af75648441f412148c4103261d54fcb60be45a2863beb76643a55fddba3bd
   languageName: node
   linkType: hard
 

@@ -13,6 +13,7 @@ import { mapNetworkToNetworkDetails, OPERATION_TYPES } from "config/constants";
 import { logger } from "config/logger";
 import { useAuthenticationStore } from "ducks/auth";
 import { stroopToXlm } from "helpers/formatAmount";
+import { getAuthEntryBoundAddress } from "helpers/soroban";
 
 interface UseSignTransactionDetailsParams {
   xdr: string;
@@ -38,7 +39,7 @@ const buildSummary = (
 
   const decodedMemo = decodeMemo(memo);
   const operations = transaction.operations.map(
-    (op) => OPERATION_TYPES[op.type] || op.type,
+    (op) => OPERATION_TYPES[op.type as keyof typeof OPERATION_TYPES] || op.type,
   );
 
   const summary: SignTransactionSummaryInterface = {
@@ -62,7 +63,10 @@ const buildAuthEntries = (transaction: Transaction | FeeBumpTransaction) => {
 
   if (!allAuthEntries.length) return [];
 
-  return allAuthEntries.map((authEntry) => authEntry.rootInvocation());
+  return allAuthEntries.map((authEntry) => ({
+    invocation: authEntry.rootInvocation(),
+    boundAddress: getAuthEntryBoundAddress(authEntry),
+  }));
 };
 
 export const useSignTransactionDetails = ({
