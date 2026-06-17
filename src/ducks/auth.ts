@@ -61,6 +61,7 @@ import {
   // TODO/FIXME: dev-only auto-lock timer override — remove before production
   getDevAutoLockTimerMs,
   getHashKeyExpirationMs,
+  persistAutoLockTimer,
 } from "services/autoLock";
 import { getAccount } from "services/stellar";
 import {
@@ -2142,10 +2143,14 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
             await dataStorage.remove(STORAGE_KEYS.COLLECTIBLES_LIST);
 
             // Reset auto-lock so the next wallet on this device doesn't
-            // inherit the previous user's timer
-            usePreferencesStore
-              .getState()
-              .setAutoLockTimer(DEFAULT_AUTO_LOCK_TIMER);
+            // inherit the previous user's timer. Await the secure-mirror write
+            // (the source of truth for getAuthStatus / generateHashKey) so an
+            // interrupted wipe can't leave a weaker policy — e.g. NONE's
+            // never-expire — behind for the next wallet.
+            usePreferencesStore.setState({
+              autoLockTimer: DEFAULT_AUTO_LOCK_TIMER,
+            });
+            await persistAutoLockTimer(DEFAULT_AUTO_LOCK_TIMER);
             await clearBackgroundedAt();
 
             await clearBiometricsData();

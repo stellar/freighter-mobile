@@ -222,7 +222,15 @@ const useAuthCheck = () => {
             ),
           )
           .finally(() => {
-            setTimeout(hidePrivacyShield, SHIELD_REVEAL_DELAY);
+            setTimeout(() => {
+              // If the user re-backgrounded before this resolved, the native
+              // side has re-shown the shield for the new background period —
+              // don't lift it, or the next resume would briefly reveal the
+              // unlocked tree while the lock decision runs.
+              if (AppState.currentState === "active") {
+                hidePrivacyShield();
+              }
+            }, SHIELD_REVEAL_DELAY);
           });
 
         setTimeout(() => {
