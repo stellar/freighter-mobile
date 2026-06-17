@@ -120,6 +120,22 @@ const getBackgroundedAt = async (): Promise<number | null> => {
   return parsedBackgroundedAt;
 };
 
+/**
+ * Whether an unlockable session is persisted on device (a hash key and a
+ * temporary store both exist). Lets the background handler decide whether to
+ * record/lock from disk state rather than the zustand auth status, which may
+ * not be hydrated yet — a cold launch into an existing session can be
+ * backgrounded before getAuthStatus runs.
+ */
+const hasPersistedSession = async (): Promise<boolean> => {
+  const [hashKey, temporaryStore] = await Promise.all([
+    getHashKey(),
+    secureDataStorage.getItem(SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE),
+  ]);
+
+  return Boolean(hashKey && temporaryStore);
+};
+
 /* ===========================================================================
  * TODO / FIXME: TEMPORARY DEV-ONLY AUTO-LOCK TESTING OVERRIDES.
  * !!! REMOVE THIS ENTIRE BLOCK (and its UI on AutoLockTimerScreen + the
@@ -187,6 +203,7 @@ export {
   recordBackgroundedAt,
   getBackgroundedAt,
   clearBackgroundedAt,
+  hasPersistedSession,
   // TODO/FIXME: remove these dev-only exports before production
   getDevAutoLockTimerMs,
   setDevAutoLockTimerSeconds,

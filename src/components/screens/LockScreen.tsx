@@ -143,13 +143,15 @@ export const LockScreenContent: React.FC<LockScreenContentProps> = ({
   }, [error, t, showToast, clearError]);
 
   const handleUnlock = useCallback(
-    (password: string) => {
+    (password: string): Promise<void> | undefined => {
       // Disable other navigation attempts while signing in
-      if (isSigningIn) return;
+      if (isSigningIn) return undefined;
 
-      // Try to sign in - error handling is in the auth store
-      signIn({ password });
-      // Navigation will happen automatically through the authStatus effect
+      // Try to sign in - error handling is in the auth store. The promise is
+      // returned so the biometric auto-unlock can await/catch a rejection
+      // (e.g. a stale stored password) instead of leaving it unhandled.
+      // Navigation happens automatically through the authStatus effect.
+      return signIn({ password });
     },
     [signIn, isSigningIn],
   );
@@ -169,7 +171,9 @@ export const LockScreenContent: React.FC<LockScreenContentProps> = ({
     hasAutoPromptedRef.current = true;
     verifyActionWithBiometrics((password?: string) => {
       if (password) {
-        handleUnlock(password);
+        // Return the sign-in promise so a rejection is handled by the
+        // .catch() below rather than surfacing as an unhandled rejection.
+        return handleUnlock(password) ?? Promise.resolve();
       }
       return Promise.resolve();
     }).catch(() => {

@@ -2,6 +2,7 @@ import { NavigationContainerRef } from "@react-navigation/native";
 import { act, renderHook } from "@testing-library/react-hooks";
 import {
   AUTO_LOCK_TIMER,
+  DEFAULT_AUTO_LOCK_TIMER,
   NETWORKS,
   STORAGE_KEYS,
   SENSITIVE_STORAGE_KEYS,
@@ -116,6 +117,7 @@ jest.mock("ducks/preferences", () => ({
       isBiometricsEnabled: false,
       setAutoLockTimer: jest.fn(),
     })),
+    setState: jest.fn(),
   },
 }));
 
@@ -1475,6 +1477,12 @@ describe("auth duck", () => {
         expect(dataStorage.remove).toHaveBeenCalledWith(
           STORAGE_KEYS.COLLECTIBLES_LIST,
         );
+
+        // Auto-lock is reset to the default so the next wallet doesn't inherit
+        // the wiped wallet's timer
+        expect(usePreferencesStore.setState).toHaveBeenCalledWith({
+          autoLockTimer: DEFAULT_AUTO_LOCK_TIMER,
+        });
       });
 
       it("should call resetRoot to AUTH_STACK on logout(true) even though ...initialState clears navigationRef", async () => {

@@ -7,6 +7,7 @@ import { AppState } from "react-native";
 import {
   getAutoLockTimer,
   getDevAutoLockTimerMs,
+  hasPersistedSession,
   recordBackgroundedAt,
   recordDevInteraction,
 } from "services/autoLock";
@@ -14,6 +15,7 @@ import {
 jest.mock("services/autoLock", () => ({
   getAutoLockTimer: jest.fn(),
   getDevAutoLockTimerMs: jest.fn().mockResolvedValue(null),
+  hasPersistedSession: jest.fn().mockResolvedValue(false),
   recordBackgroundedAt: jest.fn().mockResolvedValue(undefined),
   recordDevInteraction: jest.fn(),
 }));
@@ -32,8 +34,12 @@ jest.mock("components/App", () => ({
 }));
 
 const flushMicrotasks = async () => {
-  await Promise.resolve();
-  await Promise.resolve();
+  // Several rounds so the async background handler (session check → record →
+  // timer read → soft lock) fully settles.
+  for (let i = 0; i < 6; i += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    await Promise.resolve();
+  }
 };
 
 describe("useAuthCheck", () => {
@@ -55,6 +61,7 @@ describe("useAuthCheck", () => {
       AUTO_LOCK_TIMER.TWENTY_FOUR_HOURS,
     );
     (getDevAutoLockTimerMs as jest.Mock).mockResolvedValue(null);
+    (hasPersistedSession as jest.Mock).mockResolvedValue(false);
 
     useAuthenticationStore.setState({
       authStatus: AUTH_STATUS.AUTHENTICATED,
@@ -111,6 +118,40 @@ describe("useAuthCheck", () => {
 
   it("does NOT record a timestamp when not authenticated", async () => {
     useAuthenticationStore.setState({ authStatus: AUTH_STATUS.LOCKED });
+    const { handlers, unmount } = renderAuthCheck();
+
+    await act(async () => {
+      handlers.forEach((handler) => handler("background"));
+      await flushMicrotasks();
+    });
+
+    expect(recordBackgroundedAt).not.toHaveBeenCalled();
+    unmount();
+  });
+
+  it("records the timestamp when a session is persisted but the status has not hydrated yet", async () => {
+    // Cold launch into an existing session, backgrounded before getAuthStatus
+    // runs: zustand still holds the initial NOT_AUTHENTICATED status.
+    useAuthenticationStore.setState({
+      authStatus: AUTH_STATUS.NOT_AUTHENTICATED,
+    });
+    (hasPersistedSession as jest.Mock).mockResolvedValue(true);
+    const { handlers, unmount } = renderAuthCheck();
+
+    await act(async () => {
+      handlers.forEach((handler) => handler("background"));
+      await flushMicrotasks();
+    });
+
+    expect(recordBackgroundedAt).toHaveBeenCalledTimes(1);
+    unmount();
+  });
+
+  it("does NOT record when not authenticated and no session is persisted", async () => {
+    useAuthenticationStore.setState({
+      authStatus: AUTH_STATUS.NOT_AUTHENTICATED,
+    });
+    (hasPersistedSession as jest.Mock).mockResolvedValue(false);
     const { handlers, unmount } = renderAuthCheck();
 
     await act(async () => {

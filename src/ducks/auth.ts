@@ -1103,6 +1103,23 @@ const clearAllData = async (): Promise<void> => {
   ]);
 };
 
+/**
+ * Resets the auto-lock setting to the default for a freshly established wallet
+ * (first install, sign up, import, or wipe). Writes the default to both the
+ * zustand store and the secure mirror and clears any stale background
+ * timestamp, so a new wallet never inherits the previous one's policy — e.g. a
+ * prior "None" would otherwise bake a never-expiring hash key. The secure
+ * write is awaited so generateHashKey reads the default expiry, and so first
+ * install lands on 24h even though the mirror was never written manually.
+ */
+const resetAutoLockForNewWallet = async (): Promise<void> => {
+  usePreferencesStore.setState({ autoLockTimer: DEFAULT_AUTO_LOCK_TIMER });
+  await Promise.all([
+    persistAutoLockTimer(DEFAULT_AUTO_LOCK_TIMER),
+    clearBackgroundedAt(),
+  ]);
+};
+
 const getKeyFromKeyManager = async (
   password: string,
   activeAccountId?: string | null,
@@ -2147,15 +2164,11 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
             await dataStorage.remove(STORAGE_KEYS.COLLECTIBLES_LIST);
 
             // Reset auto-lock so the next wallet on this device doesn't
-            // inherit the previous user's timer. Await the secure-mirror write
-            // (the source of truth for getAuthStatus / generateHashKey) so an
-            // interrupted wipe can't leave a weaker policy — e.g. NONE's
-            // never-expire — behind for the next wallet.
-            usePreferencesStore.setState({
-              autoLockTimer: DEFAULT_AUTO_LOCK_TIMER,
-            });
-            await persistAutoLockTimer(DEFAULT_AUTO_LOCK_TIMER);
-            await clearBackgroundedAt();
+            // inherit the previous user's timer. The awaited secure-mirror
+            // write (source of truth for getAuthStatus / generateHashKey)
+            // means an interrupted wipe can't leave a weaker policy — e.g.
+            // NONE's never-expire — behind for the next wallet.
+            await resetAutoLockForNewWallet();
 
             await clearBiometricsData();
 
@@ -2221,6 +2234,9 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
   signUp: async (params): Promise<void> => {
     set((state) => ({ ...state, isLoading: true, error: null }));
     try {
+      // Fresh wallet: reset auto-lock to the default before the hash key is
+      // generated so it doesn't inherit a previous wallet's timer.
+      await resetAutoLockForNewWallet();
       await signUp(params);
       set({
         ...initialState,
@@ -2658,6 +2674,9 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
     set({ isLoading: true, error: null });
 
     try {
+      // Re-import replaces the wallet: reset auto-lock to the default before
+      // the hash key is generated so it doesn't inherit the previous timer.
+      await resetAutoLockForNewWallet();
       await importWallet(params);
       set({
         ...initialState,
