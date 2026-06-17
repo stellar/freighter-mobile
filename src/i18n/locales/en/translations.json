@@ -5,6 +5,9 @@
   "noInternetConnection": "No internet connection",
   "accountAddressCopied": "Account address copied!",
   "tokenAddress": "Token Address",
+  "amountCard": {
+    "unreadableAmount": "Couldn't read that amount — please enter it again"
+  },
   "common": {
     "close": "Close",
     "paste": "Paste",

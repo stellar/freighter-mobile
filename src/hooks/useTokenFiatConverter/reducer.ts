@@ -1,6 +1,6 @@
 import BigNumber from "bignumber.js";
 import { DEFAULT_DECIMALS, FIAT_DECIMALS } from "config/constants";
-import { parseDisplayNumber } from "helpers/formatAmount";
+import { parseDisplayNumber, sanitizePastedAmount } from "helpers/formatAmount";
 import { formatNumericInput } from "helpers/numericInput";
 import { getNumberFormatSettings } from "react-native-localize";
 
@@ -10,6 +10,9 @@ export interface TokenFiatConverterState {
   showFiatAmount: boolean;
   tokenAmountDisplayRaw: string | null; // Raw input when typing
   fiatAmountDisplayRaw: string | null; // Raw input when typing
+  // Monotonic counter bumped whenever a pasted/typed value is rejected as
+  // unparseable, so the UI can fire a one-shot "couldn't read that" toast.
+  pasteRejectNonce: number;
 }
 
 export enum TokenFiatConverterActionType {
@@ -110,6 +113,7 @@ export const initialState: TokenFiatConverterState = {
   showFiatAmount: false,
   tokenAmountDisplayRaw: null,
   fiatAmountDisplayRaw: null,
+  pasteRejectNonce: 0,
 };
 
 /**
@@ -764,23 +768,24 @@ export const createTokenFiatConverterReducer =
       case TokenFiatConverterActionType.SET_DISPLAY_AMOUNT_FROM_TEXT: {
         const { text } = action.payload;
         const { decimalSeparator } = getNumberFormatSettings();
-        // A bare decimal separator ("." or the locale variant) is a partial
-        // input the system keyboard delivers when the user starts a fraction
-        // before typing a leading digit — treat it like "0." so the next
-        // keystroke can append digits ("0.5", etc.). Applied to both the
-        // fiat and token branches.
-        const normalizedText =
-          text === "." || text === "," || text === decimalSeparator
-            ? `0${decimalSeparator}`
-            : text;
+        const maxDecimals = state.showFiatAmount
+          ? FIAT_DECIMALS
+          : tokenDecimals;
 
-        // Reject inputs with more than one decimal separator ("..", "0..1",
-        // "0.1.2", "0,5.1" etc.). Returning the unchanged state makes the
-        // controlled TextInput roll back to the previous valid value.
-        const separatorCount = (normalizedText.match(/[.,]/g) || []).length;
-        if (separatorCount > 1) {
-          return state;
+        // The system keyboard delivers the whole field value on every change,
+        // so this handles both typing and pastes. sanitizePastedAmount strips
+        // garbage, resolves foreign separators / grouping, normalizes a bare
+        // separator to "0.", and truncates to the allowed decimals. null means
+        // the value is unparseable or ambiguous — roll back (return unchanged
+        // state) and bump pasteRejectNonce so the UI can surface a toast.
+        const sanitized = sanitizePastedAmount(text, {
+          decimalSeparator,
+          maxDecimals,
+        });
+        if (sanitized === null) {
+          return { ...state, pasteRejectNonce: state.pasteRejectNonce + 1 };
         }
+        const normalizedText = sanitized;
 
         // Count digits typed after the (single) separator. Used to cap
         // precision to the active mode's allowed decimal places.

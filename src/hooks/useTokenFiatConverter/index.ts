@@ -33,6 +33,8 @@ export interface UseTokenFiatConverterResult {
   updateFiatDisplay: (amount: string) => void;
   /** Full-text input from system TextInput.onChangeText (Swap flow). */
   setDisplayAmountFromText: (text: string) => void;
+  /** Bumped when an input was rejected as unparseable — drive a toast off it. */
+  pasteRejectNonce: number;
 }
 
 /**
@@ -287,5 +289,6 @@ export const useTokenFiatConverter = ({
     setFiatAmount: handleSetFiatAmount,
     updateFiatDisplay,
     setDisplayAmountFromText,
+    pasteRejectNonce: state.pasteRejectNonce,
   };
 };

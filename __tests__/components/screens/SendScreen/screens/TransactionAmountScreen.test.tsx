@@ -435,6 +435,7 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
       handleDisplayAmountChange: jest.fn(),
       updateFiatDisplay: jest.fn(),
       setDisplayAmountFromText: jest.fn(),
+      pasteRejectNonce: 0,
     });
     mockUseRightHeaderMenu.mockReturnValue(undefined);
     mockUseToast.mockReturnValue({
@@ -817,6 +818,7 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
       handleDisplayAmountChange: jest.fn(),
       updateFiatDisplay: jest.fn(),
       setDisplayAmountFromText: jest.fn(),
+      pasteRejectNonce: 0,
     });
 
     const settingsStateWithMemo = {
@@ -873,6 +875,7 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
       handleDisplayAmountChange: jest.fn(),
       updateFiatDisplay: jest.fn(),
       setDisplayAmountFromText: jest.fn(),
+      pasteRejectNonce: 0,
     });
 
     const settingsStateWithoutMemo = {
@@ -1177,6 +1180,7 @@ describe("TransactionAmountScreen - Address Change Scenarios", () => {
       handleDisplayAmountChange: jest.fn(),
       updateFiatDisplay: jest.fn(),
       setDisplayAmountFromText: jest.fn(),
+      pasteRejectNonce: 0,
     });
     mockUseRightHeaderMenu.mockReturnValue(undefined);
     mockUseToast.mockReturnValue({
@@ -1749,6 +1753,7 @@ describe("TransactionAmountScreen - Native keyboard input", () => {
       handleDisplayAmountChange: jest.fn(),
       setDisplayAmountFromText: mockSetDisplayAmountFromText,
       updateFiatDisplay: jest.fn(),
+      pasteRejectNonce: 0,
     });
 
     mockUseTransactionBuilderStore.mockReturnValue({

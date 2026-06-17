@@ -5,6 +5,9 @@
   "noInternetConnection": "Sem conexão com a internet",
   "accountAddressCopied": "Endereço da conta copiado!",
   "tokenAddress": "Endereço do Token",
+  "amountCard": {
+    "unreadableAmount": "Não foi possível ler esse valor — insira-o novamente"
+  },
   "common": {
     "close": "Fechar",
     "paste": "Colar",

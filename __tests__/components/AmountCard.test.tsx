@@ -6,7 +6,17 @@ import { PricedBalance } from "config/types";
 import { renderWithProviders } from "helpers/testUtils";
 import { UseTokenFiatConverterResult } from "hooks/useTokenFiatConverter";
 import React from "react";
-import { TextInput } from "react-native";
+import { Pressable, TextInput } from "react-native";
+
+const mockShowToast = jest.fn();
+jest.mock("providers/ToastProvider", () => ({
+  ToastProvider: ({ children }: { children: React.ReactNode }) => children,
+  useToast: () => ({ showToast: mockShowToast, dismissToast: jest.fn() }),
+}));
+jest.mock("hooks/useAppTranslation", () => ({
+  __esModule: true,
+  default: () => ({ t: (key: string) => key }),
+}));
 
 const makeConverter = (
   overrides: Partial<UseTokenFiatConverterResult> = {},
@@ -24,6 +34,7 @@ const makeConverter = (
   setFiatAmount: jest.fn(),
   updateFiatDisplay: jest.fn(),
   setDisplayAmountFromText: jest.fn(),
+  pasteRejectNonce: 0,
   ...overrides,
 });
 
@@ -46,6 +57,10 @@ const mockBalance = {
 } as PricedBalance;
 
 describe("AmountCard", () => {
+  beforeEach(() => {
+    mockShowToast.mockClear();
+  });
+
   describe("editable mode", () => {
     it("renders the label, the TextInput, and the picker chip", () => {
       const onPickerPress = jest.fn();
@@ -121,6 +136,48 @@ describe("AmountCard", () => {
 
       fireEvent.press(getByTestId("toggle"));
       expect(setShowFiatAmount).toHaveBeenCalledWith(true);
+    });
+
+    it("fires a toast when the converter's pasteRejectNonce increments", () => {
+      // Drive the nonce via internal state so AmountCard re-renders in place
+      // (RTL's rerender would remount it and reset the prev-nonce ref).
+      const Harness = () => {
+        const [nonce, setNonce] = React.useState(0);
+        return (
+          <>
+            <AmountCard
+              mode="editable"
+              label="Sending"
+              selectedToken={mockBalance}
+              onPickerPress={jest.fn()}
+              inputTestID="amount-input"
+              converter={makeConverter({ pasteRejectNonce: nonce })}
+              hasUsdPrice
+            />
+            <Pressable testID="bump" onPress={() => setNonce(1)} />
+          </>
+        );
+      };
+
+      const { getByTestId } = renderWithProviders(<Harness />);
+      expect(mockShowToast).not.toHaveBeenCalled();
+
+      fireEvent.press(getByTestId("bump"));
+      expect(mockShowToast).toHaveBeenCalled();
+    });
+
+    it("does not fire a toast on initial render regardless of the nonce value", () => {
+      renderWithProviders(
+        <AmountCard
+          mode="editable"
+          label="Sending"
+          selectedToken={mockBalance}
+          onPickerPress={jest.fn()}
+          converter={makeConverter({ pasteRejectNonce: 3 })}
+          hasUsdPrice
+        />,
+      );
+      expect(mockShowToast).not.toHaveBeenCalled();
     });
 
     it("hides the secondary row when hasUsdPrice is false", () => {

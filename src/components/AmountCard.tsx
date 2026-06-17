@@ -4,8 +4,10 @@ import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
 import { Balance, PricedBalance, Token } from "config/types";
 import { fsValue, pxValue } from "helpers/dimensions";
+import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import { UseTokenFiatConverterResult } from "hooks/useTokenFiatConverter";
+import { useToast } from "providers/ToastProvider";
 import React, { useCallback, useEffect, useRef } from "react";
 import {
   Keyboard,
@@ -284,6 +286,24 @@ const EditableAmountCard: React.FC<AmountCardEditableProps> = ({
       }
     }, 0);
   }, [inputRef]);
+
+  // The converter bumps pasteRejectNonce when it rejects an unparseable input
+  // (e.g. an ambiguous paste). Surface a one-shot toast on a change — compare
+  // against the previous value so we don't fire on mount or unrelated renders.
+  const { showToast } = useToast();
+  const { t } = useAppTranslation();
+  const prevPasteRejectNonceRef = useRef(converter.pasteRejectNonce);
+  useEffect(() => {
+    if (converter.pasteRejectNonce !== prevPasteRejectNonceRef.current) {
+      prevPasteRejectNonceRef.current = converter.pasteRejectNonce;
+      showToast({
+        variant: "error",
+        title: t("amountCard.unreadableAmount"),
+        toastId: "unreadable-amount",
+        duration: 3000,
+      });
+    }
+  }, [converter.pasteRejectNonce, showToast, t]);
 
   return (
     <CardShell testID={testID}>
