@@ -206,7 +206,9 @@ export const TrendingTokenDetailBottomSheet: React.FC<
             G-address if SAC derivation failed). */}
         <View className="flex-row items-center justify-between">
           <Text md medium secondary>
-            {t("swapScreen.trendingDetail.issuer")}
+            {record.isNative
+              ? t("swapScreen.trendingDetail.issuer")
+              : t("swapScreen.trendingDetail.tokenAddress")}
           </Text>
           {record.isNative || !record.issuer ? (
             <Text md medium primary numberOfLines={1}>

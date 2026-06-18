@@ -96,6 +96,40 @@ describe("TrendingTokenDetailBottomSheet", () => {
     expect(getByText(/^C[A-Z0-9]{3}\.\.\.[A-Z0-9]{4}$/)).toBeTruthy();
   });
 
+  it("labels the address row 'Token Address' for a classic asset", () => {
+    const { getByText, queryByText } = renderWithProviders(
+      <TrendingTokenDetailBottomSheet
+        record={mockRecord}
+        priceInfo={{}}
+        onSwapTo={noop}
+        onCancel={noop}
+      />,
+    );
+    expect(getByText("Token Address")).toBeTruthy();
+    expect(queryByText("Issuer")).toBeNull();
+  });
+
+  it("keeps the 'Issuer' label for native XLM", () => {
+    const xlmRecord = {
+      tokenCode: "XLM",
+      issuer: "",
+      isNative: true,
+      domain: "",
+      tokenType: undefined,
+      hasTrustline: true,
+    } as any;
+    const { getByText, queryByText } = renderWithProviders(
+      <TrendingTokenDetailBottomSheet
+        record={xlmRecord}
+        priceInfo={{}}
+        onSwapTo={noop}
+        onCancel={noop}
+      />,
+    );
+    expect(getByText("Issuer")).toBeTruthy();
+    expect(queryByText("Token Address")).toBeNull();
+  });
+
   it("special-cases native XLM in the info card: Stellar Network / stellar.org", () => {
     const xlmRecord = {
       tokenCode: "XLM",

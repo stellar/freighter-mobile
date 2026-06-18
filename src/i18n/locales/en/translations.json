@@ -625,6 +625,7 @@
       "swapTo": "Swap to {{tokenCode}}",
       "swapToAnyway": "Swap to {{tokenCode}} anyway",
       "issuer": "Issuer",
+      "tokenAddress": "Token Address",
       "domain": "Domain",
       "stellarNetwork": "Stellar Network"
     },

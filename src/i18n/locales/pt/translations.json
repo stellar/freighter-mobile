@@ -589,6 +589,7 @@
       "swapTo": "Trocar para {{tokenCode}}",
       "swapToAnyway": "Trocar para {{tokenCode}} mesmo assim",
       "issuer": "Emissor",
+      "tokenAddress": "Endereço do token",
       "domain": "Domínio",
       "stellarNetwork": "Rede Stellar"
     },
