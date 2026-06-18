@@ -47,6 +47,7 @@ import {
   encryptDataWithDerivedKey,
 } from "helpers/encryptPassword";
 import { createKeyManager } from "helpers/keyManager/keyManager";
+import { clearScreenshotDek } from "helpers/screenshotCrypto";
 import { clearWalletKitStorage } from "helpers/walletKitUtil";
 import { t } from "i18next";
 import ReactNativeBiometrics from "react-native-biometrics";
@@ -2060,8 +2061,12 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
             // Clear all Wallet Connect storage
             await clearWalletKitStorage();
 
-            // Clear all WebView data (cookies and screenshots)
+            // Clear all WebView data (cookies and screenshots) and the
+            // screenshot DEK. The DEK lives outside clearTemporaryData so
+            // that non-wipe paths (signUp/importWallet, decryption-failure
+            // recovery) don't orphan still-referenced screenshot files.
             await clearAllWebViewData();
+            await clearScreenshotDek();
             useBrowserTabsStore.getState().closeAllTabs();
 
             // Clear all recent protocols data
