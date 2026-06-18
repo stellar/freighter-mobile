@@ -29,6 +29,14 @@ module.exports = {
       "react-native-worklets",
       "react-native-qrcode-svg",
       "stellar-hd-wallet",
+      // v16 ships ESM-only deps (@noble/*, smol-toml, uint8array-extras,
+      // eventsource), some nested under the SDK; transform these so Jest can
+      // load the SDK's CJS build.
+      "@stellar/stellar-sdk",
+      "@noble",
+      "smol-toml",
+      "uint8array-extras",
+      "eventsource",
       "react-native-config",
       "@react-native-cookies/cookies",
       "react-native-view-shot",

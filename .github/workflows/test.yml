@@ -7,7 +7,7 @@ on:
     branches: [main, release, emergency-release, "v*.*.*"]
 
 env:
-  NODE_VERSION: "20"
+  NODE_VERSION: "22"
   RUBY_VERSION: 3.1.4
   JAVA_VERSION: "17"
 
