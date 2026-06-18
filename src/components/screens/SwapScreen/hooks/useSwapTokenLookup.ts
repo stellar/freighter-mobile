@@ -219,7 +219,7 @@ export const useSwapTokenLookup = ({
         if (addressList.length === 0) return tokens;
         const bulkScanResult = await useBlockaidTokenScansStore
           .getState()
-          .scanBulkWithCache({ addressList, network });
+          .scanBulkWithCache({ addressList, network, signal });
         if (signal.aborted) return tokens;
         return mergeBlockaidScans(
           tokens,
@@ -388,7 +388,7 @@ export const useSwapTokenLookup = ({
         .map((t) => `${t.tokenCode}-${t.issuer}`);
       const { results } = await useBlockaidTokenScansStore
         .getState()
-        .scanBulkWithCache({ addressList, network });
+        .scanBulkWithCache({ addressList, network, signal });
       if (cancelled || signal.aborted) return;
 
       setStellarExpertDown(false);
@@ -686,7 +686,7 @@ export const useSwapTokenLookup = ({
       .map((t) => `${t.tokenCode}-${t.issuer}`);
     const { results } = await useBlockaidTokenScansStore
       .getState()
-      .scanBulkWithCache({ addressList, network, forceRefresh: true });
+      .scanBulkWithCache({ addressList, network, forceRefresh: true, signal });
     if (signal.aborted) return;
 
     setStellarExpertDown(false);

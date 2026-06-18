@@ -1,5 +1,7 @@
 import Blockaid from "@blockaid/client";
+import axios from "axios";
 import { NETWORKS, STORAGE_KEYS } from "config/constants";
+import { logger } from "config/logger";
 import { useBlockaidTokenScansStore } from "ducks/blockaidTokenScans";
 import { scanBulkTokens } from "services/blockaid/api";
 import { dataStorage } from "services/storage/storageFactory";
@@ -57,10 +59,10 @@ describe("useBlockaidTokenScansStore", () => {
       expect(result.results).toEqual(scanResults);
       // Service called once with all three
       expect(mockScanBulkTokens).toHaveBeenCalledTimes(1);
-      expect(mockScanBulkTokens).toHaveBeenCalledWith({
-        addressList: [TOKEN_A, TOKEN_B, TOKEN_C],
-        network: NETWORKS.PUBLIC,
-      });
+      expect(mockScanBulkTokens).toHaveBeenCalledWith(
+        { addressList: [TOKEN_A, TOKEN_B, TOKEN_C], network: NETWORKS.PUBLIC },
+        undefined,
+      );
       // Cache was written
       expect(mockDataStorage.setItem).toHaveBeenCalledWith(
         storageKey,
@@ -135,10 +137,10 @@ describe("useBlockaidTokenScansStore", () => {
 
       // Service called ONCE for only the 2 missing tokens
       expect(mockScanBulkTokens).toHaveBeenCalledTimes(1);
-      expect(mockScanBulkTokens).toHaveBeenCalledWith({
-        addressList: newTokens,
-        network: NETWORKS.PUBLIC,
-      });
+      expect(mockScanBulkTokens).toHaveBeenCalledWith(
+        { addressList: newTokens, network: NETWORKS.PUBLIC },
+        undefined,
+      );
 
       // Result contains all 5 tokens
       expect(Object.keys(result.results)).toHaveLength(allTokens.length);
@@ -175,10 +177,10 @@ describe("useBlockaidTokenScansStore", () => {
 
       // Token was stale → service was called
       expect(mockScanBulkTokens).toHaveBeenCalledTimes(1);
-      expect(mockScanBulkTokens).toHaveBeenCalledWith({
-        addressList: [TOKEN_A],
-        network: NETWORKS.PUBLIC,
-      });
+      expect(mockScanBulkTokens).toHaveBeenCalledWith(
+        { addressList: [TOKEN_A], network: NETWORKS.PUBLIC },
+        undefined,
+      );
       expect(result.results[TOKEN_A]).toEqual(freshScan);
     });
 
@@ -206,6 +208,65 @@ describe("useBlockaidTokenScansStore", () => {
       // No crash
     });
 
+    it("forwards the abort signal to scanBulkTokens", async () => {
+      mockScanBulkTokens.mockResolvedValue({ results: {} });
+      const controller = new AbortController();
+
+      const { scanBulkWithCache } = useBlockaidTokenScansStore.getState();
+      await scanBulkWithCache({
+        addressList: [TOKEN_A],
+        network: NETWORKS.PUBLIC,
+        signal: controller.signal,
+      });
+
+      expect(mockScanBulkTokens).toHaveBeenCalledWith(
+        { addressList: [TOKEN_A], network: NETWORKS.PUBLIC },
+        controller.signal,
+      );
+    });
+
+    it("warns (not errors) and returns cached hits when a scan fails", async () => {
+      const warnSpy = jest.spyOn(logger, "warn").mockImplementation(() => {});
+      const errorSpy = jest.spyOn(logger, "error").mockImplementation(() => {});
+      mockDataStorage.getItem.mockResolvedValueOnce(
+        JSON.stringify({
+          [TOKEN_A]: { ...makeScan(TOKEN_A), _cachedAt: Date.now() },
+        }),
+      );
+      mockScanBulkTokens.mockRejectedValue(new Error("Service unavailable"));
+
+      const { scanBulkWithCache } = useBlockaidTokenScansStore.getState();
+      const result = await scanBulkWithCache({
+        addressList: [TOKEN_A, TOKEN_B],
+        network: NETWORKS.PUBLIC,
+      });
+
+      expect(result.results[TOKEN_A]).toEqual(makeScan(TOKEN_A));
+      expect(warnSpy).toHaveBeenCalled();
+      expect(errorSpy).not.toHaveBeenCalled();
+    });
+
+    it("stays silent (no warn/error) when a scan is aborted, returning cached hits", async () => {
+      const warnSpy = jest.spyOn(logger, "warn").mockImplementation(() => {});
+      const errorSpy = jest.spyOn(logger, "error").mockImplementation(() => {});
+      mockDataStorage.getItem.mockResolvedValueOnce(
+        JSON.stringify({
+          [TOKEN_A]: { ...makeScan(TOKEN_A), _cachedAt: Date.now() },
+        }),
+      );
+      mockScanBulkTokens.mockRejectedValue(new axios.CanceledError("canceled"));
+
+      const { scanBulkWithCache } = useBlockaidTokenScansStore.getState();
+      const result = await scanBulkWithCache({
+        addressList: [TOKEN_A, TOKEN_B],
+        network: NETWORKS.PUBLIC,
+      });
+
+      expect(result.results[TOKEN_A]).toEqual(makeScan(TOKEN_A));
+      expect(warnSpy).not.toHaveBeenCalled();
+      expect(errorSpy).not.toHaveBeenCalled();
+    });
+
     it("bypasses cache and fetches all tokens when forceRefresh is true", async () => {
       const now = Date.now();
       // TOKEN_A is fresh in cache
@@ -230,10 +291,10 @@ describe("useBlockaidTokenScansStore", () => {
 
       // Service was called despite fresh cache
       expect(mockScanBulkTokens).toHaveBeenCalledTimes(1);
-      expect(mockScanBulkTokens).toHaveBeenCalledWith({
-        addressList: [TOKEN_A],
-        network: NETWORKS.PUBLIC,
-      });
+      expect(mockScanBulkTokens).toHaveBeenCalledWith(
+        { addressList: [TOKEN_A], network: NETWORKS.PUBLIC },
+        undefined,
+      );
       expect(result.results[TOKEN_A]).toEqual(freshScan);
     });
   });

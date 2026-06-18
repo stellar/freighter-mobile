@@ -1,4 +1,5 @@
 import Blockaid from "@blockaid/client";
+import axios from "axios";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { isMainnet } from "helpers/networks";
 import { analytics } from "services/analytics";
@@ -93,7 +94,16 @@ export const scanBulkTokens = async (
 
     return scanResult;
   } catch (error) {
-    throw new Error(BLOCKAID_ERROR_MESSAGES.BULK_TOKEN_SCAN_FAILED);
+    // Rethrow cancellations untouched so callers can treat a superseded
+    // request as benign; wrap everything else, preserving the cause.
+    if (axios.isCancel(error)) throw error;
+    const wrapped = new Error(
+      BLOCKAID_ERROR_MESSAGES.BULK_TOKEN_SCAN_FAILED,
+    ) as Error & {
+      cause?: unknown;
+    };
+    wrapped.cause = error;
+    throw wrapped;
   }
 };
 

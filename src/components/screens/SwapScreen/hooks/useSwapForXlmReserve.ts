@@ -106,8 +106,9 @@ export const useSwapForXlmReserve = ({
       receivedSourceAmount = result.records[0]?.source_amount ?? null;
     } catch (error) {
       // No path / network error — fall back to setting source+dest without
-      // a pre-filled amount so the user can still adjust manually.
-      logger.error(
+      // a pre-filled amount so the user can still adjust manually. Expected
+      // and handled, so warn (not error → no red LogBox / Sentry issue).
+      logger.warn(
         "useSwapForXlmReserve.handleSwapForXlmFromSheet",
         "strictReceivePaths failed",
         error,

@@ -1,6 +1,7 @@
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable @typescript-eslint/naming-convention */
 import Blockaid from "@blockaid/client";
+import axios from "axios";
 import { NETWORKS, STORAGE_KEYS } from "config/constants";
 import { logger } from "config/logger";
 import { scanBulkTokens } from "services/blockaid/api";
@@ -30,6 +31,7 @@ interface BlockaidTokenScansState {
     addressList: string[];
     network: NETWORKS;
     forceRefresh?: boolean;
+    signal?: AbortSignal;
   }) => Promise<{ results: Record<string, SingleScan> }>;
   /**
    * Read the disk cache for the given address list without triggering
@@ -86,6 +88,7 @@ export const useBlockaidTokenScansStore = create<BlockaidTokenScansState>()(
       addressList,
       network,
       forceRefresh = false,
+      signal,
     }) => {
       const now = Date.now();
       const cache = forceRefresh ? {} : await readNetworkCache(network);
@@ -110,12 +113,17 @@ export const useBlockaidTokenScansStore = create<BlockaidTokenScansState>()(
         results: {},
       };
       try {
-        freshScans = await scanBulkTokens({ addressList: missing, network });
+        freshScans = await scanBulkTokens(
+          { addressList: missing, network },
+          signal,
+        );
       } catch (e) {
-        // Service down (e.g., testnet) — return what we have from cache.
-        // The hook's existing assessTokenSecurity handles undefined entries
-        // as UNABLE_TO_SCAN.
-        logger.error("blockaidTokenScans", "scanBulkTokens failed", e);
+        // Best-effort security metadata: degrade to cached hits (missing
+        // entries become UNABLE_TO_SCAN). A superseded/aborted request is
+        // expected and silent; anything else is transient/optional → warn.
+        if (!axios.isCancel(e)) {
+          logger.warn("blockaidTokenScans", "scanBulkTokens failed", e);
+        }
         return { results: hits };
       }
 
