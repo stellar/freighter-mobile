@@ -5,26 +5,19 @@ import { logos } from "assets/logos";
 import BottomSheet from "components/BottomSheet";
 import InformationBottomSheet from "components/InformationBottomSheet";
 import { BaseLayout } from "components/layout/BaseLayout";
-import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import { Avatar } from "components/sds/Avatar";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { QRCodeSource } from "config/constants";
-import {
-  ROOT_NAVIGATOR_ROUTES,
-  RootStackParamList,
-  ScreenTransition,
-} from "config/routes";
+import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
 import { pxValue } from "helpers/dimensions";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
-import { useClearTransitionParam } from "hooks/useClearTransitionParam";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useRightHeaderButton } from "hooks/useRightHeader";
-import React, { useLayoutEffect, useRef } from "react";
+import React, { useRef } from "react";
 import { View } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 
@@ -33,58 +26,20 @@ type AccountQRCodeScreenProps = NativeStackScreenProps<
   typeof ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN
 >;
 
-const AccountQRCodeScreen: React.FC<AccountQRCodeScreenProps> = ({
-  route,
-  navigation,
-}) => {
+const AccountQRCodeScreen: React.FC<AccountQRCodeScreenProps> = () => {
   const { account } = useGetActiveAccount();
-  const { showNavigationAsCloseButton } = route.params || {};
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
   const { copyToClipboard } = useClipboard();
   const explanationModalRef = useRef<BottomSheetModal>(null);
 
-  useClearTransitionParam(navigation, route.params?.transition);
-
-  // useLayoutEffect is the official recommended hook to use for setting up
-  // the navigation headers to prevent UI flickering.
-  useLayoutEffect(() => {
-    if (showNavigationAsCloseButton) {
-      navigation.setOptions({
-        headerLeft: () => (
-          <CustomHeaderButton icon={Icon.X} onPress={() => navigation.pop()} />
-        ),
-      });
-    }
-  }, [navigation, showNavigationAsCloseButton]);
-
-  const getRightHeaderIcon = () =>
-    showNavigationAsCloseButton ? Icon.Scan : Icon.HelpCircle;
-
-  const handleWalletConnectNavigation = () => {
-    // Paired with the replace in useWalletConnectQrCodeScanner.handleHeaderRight,
-    // which fades from ScanQRCodeScreen back to this screen.
-    navigation.replace(ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN, {
-      source: QRCodeSource.WALLET_CONNECT,
-      transition: ScreenTransition.Fade,
-    });
-  };
-
   const handleHelpModalPress = () => {
     explanationModalRef.current?.present();
   };
 
-  const handleRightHeaderPress = () => {
-    if (showNavigationAsCloseButton) {
-      handleWalletConnectNavigation();
-    } else {
-      handleHelpModalPress();
-    }
-  };
-
   useRightHeaderButton({
-    icon: getRightHeaderIcon(),
-    onPress: handleRightHeaderPress,
+    icon: Icon.HelpCircle,
+    onPress: handleHelpModalPress,
   });
 
   return (

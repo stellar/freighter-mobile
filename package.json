@@ -1,6 +1,6 @@
 {
   "name": "freighter-mobile",
-  "version": "1.19.26",
+  "version": "1.19.27",
   "license": "Apache-2.0",
   "scripts": {
     "android": "yarn android-dev",
@@ -86,7 +86,7 @@
     "@shopify/react-native-skia": "2.2.21",
     "@stablelib/base64": "2.0.1",
     "@stablelib/utf8": "2.0.1",
-    "@stellar/stellar-sdk": "15.0.1",
+    "@stellar/stellar-sdk": "16.0.0",
     "@stellar/typescript-wallet-sdk-km": "3.0.0",
     "@tradle/react-native-http": "2.0.0",
     "@walletconnect/core": "2.23.1",
@@ -148,6 +148,7 @@
     "url": "0.11.4",
     "util": "0.10.3",
     "vm-browserify": "0.0.4",
+    "web-streams-polyfill": "4.0.0-beta.3",
     "zeego": "3.0.6",
     "zustand": "5.0.6"
   },
@@ -203,7 +204,7 @@
     "typescript": "5.8.3"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "react-native": {
     "crypto": "react-native-crypto",

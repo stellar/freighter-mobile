@@ -17,12 +17,17 @@ import { MockWalletConnectClient } from "./walletconnect";
  *   └── approve(user, dex, 50 XLM, expiry=500_000)
  *
  * Per SEP-43, the dApp constructs the HashIdPreimage and passes it to the
- * wallet to hash-and-sign. No signer address is embedded in the preimage.
+ * wallet to hash-and-sign. The legacy variant embeds no signer address; the
+ * CAP-71 / Protocol 27 "withAddress" variant (sent by dapps using ADDRESS_V2
+ * credentials) binds the signer address into the preimage.
  *
  * stellar-base v14: xdr.ScAddress.scAddressTypeContract accepts opaque
  * XDR byte-array types. Buffer is wire-compatible; cast via `as unknown`.
  */
-function generateAuthPreimageXdr(network: "testnet" | "pubnet"): string {
+function generateAuthPreimageXdr(
+  network: "testnet" | "pubnet",
+  variant: "legacy" | "withAddress" = "legacy",
+): string {
   const networkPassphrase =
     network === "pubnet" ? Networks.PUBLIC : Networks.TESTNET;
 
@@ -99,6 +104,52 @@ function generateAuthPreimageXdr(network: "testnet" | "pubnet"): string {
     ]),
     subInvocations: [usdcApprove, xlmApprove],
   });
+
+  if (variant === "withAddress") {
+    // TODO(p27): drop the feature-detection cast once mock-dapp's
+    // @stellar/stellar-base is bumped to a CAP-71 / Protocol 27 release.
+    const xdrP27 = xdr as typeof xdr & {
+      HashIdPreimage: typeof xdr.HashIdPreimage & {
+        envelopeTypeSorobanAuthorizationWithAddress?: (
+          value: unknown,
+        ) => xdr.HashIdPreimage;
+      };
+      HashIdPreimageSorobanAuthorizationWithAddress?: new (fields: {
+        networkId: Buffer;
+        nonce: xdr.Int64;
+        signatureExpirationLedger: number;
+        address: xdr.ScAddress;
+        invocation: xdr.SorobanAuthorizedInvocation;
+      }) => unknown;
+    };
+
+    if (
+      typeof xdrP27.HashIdPreimage
+        .envelopeTypeSorobanAuthorizationWithAddress !== "function" ||
+      !xdrP27.HashIdPreimageSorobanAuthorizationWithAddress
+    ) {
+      throw new Error(
+        "withAddress preimages require a CAP-71 (Protocol 27) @stellar/stellar-base — bump mock-dapp's dependency",
+      );
+    }
+
+    return xdrP27.HashIdPreimage.envelopeTypeSorobanAuthorizationWithAddress(
+      new xdrP27.HashIdPreimageSorobanAuthorizationWithAddress({
+        networkId: hash(Buffer.from(networkPassphrase)),
+        nonce: xdr.Int64.fromString(String(Date.now())),
+        signatureExpirationLedger: 999_999,
+        // Fixed test signer address (any 32 bytes encode to a valid G address)
+        address: xdr.ScAddress.scAddressTypeAccount(
+          xdr.PublicKey.publicKeyTypeEd25519(
+            Buffer.alloc(32, 0x42) as unknown as Parameters<
+              typeof xdr.PublicKey.publicKeyTypeEd25519
+            >[0],
+          ),
+        ),
+        invocation: rootInvocation,
+      }),
+    ).toXDR("base64");
+  }
 
   return xdr.HashIdPreimage.envelopeTypeSorobanAuthorization(
     new xdr.HashIdPreimageSorobanAuthorization({
@@ -463,11 +514,14 @@ export function createRoutes(wcClient: MockWalletConnectClient): Router {
       const id = Array.isArray(req.params.id)
         ? req.params.id[0]
         : req.params.id;
-      const { entryXdr } = req.body as {
+      const { entryXdr, variant } = req.body as {
         entryXdr?: unknown;
         network?: unknown;
+        variant?: unknown;
       };
       const network = parseNetwork((req.body as { network?: unknown }).network);
+      // CAP-71: "withAddress" generates the Protocol 27 preimage arm
+      const preimageVariant = variant === "withAddress" ? variant : "legacy";
 
       const metadata = sessionMetadata.get(id);
 
@@ -482,14 +536,13 @@ export function createRoutes(wcClient: MockWalletConnectClient): Router {
         });
       }
 
-      // Use the supplied XDR (including empty string for testing).
-      // Fall back to a generated preimage only when no entryXdr field was sent at all.
-      const entryXdrText =
-        typeof entryXdr === "string"
-          ? entryXdr
-          : generateAuthPreimageXdr(network);
-
       try {
+        // Use the supplied XDR (including empty string for testing).
+        // Fall back to a generated preimage only when no entryXdr field was sent at all.
+        const entryXdrText =
+          typeof entryXdr === "string"
+            ? entryXdr
+            : generateAuthPreimageXdr(network, preimageVariant);
         const requestPromise = wcClient.requestSignAuthEntry(
           metadata.topic,
           { entryXdr: entryXdrText },

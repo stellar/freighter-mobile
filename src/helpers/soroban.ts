@@ -3,11 +3,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 import {
-  MemoType,
-  Memo,
   StrKey,
   TransactionBuilder,
   Operation,
+  OperationRecord,
   Transaction,
   Horizon,
   xdr,
@@ -133,6 +132,41 @@ export const addressToString = (address: xdr.ScAddress) => {
   return Address.fromScAddress(address).toString();
 };
 
+/**
+ * Extracts the address credentials from a SorobanCredentials union, handling
+ * all CAP-71 address arms. Returns null for source-account credentials, which
+ * carry no address payload.
+ */
+export const getAddressCredentials = (
+  credentials: xdr.SorobanCredentials,
+): xdr.SorobanAddressCredentials | null => {
+  switch (credentials.switch().value) {
+    case xdr.SorobanCredentialsType.sorobanCredentialsAddress().value:
+      return credentials.address();
+    case xdr.SorobanCredentialsType.sorobanCredentialsAddressV2().value:
+      return credentials.addressV2();
+    case xdr.SorobanCredentialsType.sorobanCredentialsAddressWithDelegates()
+      .value:
+      return credentials.addressWithDelegates().addressCredentials();
+    default:
+      return null;
+  }
+};
+
+/**
+ * Returns the address a Soroban authorization entry is bound to (the address
+ * whose authorization its credentials represent), or undefined for
+ * source-account credentials.
+ */
+export const getAuthEntryBoundAddress = (
+  entry: xdr.SorobanAuthorizationEntry,
+): string | undefined => {
+  const addressCredentials = getAddressCredentials(entry.credentials());
+  return addressCredentials
+    ? addressToString(addressCredentials.address())
+    : undefined;
+};
+
 export const getArgsForTokenInvocation = (
   fnName: string,
   args: xdr.ScVal[],
@@ -216,7 +250,7 @@ export const getTokenInvocationArgs = (
 };
 
 export const isSorobanOp = (
-  operation: Horizon.ServerApi.OperationRecord | Operation,
+  operation: Horizon.ServerApi.OperationRecord | OperationRecord,
 ) => SOROBAN_OPERATION_TYPES.includes(operation.type);
 
 export const hasSorobanOperations = (
@@ -244,9 +278,11 @@ export const getAttrsFromSorobanHorizonOp = (
   const transaction = TransactionBuilder.fromXDR(
     op.transaction_attr.envelope_xdr as string,
     networkDetails.networkPassphrase,
-  ) as Transaction<Memo<MemoType>, Operation.InvokeHostFunction[]>;
+  ) as Transaction;
 
-  const invokeHostFn = transaction.operations[0]; // only one op per tx in Soroban right now
+  // only one op per tx in Soroban right now
+  const invokeHostFn = transaction
+    .operations[0] as Operation.InvokeHostFunction;
 
   return getTokenInvocationArgs(invokeHostFn);
 };
