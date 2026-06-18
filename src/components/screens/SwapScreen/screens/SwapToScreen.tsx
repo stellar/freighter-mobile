@@ -36,7 +36,12 @@ import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React, { useRef } from "react";
-import { SectionList, TouchableOpacity, View } from "react-native";
+import {
+  InteractionManager,
+  SectionList,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { analytics } from "services/analytics";
 
 type SwapToScreenProps = NativeStackScreenProps<
@@ -113,6 +118,15 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
     },
   );
 
+  // Dismiss the picker, then apply the store writes after the slide
+  // completes. Doing the writes synchronously re-renders the revealed amount
+  // screen mid-transition, which on Android cancels the dismiss animation
+  // (the flash); deferring keeps the slide smooth.
+  const dismissThenApply = (apply: () => void) => {
+    navigation.goBack();
+    InteractionManager.runAfterInteractions(apply);
+  };
+
   const handleHeldPress = (
     balance: HeldBalanceItem,
     source:
@@ -136,15 +150,17 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
         tokenIssuer: descriptor.issuer ?? "",
         source: sourceSource,
       });
-      // If the new source equals the current destination, clear destination
-      // so the user can pick a different token there.
-      if (destinationToken && destinationToken.id === balance.id) {
-        setDestinationToken(null);
-      }
-      // setSourceToken resets the amount on an actual token change (see the
-      // swap store), preventing the prior amount from briefly tripping the
-      // insufficient-balance check against the new token's balance.
-      setSourceToken(balance.id, balance.tokenCode ?? "");
+      dismissThenApply(() => {
+        // If the new source equals the current destination, clear destination
+        // so the user can pick a different token there.
+        if (destinationToken && destinationToken.id === balance.id) {
+          setDestinationToken(null);
+        }
+        // setSourceToken resets the amount on an actual token change (see the
+        // swap store), preventing the prior amount from briefly tripping the
+        // insufficient-balance check against the new token's balance.
+        setSourceToken(balance.id, balance.tokenCode ?? "");
+      });
     } else {
       analytics.track(AnalyticsEvent.SWAP_DESTINATION_SELECTED, {
         tokenCode: balance.tokenCode ?? "",
@@ -152,14 +168,15 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
         isNew: descriptor.isNew,
         source,
       });
-      // If the new destination equals the current source, clear source so
-      // the user can pick a different token there.
-      if (sourceTokenId && sourceTokenId === descriptor.id) {
-        setSourceToken("", "");
-      }
-      setDestinationToken(descriptor);
+      dismissThenApply(() => {
+        // If the new destination equals the current source, clear source so
+        // the user can pick a different token there.
+        if (sourceTokenId && sourceTokenId === descriptor.id) {
+          setSourceToken("", "");
+        }
+        setDestinationToken(descriptor);
+      });
     }
-    navigation.goBack();
   };
 
   // Non-held tokens only appear in destination mode (popularTokens / non-held
@@ -176,12 +193,13 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
       isNew: descriptor.isNew,
       source,
     });
-    // If the new destination equals the current source, clear source.
-    if (sourceTokenId && sourceTokenId === descriptor.id) {
-      setSourceToken("", "");
-    }
-    setDestinationToken(descriptor);
-    navigation.goBack();
+    dismissThenApply(() => {
+      // If the new destination equals the current source, clear source.
+      if (sourceTokenId && sourceTokenId === descriptor.id) {
+        setSourceToken("", "");
+      }
+      setDestinationToken(descriptor);
+    });
   };
 
   return (

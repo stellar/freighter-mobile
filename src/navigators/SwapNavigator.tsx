@@ -18,6 +18,11 @@ export const SwapStackNavigator = () => {
 
   return (
     <SwapStack.Navigator
+      // The amount screen is the stack root; the token pickers are PUSHED on
+      // top so their slide_from_bottom animation has a true inverse on
+      // dismiss (goBack = slide-down). Without this the picker was the bottom
+      // route, making open/close a rewind that Android snapped through.
+      initialRouteName={SWAP_ROUTES.SWAP_AMOUNT_SCREEN}
       screenOptions={{
         header: (props) => <CustomNavigationHeader {...props} />,
       }}

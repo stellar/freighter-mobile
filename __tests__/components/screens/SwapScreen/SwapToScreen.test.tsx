@@ -11,6 +11,7 @@ import { HookStatus, TokenTypeWithCustomToken } from "config/types";
 import { useSwapStore } from "ducks/swap";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
+import { InteractionManager } from "react-native";
 import { analytics } from "services/analytics";
 
 import { mockGestureHandler } from "../../../../__mocks__/gesture-handler";
@@ -112,6 +113,21 @@ const defaultLookupResult = {
   handleSearch: jest.fn(),
   resetSearch: jest.fn(),
 };
+
+// Row selection defers its store writes via InteractionManager.runAfterInteractions
+// (so the Android dismiss slide isn't interrupted). Run them synchronously here.
+beforeAll(() => {
+  jest
+    .spyOn(InteractionManager, "runAfterInteractions")
+    .mockImplementation((cb: any) => {
+      if (typeof cb === "function") cb();
+      return { cancel: jest.fn(), then: jest.fn(), done: jest.fn() } as any;
+    });
+});
+
+afterAll(() => {
+  jest.restoreAllMocks();
+});
 
 describe("SwapToScreen", () => {
   beforeEach(() => {
@@ -469,6 +485,40 @@ describe("SwapToScreen", () => {
           tokenCode: "USDC",
           id: "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
         }),
+      );
+    });
+
+    it("dismisses (goBack) BEFORE applying the token write so the slide isn't interrupted", () => {
+      const setDestinationTokenSpy = jest.fn();
+      (useSwapStore as unknown as jest.Mock).mockReturnValue({
+        setSourceToken: jest.fn(),
+        setDestinationToken: setDestinationTokenSpy,
+        setSourceAmount: jest.fn(),
+        setSourceAmountDisplay: jest.fn(),
+        sourceTokenId: null,
+        destinationToken: null,
+      });
+      (
+        useSwapTokenLookupModule.useSwapTokenLookup as jest.Mock
+      ).mockReturnValue({
+        ...defaultLookupResult,
+        yourTokens: [usdcBalance, xlmBalance],
+        popularTokens: [],
+      });
+
+      const { getByText } = renderWithProviders(
+        <SwapToScreen {...makeProps(SWAP_SELECTION_TYPES.DESTINATION)} />,
+      );
+
+      fireEvent.press(getByText("USDC"));
+
+      expect(mockGoBack).toHaveBeenCalled();
+      expect(setDestinationTokenSpy).toHaveBeenCalled();
+      // goBack must run before the store write (the write is deferred past
+      // the dismiss); otherwise the synchronous re-render cancels the
+      // Android slide animation.
+      expect(mockGoBack.mock.invocationCallOrder[0]).toBeLessThan(
+        setDestinationTokenSpy.mock.invocationCallOrder[0],
       );
     });
 
