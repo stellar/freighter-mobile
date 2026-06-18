@@ -147,6 +147,7 @@
     "url": "0.11.4",
     "util": "0.10.3",
     "vm-browserify": "0.0.4",
+    "web-streams-polyfill": "4.0.0-beta.3",
     "zeego": "3.0.6",
     "zustand": "5.0.6"
   },
