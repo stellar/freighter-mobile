@@ -82,7 +82,9 @@ export async function cachedFetch<T>(
       await dataStorage.setItem(storageKey, JSON.stringify(cachedResult));
       await dataStorage.setItem(cachedDateId, time.toString());
     } catch (e) {
-      logger.error("cachedFetch", "Error fetching data", e);
+      // Transient network failure (offline / 5xx / timeout) — handled by
+      // returning stale cache or rethrowing to the caller. warn, not error.
+      logger.warn("cachedFetch", "Error fetching data", e);
       // Graceful degradation only when the caller didn't explicitly ask
       // for fresh data. Pull-to-refresh and other forceRefresh paths
       // need to see the failure (e.g. to show a "couldn't refresh"
