@@ -826,7 +826,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       {(showTrending || showTrendingSpinner) && (
         <View className="mt-[24px] mb-[24px]">
           <Text md medium secondary>
-            {t("swapScreen.trendingTokensSection")}
+            {t("swapScreen.popularTokensSection")}
           </Text>
         </View>
       )}

@@ -613,7 +613,6 @@
     "popularTokensSection": "Popular tokens",
     "verifiedSection": "Verified",
     "unverifiedSection": "Unverified",
-    "trendingTokensSection": "Trending Tokens",
     "verifiedInfo": {
       "title": "Verified token",
       "body": "From trusted token lists in the Stellar ecosystem."
