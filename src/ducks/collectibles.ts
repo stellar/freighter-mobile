@@ -1,3 +1,4 @@
+import { NETWORKS } from "config/constants";
 import { logger } from "config/logger";
 import {
   retrieveCollectiblesContracts,
@@ -427,6 +428,9 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
             ),
         );
         if (
+          // Only a real outage signal on mainnet — Testnet/Futurenet
+          // collectibles backends routinely error and aren't an outage.
+          (network as NETWORKS) === NETWORKS.PUBLIC &&
           realFailureCollections.length === collections.length &&
           collections.length > 0
         ) {
