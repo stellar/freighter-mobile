@@ -611,6 +611,11 @@ export const useSwapTokenLookup = ({
   }, [searchTerm, performSearch]);
 
   const handleSearch = useCallback((term: string) => {
+    // Invalidate any in-flight search so a slow prior response can't
+    // repopulate results (or flip stellarExpertDown) for the old term after
+    // the field changes/clears. Mirrors resetSearch; the post-await guards in
+    // performSearch bail on signal.aborted.
+    abortControllerRef.current?.abort();
     setSearchTerm(term);
     // Optimistically flip to LOADING and clear stale results the moment the
     // user types, even before the 500ms debounce kicks the fetch. Otherwise

@@ -575,6 +575,49 @@ describe("useSwapTokenLookup — active search", () => {
     expect(result.current.verifiedSearchMatches.length).toBeGreaterThan(0);
   });
 
+  it("discards a stale in-flight search response after the field is cleared", async () => {
+    const held = buildHeldBalances();
+    // Controllable response — resolves to null (stellar.expert "down") only
+    // AFTER we clear the field; that resolution must be discarded.
+    let resolveSearch: (value: unknown) => void = () => {};
+    (stellarExpert.searchToken as jest.Mock).mockReturnValue(
+      new Promise((resolve) => {
+        resolveSearch = resolve;
+      }),
+    );
+
+    const { result } = renderHook(() =>
+      useSwapTokenLookup({ network: NETWORKS.PUBLIC, balanceItems: held }),
+    );
+    await act(async () => {
+      await settleAsync();
+    });
+
+    // Start a search and let the debounce fire so performSearch parks on the
+    // (still-pending) searchToken call.
+    act(() => {
+      result.current.handleSearch("USDC");
+    });
+    await settleDebounce();
+
+    // User clears the field before the response arrives.
+    act(() => {
+      result.current.handleSearch("");
+    });
+
+    // The stale response now resolves.
+    await act(async () => {
+      resolveSearch(null);
+      await settleAsync();
+    });
+
+    // The cleared field must not be repopulated, and a superseded request
+    // must not flip stellarExpertDown on.
+    expect(result.current.stellarExpertDown).toBe(false);
+    expect(result.current.heldSearchMatches.length).toBe(0);
+    expect(result.current.verifiedSearchMatches.length).toBe(0);
+  });
+
   it("dedupes by CODE:ISSUER across sources", async () => {
     const held = buildHeldBalances();
     (stellarExpert.searchToken as jest.Mock).mockResolvedValue({
