@@ -9,6 +9,12 @@
 > All Figma links on this design doc open specific mocks in the
 > [Freighter Mobile design file](https://www.figma.com/design/KwkHXQxbNmDllwermJtnRu/Freighter-Mobile?node-id=11310-100487&m=dev).
 > Click any inline link to see the rendered screen.
+>
+> **Implementation note (2026-06-18):** this doc has been reconciled with the
+> current state of the in-progress `cg-swap-to-new-token` branch (not yet
+> merged). Sections below describe the code as built on the branch so far; where
+> the original design intent and the implementation diverged, the text reflects
+> the code.
 
 ## 1. Context
 
@@ -47,37 +53,35 @@ classic-only for now; Soroban support will come later.
 The PRD lists every Figma node; the doc below pulls the most important ones
 inline. All links open the same Figma file.
 
-| Screen                       | Figma                                                                                                     | Used for                                  |
-| ---------------------------- | --------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
-| Swap with Trending Tokens    | [11310-94387](https://www.figma.com/design/KwkHXQxbNmDllwermJtnRu/Freighter-Mobile?node-id=11310-94387)   | New Swap home screen layout               |
-| Swap to (picker, default)    | [11310-101382](https://www.figma.com/design/KwkHXQxbNmDllwermJtnRu/Freighter-Mobile?node-id=11310-101382) | Two-section picker: Your tokens + Popular |
-| Swap to (search results)     | [11738-38221](https://www.figma.com/design/KwkHXQxbNmDllwermJtnRu/Freighter-Mobile?node-id=11738-38221)   | Single "Results" section                  |
-| Trending token detail sheet  | [11694-74469](https://www.figma.com/design/KwkHXQxbNmDllwermJtnRu/Freighter-Mobile?node-id=11694-74469)   | Issuer / domain / "Buy {code}" CTA        |
-| Malicious badge on Receive   | [11310-104182](https://www.figma.com/design/KwkHXQxbNmDllwermJtnRu/Freighter-Mobile?node-id=11310-104182) | In-place Blockaid badge on swap inputs    |
-| Sell side focused            | [11310-94563](https://www.figma.com/design/KwkHXQxbNmDllwermJtnRu/Freighter-Mobile?node-id=11310-94563)   | Native numeric keyboard state             |
-| Token-amount input           | [11738-37895](https://www.figma.com/design/KwkHXQxbNmDllwermJtnRu/Freighter-Mobile?node-id=11738-37895)   | Default mode                              |
-| Dollar-amount input          | [11738-38058](https://www.figma.com/design/KwkHXQxbNmDllwermJtnRu/Freighter-Mobile?node-id=11738-38058)   | After tapping RefreshCw03                 |
-| Insufficient balance         | [11310-103798](https://www.figma.com/design/KwkHXQxbNmDllwermJtnRu/Freighter-Mobile?node-id=11310-103798) | Disabled CTA state                        |
-| Review with trustline banner | [11684-25339](https://www.figma.com/design/KwkHXQxbNmDllwermJtnRu/Freighter-Mobile?node-id=11684-25339)   | "You are swapping" + purple banner        |
-| Trustline info sheet         | [11697-19790](https://www.figma.com/design/KwkHXQxbNmDllwermJtnRu/Freighter-Mobile?node-id=11697-19790)   | Tappable explanation                      |
-| Review with Blockaid warning | [11310-100817](https://www.figma.com/design/KwkHXQxbNmDllwermJtnRu/Freighter-Mobile?node-id=11310-100817) | Suspicious/malicious destination          |
-| Add XLM bottom sheet         | [11821-35601](https://www.figma.com/design/KwkHXQxbNmDllwermJtnRu/Freighter-Mobile?node-id=11821-35601)   | Insufficient XLM for trustline reserve    |
+| Screen                       | Figma                                                                                                     | Used for                                                       |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| Swap with Trending Tokens    | [11310-94387](https://www.figma.com/design/KwkHXQxbNmDllwermJtnRu/Freighter-Mobile?node-id=11310-94387)   | New Swap home screen layout                                    |
+| Swap to (picker, default)    | [11310-101382](https://www.figma.com/design/KwkHXQxbNmDllwermJtnRu/Freighter-Mobile?node-id=11310-101382) | Two-section picker: Your tokens + Popular                      |
+| Swap to (search results)     | [11738-38221](https://www.figma.com/design/KwkHXQxbNmDllwermJtnRu/Freighter-Mobile?node-id=11738-38221)   | Single "Results" section                                       |
+| Trending token detail sheet  | [11694-74469](https://www.figma.com/design/KwkHXQxbNmDllwermJtnRu/Freighter-Mobile?node-id=11694-74469)   | Token Address (Issuer for XLM) / domain / "Swap to {code}" CTA |
+| Malicious badge on Receive   | [11310-104182](https://www.figma.com/design/KwkHXQxbNmDllwermJtnRu/Freighter-Mobile?node-id=11310-104182) | In-place Blockaid badge on swap inputs                         |
+| Sell side focused            | [11310-94563](https://www.figma.com/design/KwkHXQxbNmDllwermJtnRu/Freighter-Mobile?node-id=11310-94563)   | Native numeric keyboard state                                  |
+| Token-amount input           | [11738-37895](https://www.figma.com/design/KwkHXQxbNmDllwermJtnRu/Freighter-Mobile?node-id=11738-37895)   | Default mode                                                   |
+| Dollar-amount input          | [11738-38058](https://www.figma.com/design/KwkHXQxbNmDllwermJtnRu/Freighter-Mobile?node-id=11738-38058)   | After tapping the token↔fiat toggle (`RefreshCcw03`)          |
+| Insufficient balance         | [11310-103798](https://www.figma.com/design/KwkHXQxbNmDllwermJtnRu/Freighter-Mobile?node-id=11310-103798) | Disabled CTA state                                             |
+| Review with trustline banner | [11684-25339](https://www.figma.com/design/KwkHXQxbNmDllwermJtnRu/Freighter-Mobile?node-id=11684-25339)   | "You are swapping" + purple banner                             |
+| Trustline info sheet         | [11697-19790](https://www.figma.com/design/KwkHXQxbNmDllwermJtnRu/Freighter-Mobile?node-id=11697-19790)   | Tappable explanation                                           |
+| Review with Blockaid warning | [11310-100817](https://www.figma.com/design/KwkHXQxbNmDllwermJtnRu/Freighter-Mobile?node-id=11310-100817) | Suspicious/malicious destination                               |
+| Add XLM bottom sheet         | [11821-35601](https://www.figma.com/design/KwkHXQxbNmDllwermJtnRu/Freighter-Mobile?node-id=11821-35601)   | Insufficient XLM for trustline reserve                         |
 
 ## 4. High-level architecture
 
 ```mermaid
 flowchart TD
     Home([Home / Token Details])
-    Home -->|tap 'Swap'| Swap[Swap screen — \nSell section, Receive section, 'Trending Tokens', 'Enter an amount' button]
+    Home -->|tap 'Swap'| Swap[Swap screen — \nSell section, Receive section, 'Popular tokens' list, 'Enter an amount' button]
 
-    Swap --->|tap Sell dropdown| SellPicker[List — 'Your tokens', balances search bar]
-    SellPicker -->|pick a token| Swap
+    Swap --->|tap Sell dropdown| Picker[SwapToScreen picker — parameterised by selectionType\nSOURCE → holdsOnly: 'Your tokens' only\nDESTINATION: 'Your tokens', 'Popular tokens', Stellar Expert search]
+    Swap --->|tap Receive dropdown, or tap 'Select a token' button| Picker
+    Picker -->|pick a token| Swap
 
-    Swap --->|tap Receive dropdown, or tap 'Select a token' button| DestPicker[List — 'Your tokens', 'Popular tokens', Stellar Expert search bar]
-    DestPicker -->|pick a token| Swap
-
-    Swap --->|tap a Trending Tokens row| TrendDetail[Trending token details — name, price, issuer, domain and 'Buy' button]
-    TrendDetail -->|tap 'Buy'| Swap
+    Swap --->|tap a Popular-tokens row| TrendDetail[Trending token details — name, price, token address, domain and 'Swap to' button]
+    TrendDetail -->|tap 'Swap to'| Swap
 
     Swap -->|tap 'Enter an amount' or tap the Sell input| AmountEntry[System numeric keyboard — 'Review swap' button]
     AmountEntry -->|tap 'Review swap'| ReserveCheck{Enough XLM for new trustline reserve?}
@@ -97,14 +101,45 @@ flowchart TD
     classDef new fill:#5b3aa8,stroke:#a48cd9,color:#fff
     classDef existing fill:#1f2937,stroke:#6b7280,color:#fff
     classDef decision fill:#3b3120,stroke:#d97706,color:#fff
-    class DestPicker,TrendDetail,AmountEntry,XlmSheet,TrustInfo,ChangeTrust new
-    class Home,Swap,SellPicker,Review,Build,PathOnly,Submit,Processing existing
+    class TrendDetail,AmountEntry,XlmSheet,TrustInfo,ChangeTrust new
+    class Home,Swap,Picker,Review,Build,PathOnly,Submit,Processing existing
     class ReserveCheck,TrustlineCheck decision
 ```
 
 **Legend:** Purple = new screen / sheet / step. Slate = exists today (kept or
 extended for this work). What each screen does, what it renders, and how state
 flows through it is in §6 — this diagram is the navigation graph only.
+
+**One picker, parameterised.** There is a single picker screen, not separate
+Sell/Receive pickers. Both dropdowns push the same `SWAP_SCREEN` route
+(`SwapToScreen`); the only difference is the `selectionType` param, which
+toggles `holdsOnly` (Sell side → held tokens only) and the header title ("Swap
+from" / "Swap to").
+
+**Route table** (`SWAP_ROUTES`,
+[`src/config/routes.ts`](../src/config/routes.ts); stack wired in
+[`src/navigators/SwapNavigator.tsx`](../src/navigators/SwapNavigator.tsx)):
+
+| Route constant       | Route name           | Component                                        | Params                                         |
+| -------------------- | -------------------- | ------------------------------------------------ | ---------------------------------------------- |
+| `SWAP_AMOUNT_SCREEN` | `"SwapAmountScreen"` | `SwapAmountScreen` (stack **initial route**)     | `{ tokenId: string; tokenSymbol: string }`     |
+| `SWAP_SCREEN`        | `"SwapScreen"`       | `SwapToScreen` (token picker, **pushed** on top) | `{ selectionType: "source" \| "destination" }` |
+
+The amount screen is the stack root and the picker is pushed on top, so its
+`slide_from_bottom` open animation has a true inverse on dismiss (`goBack` =
+slide-down). Note the mapping is slightly confusing: the constant named
+`SWAP_SCREEN` ("SwapScreen") is the _picker_ component `SwapToScreen`, not the
+amount screen.
+
+**Naming:** the user-facing section header is **"Popular tokens"**
+(`swapScreen.popularTokensSection`) on _both_ the `SwapAmountScreen` in-screen
+list and the `SwapToScreen` picker — there is no on-screen "Trending Tokens"
+label. Throughout this doc, "Trending Tokens" / "Trending list" refers only to
+the `SwapAmountScreen` list's internal identity (`trendingTokens`,
+`variant="trending"`, `useTrendingTokenDetail`, the `SWAP_TRENDING_*` analytics
+events, the `swap-amount-trending-list` testID), which intentionally keep the
+`trending` name. The only swap-facing strings under the trending namespace are
+`swapScreen.trendingDetail.*` for the detail bottom sheet.
 
 ## 5. Data sources & flow
 
@@ -136,13 +171,23 @@ The hook exposes two surfaces driven by whether the search term is empty:
 
    Soroban contracts are filtered out using
    [`helpers/balances.ts:getTokenType`](../src/helpers/balances.ts) /
-   [`helpers/soroban.ts:isContractId`](../src/helpers/soroban.ts). The picker's
-   "Popular tokens" section additionally hides tokens already in "Your tokens"
-   so the user doesn't see them twice on the same screen — but the underlying
-   `popularTokens` array kept in the hook includes them. The Trending Tokens
-   list on `SwapAmountScreen` consumes the unfiltered array since it has no
-   "Your tokens" section above it to visually duplicate, and seeing a held
-   token's price + 24h % there can be useful.
+   [`helpers/soroban.ts:isContractId`](../src/helpers/soroban.ts). On mainnet,
+   records below a minimum 7-day volume floor (`MIN_TRENDING_VOLUME7D` =
+   `70_000_000_000`, i.e. ≈ $7,000 USD in stellar.expert's 10^7-scaled
+   representation) are dropped inside the `cachedFetch` closure in
+   [`ducks/stellarExpertTopTokens.ts`](../src/ducks/stellarExpertTopTokens.ts)
+   _before_ the response is cached, so low-volume tokens never reach the
+   intersection. The floor is a no-op on testnet (where `volume7d` is always 0,
+   so applying it would empty the list).
+
+   The hook keeps two related arrays. `popularTokens` is the trending
+   intersection with held tokens filtered out
+   (`trendingTokens.filter(t => !hasExistingTrustline(...))`) — the picker's
+   "Popular tokens" section reads this, so the user never sees a held token
+   twice on the same screen. `trendingTokens` is the held-**inclusive** array,
+   and it's what the `SwapAmountScreen` in-screen list consumes — that screen
+   has no "Your tokens" section above it to visually duplicate, and seeing a
+   held token's price + 24h % there is useful.
 
 **Active (with search term)** — produces three labeled, mutually exclusive
 ordered sections:
@@ -215,8 +260,11 @@ state.
 
 - Module-scoped `trendingMemoryCacheByNetwork` survives remounts so re-entering
   the swap flow paints the trending list synchronously without a spinner.
-- Disk-backed caches via `cachedFetch` (30-min TTL) for the trending endpoint,
-  verified-tokens JSON, and Blockaid bulk-scan responses.
+- Disk-backed 30-min caches for the trending endpoint and verified-tokens JSON
+  via the shared `cachedFetch` helper. Blockaid bulk-scan responses use a
+  _separate_ per-token disk cache in
+  [`ducks/blockaidTokenScans`](../src/ducks/blockaidTokenScans.ts) (its own
+  30-min TTL via a per-entry `_cachedAt` / `isFresh` check, not `cachedFetch`).
 - SWR pipeline: read disk caches → render preliminary list → revalidate in
   background. Pull-to-refresh (`refreshTrending`) force-revalidates all three
   layers in parallel.
@@ -252,14 +300,15 @@ stellar.expert so we benefit from our API key + higher rate limits. We'll:
   `cg-swap-to-new-token` branch), so the frontend easily migrates by swapping
   the service base URL.
 
-Until the proxy lands we can call stellar.expert directly via the existing
-[`services/stellarExpert.ts`](../src/services/stellarExpert.ts) — adding one new
-method that routes per-network the same way `searchToken` already does (via
-`getApiStellarExpertUrl(network)`), so testnet users get testnet trending data
-and mainnet users get mainnet:
+Until the proxy lands we call stellar.expert directly via
+[`services/stellarExpert.ts`](../src/services/stellarExpert.ts). The new method
+(already shipped on this branch) routes per-network the same way `searchToken`
+does (via two `createApiService` instances built from
+`getApiStellarExpertUrl(NETWORKS.PUBLIC | NETWORKS.TESTNET)`), so testnet users
+get testnet trending data and mainnet users get mainnet:
 
 ```ts
-fetchTrendingAssets({ network, signal }): Promise<SearchTokenResponse>
+fetchTrendingAssets({ network, signal }): Promise<SearchTokenResponse | null>
 //  network=PUBLIC  → GET https://api.stellar.expert/explorer/public/asset?sort=volume7d&order=desc&limit=50
 //  network=TESTNET → GET https://api.stellar.expert/explorer/testnet/asset?limit=50
 //                    (volume7d is always 0 on testnet, so we omit the sort
@@ -267,6 +316,13 @@ fetchTrendingAssets({ network, signal }): Promise<SearchTokenResponse>
 //                     verified-tokens intersection is what produces a
 //                     meaningful list there.)
 ```
+
+It returns `null` (rather than throwing) on a caught error or a canceled
+request; that `null` is what drives the cache-skip and the `stellarExpertDown`
+fallback downstream (§5.4). On mainnet the cached payload is additionally
+filtered to drop sub-`MIN_TRENDING_VOLUME7D` records before caching (see §5.1),
+so the disk cache already excludes low-volume tokens and consumers never
+re-filter.
 
 The search-mode call (`/asset?search=…`) reuses the existing `searchToken`
 helper unchanged, which already handles both networks.
@@ -277,7 +333,11 @@ Mirrors the Home balances row: prefer [`usePricesStore`](../src/ducks/prices.ts)
 `currentPrice` and `percentagePriceChange24h`. When `/token-prices` returns
 nothing for a given identifier we **fall back** to stellar.expert's `price`
 field from the SearchTokenResponse record; we do not have a 24h % from
-stellar.expert so the `%` chip is hidden in the fallback case.
+stellar.expert in the fallback case. The two surfaces handle the missing 24h %
+differently: the **trending detail sheet** omits the `%` delta string entirely
+(no `percentagePriceChange24h` → the `<Text>` isn't rendered), while the
+**trending list row** always renders the `%` slot and shows a `--` placeholder
+in the fallback case rather than removing it.
 
 Prices for the Trending list are fetched in one batched call when the swap
 screen mounts (or when the Trending list resolves), reusing
@@ -310,9 +370,14 @@ between tokens they hold:
 `stellarExpertDown` is set when either the cold-start trending fetch fails AND
 no cache is available, or when the search-mode call returns null. If a stale
 cache exists, the trending list stays visible and the down notice is suppressed
-— we prefer slightly-stale data over no data. Errors are logged via
-`logger.error` regardless so we can monitor stellar.expert availability over
-time.
+— we prefer slightly-stale data over no data. Errors are routed through
+`logApiError` ([`services/apiFactory.ts`](../src/services/apiFactory.ts)), which
+logs connectivity failures (offline / DNS / TLS / captive-portal, identified by
+the `isNetworkError` flag, status 0) at `logger.warn`, and real backend errors
+or request timeouts at `logger.error`. Aborted/canceled requests (e.g. a
+superseded in-flight search) return `null` and are not logged at all. So a
+stellar.expert outage typically surfaces as a `warn` — that's the level to watch
+for availability monitoring.
 
 Held-to-held swaps — the primary existing flow — continue to work fully because
 path-finding goes through Horizon's `strictSendPaths`, not stellar.expert.
@@ -374,10 +439,14 @@ interface SwapState {
 
 `setDestinationToken(descriptor: DestinationTokenDescriptor | null)` replaces
 the current `(tokenId, tokenSymbol)` signature (nullable so the picker can clear
-the slot). Two thin helpers (live next to the type) keep call sites tidy and
+the slot). Two thin helpers (in a sibling file
+[`helpers/descriptors.ts`](../src/components/screens/SwapScreen/helpers/descriptors.ts);
+the `DestinationTokenDescriptor` type itself stays in `helpers/types.ts`, and
+both are re-exported through the `helpers` barrel) keep call sites tidy and
 avoid runtime "what shape is this?" branching — each is a narrow projection of
 its source plus `isNew` set from the origin (`false` for balances, `true` for
-search records that aren't already held):
+search records that aren't already held; the native-XLM branch of
+`descriptorFromSearchRecord` returns `isNew: false`):
 
 ```ts
 descriptorFromBalance(balance: HeldBalanceItem): DestinationTokenDescriptor
@@ -416,43 +485,65 @@ We adopt the Send flow's shared hook:
 - [`src/hooks/useTokenFiatConverter`](../src/hooks/useTokenFiatConverter/index.ts)
   — atomic `useReducer`, locale-aware decimals, conversion math.
 
-…with one small extension. The hook today exposes a per-keystroke entry point
-(`handleDisplayAmountChange(key: string)`) designed for the custom keyboard's
-`onPress`. The system keyboard reports the full input via
-`TextInput.onChangeText(fullText: string)`, so we add a sibling entry point:
+…with one small extension that has already shipped. The hook exposed a
+per-keystroke entry point (`handleDisplayAmountChange(key: string)`) designed
+for the custom keyboard's `onPress`. The system keyboard reports the full input
+via `TextInput.onChangeText(fullText: string)`, so the hook now also exposes a
+sibling entry point (declared at `useTokenFiatConverter/index.ts:35`, returned
+at `index.ts:291`, backed by the `SET_DISPLAY_AMOUNT_FROM_TEXT` reducer action
+at `reducer.ts:768`):
 
 ```ts
 setDisplayAmountFromText(text: string): void
 ```
 
-It re-uses the existing reducer's parsing and recalculation logic (which already
-operates on full strings internally — `recalculateFiatAmountFromToken`,
-`recalculateTokenAmountFromFiat`), so the change is additive. The Send flow
-keeps calling `handleDisplayAmountChange` and is unaffected.
+Rather than merely re-using the existing reducer parsing, this action adds a
+dedicated full-string path. Because the system keyboard delivers the whole field
+on every change, it handles both typing and pastes: it runs
+`sanitizePastedAmount`
+([`helpers/formatAmount.ts`](../src/helpers/formatAmount.ts)) to strip garbage,
+resolve foreign separators / grouping, and normalize a bare separator; caps
+fractional digits to the active mode's allowed decimals (`FIAT_DECIMALS` in fiat
+mode, the token's `decimals` otherwise); and rejects amounts above the protocol
+cap (`maxTokenAmount`) for classic tokens. On unparseable / ambiguous input it
+**rolls back state and bumps `pasteRejectNonce`**; `AmountCard` watches that
+counter and fires a one-shot error toast (`amountCard.unreadableAmount`). It
+then normalizes via `parseDisplayNumber` / `normalizeInternalAmount` and calls
+the shared `recalculateFiatAmountFromToken` / `recalculateTokenAmountFromFiat`
+helpers to keep token and fiat sides in sync. The Send flow keeps calling
+`handleDisplayAmountChange` and is unaffected.
 
 **On the screen:**
 
-- Sell input: `<TextInput keyboardType="decimal-pad" inputMode="decimal" />`
-  driven by `setDisplayAmountFromText`. `decimal-pad` honours the device locale,
-  so comma-vs-dot separators Just Work (the reducer already parses both via
-  `getNumberFormatSettings()`).
-- Token↔fiat toggle: the existing `RefreshCw03` icon next to the Sell value
-  flips `showFiatAmount`.
-- Receive side: read-only, renders the simulated converted amount + its fiat
-  equivalent using the converter's recalculation utilities.
-
-**The Send flow's migration to the system keyboard is already in flight** in
-[#856](https://github.com/stellar/freighter-mobile/pull/856) — that PR
-introduces the system-keyboard pattern for Send and lands the
-`setDisplayAmountFromText` (or equivalent text-based) entry point on
-`useTokenFiatConverter`. The Swap work assumes #856 is merged first and re-uses
-the new entry point; if Swap lands first, we add the entry point as part of this
-work and Send rebases onto it. Either way the per-key
-`handleDisplayAmountChange` API stays in place to keep the diff additive.
+- Sell input: the Sell amount is rendered via the shared
+  [`AmountCard`](../src/components/AmountCard.tsx) (`mode="editable"`, shared
+  with Send) driven by a `converter` prop — not a raw `TextInput` on
+  `SwapAmountScreen`. Internally `AmountCard` wires
+  `<TextInput keyboardType="decimal-pad" onChangeText={converter.setDisplayAmountFromText} />`
+  (no `inputMode` prop). `decimal-pad` honours the device locale, so
+  comma-vs-dot separators Just Work (the reducer parses both via
+  `getNumberFormatSettings()`). `SwapAmountScreen` syncs the converter's
+  `tokenAmount` / `tokenAmountDisplay` into the store (`setSourceAmount` /
+  `setSourceAmountDisplay`) so path-finding still keys off the store, and uses
+  `setTokenAmount` / `updateFiatDisplay` for the percentage buttons.
+- Token↔fiat toggle: `AmountCard` renders the `Icon.RefreshCcw03` icon
+  (counter-clockwise) next to the Sell value, which flips `showFiatAmount`. It
+  (and the secondary line) only render when the token has a USD price
+  (`hasUsdPrice`).
+- Receive side: a read-only `AmountCard` (`mode="readonly"`) fed by the
+  path-finding result, **not** by `useTokenFiatConverter`. The converted amount
+  is the store's `destinationAmount` (set from the Horizon path-finder's best
+  path); `buildReceiveTexts` formats it and its fiat equivalent, where the fiat
+  is computed by `computeDestinationFiat` over the held balance's `currentPrice`
+  or the `useSwapTokenPrices` price map. The converter and its `recalculate*`
+  helpers drive only the Sell input.
 
 Why reuse the converter rather than rebuild: it's already proven in production,
 removes ~80 LOC of duplication from `SwapAmountScreen`, and ensures swap
-inherits any future bug fixes (e.g. locale separators, decimals trimming).
+inherits any future bug fixes (e.g. locale separators, decimals trimming). (The
+Send flow's parallel migration to the system keyboard,
+[#856](https://github.com/stellar/freighter-mobile/pull/856), landed separately;
+both consumers now share `AmountCard` + `useTokenFiatConverter`.)
 
 ### 6.3 New screens / components
 
@@ -468,7 +559,18 @@ Replaces the current `SwapScreen.tsx` (which today only re-uses
 - `<SectionList>` (React Native — virtualised; section equivalent of the
   `FlatList` used by [`BalancesList`](../src/components/BalancesList.tsx)) with
   the section ordering from §5.1.
-- Sections are computed memoised arrays from `useSwapTokenLookup`.
+- `SwapToScreen` composes three hooks: `useSwapTokenLookup` returns the raw,
+  separately-typed buckets (`yourTokens`, `popularTokens`, `heldSearchMatches`,
+  `verifiedSearchMatches`, `unverifiedSearchMatches`) plus lifecycle `status`
+  and search controls;
+  [`useSwapToSections`](../src/components/screens/SwapScreen/hooks/useSwapToSections.ts)
+  assembles the memoised `SectionList` `sections` from those buckets — it is
+  `selectionType`-aware (the `popular` section is emitted only in DESTINATION
+  mode) and tags each section with a `kind` of
+  `"held" | "popular" | "verified" | "unverified"`; and
+  [`useSwapToEmptyStates`](../src/components/screens/SwapScreen/hooks/useSwapToEmptyStates.ts)
+  derives the mutually-exclusive `isSearching` / `showSorobanEmpty` /
+  `showNoResults` booleans.
 
 We **do not** add FlashList — `SectionList` is sufficient for ~150 rows and
 avoids introducing a new dependency.
@@ -496,8 +598,10 @@ three explicit variants declared on the component:
   - **`"non-held"`** (`Verified` / `Unverified` sections, plus non-held matches
     in search): a `DotsHorizontal` ellipsis that opens the existing
     [`TokenContextMenu`](../src/components/screens/SwapScreen/components/TokenContextMenu.tsx)
-    with "Copy token address" (copies the issuer `G…` for classic assets, the
-    `C…` for contracts) and "View on stellar.expert" (opens the asset page via
+    with "Copy contract address" (`swapScreen.copyContractAddress` — copies the
+    issuer `G…` for classic assets, the `C…` for contracts, via
+    `getContractAddress`) and "View on stellar.expert"
+    (`swapScreen.viewOnStellarExpert`, opens the asset page via
     [`useInAppBrowser`](../src/hooks/useInAppBrowser.ts), same pattern as
     `BalancesList` and `TransactionDetailsBottomSheet`).
   - **`"trending"`** (Trending Tokens list on `SwapAmountScreen`): price + 24h %
@@ -536,11 +640,40 @@ tapping a row opens:
 ([`src/components/screens/SwapScreen/components/TrendingTokenDetailBottomSheet.tsx`](../src/components/screens/SwapScreen/components/TrendingTokenDetailBottomSheet.tsx)
 — NEW)
 
-Reads `tomlInfo.name`, `tomlInfo.issuer`, `domain`, `price`,
-`percentagePriceChange24h` from the record. CTA "Buy {code}" → looks up the
-token in `balanceItems`: if found, uses `descriptorFromBalance`
-(`isNew: false`); otherwise uses `descriptorFromSearchRecord` (`isNew: true`).
-Calls `setDestinationToken(descriptor)` with the result and dismisses.
+A presentational sheet. It reads `record.name` (falling back to
+`record.tokenCode`), `record.domain`, and an Issuer/Token-address row from the
+**flat** `FormattedSearchTokenRecord` (no `tomlInfo` nesting). The address row
+shows the derived SAC C-address (`getTokenSacAddress(record.issuer)`) labelled
+**"Token Address"** for classic assets, and the canonical "Stellar Network"
+issuer labelled **"Issuer"** for native XLM — not the raw G-issuer. Current
+price and 24h % are **not** on the record; they arrive via a separate
+`priceInfo` prop the parent assembles from the `useSwapTokenPrices` map (backed
+by `usePricesStore`), keyed on `recordTokenId(record)`, with `record.price`
+(wrapped in a `BigNumber`) as the `currentPrice` fallback
+(`SwapAmountScreen.tsx:1020-1031`).
+
+The CTA is gated on a trusted-vs-flagged fork:
+
+- **Trusted** (not malicious/suspicious; native XLM is always trusted): a single
+  tertiary button labelled **"Swap to {code}"**
+  (`swapScreen.trendingDetail.swapTo`) that fires the opaque `onSwapTo`
+  callback.
+- **Malicious / suspicious**: a "Cancel" button (`onCancel`, dismisses) plus a
+  **"Swap to {code} anyway"** text button
+  (`swapScreen.trendingDetail.swapToAnyway`) that fires `onSwapTo`. A Blockaid
+  security banner renders above the CTA; tapping it fires
+  `onSecurityWarningPress`.
+
+The sheet emits callbacks only — it performs no `descriptorFromBalance` /
+`descriptorFromSearchRecord` lookup and never calls `setDestinationToken`
+itself. The parent wires `onSwapTo` to `confirmTrendingSelection` from the
+[`useTrendingTokenDetail`](../src/components/screens/SwapScreen/hooks/useTrendingTokenDetail.ts)
+hook; that hook's `applyTrendingSelection` does the held-balance lookup —
+`descriptorFromBalance` (`isNew: false`) when held, otherwise
+`descriptorFromSearchRecord` (`isNew: true`) — clears the source if it would
+collide with the new destination, then calls `setDestinationToken(descriptor)`
+and dismisses. The hook also owns a dedicated Blockaid security-warning sheet
+(presented via `presentTrendingSecurityWarning`).
 
 **`TrustlineInfoBottomSheet`**
 ([`src/components/screens/SwapScreen/components/TrustlineInfoBottomSheet.tsx`](../src/components/screens/SwapScreen/components/TrustlineInfoBottomSheet.tsx)
@@ -564,13 +697,21 @@ Figma node
 Contains a short explainer that the 0.5 XLM trustline reserve is a one-time lock
 (not a per-swap fee), plus —
 
-- **"Swap XLM"** — rendered only when `canOfferSwapToXlm` is true (current
-  source is a non-XLM classic, or the user has any non-XLM classic balance to
-  use as a fallback source). Sets XLM as the Receive token and dismisses. When
-  neither mode applies (e.g. user holds only XLM with XLM as source) the CTA is
-  hidden and the user falls back to the wallet-address affordance.
-- **"Copy wallet address for XLM deposit"** — copies the active account's `G…`
-  so the user can fund it from another wallet or exchange.
+- **"Swap for 0.5 XLM"** (`swapScreen.xlmReserve.swapXlm`) — rendered only when
+  `canOfferSwapToXlm` is true (current source is a non-XLM classic, or the user
+  has any non-XLM classic balance to use as a fallback source). Picks a sell
+  token (reuses the current non-XLM classic source, or falls back to the best
+  non-XLM classic balance), sets XLM as the Receive token, and pre-fills the
+  sell amount via Horizon `strictReceivePaths` so the user receives ~0.5 XLM
+  (capped to the sell token's spendable; the amount is reset in the fallback
+  case since the source token changed), then dismisses. On a missing path /
+  network error it still sets source + dest without a pre-filled amount so the
+  user can adjust manually. When neither mode applies (e.g. user holds only XLM
+  with XLM as source) the CTA is hidden and the user falls back to the
+  wallet-address affordance.
+- **"Copy my wallet address"** (`swapScreen.xlmReserve.copyAddress`) — copies
+  the active account's `G…` so the user can fund it from another wallet or
+  exchange.
 - **Inline body link "Why do I need XLM?"** — opens the help article
   [help.freighter.app — How much XLM do I need in my wallet](https://help.freighter.app/article/xjlva9dxov-how-much-xlm-do-i-need-in-my-wallet)
   via [`useInAppBrowser`](../src/hooks/useInAppBrowser.ts), same pattern as the
@@ -600,44 +741,75 @@ No change to `SwapReviewFooter`'s confirm/cancel buttons.
 
 ### 6.5 Transaction building — `buildSwapTransaction`
 
-Today
+Swap transaction building spans two layers. The op-building lives in the service
+function [`buildSwapTransaction`](../src/services/transactionService.ts)
+(`src/services/transactionService.ts`), which assembles the
+`pathPaymentStrictSend` op and returns `{ tx, xdr }`
+(`Promise<BuildPaymentTransactionResult>`). The store method
 [`useTransactionBuilderStore.buildSwapTransaction`](../src/ducks/transactionBuilder.ts)
-builds a single `pathPaymentStrictSend` op. We extend it:
+is a thin wrapper that calls the service function, stores the resulting XDR in
+Zustand state (`transactionXDR`), and returns it (`Promise<string | null>`).
+
+We extend the service function's params (and the matching store-method params)
+with `includeTrustline`:
 
 ```ts
+// service: src/services/transactionService.ts — BuildSwapTransactionParams
 buildSwapTransaction({
   …existing,
   includeTrustline?: { tokenCode: string; issuer: string }, // NEW
-}): Promise<string /* XDR */>
+}): Promise<BuildPaymentTransactionResult> // { tx, xdr }
 ```
 
 When present, the builder prepends a `changeTrust` operation (asset =
 `new Asset(tokenCode, issuer)`, no limit ⇒ max) so both ops are submitted
 atomically in a single transaction. We extract the op-creation portion of
 [`buildChangeTrustTx`](../src/services/stellar.ts) into a small sibling helper
-`buildChangeTrustOperation(tokenCode, issuer)` in the same file
-(`src/services/stellar.ts`) so both call sites (Add-Token, Swap) share it.
-`buildChangeTrustTx` is refactored to call the helper internally — no behaviour
-change for the Add-Token flow.
+`buildChangeTrustOperation({ tokenCode, issuer, isRemove = false })` (single
+object param) in the same file (`src/services/stellar.ts`) so both call sites
+(Add-Token, Swap) share it. `buildChangeTrustTx` is refactored to call the
+helper internally — no behaviour change for the Add-Token flow.
 
-`useSwapTransaction.setupSwapTransaction` passes
-`includeTrustline: destinationToken.isNew ? { tokenCode: destinationToken.tokenCode, issuer: destinationToken.issuer! } : undefined`.
-The non-null assertion on `issuer` is safe: a destination with `isNew: true` is
-by definition a non-native classic asset (you can't add a trustline to native
-XLM), so the issuer is always present — but we can replace the `!` with an
-explicit guard + `logger.error` in the unreachable branch for belt-and-braces.
-Blockaid's transaction scan now sees the combined XDR, which gives us
-defence-in-depth on top of the per-token scan.
+`useSwapTransaction.setupSwapTransaction` reads `destinationToken` from
+`useSwapStore.getState()` and derives `includeTrustline` from it. When
+`destinationToken.isNew`, it builds
+`{ tokenCode: destinationToken.tokenCode, issuer: destinationToken.issuer }`
+behind an explicit guard: if `issuer` is missing it **throws** (fail-fast,
+before submitting a transaction that would otherwise fail on-chain with
+`tx_no_trust`). This branch is unreachable in practice — native XLM can't be
+`isNew` and the picker filters out Soroban assets — so a missing issuer signals
+a bug we want surfaced immediately. (No `issuer!` non-null assertion and no
+`logger.error` — the guard throws.) Blockaid's transaction scan now sees the
+combined XDR, which gives us defence-in-depth on top of the per-token scan.
 
-**Pre-flight XLM reserve check** — before triggering `buildSwapTransaction`, we
-compute the new base reserve cost (0.5 XLM per new trustline) and compare to the
-user's spendable XLM (already exposed via `BalancesList` /
-`getSpendableBalance`). If insufficient → open `XlmReserveBottomSheet` and
-abort. The check lives in
+**Pre-flight XLM reserve check** — before triggering `buildSwapTransaction`, the
+pure predicate
+`shouldShowXlmReservePreflight({ balanceItems, subentryCount, swapFee, sourceTokenId, destinationIsNew }): boolean`
+decides whether to surface `XlmReserveBottomSheet` instead of the Review sheet.
+It lives in
 [`src/components/screens/SwapScreen/helpers/swapPreflight.ts`](../src/components/screens/SwapScreen/helpers/swapPreflight.ts)
-as `shouldShowXlmReservePreflight`, called from `SwapAmountScreen` before
-opening the Review sheet. We deliberately do this client-side rather than
-relying on Horizon's `tx_insufficient_balance` for a better UX.
+and is called from `SwapAmountScreen` before opening the Review sheet. The logic
+is not a single flat reserve-vs-spendable comparison; it branches:
+
+- Returns `false` when the destination isn't new (`!destinationIsNew`) — no
+  trustline op, so no reserve concern.
+- **XLM source** (`isNativeAssetId(sourceTokenId)`): gate on the _initial_
+  spendable being below `BASE_RESERVE` (0.5 XLM):
+  `xlmSpendable.lt(BASE_RESERVE)`. `SwapAmountScreen` already deducts
+  `BASE_RESERVE` up-front from the spendable amount, so that deduction owns the
+  reserve in the normal case; the sheet is only the fallback for accounts that
+  can't even cover 0.5 to begin with.
+- **Non-XLM source**: gate on post-fee XLM headroom for the extra `changeTrust`
+  op: `xlmSpendable.minus(new BigNumber(swapFee)).lte(BASE_RESERVE)` — the
+  reserve comes from the untouched XLM balance, and `calculateSpendableAmount`
+  only deducted one op fee while the combined tx has two ops, so one extra
+  `swapFee` is subtracted; the `lte` boundary routes the exact-boundary case to
+  the reserve sheet.
+
+`xlmSpendable` is computed via
+`calculateSpendableAmount({ balance: xlmBalance, subentryCount, transactionFee: swapFee })`,
+defaulting to 0 when no XLM balance exists. We deliberately do this client-side
+rather than relying on Horizon's `tx_insufficient_balance` for a better UX.
 
 ### 6.6 CTA state machine on `SwapAmountScreen`
 
@@ -649,37 +821,82 @@ relying on Horizon's `tx_insufficient_balance` for a better UX.
 | Loading      | path-finding in flight             | spinner                           | —                                                                                                                                                                                                                                                                               |
 | Review       | amount valid & path found          | "Review swap"                     | if `destinationToken.isNew` and spendable XLM is below the 0.5 XLM reserve → open `XlmReserveBottomSheet`; else if `isUnableToScan` → open `SecurityDetailBottomSheet` so the user acknowledges the unable-to-scan warning before proceeding; else open `SwapReviewBottomSheet` |
 
-Implemented as a derived `useMemo` returning a discriminated union; renders the
-SDS `<Button>` accordingly. The reserve-check branch only triggers when
+Implemented as a derived `useMemo` in the dedicated
+[`useSwapCtaState`](../src/components/screens/SwapScreen/hooks/useSwapCtaState.ts)
+hook, which exports the discriminated union `SwapCtaState`
+(`{kind:"select";missingSide} | {kind:"enter"} | {kind:"insufficient"} | {kind:"loading"} | {kind:"review"}`),
+the `ctaLabel`, and `isCtaDisabled`; `SwapAmountScreen` renders the SDS
+`<Button>` accordingly. The reserve-check branch only triggers when
 `destinationToken.isNew === true` — held-to-held swaps go straight to the review
 sheet.
 
+Two implementation notes the table glosses over: (1) the button's _disabled_
+state is
+`isCtaDisabled = kind === "insufficient" || !!amountError || !!pathError`, so
+it's also disabled by any `amountError` (e.g. the XLM-for-fees gate, distinct
+from "insufficient balance") or an upstream `pathError`, not only the
+`insufficient` kind; (2) the `review` kind requires `pathResult && !pathError` —
+if path-finding finishes without a result or throws, the CTA falls back to the
+`enter` kind rather than offering Review.
+
 ## 7. Component reuse summary
 
-| Concern                     | Reuse                                                                                                                                                                                                                 | New                                                                     |
-| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| Token search hook           | [`useTokenLookup`](../src/hooks/useTokenLookup.ts) for Add-Token; pattern reused                                                                                                                                      | `useSwapTokenLookup` (parallel implementation, swap-specific filtering) |
-| Token↔fiat amount input    | [`useTokenFiatConverter`](../src/hooks/useTokenFiatConverter/index.ts) (extended with `setDisplayAmountFromText`), RN `TextInput` with `keyboardType="decimal-pad"`, `KeyboardAvoidingView`                           | —                                                                       |
-| Token icon + security badge | [`TokenIcon`](../src/components/TokenIcon.tsx), badge pattern from [`AddTokenScreen/TokenItem`](../src/components/screens/AddTokenScreen/TokenItem.tsx)                                                               | `TokenIconWithBadge` (shared wrapper)                                   |
-| Picker layout               | SDS `<Input>`, `SectionList`                                                                                                                                                                                          | `SwapToScreen`, `SwapTokenRow`                                          |
-| Row context menu            | [`TokenContextMenu`](../src/components/screens/SwapScreen/components/TokenContextMenu.tsx) (typed against shared `TokenReference` shape), [`useInAppBrowser`](../src/hooks/useInAppBrowser.ts), `getStellarExpertUrl` | —                                                                       |
-| Trending list & detail      | `usePricesStore`, `SwapTokenRow`, `FlatList` (as `SwapAmountScreen` body)                                                                                                                                             | `TrendingTokenDetailBottomSheet`                                        |
-| Transaction builder         | `pathPaymentStrictSend` path                                                                                                                                                                                          | `buildChangeTrustOperation` helper (extracted), `includeTrustline` flag |
-| Review sheet                | [`SwapReviewBottomSheet`](../src/components/screens/SwapScreen/components/SwapReviewBottomSheet.tsx), SDS `<Banner>` (new `"highlight"` variant)                                                                      | `TrustlineInfoBottomSheet`, `XlmReserveBottomSheet`                     |
-| Blockaid scanning           | [`scanBulkTokens`](../src/services/blockaid/api.ts), [`assessTokenSecurity`](../src/services/blockaid/helper.ts), `useBlockaidTransaction`                                                                            | — (data flow change only)                                               |
-| Verified token lists        | [`ducks/verifiedTokens`](../src/ducks/verifiedTokens.ts), `splitVerifiedTokens`                                                                                                                                       | —                                                                       |
+| Concern                     | Reuse                                                                                                                                                                                                                                                                               | New                                                                                                   |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Token search hook           | [`useTokenLookup`](../src/hooks/useTokenLookup.ts) for Add-Token; pattern reused                                                                                                                                                                                                    | `useSwapTokenLookup` (parallel implementation, swap-specific filtering)                               |
+| Token↔fiat amount input    | [`useTokenFiatConverter`](../src/hooks/useTokenFiatConverter/index.ts) (extended with `setDisplayAmountFromText`), the shared [`AmountCard`](../src/components/AmountCard.tsx) (also used by Send) wrapping a `TextInput` with `keyboardType="decimal-pad"`, `KeyboardAvoidingView` | —                                                                                                     |
+| Token icon + security badge | [`TokenIcon`](../src/components/TokenIcon.tsx), badge pattern from [`AddTokenScreen/TokenItem`](../src/components/screens/AddTokenScreen/TokenItem.tsx)                                                                                                                             | `TokenIconWithBadge` (shared wrapper)                                                                 |
+| Picker layout               | SDS `<Input>`, `SectionList`                                                                                                                                                                                                                                                        | `SwapToScreen`, `SwapTokenRow`                                                                        |
+| Row context menu            | [`TokenContextMenu`](../src/components/screens/SwapScreen/components/TokenContextMenu.tsx) (typed against shared `TokenReference` shape), [`useInAppBrowser`](../src/hooks/useInAppBrowser.ts), `getStellarExpertUrl`                                                               | —                                                                                                     |
+| Trending list & detail      | `usePricesStore`, `SwapTokenRow`, `FlatList` (as `SwapAmountScreen` body)                                                                                                                                                                                                           | `TrendingTokenDetailBottomSheet`                                                                      |
+| Transaction builder         | `pathPaymentStrictSend` path                                                                                                                                                                                                                                                        | `buildChangeTrustOperation` helper (extracted), `includeTrustline` flag                               |
+| Review sheet                | [`SwapReviewBottomSheet`](../src/components/screens/SwapScreen/components/SwapReviewBottomSheet.tsx), SDS `<Banner>` (new `"highlight"` variant)                                                                                                                                    | `TrustlineInfoBottomSheet`, `XlmReserveBottomSheet`, `SwapReviewTokenRow` (Sell/Receive summary rows) |
+| Swap details sheet          | SDS `List`/`Text`, `getStellarExpertUrl`, `calculateSwapRate`, `useClipboard`                                                                                                                                                                                                       | `SwapTransactionDetailsBottomSheet` (computes minimumReceived / conversionRate / fiat)                |
+| Section (i) info sheets     | `InformationBottomSheet`                                                                                                                                                                                                                                                            | `VerifiedTokenInfoBottomSheet`, `UnverifiedTokenInfoBottomSheet`                                      |
+| Blockaid scanning           | [`scanBulkTokens`](../src/services/blockaid/api.ts), [`assessTokenSecurity`](../src/services/blockaid/helper.ts), `useBlockaidTransaction`                                                                                                                                          | — (data flow change only)                                                                             |
+| Verified token lists        | [`ducks/verifiedTokens`](../src/ducks/verifiedTokens.ts), `splitVerifiedTokens`                                                                                                                                                                                                     | —                                                                                                     |
 
 Nothing on this list duplicates an existing component. The new components
 introduced above (`SwapToScreen`, `SwapTokenRow`, `TrendingListItem`,
 `TrendingTokenDetailBottomSheet`, `TrustlineInfoBottomSheet`,
-`XlmReserveBottomSheet`, and the shared `TokenIconWithBadge` wrapper) are all
-single-purpose with clear inputs / outputs (a token record + callbacks). The new
-`useSwapTokenLookup` hook reuses `useTokenLookup`'s cancellation / debouncing
-patterns but is a parallel implementation rather than a wrapper — the
+`XlmReserveBottomSheet`, `SwapReviewTokenRow`,
+`SwapTransactionDetailsBottomSheet`, `VerifiedTokenInfoBottomSheet`,
+`UnverifiedTokenInfoBottomSheet`, and the shared `TokenIconWithBadge` wrapper)
+are all single-purpose with clear inputs / outputs (a token record + callbacks).
+The new `useSwapTokenLookup` hook reuses `useTokenLookup`'s cancellation /
+debouncing patterns but is a parallel implementation rather than a wrapper — the
 swap-specific concerns (Soroban filter, trending intersection, multi-section
 output, `holdsOnly` mode) made composition awkward. The trustline-reserve
 pre-flight check lives in
 `src/components/screens/SwapScreen/helpers/swapPreflight.ts` as a small helper.
+
+**Hook layer.** Beyond `useSwapTokenLookup`, the `SwapAmountScreen` / picker
+logic is decomposed into a set of focused hooks under
+[`src/components/screens/SwapScreen/hooks/`](../src/components/screens/SwapScreen/hooks/)
+(the screen itself orchestrates them rather than holding the logic inline):
+
+- `useSwapBalances` — resolve source / destination / best-non-XLM balances.
+- `useSwapPathFinding` — drive the store's path-finding effect.
+- `useSwapCtaState` — the §6.6 discriminated-union CTA selector +
+  label/disabled.
+- `useSwapAmountError` — amount/error toast state (`SWAP_TOAST_IDS`).
+- `useSwapDirectionToggle` — the chevron source↔destination swap.
+- `useSwapTransaction` — setup / execute / processing of the swap tx.
+- `useSwapTransactionSettings` — the fee/slippage settings sheet.
+- `useSwapSecurityAssessments` — aggregate Blockaid assessments for both sides.
+- `useSwapTokenPrices` — batched price fetch (+ `extraTokenIds` for the selected
+  destination).
+- `useSwapNavigation` — picker navigation + the `SWAP_*_PICKER_OPENED`
+  analytics.
+- `useSwapFooter` — the review-sheet footer renderer.
+- `useSwapForXlmReserve` — the `XlmReserveBottomSheet` "Swap for 0.5 XLM"
+  affordance + `canOfferSwapToXlm`.
+- `useTrendingTokenDetail` — the trending detail sheet, its selection logic, and
+  its dedicated security sheet.
+- `useSwapToSections` / `useSwapToEmptyStates` — picker `SectionList` sections +
+  empty-state booleans.
+- `useReviewTokens` / `useReviewSecuritySummary` / `useStableConversionRate` —
+  the review-sheet view-model + sticky conversion rate.
 
 ## 8. Performance considerations
 
@@ -707,9 +924,9 @@ pre-flight check lives in
   5 s background refresh, persisted cache.
 - **Price batching**: single `fetchPricesForTokenIds` call with the union of
   Trending + held tokens; dedupe already lives inside the store.
-- **Memoisation**: `SwapTokenRow` is memoised on the fields above; section
-  arrays are memoised in `useSwapTokenLookup` to keep `SectionList` re-renders
-  cheap.
+- **Memoisation**: `SwapTokenRow` is memoised on the fields above; the
+  `SectionList` section arrays are memoised in `useSwapToSections` (built from
+  the raw buckets `useSwapTokenLookup` returns) to keep re-renders cheap.
 - **Bundle size**: no new dependencies. Reusing `SectionList` and existing SDS
   components.
 - **Failure modes**: `useSwapTokenLookup` inherits the existing `useTokenLookup`
@@ -759,20 +976,35 @@ colon-prefixed lowercase string for the Amplitude payload (e.g.
 
 - `SWAP_TO_PICKER_OPENED = "swap: to-picker opened"` —
   `{ source: "cta" | "dropdown" }`
-- `SWAP_FROM_PICKER_OPENED = "swap: from-picker opened"` — fired when the
-  Sell-side picker opens.
+- `SWAP_FROM_PICKER_OPENED = "swap: from-picker opened"` —
+  `{ source: "cta" | "dropdown" }`, fired when the Sell-side picker opens.
 - `SWAP_SOURCE_SELECTED = "swap: source selected"` — fired when a token is
-  picked on the Sell side.
+  picked on the Sell (source) side —
+  `{ tokenCode, tokenIssuer, source: "balances" | "search" }`. The source picker
+  lists held tokens only, so `source` is narrowed to those two values.
 - `SWAP_DIRECTION_TOGGLED = "swap: direction toggled"` — fired on the
-  chevron-down direction swap between Sell and Receive.
+  chevron-down direction swap between Sell and Receive —
+  `{ previousSourceTokenCode, previousSourceTokenIssuer, previousDestinationTokenCode, previousDestinationTokenIssuer }`
+  (a pre-toggle snapshot; all fields default to `""`).
 - `SWAP_TRENDING_TOKEN_TAPPED = "swap: trending token tapped"` —
-  `{ tokenCode, position }`
-- `SWAP_TRENDING_BUY_PRESSED = "swap: trending buy pressed"` — `{ tokenCode }`
+  `{ tokenCode, tokenIssuer, position }`
+- `SWAP_TRENDING_SWAP_TO_PRESSED = "swap: trending swap-to pressed"` —
+  `{ tokenCode, tokenIssuer }` (fired by the trending detail sheet's "Swap to
+  {code}" CTA).
 - `SWAP_DESTINATION_SELECTED = "swap: destination selected"` —
-  `{ tokenCode, isNew, source: "trending" | "popular" | "search" | "balances" }`
-- `SWAP_TRUSTLINE_ADDED = "swap: trustline added"` — `{ tokenCode }`, fired once
-  the combined tx confirms.
+  `{ tokenCode, tokenIssuer, isNew, source: "trending" | "popular" | "search" | "balances" }`
+- `SWAP_TRUSTLINE_ADDED = "swap: trustline added"` —
+  `{ tokenCode, tokenIssuer }`, fired once the combined tx confirms.
 - `SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN = "swap: xlm reserve insufficient shown"`
+  (no payload).
+
+The picker-entry and selection-source payload values are centralized in the
+`SwapPickerEntrypoint` (`CTA`/`DROPDOWN`) and `SwapSelectionSource`
+(`BALANCES`/`POPULAR`/`SEARCH`/`TRENDING`) enums in `analyticsConfig.ts`; the
+wire values are unchanged so dashboards keyed on the literal strings keep
+working. The Review sheet's screen-view also fires the existing
+`VIEW_SWAP_CONFIRM = "loaded screen: swap confirm"` event (passed as the bottom
+sheet's `analyticsEvent`).
 
 These let us measure the discovery → swap funnel and the impact on first-time
 trustline creation.
@@ -811,15 +1043,15 @@ existing `services/stellarExpert.ts` pattern).
      opens, idle view shows held + popular sections.
   2. Pick a held token → CTA flips to "Enter an amount" → Sell input focuses,
      keyboard rises.
-  3. Type an amount → Receive side simulates value + fiat. Toggle RefreshCw03 →
-     Sell flips to fiat mode.
+  3. Type an amount → Receive side simulates value + fiat. Toggle the
+     token↔fiat icon (`RefreshCcw03`) → Sell flips to fiat mode.
   4. Pick the same token on the opposite side → opposite side clears (selection
      swap rule).
   5. Pick a **non-held** token, enter a valid amount, tap "Review swap" → Review
      sheet opens with the purple trustline banner. Tap banner → info sheet.
   6. Repeat step 5 on a low-XLM test account (below the 0.5 XLM trustline
      reserve) → `XlmReserveBottomSheet` appears instead of the Review sheet; tap
-     "Swap XLM" → flips Receive to XLM.
+     "Swap for 0.5 XLM" → flips Receive to XLM (and pre-fills the sell amount).
   7. With a funded account, confirm the Review sheet → tx confirms; Stellar
      Expert shows `changeTrust + pathPaymentStrictSend` in one envelope.
   8. Search "usd" → single Results section with held > verified > stellar.expert
@@ -860,21 +1092,22 @@ existing `services/stellarExpert.ts` pattern).
   - Add-a-Token flow is unaffected — it still calls `buildChangeTrustTx`
     (refactored internally to delegate to `buildChangeTrustOperation`, no
     behaviour change) and continues to share `useTokenLookup`.
-  - Send flow's amount input is unaffected by Swap changes (Send is being
-    migrated separately in
+  - Send flow's amount input is unaffected by Swap changes (Send's parallel
+    system-keyboard migration landed separately in
     [#856](https://github.com/stellar/freighter-mobile/pull/856); both consumers
-    share the same `useTokenFiatConverter`).
+    now share `AmountCard` + `useTokenFiatConverter`).
 
 ## 13. Rollout
 
 - Single PR stack (or feature branch `cg-swap-to-new-token` → main).
 - No feature flag — the new picker fully replaces the current swap picker; the
   change is incremental enough that flagging adds more risk than it removes.
-- The `SwapAmountScreen` adoption of `useTokenFiatConverter` lands inside this
-  Swap PR (not split out), so the screen ships consistent. The
-  `setDisplayAmountFromText` converter extension itself comes from whichever PR
-  lands first — this one or
-  [#856](https://github.com/stellar/freighter-mobile/pull/856) — per §6.2.
+- The `SwapAmountScreen` adoption of `useTokenFiatConverter` / `AmountCard`
+  shipped inside this Swap PR (not split out), so the screen ships consistent.
+  The `setDisplayAmountFromText` converter extension is in place on this branch
+  (see §6.2); Send's parallel migration
+  ([#856](https://github.com/stellar/freighter-mobile/pull/856)) landed
+  separately.
 - Coordinate the backend proxy GH issue as a separate stream; the frontend flow
   can be initially merged using stellar.expert directly.
 
