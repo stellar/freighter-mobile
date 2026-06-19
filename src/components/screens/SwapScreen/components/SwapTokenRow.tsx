@@ -48,6 +48,8 @@ export interface SwapTokenRowProps {
   };
   network: NETWORKS;
   onPress: () => void;
+  /** Forwarded to the row's TouchableOpacity so e2e flows can tap a specific token. */
+  testID?: string;
 }
 
 /**
@@ -65,6 +67,7 @@ const SwapTokenRowComponent: React.FC<SwapTokenRowProps> = ({
   priceInfo,
   network,
   onPress,
+  testID,
 }) => {
   const { themeColors } = useColors();
 
@@ -180,6 +183,7 @@ const SwapTokenRowComponent: React.FC<SwapTokenRowProps> = ({
 
   return (
     <TouchableOpacity
+      testID={testID}
       onPress={onPress}
       activeOpacity={0.7}
       className="flex-row justify-between items-center mb-6"

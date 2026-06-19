@@ -329,6 +329,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
                   variant="held"
                   balance={item}
                   network={network}
+                  testID={`token-option-${item.tokenCode}`}
                   onPress={() =>
                     handleHeldPress(item, SwapSelectionSource.BALANCES)
                   }
@@ -351,6 +352,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
                     variant="held"
                     balance={heldMatch}
                     network={network}
+                    testID={`token-option-${heldMatch.tokenCode}`}
                     onPress={() =>
                       handleHeldPress(
                         heldMatch,
@@ -373,6 +375,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
                   variant="non-held"
                   record={record}
                   network={network}
+                  testID={`token-option-${record.tokenCode}`}
                   onPress={() =>
                     handleRecordPress(
                       record,

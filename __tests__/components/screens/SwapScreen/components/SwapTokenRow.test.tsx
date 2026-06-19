@@ -221,6 +221,19 @@ describe("SwapTokenRow", () => {
     expect(getByText("--")).toBeTruthy();
   });
 
+  it("exposes the forwarded testID on the row (used by e2e to tap a specific token)", () => {
+    const { getByTestId } = render(
+      <SwapTokenRow
+        variant="held"
+        balance={mockHeldBalance}
+        network={NETWORKS.PUBLIC}
+        onPress={jest.fn()}
+        testID="token-option-USDC"
+      />,
+    );
+    expect(getByTestId("token-option-USDC")).toBeTruthy();
+  });
+
   it("calls onPress when the row is tapped", () => {
     const onPress = jest.fn();
     const { getByText } = render(

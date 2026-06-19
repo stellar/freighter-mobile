@@ -440,13 +440,17 @@ describe("SwapToScreen", () => {
         popularTokens: [],
       });
 
-      const { getByText } = renderWithProviders(
+      const { getByText, getByTestId } = renderWithProviders(
         <SwapToScreen {...makeProps(SWAP_SELECTION_TYPES.DESTINATION)} />,
       );
 
       // Both XLM and USDC must be visible
       expect(getByText("XLM")).toBeTruthy();
       expect(getByText("USDC")).toBeTruthy();
+      // Each row carries a stable per-token testID (token-option-<code>) so
+      // e2e flows can tap a specific token deterministically.
+      expect(getByTestId("token-option-XLM")).toBeTruthy();
+      expect(getByTestId("token-option-USDC")).toBeTruthy();
     });
 
     it("picking a destination that equals the current source clears the source", () => {
