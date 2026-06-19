@@ -117,15 +117,18 @@ export const useBiometrics = () => {
    * if the verification is successful.
    *
    * @returns Promise resolving to true if biometrics were successfully disabled, false otherwise
-   * @throws {Error} When biometric verification fails
    */
   const handleDisableBiometrics = useCallback(async (): Promise<boolean> => {
-    const success = await verifyBiometrics();
-    if (success) {
-      setIsBiometricsEnabled(false);
-      setSignInMethod(LoginType.PASSWORD);
+    try {
+      const success = await verifyBiometrics();
+      if (success) {
+        setIsBiometricsEnabled(false);
+        setSignInMethod(LoginType.PASSWORD);
+      }
+      return success;
+    } catch {
+      return false;
     }
-    return success;
   }, [verifyBiometrics, setIsBiometricsEnabled, setSignInMethod]);
 
   const getButtonIcon = useCallback(

@@ -48,6 +48,7 @@ import {
 } from "helpers/encryptPassword";
 import { createKeyManager } from "helpers/keyManager/keyManager";
 import { clearScreenshotDek } from "helpers/screenshotCrypto";
+import { scrubStrKeys } from "helpers/stellarStrKey";
 import { clearWalletKitStorage } from "helpers/walletKitUtil";
 import { t } from "i18next";
 import ReactNativeBiometrics from "react-native-biometrics";
@@ -279,7 +280,7 @@ interface ImportSecretKeyParams {
  */
 interface AuthActions {
   logout: (shouldWipeAllData?: boolean) => void;
-  signUp: (params: SignUpParams) => Promise<void>;
+  signUp: (params: SignUpParams) => Promise<boolean>;
   signIn: (params: SignInParams) => Promise<void>;
   importWallet: (params: ImportWalletParams) => Promise<boolean>;
   verifyMnemonicPhrase: (mnemonicPhrase: string) => boolean;
@@ -313,6 +314,7 @@ interface AuthActions {
   ) => Promise<Key>;
 
   clearError: () => void;
+  clearAccountError: () => void;
   devResetAppAuth: () => void;
   setAuthStatus: (authStatus: AuthStatus) => void;
 
@@ -1499,8 +1501,13 @@ const importWallet = async ({
 
     analytics.track(AnalyticsEvent.ACCOUNT_SCREEN_IMPORT_ACCOUNT);
   } catch (error) {
+    // Scrub Stellar StrKeys before sending to analytics — this is a
+    // third-party sink (Amplitude) not covered by Sentry's beforeSend, and the
+    // forwarded message can include uncontrolled native error text.
+    const importFailureMessage =
+      error instanceof Error ? error.message : String(error);
     analytics.trackAccountScreenImportAccountFail(
-      error instanceof Error ? error.message : String(error),
+      scrubStrKeys(importFailureMessage) ?? importFailureMessage,
     );
     // Clean up any partial data on error
     clearAccountData();
@@ -1876,8 +1883,12 @@ const importSecretKeyLocal = async (
 
     analytics.track(AnalyticsEvent.ACCOUNT_SCREEN_IMPORT_ACCOUNT);
   } catch (error) {
+    // Scrub Stellar StrKeys before sending to analytics — third-party sink
+    // (Amplitude) not covered by Sentry's beforeSend.
+    const importFailureMessage =
+      error instanceof Error ? error.message : String(error);
     analytics.trackAccountScreenImportAccountFail(
-      error instanceof Error ? error.message : String(error),
+      scrubStrKeys(importFailureMessage) ?? importFailureMessage,
     );
     throw error;
   }
@@ -1907,6 +1918,37 @@ const clearBiometricsData = async (): Promise<void> => {
     dataStorage.remove(STORAGE_KEYS.HAS_SEEN_BIOMETRICS_ENABLE_SCREEN),
     biometricDataStorage.clear(),
   ]);
+};
+
+/**
+ * Returns a user-safe error message. Known translated auth errors (thrown as
+ * `new Error(t("authStore.error.*"))`) are passed through; anything else is
+ * replaced with the generic `fallbackKey`. The caller logs the raw error to
+ * Sentry.
+ */
+export const getUserFacingError = (
+  error: unknown,
+  fallbackKey: string,
+): string => {
+  // Plain, user-understandable messages pass through. Cryptographic/internal
+  // jargon (noKeyPairFound, hashKeyNotFound, temporaryStoreNotFound,
+  // privateKeyNotFound) is intentionally excluded so it falls back to the
+  // friendly generic copy instead of surfacing technical terms to the user.
+  const safeMessages = new Set<string>([
+    t("authStore.error.invalidPassword"),
+    t("authStore.error.invalidMnemonicPhrase"),
+    t("authStore.error.accountAlreadyExists"),
+    t("authStore.error.accountNotFound"),
+    t("authStore.error.accountListNotFound"),
+    t("authStore.error.noActiveAccount"),
+    t("authStore.error.authenticationExpired"),
+    t("authStore.error.failedToReEncryptData"),
+    t("authStore.error.failedToDecryptData"),
+  ]);
+
+  return error instanceof Error && safeMessages.has(error.message)
+    ? error.message
+    : t(fallbackKey);
 };
 
 /**
@@ -2084,10 +2126,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
           logger.error("logout", "Failed to logout", error);
 
           set({
-            error:
-              error instanceof Error
-                ? error.message
-                : t("authStore.error.failedToLogout"),
+            error: getUserFacingError(error, "authStore.error.failedToLogout"),
             isLoading: false,
           });
         }
@@ -2099,9 +2138,9 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
    * Signs up a new user with the provided credentials
    *
    * @param {SignUpParams} params - The signup parameters
-   * @returns {Promise<void>}
+   * @returns {Promise<boolean>} `true` on success, `false` on failure
    */
-  signUp: async (params): Promise<void> => {
+  signUp: async (params): Promise<boolean> => {
     set((state) => ({ ...state, isLoading: true, error: null }));
     try {
       await signUp(params);
@@ -2112,15 +2151,14 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
       });
       // Fetch active account after successful signup
       await get().fetchActiveAccount();
+      return true;
     } catch (error) {
       logger.error("useAuthenticationStore.signUp", "Sign up failed", error);
       set({
-        error:
-          error instanceof Error
-            ? error.message
-            : t("authStore.error.failedToSignUp"),
+        error: getUserFacingError(error, "authStore.error.failedToSignUp"),
         isLoading: false,
       });
+      return false;
     }
   },
 
@@ -2187,11 +2225,9 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
         );
     } catch (error) {
       analytics.trackReAuthFail();
+      logger.error("useAuthenticationStore.signIn", "Sign in failed", error);
       set({
-        error:
-          error instanceof Error
-            ? error.message
-            : t("authStore.error.failedToSignIn"),
+        error: getUserFacingError(error, "authStore.error.failedToSignIn"),
         isLoading: false,
       });
       throw error;
@@ -2544,10 +2580,10 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
         error,
       );
       set({
-        error:
-          error instanceof Error
-            ? error.message
-            : t("authStore.error.failedToImportWallet"),
+        error: getUserFacingError(
+          error,
+          "authStore.error.failedToImportWallet",
+        ),
         isLoading: false,
       });
       return false;
@@ -2641,9 +2677,18 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
       set({ account: activeAccount, isLoadingAccount: false });
       return activeAccount;
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      set({ accountError: errorMessage, isLoadingAccount: false });
+      logger.error(
+        "useAuthenticationStore.fetchActiveAccount",
+        "Failed to fetch active account",
+        error,
+      );
+      set({
+        accountError: getUserFacingError(
+          error,
+          "authStore.error.failedToLoadAccount",
+        ),
+        isLoadingAccount: false,
+      });
       return null;
     }
   },
@@ -2680,10 +2725,10 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
       logger.error("renameAccount", "Failed to rename account", error);
 
       set({
-        error:
-          error instanceof Error
-            ? error.message
-            : t("authStore.error.failedToRenameAccount"),
+        error: getUserFacingError(
+          error,
+          "authStore.error.failedToRenameAccount",
+        ),
         isRenamingAccount: false,
       });
     }
@@ -2701,11 +2746,16 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
       const allAccounts = await getAllAccounts();
       set({ allAccounts });
     } catch (error) {
+      logger.error(
+        "useAuthenticationStore.getAllAccounts",
+        "Failed to get all accounts",
+        error,
+      );
       set({
-        error:
-          error instanceof Error
-            ? error.message
-            : t("authStore.error.failedToGetAllAccounts"),
+        error: getUserFacingError(
+          error,
+          "authStore.error.failedToGetAllAccounts",
+        ),
         isLoadingAllAccounts: false,
       });
     } finally {
@@ -2723,11 +2773,16 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
 
       set({ isCreatingAccount: false, error: null });
     } catch (error) {
+      logger.error(
+        "useAuthenticationStore.createAccount",
+        "Failed to create account",
+        error,
+      );
       set({
-        error:
-          error instanceof Error
-            ? error.message
-            : t("authStore.error.failedToCreateAccount"),
+        error: getUserFacingError(
+          error,
+          "authStore.error.failedToCreateAccount",
+        ),
         isCreatingAccount: false,
       });
       throw error;
@@ -2735,9 +2790,6 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
   },
 
   selectAccount: async (publicKey: string) => {
-    // Clear previous account data immediately to prevent showing stale data
-    clearAccountData();
-
     set({ isSwitchingAccount: true, error: null });
     try {
       // Security: Check auth status before allowing account switching
@@ -2753,6 +2805,9 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
         return;
       }
 
+      // Only clear stale data once the switch is confirmed to proceed —
+      // if anything above throws, the previous account's data stays intact.
+      clearAccountData();
       await selectAccount(publicKey);
       const activeAccount = await getActiveAccount(authStatus);
       set({ account: activeAccount, isSwitchingAccount: false });
@@ -2763,16 +2818,22 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
         error,
       );
 
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-
-      set({ error: errorMessage, isSwitchingAccount: false });
+      set({
+        error: getUserFacingError(
+          error,
+          "authStore.error.failedToSelectAccount",
+        ),
+        isSwitchingAccount: false,
+      });
     }
   },
 
   getTemporaryStore: async () => getTemporaryStore(get().authStatus),
   clearError: () => {
     set({ error: null });
+  },
+  clearAccountError: () => {
+    set({ accountError: null });
   },
 
   selectNetwork: async (network: NETWORKS) => {
@@ -2798,11 +2859,16 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
 
       set({ isLoading: false, error: null });
     } catch (error) {
+      logger.error(
+        "useAuthenticationStore.importSecretKey",
+        "Failed to import secret key",
+        error,
+      );
       set({
-        error:
-          error instanceof Error
-            ? error.message
-            : t("authStore.error.failedToImportSecretKey"),
+        error: getUserFacingError(
+          error,
+          "authStore.error.failedToImportSecretKey",
+        ),
         isLoading: false,
       });
 
