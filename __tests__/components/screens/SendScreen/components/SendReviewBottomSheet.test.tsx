@@ -1,10 +1,12 @@
 /* eslint-disable @fnando/consistent-import/consistent-import */
 import { userEvent } from "@testing-library/react-native";
-import { SendReviewBottomSheet } from "components/screens/SendScreen/components";
+import {
+  SendReviewBottomSheet,
+  SendReviewFooter,
+} from "components/screens/SendScreen/components";
 import { SendType } from "components/screens/SendScreen/components/SendReviewBottomSheet";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
-import { StyleSheet } from "react-native";
 
 import { mockBalances } from "../../../../../__mocks__/balances";
 import { mockGestureHandler } from "../../../../../__mocks__/gesture-handler";
@@ -339,30 +341,57 @@ describe("SendReviewBottomSheet", () => {
     const longErrorMessage =
       "tx_failed: operation underfunded — the source account does not have enough balance to cover the transaction and its fees, please try a smaller amount";
 
-    it("renders the full error message with a flexible, non-truncated layout", () => {
-      (
-        jest.requireMock("ducks/transactionBuilder")
-          .useTransactionBuilderStore as jest.Mock
-      ).mockReturnValueOnce({
-        transactionXDR: "",
+    const builderStoreMock = () =>
+      jest.requireMock("ducks/transactionBuilder")
+        .useTransactionBuilderStore as jest.Mock;
+
+    const mockBuilderStore = (error: string | null) =>
+      builderStoreMock().mockReturnValue({
+        transactionXDR: error ? "" : "mock-xdr",
         isBuilding: false,
-        error: longErrorMessage,
+        error,
       });
 
-      const { getByText } = renderWithProviders(
+    // Restore the shared default so the persistent mockReturnValue above does
+    // not leak into other tests.
+    afterEach(() => {
+      builderStoreMock().mockReturnValue({
+        transactionXDR: "mock-xdr",
+        isBuilding: false,
+      });
+    });
+
+    it("hides the XDR row in the review sheet when there is a build error", () => {
+      mockBuilderStore(longErrorMessage);
+
+      const { queryByText } = renderWithProviders(
         <SendReviewBottomSheet {...defaultProps} />,
       );
 
-      // The complete message is rendered (not split or shortened).
-      const errorText = getByText(`Error: ${longErrorMessage}`);
+      // The XDR row (and its error) is not shown in the sheet — the error is
+      // surfaced in the footer above the buttons instead.
+      expect(queryByText("XDR")).toBeNull();
+      expect(queryByText(`Error: ${longErrorMessage}`)).toBeNull();
+    });
 
-      // Layout assertions that lock in the overflow fix: `flex: 1` lets the
-      // text take the available width and wrap, and the absence of
-      // `numberOfLines` means it is never truncated to a single line.
-      expect(StyleSheet.flatten(errorText.props.style)).toMatchObject({
-        flex: 1,
-      });
+    it("renders the full error message above the footer buttons, not truncated", () => {
+      mockBuilderStore(longErrorMessage);
+
+      const { getByText } = renderWithProviders(<SendReviewFooter />);
+
+      // The complete message is rendered (not split or shortened) as a
+      // full-width block, and the absence of `numberOfLines` means it is never
+      // truncated to a single line — so it wraps instead of overflowing.
+      const errorText = getByText(`Error: ${longErrorMessage}`);
       expect(errorText.props.numberOfLines).toBeUndefined();
+    });
+
+    it("does not render the error block in the footer when there is no error", () => {
+      mockBuilderStore(null);
+
+      const { queryByText } = renderWithProviders(<SendReviewFooter />);
+
+      expect(queryByText(`Error: ${longErrorMessage}`)).toBeNull();
     });
   });
 });

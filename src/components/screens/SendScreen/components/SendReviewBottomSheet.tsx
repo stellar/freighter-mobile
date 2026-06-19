@@ -139,12 +139,6 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   // Use amountError from props (calculated in parent component)
   const amountError = propAmountError;
 
-  // Localized build-error string, derived once so the value shown in the XDR
-  // row and the value copied to the clipboard always match.
-  const errorMessage = error
-    ? t("common.error", { errorMessage: error })
-    : null;
-
   const handleCopyXdr = useCallback(() => {
     if (transactionXDR) {
       copyToClipboard(transactionXDR, {
@@ -152,14 +146,6 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
       });
     }
   }, [copyToClipboard, t, transactionXDR]);
-
-  const handleCopyError = useCallback(() => {
-    if (errorMessage) {
-      copyToClipboard(errorMessage, {
-        notificationMessage: t("common.copied"),
-      });
-    }
-  }, [copyToClipboard, errorMessage, t]);
 
   const renderXdrContent = useCallback(() => {
     if (isBuilding) {
@@ -334,59 +320,40 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
             </View>
           ),
         },
-        {
-          icon: (
-            <Icon.FileCode02 size={16} color={themeColors.foreground.primary} />
-          ),
-          ...(error
-            ? {
-                titleComponent: (
-                  <TouchableOpacity
-                    onPress={handleCopyError}
-                    className="flex-row items-center gap-[8px]"
-                  >
-                    <Icon.Copy01
-                      size={16}
-                      color={themeColors.foreground.primary}
-                    />
-                    <Text
-                      md
-                      medium
-                      color={themeColors.status.error}
-                      style={{ flex: 1 }}
-                    >
-                      {errorMessage}
-                    </Text>
-                  </TouchableOpacity>
-                ),
-              }
-            : {
-                title: t("transactionAmountScreen.details.xdr"),
-                titleColor: themeColors.text.secondary,
-                trailingContent: (
-                  <TouchableOpacity
-                    onPress={handleCopyXdr}
-                    disabled={isBuilding || !transactionXDR}
-                    className="flex-row items-center gap-[8px]"
-                  >
-                    <Icon.Copy01
-                      size={16}
-                      color={themeColors.foreground.primary}
-                    />
-                    <Text md medium secondary={isBuilding}>
-                      {renderXdrContent()}
-                    </Text>
-                  </TouchableOpacity>
-                ),
-              }),
-        },
+        // Hide the XDR row entirely on build errors — the error is shown above
+        // the confirm/cancel buttons in the footer instead.
+        error
+          ? undefined
+          : {
+              icon: (
+                <Icon.FileCode02
+                  size={16}
+                  color={themeColors.foreground.primary}
+                />
+              ),
+              title: t("transactionAmountScreen.details.xdr"),
+              titleColor: themeColors.text.secondary,
+              trailingContent: (
+                <TouchableOpacity
+                  onPress={handleCopyXdr}
+                  disabled={isBuilding || !transactionXDR}
+                  className="flex-row items-center gap-[8px]"
+                >
+                  <Icon.Copy01
+                    size={16}
+                    color={themeColors.foreground.primary}
+                  />
+                  <Text md medium secondary={isBuilding}>
+                    {renderXdrContent()}
+                  </Text>
+                </TouchableOpacity>
+              ),
+            },
       ].filter(Boolean) as ListItemProps[],
     [
       account?.accountName,
       account?.publicKey,
       error,
-      errorMessage,
-      handleCopyError,
       handleCopyXdr,
       handleOpenFeeBreakdown,
       isBuilding,
@@ -395,7 +362,6 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
       renderXdrContent,
       t,
       themeColors.foreground.primary,
-      themeColors.status.error,
       themeColors.text.secondary,
       totalFeeXlm,
       transactionMemo,
@@ -507,8 +473,14 @@ type SendReviewFooterProps = {
 export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
   (props) => {
     const { t } = useAppTranslation();
+    const { themeColors } = useColors();
     const { transactionXDR, isBuilding, error } = useTransactionBuilderStore();
     const insets = useSafeAreaInsets();
+
+    // Localized build-error string shown above the buttons.
+    const errorMessage = error
+      ? t("common.error", { errorMessage: error })
+      : null;
 
     const {
       onCancel,
@@ -664,15 +636,24 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
 
     return (
       <View
-        className={`${
-          shouldUseRowLayout ? "flex-row" : "flex-col"
-        } bg-background-primary w-full gap-[12px] mt-[24px] flex-column px-6 py-6`}
-        style={{
-          paddingBottom: insets.bottom + pxValue(DEFAULT_PADDING),
-          gap: pxValue(12),
-        }}
+        className="bg-background-primary w-full mt-[24px] px-6 py-6"
+        style={{ paddingBottom: insets.bottom + pxValue(DEFAULT_PADDING) }}
       >
-        {renderButtons()}
+        {errorMessage && (
+          <View className="mb-[16px]">
+            <Text md medium color={themeColors.status.error}>
+              {errorMessage}
+            </Text>
+          </View>
+        )}
+        <View
+          className={`${
+            shouldUseRowLayout ? "flex-row" : "flex-col"
+          } w-full gap-[12px]`}
+          style={{ gap: pxValue(12) }}
+        >
+          {renderButtons()}
+        </View>
       </View>
     );
   },
