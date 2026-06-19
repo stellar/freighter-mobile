@@ -63,8 +63,13 @@ type HomeScreenProps = BottomTabScreenProps<
 export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
   ({ navigation }) => {
     const { account } = useGetActiveAccount();
-    const { network, getAllAccounts, allAccounts, isSwitchingAccount } =
-      useAuthenticationStore();
+    const {
+      network,
+      getAllAccounts,
+      allAccounts,
+      isSwitchingAccount,
+      isLoadingAllAccounts,
+    } = useAuthenticationStore();
     const { themeColors } = useColors();
     const manageAccountsBottomSheetRef = useRef<BottomSheetModal>(null);
     const debugBottomSheetRef = useRef<BottomSheetModal>(null);
@@ -260,6 +265,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
           accounts={allAccounts}
           activeAccount={account}
           bottomSheetRef={manageAccountsBottomSheetRef}
+          isLoadingAccounts={isLoadingAllAccounts}
         />
 
         <ScrollView

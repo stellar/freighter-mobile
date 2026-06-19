@@ -1,5 +1,14 @@
 import { decode, encode } from "@stablelib/base64";
 import { BROWSER_CONSTANTS } from "config/constants";
+import {
+  getOrCreateScreenshotDek,
+  encryptScreenshot,
+  decryptScreenshot,
+  clearScreenshotDek,
+  resetScreenshotDek,
+} from "helpers/screenshotCrypto";
+import * as Keychain from "react-native-keychain";
+import QuickCrypto from "react-native-quick-crypto";
 
 // jest.setup.js mocks @stablelib/base64 with a fixed stub (decode → [1,2,3])
 // which is fine for most suites but breaks the byte-exact packing/round-trip
@@ -10,15 +19,6 @@ jest.mock("@stablelib/base64", () => ({
   decode: (str: string): Uint8Array =>
     new Uint8Array(Buffer.from(str, "base64")),
 }));
-import {
-  getOrCreateScreenshotDek,
-  encryptScreenshot,
-  decryptScreenshot,
-  clearScreenshotDek,
-  resetScreenshotDek,
-} from "helpers/screenshotCrypto";
-import * as Keychain from "react-native-keychain";
-import QuickCrypto from "react-native-quick-crypto";
 
 // react-native-keychain and react-native-quick-crypto are mocked globally in
 // jest.setup.js. Native AES-GCM isn't available in Node, so subtle.encrypt /
@@ -142,10 +142,7 @@ describe("screenshotCrypto", () => {
   });
 
   describe("decryptScreenshot", () => {
-    const buildPacked = (
-      version: number,
-      ciphertextLength: number,
-    ): string => {
+    const buildPacked = (version: number, ciphertextLength: number): string => {
       const packed = new Uint8Array(1 + IV_LENGTH + ciphertextLength);
       packed[0] = version;
       return encode(packed);
@@ -167,9 +164,9 @@ describe("screenshotCrypto", () => {
     it("throws a clear error on a truncated/empty payload", async () => {
       // Shorter than VERSION(1) + IV(12) + tag(16): must fail before reading
       // the version byte rather than producing a confusing downstream error.
-      await expect(decryptScreenshot(encode(new Uint8Array(0)))).rejects.toThrow(
-        "too short",
-      );
+      await expect(
+        decryptScreenshot(encode(new Uint8Array(0))),
+      ).rejects.toThrow("too short");
       await expect(
         decryptScreenshot(buildPacked(VERSION_BYTE, 4)),
       ).rejects.toThrow("too short");
