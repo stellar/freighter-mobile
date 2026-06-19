@@ -1,7 +1,7 @@
+import { WalletConnectManualInputOverlay } from "components/WalletConnectManualInputOverlay";
 import { QRCodeSource } from "config/constants";
-import useAppTranslation from "hooks/useAppTranslation";
+import { useHomeQrCodeScanner } from "hooks/useHomeQrCodeScanner";
 import { useSendFlowQrCodeScanner } from "hooks/useSendFlowQrCodeScanner";
-import { useWalletConnectQrCodeScanner } from "hooks/useWalletConnectQrCodeScanner";
 import React from "react";
 
 interface QRCodeScreenHandlers {
@@ -11,15 +11,15 @@ interface QRCodeScreenHandlers {
   handleClose: () => void;
   /** Function to handle header left button press */
   handleHeaderLeft: () => void;
-  /** Function to handle header right button press (if applicable) */
+  /** Function to handle header right button press (dev mode) */
   handleHeaderRight?: () => void;
-  /** Function to handle manual input changes */
+  /** Function to handle manual input changes (dev mode) */
   handleManualInputChange?: (text: string) => void;
-  /** Function to handle connect button press (if applicable) */
+  /** Function to handle connect button press (dev mode) */
   handleConnect?: () => void;
-  /** Function to handle clear input (if applicable) */
+  /** Function to handle clear input (dev mode) */
   handleClearInput?: () => void;
-  /** Function to handle paste from clipboard (if applicable) */
+  /** Function to handle paste from clipboard (dev mode) */
   handlePasteFromClipboard?: () => void;
 }
 
@@ -40,35 +40,13 @@ interface QRCodeScreenState {
   context: QRCodeSource;
 }
 
-interface QRCodeScreenConfig {
-  /** Whether to show header right button */
-  showHeaderRight: boolean;
-}
-
 interface QRCodeScreenReturn {
   handlers: QRCodeScreenHandlers;
   state: QRCodeScreenState;
-  config: QRCodeScreenConfig;
-  /** Manual input overlay component (only for WALLET_CONNECT context) */
-  ManualInputOverlay?: React.ComponentType<{
-    manualInput: string;
-    onManualInputChange: (text: string) => void;
-    onConnect: () => void;
-    onClearInput: () => void;
-    onPasteFromClipboard: () => void;
-    isConnecting: boolean;
-    error: string;
-    themeColors: {
-      text: {
-        primary: string;
-        secondary: string;
-      };
-      background: {
-        secondary: string;
-      };
-    };
-    t: ReturnType<typeof useAppTranslation>["t"];
-  }>;
+  /** Manual input overlay component (available in dev mode for home scanner) */
+  ManualInputOverlay?: React.ComponentType<
+    React.ComponentProps<typeof WalletConnectManualInputOverlay>
+  >;
 }
 
 /**
@@ -78,29 +56,33 @@ interface QRCodeScreenReturn {
  * based on the source parameter. Each context has its own specialized hook
  * that provides the appropriate functionality.
  *
+ * Each hook receives an `enabled` flag so that only the active hook's
+ * side effects (useEffects with navigation, store subscriptions) fire.
+ *
  * @param source - The source/context of the QR scanner
  * @returns Object containing handlers, state, and configuration
  */
 export const useQRCodeScreenScanner = (
   source: QRCodeSource,
 ): QRCodeScreenReturn => {
-  // Call all hooks to satisfy React Hooks rules
-  const walletConnectResult = useWalletConnectQrCodeScanner();
-  const sendFlowResult = useSendFlowQrCodeScanner();
+  // Call all hooks unconditionally (React rules) with enabled gates
+  const sendFlowResult = useSendFlowQrCodeScanner(
+    source === QRCodeSource.ADDRESS_INPUT,
+  );
+  const homeResult = useHomeQrCodeScanner(source === QRCodeSource.HOME_SCANNER);
 
   // Return the appropriate result based on source
   switch (source) {
-    case QRCodeSource.WALLET_CONNECT:
-      return walletConnectResult;
-
     case QRCodeSource.ADDRESS_INPUT:
       return sendFlowResult;
+
+    case QRCodeSource.HOME_SCANNER:
+      return homeResult;
 
     case QRCodeSource.IMPORT_WALLET:
       throw new Error("Import wallet QR code scanner not implemented");
 
     default:
-      // Default to send flow for unknown sources
       return sendFlowResult;
   }
 };

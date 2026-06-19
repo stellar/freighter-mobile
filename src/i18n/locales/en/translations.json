@@ -140,17 +140,18 @@
     }
   },
   "walletConnect": {
-    "title": "Scan to Connect",
-    "scanWCQrCode": "Scan a WalletConnect QR code",
+    "pairingError": "Failed to pair",
+    "connect": "Connect",
     "connectWithWalletConnect": "Paste a WalletConnect URI",
     "inputPlaceholder": "WalletConnect URI",
-    "connect": "Connect",
-    "pairingError": "Failed to pair",
-    "invalidUriError": "Please enter a valid QR Code URI",
-    "invalidQrScanUriError": "Invalid WalletConnect Address"
+    "invalidUriError": "Please enter a valid QR Code URI"
   },
   "qrCodeScannerScreen": {
     "title": "Scan to send"
+  },
+  "homeScanner": {
+    "title": "Scan a QR code",
+    "scanQRCodeText": "Scan a QR code to send or connect"
   },
   "addFundsScreen": {
     "title": "Add funds",
@@ -968,6 +969,7 @@
     "errorInvalidMessage": "Message is missing or empty",
     "errorInvalidAuthEntry": "Authorization entry XDR is missing or malformed",
     "errorAuthEntryNetworkMismatch": "Authorization entry is for a different network",
+    "errorAuthEntryAddressMismatch": "Authorization entry is bound to a different account",
     "errorEmptyMessage": "Cannot sign empty message",
     "errorMessageTooLong": "Message too long (max 1KB)",
     "errorSubmitting": "Failed to submit transaction",
@@ -1255,7 +1257,8 @@
       "contractId": "Contract ID",
       "functionName": "Function name",
       "parameters": "Parameters",
-      "contractAddress": "Contract address"
+      "contractAddress": "Contract address",
+      "address": "Signer address"
     },
     "operations": {
       "destinationWithNumber": "Destination #{{number}}",
