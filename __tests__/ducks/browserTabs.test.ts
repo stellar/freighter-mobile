@@ -155,6 +155,7 @@ describe("browserTabs", () => {
         tabUrl: "https://example.com",
         uri: "data:image/png;base64,test",
         timestamp: Date.now(),
+        file: "tab-123.enc",
       });
 
       await store.loadScreenshots();
