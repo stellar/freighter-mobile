@@ -4,12 +4,17 @@ import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { logger } from "config/logger";
 import {
+  addressToString,
   getInvocationDetails,
   InvocationArgs,
   INVOCATION_TYPE_INVOKE,
   INVOCATION_TYPE_WASM,
 } from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
+import {
+  normalizeAuthPreimage,
+  NormalizedAuthPreimage,
+} from "helpers/walletKitValidation";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
@@ -17,7 +22,10 @@ import React, { useMemo, useState } from "react";
 import { ScrollView, TouchableOpacity, View } from "react-native";
 
 interface DappAuthEntryDisplayProps {
-  /** Base64-encoded HashIdPreimage XDR (HashIdPreimage.envelopeTypeSorobanAuthorization) */
+  /**
+   * Base64-encoded HashIdPreimage XDR — envelopeTypeSorobanAuthorization or
+   * the CAP-71 / Protocol 27 envelopeTypeSorobanAuthorizationWithAddress arm
+   */
   entryXdr: string;
   /** When true all invocation cards start expanded */
   expandAll?: boolean;
@@ -37,31 +45,41 @@ export const DappAuthEntryDisplay: React.FC<DappAuthEntryDisplayProps> = ({
   const { t } = useAppTranslation();
   const { copyToClipboard } = useClipboard();
 
-  // Lazy initialiser: when expandAll, parse once to know how many indices exist
-  const [expandedIndices, setExpandedIndices] = useState<Set<number>>(() => {
-    if (!expandAll) return new Set();
+  // Parse once and normalize across both authorization preimage arms
+  const normalized = useMemo<NormalizedAuthPreimage | null>(() => {
     try {
-      const preimage = xdr.HashIdPreimage.fromXDR(entryXdr, "base64");
-      const d = getInvocationDetails(
-        preimage.sorobanAuthorization().invocation(),
+      return normalizeAuthPreimage(
+        xdr.HashIdPreimage.fromXDR(entryXdr, "base64"),
       );
-      return new Set(d.map((_, i) => i));
-    } catch {
-      return new Set();
+    } catch (e) {
+      logger.warn("DappAuthEntryDisplay", "Failed to parse auth entry XDR", {
+        error: e,
+      });
+      return null;
     }
-  });
+  }, [entryXdr]);
 
   const details = useMemo<InvocationArgs[]>(() => {
     try {
-      const preimage = xdr.HashIdPreimage.fromXDR(entryXdr, "base64");
-      return getInvocationDetails(preimage.sorobanAuthorization().invocation());
+      return normalized ? getInvocationDetails(normalized.invocation) : [];
     } catch (e) {
       logger.warn("DappAuthEntryDisplay", "Failed to parse auth entry XDR", {
         error: e,
       });
       return [];
     }
-  }, [entryXdr]);
+  }, [normalized]);
+
+  // CAP-71 withAddress preimages bind the signer address — surface it
+  const signerAddress = useMemo<string | null>(
+    () => (normalized?.address ? addressToString(normalized.address) : null),
+    [normalized],
+  );
+
+  // Lazy initialiser: when expandAll, start with every invocation card open
+  const [expandedIndices, setExpandedIndices] = useState<Set<number>>(() =>
+    expandAll ? new Set(details.map((_, i) => i)) : new Set(),
+  );
 
   const toggleExpanded = (index: number) => {
     setExpandedIndices((prev) => {
@@ -197,6 +215,28 @@ export const DappAuthEntryDisplay: React.FC<DappAuthEntryDisplayProps> = ({
           {t("signTransactionDetails.authorizations.title")}
         </Text>
       </View>
+
+      {signerAddress && (
+        <View
+          className="rounded-[16px] p-[16px] gap-[4px]"
+          style={{ backgroundColor: themeColors.background.secondary }}
+          testID="auth-entry-signer-address"
+        >
+          <Text sm secondary>
+            {t("signTransactionDetails.authorizations.address")}
+          </Text>
+          <View className="flex-row items-center gap-[8px]">
+            <Text sm primary style={{ flex: 1 }}>
+              {truncateAddress(signerAddress)}
+            </Text>
+            <Icon.Copy01
+              size={14}
+              themeColor="gray"
+              onPress={() => copyToClipboard(signerAddress)}
+            />
+          </View>
+        </View>
+      )}
 
       {details.length > 0 ? (
         details.map((detail, index) => {

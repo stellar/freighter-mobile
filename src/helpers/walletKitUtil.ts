@@ -235,6 +235,7 @@ export const approveSessionRequest = async ({
   signMessage,
   signAuthEntry,
   networkPassphrase,
+  publicKey,
   activeChain,
   showToast,
   t,
@@ -248,6 +249,7 @@ export const approveSessionRequest = async ({
     preimageXdr: string,
   ) => { signedAuthEntry: string; signerAddress: string } | null;
   networkPassphrase: string;
+  publicKey: string;
   activeChain: string;
   showToast: (options: ToastOptions) => void;
   t: TFunction<"translations", undefined>;
@@ -392,7 +394,11 @@ export const approveSessionRequest = async ({
     // Defense-in-depth: validate content, XDR format, and network ID.
     // These should already be caught by WalletKitProvider pre-validation,
     // but we re-check at approval time to prevent any bypass.
-    const validationResult = validateSignAuthEntry(entryXdr, networkPassphrase);
+    const validationResult = validateSignAuthEntry(
+      entryXdr,
+      networkPassphrase,
+      publicKey,
+    );
     if (!validationResult.valid) {
       const errorMessage = t(validationResult.errorKey);
       showToast({

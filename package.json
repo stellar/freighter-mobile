@@ -1,6 +1,6 @@
 {
   "name": "freighter-mobile",
-  "version": "1.19.26",
+  "version": "1.19.27",
   "license": "Apache-2.0",
   "scripts": {
     "android": "yarn android-dev",
@@ -85,7 +85,7 @@
     "@shopify/react-native-skia": "2.2.21",
     "@stablelib/base64": "2.0.1",
     "@stablelib/utf8": "2.0.1",
-    "@stellar/stellar-sdk": "15.0.1",
+    "@stellar/stellar-sdk": "16.0.0",
     "@stellar/typescript-wallet-sdk-km": "3.0.0",
     "@tradle/react-native-http": "2.0.0",
     "@walletconnect/core": "2.23.1",
@@ -114,7 +114,6 @@
     "react-native-config": "1.5.5",
     "react-native-crypto": "2.2.1",
     "react-native-device-info": "14.0.4",
-    "react-native-fast-opencv": "0.4.6",
     "react-native-gesture-handler": "2.28.0",
     "react-native-get-random-values": "2.0.0",
     "react-native-inappbrowser-reborn": "3.7.0",
@@ -124,8 +123,11 @@
     "react-native-keychain": "10.0.0",
     "react-native-level-fs": "2.0.0",
     "react-native-localize": "3.5.2",
+    "react-native-nitro-modules": "0.33.9",
     "react-native-permissions": "5.4.2",
     "react-native-qrcode-svg": "6.3.15",
+    "react-native-quick-base64": "3.0.0",
+    "react-native-quick-crypto": "1.1.5",
     "react-native-randombytes": "3.6.1",
     "react-native-reanimated": "4.1.2",
     "react-native-responsive-screen": "1.4.2",
@@ -147,6 +149,7 @@
     "url": "0.11.4",
     "util": "0.10.3",
     "vm-browserify": "0.0.4",
+    "web-streams-polyfill": "4.0.0-beta.3",
     "zeego": "3.0.6",
     "zustand": "5.0.6"
   },
@@ -202,7 +205,7 @@
     "typescript": "5.8.3"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "react-native": {
     "crypto": "react-native-crypto",
