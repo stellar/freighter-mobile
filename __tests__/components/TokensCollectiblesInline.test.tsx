@@ -163,18 +163,21 @@ describe("TokensCollectiblesInline", () => {
     expect(screen.getByTestId("balances-list-token-row")).toBeTruthy();
   });
 
-  it("shows the collectibles error when only collectibles fail", () => {
+  it("shows the collectibles error beneath its header when only collectibles fail", () => {
     setupState({ collectiblesError: "failed", noBalances: true });
 
     renderComponent();
 
+    expect(screen.getByText("Collectibles")).toBeTruthy();
     expect(
-      screen.getByTestId("tokens-collectibles-inline-error"),
+      screen.getByTestId("collectibles-inline-error"),
     ).toBeTruthy();
     expect(screen.getByText("Error loading collectibles")).toBeTruthy();
   });
 
-  it("prioritizes an error over the spinner while the other source is still loading", () => {
+  it("keeps the spinner up while one source loads even if the other has errored", () => {
+    // We wait for both sources before rendering content, so a settled token
+    // error stays hidden behind the spinner until collectibles finish loading.
     setupState({
       tokensError: "token-failed",
       noBalances: true,
@@ -184,28 +187,72 @@ describe("TokensCollectiblesInline", () => {
 
     renderComponent();
 
-    expect(screen.queryByTestId("tokens-collectibles-inline-spinner")).toBeNull();
-    expect(screen.getByTestId("tokens-collectibles-inline-error")).toBeTruthy();
-    expect(screen.getByText("Error loading balances")).toBeTruthy();
+    expect(
+      screen.getByTestId("tokens-collectibles-inline-spinner"),
+    ).toBeTruthy();
+    expect(screen.queryByTestId("tokens-inline-error")).toBeNull();
+    expect(screen.queryByText("Error loading balances")).toBeNull();
   });
 
-  it("shows the spinner (hiding potentially stale collectibles) while collectibles reload", () => {
-    // The store keeps `collections` from the previous network during a
-    // refetch, so a loading state with collectibles present must show the
-    // spinner rather than rendering the (possibly stale) collectibles.
+  it("renders the tokens list alongside the collectibles error when only collectibles fail", () => {
+    setupState({ noBalances: false, collectiblesError: "failed" });
+
+    renderComponent();
+
+    expect(screen.getByText("Tokens")).toBeTruthy();
+    expect(screen.getByTestId("balances-list-token-row")).toBeTruthy();
+    expect(screen.getByText("Collectibles")).toBeTruthy();
+    expect(screen.getByTestId("collectibles-inline-error")).toBeTruthy();
+    expect(screen.getByText("Error loading collectibles")).toBeTruthy();
+  });
+
+  it("renders the collectibles alongside the tokens error when only tokens fail", () => {
+    setupState({
+      tokensError: "token-failed",
+      noBalances: true,
+      visibleCollectibles: [
+        {
+          collectionAddress: "CABC",
+          collectionName: "Cool Collection",
+          items: [
+            {
+              collectionAddress: "CABC",
+              tokenId: "42",
+              image: "https://example.com/item.png",
+              name: "Collectible #42",
+            },
+          ],
+        },
+      ],
+    });
+
+    renderComponent();
+
+    expect(screen.getByText("Tokens")).toBeTruthy();
+    expect(screen.getByTestId("tokens-inline-error")).toBeTruthy();
+    expect(screen.getByText("Error loading balances")).toBeTruthy();
+    expect(screen.getByText("Collectibles")).toBeTruthy();
+    expect(screen.getByText("Collectible #42")).toBeTruthy();
+  });
+
+  it("keeps the loaded collectibles visible while they reload in the background", () => {
+    // Once collectibles have loaded, a background refetch (which flips
+    // isLoading without clearing the data) must not blank the page back to a
+    // spinner. The network/account can't change while the send flow is
+    // mounted, so the loaded data is always current.
     setupState({
       noBalances: true,
       collectiblesLoading: true,
       visibleCollectibles: [
         {
           collectionAddress: "CABC",
-          collectionName: "Stale Collection",
+          collectionName: "Cool Collection",
           items: [
             {
               collectionAddress: "CABC",
               tokenId: "1",
-              image: "https://example.com/stale.png",
-              name: "Stale #1",
+              image: "https://example.com/item.png",
+              name: "Collectible #1",
             },
           ],
         },
@@ -215,9 +262,9 @@ describe("TokensCollectiblesInline", () => {
     renderComponent();
 
     expect(
-      screen.getByTestId("tokens-collectibles-inline-spinner"),
-    ).toBeTruthy();
-    expect(screen.queryByText("Stale #1")).toBeNull();
+      screen.queryByTestId("tokens-collectibles-inline-spinner"),
+    ).toBeNull();
+    expect(screen.getByText("Collectible #1")).toBeTruthy();
   });
 
   it("suppresses a stale collectibles error while a retry is loading", () => {
@@ -233,22 +280,25 @@ describe("TokensCollectiblesInline", () => {
 
     renderComponent();
 
-    expect(screen.queryByTestId("tokens-collectibles-inline-error")).toBeNull();
+    expect(screen.queryByTestId("collectibles-inline-error")).toBeNull();
     expect(
       screen.getByTestId("tokens-collectibles-inline-spinner"),
     ).toBeTruthy();
   });
 
-  it("prefers the token error over the collectibles error", () => {
+  it("shows both section errors when both sources fail", () => {
     setupState({
       tokensError: "token-failed",
+      noBalances: true,
       collectiblesError: "collectibles-failed",
     });
 
     renderComponent();
 
+    expect(screen.getByTestId("tokens-inline-error")).toBeTruthy();
     expect(screen.getByText("Error loading balances")).toBeTruthy();
-    expect(screen.queryByText("Error loading collectibles")).toBeNull();
+    expect(screen.getByTestId("collectibles-inline-error")).toBeTruthy();
+    expect(screen.getByText("Error loading collectibles")).toBeTruthy();
   });
 
   it("shows the combined empty fallback when there are no tokens or collectibles", () => {
