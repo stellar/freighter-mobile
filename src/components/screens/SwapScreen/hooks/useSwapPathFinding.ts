@@ -61,11 +61,16 @@ export const useSwapPathFinding = ({
     }
   }, DEFAULT_DEBOUNCE_DELAY);
 
+  // Key on the stable `id` (not the object ref) so the 30s balance-polling
+  // re-renders don't re-trigger path-finding. The quote stays frozen until
+  // the token or amount actually changes. `debouncedFindSwapPath` is a stable
+  // wrapper that reads the latest objects at call time.
   useEffect(() => {
     debouncedFindSwapPath();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    sourceBalance,
-    destinationTokenForPath,
+    sourceBalance?.id,
+    destinationTokenForPath?.id,
     sourceAmount,
     swapSlippage,
     network,

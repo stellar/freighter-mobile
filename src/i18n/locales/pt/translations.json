@@ -593,7 +593,8 @@
       "insufficientXlmForFees": "XLM insuficiente para taxas de transação. Você precisa de pelo menos {{fee}} XLM para pagar a taxa de transação.",
       "noPathFound": "Nenhum caminho encontrado entre estes tokens",
       "pathFindFailed": "Não foi possível buscar o caminho de troca. Tente novamente.",
-      "customTokenSwapNotSupported": "Troca de tokens customizados ainda não é suportada"
+      "customTokenSwapNotSupported": "Troca de tokens customizados ainda não é suportada",
+      "quoteExpired": "A cotação expirou, tente novamente para obter uma nova cotação"
     },
     "stellarExpertDown": "A descoberta de tokens está temporariamente indisponível. Você ainda pode trocar entre tokens que já possui.",
     "sorobanEmptyState": "Tokens de contrato Soroban não são suportados para trocas ainda. Tente buscar por um token Clássico.",

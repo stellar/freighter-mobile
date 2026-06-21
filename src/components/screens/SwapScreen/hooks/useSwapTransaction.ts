@@ -1,6 +1,9 @@
 import Blockaid from "@blockaid/client";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { getTokenFromBalance } from "components/screens/SwapScreen/helpers";
+import {
+  getQuoteExpiredOperationCodes,
+  getTokenFromBalance,
+} from "components/screens/SwapScreen/helpers";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { NETWORKS } from "config/constants";
 import { logger } from "config/logger";
@@ -19,7 +22,7 @@ import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useToast } from "providers/ToastProvider";
-import { useState, useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { analytics } from "services/analytics";
 
 /**
@@ -70,6 +73,16 @@ export const useSwapTransaction = ({
   const { scanTransaction } = useBlockaidTransaction();
   const { t } = useAppTranslation();
   const { showToast } = useToast();
+
+  // Latest source/destination balances, read at call time by the quote-expired
+  // refetch. Keeps executeSwap's deps on the stable `?.tokenCode` (not the full
+  // objects, which get a new ref on every balance poll) so the callback — and
+  // the review-sheet footer downstream — don't churn. findSwapPath only reads
+  // token identity off these, so a one-render lag is harmless.
+  const swapBalancesRef = useRef({ sourceBalance, destinationTokenInput });
+  useEffect(() => {
+    swapBalancesRef.current = { sourceBalance, destinationTokenInput };
+  }, [sourceBalance, destinationTokenInput]);
 
   const setupSwapTransaction = useCallback(async () => {
     if (
@@ -175,9 +188,16 @@ export const useSwapTransaction = ({
       const transactionHash = await submitTransaction({ network });
 
       if (!transactionHash) {
-        const { error: submitError } = useTransactionBuilderStore.getState();
+        const { error: submitError, submitErrorResultCodes } =
+          useTransactionBuilderStore.getState();
         const errorMessage = submitError || "Failed to submit transaction";
-        throw new Error(errorMessage);
+        const submitFailure = new Error(errorMessage) as Error & {
+          quoteExpiredCodes?: string[];
+        };
+        submitFailure.quoteExpiredCodes = getQuoteExpiredOperationCodes(
+          submitErrorResultCodes,
+        );
+        throw submitFailure;
       }
 
       // Get fresh slippage value for analytics
@@ -208,6 +228,58 @@ export const useSwapTransaction = ({
       // the appropriate severity (4xx-with-result_codes → warn
       // breadcrumb, everything else → logger.error). Re-logging here
       // would either duplicate Sentry events or pollute breadcrumbs.
+
+      const quoteExpiredCodes =
+        error instanceof Error
+          ? (error as Error & { quoteExpiredCodes?: string[] })
+              .quoteExpiredCodes
+          : undefined;
+      const isQuoteExpired = !!quoteExpiredCodes?.length;
+
+      if (isQuoteExpired) {
+        // Over-slippage / liquidity-changed rejection: fire the dedicated
+        // event instead of SWAP_FAIL and prompt the user to retry for a
+        // fresh quote. `resultCode` carries the Horizon op code(s) that drove
+        // the expiry so we can slice by reason.
+        analytics.track(AnalyticsEvent.SWAP_QUOTE_EXPIRED, {
+          sourceToken: sourceBalance?.tokenCode,
+          destToken: destinationTokenInput?.tokenCode,
+          sourceAmount,
+          destAmount: pathResult?.destinationAmount,
+          allowedSlippage: useSwapSettingsStore
+            .getState()
+            .swapSlippage?.toString(),
+          resultCode: quoteExpiredCodes.join(", "),
+        });
+
+        showToast({
+          variant: "error",
+          title: t("swapScreen.errors.quoteExpired"),
+          toastId: "swap-quote-expired",
+          duration: 0,
+        });
+
+        // The frozen quote is stale — fetch a fresh path so the user's retry
+        // uses a new quote instead of resubmitting the expired one.
+        const {
+          sourceBalance: latestSource,
+          destinationTokenInput: latestDest,
+        } = swapBalancesRef.current;
+        if (latestSource && latestDest && account.publicKey) {
+          // Fire-and-forget: findSwapPath updates the store and handles its own
+          // errors (matches how useSwapPathFinding invokes it).
+          useSwapStore.getState().findSwapPath({
+            sourceBalance: latestSource,
+            destinationBalance: latestDest,
+            sourceAmount,
+            slippage: useSwapSettingsStore.getState().swapSlippage,
+            network,
+            publicKey: account.publicKey,
+          });
+        }
+
+        return;
+      }
 
       analytics.trackTransactionError({
         error: error instanceof Error ? error.message : String(error),

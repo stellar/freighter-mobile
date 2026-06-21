@@ -91,6 +91,7 @@ export enum AnalyticsEvent {
   SWAP_SOURCE_SELECTED = "swap: source selected",
   SWAP_TRUSTLINE_ADDED = "swap: trustline added",
   SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN = "swap: xlm reserve insufficient shown",
+  SWAP_QUOTE_EXPIRED = "swap: quote expired",
 
   // Send Collectible Events
   SEND_COLLECTIBLE_SUCCESS = "send collectible: success",

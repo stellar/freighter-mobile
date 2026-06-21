@@ -67,7 +67,7 @@ export const CIRCLE_USDC_CONTRACT =
   "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
 
 // Slippage constants
-export const DEFAULT_SLIPPAGE = 1;
+export const DEFAULT_SLIPPAGE = 2;
 export const MIN_SLIPPAGE = 0;
 export const MAX_SLIPPAGE = 10;
 

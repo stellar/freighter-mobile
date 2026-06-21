@@ -629,7 +629,8 @@
       "insufficientXlmForFees": "Insufficient XLM for transaction fees. You need at least {{fee}} XLM to pay the transaction fee.",
       "noPathFound": "No path found between these tokens",
       "pathFindFailed": "Couldn't fetch swap path. Please try again.",
-      "customTokenSwapNotSupported": "Swapping custom tokens is not supported yet"
+      "customTokenSwapNotSupported": "Swapping custom tokens is not supported yet",
+      "quoteExpired": "Quote has expired, please try again to get a new quote"
     },
     "stellarExpertDown": "Token discovery is temporarily unavailable. You can still swap between tokens you already hold.",
     "sorobanEmptyState": "Soroban contract tokens aren't supported for swaps yet. Try searching for a Classic token instead.",

@@ -15,6 +15,7 @@ const mockTrackTransactionError = jest.fn();
 const mockTrackSwapSuccess = jest.fn();
 const mockTrack = jest.fn();
 const mockScanTransaction = jest.fn().mockResolvedValue({});
+const mockGetBuilderState = jest.fn();
 
 jest.mock("ducks/transactionBuilder", () => ({
   useTransactionBuilderStore: Object.assign(
@@ -24,7 +25,7 @@ jest.mock("ducks/transactionBuilder", () => ({
       submitTransaction: mockSubmitTransaction,
     }),
     {
-      getState: () => ({ error: "Submit error from store" }),
+      getState: () => mockGetBuilderState(),
     },
   ),
 }));
@@ -96,6 +97,7 @@ const baseParams: Parameters<typeof useSwapTransaction>[0] = {
 describe("useSwapTransaction", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockGetBuilderState.mockReturnValue({ error: "Submit error from store" });
     act(() => {
       useSwapStore.getState().resetSwap();
     });
@@ -360,6 +362,72 @@ describe("useSwapTransaction", () => {
       expect(mockTrack).not.toHaveBeenCalledWith(
         AnalyticsEvent.SWAP_TRUSTLINE_ADDED,
         expect.anything(),
+      );
+    });
+  });
+
+  describe("SWAP_QUOTE_EXPIRED analytics", () => {
+    it("fires SWAP_QUOTE_EXPIRED with the result code (not SWAP_FAIL) when the submit is rejected with op_under_dest_min", async () => {
+      mockGetBuilderState.mockReturnValue({
+        error: "tx_failed",
+        submitErrorResultCodes: {
+          transaction: "tx_failed",
+          operations: ["op_under_dest_min"],
+        },
+      });
+      mockSignTransaction.mockReturnValue("signed-xdr");
+      mockSubmitTransaction.mockResolvedValue(null);
+
+      const { result } = renderHook(() => useSwapTransaction(baseParams));
+
+      await act(async () => {
+        await result.current.executeSwap().catch(() => {});
+      });
+
+      expect(mockTrack).toHaveBeenCalledWith(
+        AnalyticsEvent.SWAP_QUOTE_EXPIRED,
+        expect.objectContaining({
+          sourceToken: "XLM",
+          destToken: "USDC",
+          sourceAmount: "1",
+          destAmount: "2.5",
+          resultCode: "op_under_dest_min",
+        }),
+      );
+      // Quote-expiry is a distinct funnel step — the generic SWAP_FAIL must NOT fire.
+      expect(mockTrackTransactionError).not.toHaveBeenCalled();
+      expect(mockShowToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          variant: "error",
+          title: "swapScreen.errors.quoteExpired",
+          toastId: "swap-quote-expired",
+        }),
+      );
+    });
+
+    it("fires the generic SWAP_FAIL (not SWAP_QUOTE_EXPIRED) for a non-quote-expiry rejection", async () => {
+      mockGetBuilderState.mockReturnValue({
+        error: "tx_insufficient_balance",
+        submitErrorResultCodes: {
+          transaction: "tx_failed",
+          operations: ["op_underfunded"],
+        },
+      });
+      mockSignTransaction.mockReturnValue("signed-xdr");
+      mockSubmitTransaction.mockResolvedValue(null);
+
+      const { result } = renderHook(() => useSwapTransaction(baseParams));
+
+      await act(async () => {
+        await result.current.executeSwap().catch(() => {});
+      });
+
+      expect(mockTrack).not.toHaveBeenCalledWith(
+        AnalyticsEvent.SWAP_QUOTE_EXPIRED,
+        expect.anything(),
+      );
+      expect(mockTrackTransactionError).toHaveBeenCalledWith(
+        expect.objectContaining({ isSwap: true }),
       );
     });
   });

@@ -47,6 +47,10 @@ interface TransactionBuilderState {
   isSubmitting: boolean;
   transactionHash: string | null;
   error: string | null;
+  submitErrorResultCodes: {
+    transaction?: string;
+    operations?: string[];
+  } | null;
   requestId: string | null;
   isSoroban: boolean;
   sorobanResourceFeeXlm: string | null;
@@ -116,6 +120,7 @@ const initialState: Omit<
   isSubmitting: false,
   transactionHash: null,
   error: null,
+  submitErrorResultCodes: null,
   requestId: null,
   isSoroban: false,
   sorobanResourceFeeXlm: null,
@@ -496,7 +501,12 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
     submitTransaction: async (params) => {
       // Tag this submit cycle (reuse current id if exists)
       const currentRequestId = get().requestId || createRequestId();
-      set({ isSubmitting: true, error: null, requestId: currentRequestId });
+      set({
+        isSubmitting: true,
+        error: null,
+        submitErrorResultCodes: null,
+        requestId: currentRequestId,
+      });
 
       // Check debug override for forced submit failure BEFORE the try-catch
       // so the error propagates directly to the caller
@@ -593,7 +603,14 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         // Only set error state if this submit request is still current.
         // Prevents stale submit error from affecting newer transaction flows.
         if (get().requestId === currentRequestId) {
-          set({ error: errorMessage, isSubmitting: false });
+          set({
+            error: errorMessage,
+            isSubmitting: false,
+            submitErrorResultCodes:
+              (horizon4xxResultCodes as
+                | { transaction?: string; operations?: string[] }
+                | undefined) ?? null,
+          });
         }
 
         return null;
