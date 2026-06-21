@@ -386,9 +386,14 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   // only saves a truthy fee), so spendable stays put. It resumes updating
   // when the amount is cleared / the screen resets.
   const hasEnteredSourceAmount = new BigNumber(sourceAmount || "0").gt(0);
+  // A swap-to-new-token bundles changeTrust + path payment (2 ops); the fee is
+  // the TOTAL across ops, so the recommended default and the minimum scale by
+  // the op count (kept consistent with what's charged/displayed).
+  const swapOperationCount = destinationTokenDescriptor?.isNew ? 2 : 1;
   useInitialRecommendedFee(
     hasEnteredSourceAmount ? "" : recommendedFee,
     TransactionContext.Swap,
+    swapOperationCount,
   );
 
   const {
@@ -981,6 +986,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
             onCancel={cancelSettings}
             onConfirm={confirmSettings}
             onSettingsChange={handleSettingsChange}
+            operationCount={swapOperationCount}
           />
         }
       />

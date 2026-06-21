@@ -502,6 +502,11 @@ describe("buildSwapTransaction — includeTrustline", () => {
     expect(trustlineAsset.issuer).toBe(
       "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
     );
+
+    // The user-set 0.001 XLM (10,000 stroops) is the TOTAL: it's split across
+    // the 2 ops (5,000 stroops/op) so the charged total stays 10,000 — not
+    // doubled to 20,000.
+    expect(tx.fee).toBe("10000");
   });
 
   it("builds a single pathPaymentStrictSend op when includeTrustline is omitted (regression)", async () => {
@@ -511,5 +516,7 @@ describe("buildSwapTransaction — includeTrustline", () => {
 
     expect(tx.operations).toHaveLength(1);
     expect(tx.operations[0].type).toBe("pathPaymentStrictSend");
+    // Single op: total == the user-set 0.001 XLM (10,000 stroops).
+    expect(tx.fee).toBe("10000");
   });
 });

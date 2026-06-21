@@ -22,7 +22,10 @@ import {
 import { logger } from "config/logger";
 import { Balance, NativeBalance, PricedBalance } from "config/types";
 import { isLiquidityPool } from "helpers/balances";
-import { xlmToStroop } from "helpers/formatAmount";
+import {
+  getPerOperationBaseFeeStroops,
+  xlmToStroop,
+} from "helpers/formatAmount";
 import {
   determineMuxedDestination,
   checkContractMuxedSupport,
@@ -618,7 +621,14 @@ export const buildSwapTransaction = async (
     const networkDetails = mapNetworkToNetworkDetails(network);
     const server = stellarSdkServer(networkDetails.networkUrl);
     const sourceAccount = await server.loadAccount(senderAddress);
-    const fee = xlmToStroop(transactionFee).toString();
+    // transactionFee is the TOTAL the user set; the SDK fee is per-operation
+    // and the network charges baseFee × numOps. Adding a changeTrust op makes
+    // this a 2-op tx, so split the total across ops to keep the charged total
+    // equal to what the user set/sees.
+    const fee = getPerOperationBaseFeeStroops(
+      transactionFee,
+      includeTrustline ? 2 : 1,
+    );
 
     const txBuilder = new TransactionBuilder(sourceAccount, {
       fee,

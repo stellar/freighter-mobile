@@ -28,12 +28,12 @@ type BalanceItem = PricedBalance & {
  *
  *   - **Non-XLM source.** The reserve comes from the separate XLM balance,
  *     which the swap amount never touches — so there's no up-front
- *     deduction. Gate on the XLM balance's spendable headroom, minus one
- *     extra op fee: the combined trustline + path-payment transaction has
- *     2 ops, and calculateSpendableAmount only deducted one via the
- *     transactionFee parameter. The `lte` boundary routes the
- *     exact-boundary case to the reserve sheet (zero margin after the
- *     trustline).
+ *     deduction. Gate on the XLM balance's spendable headroom:
+ *     calculateSpendableAmount already subtracts the full transaction fee
+ *     (swapFee is the TOTAL across both the changeTrust and path-payment ops),
+ *     so the remaining spendable just needs to cover the new trustline's
+ *     BASE_RESERVE. The `lte` boundary routes the exact-boundary case to the
+ *     reserve sheet (zero margin after the trustline).
  *
  * Returns `false` when the destination isn't `isNew` (no trustline op
  * needed → no reserve concern).
@@ -71,7 +71,8 @@ export const shouldShowXlmReservePreflight = ({
     return xlmSpendable.lt(BASE_RESERVE);
   }
 
-  // Non-XLM source: gate on post-fee XLM headroom for the extra op.
-  const extraTrustlineOpFee = new BigNumber(swapFee);
-  return xlmSpendable.minus(extraTrustlineOpFee).lte(BASE_RESERVE);
+  // Non-XLM source: gate on post-fee XLM headroom. calculateSpendableAmount
+  // already deducted the full transaction fee (swapFee is the TOTAL across both
+  // ops), so the remaining spendable just needs to cover the trustline reserve.
+  return xlmSpendable.lte(BASE_RESERVE);
 };

@@ -1,5 +1,5 @@
 import BigNumber from "bignumber.js";
-import { DEFAULT_DECIMALS } from "config/constants";
+import { DEFAULT_DECIMALS, MIN_TRANSACTION_FEE } from "config/constants";
 import { Balance, PricedBalance } from "config/types";
 import { hasDecimals } from "helpers/balances";
 import { formatTokenForDisplay as formatSorobanTokenAmount } from "helpers/soroban";
@@ -787,6 +787,24 @@ export const xlmToStroop = (lumens: BigNumber | string): BigNumber => {
   // round to nearest stroop
   return new BigNumber(Math.round(Number(lumens) * 1e7));
 };
+
+/**
+ * Splits a TOTAL transaction fee (XLM string) into the Stellar SDK's
+ * per-operation base fee (stroops string). The network charges
+ * `baseFee × numOperations`, so dividing the user-set total by the op count
+ * keeps the total the user sees consistent regardless of how many operations
+ * the transaction bundles (e.g. a swap-to-new-token's changeTrust + path
+ * payment). Each op is clamped to the 100-stroop network minimum
+ * (MIN_TRANSACTION_FEE) so the result is always a submittable base fee.
+ */
+export const getPerOperationBaseFeeStroops = (
+  totalFeeXlm: string,
+  operationCount: number,
+): string =>
+  BigNumber.max(
+    xlmToStroop(totalFeeXlm).idiv(operationCount),
+    xlmToStroop(MIN_TRANSACTION_FEE),
+  ).toFixed(0);
 
 /**
  * Formats a balance amount for display, handling custom tokens with decimals

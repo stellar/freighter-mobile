@@ -16,6 +16,7 @@ import {
   parseDisplayNumber,
   parseDisplayNumberToBigNumber,
   formatBalanceAmount,
+  getPerOperationBaseFeeStroops,
 } from "helpers/formatAmount";
 
 // Mock react-native-localize for consistent test behavior
@@ -854,6 +855,33 @@ describe("formatAmount helpers", () => {
 
       const result = formatBalanceAmount(customTokenBalance);
       expect(result).toBe("1.00");
+    });
+  });
+
+  describe("getPerOperationBaseFeeStroops", () => {
+    it("splits a total fee evenly across operations (per-op base fee in stroops)", () => {
+      // 0.001 XLM = 10,000 stroops total; 2 ops => 5,000 stroops/op.
+      expect(getPerOperationBaseFeeStroops("0.001", 2)).toBe("5000");
+    });
+
+    it("returns the full total for a single operation", () => {
+      expect(getPerOperationBaseFeeStroops("0.001", 1)).toBe("10000");
+    });
+
+    it("clamps each op to the 100-stroop network minimum", () => {
+      // 0.00001 XLM = 100 stroops total; 2 ops would be 50/op, below the
+      // network minimum, so each op floors at 100.
+      expect(getPerOperationBaseFeeStroops("0.00001", 2)).toBe("100");
+    });
+
+    it("clamps to the minimum when the whole total is below one op's minimum", () => {
+      // 0.000001 XLM = 10 stroops, 1 op => below min => 100.
+      expect(getPerOperationBaseFeeStroops("0.000001", 1)).toBe("100");
+    });
+
+    it("floors fractional stroop division", () => {
+      // 0.0000301 XLM = 301 stroops; 2 ops => floor(150.5) = 150/op.
+      expect(getPerOperationBaseFeeStroops("0.0000301", 2)).toBe("150");
     });
   });
 });

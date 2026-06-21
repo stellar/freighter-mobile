@@ -51,6 +51,20 @@ describe("useValidateTransactionFee", () => {
     expect(result.current.error).toBeNull();
   });
 
+  it("scales the minimum by operationCount (2-op tx rejects below 2x the per-op min)", () => {
+    // 0.00001 is a valid 1-op total but below the 0.00002 floor for 2 ops.
+    const { result } = renderHook(() =>
+      useValidateTransactionFee(MIN_TRANSACTION_FEE, 2),
+    );
+    expect(result.current.error).toBe("Fee must be at least 0.00002");
+  });
+
+  it("accepts a fee equal to the operationCount-scaled minimum", () => {
+    const twoOpMin = new BigNumber(MIN_TRANSACTION_FEE).times(2).toString();
+    const { result } = renderHook(() => useValidateTransactionFee(twoOpMin, 2));
+    expect(result.current.error).toBeNull();
+  });
+
   it("should update error state when fee changes", () => {
     const { result, rerender } = renderHook(
       ({ fee }) => useValidateTransactionFee(fee),
