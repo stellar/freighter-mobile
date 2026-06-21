@@ -1,7 +1,7 @@
 import axios from "axios";
 import { NETWORKS } from "config/constants";
 import { freighterBackendV1 } from "services/backend";
-import { scanBulkTokens } from "services/blockaid/api";
+import { scanBulkTokens, scanToken } from "services/blockaid/api";
 
 jest.mock("services/backend", () => ({
   freighterBackendV1: { get: jest.fn() },
@@ -39,5 +39,31 @@ describe("scanBulkTokens error handling", () => {
         network: NETWORKS.PUBLIC,
       }),
     ).rejects.toBe(cancel);
+  });
+});
+
+describe("scanToken native XLM handling", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it("returns a benign result for native XLM without calling the backend", async () => {
+    const result = await scanToken({
+      tokenCode: "XLM",
+      network: NETWORKS.PUBLIC,
+    });
+
+    expect(mockGet).not.toHaveBeenCalled();
+    expect(result.result_type).toBe("Benign");
+  });
+
+  it("still scans a token coded XLM that carries an issuer (a non-native imposter)", async () => {
+    mockGet.mockResolvedValue({ data: { data: { result_type: "Benign" } } });
+
+    await scanToken({
+      tokenCode: "XLM",
+      tokenIssuer: "GISSUER",
+      network: NETWORKS.PUBLIC,
+    });
+
+    expect(mockGet).toHaveBeenCalled();
   });
 });
