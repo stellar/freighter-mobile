@@ -117,7 +117,8 @@ export const useTrendingTokenDetail = ({
         setSourceToken("", "");
       }
       setDestinationToken(descriptor);
-      trendingListRef.current?.scrollToOffset({ offset: 0, animated: false });
+      // The amount screen scrolls itself to the top when the selected token
+      // changes (see SwapAmountScreen), so the Sell/Receive cards are visible.
       trendingDetailSheetRef.current?.dismiss();
     },
     [balanceItems, sourceTokenId, setSourceToken, setDestinationToken],
