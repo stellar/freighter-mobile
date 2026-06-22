@@ -200,6 +200,9 @@ const PickerChip: React.FC<{
           size="md"
           securityLevel={securityLevel}
           iconUrl={iconUrl}
+          // Two letters look cramped in the 24px chip and the token code is
+          // already shown as the adjacent label, so one initial reads cleaner.
+          singleLetterFallback
         />
       ) : (
         // Empty-state affordance: a Plus-in-circle to signal "tap to add a

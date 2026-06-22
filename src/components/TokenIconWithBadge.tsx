@@ -17,6 +17,8 @@ export interface TokenIconWithBadgeProps {
   iconUrl?: string;
   /** Blockaid security level — drives the badge overlay */
   securityLevel?: SecurityLevel;
+  /** Render only the first letter of the code in the no-image fallback. */
+  singleLetterFallback?: boolean;
 }
 
 /**
