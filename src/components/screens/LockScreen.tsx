@@ -1,7 +1,11 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import ForgotPasswordWarningModal from "components/screens/ForgotPasswordWarningModal";
 import InputPasswordTemplate from "components/templates/InputPasswordTemplate";
-import { ERROR_TOAST_DURATION, LoginType } from "config/constants";
+import {
+  ERROR_TOAST_DURATION,
+  LoginType,
+  UNLOCK_ERROR_TOAST_ID,
+} from "config/constants";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore, getActiveAccountPublicKey } from "ducks/auth";
@@ -11,7 +15,6 @@ import {
   onPrivacyShieldHidden,
 } from "helpers/privacyShield";
 import useAppTranslation from "hooks/useAppTranslation";
-import { AUTH_ERROR_TOAST_ID } from "hooks/useAuthErrorToast";
 import { useToast } from "providers/ToastProvider";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { AppState } from "react-native";
@@ -159,11 +162,13 @@ export const LockScreenContent: React.FC<LockScreenContentProps> = ({
       }
       // Unlock failed after a successful biometric scan (e.g. a stale stored
       // password). Clear the store error so a biometric-derived invalidPassword
-      // doesn't bleed into the inline password field, and surface the single
-      // authoritative unlock-error toast (matches PR #890's biometric flow).
+      // doesn't bleed into the inline password field, and surface the unlock-
+      // error toast. Uses UNLOCK_ERROR_TOAST_ID because it's the only id
+      // SOFT_LOCK_ALLOWED_TOAST_IDS lets through while the soft-lock overlay is
+      // up — otherwise the failure would be silently suppressed.
       clearError();
       showToast({
-        toastId: AUTH_ERROR_TOAST_ID,
+        toastId: UNLOCK_ERROR_TOAST_ID,
         variant: "error",
         title: t("lockScreen.errorUnlockingWalletTitle"),
         message: t("lockScreen.errorUnlockingWalletMessage"),
