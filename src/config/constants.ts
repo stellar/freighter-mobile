@@ -105,7 +105,7 @@ export const FIAT_DECIMALS = 2;
  * 10^7 (the protocol's fixed 7-decimal precision). Soroban / custom tokens
  * have no protocol-level max here and rely on their own `decimals` field.
  */
-export const CLASSIC_TOKEN_MAX_AMOUNT = "922337203685.4775808";
+export const CLASSIC_TOKEN_MAX_AMOUNT = "922337203685.4775807";
 
 // Bottom sheet layout defaults
 export const BOTTOM_SHEET_MAX_HEIGHT_RATIO = 0.9;

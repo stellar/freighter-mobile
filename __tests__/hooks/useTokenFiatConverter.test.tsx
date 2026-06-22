@@ -1678,15 +1678,15 @@ describe("useTokenFiatConverter.setDisplayAmountFromText - input validation", ()
     });
   });
 
-  describe("classic absolute max (922337203685.4775808)", () => {
+  describe("classic absolute max (922337203685.4775807)", () => {
     it("accepts exactly the int64-scaled max for a classic token", () => {
       const { result } = renderHook(() =>
         useTokenFiatConverter({ selectedBalance: classicMock }),
       );
       act(() => {
-        result.current.setDisplayAmountFromText("922337203685.4775808");
+        result.current.setDisplayAmountFromText("922337203685.4775807");
       });
-      expect(result.current.tokenAmountDisplayRaw).toBe("922337203685.4775808");
+      expect(result.current.tokenAmountDisplayRaw).toBe("922337203685.4775807");
     });
 
     it("rejects input one ulp above the classic max", () => {
@@ -1697,8 +1697,8 @@ describe("useTokenFiatConverter.setDisplayAmountFromText - input validation", ()
         result.current.setDisplayAmountFromText("1");
       });
       act(() => {
-        // Just over max — should be rejected, state unchanged.
-        result.current.setDisplayAmountFromText("922337203685.4775809");
+        // 2^63 stroops — one ulp over the int64 max, must be rejected.
+        result.current.setDisplayAmountFromText("922337203685.4775808");
       });
       expect(result.current.tokenAmountDisplayRaw).toBe("1");
     });
