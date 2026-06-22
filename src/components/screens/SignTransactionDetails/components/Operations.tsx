@@ -518,7 +518,7 @@ const RenderOperationByType = ({
             titleColor: themeColors.text.secondary,
           },
           {
-            title: t("signTransactionDetails.operations.assetIssuer"),
+            title: t("signTransactionDetails.operations.tokenIssuer"),
             trailingContent: (
               <View className="flex-row items-center gap-[8px]">
                 <Icon.Copy01

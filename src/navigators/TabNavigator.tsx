@@ -18,6 +18,7 @@ import { useFetchTokenIcons } from "hooks/useFetchTokenIcons";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useHistoryPolling } from "hooks/useHistoryPolling";
 import { usePricedBalancesPolling } from "hooks/usePricedBalancesPolling";
+import { useSwapTokenListsPrewarm } from "hooks/useSwapTokenListsPrewarm";
 import React, { useEffect, useMemo } from "react";
 import styled from "styled-components/native";
 
@@ -88,6 +89,9 @@ export const TabNavigator = () => {
 
   // Fetch icons whenever balances are updated
   useFetchTokenIcons(networkDetails.network);
+
+  // Pre-warm Swap token-list caches (top-50 + verified + Blockaid)
+  useSwapTokenListsPrewarm(networkDetails.network);
 
   // Start polling for balance and price updates
   usePricedBalancesPolling({

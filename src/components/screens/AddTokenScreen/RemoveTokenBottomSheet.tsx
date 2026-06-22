@@ -1,4 +1,3 @@
-import { Asset } from "@stellar/stellar-sdk";
 import { List } from "components/List";
 import { TokenIcon } from "components/TokenIcon";
 import Avatar from "components/sds/Avatar";
@@ -16,7 +15,7 @@ import {
   TokenTypeWithCustomToken,
 } from "config/types";
 import { ActiveAccount, useAuthenticationStore } from "ducks/auth";
-import { isContractId } from "helpers/soroban";
+import { getTokenSacAddress, isContractId } from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
@@ -51,11 +50,11 @@ const RemoveTokenBottomSheetContent: React.FC<
   const listItems = useMemo(() => {
     if (!token) return [];
 
-    // If issuer is already a contract ID, use it directly
-    // Otherwise, create an Asset and get its contract ID
+    // If issuer is already a contract ID, use it directly. Otherwise derive
+    // the deterministic SAC C-address from the classic (code, issuer) pair.
     const tokenContractId = isContractId(token.issuer)
       ? token.issuer
-      : new Asset(token.tokenCode, token.issuer).contractId(networkPassphrase);
+      : getTokenSacAddress(token.tokenCode, token.issuer, networkPassphrase);
 
     const handleCopyTokenAddress = (contractAddress: string) => {
       copyToClipboard(contractAddress, {

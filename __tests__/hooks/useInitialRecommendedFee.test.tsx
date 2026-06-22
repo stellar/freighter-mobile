@@ -1,5 +1,6 @@
 import { act, renderHook } from "@testing-library/react-hooks";
 import { MIN_TRANSACTION_FEE, TransactionContext } from "config/constants";
+import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { useInitialRecommendedFee } from "hooks/useInitialRecommendedFee";
 
@@ -7,12 +8,14 @@ describe("useInitialRecommendedFee", () => {
   beforeEach(() => {
     act(() => {
       useTransactionSettingsStore.getState().resetSettings();
+      useSwapSettingsStore.getState().resetSettings();
     });
   });
 
   afterEach(() => {
     act(() => {
       useTransactionSettingsStore.getState().resetSettings();
+      useSwapSettingsStore.getState().resetSettings();
     });
   });
 
@@ -68,5 +71,22 @@ describe("useInitialRecommendedFee", () => {
     expect(useTransactionSettingsStore.getState().transactionFee).toBe(
       "0.1234567",
     );
+  });
+
+  it("scales the recommended fee by operationCount so the stored fee is the total (2-op swap)", () => {
+    renderHook(() =>
+      useInitialRecommendedFee("0.001", TransactionContext.Swap, 2),
+    );
+
+    // The per-op recommended 0.001 becomes a 0.002 total across 2 ops.
+    expect(useSwapSettingsStore.getState().swapFee).toBe("0.002");
+  });
+
+  it("writes the unscaled recommended fee for a single operation (default)", () => {
+    renderHook(() =>
+      useInitialRecommendedFee("0.001", TransactionContext.Send),
+    );
+
+    expect(useTransactionSettingsStore.getState().transactionFee).toBe("0.001");
   });
 });

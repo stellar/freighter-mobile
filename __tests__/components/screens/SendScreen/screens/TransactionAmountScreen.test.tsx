@@ -12,7 +12,6 @@ import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { calculateSpendableAmount, hasXLMForFees } from "helpers/balances";
 import { cachedFetch } from "helpers/cachedFetch";
-import { useDeviceSize, DeviceSize } from "helpers/deviceSize";
 import { renderWithProviders } from "helpers/testUtils";
 import * as blockaidService from "hooks/blockaid/useBlockaidTransaction";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -64,7 +63,6 @@ jest.mock("helpers/muxedAddress", () => ({
     mockCheckContractMuxedSupport(...args),
 }));
 jest.mock("helpers/cachedFetch");
-jest.mock("helpers/deviceSize");
 
 // Hook mocks
 jest.mock("hooks/useGetActiveAccount");
@@ -238,9 +236,6 @@ const mockUseBalancesList = useBalancesList as jest.MockedFunction<
 >;
 const mockUseTokenFiatConverter = useTokenFiatConverter as jest.MockedFunction<
   typeof useTokenFiatConverter
->;
-const mockUseDeviceSize = useDeviceSize as jest.MockedFunction<
-  typeof useDeviceSize
 >;
 const mockUseRightHeaderMenu = useRightHeaderMenu as jest.MockedFunction<
   typeof useRightHeaderMenu
@@ -439,8 +434,9 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
       setShowFiatAmount: jest.fn(),
       handleDisplayAmountChange: jest.fn(),
       updateFiatDisplay: jest.fn(),
+      setDisplayAmountFromText: jest.fn(),
+      pasteRejectNonce: 0,
     });
-    mockUseDeviceSize.mockReturnValue(DeviceSize.MD);
     mockUseRightHeaderMenu.mockReturnValue(undefined);
     mockUseToast.mockReturnValue({
       showToast: jest.fn(),
@@ -821,6 +817,8 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
       setShowFiatAmount: jest.fn(),
       handleDisplayAmountChange: jest.fn(),
       updateFiatDisplay: jest.fn(),
+      setDisplayAmountFromText: jest.fn(),
+      pasteRejectNonce: 0,
     });
 
     const settingsStateWithMemo = {
@@ -876,6 +874,8 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
       setShowFiatAmount: jest.fn(),
       handleDisplayAmountChange: jest.fn(),
       updateFiatDisplay: jest.fn(),
+      setDisplayAmountFromText: jest.fn(),
+      pasteRejectNonce: 0,
     });
 
     const settingsStateWithoutMemo = {
@@ -1179,8 +1179,9 @@ describe("TransactionAmountScreen - Address Change Scenarios", () => {
       setShowFiatAmount: jest.fn(),
       handleDisplayAmountChange: jest.fn(),
       updateFiatDisplay: jest.fn(),
+      setDisplayAmountFromText: jest.fn(),
+      pasteRejectNonce: 0,
     });
-    mockUseDeviceSize.mockReturnValue(DeviceSize.MD);
     mockUseRightHeaderMenu.mockReturnValue(undefined);
     mockUseToast.mockReturnValue({
       showToast: jest.fn(),
@@ -1721,7 +1722,7 @@ describe("TransactionAmountScreen - Address Change Scenarios", () => {
 });
 
 describe("TransactionAmountScreen - Native keyboard input", () => {
-  const mockHandleDisplayAmountChange = jest.fn();
+  const mockSetDisplayAmountFromText = jest.fn();
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -1749,8 +1750,10 @@ describe("TransactionAmountScreen - Native keyboard input", () => {
       setTokenAmount: jest.fn(),
       setFiatAmount: jest.fn(),
       setShowFiatAmount: jest.fn(),
-      handleDisplayAmountChange: mockHandleDisplayAmountChange,
+      handleDisplayAmountChange: jest.fn(),
+      setDisplayAmountFromText: mockSetDisplayAmountFromText,
       updateFiatDisplay: jest.fn(),
+      pasteRejectNonce: 0,
     });
 
     mockUseTransactionBuilderStore.mockReturnValue({
@@ -1836,7 +1839,6 @@ describe("TransactionAmountScreen - Native keyboard input", () => {
 
     mockCalculateSpendableAmount.mockReturnValue(new BigNumber("1000"));
     mockHasXLMForFees.mockReturnValue(true);
-    mockUseDeviceSize.mockReturnValue(DeviceSize.MD);
     mockUseRightHeaderMenu.mockReturnValue(undefined);
     mockUseToast.mockReturnValue({
       showToast: jest.fn(),
@@ -1864,96 +1866,22 @@ describe("TransactionAmountScreen - Native keyboard input", () => {
     expect(getByTestId("amount-text-input")).toBeTruthy();
   });
 
-  it("calls handleDisplayAmountChange with typed character", () => {
+  it("forwards TextInput.onChangeText to converter.setDisplayAmountFromText", () => {
     const { getByTestId } = render(
       <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
     );
 
     fireEvent.changeText(getByTestId("amount-text-input"), "5");
-    expect(mockHandleDisplayAmountChange).toHaveBeenCalledWith("5");
+    expect(mockSetDisplayAmountFromText).toHaveBeenCalledWith("5");
   });
 
-  it("calls handleDisplayAmountChange with empty string on delete", () => {
-    mockUseTokenFiatConverter.mockReturnValue({
-      tokenAmount: "5",
-      tokenAmountDisplay: "5",
-      tokenAmountDisplayRaw: "5",
-      fiatAmount: "0.50",
-      fiatAmountDisplay: "0.50",
-      fiatAmountDisplayRaw: null,
-      showFiatAmount: false,
-      setTokenAmount: jest.fn(),
-      setFiatAmount: jest.fn(),
-      setShowFiatAmount: jest.fn(),
-      handleDisplayAmountChange: mockHandleDisplayAmountChange,
-      updateFiatDisplay: jest.fn(),
-    });
-
+  it("forwards pasted/multi-character input as a single setDisplayAmountFromText call", () => {
     const { getByTestId } = render(
       <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
     );
 
-    fireEvent.changeText(getByTestId("amount-text-input"), "");
-    expect(mockHandleDisplayAmountChange).toHaveBeenCalledWith("");
-  });
-
-  it("calls handleDisplayAmountChange once with full pasted text", () => {
-    const { getByTestId } = render(
-      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
-    );
-
-    fireEvent.changeText(getByTestId("amount-text-input"), "123");
-    expect(mockHandleDisplayAmountChange).toHaveBeenCalledTimes(1);
-    expect(mockHandleDisplayAmountChange).toHaveBeenCalledWith("123");
-  });
-
-  it("sanitizes mixed pasted input before forwarding", () => {
-    const { getByTestId } = render(
-      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
-    );
-
-    fireEvent.changeText(getByTestId("amount-text-input"), "$12a,3b4");
-    expect(mockHandleDisplayAmountChange).toHaveBeenCalledWith("12,34");
-  });
-
-  it("maps comma deletion sequence to backspace calls", () => {
-    const { getByTestId } = render(
-      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
-    );
-
-    fireEvent.changeText(getByTestId("amount-text-input"), "0,1");
-    fireEvent.changeText(getByTestId("amount-text-input"), "0,");
-    fireEvent.changeText(getByTestId("amount-text-input"), "0");
-
-    expect(mockHandleDisplayAmountChange).toHaveBeenNthCalledWith(1, "0,1");
-    expect(mockHandleDisplayAmountChange).toHaveBeenNthCalledWith(2, "");
-    expect(mockHandleDisplayAmountChange).toHaveBeenNthCalledWith(3, "");
-  });
-
-  it("allows retyping in fiat mode after deleting to partial zero", () => {
-    mockUseTokenFiatConverter.mockReturnValue({
-      tokenAmount: "0",
-      tokenAmountDisplay: "0",
-      tokenAmountDisplayRaw: null,
-      fiatAmount: "0",
-      fiatAmountDisplay: "0,00",
-      fiatAmountDisplayRaw: "0,0",
-      showFiatAmount: true,
-      setTokenAmount: jest.fn(),
-      setFiatAmount: jest.fn(),
-      setShowFiatAmount: jest.fn(),
-      handleDisplayAmountChange: mockHandleDisplayAmountChange,
-      updateFiatDisplay: jest.fn(),
-    });
-
-    const { getByTestId } = render(
-      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
-    );
-
-    fireEvent.changeText(getByTestId("amount-text-input"), "0,");
-    fireEvent.changeText(getByTestId("amount-text-input"), "1");
-
-    expect(mockHandleDisplayAmountChange).toHaveBeenNthCalledWith(1, "");
-    expect(mockHandleDisplayAmountChange).toHaveBeenNthCalledWith(2, "1");
+    fireEvent.changeText(getByTestId("amount-text-input"), "123,45");
+    expect(mockSetDisplayAmountFromText).toHaveBeenCalledTimes(1);
+    expect(mockSetDisplayAmountFromText).toHaveBeenCalledWith("123,45");
   });
 });

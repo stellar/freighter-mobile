@@ -96,11 +96,21 @@ tags:
 # only triggers onRequestClose when the keyboard is already dismissed.
 - hideKeyboard
 
-# Make sure the sign button is visible (scroll if needed) and tap it to send the WC request
+# Make sure the sign button is visible and tap it to send the WC request.
+#
+# After hideKeyboard the modal's ScrollView springs back toward the top,
+# clipping this button (the last item) below the fold. scrollUntilVisible
+# alone is a no-op here: iOS lists the clipped button in the accessibility
+# tree at its layout position, so Maestro thinks it is already visible and
+# never scrolls — the tap then lands on empty space, onPress never fires, no
+# WC request is sent, and sign-message-title times out. Force a real scroll: a
+# plain scroll moves the content and centerElement keeps the button on-screen.
+- scroll
 - scrollUntilVisible:
     element:
       id: wc-e2e-request-sign
     direction: DOWN
+    centerElement: true
 
 # Request sign message - modal will auto-close after request
 - tapOn:
