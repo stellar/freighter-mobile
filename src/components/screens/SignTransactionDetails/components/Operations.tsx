@@ -23,7 +23,7 @@ import {
 } from "config/constants";
 import { logger } from "config/logger";
 import { useAuthenticationStore } from "ducks/auth";
-import { formatTokenForDisplay, formatFiatAmount } from "helpers/formatAmount";
+import { formatTokenForDisplay } from "helpers/formatAmount";
 import { getCreateContractArgs } from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -270,6 +270,9 @@ const RenderOperationByType = ({
     }
     case "createPassiveSellOffer": {
       const { selling, buying, amount, price } = operation;
+      // A classic offer price is an asset-to-asset ratio, not a fiat amount.
+      // For a sell offer it is buying units per 1 selling unit.
+      const priceRatio = `${formatTokenForDisplay(price)} ${buying.code} / ${selling.code}`;
 
       const items: ListItemProps[] = [
         {
@@ -279,8 +282,9 @@ const RenderOperationByType = ({
         },
         {
           title: t("signTransactionDetails.operations.amount"),
+          // amount is the quantity of the selling asset
           trailingContent: (
-            <Text>{formatTokenForDisplay(amount, buying.code)}</Text>
+            <Text>{formatTokenForDisplay(amount, selling.code)}</Text>
           ),
           titleColor: themeColors.text.secondary,
         },
@@ -291,7 +295,7 @@ const RenderOperationByType = ({
         },
         {
           title: t("signTransactionDetails.operations.price"),
-          trailingContent: <Text>{formatFiatAmount(price)}</Text>,
+          trailingContent: <Text>{priceRatio}</Text>,
           titleColor: themeColors.text.secondary,
         },
       ];
@@ -300,6 +304,9 @@ const RenderOperationByType = ({
     }
     case "manageSellOffer": {
       const { offerId, selling, buying, price, amount } = operation;
+      // A classic offer price is an asset-to-asset ratio, not a fiat amount.
+      // For a sell offer it is buying units per 1 selling unit.
+      const priceRatio = `${formatTokenForDisplay(price)} ${buying.code} / ${selling.code}`;
 
       const items: ListItemProps[] = [
         {
@@ -319,14 +326,15 @@ const RenderOperationByType = ({
         },
         {
           title: t("signTransactionDetails.operations.amount"),
+          // amount is the quantity of the selling asset
           trailingContent: (
-            <Text>{formatTokenForDisplay(amount, buying.code)}</Text>
+            <Text>{formatTokenForDisplay(amount, selling.code)}</Text>
           ),
           titleColor: themeColors.text.secondary,
         },
         {
           title: t("signTransactionDetails.operations.price"),
-          trailingContent: <Text>{formatFiatAmount(price)}</Text>,
+          trailingContent: <Text>{priceRatio}</Text>,
           titleColor: themeColors.text.secondary,
         },
       ];
@@ -335,6 +343,9 @@ const RenderOperationByType = ({
     }
     case "manageBuyOffer": {
       const { selling, buying, buyAmount, price, offerId } = operation;
+      // A classic offer price is an asset-to-asset ratio, not a fiat amount.
+      // For a buy offer it is selling units per 1 buying unit.
+      const priceRatio = `${formatTokenForDisplay(price)} ${selling.code} / ${buying.code}`;
 
       const items: ListItemProps[] = [
         {
@@ -361,7 +372,7 @@ const RenderOperationByType = ({
         },
         {
           title: t("signTransactionDetails.operations.price"),
-          trailingContent: <Text>{formatFiatAmount(price)}</Text>,
+          trailingContent: <Text>{priceRatio}</Text>,
           titleColor: themeColors.text.secondary,
         },
       ];
