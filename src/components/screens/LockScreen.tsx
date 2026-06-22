@@ -1,7 +1,7 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import ForgotPasswordWarningModal from "components/screens/ForgotPasswordWarningModal";
 import InputPasswordTemplate from "components/templates/InputPasswordTemplate";
-import { LoginType, UNLOCK_ERROR_TOAST_ID } from "config/constants";
+import { ERROR_TOAST_DURATION, LoginType } from "config/constants";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore, getActiveAccountPublicKey } from "ducks/auth";
@@ -11,6 +11,7 @@ import {
   onPrivacyShieldHidden,
 } from "helpers/privacyShield";
 import useAppTranslation from "hooks/useAppTranslation";
+import { AUTH_ERROR_TOAST_ID } from "hooks/useAuthErrorToast";
 import { useToast } from "providers/ToastProvider";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { AppState } from "react-native";
@@ -20,28 +21,8 @@ type LockScreenProps = NativeStackScreenProps<
   typeof ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN
 >;
 
-type TFunction = ReturnType<typeof useAppTranslation>["t"];
-
 // Small delay to ensure state is settled before navigating after unlock
 const UNLOCK_NAVIGATION_DELAY_MS = 100;
-
-function getErrorToastContent(
-  error: string,
-  t: TFunction,
-): { title: string; message: string } {
-  switch (error) {
-    case t("authStore.error.failedToLoadAccount"):
-      return {
-        title: t("lockScreen.failedToLoadAccountTitle"),
-        message: t("lockScreen.failedToLoadAccountMessage"),
-      };
-    default:
-      return {
-        title: t("lockScreen.errorUnlockingWalletTitle"),
-        message: t("lockScreen.errorUnlockingWalletMessage"),
-      };
-  }
-}
 
 interface LockScreenContentProps {
   /**
@@ -72,15 +53,21 @@ export const LockScreenContent: React.FC<LockScreenContentProps> = ({
     verifyActionWithBiometrics,
   } = useAuthenticationStore();
   const { isBiometricsEnabled } = usePreferencesStore();
+  const { t } = useAppTranslation();
+  const { showToast } = useToast();
   const [publicKey, setPublicKey] = useState<string | null>(null);
   const [isForgotPasswordModalVisible, setIsForgotPasswordModalVisible] =
     useState(false);
-  const { showToast } = useToast();
-  const { t } = useAppTranslation();
 
-  // Capture whether an error was set before this screen mounted (e.g. a failed
-  // account load after sign-in). The clearError-on-mount effect must not wipe
-  // it before the toast effect has a chance to display it.
+  // Only the invalid-password message belongs inline under the password field.
+  // Every other store error is surfaced app-wide by AuthErrorToastListener, so
+  // passing it inline too would double-display it.
+  const inlineError =
+    error === t("authStore.error.invalidPassword") ? error : null;
+
+  // Capture whether an error was already present when this screen mounted so
+  // the clear-on-mount effect doesn't wipe it before it can be surfaced (inline
+  // for invalid-password, or app-wide by AuthErrorToastListener).
   const hasInitialError = useRef(Boolean(error));
 
   // Auto-prompt biometrics at most once per arrival on this screen; reset when
@@ -121,26 +108,12 @@ export const LockScreenContent: React.FC<LockScreenContentProps> = ({
 
   // Clear any stale error on mount, but skip if there was already an error
   // present when this screen was first rendered (e.g. a failed account load
-  // after sign-in) — the toast effect below needs to display it first.
+  // after sign-in) so AuthErrorToastListener can surface it first.
   useEffect(() => {
     if (!hasInitialError.current) {
       clearError();
     }
   }, [clearError]);
-
-  useEffect(() => {
-    if (error && error !== t("authStore.error.invalidPassword")) {
-      const { title, message } = getErrorToastContent(error, t);
-      showToast({
-        toastId: UNLOCK_ERROR_TOAST_ID,
-        variant: "error",
-        title,
-        message,
-        duration: 6000,
-      });
-      clearError();
-    }
-  }, [error, t, showToast, clearError]);
 
   const handleUnlock = useCallback(
     (password: string): Promise<void> | undefined => {
@@ -169,16 +142,33 @@ export const LockScreenContent: React.FC<LockScreenContentProps> = ({
     if (hasAutoPromptedRef.current) return;
 
     hasAutoPromptedRef.current = true;
+    let didAttemptUnlock = false;
     verifyActionWithBiometrics((password?: string) => {
       if (password) {
+        didAttemptUnlock = true;
         // Return the sign-in promise so a rejection is handled by the
         // .catch() below rather than surfacing as an unhandled rejection.
         return handleUnlock(password) ?? Promise.resolve();
       }
       return Promise.resolve();
     }).catch(() => {
-      // The user dismissed the biometric prompt — they can still unlock
-      // manually; we prompt again on the next return from the background.
+      if (!didAttemptUnlock) {
+        // Biometric prompt cancelled/failed before any unlock attempt — the
+        // user can still unlock manually; we re-prompt on the next foreground.
+        return;
+      }
+      // Unlock failed after a successful biometric scan (e.g. a stale stored
+      // password). Clear the store error so a biometric-derived invalidPassword
+      // doesn't bleed into the inline password field, and surface the single
+      // authoritative unlock-error toast (matches PR #890's biometric flow).
+      clearError();
+      showToast({
+        toastId: AUTH_ERROR_TOAST_ID,
+        variant: "error",
+        title: t("lockScreen.errorUnlockingWalletTitle"),
+        message: t("lockScreen.errorUnlockingWalletMessage"),
+        duration: ERROR_TOAST_DURATION,
+      });
     });
   }, [
     isSigningIn,
@@ -187,6 +177,9 @@ export const LockScreenContent: React.FC<LockScreenContentProps> = ({
     signInMethod,
     verifyActionWithBiometrics,
     handleUnlock,
+    clearError,
+    showToast,
+    t,
   ]);
 
   /**
@@ -270,7 +263,7 @@ export const LockScreenContent: React.FC<LockScreenContentProps> = ({
     <>
       <InputPasswordTemplate
         publicKey={publicKey}
-        error={error}
+        error={inlineError}
         isLoading={isSigningIn}
         handleContinue={handleUnlock}
         handleLogout={handleForgotPassword}

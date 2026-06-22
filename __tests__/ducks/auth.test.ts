@@ -31,6 +31,7 @@ import {
   encryptDataWithDerivedKey,
 } from "helpers/encryptPassword";
 import { createKeyManager } from "helpers/keyManager/keyManager";
+import { clearScreenshotDek } from "helpers/screenshotCrypto";
 import { AppState } from "react-native";
 import { getSupportedBiometryType, BIOMETRY_TYPE } from "react-native-keychain";
 import {
@@ -164,6 +165,10 @@ jest.mock("helpers/walletKitUtil", () => ({
 
 jest.mock("helpers/browser", () => ({
   clearAllWebViewData: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock("helpers/screenshotCrypto", () => ({
+  clearScreenshotDek: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock("ducks/browserTabs", () => ({
@@ -1179,8 +1184,11 @@ describe("auth duck", () => {
           expect(success).toBe(false);
         });
 
-        // Should clear temporary data on decryption failure
+        // Should clear temporary data on decryption failure, but the
+        // screenshot DEK must survive: tabs and screenshot files are not
+        // cleared on this path, and rotating the key would orphan them.
         expect(clearTemporaryData).toHaveBeenCalled();
+        expect(clearScreenshotDek).not.toHaveBeenCalled();
       });
 
       it("should return false when temporary store has invalid structure", async () => {
@@ -1474,6 +1482,7 @@ describe("auth duck", () => {
         // Verify data was cleared
         expect(clearTemporaryData).toHaveBeenCalled();
         expect(clearNonSensitiveData).toHaveBeenCalled();
+        expect(clearScreenshotDek).toHaveBeenCalled();
         expect(dataStorage.remove).toHaveBeenCalledWith(
           STORAGE_KEYS.COLLECTIBLES_LIST,
         );

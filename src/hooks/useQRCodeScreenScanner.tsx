@@ -69,9 +69,7 @@ export const useQRCodeScreenScanner = (
   const sendFlowResult = useSendFlowQrCodeScanner(
     source === QRCodeSource.ADDRESS_INPUT,
   );
-  const homeResult = useHomeQrCodeScanner(
-    source === QRCodeSource.HOME_SCANNER,
-  );
+  const homeResult = useHomeQrCodeScanner(source === QRCodeSource.HOME_SCANNER);
 
   // Return the appropriate result based on source
   switch (source) {

@@ -4,6 +4,7 @@ import {
   createNavigationContainerRef,
 } from "@react-navigation/native";
 import * as Sentry from "@sentry/react-native";
+import { AuthErrorToastListener } from "components/AuthErrorToastListener";
 import { LockScreenOverlay } from "components/LockScreenOverlay";
 import { initializeSentryLogger } from "config/logger";
 import { RootStackParamList } from "config/routes";
@@ -67,6 +68,7 @@ export const App = (): React.JSX.Element => {
           <ToastProvider>
             <BottomSheetModalProvider>
               <I18nextProvider i18n={i18n}>
+                <AuthErrorToastListener />
                 <NavigationContainer
                   ref={navigationRef}
                   onStateChange={onStateChange}
