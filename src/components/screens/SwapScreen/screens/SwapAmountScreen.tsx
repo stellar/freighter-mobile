@@ -409,7 +409,10 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     openSettings,
     confirmSettings,
     cancelSettings,
-  } = useSwapTransactionSettings();
+  } = useSwapTransactionSettings({
+    recommendedFee,
+    operationCount: swapOperationCount,
+  });
 
   const {
     openDestinationPicker,
