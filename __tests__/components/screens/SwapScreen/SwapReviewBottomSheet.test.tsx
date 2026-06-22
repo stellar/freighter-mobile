@@ -163,6 +163,19 @@ describe("SwapReviewBottomSheet", () => {
       expect(getByText("This address was flagged as suspicious")).toBeTruthy();
     });
 
+    it("shows the caution banner when the transaction scan fails", () => {
+      // Mainnet network/API failure: the tx scan is unable-to-scan while both
+      // token scans are safe. Mirrors Send's scan-failure safety net.
+      const { getByText } = renderWithProviders(
+        <SwapReviewBottomSheet
+          {...defaultProps}
+          transactionSecurityAssessment={unableToScan}
+        />,
+      );
+
+      expect(getByText("Proceed with caution")).toBeTruthy();
+    });
+
     it("calls onBannerPress when malicious banner is pressed", async () => {
       const user = userEvent.setup();
 

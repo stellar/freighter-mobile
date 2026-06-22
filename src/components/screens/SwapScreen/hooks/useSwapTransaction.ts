@@ -48,7 +48,16 @@ interface SwapTransactionParams {
 interface UseSwapTransactionResult {
   isProcessing: boolean;
   executeSwap: () => Promise<void>;
-  setupSwapTransaction: () => Promise<void>;
+  /**
+   * Builds + scans the swap transaction. Returns the fresh transaction scan
+   * result so callers can decide the post-scan UX (e.g. the unable-to-scan
+   * gate) without reading the lagging `transactionScanResult` render state.
+   * `scanResult` is undefined when the scan fails (treated as unable-to-scan).
+   * Returns undefined only when required params are missing (no build).
+   */
+  setupSwapTransaction: () => Promise<{
+    scanResult: Blockaid.StellarTransactionScanResponse | undefined;
+  } | void>;
   handleProcessingScreenClose: () => void;
   sourceToken: NativeToken | NonNativeToken;
   destinationToken: NativeToken | NonNativeToken;
@@ -91,7 +100,7 @@ export const useSwapTransaction = ({
       !pathResult ||
       !account?.publicKey
     ) {
-      return;
+      return undefined;
     }
 
     // Get fresh settings values each time the function is called
@@ -140,8 +149,12 @@ export const useSwapTransaction = ({
     try {
       const scanResult = await scanTransaction(transactionXDR, "internal");
       setTransactionScanResult(scanResult);
+      return { scanResult };
     } catch (error) {
       logger.error("SwapTransaction", "Transaction scan failed", error);
+      // Scan failed → undefined classifies as unable-to-scan downstream.
+      setTransactionScanResult(undefined);
+      return { scanResult: undefined };
     }
   }, [
     sourceBalance,

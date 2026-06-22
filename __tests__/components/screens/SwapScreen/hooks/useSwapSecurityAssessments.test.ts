@@ -54,10 +54,16 @@ const xlmDestinationDescriptor = {
 
 const EMPTY_SCAN_RESULTS = {};
 
+// A non-undefined scan with no simulation error / validation result classifies
+// as SAFE (assessTransactionSecurity). undefined would classify as
+// UNABLE_TO_SCAN, so default to this to isolate the source/dest cases below;
+// the tx-failure cases pass `transactionScanResult: undefined` explicitly.
+const safeTransactionScan = {} as never;
+
 type HookProps = Parameters<typeof useSwapSecurityAssessments>[0];
 
 const baseProps: HookProps = {
-  transactionScanResult: undefined,
+  transactionScanResult: safeTransactionScan,
   overriddenBlockaidResponse: null,
   sourceBalance: baseSourceBalance,
   destinationBalance: undefined,
@@ -185,6 +191,8 @@ describe("useSwapSecurityAssessments", () => {
       expect(ids).not.toContain("unable-to-scan-source");
       expect(ids).toContain("unable-to-scan-destination");
       expect(result.current.isUnableToScan).toBe(true);
+      // A token side (not the tx) is unscannable here.
+      expect(result.current.isTokenUnableToScan).toBe(true);
     });
   });
 
@@ -205,7 +213,7 @@ describe("useSwapSecurityAssessments", () => {
       expect(ids).toContain("unable-to-scan-destination");
     });
 
-    it("returns empty warnings when both sides are XLM and there's no transaction scan", () => {
+    it("returns empty warnings when both sides are XLM and the transaction scan is safe", () => {
       const { result } = renderHook(() =>
         useSwapSecurityAssessments({
           ...baseProps,
@@ -376,7 +384,7 @@ describe("useSwapSecurityAssessments", () => {
       expect(result.current.securityWarnings[0].severity).toBe("malicious");
     });
 
-    it('stamps severity="warning" on synthetic unable-to-scan-* warnings', () => {
+    it("stamps the warning severity on synthetic unable-to-scan-* warnings", () => {
       const { result } = renderHook(() =>
         useSwapSecurityAssessments({
           ...baseProps,
@@ -396,6 +404,58 @@ describe("useSwapSecurityAssessments", () => {
     });
   });
 
+  describe("transaction-level scan failure", () => {
+    // A failed XDR scan (undefined result) must trip the safety net even when
+    // both token sides are safe — matching Send. The tx scan has no native
+    // exclusion. Both sides are XLM here so only the tx signal is in play.
+    const txFailedBothXlm: HookProps = {
+      ...baseProps,
+      transactionScanResult: undefined,
+      sourceBalance: xlmSourceBalance,
+      sourceTokenId: NATIVE_TOKEN_CODE,
+      destinationTokenDescriptor: xlmDestinationDescriptor,
+    };
+
+    it("sets isUnableToScan when the transaction scan fails (tokens safe)", () => {
+      const { result } = renderHook(() =>
+        useSwapSecurityAssessments(txFailedBothXlm),
+      );
+
+      expect(result.current.isUnableToScan).toBe(true);
+    });
+
+    it("does NOT set isTokenUnableToScan when only the transaction scan fails", () => {
+      // The CTA gate combines isTokenUnableToScan (stable token scans) with a
+      // freshly-read tx scan, so the token-only flag must exclude the tx.
+      const { result } = renderHook(() =>
+        useSwapSecurityAssessments(txFailedBothXlm),
+      );
+
+      expect(result.current.isTokenUnableToScan).toBe(false);
+    });
+
+    it("adds an unable-to-scan-transaction warning", () => {
+      const { result } = renderHook(() =>
+        useSwapSecurityAssessments(txFailedBothXlm),
+      );
+
+      const ids = result.current.securityWarnings.map((w) => w.id);
+      expect(ids).toContain("unable-to-scan-transaction");
+      expect(ids).not.toContain("unable-to-scan-source");
+      expect(ids).not.toContain("unable-to-scan-destination");
+    });
+
+    it("drives swapSecuritySeverity to UNABLE_TO_SCAN", () => {
+      const { result } = renderHook(() =>
+        useSwapSecurityAssessments(txFailedBothXlm),
+      );
+
+      expect(result.current.swapSecuritySeverity).toBe(
+        SecurityLevel.UNABLE_TO_SCAN,
+      );
+    });
+  });
+
   describe("swapSecuritySeverity", () => {
     it("returns undefined when none of the gates trip", () => {
       const { result } = renderHook(() =>
@@ -410,7 +470,7 @@ describe("useSwapSecurityAssessments", () => {
       expect(result.current.swapSecuritySeverity).toBeUndefined();
     });
 
-    it("returns UNABLE_TO_SCAN when isUnableToScan but tx-level assessment is unable-to-scan (no tx scan)", () => {
+    it("returns UNABLE_TO_SCAN when a token side is unable-to-scan and the tx scan is safe", () => {
       const { result } = renderHook(() =>
         useSwapSecurityAssessments({
           ...baseProps,
@@ -419,10 +479,8 @@ describe("useSwapSecurityAssessments", () => {
         }),
       );
 
-      // tx severity is derived: malicious > suspicious > unable.
-      // No transactionScanResult → assessTransactionSecurity returns
-      // isMalicious=false, isSuspicious=false, so it falls through to
-      // the UNABLE_TO_SCAN branch driven by token-side isUnableToScan.
+      // Severity is worst-of: malicious > suspicious > unable. Safe tx +
+      // unscannable token side → falls through to the UNABLE_TO_SCAN branch.
       expect(result.current.swapSecuritySeverity).toBe(
         SecurityLevel.UNABLE_TO_SCAN,
       );

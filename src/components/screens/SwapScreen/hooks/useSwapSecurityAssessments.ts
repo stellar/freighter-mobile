@@ -58,6 +58,13 @@ export const useSwapSecurityAssessments = ({
   sourceSecurityAssessment: SecurityAssessment;
   destinationSecurityAssessment: SecurityAssessment;
   isUnableToScan: boolean;
+  /**
+   * Token-only (source + destination) unable-to-scan, excluding the
+   * transaction scan. Those token scans run at selection/path-finding time so
+   * this is stable at CTA time, whereas the tx scan runs lazily and must be
+   * read fresh (see SwapAmountScreen's gate). `isUnableToScan` is the union.
+   */
+  isTokenUnableToScan: boolean;
   isMalicious: boolean;
   isSuspicious: boolean;
   swapSecuritySeverity:
@@ -128,8 +135,13 @@ export const useSwapSecurityAssessments = ({
     [destinationSecurityAssessment.isUnableToScan, destinationTokenDescriptor],
   );
 
-  const isUnableToScan =
+  const isTokenUnableToScan =
     showSecurityWarningForSource || showSecurityWarningForDestination;
+
+  // The transaction-level scan has no native exclusion — a failed XDR scan is
+  // a failure regardless of the assets involved. Mirrors Send's safety net.
+  const isUnableToScan =
+    transactionSecurityAssessment.isUnableToScan || isTokenUnableToScan;
 
   const securityWarnings = useMemo(() => {
     const warnings: SecurityWarning[] = [];
@@ -187,6 +199,14 @@ export const useSwapSecurityAssessments = ({
       warnings.push(...byId.values());
     }
 
+    if (transactionSecurityAssessment.isUnableToScan) {
+      warnings.push({
+        id: "unable-to-scan-transaction",
+        description: t("blockaid.unableToScan.transaction"),
+        severity: "warning",
+      });
+    }
+
     if (showSecurityWarningForSource) {
       warnings.push({
         id: "unable-to-scan-source",
@@ -207,6 +227,7 @@ export const useSwapSecurityAssessments = ({
   }, [
     transactionSecurityAssessment.isMalicious,
     transactionSecurityAssessment.isSuspicious,
+    transactionSecurityAssessment.isUnableToScan,
     sourceSecurityAssessment.isMalicious,
     sourceSecurityAssessment.isSuspicious,
     destinationSecurityAssessment.isMalicious,
@@ -248,6 +269,7 @@ export const useSwapSecurityAssessments = ({
     sourceSecurityAssessment,
     destinationSecurityAssessment,
     isUnableToScan,
+    isTokenUnableToScan,
     isMalicious,
     isSuspicious,
     swapSecuritySeverity,

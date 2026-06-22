@@ -27,7 +27,7 @@ export const useReviewSecuritySummary = ({
 }): {
   isMalicious: boolean;
   isSuspicious: boolean;
-  isUnableToScanToken: boolean;
+  isUnableToScan: boolean;
   isSourceMalicious: boolean;
   isSourceSuspicious: boolean;
   isDestMalicious: boolean;
@@ -45,9 +45,10 @@ export const useReviewSecuritySummary = ({
 
   const isMalicious = isTxMalicious || isSourceMalicious || isDestMalicious;
   const isSuspicious = isTxSuspicious || isSourceSuspicious || isDestSuspicious;
-  // Native XLM is unscannable by definition — don't trip the warning
-  // when the scan failed against it.
-  const isUnableToScanToken =
+  // Native XLM is unscannable by definition, so a failed scan against it on a
+  // token side doesn't count.
+  const isUnableToScan =
+    transactionSecurityAssessment.isUnableToScan ||
     (sourceSecurityAssessment.isUnableToScan &&
       !isNativeAssetId(sourceTokenId ?? "")) ||
     (destinationSecurityAssessment.isUnableToScan &&
@@ -66,7 +67,7 @@ export const useReviewSecuritySummary = ({
     if (isDestSuspicious || isSourceSuspicious) {
       return t("transactionAmountScreen.errors.suspiciousToken");
     }
-    if (isUnableToScanToken) {
+    if (isUnableToScan) {
       return t("securityWarning.proceedWithCaution");
     }
     // Unreachable in practice: the banner is only rendered when one of
@@ -81,13 +82,13 @@ export const useReviewSecuritySummary = ({
     isSourceMalicious,
     isDestSuspicious,
     isSourceSuspicious,
-    isUnableToScanToken,
+    isUnableToScan,
   ]);
 
   return {
     isMalicious,
     isSuspicious,
-    isUnableToScanToken,
+    isUnableToScan,
     isSourceMalicious,
     isSourceSuspicious,
     isDestMalicious,

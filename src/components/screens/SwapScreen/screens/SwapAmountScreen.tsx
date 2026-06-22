@@ -89,6 +89,7 @@ import {
 } from "react-native";
 import { analytics } from "services/analytics";
 import { SecurityContext, SecurityLevel } from "services/blockaid/constants";
+import { assessTransactionSecurity } from "services/blockaid/helper";
 
 type SwapAmountScreenProps = NativeStackScreenProps<
   SwapStackParamList,
@@ -535,21 +536,55 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     return false;
   }, [destinationBalance, destinationTokenDescriptor, prices]);
 
+  const {
+    transactionSecurityAssessment,
+    sourceSecurityAssessment,
+    destinationSecurityAssessment,
+    isUnableToScan,
+    isTokenUnableToScan,
+    isMalicious,
+    isSuspicious,
+    swapSecuritySeverity,
+    securityWarnings,
+  } = useSwapSecurityAssessments({
+    transactionScanResult,
+    overriddenBlockaidResponse,
+    sourceBalance,
+    destinationBalance,
+    destinationTokenDescriptor,
+    scanResults,
+    sourceTokenId,
+  });
+
   const prepareSwapTransaction = useCallback(
-    async (shouldOpenReview = false) => {
+    async (shouldPresent = false) => {
       // Latch the CTA's loading state for the entire prepare + present
       // span so the spinner stays continuous through the sheet's mount
       // animation. Cleared by the sheet's onChange below (index >= 0)
       // or in the catch path.
-      if (shouldOpenReview) setIsOpeningReviewSheet(true);
+      if (shouldPresent) setIsOpeningReviewSheet(true);
       try {
-        await setupSwapTransaction();
+        const setup = await setupSwapTransaction();
 
-        if (shouldOpenReview) {
-          swapReviewBottomSheetModalRef.current?.present();
+        if (shouldPresent) {
+          // Decide the gate from the FRESH tx scan (the lazily-scanned XDR),
+          // not the lagging render state — combined with the token scans,
+          // which already ran at selection time. Mirrors Send's post-scan
+          // decision. A failed/undefined tx scan classifies as unable-to-scan.
+          const txUnableToScan = assessTransactionSecurity(
+            setup?.scanResult,
+            overriddenBlockaidResponse,
+          ).isUnableToScan;
+
+          if (isTokenUnableToScan || txUnableToScan) {
+            setIsOpeningReviewSheet(false);
+            transactionSecurityWarningBottomSheetModalRef.current?.present();
+          } else {
+            swapReviewBottomSheetModalRef.current?.present();
+          }
         }
       } catch (error) {
-        if (shouldOpenReview) setIsOpeningReviewSheet(false);
+        if (shouldPresent) setIsOpeningReviewSheet(false);
         logger.error(
           "SwapAmountScreen",
           "Failed to setup swap transaction:",
@@ -567,7 +602,13 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         });
       }
     },
-    [setupSwapTransaction, t, setActiveError],
+    [
+      setupSwapTransaction,
+      isTokenUnableToScan,
+      overriddenBlockaidResponse,
+      t,
+      setActiveError,
+    ],
   );
 
   const handleConfirmSwap = useCallback(() => {
@@ -582,25 +623,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     // Settings have changed, rebuild the swap transaction with new values
     prepareSwapTransaction(false);
   }, [prepareSwapTransaction]);
-
-  const {
-    transactionSecurityAssessment,
-    sourceSecurityAssessment,
-    destinationSecurityAssessment,
-    isUnableToScan,
-    isMalicious,
-    isSuspicious,
-    swapSecuritySeverity,
-    securityWarnings,
-  } = useSwapSecurityAssessments({
-    transactionScanResult,
-    overriddenBlockaidResponse,
-    sourceBalance,
-    destinationBalance,
-    destinationTokenDescriptor,
-    scanResults,
-    sourceTokenId,
-  });
 
   const handleMainButtonPress = useCallback(async () => {
     // "enter" branch focuses the input — let the keyboard rise naturally.
@@ -647,18 +669,14 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       return;
     }
 
-    if (isUnableToScan) {
-      await prepareSwapTransaction(false);
-      transactionSecurityWarningBottomSheetModalRef.current?.present();
-    } else {
-      await prepareSwapTransaction(true);
-    }
+    // Build + scan, then present either the unable-to-scan gate or the review
+    // sheet based on the fresh scan result (decided inside prepareSwapTransaction).
+    await prepareSwapTransaction(true);
   }, [
     ctaState,
     prepareSwapTransaction,
     openDestinationPicker,
     openSourcePicker,
-    isUnableToScan,
     destinationTokenDescriptor,
     balanceItems,
     swapFee,
