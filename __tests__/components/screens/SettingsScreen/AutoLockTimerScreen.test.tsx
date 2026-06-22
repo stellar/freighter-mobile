@@ -10,11 +10,6 @@ import React from "react";
 jest.mock("services/autoLock", () => ({
   persistAutoLockTimer: jest.fn().mockResolvedValue(undefined),
   applyAutoLockTimerToHashKey: jest.fn().mockResolvedValue(undefined),
-  // TODO/FIXME: dev-only auto-lock testing helpers — remove with the feature
-  getDevAutoLockTimerMs: jest.fn().mockResolvedValue(null),
-  setDevAutoLockTimerSeconds: jest.fn().mockResolvedValue(undefined),
-  clearDevAutoLockTimer: jest.fn().mockResolvedValue(undefined),
-  setDevHashKeyTtlSeconds: jest.fn().mockResolvedValue(undefined),
 }));
 
 type AutoLockTimerScreenNavigationProp = NativeStackScreenProps<

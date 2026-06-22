@@ -60,8 +60,6 @@ import {
   clearBackgroundedAt,
   getAutoLockTimer,
   getBackgroundedAt,
-  // TODO/FIXME: dev-only auto-lock timer override — remove before production
-  getDevAutoLockTimerMs,
   getHashKeyExpirationMs,
   persistAutoLockTimer,
 } from "services/autoLock";
@@ -525,12 +523,12 @@ const getAuthStatus = async (): Promise<AuthStatus> => {
     // via the fast unlock path. Uses wall-clock time, so a clock rollback can
     // dodge it — the hash-key expiry above still bounds the session.
     const backgroundedAt = await getBackgroundedAt();
-    if (backgroundedAt) {
+    // Explicit null check, not truthiness: a clock-rollback returns 0 (epoch)
+    // to force a conservative lock, and 0 is falsey — `if (backgroundedAt)`
+    // would skip it and leave the session AUTHENTICATED.
+    if (backgroundedAt !== null) {
       const autoLockTimer = await getAutoLockTimer();
-      // TODO/FIXME: dev-only override (seconds) — remove before production
-      const devAutoLockTimerMs = await getDevAutoLockTimerMs();
-      const autoLockTimerMs =
-        devAutoLockTimerMs ?? AUTO_LOCK_TIMER_MS[autoLockTimer];
+      const autoLockTimerMs = AUTO_LOCK_TIMER_MS[autoLockTimer];
       const elapsedInBackground = Date.now() - backgroundedAt;
 
       // Only POSITIVE timed durations lock here. IMMEDIATELY (0) is

@@ -141,65 +141,6 @@ const hasPersistedSession = async (): Promise<boolean> => {
   return Boolean(hashKey && temporaryStore);
 };
 
-/* ===========================================================================
- * TODO / FIXME: TEMPORARY DEV-ONLY AUTO-LOCK TESTING OVERRIDES.
- * !!! REMOVE THIS ENTIRE BLOCK (and its UI on AutoLockTimerScreen + the
- * getDevAutoLockTimerMs usage in ducks/auth.ts) BEFORE MERGING TO PRODUCTION.
- * It lets QA set the auto-lock timer and hash-key TTL in seconds so the lock
- * flows can be exercised in seconds instead of minutes/hours.
- * ===========================================================================
- */
-const DEV_AUTO_LOCK_TIMER_MS_KEY = "devAutoLockTimerMs";
-
-/** TEMP/REMOVE: dev override for the auto-lock timer, in ms (null if unset). */
-const getDevAutoLockTimerMs = async (): Promise<number | null> => {
-  const raw = await secureDataStorage.getItem(DEV_AUTO_LOCK_TIMER_MS_KEY);
-  const parsed = raw ? Number(raw) : NaN;
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
-};
-
-/** TEMP/REMOVE: set the dev auto-lock timer override from a seconds value. */
-const setDevAutoLockTimerSeconds = async (seconds: number): Promise<void> => {
-  await secureDataStorage.setItem(
-    DEV_AUTO_LOCK_TIMER_MS_KEY,
-    String(Math.round(seconds * 1000)),
-  );
-};
-
-/** TEMP/REMOVE: clear the dev auto-lock timer override (back to the enum). */
-const clearDevAutoLockTimer = async (): Promise<void> => {
-  await secureDataStorage.remove(DEV_AUTO_LOCK_TIMER_MS_KEY);
-};
-
-/**
- * TEMP/REMOVE: force the current hash key to expire in `seconds` by rewriting
- * its expiresAt, so the hard-expiry (HASH_KEY_EXPIRED) backstop can be tested
- * quickly. One-shot: the next unlock re-anchors the TTL to the normal value.
- */
-const setDevHashKeyTtlSeconds = async (seconds: number): Promise<void> => {
-  const hashKey = await getHashKey();
-  if (!hashKey) {
-    return;
-  }
-  await secureDataStorage.setItem(
-    SENSITIVE_STORAGE_KEYS.HASH_KEY,
-    JSON.stringify({
-      ...hashKey,
-      expiresAt: Date.now() + Math.round(seconds * 1000),
-    }),
-  );
-};
-
-// TEMP/REMOVE: last user-interaction timestamp, mirrored from useAuthCheck so
-// the on-screen dev readout can show the live idle countdown without forcing
-// app-wide re-renders. Module-level on purpose (no React state).
-let devLastInteractionAt = Date.now();
-const recordDevInteraction = (): void => {
-  devLastInteractionAt = Date.now();
-};
-const getDevLastInteractionAt = (): number => devLastInteractionAt;
-/* ====================== END TEMPORARY DEV-ONLY BLOCK ====================== */
-
 export {
   getAutoLockTimer,
   persistAutoLockTimer,
@@ -209,11 +150,4 @@ export {
   getBackgroundedAt,
   clearBackgroundedAt,
   hasPersistedSession,
-  // TODO/FIXME: remove these dev-only exports before production
-  getDevAutoLockTimerMs,
-  setDevAutoLockTimerSeconds,
-  clearDevAutoLockTimer,
-  setDevHashKeyTtlSeconds,
-  recordDevInteraction,
-  getDevLastInteractionAt,
 };

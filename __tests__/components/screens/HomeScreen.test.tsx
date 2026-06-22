@@ -39,13 +39,6 @@ jest.mock("components/analytics/DebugBottomSheet", () => ({
   },
 }));
 
-// TODO/FIXME: dev-only countdown component (recurring timer) — remove with it
-jest.mock("components/screens/HomeScreen/AutoLockDevTimers", () => ({
-  AutoLockDevTimers: function MockAutoLockDevTimers() {
-    return null;
-  },
-}));
-
 jest.mock("components/primitives/Menu", () => {
   const MenuRoot = ({ children }: { children: React.ReactNode }) => (
     <div data-testid="menu-root">{children}</div>

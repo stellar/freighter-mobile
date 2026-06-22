@@ -12,12 +12,8 @@ import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { AppState, AppStateStatus, Keyboard, PanResponder } from "react-native";
 import {
   getAutoLockTimer,
-  // TODO/FIXME: dev-only override — remove before production
-  getDevAutoLockTimerMs,
   hasPersistedSession,
   recordBackgroundedAt,
-  // TODO/FIXME: dev-only idle-countdown readout — remove before production
-  recordDevInteraction,
 } from "services/autoLock";
 
 // Delay before lifting the native privacy shield on foreground, giving a
@@ -56,8 +52,6 @@ const useAuthCheck = () => {
   const recordInteraction = useCallback(() => {
     lastInteractionRef.current = Date.now();
     setIsActive(true);
-    // TODO/FIXME: dev-only — feeds the on-screen idle countdown readout
-    recordDevInteraction();
   }, []);
 
   /**
@@ -110,18 +104,17 @@ const useAuthCheck = () => {
       const status = await getAuthStatus();
 
       // Foreground-idle auto-lock: while the app is active, lock after the
-      // configured duration with no user interaction (touches reset
-      // lastInteractionRef via the app-wide PanResponder). Background time is
-      // handled by getAuthStatus above; here we cover an open-but-idle
+      // configured duration with no user interaction (touches, navigation and
+      // keyboard reset lastInteractionRef via recordInteraction). Background
+      // time is handled by getAuthStatus above; here we cover an open-but-idle
       // session. Only timed presets idle-lock — IMMEDIATELY (0, background-
       // only) and NONE (null) are skipped.
       if (
         status === AUTH_STATUS.AUTHENTICATED &&
         AppState.currentState === "active"
       ) {
-        const devAutoLockTimerMs = await getDevAutoLockTimerMs();
         const autoLockTimer = await getAutoLockTimer();
-        const timerMs = devAutoLockTimerMs ?? AUTO_LOCK_TIMER_MS[autoLockTimer];
+        const timerMs = AUTO_LOCK_TIMER_MS[autoLockTimer];
 
         if (
           timerMs !== null &&
@@ -216,18 +209,9 @@ const useAuthCheck = () => {
           // Read from the secure-storage mirror (not the zustand store) so the
           // IMMEDIATELY lock also fires when backgrounding happens before
           // zustand rehydration completes.
-          // TODO/FIXME: getDevAutoLockTimerMs is a dev-only override — when set
-          // it must win over the IMMEDIATELY preset (exclusive), so the timed
-          // dev countdown in getAuthStatus governs instead of an instant lock.
-          const [devAutoLockTimerMs, autoLockTimer] = await Promise.all([
-            getDevAutoLockTimerMs(),
-            getAutoLockTimer(),
-          ]);
+          const autoLockTimer = await getAutoLockTimer();
 
-          if (
-            devAutoLockTimerMs === null &&
-            autoLockTimer === AUTO_LOCK_TIMER.IMMEDIATELY
-          ) {
+          if (autoLockTimer === AUTO_LOCK_TIMER.IMMEDIATELY) {
             // Soft-lock right away: the overlay renders while the app is
             // backgrounded (no wallet content flashes on return) and the
             // navigation tree is preserved for after the unlock.

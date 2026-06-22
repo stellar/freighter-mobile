@@ -10,8 +10,6 @@ import {
 import { DebugBottomSheet } from "components/analytics/DebugBottomSheet";
 import { DebugTrigger } from "components/debug/DebugTrigger";
 import { BaseLayout } from "components/layout/BaseLayout";
-// TODO/FIXME: dev-only auto-lock countdown — remove before production
-import { AutoLockDevTimers } from "components/screens/HomeScreen/AutoLockDevTimers";
 import ManageAccounts from "components/screens/HomeScreen/ManageAccounts";
 import WelcomeBannerBottomSheet from "components/screens/HomeScreen/WelcomeBannerBottomSheet";
 import Avatar from "components/sds/Avatar";
@@ -297,8 +295,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
               <Display lg medium>
                 {formattedBalance}
               </Display>
-              {/* TODO/FIXME: dev-only auto-lock countdown — remove before prod */}
-              <AutoLockDevTimers />
             </View>
 
             <View className="flex-row gap-[24px] items-center justify-center my-8">

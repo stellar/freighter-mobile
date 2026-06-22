@@ -127,14 +127,17 @@ export const useSwapTransaction = ({
       throw new Error("Destination token is required for swap transaction");
     }
 
-    // Block signing if an auto-lock engaged after the swap was prepared
-    if (!isWalletUnlocked()) {
-      throw new Error("Wallet is locked");
-    }
-
     setIsProcessing(true);
 
     try {
+      // Block signing if an auto-lock engaged after the swap was prepared.
+      // Inside the try so the terminal catch runs its analytics/toast/error
+      // path — executeSwap is invoked fire-and-forget, so a throw before the
+      // try would surface as an unhandled rejection.
+      if (!isWalletUnlocked()) {
+        throw new Error("Wallet is locked");
+      }
+
       const signedXDR = signTransaction({
         secretKey: account.privateKey,
         network,

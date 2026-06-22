@@ -43,10 +43,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
   }
 
   @objc private func handlePrivacyShieldHideRequest() {
+    // hidePrivacyShield no-ops unless the app is active, so a hide() that
+    // lands during a background bounce won't expose the wallet.
     DispatchQueue.main.async { [weak self] in
-      // Skip if the app re-backgrounded between JS calling hide() and this
-      // dispatch — a fresh shield was raised; don't tear it down mid-snapshot.
-      guard UIApplication.shared.applicationState == .active else { return }
       self?.hidePrivacyShield()
     }
   }
@@ -73,6 +72,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
   private static let privacyShieldFallbackTimeout: TimeInterval = 1.0
 
   func applicationDidEnterBackground(_ application: UIApplication) {
+    // Cancel any fallback timer pending from a previous resume so it can't fire
+    // during this new background period and tear down the shield we just want
+    // to keep up.
+    privacyShieldFallbackTimer?.invalidate()
+    privacyShieldFallbackTimer = nil
+
     guard privacyWindow == nil else { return }
     let overlay = UIWindow(frame: UIScreen.main.bounds)
     overlay.windowLevel = .alert + 1
@@ -96,6 +101,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
   // Called from the PrivacyShield native module once JS has settled the lock
   // decision (and any lock overlay has mounted). Must run on the main thread.
   func hidePrivacyShield() {
+    // Only reveal while the app is actually active: a JS hide() or fallback
+    // timer that lands during a background bounce must not expose the wallet.
+    guard UIApplication.shared.applicationState == .active else { return }
     privacyShieldFallbackTimer?.invalidate()
     privacyShieldFallbackTimer = nil
     privacyWindow?.isHidden = true

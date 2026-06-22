@@ -6,18 +6,14 @@ import useAuthCheck from "hooks/useAuthCheck";
 import { AppState } from "react-native";
 import {
   getAutoLockTimer,
-  getDevAutoLockTimerMs,
   hasPersistedSession,
   recordBackgroundedAt,
-  recordDevInteraction,
 } from "services/autoLock";
 
 jest.mock("services/autoLock", () => ({
   getAutoLockTimer: jest.fn(),
-  getDevAutoLockTimerMs: jest.fn().mockResolvedValue(null),
   hasPersistedSession: jest.fn().mockResolvedValue(false),
   recordBackgroundedAt: jest.fn().mockResolvedValue(undefined),
-  recordDevInteraction: jest.fn(),
 }));
 
 // components/App pulls in the full app tree (RootNavigator → native-only
@@ -42,6 +38,10 @@ const flushMicrotasks = async () => {
   }
 };
 
+// Real durations from config/constants: ONE_MINUTE is the shortest timed
+// preset, so idle tests step across the 60s boundary.
+const ONE_MINUTE_MS = 60000;
+
 describe("useAuthCheck", () => {
   const mockGetAuthStatus = jest
     .fn()
@@ -60,7 +60,6 @@ describe("useAuthCheck", () => {
     (getAutoLockTimer as jest.Mock).mockResolvedValue(
       AUTO_LOCK_TIMER.TWENTY_FOUR_HOURS,
     );
-    (getDevAutoLockTimerMs as jest.Mock).mockResolvedValue(null);
     (hasPersistedSession as jest.Mock).mockResolvedValue(false);
 
     useAuthenticationStore.setState({
@@ -193,26 +192,6 @@ describe("useAuthCheck", () => {
     unmount();
   });
 
-  // TODO/FIXME: dev-only override exclusivity — remove with the dev feature
-  it("does NOT instant-lock for IMMEDIATELY when a dev timer override is set", async () => {
-    (getAutoLockTimer as jest.Mock).mockResolvedValue(
-      AUTO_LOCK_TIMER.IMMEDIATELY,
-    );
-    // A custom dev timer (20s) is active — it must win over IMMEDIATELY so the
-    // timed countdown governs instead of an instant lock
-    (getDevAutoLockTimerMs as jest.Mock).mockResolvedValue(20000);
-    const { handlers, unmount } = renderAuthCheck();
-
-    await act(async () => {
-      handlers.forEach((handler) => handler("background"));
-      await flushMicrotasks();
-    });
-
-    expect(recordBackgroundedAt).toHaveBeenCalledTimes(1);
-    expect(mockSoftLock).not.toHaveBeenCalled();
-    unmount();
-  });
-
   it("delegates lock transitions to the store getAuthStatus funnel on foreground return", async () => {
     const { handlers, unmount } = renderAuthCheck();
 
@@ -230,18 +209,19 @@ describe("useAuthCheck", () => {
   });
 
   it("idle-locks while foregrounded after the timer with no interaction", async () => {
-    // Short timer (1s) via the dev override so idle elapses within the test
-    (getDevAutoLockTimerMs as jest.Mock).mockResolvedValue(1000);
+    (getAutoLockTimer as jest.Mock).mockResolvedValue(
+      AUTO_LOCK_TIMER.ONE_MINUTE,
+    );
     const { unmount } = renderAuthCheck();
 
     await act(async () => {
-      jest.advanceTimersByTime(400); // let the periodic check interval set up
+      jest.advanceTimersByTime(1000); // let the periodic check interval set up
       await flushMicrotasks();
     });
     await act(async () => {
-      // No interaction; advance well past the 1s idle timeout so a periodic
+      // No interaction; advance past the 1-minute idle timeout so a periodic
       // check observes the idle and soft-locks
-      jest.advanceTimersByTime(6000);
+      jest.advanceTimersByTime(ONE_MINUTE_MS + 5000);
       await flushMicrotasks();
     });
 
@@ -250,16 +230,18 @@ describe("useAuthCheck", () => {
   });
 
   it("does NOT idle-lock before the timer elapses", async () => {
-    // Long timer (100s) so the elapsed idle stays under it
-    (getDevAutoLockTimerMs as jest.Mock).mockResolvedValue(100000);
+    (getAutoLockTimer as jest.Mock).mockResolvedValue(
+      AUTO_LOCK_TIMER.ONE_MINUTE,
+    );
     const { unmount } = renderAuthCheck();
 
     await act(async () => {
-      jest.advanceTimersByTime(400);
+      jest.advanceTimersByTime(1000);
       await flushMicrotasks();
     });
     await act(async () => {
-      jest.advanceTimersByTime(6000);
+      // Half the timeout — still under a minute, so no idle-lock
+      jest.advanceTimersByTime(ONE_MINUTE_MS / 2);
       await flushMicrotasks();
     });
 
@@ -267,27 +249,42 @@ describe("useAuthCheck", () => {
     unmount();
   });
 
-  it("resets the idle clock when the wallet becomes unlocked", async () => {
+  it("resets the idle clock on unlock so it does not immediately re-lock", async () => {
     // The lock screen / overlay sits outside this provider's PanResponder, so
-    // its touches don't update the idle clock — unlock must reset it (proxied
-    // here by recordDevInteraction, which the reset effect calls alongside
-    // resetting lastInteractionRef) or a fresh session would re-lock at once.
+    // its touches don't update the idle clock — unlock must reset it or a
+    // fresh session would re-lock at once.
+    (getAutoLockTimer as jest.Mock).mockResolvedValue(
+      AUTO_LOCK_TIMER.ONE_MINUTE,
+    );
     const { unmount } = renderAuthCheck();
 
+    // Idle most of the way to the timeout while authenticated
+    await act(async () => {
+      jest.advanceTimersByTime(ONE_MINUTE_MS - 10000);
+      await flushMicrotasks();
+    });
+
+    // Lock, then unlock — the unlock-reset effect must restart the idle clock
     await act(async () => {
       useAuthenticationStore.setState({ authStatus: AUTH_STATUS.LOCKED });
       await flushMicrotasks();
     });
-    (recordDevInteraction as jest.Mock).mockClear();
-
     await act(async () => {
       useAuthenticationStore.setState({
         authStatus: AUTH_STATUS.AUTHENTICATED,
       });
       await flushMicrotasks();
     });
+    mockSoftLock.mockClear();
 
-    expect(recordDevInteraction).toHaveBeenCalled();
+    // Another 50s: ~100s since mount but only ~50s since the unlock reset
+    // (under the minute) → must NOT lock
+    await act(async () => {
+      jest.advanceTimersByTime(ONE_MINUTE_MS - 10000);
+      await flushMicrotasks();
+    });
+
+    expect(mockSoftLock).not.toHaveBeenCalled();
     unmount();
   });
 
@@ -302,8 +299,9 @@ describe("useAuthCheck", () => {
   });
 
   it("resets the idle clock on a navigation change so a multi-screen flow is not idle-locked", async () => {
-    // Short timer (1s); the user navigates just before it would elapse
-    (getDevAutoLockTimerMs as jest.Mock).mockResolvedValue(1000);
+    (getAutoLockTimer as jest.Mock).mockResolvedValue(
+      AUTO_LOCK_TIMER.ONE_MINUTE,
+    );
     const { unmount } = renderAuthCheck();
 
     // The hook registers a "state" listener; grab the callback the same way
@@ -313,15 +311,15 @@ describe("useAuthCheck", () => {
     )?.[1] as () => void;
 
     await act(async () => {
-      jest.advanceTimersByTime(800);
-      // A navigation occurs before the 1s idle elapses → resets the clock
+      // Idle most of the way to the timeout, then navigate just before it
+      jest.advanceTimersByTime(ONE_MINUTE_MS - 10000);
       navListener();
       await flushMicrotasks();
     });
     await act(async () => {
-      // Another 800ms (1.6s total, but only 800ms since the nav) — still under
-      // the timer, so no idle-lock
-      jest.advanceTimersByTime(800);
+      // Another ~50s: well over a minute since mount, but only ~50s since the
+      // navigation reset → no idle-lock
+      jest.advanceTimersByTime(ONE_MINUTE_MS - 10000);
       await flushMicrotasks();
     });
 
@@ -329,18 +327,16 @@ describe("useAuthCheck", () => {
     unmount();
   });
 
-  it("does NOT idle-lock for the NONE / IMMEDIATELY presets", async () => {
-    // No dev override; NONE has a null duration → never idle-locks
-    (getDevAutoLockTimerMs as jest.Mock).mockResolvedValue(null);
+  it("does NOT idle-lock for the NONE preset", async () => {
     (getAutoLockTimer as jest.Mock).mockResolvedValue(AUTO_LOCK_TIMER.NONE);
     const { unmount } = renderAuthCheck();
 
     await act(async () => {
-      jest.advanceTimersByTime(400);
+      jest.advanceTimersByTime(1000);
       await flushMicrotasks();
     });
     await act(async () => {
-      jest.advanceTimersByTime(6000);
+      jest.advanceTimersByTime(ONE_MINUTE_MS * 2);
       await flushMicrotasks();
     });
 
