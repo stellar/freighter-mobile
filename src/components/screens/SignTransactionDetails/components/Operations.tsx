@@ -318,6 +318,11 @@ const RenderOperationByType = ({
 
       const items: ListItemProps[] = [
         {
+          title: t("signTransactionDetails.operations.offerId"),
+          trailingContent: <Text>{offerId}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
+        {
           title: t("signTransactionDetails.operations.selling"),
           trailingContent: <Text>{selling.code}</Text>,
           titleColor: themeColors.text.secondary,
@@ -343,11 +348,6 @@ const RenderOperationByType = ({
           ),
           titleColor: themeColors.text.secondary,
         },
-        {
-          title: t("signTransactionDetails.operations.offerId"),
-          trailingContent: <Text>{offerId}</Text>,
-          titleColor: themeColors.text.secondary,
-        },
       ];
 
       return <List variant="secondary" items={items} />;
@@ -356,6 +356,11 @@ const RenderOperationByType = ({
       const { selling, buying, buyAmount, price, offerId } = operation;
 
       const items: ListItemProps[] = [
+        {
+          title: t("signTransactionDetails.operations.offerId"),
+          trailingContent: <Text>{offerId}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
         {
           title: t("signTransactionDetails.operations.buying"),
           trailingContent: <Text>{buying.code}</Text>,
@@ -380,11 +385,6 @@ const RenderOperationByType = ({
               {formatOfferPriceRatio(price, selling.code, buying.code)}
             </Text>
           ),
-          titleColor: themeColors.text.secondary,
-        },
-        {
-          title: t("signTransactionDetails.operations.offerId"),
-          trailingContent: <Text>{offerId}</Text>,
           titleColor: themeColors.text.secondary,
         },
       ];
