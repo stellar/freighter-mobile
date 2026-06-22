@@ -31,6 +31,7 @@ import {
 } from "config/routes";
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
+import { usePreferencesStore } from "ducks/preferences";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { isDeviceJailbroken } from "helpers/deviceSecurity";
 import {
@@ -116,6 +117,10 @@ export const RootNavigator = () => {
       // Load persisted network preference before any auth or data fetching
       // so components always read the correct network from the start.
       await initializeNetwork();
+
+      // Hydrate the auto-lock timer from its secure-storage source of truth
+      // (it's intentionally not kept in the unencrypted preferences store).
+      await usePreferencesStore.getState().hydrateAutoLockTimer();
 
       // Fetch the real auth status from storage and overwrite the initial
       // NOT_AUTHENTICATED default before any navigation decision is made.

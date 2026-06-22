@@ -29,6 +29,10 @@ class MainActivity : ReactActivity() {
   // covers the brief on-return flash.)
   private var privacyOverlay: View? = null
   private val privacyHandler = Handler(Looper.getMainLooper())
+  // Tracks whether the activity is currently resumed so a JS-triggered hide()
+  // that arrives after a re-background doesn't tear down a freshly-raised
+  // shield.
+  private var isActivityResumed = false
 
   companion object {
     private const val PRIVACY_SHIELD_FALLBACK_MS = 1000L
@@ -64,6 +68,11 @@ class MainActivity : ReactActivity() {
     super.onCreate(null)
   }
 
+  override fun onPause() {
+    isActivityResumed = false
+    super.onPause()
+  }
+
   override fun onStop() {
     showPrivacyShield()
     super.onStop()
@@ -71,6 +80,7 @@ class MainActivity : ReactActivity() {
 
   override fun onResume() {
     super.onResume()
+    isActivityResumed = true
     // Fallback: ensure the shield can't get stuck if JS never calls hide()
     privacyHandler.removeCallbacksAndMessages(null)
     privacyHandler.postDelayed({ hidePrivacyShield() }, PRIVACY_SHIELD_FALLBACK_MS)
@@ -103,6 +113,10 @@ class MainActivity : ReactActivity() {
   }
 
   fun hidePrivacyShield() {
+    // Only lift while resumed: a JS hide() arriving after a re-background
+    // (onStop re-raised the shield) would briefly expose wallet content. The
+    // next onResume reschedules the fallback.
+    if (!isActivityResumed) return
     privacyHandler.removeCallbacksAndMessages(null)
     val overlay = privacyOverlay ?: return
     (overlay.parent as? ViewGroup)?.removeView(overlay)

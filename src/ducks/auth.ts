@@ -2202,26 +2202,37 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
   softLock: async (options?: { suppressBiometricPrompt?: boolean }) => {
     Keyboard.dismiss();
 
-    // Atomic update: RootNavigator must never see LOCKED && !isSoftLocked,
-    // which would unmount the preserved tree
+    // Atomic update: RootNavigator must never see LOCKED && !isSoftLocked
+    // (it would unmount the preserved tree). Clear account so the decrypted
+    // private key isn't held while locked — it re-populates on unlock.
     set({
       authStatus: AUTH_STATUS.LOCKED,
       isSoftLocked: true,
+      account: null,
       // A foreground-idle lock suppresses the lock screen's biometric
       // auto-prompt; background / IMMEDIATELY / cold-start locks still prompt.
       suppressBiometricAutoPrompt: options?.suppressBiometricPrompt ?? false,
       isLoading: false,
     });
 
-    // Persist LOCKED (covers tampering + cold starts). Awaited so an
-    // immediate post-background process kill still has the lock on disk.
+    // Persist LOCKED (covers tampering + cold starts). Retry once and rethrow
+    // on failure: a swallowed write would leave the wallet auto-unlockable on
+    // the next cold launch.
     try {
       await secureDataStorage.setItem(
         SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
         AUTH_STATUS.LOCKED,
       );
-    } catch (error) {
-      logger.error("softLock", "Failed to persist LOCKED status", error);
+    } catch (firstError) {
+      logger.error(
+        "softLock",
+        "Failed to persist LOCKED status, retrying",
+        firstError,
+      );
+      await secureDataStorage.setItem(
+        SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
+        AUTH_STATUS.LOCKED,
+      );
     }
   },
 
@@ -2273,6 +2284,14 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
 
       await signIn({ ...params, shouldCreateTempStore });
 
+      // Clear the persisted LOCKED marker and stale backgrounded-at timestamp
+      // before flipping to AUTHENTICATED — awaited so the auto-lock funnel
+      // can't observe the old values and re-lock the fresh session.
+      await Promise.all([
+        secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.AUTH_STATUS),
+        clearBackgroundedAt(),
+      ]);
+
       // Password verified — unblock navigation immediately.
       // getActiveAccount is slow (derivePrivateKeyFromMnemonic) so we run it
       // in the background and let the home screen render with isLoadingAccount=true.
@@ -2294,11 +2313,14 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
       getActiveAccount(AUTH_STATUS.AUTHENTICATED)
         .then((activeAccount) => {
           if (!activeAccount) {
-            // Sign-in succeeded but no active account was found — lock and
-            // surface an error so the user knows something went wrong.
+            // No active account after sign-in: lock and surface an error.
+            // isSoftLocked must accompany LOCKED (RootNavigator unmounts the
+            // tree on LOCKED && !isSoftLocked).
             set({
               isLoadingAccount: false,
               authStatus: AUTH_STATUS.LOCKED,
+              isSoftLocked: true,
+              account: null,
               error: t("authStore.error.failedToLoadAccount"),
             });
             get().navigateToLockScreen();
@@ -2315,23 +2337,12 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
           set({
             isLoadingAccount: false,
             authStatus: AUTH_STATUS.LOCKED,
+            isSoftLocked: true,
+            account: null,
             error: t("authStore.error.failedToLoadAccount"),
           });
           get().navigateToLockScreen();
         });
-
-      // Clear persisted auth status in background (non-blocking)
-      secureDataStorage
-        .remove(SENSITIVE_STORAGE_KEYS.AUTH_STATUS)
-        .catch((e) =>
-          logger.debug("signIn", "Failed to clear persisted auth status", e),
-        );
-
-      // Clear any stale backgrounded-at timestamp so the auto-lock timer
-      // can't re-lock a freshly unlocked session (non-blocking)
-      clearBackgroundedAt().catch((e) =>
-        logger.debug("signIn", "Failed to clear backgrounded-at timestamp", e),
-      );
     } catch (error) {
       analytics.trackReAuthFail();
       set({
@@ -2732,6 +2743,21 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
     // isSoftLocked; disk already holds LOCKED, so the next check self-heals.
     if (get().isSoftLocked && authStatus === AUTH_STATUS.AUTHENTICATED) {
       return get().authStatus;
+    }
+
+    // A soft lock is only valid over an authenticated session. If the session
+    // is gone (wipe) or hard-expired, clear isSoftLocked too — otherwise the
+    // overlay stays stranded over an accountless/expired app until kill.
+    if (
+      get().isSoftLocked &&
+      (authStatus === AUTH_STATUS.NOT_AUTHENTICATED ||
+        authStatus === AUTH_STATUS.HASH_KEY_EXPIRED)
+    ) {
+      set({ authStatus, isSoftLocked: false });
+      if (authStatus === AUTH_STATUS.HASH_KEY_EXPIRED) {
+        get().navigateToLockScreen();
+      }
+      return authStatus;
     }
 
     set({ authStatus });

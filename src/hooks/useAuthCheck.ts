@@ -7,8 +7,9 @@ import {
   hidePrivacyShield,
   markPrivacyShieldVisible,
 } from "helpers/privacyShield";
+import { setActivityRecorder } from "helpers/userActivity";
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
-import { AppState, AppStateStatus, PanResponder } from "react-native";
+import { AppState, AppStateStatus, Keyboard, PanResponder } from "react-native";
 import {
   getAutoLockTimer,
   // TODO/FIXME: dev-only override — remove before production
@@ -262,10 +263,9 @@ const useAuthCheck = () => {
           )
           .finally(() => {
             setTimeout(() => {
-              // If the user re-backgrounded before this resolved, the native
-              // side has re-shown the shield for the new background period —
-              // don't lift it, or the next resume would briefly reveal the
-              // unlocked tree while the lock decision runs.
+              // If re-backgrounded before this resolved, the native side
+              // re-showed the shield — don't lift it, or the next resume flashes
+              // the unlocked tree.
               if (AppState.currentState === "active") {
                 hidePrivacyShield();
               }
@@ -321,6 +321,24 @@ const useAuthCheck = () => {
   useEffect(() => {
     const unsubscribe = navigationRef.addListener("state", recordInteraction);
     return unsubscribe;
+  }, [recordInteraction]);
+
+  /**
+   * Keyboard and gesture-handler input don't reach the PanResponder, so count
+   * keyboard show/hide as interaction (otherwise a user entering an amount
+   * could be idle-locked mid-input) and expose recordInteraction via the
+   * userActivity bridge for components outside this tree (e.g. amount inputs).
+   */
+  useEffect(() => {
+    const showSub = Keyboard.addListener("keyboardDidShow", recordInteraction);
+    const hideSub = Keyboard.addListener("keyboardDidHide", recordInteraction);
+    setActivityRecorder(recordInteraction);
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+      setActivityRecorder(null);
+    };
   }, [recordInteraction]);
 
   /**

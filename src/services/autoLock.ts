@@ -97,10 +97,10 @@ const clearBackgroundedAt = async (): Promise<void> => {
 };
 
 /**
- * Returns the persisted backgrounded-at timestamp, or null when the app
- * hasn't gone to the background since the last evaluation. Corrupt
- * (non-numeric) and future-dated values are cleaned up and treated as
- * absent — a future timestamp would otherwise stall the timer.
+ * Returns the persisted backgrounded-at timestamp, or null when none exists.
+ * A corrupt (non-numeric) value is cleared and treated as absent. A
+ * future-dated value (clock moved backward) returns 0 so any positive timer
+ * elapses and the wallet locks, rather than trusting it to skip the lock.
  */
 const getBackgroundedAt = async (): Promise<number | null> => {
   const backgroundedAt = await secureDataStorage.getItem(
@@ -112,9 +112,14 @@ const getBackgroundedAt = async (): Promise<number | null> => {
   }
 
   const parsedBackgroundedAt = Number(backgroundedAt);
-  if (Number.isNaN(parsedBackgroundedAt) || parsedBackgroundedAt > Date.now()) {
+
+  if (Number.isNaN(parsedBackgroundedAt)) {
     await clearBackgroundedAt();
     return null;
+  }
+
+  if (parsedBackgroundedAt > Date.now()) {
+    return 0;
   }
 
   return parsedBackgroundedAt;

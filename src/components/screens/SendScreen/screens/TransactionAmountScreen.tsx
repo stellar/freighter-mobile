@@ -62,6 +62,7 @@ import {
   isMuxedAccount,
   truncateFedAddress,
 } from "helpers/stellar";
+import { recordUserActivity } from "helpers/userActivity";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -463,6 +464,11 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
   const handleNativeAmountChange = useCallback(
     (text: string) => {
+      // System-keyboard keystrokes don't reach the app-wide PanResponder, so
+      // record activity here to keep the foreground-idle auto-lock from firing
+      // while the user is actively entering an amount.
+      recordUserActivity();
+
       const sanitizedText = text.replace(/[^0-9.,]/g, "");
       const previousText = previousNativeInputRef.current;
 

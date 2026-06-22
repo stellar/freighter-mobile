@@ -44,6 +44,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
   @objc private func handlePrivacyShieldHideRequest() {
     DispatchQueue.main.async { [weak self] in
+      // Skip if the app re-backgrounded between JS calling hide() and this
+      // dispatch — a fresh shield was raised; don't tear it down mid-snapshot.
+      guard UIApplication.shared.applicationState == .active else { return }
       self?.hidePrivacyShield()
     }
   }

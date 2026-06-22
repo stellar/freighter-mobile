@@ -72,7 +72,11 @@ export const PASSWORD_MAX_LENGTH = 2048;
 export const ACCOUNT_NAME_MIN_LENGTH = 1;
 export const ACCOUNT_NAME_MAX_LENGTH = 24;
 export const ACCOUNTS_TO_VERIFY_ON_EXISTING_MNEMONIC_PHRASE = 6;
-export const HASH_KEY_EXPIRATION_MS = 24 * 60 * 60 * 1000; // 24 hours
+// Hard-expiry backstop: after this the session fully re-authenticates
+// (HASH_KEY_EXPIRED). Must stay greater than the largest AUTO_LOCK_TIMER
+// preset, or that preset's soft-lock fast path can never run (hard expiry
+// fires first).
+export const HASH_KEY_EXPIRATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 export const VISUAL_DELAY_MS = 500;
 
 const SECOND_IN_MS = 1000;
@@ -99,7 +103,9 @@ export enum AUTO_LOCK_TIMER {
   NONE = "none",
 }
 
-export const DEFAULT_AUTO_LOCK_TIMER = AUTO_LOCK_TIMER.TWENTY_FOUR_HOURS;
+// 12h matches the extension's default (DEFAULT_AUTO_LOCK_TIMEOUT_MINUTES=720)
+// so both platforms ship the same cadence.
+export const DEFAULT_AUTO_LOCK_TIMER = AUTO_LOCK_TIMER.TWELVE_HOURS;
 
 /** Toast ID used by the lock screen / overlay to surface unlock errors. */
 export const UNLOCK_ERROR_TOAST_ID = "unlock-wallet-error";

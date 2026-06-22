@@ -181,7 +181,10 @@ describe("autoLock service", () => {
       );
     });
 
-    it("cleans up and returns null for a future-dated timestamp", async () => {
+    it("forces a lock for a future-dated timestamp (clock anomaly)", async () => {
+      // A future-dated timestamp means the device clock moved backward; rather
+      // than skip the lock, treat it as an epoch-old background so any positive
+      // timer elapses and the wallet locks conservatively.
       const oneHourAhead = Date.now() + 3600000;
       (secureDataStorage.getItem as jest.Mock).mockResolvedValue(
         String(oneHourAhead),
@@ -189,10 +192,7 @@ describe("autoLock service", () => {
 
       const backgroundedAt = await getBackgroundedAt();
 
-      expect(backgroundedAt).toBeNull();
-      expect(secureDataStorage.remove).toHaveBeenCalledWith(
-        SENSITIVE_STORAGE_KEYS.AUTO_LOCK_BACKGROUNDED_AT,
-      );
+      expect(backgroundedAt).toBe(0);
     });
 
     it("clears the persisted timestamp", async () => {

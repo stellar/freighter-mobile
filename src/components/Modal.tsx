@@ -1,3 +1,4 @@
+import { useAuthenticationStore } from "ducks/auth";
 import React, { useEffect } from "react";
 import {
   type StyleProp,
@@ -6,7 +7,6 @@ import {
   Modal as RNModal,
   TouchableWithoutFeedback,
   KeyboardAvoidingView,
-  AppState,
 } from "react-native";
 
 interface ModalProps {
@@ -30,22 +30,15 @@ const Modal: React.FC<ModalProps> = ({
   contentStyle,
   testID,
 }) => {
-  // Dismiss on background: a native RN Modal renders above the in-tree lock
-  // overlay, so an open modal would otherwise stay on top of the lock screen.
-  // (Not "inactive" — avoids closing on control-center / app-switcher peeks.)
+  // Dismiss on soft lock: a native RN Modal renders above the in-tree lock
+  // overlay, so an open one would sit on top of the lock screen. Gated on
+  // isSoftLocked (not a raw background event) so a brief glance keeps state.
+  const isSoftLocked = useAuthenticationStore((state) => state.isSoftLocked);
   useEffect(() => {
-    if (!visible) {
-      return undefined;
+    if (visible && isSoftLocked) {
+      onClose();
     }
-
-    const subscription = AppState.addEventListener("change", (nextAppState) => {
-      if (nextAppState === "background") {
-        onClose();
-      }
-    });
-
-    return () => subscription.remove();
-  }, [visible, onClose]);
+  }, [visible, isSoftLocked, onClose]);
 
   return (
     <RNModal

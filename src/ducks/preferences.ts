@@ -3,6 +3,7 @@ import { AUTO_LOCK_TIMER, DEFAULT_AUTO_LOCK_TIMER } from "config/constants";
 import { logger } from "config/logger";
 import {
   applyAutoLockTimerToHashKey,
+  getAutoLockTimer,
   persistAutoLockTimer,
 } from "services/autoLock";
 import { create } from "zustand";
@@ -17,6 +18,7 @@ interface PreferencesState {
   setIsBiometricsEnabled: (isBiometricsEnabled: boolean) => void;
   autoLockTimer: AUTO_LOCK_TIMER;
   setAutoLockTimer: (autoLockTimer: AUTO_LOCK_TIMER) => void;
+  hydrateAutoLockTimer: () => Promise<void>;
 }
 
 const INITIAL_PREFERENCES_STATE = {
@@ -40,31 +42,56 @@ export const usePreferencesStore = create<PreferencesState>()(
         const previousAutoLockTimer = get().autoLockTimer;
         set({ autoLockTimer });
 
-        // Write-through to the secure-storage mirror (read by getAuthStatus
-        // without depending on zustand rehydration) and re-anchor the hash
-        // key TTL so switching to/from NONE takes effect immediately.
-        // If the mirror write fails, revert the UI state so the displayed
-        // selection never disagrees with the enforced value.
-        persistAutoLockTimer(autoLockTimer).catch((error) => {
+        // Persist to the secure mirror, then re-anchor the hash-key TTL —
+        // sequenced, not raced. On failure, roll back the UI, mirror, and TTL
+        // together so the selection, enforcement, and expiry can't disagree.
+        (async () => {
+          try {
+            await persistAutoLockTimer(autoLockTimer);
+            await applyAutoLockTimerToHashKey(autoLockTimer);
+          } catch (error) {
+            logger.error(
+              "setAutoLockTimer",
+              "Failed to apply auto-lock timer; rolling back",
+              error,
+            );
+            set({ autoLockTimer: previousAutoLockTimer });
+            await Promise.allSettled([
+              persistAutoLockTimer(previousAutoLockTimer),
+              applyAutoLockTimerToHashKey(previousAutoLockTimer),
+            ]);
+          }
+        })();
+      },
+      // Load autoLockTimer from the secure mirror (its single source of truth).
+      // Called once on app init since the value is intentionally not persisted
+      // to the unencrypted zustand store (see partialize below).
+      hydrateAutoLockTimer: async () => {
+        try {
+          const autoLockTimer = await getAutoLockTimer();
+          set({ autoLockTimer });
+        } catch (error) {
           logger.error(
-            "setAutoLockTimer",
-            "Failed to persist auto-lock timer",
+            "hydrateAutoLockTimer",
+            "Failed to hydrate auto-lock timer from secure storage",
             error,
           );
-          set({ autoLockTimer: previousAutoLockTimer });
-        });
-        applyAutoLockTimerToHashKey(autoLockTimer).catch((error) =>
-          logger.error(
-            "setAutoLockTimer",
-            "Failed to apply auto-lock timer to hash key",
-            error,
-          ),
-        );
+        }
       },
     }),
     {
       name: "preferences-storage",
       storage: createJSONStorage(() => AsyncStorage),
+      // autoLockTimer is intentionally NOT persisted here: the secure-storage
+      // mirror (read by getAuthStatus for enforcement) is its single source of
+      // truth. Keeping a second copy in unencrypted AsyncStorage would let the
+      // UI disagree with enforcement and expose the policy to tampering. It's
+      // hydrated from the mirror on app init via hydrateAutoLockTimer().
+      partialize: (state) => ({
+        isHideDustEnabled: state.isHideDustEnabled,
+        isMemoValidationEnabled: state.isMemoValidationEnabled,
+        isBiometricsEnabled: state.isBiometricsEnabled,
+      }),
     },
   ),
 );
