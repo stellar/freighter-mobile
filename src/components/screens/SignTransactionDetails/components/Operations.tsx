@@ -41,6 +41,17 @@ type AuthorizationMap = {
   [index: string]: string;
 };
 
+/**
+ * A classic offer price is an asset-to-asset exchange rate, not a fiat amount.
+ * It reads as `quoteCode` units per 1 `baseCode` unit: buying-per-selling for
+ * sell offers, selling-per-buying for buy offers.
+ */
+const formatOfferPriceRatio = (
+  price: string,
+  quoteCode: string,
+  baseCode: string,
+) => `${formatTokenForDisplay(price)} ${quoteCode} / ${baseCode}`;
+
 const RenderOperationByType = ({
   operation,
 }: {
@@ -270,32 +281,32 @@ const RenderOperationByType = ({
     }
     case "createPassiveSellOffer": {
       const { selling, buying, amount, price } = operation;
-      // A classic offer price is an asset-to-asset ratio, not a fiat amount.
-      // For a sell offer it is buying units per 1 selling unit.
-      const priceRatio = `${formatTokenForDisplay(price)} ${buying.code} / ${selling.code}`;
 
       const items: ListItemProps[] = [
-        {
-          title: t("signTransactionDetails.operations.buying"),
-          trailingContent: <Text>{buying.code}</Text>,
-          titleColor: themeColors.text.secondary,
-        },
-        {
-          title: t("signTransactionDetails.operations.amount"),
-          // amount is the quantity of the selling asset
-          trailingContent: (
-            <Text>{formatTokenForDisplay(amount, selling.code)}</Text>
-          ),
-          titleColor: themeColors.text.secondary,
-        },
         {
           title: t("signTransactionDetails.operations.selling"),
           trailingContent: <Text>{selling.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
         {
+          title: t("signTransactionDetails.operations.sellingAmount"),
+          trailingContent: (
+            <Text>{formatTokenForDisplay(amount, selling.code)}</Text>
+          ),
+          titleColor: themeColors.text.secondary,
+        },
+        {
+          title: t("signTransactionDetails.operations.buying"),
+          trailingContent: <Text>{buying.code}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
+        {
           title: t("signTransactionDetails.operations.price"),
-          trailingContent: <Text>{priceRatio}</Text>,
+          trailingContent: (
+            <Text>
+              {formatOfferPriceRatio(price, buying.code, selling.code)}
+            </Text>
+          ),
           titleColor: themeColors.text.secondary,
         },
       ];
@@ -304,19 +315,18 @@ const RenderOperationByType = ({
     }
     case "manageSellOffer": {
       const { offerId, selling, buying, price, amount } = operation;
-      // A classic offer price is an asset-to-asset ratio, not a fiat amount.
-      // For a sell offer it is buying units per 1 selling unit.
-      const priceRatio = `${formatTokenForDisplay(price)} ${buying.code} / ${selling.code}`;
 
       const items: ListItemProps[] = [
         {
-          title: t("signTransactionDetails.operations.offerId"),
-          trailingContent: <Text>{offerId}</Text>,
+          title: t("signTransactionDetails.operations.selling"),
+          trailingContent: <Text>{selling.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
         {
-          title: t("signTransactionDetails.operations.selling"),
-          trailingContent: <Text>{selling.code}</Text>,
+          title: t("signTransactionDetails.operations.sellingAmount"),
+          trailingContent: (
+            <Text>{formatTokenForDisplay(amount, selling.code)}</Text>
+          ),
           titleColor: themeColors.text.secondary,
         },
         {
@@ -325,16 +335,17 @@ const RenderOperationByType = ({
           titleColor: themeColors.text.secondary,
         },
         {
-          title: t("signTransactionDetails.operations.amount"),
-          // amount is the quantity of the selling asset
+          title: t("signTransactionDetails.operations.price"),
           trailingContent: (
-            <Text>{formatTokenForDisplay(amount, selling.code)}</Text>
+            <Text>
+              {formatOfferPriceRatio(price, buying.code, selling.code)}
+            </Text>
           ),
           titleColor: themeColors.text.secondary,
         },
         {
-          title: t("signTransactionDetails.operations.price"),
-          trailingContent: <Text>{priceRatio}</Text>,
+          title: t("signTransactionDetails.operations.offerId"),
+          trailingContent: <Text>{offerId}</Text>,
           titleColor: themeColors.text.secondary,
         },
       ];
@@ -343,23 +354,15 @@ const RenderOperationByType = ({
     }
     case "manageBuyOffer": {
       const { selling, buying, buyAmount, price, offerId } = operation;
-      // A classic offer price is an asset-to-asset ratio, not a fiat amount.
-      // For a buy offer it is selling units per 1 buying unit.
-      const priceRatio = `${formatTokenForDisplay(price)} ${selling.code} / ${buying.code}`;
 
       const items: ListItemProps[] = [
-        {
-          title: t("signTransactionDetails.operations.offerId"),
-          trailingContent: <Text>{offerId}</Text>,
-          titleColor: themeColors.text.secondary,
-        },
         {
           title: t("signTransactionDetails.operations.buying"),
           trailingContent: <Text>{buying.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
         {
-          title: t("signTransactionDetails.operations.buyAmount"),
+          title: t("signTransactionDetails.operations.buyingAmount"),
           trailingContent: (
             <Text>{formatTokenForDisplay(buyAmount, buying.code)}</Text>
           ),
@@ -372,7 +375,16 @@ const RenderOperationByType = ({
         },
         {
           title: t("signTransactionDetails.operations.price"),
-          trailingContent: <Text>{priceRatio}</Text>,
+          trailingContent: (
+            <Text>
+              {formatOfferPriceRatio(price, selling.code, buying.code)}
+            </Text>
+          ),
+          titleColor: themeColors.text.secondary,
+        },
+        {
+          title: t("signTransactionDetails.operations.offerId"),
+          trailingContent: <Text>{offerId}</Text>,
           titleColor: themeColors.text.secondary,
         },
       ];

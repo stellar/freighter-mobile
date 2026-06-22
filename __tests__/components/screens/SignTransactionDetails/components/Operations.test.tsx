@@ -48,6 +48,8 @@ const WBTC_ISSUER = "GD6ROJBYLKQMOW3E7N4M2YBPUHMZD7PL65VRHRMO24BOVSBV5H3BQRSL";
 const WBTC = new Asset("WBTC", WBTC_ISSUER);
 const XLM = Asset.native();
 const FIND = { timeout: 3000 };
+// react-i18next is mocked to echo the key, so labels render as their key path.
+const label = (key: string) => `signTransactionDetails.operations.${key}`;
 
 // Parse the operation the same way the signing flow does: read it back off a
 // built transaction so the component receives a real parsed OperationRecord.
@@ -64,7 +66,7 @@ const operationsFor = (op: xdr.Operation): OperationRecord[] => {
 };
 
 describe("SignTransactionDetails > Operations: offer amount denomination & price", () => {
-  it("manageSellOffer renders the amount in the SELLING asset", async () => {
+  it("manageSellOffer renders a 'Selling Amount' row in the selling asset", async () => {
     const ops = operationsFor(
       Operation.manageSellOffer({
         selling: WBTC,
@@ -77,6 +79,7 @@ describe("SignTransactionDetails > Operations: offer amount denomination & price
 
     const { findByText } = render(<Operations operations={ops} />);
 
+    expect(await findByText(label("sellingAmount"), {}, FIND)).toBeTruthy();
     expect(await findByText("10.1234567 WBTC", {}, FIND)).toBeTruthy();
   });
 
@@ -96,7 +99,7 @@ describe("SignTransactionDetails > Operations: offer amount denomination & price
     expect(await findByText("1.00 XLM / WBTC", {}, FIND)).toBeTruthy();
   });
 
-  it("createPassiveSellOffer renders the amount in the SELLING asset", async () => {
+  it("createPassiveSellOffer renders a 'Selling Amount' row in the selling asset", async () => {
     const ops = operationsFor(
       Operation.createPassiveSellOffer({
         selling: WBTC,
@@ -108,6 +111,7 @@ describe("SignTransactionDetails > Operations: offer amount denomination & price
 
     const { findByText } = render(<Operations operations={ops} />);
 
+    expect(await findByText(label("sellingAmount"), {}, FIND)).toBeTruthy();
     expect(await findByText("10.1234567 WBTC", {}, FIND)).toBeTruthy();
   });
 
@@ -142,7 +146,7 @@ describe("SignTransactionDetails > Operations: offer amount denomination & price
     expect(await findByText("3.50 WBTC / XLM", {}, FIND)).toBeTruthy();
   });
 
-  it("manageBuyOffer keeps the buy amount in the BUYING asset", async () => {
+  it("manageBuyOffer renders a 'Buying Amount' row in the buying asset", async () => {
     const ops = operationsFor(
       Operation.manageBuyOffer({
         selling: WBTC,
@@ -155,6 +159,7 @@ describe("SignTransactionDetails > Operations: offer amount denomination & price
 
     const { findByText } = render(<Operations operations={ops} />);
 
+    expect(await findByText(label("buyingAmount"), {}, FIND)).toBeTruthy();
     expect(await findByText("10.1234567 XLM", {}, FIND)).toBeTruthy();
   });
 });
