@@ -17,10 +17,12 @@ import {
   SWAP_ROUTES,
   SEND_PAYMENT_ROUTES,
 } from "config/routes";
+import { TokenTypeWithCustomToken } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useDebugStore } from "ducks/debug";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
+import { getTokenType } from "helpers/balances";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
@@ -103,6 +105,14 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
       params: { tokenId, tokenSymbol },
     });
   };
+
+  // Classic Stellar assets = native (XLM) + credit_alphanum4/12. Soroban
+  // custom tokens (CUSTOM_TOKEN) and liquidity-pool shares aren't supported
+  // by the swap flow yet, so the Swap CTA is gated on this.
+  const isClassicAsset =
+    getTokenType(tokenId) === TokenTypeWithCustomToken.NATIVE ||
+    getTokenType(tokenId) === TokenTypeWithCustomToken.CREDIT_ALPHANUM4 ||
+    getTokenType(tokenId) === TokenTypeWithCustomToken.CREDIT_ALPHANUM12;
 
   const handleSendPress = () => {
     saveSelectedTokenId(tokenId);
@@ -189,7 +199,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
       </View>
       <View className="mt-7 pb-3 gap-7">
         <View className="flex-row gap-3">
-          {swapEnabled && (
+          {swapEnabled && isClassicAsset && (
             <View className="flex-1">
               <Button tertiary xl isFullWidth onPress={handleSwapPress}>
                 {t("tokenDetailsScreen.swap")}
@@ -226,7 +236,6 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
             }
             severity={securitySeverity}
             securityContext={SecurityContext.TOKEN}
-            proceedAnywayText={t("transactionAmountScreen.confirmAnyway")}
           />
         }
       />

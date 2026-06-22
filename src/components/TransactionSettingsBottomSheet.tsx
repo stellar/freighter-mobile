@@ -1,4 +1,5 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
+import BigNumber from "bignumber.js";
 import BottomSheet from "components/BottomSheet";
 import { IconButton } from "components/IconButton";
 import InformationBottomSheet from "components/InformationBottomSheet";
@@ -51,6 +52,13 @@ type TransactionSettingsBottomSheetProps = {
   context: TransactionContext;
   onSettingsChange?: () => void;
   onOpenFeeBreakdown?: () => void;
+  /**
+   * Number of operations the transaction bundles. The fee is the TOTAL across
+   * all ops, so the recommended default scales by this and the minimum is
+   * `operationCount × MIN_TRANSACTION_FEE` (a 2-op swap-to-new-token can't
+   * total below 2 × the network per-op minimum). Defaults to 1 (single-op).
+   */
+  operationCount?: number;
 };
 
 // Constants
@@ -64,6 +72,7 @@ const TransactionSettingsBottomSheet: React.FC<
   context,
   onSettingsChange,
   onOpenFeeBreakdown,
+  operationCount = 1,
 }) => {
   // All hooks at the top
   const { t } = useAppTranslation();
@@ -94,6 +103,7 @@ const TransactionSettingsBottomSheet: React.FC<
   const { markAsManuallyChanged } = useInitialRecommendedFee(
     recommendedFee,
     context,
+    operationCount,
   );
 
   const timeoutInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -217,13 +227,42 @@ const TransactionSettingsBottomSheet: React.FC<
           TransactionSetting.Memo,
         ];
 
+  // The displayed fee, floored at the effective minimum for this transaction:
+  // each op needs at least MIN_TRANSACTION_FEE, so a multi-op transaction (e.g.
+  // a swap-to-new-token's changeTrust + path payment) floors at
+  // operationCount × that. A stored fee below this would be clamped up to it at
+  // build time anyway, so showing the floored value avoids a confusing "fee too
+  // low" error for a fee that's already corrected when the tx is built.
+  const minTotalFee = new BigNumber(MIN_TRANSACTION_FEE).times(operationCount);
+  const storeFeeBn = new BigNumber(storeFee);
+  const displayedStoreFee = formatNumberForDisplay(
+    (storeFeeBn.isFinite()
+      ? BigNumber.max(storeFeeBn, minTotalFee)
+      : minTotalFee
+    ).toString(),
+  );
+
   // State hooks
-  const [localFee, setLocalFee] = useState(formatNumberForDisplay(storeFee));
+  const [localFee, setLocalFee] = useState(displayedStoreFee);
   const [localMemo, setLocalMemo] = useState(memo);
   const [localTimeout, setLocalTimeout] = useState(timeout.toString());
   const [localSlippage, setLocalSlippage] = useState(
     enforceSettingInputDecimalSeparator(slippage.toString()),
   );
+
+  // Mirror the (floored) store fee into the displayed value until the user
+  // edits it. The store fee can update right after mount — e.g.
+  // useInitialRecommendedFee re-scales the recommended fee by operationCount in
+  // an effect — and the useState init above only captures the value at mount,
+  // which otherwise showed stale until the sheet was closed and reopened. The
+  // store fee only changes outside of typing, so this never clobbers an
+  // in-progress edit.
+  const feeEdited = useRef(false);
+  useEffect(() => {
+    if (!feeEdited.current) {
+      setLocalFee(displayedStoreFee);
+    }
+  }, [displayedStoreFee]);
 
   useEffect(() => {
     if (isMemoDisabled && localMemo) {
@@ -234,7 +273,10 @@ const TransactionSettingsBottomSheet: React.FC<
 
   // Validation hooks
   const { error: memoError } = useValidateMemo(localMemo);
-  const { error: feeError } = useValidateTransactionFee(localFee);
+  const { error: feeError } = useValidateTransactionFee(
+    localFee,
+    operationCount,
+  );
   const { error: timeoutError } = useValidateTransactionTimeout(localTimeout);
   const { error: slippageError } = useValidateSlippage(localSlippage);
 
@@ -319,6 +361,7 @@ const TransactionSettingsBottomSheet: React.FC<
   );
 
   const handleFeeChange = useCallback((text: string) => {
+    feeEdited.current = true;
     const normalizedText = enforceSettingInputDecimalSeparator(text);
     setLocalFee(normalizedText);
   }, []);
@@ -513,9 +556,16 @@ const TransactionSettingsBottomSheet: React.FC<
           </View>
           <TouchableOpacity
             onPress={() => {
+              feeEdited.current = true;
               markAsManuallyChanged();
+              // Reset to the recommended TOTAL across all ops (the network
+              // recommendation is a per-op rate).
               setLocalFee(
-                formatNumberForDisplay(recommendedFee || MIN_TRANSACTION_FEE),
+                formatNumberForDisplay(
+                  new BigNumber(recommendedFee || MIN_TRANSACTION_FEE)
+                    .times(operationCount)
+                    .toString(),
+                ),
               );
             }}
           >
@@ -571,6 +621,7 @@ const TransactionSettingsBottomSheet: React.FC<
       handleFeeChange,
       recommendedFee,
       markAsManuallyChanged,
+      operationCount,
     ],
   );
 

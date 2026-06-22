@@ -1,5 +1,8 @@
 import BigNumber from "bignumber.js";
+import { SecurityLevel } from "services/blockaid/constants";
 import {
+  assessTokenSecurityFromLevel,
+  extractSecurityWarnings,
   getTransactionBalanceChanges,
   isUnfundedDestinationError,
 } from "services/blockaid/helper";
@@ -381,5 +384,212 @@ describe("isUnfundedDestinationError", () => {
         isContractDestination: true,
       }),
     ).toBe(false);
+  });
+});
+
+describe("assessTokenSecurityFromLevel", () => {
+  it("returns a Malicious assessment for SecurityLevel.MALICIOUS", () => {
+    const a = assessTokenSecurityFromLevel(SecurityLevel.MALICIOUS);
+    expect(a.level).toBe(SecurityLevel.MALICIOUS);
+    expect(a.isMalicious).toBe(true);
+    expect(a.isSuspicious).toBe(false);
+  });
+
+  it("returns a Suspicious assessment for SecurityLevel.SUSPICIOUS", () => {
+    const a = assessTokenSecurityFromLevel(SecurityLevel.SUSPICIOUS);
+    expect(a.level).toBe(SecurityLevel.SUSPICIOUS);
+    expect(a.isSuspicious).toBe(true);
+    expect(a.isMalicious).toBe(false);
+  });
+
+  it("returns a Safe assessment for SecurityLevel.SAFE", () => {
+    const a = assessTokenSecurityFromLevel(SecurityLevel.SAFE);
+    expect(a.level).toBe(SecurityLevel.SAFE);
+    expect(a.isMalicious).toBe(false);
+    expect(a.isSuspicious).toBe(false);
+    expect(a.isUnableToScan).toBe(false);
+  });
+
+  it("defaults to UNABLE_TO_SCAN when no level is provided", () => {
+    const a = assessTokenSecurityFromLevel(undefined);
+    expect(a.level).toBe(SecurityLevel.UNABLE_TO_SCAN);
+    expect(a.isUnableToScan).toBe(true);
+  });
+
+  it("debugOverride takes precedence over the passed level", () => {
+    const a = assessTokenSecurityFromLevel(
+      SecurityLevel.SAFE,
+      SecurityLevel.MALICIOUS,
+    );
+    expect(a.level).toBe(SecurityLevel.MALICIOUS);
+    expect(a.isMalicious).toBe(true);
+  });
+});
+
+describe("extractSecurityWarnings — feature.type filter + severity stamp", () => {
+  // The contract this suite locks in:
+  //   - Only Warning / Malicious features become rows. Benign / Info
+  //     are positive trust signals and MUST NOT surface as "do not
+  //     proceed" reasons (see the XRP-GBXRPL45 case: real prod scan
+  //     carries HIGH_REPUTATION_TOKEN + LISTED_ON_CENTRALIZED_EXCHANGE
+  //     as Benign — those must NOT be rendered alongside the real
+  //     KNOWN_MALICIOUS reason).
+  //   - Every emitted SecurityWarning carries an explicit `severity`
+  //     so the renderer picks the right per-row icon without inferring
+  //     anything from the sheet-level severity.
+
+  const tokenScanWithFeatures = (
+    features: Array<{
+      feature_id: string;
+      type: "Benign" | "Info" | "Warning" | "Malicious";
+      description: string;
+    }>,
+  ): any =>
+    ({
+      result_type: "Malicious",
+      features,
+    }) as any;
+
+  it("drops Benign features", () => {
+    const warnings = extractSecurityWarnings(
+      tokenScanWithFeatures([
+        {
+          feature_id: "HIGH_REPUTATION_TOKEN",
+          type: "Benign",
+          description: "Token with verified high reputation",
+        },
+        {
+          feature_id: "LISTED_ON_CENTRALIZED_EXCHANGE",
+          type: "Benign",
+          description: "Listed on a leading, well-known centralized exchange",
+        },
+      ]),
+    );
+    expect(warnings).toEqual([]);
+  });
+
+  it("drops Info features", () => {
+    const warnings = extractSecurityWarnings(
+      tokenScanWithFeatures([
+        {
+          feature_id: "METADATA",
+          type: "Info",
+          description: "Metadata analyser ran successfully",
+        },
+      ]),
+    );
+    expect(warnings).toEqual([]);
+  });
+
+  it("emits a Malicious-severity warning for a Malicious feature", () => {
+    const warnings = extractSecurityWarnings(
+      tokenScanWithFeatures([
+        {
+          feature_id: "KNOWN_MALICIOUS",
+          type: "Malicious",
+          description:
+            "An identified malicious address is associated with the token.",
+        },
+      ]),
+    );
+    expect(warnings).toEqual([
+      {
+        id: "KNOWN_MALICIOUS",
+        description:
+          "An identified malicious address is associated with the token.",
+        severity: "malicious",
+      },
+    ]);
+  });
+
+  it("emits a Warning-severity warning for a Warning feature", () => {
+    const warnings = extractSecurityWarnings(
+      tokenScanWithFeatures([
+        {
+          feature_id: "HIGH_TRANSFER_FEE",
+          type: "Warning",
+          description: "Transfer fee is unusually high",
+        },
+      ]),
+    );
+    expect(warnings).toEqual([
+      {
+        id: "HIGH_TRANSFER_FEE",
+        description: "Transfer fee is unusually high",
+        severity: "warning",
+      },
+    ]);
+  });
+
+  it("mixed input: filters benign+info but keeps warning+malicious in original order", () => {
+    const warnings = extractSecurityWarnings(
+      tokenScanWithFeatures([
+        {
+          feature_id: "HIGH_REPUTATION_TOKEN",
+          type: "Benign",
+          description: "high rep",
+        },
+        {
+          feature_id: "HIGH_TRANSFER_FEE",
+          type: "Warning",
+          description: "high fee",
+        },
+        {
+          feature_id: "METADATA",
+          type: "Info",
+          description: "metadata ok",
+        },
+        {
+          feature_id: "KNOWN_MALICIOUS",
+          type: "Malicious",
+          description: "known bad",
+        },
+      ]),
+    );
+    expect(warnings.map((w) => w.id)).toEqual([
+      "HIGH_TRANSFER_FEE",
+      "KNOWN_MALICIOUS",
+    ]);
+    expect(warnings.map((w) => w.severity)).toEqual(["warning", "malicious"]);
+  });
+
+  it("XRP-GBXRPL45 fixture: real Blockaid prod response yields exactly one Malicious row", () => {
+    // Verbatim shape from `curl https://freighter-backend-prd.stellar.org/api/v1/scan-asset?address=XRP-GBXRPL45...`
+    // (verified during the investigation that produced this fix).
+    const warnings = extractSecurityWarnings({
+      result_type: "Malicious",
+      malicious_score: "1.0",
+      attack_types: {
+        known_malicious: { score: "1.0", threshold: "1.0", features: {} },
+      },
+      chain: "stellar",
+      address: "XRP-GBXRPL45NPHCVMFFAYZVUVFFVKSIZ362ZXFP7I2ETNQ3QKZMFLPRDTD5",
+      features: [
+        {
+          feature_id: "KNOWN_MALICIOUS",
+          type: "Malicious",
+          description:
+            "An identified malicious address is associated with the token.",
+        },
+      ],
+    } as any);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0].severity).toBe("malicious");
+    expect(warnings[0].id).toBe("KNOWN_MALICIOUS");
+  });
+
+  it("stamps severity on site-malicious and site-miss synthetic warnings", () => {
+    const malicious = extractSecurityWarnings({
+      status: "hit",
+      is_malicious: true,
+    } as any);
+    expect(malicious).toEqual([
+      expect.objectContaining({ id: "site-malicious", severity: "malicious" }),
+    ]);
+
+    const miss = extractSecurityWarnings({ status: "miss" } as any);
+    expect(miss).toEqual([
+      expect.objectContaining({ id: "site-miss", severity: "warning" }),
+    ]);
   });
 });

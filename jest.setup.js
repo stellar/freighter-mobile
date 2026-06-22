@@ -176,6 +176,11 @@ jest.mock("services/stellarExpert", () => ({
       records: [],
     },
   })),
+  fetchTrendingAssets: jest.fn(async () => ({
+    _embedded: {
+      records: [],
+    },
+  })),
 }));
 
 // Mock react-native-bootsplash
