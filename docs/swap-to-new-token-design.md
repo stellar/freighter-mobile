@@ -10,11 +10,14 @@
 > [Freighter Mobile design file](https://www.figma.com/design/KwkHXQxbNmDllwermJtnRu/Freighter-Mobile?node-id=11310-100487&m=dev).
 > Click any inline link to see the rendered screen.
 >
-> **Implementation note (2026-06-18):** this doc has been reconciled with the
-> current state of the in-progress `cg-swap-to-new-token` branch (not yet
-> merged). Sections below describe the code as built on the branch so far; where
-> the original design intent and the implementation diverged, the text reflects
-> the code.
+> **Implementation note (2026-06-22):** this doc has been re-synced with the
+> `cg-swap-to-new-token` branch as it stands at PR approval, immediately before
+> merge. Sections below describe the code as built; where the original design
+> intent and the implementation diverged, the text reflects the code. This pass
+> reconciled the fee model (total-across-ops fee split), the reserve pre-flight
+> non-XLM branch, the unable-to-scan CTA gate (now a post-scan decision that
+> includes the transaction-level scan), the review banner, and the quote-expiry
+> recovery path.
 
 ## 1. Context
 
@@ -735,7 +738,12 @@ We add two pieces:
   other Banner in the app.
 - The existing Blockaid token/transaction warning logic (`isDestMalicious`,
   `isDestSuspicious`, `isTxMalicious`, …) already works; we just feed it the new
-  destination scan result (see §5.1).
+  destination scan result (see §5.1). The review-sheet view-model
+  (`useReviewSecuritySummary`) also folds the **transaction-level**
+  `isUnableToScan` into its banner flag, so a failed XDR scan (mainnet
+  network/API error) surfaces the amber "Proceed with caution" banner on the
+  review sheet — matching the scan-failure safety net the Send flow has, rather
+  than silently letting the user confirm an unscanned transaction.
 
 No change to `SwapReviewFooter`'s confirm/cancel buttons.
 
@@ -782,6 +790,25 @@ a bug we want surfaced immediately. (No `issuer!` non-null assertion and no
 `logger.error` — the guard throws.) Blockaid's transaction scan now sees the
 combined XDR, which gives us defence-in-depth on top of the per-token scan.
 
+**Fee is the TOTAL across all ops.** The user-set fee (from the shared
+transaction-settings sheet) represents the total for the whole transaction, not
+a per-op rate. Stellar's `TransactionBuilder` `fee` is a per-operation base fee
+and the network charges `baseFee × numOps`, so `buildSwapTransaction` divides
+the total by the op count
+(`getPerOperationBaseFeeStroops(transactionFee, includeTrustline ? 2 : 1)` in
+[`helpers/formatAmount.ts`](../src/helpers/formatAmount.ts), clamped to the
+100-stroop network minimum). A 2-op swap-to-new-token therefore charges exactly
+the total the user set — set 0.001, pay/see 0.001, with 0.0005 per op — and the
+review's "Transaction details" + the processing screen read the built/charged
+fee, so they show the total automatically with no display-side math. Send is
+always 1 op, so total == per-op there and its builder is unchanged. The shared
+settings sheet is **operation-count-aware**: it scales the recommended default
+and floors the minimum by op count (a 2-op swap can't total below 2× the per-op
+minimum), threaded as
+`swapOperationCount = destinationTokenDescriptor?.isNew ? 2 : 1`;
+`useSwapTransactionSettings` settles the scaled total into the store before the
+sheet opens so the displayed value doesn't visibly jump.
+
 **Pre-flight XLM reserve check** — before triggering `buildSwapTransaction`, the
 pure predicate
 `shouldShowXlmReservePreflight({ balanceItems, subentryCount, swapFee, sourceTokenId, destinationIsNew }): boolean`
@@ -800,11 +827,13 @@ is not a single flat reserve-vs-spendable comparison; it branches:
   reserve in the normal case; the sheet is only the fallback for accounts that
   can't even cover 0.5 to begin with.
 - **Non-XLM source**: gate on post-fee XLM headroom for the extra `changeTrust`
-  op: `xlmSpendable.minus(new BigNumber(swapFee)).lte(BASE_RESERVE)` — the
-  reserve comes from the untouched XLM balance, and `calculateSpendableAmount`
-  only deducted one op fee while the combined tx has two ops, so one extra
-  `swapFee` is subtracted; the `lte` boundary routes the exact-boundary case to
-  the reserve sheet.
+  op: `xlmSpendable.lte(BASE_RESERVE)`. `calculateSpendableAmount` already
+  subtracts the full transaction fee — which, with the total-across-ops fee
+  model above, is now the true total for both ops — so there is **no** extra
+  op-fee subtraction here (an earlier version subtracted one extra `swapFee` to
+  compensate for `calculateSpendableAmount` only deducting a single op fee; that
+  double-count was removed once the fee became a true total). The `lte` boundary
+  routes the exact-boundary case to the reserve sheet.
 
 `xlmSpendable` is computed via
 `calculateSpendableAmount({ balance: xlmBalance, subentryCount, transactionFee: swapFee })`,
@@ -813,13 +842,13 @@ rather than relying on Horizon's `tx_insufficient_balance` for a better UX.
 
 ### 6.6 CTA state machine on `SwapAmountScreen`
 
-| State        | Condition                          | Label                             | Action on tap                                                                                                                                                                                                                                                                   |
-| ------------ | ---------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Select       | source OR destination not selected | "Select a token"                  | navigate → `SwapToScreen` for the missing side (source-first ordering when both are empty)                                                                                                                                                                                      |
-| Enter        | both sides set, amount = 0         | "Enter an amount"                 | focus Sell `TextInput` (system numeric keyboard slides up)                                                                                                                                                                                                                      |
-| Insufficient | amount > spendable                 | "Insufficient balance" (disabled) | —                                                                                                                                                                                                                                                                               |
-| Loading      | path-finding in flight             | spinner                           | —                                                                                                                                                                                                                                                                               |
-| Review       | amount valid & path found          | "Review swap"                     | if `destinationToken.isNew` and spendable XLM is below the 0.5 XLM reserve → open `XlmReserveBottomSheet`; else if `isUnableToScan` → open `SecurityDetailBottomSheet` so the user acknowledges the unable-to-scan warning before proceeding; else open `SwapReviewBottomSheet` |
+| State        | Condition                          | Label                             | Action on tap                                                                                                                                                                                                                                                                                                                                                                                     |
+| ------------ | ---------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Select       | source OR destination not selected | "Select a token"                  | navigate → `SwapToScreen` for the missing side (source-first ordering when both are empty)                                                                                                                                                                                                                                                                                                        |
+| Enter        | both sides set, amount = 0         | "Enter an amount"                 | focus Sell `TextInput` (system numeric keyboard slides up)                                                                                                                                                                                                                                                                                                                                        |
+| Insufficient | amount > spendable                 | "Insufficient balance" (disabled) | —                                                                                                                                                                                                                                                                                                                                                                                                 |
+| Loading      | path-finding in flight             | spinner                           | —                                                                                                                                                                                                                                                                                                                                                                                                 |
+| Review       | amount valid & path found          | "Review swap"                     | if `destinationToken.isNew` and spendable XLM is below the 0.5 XLM reserve → open `XlmReserveBottomSheet`; else build + scan the tx and, from the **fresh** scan result, open `SecurityDetailBottomSheet` when any side is unable-to-scan (source/destination token scans **or** the transaction-level XDR scan) so the user acknowledges it before proceeding; else open `SwapReviewBottomSheet` |
 
 Implemented as a derived `useMemo` in the dedicated
 [`useSwapCtaState`](../src/components/screens/SwapScreen/hooks/useSwapCtaState.ts)
@@ -838,6 +867,47 @@ from "insufficient balance") or an upstream `pathError`, not only the
 `insufficient` kind; (2) the `review` kind requires `pathResult && !pathError` —
 if path-finding finishes without a result or throws, the CTA falls back to the
 `enter` kind rather than offering Review.
+
+**The unable-to-scan gate is a _post-scan_ decision.** The source/destination
+token scans run earlier (at selection / path-finding time) so they're stable at
+CTA time, but the transaction XDR is scanned lazily inside
+`setupSwapTransaction`. So the CTA no longer reads a pre-scan `isUnableToScan`
+flag to decide the branch — it builds + scans first, then decides from the
+**fresh** transaction scan result (`setupSwapTransaction` returns it) combined
+with the already-current token scans. This mirrors Send's post-scan decision and
+avoids firing the warning sheet before the first scan completes (an earlier
+pre-scan check fired the gate on every first tap because the not-yet-run scan
+read as unable-to-scan). `useSwapSecurityAssessments` exposes a token-only
+`isTokenUnableToScan` for this purpose; the union `isUnableToScan` (which folds
+in the transaction scan) still drives the review banner and the warning sheet's
+severity/reasons.
+
+### 6.7 Quote freeze, slippage & expiry recovery
+
+The swap quote is **frozen** at review time: the path-finder's best
+`destinationAmount` and the slippage-adjusted floor (`destinationAmountMin`, the
+`pathPaymentStrictSend` `destMin`) are captured and reused for the actual
+submission, rather than re-quoted at submit. The default slippage tolerance is
+**2%** (`DEFAULT_SLIPPAGE` in
+[`config/constants.ts`](../src/config/constants.ts), stored as `swapSlippage` in
+[`ducks/swapSettings`](../src/ducks/swapSettings.ts) and adjustable in the
+settings sheet); `computeDestMinWithSlippage` applies it.
+
+Because the quote is frozen, on-chain liquidity can move between review and
+submit such that the path payment can no longer deliver `destMin`. Horizon then
+rejects the transaction with a quote-expired operation code (`op_under_dest_min`
+and siblings).
+[`helpers/quoteErrors.ts:getQuoteExpiredOperationCodes`](../src/components/screens/SwapScreen/helpers/quoteErrors.ts)
+extracts those codes from `resultCodes.operations`, and
+`useSwapTransaction.executeSwap` treats that case specially instead of as a
+generic failure:
+
+- It fires `SWAP_QUOTE_EXPIRED` (not `SWAP_FAIL`), with the driving
+  `resultCode`(s) and the allowed slippage (§10).
+- It shows the `swapScreen.errors.quoteExpired` retry toast ("Quote has expired,
+  please try again to get a new quote").
+- It **auto-refetches** a fresh path (`findSwapPath`) so the user's retry uses a
+  new quote rather than resubmitting the stale one.
 
 ## 7. Component reuse summary
 
@@ -997,6 +1067,15 @@ colon-prefixed lowercase string for the Amplitude payload (e.g.
   `{ tokenCode, tokenIssuer }`, fired once the combined tx confirms.
 - `SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN = "swap: xlm reserve insufficient shown"`
   (no payload).
+- `SWAP_QUOTE_EXPIRED = "swap: quote expired"` — fired **instead of**
+  `SWAP_FAIL` when a submit is rejected with a quote-expired operation code
+  (`op_under_dest_min` and siblings, detected by
+  [`helpers/quoteErrors.ts`](../src/components/screens/SwapScreen/helpers/quoteErrors.ts)
+  over `resultCodes.operations`) — i.e. liquidity moved past the frozen quote's
+  slippage tolerance —
+  `{ sourceToken, destToken, sourceAmount, destAmount, allowedSlippage, resultCode }`
+  (`resultCode` carries the Horizon op code(s) so we can slice by reason). See
+  §6.7 for the recovery behaviour.
 
 The picker-entry and selection-source payload values are centralized in the
 `SwapPickerEntrypoint` (`CTA`/`DROPDOWN`) and `SwapSelectionSource`
@@ -1034,6 +1113,16 @@ existing `services/stellarExpert.ts` pattern).
   - `buildSwapTransaction` with `includeTrustline` produces a tx with
     `changeTrust` as op #0 and `pathPaymentStrictSend` as op #1; without it
     produces a single op (regression).
+  - Fee total-across-ops: `getPerOperationBaseFeeStroops` divides then clamps,
+    and a 2-op swap's per-op base fee == total/2 so the charged total equals the
+    user-set total (a 1-op send/swap is unchanged); the settings sheet's
+    recommended/minimum scale by op count.
+  - Quote-expiry classification: `getQuoteExpiredOperationCodes` maps
+    `op_under_dest_min`-class codes to the `SWAP_QUOTE_EXPIRED` path (retry
+    toast and auto-refetch), while other submit failures stay on `SWAP_FAIL`.
+  - Unable-to-scan: the review banner + warning sheet include the
+    transaction-level scan; the CTA gate is decided from the fresh post-scan
+    result (token-only `isTokenUnableToScan` vs the tx scan).
   - CTA selector transitions (the derived `useMemo` from §6.6) for all five
     states.
 
