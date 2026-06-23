@@ -460,6 +460,7 @@ fi
 provision_flags_for_flow() {
   case "$1" in
     SendClassicToken) echo "--with-recipient" ;;
+    SendClassicTokenFromDetails) echo "--with-recipient" ;;
     SendFederatedAddress) echo "--with-usdc-balance" ;;
     SwapClassicToken) echo "--with-usdc-trustline" ;;
     *) echo "" ;;

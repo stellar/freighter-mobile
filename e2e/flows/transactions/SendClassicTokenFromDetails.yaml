@@ -3,12 +3,13 @@ tags:
   - transactions
   - send
   - classic-token
-  - mainnet
+  - testnet
   - from-details
 ---
-# Send 0.000001 XLM on mainnet starting from the Token Details screen.
+# Send 0.000001 XLM on testnet starting from the Token Details screen.
 # Verifies the send flow entry point via HomeScreen → TokenDetailsScreen → Send button.
-# Uses a small amount to avoid wasting mainnet funds.
+# Sends to E2E_TEST_RECIPIENT_ADDRESS (a freshly provisioned account).
+# Uses a small amount to keep the test cheap.
 #
 # Import funded wallet
 - runFlow:
@@ -36,6 +37,10 @@ tags:
 # Verify we're on home screen after import
 - assertVisible:
     id: home-screen
+
+# Switch to Testnet (account is provisioned on testnet)
+- runFlow:
+    file: ../shared/SwitchToTestnet.yaml
 
 # Wait for balances to load — the XLM balance row must be visible
 - extendedWaitUntil:
@@ -66,7 +71,7 @@ tags:
 # Type the recipient address
 - tapOn:
     id: send-recipient-input
-- inputText: GDAS7BS4XKW27H2K5C25V6ZU46FCFGBTFQGFDZURAKVPA6QYQG4GTWBC
+- inputText: ${E2E_TEST_RECIPIENT_ADDRESS}
 
 # Wait for search suggestion to appear and select it
 - extendedWaitUntil:
@@ -82,7 +87,7 @@ tags:
       id: send-amount-screen
     timeout: 15000
 
-# Enter amount: 0.000001 XLM (minimal to avoid wasting mainnet funds)
+# Enter amount: 0.000001 XLM (minimal, keeps the test cheap)
 - tapOn:
     id: send-amount-focus-trigger
 - inputText: "0.000001"
@@ -98,6 +103,10 @@ tags:
 - tapOn:
     id: send-continue-button
 
+# Dismiss Blockaid "Proceed with caution" sheet on testnet
+- runFlow:
+    file: ../shared/HandleUnableToScan.yaml
+
 # Verify review sheet is visible
 - extendedWaitUntil:
     visible:
@@ -107,12 +116,12 @@ tags:
 # Wait for confirm button to be ready before tapping
 - extendedWaitUntil:
     visible:
-      id: send-review-confirm-button
+      id: send-review-confirm-anyway-button
     timeout: 30000
 
 # Confirm the transaction
 - tapOn:
-    id: send-review-confirm-button
+    id: send-review-confirm-anyway-button
 
 # Wait for completion and tap Done
 - extendedWaitUntil:
