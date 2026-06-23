@@ -6,9 +6,9 @@ tags:
   - testnet
 ---
 # Send 0.000001 XLM and 0.000001 USDC on testnet to a federated address
-# (freighter.c7*lobstr.co). Verifies that federation address resolution works
-# end-to-end for both native and classic tokens:
-# search → resolve → review → confirm → sent.
+# (freighter.pb*lobstr.co). Verifies that federation address resolution works
+# end-to-end for both native and classic tokens under the linearized send
+# flow: token select → recipient search/resolve → amount → review → confirm.
 #
 # Uses a small amount to keep the test cheap.
 
@@ -57,12 +57,20 @@ tags:
       id: icon-button-send
     timeout: 15000
 
-# Navigate to send flow
+# ── XLM send ───────────────────────────────────────────────────────────────
+
+# Navigate to send flow — new linearized flow opens token selection first
 - tapOn:
     id: icon-button-send
-# Tap recipient row to open search
+
+# Select XLM token
+- extendedWaitUntil:
+    visible:
+      id: token-option-XLM
+    timeout: 30000
 - tapOn:
-    id: send-recipient-row
+    id: token-option-XLM
+
 # Wait for recipient search screen
 - extendedWaitUntil:
     visible:
@@ -90,18 +98,17 @@ tags:
 
 # Enter amount: 0.000001 XLM (minimal, keeps the test cheap)
 - tapOn:
-    id: numeric-key-0
-- tapOn:
-    id: numeric-key-decimal
-- repeat:
-    times: 5
-    commands:
-      - tapOn:
-          id: numeric-key-0
-- tapOn:
-    id: numeric-key-1
+    id: send-amount-focus-trigger
+- inputText: "0.000001"
 
-# Tap Review button - this is where the bug manifested (federation address
+# Dismiss the keyboard on Android so the Review button is not obscured
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+
+# Tap Review button — this is where the bug manifested (federation address
 # was passed to buildPaymentTransaction instead of the resolved G... key)
 - tapOn:
     id: send-continue-button
@@ -135,6 +142,7 @@ tags:
     timeout: 30000
 - tapOn:
     id: send-processing-done-button
+
 # Verify we're back on history screen with transaction visible
 # Note: optional because the transaction might not be immediately rendered in the view
 - assertVisible:
@@ -155,33 +163,22 @@ tags:
 # Navigate to send flow
 - tapOn:
     id: icon-button-send
-# On TransactionAmountScreen, tap token row to change asset
-- extendedWaitUntil:
-    visible:
-      id: send-amount-screen
-    timeout: 15000
-- tapOn:
-    id: send-token-row
-# Wait for token selection screen
+
+# Select USDC token
 - extendedWaitUntil:
     visible:
       id: token-option-USDC
-    timeout: 15000
-# Select USDC
+    timeout: 30000
 - tapOn:
     id: token-option-USDC
-# Verify we're on the amount screen with USDC selected
-- extendedWaitUntil:
-    visible:
-      id: send-amount-screen
-    timeout: 15000
-# Open recipient search and type the same federation address
-- tapOn:
-    id: send-recipient-row
+
+# Wait for recipient search screen
 - extendedWaitUntil:
     visible:
       id: send-search-contacts-screen
     timeout: 15000
+
+# Type the federation address again
 - tapOn:
     id: send-recipient-input
 - inputText: freighter.c7*lobstr.co
@@ -192,22 +189,23 @@ tags:
     timeout: 30000
 - tapOn:
     id: search-suggestion-0
+
 # Back on amount screen — enter 0.000001 USDC
 - extendedWaitUntil:
     visible:
       id: send-amount-screen
     timeout: 15000
 - tapOn:
-    id: numeric-key-0
-- tapOn:
-    id: numeric-key-decimal
-- repeat:
-    times: 5
+    id: send-amount-focus-trigger
+- inputText: "0.000001"
+
+# Dismiss the keyboard on Android so the Review button is not obscured
+- runFlow:
+    when:
+      platform: Android
     commands:
-      - tapOn:
-          id: numeric-key-0
-- tapOn:
-    id: numeric-key-1
+      - hideKeyboard
+
 # Review and confirm
 - tapOn:
     id: send-continue-button
@@ -235,6 +233,7 @@ tags:
     timeout: 30000
 - tapOn:
     id: send-processing-done-button
+
 - assertVisible:
     text: "USDC"
     optional: true

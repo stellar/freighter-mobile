@@ -52,9 +52,14 @@ tags:
 # Navigate to send flow
 - tapOn:
     id: icon-button-send
-# Tap recipient row to open search
+# Select token first
+- extendedWaitUntil:
+    visible:
+      id: token-option-XLM
+    timeout: 30000
 - tapOn:
-    id: send-recipient-row
+    id: token-option-XLM
+
 # Wait for recipient search screen
 - extendedWaitUntil:
     visible:
@@ -84,16 +89,15 @@ tags:
 
 # Enter amount: 0.000001 XLM (minimal, keeps the test cheap)
 - tapOn:
-    id: numeric-key-0
-- tapOn:
-    id: numeric-key-decimal
-- repeat:
-    times: 5
+    id: send-amount-focus-trigger
+- inputText: "0.000001"
+
+# Dismiss the keyboard on Android so the Review button is not obscured
+- runFlow:
+    when:
+      platform: Android
     commands:
-      - tapOn:
-          id: numeric-key-0
-- tapOn:
-    id: numeric-key-1
+      - hideKeyboard
 
 # Tap Review button
 - tapOn:
@@ -105,6 +109,11 @@ tags:
 - extendedWaitUntil:
     visible:
       id: send-review-sheet
+    timeout: 30000
+# Wait for confirm button to be ready before tapping
+- extendedWaitUntil:
+    visible:
+      id: send-review-confirm-button
     timeout: 30000
 # Confirm the transaction
 - tapOn:

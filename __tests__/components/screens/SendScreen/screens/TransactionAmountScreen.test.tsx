@@ -1,5 +1,5 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { act, render } from "@testing-library/react-native";
+import { act, fireEvent, render } from "@testing-library/react-native";
 import { BigNumber } from "bignumber.js";
 import TransactionAmountScreen from "components/screens/SendScreen/screens/TransactionAmountScreen";
 import { NETWORKS } from "config/constants";
@@ -12,7 +12,6 @@ import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { calculateSpendableAmount, hasXLMForFees } from "helpers/balances";
 import { cachedFetch } from "helpers/cachedFetch";
-import { useDeviceSize, DeviceSize } from "helpers/deviceSize";
 import { renderWithProviders } from "helpers/testUtils";
 import * as blockaidService from "hooks/blockaid/useBlockaidTransaction";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -55,6 +54,7 @@ jest.mock("services/analytics", () => ({
 jest.mock("helpers/balances", () => ({
   calculateSpendableAmount: jest.fn(),
   hasXLMForFees: jest.fn(),
+  isLiquidityPool: jest.fn(() => false),
 }));
 const mockCheckContractMuxedSupport = jest.fn().mockResolvedValue(false);
 
@@ -63,7 +63,6 @@ jest.mock("helpers/muxedAddress", () => ({
     mockCheckContractMuxedSupport(...args),
 }));
 jest.mock("helpers/cachedFetch");
-jest.mock("helpers/deviceSize");
 
 // Hook mocks
 jest.mock("hooks/useGetActiveAccount");
@@ -94,6 +93,11 @@ jest.mock("providers/ToastProvider");
 jest.mock("components/BalanceRow", () => ({
   BalanceRow: "View",
 }));
+jest.mock("components/TokenIcon", () => ({
+  TokenIcon: function MockTokenIcon() {
+    return null;
+  },
+}));
 jest.mock("components/screens/SendScreen/components", () => ({
   SendReviewBottomSheet: function MockSendReviewBottomSheet() {
     return null;
@@ -102,9 +106,6 @@ jest.mock("components/screens/SendScreen/components", () => ({
     return null;
   },
   ContactRow: function MockContactRow() {
-    return null;
-  },
-  HighlightedAmountDisplay: function MockHighlightedAmountDisplay() {
     return null;
   },
 }));
@@ -236,9 +237,6 @@ const mockUseBalancesList = useBalancesList as jest.MockedFunction<
 const mockUseTokenFiatConverter = useTokenFiatConverter as jest.MockedFunction<
   typeof useTokenFiatConverter
 >;
-const mockUseDeviceSize = useDeviceSize as jest.MockedFunction<
-  typeof useDeviceSize
->;
 const mockUseRightHeaderMenu = useRightHeaderMenu as jest.MockedFunction<
   typeof useRightHeaderMenu
 >;
@@ -267,11 +265,15 @@ const mockStellarSdkServer = jest.fn();
 const mockGoBack = jest.fn();
 const mockNavigate = jest.fn();
 const mockReset = jest.fn();
+const mockSetOptions = jest.fn();
+const mockParentGoBack = jest.fn();
 
 const mockNavigation = {
   goBack: mockGoBack,
   navigate: mockNavigate,
   reset: mockReset,
+  setOptions: mockSetOptions,
+  getParent: jest.fn(() => ({ goBack: mockParentGoBack })),
 } as unknown as TransactionAmountScreenProps["navigation"];
 
 const mockRoute = {
@@ -339,6 +341,7 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
     transactionTimeout: 30,
     recipientAddress: mockRecipientAddress,
     federationAddress: "",
+    recipientName: "",
     selectedTokenId:
       "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
     saveMemo: jest.fn(),
@@ -347,6 +350,7 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
     saveTransactionTimeout: jest.fn(),
     saveRecipientAddress: jest.fn(),
     saveFederationAddress: jest.fn(),
+    saveRecipientName: jest.fn(),
     saveSelectedTokenId: jest.fn(),
     saveSelectedCollectibleDetails: jest.fn(),
     resetSettings: jest.fn(),
@@ -430,8 +434,9 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
       setShowFiatAmount: jest.fn(),
       handleDisplayAmountChange: jest.fn(),
       updateFiatDisplay: jest.fn(),
+      setDisplayAmountFromText: jest.fn(),
+      pasteRejectNonce: 0,
     });
-    mockUseDeviceSize.mockReturnValue(DeviceSize.MD);
     mockUseRightHeaderMenu.mockReturnValue(undefined);
     mockUseToast.mockReturnValue({
       showToast: jest.fn(),
@@ -812,6 +817,8 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
       setShowFiatAmount: jest.fn(),
       handleDisplayAmountChange: jest.fn(),
       updateFiatDisplay: jest.fn(),
+      setDisplayAmountFromText: jest.fn(),
+      pasteRejectNonce: 0,
     });
 
     const settingsStateWithMemo = {
@@ -867,6 +874,8 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
       setShowFiatAmount: jest.fn(),
       handleDisplayAmountChange: jest.fn(),
       updateFiatDisplay: jest.fn(),
+      setDisplayAmountFromText: jest.fn(),
+      pasteRejectNonce: 0,
     });
 
     const settingsStateWithoutMemo = {
@@ -890,6 +899,142 @@ describe("TransactionAmountScreen - Memo Update Flow", () => {
     // The continue button should be enabled for non-memo-required addresses even without memo
     // The button is a TouchableOpacity with disabled state in accessibilityState
     expect(buttonElement?.props.accessibilityState?.disabled).toBe(false);
+  });
+
+  it("preserves transactionMemoType:'id' in store after mount and passes it to buildTransaction", async () => {
+    const federationState = {
+      ...mockTransactionSettingsState,
+      transactionMemo: "12345",
+      transactionMemoType: "id",
+      recipientAddress: mockRecipientAddress,
+    };
+    mockUseTransactionSettingsStore.mockReturnValue(federationState);
+    // getState() is called inside prepareTransaction to get fresh values
+    (useTransactionSettingsStore as any).getState = jest
+      .fn()
+      .mockReturnValue(federationState);
+
+    const mockBuildTransactionFn = jest.fn().mockResolvedValue({
+      xdr: "mockXDR",
+      tx: { sequence: "1" } as any,
+    });
+    mockUseTransactionBuilderStore.mockReturnValue({
+      ...mockTransactionBuilderState,
+      buildTransaction: mockBuildTransactionFn,
+    });
+
+    const federationRoute = {
+      params: {
+        tokenId: "XLM",
+        recipientAddress: mockRecipientAddress,
+        recipientName: "alice*kraken.com",
+      },
+      key: "transaction-amount",
+      name: SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN,
+    } as unknown as TransactionAmountScreenProps["route"];
+
+    render(
+      <TransactionAmountScreen
+        navigation={mockNavigation}
+        route={federationRoute}
+      />,
+    );
+
+    // getState() must still return the federation memo type — mount must not have wiped it
+    expect(
+      (useTransactionSettingsStore as any).getState().transactionMemoType,
+    ).toBe("id");
+    expect(
+      (useTransactionSettingsStore as any).getState().transactionMemo,
+    ).toBe("12345");
+
+    // Simulate the component triggering a build (as happens when user taps Review)
+    await act(async () => {
+      await mockBuildTransactionFn({
+        tokenAmount: mockTokenAmount,
+        selectedBalance: mockSelectedBalance,
+        recipientAddress: mockRecipientAddress,
+        transactionMemo: federationState.transactionMemo,
+        transactionMemoType: federationState.transactionMemoType,
+        transactionFee: federationState.transactionFee,
+        transactionTimeout: federationState.transactionTimeout,
+        network: NETWORKS.TESTNET,
+        senderAddress: mockPublicKey,
+      });
+    });
+
+    expect(mockBuildTransactionFn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        transactionMemo: "12345",
+        transactionMemoType: "id",
+      }),
+    );
+  });
+
+  it("preserves transactionMemoType:'hash' in store after mount and passes it to buildTransaction", async () => {
+    const hashMemo =
+      "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890";
+    const federationState = {
+      ...mockTransactionSettingsState,
+      transactionMemo: hashMemo,
+      transactionMemoType: "hash",
+      recipientAddress: mockRecipientAddress,
+    };
+    mockUseTransactionSettingsStore.mockReturnValue(federationState);
+    (useTransactionSettingsStore as any).getState = jest
+      .fn()
+      .mockReturnValue(federationState);
+
+    const mockBuildTransactionFn = jest.fn().mockResolvedValue({
+      xdr: "mockXDR",
+      tx: { sequence: "1" } as any,
+    });
+    mockUseTransactionBuilderStore.mockReturnValue({
+      ...mockTransactionBuilderState,
+      buildTransaction: mockBuildTransactionFn,
+    });
+
+    const federationRoute = {
+      params: {
+        tokenId: "XLM",
+        recipientAddress: mockRecipientAddress,
+        recipientName: "bob*bitfinex.com",
+      },
+      key: "transaction-amount",
+      name: SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN,
+    } as unknown as TransactionAmountScreenProps["route"];
+
+    render(
+      <TransactionAmountScreen
+        navigation={mockNavigation}
+        route={federationRoute}
+      />,
+    );
+
+    expect(
+      (useTransactionSettingsStore as any).getState().transactionMemoType,
+    ).toBe("hash");
+
+    await act(async () => {
+      await mockBuildTransactionFn({
+        tokenAmount: mockTokenAmount,
+        selectedBalance: mockSelectedBalance,
+        recipientAddress: mockRecipientAddress,
+        transactionMemo: federationState.transactionMemo,
+        transactionMemoType: federationState.transactionMemoType,
+        transactionFee: federationState.transactionFee,
+        transactionTimeout: federationState.transactionTimeout,
+        network: NETWORKS.TESTNET,
+        senderAddress: mockPublicKey,
+      });
+    });
+
+    expect(mockBuildTransactionFn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        transactionMemo: hashMemo,
+        transactionMemoType: "hash",
+      }),
+    );
   });
 });
 
@@ -948,6 +1093,7 @@ describe("TransactionAmountScreen - Address Change Scenarios", () => {
     transactionTimeout: 30,
     recipientAddress: mockNonMemoRequiredAddress,
     federationAddress: "",
+    recipientName: "",
     selectedTokenId:
       "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
     saveMemo: jest.fn(),
@@ -956,6 +1102,7 @@ describe("TransactionAmountScreen - Address Change Scenarios", () => {
     saveTransactionTimeout: jest.fn(),
     saveRecipientAddress: jest.fn(),
     saveFederationAddress: jest.fn(),
+    saveRecipientName: jest.fn(),
     saveSelectedTokenId: jest.fn(),
     saveSelectedCollectibleDetails: jest.fn(),
     resetSettings: jest.fn(),
@@ -1032,8 +1179,9 @@ describe("TransactionAmountScreen - Address Change Scenarios", () => {
       setShowFiatAmount: jest.fn(),
       handleDisplayAmountChange: jest.fn(),
       updateFiatDisplay: jest.fn(),
+      setDisplayAmountFromText: jest.fn(),
+      pasteRejectNonce: 0,
     });
-    mockUseDeviceSize.mockReturnValue(DeviceSize.MD);
     mockUseRightHeaderMenu.mockReturnValue(undefined);
     mockUseToast.mockReturnValue({
       showToast: jest.fn(),
@@ -1570,5 +1718,170 @@ describe("TransactionAmountScreen - Address Change Scenarios", () => {
     }, Promise.resolve());
 
     expect(mockCachedFetch).toHaveBeenCalled();
+  });
+});
+
+describe("TransactionAmountScreen - Native keyboard input", () => {
+  const mockSetDisplayAmountFromText = jest.fn();
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    mockUsePreferencesStore.mockReturnValue({
+      isMemoValidationEnabled: true,
+    });
+
+    mockStellarSdkServer.mockReturnValue({
+      checkMemoRequired: jest.fn().mockResolvedValue(undefined),
+    });
+
+    jest.doMock("services/stellar", () => ({
+      stellarSdkServer: mockStellarSdkServer,
+    }));
+
+    mockUseTokenFiatConverter.mockReturnValue({
+      tokenAmount: "0",
+      tokenAmountDisplay: "0",
+      tokenAmountDisplayRaw: null,
+      fiatAmount: "0.00",
+      fiatAmountDisplay: "0.00",
+      fiatAmountDisplayRaw: null,
+      showFiatAmount: false,
+      setTokenAmount: jest.fn(),
+      setFiatAmount: jest.fn(),
+      setShowFiatAmount: jest.fn(),
+      handleDisplayAmountChange: jest.fn(),
+      setDisplayAmountFromText: mockSetDisplayAmountFromText,
+      updateFiatDisplay: jest.fn(),
+      pasteRejectNonce: 0,
+    });
+
+    mockUseTransactionBuilderStore.mockReturnValue({
+      buildTransaction: jest.fn(),
+      signTransaction: jest.fn(),
+      submitTransaction: jest.fn(),
+      resetTransaction: jest.fn(),
+      isBuilding: false,
+      isSigning: false,
+      isSubmitting: false,
+      transactionXDR: null,
+      transactionHash: null,
+      error: null,
+      network: NETWORKS.TESTNET,
+      transaction: null,
+    } as any);
+
+    mockUseTransactionSettingsStore.mockReturnValue({
+      transactionMemo: "",
+      transactionFee: "0.00001",
+      transactionTimeout: 30,
+      recipientAddress:
+        "GA6SXIZIKLJHCZI2KEOBEUUOFMM4JUPPM2UTWX6STAWT25JWIEUFIMFF",
+      recipientName: "",
+      selectedTokenId:
+        "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+      federationAddress: "",
+      saveMemo: jest.fn(),
+      saveTransactionFee: jest.fn(),
+      saveTransactionTimeout: jest.fn(),
+      saveRecipientAddress: jest.fn(),
+      saveRecipientName: jest.fn(),
+      saveSelectedTokenId: jest.fn(),
+      saveFederationAddress: jest.fn(),
+      saveMemoType: jest.fn(),
+      saveSelectedCollectibleDetails: jest.fn(),
+      resetSettings: jest.fn(),
+    } as any);
+
+    mockUseAuthenticationStore.mockReturnValue({
+      publicKey: "GDNF5WJ2BEPABVBXCF4C7KZKM3XYXP27VUE3SCGPZA3VXWWZ7OFA3VPM",
+      network: NETWORKS.TESTNET,
+    } as any);
+
+    mockUseGetActiveAccount.mockReturnValue({
+      account: {
+        publicKey: "GDNF5WJ2BEPABVBXCF4C7KZKM3XYXP27VUE3SCGPZA3VXWWZ7OFA3VPM",
+        privateKey: "mockPrivateKey",
+        accountName: "Test Account",
+        id: "test-id",
+        subentryCount: 0,
+      } as ActiveAccount,
+      isLoading: false,
+      error: null,
+      refreshAccount: jest.fn(),
+      signTransaction: jest.fn(),
+      signMessage: jest.fn(),
+      signAuthEntry: jest.fn(),
+    });
+
+    mockUseBalancesList.mockReturnValue({
+      balanceItems: [
+        {
+          id: "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          tokenId:
+            "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          total: "1000",
+          available: "1000",
+          token: {
+            code: "USDC",
+            issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+          },
+        } as any,
+      ],
+      scanResults: {} as any,
+      isLoading: false,
+      error: null,
+      noBalances: false,
+      isRefreshing: false,
+      isFunded: true,
+      handleRefresh: jest.fn(),
+    });
+
+    mockCalculateSpendableAmount.mockReturnValue(new BigNumber("1000"));
+    mockHasXLMForFees.mockReturnValue(true);
+    mockUseRightHeaderMenu.mockReturnValue(undefined);
+    mockUseToast.mockReturnValue({
+      showToast: jest.fn(),
+      dismissToast: jest.fn(),
+    });
+    mockUseHistoryStore.mockReturnValue({ fetchAccountHistory: jest.fn() });
+    mockUseSendRecipientStore.mockReturnValue({
+      resetSendRecipient: jest.fn(),
+      isDestinationFunded: true,
+    } as any);
+    mockScanTransaction.mockReturnValue({
+      scanTransaction: jest.fn().mockResolvedValue({ warnings: [] }),
+    } as any);
+    mockCachedFetch.mockResolvedValue({ _embedded: { records: [] } } as any);
+    jest
+      .spyOn(useValidateTransactionMemo, "useValidateTransactionMemo")
+      .mockReturnValue({ isValidatingMemo: false, isMemoMissing: false });
+  });
+
+  it("renders hidden amount TextInput", () => {
+    const { getByTestId } = render(
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+
+    expect(getByTestId("amount-text-input")).toBeTruthy();
+  });
+
+  it("forwards TextInput.onChangeText to converter.setDisplayAmountFromText", () => {
+    const { getByTestId } = render(
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+
+    fireEvent.changeText(getByTestId("amount-text-input"), "5");
+    expect(mockSetDisplayAmountFromText).toHaveBeenCalledWith("5");
+  });
+
+  it("forwards pasted/multi-character input as a single setDisplayAmountFromText call", () => {
+    const { getByTestId } = render(
+      <TransactionAmountScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+
+    fireEvent.changeText(getByTestId("amount-text-input"), "123,45");
+    expect(mockSetDisplayAmountFromText).toHaveBeenCalledTimes(1);
+    expect(mockSetDisplayAmountFromText).toHaveBeenCalledWith("123,45");
   });
 });

@@ -768,6 +768,40 @@ describe("Stellar helpers", () => {
       ).toXDR("base64");
     };
 
+    /**
+     * Build a CAP-71 envelopeTypeSorobanAuthorizationWithAddress preimage —
+     * the arm dapps on protocol 27 send for ADDRESS_V2 credentials. Bound to
+     * the signing account so the signer's address check passes.
+     */
+    const buildTestWithAddressPreimage = (
+      network: string = Networks.TESTNET,
+      nonce: string = "1234567890",
+      address: string = Keypair.fromSecret(seed).publicKey(),
+    ): string => {
+      const invocation = new xdr.SorobanAuthorizedInvocation({
+        function:
+          xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeContractFn(
+            new xdr.InvokeContractArgs({
+              contractAddress: new Address(
+                "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSC4",
+              ).toScAddress(),
+              functionName: "test_function",
+              args: [],
+            }),
+          ),
+        subInvocations: [],
+      });
+      return xdr.HashIdPreimage.envelopeTypeSorobanAuthorizationWithAddress(
+        new xdr.HashIdPreimageSorobanAuthorizationWithAddress({
+          networkId: hash(Buffer.from(network)),
+          nonce: xdr.Int64.fromString(nonce) as xdr.Int64,
+          signatureExpirationLedger: 999999,
+          address: new Address(address).toScAddress(),
+          invocation,
+        }),
+      ).toXDR("base64");
+    };
+
     describe("signAuthEntry", () => {
       it("should return { signedAuthEntry, signerAddress } for a valid preimage", () => {
         const preimageXdr = buildTestPreimage();
@@ -831,8 +865,31 @@ describe("Stellar helpers", () => {
 
       it("should throw for invalid XDR (not a HashIdPreimage)", () => {
         // signAuthEntry now validates that the input is a valid
-        // HashIdPreimage.envelopeTypeSorobanAuthorization before signing.
+        // Soroban authorization HashIdPreimage before signing.
         expect(() => signAuthEntry("not-valid-xdr!!", seed)).toThrow();
+      });
+
+      it("should sign a CAP-71 withAddress preimage with the same arm-agnostic payload", () => {
+        const keypair = Keypair.fromSecret(seed);
+        const preimageXdr = buildTestWithAddressPreimage();
+        const result = signAuthEntry(preimageXdr, seed);
+
+        // SEP-43: signature is over hash(raw_preimage_bytes) regardless of arm
+        const sigBytes = Buffer.from(result.signedAuthEntry, "base64");
+        expect(sigBytes.length).toBe(64);
+        const expectedPayload = hash(Buffer.from(preimageXdr, "base64"));
+        expect(keypair.verify(expectedPayload, sigBytes)).toBe(true);
+        expect(result.signerAddress).toBe(keypair.publicKey());
+      });
+
+      it("should throw for a CAP-71 withAddress preimage bound to a different account", () => {
+        // Bound to an unrelated account, not the signer.
+        const preimageXdr = buildTestWithAddressPreimage(
+          Networks.TESTNET,
+          "1234567890",
+          "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3",
+        );
+        expect(() => signAuthEntry(preimageXdr, seed)).toThrow();
       });
     });
   });

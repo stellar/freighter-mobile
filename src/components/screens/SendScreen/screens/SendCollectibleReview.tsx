@@ -9,7 +9,7 @@ import InformationBottomSheet from "components/InformationBottomSheet";
 import { List, ListItemProps } from "components/List";
 import MuxedAddressWarningBottomSheet from "components/MuxedAddressWarningBottomSheet";
 import TransactionSettingsBottomSheet from "components/TransactionSettingsBottomSheet";
-import SecurityDetailBottomSheet from "components/blockaid/SecurityDetailBottomSheet";
+import { SecurityDetailBottomSheet } from "components/blockaid";
 import { BaseLayout } from "components/layout/BaseLayout";
 import {
   ContactRow,
@@ -37,6 +37,7 @@ import {
   SendPaymentStackParamList,
   ROOT_NAVIGATOR_ROUTES,
   MAIN_TAB_ROUTES,
+  ScreenTransition,
 } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import { useCollectiblesStore } from "ducks/collectibles";
@@ -62,7 +63,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { View } from "react-native";
+import { Keyboard, View } from "react-native";
 import { analytics } from "services/analytics";
 import { TransactionOperationType } from "services/analytics/types";
 
@@ -82,7 +83,10 @@ type SendCollectibleReviewScreenProps = NativeStackScreenProps<
 const SendCollectibleReviewScreen: React.FC<
   SendCollectibleReviewScreenProps
 > = ({ navigation, route }) => {
-  const { tokenId, collectionAddress } = route.params;
+  const { tokenId, collectionAddress } = route.params ?? {
+    tokenId: "",
+    collectionAddress: "",
+  };
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const { account } = useGetActiveAccount();
@@ -175,9 +179,11 @@ const SendCollectibleReviewScreen: React.FC<
   };
 
   const navigateToSelectContactScreen = () => {
-    // Use popTo to navigate back to SearchContacts
-    // If SearchContacts exists in stack, pops back to it; otherwise adds it
-    navigation.popTo(SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN);
+    // Navigate to SearchContacts with slide from bottom transition
+    navigation.navigate(SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN, {
+      dismissToPreviousScreen: true,
+      transition: ScreenTransition.SlideFromBottom,
+    });
   };
 
   const selectedCollectible = useMemo(
@@ -233,6 +239,7 @@ const SendCollectibleReviewScreen: React.FC<
 
   const handleTransactionScanSuccess = useCallback(
     (scanResult: Blockaid.StellarTransactionScanResponse | undefined) => {
+      Keyboard.dismiss();
       const security = getTransactionSecurity(
         scanResult,
         overriddenBlockaidResponse,
@@ -547,6 +554,7 @@ const SendCollectibleReviewScreen: React.FC<
       !transactionScanResult || transactionSecurityAssessment.isUnableToScan;
 
     if (isUnableToScan) {
+      Keyboard.dismiss();
       reviewBottomSheetModalRef.current?.present();
     } else {
       handleTransactionConfirmation();

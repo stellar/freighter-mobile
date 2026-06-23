@@ -183,6 +183,9 @@ export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
         saveSelectedTokenId("");
         navigation.navigate(ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK, {
           screen: SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN,
+          params: {
+            dismissToPreviousScreen: true,
+          },
         });
       }
     };

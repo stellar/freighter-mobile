@@ -417,16 +417,14 @@ export function createApiService(options: ApiServiceOptions) {
 }
 
 export function isRequestCanceled(error: unknown): boolean {
-  // Axios <1 style
+  // Axios <1 cancels.
   if (axios.isCancel(error)) return true;
 
-  // Axios >=1 + AbortController style
+  // Axios >=1 + AbortController surfaces a cancel as a plain object
+  // with `message: "canceled"`.
+  if (typeof error !== "object" || error === null) return false;
   return (
-    (error instanceof DOMException && error.name === "CanceledError") ||
-    (typeof error === "object" &&
-      error !== null &&
-      "message" in error &&
-      error.message === "canceled")
+    "message" in error && (error as { message?: string }).message === "canceled"
   );
 }
 

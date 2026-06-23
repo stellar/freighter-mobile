@@ -2,11 +2,16 @@ import FastImage from "@d11/react-native-fast-image";
 import { debug } from "helpers/debug";
 
 /**
- * Timeout in milliseconds for validating icon URLs.
- * If the HEAD request doesn't resolve within this window the URL is considered
- * unreachable and validation returns false.
+ * Timeout in milliseconds for validating icon URLs and for the
+ * downstream FastImage onLoad watchdog in the SDS Token component.
+ * 3s was too aggressive on Android — Glide + slower DNS resolution
+ * plus a parallel-fetch storm across many issuer CDNs caused the
+ * long tail to time out before onLoad fired, locking trending-list
+ * rows into the 2-letter fallback. 8s comfortably covers the slow
+ * legitimate cases without making genuinely-broken URLs hold the UI
+ * up for visibly long.
  */
-export const ICON_VALIDATION_TIMEOUT = 3000;
+export const ICON_VALIDATION_TIMEOUT = 8000;
 
 /**
  * Validates an icon URL and pre-warms FastImage's cache.
@@ -68,8 +73,10 @@ export const validateIconUrl = async (url: string): Promise<boolean> => {
         if (response.ok) {
           debug("validateIconUrl", `Validated: ${url}`);
           // Pre-warm FastImage's SDWebImage/Glide cache so the first render
-          // loads from disk rather than the network.
-          FastImage.preload([{ uri: url }]);
+          // loads from disk rather than the network. Low priority so visible
+          // rows (which mount with priority='high') leapfrog the preload
+          // queue and aren't blocked behind a still-warming icon.
+          FastImage.preload([{ uri: url, priority: FastImage.priority.low }]);
           return true as boolean;
         }
         debug(

@@ -25,11 +25,13 @@ import {
   SEND_PAYMENT_ROUTES,
   SWAP_ROUTES,
 } from "config/routes";
+import { TokenTypeWithCustomToken } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
 import { useCollectiblesStore } from "ducks/collectibles";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { useWalletKitStore } from "ducks/walletKit";
+import { getTokenType } from "helpers/balances";
 import { isContractId } from "helpers/soroban";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
@@ -53,22 +55,21 @@ import {
 } from "react-native";
 import { analytics } from "services/analytics";
 
-/**
- * Top section of the home screen containing account info and actions
- */
 type HomeScreenProps = BottomTabScreenProps<
   MainTabStackParamList & RootStackParamList,
   typeof MAIN_TAB_ROUTES.TAB_HOME
 >;
 
-/**
- * Home screen component displaying account information and balances
- */
 export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
   ({ navigation }) => {
     const { account } = useGetActiveAccount();
-    const { network, getAllAccounts, allAccounts, isSwitchingAccount } =
-      useAuthenticationStore();
+    const {
+      network,
+      getAllAccounts,
+      allAccounts,
+      isSwitchingAccount,
+      isLoadingAllAccounts,
+    } = useAuthenticationStore();
     const { themeColors } = useColors();
     const manageAccountsBottomSheetRef = useRef<BottomSheetModal>(null);
     const debugBottomSheetRef = useRef<BottomSheetModal>(null);
@@ -144,6 +145,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
 
     const handleTokenPress = useCallback(
       (tokenId: string) => {
+        // Liquidity-pool rows don't have a useful TokenDetailsScreen layout
+        // yet, so a tap from the Home list is a no-op. The row is still
+        // displayed; we just don't navigate.
+        if (
+          getTokenType(tokenId) ===
+          TokenTypeWithCustomToken.LIQUIDITY_POOL_SHARES
+        ) {
+          return;
+        }
+
         let tokenSymbol: string;
 
         if (tokenId === "native") {
@@ -183,8 +194,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
 
     const handleSendPress = useCallback(() => {
       navigation.navigate(ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK, {
-        screen: SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN,
-        params: { tokenId: NATIVE_TOKEN_CODE },
+        screen: SEND_PAYMENT_ROUTES.TRANSACTION_TOKEN_SCREEN,
       });
     }, [navigation]);
 
@@ -255,6 +265,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
           accounts={allAccounts}
           activeAccount={account}
           bottomSheetRef={manageAccountsBottomSheetRef}
+          isLoadingAccounts={isLoadingAllAccounts}
         />
 
         <ScrollView
@@ -271,7 +282,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
           }
           contentContainerStyle={{ flexGrow: 1 }}
         >
-          {/* Header section with account info and actions */}
           <View className="pt-8 w-full items-center">
             <View className="flex-col gap-3 items-center">
               <TouchableOpacity
@@ -325,7 +335,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
             <View className="w-full border-b mb-4 border-border-primary" />
           </View>
 
-          {/* Tokens and Collectibles tabs content */}
           <TokensCollectiblesTabs
             // Should disable inner scrolling here since the whole Home screen is scrollable
             disableInnerScrolling
@@ -334,10 +343,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
             network={network}
             onTokenPress={handleTokenPress}
             onCollectiblePress={handleCollectiblePress}
+            balanceRowTestIDPrefix="home-token"
           />
         </ScrollView>
 
-        {/* Debug - Development Only */}
         {__DEV__ && (
           <DebugBottomSheet
             modalRef={debugBottomSheetRef}

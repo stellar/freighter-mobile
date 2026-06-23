@@ -1,11 +1,34 @@
 import { BigNumber } from "bignumber.js";
+import { isNativeAssetId, NATIVE_TOKEN_CODE } from "config/constants";
 import {
+  FormattedSearchTokenRecord,
   NativeToken,
   NonNativeToken,
   PricedBalance,
+  TokenIdentifier,
   TokenPricesMap,
 } from "config/types";
 import { getTokenIdentifier, getTokenPriceFromBalance } from "helpers/balances";
+
+/**
+ * Canonical token identifier for a stellar.expert / search record.
+ *
+ * Native XLM → "XLM" (no colon); classic → "CODE:ISSUER".
+ *
+ * Use this everywhere on the swap surface that needs to interop with the
+ * balance-side identifiers from `getTokenIdentifier`. Building the id
+ * manually as `${tokenCode}:${issuer}` produces "XLM:" for native, which
+ * the freighter-backend /token-prices endpoint rejects with HTTP 400 and
+ * never matches the balance-side "XLM" key in the prices map.
+ */
+export const recordTokenId = (
+  record: FormattedSearchTokenRecord,
+): TokenIdentifier => {
+  if (record.isNative) return NATIVE_TOKEN_CODE;
+  return record.issuer
+    ? `${record.tokenCode}:${record.issuer}`
+    : record.tokenCode;
+};
 
 interface FindBalanceForTokenParams {
   token: NonNativeToken | NativeToken;
@@ -20,7 +43,13 @@ interface CalculateTokenFiatAmountParams {
 }
 
 /**
- * Extracts token from balance or creates fallback
+ * Returns the held balance's `token` field, or a native-XLM fallback
+ * when no balance is provided. The fallback is XLM-only — callers
+ * dealing with non-held destinations must NOT pass `undefined` and
+ * expect to derive the destination token shape from this helper, since
+ * they'll silently get XLM. See `useReviewTokens` for the canonical
+ * non-held pattern that builds the token from a
+ * `DestinationTokenDescriptor`.
  */
 export const getTokenFromBalance = (
   balance: PricedBalance | undefined,
@@ -35,8 +64,7 @@ export const getTokenFromBalance = (
 };
 
 /**
- * Finds a balance item that matches the given token using multiple strategies
- * This is more robust than simple ID matching as it tries multiple approaches
+ * Finds a balance item that matches the given token using multiple strategies.
  */
 export const findBalanceForToken = ({
   token: incomingToken,
@@ -58,7 +86,7 @@ export const findBalanceForToken = ({
       if ("token" in item && item.token.type === "native") {
         return true;
       }
-      return item.id === "native";
+      return isNativeAssetId(item.id);
     });
     if (nativeMatch) return nativeMatch;
   }
@@ -90,8 +118,7 @@ export const findBalanceForToken = ({
 };
 
 /**
- * Calculates fiat amount for a token using multiple price sources
- * This provides robust price calculation with fallbacks
+ * Calculates fiat amount for a token using multiple price sources, with fallbacks.
  */
 export const calculateTokenFiatAmount = ({
   token: incomingToken,
@@ -129,6 +156,5 @@ export const calculateTokenFiatAmount = ({
     }
   }
 
-  // No price data available
   return "--";
 };

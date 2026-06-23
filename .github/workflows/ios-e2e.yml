@@ -17,7 +17,7 @@ on:
         type: string
 
 env:
-  NODE_VERSION: "20"
+  NODE_VERSION: "22"
   RUBY_VERSION: 3.1.4
   APP_ID: "org.stellar.freighterdev"
   APPLE_CONNECT_KEY_ID: "skip-android-16kb-setup"
@@ -227,6 +227,7 @@ jobs:
       # - ImportFundedWallet: Import wallet with funded account
       # - SwitchToTestnet: Switch network to testnet
       # - SendClassicToken: Send XLM on testnet (small amount: 0.000001 XLM)
+      # - SendClassicTokenFromDetails: Send XLM on testnet starting from Token Details screen (small amount: 0.000001 XLM)
       # - SwapClassicToken: Swap tokens on testnet (small amount: 0.000001 XLM)
       # - ForgotPasswordWarning: Lock screen forgot password confirmation modal
       # - SendFederatedAddress: Send XLM and USDC to a federated address on testnet (small amount: 0.000001 each)
@@ -237,47 +238,51 @@ jobs:
       matrix:
         include:
           - shard-index: 0
-            shard-total: 9
+            shard-total: 10
             flow-name: LaunchAndInspect
             requires-mock-server: false
           - shard-index: 1
-            shard-total: 9
+            shard-total: 10
             flow-name: CreateWallet
             requires-mock-server: false
           - shard-index: 2
-            shard-total: 9
+            shard-total: 10
             flow-name: ImportWallet
             requires-mock-server: false
           - shard-index: 3
-            shard-total: 9
+            shard-total: 10
             flow-name: ImportFundedWallet
             requires-mock-server: false
           - shard-index: 4
-            shard-total: 9
+            shard-total: 10
             flow-name: SwitchToTestnet
             requires-mock-server: false
           - shard-index: 5
-            shard-total: 9
+            shard-total: 10
             flow-name: SendClassicToken
             requires-mock-server: false
           - shard-index: 6
-            shard-total: 9
+            shard-total: 10
             flow-name: SwapClassicToken
             requires-mock-server: false
           - shard-index: 7
-            shard-total: 9
+            shard-total: 10
             flow-name: ForgotPasswordWarning
             requires-mock-server: false
           - shard-index: 8
-            shard-total: 9
+            shard-total: 10
             flow-name: SendFederatedAddress
             requires-mock-server: false
+          - shard-index: 9
+            shard-total: 10
+            flow-name: SendClassicTokenFromDetails
+            requires-mock-server: false
           - shard-index: 0
-            shard-total: 9
+            shard-total: 10
             flow-name: SignMessageMockDapp
             requires-mock-server: true
           - shard-index: 0
-            shard-total: 9
+            shard-total: 10
             flow-name: SignAuthEntryMockDapp
             requires-mock-server: true
 

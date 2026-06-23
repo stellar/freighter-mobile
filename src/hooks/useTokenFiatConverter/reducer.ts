@@ -1,6 +1,6 @@
 import BigNumber from "bignumber.js";
 import { DEFAULT_DECIMALS, FIAT_DECIMALS } from "config/constants";
-import { parseDisplayNumber } from "helpers/formatAmount";
+import { parseDisplayNumber, sanitizePastedAmount } from "helpers/formatAmount";
 import { formatNumericInput } from "helpers/numericInput";
 import { getNumberFormatSettings } from "react-native-localize";
 
@@ -10,17 +10,28 @@ export interface TokenFiatConverterState {
   showFiatAmount: boolean;
   tokenAmountDisplayRaw: string | null; // Raw input when typing
   fiatAmountDisplayRaw: string | null; // Raw input when typing
+  // Monotonic counter bumped whenever a pasted/typed value is rejected as
+  // unparseable, so the UI can fire a one-shot "couldn't read that" toast.
+  pasteRejectNonce: number;
 }
 
 export enum TokenFiatConverterActionType {
   SET_TOKEN_AMOUNT = "SET_TOKEN_AMOUNT",
   SET_FIAT_AMOUNT = "SET_FIAT_AMOUNT",
+  SET_TOKEN_DISPLAY_FROM_TEXT = "SET_TOKEN_DISPLAY_FROM_TEXT",
+  SET_FIAT_DISPLAY_FROM_TEXT = "SET_FIAT_DISPLAY_FROM_TEXT",
   SET_SHOW_FIAT_AMOUNT = "SET_SHOW_FIAT_AMOUNT",
   HANDLE_TOKEN_INPUT = "HANDLE_TOKEN_INPUT",
   HANDLE_FIAT_INPUT = "HANDLE_FIAT_INPUT",
   UPDATE_FIAT_DISPLAY = "UPDATE_FIAT_DISPLAY",
   CONVERT_TOKEN_TO_FIAT = "CONVERT_TOKEN_TO_FIAT",
   CONVERT_FIAT_TO_TOKEN = "CONVERT_FIAT_TO_TOKEN",
+  SET_DISPLAY_AMOUNT_FROM_TEXT = "SET_DISPLAY_AMOUNT_FROM_TEXT",
+  /** Reset both amounts + both raw displays to the initial state. The
+   *  showFiatAmount mode flag is preserved. Used when the selected token
+   *  changes, so a previously-typed amount can't survive into a token with
+   *  tighter decimal / precision constraints. */
+  RESET_AMOUNTS = "RESET_AMOUNTS",
 }
 
 export interface SetTokenAmountAction {
@@ -30,6 +41,16 @@ export interface SetTokenAmountAction {
 
 export interface SetFiatAmountAction {
   type: TokenFiatConverterActionType.SET_FIAT_AMOUNT;
+  payload: string;
+}
+
+export interface SetTokenDisplayFromTextAction {
+  type: TokenFiatConverterActionType.SET_TOKEN_DISPLAY_FROM_TEXT;
+  payload: string;
+}
+
+export interface SetFiatDisplayFromTextAction {
+  type: TokenFiatConverterActionType.SET_FIAT_DISPLAY_FROM_TEXT;
   payload: string;
 }
 
@@ -63,15 +84,28 @@ export interface ConvertFiatToTokenAction {
   payload: { fiatAmount: string; tokenPrice: BigNumber };
 }
 
+export interface SetDisplayAmountFromTextAction {
+  type: TokenFiatConverterActionType.SET_DISPLAY_AMOUNT_FROM_TEXT;
+  payload: { text: string };
+}
+
+export interface ResetAmountsAction {
+  type: TokenFiatConverterActionType.RESET_AMOUNTS;
+}
+
 export type TokenFiatConverterAction =
   | SetTokenAmountAction
   | SetFiatAmountAction
+  | SetTokenDisplayFromTextAction
+  | SetFiatDisplayFromTextAction
   | SetShowFiatAmountAction
   | HandleTokenInputAction
   | HandleFiatInputAction
   | UpdateFiatDisplayAction
   | ConvertTokenToFiatAction
-  | ConvertFiatToTokenAction;
+  | ConvertFiatToTokenAction
+  | SetDisplayAmountFromTextAction
+  | ResetAmountsAction;
 
 export const initialState: TokenFiatConverterState = {
   tokenAmount: "0",
@@ -79,6 +113,7 @@ export const initialState: TokenFiatConverterState = {
   showFiatAmount: false,
   tokenAmountDisplayRaw: null,
   fiatAmountDisplayRaw: null,
+  pasteRejectNonce: 0,
 };
 
 /**
@@ -402,10 +437,12 @@ export const determineFiatDisplayRaw = (
     // If it's a whole number, set display to integer part for easier editing
     fiatAmountDisplayRaw = bnFiat.toFixed(0);
   } else if (bnFiat.isZero()) {
-    // If token amount is 0, set fiat to "0" (not "0.00") to allow fresh input
+    // If token amount is 0, set fiat to "0" (not "0.00") and leave the raw
+    // display null so the input renders the secondary-color placeholder
+    // instead of a primary-color "0" the moment the user switches modes.
+    // The user can still type freely from this state.
     fiatAmount = "0";
-    // Set fiatAmountDisplayRaw to "0" so user can start typing fresh
-    fiatAmountDisplayRaw = "0";
+    fiatAmountDisplayRaw = null;
   }
 
   return { fiatAmount, fiatAmountDisplayRaw };
@@ -420,7 +457,17 @@ export const determineFiatDisplayRaw = (
  * @returns {Function} The reducer function
  */
 export const createTokenFiatConverterReducer =
-  (tokenPrice: BigNumber, tokenDecimals: number = DEFAULT_DECIMALS) =>
+  (
+    tokenPrice: BigNumber,
+    tokenDecimals: number = DEFAULT_DECIMALS,
+    /**
+     * Absolute cap on the token amount. SET_DISPLAY_AMOUNT_FROM_TEXT rejects
+     * input whose magnitude exceeds this. Currently set for classic Stellar
+     * tokens via the hook; Soroban / custom tokens leave this undefined
+     * (no protocol-level cap in our flow).
+     */
+    maxTokenAmount?: BigNumber,
+  ) =>
   (
     state: TokenFiatConverterState,
     action: TokenFiatConverterAction,
@@ -457,6 +504,62 @@ export const createTokenFiatConverterReducer =
           tokenAmount,
           fiatAmount,
           fiatAmountDisplayRaw: null, // Clear raw input when programmatically setting
+        };
+      }
+
+      case TokenFiatConverterActionType.SET_TOKEN_DISPLAY_FROM_TEXT: {
+        const text = action.payload;
+        const nextDisplay = text
+          .split("")
+          .reduce(
+            (accumulator, character) =>
+              formatNumericInput(accumulator, character, tokenDecimals),
+            "0",
+          );
+        const tokenAmount = parseDisplayNumber(nextDisplay, tokenDecimals);
+
+        let { fiatAmount } = state;
+        if (!state.showFiatAmount && tokenPrice && !tokenPrice.isZero()) {
+          const bnTokenAmount = new BigNumber(tokenAmount);
+          fiatAmount =
+            bnTokenAmount.isFinite() && !bnTokenAmount.isZero()
+              ? recalculateFiatAmountFromToken(tokenAmount, tokenPrice)
+              : "0";
+        }
+
+        return {
+          ...state,
+          tokenAmount,
+          fiatAmount,
+          tokenAmountDisplayRaw: nextDisplay,
+        };
+      }
+
+      case TokenFiatConverterActionType.SET_FIAT_DISPLAY_FROM_TEXT: {
+        const text = action.payload;
+        const newDisplay = text
+          .split("")
+          .reduce(
+            (accumulator, character) =>
+              formatFiatInputTemplate(accumulator, character),
+            "0",
+          );
+        const fiatAmount = normalizeInternalAmount(newDisplay);
+
+        let { tokenAmount } = state;
+        if (state.showFiatAmount && tokenPrice) {
+          tokenAmount = recalculateTokenAmountFromFiat(
+            fiatAmount,
+            tokenPrice,
+            tokenDecimals,
+          );
+        }
+
+        return {
+          ...state,
+          tokenAmount,
+          fiatAmount,
+          fiatAmountDisplayRaw: newDisplay,
         };
       }
 
@@ -658,6 +761,130 @@ export const createTokenFiatConverterReducer =
           ...state,
           fiatAmount,
           tokenAmount,
+          fiatAmountDisplayRaw: null,
+        };
+      }
+
+      case TokenFiatConverterActionType.SET_DISPLAY_AMOUNT_FROM_TEXT: {
+        const { text } = action.payload;
+        const { decimalSeparator } = getNumberFormatSettings();
+        const maxDecimals = state.showFiatAmount
+          ? FIAT_DECIMALS
+          : tokenDecimals;
+
+        // The system keyboard delivers the whole field value on every change,
+        // so this handles both typing and pastes. sanitizePastedAmount strips
+        // garbage, resolves foreign separators / grouping, normalizes a bare
+        // separator to "0.", and truncates to the allowed decimals. null means
+        // the value is unparseable or ambiguous — roll back (return unchanged
+        // state) and bump pasteRejectNonce so the UI can surface a toast.
+        const sanitized = sanitizePastedAmount(text, {
+          decimalSeparator,
+          maxDecimals,
+        });
+        if (sanitized === null) {
+          return { ...state, pasteRejectNonce: state.pasteRejectNonce + 1 };
+        }
+        const normalizedText = sanitized;
+
+        // Count digits typed after the (single) separator. Used to cap
+        // precision to the active mode's allowed decimal places.
+        const sepIdx = normalizedText.search(/[.,]/);
+        const fractionalDigits =
+          sepIdx === -1 ? 0 : normalizedText.length - sepIdx - 1;
+
+        if (state.showFiatAmount) {
+          if (fractionalDigits > FIAT_DECIMALS) {
+            return state;
+          }
+          // Fiat side: text is the assembled display value (system keyboard delivers
+          // the whole string). Strip trailing separator via normalizeInternalAmount to
+          // get the canonical internal amount.
+          const rawInternal = normalizeInternalAmount(normalizedText);
+          const bnInternal = new BigNumber(rawInternal);
+          const safeInternal = bnInternal.isFinite() ? rawInternal : "0";
+          const safeDisplay = bnInternal.isFinite() ? normalizedText : "";
+
+          // Convert to token
+          let { tokenAmount } = state;
+          if (tokenPrice && !tokenPrice.isZero()) {
+            tokenAmount = recalculateTokenAmountFromFiat(
+              safeInternal,
+              tokenPrice,
+              tokenDecimals,
+            );
+          }
+
+          return {
+            ...state,
+            fiatAmount: safeInternal,
+            fiatAmountDisplayRaw: safeDisplay,
+            tokenAmount,
+          };
+        }
+
+        // Token side: enforce the token's `decimals` (set per balance by the
+        // hook — 7 for classic, the balance's own value for Soroban tokens).
+        if (fractionalDigits > tokenDecimals) {
+          return state;
+        }
+
+        const rawInternal = parseDisplayNumber(normalizedText, tokenDecimals);
+        // Guard non-finite values (e.g. user pasted "1e999" → Infinity, or
+        // a malformed input that returns NaN) so the store never holds a
+        // string that would crash BigNumber arithmetic downstream or get
+        // serialized into a Horizon strictSendPaths request.
+        const bnInternal = new BigNumber(rawInternal);
+
+        // Reject amounts above the protocol-level cap when a maxTokenAmount
+        // is in force (currently: classic Stellar tokens are bounded by the
+        // int64-scaled limit; Soroban / custom tokens have no max here).
+        // parseDisplayNumber goes through parseFloat which loses precision
+        // near the int64 max, so build the BigNumber for this check directly
+        // from the normalized text to preserve the exact decimal value.
+        const bnFromText = new BigNumber(
+          normalizedText.replace(decimalSeparator, "."),
+        );
+        if (
+          maxTokenAmount &&
+          bnFromText.isFinite() &&
+          bnFromText.isGreaterThan(maxTokenAmount)
+        ) {
+          return state;
+        }
+
+        const internalAmount = bnInternal.isFinite() ? rawInternal : "0";
+        const tokenAmountDisplayRaw = bnInternal.isFinite()
+          ? normalizedText
+          : "";
+
+        // Convert to fiat
+        let { fiatAmount } = state;
+        if (tokenPrice && !tokenPrice.isZero()) {
+          if (bnInternal.isFinite() && !bnInternal.isZero()) {
+            fiatAmount = recalculateFiatAmountFromToken(
+              internalAmount,
+              tokenPrice,
+            );
+          } else {
+            fiatAmount = "0";
+          }
+        }
+
+        return {
+          ...state,
+          tokenAmount: internalAmount,
+          tokenAmountDisplayRaw,
+          fiatAmount,
+        };
+      }
+
+      case TokenFiatConverterActionType.RESET_AMOUNTS: {
+        return {
+          ...state,
+          tokenAmount: "0",
+          fiatAmount: "0",
+          tokenAmountDisplayRaw: null,
           fiatAmountDisplayRaw: null,
         };
       }

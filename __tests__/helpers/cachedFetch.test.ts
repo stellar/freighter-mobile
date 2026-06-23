@@ -1,4 +1,4 @@
-import { cachedFetch } from "helpers/cachedFetch";
+import { cachedFetch, readCachedValue } from "helpers/cachedFetch";
 import { dataStorage } from "services/storage/storageFactory";
 
 jest.mock("services/storage/storageFactory");
@@ -216,25 +216,50 @@ describe("cachedFetch", () => {
       expect(mockFn).toHaveBeenCalledTimes(1);
     });
 
-    it("returns cached data on error if available (function mode)", async () => {
-      const now = Date.now();
+    it("returns cached data on error during stale-reload (function mode, !forceRefresh)", async () => {
+      // Stale cache (older than TTL) but no explicit refresh request:
+      // the fetch fails and we gracefully fall back to the cached
+      // value rather than surface an error to a passive caller.
       const cachedData = { cached: "data" };
       const error = new Error("Function error");
       const mockFn = jest.fn().mockRejectedValue(error);
 
-      // Mock cached data
+      const staleTime = Date.now() - THIRTY_MINUTES - 1000;
       mockDataStorage.getItem
-        .mockResolvedValueOnce(now.toString()) // cached date
+        .mockResolvedValueOnce(staleTime.toString()) // cached date (stale)
         .mockResolvedValueOnce(JSON.stringify(cachedData)); // cached result
 
       const result = await cachedFetch({
         urlOrFn: mockFn,
         storageKey,
         ttlMs: THIRTY_MINUTES,
-        forceRefresh: true, // Force refresh to trigger function call
       });
 
       expect(result).toEqual(cachedData);
+      expect(mockFn).toHaveBeenCalledTimes(1);
+    });
+
+    it("throws on forceRefresh failure even when cached data exists (function mode)", async () => {
+      // Pull-to-refresh and other explicit forceRefresh callers need to
+      // see the failure (e.g. to toast "couldn't refresh"). Silently
+      // returning the stale cache contradicts the user's intent.
+      const now = Date.now();
+      const cachedData = { cached: "data" };
+      const error = new Error("Function error");
+      const mockFn = jest.fn().mockRejectedValue(error);
+
+      mockDataStorage.getItem
+        .mockResolvedValueOnce(now.toString())
+        .mockResolvedValueOnce(JSON.stringify(cachedData));
+
+      await expect(
+        cachedFetch({
+          urlOrFn: mockFn,
+          storageKey,
+          ttlMs: THIRTY_MINUTES,
+          forceRefresh: true,
+        }),
+      ).rejects.toThrow("Function error");
       expect(mockFn).toHaveBeenCalledTimes(1);
     });
 
@@ -340,5 +365,51 @@ describe("cachedFetch", () => {
       expect(result).toEqual({ data: "test" });
       expect(mockFn).toHaveBeenCalledTimes(1);
     });
+  });
+});
+
+describe("readCachedValue", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (dataStorage.getItem as jest.Mock).mockResolvedValue(null);
+    (dataStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+  });
+
+  it("returns null when the date key is missing", async () => {
+    (dataStorage.getItem as jest.Mock).mockResolvedValue(null);
+    const result = await readCachedValue("missing-key");
+    expect(result).toBeNull();
+  });
+
+  it("returns null when the date is unparseable (0 or NaN)", async () => {
+    (dataStorage.getItem as jest.Mock).mockImplementation((k: string) =>
+      Promise.resolve(k.endsWith("_date") ? "0" : '{"x":1}'),
+    );
+    expect(await readCachedValue("key")).toBeNull();
+  });
+
+  it("returns null when the value is missing even if the date is present", async () => {
+    (dataStorage.getItem as jest.Mock).mockImplementation((k: string) =>
+      Promise.resolve(k.endsWith("_date") ? String(Date.now()) : null),
+    );
+    expect(await readCachedValue("key")).toBeNull();
+  });
+
+  it("returns null when the cached JSON is malformed", async () => {
+    (dataStorage.getItem as jest.Mock).mockImplementation((k: string) =>
+      Promise.resolve(k.endsWith("_date") ? String(Date.now()) : "not json"),
+    );
+    expect(await readCachedValue("key")).toBeNull();
+  });
+
+  it("returns parsed data + age when both keys are present and well-formed", async () => {
+    const cachedAt = Date.now() - 5000; // 5 seconds ago
+    (dataStorage.getItem as jest.Mock).mockImplementation((k: string) =>
+      Promise.resolve(k.endsWith("_date") ? String(cachedAt) : '{"foo":"bar"}'),
+    );
+    const result = await readCachedValue<{ foo: string }>("key");
+    expect(result?.data).toEqual({ foo: "bar" });
+    expect(result?.age).toBeGreaterThanOrEqual(5000);
+    expect(result?.age).toBeLessThan(10_000);
   });
 });

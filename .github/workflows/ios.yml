@@ -40,7 +40,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  NODE_VERSION: "20"
+  NODE_VERSION: "22"
   RUBY_VERSION: 3.1.4
 
   # Apple Connect API configuration (for app_store_connect_api_key)

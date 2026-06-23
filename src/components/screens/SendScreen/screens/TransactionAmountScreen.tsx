@@ -2,19 +2,18 @@ import Blockaid from "@blockaid/client";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BigNumber } from "bignumber.js";
-import { BalanceRow } from "components/BalanceRow";
+import { AmountCard } from "components/AmountCard";
 import BottomSheet from "components/BottomSheet";
 import FeeBreakdownBottomSheet from "components/FeeBreakdownBottomSheet";
-import { IconButton } from "components/IconButton";
 import InformationBottomSheet from "components/InformationBottomSheet";
 import MuxedAddressWarningBottomSheet from "components/MuxedAddressWarningBottomSheet";
-import NumericKeyboard from "components/NumericKeyboard";
+import { PercentageButtons } from "components/PercentageButtons";
 import TransactionSettingsBottomSheet from "components/TransactionSettingsBottomSheet";
-import SecurityDetailBottomSheet from "components/blockaid/SecurityDetailBottomSheet";
+import { SecurityDetailBottomSheet } from "components/blockaid";
 import { BaseLayout } from "components/layout/BaseLayout";
+import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import {
   ContactRow,
-  HighlightedAmountDisplay,
   SendReviewBottomSheet,
   SendReviewFooter,
 } from "components/screens/SendScreen/components";
@@ -28,7 +27,6 @@ import { TransactionProcessingScreen } from "components/screens/SendScreen/scree
 import { useSignTransactionDetails } from "components/screens/SignTransactionDetails/hooks/useSignTransactionDetails";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
-import { Display, Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import {
   DEFAULT_DECIMALS,
@@ -38,6 +36,7 @@ import {
 } from "config/constants";
 import { logger } from "config/logger";
 import {
+  ScreenTransition,
   SEND_PAYMENT_ROUTES,
   SendPaymentStackParamList,
   ROOT_NAVIGATOR_ROUTES,
@@ -50,14 +49,18 @@ import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { calculateSpendableAmount, hasXLMForFees } from "helpers/balances";
-import { useDeviceSize, DeviceSize } from "helpers/deviceSize";
 import {
   formatTokenForDisplay,
   formatFiatInputDisplay,
 } from "helpers/formatAmount";
+import { waitForKeyboardDismiss } from "helpers/keyboard";
 import { checkContractMuxedSupport } from "helpers/muxedAddress";
 import { isSorobanTransaction } from "helpers/soroban";
-import { isMuxedAccount, truncateFedAddress } from "helpers/stellar";
+import {
+  isFederationAddress,
+  isMuxedAccount,
+  truncateFedAddress,
+} from "helpers/stellar";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -72,11 +75,12 @@ import { useToast } from "providers/ToastProvider";
 import React, {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
-import { TouchableOpacity, View, Text as RNText } from "react-native";
+import { Keyboard, TextInput, View } from "react-native";
 import { analytics } from "services/analytics";
 import { TransactionOperationType } from "services/analytics/types";
 import { SecurityContext } from "services/blockaid/constants";
@@ -87,29 +91,15 @@ type TransactionAmountScreenProps = NativeStackScreenProps<
   typeof SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN
 >;
 
-/**
- * Checks if a raw input value should skip highlighting.
- * Only skip if it's exactly "0" (no decimal separator or trailing characters).
- * Values like "0,", "0,00", ",00" should be highlighted.
- */
-const shouldSkipHighlighting = (rawInput: string | null): boolean =>
-  // Only skip if it's exactly "0" (no separator, no trailing zeros) or empty
-  !rawInput || rawInput === "0" || rawInput === "";
-
-/**
- * TransactionAmountScreen Component
- *
- * A screen for entering transaction amounts in either token or fiat currency.
- * Supports switching between token and fiat input modes with automatic conversion.
- *
- * @param {TransactionAmountScreenProps} props - Component props
- * @returns {JSX.Element} The rendered component
- */
 const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   navigation,
   route,
 }) => {
-  const { tokenId, recipientAddress: routeRecipientAddress } = route.params;
+  const {
+    tokenId,
+    recipientAddress: routeRecipientAddress,
+    recipientName: routeRecipientName,
+  } = route.params;
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const { account } = useGetActiveAccount();
@@ -119,12 +109,13 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     transactionFee,
     recipientAddress,
     federationAddress,
+    recipientName,
     selectedTokenId,
     transactionMemo,
     saveSelectedTokenId,
     saveRecipientAddress,
     saveFederationAddress,
-    saveMemoType,
+    saveRecipientName,
     saveSelectedCollectibleDetails,
     saveMemo,
     resetSettings,
@@ -137,30 +128,33 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   useEffect(() => {
     // Clear collectible details when entering token flow to prevent cross-flow contamination
     saveSelectedCollectibleDetails({ collectionAddress: "", tokenId: "" });
-    // Clear recipient, federation, and memo state when entering the screen
-    saveRecipientAddress("");
-    saveFederationAddress("");
-    saveMemoType("");
+    saveSelectedTokenId(tokenId || "");
 
-    if (tokenId) {
-      saveSelectedTokenId(tokenId);
+    // Explicitly set or clear recipient fields based on route params to avoid stale state
+    // from previous screens. If route params are missing, clear the store fields.
+    saveRecipientAddress(
+      typeof routeRecipientAddress === "string" ? routeRecipientAddress : "",
+    );
+    // routeRecipientName carries a display label. Route it to federationAddress
+    // when it looks like a federation address (user*domain), otherwise treat it
+    // as a wallet/contact nickname.
+    if (routeRecipientName && isFederationAddress(routeRecipientName)) {
+      saveFederationAddress(routeRecipientName);
+      saveRecipientName("");
     } else {
-      saveSelectedTokenId("");
+      saveFederationAddress("");
+      saveRecipientName(routeRecipientName ?? "");
     }
   }, [
     tokenId,
+    routeRecipientAddress,
+    routeRecipientName,
     saveSelectedTokenId,
     saveSelectedCollectibleDetails,
     saveRecipientAddress,
     saveFederationAddress,
-    saveMemoType,
+    saveRecipientName,
   ]);
-
-  useEffect(() => {
-    if (routeRecipientAddress && typeof routeRecipientAddress === "string") {
-      saveRecipientAddress(routeRecipientAddress);
-    }
-  }, [routeRecipientAddress, saveRecipientAddress]);
 
   const {
     buildTransaction,
@@ -173,37 +167,40 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     error: transactionBuilderError,
   } = useTransactionBuilderStore();
 
-  // Reset transaction, recipient, and token on unmount
-  useEffect(
-    () => () => {
-      resetTransaction();
-      saveSelectedTokenId("");
-      saveRecipientAddress("");
-      resetSendRecipient();
-      resetSettings();
-    },
-    [
-      resetTransaction,
-      saveSelectedTokenId,
-      saveRecipientAddress,
-      resetSendRecipient,
-      resetSettings,
-    ],
-  );
-
   const { isValidatingMemo, isMemoMissing } =
     useValidateTransactionMemo(transactionXDR);
 
   const { scanTransaction } = useBlockaidTransaction();
   const { recommendedFee } = useNetworkFees();
 
-  useInitialRecommendedFee(recommendedFee, TransactionContext.Send);
-
   const publicKey = account?.publicKey;
+  const amountInputRef = useRef<TextInput>(null);
+  const focusRetryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const reviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [amountError, setAmountError] = useState<string | null>(null);
   const { showToast } = useToast();
+
+  const handleCloseSendFlow = useCallback(() => {
+    // Clean up state before exiting the send flow to prevent stale data.
+    useSendRecipientStore.getState().resetSendRecipient();
+    useTransactionSettingsStore.getState().resetSettings();
+    useTransactionBuilderStore.getState().resetTransaction();
+    navigation.getParent()?.goBack();
+  }, [navigation]);
+
+  const renderCloseHeaderButton = useCallback(
+    () => <CustomHeaderButton icon={Icon.X} onPress={handleCloseSendFlow} />,
+    [handleCloseSendFlow],
+  );
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerLeft: renderCloseHeaderButton,
+    });
+  }, [navigation, renderCloseHeaderButton]);
 
   // Show toast when transaction builder error occurs
   const previousErrorRef = useRef<string | null>(null);
@@ -221,8 +218,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       });
     }
   }, [transactionBuilderError, showToast]);
-  const deviceSize = useDeviceSize();
-  const isSmallScreen = deviceSize === DeviceSize.XS;
   const addMemoExplanationBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const transactionSettingsBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const feeBreakdownBottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -242,13 +237,47 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   useRightHeaderButton({
     icon: Icon.Settings04,
     onPress: () => {
-      transactionSettingsBottomSheetModalRef.current?.present();
+      amountInputRef.current?.blur();
+      // Wait for the keyboard's hide animation before presenting the sheet so
+      // it opens at its final height instead of jumping down.
+      waitForKeyboardDismiss().then(() => {
+        transactionSettingsBottomSheetModalRef.current?.present();
+      });
     },
   });
 
+  const focusAmountInput = useCallback(() => {
+    amountInputRef.current?.focus();
+
+    if (focusRetryTimeoutRef.current) {
+      clearTimeout(focusRetryTimeoutRef.current);
+    }
+
+    // iOS can occasionally ignore focus on fully hidden inputs; retry on next tick.
+    focusRetryTimeoutRef.current = setTimeout(() => {
+      if (!amountInputRef.current?.isFocused()) {
+        amountInputRef.current?.focus();
+      }
+    }, 0);
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (focusRetryTimeoutRef.current) {
+        clearTimeout(focusRetryTimeoutRef.current);
+      }
+    },
+    [],
+  );
+
   const onConfirmAddMemo = useCallback(() => {
+    amountInputRef.current?.blur();
     addMemoExplanationBottomSheetModalRef.current?.dismiss();
-    transactionSettingsBottomSheetModalRef.current?.present();
+    // Wait for the keyboard's hide animation before presenting the sheet so
+    // it opens at its final height instead of jumping down.
+    waitForKeyboardDismiss().then(() => {
+      transactionSettingsBottomSheetModalRef.current?.present();
+    });
   }, []);
 
   const onCancelAddMemo = () => {
@@ -260,20 +289,32 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   };
 
   const handleOpenSettingsFromReview = () => {
-    transactionSettingsBottomSheetModalRef.current?.present();
+    amountInputRef.current?.blur();
+    // Wait for the keyboard's hide animation before presenting the sheet so
+    // it opens at its final height instead of jumping down.
+    waitForKeyboardDismiss().then(() => {
+      transactionSettingsBottomSheetModalRef.current?.present();
+    });
   };
 
   const handleCancelTransactionSettings = () => {
     addMemoExplanationBottomSheetModalRef.current?.dismiss();
     transactionSettingsBottomSheetModalRef.current?.dismiss();
+    focusAmountInput();
   };
 
   const navigateToSelectTokenScreen = () => {
-    navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_TOKEN_SCREEN);
+    navigation.navigate(SEND_PAYMENT_ROUTES.TRANSACTION_TOKEN_SCREEN, {
+      dismissToPreviousScreen: true,
+      transition: ScreenTransition.SlideFromBottom,
+    });
   };
 
   const navigateToSelectContactScreen = () => {
-    navigation.navigate(SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN);
+    navigation.navigate(SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN, {
+      dismissToPreviousScreen: true,
+      transition: ScreenTransition.SlideFromBottom,
+    });
   };
 
   const { balanceItems } = useBalancesList({
@@ -360,17 +401,26 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     return result;
   }, [selectedBalance, account, transactionFee]);
 
+  const converter = useTokenFiatConverter({ selectedBalance });
   const {
     tokenAmount,
-    tokenAmountDisplay,
     fiatAmountDisplay,
-    fiatAmountDisplayRaw,
     showFiatAmount,
     setShowFiatAmount,
-    handleDisplayAmountChange,
     setTokenAmount,
     updateFiatDisplay,
-  } = useTokenFiatConverter({ selectedBalance });
+  } = converter;
+
+  // Freeze the network fee once an amount is entered. The fee auto-refreshes
+  // every 30s and is paid in XLM, so a bump would shrink an XLM source's
+  // spendable under a committed amount and flash "Insufficient balance".
+  // useInitialRecommendedFee only persists a truthy fee, so withholding it
+  // freezes the value; it resumes when the amount is cleared. Mirrors swap.
+  const hasEnteredAmount = new BigNumber(tokenAmount || "0").isGreaterThan(0);
+  useInitialRecommendedFee(
+    hasEnteredAmount ? "" : recommendedFee,
+    TransactionContext.Send,
+  );
 
   const unfundedContext: UnfundedDestinationContext | undefined = useMemo(
     () =>
@@ -526,6 +576,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       setTransactionScanResult(scanResult);
 
       if (shouldOpenReview) {
+        amountInputRef.current?.blur();
+        Keyboard.dismiss();
         const security = getTransactionSecurity(
           scanResult,
           overriddenBlockaidResponse,
@@ -545,6 +597,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     (shouldOpenReview: boolean) => {
       setTransactionScanResult(undefined);
       if (shouldOpenReview) {
+        amountInputRef.current?.blur();
+        Keyboard.dismiss();
         // When scan fails, treat as unable to scan and open security detail sheet
         const security = getTransactionSecurity(
           undefined,
@@ -762,7 +816,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
   const handleCancelReview = useCallback(() => {
     reviewBottomSheetModalRef.current?.dismiss();
-  }, []);
+    focusAmountInput();
+  }, [focusAmountInput]);
 
   const footerProps = useMemo(
     () => ({
@@ -819,6 +874,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       !transactionScanResult || transactionSecurityAssessment.isUnableToScan;
 
     if (isUnableToScan) {
+      amountInputRef.current?.blur();
+      Keyboard.dismiss();
       reviewBottomSheetModalRef.current?.present();
     } else {
       handleTransactionConfirmation();
@@ -876,6 +933,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       return;
     }
 
+    amountInputRef.current?.blur();
+    Keyboard.dismiss();
     prepareTransaction(true);
   };
 
@@ -891,146 +950,100 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     return t("transactionAmountScreen.reviewButton");
   };
 
+  const hasUsdPrice =
+    !!selectedBalance?.currentPrice && !selectedBalance.currentPrice.isZero();
+
+  if (!hasUsdPrice && showFiatAmount) {
+    setShowFiatAmount(false);
+  }
+
+  const secondaryConversionAmount = showFiatAmount
+    ? formatTokenForDisplay(tokenAmount, selectedBalance?.tokenCode)
+    : formatFiatInputDisplay(fiatAmountDisplay);
+
+  const availableAmountText = spendableBalance
+    ? formatTokenForDisplay(
+        (isCustomToken && selectedBalance && "decimals" in selectedBalance
+          ? spendableBalance.shiftedBy(-selectedBalance.decimals)
+          : spendableBalance
+        ).toString(),
+        selectedBalance?.tokenCode,
+      )
+    : null;
+
+  const availableBalanceText = availableAmountText
+    ? `${availableAmountText} ${t("common.available")}`
+    : null;
+
+  // recipientName takes priority — it carries wallet nicknames and future
+  // user-editable custom labels. Falls back to the federation address when
+  // no custom name is set, then to undefined (the row will show the truncated
+  // public key on its own).
+  const recipientDisplayName =
+    recipientName ||
+    (federationAddress ? truncateFedAddress(federationAddress) : undefined);
+
   return (
-    <BaseLayout insets={{ top: false }}>
+    <BaseLayout useKeyboardAvoidingView insets={{ top: false }}>
       <View className="flex-1" testID="send-amount-screen">
         <View className="items-center gap-[12px] max-xs:gap-[6px]">
-          <View className="rounded-[12px] gap-[8px] max-xs:gap-[4px] py-[12px] max-xs:py-[8px] px-[16px] max-xs:px-[12px] items-center">
-            {showFiatAmount ? (
-              <HighlightedAmountDisplay
-                rawInput={
-                  fiatAmountDisplayRaw !== null &&
-                  !shouldSkipHighlighting(fiatAmountDisplayRaw)
-                    ? fiatAmountDisplayRaw
-                    : null
-                }
-                formattedDisplay={formatFiatInputDisplay(fiatAmountDisplay)}
-                isSmallScreen={isSmallScreen}
-                highlightColor={themeColors.text.primary}
-                normalColor={themeColors.text.primary}
-                secondaryColor={themeColors.text.secondary}
-              />
-            ) : (
-              <View className="flex-row items-center gap-[4px]">
-                <Display
-                  size={isSmallScreen ? "lg" : "xl"}
-                  medium
-                  adjustsFontSizeToFit
-                  numberOfLines={1}
-                  minimumFontScale={0.6}
-                  {...(Number(tokenAmount) > 0
-                    ? { primary: true }
-                    : { secondary: true })}
-                >
-                  {tokenAmountDisplay}{" "}
-                  <RNText style={{ color: themeColors.text.secondary }}>
-                    {selectedBalance?.tokenCode}
-                  </RNText>
-                </Display>
-              </View>
-            )}
-            <View className="flex-row items-center justify-center">
-              <Text lg medium secondary>
-                {showFiatAmount
-                  ? formatTokenForDisplay(
-                      tokenAmount,
-                      selectedBalance?.tokenCode,
-                    )
-                  : formatFiatInputDisplay(fiatAmountDisplay)}
-              </Text>
-              <TouchableOpacity
-                className="ml-2"
-                hitSlop={10}
-                onPress={() => setShowFiatAmount(!showFiatAmount)}
-              >
-                <Icon.RefreshCcw03
-                  size={16}
-                  color={themeColors.text.secondary}
-                />
-              </TouchableOpacity>
-            </View>
-          </View>
-          <View className="rounded-[16px] py-[12px] px-[16px] bg-background-tertiary">
-            {selectedBalance && (
-              <BalanceRow
-                isSingleRow
-                onPress={navigateToSelectTokenScreen}
-                balance={selectedBalance}
-                spendableAmount={spendableBalance}
-                rightContent={
-                  <IconButton
-                    Icon={Icon.ChevronRight}
-                    size="sm"
-                    variant="ghost"
-                  />
-                }
-                testID="send-token-row"
-              />
-            )}
-          </View>
-          <View className="rounded-[16px] py-[12px] px-[16px] bg-background-tertiary max-xs:mt-[4px]">
+          <View className="rounded-[12px] py-[12px] px-[16px] bg-background-tertiary max-xs:mt-[4px] w-full">
             <ContactRow
               isSingleRow
+              hasDarkBackground
               onPress={navigateToSelectContactScreen}
               address={recipientAddress}
-              name={
-                federationAddress
-                  ? truncateFedAddress(federationAddress)
-                  : undefined
-              }
+              name={recipientDisplayName}
               testID="send-recipient-row"
               rightElement={
-                <IconButton
-                  Icon={Icon.ChevronRight}
-                  size="sm"
-                  variant="ghost"
-                />
+                <View className="w-[36px] h-[36px] items-center justify-center rounded-full bg-background-primary">
+                  <Icon.ChevronRight
+                    size={14}
+                    color={themeColors.text.secondary}
+                  />
+                </View>
               }
             />
           </View>
+
+          <AmountCard
+            mode="editable"
+            label={t("transactionAmountScreen.sendingLabel")}
+            selectedToken={selectedBalance}
+            onPickerPress={navigateToSelectTokenScreen}
+            pickerTestID="send-token-row"
+            inputTestID="amount-text-input"
+            focusTriggerTestID="send-amount-focus-trigger"
+            inputRef={amountInputRef}
+            autoFocus
+            accessibilityLabel={t("transactionAmountScreen.setAmount")}
+            accessibilityHint={t("transactionAmountScreen.title")}
+            availableBalanceText={availableBalanceText}
+            converter={converter}
+            hasUsdPrice={hasUsdPrice}
+            secondaryAmountText={secondaryConversionAmount}
+          />
         </View>
+
         <View className="flex-1 items-center mt-[24px] gap-[24px]">
-          <View className="flex-row gap-[8px]">
-            <View className="flex-1">
-              <Button secondary xl onPress={() => handlePercentagePress(25)}>
-                {t("transactionAmountScreen.percentageButtons.twentyFive")}
-              </Button>
-            </View>
-            <View className="flex-1">
-              <Button secondary xl onPress={() => handlePercentagePress(50)}>
-                {t("transactionAmountScreen.percentageButtons.fifty")}
-              </Button>
-            </View>
-            <View className="flex-1">
-              <Button secondary xl onPress={() => handlePercentagePress(75)}>
-                {t("transactionAmountScreen.percentageButtons.seventyFive")}
-              </Button>
-            </View>
-            <View className="flex-1">
-              <Button secondary xl onPress={() => handlePercentagePress(100)}>
-                {t("transactionAmountScreen.percentageButtons.max")}
-              </Button>
-            </View>
-          </View>
-          <View className="w-full">
-            <NumericKeyboard onPress={handleDisplayAmountChange} />
-          </View>
-          <View className="w-full mt-auto mb-4">
-            <Button
-              tertiary
-              xl
-              onPress={handleContinueButtonPress}
-              disabled={isContinueButtonDisabled}
-              testID="send-continue-button"
-            >
-              {getContinueButtonText()}
-            </Button>
-          </View>
+          <PercentageButtons onPress={handlePercentagePress} />
         </View>
+      </View>
+
+      <View className="w-full mt-auto mb-[8px]">
+        <Button
+          tertiary
+          xl
+          onPress={handleContinueButtonPress}
+          disabled={isContinueButtonDisabled}
+          testID="send-continue-button"
+        >
+          {getContinueButtonText()}
+        </Button>
       </View>
       <BottomSheet
         modalRef={reviewBottomSheetModalRef}
-        handleCloseModal={() => reviewBottomSheetModalRef.current?.dismiss()}
+        handleCloseModal={handleCancelReview}
         analyticsEvent={AnalyticsEvent.VIEW_SEND_CONFIRM}
         scrollable
         bottomSheetModalProps={{ accessible: false }}
@@ -1086,9 +1099,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       />
       <BottomSheet
         modalRef={transactionSettingsBottomSheetModalRef}
-        handleCloseModal={() =>
-          transactionSettingsBottomSheetModalRef.current?.dismiss()
-        }
+        handleCloseModal={handleCancelTransactionSettings}
         customContent={
           <TransactionSettingsBottomSheet
             context={TransactionContext.Send}

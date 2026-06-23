@@ -21,6 +21,9 @@ export const POSITIVE_PRICE_CHANGE_THRESHOLD = new BigNumber(0.0099999);
 
 export const TOGGLE_ANIMATION_DURATION = 400;
 
+/** Display duration (ms) for error toasts surfaced from auth/account flows. */
+export const ERROR_TOAST_DURATION = 6000;
+
 // This is used to prevent rows from highlighting when the user is scrolling
 export const DEFAULT_PRESS_DELAY = 100;
 
@@ -37,6 +40,20 @@ export const HISTORY_FETCH_POLLING_INTERVAL = 30000;
 
 // Transaction fee constants
 export const NATIVE_TOKEN_CODE = "XLM";
+/**
+ * Horizon's wire string for the native (XLM) asset's `asset_type` / `id`.
+ * Distinct from `NATIVE_TOKEN_CODE` ("XLM"): raw Horizon responses use
+ * "native", but normalized surfaces use "XLM". Prefer the
+ * {@link isNativeAssetId} guard over comparing to either sentinel directly.
+ */
+export const HORIZON_NATIVE_ASSET_TYPE = "native";
+
+/**
+ * True if `id` refers to native XLM, matching both Horizon's raw "native"
+ * sentinel and the normalized NATIVE_TOKEN_CODE ("XLM").
+ */
+export const isNativeAssetId = (id: string | undefined | null): boolean =>
+  id === HORIZON_NATIVE_ASSET_TYPE || id === NATIVE_TOKEN_CODE;
 export const MIN_TRANSACTION_FEE = "0.00001";
 export const BASE_RESERVE = BigNumber(0.5);
 export const MINIMUM_CREATE_ACCOUNT_XLM = 1;
@@ -50,7 +67,7 @@ export const CIRCLE_USDC_CONTRACT =
   "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
 
 // Slippage constants
-export const DEFAULT_SLIPPAGE = 1;
+export const DEFAULT_SLIPPAGE = 2;
 export const MIN_SLIPPAGE = 0;
 export const MAX_SLIPPAGE = 10;
 
@@ -82,6 +99,13 @@ export const VALIDATION_DECOY_WORDS: number = 6;
 
 export const DEFAULT_DECIMALS = 7;
 export const FIAT_DECIMALS = 2;
+
+/**
+ * Absolute maximum amount for a classic Stellar token: 2^63 - 1 scaled by
+ * 10^7 (the protocol's fixed 7-decimal precision). Soroban / custom tokens
+ * have no protocol-level max here and rely on their own `decimals` field.
+ */
+export const CLASSIC_TOKEN_MAX_AMOUNT = "922337203685.4775807";
 
 // Bottom sheet layout defaults
 export const BOTTOM_SHEET_MAX_HEIGHT_RATIO = 0.9;
@@ -292,6 +316,8 @@ export enum STORAGE_KEYS {
   RECENT_ADDRESSES = "recentAddresses",
   MEMO_REQUIRED_ACCOUNTS = "memoRequiredAccounts",
   VERIFIED_TOKENS_PREFIX = "verifiedTokens_",
+  STELLAR_EXPERT_TOP_TOKENS_PREFIX = "stellarExpertTopTokens_",
+  BLOCKAID_TOKEN_SCANS_PREFIX = "blockaidTokenScans_",
   WELCOME_BANNER_SHOWN_PREFIX = "welcomeBanner_shown_",
   HAS_SEEN_BIOMETRICS_ENABLE_SCREEN = "hasSeenBiometricsEnableScreen",
   HAS_SEEN_DISCOVER_WELCOME = "hasSeenDiscoverWelcome",
@@ -340,20 +366,14 @@ export const BROWSER_CONSTANTS = {
   MAX_SCREENSHOTS_STORED: 30,
   MAX_ACTIVE_WEBVIEWS: 10, // Maximum number of active WebView instances
   SCREENSHOT_FORMAT: "jpg",
-  SCREENSHOT_QUALITY: 0.25,
+  SCREENSHOT_QUALITY: 0.5,
   SCREENSHOT_WIDTH: 400,
   SCREENSHOT_HEIGHT: 600,
   SCREENSHOT_ON_LOAD_DELAY: 500, // Take screenshot after site finishes loading
   SCREENSHOT_SCROLL_DELAY: 1000, // Take screenshot after 1s of no-scrolling
   SCREENSHOT_FINAL_DELAY: 2000, // Take screenshot after site animations complete
-  // BLUR STRNGTH NEEDS TO BE ODD NUMBERS, IE 15, 25, 35, 55, 75, 95, etc.
-  SCREENSHOT_BLUR_STRENGTH: {
-    LIGHT: 15,
-    MEDIUM: 25,
-    STRONG: 35,
-    VERY_STRONG: 55,
-    EXTREMELY_STRONG: 151,
-  },
+  SCREENSHOT_DEK_SERVICE: "screenshot_dek", // Keychain service name for the screenshot DEK
+  SCREENSHOT_FILES_DIR: "tab-screenshots", // Subdirectory under CachesDirectoryPath
   OPEN_ANIMATION_DURATION: 200,
   CLOSE_ANIMATION_DURATION: 200,
   TAB_SWITCH_SPINNER_DELAY: 500,
@@ -411,8 +431,8 @@ export const FINGERPRINT_BIOMETRY_TYPES = [
 export enum QRCodeSource {
   /** For scanning addresses in Send flow */
   ADDRESS_INPUT = "address_input",
-  /** For scanning WalletConnect URIs */
-  WALLET_CONNECT = "wallet_connect",
+  /** For scanning from the home screen (handles both addresses and WalletConnect) */
+  HOME_SCANNER = "home_scanner",
   /** For scanning wallet import data */
   IMPORT_WALLET = "import_wallet",
 }

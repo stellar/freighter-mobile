@@ -4,6 +4,7 @@ import BottomSheet from "components/BottomSheet";
 import ManageAccountBottomSheet from "components/screens/HomeScreen/ManageAccountBottomSheet";
 import RenameAccountModal from "components/screens/HomeScreen/RenameAccountModal";
 import { AnalyticsEvent } from "config/analyticsConfig";
+import { ERROR_TOAST_DURATION } from "config/constants";
 import {
   MainTabStackParamList,
   RootStackParamList,
@@ -15,6 +16,7 @@ import { ActiveAccount, useAuthenticationStore } from "ducks/auth";
 import { toPercent } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
+import { useToast } from "providers/ToastProvider";
 import React, { useCallback, useState } from "react";
 import { analytics } from "services/analytics";
 
@@ -27,6 +29,7 @@ interface ManageAccountsProps {
   activeAccount: ActiveAccount | null;
   bottomSheetRef: React.RefObject<BottomSheetModal | null>;
   showAddWallet?: boolean;
+  isLoadingAccounts?: boolean;
 }
 
 const SNAP_VALUE_PERCENT = 80;
@@ -38,6 +41,7 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
   activeAccount,
   bottomSheetRef,
   showAddWallet = true,
+  isLoadingAccounts = false,
 }) => {
   const {
     renameAccount,
@@ -46,6 +50,7 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
     isSwitchingAccount,
   } = useAuthenticationStore();
   const { copyToClipboard } = useClipboard();
+  const { showToast } = useToast();
   const { t } = useAppTranslation();
 
   const [accountToRename, setAccountToRename] = useState<Account | null>(null);
@@ -54,6 +59,26 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
   const [switchingToPublicKey, setSwitchingToPublicKey] = useState<
     string | null
   >(null);
+
+  const handleSheetPresent = useCallback(
+    (index: number) => {
+      if (
+        index >= 0 &&
+        accounts.length === 0 &&
+        activeAccount &&
+        !isLoadingAccounts
+      ) {
+        showToast({
+          toastId: "manage-accounts-load-error",
+          variant: "error",
+          title: t("authStore.error.getAccountsFailedTitle"),
+          message: t("authStore.error.getAccountsFailedMessage"),
+          duration: ERROR_TOAST_DURATION,
+        });
+      }
+    },
+    [accounts.length, activeAccount, isLoadingAccounts, showToast, t],
+  );
 
   const handleCopyAddress = useCallback(
     (publicKey?: string) => {
@@ -139,6 +164,7 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
         enablePanDownToClose={false}
         enableDynamicSizing={false}
         analyticsEvent={AnalyticsEvent.VIEW_MANAGE_WALLETS}
+        bottomSheetModalProps={{ onChange: handleSheetPresent }}
         customContent={
           <ManageAccountBottomSheet
             handleCloseModal={handleCloseModal}

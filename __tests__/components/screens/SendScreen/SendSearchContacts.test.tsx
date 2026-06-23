@@ -1,14 +1,23 @@
 import { NavigationContainer, RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { screen, userEvent, waitFor } from "@testing-library/react-native";
+import {
+  act,
+  fireEvent,
+  screen,
+  userEvent,
+  waitFor,
+} from "@testing-library/react-native";
 import { SendSearchContacts } from "components/screens/SendScreen";
 import {
   RootStackParamList,
   SEND_PAYMENT_ROUTES,
   SendPaymentStackParamList,
 } from "config/routes";
+import { Account } from "config/types";
+import { useAuthenticationStore } from "ducks/auth";
 import * as sendDuck from "ducks/sendRecipient";
 import * as transactionSettingsDuck from "ducks/transactionSettings";
+import { isFederationAddress } from "helpers/stellar";
 import { renderWithProviders } from "helpers/testUtils";
 import React, { ReactNode } from "react";
 import { View } from "react-native";
@@ -49,6 +58,7 @@ const mockLoadRecentAddresses = jest.fn();
 const mockSearchAddress = jest.fn();
 const mockAddRecentAddress = jest.fn();
 const mockSetDestinationAddress = jest.fn();
+const mockPrepareForSearch = jest.fn();
 const mockReset = jest.fn();
 
 // Create mock data
@@ -70,8 +80,8 @@ const mockSearchResults = [
 ];
 
 // Create a function to get the useSendStore implementation
-const getSendStoreMock = (overrides = {}) =>
-  jest.fn().mockReturnValue({
+const getSendStoreMock = (overrides = {}) => {
+  const state = {
     recentAddresses: [],
     searchResults: [],
     searchError: null,
@@ -86,10 +96,16 @@ const getSendStoreMock = (overrides = {}) =>
     searchAddress: mockSearchAddress,
     addRecentAddress: mockAddRecentAddress,
     setDestinationAddress: mockSetDestinationAddress,
-    prepareForSearch: jest.fn(),
+    prepareForSearch: mockPrepareForSearch,
     resetSendRecipient: mockReset,
     ...overrides,
-  });
+  };
+  const fn = jest.fn().mockReturnValue(state) as jest.Mock & {
+    getState: jest.Mock;
+  };
+  fn.getState = jest.fn().mockReturnValue(state);
+  return fn;
+};
 
 jest.mock("ducks/sendRecipient", () => ({
   useSendRecipientStore: getSendStoreMock(),
@@ -98,6 +114,7 @@ jest.mock("ducks/sendRecipient", () => ({
 const getTransactionSettingsStoreMock = (overrides = {}) => ({
   saveRecipientAddress: jest.fn(),
   saveFederationAddress: jest.fn(),
+  saveRecipientName: jest.fn(),
   saveMemo: jest.fn(),
   saveMemoType: jest.fn(),
   saveSelectedCollectibleDetails: jest.fn(),
@@ -110,6 +127,7 @@ jest.mock("ducks/transactionSettings", () => ({
   useTransactionSettingsStore: jest.fn().mockReturnValue({
     saveRecipientAddress: jest.fn(),
     saveFederationAddress: jest.fn(),
+    saveRecipientName: jest.fn(),
     saveMemo: jest.fn(),
     saveMemoType: jest.fn(),
     saveSelectedCollectibleDetails: jest.fn(),
@@ -120,6 +138,10 @@ jest.mock("ducks/transactionSettings", () => ({
 
 jest.mock("ducks/qrData", () => ({
   useQRDataStore: () => ({ clearQRData: jest.fn() }),
+}));
+
+jest.mock("ducks/auth", () => ({
+  useAuthenticationStore: jest.fn(),
 }));
 
 jest.mock("hooks/useInAppBrowser", () => ({
@@ -161,6 +183,7 @@ const mockNavigation = {
   reset: jest.fn(),
   replace: jest.fn(),
   popToTop: jest.fn(),
+  popTo: jest.fn(),
   setParams: jest.fn(),
 } as unknown as SendSearchContactsNavigationProp;
 
@@ -177,6 +200,7 @@ jest.mock("hooks/useAppTranslation", () => () => ({
       "sendPaymentScreen.recents": "Recent",
       "sendPaymentScreen.suggestions": "Suggestions",
       "common.paste": "Paste",
+      "sendSearchContacts.myWallets": "My Wallets",
       "sendSearchContacts.unfunded.title":
         "The destination account doesn't exist",
       "sendSearchContacts.unfunded.action":
@@ -186,6 +210,25 @@ jest.mock("hooks/useAppTranslation", () => () => ({
     return translations[key] || key;
   },
 }));
+
+const mockUseAuthenticationStore =
+  useAuthenticationStore as jest.MockedFunction<typeof useAuthenticationStore>;
+
+const mockAccounts: Account[] = [
+  {
+    id: "wallet-1",
+    name: "My Second Wallet",
+    publicKey: "GBLS3IXAFSUWBSW3RXJMNXEGCHXEUL6VMBLFGVFPW47X2OL7BG7QQMUQ",
+  },
+  {
+    id: "wallet-2",
+    name: "Savings",
+    publicKey: "GACJYENHYW2LGHBNNGNZ4NCBGZYVTGTZM4CJLQIOQQ5IUZU3SYWOW5EK",
+  },
+];
+
+const activePublicKey =
+  "GDAS7BS4XKW27H2K5C25V6ZU46FCFGBTFQGFDZURAKVPA6QYQG4GTWBC";
 
 describe("SendSearchContacts", () => {
   beforeEach(() => {
@@ -197,6 +240,10 @@ describe("SendSearchContacts", () => {
         loadRecentAddresses: mockLoadRecentAddresses,
       }),
     );
+    mockUseAuthenticationStore.mockReturnValue({
+      allAccounts: mockAccounts,
+      account: { publicKey: activePublicKey } as any,
+    } as any);
   });
 
   it("renders correctly with the search input", async () => {
@@ -247,6 +294,8 @@ describe("SendSearchContacts", () => {
   });
 
   it("shows search suggestions when text is entered", async () => {
+    jest.useFakeTimers();
+
     // Setup the mock to return search results for this specific test
     jest.spyOn(sendDuck, "useSendRecipientStore").mockImplementation(
       getSendStoreMock({
@@ -263,10 +312,44 @@ describe("SendSearchContacts", () => {
     );
 
     const input = await screen.findByPlaceholderText("Enter address");
-    await userEvent.type(input, "test");
+    fireEvent.changeText(input, "test");
+
+    expect(mockPrepareForSearch).toHaveBeenCalled();
+    expect(mockSearchAddress).not.toHaveBeenCalled();
+
+    act(() => {
+      jest.runAllTimers();
+    });
 
     await waitFor(() => {
       expect(mockSearchAddress).toHaveBeenCalledWith("test");
+    });
+
+    jest.useRealTimers();
+  });
+
+  it("keeps recents and wallets visible while typing an invalid address", async () => {
+    jest.spyOn(sendDuck, "useSendRecipientStore").mockImplementation(
+      getSendStoreMock({
+        searchResults: mockSearchResults,
+        recentAddresses: mockRecentAddresses,
+        loadRecentAddresses: mockLoadRecentAddresses,
+        isValidDestination: false,
+      }),
+    );
+
+    renderWithProviders(
+      <NavigationContainer>
+        <SendSearchContacts navigation={mockNavigation} route={mockRoute} />
+      </NavigationContainer>,
+    );
+
+    const input = await screen.findByPlaceholderText("Enter address");
+    await userEvent.type(input, "GABC");
+
+    await waitFor(() => {
+      expect(screen.getByText("Recent Contact")).toBeTruthy();
+      expect(screen.getByText("My Second Wallet")).toBeTruthy();
     });
   });
 
@@ -407,6 +490,206 @@ describe("SendSearchContacts", () => {
         expect(screen.getByPlaceholderText("Enter address")).toBeTruthy();
       });
       expect(screen.queryByText(unfundedTitle)).toBeNull();
+    });
+  });
+
+  describe("My Wallets section", () => {
+    beforeEach(() => {
+      jest.spyOn(sendDuck, "useSendRecipientStore").mockImplementation(
+        getSendStoreMock({
+          recentAddresses: [],
+          loadRecentAddresses: mockLoadRecentAddresses,
+        }),
+      );
+      mockUseAuthenticationStore.mockReturnValue({
+        allAccounts: mockAccounts,
+        account: { publicKey: activePublicKey } as any,
+      } as any);
+    });
+
+    it("renders rows for wallets other than active account", async () => {
+      renderWithProviders(
+        <NavigationContainer>
+          <SendSearchContacts navigation={mockNavigation} route={mockRoute} />
+        </NavigationContainer>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("My Second Wallet")).toBeTruthy();
+        expect(screen.getByText("Savings")).toBeTruthy();
+      });
+    });
+
+    it("does not render active account row", async () => {
+      mockUseAuthenticationStore.mockReturnValue({
+        allAccounts: [
+          ...mockAccounts,
+          { id: "active", name: "Active Wallet", publicKey: activePublicKey },
+        ],
+        account: { publicKey: activePublicKey } as any,
+      } as any);
+
+      renderWithProviders(
+        <NavigationContainer>
+          <SendSearchContacts navigation={mockNavigation} route={mockRoute} />
+        </NavigationContainer>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("My Second Wallet")).toBeTruthy();
+      });
+      expect(screen.queryByText("Active Wallet")).toBeNull();
+    });
+
+    it("sets destination address when wallet row is tapped", async () => {
+      renderWithProviders(
+        <NavigationContainer>
+          <SendSearchContacts navigation={mockNavigation} route={mockRoute} />
+        </NavigationContainer>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("My Second Wallet")).toBeTruthy();
+      });
+
+      await userEvent.press(screen.getByTestId("my-wallet-row-wallet-1"));
+
+      await waitFor(() => {
+        expect(mockSetDestinationAddress).toHaveBeenCalledWith(
+          "GBLS3IXAFSUWBSW3RXJMNXEGCHXEUL6VMBLFGVFPW47X2OL7BG7QQMUQ",
+        );
+      });
+    });
+
+    it("saves the wallet nickname as recipientName when wallet row is tapped", async () => {
+      const mockSaveRecipientName = jest.fn();
+      const mockSaveFederationAddress = jest.fn();
+
+      jest
+        .spyOn(transactionSettingsDuck, "useTransactionSettingsStore")
+        .mockReturnValue(
+          getTransactionSettingsStoreMock({
+            saveRecipientName: mockSaveRecipientName,
+            saveFederationAddress: mockSaveFederationAddress,
+          }),
+        );
+
+      renderWithProviders(
+        <NavigationContainer>
+          <SendSearchContacts navigation={mockNavigation} route={mockRoute} />
+        </NavigationContainer>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("My Second Wallet")).toBeTruthy();
+      });
+
+      await userEvent.press(screen.getByTestId("my-wallet-row-wallet-1"));
+
+      await waitFor(() => {
+        // Wallet nicknames go into recipientName, not federationAddress
+        expect(mockSaveRecipientName).toHaveBeenCalledWith("My Second Wallet");
+        expect(mockSaveFederationAddress).toHaveBeenCalledWith("");
+      });
+    });
+
+    it("does not save recipientName when contact name is federation address", async () => {
+      const mockSaveRecipientAddress = jest.fn();
+      const mockSaveRecipientName = jest.fn();
+
+      (isFederationAddress as jest.Mock).mockImplementation((value: string) =>
+        value.includes("*"),
+      );
+
+      jest
+        .spyOn(transactionSettingsDuck, "useTransactionSettingsStore")
+        .mockReturnValue(
+          getTransactionSettingsStoreMock({
+            saveRecipientAddress: mockSaveRecipientAddress,
+            saveRecipientName: mockSaveRecipientName,
+          }),
+        );
+
+      const sendStoreMock = getSendStoreMock({
+        recentAddresses: [
+          {
+            id: "recent-fed",
+            address: "GDAS7BS4XKW27H2K5C25V6ZU46FCFGBTFQGFDZURAKVPA6QYQG4GTWBC",
+            name: "alice*example.com",
+          },
+        ],
+        // Re-resolution returns the same address; handleContactPress reads
+        // searchResults via useSendRecipientStore.getState() to pick the
+        // (possibly remapped) resolved key.
+        searchResults: [
+          {
+            id: "search-fed",
+            address: "GDAS7BS4XKW27H2K5C25V6ZU46FCFGBTFQGFDZURAKVPA6QYQG4GTWBC",
+            name: "alice*example.com",
+          },
+        ],
+        loadRecentAddresses: mockLoadRecentAddresses,
+      });
+      jest
+        .spyOn(sendDuck, "useSendRecipientStore")
+        .mockImplementation(sendStoreMock);
+      // jest.spyOn replaces the hook function but not the static .getState
+      // helper attached to it; re-bind it so the source's getState() call
+      // returns the same overridden state.
+      (
+        sendDuck.useSendRecipientStore as unknown as { getState: jest.Mock }
+      ).getState = sendStoreMock.getState;
+
+      renderWithProviders(
+        <NavigationContainer>
+          <SendSearchContacts navigation={mockNavigation} route={mockRoute} />
+        </NavigationContainer>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("alice*example.com")).toBeTruthy();
+      });
+
+      await userEvent.press(screen.getByText("alice*example.com"));
+
+      await waitFor(() => {
+        expect(mockSaveRecipientAddress).toHaveBeenCalledWith(
+          "GDAS7BS4XKW27H2K5C25V6ZU46FCFGBTFQGFDZURAKVPA6QYQG4GTWBC",
+        );
+        expect(mockSaveRecipientName).toHaveBeenCalledWith("");
+      });
+    });
+
+    it("shows My Wallets header when other accounts exist", async () => {
+      renderWithProviders(
+        <NavigationContainer>
+          <SendSearchContacts navigation={mockNavigation} route={mockRoute} />
+        </NavigationContainer>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("My Wallets")).toBeTruthy();
+      });
+    });
+
+    it("hides My Wallets section when there are no other accounts", async () => {
+      mockUseAuthenticationStore.mockReturnValue({
+        allAccounts: [
+          { id: "active", name: "Active Wallet", publicKey: activePublicKey },
+        ],
+        account: { publicKey: activePublicKey } as any,
+      } as any);
+
+      renderWithProviders(
+        <NavigationContainer>
+          <SendSearchContacts navigation={mockNavigation} route={mockRoute} />
+        </NavigationContainer>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText("Enter address")).toBeTruthy();
+      });
+      expect(screen.queryByText("My Wallets")).toBeNull();
     });
   });
 });
