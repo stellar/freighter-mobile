@@ -33,25 +33,22 @@ const SegmentedControl: React.FC<SegmentedControlProps> = ({
   const { themeColors } = useColors();
 
   return (
-    <View className="bg-background-tertiary rounded-lg flex-row">
-      {options.map((option, index) => {
+    <View className="flex-row gap-2 w-full">
+      {options.map((option) => {
         const isSelected = option.value === selectedValue;
-        const isFirst = index === 0;
-        const isLast = index === options.length - 1;
 
         return (
           <TouchableOpacity
             key={option.value}
             onPress={() => !disabled && onValueChange(option.value)}
             disabled={disabled}
-            className={`flex-1 py-2 px-3 ${isSelected ? "bg-lilac-4" : ""} ${
-              isFirst ? "rounded-l-lg" : ""
-            } ${isLast ? "rounded-r-lg" : ""}`}
+            className={`flex-1 items-center justify-center rounded-md px-[10px] py-[6px] ${
+              isSelected ? "bg-lilac-4" : ""
+            }`}
           >
             <Text
-              md
-              medium={isSelected}
-              semiBold={!isSelected}
+              sm
+              semiBold
               textAlign="center"
               color={
                 isSelected ? themeColors.lilac[11] : themeColors.text.secondary

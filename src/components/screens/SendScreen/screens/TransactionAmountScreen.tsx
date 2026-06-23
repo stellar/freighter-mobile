@@ -241,6 +241,10 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   const transactionSettingsBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const feeBreakdownBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const muxedAddressInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  // In-progress inclusion fee previewed in the breakdown (not yet saved).
+  const [feeBreakdownInclusionFee, setFeeBreakdownInclusionFee] = useState<
+    string | undefined
+  >(undefined);
   const [transactionScanResult, setTransactionScanResult] = useState<
     Blockaid.StellarTransactionScanResponse | undefined
   >(undefined);
@@ -1300,9 +1304,10 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             onCancel={handleCancelTransactionSettings}
             onConfirm={handleConfirmTransactionSettings}
             onSettingsChange={handleSettingsChange}
-            onOpenFeeBreakdown={() =>
-              feeBreakdownBottomSheetModalRef.current?.present()
-            }
+            onOpenFeeBreakdown={(inclusionFeeXlm) => {
+              setFeeBreakdownInclusionFee(inclusionFeeXlm);
+              feeBreakdownBottomSheetModalRef.current?.present();
+            }}
           />
         }
       />
@@ -1318,6 +1323,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
               selectedBalance,
               recipientAddress,
             )}
+            inclusionFeeXlmOverride={feeBreakdownInclusionFee}
           />
         }
       />

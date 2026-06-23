@@ -48,9 +48,11 @@ jest.mock("hooks/useColors", () => ({
       foreground: { primary: "#000000" },
       gray: { 8: "#666666" },
       status: { error: "#ff0000", warning: "#ffaa00" },
-      background: { primary: "#ffffff" },
+      background: { primary: "#ffffff", tertiary: "#f0f0f0" },
+      text: { secondary: "#999999" },
       lilac: {
         9: "#6e56cf",
+        11: "#9d8bff",
       },
     },
   }),
@@ -59,6 +61,11 @@ jest.mock("hooks/useNetworkFees", () => ({
   useNetworkFees: () => ({
     recommendedFee: "100",
     networkCongestion: "LOW",
+    feePresets: {
+      low: "0.0001",
+      medium: "0.001",
+      high: "0.01",
+    },
   }),
 }));
 jest.mock("hooks/useValidateMemo", () => ({
@@ -288,6 +295,125 @@ describe("TransactionSettingsBottomSheet - onSettingsChange Integration", () => 
     expect(mockTransactionSettingsState.saveMemo).toHaveBeenCalledWith(
       "Required memo for GA6SXIZIKLJHCZI2KEOBEUUOFMM4JUPPM2UTWX6STAWT25JWIEUFIMFF",
     );
+  });
+
+  it("sets the fee to the High preset when the High tab is pressed", async () => {
+    const { getByText } = renderWithProviders(
+      <TransactionSettingsBottomSheet
+        onCancel={mockOnCancel}
+        onConfirm={mockOnConfirm}
+        context={TransactionContext.Send}
+        onSettingsChange={mockOnSettingsChange}
+      />,
+    );
+
+    fireEvent.press(getByText("transactionSettings.priorityHigh"));
+    fireEvent.press(getByText("common.save"));
+
+    await waitFor(() => {
+      expect(
+        mockTransactionSettingsState.saveTransactionFee,
+      ).toHaveBeenCalledWith("0.01");
+    });
+  });
+
+  it("sets the fee to the Low preset when the Low tab is pressed", async () => {
+    const { getByText } = renderWithProviders(
+      <TransactionSettingsBottomSheet
+        onCancel={mockOnCancel}
+        onConfirm={mockOnConfirm}
+        context={TransactionContext.Send}
+        onSettingsChange={mockOnSettingsChange}
+      />,
+    );
+
+    fireEvent.press(getByText("transactionSettings.priorityLow"));
+    fireEvent.press(getByText("common.save"));
+
+    await waitFor(() => {
+      expect(
+        mockTransactionSettingsState.saveTransactionFee,
+      ).toHaveBeenCalledWith("0.0001");
+    });
+  });
+
+  it("locks the fee input for presets and unlocks it for Custom", async () => {
+    const { getByText, getByTestId } = renderWithProviders(
+      <TransactionSettingsBottomSheet
+        onCancel={mockOnCancel}
+        onConfirm={mockOnConfirm}
+        context={TransactionContext.Send}
+        onSettingsChange={mockOnSettingsChange}
+      />,
+    );
+
+    // The stored fee (100) matches no preset, so "Custom" is the default tier
+    // and the input is editable.
+    expect(getByTestId("fee-input").props.editable).toBe(true);
+
+    // Selecting a preset locks the input.
+    fireEvent.press(getByText("transactionSettings.priorityMed"));
+    await waitFor(() => {
+      expect(getByTestId("fee-input").props.editable).toBe(false);
+    });
+
+    // "Custom" unlocks it again for manual entry.
+    fireEvent.press(getByText("transactionSettings.priorityCustom"));
+    await waitFor(() => {
+      expect(getByTestId("fee-input").props.editable).toBe(true);
+    });
+  });
+
+  it("previews the selected inclusion fee in the breakdown without saving", async () => {
+    // Make this a Soroban transaction so the info icon opens the fee breakdown.
+    mockIsContractId.mockReturnValue(true);
+    const mockOnOpenFeeBreakdown = jest.fn();
+
+    const { getByText, getByTestId } = renderWithProviders(
+      <TransactionSettingsBottomSheet
+        onCancel={mockOnCancel}
+        onConfirm={mockOnConfirm}
+        context={TransactionContext.Send}
+        onSettingsChange={mockOnSettingsChange}
+        onOpenFeeBreakdown={mockOnOpenFeeBreakdown}
+      />,
+    );
+
+    // Pick the High preset, then open the breakdown via the info icon.
+    fireEvent.press(getByText("transactionSettings.priorityHigh"));
+    fireEvent.press(getByTestId("fee-info-button"));
+
+    await waitFor(() => {
+      // The breakdown previews the selected fee...
+      expect(mockOnOpenFeeBreakdown).toHaveBeenCalledWith("0.01");
+    });
+
+    // ...but the fee is NOT persisted until the user presses Save.
+    expect(
+      mockTransactionSettingsState.saveTransactionFee,
+    ).not.toHaveBeenCalled();
+  });
+
+  it("opens on the matching preset tier with the input locked", async () => {
+    // A stored fee equal to a preset (here the Medium preset) should open the
+    // sheet on that tier with the input locked.
+    mockUseTransactionSettingsStore.mockReturnValue({
+      ...mockTransactionSettingsState,
+      transactionFee: "0.001",
+    });
+
+    const { getByTestId } = renderWithProviders(
+      <TransactionSettingsBottomSheet
+        onCancel={mockOnCancel}
+        onConfirm={mockOnConfirm}
+        context={TransactionContext.Send}
+        onSettingsChange={mockOnSettingsChange}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(getByTestId("fee-input").props.editable).toBe(false);
+    });
   });
 });
 

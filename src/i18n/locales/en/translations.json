@@ -756,6 +756,11 @@
     "timeoutPlaceholder": "Enter timeout",
     "seconds": "seconds",
     "congestion": "{{networkCongestion}} congestion",
+    "network": "Network",
+    "priorityLow": "Low",
+    "priorityMed": "Med",
+    "priorityHigh": "High",
+    "priorityCustom": "Custom",
     "memoInfo": {
       "title": "Memo",
       "description": "Some destination accounts on the Stellar network require a memo to identify your payment.",

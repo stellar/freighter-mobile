@@ -137,6 +137,10 @@ const SendCollectibleReviewScreen: React.FC<
   const transactionSettingsBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const feeBreakdownBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const muxedAddressInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  // In-progress inclusion fee previewed in the breakdown (not yet saved).
+  const [feeBreakdownInclusionFee, setFeeBreakdownInclusionFee] = useState<
+    string | undefined
+  >(undefined);
   const [transactionScanResult, setTransactionScanResult] = useState<
     Blockaid.StellarTransactionScanResponse | undefined
   >(undefined);
@@ -692,9 +696,10 @@ const SendCollectibleReviewScreen: React.FC<
             onCancel={handleCancelTransactionSettings}
             onConfirm={handleConfirmTransactionSettings}
             onSettingsChange={handleSettingsChange}
-            onOpenFeeBreakdown={() =>
-              feeBreakdownBottomSheetModalRef.current?.present()
-            }
+            onOpenFeeBreakdown={(inclusionFeeXlm) => {
+              setFeeBreakdownInclusionFee(inclusionFeeXlm);
+              feeBreakdownBottomSheetModalRef.current?.present();
+            }}
           />
         }
       />
@@ -707,6 +712,7 @@ const SendCollectibleReviewScreen: React.FC<
           <FeeBreakdownBottomSheet
             onClose={() => feeBreakdownBottomSheetModalRef.current?.dismiss()}
             isSorobanContext
+            inclusionFeeXlmOverride={feeBreakdownInclusionFee}
           />
         }
       />

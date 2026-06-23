@@ -1,3 +1,5 @@
+import BigNumber from "bignumber.js";
+import { FeePresets, FeePriority } from "config/types";
 import { getNumberFormatSettings } from "react-native-localize";
 
 /**
@@ -56,4 +58,33 @@ export const enforceSettingInputDecimalSeparator = (value: string): string => {
   // Reconstruct: remove all separators from before the last one, keep the last part, convert last separator
   const beforeLastWithoutSeparators = beforeLastSeparator.replace(/[.,]/g, "");
   return beforeLastWithoutSeparators + decimalSeparator + afterLastSeparator;
+};
+
+/**
+ * Derives the fee priority tier that matches a given fee amount.
+ *
+ * Returns the matching priority (Low/Med/High) when the fee exactly equals one
+ * of the network-derived presets, otherwise `FeePriority.CUSTOM`. Used to
+ * highlight the correct segment in the fee priority selector — typing any value
+ * that doesn't match a preset naturally lands on "Custom".
+ *
+ * @param {string} feeXlm - The fee amount in XLM (plain numeric string, e.g. "0.0051234")
+ * @param {FeePresets} presets - The network-derived preset fees in XLM
+ * @returns {FeePriority} The matching priority tier, or CUSTOM
+ */
+export const getFeePriority = (
+  feeXlm: string,
+  presets: FeePresets,
+): FeePriority => {
+  const fee = new BigNumber(feeXlm);
+
+  if (fee.isNaN()) {
+    return FeePriority.CUSTOM;
+  }
+
+  const match = (
+    [FeePriority.LOW, FeePriority.MEDIUM, FeePriority.HIGH] as const
+  ).find((priority) => fee.isEqualTo(new BigNumber(presets[priority])));
+
+  return match ?? FeePriority.CUSTOM;
 };

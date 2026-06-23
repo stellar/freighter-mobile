@@ -17,7 +17,7 @@ import {
   SOROBAN_RPC_URLS,
 } from "config/constants";
 import { logger } from "config/logger";
-import { NetworkCongestion } from "config/types";
+import { FeePresets, FeePriority, NetworkCongestion } from "config/types";
 import { formatTokenIdentifier } from "helpers/balances";
 import { stroopToXlm, xlmToStroop } from "helpers/formatAmount";
 import { getIsSwap } from "helpers/history";
@@ -25,6 +25,10 @@ import { getIsSwap } from "helpers/history";
 // Retry configuration for transaction submission
 export const SUBMIT_BACKOFF_MAX_ATTEMPTS = 5;
 export const BASE_BACKOFF_SEC = 1000; // Base delay in milliseconds
+
+// Ledger capacity usage thresholds (0-1) that map to network congestion levels.
+const LEDGER_CAPACITY_MEDIUM_THRESHOLD = 0.5;
+const LEDGER_CAPACITY_HIGH_THRESHOLD = 0.75;
 
 interface HorizonError {
   response: {
@@ -167,16 +171,33 @@ export const submitTx = async (
 export const getNetworkFees = async (server: Horizon.Server) => {
   let recommendedFee = "";
   let networkCongestion = "" as NetworkCongestion;
+  // Inclusion-fee presets (XLM) for the Low/Med/High priority tiers, derived
+  // from the Horizon `max_fee` percentile distribution.
+  let feePresets: FeePresets = {
+    [FeePriority.LOW]: DEFAULT_RECOMMENDED_STELLAR_FEE,
+    [FeePriority.MEDIUM]: DEFAULT_RECOMMENDED_STELLAR_FEE,
+    [FeePriority.HIGH]: DEFAULT_RECOMMENDED_STELLAR_FEE,
+  };
 
   try {
     const { max_fee: maxFee, ledger_capacity_usage: ledgerCapacityUsage } =
       await server.feeStats();
     const ledgerCapacityUsageNum = Number(ledgerCapacityUsage);
 
-    recommendedFee = stroopToXlm(maxFee.mode).toFixed();
-    if (ledgerCapacityUsageNum > 0.5 && ledgerCapacityUsageNum <= 0.75) {
+    feePresets = {
+      [FeePriority.LOW]: stroopToXlm(maxFee.p10).toFixed(),
+      [FeePriority.MEDIUM]: stroopToXlm(maxFee.p50).toFixed(),
+      [FeePriority.HIGH]: stroopToXlm(maxFee.p90).toFixed(),
+    };
+    // The recommended (default) fee matches the Medium preset (the median of
+    // the max-fee distribution), so the settings sheet opens on the "Med" tier.
+    recommendedFee = feePresets[FeePriority.MEDIUM];
+    if (
+      ledgerCapacityUsageNum > LEDGER_CAPACITY_MEDIUM_THRESHOLD &&
+      ledgerCapacityUsageNum <= LEDGER_CAPACITY_HIGH_THRESHOLD
+    ) {
       networkCongestion = NetworkCongestion.MEDIUM;
-    } else if (ledgerCapacityUsageNum > 0.75) {
+    } else if (ledgerCapacityUsageNum > LEDGER_CAPACITY_HIGH_THRESHOLD) {
       networkCongestion = NetworkCongestion.HIGH;
     } else {
       networkCongestion = NetworkCongestion.LOW;
@@ -187,7 +208,7 @@ export const getNetworkFees = async (server: Horizon.Server) => {
     networkCongestion = NetworkCongestion.LOW;
   }
 
-  return { recommendedFee, networkCongestion };
+  return { recommendedFee, networkCongestion, feePresets };
 };
 
 export const buildChangeTrustTx = async (input: BuildChangeTrustTxParams) => {
