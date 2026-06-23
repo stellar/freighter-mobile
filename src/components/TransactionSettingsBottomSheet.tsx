@@ -28,10 +28,7 @@ import {
 } from "helpers/formatAmount";
 import { getMemoDisabledState } from "helpers/muxedAddress";
 import { isContractId } from "helpers/soroban";
-import {
-  enforceSettingInputDecimalSeparator,
-  getFeePriority,
-} from "helpers/transactionSettingsUtils";
+import { enforceSettingInputDecimalSeparator } from "helpers/transactionSettingsUtils";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
@@ -93,6 +90,8 @@ const TransactionSettingsBottomSheet: React.FC<
     saveMemo: saveTransactionMemo,
     saveTransactionFee,
     saveTransactionTimeout,
+    feePriority: txFeePriority,
+    saveFeePriority: saveTxFeePriority,
   } = useTransactionSettingsStore();
 
   const {
@@ -102,6 +101,8 @@ const TransactionSettingsBottomSheet: React.FC<
     saveSwapFee,
     saveSwapTimeout,
     saveSwapSlippage,
+    feePriority: swapFeePriority,
+    saveFeePriority: saveSwapFeePriority,
   } = useSwapSettingsStore();
 
   const { markAsManuallyChanged } = useInitialRecommendedFee(
@@ -213,6 +214,12 @@ const TransactionSettingsBottomSheet: React.FC<
   const memo = context === TransactionContext.Swap ? "" : transactionMemo;
   const storeFee =
     context === TransactionContext.Swap ? swapFee : transactionFee;
+  const storeFeePriority =
+    context === TransactionContext.Swap ? swapFeePriority : txFeePriority;
+  const saveFeePriorityForContext =
+    context === TransactionContext.Swap
+      ? saveSwapFeePriority
+      : saveTxFeePriority;
 
   const timeout =
     context === TransactionContext.Swap ? swapTimeout : transactionTimeout;
@@ -231,42 +238,50 @@ const TransactionSettingsBottomSheet: React.FC<
           TransactionSetting.Memo,
         ];
 
-  // The displayed fee, floored at the effective minimum for this transaction:
-  // each op needs at least MIN_TRANSACTION_FEE, so a multi-op transaction (e.g.
-  // a swap-to-new-token's changeTrust + path payment) floors at
-  // operationCount × that. A stored fee below this would be clamped up to it at
-  // build time anyway, so showing the floored value avoids a confusing "fee too
-  // low" error for a fee that's already corrected when the tx is built.
+  // Each op needs at least MIN_TRANSACTION_FEE, so a multi-op transaction (e.g.
+  // a swap-to-new-token's changeTrust + path payment) floors the total at
+  // operationCount × that.
   const minTotalFee = new BigNumber(MIN_TRANSACTION_FEE).times(operationCount);
-  const storeFeeBn = new BigNumber(storeFee);
-  const displayedStoreFee = formatNumberForDisplay(
-    (storeFeeBn.isFinite()
-      ? BigNumber.max(storeFeeBn, minTotalFee)
-      : minTotalFee
-    ).toString(),
+  const flooredStoreFee = formatNumberForDisplay(
+    (() => {
+      const bn = new BigNumber(storeFee);
+      return (
+        bn.isFinite() ? BigNumber.max(bn, minTotalFee) : minTotalFee
+      ).toString();
+    })(),
   );
 
-  // State hooks
-  const [localFee, setLocalFee] = useState(displayedStoreFee);
+  // Presets are per-op rates; the shown/stored fee is the TOTAL across all ops.
+  const presetTotalFee = (priority: FeePriority): string | undefined => {
+    const preset = feePresets[priority as keyof FeePresets];
+    if (!preset || new BigNumber(preset).isNaN()) {
+      return undefined;
+    }
+    return new BigNumber(preset).times(operationCount).toString();
+  };
+
+  // The selected tier is the single source of truth, persisted in the store, so
+  // it reflects the user's actual choice and never flickers to "Custom" when
+  // the 30s poll refetches presets with slightly different values (Med stays
+  // Med — only the shown amount tracks the new median).
+  const [selectedFeePriority, setSelectedFeePriority] =
+    useState<FeePriority>(storeFeePriority);
+  // The editable value, used while on the "Custom" tier.
+  const [customFee, setCustomFee] = useState(flooredStoreFee);
   const [localMemo, setLocalMemo] = useState(memo);
   const [localTimeout, setLocalTimeout] = useState(timeout.toString());
   const [localSlippage, setLocalSlippage] = useState(
     enforceSettingInputDecimalSeparator(slippage.toString()),
   );
 
-  // Mirror the (floored) store fee into the displayed value until the user
-  // edits it. The store fee can update right after mount — e.g.
-  // useInitialRecommendedFee re-scales the recommended fee by operationCount in
-  // an effect — and the useState init above only captures the value at mount,
-  // which otherwise showed stale until the sheet was closed and reopened. The
-  // store fee only changes outside of typing, so this never clobbers an
-  // in-progress edit.
-  const feeEdited = useRef(false);
-  useEffect(() => {
-    if (!feeEdited.current) {
-      setLocalFee(displayedStoreFee);
-    }
-  }, [displayedStoreFee]);
+  // The value shown in the input: for a preset tier it's the current preset
+  // total (kept in step with refetched fees); for Custom it's the editable
+  // amount.
+  const presetTotal = presetTotalFee(selectedFeePriority);
+  const localFee =
+    selectedFeePriority === FeePriority.CUSTOM
+      ? customFee
+      : (presetTotal && formatNumberForDisplay(presetTotal)) || flooredStoreFee;
 
   useEffect(() => {
     if (isMemoDisabled && localMemo) {
@@ -365,34 +380,15 @@ const TransactionSettingsBottomSheet: React.FC<
   );
 
   const handleFeeChange = useCallback((text: string) => {
-    // Manual typing is a deliberate choice — stop auto-syncing the fee/tier.
-    feeEdited.current = true;
+    // Manual typing is only possible on the Custom tier; update its value.
     const normalizedText = enforceSettingInputDecimalSeparator(text);
-    setLocalFee(normalizedText);
+    setCustomFee(normalizedText);
   }, []);
 
   const handleTimeoutChange = useCallback((text: string) => {
     const integerOnly = text.replace(/[^\d]/g, "");
     setLocalTimeout(integerOnly);
   }, []);
-
-  // The presets are per-operation rates while the fee shown/stored is the TOTAL
-  // across all ops, so divide by operationCount before matching a tier.
-  const perOpFeeXlm = (totalFeeXlm: string) =>
-    new BigNumber(parseDisplayNumber(totalFeeXlm))
-      .dividedBy(operationCount)
-      .toString();
-
-  // The selected priority tier. Low/Med/High lock the fee to a network preset
-  // and disable the input; "Custom" unlocks it for manual entry. The default
-  // fee is the network recommendation (mode), which shows as "Custom" and is
-  // deliberately NOT re-derived when presets refetch — so the fee a user sees
-  // stays stable through the review screens and only changes when they pick a
-  // tier or type. Derived once at mount (picks up a matching tier if the stored
-  // fee already equals a preset, e.g. on re-entry).
-  const [selectedFeePriority, setSelectedFeePriority] = useState<FeePriority>(
-    () => getFeePriority(perOpFeeXlm(localFee), feePresets),
-  );
 
   const feePriorityOptions = useMemo(
     () => [
@@ -412,26 +408,16 @@ const TransactionSettingsBottomSheet: React.FC<
 
   const handleFeePriorityChange = useCallback(
     (value: string | number) => {
-      feeEdited.current = true;
       const priority = value as FeePriority;
-      setSelectedFeePriority(priority);
-
-      // "Custom" unlocks the input and keeps the current value for editing.
+      // Preset tiers derive their shown value automatically; switching to
+      // Custom seeds the editable input with the amount currently shown so it
+      // doesn't blank or jump. Persisted on Save (settingSaveCallbacks).
       if (priority === FeePriority.CUSTOM) {
-        return;
+        setCustomFee(localFee);
       }
-
-      markAsManuallyChanged();
-      // Presets are per-op rates; store the TOTAL across all ops.
-      setLocalFee(
-        formatNumberForDisplay(
-          new BigNumber(feePresets[priority as keyof FeePresets])
-            .times(operationCount)
-            .toString(),
-        ),
-      );
+      setSelectedFeePriority(priority);
     },
-    [feePresets, markAsManuallyChanged, operationCount],
+    [localFee],
   );
 
   // Opening the fee breakdown previews the current (unsaved) inclusion fee so
@@ -458,6 +444,7 @@ const TransactionSettingsBottomSheet: React.FC<
       saveSlippage(Number(parseDisplayNumber(localSlippage))),
     [TransactionSetting.Fee]: () => {
       markAsManuallyChanged();
+      saveFeePriorityForContext(selectedFeePriority);
       saveFee(parseDisplayNumber(localFee).toString());
     },
     [TransactionSetting.Timeout]: () => saveTimeout(Number(localTimeout)),

@@ -91,7 +91,7 @@ describe("stellar service - getNetworkFees", () => {
     ...overrides,
   });
 
-  it("maps max_fee p10/p50/p90 to Low/Med/High presets and mode to the recommended fee (XLM)", async () => {
+  it("maps max_fee p10/p50/p90 to Low/Med/High presets and the Medium preset to the recommended fee (XLM)", async () => {
     const server = buildFeeStatsServer(() =>
       Promise.resolve({
         ledger_capacity_usage: "0.2",
@@ -106,8 +106,8 @@ describe("stellar service - getNetworkFees", () => {
     expect(feePresets[FeePriority.LOW]).toBe("0.00001"); // p10 = 100
     expect(feePresets[FeePriority.MEDIUM]).toBe("0.0001"); // p50 = 1000
     expect(feePresets[FeePriority.HIGH]).toBe("0.001"); // p90 = 10000
-    // The recommended (default) fee is the network mode, independent of the tiers.
-    expect(recommendedFee).toBe("0.00005"); // mode = 500
+    // The recommended (default) fee matches the Medium preset (p50).
+    expect(recommendedFee).toBe(feePresets[FeePriority.MEDIUM]);
   });
 
   it("derives congestion level from ledger capacity usage", async () => {

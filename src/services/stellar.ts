@@ -184,16 +184,14 @@ export const getNetworkFees = async (server: Horizon.Server) => {
       await server.feeStats();
     const ledgerCapacityUsageNum = Number(ledgerCapacityUsage);
 
-    // The recommended (default) fee is the network mode — shown as "Custom" in
-    // the settings sheet so it stays stable while the user is in the flow. The
-    // Low/Med/High presets are derived from the max-fee percentile distribution
-    // and only applied when the user explicitly picks a tier.
-    recommendedFee = stroopToXlm(maxFee.mode).toFixed();
     feePresets = {
       [FeePriority.LOW]: stroopToXlm(maxFee.p10).toFixed(),
       [FeePriority.MEDIUM]: stroopToXlm(maxFee.p50).toFixed(),
       [FeePriority.HIGH]: stroopToXlm(maxFee.p90).toFixed(),
     };
+    // The recommended (default) fee matches the Medium preset (the median of the
+    // max-fee distribution), so the settings sheet opens on the "Med" tier.
+    recommendedFee = feePresets[FeePriority.MEDIUM];
 
     if (
       ledgerCapacityUsageNum > LEDGER_CAPACITY_MEDIUM_THRESHOLD &&

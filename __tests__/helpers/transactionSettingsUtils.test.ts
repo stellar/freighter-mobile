@@ -1,9 +1,5 @@
 // Mock react-native-localize
-import { FeePresets, FeePriority } from "config/types";
-import {
-  enforceSettingInputDecimalSeparator,
-  getFeePriority,
-} from "helpers/transactionSettingsUtils";
+import { enforceSettingInputDecimalSeparator } from "helpers/transactionSettingsUtils";
 import { getNumberFormatSettings } from "react-native-localize";
 
 jest.mock("react-native-localize", () => ({
@@ -115,35 +111,6 @@ describe("transactionSettingsUtils", () => {
       expect(enforceSettingInputDecimalSeparator("")).toBe("");
       expect(enforceSettingInputDecimalSeparator(".")).toBe(",");
       expect(enforceSettingInputDecimalSeparator(",")).toBe(",");
-    });
-  });
-
-  describe("getFeePriority", () => {
-    const presets: FeePresets = {
-      [FeePriority.LOW]: "0.0001",
-      [FeePriority.MEDIUM]: "0.001",
-      [FeePriority.HIGH]: "0.01",
-    };
-
-    it("returns the matching priority for an exact preset match", () => {
-      expect(getFeePriority("0.0001", presets)).toBe(FeePriority.LOW);
-      expect(getFeePriority("0.001", presets)).toBe(FeePriority.MEDIUM);
-      expect(getFeePriority("0.01", presets)).toBe(FeePriority.HIGH);
-    });
-
-    it("matches regardless of trailing-zero formatting", () => {
-      expect(getFeePriority("0.00010", presets)).toBe(FeePriority.LOW);
-      expect(getFeePriority("0.0100", presets)).toBe(FeePriority.HIGH);
-    });
-
-    it("returns CUSTOM when the fee does not match any preset", () => {
-      expect(getFeePriority("0.005", presets)).toBe(FeePriority.CUSTOM);
-      expect(getFeePriority("1", presets)).toBe(FeePriority.CUSTOM);
-    });
-
-    it("returns CUSTOM for an empty or invalid fee", () => {
-      expect(getFeePriority("", presets)).toBe(FeePriority.CUSTOM);
-      expect(getFeePriority("abc", presets)).toBe(FeePriority.CUSTOM);
     });
   });
 });

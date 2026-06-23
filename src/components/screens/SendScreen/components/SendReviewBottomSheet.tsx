@@ -112,7 +112,6 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
     transactionXDR,
     isBuilding,
     error,
-    isSoroban,
     sorobanResourceFeeXlm,
     sorobanInclusionFeeXlm,
   } = useTransactionBuilderStore();
@@ -320,15 +319,13 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
             />
           ) : (
             <View className="flex-row items-center gap-[8px]">
-              {isSoroban && (
-                <TouchableOpacity
-                  onPress={handleOpenFeeBreakdown}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  className="mt-[2px]"
-                >
-                  <Icon.InfoCircle themeColor="gray" size={16} />
-                </TouchableOpacity>
-              )}
+              <TouchableOpacity
+                onPress={handleOpenFeeBreakdown}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                className="mt-[2px]"
+              >
+                <Icon.InfoCircle themeColor="gray" size={16} />
+              </TouchableOpacity>
               <Text md primary>
                 {formatTokenForDisplay(totalFeeXlm, NATIVE_TOKEN_CODE)}
               </Text>
@@ -361,7 +358,6 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
       handleCopyXdr,
       handleOpenFeeBreakdown,
       isBuilding,
-      isSoroban,
       renderMemoTitle,
       renderXdrContent,
       t,

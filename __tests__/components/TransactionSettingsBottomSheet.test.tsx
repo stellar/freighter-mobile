@@ -28,6 +28,8 @@ jest.mock("ducks/swapSettings", () => ({
     saveSwapFee: jest.fn(),
     saveSwapTimeout: jest.fn(),
     saveSwapSlippage: jest.fn(),
+    feePriority: "medium",
+    saveFeePriority: jest.fn(),
   })),
 }));
 jest.mock("hooks/useInitialRecommendedFee", () => ({
@@ -144,9 +146,11 @@ describe("TransactionSettingsBottomSheet - onSettingsChange Integration", () => 
       collectionAddress: "",
       tokenId: "",
     },
+    feePriority: "medium",
     saveMemo: jest.fn(),
     saveTransactionFee: jest.fn(),
     saveTransactionTimeout: jest.fn(),
+    saveFeePriority: jest.fn(),
     saveRecipientAddress: jest.fn(),
     saveSelectedTokenId: jest.fn(),
     saveSelectedCollectibleDetails: jest.fn(),
@@ -347,20 +351,20 @@ describe("TransactionSettingsBottomSheet - onSettingsChange Integration", () => 
       />,
     );
 
-    // The stored fee (100) matches no preset, so "Custom" is the default tier
-    // and the input is editable.
-    expect(getByTestId("fee-input").props.editable).toBe(true);
+    // The fee hasn't been manually changed, so the default tier is Med and the
+    // input is locked.
+    expect(getByTestId("fee-input").props.editable).toBe(false);
 
-    // Selecting a preset locks the input.
-    fireEvent.press(getByText("transactionSettings.priorityMed"));
-    await waitFor(() => {
-      expect(getByTestId("fee-input").props.editable).toBe(false);
-    });
-
-    // "Custom" unlocks it again for manual entry.
+    // "Custom" unlocks the input for manual entry.
     fireEvent.press(getByText("transactionSettings.priorityCustom"));
     await waitFor(() => {
       expect(getByTestId("fee-input").props.editable).toBe(true);
+    });
+
+    // Selecting a preset locks it again.
+    fireEvent.press(getByText("transactionSettings.priorityLow"));
+    await waitFor(() => {
+      expect(getByTestId("fee-input").props.editable).toBe(false);
     });
   });
 
@@ -394,12 +398,12 @@ describe("TransactionSettingsBottomSheet - onSettingsChange Integration", () => 
     ).not.toHaveBeenCalled();
   });
 
-  it("opens on the matching preset tier with the input locked", async () => {
-    // A stored fee equal to a preset (here the Medium preset) should open the
-    // sheet on that tier with the input locked.
+  it("opens on the stored fee priority tier (preset → input locked)", async () => {
+    // The sheet reflects the persisted tier directly — a stored High tier opens
+    // locked, regardless of how the fee amount compares to the current presets.
     mockUseTransactionSettingsStore.mockReturnValue({
       ...mockTransactionSettingsState,
-      transactionFee: "0.001",
+      feePriority: "high",
     });
 
     const { getByTestId } = renderWithProviders(
@@ -413,6 +417,26 @@ describe("TransactionSettingsBottomSheet - onSettingsChange Integration", () => 
 
     await waitFor(() => {
       expect(getByTestId("fee-input").props.editable).toBe(false);
+    });
+  });
+
+  it("opens editable when the stored tier is Custom", async () => {
+    mockUseTransactionSettingsStore.mockReturnValue({
+      ...mockTransactionSettingsState,
+      feePriority: "custom",
+    });
+
+    const { getByTestId } = renderWithProviders(
+      <TransactionSettingsBottomSheet
+        onCancel={mockOnCancel}
+        onConfirm={mockOnConfirm}
+        context={TransactionContext.Send}
+        onSettingsChange={mockOnSettingsChange}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(getByTestId("fee-input").props.editable).toBe(true);
     });
   });
 });
@@ -434,9 +458,11 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
       collectionAddress: "",
       tokenId: "",
     },
+    feePriority: "medium",
     saveMemo: jest.fn(),
     saveTransactionFee: jest.fn(),
     saveTransactionTimeout: jest.fn(),
+    saveFeePriority: jest.fn(),
     saveRecipientAddress: jest.fn(),
     saveSelectedTokenId: jest.fn(),
     saveSelectedCollectibleDetails: jest.fn(),
