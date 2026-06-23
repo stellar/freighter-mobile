@@ -1,0 +1,33 @@
+appId: org.stellar.freighterdev
+---
+# Standalone flow: import a funded wallet and switch the active network to Testnet.
+# The network-switch portion is delegated to the shared sub-flow so the logic
+# lives in one place and is shared with the transaction flows that need to be
+# on testnet too.
+
+# Import funded wallet
+- runFlow:
+    file: ../onboarding/ImportFundedWallet.yaml
+
+# Wait for either home screen or banner to appear
+- extendedWaitUntil:
+    visible:
+      id: home-screen|welcome-banner-dismiss-button
+    timeout: 30000
+
+# Dismiss welcome banner if visible
+- runFlow:
+    when:
+      visible:
+        id: welcome-banner-dismiss-button
+    commands:
+      - tapOn:
+          id: welcome-banner-dismiss-button
+      - extendedWaitUntil:
+          visible:
+            id: home-screen
+          timeout: 30000
+
+# Switch to Testnet
+- runFlow:
+    file: ../shared/SwitchToTestnet.yaml

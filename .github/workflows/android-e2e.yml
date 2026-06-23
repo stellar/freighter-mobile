@@ -228,7 +228,7 @@ jobs:
       # - CreateWallet: Basic wallet creation flow
       # - ImportWallet: Import existing wallet with recovery phrase
       # - ImportFundedWallet: Import wallet with funded account
-      # - SwitchToTestnet: Switch network to testnet
+      # - ImportAndSwitchToTestnet: Import funded wallet and switch network to testnet
       # - SendClassicToken: Send XLM on testnet (small amount: 0.000001 XLM)
       # - SendClassicTokenFromDetails: Send XLM on testnet starting from Token Details screen (small amount: 0.000001 XLM)
       # - SwapClassicToken: Swap tokens on testnet (small amount: 0.000001 XLM)
@@ -258,7 +258,7 @@ jobs:
             requires-mock-server: false
           - shard-index: 4
             shard-total: 10
-            flow-name: SwitchToTestnet
+            flow-name: ImportAndSwitchToTestnet
             requires-mock-server: false
           - shard-index: 5
             shard-total: 10
