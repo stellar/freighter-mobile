@@ -1,15 +1,49 @@
 appId: org.stellar.freighterdev
 ---
-# Shared flow: switch the active network to Testnet (entered from home screen,
-# exits back to home screen). Used by the WalletConnect mock-dapp flows, by the
-# transaction flows that run on testnet (Send/Swap), and by the standalone
+# Shared flow: switch the active network to Testnet, called right after the
+# wallet has been imported. Exits back to home screen. Used by the transaction
+# flows that run on testnet (Send/Swap, FromDetails) and by the standalone
 # ImportAndSwitchToTestnet flow.
 #
-# Timeouts are intentionally generous (15s) for the post-switch back-nav waits
-# because the app refetches balances on the new network, which can briefly
-# slow UI updates.
+# Freshly imported wallets always land on Mainnet where the account is unfunded,
+# so the "Welcome to Freighter!" bottom sheet appears every time and covers the
+# header (including the e2e-open-settings button). And if the Mainnet account
+# fetch flakes, an "Account not loaded" toast appears at the top and also
+# overlays the header. Both are handled here so the network-switch tap is
+# never blocked.
+#
+# Timeouts on the network-switch UI are generous (15s) for the post-switch
+# back-nav because the app refetches balances on the new network.
 
-# Open settings from the home screen (E2E only button)
+# 1. The welcome bottom sheet ALWAYS appears post-import on Mainnet — wait for
+#    it explicitly and dismiss (replaces the racy "home-screen OR banner" wait
+#    that callers used to do).
+- extendedWaitUntil:
+    visible:
+      id: welcome-banner-dismiss-button
+    timeout: 30000
+- tapOn:
+    id: welcome-banner-dismiss-button
+
+# 2. Confirm home is fully visible.
+- extendedWaitUntil:
+    visible:
+      id: home-screen
+    timeout: 15000
+
+# 3. If the Mainnet account fetch hiccupped, an "Account not loaded" toast
+#    overlays the top of the header. Swipe it away (auto-dismisses in 6s
+#    anyway, but this is faster and deterministic).
+- runFlow:
+    when:
+      visible: ".*could not be loaded.*"
+    commands:
+      - swipe:
+          from:
+            text: ".*could not be loaded.*"
+          direction: UP
+
+# 4. Open settings from the home screen (E2E only button)
 - tapOn:
     id: e2e-open-settings
 

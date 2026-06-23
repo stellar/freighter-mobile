@@ -15,30 +15,9 @@ tags:
 - runFlow:
     file: ../onboarding/ImportFundedWallet.yaml
 
-# Wait for either home screen or banner to appear
-- extendedWaitUntil:
-    visible:
-      id: home-screen|welcome-banner-dismiss-button
-    timeout: 30000
-
-# Dismiss welcome banner if visible
-- runFlow:
-    when:
-      visible:
-        id: welcome-banner-dismiss-button
-    commands:
-      - tapOn:
-          id: welcome-banner-dismiss-button
-      - extendedWaitUntil:
-          visible:
-            id: home-screen
-          timeout: 30000
-
-# Verify we're on home screen after import
-- assertVisible:
-    id: home-screen
-
-# Switch to Testnet (account is provisioned on testnet)
+# Switch to Testnet (account is provisioned on testnet). The shared sub-flow
+# waits for the post-import welcome bottom sheet and any auth-error toast,
+# dismisses them, then performs the network switch.
 - runFlow:
     file: ../shared/SwitchToTestnet.yaml
 
