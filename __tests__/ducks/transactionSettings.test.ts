@@ -3,6 +3,7 @@ import {
   DEFAULT_TRANSACTION_TIMEOUT,
   MIN_TRANSACTION_FEE,
 } from "config/constants";
+import { FeePriority } from "config/types";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 
 const store = useTransactionSettingsStore;
@@ -23,6 +24,14 @@ describe("transactionSettings Duck", () => {
     expect(initialState.federationAddress).toBe("");
     expect(initialState.recipientName).toBe("");
     expect(initialState.selectedTokenId).toBe("");
+    expect(initialState.feePriority).toBe(FeePriority.MEDIUM);
+  });
+
+  it("should save fee priority", () => {
+    act(() => {
+      store.getState().saveFeePriority(FeePriority.HIGH);
+    });
+    expect(store.getState().feePriority).toBe(FeePriority.HIGH);
   });
 
   it("should save memo", () => {
@@ -109,6 +118,7 @@ describe("transactionSettings Duck", () => {
       store.getState().saveFederationAddress(newFederationAddress);
       store.getState().saveRecipientName(newRecipientName);
       store.getState().saveSelectedTokenId(newTokenId);
+      store.getState().saveFeePriority(FeePriority.HIGH);
     });
 
     expect(store.getState().transactionMemo).toBe(newMemo);
@@ -118,6 +128,7 @@ describe("transactionSettings Duck", () => {
     expect(store.getState().federationAddress).toBe(newFederationAddress);
     expect(store.getState().recipientName).toBe(newRecipientName);
     expect(store.getState().selectedTokenId).toBe(newTokenId);
+    expect(store.getState().feePriority).toBe(FeePriority.HIGH);
 
     act(() => {
       store.getState().resetSettings();
@@ -132,6 +143,7 @@ describe("transactionSettings Duck", () => {
     expect(store.getState().federationAddress).toBe("");
     expect(store.getState().recipientName).toBe("");
     expect(store.getState().selectedTokenId).toBe("");
+    expect(store.getState().feePriority).toBe(FeePriority.MEDIUM);
   });
 
   describe("selectedCollectibleDetails", () => {

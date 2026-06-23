@@ -9,9 +9,9 @@ import {
   rpc,
 } from "@stellar/stellar-sdk";
 import {
-  DEFAULT_RECOMMENDED_STELLAR_FEE,
   DEFAULT_TRANSACTION_TIMEOUT,
   mapNetworkToNetworkDetails,
+  MIN_TRANSACTION_FEE,
   NATIVE_TOKEN_CODE,
   NETWORKS,
   SOROBAN_RPC_URLS,
@@ -172,11 +172,13 @@ export const getNetworkFees = async (server: Horizon.Server) => {
   let recommendedFee = "";
   let networkCongestion = "" as NetworkCongestion;
   // Inclusion-fee presets (XLM) for the Low/Med/High priority tiers, derived
-  // from the Horizon `max_fee` percentile distribution.
+  // from the Horizon `max_fee` percentile distribution. Defaults are in XLM
+  // (the network minimum) — NOT raw stroops — since every consumer treats these
+  // as XLM and converts to stroops at build time.
   let feePresets: FeePresets = {
-    [FeePriority.LOW]: DEFAULT_RECOMMENDED_STELLAR_FEE,
-    [FeePriority.MEDIUM]: DEFAULT_RECOMMENDED_STELLAR_FEE,
-    [FeePriority.HIGH]: DEFAULT_RECOMMENDED_STELLAR_FEE,
+    [FeePriority.LOW]: MIN_TRANSACTION_FEE,
+    [FeePriority.MEDIUM]: MIN_TRANSACTION_FEE,
+    [FeePriority.HIGH]: MIN_TRANSACTION_FEE,
   };
 
   try {
@@ -204,8 +206,9 @@ export const getNetworkFees = async (server: Horizon.Server) => {
       networkCongestion = NetworkCongestion.LOW;
     }
   } catch (e) {
-    // use default values
-    recommendedFee = DEFAULT_RECOMMENDED_STELLAR_FEE;
+    // Fall back to the network minimum (XLM); presets stay at their XLM
+    // defaults set above.
+    recommendedFee = MIN_TRANSACTION_FEE;
     networkCongestion = NetworkCongestion.LOW;
   }
 

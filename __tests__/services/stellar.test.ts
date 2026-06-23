@@ -4,7 +4,7 @@
  * This test uses the actual functions from stellar.ts
  */
 import { Asset as SdkToken, Operation } from "@stellar/stellar-sdk";
-import { DEFAULT_RECOMMENDED_STELLAR_FEE } from "config/constants";
+import { MIN_TRANSACTION_FEE } from "config/constants";
 import { FeePriority, NetworkCongestion } from "config/types";
 import {
   buildChangeTrustOperation,
@@ -140,13 +140,14 @@ describe("stellar service - getNetworkFees", () => {
     const { recommendedFee, networkCongestion, feePresets } =
       await getNetworkFees(server);
 
-    expect(recommendedFee).toBe(DEFAULT_RECOMMENDED_STELLAR_FEE);
+    // Fallbacks are the XLM network minimum (NOT raw stroops): every consumer
+    // treats these as XLM and converts to stroops at build time, so a stroop
+    // value here would be a ~1,000,000× fee overpayment.
+    expect(recommendedFee).toBe(MIN_TRANSACTION_FEE);
     expect(networkCongestion).toBe(NetworkCongestion.LOW);
-    expect(feePresets[FeePriority.LOW]).toBe(DEFAULT_RECOMMENDED_STELLAR_FEE);
-    expect(feePresets[FeePriority.MEDIUM]).toBe(
-      DEFAULT_RECOMMENDED_STELLAR_FEE,
-    );
-    expect(feePresets[FeePriority.HIGH]).toBe(DEFAULT_RECOMMENDED_STELLAR_FEE);
+    expect(feePresets[FeePriority.LOW]).toBe(MIN_TRANSACTION_FEE);
+    expect(feePresets[FeePriority.MEDIUM]).toBe(MIN_TRANSACTION_FEE);
+    expect(feePresets[FeePriority.HIGH]).toBe(MIN_TRANSACTION_FEE);
   });
 });
 

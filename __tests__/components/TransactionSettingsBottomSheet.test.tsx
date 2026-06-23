@@ -59,16 +59,20 @@ jest.mock("hooks/useColors", () => ({
     },
   }),
 }));
+// Mutable so individual tests can simulate the 30s-poll refetch returning new
+// preset values (must be `mock`-prefixed to be usable inside the jest.mock factory).
+const mockDefaultNetworkFees = {
+  recommendedFee: "100",
+  networkCongestion: "LOW",
+  feePresets: {
+    low: "0.0001",
+    medium: "0.001",
+    high: "0.01",
+  },
+};
+let mockNetworkFees = mockDefaultNetworkFees;
 jest.mock("hooks/useNetworkFees", () => ({
-  useNetworkFees: () => ({
-    recommendedFee: "100",
-    networkCongestion: "LOW",
-    feePresets: {
-      low: "0.0001",
-      medium: "0.001",
-      high: "0.01",
-    },
-  }),
+  useNetworkFees: () => mockNetworkFees,
 }));
 jest.mock("hooks/useValidateMemo", () => ({
   useValidateMemo: () => ({ error: null }),
@@ -159,6 +163,7 @@ describe("TransactionSettingsBottomSheet - onSettingsChange Integration", () => 
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockNetworkFees = mockDefaultNetworkFees;
     mockUseTransactionSettingsStore.mockReturnValue(
       mockTransactionSettingsState,
     );
@@ -318,6 +323,10 @@ describe("TransactionSettingsBottomSheet - onSettingsChange Integration", () => 
       expect(
         mockTransactionSettingsState.saveTransactionFee,
       ).toHaveBeenCalledWith("0.01");
+      // The chosen tier is persisted so it survives refetches and re-entry.
+      expect(mockTransactionSettingsState.saveFeePriority).toHaveBeenCalledWith(
+        "high",
+      );
     });
   });
 
@@ -437,6 +446,35 @@ describe("TransactionSettingsBottomSheet - onSettingsChange Integration", () => 
 
     await waitFor(() => {
       expect(getByTestId("fee-input").props.editable).toBe(true);
+    });
+  });
+
+  it("keeps the selected tier when network presets refetch (no flicker to Custom)", async () => {
+    // Stored tier is Med (locked input).
+    const props = {
+      onCancel: mockOnCancel,
+      onConfirm: mockOnConfirm,
+      context: TransactionContext.Send,
+      onSettingsChange: mockOnSettingsChange,
+    };
+    const { getByTestId, rerender } = renderWithProviders(
+      <TransactionSettingsBottomSheet {...props} />,
+    );
+
+    await waitFor(() => {
+      expect(getByTestId("fee-input").props.editable).toBe(false);
+    });
+
+    // Simulate the 30s poll returning different preset values.
+    mockNetworkFees = {
+      ...mockDefaultNetworkFees,
+      feePresets: { low: "0.0002", medium: "0.0021", high: "0.02" },
+    };
+    rerender(<TransactionSettingsBottomSheet {...props} />);
+
+    // The tier stays Med (input still locked) — it does NOT flip to Custom.
+    await waitFor(() => {
+      expect(getByTestId("fee-input").props.editable).toBe(false);
     });
   });
 });

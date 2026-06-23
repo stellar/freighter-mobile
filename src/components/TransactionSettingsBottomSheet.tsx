@@ -242,18 +242,19 @@ const TransactionSettingsBottomSheet: React.FC<
   // a swap-to-new-token's changeTrust + path payment) floors the total at
   // operationCount × that.
   const minTotalFee = new BigNumber(MIN_TRANSACTION_FEE).times(operationCount);
+  const storeFeeBn = new BigNumber(storeFee);
   const flooredStoreFee = formatNumberForDisplay(
-    (() => {
-      const bn = new BigNumber(storeFee);
-      return (
-        bn.isFinite() ? BigNumber.max(bn, minTotalFee) : minTotalFee
-      ).toString();
-    })(),
+    (storeFeeBn.isFinite()
+      ? BigNumber.max(storeFeeBn, minTotalFee)
+      : minTotalFee
+    ).toString(),
   );
 
   // Presets are per-op rates; the shown/stored fee is the TOTAL across all ops.
-  const presetTotalFee = (priority: FeePriority): string | undefined => {
-    const preset = feePresets[priority as keyof FeePresets];
+  // Returns undefined when the preset hasn't loaded yet (empty/NaN), e.g. on a
+  // cold start before the first feeStats fetch resolves.
+  const presetTotalFee = (priority: keyof FeePresets): string | undefined => {
+    const preset = feePresets[priority];
     if (!preset || new BigNumber(preset).isNaN()) {
       return undefined;
     }
@@ -276,8 +277,11 @@ const TransactionSettingsBottomSheet: React.FC<
 
   // The value shown in the input: for a preset tier it's the current preset
   // total (kept in step with refetched fees); for Custom it's the editable
-  // amount.
-  const presetTotal = presetTotalFee(selectedFeePriority);
+  // amount. (Falls back to the floored store fee if the preset hasn't loaded.)
+  const presetTotal =
+    selectedFeePriority === FeePriority.CUSTOM
+      ? undefined
+      : presetTotalFee(selectedFeePriority);
   const localFee =
     selectedFeePriority === FeePriority.CUSTOM
       ? customFee

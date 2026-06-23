@@ -13,8 +13,11 @@ export interface NetworkFeesData {
   feePresets: FeePresets;
 }
 
-// Empty presets so the priority selector resolves to "Custom" (not a spurious
-// preset match) until the real network fees have loaded.
+// Empty presets until the first fetch resolves: a selected preset tier then
+// shows the floored store fee (presetTotalFee returns undefined) rather than a
+// bogus value. Note this is a DIFFERENT "no data" representation than the
+// fetch-error path, where `getNetworkFees` falls back to the XLM minimum fee
+// for all presets.
 const EMPTY_FEE_PRESETS: FeePresets = {
   [FeePriority.LOW]: "",
   [FeePriority.MEDIUM]: "",
