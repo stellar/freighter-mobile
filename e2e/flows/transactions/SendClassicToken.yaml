@@ -113,7 +113,7 @@ tags:
 # Wait for confirm button to be ready before tapping
 - extendedWaitUntil:
     visible:
-      id: send-review-confirm-button
+      id: send-review-confirm-anyway-button
     timeout: 30000
 # Confirm the transaction
 - tapOn:
