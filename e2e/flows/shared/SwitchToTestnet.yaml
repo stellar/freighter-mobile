@@ -15,21 +15,29 @@ appId: org.stellar.freighterdev
 # Timeouts on the network-switch UI are generous (15s) for the post-switch
 # back-nav because the app refetches balances on the new network.
 
-# 1. The welcome bottom sheet ALWAYS appears post-import on Mainnet — wait for
-#    it explicitly and dismiss (replaces the racy "home-screen OR banner" wait
-#    that callers used to do).
+# 1. Wait for the home screen to reach a steady post-load state — either the
+#    "Welcome to Freighter!" bottom sheet (fresh testnet-only account shown as
+#    unfunded on Mainnet) or the XLM balance row (static funded Mainnet account
+#    already loaded). Both are end-states, not the racy "home-screen rendered"
+#    signal that the calling flows used to wait for.
 - extendedWaitUntil:
     visible:
-      id: welcome-banner-dismiss-button
+      id: home-token-XLM|welcome-banner-dismiss-button
     timeout: 30000
-- tapOn:
-    id: welcome-banner-dismiss-button
 
-# 2. Confirm home is fully visible.
-- extendedWaitUntil:
-    visible:
-      id: home-screen
-    timeout: 15000
+# 2. Dismiss the welcome bottom sheet if it appeared (only for fresh accounts
+#    that present as unfunded on Mainnet).
+- runFlow:
+    when:
+      visible:
+        id: welcome-banner-dismiss-button
+    commands:
+      - tapOn:
+          id: welcome-banner-dismiss-button
+      - extendedWaitUntil:
+          visible:
+            id: home-screen
+          timeout: 15000
 
 # 3. If the Mainnet account fetch hiccupped, an "Account not loaded" toast
 #    overlays the top of the header. Swipe it away (auto-dismisses in 6s
