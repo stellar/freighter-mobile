@@ -133,5 +133,5 @@ tags:
 
 # Verify XLM still visible (back on token details or history)
 - assertVisible:
-    text: ".*XLM.*"
+    text: ".*-0.000001 XLM.*"
     optional: true

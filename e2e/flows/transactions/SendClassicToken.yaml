@@ -133,5 +133,5 @@ tags:
 # Verify we're back on history screen with transaction visible
 # Note: optional because the transaction might not be immediately rendered in the view
 - assertVisible:
-    text: ".*XLM.*"
+    text: ".*-0.000001 XLM.*"
     optional: true
