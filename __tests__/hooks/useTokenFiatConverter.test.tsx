@@ -79,12 +79,13 @@ describe("useTokenFiatConverter", () => {
     expect(result.current.fiatAmount).toBe("50");
   });
 
-  it("should handle zero token price correctly during conversions", () => {
+  it("forces token mode when the selected token has no price", () => {
     const mockBalance = createMockPricedBalance(100, 0);
     const { result } = renderHook(() =>
       useTokenFiatConverter({ selectedBalance: mockBalance }),
     );
 
+    // Token mode works normally; with no price the fiat value stays 0.
     act(() => {
       result.current.setTokenAmount("10");
     });
@@ -92,15 +93,14 @@ describe("useTokenFiatConverter", () => {
       new BigNumber(0).toFixed(FIAT_DECIMALS),
     );
 
+    // Fiat mode is meaningless without a price, so attempting to switch into
+    // it is auto-corrected back to token mode — otherwise the input would get
+    // stuck showing a "$" prefix with no toggle to switch back (the toggle is
+    // hidden for unpriced tokens).
     act(() => {
       result.current.setShowFiatAmount(true);
     });
-    act(() => {
-      result.current.setFiatAmount("50");
-    });
-    expect(result.current.tokenAmount).toBe(
-      new BigNumber(0).toFixed(DEFAULT_DECIMALS),
-    );
+    expect(result.current.showFiatAmount).toBe(false);
   });
 
   it("should toggle display mode without immediately changing the primary value set", () => {
@@ -1228,11 +1228,17 @@ describe("useTokenFiatConverter", () => {
         result.current.setShowFiatAmount(true);
       });
 
-      // Type "0" - starts from "0"
+      // Type "0" - starts from "0".
+      // Toggling to fiat now leaves fiatAmountDisplayRaw=null (so the input
+      // renders a placeholder "0" rather than a white "0"), so the derived
+      // display is just "0" until the user produces a state-altering key.
+      // The end-to-end "0,01" check below is what actually validates the
+      // bug fix; this intermediate assertion just documents the resting
+      // state.
       act(() => {
         result.current.handleDisplayAmountChange("0");
       });
-      expect(result.current.fiatAmountDisplay).toMatch(/^0[.,]00$/);
+      expect(result.current.fiatAmountDisplay).toMatch(/^0[.,]?(00)?$/);
 
       // Type "," - should preserve "0," in raw input (display may format to "0,00")
       act(() => {
@@ -1260,6 +1266,526 @@ describe("useTokenFiatConverter", () => {
 
       // Verify the internal fiat amount is correct (0.01)
       expect(result.current.fiatAmount).toBe("0.01");
+    });
+  });
+});
+
+describe("useTokenFiatConverter.setDisplayAmountFromText", () => {
+  const createMockBalance = (price: number | string) =>
+    ({
+      total: new BigNumber(100),
+      currentPrice: new BigNumber(price),
+      percentagePriceChange24h: new BigNumber(0),
+      tokenCode: "USDC",
+      fiatCode: "USD",
+      fiatTotal: new BigNumber(100).multipliedBy(new BigNumber(price)),
+      displayName: "USD Coin",
+      token: {
+        type: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+        code: "USDC",
+        issuer: {
+          key: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+        },
+      },
+      available: new BigNumber(100),
+      limit: new BigNumber(1000),
+      buyingLiabilities: "0",
+      sellingLiabilities: "0",
+    }) as PricedBalance;
+
+  it("sets the token-side display from a full text string", () => {
+    const mockBalance = createMockBalance(1.0);
+    const { result } = renderHook(() =>
+      useTokenFiatConverter({ selectedBalance: mockBalance }),
+    );
+
+    act(() => {
+      result.current.setDisplayAmountFromText("12.34");
+    });
+
+    expect(result.current.tokenAmountDisplay).toBe("12.34");
+    expect(result.current.tokenAmount).toBe("12.34");
+  });
+
+  it("sets the fiat-side display when showFiatAmount is true", () => {
+    const mockBalance = createMockBalance(1.0);
+    const { result } = renderHook(() =>
+      useTokenFiatConverter({ selectedBalance: mockBalance }),
+    );
+
+    act(() => {
+      result.current.setShowFiatAmount(true);
+    });
+    act(() => {
+      result.current.setDisplayAmountFromText("50");
+    });
+
+    expect(result.current.fiatAmountDisplay).toBe("50");
+  });
+
+  it("recalculates the opposite side after setDisplayAmountFromText", () => {
+    const mockBalance = createMockBalance(1.0);
+    const { result } = renderHook(() =>
+      useTokenFiatConverter({ selectedBalance: mockBalance }),
+    );
+
+    act(() => {
+      result.current.setDisplayAmountFromText("10");
+    });
+
+    // At $1 price, 10 USDC = $10
+    // recalculateFiatAmountFromToken returns toFixed(FIAT_DECIMALS) = "10.00"
+    expect(result.current.fiatAmount).toBe("10.00");
+  });
+
+  it("recalculates token side from fiat when showFiatAmount is true", () => {
+    const mockBalance = createMockBalance(2.0);
+    const { result } = renderHook(() =>
+      useTokenFiatConverter({ selectedBalance: mockBalance }),
+    );
+
+    act(() => {
+      result.current.setShowFiatAmount(true);
+    });
+    act(() => {
+      result.current.setDisplayAmountFromText("20");
+    });
+
+    // $20 at $2/token = 10 tokens
+    expect(result.current.tokenAmount).toBe(
+      new BigNumber(10).toFixed(DEFAULT_DECIMALS),
+    );
+  });
+
+  it("clears token amount to '0' on empty string in token mode", () => {
+    const mockBalance = createMockBalance(1.0);
+    const { result } = renderHook(() =>
+      useTokenFiatConverter({ selectedBalance: mockBalance }),
+    );
+
+    act(() => {
+      result.current.setDisplayAmountFromText("42");
+    });
+    act(() => {
+      result.current.setDisplayAmountFromText("");
+    });
+
+    expect(result.current.tokenAmount).toBe("0");
+  });
+
+  it("clears fiat amount to '0' on empty string in fiat mode", () => {
+    const mockBalance = createMockBalance(1.0);
+    const { result } = renderHook(() =>
+      useTokenFiatConverter({ selectedBalance: mockBalance }),
+    );
+
+    act(() => {
+      result.current.setShowFiatAmount(true);
+    });
+    act(() => {
+      result.current.setDisplayAmountFromText("42");
+    });
+    act(() => {
+      result.current.setDisplayAmountFromText("");
+    });
+
+    expect(result.current.fiatAmount).toBe("0");
+  });
+
+  it("clamps malformed input (e.g. '12.34.56') to '0' in fiat mode", () => {
+    const mockBalance = createMockBalance(1.0);
+    const { result } = renderHook(() =>
+      useTokenFiatConverter({ selectedBalance: mockBalance }),
+    );
+
+    act(() => {
+      result.current.setShowFiatAmount(true);
+    });
+    act(() => {
+      result.current.setDisplayAmountFromText("12.34.56");
+    });
+
+    expect(result.current.fiatAmount).toBe("0");
+  });
+
+  it("normalizes a bare '.' to '0.' so users can type sub-1 fractions", () => {
+    const mockBalance = createMockBalance(1.0);
+    const { result } = renderHook(() =>
+      useTokenFiatConverter({ selectedBalance: mockBalance }),
+    );
+
+    act(() => {
+      result.current.setDisplayAmountFromText(".");
+    });
+
+    // The raw display must persist as a partial fraction so the next
+    // keystroke ("5") can append to it.
+    expect(result.current.tokenAmountDisplayRaw).toMatch(/^0[.,]$/);
+    expect(result.current.tokenAmount).toBe("0");
+  });
+
+  it("leaves fiatAmountDisplayRaw null after toggling to fiat with a zero token amount", () => {
+    // Regression: previously determineFiatDisplayRaw returned raw="0" for the
+    // zero case, which (after the AmountCard isEmpty fix) made the toggle
+    // render a primary-color "0" instead of the secondary-color placeholder.
+    // The placeholder belongs there until the user actually types.
+    const mockBalance = createMockBalance(1.0);
+    const { result } = renderHook(() =>
+      useTokenFiatConverter({ selectedBalance: mockBalance }),
+    );
+
+    act(() => {
+      result.current.setShowFiatAmount(true);
+    });
+
+    expect(result.current.fiatAmountDisplayRaw).toBeNull();
+    expect(result.current.fiatAmount).toBe("0");
+  });
+
+  it("normalizes a bare '.' to '0.' on the FIAT side too (sub-1 fractions in fiat mode)", () => {
+    const mockBalance = createMockBalance(1.0);
+    const { result } = renderHook(() =>
+      useTokenFiatConverter({ selectedBalance: mockBalance }),
+    );
+
+    act(() => {
+      result.current.setShowFiatAmount(true);
+    });
+    act(() => {
+      result.current.setDisplayAmountFromText(".");
+    });
+
+    expect(result.current.fiatAmountDisplayRaw).toMatch(/^0[.,]$/);
+    expect(result.current.fiatAmount).toBe("0");
+  });
+
+  it("preserves '0.' as a typed partial fraction in token mode", () => {
+    const mockBalance = createMockBalance(1.0);
+    const { result } = renderHook(() =>
+      useTokenFiatConverter({ selectedBalance: mockBalance }),
+    );
+
+    act(() => {
+      result.current.setDisplayAmountFromText("0.");
+    });
+
+    expect(result.current.tokenAmountDisplayRaw).toBe("0.");
+    expect(result.current.tokenAmount).toBe("0");
+  });
+
+  it("treats a typed '0' as a literal value (raw='0', not null)", () => {
+    // The AmountCard treats raw === null as the placeholder state and any
+    // typed input — including a single "0" — as a real value so the next
+    // keystroke (e.g. ".") appends instead of replacing.
+    const mockBalance = createMockBalance(1.0);
+    const { result } = renderHook(() =>
+      useTokenFiatConverter({ selectedBalance: mockBalance }),
+    );
+
+    act(() => {
+      result.current.setDisplayAmountFromText("0");
+    });
+
+    expect(result.current.tokenAmountDisplayRaw).toBe("0");
+    expect(result.current.tokenAmount).toBe("0");
+  });
+});
+
+describe("useTokenFiatConverter.setDisplayAmountFromText - input validation", () => {
+  const classicMock = {
+    total: new BigNumber(100),
+    currentPrice: new BigNumber(1),
+    percentagePriceChange24h: new BigNumber(0),
+    tokenCode: "USDC",
+    fiatCode: "USD",
+    fiatTotal: new BigNumber(100),
+    displayName: "USD Coin",
+    token: {
+      type: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+      code: "USDC",
+      issuer: {
+        key: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+      },
+    },
+    available: new BigNumber(100),
+    limit: new BigNumber("1000000000000"),
+    buyingLiabilities: "0",
+    sellingLiabilities: "0",
+  } as PricedBalance;
+
+  const sorobanMock = (decimals: number) =>
+    ({
+      total: new BigNumber(100),
+      currentPrice: new BigNumber(1),
+      percentagePriceChange24h: new BigNumber(0),
+      tokenCode: `CUSTOM${decimals}`,
+      fiatCode: "USD",
+      fiatTotal: new BigNumber(100),
+      displayName: `Custom Token ${decimals}d`,
+      token: {
+        type: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+        code: `CUSTOM${decimals}`,
+        issuer: { key: `${decimals}_ISSUER` },
+      },
+      available: new BigNumber(100),
+      limit: new BigNumber("1000000000000"),
+      buyingLiabilities: "0",
+      sellingLiabilities: "0",
+      contractId: `CUSTOM${decimals}_CONTRACT`,
+      name: `Custom Token ${decimals}d`,
+      symbol: `CUSTOM${decimals}`,
+      decimals,
+    }) as PricedBalance;
+
+  describe("at most one decimal separator", () => {
+    it("rejects '0..' on the token side", () => {
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({ selectedBalance: classicMock }),
+      );
+      act(() => {
+        result.current.setDisplayAmountFromText("1.5");
+      });
+      act(() => {
+        // Attempting to type a second separator: state must NOT update.
+        result.current.setDisplayAmountFromText("1.5.");
+      });
+      expect(result.current.tokenAmountDisplayRaw).toBe("1.5");
+    });
+
+    it("rejects '0.1.2.3' on the token side", () => {
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({ selectedBalance: classicMock }),
+      );
+      act(() => {
+        result.current.setDisplayAmountFromText("0.1");
+      });
+      act(() => {
+        result.current.setDisplayAmountFromText("0.1.2.3");
+      });
+      expect(result.current.tokenAmountDisplayRaw).toBe("0.1");
+    });
+
+    it("rejects mixed separators like '0.5,1'", () => {
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({ selectedBalance: classicMock }),
+      );
+      act(() => {
+        result.current.setDisplayAmountFromText("0.5");
+      });
+      act(() => {
+        result.current.setDisplayAmountFromText("0.5,1");
+      });
+      expect(result.current.tokenAmountDisplayRaw).toBe("0.5");
+    });
+
+    it("also rejects multi-separator input on the fiat side", () => {
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({ selectedBalance: classicMock }),
+      );
+      act(() => {
+        result.current.setShowFiatAmount(true);
+      });
+      act(() => {
+        result.current.setDisplayAmountFromText("1.5");
+      });
+      act(() => {
+        result.current.setDisplayAmountFromText("1.5.6");
+      });
+      expect(result.current.fiatAmountDisplayRaw).toBe("1.5");
+    });
+  });
+
+  describe("decimal precision limit", () => {
+    it("classic (decimals=7): accepts 7 decimals, rejects an 8th", () => {
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({ selectedBalance: classicMock }),
+      );
+      act(() => {
+        result.current.setDisplayAmountFromText("1.1234567");
+      });
+      expect(result.current.tokenAmountDisplayRaw).toBe("1.1234567");
+      act(() => {
+        result.current.setDisplayAmountFromText("1.12345678");
+      });
+      // State unchanged — the 8th decimal was rejected.
+      expect(result.current.tokenAmountDisplayRaw).toBe("1.1234567");
+    });
+
+    it("soroban (decimals=3): accepts 3 decimals, rejects a 4th", () => {
+      const balance = sorobanMock(3);
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({ selectedBalance: balance }),
+      );
+      act(() => {
+        result.current.setDisplayAmountFromText("1.123");
+      });
+      expect(result.current.tokenAmountDisplayRaw).toBe("1.123");
+      act(() => {
+        result.current.setDisplayAmountFromText("1.1234");
+      });
+      expect(result.current.tokenAmountDisplayRaw).toBe("1.123");
+    });
+
+    it("soroban (decimals=0): rejects ANY fractional digit", () => {
+      // Regression: hasDecimals used to require decimals > 0, which made the
+      // hook fall back to the 7-decimal default for integer-only Soroban
+      // tokens. With the >= 0 guard, decimals=0 is honored.
+      const balance = sorobanMock(0);
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({ selectedBalance: balance }),
+      );
+      act(() => {
+        result.current.setDisplayAmountFromText("42");
+      });
+      expect(result.current.tokenAmountDisplayRaw).toBe("42");
+      act(() => {
+        // Even a single decimal digit must be rejected for decimals=0 tokens.
+        result.current.setDisplayAmountFromText("42.1");
+      });
+      expect(result.current.tokenAmountDisplayRaw).toBe("42");
+    });
+
+    it("soroban (decimals=12): accepts 12 decimals, rejects a 13th", () => {
+      const balance = sorobanMock(12);
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({ selectedBalance: balance }),
+      );
+      act(() => {
+        result.current.setDisplayAmountFromText("1.123456789012");
+      });
+      expect(result.current.tokenAmountDisplayRaw).toBe("1.123456789012");
+      act(() => {
+        result.current.setDisplayAmountFromText("1.1234567890123");
+      });
+      expect(result.current.tokenAmountDisplayRaw).toBe("1.123456789012");
+    });
+
+    it("fiat side respects FIAT_DECIMALS (2)", () => {
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({ selectedBalance: classicMock }),
+      );
+      act(() => {
+        result.current.setShowFiatAmount(true);
+      });
+      act(() => {
+        result.current.setDisplayAmountFromText("1.23");
+      });
+      expect(result.current.fiatAmountDisplayRaw).toBe("1.23");
+      act(() => {
+        result.current.setDisplayAmountFromText("1.234");
+      });
+      expect(result.current.fiatAmountDisplayRaw).toBe("1.23");
+    });
+  });
+
+  describe("classic absolute max (922337203685.4775807)", () => {
+    it("accepts exactly the int64-scaled max for a classic token", () => {
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({ selectedBalance: classicMock }),
+      );
+      act(() => {
+        result.current.setDisplayAmountFromText("922337203685.4775807");
+      });
+      expect(result.current.tokenAmountDisplayRaw).toBe("922337203685.4775807");
+    });
+
+    it("rejects input one ulp above the classic max", () => {
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({ selectedBalance: classicMock }),
+      );
+      act(() => {
+        result.current.setDisplayAmountFromText("1");
+      });
+      act(() => {
+        // 2^63 stroops — one ulp over the int64 max, must be rejected.
+        result.current.setDisplayAmountFromText("922337203685.4775808");
+      });
+      expect(result.current.tokenAmountDisplayRaw).toBe("1");
+    });
+
+    it("rejects amounts well above the classic max", () => {
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({ selectedBalance: classicMock }),
+      );
+      act(() => {
+        result.current.setDisplayAmountFromText("100");
+      });
+      act(() => {
+        result.current.setDisplayAmountFromText("9999999999999999");
+      });
+      expect(result.current.tokenAmountDisplayRaw).toBe("100");
+    });
+
+    it("does NOT enforce the classic max for soroban / custom tokens", () => {
+      const balance = sorobanMock(6);
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({ selectedBalance: balance }),
+      );
+      act(() => {
+        // Above the classic cap — soroban tokens have no protocol-level max
+        // here, so the input should still be accepted.
+        result.current.setDisplayAmountFromText("1000000000000.123456");
+      });
+      expect(result.current.tokenAmountDisplayRaw).toBe("1000000000000.123456");
+    });
+
+    it("resets both amounts and both raw displays when the selected token changes", () => {
+      // Typing on token A then picking a token B with different decimal
+      // constraints must clear the input — otherwise a value typed under A's
+      // 7-decimal allowance could survive into a 3-decimal token and bypass
+      // the precision cap. This is the Send flow's situation today: Send
+      // already supports Soroban / custom tokens with arbitrary decimals.
+      const { result, rerender } = renderHook(
+        ({ balance }: { balance: PricedBalance }) =>
+          useTokenFiatConverter({ selectedBalance: balance }),
+        { initialProps: { balance: classicMock } },
+      );
+
+      act(() => {
+        result.current.setDisplayAmountFromText("1.2345678");
+      });
+      expect(result.current.tokenAmount).toBe("1.2345678");
+      expect(result.current.tokenAmountDisplayRaw).toBe("1.2345678");
+
+      // Swap to a Soroban token (decimals=3).
+      rerender({ balance: sorobanMock(3) });
+
+      expect(result.current.tokenAmount).toBe("0");
+      expect(result.current.fiatAmount).toBe("0");
+      expect(result.current.tokenAmountDisplayRaw).toBeNull();
+      expect(result.current.fiatAmountDisplayRaw).toBeNull();
+    });
+
+    it("preserves showFiatAmount mode across token changes", () => {
+      const { result, rerender } = renderHook(
+        ({ balance }: { balance: PricedBalance }) =>
+          useTokenFiatConverter({ selectedBalance: balance }),
+        { initialProps: { balance: classicMock } },
+      );
+
+      act(() => {
+        result.current.setShowFiatAmount(true);
+      });
+      expect(result.current.showFiatAmount).toBe(true);
+
+      rerender({ balance: sorobanMock(3) });
+      expect(result.current.showFiatAmount).toBe(true);
+    });
+
+    it("does NOT enforce the classic max for soroban tokens with decimals=0", () => {
+      // The classic cap is gated by the absence of an explicit `decimals`
+      // field. A decimals=0 Soroban token must still be recognized as
+      // Soroban — not misidentified as classic.
+      const balance = sorobanMock(0);
+      const { result } = renderHook(() =>
+        useTokenFiatConverter({ selectedBalance: balance }),
+      );
+      act(() => {
+        // Above the classic cap — should be accepted because this is a
+        // Soroban token (no protocol-level max in our flow).
+        result.current.setDisplayAmountFromText("999999999999999");
+      });
+      expect(result.current.tokenAmountDisplayRaw).toBe("999999999999999");
     });
   });
 });

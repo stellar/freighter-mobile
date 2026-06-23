@@ -425,16 +425,39 @@ enum IconActionType {
   LOADED = "LOADED",
   FAILED = "FAILED",
   TIMEOUT = "TIMEOUT",
+  RETRY = "RETRY",
   CLEAR = "CLEAR",
 }
 
 /** Sentinel URL used for Metro-bundled (local) assets that don't need fetching. */
 const LOCAL_ASSET_URL = "__local__";
 
+/**
+ * Retry-on-timeout config. A timeout-driven FALLBACK is recoverable —
+ * the URL is well-formed, the fetch just lost the race against the
+ * watchdog (typical on Android cold-start when 30+ trending rows hit
+ * Glide's executor at once). Schedule retries with short backoff so the
+ * tail of the trending list eventually delivers its icon.
+ *
+ * onError-driven FALLBACK is terminal (real 404 / bad URL) — no retry.
+ */
+const MAX_TIMEOUT_RETRIES = 2;
+const RETRY_BACKOFF_MS = [500, 1500] as const;
+
 interface IconLoadState {
   phase: IconPhase;
   /** The URL string we most recently dispatched START_LOADING for. */
   activeUrl: string | undefined;
+  /**
+   * Number of TIMEOUT-driven retries already spent for the current
+   * activeUrl. Reset to 0 when activeUrl changes.
+   */
+  retryCount: number;
+  /**
+   * Why the row landed in FALLBACK. Only "timeout" is eligible for
+   * retry; "error" is terminal so we don't loop on real 404s.
+   */
+  failureReason: "timeout" | "error" | undefined;
 }
 
 type IconLoadAction =
@@ -442,6 +465,7 @@ type IconLoadAction =
   | { type: IconActionType.LOADED }
   | { type: IconActionType.FAILED }
   | { type: IconActionType.TIMEOUT }
+  | { type: IconActionType.RETRY }
   | { type: IconActionType.CLEAR };
 
 function iconLoadReducer(
@@ -450,21 +474,69 @@ function iconLoadReducer(
 ): IconLoadState {
   switch (action.type) {
     case IconActionType.START_LOADING:
-      return { phase: IconPhase.LOADING, activeUrl: action.url };
+      return {
+        phase: IconPhase.LOADING,
+        activeUrl: action.url,
+        // Preserve retryCount only when starting on the same URL — guards
+        // against an unrelated re-fire stomping the in-progress retry
+        // ladder. A new URL resets the counter as expected.
+        retryCount: action.url === state.activeUrl ? state.retryCount : 0,
+        failureReason: undefined,
+      };
     case IconActionType.LOADED:
       // Guard: don't transition if there's nothing active (e.g. component
       // already cleared). The key=activeUrl prop on TokenImage forces a
       // remount whenever the URL changes, so stale onLoad callbacks from
       // an old source are discarded before they can reach this reducer.
       if (!state.activeUrl) return state;
-      return { phase: IconPhase.LOADED, activeUrl: state.activeUrl };
+      return {
+        phase: IconPhase.LOADED,
+        activeUrl: state.activeUrl,
+        retryCount: 0,
+        failureReason: undefined,
+      };
     case IconActionType.FAILED:
-    case IconActionType.TIMEOUT:
-      // Guard: only transition to fallback while actively loading.
+      // Terminal — onError fires for real 404s / bad URLs. No retry.
       if (state.phase !== IconPhase.LOADING) return state;
-      return { phase: IconPhase.FALLBACK, activeUrl: state.activeUrl };
+      return {
+        phase: IconPhase.FALLBACK,
+        activeUrl: state.activeUrl,
+        retryCount: state.retryCount,
+        failureReason: "error",
+      };
+    case IconActionType.TIMEOUT:
+      // Soft failure — the watchdog fired before onLoad. Eligible for retry.
+      if (state.phase !== IconPhase.LOADING) return state;
+      return {
+        phase: IconPhase.FALLBACK,
+        activeUrl: state.activeUrl,
+        retryCount: state.retryCount,
+        failureReason: "timeout",
+      };
+    case IconActionType.RETRY:
+      // Only valid from timeout-driven FALLBACK under the cap. The
+      // scheduler effect double-checks before dispatching but guard
+      // here too so a stale event can't reanimate a terminal row.
+      if (
+        state.phase !== IconPhase.FALLBACK ||
+        state.failureReason !== "timeout" ||
+        state.retryCount >= MAX_TIMEOUT_RETRIES
+      ) {
+        return state;
+      }
+      return {
+        phase: IconPhase.LOADING,
+        activeUrl: state.activeUrl,
+        retryCount: state.retryCount + 1,
+        failureReason: undefined,
+      };
     case IconActionType.CLEAR:
-      return { phase: IconPhase.IDLE, activeUrl: undefined };
+      return {
+        phase: IconPhase.IDLE,
+        activeUrl: undefined,
+        retryCount: 0,
+        failureReason: undefined,
+      };
     default:
       return state;
   }
@@ -492,8 +564,18 @@ const ImageWithFallback: React.FC<{
     undefined,
     (): IconLoadState =>
       isInitiallyLocalAsset
-        ? { phase: IconPhase.LOADED, activeUrl: LOCAL_ASSET_URL }
-        : { phase: IconPhase.IDLE, activeUrl: undefined },
+        ? {
+            phase: IconPhase.LOADED,
+            activeUrl: LOCAL_ASSET_URL,
+            retryCount: 0,
+            failureReason: undefined,
+          }
+        : {
+            phase: IconPhase.IDLE,
+            activeUrl: undefined,
+            retryCount: 0,
+            failureReason: undefined,
+          },
   );
 
   // Ref so timeout callbacks always read the current phase without being
@@ -632,6 +714,36 @@ const ImageWithFallback: React.FC<{
   }, [targetUrl, isLocalAsset, skipAnimation]);
 
   // -------------------------------------------------------------------------
+  // Retry-after-timeout scheduler — re-enters LOADING after the configured
+  // backoff so a row whose first fetch lost the race against the watchdog
+  // gets another shot at the (by-now-warmer) native cache.
+  // -------------------------------------------------------------------------
+  useEffect(() => {
+    if (skipAnimation) return undefined;
+    const { phase, failureReason, retryCount, activeUrl } = state;
+    if (phase !== IconPhase.FALLBACK || failureReason !== "timeout") {
+      return undefined;
+    }
+    if (retryCount >= MAX_TIMEOUT_RETRIES) return undefined;
+    if (!targetUrl || activeUrl !== targetUrl) return undefined;
+
+    const delay = RETRY_BACKOFF_MS[retryCount] ?? RETRY_BACKOFF_MS[1];
+    const retryId = setTimeout(() => {
+      // Re-check via the ref in case CLEAR / a new URL landed mid-backoff.
+      const cur = stateRef.current;
+      if (
+        cur.phase === IconPhase.FALLBACK &&
+        cur.failureReason === "timeout" &&
+        cur.activeUrl === targetUrl &&
+        cur.retryCount < MAX_TIMEOUT_RETRIES
+      ) {
+        dispatch({ type: IconActionType.RETRY });
+      }
+    }, delay);
+    return () => clearTimeout(retryId);
+  }, [state, targetUrl, skipAnimation]);
+
+  // -------------------------------------------------------------------------
   // Render
   // -------------------------------------------------------------------------
   const { phase } = state;
@@ -686,10 +798,19 @@ const ImageWithFallback: React.FC<{
           any stale onLoad/onError callbacks from the previous source. */}
       {renderTokenImage && (
         <TokenImage
-          key={state.activeUrl}
+          // Bump key on each retry so FastImage starts a fresh native
+          // request instead of re-binding to the prior (deduped) Glide
+          // entry that already timed out in the queue.
+          key={`${state.activeUrl}#${state.retryCount}`}
           source={
             typeof finalImageUrl === "string"
-              ? { uri: finalImageUrl }
+              ? {
+                  uri: finalImageUrl,
+                  // Visible rows should leapfrog any low-priority
+                  // preloads queued at the same time (see
+                  // useSwapTokenLookup's preload firehose).
+                  priority: FastImage.priority.high,
+                }
               : (finalImageUrl as ImageSourcePropType)
           }
           accessibilityLabel={source.altText}

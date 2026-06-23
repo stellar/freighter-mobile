@@ -6,6 +6,7 @@ import {
 import * as Sentry from "@sentry/react-native";
 import { AuthErrorToastListener } from "components/AuthErrorToastListener";
 import { initializeSentryLogger } from "config/logger";
+import { NAVIGATION_THEME } from "config/navigationTheme";
 import { RootStackParamList } from "config/routes";
 import { initializeSentry } from "config/sentryConfig";
 import { THEME } from "config/theme";
@@ -70,6 +71,7 @@ export const App = (): React.JSX.Element => {
                 <AuthErrorToastListener />
                 <NavigationContainer
                   ref={navigationRef}
+                  theme={NAVIGATION_THEME}
                   onStateChange={onStateChange}
                 >
                   <AuthCheckProvider>

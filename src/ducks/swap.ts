@@ -1,15 +1,17 @@
 import { Horizon } from "@stellar/stellar-sdk";
 import BigNumber from "bignumber.js";
+import { DestinationTokenDescriptor } from "components/screens/SwapScreen/helpers";
 import {
   DEFAULT_DECIMALS,
   NETWORKS,
   mapNetworkToNetworkDetails,
 } from "config/constants";
 import { logger } from "config/logger";
-import { PricedBalance } from "config/types";
+import { PricedBalance, TokenTypeWithCustomToken } from "config/types";
 import { useDebugStore } from "ducks/debug";
 import { formatBigNumberForDisplay } from "helpers/formatAmount";
 import { isContractId } from "helpers/soroban";
+import { type HeldBalanceItem } from "hooks/useBalancesList";
 import { t } from "i18next";
 import { getTokenForPayment } from "services/transactionService";
 import { create } from "zustand";
@@ -37,9 +39,8 @@ interface SwapPathData {
 
 interface SwapState {
   sourceTokenId: string;
-  destinationTokenId: string;
   sourceTokenSymbol: string;
-  destinationTokenSymbol: string;
+  destinationToken: DestinationTokenDescriptor | null;
   sourceAmount: string; // Internal value (dot notation)
   sourceAmountDisplay: string; // Display value (locale formatted)
   destinationAmount: string;
@@ -50,7 +51,7 @@ interface SwapState {
   buildError: string | null;
 
   setSourceToken: (tokenId: string, tokenSymbol: string) => void;
-  setDestinationToken: (tokenId: string, tokenSymbol: string) => void;
+  setDestinationToken: (descriptor: DestinationTokenDescriptor | null) => void;
   setSourceAmount: (amount: string, preserveDisplay?: boolean) => void;
   setSourceAmountDisplay: (displayAmount: string) => void;
   findSwapPath: (params: {
@@ -67,9 +68,8 @@ interface SwapState {
 
 const initialState = {
   sourceTokenId: "",
-  destinationTokenId: "",
   sourceTokenSymbol: "",
-  destinationTokenSymbol: "",
+  destinationToken: null as DestinationTokenDescriptor | null,
   sourceAmount: "0",
   sourceAmountDisplay: "0",
   destinationAmount: "0",
@@ -145,10 +145,25 @@ export const useSwapStore = create<SwapState>((set) => ({
   ...initialState,
 
   setSourceToken: (tokenId, tokenSymbol) =>
-    set({ sourceTokenId: tokenId, sourceTokenSymbol: tokenSymbol }),
+    set((state) =>
+      tokenId === state.sourceTokenId
+        ? { sourceTokenId: tokenId, sourceTokenSymbol: tokenSymbol }
+        : {
+            sourceTokenId: tokenId,
+            sourceTokenSymbol: tokenSymbol,
+            // Reset the amount on an actual source-token change. Centralized
+            // here so every caller is correct by construction: otherwise the
+            // prior amount (e.g. the old token's Max) is briefly validated
+            // against the new token's possibly-smaller balance before the
+            // converter's reset-on-token-change lands, flashing an
+            // "Insufficient balance" error. Skipped when the token is
+            // unchanged so a re-pick doesn't wipe an in-progress amount.
+            sourceAmount: "0",
+            sourceAmountDisplay: "0",
+          },
+    ),
 
-  setDestinationToken: (tokenId, tokenSymbol) =>
-    set({ destinationTokenId: tokenId, destinationTokenSymbol: tokenSymbol }),
+  setDestinationToken: (descriptor) => set({ destinationToken: descriptor }),
 
   setSourceAmount: (amount, preserveDisplay = false) => {
     // Expect internal dot notation input, convert to display format
@@ -202,8 +217,7 @@ export const useSwapStore = create<SwapState>((set) => ({
         return;
       }
 
-      // For now, we only support classic path payments
-      // TODO: Add Soroswap support for Testnet in future iteration
+      // TODO: Add Soroswap support for Testnet
       const pathResult = await findClassicSwapPath({
         sourceBalance,
         destinationBalance,
@@ -240,7 +254,6 @@ export const useSwapStore = create<SwapState>((set) => ({
 
       logger.error("SwapStore", "Failed to find swap path", error);
 
-      // In dev mode, show the actual error; otherwise show generic message
       const displayError = __DEV__
         ? errorMessage
         : t("swapScreen.errors.pathFindFailed");
@@ -261,3 +274,44 @@ export const useSwapStore = create<SwapState>((set) => ({
 
   resetSwap: () => set(initialState),
 }));
+
+/**
+ * Shim that lets a `DestinationTokenDescriptor` flow through the
+ * path-finding / transaction-building pipelines where they accept a
+ * `PricedBalance`. The pipelines only read `token` (code/issuer/type)
+ * off the value; the `as unknown as PricedBalance` cast is safe here
+ * because of that read-shape contract. Don't treat the shim as a real
+ * holding anywhere else.
+ *
+ * Native XLM is unreachable: XLM is the user's reserve, always present
+ * in `balanceItems`, so the SwapAmountScreen useMemo at the call site
+ * resolves `destinationBalance` to the held XLM PricedBalance before
+ * this shim is reached. We assert that invariant rather than silently
+ * mint a fake.
+ */
+export const descriptorAsPathBalance = (
+  descriptor: DestinationTokenDescriptor,
+): HeldBalanceItem => {
+  if (descriptor.tokenType === TokenTypeWithCustomToken.NATIVE) {
+    throw new Error(
+      `descriptorAsPathBalance: native descriptor (id=${descriptor.id}) — XLM should always resolve to a held balance before this shim runs`,
+    );
+  }
+
+  if (!descriptor.issuer) {
+    throw new Error(
+      `descriptorAsPathBalance: non-native descriptor missing issuer (id=${descriptor.id})`,
+    );
+  }
+
+  return {
+    id: descriptor.id,
+    tokenCode: descriptor.tokenCode,
+    tokenType: descriptor.tokenType,
+    token: {
+      code: descriptor.tokenCode,
+      issuer: { key: descriptor.issuer },
+      type: descriptor.tokenType,
+    },
+  } as unknown as HeldBalanceItem;
+};

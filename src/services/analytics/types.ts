@@ -1,10 +1,6 @@
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { QRCodeSource } from "config/constants";
 
-// -----------------------------------------------------------------------------
-// CORE TYPES
-// -----------------------------------------------------------------------------
-
 export enum TransactionType {
   Classic = "classic",
   Soroban = "soroban",
@@ -12,10 +8,6 @@ export enum TransactionType {
 
 export type AnalyticsEventName = AnalyticsEvent;
 export type AnalyticsProps = Record<string, unknown> | undefined;
-
-// -----------------------------------------------------------------------------
-// EVENT INTERFACES
-// -----------------------------------------------------------------------------
 
 export interface SignedTransactionEvent {
   transactionHash: string;
@@ -54,6 +46,8 @@ export interface TransactionSuccessEvent {
 export interface SwapSuccessEvent {
   sourceToken: string;
   destToken: string;
+  sourceAmount?: string;
+  destAmount?: string;
   allowedSlippage?: string;
   isSwap: true;
 }
@@ -63,6 +57,10 @@ export interface TransactionErrorEvent {
   errorCode?: string;
   operationType?: TransactionOperationType;
   isSwap?: boolean;
+  sourceToken?: string;
+  destToken?: string;
+  sourceAmount?: string;
+  destAmount?: string;
 }
 
 export interface QRScanEvent {
