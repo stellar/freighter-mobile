@@ -30,6 +30,17 @@ export const BASE_BACKOFF_SEC = 1000; // Base delay in milliseconds
 const LEDGER_CAPACITY_MEDIUM_THRESHOLD = 0.5;
 const LEDGER_CAPACITY_HIGH_THRESHOLD = 0.75;
 
+// The recommended fee tier follows the current network congestion: bid low when
+// the network is quiet, higher when it's contested.
+const CONGESTION_TO_FEE_PRIORITY: Record<
+  NetworkCongestion,
+  FeePriority.LOW | FeePriority.MEDIUM | FeePriority.HIGH
+> = {
+  [NetworkCongestion.LOW]: FeePriority.LOW,
+  [NetworkCongestion.MEDIUM]: FeePriority.MEDIUM,
+  [NetworkCongestion.HIGH]: FeePriority.HIGH,
+};
+
 interface HorizonError {
   response: {
     status: number;
@@ -189,9 +200,7 @@ export const getNetworkFees = async (server: Horizon.Server) => {
       [FeePriority.MEDIUM]: stroopToXlm(maxFee.p50).toFixed(),
       [FeePriority.HIGH]: stroopToXlm(maxFee.p90).toFixed(),
     };
-    // The recommended (default) fee matches the Medium preset (the median of
-    // the max-fee distribution), so the settings sheet opens on the "Med" tier.
-    recommendedFee = feePresets[FeePriority.MEDIUM];
+
     if (
       ledgerCapacityUsageNum > LEDGER_CAPACITY_MEDIUM_THRESHOLD &&
       ledgerCapacityUsageNum <= LEDGER_CAPACITY_HIGH_THRESHOLD
@@ -202,6 +211,10 @@ export const getNetworkFees = async (server: Horizon.Server) => {
     } else {
       networkCongestion = NetworkCongestion.LOW;
     }
+
+    // The recommended (default) fee tier follows the current congestion, so the
+    // settings sheet opens on Low/Med/High to match network conditions.
+    recommendedFee = feePresets[CONGESTION_TO_FEE_PRIORITY[networkCongestion]];
   } catch (e) {
     // use default values
     recommendedFee = DEFAULT_RECOMMENDED_STELLAR_FEE;

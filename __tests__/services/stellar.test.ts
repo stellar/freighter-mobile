@@ -103,11 +103,11 @@ describe("stellar service - getNetworkFees", () => {
     expect(feePresets[FeePriority.LOW]).toBe("0.00001"); // p10 = 100
     expect(feePresets[FeePriority.MEDIUM]).toBe("0.0001"); // p50 = 1000
     expect(feePresets[FeePriority.HIGH]).toBe("0.001"); // p90 = 10000
-    // The recommended (default) fee matches the Medium preset.
-    expect(recommendedFee).toBe(feePresets[FeePriority.MEDIUM]);
+    // Low congestion → recommended fee follows the Low preset.
+    expect(recommendedFee).toBe(feePresets[FeePriority.LOW]);
   });
 
-  it("derives congestion level from ledger capacity usage", async () => {
+  it("derives congestion level and a matching recommended fee tier", async () => {
     const mediumServer = buildFeeStatsServer(() =>
       Promise.resolve({
         ledger_capacity_usage: "0.6",
@@ -121,12 +121,13 @@ describe("stellar service - getNetworkFees", () => {
       }),
     );
 
-    expect((await getNetworkFees(mediumServer)).networkCongestion).toBe(
-      NetworkCongestion.MEDIUM,
-    );
-    expect((await getNetworkFees(highServer)).networkCongestion).toBe(
-      NetworkCongestion.HIGH,
-    );
+    const medium = await getNetworkFees(mediumServer);
+    expect(medium.networkCongestion).toBe(NetworkCongestion.MEDIUM);
+    expect(medium.recommendedFee).toBe(medium.feePresets[FeePriority.MEDIUM]);
+
+    const high = await getNetworkFees(highServer);
+    expect(high.networkCongestion).toBe(NetworkCongestion.HIGH);
+    expect(high.recommendedFee).toBe(high.feePresets[FeePriority.HIGH]);
   });
 
   it("falls back to defaults when feeStats fails", async () => {
