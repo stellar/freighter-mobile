@@ -1,5 +1,5 @@
 import BigNumber from "bignumber.js";
-import { DEFAULT_DECIMALS } from "config/constants";
+import { DEFAULT_DECIMALS, MIN_TRANSACTION_FEE } from "config/constants";
 import { Balance, PricedBalance } from "config/types";
 import { hasDecimals } from "helpers/balances";
 import { formatTokenForDisplay as formatSorobanTokenAmount } from "helpers/soroban";
@@ -385,6 +385,158 @@ export const parseDisplayNumber = (
 };
 
 /**
+ * Sanitizes an arbitrary pasted/typed string into a clean, locale-formatted
+ * numeric display string (or rejects it).
+ *
+ * The system keyboard delivers the whole field value on every change, so this
+ * runs for typed input too — it must preserve in-progress typing (trailing
+ * separators, trailing zeros) while coping with the worst a paste can carry:
+ * foreign separators, grouping, currency symbols, whitespace, signs.
+ *
+ * Rules:
+ *  - Strip every char that is not a digit, "." or ",".
+ *  - Resolve the decimal separator: when BOTH "." and "," are present the
+ *    RIGHTMOST one is the decimal and the other is grouping (so "1,234.56" and
+ *    "1.234,56" both read as 1234.56 regardless of locale). A lone locale
+ *    decimal is the decimal; a lone/repeated locale grouping separator is
+ *    grouping; repeated locale-decimal separators are malformed.
+ *  - Truncate the fraction to `maxDecimals` (never round — rounding could
+ *    inflate a send amount).
+ *  - Emit the decimal using the LOCALE separator so downstream parsing reads
+ *    it as the decimal, not as grouping.
+ *
+ * @returns the sanitized locale-display string, "" for empty input (a clear),
+ *   or null when the input is unparseable/ambiguous (caller should roll back).
+ */
+export const sanitizePastedAmount = (
+  text: string,
+  {
+    decimalSeparator,
+    maxDecimals,
+  }: {
+    decimalSeparator: string;
+    maxDecimals: number;
+  },
+): string | null => {
+  // Empty is a clear, not a reject.
+  if (text === "") return "";
+
+  // Normalize fullwidth/compatibility forms (e.g. CJK fullwidth digits "１２３"
+  // and separators "．，") to ASCII so they aren't silently dropped below.
+  const normalized = text.normalize("NFKC");
+
+  // Reject scientific notation up front — stripping the "e" would silently
+  // corrupt it into a wrong magnitude (e.g. "1e5" → "15").
+  if (/\d[eE][-+]?\d/.test(normalized)) return null;
+
+  // Keep only digits and the two separator characters (drops currency
+  // symbols, letters, whitespace, and the sign — amounts are non-negative).
+  let cleaned = normalized.replace(/[^0-9.,]/g, "");
+  if (cleaned === "") return null;
+
+  // A trailing separator can't be a decimal point (nothing follows it).
+  // Preserve only a lone trailing LOCALE decimal — in-progress typing like
+  // "1." / "100,". Otherwise strip trailing separators as junk/grouping so
+  // "1.5," resolves to "1.5", not "15.".
+  const otherSep = decimalSeparator === "." ? "," : ".";
+  const preserveTrailingDecimal =
+    cleaned.endsWith(decimalSeparator) &&
+    (cleaned.match(new RegExp(`\\${decimalSeparator}`, "g")) || []).length ===
+      1 &&
+    !cleaned.includes(otherSep);
+  if (!preserveTrailingDecimal) {
+    cleaned = cleaned.replace(/[.,]+$/, "");
+    if (cleaned === "") return null;
+  }
+
+  const dots = (cleaned.match(/\./g) || []).length;
+  const commas = (cleaned.match(/,/g) || []).length;
+
+  // A separator forms valid thousands grouping when the first group is 1-3
+  // digits and every later group is exactly 3 (e.g. "1,234", "12,345,678").
+  const isValidGrouping = (value: string, sep: string): boolean => {
+    const parts = value.split(sep);
+    return (
+      parts.length > 1 &&
+      parts[0].length >= 1 &&
+      parts[0].length <= 3 &&
+      parts.slice(1).every((part) => part.length === 3)
+    );
+  };
+
+  let decimalChar: string | null = null;
+  let digitsAndDecimal = cleaned;
+
+  if (dots > 0 && commas > 0) {
+    // Mixed: the rightmost separator is the decimal, the other is grouping.
+    // The integer portion must be validly grouped (1-3 digits, then groups of
+    // 3) and the fraction must be plain digits — otherwise it's ambiguous
+    // garbage (e.g. "0.5,1", or irregular grouping like "1,23,456.78") and we
+    // reject rather than guess a magnitude.
+    decimalChar =
+      cleaned.lastIndexOf(".") > cleaned.lastIndexOf(",") ? "." : ",";
+    const groupingChar = decimalChar === "." ? "," : ".";
+    const lastDecimalIdx = cleaned.lastIndexOf(decimalChar);
+    const integerPortion = cleaned.slice(0, lastDecimalIdx);
+    const fractionPortion = cleaned.slice(lastDecimalIdx + 1);
+    const groupedPattern = new RegExp(`^\\d{1,3}(\\${groupingChar}\\d{3})+$`);
+    if (
+      !groupedPattern.test(integerPortion) ||
+      !/^\d*$/.test(fractionPortion)
+    ) {
+      return null;
+    }
+    digitsAndDecimal = `${integerPortion
+      .split(groupingChar)
+      .join("")}${decimalChar}${fractionPortion}`;
+  } else if (dots > 0 || commas > 0) {
+    const sepChar = dots > 0 ? "." : ",";
+    const count = dots > 0 ? dots : commas;
+
+    if (sepChar === decimalSeparator && count === 1) {
+      // A lone locale decimal is the decimal point.
+      decimalChar = sepChar;
+    } else if (isValidGrouping(cleaned, sepChar)) {
+      // Valid 3-digit groups → thousands grouping → integer. Also rescues a
+      // foreign-grouped integer (e.g. "1,234,567" pasted on a comma-decimal
+      // device).
+      digitsAndDecimal = cleaned.split(sepChar).join("");
+    } else if (count === 1 && sepChar !== decimalSeparator) {
+      // A lone NON-locale separator that isn't valid grouping is a
+      // foreign-formatted decimal (e.g. "5,2" on a US device → 5.2). This is
+      // what prevents the silent 10x-100000x magnitude errors.
+      decimalChar = sepChar;
+    } else {
+      // Repeated separators that don't form valid groups, or a repeated
+      // locale decimal — unresolvable, reject.
+      return null;
+    }
+  }
+
+  let integerPart = digitsAndDecimal;
+  let fractionPart = "";
+  if (decimalChar) {
+    const idx = digitsAndDecimal.indexOf(decimalChar);
+    integerPart = digitsAndDecimal.slice(0, idx);
+    fractionPart = digitsAndDecimal.slice(idx + 1);
+  }
+
+  integerPart = integerPart.replace(/^0+(?=\d)/, ""); // drop leading zeros
+  fractionPart = fractionPart.slice(0, maxDecimals); // truncate, never round
+
+  // A bare grouping separator with no digits is not a number.
+  if (integerPart === "" && fractionPart === "" && !decimalChar) return null;
+
+  if (!decimalChar) return integerPart;
+
+  // Integer-only token (maxDecimals 0): drop the decimal entirely rather than
+  // leaving a dangling "42." after truncating the fraction away.
+  if (maxDecimals === 0) return integerPart || "0";
+
+  return `${integerPart || "0"}${decimalSeparator}${fractionPart}`;
+};
+
+/**
  * Parses a display-formatted numeric string to a BigNumber instance
  *
  * This function is useful when you need to maintain precision and work with BigNumber
@@ -635,6 +787,24 @@ export const xlmToStroop = (lumens: BigNumber | string): BigNumber => {
   // round to nearest stroop
   return new BigNumber(Math.round(Number(lumens) * 1e7));
 };
+
+/**
+ * Splits a TOTAL transaction fee (XLM string) into the Stellar SDK's
+ * per-operation base fee (stroops string). The network charges
+ * `baseFee × numOperations`, so dividing the user-set total by the op count
+ * keeps the total the user sees consistent regardless of how many operations
+ * the transaction bundles (e.g. a swap-to-new-token's changeTrust + path
+ * payment). Each op is clamped to the 100-stroop network minimum
+ * (MIN_TRANSACTION_FEE) so the result is always a submittable base fee.
+ */
+export const getPerOperationBaseFeeStroops = (
+  totalFeeXlm: string,
+  operationCount: number,
+): string =>
+  BigNumber.max(
+    xlmToStroop(totalFeeXlm).idiv(operationCount),
+    xlmToStroop(MIN_TRANSACTION_FEE),
+  ).toFixed(0);
 
 /**
  * Formats a balance amount for display, handling custom tokens with decimals

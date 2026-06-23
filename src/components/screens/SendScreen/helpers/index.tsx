@@ -13,6 +13,7 @@ import {
   assessTransactionSecurity,
   extractSecurityWarnings,
   isUnfundedDestinationError,
+  type SecurityWarning,
   type UnfundedDestinationContext,
 } from "services/blockaid/helper";
 
@@ -88,12 +89,13 @@ function getTransactionSecurityWarnings(
   assessment: ReturnType<typeof assessTransactionSecurity>,
   scanResult: Blockaid.StellarTransactionScanResponse | undefined,
   unfundedContext?: UnfundedDestinationContext,
-) {
+): SecurityWarning[] {
   if (assessment.isUnableToScan) {
     return [
       {
         id: "unable-to-scan",
         description: assessment.details || "Unable to scan transaction",
+        severity: "warning",
       },
     ];
   }

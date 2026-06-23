@@ -61,9 +61,7 @@ const PAIRING_ERROR_DELAY_MS = 500;
  * @param enabled - When false, all effects are no-ops (used by useQRCodeScreenScanner
  *   to prevent inactive hooks from firing side effects)
  */
-export const useHomeQrCodeScanner = (
-  enabled: boolean,
-): QRCodeScreenReturn => {
+export const useHomeQrCodeScanner = (enabled: boolean): QRCodeScreenReturn => {
   const { t } = useAppTranslation();
   const { getClipboardText } = useClipboard();
   const { showToast } = useToast();
@@ -316,12 +314,12 @@ export const useHomeQrCodeScanner = (
     handleQRCodeScanned,
     handleClose,
     handleHeaderLeft,
-    ...isDev && {
+    ...(isDev && {
       handleManualInputChange,
       handleConnect,
       handleClearInput,
       handlePasteFromClipboard,
-    },
+    }),
   };
 
   return {

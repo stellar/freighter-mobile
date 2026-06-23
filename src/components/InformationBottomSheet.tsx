@@ -13,16 +13,18 @@ import { TouchableOpacity, View } from "react-native";
  * @property {() => void} onClose - Callback function when the bottom sheet is closed
  * @property {string} title - The main title displayed at the top of the bottom sheet
  * @property {React.ReactNode} [headerElement] - Optional custom header element (e.g., icon with background)
- * @property {Array<{ key: string; value: string }>} texts - Array of text strings to display as content paragraphs
+ * @property {Array<{ key: string; value: React.ReactNode }>} texts - Array of paragraphs to display. `value` accepts plain text or rich content (e.g. nested `<Text>` for inline emphasis); rendered inside the shared paragraph `<Text>` wrapper so RN's nested-Text inheritance keeps fonts consistent.
  * @property {string} [confirmLabel] - Optional label for the confirmation button (defaults to "Add memo")
+ * @property {string} [closeTestID] - Optional testID for the close (X) button.
  */
 type InformationBottomSheetProps = {
   onConfirm?: () => void;
   onClose: () => void;
   title: string;
   headerElement?: React.ReactNode;
-  texts: { key: string; value: string }[];
+  texts: { key: string; value: React.ReactNode }[];
   confirmLabel?: string;
+  closeTestID?: string;
 };
 
 /**
@@ -51,6 +53,7 @@ const InformationBottomSheet = ({
   headerElement,
   texts,
   confirmLabel,
+  closeTestID,
 }: InformationBottomSheetProps) => {
   const { themeColors } = useColors();
 
@@ -60,11 +63,16 @@ const InformationBottomSheet = ({
     <View className="flex-1">
       <View className="relative flex-row items-center mb-8">
         {headerElement}
-        <TouchableOpacity onPress={onClose} className="absolute right-0">
+        <TouchableOpacity
+          onPress={onClose}
+          className="absolute right-0"
+          testID={closeTestID}
+        >
           <Icon.X
             color={themeColors.foreground.secondary}
-            size={24}
+            size={22}
             circle
+            circleBorder={themeColors.background.tertiary}
             circleBackground={themeColors.background.tertiary}
           />
         </TouchableOpacity>

@@ -110,6 +110,24 @@ describe("TokenIcon", () => {
     expect(getByText("US")).toBeTruthy();
   });
 
+  it("renders a single initial in the fallback when singleLetterFallback is set", () => {
+    const { getByText, queryByText } = render(
+      <TokenIcon
+        singleLetterFallback
+        token={{
+          code: "USDC",
+          issuer: {
+            key: "GBBD47UZQ2BNSE5O27ZIVVKV4OZVL2D7OEHTASAA5HQYKWNGZFYMHZWZ",
+          },
+          type: TokenTypeWithCustomToken.CREDIT_ALPHANUM12,
+        }}
+      />,
+    );
+
+    expect(getByText("U")).toBeTruthy();
+    expect(queryByText("US")).toBeNull();
+  });
+
   it("renders Circle USDC with bundled logo", () => {
     const { getByTestId } = render(
       <TokenIcon

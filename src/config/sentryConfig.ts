@@ -5,6 +5,7 @@ import { useAnalyticsStore } from "ducks/analytics";
 import { useAuthenticationStore } from "ducks/auth";
 import { useNetworkStore } from "ducks/networkInfo";
 import { isProd, isE2ETest } from "helpers/isEnv";
+import { scrubStrKeys } from "helpers/stellarStrKey";
 import enTranslations from "i18n/locales/en/translations.json";
 import ptTranslations from "i18n/locales/pt/translations.json";
 import { Platform } from "react-native";
@@ -65,32 +66,15 @@ export const PASSWORD_TYPO_MESSAGES = [
   ptTranslations.authStore.error.invalidPassword,
 ];
 
-/**
- * Stellar StrKey identifiers (publicKeys `G...` and secret seeds
- * `S...`) are base32-encoded with a fixed prefix and exact 56-char
- * length. The pattern is anchored on word boundaries so a 56-char
- * substring inside a longer alphanumeric run does not match.
- *
- * Anything matching this pattern is scrubbed in `beforeSend` from
- * event.message, exception values, and recursively from the entire
- * `event.extra` subtree and breadcrumb data — so identifiers that
- * get interpolated into log messages or embedded in thrown
- * Error.message strings cannot leak verbatim to Sentry.
- *
- * Object-key redaction (sanitizeLogData with PII_FIELDS_LOWER)
- * handles structured payloads. This pattern handles raw strings
- * the key-based redactor can't reach.
- */
-const STELLAR_STRKEY_PATTERN = /\b[GS][A-Z2-7]{55}\b/g;
-
-/**
- * Replace any embedded Stellar StrKey with a short prefix sentinel
- * ("G***" / "S***"). Preserves the prefix so triage can still
- * distinguish a publicKey leak from a secret-seed leak (the latter
- * is a critical bug — secrets should never reach this code path).
- */
-export const scrubStrKeys = (s: string | undefined): string | undefined =>
-  s?.replace(STELLAR_STRKEY_PATTERN, (match) => `${match[0]}***`);
+// scrubStrKeys lives in a leaf module (helpers/stellarStrKey) so it can be
+// shared with non-Sentry PII sinks (e.g. analytics) without import cycles.
+// Re-exported here to preserve the existing `config/sentryConfig` import path.
+// In beforeSend it scrubs Stellar StrKeys from event.message, exception values,
+// and recursively from event.extra / breadcrumb data, so identifiers embedded
+// in thrown Error.message strings cannot leak verbatim to Sentry. Object-key
+// redaction (sanitizeLogData with PII_FIELDS_LOWER) handles structured
+// payloads; this pattern handles raw strings the key-based redactor can't reach.
+export { scrubStrKeys };
 
 /**
  * Recursively walk a structured value and scrub Stellar StrKeys from

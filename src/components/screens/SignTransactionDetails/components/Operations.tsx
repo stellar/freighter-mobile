@@ -1,5 +1,5 @@
 /* eslint-disable react/no-array-index-key */
-import { Address, Operation, xdr } from "@stellar/stellar-sdk";
+import { Address, Operation, OperationRecord, xdr } from "@stellar/stellar-sdk";
 import { List, ListItemProps } from "components/List";
 import Spinner from "components/Spinner";
 import {
@@ -34,14 +34,18 @@ import { View } from "react-native";
 import { scanToken } from "services/blockaid/api";
 
 interface OperationsProps {
-  operations: Operation[];
+  operations: OperationRecord[];
 }
 
 type AuthorizationMap = {
   [index: string]: string;
 };
 
-const RenderOperationByType = ({ operation }: { operation: Operation }) => {
+const RenderOperationByType = ({
+  operation,
+}: {
+  operation: OperationRecord;
+}) => {
   const { t } = useAppTranslation();
   const { network } = useAuthenticationStore();
   const networkDetails = mapNetworkToNetworkDetails(network);
@@ -491,15 +495,15 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
             titleColor: themeColors.text.secondary,
           },
           {
-            title: t("signTransactionDetails.operations.assetIssuer"),
+            title: t("signTransactionDetails.operations.tokenIssuer"),
             trailingContent: (
               <View className="flex-row items-center gap-[8px]">
                 <Icon.Copy01
                   size={16}
                   themeColor="gray"
-                  onPress={() => copyToClipboard(line.issuer)}
+                  onPress={() => copyToClipboard(line.issuer ?? "")}
                 />
-                <Text>{truncateAddress(line.issuer)}</Text>
+                <Text>{truncateAddress(line.issuer ?? "")}</Text>
               </View>
             ),
             titleColor: themeColors.text.secondary,
@@ -1054,7 +1058,11 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
   }
 };
 
-const RenderOperationArgsByType = ({ operation }: { operation: Operation }) => {
+const RenderOperationArgsByType = ({
+  operation,
+}: {
+  operation: OperationRecord;
+}) => {
   const { t } = useAppTranslation();
   const { network } = useAuthenticationStore();
   const networkDetails = mapNetworkToNetworkDetails(network);
@@ -1202,7 +1210,9 @@ const Operations = ({ operations }: OperationsProps) => {
           >
             <View className="flex-row items-center gap-[8px]">
               <Icon.Cube02 size={16} themeColor="gray" />
-              <Text secondary>{OPERATION_TYPES[type] || type}</Text>
+              <Text secondary>
+                {OPERATION_TYPES[type as keyof typeof OPERATION_TYPES] || type}
+              </Text>
             </View>
             <View className="gap-[16px] mb-4">
               {source && (

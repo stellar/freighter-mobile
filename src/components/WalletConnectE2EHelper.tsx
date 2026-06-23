@@ -213,8 +213,7 @@ export const WalletConnectE2EHelper = forwardRef<WalletConnectE2EHelperRef>(
         }
         dismissTimeoutRef.current = setTimeout(() => handleDismiss(), 500);
       } catch (error) {
-        const errorMsg =
-          error instanceof Error ? error.message : String(error);
+        const errorMsg = error instanceof Error ? error.message : String(error);
         setStatus(`Pairing failed: ${errorMsg}`);
       }
     };
