@@ -1,4 +1,4 @@
-import { NETWORKS, mapNetworkToNetworkDetails } from "config/constants";
+import { mapNetworkToNetworkDetails, NETWORKS } from "config/constants";
 import { logger } from "config/logger";
 import { FeePresets, FeePriority, NetworkCongestion } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
@@ -27,9 +27,12 @@ const DEFAULT_NETWORK_FEES: NetworkFeesData = {
   feePresets: EMPTY_FEE_PRESETS,
 };
 
-// Session cache keyed by network. The amount screens mount this hook on entry,
-// so by the time the settings bottom sheet opens the fees are already loaded
-// and read from the cache immediately — no cold-start flicker on each open.
+/**
+ * Last successful fetch per network. New mounts seed their initial state from
+ * this so a freshly mounted consumer (most visibly the shared transaction
+ * settings sheet, which mounts after the screen behind it has already loaded
+ * the real values) doesn't flash the defaults before its own fetch resolves.
+ */
 const networkFeesCache: Partial<Record<NETWORKS, NetworkFeesData>> = {};
 
 /**

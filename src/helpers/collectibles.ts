@@ -279,7 +279,7 @@ export const transformBackendCollections = async (
                 isHidden,
               };
             } catch (error) {
-              logger.error(
+              logger.warn(
                 "transformBackendCollections",
                 `Failed to fetch metadata for token ${collectible.token_id}:`,
                 error,

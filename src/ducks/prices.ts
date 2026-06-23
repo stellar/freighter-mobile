@@ -4,21 +4,6 @@ import { getTokenIdentifiersFromBalances } from "helpers/balances";
 import { fetchTokenPrices } from "services/backend";
 import { create } from "zustand";
 
-/**
- * Prices State Interface
- *
- * Defines the structure of the token prices state store using Zustand.
- * This store manages price data for tokens, including current prices and
- * price changes, along with loading state, error state, and methods to
- * fetch price data based on account balances.
- *
- * @interface PricesState
- * @property {TokenPricesMap} prices - Mapping of token identifiers to price data
- * @property {boolean} isLoading - Indicates if price data is currently being fetched
- * @property {string | null} error - Error message if fetch failed, null otherwise
- * @property {number | null} lastUpdated - Timestamp of when prices were last updated
- * @property {Function} fetchPricesForBalances - Function to fetch prices for tokens in the balances
- */
 interface PricesState {
   prices: TokenPricesMap;
   isLoading: boolean;
@@ -32,36 +17,21 @@ interface PricesState {
   /** Fetch prices for arbitrary token identifiers (e.g., from Blockaid diffs) */
   fetchPricesForTokenIds: (params: {
     tokens: TokenIdentifier[];
+    /** Refetch even tokens already in the map (e.g. pull-to-refresh). */
+    forceRefresh?: boolean;
   }) => Promise<void>;
 }
 
-/**
- * Prices Store
- *
- * A Zustand store that manages the state of token prices in the application.
- * Handles fetching, storing, and error states for price data of tokens
- * held in user balances.
- */
 export const usePricesStore = create<PricesState>((set, get) => ({
   prices: {},
   isLoading: false,
   error: null,
   lastUpdated: null,
-  /**
-   * Fetches prices for tokens present in the user's balances
-   *
-   * @async
-   * @param {Object} params - Parameters for fetching prices
-   * @param {Record<string, Balance>} params.balances - Account balances to fetch prices for
-   * @param {string} params.publicKey - The account's public key (used for analytics)
-   * @param {NETWORKS} params.network - The network the balances are from (used for analytics)
-   * @returns {Promise<void>} A promise that resolves when the operation completes
-   */
+  /** Fetch prices for tokens present in the user's balances. */
   fetchPricesForBalances: async ({ balances }) => {
     try {
       set({ isLoading: true, error: null });
 
-      // Get token identifiers from balances
       const tokens = getTokenIdentifiersFromBalances(balances);
 
       if (tokens.length === 0) {
@@ -72,11 +42,13 @@ export const usePricesStore = create<PricesState>((set, get) => ({
         return;
       }
 
-      // Fetch prices for these tokens
       const response = await fetchTokenPrices({ tokens });
 
+      // Merge instead of replacing — otherwise prices populated by
+      // fetchPricesForTokenIds for non-held tokens get wiped every time
+      // balances refresh.
       set({
-        prices: response,
+        prices: { ...get().prices, ...response },
         isLoading: false,
         lastUpdated: Date.now(),
       });
@@ -85,7 +57,6 @@ export const usePricesStore = create<PricesState>((set, get) => ({
       const currentPrices = get().prices;
 
       set({
-        // Keep the existing prices data
         prices: currentPrices,
         error:
           error instanceof Error
@@ -96,15 +67,19 @@ export const usePricesStore = create<PricesState>((set, get) => ({
     }
   },
   /** Lightweight fetch for arbitrary tokens */
-  fetchPricesForTokenIds: async ({ tokens }) => {
+  fetchPricesForTokenIds: async ({ tokens, forceRefresh = false }) => {
     try {
       if (!tokens || tokens.length === 0) return;
-      // Avoid duplicate requests for tokens already loaded
+      // Skip tokens already loaded to avoid duplicate requests — unless the
+      // caller forces a refresh (e.g. pull-to-refresh), since otherwise a
+      // price fetched once would never update for the rest of the session.
       const existing = get().prices;
-      const missing = tokens.filter((t) => !existing[t]);
-      if (missing.length === 0) return;
+      const toFetch = forceRefresh
+        ? tokens
+        : tokens.filter((t) => !existing[t]);
+      if (toFetch.length === 0) return;
 
-      const response = await fetchTokenPrices({ tokens: missing });
+      const response = await fetchTokenPrices({ tokens: toFetch });
       set({
         prices: { ...get().prices, ...response },
         lastUpdated: Date.now(),

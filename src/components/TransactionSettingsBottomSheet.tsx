@@ -1,4 +1,5 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
+import BigNumber from "bignumber.js";
 import BottomSheet from "components/BottomSheet";
 import { IconButton } from "components/IconButton";
 import InformationBottomSheet from "components/InformationBottomSheet";
@@ -55,6 +56,13 @@ type TransactionSettingsBottomSheetProps = {
   context: TransactionContext;
   onSettingsChange?: () => void;
   onOpenFeeBreakdown?: (inclusionFeeXlm: string) => void;
+  /**
+   * Number of operations the transaction bundles. The fee is the TOTAL across
+   * all ops, so the recommended default scales by this and the minimum is
+   * `operationCount × MIN_TRANSACTION_FEE` (a 2-op swap-to-new-token can't
+   * total below 2 × the network per-op minimum). Defaults to 1 (single-op).
+   */
+  operationCount?: number;
 };
 
 // Constants
@@ -68,6 +76,7 @@ const TransactionSettingsBottomSheet: React.FC<
   context,
   onSettingsChange,
   onOpenFeeBreakdown,
+  operationCount = 1,
 }) => {
   // All hooks at the top
   const { t } = useAppTranslation();
@@ -98,11 +107,8 @@ const TransactionSettingsBottomSheet: React.FC<
   const { markAsManuallyChanged } = useInitialRecommendedFee(
     recommendedFee,
     context,
+    operationCount,
   );
-
-  // Tracks whether the user explicitly chose a priority tier or typed a fee, so
-  // the auto-sync effect stops overriding their choice once they interact.
-  const userPickedPriorityRef = useRef(false);
 
   const timeoutInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const feeInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -225,13 +231,42 @@ const TransactionSettingsBottomSheet: React.FC<
           TransactionSetting.Memo,
         ];
 
+  // The displayed fee, floored at the effective minimum for this transaction:
+  // each op needs at least MIN_TRANSACTION_FEE, so a multi-op transaction (e.g.
+  // a swap-to-new-token's changeTrust + path payment) floors at
+  // operationCount × that. A stored fee below this would be clamped up to it at
+  // build time anyway, so showing the floored value avoids a confusing "fee too
+  // low" error for a fee that's already corrected when the tx is built.
+  const minTotalFee = new BigNumber(MIN_TRANSACTION_FEE).times(operationCount);
+  const storeFeeBn = new BigNumber(storeFee);
+  const displayedStoreFee = formatNumberForDisplay(
+    (storeFeeBn.isFinite()
+      ? BigNumber.max(storeFeeBn, minTotalFee)
+      : minTotalFee
+    ).toString(),
+  );
+
   // State hooks
-  const [localFee, setLocalFee] = useState(formatNumberForDisplay(storeFee));
+  const [localFee, setLocalFee] = useState(displayedStoreFee);
   const [localMemo, setLocalMemo] = useState(memo);
   const [localTimeout, setLocalTimeout] = useState(timeout.toString());
   const [localSlippage, setLocalSlippage] = useState(
     enforceSettingInputDecimalSeparator(slippage.toString()),
   );
+
+  // Mirror the (floored) store fee into the displayed value until the user
+  // edits it. The store fee can update right after mount — e.g.
+  // useInitialRecommendedFee re-scales the recommended fee by operationCount in
+  // an effect — and the useState init above only captures the value at mount,
+  // which otherwise showed stale until the sheet was closed and reopened. The
+  // store fee only changes outside of typing, so this never clobbers an
+  // in-progress edit.
+  const feeEdited = useRef(false);
+  useEffect(() => {
+    if (!feeEdited.current) {
+      setLocalFee(displayedStoreFee);
+    }
+  }, [displayedStoreFee]);
 
   useEffect(() => {
     if (isMemoDisabled && localMemo) {
@@ -242,7 +277,10 @@ const TransactionSettingsBottomSheet: React.FC<
 
   // Validation hooks
   const { error: memoError } = useValidateMemo(localMemo);
-  const { error: feeError } = useValidateTransactionFee(localFee);
+  const { error: feeError } = useValidateTransactionFee(
+    localFee,
+    operationCount,
+  );
   const { error: timeoutError } = useValidateTransactionTimeout(localTimeout);
   const { error: slippageError } = useValidateSlippage(localSlippage);
 
@@ -327,8 +365,8 @@ const TransactionSettingsBottomSheet: React.FC<
   );
 
   const handleFeeChange = useCallback((text: string) => {
-    // Manual typing is a deliberate choice — stop auto-syncing the tier.
-    userPickedPriorityRef.current = true;
+    // Manual typing is a deliberate choice — stop auto-syncing the fee/tier.
+    feeEdited.current = true;
     const normalizedText = enforceSettingInputDecimalSeparator(text);
     setLocalFee(normalizedText);
   }, []);
@@ -338,32 +376,23 @@ const TransactionSettingsBottomSheet: React.FC<
     setLocalTimeout(integerOnly);
   }, []);
 
+  // The presets are per-operation rates while the fee shown/stored is the TOTAL
+  // across all ops, so divide by operationCount before matching a tier.
+  const perOpFeeXlm = (totalFeeXlm: string) =>
+    new BigNumber(parseDisplayNumber(totalFeeXlm))
+      .dividedBy(operationCount)
+      .toString();
+
   // The selected priority tier. Low/Med/High lock the fee to a network preset
-  // and disable the input; "Custom" unlocks the input for manual entry.
+  // and disable the input; "Custom" unlocks it for manual entry. The default
+  // fee is the network recommendation (mode), which shows as "Custom" and is
+  // deliberately NOT re-derived when presets refetch — so the fee a user sees
+  // stays stable through the review screens and only changes when they pick a
+  // tier or type. Derived once at mount (picks up a matching tier if the stored
+  // fee already equals a preset, e.g. on re-entry).
   const [selectedFeePriority, setSelectedFeePriority] = useState<FeePriority>(
-    () => getFeePriority(parseDisplayNumber(localFee), feePresets),
+    () => getFeePriority(perOpFeeXlm(localFee), feePresets),
   );
-
-  // Keep the local fee in sync with the recommended/store fee until the user
-  // edits it, so the input shows the pre-loaded recommended fee once it lands
-  // (the network fees are fetched in the background and may arrive async).
-  useEffect(() => {
-    if (userPickedPriorityRef.current) {
-      return;
-    }
-    setLocalFee(formatNumberForDisplay(storeFee));
-  }, [storeFee]);
-
-  // Until the user explicitly picks a tier, keep the highlighted tier in sync
-  // with the active fee as the network presets load in (they arrive async).
-  useEffect(() => {
-    if (userPickedPriorityRef.current) {
-      return;
-    }
-    setSelectedFeePriority(
-      getFeePriority(parseDisplayNumber(localFee), feePresets),
-    );
-  }, [feePresets, localFee]);
 
   const feePriorityOptions = useMemo(
     () => [
@@ -383,7 +412,7 @@ const TransactionSettingsBottomSheet: React.FC<
 
   const handleFeePriorityChange = useCallback(
     (value: string | number) => {
-      userPickedPriorityRef.current = true;
+      feeEdited.current = true;
       const priority = value as FeePriority;
       setSelectedFeePriority(priority);
 
@@ -393,11 +422,16 @@ const TransactionSettingsBottomSheet: React.FC<
       }
 
       markAsManuallyChanged();
+      // Presets are per-op rates; store the TOTAL across all ops.
       setLocalFee(
-        formatNumberForDisplay(feePresets[priority as keyof FeePresets]),
+        formatNumberForDisplay(
+          new BigNumber(feePresets[priority as keyof FeePresets])
+            .times(operationCount)
+            .toString(),
+        ),
       );
     },
-    [feePresets, markAsManuallyChanged],
+    [feePresets, markAsManuallyChanged, operationCount],
   );
 
   // Opening the fee breakdown previews the current (unsaved) inclusion fee so

@@ -206,4 +206,57 @@ describe("useVerifiedTokensStore", () => {
       ).rejects.toThrow("Network error");
     });
   });
+
+  describe("readCache", () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it("returns null when no cache exists", async () => {
+      (dataStorage.getItem as jest.Mock).mockResolvedValue(null);
+      const result = await useVerifiedTokensStore
+        .getState()
+        .readCache(NETWORKS.PUBLIC);
+      expect(result).toBeNull();
+    });
+
+    it("returns { data, age } when cache exists", async () => {
+      const cachedAt = Date.now() - 1000;
+      const payload: TokenListReponseItem[] = [
+        {
+          code: "USDC",
+          issuer: "GA5Z",
+          contract: "C123",
+          domain: "circle.com",
+          icon: "usdc.png",
+          decimals: 7,
+        },
+      ];
+      (dataStorage.getItem as jest.Mock).mockImplementation((k: string) =>
+        Promise.resolve(
+          k.endsWith("_date") ? String(cachedAt) : JSON.stringify(payload),
+        ),
+      );
+
+      const result = await useVerifiedTokensStore
+        .getState()
+        .readCache(NETWORKS.PUBLIC);
+
+      expect(result?.data).toEqual(payload);
+      expect(result?.age).toBeGreaterThanOrEqual(1000);
+    });
+
+    it("uses the per-network storage key", async () => {
+      (dataStorage.getItem as jest.Mock).mockResolvedValue(null);
+      await useVerifiedTokensStore.getState().readCache(NETWORKS.TESTNET);
+      const calls = (dataStorage.getItem as jest.Mock).mock.calls.map(
+        (c) => c[0],
+      );
+      expect(
+        calls.some((k: string) =>
+          k.includes(`verifiedTokens_${NETWORKS.TESTNET}`),
+        ),
+      ).toBe(true);
+    });
+  });
 });

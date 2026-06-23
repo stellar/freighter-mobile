@@ -30,17 +30,6 @@ export const BASE_BACKOFF_SEC = 1000; // Base delay in milliseconds
 const LEDGER_CAPACITY_MEDIUM_THRESHOLD = 0.5;
 const LEDGER_CAPACITY_HIGH_THRESHOLD = 0.75;
 
-// The recommended fee tier follows the current network congestion: bid low when
-// the network is quiet, higher when it's contested.
-const CONGESTION_TO_FEE_PRIORITY: Record<
-  NetworkCongestion,
-  FeePriority.LOW | FeePriority.MEDIUM | FeePriority.HIGH
-> = {
-  [NetworkCongestion.LOW]: FeePriority.LOW,
-  [NetworkCongestion.MEDIUM]: FeePriority.MEDIUM,
-  [NetworkCongestion.HIGH]: FeePriority.HIGH,
-};
-
 interface HorizonError {
   response: {
     status: number;
@@ -195,6 +184,11 @@ export const getNetworkFees = async (server: Horizon.Server) => {
       await server.feeStats();
     const ledgerCapacityUsageNum = Number(ledgerCapacityUsage);
 
+    // The recommended (default) fee is the network mode — shown as "Custom" in
+    // the settings sheet so it stays stable while the user is in the flow. The
+    // Low/Med/High presets are derived from the max-fee percentile distribution
+    // and only applied when the user explicitly picks a tier.
+    recommendedFee = stroopToXlm(maxFee.mode).toFixed();
     feePresets = {
       [FeePriority.LOW]: stroopToXlm(maxFee.p10).toFixed(),
       [FeePriority.MEDIUM]: stroopToXlm(maxFee.p50).toFixed(),
@@ -211,10 +205,6 @@ export const getNetworkFees = async (server: Horizon.Server) => {
     } else {
       networkCongestion = NetworkCongestion.LOW;
     }
-
-    // The recommended (default) fee tier follows the current congestion, so the
-    // settings sheet opens on Low/Med/High to match network conditions.
-    recommendedFee = feePresets[CONGESTION_TO_FEE_PRIORITY[networkCongestion]];
   } catch (e) {
     // use default values
     recommendedFee = DEFAULT_RECOMMENDED_STELLAR_FEE;
@@ -223,6 +213,22 @@ export const getNetworkFees = async (server: Horizon.Server) => {
 
   return { recommendedFee, networkCongestion, feePresets };
 };
+
+/** Builds a single `changeTrust` operation for a classic asset. */
+export const buildChangeTrustOperation = ({
+  tokenCode,
+  issuer,
+  isRemove = false,
+}: {
+  tokenCode: string;
+  issuer: string;
+  isRemove?: boolean;
+}) =>
+  Operation.changeTrust({
+    asset: new SdkToken(tokenCode, issuer),
+    // Setting the limit to 0 will remove the trustline.
+    ...(isRemove && { limit: "0" }),
+  });
 
 export const buildChangeTrustTx = async (input: BuildChangeTrustTxParams) => {
   const { network, publicKey, tokenIdentifier, isRemove = false } = input;
@@ -239,13 +245,7 @@ export const buildChangeTrustTx = async (input: BuildChangeTrustTxParams) => {
   });
 
   txBuilder
-    .addOperation(
-      Operation.changeTrust({
-        asset: new SdkToken(tokenCode, issuer),
-        // Setting the limit to 0 will remove the trustline.
-        ...(isRemove && { limit: "0" }),
-      }),
-    )
+    .addOperation(buildChangeTrustOperation({ tokenCode, issuer, isRemove }))
     .setTimeout(DEFAULT_TRANSACTION_TIMEOUT);
 
   return txBuilder.build().toXDR();

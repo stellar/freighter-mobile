@@ -1,10 +1,13 @@
 /**
  * Tests for stellar service, focusing on submitTx retry logic with exponential backoff
- * This test uses the actual isHorizonError function from stellar.ts
+ * and buildChangeTrustOperation helper.
+ * This test uses the actual functions from stellar.ts
  */
+import { Asset as SdkToken, Operation } from "@stellar/stellar-sdk";
 import { DEFAULT_RECOMMENDED_STELLAR_FEE } from "config/constants";
 import { FeePriority, NetworkCongestion } from "config/types";
 import {
+  buildChangeTrustOperation,
   calculateBackoffDelay,
   getNetworkFees,
   isHorizonError,
@@ -73,7 +76,7 @@ describe("stellar service - getNetworkFees", () => {
   const buildFeeDistribution = (overrides = {}) => ({
     max: "20000",
     min: "100",
-    mode: "100",
+    mode: "500",
     p10: "100",
     p20: "200",
     p30: "300",
@@ -88,7 +91,7 @@ describe("stellar service - getNetworkFees", () => {
     ...overrides,
   });
 
-  it("maps max_fee p10/p50/p90 (stroops) to Low/Med/High presets in XLM", async () => {
+  it("maps max_fee p10/p50/p90 to Low/Med/High presets and mode to the recommended fee (XLM)", async () => {
     const server = buildFeeStatsServer(() =>
       Promise.resolve({
         ledger_capacity_usage: "0.2",
@@ -103,11 +106,11 @@ describe("stellar service - getNetworkFees", () => {
     expect(feePresets[FeePriority.LOW]).toBe("0.00001"); // p10 = 100
     expect(feePresets[FeePriority.MEDIUM]).toBe("0.0001"); // p50 = 1000
     expect(feePresets[FeePriority.HIGH]).toBe("0.001"); // p90 = 10000
-    // Low congestion → recommended fee follows the Low preset.
-    expect(recommendedFee).toBe(feePresets[FeePriority.LOW]);
+    // The recommended (default) fee is the network mode, independent of the tiers.
+    expect(recommendedFee).toBe("0.00005"); // mode = 500
   });
 
-  it("derives congestion level and a matching recommended fee tier", async () => {
+  it("derives congestion level from ledger capacity usage", async () => {
     const mediumServer = buildFeeStatsServer(() =>
       Promise.resolve({
         ledger_capacity_usage: "0.6",
@@ -121,13 +124,12 @@ describe("stellar service - getNetworkFees", () => {
       }),
     );
 
-    const medium = await getNetworkFees(mediumServer);
-    expect(medium.networkCongestion).toBe(NetworkCongestion.MEDIUM);
-    expect(medium.recommendedFee).toBe(medium.feePresets[FeePriority.MEDIUM]);
-
-    const high = await getNetworkFees(highServer);
-    expect(high.networkCongestion).toBe(NetworkCongestion.HIGH);
-    expect(high.recommendedFee).toBe(high.feePresets[FeePriority.HIGH]);
+    expect((await getNetworkFees(mediumServer)).networkCongestion).toBe(
+      NetworkCongestion.MEDIUM,
+    );
+    expect((await getNetworkFees(highServer)).networkCongestion).toBe(
+      NetworkCongestion.HIGH,
+    );
   });
 
   it("falls back to defaults when feeStats fails", async () => {
@@ -145,5 +147,38 @@ describe("stellar service - getNetworkFees", () => {
       DEFAULT_RECOMMENDED_STELLAR_FEE,
     );
     expect(feePresets[FeePriority.HIGH]).toBe(DEFAULT_RECOMMENDED_STELLAR_FEE);
+  });
+});
+
+describe("buildChangeTrustOperation", () => {
+  const ISSUER = "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
+
+  it("returns a changeTrust operation for the requested asset with no explicit limit", () => {
+    const op = buildChangeTrustOperation({ tokenCode: "USDC", issuer: ISSUER });
+    const decoded = Operation.fromXDRObject(op);
+
+    expect(decoded.type).toBe("changeTrust");
+    expect((decoded as any).line).toBeInstanceOf(SdkToken);
+    expect((decoded as any).line.code).toBe("USDC");
+    expect((decoded as any).line.issuer).toBe(ISSUER);
+    // No `limit` argument was passed — SDK defaults to the max trustline limit.
+    // We don't pin that string here, but we assert the limit is not 0,
+    // which is the remove-path sentinel.
+    expect(parseFloat((decoded as any).limit)).toBeGreaterThan(0);
+  });
+
+  it("sets limit to '0' when isRemove is true (remove-trustline op)", () => {
+    const op = buildChangeTrustOperation({
+      tokenCode: "USDC",
+      issuer: ISSUER,
+      isRemove: true,
+    });
+    const decoded = Operation.fromXDRObject(op);
+
+    expect(decoded.type).toBe("changeTrust");
+    // The Stellar SDK normalizes the limit to 7 decimal places on decode.
+    expect(parseFloat((decoded as any).limit)).toBe(0);
+    expect((decoded as any).line.code).toBe("USDC");
+    expect((decoded as any).line.issuer).toBe(ISSUER);
   });
 });

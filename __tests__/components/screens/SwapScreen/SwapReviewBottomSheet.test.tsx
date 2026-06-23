@@ -1,13 +1,22 @@
 /* eslint-disable @fnando/consistent-import/consistent-import */
-import Blockaid from "@blockaid/client";
 import { userEvent } from "@testing-library/react-native";
+import { TokenIcon } from "components/TokenIcon";
 import SwapReviewBottomSheet from "components/screens/SwapScreen/components/SwapReviewBottomSheet";
+import { useSwapStore } from "ducks/swap";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
+import { SecurityLevel } from "services/blockaid/constants";
+import { createSecurityAssessment } from "services/blockaid/helper";
 
 import { mockBalances } from "../../../../__mocks__/balances";
 import { mockGestureHandler } from "../../../../__mocks__/gesture-handler";
 import { mockUseColors } from "../../../../__mocks__/use-colors";
+
+const assessmentFor = (level: SecurityLevel) => createSecurityAssessment(level);
+const malicious = assessmentFor(SecurityLevel.MALICIOUS);
+const suspicious = assessmentFor(SecurityLevel.SUSPICIOUS);
+const safe = assessmentFor(SecurityLevel.SAFE);
+const unableToScan = assessmentFor(SecurityLevel.UNABLE_TO_SCAN);
 
 mockGestureHandler();
 mockUseColors();
@@ -64,10 +73,15 @@ jest.mock("ducks/swap", () => ({
       conversionRate: 0.5,
     },
     sourceTokenSymbol: "XLM",
-    destinationTokenSymbol: "USDC",
     sourceTokenId: "XLM",
-    destinationTokenId:
-      "USDC:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+    destinationToken: {
+      id: "USDC:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+      tokenCode: "USDC",
+      issuer: "GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
+      decimals: 7,
+      tokenType: "credit_alphanum4",
+      isNew: false,
+    },
   })),
 }));
 
@@ -98,9 +112,9 @@ describe("SwapReviewBottomSheet", () => {
     onCancel: jest.fn(),
     onConfirm: jest.fn(),
     onSecurityWarningPress: jest.fn(),
-    transactionScanResult: undefined,
-    sourceTokenScanResult: undefined,
-    destTokenScanResult: undefined,
+    transactionSecurityAssessment: safe,
+    sourceSecurityAssessment: safe,
+    destinationSecurityAssessment: safe,
   };
 
   beforeEach(() => {
@@ -128,16 +142,10 @@ describe("SwapReviewBottomSheet", () => {
 
   describe("Transaction scan states", () => {
     it("shows malicious banner when transaction is malicious", () => {
-      const maliciousTransactionScan = {
-        validation: {
-          result_type: "Malicious",
-        },
-      } as Blockaid.StellarTransactionScanResponse;
-
       const { getByText } = renderWithProviders(
         <SwapReviewBottomSheet
           {...defaultProps}
-          transactionScanResult={maliciousTransactionScan}
+          transactionSecurityAssessment={malicious}
         />,
       );
 
@@ -145,34 +153,36 @@ describe("SwapReviewBottomSheet", () => {
     });
 
     it("shows suspicious banner when transaction is suspicious", () => {
-      const suspiciousTransactionScan = {
-        validation: {
-          result_type: "Warning",
-        },
-      } as Blockaid.StellarTransactionScanResponse;
-
       const { getByText } = renderWithProviders(
         <SwapReviewBottomSheet
           {...defaultProps}
-          transactionScanResult={suspiciousTransactionScan}
+          transactionSecurityAssessment={suspicious}
         />,
       );
 
       expect(getByText("This address was flagged as suspicious")).toBeTruthy();
     });
 
+    it("shows the caution banner when the transaction scan fails", () => {
+      // Mainnet network/API failure: the tx scan is unable-to-scan while both
+      // token scans are safe. Mirrors Send's scan-failure safety net.
+      const { getByText } = renderWithProviders(
+        <SwapReviewBottomSheet
+          {...defaultProps}
+          transactionSecurityAssessment={unableToScan}
+        />,
+      );
+
+      expect(getByText("Proceed with caution")).toBeTruthy();
+    });
+
     it("calls onBannerPress when malicious banner is pressed", async () => {
       const user = userEvent.setup();
-      const maliciousTransactionScan = {
-        validation: {
-          result_type: "Malicious",
-        },
-      } as Blockaid.StellarTransactionScanResponse;
 
       const { getByText } = renderWithProviders(
         <SwapReviewBottomSheet
           {...defaultProps}
-          transactionScanResult={maliciousTransactionScan}
+          transactionSecurityAssessment={malicious}
         />,
       );
 
@@ -183,85 +193,88 @@ describe("SwapReviewBottomSheet", () => {
 
   describe("Source token scan states", () => {
     it("shows malicious asset banner when source token is malicious", () => {
-      const maliciousSourceScan = {
-        result_type: "Malicious",
-      } as Blockaid.TokenBulk.TokenBulkScanResponse.Results;
-
       const { getByText } = renderWithProviders(
         <SwapReviewBottomSheet
           {...defaultProps}
-          sourceTokenScanResult={maliciousSourceScan}
+          sourceSecurityAssessment={malicious}
         />,
       );
 
-      expect(getByText("An asset was flagged as malicious")).toBeTruthy();
+      expect(getByText("A token was flagged as malicious")).toBeTruthy();
     });
 
     it("shows suspicious asset banner when source token is suspicious", () => {
-      const suspiciousSourceScan = {
-        result_type: "Spam",
-      } as Blockaid.TokenBulk.TokenBulkScanResponse.Results;
-
       const { getByText } = renderWithProviders(
         <SwapReviewBottomSheet
           {...defaultProps}
-          sourceTokenScanResult={suspiciousSourceScan}
+          sourceSecurityAssessment={suspicious}
         />,
       );
 
-      expect(getByText("An asset was flagged as suspicious")).toBeTruthy();
+      expect(getByText("A token was flagged as suspicious")).toBeTruthy();
     });
   });
 
   describe("Destination token scan states", () => {
     it("shows malicious asset banner when destination token is malicious", () => {
-      const maliciousDestScan = {
-        result_type: "Malicious",
-      } as Blockaid.TokenBulk.TokenBulkScanResponse.Results;
-
       const { getByText } = renderWithProviders(
         <SwapReviewBottomSheet
           {...defaultProps}
-          destTokenScanResult={maliciousDestScan}
+          destinationSecurityAssessment={malicious}
         />,
       );
 
-      expect(getByText("An asset was flagged as malicious")).toBeTruthy();
+      expect(getByText("A token was flagged as malicious")).toBeTruthy();
     });
 
     it("shows suspicious asset banner when destination token is suspicious", () => {
-      const suspiciousDestScan = {
-        result_type: "Spam",
-      } as Blockaid.TokenBulk.TokenBulkScanResponse.Results;
-
       const { getByText } = renderWithProviders(
         <SwapReviewBottomSheet
           {...defaultProps}
-          destTokenScanResult={suspiciousDestScan}
+          destinationSecurityAssessment={suspicious}
         />,
       );
 
-      expect(getByText("An asset was flagged as suspicious")).toBeTruthy();
+      expect(getByText("A token was flagged as suspicious")).toBeTruthy();
     });
   });
 
   describe("Unable to scan states", () => {
-    it("shows unable to scan banner when transaction scan fails", () => {
-      const { getByText } = renderWithProviders(
-        <SwapReviewBottomSheet
-          {...defaultProps}
-          transactionScanResult={undefined}
-        />,
-      );
+    // `isNativeAssetId(sourceTokenId/destinationTokenDescriptor.id)` is honoured by
+    // useReviewSecuritySummary — for these unable-to-scan tests we point the mocked
+    // swap store at a non-XLM source so the unable-to-scan flag isn't suppressed.
+    const nonNativeSourceState = {
+      sourceAmount: "10",
+      destinationAmount: "5",
+      pathResult: {
+        sourceAmount: "10",
+        destinationAmount: "5",
+        conversionRate: 0.5,
+      },
+      sourceTokenSymbol: "USDC",
+      sourceTokenId:
+        "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVV",
+      destinationToken: {
+        id: "AQUA:GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+        tokenCode: "AQUA",
+        issuer: "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+        decimals: 7,
+        tokenType: "credit_alphanum4",
+        isNew: false,
+      },
+    };
 
-      expect(getByText("Proceed with caution")).toBeTruthy();
+    beforeEach(() => {
+      (useSwapStore as unknown as jest.Mock).mockReturnValue(
+        nonNativeSourceState,
+      );
     });
 
     it("shows unable to scan banner when source token scan fails", () => {
       const { getByText } = renderWithProviders(
         <SwapReviewBottomSheet
           {...defaultProps}
-          sourceTokenScanResult={undefined}
+          sourceSecurityAssessment={unableToScan}
         />,
       );
 
@@ -272,18 +285,7 @@ describe("SwapReviewBottomSheet", () => {
       const { getByText } = renderWithProviders(
         <SwapReviewBottomSheet
           {...defaultProps}
-          destTokenScanResult={undefined}
-        />,
-      );
-
-      expect(getByText("Proceed with caution")).toBeTruthy();
-    });
-
-    it("shows warning variant banner for unable to scan states", () => {
-      const { getByText } = renderWithProviders(
-        <SwapReviewBottomSheet
-          {...defaultProps}
-          transactionScanResult={undefined}
+          destinationSecurityAssessment={unableToScan}
         />,
       );
 
@@ -296,7 +298,7 @@ describe("SwapReviewBottomSheet", () => {
       const { getByText } = renderWithProviders(
         <SwapReviewBottomSheet
           {...defaultProps}
-          transactionScanResult={undefined}
+          sourceSecurityAssessment={unableToScan}
         />,
       );
 
@@ -304,26 +306,12 @@ describe("SwapReviewBottomSheet", () => {
       expect(defaultProps.onSecurityWarningPress).toHaveBeenCalledTimes(1);
     }, 10000);
 
-    it("prioritizes transaction unable to scan over token unable to scan", () => {
+    it("shows unable to scan banner when both source and destination scans fail", () => {
       const { getByText } = renderWithProviders(
         <SwapReviewBottomSheet
           {...defaultProps}
-          transactionScanResult={undefined}
-          sourceTokenScanResult={undefined}
-          destTokenScanResult={undefined}
-        />,
-      );
-
-      expect(getByText("Proceed with caution")).toBeTruthy();
-    });
-
-    it("shows unable to scan banner when multiple scans fail", () => {
-      const { getByText } = renderWithProviders(
-        <SwapReviewBottomSheet
-          {...defaultProps}
-          transactionScanResult={undefined}
-          sourceTokenScanResult={undefined}
-          destTokenScanResult={undefined}
+          sourceSecurityAssessment={unableToScan}
+          destinationSecurityAssessment={unableToScan}
         />,
       );
 
@@ -333,21 +321,11 @@ describe("SwapReviewBottomSheet", () => {
 
   describe("Combined scan states", () => {
     it("prioritizes transaction malicious over asset malicious in banner", () => {
-      const maliciousTransactionScan = {
-        validation: {
-          result_type: "Malicious",
-        },
-      } as Blockaid.StellarTransactionScanResponse;
-
-      const maliciousSourceScan = {
-        result_type: "Malicious",
-      } as Blockaid.TokenBulk.TokenBulkScanResponse.Results;
-
       const { getByText } = renderWithProviders(
         <SwapReviewBottomSheet
           {...defaultProps}
-          transactionScanResult={maliciousTransactionScan}
-          sourceTokenScanResult={maliciousSourceScan}
+          transactionSecurityAssessment={malicious}
+          sourceSecurityAssessment={malicious}
         />,
       );
 
@@ -355,23 +333,129 @@ describe("SwapReviewBottomSheet", () => {
     });
 
     it("shows banner when both source and destination are malicious", () => {
-      const maliciousSourceScan = {
-        result_type: "Malicious",
-      } as Blockaid.TokenBulk.TokenBulkScanResponse.Results;
-
-      const maliciousDestScan = {
-        result_type: "Malicious",
-      } as Blockaid.TokenBulk.TokenBulkScanResponse.Results;
-
       const { getByText } = renderWithProviders(
         <SwapReviewBottomSheet
           {...defaultProps}
-          sourceTokenScanResult={maliciousSourceScan}
-          destTokenScanResult={maliciousDestScan}
+          sourceSecurityAssessment={malicious}
+          destinationSecurityAssessment={malicious}
         />,
       );
 
-      expect(getByText("An asset was flagged as malicious")).toBeTruthy();
+      expect(getByText("A token was flagged as malicious")).toBeTruthy();
+    });
+  });
+
+  describe("non-held destination token icon", () => {
+    const baseSwapState = {
+      sourceAmount: "10",
+      destinationAmount: "5",
+      pathResult: {
+        sourceAmount: "10",
+        destinationAmount: "5",
+        conversionRate: 0.5,
+      },
+      sourceTokenSymbol: "XLM",
+      sourceTokenId: "XLM",
+    };
+
+    it("renders the USDC token icon (not XLM) when the destination is a non-held USDC", () => {
+      // Use an issuer that is NOT present in mockBalances so destinationBalance
+      // resolves to undefined — this is the exact bug scenario.
+      const nonHeldUsdcIssuer =
+        "GCOIN000000000000000000000000000000000000000000000000000NOT";
+      (useSwapStore as unknown as jest.Mock).mockReturnValue({
+        ...baseSwapState,
+        destinationToken: {
+          id: `USDC:${nonHeldUsdcIssuer}`,
+          tokenCode: "USDC",
+          issuer: nonHeldUsdcIssuer,
+          decimals: 7,
+          tokenType: "credit_alphanum4",
+          isNew: true,
+        },
+      });
+
+      // eslint-disable-next-line @typescript-eslint/naming-convention
+      const { UNSAFE_getAllByType: getAllByComponentType } =
+        renderWithProviders(<SwapReviewBottomSheet {...defaultProps} />);
+
+      // The sheet renders two TokenIcon instances: [0] = source, [1] = destination.
+      // Before the fix, [1].props.token.type was "native" (XLM fallback).
+      // After the fix, it must be "credit_alphanum4" with code "USDC".
+      const tokenIcons = getAllByComponentType(TokenIcon);
+      // There are at least 2 icons (source + destination)
+      expect(tokenIcons.length).toBeGreaterThanOrEqual(2);
+
+      const destIconToken = tokenIcons[1].props.token;
+      expect(destIconToken.type).not.toBe("native");
+      expect(destIconToken.code).toBe("USDC");
+    });
+  });
+
+  describe("trustline banner", () => {
+    const baseSwapState = {
+      sourceAmount: "10",
+      destinationAmount: "5",
+      pathResult: {
+        sourceAmount: "10",
+        destinationAmount: "5",
+        conversionRate: 0.5,
+      },
+      sourceTokenSymbol: "XLM",
+      sourceTokenId: "XLM",
+    };
+
+    it("renders the purple banner when destinationToken.isNew is true", () => {
+      (useSwapStore as unknown as jest.Mock).mockReturnValue({
+        ...baseSwapState,
+        destinationToken: {
+          id: "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVV",
+          tokenCode: "USDC",
+          issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVV",
+          decimals: 7,
+          tokenType: "credit_alphanum4",
+          isNew: true,
+        },
+      });
+
+      const { getByText } = renderWithProviders(
+        <SwapReviewBottomSheet {...defaultProps} />,
+      );
+
+      expect(getByText(/This will add a trustline to USDC/)).toBeTruthy();
+    });
+
+    it("does NOT render the banner when destinationToken.isNew is false", () => {
+      (useSwapStore as unknown as jest.Mock).mockReturnValue({
+        ...baseSwapState,
+        destinationToken: {
+          id: "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVV",
+          tokenCode: "USDC",
+          issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVV",
+          decimals: 7,
+          tokenType: "credit_alphanum4",
+          isNew: false,
+        },
+      });
+
+      const { queryByText } = renderWithProviders(
+        <SwapReviewBottomSheet {...defaultProps} />,
+      );
+
+      expect(queryByText(/This will add a trustline/)).toBeNull();
+    });
+
+    it("does NOT render the banner when destinationToken is null", () => {
+      (useSwapStore as unknown as jest.Mock).mockReturnValue({
+        ...baseSwapState,
+        destinationToken: null,
+      });
+
+      const { queryByText } = renderWithProviders(
+        <SwapReviewBottomSheet {...defaultProps} />,
+      );
+
+      expect(queryByText(/This will add a trustline/)).toBeNull();
     });
   });
 });

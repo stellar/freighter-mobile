@@ -1,10 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-enum-comparison */
-import { Horizon, Asset as SdkToken } from "@stellar/stellar-sdk";
+import { Horizon } from "@stellar/stellar-sdk";
 import BigNumber from "bignumber.js";
 import { NATIVE_TOKEN_CODE, NetworkDetails } from "config/constants";
 import {
   SorobanTokenInterface,
   getAttrsFromSorobanHorizonOp,
+  getTokenSacAddress,
   isContractId,
   getNativeContractDetails,
 } from "helpers/soroban";
@@ -214,8 +215,11 @@ export const operationInvolvesToken = (
         // For classic tokens, we need to check if the contract ID matches the SAC address for this token
         // The SAC address is deterministic based on the token code and issuer
         try {
-          const asset = new SdkToken(targetCode, targetIssuer);
-          const sacAddress = asset.contractId(networkDetails.networkPassphrase);
+          const sacAddress = getTokenSacAddress(
+            targetCode,
+            targetIssuer,
+            networkDetails.networkPassphrase,
+          );
 
           return typedAttrs.contractId === sacAddress;
         } catch (error) {
