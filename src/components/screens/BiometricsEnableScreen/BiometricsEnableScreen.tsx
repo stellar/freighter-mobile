@@ -75,7 +75,7 @@ const BlurredBackgroundIcon = ({
 
   return (
     <View
-      className="items-center justify-center mt-4 flex-grow-0"
+      className="items-center justify-center mt-4 flex-grow-0 z-10"
       style={iconContainerDimensions}
     >
       <View
@@ -83,6 +83,10 @@ const BlurredBackgroundIcon = ({
           width: iconContainerDimensions.width,
           height: iconContainerDimensions.height,
           position: "relative",
+          // On iOS, borderRadius set directly on BlurView doesn't clip the
+          // native blur effect, so we round + clip here on the parent instead.
+          borderRadius: Math.round(pxValue(16)),
+          overflow: "hidden",
         }}
       >
         {isIOS ? (
@@ -96,7 +100,6 @@ const BlurredBackgroundIcon = ({
               left: 0,
               bottom: 0,
               right: 0,
-              borderRadius: Math.round(pxValue(16)), // care about rounded values for blurView
               zIndex: 1,
             }}
           />
