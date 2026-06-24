@@ -113,7 +113,7 @@ export const useSwapForXlmReserve = ({
       tokenCode: NATIVE_TOKEN_CODE,
       decimals: DEFAULT_DECIMALS,
       tokenType: TokenTypeWithCustomToken.NATIVE,
-      isNew: false,
+      requiresTrustline: false,
     });
 
     if (!isCurrentSourceNonXlmClassic) {

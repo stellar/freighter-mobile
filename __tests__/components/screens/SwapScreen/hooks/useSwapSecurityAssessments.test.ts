@@ -41,7 +41,7 @@ const baseDestinationDescriptor = {
   tokenCode: "AQUA",
   decimals: 7,
   tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
-  isNew: false,
+  requiresTrustline: false,
 };
 
 const xlmDestinationDescriptor = {
@@ -49,7 +49,7 @@ const xlmDestinationDescriptor = {
   tokenCode: NATIVE_TOKEN_CODE,
   decimals: 7,
   tokenType: TokenTypeWithCustomToken.NATIVE,
-  isNew: false,
+  requiresTrustline: false,
 };
 
 const EMPTY_SCAN_RESULTS = {};

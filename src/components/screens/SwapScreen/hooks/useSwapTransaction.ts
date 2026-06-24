@@ -108,17 +108,17 @@ export const useSwapTransaction = ({
       useSwapSettingsStore.getState();
 
     // Derive includeTrustline from the swap store's destinationToken.
-    // When isNew === true the user doesn't yet hold a trustline for the
+    // When requiresTrustline === true the user doesn't yet hold a trustline for the
     // destination asset; the changeTrust op is prepended atomically.
     const { destinationToken } = useSwapStore.getState();
     let includeTrustline: { tokenCode: string; issuer: string } | undefined;
-    if (destinationToken?.isNew) {
+    if (destinationToken?.requiresTrustline) {
       if (!destinationToken.issuer) {
-        // Unreachable in practice: native XLM can't be isNew, and the picker
+        // Unreachable in practice: native XLM can't be requiresTrustline, and the picker
         // filters out Soroban. Fail fast so the bug surfaces here rather than
         // submitting a doomed transaction that fails on-chain with tx_no_trust.
         throw new Error(
-          `useSwapTransaction: isNew=true but issuer missing on destinationToken (id=${destinationToken.id})`,
+          `useSwapTransaction: requiresTrustline=true but issuer missing on destinationToken (id=${destinationToken.id})`,
         );
       }
       includeTrustline = {
@@ -229,7 +229,7 @@ export const useSwapTransaction = ({
       // Fire SWAP_TRUSTLINE_ADDED when the combined changeTrust +
       // pathPaymentStrictSend transaction confirmed a new trustline.
       const { destinationToken: swappedDestination } = useSwapStore.getState();
-      if (swappedDestination?.isNew) {
+      if (swappedDestination?.requiresTrustline) {
         analytics.track(AnalyticsEvent.SWAP_TRUSTLINE_ADDED, {
           tokenCode: destinationTokenInput.tokenCode,
           tokenIssuer: swappedDestination.issuer ?? "",
