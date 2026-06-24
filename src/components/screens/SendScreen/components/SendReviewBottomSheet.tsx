@@ -154,27 +154,12 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
       );
     }
 
-    if (error) {
-      return (
-        <Text md medium color={themeColors.status.error}>
-          {t("common.error", { errorMessage: error })}
-        </Text>
-      );
-    }
-
     if (transactionXDR) {
       return truncateAddress(transactionXDR, 10, 4);
     }
 
     return t("common.none");
-  }, [
-    error,
-    isBuilding,
-    t,
-    themeColors.status.error,
-    themeColors.text.secondary,
-    transactionXDR,
-  ]);
+  }, [isBuilding, t, themeColors.text.secondary, transactionXDR]);
 
   /**
    * Renders the memo section title with appropriate icon and warning indicator
@@ -335,29 +320,40 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
             </View>
           ),
         },
-        {
-          icon: (
-            <Icon.FileCode02 size={16} color={themeColors.foreground.primary} />
-          ),
-          title: t("transactionAmountScreen.details.xdr"),
-          titleColor: themeColors.text.secondary,
-          trailingContent: (
-            <TouchableOpacity
-              onPress={handleCopyXdr}
-              disabled={isBuilding || !transactionXDR}
-              className="flex-row items-center gap-[8px]"
-            >
-              <Icon.Copy01 size={16} color={themeColors.foreground.primary} />
-              <Text md medium secondary={isBuilding}>
-                {renderXdrContent()}
-              </Text>
-            </TouchableOpacity>
-          ),
-        },
+        // Hide the XDR row entirely on build errors — the error is shown above
+        // the confirm/cancel buttons in the footer instead.
+        error
+          ? undefined
+          : {
+              icon: (
+                <Icon.FileCode02
+                  size={16}
+                  color={themeColors.foreground.primary}
+                />
+              ),
+              title: t("transactionAmountScreen.details.xdr"),
+              titleColor: themeColors.text.secondary,
+              trailingContent: (
+                <TouchableOpacity
+                  onPress={handleCopyXdr}
+                  disabled={isBuilding || !transactionXDR}
+                  className="flex-row items-center gap-[8px]"
+                >
+                  <Icon.Copy01
+                    size={16}
+                    color={themeColors.foreground.primary}
+                  />
+                  <Text md medium secondary={isBuilding}>
+                    {renderXdrContent()}
+                  </Text>
+                </TouchableOpacity>
+              ),
+            },
       ].filter(Boolean) as ListItemProps[],
     [
       account?.accountName,
       account?.publicKey,
+      error,
       handleCopyXdr,
       handleOpenFeeBreakdown,
       isBuilding,
@@ -477,8 +473,14 @@ type SendReviewFooterProps = {
 export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
   (props) => {
     const { t } = useAppTranslation();
+    const { themeColors } = useColors();
     const { transactionXDR, isBuilding, error } = useTransactionBuilderStore();
     const insets = useSafeAreaInsets();
+
+    // Localized build-error string shown above the buttons.
+    const errorMessage = error
+      ? t("common.error", { errorMessage: error })
+      : null;
 
     const {
       onCancel,
@@ -578,7 +580,6 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
             secondary={shouldUseRowLayout}
             isFullWidth
             onPress={onCancel}
-            disabled={isDisabled}
             testID="send-review-cancel-button"
           >
             {t("common.cancel")}
@@ -635,15 +636,24 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
 
     return (
       <View
-        className={`${
-          shouldUseRowLayout ? "flex-row" : "flex-col"
-        } bg-background-primary w-full gap-[12px] mt-[24px] flex-column px-6 py-6`}
-        style={{
-          paddingBottom: insets.bottom + pxValue(DEFAULT_PADDING),
-          gap: pxValue(12),
-        }}
+        className="bg-background-primary w-full mt-[24px] px-6 py-6"
+        style={{ paddingBottom: insets.bottom + pxValue(DEFAULT_PADDING) }}
       >
-        {renderButtons()}
+        {errorMessage && (
+          <View className="mb-[16px]">
+            <Text md medium color={themeColors.status.error}>
+              {errorMessage}
+            </Text>
+          </View>
+        )}
+        <View
+          className={`${
+            shouldUseRowLayout ? "flex-row" : "flex-col"
+          } w-full gap-[12px]`}
+          style={{ gap: pxValue(12) }}
+        >
+          {renderButtons()}
+        </View>
       </View>
     );
   },
