@@ -159,7 +159,6 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
 
       {destinationTokenDescriptor?.isNew && (
         <Banner
-          testID="security-warning-banner"
           className="mt-[16px]"
           variant="highlight"
           text={t("swapScreen.trustlineBanner", {
@@ -171,6 +170,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
 
       {(isMalicious || isSuspicious || isUnableToScan) && (
         <Banner
+          testID="security-warning-banner"
           className="mt-[16px]"
           variant={isSuspicious || isUnableToScan ? "warning" : "error"}
           text={bannerText}
