@@ -46,9 +46,9 @@ module.exports = {
       "react-native-inappbrowser-reborn",
     ].join("|")})/)`,
   ],
-  moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json", "node"],
+  moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json", "node", "mjs"],
   coveragePathIgnorePatterns: ["/node_modules/", "/jest"],
   transform: {
-    "^.+\\.(js|jsx|ts|tsx)$": "babel-jest",
+    "^.+\\.(js|jsx|ts|tsx|mjs)$": "babel-jest",
   },
 };

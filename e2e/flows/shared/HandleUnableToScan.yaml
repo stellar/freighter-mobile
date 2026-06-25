@@ -1,0 +1,27 @@
+appId: org.stellar.freighterdev
+---
+# Acknowledge Blockaid's "unable to scan" warning so the review sheet's
+# confirm-anyway button becomes enabled. On testnet Blockaid can't scan
+# transactions, so the app surfaces a "Proceed with caution" warning. There
+# are two possible visible states: the inline banner on the review sheet,
+# and the detail bottom sheet (auto-opened or opened by tapping the banner).
+# Both blocks are conditional, so this is a no-op when the warning isn't
+# shown (e.g. mainnet scans succeed).
+- runFlow:
+    when:
+      visible:
+        id: security-warning-banner
+    commands:
+      - tapOn:
+          id: security-warning-banner
+      - extendedWaitUntil:
+          visible:
+            id: security-warning-proceed-button
+          timeout: 10000
+- runFlow:
+    when:
+      visible:
+        id: security-warning-proceed-button
+    commands:
+      - tapOn:
+          id: security-warning-proceed-button
