@@ -455,14 +455,65 @@ else
   echo "ℹ️  Skipping mock-dapp server (not needed for selected flows)"
 fi
 
+# Map a transaction flow to the testnet-provisioning flags it needs.
+# Empty output ⇒ the flow is not provisioned (left untouched).
+provision_flags_for_flow() {
+  case "$1" in
+    SendClassicToken) echo "--with-recipient" ;;
+    SendClassicTokenFromDetails) echo "--with-recipient" ;;
+    SendFederatedAddress) echo "--with-usdc-balance" ;;
+    SwapClassicToken) echo "--with-usdc-trustline" ;;
+    *) echo "" ;;
+  esac
+}
+
 # Track failures
 failed=0
 failed_tests=""
+
+# Preserve the original funded phrase so provisioned flows (which overwrite
+# E2E_TEST_FUNDED_RECOVERY_PHRASE with an ephemeral mnemonic) don't leak it into
+# later non-provisioned flows in the same local run.
+_ORIG_FUNDED_PHRASE="${E2E_TEST_FUNDED_RECOVERY_PHRASE:-}"
 
 for file in $FLOW_FILES; do
   # Extract flow name from file path (e.g., "CreateWallet" from "e2e/flows/onboarding/CreateWallet.yaml")
   FLOW_NAME=$(basename "$file" .yaml)
 
+  # Reset per-flow provisioning vars so values never leak between flows.
+  unset E2E_TEST_RECIPIENT_ADDRESS E2E_TEST_USDC_CODE E2E_TEST_USDC_ISSUER
+  # Restore the original funded phrase; provisioning (below) overwrites it only
+  # for provisioned flows. Without this, an ephemeral mnemonic from a previous
+  # provisioned flow would leak into later non-provisioned flows.
+  if [ -n "$_ORIG_FUNDED_PHRASE" ]; then
+    export E2E_TEST_FUNDED_RECOVERY_PHRASE="$_ORIG_FUNDED_PHRASE"
+  else
+    unset E2E_TEST_FUNDED_RECOVERY_PHRASE
+  fi
+
+  # Provision a fresh, isolated testnet account for transaction flows so
+  # concurrent runs never share a source-account sequence number (tx_bad_seq).
+  PROVISION_FLAGS=$(provision_flags_for_flow "$FLOW_NAME")
+  if [ -n "$PROVISION_FLAGS" ]; then
+    echo "🔑 Provisioning fresh testnet account for $FLOW_NAME ($PROVISION_FLAGS)..."
+    if ! PROVISION_OUT=$(node e2e/scripts/provision-test-account.mjs $PROVISION_FLAGS); then
+      echo "❌ Provisioning failed for $FLOW_NAME — skipping"
+      failed=1
+      if [ -z "$failed_tests" ]; then
+        failed_tests="$FLOW_NAME"
+      else
+        failed_tests="$failed_tests, $FLOW_NAME"
+      fi
+      continue
+    fi
+    # Export each KEY=VALUE line the script emitted.
+    while IFS= read -r _pline; do
+      [ -n "$_pline" ] && export "${_pline?}"
+    done <<EOF
+$PROVISION_OUT
+EOF
+    echo "✅ Provisioned: sender phrase + ${PROVISION_FLAGS}"
+  fi
 
   # Set iOS simulator clipboard based on flow type (local runs). CI sets it in the workflow.
   if [ "$PLATFORM" = "ios" ] && [ -n "${MAESTRO_DEVICE:-}" ]; then
@@ -506,6 +557,9 @@ for file in $FLOW_FILES; do
   fi
   if [ -n "${E2E_TEST_FUNDED_RECOVERY_PHRASE:-}" ]; then
     MAESTRO_ENV_ARGS+=("-e" "E2E_TEST_FUNDED_RECOVERY_PHRASE=$E2E_TEST_FUNDED_RECOVERY_PHRASE")
+  fi
+  if [ -n "${E2E_TEST_RECIPIENT_ADDRESS:-}" ]; then
+    MAESTRO_ENV_ARGS+=("-e" "E2E_TEST_RECIPIENT_ADDRESS=$E2E_TEST_RECIPIENT_ADDRESS")
   fi
 
   # Retry logic for ADB connection issues
