@@ -10,6 +10,7 @@ import {
   TokenIdentifier,
   NonNativeToken,
 } from "config/types";
+import { useAuthenticationStore } from "ducks/auth";
 import { usePricesStore } from "ducks/prices";
 import { formatTokenForDisplay, formatFiatAmount } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -134,11 +135,12 @@ export const useTransactionBalanceListItems = (
 
     // Fire-and-forget fetch of missing prices (non-blocking render)
     const { prices, fetchPricesForTokenIds } = usePricesStore.getState();
+    const { network } = useAuthenticationStore.getState();
     const missing = tokenIds.filter((id) => !prices[id]);
     if (missing.length > 0) {
       // Fire and ignore resolution; store handles errors
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      fetchPricesForTokenIds({ tokens: missing });
+      fetchPricesForTokenIds({ tokens: missing, network });
     }
 
     // Add balance changes to the list

@@ -1,5 +1,6 @@
 import { NETWORKS } from "config/constants";
 import { Balance, TokenIdentifier, TokenPricesMap } from "config/types";
+import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { getTokenIdentifiersFromBalances } from "helpers/balances";
 import { fetchTokenPrices } from "services/backend";
 import { create } from "zustand";
@@ -17,6 +18,8 @@ interface PricesState {
   /** Fetch prices for arbitrary token identifiers (e.g., from Blockaid diffs) */
   fetchPricesForTokenIds: (params: {
     tokens: TokenIdentifier[];
+    /** Active network — required by the network-scoped v2 prices endpoint. */
+    network: NETWORKS;
     /** Refetch even tokens already in the map (e.g. pull-to-refresh). */
     forceRefresh?: boolean;
   }) => Promise<void>;
@@ -28,7 +31,7 @@ export const usePricesStore = create<PricesState>((set, get) => ({
   error: null,
   lastUpdated: null,
   /** Fetch prices for tokens present in the user's balances. */
-  fetchPricesForBalances: async ({ balances }) => {
+  fetchPricesForBalances: async ({ balances, network }) => {
     try {
       set({ isLoading: true, error: null });
 
@@ -42,7 +45,8 @@ export const usePricesStore = create<PricesState>((set, get) => ({
         return;
       }
 
-      const response = await fetchTokenPrices({ tokens });
+      const useV2 = useRemoteConfigStore.getState().use_token_prices_v2;
+      const response = await fetchTokenPrices({ tokens, network, useV2 });
 
       // Merge instead of replacing — otherwise prices populated by
       // fetchPricesForTokenIds for non-held tokens get wiped every time
@@ -67,7 +71,7 @@ export const usePricesStore = create<PricesState>((set, get) => ({
     }
   },
   /** Lightweight fetch for arbitrary tokens */
-  fetchPricesForTokenIds: async ({ tokens, forceRefresh = false }) => {
+  fetchPricesForTokenIds: async ({ tokens, network, forceRefresh = false }) => {
     try {
       if (!tokens || tokens.length === 0) return;
       // Skip tokens already loaded to avoid duplicate requests — unless the
@@ -79,7 +83,12 @@ export const usePricesStore = create<PricesState>((set, get) => ({
         : tokens.filter((t) => !existing[t]);
       if (toFetch.length === 0) return;
 
-      const response = await fetchTokenPrices({ tokens: toFetch });
+      const useV2 = useRemoteConfigStore.getState().use_token_prices_v2;
+      const response = await fetchTokenPrices({
+        tokens: toFetch,
+        network,
+        useV2,
+      });
       set({
         prices: { ...get().prices, ...response },
         lastUpdated: Date.now(),

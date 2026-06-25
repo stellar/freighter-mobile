@@ -20,6 +20,14 @@ jest.mock("services/backend", () => ({
   fetchTokenPrices: jest.fn(),
 }));
 
+// The store reads the use_token_prices_v2 flag to decide v1 vs v2. Default it
+// to true (v2) for these tests; the value is forwarded to fetchTokenPrices.
+jest.mock("ducks/remoteConfig", () => ({
+  useRemoteConfigStore: {
+    getState: () => ({ use_token_prices_v2: true }),
+  },
+}));
+
 describe("prices duck", () => {
   const mockGetTokenIdentifiersFromBalances =
     balancesHelpers.getTokenIdentifiersFromBalances as jest.MockedFunction<
@@ -145,6 +153,8 @@ describe("prices duck", () => {
       );
       expect(mockFetchTokenPrices).toHaveBeenCalledWith({
         tokens: mockTokenIdentifiers,
+        network: NETWORKS.TESTNET,
+        useV2: true,
       });
     });
 
@@ -281,12 +291,17 @@ describe("prices duck", () => {
       });
 
       await act(async () => {
-        await result.current.fetchPricesForTokenIds({ tokens: trendingIds });
+        await result.current.fetchPricesForTokenIds({
+          tokens: trendingIds,
+          network: NETWORKS.PUBLIC,
+        });
       });
 
       // Only the missing token is requested.
       expect(mockFetchTokenPrices).toHaveBeenCalledWith({
         tokens: ["yXLM:GYXLM"],
+        network: NETWORKS.PUBLIC,
+        useV2: true,
       });
     });
 
@@ -309,7 +324,10 @@ describe("prices duck", () => {
       });
 
       await act(async () => {
-        await result.current.fetchPricesForTokenIds({ tokens: trendingIds });
+        await result.current.fetchPricesForTokenIds({
+          tokens: trendingIds,
+          network: NETWORKS.PUBLIC,
+        });
       });
 
       expect(mockFetchTokenPrices).not.toHaveBeenCalled();
@@ -336,6 +354,7 @@ describe("prices duck", () => {
       await act(async () => {
         await result.current.fetchPricesForTokenIds({
           tokens: trendingIds,
+          network: NETWORKS.PUBLIC,
           forceRefresh: true,
         });
       });
@@ -343,6 +362,8 @@ describe("prices duck", () => {
       // forceRefresh bypasses the already-loaded skip → both tokens requested.
       expect(mockFetchTokenPrices).toHaveBeenCalledWith({
         tokens: trendingIds,
+        network: NETWORKS.PUBLIC,
+        useV2: true,
       });
     });
   });
@@ -382,6 +403,8 @@ describe("prices duck", () => {
       );
       expect(mockFetchTokenPrices).toHaveBeenCalledWith({
         tokens: mockTokenIdentifiers,
+        network: NETWORKS.TESTNET,
+        useV2: true,
       });
     });
   });

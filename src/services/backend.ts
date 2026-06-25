@@ -321,22 +321,43 @@ interface TokenPricesResponse {
 export interface FetchTokenPricesParams {
   /** Array of token identifiers to fetch prices for */
   tokens: TokenIdentifier[];
+  /** Active network — the v2 endpoint is network-scoped */
+  network: NETWORKS;
+  /** Whether to hit the network-scoped v2 endpoint (remote-config gated) */
+  useV2: boolean;
 }
 
 /**
- * NOTE: This is a FAKE implementation that returns random data after a 1-second delay
- * Simulates fetching the current USD prices and 24h percentage changes for the specified tokens
+ * The v2 /token-prices endpoint is network-scoped and only serves prices for
+ * mainnet and testnet. Maps the active network to the `network` query value the
+ * endpoint expects; networks absent from this map (e.g. Futurenet) are skipped.
+ */
+const PRICE_NETWORK_PARAMS: Partial<Record<NETWORKS, string>> = {
+  [NETWORKS.PUBLIC]: NETWORKS.PUBLIC,
+  [NETWORKS.TESTNET]: NETWORKS.TESTNET,
+};
+
+/**
+ * Fetches the current USD prices and 24h percentage changes for the given tokens.
  *
- * @param params Object containing the list of tokens to fetch prices for
+ * When `useV2` is true, hits the network-scoped v2 endpoint, passing the active
+ * network as a `network` query param; networks the endpoint doesn't serve (e.g.
+ * Futurenet) are skipped and return null prices. When false, falls back to the
+ * v1 endpoint. LP shares and custom tokens are always filtered out before the
+ * request, and any requested token without a returned price is filled with null.
+ *
+ * @param params Tokens to price, the active network, and the v2 flag
  * @returns Promise resolving to a map of token identifiers to their price information
  *
  * @example
- * // Fetch prices for XLM and USDC
+ * // Fetch prices for XLM and USDC on mainnet via v2
  * const prices = await fetchTokenPrices({
  *   tokens: [
  *     "XLM",
  *     "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
- *   ]
+ *   ],
+ *   network: NETWORKS.PUBLIC,
+ *   useV2: true,
  * });
  *
  * // Access individual token prices
@@ -345,6 +366,8 @@ export interface FetchTokenPricesParams {
  */
 export const fetchTokenPrices = async ({
   tokens,
+  network,
+  useV2,
 }: FetchTokenPricesParams): Promise<TokenPricesMap> => {
   // NOTE: API does not accept LP IDs or custom tokens
   const filteredTokens = tokens.filter((tokenId) => {
@@ -355,12 +378,30 @@ export const fetchTokenPrices = async ({
     );
   });
 
-  const { data } = await freighterBackendV1.post<TokenPricesResponse>(
-    "/token-prices",
-    {
-      tokens: filteredTokens,
-    },
-  );
+  // Skip the request entirely — returning empty prices that the loop below
+  // fills with nulls — when there's nothing to ask for, or when v2 is active
+  // on a network it doesn't serve (e.g. Futurenet). This avoids guaranteed-
+  // failing calls and the resulting Sentry noise.
+  const priceNetwork = PRICE_NETWORK_PARAMS[network];
+  const shouldSkipRequest =
+    filteredTokens.length === 0 || (useV2 && !priceNetwork);
+
+  let pricesMap: TokenPricesMap = {};
+
+  if (!shouldSkipRequest) {
+    // The v2 endpoint is network-scoped via a `network` query param; v1 is not.
+    const { data } = useV2
+      ? await freighterBackendV2.post<TokenPricesResponse>(
+          "/token-prices",
+          { tokens: filteredTokens },
+          { params: { network: priceNetwork } },
+        )
+      : await freighterBackendV1.post<TokenPricesResponse>("/token-prices", {
+          tokens: filteredTokens,
+        });
+
+    pricesMap = data.data;
+  }
 
   /*
   // ========================================================
@@ -401,7 +442,6 @@ export const fetchTokenPrices = async ({
 
   // Make sure it's compliant with the TokenPricesMap type as the backend
   // returns { "code:issuer" : null } for tokens that are not supported
-  const pricesMap = data.data;
   tokens.forEach((token) => {
     if (!pricesMap[token]) {
       pricesMap[token] = {

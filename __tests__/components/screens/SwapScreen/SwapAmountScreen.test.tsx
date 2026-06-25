@@ -6,6 +6,7 @@ import BigNumber from "bignumber.js";
 import SwapAmountScreen from "components/screens/SwapScreen/screens/SwapAmountScreen";
 import Icon from "components/sds/Icon";
 import { AnalyticsEvent } from "config/analyticsConfig";
+import { NETWORKS } from "config/constants";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import { useSwapStore } from "ducks/swap";
 import { renderWithProviders } from "helpers/testUtils";
@@ -899,6 +900,7 @@ describe("SwapAmountScreen", () => {
           "yXLM:GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55",
           "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
         ],
+        network: NETWORKS.PUBLIC,
       });
     });
 

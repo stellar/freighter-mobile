@@ -3,6 +3,7 @@ import { NETWORK_URLS, NETWORKS } from "config/constants";
 import { logger } from "config/logger";
 import {
   fetchCollectibles,
+  fetchTokenPrices,
   freighterBackendV1,
   freighterBackendV2,
   simulateTransaction,
@@ -703,5 +704,72 @@ describe("Backend Service - fetchCollectibles severity split", () => {
       "Error fetching collectibles",
       expect.any(Error),
     );
+  });
+});
+
+describe("Backend Service - fetchTokenPrices v2 migration", () => {
+  let mockV1Post: jest.MockedFunction<any>;
+  let mockV2Post: jest.MockedFunction<any>;
+
+  const tokens = [
+    "XLM",
+    "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+  ];
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockV1Post = freighterBackendV1.post as jest.MockedFunction<any>;
+    mockV2Post = freighterBackendV2.post as jest.MockedFunction<any>;
+    const response = {
+      data: {
+        data: { XLM: { currentPrice: "0.5", percentagePriceChange24h: 0.02 } },
+      },
+    };
+    mockV1Post.mockResolvedValue(response);
+    mockV2Post.mockResolvedValue(response);
+  });
+
+  it("hits the v2 client with a network query param when useV2 is true", async () => {
+    await fetchTokenPrices({ tokens, network: NETWORKS.PUBLIC, useV2: true });
+
+    expect(mockV2Post).toHaveBeenCalledWith(
+      "/token-prices",
+      { tokens },
+      { params: { network: "PUBLIC" } },
+    );
+    expect(mockV1Post).not.toHaveBeenCalled();
+  });
+
+  it("maps testnet to the TESTNET network param", async () => {
+    await fetchTokenPrices({ tokens, network: NETWORKS.TESTNET, useV2: true });
+
+    expect(mockV2Post).toHaveBeenCalledWith(
+      "/token-prices",
+      { tokens },
+      { params: { network: "TESTNET" } },
+    );
+  });
+
+  it("hits the v1 client with no network param when useV2 is false", async () => {
+    await fetchTokenPrices({ tokens, network: NETWORKS.PUBLIC, useV2: false });
+
+    expect(mockV1Post).toHaveBeenCalledWith("/token-prices", { tokens });
+    expect(mockV2Post).not.toHaveBeenCalled();
+  });
+
+  it("short-circuits on unsupported networks (Futurenet) without any request", async () => {
+    const result = await fetchTokenPrices({
+      tokens,
+      network: NETWORKS.FUTURENET,
+      useV2: true,
+    });
+
+    expect(mockV1Post).not.toHaveBeenCalled();
+    expect(mockV2Post).not.toHaveBeenCalled();
+    // Every requested token is present with null prices.
+    expect(result.XLM).toEqual({
+      currentPrice: null,
+      percentagePriceChange24h: null,
+    });
   });
 });

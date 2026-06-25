@@ -1,5 +1,6 @@
 import { recordTokenId } from "components/screens/SwapScreen/helpers";
 import { FormattedSearchTokenRecord, TokenPricesMap } from "config/types";
+import { useAuthenticationStore } from "ducks/auth";
 import { usePricesStore } from "ducks/prices";
 import { useCallback, useEffect, useMemo } from "react";
 
@@ -36,6 +37,7 @@ export const useSwapTokenPrices = ({
     (state) => state.fetchPricesForTokenIds,
   );
   const prices = usePricesStore((state) => state.prices);
+  const network = useAuthenticationStore((state) => state.network);
 
   // Stabilise the extra-ids array so the effect doesn't fire on every
   // render when the caller passes a fresh literal.
@@ -50,15 +52,15 @@ export const useSwapTokenPrices = ({
     const trendingIds = enabled ? tokens.map(recordTokenId) : [];
     const ids = [...trendingIds, ...stableExtraTokenIds];
     if (ids.length === 0) return;
-    fetchPricesForTokenIds({ tokens: ids });
-  }, [enabled, tokens, stableExtraTokenIds, fetchPricesForTokenIds]);
+    fetchPricesForTokenIds({ tokens: ids, network });
+  }, [enabled, tokens, stableExtraTokenIds, fetchPricesForTokenIds, network]);
 
   const refreshPrices = useCallback(async () => {
     const trendingIds = tokens.map(recordTokenId);
     const ids = [...trendingIds, ...stableExtraTokenIds];
     if (ids.length === 0) return;
-    await fetchPricesForTokenIds({ tokens: ids, forceRefresh: true });
-  }, [tokens, stableExtraTokenIds, fetchPricesForTokenIds]);
+    await fetchPricesForTokenIds({ tokens: ids, network, forceRefresh: true });
+  }, [tokens, stableExtraTokenIds, fetchPricesForTokenIds, network]);
 
   return { prices, refreshPrices };
 };
