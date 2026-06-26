@@ -12,6 +12,7 @@ import {
 } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { usePricesStore } from "ducks/prices";
+import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { formatTokenForDisplay, formatFiatAmount } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
@@ -36,9 +37,11 @@ export const useTransactionBalanceListItems = (
 ): ListItemProps[] => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
-  // Subscribe to the active network so the memo recomputes (and missing-price
-  // fetches re-run) on network changes — v2 prices are network-scoped.
+  // Subscribe to the active network and endpoint flag so the memo recomputes
+  // (and missing-price fetches re-run) on a network switch or v1/v2 rollback —
+  // v2 prices are network-scoped and the rollback must re-query the new source.
   const network = useAuthenticationStore((state) => state.network);
+  const useV2 = useRemoteConfigStore((state) => state.use_token_prices_v2);
 
   return useMemo(() => {
     const items: ListItemProps[] = [];
@@ -145,7 +148,7 @@ export const useTransactionBalanceListItems = (
     if (tokenIds.length > 0) {
       // Fire and ignore resolution; store handles errors
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      fetchPricesForTokenIds({ tokens: tokenIds, network });
+      fetchPricesForTokenIds({ tokens: tokenIds, network, useV2 });
     }
 
     // Add balance changes to the list
@@ -202,6 +205,7 @@ export const useTransactionBalanceListItems = (
     return items;
   }, [
     network,
+    useV2,
     scanResult,
     signTransactionDetails?.hasTrustlineChanges,
     signTransactionDetails?.operations,

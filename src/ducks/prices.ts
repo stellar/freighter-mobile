@@ -1,6 +1,5 @@
 import { NETWORKS } from "config/constants";
 import { Balance, TokenIdentifier, TokenPricesMap } from "config/types";
-import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { getTokenIdentifiersFromBalances } from "helpers/balances";
 import { fetchTokenPrices } from "services/backend";
 import { create } from "zustand";
@@ -27,12 +26,17 @@ interface PricesState {
     balances: Record<string, Balance>;
     publicKey: string;
     network: NETWORKS;
+    /** Endpoint version, from the `use_token_prices_v2` flag. */
+    useV2: boolean;
   }) => Promise<void>;
   /** Fetch prices for arbitrary token identifiers (e.g., from Blockaid diffs) */
   fetchPricesForTokenIds: (params: {
     tokens: TokenIdentifier[];
     /** Active network — required by the network-scoped v2 prices endpoint. */
     network: NETWORKS;
+    /** Endpoint version, from the `use_token_prices_v2` flag. Callers subscribe
+     * to the flag so a rollback re-runs the fetch and invalidates the cache. */
+    useV2: boolean;
     /** Refetch even tokens already in the map (e.g. pull-to-refresh). */
     forceRefresh?: boolean;
   }) => Promise<void>;
@@ -46,11 +50,9 @@ export const usePricesStore = create<PricesState>((set, get) => ({
   error: null,
   lastUpdated: null,
   /** Fetch prices for tokens present in the user's balances. */
-  fetchPricesForBalances: async ({ balances, network }) => {
+  fetchPricesForBalances: async ({ balances, network, useV2 }) => {
     try {
       set({ isLoading: true, error: null });
-
-      const useV2 = useRemoteConfigStore.getState().use_token_prices_v2;
 
       // The cache is identified by its source — (network, endpoint version).
       // v2 is network-scoped, and a v1/v2 rollback changes which endpoint the
@@ -105,17 +107,20 @@ export const usePricesStore = create<PricesState>((set, get) => ({
     }
   },
   /** Lightweight fetch for arbitrary tokens */
-  fetchPricesForTokenIds: async ({ tokens, network, forceRefresh = false }) => {
+  fetchPricesForTokenIds: async ({
+    tokens,
+    network,
+    useV2,
+    forceRefresh = false,
+  }) => {
     try {
       if (!tokens || tokens.length === 0) return;
 
-      const useV2 = useRemoteConfigStore.getState().use_token_prices_v2;
-
       // Drop the cache when its source — (network, endpoint version) — differs
       // from this request: v2 is network-scoped, and a v1/v2 rollback changes
-      // the endpoint. Read the flag *before* the dedupe below so a rollback
-      // invalidates already-cached token-id lookups too; clearing empties the
-      // dedupe baseline so every requested token is refetched.
+      // the endpoint. Callers pass the current flag so a rollback invalidates
+      // already-cached token-id lookups too; clearing empties the dedupe
+      // baseline so every requested token is refetched.
       if (get().pricesNetwork !== network || get().pricesUseV2 !== useV2) {
         set({ prices: {}, pricesNetwork: network, pricesUseV2: useV2 });
       }

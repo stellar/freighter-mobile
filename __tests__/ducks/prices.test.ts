@@ -21,16 +21,6 @@ jest.mock("services/backend", () => ({
   fetchTokenPrices: jest.fn(),
 }));
 
-// The store reads the use_token_prices_v2 flag to decide v1 vs v2. Use a
-// mutable object (must be prefixed `mock` for jest's factory) so tests can flip
-// the flag to exercise the rollback path; reset in beforeEach.
-const mockRemoteConfig = { use_token_prices_v2: true };
-jest.mock("ducks/remoteConfig", () => ({
-  useRemoteConfigStore: {
-    getState: () => mockRemoteConfig,
-  },
-}));
-
 describe("prices duck", () => {
   const mockGetTokenIdentifiersFromBalances =
     balancesHelpers.getTokenIdentifiersFromBalances as jest.MockedFunction<
@@ -110,13 +100,13 @@ describe("prices duck", () => {
     balances: mockBalances,
     publicKey: "GDNF5WJ2BEPABVBXCF4C7KZKM3XYXP27VUE3SCGPZA3VXWWZ7OFA3VPM",
     network: NETWORKS.TESTNET,
+    useV2: true,
   };
 
   beforeEach(() => {
     // Reset the store before each test
-    // pricesUseV2 starts at the mocked flag default (true) so pre-seeded tests,
-    // which shallow-merge their own setState, are treated as same-source.
-    mockRemoteConfig.use_token_prices_v2 = true;
+    // pricesUseV2 starts at true so pre-seeded tests, which shallow-merge their
+    // own setState and fetch with useV2: true, are treated as same-source.
     act(() => {
       usePricesStore.setState({
         prices: {},
@@ -363,6 +353,7 @@ describe("prices duck", () => {
         await result.current.fetchPricesForTokenIds({
           tokens: trendingIds,
           network: NETWORKS.PUBLIC,
+          useV2: true,
         });
       });
 
@@ -397,6 +388,7 @@ describe("prices duck", () => {
         await result.current.fetchPricesForTokenIds({
           tokens: trendingIds,
           network: NETWORKS.PUBLIC,
+          useV2: true,
         });
       });
 
@@ -426,6 +418,7 @@ describe("prices duck", () => {
         await result.current.fetchPricesForTokenIds({
           tokens: trendingIds,
           network: NETWORKS.PUBLIC,
+          useV2: true,
           forceRefresh: true,
         });
       });
@@ -462,6 +455,7 @@ describe("prices duck", () => {
         await result.current.fetchPricesForTokenIds({
           tokens: trendingIds,
           network: NETWORKS.TESTNET,
+          useV2: true,
         });
       });
 
@@ -490,6 +484,7 @@ describe("prices duck", () => {
         pending = result.current.fetchPricesForTokenIds({
           tokens: trendingIds,
           network: NETWORKS.PUBLIC,
+          useV2: true,
         });
       });
 
@@ -533,13 +528,12 @@ describe("prices duck", () => {
         });
       });
 
-      // Amplitude rolls the flag back to v1.
-      mockRemoteConfig.use_token_prices_v2 = false;
-
+      // Amplitude rolled the flag back to v1, so the caller now passes false.
       await act(async () => {
         await result.current.fetchPricesForTokenIds({
           tokens: trendingIds,
           network: NETWORKS.PUBLIC,
+          useV2: false,
         });
       });
 
