@@ -772,4 +772,20 @@ describe("Backend Service - fetchTokenPrices v2 migration", () => {
       percentagePriceChange24h: null,
     });
   });
+
+  it("short-circuits when all tokens filter out (custom tokens) without any request", async () => {
+    const customTokens = ["USDC:CUSTOM_CONTRACT_ID"];
+    const result = await fetchTokenPrices({
+      tokens: customTokens,
+      network: NETWORKS.PUBLIC,
+      useV2: true,
+    });
+
+    expect(mockV1Post).not.toHaveBeenCalled();
+    expect(mockV2Post).not.toHaveBeenCalled();
+    expect(result["USDC:CUSTOM_CONTRACT_ID"]).toEqual({
+      currentPrice: null,
+      percentagePriceChange24h: null,
+    });
+  });
 });
