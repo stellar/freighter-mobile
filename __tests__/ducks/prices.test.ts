@@ -159,6 +159,25 @@ describe("prices duck", () => {
       expect(typeof result.current.lastUpdated).toBe("number");
     });
 
+    it("refetches held tokens even when already cached (poll keeps prices fresh)", async () => {
+      const { result } = renderHook(() => usePricesStore());
+
+      // All held tokens are already cached for this network/endpoint...
+      seedNetwork(NETWORKS.TESTNET, mockPrices, true);
+
+      await act(async () => {
+        await result.current.fetchPricesForBalances(mockParams); // TESTNET
+      });
+
+      // ...but the balance path must still refetch them (no per-token dedupe),
+      // otherwise held-asset prices freeze for the rest of the session.
+      expect(mockFetchTokenPrices).toHaveBeenCalledWith({
+        tokens: mockTokenIdentifiers,
+        network: NETWORKS.TESTNET,
+        useV2: true,
+      });
+    });
+
     it("merges within a network (preserves non-balance entries)", async () => {
       const { result } = renderHook(() => usePricesStore());
 

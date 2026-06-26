@@ -87,20 +87,11 @@ export const usePricesStore = create<PricesState>((set, get) => ({
 
       reconcileSource(get, set, network, useV2);
 
-      // Dedupe against the network's cache (emptied above if the endpoint just
-      // changed, so a rollback refetches everything).
-      const cached = get().pricesByNetwork[network] ?? EMPTY_PRICES;
-      const toFetch = tokens.filter((t) => !cached[t]);
-      if (toFetch.length === 0) {
-        set({ isLoading: false, lastUpdated: Date.now() });
-        return;
-      }
-
-      const response = await fetchTokenPrices({
-        tokens: toFetch,
-        network,
-        useV2,
-      });
+      // Refetch every held token on each call — no per-token dedupe here. The
+      // balance poll (and pull-to-refresh) is the price-refresh mechanism for
+      // held assets, so deduping would freeze currentPrice/fiatTotal (and any
+      // null-filled entries) for the rest of the session.
+      const response = await fetchTokenPrices({ tokens, network, useV2 });
 
       // A v1<->v2 rollback may have landed while this request was in flight;
       // its response is for the now-superseded endpoint, so drop it rather than
