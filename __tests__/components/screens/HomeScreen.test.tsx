@@ -232,6 +232,7 @@ jest.mock("hooks/useTotalBalance", () => ({
   useTotalBalance: jest.fn(() => ({
     formattedBalance: "$350.75",
     totalBalance: "350.75",
+    hasFiatTotal: true,
   })),
 }));
 

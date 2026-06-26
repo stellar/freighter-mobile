@@ -328,13 +328,14 @@ export interface FetchTokenPricesParams {
 }
 
 /**
- * The v2 /token-prices endpoint is network-scoped and only serves prices for
- * mainnet and testnet. Maps the active network to the `network` query value the
- * endpoint expects; networks absent from this map (e.g. Futurenet) are skipped.
+ * Networks we fetch fiat prices for, mapped to the `network` query value the v2
+ * endpoint expects. Only mainnet has a real price source — testnet assets have
+ * no market and v2 returns $0, so (like the browser extension) we gate testnet
+ * out and show no fiat there. Networks absent from this map (testnet, futurenet)
+ * are skipped on both v1 and v2, so a rollback can't reintroduce testnet fiat.
  */
 const PRICE_NETWORK_PARAMS: Partial<Record<NETWORKS, string>> = {
   [NETWORKS.PUBLIC]: NETWORKS.PUBLIC,
-  [NETWORKS.TESTNET]: NETWORKS.TESTNET,
 };
 
 /**
@@ -387,12 +388,12 @@ export const fetchTokenPrices = async ({
   });
 
   // Skip the request entirely — returning empty prices that the loop below
-  // fills with nulls — when there's nothing to ask for, or when v2 is active
-  // on a network it doesn't serve (e.g. Futurenet). This avoids guaranteed-
-  // failing calls and the resulting Sentry noise.
+  // fills with nulls (→ "--" in the UI) — when there's nothing to ask for, or
+  // when the active network isn't priceable (testnet/futurenet). Fiat is
+  // mainnet-only; gating here applies to both v1 and v2 so a rollback can't
+  // reintroduce testnet fiat, and avoids guaranteed-failing/zero-value calls.
   const priceNetwork = PRICE_NETWORK_PARAMS[network];
-  const shouldSkipRequest =
-    filteredTokens.length === 0 || (useV2 && !priceNetwork);
+  const shouldSkipRequest = filteredTokens.length === 0 || !priceNetwork;
 
   let pricesMap: TokenPricesMap = {};
 

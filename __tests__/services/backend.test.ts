@@ -746,14 +746,34 @@ describe("Backend Service - fetchTokenPrices v2 migration", () => {
     expect(mockV1Post).not.toHaveBeenCalled();
   });
 
-  it("maps testnet to the TESTNET network param", async () => {
-    await fetchTokenPrices({ tokens, network: NETWORKS.TESTNET, useV2: true });
+  it("gates testnet entirely — no request, null prices (fiat is mainnet-only)", async () => {
+    const result = await fetchTokenPrices({
+      tokens,
+      network: NETWORKS.TESTNET,
+      useV2: true,
+    });
 
-    expect(mockV2Post).toHaveBeenCalledWith(
-      "/token-prices",
-      { tokens: v2Tokens },
-      { params: { network: "TESTNET" } },
-    );
+    expect(mockV2Post).not.toHaveBeenCalled();
+    expect(mockV1Post).not.toHaveBeenCalled();
+    expect(result.XLM).toEqual({
+      currentPrice: null,
+      percentagePriceChange24h: null,
+    });
+  });
+
+  it("gates testnet on the v1 fallback too (rollback can't reintroduce testnet fiat)", async () => {
+    const result = await fetchTokenPrices({
+      tokens,
+      network: NETWORKS.TESTNET,
+      useV2: false,
+    });
+
+    expect(mockV1Post).not.toHaveBeenCalled();
+    expect(mockV2Post).not.toHaveBeenCalled();
+    expect(result.XLM).toEqual({
+      currentPrice: null,
+      percentagePriceChange24h: null,
+    });
   });
 
   it("remaps the v2 'native' price back to the app's 'XLM' key", async () => {
