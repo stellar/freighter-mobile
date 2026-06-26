@@ -13,6 +13,13 @@ interface PricesState {
    * fetch arrives for a different network the cache is dropped and refetched.
    */
   pricesNetwork: NETWORKS | null;
+  /**
+   * Endpoint version (`use_token_prices_v2`) the cached `prices` came from.
+   * Together with `pricesNetwork` this identifies the price source — when the
+   * Amplitude flag rolls v2 back to v1 (or vice versa) the cache is dropped and
+   * refetched, so the rollback applies even to already-cached token-id lookups.
+   */
+  pricesUseV2: boolean | null;
   isLoading: boolean;
   error: string | null;
   lastUpdated: number | null;
@@ -34,6 +41,7 @@ interface PricesState {
 export const usePricesStore = create<PricesState>((set, get) => ({
   prices: {},
   pricesNetwork: null,
+  pricesUseV2: null,
   isLoading: false,
   error: null,
   lastUpdated: null,
@@ -42,11 +50,15 @@ export const usePricesStore = create<PricesState>((set, get) => ({
     try {
       set({ isLoading: true, error: null });
 
-      // Drop prices cached for a different network before doing anything —
-      // they're stale for the network-scoped v2 endpoint. This also resets the
-      // dedupe baseline so the subsequent fetch re-queries every token.
-      if (get().pricesNetwork !== network) {
-        set({ prices: {}, pricesNetwork: network });
+      const useV2 = useRemoteConfigStore.getState().use_token_prices_v2;
+
+      // The cache is identified by its source — (network, endpoint version).
+      // v2 is network-scoped, and a v1/v2 rollback changes which endpoint the
+      // prices came from. If either differs, drop the cache before doing
+      // anything, which also resets the dedupe baseline so every token is
+      // re-queried from the current source.
+      if (get().pricesNetwork !== network || get().pricesUseV2 !== useV2) {
+        set({ prices: {}, pricesNetwork: network, pricesUseV2: useV2 });
       }
 
       const tokens = getTokenIdentifiersFromBalances(balances);
@@ -59,13 +71,13 @@ export const usePricesStore = create<PricesState>((set, get) => ({
         return;
       }
 
-      const useV2 = useRemoteConfigStore.getState().use_token_prices_v2;
       const response = await fetchTokenPrices({ tokens, network, useV2 });
 
-      // The active network may have switched while this request was in flight.
-      // The response is scoped to `network`; if the network has since moved on,
-      // discard it rather than merging stale prices into the new network.
-      if (get().pricesNetwork !== network) {
+      // The source may have changed while this request was in flight (network
+      // switch or flag flip). The response is scoped to (network, useV2); if the
+      // active source has since moved on, discard it rather than merging stale
+      // prices into the new source's cache.
+      if (get().pricesNetwork !== network || get().pricesUseV2 !== useV2) {
         set({ isLoading: false });
         return;
       }
@@ -97,11 +109,15 @@ export const usePricesStore = create<PricesState>((set, get) => ({
     try {
       if (!tokens || tokens.length === 0) return;
 
-      // Drop prices cached for a different network — they're stale for the
-      // network-scoped v2 endpoint. Clearing also empties the dedupe baseline
-      // below, so every requested token is refetched for the new network.
-      if (get().pricesNetwork !== network) {
-        set({ prices: {}, pricesNetwork: network });
+      const useV2 = useRemoteConfigStore.getState().use_token_prices_v2;
+
+      // Drop the cache when its source — (network, endpoint version) — differs
+      // from this request: v2 is network-scoped, and a v1/v2 rollback changes
+      // the endpoint. Read the flag *before* the dedupe below so a rollback
+      // invalidates already-cached token-id lookups too; clearing empties the
+      // dedupe baseline so every requested token is refetched.
+      if (get().pricesNetwork !== network || get().pricesUseV2 !== useV2) {
+        set({ prices: {}, pricesNetwork: network, pricesUseV2: useV2 });
       }
 
       // Skip tokens already loaded to avoid duplicate requests — unless the
@@ -113,17 +129,17 @@ export const usePricesStore = create<PricesState>((set, get) => ({
         : tokens.filter((t) => !existing[t]);
       if (toFetch.length === 0) return;
 
-      const useV2 = useRemoteConfigStore.getState().use_token_prices_v2;
       const response = await fetchTokenPrices({
         tokens: toFetch,
         network,
         useV2,
       });
 
-      // Discard if the active network changed while this request was in flight
-      // — the response is scoped to the now-stale `network` (see the balances
-      // fetch above for the full rationale).
-      if (get().pricesNetwork !== network) return;
+      // Discard if the source changed while this request was in flight (network
+      // switch or flag flip) — the response is scoped to the now-stale
+      // (network, useV2) (see the balances fetch above for the full rationale).
+      if (get().pricesNetwork !== network || get().pricesUseV2 !== useV2)
+        return;
 
       set({
         prices: { ...get().prices, ...response },

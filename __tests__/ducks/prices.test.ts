@@ -21,11 +21,13 @@ jest.mock("services/backend", () => ({
   fetchTokenPrices: jest.fn(),
 }));
 
-// The store reads the use_token_prices_v2 flag to decide v1 vs v2. Default it
-// to true (v2) for these tests; the value is forwarded to fetchTokenPrices.
+// The store reads the use_token_prices_v2 flag to decide v1 vs v2. Use a
+// mutable object (must be prefixed `mock` for jest's factory) so tests can flip
+// the flag to exercise the rollback path; reset in beforeEach.
+const mockRemoteConfig = { use_token_prices_v2: true };
 jest.mock("ducks/remoteConfig", () => ({
   useRemoteConfigStore: {
-    getState: () => ({ use_token_prices_v2: true }),
+    getState: () => mockRemoteConfig,
   },
 }));
 
@@ -112,10 +114,14 @@ describe("prices duck", () => {
 
   beforeEach(() => {
     // Reset the store before each test
+    // pricesUseV2 starts at the mocked flag default (true) so pre-seeded tests,
+    // which shallow-merge their own setState, are treated as same-source.
+    mockRemoteConfig.use_token_prices_v2 = true;
     act(() => {
       usePricesStore.setState({
         prices: {},
         pricesNetwork: null,
+        pricesUseV2: true,
         isLoading: false,
         error: null,
         lastUpdated: null,
@@ -504,6 +510,47 @@ describe("prices duck", () => {
 
       // The stale PUBLIC response must not be merged into the TESTNET cache.
       expect(result.current.prices["AQUA:GBNAQUA"]).toBeUndefined();
+    });
+
+    it("refetches cached tokens when the v2 rollback flag flips", async () => {
+      const { result } = renderHook(() => usePricesStore());
+
+      // Cache fully populated by v2 on the same network the fetch will use.
+      act(() => {
+        usePricesStore.setState({
+          prices: {
+            "AQUA:GBNAQUA": {
+              currentPrice: new BigNumber("0.003"),
+              percentagePriceChange24h: new BigNumber("1.2"),
+            },
+            "yXLM:GYXLM": {
+              currentPrice: new BigNumber("0.4"),
+              percentagePriceChange24h: new BigNumber("0.5"),
+            },
+          },
+          pricesNetwork: NETWORKS.PUBLIC,
+          pricesUseV2: true,
+        });
+      });
+
+      // Amplitude rolls the flag back to v1.
+      mockRemoteConfig.use_token_prices_v2 = false;
+
+      await act(async () => {
+        await result.current.fetchPricesForTokenIds({
+          tokens: trendingIds,
+          network: NETWORKS.PUBLIC,
+        });
+      });
+
+      // Despite being cached, the tokens are refetched from v1 — the rollback
+      // applies to cached token-id lookups, not just new ones.
+      expect(mockFetchTokenPrices).toHaveBeenCalledWith({
+        tokens: trendingIds,
+        network: NETWORKS.PUBLIC,
+        useV2: false,
+      });
+      expect(usePricesStore.getState().pricesUseV2).toBe(false);
     });
   });
 
