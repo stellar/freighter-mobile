@@ -7,6 +7,12 @@ import { create } from "zustand";
 
 interface PricesState {
   prices: TokenPricesMap;
+  /**
+   * Network the cached `prices` were fetched for. v2 is network-scoped, so
+   * prices from a different network are stale and must not be reused — when a
+   * fetch arrives for a different network the cache is dropped and refetched.
+   */
+  pricesNetwork: NETWORKS | null;
   isLoading: boolean;
   error: string | null;
   lastUpdated: number | null;
@@ -27,6 +33,7 @@ interface PricesState {
 
 export const usePricesStore = create<PricesState>((set, get) => ({
   prices: {},
+  pricesNetwork: null,
   isLoading: false,
   error: null,
   lastUpdated: null,
@@ -34,6 +41,13 @@ export const usePricesStore = create<PricesState>((set, get) => ({
   fetchPricesForBalances: async ({ balances, network }) => {
     try {
       set({ isLoading: true, error: null });
+
+      // Drop prices cached for a different network before doing anything —
+      // they're stale for the network-scoped v2 endpoint. This also resets the
+      // dedupe baseline so the subsequent fetch re-queries every token.
+      if (get().pricesNetwork !== network) {
+        set({ prices: {}, pricesNetwork: network });
+      }
 
       const tokens = getTokenIdentifiersFromBalances(balances);
 
@@ -74,6 +88,14 @@ export const usePricesStore = create<PricesState>((set, get) => ({
   fetchPricesForTokenIds: async ({ tokens, network, forceRefresh = false }) => {
     try {
       if (!tokens || tokens.length === 0) return;
+
+      // Drop prices cached for a different network — they're stale for the
+      // network-scoped v2 endpoint. Clearing also empties the dedupe baseline
+      // below, so every requested token is refetched for the new network.
+      if (get().pricesNetwork !== network) {
+        set({ prices: {}, pricesNetwork: network });
+      }
+
       // Skip tokens already loaded to avoid duplicate requests — unless the
       // caller forces a refresh (e.g. pull-to-refresh), since otherwise a
       // price fetched once would never update for the rest of the session.

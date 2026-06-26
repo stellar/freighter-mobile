@@ -114,6 +114,7 @@ describe("prices duck", () => {
     act(() => {
       usePricesStore.setState({
         prices: {},
+        pricesNetwork: null,
         isLoading: false,
         error: null,
         lastUpdated: null,
@@ -176,7 +177,8 @@ describe("prices duck", () => {
       const { result } = renderHook(() => usePricesStore());
 
       // Pre-seed the store with a price for a non-balance token (e.g., a
-      // trending token previously loaded via fetchPricesForTokenIds).
+      // trending token previously loaded via fetchPricesForTokenIds), already
+      // on the same network the fetch will use so it merges (not cleared).
       act(() => {
         usePricesStore.setState({
           prices: {
@@ -185,6 +187,7 @@ describe("prices duck", () => {
               percentagePriceChange24h: new BigNumber("1.2"),
             },
           },
+          pricesNetwork: NETWORKS.TESTNET,
         });
       });
 
@@ -196,6 +199,32 @@ describe("prices duck", () => {
       // Both pre-seeded and freshly-fetched prices should be present.
       expect(result.current.prices["AQUA:GBN..."]).toBeDefined();
       expect(result.current.prices.XLM).toBeDefined();
+    });
+
+    it("drops prices from a different network before fetching", async () => {
+      const { result } = renderHook(() => usePricesStore());
+
+      // A non-held price cached for PUBLIC; the fetch below is for TESTNET.
+      act(() => {
+        usePricesStore.setState({
+          prices: {
+            "AQUA:GBN...": {
+              currentPrice: new BigNumber("0.003"),
+              percentagePriceChange24h: new BigNumber("1.2"),
+            },
+          },
+          pricesNetwork: NETWORKS.PUBLIC,
+        });
+      });
+
+      await act(async () => {
+        await result.current.fetchPricesForBalances(mockParams); // TESTNET
+      });
+
+      // Stale PUBLIC price is gone; only the freshly-fetched TESTNET prices remain.
+      expect(result.current.prices["AQUA:GBN..."]).toBeUndefined();
+      expect(result.current.prices.XLM).toBeDefined();
+      expect(result.current.pricesNetwork).toBe(NETWORKS.TESTNET);
     });
 
     it("should handle empty token list", async () => {
@@ -245,11 +274,13 @@ describe("prices duck", () => {
       });
 
       it("should preserve existing prices when fetch fails", async () => {
-        // First set some prices
+        // First set some prices, already on the network the fetch will use so a
+        // transient failure preserves them (rather than the network-change clear).
         const mockLastUpdated = Date.now();
         act(() => {
           usePricesStore.setState({
             prices: mockPrices,
+            pricesNetwork: NETWORKS.TESTNET,
             isLoading: false,
             error: null,
             lastUpdated: mockLastUpdated,
@@ -287,6 +318,7 @@ describe("prices duck", () => {
               percentagePriceChange24h: new BigNumber("1.2"),
             },
           },
+          pricesNetwork: NETWORKS.PUBLIC,
         });
       });
 
@@ -320,6 +352,7 @@ describe("prices duck", () => {
               percentagePriceChange24h: new BigNumber("0.5"),
             },
           },
+          pricesNetwork: NETWORKS.PUBLIC,
         });
       });
 
@@ -348,6 +381,7 @@ describe("prices duck", () => {
               percentagePriceChange24h: new BigNumber("0.5"),
             },
           },
+          pricesNetwork: NETWORKS.PUBLIC,
         });
       });
 
@@ -365,6 +399,43 @@ describe("prices duck", () => {
         network: NETWORKS.PUBLIC,
         useV2: true,
       });
+    });
+
+    it("refetches already-loaded tokens when the network changes", async () => {
+      const { result } = renderHook(() => usePricesStore());
+
+      // Cache is fully populated, but for a different network than the fetch.
+      act(() => {
+        usePricesStore.setState({
+          prices: {
+            "AQUA:GBNAQUA": {
+              currentPrice: new BigNumber("0.003"),
+              percentagePriceChange24h: new BigNumber("1.2"),
+            },
+            "yXLM:GYXLM": {
+              currentPrice: new BigNumber("0.4"),
+              percentagePriceChange24h: new BigNumber("0.5"),
+            },
+          },
+          pricesNetwork: NETWORKS.PUBLIC,
+        });
+      });
+
+      await act(async () => {
+        await result.current.fetchPricesForTokenIds({
+          tokens: trendingIds,
+          network: NETWORKS.TESTNET,
+        });
+      });
+
+      // Stale prices are network-scoped, so the network switch refetches every
+      // requested token rather than treating them as already-loaded.
+      expect(mockFetchTokenPrices).toHaveBeenCalledWith({
+        tokens: trendingIds,
+        network: NETWORKS.TESTNET,
+        useV2: true,
+      });
+      expect(usePricesStore.getState().pricesNetwork).toBe(NETWORKS.TESTNET);
     });
   });
 
