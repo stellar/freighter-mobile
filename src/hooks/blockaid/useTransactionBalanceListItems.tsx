@@ -36,6 +36,9 @@ export const useTransactionBalanceListItems = (
 ): ListItemProps[] => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
+  // Subscribe to the active network so the memo recomputes (and missing-price
+  // fetches re-run) on network changes — v2 prices are network-scoped.
+  const network = useAuthenticationStore((state) => state.network);
 
   return useMemo(() => {
     const items: ListItemProps[] = [];
@@ -135,7 +138,6 @@ export const useTransactionBalanceListItems = (
 
     // Fire-and-forget fetch of missing prices (non-blocking render)
     const { prices, fetchPricesForTokenIds } = usePricesStore.getState();
-    const { network } = useAuthenticationStore.getState();
     const missing = tokenIds.filter((id) => !prices[id]);
     if (missing.length > 0) {
       // Fire and ignore resolution; store handles errors
@@ -196,6 +198,7 @@ export const useTransactionBalanceListItems = (
 
     return items;
   }, [
+    network,
     scanResult,
     signTransactionDetails?.hasTrustlineChanges,
     signTransactionDetails?.operations,
