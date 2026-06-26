@@ -136,13 +136,16 @@ export const useTransactionBalanceListItems = (
       c.isNative ? NATIVE_TOKEN_CODE : `${c.assetCode}:${c.assetIssuer ?? ""}`,
     );
 
-    // Fire-and-forget fetch of missing prices (non-blocking render)
-    const { prices, fetchPricesForTokenIds } = usePricesStore.getState();
-    const missing = tokenIds.filter((id) => !prices[id]);
-    if (missing.length > 0) {
+    // Fire-and-forget fetch of prices (non-blocking render). Pass all ids and
+    // let the store decide what to fetch: it already dedupes already-loaded
+    // tokens and clears/refetches when the network changes. Pre-filtering by
+    // the cached map here would skip the network-change invalidation when every
+    // token already has a (stale, previous-network) entry.
+    const { fetchPricesForTokenIds } = usePricesStore.getState();
+    if (tokenIds.length > 0) {
       // Fire and ignore resolution; store handles errors
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      fetchPricesForTokenIds({ tokens: missing, network });
+      fetchPricesForTokenIds({ tokens: tokenIds, network });
     }
 
     // Add balance changes to the list
