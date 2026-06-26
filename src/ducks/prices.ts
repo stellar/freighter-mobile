@@ -62,6 +62,14 @@ export const usePricesStore = create<PricesState>((set, get) => ({
       const useV2 = useRemoteConfigStore.getState().use_token_prices_v2;
       const response = await fetchTokenPrices({ tokens, network, useV2 });
 
+      // The active network may have switched while this request was in flight.
+      // The response is scoped to `network`; if the network has since moved on,
+      // discard it rather than merging stale prices into the new network.
+      if (get().pricesNetwork !== network) {
+        set({ isLoading: false });
+        return;
+      }
+
       // Merge instead of replacing — otherwise prices populated by
       // fetchPricesForTokenIds for non-held tokens get wiped every time
       // balances refresh.
@@ -111,6 +119,12 @@ export const usePricesStore = create<PricesState>((set, get) => ({
         network,
         useV2,
       });
+
+      // Discard if the active network changed while this request was in flight
+      // — the response is scoped to the now-stale `network` (see the balances
+      // fetch above for the full rationale).
+      if (get().pricesNetwork !== network) return;
+
       set({
         prices: { ...get().prices, ...response },
         lastUpdated: Date.now(),

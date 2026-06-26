@@ -5,6 +5,7 @@ import {
   Balance,
   NativeBalance,
   ClassicBalance,
+  TokenPricesMap,
   TokenTypeWithCustomToken,
 } from "config/types";
 import { usePricesStore } from "ducks/prices";
@@ -227,6 +228,36 @@ describe("prices duck", () => {
       expect(result.current.pricesNetwork).toBe(NETWORKS.TESTNET);
     });
 
+    it("discards an in-flight response when the network changed mid-fetch", async () => {
+      const { result } = renderHook(() => usePricesStore());
+
+      // Hold the fetch open so we can switch networks before it resolves.
+      let resolveFetch: (value: typeof mockPrices) => void = () => {};
+      mockFetchTokenPrices.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveFetch = resolve;
+        }),
+      );
+
+      let pending: Promise<void> = Promise.resolve();
+      act(() => {
+        pending = result.current.fetchPricesForBalances(mockParams); // TESTNET
+      });
+
+      // The user switches networks while the TESTNET fetch is still in flight.
+      act(() => {
+        usePricesStore.setState({ pricesNetwork: NETWORKS.PUBLIC });
+      });
+
+      await act(async () => {
+        resolveFetch(mockPrices);
+        await pending;
+      });
+
+      // The stale TESTNET response must not be merged into the PUBLIC cache.
+      expect(result.current.prices).toEqual({});
+    });
+
     it("should handle empty token list", async () => {
       mockGetTokenIdentifiersFromBalances.mockReturnValueOnce([]);
 
@@ -436,6 +467,43 @@ describe("prices duck", () => {
         useV2: true,
       });
       expect(usePricesStore.getState().pricesNetwork).toBe(NETWORKS.TESTNET);
+    });
+
+    it("discards an in-flight response when the network changed mid-fetch", async () => {
+      const { result } = renderHook(() => usePricesStore());
+
+      let resolveFetch: (value: TokenPricesMap) => void = () => {};
+      mockFetchTokenPrices.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveFetch = resolve;
+        }),
+      );
+
+      let pending: Promise<void> = Promise.resolve();
+      act(() => {
+        pending = result.current.fetchPricesForTokenIds({
+          tokens: trendingIds,
+          network: NETWORKS.PUBLIC,
+        });
+      });
+
+      // Network moves on before the slow PUBLIC fetch resolves.
+      act(() => {
+        usePricesStore.setState({ pricesNetwork: NETWORKS.TESTNET });
+      });
+
+      await act(async () => {
+        resolveFetch({
+          "AQUA:GBNAQUA": {
+            currentPrice: new BigNumber("1"),
+            percentagePriceChange24h: new BigNumber("0"),
+          },
+        });
+        await pending;
+      });
+
+      // The stale PUBLIC response must not be merged into the TESTNET cache.
+      expect(result.current.prices["AQUA:GBNAQUA"]).toBeUndefined();
     });
   });
 
