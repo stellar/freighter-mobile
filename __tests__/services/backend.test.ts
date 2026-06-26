@@ -715,6 +715,11 @@ describe("Backend Service - fetchTokenPrices v2 migration", () => {
     "XLM",
     "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
   ];
+  // What the v2 request body should contain: native "XLM" mapped to "native".
+  const v2Tokens = [
+    "native",
+    "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+  ];
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -729,12 +734,13 @@ describe("Backend Service - fetchTokenPrices v2 migration", () => {
     mockV2Post.mockResolvedValue(response);
   });
 
-  it("hits the v2 client with a network query param when useV2 is true", async () => {
+  it("hits the v2 client with a network query param and native id when useV2 is true", async () => {
     await fetchTokenPrices({ tokens, network: NETWORKS.PUBLIC, useV2: true });
 
+    // Native "XLM" is sent to v2 as "native".
     expect(mockV2Post).toHaveBeenCalledWith(
       "/token-prices",
-      { tokens },
+      { tokens: v2Tokens },
       { params: { network: "PUBLIC" } },
     );
     expect(mockV1Post).not.toHaveBeenCalled();
@@ -745,14 +751,34 @@ describe("Backend Service - fetchTokenPrices v2 migration", () => {
 
     expect(mockV2Post).toHaveBeenCalledWith(
       "/token-prices",
-      { tokens },
+      { tokens: v2Tokens },
       { params: { network: "TESTNET" } },
     );
   });
 
-  it("hits the v1 client with no network param when useV2 is false", async () => {
+  it("remaps the v2 'native' price back to the app's 'XLM' key", async () => {
+    mockV2Post.mockResolvedValueOnce({
+      data: {
+        data: {
+          native: { currentPrice: "0.5", percentagePriceChange24h: 0.02 },
+        },
+      },
+    });
+
+    const result = await fetchTokenPrices({
+      tokens,
+      network: NETWORKS.PUBLIC,
+      useV2: true,
+    });
+
+    expect(result.XLM?.currentPrice?.toString()).toBe("0.5");
+    expect(result.native).toBeUndefined();
+  });
+
+  it("hits the v1 client with the 'XLM' native id and no network param when useV2 is false", async () => {
     await fetchTokenPrices({ tokens, network: NETWORKS.PUBLIC, useV2: false });
 
+    // v1 is not native-translated — it still receives "XLM".
     expect(mockV1Post).toHaveBeenCalledWith("/token-prices", { tokens });
     expect(mockV2Post).not.toHaveBeenCalled();
   });

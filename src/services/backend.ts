@@ -16,7 +16,7 @@
 /* eslint-disable arrow-body-style */
 import { Horizon, TransactionBuilder } from "@stellar/stellar-sdk";
 import { AxiosError } from "axios";
-import { NetworkDetails, NETWORKS } from "config/constants";
+import { NATIVE_TOKEN_CODE, NetworkDetails, NETWORKS } from "config/constants";
 import { BackendEnvConfig } from "config/envConfig";
 import { logger, normalizeError } from "config/logger";
 import {
@@ -338,6 +338,14 @@ const PRICE_NETWORK_PARAMS: Partial<Record<NETWORKS, string>> = {
 };
 
 /**
+ * Wire identifier the v2 /token-prices endpoint expects for the native asset.
+ * The app uses NATIVE_TOKEN_CODE ("XLM") everywhere, but v2 keys the native
+ * asset as "native" (matching the browser extension). We translate only at the
+ * v2 request/response boundary so the rest of the app keeps using "XLM".
+ */
+const V2_NATIVE_PRICE_ID = "native";
+
+/**
  * Fetches the current USD prices and 24h percentage changes for the given tokens.
  *
  * When `useV2` is true, hits the network-scoped v2 endpoint, passing the active
@@ -390,16 +398,25 @@ export const fetchTokenPrices = async ({
 
   if (!shouldSkipRequest) {
     try {
-      // The v2 endpoint is network-scoped via a `network` query param; v1 is not.
-      const { data } = useV2
-        ? await freighterBackendV2.post<TokenPricesResponse>(
-            "/token-prices",
-            { tokens: filteredTokens },
-            { params: { network: priceNetwork } },
-          )
-        : await freighterBackendV1.post<TokenPricesResponse>("/token-prices", {
-            tokens: filteredTokens,
-          });
+      let data: TokenPricesResponse;
+      if (useV2) {
+        // The v2 endpoint is network-scoped via a `network` query param and keys
+        // the native asset as "native", so translate "XLM" -> "native" on the
+        // way out (v1, below, is neither network-scoped nor native-translated).
+        const v2Tokens = filteredTokens.map((tokenId) =>
+          tokenId === NATIVE_TOKEN_CODE ? V2_NATIVE_PRICE_ID : tokenId,
+        );
+        ({ data } = await freighterBackendV2.post<TokenPricesResponse>(
+          "/token-prices",
+          { tokens: v2Tokens },
+          { params: { network: priceNetwork } },
+        ));
+      } else {
+        ({ data } = await freighterBackendV1.post<TokenPricesResponse>(
+          "/token-prices",
+          { tokens: filteredTokens },
+        ));
+      }
 
       // Defensive: if the endpoint returns an unexpected shape (e.g. v2
       // diverges from `{ data: TokenPricesMap }`), fall back to an empty map so
@@ -413,6 +430,14 @@ export const fetchTokenPrices = async ({
         );
       }
       pricesMap = data?.data ?? {};
+
+      // Translate the native price back to the app's "XLM" convention. The
+      // null-fill loop below keys off the original (un-translated) `tokens`, so
+      // remapping here ensures the XLM entry is present and not null-filled.
+      if (useV2 && pricesMap[V2_NATIVE_PRICE_ID]) {
+        pricesMap[NATIVE_TOKEN_CODE] = pricesMap[V2_NATIVE_PRICE_ID];
+        delete pricesMap[V2_NATIVE_PRICE_ID];
+      }
     } catch (error) {
       // Without this, the store callers swallow price-fetch failures (keeping
       // stale prices / a local error string) with no Sentry signal — so a
@@ -432,9 +457,8 @@ export const fetchTokenPrices = async ({
 
   /*
   // ========================================================
-  // Uncomment this to simulate token-prices response
-  // This may be useful for testing the UI with token prices on Testnet
-  // as the /token-prices endpoint only returns prices for Mainnet
+  // Uncomment this to simulate a token-prices response — useful for exercising
+  // the price UI locally without depending on live backend data.
 
   // Simulate network delay
   // eslint-disable-next-line no-promise-executor-return
