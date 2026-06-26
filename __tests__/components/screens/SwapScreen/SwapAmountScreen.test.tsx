@@ -274,11 +274,13 @@ const mockPrices: Record<
 jest.mock("ducks/prices", () => ({
   usePricesStore: (selector?: (s: unknown) => unknown): unknown => {
     const state = {
-      prices: mockPrices,
+      pricesByNetwork: {},
+      sourceByNetwork: {},
       fetchPricesForTokenIds: mockFetchPricesForTokenIds,
     };
     return selector ? selector(state) : state;
   },
+  usePricesForNetwork: () => mockPrices,
 }));
 // Cache the return value so account / spendableAmount memos stay stable across
 // re-renders — otherwise the amountError useEffect can re-fire forever when

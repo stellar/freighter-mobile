@@ -11,7 +11,7 @@ import {
   NonNativeToken,
 } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
-import { usePricesStore } from "ducks/prices";
+import { usePricesForNetwork, usePricesStore } from "ducks/prices";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { formatTokenForDisplay, formatFiatAmount } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -42,9 +42,10 @@ export const useTransactionBalanceListItems = (
   // and the rollback must re-query the new source.
   const network = useAuthenticationStore((state) => state.network);
   const useV2 = useRemoteConfigStore((state) => state.use_token_prices_v2);
-  // Subscribe to prices so the list recomputes when an async price response
-  // lands — reading via getState alone would not trigger a re-render.
-  const prices = usePricesStore((state) => state.prices);
+  // Subscribe to the active network's prices so the list recomputes when an
+  // async price response lands (reading via getState alone would not trigger a
+  // re-render) and never shows another network's prices.
+  const prices = usePricesForNetwork(network);
 
   // Balance changes for this transaction: null = unable to simulate.
   const balanceUpdates = useMemo(

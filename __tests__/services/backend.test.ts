@@ -788,4 +788,44 @@ describe("Backend Service - fetchTokenPrices v2 migration", () => {
       percentagePriceChange24h: null,
     });
   });
+
+  it("logs an error to Sentry and rethrows on a backend failure", async () => {
+    const backendError = {
+      message: "Internal Server Error",
+      status: 500,
+      isNetworkError: false,
+    };
+    mockV2Post.mockRejectedValueOnce(backendError);
+
+    await expect(
+      fetchTokenPrices({ tokens, network: NETWORKS.PUBLIC, useV2: true }),
+    ).rejects.toEqual(backendError);
+
+    expect(logger.error).toHaveBeenCalledWith(
+      "backendApi.fetchTokenPrices",
+      "Error fetching token prices",
+      backendError,
+    );
+    expect(logger.warn).not.toHaveBeenCalled();
+  });
+
+  it("demotes a connectivity failure to a warn breadcrumb (no Sentry error)", async () => {
+    const networkError = {
+      message: "Network Error",
+      status: 0,
+      isNetworkError: true,
+    };
+    mockV2Post.mockRejectedValueOnce(networkError);
+
+    await expect(
+      fetchTokenPrices({ tokens, network: NETWORKS.PUBLIC, useV2: true }),
+    ).rejects.toEqual(networkError);
+
+    expect(logger.warn).toHaveBeenCalledWith(
+      "backendApi.fetchTokenPrices",
+      "Network unreachable while fetching token prices",
+      networkError,
+    );
+    expect(logger.error).not.toHaveBeenCalled();
+  });
 });

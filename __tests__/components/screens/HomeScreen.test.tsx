@@ -113,12 +113,14 @@ jest.mock("ducks/balances", () => ({
 
 jest.mock("ducks/prices", () => ({
   usePricesStore: jest.fn(() => ({
-    prices: {},
+    pricesByNetwork: {},
+    sourceByNetwork: {},
     isLoading: false,
     error: null,
     lastUpdated: null,
     fetchPricesForBalances: jest.fn(),
   })),
+  usePricesForNetwork: jest.fn(() => ({})),
 }));
 
 jest.mock("ducks/collectibles", () => ({

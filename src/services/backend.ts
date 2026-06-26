@@ -389,18 +389,45 @@ export const fetchTokenPrices = async ({
   let pricesMap: TokenPricesMap = {};
 
   if (!shouldSkipRequest) {
-    // The v2 endpoint is network-scoped via a `network` query param; v1 is not.
-    const { data } = useV2
-      ? await freighterBackendV2.post<TokenPricesResponse>(
-          "/token-prices",
-          { tokens: filteredTokens },
-          { params: { network: priceNetwork } },
-        )
-      : await freighterBackendV1.post<TokenPricesResponse>("/token-prices", {
-          tokens: filteredTokens,
-        });
+    try {
+      // The v2 endpoint is network-scoped via a `network` query param; v1 is not.
+      const { data } = useV2
+        ? await freighterBackendV2.post<TokenPricesResponse>(
+            "/token-prices",
+            { tokens: filteredTokens },
+            { params: { network: priceNetwork } },
+          )
+        : await freighterBackendV1.post<TokenPricesResponse>("/token-prices", {
+            tokens: filteredTokens,
+          });
 
-    pricesMap = data.data;
+      // Defensive: if the endpoint returns an unexpected shape (e.g. v2
+      // diverges from `{ data: TokenPricesMap }`), fall back to an empty map so
+      // the null-fill loop below still produces a valid TokenPricesMap instead
+      // of throwing and silently wiping out all prices.
+      if (!data?.data) {
+        logger.warn(
+          "backendApi.fetchTokenPrices",
+          "Unexpected token-prices response shape",
+          { useV2, topLevelKeys: data ? Object.keys(data) : [] },
+        );
+      }
+      pricesMap = data?.data ?? {};
+    } catch (error) {
+      // Without this, the store callers swallow price-fetch failures (keeping
+      // stale prices / a local error string) with no Sentry signal — so a
+      // broadly-failing endpoint (e.g. a bad v2 rollout) would be invisible.
+      // Connectivity failures (offline/DNS/TLS) demote to a warn breadcrumb;
+      // backend 4xx/5xx and timeouts surface as logger.error. Rethrow so the
+      // callers still manage UI state.
+      logApiError(
+        "backendApi.fetchTokenPrices",
+        "Network unreachable while fetching token prices",
+        "Error fetching token prices",
+        error,
+      );
+      throw error;
+    }
   }
 
   /*
