@@ -95,6 +95,18 @@ jest.mock("@gorhom/bottom-sheet", () => ({
 jest.mock("helpers/soroban", () => ({
   isContractId: jest.fn(),
   isSorobanTransaction: jest.fn(),
+  computeTotalFeeXlm: jest.fn(() => "0"),
+}));
+
+// The fee info icon mounts FeeBreakdownBottomSheet (via useFeeDetailsBottomSheet),
+// which reads the transaction builder store.
+jest.mock("ducks/transactionBuilder", () => ({
+  useTransactionBuilderStore: jest.fn(() => ({
+    sorobanResourceFeeXlm: null,
+    sorobanInclusionFeeXlm: null,
+    isBuilding: false,
+    error: null,
+  })),
 }));
 
 jest.mock("services/backend", () => ({
@@ -377,10 +389,8 @@ describe("TransactionSettingsBottomSheet - onSettingsChange Integration", () => 
     });
   });
 
-  it("previews the selected inclusion fee in the breakdown without saving", async () => {
-    // Make this a Soroban transaction so the info icon opens the fee breakdown.
+  it("opening the fee details does not persist the fee (preview only)", async () => {
     mockIsContractId.mockReturnValue(true);
-    const mockOnOpenFeeBreakdown = jest.fn();
 
     const { getByText, getByTestId } = renderWithProviders(
       <TransactionSettingsBottomSheet
@@ -388,23 +398,19 @@ describe("TransactionSettingsBottomSheet - onSettingsChange Integration", () => 
         onConfirm={mockOnConfirm}
         context={TransactionContext.Send}
         onSettingsChange={mockOnSettingsChange}
-        onOpenFeeBreakdown={mockOnOpenFeeBreakdown}
       />,
     );
 
-    // Pick the High preset, then open the breakdown via the info icon.
+    // Pick the High preset, then open the fee details via the info icon.
     fireEvent.press(getByText("transactionSettings.priorityHigh"));
     fireEvent.press(getByTestId("fee-info-button"));
 
+    // The fee is only persisted on Save, not when opening the details.
     await waitFor(() => {
-      // The breakdown previews the selected fee...
-      expect(mockOnOpenFeeBreakdown).toHaveBeenCalledWith("0.01");
+      expect(
+        mockTransactionSettingsState.saveTransactionFee,
+      ).not.toHaveBeenCalled();
     });
-
-    // ...but the fee is NOT persisted until the user presses Save.
-    expect(
-      mockTransactionSettingsState.saveTransactionFee,
-    ).not.toHaveBeenCalled();
   });
 
   it("opens on the stored fee priority tier (preset → input locked)", async () => {

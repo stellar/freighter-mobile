@@ -4,7 +4,6 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BigNumber } from "bignumber.js";
 import { AmountCard } from "components/AmountCard";
 import BottomSheet from "components/BottomSheet";
-import FeeBreakdownBottomSheet from "components/FeeBreakdownBottomSheet";
 import InformationBottomSheet from "components/InformationBottomSheet";
 import MuxedAddressWarningBottomSheet from "components/MuxedAddressWarningBottomSheet";
 import { PercentageButtons } from "components/PercentageButtons";
@@ -220,12 +219,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   }, [transactionBuilderError, showToast]);
   const addMemoExplanationBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const transactionSettingsBottomSheetModalRef = useRef<BottomSheetModal>(null);
-  const feeBreakdownBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const muxedAddressInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
-  // In-progress inclusion fee previewed in the breakdown (not yet saved).
-  const [feeBreakdownInclusionFee, setFeeBreakdownInclusionFee] = useState<
-    string | undefined
-  >(undefined);
   const [transactionScanResult, setTransactionScanResult] = useState<
     Blockaid.StellarTransactionScanResponse | undefined
   >(undefined);
@@ -1110,26 +1104,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             onCancel={handleCancelTransactionSettings}
             onConfirm={handleConfirmTransactionSettings}
             onSettingsChange={handleSettingsChange}
-            onOpenFeeBreakdown={(inclusionFeeXlm) => {
-              setFeeBreakdownInclusionFee(inclusionFeeXlm);
-              feeBreakdownBottomSheetModalRef.current?.present();
-            }}
-          />
-        }
-      />
-      <BottomSheet
-        modalRef={feeBreakdownBottomSheetModalRef}
-        handleCloseModal={() =>
-          feeBreakdownBottomSheetModalRef.current?.dismiss()
-        }
-        customContent={
-          <FeeBreakdownBottomSheet
-            onClose={() => feeBreakdownBottomSheetModalRef.current?.dismiss()}
-            isSorobanContext={isSorobanTransaction(
-              selectedBalance,
-              recipientAddress,
-            )}
-            inclusionFeeXlmOverride={feeBreakdownInclusionFee}
           />
         }
       />

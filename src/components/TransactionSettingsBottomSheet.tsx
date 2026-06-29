@@ -32,6 +32,7 @@ import { enforceSettingInputDecimalSeparator } from "helpers/transactionSettings
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
+import { useFeeDetailsBottomSheet } from "hooks/useFeeDetailsBottomSheet";
 import { useInitialRecommendedFee } from "hooks/useInitialRecommendedFee";
 import { useNetworkFees } from "hooks/useNetworkFees";
 import { useValidateMemo } from "hooks/useValidateMemo";
@@ -52,7 +53,6 @@ type TransactionSettingsBottomSheetProps = {
   onConfirm: () => void;
   context: TransactionContext;
   onSettingsChange?: () => void;
-  onOpenFeeBreakdown?: (inclusionFeeXlm: string) => void;
   /**
    * Number of operations the transaction bundles. The fee is the TOTAL across
    * all ops, so the recommended default scales by this and the minimum is
@@ -72,7 +72,6 @@ const TransactionSettingsBottomSheet: React.FC<
   onConfirm,
   context,
   onSettingsChange,
-  onOpenFeeBreakdown,
   operationCount = 1,
 }) => {
   // All hooks at the top
@@ -112,7 +111,6 @@ const TransactionSettingsBottomSheet: React.FC<
   );
 
   const timeoutInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
-  const feeInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const memoInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const slippageInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
 
@@ -424,15 +422,13 @@ const TransactionSettingsBottomSheet: React.FC<
     [localFee],
   );
 
-  // Opening the fee breakdown previews the current (unsaved) inclusion fee so
-  // the breakdown reflects what the user typed/selected. The fee is only
-  // persisted on Save — cancelling reverts to the stored value.
-  const handleOpenFeeBreakdown = useCallback(() => {
-    if (feeError) {
-      return;
-    }
-    onOpenFeeBreakdown?.(parseDisplayNumber(localFee).toString());
-  }, [feeError, localFee, onOpenFeeBreakdown]);
+  // Preview the unsaved fee in the breakdown; skip the override while invalid.
+  const { openFeeDetails, feeDetailsSheets } = useFeeDetailsBottomSheet({
+    isSorobanContext: isSorobanTransaction,
+    inclusionFeeXlmOverride: feeError
+      ? undefined
+      : parseDisplayNumber(localFee).toString(),
+  });
 
   // Data objects and configurations
   const settingErrors = {
@@ -592,14 +588,7 @@ const TransactionSettingsBottomSheet: React.FC<
                 ? t("transactionSettings.inclusionFeeTitle")
                 : t("transactionSettings.feeTitle")}
             </Text>
-            <TouchableOpacity
-              testID="fee-info-button"
-              onPress={() =>
-                isSorobanTransaction && onOpenFeeBreakdown
-                  ? handleOpenFeeBreakdown()
-                  : feeInfoBottomSheetModalRef.current?.present()
-              }
-            >
+            <TouchableOpacity testID="fee-info-button" onPress={openFeeDetails}>
               <Icon.InfoCircle themeColor="gray" size={16} />
             </TouchableOpacity>
           </View>
@@ -641,8 +630,7 @@ const TransactionSettingsBottomSheet: React.FC<
     ),
     [
       isSorobanTransaction,
-      onOpenFeeBreakdown,
-      handleOpenFeeBreakdown,
+      openFeeDetails,
       localFee,
       feeError,
       t,
@@ -722,23 +710,6 @@ const TransactionSettingsBottomSheet: React.FC<
       ],
     },
     {
-      IconComponent: Icon.Route,
-      key: "feeInfo" as const,
-      modalRef: feeInfoBottomSheetModalRef,
-      title: t("transactionSettings.feeInfo.title"),
-      onClose: () => feeInfoBottomSheetModalRef.current?.dismiss(),
-      texts: [
-        {
-          key: "description",
-          value: t("transactionSettings.feeInfo.description"),
-        },
-        {
-          key: "additionalInfo",
-          value: t("transactionSettings.feeInfo.additionalInfo"),
-        },
-      ],
-    },
-    {
       IconComponent: Icon.ClockRefresh,
       key: "timeoutInfo" as const,
       modalRef: timeoutInfoBottomSheetModalRef,
@@ -808,6 +779,7 @@ const TransactionSettingsBottomSheet: React.FC<
           />
         ),
       )}
+      {feeDetailsSheets}
     </View>
   );
 };
