@@ -23,7 +23,7 @@ import {
 } from "config/constants";
 import { logger } from "config/logger";
 import { useAuthenticationStore } from "ducks/auth";
-import { formatTokenForDisplay, formatFiatAmount } from "helpers/formatAmount";
+import { formatTokenForDisplay } from "helpers/formatAmount";
 import { getCreateContractArgs } from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -40,6 +40,17 @@ interface OperationsProps {
 type AuthorizationMap = {
   [index: string]: string;
 };
+
+/**
+ * A classic offer price is an asset-to-asset exchange rate, not a fiat amount.
+ * It reads as `quoteCode` units per 1 `baseCode` unit: buying-per-selling for
+ * sell offers, selling-per-buying for buy offers.
+ */
+const formatOfferPriceRatio = (
+  price: string,
+  quoteCode: string,
+  baseCode: string,
+) => `${formatTokenForDisplay(price)} ${quoteCode} / ${baseCode}`;
 
 const RenderOperationByType = ({
   operation,
@@ -273,25 +284,29 @@ const RenderOperationByType = ({
 
       const items: ListItemProps[] = [
         {
-          title: t("signTransactionDetails.operations.buying"),
-          trailingContent: <Text>{buying.code}</Text>,
-          titleColor: themeColors.text.secondary,
-        },
-        {
-          title: t("signTransactionDetails.operations.amount"),
-          trailingContent: (
-            <Text>{formatTokenForDisplay(amount, buying.code)}</Text>
-          ),
-          titleColor: themeColors.text.secondary,
-        },
-        {
           title: t("signTransactionDetails.operations.selling"),
           trailingContent: <Text>{selling.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
         {
+          title: t("signTransactionDetails.operations.sellingAmount"),
+          trailingContent: (
+            <Text>{formatTokenForDisplay(amount, selling.code)}</Text>
+          ),
+          titleColor: themeColors.text.secondary,
+        },
+        {
+          title: t("signTransactionDetails.operations.buying"),
+          trailingContent: <Text>{buying.code}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
+        {
           title: t("signTransactionDetails.operations.price"),
-          trailingContent: <Text>{formatFiatAmount(price)}</Text>,
+          trailingContent: (
+            <Text>
+              {formatOfferPriceRatio(price, buying.code, selling.code)}
+            </Text>
+          ),
           titleColor: themeColors.text.secondary,
         },
       ];
@@ -313,20 +328,24 @@ const RenderOperationByType = ({
           titleColor: themeColors.text.secondary,
         },
         {
+          title: t("signTransactionDetails.operations.sellingAmount"),
+          trailingContent: (
+            <Text>{formatTokenForDisplay(amount, selling.code)}</Text>
+          ),
+          titleColor: themeColors.text.secondary,
+        },
+        {
           title: t("signTransactionDetails.operations.buying"),
           trailingContent: <Text>{buying.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
         {
-          title: t("signTransactionDetails.operations.amount"),
-          trailingContent: (
-            <Text>{formatTokenForDisplay(amount, buying.code)}</Text>
-          ),
-          titleColor: themeColors.text.secondary,
-        },
-        {
           title: t("signTransactionDetails.operations.price"),
-          trailingContent: <Text>{formatFiatAmount(price)}</Text>,
+          trailingContent: (
+            <Text>
+              {formatOfferPriceRatio(price, buying.code, selling.code)}
+            </Text>
+          ),
           titleColor: themeColors.text.secondary,
         },
       ];
@@ -348,7 +367,7 @@ const RenderOperationByType = ({
           titleColor: themeColors.text.secondary,
         },
         {
-          title: t("signTransactionDetails.operations.buyAmount"),
+          title: t("signTransactionDetails.operations.buyingAmount"),
           trailingContent: (
             <Text>{formatTokenForDisplay(buyAmount, buying.code)}</Text>
           ),
@@ -361,7 +380,11 @@ const RenderOperationByType = ({
         },
         {
           title: t("signTransactionDetails.operations.price"),
-          trailingContent: <Text>{formatFiatAmount(price)}</Text>,
+          trailingContent: (
+            <Text>
+              {formatOfferPriceRatio(price, selling.code, buying.code)}
+            </Text>
+          ),
           titleColor: themeColors.text.secondary,
         },
       ];
@@ -495,7 +518,7 @@ const RenderOperationByType = ({
             titleColor: themeColors.text.secondary,
           },
           {
-            title: t("signTransactionDetails.operations.assetIssuer"),
+            title: t("signTransactionDetails.operations.tokenIssuer"),
             trailingContent: (
               <View className="flex-row items-center gap-[8px]">
                 <Icon.Copy01

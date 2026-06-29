@@ -1,15 +1,15 @@
-import Blockaid from "@blockaid/client";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import BottomSheet from "components/BottomSheet";
 import { List } from "components/List";
-import { TokenIcon } from "components/TokenIcon";
 import SignTransactionDetailsBottomSheet from "components/screens/SignTransactionDetails/components/SignTransactionDetailsBottomSheet";
 import { useSignTransactionDetails } from "components/screens/SignTransactionDetails/hooks/useSignTransactionDetails";
+import { SwapReviewTokenRow } from "components/screens/SwapScreen/components/SwapReviewTokenRow";
+import { TrustlineInfoBottomSheet } from "components/screens/SwapScreen/components/TrustlineInfoBottomSheet";
 import {
-  formatConversionRate,
-  getTokenFromBalance,
-  calculateTokenFiatAmount,
-} from "components/screens/SwapScreen/helpers";
+  useReviewSecuritySummary,
+  useReviewTokens,
+  useStableConversionRate,
+} from "components/screens/SwapScreen/hooks";
 import Avatar from "components/sds/Avatar";
 import { Banner } from "components/sds/Banner";
 import { Button } from "components/sds/Button";
@@ -17,53 +17,47 @@ import Icon from "components/sds/Icon";
 import { TextButton } from "components/sds/TextButton";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
-import { DEFAULT_PADDING, NATIVE_TOKEN_CODE } from "config/constants";
+import { DEFAULT_PADDING } from "config/constants";
 import { THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
-import { useDebugStore } from "ducks/debug";
 import { useSwapStore } from "ducks/swap";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
-import { calculateSwapRate } from "helpers/balances";
 import { pxValue } from "helpers/dimensions";
-import { formatTokenForDisplay, formatFiatAmount } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React, { useMemo, useState, useEffect, useRef } from "react";
+import React, { useRef } from "react";
 import { TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import {
-  assessTokenSecurity,
-  assessTransactionSecurity,
-} from "services/blockaid/helper";
+import type { SecurityAssessment } from "services/blockaid/types";
 
 type SwapReviewBottomSheetProps = {
   onSecurityWarningPress?: () => void;
-  transactionScanResult: Blockaid.StellarTransactionScanResponse | undefined;
-  sourceTokenScanResult: Blockaid.TokenBulkScanResponse.Results | undefined;
-  destTokenScanResult: Blockaid.TokenBulkScanResponse.Results | undefined;
+  transactionSecurityAssessment: SecurityAssessment;
+  sourceSecurityAssessment: SecurityAssessment;
+  destinationSecurityAssessment: SecurityAssessment;
 };
 
 const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
   onSecurityWarningPress,
-  transactionScanResult,
-  sourceTokenScanResult,
-  destTokenScanResult,
+  transactionSecurityAssessment,
+  sourceSecurityAssessment,
+  destinationSecurityAssessment,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
-  const { overriddenBlockaidResponse } = useDebugStore();
 
   const {
     sourceAmount,
     destinationAmount,
     pathResult,
     sourceTokenSymbol,
-    destinationTokenSymbol,
+    sourceTokenId,
+    destinationToken: destinationTokenDescriptor,
   } = useSwapStore();
   const { transactionXDR } = useTransactionBuilderStore();
   const transactionDetails = useSignTransactionDetails({
@@ -71,6 +65,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
   });
   const swapTransactionDetailsBottomSheetModalRef =
     useRef<BottomSheetModal>(null);
+  const trustlineInfoRef = useRef<BottomSheetModal>(null);
 
   const handleOpenTransactionDetails = () => {
     swapTransactionDetailsBottomSheetModalRef.current?.present();
@@ -80,133 +75,49 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
     swapTransactionDetailsBottomSheetModalRef.current?.dismiss();
   };
 
-  const [stableConversionRate, setStableConversionRate] = useState<string>("");
+  const { stableConversionRate } = useStableConversionRate({
+    pathResult,
+    sourceTokenSymbol,
+    destinationTokenSymbol: destinationTokenDescriptor?.tokenCode ?? "",
+  });
 
-  const currentConversionRate =
-    pathResult?.conversionRate ||
-    calculateSwapRate(
-      Number(pathResult?.sourceAmount),
-      Number(pathResult?.destinationAmount),
-    );
-
-  useEffect(() => {
-    if (
-      currentConversionRate &&
-      !Number.isNaN(Number(currentConversionRate)) &&
-      Number(currentConversionRate) > 0
-    ) {
-      const formattedRate = formatConversionRate({
-        rate: currentConversionRate,
-        sourceSymbol: sourceTokenSymbol,
-        destinationSymbol: destinationTokenSymbol,
-      });
-
-      setStableConversionRate(formattedRate);
-    }
-  }, [currentConversionRate, sourceTokenSymbol, destinationTokenSymbol]);
-
-  const { sourceTokenId, destinationTokenId } = useSwapStore();
   const { balanceItems } = useBalancesList({
     publicKey: account?.publicKey ?? "",
     network,
   });
 
-  const sourceBalance = useMemo(
-    () => balanceItems.find((item) => item.id === sourceTokenId),
-    [balanceItems, sourceTokenId],
-  );
-
-  const destinationBalance = useMemo(
-    () => balanceItems.find((item) => item.id === destinationTokenId),
-    [balanceItems, destinationTokenId],
-  );
-
-  const sourceToken = getTokenFromBalance(sourceBalance);
-  const destinationToken = getTokenFromBalance(destinationBalance);
-
-  const sourceTokenFiatAmountValue = calculateTokenFiatAmount({
-    token: sourceToken,
-    amount: pathResult?.sourceAmount || sourceAmount,
+  const {
+    sourceToken,
+    destinationToken,
+    sourceTokenFiatAmount,
+    destinationTokenFiatAmount,
+  } = useReviewTokens({
     balanceItems,
+    sourceTokenId,
+    sourceAmount,
+    destinationAmount,
+    destinationTokenDescriptor,
+    pathResult,
   });
-
-  const sourceTokenFiatAmount =
-    sourceTokenFiatAmountValue !== "--"
-      ? formatFiatAmount(sourceTokenFiatAmountValue)
-      : "--";
-
-  const destinationTokenFiatAmountValue = calculateTokenFiatAmount({
-    token: destinationToken,
-    amount: pathResult?.destinationAmount || destinationAmount,
-    balanceItems,
-  });
-  const destinationTokenFiatAmount =
-    destinationTokenFiatAmountValue !== "--"
-      ? formatFiatAmount(destinationTokenFiatAmountValue)
-      : "--";
 
   const publicKey = account?.publicKey;
 
-  const transactionSecurityAssessment = assessTransactionSecurity(
-    transactionScanResult,
-    overriddenBlockaidResponse,
-  );
-  const sourceSecurityAssessment = assessTokenSecurity(
-    sourceTokenScanResult,
-    overriddenBlockaidResponse,
-  );
-  const destSecurityAssessment = assessTokenSecurity(
-    destTokenScanResult,
-    overriddenBlockaidResponse,
-  );
-
-  const { isMalicious: isTxMalicious, isSuspicious: isTxSuspicious } =
-    transactionSecurityAssessment;
-  const { isMalicious: isSourceMalicious, isSuspicious: isSourceSuspicious } =
-    sourceSecurityAssessment;
-  const { isMalicious: isDestMalicious, isSuspicious: isDestSuspicious } =
-    destSecurityAssessment;
-
-  const isMalicious = isTxMalicious || isSourceMalicious || isDestMalicious;
-  const isSuspicious = isTxSuspicious || isSourceSuspicious || isDestSuspicious;
-  const isUnableToScanToken =
-    (sourceSecurityAssessment.isUnableToScan &&
-      sourceTokenId !== NATIVE_TOKEN_CODE) ||
-    (destSecurityAssessment.isUnableToScan &&
-      destinationTokenId !== NATIVE_TOKEN_CODE);
-
-  const bannerText = useMemo(() => {
-    if (isTxMalicious) {
-      return t("transactionAmountScreen.errors.malicious");
-    }
-
-    if (isTxSuspicious) {
-      return t("transactionAmountScreen.errors.suspicious");
-    }
-
-    if (isDestMalicious || isSourceMalicious) {
-      return t("transactionAmountScreen.errors.maliciousAsset");
-    }
-
-    if (isDestSuspicious || isSourceSuspicious) {
-      return t("transactionAmountScreen.errors.suspiciousAsset");
-    }
-
-    if (isUnableToScanToken) {
-      return t("securityWarning.proceedWithCaution");
-    }
-
-    return t("transactionAmountScreen.errors.malicious");
-  }, [
-    t,
-    isTxMalicious,
-    isTxSuspicious,
-    isDestMalicious,
+  const {
+    isMalicious,
+    isSuspicious,
+    isUnableToScan,
     isSourceMalicious,
-    isDestSuspicious,
     isSourceSuspicious,
-    isUnableToScanToken,
-  ]);
+    isDestMalicious,
+    isDestSuspicious,
+    bannerText,
+  } = useReviewSecuritySummary({
+    transactionSecurityAssessment,
+    sourceSecurityAssessment,
+    destinationSecurityAssessment,
+    sourceTokenId,
+    destinationTokenDescriptor,
+  });
 
   return (
     <View className="flex-1" testID="swap-review-sheet">
@@ -216,29 +127,14 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
         </Text>
 
         <View className="gap-[16px]">
-          <View className="w-full flex-row items-center gap-4">
-            <View className="relative">
-              <TokenIcon token={sourceToken} />
-              {(isSourceMalicious || isSourceSuspicious) && (
-                <View className="absolute bottom-0 right-0 w-4 h-4 items-center justify-center z-10">
-                  <Icon.AlertCircle
-                    size={8}
-                    testID="alert-icon"
-                    themeColor={isSourceMalicious ? "red" : "amber"}
-                    withBackground
-                  />
-                </View>
-              )}
-            </View>
-            <View className="flex-1">
-              <Text xl medium>
-                {formatTokenForDisplay(sourceAmount, sourceTokenSymbol)}
-              </Text>
-              <Text md medium secondary>
-                {sourceTokenFiatAmount}
-              </Text>
-            </View>
-          </View>
+          <SwapReviewTokenRow
+            token={sourceToken}
+            amount={sourceAmount}
+            symbol={sourceTokenSymbol}
+            fiatString={sourceTokenFiatAmount}
+            isMalicious={isSourceMalicious}
+            isSuspicious={isSourceSuspicious}
+          />
 
           <View className="w-[40px] flex items-center">
             <Icon.ChevronDownDouble
@@ -247,39 +143,36 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
             />
           </View>
 
-          <View className="w-full flex-row items-center gap-4">
-            <View className="relative">
-              <TokenIcon token={destinationToken} />
-              {(isDestMalicious || isDestSuspicious) && (
-                <View className="absolute bottom-0 right-0 w-4 h-4 items-center justify-center z-10">
-                  <Icon.AlertCircle
-                    size={8}
-                    testID="alert-icon"
-                    themeColor={isDestMalicious ? "red" : "amber"}
-                    withBackground
-                  />
-                </View>
-              )}
-            </View>
-            <View className="flex-1">
-              <Text xl medium>
-                {formatTokenForDisplay(
-                  destinationAmount,
-                  destinationTokenSymbol,
-                )}
-              </Text>
-              <Text md medium secondary>
-                {destinationTokenFiatAmount}
-              </Text>
-            </View>
-          </View>
+          <SwapReviewTokenRow
+            token={destinationToken}
+            amount={destinationAmount}
+            symbol={destinationTokenDescriptor?.tokenCode ?? ""}
+            fiatString={destinationTokenFiatAmount}
+            // Carry the descriptor's iconUrl so non-held destinations render
+            // their logo instead of a 2-letter fallback.
+            iconUrl={destinationTokenDescriptor?.iconUrl}
+            isMalicious={isDestMalicious}
+            isSuspicious={isDestSuspicious}
+          />
         </View>
       </View>
 
-      {(isMalicious || isSuspicious || isUnableToScanToken) && (
+      {destinationTokenDescriptor?.isNew && (
         <Banner
           className="mt-[16px]"
-          variant={isSuspicious || isUnableToScanToken ? "warning" : "error"}
+          variant="highlight"
+          text={t("swapScreen.trustlineBanner", {
+            tokenCode: destinationTokenDescriptor.tokenCode,
+          })}
+          onPress={() => trustlineInfoRef.current?.present()}
+        />
+      )}
+
+      {(isMalicious || isSuspicious || isUnableToScan) && (
+        <Banner
+          testID="security-warning-banner"
+          className="mt-[16px]"
+          variant={isSuspicious || isUnableToScan ? "warning" : "error"}
           text={bannerText}
           onPress={onSecurityWarningPress}
         />
@@ -298,15 +191,15 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
             ),
             trailingContent: (
               <View className="flex-row items-center gap-[8px]">
-                <Text md medium>
-                  {account?.accountName ||
-                    truncateAddress(publicKey ?? "", 4, 4)}
-                </Text>
                 <Avatar
                   size="sm"
                   publicAddress={publicKey ?? ""}
                   hasDarkBackground
                 />
+                <Text md medium>
+                  {account?.accountName ||
+                    truncateAddress(publicKey ?? "", 4, 4)}
+                </Text>
               </View>
             ),
           },
@@ -359,6 +252,16 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
           }
         />
       )}
+      <BottomSheet
+        modalRef={trustlineInfoRef}
+        handleCloseModal={() => trustlineInfoRef.current?.dismiss()}
+        customContent={
+          <TrustlineInfoBottomSheet
+            bottomSheetModalRef={trustlineInfoRef}
+            tokenCode={destinationTokenDescriptor?.tokenCode}
+          />
+        }
+      />
     </View>
   );
 };
@@ -366,7 +269,6 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
 type SwapReviewFooterProps = {
   isMalicious: boolean;
   isSuspicious: boolean;
-  isUnableToScanToken?: boolean;
   onCancel?: () => void;
   onConfirm?: () => void;
   isBuilding?: boolean;
@@ -382,7 +284,6 @@ export const SwapReviewFooter: React.FC<SwapReviewFooterProps> = React.memo(
     const {
       isMalicious,
       isSuspicious,
-      isUnableToScanToken = false,
       onCancel,
       onConfirm,
       isBuilding = false,
@@ -426,7 +327,7 @@ export const SwapReviewFooter: React.FC<SwapReviewFooterProps> = React.memo(
         <View className={`${isTrusted ? "flex-1" : "w-full"}`}>
           <Button
             tertiary={isSuspicious}
-            secondary={isUnableToScanToken || isTrusted}
+            secondary={isTrusted}
             destructive={isMalicious}
             xl
             isFullWidth
@@ -438,19 +339,7 @@ export const SwapReviewFooter: React.FC<SwapReviewFooterProps> = React.memo(
         </View>
       );
 
-      const confirmAnywayButton = isUnableToScanToken ? (
-        <View className="flex-1">
-          <Button
-            xl
-            isFullWidth
-            onPress={onConfirm}
-            variant="tertiary"
-            testID="swap-review-confirm-anyway-button"
-          >
-            {t("transactionAmountScreen.confirmAnyway")}
-          </Button>
-        </View>
-      ) : (
+      const confirmAnywayButton = (
         <TextButton
           text={t("transactionAmountScreen.confirmAnyway")}
           onPress={onConfirm}
@@ -461,9 +350,7 @@ export const SwapReviewFooter: React.FC<SwapReviewFooterProps> = React.memo(
 
       if (!isTrusted) {
         return (
-          <View
-            className={`${isUnableToScanToken ? "flex-row gap-3" : "gap-3"}`}
-          >
+          <View className="gap-3">
             {cancelButton}
             {confirmAnywayButton}
           </View>

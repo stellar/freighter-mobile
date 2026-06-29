@@ -45,8 +45,8 @@ Pass the **flow name** (filename without `.yaml`) as a positional argument:
 ```bash
 yarn test:e2e:ios CreateWallet
 yarn test:e2e:ios ImportWallet
-yarn test:e2e:ios SendClassicTokenMainnet  # Send on mainnet (0.000001 XLM)
-yarn test:e2e:ios SwapClassicTokenMainnet  # Swap on mainnet (0.000001 XLM)
+yarn test:e2e:ios SendClassicToken  # Send on testnet (0.000001 XLM)
+yarn test:e2e:ios SwapClassicToken  # Swap on testnet (0.000001 XLM)
 ```
 
 ```bash
@@ -59,7 +59,7 @@ Or with explicit platform:
 
 ```bash
 yarn test:e2e -- --platform ios CreateWallet
-yarn test:e2e -- --platform android SendClassicTokenMainnet
+yarn test:e2e -- --platform android SendClassicToken
 ```
 
 Flow name matching is **case-insensitive**. The script runs only that flow and

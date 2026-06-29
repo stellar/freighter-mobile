@@ -27,9 +27,10 @@ let installResponseBodyPolyfill: (target?: unknown) => void;
 
 beforeAll(() => {
   // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
-  const responseBody = require("../../src/polyfills/responseBody");
-  createResponseBodyStream = responseBody.createResponseBodyStream;
-  installResponseBodyPolyfill = responseBody.installResponseBodyPolyfill;
+  const responseBodyPolyfill = require("../../src/polyfills/responseBody");
+  createResponseBodyStream = responseBodyPolyfill.createResponseBodyStream;
+  installResponseBodyPolyfill =
+    responseBodyPolyfill.installResponseBodyPolyfill;
 });
 
 const encode = (text: string): ArrayBuffer => {

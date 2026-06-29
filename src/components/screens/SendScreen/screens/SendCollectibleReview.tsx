@@ -9,7 +9,7 @@ import InformationBottomSheet from "components/InformationBottomSheet";
 import { List, ListItemProps } from "components/List";
 import MuxedAddressWarningBottomSheet from "components/MuxedAddressWarningBottomSheet";
 import TransactionSettingsBottomSheet from "components/TransactionSettingsBottomSheet";
-import SecurityDetailBottomSheet from "components/blockaid/SecurityDetailBottomSheet";
+import { SecurityDetailBottomSheet } from "components/blockaid";
 import { BaseLayout } from "components/layout/BaseLayout";
 import {
   ContactRow,
