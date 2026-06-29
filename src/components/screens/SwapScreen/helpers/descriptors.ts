@@ -13,7 +13,7 @@ import { assessTokenSecurity } from "services/blockaid/helper";
 
 /**
  * Project a held balance into a DestinationTokenDescriptor.
- * `isNew` is always false because the user already has a trustline.
+ * `requiresTrustline` is always false because the user already has a trustline.
  *
  * Some PricedBalance variants (Soroban) carry `decimals` / `blockaidData`
  * that the union doesn't expose unconditionally — we read them via
@@ -41,7 +41,7 @@ export const descriptorFromBalance = (
       issuer: undefined,
       decimals: DEFAULT_DECIMALS,
       tokenType: TokenTypeWithCustomToken.NATIVE,
-      isNew: false,
+      requiresTrustline: false,
     };
   }
 
@@ -71,14 +71,14 @@ export const descriptorFromBalance = (
     issuer: issuer || undefined,
     decimals,
     tokenType: balance.tokenType,
-    isNew: false,
+    requiresTrustline: false,
     securityLevel: heldSecurityLevel,
   };
 };
 
 /**
  * Project a stellar.expert / verified-list record into a descriptor.
- * `isNew` is true unless the record is already in the user's balances
+ * `requiresTrustline` is true unless the record is already in the user's balances
  * (hasTrustline flag set by `useSwapTokenLookup`).
  */
 export const descriptorFromSearchRecord = (
@@ -94,7 +94,7 @@ export const descriptorFromSearchRecord = (
       issuer: undefined,
       decimals: DEFAULT_DECIMALS,
       tokenType: TokenTypeWithCustomToken.NATIVE,
-      isNew: false,
+      requiresTrustline: false,
     };
   }
 
@@ -108,7 +108,7 @@ export const descriptorFromSearchRecord = (
       (record.tokenCode.length <= 4
         ? TokenTypeWithCustomToken.CREDIT_ALPHANUM4
         : TokenTypeWithCustomToken.CREDIT_ALPHANUM12),
-    isNew: !record.hasTrustline,
+    requiresTrustline: !record.hasTrustline,
     securityLevel: record.securityLevel,
     // Real Blockaid warnings from the search record's bulk scan — needed
     // because the destination side has no PricedBalance for non-held
