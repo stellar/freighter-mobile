@@ -5,8 +5,6 @@ import { useAuthenticationStore } from "ducks/auth";
 import { useEffect, useState } from "react";
 import { getNetworkFees, stellarSdkServer } from "services/stellar";
 
-const NETWORK_FEES_POLL_INTERVAL_MS = 30000;
-
 export interface NetworkFeesData {
   recommendedFee: string;
   networkCongestion: NetworkCongestion;
@@ -15,9 +13,8 @@ export interface NetworkFeesData {
 
 // Empty presets until the first fetch resolves: a selected preset tier then
 // shows the floored store fee (presetTotalFee returns undefined) rather than a
-// bogus value. Note this is a DIFFERENT "no data" representation than the
-// fetch-error path, where `getNetworkFees` falls back to the XLM minimum fee
-// for all presets.
+// bogus value. This is a DIFFERENT "no data" representation than the
+// fetch-error path, where `getNetworkFees` falls back to the XLM minimum fee.
 const EMPTY_FEE_PRESETS: FeePresets = {
   [FeePriority.LOW]: "",
   [FeePriority.MEDIUM]: "",
@@ -31,18 +28,28 @@ const DEFAULT_NETWORK_FEES: NetworkFeesData = {
 };
 
 /**
- * Last successful fetch per network. New mounts seed their initial state from
- * this so a freshly mounted consumer (most visibly the shared transaction
- * settings sheet, which mounts after the screen behind it has already loaded
- * the real values) doesn't flash the defaults before its own fetch resolves.
+ * Fee snapshot per network, fetched once and then frozen for the duration of a
+ * send/swap/collectible flow so the congestion level and fees stay consistent
+ * to the user (and only change when they manually edit). Cleared on flow exit
+ * via `clearNetworkFeesCache`, so the next flow re-fetches fresh values.
  */
 const networkFeesCache: Partial<Record<NETWORKS, NetworkFeesData>> = {};
 
+/** Clears the frozen fee snapshot so the next flow re-fetches. Call on flow exit. */
+export const clearNetworkFeesCache = (): void => {
+  (Object.keys(networkFeesCache) as NETWORKS[]).forEach((key) => {
+    delete networkFeesCache[key];
+  });
+};
+
 /**
- * Hook to retrieve and monitor network fees and congestion levels.
+ * Hook to retrieve network fees and congestion for the current flow.
  *
- * @returns An object containing the recommended fee, network congestion level
- * and the Low/Med/High inclusion-fee presets
+ * The values are fetched once and frozen (no polling): the first consumer to
+ * mount populates the cache, later consumers (e.g. the settings sheet) read the
+ * same snapshot, and it stays put for the whole flow.
+ *
+ * @returns The recommended fee, network congestion, and Low/Med/High presets.
  */
 export const useNetworkFees = (): NetworkFeesData => {
   const { network } = useAuthenticationStore();
@@ -51,12 +58,14 @@ export const useNetworkFees = (): NetworkFeesData => {
   );
 
   useEffect(() => {
-    // Reflect any cached value for this network immediately (e.g. on switch).
     const cached = networkFeesCache[network];
     if (cached) {
+      // Frozen snapshot already loaded for this flow — reuse it, don't refetch.
       setFees(cached);
+      return undefined;
     }
 
+    let cancelled = false;
     const fetchNetworkFees = async () => {
       try {
         const { networkUrl } = mapNetworkToNetworkDetails(network);
@@ -66,7 +75,7 @@ export const useNetworkFees = (): NetworkFeesData => {
 
         // Guard against an invalid/empty result so the hook never returns
         // undefined to consumers.
-        if (!data?.recommendedFee) {
+        if (cancelled || !data?.recommendedFee) {
           return;
         }
 
@@ -79,11 +88,9 @@ export const useNetworkFees = (): NetworkFeesData => {
 
     fetchNetworkFees();
 
-    const interval = setInterval(() => {
-      fetchNetworkFees();
-    }, NETWORK_FEES_POLL_INTERVAL_MS);
-
-    return () => clearInterval(interval);
+    return () => {
+      cancelled = true;
+    };
   }, [network]);
 
   return fees;

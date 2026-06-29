@@ -103,9 +103,14 @@ const SendCollectibleReviewScreen: React.FC<
     }
   }, [tokenId, collectionAddress, saveSelectedCollectibleDetails]);
 
-  const { recommendedFee } = useNetworkFees();
+  const { recommendedFee, networkCongestion } = useNetworkFees();
 
-  useInitialRecommendedFee(recommendedFee, TransactionContext.Send);
+  useInitialRecommendedFee(
+    recommendedFee,
+    TransactionContext.Send,
+    1,
+    networkCongestion,
+  );
 
   const {
     buildSendCollectibleTransaction,

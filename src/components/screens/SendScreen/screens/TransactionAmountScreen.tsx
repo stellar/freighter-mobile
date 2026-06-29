@@ -170,7 +170,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     useValidateTransactionMemo(transactionXDR);
 
   const { scanTransaction } = useBlockaidTransaction();
-  const { recommendedFee } = useNetworkFees();
+  const { recommendedFee, networkCongestion } = useNetworkFees();
 
   const publicKey = account?.publicKey;
   const amountInputRef = useRef<TextInput>(null);
@@ -418,6 +418,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   useInitialRecommendedFee(
     hasEnteredAmount ? "" : recommendedFee,
     TransactionContext.Send,
+    1,
+    networkCongestion,
   );
 
   const unfundedContext: UnfundedDestinationContext | undefined = useMemo(

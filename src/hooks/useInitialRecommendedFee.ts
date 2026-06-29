@@ -1,13 +1,15 @@
 import BigNumber from "bignumber.js";
 import { TransactionContext } from "config/constants";
+import { CONGESTION_TO_FEE_PRIORITY, NetworkCongestion } from "config/types";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { useEffect } from "react";
 
 /**
- * Hook to automatically initialize fee with recommended fee if it's still at default
- * Uses a global store flag to track if fee was manually changed to prevent overwriting
- * user input even when the hook is mounted in multiple places simultaneously.
+ * Initializes the fee and priority tier from the network recommendation until
+ * the user manually changes them (tracked by a global store flag so it works
+ * even when mounted in several places at once). The default tier follows
+ * network congestion 1:1.
  *
  * @param recommendedFee - The recommended fee from the network (a per-operation rate)
  * @param context - The transaction context (Send or Swap)
@@ -15,11 +17,13 @@ import { useEffect } from "react";
  *   stored fee is the TOTAL across all ops, so the per-op recommended rate is
  *   scaled by this (e.g. 2 for a swap-to-new-token's changeTrust + path
  *   payment). Defaults to 1 (Send / single-op).
+ * @param networkCongestion - Current congestion; picks the default tier.
  */
 export const useInitialRecommendedFee = (
   recommendedFee: string,
   context: TransactionContext,
   operationCount = 1,
+  networkCongestion: NetworkCongestion = NetworkCongestion.LOW,
 ) => {
   const isSwap = context === TransactionContext.Swap;
 
@@ -27,12 +31,14 @@ export const useInitialRecommendedFee = (
     feeManuallyChanged: txFeeManuallyChanged,
     markFeeManuallyChanged: markTxFeeManuallyChanged,
     saveTransactionFee,
+    saveFeePriority: saveTxFeePriority,
   } = useTransactionSettingsStore();
 
   const {
     feeManuallyChanged: swapFeeManuallyChanged,
     markFeeManuallyChanged: markSwapFeeManuallyChanged,
     saveSwapFee,
+    saveFeePriority: saveSwapFeePriority,
   } = useSwapSettingsStore();
 
   const feeManuallyChanged = isSwap
@@ -42,6 +48,7 @@ export const useInitialRecommendedFee = (
     ? markSwapFeeManuallyChanged
     : markTxFeeManuallyChanged;
   const saveFee = isSwap ? saveSwapFee : saveTransactionFee;
+  const saveFeePriority = isSwap ? saveSwapFeePriority : saveTxFeePriority;
 
   useEffect(() => {
     if (recommendedFee && !feeManuallyChanged) {
@@ -52,8 +59,16 @@ export const useInitialRecommendedFee = (
         .times(operationCount)
         .toString();
       saveFee(totalFee);
+      saveFeePriority(CONGESTION_TO_FEE_PRIORITY[networkCongestion]);
     }
-  }, [recommendedFee, saveFee, feeManuallyChanged, operationCount]);
+  }, [
+    recommendedFee,
+    saveFee,
+    saveFeePriority,
+    feeManuallyChanged,
+    operationCount,
+    networkCongestion,
+  ]);
 
   return { markAsManuallyChanged };
 };

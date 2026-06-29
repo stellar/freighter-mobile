@@ -47,6 +47,16 @@ export type FeePresets = Record<
   string
 >;
 
+/** Network congestion maps 1:1 to the default fee priority tier. */
+export const CONGESTION_TO_FEE_PRIORITY: Record<
+  NetworkCongestion,
+  FeePriority.LOW | FeePriority.MEDIUM | FeePriority.HIGH
+> = {
+  [NetworkCongestion.LOW]: FeePriority.LOW,
+  [NetworkCongestion.MEDIUM]: FeePriority.MEDIUM,
+  [NetworkCongestion.HIGH]: FeePriority.HIGH,
+};
+
 export enum HookStatus {
   IDLE = "idle",
   LOADING = "loading",

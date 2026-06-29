@@ -17,7 +17,12 @@ import {
   SOROBAN_RPC_URLS,
 } from "config/constants";
 import { logger } from "config/logger";
-import { FeePresets, FeePriority, NetworkCongestion } from "config/types";
+import {
+  CONGESTION_TO_FEE_PRIORITY,
+  FeePresets,
+  FeePriority,
+  NetworkCongestion,
+} from "config/types";
 import { formatTokenIdentifier } from "helpers/balances";
 import { stroopToXlm, xlmToStroop } from "helpers/formatAmount";
 import { getIsSwap } from "helpers/history";
@@ -191,9 +196,6 @@ export const getNetworkFees = async (server: Horizon.Server) => {
       [FeePriority.MEDIUM]: stroopToXlm(maxFee.p50).toFixed(),
       [FeePriority.HIGH]: stroopToXlm(maxFee.p90).toFixed(),
     };
-    // The recommended (default) fee matches the Medium preset (the median of the
-    // max-fee distribution), so the settings sheet opens on the "Med" tier.
-    recommendedFee = feePresets[FeePriority.MEDIUM];
 
     if (
       ledgerCapacityUsageNum > LEDGER_CAPACITY_MEDIUM_THRESHOLD &&
@@ -205,6 +207,9 @@ export const getNetworkFees = async (server: Horizon.Server) => {
     } else {
       networkCongestion = NetworkCongestion.LOW;
     }
+
+    // Recommended (default) fee = the preset matching current congestion (1:1).
+    recommendedFee = feePresets[CONGESTION_TO_FEE_PRIORITY[networkCongestion]];
   } catch (e) {
     // Fall back to the network minimum (XLM); presets stay at their XLM
     // defaults set above.

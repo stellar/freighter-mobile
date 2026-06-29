@@ -108,6 +108,7 @@ const TransactionSettingsBottomSheet: React.FC<
     recommendedFee,
     context,
     operationCount,
+    networkCongestion,
   );
 
   const timeoutInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -259,12 +260,19 @@ const TransactionSettingsBottomSheet: React.FC<
     return new BigNumber(preset).times(operationCount).toString();
   };
 
-  // The selected tier is the single source of truth, persisted in the store, so
-  // it reflects the user's actual choice and never flickers to "Custom" when
-  // the 30s poll refetches presets with slightly different values (Med stays
-  // Med — only the shown amount tracks the new median).
+  // The selected tier. Until the user interacts, it mirrors the stored tier
+  // (set from network congestion once the frozen fee snapshot lands), so the
+  // tab, the shown fee, and the congestion icon stay consistent during the
+  // initial load instead of the tab sticking while the others update. Once the
+  // user picks a tier or types, their choice sticks (no further syncing).
+  const feeInteractedRef = useRef(false);
   const [selectedFeePriority, setSelectedFeePriority] =
     useState<FeePriority>(storeFeePriority);
+  useEffect(() => {
+    if (!feeInteractedRef.current) {
+      setSelectedFeePriority(storeFeePriority);
+    }
+  }, [storeFeePriority]);
   // The editable value, used while on the "Custom" tier.
   const [customFee, setCustomFee] = useState(flooredStoreFee);
   const [localMemo, setLocalMemo] = useState(memo);
@@ -383,6 +391,7 @@ const TransactionSettingsBottomSheet: React.FC<
 
   const handleFeeChange = useCallback((text: string) => {
     // Manual typing is only possible on the Custom tier; update its value.
+    feeInteractedRef.current = true;
     const normalizedText = enforceSettingInputDecimalSeparator(text);
     setCustomFee(normalizedText);
   }, []);
@@ -410,6 +419,7 @@ const TransactionSettingsBottomSheet: React.FC<
 
   const handleFeePriorityChange = useCallback(
     (value: string | number) => {
+      feeInteractedRef.current = true;
       const priority = value as FeePriority;
       // Preset tiers derive their shown value automatically; switching to
       // Custom seeds the editable input with the amount currently shown so it

@@ -184,6 +184,8 @@ jest.mock("ducks/swapSettings", () => ({
     saveSwapFee: mockSaveSwapFee,
     feeManuallyChanged: false,
     markFeeManuallyChanged: jest.fn(),
+    feePriority: "medium",
+    saveFeePriority: jest.fn(),
   })),
 }));
 // Deterministic network fee so the fee-freeze behavior is testable and
@@ -193,6 +195,7 @@ jest.mock("hooks/useNetworkFees", () => ({
     recommendedFee: "0.001",
     networkCongestion: "LOW",
   }),
+  clearNetworkFeesCache: jest.fn(),
 }));
 jest.mock("components/screens/SwapScreen/hooks/useSwapTransaction", () => ({
   useSwapTransaction: jest.fn(() => ({

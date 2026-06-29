@@ -455,6 +455,37 @@ describe("TransactionSettingsBottomSheet - onSettingsChange Integration", () => 
     });
   });
 
+  it("follows the stored tier when it updates before the user interacts", async () => {
+    // Stored tier starts Custom (editable); then the store updates (e.g. the
+    // frozen congestion snapshot lands) and the tab follows + locks the input.
+    mockUseTransactionSettingsStore.mockReturnValue({
+      ...mockTransactionSettingsState,
+      feePriority: "custom",
+    });
+    const props = {
+      onCancel: mockOnCancel,
+      onConfirm: mockOnConfirm,
+      context: TransactionContext.Send,
+      onSettingsChange: mockOnSettingsChange,
+    };
+    const { getByTestId, rerender } = renderWithProviders(
+      <TransactionSettingsBottomSheet {...props} />,
+    );
+    await waitFor(() => {
+      expect(getByTestId("fee-input").props.editable).toBe(true);
+    });
+
+    mockUseTransactionSettingsStore.mockReturnValue({
+      ...mockTransactionSettingsState,
+      feePriority: "high",
+    });
+    rerender(<TransactionSettingsBottomSheet {...props} />);
+
+    await waitFor(() => {
+      expect(getByTestId("fee-input").props.editable).toBe(false);
+    });
+  });
+
   it("keeps the selected tier when network presets refetch (no flicker to Custom)", async () => {
     // Stored tier is Med (locked input).
     const props = {
