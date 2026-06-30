@@ -173,13 +173,19 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     // that, leave the value untouched and let the XlmReserveBottomSheet
     // pre-flight surface the shortfall as usual.
     const swappingXlmToNewToken =
-      isNativeAssetId(sourceBalance.id) && !!destinationTokenDescriptor?.isNew;
+      isNativeAssetId(sourceBalance.id) &&
+      !!destinationTokenDescriptor?.requiresTrustline;
     if (swappingXlmToNewToken && baseSpendable.gte(BASE_RESERVE)) {
       return baseSpendable.minus(BASE_RESERVE);
     }
 
     return baseSpendable;
-  }, [sourceBalance, account, swapFee, destinationTokenDescriptor?.isNew]);
+  }, [
+    sourceBalance,
+    account,
+    swapFee,
+    destinationTokenDescriptor?.requiresTrustline,
+  ]);
 
   // Token/fiat amount input is driven by the system keyboard via TextInput.
   // We mirror the converter's tokenAmount back into the swap store so that
@@ -398,7 +404,9 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   // A swap-to-new-token bundles changeTrust + path payment (2 ops); the fee is
   // the TOTAL across ops, so the recommended default and the minimum scale by
   // the op count (kept consistent with what's charged/displayed).
-  const swapOperationCount = destinationTokenDescriptor?.isNew ? 2 : 1;
+  const swapOperationCount = destinationTokenDescriptor?.requiresTrustline
+    ? 2
+    : 1;
   useInitialRecommendedFee(
     hasEnteredSourceAmount ? "" : recommendedFee,
     TransactionContext.Swap,
@@ -662,7 +670,8 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         subentryCount: account?.subentryCount ?? 0,
         swapFee,
         sourceTokenId,
-        destinationIsNew: !!destinationTokenDescriptor?.isNew,
+        destinationRequiresTrustline:
+          !!destinationTokenDescriptor?.requiresTrustline,
       })
     ) {
       analytics.track(AnalyticsEvent.SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN);
