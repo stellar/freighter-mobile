@@ -80,7 +80,7 @@ jest.mock("ducks/swap", () => ({
       issuer: "GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
       decimals: 7,
       tokenType: "credit_alphanum4",
-      isNew: false,
+      requiresTrustline: false,
     },
   })),
 }));
@@ -260,7 +260,7 @@ describe("SwapReviewBottomSheet", () => {
         issuer: "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
         decimals: 7,
         tokenType: "credit_alphanum4",
-        isNew: false,
+        requiresTrustline: false,
       },
     };
 
@@ -371,7 +371,7 @@ describe("SwapReviewBottomSheet", () => {
           issuer: nonHeldUsdcIssuer,
           decimals: 7,
           tokenType: "credit_alphanum4",
-          isNew: true,
+          requiresTrustline: true,
         },
       });
 
@@ -405,7 +405,7 @@ describe("SwapReviewBottomSheet", () => {
       sourceTokenId: "XLM",
     };
 
-    it("renders the purple banner when destinationToken.isNew is true", () => {
+    it("renders the purple banner when destinationToken.requiresTrustline is true", () => {
       (useSwapStore as unknown as jest.Mock).mockReturnValue({
         ...baseSwapState,
         destinationToken: {
@@ -414,7 +414,7 @@ describe("SwapReviewBottomSheet", () => {
           issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVV",
           decimals: 7,
           tokenType: "credit_alphanum4",
-          isNew: true,
+          requiresTrustline: true,
         },
       });
 
@@ -425,7 +425,7 @@ describe("SwapReviewBottomSheet", () => {
       expect(getByText(/This will add a trustline to USDC/)).toBeTruthy();
     });
 
-    it("does NOT render the banner when destinationToken.isNew is false", () => {
+    it("does NOT render the banner when destinationToken.requiresTrustline is false", () => {
       (useSwapStore as unknown as jest.Mock).mockReturnValue({
         ...baseSwapState,
         destinationToken: {
@@ -434,7 +434,7 @@ describe("SwapReviewBottomSheet", () => {
           issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVV",
           decimals: 7,
           tokenType: "credit_alphanum4",
-          isNew: false,
+          requiresTrustline: false,
         },
       });
 
