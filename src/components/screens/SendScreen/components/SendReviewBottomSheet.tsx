@@ -19,7 +19,7 @@ import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { isLiquidityPool } from "helpers/balances";
 import { pxValue } from "helpers/dimensions";
 import { formatTokenForDisplay, formatFiatAmount } from "helpers/formatAmount";
-import { isSorobanTransaction } from "helpers/soroban";
+import { computeTotalFeeXlm, isSorobanTransaction } from "helpers/soroban";
 import {
   truncateAddress,
   truncateFedAddress,
@@ -106,8 +106,13 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   const { account } = useGetActiveAccount();
   const { copyToClipboard } = useClipboard();
   const slicedAddress = truncateAddress(recipientAddress, 4, 4);
-  const { transactionXDR, isBuilding, error, sorobanInclusionFeeXlm } =
-    useTransactionBuilderStore();
+  const {
+    transactionXDR,
+    isBuilding,
+    error,
+    sorobanInclusionFeeXlm,
+    sorobanResourceFeeXlm,
+  } = useTransactionBuilderStore();
 
   // Derived from current context (collectible or Soroban token/address) rather
   // than the builder store so the fee breakdown sheet shows Soroban rows and
@@ -116,9 +121,14 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
     type === SendType.Collectible ||
     isSorobanTransaction(selectedBalance, recipientAddress);
 
-  // Mirror the settings sheet: show the inclusion fee, not the total (the
-  // inclusion/resource/total split lives in the breakdown).
-  const inclusionFeeXlm = sorobanInclusionFeeXlm ?? transactionFee;
+  const effectiveInclusionFeeXlm = sorobanInclusionFeeXlm ?? transactionFee;
+
+  // Match FeeBreakdownBottomSheet: review sheet should show total fee.
+  const totalFeeXlm = computeTotalFeeXlm(
+    sorobanInclusionFeeXlm,
+    sorobanResourceFeeXlm,
+    effectiveInclusionFeeXlm,
+  );
 
   const { openFeeDetails, feeDetailsSheets } = useFeeDetailsBottomSheet({
     isSorobanContext,
@@ -281,9 +291,10 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
               ),
             }
           : undefined,
-        // Fee row — shows the inclusion fee (mirrors the settings sheet). The
-        // info icon opens the breakdown for Soroban (inclusion/resource/total)
-        // or a plain fee info sheet for classic transactions.
+        // Fee row — shows the total fee (matching FeeBreakdownBottomSheet).
+        // The info icon opens the breakdown for Soroban
+        // (inclusion/resource/total) or a plain fee info sheet for classic
+        // transactions.
         {
           icon: <Icon.Route size={16} color={themeColors.foreground.primary} />,
           title: t("transactionAmountScreen.details.fee"),
@@ -303,7 +314,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
                 <Icon.InfoCircle themeColor="gray" size={16} />
               </TouchableOpacity>
               <Text md primary>
-                {formatTokenForDisplay(inclusionFeeXlm, NATIVE_TOKEN_CODE)}
+                {formatTokenForDisplay(totalFeeXlm, NATIVE_TOKEN_CODE)}
               </Text>
             </View>
           ),
@@ -350,7 +361,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
       t,
       themeColors.foreground.primary,
       themeColors.text.secondary,
-      inclusionFeeXlm,
+      totalFeeXlm,
       transactionMemo,
       transactionXDR,
       isRecipientMuxed,
