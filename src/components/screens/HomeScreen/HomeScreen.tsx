@@ -80,7 +80,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
     const { t } = useAppTranslation();
     const { copyToClipboard } = useClipboard();
 
-    const { formattedBalance, rawBalance } = useTotalBalance();
+    const { formattedBalance, hasFiatTotal } = useTotalBalance();
     const {
       balances,
       isFunded,
@@ -95,9 +95,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
       () => Object.keys(balances).length > 0,
       [balances],
     );
+    // Send/Swap require something to spend. Gate on actual holdings (any
+    // non-zero token balance), not fiat value — fiat is unavailable on testnet
+    // by design, so a fiat-based gate would wrongly disable a funded account.
     const hasZeroBalance = useMemo(
-      () => rawBalance?.isLessThanOrEqualTo(0) ?? true,
-      [rawBalance],
+      () =>
+        !Object.values(balances).some((balance) =>
+          balance.total?.isGreaterThan(0),
+        ),
+      [balances],
     );
 
     // Set up navigation headers (hook handles navigation.setOptions internally)
@@ -297,9 +303,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
                   />
                 </View>
               </TouchableOpacity>
-              <Display lg medium>
-                {formattedBalance}
-              </Display>
+              {hasFiatTotal && (
+                <Display lg medium>
+                  {formattedBalance}
+                </Display>
+              )}
             </View>
 
             <View className="flex-row gap-[24px] items-center justify-center my-8">

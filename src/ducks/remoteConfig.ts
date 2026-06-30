@@ -17,6 +17,7 @@ const BOOLEAN_FLAGS = [
   "swap_enabled",
   "discover_enabled",
   "onramp_enabled",
+  "use_token_prices_v2",
 ] as const;
 
 const VERSION_FLAGS = ["required_app_version", "latest_app_version"] as const;
@@ -69,6 +70,7 @@ const INITIAL_REMOTE_CONFIG_STATE =
         swap_enabled: true,
         discover_enabled: true,
         onramp_enabled: true,
+        use_token_prices_v2: true,
         required_app_version: currentAppVersion,
         latest_app_version: currentAppVersion,
         app_update_banner_text: {
@@ -89,6 +91,7 @@ const INITIAL_REMOTE_CONFIG_STATE =
         swap_enabled: isAndroid,
         discover_enabled: isAndroid,
         onramp_enabled: isAndroid,
+        use_token_prices_v2: true,
         required_app_version: currentAppVersion,
         latest_app_version: currentAppVersion,
         app_update_banner_text: {

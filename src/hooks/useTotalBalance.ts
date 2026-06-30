@@ -6,6 +6,12 @@ import { useMemo } from "react";
 interface TotalBalance {
   formattedBalance: string;
   rawBalance: BigNumber;
+  /**
+   * Whether any held asset is actually priced. When false (e.g. testnet, where
+   * fiat is gated off, or before prices load) consumers should hide the total
+   * rather than render a misleading "$0.00".
+   */
+  hasFiatTotal: boolean;
 }
 
 /**
@@ -27,9 +33,17 @@ export const useTotalBalance = (): TotalBalance => {
       new BigNumber(0),
     );
 
+    // A total is only meaningful when at least one held asset is priced.
+    // Otherwise (e.g. testnet, where fiat is gated off, or before prices load)
+    // the sum is a misleading "$0.00" — consumers hide the total instead.
+    const hasFiatTotal = Object.values(pricedBalances).some(
+      (balance) => balance.fiatTotal != null,
+    );
+
     return {
       formattedBalance: formatFiatAmount(rawBalance),
       rawBalance,
+      hasFiatTotal,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fiatTotalsKey]);

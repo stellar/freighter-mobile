@@ -6,6 +6,7 @@ import BigNumber from "bignumber.js";
 import SwapAmountScreen from "components/screens/SwapScreen/screens/SwapAmountScreen";
 import Icon from "components/sds/Icon";
 import { AnalyticsEvent } from "config/analyticsConfig";
+import { NETWORKS } from "config/constants";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import { useSwapStore } from "ducks/swap";
 import { renderWithProviders } from "helpers/testUtils";
@@ -273,11 +274,13 @@ const mockPrices: Record<
 jest.mock("ducks/prices", () => ({
   usePricesStore: (selector?: (s: unknown) => unknown): unknown => {
     const state = {
-      prices: mockPrices,
+      pricesByNetwork: {},
+      sourceByNetwork: {},
       fetchPricesForTokenIds: mockFetchPricesForTokenIds,
     };
     return selector ? selector(state) : state;
   },
+  usePricesForNetwork: () => mockPrices,
 }));
 // Cache the return value so account / spendableAmount memos stay stable across
 // re-renders — otherwise the amountError useEffect can re-fire forever when
@@ -899,6 +902,8 @@ describe("SwapAmountScreen", () => {
           "yXLM:GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55",
           "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
         ],
+        network: NETWORKS.PUBLIC,
+        useV2: true,
       });
     });
 

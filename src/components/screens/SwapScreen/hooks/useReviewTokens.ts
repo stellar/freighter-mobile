@@ -10,7 +10,8 @@ import {
   PricedBalance,
   TokenTypeWithCustomToken,
 } from "config/types";
-import { usePricesStore } from "ducks/prices";
+import { useAuthenticationStore } from "ducks/auth";
+import { usePricesForNetwork } from "ducks/prices";
 import { SwapPathResult } from "ducks/swap";
 import { formatFiatAmount } from "helpers/formatAmount";
 import { useMemo } from "react";
@@ -97,7 +98,8 @@ export const useReviewTokens = ({
   // their fiat via the token-id lookup (strategy 3) — without it the
   // review sheet renders "--" instead of the dollar amount for any
   // token the user doesn't already hold.
-  const prices = usePricesStore((state) => state.prices);
+  const network = useAuthenticationStore((state) => state.network);
+  const prices = usePricesForNetwork(network);
 
   const sourceTokenFiatAmountValue = calculateTokenFiatAmount({
     token: sourceToken,

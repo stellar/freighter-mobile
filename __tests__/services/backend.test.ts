@@ -3,6 +3,7 @@ import { NETWORK_URLS, NETWORKS } from "config/constants";
 import { logger } from "config/logger";
 import {
   fetchCollectibles,
+  fetchTokenPrices,
   freighterBackendV1,
   freighterBackendV2,
   simulateTransaction,
@@ -703,5 +704,174 @@ describe("Backend Service - fetchCollectibles severity split", () => {
       "Error fetching collectibles",
       expect.any(Error),
     );
+  });
+});
+
+describe("Backend Service - fetchTokenPrices v2 migration", () => {
+  let mockV1Post: jest.MockedFunction<any>;
+  let mockV2Post: jest.MockedFunction<any>;
+
+  const tokens = [
+    "XLM",
+    "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+  ];
+  // What the v2 request body should contain: native "XLM" mapped to "native".
+  const v2Tokens = [
+    "native",
+    "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+  ];
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockV1Post = freighterBackendV1.post as jest.MockedFunction<any>;
+    mockV2Post = freighterBackendV2.post as jest.MockedFunction<any>;
+    const response = {
+      data: {
+        data: { XLM: { currentPrice: "0.5", percentagePriceChange24h: 0.02 } },
+      },
+    };
+    mockV1Post.mockResolvedValue(response);
+    mockV2Post.mockResolvedValue(response);
+  });
+
+  it("hits the v2 client with a network query param and native id when useV2 is true", async () => {
+    await fetchTokenPrices({ tokens, network: NETWORKS.PUBLIC, useV2: true });
+
+    // Native "XLM" is sent to v2 as "native".
+    expect(mockV2Post).toHaveBeenCalledWith(
+      "/token-prices",
+      { tokens: v2Tokens },
+      { params: { network: "PUBLIC" } },
+    );
+    expect(mockV1Post).not.toHaveBeenCalled();
+  });
+
+  it("gates testnet entirely — no request, null prices (fiat is mainnet-only)", async () => {
+    const result = await fetchTokenPrices({
+      tokens,
+      network: NETWORKS.TESTNET,
+      useV2: true,
+    });
+
+    expect(mockV2Post).not.toHaveBeenCalled();
+    expect(mockV1Post).not.toHaveBeenCalled();
+    expect(result.XLM).toEqual({
+      currentPrice: null,
+      percentagePriceChange24h: null,
+    });
+  });
+
+  it("gates testnet on the v1 fallback too (rollback can't reintroduce testnet fiat)", async () => {
+    const result = await fetchTokenPrices({
+      tokens,
+      network: NETWORKS.TESTNET,
+      useV2: false,
+    });
+
+    expect(mockV1Post).not.toHaveBeenCalled();
+    expect(mockV2Post).not.toHaveBeenCalled();
+    expect(result.XLM).toEqual({
+      currentPrice: null,
+      percentagePriceChange24h: null,
+    });
+  });
+
+  it("remaps the v2 'native' price back to the app's 'XLM' key", async () => {
+    mockV2Post.mockResolvedValueOnce({
+      data: {
+        data: {
+          native: { currentPrice: "0.5", percentagePriceChange24h: 0.02 },
+        },
+      },
+    });
+
+    const result = await fetchTokenPrices({
+      tokens,
+      network: NETWORKS.PUBLIC,
+      useV2: true,
+    });
+
+    expect(result.XLM?.currentPrice?.toString()).toBe("0.5");
+    expect(result.native).toBeUndefined();
+  });
+
+  it("hits the v1 client with the 'XLM' native id and no network param when useV2 is false", async () => {
+    await fetchTokenPrices({ tokens, network: NETWORKS.PUBLIC, useV2: false });
+
+    // v1 is not native-translated — it still receives "XLM".
+    expect(mockV1Post).toHaveBeenCalledWith("/token-prices", { tokens });
+    expect(mockV2Post).not.toHaveBeenCalled();
+  });
+
+  it("short-circuits on unsupported networks (Futurenet) without any request", async () => {
+    const result = await fetchTokenPrices({
+      tokens,
+      network: NETWORKS.FUTURENET,
+      useV2: true,
+    });
+
+    expect(mockV1Post).not.toHaveBeenCalled();
+    expect(mockV2Post).not.toHaveBeenCalled();
+    // Every requested token is present with null prices.
+    expect(result.XLM).toEqual({
+      currentPrice: null,
+      percentagePriceChange24h: null,
+    });
+  });
+
+  it("short-circuits when all tokens filter out (custom tokens) without any request", async () => {
+    const customTokens = ["USDC:CUSTOM_CONTRACT_ID"];
+    const result = await fetchTokenPrices({
+      tokens: customTokens,
+      network: NETWORKS.PUBLIC,
+      useV2: true,
+    });
+
+    expect(mockV1Post).not.toHaveBeenCalled();
+    expect(mockV2Post).not.toHaveBeenCalled();
+    expect(result["USDC:CUSTOM_CONTRACT_ID"]).toEqual({
+      currentPrice: null,
+      percentagePriceChange24h: null,
+    });
+  });
+
+  it("logs an error to Sentry and rethrows on a backend failure", async () => {
+    const backendError = {
+      message: "Internal Server Error",
+      status: 500,
+      isNetworkError: false,
+    };
+    mockV2Post.mockRejectedValueOnce(backendError);
+
+    await expect(
+      fetchTokenPrices({ tokens, network: NETWORKS.PUBLIC, useV2: true }),
+    ).rejects.toEqual(backendError);
+
+    expect(logger.error).toHaveBeenCalledWith(
+      "backendApi.fetchTokenPrices",
+      "Error fetching token prices",
+      backendError,
+    );
+    expect(logger.warn).not.toHaveBeenCalled();
+  });
+
+  it("demotes a connectivity failure to a warn breadcrumb (no Sentry error)", async () => {
+    const networkError = {
+      message: "Network Error",
+      status: 0,
+      isNetworkError: true,
+    };
+    mockV2Post.mockRejectedValueOnce(networkError);
+
+    await expect(
+      fetchTokenPrices({ tokens, network: NETWORKS.PUBLIC, useV2: true }),
+    ).rejects.toEqual(networkError);
+
+    expect(logger.warn).toHaveBeenCalledWith(
+      "backendApi.fetchTokenPrices",
+      "Network unreachable while fetching token prices",
+      networkError,
+    );
+    expect(logger.error).not.toHaveBeenCalled();
   });
 });
