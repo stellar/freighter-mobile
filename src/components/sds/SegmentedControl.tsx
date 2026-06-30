@@ -15,6 +15,9 @@ interface SegmentedControlProps {
   disabled?: boolean;
 }
 
+// Extra vertical touch area (px) so the compact segments reach ~44pt tall.
+const SEGMENT_HIT_SLOP = 8;
+
 /**
  * SegmentedControl Component
  *
@@ -33,7 +36,7 @@ const SegmentedControl: React.FC<SegmentedControlProps> = ({
   const { themeColors } = useColors();
 
   return (
-    <View className="flex-row gap-2 w-full">
+    <View className="flex-row gap-2 w-full" accessibilityRole="radiogroup">
       {options.map((option) => {
         const isSelected = option.value === selectedValue;
 
@@ -42,6 +45,12 @@ const SegmentedControl: React.FC<SegmentedControlProps> = ({
             key={option.value}
             onPress={() => !disabled && onValueChange(option.value)}
             disabled={disabled}
+            accessibilityRole="radio"
+            accessibilityState={{ selected: isSelected, disabled }}
+            accessibilityLabel={option.label}
+            // Visual padding stays compact (matches the design); hitSlop extends
+            // the vertical touch target toward the ~44pt minimum.
+            hitSlop={{ top: SEGMENT_HIT_SLOP, bottom: SEGMENT_HIT_SLOP }}
             className={`flex-1 items-center justify-center rounded-md px-[10px] py-[6px] ${
               isSelected ? "bg-lilac-4" : ""
             }`}

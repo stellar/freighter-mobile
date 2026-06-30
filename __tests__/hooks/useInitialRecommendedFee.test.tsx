@@ -1,5 +1,6 @@
 import { act, renderHook } from "@testing-library/react-hooks";
 import { MIN_TRANSACTION_FEE, TransactionContext } from "config/constants";
+import { FeePriority, NetworkCongestion } from "config/types";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { useInitialRecommendedFee } from "hooks/useInitialRecommendedFee";
@@ -88,5 +89,63 @@ describe("useInitialRecommendedFee", () => {
     );
 
     expect(useTransactionSettingsStore.getState().transactionFee).toBe("0.001");
+  });
+
+  it("defaults the fee priority tier to match network congestion (1:1)", () => {
+    (
+      [
+        [NetworkCongestion.LOW, FeePriority.LOW],
+        [NetworkCongestion.MEDIUM, FeePriority.MEDIUM],
+        [NetworkCongestion.HIGH, FeePriority.HIGH],
+      ] as const
+    ).forEach(([congestion, expectedTier]) => {
+      act(() => {
+        useTransactionSettingsStore.getState().resetSettings();
+      });
+
+      renderHook(() =>
+        useInitialRecommendedFee(
+          "0.001",
+          TransactionContext.Send,
+          1,
+          congestion,
+        ),
+      );
+
+      expect(useTransactionSettingsStore.getState().feePriority).toBe(
+        expectedTier,
+      );
+    });
+  });
+
+  it("stops re-defaulting the tier once the fee is manually changed", () => {
+    const { result, rerender } = renderHook(
+      ({ congestion }: { congestion: NetworkCongestion }) =>
+        useInitialRecommendedFee(
+          "0.001",
+          TransactionContext.Send,
+          1,
+          congestion,
+        ),
+      { initialProps: { congestion: NetworkCongestion.LOW } },
+    );
+
+    expect(useTransactionSettingsStore.getState().feePriority).toBe(
+      FeePriority.LOW,
+    );
+
+    act(() => {
+      result.current.markAsManuallyChanged();
+      useTransactionSettingsStore
+        .getState()
+        .saveFeePriority(FeePriority.CUSTOM);
+    });
+
+    // Congestion rises, but the user's chosen tier is preserved.
+    rerender({ congestion: NetworkCongestion.HIGH });
+
+    expect(useTransactionSettingsStore.getState().feePriority).toBe(
+      FeePriority.CUSTOM,
+    );
   });
 });

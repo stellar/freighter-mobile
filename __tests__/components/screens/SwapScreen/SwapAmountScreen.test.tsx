@@ -193,7 +193,7 @@ jest.mock("ducks/swapSettings", () => ({
 jest.mock("hooks/useNetworkFees", () => ({
   useNetworkFees: () => ({
     recommendedFee: "0.001",
-    networkCongestion: "LOW",
+    networkCongestion: "Low",
   }),
   clearNetworkFeesCache: jest.fn(),
 }));

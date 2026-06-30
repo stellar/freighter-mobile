@@ -35,10 +35,18 @@ const DEFAULT_NETWORK_FEES: NetworkFeesData = {
  */
 const networkFeesCache: Partial<Record<NETWORKS, NetworkFeesData>> = {};
 
+// In-flight fetch per network, so the navigator's prewarm and the screen that
+// mounts right after it share a single feeStats round-trip instead of racing
+// two. Cleared once the fetch settles (and on flow exit).
+const inflightFetches: Partial<Record<NETWORKS, Promise<NetworkFeesData>>> = {};
+
 /** Clears the frozen fee snapshot so the next flow re-fetches. Call on flow exit. */
 export const clearNetworkFeesCache = (): void => {
   (Object.keys(networkFeesCache) as NETWORKS[]).forEach((key) => {
     delete networkFeesCache[key];
+  });
+  (Object.keys(inflightFetches) as NETWORKS[]).forEach((key) => {
+    delete inflightFetches[key];
   });
 };
 
@@ -68,10 +76,17 @@ export const useNetworkFees = (): NetworkFeesData => {
     let cancelled = false;
     const fetchNetworkFees = async () => {
       try {
-        const { networkUrl } = mapNetworkToNetworkDetails(network);
-        const server = stellarSdkServer(networkUrl);
+        let pending = inflightFetches[network];
+        if (!pending) {
+          const { networkUrl } = mapNetworkToNetworkDetails(network);
+          const server = stellarSdkServer(networkUrl);
+          pending = getNetworkFees(server).finally(() => {
+            delete inflightFetches[network];
+          });
+          inflightFetches[network] = pending;
+        }
 
-        const data = await getNetworkFees(server);
+        const data = await pending;
 
         // Guard against an invalid/empty result so the hook never returns
         // undefined to consumers.

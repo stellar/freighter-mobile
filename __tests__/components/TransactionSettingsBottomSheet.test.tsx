@@ -59,11 +59,11 @@ jest.mock("hooks/useColors", () => ({
     },
   }),
 }));
-// Mutable so individual tests can simulate the 30s-poll refetch returning new
-// preset values (must be `mock`-prefixed to be usable inside the jest.mock factory).
+// Mutable so a test can simulate the fees changing (e.g. a re-fetch on flow
+// re-entry) and assert the tier doesn't flicker.
 const mockDefaultNetworkFees = {
   recommendedFee: "100",
-  networkCongestion: "LOW",
+  networkCongestion: "Low",
   feePresets: {
     low: "0.0001",
     medium: "0.001",
@@ -359,6 +359,31 @@ describe("TransactionSettingsBottomSheet - onSettingsChange Integration", () => 
       expect(
         mockTransactionSettingsState.saveTransactionFee,
       ).toHaveBeenCalledWith("0.0001");
+      expect(mockTransactionSettingsState.saveFeePriority).toHaveBeenCalledWith(
+        "low",
+      );
+    });
+  });
+
+  it("scales the preset fee by operationCount (saves the total across ops)", async () => {
+    // Default tier is Med; the Medium preset is 0.001. A 2-op transaction
+    // (e.g. swap-to-new-token) stores the total: 0.001 × 2 = 0.002.
+    const { getByText } = renderWithProviders(
+      <TransactionSettingsBottomSheet
+        onCancel={mockOnCancel}
+        onConfirm={mockOnConfirm}
+        context={TransactionContext.Send}
+        onSettingsChange={mockOnSettingsChange}
+        operationCount={2}
+      />,
+    );
+
+    fireEvent.press(getByText("common.save"));
+
+    await waitFor(() => {
+      expect(
+        mockTransactionSettingsState.saveTransactionFee,
+      ).toHaveBeenCalledWith("0.002");
     });
   });
 
@@ -486,7 +511,7 @@ describe("TransactionSettingsBottomSheet - onSettingsChange Integration", () => 
     });
   });
 
-  it("keeps the selected tier when network presets refetch (no flicker to Custom)", async () => {
+  it("keeps the selected tier when network presets change (no flicker to Custom)", async () => {
     // Stored tier is Med (locked input).
     const props = {
       onCancel: mockOnCancel,
@@ -502,7 +527,7 @@ describe("TransactionSettingsBottomSheet - onSettingsChange Integration", () => 
       expect(getByTestId("fee-input").props.editable).toBe(false);
     });
 
-    // Simulate the 30s poll returning different preset values.
+    // Fees change underfoot (e.g. a refetch on flow re-entry).
     mockNetworkFees = {
       ...mockDefaultNetworkFees,
       feePresets: { low: "0.0002", medium: "0.0021", high: "0.02" },
