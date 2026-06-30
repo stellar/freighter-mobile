@@ -35,7 +35,7 @@ type BalanceItem = PricedBalance & {
  *     BASE_RESERVE. The `lte` boundary routes the exact-boundary case to the
  *     reserve sheet (zero margin after the trustline).
  *
- * Returns `false` when the destination isn't `isNew` (no trustline op
+ * Returns `false` when the destination isn't `requiresTrustline` (no trustline op
  * needed → no reserve concern).
  */
 export const shouldShowXlmReservePreflight = ({
@@ -43,15 +43,15 @@ export const shouldShowXlmReservePreflight = ({
   subentryCount,
   swapFee,
   sourceTokenId,
-  destinationIsNew,
+  destinationRequiresTrustline,
 }: {
   balanceItems: BalanceItem[];
   subentryCount: number;
   swapFee: string;
   sourceTokenId: string | undefined;
-  destinationIsNew: boolean;
+  destinationRequiresTrustline: boolean;
 }): boolean => {
-  if (!destinationIsNew) return false;
+  if (!destinationRequiresTrustline) return false;
 
   const xlmBalance = balanceItems.find(
     (b) => "token" in b && b.token.type === "native",
