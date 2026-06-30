@@ -31,7 +31,8 @@ jest.mock("ducks/prices", () => ({
   usePricesStore: {
     getState: jest.fn().mockReturnValue({
       fetchPricesForBalances: jest.fn(),
-      prices: {},
+      pricesByNetwork: {},
+      sourceByNetwork: {},
       error: null,
       isLoading: false,
       lastUpdated: null,
@@ -49,7 +50,9 @@ describe("balances duck", () => {
   >;
   const mockGetItem = jest.fn();
 
-  // Helper function to create a mock prices store state
+  // Helper function to create a mock prices store state. The `prices` override
+  // is exposed under every network so `pricesByNetwork[params.network]` resolves
+  // regardless of which network a test uses.
   const createMockPricesStore = (
     overrides: Partial<{
       fetchPricesForBalances: jest.Mock;
@@ -58,14 +61,22 @@ describe("balances duck", () => {
       isLoading: boolean;
       lastUpdated: number | null;
     }> = {},
-  ) => ({
-    fetchPricesForBalances: jest.fn().mockResolvedValue(undefined),
-    prices: {},
-    error: null,
-    isLoading: false,
-    lastUpdated: null,
-    ...overrides,
-  });
+  ) => {
+    const { prices = {}, ...rest } = overrides;
+    return {
+      fetchPricesForBalances: jest.fn().mockResolvedValue(undefined),
+      pricesByNetwork: {
+        [NETWORKS.PUBLIC]: prices,
+        [NETWORKS.TESTNET]: prices,
+        [NETWORKS.FUTURENET]: prices,
+      },
+      sourceByNetwork: {},
+      error: null,
+      isLoading: false,
+      lastUpdated: null,
+      ...rest,
+    };
+  };
 
   // Mock data
   const mockNativeBalance: NativeBalance = {
@@ -286,7 +297,8 @@ describe("balances duck", () => {
       mockFetchBalances.mockResolvedValueOnce({ balances: {} });
       (usePricesStore.getState as jest.Mock).mockReturnValue({
         fetchPricesForBalances: jest.fn().mockResolvedValue(undefined),
-        prices: {},
+        pricesByNetwork: {},
+        sourceByNetwork: {},
         error: null,
         isLoading: false,
         lastUpdated: null,

@@ -1,6 +1,8 @@
 import { recordTokenId } from "components/screens/SwapScreen/helpers";
 import { FormattedSearchTokenRecord, TokenPricesMap } from "config/types";
-import { usePricesStore } from "ducks/prices";
+import { useAuthenticationStore } from "ducks/auth";
+import { usePricesForNetwork, usePricesStore } from "ducks/prices";
+import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { useCallback, useEffect, useMemo } from "react";
 
 /**
@@ -35,7 +37,12 @@ export const useSwapTokenPrices = ({
   const fetchPricesForTokenIds = usePricesStore(
     (state) => state.fetchPricesForTokenIds,
   );
-  const prices = usePricesStore((state) => state.prices);
+  const network = useAuthenticationStore((state) => state.network);
+  // Subscribe to the endpoint flag so a v1/v2 rollback re-runs the fetch below
+  // even while this screen stays mounted with an unchanged token list/network.
+  const useV2 = useRemoteConfigStore((state) => state.use_token_prices_v2);
+  // Read the active network's prices only — never another network's.
+  const prices = usePricesForNetwork(network);
 
   // Stabilise the extra-ids array so the effect doesn't fire on every
   // render when the caller passes a fresh literal.
@@ -50,15 +57,27 @@ export const useSwapTokenPrices = ({
     const trendingIds = enabled ? tokens.map(recordTokenId) : [];
     const ids = [...trendingIds, ...stableExtraTokenIds];
     if (ids.length === 0) return;
-    fetchPricesForTokenIds({ tokens: ids });
-  }, [enabled, tokens, stableExtraTokenIds, fetchPricesForTokenIds]);
+    fetchPricesForTokenIds({ tokens: ids, network, useV2 });
+  }, [
+    enabled,
+    tokens,
+    stableExtraTokenIds,
+    fetchPricesForTokenIds,
+    network,
+    useV2,
+  ]);
 
   const refreshPrices = useCallback(async () => {
     const trendingIds = tokens.map(recordTokenId);
     const ids = [...trendingIds, ...stableExtraTokenIds];
     if (ids.length === 0) return;
-    await fetchPricesForTokenIds({ tokens: ids, forceRefresh: true });
-  }, [tokens, stableExtraTokenIds, fetchPricesForTokenIds]);
+    await fetchPricesForTokenIds({
+      tokens: ids,
+      network,
+      useV2,
+      forceRefresh: true,
+    });
+  }, [tokens, stableExtraTokenIds, fetchPricesForTokenIds, network, useV2]);
 
   return { prices, refreshPrices };
 };
