@@ -365,6 +365,36 @@ describe("TransactionSettingsBottomSheet - onSettingsChange Integration", () => 
     });
   });
 
+  it("does not switch to preset tiers before fee presets are loaded", async () => {
+    mockNetworkFees = {
+      ...mockDefaultNetworkFees,
+      feePresets: {
+        low: "",
+        medium: "",
+        high: "",
+      },
+    };
+
+    const { getByText } = renderWithProviders(
+      <TransactionSettingsBottomSheet
+        onCancel={mockOnCancel}
+        onConfirm={mockOnConfirm}
+        context={TransactionContext.Send}
+        onSettingsChange={mockOnSettingsChange}
+      />,
+    );
+
+    // Preset selection is ignored until presets are available.
+    fireEvent.press(getByText("transactionSettings.priorityHigh"));
+    fireEvent.press(getByText("common.save"));
+
+    await waitFor(() => {
+      expect(mockTransactionSettingsState.saveFeePriority).toHaveBeenCalledWith(
+        "medium",
+      );
+    });
+  });
+
   it("scales the preset fee by operationCount (saves the total across ops)", async () => {
     // Default tier is Med; the Medium preset is 0.001. A 2-op transaction
     // (e.g. swap-to-new-token) stores the total: 0.001 × 2 = 0.002.

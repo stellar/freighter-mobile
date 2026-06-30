@@ -29,6 +29,11 @@ describe("useNetworkFees", () => {
     mockGetNetworkFees.mockResolvedValue({
       recommendedFee: "0.005",
       networkCongestion: NetworkCongestion.HIGH,
+      feePresets: {
+        low: "0.001",
+        medium: "0.003",
+        high: "0.005",
+      },
     });
 
     // First mount: starts at the defaults, then fills in from the fetch.
@@ -54,6 +59,11 @@ describe("useNetworkFees", () => {
     mockGetNetworkFees.mockResolvedValue({
       recommendedFee: "0.005",
       networkCongestion: NetworkCongestion.HIGH,
+      feePresets: {
+        low: "0.001",
+        medium: "0.003",
+        high: "0.005",
+      },
     });
 
     const first = renderHook(() => useNetworkFees());
@@ -72,6 +82,11 @@ describe("useNetworkFees", () => {
     mockGetNetworkFees.mockResolvedValue({
       recommendedFee: "0.005",
       networkCongestion: NetworkCongestion.HIGH,
+      feePresets: {
+        low: "0.001",
+        medium: "0.003",
+        high: "0.005",
+      },
     });
 
     const first = renderHook(() => useNetworkFees());

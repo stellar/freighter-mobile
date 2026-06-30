@@ -64,6 +64,11 @@ type TransactionSettingsBottomSheetProps = {
 
 // Constants
 const STEP_SIZE_PERCENT = 0.5;
+const PRESET_PRIORITIES: Array<keyof FeePresets> = [
+  FeePriority.LOW,
+  FeePriority.MEDIUM,
+  FeePriority.HIGH,
+];
 
 const TransactionSettingsBottomSheet: React.FC<
   TransactionSettingsBottomSheetProps
@@ -417,10 +422,22 @@ const TransactionSettingsBottomSheet: React.FC<
     [t],
   );
 
+  const areFeePresetsLoaded = useMemo(
+    () => PRESET_PRIORITIES.every((priority) => !!feePresets[priority]),
+    [feePresets],
+  );
+
   const handleFeePriorityChange = useCallback(
     (value: string | number) => {
       feeInteractedRef.current = true;
       const priority = value as FeePriority;
+
+      // Keep preset tiers unavailable until we have a fetched preset snapshot.
+      // Custom remains selectable so users can still set a manual fee.
+      if (priority !== FeePriority.CUSTOM && !areFeePresetsLoaded) {
+        return;
+      }
+
       // Preset tiers derive their shown value automatically; switching to
       // Custom seeds the editable input with the amount currently shown so it
       // doesn't blank or jump. Persisted on Save (settingSaveCallbacks).
@@ -429,7 +446,7 @@ const TransactionSettingsBottomSheet: React.FC<
       }
       setSelectedFeePriority(priority);
     },
-    [localFee],
+    [areFeePresetsLoaded, localFee],
   );
 
   // Preview the unsaved fee in the breakdown; skip the override while invalid.

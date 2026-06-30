@@ -186,15 +186,24 @@ export const getNetworkFees = async (server: Horizon.Server) => {
     [FeePriority.HIGH]: MIN_TRANSACTION_FEE,
   };
 
+  const safePresetFee = (percentile: string): string => {
+    if (!Number.isFinite(Number(percentile))) {
+      return MIN_TRANSACTION_FEE;
+    }
+
+    const xlmFee = stroopToXlm(percentile).toFixed();
+    return Number.isFinite(Number(xlmFee)) ? xlmFee : MIN_TRANSACTION_FEE;
+  };
+
   try {
     const { max_fee: maxFee, ledger_capacity_usage: ledgerCapacityUsage } =
       await server.feeStats();
     const ledgerCapacityUsageNum = Number(ledgerCapacityUsage);
 
     feePresets = {
-      [FeePriority.LOW]: stroopToXlm(maxFee.p10).toFixed(),
-      [FeePriority.MEDIUM]: stroopToXlm(maxFee.p50).toFixed(),
-      [FeePriority.HIGH]: stroopToXlm(maxFee.p90).toFixed(),
+      [FeePriority.LOW]: safePresetFee(maxFee.p10),
+      [FeePriority.MEDIUM]: safePresetFee(maxFee.p50),
+      [FeePriority.HIGH]: safePresetFee(maxFee.p90),
     };
 
     if (

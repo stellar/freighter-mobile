@@ -213,8 +213,16 @@ const SendCollectibleReviewScreen: React.FC<
   );
 
   useEffect(() => {
+    let isCancelled = false;
+
     const checkContract = async () => {
-      if (!collectionAddress || !recipientAddress || !network) {
+      // Contract muxed support only matters for M-address recipients.
+      if (
+        !isRecipientMuxed ||
+        !collectionAddress ||
+        !recipientAddress ||
+        !network
+      ) {
         setContractSupportsMuxed(null);
         return;
       }
@@ -225,15 +233,24 @@ const SendCollectibleReviewScreen: React.FC<
           contractId: collectionAddress,
           networkDetails,
         });
-        setContractSupportsMuxed(supportsMuxed);
+
+        if (!isCancelled) {
+          setContractSupportsMuxed(supportsMuxed);
+        }
       } catch (error) {
         // On error, assume no support for safety
-        setContractSupportsMuxed(false);
+        if (!isCancelled) {
+          setContractSupportsMuxed(false);
+        }
       }
     };
 
     checkContract();
-  }, [collectionAddress, recipientAddress, network]);
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [collectionAddress, recipientAddress, network, isRecipientMuxed]);
 
   // Determine if M address + contract doesn't support muxed
   const isMuxedAddressWithoutMemoSupport = Boolean(
