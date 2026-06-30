@@ -176,6 +176,11 @@ jest.mock("services/stellarExpert", () => ({
       records: [],
     },
   })),
+  fetchTrendingAssets: jest.fn(async () => ({
+    _embedded: {
+      records: [],
+    },
+  })),
 }));
 
 // Mock react-native-bootsplash
@@ -441,39 +446,17 @@ jest.mock("react-native-keychain", () => ({
   getAvailableBiometryType: jest.fn(() => Promise.resolve("FaceID")),
   isSensorAvailable: jest.fn(() => Promise.resolve(true)),
 }));
-// Mock react-native-fast-opencv
-jest.mock("react-native-fast-opencv", () => ({
-  BorderTypes: {
-    BORDER_DEFAULT: 0,
-  },
-  DataTypes: {
-    CV_8U: 0,
-  },
-  ObjectType: {
-    Mat: "Mat",
-    Size: "Size",
-    Point: "Point",
-  },
-  OpenCV: {
-    base64ToMat: jest.fn((base64) => ({
-      // Mock Mat object
-      empty: jest.fn(() => false),
-    })),
-    createObject: jest.fn((type, ...args) => ({
-      type,
-      args,
-    })),
-    invoke: jest.fn((method, ...args) => {
-      // Mock OpenCV method invocation
-      if (method === "GaussianBlur") {
-        return true;
-      }
-      return true;
-    }),
-    toJSValue: jest.fn((obj) => ({
-      base64: "mock-blurred-base64-data",
-    })),
-    clearBuffers: jest.fn(),
+// Mock react-native-quick-crypto (native AES-GCM — not available in Node/Jest)
+jest.mock("react-native-quick-crypto", () => ({
+  __esModule: true,
+  default: {
+    getRandomValues: jest.fn((arr) => arr),
+    subtle: {
+      importKey: jest.fn(() => Promise.resolve({ type: "secret" })),
+      encrypt: jest.fn(() => Promise.resolve(new ArrayBuffer(32))),
+      decrypt: jest.fn(() => Promise.resolve(new ArrayBuffer(32))),
+      exportKey: jest.fn(() => Promise.resolve(new ArrayBuffer(32))),
+    },
   },
 }));
 

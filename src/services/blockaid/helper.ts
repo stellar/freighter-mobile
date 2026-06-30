@@ -16,11 +16,15 @@ import type { SecurityAssessment } from "services/blockaid/types";
 // Keep this helper UI-agnostic – no UI imports/hooks here
 
 /**
- * Security warning interface for UI display
+ * Security warning interface for UI display. `severity` drives the
+ * per-row icon (red X for malicious, amber triangle for warning) and
+ * the de-dup precedence when source + destination produce the same
+ * `feature_id` — malicious wins over warning.
  */
 export interface SecurityWarning {
   id: string;
   description: string;
+  severity: "warning" | "malicious";
 }
 
 /**
@@ -90,6 +94,31 @@ export const createSecurityAssessment = (
 });
 
 /**
+ * Build a SecurityAssessment directly from a pre-classified SecurityLevel.
+ *
+ * Used for non-held swap destinations: the descriptor carries `securityLevel`
+ * from the bulk scan that ran during token discovery in `useSwapTokenLookup`,
+ * so there's no token-scan object to feed `assessTokenSecurity`. Mirrors the
+ * pattern used by Add-a-token (`AddTokenScreen.tsx:170-175`) where the search
+ * record's pre-computed signals drive the UI directly.
+ *
+ * When `level` is undefined we default to UNABLE_TO_SCAN — same fall-through
+ * `assessTokenSecurity` uses when its scan input is missing.
+ */
+export const assessTokenSecurityFromLevel = (
+  level: SecurityLevel | undefined,
+  debugOverride?: SecurityLevel | null,
+): SecurityAssessment => {
+  const effectiveLevel = debugOverride ?? level ?? SecurityLevel.UNABLE_TO_SCAN;
+  const messageKeys = TOKEN_SECURITY_LEVEL_MESSAGE_KEYS[effectiveLevel];
+  return createSecurityAssessment(
+    effectiveLevel,
+    messageKeys?.title,
+    messageKeys?.description,
+  );
+};
+
+/**
  * Token Security Assessment
  *
  * Evaluates token scan results using result_type for consistent security classification.
@@ -102,7 +131,6 @@ export const assessTokenSecurity = (
   scanResult?: Blockaid.TokenScanResponse,
   debugOverride?: SecurityLevel | null,
 ): SecurityAssessment => {
-  // Check for debug override first
   if (debugOverride) {
     const messageKeys = TOKEN_SECURITY_LEVEL_MESSAGE_KEYS[debugOverride];
     return createSecurityAssessment(
@@ -151,7 +179,6 @@ export const assessSiteSecurity = (
   scanResult?: Blockaid.SiteScanResponse,
   debugOverride?: SecurityLevel | null,
 ): SecurityAssessment => {
-  // Check for debug override first
   if (debugOverride) {
     const messageKeys = SITE_SECURITY_LEVEL_MESSAGE_KEYS[debugOverride];
     return createSecurityAssessment(
@@ -260,7 +287,6 @@ export const assessTransactionSecurity = (
   debugOverride?: SecurityLevel | null,
   unfundedContext?: UnfundedDestinationContext,
 ): SecurityAssessment => {
-  // Check for debug override first
   if (debugOverride) {
     const messageKeys = TRANSACTION_SECURITY_LEVEL_MESSAGE_KEYS[debugOverride];
     return createSecurityAssessment(
@@ -294,9 +320,7 @@ export const assessTransactionSecurity = (
     );
   }
 
-  // Check for simulation errors - classify unfunded destination specially, others as suspicious
   if (simulation && "error" in simulation) {
-    // For other simulation errors, treat as suspicious
     const messageKeys =
       TRANSACTION_SECURITY_LEVEL_MESSAGE_KEYS[SecurityLevel.SUSPICIOUS];
     return createSecurityAssessment(
@@ -306,7 +330,6 @@ export const assessTransactionSecurity = (
     );
   }
 
-  // Check validation result_type
   if (validation && "result_type" in validation) {
     const level = getSecurityLevel(validation.result_type);
     const messageKeys = TRANSACTION_SECURITY_LEVEL_MESSAGE_KEYS[level];
@@ -378,6 +401,7 @@ export const extractSecurityWarnings = (
       warnings.push({
         id: "site-miss",
         description: t("blockaid.security.site.suspicious"),
+        severity: "warning",
       });
 
       return warnings;
@@ -387,6 +411,7 @@ export const extractSecurityWarnings = (
       warnings.push({
         id: "site-malicious",
         description: t("blockaid.security.site.malicious"),
+        severity: "malicious",
       });
 
       return warnings;
@@ -395,17 +420,24 @@ export const extractSecurityWarnings = (
     return warnings;
   }
 
-  // Handle token scan results
+  // Token-scan features carry their own `type` field. Blockaid uses Benign
+  // and Info for positive trust signals (e.g. HIGH_REPUTATION_TOKEN,
+  // LISTED_ON_CENTRALIZED_EXCHANGE) — those MUST NOT surface as "do not
+  // proceed" reasons. Only Warning and Malicious become rows; severity is
+  // carried forward so the renderer picks the right per-row icon.
   if ("features" in scanResult && scanResult.features) {
     scanResult.features.forEach((feature) => {
+      if (feature.type !== "Warning" && feature.type !== "Malicious") {
+        return;
+      }
       warnings.push({
         id: feature.feature_id,
         description: feature.description,
+        severity: feature.type === "Malicious" ? "malicious" : "warning",
       });
     });
   }
 
-  // Handle transaction scan results
   if ("simulation" in scanResult) {
     if (
       !isUnfunded &&
@@ -415,6 +447,7 @@ export const extractSecurityWarnings = (
       warnings.push({
         id: "simulation-error",
         description: scanResult.simulation.error,
+        severity: "malicious",
       });
     }
 
@@ -428,6 +461,7 @@ export const extractSecurityWarnings = (
       warnings.push({
         id: "unfunded-destination-details",
         description: t(descriptionKey),
+        severity: "warning",
       });
 
       // Do not surface Blockaid technical messages for unfunded accounts
@@ -448,6 +482,10 @@ export const extractSecurityWarnings = (
         warnings.push({
           id: `validation-${resultType.toLowerCase()}`,
           description: scanResult.validation.description,
+          severity:
+            resultType === BLOCKAID_RESULT_TYPES.MALICIOUS
+              ? "malicious"
+              : "warning",
         });
       }
     }
@@ -455,10 +493,6 @@ export const extractSecurityWarnings = (
 
   return warnings;
 };
-
-// =============================================================================
-// Transaction validation flagged entities (addresses)
-// =============================================================================
 
 export interface ValidationFlaggedEntity {
   address: string;
@@ -501,7 +535,6 @@ export const extractFlaggedEntitiesFromTransaction = (
   const ADDRESS_REGEX = /G[A-Z2-7]{55}/g;
   const matches = description.match(ADDRESS_REGEX) || [];
 
-  // Deduplicate addresses
   const unique = Array.from(new Set(matches));
 
   return unique.map((address) => ({
@@ -510,10 +543,6 @@ export const extractFlaggedEntitiesFromTransaction = (
     classification: validation.classification,
   }));
 };
-
-// =============================================================================
-// Transaction balance changes (domain model)
-// =============================================================================
 
 export interface TransactionBalanceChange {
   assetCode: string;

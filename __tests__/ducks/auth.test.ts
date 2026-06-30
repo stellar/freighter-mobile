@@ -29,6 +29,7 @@ import {
   encryptDataWithDerivedKey,
 } from "helpers/encryptPassword";
 import { createKeyManager } from "helpers/keyManager/keyManager";
+import { clearScreenshotDek } from "helpers/screenshotCrypto";
 import { getSupportedBiometryType, BIOMETRY_TYPE } from "react-native-keychain";
 import {
   clearNonSensitiveData,
@@ -157,6 +158,10 @@ jest.mock("helpers/walletKitUtil", () => ({
 
 jest.mock("helpers/browser", () => ({
   clearAllWebViewData: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock("helpers/screenshotCrypto", () => ({
+  clearScreenshotDek: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock("ducks/browserTabs", () => ({
@@ -1171,8 +1176,11 @@ describe("auth duck", () => {
           expect(success).toBe(false);
         });
 
-        // Should clear temporary data on decryption failure
+        // Should clear temporary data on decryption failure, but the
+        // screenshot DEK must survive: tabs and screenshot files are not
+        // cleared on this path, and rotating the key would orphan them.
         expect(clearTemporaryData).toHaveBeenCalled();
+        expect(clearScreenshotDek).not.toHaveBeenCalled();
       });
 
       it("should return false when temporary store has invalid structure", async () => {
@@ -1461,6 +1469,7 @@ describe("auth duck", () => {
         // Verify data was cleared
         expect(clearTemporaryData).toHaveBeenCalled();
         expect(clearNonSensitiveData).toHaveBeenCalled();
+        expect(clearScreenshotDek).toHaveBeenCalled();
         expect(dataStorage.remove).toHaveBeenCalledWith(
           STORAGE_KEYS.COLLECTIBLES_LIST,
         );
@@ -1836,7 +1845,8 @@ describe("auth duck", () => {
 
       // Verify setState was called with correct reset values
       expect(usePricesStore.setState).toHaveBeenCalledWith({
-        prices: {},
+        pricesByNetwork: {},
+        sourceByNetwork: {},
         isLoading: false,
         error: null,
         lastUpdated: null,
@@ -1918,7 +1928,8 @@ describe("auth duck", () => {
 
       const pricesCall = (usePricesStore.setState as jest.Mock).mock
         .calls[0]?.[0];
-      expect(pricesCall?.prices).toEqual({});
+      expect(pricesCall?.pricesByNetwork).toEqual({});
+      expect(pricesCall?.sourceByNetwork).toEqual({});
       expect(pricesCall?.lastUpdated).toBeNull();
     });
 

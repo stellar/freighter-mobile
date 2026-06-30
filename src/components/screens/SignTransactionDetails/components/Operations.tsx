@@ -1,5 +1,5 @@
 /* eslint-disable react/no-array-index-key */
-import { Address, Operation, xdr } from "@stellar/stellar-sdk";
+import { Address, Operation, OperationRecord, xdr } from "@stellar/stellar-sdk";
 import { List, ListItemProps } from "components/List";
 import Spinner from "components/Spinner";
 import {
@@ -23,7 +23,7 @@ import {
 } from "config/constants";
 import { logger } from "config/logger";
 import { useAuthenticationStore } from "ducks/auth";
-import { formatTokenForDisplay, formatFiatAmount } from "helpers/formatAmount";
+import { formatTokenForDisplay } from "helpers/formatAmount";
 import { getCreateContractArgs } from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -34,14 +34,29 @@ import { View } from "react-native";
 import { scanToken } from "services/blockaid/api";
 
 interface OperationsProps {
-  operations: Operation[];
+  operations: OperationRecord[];
 }
 
 type AuthorizationMap = {
   [index: string]: string;
 };
 
-const RenderOperationByType = ({ operation }: { operation: Operation }) => {
+/**
+ * A classic offer price is an asset-to-asset exchange rate, not a fiat amount.
+ * It reads as `quoteCode` units per 1 `baseCode` unit: buying-per-selling for
+ * sell offers, selling-per-buying for buy offers.
+ */
+const formatOfferPriceRatio = (
+  price: string,
+  quoteCode: string,
+  baseCode: string,
+) => `${formatTokenForDisplay(price)} ${quoteCode} / ${baseCode}`;
+
+const RenderOperationByType = ({
+  operation,
+}: {
+  operation: OperationRecord;
+}) => {
   const { t } = useAppTranslation();
   const { network } = useAuthenticationStore();
   const networkDetails = mapNetworkToNetworkDetails(network);
@@ -269,25 +284,29 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
 
       const items: ListItemProps[] = [
         {
-          title: t("signTransactionDetails.operations.buying"),
-          trailingContent: <Text>{buying.code}</Text>,
-          titleColor: themeColors.text.secondary,
-        },
-        {
-          title: t("signTransactionDetails.operations.amount"),
-          trailingContent: (
-            <Text>{formatTokenForDisplay(amount, buying.code)}</Text>
-          ),
-          titleColor: themeColors.text.secondary,
-        },
-        {
           title: t("signTransactionDetails.operations.selling"),
           trailingContent: <Text>{selling.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
         {
+          title: t("signTransactionDetails.operations.sellingAmount"),
+          trailingContent: (
+            <Text>{formatTokenForDisplay(amount, selling.code)}</Text>
+          ),
+          titleColor: themeColors.text.secondary,
+        },
+        {
+          title: t("signTransactionDetails.operations.buying"),
+          trailingContent: <Text>{buying.code}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
+        {
           title: t("signTransactionDetails.operations.price"),
-          trailingContent: <Text>{formatFiatAmount(price)}</Text>,
+          trailingContent: (
+            <Text>
+              {formatOfferPriceRatio(price, buying.code, selling.code)}
+            </Text>
+          ),
           titleColor: themeColors.text.secondary,
         },
       ];
@@ -309,20 +328,24 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
           titleColor: themeColors.text.secondary,
         },
         {
+          title: t("signTransactionDetails.operations.sellingAmount"),
+          trailingContent: (
+            <Text>{formatTokenForDisplay(amount, selling.code)}</Text>
+          ),
+          titleColor: themeColors.text.secondary,
+        },
+        {
           title: t("signTransactionDetails.operations.buying"),
           trailingContent: <Text>{buying.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
         {
-          title: t("signTransactionDetails.operations.amount"),
-          trailingContent: (
-            <Text>{formatTokenForDisplay(amount, buying.code)}</Text>
-          ),
-          titleColor: themeColors.text.secondary,
-        },
-        {
           title: t("signTransactionDetails.operations.price"),
-          trailingContent: <Text>{formatFiatAmount(price)}</Text>,
+          trailingContent: (
+            <Text>
+              {formatOfferPriceRatio(price, buying.code, selling.code)}
+            </Text>
+          ),
           titleColor: themeColors.text.secondary,
         },
       ];
@@ -344,7 +367,7 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
           titleColor: themeColors.text.secondary,
         },
         {
-          title: t("signTransactionDetails.operations.buyAmount"),
+          title: t("signTransactionDetails.operations.buyingAmount"),
           trailingContent: (
             <Text>{formatTokenForDisplay(buyAmount, buying.code)}</Text>
           ),
@@ -357,7 +380,11 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
         },
         {
           title: t("signTransactionDetails.operations.price"),
-          trailingContent: <Text>{formatFiatAmount(price)}</Text>,
+          trailingContent: (
+            <Text>
+              {formatOfferPriceRatio(price, selling.code, buying.code)}
+            </Text>
+          ),
           titleColor: themeColors.text.secondary,
         },
       ];
@@ -491,15 +518,15 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
             titleColor: themeColors.text.secondary,
           },
           {
-            title: t("signTransactionDetails.operations.assetIssuer"),
+            title: t("signTransactionDetails.operations.tokenIssuer"),
             trailingContent: (
               <View className="flex-row items-center gap-[8px]">
                 <Icon.Copy01
                   size={16}
                   themeColor="gray"
-                  onPress={() => copyToClipboard(line.issuer)}
+                  onPress={() => copyToClipboard(line.issuer ?? "")}
                 />
-                <Text>{truncateAddress(line.issuer)}</Text>
+                <Text>{truncateAddress(line.issuer ?? "")}</Text>
               </View>
             ),
             titleColor: themeColors.text.secondary,
@@ -1054,7 +1081,11 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
   }
 };
 
-const RenderOperationArgsByType = ({ operation }: { operation: Operation }) => {
+const RenderOperationArgsByType = ({
+  operation,
+}: {
+  operation: OperationRecord;
+}) => {
   const { t } = useAppTranslation();
   const { network } = useAuthenticationStore();
   const networkDetails = mapNetworkToNetworkDetails(network);
@@ -1202,7 +1233,9 @@ const Operations = ({ operations }: OperationsProps) => {
           >
             <View className="flex-row items-center gap-[8px]">
               <Icon.Cube02 size={16} themeColor="gray" />
-              <Text secondary>{OPERATION_TYPES[type] || type}</Text>
+              <Text secondary>
+                {OPERATION_TYPES[type as keyof typeof OPERATION_TYPES] || type}
+              </Text>
             </View>
             <View className="gap-[16px] mb-4">
               {source && (

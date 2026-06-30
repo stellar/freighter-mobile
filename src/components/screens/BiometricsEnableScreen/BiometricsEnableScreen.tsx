@@ -29,6 +29,7 @@ import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBiometrics } from "hooks/useBiometrics";
 import useColors from "hooks/useColors";
+import { useSetupFailedToast } from "hooks/useSetupFailedToast";
 import React, { useCallback, useMemo, useState } from "react";
 import { View, Image } from "react-native";
 import { BIOMETRY_TYPE } from "react-native-keychain";
@@ -74,7 +75,7 @@ const BlurredBackgroundIcon = ({
 
   return (
     <View
-      className="items-center justify-center mt-4 flex-grow-0"
+      className="items-center justify-center mt-4 flex-grow-0 z-10"
       style={iconContainerDimensions}
     >
       <View
@@ -82,6 +83,10 @@ const BlurredBackgroundIcon = ({
           width: iconContainerDimensions.width,
           height: iconContainerDimensions.height,
           position: "relative",
+          // On iOS, borderRadius set directly on BlurView doesn't clip the
+          // native blur effect, so we round + clip here on the parent instead.
+          borderRadius: Math.round(pxValue(16)),
+          overflow: "hidden",
         }}
       >
         {isIOS ? (
@@ -95,7 +100,6 @@ const BlurredBackgroundIcon = ({
               left: 0,
               bottom: 0,
               right: 0,
-              borderRadius: Math.round(pxValue(16)), // care about rounded values for blurView
               zIndex: 1,
             }}
           />
@@ -142,6 +146,11 @@ export const BiometricsOnboardingScreen: React.FC<
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Wallet creation (signUp / importWallet) is deferred to this step, so a
+  // failure here isn't a generic "sign up" error — show a setup-specific
+  // message.
+  const notifySetupFailed = useSetupFailedToast();
+
   // Check if this is the pre-authentication flow (new) or post-authentication flow (existing)
 
   const enableBiometrics = useCallback(async () => {
@@ -178,17 +187,22 @@ export const BiometricsOnboardingScreen: React.FC<
           "true",
         );
 
-        // Use importWallet for import flow, signUp for onboarding flow
-        if (source === BiometricsSource.IMPORT_WALLET) {
-          await importWallet({
-            mnemonicPhrase,
-            password: biometricPassword ?? password,
-          });
-        } else {
-          await signUp({
-            mnemonicPhrase,
-            password: biometricPassword ?? password,
-          });
+        // Use importWallet for import flow, signUp for onboarding flow.
+        // These return false (rather than throwing) on failure — bail out so we
+        // don't clear login data / enable biometrics on a failed setup.
+        const success =
+          source === BiometricsSource.IMPORT_WALLET
+            ? await importWallet({
+                mnemonicPhrase,
+                password: biometricPassword ?? password,
+              })
+            : await signUp({
+                mnemonicPhrase,
+                password: biometricPassword ?? password,
+              });
+
+        if (!success) {
+          throw new Error("Wallet setup failed during biometric enable");
         }
 
         clearLoginData(); // Clear sensitive data after successful authentication
@@ -203,6 +217,7 @@ export const BiometricsOnboardingScreen: React.FC<
         "Failed to complete authentication with biometrics",
         error,
       );
+      notifySetupFailed();
     }
   }, [
     route.params,
@@ -214,6 +229,7 @@ export const BiometricsOnboardingScreen: React.FC<
     mnemonicPhrase,
     password,
     clearLoginData,
+    notifySetupFailed,
   ]);
 
   const handleSkip = useCallback(async () => {
@@ -239,17 +255,16 @@ export const BiometricsOnboardingScreen: React.FC<
     }
 
     try {
-      // Use importWallet for import flow, signUp for onboarding flow
-      if (source === BiometricsSource.IMPORT_WALLET) {
-        await importWallet({
-          mnemonicPhrase,
-          password,
-        });
-      } else {
-        await signUp({
-          mnemonicPhrase,
-          password,
-        });
+      // Use importWallet for import flow, signUp for onboarding flow.
+      // Both return false (rather than throwing) on failure.
+      const success =
+        source === BiometricsSource.IMPORT_WALLET
+          ? await importWallet({ mnemonicPhrase, password })
+          : await signUp({ mnemonicPhrase, password });
+
+      if (!success) {
+        notifySetupFailed();
+        return;
       }
 
       // Track analytics for successful completion
@@ -260,7 +275,7 @@ export const BiometricsOnboardingScreen: React.FC<
         "Failed to complete authentication",
         error,
       );
-      // Handle error appropriately
+      notifySetupFailed();
     }
   }, [
     route.params,
@@ -269,6 +284,7 @@ export const BiometricsOnboardingScreen: React.FC<
     navigation,
     mnemonicPhrase,
     password,
+    notifySetupFailed,
   ]);
 
   const handleSkipPress = useCallback(async () => {

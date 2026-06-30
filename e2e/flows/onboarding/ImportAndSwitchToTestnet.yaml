@@ -1,0 +1,16 @@
+appId: org.stellar.freighterdev
+---
+# Standalone flow: import a funded wallet and switch the active network to Testnet.
+# The network-switch portion is delegated to the shared sub-flow so the logic
+# lives in one place and is shared with the transaction flows that need to be
+# on testnet too.
+
+# Import funded wallet
+- runFlow:
+    file: ../onboarding/ImportFundedWallet.yaml
+
+# Switch to Testnet — the shared sub-flow waits for the post-import "Welcome to
+# Freighter!" bottom sheet and any "Account not loaded" toast, dismisses them,
+# then performs the network switch.
+- runFlow:
+    file: ../shared/SwitchToTestnet.yaml

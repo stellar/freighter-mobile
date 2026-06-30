@@ -1,5 +1,6 @@
 import { BalancesList } from "components/BalancesList";
 import { CollectibleImage } from "components/CollectibleImage";
+import { DefaultListFooter } from "components/DefaultListFooter";
 import Spinner from "components/Spinner";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
@@ -230,7 +231,7 @@ export const TokensCollectiblesInline: React.FC<
     >
       {renderContent()}
 
-      <View className="pb-4" />
+      <DefaultListFooter />
     </ScrollView>
   );
 };

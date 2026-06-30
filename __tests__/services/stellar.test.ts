@@ -1,8 +1,14 @@
 /**
  * Tests for stellar service, focusing on submitTx retry logic with exponential backoff
- * This test uses the actual isHorizonError function from stellar.ts
+ * and buildChangeTrustOperation helper.
+ * This test uses the actual functions from stellar.ts
  */
-import { calculateBackoffDelay, isHorizonError } from "services/stellar";
+import { Asset as SdkToken, Operation } from "@stellar/stellar-sdk";
+import {
+  buildChangeTrustOperation,
+  calculateBackoffDelay,
+  isHorizonError,
+} from "services/stellar";
 
 describe("stellar service - submitTx retry logic", () => {
   it("should implement correct delay timing", async () => {
@@ -54,5 +60,38 @@ describe("stellar service - submitTx retry logic", () => {
     expect(shouldRetry(horizon504Error)).toBe(true);
     expect(shouldRetry(horizon400Error)).toBe(false);
     expect(shouldRetry(nonHorizonError)).toBe(false);
+  });
+});
+
+describe("buildChangeTrustOperation", () => {
+  const ISSUER = "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
+
+  it("returns a changeTrust operation for the requested asset with no explicit limit", () => {
+    const op = buildChangeTrustOperation({ tokenCode: "USDC", issuer: ISSUER });
+    const decoded = Operation.fromXDRObject(op);
+
+    expect(decoded.type).toBe("changeTrust");
+    expect((decoded as any).line).toBeInstanceOf(SdkToken);
+    expect((decoded as any).line.code).toBe("USDC");
+    expect((decoded as any).line.issuer).toBe(ISSUER);
+    // No `limit` argument was passed — SDK defaults to the max trustline limit.
+    // We don't pin that string here, but we assert the limit is not 0,
+    // which is the remove-path sentinel.
+    expect(parseFloat((decoded as any).limit)).toBeGreaterThan(0);
+  });
+
+  it("sets limit to '0' when isRemove is true (remove-trustline op)", () => {
+    const op = buildChangeTrustOperation({
+      tokenCode: "USDC",
+      issuer: ISSUER,
+      isRemove: true,
+    });
+    const decoded = Operation.fromXDRObject(op);
+
+    expect(decoded.type).toBe("changeTrust");
+    // The Stellar SDK normalizes the limit to 7 decimal places on decode.
+    expect(parseFloat((decoded as any).limit)).toBe(0);
+    expect((decoded as any).line.code).toBe("USDC");
+    expect((decoded as any).line.issuer).toBe(ISSUER);
   });
 });

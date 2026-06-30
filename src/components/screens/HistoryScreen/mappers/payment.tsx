@@ -21,7 +21,7 @@ import {
 import { TokenTypeWithCustomToken } from "config/types";
 import { normalizePaymentToAssetDiffs } from "helpers/assetBalanceChanges";
 import { formatTokenForDisplay } from "helpers/formatAmount";
-import { truncateAddress } from "helpers/stellar";
+import { isSameAccount, truncateAddress } from "helpers/stellar";
 import useColors, { ThemeColors } from "hooks/useColors";
 import { t } from "i18next";
 import React from "react";
@@ -64,15 +64,23 @@ export const mapPaymentHistoryItem = async ({
     to,
     to_muxed: toMuxed,
     from,
+    from_muxed: fromMuxed,
   } = operation;
 
   const actualDestination = toMuxed || to;
+  const actualSource = fromMuxed || from;
 
   // Payment mapper handles classic/native tokens only (Soroban payments go to soroban mapper)
   // Classic tokens support M address + memo, so preserve memo even for M addresses
   const finalMemo = memo;
 
-  const isRecipient = actualDestination === publicKey;
+  // isSameAccount resolves muxed (M...) addresses to their base (G...) account,
+  // so payments received to the user's muxed address aren't misclassified. The
+  // source check excludes self-payments (same base on both ends), where the
+  // balance doesn't actually increase.
+  const isRecipient =
+    isSameAccount(actualDestination, publicKey) &&
+    !isSameAccount(actualSource, publicKey);
   const paymentDifference = isRecipient ? "+" : "-";
   const formattedAmount = `${paymentDifference}${formatTokenForDisplay(
     new BigNumber(amount).toString(),

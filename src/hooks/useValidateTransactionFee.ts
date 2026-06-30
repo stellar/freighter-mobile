@@ -8,11 +8,13 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useEffect, useState } from "react";
 
 /**
- * Hook to validate a transaction fee
- * Accepts locale-formatted input (e.g., "0,00001" or "0.00001")
- * Returns error message if invalid
+ * Hook to validate a transaction fee (the TOTAL across all operations).
+ * Accepts locale-formatted input (e.g., "0,00001" or "0.00001").
+ * The minimum scales with `operationCount` because each operation needs at
+ * least MIN_TRANSACTION_FEE (Stellar's 100-stroop per-op minimum) — so a 2-op
+ * swap can't total less than 2 × that. Returns error message if invalid.
  */
-export const useValidateTransactionFee = (fee: string) => {
+export const useValidateTransactionFee = (fee: string, operationCount = 1) => {
   const { t } = useAppTranslation();
   const [error, setError] = useState<string | null>(null);
 
@@ -24,7 +26,7 @@ export const useValidateTransactionFee = (fee: string) => {
 
     try {
       const feeValue = new BigNumber(parseDisplayNumber(fee));
-      const minFee = new BigNumber(MIN_TRANSACTION_FEE);
+      const minFee = new BigNumber(MIN_TRANSACTION_FEE).times(operationCount);
 
       if (feeValue.isNaN()) {
         setError(t("transactionSettings.errors.fee.invalid"));
@@ -34,7 +36,7 @@ export const useValidateTransactionFee = (fee: string) => {
       if (feeValue.isLessThan(minFee)) {
         setError(
           t("transactionSettings.errors.fee.tooLow", {
-            min: formatNumberForDisplay(MIN_TRANSACTION_FEE),
+            min: formatNumberForDisplay(minFee.toString()),
           }),
         );
         return;
@@ -44,7 +46,7 @@ export const useValidateTransactionFee = (fee: string) => {
     } catch (parseError) {
       setError(t("transactionSettings.errors.fee.invalid"));
     }
-  }, [fee, t]);
+  }, [fee, t, operationCount]);
 
   return { error };
 };

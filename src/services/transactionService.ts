@@ -22,7 +22,10 @@ import {
 import { logger } from "config/logger";
 import { Balance, NativeBalance, PricedBalance } from "config/types";
 import { isLiquidityPool } from "helpers/balances";
-import { xlmToStroop } from "helpers/formatAmount";
+import {
+  getPerOperationBaseFeeStroops,
+  xlmToStroop,
+} from "helpers/formatAmount";
 import {
   determineMuxedDestination,
   checkContractMuxedSupport,
@@ -38,7 +41,7 @@ import { t } from "i18next";
 import { analytics } from "services/analytics";
 import { SimulationTransactionType } from "services/analytics/types";
 import { simulateTokenTransfer, simulateTransaction } from "services/backend";
-import { stellarSdkServer } from "services/stellar";
+import { buildChangeTrustOperation, stellarSdkServer } from "services/stellar";
 
 export interface BuildPaymentTransactionParams {
   tokenAmount: string;
@@ -63,6 +66,14 @@ export interface BuildSwapTransactionParams {
   transactionTimeout?: number;
   network?: NETWORKS;
   senderAddress?: string;
+  /**
+   * When present, the builder prepends a `changeTrust` op as op #0 so the
+   * trustline and the path payment submit atomically as a single transaction.
+   * Used for swaps to a new (non-held) destination token. Pass this only when
+   * `destinationToken.requiresTrustline === true` (i.e. the user does not yet hold a
+   * trustline for the destination asset).
+   */
+  includeTrustline?: { tokenCode: string; issuer: string };
 }
 
 export interface BuildSendCollectibleParams {
@@ -586,6 +597,7 @@ export const buildSwapTransaction = async (
     transactionTimeout,
     network,
     senderAddress,
+    includeTrustline,
   } = params;
 
   try {
@@ -609,7 +621,14 @@ export const buildSwapTransaction = async (
     const networkDetails = mapNetworkToNetworkDetails(network);
     const server = stellarSdkServer(networkDetails.networkUrl);
     const sourceAccount = await server.loadAccount(senderAddress);
-    const fee = xlmToStroop(transactionFee).toString();
+    // transactionFee is the TOTAL the user set; the SDK fee is per-operation
+    // and the network charges baseFee × numOps. Adding a changeTrust op makes
+    // this a 2-op tx, so split the total across ops to keep the charged total
+    // equal to what the user set/sees.
+    const fee = getPerOperationBaseFeeStroops(
+      transactionFee,
+      includeTrustline ? 2 : 1,
+    );
 
     const txBuilder = new TransactionBuilder(sourceAccount, {
       fee,
@@ -628,6 +647,17 @@ export const buildSwapTransaction = async (
 
       return new SdkToken(code, issuer);
     });
+
+    // Op ordering is load-bearing: changeTrust must be op #0 so the trustline
+    // is established before the path-payment op consumes the destination asset.
+    if (includeTrustline) {
+      txBuilder.addOperation(
+        buildChangeTrustOperation({
+          tokenCode: includeTrustline.tokenCode,
+          issuer: includeTrustline.issuer,
+        }),
+      );
+    }
 
     txBuilder.addOperation(
       Operation.pathPaymentStrictSend({

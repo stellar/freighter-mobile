@@ -3,11 +3,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 import {
-  MemoType,
-  Memo,
   StrKey,
   TransactionBuilder,
   Operation,
+  OperationRecord,
   Transaction,
   Horizon,
   xdr,
@@ -133,6 +132,41 @@ export const addressToString = (address: xdr.ScAddress) => {
   return Address.fromScAddress(address).toString();
 };
 
+/**
+ * Extracts the address credentials from a SorobanCredentials union, handling
+ * all CAP-71 address arms. Returns null for source-account credentials, which
+ * carry no address payload.
+ */
+export const getAddressCredentials = (
+  credentials: xdr.SorobanCredentials,
+): xdr.SorobanAddressCredentials | null => {
+  switch (credentials.switch().value) {
+    case xdr.SorobanCredentialsType.sorobanCredentialsAddress().value:
+      return credentials.address();
+    case xdr.SorobanCredentialsType.sorobanCredentialsAddressV2().value:
+      return credentials.addressV2();
+    case xdr.SorobanCredentialsType.sorobanCredentialsAddressWithDelegates()
+      .value:
+      return credentials.addressWithDelegates().addressCredentials();
+    default:
+      return null;
+  }
+};
+
+/**
+ * Returns the address a Soroban authorization entry is bound to (the address
+ * whose authorization its credentials represent), or undefined for
+ * source-account credentials.
+ */
+export const getAuthEntryBoundAddress = (
+  entry: xdr.SorobanAuthorizationEntry,
+): string | undefined => {
+  const addressCredentials = getAddressCredentials(entry.credentials());
+  return addressCredentials
+    ? addressToString(addressCredentials.address())
+    : undefined;
+};
+
 export const getArgsForTokenInvocation = (
   fnName: string,
   args: xdr.ScVal[],
@@ -216,7 +250,7 @@ export const getTokenInvocationArgs = (
 };
 
 export const isSorobanOp = (
-  operation: Horizon.ServerApi.OperationRecord | Operation,
+  operation: Horizon.ServerApi.OperationRecord | OperationRecord,
 ) => SOROBAN_OPERATION_TYPES.includes(operation.type);
 
 export const hasSorobanOperations = (
@@ -244,20 +278,30 @@ export const getAttrsFromSorobanHorizonOp = (
   const transaction = TransactionBuilder.fromXDR(
     op.transaction_attr.envelope_xdr as string,
     networkDetails.networkPassphrase,
-  ) as Transaction<Memo<MemoType>, Operation.InvokeHostFunction[]>;
+  ) as Transaction;
 
-  const invokeHostFn = transaction.operations[0]; // only one op per tx in Soroban right now
+  // only one op per tx in Soroban right now
+  const invokeHostFn = transaction
+    .operations[0] as Operation.InvokeHostFunction;
 
   return getTokenInvocationArgs(invokeHostFn);
 };
 
+/**
+ * Derive a classic asset's Stellar Asset Contract (SAC) C-address. The SAC
+ * address is deterministic — same (code, issuer, network) always resolves
+ * to the same C-address, regardless of whether the asset has been wrapped
+ * on-chain yet.
+ *
+ * Throws via `new SdkToken(...)` for invalid input (e.g. asset code longer
+ * than 12 chars). Callers that pass user-supplied codes/issuers should
+ * guard with a try/catch.
+ */
 export const getTokenSacAddress = (
-  canonicalName: string,
+  tokenCode: string,
+  issuer: string,
   networkPassphrase: string,
-) =>
-  new SdkToken(...(canonicalName.split(":") as [string, string])).contractId(
-    networkPassphrase,
-  );
+) => new SdkToken(tokenCode, issuer).contractId(networkPassphrase);
 
 /*
   Attempts to match a balance to a related contract ID, expects a token or SAC contract ID.
@@ -270,12 +314,10 @@ export const getBalanceByKey = (
   const foundBalance = balances.find((balance) => {
     const matchesIssuer =
       "contractId" in balance && contractId === balance.contractId;
-    let canonicalName = "";
 
     try {
       // if xlm, check for a SAC match
       if ("token" in balance && balance.token.code === NATIVE_TOKEN_CODE) {
-        canonicalName = "native";
         const matchesSac =
           SdkToken.native().contractId(networkDetails.networkPassphrase) ===
           contractId;
@@ -288,11 +330,9 @@ export const getBalanceByKey = (
         "issuer" in balance.token &&
         !isContractId(balance.token.issuer.key)
       ) {
-        canonicalName = balance.token.issuer.key
-          ? `${balance.token.code}:${balance.token.issuer.key}`
-          : balance.token.code;
         const sacAddress = getTokenSacAddress(
-          canonicalName,
+          balance.token.code,
+          balance.token.issuer.key,
           networkDetails.networkPassphrase,
         );
         const matchesSac = contractId === sacAddress;

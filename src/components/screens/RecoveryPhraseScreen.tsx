@@ -20,6 +20,7 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useBiometrics } from "hooks/useBiometrics";
 import useColors from "hooks/useColors";
 import { useSecureClipboard } from "hooks/useSecureClipboard";
+import { useSetupFailedToast } from "hooks/useSetupFailedToast";
 import React, { useCallback, useEffect, useState } from "react";
 import { analytics } from "services/analytics";
 import StellarHDWallet from "stellar-hd-wallet";
@@ -91,6 +92,7 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const { copyToClipboard } = useSecureClipboard();
+  const notifySetupFailed = useSetupFailedToast();
   const skipModalRef = React.useRef<BottomSheetModal | null>(null);
   const { biometryType } = useBiometrics();
 
@@ -116,17 +118,23 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
 
   const confirmSkip = useCallback(() => {
     if (biometryType) {
-      storeBiometricPassword(password!).then(() => {
-        navigation.navigate(AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN, {
-          source: BiometricsSource.ONBOARDING,
-        });
-      });
+      storeBiometricPassword(password!)
+        .then(() => {
+          navigation.navigate(AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN, {
+            source: BiometricsSource.ONBOARDING,
+          });
+        })
+        .catch(notifySetupFailed);
     } else {
       // No biometrics available, proceed with normal signup
       signUp({
         password: password!,
         mnemonicPhrase: localMnemonicPhrase,
-      }).then(() => {
+      }).then((success) => {
+        if (!success) {
+          notifySetupFailed();
+          return;
+        }
         clearLoginData(); // Clear sensitive data after successful signup
         analytics.track(AnalyticsEvent.ACCOUNT_CREATOR_FINISHED);
       });
@@ -141,6 +149,7 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
     biometryType,
     storeBiometricPassword,
     clearLoginData,
+    notifySetupFailed,
   ]);
 
   const handleConfirmSkip = useCallback(() => {

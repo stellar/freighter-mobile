@@ -1,5 +1,7 @@
 import Blockaid from "@blockaid/client";
+import axios from "axios";
 import { AnalyticsEvent } from "config/analyticsConfig";
+import { isNativeAssetId } from "config/constants";
 import { isMainnet } from "helpers/networks";
 import { analytics } from "services/analytics";
 import { freighterBackendV1 } from "services/backend";
@@ -28,6 +30,14 @@ export const scanToken = async (
 ): Promise<Blockaid.TokenScanResponse> => {
   const { tokenCode, tokenIssuer, network } = params;
   try {
+    // Native XLM is trusted by default and isn't a scannable Blockaid address
+    // (Blockaid rejects "XLM" / "native"), so short-circuit to a benign result
+    // instead of calling the backend. The issuer must be absent too — a
+    // non-native imposter coded "XLM" carries an issuer and is still scanned.
+    if (isNativeAssetId(tokenCode) && !tokenIssuer) {
+      return { result_type: "Benign" } as Blockaid.TokenScanResponse;
+    }
+
     if (!isMainnet(network)) {
       throw new Error(BLOCKAID_ERROR_MESSAGES.NETWORK_NOT_SUPPORTED);
     }
@@ -93,7 +103,16 @@ export const scanBulkTokens = async (
 
     return scanResult;
   } catch (error) {
-    throw new Error(BLOCKAID_ERROR_MESSAGES.BULK_TOKEN_SCAN_FAILED);
+    // Rethrow cancellations untouched so callers can treat a superseded
+    // request as benign; wrap everything else, preserving the cause.
+    if (axios.isCancel(error)) throw error;
+    const wrapped = new Error(
+      BLOCKAID_ERROR_MESSAGES.BULK_TOKEN_SCAN_FAILED,
+    ) as Error & {
+      cause?: unknown;
+    };
+    wrapped.cause = error;
+    throw wrapped;
   }
 };
 

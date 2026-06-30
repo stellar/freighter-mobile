@@ -39,6 +39,7 @@ import {
   validateSignAuthEntryContent,
   parseAuthEntryPreimage,
   validateAuthEntryNetwork,
+  validateAuthEntryAddress,
 } from "helpers/walletKitValidation";
 import { useBlockaidSite } from "hooks/blockaid/useBlockaidSite";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
@@ -264,7 +265,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
    * Security warnings extracted from scan result
    * @type {SecurityWarning[]}
    */
-  const siteSecurityWarnings = useMemo(() => {
+  const siteSecurityWarnings = useMemo<SecurityWarning[]>(() => {
     if (siteSecurityAssessment.isUnableToScan) {
       // For "Unable to scan" cases, always provide a warning so the list renders
       return [
@@ -273,6 +274,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
           description:
             siteSecurityAssessment.details ||
             t("blockaid.unableToScan.site.description"),
+          severity: "warning",
         },
       ];
     }
@@ -298,7 +300,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     t,
   ]);
 
-  const transactionSecurityWarnings = useMemo(() => {
+  const transactionSecurityWarnings = useMemo<SecurityWarning[]>(() => {
     if (transactionSecurityAssessment.isUnableToScan) {
       // For "Unable to scan" cases, always provide a warning so the list renders
       return [
@@ -307,6 +309,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
           description:
             transactionSecurityAssessment.details ||
             t("securityWarning.unsafeTransaction"),
+          severity: "warning",
         },
       ];
     }
@@ -539,6 +542,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       signMessage,
       signAuthEntry,
       networkPassphrase: networkDetails.networkPassphrase,
+      publicKey,
       activeChain,
       showToast,
       t,
@@ -795,6 +799,33 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   };
 
   /**
+   * Validates that a CAP-71 (ADDRESS_V2) preimage is bound to the active
+   * wallet account. Rejects the request on mismatch.
+   */
+  const prevalidateSignAuthEntryAddress = (
+    sessionRequest: WalletKitSessionRequest,
+    preimage: stellarXdr.HashIdPreimage,
+  ): boolean => {
+    const result = validateAuthEntryAddress(preimage, publicKey);
+    if (!result.valid) {
+      showToast({
+        title: t("walletKit.invalidRequestTitle"),
+        message: t(result.errorKey),
+        variant: "error",
+      });
+      rejectSessionRequest({
+        sessionRequest,
+        message: t(result.errorKey),
+      });
+      clearEvent();
+      isProcessingRequestRef.current = false;
+      return false;
+    }
+
+    return true;
+  };
+
+  /**
    * Orchestrates all sign_auth_entry pre-validations.
    * @returns true if all validations pass, false if any fail (rejection handled)
    */
@@ -818,6 +849,11 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 
     // Step 3: Validate network (networkId matches wallet's active network)
     if (!prevalidateSignAuthEntryNetworkId(sessionRequest, preimage)) {
+      return false;
+    }
+
+    // Step 4: Validate bound address (CAP-71 ADDRESS_V2) matches active wallet
+    if (!prevalidateSignAuthEntryAddress(sessionRequest, preimage)) {
       return false;
     }
 
