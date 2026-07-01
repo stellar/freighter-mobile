@@ -688,7 +688,8 @@
     "swapped": "Swapped"
   },
   "transactionTokenScreen": {
-    "title": "Sending"
+    "title": "Sending",
+    "empty": "No tokens or collectibles to send"
   },
   "transactionSettings": {
     "feeTitle": "Transaction fee",
