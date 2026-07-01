@@ -31,6 +31,7 @@ import {
 } from "config/routes";
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
+import { usePreferencesStore } from "ducks/preferences";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { isDeviceJailbroken } from "helpers/deviceSecurity";
 import {
@@ -41,7 +42,6 @@ import {
 } from "helpers/navigationOptions";
 import { triggerFaceIdOnboarding } from "helpers/postOnboardingBiometrics";
 import { useAnalyticsPermissions } from "hooks/useAnalyticsPermissions";
-import { useAppOpenBiometricsLogin } from "hooks/useAppOpenBiometricsLogin";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useAppUpdate } from "hooks/useAppUpdate";
 import { useBiometrics } from "hooks/useBiometrics";
@@ -57,8 +57,13 @@ import {
 } from "navigators";
 import { TabNavigator } from "navigators/TabNavigator";
 import React, { useEffect, useMemo, useState } from "react";
+import { StyleSheet, View } from "react-native";
 import RNBootSplash from "react-native-bootsplash";
 import { isInitialized as isAnalyticsInitialized } from "services/analytics/core";
+
+const styles = StyleSheet.create({
+  flex: { flex: 1 },
+});
 
 const RootStack = createNativeStackNavigator<
   RootStackParamList &
@@ -75,7 +80,7 @@ export const RootNavigator = () => {
     useNavigation<
       NativeStackNavigationProp<RootStackParamList & AuthStackParamList>
     >();
-  const { authStatus, getAuthStatus, initializeNetwork } =
+  const { authStatus, isSoftLocked, getAuthStatus, initializeNetwork } =
     useAuthenticationStore();
   const remoteConfigInitialized = useRemoteConfigStore(
     (state) => state.isInitialized,
@@ -93,8 +98,6 @@ export const RootNavigator = () => {
   useAnalyticsPermissions({
     previousState: initializing ? undefined : "none",
   });
-
-  useAppOpenBiometricsLogin(initializing);
 
   // Run once on mount: check jailbreak, fetch auth status from storage, trigger
   // face-id onboarding if needed. We intentionally omit deps so this only fires
@@ -114,6 +117,10 @@ export const RootNavigator = () => {
       // Load persisted network preference before any auth or data fetching
       // so components always read the correct network from the start.
       await initializeNetwork();
+
+      // Hydrate the auto-lock timer from its secure-storage source of truth
+      // (it's intentionally not kept in the unencrypted preferences store).
+      await usePreferencesStore.getState().hydrateAutoLockTimer();
 
       // Fetch the real auth status from storage and overwrite the initial
       // NOT_AUTHENTICATED default before any navigation decision is made.
@@ -152,9 +159,14 @@ export const RootNavigator = () => {
     }
   }, [showFullScreenUpdateNotice]);
 
+  // Soft lock keeps the authenticated tree mounted (covered by the lock
+  // overlay) so navigation history and in-progress inputs survive the lock.
+  const showAuthenticatedStack =
+    authStatus === AUTH_STATUS.AUTHENTICATED || isSoftLocked;
+
   // Make the stack re-render when auth status changes
   const initialRouteName = useMemo(() => {
-    if (authStatus === AUTH_STATUS.AUTHENTICATED) {
+    if (showAuthenticatedStack) {
       return ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK;
     }
 
@@ -166,7 +178,7 @@ export const RootNavigator = () => {
     }
 
     return ROOT_NAVIGATOR_ROUTES.AUTH_STACK;
-  }, [authStatus]);
+  }, [authStatus, showAuthenticatedStack]);
 
   if (isJailbroken) {
     return <SecurityBlockScreen />;
@@ -194,112 +206,124 @@ export const RootNavigator = () => {
   }
 
   return (
-    <RootStack.Navigator
-      initialRouteName={initialRouteName}
-      screenOptions={{
-        headerShown: false,
-      }}
+    // While soft-locked, hide the mounted tree from screen readers
+    // (Android: no-hide-descendants; iOS: accessibilityElementsHidden) so the
+    // overlay — a sibling rendered in App.tsx — isn't bypassed by TalkBack /
+    // VoiceOver. The overlay also sets accessibilityViewIsModal (iOS).
+    <View
+      style={styles.flex}
+      importantForAccessibility={isSoftLocked ? "no-hide-descendants" : "auto"}
+      accessibilityElementsHidden={isSoftLocked}
     >
-      {authStatus === AUTH_STATUS.AUTHENTICATED ? (
-        <RootStack.Group>
+      <RootStack.Navigator
+        initialRouteName={initialRouteName}
+        screenOptions={{
+          headerShown: false,
+        }}
+      >
+        {showAuthenticatedStack ? (
+          <RootStack.Group>
+            <RootStack.Screen
+              name={ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK}
+              component={TabNavigator}
+            />
+            <RootStack.Screen
+              name={ROOT_NAVIGATOR_ROUTES.MANAGE_TOKENS_STACK}
+              component={ManageTokensStackNavigator}
+              options={getStackBottomNavigateOptions()}
+            />
+            <RootStack.Screen
+              name={ROOT_NAVIGATOR_ROUTES.MANAGE_WALLETS_STACK}
+              component={ManageWalletsStackNavigator}
+              options={getStackBottomNavigateOptions()}
+            />
+            <RootStack.Screen
+              name={ROOT_NAVIGATOR_ROUTES.SETTINGS_STACK}
+              component={SettingsStackNavigator}
+              options={getStackBottomNavigateOptions()}
+            />
+            <RootStack.Screen
+              name={ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK}
+              component={SendPaymentStackNavigator}
+              options={getStackBottomNavigateOptions()}
+            />
+            <RootStack.Screen
+              name={ROOT_NAVIGATOR_ROUTES.SWAP_STACK}
+              component={SwapStackNavigator}
+              options={getStackBottomNavigateOptions()}
+            />
+            <RootStack.Screen
+              name={ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN}
+              component={AccountQRCodeScreen}
+              options={({ route }) =>
+                withTransitionOverride(
+                  getScreenBottomNavigateOptions(
+                    t("accountQRCodeScreen.title"),
+                  ),
+                  route,
+                )
+              }
+            />
+            <RootStack.Screen
+              name={ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN}
+              component={ScanQRCodeScreen}
+              options={({ route }) =>
+                withTransitionOverride(getScreenOptionsNoHeader(), route)
+              }
+            />
+            <RootStack.Screen
+              name={ROOT_NAVIGATOR_ROUTES.CONNECTED_APPS_SCREEN}
+              component={ConnectedAppsScreen}
+              options={getScreenBottomNavigateOptions(t("connectedApps.title"))}
+            />
+            <RootStack.Screen
+              name={ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK}
+              component={AddFundsStackNavigator}
+              options={getStackBottomNavigateOptions()}
+            />
+            <RootStack.Screen
+              name={ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN}
+              component={TokenDetailsScreen}
+              options={getScreenBottomNavigateOptions("")}
+            />
+            <RootStack.Screen
+              name={ROOT_NAVIGATOR_ROUTES.COLLECTIBLE_DETAILS_SCREEN}
+              component={CollectibleDetailsScreen}
+              options={getScreenBottomNavigateOptions("")}
+            />
+            <RootStack.Screen
+              name={ROOT_NAVIGATOR_ROUTES.ADD_COLLECTIBLE_SCREEN}
+              component={AddCollectibleScreen}
+              options={getScreenBottomNavigateOptions(
+                t("addCollectibleScreen.title"),
+              )}
+            />
+            <RootStack.Screen
+              name={ROOT_NAVIGATOR_ROUTES.HIDDEN_COLLECTIBLES_SCREEN}
+              component={HiddenCollectiblesScreen}
+              options={getScreenBottomNavigateOptions(
+                t("hiddenCollectiblesScreen.title"),
+              )}
+            />
+            <RootStack.Screen
+              name={AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN}
+              component={BiometricsOnboardingScreen}
+              options={getScreenBottomNavigateOptions("")}
+            />
+          </RootStack.Group>
+        ) : authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ||
+          authStatus === AUTH_STATUS.LOCKED ? (
           <RootStack.Screen
-            name={ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK}
-            component={TabNavigator}
+            name={ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN}
+            component={LockScreen}
           />
+        ) : (
           <RootStack.Screen
-            name={ROOT_NAVIGATOR_ROUTES.MANAGE_TOKENS_STACK}
-            component={ManageTokensStackNavigator}
-            options={getStackBottomNavigateOptions()}
+            name={ROOT_NAVIGATOR_ROUTES.AUTH_STACK}
+            component={AuthNavigator}
           />
-          <RootStack.Screen
-            name={ROOT_NAVIGATOR_ROUTES.MANAGE_WALLETS_STACK}
-            component={ManageWalletsStackNavigator}
-            options={getStackBottomNavigateOptions()}
-          />
-          <RootStack.Screen
-            name={ROOT_NAVIGATOR_ROUTES.SETTINGS_STACK}
-            component={SettingsStackNavigator}
-            options={getStackBottomNavigateOptions()}
-          />
-          <RootStack.Screen
-            name={ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK}
-            component={SendPaymentStackNavigator}
-            options={getStackBottomNavigateOptions()}
-          />
-          <RootStack.Screen
-            name={ROOT_NAVIGATOR_ROUTES.SWAP_STACK}
-            component={SwapStackNavigator}
-            options={getStackBottomNavigateOptions()}
-          />
-          <RootStack.Screen
-            name={ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN}
-            component={AccountQRCodeScreen}
-            options={({ route }) =>
-              withTransitionOverride(
-                getScreenBottomNavigateOptions(t("accountQRCodeScreen.title")),
-                route,
-              )
-            }
-          />
-          <RootStack.Screen
-            name={ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN}
-            component={ScanQRCodeScreen}
-            options={({ route }) =>
-              withTransitionOverride(getScreenOptionsNoHeader(), route)
-            }
-          />
-          <RootStack.Screen
-            name={ROOT_NAVIGATOR_ROUTES.CONNECTED_APPS_SCREEN}
-            component={ConnectedAppsScreen}
-            options={getScreenBottomNavigateOptions(t("connectedApps.title"))}
-          />
-          <RootStack.Screen
-            name={ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK}
-            component={AddFundsStackNavigator}
-            options={getStackBottomNavigateOptions()}
-          />
-          <RootStack.Screen
-            name={ROOT_NAVIGATOR_ROUTES.TOKEN_DETAILS_SCREEN}
-            component={TokenDetailsScreen}
-            options={getScreenBottomNavigateOptions("")}
-          />
-          <RootStack.Screen
-            name={ROOT_NAVIGATOR_ROUTES.COLLECTIBLE_DETAILS_SCREEN}
-            component={CollectibleDetailsScreen}
-            options={getScreenBottomNavigateOptions("")}
-          />
-          <RootStack.Screen
-            name={ROOT_NAVIGATOR_ROUTES.ADD_COLLECTIBLE_SCREEN}
-            component={AddCollectibleScreen}
-            options={getScreenBottomNavigateOptions(
-              t("addCollectibleScreen.title"),
-            )}
-          />
-          <RootStack.Screen
-            name={ROOT_NAVIGATOR_ROUTES.HIDDEN_COLLECTIBLES_SCREEN}
-            component={HiddenCollectiblesScreen}
-            options={getScreenBottomNavigateOptions(
-              t("hiddenCollectiblesScreen.title"),
-            )}
-          />
-          <RootStack.Screen
-            name={AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN}
-            component={BiometricsOnboardingScreen}
-            options={getScreenBottomNavigateOptions("")}
-          />
-        </RootStack.Group>
-      ) : authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ||
-        authStatus === AUTH_STATUS.LOCKED ? (
-        <RootStack.Screen
-          name={ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN}
-          component={LockScreen}
-        />
-      ) : (
-        <RootStack.Screen
-          name={ROOT_NAVIGATOR_ROUTES.AUTH_STACK}
-          component={AuthNavigator}
-        />
-      )}
-    </RootStack.Navigator>
+        )}
+      </RootStack.Navigator>
+    </View>
   );
 };

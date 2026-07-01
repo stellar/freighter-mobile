@@ -66,6 +66,8 @@ PODS:
     - SocketRocket
     - Yoga
   - OpenSSL-Universal (3.6.2000)
+  - PrivacyShield (1.0.0):
+    - React-Core
   - QuickCrypto (1.1.5):
     - boost
     - DoubleConversion
@@ -3446,6 +3448,7 @@ DEPENDENCIES:
   - hermes-engine (from `../node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec`)
   - jail-monkey (from `../node_modules/jail-monkey`)
   - NitroModules (from `../node_modules/react-native-nitro-modules`)
+  - PrivacyShield (from `./`)
   - QuickCrypto (from `../node_modules/react-native-quick-crypto`)
   - RCT-Folly (from `../node_modules/react-native/third-party-podspecs/RCT-Folly.podspec`)
   - RCTDeprecation (from `../node_modules/react-native/ReactApple/Libraries/RCTFoundation/RCTDeprecation`)
@@ -3591,6 +3594,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/jail-monkey"
   NitroModules:
     :path: "../node_modules/react-native-nitro-modules"
+  PrivacyShield:
+    :path: "./"
   QuickCrypto:
     :path: "../node_modules/react-native-quick-crypto"
   RCT-Folly:
@@ -3815,6 +3820,7 @@ SPEC CHECKSUMS:
   libwebp: 02b23773aedb6ff1fd38cec7a77b81414c6842a8
   NitroModules: 1ef0796714251dbdaea49af187e291d8b6a7c5ea
   OpenSSL-Universal: ecee7b138fa75a74ecf00d7ffd248fb584739b9e
+  PrivacyShield: df1c5e513b672f8725b5a4637726ee75ad5611e4
   QuickCrypto: fbb50daf9313753153af0e4f67a9f14ec1a26979
   RCT-Folly: 846fda9475e61ec7bcbf8a3fe81edfcaeb090669
   RCTDeprecation: c0ed3249a97243002615517dff789bf4666cf585
@@ -3924,6 +3930,6 @@ SPEC CHECKSUMS:
   VisionCamera: 891edb31806dd3a239c8a9d6090d6ec78e11ee80
   Yoga: a3ed390a19db0459bd6839823a6ac6d9c6db198d
 
-PODFILE CHECKSUM: aa3474b4795f465757c119bd3e4b6cd20a1526f0
+PODFILE CHECKSUM: a88f7c96ae72d2da0c705ccdb51d43ec1391b5a7
 
 COCOAPODS: 1.15.2

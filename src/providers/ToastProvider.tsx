@@ -1,5 +1,6 @@
 import { Toast, ToastProps, ToastVariant } from "components/sds/Toast";
-import { DEFAULT_PADDING } from "config/constants";
+import { DEFAULT_PADDING, SOFT_LOCK_ALLOWED_TOAST_IDS } from "config/constants";
+import { useAuthenticationStore } from "ducks/auth";
 import { px, pxValue } from "helpers/dimensions";
 import React, {
   createContext,
@@ -103,6 +104,24 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
   const insets = useSafeAreaInsets();
 
   const showToast = useCallback((options: ToastOptions) => {
+    // While soft-locked, the navigation tree stays mounted under the lock
+    // overlay and may still emit toasts (stale network errors, re-run
+    // validations). Suppress everything except the lock overlay's own
+    // messaging so nothing surfaces over the lock until the app is usable.
+    // Read imperatively (not via a reactive selector) to avoid coupling this
+    // low-level provider's render cycle to the auth store; the optional chain
+    // keeps it safe under test mocks that stub the store without getState.
+    const isSoftLocked =
+      useAuthenticationStore.getState?.()?.isSoftLocked ?? false;
+    if (
+      isSoftLocked &&
+      !(
+        options.toastId && SOFT_LOCK_ALLOWED_TOAST_IDS.includes(options.toastId)
+      )
+    ) {
+      return;
+    }
+
     const newToast: ToastPropsWithId = {
       ...options,
       toastId: options.toastId ?? Date.now().toString(),

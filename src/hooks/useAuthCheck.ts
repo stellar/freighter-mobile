@@ -1,13 +1,24 @@
+import { navigationRef } from "components/App";
+import { AUTO_LOCK_TIMER, AUTO_LOCK_TIMER_MS } from "config/constants";
 import { logger } from "config/logger";
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
-import { useEffect, useRef, useState, useCallback } from "react";
 import {
-  AppState,
-  AppStateStatus,
-  PanResponder,
-  PanResponderInstance,
-} from "react-native";
+  hidePrivacyShield,
+  markPrivacyShieldVisible,
+} from "helpers/privacyShield";
+import { setActivityRecorder } from "helpers/userActivity";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import { AppState, AppStateStatus, Keyboard, PanResponder } from "react-native";
+import {
+  getAutoLockTimer,
+  hasPersistedSession,
+  recordBackgroundedAt,
+} from "services/autoLock";
+
+// Delay before lifting the native privacy shield on foreground, giving a
+// soft-lock overlay a frame to paint so the unlocked wallet never flashes
+const SHIELD_REVEAL_DELAY = 50;
 
 // Constants for interval timings (in milliseconds)
 const BACKGROUND_CHECK_INTERVAL = 60000; // Check every minute when in background
@@ -24,16 +35,50 @@ const INITIAL_SETUP_DELAY = 500; // Delay to prevent race conditions during setu
  * It adjusts the check frequency based on the app state and user activity.
  */
 const useAuthCheck = () => {
-  const { getAuthStatus, authStatus, navigateToLockScreen } =
-    useAuthenticationStore();
+  const { getAuthStatus, authStatus } = useAuthenticationStore();
   const [isActive, setIsActive] = useState(true);
 
-  // Refs to track app state, last interaction, auth check intervals, and pan responder instance
+  // Refs to track app state, last interaction, and auth check intervals
   const appState = useRef<AppStateStatus>(AppState.currentState);
   const checkIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastInteractionRef = useRef<number>(Date.now());
   const lastCheckRef = useRef<number>(Date.now());
-  const panResponderRef = useRef<PanResponderInstance | null>(null);
+
+  /**
+   * Mark "now" as the last user interaction. Called from every activity
+   * signal (touches, navigation, unlock) so the foreground-idle timer only
+   * fires after a genuinely idle stretch.
+   */
+  const recordInteraction = useCallback(() => {
+    lastInteractionRef.current = Date.now();
+    setIsActive(true);
+  }, []);
+
+  /**
+   * PanResponder to observe touch interactions. Built during render (not in an
+   * effect) so panHandlers are attached to the provider's View on the very
+   * first render — otherwise touches wouldn't reset the idle clock until some
+   * unrelated re-render populated the handlers, letting a freshly active user
+   * be idle-locked from a stale timestamp. The *Capture variants run in the
+   * capture phase (root → target) so the root sees EVERY touch start/move,
+   * including taps on buttons/list items that would otherwise claim the
+   * responder first; returning false observes without stealing the gesture.
+   */
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponderCapture: () => {
+          recordInteraction();
+          return false;
+        },
+        onMoveShouldSetPanResponderCapture: () => {
+          recordInteraction();
+          return false;
+        },
+        onPanResponderTerminationRequest: () => true,
+      }),
+    [recordInteraction],
+  );
 
   /**
    * Check the authentication status and navigate to the lock screen if the auth hash is expired.
@@ -52,9 +97,36 @@ const useAuthCheck = () => {
 
     lastCheckRef.current = now;
     try {
+      // The store action is the single funnel for lock transitions: it
+      // soft-locks atomically when the background auto-lock timer fired
+      // (preserving the mounted screens under the overlay) and navigates to
+      // the lock screen when the hash key hard-expired.
       const status = await getAuthStatus();
-      if (status === AUTH_STATUS.HASH_KEY_EXPIRED) {
-        navigateToLockScreen();
+
+      // Foreground-idle auto-lock: while the app is active, lock after the
+      // configured duration with no user interaction (touches, navigation and
+      // keyboard reset lastInteractionRef via recordInteraction). Background
+      // time is handled by getAuthStatus above; here we cover an open-but-idle
+      // session. Only timed presets idle-lock — IMMEDIATELY (0, background-
+      // only) and NONE (null) are skipped.
+      if (
+        status === AUTH_STATUS.AUTHENTICATED &&
+        AppState.currentState === "active"
+      ) {
+        const autoLockTimer = await getAutoLockTimer();
+        const timerMs = AUTO_LOCK_TIMER_MS[autoLockTimer];
+
+        if (
+          timerMs !== null &&
+          timerMs > 0 &&
+          Date.now() - lastInteractionRef.current >= timerMs
+        ) {
+          // The user stayed in the app and idled out — suppress the lock
+          // screen's biometric auto-prompt for this case.
+          await useAuthenticationStore
+            .getState()
+            .softLock({ suppressBiometricPrompt: true });
+        }
       }
     } catch (error) {
       logger.error(
@@ -63,7 +135,7 @@ const useAuthCheck = () => {
         error,
       );
     }
-  }, [getAuthStatus, navigateToLockScreen, authStatus]);
+  }, [getAuthStatus, authStatus]);
 
   /**
    * Setup a periodic interval to check authentication status based on the current app state and user activity.
@@ -99,11 +171,91 @@ const useAuthCheck = () => {
    */
   useEffect(() => {
     const handleAppStateChange = (nextAppState: AppStateStatus) => {
-      // When returning to active state, allow a slight delay before checking auth
+      // Mirror the native shield: it's raised whenever the app backgrounds, so
+      // the lock screen can hold its biometric prompt until the shield drops.
+      if (nextAppState === "background") {
+        markPrivacyShieldVisible();
+      }
+
+      // Record when the app goes to the background so the auto-lock timer can
+      // be evaluated on the next foreground or cold start. Intentionally NOT
+      // on "inactive": iOS fires it for control center, app-switcher peeks,
+      // permission dialogs and biometric prompts. NOTE: some Android OEMs
+      // emit "background" when their BiometricPrompt appears — worth keeping
+      // in mind if IMMEDIATELY ever misbehaves around in-app biometric
+      // confirmations on specific devices.
+      const { authStatus: currentAuthStatus, softLock } =
+        useAuthenticationStore.getState();
+      if (nextAppState === "background") {
+        // Gate on persisted session data, not only the zustand status: a cold
+        // launch into an existing session can be backgrounded before
+        // RootNavigator's async getAuthStatus sets AUTHENTICATED (the store is
+        // still on its initial NOT_AUTHENTICATED). Treat that unhydrated window
+        // as authenticated when a session exists on disk so the timestamp /
+        // IMMEDIATELY lock still fire. A hydrated LOCKED / HASH_KEY_EXPIRED
+        // status is respected (we don't re-record for an already-locked app).
+        (async () => {
+          const isSessionActive =
+            currentAuthStatus === AUTH_STATUS.AUTHENTICATED ||
+            (currentAuthStatus === AUTH_STATUS.NOT_AUTHENTICATED &&
+              (await hasPersistedSession()));
+
+          if (!isSessionActive) {
+            return;
+          }
+
+          await recordBackgroundedAt();
+
+          // Read from the secure-storage mirror (not the zustand store) so the
+          // IMMEDIATELY lock also fires when backgrounding happens before
+          // zustand rehydration completes.
+          const autoLockTimer = await getAutoLockTimer();
+
+          if (autoLockTimer === AUTO_LOCK_TIMER.IMMEDIATELY) {
+            // Soft-lock right away: the overlay renders while the app is
+            // backgrounded (no wallet content flashes on return) and the
+            // navigation tree is preserved for after the unlock.
+            await softLock();
+          }
+        })().catch((err) =>
+          logger.error(
+            "handleAppStateChange",
+            "Error handling background auto-lock",
+            err,
+          ),
+        );
+      }
+
+      // When returning to active state, resolve the auto-lock decision and
+      // then dismiss the native privacy shield. Running getAuthStatus right
+      // away (instead of only the delayed check below) lets a soft-lock
+      // overlay mount before the shield lifts, so the unlocked wallet never
+      // flashes; the brief delay gives that overlay a frame to paint.
       if (
         appState.current.match(/inactive|background/) &&
         nextAppState === "active"
       ) {
+        useAuthenticationStore
+          .getState()
+          .getAuthStatus()
+          .catch((err) =>
+            logger.error(
+              "handleAppStateChange",
+              "Error checking auth on foreground",
+              err,
+            ),
+          )
+          .finally(() => {
+            setTimeout(() => {
+              // If re-backgrounded before this resolved, the native side
+              // re-showed the shield — don't lift it, or the next resume flashes
+              // the unlocked tree.
+              if (AppState.currentState === "active") {
+                hidePrivacyShield();
+              }
+            }, SHIELD_REVEAL_DELAY);
+          });
+
         setTimeout(() => {
           checkAuth().catch((err) =>
             logger.error("handleAppStateChange", "Error checking auth", err),
@@ -131,6 +283,49 @@ const useAuthCheck = () => {
   }, [setupCheckInterval, checkAuth]);
 
   /**
+   * Reset the idle clock whenever the wallet becomes unlocked. The user is
+   * actively present at unlock, but the lock screen / overlay sits outside
+   * this provider's PanResponder, so its touches don't update
+   * lastInteractionRef — without this the idle timer would still hold its
+   * pre-lock (often already-elapsed) value and immediately re-lock.
+   */
+  useEffect(() => {
+    if (authStatus === AUTH_STATUS.AUTHENTICATED) {
+      recordInteraction();
+    }
+  }, [authStatus, recordInteraction]);
+
+  /**
+   * Treat navigation as user activity. Some controls (gesture-handler-based
+   * buttons, swipeables, bottom sheets) bypass the JS responder system and
+   * never reach the PanResponder below, so a route change is often the only
+   * reliable signal that the user acted — without this a user could move
+   * through several screens and still be idle-locked mid-flow.
+   */
+  useEffect(() => {
+    const unsubscribe = navigationRef.addListener("state", recordInteraction);
+    return unsubscribe;
+  }, [recordInteraction]);
+
+  /**
+   * Keyboard and gesture-handler input don't reach the PanResponder, so count
+   * keyboard show/hide as interaction (otherwise a user entering an amount
+   * could be idle-locked mid-input) and expose recordInteraction via the
+   * userActivity bridge for components outside this tree (e.g. amount inputs).
+   */
+  useEffect(() => {
+    const showSub = Keyboard.addListener("keyboardDidShow", recordInteraction);
+    const hideSub = Keyboard.addListener("keyboardDidHide", recordInteraction);
+    setActivityRecorder(recordInteraction);
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+      setActivityRecorder(null);
+    };
+  }, [recordInteraction]);
+
+  /**
    * Monitor user interaction and update active status accordingly.
    */
   useEffect(() => {
@@ -146,30 +341,13 @@ const useAuthCheck = () => {
   }, []);
 
   /**
-   * Initialize PanResponder to capture touch interactions and update the last interaction timestamp.
+   * Perform an initial auth check after a short delay to avoid navigation race
+   * conditions during setup.
    */
   useEffect(() => {
-    const updateLastInteraction = () => {
-      lastInteractionRef.current = Date.now();
-      setIsActive(true);
-    };
-
-    panResponderRef.current = PanResponder.create({
-      onStartShouldSetPanResponder: () => {
-        updateLastInteraction();
-        return false;
-      },
-      onMoveShouldSetPanResponder: () => {
-        updateLastInteraction();
-        return false;
-      },
-      onPanResponderTerminationRequest: () => true,
-    });
-
-    // Perform an initial auth check after a short delay to avoid navigation race conditions
     const initialCheckTimeout = setTimeout(() => {
       checkAuth().catch((err) =>
-        logger.error("initPanResponder", "Error checking auth", err),
+        logger.error("initialCheck", "Error checking auth", err),
       );
     }, INITIAL_SETUP_DELAY);
 
@@ -189,7 +367,7 @@ const useAuthCheck = () => {
     checkAuthNow,
     isActive,
     authStatus,
-    panHandlers: panResponderRef.current?.panHandlers,
+    panHandlers: panResponder.panHandlers,
   };
 };
 

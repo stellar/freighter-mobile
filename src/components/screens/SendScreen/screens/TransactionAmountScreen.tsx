@@ -65,7 +65,9 @@ import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
-import useGetActiveAccount from "hooks/useGetActiveAccount";
+import useGetActiveAccount, {
+  isWalletUnlocked,
+} from "hooks/useGetActiveAccount";
 import { useInitialRecommendedFee } from "hooks/useInitialRecommendedFee";
 import { useNetworkFees } from "hooks/useNetworkFees";
 import { useRightHeaderButton } from "hooks/useRightHeader";
@@ -317,7 +319,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     });
   };
 
-  const { balanceItems } = useBalancesList({
+  const { balanceItems, isLoading: isLoadingBalances } = useBalancesList({
     publicKey: publicKey ?? "",
     network,
   });
@@ -507,6 +509,19 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   };
 
   useEffect(() => {
+    // Skip until balances AND the active account are loaded. After the app
+    // returns from background, balances refetch and the account reloads
+    // (briefly null during signIn); spendableBalance is 0 without them, which
+    // would flash a false "amount too high" / "insufficient XLM" error + toast.
+    if (
+      isLoadingBalances ||
+      balanceItems.length === 0 ||
+      !account ||
+      !selectedBalance
+    ) {
+      return;
+    }
+
     const currentTokenAmount = BigNumber(tokenAmount);
 
     if (!hasXLMForFees(balanceItems, transactionFee)) {
@@ -559,6 +574,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     tokenAmount,
     spendableBalance,
     balanceItems,
+    isLoadingBalances,
+    account,
     transactionFee,
     transactionHash,
     isCustomToken,
@@ -731,6 +748,11 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       try {
         if (!account?.privateKey || !selectedBalance || !recipientAddress) {
           throw new Error("Missing account or balance information");
+        }
+
+        // Block signing if an auto-lock engaged while on the review sheet
+        if (!isWalletUnlocked()) {
+          throw new Error("Wallet is locked");
         }
 
         const { privateKey } = account;

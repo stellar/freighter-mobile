@@ -964,6 +964,7 @@
   "securityScreen": {
     "title": "Security",
     "showRecoveryPhrase": "Show recovery phrase",
+    "autoLock": "Auto-lock",
     "faceId": {
       "title": "Face ID authentication",
       "description": "Enable Face ID for an added layer of security. Use biometric authentication to unlock your wallet and approve transactions quickly and securely.",
@@ -1006,6 +1007,20 @@
       "disableAlertTitle": "Disable Iris?",
       "disableAlertMessage": "Are you sure you want to disable Iris?"
     }
+  },
+  "autoLockTimerScreen": {
+    "title": "Auto-Lock Timer",
+    "options": {
+      "immediately": "Immediately",
+      "oneMinute": "1 minute",
+      "fifteenMinutes": "15 minutes",
+      "thirtyMinutes": "30 minutes",
+      "oneHour": "1 hour",
+      "twelveHours": "12 hours",
+      "twentyFourHours": "24 hours",
+      "none": "None"
+    },
+    "footer": "After a set time, you will be prompted for your password again as an extra security measure."
   },
   "showRecoveryPhraseScreen": {
     "title": "Show Recovery Phrase",

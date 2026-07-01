@@ -51,7 +51,9 @@ import { isMuxedAccount } from "helpers/stellar";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
-import useGetActiveAccount from "hooks/useGetActiveAccount";
+import useGetActiveAccount, {
+  isWalletUnlocked,
+} from "hooks/useGetActiveAccount";
 import { useInitialRecommendedFee } from "hooks/useInitialRecommendedFee";
 import { useNetworkFees } from "hooks/useNetworkFees";
 import { useRightHeaderButton } from "hooks/useRightHeader";
@@ -359,6 +361,13 @@ const SendCollectibleReviewScreen: React.FC<
       try {
         if (!account?.privateKey || !selectedCollectible || !recipientAddress) {
           throw new Error("Missing account or collectible information");
+        }
+
+        // Refuse to sign if the wallet locked between opening the review sheet
+        // and confirming (e.g. an IMMEDIATELY auto-lock fired) — every other
+        // signing path enforces the same guard.
+        if (!isWalletUnlocked()) {
+          throw new Error("Wallet is locked");
         }
 
         const { privateKey } = account;

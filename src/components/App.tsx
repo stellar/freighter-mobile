@@ -5,6 +5,7 @@ import {
 } from "@react-navigation/native";
 import * as Sentry from "@sentry/react-native";
 import { AuthErrorToastListener } from "components/AuthErrorToastListener";
+import { LockScreenOverlay } from "components/LockScreenOverlay";
 import { initializeSentryLogger } from "config/logger";
 import { NAVIGATION_THEME } from "config/navigationTheme";
 import { RootStackParamList } from "config/routes";
@@ -88,6 +89,12 @@ export const App = (): React.JSX.Element => {
                 </NavigationContainer>
               </I18nextProvider>
             </BottomSheetModalProvider>
+            {/* Soft-lock overlay: rendered after the bottom sheet provider so
+                it covers open sheets, keeping the navigation tree mounted
+                underneath for after the unlock. */}
+            <I18nextProvider i18n={i18n}>
+              <LockScreenOverlay />
+            </I18nextProvider>
           </ToastProvider>
         </SafeAreaProvider>
       </GestureHandlerRootView>

@@ -3,6 +3,7 @@ import { CLASSIC_TOKEN_MAX_AMOUNT, DEFAULT_DECIMALS } from "config/constants";
 import { PricedBalance } from "config/types";
 import { hasDecimals } from "helpers/balances";
 import { formatBigNumberForDisplay } from "helpers/formatAmount";
+import { recordUserActivity } from "helpers/userActivity";
 import {
   createTokenFiatConverterReducer,
   initialState,
@@ -269,6 +270,10 @@ export const useTokenFiatConverter = ({
   }, []);
 
   const setDisplayAmountFromText = useCallback((text: string) => {
+    // System-keyboard keystrokes don't reach the app-wide PanResponder, so
+    // record activity here to keep the foreground-idle auto-lock from firing
+    // while the user is actively entering a send/swap amount.
+    recordUserActivity();
     dispatch({
       type: TokenFiatConverterActionType.SET_DISPLAY_AMOUNT_FROM_TEXT,
       payload: { text },
