@@ -68,7 +68,7 @@ import { type HeldBalanceItem, useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useInitialRecommendedFee } from "hooks/useInitialRecommendedFee";
-import { useNetworkFees } from "hooks/useNetworkFees";
+import { clearNetworkFeesCache, useNetworkFees } from "hooks/useNetworkFees";
 import { useTokenFiatConverter } from "hooks/useTokenFiatConverter";
 import { useToast } from "providers/ToastProvider";
 import React, {
@@ -132,7 +132,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     network,
   });
 
-  const { recommendedFee } = useNetworkFees();
+  const { recommendedFee, networkCongestion } = useNetworkFees();
 
   const {
     sourceTokenId,
@@ -411,6 +411,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     hasEnteredSourceAmount ? "" : recommendedFee,
     TransactionContext.Swap,
     swapOperationCount,
+    networkCongestion,
   );
 
   const {
@@ -694,12 +695,14 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     xlmReserveBottomSheetRef,
   ]);
 
-  // Reset everything on unmount
+  // Reset everything on unmount (incl. the frozen network-fee snapshot, so the
+  // next flow re-fetches fresh values).
   useEffect(
     () => () => {
       resetSwap();
       resetTransaction();
       resetToDefaults();
+      clearNetworkFeesCache();
       setActiveError(null);
     },
     [resetSwap, resetTransaction, resetToDefaults, setActiveError],

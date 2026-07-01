@@ -1,8 +1,5 @@
-import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import BigNumber from "bignumber.js";
-import BottomSheet from "components/BottomSheet";
 import { CollectibleImage } from "components/CollectibleImage";
-import FeeBreakdownBottomSheet from "components/FeeBreakdownBottomSheet";
 import { List, ListItemProps } from "components/List";
 import { TokenIcon } from "components/TokenIcon";
 import SignTransactionDetails from "components/screens/SignTransactionDetails";
@@ -31,8 +28,9 @@ import {
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
+import { useFeeDetailsBottomSheet } from "hooks/useFeeDetailsBottomSheet";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React, { useCallback, useMemo, useRef } from "react";
+import React, { useCallback, useMemo } from "react";
 import { ActivityIndicator, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -112,22 +110,9 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
     transactionXDR,
     isBuilding,
     error,
-    isSoroban,
-    sorobanResourceFeeXlm,
     sorobanInclusionFeeXlm,
+    sorobanResourceFeeXlm,
   } = useTransactionBuilderStore();
-
-  const feeBreakdownSheetRef = useRef<BottomSheetModal>(null);
-
-  const handleOpenFeeBreakdown = useCallback(() => {
-    feeBreakdownSheetRef.current?.present();
-  }, []);
-
-  const totalFeeXlm = computeTotalFeeXlm(
-    sorobanInclusionFeeXlm,
-    sorobanResourceFeeXlm,
-    transactionFee,
-  );
 
   // Derived from current context (collectible or Soroban token/address) rather
   // than the builder store so the fee breakdown sheet shows Soroban rows and
@@ -135,6 +120,19 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
   const isSorobanContext =
     type === SendType.Collectible ||
     isSorobanTransaction(selectedBalance, recipientAddress);
+
+  const effectiveInclusionFeeXlm = sorobanInclusionFeeXlm ?? transactionFee;
+
+  // Match FeeBreakdownBottomSheet: review sheet should show total fee.
+  const totalFeeXlm = computeTotalFeeXlm(
+    sorobanInclusionFeeXlm,
+    sorobanResourceFeeXlm,
+    effectiveInclusionFeeXlm,
+  );
+
+  const { openFeeDetails, feeDetailsSheets } = useFeeDetailsBottomSheet({
+    isSorobanContext,
+  });
 
   // Use amountError from props (calculated in parent component)
   const amountError = propAmountError;
@@ -293,8 +291,10 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
               ),
             }
           : undefined,
-        // Single fee row — total fee on the right with an info icon that opens
-        // FeeBreakdownBottomSheet (where the inclusion/resource split lives).
+        // Fee row — shows the total fee (matching FeeBreakdownBottomSheet).
+        // The info icon opens the breakdown for Soroban
+        // (inclusion/resource/total) or a plain fee info sheet for classic
+        // transactions.
         {
           icon: <Icon.Route size={16} color={themeColors.foreground.primary} />,
           title: t("transactionAmountScreen.details.fee"),
@@ -306,15 +306,13 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
             />
           ) : (
             <View className="flex-row items-center gap-[8px]">
-              {isSoroban && (
-                <TouchableOpacity
-                  onPress={handleOpenFeeBreakdown}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  className="mt-[2px]"
-                >
-                  <Icon.InfoCircle themeColor="gray" size={16} />
-                </TouchableOpacity>
-              )}
+              <TouchableOpacity
+                onPress={openFeeDetails}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                className="mt-[2px]"
+              >
+                <Icon.InfoCircle themeColor="gray" size={16} />
+              </TouchableOpacity>
               <Text md primary>
                 {formatTokenForDisplay(totalFeeXlm, NATIVE_TOKEN_CODE)}
               </Text>
@@ -356,9 +354,8 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
       account?.publicKey,
       error,
       handleCopyXdr,
-      handleOpenFeeBreakdown,
+      openFeeDetails,
       isBuilding,
-      isSoroban,
       renderMemoTitle,
       renderXdrContent,
       t,
@@ -443,16 +440,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
           analyticsEvent={AnalyticsEvent.VIEW_SEND_TRANSACTION_DETAILS}
         />
       )}
-      <BottomSheet
-        modalRef={feeBreakdownSheetRef}
-        handleCloseModal={() => feeBreakdownSheetRef.current?.dismiss()}
-        customContent={
-          <FeeBreakdownBottomSheet
-            onClose={() => feeBreakdownSheetRef.current?.dismiss()}
-            isSorobanContext={isSorobanContext}
-          />
-        }
-      />
+      {feeDetailsSheets}
     </View>
   );
 };

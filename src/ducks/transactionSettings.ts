@@ -2,6 +2,7 @@ import {
   DEFAULT_TRANSACTION_TIMEOUT,
   MIN_TRANSACTION_FEE,
 } from "config/constants";
+import { FeePriority } from "config/types";
 import { create } from "zustand";
 
 const INITIAL_TRANSACTION_SETTINGS_STATE = {
@@ -18,6 +19,10 @@ const INITIAL_TRANSACTION_SETTINGS_STATE = {
     tokenId: "",
   },
   feeManuallyChanged: false,
+  // The selected fee priority tier (Low/Med/High/Custom). Stored as
+  // first-class state so the sheet shows the user's actual choice rather than
+  // reverse-deriving it from the fee amount (which drifts as presets refetch).
+  feePriority: FeePriority.MEDIUM,
 };
 
 /**
@@ -61,6 +66,7 @@ interface TransactionSettingsState {
     tokenId: string;
   };
   feeManuallyChanged: boolean;
+  feePriority: FeePriority;
 
   saveMemo: (memo: string) => void;
   saveMemoType: (memoType: string) => void;
@@ -75,6 +81,7 @@ interface TransactionSettingsState {
     tokenId: string;
   }) => void;
   markFeeManuallyChanged: () => void;
+  saveFeePriority: (feePriority: FeePriority) => void;
   resetSettings: () => void;
 }
 
@@ -150,6 +157,12 @@ export const useTransactionSettingsStore = create<TransactionSettingsState>(
      * overwrites when the recommended fee updates.
      */
     markFeeManuallyChanged: () => set({ feeManuallyChanged: true }),
+
+    /**
+     * Saves the selected fee priority tier (Low/Med/High/Custom)
+     * @param {FeePriority} feePriority - The selected priority tier
+     */
+    saveFeePriority: (feePriority) => set({ feePriority }),
 
     /**
      * Resets all transaction settings to their default values

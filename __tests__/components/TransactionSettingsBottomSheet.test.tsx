@@ -28,6 +28,8 @@ jest.mock("ducks/swapSettings", () => ({
     saveSwapFee: jest.fn(),
     saveSwapTimeout: jest.fn(),
     saveSwapSlippage: jest.fn(),
+    feePriority: "medium",
+    saveFeePriority: jest.fn(),
   })),
 }));
 jest.mock("hooks/useInitialRecommendedFee", () => ({
@@ -48,18 +50,29 @@ jest.mock("hooks/useColors", () => ({
       foreground: { primary: "#000000" },
       gray: { 8: "#666666" },
       status: { error: "#ff0000", warning: "#ffaa00" },
-      background: { primary: "#ffffff" },
+      background: { primary: "#ffffff", tertiary: "#f0f0f0" },
+      text: { secondary: "#999999" },
       lilac: {
         9: "#6e56cf",
+        11: "#9d8bff",
       },
     },
   }),
 }));
+// Mutable so a test can simulate the fees changing (e.g. a re-fetch on flow
+// re-entry) and assert the tier doesn't flicker.
+const mockDefaultNetworkFees = {
+  recommendedFee: "100",
+  networkCongestion: "Low",
+  feePresets: {
+    low: "0.0001",
+    medium: "0.001",
+    high: "0.01",
+  },
+};
+let mockNetworkFees = mockDefaultNetworkFees;
 jest.mock("hooks/useNetworkFees", () => ({
-  useNetworkFees: () => ({
-    recommendedFee: "100",
-    networkCongestion: "LOW",
-  }),
+  useNetworkFees: () => mockNetworkFees,
 }));
 jest.mock("hooks/useValidateMemo", () => ({
   useValidateMemo: () => ({ error: null }),
@@ -82,6 +95,18 @@ jest.mock("@gorhom/bottom-sheet", () => ({
 jest.mock("helpers/soroban", () => ({
   isContractId: jest.fn(),
   isSorobanTransaction: jest.fn(),
+  computeTotalFeeXlm: jest.fn(() => "0"),
+}));
+
+// The fee info icon mounts FeeBreakdownBottomSheet (via useFeeDetailsBottomSheet),
+// which reads the transaction builder store.
+jest.mock("ducks/transactionBuilder", () => ({
+  useTransactionBuilderStore: jest.fn(() => ({
+    sorobanResourceFeeXlm: null,
+    sorobanInclusionFeeXlm: null,
+    isBuilding: false,
+    error: null,
+  })),
 }));
 
 jest.mock("services/backend", () => ({
@@ -137,9 +162,11 @@ describe("TransactionSettingsBottomSheet - onSettingsChange Integration", () => 
       collectionAddress: "",
       tokenId: "",
     },
+    feePriority: "medium",
     saveMemo: jest.fn(),
     saveTransactionFee: jest.fn(),
     saveTransactionTimeout: jest.fn(),
+    saveFeePriority: jest.fn(),
     saveRecipientAddress: jest.fn(),
     saveSelectedTokenId: jest.fn(),
     saveSelectedCollectibleDetails: jest.fn(),
@@ -148,6 +175,7 @@ describe("TransactionSettingsBottomSheet - onSettingsChange Integration", () => 
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockNetworkFees = mockDefaultNetworkFees;
     mockUseTransactionSettingsStore.mockReturnValue(
       mockTransactionSettingsState,
     );
@@ -289,6 +317,258 @@ describe("TransactionSettingsBottomSheet - onSettingsChange Integration", () => 
       "Required memo for GA6SXIZIKLJHCZI2KEOBEUUOFMM4JUPPM2UTWX6STAWT25JWIEUFIMFF",
     );
   });
+
+  it("sets the fee to the High preset when the High tab is pressed", async () => {
+    const { getByText } = renderWithProviders(
+      <TransactionSettingsBottomSheet
+        onCancel={mockOnCancel}
+        onConfirm={mockOnConfirm}
+        context={TransactionContext.Send}
+        onSettingsChange={mockOnSettingsChange}
+      />,
+    );
+
+    fireEvent.press(getByText("transactionSettings.priorityHigh"));
+    fireEvent.press(getByText("common.save"));
+
+    await waitFor(() => {
+      expect(
+        mockTransactionSettingsState.saveTransactionFee,
+      ).toHaveBeenCalledWith("0.01");
+      // The chosen tier is persisted so it survives refetches and re-entry.
+      expect(mockTransactionSettingsState.saveFeePriority).toHaveBeenCalledWith(
+        "high",
+      );
+    });
+  });
+
+  it("sets the fee to the Low preset when the Low tab is pressed", async () => {
+    const { getByText } = renderWithProviders(
+      <TransactionSettingsBottomSheet
+        onCancel={mockOnCancel}
+        onConfirm={mockOnConfirm}
+        context={TransactionContext.Send}
+        onSettingsChange={mockOnSettingsChange}
+      />,
+    );
+
+    fireEvent.press(getByText("transactionSettings.priorityLow"));
+    fireEvent.press(getByText("common.save"));
+
+    await waitFor(() => {
+      expect(
+        mockTransactionSettingsState.saveTransactionFee,
+      ).toHaveBeenCalledWith("0.0001");
+      expect(mockTransactionSettingsState.saveFeePriority).toHaveBeenCalledWith(
+        "low",
+      );
+    });
+  });
+
+  it("does not switch to preset tiers before fee presets are loaded", async () => {
+    mockNetworkFees = {
+      ...mockDefaultNetworkFees,
+      feePresets: {
+        low: "",
+        medium: "",
+        high: "",
+      },
+    };
+
+    const { getByText } = renderWithProviders(
+      <TransactionSettingsBottomSheet
+        onCancel={mockOnCancel}
+        onConfirm={mockOnConfirm}
+        context={TransactionContext.Send}
+        onSettingsChange={mockOnSettingsChange}
+      />,
+    );
+
+    // Preset selection is ignored until presets are available.
+    fireEvent.press(getByText("transactionSettings.priorityHigh"));
+    fireEvent.press(getByText("common.save"));
+
+    await waitFor(() => {
+      expect(mockTransactionSettingsState.saveFeePriority).toHaveBeenCalledWith(
+        "medium",
+      );
+    });
+  });
+
+  it("scales the preset fee by operationCount (saves the total across ops)", async () => {
+    // Default tier is Med; the Medium preset is 0.001. A 2-op transaction
+    // (e.g. swap-to-new-token) stores the total: 0.001 × 2 = 0.002.
+    const { getByText } = renderWithProviders(
+      <TransactionSettingsBottomSheet
+        onCancel={mockOnCancel}
+        onConfirm={mockOnConfirm}
+        context={TransactionContext.Send}
+        onSettingsChange={mockOnSettingsChange}
+        operationCount={2}
+      />,
+    );
+
+    fireEvent.press(getByText("common.save"));
+
+    await waitFor(() => {
+      expect(
+        mockTransactionSettingsState.saveTransactionFee,
+      ).toHaveBeenCalledWith("0.002");
+    });
+  });
+
+  it("locks the fee input for presets and unlocks it for Custom", async () => {
+    const { getByText, getByTestId } = renderWithProviders(
+      <TransactionSettingsBottomSheet
+        onCancel={mockOnCancel}
+        onConfirm={mockOnConfirm}
+        context={TransactionContext.Send}
+        onSettingsChange={mockOnSettingsChange}
+      />,
+    );
+
+    // The fee hasn't been manually changed, so the default tier is Med and the
+    // input is locked.
+    expect(getByTestId("fee-input").props.editable).toBe(false);
+
+    // "Custom" unlocks the input for manual entry.
+    fireEvent.press(getByText("transactionSettings.priorityCustom"));
+    await waitFor(() => {
+      expect(getByTestId("fee-input").props.editable).toBe(true);
+    });
+
+    // Selecting a preset locks it again.
+    fireEvent.press(getByText("transactionSettings.priorityLow"));
+    await waitFor(() => {
+      expect(getByTestId("fee-input").props.editable).toBe(false);
+    });
+  });
+
+  it("opening the fee details does not persist the fee (preview only)", async () => {
+    mockIsContractId.mockReturnValue(true);
+
+    const { getByText, getByTestId } = renderWithProviders(
+      <TransactionSettingsBottomSheet
+        onCancel={mockOnCancel}
+        onConfirm={mockOnConfirm}
+        context={TransactionContext.Send}
+        onSettingsChange={mockOnSettingsChange}
+      />,
+    );
+
+    // Pick the High preset, then open the fee details via the info icon.
+    fireEvent.press(getByText("transactionSettings.priorityHigh"));
+    fireEvent.press(getByTestId("fee-info-button"));
+
+    // The fee is only persisted on Save, not when opening the details.
+    await waitFor(() => {
+      expect(
+        mockTransactionSettingsState.saveTransactionFee,
+      ).not.toHaveBeenCalled();
+    });
+  });
+
+  it("opens on the stored fee priority tier (preset → input locked)", async () => {
+    // The sheet reflects the persisted tier directly — a stored High tier opens
+    // locked, regardless of how the fee amount compares to the current presets.
+    mockUseTransactionSettingsStore.mockReturnValue({
+      ...mockTransactionSettingsState,
+      feePriority: "high",
+    });
+
+    const { getByTestId } = renderWithProviders(
+      <TransactionSettingsBottomSheet
+        onCancel={mockOnCancel}
+        onConfirm={mockOnConfirm}
+        context={TransactionContext.Send}
+        onSettingsChange={mockOnSettingsChange}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(getByTestId("fee-input").props.editable).toBe(false);
+    });
+  });
+
+  it("opens editable when the stored tier is Custom", async () => {
+    mockUseTransactionSettingsStore.mockReturnValue({
+      ...mockTransactionSettingsState,
+      feePriority: "custom",
+    });
+
+    const { getByTestId } = renderWithProviders(
+      <TransactionSettingsBottomSheet
+        onCancel={mockOnCancel}
+        onConfirm={mockOnConfirm}
+        context={TransactionContext.Send}
+        onSettingsChange={mockOnSettingsChange}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(getByTestId("fee-input").props.editable).toBe(true);
+    });
+  });
+
+  it("follows the stored tier when it updates before the user interacts", async () => {
+    // Stored tier starts Custom (editable); then the store updates (e.g. the
+    // frozen congestion snapshot lands) and the tab follows + locks the input.
+    mockUseTransactionSettingsStore.mockReturnValue({
+      ...mockTransactionSettingsState,
+      feePriority: "custom",
+    });
+    const props = {
+      onCancel: mockOnCancel,
+      onConfirm: mockOnConfirm,
+      context: TransactionContext.Send,
+      onSettingsChange: mockOnSettingsChange,
+    };
+    const { getByTestId, rerender } = renderWithProviders(
+      <TransactionSettingsBottomSheet {...props} />,
+    );
+    await waitFor(() => {
+      expect(getByTestId("fee-input").props.editable).toBe(true);
+    });
+
+    mockUseTransactionSettingsStore.mockReturnValue({
+      ...mockTransactionSettingsState,
+      feePriority: "high",
+    });
+    rerender(<TransactionSettingsBottomSheet {...props} />);
+
+    await waitFor(() => {
+      expect(getByTestId("fee-input").props.editable).toBe(false);
+    });
+  });
+
+  it("keeps the selected tier when network presets change (no flicker to Custom)", async () => {
+    // Stored tier is Med (locked input).
+    const props = {
+      onCancel: mockOnCancel,
+      onConfirm: mockOnConfirm,
+      context: TransactionContext.Send,
+      onSettingsChange: mockOnSettingsChange,
+    };
+    const { getByTestId, rerender } = renderWithProviders(
+      <TransactionSettingsBottomSheet {...props} />,
+    );
+
+    await waitFor(() => {
+      expect(getByTestId("fee-input").props.editable).toBe(false);
+    });
+
+    // Fees change underfoot (e.g. a refetch on flow re-entry).
+    mockNetworkFees = {
+      ...mockDefaultNetworkFees,
+      feePresets: { low: "0.0002", medium: "0.0021", high: "0.02" },
+    };
+    rerender(<TransactionSettingsBottomSheet {...props} />);
+
+    // The tier stays Med (input still locked) — it does NOT flip to Custom.
+    await waitFor(() => {
+      expect(getByTestId("fee-input").props.editable).toBe(false);
+    });
+  });
 });
 
 describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
@@ -308,9 +588,11 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
       collectionAddress: "",
       tokenId: "",
     },
+    feePriority: "medium",
     saveMemo: jest.fn(),
     saveTransactionFee: jest.fn(),
     saveTransactionTimeout: jest.fn(),
+    saveFeePriority: jest.fn(),
     saveRecipientAddress: jest.fn(),
     saveSelectedTokenId: jest.fn(),
     saveSelectedCollectibleDetails: jest.fn(),

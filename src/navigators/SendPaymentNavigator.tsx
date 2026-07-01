@@ -19,7 +19,8 @@ import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { withTransitionOverride } from "helpers/navigationOptions";
 import useAppTranslation from "hooks/useAppTranslation";
-import React from "react";
+import { clearNetworkFeesCache, useNetworkFees } from "hooks/useNetworkFees";
+import React, { useEffect } from "react";
 
 const SendPaymentStack =
   createNativeStackNavigator<SendPaymentStackParamList>();
@@ -48,6 +49,24 @@ const closeSendFlow = (
 
 export const SendPaymentStackNavigator = () => {
   const { t } = useAppTranslation();
+
+  // Prewarm the network-fee snapshot on flow entry so the amount/settings
+  // screens read frozen values from cache instead of fetching (and flickering)
+  // once they're reached.
+  useNetworkFees();
+
+  // Reset send-flow state when the whole flow unmounts, so EVERY exit path
+  // (X, hardware/gesture back, or programmatic) leaves a clean slate. Also clear
+  // the frozen network-fee snapshot so the next flow re-fetches fresh values.
+  useEffect(
+    () => () => {
+      useSendRecipientStore.getState().resetSendRecipient();
+      useTransactionSettingsStore.getState().resetSettings();
+      useTransactionBuilderStore.getState().resetTransaction();
+      clearNetworkFeesCache();
+    },
+    [],
+  );
 
   return (
     <SendPaymentStack.Navigator

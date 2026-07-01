@@ -3,7 +3,6 @@ import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import BottomSheet from "components/BottomSheet";
 import { CollectibleImage } from "components/CollectibleImage";
-import FeeBreakdownBottomSheet from "components/FeeBreakdownBottomSheet";
 import { IconButton } from "components/IconButton";
 import InformationBottomSheet from "components/InformationBottomSheet";
 import { List, ListItemProps } from "components/List";
@@ -104,9 +103,14 @@ const SendCollectibleReviewScreen: React.FC<
     }
   }, [tokenId, collectionAddress, saveSelectedCollectibleDetails]);
 
-  const { recommendedFee } = useNetworkFees();
+  const { recommendedFee, networkCongestion } = useNetworkFees();
 
-  useInitialRecommendedFee(recommendedFee, TransactionContext.Send);
+  useInitialRecommendedFee(
+    recommendedFee,
+    TransactionContext.Send,
+    1,
+    networkCongestion,
+  );
 
   const {
     buildSendCollectibleTransaction,
@@ -135,7 +139,6 @@ const SendCollectibleReviewScreen: React.FC<
   const [isProcessing, setIsProcessing] = useState(false);
   const addMemoExplanationBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const transactionSettingsBottomSheetModalRef = useRef<BottomSheetModal>(null);
-  const feeBreakdownBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const muxedAddressInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [transactionScanResult, setTransactionScanResult] = useState<
     Blockaid.StellarTransactionScanResponse | undefined
@@ -210,8 +213,16 @@ const SendCollectibleReviewScreen: React.FC<
   );
 
   useEffect(() => {
+    let isCancelled = false;
+
     const checkContract = async () => {
-      if (!collectionAddress || !recipientAddress || !network) {
+      // Contract muxed support only matters for M-address recipients.
+      if (
+        !isRecipientMuxed ||
+        !collectionAddress ||
+        !recipientAddress ||
+        !network
+      ) {
         setContractSupportsMuxed(null);
         return;
       }
@@ -222,15 +233,24 @@ const SendCollectibleReviewScreen: React.FC<
           contractId: collectionAddress,
           networkDetails,
         });
-        setContractSupportsMuxed(supportsMuxed);
+
+        if (!isCancelled) {
+          setContractSupportsMuxed(supportsMuxed);
+        }
       } catch (error) {
         // On error, assume no support for safety
-        setContractSupportsMuxed(false);
+        if (!isCancelled) {
+          setContractSupportsMuxed(false);
+        }
       }
     };
 
     checkContract();
-  }, [collectionAddress, recipientAddress, network]);
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [collectionAddress, recipientAddress, network, isRecipientMuxed]);
 
   // Determine if M address + contract doesn't support muxed
   const isMuxedAddressWithoutMemoSupport = Boolean(
@@ -692,21 +712,6 @@ const SendCollectibleReviewScreen: React.FC<
             onCancel={handleCancelTransactionSettings}
             onConfirm={handleConfirmTransactionSettings}
             onSettingsChange={handleSettingsChange}
-            onOpenFeeBreakdown={() =>
-              feeBreakdownBottomSheetModalRef.current?.present()
-            }
-          />
-        }
-      />
-      <BottomSheet
-        modalRef={feeBreakdownBottomSheetModalRef}
-        handleCloseModal={() =>
-          feeBreakdownBottomSheetModalRef.current?.dismiss()
-        }
-        customContent={
-          <FeeBreakdownBottomSheet
-            onClose={() => feeBreakdownBottomSheetModalRef.current?.dismiss()}
-            isSorobanContext
           />
         }
       />

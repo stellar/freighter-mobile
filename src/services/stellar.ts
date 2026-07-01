@@ -9,15 +9,20 @@ import {
   rpc,
 } from "@stellar/stellar-sdk";
 import {
-  DEFAULT_RECOMMENDED_STELLAR_FEE,
   DEFAULT_TRANSACTION_TIMEOUT,
   mapNetworkToNetworkDetails,
+  MIN_TRANSACTION_FEE,
   NATIVE_TOKEN_CODE,
   NETWORKS,
   SOROBAN_RPC_URLS,
 } from "config/constants";
 import { logger } from "config/logger";
-import { NetworkCongestion } from "config/types";
+import {
+  CONGESTION_TO_FEE_PRIORITY,
+  FeePresets,
+  FeePriority,
+  NetworkCongestion,
+} from "config/types";
 import { formatTokenIdentifier } from "helpers/balances";
 import { stroopToXlm, xlmToStroop } from "helpers/formatAmount";
 import { getIsSwap } from "helpers/history";
@@ -25,6 +30,10 @@ import { getIsSwap } from "helpers/history";
 // Retry configuration for transaction submission
 export const SUBMIT_BACKOFF_MAX_ATTEMPTS = 5;
 export const BASE_BACKOFF_SEC = 1000; // Base delay in milliseconds
+
+// Ledger capacity usage thresholds (0-1) that map to network congestion levels.
+const LEDGER_CAPACITY_MEDIUM_THRESHOLD = 0.5;
+const LEDGER_CAPACITY_HIGH_THRESHOLD = 0.75;
 
 interface HorizonError {
   response: {
@@ -167,27 +176,57 @@ export const submitTx = async (
 export const getNetworkFees = async (server: Horizon.Server) => {
   let recommendedFee = "";
   let networkCongestion = "" as NetworkCongestion;
+  // Inclusion-fee presets (XLM) for the Low/Med/High priority tiers, derived
+  // from the Horizon `max_fee` percentile distribution. Defaults are in XLM
+  // (the network minimum) — NOT raw stroops — since every consumer treats these
+  // as XLM and converts to stroops at build time.
+  let feePresets: FeePresets = {
+    [FeePriority.LOW]: MIN_TRANSACTION_FEE,
+    [FeePriority.MEDIUM]: MIN_TRANSACTION_FEE,
+    [FeePriority.HIGH]: MIN_TRANSACTION_FEE,
+  };
+
+  const safePresetFee = (percentile: string): string => {
+    if (!Number.isFinite(Number(percentile))) {
+      return MIN_TRANSACTION_FEE;
+    }
+
+    const xlmFee = stroopToXlm(percentile).toFixed();
+    return Number.isFinite(Number(xlmFee)) ? xlmFee : MIN_TRANSACTION_FEE;
+  };
 
   try {
     const { max_fee: maxFee, ledger_capacity_usage: ledgerCapacityUsage } =
       await server.feeStats();
     const ledgerCapacityUsageNum = Number(ledgerCapacityUsage);
 
-    recommendedFee = stroopToXlm(maxFee.mode).toFixed();
-    if (ledgerCapacityUsageNum > 0.5 && ledgerCapacityUsageNum <= 0.75) {
+    feePresets = {
+      [FeePriority.LOW]: safePresetFee(maxFee.p10),
+      [FeePriority.MEDIUM]: safePresetFee(maxFee.p50),
+      [FeePriority.HIGH]: safePresetFee(maxFee.p90),
+    };
+
+    if (
+      ledgerCapacityUsageNum > LEDGER_CAPACITY_MEDIUM_THRESHOLD &&
+      ledgerCapacityUsageNum <= LEDGER_CAPACITY_HIGH_THRESHOLD
+    ) {
       networkCongestion = NetworkCongestion.MEDIUM;
-    } else if (ledgerCapacityUsageNum > 0.75) {
+    } else if (ledgerCapacityUsageNum > LEDGER_CAPACITY_HIGH_THRESHOLD) {
       networkCongestion = NetworkCongestion.HIGH;
     } else {
       networkCongestion = NetworkCongestion.LOW;
     }
+
+    // Recommended (default) fee = the preset matching current congestion (1:1).
+    recommendedFee = feePresets[CONGESTION_TO_FEE_PRIORITY[networkCongestion]];
   } catch (e) {
-    // use default values
-    recommendedFee = DEFAULT_RECOMMENDED_STELLAR_FEE;
+    // Fall back to the network minimum (XLM); presets stay at their XLM
+    // defaults set above.
+    recommendedFee = MIN_TRANSACTION_FEE;
     networkCongestion = NetworkCongestion.LOW;
   }
 
-  return { recommendedFee, networkCongestion };
+  return { recommendedFee, networkCongestion, feePresets };
 };
 
 /** Builds a single `changeTrust` operation for a classic asset. */

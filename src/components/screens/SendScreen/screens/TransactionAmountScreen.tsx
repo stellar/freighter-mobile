@@ -4,7 +4,6 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { BigNumber } from "bignumber.js";
 import { AmountCard } from "components/AmountCard";
 import BottomSheet from "components/BottomSheet";
-import FeeBreakdownBottomSheet from "components/FeeBreakdownBottomSheet";
 import InformationBottomSheet from "components/InformationBottomSheet";
 import MuxedAddressWarningBottomSheet from "components/MuxedAddressWarningBottomSheet";
 import { PercentageButtons } from "components/PercentageButtons";
@@ -171,7 +170,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     useValidateTransactionMemo(transactionXDR);
 
   const { scanTransaction } = useBlockaidTransaction();
-  const { recommendedFee } = useNetworkFees();
+  const { recommendedFee, networkCongestion } = useNetworkFees();
 
   const publicKey = account?.publicKey;
   const amountInputRef = useRef<TextInput>(null);
@@ -220,7 +219,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   }, [transactionBuilderError, showToast]);
   const addMemoExplanationBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const transactionSettingsBottomSheetModalRef = useRef<BottomSheetModal>(null);
-  const feeBreakdownBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const muxedAddressInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [transactionScanResult, setTransactionScanResult] = useState<
     Blockaid.StellarTransactionScanResponse | undefined
@@ -420,6 +418,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   useInitialRecommendedFee(
     hasEnteredAmount ? "" : recommendedFee,
     TransactionContext.Send,
+    1,
+    networkCongestion,
   );
 
   const unfundedContext: UnfundedDestinationContext | undefined = useMemo(
@@ -1106,24 +1106,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             onCancel={handleCancelTransactionSettings}
             onConfirm={handleConfirmTransactionSettings}
             onSettingsChange={handleSettingsChange}
-            onOpenFeeBreakdown={() =>
-              feeBreakdownBottomSheetModalRef.current?.present()
-            }
-          />
-        }
-      />
-      <BottomSheet
-        modalRef={feeBreakdownBottomSheetModalRef}
-        handleCloseModal={() =>
-          feeBreakdownBottomSheetModalRef.current?.dismiss()
-        }
-        customContent={
-          <FeeBreakdownBottomSheet
-            onClose={() => feeBreakdownBottomSheetModalRef.current?.dismiss()}
-            isSorobanContext={isSorobanTransaction(
-              selectedBalance,
-              recipientAddress,
-            )}
           />
         }
       />

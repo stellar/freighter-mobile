@@ -247,6 +247,8 @@ const setupDefaultMocks = () => {
     transactionMemo: "",
     transactionFee: "0.00001",
     transactionTimeout: 30,
+    feePriority: "low",
+    feeManuallyChanged: false,
     recipientAddress: mockRecipientAddress,
     selectedTokenId: "",
     selectedCollectibleDetails: {
@@ -255,6 +257,8 @@ const setupDefaultMocks = () => {
     },
     saveMemo: jest.fn(),
     saveTransactionFee: jest.fn(),
+    saveFeePriority: jest.fn(),
+    markFeeManuallyChanged: jest.fn(),
     saveTransactionTimeout: jest.fn(),
     saveRecipientAddress: jest.fn(),
     saveSelectedTokenId: jest.fn(),

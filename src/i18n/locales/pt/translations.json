@@ -667,6 +667,11 @@
     "timeoutPlaceholder": "Digite o tempo limite",
     "seconds": "segundos",
     "congestion": "Congestionamento {{networkCongestion}}",
+    "network": "Rede",
+    "priorityLow": "Baixa",
+    "priorityMed": "Méd",
+    "priorityHigh": "Alta",
+    "priorityCustom": "Personalizada",
     "memoInfo": {
       "title": "Memo",
       "description": "Algumas contas de destino na rede Stellar requerem um memo para identificar seu pagamento.",

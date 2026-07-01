@@ -31,6 +31,32 @@ export enum NetworkCongestion {
   HIGH = "High",
 }
 
+export enum FeePriority {
+  LOW = "low",
+  MEDIUM = "medium",
+  HIGH = "high",
+  CUSTOM = "custom",
+}
+
+/**
+ * Recommended inclusion fees (in XLM) for each non-custom priority tier,
+ * derived from the Horizon `feeStats().max_fee` percentile distribution.
+ */
+export type FeePresets = Record<
+  FeePriority.LOW | FeePriority.MEDIUM | FeePriority.HIGH,
+  string
+>;
+
+/** Network congestion maps 1:1 to the default fee priority tier. */
+export const CONGESTION_TO_FEE_PRIORITY: Record<
+  NetworkCongestion,
+  FeePriority.LOW | FeePriority.MEDIUM | FeePriority.HIGH
+> = {
+  [NetworkCongestion.LOW]: FeePriority.LOW,
+  [NetworkCongestion.MEDIUM]: FeePriority.MEDIUM,
+  [NetworkCongestion.HIGH]: FeePriority.HIGH,
+};
+
 export enum HookStatus {
   IDLE = "idle",
   LOADING = "loading",

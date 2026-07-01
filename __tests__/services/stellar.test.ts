@@ -4,11 +4,20 @@
  * This test uses the actual functions from stellar.ts
  */
 import { Asset as SdkToken, Operation } from "@stellar/stellar-sdk";
+import { MIN_TRANSACTION_FEE } from "config/constants";
+import { FeePriority, NetworkCongestion } from "config/types";
 import {
   buildChangeTrustOperation,
   calculateBackoffDelay,
+  getNetworkFees,
   isHorizonError,
 } from "services/stellar";
+
+type FeeStatsServer = Parameters<typeof getNetworkFees>[0];
+
+const buildFeeStatsServer = (
+  feeStats: () => Promise<unknown>,
+): FeeStatsServer => ({ feeStats }) as unknown as FeeStatsServer;
 
 describe("stellar service - submitTx retry logic", () => {
   it("should implement correct delay timing", async () => {
@@ -60,6 +69,92 @@ describe("stellar service - submitTx retry logic", () => {
     expect(shouldRetry(horizon504Error)).toBe(true);
     expect(shouldRetry(horizon400Error)).toBe(false);
     expect(shouldRetry(nonHorizonError)).toBe(false);
+  });
+});
+
+describe("stellar service - getNetworkFees", () => {
+  const buildFeeDistribution = (overrides = {}) => ({
+    max: "20000",
+    min: "100",
+    mode: "500",
+    p10: "100",
+    p20: "200",
+    p30: "300",
+    p40: "400",
+    p50: "1000",
+    p60: "2000",
+    p70: "3000",
+    p80: "5000",
+    p90: "10000",
+    p95: "15000",
+    p99: "20000",
+    ...overrides,
+  });
+
+  it("maps max_fee p10/p50/p90 to Low/Med/High presets (XLM)", async () => {
+    const server = buildFeeStatsServer(() =>
+      Promise.resolve({
+        ledger_capacity_usage: "0.2",
+        max_fee: buildFeeDistribution(),
+      }),
+    );
+
+    const { feePresets } = await getNetworkFees(server);
+
+    expect(feePresets[FeePriority.LOW]).toBe("0.00001"); // p10 = 100
+    expect(feePresets[FeePriority.MEDIUM]).toBe("0.0001"); // p50 = 1000
+    expect(feePresets[FeePriority.HIGH]).toBe("0.001"); // p90 = 10000
+  });
+
+  it("derives congestion level and a recommended fee matching it (1:1)", async () => {
+    const lowServer = buildFeeStatsServer(() =>
+      Promise.resolve({
+        ledger_capacity_usage: "0.2",
+        max_fee: buildFeeDistribution(),
+      }),
+    );
+    const mediumServer = buildFeeStatsServer(() =>
+      Promise.resolve({
+        ledger_capacity_usage: "0.6",
+        max_fee: buildFeeDistribution(),
+      }),
+    );
+    const highServer = buildFeeStatsServer(() =>
+      Promise.resolve({
+        ledger_capacity_usage: "0.9",
+        max_fee: buildFeeDistribution(),
+      }),
+    );
+
+    const low = await getNetworkFees(lowServer);
+    expect(low.networkCongestion).toBe(NetworkCongestion.LOW);
+    expect(low.recommendedFee).toBe(low.feePresets[FeePriority.LOW]);
+
+    const medium = await getNetworkFees(mediumServer);
+    expect(medium.networkCongestion).toBe(NetworkCongestion.MEDIUM);
+    expect(medium.recommendedFee).toBe(medium.feePresets[FeePriority.MEDIUM]);
+
+    const high = await getNetworkFees(highServer);
+    expect(high.networkCongestion).toBe(NetworkCongestion.HIGH);
+    expect(high.recommendedFee).toBe(high.feePresets[FeePriority.HIGH]);
+  });
+
+  it("falls back to defaults when feeStats fails", async () => {
+    const server = buildFeeStatsServer(() =>
+      Promise.reject(new Error("network error")),
+    );
+
+    const { recommendedFee, networkCongestion, feePresets } =
+      await getNetworkFees(server);
+
+    // Fallbacks are the XLM network minimum (NOT raw stroops): every consumer
+    // treats these as XLM and converts to stroops at build time, so a stroop
+    // value here would be a ~1,000,000× fee overpayment.
+    expect(recommendedFee).toBe(MIN_TRANSACTION_FEE);
+    expect(networkCongestion).toBe(NetworkCongestion.LOW);
+    expect(feePresets[FeePriority.LOW]).toBe(MIN_TRANSACTION_FEE);
+    expect(feePresets[FeePriority.MEDIUM]).toBe(MIN_TRANSACTION_FEE);
+    expect(feePresets[FeePriority.HIGH]).toBe(MIN_TRANSACTION_FEE);
   });
 });
 
