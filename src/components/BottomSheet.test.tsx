@@ -14,12 +14,14 @@ jest.mock("@gorhom/bottom-sheet", () => {
   const { View: RNView } = require("react-native");
   return {
     __esModule: true,
-    BottomSheetModal: ReactActual.forwardRef((props: any) => {
+    // forwardRef's signature is (props, ref); forward the ref onto the host
+    // View so React does not warn about a one-arg render function.
+    BottomSheetModal: ReactActual.forwardRef((props: any, ref: any) => {
       Object.keys(capturedModalProps).forEach(
         (k) => delete capturedModalProps[k],
       );
       Object.assign(capturedModalProps, props);
-      return ReactActual.createElement(RNView, null, props.children);
+      return ReactActual.createElement(RNView, { ref }, props.children);
     }),
     BottomSheetView: (props: any) =>
       ReactActual.createElement(RNView, props, props.children),
