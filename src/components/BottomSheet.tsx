@@ -47,6 +47,10 @@ const Icons = {
   },
 } as const;
 
+// Floating variant: small transparent margins + a fully rounded card.
+const FLOATING_MARGIN = 8;
+const FLOATING_CORNER_RADIUS = 32;
+
 /**
  * Props for the shared BottomSheet wrapper.
  *
@@ -87,6 +91,12 @@ export type BottomSheetProps = {
   analyticsProps?: AnalyticsProps;
   scrollViewFooterComponent?: () => React.ReactNode;
   scrollable?: boolean;
+  /**
+   * Render as a detached "floating" card: small transparent margins on the
+   * sides and bottom, all four corners rounded, and no drag handle. Opt-in;
+   * defaults to the classic bottom-attached sheet.
+   */
+  floating?: boolean;
 };
 
 const BottomSheet: React.FC<BottomSheetProps> = ({
@@ -109,6 +119,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
   analyticsProps,
   scrollViewFooterComponent = undefined,
   scrollable = false,
+  floating = false,
 }) => {
   if (__DEV__ && scrollable && snapPoints) {
     throw new Error(
@@ -224,6 +235,24 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
     [],
   );
 
+  // Floating cards drop the content background so the rounded (borderRadius)
+  // sheet background shows through the corners; the classic variant keeps its
+  // own background because its rounded top comes from the handle instead.
+  const contentClassName = floating
+    ? "pl-6 pr-6 pt-6 gap-6"
+    : "bg-background-primary pl-6 pr-6 pt-6 gap-6";
+
+  // Floating sheets are already lifted off the safe area by `bottomInset`, so
+  // the content must not add `insets.bottom` again (that would double the gap).
+  const contentPaddingBottom = (() => {
+    if (!useInsetsBottomPadding) {
+      return 0;
+    }
+    return floating
+      ? pxValue(DEFAULT_PADDING)
+      : insets.bottom + pxValue(DEFAULT_PADDING);
+  })();
+
   return (
     <>
       {/* Pre-measurement render — kept off-screen and out of the
@@ -263,10 +292,14 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
         enableOverDrag={false}
         snapPoints={snapPoints}
         topInset={scrollable ? insets.top : undefined}
+        detached={floating || undefined}
+        bottomInset={floating ? insets.bottom + FLOATING_MARGIN : undefined}
+        style={floating ? { marginHorizontal: FLOATING_MARGIN } : undefined}
         backdropComponent={renderBackdrop}
-        handleComponent={renderHandle}
+        handleComponent={floating ? null : renderHandle}
         backgroundStyle={{
           backgroundColor: themeColors.background.primary,
+          ...(floating ? { borderRadius: FLOATING_CORNER_RADIUS } : {}),
         }}
         {...bottomSheetModalProps}
         onChange={handleChange}
@@ -274,12 +307,10 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
         {scrollable ? (
           <View>
             <BottomSheetScrollView
-              className="bg-background-primary pl-6 pr-6 pt-6 gap-6"
+              className={contentClassName}
               showsVerticalScrollIndicator={false}
               style={{
-                paddingBottom: useInsetsBottomPadding
-                  ? insets.bottom + pxValue(DEFAULT_PADDING)
-                  : 0,
+                paddingBottom: contentPaddingBottom,
               }}
               {...bottomSheetViewProps}
             >
@@ -305,11 +336,9 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
           </View>
         ) : (
           <BottomSheetView
-            className="bg-background-primary pl-6 pr-6 pt-6 gap-6"
+            className={contentClassName}
             style={{
-              paddingBottom: useInsetsBottomPadding
-                ? insets.bottom + pxValue(DEFAULT_PADDING)
-                : 0,
+              paddingBottom: contentPaddingBottom,
             }}
             {...bottomSheetViewProps}
           >
