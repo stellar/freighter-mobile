@@ -254,6 +254,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
       )}
       <BottomSheet
         modalRef={trustlineInfoRef}
+        floating
         handleCloseModal={() => trustlineInfoRef.current?.dismiss()}
         customContent={
           <TrustlineInfoBottomSheet
