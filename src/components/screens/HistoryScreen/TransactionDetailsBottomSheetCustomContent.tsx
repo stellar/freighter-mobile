@@ -350,11 +350,17 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
 
 interface TransactionDetailsFooterProps {
   externalUrl: string;
+  /**
+   * When the host sheet is floating, it already clears the safe area via its
+   * bottom inset, so the footer must not add `insets.bottom` again — that
+   * would leave a large empty gap below the button.
+   */
+  floating?: boolean;
 }
 
 export const TransactionDetailsFooter: React.FC<
   TransactionDetailsFooterProps
-> = ({ externalUrl }) => {
+> = ({ externalUrl, floating = false }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const { open: openInAppBrowser } = useInAppBrowser();
@@ -364,7 +370,9 @@ export const TransactionDetailsFooter: React.FC<
     <View
       className="bg-background-primary w-full px-6 py-6 mt-6"
       style={{
-        paddingBottom: insets.bottom + pxValue(DEFAULT_PADDING),
+        paddingBottom: floating
+          ? pxValue(DEFAULT_PADDING)
+          : insets.bottom + pxValue(DEFAULT_PADDING),
       }}
     >
       <Button
