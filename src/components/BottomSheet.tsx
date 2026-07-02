@@ -322,12 +322,23 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
             </BottomSheetScrollView>
             {scrollViewFooterComponent && (
               <View
+                testID="bottom-sheet-scroll-footer"
                 style={{
                   position: "absolute",
                   bottom:
                     keyboardHeight > 0 ? keyboardHeight - insets.bottom : 0,
                   left: 0,
                   right: 0,
+                  // On a floating card the footer sits over the rounded bottom
+                  // edge; round + clip it so an opaque footer background does
+                  // not square off the card's bottom corners.
+                  ...(floating
+                    ? {
+                        borderBottomLeftRadius: FLOATING_CORNER_RADIUS,
+                        borderBottomRightRadius: FLOATING_CORNER_RADIUS,
+                        overflow: "hidden" as const,
+                      }
+                    : {}),
                 }}
               >
                 {scrollViewFooterComponent()}

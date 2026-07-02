@@ -65,4 +65,38 @@ describe("BottomSheet floating variant", () => {
     expect(capturedModalProps.backgroundStyle.borderRadius).toBeUndefined();
     expect(typeof capturedModalProps.handleComponent).toBe("function");
   });
+
+  it("rounds and clips the scroll footer's bottom corners when floating", () => {
+    const { getAllByTestId } = render(
+      <BottomSheet
+        floating
+        scrollable
+        modalRef={makeRef()}
+        customContent={<View testID="content" />}
+        scrollViewFooterComponent={() => <View testID="footer-content" />}
+      />,
+    );
+
+    // Only the in-modal footer container carries the testID (the off-screen
+    // pre-measurement probe does not), so there is exactly one.
+    const [footer] = getAllByTestId("bottom-sheet-scroll-footer");
+    expect(footer.props.style.borderBottomLeftRadius).toBe(32);
+    expect(footer.props.style.borderBottomRightRadius).toBe(32);
+    expect(footer.props.style.overflow).toBe("hidden");
+  });
+
+  it("leaves the scroll footer corners square when not floating", () => {
+    const { getAllByTestId } = render(
+      <BottomSheet
+        scrollable
+        modalRef={makeRef()}
+        customContent={<View testID="content" />}
+        scrollViewFooterComponent={() => <View testID="footer-content" />}
+      />,
+    );
+
+    const [footer] = getAllByTestId("bottom-sheet-scroll-footer");
+    expect(footer.props.style.borderBottomLeftRadius).toBeUndefined();
+    expect(footer.props.style.overflow).toBeUndefined();
+  });
 });
