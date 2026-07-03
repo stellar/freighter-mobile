@@ -113,6 +113,10 @@ export const BOTTOM_SHEET_CONTENT_TOP_PADDING = DEFAULT_PADDING;
 export const BOTTOM_SHEET_CONTENT_BOTTOM_PADDING = 64;
 export const BOTTOM_SHEET_CONTENT_GAP = 16;
 
+// Floating bottom-sheet variant: transparent margins + fully rounded card
+export const BOTTOM_SHEET_FLOATING_MARGIN = 8;
+export const BOTTOM_SHEET_FLOATING_CORNER_RADIUS = 32;
+
 // settings screen URLs
 export const FREIGHTER_BASE_URL = "https://www.freighter.app";
 export const FREIGHTER_DISCORD_URL = "https://discord.gg/rtXyAXPHYT";

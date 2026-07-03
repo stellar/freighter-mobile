@@ -10,7 +10,11 @@ import { BottomSheetViewProps } from "@gorhom/bottom-sheet/lib/typescript/compon
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
-import { DEFAULT_PADDING } from "config/constants";
+import {
+  BOTTOM_SHEET_FLOATING_CORNER_RADIUS,
+  BOTTOM_SHEET_FLOATING_MARGIN,
+  DEFAULT_PADDING,
+} from "config/constants";
 import { pxValue } from "helpers/dimensions";
 import useColors from "hooks/useColors";
 import { useKeyboardHeight } from "hooks/useKeyboardHeight";
@@ -46,10 +50,6 @@ const Icons = {
     color: "gold",
   },
 } as const;
-
-// Floating variant: small transparent margins + a fully rounded card.
-const FLOATING_MARGIN = 8;
-const FLOATING_CORNER_RADIUS = 32;
 
 /**
  * Props for the shared BottomSheet wrapper.
@@ -293,13 +293,21 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
         snapPoints={snapPoints}
         topInset={scrollable ? insets.top : undefined}
         detached={floating || undefined}
-        bottomInset={floating ? insets.bottom + FLOATING_MARGIN : undefined}
-        style={floating ? { marginHorizontal: FLOATING_MARGIN } : undefined}
+        bottomInset={
+          floating ? insets.bottom + BOTTOM_SHEET_FLOATING_MARGIN : undefined
+        }
+        style={
+          floating
+            ? { marginHorizontal: BOTTOM_SHEET_FLOATING_MARGIN }
+            : undefined
+        }
         backdropComponent={renderBackdrop}
         handleComponent={floating ? null : renderHandle}
         backgroundStyle={{
           backgroundColor: themeColors.background.primary,
-          ...(floating ? { borderRadius: FLOATING_CORNER_RADIUS } : {}),
+          ...(floating
+            ? { borderRadius: BOTTOM_SHEET_FLOATING_CORNER_RADIUS }
+            : {}),
         }}
         {...bottomSheetModalProps}
         onChange={handleChange}
@@ -334,8 +342,10 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
                   // not square off the card's bottom corners.
                   ...(floating
                     ? {
-                        borderBottomLeftRadius: FLOATING_CORNER_RADIUS,
-                        borderBottomRightRadius: FLOATING_CORNER_RADIUS,
+                        borderBottomLeftRadius:
+                          BOTTOM_SHEET_FLOATING_CORNER_RADIUS,
+                        borderBottomRightRadius:
+                          BOTTOM_SHEET_FLOATING_CORNER_RADIUS,
                         overflow: "hidden" as const,
                       }
                     : {}),

@@ -49,6 +49,7 @@ const SignTransactionDetails: React.FC<SignTransactionDetailsProps> = ({
         handleCloseModal={() =>
           signTransactionDetailsBottomSheetModalRef.current?.dismiss()
         }
+        floating
         enableDynamicSizing={false}
         useInsetsBottomPadding={false}
         enablePanDownToClose={false}
@@ -58,6 +59,7 @@ const SignTransactionDetails: React.FC<SignTransactionDetailsProps> = ({
           <SignTransactionDetailsBottomSheet
             data={data}
             onDismiss={handleDismiss}
+            floating
           />
         }
       />
