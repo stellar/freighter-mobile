@@ -750,9 +750,14 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           throw new Error("Missing account or balance information");
         }
 
-        // Block signing if an auto-lock engaged while on the review sheet
+        // Abort cleanly if an auto-lock engaged between opening the review
+        // sheet and confirming: drop out of the processing UI so the user
+        // returns to the review screen after unlocking instead of a stranded
+        // "sending" spinner. Being locked isn't a transaction error, so skip
+        // the failure toast/analytics path.
         if (!isWalletUnlocked()) {
-          throw new Error("Wallet is locked");
+          setIsProcessing(false);
+          return;
         }
 
         const { privateKey } = account;

@@ -365,9 +365,13 @@ const SendCollectibleReviewScreen: React.FC<
 
         // Refuse to sign if the wallet locked between opening the review sheet
         // and confirming (e.g. an IMMEDIATELY auto-lock fired) — every other
-        // signing path enforces the same guard.
+        // signing path enforces the same guard. Abort cleanly: reset the
+        // processing UI so the user returns to the review screen after
+        // unlocking rather than a stranded "sending" spinner. Being locked
+        // isn't a transaction error, so skip the failure toast/analytics path.
         if (!isWalletUnlocked()) {
-          throw new Error("Wallet is locked");
+          setIsProcessing(false);
+          return;
         }
 
         const { privateKey } = account;

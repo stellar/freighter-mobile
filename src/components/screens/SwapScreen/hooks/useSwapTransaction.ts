@@ -185,12 +185,14 @@ export const useSwapTransaction = ({
     setIsProcessing(true);
 
     try {
-      // Block signing if an auto-lock engaged after the swap was prepared.
-      // Inside the try so the terminal catch runs its analytics/toast/error
-      // path — executeSwap is invoked fire-and-forget, so a throw before the
-      // try would surface as an unhandled rejection.
+      // Abort cleanly if an auto-lock engaged after the swap was prepared.
+      // Return (don't throw): being locked isn't a swap failure, so skip the
+      // catch's analytics + error-toast path — a hard-coded throw would also
+      // surface as a non-localized toast title. A return (not a throw) keeps
+      // the fire-and-forget executeSwap() from rejecting unhandled.
       if (!isWalletUnlocked()) {
-        throw new Error("Wallet is locked");
+        setIsProcessing(false);
+        return;
       }
 
       const signedXDR = signTransaction({
