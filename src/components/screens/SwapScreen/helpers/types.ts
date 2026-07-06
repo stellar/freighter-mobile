@@ -19,7 +19,7 @@ export type DestinationTokenDescriptor = {
   decimals: number;
   tokenType: TokenTypeWithCustomToken;
   /** `false` when the user already has a trustline; `true` for new tokens. */
-  isNew: boolean;
+  requiresTrustline: boolean;
   /**
    * Blockaid security level for the destination token, when known. Carried on
    * the descriptor so the Receive-icon badge renders without a separate scan

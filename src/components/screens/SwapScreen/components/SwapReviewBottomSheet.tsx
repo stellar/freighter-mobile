@@ -157,7 +157,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
         </View>
       </View>
 
-      {destinationTokenDescriptor?.isNew && (
+      {destinationTokenDescriptor?.requiresTrustline && (
         <Banner
           className="mt-[16px]"
           variant="highlight"

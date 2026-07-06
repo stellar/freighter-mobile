@@ -217,7 +217,7 @@ describe("useSwapTransaction", () => {
   });
 
   describe("setupSwapTransaction — includeTrustline wiring", () => {
-    it("passes includeTrustline when destinationToken.isNew is true", async () => {
+    it("passes includeTrustline when destinationToken.requiresTrustline is true", async () => {
       act(() => {
         useSwapStore.setState({
           destinationToken: {
@@ -226,7 +226,7 @@ describe("useSwapTransaction", () => {
             issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
             decimals: 7,
             tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
-            isNew: true,
+            requiresTrustline: true,
           },
         } as never);
       });
@@ -247,7 +247,7 @@ describe("useSwapTransaction", () => {
       );
     });
 
-    it("omits includeTrustline when destinationToken.isNew is false", async () => {
+    it("omits includeTrustline when destinationToken.requiresTrustline is false", async () => {
       act(() => {
         useSwapStore.setState({
           destinationToken: {
@@ -256,7 +256,7 @@ describe("useSwapTransaction", () => {
             issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
             decimals: 7,
             tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
-            isNew: false,
+            requiresTrustline: false,
           },
         } as never);
       });
@@ -272,7 +272,7 @@ describe("useSwapTransaction", () => {
       expect(callArgs.includeTrustline).toBeUndefined();
     });
 
-    it("throws when isNew=true but issuer is missing on destinationToken", async () => {
+    it("throws when requiresTrustline=true but issuer is missing on destinationToken", async () => {
       act(() => {
         useSwapStore.setState({
           destinationToken: {
@@ -281,7 +281,7 @@ describe("useSwapTransaction", () => {
             // issuer intentionally omitted
             decimals: 7,
             tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
-            isNew: true,
+            requiresTrustline: true,
           },
         } as never);
       });
@@ -292,7 +292,7 @@ describe("useSwapTransaction", () => {
         act(async () => {
           await result.current.setupSwapTransaction();
         }),
-      ).rejects.toThrow(/isNew=true but issuer missing/);
+      ).rejects.toThrow(/requiresTrustline=true but issuer missing/);
 
       // mockBuildSwapTransaction should NOT have been called — we threw before reaching it
       expect(mockBuildSwapTransaction).not.toHaveBeenCalled();
@@ -304,7 +304,7 @@ describe("useSwapTransaction", () => {
       mockTrack.mockClear();
     });
 
-    it("fires SWAP_TRUSTLINE_ADDED when the swap succeeds and destinationToken.isNew is true", async () => {
+    it("fires SWAP_TRUSTLINE_ADDED when the swap succeeds and destinationToken.requiresTrustline is true", async () => {
       act(() => {
         useSwapStore.setState({
           destinationToken: {
@@ -313,7 +313,7 @@ describe("useSwapTransaction", () => {
             issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
             decimals: 7,
             tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
-            isNew: true,
+            requiresTrustline: true,
           },
         } as never);
       });
@@ -336,7 +336,7 @@ describe("useSwapTransaction", () => {
       );
     });
 
-    it("does NOT fire SWAP_TRUSTLINE_ADDED when the swap succeeds but destinationToken.isNew is false", async () => {
+    it("does NOT fire SWAP_TRUSTLINE_ADDED when the swap succeeds but destinationToken.requiresTrustline is false", async () => {
       act(() => {
         useSwapStore.setState({
           destinationToken: {
@@ -345,7 +345,7 @@ describe("useSwapTransaction", () => {
             issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
             decimals: 7,
             tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
-            isNew: false,
+            requiresTrustline: false,
           },
         } as never);
       });

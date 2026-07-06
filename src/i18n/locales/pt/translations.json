@@ -652,7 +652,8 @@
     "swapped": "Trocado"
   },
   "transactionTokenScreen": {
-    "title": "Enviando"
+    "title": "Enviando",
+    "empty": "Nenhum token ou colecionável para enviar"
   },
   "transactionSettings": {
     "feeTitle": "Taxa da transação",

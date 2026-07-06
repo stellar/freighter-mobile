@@ -16,7 +16,7 @@
 /* eslint-disable arrow-body-style */
 import { Horizon, TransactionBuilder } from "@stellar/stellar-sdk";
 import { AxiosError } from "axios";
-import { NetworkDetails, NETWORKS } from "config/constants";
+import { NATIVE_TOKEN_CODE, NetworkDetails, NETWORKS } from "config/constants";
 import { BackendEnvConfig } from "config/envConfig";
 import { logger, normalizeError } from "config/logger";
 import {
@@ -321,22 +321,52 @@ interface TokenPricesResponse {
 export interface FetchTokenPricesParams {
   /** Array of token identifiers to fetch prices for */
   tokens: TokenIdentifier[];
+  /** Active network — the v2 endpoint is network-scoped */
+  network: NETWORKS;
+  /** Whether to hit the network-scoped v2 endpoint (remote-config gated) */
+  useV2: boolean;
 }
 
 /**
- * NOTE: This is a FAKE implementation that returns random data after a 1-second delay
- * Simulates fetching the current USD prices and 24h percentage changes for the specified tokens
+ * Networks we fetch fiat prices for, mapped to the `network` query value the v2
+ * endpoint expects. Only mainnet has a real price source — testnet assets have
+ * no market and v2 returns $0, so (like the browser extension) we gate testnet
+ * out and show no fiat there. Networks absent from this map (testnet, futurenet)
+ * are skipped on both v1 and v2, so a rollback can't reintroduce testnet fiat.
+ */
+const PRICE_NETWORK_PARAMS: Partial<Record<NETWORKS, string>> = {
+  [NETWORKS.PUBLIC]: NETWORKS.PUBLIC,
+};
+
+/**
+ * Wire identifier the v2 /token-prices endpoint expects for the native asset.
+ * The app uses NATIVE_TOKEN_CODE ("XLM") everywhere, but v2 keys the native
+ * asset as "native" (matching the browser extension). We translate only at the
+ * v2 request/response boundary so the rest of the app keeps using "XLM".
+ */
+const V2_NATIVE_PRICE_ID = "native";
+
+/**
+ * Fetches the current USD prices and 24h percentage changes for the given tokens.
  *
- * @param params Object containing the list of tokens to fetch prices for
+ * When `useV2` is true, hits the network-scoped v2 endpoint, passing the active
+ * network as a `network` query param; networks the endpoint doesn't serve (e.g.
+ * Futurenet) are skipped and return null prices. When false, falls back to the
+ * v1 endpoint. LP shares and custom tokens are always filtered out before the
+ * request, and any requested token without a returned price is filled with null.
+ *
+ * @param params Tokens to price, the active network, and the v2 flag
  * @returns Promise resolving to a map of token identifiers to their price information
  *
  * @example
- * // Fetch prices for XLM and USDC
+ * // Fetch prices for XLM and USDC on mainnet via v2
  * const prices = await fetchTokenPrices({
  *   tokens: [
  *     "XLM",
  *     "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
- *   ]
+ *   ],
+ *   network: NETWORKS.PUBLIC,
+ *   useV2: true,
  * });
  *
  * // Access individual token prices
@@ -345,6 +375,8 @@ export interface FetchTokenPricesParams {
  */
 export const fetchTokenPrices = async ({
   tokens,
+  network,
+  useV2,
 }: FetchTokenPricesParams): Promise<TokenPricesMap> => {
   // NOTE: API does not accept LP IDs or custom tokens
   const filteredTokens = tokens.filter((tokenId) => {
@@ -355,18 +387,79 @@ export const fetchTokenPrices = async ({
     );
   });
 
-  const { data } = await freighterBackendV1.post<TokenPricesResponse>(
-    "/token-prices",
-    {
-      tokens: filteredTokens,
-    },
-  );
+  // Skip the request entirely — returning empty prices that the loop below
+  // fills with nulls (→ "--" in the UI) — when there's nothing to ask for, or
+  // when the active network isn't priceable (testnet/futurenet). Fiat is
+  // mainnet-only; gating here applies to both v1 and v2 so a rollback can't
+  // reintroduce testnet fiat, and avoids guaranteed-failing/zero-value calls.
+  const priceNetwork = PRICE_NETWORK_PARAMS[network];
+  const shouldSkipRequest = filteredTokens.length === 0 || !priceNetwork;
+
+  let pricesMap: TokenPricesMap = {};
+
+  if (!shouldSkipRequest) {
+    try {
+      let data: TokenPricesResponse;
+      if (useV2) {
+        // The v2 endpoint is network-scoped via a `network` query param and keys
+        // the native asset as "native", so translate "XLM" -> "native" on the
+        // way out (v1, below, is neither network-scoped nor native-translated).
+        const v2Tokens = filteredTokens.map((tokenId) =>
+          tokenId === NATIVE_TOKEN_CODE ? V2_NATIVE_PRICE_ID : tokenId,
+        );
+        ({ data } = await freighterBackendV2.post<TokenPricesResponse>(
+          "/token-prices",
+          { tokens: v2Tokens },
+          { params: { network: priceNetwork } },
+        ));
+      } else {
+        ({ data } = await freighterBackendV1.post<TokenPricesResponse>(
+          "/token-prices",
+          { tokens: filteredTokens },
+        ));
+      }
+
+      // Defensive: if the endpoint returns an unexpected shape (e.g. v2
+      // diverges from `{ data: TokenPricesMap }`), fall back to an empty map so
+      // the null-fill loop below still produces a valid TokenPricesMap instead
+      // of throwing and silently wiping out all prices.
+      if (!data?.data) {
+        logger.warn(
+          "backendApi.fetchTokenPrices",
+          "Unexpected token-prices response shape",
+          { useV2, topLevelKeys: data ? Object.keys(data) : [] },
+        );
+      }
+      pricesMap = data?.data ?? {};
+
+      // Translate the native price back to the app's "XLM" convention. The
+      // null-fill loop below keys off the original (un-translated) `tokens`, so
+      // remapping here ensures the XLM entry is present and not null-filled.
+      if (useV2 && pricesMap[V2_NATIVE_PRICE_ID]) {
+        pricesMap[NATIVE_TOKEN_CODE] = pricesMap[V2_NATIVE_PRICE_ID];
+        delete pricesMap[V2_NATIVE_PRICE_ID];
+      }
+    } catch (error) {
+      // Without this, the store callers swallow price-fetch failures (keeping
+      // stale prices / a local error string) with no Sentry signal — so a
+      // broadly-failing endpoint (e.g. a bad v2 rollout) would be invisible.
+      // Connectivity failures (offline/DNS/TLS) demote to a warn breadcrumb;
+      // backend 4xx/5xx and timeouts surface as logger.error. Rethrow so the
+      // callers still manage UI state.
+      logApiError(
+        "backendApi.fetchTokenPrices",
+        "Network unreachable while fetching token prices",
+        "Error fetching token prices",
+        error,
+      );
+      throw error;
+    }
+  }
 
   /*
   // ========================================================
-  // Uncomment this to simulate token-prices response
-  // This may be useful for testing the UI with token prices on Testnet
-  // as the /token-prices endpoint only returns prices for Mainnet
+  // Uncomment this to simulate a token-prices response — useful for exercising
+  // the price UI locally without depending on live backend data.
 
   // Simulate network delay
   // eslint-disable-next-line no-promise-executor-return
@@ -401,7 +494,6 @@ export const fetchTokenPrices = async ({
 
   // Make sure it's compliant with the TokenPricesMap type as the backend
   // returns { "code:issuer" : null } for tokens that are not supported
-  const pricesMap = data.data;
   tokens.forEach((token) => {
     if (!pricesMap[token]) {
       pricesMap[token] = {

@@ -6,6 +6,7 @@ import BigNumber from "bignumber.js";
 import SwapAmountScreen from "components/screens/SwapScreen/screens/SwapAmountScreen";
 import Icon from "components/sds/Icon";
 import { AnalyticsEvent } from "config/analyticsConfig";
+import { NETWORKS } from "config/constants";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import { useSwapStore } from "ducks/swap";
 import { renderWithProviders } from "helpers/testUtils";
@@ -96,7 +97,7 @@ type SwapStoreState = {
     issuer?: string;
     decimals: number;
     tokenType: string;
-    isNew: boolean;
+    requiresTrustline: boolean;
   };
   sourceTokenSymbol: string;
   sourceAmount: string;
@@ -121,7 +122,7 @@ const makeDefaultSwapState = (): SwapStoreState => ({
     issuer: "GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
     decimals: 7,
     tokenType: "credit_alphanum4",
-    isNew: false,
+    requiresTrustline: false,
   },
   sourceTokenSymbol: "USDC",
   sourceAmount: "1",
@@ -273,11 +274,13 @@ const mockPrices: Record<
 jest.mock("ducks/prices", () => ({
   usePricesStore: (selector?: (s: unknown) => unknown): unknown => {
     const state = {
-      prices: mockPrices,
+      pricesByNetwork: {},
+      sourceByNetwork: {},
       fetchPricesForTokenIds: mockFetchPricesForTokenIds,
     };
     return selector ? selector(state) : state;
   },
+  usePricesForNetwork: () => mockPrices,
 }));
 // Cache the return value so account / spendableAmount memos stay stable across
 // re-renders — otherwise the amountError useEffect can re-fire forever when
@@ -615,7 +618,7 @@ describe("SwapAmountScreen", () => {
       jest.spyOn(analytics, "track").mockClear();
     });
 
-    it("opens the XLM reserve sheet when destinationToken.isNew && XLM spendable < 0.5", async () => {
+    it("opens the XLM reserve sheet when destinationToken.requiresTrustline && XLM spendable < 0.5", async () => {
       // The new check uses calculateSpendableAmount(xlmBalance, subentryCount, swapFee).
       // swapFee mock is "100", subentryCount is 0.
       // spendable = total - (2+0)*0.5 - 100 = total - 101.
@@ -654,7 +657,7 @@ describe("SwapAmountScreen", () => {
           issuer: "GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
           decimals: 7,
           tokenType: "credit_alphanum4",
-          isNew: true,
+          requiresTrustline: true,
         },
       });
 
@@ -683,7 +686,7 @@ describe("SwapAmountScreen", () => {
       expect(presentedSheets.length).toBeGreaterThan(0);
     });
 
-    it("opens Review sheet when destinationToken.isNew but XLM spendable >= 0.5", async () => {
+    it("opens Review sheet when destinationToken.requiresTrustline but XLM spendable >= 0.5", async () => {
       // XLM total is the default 1000.5.
       // spendable = 1000.5 - (2+0)*0.5 - 100 = 899.5 — well above 0.5.
       // The pre-flight gate should NOT fire, so setupSwapTransaction is called.
@@ -696,7 +699,7 @@ describe("SwapAmountScreen", () => {
           issuer: "GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
           decimals: 7,
           tokenType: "credit_alphanum4",
-          isNew: true,
+          requiresTrustline: true,
         },
       });
 
@@ -762,7 +765,7 @@ describe("SwapAmountScreen", () => {
           issuer: "GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
           decimals: 7,
           tokenType: "credit_alphanum4",
-          isNew: true,
+          requiresTrustline: true,
         },
       });
 
@@ -824,7 +827,7 @@ describe("SwapAmountScreen", () => {
           issuer: "GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
           decimals: 7,
           tokenType: "credit_alphanum4",
-          isNew: true,
+          requiresTrustline: true,
         },
       });
 
@@ -899,6 +902,8 @@ describe("SwapAmountScreen", () => {
           "yXLM:GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55",
           "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
         ],
+        network: NETWORKS.PUBLIC,
+        useV2: true,
       });
     });
 
@@ -1088,7 +1093,7 @@ describe("SwapAmountScreen", () => {
           issuer: "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
           decimals: 7,
           tokenType: "credit_alphanum4",
-          isNew: true,
+          requiresTrustline: true,
         },
       });
 
@@ -1124,7 +1129,7 @@ describe("SwapAmountScreen", () => {
           issuer: "GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
           decimals: 7,
           tokenType: "credit_alphanum4",
-          isNew: false,
+          requiresTrustline: false,
         },
       });
 
@@ -1161,7 +1166,7 @@ describe("SwapAmountScreen", () => {
           issuer: "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
           decimals: 7,
           tokenType: "credit_alphanum4",
-          isNew: true,
+          requiresTrustline: true,
         },
       });
 
@@ -1203,7 +1208,7 @@ describe("SwapAmountScreen", () => {
           issuer: "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
           decimals: 7,
           tokenType: "credit_alphanum4",
-          isNew: true,
+          requiresTrustline: true,
         },
       });
 
@@ -1236,7 +1241,7 @@ describe("SwapAmountScreen", () => {
           issuer: HELD_USDC.id.split(":")[1],
           decimals: 7,
           tokenType: "credit_alphanum4",
-          isNew: false,
+          requiresTrustline: false,
         },
       });
 
@@ -1284,7 +1289,7 @@ describe("SwapAmountScreen", () => {
           issuer: undefined,
           decimals: 7,
           tokenType: "native",
-          isNew: false,
+          requiresTrustline: false,
         },
         setSourceToken: setSourceTokenSpy,
         setDestinationToken: setDestinationTokenSpy,
@@ -1319,7 +1324,7 @@ describe("SwapAmountScreen", () => {
           issuer: "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
           decimals: 7,
           tokenType: "credit_alphanum4",
-          isNew: true,
+          requiresTrustline: true,
         },
         setSourceToken: setSourceTokenSpy,
         setDestinationToken: setDestinationTokenSpy,
@@ -1339,7 +1344,7 @@ describe("SwapAmountScreen", () => {
       expect(setDestinationTokenSpy).toHaveBeenCalledTimes(1);
       const [descriptor] = setDestinationTokenSpy.mock.calls[0];
       expect(descriptor).toEqual(
-        expect.objectContaining({ tokenCode: "XLM", isNew: false }),
+        expect.objectContaining({ tokenCode: "XLM", requiresTrustline: false }),
       );
     });
   });
@@ -1423,7 +1428,7 @@ describe("SwapAmountScreen", () => {
           issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
           decimals: 7,
           tokenType: "credit_alphanum4",
-          isNew: false,
+          requiresTrustline: false,
         },
       } as Partial<SwapStoreState>);
 
@@ -1460,7 +1465,7 @@ describe("SwapAmountScreen", () => {
           tokenCode: "XLM",
           decimals: 7,
           tokenType: "native",
-          isNew: false,
+          requiresTrustline: false,
         },
       } as Partial<SwapStoreState>);
 
@@ -1495,7 +1500,7 @@ describe("SwapAmountScreen", () => {
           issuer: "GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
           decimals: 7,
           tokenType: "credit_alphanum4",
-          isNew: true,
+          requiresTrustline: true,
         },
       } as Partial<SwapStoreState>);
 

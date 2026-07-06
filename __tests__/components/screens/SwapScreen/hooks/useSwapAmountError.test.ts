@@ -50,7 +50,7 @@ const baseDestinationDescriptor = {
   tokenCode: "AQUA",
   decimals: 7,
   tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
-  isNew: false,
+  requiresTrustline: false,
 };
 
 // IMPORTANT: hoist mutable inputs to module scope so their references

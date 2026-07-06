@@ -542,7 +542,7 @@ describe("SwapToScreen", () => {
           issuer: undefined,
           decimals: 7,
           tokenType: "native",
-          isNew: false,
+          requiresTrustline: false,
         },
       });
 

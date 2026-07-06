@@ -27,7 +27,7 @@ describe("descriptorFromBalance", () => {
       issuer: undefined,
       decimals: 7,
       tokenType: TokenTypeWithCustomToken.NATIVE,
-      isNew: false,
+      requiresTrustline: false,
     });
   });
 
@@ -61,7 +61,7 @@ describe("descriptorFromBalance", () => {
       issuer: "GA5Z...",
       decimals: 7,
       tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
-      isNew: false,
+      requiresTrustline: false,
     });
   });
 
@@ -100,7 +100,7 @@ describe("descriptorFromBalance", () => {
 });
 
 describe("descriptorFromSearchRecord", () => {
-  it("projects a classic search record with isNew=true when not held", () => {
+  it("projects a classic search record with requiresTrustline=true when not held", () => {
     const record = {
       tokenCode: "USDC",
       issuer: "GA5Z...",
@@ -117,11 +117,11 @@ describe("descriptorFromSearchRecord", () => {
       issuer: "GA5Z...",
       decimals: 7,
       tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
-      isNew: true,
+      requiresTrustline: true,
     });
   });
 
-  it("sets isNew=false when hasTrustline is true (already held)", () => {
+  it("sets requiresTrustline=false when hasTrustline is true (already held)", () => {
     const record = {
       tokenCode: "USDC",
       issuer: "GA5Z...",
@@ -131,7 +131,7 @@ describe("descriptorFromSearchRecord", () => {
       hasTrustline: true,
     } as any;
 
-    expect(descriptorFromSearchRecord(record).isNew).toBe(false);
+    expect(descriptorFromSearchRecord(record).requiresTrustline).toBe(false);
   });
 
   it("defaults decimals to 7 when not provided", () => {

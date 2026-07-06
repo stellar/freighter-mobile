@@ -27,7 +27,7 @@ describe("shouldShowXlmReservePreflight", () => {
       shouldShowXlmReservePreflight({
         ...baseArgs,
         sourceTokenId: "USDC:GISSUER",
-        destinationIsNew: false,
+        destinationRequiresTrustline: false,
       }),
     ).toBe(false);
     expect(mockCalc).not.toHaveBeenCalled();
@@ -40,7 +40,7 @@ describe("shouldShowXlmReservePreflight", () => {
         shouldShowXlmReservePreflight({
           ...baseArgs,
           sourceTokenId: "XLM",
-          destinationIsNew: true,
+          destinationRequiresTrustline: true,
         }),
       ).toBe(true);
     });
@@ -51,7 +51,7 @@ describe("shouldShowXlmReservePreflight", () => {
         shouldShowXlmReservePreflight({
           ...baseArgs,
           sourceTokenId: "XLM",
-          destinationIsNew: true,
+          destinationRequiresTrustline: true,
         }),
       ).toBe(false);
     });
@@ -67,7 +67,7 @@ describe("shouldShowXlmReservePreflight", () => {
         shouldShowXlmReservePreflight({
           ...baseArgs,
           sourceTokenId: "USDC:GISSUER",
-          destinationIsNew: true,
+          destinationRequiresTrustline: true,
         }),
       ).toBe(false);
     });
@@ -78,7 +78,7 @@ describe("shouldShowXlmReservePreflight", () => {
         shouldShowXlmReservePreflight({
           ...baseArgs,
           sourceTokenId: "USDC:GISSUER",
-          destinationIsNew: true,
+          destinationRequiresTrustline: true,
         }),
       ).toBe(true);
     });

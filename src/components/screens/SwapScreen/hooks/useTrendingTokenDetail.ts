@@ -108,7 +108,7 @@ export const useTrendingTokenDetail = ({
       analytics.track(AnalyticsEvent.SWAP_DESTINATION_SELECTED, {
         tokenCode: record.tokenCode,
         tokenIssuer: descriptor.issuer ?? "",
-        isNew: descriptor.isNew,
+        requiresTrustline: descriptor.requiresTrustline,
         source: SwapSelectionSource.TRENDING,
       });
       // If the new destination equals the current source, clear source so

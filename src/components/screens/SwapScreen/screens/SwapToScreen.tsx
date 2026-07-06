@@ -165,7 +165,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
       analytics.track(AnalyticsEvent.SWAP_DESTINATION_SELECTED, {
         tokenCode: balance.tokenCode ?? "",
         tokenIssuer: descriptor.issuer ?? "",
-        isNew: descriptor.isNew,
+        requiresTrustline: descriptor.requiresTrustline,
         source,
       });
       dismissThenApply(() => {
@@ -190,7 +190,7 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
     analytics.track(AnalyticsEvent.SWAP_DESTINATION_SELECTED, {
       tokenCode: record.tokenCode,
       tokenIssuer: descriptor.issuer ?? "",
-      isNew: descriptor.isNew,
+      requiresTrustline: descriptor.requiresTrustline,
       source,
     });
     dismissThenApply(() => {

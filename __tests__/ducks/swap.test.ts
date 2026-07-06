@@ -27,7 +27,7 @@ describe("useSwapStore — destinationToken migration", () => {
       issuer: "GA5Z...",
       decimals: 7,
       tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
-      isNew: true,
+      requiresTrustline: true,
     };
 
     act(() => {
@@ -46,7 +46,7 @@ describe("useSwapStore — destinationToken migration", () => {
         tokenCode: "XLM",
         decimals: 7,
         tokenType: TokenTypeWithCustomToken.NATIVE,
-        isNew: false,
+        requiresTrustline: false,
       });
     });
     act(() => {
@@ -111,7 +111,7 @@ describe("descriptorAsPathBalance", () => {
         tokenCode: "XLM",
         decimals: 7,
         tokenType: TokenTypeWithCustomToken.NATIVE,
-        isNew: false,
+        requiresTrustline: false,
       }),
     ).toThrow(/native descriptor/);
   });
@@ -123,7 +123,7 @@ describe("descriptorAsPathBalance", () => {
       issuer: "GA5Z...",
       decimals: 7,
       tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
-      isNew: true,
+      requiresTrustline: true,
     });
 
     expect((result as any).token).toEqual({
@@ -141,7 +141,7 @@ describe("descriptorAsPathBalance", () => {
         // issuer intentionally omitted
         decimals: 7,
         tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
-        isNew: true,
+        requiresTrustline: true,
       }),
     ).toThrow(/missing issuer/);
   });

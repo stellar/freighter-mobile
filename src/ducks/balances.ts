@@ -8,6 +8,7 @@ import {
   TokenPricesMap,
 } from "config/types";
 import { usePricesStore } from "ducks/prices";
+import { useRemoteConfigStore } from "ducks/remoteConfig";
 import {
   getLPShareCode,
   isLiquidityPool,
@@ -150,12 +151,14 @@ const fetchPricedBalances = async (
   );
 
   const { fetchPricesForBalances } = usePricesStore.getState();
+  const useV2 = useRemoteConfigStore.getState().use_token_prices_v2;
 
   // Fetch updated prices for the balances using the prices store
   const priceFetchPromise = fetchPricesForBalances({
     balances,
     publicKey: params.publicKey,
     network: params.network,
+    useV2,
   });
 
   // Wait a maximum of 3 seconds for prices to be fetched
@@ -175,10 +178,11 @@ const fetchPricedBalances = async (
   // Make sure to wait until the prices finishes fetching
   await priceFetchPromise;
 
-  // Get the updated prices from the store
-  const { prices, error: pricesError } = usePricesStore.getState();
+  // Get the updated prices for this network from the store
+  const { pricesByNetwork, error: pricesError } = usePricesStore.getState();
+  const prices = pricesByNetwork[params.network] ?? {};
 
-  if (pricesError || !prices || Object.keys(prices).length === 0) {
+  if (pricesError || Object.keys(prices).length === 0) {
     // Return existing data in case of price fetch error
     return existingPricedBalances;
   }

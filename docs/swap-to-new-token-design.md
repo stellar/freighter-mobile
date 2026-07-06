@@ -409,7 +409,7 @@ export type DestinationTokenDescriptor = {
   issuer?: string; // omitted for native XLM
   decimals: number; // defaults to 7 for classic; tomlInfo.decimals if present
   tokenType: TokenTypeWithCustomToken;
-  isNew: boolean; // false when the user already has a trustline
+  requiresTrustline: boolean; // false when the user already has a trustline
   // Optional security signals propagated from Blockaid scans so the
   // Receive chip / review sheet can render warnings without re-scanning.
   securityLevel?: SecurityLevel;
@@ -447,9 +447,9 @@ the slot). Two thin helpers (in a sibling file
 the `DestinationTokenDescriptor` type itself stays in `helpers/types.ts`, and
 both are re-exported through the `helpers` barrel) keep call sites tidy and
 avoid runtime "what shape is this?" branching — each is a narrow projection of
-its source plus `isNew` set from the origin (`false` for balances, `true` for
-search records that aren't already held; the native-XLM branch of
-`descriptorFromSearchRecord` returns `isNew: false`):
+its source plus `requiresTrustline` set from the origin (`false` for balances,
+`true` for search records that aren't already held; the native-XLM branch of
+`descriptorFromSearchRecord` returns `requiresTrustline: false`):
 
 ```ts
 descriptorFromBalance(balance: HeldBalanceItem): DestinationTokenDescriptor
@@ -672,11 +672,12 @@ The sheet emits callbacks only — it performs no `descriptorFromBalance` /
 itself. The parent wires `onSwapTo` to `confirmTrendingSelection` from the
 [`useTrendingTokenDetail`](../src/components/screens/SwapScreen/hooks/useTrendingTokenDetail.ts)
 hook; that hook's `applyTrendingSelection` does the held-balance lookup —
-`descriptorFromBalance` (`isNew: false`) when held, otherwise
-`descriptorFromSearchRecord` (`isNew: true`) — clears the source if it would
-collide with the new destination, then calls `setDestinationToken(descriptor)`
-and dismisses. The hook also owns a dedicated Blockaid security-warning sheet
-(presented via `presentTrendingSecurityWarning`).
+`descriptorFromBalance` (`requiresTrustline: false`) when held, otherwise
+`descriptorFromSearchRecord` (`requiresTrustline: true`) — clears the source if
+it would collide with the new destination, then calls
+`setDestinationToken(descriptor)` and dismisses. The hook also owns a dedicated
+Blockaid security-warning sheet (presented via
+`presentTrendingSecurityWarning`).
 
 **`TrustlineInfoBottomSheet`**
 ([`src/components/screens/SwapScreen/components/TrustlineInfoBottomSheet.tsx`](../src/components/screens/SwapScreen/components/TrustlineInfoBottomSheet.tsx)
@@ -730,12 +731,12 @@ Existing component at
 We add two pieces:
 
 - A purple inline `<Banner variant="highlight">` rendered when
-  `destinationToken.isNew === true`, with text "This will add a trustline to
-  {tokenCode}" and a chevron — tap opens `TrustlineInfoBottomSheet`. The
-  `highlight` variant was added to the SDS Banner (alongside
-  warning/error/success/info) so swap-flow callouts and any future lilac/purple
-  banners share the same layout, accessibility, and chevron behaviour as every
-  other Banner in the app.
+  `destinationToken.requiresTrustline === true`, with text "This will add a
+  trustline to {tokenCode}" and a chevron — tap opens
+  `TrustlineInfoBottomSheet`. The `highlight` variant was added to the SDS
+  Banner (alongside warning/error/success/info) so swap-flow callouts and any
+  future lilac/purple banners share the same layout, accessibility, and chevron
+  behaviour as every other Banner in the app.
 - The existing Blockaid token/transaction warning logic (`isDestMalicious`,
   `isDestSuspicious`, `isTxMalicious`, …) already works; we just feed it the new
   destination scan result (see §5.1). The review-sheet view-model
@@ -780,15 +781,16 @@ helper internally — no behaviour change for the Add-Token flow.
 
 `useSwapTransaction.setupSwapTransaction` reads `destinationToken` from
 `useSwapStore.getState()` and derives `includeTrustline` from it. When
-`destinationToken.isNew`, it builds
+`destinationToken.requiresTrustline`, it builds
 `{ tokenCode: destinationToken.tokenCode, issuer: destinationToken.issuer }`
 behind an explicit guard: if `issuer` is missing it **throws** (fail-fast,
 before submitting a transaction that would otherwise fail on-chain with
 `tx_no_trust`). This branch is unreachable in practice — native XLM can't be
-`isNew` and the picker filters out Soroban assets — so a missing issuer signals
-a bug we want surfaced immediately. (No `issuer!` non-null assertion and no
-`logger.error` — the guard throws.) Blockaid's transaction scan now sees the
-combined XDR, which gives us defence-in-depth on top of the per-token scan.
+`requiresTrustline` and the picker filters out Soroban assets — so a missing
+issuer signals a bug we want surfaced immediately. (No `issuer!` non-null
+assertion and no `logger.error` — the guard throws.) Blockaid's transaction scan
+now sees the combined XDR, which gives us defence-in-depth on top of the
+per-token scan.
 
 **Fee is the TOTAL across all ops.** The user-set fee (from the shared
 transaction-settings sheet) represents the total for the whole transaction, not
@@ -805,21 +807,21 @@ always 1 op, so total == per-op there and its builder is unchanged. The shared
 settings sheet is **operation-count-aware**: it scales the recommended default
 and floors the minimum by op count (a 2-op swap can't total below 2× the per-op
 minimum), threaded as
-`swapOperationCount = destinationTokenDescriptor?.isNew ? 2 : 1`;
+`swapOperationCount = destinationTokenDescriptor?.requiresTrustline ? 2 : 1`;
 `useSwapTransactionSettings` settles the scaled total into the store before the
 sheet opens so the displayed value doesn't visibly jump.
 
 **Pre-flight XLM reserve check** — before triggering `buildSwapTransaction`, the
 pure predicate
-`shouldShowXlmReservePreflight({ balanceItems, subentryCount, swapFee, sourceTokenId, destinationIsNew }): boolean`
+`shouldShowXlmReservePreflight({ balanceItems, subentryCount, swapFee, sourceTokenId, destinationRequiresTrustline }): boolean`
 decides whether to surface `XlmReserveBottomSheet` instead of the Review sheet.
 It lives in
 [`src/components/screens/SwapScreen/helpers/swapPreflight.ts`](../src/components/screens/SwapScreen/helpers/swapPreflight.ts)
 and is called from `SwapAmountScreen` before opening the Review sheet. The logic
 is not a single flat reserve-vs-spendable comparison; it branches:
 
-- Returns `false` when the destination isn't new (`!destinationIsNew`) — no
-  trustline op, so no reserve concern.
+- Returns `false` when the destination isn't new
+  (`!destinationRequiresTrustline`) — no trustline op, so no reserve concern.
 - **XLM source** (`isNativeAssetId(sourceTokenId)`): gate on the _initial_
   spendable being below `BASE_RESERVE` (0.5 XLM):
   `xlmSpendable.lt(BASE_RESERVE)`. `SwapAmountScreen` already deducts
@@ -842,13 +844,13 @@ rather than relying on Horizon's `tx_insufficient_balance` for a better UX.
 
 ### 6.6 CTA state machine on `SwapAmountScreen`
 
-| State        | Condition                          | Label                             | Action on tap                                                                                                                                                                                                                                                                                                                                                                                     |
-| ------------ | ---------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Select       | source OR destination not selected | "Select a token"                  | navigate → `SwapToScreen` for the missing side (source-first ordering when both are empty)                                                                                                                                                                                                                                                                                                        |
-| Enter        | both sides set, amount = 0         | "Enter an amount"                 | focus Sell `TextInput` (system numeric keyboard slides up)                                                                                                                                                                                                                                                                                                                                        |
-| Insufficient | amount > spendable                 | "Insufficient balance" (disabled) | —                                                                                                                                                                                                                                                                                                                                                                                                 |
-| Loading      | path-finding in flight             | spinner                           | —                                                                                                                                                                                                                                                                                                                                                                                                 |
-| Review       | amount valid & path found          | "Review swap"                     | if `destinationToken.isNew` and spendable XLM is below the 0.5 XLM reserve → open `XlmReserveBottomSheet`; else build + scan the tx and, from the **fresh** scan result, open `SecurityDetailBottomSheet` when any side is unable-to-scan (source/destination token scans **or** the transaction-level XDR scan) so the user acknowledges it before proceeding; else open `SwapReviewBottomSheet` |
+| State        | Condition                          | Label                             | Action on tap                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ------------ | ---------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Select       | source OR destination not selected | "Select a token"                  | navigate → `SwapToScreen` for the missing side (source-first ordering when both are empty)                                                                                                                                                                                                                                                                                                                    |
+| Enter        | both sides set, amount = 0         | "Enter an amount"                 | focus Sell `TextInput` (system numeric keyboard slides up)                                                                                                                                                                                                                                                                                                                                                    |
+| Insufficient | amount > spendable                 | "Insufficient balance" (disabled) | —                                                                                                                                                                                                                                                                                                                                                                                                             |
+| Loading      | path-finding in flight             | spinner                           | —                                                                                                                                                                                                                                                                                                                                                                                                             |
+| Review       | amount valid & path found          | "Review swap"                     | if `destinationToken.requiresTrustline` and spendable XLM is below the 0.5 XLM reserve → open `XlmReserveBottomSheet`; else build + scan the tx and, from the **fresh** scan result, open `SecurityDetailBottomSheet` when any side is unable-to-scan (source/destination token scans **or** the transaction-level XDR scan) so the user acknowledges it before proceeding; else open `SwapReviewBottomSheet` |
 
 Implemented as a derived `useMemo` in the dedicated
 [`useSwapCtaState`](../src/components/screens/SwapScreen/hooks/useSwapCtaState.ts)
@@ -856,8 +858,8 @@ hook, which exports the discriminated union `SwapCtaState`
 (`{kind:"select";missingSide} | {kind:"enter"} | {kind:"insufficient"} | {kind:"loading"} | {kind:"review"}`),
 the `ctaLabel`, and `isCtaDisabled`; `SwapAmountScreen` renders the SDS
 `<Button>` accordingly. The reserve-check branch only triggers when
-`destinationToken.isNew === true` — held-to-held swaps go straight to the review
-sheet.
+`destinationToken.requiresTrustline === true` — held-to-held swaps go straight
+to the review sheet.
 
 Two implementation notes the table glosses over: (1) the button's _disabled_
 state is
@@ -1062,7 +1064,7 @@ colon-prefixed lowercase string for the Amplitude payload (e.g.
   `{ tokenCode, tokenIssuer }` (fired by the trending detail sheet's "Swap to
   {code}" CTA).
 - `SWAP_DESTINATION_SELECTED = "swap: destination selected"` —
-  `{ tokenCode, tokenIssuer, isNew, source: "trending" | "popular" | "search" | "balances" }`
+  `{ tokenCode, tokenIssuer, requiresTrustline, source: "trending" | "popular" | "search" | "balances" }`
 - `SWAP_TRUSTLINE_ADDED = "swap: trustline added"` —
   `{ tokenCode, tokenIssuer }`, fired once the combined tx confirms.
 - `SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN = "swap: xlm reserve insufficient shown"`
