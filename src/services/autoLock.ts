@@ -43,7 +43,7 @@ const persistAutoLockTimer = async (timer: AUTO_LOCK_TIMER): Promise<void> => {
 
 /**
  * Returns the hash key TTL for the given auto-lock timer. With NONE the user
- * explicitly opted out of auto-lock, so the 24h hard-expiry backstop is
+ * explicitly opted out of auto-lock, so the hard-expiry backstop is
  * replaced by an effectively-never expiration.
  */
 const getHashKeyExpirationMs = (timer: AUTO_LOCK_TIMER): number =>

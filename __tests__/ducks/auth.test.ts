@@ -1750,7 +1750,7 @@ describe("auth duck", () => {
           autoLockTimer: AUTO_LOCK_TIMER.ONE_HOUR,
         });
 
-        // Hash key hard-expired (e.g. > 24h since the last unlock)
+        // Hash key hard-expired (e.g. > 48h since the last unlock)
         (getHashKey as jest.Mock).mockResolvedValue({
           hashKey: "mock-hash-key",
           salt: "mock-salt",
@@ -1769,7 +1769,7 @@ describe("auth duck", () => {
       it("should return HASH_KEY_EXPIRED (not LOCKED) when backgrounded beyond BOTH the timer and the hash-key TTL", async () => {
         // The reviewer's scenario: the timer branch would otherwise return a
         // fast-path LOCKED that refreshes the expired key, silently defeating
-        // the 24h hard-expiry backstop. Expiry must win → full re-auth.
+        // the hard-expiry backstop. Expiry must win → full re-auth.
         const { result } = renderHook(() => useAuthenticationStore());
         restoreGetAuthStatus();
 

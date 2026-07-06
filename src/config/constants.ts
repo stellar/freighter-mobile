@@ -89,11 +89,19 @@ export const PASSWORD_MAX_LENGTH = 2048;
 export const ACCOUNT_NAME_MIN_LENGTH = 1;
 export const ACCOUNT_NAME_MAX_LENGTH = 24;
 export const ACCOUNTS_TO_VERIFY_ON_EXISTING_MNEMONIC_PHRASE = 6;
-// Hard-expiry backstop: after this the session fully re-authenticates
-// (HASH_KEY_EXPIRED). Must stay greater than the largest AUTO_LOCK_TIMER
-// preset, or that preset's soft-lock fast path can never run (hard expiry
-// fires first).
-export const HASH_KEY_EXPIRATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+// Hard-expiry backstop: after this the persisted derived key is discarded and
+// the session fully re-authenticates from the password (HASH_KEY_EXPIRED)
+// rather than taking the fast soft-lock unlock path. It is a separate, coarser
+// bound than the user-configurable soft auto-lock: the soft timer governs how
+// soon the wallet re-locks (fast unlock), while this caps how long key material
+// may live in secure storage regardless of that choice.
+//
+// Set just above the largest AUTO_LOCK_TIMER preset (24h) so that preset's
+// soft-lock fast path stays reachable — if this were <= 24h, the hard expiry
+// (which is anchored at sign-in and checked before the soft timer) would fire
+// first and the 24h preset could never fast-unlock. 48h keeps a tight backstop
+// while leaving that headroom; NONE opts out via NEVER_EXPIRE_HASH_KEY_MS.
+export const HASH_KEY_EXPIRATION_MS = 48 * 60 * 60 * 1000; // 48 hours
 export const VISUAL_DELAY_MS = 500;
 
 const SECOND_IN_MS = 1000;
@@ -153,7 +161,7 @@ export const AUTO_LOCK_TIMER_MS: Record<AUTO_LOCK_TIMER, number | null> = {
 
 /**
  * Hash key TTL used when the auto-lock timer is NONE: the user explicitly
- * opted out of auto-lock, so the 24h hard-expiry backstop must never force
+ * opted out of auto-lock, so the hard-expiry backstop must never force
  * a re-auth. Effectively "never" while remaining a valid timestamp.
  */
 export const NEVER_EXPIRE_HASH_KEY_MS = 100 * YEAR_IN_MS;
