@@ -3106,3 +3106,18 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
     set({ signInMethod: method });
   },
 }));
+
+/**
+ * Returns the mnemonic phrase from the unlocked temporary store,
+ * or null when the wallet is locked or the store is unavailable.
+ */
+export const getActiveMnemonicPhrase = async (): Promise<string | null> => {
+  try {
+    const store = await getTemporaryStore(
+      useAuthenticationStore.getState().authStatus,
+    );
+    return store?.mnemonicPhrase ?? null;
+  } catch {
+    return null;
+  }
+};
