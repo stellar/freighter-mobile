@@ -25,6 +25,10 @@ const ForgotPasswordWarningModal: React.FC<ForgotPasswordWarningModalProps> = ({
     <Modal
       visible={visible}
       onClose={onCancel}
+      // Part of the lock screen's own UI — must stay usable while soft-locked
+      // (otherwise pressing "Forgot password?" from the lock overlay would
+      // instantly dismiss this warning and the reset flow is unreachable).
+      dismissOnSoftLock={false}
       contentClassName="w-full bg-background-tertiary rounded-[24px] p-6 gap-6"
       testID="forgot-password-warning-modal"
     >

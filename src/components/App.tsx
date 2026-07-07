@@ -11,6 +11,7 @@ import { NAVIGATION_THEME } from "config/navigationTheme";
 import { RootStackParamList } from "config/routes";
 import { initializeSentry } from "config/sentryConfig";
 import { THEME } from "config/theme";
+import { useAuthenticationStore } from "ducks/auth";
 import { useNavigationAnalytics } from "hooks/useNavigationAnalytics";
 import { useSentryContext } from "hooks/useSentryContext";
 import i18n from "i18n";
@@ -21,13 +22,36 @@ import { ToastProvider } from "providers/ToastProvider";
 import { WalletKitProvider } from "providers/WalletKitProvider";
 import React, { useEffect } from "react";
 import { I18nextProvider } from "react-i18next";
-import { Appearance, StatusBar } from "react-native";
+import { Appearance, StatusBar, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { getUserId } from "services/analytics/user";
 
 export const navigationRef = createNavigationContainerRef<RootStackParamList>();
+
+/**
+ * Hides the still-mounted app tree from screen readers while the soft-lock
+ * overlay is up, so VoiceOver / TalkBack can't traverse the wallet underneath.
+ * `accessibilityElementsHidden` covers iOS (complementing the overlay's
+ * `accessibilityViewIsModal`); `importantForAccessibility` covers Android,
+ * which has no modal-accessibility equivalent. Isolated as its own subscriber
+ * so only this wrapper re-renders on lock/unlock, not the whole provider tree.
+ */
+const SoftLockAccessibilityShield: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
+  const isSoftLocked = useAuthenticationStore((state) => state.isSoftLocked);
+  return (
+    <View
+      style={{ flex: 1 }}
+      accessibilityElementsHidden={isSoftLocked}
+      importantForAccessibility={isSoftLocked ? "no-hide-descendants" : "auto"}
+    >
+      {children}
+    </View>
+  );
+};
 
 export const App = (): React.JSX.Element => {
   const { onStateChange } = useNavigationAnalytics();
@@ -82,7 +106,9 @@ export const App = (): React.JSX.Element => {
                         barStyle="light-content"
                       />
                       <WalletKitProvider>
-                        <RootNavigator />
+                        <SoftLockAccessibilityShield>
+                          <RootNavigator />
+                        </SoftLockAccessibilityShield>
                       </WalletKitProvider>
                     </NetworkProvider>
                   </AuthCheckProvider>

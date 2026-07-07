@@ -2359,6 +2359,14 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
             get().navigateToLockScreen();
             return;
           }
+          // A soft-lock may have engaged during the slow key derivation above
+          // (softLock clears account to null). Drop this stale load rather than
+          // repopulating the private key into a locked store — the next unlock
+          // reloads it.
+          if (get().isSoftLocked) {
+            set({ isLoadingAccount: false });
+            return;
+          }
           set({ account: activeAccount, isLoadingAccount: false });
         })
         .catch((accountError) => {
