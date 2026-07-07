@@ -92,6 +92,20 @@ export interface ApiServiceOptions {
   headers?: Record<string, string>;
   /** Whether to log requests and responses */
   logRequests?: boolean;
+  /**
+   * Optional hook invoked on the raw AxiosInstance BEFORE the error-normalizing
+   * response interceptor is registered.  Use this to attach interceptors that
+   * must run BEFORE the normalizer on the error path (e.g. a 401-retry handler
+   * that needs access to `error.response` and `error.config` — both of which
+   * the normalizer strips when it converts the AxiosError into a plain ApiError).
+   *
+   * Axios runs response interceptors in registration order, so any response
+   * interceptor added here is guaranteed to see the raw AxiosError.
+   *
+   * @example
+   * createApiService({ baseURL, configureInstance: attachAuthInterceptors })
+   */
+  configureInstance?: (instance: AxiosInstance) => void;
 }
 
 /**
@@ -136,6 +150,7 @@ export function createApiService(options: ApiServiceOptions) {
       Accept: "application/json",
     },
     logRequests = false,
+    configureInstance,
   } = options;
 
   // Create axios instance
@@ -156,6 +171,14 @@ export function createApiService(options: ApiServiceOptions) {
       return response;
     });
   }
+
+  // Allow the caller to register interceptors on the raw instance BEFORE the
+  // error-normalizing response interceptor below.  Axios runs response
+  // interceptors in registration order, so any response interceptor added by
+  // this hook sees the original AxiosError (with .response / .config intact)
+  // before the normalizer converts it to a plain ApiError and drops those
+  // fields.  This is the correct insertion point for a 401-retry handler.
+  configureInstance?.(instance);
 
   // Add response interceptor for error handling
   instance.interceptors.response.use(

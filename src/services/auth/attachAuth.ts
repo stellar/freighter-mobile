@@ -91,8 +91,19 @@ function deriveServerPath(
 /**
  * Attaches per-request JWT authentication interceptors to `instance`.
  *
- * Call this exactly once, right after `createApiService(...)` returns the
- * instance for `freighterBackendV2`.
+ * ORDERING REQUIREMENT: This function MUST be wired via the `configureInstance`
+ * hook of `createApiService` (not called after `createApiService` returns).
+ * Axios runs response interceptors in registration order.  The 401-retry
+ * handler below inspects `error.response?.status` and `error.config` — fields
+ * that are present on a raw AxiosError but are stripped by apiFactory's
+ * error-normalizing response interceptor (which converts the error into a plain
+ * `ApiError`).  If this function were called after `createApiService`, the
+ * retry handler would be registered *after* the normalizer and would never fire
+ * on a real 401: by the time it runs, the error is already an `ApiError` with
+ * no `.response` property.
+ *
+ * Using `configureInstance` guarantees these interceptors are registered BEFORE
+ * the normalizer, so the 401-retry path works correctly in production.
  */
 export function attachAuthInterceptors(instance: AxiosInstance): void {
   // ------------------------------------------------------------------

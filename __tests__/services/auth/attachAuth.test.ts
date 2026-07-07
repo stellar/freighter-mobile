@@ -2,19 +2,30 @@
 /**
  * Tests for attachAuthInterceptors helper.
  *
- * Strategy: build a minimal fake AxiosInstance that captures the interceptor
- * functions registered via `interceptors.request.use` and
- * `interceptors.response.use`. We then invoke those functions directly to
+ * Strategy A (isolated handler tests): build a minimal fake AxiosInstance that
+ * captures the interceptor functions registered via `interceptors.request.use`
+ * and `interceptors.response.use`. We then invoke those functions directly to
  * exercise the logic without any real HTTP calls.
+ *
+ * Strategy B (integration tests): build a REAL instance via
+ * `createApiService({ configureInstance: attachAuthInterceptors })` with a
+ * custom axios adapter so requests never hit the network.  These tests prove
+ * that the 401-retry fires through the full interceptor chain — including
+ * apiFactory's error-normalizing response interceptor — which the isolated
+ * handler tests cannot cover because they bypass the normalizer entirely.
  *
  * Modules under test:
  *   - services/auth/attachAuth  (the helper being implemented)
+ *   - services/apiFactory       (createApiService, integration only)
  *
  * Dependencies mocked:
  *   - services/auth/getAuthKeypair  (getAuthKeypair)
- *   - services/auth/buildAuthJwt    (buildAuthJwt)
+ *   - services/auth/buildAuthJwt    (buildAuthJwt — mocked for isolated tests,
+ *                                    real implementation used for integration)
  */
 import { Keypair } from "@stellar/stellar-sdk";
+import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
+import { createApiService } from "services/apiFactory";
 import { attachAuthInterceptors } from "services/auth/attachAuth";
 import { buildAuthJwt } from "services/auth/buildAuthJwt";
 import { getAuthKeypair } from "services/auth/getAuthKeypair";
@@ -29,6 +40,16 @@ jest.mock("services/auth/getAuthKeypair", () => ({
 
 jest.mock("services/auth/buildAuthJwt", () => ({
   buildAuthJwt: jest.fn(),
+}));
+
+// apiFactory imports config/logger; silence it in the integration tests.
+jest.mock("config/logger", () => ({
+  logger: {
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+  },
 }));
 
 const mockGetAuthKeypair = jest.mocked(getAuthKeypair);
@@ -365,5 +386,223 @@ describe("attachAuthInterceptors", () => {
       await expect(runResponseError(err)).rejects.toBe(err);
       expect(requestCalls).toHaveLength(0);
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Integration tests — real createApiService + real interceptor chain
+//
+// These tests prove the 401-retry fires through the FULL interceptor chain,
+// including apiFactory's error-normalizing response interceptor.  The isolated
+// handler tests above bypass that normalizer; this suite covers the gap that
+// hid the original bug (auth interceptors registered after the normalizer).
+// ---------------------------------------------------------------------------
+
+/**
+ * Reject with a proper AxiosError so that axios response interceptors receive
+ * a real AxiosError (with `.response` and `.config` set) rather than a plain
+ * object.  Custom adapters in axios 1.x do NOT run through `settle`
+ * automatically — the built-in http/xhr adapters call `settle` internally.
+ * For a custom adapter to trigger the error path the adapter must reject with
+ * an AxiosError itself.
+ */
+function make401AxiosError(config: InternalAxiosRequestConfig): AxiosError {
+  const response = {
+    data: { message: "Unauthorized" },
+    status: 401,
+    statusText: "Unauthorized",
+    headers: {},
+    config,
+  } as import("axios").AxiosResponse;
+  const err = new axios.AxiosError(
+    "Request failed with status code 401",
+    "ERR_BAD_REQUEST",
+    config,
+    null,
+    response,
+  );
+  return err;
+}
+
+/**
+ * Build an axios adapter that rejects with a 401 AxiosError on the first call
+ * and resolves with 200 on the second.  Captures every config it receives so
+ * the caller can inspect the Authorization headers used on each attempt.
+ */
+function makeTwoCallAdapter(capturedConfigs: InternalAxiosRequestConfig[]) {
+  let callCount = 0;
+  return async function adapter(
+    config: InternalAxiosRequestConfig,
+  ): Promise<import("axios").AxiosResponse> {
+    capturedConfigs.push(config);
+    callCount += 1;
+    if (callCount === 1) {
+      // First call → 401 Unauthorized (reject with AxiosError so axios
+      // response error interceptors see .response/.config intact).
+      return Promise.reject(make401AxiosError(config));
+    }
+    // Second call → 200 OK.
+    return Promise.resolve({
+      data: { ok: true },
+      status: 200,
+      statusText: "OK",
+      headers: {},
+      config,
+    });
+  };
+}
+
+/**
+ * Build an adapter that always rejects with 401 (simulates a second
+ * consecutive 401 after the retry — terminal failure path).
+ */
+function makeAlways401Adapter(capturedConfigs: InternalAxiosRequestConfig[]) {
+  return async function adapter(
+    config: InternalAxiosRequestConfig,
+  ): Promise<import("axios").AxiosResponse> {
+    capturedConfigs.push(config);
+    return Promise.reject(make401AxiosError(config));
+  };
+}
+
+describe("attachAuthInterceptors — integration through full apiFactory chain", () => {
+  const BASE_URL = "https://mock-backend-v2-dev.example.com/api/v1";
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // Use the real buildAuthJwt for all integration tests so we can inspect
+    // the actual JWT payloads and assert fresh tokens on retry.
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const { buildAuthJwt: realBuildAuthJwt } = jest.requireActual(
+      "services/auth/buildAuthJwt",
+    );
+    mockBuildAuthJwt.mockImplementation(realBuildAuthJwt);
+    mockGetAuthKeypair.mockResolvedValue(TEST_KEYPAIR);
+  });
+
+  it("adapter is called exactly twice and request succeeds with 200 on the second call", async () => {
+    // This is the regression test for the ordering bug.  Before the fix,
+    // the auth retry interceptor was registered AFTER apiFactory's normalizer.
+    // On a 401 the normalizer would convert the AxiosError to a plain ApiError
+    // (dropping .response), so err.response?.status === 401 was never true and
+    // the retry never fired — the request failed with ApiError{ status: 401 }.
+    // After the fix, auth interceptors are registered via configureInstance
+    // (BEFORE the normalizer), so they see the raw AxiosError and the retry
+    // fires correctly.
+    const capturedConfigs: InternalAxiosRequestConfig[] = [];
+    const api = createApiService({
+      baseURL: BASE_URL,
+      configureInstance: attachAuthInterceptors,
+    });
+    // Inject the adapter after service creation — this controls HTTP responses
+    // without changing the interceptor registration order.
+    api.getInstance().defaults.adapter = makeTwoCallAdapter(capturedConfigs);
+
+    const result = await api.get<{ ok: boolean }>("/token-prices");
+
+    // Adapter was called twice: first 401, then 200.
+    expect(capturedConfigs).toHaveLength(2);
+    // The final response reaches the consumer as a 200.
+    expect(result.status).toBe(200);
+    expect(result.data).toEqual({ ok: true });
+  });
+
+  it("second request carries a fresh JWT that differs from the first", async () => {
+    // The retry must re-run the request interceptor to get a new JWT.
+    // We use fake timers to advance the clock by 2 s between the first and
+    // second call so the `iat` claim differs deterministically — without this
+    // the two JWTs may be identical when both calls land in the same second.
+    jest.useFakeTimers();
+    const baseNow = Date.now();
+    jest.setSystemTime(baseNow);
+
+    const capturedConfigs: InternalAxiosRequestConfig[] = [];
+
+    // Wrap the real adapter so we can advance the clock between calls.
+    let callCount = 0;
+    const clockAdvancingAdapter = async (
+      config: InternalAxiosRequestConfig,
+    ): Promise<import("axios").AxiosResponse> => {
+      capturedConfigs.push(config);
+      callCount += 1;
+      if (callCount === 1) {
+        // Advance clock BEFORE the retry so the second JWT has a later iat.
+        jest.advanceTimersByTime(2000);
+        // Reject with an AxiosError so interceptors see .response/.config.
+        return Promise.reject(make401AxiosError(config));
+      }
+      return Promise.resolve({
+        data: { ok: true },
+        status: 200,
+        statusText: "OK",
+        headers: {},
+        config,
+      });
+    };
+
+    const api = createApiService({
+      baseURL: BASE_URL,
+      configureInstance: attachAuthInterceptors,
+    });
+    api.getInstance().defaults.adapter = clockAdvancingAdapter;
+
+    await api.get<{ ok: boolean }>("/protocols");
+
+    jest.useRealTimers();
+
+    expect(capturedConfigs).toHaveLength(2);
+
+    // Extract Authorization headers from both captured configs.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const token1 = (capturedConfigs[0].headers as Record<string, any>)
+      .Authorization as string | undefined;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const token2 = (capturedConfigs[1].headers as Record<string, any>)
+      .Authorization as string | undefined;
+
+    expect(token1).toMatch(/^Bearer /);
+    expect(token2).toMatch(/^Bearer /);
+
+    // The two tokens must differ — the second request must have triggered the
+    // request interceptor again to build a fresh JWT.
+    expect(token1).not.toBe(token2);
+
+    // Verify the iat in the second JWT is later than in the first.
+    const payload1 = decodePayload(token1!.replace("Bearer ", ""));
+    const payload2 = decodePayload(token2!.replace("Bearer ", ""));
+    expect(payload2.iat as number).toBeGreaterThan(payload1.iat as number);
+  });
+
+  it("a second consecutive 401 rejects with ApiError (normalizer applied) and does NOT retry more than once", async () => {
+    // When both the initial request AND the retry return 401:
+    //   - The retry's inner request chain catches the second 401 in the auth
+    //     interceptor (__isAuthRetry=true), rejects with the raw AxiosError,
+    //     and the INNER normalizer converts it → ApiError{ status: 401 }.
+    //   - The OUTER chain's normalizer then runs on that plain ApiError object.
+    //     Because ApiError has no .response field, it produces ApiError{ status: 0 }.
+    // The consumer therefore receives an ApiError (not a raw AxiosError), which
+    // is what callers in services/backend.ts expect.
+    // Key assertions:
+    //   (a) no infinite retry loop (adapter called exactly twice), and
+    //   (b) the consumer receives an ApiError shape (isNetworkError defined).
+    const capturedConfigs: InternalAxiosRequestConfig[] = [];
+    const api = createApiService({
+      baseURL: BASE_URL,
+      configureInstance: attachAuthInterceptors,
+    });
+    api.getInstance().defaults.adapter = makeAlways401Adapter(capturedConfigs);
+
+    await expect(api.get("/protocols")).rejects.toMatchObject({
+      // ApiError shape produced by the normalizer — status may be 0 because
+      // the outer normalizer sees a plain ApiError (no .response) rather than
+      // a raw AxiosError.  What matters is isNetworkError is present, message
+      // is a string, and the retry did not loop.
+      isNetworkError: false,
+      message: expect.any(String),
+    });
+
+    // Exactly 2 adapter calls: original + one retry.  A third call would mean
+    // the guard flag is broken.
+    expect(capturedConfigs).toHaveLength(2);
   });
 });
