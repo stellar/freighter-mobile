@@ -57,6 +57,7 @@ import { AppState, Keyboard } from "react-native";
 import ReactNativeBiometrics from "react-native-biometrics";
 import * as Keychain from "react-native-keychain";
 import { analytics } from "services/analytics";
+import { clearAuthKeypairCache } from "services/auth/getAuthKeypair";
 import {
   clearBackgroundedAt,
   getAutoLockTimer,
@@ -2151,6 +2152,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
           if (hasAccountList && !shouldWipeAllData) {
             // Don't expire hash key - preserve temporary store accessibility
             // Security comes from app being locked, not key expiration
+            clearAuthKeypairCache();
 
             set({
               account: null,
@@ -2182,6 +2184,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
             // Wipe path: clear derived key cache and use resetRoot so the auth screen is
             // visible before the long async cleanup begins.
             clearDerivedKeyCache();
+            clearAuthKeypairCache();
 
             // Capture navigationRef before ...initialState clears it to null
             const { navigationRef: navRef } = get();
