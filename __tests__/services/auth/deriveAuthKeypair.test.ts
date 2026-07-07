@@ -23,7 +23,7 @@ describe("deriveAuthKeypair", () => {
     const call1 = deriveAuthKeypair(m);
     const call2 = deriveAuthKeypair(m);
     expect(call1.userId).toBe(call2.userId);
-    expect(call1.publicKey).toBe(call2.publicKey);
+    expect(call1.keypair.publicKey()).toBe(call2.keypair.publicKey());
   });
 
   it("emits lowercase 64-char hex", () => {
