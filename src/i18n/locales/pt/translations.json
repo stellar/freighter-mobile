@@ -1011,14 +1011,14 @@
   "autoLockTimerScreen": {
     "title": "Temporizador de Bloqueio Automático",
     "options": {
-      "immediately": "Imediatamente",
       "oneMinute": "1 minuto",
+      "fiveMinutes": "5 minutos",
       "fifteenMinutes": "15 minutos",
       "thirtyMinutes": "30 minutos",
       "oneHour": "1 hora",
+      "sixHours": "6 horas",
       "twelveHours": "12 horas",
-      "twentyFourHours": "24 horas",
-      "none": "Nenhum"
+      "twentyFourHours": "24 horas"
     },
     "footer": "Após um período definido, sua senha será solicitada novamente como medida extra de segurança."
   },

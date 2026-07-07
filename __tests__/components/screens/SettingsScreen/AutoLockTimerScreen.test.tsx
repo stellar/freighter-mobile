@@ -9,7 +9,6 @@ import React from "react";
 
 jest.mock("services/autoLock", () => ({
   persistAutoLockTimer: jest.fn().mockResolvedValue(undefined),
-  applyAutoLockTimerToHashKey: jest.fn().mockResolvedValue(undefined),
 }));
 
 type AutoLockTimerScreenNavigationProp = NativeStackScreenProps<
@@ -47,10 +46,10 @@ describe("AutoLockTimerScreen", () => {
     const { getByTestId } = renderAutoLockTimerScreen();
 
     expect(
-      getByTestId(`auto-lock-option-${AUTO_LOCK_TIMER.IMMEDIATELY}`),
+      getByTestId(`auto-lock-option-${AUTO_LOCK_TIMER.ONE_MINUTE}`),
     ).toBeTruthy();
     expect(
-      getByTestId(`auto-lock-option-${AUTO_LOCK_TIMER.ONE_MINUTE}`),
+      getByTestId(`auto-lock-option-${AUTO_LOCK_TIMER.FIVE_MINUTES}`),
     ).toBeTruthy();
     expect(
       getByTestId(`auto-lock-option-${AUTO_LOCK_TIMER.FIFTEEN_MINUTES}`),
@@ -62,13 +61,13 @@ describe("AutoLockTimerScreen", () => {
       getByTestId(`auto-lock-option-${AUTO_LOCK_TIMER.ONE_HOUR}`),
     ).toBeTruthy();
     expect(
+      getByTestId(`auto-lock-option-${AUTO_LOCK_TIMER.SIX_HOURS}`),
+    ).toBeTruthy();
+    expect(
       getByTestId(`auto-lock-option-${AUTO_LOCK_TIMER.TWELVE_HOURS}`),
     ).toBeTruthy();
     expect(
       getByTestId(`auto-lock-option-${AUTO_LOCK_TIMER.TWENTY_FOUR_HOURS}`),
-    ).toBeTruthy();
-    expect(
-      getByTestId(`auto-lock-option-${AUTO_LOCK_TIMER.NONE}`),
     ).toBeTruthy();
   });
 

@@ -1,14 +1,10 @@
 import { act, renderHook } from "@testing-library/react-hooks";
 import { AUTO_LOCK_TIMER, DEFAULT_AUTO_LOCK_TIMER } from "config/constants";
 import { usePreferencesStore } from "ducks/preferences";
-import {
-  applyAutoLockTimerToHashKey,
-  persistAutoLockTimer,
-} from "services/autoLock";
+import { persistAutoLockTimer } from "services/autoLock";
 
 jest.mock("services/autoLock", () => ({
   persistAutoLockTimer: jest.fn().mockResolvedValue(undefined),
-  applyAutoLockTimerToHashKey: jest.fn().mockResolvedValue(undefined),
   getAutoLockTimer: jest
     .fn()
     .mockResolvedValue(
@@ -16,8 +12,8 @@ jest.mock("services/autoLock", () => ({
     ),
 }));
 
-// setAutoLockTimer sequences the persist + hash-TTL writes in an async IIFE,
-// so let those microtasks settle before asserting.
+// setAutoLockTimer persists to the mirror in a fire-and-forget promise, so let
+// those microtasks settle before asserting.
 const flushMicrotasks = async () => {
   for (let i = 0; i < 5; i += 1) {
     // eslint-disable-next-line no-await-in-loop
@@ -47,10 +43,6 @@ describe("preferences store", () => {
 
     expect(result.current.autoLockTimer).toBe(AUTO_LOCK_TIMER.FIFTEEN_MINUTES);
     expect(persistAutoLockTimer).toHaveBeenCalledWith(
-      AUTO_LOCK_TIMER.FIFTEEN_MINUTES,
-    );
-    // The hash-key TTL re-anchor is sequenced after the mirror write succeeds
-    expect(applyAutoLockTimerToHashKey).toHaveBeenCalledWith(
       AUTO_LOCK_TIMER.FIFTEEN_MINUTES,
     );
   });

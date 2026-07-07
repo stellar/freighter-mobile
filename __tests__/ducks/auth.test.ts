@@ -1797,66 +1797,15 @@ describe("auth duck", () => {
         );
       });
 
-      it("should never soft-lock when the timer is NONE", async () => {
+      it("should default to 12 hours when no timer preference is persisted", async () => {
         const { result } = renderHook(() => useAuthenticationStore());
         restoreGetAuthStatus();
 
+        // 13h exceeds the 12h default but not the old 24h, so this pins the
+        // default at 12h (matching the extension) rather than merely "some
+        // default under 13h".
         mockAuthenticatedStorage({
-          backgroundedAt: Date.now() - 100 * ONE_HOUR_MS,
-          autoLockTimer: AUTO_LOCK_TIMER.NONE,
-        });
-
-        await act(async () => {
-          const status = await result.current.getAuthStatus();
-          expect(status).toBe(AUTH_STATUS.AUTHENTICATED);
-        });
-
-        expect(secureDataStorage.setItem).not.toHaveBeenCalledWith(
-          SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
-          AUTH_STATUS.LOCKED,
-        );
-      });
-
-      it("does NOT re-lock via getAuthStatus for IMMEDIATELY (background-only) — it consumes a lingering timestamp instead", async () => {
-        // IMMEDIATELY is locked proactively on backgrounding (useAuthCheck);
-        // its 0ms duration must NOT make getAuthStatus re-lock a fresh
-        // foreground session off a lingering backgrounded-at timestamp, which
-        // would make the app unusable after unlock.
-        const { result } = renderHook(() => useAuthenticationStore());
-        restoreGetAuthStatus();
-
-        const previousAppState = AppState.currentState;
-        (AppState as { currentState: string }).currentState = "active";
-
-        mockAuthenticatedStorage({
-          backgroundedAt: Date.now() - 60000, // a stale timestamp
-          autoLockTimer: AUTO_LOCK_TIMER.IMMEDIATELY,
-        });
-
-        await act(async () => {
-          const status = await result.current.getAuthStatus();
-          expect(status).toBe(AUTH_STATUS.AUTHENTICATED);
-        });
-
-        // Must NOT persist LOCKED, and should consume the stale timestamp
-        expect(secureDataStorage.setItem).not.toHaveBeenCalledWith(
-          SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
-          AUTH_STATUS.LOCKED,
-        );
-        expect(secureDataStorage.remove).toHaveBeenCalledWith(
-          SENSITIVE_STORAGE_KEYS.AUTO_LOCK_BACKGROUNDED_AT,
-        );
-
-        (AppState as { currentState: typeof previousAppState }).currentState =
-          previousAppState;
-      });
-
-      it("should default to 24 hours when no timer preference is persisted", async () => {
-        const { result } = renderHook(() => useAuthenticationStore());
-        restoreGetAuthStatus();
-
-        mockAuthenticatedStorage({
-          backgroundedAt: Date.now() - 25 * ONE_HOUR_MS,
+          backgroundedAt: Date.now() - 13 * ONE_HOUR_MS,
           autoLockTimer: null,
         });
 

@@ -1,20 +1,15 @@
 import {
   AUTO_LOCK_TIMER,
   DEFAULT_AUTO_LOCK_TIMER,
-  HASH_KEY_EXPIRATION_MS,
-  NEVER_EXPIRE_HASH_KEY_MS,
   SENSITIVE_STORAGE_KEYS,
 } from "config/constants";
 import {
-  applyAutoLockTimerToHashKey,
   clearBackgroundedAt,
   getAutoLockTimer,
   getBackgroundedAt,
-  getHashKeyExpirationMs,
   persistAutoLockTimer,
   recordBackgroundedAt,
 } from "services/autoLock";
-import { getHashKey } from "services/storage/helpers";
 import { secureDataStorage } from "services/storage/storageFactory";
 
 jest.mock("services/storage/storageFactory", () => ({
@@ -78,59 +73,6 @@ describe("autoLock service", () => {
         SENSITIVE_STORAGE_KEYS.AUTO_LOCK_TIMER_SETTING,
         AUTO_LOCK_TIMER.ONE_HOUR,
       );
-    });
-  });
-
-  describe("getHashKeyExpirationMs", () => {
-    it("returns the default hash key TTL for regular timers", () => {
-      expect(getHashKeyExpirationMs(AUTO_LOCK_TIMER.ONE_MINUTE)).toBe(
-        HASH_KEY_EXPIRATION_MS,
-      );
-      expect(getHashKeyExpirationMs(AUTO_LOCK_TIMER.TWENTY_FOUR_HOURS)).toBe(
-        HASH_KEY_EXPIRATION_MS,
-      );
-    });
-
-    it("returns the never-expire TTL for NONE", () => {
-      expect(getHashKeyExpirationMs(AUTO_LOCK_TIMER.NONE)).toBe(
-        NEVER_EXPIRE_HASH_KEY_MS,
-      );
-    });
-  });
-
-  describe("applyAutoLockTimerToHashKey", () => {
-    it("re-anchors the stored hash key expiration", async () => {
-      const mockHashKey = {
-        hashKey: "mock-hash-key",
-        salt: "mock-salt",
-        expiresAt: Date.now(),
-      };
-      (getHashKey as jest.Mock).mockResolvedValue(mockHashKey);
-
-      const before = Date.now();
-      await applyAutoLockTimerToHashKey(AUTO_LOCK_TIMER.NONE);
-
-      expect(secureDataStorage.setItem).toHaveBeenCalledWith(
-        SENSITIVE_STORAGE_KEYS.HASH_KEY,
-        expect.any(String),
-      );
-
-      const [, storedValue] = (secureDataStorage.setItem as jest.Mock).mock
-        .calls[0];
-      const storedHashKey = JSON.parse(storedValue);
-      expect(storedHashKey.hashKey).toBe(mockHashKey.hashKey);
-      expect(storedHashKey.salt).toBe(mockHashKey.salt);
-      expect(storedHashKey.expiresAt).toBeGreaterThanOrEqual(
-        before + NEVER_EXPIRE_HASH_KEY_MS,
-      );
-    });
-
-    it("is a no-op when no hash key is stored", async () => {
-      (getHashKey as jest.Mock).mockResolvedValue(null);
-
-      await applyAutoLockTimerToHashKey(AUTO_LOCK_TIMER.ONE_HOUR);
-
-      expect(secureDataStorage.setItem).not.toHaveBeenCalled();
     });
   });
 

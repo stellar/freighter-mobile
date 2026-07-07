@@ -1011,14 +1011,14 @@
   "autoLockTimerScreen": {
     "title": "Auto-Lock Timer",
     "options": {
-      "immediately": "Immediately",
       "oneMinute": "1 minute",
+      "fiveMinutes": "5 minutes",
       "fifteenMinutes": "15 minutes",
       "thirtyMinutes": "30 minutes",
       "oneHour": "1 hour",
+      "sixHours": "6 hours",
       "twelveHours": "12 hours",
-      "twentyFourHours": "24 hours",
-      "none": "None"
+      "twentyFourHours": "24 hours"
     },
     "footer": "After a set time, you will be prompted for your password again as an extra security measure."
   },

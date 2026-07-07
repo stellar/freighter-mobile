@@ -162,23 +162,7 @@ describe("useAuthCheck", () => {
     unmount();
   });
 
-  it("soft-locks immediately on backgrounding when the timer is IMMEDIATELY", async () => {
-    (getAutoLockTimer as jest.Mock).mockResolvedValue(
-      AUTO_LOCK_TIMER.IMMEDIATELY,
-    );
-    const { handlers, unmount } = renderAuthCheck();
-
-    await act(async () => {
-      handlers.forEach((handler) => handler("background"));
-      await flushMicrotasks();
-    });
-
-    expect(recordBackgroundedAt).toHaveBeenCalledTimes(1);
-    expect(mockSoftLock).toHaveBeenCalledTimes(1);
-    unmount();
-  });
-
-  it("does NOT soft-lock on backgrounding for timed options", async () => {
+  it("records the background timestamp but does not soft-lock on backgrounding", async () => {
     (getAutoLockTimer as jest.Mock).mockResolvedValue(AUTO_LOCK_TIMER.ONE_HOUR);
     const { handlers, unmount } = renderAuthCheck();
 
@@ -187,6 +171,8 @@ describe("useAuthCheck", () => {
       await flushMicrotasks();
     });
 
+    // Backgrounding only records the timestamp; the lock decision happens on
+    // the next foreground/cold-start via getAuthStatus.
     expect(recordBackgroundedAt).toHaveBeenCalledTimes(1);
     expect(mockSoftLock).not.toHaveBeenCalled();
     unmount();
@@ -320,23 +306,6 @@ describe("useAuthCheck", () => {
       // Another ~50s: well over a minute since mount, but only ~50s since the
       // navigation reset → no idle-lock
       jest.advanceTimersByTime(ONE_MINUTE_MS - 10000);
-      await flushMicrotasks();
-    });
-
-    expect(mockSoftLock).not.toHaveBeenCalled();
-    unmount();
-  });
-
-  it("does NOT idle-lock for the NONE preset", async () => {
-    (getAutoLockTimer as jest.Mock).mockResolvedValue(AUTO_LOCK_TIMER.NONE);
-    const { unmount } = renderAuthCheck();
-
-    await act(async () => {
-      jest.advanceTimersByTime(1000);
-      await flushMicrotasks();
-    });
-    await act(async () => {
-      jest.advanceTimersByTime(ONE_MINUTE_MS * 2);
       await flushMicrotasks();
     });
 

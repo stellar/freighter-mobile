@@ -100,14 +100,13 @@ export const ACCOUNTS_TO_VERIFY_ON_EXISTING_MNEMONIC_PHRASE = 6;
 // soft-lock fast path stays reachable — if this were <= 24h, the hard expiry
 // (which is anchored at sign-in and checked before the soft timer) would fire
 // first and the 24h preset could never fast-unlock. 48h keeps a tight backstop
-// while leaving that headroom; NONE opts out via NEVER_EXPIRE_HASH_KEY_MS.
+// while leaving that headroom.
 export const HASH_KEY_EXPIRATION_MS = 48 * 60 * 60 * 1000; // 48 hours
 export const VISUAL_DELAY_MS = 500;
 
 const SECOND_IN_MS = 1000;
 const MINUTE_IN_MS = 60 * SECOND_IN_MS;
 const HOUR_IN_MS = 60 * MINUTE_IN_MS;
-const YEAR_IN_MS = 365 * 24 * HOUR_IN_MS;
 
 /**
  * Auto-lock timer options.
@@ -115,17 +114,19 @@ const YEAR_IN_MS = 365 * 24 * HOUR_IN_MS;
  * The timer starts counting when the app goes to the background; returning to
  * the app after the selected duration soft-locks the wallet (AUTH_STATUS.LOCKED,
  * fast unlock path). Declaration order is the display order on the
- * Auto-Lock Timer settings screen.
+ * Auto-Lock Timer settings screen. This set mirrors the Freighter extension's
+ * VALID_AUTO_LOCK_TIMEOUT_MINUTES exactly, so both platforms offer the same
+ * options.
  */
 export enum AUTO_LOCK_TIMER {
-  IMMEDIATELY = "immediately",
   ONE_MINUTE = "oneMinute",
+  FIVE_MINUTES = "fiveMinutes",
   FIFTEEN_MINUTES = "fifteenMinutes",
   THIRTY_MINUTES = "thirtyMinutes",
   ONE_HOUR = "oneHour",
+  SIX_HOURS = "sixHours",
   TWELVE_HOURS = "twelveHours",
   TWENTY_FOUR_HOURS = "twentyFourHours",
-  NONE = "none",
 }
 
 // 12h matches the extension's default (DEFAULT_AUTO_LOCK_TIMEOUT_MINUTES=720)
@@ -145,26 +146,18 @@ export const SOFT_LOCK_ALLOWED_TOAST_IDS: string[] = [UNLOCK_ERROR_TOAST_ID];
 
 /**
  * Background duration (in ms) after which each AUTO_LOCK_TIMER option locks
- * the wallet. `0` locks as soon as the app is backgrounded; `null` never
- * auto-locks by timer.
+ * the wallet.
  */
-export const AUTO_LOCK_TIMER_MS: Record<AUTO_LOCK_TIMER, number | null> = {
-  [AUTO_LOCK_TIMER.IMMEDIATELY]: 0,
+export const AUTO_LOCK_TIMER_MS: Record<AUTO_LOCK_TIMER, number> = {
   [AUTO_LOCK_TIMER.ONE_MINUTE]: MINUTE_IN_MS,
+  [AUTO_LOCK_TIMER.FIVE_MINUTES]: 5 * MINUTE_IN_MS,
   [AUTO_LOCK_TIMER.FIFTEEN_MINUTES]: 15 * MINUTE_IN_MS,
   [AUTO_LOCK_TIMER.THIRTY_MINUTES]: 30 * MINUTE_IN_MS,
   [AUTO_LOCK_TIMER.ONE_HOUR]: HOUR_IN_MS,
+  [AUTO_LOCK_TIMER.SIX_HOURS]: 6 * HOUR_IN_MS,
   [AUTO_LOCK_TIMER.TWELVE_HOURS]: 12 * HOUR_IN_MS,
   [AUTO_LOCK_TIMER.TWENTY_FOUR_HOURS]: 24 * HOUR_IN_MS,
-  [AUTO_LOCK_TIMER.NONE]: null,
 };
-
-/**
- * Hash key TTL used when the auto-lock timer is NONE: the user explicitly
- * opted out of auto-lock, so the hard-expiry backstop must never force
- * a re-auth. Effectively "never" while remaining a valid timestamp.
- */
-export const NEVER_EXPIRE_HASH_KEY_MS = 100 * YEAR_IN_MS;
 
 // Recovery phrase validation constants
 export const VALIDATION_WORDS_PER_ROW: number = 3;

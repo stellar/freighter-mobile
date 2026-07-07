@@ -1,11 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AUTO_LOCK_TIMER, DEFAULT_AUTO_LOCK_TIMER } from "config/constants";
 import { logger } from "config/logger";
-import {
-  applyAutoLockTimerToHashKey,
-  getAutoLockTimer,
-  persistAutoLockTimer,
-} from "services/autoLock";
+import { getAutoLockTimer, persistAutoLockTimer } from "services/autoLock";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
@@ -42,26 +38,20 @@ export const usePreferencesStore = create<PreferencesState>()(
         const previousAutoLockTimer = get().autoLockTimer;
         set({ autoLockTimer });
 
-        // Persist to the secure mirror, then re-anchor the hash-key TTL —
-        // sequenced, not raced. On failure, roll back the UI, mirror, and TTL
-        // together so the selection, enforcement, and expiry can't disagree.
-        (async () => {
-          try {
-            await persistAutoLockTimer(autoLockTimer);
-            await applyAutoLockTimerToHashKey(autoLockTimer);
-          } catch (error) {
-            logger.error(
-              "setAutoLockTimer",
-              "Failed to apply auto-lock timer; rolling back",
-              error,
-            );
-            set({ autoLockTimer: previousAutoLockTimer });
-            await Promise.allSettled([
-              persistAutoLockTimer(previousAutoLockTimer),
-              applyAutoLockTimerToHashKey(previousAutoLockTimer),
-            ]);
-          }
-        })();
+        // Persist to the secure-storage mirror (the source of truth read by
+        // getAuthStatus for enforcement). On failure, roll back the UI and the
+        // mirror together so the displayed selection can't disagree with the
+        // enforced value.
+        persistAutoLockTimer(autoLockTimer).catch((error) => {
+          logger.error(
+            "setAutoLockTimer",
+            "Failed to persist auto-lock timer; rolling back",
+            error,
+          );
+          set({ autoLockTimer: previousAutoLockTimer });
+          // Best-effort: restore the mirror to the rolled-back value.
+          persistAutoLockTimer(previousAutoLockTimer).catch(() => undefined);
+        });
       },
       // Load autoLockTimer from the secure mirror (its single source of truth).
       // Called once on app init since the value is intentionally not persisted

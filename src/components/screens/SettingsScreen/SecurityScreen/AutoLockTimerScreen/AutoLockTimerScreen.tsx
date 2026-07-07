@@ -23,8 +23,10 @@ const AutoLockTimerScreen: React.FC<AutoLockTimerScreenProps> = () => {
   const { autoLockTimer, setAutoLockTimer } = usePreferencesStore();
 
   const timerLabels: Record<AUTO_LOCK_TIMER, string> = {
-    [AUTO_LOCK_TIMER.IMMEDIATELY]: t("autoLockTimerScreen.options.immediately"),
     [AUTO_LOCK_TIMER.ONE_MINUTE]: t("autoLockTimerScreen.options.oneMinute"),
+    [AUTO_LOCK_TIMER.FIVE_MINUTES]: t(
+      "autoLockTimerScreen.options.fiveMinutes",
+    ),
     [AUTO_LOCK_TIMER.FIFTEEN_MINUTES]: t(
       "autoLockTimerScreen.options.fifteenMinutes",
     ),
@@ -32,13 +34,13 @@ const AutoLockTimerScreen: React.FC<AutoLockTimerScreenProps> = () => {
       "autoLockTimerScreen.options.thirtyMinutes",
     ),
     [AUTO_LOCK_TIMER.ONE_HOUR]: t("autoLockTimerScreen.options.oneHour"),
+    [AUTO_LOCK_TIMER.SIX_HOURS]: t("autoLockTimerScreen.options.sixHours"),
     [AUTO_LOCK_TIMER.TWELVE_HOURS]: t(
       "autoLockTimerScreen.options.twelveHours",
     ),
     [AUTO_LOCK_TIMER.TWENTY_FOUR_HOURS]: t(
       "autoLockTimerScreen.options.twentyFourHours",
     ),
-    [AUTO_LOCK_TIMER.NONE]: t("autoLockTimerScreen.options.none"),
   };
 
   const handleSelectOption = (option: AUTO_LOCK_TIMER) => {

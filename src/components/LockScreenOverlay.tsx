@@ -13,7 +13,7 @@ const styles = StyleSheet.create({
 
 /**
  * Full-screen overlay for the in-process soft lock (auto-lock timer or the
- * IMMEDIATELY option). Rendered after the navigation + bottom-sheet providers
+ * timer). Rendered after the navigation + bottom-sheet providers
  * so it covers them while the screens underneath keep their state for after
  * the unlock; unlocking clears isSoftLocked and unmounts it. Swallows the
  * Android back button and hides the tree from accessibility. Cold starts use

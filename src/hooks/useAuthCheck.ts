@@ -1,5 +1,5 @@
 import { navigationRef } from "components/App";
-import { AUTO_LOCK_TIMER, AUTO_LOCK_TIMER_MS } from "config/constants";
+import { AUTO_LOCK_TIMER_MS } from "config/constants";
 import { logger } from "config/logger";
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
@@ -107,8 +107,7 @@ const useAuthCheck = () => {
       // configured duration with no user interaction (touches, navigation and
       // keyboard reset lastInteractionRef via recordInteraction). Background
       // time is handled by getAuthStatus above; here we cover an open-but-idle
-      // session. Only timed presets idle-lock — IMMEDIATELY (0, background-
-      // only) and NONE (null) are skipped.
+      // session.
       if (
         status === AUTH_STATUS.AUTHENTICATED &&
         AppState.currentState === "active"
@@ -116,11 +115,7 @@ const useAuthCheck = () => {
         const autoLockTimer = await getAutoLockTimer();
         const timerMs = AUTO_LOCK_TIMER_MS[autoLockTimer];
 
-        if (
-          timerMs !== null &&
-          timerMs > 0 &&
-          Date.now() - lastInteractionRef.current >= timerMs
-        ) {
+        if (Date.now() - lastInteractionRef.current >= timerMs) {
           // The user stayed in the app and idled out — suppress the lock
           // screen's biometric auto-prompt for this case.
           await useAuthenticationStore
@@ -180,19 +175,16 @@ const useAuthCheck = () => {
       // Record when the app goes to the background so the auto-lock timer can
       // be evaluated on the next foreground or cold start. Intentionally NOT
       // on "inactive": iOS fires it for control center, app-switcher peeks,
-      // permission dialogs and biometric prompts. NOTE: some Android OEMs
-      // emit "background" when their BiometricPrompt appears — worth keeping
-      // in mind if IMMEDIATELY ever misbehaves around in-app biometric
-      // confirmations on specific devices.
-      const { authStatus: currentAuthStatus, softLock } =
+      // permission dialogs and biometric prompts.
+      const { authStatus: currentAuthStatus } =
         useAuthenticationStore.getState();
       if (nextAppState === "background") {
         // Gate on persisted session data, not only the zustand status: a cold
         // launch into an existing session can be backgrounded before
         // RootNavigator's async getAuthStatus sets AUTHENTICATED (the store is
         // still on its initial NOT_AUTHENTICATED). Treat that unhydrated window
-        // as authenticated when a session exists on disk so the timestamp /
-        // IMMEDIATELY lock still fire. A hydrated LOCKED / HASH_KEY_EXPIRED
+        // as authenticated when a session exists on disk so the background
+        // timestamp is still recorded. A hydrated LOCKED / HASH_KEY_EXPIRED
         // status is respected (we don't re-record for an already-locked app).
         (async () => {
           const isSessionActive =
@@ -205,18 +197,6 @@ const useAuthCheck = () => {
           }
 
           await recordBackgroundedAt();
-
-          // Read from the secure-storage mirror (not the zustand store) so the
-          // IMMEDIATELY lock also fires when backgrounding happens before
-          // zustand rehydration completes.
-          const autoLockTimer = await getAutoLockTimer();
-
-          if (autoLockTimer === AUTO_LOCK_TIMER.IMMEDIATELY) {
-            // Soft-lock right away: the overlay renders while the app is
-            // backgrounded (no wallet content flashes on return) and the
-            // navigation tree is preserved for after the unlock.
-            await softLock();
-          }
         })().catch((err) =>
           logger.error(
             "handleAppStateChange",

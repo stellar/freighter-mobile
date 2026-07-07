@@ -1,8 +1,6 @@
 import {
   AUTO_LOCK_TIMER,
   DEFAULT_AUTO_LOCK_TIMER,
-  HASH_KEY_EXPIRATION_MS,
-  NEVER_EXPIRE_HASH_KEY_MS,
   SENSITIVE_STORAGE_KEYS,
 } from "config/constants";
 import { getHashKey } from "services/storage/helpers";
@@ -38,41 +36,6 @@ const persistAutoLockTimer = async (timer: AUTO_LOCK_TIMER): Promise<void> => {
   await secureDataStorage.setItem(
     SENSITIVE_STORAGE_KEYS.AUTO_LOCK_TIMER_SETTING,
     timer,
-  );
-};
-
-/**
- * Returns the hash key TTL for the given auto-lock timer. With NONE the user
- * explicitly opted out of auto-lock, so the hard-expiry backstop is
- * replaced by an effectively-never expiration.
- */
-const getHashKeyExpirationMs = (timer: AUTO_LOCK_TIMER): number =>
-  timer === AUTO_LOCK_TIMER.NONE
-    ? NEVER_EXPIRE_HASH_KEY_MS
-    : HASH_KEY_EXPIRATION_MS;
-
-/**
- * Re-anchors the stored hash key expiration based on the given auto-lock
- * timer. Called when the user changes the timer so switching to/from NONE
- * takes effect immediately rather than on the next unlock. Only reachable
- * from an unlocked session (the settings screen), so this is a
- * credential-verified moment.
- */
-const applyAutoLockTimerToHashKey = async (
-  timer: AUTO_LOCK_TIMER,
-): Promise<void> => {
-  const hashKey = await getHashKey();
-
-  if (!hashKey) {
-    return;
-  }
-
-  await secureDataStorage.setItem(
-    SENSITIVE_STORAGE_KEYS.HASH_KEY,
-    JSON.stringify({
-      ...hashKey,
-      expiresAt: Date.now() + getHashKeyExpirationMs(timer),
-    }),
   );
 };
 
@@ -144,8 +107,6 @@ const hasPersistedSession = async (): Promise<boolean> => {
 export {
   getAutoLockTimer,
   persistAutoLockTimer,
-  getHashKeyExpirationMs,
-  applyAutoLockTimerToHashKey,
   recordBackgroundedAt,
   getBackgroundedAt,
   clearBackgroundedAt,

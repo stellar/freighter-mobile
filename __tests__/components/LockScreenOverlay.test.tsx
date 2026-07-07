@@ -15,7 +15,6 @@ jest.mock("ducks/auth", () => {
 
 jest.mock("services/autoLock", () => ({
   persistAutoLockTimer: jest.fn().mockResolvedValue(undefined),
-  applyAutoLockTimerToHashKey: jest.fn().mockResolvedValue(undefined),
 }));
 
 describe("LockScreenOverlay", () => {

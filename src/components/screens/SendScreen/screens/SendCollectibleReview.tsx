@@ -364,7 +364,7 @@ const SendCollectibleReviewScreen: React.FC<
         }
 
         // Refuse to sign if the wallet locked between opening the review sheet
-        // and confirming (e.g. an IMMEDIATELY auto-lock fired) — every other
+        // and confirming (e.g. a short auto-lock timer fired) — every other
         // signing path enforces the same guard. Abort cleanly: reset the
         // processing UI so the user returns to the review screen after
         // unlocking rather than a stranded "sending" spinner. Being locked

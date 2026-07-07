@@ -17,6 +17,7 @@ import {
   DEFAULT_AUTO_LOCK_TIMER,
   FACE_ID_BIOMETRY_TYPES,
   FINGERPRINT_BIOMETRY_TYPES,
+  HASH_KEY_EXPIRATION_MS,
   LoginType,
   NETWORKS,
   SENSITIVE_STORAGE_KEYS,
@@ -60,7 +61,6 @@ import {
   clearBackgroundedAt,
   getAutoLockTimer,
   getBackgroundedAt,
-  getHashKeyExpirationMs,
   persistAutoLockTimer,
 } from "services/autoLock";
 import { getAccount } from "services/stellar";
@@ -216,9 +216,9 @@ interface AuthState {
   isSwitchingAccount: boolean;
   error: string | null;
   authStatus: AuthStatus;
-  // True when the wallet was soft-locked in-process (auto-lock timer or
-  // IMMEDIATELY on backgrounding): the navigation tree stays mounted under a
-  // lock overlay so the user resumes exactly where they were after unlocking.
+  // True when the wallet was soft-locked in-process (auto-lock timer): the
+  // navigation tree stays mounted under a lock overlay so the user resumes
+  // exactly where they were after unlocking.
   isSoftLocked: boolean;
   // True when the lock happened while the user was actively present in the
   // app — a foreground-idle timeout or a manual lock/logout. The lock screen
@@ -531,17 +531,10 @@ const getAuthStatus = async (): Promise<AuthStatus> => {
       const autoLockTimerMs = AUTO_LOCK_TIMER_MS[autoLockTimer];
       const elapsedInBackground = Date.now() - backgroundedAt;
 
-      // Only POSITIVE timed durations lock here. IMMEDIATELY (0) is
-      // background-only: it's locked proactively on the background transition
-      // (useAuthCheck) and persisted, so it must NOT be re-derived from a
-      // lingering timestamp — otherwise elapsed >= 0 would re-lock a fresh
-      // foreground session and make the app unusable. NONE (null) never locks.
-      if (
-        autoLockTimerMs !== null &&
-        autoLockTimerMs > 0 &&
-        elapsedInBackground >= autoLockTimerMs &&
-        temporaryStore
-      ) {
+      // Backgrounded past the selected duration: soft-lock via the fast
+      // unlock path (all presets are positive durations, so no zero/null case
+      // to exclude).
+      if (elapsedInBackground >= autoLockTimerMs && temporaryStore) {
         await secureDataStorage.setItem(
           SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
           AUTH_STATUS.LOCKED,
@@ -554,8 +547,8 @@ const getAuthStatus = async (): Promise<AuthStatus> => {
         // Returned within the timer: consume the timestamp so the foreground
         // interval can't lock mid-use. The hash-key TTL is deliberately NOT
         // refreshed here — it's only anchored at credential-verified moments
-        // (signIn / generateHashKey / applyAutoLockTimerToHashKey) so key
-        // material stays bounded however often the app is reopened.
+        // (signIn / generateHashKey) so key material stays bounded however
+        // often the app is reopened.
         await clearBackgroundedAt();
       }
       // Still backgrounded (periodic background check): leave the timestamp
@@ -870,9 +863,9 @@ const generateHashKey = async (password: string): Promise<HashKey> => {
     // Convert to base64 for storage
     const hashKey = base64Encode(hashKeyBytes);
 
-    // Calculate the expiration timestamp (timer-aware: "None" never expires)
-    const autoLockTimer = await getAutoLockTimer();
-    const expirationTime = Date.now() + getHashKeyExpirationMs(autoLockTimer);
+    // Calculate the hard-expiry timestamp (the coarse security backstop that
+    // forces a full re-auth; the soft auto-lock timer is enforced separately).
+    const expirationTime = Date.now() + HASH_KEY_EXPIRATION_MS;
 
     // Return the hash key object (caller will store it)
     return {
@@ -1482,14 +1475,12 @@ const signIn = async ({
       SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE,
     );
     if (existingHashKey && existingTempStore) {
-      // Fast path: temp store is intact — just refresh TTL
-      // (timer-aware: "None" never expires).
-      const autoLockTimer = await getAutoLockTimer();
+      // Fast path: temp store is intact — just refresh the hard-expiry TTL.
       await secureDataStorage.setItem(
         SENSITIVE_STORAGE_KEYS.HASH_KEY,
         JSON.stringify({
           ...existingHashKey,
-          expiresAt: Date.now() + getHashKeyExpirationMs(autoLockTimer),
+          expiresAt: Date.now() + HASH_KEY_EXPIRATION_MS,
         }),
       );
     } else {
@@ -2233,7 +2224,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
   },
 
   /**
-   * Soft-locks the wallet in-process (auto-lock timer / IMMEDIATELY option).
+   * Soft-locks the wallet in-process (auto-lock timer).
    *
    * Unlike logout(), keeps the navigation tree mounted under the lock overlay
    * so the user resumes where they were after unlocking. Sensitive reads stay
@@ -2253,7 +2244,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
       isSoftLocked: true,
       account: null,
       // A foreground-idle lock suppresses the lock screen's biometric
-      // auto-prompt; background / IMMEDIATELY / cold-start locks still prompt.
+      // auto-prompt; background / cold-start locks still prompt.
       suppressBiometricAutoPrompt: options?.suppressBiometricPrompt ?? false,
       isLoading: false,
     });

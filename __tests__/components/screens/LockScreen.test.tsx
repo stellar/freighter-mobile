@@ -19,7 +19,6 @@ jest.mock("ducks/auth", () => {
 
 jest.mock("services/autoLock", () => ({
   persistAutoLockTimer: jest.fn().mockResolvedValue(undefined),
-  applyAutoLockTimerToHashKey: jest.fn().mockResolvedValue(undefined),
 }));
 
 // Controllable privacy-shield state so we can assert the prompt is held until
