@@ -11,6 +11,7 @@ import { setActivityRecorder } from "helpers/userActivity";
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { AppState, AppStateStatus, Keyboard, PanResponder } from "react-native";
 import {
+  clearBackgroundedAt,
   getAutoLockTimer,
   hasPersistedSession,
   recordBackgroundedAt,
@@ -197,6 +198,15 @@ const useAuthCheck = () => {
           }
 
           await recordBackgroundedAt();
+
+          // Fast background→foreground bounce: if the app already returned to
+          // the foreground before this write landed, the foreground
+          // getAuthStatus may have run with no timestamp to clear. Undo the
+          // now-stale write so the timer can't later lock off a background
+          // that's already over.
+          if (AppState.currentState === "active") {
+            await clearBackgroundedAt();
+          }
         })().catch((err) =>
           logger.error(
             "handleAppStateChange",
