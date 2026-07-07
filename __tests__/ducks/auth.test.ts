@@ -1776,7 +1776,7 @@ describe("auth duck", () => {
           autoLockTimer: AUTO_LOCK_TIMER.ONE_HOUR,
         });
 
-        // Hash key hard-expired (e.g. > 48h since the last unlock)
+        // Hash key hard-expired (e.g. > 72h since the last unlock)
         (getHashKey as jest.Mock).mockResolvedValue({
           hashKey: "mock-hash-key",
           salt: "mock-salt",

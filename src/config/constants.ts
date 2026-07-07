@@ -96,12 +96,15 @@ export const ACCOUNTS_TO_VERIFY_ON_EXISTING_MNEMONIC_PHRASE = 6;
 // soon the wallet re-locks (fast unlock), while this caps how long key material
 // may live in secure storage regardless of that choice.
 //
-// Set just above the largest AUTO_LOCK_TIMER preset (24h) so that preset's
-// soft-lock fast path stays reachable — if this were <= 24h, the hard expiry
-// (which is anchored at sign-in and checked before the soft timer) would fire
-// first and the 24h preset could never fast-unlock. 48h keeps a tight backstop
-// while leaving that headroom.
-export const HASH_KEY_EXPIRATION_MS = 48 * 60 * 60 * 1000; // 48 hours
+// Set above the largest AUTO_LOCK_TIMER preset (24h) so that preset's soft-lock
+// fast path stays reachable — if this were <= 24h, the hard expiry (anchored at
+// sign-in and checked before the soft timer) would fire first and the 24h
+// preset could never fast-unlock. 72h (3x the max preset) gives enough headroom
+// that even a loosely-active 24h-preset user — one whose gaps stay just under
+// 24h so the soft-lock never fires and never resets this clock — is unlikely to
+// hit a surprise full re-auth. (The complete fix is to re-anchor this on
+// activity rather than sign-in; tracked as a follow-up.)
+export const HASH_KEY_EXPIRATION_MS = 72 * 60 * 60 * 1000; // 72 hours
 export const VISUAL_DELAY_MS = 500;
 
 const SECOND_IN_MS = 1000;
