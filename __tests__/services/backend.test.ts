@@ -711,6 +711,46 @@ describe("Backend Service - fetchCollectibles severity split", () => {
       expect.any(Error),
     );
   });
+
+  it("sends a pre-serialized string body and query-in-URL so the JWT interceptor hashes the correct bytes", async () => {
+    // The JWT request interceptor hashes config.data ONLY when it is already a
+    // string. If the body is an object the interceptor would sign the empty-string
+    // hash, producing a token that never validates on the backend. This test locks
+    // the contract: body must be a string, query must be in the URL.
+    mockV2Post.mockResolvedValue({
+      data: {
+        data: {
+          collections: [
+            {
+              contract_id: "C...",
+              collection_name: "Test",
+              nfts: [],
+            },
+          ],
+        },
+      },
+      status: 200,
+      statusText: "OK",
+    });
+
+    await fetchCollectibles(params);
+
+    expect(mockV2Post).toHaveBeenCalledWith(
+      `/collectibles?network=${params.network}`,
+      JSON.stringify({ owner: params.owner, contracts: params.contracts }),
+      { headers: { "Content-Type": "application/json" } },
+    );
+
+    const [url, body, config] = mockV2Post.mock.calls[0];
+    // URL must embed the network query param — not in config.params
+    expect(url).toContain("?network=");
+    expect(config).not.toHaveProperty("params");
+    // Body must be a pre-serialized string so bodyHash matches wire bytes
+    expect(typeof body).toBe("string");
+    expect(body).toBe(
+      JSON.stringify({ owner: params.owner, contracts: params.contracts }),
+    );
+  });
 });
 
 describe("Backend Service - fetchTokenPrices v2 migration", () => {
@@ -744,11 +784,19 @@ describe("Backend Service - fetchTokenPrices v2 migration", () => {
     await fetchTokenPrices({ tokens, network: NETWORKS.PUBLIC, useV2: true });
 
     // Native "XLM" is sent to v2 as "native".
+    // Query is embedded in the URL (not via { params }) so the JWT interceptor
+    // signs the correct methodAndPath. Body is pre-serialized to a string so
+    // the interceptor's bodyHash matches the wire bytes exactly.
     expect(mockV2Post).toHaveBeenCalledWith(
-      "/token-prices",
-      { tokens: v2Tokens },
-      { params: { network: "PUBLIC" } },
+      "/token-prices?network=PUBLIC",
+      JSON.stringify({ tokens: v2Tokens }),
+      { headers: { "Content-Type": "application/json" } },
     );
+    // Verify the body is a string (not an object) — guards against regression
+    // where a plain object would cause the JWT to sign the empty-string hash.
+    const [, body] = mockV2Post.mock.calls[0];
+    expect(typeof body).toBe("string");
+    expect(body).toBe(JSON.stringify({ tokens: v2Tokens }));
     expect(mockV1Post).not.toHaveBeenCalled();
   });
 
