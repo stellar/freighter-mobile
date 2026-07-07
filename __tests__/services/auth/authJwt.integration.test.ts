@@ -56,14 +56,15 @@ d("auth JWT e2e", () => {
 
     expect(res.status).toBe(200);
 
+    // The backend wraps successful responses in its standard `{ data: ... }`
+    // envelope (verified against staging), so whoami is at body.data.
     const body = (await res.json()) as {
-      authenticated: boolean;
-      userId: string;
+      data: { authenticated: boolean; userId: string };
     };
-    expect(body.authenticated).toBe(true);
-    expect(body.userId).toBe(userId);
+    expect(body.data.authenticated).toBe(true);
+    expect(body.data.userId).toBe(userId);
     // Double-check against the hard-coded vector value for extra safety
-    expect(body.userId).toBe(VECTOR.userId);
+    expect(body.data.userId).toBe(VECTOR.userId);
   });
 
   it("tampered body: JWT built with body hash mismatch → 401", async () => {
