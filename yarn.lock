@@ -9980,6 +9980,7 @@ __metadata:
     babel-plugin-module-resolver: "npm:5.0.2"
     babel-plugin-styled-components: "npm:2.1.4"
     bignumber.js: "npm:9.1.2"
+    bip39: "npm:3.1.0"
     buffer: "npm:4.9.2"
     eslint: "npm:8.57.1"
     eslint-config-airbnb: "npm:19.0.4"
