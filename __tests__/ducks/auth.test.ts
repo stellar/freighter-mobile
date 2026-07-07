@@ -1131,6 +1131,32 @@ describe("auth duck", () => {
         });
       });
 
+      it("should treat a hash key with a future generatedAt as expired (clock rollback)", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+
+        // Device clock rolled back below the key's creation time: generatedAt
+        // is in the future even though expiresAt hasn't been reached by wall
+        // clock. Must be treated as expired so a rolled-back clock can't keep
+        // stale key material usable past the hard-expiry backstop.
+        const rolledBackHashKey = {
+          ...mockHashKeyObj,
+          generatedAt: Date.now() + 60_000,
+          expiresAt: Date.now() + 3_600_000,
+        };
+        (getHashKey as jest.Mock).mockResolvedValue(rolledBackHashKey);
+
+        act(() => {
+          useAuthenticationStore.setState({
+            authStatus: AUTH_STATUS.AUTHENTICATED,
+          });
+        });
+
+        await act(async () => {
+          const success = await result.current.initBiometricPassword();
+          expect(success).toBe(false);
+        });
+      });
+
       it("should return false when auth status is HASH_KEY_EXPIRED", async () => {
         const { result } = renderHook(() => useAuthenticationStore());
 
@@ -2048,7 +2074,7 @@ describe("auth duck", () => {
         // Verify TTL was refreshed on the existing hash key (no re-encryption)
         expect(secureDataStorage.setItem).toHaveBeenCalledWith(
           SENSITIVE_STORAGE_KEYS.HASH_KEY,
-          expect.stringContaining('"expiresAt":'),
+          expect.stringContaining("\"expiresAt\":"),
         );
         // Verify that re-encryption did NOT occur
         expect(decryptDataWithPassword).not.toHaveBeenCalled();

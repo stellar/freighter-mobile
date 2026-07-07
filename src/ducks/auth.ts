@@ -445,10 +445,23 @@ const loadPersistedNetwork = async (
 const keyManager = createKeyManager(Networks.PUBLIC);
 
 /**
- * Checks if a hash key is expired
+ * Checks if a hash key is expired.
+ *
+ * Clock-rollback backstop: a key whose generatedAt is in the future means the
+ * device clock was moved backward below the key's creation time — a rolled-back
+ * clock would otherwise keep `now <= expiresAt` true indefinitely and prevent
+ * the hard-expiry from ever forcing a full re-auth. Treat that as expired
+ * (mirrors getBackgroundedAt's future-timestamp guard for the soft timer).
+ * generatedAt is optional so keys persisted before this field fall back to the
+ * plain expiry check.
  */
-const isHashKeyExpired = (hashKey: HashKey): boolean =>
-  Date.now() > hashKey.expiresAt;
+const isHashKeyExpired = (hashKey: HashKey): boolean => {
+  const now = Date.now();
+  if (hashKey.generatedAt !== undefined && hashKey.generatedAt > now) {
+    return true;
+  }
+  return now > hashKey.expiresAt;
+};
 
 /**
  * Gets all accounts from the account list
@@ -865,13 +878,16 @@ const generateHashKey = async (password: string): Promise<HashKey> => {
 
     // Calculate the hard-expiry timestamp (the coarse security backstop that
     // forces a full re-auth; the soft auto-lock timer is enforced separately).
-    const expirationTime = Date.now() + HASH_KEY_EXPIRATION_MS;
+    const now = Date.now();
+    const expirationTime = now + HASH_KEY_EXPIRATION_MS;
 
-    // Return the hash key object (caller will store it)
+    // Return the hash key object (caller will store it). generatedAt anchors
+    // the clock-rollback backstop in isHashKeyExpired.
     return {
       hashKey,
       salt,
       expiresAt: expirationTime,
+      generatedAt: now,
     };
   } catch (error) {
     throw new Error(`Failed to generate hash key: ${String(error)}`);
@@ -1476,11 +1492,15 @@ const signIn = async ({
     );
     if (existingHashKey && existingTempStore) {
       // Fast path: temp store is intact — just refresh the hard-expiry TTL.
+      // Re-anchor generatedAt too (this is a credential-verified moment) so the
+      // clock-rollback backstop stays aligned with the new expiry.
+      const refreshNow = Date.now();
       await secureDataStorage.setItem(
         SENSITIVE_STORAGE_KEYS.HASH_KEY,
         JSON.stringify({
           ...existingHashKey,
-          expiresAt: Date.now() + HASH_KEY_EXPIRATION_MS,
+          expiresAt: refreshNow + HASH_KEY_EXPIRATION_MS,
+          generatedAt: refreshNow,
         }),
       );
     } else {
