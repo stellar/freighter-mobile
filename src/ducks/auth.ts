@@ -1103,6 +1103,7 @@ const deriveKeyPair = (params: DeriveKeypairParams) => {
  */
 const clearAllData = async (): Promise<void> => {
   clearDerivedKeyCache();
+  clearAuthKeypairCache();
 
   const allKeys = await keyManager.loadAllKeyIds();
 
