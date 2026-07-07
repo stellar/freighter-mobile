@@ -37,6 +37,7 @@ import {
   isRequestCanceled,
   logApiError,
 } from "services/apiFactory";
+import { attachAuthInterceptors } from "services/auth/attachAuth";
 
 // Create dedicated API services for backend operations
 export const freighterBackendV1 = createApiService({
@@ -45,6 +46,9 @@ export const freighterBackendV1 = createApiService({
 export const freighterBackendV2 = createApiService({
   baseURL: BackendEnvConfig.FREIGHTER_BACKEND_V2_URL,
 });
+// Attach per-request JWT auth to the v2 backend instance. The v1 instance
+// uses a different auth mechanism and is intentionally excluded here.
+attachAuthInterceptors(freighterBackendV2.getInstance());
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /**
