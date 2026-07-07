@@ -21,6 +21,7 @@ import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
+import { isWalletUnlocked } from "hooks/useGetActiveAccount";
 import { useToast } from "providers/ToastProvider";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { analytics } from "services/analytics";
@@ -184,6 +185,16 @@ export const useSwapTransaction = ({
     setIsProcessing(true);
 
     try {
+      // Abort cleanly if an auto-lock engaged after the swap was prepared.
+      // Return (don't throw): being locked isn't a swap failure, so skip the
+      // catch's analytics + error-toast path — a hard-coded throw would also
+      // surface as a non-localized toast title. A return (not a throw) keeps
+      // the fire-and-forget executeSwap() from rejecting unhandled.
+      if (!isWalletUnlocked()) {
+        setIsProcessing(false);
+        return;
+      }
+
       const signedXDR = signTransaction({
         secretKey: account.privateKey,
         network,

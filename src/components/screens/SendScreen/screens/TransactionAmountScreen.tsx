@@ -65,7 +65,9 @@ import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
-import useGetActiveAccount from "hooks/useGetActiveAccount";
+import useGetActiveAccount, {
+  isWalletUnlocked,
+} from "hooks/useGetActiveAccount";
 import { useInitialRecommendedFee } from "hooks/useInitialRecommendedFee";
 import { useNetworkFees } from "hooks/useNetworkFees";
 import { useRightHeaderButton } from "hooks/useRightHeader";
@@ -317,7 +319,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     });
   };
 
-  const { balanceItems } = useBalancesList({
+  const { balanceItems, isLoading: isLoadingBalances } = useBalancesList({
     publicKey: publicKey ?? "",
     network,
   });
@@ -507,6 +509,19 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   };
 
   useEffect(() => {
+    // Skip until balances AND the active account are loaded. After the app
+    // returns from background, balances refetch and the account reloads
+    // (briefly null during signIn); spendableBalance is 0 without them, which
+    // would flash a false "amount too high" / "insufficient XLM" error + toast.
+    if (
+      isLoadingBalances ||
+      balanceItems.length === 0 ||
+      !account ||
+      !selectedBalance
+    ) {
+      return;
+    }
+
     const currentTokenAmount = BigNumber(tokenAmount);
 
     if (!hasXLMForFees(balanceItems, transactionFee)) {
@@ -559,6 +574,8 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     tokenAmount,
     spendableBalance,
     balanceItems,
+    isLoadingBalances,
+    account,
     transactionFee,
     transactionHash,
     isCustomToken,
@@ -731,6 +748,16 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
       try {
         if (!account?.privateKey || !selectedBalance || !recipientAddress) {
           throw new Error("Missing account or balance information");
+        }
+
+        // Abort cleanly if an auto-lock engaged between opening the review
+        // sheet and confirming: drop out of the processing UI so the user
+        // returns to the review screen after unlocking instead of a stranded
+        // "sending" spinner. Being locked isn't a transaction error, so skip
+        // the failure toast/analytics path.
+        if (!isWalletUnlocked()) {
+          setIsProcessing(false);
+          return;
         }
 
         const { privateKey } = account;

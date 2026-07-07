@@ -15,6 +15,7 @@ import {
 import { ActiveAccount } from "ducks/auth";
 import { formatTokenIdentifier } from "helpers/balances";
 import useAppTranslation from "hooks/useAppTranslation";
+import { isWalletUnlocked } from "hooks/useGetActiveAccount";
 import { ToastOptions, useToast } from "providers/ToastProvider";
 import { useState } from "react";
 import { analytics } from "services/analytics";
@@ -24,6 +25,8 @@ import {
   submitTx,
 } from "services/stellar";
 import { dataStorage } from "services/storage/storageFactory";
+
+const WALLET_LOCKED_ERROR = "Wallet is locked";
 
 interface UseManageTokensProps {
   network: NETWORKS;
@@ -165,6 +168,12 @@ export const useManageTokens = ({
           publicKey,
         });
 
+        // Re-check auth after the async build: an auto-lock may have engaged
+        // mid-await, and this path signs with a captured privateKey
+        if (!isWalletUnlocked()) {
+          throw new Error(WALLET_LOCKED_ERROR);
+        }
+
         const signedTx = signTransaction({
           tx: addTokenTrustlineTx,
           secretKey: privateKey,
@@ -286,6 +295,12 @@ export const useManageTokens = ({
           publicKey,
           isRemove: true,
         });
+
+        // Re-check auth after the async build: an auto-lock may have engaged
+        // mid-await, and this path signs with a captured privateKey
+        if (!isWalletUnlocked()) {
+          throw new Error(WALLET_LOCKED_ERROR);
+        }
 
         const signedTx = signTransaction({
           tx: removeTokenTrustlineTx,

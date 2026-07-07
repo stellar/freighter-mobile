@@ -1,6 +1,8 @@
 import { NavigationContainerRef } from "@react-navigation/native";
 import { act, renderHook } from "@testing-library/react-hooks";
 import {
+  AUTO_LOCK_TIMER,
+  DEFAULT_AUTO_LOCK_TIMER,
   NETWORKS,
   STORAGE_KEYS,
   SENSITIVE_STORAGE_KEYS,
@@ -30,6 +32,7 @@ import {
 } from "helpers/encryptPassword";
 import { createKeyManager } from "helpers/keyManager/keyManager";
 import { clearScreenshotDek } from "helpers/screenshotCrypto";
+import { AppState } from "react-native";
 import { getSupportedBiometryType, BIOMETRY_TYPE } from "react-native-keychain";
 import {
   clearNonSensitiveData,
@@ -111,7 +114,11 @@ jest.mock("services/storage/secureStorage", () => ({
 
 jest.mock("ducks/preferences", () => ({
   usePreferencesStore: {
-    getState: jest.fn(),
+    getState: jest.fn(() => ({
+      isBiometricsEnabled: false,
+      setAutoLockTimer: jest.fn(),
+    })),
+    setState: jest.fn(),
   },
 }));
 
@@ -266,6 +273,7 @@ describe("auth duck", () => {
     setNavigationRef: useAuthenticationStore.getState().setNavigationRef,
     signIn: useAuthenticationStore.getState().signIn,
     initializeNetwork: useAuthenticationStore.getState().initializeNetwork,
+    softLock: useAuthenticationStore.getState().softLock,
   };
 
   beforeEach(() => {
@@ -1123,6 +1131,32 @@ describe("auth duck", () => {
         });
       });
 
+      it("should treat a hash key with a future generatedAt as expired (clock rollback)", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+
+        // Device clock rolled back below the key's creation time: generatedAt
+        // is in the future even though expiresAt hasn't been reached by wall
+        // clock. Must be treated as expired so a rolled-back clock can't keep
+        // stale key material usable past the hard-expiry backstop.
+        const rolledBackHashKey = {
+          ...mockHashKeyObj,
+          generatedAt: Date.now() + 60_000,
+          expiresAt: Date.now() + 3_600_000,
+        };
+        (getHashKey as jest.Mock).mockResolvedValue(rolledBackHashKey);
+
+        act(() => {
+          useAuthenticationStore.setState({
+            authStatus: AUTH_STATUS.AUTHENTICATED,
+          });
+        });
+
+        await act(async () => {
+          const success = await result.current.initBiometricPassword();
+          expect(success).toBe(false);
+        });
+      });
+
       it("should return false when auth status is HASH_KEY_EXPIRED", async () => {
         const { result } = renderHook(() => useAuthenticationStore());
 
@@ -1433,6 +1467,11 @@ describe("auth duck", () => {
           SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
           AUTH_STATUS.LOCKED,
         );
+
+        // A manual lock suppresses the lock screen's biometric auto-prompt
+        expect(
+          useAuthenticationStore.getState().suppressBiometricAutoPrompt,
+        ).toBe(true);
       });
 
       it("should wipe all data on logout when shouldWipeAllData is true", async () => {
@@ -1473,6 +1512,12 @@ describe("auth duck", () => {
         expect(dataStorage.remove).toHaveBeenCalledWith(
           STORAGE_KEYS.COLLECTIBLES_LIST,
         );
+
+        // Auto-lock is reset to the default so the next wallet doesn't inherit
+        // the wiped wallet's timer
+        expect(usePreferencesStore.setState).toHaveBeenCalledWith({
+          autoLockTimer: DEFAULT_AUTO_LOCK_TIMER,
+        });
       });
 
       it("should call resetRoot to AUTH_STACK on logout(true) even though ...initialState clears navigationRef", async () => {
@@ -1610,6 +1655,327 @@ describe("auth duck", () => {
       });
     });
 
+    describe("getAuthStatus with auto-lock timer", () => {
+      const ONE_HOUR_MS = 3600000;
+
+      const mockAuthenticatedStorage = ({
+        backgroundedAt,
+        autoLockTimer,
+      }: {
+        backgroundedAt: number | null;
+        autoLockTimer: AUTO_LOCK_TIMER | null;
+      }) => {
+        (dataStorage.getItem as jest.Mock).mockImplementation((key) => {
+          if (key === STORAGE_KEYS.ACCOUNT_LIST) {
+            return Promise.resolve(JSON.stringify([mockAccount]));
+          }
+          return Promise.resolve(null);
+        });
+
+        (secureDataStorage.getItem as jest.Mock).mockImplementation((key) => {
+          if (key === SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE) {
+            return Promise.resolve("encrypted-temp-store");
+          }
+          if (key === SENSITIVE_STORAGE_KEYS.AUTO_LOCK_BACKGROUNDED_AT) {
+            return Promise.resolve(
+              backgroundedAt ? String(backgroundedAt) : null,
+            );
+          }
+          if (key === SENSITIVE_STORAGE_KEYS.AUTO_LOCK_TIMER_SETTING) {
+            return Promise.resolve(autoLockTimer);
+          }
+          // No persisted AUTH_STATUS (not LOCKED)
+          return Promise.resolve(null);
+        });
+
+        (getHashKey as jest.Mock).mockResolvedValue({
+          hashKey: "mock-hash-key",
+          salt: "mock-salt",
+          expiresAt: Date.now() + ONE_HOUR_MS,
+        });
+
+        (secureDataStorage.remove as jest.Mock).mockResolvedValue(undefined);
+        (secureDataStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+      };
+
+      const restoreGetAuthStatus = () => {
+        act(() => {
+          useAuthenticationStore.setState({
+            getAuthStatus: originalStoreMethods.getAuthStatus,
+          });
+        });
+      };
+
+      it("should soft-lock when the background duration exceeds the timer", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+        restoreGetAuthStatus();
+
+        mockAuthenticatedStorage({
+          backgroundedAt: Date.now() - 2 * ONE_HOUR_MS,
+          autoLockTimer: AUTO_LOCK_TIMER.ONE_HOUR,
+        });
+
+        await act(async () => {
+          const status = await result.current.getAuthStatus();
+          expect(status).toBe(AUTH_STATUS.LOCKED);
+        });
+
+        // LOCKED state is persisted and the timestamp is consumed
+        expect(secureDataStorage.setItem).toHaveBeenCalledWith(
+          SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
+          AUTH_STATUS.LOCKED,
+        );
+        expect(secureDataStorage.remove).toHaveBeenCalledWith(
+          SENSITIVE_STORAGE_KEYS.AUTO_LOCK_BACKGROUNDED_AT,
+        );
+      });
+
+      it("should stay authenticated and consume the timestamp WITHOUT refreshing the hash key TTL", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+        restoreGetAuthStatus();
+
+        // The jest AppState mock has no real currentState; the consume
+        // branch only runs when the app is actively foregrounded
+        const previousAppState = AppState.currentState;
+        (AppState as { currentState: string }).currentState = "active";
+
+        mockAuthenticatedStorage({
+          backgroundedAt: Date.now() - 60000, // 1 minute ago
+          autoLockTimer: AUTO_LOCK_TIMER.ONE_HOUR,
+        });
+
+        await act(async () => {
+          const status = await result.current.getAuthStatus();
+          expect(status).toBe(AUTH_STATUS.AUTHENTICATED);
+        });
+
+        // Timestamp is consumed...
+        expect(secureDataStorage.remove).toHaveBeenCalledWith(
+          SENSITIVE_STORAGE_KEYS.AUTO_LOCK_BACKGROUNDED_AT,
+        );
+        // ...but the hash key expiry must NOT advance without credential
+        // verification (key material lifetime stays bounded)
+        expect(secureDataStorage.setItem).not.toHaveBeenCalledWith(
+          SENSITIVE_STORAGE_KEYS.HASH_KEY,
+          expect.any(String),
+        );
+
+        (AppState as { currentState: typeof previousAppState }).currentState =
+          previousAppState;
+      });
+
+      it("should return HASH_KEY_EXPIRED when the hash key expired even if within the timer", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+        restoreGetAuthStatus();
+
+        const previousAppState = AppState.currentState;
+        (AppState as { currentState: string }).currentState = "active";
+
+        mockAuthenticatedStorage({
+          backgroundedAt: Date.now() - 60000, // 1 minute ago, within timer
+          autoLockTimer: AUTO_LOCK_TIMER.ONE_HOUR,
+        });
+
+        // Hash key hard-expired (e.g. > 72h since the last unlock)
+        (getHashKey as jest.Mock).mockResolvedValue({
+          hashKey: "mock-hash-key",
+          salt: "mock-salt",
+          expiresAt: Date.now() - ONE_HOUR_MS,
+        });
+
+        await act(async () => {
+          const status = await result.current.getAuthStatus();
+          expect(status).toBe(AUTH_STATUS.HASH_KEY_EXPIRED);
+        });
+
+        (AppState as { currentState: typeof previousAppState }).currentState =
+          previousAppState;
+      });
+
+      it("should return HASH_KEY_EXPIRED (not LOCKED) when backgrounded beyond BOTH the timer and the hash-key TTL", async () => {
+        // The reviewer's scenario: the timer branch would otherwise return a
+        // fast-path LOCKED that refreshes the expired key, silently defeating
+        // the hard-expiry backstop. Expiry must win → full re-auth.
+        const { result } = renderHook(() => useAuthenticationStore());
+        restoreGetAuthStatus();
+
+        mockAuthenticatedStorage({
+          backgroundedAt: Date.now() - 2 * ONE_HOUR_MS, // beyond the 1h timer
+          autoLockTimer: AUTO_LOCK_TIMER.ONE_HOUR,
+        });
+
+        // ...and the hash key has hard-expired (beyond its TTL)
+        (getHashKey as jest.Mock).mockResolvedValue({
+          hashKey: "mock-hash-key",
+          salt: "mock-salt",
+          expiresAt: Date.now() - ONE_HOUR_MS,
+        });
+
+        await act(async () => {
+          const status = await result.current.getAuthStatus();
+          expect(status).toBe(AUTH_STATUS.HASH_KEY_EXPIRED);
+        });
+
+        // Must NOT have converted the session to a soft timer lock
+        expect(secureDataStorage.setItem).not.toHaveBeenCalledWith(
+          SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
+          AUTH_STATUS.LOCKED,
+        );
+      });
+
+      it("should default to 12 hours when no timer preference is persisted", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+        restoreGetAuthStatus();
+
+        // 13h exceeds the 12h default but not the old 24h, so this pins the
+        // default at 12h (matching the extension) rather than merely "some
+        // default under 13h".
+        mockAuthenticatedStorage({
+          backgroundedAt: Date.now() - 13 * ONE_HOUR_MS,
+          autoLockTimer: null,
+        });
+
+        await act(async () => {
+          const status = await result.current.getAuthStatus();
+          expect(status).toBe(AUTH_STATUS.LOCKED);
+        });
+      });
+
+      it("should not evaluate the timer when no backgrounded-at timestamp exists", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+        restoreGetAuthStatus();
+
+        mockAuthenticatedStorage({
+          backgroundedAt: null,
+          autoLockTimer: AUTO_LOCK_TIMER.ONE_HOUR,
+        });
+
+        await act(async () => {
+          const status = await result.current.getAuthStatus();
+          expect(status).toBe(AUTH_STATUS.AUTHENTICATED);
+        });
+
+        expect(secureDataStorage.remove).not.toHaveBeenCalledWith(
+          SENSITIVE_STORAGE_KEYS.AUTO_LOCK_BACKGROUNDED_AT,
+        );
+      });
+    });
+
+    describe("softLock", () => {
+      it("should set LOCKED with isSoftLocked and persist the status without touching navigation", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+
+        const mockResetRoot = jest.fn();
+        const softLockNavigationRef = {
+          isReady: jest.fn().mockReturnValue(true),
+          getCurrentRoute: jest.fn().mockReturnValue({ name: "Home" }),
+          resetRoot: mockResetRoot,
+        } as unknown as NavigationContainerRef<RootStackParamList>;
+
+        act(() => {
+          useAuthenticationStore.setState({
+            authStatus: AUTH_STATUS.AUTHENTICATED,
+            isSoftLocked: false,
+            navigationRef: softLockNavigationRef,
+          });
+        });
+
+        await act(async () => {
+          await result.current.softLock();
+        });
+
+        expect(result.current.authStatus).toBe(AUTH_STATUS.LOCKED);
+        expect(result.current.isSoftLocked).toBe(true);
+        // The whole point of softLock: the navigation tree stays untouched
+        expect(mockResetRoot).not.toHaveBeenCalled();
+        expect(secureDataStorage.setItem).toHaveBeenCalledWith(
+          SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
+          AUTH_STATUS.LOCKED,
+        );
+      });
+
+      it("should funnel a warm timer lock through softLock atomically", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+        act(() => {
+          useAuthenticationStore.setState({
+            getAuthStatus: originalStoreMethods.getAuthStatus,
+            softLock: originalStoreMethods.softLock,
+            authStatus: AUTH_STATUS.AUTHENTICATED,
+            isSoftLocked: false,
+          });
+        });
+
+        // Storage says the auto-lock timer fired while we were AUTHENTICATED
+        (dataStorage.getItem as jest.Mock).mockImplementation((key) => {
+          if (key === STORAGE_KEYS.ACCOUNT_LIST) {
+            return Promise.resolve(JSON.stringify([mockAccount]));
+          }
+          return Promise.resolve(null);
+        });
+        (secureDataStorage.getItem as jest.Mock).mockImplementation((key) => {
+          if (key === SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE) {
+            return Promise.resolve("encrypted-temp-store");
+          }
+          if (key === SENSITIVE_STORAGE_KEYS.AUTO_LOCK_BACKGROUNDED_AT) {
+            return Promise.resolve(String(Date.now() - 7200000)); // 2h ago
+          }
+          if (key === SENSITIVE_STORAGE_KEYS.AUTO_LOCK_TIMER_SETTING) {
+            return Promise.resolve(AUTO_LOCK_TIMER.ONE_HOUR);
+          }
+          return Promise.resolve(null);
+        });
+        (getHashKey as jest.Mock).mockResolvedValue({
+          hashKey: "mock-hash-key",
+          salt: "mock-salt",
+          expiresAt: Date.now() + 3600000,
+        });
+
+        // RootNavigator must NEVER observe LOCKED && !isSoftLocked — that
+        // combination unmounts the preserved navigation tree
+        const observedInvalidStates: string[] = [];
+        const unsubscribe = useAuthenticationStore.subscribe((state) => {
+          if (state.authStatus === AUTH_STATUS.LOCKED && !state.isSoftLocked) {
+            observedInvalidStates.push(state.authStatus);
+          }
+        });
+
+        await act(async () => {
+          const status = await result.current.getAuthStatus();
+          expect(status).toBe(AUTH_STATUS.LOCKED);
+        });
+
+        unsubscribe();
+        expect(observedInvalidStates).toHaveLength(0);
+        expect(result.current.authStatus).toBe(AUTH_STATUS.LOCKED);
+        expect(result.current.isSoftLocked).toBe(true);
+      });
+
+      it("should make navigateToLockScreen a no-op while soft-locked", () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+
+        const mockResetRoot = jest.fn();
+        const softLockedNavigationRef = {
+          isReady: jest.fn().mockReturnValue(true),
+          getCurrentRoute: jest.fn().mockReturnValue({ name: "Home" }),
+          resetRoot: mockResetRoot,
+        } as unknown as NavigationContainerRef<RootStackParamList>;
+
+        act(() => {
+          useAuthenticationStore.setState({
+            authStatus: AUTH_STATUS.LOCKED,
+            isSoftLocked: true,
+            navigationRef: softLockedNavigationRef,
+          });
+        });
+
+        act(() => {
+          result.current.navigateToLockScreen();
+        });
+
+        expect(mockResetRoot).not.toHaveBeenCalled();
+      });
+    });
+
     describe("signIn from LOCKED state", () => {
       it("should authenticate from LOCKED state and refresh TTL on the existing hash key", async () => {
         // Update the keyManager mock to return the correct account
@@ -1708,7 +2074,7 @@ describe("auth duck", () => {
         // Verify TTL was refreshed on the existing hash key (no re-encryption)
         expect(secureDataStorage.setItem).toHaveBeenCalledWith(
           SENSITIVE_STORAGE_KEYS.HASH_KEY,
-          expect.stringContaining('"expiresAt":'),
+          expect.stringContaining("\"expiresAt\":"),
         );
         // Verify that re-encryption did NOT occur
         expect(decryptDataWithPassword).not.toHaveBeenCalled();
