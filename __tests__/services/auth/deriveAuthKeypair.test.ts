@@ -1,11 +1,9 @@
-import { StrKey } from "@stellar/stellar-sdk";
 import { AUTH_KEYPAIR_VECTORS } from "services/auth/authKeypairVectors";
 import {
   AUTH_SALT,
   deriveAuthKeypair,
   deriveAuthSeed,
 } from "services/auth/deriveAuthKeypair";
-import StellarHDWallet from "stellar-hd-wallet";
 
 describe("deriveAuthKeypair", () => {
   it("uses the versioned salt", () => {
@@ -22,7 +20,10 @@ describe("deriveAuthKeypair", () => {
 
   it("is deterministic", () => {
     const m = AUTH_KEYPAIR_VECTORS[0].mnemonic;
-    expect(deriveAuthKeypair(m).userId).toBe(deriveAuthKeypair(m).userId);
+    const call1 = deriveAuthKeypair(m);
+    const call2 = deriveAuthKeypair(m);
+    expect(call1.userId).toBe(call2.userId);
+    expect(call1.publicKey).toBe(call2.publicKey);
   });
 
   it("emits lowercase 64-char hex", () => {
@@ -33,17 +34,10 @@ describe("deriveAuthKeypair", () => {
 
   it("is independent from the wallet account-0 key", () => {
     const m = AUTH_KEYPAIR_VECTORS[0].mnemonic;
-    try {
-      const walletHex = StrKey.decodeEd25519PublicKey(
-        StellarHDWallet.fromMnemonic(m).getPublicKey(0),
-      ).toString("hex");
-      expect(deriveAuthKeypair(m).userId).not.toBe(walletHex);
-    } catch {
-      // stellar-hd-wallet bip39 interop fallback: use verified extension value
-      expect(deriveAuthKeypair(m).userId).not.toBe(
-        "7691d85048acc4ed085d9061ce0948bbdf7de6a92b790aaf241d31b7dcaa4238",
-      );
-    }
+    // Verified wallet account-0 public key hex for this mnemonic
+    const walletAccountZeroHex =
+      "7691d85048acc4ed085d9061ce0948bbdf7de6a92b790aaf241d31b7dcaa4238";
+    expect(deriveAuthKeypair(m).userId).not.toBe(walletAccountZeroHex);
   });
 
   it("throws on an invalid mnemonic", () => {
