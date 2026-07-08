@@ -3127,6 +3127,15 @@ export const getActiveMnemonicPhrase = async (): Promise<string | null> => {
     const store = await getTemporaryStore(
       useAuthenticationStore.getState().authStatus,
     );
+    // Re-check after the async decrypt: a lock (soft-lock / auto-lock) may have
+    // landed while awaiting SecureStorage. If so, do NOT return the pre-lock
+    // mnemonic — otherwise getAuthKeypair could derive and re-cache a signing
+    // key after softLock() already cleared the cache (TOCTOU race).
+    if (
+      useAuthenticationStore.getState().authStatus !== AUTH_STATUS.AUTHENTICATED
+    ) {
+      return null;
+    }
     return store?.mnemonicPhrase ?? null;
   } catch {
     return null;

@@ -17,6 +17,7 @@ import {
   appendAccounts,
   clearAccountData,
   isSessionAuthValid,
+  getActiveMnemonicPhrase,
 } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
 import { useCollectiblesStore } from "ducks/collectibles";
@@ -2429,6 +2430,64 @@ describe("auth duck", () => {
       const result = await isSessionAuthValid();
 
       expect(result).toBe(false);
+    });
+  });
+
+  describe("getActiveMnemonicPhrase lock race (TOCTOU)", () => {
+    beforeEach(() => {
+      // Working temporary-store decrypt (mirrors the "authentication
+      // mechanisms" setup) so the happy path actually yields the mnemonic —
+      // otherwise the race test's null would pass for the wrong reason.
+      (secureDataStorage.getItem as jest.Mock).mockImplementation((key) => {
+        if (key === SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE) {
+          return Promise.resolve(mockEncryptedData);
+        }
+        if (key === SENSITIVE_STORAGE_KEYS.HASH_KEY) {
+          return Promise.resolve(JSON.stringify(mockHashKeyObj));
+        }
+        return Promise.resolve(null);
+      });
+      (decryptDataWithDerivedKey as jest.Mock).mockReturnValue(
+        mockTemporaryStore,
+      );
+    });
+
+    it("returns the mnemonic when AUTHENTICATED throughout the decrypt", async () => {
+      act(() => {
+        useAuthenticationStore.setState({
+          authStatus: AUTH_STATUS.AUTHENTICATED,
+        });
+      });
+      (getHashKey as jest.Mock).mockResolvedValue(mockHashKeyObj);
+
+      const result = await getActiveMnemonicPhrase();
+
+      expect(result).toBe(mockMnemonicPhrase);
+    });
+
+    it("returns null if a lock lands during the temporary-store decrypt", async () => {
+      act(() => {
+        useAuthenticationStore.setState({
+          authStatus: AUTH_STATUS.AUTHENTICATED,
+        });
+      });
+      // Simulate a soft-lock / auto-lock landing while getTemporaryStore is
+      // awaiting SecureStorage: flip the store to LOCKED during the decrypt
+      // path (getHashKey is awaited inside getTemporaryStore). The pre-lock
+      // AUTHENTICATED status was already captured, so the store still decrypts
+      // — but getActiveMnemonicPhrase must re-check afterward and refuse to
+      // return the pre-lock mnemonic (otherwise getAuthKeypair could re-cache a
+      // signing key after softLock cleared it).
+      (getHashKey as jest.Mock).mockImplementation(() => {
+        useAuthenticationStore.setState({
+          authStatus: AUTH_STATUS.LOCKED,
+        });
+        return Promise.resolve(mockHashKeyObj);
+      });
+
+      const result = await getActiveMnemonicPhrase();
+
+      expect(result).toBeNull();
     });
   });
 });
