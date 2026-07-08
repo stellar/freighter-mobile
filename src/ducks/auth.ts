@@ -57,7 +57,7 @@ import { AppState, Keyboard } from "react-native";
 import ReactNativeBiometrics from "react-native-biometrics";
 import * as Keychain from "react-native-keychain";
 import { analytics } from "services/analytics";
-import { clearAuthKeypairCache } from "services/auth/getAuthKeypair";
+import { clearAuthKeypairCache } from "services/auth/authKeypairCache";
 import {
   clearBackgroundedAt,
   getAutoLockTimer,
@@ -2272,6 +2272,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
       suppressBiometricAutoPrompt: options?.suppressBiometricPrompt ?? false,
       isLoading: false,
     });
+    clearAuthKeypairCache();
 
     // Persist LOCKED (covers tampering + cold starts). Retry once and rethrow
     // on failure: a swallowed write would leave the wallet auto-unlockable on
@@ -3113,9 +3114,15 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
 
 /**
  * Returns the mnemonic phrase from the unlocked temporary store,
- * or null when the wallet is locked or the store is unavailable.
+ * or null when the wallet is not fully authenticated (AUTHENTICATED),
+ * locked, or the store is unavailable.
  */
 export const getActiveMnemonicPhrase = async (): Promise<string | null> => {
+  if (
+    useAuthenticationStore.getState().authStatus !== AUTH_STATUS.AUTHENTICATED
+  ) {
+    return null;
+  }
   try {
     const store = await getTemporaryStore(
       useAuthenticationStore.getState().authStatus,
@@ -3124,4 +3131,20 @@ export const getActiveMnemonicPhrase = async (): Promise<string | null> => {
   } catch {
     return null;
   }
+};
+
+/**
+ * Cheap session-validity check: returns true only when the store reports
+ * AUTHENTICATED AND the persisted hash key is both present and not expired.
+ * Does NOT decrypt the temporary store — no PBKDF2 involved.
+ */
+export const isSessionAuthValid = async (): Promise<boolean> => {
+  if (
+    useAuthenticationStore.getState().authStatus !== AUTH_STATUS.AUTHENTICATED
+  ) {
+    return false;
+  }
+  const hashKey = await getHashKey();
+  if (!hashKey) return false;
+  return !isHashKeyExpired(hashKey);
 };

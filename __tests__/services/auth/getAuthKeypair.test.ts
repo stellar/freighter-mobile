@@ -1,4 +1,3 @@
-import { AUTH_STATUS } from "config/types";
 import * as authDuck from "ducks/auth";
 import { AUTH_KEYPAIR_VECTORS } from "services/auth/authKeypairVectors";
 import {
@@ -6,28 +5,23 @@ import {
   clearAuthKeypairCache,
 } from "services/auth/getAuthKeypair";
 
-// Mock ducks/auth: expose both getActiveMnemonicPhrase and useAuthenticationStore
-// with a controllable getState so we can drive the auth-status gate directly.
-let mockAuthStatus: string = AUTH_STATUS.AUTHENTICATED;
-
+// Mock ducks/auth: expose both getActiveMnemonicPhrase and isSessionAuthValid
+// so we can drive the auth-status gate directly.
 jest.mock("ducks/auth", () => ({
   getActiveMnemonicPhrase: jest.fn(),
-  useAuthenticationStore: {
-    getState: jest.fn(() => ({ authStatus: mockAuthStatus })),
-  },
+  isSessionAuthValid: jest.fn(),
 }));
 
 const mockMnemonic = authDuck.getActiveMnemonicPhrase as jest.Mock;
-const mockGetState = authDuck.useAuthenticationStore.getState as jest.Mock;
+const mockIsSessionAuthValid = authDuck.isSessionAuthValid as jest.Mock;
 const M = AUTH_KEYPAIR_VECTORS[0];
 
 describe("getAuthKeypair", () => {
   beforeEach(() => {
     clearAuthKeypairCache();
     jest.clearAllMocks();
-    // Default: fully authenticated, so the status gate passes.
-    mockAuthStatus = AUTH_STATUS.AUTHENTICATED;
-    mockGetState.mockImplementation(() => ({ authStatus: mockAuthStatus }));
+    // Default: session is fully valid.
+    mockIsSessionAuthValid.mockResolvedValue(true);
   });
 
   it("derives and memoizes (accessor called once for repeated calls)", async () => {
@@ -42,11 +36,10 @@ describe("getAuthKeypair", () => {
 
   it("returns null when LOCKED even if getActiveMnemonicPhrase would return a mnemonic (regression guard)", async () => {
     // This is the real LOCKED path: fast-unlock preserved session.
-    // getActiveMnemonicPhrase deliberately allows LOCKED, so without the
-    // auth-status gate it would still yield a keypair — this test proves it
-    // no longer does.
-    mockAuthStatus = AUTH_STATUS.LOCKED;
-    mockGetState.mockImplementation(() => ({ authStatus: mockAuthStatus }));
+    // getActiveMnemonicPhrase now also returns null when not AUTHENTICATED
+    // (Fix 2), but the gate in getAuthKeypair fires first — this test proves
+    // the accessor is never reached when LOCKED.
+    mockIsSessionAuthValid.mockResolvedValue(false);
     mockMnemonic.mockResolvedValue(M.mnemonic); // would succeed if gate absent
 
     expect(await getAuthKeypair()).toBeNull();
@@ -55,8 +48,7 @@ describe("getAuthKeypair", () => {
   });
 
   it("returns null when HASH_KEY_EXPIRED", async () => {
-    mockAuthStatus = AUTH_STATUS.HASH_KEY_EXPIRED;
-    mockGetState.mockImplementation(() => ({ authStatus: mockAuthStatus }));
+    mockIsSessionAuthValid.mockResolvedValue(false);
     mockMnemonic.mockResolvedValue(M.mnemonic);
 
     expect(await getAuthKeypair()).toBeNull();
@@ -64,8 +56,7 @@ describe("getAuthKeypair", () => {
   });
 
   it("returns null when NOT_AUTHENTICATED", async () => {
-    mockAuthStatus = AUTH_STATUS.NOT_AUTHENTICATED;
-    mockGetState.mockImplementation(() => ({ authStatus: mockAuthStatus }));
+    mockIsSessionAuthValid.mockResolvedValue(false);
     mockMnemonic.mockResolvedValue(M.mnemonic);
 
     expect(await getAuthKeypair()).toBeNull();
@@ -79,8 +70,7 @@ describe("getAuthKeypair", () => {
     expect(a).not.toBeNull();
 
     // Transition to LOCKED — warm cache must be bypassed.
-    mockAuthStatus = AUTH_STATUS.LOCKED;
-    mockGetState.mockImplementation(() => ({ authStatus: mockAuthStatus }));
+    mockIsSessionAuthValid.mockResolvedValue(false);
 
     expect(await getAuthKeypair()).toBeNull();
   });
@@ -100,5 +90,21 @@ describe("getAuthKeypair", () => {
       AUTH_KEYPAIR_VECTORS[1].userId,
     );
     expect(c).not.toBe(a);
+  });
+
+  it("warm cache is NOT returned when hash key expired (session validity check fires even with warm cache)", async () => {
+    // Populate cache while session is valid.
+    mockIsSessionAuthValid.mockResolvedValue(true);
+    mockMnemonic.mockResolvedValue(M.mnemonic);
+    const a = await getAuthKeypair();
+    expect(a).not.toBeNull();
+
+    // Simulate hash key expiry: isSessionAuthValid returns false even though
+    // authStatus is AUTHENTICATED in the store (the stale-authStatus window).
+    mockIsSessionAuthValid.mockResolvedValue(false);
+
+    expect(await getAuthKeypair()).toBeNull();
+    // Mnemonic must not have been called on the second invocation.
+    expect(mockMnemonic).toHaveBeenCalledTimes(1);
   });
 });

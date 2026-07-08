@@ -16,6 +16,7 @@ import {
   ActiveAccount,
   appendAccounts,
   clearAccountData,
+  isSessionAuthValid,
 } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
 import { useCollectiblesStore } from "ducks/collectibles";
@@ -2074,7 +2075,7 @@ describe("auth duck", () => {
         // Verify TTL was refreshed on the existing hash key (no re-encryption)
         expect(secureDataStorage.setItem).toHaveBeenCalledWith(
           SENSITIVE_STORAGE_KEYS.HASH_KEY,
-          expect.stringContaining("\"expiresAt\":"),
+          expect.stringContaining('"expiresAt":'),
         );
         // Verify that re-encryption did NOT occur
         expect(decryptDataWithPassword).not.toHaveBeenCalled();
@@ -2354,6 +2355,80 @@ describe("auth duck", () => {
       });
 
       expect(result.current.network).toBe(NETWORKS.PUBLIC);
+    });
+  });
+
+  describe("isSessionAuthValid", () => {
+    it("returns true when AUTHENTICATED and hash key present and not expired", async () => {
+      act(() => {
+        useAuthenticationStore.setState({
+          authStatus: AUTH_STATUS.AUTHENTICATED,
+        });
+      });
+      (getHashKey as jest.Mock).mockResolvedValue(mockHashKeyObj);
+
+      const result = await isSessionAuthValid();
+
+      expect(result).toBe(true);
+    });
+
+    it("returns false when not AUTHENTICATED (short-circuits before reading hash key)", async () => {
+      act(() => {
+        useAuthenticationStore.setState({
+          authStatus: AUTH_STATUS.LOCKED,
+        });
+      });
+      (getHashKey as jest.Mock).mockClear();
+
+      const result = await isSessionAuthValid();
+
+      expect(result).toBe(false);
+      expect(getHashKey).not.toHaveBeenCalled();
+    });
+
+    it("returns false when AUTHENTICATED but hash key absent", async () => {
+      act(() => {
+        useAuthenticationStore.setState({
+          authStatus: AUTH_STATUS.AUTHENTICATED,
+        });
+      });
+      (getHashKey as jest.Mock).mockResolvedValue(null);
+
+      const result = await isSessionAuthValid();
+
+      expect(result).toBe(false);
+    });
+
+    it("returns false when AUTHENTICATED but hash key expired", async () => {
+      act(() => {
+        useAuthenticationStore.setState({
+          authStatus: AUTH_STATUS.AUTHENTICATED,
+        });
+      });
+      (getHashKey as jest.Mock).mockResolvedValue({
+        ...mockHashKeyObj,
+        expiresAt: Date.now() - 1000,
+      });
+
+      const result = await isSessionAuthValid();
+
+      expect(result).toBe(false);
+    });
+
+    it("returns false when AUTHENTICATED but hash key has future generatedAt (clock rollback)", async () => {
+      act(() => {
+        useAuthenticationStore.setState({
+          authStatus: AUTH_STATUS.AUTHENTICATED,
+        });
+      });
+      (getHashKey as jest.Mock).mockResolvedValue({
+        ...mockHashKeyObj,
+        generatedAt: Date.now() + 100_000,
+      });
+
+      const result = await isSessionAuthValid();
+
+      expect(result).toBe(false);
     });
   });
 });
