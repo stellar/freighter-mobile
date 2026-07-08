@@ -34,10 +34,23 @@
  * Body hashing
  * ------------
  * Only a pre-serialized string `config.data` is hashed.  If `config.data`
- * is an object (i.e. the caller forgot to JSON.stringify before passing
- * it), we pass `body: undefined` (empty bodyHash) and emit a dev-mode
- * warning.  Call sites should be migrated to pre-serialize, but that is
- * outside the scope of this task.
+ * is an object the caller has not pre-serialized it; we pass `body: undefined`
+ * (empty bodyHash) and emit a dev-mode warning as a defensive backstop.  In
+ * practice this path is unreachable for V2 write requests: `createApiService`
+ * is parameterised as `createApiService<string>`, so passing an object body
+ * is a compile-time error.
+ *
+ * Query-param folding
+ * -------------------
+ * When the caller supplies `config.params`, axios normally appends them to the
+ * URL *after* the request interceptor runs.  That would cause the signed
+ * `methodAndPath` to diverge from the actual wire request-target, producing a
+ * 401 on the server.  To prevent this, the authenticated branch of the request
+ * interceptor folds `config.params` into `config.url` before signing, then
+ * writes the merged URL back and deletes `config.params` so axios does not
+ * append them a second time.  The result: signed path == wire path for every
+ * authenticated request.  Anonymous requests (locked wallet) are unaffected —
+ * their `config.params` flow through axios normally.
  *
  * Import strategy
  * ---------------
@@ -60,6 +73,36 @@ import { logger } from "config/logger";
  */
 interface AuthRetryConfig extends InternalAxiosRequestConfig {
   __isAuthRetry?: boolean;
+}
+
+/**
+ * Merges `config.params` into an axios URL string so that the signed path
+ * equals the wire request-target.
+ *
+ * Axios appends `config.params` to the URL *after* request interceptors run.
+ * We pre-fold them here so the JWT `methodAndPath` matches what the server
+ * sees in `r.URL.RequestURI()`.
+ *
+ * Rules:
+ *  - If `params` is absent or empty, returns `url` unchanged.
+ *  - Non-string primitive values (numbers, booleans) are coerced via
+ *    `String()`.  Array/object values are also coerced — that is a
+ *    simplification: axios's full array-serialization logic is out of scope.
+ *  - Appends with `&` when `url` already contains a `?`, otherwise with `?`.
+ */
+function mergeParamsIntoUrl(url: string, params: unknown): string {
+  if (params === undefined || params === null) return url;
+  if (typeof params !== "object") return url;
+
+  const entries = Object.entries(params as Record<string, unknown>);
+  if (entries.length === 0) return url;
+
+  const qs = new URLSearchParams(
+    entries.map(([k, v]) => [k, String(v)] as [string, string]),
+  ).toString();
+
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}${qs}`;
 }
 
 /**
@@ -131,6 +174,19 @@ export function attachAuthInterceptors(instance: AxiosInstance): void {
       const { buildAuthJwt } =
         require("services/auth/buildAuthJwt") as typeof import("services/auth/buildAuthJwt");
       /* eslint-enable @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires, global-require */
+
+      // Fold config.params into the URL before signing so the signed
+      // methodAndPath matches the wire request-target.  We write the merged
+      // URL back to config.url and delete config.params so axios does not
+      // append them a second time — guaranteeing signed path == wire path.
+      // (Anonymous requests skip this block entirely and let axios handle
+      //  params normally, since they return early above.)
+      // eslint-disable-next-line no-param-reassign
+      config.url = mergeParamsIntoUrl(config.url ?? "/", config.params);
+      if (config.params !== undefined) {
+        // eslint-disable-next-line no-param-reassign
+        delete config.params;
+      }
 
       const serverPath = deriveServerPath(config.baseURL, config.url);
       const method = config.method ?? "get";

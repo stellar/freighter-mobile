@@ -282,6 +282,73 @@ describe("attachAuthInterceptors", () => {
   });
 
   // -------------------------------------------------------------------------
+  // (a2) Unlocked wallet — config.params folding
+  // -------------------------------------------------------------------------
+
+  describe("when wallet is unlocked and config.params is supplied", () => {
+    it("folds config.params into the signed JWT methodAndPath and clears config.params", async () => {
+      mockGetAuthKeypair.mockResolvedValue(TEST_KEYPAIR);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const { buildAuthJwt: realBuildAuthJwt } = jest.requireActual(
+        "services/auth/buildAuthJwt",
+      );
+      mockBuildAuthJwt.mockImplementation(realBuildAuthJwt);
+
+      const { instance, runRequestInterceptors } = makeFakeInstance();
+      attachAuthInterceptors(instance);
+
+      const cfg = {
+        baseURL: BASE_URL,
+        url: "/protocols",
+        method: "get",
+        headers: {},
+        data: undefined,
+        params: { network: "PUBLIC" },
+      };
+      const result = await runRequestInterceptors(cfg);
+
+      // 1. JWT methodAndPath must include the merged query string.
+      const payload = decodePayload(
+        (result.headers?.Authorization as string).replace("Bearer ", ""),
+      );
+      expect(payload.methodAndPath).toBe(
+        "GET /api/v1/protocols?network=PUBLIC",
+      );
+
+      // 2. config.params must be cleared (so axios does not double-append).
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect(result.params).toBeUndefined();
+
+      // 3. config.url must have the merged query so the wire URL matches.
+      expect(result.url).toBe("/protocols?network=PUBLIC");
+    });
+
+    it("appends with & when config.url already has a query string", async () => {
+      mockGetAuthKeypair.mockResolvedValue(TEST_KEYPAIR);
+      mockBuildAuthJwt.mockReturnValue("mock.jwt.token");
+
+      const { instance, runRequestInterceptors } = makeFakeInstance();
+      attachAuthInterceptors(instance);
+
+      const cfg = {
+        baseURL: BASE_URL,
+        url: "/foo?a=1",
+        method: "get",
+        headers: {},
+        data: undefined,
+        params: { b: "2" },
+      };
+      await runRequestInterceptors(cfg);
+
+      expect(mockBuildAuthJwt).toHaveBeenCalledWith(
+        expect.objectContaining({
+          path: "/api/v1/foo?a=1&b=2",
+        }),
+      );
+    });
+  });
+
+  // -------------------------------------------------------------------------
   // (b) Locked wallet — no Authorization header
   // -------------------------------------------------------------------------
 
@@ -303,6 +370,31 @@ describe("attachAuthInterceptors", () => {
 
       expect(result.headers?.Authorization).toBeUndefined();
       expect(mockBuildAuthJwt).not.toHaveBeenCalled();
+    });
+
+    it("does NOT touch config.params when wallet is locked (params flow through axios normally)", async () => {
+      mockGetAuthKeypair.mockResolvedValue(null);
+
+      const { instance, runRequestInterceptors } = makeFakeInstance();
+      attachAuthInterceptors(instance);
+
+      const cfg = {
+        baseURL: BASE_URL,
+        url: "/protocols",
+        method: "get",
+        headers: {},
+        data: undefined,
+        params: { network: "PUBLIC" },
+      };
+      const result = await runRequestInterceptors(cfg);
+
+      // No Authorization header.
+      expect(result.headers?.Authorization).toBeUndefined();
+      // config.params must be left intact for axios to append on send.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect(result.params).toEqual({ network: "PUBLIC" });
+      // config.url must be unchanged (no merging).
+      expect(result.url).toBe("/protocols");
     });
   });
 
@@ -650,5 +742,123 @@ describe("attachAuthInterceptors — integration through full apiFactory chain",
 
     // Exactly 1 adapter call — the retry must not have fired.
     expect(capturedConfigs).toHaveLength(1);
+  });
+
+  // -------------------------------------------------------------------------
+  // config.params folding — integration: signed path == wire path
+  // -------------------------------------------------------------------------
+
+  it("authed request with config.params: JWT methodAndPath includes query AND adapter sees merged URL with no config.params", async () => {
+    // Prove that the folding is end-to-end: the JWT claim and the wire URL
+    // the adapter receives are identical, and config.params was cleared.
+    const capturedConfigs: InternalAxiosRequestConfig[] = [];
+    const api = createApiService({
+      baseURL: BASE_URL,
+      configureInstance: attachAuthInterceptors,
+    });
+    // Adapter: always 200 so we can inspect what it received.
+    api.getInstance().defaults.adapter = (
+      config: InternalAxiosRequestConfig,
+    ) => {
+      capturedConfigs.push(config);
+      return Promise.resolve({
+        data: { ok: true },
+        status: 200,
+        statusText: "OK",
+        headers: {},
+        config,
+      });
+    };
+
+    await api.get("/token-prices", { params: { network: "PUBLIC" } });
+
+    expect(capturedConfigs).toHaveLength(1);
+    const captured = capturedConfigs[0];
+
+    // 1. config.params was cleared — no double-append.
+    expect(captured.params).toBeUndefined();
+
+    // 2. The wire URL has the merged query.
+    expect(captured.url).toContain("?network=PUBLIC");
+
+    // 3. The JWT methodAndPath equals the signed wire path.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const authHeader = (captured.headers as Record<string, any>)
+      .Authorization as string;
+    expect(authHeader).toMatch(/^Bearer /);
+    const payload = decodePayload(authHeader.replace("Bearer ", ""));
+    expect(payload.methodAndPath).toBe(
+      "GET /api/v1/token-prices?network=PUBLIC",
+    );
+  });
+
+  it("config.url already has a query + config.params: joined with & not a second ?", async () => {
+    const capturedConfigs: InternalAxiosRequestConfig[] = [];
+    const api = createApiService({
+      baseURL: BASE_URL,
+      configureInstance: attachAuthInterceptors,
+    });
+    api.getInstance().defaults.adapter = (
+      config: InternalAxiosRequestConfig,
+    ) => {
+      capturedConfigs.push(config);
+      return Promise.resolve({
+        data: { ok: true },
+        status: 200,
+        statusText: "OK",
+        headers: {},
+        config,
+      });
+    };
+
+    await api.get("/foo?a=1", { params: { b: "2" } });
+
+    expect(capturedConfigs).toHaveLength(1);
+    const captured = capturedConfigs[0];
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const authHeader = (captured.headers as Record<string, any>)
+      .Authorization as string;
+    const payload = decodePayload(authHeader.replace("Bearer ", ""));
+    // Signed and sent path must use & not a second ?.
+    expect(payload.methodAndPath).toBe("GET /api/v1/foo?a=1&b=2");
+    expect(captured.url).toContain("?a=1&b=2");
+    expect(captured.params).toBeUndefined();
+  });
+
+  it("anonymous request with config.params: interceptor leaves params for axios to handle", async () => {
+    mockGetAuthKeypair.mockResolvedValue(null);
+
+    const capturedConfigs: InternalAxiosRequestConfig[] = [];
+    const api = createApiService({
+      baseURL: BASE_URL,
+      configureInstance: attachAuthInterceptors,
+    });
+    api.getInstance().defaults.adapter = (
+      config: InternalAxiosRequestConfig,
+    ) => {
+      capturedConfigs.push(config);
+      return Promise.resolve({
+        data: { ok: true },
+        status: 200,
+        statusText: "OK",
+        headers: {},
+        config,
+      });
+    };
+
+    await api.get("/protocols", { params: { network: "PUBLIC" } });
+
+    expect(capturedConfigs).toHaveLength(1);
+    const captured = capturedConfigs[0];
+
+    // Anonymous path: interceptor must not strip params.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const authHeader = (captured.headers as Record<string, any>)
+      .Authorization as string | undefined;
+    expect(authHeader).toBeUndefined();
+    // axios serialises params onto the URL for the adapter, so by the time
+    // the adapter fires, params may or may not still be on the config —
+    // what matters is that no Authorization header was set.
   });
 });
