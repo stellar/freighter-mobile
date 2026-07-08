@@ -109,6 +109,29 @@ export interface ApiServiceOptions {
 }
 
 /**
+ * Type guard that returns true for any value that has already been normalized
+ * into an ApiError by the apiFactory response interceptor.  Used by the
+ * normalizer itself to make error normalization idempotent: when a nested
+ * instance.request() (e.g. the JWT 401-retry in attachAuth) surfaces an
+ * ApiError up through the outer interceptor chain, the normalizer must not
+ * re-process it — doing so would clobber the real status (e.g. 401 → 0)
+ * because ApiError carries no .response field.
+ */
+export function isApiError(error: unknown): error is ApiError {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    !axios.isAxiosError(error) &&
+    "status" in error &&
+    typeof (error as ApiError).status === "number" &&
+    "isNetworkError" in error &&
+    typeof (error as ApiError).isNetworkError === "boolean" &&
+    "message" in error &&
+    typeof (error as ApiError).message === "string"
+  );
+}
+
+/**
  * Creates an API service instance with consistent behavior and error handling
  *
  * @param options Configuration options for the API service
@@ -185,6 +208,15 @@ export function createApiService(options: ApiServiceOptions) {
     (response) => response,
     /* eslint-disable @typescript-eslint/no-unsafe-member-access */
     (error) => {
+      // If the error is already a normalized ApiError (e.g. surfaced from a
+      // nested instance.request() inside another interceptor, like the JWT
+      // 401-retry), don't re-normalize — a second pass would clobber the
+      // real status (e.g. 401) to 0 because ApiError has no .response field.
+      if (isApiError(error)) {
+        // eslint-disable-next-line @typescript-eslint/no-throw-literal
+        throw error;
+      }
+
       // When the server didn't respond at all (offline, DNS, TLS failure,
       // captive portal, request aborted before headers), use 0 as the
       // status to match the ApiError contract ("HTTP status code (or 0

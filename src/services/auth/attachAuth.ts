@@ -179,10 +179,19 @@ export function attachAuthInterceptors(instance: AxiosInstance): void {
       const err = error as { response?: { status?: number }; config?: any };
       const config = err.config as AuthRetryConfig | undefined;
 
+      // Only retry if the original request actually carried a JWT.
+      // Retrying an anonymous request is pointless — nothing would change on
+      // the second attempt (the wallet is locked, so no Authorization header
+      // would be attached) and it would double locked-wallet traffic.
+      const hadAuth = Boolean(
+        (config?.headers as Record<string, unknown> | undefined)?.Authorization,
+      );
+
       if (
         err.response?.status === 401 &&
         config !== undefined &&
-        !config.__isAuthRetry
+        !config.__isAuthRetry &&
+        hadAuth
       ) {
         // Spread into a new config object to avoid mutating the original
         // (satisfies no-param-reassign) while marking the retry flag.

@@ -25,7 +25,7 @@
  */
 import { Keypair } from "@stellar/stellar-sdk";
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
-import { createApiService } from "services/apiFactory";
+import { createApiService, isApiError } from "services/apiFactory";
 import { attachAuthInterceptors } from "services/auth/attachAuth";
 import { buildAuthJwt } from "services/auth/buildAuthJwt";
 import { getAuthKeypair } from "services/auth/getAuthKeypair";
@@ -322,7 +322,9 @@ describe("attachAuthInterceptors", () => {
         baseURL: BASE_URL,
         url: "/protocols",
         method: "get",
-        headers: {},
+        // Simulate that the request interceptor already attached a JWT —
+        // hadAuth must be true for the retry guard to fire.
+        headers: { Authorization: "Bearer mock.jwt.token" },
         data: undefined,
         __isAuthRetry: false,
       };
@@ -573,18 +575,17 @@ describe("attachAuthInterceptors — integration through full apiFactory chain",
     expect(payload2.iat as number).toBeGreaterThan(payload1.iat as number);
   });
 
-  it("a second consecutive 401 rejects with ApiError (normalizer applied) and does NOT retry more than once", async () => {
+  it("a second consecutive 401 rejects with ApiError{ status: 401 } and does NOT retry more than once", async () => {
     // When both the initial request AND the retry return 401:
     //   - The retry's inner request chain catches the second 401 in the auth
     //     interceptor (__isAuthRetry=true), rejects with the raw AxiosError,
     //     and the INNER normalizer converts it → ApiError{ status: 401 }.
-    //   - The OUTER chain's normalizer then runs on that plain ApiError object.
-    //     Because ApiError has no .response field, it produces ApiError{ status: 0 }.
-    // The consumer therefore receives an ApiError (not a raw AxiosError), which
-    // is what callers in services/backend.ts expect.
+    //   - The OUTER chain's normalizer is now idempotent (isApiError guard):
+    //     it detects the already-normalized ApiError and rethrows it unchanged,
+    //     preserving status: 401 instead of clobbering it to 0.
     // Key assertions:
-    //   (a) no infinite retry loop (adapter called exactly twice), and
-    //   (b) the consumer receives an ApiError shape (isNetworkError defined).
+    //   (a) no infinite retry loop (adapter called exactly twice),
+    //   (b) the consumer receives ApiError{ status: 401 } — NOT status: 0.
     const capturedConfigs: InternalAxiosRequestConfig[] = [];
     const api = createApiService({
       baseURL: BASE_URL,
@@ -593,10 +594,7 @@ describe("attachAuthInterceptors — integration through full apiFactory chain",
     api.getInstance().defaults.adapter = makeAlways401Adapter(capturedConfigs);
 
     await expect(api.get("/protocols")).rejects.toMatchObject({
-      // ApiError shape produced by the normalizer — status may be 0 because
-      // the outer normalizer sees a plain ApiError (no .response) rather than
-      // a raw AxiosError.  What matters is isNetworkError is present, message
-      // is a string, and the retry did not loop.
+      status: 401,
       isNetworkError: false,
       message: expect.any(String),
     });
@@ -604,5 +602,53 @@ describe("attachAuthInterceptors — integration through full apiFactory chain",
     // Exactly 2 adapter calls: original + one retry.  A third call would mean
     // the guard flag is broken.
     expect(capturedConfigs).toHaveLength(2);
+  });
+
+  // -------------------------------------------------------------------------
+  // isApiError type guard
+  // -------------------------------------------------------------------------
+
+  it("isApiError returns true for an ApiError-shaped object", () => {
+    const apiErr = {
+      message: "Unauthorized",
+      status: 401,
+      isNetworkError: false,
+    };
+    expect(isApiError(apiErr)).toBe(true);
+  });
+
+  it("isApiError returns false for a real AxiosError", () => {
+    const axiosErr = new axios.AxiosError("Request failed");
+    expect(isApiError(axiosErr)).toBe(false);
+  });
+
+  it("isApiError returns false for a plain object missing required fields", () => {
+    expect(isApiError({ message: "oops" })).toBe(false);
+    expect(isApiError(null)).toBe(false);
+    expect(isApiError("string error")).toBe(false);
+  });
+
+  it("anonymous request (no JWT) that receives a 401 does NOT retry", async () => {
+    // When the wallet is locked, getAuthKeypair() returns null and no
+    // Authorization header is attached.  Retrying such a request is pointless
+    // — nothing would change on the second attempt.  The response interceptor
+    // must detect the absence of an Authorization header and skip the retry.
+    mockGetAuthKeypair.mockResolvedValue(null);
+
+    const capturedConfigs: InternalAxiosRequestConfig[] = [];
+    const api = createApiService({
+      baseURL: BASE_URL,
+      configureInstance: attachAuthInterceptors,
+    });
+    api.getInstance().defaults.adapter = makeAlways401Adapter(capturedConfigs);
+
+    await expect(api.get("/protocols")).rejects.toMatchObject({
+      status: 401,
+      isNetworkError: false,
+      message: expect.any(String),
+    });
+
+    // Exactly 1 adapter call — the retry must not have fired.
+    expect(capturedConfigs).toHaveLength(1);
   });
 });
