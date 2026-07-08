@@ -49,7 +49,7 @@ export const freighterBackendV1 = createApiService({
 // interceptors in registration order; if attachAuthInterceptors were called
 // after createApiService returns, the 401-retry handler would run AFTER the
 // normalizer and never see error.response (already converted to ApiError).
-export const freighterBackendV2 = createApiService({
+export const freighterBackendV2 = createApiService<string>({
   baseURL: BackendEnvConfig.FREIGHTER_BACKEND_V2_URL,
   configureInstance: attachAuthInterceptors,
 });
