@@ -346,6 +346,37 @@ describe("attachAuthInterceptors", () => {
         }),
       );
     });
+
+    it("folds a URLSearchParams instance (not just a plain object)", async () => {
+      mockGetAuthKeypair.mockResolvedValue(TEST_KEYPAIR);
+      mockBuildAuthJwt.mockReturnValue("mock.jwt.token");
+
+      const { instance, runRequestInterceptors } = makeFakeInstance();
+      attachAuthInterceptors(instance);
+
+      // URLSearchParams entries are NOT enumerable via Object.entries — the
+      // merge helper must serialize it via toString(), else the query would be
+      // silently dropped (neither signed nor sent) after config.params is cleared.
+      const cfg = {
+        baseURL: BASE_URL,
+        url: "/protocols",
+        method: "get",
+        headers: {},
+        data: undefined,
+        params: new URLSearchParams({ network: "PUBLIC", cursor: "abc" }),
+      };
+      const result = await runRequestInterceptors(cfg);
+
+      expect(mockBuildAuthJwt).toHaveBeenCalledWith(
+        expect.objectContaining({
+          path: "/api/v1/protocols?network=PUBLIC&cursor=abc",
+        }),
+      );
+      // params cleared and folded into the url so the wire URL matches the sign.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect(result.params).toBeUndefined();
+      expect(result.url).toBe("/protocols?network=PUBLIC&cursor=abc");
+    });
   });
 
   // -------------------------------------------------------------------------

@@ -85,21 +85,31 @@ interface AuthRetryConfig extends InternalAxiosRequestConfig {
  *
  * Rules:
  *  - If `params` is absent or empty, returns `url` unchanged.
- *  - Non-string primitive values (numbers, booleans) are coerced via
- *    `String()`.  Array/object values are also coerced — that is a
+ *  - A `URLSearchParams` instance is serialized via its own `toString()`
+ *    (its entries are NOT enumerable via `Object.entries`, so it must be
+ *    handled explicitly — otherwise the query would be silently dropped).
+ *  - For a plain object, non-string primitive values (numbers, booleans) are
+ *    coerced via `String()`.  Array/object values are also coerced — that is a
  *    simplification: axios's full array-serialization logic is out of scope.
  *  - Appends with `&` when `url` already contains a `?`, otherwise with `?`.
  */
 function mergeParamsIntoUrl(url: string, params: unknown): string {
   if (params === undefined || params === null) return url;
-  if (typeof params !== "object") return url;
 
-  const entries = Object.entries(params as Record<string, unknown>);
-  if (entries.length === 0) return url;
+  let qs: string;
+  if (params instanceof URLSearchParams) {
+    qs = params.toString();
+  } else if (typeof params === "object") {
+    const entries = Object.entries(params as Record<string, unknown>);
+    if (entries.length === 0) return url;
+    qs = new URLSearchParams(
+      entries.map(([k, v]) => [k, String(v)] as [string, string]),
+    ).toString();
+  } else {
+    return url;
+  }
 
-  const qs = new URLSearchParams(
-    entries.map(([k, v]) => [k, String(v)] as [string, string]),
-  ).toString();
+  if (qs.length === 0) return url;
 
   const separator = url.includes("?") ? "&" : "?";
   return `${url}${separator}${qs}`;
