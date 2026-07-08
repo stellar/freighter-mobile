@@ -166,7 +166,17 @@ export function attachAuthInterceptors(instance: AxiosInstance): void {
       /* eslint-enable @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires, global-require */
       const keypair = await getAuthKeypair();
       if (!keypair) {
-        // Wallet is locked — pass through without auth.
+        // Wallet is locked — pass through anonymously. Strip any stale
+        // Authorization header first: a 401-retry copies the failed request's
+        // config (which carried a Bearer token), so if the wallet locked
+        // between the original request and the retry, returning config as-is
+        // would re-send the now-stale token. Locked requests must be anonymous.
+        if (config.headers) {
+          /* eslint-disable no-param-reassign */
+          delete (config.headers as Record<string, unknown>).Authorization;
+          delete (config.headers as Record<string, unknown>).authorization;
+          /* eslint-enable no-param-reassign */
+        }
         return config;
       }
 

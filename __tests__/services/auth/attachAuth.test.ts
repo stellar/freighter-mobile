@@ -396,6 +396,28 @@ describe("attachAuthInterceptors", () => {
       // config.url must be unchanged (no merging).
       expect(result.url).toBe("/protocols");
     });
+
+    it("strips a stale Authorization header when locked (401-retry copies the pre-lock token)", async () => {
+      mockGetAuthKeypair.mockResolvedValue(null);
+
+      const { instance, runRequestInterceptors } = makeFakeInstance();
+      attachAuthInterceptors(instance);
+
+      // Simulates a 401-retry whose config was copied from the authed first
+      // attempt (carrying a Bearer token) after the wallet locked. The locked
+      // request must go out anonymously — the stale token must not be re-sent.
+      const cfg = {
+        baseURL: BASE_URL,
+        url: "/protocols",
+        method: "get",
+        headers: { Authorization: "Bearer stale.jwt.token" },
+        data: undefined,
+      };
+      const result = await runRequestInterceptors(cfg);
+
+      expect(result.headers?.Authorization).toBeUndefined();
+      expect(mockBuildAuthJwt).not.toHaveBeenCalled();
+    });
   });
 
   // -------------------------------------------------------------------------
