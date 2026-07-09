@@ -3156,17 +3156,14 @@ export const getActiveMnemonicPhrase = async (): Promise<string | null> => {
 };
 
 /**
- * Cheap session-validity check: returns true only when the store reports
- * AUTHENTICATED AND the persisted hash key is both present and not expired.
- * Does NOT decrypt the temporary store — no PBKDF2 involved.
+ * Session-validity gate for backend auth-key use. Delegates to the authoritative
+ * `getAuthStatus()` funnel — the single source of truth for lock transitions —
+ * so it evaluates account existence, persisted LOCKED, hash-key hard-expiry AND
+ * the auto-lock timer (`backgroundedAt` + `autoLockTimer`), rather than
+ * re-implementing a subset. This closes the foreground-before-funnel window
+ * where a stale in-memory AUTHENTICATED + within-TTL hash key would otherwise
+ * report valid after the auto-lock timer had already elapsed. Does not decrypt
+ * the temporary store (no PBKDF2); it reads persisted/secure state only.
  */
-export const isSessionAuthValid = async (): Promise<boolean> => {
-  if (
-    useAuthenticationStore.getState().authStatus !== AUTH_STATUS.AUTHENTICATED
-  ) {
-    return false;
-  }
-  const hashKey = await getHashKey();
-  if (!hashKey) return false;
-  return !isHashKeyExpired(hashKey);
-};
+export const isSessionAuthValid = async (): Promise<boolean> =>
+  (await getAuthStatus()) === AUTH_STATUS.AUTHENTICATED;

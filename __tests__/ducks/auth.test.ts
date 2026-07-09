@@ -2373,76 +2373,99 @@ describe("auth duck", () => {
   });
 
   describe("isSessionAuthValid", () => {
-    it("returns true when AUTHENTICATED and hash key present and not expired", async () => {
-      act(() => {
-        useAuthenticationStore.setState({
-          authStatus: AUTH_STATUS.AUTHENTICATED,
-        });
+    // isSessionAuthValid now delegates to the authoritative getAuthStatus()
+    // funnel, so these drive the real computation via storage mocks (one source
+    // of truth) rather than the in-memory authStatus + hash key alone.
+    const ONE_HOUR = 3_600_000;
+
+    const mockFunnelStorage = ({
+      backgroundedAt = null,
+      autoLockTimer = null,
+      hashKey = {
+        hashKey: "mock-hash-key",
+        salt: "mock-salt",
+        expiresAt: Date.now() + ONE_HOUR,
+      } as unknown,
+      hasTempStore = true,
+      hasAccount = true,
+      persistedLocked = false,
+    }: {
+      backgroundedAt?: number | null;
+      autoLockTimer?: AUTO_LOCK_TIMER | null;
+      hashKey?: unknown;
+      hasTempStore?: boolean;
+      hasAccount?: boolean;
+      persistedLocked?: boolean;
+    } = {}) => {
+      (dataStorage.getItem as jest.Mock).mockImplementation((key) =>
+        Promise.resolve(
+          key === STORAGE_KEYS.ACCOUNT_LIST && hasAccount
+            ? JSON.stringify([mockAccount])
+            : null,
+        ),
+      );
+      (secureDataStorage.getItem as jest.Mock).mockImplementation((key) => {
+        if (key === SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE) {
+          return Promise.resolve(hasTempStore ? "encrypted-temp-store" : null);
+        }
+        if (key === SENSITIVE_STORAGE_KEYS.AUTO_LOCK_BACKGROUNDED_AT) {
+          return Promise.resolve(
+            backgroundedAt !== null ? String(backgroundedAt) : null,
+          );
+        }
+        if (key === SENSITIVE_STORAGE_KEYS.AUTO_LOCK_TIMER_SETTING) {
+          return Promise.resolve(autoLockTimer);
+        }
+        if (key === SENSITIVE_STORAGE_KEYS.AUTH_STATUS) {
+          return Promise.resolve(persistedLocked ? AUTH_STATUS.LOCKED : null);
+        }
+        return Promise.resolve(null);
       });
-      (getHashKey as jest.Mock).mockResolvedValue(mockHashKeyObj);
+      (getHashKey as jest.Mock).mockResolvedValue(hashKey);
+      (secureDataStorage.remove as jest.Mock).mockResolvedValue(undefined);
+      (secureDataStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+    };
 
-      const result = await isSessionAuthValid();
-
-      expect(result).toBe(true);
+    it("returns true when the funnel reports AUTHENTICATED (accounts + valid hash + within timer)", async () => {
+      mockFunnelStorage();
+      expect(await isSessionAuthValid()).toBe(true);
     });
 
-    it("returns false when not AUTHENTICATED (short-circuits before reading hash key)", async () => {
-      act(() => {
-        useAuthenticationStore.setState({
-          authStatus: AUTH_STATUS.LOCKED,
-        });
-      });
-      (getHashKey as jest.Mock).mockClear();
-
-      const result = await isSessionAuthValid();
-
-      expect(result).toBe(false);
-      expect(getHashKey).not.toHaveBeenCalled();
+    it("returns false when no accounts exist (NOT_AUTHENTICATED)", async () => {
+      mockFunnelStorage({ hasAccount: false });
+      expect(await isSessionAuthValid()).toBe(false);
     });
 
-    it("returns false when AUTHENTICATED but hash key absent", async () => {
-      act(() => {
-        useAuthenticationStore.setState({
-          authStatus: AUTH_STATUS.AUTHENTICATED,
-        });
-      });
-      (getHashKey as jest.Mock).mockResolvedValue(null);
-
-      const result = await isSessionAuthValid();
-
-      expect(result).toBe(false);
+    it("returns false when the hash key is absent and no temp store (HASH_KEY_EXPIRED)", async () => {
+      mockFunnelStorage({ hashKey: null, hasTempStore: false });
+      expect(await isSessionAuthValid()).toBe(false);
     });
 
-    it("returns false when AUTHENTICATED but hash key expired", async () => {
-      act(() => {
-        useAuthenticationStore.setState({
-          authStatus: AUTH_STATUS.AUTHENTICATED,
-        });
+    it("returns false when the hash key is expired", async () => {
+      mockFunnelStorage({
+        hashKey: {
+          hashKey: "mock-hash-key",
+          salt: "mock-salt",
+          expiresAt: Date.now() - 1000,
+        },
       });
-      (getHashKey as jest.Mock).mockResolvedValue({
-        ...mockHashKeyObj,
-        expiresAt: Date.now() - 1000,
-      });
-
-      const result = await isSessionAuthValid();
-
-      expect(result).toBe(false);
+      expect(await isSessionAuthValid()).toBe(false);
     });
 
-    it("returns false when AUTHENTICATED but hash key has future generatedAt (clock rollback)", async () => {
-      act(() => {
-        useAuthenticationStore.setState({
-          authStatus: AUTH_STATUS.AUTHENTICATED,
-        });
-      });
-      (getHashKey as jest.Mock).mockResolvedValue({
-        ...mockHashKeyObj,
-        generatedAt: Date.now() + 100_000,
-      });
+    it("returns false when the session is persisted LOCKED", async () => {
+      mockFunnelStorage({ persistedLocked: true });
+      expect(await isSessionAuthValid()).toBe(false);
+    });
 
-      const result = await isSessionAuthValid();
-
-      expect(result).toBe(false);
+    it("returns false once the auto-lock timer has elapsed even though the hash key is still within its TTL (foreground-before-funnel window)", async () => {
+      // The Codex regression: a stale in-memory AUTHENTICATED + within-TTL hash
+      // key would report valid, but the funnel soft-locks on the elapsed timer.
+      mockFunnelStorage({
+        backgroundedAt: Date.now() - 2 * ONE_HOUR, // beyond the 1h timer
+        autoLockTimer: AUTO_LOCK_TIMER.ONE_HOUR,
+        // hashKey left at the default (expiresAt = +1h, i.e. still valid)
+      });
+      expect(await isSessionAuthValid()).toBe(false);
     });
   });
 
