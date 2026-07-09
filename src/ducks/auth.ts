@@ -3155,15 +3155,55 @@ export const getActiveMnemonicPhrase = async (): Promise<string | null> => {
   }
 };
 
+// Short-TTL memo + in-flight dedup for the session-validity funnel result.
+// getAuthKeypair runs isSessionAuthValid on every call — per backend request
+// once the JWT interceptor is wired — and each funnel run is ~5 keychain reads.
+// The in-flight promise collapses a near-simultaneous burst (balances + prices
+// + history on unlock) to one run; the value memo collapses sequential calls
+// within the window.
+//
+// Tradeoff: a transition detected ONLY by the funnel (auto-lock timer elapse,
+// hash hard-expiry) is reflected at this gate up to SESSION_AUTH_VALID_TTL_MS
+// late. That is bounded and immaterial in practice (auto-lock windows are
+// minutes to hours) and does not leak key material: explicit lock/logout/wipe
+// paths clear the keypair cache AND flip in-memory authStatus, so during a
+// stale-true memo getAuthKeypair's warm-cache path finds an empty cache and its
+// derive path is blocked by getActiveMnemonicPhrase's AUTHENTICATED gate.
+export const SESSION_AUTH_VALID_TTL_MS = 1000;
+let sessionAuthValidMemo: { value: boolean; expiresAt: number } | null = null;
+let sessionAuthValidInFlight: Promise<boolean> | null = null;
+
+/** Drops the isSessionAuthValid memo (tests + any caller needing a fresh read). */
+export const clearSessionAuthValidMemo = (): void => {
+  sessionAuthValidMemo = null;
+};
+
 /**
  * Session-validity gate for backend auth-key use. Delegates to the authoritative
  * `getAuthStatus()` funnel — the single source of truth for lock transitions —
  * so it evaluates account existence, persisted LOCKED, hash-key hard-expiry AND
  * the auto-lock timer (`backgroundedAt` + `autoLockTimer`), rather than
- * re-implementing a subset. This closes the foreground-before-funnel window
- * where a stale in-memory AUTHENTICATED + within-TTL hash key would otherwise
- * report valid after the auto-lock timer had already elapsed. Does not decrypt
- * the temporary store (no PBKDF2); it reads persisted/secure state only.
+ * re-implementing a subset. Result is memoized for SESSION_AUTH_VALID_TTL_MS
+ * (see above). Does not decrypt the temporary store (no PBKDF2); persisted/secure
+ * reads only.
  */
-export const isSessionAuthValid = async (): Promise<boolean> =>
-  (await getAuthStatus()) === AUTH_STATUS.AUTHENTICATED;
+export const isSessionAuthValid = async (): Promise<boolean> => {
+  const memo = sessionAuthValidMemo;
+  if (memo && Date.now() < memo.expiresAt) return memo.value;
+
+  if (!sessionAuthValidInFlight) {
+    sessionAuthValidInFlight = (async () => {
+      try {
+        const value = (await getAuthStatus()) === AUTH_STATUS.AUTHENTICATED;
+        sessionAuthValidMemo = {
+          value,
+          expiresAt: Date.now() + SESSION_AUTH_VALID_TTL_MS,
+        };
+        return value;
+      } finally {
+        sessionAuthValidInFlight = null;
+      }
+    })();
+  }
+  return sessionAuthValidInFlight;
+};

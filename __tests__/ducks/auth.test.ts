@@ -17,6 +17,8 @@ import {
   appendAccounts,
   clearAccountData,
   isSessionAuthValid,
+  clearSessionAuthValidMemo,
+  SESSION_AUTH_VALID_TTL_MS,
   getActiveMnemonicPhrase,
 } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
@@ -2426,6 +2428,11 @@ describe("auth duck", () => {
       (secureDataStorage.setItem as jest.Mock).mockResolvedValue(undefined);
     };
 
+    // The memo is module-scoped state that would otherwise leak across tests.
+    beforeEach(() => {
+      clearSessionAuthValidMemo();
+    });
+
     it("returns true when the funnel reports AUTHENTICATED (accounts + valid hash + within timer)", async () => {
       mockFunnelStorage();
       expect(await isSessionAuthValid()).toBe(true);
@@ -2466,6 +2473,40 @@ describe("auth duck", () => {
         // hashKey left at the default (expiresAt = +1h, i.e. still valid)
       });
       expect(await isSessionAuthValid()).toBe(false);
+    });
+
+    it("dedupes a concurrent burst into a single funnel run (in-flight promise shared)", async () => {
+      mockFunnelStorage();
+      (getHashKey as jest.Mock).mockClear();
+
+      const results = await Promise.all([
+        isSessionAuthValid(),
+        isSessionAuthValid(),
+        isSessionAuthValid(),
+      ]);
+
+      expect(results).toEqual([true, true, true]);
+      // getAuthStatus (→ getHashKey once per run) ran a single time for all three.
+      expect(getHashKey).toHaveBeenCalledTimes(1);
+    });
+
+    it("memoizes within the TTL and re-runs the funnel once it expires", async () => {
+      const nowSpy = jest.spyOn(Date, "now").mockReturnValue(1_000_000);
+      mockFunnelStorage();
+      (getHashKey as jest.Mock).mockClear();
+
+      await isSessionAuthValid();
+      await isSessionAuthValid();
+      await isSessionAuthValid();
+      // Second and third calls are served from the memo — one funnel run.
+      expect(getHashKey).toHaveBeenCalledTimes(1);
+
+      // Advance past the TTL: the memo expires and the funnel runs again.
+      nowSpy.mockReturnValue(1_000_000 + SESSION_AUTH_VALID_TTL_MS + 1);
+      await isSessionAuthValid();
+      expect(getHashKey).toHaveBeenCalledTimes(2);
+
+      nowSpy.mockRestore();
     });
   });
 

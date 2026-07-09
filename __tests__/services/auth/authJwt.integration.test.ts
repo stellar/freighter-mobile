@@ -33,11 +33,12 @@ const WHOAMI_URL = `${BASE_URL}${WHOAMI_PATH}`;
 const VECTOR = AUTH_KEYPAIR_VECTORS[1];
 
 d("auth JWT e2e", () => {
-  let keypair: ReturnType<typeof deriveAuthKeypair>["keypair"];
+  let keypair: Awaited<ReturnType<typeof deriveAuthKeypair>>["keypair"];
   let userId: string;
 
-  beforeAll(() => {
-    const derived = deriveAuthKeypair(VECTOR.mnemonic);
+  beforeAll(async () => {
+    // deriveAuthKeypair is async as of #920 (bip39 mnemonicToSeed off the JS thread).
+    const derived = await deriveAuthKeypair(VECTOR.mnemonic);
     keypair = derived.keypair;
     userId = derived.userId;
   });
