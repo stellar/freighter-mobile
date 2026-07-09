@@ -36,6 +36,7 @@ import { createKeyManager } from "helpers/keyManager/keyManager";
 import { clearScreenshotDek } from "helpers/screenshotCrypto";
 import { AppState } from "react-native";
 import { getSupportedBiometryType, BIOMETRY_TYPE } from "react-native-keychain";
+import { clearAuthKeypairCache } from "services/auth/authKeypairCache";
 import {
   clearNonSensitiveData,
   clearTemporaryData,
@@ -147,6 +148,12 @@ jest.mock("config/logger", () => ({
     warn: jest.fn(),
     info: jest.fn(),
   },
+}));
+
+jest.mock("services/auth/authKeypairCache", () => ({
+  clearAuthKeypairCache: jest.fn(),
+  getCachedAuthKeypair: jest.fn(() => null),
+  setCachedAuthKeypair: jest.fn(),
 }));
 
 jest.mock("i18next", () => ({
@@ -1785,10 +1792,16 @@ describe("auth duck", () => {
           expiresAt: Date.now() - ONE_HOUR_MS,
         });
 
+        (clearAuthKeypairCache as jest.Mock).mockClear();
+
         await act(async () => {
           const status = await result.current.getAuthStatus();
           expect(status).toBe(AUTH_STATUS.HASH_KEY_EXPIRED);
         });
+
+        // Hard-expiry must evict the derived auth keypair — retention, not just
+        // use, ends at expiry (the eviction-coverage gap raised in review).
+        expect(clearAuthKeypairCache).toHaveBeenCalled();
 
         (AppState as { currentState: typeof previousAppState }).currentState =
           previousAppState;

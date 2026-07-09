@@ -1,9 +1,7 @@
 import * as authDuck from "ducks/auth";
+import { clearAuthKeypairCache } from "services/auth/authKeypairCache";
 import { AUTH_KEYPAIR_VECTORS } from "services/auth/authKeypairVectors";
-import {
-  getAuthKeypair,
-  clearAuthKeypairCache,
-} from "services/auth/getAuthKeypair";
+import { getAuthKeypair } from "services/auth/getAuthKeypair";
 
 // Mock ducks/auth: expose both getActiveMnemonicPhrase and isSessionAuthValid
 // so we can drive the auth-status gate directly.
@@ -34,30 +32,12 @@ describe("getAuthKeypair", () => {
     expect(mockMnemonic).toHaveBeenCalledTimes(1);
   });
 
-  it("returns null when LOCKED even if getActiveMnemonicPhrase would return a mnemonic (regression guard)", async () => {
-    // This is the real LOCKED path: fast-unlock preserved session.
-    // getActiveMnemonicPhrase now also returns null when not AUTHENTICATED
-    // (Fix 2), but the gate in getAuthKeypair fires first — this test proves
-    // the accessor is never reached when LOCKED.
+  it("returns null when the session is invalid, before touching the mnemonic accessor", async () => {
+    // isSessionAuthValid folds LOCKED / HASH_KEY_EXPIRED / NOT_AUTHENTICATED
+    // into one boolean (the state→boolean mapping is covered in the duck tests).
+    // The gate must fire before getActiveMnemonicPhrase is ever reached.
     mockIsSessionAuthValid.mockResolvedValue(false);
     mockMnemonic.mockResolvedValue(M.mnemonic); // would succeed if gate absent
-
-    expect(await getAuthKeypair()).toBeNull();
-    // The mnemonic accessor must NOT have been called — gate fires first.
-    expect(mockMnemonic).not.toHaveBeenCalled();
-  });
-
-  it("returns null when HASH_KEY_EXPIRED", async () => {
-    mockIsSessionAuthValid.mockResolvedValue(false);
-    mockMnemonic.mockResolvedValue(M.mnemonic);
-
-    expect(await getAuthKeypair()).toBeNull();
-    expect(mockMnemonic).not.toHaveBeenCalled();
-  });
-
-  it("returns null when NOT_AUTHENTICATED", async () => {
-    mockIsSessionAuthValid.mockResolvedValue(false);
-    mockMnemonic.mockResolvedValue(M.mnemonic);
 
     expect(await getAuthKeypair()).toBeNull();
     expect(mockMnemonic).not.toHaveBeenCalled();
@@ -105,6 +85,21 @@ describe("getAuthKeypair", () => {
 
     expect(await getAuthKeypair()).toBeNull();
     // Mnemonic must not have been called on the second invocation.
+    expect(mockMnemonic).toHaveBeenCalledTimes(1);
+  });
+
+  it("dedupes concurrent first-derivations (accessor called once under a stampede)", async () => {
+    mockMnemonic.mockResolvedValue(M.mnemonic);
+    // Several callers race before the first derivation resolves (the
+    // balances/prices/history burst on unlock).
+    const [a, b, c] = await Promise.all([
+      getAuthKeypair(),
+      getAuthKeypair(),
+      getAuthKeypair(),
+    ]);
+    expect(a).not.toBeNull();
+    expect(b).toBe(a);
+    expect(c).toBe(a);
     expect(mockMnemonic).toHaveBeenCalledTimes(1);
   });
 });

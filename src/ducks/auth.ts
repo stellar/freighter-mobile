@@ -2818,6 +2818,9 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
         authStatus === AUTH_STATUS.HASH_KEY_EXPIRED)
     ) {
       set({ authStatus, isSoftLocked: false });
+      // Session is no longer authenticated — evict the derived auth keypair so
+      // private-key material never outlives the session (as softLock does).
+      clearAuthKeypairCache();
       if (authStatus === AUTH_STATUS.HASH_KEY_EXPIRED) {
         get().navigateToLockScreen();
       }
@@ -2826,8 +2829,10 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
 
     set({ authStatus });
 
-    // If the hash key is expired, navigate to lock screen
+    // If the hash key is expired, evict the cached auth keypair (retention, not
+    // just use, must end at hard-expiry) and navigate to lock screen.
     if (authStatus === AUTH_STATUS.HASH_KEY_EXPIRED) {
+      clearAuthKeypairCache();
       get().navigateToLockScreen();
     }
 
@@ -3137,7 +3142,15 @@ export const getActiveMnemonicPhrase = async (): Promise<string | null> => {
       return null;
     }
     return store?.mnemonicPhrase ?? null;
-  } catch {
+  } catch (error) {
+    // Unreachable today (getTemporaryStore is itself total), but keep the guard
+    // so a future throwing edit surfaces in Sentry instead of masquerading as a
+    // normal locked session with an empty breadcrumb trail.
+    logger.error(
+      "getActiveMnemonicPhrase",
+      "Failed to read active mnemonic",
+      error,
+    );
     return null;
   }
 };
