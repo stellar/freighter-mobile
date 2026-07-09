@@ -2818,6 +2818,9 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
         authStatus === AUTH_STATUS.HASH_KEY_EXPIRED)
     ) {
       set({ authStatus, isSoftLocked: false });
+      // Session is no longer authenticated — evict the derived auth keypair so
+      // private-key material never outlives the session (as softLock does).
+      clearAuthKeypairCache();
       if (authStatus === AUTH_STATUS.HASH_KEY_EXPIRED) {
         get().navigateToLockScreen();
       }
@@ -2826,8 +2829,10 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
 
     set({ authStatus });
 
-    // If the hash key is expired, navigate to lock screen
+    // If the hash key is expired, evict the cached auth keypair (retention, not
+    // just use, must end at hard-expiry) and navigate to lock screen.
     if (authStatus === AUTH_STATUS.HASH_KEY_EXPIRED) {
+      clearAuthKeypairCache();
       get().navigateToLockScreen();
     }
 
@@ -3137,23 +3142,28 @@ export const getActiveMnemonicPhrase = async (): Promise<string | null> => {
       return null;
     }
     return store?.mnemonicPhrase ?? null;
-  } catch {
+  } catch (error) {
+    // Unreachable today (getTemporaryStore is itself total), but keep the guard
+    // so a future throwing edit surfaces in Sentry instead of masquerading as a
+    // normal locked session with an empty breadcrumb trail.
+    logger.error(
+      "getActiveMnemonicPhrase",
+      "Failed to read active mnemonic",
+      error,
+    );
     return null;
   }
 };
 
 /**
- * Cheap session-validity check: returns true only when the store reports
- * AUTHENTICATED AND the persisted hash key is both present and not expired.
- * Does NOT decrypt the temporary store — no PBKDF2 involved.
+ * Session-validity gate for backend auth-key use. Delegates to the authoritative
+ * `getAuthStatus()` funnel — the single source of truth for lock transitions —
+ * so it evaluates account existence, persisted LOCKED, hash-key hard-expiry AND
+ * the auto-lock timer (`backgroundedAt` + `autoLockTimer`), rather than
+ * re-implementing a subset. This closes the foreground-before-funnel window
+ * where a stale in-memory AUTHENTICATED + within-TTL hash key would otherwise
+ * report valid after the auto-lock timer had already elapsed. Does not decrypt
+ * the temporary store (no PBKDF2); it reads persisted/secure state only.
  */
-export const isSessionAuthValid = async (): Promise<boolean> => {
-  if (
-    useAuthenticationStore.getState().authStatus !== AUTH_STATUS.AUTHENTICATED
-  ) {
-    return false;
-  }
-  const hashKey = await getHashKey();
-  if (!hashKey) return false;
-  return !isHashKeyExpired(hashKey);
-};
+export const isSessionAuthValid = async (): Promise<boolean> =>
+  (await getAuthStatus()) === AUTH_STATUS.AUTHENTICATED;
