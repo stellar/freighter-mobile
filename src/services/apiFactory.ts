@@ -350,7 +350,11 @@ export function createApiService(options: ApiServiceOptions) {
      * Makes a POST request
      *
      * @param url The URL to request (will be appended to baseURL)
-     * @param data The data to send in the request body
+     * @param data The request body, typed `unknown` — pass a plain object.
+     * (The `TWriteBody` generic was removed with the string-only body contract.)
+     * On an auth-wired instance (see `configureInstance`), the request
+     * interceptor JSON-serializes object bodies centrally so the signed JWT
+     * `bodyHash` matches the wire bytes; string bodies pass through untouched.
      * @param config Additional request configuration
      * @returns Promise with the API response
      *
@@ -387,7 +391,11 @@ export function createApiService(options: ApiServiceOptions) {
      * Makes a PUT request
      *
      * @param url The URL to request (will be appended to baseURL)
-     * @param data The data to send in the request body
+     * @param data The request body, typed `unknown` — pass a plain object.
+     * (The `TWriteBody` generic was removed with the string-only body contract.)
+     * On an auth-wired instance (see `configureInstance`), the request
+     * interceptor JSON-serializes object bodies centrally so the signed JWT
+     * `bodyHash` matches the wire bytes; string bodies pass through untouched.
      * @param config Additional request configuration
      * @returns Promise with the API response
      *
