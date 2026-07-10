@@ -164,9 +164,7 @@ export function isApiError(error: unknown): error is ApiError {
  *   }
  * }
  */
-export function createApiService<TWriteBody = unknown>(
-  options: ApiServiceOptions,
-) {
+export function createApiService(options: ApiServiceOptions) {
   const {
     baseURL,
     timeout = 15000,
@@ -364,7 +362,7 @@ export function createApiService<TWriteBody = unknown>(
      */
     async post<T>(
       url: string,
-      data?: TWriteBody,
+      data?: unknown,
       config?: RequestConfig,
     ): Promise<ApiResponse<T>> {
       const { retry, ...axiosConfig } = config || {};
@@ -393,7 +391,7 @@ export function createApiService<TWriteBody = unknown>(
      */
     async put<T>(
       url: string,
-      data?: TWriteBody,
+      data?: unknown,
       config?: RequestConfig,
     ): Promise<ApiResponse<T>> {
       const { retry, ...axiosConfig } = config || {};
