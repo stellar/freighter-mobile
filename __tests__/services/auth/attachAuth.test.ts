@@ -25,6 +25,7 @@
  */
 import { Keypair } from "@stellar/stellar-sdk";
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
+import { debug } from "helpers/debug";
 import { createApiService, isApiError } from "services/apiFactory";
 import { attachAuthInterceptors } from "services/auth/attachAuth";
 import { buildAuthJwt } from "services/auth/buildAuthJwt";
@@ -36,6 +37,11 @@ import { getAuthKeypair } from "services/auth/getAuthKeypair";
 
 jest.mock("services/auth/getAuthKeypair", () => ({
   getAuthKeypair: jest.fn(),
+}));
+
+// apiFactory's logRequests debug logger — spy so we can assert redaction.
+jest.mock("helpers/debug", () => ({
+  debug: jest.fn(),
 }));
 
 jest.mock("services/auth/buildAuthJwt", () => ({
@@ -930,5 +936,34 @@ describe("attachAuthInterceptors — integration through full apiFactory chain",
     // axios serialises params onto the URL for the adapter, so by the time
     // the adapter fires, params may or may not still be on the config —
     // what matters is that no Authorization header was set.
+  });
+
+  it("logRequests never logs the Bearer token (redacted)", async () => {
+    mockGetAuthKeypair.mockResolvedValue(TEST_KEYPAIR);
+    mockBuildAuthJwt.mockReturnValue("super.secret.jwt");
+    (debug as jest.Mock).mockClear();
+
+    const api = createApiService({
+      baseURL: BASE_URL,
+      configureInstance: attachAuthInterceptors,
+      logRequests: true,
+    });
+    api.getInstance().defaults.adapter = (config: InternalAxiosRequestConfig) =>
+      Promise.resolve({
+        data: { ok: true },
+        status: 200,
+        statusText: "OK",
+        headers: {},
+        config,
+      });
+
+    await api.get("/token-prices");
+
+    // The request logger ran with the token attached, but redacted it.
+    const logged = (debug as jest.Mock).mock.calls
+      .map((args) => args.join(" "))
+      .join("\n");
+    expect(logged).toContain("[REDACTED]");
+    expect(logged).not.toContain("super.secret.jwt");
   });
 });

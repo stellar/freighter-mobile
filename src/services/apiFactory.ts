@@ -184,13 +184,19 @@ export function createApiService(options: ApiServiceOptions) {
   });
 
   if (logRequests) {
+    // Never log the Bearer token (this instance may carry per-request JWT auth
+    // via configureInstance). Mask any Authorization header at any depth —
+    // covers request.headers and response.config.headers.
+    const redactAuth = (key: string, value: unknown) =>
+      /^authorization$/i.test(key) ? "[REDACTED]" : value;
+
     instance.interceptors.request.use((request) => {
-      debug("Starting Request", JSON.stringify(request, null, 2));
+      debug("Starting Request", JSON.stringify(request, redactAuth, 2));
       return request;
     });
 
     instance.interceptors.response.use((response) => {
-      debug("Response:", JSON.stringify(response, null, 2));
+      debug("Response:", JSON.stringify(response, redactAuth, 2));
       return response;
     });
   }
