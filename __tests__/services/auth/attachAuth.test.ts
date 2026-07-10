@@ -223,6 +223,31 @@ describe("attachAuthInterceptors", () => {
       );
     });
 
+    it("signs a query-less path with NO trailing slash (RN URL non-spec regression)", async () => {
+      // React Native's built-in URL appends "/" to a query-less URL; if the
+      // signed path used `new URL().pathname` it would be "/api/v1/protocols/"
+      // on device (≠ wire "/api/v1/protocols" → 401). The origin-strip must
+      // preserve getUri's output verbatim.
+      mockGetAuthKeypair.mockResolvedValue(TEST_KEYPAIR);
+      mockBuildAuthJwt.mockReturnValue("mock.jwt.token");
+
+      const { instance, runRequestInterceptors } = makeFakeInstance();
+      attachAuthInterceptors(instance);
+
+      const cfg = {
+        baseURL: BASE_URL,
+        url: "/protocols",
+        method: "get",
+        headers: {},
+        data: undefined,
+      };
+      await runRequestInterceptors(cfg);
+
+      expect(mockBuildAuthJwt).toHaveBeenCalledWith(
+        expect.objectContaining({ path: "/api/v1/protocols" }),
+      );
+    });
+
     it("passes method and body correctly to buildAuthJwt", async () => {
       mockGetAuthKeypair.mockResolvedValue(TEST_KEYPAIR);
       mockBuildAuthJwt.mockReturnValue("mock.jwt.token");

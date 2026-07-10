@@ -83,14 +83,18 @@ function deriveServerPath(
   instance: AxiosInstance,
   config: InternalAxiosRequestConfig,
 ): string {
-  try {
-    const uri = new URL(instance.getUri(config));
-    return `${uri.pathname}${uri.search}`;
-  } catch {
-    // Defensive: getUri yields an absolute URL because our baseURLs are
-    // absolute. Fall back to the raw url if that ever fails to parse.
-    return config.url ?? "/";
-  }
+  // Strip the scheme://host[:port] origin from what axios will send, leaving
+  // exactly the pathname+query it puts on the wire.
+  //
+  // Do NOT use `new URL(...).pathname`: React Native's built-in URL is NOT
+  // WHATWG-compliant — its constructor appends a trailing "/" to any URL with
+  // no "?"/"#" (RN 0.81 Libraries/Blob/URL.js), so a query-less request would
+  // sign "/api/v1/x/" while the wire target is "/api/v1/x" → guaranteed 401.
+  // Jest uses Node's compliant URL, so that divergence is invisible in tests.
+  // A plain origin-strip is environment-independent and preserves getUri's
+  // output verbatim (== the wire request-target).
+  const uri = instance.getUri(config);
+  return uri.replace(/^[a-z][a-z0-9+.-]*:\/\/[^/]+/i, "") || "/";
 }
 
 /**
@@ -148,14 +152,19 @@ export function attachAuthInterceptors(instance: AxiosInstance): void {
       const serverPath = deriveServerPath(instance, config);
       const method = config.method ?? "get";
 
-      // Serialize object bodies here — before axios's transformRequest — so the
-      // bytes we hash are exactly the bytes that go on the wire. A string body
-      // passes through untouched (no double-encode); GET/no-body stays undefined.
-      if (
-        config.data !== undefined &&
+      // Serialize plain JSON bodies here — before axios's transformRequest — so
+      // the bytes we hash are exactly the bytes that go on the wire. A string
+      // body passes through untouched (no double-encode); GET/no-body stays
+      // undefined. Only plain objects / arrays are serialized: FormData / Blob /
+      // URLSearchParams etc. are left alone (JSON.stringify would corrupt them to
+      // "{}" on the wire). No such body exists on a v2 call site today; a future
+      // non-JSON authenticated body would need explicit bodyHash handling.
+      const isPlainJsonBody =
+        typeof config.data === "object" &&
         config.data !== null &&
-        typeof config.data !== "string"
-      ) {
+        ((config.data as object).constructor === Object ||
+          Array.isArray(config.data));
+      if (isPlainJsonBody) {
         // eslint-disable-next-line no-param-reassign
         config.data = JSON.stringify(config.data);
       }

@@ -2368,6 +2368,13 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
         isLoadingAccount: true,
       });
 
+      // Drop any stale isSessionAuthValid memo captured while locked — otherwise
+      // the post-unlock request burst (balances + prices + history) could read a
+      // cached `false` for up to the TTL and go out anonymous, defeating the auth
+      // this feature exists to attach. (Defined below; resolved at call time.)
+      // eslint-disable-next-line @typescript-eslint/no-use-before-define
+      clearSessionAuthValidMemo();
+
       getActiveAccount(AUTH_STATUS.AUTHENTICATED)
         .then((activeAccount) => {
           if (!activeAccount) {
