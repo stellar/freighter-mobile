@@ -110,6 +110,27 @@ function makeFakeInstance() {
       requestCalls.push(args);
       return Promise.resolve({ data: "retried" });
     }),
+    // Faithful stand-in for axios's getUri (baseURL join + param serialize) so
+    // the interceptor can derive the signed path. Overridable per test via
+    // mockReturnValue; the REAL serializer is exercised in the integration tests.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    getUri: jest.fn((config: any) => {
+      const base = (config.baseURL ?? "").replace(/\/+$/, "");
+      let uri = `${base}${config.url ?? ""}`;
+      const p = config.params;
+      if (p) {
+        const qs =
+          p instanceof URLSearchParams
+            ? p.toString()
+            : new URLSearchParams(
+                Object.entries(p)
+                  .filter(([, v]) => v !== undefined && v !== null)
+                  .map(([k, v]) => [k, String(v)] as [string, string]),
+              ).toString();
+        if (qs) uri += (uri.includes("?") ? "&" : "?") + qs;
+      }
+      return uri;
+    }),
   };
 
   return {
@@ -314,7 +335,7 @@ describe("attachAuthInterceptors", () => {
   // -------------------------------------------------------------------------
 
   describe("when wallet is unlocked and config.params is supplied", () => {
-    it("folds config.params into the signed JWT methodAndPath and clears config.params", async () => {
+    it("signs the request-target from instance.getUri and leaves config.params for axios", async () => {
       mockGetAuthKeypair.mockResolvedValue(TEST_KEYPAIR);
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const { buildAuthJwt: realBuildAuthJwt } = jest.requireActual(
@@ -323,6 +344,10 @@ describe("attachAuthInterceptors", () => {
       mockBuildAuthJwt.mockImplementation(realBuildAuthJwt);
 
       const { instance, runRequestInterceptors } = makeFakeInstance();
+      // getUri returns exactly what axios would put on the wire.
+      (instance.getUri as jest.Mock).mockReturnValue(
+        `${BASE_URL}/protocols?network=PUBLIC`,
+      );
       attachAuthInterceptors(instance);
 
       const cfg = {
@@ -335,75 +360,19 @@ describe("attachAuthInterceptors", () => {
       };
       const result = await runRequestInterceptors(cfg);
 
-      // 1. JWT methodAndPath must include the merged query string.
+      // Signed methodAndPath is the pathname+search of getUri's output.
       const payload = decodePayload(
         (result.headers?.Authorization as string).replace("Bearer ", ""),
       );
       expect(payload.methodAndPath).toBe(
         "GET /api/v1/protocols?network=PUBLIC",
       );
-
-      // 2. config.params must be cleared (so axios does not double-append).
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      expect(result.params).toBeUndefined();
-
-      // 3. config.url must have the merged query so the wire URL matches.
-      expect(result.url).toBe("/protocols?network=PUBLIC");
-    });
-
-    it("appends with & when config.url already has a query string", async () => {
-      mockGetAuthKeypair.mockResolvedValue(TEST_KEYPAIR);
-      mockBuildAuthJwt.mockReturnValue("mock.jwt.token");
-
-      const { instance, runRequestInterceptors } = makeFakeInstance();
-      attachAuthInterceptors(instance);
-
-      const cfg = {
-        baseURL: BASE_URL,
-        url: "/foo?a=1",
-        method: "get",
-        headers: {},
-        data: undefined,
-        params: { b: "2" },
-      };
-      await runRequestInterceptors(cfg);
-
-      expect(mockBuildAuthJwt).toHaveBeenCalledWith(
-        expect.objectContaining({
-          path: "/api/v1/foo?a=1&b=2",
-        }),
-      );
-    });
-
-    it("folds a URLSearchParams instance (not just a plain object)", async () => {
-      mockGetAuthKeypair.mockResolvedValue(TEST_KEYPAIR);
-      mockBuildAuthJwt.mockReturnValue("mock.jwt.token");
-
-      const { instance, runRequestInterceptors } = makeFakeInstance();
-      attachAuthInterceptors(instance);
-
-      // URLSearchParams entries are NOT enumerable via Object.entries — the
-      // merge helper must serialize it via toString(), else the query would be
-      // silently dropped (neither signed nor sent) after config.params is cleared.
-      const cfg = {
-        baseURL: BASE_URL,
-        url: "/protocols",
-        method: "get",
-        headers: {},
-        data: undefined,
-        params: new URLSearchParams({ network: "PUBLIC", cursor: "abc" }),
-      };
-      const result = await runRequestInterceptors(cfg);
-
-      expect(mockBuildAuthJwt).toHaveBeenCalledWith(
-        expect.objectContaining({
-          path: "/api/v1/protocols?network=PUBLIC&cursor=abc",
-        }),
-      );
-      // params cleared and folded into the url so the wire URL matches the sign.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      expect(result.params).toBeUndefined();
-      expect(result.url).toBe("/protocols?network=PUBLIC&cursor=abc");
+      // getUri was consulted with the request config...
+      expect(instance.getUri).toHaveBeenCalledWith(cfg);
+      // ...and we do NOT fold/delete — params and url are left intact for axios
+      // to serialize identically on the wire. (Real serialization: integration.)
+      expect(result.params).toEqual({ network: "PUBLIC" });
+      expect(result.url).toBe("/protocols");
     });
   });
 
@@ -875,9 +844,9 @@ describe("attachAuthInterceptors — integration through full apiFactory chain",
   // config.params folding — integration: signed path == wire path
   // -------------------------------------------------------------------------
 
-  it("authed request with config.params: JWT methodAndPath includes query AND adapter sees merged URL with no config.params", async () => {
-    // Prove that the folding is end-to-end: the JWT claim and the wire URL
-    // the adapter receives are identical, and config.params was cleared.
+  it("authed request with config.params: signed methodAndPath matches the wire query (params left for axios)", async () => {
+    // Prove it end-to-end with the REAL axios chain: the JWT claim equals the
+    // request-target axios will build, and we don't fold/delete params.
     const capturedConfigs: InternalAxiosRequestConfig[] = [];
     const api = createApiService({
       baseURL: BASE_URL,
@@ -902,13 +871,8 @@ describe("attachAuthInterceptors — integration through full apiFactory chain",
     expect(capturedConfigs).toHaveLength(1);
     const captured = capturedConfigs[0];
 
-    // 1. config.params was cleared — no double-append.
-    expect(captured.params).toBeUndefined();
-
-    // 2. The wire URL has the merged query.
-    expect(captured.url).toContain("?network=PUBLIC");
-
-    // 3. The JWT methodAndPath equals the signed wire path.
+    // The signed methodAndPath equals the request-target axios builds for the
+    // captured config (getUri shares axios's builder with the adapter).
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const authHeader = (captured.headers as Record<string, any>)
       .Authorization as string;
@@ -917,6 +881,9 @@ describe("attachAuthInterceptors — integration through full apiFactory chain",
     expect(payload.methodAndPath).toBe(
       "GET /api/v1/token-prices?network=PUBLIC",
     );
+    // The query reaches the wire (regardless of whether axios keeps it on
+    // url or params) — proving we didn't drop it by not folding.
+    expect(api.getInstance().getUri(captured)).toContain("?network=PUBLIC");
   });
 
   it("config.url already has a query + config.params: joined with & not a second ?", async () => {
@@ -947,10 +914,10 @@ describe("attachAuthInterceptors — integration through full apiFactory chain",
     const authHeader = (captured.headers as Record<string, any>)
       .Authorization as string;
     const payload = decodePayload(authHeader.replace("Bearer ", ""));
-    // Signed and sent path must use & not a second ?.
+    // Signed path uses & (axios's builder joins the pre-existing query).
     expect(payload.methodAndPath).toBe("GET /api/v1/foo?a=1&b=2");
-    expect(captured.url).toContain("?a=1&b=2");
-    expect(captured.params).toBeUndefined();
+    // And that's the URL axios will actually send.
+    expect(api.getInstance().getUri(captured)).toContain("/foo?a=1&b=2");
   });
 
   it("anonymous request with config.params: interceptor leaves params for axios to handle", async () => {

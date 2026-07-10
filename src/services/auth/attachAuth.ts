@@ -17,21 +17,17 @@
  *
  * Path derivation
  * ---------------
- * The JWT `methodAndPath` field must match the server's
- * `r.URL.RequestURI()` value, which includes the full path + query.
- * Because the axios `baseURL` already ends with `/api/v1` and per-call
- * `url` values look like `/protocols?network=PUBLIC`, we cannot use
- * `new URL(url, baseURL)` — that resolves relative to the *origin* and
- * silently drops the `/api/v1` prefix.  Instead we concatenate:
- *
- *   `<baseURL (trailing slash stripped)> + <url>`
- *
- * then parse with `new URL()` to extract `pathname + search`.
+ * The JWT `methodAndPath` must match the server's `r.URL.RequestURI()` (full
+ * path + query). We derive it from `instance.getUri(config)` — axios's own
+ * baseURL-join + param serializer, i.e. exactly what it will put on the wire —
+ * and strip the origin to `pathname + search`. Delegating means the signed path
+ * cannot drift from the wire path (both route through the same builder), and we
+ * leave `config.params` untouched; axios serializes them identically.
  *
  * Example:
  *   baseURL = "https://api.example.com/api/v1"
- *   url     = "/protocols?network=PUBLIC"
- *   path    = "/api/v1/protocols?network=PUBLIC"          ✓
+ *   url     = "/protocols", params = { network: "PUBLIC" }
+ *   signed  = "/api/v1/protocols?network=PUBLIC"          ✓
  *
  * Body hashing
  * ------------
@@ -41,18 +37,6 @@
  * already-serialized string is left untouched; GET/no-body yields an empty
  * bodyHash.  (The anonymous/locked path lets axios serialize the object
  * normally, producing the identical JSON bytes, so the two paths agree.)
- *
- * Query-param folding
- * -------------------
- * When the caller supplies `config.params`, axios normally appends them to the
- * URL *after* the request interceptor runs.  That would cause the signed
- * `methodAndPath` to diverge from the actual wire request-target, producing a
- * 401 on the server.  To prevent this, the authenticated branch of the request
- * interceptor folds `config.params` into `config.url` before signing, then
- * writes the merged URL back and deletes `config.params` so axios does not
- * append them a second time.  The result: signed path == wire path for every
- * authenticated request.  Anonymous requests (locked wallet) are unaffected —
- * their `config.params` flow through axios normally.
  *
  * Import strategy
  * ---------------
@@ -90,73 +74,27 @@ function stripAuthHeaders(config: InternalAxiosRequestConfig): void {
 }
 
 /**
- * Merges `config.params` into an axios URL string so that the signed path
- * equals the wire request-target.
+ * Derives the server request-target (pathname + search) that axios will put on
+ * the wire, so the signed JWT `methodAndPath` equals the server's
+ * `r.URL.RequestURI()` by construction.
  *
- * Axios appends `config.params` to the URL *after* request interceptors run.
- * We pre-fold them here so the JWT `methodAndPath` matches what the server
- * sees in `r.URL.RequestURI()`.
- *
- * Rules:
- *  - If `params` is absent or empty, returns `url` unchanged.
- *  - A `URLSearchParams` instance is serialized via its own `toString()`
- *    (its entries are NOT enumerable via `Object.entries`, so it must be
- *    handled explicitly — otherwise the query would be silently dropped).
- *  - For a plain object, non-string primitive values (numbers, booleans) are
- *    coerced via `String()`.  Array/object values are also coerced — that is a
- *    simplification: axios's full array-serialization logic is out of scope.
- *  - Appends with `&` when `url` already contains a `?`, otherwise with `?`.
- */
-function mergeParamsIntoUrl(url: string, params: unknown): string {
-  if (params === undefined || params === null) return url;
-
-  let qs: string;
-  if (params instanceof URLSearchParams) {
-    qs = params.toString();
-  } else if (typeof params === "object") {
-    // Drop null/undefined entries to match axios's default serializer (which
-    // omits them). Without this, the authenticated path would sign `?x=null`
-    // while the anonymous path (axios) omits `x` — a state-dependent query.
-    const entries = Object.entries(params as Record<string, unknown>).filter(
-      ([, v]) => v !== undefined && v !== null,
-    );
-    if (entries.length === 0) return url;
-    qs = new URLSearchParams(
-      entries.map(([k, v]) => [k, String(v)] as [string, string]),
-    ).toString();
-  } else {
-    return url;
-  }
-
-  if (qs.length === 0) return url;
-
-  const separator = url.includes("?") ? "&" : "?";
-  return `${url}${separator}${qs}`;
-}
-
-/**
- * Derives the full server request-target (pathname + search) from the
- * axios request config so it matches `r.URL.RequestURI()` on the server.
- *
- * NOTE: We concatenate rather than using `new URL(url, baseURL)` because
- * axios baseURLs end with a path segment (`/api/v1`) and a url that starts
- * with `/` would be treated as an absolute path relative to the origin,
- * silently dropping the prefix.
+ * We delegate to `instance.getUri(config)` — the same `baseURL` join + param
+ * serializer axios uses to build the actual request URL — rather than
+ * hand-rolling the merge. That guarantees signed path == wire path (and stays
+ * true across axios upgrades, since both route through the same builder). We
+ * only strip the origin down to `pathname + search`; axios owns the rest.
  */
 function deriveServerPath(
-  baseURL: string | undefined,
-  url: string | undefined,
+  instance: AxiosInstance,
+  config: InternalAxiosRequestConfig,
 ): string {
-  const base = (baseURL ?? "").replace(/\/+$/, "");
-  const urlPath = url ?? "/";
-  // url should always start with "/" when coming from axios; normalise just in case.
-  const normalizedPath = urlPath.startsWith("/") ? urlPath : `/${urlPath}`;
   try {
-    const parsed = new URL(`${base}${normalizedPath}`);
-    return `${parsed.pathname}${parsed.search}`;
+    const uri = new URL(instance.getUri(config));
+    return `${uri.pathname}${uri.search}`;
   } catch {
-    // Fallback: return the raw path component stripped of origin.
-    return normalizedPath;
+    // Defensive: getUri yields an absolute URL because our baseURLs are
+    // absolute. Fall back to the raw url if that ever fails to parse.
+    return config.url ?? "/";
   }
 }
 
@@ -217,20 +155,10 @@ export function attachAuthInterceptors(instance: AxiosInstance): void {
         require("services/auth/buildAuthJwt") as typeof import("services/auth/buildAuthJwt");
       /* eslint-enable @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires, global-require */
 
-      // Fold config.params into the URL before signing so the signed
-      // methodAndPath matches the wire request-target.  We write the merged
-      // URL back to config.url and delete config.params so axios does not
-      // append them a second time — guaranteeing signed path == wire path.
-      // (Anonymous requests skip this block entirely and let axios handle
-      //  params normally, since they return early above.)
-      // eslint-disable-next-line no-param-reassign
-      config.url = mergeParamsIntoUrl(config.url ?? "/", config.params);
-      if (config.params !== undefined) {
-        // eslint-disable-next-line no-param-reassign
-        delete config.params;
-      }
-
-      const serverPath = deriveServerPath(config.baseURL, config.url);
+      // Sign the exact request-target axios will send (baseURL + url + params),
+      // leaving config.params in place — axios serializes them identically on
+      // the wire, so signed path == wire path with no manual folding.
+      const serverPath = deriveServerPath(instance, config);
       const method = config.method ?? "get";
 
       // Serialize object bodies here — before axios's transformRequest — so the
