@@ -25,7 +25,6 @@
  */
 import { Keypair } from "@stellar/stellar-sdk";
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
-import { logger } from "config/logger";
 import { createApiService, isApiError } from "services/apiFactory";
 import { attachAuthInterceptors } from "services/auth/attachAuth";
 import { buildAuthJwt } from "services/auth/buildAuthJwt";
@@ -481,7 +480,7 @@ describe("attachAuthInterceptors", () => {
       expect(requestCalls[0][0].__isAuthRetry).toBe(true);
     });
 
-    it("falls back to a single anonymous request when the authed retry also 401s", async () => {
+    it("does NOT retry a second time when __isAuthRetry is already true (returns the second 401)", async () => {
       mockGetAuthKeypair.mockResolvedValue(TEST_KEYPAIR);
       mockBuildAuthJwt.mockReturnValue("mock.jwt.token");
 
@@ -499,56 +498,9 @@ describe("attachAuthInterceptors", () => {
       };
       const err = { response: { status: 401 }, config: retryConfig };
 
-      await runResponseError(err);
-
-      // Exactly one further request — the anonymous fallback, flagged so the
-      // request interceptor skips JWT signing.
-      expect(requestCalls).toHaveLength(1);
-      expect(requestCalls[0][0].__authFellBackAnon).toBe(true);
-      expect(logger.warn).toHaveBeenCalledWith(
-        "attachAuth",
-        expect.stringContaining("anonymous"),
-        expect.objectContaining({ url: "/protocols" }),
-      );
-    });
-
-    it("does NOT fall back again once __authFellBackAnon is set (terminates)", async () => {
-      const { instance, runResponseError, requestCalls } = makeFakeInstance();
-      attachAuthInterceptors(instance);
-
-      const anonConfig = {
-        baseURL: BASE_URL,
-        url: "/protocols",
-        method: "get",
-        headers: { Authorization: "Bearer x" },
-        __isAuthRetry: true,
-        __authFellBackAnon: true,
-      };
-      const err = { response: { status: 401 }, config: anonConfig };
-
+      // No anonymous fallback (matches the extension): the 401 surfaces.
       await expect(runResponseError(err)).rejects.toBe(err);
       expect(requestCalls).toHaveLength(0);
-    });
-
-    it("forced-anonymous config skips JWT signing even when unlocked", async () => {
-      mockGetAuthKeypair.mockResolvedValue(TEST_KEYPAIR); // unlocked...
-      mockBuildAuthJwt.mockReturnValue("mock.jwt.token");
-
-      const { instance, runRequestInterceptors } = makeFakeInstance();
-      attachAuthInterceptors(instance);
-
-      const cfg = {
-        baseURL: BASE_URL,
-        url: "/protocols",
-        method: "get",
-        headers: { Authorization: "Bearer stale.jwt.token" },
-        __authFellBackAnon: true,
-      };
-      const result = await runRequestInterceptors(cfg);
-
-      // ...but the flag forces anonymity: stale header stripped, no JWT built.
-      expect(result.headers?.Authorization).toBeUndefined();
-      expect(mockBuildAuthJwt).not.toHaveBeenCalled();
     });
 
     it("does NOT retry on non-401 errors", async () => {
@@ -763,16 +715,15 @@ describe("attachAuthInterceptors — integration through full apiFactory chain",
     expect(payload2.iat as number).toBeGreaterThan(payload1.iat as number);
   });
 
-  it("a persistent 401 falls back to anonymous once, then rejects with ApiError{ status: 401 }", async () => {
-    // When the initial request, the signed retry, AND the anonymous fallback all
-    // return 401:
-    //   - original (JWT) → 401 → signed retry (__isAuthRetry) → 401 →
-    //     anonymous fallback (__authFellBackAnon, no JWT) → 401 → reject.
-    //   - The inner normalizer converts the final AxiosError → ApiError{ 401 };
+  it("a second consecutive 401 rejects with ApiError{ status: 401 } and does NOT retry more than once", async () => {
+    // When both the initial request AND the retry return 401:
+    //   - original (JWT) → 401 → signed retry (__isAuthRetry) → 401 → reject.
+    //     No anonymous fallback (matches the extension's authedFetch).
+    //   - The inner normalizer converts the second AxiosError → ApiError{ 401 };
     //     the outer normalizer is idempotent (isApiError guard) and rethrows it
     //     unchanged, preserving status: 401 instead of clobbering it to 0.
     // Key assertions:
-    //   (a) the cycle is bounded (adapter called exactly three times),
+    //   (a) no infinite retry loop (adapter called exactly twice),
     //   (b) the consumer receives ApiError{ status: 401 } — NOT status: 0.
     const capturedConfigs: InternalAxiosRequestConfig[] = [];
     const api = createApiService({
@@ -787,9 +738,9 @@ describe("attachAuthInterceptors — integration through full apiFactory chain",
       message: expect.any(String),
     });
 
-    // Exactly 3 adapter calls: original + signed retry + one anonymous fallback
-    // (the clock-skew degradation). A fourth would mean a flag is broken.
-    expect(capturedConfigs).toHaveLength(3);
+    // Exactly 2 adapter calls: original + one retry. A third would mean the
+    // guard flag is broken (or an anonymous fallback crept back in).
+    expect(capturedConfigs).toHaveLength(2);
   });
 
   // -------------------------------------------------------------------------

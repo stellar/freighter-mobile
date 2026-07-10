@@ -10,10 +10,9 @@
  *    returned unmodified and the backend permissively allows the request.
  *
  * 2. **Response interceptor**: on a 401, rebuilds the JWT once and re-issues
- *    the request. If that signed retry also 401s (e.g. device-clock skew makes
- *    every locally-signed token invalid), it falls back to a single anonymous
- *    request so these endpoints keep working, and logs the fallback.
- *    `__isAuthRetry` / `__authFellBackAnon` flags bound the cycle.
+ *    the request via `instance.request(config)`, returning that response
+ *    (success or the second 401). A `__isAuthRetry` flag prevents infinite
+ *    loops. Mirrors the extension's `authedFetch` (retry-once-then-return).
  *
  * Path derivation
  * ---------------
@@ -50,7 +49,6 @@
  * backend HTTP layer.
  */
 import { AxiosInstance, InternalAxiosRequestConfig } from "axios";
-import { logger } from "config/logger";
 
 /**
  * Internal marker added to config when we have already attempted one
@@ -59,9 +57,6 @@ import { logger } from "config/logger";
  */
 interface AuthRetryConfig extends InternalAxiosRequestConfig {
   __isAuthRetry?: boolean;
-  // Terminal flag: the authenticated retry also 401'd, so this attempt is a
-  // one-shot anonymous fallback (JWT signing is skipped for it).
-  __authFellBackAnon?: boolean;
 }
 
 /** Strips any Authorization header so a request goes out anonymously. */
@@ -127,14 +122,6 @@ export function attachAuthInterceptors(instance: AxiosInstance): void {
   // ------------------------------------------------------------------
   instance.interceptors.request.use(
     async (config: InternalAxiosRequestConfig) => {
-      // Forced-anonymous retry: a prior authenticated attempt 401'd twice (see
-      // the response interceptor's clock-skew fallback). Skip JWT signing and
-      // send anonymously — re-signing would reuse the same bad local clock.
-      if ((config as AuthRetryConfig).__authFellBackAnon) {
-        stripAuthHeaders(config);
-        return config;
-      }
-
       /* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires, global-require */
       const { getAuthKeypair } =
         require("services/auth/getAuthKeypair") as typeof import("services/auth/getAuthKeypair");
@@ -226,32 +213,10 @@ export function attachAuthInterceptors(instance: AxiosInstance): void {
         return instance.request(retryConfig);
       }
 
-      // The signed retry also 401'd. On an unlocked wallet the likeliest cause
-      // is device-clock skew: buildAuthJwt derives iat/exp from the local clock,
-      // so re-signing yields an equally-invalid token. Fall back to ONE
-      // anonymous request so these endpoints (anonymous before this PR) keep
-      // working, degraded — and log it, since the fallback rate is the signal
-      // for widening the backend clock-skew leeway (tracked follow-up).
-      if (
-        err.response?.status === 401 &&
-        config !== undefined &&
-        config.__isAuthRetry &&
-        !config.__authFellBackAnon &&
-        hadAuth
-      ) {
-        logger.warn(
-          "attachAuth",
-          "Authenticated request 401'd after retry; falling back to anonymous " +
-            "(likely device-clock skew in the JWT iat/exp).",
-          { url: config.url, method: config.method },
-        );
-        const anonConfig: AuthRetryConfig = {
-          ...config,
-          __authFellBackAnon: true,
-        };
-        return instance.request(anonConfig);
-      }
-
+      // Not a retryable 401 (already retried, non-401, or anonymous): reject.
+      // A persistent 401 surfaces to the caller — we do NOT fall back to an
+      // anonymous request (matches the extension's authedFetch; clock-skew
+      // handling is deferred to the backend leeway, see #930).
       return Promise.reject(error);
     },
   );
