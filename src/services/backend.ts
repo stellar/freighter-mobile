@@ -49,7 +49,7 @@ export const freighterBackendV1 = createApiService({
 // interceptors in registration order; if attachAuthInterceptors were called
 // after createApiService returns, the 401-retry handler would run AFTER the
 // normalizer and never see error.response (already converted to ApiError).
-export const freighterBackendV2 = createApiService<string>({
+export const freighterBackendV2 = createApiService({
   baseURL: BackendEnvConfig.FREIGHTER_BACKEND_V2_URL,
   configureInstance: attachAuthInterceptors,
 });
@@ -417,8 +417,7 @@ export const fetchTokenPrices = async ({
         );
         ({ data } = await freighterBackendV2.post<TokenPricesResponse>(
           `/token-prices?network=${priceNetwork}`,
-          JSON.stringify({ tokens: v2Tokens }),
-          { headers: { "Content-Type": "application/json" } },
+          { tokens: v2Tokens },
         ));
       } else {
         ({ data } = await freighterBackendV1.post<TokenPricesResponse>(
@@ -1210,8 +1209,7 @@ export const fetchCollectibles = async ({
   try {
     const { data } = await freighterBackendV2.post<CollectiblesResponse>(
       `/collectibles?network=${network}`,
-      JSON.stringify({ owner, contracts }),
-      { headers: { "Content-Type": "application/json" } },
+      { owner, contracts },
     );
 
     if (!data.data || !data.data.collections) {

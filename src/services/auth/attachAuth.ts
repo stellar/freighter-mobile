@@ -9,9 +9,11 @@
  *    When the wallet is locked (`getAuthKeypair()` → null) the config is
  *    returned unmodified and the backend permissively allows the request.
  *
- * 2. **Response interceptor**: on a 401, rebuilds the JWT once and
- *    re-issues the request via `instance.request(config)`.  A
- *    `__isAuthRetry` flag on the config prevents infinite loops.
+ * 2. **Response interceptor**: on a 401, rebuilds the JWT once and re-issues
+ *    the request. If that signed retry also 401s (e.g. device-clock skew makes
+ *    every locally-signed token invalid), it falls back to a single anonymous
+ *    request so these endpoints keep working, and logs the fallback.
+ *    `__isAuthRetry` / `__authFellBackAnon` flags bound the cycle.
  *
  * Path derivation
  * ---------------
@@ -33,12 +35,12 @@
  *
  * Body hashing
  * ------------
- * Only a pre-serialized string `config.data` is hashed.  If `config.data`
- * is an object the caller has not pre-serialized it; we pass `body: undefined`
- * (empty bodyHash) and emit a dev-mode warning as a defensive backstop.  In
- * practice this path is unreachable for V2 write requests: `createApiService`
- * is parameterised as `createApiService<string>`, so passing an object body
- * is a compile-time error.
+ * Object bodies are serialized here — in the request interceptor, before
+ * axios's own `transformRequest` — so the bytes hashed into `bodyHash` are
+ * exactly the bytes that go on the wire.  Call sites pass plain objects; an
+ * already-serialized string is left untouched; GET/no-body yields an empty
+ * bodyHash.  (The anonymous/locked path lets axios serialize the object
+ * normally, producing the identical JSON bytes, so the two paths agree.)
  *
  * Query-param folding
  * -------------------
@@ -73,6 +75,18 @@ import { logger } from "config/logger";
  */
 interface AuthRetryConfig extends InternalAxiosRequestConfig {
   __isAuthRetry?: boolean;
+  // Terminal flag: the authenticated retry also 401'd, so this attempt is a
+  // one-shot anonymous fallback (JWT signing is skipped for it).
+  __authFellBackAnon?: boolean;
+}
+
+/** Strips any Authorization header so a request goes out anonymously. */
+function stripAuthHeaders(config: InternalAxiosRequestConfig): void {
+  if (!config.headers) return;
+  /* eslint-disable no-param-reassign */
+  delete (config.headers as Record<string, unknown>).Authorization;
+  delete (config.headers as Record<string, unknown>).authorization;
+  /* eslint-enable no-param-reassign */
 }
 
 /**
@@ -100,7 +114,12 @@ function mergeParamsIntoUrl(url: string, params: unknown): string {
   if (params instanceof URLSearchParams) {
     qs = params.toString();
   } else if (typeof params === "object") {
-    const entries = Object.entries(params as Record<string, unknown>);
+    // Drop null/undefined entries to match axios's default serializer (which
+    // omits them). Without this, the authenticated path would sign `?x=null`
+    // while the anonymous path (axios) omits `x` — a state-dependent query.
+    const entries = Object.entries(params as Record<string, unknown>).filter(
+      ([, v]) => v !== undefined && v !== null,
+    );
     if (entries.length === 0) return url;
     qs = new URLSearchParams(
       entries.map(([k, v]) => [k, String(v)] as [string, string]),
@@ -170,6 +189,14 @@ export function attachAuthInterceptors(instance: AxiosInstance): void {
   // ------------------------------------------------------------------
   instance.interceptors.request.use(
     async (config: InternalAxiosRequestConfig) => {
+      // Forced-anonymous retry: a prior authenticated attempt 401'd twice (see
+      // the response interceptor's clock-skew fallback). Skip JWT signing and
+      // send anonymously — re-signing would reuse the same bad local clock.
+      if ((config as AuthRetryConfig).__authFellBackAnon) {
+        stripAuthHeaders(config);
+        return config;
+      }
+
       /* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires, global-require */
       const { getAuthKeypair } =
         require("services/auth/getAuthKeypair") as typeof import("services/auth/getAuthKeypair");
@@ -181,12 +208,7 @@ export function attachAuthInterceptors(instance: AxiosInstance): void {
         // config (which carried a Bearer token), so if the wallet locked
         // between the original request and the retry, returning config as-is
         // would re-send the now-stale token. Locked requests must be anonymous.
-        if (config.headers) {
-          /* eslint-disable no-param-reassign */
-          delete (config.headers as Record<string, unknown>).Authorization;
-          delete (config.headers as Record<string, unknown>).authorization;
-          /* eslint-enable no-param-reassign */
-        }
+        stripAuthHeaders(config);
         return config;
       }
 
@@ -211,22 +233,18 @@ export function attachAuthInterceptors(instance: AxiosInstance): void {
       const serverPath = deriveServerPath(config.baseURL, config.url);
       const method = config.method ?? "get";
 
-      // Only hash string bodies.  If the body is an object the caller has
-      // not pre-serialized it; warn in dev and skip body hashing.
-      let body: string | undefined;
-      if (typeof config.data === "string") {
-        body = config.data;
-      } else if (config.data !== undefined && config.data !== null) {
-        if (__DEV__) {
-          logger.warn(
-            "attachAuth",
-            "config.data is not a string — body will not be hashed. " +
-              "Pre-serialize the request body before passing it to axios.",
-            { method, path: serverPath, dataType: typeof config.data },
-          );
-        }
-        body = undefined;
+      // Serialize object bodies here — before axios's transformRequest — so the
+      // bytes we hash are exactly the bytes that go on the wire. A string body
+      // passes through untouched (no double-encode); GET/no-body stays undefined.
+      if (
+        config.data !== undefined &&
+        config.data !== null &&
+        typeof config.data !== "string"
+      ) {
+        // eslint-disable-next-line no-param-reassign
+        config.data = JSON.stringify(config.data);
       }
+      const body = typeof config.data === "string" ? config.data : undefined;
 
       const jwt = buildAuthJwt({
         keypair,
@@ -278,6 +296,32 @@ export function attachAuthInterceptors(instance: AxiosInstance): void {
         // The request interceptor above will rebuild a fresh JWT when
         // instance.request() runs again.
         return instance.request(retryConfig);
+      }
+
+      // The signed retry also 401'd. On an unlocked wallet the likeliest cause
+      // is device-clock skew: buildAuthJwt derives iat/exp from the local clock,
+      // so re-signing yields an equally-invalid token. Fall back to ONE
+      // anonymous request so these endpoints (anonymous before this PR) keep
+      // working, degraded — and log it, since the fallback rate is the signal
+      // for widening the backend clock-skew leeway (tracked follow-up).
+      if (
+        err.response?.status === 401 &&
+        config !== undefined &&
+        config.__isAuthRetry &&
+        !config.__authFellBackAnon &&
+        hadAuth
+      ) {
+        logger.warn(
+          "attachAuth",
+          "Authenticated request 401'd after retry; falling back to anonymous " +
+            "(likely device-clock skew in the JWT iat/exp).",
+          { url: config.url, method: config.method },
+        );
+        const anonConfig: AuthRetryConfig = {
+          ...config,
+          __authFellBackAnon: true,
+        };
+        return instance.request(anonConfig);
       }
 
       return Promise.reject(error);

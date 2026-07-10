@@ -735,20 +735,12 @@ describe("Backend Service - fetchCollectibles severity split", () => {
 
     await fetchCollectibles(params);
 
+    // toHaveBeenCalledWith fully pins the contract: the query is embedded in the
+    // URL (so the JWT interceptor signs the right methodAndPath) and the body is
+    // a plain object (the interceptor serializes it so bodyHash matches the wire).
     expect(mockV2Post).toHaveBeenCalledWith(
       `/collectibles?network=${params.network}`,
-      JSON.stringify({ owner: params.owner, contracts: params.contracts }),
-      { headers: { "Content-Type": "application/json" } },
-    );
-
-    const [url, body, config] = mockV2Post.mock.calls[0];
-    // URL must embed the network query param — not in config.params
-    expect(url).toContain("?network=");
-    expect(config).not.toHaveProperty("params");
-    // Body must be a pre-serialized string so bodyHash matches wire bytes
-    expect(typeof body).toBe("string");
-    expect(body).toBe(
-      JSON.stringify({ owner: params.owner, contracts: params.contracts }),
+      { owner: params.owner, contracts: params.contracts },
     );
   });
 });
@@ -783,20 +775,13 @@ describe("Backend Service - fetchTokenPrices v2 migration", () => {
   it("hits the v2 client with a network query param and native id when useV2 is true", async () => {
     await fetchTokenPrices({ tokens, network: NETWORKS.PUBLIC, useV2: true });
 
-    // Native "XLM" is sent to v2 as "native".
-    // Query is embedded in the URL (not via { params }) so the JWT interceptor
-    // signs the correct methodAndPath. Body is pre-serialized to a string so
-    // the interceptor's bodyHash matches the wire bytes exactly.
-    expect(mockV2Post).toHaveBeenCalledWith(
-      "/token-prices?network=PUBLIC",
-      JSON.stringify({ tokens: v2Tokens }),
-      { headers: { "Content-Type": "application/json" } },
-    );
-    // Verify the body is a string (not an object) — guards against regression
-    // where a plain object would cause the JWT to sign the empty-string hash.
-    const [, body] = mockV2Post.mock.calls[0];
-    expect(typeof body).toBe("string");
-    expect(body).toBe(JSON.stringify({ tokens: v2Tokens }));
+    // Native "XLM" is sent to v2 as "native"; the query is embedded in the URL
+    // (not via { params }) so the JWT interceptor signs the correct
+    // methodAndPath. The body is a plain object — the interceptor serializes it
+    // centrally so bodyHash matches the wire bytes.
+    expect(mockV2Post).toHaveBeenCalledWith("/token-prices?network=PUBLIC", {
+      tokens: v2Tokens,
+    });
     expect(mockV1Post).not.toHaveBeenCalled();
   });
 

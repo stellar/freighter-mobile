@@ -21,6 +21,11 @@ const b64url = (b: Buffer): string =>
 const seg = (v: unknown): string =>
   b64url(Buffer.from(JSON.stringify(v), "utf8"));
 
+// The header is constant for every token — compute it once at module load
+// rather than re-running JSON.stringify + base64 + three regex replaces per
+// authenticated request.
+const HEADER_SEG = seg({ alg: "EdDSA", typ: "JWT" });
+
 export const buildAuthJwt = ({
   keypair,
   method,
@@ -40,6 +45,6 @@ export const buildAuthJwt = ({
     bodyHash,
     methodAndPath: `${method.toUpperCase()} ${path}`,
   };
-  const signingInput = `${seg({ alg: "EdDSA", typ: "JWT" })}.${seg(payload)}`;
+  const signingInput = `${HEADER_SEG}.${seg(payload)}`;
   return `${signingInput}.${b64url(keypair.sign(Buffer.from(signingInput, "utf8")))}`;
 };

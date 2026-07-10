@@ -25,6 +25,7 @@
  */
 import { Keypair } from "@stellar/stellar-sdk";
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
+import { logger } from "config/logger";
 import { createApiService, isApiError } from "services/apiFactory";
 import { attachAuthInterceptors } from "services/auth/attachAuth";
 import { buildAuthJwt } from "services/auth/buildAuthJwt";
@@ -229,7 +230,7 @@ describe("attachAuthInterceptors", () => {
       );
     });
 
-    it("passes body: undefined (no hash) when config.data is not a string", async () => {
+    it("serializes an object body so the hashed bytes equal the wire bytes", async () => {
       mockGetAuthKeypair.mockResolvedValue(TEST_KEYPAIR);
       mockBuildAuthJwt.mockReturnValue("mock.jwt.token");
 
@@ -241,12 +242,39 @@ describe("attachAuthInterceptors", () => {
         url: "/token-prices",
         method: "post",
         headers: {},
-        data: { tokens: ["XLM"] }, // object, not pre-serialized string
+        data: { tokens: ["XLM"] }, // plain object — interceptor serializes it
       };
-      await runRequestInterceptors(cfg);
+      const result = await runRequestInterceptors(cfg);
 
+      const expected = JSON.stringify({ tokens: ["XLM"] });
+      // config.data is rewritten to the serialized string axios will send...
+      expect(result.data).toBe(expected);
+      // ...and that exact string is what gets hashed.
       expect(mockBuildAuthJwt).toHaveBeenCalledWith(
-        expect.objectContaining({ body: undefined }),
+        expect.objectContaining({ body: expected }),
+      );
+    });
+
+    it("leaves an already-serialized string body untouched (no double-encode)", async () => {
+      mockGetAuthKeypair.mockResolvedValue(TEST_KEYPAIR);
+      mockBuildAuthJwt.mockReturnValue("mock.jwt.token");
+
+      const { instance, runRequestInterceptors } = makeFakeInstance();
+      attachAuthInterceptors(instance);
+
+      const raw = JSON.stringify({ tokens: ["XLM"] });
+      const cfg = {
+        baseURL: BASE_URL,
+        url: "/token-prices",
+        method: "post",
+        headers: {},
+        data: raw,
+      };
+      const result = await runRequestInterceptors(cfg);
+
+      expect(result.data).toBe(raw);
+      expect(mockBuildAuthJwt).toHaveBeenCalledWith(
+        expect.objectContaining({ body: raw }),
       );
     });
 
@@ -484,7 +512,7 @@ describe("attachAuthInterceptors", () => {
       expect(requestCalls[0][0].__isAuthRetry).toBe(true);
     });
 
-    it("does NOT retry a second time when __isAuthRetry is already true", async () => {
+    it("falls back to a single anonymous request when the authed retry also 401s", async () => {
       mockGetAuthKeypair.mockResolvedValue(TEST_KEYPAIR);
       mockBuildAuthJwt.mockReturnValue("mock.jwt.token");
 
@@ -495,17 +523,63 @@ describe("attachAuthInterceptors", () => {
         baseURL: BASE_URL,
         url: "/protocols",
         method: "get",
-        headers: {},
+        // The signed retry carried a JWT (hadAuth) and just 401'd again.
+        headers: { Authorization: "Bearer mock.jwt.token" },
         data: undefined,
-        __isAuthRetry: true, // already retried once
+        __isAuthRetry: true,
       };
-      const err = {
-        response: { status: 401 },
-        config: retryConfig,
+      const err = { response: { status: 401 }, config: retryConfig };
+
+      await runResponseError(err);
+
+      // Exactly one further request — the anonymous fallback, flagged so the
+      // request interceptor skips JWT signing.
+      expect(requestCalls).toHaveLength(1);
+      expect(requestCalls[0][0].__authFellBackAnon).toBe(true);
+      expect(logger.warn).toHaveBeenCalledWith(
+        "attachAuth",
+        expect.stringContaining("anonymous"),
+        expect.objectContaining({ url: "/protocols" }),
+      );
+    });
+
+    it("does NOT fall back again once __authFellBackAnon is set (terminates)", async () => {
+      const { instance, runResponseError, requestCalls } = makeFakeInstance();
+      attachAuthInterceptors(instance);
+
+      const anonConfig = {
+        baseURL: BASE_URL,
+        url: "/protocols",
+        method: "get",
+        headers: { Authorization: "Bearer x" },
+        __isAuthRetry: true,
+        __authFellBackAnon: true,
       };
+      const err = { response: { status: 401 }, config: anonConfig };
 
       await expect(runResponseError(err)).rejects.toBe(err);
       expect(requestCalls).toHaveLength(0);
+    });
+
+    it("forced-anonymous config skips JWT signing even when unlocked", async () => {
+      mockGetAuthKeypair.mockResolvedValue(TEST_KEYPAIR); // unlocked...
+      mockBuildAuthJwt.mockReturnValue("mock.jwt.token");
+
+      const { instance, runRequestInterceptors } = makeFakeInstance();
+      attachAuthInterceptors(instance);
+
+      const cfg = {
+        baseURL: BASE_URL,
+        url: "/protocols",
+        method: "get",
+        headers: { Authorization: "Bearer stale.jwt.token" },
+        __authFellBackAnon: true,
+      };
+      const result = await runRequestInterceptors(cfg);
+
+      // ...but the flag forces anonymity: stale header stripped, no JWT built.
+      expect(result.headers?.Authorization).toBeUndefined();
+      expect(mockBuildAuthJwt).not.toHaveBeenCalled();
     });
 
     it("does NOT retry on non-401 errors", async () => {
@@ -720,16 +794,16 @@ describe("attachAuthInterceptors — integration through full apiFactory chain",
     expect(payload2.iat as number).toBeGreaterThan(payload1.iat as number);
   });
 
-  it("a second consecutive 401 rejects with ApiError{ status: 401 } and does NOT retry more than once", async () => {
-    // When both the initial request AND the retry return 401:
-    //   - The retry's inner request chain catches the second 401 in the auth
-    //     interceptor (__isAuthRetry=true), rejects with the raw AxiosError,
-    //     and the INNER normalizer converts it → ApiError{ status: 401 }.
-    //   - The OUTER chain's normalizer is now idempotent (isApiError guard):
-    //     it detects the already-normalized ApiError and rethrows it unchanged,
-    //     preserving status: 401 instead of clobbering it to 0.
+  it("a persistent 401 falls back to anonymous once, then rejects with ApiError{ status: 401 }", async () => {
+    // When the initial request, the signed retry, AND the anonymous fallback all
+    // return 401:
+    //   - original (JWT) → 401 → signed retry (__isAuthRetry) → 401 →
+    //     anonymous fallback (__authFellBackAnon, no JWT) → 401 → reject.
+    //   - The inner normalizer converts the final AxiosError → ApiError{ 401 };
+    //     the outer normalizer is idempotent (isApiError guard) and rethrows it
+    //     unchanged, preserving status: 401 instead of clobbering it to 0.
     // Key assertions:
-    //   (a) no infinite retry loop (adapter called exactly twice),
+    //   (a) the cycle is bounded (adapter called exactly three times),
     //   (b) the consumer receives ApiError{ status: 401 } — NOT status: 0.
     const capturedConfigs: InternalAxiosRequestConfig[] = [];
     const api = createApiService({
@@ -744,9 +818,9 @@ describe("attachAuthInterceptors — integration through full apiFactory chain",
       message: expect.any(String),
     });
 
-    // Exactly 2 adapter calls: original + one retry.  A third call would mean
-    // the guard flag is broken.
-    expect(capturedConfigs).toHaveLength(2);
+    // Exactly 3 adapter calls: original + signed retry + one anonymous fallback
+    // (the clock-skew degradation). A fourth would mean a flag is broken.
+    expect(capturedConfigs).toHaveLength(3);
   });
 
   // -------------------------------------------------------------------------
