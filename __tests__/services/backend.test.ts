@@ -735,12 +735,13 @@ describe("Backend Service - fetchCollectibles severity split", () => {
 
     await fetchCollectibles(params);
 
-    // toHaveBeenCalledWith fully pins the contract: the query is embedded in the
-    // URL (so the JWT interceptor signs the right methodAndPath) and the body is
-    // a plain object (the interceptor serializes it so bodyHash matches the wire).
+    // Idiomatic axios: the network goes via `{ params }` (the JWT interceptor
+    // folds it into the signed path via getUri) and the body is a plain object
+    // (the interceptor serializes it so bodyHash matches the wire).
     expect(mockV2Post).toHaveBeenCalledWith(
-      `/collectibles?network=${params.network}`,
+      "/collectibles",
       { owner: params.owner, contracts: params.contracts },
+      { params: { network: params.network } },
     );
   });
 });
@@ -775,13 +776,15 @@ describe("Backend Service - fetchTokenPrices v2 migration", () => {
   it("hits the v2 client with a network query param and native id when useV2 is true", async () => {
     await fetchTokenPrices({ tokens, network: NETWORKS.PUBLIC, useV2: true });
 
-    // Native "XLM" is sent to v2 as "native"; the query is embedded in the URL
-    // (not via { params }) so the JWT interceptor signs the correct
-    // methodAndPath. The body is a plain object — the interceptor serializes it
-    // centrally so bodyHash matches the wire bytes.
-    expect(mockV2Post).toHaveBeenCalledWith("/token-prices?network=PUBLIC", {
-      tokens: v2Tokens,
-    });
+    // Native "XLM" is sent to v2 as "native"; the network goes via `{ params }`
+    // (the JWT interceptor folds it into the signed path via getUri). The body
+    // is a plain object — the interceptor serializes it centrally so bodyHash
+    // matches the wire bytes.
+    expect(mockV2Post).toHaveBeenCalledWith(
+      "/token-prices",
+      { tokens: v2Tokens },
+      { params: { network: "PUBLIC" } },
+    );
     expect(mockV1Post).not.toHaveBeenCalled();
   });
 

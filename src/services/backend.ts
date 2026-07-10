@@ -416,8 +416,9 @@ export const fetchTokenPrices = async ({
           tokenId === NATIVE_TOKEN_CODE ? V2_NATIVE_PRICE_ID : tokenId,
         );
         ({ data } = await freighterBackendV2.post<TokenPricesResponse>(
-          `/token-prices?network=${priceNetwork}`,
+          "/token-prices",
           { tokens: v2Tokens },
+          { params: { network: priceNetwork } },
         ));
       } else {
         ({ data } = await freighterBackendV1.post<TokenPricesResponse>(
@@ -1208,8 +1209,9 @@ export const fetchCollectibles = async ({
 > => {
   try {
     const { data } = await freighterBackendV2.post<CollectiblesResponse>(
-      `/collectibles?network=${network}`,
+      "/collectibles",
       { owner, contracts },
+      { params: { network } },
     );
 
     if (!data.data || !data.data.collections) {
