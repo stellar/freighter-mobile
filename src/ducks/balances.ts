@@ -309,10 +309,13 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
         ...customTokensContractsIds,
       ];
 
-      // Fetch balances with combined contract IDs
+      // Fetch balances with combined contract IDs. Read the v2 flag from the
+      // store at call time (not a captured value) so a freshly resolved
+      // Amplitude flag isn't missed — mirrors the token-prices flag below.
       const { balances, isFunded, subentryCount } = await fetchBalances({
         ...params,
         contractIds: allContractIds,
+        useV2: useRemoteConfigStore.getState().use_balances_v2,
       });
 
       if (!balances) {

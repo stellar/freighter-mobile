@@ -81,6 +81,12 @@ describe("remoteConfig duck", () => {
       expect(typeof result.current.fetchFeatureFlags).toBe("function");
       expect(typeof result.current.initFetchFeatureFlagsPoll).toBe("function");
     });
+
+    it("defaults use_balances_v2 to true", () => {
+      const { result } = renderHook(() => useRemoteConfigStore());
+
+      expect(result.current.use_balances_v2).toBe(true);
+    });
   });
 
   describe("fetchFeatureFlags", () => {
@@ -164,6 +170,38 @@ describe("remoteConfig duck", () => {
       expect(result.current.swap_enabled).toBe(false);
       expect(result.current.discover_enabled).toBe(false);
       expect(result.current.onramp_enabled).toBe(false);
+    });
+
+    it("keeps use_balances_v2 true when the variant is on", async () => {
+      const mockClient = createMockExperimentClient();
+      mockClient.all.mockReturnValue({
+        use_balances_v2: { value: "on" },
+      });
+      mockGetExperimentClient.mockReturnValue(mockClient);
+
+      const { result } = renderHook(() => useRemoteConfigStore());
+
+      await act(async () => {
+        await result.current.fetchFeatureFlags();
+      });
+
+      expect(result.current.use_balances_v2).toBe(true);
+    });
+
+    it("rolls use_balances_v2 back to false when the variant is off", async () => {
+      const mockClient = createMockExperimentClient();
+      mockClient.all.mockReturnValue({
+        use_balances_v2: { value: "off" },
+      });
+      mockGetExperimentClient.mockReturnValue(mockClient);
+
+      const { result } = renderHook(() => useRemoteConfigStore());
+
+      await act(async () => {
+        await result.current.fetchFeatureFlags();
+      });
+
+      expect(result.current.use_balances_v2).toBe(false);
     });
 
     it("should update only specific flags when variants are returned", async () => {

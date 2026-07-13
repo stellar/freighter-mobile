@@ -185,7 +185,10 @@ describe("balances duck", () => {
         await result.current.fetchAccountBalances(mockParams);
       });
 
-      expect(mockFetchBalances).toHaveBeenCalledWith(mockParams);
+      expect(mockFetchBalances).toHaveBeenCalledWith({
+        ...mockParams,
+        useV2: true,
+      });
     });
   });
 
@@ -202,7 +205,10 @@ describe("balances duck", () => {
         await result.current.fetchAccountBalances(mockParams);
       });
 
-      expect(mockFetchBalances).toHaveBeenCalledWith(mockParams);
+      expect(mockFetchBalances).toHaveBeenCalledWith({
+        ...mockParams,
+        useV2: true,
+      });
     });
 
     it("should update balances and pricedBalances state on successful fetch", async () => {

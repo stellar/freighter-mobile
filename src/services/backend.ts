@@ -29,8 +29,13 @@ import {
   TokenIdentifier,
   TokenPricesMap,
 } from "config/types";
+import { addBlockaidScanResults } from "helpers/addBlockaidScanResults";
 import { getTokenType } from "helpers/balances";
 import { bigize } from "helpers/bigize";
+import {
+  mapAccountBalancesV2,
+  V2AccountBalances,
+} from "helpers/mapAccountBalancesV2";
 import { getNativeContractDetails } from "helpers/soroban";
 import {
   createApiService,
@@ -223,11 +228,46 @@ export type FetchBalancesResponse = {
  * @property {string} publicKey - The public key of the account
  * @property {NETWORKS} network - The network to query (mainnet/testnet)
  * @property {string[]} [contractIds] - Optional contract IDs to include in balance calculation
+ * @property {boolean} useV2 - Whether to hit the v2 balances endpoint (remote-config gated)
  */
 type FetchBalancesParams = {
   publicKey: string;
   network: NETWORKS;
   contractIds?: string[];
+  useV2: boolean;
+};
+
+/**
+ * Fetches account balances from the freighter-backend-v2
+ * `POST /accounts/balances` endpoint and normalizes the response to the same
+ * shape `fetchBalances` returns on the v1 path.
+ *
+ * Multi-address fan-out endpoint; the app fetches one account at a time.
+ * Addresses travel in the POST body, so the URL carries no G-address. The v2
+ * response covers every token the account holds — trustlines, SACs, SEP-41
+ * contract balances, and pool shares — so unlike v1 there is no `contract_ids`
+ * param: custom tokens the wallet-backend has indexed come back automatically.
+ *
+ * The v2 response has no Blockaid data yet — `addBlockaidScanResults`
+ * replicates the v1 backend's scan-and-merge client-side so both paths return
+ * the same payload.
+ */
+export const fetchBalancesV2 = async ({
+  publicKey,
+  network,
+}: {
+  publicKey: string;
+  network: NETWORKS;
+}): Promise<FetchBalancesResponse> => {
+  const { data } = await freighterBackendV2.post<{
+    data: V2AccountBalances[];
+  }>("/accounts/balances", { addresses: [publicKey] }, { params: { network } });
+
+  const account = (data?.data || []).find(
+    (accountBalances) => accountBalances.address === publicKey,
+  );
+
+  return addBlockaidScanResults(mapAccountBalancesV2(account), network);
 };
 
 /**
@@ -237,11 +277,14 @@ type FetchBalancesParams = {
  * @param {FetchBalancesParams} params - Parameters for balance fetching
  * @param {string} params.publicKey - The public key of the account
  * @param {NETWORKS} params.network - The network to query (mainnet/testnet)
- * @param {string[]} [params.contractIds] - Optional contract IDs to include
+ * @param {string[]} [params.contractIds] - Optional contract IDs to include (v1 path only)
+ * @param {boolean} params.useV2 - Whether to hit the v2 endpoint (remote-config gated)
  * @returns {Promise<FetchBalancesResponse>} Promise resolving to account balance data
  *
  * @description
- * Fetches account balances from the backend and transforms the response:
+ * When `useV2` is true and the network is pubnet/testnet, delegates to
+ * `fetchBalancesV2` (same response shape). Otherwise fetches account balances
+ * from the v1 backend and transforms the response:
  * - Converts numeric values to BigNumber for precision
  * - Handles native balance conversion (native → XLM)
  * - Supports optional contract ID filtering
@@ -254,7 +297,8 @@ type FetchBalancesParams = {
  * const balances = await fetchBalances({
  *   publicKey: "GABC...",
  *   network: NETWORKS.PUBLIC,
- *   contractIds: ["contract123"]
+ *   contractIds: ["contract123"],
+ *   useV2: true,
  * });
  * ```
  */
@@ -262,7 +306,17 @@ export const fetchBalances = async ({
   publicKey,
   network,
   contractIds,
+  useV2,
 }: FetchBalancesParams): Promise<FetchBalancesResponse> => {
+  // The v2 balances endpoint only supports pubnet and testnet; Futurenet
+  // stays on v1 regardless of the flag. The v2 path needs no contractIds —
+  // indexed contract-token balances come back automatically.
+  const isV2SupportedNetwork =
+    network === NETWORKS.PUBLIC || network === NETWORKS.TESTNET;
+  if (useV2 && isV2SupportedNetwork) {
+    return fetchBalancesV2({ publicKey, network });
+  }
+
   const params = new URLSearchParams({
     network,
   });
