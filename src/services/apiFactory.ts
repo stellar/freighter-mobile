@@ -92,6 +92,43 @@ export interface ApiServiceOptions {
   headers?: Record<string, string>;
   /** Whether to log requests and responses */
   logRequests?: boolean;
+  /**
+   * Optional hook invoked on the raw AxiosInstance BEFORE the error-normalizing
+   * response interceptor is registered.  Use this to attach interceptors that
+   * must run BEFORE the normalizer on the error path (e.g. a 401-retry handler
+   * that needs access to `error.response` and `error.config` — both of which
+   * the normalizer strips when it converts the AxiosError into a plain ApiError).
+   *
+   * Axios runs response interceptors in registration order, so any response
+   * interceptor added here is guaranteed to see the raw AxiosError.
+   *
+   * @example
+   * createApiService({ baseURL, configureInstance: attachAuthInterceptors })
+   */
+  configureInstance?: (instance: AxiosInstance) => void;
+}
+
+/**
+ * Type guard that returns true for any value that has already been normalized
+ * into an ApiError by the apiFactory response interceptor.  Used by the
+ * normalizer itself to make error normalization idempotent: when a nested
+ * instance.request() (e.g. the JWT 401-retry in attachAuth) surfaces an
+ * ApiError up through the outer interceptor chain, the normalizer must not
+ * re-process it — doing so would clobber the real status (e.g. 401 → 0)
+ * because ApiError carries no .response field.
+ */
+export function isApiError(error: unknown): error is ApiError {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    !axios.isAxiosError(error) &&
+    "status" in error &&
+    typeof (error as ApiError).status === "number" &&
+    "isNetworkError" in error &&
+    typeof (error as ApiError).isNetworkError === "boolean" &&
+    "message" in error &&
+    typeof (error as ApiError).message === "string"
+  );
 }
 
 /**
@@ -136,6 +173,7 @@ export function createApiService(options: ApiServiceOptions) {
       Accept: "application/json",
     },
     logRequests = false,
+    configureInstance,
   } = options;
 
   // Create axios instance
@@ -146,22 +184,45 @@ export function createApiService(options: ApiServiceOptions) {
   });
 
   if (logRequests) {
+    // Never log the Bearer token (this instance may carry per-request JWT auth
+    // via configureInstance). Mask any Authorization header at any depth —
+    // covers request.headers and response.config.headers.
+    const redactAuth = (key: string, value: unknown) =>
+      /^authorization$/i.test(key) ? "[REDACTED]" : value;
+
     instance.interceptors.request.use((request) => {
-      debug("Starting Request", JSON.stringify(request, null, 2));
+      debug("Starting Request", JSON.stringify(request, redactAuth, 2));
       return request;
     });
 
     instance.interceptors.response.use((response) => {
-      debug("Response:", JSON.stringify(response, null, 2));
+      debug("Response:", JSON.stringify(response, redactAuth, 2));
       return response;
     });
   }
+
+  // Allow the caller to register interceptors on the raw instance BEFORE the
+  // error-normalizing response interceptor below.  Axios runs response
+  // interceptors in registration order, so any response interceptor added by
+  // this hook sees the original AxiosError (with .response / .config intact)
+  // before the normalizer converts it to a plain ApiError and drops those
+  // fields.  This is the correct insertion point for a 401-retry handler.
+  configureInstance?.(instance);
 
   // Add response interceptor for error handling
   instance.interceptors.response.use(
     (response) => response,
     /* eslint-disable @typescript-eslint/no-unsafe-member-access */
     (error) => {
+      // If the error is already a normalized ApiError (e.g. surfaced from a
+      // nested instance.request() inside another interceptor, like the JWT
+      // 401-retry), don't re-normalize — a second pass would clobber the
+      // real status (e.g. 401) to 0 because ApiError has no .response field.
+      if (isApiError(error)) {
+        // eslint-disable-next-line @typescript-eslint/no-throw-literal
+        throw error;
+      }
+
       // When the server didn't respond at all (offline, DNS, TLS failure,
       // captive portal, request aborted before headers), use 0 as the
       // status to match the ApiError contract ("HTTP status code (or 0
@@ -289,7 +350,11 @@ export function createApiService(options: ApiServiceOptions) {
      * Makes a POST request
      *
      * @param url The URL to request (will be appended to baseURL)
-     * @param data The data to send in the request body
+     * @param data The request body, typed `unknown` — pass a plain object.
+     * (The `TWriteBody` generic was removed with the string-only body contract.)
+     * On an auth-wired instance (see `configureInstance`), the request
+     * interceptor JSON-serializes object bodies centrally so the signed JWT
+     * `bodyHash` matches the wire bytes; string bodies pass through untouched.
      * @param config Additional request configuration
      * @returns Promise with the API response
      *
@@ -305,9 +370,9 @@ export function createApiService(options: ApiServiceOptions) {
      *   { headers: { 'X-Custom-Header': 'value' } }
      * );
      */
-    async post<T, D = unknown>(
+    async post<T>(
       url: string,
-      data?: D,
+      data?: unknown,
       config?: RequestConfig,
     ): Promise<ApiResponse<T>> {
       const { retry, ...axiosConfig } = config || {};
@@ -326,7 +391,11 @@ export function createApiService(options: ApiServiceOptions) {
      * Makes a PUT request
      *
      * @param url The URL to request (will be appended to baseURL)
-     * @param data The data to send in the request body
+     * @param data The request body, typed `unknown` — pass a plain object.
+     * (The `TWriteBody` generic was removed with the string-only body contract.)
+     * On an auth-wired instance (see `configureInstance`), the request
+     * interceptor JSON-serializes object bodies centrally so the signed JWT
+     * `bodyHash` matches the wire bytes; string bodies pass through untouched.
      * @param config Additional request configuration
      * @returns Promise with the API response
      *
@@ -334,9 +403,9 @@ export function createApiService(options: ApiServiceOptions) {
      * // Basic PUT request
      * const { data } = await api.put('/users/123', { name: 'Updated Name' });
      */
-    async put<T, D = unknown>(
+    async put<T>(
       url: string,
-      data?: D,
+      data?: unknown,
       config?: RequestConfig,
     ): Promise<ApiResponse<T>> {
       const { retry, ...axiosConfig } = config || {};

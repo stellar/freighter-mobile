@@ -16,6 +16,10 @@ import {
   ActiveAccount,
   appendAccounts,
   clearAccountData,
+  isSessionAuthValid,
+  clearSessionAuthValidMemo,
+  SESSION_AUTH_VALID_TTL_MS,
+  getActiveMnemonicPhrase,
 } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
 import { useCollectiblesStore } from "ducks/collectibles";
@@ -34,6 +38,7 @@ import { createKeyManager } from "helpers/keyManager/keyManager";
 import { clearScreenshotDek } from "helpers/screenshotCrypto";
 import { AppState } from "react-native";
 import { getSupportedBiometryType, BIOMETRY_TYPE } from "react-native-keychain";
+import { clearAuthKeypairCache } from "services/auth/authKeypairCache";
 import {
   clearNonSensitiveData,
   clearTemporaryData,
@@ -145,6 +150,12 @@ jest.mock("config/logger", () => ({
     warn: jest.fn(),
     info: jest.fn(),
   },
+}));
+
+jest.mock("services/auth/authKeypairCache", () => ({
+  clearAuthKeypairCache: jest.fn(),
+  getCachedAuthKeypair: jest.fn(() => null),
+  setCachedAuthKeypair: jest.fn(),
 }));
 
 jest.mock("i18next", () => ({
@@ -1783,10 +1794,16 @@ describe("auth duck", () => {
           expiresAt: Date.now() - ONE_HOUR_MS,
         });
 
+        (clearAuthKeypairCache as jest.Mock).mockClear();
+
         await act(async () => {
           const status = await result.current.getAuthStatus();
           expect(status).toBe(AUTH_STATUS.HASH_KEY_EXPIRED);
         });
+
+        // Hard-expiry must evict the derived auth keypair — retention, not just
+        // use, ends at expiry (the eviction-coverage gap raised in review).
+        expect(clearAuthKeypairCache).toHaveBeenCalled();
 
         (AppState as { currentState: typeof previousAppState }).currentState =
           previousAppState;
@@ -2074,7 +2091,7 @@ describe("auth duck", () => {
         // Verify TTL was refreshed on the existing hash key (no re-encryption)
         expect(secureDataStorage.setItem).toHaveBeenCalledWith(
           SENSITIVE_STORAGE_KEYS.HASH_KEY,
-          expect.stringContaining("\"expiresAt\":"),
+          expect.stringContaining('"expiresAt":'),
         );
         // Verify that re-encryption did NOT occur
         expect(decryptDataWithPassword).not.toHaveBeenCalled();
@@ -2354,6 +2371,200 @@ describe("auth duck", () => {
       });
 
       expect(result.current.network).toBe(NETWORKS.PUBLIC);
+    });
+  });
+
+  describe("isSessionAuthValid", () => {
+    // isSessionAuthValid now delegates to the authoritative getAuthStatus()
+    // funnel, so these drive the real computation via storage mocks (one source
+    // of truth) rather than the in-memory authStatus + hash key alone.
+    const ONE_HOUR = 3_600_000;
+
+    const mockFunnelStorage = ({
+      backgroundedAt = null,
+      autoLockTimer = null,
+      hashKey = {
+        hashKey: "mock-hash-key",
+        salt: "mock-salt",
+        expiresAt: Date.now() + ONE_HOUR,
+      } as unknown,
+      hasTempStore = true,
+      hasAccount = true,
+      persistedLocked = false,
+    }: {
+      backgroundedAt?: number | null;
+      autoLockTimer?: AUTO_LOCK_TIMER | null;
+      hashKey?: unknown;
+      hasTempStore?: boolean;
+      hasAccount?: boolean;
+      persistedLocked?: boolean;
+    } = {}) => {
+      (dataStorage.getItem as jest.Mock).mockImplementation((key) =>
+        Promise.resolve(
+          key === STORAGE_KEYS.ACCOUNT_LIST && hasAccount
+            ? JSON.stringify([mockAccount])
+            : null,
+        ),
+      );
+      (secureDataStorage.getItem as jest.Mock).mockImplementation((key) => {
+        if (key === SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE) {
+          return Promise.resolve(hasTempStore ? "encrypted-temp-store" : null);
+        }
+        if (key === SENSITIVE_STORAGE_KEYS.AUTO_LOCK_BACKGROUNDED_AT) {
+          return Promise.resolve(
+            backgroundedAt !== null ? String(backgroundedAt) : null,
+          );
+        }
+        if (key === SENSITIVE_STORAGE_KEYS.AUTO_LOCK_TIMER_SETTING) {
+          return Promise.resolve(autoLockTimer);
+        }
+        if (key === SENSITIVE_STORAGE_KEYS.AUTH_STATUS) {
+          return Promise.resolve(persistedLocked ? AUTH_STATUS.LOCKED : null);
+        }
+        return Promise.resolve(null);
+      });
+      (getHashKey as jest.Mock).mockResolvedValue(hashKey);
+      (secureDataStorage.remove as jest.Mock).mockResolvedValue(undefined);
+      (secureDataStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+    };
+
+    // The memo is module-scoped state that would otherwise leak across tests.
+    beforeEach(() => {
+      clearSessionAuthValidMemo();
+    });
+
+    it("returns true when the funnel reports AUTHENTICATED (accounts + valid hash + within timer)", async () => {
+      mockFunnelStorage();
+      expect(await isSessionAuthValid()).toBe(true);
+    });
+
+    it("returns false when no accounts exist (NOT_AUTHENTICATED)", async () => {
+      mockFunnelStorage({ hasAccount: false });
+      expect(await isSessionAuthValid()).toBe(false);
+    });
+
+    it("returns false when the hash key is absent and no temp store (HASH_KEY_EXPIRED)", async () => {
+      mockFunnelStorage({ hashKey: null, hasTempStore: false });
+      expect(await isSessionAuthValid()).toBe(false);
+    });
+
+    it("returns false when the hash key is expired", async () => {
+      mockFunnelStorage({
+        hashKey: {
+          hashKey: "mock-hash-key",
+          salt: "mock-salt",
+          expiresAt: Date.now() - 1000,
+        },
+      });
+      expect(await isSessionAuthValid()).toBe(false);
+    });
+
+    it("returns false when the session is persisted LOCKED", async () => {
+      mockFunnelStorage({ persistedLocked: true });
+      expect(await isSessionAuthValid()).toBe(false);
+    });
+
+    it("returns false once the auto-lock timer has elapsed even though the hash key is still within its TTL (foreground-before-funnel window)", async () => {
+      // The Codex regression: a stale in-memory AUTHENTICATED + within-TTL hash
+      // key would report valid, but the funnel soft-locks on the elapsed timer.
+      mockFunnelStorage({
+        backgroundedAt: Date.now() - 2 * ONE_HOUR, // beyond the 1h timer
+        autoLockTimer: AUTO_LOCK_TIMER.ONE_HOUR,
+        // hashKey left at the default (expiresAt = +1h, i.e. still valid)
+      });
+      expect(await isSessionAuthValid()).toBe(false);
+    });
+
+    it("dedupes a concurrent burst into a single funnel run (in-flight promise shared)", async () => {
+      mockFunnelStorage();
+      (getHashKey as jest.Mock).mockClear();
+
+      const results = await Promise.all([
+        isSessionAuthValid(),
+        isSessionAuthValid(),
+        isSessionAuthValid(),
+      ]);
+
+      expect(results).toEqual([true, true, true]);
+      // getAuthStatus (→ getHashKey once per run) ran a single time for all three.
+      expect(getHashKey).toHaveBeenCalledTimes(1);
+    });
+
+    it("memoizes within the TTL and re-runs the funnel once it expires", async () => {
+      const nowSpy = jest.spyOn(Date, "now").mockReturnValue(1_000_000);
+      mockFunnelStorage();
+      (getHashKey as jest.Mock).mockClear();
+
+      await isSessionAuthValid();
+      await isSessionAuthValid();
+      await isSessionAuthValid();
+      // Second and third calls are served from the memo — one funnel run.
+      expect(getHashKey).toHaveBeenCalledTimes(1);
+
+      // Advance past the TTL: the memo expires and the funnel runs again.
+      nowSpy.mockReturnValue(1_000_000 + SESSION_AUTH_VALID_TTL_MS + 1);
+      await isSessionAuthValid();
+      expect(getHashKey).toHaveBeenCalledTimes(2);
+
+      nowSpy.mockRestore();
+    });
+  });
+
+  describe("getActiveMnemonicPhrase lock race (TOCTOU)", () => {
+    beforeEach(() => {
+      // Working temporary-store decrypt (mirrors the "authentication
+      // mechanisms" setup) so the happy path actually yields the mnemonic —
+      // otherwise the race test's null would pass for the wrong reason.
+      (secureDataStorage.getItem as jest.Mock).mockImplementation((key) => {
+        if (key === SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE) {
+          return Promise.resolve(mockEncryptedData);
+        }
+        if (key === SENSITIVE_STORAGE_KEYS.HASH_KEY) {
+          return Promise.resolve(JSON.stringify(mockHashKeyObj));
+        }
+        return Promise.resolve(null);
+      });
+      (decryptDataWithDerivedKey as jest.Mock).mockReturnValue(
+        mockTemporaryStore,
+      );
+    });
+
+    it("returns the mnemonic when AUTHENTICATED throughout the decrypt", async () => {
+      act(() => {
+        useAuthenticationStore.setState({
+          authStatus: AUTH_STATUS.AUTHENTICATED,
+        });
+      });
+      (getHashKey as jest.Mock).mockResolvedValue(mockHashKeyObj);
+
+      const result = await getActiveMnemonicPhrase();
+
+      expect(result).toBe(mockMnemonicPhrase);
+    });
+
+    it("returns null if a lock lands during the temporary-store decrypt", async () => {
+      act(() => {
+        useAuthenticationStore.setState({
+          authStatus: AUTH_STATUS.AUTHENTICATED,
+        });
+      });
+      // Simulate a soft-lock / auto-lock landing while getTemporaryStore is
+      // awaiting SecureStorage: flip the store to LOCKED during the decrypt
+      // path (getHashKey is awaited inside getTemporaryStore). The pre-lock
+      // AUTHENTICATED status was already captured, so the store still decrypts
+      // — but getActiveMnemonicPhrase must re-check afterward and refuse to
+      // return the pre-lock mnemonic (otherwise getAuthKeypair could re-cache a
+      // signing key after softLock cleared it).
+      (getHashKey as jest.Mock).mockImplementation(() => {
+        useAuthenticationStore.setState({
+          authStatus: AUTH_STATUS.LOCKED,
+        });
+        return Promise.resolve(mockHashKeyObj);
+      });
+
+      const result = await getActiveMnemonicPhrase();
+
+      expect(result).toBeNull();
     });
   });
 });
