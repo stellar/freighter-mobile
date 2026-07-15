@@ -240,11 +240,18 @@ export const buildCommonContext = (): Record<string, unknown> => {
     if (idHash) context.account_id_hash = idHash;
 
     // ActiveAccount does not carry importedFromSecretKey; look it up on the
-    // matching Account entry in allAccounts instead.
-    const isImported =
-      allAccounts.find((a) => a.publicKey === activePublicKey)
-        ?.importedFromSecretKey ?? false;
-    context.account_type = isImported ? "imported_secret_key" : "freighter";
+    // matching Account entry in allAccounts. Omit account_type entirely when
+    // the active account isn't (yet) resolvable in allAccounts (auth-store
+    // update race, drift-recovery path) rather than defaulting to "freighter"
+    // and mislabeling a possibly-imported account.
+    const activeEntry = allAccounts.find(
+      (a) => a.publicKey === activePublicKey,
+    );
+    if (activeEntry) {
+      context.account_type = activeEntry.importedFromSecretKey
+        ? "imported_secret_key"
+        : "freighter";
+    }
 
     const { isFunded, fetchedPublicKey } = useBalancesStore.getState();
     if (fetchedPublicKey === activePublicKey) {

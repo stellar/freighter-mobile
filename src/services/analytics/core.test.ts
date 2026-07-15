@@ -168,4 +168,31 @@ describe("buildCommonContext (four-bucket model)", () => {
     });
     expect(buildCommonContext()).not.toHaveProperty("account_funded");
   });
+
+  it("labels account_type freighter when the found entry is not imported", () => {
+    (useAuthenticationStore.getState as jest.Mock).mockReturnValue({
+      network: "testnet",
+      account: { publicKey: PK, importedFromSecretKey: false },
+      allAccounts: [{ publicKey: PK, importedFromSecretKey: false }],
+    });
+    expect(buildCommonContext()).toMatchObject({ account_type: "freighter" });
+  });
+
+  it("omits account_type when the active account is not resolvable in allAccounts", () => {
+    // Active account is set, but allAccounts does not (yet) contain it -
+    // e.g. the auth-store update race or drift-recovery path. We must not
+    // default to "freighter" and mislabel a possibly-imported account.
+    (useAuthenticationStore.getState as jest.Mock).mockReturnValue({
+      network: "testnet",
+      account: { publicKey: PK, importedFromSecretKey: true },
+      allAccounts: [],
+    });
+    const ctx = buildCommonContext();
+    expect(ctx).not.toHaveProperty("account_type");
+    // account_id_hash is still derivable from the active public key alone.
+    expect(ctx).toHaveProperty(
+      "account_id_hash",
+      "f56f6f2c6cf1b9388e3495dfab96f0c55ec5d217f481b2ae45d11b46145c44ef",
+    );
+  });
 });
