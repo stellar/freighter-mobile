@@ -231,10 +231,10 @@ const mapLiquidityPool = (b: V2LiquidityPoolBalance): MappedEntry => ({
 });
 
 export const mapAccountBalancesV2 = (
-  account: V2AccountBalances | undefined,
+  account: V2AccountBalances,
 ): MappedAccountBalances => {
   const balances = {} as BalanceMap;
-  const v2Balances = account?.balances || [];
+  const v2Balances = account.balances || [];
 
   v2Balances.forEach((balance) => {
     let entry: MappedEntry | null = null;
@@ -265,9 +265,11 @@ export const mapAccountBalancesV2 = (
 
   return {
     balances,
-    // Envelope fields come straight from the v2 response; an account missing
-    // from the fan-out result reads as unfunded.
-    isFunded: account?.is_funded ?? false,
-    subentryCount: account?.subentry_count ?? 0,
+    // Envelope fields come straight from the v2 response. The backend
+    // guarantees an entry per requested address (unfunded accounts arrive as
+    // is_funded: false), and the caller rejects responses missing the
+    // requested account before mapping.
+    isFunded: account.is_funded,
+    subentryCount: account.subentry_count,
   };
 };

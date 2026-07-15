@@ -1016,18 +1016,21 @@ describe("Backend Service - fetchBalances v2 routing", () => {
     });
   });
 
-  it("maps a missing account in the fan-out result as unfunded", async () => {
+  it("rejects a response missing the requested account (contract violation)", async () => {
+    // The backend returns one entry per requested address — unfunded accounts
+    // arrive as is_funded: false, never as an omission — so an absent entry
+    // is a malformed/partial response, not an unfunded account.
     mockV2Post.mockResolvedValueOnce({ data: { data: [] } });
 
-    const result = await fetchBalances({
-      publicKey,
-      network: NETWORKS.PUBLIC,
-      useV2: true,
-    });
-
-    expect(result.isFunded).toBe(false);
-    expect(result.subentryCount).toBe(0);
-    expect(result.balances).toEqual({});
+    await expect(
+      fetchBalances({
+        publicKey,
+        network: NETWORKS.PUBLIC,
+        useV2: true,
+      }),
+    ).rejects.toThrow(
+      `v2 balances response is missing the requested account ${publicKey}`,
+    );
   });
 
   it("routes to v1 when the flag is off", async () => {

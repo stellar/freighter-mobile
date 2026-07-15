@@ -256,6 +256,13 @@ type FetchBalancesParams = {
  * contract balances, and pool shares — so unlike v1 there is no `contract_ids`
  * param: custom tokens the wallet-backend has indexed come back automatically.
  *
+ * The backend contract guarantees one result per requested address — an
+ * unfunded account comes back as a matching entry with `is_funded: false`,
+ * never as an omission. A 200 missing the requested account is therefore a
+ * malformed/partial response and is rejected rather than rendered as
+ * unfunded, which would wrongly replace a funded user's balances with the
+ * unfunded UI.
+ *
  * The v2 response has no Blockaid data yet — `addBlockaidScanResults`
  * replicates the v1 backend's scan-and-merge client-side so both paths return
  * the same payload.
@@ -274,6 +281,12 @@ export const fetchBalancesV2 = async ({
   const account = (data?.data || []).find(
     (accountBalances) => accountBalances.address === publicKey,
   );
+
+  if (!account) {
+    throw new Error(
+      `v2 balances response is missing the requested account ${publicKey}`,
+    );
+  }
 
   return addBlockaidScanResults(mapAccountBalancesV2(account), network);
 };
