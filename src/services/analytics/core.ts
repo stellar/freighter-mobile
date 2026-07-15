@@ -5,16 +5,11 @@ import { AnalyticsEvent } from "config/analyticsConfig";
 import { logger } from "config/logger";
 import { useAnalyticsStore } from "ducks/analytics";
 import { useAuthenticationStore } from "ducks/auth";
-import { useNetworkStore } from "ducks/networkInfo";
+import { useBalancesStore } from "ducks/balances";
 import { isE2ETest } from "helpers/isEnv";
-import { truncateAddress } from "helpers/stellar";
 import { throttle, memoize } from "lodash";
 import { Platform } from "react-native";
-import {
-  getVersion,
-  getBuildNumber,
-  getBundleId,
-} from "react-native-device-info";
+import { getBundleId } from "react-native-device-info";
 import {
   AMPLITUDE_API_KEY,
   AMPLITUDE_EXPERIMENT_DEPLOYMENT_KEY,
@@ -224,33 +219,37 @@ export const getAccountIdHash = (publicKey: string): string => {
   }
 };
 
+export const SCHEMA_VERSION = "2";
+
 /**
- * Builds common context data for all events.
- *
- * Context includes both static app data and dynamic mobile connectivity information:
- * - network: Stellar network (TESTNET, PUBLIC, FUTURENET, etc.)
- * - connectionType: Internet connectivity (wifi, cellular, bluetooth, none, etc.)
- * - effectiveType: Cellular quality (slow-2g, 2g, 3g, 4g) when on cellular
+ * Event-level volatile bucket + schema_version. Durable traits live in Identify;
+ * device/app metadata comes from the RN SDK; connectivity is on app.opened.
  */
-const buildCommonContext = (): Record<string, unknown> => {
-  const { connectionType, effectiveType } = useNetworkStore.getState();
-  const { network, account } = useAuthenticationStore.getState();
+export const buildCommonContext = (): Record<string, unknown> => {
+  const { network, account, allAccounts } = useAuthenticationStore.getState();
+  const activePublicKey = account?.publicKey;
 
   const context: Record<string, unknown> = {
-    publicKey: truncateAddress(account?.publicKey ?? "N/A"),
-    platform: Platform.OS,
-    platformVersion: Platform.Version,
+    schema_version: SCHEMA_VERSION,
+    surface: getSurface(),
     network: network.toUpperCase(), // Stellar network (TESTNET, PUBLIC, FUTURENET)
-    connectionType, // Internet connectivity (wifi, cellular, etc.)
-    appVersion: getVersion(),
-    buildVersion: getBuildNumber(),
-    bundleId: getBundleId(),
   };
 
-  // Add effectiveType only when available (mainly for cellular connections)
-  // Values: slow-2g, 2g, 3g, 4g
-  if (effectiveType) {
-    context.effectiveType = effectiveType;
+  if (activePublicKey) {
+    const idHash = getAccountIdHash(activePublicKey);
+    if (idHash) context.account_id_hash = idHash;
+
+    // ActiveAccount does not carry importedFromSecretKey; look it up on the
+    // matching Account entry in allAccounts instead.
+    const isImported =
+      allAccounts.find((a) => a.publicKey === activePublicKey)
+        ?.importedFromSecretKey ?? false;
+    context.account_type = isImported ? "imported_secret_key" : "freighter";
+
+    const { isFunded, fetchedPublicKey } = useBalancesStore.getState();
+    if (fetchedPublicKey === activePublicKey) {
+      context.account_funded = isFunded;
+    }
   }
 
   return context;

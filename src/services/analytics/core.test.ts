@@ -18,6 +18,9 @@
 //     (`PlatformLocalStorage`). The factory stubs only what core.ts touches.
 //   • `helpers/stellar` is mocked because core.ts imports `truncateAddress`
 //     from it and there is no `__mocks__/helpers/stellar` stub.
+import { useAuthenticationStore } from "ducks/auth";
+import { useBalancesStore } from "ducks/balances";
+
 jest.mock("@amplitude/analytics-react-native", () => ({
   Identify: jest.fn().mockImplementation(() => ({ set: jest.fn() })),
   identify: jest.fn(),
@@ -78,7 +81,7 @@ jest.mock("ducks/balances", () => ({
 }));
 
 // Load the REAL core module (see header for why requireActual + "./core").
-const { getAccountIdHash, getSurface } =
+const { getAccountIdHash, getSurface, buildCommonContext } =
   jest.requireActual<typeof import("services/analytics/core")>("./core");
 
 describe("getAccountIdHash", () => {
@@ -100,5 +103,69 @@ describe("getSurface", () => {
   it("maps Platform.OS to the RFC surface value", () => {
     // react-native mock has Platform.OS = "ios"
     expect(getSurface()).toBe("mobile_ios");
+  });
+});
+
+describe("buildCommonContext (four-bucket model)", () => {
+  const PK = "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF";
+  beforeEach(() => {
+    (useAuthenticationStore.getState as jest.Mock).mockReturnValue({
+      network: "testnet",
+      account: { publicKey: PK, importedFromSecretKey: true },
+      allAccounts: [{ publicKey: PK, importedFromSecretKey: true }],
+    });
+    (useBalancesStore.getState as jest.Mock).mockReturnValue({
+      isFunded: true,
+      fetchedPublicKey: PK,
+    });
+  });
+
+  it("emits the reshaped bucket", () => {
+    expect(buildCommonContext()).toMatchObject({
+      schema_version: "2",
+      surface: "mobile_ios",
+      network: "TESTNET",
+      account_type: "imported_secret_key",
+      account_funded: true,
+      account_id_hash:
+        "f56f6f2c6cf1b9388e3495dfab96f0c55ec5d217f481b2ae45d11b46145c44ef",
+    });
+  });
+
+  it("drops SDK/legacy fields and never emits is_hardware_account or a public key", () => {
+    const ctx = buildCommonContext();
+    [
+      "publicKey",
+      "platform",
+      "platformVersion",
+      "appVersion",
+      "buildVersion",
+      "bundleId",
+      "connectionType",
+      "effectiveType",
+      "is_hardware_account",
+    ].forEach((k) => expect(ctx).not.toHaveProperty(k));
+    expect(JSON.stringify(ctx)).not.toContain(PK);
+  });
+
+  it("omits account fields pre-unlock (no active account)", () => {
+    (useAuthenticationStore.getState as jest.Mock).mockReturnValue({
+      network: "testnet",
+      account: null,
+      allAccounts: [],
+    });
+    const ctx = buildCommonContext();
+    ["account_id_hash", "account_type", "account_funded"].forEach((k) =>
+      expect(ctx).not.toHaveProperty(k),
+    );
+    expect(ctx).toMatchObject({ schema_version: "2", network: "TESTNET" });
+  });
+
+  it("omits account_funded when balances are for a different/unfetched account", () => {
+    (useBalancesStore.getState as jest.Mock).mockReturnValue({
+      isFunded: true,
+      fetchedPublicKey: "G_OTHER",
+    });
+    expect(buildCommonContext()).not.toHaveProperty("account_funded");
   });
 });
