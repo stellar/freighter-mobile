@@ -7,6 +7,7 @@ import {
   WALLET_KIT_MT_REDIRECT_NATIVE,
   WalletKitEventTypes,
 } from "ducks/walletKit";
+import { parseWalletConnectDeepLink } from "helpers/walletConnectDeepLink";
 import { walletKit } from "helpers/walletKitUtil";
 import useAppTranslation from "hooks/useAppTranslation";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
@@ -82,21 +83,14 @@ export const useWalletKitEventsManager = (initialized: boolean) => {
 
   const onDeepLink = useCallback(
     (event: { url: string | null }): void => {
-      // Early return if the deep link is not compliant with the expected format
-      if (!event.url?.includes(WALLET_KIT_MT_REDIRECT_NATIVE)) {
-        return;
-      }
+      const { pairingUri } = parseWalletConnectDeepLink(
+        event.url ?? "",
+        WALLET_KIT_MT_REDIRECT_NATIVE,
+      );
+      if (!pairingUri) return;
 
-      const urlWithParams = new URL(event.url);
-      const uriParam = urlWithParams.search.split("uri=")[1];
-
-      // Early return if the URI param is not found
-      if (!uriParam) {
-        return;
-      }
-
-      // Try pairing with the dApp using the provided URI param
-      walletKit.pair({ uri: decodeURIComponent(uriParam) }).catch((error) => {
+      // Try pairing with the validated dApp URI.
+      walletKit.pair({ uri: pairingUri }).catch((error) => {
         showToast({
           title: t("walletKit.errorPairing"),
           message: t("common.error", {

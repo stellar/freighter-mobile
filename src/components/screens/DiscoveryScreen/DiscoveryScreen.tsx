@@ -7,7 +7,6 @@ import {
   WebViewContainer,
 } from "components/screens/DiscoveryScreen/components";
 import DiscoverWelcomeModal from "components/screens/DiscoveryScreen/components/DiscoverWelcomeModal";
-import { forwardWalletConnectDeepLink } from "components/screens/DiscoveryScreen/walletConnectDeepLink";
 import ManageAccounts from "components/screens/HomeScreen/ManageAccounts";
 import { Text } from "components/sds/Typography";
 import {
@@ -27,6 +26,7 @@ import {
   isHomepageUrl,
 } from "helpers/browser";
 import { pxValue } from "helpers/dimensions";
+import { forwardWalletConnectDeepLink } from "helpers/walletConnectDeepLink";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBrowserActions } from "hooks/useBrowserActions";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
