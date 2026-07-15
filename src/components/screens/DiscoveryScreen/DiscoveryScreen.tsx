@@ -7,6 +7,7 @@ import {
   WebViewContainer,
 } from "components/screens/DiscoveryScreen/components";
 import DiscoverWelcomeModal from "components/screens/DiscoveryScreen/components/DiscoverWelcomeModal";
+import { forwardWalletConnectDeepLink } from "components/screens/DiscoveryScreen/walletConnectDeepLink";
 import ManageAccounts from "components/screens/HomeScreen/ManageAccounts";
 import { Text } from "components/sds/Typography";
 import {
@@ -30,7 +31,7 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useBrowserActions } from "hooks/useBrowserActions";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React, { useRef, useState, useCallback, useEffect } from "react";
-import { Animated, Keyboard, Pressable, View } from "react-native";
+import { Animated, Keyboard, Linking, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView, WebViewNavigation } from "react-native-webview";
 import { analytics } from "services/analytics";
@@ -244,12 +245,23 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
         return false;
       }
 
-      // We should not handle WalletConnect URIs here
-      // let's handle them in the useWalletKitEventsManager hook instead
-      if (request.url.includes(WALLET_KIT_MT_REDIRECT_NATIVE)) {
+      if (
+        forwardWalletConnectDeepLink({
+          url: request.url,
+          nativeRedirect: WALLET_KIT_MT_REDIRECT_NATIVE,
+          openUrl: (url) => Linking.openURL(url),
+          onError: (error) => {
+            logger.error(
+              "DiscoveryScreen",
+              "Failed to forward WalletConnect deep link",
+              error,
+            );
+          },
+        })
+      ) {
         logger.debug(
           "WebViewContainer",
-          "onShouldStartLoadWithRequest, WalletConnect URI detected:",
+          "onShouldStartLoadWithRequest, WalletConnect URI forwarded:",
           request.url,
         );
         return false;
