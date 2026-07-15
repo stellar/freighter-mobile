@@ -81,8 +81,12 @@ jest.mock("ducks/balances", () => ({
 }));
 
 // Load the REAL core module (see header for why requireActual + "./core").
-const { getAccountIdHash, getSurface, buildCommonContext } =
-  jest.requireActual<typeof import("services/analytics/core")>("./core");
+const {
+  getAccountIdHash,
+  getSurface,
+  buildCommonContext,
+  deriveIdentifyTraits,
+} = jest.requireActual<typeof import("services/analytics/core")>("./core");
 
 describe("getAccountIdHash", () => {
   const PK = "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF";
@@ -194,5 +198,68 @@ describe("buildCommonContext (four-bucket model)", () => {
       "account_id_hash",
       "f56f6f2c6cf1b9388e3495dfab96f0c55ec5d217f481b2ae45d11b46145c44ef",
     );
+  });
+});
+
+describe("deriveIdentifyTraits", () => {
+  it("counts accounts and detects imported presence; no hardware trait", () => {
+    const accounts = [
+      { publicKey: "G1", importedFromSecretKey: false },
+      { publicKey: "G2", importedFromSecretKey: true },
+    ] as never;
+    const t = deriveIdentifyTraits(accounts);
+    expect(t).toEqual({ wallet_count: 2, has_imported_account: true });
+    expect(t).not.toHaveProperty("has_hardware_wallet");
+  });
+
+  it("reports zero/false for an empty account list", () => {
+    expect(deriveIdentifyTraits([])).toEqual({
+      wallet_count: 0,
+      has_imported_account: false,
+    });
+  });
+});
+
+describe("syncIdentifyTraits (consent gating)", () => {
+  it("does not cache or send Identify while opted out; sends once opted in with the same traits", () => {
+    // syncIdentifyTraits guards on module-level `hasInitialised`/fingerprint
+    // state that would otherwise be shared with the other describe blocks in
+    // this file (which never call initAnalytics), so isolate the module here
+    // to get a fresh, independently-initializable instance. Mirrors the
+    // extension's helpers/metrics.test.ts pattern for the same fix.
+    const accounts = [
+      { publicKey: "G1", importedFromSecretKey: true },
+    ] as never;
+
+    let mod: typeof import("services/analytics/core");
+    let isolatedAnalyticsStore: { getState: jest.Mock };
+    let isolatedIdentify: jest.Mock;
+
+    jest.isolateModules(() => {
+      mod =
+        jest.requireActual<typeof import("services/analytics/core")>("./core");
+      // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
+      isolatedAnalyticsStore = require("ducks/analytics").useAnalyticsStore;
+      isolatedIdentify =
+        // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
+        (
+          require("@amplitude/analytics-react-native") as typeof import("@amplitude/analytics-react-native")
+        ).identify as jest.Mock;
+    });
+
+    isolatedAnalyticsStore!.getState.mockReturnValue({ isEnabled: false });
+    mod!.initAnalytics();
+    isolatedIdentify!.mockClear();
+
+    // Opted out: no Identify sent, and (critically) the fingerprint must NOT
+    // be cached, so the same call after opt-in below still sends.
+    mod!.syncIdentifyTraits(accounts);
+    expect(isolatedIdentify!).not.toHaveBeenCalled();
+
+    // Opt in with the same traits: must send now, proving nothing was
+    // cached while opted out (otherwise the dirty-check would suppress it).
+    isolatedAnalyticsStore!.getState.mockReturnValue({ isEnabled: true });
+    mod!.syncIdentifyTraits(accounts);
+    expect(isolatedIdentify!).toHaveBeenCalled();
   });
 });

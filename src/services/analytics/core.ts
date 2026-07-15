@@ -32,26 +32,62 @@ let experimentClient: ReturnType<
 > | null = null;
 
 /**
- * Sets persistent user properties in Amplitude.
- * These are attributes that don't change frequently (e.g. "Bundle Id")
- * Other attributes like "Platform", "OS" and "Version" appear to be
- * automatically assigned by Amplitude.
+ * Durable, low-cardinality wallet traits derived from the auth store's
+ * account list. Sent via Amplitude's Identify API (not per-event context) so
+ * they persist on the user profile. Mobile has no hardware wallets, so
+ * (unlike the extension) there is no `has_hardware_wallet` trait here.
  */
-const setAmplitudeUserProperties = (): void => {
+export const deriveIdentifyTraits = (
+  allAccounts: { importedFromSecretKey?: boolean }[],
+): { wallet_count: number; has_imported_account: boolean } => ({
+  wallet_count: allAccounts.length,
+  has_imported_account: allAccounts.some((a) => a.importedFromSecretKey),
+});
+
+// Fingerprint of the last traits successfully sent via Identify, used to
+// dirty-check syncIdentifyTraits so unchanged traits don't re-send on every
+// auth-store update.
+let lastIdentifiedTraits: string | null = null;
+
+/**
+ * Syncs durable wallet traits to Amplitude via Identify, gated on both
+ * initialization and user consent. The fingerprint is only cached once the
+ * Identify call can actually be sent - if we cached it while opted out (or
+ * pre-init), traits would never re-sync once consent/init become available,
+ * since the dirty-check would short-circuit on the next identical call.
+ * Mirrors the extension's consent-gating fix.
+ */
+export const syncIdentifyTraits = (
+  allAccounts: { importedFromSecretKey?: boolean }[],
+): void => {
+  const traits = deriveIdentifyTraits(allAccounts);
+  const fingerprint = JSON.stringify(traits);
+
+  if (fingerprint === lastIdentifiedTraits) return;
+  if (!AMPLITUDE_API_KEY || !hasInitialised) return;
+  if (!useAnalyticsStore.getState().isEnabled) return;
+
+  lastIdentifiedTraits = fingerprint;
+
   try {
     const identify = new amplitude.Identify();
 
     // Let's set bundle id as a user property so we could easily
     // filter mobile Prod and Dev users in Amplitude.
     identify.set(ANALYTICS_CONFIG.BUNDLE_ID_KEY, getBundleId());
+    identify.set("wallet_count", traits.wallet_count);
+    identify.set("has_imported_account", traits.has_imported_account);
 
     amplitude.identify(identify);
 
-    logger.debug(DEBUG_CONFIG.LOG_PREFIX, "User properties set in Amplitude");
+    logger.debug(
+      DEBUG_CONFIG.LOG_PREFIX,
+      "Identify traits synced to Amplitude",
+    );
   } catch (error) {
     logger.error(
       DEBUG_CONFIG.LOG_PREFIX,
-      "Failed to set Amplitude user properties",
+      "Failed to sync Amplitude identify traits",
       error,
     );
   }
@@ -106,8 +142,8 @@ export const initAnalytics = (): void => {
       );
     }
 
-    // Set user properties that don't change
-    setAmplitudeUserProperties();
+    // Sync durable wallet traits (consent-gated) now that init has completed.
+    syncIdentifyTraits(useAuthenticationStore.getState().allAccounts);
 
     // Get initial state
     const { isEnabled } = useAnalyticsStore.getState();
@@ -382,4 +418,10 @@ useAnalyticsStore.subscribe((state) => {
       error,
     );
   }
+});
+
+// Set up auth store subscription so wallet traits stay in sync as accounts
+// are added/imported/removed (consent-gated inside syncIdentifyTraits).
+useAuthenticationStore.subscribe((state) => {
+  syncIdentifyTraits(state.allAccounts);
 });
