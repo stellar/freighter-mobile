@@ -132,6 +132,15 @@ export const initAnalytics = (): void => {
 
 export const isInitialized = (): boolean => hasInitialised;
 
+/**
+ * RFC surface value for this client, used to distinguish mobile from
+ * extension events in shared analytics dashboards.
+ */
+export type Surface = "mobile_ios" | "mobile_android";
+
+export const getSurface = (): Surface =>
+  Platform.OS === "ios" ? "mobile_ios" : "mobile_android";
+
 export const getExperimentClient = (): ReturnType<
   typeof Experiment.initializeWithAmplitudeAnalytics
 > | null => experimentClient;

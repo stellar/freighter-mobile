@@ -78,7 +78,7 @@ jest.mock("ducks/balances", () => ({
 }));
 
 // Load the REAL core module (see header for why requireActual + "./core").
-const { getAccountIdHash } =
+const { getAccountIdHash, getSurface } =
   jest.requireActual<typeof import("services/analytics/core")>("./core");
 
 describe("getAccountIdHash", () => {
@@ -93,5 +93,12 @@ describe("getAccountIdHash", () => {
     expect(getAccountIdHash(PK)).toBe(getAccountIdHash(PK));
     expect(getAccountIdHash(PK)).toMatch(/^[0-9a-f]{64}$/);
     expect(getAccountIdHash("GABC")).not.toBe(getAccountIdHash("GXYZ"));
+  });
+});
+
+describe("getSurface", () => {
+  it("maps Platform.OS to the RFC surface value", () => {
+    // react-native mock has Platform.OS = "ios"
+    expect(getSurface()).toBe("mobile_ios");
   });
 });
