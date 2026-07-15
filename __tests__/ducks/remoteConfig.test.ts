@@ -82,10 +82,10 @@ describe("remoteConfig duck", () => {
       expect(typeof result.current.initFetchFeatureFlagsPoll).toBe("function");
     });
 
-    it("defaults use_balances_v2 to true", () => {
+    it("defaults use_balances_v2 to false", () => {
       const { result } = renderHook(() => useRemoteConfigStore());
 
-      expect(result.current.use_balances_v2).toBe(true);
+      expect(result.current.use_balances_v2).toBe(false);
     });
   });
 
@@ -172,7 +172,7 @@ describe("remoteConfig duck", () => {
       expect(result.current.onramp_enabled).toBe(false);
     });
 
-    it("keeps use_balances_v2 true when the variant is on", async () => {
+    it("turns use_balances_v2 on when the variant is on", async () => {
       const mockClient = createMockExperimentClient();
       mockClient.all.mockReturnValue({
         use_balances_v2: { value: "on" },
@@ -188,7 +188,7 @@ describe("remoteConfig duck", () => {
       expect(result.current.use_balances_v2).toBe(true);
     });
 
-    it("rolls use_balances_v2 back to false when the variant is off", async () => {
+    it("keeps use_balances_v2 off when the variant is off", async () => {
       const mockClient = createMockExperimentClient();
       mockClient.all.mockReturnValue({
         use_balances_v2: { value: "off" },

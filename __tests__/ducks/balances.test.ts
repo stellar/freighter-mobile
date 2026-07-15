@@ -187,7 +187,7 @@ describe("balances duck", () => {
 
       expect(mockFetchBalances).toHaveBeenCalledWith({
         ...mockParams,
-        useV2: true,
+        useV2: false,
       });
     });
   });
@@ -207,7 +207,7 @@ describe("balances duck", () => {
 
       expect(mockFetchBalances).toHaveBeenCalledWith({
         ...mockParams,
-        useV2: true,
+        useV2: false,
       });
     });
 
