@@ -142,9 +142,6 @@ export const initAnalytics = (): void => {
       );
     }
 
-    // Sync durable wallet traits (consent-gated) now that init has completed.
-    syncIdentifyTraits(useAuthenticationStore.getState().allAccounts);
-
     // Get initial state
     const { isEnabled } = useAnalyticsStore.getState();
     amplitude.setOptOut(!isEnabled);
@@ -152,6 +149,11 @@ export const initAnalytics = (): void => {
     logger.debug(DEBUG_CONFIG.LOG_PREFIX, `Analytics enabled: ${isEnabled}`);
 
     hasInitialised = true;
+
+    // Sync durable wallet traits (consent-gated) now that init has completed.
+    // Must run AFTER hasInitialised is set - syncIdentifyTraits guards on
+    // that flag, so calling it earlier would always short-circuit.
+    syncIdentifyTraits(useAuthenticationStore.getState().allAccounts);
   } catch (error) {
     logger.error(
       DEBUG_CONFIG.LOG_PREFIX,
@@ -418,6 +420,12 @@ useAnalyticsStore.subscribe((state) => {
       error,
     );
   }
+
+  // Consent may hydrate/enable AFTER init runs, so the in-init sync can
+  // correctly skip (opted-out, nothing cached). Re-sync here so traits reach
+  // Amplitude once consent becomes allowed. The dirty-check + consent-gate in
+  // syncIdentifyTraits make this a safe no-op when unchanged or still opted-out.
+  syncIdentifyTraits(useAuthenticationStore.getState().allAccounts);
 });
 
 // Set up auth store subscription so wallet traits stay in sync as accounts

@@ -240,11 +240,9 @@ describe("syncIdentifyTraits (consent gating)", () => {
         jest.requireActual<typeof import("services/analytics/core")>("./core");
       // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
       isolatedAnalyticsStore = require("ducks/analytics").useAnalyticsStore;
-      isolatedIdentify =
-        // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
-        (
-          require("@amplitude/analytics-react-native") as typeof import("@amplitude/analytics-react-native")
-        ).identify as jest.Mock;
+      // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
+      const amplitudeMock = require("@amplitude/analytics-react-native");
+      isolatedIdentify = amplitudeMock.identify as jest.Mock;
     });
 
     isolatedAnalyticsStore!.getState.mockReturnValue({ isEnabled: false });
@@ -260,6 +258,88 @@ describe("syncIdentifyTraits (consent gating)", () => {
     // cached while opted out (otherwise the dirty-check would suppress it).
     isolatedAnalyticsStore!.getState.mockReturnValue({ isEnabled: true });
     mod!.syncIdentifyTraits(accounts);
+    expect(isolatedIdentify!).toHaveBeenCalled();
+  });
+
+  it("sends the initial Identify during initAnalytics when enabled (proves the in-init sync runs after hasInitialised is set)", () => {
+    // Regression guard for the ordering bug: the in-init syncIdentifyTraits
+    // call must run AFTER `hasInitialised = true`, otherwise its own
+    // !hasInitialised gate short-circuits and an already-logged-in user
+    // (whose allAccounts never changes again) gets no Identify all session.
+    let mod: typeof import("services/analytics/core");
+    let isolatedAnalyticsStore: { getState: jest.Mock };
+    let isolatedAuthStore: { getState: jest.Mock; subscribe: jest.Mock };
+    let isolatedIdentify: jest.Mock;
+
+    jest.isolateModules(() => {
+      mod =
+        jest.requireActual<typeof import("services/analytics/core")>("./core");
+      // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
+      isolatedAnalyticsStore = require("ducks/analytics").useAnalyticsStore;
+      // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
+      isolatedAuthStore = require("ducks/auth").useAuthenticationStore;
+      // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
+      const amplitudeMock = require("@amplitude/analytics-react-native");
+      isolatedIdentify = amplitudeMock.identify as jest.Mock;
+    });
+
+    isolatedAnalyticsStore!.getState.mockReturnValue({ isEnabled: true });
+    isolatedAuthStore!.getState.mockReturnValue({
+      network: "testnet",
+      account: null,
+      allAccounts: [{ publicKey: "G1", importedFromSecretKey: true }],
+    });
+    isolatedIdentify!.mockClear();
+
+    mod!.initAnalytics();
+
+    expect(isolatedIdentify!).toHaveBeenCalled();
+  });
+
+  it("sends Identify when consent is enabled after init (via the analytics-store subscription)", () => {
+    // Consent (isEnabled, persisted to AsyncStorage) may hydrate/enable AFTER
+    // init, so the in-init sync correctly skips (opted-out, nothing cached).
+    // The analytics-store subscription must then re-sync so traits still land.
+    let mod: typeof import("services/analytics/core");
+    let isolatedAnalyticsStore: { getState: jest.Mock; subscribe: jest.Mock };
+    let isolatedAuthStore: { getState: jest.Mock };
+    let isolatedIdentify: jest.Mock;
+
+    jest.isolateModules(() => {
+      mod =
+        jest.requireActual<typeof import("services/analytics/core")>("./core");
+      // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
+      isolatedAnalyticsStore = require("ducks/analytics").useAnalyticsStore;
+      // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
+      isolatedAuthStore = require("ducks/auth").useAuthenticationStore;
+      // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
+      const amplitudeMock = require("@amplitude/analytics-react-native");
+      isolatedIdentify = amplitudeMock.identify as jest.Mock;
+    });
+
+    isolatedAuthStore!.getState.mockReturnValue({
+      network: "testnet",
+      account: null,
+      allAccounts: [{ publicKey: "G1", importedFromSecretKey: true }],
+    });
+
+    // Init while opted out: no Identify, nothing cached.
+    isolatedAnalyticsStore!.getState.mockReturnValue({ isEnabled: false });
+    mod!.initAnalytics();
+    isolatedIdentify!.mockClear();
+
+    // Consent enables: flip the store, then invoke the subscription callback
+    // core.ts registered at module load (the analytics-store subscriber). The
+    // subscribe mock is a shared jest.fn that accumulates a registration from
+    // every core module load in this suite, so take the LAST one - the
+    // subscriber bound to THIS isolated module (whose hasInitialised is true).
+    isolatedAnalyticsStore!.getState.mockReturnValue({ isEnabled: true });
+    const { calls } = isolatedAnalyticsStore!.subscribe.mock;
+    const subscriber = calls[calls.length - 1][0] as (state: {
+      isEnabled: boolean;
+    }) => void;
+    subscriber({ isEnabled: true });
+
     expect(isolatedIdentify!).toHaveBeenCalled();
   });
 });
