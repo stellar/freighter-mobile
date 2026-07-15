@@ -1,5 +1,6 @@
 import * as amplitude from "@amplitude/analytics-react-native";
 import { Experiment } from "@amplitude/experiment-react-native-client";
+import { hash } from "@stellar/stellar-sdk";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { logger } from "config/logger";
 import { useAnalyticsStore } from "ducks/analytics";
@@ -195,6 +196,24 @@ export const setAnalyticsUserId = (userId: string | null): void => {
 // -----------------------------------------------------------------------------
 // CORE TRACKING
 // -----------------------------------------------------------------------------
+
+/**
+ * Cross-platform account identifier: lowercase-hex SHA-256 of the full
+ * G-address string. Memoized; never emits a raw/truncated key. Must match the
+ * extension's value for the same address.
+ */
+const accountIdHashCache = new Map<string, string>();
+export const getAccountIdHash = (publicKey: string): string => {
+  const cached = accountIdHashCache.get(publicKey);
+  if (cached) return cached;
+  try {
+    const digest = hash(Buffer.from(publicKey, "utf8")).toString("hex");
+    accountIdHashCache.set(publicKey, digest);
+    return digest;
+  } catch {
+    return "";
+  }
+};
 
 /**
  * Builds common context data for all events.
