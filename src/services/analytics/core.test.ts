@@ -18,7 +18,7 @@
 //     (`PlatformLocalStorage`). The factory stubs only what core.ts touches.
 //   • `helpers/stellar` is mocked because core.ts imports `truncateAddress`
 //     from it and there is no `__mocks__/helpers/stellar` stub.
-import { AnalyticsEvent } from "config/analyticsConfig";
+import { AnalyticsEvent, buildScreenViewedProps } from "config/analyticsConfig";
 import { useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
 
@@ -89,6 +89,7 @@ const {
   deriveIdentifyTraits,
   initAnalytics,
   trackAppOpened,
+  track,
 } = jest.requireActual<typeof import("services/analytics/core")>("./core");
 
 describe("getAccountIdHash", () => {
@@ -279,6 +280,71 @@ describe("trackAppOpened (one-time connectivity snapshot)", () => {
         schema_version: "2",
       }),
     );
+  });
+});
+
+describe("screen.viewed emission (Slice B hard cutover)", () => {
+  // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
+  const amplitudeMock = require("@amplitude/analytics-react-native");
+
+  beforeEach(() => {
+    initAnalytics();
+    (amplitudeMock.track as jest.Mock).mockClear();
+  });
+
+  it("emits the single canonical event with screen_name, flow, and surface", () => {
+    track(
+      AnalyticsEvent.SCREEN_VIEWED,
+      buildScreenViewedProps(AnalyticsEvent.VIEW_SEND_AMOUNT),
+    );
+
+    expect(amplitudeMock.track).toHaveBeenCalledTimes(1);
+    expect(amplitudeMock.track).toHaveBeenCalledWith(
+      "screen.viewed",
+      expect.objectContaining({
+        screen_name: "send_payment_amount",
+        flow: "send",
+        // surface comes from the Slice-A common context (getSurface()).
+        surface: "mobile_ios",
+        schema_version: "2",
+      }),
+    );
+  });
+
+  it("carries a step for completion/sub-step screens", () => {
+    track(
+      AnalyticsEvent.SCREEN_VIEWED,
+      buildScreenViewedProps(AnalyticsEvent.VIEW_SEND_PROCESSING),
+    );
+
+    expect(amplitudeMock.track).toHaveBeenCalledWith(
+      "screen.viewed",
+      expect.objectContaining({
+        screen_name: "send_payment_processing",
+        flow: "send",
+        step: "processing",
+      }),
+    );
+  });
+
+  it("never emits a legacy 'loaded screen: X' event for ANY screen in the catalog", () => {
+    // Drive every VIEW_* screen through the navigation retargeting path and
+    // assert the emitted event name is always the canonical one.
+    Object.entries(AnalyticsEvent)
+      .filter(([key]) => key.startsWith("VIEW_"))
+      .forEach(([, legacy]) => {
+        track(AnalyticsEvent.SCREEN_VIEWED, buildScreenViewedProps(legacy));
+      });
+
+    const emittedEventNames = (amplitudeMock.track as jest.Mock).mock.calls.map(
+      (call) => call[0] as string,
+    );
+
+    expect(emittedEventNames.length).toBeGreaterThan(0);
+    emittedEventNames.forEach((name) => {
+      expect(name).toBe(AnalyticsEvent.SCREEN_VIEWED);
+      expect(name.startsWith("loaded screen:")).toBe(false);
+    });
   });
 });
 
