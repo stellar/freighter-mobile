@@ -107,9 +107,24 @@ describe("getAccountIdHash", () => {
 });
 
 describe("getSurface", () => {
+  // getSurface reads Platform.OS at call time, so we mutate the shared
+  // react-native mock's OS per-test and restore it afterwards.
+  const { Platform } = jest.requireMock<{ Platform: { OS: string } }>(
+    "react-native",
+  );
+  const originalOS = Platform.OS;
+  afterEach(() => {
+    Platform.OS = originalOS;
+  });
+
   it("maps Platform.OS to the RFC surface value", () => {
     // react-native mock has Platform.OS = "ios"
     expect(getSurface()).toBe("mobile_ios");
+  });
+
+  it("maps a non-ios platform to mobile_android", () => {
+    Platform.OS = "android";
+    expect(getSurface()).toBe("mobile_android");
   });
 });
 
