@@ -204,6 +204,27 @@ describe("buildCommonContext (four-bucket model)", () => {
   });
 });
 
+describe("privacy guard", () => {
+  const PK = "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF";
+
+  it("never leaks the raw public key: context has account_id_hash, no publicKey, and JSON has no trace of the G-address", () => {
+    (useAuthenticationStore.getState as jest.Mock).mockReturnValue({
+      network: "testnet",
+      account: { publicKey: PK, importedFromSecretKey: true },
+      allAccounts: [{ publicKey: PK, importedFromSecretKey: true }],
+    });
+
+    const ctx = buildCommonContext();
+
+    expect(ctx).not.toHaveProperty("publicKey");
+    expect(ctx).toHaveProperty(
+      "account_id_hash",
+      "f56f6f2c6cf1b9388e3495dfab96f0c55ec5d217f481b2ae45d11b46145c44ef",
+    );
+    expect(JSON.stringify(ctx)).not.toContain(PK);
+  });
+});
+
 describe("deriveIdentifyTraits", () => {
   it("counts accounts and detects imported presence; no hardware trait", () => {
     const accounts = [
