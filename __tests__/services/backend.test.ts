@@ -28,6 +28,12 @@ jest.mock("services/apiFactory", () => {
     createApiService: jest.fn(() => ({
       get: jest.fn(),
       post: jest.fn(),
+      getInstance: jest.fn(() => ({
+        interceptors: {
+          request: { use: jest.fn() },
+          response: { use: jest.fn() },
+        },
+      })),
     })),
     isRequestCanceled: jest.fn(),
   };
@@ -713,6 +719,39 @@ describe("Backend Service - fetchCollectibles severity split", () => {
       expect.any(Error),
     );
   });
+
+  it("sends a pre-serialized string body and query-in-URL so the JWT interceptor hashes the correct bytes", async () => {
+    // The JWT request interceptor hashes config.data ONLY when it is already a
+    // string. If the body is an object the interceptor would sign the empty-string
+    // hash, producing a token that never validates on the backend. This test locks
+    // the contract: body must be a string, query must be in the URL.
+    mockV2Post.mockResolvedValue({
+      data: {
+        data: {
+          collections: [
+            {
+              contract_id: "C...",
+              collection_name: "Test",
+              nfts: [],
+            },
+          ],
+        },
+      },
+      status: 200,
+      statusText: "OK",
+    });
+
+    await fetchCollectibles(params);
+
+    // Idiomatic axios: the network goes via `{ params }` (the JWT interceptor
+    // folds it into the signed path via getUri) and the body is a plain object
+    // (the interceptor serializes it so bodyHash matches the wire).
+    expect(mockV2Post).toHaveBeenCalledWith(
+      "/collectibles",
+      { owner: params.owner, contracts: params.contracts },
+      { params: { network: params.network } },
+    );
+  });
 });
 
 describe("Backend Service - fetchTokenPrices v2 migration", () => {
@@ -745,7 +784,10 @@ describe("Backend Service - fetchTokenPrices v2 migration", () => {
   it("hits the v2 client with a network query param and native id when useV2 is true", async () => {
     await fetchTokenPrices({ tokens, network: NETWORKS.PUBLIC, useV2: true });
 
-    // Native "XLM" is sent to v2 as "native".
+    // Native "XLM" is sent to v2 as "native"; the network goes via `{ params }`
+    // (the JWT interceptor folds it into the signed path via getUri). The body
+    // is a plain object — the interceptor serializes it centrally so bodyHash
+    // matches the wire bytes.
     expect(mockV2Post).toHaveBeenCalledWith(
       "/token-prices",
       { tokens: v2Tokens },

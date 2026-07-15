@@ -42,13 +42,21 @@ import {
   isRequestCanceled,
   logApiError,
 } from "services/apiFactory";
+import { attachAuthInterceptors } from "services/auth/attachAuth";
 
 // Create dedicated API services for backend operations
 export const freighterBackendV1 = createApiService({
   baseURL: BackendEnvConfig.FREIGHTER_BACKEND_V1_URL,
 });
+// Attach per-request JWT auth to the v2 backend instance via the
+// configureInstance hook so the auth interceptors are registered BEFORE
+// apiFactory's error-normalizing response interceptor.  Axios runs response
+// interceptors in registration order; if attachAuthInterceptors were called
+// after createApiService returns, the 401-retry handler would run AFTER the
+// normalizer and never see error.response (already converted to ApiError).
 export const freighterBackendV2 = createApiService({
   baseURL: BackendEnvConfig.FREIGHTER_BACKEND_V2_URL,
+  configureInstance: attachAuthInterceptors,
 });
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -1255,11 +1263,9 @@ export const fetchCollectibles = async ({
 > => {
   try {
     const { data } = await freighterBackendV2.post<CollectiblesResponse>(
-      `/collectibles?network=${network}`,
-      {
-        owner,
-        contracts,
-      },
+      "/collectibles",
+      { owner, contracts },
+      { params: { network } },
     );
 
     if (!data.data || !data.data.collections) {

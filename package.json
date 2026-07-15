@@ -96,6 +96,7 @@
     "asyncstorage-down": "4.2.0",
     "axios": "1.13.2",
     "bignumber.js": "9.1.2",
+    "bip39": "3.1.0",
     "buffer": "4.9.2",
     "events": "3.3.0",
     "fast-text-encoding": "1.0.6",

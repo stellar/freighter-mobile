@@ -57,6 +57,7 @@ import { AppState, Keyboard } from "react-native";
 import ReactNativeBiometrics from "react-native-biometrics";
 import * as Keychain from "react-native-keychain";
 import { analytics } from "services/analytics";
+import { clearAuthKeypairCache } from "services/auth/authKeypairCache";
 import {
   clearBackgroundedAt,
   getAutoLockTimer,
@@ -1102,6 +1103,7 @@ const deriveKeyPair = (params: DeriveKeypairParams) => {
  */
 const clearAllData = async (): Promise<void> => {
   clearDerivedKeyCache();
+  clearAuthKeypairCache();
 
   const allKeys = await keyManager.loadAllKeyIds();
 
@@ -2151,6 +2153,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
           if (hasAccountList && !shouldWipeAllData) {
             // Don't expire hash key - preserve temporary store accessibility
             // Security comes from app being locked, not key expiration
+            clearAuthKeypairCache();
 
             set({
               account: null,
@@ -2182,6 +2185,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
             // Wipe path: clear derived key cache and use resetRoot so the auth screen is
             // visible before the long async cleanup begins.
             clearDerivedKeyCache();
+            clearAuthKeypairCache();
 
             // Capture navigationRef before ...initialState clears it to null
             const { navigationRef: navRef } = get();
@@ -2268,6 +2272,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
       suppressBiometricAutoPrompt: options?.suppressBiometricPrompt ?? false,
       isLoading: false,
     });
+    clearAuthKeypairCache();
 
     // Persist LOCKED (covers tampering + cold starts). Retry once and rethrow
     // on failure: a swallowed write would leave the wallet auto-unlockable on
@@ -2362,6 +2367,13 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
         isLoading: false,
         isLoadingAccount: true,
       });
+
+      // Drop any stale isSessionAuthValid memo captured while locked — otherwise
+      // the post-unlock request burst (balances + prices + history) could read a
+      // cached `false` for up to the TTL and go out anonymous, defeating the auth
+      // this feature exists to attach. (Defined below; resolved at call time.)
+      // eslint-disable-next-line @typescript-eslint/no-use-before-define
+      clearSessionAuthValidMemo();
 
       getActiveAccount(AUTH_STATUS.AUTHENTICATED)
         .then((activeAccount) => {
@@ -2813,6 +2825,9 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
         authStatus === AUTH_STATUS.HASH_KEY_EXPIRED)
     ) {
       set({ authStatus, isSoftLocked: false });
+      // Session is no longer authenticated — evict the derived auth keypair so
+      // private-key material never outlives the session (as softLock does).
+      clearAuthKeypairCache();
       if (authStatus === AUTH_STATUS.HASH_KEY_EXPIRED) {
         get().navigateToLockScreen();
       }
@@ -2821,8 +2836,10 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
 
     set({ authStatus });
 
-    // If the hash key is expired, navigate to lock screen
+    // If the hash key is expired, evict the cached auth keypair (retention, not
+    // just use, must end at hard-expiry) and navigate to lock screen.
     if (authStatus === AUTH_STATUS.HASH_KEY_EXPIRED) {
+      clearAuthKeypairCache();
       get().navigateToLockScreen();
     }
 
@@ -3106,3 +3123,94 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
     set({ signInMethod: method });
   },
 }));
+
+/**
+ * Returns the mnemonic phrase from the unlocked temporary store,
+ * or null when the wallet is not fully authenticated (AUTHENTICATED),
+ * locked, or the store is unavailable.
+ */
+export const getActiveMnemonicPhrase = async (): Promise<string | null> => {
+  if (
+    useAuthenticationStore.getState().authStatus !== AUTH_STATUS.AUTHENTICATED
+  ) {
+    return null;
+  }
+  try {
+    const store = await getTemporaryStore(
+      useAuthenticationStore.getState().authStatus,
+    );
+    // Re-check after the async decrypt: a lock (soft-lock / auto-lock) may have
+    // landed while awaiting SecureStorage. If so, do NOT return the pre-lock
+    // mnemonic — otherwise getAuthKeypair could derive and re-cache a signing
+    // key after softLock() already cleared the cache (TOCTOU race).
+    if (
+      useAuthenticationStore.getState().authStatus !== AUTH_STATUS.AUTHENTICATED
+    ) {
+      return null;
+    }
+    return store?.mnemonicPhrase ?? null;
+  } catch (error) {
+    // Unreachable today (getTemporaryStore is itself total), but keep the guard
+    // so a future throwing edit surfaces in Sentry instead of masquerading as a
+    // normal locked session with an empty breadcrumb trail.
+    logger.error(
+      "getActiveMnemonicPhrase",
+      "Failed to read active mnemonic",
+      error,
+    );
+    return null;
+  }
+};
+
+// Short-TTL memo + in-flight dedup for the session-validity funnel result.
+// getAuthKeypair runs isSessionAuthValid on every call — per backend request
+// once the JWT interceptor is wired — and each funnel run is ~5 keychain reads.
+// The in-flight promise collapses a near-simultaneous burst (balances + prices
+// + history on unlock) to one run; the value memo collapses sequential calls
+// within the window.
+//
+// Tradeoff: a transition detected ONLY by the funnel (auto-lock timer elapse,
+// hash hard-expiry) is reflected at this gate up to SESSION_AUTH_VALID_TTL_MS
+// late. That is bounded and immaterial in practice (auto-lock windows are
+// minutes to hours) and does not leak key material: explicit lock/logout/wipe
+// paths clear the keypair cache AND flip in-memory authStatus, so during a
+// stale-true memo getAuthKeypair's warm-cache path finds an empty cache and its
+// derive path is blocked by getActiveMnemonicPhrase's AUTHENTICATED gate.
+export const SESSION_AUTH_VALID_TTL_MS = 1000;
+let sessionAuthValidMemo: { value: boolean; expiresAt: number } | null = null;
+let sessionAuthValidInFlight: Promise<boolean> | null = null;
+
+/** Drops the isSessionAuthValid memo (tests + any caller needing a fresh read). */
+export const clearSessionAuthValidMemo = (): void => {
+  sessionAuthValidMemo = null;
+};
+
+/**
+ * Session-validity gate for backend auth-key use. Delegates to the authoritative
+ * `getAuthStatus()` funnel — the single source of truth for lock transitions —
+ * so it evaluates account existence, persisted LOCKED, hash-key hard-expiry AND
+ * the auto-lock timer (`backgroundedAt` + `autoLockTimer`), rather than
+ * re-implementing a subset. Result is memoized for SESSION_AUTH_VALID_TTL_MS
+ * (see above). Does not decrypt the temporary store (no PBKDF2); persisted/secure
+ * reads only.
+ */
+export const isSessionAuthValid = async (): Promise<boolean> => {
+  const memo = sessionAuthValidMemo;
+  if (memo && Date.now() < memo.expiresAt) return memo.value;
+
+  if (!sessionAuthValidInFlight) {
+    sessionAuthValidInFlight = (async () => {
+      try {
+        const value = (await getAuthStatus()) === AUTH_STATUS.AUTHENTICATED;
+        sessionAuthValidMemo = {
+          value,
+          expiresAt: Date.now() + SESSION_AUTH_VALID_TTL_MS,
+        };
+        return value;
+      } finally {
+        sessionAuthValidInFlight = null;
+      }
+    })();
+  }
+  return sessionAuthValidInFlight;
+};
