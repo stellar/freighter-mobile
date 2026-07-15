@@ -18,6 +18,7 @@
 //     (`PlatformLocalStorage`). The factory stubs only what core.ts touches.
 //   • `helpers/stellar` is mocked because core.ts imports `truncateAddress`
 //     from it and there is no `__mocks__/helpers/stellar` stub.
+import { AnalyticsEvent } from "config/analyticsConfig";
 import { useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
 
@@ -86,6 +87,8 @@ const {
   getSurface,
   buildCommonContext,
   deriveIdentifyTraits,
+  initAnalytics,
+  trackAppOpened,
 } = jest.requireActual<typeof import("services/analytics/core")>("./core");
 
 describe("getAccountIdHash", () => {
@@ -217,6 +220,29 @@ describe("deriveIdentifyTraits", () => {
       wallet_count: 0,
       has_imported_account: false,
     });
+  });
+});
+
+describe("trackAppOpened (one-time connectivity snapshot)", () => {
+  it("enriches app.opened with connectivity, surface, and common context", () => {
+    initAnalytics();
+
+    // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
+    const amplitudeMock = require("@amplitude/analytics-react-native");
+    (amplitudeMock.track as jest.Mock).mockClear();
+
+    trackAppOpened({ previousState: "background" });
+
+    expect(amplitudeMock.track).toHaveBeenCalledWith(
+      AnalyticsEvent.APP_OPENED,
+      expect.objectContaining({
+        previousState: "background",
+        surface: "mobile_ios",
+        connection_type: "wifi",
+        effective_type: "4g",
+        schema_version: "2",
+      }),
+    );
   });
 });
 

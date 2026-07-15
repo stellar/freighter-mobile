@@ -6,6 +6,7 @@ import { logger } from "config/logger";
 import { useAnalyticsStore } from "ducks/analytics";
 import { useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
+import { useNetworkStore } from "ducks/networkInfo";
 import { isE2ETest } from "helpers/isEnv";
 import { throttle, memoize } from "lodash";
 import { Platform } from "react-native";
@@ -396,8 +397,22 @@ export const track = (
 // APP LIFECYCLE
 // -----------------------------------------------------------------------------
 
+/**
+ * Tracks app.opened enriched with a one-time connectivity snapshot
+ * (connection_type/effective_type) taken at open time. This is the only
+ * event that carries connectivity - buildCommonContext deliberately does
+ * not (see its docstring), since connectivity is volatile and only
+ * meaningful as a point-in-time snapshot on session start.
+ */
 export const trackAppOpened = (props?: { previousState: string }): void => {
-  track(AnalyticsEvent.APP_OPENED, props);
+  const { connectionType, effectiveType } = useNetworkStore.getState();
+
+  track(AnalyticsEvent.APP_OPENED, {
+    ...props,
+    surface: getSurface(),
+    connection_type: connectionType ?? "unknown",
+    ...(effectiveType ? { effective_type: effectiveType } : {}),
+  });
 };
 
 // -----------------------------------------------------------------------------
