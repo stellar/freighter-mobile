@@ -1,5 +1,9 @@
 import { NavigationState, PartialState } from "@react-navigation/native";
-import { processRouteForAnalytics } from "config/analyticsConfig";
+import {
+  AnalyticsEvent,
+  buildScreenViewedProps,
+  processRouteForAnalytics,
+} from "config/analyticsConfig";
 import { useRef } from "react";
 import { track } from "services/analytics/core";
 
@@ -35,10 +39,17 @@ export const useNavigationAnalytics = () => {
     const currentRouteName = getActiveRouteName(state);
 
     if (previousRouteName !== currentRouteName) {
-      const event = processRouteForAnalytics(currentRouteName);
+      // processRouteForAnalytics still resolves the route to its legacy
+      // "loaded screen: X" string; Slice B retargets that into a single
+      // canonical `screen.viewed` event carrying { screen_name, flow }
+      // (surface is added by the Slice-A common context).
+      const legacyScreenEvent = processRouteForAnalytics(currentRouteName);
 
-      if (event) {
-        track(event);
+      if (legacyScreenEvent) {
+        track(
+          AnalyticsEvent.SCREEN_VIEWED,
+          buildScreenViewedProps(legacyScreenEvent),
+        );
       }
     }
 
