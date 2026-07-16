@@ -13,12 +13,16 @@ import {
   SubmitTransactionBody,
 } from "services/backend";
 import { scanBulkTokens } from "services/blockaid/api";
+import { dataStorage } from "services/storage/storageFactory";
 
-// The v2 balances path stamps Blockaid data via scanBulkTokens, which would
-// otherwise loop back into the mocked freighterBackendV1 client.
+// The v2 balances path stamps Blockaid data through the blockaidTokenScans
+// duck's disk-backed cache; mock the raw scan API underneath it (it would
+// otherwise loop back into the mocked freighterBackendV1 client) and the
+// storage the cache reads/writes.
 jest.mock("services/blockaid/api", () => ({
   scanBulkTokens: jest.fn(),
 }));
+jest.mock("services/storage/storageFactory");
 
 jest.mock("services/apiFactory", () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports, global-require
@@ -970,6 +974,10 @@ describe("Backend Service - fetchBalances v2 routing", () => {
     (scanBulkTokens as jest.MockedFunction<any>).mockResolvedValue({
       results: {},
     });
+    (dataStorage.getItem as jest.MockedFunction<any>).mockResolvedValue(null);
+    (dataStorage.setItem as jest.MockedFunction<any>).mockResolvedValue(
+      undefined,
+    );
   });
 
   it("POSTs the address to the v2 endpoint and maps the response (useV2 on PUBLIC)", async () => {

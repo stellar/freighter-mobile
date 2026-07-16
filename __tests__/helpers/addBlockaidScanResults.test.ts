@@ -1,20 +1,26 @@
 import BigNumber from "bignumber.js";
-import { NETWORKS } from "config/constants";
+import { NETWORKS, STORAGE_KEYS } from "config/constants";
 import { logger } from "config/logger";
 import { addBlockaidScanResults } from "helpers/addBlockaidScanResults";
 import { MappedAccountBalances } from "helpers/mapAccountBalancesV2";
 import { scanBulkTokens } from "services/blockaid/api";
+import { dataStorage } from "services/storage/storageFactory";
 
-jest.mock("services/blockaid/api", () => ({
-  scanBulkTokens: jest.fn(),
-}));
+// The helper goes through the blockaidTokenScans duck's disk-backed cache
+// (scanBulkWithCache); mock the raw API + storage underneath it, same as the
+// duck's own tests, so cache behavior is exercised for real.
+jest.mock("services/blockaid/api");
+jest.mock("services/storage/storageFactory");
 
 const mockScanBulkTokens = scanBulkTokens as jest.MockedFunction<
   typeof scanBulkTokens
 >;
+const mockDataStorage = dataStorage as jest.Mocked<typeof dataStorage>;
 
 const benignResult = { result_type: "Benign" };
 const maliciousResult = { result_type: "Malicious" };
+
+const storageKey = `${STORAGE_KEYS.BLOCKAID_TOKEN_SCANS_PREFIX}${NETWORKS.PUBLIC}`;
 
 const makeBalances = (): MappedAccountBalances =>
   ({
@@ -52,6 +58,8 @@ const makeBalances = (): MappedAccountBalances =>
 describe("addBlockaidScanResults", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockDataStorage.getItem.mockResolvedValue(null);
+    mockDataStorage.setItem.mockResolvedValue();
   });
 
   it("stamps the benign default on every non-LP entry without scanning on testnet", async () => {
@@ -84,10 +92,13 @@ describe("addBlockaidScanResults", () => {
       NETWORKS.PUBLIC,
     );
 
-    expect(mockScanBulkTokens).toHaveBeenCalledWith({
-      addressList: ["USDC-GISSUER", "TKN-CTOKEN456"],
-      network: NETWORKS.PUBLIC,
-    });
+    expect(mockScanBulkTokens).toHaveBeenCalledWith(
+      {
+        addressList: ["USDC-GISSUER", "TKN-CTOKEN456"],
+        network: NETWORKS.PUBLIC,
+      },
+      undefined,
+    );
 
     // matched entry overwritten with the scan verdict
     expect((result.balances["USDC:GISSUER"] as any).blockaidData).toEqual(
@@ -98,6 +109,26 @@ describe("addBlockaidScanResults", () => {
       benignResult,
     );
     expect((result.balances.XLM as any).blockaidData).toEqual(benignResult);
+  });
+
+  it("serves fresh cache entries without a network call (30s polls stay local)", async () => {
+    const cached = {
+      "USDC-GISSUER": { ...maliciousResult, _cachedAt: Date.now() },
+      "TKN-CTOKEN456": { ...benignResult, _cachedAt: Date.now() },
+    };
+    mockDataStorage.getItem.mockImplementation((key) =>
+      Promise.resolve(key === storageKey ? JSON.stringify(cached) : null),
+    );
+
+    const result = await addBlockaidScanResults(
+      makeBalances(),
+      NETWORKS.PUBLIC,
+    );
+
+    expect(mockScanBulkTokens).not.toHaveBeenCalled();
+    expect((result.balances["USDC:GISSUER"] as any).blockaidData).toEqual(
+      maliciousResult,
+    );
   });
 
   it("keeps benign defaults and warns when the scan request fails", async () => {

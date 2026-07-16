@@ -2,9 +2,9 @@ import Blockaid from "@blockaid/client";
 import { NATIVE_TOKEN_CODE, NETWORKS } from "config/constants";
 import { logger } from "config/logger";
 import { Balance, BalanceMap } from "config/types";
+import { useBlockaidTokenScansStore } from "ducks/blockaidTokenScans";
 import { MappedAccountBalances } from "helpers/mapAccountBalancesV2";
 import { isMainnet } from "helpers/networks";
-import { scanBulkTokens } from "services/blockaid/api";
 
 type ScannableBalance = Balance & {
   blockaidData?: Blockaid.Token.TokenScanResponse;
@@ -55,21 +55,27 @@ export const addBlockaidScanResults = async (
   }
 
   try {
-    const { results } = await scanBulkTokens({
-      addressList: scannableIds.map((id) => id.replace(":", "-")),
-      network,
-    });
+    // This runs on every balance poll (every 30s), so it must go through the
+    // disk-backed scan cache: warm polls are a local read — no Blockaid call,
+    // no analytics event — and only cache misses (30-min TTL) hit the network.
+    // The swap flow shares the same cache and `CODE-ISSUER` key format.
+    const { results } = await useBlockaidTokenScansStore
+      .getState()
+      .scanBulkWithCache({
+        addressList: scannableIds.map((id) => id.replace(":", "-")),
+        network,
+      });
 
     Object.entries(results || {}).forEach(([assetId, scanResult]) => {
       const balanceKey = assetId.replace("-", ":");
       if (balances[balanceKey]) {
-        (balances[balanceKey] as ScannableBalance).blockaidData =
-          scanResult as Blockaid.Token.TokenScanResponse;
+        (balances[balanceKey] as ScannableBalance).blockaidData = scanResult;
       }
     });
   } catch (error) {
-    // Non-fatal: spam/scam badges fall back to benign defaults. Same
-    // severity as the blockaidTokenScans duck's bulk-scan failure handling.
+    // Non-fatal: spam/scam badges fall back to benign defaults.
+    // scanBulkWithCache already swallows Blockaid failures (degrading to
+    // cached hits), so this only catches storage-level errors.
     logger.warn(
       "addBlockaidScanResults",
       "Failed to bulk scan v2 balances",
