@@ -1378,6 +1378,8 @@ export function clearAccountData(): void {
     scanResults: {},
     isLoading: false,
     isFunded: false,
+    fetchedPublicKey: null,
+    fetchedNetwork: null,
     subentryCount: 0,
     error: null,
   });
