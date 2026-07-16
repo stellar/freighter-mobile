@@ -7,7 +7,7 @@ import { ALL_ROUTES_OBJECT } from "config/routes";
  * Events are organized by category for better maintainability.
  */
 export enum AnalyticsEvent {
-  // Canonical screen-view event (Slice B, #2883).
+  // Canonical screen-view event (#2883).
   //
   // Every screen load emits THIS single event carrying { screen_name, flow,
   // surface, step? } instead of a distinct "loaded screen: X" event. The
@@ -15,7 +15,7 @@ export enum AnalyticsEvent {
   // catalog: `screen_name` is derived deterministically from their string
   // values (see deriveScreenName), and they remain the keys that components
   // firing screen views manually (bottom sheets / detail sheets) reference.
-  // After the Slice B cutover their "loaded screen: X" string values are used
+  // After the cutover their "loaded screen: X" string values are used
   // only as catalog keys and are NEVER emitted to Amplitude.
   SCREEN_VIEWED = "screen.viewed",
 

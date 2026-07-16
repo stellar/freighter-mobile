@@ -283,7 +283,7 @@ describe("trackAppOpened (one-time connectivity snapshot)", () => {
   });
 });
 
-describe("screen.viewed emission (Slice B hard cutover)", () => {
+describe("screen.viewed emission (hard cutover)", () => {
   // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
   const amplitudeMock = require("@amplitude/analytics-react-native");
 

@@ -152,7 +152,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
       if (analyticsEvent && index >= 0 && !hasTrackedRef.current) {
         // Screens presented via a bottom sheet are screen loads too: retarget
         // any legacy "loaded screen: X" analyticsEvent to the single canonical
-        // `screen.viewed` event (Slice B). Non-screen events pass through
+        // `screen.viewed` event. Non-screen events pass through
         // unchanged.
         const screenViewedProps = getScreenViewedProps(analyticsEvent);
         if (screenViewedProps) {
