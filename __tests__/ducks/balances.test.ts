@@ -223,7 +223,7 @@ describe("balances duck", () => {
       expect(result.current.error).toBeNull();
     });
 
-    it("should record fetchedPublicKey after a successful fetch", async () => {
+    it("should record fetchedPublicKey and fetchedNetwork after a successful fetch", async () => {
       mockFetchBalances.mockResolvedValueOnce({
         balances: {},
         isFunded: false,
@@ -240,6 +240,7 @@ describe("balances duck", () => {
       });
 
       expect(result.current.fetchedPublicKey).toBe(mockParams.publicKey);
+      expect(result.current.fetchedNetwork).toBe(mockParams.network);
     });
 
     it("should handle fetch with contractIds", async () => {

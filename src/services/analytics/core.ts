@@ -66,9 +66,14 @@ export const syncIdentifyTraits = (
 
   if (fingerprint === lastIdentifiedTraits) return;
   if (!AMPLITUDE_API_KEY || !hasInitialised) return;
+  // Consent (isEnabled) is persisted to AsyncStorage and hydrates
+  // asynchronously. Before hydration the store holds its default, which is
+  // `true` on Android (see ANALYTICS_CONFIG.DEFAULT_ENABLED) - so reading
+  // isEnabled now could emit traits for a returning user whose persisted
+  // preference is opt-out. Treat persisted consent as authoritative: skip
+  // until hydration completes (initAnalytics re-syncs onFinishHydration).
+  if (!useAnalyticsStore.persist.hasHydrated()) return;
   if (!useAnalyticsStore.getState().isEnabled) return;
-
-  lastIdentifiedTraits = fingerprint;
 
   try {
     const identify = new amplitude.Identify();
@@ -80,6 +85,12 @@ export const syncIdentifyTraits = (
     identify.set("has_imported_account", traits.has_imported_account);
 
     amplitude.identify(identify);
+
+    // Cache the fingerprint only after the Identify call has been issued
+    // successfully. Caching before the try (or before this line) would mean a
+    // one-off throw leaves the dirty-check short-circuiting every later sync
+    // with the same traits, so they'd never retry.
+    lastIdentifiedTraits = fingerprint;
 
     logger.debug(
       DEBUG_CONFIG.LOG_PREFIX,
@@ -154,7 +165,19 @@ export const initAnalytics = (): void => {
     // Sync durable wallet traits (consent-gated) now that init has completed.
     // Must run AFTER hasInitialised is set - syncIdentifyTraits guards on
     // that flag, so calling it earlier would always short-circuit.
-    syncIdentifyTraits(useAuthenticationStore.getState().allAccounts);
+    //
+    // syncIdentifyTraits also guards on persisted consent having hydrated. If
+    // it hasn't yet, this call is a no-op; retry once hydration finishes so an
+    // enabled user's traits still reach Amplitude. onFinishHydration fires
+    // after persist flips hasHydrated() to true (unlike a plain store
+    // subscription, which is notified during the rehydrate set, before it).
+    if (useAnalyticsStore.persist.hasHydrated()) {
+      syncIdentifyTraits(useAuthenticationStore.getState().allAccounts);
+    } else {
+      useAnalyticsStore.persist.onFinishHydration(() => {
+        syncIdentifyTraits(useAuthenticationStore.getState().allAccounts);
+      });
+    }
   } catch (error) {
     logger.error(
       DEBUG_CONFIG.LOG_PREFIX,
@@ -292,8 +315,15 @@ export const buildCommonContext = (): Record<string, unknown> => {
         : "freighter";
     }
 
-    const { isFunded, fetchedPublicKey } = useBalancesStore.getState();
-    if (fetchedPublicKey === activePublicKey) {
+    // Balances are keyed by public key AND network, so both must match the
+    // active account+network for isFunded to describe the current snapshot.
+    // The same G-address stays active across a selectNetwork() switch; until
+    // the async refetch lands, fetchedPublicKey still matches but isFunded
+    // belongs to the old network. Require the network to match too so this
+    // fails closed (omits account_funded) on a network switch.
+    const { isFunded, fetchedPublicKey, fetchedNetwork } =
+      useBalancesStore.getState();
+    if (fetchedPublicKey === activePublicKey && fetchedNetwork === network) {
       context.account_funded = isFunded;
     }
   }
@@ -409,7 +439,7 @@ export const trackAppOpened = (props?: { previousState: string }): void => {
 
   track(AnalyticsEvent.APP_OPENED, {
     ...props,
-    surface: getSurface(),
+    // surface is supplied by buildCommonContext(); only connectivity is added here
     connection_type: connectionType ?? "unknown",
     ...(effectiveType ? { effective_type: effectiveType } : {}),
   });

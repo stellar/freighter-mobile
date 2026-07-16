@@ -16,8 +16,6 @@
 //     not a bare auto-mock. Auto-mocking loads the real RN SDK to introspect
 //     it, which crashes in the Jest env on native async-storage
 //     (`PlatformLocalStorage`). The factory stubs only what core.ts touches.
-//   • `helpers/stellar` is mocked because core.ts imports `truncateAddress`
-//     from it and there is no `__mocks__/helpers/stellar` stub.
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
@@ -42,7 +40,6 @@ jest.mock("config/logger", () => ({
   logger: { debug: jest.fn(), info: jest.fn(), error: jest.fn() },
 }));
 jest.mock("helpers/isEnv", () => ({ isE2ETest: false }));
-jest.mock("helpers/stellar", () => ({ truncateAddress: (a: string) => a }));
 jest.mock("services/analytics/constants", () => ({
   AMPLITUDE_API_KEY: "test-key",
   AMPLITUDE_EXPERIMENT_DEPLOYMENT_KEY: "test-exp",
@@ -58,6 +55,10 @@ jest.mock("ducks/analytics", () => ({
   useAnalyticsStore: {
     getState: jest.fn(() => ({ isEnabled: true })),
     subscribe: jest.fn(),
+    persist: {
+      hasHydrated: jest.fn(() => true),
+      onFinishHydration: jest.fn(),
+    },
   },
 }));
 jest.mock("ducks/auth", () => ({
@@ -139,6 +140,7 @@ describe("buildCommonContext (four-bucket model)", () => {
     (useBalancesStore.getState as jest.Mock).mockReturnValue({
       isFunded: true,
       fetchedPublicKey: PK,
+      fetchedNetwork: "testnet",
     });
   });
 
@@ -187,6 +189,19 @@ describe("buildCommonContext (four-bucket model)", () => {
     (useBalancesStore.getState as jest.Mock).mockReturnValue({
       isFunded: true,
       fetchedPublicKey: "G_OTHER",
+      fetchedNetwork: "testnet",
+    });
+    expect(buildCommonContext()).not.toHaveProperty("account_funded");
+  });
+
+  it("omits account_funded when the snapshot is for a different network (network switch)", () => {
+    // Same active account, but the cached balance snapshot was fetched for a
+    // different network - until the async refetch lands, fail closed rather
+    // than reporting the old network's funded status against the new network.
+    (useBalancesStore.getState as jest.Mock).mockReturnValue({
+      isFunded: true,
+      fetchedPublicKey: PK,
+      fetchedNetwork: "public",
     });
     expect(buildCommonContext()).not.toHaveProperty("account_funded");
   });
@@ -403,5 +418,106 @@ describe("syncIdentifyTraits (consent gating)", () => {
     subscriber({ isEnabled: true });
 
     expect(isolatedIdentify!).toHaveBeenCalled();
+  });
+
+  it("does not send Identify before consent has hydrated, then syncs once hydration finishes", () => {
+    // Consent is persisted and hydrates asynchronously; the pre-hydration
+    // in-memory default is `true` on Android, so reading it now could emit
+    // traits for a user whose stored preference is opt-out. Must wait for
+    // hydration, then retry via onFinishHydration.
+    const accounts = [
+      { publicKey: "G1", importedFromSecretKey: true },
+    ] as never;
+
+    let mod: typeof import("services/analytics/core");
+    let store: {
+      getState: jest.Mock;
+      persist: { hasHydrated: jest.Mock; onFinishHydration: jest.Mock };
+    };
+    let identify: jest.Mock;
+
+    jest.isolateModules(() => {
+      mod =
+        jest.requireActual<typeof import("services/analytics/core")>("./core");
+      // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
+      store = require("ducks/analytics").useAnalyticsStore;
+      // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
+      identify = require("@amplitude/analytics-react-native")
+        .identify as jest.Mock;
+    });
+
+    store!.persist.onFinishHydration.mockClear();
+    store!.persist.hasHydrated.mockReturnValue(false);
+    store!.getState.mockReturnValue({ isEnabled: true }); // default, not yet persisted
+
+    mod!.initAnalytics();
+    identify!.mockClear();
+
+    // Not hydrated: neither init nor a direct call may emit.
+    mod!.syncIdentifyTraits(accounts);
+    expect(identify!).not.toHaveBeenCalled();
+    expect(store!.persist.onFinishHydration).toHaveBeenCalled();
+
+    // Hydration finishes → the registered callback re-syncs with the now
+    // authoritative (still enabled) consent value.
+    store!.persist.hasHydrated.mockReturnValue(true);
+    const onFinish = store!.persist.onFinishHydration.mock.calls.at(
+      -1,
+    )![0] as () => void;
+    onFinish();
+    expect(identify!).toHaveBeenCalled();
+
+    // Restore the shared mock default for any later test.
+    store!.persist.hasHydrated.mockReturnValue(true);
+  });
+
+  it("retries Identify after a failed send (fingerprint cached only on success)", () => {
+    // If amplitude.identify throws once, the fingerprint must NOT be cached, so
+    // a later call with the same traits still retries rather than being
+    // suppressed by the dirty-check.
+    const accounts = [
+      { publicKey: "G1", importedFromSecretKey: true },
+    ] as never;
+
+    let mod: typeof import("services/analytics/core");
+    let store: { getState: jest.Mock };
+    let authStore: { getState: jest.Mock };
+    let identify: jest.Mock;
+
+    jest.isolateModules(() => {
+      mod =
+        jest.requireActual<typeof import("services/analytics/core")>("./core");
+      // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
+      store = require("ducks/analytics").useAnalyticsStore;
+      // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
+      authStore = require("ducks/auth").useAuthenticationStore;
+      // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
+      identify = require("@amplitude/analytics-react-native")
+        .identify as jest.Mock;
+    });
+
+    store!.getState.mockReturnValue({ isEnabled: true });
+    // Init syncs with an EMPTY account list so its cached fingerprint differs
+    // from `accounts` below (otherwise the dirty-check would suppress the call
+    // under test for the wrong reason).
+    authStore!.getState.mockReturnValue({
+      network: "testnet",
+      account: null,
+      allAccounts: [],
+    });
+    mod!.initAnalytics();
+    identify!.mockClear();
+
+    // First send throws; the catch swallows it and must leave nothing cached.
+    identify!.mockImplementationOnce(() => {
+      throw new Error("network blip");
+    });
+    mod!.syncIdentifyTraits(accounts);
+    expect(identify!).toHaveBeenCalledTimes(1);
+
+    // Same traits again: since the failed send wasn't cached, this retries.
+    identify!.mockClear();
+    mod!.syncIdentifyTraits(accounts);
+    expect(identify!).toHaveBeenCalledTimes(1);
   });
 });
