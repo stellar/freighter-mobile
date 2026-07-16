@@ -587,3 +587,103 @@ describe("syncIdentifyTraits (consent gating)", () => {
     expect(identify!).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("domain event catalog (#2883)", () => {
+  // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
+  const amplitudeMock = require("@amplitude/analytics-react-native");
+
+  beforeEach(() => {
+    initAnalytics();
+    (amplitudeMock.track as jest.Mock).mockClear();
+  });
+
+  it("emits the renamed domain wire strings verbatim, merged with common context", () => {
+    track(AnalyticsEvent.SEND_PAYMENT_SUCCESS, { payment_type: "payment" });
+
+    expect(amplitudeMock.track).toHaveBeenCalledWith(
+      "payment.completed",
+      expect.objectContaining({
+        payment_type: "payment",
+        // schema_version / surface / network come from buildCommonContext and
+        // must not be hand-added at call sites.
+        schema_version: "2",
+        surface: "mobile_ios",
+      }),
+    );
+  });
+
+  it("carries the scan_target + result discriminators on the consolidated blockaid scan event", () => {
+    track(AnalyticsEvent.BLOCKAID_SCAN_COMPLETED, {
+      scan_target: "asset",
+      result: "SAFE",
+    });
+
+    expect(amplitudeMock.track).toHaveBeenCalledWith(
+      "blockaid.scan_completed",
+      expect.objectContaining({ scan_target: "asset", result: "SAFE" }),
+    );
+  });
+
+  it("emits the added blockaid.scan_failed event with scan_target + reason_code", () => {
+    track(AnalyticsEvent.BLOCKAID_SCAN_FAILED, {
+      scan_target: "domain",
+      reason_code: "boom",
+    });
+
+    expect(amplitudeMock.track).toHaveBeenCalledWith(
+      "blockaid.scan_failed",
+      expect.objectContaining({ scan_target: "domain", reason_code: "boom" }),
+    );
+  });
+
+  it("consolidates the swap pickers into swap.picker_opened discriminated by side", () => {
+    track(AnalyticsEvent.SWAP_PICKER_OPENED, { side: "from", source: "cta" });
+    track(AnalyticsEvent.SWAP_PICKER_OPENED, {
+      side: "to",
+      source: "dropdown",
+    });
+
+    expect(amplitudeMock.track).toHaveBeenNthCalledWith(
+      1,
+      "swap.picker_opened",
+      expect.objectContaining({ side: "from", source: "cta" }),
+    );
+    expect(amplitudeMock.track).toHaveBeenNthCalledWith(
+      2,
+      "swap.picker_opened",
+      expect.objectContaining({ side: "to", source: "dropdown" }),
+    );
+  });
+
+  it("consolidates the add-token prompt responses into asset_add.responded by decision", () => {
+    track(AnalyticsEvent.ASSET_ADD_RESPONDED, { decision: "reject" });
+
+    expect(amplitudeMock.track).toHaveBeenCalledWith(
+      "asset_add.responded",
+      expect.objectContaining({ decision: "reject" }),
+    );
+  });
+
+  it("consolidates the store-open events into app_update.store_opened by source", () => {
+    track(AnalyticsEvent.APP_UPDATE_STORE_OPENED, { source: "banner" });
+
+    expect(amplitudeMock.track).toHaveBeenCalledWith(
+      "app_update.store_opened",
+      expect.objectContaining({ source: "banner" }),
+    );
+  });
+
+  it("keeps every non-screen domain event on the domain.action_past grammar", () => {
+    // The property-model foundation owns these three; everything else must be
+    // a single-dot, snake_case `domain.action_past` string.
+    const FOUNDATION_VALUES = new Set([AnalyticsEvent.APP_OPENED]);
+    const GRAMMAR = /^[a-z0-9]+(?:_[a-z0-9]+)*\.[a-z0-9]+(?:_[a-z0-9]+)*$/;
+
+    Object.entries(AnalyticsEvent)
+      .filter(([key]) => key !== "SCREEN_VIEWED" && !key.startsWith("VIEW_"))
+      .filter(([, value]) => !FOUNDATION_VALUES.has(value))
+      .forEach(([, value]) => {
+        expect(value).toMatch(GRAMMAR);
+      });
+  });
+});
