@@ -186,12 +186,13 @@ export const useManageTokens = ({
         });
       }
       analytics.track(AnalyticsEvent.ADD_TOKEN_SUCCESS, {
+        asset_code: tokenCode,
         asset: `${tokenCode}:${issuer}`,
       });
     } catch (error) {
       analytics.track(AnalyticsEvent.TOKEN_MANAGEMENT_FAIL, {
-        error: error instanceof Error ? error.message : String(error),
-        action: "add",
+        reason_code: error instanceof Error ? error.message : String(error),
+        operation: "add",
         asset: `${tokenCode}:${issuer}`,
       });
 
@@ -314,12 +315,13 @@ export const useManageTokens = ({
         });
       }
       analytics.track(AnalyticsEvent.REMOVE_TOKEN_SUCCESS, {
+        asset_code: tokenCode,
         asset: tokenIdentifier,
       });
     } catch (error) {
       analytics.track(AnalyticsEvent.TOKEN_MANAGEMENT_FAIL, {
-        error: error instanceof Error ? error.message : String(error),
-        action: "remove",
+        reason_code: error instanceof Error ? error.message : String(error),
+        operation: "remove",
         asset: tokenIdentifier,
       });
 

@@ -8,7 +8,13 @@ import { freighterBackendV1 } from "services/backend";
 import {
   BLOCKAID_ENDPOINTS,
   BLOCKAID_ERROR_MESSAGES,
+  SecurityLevel,
 } from "services/blockaid/constants";
+import {
+  assessSiteSecurity,
+  assessTokenSecurity,
+  assessTransactionSecurity,
+} from "services/blockaid/helper";
 import {
   BlockaidApiResponse,
   ScanTokenParams,
@@ -16,6 +22,51 @@ import {
   ScanTransactionParams,
   ScanBulkTokensParams,
 } from "services/blockaid/types";
+
+/**
+ * Blockaid scan targets for the consolidated `blockaid.scan_completed` /
+ * `blockaid.scan_failed` events. The `scan_target` property discriminates
+ * which kind of scan ran.
+ */
+type BlockaidScanTarget = "domain" | "transaction" | "asset" | "asset_bulk";
+
+/**
+ * Emits the consolidated scan-failure event. Blockaid only runs on mainnet, so
+ * the NETWORK_NOT_SUPPORTED short-circuit on other networks is an expected skip
+ * rather than a scan failure and is not reported.
+ */
+/**
+ * Reduces a bulk token scan to a single worst-case security level for the
+ * `result` property (malicious > suspicious > safe/unable-to-scan).
+ */
+const aggregateBulkResult = (
+  scanResult: Blockaid.TokenBulkScanResponse,
+): SecurityLevel => {
+  const levels = Object.values(scanResult.results ?? {}).map(
+    (result) => assessTokenSecurity(result).level,
+  );
+
+  if (levels.includes(SecurityLevel.MALICIOUS)) return SecurityLevel.MALICIOUS;
+  if (levels.includes(SecurityLevel.SUSPICIOUS)) {
+    return SecurityLevel.SUSPICIOUS;
+  }
+  return SecurityLevel.SAFE;
+};
+
+const trackScanFailed = (
+  scanTarget: BlockaidScanTarget,
+  error: unknown,
+): void => {
+  if (axios.isCancel(error)) return;
+
+  const reasonCode = error instanceof Error ? error.message : String(error);
+  if (reasonCode === BLOCKAID_ERROR_MESSAGES.NETWORK_NOT_SUPPORTED) return;
+
+  analytics.track(AnalyticsEvent.BLOCKAID_SCAN_FAILED, {
+    scan_target: scanTarget,
+    reason_code: reasonCode,
+  });
+};
 
 const formatAddress = (tokenCode: string, tokenIssuer?: string): string => {
   if (tokenIssuer) {
@@ -58,13 +109,15 @@ export const scanToken = async (
 
     const scanResult = response.data.data as Blockaid.TokenScanResponse;
 
-    analytics.track(AnalyticsEvent.BLOCKAID_TOKEN_SCAN, {
+    analytics.track(AnalyticsEvent.BLOCKAID_SCAN_COMPLETED, {
+      scan_target: "asset",
+      result: assessTokenSecurity(scanResult).level,
       tokenCode,
-      network,
     });
 
     return scanResult;
   } catch (error) {
+    trackScanFailed("asset", error);
     throw new Error(BLOCKAID_ERROR_MESSAGES.TOKEN_SCAN_FAILED);
   }
 };
@@ -96,13 +149,16 @@ export const scanBulkTokens = async (
 
     const scanResult = response.data.data as Blockaid.TokenBulkScanResponse;
 
-    analytics.track(AnalyticsEvent.BLOCKAID_BULK_TOKEN_SCAN, {
-      addressList,
-      network,
+    analytics.track(AnalyticsEvent.BLOCKAID_SCAN_COMPLETED, {
+      scan_target: "asset_bulk",
+      // Aggregate verdict across the batch: the worst per-token security level.
+      result: aggregateBulkResult(scanResult),
+      addressCount: addressList.length,
     });
 
     return scanResult;
   } catch (error) {
+    trackScanFailed("asset_bulk", error);
     // Rethrow cancellations untouched so callers can treat a superseded
     // request as benign; wrap everything else, preserving the cause.
     if (axios.isCancel(error)) throw error;
@@ -139,13 +195,14 @@ export const scanSite = async (
 
     const scanResult = response.data.data as Blockaid.SiteScanResponse;
 
-    analytics.track(AnalyticsEvent.BLOCKAID_SITE_SCAN, {
-      url,
-      network,
+    analytics.track(AnalyticsEvent.BLOCKAID_SCAN_COMPLETED, {
+      scan_target: "domain",
+      result: assessSiteSecurity(scanResult).level,
     });
 
     return scanResult;
   } catch (error) {
+    trackScanFailed("domain", error);
     throw new Error(BLOCKAID_ERROR_MESSAGES.SITE_SCAN_FAILED);
   }
 };
@@ -177,14 +234,14 @@ export const scanTransaction = async (
     const scanResult = response.data
       .data as Blockaid.StellarTransactionScanResponse;
 
-    analytics.track(AnalyticsEvent.BLOCKAID_TRANSACTION_SCAN, {
-      xdr,
-      url,
-      network,
+    analytics.track(AnalyticsEvent.BLOCKAID_SCAN_COMPLETED, {
+      scan_target: "transaction",
+      result: assessTransactionSecurity(scanResult).level,
     });
 
     return scanResult;
   } catch (error) {
+    trackScanFailed("transaction", error);
     throw new Error(BLOCKAID_ERROR_MESSAGES.TRANSACTION_SCAN_FAILED);
   }
 };

@@ -1,5 +1,6 @@
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { track } from "services/analytics/core";
+import { TransactionOperationType } from "services/analytics/types";
 import type {
   SignedTransactionEvent,
   SimulationTransactionType,
@@ -13,7 +14,7 @@ export const trackSignedTransaction = (data: SignedTransactionEvent): void => {
   track(AnalyticsEvent.SIGN_TRANSACTION_SUCCESS, {
     transactionHash: data.transactionHash,
     transactionType: data.transactionType,
-    ...(data.dappDomain ? { dappDomain: data.dappDomain } : {}),
+    ...(data.dappDomain ? { origin: data.dappDomain } : {}),
   });
 };
 
@@ -21,15 +22,17 @@ export const trackSignedMessage = (data: {
   messageLength: number;
   dappDomain?: string;
 }): void => {
+  // NOTE: mobile has a single message-signing flow, so message_type is not
+  // discriminated here; flagged for review.
   track(AnalyticsEvent.SIGN_MESSAGE_SUCCESS, {
     messageLength: data.messageLength,
-    ...(data.dappDomain ? { dappDomain: data.dappDomain } : {}),
+    ...(data.dappDomain ? { origin: data.dappDomain } : {}),
   });
 };
 
 export const trackSignedAuthEntry = (data: { dappDomain?: string }): void => {
   track(AnalyticsEvent.SIGN_AUTH_ENTRY_SUCCESS, {
-    ...(data.dappDomain ? { dappDomain: data.dappDomain } : {}),
+    ...(data.dappDomain ? { origin: data.dappDomain } : {}),
   });
 };
 
@@ -37,9 +40,13 @@ export const trackSignedMessageError = (data: {
   error: string;
   dappDomain?: string;
 }): void => {
+  // This is the runtime signing-failure path (a caught exception while
+  // signing), which is distinct from a user rejection. The user-reject case
+  // is not currently instrumented on mobile (SIGN_MESSAGE_REJECTED exists in
+  // the catalog for parity but has no emit site yet).
   track(AnalyticsEvent.SIGN_MESSAGE_FAIL, {
-    error: data.error,
-    ...(data.dappDomain ? { dappDomain: data.dappDomain } : {}),
+    reason_code: data.error,
+    ...(data.dappDomain ? { origin: data.dappDomain } : {}),
   });
 };
 
@@ -47,9 +54,10 @@ export const trackSignedAuthEntryError = (data: {
   error: string;
   dappDomain?: string;
 }): void => {
+  // Runtime signing-failure path; see trackSignedMessageError.
   track(AnalyticsEvent.SIGN_AUTH_ENTRY_FAIL, {
-    error: data.error,
-    ...(data.dappDomain ? { dappDomain: data.dappDomain } : {}),
+    reason_code: data.error,
+    ...(data.dappDomain ? { origin: data.dappDomain } : {}),
   });
 };
 
@@ -59,7 +67,7 @@ export const trackSubmittedTransaction = (
   track(AnalyticsEvent.SUBMIT_TRANSACTION_SUCCESS, {
     transactionHash: data.transactionHash,
     transactionType: data.transactionType,
-    ...(data.dappDomain ? { dappDomain: data.dappDomain } : {}),
+    ...(data.dappDomain ? { origin: data.dappDomain } : {}),
   });
 };
 
@@ -68,7 +76,7 @@ export const trackSimulationError = (
   transactionType: SimulationTransactionType,
 ): void => {
   track(AnalyticsEvent.SIMULATE_TOKEN_PAYMENT_ERROR, {
-    error,
+    reason_code: error,
     transactionType,
   });
 };
@@ -76,8 +84,20 @@ export const trackSimulationError = (
 export const trackSendPaymentSuccess = (
   data: TransactionSuccessEvent,
 ): void => {
+  // Path / routed payment outcomes are reported as swaps (product decision):
+  // a path-payment success emits swap.completed, a direct payment emits
+  // payment.completed with payment_type=payment.
+  if (data.operationType === TransactionOperationType.PathPayment) {
+    track(AnalyticsEvent.SWAP_SUCCESS, {
+      from_asset_code: data.sourceToken,
+      operationType: data.operationType,
+    });
+    return;
+  }
+
   track(AnalyticsEvent.SEND_PAYMENT_SUCCESS, {
-    sourceAsset: data.sourceToken,
+    from_asset_code: data.sourceToken,
+    payment_type: "payment",
     operationType: data.operationType,
   });
 };
@@ -93,8 +113,8 @@ export const trackSendCollectibleSuccess = (
 
 export const trackSwapSuccess = (data: SwapSuccessEvent): void => {
   track(AnalyticsEvent.SWAP_SUCCESS, {
-    sourceAsset: data.sourceToken,
-    destinationAsset: data.destToken,
+    from_asset_code: data.sourceToken,
+    to_asset_code: data.destToken,
     sourceAmount: data.sourceAmount,
     destinationAmount: data.destAmount,
     allowedSlippage: data.allowedSlippage,
@@ -103,22 +123,34 @@ export const trackSwapSuccess = (data: SwapSuccessEvent): void => {
 };
 
 export const trackTransactionError = (data: TransactionErrorEvent): void => {
-  const event = data.isSwap
-    ? AnalyticsEvent.SWAP_FAIL
-    : AnalyticsEvent.SEND_PAYMENT_FAIL;
+  // Route the outcome to the right terminal event:
+  // - collectible sends -> collectible_send.failed
+  // - swaps and path / routed payments -> swap.failed (product decision)
+  // - direct payments -> payment.failed
+  const isSwapLike =
+    data.isSwap ||
+    data.operationType === TransactionOperationType.PathPayment ||
+    data.operationType === TransactionOperationType.Swap;
+
+  let event = AnalyticsEvent.SEND_PAYMENT_FAIL;
+  if (data.operationType === TransactionOperationType.SendCollectible) {
+    event = AnalyticsEvent.SEND_COLLECTIBLE_FAIL;
+  } else if (isSwapLike) {
+    event = AnalyticsEvent.SWAP_FAIL;
+  }
 
   track(event, {
-    error: data.error,
+    reason_code: data.error,
     errorCode: data.errorCode,
     operationType: data.operationType,
     isSwap: data.isSwap,
-    // Swap-specific fields are gated so SEND_PAYMENT_FAIL events from
-    // non-swap callers don't get polluted with undefined sourceAsset /
-    // destinationAsset / sourceAmount / destinationAmount keys.
-    ...(data.isSwap
+    // Swap-specific fields are gated so payment.failed events from non-swap
+    // callers don't get polluted with undefined from_asset_code /
+    // to_asset_code / sourceAmount / destinationAmount keys.
+    ...(isSwapLike
       ? {
-          sourceAsset: data.sourceToken,
-          destinationAsset: data.destToken,
+          from_asset_code: data.sourceToken,
+          to_asset_code: data.destToken,
           sourceAmount: data.sourceAmount,
           destinationAmount: data.destAmount,
         }
@@ -127,19 +159,31 @@ export const trackTransactionError = (data: TransactionErrorEvent): void => {
 };
 
 export const trackAddTokenConfirmed = (token?: string): void => {
-  track(AnalyticsEvent.ADD_TOKEN_CONFIRMED, { asset: token });
+  track(AnalyticsEvent.ASSET_ADD_RESPONDED, {
+    decision: "confirm",
+    asset: token,
+  });
 };
 
 export const trackAddTokenRejected = (token?: string): void => {
-  track(AnalyticsEvent.ADD_TOKEN_REJECTED, { asset: token });
+  track(AnalyticsEvent.ASSET_ADD_RESPONDED, {
+    decision: "reject",
+    asset: token,
+  });
 };
 
 export const trackRemoveTokenConfirmed = (token?: string): void => {
-  track(AnalyticsEvent.REMOVE_TOKEN_CONFIRMED, { asset: token });
+  track(AnalyticsEvent.ASSET_REMOVE_RESPONDED, {
+    decision: "confirm",
+    asset: token,
+  });
 };
 
 export const trackRemoveTokenRejected = (token?: string): void => {
-  track(AnalyticsEvent.REMOVE_TOKEN_REJECTED, { asset: token });
+  track(AnalyticsEvent.ASSET_REMOVE_RESPONDED, {
+    decision: "reject",
+    asset: token,
+  });
 };
 
 export const trackAccountScreenImportAccountFail = (error: string): void => {
@@ -157,14 +201,17 @@ export const trackViewPublicKeyAccountRenamed = (
 };
 
 export const trackGrantAccessSuccess = (domain?: string): void => {
-  track(AnalyticsEvent.GRANT_DAPP_ACCESS_SUCCESS, { domain });
+  track(AnalyticsEvent.GRANT_DAPP_ACCESS_SUCCESS, { origin: domain });
 };
 
 export const trackGrantAccessFail = (
   domain?: string,
   reason?: string,
 ): void => {
-  track(AnalyticsEvent.GRANT_DAPP_ACCESS_FAIL, { domain, reason });
+  track(AnalyticsEvent.GRANT_DAPP_ACCESS_FAIL, {
+    origin: domain,
+    reason_code: reason,
+  });
 };
 
 export const trackHistoryOpenItem = (transactionHash: string): void => {
@@ -220,5 +267,5 @@ export const trackQRScanSuccess = (
 };
 
 export const trackQRScanError = (context: string, error: string): void => {
-  track(AnalyticsEvent.QR_SCAN_ERROR, { context, error });
+  track(AnalyticsEvent.QR_SCAN_ERROR, { context, reason_code: error });
 };
