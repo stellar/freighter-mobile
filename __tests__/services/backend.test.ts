@@ -1041,6 +1041,25 @@ describe("Backend Service - fetchBalances v2 routing", () => {
     );
   });
 
+  it("propagates a v2 server error without falling back to v1", async () => {
+    // A v2 failure must surface, not silently degrade to v1 — a fallback
+    // would mask indexer outages behind stale-looking v1 data.
+    mockV2Post.mockRejectedValueOnce(
+      Object.assign(new Error("Request failed with status code 500"), {
+        response: { status: 500 },
+      }),
+    );
+
+    await expect(
+      fetchBalances({
+        publicKey,
+        network: NETWORKS.PUBLIC,
+        useV2: true,
+      }),
+    ).rejects.toThrow("500");
+    expect(mockV1Get).not.toHaveBeenCalled();
+  });
+
   it("routes to v1 when the flag is off", async () => {
     mockV1Get.mockResolvedValueOnce({
       data: { balances: {}, isFunded: true, subentryCount: 0 },
