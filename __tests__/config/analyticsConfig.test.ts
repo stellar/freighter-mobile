@@ -3,9 +3,8 @@ import {
   AnalyticsFlow,
   ROUTE_TO_ANALYTICS_EVENT_MAP,
   ROUTES_WITHOUT_ANALYTICS,
-  transformRouteToEventName,
+  routeToScreenName,
   processRouteForAnalytics,
-  deriveScreenName,
   buildScreenViewedProps,
   getScreenViewedProps,
   isScreenViewEvent,
@@ -13,23 +12,15 @@ import {
 
 describe("Analytics Configuration", () => {
   describe("Route Transformation", () => {
-    it("should transform route names correctly", () => {
-      expect(transformRouteToEventName("WelcomeScreen")).toBe(
-        "loaded screen: welcome",
-      );
-      expect(transformRouteToEventName("SettingsScreen")).toBe(
-        "loaded screen: settings",
-      );
-      expect(transformRouteToEventName("SwapAmountScreen")).toBe(
-        "loaded screen: swap amount",
-      );
+    it("should derive canonical screen_names from route names", () => {
+      expect(routeToScreenName("WelcomeScreen")).toBe("welcome");
+      expect(routeToScreenName("SettingsScreen")).toBe("settings");
+      expect(routeToScreenName("SwapAmountScreen")).toBe("swap_amount");
     });
 
     it("should handle routes without Screen suffix", () => {
-      expect(transformRouteToEventName("Home")).toBe("loaded screen: home");
-      expect(transformRouteToEventName("History")).toBe(
-        "loaded screen: history",
-      );
+      expect(routeToScreenName("Home")).toBe("home");
+      expect(routeToScreenName("History")).toBe("history");
     });
   });
 
@@ -88,38 +79,24 @@ describe("Analytics Configuration", () => {
       expect(AnalyticsEvent.SCREEN_VIEWED).toBe("screen.viewed");
     });
 
-    describe("deriveScreenName", () => {
-      it("derives a deterministic slug from the legacy screen string", () => {
-        expect(deriveScreenName("loaded screen: send payment amount")).toBe(
-          "send_payment_amount",
-        );
-        expect(deriveScreenName("loaded screen: account")).toBe("account");
-        expect(
-          deriveScreenName("loaded screen: view public key generator"),
-        ).toBe("view_public_key_generator");
-      });
-
+    describe("routeToScreenName", () => {
       it("collapses each run of non-alphanumeric chars into a single underscore", () => {
-        expect(deriveScreenName("loaded screen:   swap   amount  ")).toBe(
-          "swap_amount",
-        );
-        expect(deriveScreenName("loaded screen: re-auth / details")).toBe(
+        expect(routeToScreenName("ReAuthDetailsScreen")).toBe(
           "re_auth_details",
         );
       });
 
-      it("is stable across the whole VIEW_* catalog (idempotent, no leading/trailing underscores)", () => {
-        Object.entries(AnalyticsEvent)
-          .filter(([key]) => key.startsWith("VIEW_"))
-          .forEach(([, legacy]) => {
-            const name = deriveScreenName(legacy);
+      it("yields a valid slug for every route in the map", () => {
+        Object.values(ROUTE_TO_ANALYTICS_EVENT_MAP)
+          .filter((name): name is string => name !== null)
+          .forEach((name) => {
             expect(name).toMatch(/^[a-z0-9]+(?:_[a-z0-9]+)*$/);
           });
       });
     });
 
     describe("isScreenViewEvent", () => {
-      it("recognises legacy screen-load strings and rejects the rest", () => {
+      it("recognises catalogued screen_names and rejects the rest", () => {
         expect(isScreenViewEvent(AnalyticsEvent.VIEW_HOME)).toBe(true);
         expect(isScreenViewEvent(AnalyticsEvent.SCREEN_VIEWED)).toBe(false);
         expect(isScreenViewEvent(AnalyticsEvent.SEND_PAYMENT_SUCCESS)).toBe(
@@ -166,19 +143,19 @@ describe("Analytics Configuration", () => {
         });
       });
 
-      it("falls back to a derived name (no flow) for an uncatalogued route", () => {
-        // Auto-mapped routes (transformRouteToEventName) not in SCREEN_CATALOG
-        // still emit screen.viewed with a derived name but carry no flow.
+      it("carries no flow for an uncatalogued (auto-mapped) route", () => {
+        // Auto-mapped routes not in SCREEN_CATALOG still emit screen.viewed
+        // with their route-derived screen_name but carry no flow.
         expect(
-          buildScreenViewedProps("loaded screen: some future screen"),
-        ).toEqual({ screen_name: "some_future_screen" });
+          buildScreenViewedProps(routeToScreenName("SomeFutureScreen")),
+        ).toEqual({ screen_name: "some_future" });
       });
 
-      it("produces a valid screen_name for every VIEW_* catalog entry", () => {
-        Object.entries(AnalyticsEvent)
-          .filter(([key]) => key.startsWith("VIEW_"))
-          .forEach(([, legacy]) => {
-            const props = buildScreenViewedProps(legacy);
+      it("produces a valid screen_name for every catalogued screen", () => {
+        Object.values(AnalyticsEvent)
+          .filter((value) => isScreenViewEvent(value))
+          .forEach((screenName) => {
+            const props = buildScreenViewedProps(screenName);
             expect(props.screen_name).toMatch(/^[a-z0-9]+(?:_[a-z0-9]+)*$/);
             if (props.flow) {
               expect(Object.values(AnalyticsFlow)).toContain(props.flow);
@@ -213,8 +190,8 @@ describe("Analytics Configuration", () => {
     });
 
     describe("route path feeds screen.viewed (hard cutover)", () => {
-      it("still resolves routes to a legacy string that maps to screen.viewed props", () => {
-        // processRouteForAnalytics keeps returning the legacy string; the
+      it("resolves routes to a screen_name that maps to screen.viewed props", () => {
+        // processRouteForAnalytics returns the canonical screen_name; the
         // navigation hook feeds it through buildScreenViewedProps.
         const welcome = processRouteForAnalytics("WelcomeScreen");
         expect(welcome).toBe(AnalyticsEvent.VIEW_WELCOME);
