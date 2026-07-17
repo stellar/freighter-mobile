@@ -10,65 +10,63 @@ export enum AnalyticsEvent {
   // Canonical screen-view event (#2883).
   //
   // Every screen load emits THIS single event carrying { screen_name, flow,
-  // surface, step? } instead of a distinct "loaded screen: X" event. The
-  // VIEW_* members below are retained as the canonical legacy-screen-string
-  // catalog: `screen_name` is derived deterministically from their string
-  // values (see deriveScreenName), and they remain the keys that components
-  // firing screen views manually (bottom sheets / detail sheets) reference.
-  // After the cutover their "loaded screen: X" string values are used
-  // only as catalog keys and are NEVER emitted to Amplitude.
+  // surface, step? }. The VIEW_* members below hold each screen's canonical
+  // `screen_name` directly as their value; they are the identifiers that
+  // components firing screen views manually (bottom sheets / detail sheets)
+  // reference, and are NEVER emitted as event names themselves — they only
+  // populate the `screen_name` prop on `screen.viewed`.
   SCREEN_VIEWED = "screen.viewed",
 
   // Screen Navigation Events (Auto-generated from routes)
-  VIEW_WELCOME = "loaded screen: welcome",
-  VIEW_CHOOSE_PASSWORD = "loaded screen: account creator",
-  VIEW_RECOVERY_PHRASE_ALERT = "loaded screen: mnemonic phrase alert",
-  VIEW_RECOVERY_PHRASE = "loaded screen: mnemonic phrase",
-  VIEW_VALIDATE_RECOVERY_PHRASE = "loaded screen: confirm mnemonic phrase",
-  VIEW_IMPORT_WALLET = "loaded screen: recover account",
-  VIEW_LOCK_SCREEN = "loaded screen: unlock account",
-  VIEW_HOME = "loaded screen: account",
-  VIEW_HISTORY = "loaded screen: account history",
-  VIEW_DISCOVERY = "loaded screen: discover",
-  VIEW_TOKEN_DETAILS = "loaded screen: asset detail",
-  VIEW_ACCOUNT_QR_CODE = "loaded screen: view public key generator",
-  VIEW_GRANT_DAPP_ACCESS = "loaded screen: grant access",
-  VIEW_SIGN_DAPP_TRANSACTION = "loaded screen: sign transaction",
-  VIEW_SIGN_DAPP_TRANSACTION_DETAILS = "loaded screen: sign transaction details",
-  VIEW_SIGN_DAPP_AUTH_ENTRY_DETAILS = "loaded screen: sign auth entry details",
-  VIEW_SEND_SEARCH_CONTACTS = "loaded screen: send payment to",
-  VIEW_SEND_AMOUNT = "loaded screen: send payment amount",
-  VIEW_SEND_MEMO = "loaded screen: send payment settings",
-  VIEW_SEND_FEE = "loaded screen: send payment fee",
-  VIEW_SEND_TIMEOUT = "loaded screen: send payment timeout",
-  VIEW_SEND_CONFIRM = "loaded screen: send payment confirm",
-  VIEW_SEND_TRANSACTION_DETAILS = "loaded screen: send transaction details",
-  VIEW_SEND_PROCESSING = "loaded screen: send payment processing",
-  VIEW_SWAP = "loaded screen: swap",
-  VIEW_SWAP_AMOUNT = "loaded screen: swap amount",
-  VIEW_SWAP_FEE = "loaded screen: swap fee",
-  VIEW_SWAP_SLIPPAGE = "loaded screen: swap slippage",
-  VIEW_SWAP_TIMEOUT = "loaded screen: swap timeout",
-  VIEW_SWAP_SETTINGS = "loaded screen: swap settings",
-  VIEW_SWAP_CONFIRM = "loaded screen: swap confirm",
-  VIEW_SWAP_TRANSACTION_DETAILS = "loaded screen: swap transaction details",
-  VIEW_SETTINGS = "loaded screen: settings",
-  VIEW_PREFERENCES = "loaded screen: preferences",
-  VIEW_CHANGE_NETWORK = "loaded screen: manage network",
-  VIEW_NETWORK_SETTINGS = "loaded screen: network settings",
-  VIEW_SHARE_FEEDBACK = "loaded screen: leave feedback",
-  VIEW_ABOUT = "loaded screen: about",
-  VIEW_SECURITY = "loaded screen: security",
-  VIEW_SHOW_RECOVERY_PHRASE = "loaded screen: show recovery phrase",
-  VIEW_MANAGE_CONNECTED_APPS = "loaded screen: manage connected apps",
-  VIEW_MANAGE_TOKENS = "loaded screen: manage assets",
-  VIEW_ADD_TOKEN = "loaded screen: add asset",
-  VIEW_REMOVE_TOKEN = "loaded screen: remove asset",
-  VIEW_MANAGE_WALLETS = "loaded screen: manage wallets",
-  VIEW_IMPORT_SECRET_KEY = "loaded screen: import secret key",
-  VIEW_BUY_XLM = "loaded screen: add fund",
-  VIEW_SEARCH_TOKEN = "loaded screen: search asset",
-  VIEW_ADD_TOKEN_MANUALLY = "loaded screen: add asset manually",
+  VIEW_WELCOME = "welcome",
+  VIEW_CHOOSE_PASSWORD = "account_creator",
+  VIEW_RECOVERY_PHRASE_ALERT = "mnemonic_phrase_alert",
+  VIEW_RECOVERY_PHRASE = "mnemonic_phrase",
+  VIEW_VALIDATE_RECOVERY_PHRASE = "confirm_mnemonic_phrase",
+  VIEW_IMPORT_WALLET = "recover_account",
+  VIEW_LOCK_SCREEN = "unlock_account",
+  VIEW_HOME = "account",
+  VIEW_HISTORY = "account_history",
+  VIEW_DISCOVERY = "discover",
+  VIEW_TOKEN_DETAILS = "asset_detail",
+  VIEW_ACCOUNT_QR_CODE = "view_public_key_generator",
+  VIEW_GRANT_DAPP_ACCESS = "grant_access",
+  VIEW_SIGN_DAPP_TRANSACTION = "sign_transaction",
+  VIEW_SIGN_DAPP_TRANSACTION_DETAILS = "sign_transaction_details",
+  VIEW_SIGN_DAPP_AUTH_ENTRY_DETAILS = "sign_auth_entry_details",
+  VIEW_SEND_SEARCH_CONTACTS = "send_payment_to",
+  VIEW_SEND_AMOUNT = "send_payment_amount",
+  VIEW_SEND_MEMO = "send_payment_settings",
+  VIEW_SEND_FEE = "send_payment_fee",
+  VIEW_SEND_TIMEOUT = "send_payment_timeout",
+  VIEW_SEND_CONFIRM = "send_payment_confirm",
+  VIEW_SEND_TRANSACTION_DETAILS = "send_transaction_details",
+  VIEW_SEND_PROCESSING = "send_payment_processing",
+  VIEW_SWAP = "swap",
+  VIEW_SWAP_AMOUNT = "swap_amount",
+  VIEW_SWAP_FEE = "swap_fee",
+  VIEW_SWAP_SLIPPAGE = "swap_slippage",
+  VIEW_SWAP_TIMEOUT = "swap_timeout",
+  VIEW_SWAP_SETTINGS = "swap_settings",
+  VIEW_SWAP_CONFIRM = "swap_confirm",
+  VIEW_SWAP_TRANSACTION_DETAILS = "swap_transaction_details",
+  VIEW_SETTINGS = "settings",
+  VIEW_PREFERENCES = "preferences",
+  VIEW_CHANGE_NETWORK = "manage_network",
+  VIEW_NETWORK_SETTINGS = "network_settings",
+  VIEW_SHARE_FEEDBACK = "leave_feedback",
+  VIEW_ABOUT = "about",
+  VIEW_SECURITY = "security",
+  VIEW_SHOW_RECOVERY_PHRASE = "show_recovery_phrase",
+  VIEW_MANAGE_CONNECTED_APPS = "manage_connected_apps",
+  VIEW_MANAGE_TOKENS = "manage_assets",
+  VIEW_ADD_TOKEN = "add_asset",
+  VIEW_REMOVE_TOKEN = "remove_asset",
+  VIEW_MANAGE_WALLETS = "manage_wallets",
+  VIEW_IMPORT_SECRET_KEY = "import_secret_key",
+  VIEW_BUY_XLM = "add_fund",
+  VIEW_SEARCH_TOKEN = "search_asset",
+  VIEW_ADD_TOKEN_MANUALLY = "add_asset_manually",
 
   // ---------------------------------------------------------------------------
   // Domain (action / outcome) events (#2883)
@@ -280,7 +278,8 @@ export enum AnalyticsFlow {
 /**
  * Property bag carried by the single canonical `screen.viewed` event.
  *
- * - `screen_name`: deterministic, cross-platform slug (see deriveScreenName).
+ * - `screen_name`: canonical, cross-platform id — a named screen's VIEW_*
+ *   enum value; auto-mapped routes derive it from the route name.
  * - `flow`: best-fit user journey (see AnalyticsFlow); omitted when none fits.
  * - `step`: sub-step marker for screens that are a stage within a flow
  *   (e.g. a confirmation or processing screen) rather than a distinct
@@ -299,56 +298,87 @@ export type ScreenViewedProps = {
   step?: string;
 };
 
-const LEGACY_SCREEN_PREFIX = "loaded screen: ";
-
 /**
- * Per-screen flow (and optional step) assignment, keyed by the legacy
- * "loaded screen: X" string. `screen_name` is NOT stored here - it is derived
- * mechanically from the key so both platforms align automatically. Screens
- * absent from this map still emit `screen.viewed` (with a derived
- * `screen_name`) but carry no `flow`.
+ * Per-screen `flow`/`step` for named screens, keyed by the screen's canonical
+ * `screen_name` (its VIEW_* enum value). The `screen_name` itself is the key,
+ * so it isn't repeated inside. Routes NOT listed here (auto-mapped via
+ * routeToScreenName) still emit `screen.viewed` with their route-derived
+ * `screen_name` but carry no `flow` — see buildScreenViewedProps.
  */
-const SCREEN_METADATA: Record<string, { flow?: AnalyticsFlow; step?: string }> =
+const SCREEN_CATALOG: Record<string, { flow?: AnalyticsFlow; step?: string }> =
   {
     // Onboarding / account creation
-    [AnalyticsEvent.VIEW_WELCOME]: { flow: AnalyticsFlow.ONBOARDING },
-    [AnalyticsEvent.VIEW_CHOOSE_PASSWORD]: { flow: AnalyticsFlow.ONBOARDING },
+    [AnalyticsEvent.VIEW_WELCOME]: {
+      flow: AnalyticsFlow.ONBOARDING,
+    },
+    [AnalyticsEvent.VIEW_CHOOSE_PASSWORD]: {
+      flow: AnalyticsFlow.ONBOARDING,
+    },
     [AnalyticsEvent.VIEW_RECOVERY_PHRASE_ALERT]: {
       flow: AnalyticsFlow.ONBOARDING,
     },
-    [AnalyticsEvent.VIEW_RECOVERY_PHRASE]: { flow: AnalyticsFlow.ONBOARDING },
+    [AnalyticsEvent.VIEW_RECOVERY_PHRASE]: {
+      flow: AnalyticsFlow.ONBOARDING,
+    },
     [AnalyticsEvent.VIEW_VALIDATE_RECOVERY_PHRASE]: {
       flow: AnalyticsFlow.ONBOARDING,
     },
-    [AnalyticsEvent.VIEW_IMPORT_WALLET]: { flow: AnalyticsFlow.ONBOARDING },
-
+    [AnalyticsEvent.VIEW_IMPORT_WALLET]: {
+      flow: AnalyticsFlow.ONBOARDING,
+    },
     // Security / re-auth / secret material
-    [AnalyticsEvent.VIEW_LOCK_SCREEN]: { flow: AnalyticsFlow.SECURITY },
-    [AnalyticsEvent.VIEW_SECURITY]: { flow: AnalyticsFlow.SECURITY },
+    [AnalyticsEvent.VIEW_LOCK_SCREEN]: {
+      flow: AnalyticsFlow.SECURITY,
+    },
+    [AnalyticsEvent.VIEW_SECURITY]: {
+      flow: AnalyticsFlow.SECURITY,
+    },
     [AnalyticsEvent.VIEW_SHOW_RECOVERY_PHRASE]: {
       flow: AnalyticsFlow.SECURITY,
     },
-    [AnalyticsEvent.VIEW_IMPORT_SECRET_KEY]: { flow: AnalyticsFlow.SECURITY },
-
+    [AnalyticsEvent.VIEW_IMPORT_SECRET_KEY]: {
+      flow: AnalyticsFlow.SECURITY,
+    },
     // Home / assets
-    [AnalyticsEvent.VIEW_HOME]: { flow: AnalyticsFlow.ASSETS },
-    [AnalyticsEvent.VIEW_TOKEN_DETAILS]: { flow: AnalyticsFlow.ASSETS },
-    [AnalyticsEvent.VIEW_ACCOUNT_QR_CODE]: { flow: AnalyticsFlow.ASSETS },
-    [AnalyticsEvent.VIEW_MANAGE_TOKENS]: { flow: AnalyticsFlow.ASSETS },
-    [AnalyticsEvent.VIEW_ADD_TOKEN]: { flow: AnalyticsFlow.ASSETS },
-    [AnalyticsEvent.VIEW_REMOVE_TOKEN]: { flow: AnalyticsFlow.ASSETS },
-    [AnalyticsEvent.VIEW_SEARCH_TOKEN]: { flow: AnalyticsFlow.ASSETS },
-    [AnalyticsEvent.VIEW_ADD_TOKEN_MANUALLY]: { flow: AnalyticsFlow.ASSETS },
-    [AnalyticsEvent.VIEW_BUY_XLM]: { flow: AnalyticsFlow.ASSETS },
-
+    [AnalyticsEvent.VIEW_HOME]: {
+      flow: AnalyticsFlow.ASSETS,
+    },
+    [AnalyticsEvent.VIEW_TOKEN_DETAILS]: {
+      flow: AnalyticsFlow.ASSETS,
+    },
+    [AnalyticsEvent.VIEW_ACCOUNT_QR_CODE]: {
+      flow: AnalyticsFlow.ASSETS,
+    },
+    [AnalyticsEvent.VIEW_MANAGE_TOKENS]: {
+      flow: AnalyticsFlow.ASSETS,
+    },
+    [AnalyticsEvent.VIEW_ADD_TOKEN]: {
+      flow: AnalyticsFlow.ASSETS,
+    },
+    [AnalyticsEvent.VIEW_REMOVE_TOKEN]: {
+      flow: AnalyticsFlow.ASSETS,
+    },
+    [AnalyticsEvent.VIEW_SEARCH_TOKEN]: {
+      flow: AnalyticsFlow.ASSETS,
+    },
+    [AnalyticsEvent.VIEW_ADD_TOKEN_MANUALLY]: {
+      flow: AnalyticsFlow.ASSETS,
+    },
+    [AnalyticsEvent.VIEW_BUY_XLM]: {
+      flow: AnalyticsFlow.ASSETS,
+    },
     // History
-    [AnalyticsEvent.VIEW_HISTORY]: { flow: AnalyticsFlow.HISTORY },
-
+    [AnalyticsEvent.VIEW_HISTORY]: {
+      flow: AnalyticsFlow.HISTORY,
+    },
     // Discovery
-    [AnalyticsEvent.VIEW_DISCOVERY]: { flow: AnalyticsFlow.DISCOVERY },
-
+    [AnalyticsEvent.VIEW_DISCOVERY]: {
+      flow: AnalyticsFlow.DISCOVERY,
+    },
     // Signing / dApp
-    [AnalyticsEvent.VIEW_GRANT_DAPP_ACCESS]: { flow: AnalyticsFlow.SIGNING },
+    [AnalyticsEvent.VIEW_GRANT_DAPP_ACCESS]: {
+      flow: AnalyticsFlow.SIGNING,
+    },
     [AnalyticsEvent.VIEW_SIGN_DAPP_TRANSACTION]: {
       flow: AnalyticsFlow.SIGNING,
     },
@@ -358,13 +388,22 @@ const SCREEN_METADATA: Record<string, { flow?: AnalyticsFlow; step?: string }> =
     [AnalyticsEvent.VIEW_SIGN_DAPP_AUTH_ENTRY_DETAILS]: {
       flow: AnalyticsFlow.SIGNING,
     },
-
     // Send payment
-    [AnalyticsEvent.VIEW_SEND_SEARCH_CONTACTS]: { flow: AnalyticsFlow.SEND },
-    [AnalyticsEvent.VIEW_SEND_AMOUNT]: { flow: AnalyticsFlow.SEND },
-    [AnalyticsEvent.VIEW_SEND_MEMO]: { flow: AnalyticsFlow.SEND },
-    [AnalyticsEvent.VIEW_SEND_FEE]: { flow: AnalyticsFlow.SEND },
-    [AnalyticsEvent.VIEW_SEND_TIMEOUT]: { flow: AnalyticsFlow.SEND },
+    [AnalyticsEvent.VIEW_SEND_SEARCH_CONTACTS]: {
+      flow: AnalyticsFlow.SEND,
+    },
+    [AnalyticsEvent.VIEW_SEND_AMOUNT]: {
+      flow: AnalyticsFlow.SEND,
+    },
+    [AnalyticsEvent.VIEW_SEND_MEMO]: {
+      flow: AnalyticsFlow.SEND,
+    },
+    [AnalyticsEvent.VIEW_SEND_FEE]: {
+      flow: AnalyticsFlow.SEND,
+    },
+    [AnalyticsEvent.VIEW_SEND_TIMEOUT]: {
+      flow: AnalyticsFlow.SEND,
+    },
     [AnalyticsEvent.VIEW_SEND_CONFIRM]: {
       flow: AnalyticsFlow.SEND,
       step: "confirm",
@@ -376,14 +415,23 @@ const SCREEN_METADATA: Record<string, { flow?: AnalyticsFlow; step?: string }> =
       flow: AnalyticsFlow.SEND,
       step: "processing",
     },
-
     // Swap
     [AnalyticsEvent.VIEW_SWAP]: { flow: AnalyticsFlow.SWAP },
-    [AnalyticsEvent.VIEW_SWAP_AMOUNT]: { flow: AnalyticsFlow.SWAP },
-    [AnalyticsEvent.VIEW_SWAP_FEE]: { flow: AnalyticsFlow.SWAP },
-    [AnalyticsEvent.VIEW_SWAP_SLIPPAGE]: { flow: AnalyticsFlow.SWAP },
-    [AnalyticsEvent.VIEW_SWAP_TIMEOUT]: { flow: AnalyticsFlow.SWAP },
-    [AnalyticsEvent.VIEW_SWAP_SETTINGS]: { flow: AnalyticsFlow.SWAP },
+    [AnalyticsEvent.VIEW_SWAP_AMOUNT]: {
+      flow: AnalyticsFlow.SWAP,
+    },
+    [AnalyticsEvent.VIEW_SWAP_FEE]: {
+      flow: AnalyticsFlow.SWAP,
+    },
+    [AnalyticsEvent.VIEW_SWAP_SLIPPAGE]: {
+      flow: AnalyticsFlow.SWAP,
+    },
+    [AnalyticsEvent.VIEW_SWAP_TIMEOUT]: {
+      flow: AnalyticsFlow.SWAP,
+    },
+    [AnalyticsEvent.VIEW_SWAP_SETTINGS]: {
+      flow: AnalyticsFlow.SWAP,
+    },
     [AnalyticsEvent.VIEW_SWAP_CONFIRM]: {
       flow: AnalyticsFlow.SWAP,
       step: "confirm",
@@ -391,71 +439,63 @@ const SCREEN_METADATA: Record<string, { flow?: AnalyticsFlow; step?: string }> =
     [AnalyticsEvent.VIEW_SWAP_TRANSACTION_DETAILS]: {
       flow: AnalyticsFlow.SWAP,
     },
-
     // Settings
-    [AnalyticsEvent.VIEW_SETTINGS]: { flow: AnalyticsFlow.SETTINGS },
-    [AnalyticsEvent.VIEW_PREFERENCES]: { flow: AnalyticsFlow.SETTINGS },
-    [AnalyticsEvent.VIEW_CHANGE_NETWORK]: { flow: AnalyticsFlow.SETTINGS },
-    [AnalyticsEvent.VIEW_NETWORK_SETTINGS]: { flow: AnalyticsFlow.SETTINGS },
-    [AnalyticsEvent.VIEW_SHARE_FEEDBACK]: { flow: AnalyticsFlow.SETTINGS },
-    [AnalyticsEvent.VIEW_ABOUT]: { flow: AnalyticsFlow.SETTINGS },
+    [AnalyticsEvent.VIEW_SETTINGS]: {
+      flow: AnalyticsFlow.SETTINGS,
+    },
+    [AnalyticsEvent.VIEW_PREFERENCES]: {
+      flow: AnalyticsFlow.SETTINGS,
+    },
+    [AnalyticsEvent.VIEW_CHANGE_NETWORK]: {
+      flow: AnalyticsFlow.SETTINGS,
+    },
+    [AnalyticsEvent.VIEW_NETWORK_SETTINGS]: {
+      flow: AnalyticsFlow.SETTINGS,
+    },
+    [AnalyticsEvent.VIEW_SHARE_FEEDBACK]: {
+      flow: AnalyticsFlow.SETTINGS,
+    },
+    [AnalyticsEvent.VIEW_ABOUT]: {
+      flow: AnalyticsFlow.SETTINGS,
+    },
     [AnalyticsEvent.VIEW_MANAGE_CONNECTED_APPS]: {
       flow: AnalyticsFlow.SETTINGS,
     },
-    [AnalyticsEvent.VIEW_MANAGE_WALLETS]: { flow: AnalyticsFlow.SETTINGS },
+    [AnalyticsEvent.VIEW_MANAGE_WALLETS]: {
+      flow: AnalyticsFlow.SETTINGS,
+    },
   };
 
 /**
- * Derives the canonical, cross-platform `screen_name` from a legacy
- * "loaded screen: X" string, deterministically:
- *   1. strip the "loaded screen: " prefix
- *   2. trim
- *   3. lowercase
- *   4. replace each run of non-alphanumeric chars with a single "_"
- *
- * e.g. "loaded screen: send payment amount" -> "send_payment_amount"
- *      "loaded screen: account"             -> "account"
- *
- * Both platforms use identical legacy strings, so `screen_name` aligns
- * cross-platform automatically.
- */
-export const deriveScreenName = (legacyEvent: string): string =>
-  legacyEvent
-    .replace(/^loaded screen:\s*/i, "")
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
-
-/**
- * True when `event` is a legacy screen-load event (its value should be
- * retargeted to the canonical `screen.viewed` event rather than emitted).
+ * True when `event` is a known screen-view — i.e. a canonical `screen_name`
+ * present in SCREEN_CATALOG. Such events are retargeted to the single
+ * `screen.viewed` event; everything else (action/domain events) is tracked
+ * unchanged.
  */
 export const isScreenViewEvent = (event: string): boolean =>
-  event.startsWith(LEGACY_SCREEN_PREFIX);
+  event in SCREEN_CATALOG;
 
 /**
- * Builds the `screen.viewed` property bag from a legacy "loaded screen: X"
- * string: a deterministic `screen_name` plus the screen's `flow`/`step` from
- * the catalog (omitted when unknown/none fits).
+ * Builds the `screen.viewed` property bag for a screen: the `screen_name`
+ * itself (a named screen passes its VIEW_* enum value; an auto-mapped route
+ * passes its route-derived name) plus the catalogued `flow`/`step` (omitted
+ * when the screen is not catalogued or carries none).
  */
 export const buildScreenViewedProps = (
-  legacyEvent: string,
+  screenName: string,
 ): ScreenViewedProps => {
-  const meta = SCREEN_METADATA[legacyEvent] ?? {};
-  const props: ScreenViewedProps = {
-    screen_name: deriveScreenName(legacyEvent),
-  };
-  if (meta.flow) props.flow = meta.flow;
-  if (meta.step) props.step = meta.step;
+  const meta = SCREEN_CATALOG[screenName];
+  const props: ScreenViewedProps = { screen_name: screenName };
+  if (meta?.flow) props.flow = meta.flow;
+  if (meta?.step) props.step = meta.step;
   return props;
 };
 
 /**
  * Retargeting helper for manual screen-view emission sites (e.g. bottom
  * sheets that present a "screen"). Returns the `screen.viewed` props for a
- * legacy screen-load event, or null for any non-screen event (which should be
- * tracked unchanged).
+ * catalogued screen-view event, or null for any non-screen event (which
+ * should be tracked unchanged).
  */
 export const getScreenViewedProps = (
   event: string,
@@ -532,37 +572,29 @@ export const CUSTOM_ROUTE_MAPPINGS: Record<string, AnalyticsEvent> = {
 };
 
 /**
- * Transform route name to analytics event name automatically.
- *
- * This function implements the core transformation logic that converts
- * React Navigation route names to analytics event names.
+ * Derives a canonical `screen_name` directly from a React Navigation route
+ * name: drop the "Screen" suffix, split PascalCase, lowercase, and join runs
+ * of non-alphanumeric chars with a single "_".
  *
  * Examples:
- * - "WelcomeScreen" → "loaded screen: welcome"
- * - "SettingsScreen" → "loaded screen: settings"
- * - "SwapAmountScreen" → "loaded screen: swap amount"
+ * - "WelcomeScreen"    → "welcome"
+ * - "SettingsScreen"   → "settings"
+ * - "SwapAmountScreen" → "swap_amount"
  */
-export const transformRouteToEventName = (routeName: string): string => {
-  // Remove "Screen" suffix if present
-  const baseName = routeName.replace(/Screen$/, "");
-
-  // Convert PascalCase to lowercase with spaces
-  // "SwapAmount" → "swap amount"
-  const withSpaces = baseName
+export const routeToScreenName = (routeName: string): string =>
+  routeName
+    .replace(/Screen$/, "")
     .replace(/([A-Z])/g, " $1") // Add space before capitals
     .toLowerCase()
-    .trim();
-
-  return `loaded screen: ${withSpaces}`;
-};
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
 
 /**
- * Processes a single route for analytics mapping.
- * Uses automatic transformation unless there's a manual override.
+ * Resolves a route to its canonical `screen_name`, or null when the route
+ * carries no analytics. A manual override (CUSTOM_ROUTE_MAPPINGS) wins;
+ * otherwise the name is derived from the route.
  */
-export const processRouteForAnalytics = (
-  routeName: string,
-): AnalyticsEvent | null => {
+export const processRouteForAnalytics = (routeName: string): string | null => {
   // Check exclusion list first
   if (ROUTES_WITHOUT_ANALYTICS.has(routeName)) {
     return null;
@@ -573,26 +605,23 @@ export const processRouteForAnalytics = (
     return CUSTOM_ROUTE_MAPPINGS[routeName];
   }
 
-  // Use automatic transformation for all other routes
-  const autoEvent = transformRouteToEventName(routeName);
-
-  return autoEvent as AnalyticsEvent;
+  // Derive the screen_name directly for all other routes
+  return routeToScreenName(routeName);
 };
 
 /**
- * Generates the complete route-to-analytics mapping using ALL_ROUTE_OBJECTS.
+ * Generates the complete route-to-screen_name mapping using ALL_ROUTE_OBJECTS.
  *
  * This function automatically discovers all routes and creates analytics mappings
  * without requiring manual maintenance of route lists.
  */
 export const generateRouteToAnalyticsMapping = () => {
-  const mapping: Record<string, AnalyticsEvent | null> = {};
+  const mapping: Record<string, string | null> = {};
 
   ALL_ROUTES_OBJECT.forEach((routeObject) => {
     Object.values(routeObject).forEach((routeName) => {
       if (typeof routeName === "string") {
-        const analyticsEvent = processRouteForAnalytics(routeName);
-        mapping[routeName] = analyticsEvent;
+        mapping[routeName] = processRouteForAnalytics(routeName);
       }
     });
   });

@@ -39,17 +39,14 @@ export const useNavigationAnalytics = () => {
     const currentRouteName = getActiveRouteName(state);
 
     if (previousRouteName !== currentRouteName) {
-      // processRouteForAnalytics still resolves the route to its legacy
-      // "loaded screen: X" string; this change retargets that into a single
-      // canonical `screen.viewed` event carrying { screen_name, flow }
-      // (surface is added by the Slice-A common context).
-      const legacyScreenEvent = processRouteForAnalytics(currentRouteName);
+      // processRouteForAnalytics resolves the route to its canonical
+      // screen_name; we emit a single `screen.viewed` event carrying
+      // { screen_name, flow } (surface is added by the Slice-A common
+      // context).
+      const screenName = processRouteForAnalytics(currentRouteName);
 
-      if (legacyScreenEvent) {
-        track(
-          AnalyticsEvent.SCREEN_VIEWED,
-          buildScreenViewedProps(legacyScreenEvent),
-        );
+      if (screenName) {
+        track(AnalyticsEvent.SCREEN_VIEWED, buildScreenViewedProps(screenName));
       }
     }
 
