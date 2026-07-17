@@ -129,7 +129,7 @@ describe("Analytics Configuration", () => {
     });
 
     describe("buildScreenViewedProps", () => {
-      it("derives screen_name and assigns the screen's flow", () => {
+      it("uses the catalogued screen_name and assigns the screen's flow", () => {
         expect(buildScreenViewedProps(AnalyticsEvent.VIEW_SEND_AMOUNT)).toEqual(
           {
             screen_name: "send_payment_amount",
@@ -166,9 +166,9 @@ describe("Analytics Configuration", () => {
         });
       });
 
-      it("omits flow (and step) for a screen with no catalogued flow", () => {
-        // An unmapped legacy string still emits screen.viewed with a derived
-        // name but no flow.
+      it("falls back to a derived name (no flow) for an uncatalogued route", () => {
+        // Auto-mapped routes (transformRouteToEventName) not in SCREEN_CATALOG
+        // still emit screen.viewed with a derived name but carry no flow.
         expect(
           buildScreenViewedProps("loaded screen: some future screen"),
         ).toEqual({ screen_name: "some_future_screen" });
