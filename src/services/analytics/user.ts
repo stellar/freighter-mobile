@@ -4,6 +4,7 @@ import { logger } from "config/logger";
 import { useAnalyticsStore } from "ducks/analytics";
 import { STORAGE_KEYS, DEBUG_CONFIG } from "services/analytics/constants";
 import { isInitialized } from "services/analytics/core";
+import { getAuthUserId } from "services/auth/getAuthUserId";
 
 // -----------------------------------------------------------------------------
 // USER ID MANAGEMENT
@@ -19,12 +20,35 @@ const generateRandomUserId = (): string =>
   Math.random().toString().split(".")[1];
 
 /**
- * Gets user ID with fallback strategy:
- * 1. Try to get from AsyncStorage
+ * Gets user ID, preferring the seed-derived auth id, with fallback strategy:
+ * 0. Prefer the auth id (services/auth/getAuthUserId) when the session is
+ *    unlocked, persisting/overwriting the stored id so migrated users keep a
+ *    stable identity going forward.
+ * 1. Otherwise (locked / no session) try to get from AsyncStorage
  * 2. Generate new one and store it
  * 3. Use session-only ID if storage fails
  */
 export const getUserId = async (): Promise<string> => {
+  const authId = await getAuthUserId();
+
+  if (authId) {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.METRICS_USER_ID, authId);
+    } catch (setError) {
+      // Same rationale as the random-id session-only fallback below: don't
+      // let a persistence failure discard an id we already have.
+      logger.warn(
+        DEBUG_CONFIG.LOG_PREFIX,
+        "Failed to persist auth-derived user ID, using it for this session only",
+        setError,
+      );
+    }
+
+    sessionUserId = authId;
+
+    return authId;
+  }
+
   try {
     const storedId = await AsyncStorage.getItem(STORAGE_KEYS.METRICS_USER_ID);
 
