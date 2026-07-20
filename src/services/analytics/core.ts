@@ -1,7 +1,7 @@
 import * as amplitude from "@amplitude/analytics-react-native";
 import { Experiment } from "@amplitude/experiment-react-native-client";
 import { hash } from "@stellar/stellar-sdk";
-import { AnalyticsEvent } from "config/analyticsConfig";
+import { AnalyticsEvent, isScreenViewEvent } from "config/analyticsConfig";
 import { logger } from "config/logger";
 import { useAnalyticsStore } from "ducks/analytics";
 import { useAuthenticationStore } from "ducks/auth";
@@ -395,15 +395,37 @@ const dispatchUnthrottled = (
 /**
  * Throttled event dispatcher to prevent duplicate events.
  * Uses trailing execution to give time for analytics preferences to load.
- * We use memoize to create a separate throttled function for each event name.
+ * We use memoize to create a separate throttled function for each throttle key.
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-const getThrottledDispatcher = memoize((_eventName: AnalyticsEventName) =>
+const getThrottledDispatcher = memoize((_throttleKey: string) =>
   throttle(dispatchUnthrottled, TIMING.THROTTLE_DELAY_MS, {
     leading: false,
     trailing: true,
   }),
 );
+
+/**
+ * Resolves the throttle bucket for an event.
+ *
+ * `screen.viewed` collapses every screen into a single event name, so keying
+ * the throttle on the event name alone would put all screens in one bucket: a
+ * burst of navigations within THROTTLE_DELAY_MS (fast tap-through, or
+ * synchronous programmatic navigation such as popToTop() immediately followed
+ * by navigate()) would drop all but the last screen. Navigation already dedups
+ * consecutive same-screen views upstream (useNavigationAnalytics compares
+ * previousRouteName !== currentRouteName; BottomSheet guards per-mount), so
+ * partitioning the throttle per screen_name is safe and keeps distinct screens
+ * from clobbering one another while still deduping same-screen re-emits.
+ */
+const getThrottleKey = (
+  event: AnalyticsEventName,
+  props?: AnalyticsProps,
+): string =>
+  event === AnalyticsEvent.SCREEN_VIEWED &&
+  typeof props?.screen_name === "string"
+    ? `${event}:${props.screen_name}`
+    : event;
 
 /**
  * Main event tracking function.
@@ -413,9 +435,26 @@ export const track = (
   event: AnalyticsEventName,
   props?: AnalyticsProps,
 ): void => {
+  // Bypass guard (RFC #2883, D7): screen-view VIEW_* members must be retargeted
+  // to the single SCREEN_VIEWED event by the navigation/BottomSheet choke
+  // points. A catalogued screen slug (e.g. "send_payment_amount") arriving here
+  // as the event name means a screen-view bypassed those choke points and would
+  // leak the bare slug as an Amplitude event name. The enum members keep their
+  // slug values (so there is no compile-time guard), hence this runtime one:
+  // drop the event and log, so a regression is caught in the console/breadcrumbs
+  // instead of silently corrupting the event stream.
+  if (event !== AnalyticsEvent.SCREEN_VIEWED && isScreenViewEvent(event)) {
+    const message = `Screen-view "${event}" passed to track() directly; emit SCREEN_VIEWED via the navigation choke points instead. Event dropped.`;
+    logger.error(DEBUG_CONFIG.LOG_PREFIX, message, new Error(message));
+    return;
+  }
+
   if (ANALYTICS_CONFIG.THROTTLE_DUPLICATE_EVENTS) {
-    // Get a dispatcher throttled for this specific event name
-    const throttledDispatch = getThrottledDispatcher(event);
+    // Get a dispatcher throttled for this event's bucket (screen-aware for
+    // screen.viewed; per event name otherwise).
+    const throttledDispatch = getThrottledDispatcher(
+      getThrottleKey(event, props),
+    );
 
     throttledDispatch(event, props);
   } else {

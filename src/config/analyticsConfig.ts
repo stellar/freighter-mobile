@@ -243,21 +243,29 @@ export enum AnalyticsFlow {
  * - `screen_name`: canonical, cross-platform id — a named screen's VIEW_*
  *   enum value; auto-mapped routes derive it from the route name.
  * - `flow`: best-fit user journey (see AnalyticsFlow); omitted when none fits.
- * - `step`: sub-step marker for screens that are a stage within a flow
- *   (e.g. a confirmation or processing screen) rather than a distinct
- *   destination. Collapses completion/success screens into `screen.viewed`
- *   instead of a bespoke event.
+ * - `step`: a screen's position within a multi-step flow (see Step) rather than
+ *   a distinct destination. Omitted for standalone screens.
  *
  * `surface` is intentionally NOT included here: it is added to every event by
  * the Slice-A common context (buildCommonContext -> getSurface()).
  */
+/**
+ * Canonical cross-platform `step` vocabulary (RFC #2883): a screen's position
+ * within a multi-step flow. Closed set, applied identically on the extension —
+ * a screen present on both platforms MUST carry the same `step`.
+ *   - `confirm`:    the review/confirm stage before submitting (send/swap).
+ *   - `processing`: the in-flight submission stage.
+ *   - `success`:    the terminal completion stage of a flow.
+ */
+export type Step = "confirm" | "processing" | "success";
+
 // A `type` alias (not an `interface`) so it stays assignable to the
 // `Record<string, unknown>`-based `AnalyticsProps` at the track() call sites -
 // interfaces are not assignable to an index signature, type aliases are.
 export type ScreenViewedProps = {
   screen_name: string;
   flow?: AnalyticsFlow;
-  step?: string;
+  step?: Step;
 };
 
 /**
@@ -267,166 +275,165 @@ export type ScreenViewedProps = {
  * routeToScreenName) still emit `screen.viewed` with their route-derived
  * `screen_name` but carry no `flow` — see buildScreenViewedProps.
  */
-const SCREEN_CATALOG: Record<string, { flow?: AnalyticsFlow; step?: string }> =
-  {
-    // Onboarding / account creation
-    [AnalyticsEvent.VIEW_WELCOME]: {
-      flow: AnalyticsFlow.ONBOARDING,
-    },
-    [AnalyticsEvent.VIEW_CHOOSE_PASSWORD]: {
-      flow: AnalyticsFlow.ONBOARDING,
-    },
-    [AnalyticsEvent.VIEW_RECOVERY_PHRASE_ALERT]: {
-      flow: AnalyticsFlow.ONBOARDING,
-    },
-    [AnalyticsEvent.VIEW_RECOVERY_PHRASE]: {
-      flow: AnalyticsFlow.ONBOARDING,
-    },
-    [AnalyticsEvent.VIEW_VALIDATE_RECOVERY_PHRASE]: {
-      flow: AnalyticsFlow.ONBOARDING,
-    },
-    [AnalyticsEvent.VIEW_IMPORT_WALLET]: {
-      flow: AnalyticsFlow.ONBOARDING,
-    },
-    // Security / re-auth / secret material
-    [AnalyticsEvent.VIEW_LOCK_SCREEN]: {
-      flow: AnalyticsFlow.SECURITY,
-    },
-    [AnalyticsEvent.VIEW_SECURITY]: {
-      flow: AnalyticsFlow.SECURITY,
-    },
-    [AnalyticsEvent.VIEW_SHOW_RECOVERY_PHRASE]: {
-      flow: AnalyticsFlow.SECURITY,
-    },
-    [AnalyticsEvent.VIEW_IMPORT_SECRET_KEY]: {
-      flow: AnalyticsFlow.SECURITY,
-    },
-    // Home / assets
-    [AnalyticsEvent.VIEW_HOME]: {
-      flow: AnalyticsFlow.ASSETS,
-    },
-    [AnalyticsEvent.VIEW_TOKEN_DETAILS]: {
-      flow: AnalyticsFlow.ASSETS,
-    },
-    [AnalyticsEvent.VIEW_ACCOUNT_QR_CODE]: {
-      flow: AnalyticsFlow.ASSETS,
-    },
-    [AnalyticsEvent.VIEW_MANAGE_TOKENS]: {
-      flow: AnalyticsFlow.ASSETS,
-    },
-    [AnalyticsEvent.VIEW_ADD_TOKEN]: {
-      flow: AnalyticsFlow.ASSETS,
-    },
-    [AnalyticsEvent.VIEW_REMOVE_TOKEN]: {
-      flow: AnalyticsFlow.ASSETS,
-    },
-    [AnalyticsEvent.VIEW_SEARCH_TOKEN]: {
-      flow: AnalyticsFlow.ASSETS,
-    },
-    [AnalyticsEvent.VIEW_ADD_TOKEN_MANUALLY]: {
-      flow: AnalyticsFlow.ASSETS,
-    },
-    [AnalyticsEvent.VIEW_BUY_XLM]: {
-      flow: AnalyticsFlow.ASSETS,
-    },
-    // History
-    [AnalyticsEvent.VIEW_HISTORY]: {
-      flow: AnalyticsFlow.HISTORY,
-    },
-    // Discovery
-    [AnalyticsEvent.VIEW_DISCOVERY]: {
-      flow: AnalyticsFlow.DISCOVERY,
-    },
-    // Signing / dApp
-    [AnalyticsEvent.VIEW_GRANT_DAPP_ACCESS]: {
-      flow: AnalyticsFlow.SIGNING,
-    },
-    [AnalyticsEvent.VIEW_SIGN_DAPP_TRANSACTION]: {
-      flow: AnalyticsFlow.SIGNING,
-    },
-    [AnalyticsEvent.VIEW_SIGN_DAPP_TRANSACTION_DETAILS]: {
-      flow: AnalyticsFlow.SIGNING,
-    },
-    [AnalyticsEvent.VIEW_SIGN_DAPP_AUTH_ENTRY_DETAILS]: {
-      flow: AnalyticsFlow.SIGNING,
-    },
-    // Send payment
-    [AnalyticsEvent.VIEW_SEND_SEARCH_CONTACTS]: {
-      flow: AnalyticsFlow.SEND,
-    },
-    [AnalyticsEvent.VIEW_SEND_AMOUNT]: {
-      flow: AnalyticsFlow.SEND,
-    },
-    [AnalyticsEvent.VIEW_SEND_MEMO]: {
-      flow: AnalyticsFlow.SEND,
-    },
-    [AnalyticsEvent.VIEW_SEND_FEE]: {
-      flow: AnalyticsFlow.SEND,
-    },
-    [AnalyticsEvent.VIEW_SEND_TIMEOUT]: {
-      flow: AnalyticsFlow.SEND,
-    },
-    [AnalyticsEvent.VIEW_SEND_CONFIRM]: {
-      flow: AnalyticsFlow.SEND,
-      step: "confirm",
-    },
-    [AnalyticsEvent.VIEW_SEND_TRANSACTION_DETAILS]: {
-      flow: AnalyticsFlow.SEND,
-    },
-    [AnalyticsEvent.VIEW_SEND_PROCESSING]: {
-      flow: AnalyticsFlow.SEND,
-      step: "processing",
-    },
-    // Swap
-    [AnalyticsEvent.VIEW_SWAP]: { flow: AnalyticsFlow.SWAP },
-    [AnalyticsEvent.VIEW_SWAP_AMOUNT]: {
-      flow: AnalyticsFlow.SWAP,
-    },
-    [AnalyticsEvent.VIEW_SWAP_FEE]: {
-      flow: AnalyticsFlow.SWAP,
-    },
-    [AnalyticsEvent.VIEW_SWAP_SLIPPAGE]: {
-      flow: AnalyticsFlow.SWAP,
-    },
-    [AnalyticsEvent.VIEW_SWAP_TIMEOUT]: {
-      flow: AnalyticsFlow.SWAP,
-    },
-    [AnalyticsEvent.VIEW_SWAP_SETTINGS]: {
-      flow: AnalyticsFlow.SWAP,
-    },
-    [AnalyticsEvent.VIEW_SWAP_CONFIRM]: {
-      flow: AnalyticsFlow.SWAP,
-      step: "confirm",
-    },
-    [AnalyticsEvent.VIEW_SWAP_TRANSACTION_DETAILS]: {
-      flow: AnalyticsFlow.SWAP,
-    },
-    // Settings
-    [AnalyticsEvent.VIEW_SETTINGS]: {
-      flow: AnalyticsFlow.SETTINGS,
-    },
-    [AnalyticsEvent.VIEW_PREFERENCES]: {
-      flow: AnalyticsFlow.SETTINGS,
-    },
-    [AnalyticsEvent.VIEW_CHANGE_NETWORK]: {
-      flow: AnalyticsFlow.SETTINGS,
-    },
-    [AnalyticsEvent.VIEW_NETWORK_SETTINGS]: {
-      flow: AnalyticsFlow.SETTINGS,
-    },
-    [AnalyticsEvent.VIEW_SHARE_FEEDBACK]: {
-      flow: AnalyticsFlow.SETTINGS,
-    },
-    [AnalyticsEvent.VIEW_ABOUT]: {
-      flow: AnalyticsFlow.SETTINGS,
-    },
-    [AnalyticsEvent.VIEW_MANAGE_CONNECTED_APPS]: {
-      flow: AnalyticsFlow.SETTINGS,
-    },
-    [AnalyticsEvent.VIEW_MANAGE_WALLETS]: {
-      flow: AnalyticsFlow.SETTINGS,
-    },
-  };
+const SCREEN_CATALOG: Record<string, { flow?: AnalyticsFlow; step?: Step }> = {
+  // Onboarding / account creation
+  [AnalyticsEvent.VIEW_WELCOME]: {
+    flow: AnalyticsFlow.ONBOARDING,
+  },
+  [AnalyticsEvent.VIEW_CHOOSE_PASSWORD]: {
+    flow: AnalyticsFlow.ONBOARDING,
+  },
+  [AnalyticsEvent.VIEW_RECOVERY_PHRASE_ALERT]: {
+    flow: AnalyticsFlow.ONBOARDING,
+  },
+  [AnalyticsEvent.VIEW_RECOVERY_PHRASE]: {
+    flow: AnalyticsFlow.ONBOARDING,
+  },
+  [AnalyticsEvent.VIEW_VALIDATE_RECOVERY_PHRASE]: {
+    flow: AnalyticsFlow.ONBOARDING,
+  },
+  [AnalyticsEvent.VIEW_IMPORT_WALLET]: {
+    flow: AnalyticsFlow.ONBOARDING,
+  },
+  // Security / re-auth / secret material
+  [AnalyticsEvent.VIEW_LOCK_SCREEN]: {
+    flow: AnalyticsFlow.SECURITY,
+  },
+  [AnalyticsEvent.VIEW_SECURITY]: {
+    flow: AnalyticsFlow.SECURITY,
+  },
+  [AnalyticsEvent.VIEW_SHOW_RECOVERY_PHRASE]: {
+    flow: AnalyticsFlow.SECURITY,
+  },
+  [AnalyticsEvent.VIEW_IMPORT_SECRET_KEY]: {
+    flow: AnalyticsFlow.SECURITY,
+  },
+  // Home / assets
+  [AnalyticsEvent.VIEW_HOME]: {
+    flow: AnalyticsFlow.ASSETS,
+  },
+  [AnalyticsEvent.VIEW_TOKEN_DETAILS]: {
+    flow: AnalyticsFlow.ASSETS,
+  },
+  [AnalyticsEvent.VIEW_ACCOUNT_QR_CODE]: {
+    flow: AnalyticsFlow.ASSETS,
+  },
+  [AnalyticsEvent.VIEW_MANAGE_TOKENS]: {
+    flow: AnalyticsFlow.ASSETS,
+  },
+  [AnalyticsEvent.VIEW_ADD_TOKEN]: {
+    flow: AnalyticsFlow.ASSETS,
+  },
+  [AnalyticsEvent.VIEW_REMOVE_TOKEN]: {
+    flow: AnalyticsFlow.ASSETS,
+  },
+  [AnalyticsEvent.VIEW_SEARCH_TOKEN]: {
+    flow: AnalyticsFlow.ASSETS,
+  },
+  [AnalyticsEvent.VIEW_ADD_TOKEN_MANUALLY]: {
+    flow: AnalyticsFlow.ASSETS,
+  },
+  [AnalyticsEvent.VIEW_BUY_XLM]: {
+    flow: AnalyticsFlow.ASSETS,
+  },
+  // History
+  [AnalyticsEvent.VIEW_HISTORY]: {
+    flow: AnalyticsFlow.HISTORY,
+  },
+  // Discovery
+  [AnalyticsEvent.VIEW_DISCOVERY]: {
+    flow: AnalyticsFlow.DISCOVERY,
+  },
+  // Signing / dApp
+  [AnalyticsEvent.VIEW_GRANT_DAPP_ACCESS]: {
+    flow: AnalyticsFlow.SIGNING,
+  },
+  [AnalyticsEvent.VIEW_SIGN_DAPP_TRANSACTION]: {
+    flow: AnalyticsFlow.SIGNING,
+  },
+  [AnalyticsEvent.VIEW_SIGN_DAPP_TRANSACTION_DETAILS]: {
+    flow: AnalyticsFlow.SIGNING,
+  },
+  [AnalyticsEvent.VIEW_SIGN_DAPP_AUTH_ENTRY_DETAILS]: {
+    flow: AnalyticsFlow.SIGNING,
+  },
+  // Send payment
+  [AnalyticsEvent.VIEW_SEND_SEARCH_CONTACTS]: {
+    flow: AnalyticsFlow.SEND,
+  },
+  [AnalyticsEvent.VIEW_SEND_AMOUNT]: {
+    flow: AnalyticsFlow.SEND,
+  },
+  [AnalyticsEvent.VIEW_SEND_MEMO]: {
+    flow: AnalyticsFlow.SEND,
+  },
+  [AnalyticsEvent.VIEW_SEND_FEE]: {
+    flow: AnalyticsFlow.SEND,
+  },
+  [AnalyticsEvent.VIEW_SEND_TIMEOUT]: {
+    flow: AnalyticsFlow.SEND,
+  },
+  [AnalyticsEvent.VIEW_SEND_CONFIRM]: {
+    flow: AnalyticsFlow.SEND,
+    step: "confirm",
+  },
+  [AnalyticsEvent.VIEW_SEND_TRANSACTION_DETAILS]: {
+    flow: AnalyticsFlow.SEND,
+  },
+  [AnalyticsEvent.VIEW_SEND_PROCESSING]: {
+    flow: AnalyticsFlow.SEND,
+    step: "processing",
+  },
+  // Swap
+  [AnalyticsEvent.VIEW_SWAP]: { flow: AnalyticsFlow.SWAP },
+  [AnalyticsEvent.VIEW_SWAP_AMOUNT]: {
+    flow: AnalyticsFlow.SWAP,
+  },
+  [AnalyticsEvent.VIEW_SWAP_FEE]: {
+    flow: AnalyticsFlow.SWAP,
+  },
+  [AnalyticsEvent.VIEW_SWAP_SLIPPAGE]: {
+    flow: AnalyticsFlow.SWAP,
+  },
+  [AnalyticsEvent.VIEW_SWAP_TIMEOUT]: {
+    flow: AnalyticsFlow.SWAP,
+  },
+  [AnalyticsEvent.VIEW_SWAP_SETTINGS]: {
+    flow: AnalyticsFlow.SWAP,
+  },
+  [AnalyticsEvent.VIEW_SWAP_CONFIRM]: {
+    flow: AnalyticsFlow.SWAP,
+    step: "confirm",
+  },
+  [AnalyticsEvent.VIEW_SWAP_TRANSACTION_DETAILS]: {
+    flow: AnalyticsFlow.SWAP,
+  },
+  // Settings
+  [AnalyticsEvent.VIEW_SETTINGS]: {
+    flow: AnalyticsFlow.SETTINGS,
+  },
+  [AnalyticsEvent.VIEW_PREFERENCES]: {
+    flow: AnalyticsFlow.SETTINGS,
+  },
+  [AnalyticsEvent.VIEW_CHANGE_NETWORK]: {
+    flow: AnalyticsFlow.SETTINGS,
+  },
+  [AnalyticsEvent.VIEW_NETWORK_SETTINGS]: {
+    flow: AnalyticsFlow.SETTINGS,
+  },
+  [AnalyticsEvent.VIEW_SHARE_FEEDBACK]: {
+    flow: AnalyticsFlow.SETTINGS,
+  },
+  [AnalyticsEvent.VIEW_ABOUT]: {
+    flow: AnalyticsFlow.SETTINGS,
+  },
+  [AnalyticsEvent.VIEW_MANAGE_CONNECTED_APPS]: {
+    flow: AnalyticsFlow.SETTINGS,
+  },
+  [AnalyticsEvent.VIEW_MANAGE_WALLETS]: {
+    flow: AnalyticsFlow.SETTINGS,
+  },
+};
 
 /**
  * True when `event` is a known screen-view — i.e. a canonical `screen_name`

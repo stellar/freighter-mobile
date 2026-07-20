@@ -363,6 +363,105 @@ describe("screen.viewed emission (hard cutover)", () => {
   });
 });
 
+describe("screen.viewed throttling (D1: cross-screen collapse regression)", () => {
+  // The rest of the suite disables the throttle for determinism
+  // (THROTTLE_DUPLICATE_EVENTS: false). These tests instead exercise the
+  // PRODUCTION throttle path, because that is where a burst of navigations
+  // (fast tap-through, or synchronous programmatic nav like popToTop() +
+  // navigate()) could silently drop screen views: every screen shares the
+  // single "screen.viewed" event name, so a name-keyed throttle would collapse
+  // distinct screens into one. `core.ts` reads THROTTLE_DUPLICATE_EVENTS off
+  // the (mutable) mocked ANALYTICS_CONFIG at call time, so we flip it on the
+  // shared reference here and restore it afterwards.
+  const THROTTLE_DELAY_MS = 500; // must match the TIMING constants mock
+
+  // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
+  const constantsMock = require("services/analytics/constants");
+  // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
+  const amplitudeMock = require("@amplitude/analytics-react-native");
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    constantsMock.ANALYTICS_CONFIG.THROTTLE_DUPLICATE_EVENTS = true;
+    initAnalytics();
+    (amplitudeMock.track as jest.Mock).mockClear();
+  });
+  afterEach(() => {
+    jest.runOnlyPendingTimers();
+    jest.useRealTimers();
+    constantsMock.ANALYTICS_CONFIG.THROTTLE_DUPLICATE_EVENTS = false; // restore
+  });
+
+  it("emits every distinct screen in a rapid navigation burst", () => {
+    // Three distinct screens tracked within one THROTTLE_DELAY_MS window.
+    track(AnalyticsEvent.SCREEN_VIEWED, { screen_name: "send_payment_to" });
+    track(AnalyticsEvent.SCREEN_VIEWED, { screen_name: "send_payment_amount" });
+    track(AnalyticsEvent.SCREEN_VIEWED, {
+      screen_name: "send_payment_confirm",
+    });
+
+    // Proves the throttle is genuinely engaged: with leading:false nothing has
+    // dispatched yet (a disabled throttle would have fired 3 immediate calls).
+    expect(amplitudeMock.track).toHaveBeenCalledTimes(0);
+
+    jest.advanceTimersByTime(THROTTLE_DELAY_MS + 1);
+
+    // Before the screen-aware throttle key this collapsed to a single trailing
+    // emit carrying only "send_payment_confirm".
+    expect(amplitudeMock.track).toHaveBeenCalledTimes(3);
+    const names = (amplitudeMock.track as jest.Mock).mock.calls.map(
+      (call) => (call[1] as { screen_name: string }).screen_name,
+    );
+    // Order is preserved (trailing timers fire in scheduling order), so the
+    // funnel stays intact.
+    expect(names).toEqual([
+      "send_payment_to",
+      "send_payment_amount",
+      "send_payment_confirm",
+    ]);
+  });
+
+  it("still dedups rapid re-emits of the SAME screen (throttle intent preserved)", () => {
+    track(AnalyticsEvent.SCREEN_VIEWED, { screen_name: "account" });
+    track(AnalyticsEvent.SCREEN_VIEWED, { screen_name: "account" });
+
+    jest.advanceTimersByTime(THROTTLE_DELAY_MS + 1);
+
+    expect(amplitudeMock.track).toHaveBeenCalledTimes(1);
+    expect(amplitudeMock.track).toHaveBeenCalledWith(
+      "screen.viewed",
+      expect.objectContaining({ screen_name: "account" }),
+    );
+  });
+});
+
+describe("screen-view bypass guard (D7)", () => {
+  // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
+  const amplitudeMock = require("@amplitude/analytics-react-native");
+
+  beforeEach(() => {
+    initAnalytics();
+    (amplitudeMock.track as jest.Mock).mockClear();
+  });
+
+  it("drops a catalogued screen slug passed directly to track (never leaks a bare slug as event name)", () => {
+    // Simulate a future call site bypassing the navigation/BottomSheet choke
+    // points by passing a VIEW_* screen member straight to track(). Its value
+    // ("send_payment_amount") is a SCREEN_CATALOG key, so the guard must drop it
+    // rather than emit it as an Amplitude event name.
+    track(AnalyticsEvent.VIEW_SEND_AMOUNT);
+    expect(amplitudeMock.track).not.toHaveBeenCalled();
+  });
+
+  it("still emits the canonical SCREEN_VIEWED event and non-screen action events", () => {
+    // The choke-point path (event = SCREEN_VIEWED, slug in props) is allowed...
+    track(AnalyticsEvent.SCREEN_VIEWED, { screen_name: "send_payment_amount" });
+    // ...as are action-style VIEW_* members that are NOT catalogued screens.
+    track(AnalyticsEvent.VIEW_PUBLIC_KEY_CLICKED_STELLAR_EXPERT);
+    expect(amplitudeMock.track).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe("syncIdentifyTraits (consent gating)", () => {
   it("does not cache or send Identify while opted out; sends once opted in with the same traits", () => {
     // syncIdentifyTraits guards on module-level `hasInitialised`/fingerprint
