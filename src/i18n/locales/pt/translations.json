@@ -257,6 +257,8 @@
   "connectedApps": {
     "title": "Aplicativos Conectados",
     "noConnectedDapps": "Nenhum aplicativo conectado. Encontre aplicativos\npara usar em Discover.",
+    "noConnectedDappsTitle": "Nada conectado ainda",
+    "noConnectedDappsDescription": "Descubra aplicativos e conecte o seu primeiro.",
     "noConnectedDappsNoDiscover": "Nenhum aplicativo conectado.",
     "goToDiscover": "Ir para o Discover",
     "disconnectAllSessions": "Desconectar todos"
