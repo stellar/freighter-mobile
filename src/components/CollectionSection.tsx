@@ -104,6 +104,9 @@ export const CollectionSection: React.FC<CollectionSectionProps> = ({
         className="flex-row items-center justify-between mb-4"
         onPress={toggleExpanded}
         testID={`collection-header-${collection.collectionAddress}`}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: isExpanded }}
+        accessibilityLabel={collection.collectionName}
       >
         <Text md medium style={{ flex: 1 }}>
           {collection.collectionName}

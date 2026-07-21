@@ -118,6 +118,16 @@ describe("CollectionSection", () => {
     expect(screen.getByTestId("collectible-hidden-overlay-2")).toBeTruthy();
   });
 
+  it("exposes the expanded state on the header for screen readers", () => {
+    render(<CollectionSection collection={buildCollection()} />);
+
+    const header = screen.getByTestId("collection-header-CABC");
+    expect(header.props.accessibilityState.expanded).toBe(true);
+
+    fireEvent.press(header);
+    expect(header.props.accessibilityState.expanded).toBe(false);
+  });
+
   it("calls onCollectiblePress with the collection address and token id when a tile is pressed", () => {
     const onCollectiblePress = jest.fn();
     render(
