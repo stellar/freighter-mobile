@@ -10,6 +10,7 @@ import {
 import { DebugBottomSheet } from "components/analytics/DebugBottomSheet";
 import { DebugTrigger } from "components/debug/DebugTrigger";
 import { BaseLayout } from "components/layout/BaseLayout";
+import ConnectedApps from "components/screens/HomeScreen/ConnectedApps";
 import ManageAccounts from "components/screens/HomeScreen/ManageAccounts";
 import WelcomeBannerBottomSheet from "components/screens/HomeScreen/WelcomeBannerBottomSheet";
 import Avatar from "components/sds/Avatar";
@@ -72,6 +73,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
     } = useAuthenticationStore();
     const { themeColors } = useColors();
     const manageAccountsBottomSheetRef = useRef<BottomSheetModal>(null);
+    const connectedAppsBottomSheetRef = useRef<BottomSheetModal>(null);
     const debugBottomSheetRef = useRef<BottomSheetModal>(null);
     const walletConnectE2EHelperRef = useRef<WalletConnectE2EHelperRef>(null);
 
@@ -106,8 +108,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
       [balances],
     );
 
+    const handleConnectedAppsPress = useCallback(() => {
+      connectedAppsBottomSheetRef.current?.present();
+    }, []);
+
     // Set up navigation headers (hook handles navigation.setOptions internally)
-    useHomeHeaders({ navigation });
+    useHomeHeaders({
+      navigation,
+      onConnectedAppsPress: handleConnectedAppsPress,
+    });
 
     const { welcomeBannerBottomSheetModalRef, handleWelcomeBannerDismiss } =
       useWelcomeBanner({
@@ -272,6 +281,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
           activeAccount={account}
           bottomSheetRef={manageAccountsBottomSheetRef}
           isLoadingAccounts={isLoadingAllAccounts}
+        />
+        <ConnectedApps
+          navigation={navigation}
+          bottomSheetRef={connectedAppsBottomSheetRef}
         />
 
         <ScrollView
