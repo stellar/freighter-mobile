@@ -159,7 +159,7 @@ export enum AnalyticsEvent {
   SIGN_AUTH_ENTRY_REJECTED = "signing.auth_entry_rejected",
 
   // Assets / trustlines
-  // asset.added carries safety=unsafe when an unsafe asset was added.
+  // asset.added carries asset_code + asset (CODE:ISSUER).
   ADD_TOKEN_SUCCESS = "asset.added",
   REMOVE_TOKEN_SUCCESS = "asset.removed",
   // carries operation (add | remove) + reason_code

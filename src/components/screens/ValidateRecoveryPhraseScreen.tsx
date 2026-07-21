@@ -115,7 +115,9 @@ export const ValidateRecoveryPhraseScreen: React.FC<
     if (!canContinue) {
       // Word is incorrect - show error and generate new words
       setError(t("validateRecoveryPhraseScreen.errorText"));
-      analytics.track(AnalyticsEvent.CONFIRM_RECOVERY_PHRASE_FAIL);
+      analytics.track(AnalyticsEvent.CONFIRM_RECOVERY_PHRASE_FAIL, {
+        reason_code: "incorrect_word",
+      });
       regenerateWords();
       return;
     }

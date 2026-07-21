@@ -372,7 +372,9 @@ export const TransactionDetailsFooter: React.FC<
         tertiary
         icon={<Icon.LinkExternal01 size={16} color={themeColors.base[0]} />}
         onPress={() => {
-          analytics.track(AnalyticsEvent.HISTORY_OPEN_FULL_HISTORY);
+          analytics.track(AnalyticsEvent.HISTORY_OPEN_FULL_HISTORY, {
+            source: "transaction_detail",
+          });
           openInAppBrowser(externalUrl);
         }}
       >

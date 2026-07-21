@@ -87,13 +87,15 @@ describe("blockaid scan analytics (#2883 consolidation)", () => {
 
     expect(mockTrack).toHaveBeenCalledWith(
       AnalyticsEvent.BLOCKAID_SCAN_COMPLETED,
-      expect.objectContaining({ scan_target: "asset", result: "MALICIOUS" }),
+      expect.objectContaining({ scan_target: "asset", result: "block" }),
     );
   });
 
   it("emits the consolidated scan_completed event with scan_target=asset_bulk", async () => {
     mockGet.mockResolvedValue({
-      data: { data: { results: { "USDC-GISSUER": { result_type: "Benign" } } } },
+      data: {
+        data: { results: { "USDC-GISSUER": { result_type: "Benign" } } },
+      },
     });
 
     await scanBulkTokens({

@@ -106,10 +106,7 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
     async (newAccountName: string) => {
       if (!accountToRename || !activeAccount) return;
 
-      analytics.trackViewPublicKeyAccountRenamed(
-        accountToRename.name,
-        newAccountName,
-      );
+      analytics.trackViewPublicKeyAccountRenamed();
 
       await renameAccount({
         accountName: newAccountName,

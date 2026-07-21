@@ -13,6 +13,7 @@ import {
   FormattedSearchTokenRecord,
 } from "config/types";
 import { ActiveAccount } from "ducks/auth";
+import { useBalancesStore } from "ducks/balances";
 import { formatTokenIdentifier } from "helpers/balances";
 import useAppTranslation from "hooks/useAppTranslation";
 import { isWalletUnlocked } from "hooks/useGetActiveAccount";
@@ -21,6 +22,7 @@ import { useState } from "react";
 import { analytics } from "services/analytics";
 import {
   buildChangeTrustTx,
+  isHorizonError,
   signTransaction,
   submitTx,
 } from "services/stellar";
@@ -187,13 +189,14 @@ export const useManageTokens = ({
       }
       analytics.track(AnalyticsEvent.ADD_TOKEN_SUCCESS, {
         asset_code: tokenCode,
-        asset: `${tokenCode}:${issuer}`,
+        asset_issuer: issuer,
       });
     } catch (error) {
       analytics.track(AnalyticsEvent.TOKEN_MANAGEMENT_FAIL, {
         reason_code: error instanceof Error ? error.message : String(error),
         operation: "add",
-        asset: `${tokenCode}:${issuer}`,
+        asset_code: tokenCode,
+        asset_issuer: issuer,
       });
 
       logger.error(
@@ -316,14 +319,51 @@ export const useManageTokens = ({
       }
       analytics.track(AnalyticsEvent.REMOVE_TOKEN_SUCCESS, {
         asset_code: tokenCode,
-        asset: tokenIdentifier,
+        asset_issuer: tokenIdentifier.split(":")[1],
       });
     } catch (error) {
       analytics.track(AnalyticsEvent.TOKEN_MANAGEMENT_FAIL, {
         reason_code: error instanceof Error ? error.message : String(error),
         operation: "remove",
-        asset: tokenIdentifier,
+        asset_code: tokenCode,
+        asset_issuer: tokenIdentifier.split(":")[1],
       });
+
+      // Additionally emit the granular trustline_remove.failed, mirroring
+      // the extension. Derive reason_code from the CHANGE_TRUST op result codes
+      // (op_low_reserve -> low_reserve; op_invalid_limit split by whether the
+      // asset carries buying liabilities). Only fires for the trustline-specific
+      // failures — wallet-locked/build/sign errors won't set a reason.
+      const opResultCodes = isHorizonError(error)
+        ? (
+            error as {
+              response?: {
+                data?: {
+                  extras?: { result_codes?: { operations?: string[] } };
+                };
+              };
+            }
+          ).response?.data?.extras?.result_codes?.operations
+        : undefined;
+      let trustlineReason: string | undefined;
+      if (opResultCodes?.includes("op_low_reserve")) {
+        trustlineReason = "low_reserve";
+      } else if (opResultCodes?.includes("op_invalid_limit")) {
+        const balance = useBalancesStore.getState().balances[tokenIdentifier];
+        const buyingLiabilities =
+          balance && "buyingLiabilities" in balance
+            ? Number(balance.buyingLiabilities ?? 0)
+            : 0;
+        trustlineReason =
+          buyingLiabilities > 0 ? "buying_liabilities" : "has_balance";
+      }
+      if (trustlineReason) {
+        analytics.track(AnalyticsEvent.TRUSTLINE_REMOVE_FAILED, {
+          reason_code: trustlineReason,
+          asset_code: tokenCode,
+          asset_issuer: tokenIdentifier.split(":")[1],
+        });
+      }
 
       logger.error(
         "useManageTokens.removeToken",

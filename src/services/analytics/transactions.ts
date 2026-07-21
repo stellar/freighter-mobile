@@ -22,10 +22,11 @@ export const trackSignedMessage = (data: {
   messageLength: number;
   dappDomain?: string;
 }): void => {
-  // NOTE: mobile has a single message-signing flow, so message_type is not
-  // discriminated here; flagged for review.
+  // signing.message_approved carries message_type (parity with the
+  // extension); mobile signs raw blobs. messageLength dropped. `origin` kept as
+  // an RFC-optional extra — the extension lacks it (flagged signing-origin gap).
   track(AnalyticsEvent.SIGN_MESSAGE_SUCCESS, {
-    messageLength: data.messageLength,
+    message_type: "blob",
     ...(data.dappDomain ? { origin: data.dappDomain } : {}),
   });
 };
@@ -45,6 +46,7 @@ export const trackSignedMessageError = (data: {
   // is not currently instrumented on mobile (SIGN_MESSAGE_REJECTED exists in
   // the catalog for parity but has no emit site yet).
   track(AnalyticsEvent.SIGN_MESSAGE_FAIL, {
+    message_type: "blob",
     reason_code: data.error,
     ...(data.dappDomain ? { origin: data.dappDomain } : {}),
   });
@@ -57,6 +59,26 @@ export const trackSignedAuthEntryError = (data: {
   // Runtime signing-failure path; see trackSignedMessageError.
   track(AnalyticsEvent.SIGN_AUTH_ENTRY_FAIL, {
     reason_code: data.error,
+    ...(data.dappDomain ? { origin: data.dappDomain } : {}),
+  });
+};
+
+// User-rejection paths (D4) — distinct from the runtime *_FAIL helpers above.
+// Fired when the user cancels/dismisses a dApp sign-message / sign-auth-entry
+// request. Keeps the rejection vs runtime-failure split on both platforms.
+export const trackSignedMessageRejected = (data: {
+  dappDomain?: string;
+}): void => {
+  track(AnalyticsEvent.SIGN_MESSAGE_REJECTED, {
+    message_type: "blob",
+    ...(data.dappDomain ? { origin: data.dappDomain } : {}),
+  });
+};
+
+export const trackSignedAuthEntryRejected = (data: {
+  dappDomain?: string;
+}): void => {
+  track(AnalyticsEvent.SIGN_AUTH_ENTRY_REJECTED, {
     ...(data.dappDomain ? { origin: data.dappDomain } : {}),
   });
 };
@@ -90,15 +112,14 @@ export const trackSendPaymentSuccess = (
   if (data.operationType === TransactionOperationType.PathPayment) {
     track(AnalyticsEvent.SWAP_SUCCESS, {
       from_asset_code: data.sourceToken,
-      operationType: data.operationType,
+      to_asset_code: data.destToken,
     });
     return;
   }
 
   track(AnalyticsEvent.SEND_PAYMENT_SUCCESS, {
-    from_asset_code: data.sourceToken,
     payment_type: "payment",
-    operationType: data.operationType,
+    asset_code: data.sourceToken,
   });
 };
 
@@ -106,8 +127,8 @@ export const trackSendCollectibleSuccess = (
   data: TransactionSuccessEvent,
 ): void => {
   track(AnalyticsEvent.SEND_COLLECTIBLE_SUCCESS, {
-    collectionAddress: data.collectionAddress,
-    tokenId: data.tokenId,
+    collection_address: data.collectionAddress,
+    token_id: data.tokenId,
   });
 };
 
@@ -115,10 +136,6 @@ export const trackSwapSuccess = (data: SwapSuccessEvent): void => {
   track(AnalyticsEvent.SWAP_SUCCESS, {
     from_asset_code: data.sourceToken,
     to_asset_code: data.destToken,
-    sourceAmount: data.sourceAmount,
-    destinationAmount: data.destAmount,
-    allowedSlippage: data.allowedSlippage,
-    isSwap: data.isSwap,
   });
 };
 
@@ -139,23 +156,22 @@ export const trackTransactionError = (data: TransactionErrorEvent): void => {
     event = AnalyticsEvent.SWAP_FAIL;
   }
 
-  track(event, {
-    reason_code: data.error,
-    errorCode: data.errorCode,
-    operationType: data.operationType,
-    isSwap: data.isSwap,
-    // Swap-specific fields are gated so payment.failed events from non-swap
-    // callers don't get polluted with undefined from_asset_code /
-    // to_asset_code / sourceAmount / destinationAmount keys.
-    ...(isSwapLike
-      ? {
-          from_asset_code: data.sourceToken,
-          to_asset_code: data.destToken,
-          sourceAmount: data.sourceAmount,
-          destinationAmount: data.destAmount,
-        }
-      : {}),
-  });
+  // Shared required sets: payment.failed {payment_type, reason_code};
+  // swap.failed {from_asset_code, to_asset_code, reason_code};
+  // collectible_send.failed {reason_code}. Legacy extras (errorCode,
+  // operationType, isSwap, amounts) dropped for cross-platform parity.
+  let props: Record<string, unknown> = { reason_code: data.error };
+  if (event === AnalyticsEvent.SWAP_FAIL) {
+    props = {
+      from_asset_code: data.sourceToken,
+      to_asset_code: data.destToken,
+      reason_code: data.error,
+    };
+  } else if (event === AnalyticsEvent.SEND_PAYMENT_FAIL) {
+    props.payment_type = "payment";
+  }
+
+  track(event, props);
 };
 
 export const trackAddTokenConfirmed = (token?: string): void => {
@@ -187,16 +203,21 @@ export const trackRemoveTokenRejected = (token?: string): void => {
 };
 
 export const trackAccountScreenImportAccountFail = (error: string): void => {
-  track(AnalyticsEvent.ACCOUNT_SCREEN_IMPORT_ACCOUNT_FAIL, { error });
+  // Failure reason is carried on `reason_code` per the shared failure grammar
+  // (matches the catalog note and the extension `account.import_failed` shape).
+  // account.import_failed carries import_method. This helper is the
+  // secret-key import path (mnemonic restore emits account_recovery.* instead).
+  track(AnalyticsEvent.ACCOUNT_SCREEN_IMPORT_ACCOUNT_FAIL, {
+    import_method: "secret_key",
+    reason_code: error,
+  });
 };
 
-export const trackViewPublicKeyAccountRenamed = (
-  oldName: string,
-  newName: string,
-): void => {
+export const trackViewPublicKeyAccountRenamed = (): void => {
+  // account.renamed carries `source`, never the account labels.
+  // Mobile only renames from the manage-accounts list.
   track(AnalyticsEvent.VIEW_PUBLIC_KEY_ACCOUNT_RENAMED, {
-    oldName,
-    newName,
+    source: "wallets",
   });
 };
 
@@ -214,8 +235,9 @@ export const trackGrantAccessFail = (
   });
 };
 
-export const trackHistoryOpenItem = (transactionHash: string): void => {
-  track(AnalyticsEvent.HISTORY_OPEN_ITEM, { transactionHash });
+export const trackHistoryOpenItem = (source: string): void => {
+  // history.item_opened carries `source` (not the tx hash).
+  track(AnalyticsEvent.HISTORY_OPEN_ITEM, { source });
 };
 
 /**
@@ -225,11 +247,9 @@ const trackAuthEvent = (
   event: AnalyticsEvent,
   additional?: Record<string, unknown>,
 ): void => {
-  track(event, {
-    context: "user_authentication",
-    method: "password", // TODO: Add other methods (eg: fingerprint, face id, etc)
-    ...additional,
-  });
+  // reauth.* is not in the shared cross-platform catalog (documented deviation). Dropping
+  // the constant context/method for parity with the extension's {} / {reason_code}.
+  track(event, { ...additional });
 };
 
 export const trackReAuthSuccess = (): void => {
@@ -240,23 +260,14 @@ export const trackReAuthFail = (): void => {
   trackAuthEvent(AnalyticsEvent.RE_AUTH_FAIL);
 };
 
-/**
- * Generic helper for simple user actions with context.
- */
-const trackUserAction = (
-  event: AnalyticsEvent,
-  context: string,
-  action: string,
-): void => {
-  track(event, { context, action });
-};
-
 export const trackCopyPublicKey = (): void => {
-  trackUserAction(AnalyticsEvent.COPY_PUBLIC_KEY, "home_screen", "copy");
+  // account.public_key_copied carries no source and never the key.
+  track(AnalyticsEvent.COPY_PUBLIC_KEY);
 };
 
 export const trackCopyBackupPhrase = (): void => {
-  trackUserAction(AnalyticsEvent.COPY_BACKUP_PHRASE, "backup_phrase", "copy");
+  // recovery_phrase.copied carries only schema_version (via context).
+  track(AnalyticsEvent.COPY_BACKUP_PHRASE);
 };
 
 export const trackQRScanSuccess = (

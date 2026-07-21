@@ -53,6 +53,26 @@ const aggregateBulkResult = (
   return SecurityLevel.SAFE;
 };
 
+/**
+ * Map the internal SecurityLevel to the shared cross-platform `result`
+ * vocabulary (`safe | warn | block | unknown`) so blockaid.scan_completed.result
+ * aligns with the extension.
+ */
+const toBlockaidResultLevel = (
+  level: SecurityLevel,
+): "safe" | "warn" | "block" | "unknown" => {
+  switch (level) {
+    case SecurityLevel.SAFE:
+      return "safe";
+    case SecurityLevel.SUSPICIOUS:
+      return "warn";
+    case SecurityLevel.MALICIOUS:
+      return "block";
+    default:
+      return "unknown";
+  }
+};
+
 const trackScanFailed = (
   scanTarget: BlockaidScanTarget,
   error: unknown,
@@ -111,7 +131,7 @@ export const scanToken = async (
 
     analytics.track(AnalyticsEvent.BLOCKAID_SCAN_COMPLETED, {
       scan_target: "asset",
-      result: assessTokenSecurity(scanResult).level,
+      result: toBlockaidResultLevel(assessTokenSecurity(scanResult).level),
       tokenCode,
     });
 
@@ -152,7 +172,7 @@ export const scanBulkTokens = async (
     analytics.track(AnalyticsEvent.BLOCKAID_SCAN_COMPLETED, {
       scan_target: "asset_bulk",
       // Aggregate verdict across the batch: the worst per-token security level.
-      result: aggregateBulkResult(scanResult),
+      result: toBlockaidResultLevel(aggregateBulkResult(scanResult)),
       addressCount: addressList.length,
     });
 
@@ -197,7 +217,7 @@ export const scanSite = async (
 
     analytics.track(AnalyticsEvent.BLOCKAID_SCAN_COMPLETED, {
       scan_target: "domain",
-      result: assessSiteSecurity(scanResult).level,
+      result: toBlockaidResultLevel(assessSiteSecurity(scanResult).level),
     });
 
     return scanResult;
@@ -236,7 +256,9 @@ export const scanTransaction = async (
 
     analytics.track(AnalyticsEvent.BLOCKAID_SCAN_COMPLETED, {
       scan_target: "transaction",
-      result: assessTransactionSecurity(scanResult).level,
+      result: toBlockaidResultLevel(
+        assessTransactionSecurity(scanResult).level,
+      ),
     });
 
     return scanResult;
