@@ -1,0 +1,204 @@
+import { BigNumber } from "bignumber.js";
+import { NETWORKS } from "config/constants";
+import { BalanceMap, TokenPricesMap } from "config/types";
+import { usePricesStore } from "ducks/prices";
+import { useRemoteConfigStore } from "ducks/remoteConfig";
+import {
+  getTokenIdentifier,
+  getTokenIdentifiersFromBalances,
+} from "helpers/balances";
+import { isMainnet } from "helpers/networks";
+import { fetchBalances } from "services/backend";
+import { create } from "zustand";
+
+/**
+ * Number of accounts fetched concurrently per batch. Batches run sequentially
+ * so a wallet with many accounts doesn't fire all its balance requests at
+ * once (the backend rate-limits per IP).
+ */
+export const ACCOUNTS_FIAT_TOTALS_BATCH_SIZE = 6;
+
+/**
+ * How long fetched totals stay fresh. Within this window a re-open of the
+ * account list reuses the cached totals instead of refetching every account.
+ */
+export const ACCOUNTS_FIAT_TOTALS_TTL_MS = 3 * 60 * 1000;
+
+interface FetchAccountsFiatTotalsParams {
+  publicKeys: string[];
+  network: NETWORKS;
+  forceRefresh?: boolean;
+}
+
+/**
+ * State for the accounts fiat totals store
+ *
+ * @interface AccountsFiatTotalsState
+ * @property {Record<string, BigNumber | null>} fiatTotals - USD total keyed by
+ *   publicKey. `null` means the account's balances couldn't be fetched; a
+ *   missing key means the account hasn't been fetched yet.
+ * @property {boolean} isLoading - Whether a fetch cycle is in flight
+ * @property {number | null} lastUpdatedAt - Timestamp of the last completed fetch
+ * @property {NETWORKS | null} lastNetwork - Network the current totals belong to
+ * @property {Function} fetchAccountsFiatTotals - Fetches USD totals for the given accounts
+ */
+interface AccountsFiatTotalsState {
+  fiatTotals: Record<string, BigNumber | null>;
+  isLoading: boolean;
+  lastUpdatedAt: number | null;
+  lastNetwork: NETWORKS | null;
+  fetchAccountsFiatTotals: (
+    params: FetchAccountsFiatTotalsParams,
+  ) => Promise<void>;
+}
+
+/**
+ * Sums the USD value of every priced token in an account's balances.
+ * Tokens without a known price (custom tokens, LP shares, price fetch
+ * failures) contribute zero, so an unfunded account totals $0.00.
+ */
+const computeFiatTotal = (
+  balances: BalanceMap,
+  prices: TokenPricesMap,
+): BigNumber =>
+  Object.values(balances).reduce((total, balance) => {
+    const identifier = getTokenIdentifier(balance);
+    const currentPrice = identifier ? prices[identifier]?.currentPrice : null;
+
+    if (!currentPrice) {
+      return total;
+    }
+
+    return total.plus(balance.total.multipliedBy(currentPrice));
+  }, new BigNumber(0));
+
+/**
+ * Accounts Fiat Totals Store
+ *
+ * Holds the total USD value of EVERY account in the wallet (not just the
+ * active one) for the account-switcher list. Balances are fetched per account
+ * in small sequential batches and priced through the shared prices store
+ * cache, with results applied progressively so rows fill in batch by batch.
+ *
+ * Fiat values are mainnet-only: on other networks the store clears itself and
+ * never hits the backend.
+ */
+export const useAccountsFiatTotalsStore = create<AccountsFiatTotalsState>(
+  (set, get) => ({
+    fiatTotals: {},
+    isLoading: false,
+    lastUpdatedAt: null,
+    lastNetwork: null,
+
+    fetchAccountsFiatTotals: async ({
+      publicKeys,
+      network,
+      forceRefresh = false,
+    }) => {
+      if (!isMainnet(network)) {
+        set({
+          fiatTotals: {},
+          isLoading: false,
+          lastUpdatedAt: null,
+          lastNetwork: network,
+        });
+        return;
+      }
+
+      const { fiatTotals, isLoading, lastUpdatedAt, lastNetwork } = get();
+
+      if (isLoading) {
+        return;
+      }
+
+      const isSameNetwork = lastNetwork === network;
+      const isFresh =
+        lastUpdatedAt !== null &&
+        Date.now() - lastUpdatedAt < ACCOUNTS_FIAT_TOTALS_TTL_MS;
+      const hasAllAccounts = publicKeys.every(
+        (publicKey) => publicKey in fiatTotals,
+      );
+
+      if (!forceRefresh && isSameNetwork && isFresh && hasAllAccounts) {
+        return;
+      }
+
+      // Totals from another network are meaningless here — drop them so the
+      // list never shows stale values while the new fetch is in flight.
+      set({ isLoading: true, ...(isSameNetwork ? {} : { fiatTotals: {} }) });
+
+      const useV2 = useRemoteConfigStore.getState().use_token_prices_v2;
+
+      try {
+        for (
+          let i = 0;
+          i < publicKeys.length;
+          i += ACCOUNTS_FIAT_TOTALS_BATCH_SIZE
+        ) {
+          const batch = publicKeys.slice(
+            i,
+            i + ACCOUNTS_FIAT_TOTALS_BATCH_SIZE,
+          );
+
+          // eslint-disable-next-line no-await-in-loop
+          const results = await Promise.all(
+            batch.map(async (publicKey) => {
+              try {
+                const { balances } = await fetchBalances({
+                  publicKey,
+                  network,
+                  shouldSkipScan: true,
+                });
+
+                return { publicKey, balances: balances ?? {} };
+              } catch (error) {
+                // One account failing shouldn't blank out the whole list.
+                return { publicKey, balances: null };
+              }
+            }),
+          );
+
+          const tokens = [
+            ...new Set(
+              results.flatMap(({ balances }) =>
+                balances ? getTokenIdentifiersFromBalances(balances) : [],
+              ),
+            ),
+          ];
+
+          // Deduped against the shared prices cache, so tokens held by
+          // several accounts (e.g. XLM) are only requested once.
+          // eslint-disable-next-line no-await-in-loop
+          await usePricesStore.getState().fetchPricesForTokenIds({
+            tokens,
+            network,
+            useV2,
+          });
+
+          const prices = usePricesStore.getState().pricesByNetwork[network];
+
+          const batchTotals: Record<string, BigNumber | null> = {};
+          results.forEach(({ publicKey, balances }) => {
+            batchTotals[publicKey] =
+              balances === null
+                ? null
+                : computeFiatTotal(balances, prices ?? {});
+          });
+
+          set({ fiatTotals: { ...get().fiatTotals, ...batchTotals } });
+        }
+
+        set({
+          isLoading: false,
+          lastUpdatedAt: Date.now(),
+          lastNetwork: network,
+        });
+      } catch (error) {
+        // Per-account and price errors are already handled above; this is a
+        // safety net so isLoading can't get stuck if something unexpected
+        // throws mid-cycle.
+        set({ isLoading: false, lastNetwork: network });
+      }
+    },
+  }),
+);
