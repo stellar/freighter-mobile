@@ -5,7 +5,6 @@ import {
   createNativeStackNavigator,
   NativeStackNavigationProp,
 } from "@react-navigation/native-stack";
-import AccountQRCodeScreen from "components/screens/AccountQRCodeScreen";
 import AddCollectibleScreen from "components/screens/AddCollectibleScreen";
 import { BiometricsOnboardingScreen } from "components/screens/BiometricsEnableScreen/BiometricsEnableScreen";
 import CollectibleDetailsScreen from "components/screens/CollectibleDetailsScreen";
@@ -16,6 +15,7 @@ import { LoadingScreen } from "components/screens/LoadingScreen";
 import { LockScreen } from "components/screens/LockScreen";
 import { MaintenanceScreen } from "components/screens/MaintenanceScreen/MaintenanceScreen";
 import ScanQRCodeScreen from "components/screens/ScanQRCodeScreen";
+import ScanReceiveScreen from "components/screens/ScanReceiveScreen";
 import { SecurityBlockScreen } from "components/screens/SecurityBlockScreen";
 import TokenDetailsScreen from "components/screens/TokenDetailsScreen";
 import {
@@ -253,20 +253,15 @@ export const RootNavigator = () => {
               options={getStackBottomNavigateOptions()}
             />
             <RootStack.Screen
-              name={ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN}
-              component={AccountQRCodeScreen}
+              name={ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN}
+              component={ScanQRCodeScreen}
               options={({ route }) =>
-                withTransitionOverride(
-                  getScreenBottomNavigateOptions(
-                    t("accountQRCodeScreen.title"),
-                  ),
-                  route,
-                )
+                withTransitionOverride(getScreenOptionsNoHeader(), route)
               }
             />
             <RootStack.Screen
-              name={ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN}
-              component={ScanQRCodeScreen}
+              name={ROOT_NAVIGATOR_ROUTES.SCAN_RECEIVE_SCREEN}
+              component={ScanReceiveScreen}
               options={({ route }) =>
                 withTransitionOverride(getScreenOptionsNoHeader(), route)
               }
