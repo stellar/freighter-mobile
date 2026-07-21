@@ -292,7 +292,6 @@
   },
   "connectedApps": {
     "title": "Connected Apps",
-    "noConnectedDapps": "No connected apps. Find apps\nto use on Discover.",
     "noConnectedDappsTitle": "Nothing connected yet",
     "noConnectedDappsDescription": "Discover apps and connect your first one.",
     "noConnectedDappsNoDiscover": "No connected apps.",

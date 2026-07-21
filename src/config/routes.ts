@@ -51,7 +51,6 @@ export const ROOT_NAVIGATOR_ROUTES = {
   LOCK_SCREEN: "LockScreen",
   ACCOUNT_QR_CODE_SCREEN: "AccountQRCodeScreen",
   SCAN_QR_CODE_SCREEN: "ScanQRCodeScreen",
-  CONNECTED_APPS_SCREEN: "ConnectedAppsScreen",
   TOKEN_DETAILS_SCREEN: "TokenDetailsScreen",
   COLLECTIBLE_DETAILS_SCREEN: "CollectibleDetailsScreen",
   ADD_COLLECTIBLE_SCREEN: "AddCollectibleScreen",
@@ -153,7 +152,6 @@ export type RootStackParamList = {
     source?: QRCodeSource;
     transition?: ScreenTransition;
   };
-  [ROOT_NAVIGATOR_ROUTES.CONNECTED_APPS_SCREEN]: undefined;
   [ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK]: NavigatorScreenParams<AddFundsStackParamList>;
   [ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK]: NavigatorScreenParams<SendPaymentStackParamList>;
   [ROOT_NAVIGATOR_ROUTES.SWAP_STACK]: NavigatorScreenParams<SwapStackParamList>;
