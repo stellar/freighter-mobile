@@ -60,7 +60,7 @@ export const ReceiveTabView: React.FC = () => {
           <View className="flex-row items-center gap-2 bg-background-tertiary rounded-full px-3 py-2">
             <Image
               source={logos.stellar}
-              className="w-4 h-4"
+              className="w-4 h-4 rounded-full"
               resizeMode="contain"
             />
             <Text sm medium>
@@ -76,7 +76,7 @@ export const ReceiveTabView: React.FC = () => {
         </Text>
         <Button
           isFullWidth
-          secondary
+          tertiary
           icon={
             <Icon.Copy01 size={16} color={themeColors.foreground.primary} />
           }

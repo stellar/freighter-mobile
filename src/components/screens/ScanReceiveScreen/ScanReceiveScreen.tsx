@@ -124,7 +124,7 @@ const ScanReceiveScreen: React.FC<ScanReceiveScreenProps> = ({
           onPress={() => navigation.goBack()}
           testID="scan-receive-close-button"
         />
-        <View className="flex-1 items-center">
+        <View className="flex-1 flex-row items-center justify-center">
           <Tabs
             options={tabOptions}
             selectedValue={activeTab}
