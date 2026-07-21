@@ -37,6 +37,11 @@ type QRScannerProps = {
   onRead: (data: string) => void;
   context?: QRCodeSource;
   title: string;
+  /**
+   * Whether the camera is active. Defaults to true. Pass false to pause the
+   * camera while the scanner stays mounted (e.g. when it is not the visible tab).
+   */
+  isActive?: boolean;
 };
 
 /**
@@ -75,6 +80,7 @@ export const QRScanner: React.FC<QRScannerProps> = ({
   onRead,
   context = QRCodeSource.HOME_SCANNER,
   title,
+  isActive = true,
 }) => {
   const { hasPermission, requestPermission } = useCameraPermission();
   const device = useCameraDevice("back");
@@ -173,7 +179,7 @@ export const QRScanner: React.FC<QRScannerProps> = ({
         codeScanner={codeScanner}
         style={StyleSheet.absoluteFill}
         device={device}
-        isActive
+        isActive={isActive}
       />
 
       <View style={StyleSheet.absoluteFill}>
