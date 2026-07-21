@@ -101,9 +101,11 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
             {account.name}
           </Text>
           <View className="flex-row items-center">
-            <Text sm secondary numberOfLines={1}>
-              {truncatedPublicKey}
-            </Text>
+            <View className="shrink">
+              <Text sm secondary numberOfLines={1}>
+                {truncatedPublicKey}
+              </Text>
+            </View>
             {account.importedFromSecretKey && (
               <Text sm secondary>
                 {` • ${t("home.account.imported")}`}

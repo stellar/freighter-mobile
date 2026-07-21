@@ -53,6 +53,14 @@ interface AccountsFiatTotalsState {
 }
 
 /**
+ * Monotonic token identifying the latest fetch request. A new cycle (or a
+ * non-mainnet clear) bumps it, so an in-flight batch loop from a previous
+ * cycle aborts at its next checkpoint instead of writing stale totals —
+ * e.g. mainnet values landing after the user switched to testnet.
+ */
+let fetchGeneration = 0;
+
+/**
  * Sums the USD value of every priced token in an account's balances.
  * Tokens without a known price (custom tokens, LP shares, price fetch
  * failures) contribute zero, so an unfunded account totals $0.00.
@@ -96,6 +104,7 @@ export const useAccountsFiatTotalsStore = create<AccountsFiatTotalsState>(
       forceRefresh = false,
     }) => {
       if (!isMainnet(network)) {
+        fetchGeneration += 1;
         set({
           fiatTotals: {},
           isLoading: false,
@@ -115,8 +124,10 @@ export const useAccountsFiatTotalsStore = create<AccountsFiatTotalsState>(
       const isFresh =
         lastUpdatedAt !== null &&
         Date.now() - lastUpdatedAt < ACCOUNTS_FIAT_TOTALS_TTL_MS;
+      // Failed (null) entries don't count as fetched, so a reopen within the
+      // TTL retries them instead of leaving rows blank until it expires.
       const hasAllAccounts = publicKeys.every(
-        (publicKey) => publicKey in fiatTotals,
+        (publicKey) => fiatTotals[publicKey] != null,
       );
 
       if (!forceRefresh && isSameNetwork && isFresh && hasAllAccounts) {
@@ -127,6 +138,8 @@ export const useAccountsFiatTotalsStore = create<AccountsFiatTotalsState>(
       // list never shows stale values while the new fetch is in flight.
       set({ isLoading: true, ...(isSameNetwork ? {} : { fiatTotals: {} }) });
 
+      fetchGeneration += 1;
+      const thisGeneration = fetchGeneration;
       const useV2 = useRemoteConfigStore.getState().use_token_prices_v2;
 
       try {
@@ -175,6 +188,12 @@ export const useAccountsFiatTotalsStore = create<AccountsFiatTotalsState>(
             useV2,
           });
 
+          // Superseded (e.g. the network switched mid-flight)? The newer
+          // cycle owns the state now — abort without writing.
+          if (fetchGeneration !== thisGeneration) {
+            return;
+          }
+
           const prices = usePricesStore.getState().pricesByNetwork[network];
 
           const batchTotals: Record<string, BigNumber | null> = {};
@@ -197,7 +216,9 @@ export const useAccountsFiatTotalsStore = create<AccountsFiatTotalsState>(
         // Per-account and price errors are already handled above; this is a
         // safety net so isLoading can't get stuck if something unexpected
         // throws mid-cycle.
-        set({ isLoading: false, lastNetwork: network });
+        if (fetchGeneration === thisGeneration) {
+          set({ isLoading: false, lastNetwork: network });
+        }
       }
     },
   }),

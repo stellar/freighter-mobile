@@ -345,6 +345,75 @@ describe("accountsFiatTotals duck", () => {
     expect(mockFetchBalances).toHaveBeenCalledTimes(1);
   });
 
+  it("aborts an in-flight mainnet fetch when the network switches", async () => {
+    const publicKeys = Array.from(
+      { length: ACCOUNTS_FIAT_TOTALS_BATCH_SIZE + 1 },
+      (_, i) => `${PK_1.slice(0, -2)}${String(i).padStart(2, "0")}`,
+    );
+
+    const pendingResolvers: Array<
+      (value: {
+        balances: typeof mockBalanceMap;
+        isFunded: boolean;
+        subentryCount: number;
+      }) => void
+    > = [];
+    mockFetchBalances.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          pendingResolvers.push(resolve);
+        }),
+    );
+
+    const { fetchAccountsFiatTotals } = useAccountsFiatTotalsStore.getState();
+
+    const mainnetFetch = fetchAccountsFiatTotals({
+      publicKeys,
+      network: NETWORKS.PUBLIC,
+    });
+
+    // Switch to testnet while the first mainnet batch is still in flight
+    await fetchAccountsFiatTotals({
+      publicKeys,
+      network: NETWORKS.TESTNET,
+    });
+
+    pendingResolvers.forEach((resolve) =>
+      resolve({ balances: mockBalanceMap, isFunded: true, subentryCount: 1 }),
+    );
+    await mainnetFetch;
+
+    const { fiatTotals, lastNetwork } = useAccountsFiatTotalsStore.getState();
+    expect(fiatTotals).toEqual({});
+    expect(lastNetwork).toBe(NETWORKS.TESTNET);
+    // Second mainnet batch never starts after the abort
+    expect(mockFetchBalances).toHaveBeenCalledTimes(
+      ACCOUNTS_FIAT_TOTALS_BATCH_SIZE,
+    );
+  });
+
+  it("retries failed (null) totals on the next fetch within the TTL", async () => {
+    mockFetchBalances.mockRejectedValueOnce(new Error("offline"));
+
+    const { fetchAccountsFiatTotals } = useAccountsFiatTotalsStore.getState();
+
+    await fetchAccountsFiatTotals({
+      publicKeys: [PK_1],
+      network: NETWORKS.PUBLIC,
+    });
+    expect(useAccountsFiatTotalsStore.getState().fiatTotals[PK_1]).toBeNull();
+
+    await fetchAccountsFiatTotals({
+      publicKeys: [PK_1],
+      network: NETWORKS.PUBLIC,
+    });
+
+    expect(mockFetchBalances).toHaveBeenCalledTimes(2);
+    expect(
+      useAccountsFiatTotalsStore.getState().fiatTotals[PK_1]?.toString(),
+    ).toBe("250");
+  });
+
   it("clears totals from another network before fetching", async () => {
     useAccountsFiatTotalsStore.setState({
       fiatTotals: { STALE_KEY: new BigNumber("999") },

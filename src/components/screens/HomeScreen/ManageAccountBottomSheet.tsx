@@ -153,7 +153,6 @@ export const ManageAccountBottomSheet: React.FC<
           alwaysBounceVertical={false}
           contentContainerStyle={{
             gap: pxValue(24),
-            paddingBottom: pxValue(24),
           }}
         >
           <View className="items-center">
