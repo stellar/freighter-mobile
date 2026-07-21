@@ -924,6 +924,15 @@
       "description": "Peça ao remetente para digitalizar o código QR em seu aplicativo Freighter para recuperar seu endereço de carteira com segurança."
     }
   },
+  "scanReceiveScreen": {
+    "scanTab": "Escanear",
+    "receiveTab": "Receber",
+    "receive": {
+      "network": "Stellar",
+      "networkSupport": "Este endereço é compatível com a rede Stellar.",
+      "copyButton": "Copiar endereço da carteira"
+    }
+  },
   "walletConnect": {
     "pairingError": "Falha ao parear",
     "connect": "Conectar",

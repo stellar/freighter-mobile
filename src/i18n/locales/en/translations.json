@@ -137,6 +137,15 @@
       "description": "Have the sender scan the QR code on their Freighter app to retrieve your wallet address securely."
     }
   },
+  "scanReceiveScreen": {
+    "scanTab": "Scan",
+    "receiveTab": "Receive",
+    "receive": {
+      "network": "Stellar",
+      "networkSupport": "This address supports Stellar network.",
+      "copyButton": "Copy wallet address"
+    }
+  },
   "walletConnect": {
     "pairingError": "Failed to pair",
     "connect": "Connect",

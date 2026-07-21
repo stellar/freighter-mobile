@@ -13,6 +13,9 @@ export enum ScreenTransition {
   Default = "default",
 }
 
+/** Which tab the unified Scan/Receive screen opens on. */
+export type ScanReceiveTab = "scan" | "receive";
+
 /**
  * ROUTE NAMING CONVENTIONS FOR ANALYTICS
  *
@@ -51,6 +54,7 @@ export const ROOT_NAVIGATOR_ROUTES = {
   LOCK_SCREEN: "LockScreen",
   ACCOUNT_QR_CODE_SCREEN: "AccountQRCodeScreen",
   SCAN_QR_CODE_SCREEN: "ScanQRCodeScreen",
+  SCAN_RECEIVE_SCREEN: "ScanReceiveScreen",
   CONNECTED_APPS_SCREEN: "ConnectedAppsScreen",
   TOKEN_DETAILS_SCREEN: "TokenDetailsScreen",
   COLLECTIBLE_DETAILS_SCREEN: "CollectibleDetailsScreen",
@@ -151,6 +155,10 @@ export type RootStackParamList = {
   [ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN]: undefined;
   [ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN]: {
     source?: QRCodeSource;
+    transition?: ScreenTransition;
+  };
+  [ROOT_NAVIGATOR_ROUTES.SCAN_RECEIVE_SCREEN]: {
+    initialTab?: ScanReceiveTab;
     transition?: ScreenTransition;
   };
   [ROOT_NAVIGATOR_ROUTES.CONNECTED_APPS_SCREEN]: undefined;
