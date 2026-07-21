@@ -54,8 +54,7 @@
       "myQRCode": "Meu QR code"
     },
     "manageAccount": {
-      "title": "Carteiras",
-      "addWallet": "Adicionar uma carteira",
+      "addWallet": "Adicionar carteira",
       "renameWallet": "Renomear carteira",
       "copyAddress": "Copiar endereço",
       "viewOnExplorer": "Ver no stellar.expert"

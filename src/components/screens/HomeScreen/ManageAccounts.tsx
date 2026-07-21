@@ -1,30 +1,24 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
-import { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
+import { NavigationProp, useNavigation } from "@react-navigation/native";
 import BottomSheet from "components/BottomSheet";
 import ManageAccountBottomSheet from "components/screens/HomeScreen/ManageAccountBottomSheet";
 import RenameAccountModal from "components/screens/HomeScreen/RenameAccountModal";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { ERROR_TOAST_DURATION } from "config/constants";
-import {
-  MainTabStackParamList,
-  RootStackParamList,
-  MAIN_TAB_ROUTES,
-  ROOT_NAVIGATOR_ROUTES,
-} from "config/routes";
+import { RootStackParamList, ROOT_NAVIGATOR_ROUTES } from "config/routes";
 import { Account } from "config/types";
+import { useAccountsFiatTotalsStore } from "ducks/accountsFiatTotals";
 import { ActiveAccount, useAuthenticationStore } from "ducks/auth";
 import { toPercent } from "helpers/dimensions";
+import { getStellarExpertUrl } from "helpers/stellarExpert";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
+import { useInAppBrowser } from "hooks/useInAppBrowser";
 import { useToast } from "providers/ToastProvider";
 import React, { useCallback, useState } from "react";
 import { analytics } from "services/analytics";
 
 interface ManageAccountsProps {
-  navigation?: BottomTabNavigationProp<
-    MainTabStackParamList & RootStackParamList,
-    typeof MAIN_TAB_ROUTES.TAB_HOME
-  >;
   accounts: Account[];
   activeAccount: ActiveAccount | null;
   bottomSheetRef: React.RefObject<BottomSheetModal | null>;
@@ -36,20 +30,27 @@ const SNAP_VALUE_PERCENT = 80;
 const ACCOUNT_SWITCH_DISMISS_DELAY_MS = 500;
 
 const ManageAccounts: React.FC<ManageAccountsProps> = ({
-  navigation,
   accounts,
   activeAccount,
   bottomSheetRef,
   showAddWallet = true,
   isLoadingAccounts = false,
 }) => {
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const {
+    network,
     renameAccount,
     selectAccount,
     isRenamingAccount,
     isSwitchingAccount,
   } = useAuthenticationStore();
+  const {
+    fiatTotals,
+    isLoading: isLoadingFiatTotals,
+    fetchAccountsFiatTotals,
+  } = useAccountsFiatTotalsStore();
   const { copyToClipboard } = useClipboard();
+  const { open: openInAppBrowser } = useInAppBrowser();
   const { showToast } = useToast();
   const { t } = useAppTranslation();
 
@@ -62,12 +63,11 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
 
   const handleSheetPresent = useCallback(
     (index: number) => {
-      if (
-        index >= 0 &&
-        accounts.length === 0 &&
-        activeAccount &&
-        !isLoadingAccounts
-      ) {
+      if (index < 0) {
+        return;
+      }
+
+      if (accounts.length === 0 && activeAccount && !isLoadingAccounts) {
         showToast({
           toastId: "manage-accounts-load-error",
           variant: "error",
@@ -76,26 +76,78 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
           duration: ERROR_TOAST_DURATION,
         });
       }
+
+      if (accounts.length > 0) {
+        fetchAccountsFiatTotals({
+          publicKeys: accounts.map((account) => account.publicKey),
+          network,
+        });
+      }
     },
-    [accounts.length, activeAccount, isLoadingAccounts, showToast, t],
+    [
+      accounts,
+      activeAccount,
+      isLoadingAccounts,
+      showToast,
+      t,
+      fetchAccountsFiatTotals,
+      network,
+    ],
   );
 
-  const handleCopyAddress = useCallback(
-    (publicKey?: string) => {
-      if (!publicKey) return;
+  const handleOpenSettings = useCallback(() => {
+    bottomSheetRef.current?.dismiss();
+    navigation.navigate(ROOT_NAVIGATOR_ROUTES.SETTINGS_STACK);
+  }, [navigation, bottomSheetRef]);
 
-      copyToClipboard(publicKey, {
-        notificationMessage: t("accountAddressCopied"),
-      });
+  const handleOpenMyQRCode = useCallback(() => {
+    bottomSheetRef.current?.dismiss();
+    navigation.navigate(ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN);
+  }, [navigation, bottomSheetRef]);
 
-      analytics.trackCopyPublicKey();
-    },
-    [copyToClipboard, t],
-  );
+  const handleCopyActiveAddress = useCallback(() => {
+    if (!activeAccount) {
+      return;
+    }
+
+    copyToClipboard(activeAccount.publicKey, {
+      notificationMessage: t("accountAddressCopied"),
+    });
+
+    analytics.trackCopyPublicKey();
+  }, [activeAccount, copyToClipboard, t]);
+
+  const handleViewActiveOnExplorer = useCallback(() => {
+    if (!activeAccount) {
+      return;
+    }
+
+    const url = `${getStellarExpertUrl(network)}/account/${activeAccount.publicKey}`;
+    analytics.track(AnalyticsEvent.VIEW_PUBLIC_KEY_CLICKED_STELLAR_EXPERT);
+
+    openInAppBrowser(url);
+  }, [activeAccount, network, openInAppBrowser]);
+
+  const handleOpenRenameActiveAccount = useCallback(() => {
+    if (!activeAccount) {
+      return;
+    }
+
+    // Prefer the entry from the accounts list (it carries flags like
+    // importedFromSecretKey); fall back to mapping the active account.
+    const account = accounts.find(
+      (item) => item.publicKey === activeAccount.publicKey,
+    ) ?? {
+      id: activeAccount.id,
+      name: activeAccount.accountName,
+      publicKey: activeAccount.publicKey,
+    };
+
+    setAccountToRename(account);
+    setRenameAccountModalVisible(true);
+  }, [accounts, activeAccount]);
 
   const handleAddAnotherWallet = useCallback(() => {
-    if (!navigation) return;
-
     analytics.track(AnalyticsEvent.ACCOUNT_SCREEN_ADD_ACCOUNT);
 
     bottomSheetRef.current?.dismiss();
@@ -143,14 +195,6 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
     [activeAccount, isSwitchingAccount, selectAccount, bottomSheetRef],
   );
 
-  const handleOpenRenameAccountModal = useCallback(
-    (selectedAccount: Account) => {
-      setAccountToRename(selectedAccount);
-      setRenameAccountModalVisible(true);
-    },
-    [],
-  );
-
   const handleCloseModal = useCallback(() => {
     bottomSheetRef.current?.dismiss();
   }, [bottomSheetRef]);
@@ -168,14 +212,19 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
         customContent={
           <ManageAccountBottomSheet
             handleCloseModal={handleCloseModal}
+            onPressSettings={handleOpenSettings}
+            onPressMyQRCode={handleOpenMyQRCode}
+            onPressCopyAddress={handleCopyActiveAddress}
+            onPressViewOnExplorer={handleViewActiveOnExplorer}
+            onPressRenameAccount={handleOpenRenameActiveAccount}
             onPressAddAnotherWallet={handleAddAnotherWallet}
-            handleCopyAddress={handleCopyAddress}
-            handleRenameAccount={handleOpenRenameAccountModal}
             accounts={accounts}
             activeAccount={activeAccount}
             handleSelectAccount={handleSelectAccount}
             isAccountSwitching={isSwitchingAccount}
             switchingToPublicKey={switchingToPublicKey}
+            fiatTotals={fiatTotals}
+            isLoadingFiatTotals={isLoadingFiatTotals}
             showAddWallet={showAddWallet}
           />
         }

@@ -267,7 +267,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
           onDismiss={handleWelcomeBannerDismiss}
         />
         <ManageAccounts
-          navigation={navigation}
           accounts={allAccounts}
           activeAccount={account}
           bottomSheetRef={manageAccountsBottomSheetRef}

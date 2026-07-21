@@ -1,146 +1,118 @@
-/* eslint-disable @typescript-eslint/no-misused-promises */
-import ContextMenuButton, { MenuItem } from "components/ContextMenuButton";
+import { BigNumber } from "bignumber.js";
 import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { AnalyticsEvent } from "config/analyticsConfig";
 import { DEFAULT_PRESS_DELAY } from "config/constants";
 import { Account } from "config/types";
-import { useAuthenticationStore } from "ducks/auth";
+import { formatFiatAmount } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
-import { getStellarExpertUrl } from "helpers/stellarExpert";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
-import { useInAppBrowser } from "hooks/useInAppBrowser";
 import React, { useCallback } from "react";
 import {
   TouchableOpacity,
   View,
-  Platform,
   ActivityIndicator,
   StyleSheet,
 } from "react-native";
-import { analytics } from "services/analytics";
 
 interface AccountItemRowProps {
   account: Account;
-  handleCopyAddress: (publicKey: string) => void;
-  handleRenameAccount: (account: Account) => void;
   handleSelectAccount: (publicKey: string) => Promise<void>;
   isSelected: boolean;
   isAccountSwitching: boolean;
   isSwitchingToThisAccount: boolean;
+  /**
+   * Account's total USD value. `undefined` while it hasn't been fetched yet,
+   * `null` when unavailable (fetch failed or fiat-less network).
+   */
+  fiatTotal?: BigNumber | null;
+  isLoadingFiatTotal?: boolean;
   testID?: string;
 }
 
 const AccountItemRow: React.FC<AccountItemRowProps> = ({
   account,
-  handleCopyAddress,
-  handleRenameAccount,
   handleSelectAccount,
   isSelected,
   isAccountSwitching,
   isSwitchingToThisAccount,
+  fiatTotal,
+  isLoadingFiatTotal = false,
   testID,
 }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
-  const { network } = useAuthenticationStore();
-  const { open: openInAppBrowser } = useInAppBrowser();
 
   const truncatedPublicKey = truncateAddress(account.publicKey);
-
-  const icons = Platform.select({
-    ios: {
-      renameWallet: "pencil",
-      copyAddress: "doc.on.doc",
-      viewOnExplorer: "safari",
-    },
-    android: {
-      renameWallet: "baseline_edit",
-      copyAddress: "copy",
-      viewOnExplorer: "public",
-    },
-  });
-
-  const handleViewOnExplorer = async () => {
-    const url = `${getStellarExpertUrl(network)}/account/${account.publicKey}`;
-    analytics.track(AnalyticsEvent.VIEW_PUBLIC_KEY_CLICKED_STELLAR_EXPERT);
-
-    await openInAppBrowser(url);
-  };
-
-  const actions: MenuItem[] = [
-    {
-      title: t("home.manageAccount.renameWallet"),
-      systemIcon: icons!.renameWallet,
-      disabled: isAccountSwitching,
-      onPress: () => handleRenameAccount(account),
-    },
-    {
-      title: t("home.manageAccount.copyAddress"),
-      systemIcon: icons!.copyAddress,
-      disabled: isAccountSwitching,
-      onPress: () => handleCopyAddress(account.publicKey),
-    },
-    {
-      title: t("home.manageAccount.viewOnExplorer"),
-      systemIcon: icons!.viewOnExplorer,
-      disabled: isAccountSwitching,
-      onPress: handleViewOnExplorer,
-    },
-  ];
+  const showSelectedBadge =
+    isSwitchingToThisAccount || (isSelected && !isAccountSwitching);
 
   const handleSelectAccountPress = useCallback(() => {
     handleSelectAccount(account.publicKey);
   }, [account.publicKey, handleSelectAccount]);
 
+  const renderFiatTotal = () => {
+    if (fiatTotal) {
+      return (
+        <Text md medium primary testID={testID ? `${testID}-total` : undefined}>
+          {formatFiatAmount(fiatTotal)}
+        </Text>
+      );
+    }
+
+    if (fiatTotal === undefined && isLoadingFiatTotal) {
+      return (
+        <Text md medium secondary>
+          ...
+        </Text>
+      );
+    }
+
+    return null;
+  };
+
   return (
     <View
-      className="flex-row justify-between items-center flex-1 h-16 mb-2"
+      className="w-full"
       style={{ opacity: isSwitchingToThisAccount ? 0.5 : 1 }}
       testID={testID}
     >
       <TouchableOpacity
-        className="flex-row justify-between items-center flex-1"
+        className="flex-row items-center gap-[16px]"
         onPress={handleSelectAccountPress}
         disabled={isAccountSwitching}
         delayPressIn={DEFAULT_PRESS_DELAY}
         testID={testID ? `${testID}-select` : undefined}
       >
-        <View className="flex-row items-center flex-1">
-          <Avatar
-            size="md"
-            publicAddress={account.publicKey}
-            isSelected={
-              isSwitchingToThisAccount || (isSelected && !isAccountSwitching)
-            }
-          />
-          <View className="ml-4 flex-1 mr-2">
-            <Text md primary medium numberOfLines={1}>
-              {account.name}
-            </Text>
-            <View className="flex-row items-center">
-              <Text sm secondary medium numberOfLines={1}>
-                {truncatedPublicKey}
-              </Text>
-              {account.importedFromSecretKey && (
-                <>
-                  <Text sm secondary medium>
-                    {" • "}
-                  </Text>
-                  <Text sm secondary medium>
-                    {t("home.account.imported")}
-                  </Text>
-                </>
-              )}
+        <View>
+          <Avatar size="lg" publicAddress={account.publicKey} />
+          {showSelectedBadge && (
+            <View
+              className="absolute -bottom-1 -right-1 z-20 w-6 h-6 rounded-full bg-navy-9 justify-center items-center"
+              testID={testID ? `${testID}-selected-badge` : undefined}
+            >
+              <Icon.Check size={12} color={themeColors.base[1]} />
             </View>
+          )}
+        </View>
+        <View className="flex-1">
+          <Text md primary medium numberOfLines={1}>
+            {account.name}
+          </Text>
+          <View className="flex-row items-center">
+            <Text sm secondary numberOfLines={1}>
+              {truncatedPublicKey}
+            </Text>
+            {account.importedFromSecretKey && (
+              <Text sm secondary>
+                {` • ${t("home.account.imported")}`}
+              </Text>
+            )}
           </View>
         </View>
+        {renderFiatTotal()}
       </TouchableOpacity>
-      <ContextMenuButton contextMenuProps={{ actions }}>
-        <Icon.DotsHorizontal color={themeColors.foreground.primary} />
-      </ContextMenuButton>
       {isSwitchingToThisAccount && (
         <View
           style={[
