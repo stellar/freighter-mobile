@@ -33,7 +33,13 @@ export enum AnalyticsEvent {
   VIEW_GRANT_DAPP_ACCESS = "grant_access",
   VIEW_SIGN_DAPP_TRANSACTION = "sign_transaction",
   VIEW_SIGN_DAPP_TRANSACTION_DETAILS = "sign_transaction_details",
-  VIEW_SIGN_DAPP_AUTH_ENTRY_DETAILS = "sign_auth_entry_details",
+  // Canonical cross-platform name (RFC #2883): the extension emits
+  // `sign_auth_entry` for the same dApp auth-entry signing screen. Mobile has
+  // only this (details bottom-sheet) variant of the screen -- there is no
+  // separate base `sign_auth_entry` -- so the value is reconciled to the
+  // shared name to keep cross-platform funnels joined. The `_DETAILS` member
+  // suffix reflects mobile's component structure and is unrelated to the wire value.
+  VIEW_SIGN_DAPP_AUTH_ENTRY_DETAILS = "sign_auth_entry",
   VIEW_SEND_SEARCH_CONTACTS = "send_payment_to",
   VIEW_SEND_AMOUNT = "send_payment_amount",
   VIEW_SEND_MEMO = "send_payment_settings",
