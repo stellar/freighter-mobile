@@ -4,7 +4,16 @@ import { logger } from "config/logger";
 import { useAnalyticsStore } from "ducks/analytics";
 import { STORAGE_KEYS, DEBUG_CONFIG } from "services/analytics/constants";
 import { isInitialized } from "services/analytics/core";
-import { getAuthUserId } from "services/auth/getAuthUserId";
+
+// NOTE: `services/auth/getAuthUserId` is intentionally NOT imported statically.
+// A static import closes this cycle at module-init time:
+//   analytics/user → auth/getAuthUserId → auth/getAuthKeypair → ducks/auth →
+//   services/analytics (index) → analytics/user
+// Because services/analytics/index.ts snapshots `identifyUser` into the exported
+// `analytics` object during initialization, whichever module loads first can
+// capture a partially-initialized export. It is deferred to call time inside
+// getUserId() below, mirroring the lazy-require cycle-avoidance pattern in
+// services/auth/attachAuth.ts.
 
 // -----------------------------------------------------------------------------
 // USER ID MANAGEMENT
@@ -29,6 +38,10 @@ const generateRandomUserId = (): string =>
  * 3. Use session-only ID if storage fails
  */
 export const getUserId = async (): Promise<string> => {
+  /* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires, global-require */
+  const { getAuthUserId } =
+    require("services/auth/getAuthUserId") as typeof import("services/auth/getAuthUserId");
+  /* eslint-enable @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires, global-require */
   const authId = await getAuthUserId();
 
   if (authId) {

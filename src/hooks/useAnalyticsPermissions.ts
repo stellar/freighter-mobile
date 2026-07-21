@@ -1,6 +1,8 @@
 import { MIN_IOS_VERSION_FOR_ATT_REQUEST } from "config/constants";
 import { logger } from "config/logger";
+import { AUTH_STATUS } from "config/types";
 import { useAnalyticsStore } from "ducks/analytics";
+import { useAuthenticationStore } from "ducks/auth";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { isE2ETest } from "helpers/isEnv";
 import useDebounce from "hooks/useDebounce";
@@ -72,6 +74,7 @@ export const useAnalyticsPermissions = ({
 }: UseAnalyticsPermissionsParams = {}): UseAnalyticsPermissionsReturn => {
   const isAttRequested = useAnalyticsStore((state) => state.attRequested);
   const isEnabled = useAnalyticsStore((state) => state.isEnabled);
+  const authStatus = useAuthenticationStore((state) => state.authStatus);
 
   const [isPermissionLoading, setIsPermissionLoading] = useState(false);
   const [showPermissionModal, setShowPermissionModal] = useState(false);
@@ -333,6 +336,21 @@ export const useAnalyticsPermissions = ({
     checkTrackingPermission,
     syncTrackingPermission,
   ]);
+
+  // Re-identify the user when the session unlocks. The initialize effect above
+  // runs once on mount, which on a cold start happens while the wallet is still
+  // locked — getUserId() there resolves the random-id fallback because the
+  // seed-derived auth id is only derivable from an unlocked session. This host
+  // (RootNavigator) stays mounted across the lock→unlock transition, so nothing
+  // else re-runs identification. Once auth transitions to AUTHENTICATED the auth
+  // id becomes available; re-identify so existing users migrate from their
+  // random id to the stable auth id. identifyUser() dedups on the resolved id,
+  // so this is a no-op once already migrated (or when the id is unchanged).
+  useEffect(() => {
+    if (authStatus === AUTH_STATUS.AUTHENTICATED) {
+      analytics.identifyUser();
+    }
+  }, [authStatus]);
 
   return {
     isTrackingEnabled: isEnabled,
