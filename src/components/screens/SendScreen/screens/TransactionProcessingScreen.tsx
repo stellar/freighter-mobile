@@ -86,6 +86,7 @@ const TransactionProcessingScreen: React.FC<
   const [status, setStatus] = useState<TransactionStatusType>(
     TransactionStatus.SENDING,
   );
+  const hasEmittedSuccess = useRef(false);
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const isContractAddress = isContractId(recipientAddress);
 
@@ -101,6 +102,21 @@ const TransactionProcessingScreen: React.FC<
       buildScreenViewedProps(AnalyticsEvent.VIEW_SEND_PROCESSING),
     );
   }, []);
+
+  // This one screen also renders the terminal success state, so emit the
+  // success funnel stage (send_payment_success, flow:"send", step:"success")
+  // when the submission settles into SENT -- completing confirm -> processing
+  // -> success on mobile and matching the extension's success emission. Guarded
+  // to fire at most once per mount (the SENT status is terminal here anyway).
+  useEffect(() => {
+    if (status === TransactionStatus.SENT && !hasEmittedSuccess.current) {
+      hasEmittedSuccess.current = true;
+      track(
+        AnalyticsEvent.SCREEN_VIEWED,
+        buildScreenViewedProps(AnalyticsEvent.VIEW_SEND_SUCCESS),
+      );
+    }
+  }, [status]);
 
   useLayoutEffect(() => {
     navigation.setOptions({

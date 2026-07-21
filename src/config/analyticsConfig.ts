@@ -48,6 +48,7 @@ export enum AnalyticsEvent {
   VIEW_SEND_CONFIRM = "send_payment_confirm",
   VIEW_SEND_TRANSACTION_DETAILS = "send_transaction_details",
   VIEW_SEND_PROCESSING = "send_payment_processing",
+  VIEW_SEND_SUCCESS = "send_payment_success",
   VIEW_SWAP = "swap",
   VIEW_SWAP_AMOUNT = "swap_amount",
   VIEW_SWAP_FEE = "swap_fee",
@@ -389,6 +390,10 @@ const SCREEN_CATALOG: Record<string, { flow?: AnalyticsFlow; step?: Step }> = {
   [AnalyticsEvent.VIEW_SEND_PROCESSING]: {
     flow: AnalyticsFlow.SEND,
     step: "processing",
+  },
+  [AnalyticsEvent.VIEW_SEND_SUCCESS]: {
+    flow: AnalyticsFlow.SEND,
+    step: "success",
   },
   // Swap
   [AnalyticsEvent.VIEW_SWAP]: { flow: AnalyticsFlow.SWAP },

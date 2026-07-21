@@ -2,6 +2,7 @@
 import { SendType } from "components/screens/SendScreen/components/SendReviewBottomSheet";
 import TransactionProcessingScreen from "components/screens/SendScreen/screens/TransactionProcessingScreen";
 import { AnalyticsEvent, AnalyticsFlow } from "config/analyticsConfig";
+import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 import { track } from "services/analytics/core";
@@ -69,25 +70,61 @@ jest.mock("components/sds/Icon", () => ({
   default: new Proxy({}, { get: () => "View" }),
 }));
 
+const setTransactionState = (state: {
+  transactionHash: string | null;
+  error?: unknown;
+}) => {
+  (useTransactionBuilderStore as unknown as jest.Mock).mockReturnValue({
+    isSubmitting: state.transactionHash === null,
+    transactionHash: state.transactionHash,
+    error: state.error ?? null,
+    resetTransaction: jest.fn(),
+  });
+};
+
+const screenViewedProps = () =>
+  (track as jest.Mock).mock.calls
+    .filter(([event]) => event === AnalyticsEvent.SCREEN_VIEWED)
+    .map(([, props]) => props);
+
 describe("TransactionProcessingScreen analytics", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it("emits a single screen.viewed for the processing step on mount", () => {
-    renderWithProviders(
-      <TransactionProcessingScreen type={SendType.Token} />,
-    );
+  it("emits only the processing step while the submission is in flight", () => {
+    setTransactionState({ transactionHash: null });
 
-    const screenViewedCalls = (track as jest.Mock).mock.calls.filter(
-      ([event]) => event === AnalyticsEvent.SCREEN_VIEWED,
-    );
+    renderWithProviders(<TransactionProcessingScreen type={SendType.Token} />);
 
-    expect(screenViewedCalls).toHaveLength(1);
-    expect(screenViewedCalls[0][1]).toEqual({
+    expect(screenViewedProps()).toEqual([
+      {
+        screen_name: "send_payment_processing",
+        flow: AnalyticsFlow.SEND,
+        step: "processing",
+      },
+    ]);
+  });
+
+  it("also emits the success step once the submission settles into SENT", () => {
+    setTransactionState({ transactionHash: "tx-hash" });
+
+    renderWithProviders(<TransactionProcessingScreen type={SendType.Token} />);
+
+    const props = screenViewedProps();
+    expect(props).toContainEqual({
       screen_name: "send_payment_processing",
       flow: AnalyticsFlow.SEND,
       step: "processing",
     });
+    expect(props).toContainEqual({
+      screen_name: "send_payment_success",
+      flow: AnalyticsFlow.SEND,
+      step: "success",
+    });
+    // success fires exactly once
+    expect(
+      props.filter((p) => p.screen_name === "send_payment_success"),
+    ).toHaveLength(1);
   });
 });
