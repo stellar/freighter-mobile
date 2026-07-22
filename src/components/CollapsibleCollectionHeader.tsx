@@ -21,11 +21,6 @@ interface CollapsibleCollectionHeaderProps {
    * badge (used by the Send flow to match its previous list header).
    */
   showDivider?: boolean;
-  /**
-   * Render the title in the muted secondary color instead of the default primary
-   * (used together with showDivider by the Send flow).
-   */
-  secondaryTitle?: boolean;
 }
 
 /**
@@ -49,7 +44,6 @@ export const CollapsibleCollectionHeader: React.FC<
   onToggle,
   testID,
   showDivider = false,
-  secondaryTitle = false,
 }) => {
   const { themeColors } = useColors();
 
@@ -66,12 +60,12 @@ export const CollapsibleCollectionHeader: React.FC<
       accessibilityState={{ expanded: isExpanded }}
       accessibilityLabel={collectionName}
     >
-      {secondaryTitle ? (
-        <Text md secondary numberOfLines={1} style={{ flexShrink: 1 }}>
+      {showDivider ? (
+        <Text md medium secondary numberOfLines={1} style={{ flexShrink: 1 }}>
           {collectionName}
         </Text>
       ) : (
-        <Text md medium style={{ flex: 1 }}>
+        <Text md medium secondary style={{ flex: 1 }}>
           {collectionName}
         </Text>
       )}

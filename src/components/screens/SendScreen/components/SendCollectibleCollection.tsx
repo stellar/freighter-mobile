@@ -40,7 +40,6 @@ export const SendCollectibleCollection: React.FC<
         onToggle={toggleExpanded}
         testID={`send-collection-header-${collection.collectionAddress}`}
         showDivider
-        secondaryTitle
       />
 
       {isExpanded && (
