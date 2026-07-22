@@ -1,13 +1,13 @@
 import { logos } from "assets/logos";
 import { Avatar } from "components/sds/Avatar";
-import { Button } from "components/sds/Button";
+import { Button, IconPosition } from "components/sds/Button";
+import { BUTTON_THEME } from "components/sds/Button/theme";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { pxValue } from "helpers/dimensions";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
-import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React from "react";
 import { Image, View } from "react-native";
@@ -22,7 +22,6 @@ const QR_SIZE = 210;
  */
 export const ReceiveTabView: React.FC = () => {
   const { account } = useGetActiveAccount();
-  const { themeColors } = useColors();
   const { t } = useAppTranslation();
   const { copyToClipboard } = useClipboard();
 
@@ -78,8 +77,9 @@ export const ReceiveTabView: React.FC = () => {
           isFullWidth
           tertiary
           icon={
-            <Icon.Copy01 size={16} color={themeColors.foreground.primary} />
+            <Icon.Copy01 size={16} color={BUTTON_THEME.colors.tertiary.text} />
           }
+          iconPosition={IconPosition.RIGHT}
           onPress={() => copyToClipboard(publicKey)}
         >
           {t("scanReceiveScreen.receive.copyButton")}
