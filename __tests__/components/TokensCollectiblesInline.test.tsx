@@ -56,7 +56,9 @@ jest.mock("hooks/useColors", () => ({
   default: () => ({
     themeColors: {
       secondary: "#000",
+      gray: { 11: "#a0a0a0" },
       text: {
+        primary: "#ededed",
         secondary: "#111",
       },
     },

@@ -41,11 +41,12 @@ const buildCollection = (overrides: Partial<Collection> = {}): Collection => ({
 });
 
 describe("CollectionSection", () => {
-  it("renders the collection name and item count", () => {
+  it("renders the collection name and item count without a header divider", () => {
     render(<CollectionSection collection={buildCollection()} />);
 
     expect(screen.getByText("Soroban Frogs")).toBeTruthy();
     expect(screen.getByText("3")).toBeTruthy();
+    expect(screen.queryByTestId("collection-header-divider")).toBeNull();
   });
 
   it("shows tiles when expanded by default and hides them when the header is tapped", () => {
