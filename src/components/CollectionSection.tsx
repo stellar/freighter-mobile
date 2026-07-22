@@ -1,5 +1,4 @@
 import { CollectibleImage } from "components/CollectibleImage";
-import { Badge } from "components/sds/Badge";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { DEFAULT_PADDING, DEFAULT_PRESS_DELAY } from "config/constants";
@@ -94,6 +93,11 @@ export const CollectionSection: React.FC<CollectionSectionProps> = ({
 
   const rows = chunkIntoPairs(collection.items);
 
+  // Count badge: a perfect 24x24 circle for single-digit counts; for two or
+  // more characters it keeps the 24px height and grows wider into a pill.
+  const countLabel = String(collection.items.length);
+  const isSingleCharCount = countLabel.length <= 1;
+
   return (
     <View
       className="mb-6"
@@ -112,13 +116,19 @@ export const CollectionSection: React.FC<CollectionSectionProps> = ({
           {collection.collectionName}
         </Text>
         <View className="flex-row items-center gap-2">
-          <Badge variant="tertiary" size="md" isOutlined>
-            {String(collection.items.length)}
-          </Badge>
+          <View
+            className={`flex-row items-center justify-center h-[24px] rounded-full border bg-gray-3 border-gray-6 ${
+              isSingleCharCount ? "w-[24px]" : "min-w-[24px] px-2"
+            }`}
+          >
+            <Text sm semiBold color={themeColors.gray[11]} textAlign="center">
+              {countLabel}
+            </Text>
+          </View>
           {isExpanded ? (
-            <Icon.ChevronUp size={16} color={themeColors.text.secondary} />
+            <Icon.ChevronUp size={16} color={themeColors.text.primary} />
           ) : (
-            <Icon.ChevronDown size={16} color={themeColors.text.secondary} />
+            <Icon.ChevronDown size={16} color={themeColors.text.primary} />
           )}
         </View>
       </TouchableOpacity>
