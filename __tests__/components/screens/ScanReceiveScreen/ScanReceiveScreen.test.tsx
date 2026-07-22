@@ -13,9 +13,12 @@ type Props = NativeStackScreenProps<
 >;
 
 jest.mock("services/analytics/core", () => ({ track: jest.fn() }));
-jest.mock("components/screens/ScanReceiveScreen/ScanTabView", () => ({
-  ScanTabView: () => null,
-}));
+jest.mock("components/screens/ScanReceiveScreen/ScanTabView", () => {
+  const { View: MockView } = jest.requireActual("react-native");
+  return {
+    ScanTabView: () => <MockView testID="scan-tab-view" />,
+  };
+});
 jest.mock("components/screens/ScanReceiveScreen/ReceiveTabView", () => ({
   ReceiveTabView: () => null,
 }));
@@ -76,5 +79,27 @@ describe("ScanReceiveScreen", () => {
     );
     fireEvent.press(getByTestId("scan-receive-close-button"));
     expect(mockGoBack).toHaveBeenCalled();
+  });
+
+  it("does not mount the scanner until the Scan tab is visited", () => {
+    // Opening straight to Receive must not mount the camera (no permission
+    // prompt); the scanner mounts once Scan is selected and stays mounted.
+    const { queryByTestId, getByText } = renderWithProviders(
+      <ScanReceiveScreen {...makeProps("receive")} />,
+    );
+    expect(queryByTestId("scan-tab-view")).toBeNull();
+
+    fireEvent.press(getByText("Scan"));
+    expect(queryByTestId("scan-tab-view")).not.toBeNull();
+
+    fireEvent.press(getByText("Receive"));
+    expect(queryByTestId("scan-tab-view")).not.toBeNull();
+  });
+
+  it("mounts the scanner immediately when opened on the Scan tab", () => {
+    const { queryByTestId } = renderWithProviders(
+      <ScanReceiveScreen {...makeProps("scan")} />,
+    );
+    expect(queryByTestId("scan-tab-view")).not.toBeNull();
   });
 });

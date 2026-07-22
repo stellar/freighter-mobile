@@ -96,6 +96,8 @@ const Tabs: React.FC<TabsProps> = ({
             onPress={() => !disabled && onValueChange(option.value)}
             onLayout={isHug ? handleTabLayout : undefined}
             disabled={disabled}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: isSelected, disabled }}
             style={
               isHug && maxTabWidth > 0 ? { minWidth: maxTabWidth } : undefined
             }

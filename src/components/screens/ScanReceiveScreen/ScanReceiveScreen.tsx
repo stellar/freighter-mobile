@@ -16,7 +16,7 @@ import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClearTransitionParam } from "hooks/useClearTransitionParam";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Animated, StyleSheet, View } from "react-native";
+import { Animated, AppState, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { track } from "services/analytics/core";
 
@@ -35,8 +35,19 @@ const FADE_DURATION_MS = 200;
  *
  * Unified screen with a camera Scan tab and an account-QR Receive tab, switched
  * via the Tabs control in a floating header. The opaque Receive layer crossfades
- * over the camera; the camera is paused while Receive is active. Per-tab
- * screen-view analytics are fired manually.
+ * over the camera.
+ *
+ * Camera lifecycle:
+ * - The scanner mounts lazily the first time the Scan tab is shown, so opening
+ *   straight to Receive (My QR code / Add Funds) never triggers a camera
+ *   permission prompt.
+ * - Once mounted it stays mounted, and the camera session is kept alive across
+ *   tab switches so returning to Scan does not blink. The session is paused when
+ *   the screen is unfocused or the app is backgrounded.
+ * - Code scanning is gated to the Scan tab so the live camera behind Receive
+ *   cannot trigger a navigation.
+ *
+ * Per-tab screen-view analytics are fired manually.
  */
 const ScanReceiveScreen: React.FC<ScanReceiveScreenProps> = ({
   route,
@@ -50,6 +61,29 @@ const ScanReceiveScreen: React.FC<ScanReceiveScreenProps> = ({
 
   const initialTab: ScanReceiveTab = route.params?.initialTab ?? "scan";
   const [activeTab, setActiveTab] = useState<ScanReceiveTab>(initialTab);
+
+  // Mount the scanner only once the Scan tab has been shown; keep it mounted
+  // afterwards so the camera stays warm across tab switches.
+  const [hasMountedScanner, setHasMountedScanner] = useState(
+    initialTab === "scan",
+  );
+  useEffect(() => {
+    if (activeTab === "scan") {
+      setHasMountedScanner(true);
+    }
+  }, [activeTab]);
+
+  // Navigation focus alone stays true while the app is backgrounded, so combine
+  // it with AppState to actually pause the camera when the app is not active.
+  const [isAppActive, setIsAppActive] = useState(
+    AppState.currentState === "active",
+  );
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      setIsAppActive(nextState === "active");
+    });
+    return () => subscription.remove();
+  }, []);
 
   const receiveAnim = useRef(
     new Animated.Value(initialTab === "receive" ? 1 : 0),
@@ -91,16 +125,18 @@ const ScanReceiveScreen: React.FC<ScanReceiveScreenProps> = ({
 
   return (
     <View className="flex-1 bg-background-primary">
-      {/* Scan layer (camera) */}
-      <View
-        style={StyleSheet.absoluteFill}
-        pointerEvents={isScan ? "auto" : "none"}
-      >
-        <ScanTabView
-          cameraActive={isFocused}
-          isScanning={isFocused && isScan}
-        />
-      </View>
+      {/* Scan layer (camera) — mounted lazily on first Scan visit. */}
+      {hasMountedScanner && (
+        <View
+          style={StyleSheet.absoluteFill}
+          pointerEvents={isScan ? "auto" : "none"}
+        >
+          <ScanTabView
+            cameraActive={isFocused && isAppActive}
+            isScanning={isScan}
+          />
+        </View>
+      )}
 
       {/* Receive layer (opaque; fades in over the camera) */}
       <Animated.View

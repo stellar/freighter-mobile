@@ -9,9 +9,6 @@ import React from "react";
 import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-/** No-op used to ignore scanned codes while the Scan tab is not active. */
-const IGNORE_SCAN = () => {};
-
 interface ScanTabViewProps {
   /**
    * Keep the camera session alive. Stays true across a tab switch so the
@@ -49,10 +46,11 @@ export const ScanTabView: React.FC<ScanTabViewProps> = ({
   return (
     <>
       <QRScanner
-        onRead={isScanning ? handlers.handleQRCodeScanned : IGNORE_SCAN}
+        onRead={handlers.handleQRCodeScanned}
         context={state.context}
         title={state.scannerTitle}
         isActive={cameraActive}
+        scanEnabled={isScanning}
       />
 
       {state.showManualInput &&

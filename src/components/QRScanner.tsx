@@ -42,6 +42,13 @@ type QRScannerProps = {
    * camera while the scanner stays mounted (e.g. when it is not the visible tab).
    */
   isActive?: boolean;
+  /**
+   * Whether scanned codes should be processed. Defaults to true. Pass false to
+   * keep the camera preview running but ignore detections entirely — the code is
+   * dropped before debounce/deduplication so a code seen while disabled does not
+   * get cached (and become unscannable) once scanning is re-enabled.
+   */
+  scanEnabled?: boolean;
 };
 
 /**
@@ -81,6 +88,7 @@ export const QRScanner: React.FC<QRScannerProps> = ({
   context = QRCodeSource.HOME_SCANNER,
   title,
   isActive = true,
+  scanEnabled = true,
 }) => {
   const { hasPermission, requestPermission } = useCameraPermission();
   const device = useCameraDevice("back");
@@ -93,6 +101,13 @@ export const QRScanner: React.FC<QRScannerProps> = ({
 
   const handleCodeScanned = useCallback(
     (codes: Code[]) => {
+      // Drop detections entirely when scanning is disabled — before debounce or
+      // deduplication — so a code seen while disabled is not cached (which would
+      // make it unscannable for PROCESSED_CODE_EXPIRY_MS once re-enabled).
+      if (!scanEnabled) {
+        return;
+      }
+
       if (codes.length === 0 || !codes[0].value) {
         return;
       }
@@ -126,7 +141,7 @@ export const QRScanner: React.FC<QRScannerProps> = ({
 
       onRead(codeValue);
     },
-    [processedCodes, onRead],
+    [scanEnabled, processedCodes, onRead],
   );
 
   const codeScanner = useCodeScanner({
