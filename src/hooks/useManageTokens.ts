@@ -15,6 +15,7 @@ import {
 import { ActiveAccount } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
 import { formatTokenIdentifier } from "helpers/balances";
+import { scrubStrKeys } from "helpers/stellarStrKey";
 import useAppTranslation from "hooks/useAppTranslation";
 import { isWalletUnlocked } from "hooks/useGetActiveAccount";
 import { ToastOptions, useToast } from "providers/ToastProvider";
@@ -29,6 +30,13 @@ import {
 import { dataStorage } from "services/storage/storageFactory";
 
 const WALLET_LOCKED_ERROR = "Wallet is locked";
+
+// asset.operation_failed reason_code is free-text; scrub Stellar StrKeys before
+// it reaches Amplitude (a third-party sink not covered by Sentry's beforeSend).
+const scrubReasonCode = (error: unknown): string => {
+  const message = error instanceof Error ? error.message : String(error);
+  return scrubStrKeys(message) ?? message;
+};
 
 interface UseManageTokensProps {
   network: NETWORKS;
@@ -193,7 +201,7 @@ export const useManageTokens = ({
       });
     } catch (error) {
       analytics.track(AnalyticsEvent.TOKEN_MANAGEMENT_FAIL, {
-        reason_code: error instanceof Error ? error.message : String(error),
+        reason_code: scrubReasonCode(error),
         operation: "add",
         asset_code: tokenCode,
         asset_issuer: issuer,
@@ -323,7 +331,7 @@ export const useManageTokens = ({
       });
     } catch (error) {
       analytics.track(AnalyticsEvent.TOKEN_MANAGEMENT_FAIL, {
-        reason_code: error instanceof Error ? error.message : String(error),
+        reason_code: scrubReasonCode(error),
         operation: "remove",
         asset_code: tokenCode,
         asset_issuer: tokenIssuer,

@@ -109,6 +109,43 @@ describe("blockaid scan analytics (#2883 consolidation)", () => {
     );
   });
 
+  // D2 parity: an unclassifiable token (missing/unrecognized result_type) must
+  // report result:"unknown", NOT "safe". The UI SecurityLevel defaults such
+  // tokens to SAFE, but the analytics result is derived from the raw
+  // result_type so it buckets identically to the extension.
+  it("reports result=unknown for a token with no result_type (not safe)", async () => {
+    mockGet.mockResolvedValue({ data: { data: {} } });
+
+    await scanToken({
+      tokenCode: "NOVEL",
+      tokenIssuer: "GISSUER",
+      network: NETWORKS.PUBLIC,
+    });
+
+    expect(mockTrack).toHaveBeenCalledWith(
+      AnalyticsEvent.BLOCKAID_SCAN_COMPLETED,
+      expect.objectContaining({ scan_target: "asset", result: "unknown" }),
+    );
+  });
+
+  it("reports result=unknown for an unrecognized result_type on a bulk scan", async () => {
+    mockGet.mockResolvedValue({
+      data: {
+        data: { results: { "NOVEL-GISSUER": { result_type: "Weird" } } },
+      },
+    });
+
+    await scanBulkTokens({
+      addressList: ["NOVEL-GISSUER"],
+      network: NETWORKS.PUBLIC,
+    });
+
+    expect(mockTrack).toHaveBeenCalledWith(
+      AnalyticsEvent.BLOCKAID_SCAN_COMPLETED,
+      expect.objectContaining({ scan_target: "asset_bulk", result: "unknown" }),
+    );
+  });
+
   it("emits the added scan_failed event when a scan throws", async () => {
     mockGet.mockRejectedValue(new Error("backend down"));
 

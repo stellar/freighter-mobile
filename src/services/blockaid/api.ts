@@ -8,11 +8,11 @@ import { freighterBackendV1 } from "services/backend";
 import {
   BLOCKAID_ENDPOINTS,
   BLOCKAID_ERROR_MESSAGES,
+  BLOCKAID_RESULT_TYPES,
   SecurityLevel,
 } from "services/blockaid/constants";
 import {
   assessSiteSecurity,
-  assessTokenSecurity,
   assessTransactionSecurity,
 } from "services/blockaid/helper";
 import {
@@ -31,21 +31,45 @@ import {
 type BlockaidScanTarget = "domain" | "transaction" | "asset" | "asset_bulk";
 
 /**
- * Reduces a bulk token scan to a single worst-case security level for the
- * `result` property (malicious > suspicious > safe/unable-to-scan).
+ * Analytics `result` derived DIRECTLY from the raw Blockaid result_type — not
+ * from the UI SecurityLevel. getSecurityLevel/assessTokenSecurity default a
+ * missing or unrecognized result_type to SAFE for the UI (a deliberate
+ * product choice), but for analytics that would inflate the `safe` bucket with
+ * tokens Blockaid could not classify. Mirroring the extension's
+ * toBlockaidResultLevel, an unclassifiable token is `unknown` on both
+ * platforms. `Spam` maps to `warn`.
+ */
+const resultFromResultType = (
+  resultType?: string,
+): "safe" | "warn" | "block" | "unknown" => {
+  switch (resultType) {
+    case BLOCKAID_RESULT_TYPES.BENIGN:
+      return "safe";
+    case BLOCKAID_RESULT_TYPES.WARNING:
+    case BLOCKAID_RESULT_TYPES.SPAM:
+      return "warn";
+    case BLOCKAID_RESULT_TYPES.MALICIOUS:
+      return "block";
+    default:
+      return "unknown";
+  }
+};
+
+/**
+ * Reduces a bulk token scan to a single worst-case analytics `result`
+ * (block > warn > safe > unknown), matching the extension's asset_bulk
+ * aggregation over per-token result_type.
  */
 const aggregateBulkResult = (
   scanResult: Blockaid.TokenBulkScanResponse,
-): SecurityLevel => {
-  const levels = Object.values(scanResult.results ?? {}).map(
-    (result) => assessTokenSecurity(result).level,
+): "safe" | "warn" | "block" | "unknown" => {
+  const levels = Object.values(scanResult.results ?? {}).map((result) =>
+    resultFromResultType(result?.result_type),
   );
-
-  if (levels.includes(SecurityLevel.MALICIOUS)) return SecurityLevel.MALICIOUS;
-  if (levels.includes(SecurityLevel.SUSPICIOUS)) {
-    return SecurityLevel.SUSPICIOUS;
-  }
-  return SecurityLevel.SAFE;
+  if (levels.includes("block")) return "block";
+  if (levels.includes("warn")) return "warn";
+  if (levels.includes("safe")) return "safe";
+  return "unknown";
 };
 
 /**
@@ -131,7 +155,7 @@ export const scanToken = async (
 
     analytics.track(AnalyticsEvent.BLOCKAID_SCAN_COMPLETED, {
       scan_target: "asset",
-      result: toBlockaidResultLevel(assessTokenSecurity(scanResult).level),
+      result: resultFromResultType(scanResult.result_type),
       token_code: tokenCode,
     });
 
@@ -171,8 +195,8 @@ export const scanBulkTokens = async (
 
     analytics.track(AnalyticsEvent.BLOCKAID_SCAN_COMPLETED, {
       scan_target: "asset_bulk",
-      // Aggregate verdict across the batch: the worst per-token security level.
-      result: toBlockaidResultLevel(aggregateBulkResult(scanResult)),
+      // Aggregate verdict across the batch: the worst per-token result.
+      result: aggregateBulkResult(scanResult),
       address_count: addressList.length,
     });
 
