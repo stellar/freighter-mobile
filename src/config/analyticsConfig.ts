@@ -110,8 +110,9 @@ export enum AnalyticsEvent {
   // carries reason_code (direct payments only; path outcomes -> swap.failed)
   SEND_PAYMENT_FAIL = "payment.failed",
   SEND_PAYMENT_SET_MAX = "payment.max_amount_selected",
-  // Consolidates the direct / path payment-type selections; carries
-  // payment_type (payment | path_payment).
+  // Reserved: not currently emitted on either platform (the legacy
+  // type-selection events were retired without a replacement call site). Would
+  // carry payment_type (payment | path_payment) if wired.
   PAYMENT_TYPE_SELECTED = "payment.type_selected",
   SEND_PAYMENT_RECENT_ADDRESS = "payment.recipient_recent_selected",
   // carries reason_code
@@ -194,6 +195,9 @@ export enum AnalyticsEvent {
   DOWNLOAD_BACKUP_PHRASE = "recovery_phrase.downloaded",
 
   // History
+  // Extension-only: mobile's history is a full tab screen (covered by
+  // screen.viewed); there is no discrete "open full history" gesture to
+  // instrument. Kept for a shared catalog.
   HISTORY_OPEN_FULL_HISTORY = "history.full_history_opened",
   HISTORY_OPEN_ITEM = "history.item_opened",
 

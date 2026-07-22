@@ -2318,6 +2318,9 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
       // generated so it doesn't inherit a previous wallet's timer.
       await resetAutoLockForNewWallet();
       await signUp(params);
+      // Mirror the extension's onboarding.password_created (createAccount.fulfilled)
+      // so the create-password funnel has a success side on mobile (was fail-only).
+      analytics.track(AnalyticsEvent.CREATE_PASSWORD_SUCCESS);
       set({
         ...initialState,
         navigationRef: get().navigationRef,
@@ -2436,7 +2439,11 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
           get().navigateToLockScreen();
         });
     } catch (error) {
-      analytics.trackReAuthFail();
+      const reAuthFailureMessage =
+        error instanceof Error ? error.message : String(error);
+      analytics.trackReAuthFail(
+        scrubStrKeys(reAuthFailureMessage) ?? reAuthFailureMessage,
+      );
       logger.error("useAuthenticationStore.signIn", "Sign in failed", error);
       set({
         error: getUserFacingError(error, "authStore.error.failedToSignIn"),
@@ -3025,6 +3032,14 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
       await createAccount(password);
 
       await Promise.all([get().getAllAccounts(), get().fetchActiveAccount()]);
+
+      // account.created on the creation-success path with the real post-creation
+      // count (matches the extension's addAccount.fulfilled -> allAccounts.length).
+      // Replaces the former tap-time emit in ManageAccounts, which over-counted
+      // abandoned add flows.
+      analytics.track(AnalyticsEvent.ACCOUNT_SCREEN_ADD_ACCOUNT, {
+        number_of_accounts: get().allAccounts.length,
+      });
 
       set({ isCreatingAccount: false, error: null });
     } catch (error) {

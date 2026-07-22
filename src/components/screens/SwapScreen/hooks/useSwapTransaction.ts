@@ -217,10 +217,12 @@ export const useSwapTransaction = ({
         const errorMessage = submitError || "Failed to submit transaction";
         const submitFailure = new Error(errorMessage) as Error & {
           quoteExpiredCodes?: string[];
+          resultCodes?: { transaction?: string; operations?: string[] } | null;
         };
         submitFailure.quoteExpiredCodes = getQuoteExpiredOperationCodes(
           submitErrorResultCodes,
         );
+        submitFailure.resultCodes = submitErrorResultCodes;
         throw submitFailure;
       }
 
@@ -305,8 +307,18 @@ export const useSwapTransaction = ({
         return;
       }
 
+      const submitResultCodes =
+        error instanceof Error
+          ? (
+              error as Error & {
+                resultCodes?: { transaction?: string; operations?: string[] };
+              }
+            ).resultCodes
+          : undefined;
       analytics.trackTransactionError({
         error: error instanceof Error ? error.message : String(error),
+        errorCode:
+          submitResultCodes?.operations?.[0] || submitResultCodes?.transaction,
         isSwap: true,
         sourceToken: sourceBalance?.tokenCode,
         destToken: destinationTokenInput?.tokenCode,

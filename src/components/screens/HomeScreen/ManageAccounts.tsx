@@ -96,17 +96,12 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
   const handleAddAnotherWallet = useCallback(() => {
     if (!navigation) return;
 
-    // Post-creation count, matching the extension's allAccounts.length.
-    // NB: this fires at tap time (before the account exists); it over-counts if
-    // the add flow is abandoned. Longer-term this belongs on the creation-success
-    // path (ducks/auth createAccount) — flagged for a product/analytics decision.
-    analytics.track(AnalyticsEvent.ACCOUNT_SCREEN_ADD_ACCOUNT, {
-      number_of_accounts: accounts.length + 1,
-    });
-
+    // account.created (ACCOUNT_SCREEN_ADD_ACCOUNT) fires on the actual
+    // creation-success path (ducks/auth createAccount), not here at tap time —
+    // so it isn't counted when the add flow is abandoned.
     bottomSheetRef.current?.dismiss();
     navigation.navigate(ROOT_NAVIGATOR_ROUTES.MANAGE_WALLETS_STACK);
-  }, [navigation, bottomSheetRef, accounts.length]);
+  }, [navigation, bottomSheetRef]);
 
   const handleRenameAccount = useCallback(
     async (newAccountName: string) => {

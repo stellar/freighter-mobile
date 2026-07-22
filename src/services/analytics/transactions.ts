@@ -1,5 +1,6 @@
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { getDisplayHost } from "helpers/protocols";
+import { scrubStrKeys } from "helpers/stellarStrKey";
 import { track } from "services/analytics/core";
 import { TransactionOperationType } from "services/analytics/types";
 import type {
@@ -172,14 +173,18 @@ export const trackTransactionError = (data: TransactionErrorEvent): void => {
 
   // Shared required sets: payment.failed {payment_type, reason_code};
   // swap.failed {from_asset_code, to_asset_code, reason_code};
-  // collectible_send.failed {reason_code}. Legacy extras (errorCode,
-  // operationType, isSwap, amounts) dropped for cross-platform parity.
-  let props: Record<string, unknown> = { reason_code: data.error };
+  // collectible_send.failed {reason_code}. operationType/isSwap/amounts dropped
+  // for cross-platform parity. reason_code prefers the machine-readable Horizon
+  // result code (op_underfunded, tx_insufficient_balance, ...) so it buckets
+  // with the extension's SubmitFail derivation; a scrubbed free-text message is
+  // the fallback for non-Horizon failures (signing / precondition errors).
+  const reasonCode = data.errorCode ?? scrubStrKeys(data.error) ?? data.error;
+  let props: Record<string, unknown> = { reason_code: reasonCode };
   if (event === AnalyticsEvent.SWAP_FAIL) {
     props = {
       from_asset_code: data.sourceToken,
       to_asset_code: data.destToken,
-      reason_code: data.error,
+      reason_code: reasonCode,
     };
   } else if (event === AnalyticsEvent.SEND_PAYMENT_FAIL) {
     props.payment_type = "payment";
@@ -285,8 +290,13 @@ export const trackReAuthSuccess = (): void => {
   trackAuthEvent(AnalyticsEvent.RE_AUTH_SUCCESS);
 };
 
-export const trackReAuthFail = (): void => {
-  trackAuthEvent(AnalyticsEvent.RE_AUTH_FAIL);
+export const trackReAuthFail = (reasonCode?: string): void => {
+  // reason_code parity with the extension's reauth.failed; callers must scrub
+  // StrKeys before passing native error text.
+  trackAuthEvent(
+    AnalyticsEvent.RE_AUTH_FAIL,
+    reasonCode ? { reason_code: reasonCode } : undefined,
+  );
 };
 
 export const trackCopyPublicKey = (): void => {
