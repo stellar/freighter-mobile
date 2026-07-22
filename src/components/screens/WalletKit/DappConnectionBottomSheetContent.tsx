@@ -161,7 +161,6 @@ const DappConnectionBottomSheetContent: React.FC<
     if (proposalEvent) {
       analytics.trackGrantAccessFail(
         proposalEvent.params.proposer.metadata.url,
-        "user_rejected",
       );
     }
 

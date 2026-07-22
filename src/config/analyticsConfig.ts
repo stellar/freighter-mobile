@@ -139,10 +139,16 @@ export enum AnalyticsEvent {
 
   // Signing / dApp
   GRANT_DAPP_ACCESS_SUCCESS = "dapp_access.granted",
+  // User declined the connection prompt; carries origin only.
   GRANT_DAPP_ACCESS_FAIL = "dapp_access.rejected",
+  // System auto-declined a connection (not a user decision); carries
+  // origin + reason_code (e.g. not_authenticated).
+  GRANT_DAPP_ACCESS_BLOCKED = "dapp_access.blocked",
   SIGN_TRANSACTION_SUCCESS = "signing.transaction_approved",
   SIGN_TRANSACTION_FAIL = "signing.transaction_rejected",
-  // carries reason_code=memo_required
+  // signing.transaction_blocked (memo_required): NOT emitted on mobile — the
+  // memo-required state is a passive UI gate (disabled confirm button), not a
+  // reachable block/refuse branch. Extension emits it; kept for a shared catalog.
   SIGN_TRANSACTION_MEMO_REQUIRED_FAIL = "signing.transaction_blocked",
   SUBMIT_TRANSACTION_SUCCESS = "transaction.submitted",
   SIGN_MESSAGE_SUCCESS = "signing.message_approved",
@@ -165,10 +171,10 @@ export enum AnalyticsEvent {
   // carries operation (add | remove) + reason_code
   TOKEN_MANAGEMENT_FAIL = "asset.operation_failed",
   // Consolidates the add-token confirmed / rejected prompt responses; carries
-  // decision (confirm | reject) + asset.
+  // decision (confirm | reject) + asset + source (manage_assets on mobile).
   ASSET_ADD_RESPONDED = "asset_add.responded",
   // Consolidates the remove-token confirmed / rejected prompt responses;
-  // carries decision (confirm | reject) + asset.
+  // carries decision (confirm | reject) + asset + source (manage_assets).
   ASSET_REMOVE_RESPONDED = "asset_remove.responded",
   MANAGE_TOKEN_LISTS_MODIFY = "asset_list.modified",
   // Consolidates the three trustline-removal failure reasons; carries

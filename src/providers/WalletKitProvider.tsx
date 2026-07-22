@@ -456,6 +456,13 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         analytics.trackSignedAuthEntryRejected(
           dappDomain ? { dappDomain } : {},
         );
+      } else if (
+        requestMethod === StellarRpcMethods.SIGN_XDR ||
+        requestMethod === StellarRpcMethods.SIGN_AND_SUBMIT_XDR
+      ) {
+        analytics.trackSignedTransactionRejected(
+          dappDomain ? { dappDomain } : {},
+        );
       }
     }
 
@@ -891,9 +898,11 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         message: t("walletKit.userNotAuthenticated"),
       });
 
-      analytics.trackGrantAccessFail(
+      // Auto-declined because the wallet isn't authenticated — a system block,
+      // not a user rejection → dapp_access.blocked (distinct from .rejected).
+      analytics.trackGrantAccessBlocked(
         sessionProposal.params.proposer.metadata.url,
-        "user_not_authenticated",
+        "not_authenticated",
       );
 
       clearEvent();

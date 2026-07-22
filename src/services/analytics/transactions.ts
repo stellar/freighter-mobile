@@ -83,6 +83,17 @@ export const trackSignedAuthEntryRejected = (data: {
   });
 };
 
+export const trackSignedTransactionRejected = (data: {
+  dappDomain?: string;
+}): void => {
+  // Mirrors the approve side (trackSignedTransaction) for the tx-signing methods
+  // (SIGN_XDR / SIGN_AND_SUBMIT_XDR); parity with the extension's
+  // signing.transaction_rejected.
+  track(AnalyticsEvent.SIGN_TRANSACTION_FAIL, {
+    ...(data.dappDomain ? { origin: data.dappDomain } : {}),
+  });
+};
+
 export const trackSubmittedTransaction = (
   data: SubmittedTransactionEvent,
 ): void => {
@@ -174,10 +185,14 @@ export const trackTransactionError = (data: TransactionErrorEvent): void => {
   track(event, props);
 };
 
+// Mobile add/remove-token responses originate from the in-app manage-assets UI
+// (there is no dApp add-token RPC on mobile), so source is fixed. The extension
+// emits the same events with source:"dapp_api" for its injected-API prompt.
 export const trackAddTokenConfirmed = (token?: string): void => {
   track(AnalyticsEvent.ASSET_ADD_RESPONDED, {
     decision: "confirm",
     asset: token,
+    source: "manage_assets",
   });
 };
 
@@ -185,6 +200,7 @@ export const trackAddTokenRejected = (token?: string): void => {
   track(AnalyticsEvent.ASSET_ADD_RESPONDED, {
     decision: "reject",
     asset: token,
+    source: "manage_assets",
   });
 };
 
@@ -192,6 +208,7 @@ export const trackRemoveTokenConfirmed = (token?: string): void => {
   track(AnalyticsEvent.ASSET_REMOVE_RESPONDED, {
     decision: "confirm",
     asset: token,
+    source: "manage_assets",
   });
 };
 
@@ -199,6 +216,7 @@ export const trackRemoveTokenRejected = (token?: string): void => {
   track(AnalyticsEvent.ASSET_REMOVE_RESPONDED, {
     decision: "reject",
     asset: token,
+    source: "manage_assets",
   });
 };
 
@@ -225,11 +243,19 @@ export const trackGrantAccessSuccess = (domain?: string): void => {
   track(AnalyticsEvent.GRANT_DAPP_ACCESS_SUCCESS, { origin: domain });
 };
 
-export const trackGrantAccessFail = (
+// User declined the connection prompt. dapp_access.rejected carries origin
+// only — a user rejection has no failure reason_code (matches the extension).
+export const trackGrantAccessFail = (domain?: string): void => {
+  track(AnalyticsEvent.GRANT_DAPP_ACCESS_FAIL, { origin: domain });
+};
+
+// System auto-declined a connection (e.g. wallet not authenticated) — NOT a
+// user decision, so it's a distinct event carrying the block reason_code.
+export const trackGrantAccessBlocked = (
   domain?: string,
   reason?: string,
 ): void => {
-  track(AnalyticsEvent.GRANT_DAPP_ACCESS_FAIL, {
+  track(AnalyticsEvent.GRANT_DAPP_ACCESS_BLOCKED, {
     origin: domain,
     reason_code: reason,
   });
