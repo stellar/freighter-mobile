@@ -145,7 +145,11 @@ export enum AnalyticsEvent {
   HISTORY_OPEN_FULL_HISTORY = "history: opened full history on external website",
   HISTORY_OPEN_ITEM = "history: opened item on external website",
 
-  APP_OPENED = "event: App Opened",
+  // Cross-platform aligned wire string — matches the extension's `app.opened`
+  // so the app-open funnel merges across platforms. (The domain.action_past
+  // renames for other events land in later slices; app.opened is
+  // foundation-owned, so its alignment belongs here.)
+  APP_OPENED = "app.opened",
 
   // Mobile-Only Events
   QR_SCAN_SUCCESS = "mobile: qr scan success",
