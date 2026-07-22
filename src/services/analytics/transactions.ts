@@ -1,4 +1,5 @@
 import { AnalyticsEvent } from "config/analyticsConfig";
+import { getDisplayHost } from "helpers/protocols";
 import { track } from "services/analytics/core";
 import { TransactionOperationType } from "services/analytics/types";
 import type {
@@ -10,11 +11,18 @@ import type {
   TransactionErrorEvent,
 } from "services/analytics/types";
 
+// `origin` is the bare dApp hostname (never a full URL) — matches the
+// extension's getUrlHostname-based origin so cross-platform funnels merge.
+const originProps = (url?: string): { origin?: string } => {
+  const host = url ? getDisplayHost(url) : null;
+  return host ? { origin: host } : {};
+};
+
 export const trackSignedTransaction = (data: SignedTransactionEvent): void => {
   track(AnalyticsEvent.SIGN_TRANSACTION_SUCCESS, {
     transactionHash: data.transactionHash,
     transactionType: data.transactionType,
-    ...(data.dappDomain ? { origin: data.dappDomain } : {}),
+    ...originProps(data.dappDomain),
   });
 };
 
@@ -23,17 +31,17 @@ export const trackSignedMessage = (data: {
   dappDomain?: string;
 }): void => {
   // signing.message_approved carries message_type (parity with the
-  // extension); mobile signs raw blobs. messageLength dropped. `origin` kept as
-  // an RFC-optional extra — the extension lacks it (flagged signing-origin gap).
+  // extension); mobile signs raw blobs. messageLength dropped. `origin` matches
+  // the extension's hostname-based origin.
   track(AnalyticsEvent.SIGN_MESSAGE_SUCCESS, {
     message_type: "blob",
-    ...(data.dappDomain ? { origin: data.dappDomain } : {}),
+    ...originProps(data.dappDomain),
   });
 };
 
 export const trackSignedAuthEntry = (data: { dappDomain?: string }): void => {
   track(AnalyticsEvent.SIGN_AUTH_ENTRY_SUCCESS, {
-    ...(data.dappDomain ? { origin: data.dappDomain } : {}),
+    ...originProps(data.dappDomain),
   });
 };
 
@@ -42,13 +50,12 @@ export const trackSignedMessageError = (data: {
   dappDomain?: string;
 }): void => {
   // This is the runtime signing-failure path (a caught exception while
-  // signing), which is distinct from a user rejection. The user-reject case
-  // is not currently instrumented on mobile (SIGN_MESSAGE_REJECTED exists in
-  // the catalog for parity but has no emit site yet).
+  // signing), distinct from a user rejection. The user-reject case is
+  // instrumented separately (trackSignedMessageRejected, below).
   track(AnalyticsEvent.SIGN_MESSAGE_FAIL, {
     message_type: "blob",
     reason_code: data.error,
-    ...(data.dappDomain ? { origin: data.dappDomain } : {}),
+    ...originProps(data.dappDomain),
   });
 };
 
@@ -59,7 +66,7 @@ export const trackSignedAuthEntryError = (data: {
   // Runtime signing-failure path; see trackSignedMessageError.
   track(AnalyticsEvent.SIGN_AUTH_ENTRY_FAIL, {
     reason_code: data.error,
-    ...(data.dappDomain ? { origin: data.dappDomain } : {}),
+    ...originProps(data.dappDomain),
   });
 };
 
@@ -71,7 +78,7 @@ export const trackSignedMessageRejected = (data: {
 }): void => {
   track(AnalyticsEvent.SIGN_MESSAGE_REJECTED, {
     message_type: "blob",
-    ...(data.dappDomain ? { origin: data.dappDomain } : {}),
+    ...originProps(data.dappDomain),
   });
 };
 
@@ -79,7 +86,7 @@ export const trackSignedAuthEntryRejected = (data: {
   dappDomain?: string;
 }): void => {
   track(AnalyticsEvent.SIGN_AUTH_ENTRY_REJECTED, {
-    ...(data.dappDomain ? { origin: data.dappDomain } : {}),
+    ...originProps(data.dappDomain),
   });
 };
 
@@ -90,7 +97,7 @@ export const trackSignedTransactionRejected = (data: {
   // (SIGN_XDR / SIGN_AND_SUBMIT_XDR); parity with the extension's
   // signing.transaction_rejected.
   track(AnalyticsEvent.SIGN_TRANSACTION_FAIL, {
-    ...(data.dappDomain ? { origin: data.dappDomain } : {}),
+    ...originProps(data.dappDomain),
   });
 };
 
@@ -100,7 +107,7 @@ export const trackSubmittedTransaction = (
   track(AnalyticsEvent.SUBMIT_TRANSACTION_SUCCESS, {
     transactionHash: data.transactionHash,
     transactionType: data.transactionType,
-    ...(data.dappDomain ? { origin: data.dappDomain } : {}),
+    ...originProps(data.dappDomain),
   });
 };
 
@@ -240,13 +247,13 @@ export const trackViewPublicKeyAccountRenamed = (): void => {
 };
 
 export const trackGrantAccessSuccess = (domain?: string): void => {
-  track(AnalyticsEvent.GRANT_DAPP_ACCESS_SUCCESS, { origin: domain });
+  track(AnalyticsEvent.GRANT_DAPP_ACCESS_SUCCESS, originProps(domain));
 };
 
 // User declined the connection prompt. dapp_access.rejected carries origin
 // only — a user rejection has no failure reason_code (matches the extension).
 export const trackGrantAccessFail = (domain?: string): void => {
-  track(AnalyticsEvent.GRANT_DAPP_ACCESS_FAIL, { origin: domain });
+  track(AnalyticsEvent.GRANT_DAPP_ACCESS_FAIL, originProps(domain));
 };
 
 // System auto-declined a connection (e.g. wallet not authenticated) — NOT a
@@ -256,7 +263,7 @@ export const trackGrantAccessBlocked = (
   reason?: string,
 ): void => {
   track(AnalyticsEvent.GRANT_DAPP_ACCESS_BLOCKED, {
-    origin: domain,
+    ...originProps(domain),
     reason_code: reason,
   });
 };

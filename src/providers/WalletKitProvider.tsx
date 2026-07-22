@@ -444,10 +444,9 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         message: t("walletKit.userRejected"),
       });
 
-      // This is the genuine user-reject path. Instrument message /
-      // auth-entry rejections (distinct from the runtime *_FAIL events). Only
-      // these two methods have catalog reject members; SIGN_XDR/SIGN_AND_SUBMIT
-      // rejections are the transaction path, not covered here.
+      // This is the genuine user-reject path. Message, auth-entry, and
+      // transaction (SIGN_XDR / SIGN_AND_SUBMIT_XDR) rejections each emit their
+      // signing.*_rejected event (distinct from the runtime *_FAIL events).
       const dappDomain =
         getDappMetadataFromEvent(requestEvent, activeSessions)?.url || "";
       if (requestMethod === StellarRpcMethods.SIGN_MESSAGE) {

@@ -154,9 +154,8 @@ export enum AnalyticsEvent {
   SIGN_MESSAGE_SUCCESS = "signing.message_approved",
   // Runtime signing failure (carries reason_code).
   SIGN_MESSAGE_FAIL = "signing.message_failed",
-  // Catalog member for the user-reject case. The mobile reject path currently
-  // has no analytics call, so this is not emitted yet; kept for cross-platform
-  // parity and flagged for review.
+  // User-reject case; emitted from WalletKitProvider's reject path (distinct
+  // from the runtime SIGN_MESSAGE_FAIL).
   SIGN_MESSAGE_REJECTED = "signing.message_rejected",
   SIGN_AUTH_ENTRY_SUCCESS = "signing.auth_entry_approved",
   // Runtime signing failure (carries reason_code).

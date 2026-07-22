@@ -319,14 +319,14 @@ export const useManageTokens = ({
       }
       analytics.track(AnalyticsEvent.REMOVE_TOKEN_SUCCESS, {
         asset_code: tokenCode,
-        asset_issuer: tokenIdentifier.split(":")[1],
+        asset_issuer: tokenIssuer,
       });
     } catch (error) {
       analytics.track(AnalyticsEvent.TOKEN_MANAGEMENT_FAIL, {
         reason_code: error instanceof Error ? error.message : String(error),
         operation: "remove",
         asset_code: tokenCode,
-        asset_issuer: tokenIdentifier.split(":")[1],
+        asset_issuer: tokenIssuer,
       });
 
       // Additionally emit the granular trustline_remove.failed, mirroring
@@ -361,7 +361,7 @@ export const useManageTokens = ({
         analytics.track(AnalyticsEvent.TRUSTLINE_REMOVE_FAILED, {
           reason_code: trustlineReason,
           asset_code: tokenCode,
-          asset_issuer: tokenIdentifier.split(":")[1],
+          asset_issuer: tokenIssuer,
         });
       }
 
