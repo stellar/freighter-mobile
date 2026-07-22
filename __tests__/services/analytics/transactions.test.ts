@@ -1,5 +1,9 @@
 import { AnalyticsEvent } from "config/analyticsConfig";
-import { trackTransactionError } from "services/analytics/transactions";
+import {
+  trackSignedAuthEntryError,
+  trackSignedMessageError,
+  trackTransactionError,
+} from "services/analytics/transactions";
 import { TransactionOperationType } from "services/analytics/types";
 
 jest.mock("services/analytics/core", () => ({
@@ -47,5 +51,29 @@ describe("trackTransactionError reason_code (D1 cross-platform parity)", () => {
     // Explicitly assert the free-text never leaks into reason_code.
     const props = track.mock.calls[0][1];
     expect(props.reason_code).not.toContain(freeText);
+  });
+});
+
+describe("signing-failure reason_code scrubbing (D2 security hygiene)", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  // A 56-char G-StrKey (G + 55 base32 chars) that scrubStrKeys must redact
+  // before reason_code reaches Amplitude (a third-party sink).
+  const STRKEY = `G${"A".repeat(55)}`;
+
+  it("scrubs StrKeys from signing.message_failed reason_code", () => {
+    trackSignedMessageError({ error: `signMessage failed for ${STRKEY}` });
+
+    const props = track.mock.calls[0][1];
+    expect(props.reason_code).toBe("signMessage failed for G***");
+    expect(props.reason_code).not.toContain(STRKEY);
+  });
+
+  it("scrubs StrKeys from signing.auth_entry_failed reason_code", () => {
+    trackSignedAuthEntryError({ error: `signAuthEntry failed for ${STRKEY}` });
+
+    const props = track.mock.calls[0][1];
+    expect(props.reason_code).toBe("signAuthEntry failed for G***");
+    expect(props.reason_code).not.toContain(STRKEY);
   });
 });

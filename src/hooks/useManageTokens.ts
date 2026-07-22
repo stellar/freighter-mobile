@@ -15,7 +15,6 @@ import {
 import { ActiveAccount } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
 import { formatTokenIdentifier } from "helpers/balances";
-import { scrubStrKeys } from "helpers/stellarStrKey";
 import useAppTranslation from "hooks/useAppTranslation";
 import { isWalletUnlocked } from "hooks/useGetActiveAccount";
 import { ToastOptions, useToast } from "providers/ToastProvider";
@@ -31,12 +30,26 @@ import { dataStorage } from "services/storage/storageFactory";
 
 const WALLET_LOCKED_ERROR = "Wallet is locked";
 
-// asset.operation_failed reason_code is free-text; scrub Stellar StrKeys before
-// it reaches Amplitude (a third-party sink not covered by Sentry's beforeSend).
-const scrubReasonCode = (error: unknown): string => {
-  const message = error instanceof Error ? error.message : String(error);
-  return scrubStrKeys(message) ?? message;
-};
+// Extract the Horizon CHANGE_TRUST operation result codes (op_low_reserve,
+// op_no_trust, op_invalid_limit, ...) from a thrown error, if present.
+const opResultCodesOf = (error: unknown): string[] | undefined =>
+  isHorizonError(error)
+    ? (
+        error as {
+          response?: {
+            data?: { extras?: { result_codes?: { operations?: string[] } } };
+          };
+        }
+      ).response?.data?.extras?.result_codes?.operations
+    : undefined;
+
+// asset.operation_failed.reason_code = the first machine-readable op result
+// code, or "unknown". Deliberately bounded (NOT the free-text error message) so
+// it buckets with the extension's `opCodes[0] || "unknown"` on a shared
+// failure dashboard, matching the discipline already applied to
+// payment.failed/swap.failed.
+const operationFailedReasonCode = (error: unknown): string =>
+  opResultCodesOf(error)?.[0] ?? "unknown";
 
 interface UseManageTokensProps {
   network: NETWORKS;
@@ -201,7 +214,7 @@ export const useManageTokens = ({
       });
     } catch (error) {
       analytics.track(AnalyticsEvent.TOKEN_MANAGEMENT_FAIL, {
-        reason_code: scrubReasonCode(error),
+        reason_code: operationFailedReasonCode(error),
         operation: "add",
         asset_code: tokenCode,
         asset_issuer: issuer,
@@ -331,7 +344,7 @@ export const useManageTokens = ({
       });
     } catch (error) {
       analytics.track(AnalyticsEvent.TOKEN_MANAGEMENT_FAIL, {
-        reason_code: scrubReasonCode(error),
+        reason_code: operationFailedReasonCode(error),
         operation: "remove",
         asset_code: tokenCode,
         asset_issuer: tokenIssuer,
@@ -342,17 +355,7 @@ export const useManageTokens = ({
       // (op_low_reserve -> low_reserve; op_invalid_limit split by whether the
       // asset carries buying liabilities). Only fires for the trustline-specific
       // failures — wallet-locked/build/sign errors won't set a reason.
-      const opResultCodes = isHorizonError(error)
-        ? (
-            error as {
-              response?: {
-                data?: {
-                  extras?: { result_codes?: { operations?: string[] } };
-                };
-              };
-            }
-          ).response?.data?.extras?.result_codes?.operations
-        : undefined;
+      const opResultCodes = opResultCodesOf(error);
       let trustlineReason: string | undefined;
       if (opResultCodes?.includes("op_low_reserve")) {
         trustlineReason = "low_reserve";

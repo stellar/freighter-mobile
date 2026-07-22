@@ -244,8 +244,8 @@ export const useSwapTransaction = ({
       const { destinationToken: swappedDestination } = useSwapStore.getState();
       if (swappedDestination?.requiresTrustline) {
         analytics.track(AnalyticsEvent.SWAP_TRUSTLINE_ADDED, {
-          tokenCode: destinationTokenInput.tokenCode,
-          tokenIssuer: swappedDestination.issuer ?? "",
+          asset_code: destinationTokenInput.tokenCode,
+          asset_issuer: swappedDestination.issuer ?? "",
         });
       }
     } catch (error) {

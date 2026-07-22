@@ -53,7 +53,10 @@ export const trackSignedMessageError = (data: {
   // instrumented separately (trackSignedMessageRejected, below).
   track(AnalyticsEvent.SIGN_MESSAGE_FAIL, {
     message_type: "blob",
-    reason_code: data.error,
+    // Scrub Stellar StrKeys — a signing exception's message can embed a G…/S…
+    // key, and Amplitude is a third-party sink not covered by Sentry. Matches
+    // the extension's signBlob.rejected handler.
+    reason_code: scrubStrKeys(data.error) ?? data.error,
     ...originProps(data.dappDomain),
   });
 };
@@ -64,7 +67,8 @@ export const trackSignedAuthEntryError = (data: {
 }): void => {
   // Runtime signing-failure path; see trackSignedMessageError.
   track(AnalyticsEvent.SIGN_AUTH_ENTRY_FAIL, {
-    reason_code: data.error,
+    // Scrub StrKeys before this reaches Amplitude (see trackSignedMessageError).
+    reason_code: scrubStrKeys(data.error) ?? data.error,
     ...originProps(data.dappDomain),
   });
 };
