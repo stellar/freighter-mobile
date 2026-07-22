@@ -17,6 +17,7 @@ import {
 } from "react-native-permissions";
 import { analytics } from "services/analytics";
 import { initAnalytics } from "services/analytics/core";
+import { reconcileAnalyticsUserId } from "services/analytics/reconcileUserId";
 
 interface UseAnalyticsPermissionsParams {
   previousState?: AppStateStatus | "none";
@@ -337,18 +338,19 @@ export const useAnalyticsPermissions = ({
     syncTrackingPermission,
   ]);
 
-  // Re-identify the user when the session unlocks. The initialize effect above
-  // runs once on mount, which on a cold start happens while the wallet is still
-  // locked — getUserId() there resolves the random-id fallback because the
-  // seed-derived auth id is only derivable from an unlocked session. This host
-  // (RootNavigator) stays mounted across the lock→unlock transition, so nothing
-  // else re-runs identification. Once auth transitions to AUTHENTICATED the auth
-  // id becomes available; re-identify so existing users migrate from their
-  // random id to the stable auth id. identifyUser() dedups on the resolved id,
-  // so this is a no-op once already migrated (or when the id is unchanged).
+  // Reconcile the analytics/Sentry identity when the session unlocks. The
+  // initialize effect above runs once on mount, which on a cold start happens
+  // while the wallet is still locked — the seed-derived auth id is only
+  // derivable from an unlocked session. This host (RootNavigator) stays mounted
+  // across the lock→unlock transition, so nothing else re-runs identification.
+  // Once auth transitions to AUTHENTICATED the auth id becomes available;
+  // reconcile so existing users migrate from their random id to the stable auth
+  // id (and it reaches Sentry in-session). reconcileAnalyticsUserId is a no-op
+  // once already migrated and never throws into this fire-and-forget caller.
   useEffect(() => {
     if (authStatus === AUTH_STATUS.AUTHENTICATED) {
-      analytics.identifyUser();
+      // Fire-and-forget: reconcileAnalyticsUserId never throws into callers.
+      reconcileAnalyticsUserId();
     }
   }, [authStatus]);
 

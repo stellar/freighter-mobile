@@ -2,9 +2,15 @@ import { renderHook, act } from "@testing-library/react-hooks";
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useAnalyticsPermissions } from "hooks/useAnalyticsPermissions";
-import { analytics } from "services/analytics";
+import { reconcileAnalyticsUserId } from "services/analytics/reconcileUserId";
 
-const mockIdentifyUser = analytics.identifyUser as jest.Mock;
+// The AUTHENTICATED transition reconciles the analytics/Sentry identity via
+// reconcileAnalyticsUserId (which internally identifies + pushes to Sentry).
+jest.mock("services/analytics/reconcileUserId", () => ({
+  reconcileAnalyticsUserId: jest.fn(),
+}));
+
+const mockReconcile = reconcileAnalyticsUserId as jest.Mock;
 
 const flushMicrotasks = async () => {
   // Let the async mount effect (permission check → init → identify) settle.
@@ -30,7 +36,7 @@ describe("useAnalyticsPermissions — auth-transition identity reconciliation", 
     await act(async () => {
       await flushMicrotasks();
     });
-    mockIdentifyUser.mockClear();
+    mockReconcile.mockClear();
 
     // Unlock: the seed-derived auth id is now derivable, so identity must be
     // reconciled to migrate an existing random id → the stable auth id.
@@ -41,7 +47,7 @@ describe("useAnalyticsPermissions — auth-transition identity reconciliation", 
       await flushMicrotasks();
     });
 
-    expect(mockIdentifyUser).toHaveBeenCalledTimes(1);
+    expect(mockReconcile).toHaveBeenCalledTimes(1);
     unmount();
   });
 
@@ -53,14 +59,14 @@ describe("useAnalyticsPermissions — auth-transition identity reconciliation", 
     await act(async () => {
       await flushMicrotasks();
     });
-    mockIdentifyUser.mockClear();
+    mockReconcile.mockClear();
 
     await act(async () => {
       useAuthenticationStore.setState({ authStatus: AUTH_STATUS.LOCKED });
       await flushMicrotasks();
     });
 
-    expect(mockIdentifyUser).not.toHaveBeenCalled();
+    expect(mockReconcile).not.toHaveBeenCalled();
     unmount();
   });
 
@@ -73,7 +79,7 @@ describe("useAnalyticsPermissions — auth-transition identity reconciliation", 
     await act(async () => {
       await flushMicrotasks();
     });
-    mockIdentifyUser.mockClear();
+    mockReconcile.mockClear();
 
     await act(async () => {
       useAuthenticationStore.setState({
@@ -82,7 +88,7 @@ describe("useAnalyticsPermissions — auth-transition identity reconciliation", 
       await flushMicrotasks();
     });
 
-    expect(mockIdentifyUser).toHaveBeenCalledTimes(1);
+    expect(mockReconcile).toHaveBeenCalledTimes(1);
     unmount();
   });
 });

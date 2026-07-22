@@ -5,16 +5,6 @@ import { useAnalyticsStore } from "ducks/analytics";
 import { STORAGE_KEYS, DEBUG_CONFIG } from "services/analytics/constants";
 import { isInitialized } from "services/analytics/core";
 
-// NOTE: `services/auth/getAuthUserId` is intentionally NOT imported statically.
-// A static import closes this cycle at module-init time:
-//   analytics/user → auth/getAuthUserId → auth/getAuthKeypair → ducks/auth →
-//   services/analytics (index) → analytics/user
-// Because services/analytics/index.ts snapshots `identifyUser` into the exported
-// `analytics` object during initialization, whichever module loads first can
-// capture a partially-initialized export. It is deferred to call time inside
-// getUserId() below, mirroring the lazy-require cycle-avoidance pattern in
-// services/auth/attachAuth.ts.
-
 // -----------------------------------------------------------------------------
 // USER ID MANAGEMENT
 // -----------------------------------------------------------------------------
@@ -29,39 +19,12 @@ const generateRandomUserId = (): string =>
   Math.random().toString().split(".")[1];
 
 /**
- * Gets user ID, preferring the seed-derived auth id, with fallback strategy:
- * 0. Prefer the auth id (services/auth/getAuthUserId) when the session is
- *    unlocked, persisting/overwriting the stored id so migrated users keep a
- *    stable identity going forward.
- * 1. Otherwise (locked / no session) try to get from AsyncStorage
+ * Gets user ID with fallback strategy:
+ * 1. Try to get from AsyncStorage
  * 2. Generate new one and store it
  * 3. Use session-only ID if storage fails
  */
 export const getUserId = async (): Promise<string> => {
-  /* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires, global-require */
-  const { getAuthUserId } =
-    require("services/auth/getAuthUserId") as typeof import("services/auth/getAuthUserId");
-  /* eslint-enable @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires, global-require */
-  const authId = await getAuthUserId();
-
-  if (authId) {
-    try {
-      await AsyncStorage.setItem(STORAGE_KEYS.METRICS_USER_ID, authId);
-    } catch (setError) {
-      // Same rationale as the random-id session-only fallback below: don't
-      // let a persistence failure discard an id we already have.
-      logger.warn(
-        DEBUG_CONFIG.LOG_PREFIX,
-        "Failed to persist auth-derived user ID, using it for this session only",
-        setError,
-      );
-    }
-
-    sessionUserId = authId;
-
-    return authId;
-  }
-
   try {
     const storedId = await AsyncStorage.getItem(STORAGE_KEYS.METRICS_USER_ID);
 
