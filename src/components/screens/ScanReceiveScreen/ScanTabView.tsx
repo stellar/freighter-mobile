@@ -11,9 +11,21 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const OVERLAY_BOTTOM_GAP = 16;
 
+/** No-op used to ignore scanned codes while the Scan tab is not active. */
+const IGNORE_SCAN = () => {};
+
 interface ScanTabViewProps {
-  /** Whether the Scan tab is currently active (drives the camera). */
-  isActive: boolean;
+  /**
+   * Keep the camera session alive. Stays true across a tab switch so the
+   * preview does not tear down and re-initialize (which would blink); tie it to
+   * screen focus so the camera still stops when navigating away.
+   */
+  cameraActive: boolean;
+  /**
+   * Whether scanned codes should be handled. Only true on the Scan tab, so the
+   * still-running camera behind the Receive tab cannot trigger a navigation.
+   */
+  isScanning: boolean;
 }
 
 /**
@@ -24,7 +36,10 @@ interface ScanTabViewProps {
  * screen owns the header (X + Tabs), so this renders only the scanner and the
  * dev-only manual input overlay.
  */
-export const ScanTabView: React.FC<ScanTabViewProps> = ({ isActive }) => {
+export const ScanTabView: React.FC<ScanTabViewProps> = ({
+  cameraActive,
+  isScanning,
+}) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const insets = useSafeAreaInsets();
@@ -36,17 +51,17 @@ export const ScanTabView: React.FC<ScanTabViewProps> = ({ isActive }) => {
   return (
     <>
       <QRScanner
-        onRead={handlers.handleQRCodeScanned}
+        onRead={isScanning ? handlers.handleQRCodeScanned : IGNORE_SCAN}
         context={state.context}
         title={state.scannerTitle}
-        isActive={isActive}
+        isActive={cameraActive}
       />
 
       {state.showManualInput &&
         handlers.handleManualInputChange &&
         ManualInputOverlay && (
           <View
-            className="absolute inset-0 z-[100]"
+            className="absolute inset-0 z-[100] px-5"
             style={{
               paddingBottom: insets.bottom + pxValue(OVERLAY_BOTTOM_GAP),
             }}

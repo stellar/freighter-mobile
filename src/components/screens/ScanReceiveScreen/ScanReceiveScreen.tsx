@@ -1,3 +1,4 @@
+import { useIsFocused } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import { ReceiveTabView } from "components/screens/ScanReceiveScreen/ReceiveTabView";
@@ -43,6 +44,7 @@ const ScanReceiveScreen: React.FC<ScanReceiveScreenProps> = ({
 }) => {
   const { t } = useAppTranslation();
   const insets = useSafeAreaInsets();
+  const isFocused = useIsFocused();
 
   useClearTransitionParam(navigation, route.params?.transition);
 
@@ -94,7 +96,10 @@ const ScanReceiveScreen: React.FC<ScanReceiveScreenProps> = ({
         style={StyleSheet.absoluteFill}
         pointerEvents={isScan ? "auto" : "none"}
       >
-        <ScanTabView isActive={isScan} />
+        <ScanTabView
+          cameraActive={isFocused}
+          isScanning={isFocused && isScan}
+        />
       </View>
 
       {/* Receive layer (opaque; fades in over the camera) */}
