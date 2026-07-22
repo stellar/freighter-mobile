@@ -70,14 +70,14 @@ export const ReceiveTabView: React.FC = () => {
       </View>
 
       <View className="gap-6">
-        <Text sm medium secondary textAlign="center">
+        <Text md medium secondary textAlign="center">
           {t("scanReceiveScreen.receive.networkSupport")}
         </Text>
         <Button
           isFullWidth
           tertiary
           icon={
-            <Icon.Copy01 size={16} color={BUTTON_THEME.colors.tertiary.text} />
+            <Icon.Copy01 size={18} color={BUTTON_THEME.colors.tertiary.text} />
           }
           iconPosition={IconPosition.LEFT}
           onPress={() => copyToClipboard(publicKey)}
