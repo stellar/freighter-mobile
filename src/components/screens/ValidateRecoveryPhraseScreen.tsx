@@ -93,7 +93,8 @@ export const ValidateRecoveryPhraseScreen: React.FC<
         }
         clearLoginData(); // Clear sensitive data after successful signup
         analytics.track(AnalyticsEvent.CONFIRM_RECOVERY_PHRASE_SUCCESS);
-        analytics.track(AnalyticsEvent.ACCOUNT_CREATOR_FINISHED);
+        // onboarding.completed now fires once from the signUp store action's
+        // success path (single terminal point), not per UI screen.
       });
     }
   }, [

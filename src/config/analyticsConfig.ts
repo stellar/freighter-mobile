@@ -90,6 +90,12 @@ export enum AnalyticsEvent {
   // carries reason_code
   CONFIRM_RECOVERY_PHRASE_FAIL = "onboarding.recovery_phrase_confirm_failed",
   ACCOUNT_CREATOR_CONFIRM_MNEMONIC_BACK = "onboarding.recovery_phrase_back_clicked",
+  // Fires once from the signUp store action's success path (create-account
+  // terminal point) — NOT from the recovery-phrase / biometrics UI screens.
+  // The import/recover flow emits account_recovery.completed instead, matching
+  // the extension's create-vs-recover split. Completion lifecycle still differs
+  // from the extension (mobile: wallet-creation call; extension: mnemonic
+  // confirm), so the two series aren't naively comparable.
   ACCOUNT_CREATOR_FINISHED = "onboarding.completed",
 
   // Authentication / recovery

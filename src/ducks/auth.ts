@@ -2321,6 +2321,12 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
       // Mirror the extension's onboarding.password_created (createAccount.fulfilled)
       // so the create-password funnel has a success side on mobile (was fail-only).
       analytics.track(AnalyticsEvent.CREATE_PASSWORD_SUCCESS);
+      // onboarding.completed at the single create-account terminal point (mirrors
+      // the extension's confirmMnemonicPhrase.fulfilled). Consolidated here from
+      // four UI-site emits (recovery-phrase / biometrics screens) that risked
+      // double-counting. The import/recover flow emits account_recovery.completed
+      // instead (see module importWallet), matching the extension's split.
+      analytics.track(AnalyticsEvent.ACCOUNT_CREATOR_FINISHED);
       set({
         ...initialState,
         navigationRef: get().navigationRef,
