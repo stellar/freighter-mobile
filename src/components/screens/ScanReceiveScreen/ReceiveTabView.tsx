@@ -79,7 +79,7 @@ export const ReceiveTabView: React.FC = () => {
           icon={
             <Icon.Copy01 size={16} color={BUTTON_THEME.colors.tertiary.text} />
           }
-          iconPosition={IconPosition.RIGHT}
+          iconPosition={IconPosition.LEFT}
           onPress={() => copyToClipboard(publicKey)}
         >
           {t("scanReceiveScreen.receive.copyButton")}
