@@ -20,8 +20,6 @@ const originProps = (url?: string): { origin?: string } => {
 
 export const trackSignedTransaction = (data: SignedTransactionEvent): void => {
   track(AnalyticsEvent.SIGN_TRANSACTION_SUCCESS, {
-    transactionHash: data.transactionHash,
-    transactionType: data.transactionType,
     ...originProps(data.dappDomain),
   });
 };
@@ -105,8 +103,6 @@ export const trackSubmittedTransaction = (
   data: SubmittedTransactionEvent,
 ): void => {
   track(AnalyticsEvent.SUBMIT_TRANSACTION_SUCCESS, {
-    transactionHash: data.transactionHash,
-    transactionType: data.transactionType,
     ...originProps(data.dappDomain),
   });
 };
@@ -117,7 +113,7 @@ export const trackSimulationError = (
 ): void => {
   track(AnalyticsEvent.SIMULATE_TOKEN_PAYMENT_ERROR, {
     reason_code: error,
-    transactionType,
+    transaction_type: transactionType,
   });
 };
 
@@ -198,7 +194,7 @@ export const trackTransactionError = (data: TransactionErrorEvent): void => {
 export const trackAddTokenConfirmed = (token?: string): void => {
   track(AnalyticsEvent.ASSET_ADD_RESPONDED, {
     decision: "confirm",
-    asset: token,
+    asset_code: token,
     source: "manage_assets",
   });
 };
@@ -206,7 +202,7 @@ export const trackAddTokenConfirmed = (token?: string): void => {
 export const trackAddTokenRejected = (token?: string): void => {
   track(AnalyticsEvent.ASSET_ADD_RESPONDED, {
     decision: "reject",
-    asset: token,
+    asset_code: token,
     source: "manage_assets",
   });
 };
@@ -214,7 +210,7 @@ export const trackAddTokenRejected = (token?: string): void => {
 export const trackRemoveTokenConfirmed = (token?: string): void => {
   track(AnalyticsEvent.ASSET_REMOVE_RESPONDED, {
     decision: "confirm",
-    asset: token,
+    asset_code: token,
     source: "manage_assets",
   });
 };
@@ -222,7 +218,7 @@ export const trackRemoveTokenConfirmed = (token?: string): void => {
 export const trackRemoveTokenRejected = (token?: string): void => {
   track(AnalyticsEvent.ASSET_REMOVE_RESPONDED, {
     decision: "reject",
-    asset: token,
+    asset_code: token,
     source: "manage_assets",
   });
 };

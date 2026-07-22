@@ -514,7 +514,6 @@ export const approveSessionRequest = async ({
     dappDomain = dappMetadata?.url;
 
     analytics.trackSignedTransaction({
-      transactionHash: transaction.hash().toString("hex"),
       ...(dappDomain ? { dappDomain } : {}),
     });
   } catch (error) {
@@ -541,7 +540,6 @@ export const approveSessionRequest = async ({
       });
 
       analytics.trackSubmittedTransaction({
-        transactionHash: transaction.hash().toString("hex"),
         ...(dappDomain ? { dappDomain } : {}),
       });
     } catch (error) {

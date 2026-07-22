@@ -170,10 +170,10 @@ export enum AnalyticsEvent {
   // carries operation (add | remove) + reason_code
   TOKEN_MANAGEMENT_FAIL = "asset.operation_failed",
   // Consolidates the add-token confirmed / rejected prompt responses; carries
-  // decision (confirm | reject) + asset + source (manage_assets on mobile).
+  // decision (confirm | reject) + asset_code + source (manage_assets on mobile).
   ASSET_ADD_RESPONDED = "asset_add.responded",
   // Consolidates the remove-token confirmed / rejected prompt responses;
-  // carries decision (confirm | reject) + asset + source (manage_assets).
+  // carries decision (confirm | reject) + asset_code + source (manage_assets).
   ASSET_REMOVE_RESPONDED = "asset_remove.responded",
   MANAGE_TOKEN_LISTS_MODIFY = "asset_list.modified",
   // Consolidates the three trustline-removal failure reasons; carries
