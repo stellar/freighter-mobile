@@ -372,7 +372,10 @@ export const TransactionDetailsFooter: React.FC<
         tertiary
         icon={<Icon.LinkExternal01 size={16} color={themeColors.base[0]} />}
         onPress={() => {
-          analytics.track(AnalyticsEvent.HISTORY_OPEN_FULL_HISTORY, {
+          // Opening THIS operation on Stellar Expert is an item-open, not a
+          // full-history-list open — matches the extension's history.item_opened
+          // {source:"transaction_detail"} for the same gesture.
+          analytics.track(AnalyticsEvent.HISTORY_OPEN_ITEM, {
             source: "transaction_detail",
           });
           openInAppBrowser(externalUrl);

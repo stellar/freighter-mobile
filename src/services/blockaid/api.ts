@@ -31,11 +31,6 @@ import {
 type BlockaidScanTarget = "domain" | "transaction" | "asset" | "asset_bulk";
 
 /**
- * Emits the consolidated scan-failure event. Blockaid only runs on mainnet, so
- * the NETWORK_NOT_SUPPORTED short-circuit on other networks is an expected skip
- * rather than a scan failure and is not reported.
- */
-/**
  * Reduces a bulk token scan to a single worst-case security level for the
  * `result` property (malicious > suspicious > safe/unable-to-scan).
  */
@@ -73,6 +68,11 @@ const toBlockaidResultLevel = (
   }
 };
 
+/**
+ * Emits the consolidated scan-failure event. Blockaid only runs on mainnet, so
+ * the NETWORK_NOT_SUPPORTED short-circuit on other networks is an expected skip
+ * rather than a scan failure and is not reported.
+ */
 const trackScanFailed = (
   scanTarget: BlockaidScanTarget,
   error: unknown,
@@ -132,7 +132,7 @@ export const scanToken = async (
     analytics.track(AnalyticsEvent.BLOCKAID_SCAN_COMPLETED, {
       scan_target: "asset",
       result: toBlockaidResultLevel(assessTokenSecurity(scanResult).level),
-      tokenCode,
+      token_code: tokenCode,
     });
 
     return scanResult;
@@ -173,7 +173,7 @@ export const scanBulkTokens = async (
       scan_target: "asset_bulk",
       // Aggregate verdict across the batch: the worst per-token security level.
       result: toBlockaidResultLevel(aggregateBulkResult(scanResult)),
-      addressCount: addressList.length,
+      address_count: addressList.length,
     });
 
     return scanResult;

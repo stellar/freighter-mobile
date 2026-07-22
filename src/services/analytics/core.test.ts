@@ -615,12 +615,12 @@ describe("domain event catalog (#2883)", () => {
   it("carries the scan_target + result discriminators on the consolidated blockaid scan event", () => {
     track(AnalyticsEvent.BLOCKAID_SCAN_COMPLETED, {
       scan_target: "asset",
-      result: "SAFE",
+      result: "safe",
     });
 
     expect(amplitudeMock.track).toHaveBeenCalledWith(
       "blockaid.scan_completed",
-      expect.objectContaining({ scan_target: "asset", result: "SAFE" }),
+      expect.objectContaining({ scan_target: "asset", result: "safe" }),
     );
   });
 

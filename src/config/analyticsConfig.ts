@@ -159,16 +159,16 @@ export enum AnalyticsEvent {
   SIGN_AUTH_ENTRY_REJECTED = "signing.auth_entry_rejected",
 
   // Assets / trustlines
-  // asset.added carries asset_code + asset (CODE:ISSUER).
+  // asset.added carries asset_code + asset_issuer.
   ADD_TOKEN_SUCCESS = "asset.added",
   REMOVE_TOKEN_SUCCESS = "asset.removed",
   // carries operation (add | remove) + reason_code
   TOKEN_MANAGEMENT_FAIL = "asset.operation_failed",
   // Consolidates the add-token confirmed / rejected prompt responses; carries
-  // decision (confirm | reject) + source.
+  // decision (confirm | reject) + asset.
   ASSET_ADD_RESPONDED = "asset_add.responded",
   // Consolidates the remove-token confirmed / rejected prompt responses;
-  // carries decision (confirm | reject).
+  // carries decision (confirm | reject) + asset.
   ASSET_REMOVE_RESPONDED = "asset_remove.responded",
   MANAGE_TOKEN_LISTS_MODIFY = "asset_list.modified",
   // Consolidates the three trustline-removal failure reasons; carries
