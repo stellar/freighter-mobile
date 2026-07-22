@@ -58,7 +58,7 @@ export const CollapsibleCollectionHeader: React.FC<
       testID={testID}
       accessibilityRole="button"
       accessibilityState={{ expanded: isExpanded }}
-      accessibilityLabel={collectionName}
+      accessibilityLabel={`${collectionName}, ${countLabel}`}
     >
       {showDivider ? (
         <Text md medium secondary numberOfLines={1} style={{ flexShrink: 1 }}>

@@ -47,8 +47,8 @@ interface CollectiblesGridProps {
  * A component that displays collectibles organized by collections in a grid layout.
  * Features include:
  * - Groups collectibles by collection
- * - Displays collection names with item counts
- * - Shows collectible images in a horizontal scrollable grid
+ * - Renders each collection as a collapsible 2-column vertical grid (via CollectionSection)
+ * - Displays collection names with item counts and an expand/collapse chevron
  * - Handles loading and empty states
  * - Pull-to-refresh functionality
  * - Responsive grid layout with proper spacing
