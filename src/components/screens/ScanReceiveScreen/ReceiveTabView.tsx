@@ -70,7 +70,7 @@ export const ReceiveTabView: React.FC = () => {
         </View>
       </View>
 
-      <View className="gap-6 pb-4">
+      <View className="gap-6">
         <Text sm medium secondary textAlign="center">
           {t("scanReceiveScreen.receive.networkSupport")}
         </Text>

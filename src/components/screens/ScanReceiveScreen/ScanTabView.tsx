@@ -1,6 +1,6 @@
 /* eslint-disable react/no-unstable-nested-components */
 import { QRScanner } from "components/QRScanner";
-import { QRCodeSource } from "config/constants";
+import { DEFAULT_PADDING, QRCodeSource } from "config/constants";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
@@ -8,8 +8,6 @@ import { useQRCodeScreenScanner } from "hooks/useQRCodeScreenScanner";
 import React from "react";
 import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-const OVERLAY_BOTTOM_GAP = 16;
 
 /** No-op used to ignore scanned codes while the Scan tab is not active. */
 const IGNORE_SCAN = () => {};
@@ -63,7 +61,7 @@ export const ScanTabView: React.FC<ScanTabViewProps> = ({
           <View
             className="absolute inset-0 z-[100] px-5"
             style={{
-              paddingBottom: insets.bottom + pxValue(OVERLAY_BOTTOM_GAP),
+              paddingBottom: insets.bottom + pxValue(DEFAULT_PADDING),
             }}
             pointerEvents="box-none"
           >

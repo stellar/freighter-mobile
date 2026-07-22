@@ -112,7 +112,7 @@ const ScanReceiveScreen: React.FC<ScanReceiveScreenProps> = ({
           style={{
             flex: 1,
             paddingTop: headerHeight,
-            paddingBottom: insets.bottom,
+            paddingBottom: insets.bottom + pxValue(DEFAULT_PADDING),
           }}
         >
           <ReceiveTabView />
