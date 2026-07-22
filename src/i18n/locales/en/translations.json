@@ -129,20 +129,12 @@
       "termsOfService": "Terms of Service"
     }
   },
-  "accountQRCodeScreen": {
-    "title": "Receive funds",
-    "copyButton": "Copy address",
-    "helperText": "Scan the QR code or \ncopy your address",
-    "bottomSheet": {
-      "description": "Have the sender scan the QR code on their Freighter app to retrieve your wallet address securely."
-    }
-  },
   "scanReceiveScreen": {
     "scanTab": "Scan",
     "receiveTab": "Receive",
     "receive": {
       "network": "Stellar",
-      "networkSupport": "This address supports Stellar network.",
+      "networkSupport": "This address supports the Stellar network.",
       "copyButton": "Copy wallet address"
     }
   },

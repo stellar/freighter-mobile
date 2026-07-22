@@ -157,7 +157,6 @@ export type RootStackParamList = {
   };
   [ROOT_NAVIGATOR_ROUTES.SCAN_RECEIVE_SCREEN]: {
     initialTab?: ScanReceiveTab;
-    transition?: ScreenTransition;
   };
   [ROOT_NAVIGATOR_ROUTES.CONNECTED_APPS_SCREEN]: undefined;
   [ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK]: NavigatorScreenParams<AddFundsStackParamList>;
@@ -232,7 +231,6 @@ export type AddFundsStackParamList = {
   };
   [ROOT_NAVIGATOR_ROUTES.SCAN_RECEIVE_SCREEN]: {
     initialTab?: ScanReceiveTab;
-    transition?: ScreenTransition;
   };
 };
 

@@ -13,7 +13,6 @@ import {
 import {
   getScreenOptionsNoHeader,
   getStackBottomNavigateOptions,
-  withTransitionOverride,
 } from "helpers/navigationOptions";
 import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
@@ -41,9 +40,7 @@ export const AddFundsStackNavigator = () => {
       <AddFundsStack.Screen
         name={ROOT_NAVIGATOR_ROUTES.SCAN_RECEIVE_SCREEN}
         component={ScanReceiveScreen}
-        options={({ route }) =>
-          withTransitionOverride(getScreenOptionsNoHeader(), route)
-        }
+        options={getScreenOptionsNoHeader()}
       />
     </AddFundsStack.Navigator>
   );

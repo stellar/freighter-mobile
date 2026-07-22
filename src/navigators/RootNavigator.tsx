@@ -262,9 +262,7 @@ export const RootNavigator = () => {
             <RootStack.Screen
               name={ROOT_NAVIGATOR_ROUTES.SCAN_RECEIVE_SCREEN}
               component={ScanReceiveScreen}
-              options={({ route }) =>
-                withTransitionOverride(getScreenOptionsNoHeader(), route)
-              }
+              options={getScreenOptionsNoHeader()}
             />
             <RootStack.Screen
               name={ROOT_NAVIGATOR_ROUTES.CONNECTED_APPS_SCREEN}

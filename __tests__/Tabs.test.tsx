@@ -63,4 +63,57 @@ describe("Tabs Component", () => {
       : container.props.style;
     expect(style.width).toBe(240);
   });
+
+  const flattenStyle = (node: { props: { style?: unknown } }) => {
+    const { style } = node.props;
+    return Array.isArray(style)
+      ? Object.assign({}, ...(style as object[]).flat())
+      : ((style ?? {}) as Record<string, unknown>);
+  };
+
+  const fireLayout = (node: unknown, width: number) =>
+    fireEvent(node as never, "layout", {
+      nativeEvent: { layout: { width, height: 40, x: 0, y: 0 } },
+    });
+
+  it("hug mode equalizes every tab to the widest measured tab", () => {
+    render(
+      <Tabs
+        options={OPTIONS}
+        selectedValue="receive"
+        onValueChange={jest.fn()}
+      />,
+    );
+
+    const tabs = screen.getAllByRole("tab");
+    // Each hug-mode tab measures itself via onLayout.
+    expect(tabs.every((tab) => typeof tab.props.onLayout === "function")).toBe(
+      true,
+    );
+
+    // Report differing natural widths; the wider one wins.
+    fireLayout(tabs[0], 80);
+    fireLayout(tabs[1], 120);
+
+    screen.getAllByRole("tab").forEach((tab) => {
+      expect(flattenStyle(tab).minWidth).toBe(120);
+    });
+  });
+
+  it("fill mode stretches tabs without the measure/equalize pass", () => {
+    render(
+      <Tabs
+        sizing="fill"
+        options={OPTIONS}
+        selectedValue="receive"
+        onValueChange={jest.fn()}
+      />,
+    );
+
+    screen.getAllByRole("tab").forEach((tab) => {
+      // No measuring in fill mode, and no per-tab minWidth is applied.
+      expect(tab.props.onLayout).toBeUndefined();
+      expect(flattenStyle(tab).minWidth).toBeUndefined();
+    });
+  });
 });

@@ -916,14 +916,6 @@
       "unexpectedSearchError": "Ocorreu um erro inesperado durante a pesquisa"
     }
   },
-  "accountQRCodeScreen": {
-    "title": "Receber fundos",
-    "copyButton": "Copiar endereço",
-    "helperText": "Digitalize o código QR ou \n copie seu endereço",
-    "bottomSheet": {
-      "description": "Peça ao remetente para digitalizar o código QR em seu aplicativo Freighter para recuperar seu endereço de carteira com segurança."
-    }
-  },
   "scanReceiveScreen": {
     "scanTab": "Escanear",
     "receiveTab": "Receber",

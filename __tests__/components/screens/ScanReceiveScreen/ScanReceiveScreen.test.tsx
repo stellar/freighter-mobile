@@ -84,16 +84,21 @@ describe("ScanReceiveScreen", () => {
   it("does not mount the scanner until the Scan tab is visited", () => {
     // Opening straight to Receive must not mount the camera (no permission
     // prompt); the scanner mounts once Scan is selected and stays mounted.
+    // includeHiddenElements checks mount state regardless of the a11y-hiding
+    // applied to the inactive layer.
     const { queryByTestId, getByText } = renderWithProviders(
       <ScanReceiveScreen {...makeProps("receive")} />,
     );
-    expect(queryByTestId("scan-tab-view")).toBeNull();
+    const scannerMounted = () =>
+      queryByTestId("scan-tab-view", { includeHiddenElements: true }) !== null;
+    expect(scannerMounted()).toBe(false);
 
     fireEvent.press(getByText("Scan"));
-    expect(queryByTestId("scan-tab-view")).not.toBeNull();
+    expect(scannerMounted()).toBe(true);
 
+    // Returning to Receive keeps the scanner mounted (camera kept warm).
     fireEvent.press(getByText("Receive"));
-    expect(queryByTestId("scan-tab-view")).not.toBeNull();
+    expect(scannerMounted()).toBe(true);
   });
 
   it("mounts the scanner immediately when opened on the Scan tab", () => {

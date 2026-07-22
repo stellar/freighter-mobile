@@ -82,6 +82,7 @@ const Tabs: React.FC<TabsProps> = ({
   return (
     <View
       testID={testID}
+      accessibilityRole="tablist"
       style={hasFixedWidth ? { width } : undefined}
       className={`bg-background-tertiary rounded-3xl p-2 flex-row gap-2 ${containerWidthClass} ${
         isMeasured ? "" : "opacity-0"

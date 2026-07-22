@@ -14,7 +14,6 @@ import {
 } from "config/routes";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
-import { useClearTransitionParam } from "hooks/useClearTransitionParam";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, AppState, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -56,8 +55,6 @@ const ScanReceiveScreen: React.FC<ScanReceiveScreenProps> = ({
   const { t } = useAppTranslation();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
-
-  useClearTransitionParam(navigation, route.params?.transition);
 
   const initialTab: ScanReceiveTab = route.params?.initialTab ?? "scan";
   const [activeTab, setActiveTab] = useState<ScanReceiveTab>(initialTab);
@@ -125,11 +122,15 @@ const ScanReceiveScreen: React.FC<ScanReceiveScreenProps> = ({
 
   return (
     <View className="flex-1 bg-background-primary">
-      {/* Scan layer (camera) — mounted lazily on first Scan visit. */}
+      {/* Scan layer (camera) — mounted lazily on first Scan visit. Hidden from
+          screen readers while Receive is active (pointerEvents/opacity alone do
+          not remove descendants from the accessibility tree). */}
       {hasMountedScanner && (
         <View
           style={StyleSheet.absoluteFill}
           pointerEvents={isScan ? "auto" : "none"}
+          accessibilityElementsHidden={!isScan}
+          importantForAccessibility={isScan ? "auto" : "no-hide-descendants"}
         >
           <ScanTabView
             cameraActive={isFocused && isAppActive}
@@ -138,11 +139,14 @@ const ScanReceiveScreen: React.FC<ScanReceiveScreenProps> = ({
         </View>
       )}
 
-      {/* Receive layer (opaque; fades in over the camera) */}
+      {/* Receive layer (opaque; fades in over the camera). Hidden from screen
+          readers while Scan is active. */}
       <Animated.View
         className="bg-background-primary"
         style={[StyleSheet.absoluteFill, { opacity: receiveAnim }]}
         pointerEvents={isScan ? "none" : "auto"}
+        accessibilityElementsHidden={isScan}
+        importantForAccessibility={isScan ? "no-hide-descendants" : "auto"}
       >
         <View
           style={{
