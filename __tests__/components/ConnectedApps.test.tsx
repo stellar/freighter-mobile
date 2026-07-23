@@ -8,6 +8,9 @@ const mockNavigate = jest.fn();
 const mockDismiss = jest.fn();
 
 jest.mock("hooks/useAppTranslation", () => () => ({ t: (k: string) => k }));
+jest.mock("providers/ToastProvider", () => ({
+  useToast: () => ({ showToast: jest.fn(), dismissToast: jest.fn() }),
+}));
 jest.mock("hooks/useGetActiveAccount", () => () => ({
   account: { publicKey: "GABC" },
 }));

@@ -260,7 +260,9 @@
     "noConnectedDappsDescription": "Descubra aplicativos e conecte o seu primeiro.",
     "noConnectedDappsNoDiscover": "Nenhum aplicativo conectado.",
     "goToDiscover": "Ir para o Discover",
-    "disconnectAllSessions": "Desconectar todos"
+    "disconnectAllSessions": "Desconectar todos",
+    "appDisconnected": "{{appName}} desconectado",
+    "allAppsDisconnected": "Todos os aplicativos foram desconectados"
   },
   "discovery": {
     "discover": "Descobrir",

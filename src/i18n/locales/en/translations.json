@@ -297,7 +297,9 @@
     "noConnectedDappsDescription": "Discover apps and connect your first one.",
     "noConnectedDappsNoDiscover": "No connected apps.",
     "goToDiscover": "Go to Discover",
-    "disconnectAllSessions": "Disconnect all"
+    "disconnectAllSessions": "Disconnect all",
+    "appDisconnected": "{{appName}} disconnected",
+    "allAppsDisconnected": "All apps have been disconnected"
   },
   "discovery": {
     "discover": "Discover",

@@ -23,6 +23,7 @@ import { findMatchedProtocol } from "helpers/protocols";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
+import { useToast } from "providers/ToastProvider";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { TouchableOpacity, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -41,6 +42,7 @@ const ConnectedApps: React.FC<ConnectedAppsProps> = ({
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
+  const { showToast } = useToast();
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
   const { protocols } = useProtocolsStore();
@@ -85,16 +87,29 @@ const ConnectedApps: React.FC<ConnectedAppsProps> = ({
 
   const handleDisconnectSession = useCallback(
     (topic: string) => {
-      disconnectSession({ topic, publicKey, network });
+      // Capture the name before disconnecting removes it from the list.
+      const appName = connectedDapps.find((dapp) => dapp.topic === topic)?.name;
+      disconnectSession({ topic, publicKey, network }).then(() => {
+        showToast({
+          variant: "success",
+          title: t("connectedApps.appDisconnected", { appName }),
+          toastId: `app-disconnected-${topic}`,
+        });
+      });
     },
-    [disconnectSession, publicKey, network],
+    [connectedDapps, disconnectSession, publicKey, network, showToast, t],
   );
 
   const handleDisconnectAll = useCallback(async () => {
     setIsDisconnecting(true);
     await disconnectAllSessions(publicKey, network);
+    showToast({
+      variant: "success",
+      title: t("connectedApps.allAppsDisconnected"),
+      toastId: "all-apps-disconnected",
+    });
     setTimeout(() => setIsDisconnecting(false), VISUAL_DELAY_MS);
-  }, [disconnectAllSessions, publicKey, network]);
+  }, [disconnectAllSessions, publicKey, network, showToast, t]);
 
   // Defer navigation until the sheet has finished dismissing (see
   // `handleDismiss`) so the transition isn't abrupt.
