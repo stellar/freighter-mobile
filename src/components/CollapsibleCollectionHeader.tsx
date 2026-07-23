@@ -54,6 +54,9 @@ export const CollapsibleCollectionHeader: React.FC<
     <TouchableOpacity
       className="flex-row items-center justify-between"
       delayPressIn={DEFAULT_PRESS_DELAY}
+      // Extend the tap target to the ~48px minimum without changing the row's
+      // visual height/spacing (content is only ~24px tall).
+      hitSlop={{ top: 12, bottom: 12 }}
       onPress={onToggle}
       testID={testID}
       accessibilityRole="button"
