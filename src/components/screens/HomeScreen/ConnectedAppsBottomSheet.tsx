@@ -61,12 +61,12 @@ const ConnectedAppsBottomSheet: React.FC<ConnectedAppsBottomSheetProps> = ({
     <List items={listItems} variant="secondary" />
   ) : (
     <View
-      className="w-full items-center px-4 pt-6 gap-3"
+      className="w-full items-center px-4 pt-6 gap-4"
       style={{
         paddingBottom: insets.bottom + pxValue(DEFAULT_PADDING * 2),
       }}
     >
-      <View className="size-14 items-center justify-center rounded-full bg-background-tertiary">
+      <View className="size-16 items-center justify-center rounded-full bg-background-tertiary">
         <Icon.NotificationBox
           size={24}
           color={themeColors.foreground.primary}
@@ -74,20 +74,20 @@ const ConnectedAppsBottomSheet: React.FC<ConnectedAppsBottomSheetProps> = ({
       </View>
       {discoverEnabled ? (
         <>
-          <Text md primary medium textAlign="center">
+          <Text lg primary medium textAlign="center">
             {t("connectedApps.noConnectedDappsTitle")}
           </Text>
           <Text sm secondary regular textAlign="center">
             {t("connectedApps.noConnectedDappsDescription")}
           </Text>
-          <View className="mt-2">
+          <View className="mt-3">
             <Button xl tertiary onPress={onGoToDiscover}>
               {t("connectedApps.goToDiscover")}
             </Button>
           </View>
         </>
       ) : (
-        <Text md secondary medium textAlign="center">
+        <Text lg secondary medium textAlign="center">
           {t("connectedApps.noConnectedDappsNoDiscover")}
         </Text>
       )}
