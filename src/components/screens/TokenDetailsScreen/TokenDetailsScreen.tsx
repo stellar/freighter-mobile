@@ -7,9 +7,12 @@ import { SecurityDetailBottomSheet } from "components/blockaid";
 import { BaseLayout } from "components/layout/BaseLayout";
 import HistoryList from "components/screens/HistoryScreen/HistoryList";
 import { TokenBalanceHeader } from "components/screens/TokenDetailsScreen/components";
+import { RemoveTokenSheetContent } from "components/screens/TokenDetailsScreen/components/RemoveTokenSheetContent";
 import { Banner } from "components/sds/Banner";
 import { Button } from "components/sds/Button";
+import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import { mapNetworkToNetworkDetails } from "config/constants";
 import {
   ROOT_NAVIGATOR_ROUTES,
@@ -22,14 +25,18 @@ import { useAuthenticationStore } from "ducks/auth";
 import { useDebugStore } from "ducks/debug";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
-import { getTokenType } from "helpers/balances";
+import { getTokenType, getIssuerFromIdentifier } from "helpers/balances";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useGetHistoryData } from "hooks/useGetHistoryData";
+import { useManageToken } from "hooks/useManageToken";
+import { useRightHeaderMenu } from "hooks/useRightHeader";
+import { useTokenActions } from "hooks/useTokenActions";
 import useTokenDetails from "hooks/useTokenDetails";
 import React, { useCallback, useLayoutEffect, useMemo, useRef } from "react";
 import { View, Dimensions } from "react-native";
+import { analytics } from "services/analytics";
 import { SecurityContext, SecurityLevel } from "services/blockaid/constants";
 import {
   assessTokenSecurity,
@@ -84,9 +91,63 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
     tokenId,
   });
 
-  const { scanResults } = useBalancesList({
+  const { scanResults, balanceItems } = useBalancesList({
     publicKey: account?.publicKey ?? "",
     network,
+  });
+
+  const removeTokenBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const { copyTokenAddress } = useTokenActions();
+
+  const selectedBalance = useMemo(
+    () => balanceItems.find((item) => item.id === tokenId) ?? null,
+    [balanceItems, tokenId],
+  );
+
+  const { removeToken, isRemovingToken } = useManageToken({
+    token: selectedBalance
+      ? {
+          type: selectedBalance.tokenType,
+          code: selectedBalance.tokenCode!,
+          id: selectedBalance.id,
+          issuer: getIssuerFromIdentifier(selectedBalance.id),
+        }
+      : null,
+    network,
+    account,
+    bottomSheetRefRemove: removeTokenBottomSheetModalRef,
+    onSuccess: () => navigation.goBack(),
+  });
+
+  const handleCancelTokenRemoval = useCallback(() => {
+    if (selectedBalance) {
+      analytics.trackRemoveTokenRejected(selectedBalance.tokenCode);
+    }
+    removeTokenBottomSheetModalRef.current?.dismiss();
+  }, [selectedBalance]);
+
+  const headerMenuActions = useMemo(
+    () => [
+      {
+        title: t("manageTokenRightContent.copyAddress"),
+        onPress: () =>
+          copyTokenAddress(
+            tokenId,
+            "manageTokenRightContent.tokenAddressCopied",
+          ),
+      },
+      {
+        title: t("common.remove"),
+        destructive: true,
+        onPress: () => removeTokenBottomSheetModalRef.current?.present(),
+      },
+    ],
+    [t, copyTokenAddress, tokenId],
+  );
+
+  useRightHeaderMenu({
+    actions: headerMenuActions,
+    icon: Icon.DotsHorizontal,
   });
 
   useLayoutEffect(() => {
@@ -236,6 +297,24 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
             }
             severity={securitySeverity}
             securityContext={SecurityContext.TOKEN}
+          />
+        }
+      />
+      <BottomSheet
+        modalRef={removeTokenBottomSheetModalRef}
+        handleCloseModal={() =>
+          removeTokenBottomSheetModalRef.current?.dismiss()
+        }
+        analyticsEvent={AnalyticsEvent.VIEW_REMOVE_TOKEN}
+        shouldCloseOnPressBackdrop={!!selectedBalance}
+        customContent={
+          <RemoveTokenSheetContent
+            selectedToken={selectedBalance}
+            account={account}
+            onCancel={handleCancelTokenRemoval}
+            onRemoveToken={removeToken}
+            isRemovingToken={isRemovingToken}
+            onDismiss={() => removeTokenBottomSheetModalRef.current?.dismiss()}
           />
         }
       />
