@@ -11,6 +11,7 @@ import { NAVIGATION_THEME } from "config/navigationTheme";
 import { RootStackParamList } from "config/routes";
 import { initializeSentry } from "config/sentryConfig";
 import { THEME } from "config/theme";
+import { useAnalyticsStore } from "ducks/analytics";
 import { useAuthenticationStore } from "ducks/auth";
 import { useNavigationAnalytics } from "hooks/useNavigationAnalytics";
 import { useSentryContext } from "hooks/useSentryContext";
@@ -76,7 +77,15 @@ export const App = (): React.JSX.Element => {
 
       const userId = await getUserId();
 
-      Sentry.setUser({ id: userId });
+      // Consent-gate the Sentry user identity: the resolved id is the
+      // seed-derived auth pubkey (== backend JWT `sub`), a stable
+      // cross-service identifier that must not be attached to crash
+      // telemetry when the user has opted out of data sharing.
+      // updateSentryContext (via useSentryContext) owns clearing it on a
+      // later toggle-off; this guard covers the cold-start identification.
+      if (useAnalyticsStore.getState().isEnabled) {
+        Sentry.setUser({ id: userId });
+      }
     };
 
     initSentry();

@@ -5,12 +5,14 @@ import {
   PASSWORD_TYPO_MESSAGES,
   initializeSentry,
   scrubStrKeys,
+  updateSentryContext,
 } from "config/sentryConfig";
 
 jest.mock("@sentry/react-native", () => ({
   init: jest.fn(),
   setContext: jest.fn(),
   setTag: jest.fn(),
+  setUser: jest.fn(),
   addBreadcrumb: jest.fn(),
 }));
 
@@ -25,8 +27,15 @@ jest.mock("react-native-device-info", () => ({
   getBundleId: jest.fn(() => "org.stellar.freighterwallet"),
 }));
 
+// Mutable analytics state so individual tests can flip consent / user id.
+// Defaults to enabled with no user id, matching the prior static mock for the
+// existing beforeSend suite (which only reads isEnabled).
+const mockAnalyticsState: { isEnabled: boolean; userId: string | null } = {
+  isEnabled: true,
+  userId: null,
+};
 jest.mock("ducks/analytics", () => ({
-  useAnalyticsStore: { getState: () => ({ isEnabled: true }) },
+  useAnalyticsStore: { getState: () => mockAnalyticsState },
 }));
 jest.mock("ducks/auth", () => ({
   useAuthenticationStore: {
@@ -75,9 +84,48 @@ const runBeforeSendWith = (event: Partial<ErrorEvent>): ErrorEvent | null => {
   return initOpts.beforeSend(event as ErrorEvent, {}) as ErrorEvent | null;
 };
 
+describe("updateSentryContext user-identity consent gate", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockAnalyticsState.isEnabled = true;
+    mockAnalyticsState.userId = null;
+  });
+
+  it("sets the Sentry user id when analytics is enabled and a user id exists", () => {
+    mockAnalyticsState.isEnabled = true;
+    mockAnalyticsState.userId = "a".repeat(64);
+
+    updateSentryContext();
+
+    expect(mockedSentry.setUser).toHaveBeenCalledWith({ id: "a".repeat(64) });
+  });
+
+  it("clears the Sentry user (null) when analytics is disabled, even if a user id is present", () => {
+    // The opt-out case: the persisted auth id must NOT ride along on crash
+    // telemetry once the user has disabled data sharing.
+    mockAnalyticsState.isEnabled = false;
+    mockAnalyticsState.userId = "a".repeat(64);
+
+    updateSentryContext();
+
+    expect(mockedSentry.setUser).toHaveBeenCalledWith(null);
+  });
+
+  it("clears the Sentry user (null) when enabled but no user id is resolved yet", () => {
+    mockAnalyticsState.isEnabled = true;
+    mockAnalyticsState.userId = null;
+
+    updateSentryContext();
+
+    expect(mockedSentry.setUser).toHaveBeenCalledWith(null);
+  });
+});
+
 describe("sentryConfig.beforeSend filters", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockAnalyticsState.isEnabled = true;
+    mockAnalyticsState.userId = null;
   });
 
   describe("dropped patterns (no Sentry event, no breadcrumb)", () => {
