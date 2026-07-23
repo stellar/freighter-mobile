@@ -76,8 +76,11 @@ const ConnectedApps: React.FC<ConnectedAppsProps> = ({
           favicon: matchedProtocol?.iconUrl ?? session.peer.metadata.icons[0],
         };
       }),
+    // activeSessions is intentionally proxied via activeSessionsKey (only
+    // additions/removals should recompute); protocols must be listed so the
+    // canonical name/icon appear once the protocols store loads.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [activeSessionsKey],
+    [activeSessionsKey, protocols],
   );
   /* eslint-enable @typescript-eslint/no-unsafe-member-access */
 
@@ -89,26 +92,45 @@ const ConnectedApps: React.FC<ConnectedAppsProps> = ({
     (topic: string) => {
       // Capture the name before disconnecting removes it from the list.
       const appName = connectedDapps.find((dapp) => dapp.topic === topic)?.name;
-      disconnectSession({ topic, publicKey, network }).then(() => {
-        showToast({
-          variant: "success",
-          title: t("connectedApps.appDisconnected", { appName }),
-          toastId: `app-disconnected-${topic}`,
+      disconnectSession({ topic, publicKey, network })
+        .then(() => {
+          showToast({
+            variant: "success",
+            title: appName
+              ? t("connectedApps.appDisconnected", { appName })
+              : t("connectedApps.appDisconnectedFallback"),
+            toastId: `app-disconnected-${topic}`,
+          });
+        })
+        .catch(() => {
+          showToast({
+            variant: "error",
+            title: t("connectedApps.disconnectError"),
+            toastId: `app-disconnect-error-${topic}`,
+          });
         });
-      });
     },
     [connectedDapps, disconnectSession, publicKey, network, showToast, t],
   );
 
   const handleDisconnectAll = useCallback(async () => {
     setIsDisconnecting(true);
-    await disconnectAllSessions(publicKey, network);
-    showToast({
-      variant: "success",
-      title: t("connectedApps.allAppsDisconnected"),
-      toastId: "all-apps-disconnected",
-    });
-    setTimeout(() => setIsDisconnecting(false), VISUAL_DELAY_MS);
+    try {
+      await disconnectAllSessions(publicKey, network);
+      showToast({
+        variant: "success",
+        title: t("connectedApps.allAppsDisconnected"),
+        toastId: "all-apps-disconnected",
+      });
+    } catch {
+      showToast({
+        variant: "error",
+        title: t("connectedApps.disconnectError"),
+        toastId: "all-apps-disconnect-error",
+      });
+    } finally {
+      setTimeout(() => setIsDisconnecting(false), VISUAL_DELAY_MS);
+    }
   }, [disconnectAllSessions, publicKey, network, showToast, t]);
 
   // Defer navigation until the sheet has finished dismissing (see

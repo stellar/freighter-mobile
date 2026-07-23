@@ -298,8 +298,11 @@
     "noConnectedDappsNoDiscover": "No connected apps.",
     "goToDiscover": "Go to Discover",
     "disconnectAllSessions": "Disconnect all",
+    "disconnectApp": "Disconnect {{appName}}",
     "appDisconnected": "{{appName}} disconnected",
-    "allAppsDisconnected": "All apps have been disconnected"
+    "appDisconnectedFallback": "App disconnected",
+    "allAppsDisconnected": "All apps disconnected",
+    "disconnectError": "Couldn't disconnect. Please try again."
   },
   "discovery": {
     "discover": "Discover",

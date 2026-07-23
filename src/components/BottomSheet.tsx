@@ -149,10 +149,10 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
         <View className="items-center justify-center">
           <View className="h-[6px] w-[40px] rounded-full bg-gray-8 opacity-[.32]" />
         </View>
-        {stickyHeaderComponent?.()}
+        {scrollable && stickyHeaderComponent?.()}
       </View>
     ),
-    [stickyHeaderComponent],
+    [scrollable, stickyHeaderComponent],
   );
 
   const handleChange = useCallback(

@@ -45,12 +45,16 @@ const ConnectedAppsBottomSheet: React.FC<ConnectedAppsBottomSheetProps> = ({
             onPress={() => onDisconnect(dapp.topic)}
             className="w-10 h-10 items-end justify-center pr-1"
             testID={`disconnect-${dapp.topic}`}
+            accessibilityRole="button"
+            accessibilityLabel={t("connectedApps.disconnectApp", {
+              appName: dapp.name,
+            })}
           >
             <Icon.MinusCircle size={18} themeColor="red" />
           </TouchableOpacity>
         ),
       })),
-    [connectedDapps, onDisconnect],
+    [connectedDapps, onDisconnect, t],
   );
 
   return connectedDapps.length > 0 ? (
@@ -62,7 +66,7 @@ const ConnectedAppsBottomSheet: React.FC<ConnectedAppsBottomSheetProps> = ({
         paddingBottom: insets.bottom + pxValue(DEFAULT_PADDING * 2),
       }}
     >
-      <View className="size-12 items-center justify-center rounded-full bg-background-tertiary">
+      <View className="size-14 items-center justify-center rounded-full bg-background-tertiary">
         <Icon.NotificationBox
           size={24}
           color={themeColors.foreground.primary}
