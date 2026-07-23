@@ -7,7 +7,6 @@ import ContextMenuButton from "components/ContextMenuButton";
 import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import HomeScreenHeader from "components/screens/HomeScreen/HomeScreenHeader";
 import Icon from "components/sds/Icon";
-import { QRCodeSource } from "config/constants";
 import {
   ROOT_NAVIGATOR_ROUTES,
   MainTabStackParamList,
@@ -54,7 +53,9 @@ export const useHomeHeaders = ({
           android: "qr_code_scanner",
         }),
         onPress: () =>
-          navigation.navigate(ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN),
+          navigation.navigate(ROOT_NAVIGATOR_ROUTES.SCAN_RECEIVE_SCREEN, {
+            initialTab: "receive",
+          }),
       },
     ],
     [t, navigation],
@@ -113,8 +114,8 @@ export const useHomeHeaders = ({
         icon={Icon.Scan}
         testID="home-screen-scan-button"
         onPress={() =>
-          navigation.navigate(ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN, {
-            source: QRCodeSource.HOME_SCANNER,
+          navigation.navigate(ROOT_NAVIGATOR_ROUTES.SCAN_RECEIVE_SCREEN, {
+            initialTab: "scan",
           })
         }
       />

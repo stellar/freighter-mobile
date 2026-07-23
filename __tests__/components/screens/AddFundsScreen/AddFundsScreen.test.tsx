@@ -76,7 +76,7 @@ describe("AddFundsScreen", () => {
     expect(getByText("Receive funds from another wallet")).toBeTruthy();
   });
 
-  it("navigates to QR code screen when transfer button is pressed", () => {
+  it("navigates to the Scan/Receive screen (Receive tab) when transfer button is pressed", () => {
     const { getByText } = renderWithProviders(
       <AddFundsScreen navigation={mockNavigation} route={mockRoute} />,
     );
@@ -87,7 +87,8 @@ describe("AddFundsScreen", () => {
       fireEvent.press(transferContainer);
 
       expect(mockNavigate).toHaveBeenCalledWith(
-        ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN,
+        ROOT_NAVIGATOR_ROUTES.SCAN_RECEIVE_SCREEN,
+        { initialTab: "receive" },
       );
     }
   });

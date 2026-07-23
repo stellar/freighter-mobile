@@ -13,6 +13,9 @@ export enum ScreenTransition {
   Default = "default",
 }
 
+/** Which tab the unified Scan/Receive screen opens on. */
+export type ScanReceiveTab = "scan" | "receive";
+
 /**
  * ROUTE NAMING CONVENTIONS FOR ANALYTICS
  *
@@ -49,8 +52,8 @@ export const ROOT_NAVIGATOR_ROUTES = {
   MANAGE_WALLETS_STACK: "ManageWalletsStack",
   // This screen can be called on both stacks.
   LOCK_SCREEN: "LockScreen",
-  ACCOUNT_QR_CODE_SCREEN: "AccountQRCodeScreen",
   SCAN_QR_CODE_SCREEN: "ScanQRCodeScreen",
+  SCAN_RECEIVE_SCREEN: "ScanReceiveScreen",
   TOKEN_DETAILS_SCREEN: "TokenDetailsScreen",
   COLLECTIBLE_DETAILS_SCREEN: "CollectibleDetailsScreen",
   ADD_COLLECTIBLE_SCREEN: "AddCollectibleScreen",
@@ -147,10 +150,12 @@ export type RootStackParamList = {
   [ROOT_NAVIGATOR_ROUTES.MANAGE_WALLETS_STACK]: undefined;
   [ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN]: undefined;
   [ROOT_NAVIGATOR_ROUTES.SETTINGS_STACK]: undefined;
-  [ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN]: undefined;
   [ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN]: {
     source?: QRCodeSource;
     transition?: ScreenTransition;
+  };
+  [ROOT_NAVIGATOR_ROUTES.SCAN_RECEIVE_SCREEN]: {
+    initialTab?: ScanReceiveTab;
   };
   [ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK]: NavigatorScreenParams<AddFundsStackParamList>;
   [ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK]: NavigatorScreenParams<SendPaymentStackParamList>;
@@ -222,7 +227,9 @@ export type AddFundsStackParamList = {
   [ADD_FUNDS_ROUTES.ADD_FUNDS_SCREEN]: {
     isUnfunded: boolean;
   };
-  [ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN]: undefined;
+  [ROOT_NAVIGATOR_ROUTES.SCAN_RECEIVE_SCREEN]: {
+    initialTab?: ScanReceiveTab;
+  };
 };
 
 export type SendPaymentStackParamList = {

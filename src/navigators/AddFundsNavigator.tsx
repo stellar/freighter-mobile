@@ -2,8 +2,8 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import CustomNavigationHeader from "components/layout/CustomNavigationHeader";
-import AccountQRCodeScreen from "components/screens/AccountQRCodeScreen";
 import AddFundsScreen from "components/screens/AddFundsScreen";
+import ScanReceiveScreen from "components/screens/ScanReceiveScreen";
 import Icon from "components/sds/Icon";
 import {
   ADD_FUNDS_ROUTES,
@@ -11,7 +11,7 @@ import {
   ROOT_NAVIGATOR_ROUTES,
 } from "config/routes";
 import {
-  getScreenBottomNavigateOptions,
+  getScreenOptionsNoHeader,
   getStackBottomNavigateOptions,
 } from "helpers/navigationOptions";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -38,9 +38,9 @@ export const AddFundsStackNavigator = () => {
         }}
       />
       <AddFundsStack.Screen
-        name={ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN}
-        component={AccountQRCodeScreen}
-        options={getScreenBottomNavigateOptions(t("accountQRCodeScreen.title"))}
+        name={ROOT_NAVIGATOR_ROUTES.SCAN_RECEIVE_SCREEN}
+        component={ScanReceiveScreen}
+        options={getScreenOptionsNoHeader()}
       />
     </AddFundsStack.Navigator>
   );
