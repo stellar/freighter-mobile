@@ -15,7 +15,7 @@ import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useToast } from "providers/ToastProvider";
 import React, { useState, useCallback, useRef } from "react";
-import { View, TextInput } from "react-native";
+import { View, TextInput, TouchableOpacity } from "react-native";
 
 type AddCollectibleScreenProps = NativeStackScreenProps<
   RootStackParamList,
@@ -246,6 +246,21 @@ export const AddCollectibleScreen: React.FC<AddCollectibleScreenProps> = ({
             onPress: handlePasteTokenId,
           }}
         />
+      </View>
+
+      <View className="mb-6 flex-row">
+        <TouchableOpacity
+          testID="add-collectible-show-hidden"
+          onPress={() =>
+            navigation.navigate(
+              ROOT_NAVIGATOR_ROUTES.HIDDEN_COLLECTIBLES_SCREEN,
+            )
+          }
+        >
+          <Text sm medium color={themeColors.primary}>
+            {t("addCollectibleScreen.showHidden")}
+          </Text>
+        </TouchableOpacity>
       </View>
 
       <View className="mb-8">
