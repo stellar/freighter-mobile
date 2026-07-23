@@ -156,8 +156,11 @@ jobs:
           printf '%s\n' "${FREIGHTER_CONFIG_DEPLOY_KEY}" > "$KEY_FILE"
           chmod 600 "$KEY_FILE"
 
+          # TEMP(#947 e2e): pinned to the freighter-config PR branch to verify
+          # sandbox resolution before stellar/freighter-config#1 merges to main.
+          # >>> REVERT to plain `git clone --depth 1 ...` (no --branch) before merging #947. <<<
           if GIT_SSH_COMMAND="ssh -i $KEY_FILE -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new" \
-               git clone --depth 1 git@github.com:stellar/freighter-config.git "$CLONE_DIR" 2>/tmp/fc-clone.err \
+               git clone --depth 1 --branch feat/seed-config-schema-and-piyalbasu git@github.com:stellar/freighter-config.git "$CLONE_DIR" 2>/tmp/fc-clone.err \
              && [ -f "$CLONE_DIR/config.json" ]; then
             cp "$CLONE_DIR/config.json" "$CONFIG_OUT"
             echo "config_available=true" >> "$GITHUB_OUTPUT"
