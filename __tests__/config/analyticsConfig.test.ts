@@ -77,4 +77,16 @@ describe("Analytics Configuration", () => {
       expect(ROUTE_TO_ANALYTICS_EVENT_MAP.AuthStack).toBeNull();
     });
   });
+
+  describe("ScanReceiveScreen analytics", () => {
+    it("excludes the unified route from auto view-tracking", () => {
+      expect(processRouteForAnalytics("ScanReceiveScreen")).toBeNull();
+    });
+
+    it("exposes the scan view event used for the Scan tab", () => {
+      expect(AnalyticsEvent.VIEW_SCAN_QR_CODE).toBe(
+        "loaded screen: scan qr code",
+      );
+    });
+  });
 });

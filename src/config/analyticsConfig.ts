@@ -20,6 +20,7 @@ export enum AnalyticsEvent {
   VIEW_DISCOVERY = "loaded screen: discover",
   VIEW_TOKEN_DETAILS = "loaded screen: asset detail",
   VIEW_ACCOUNT_QR_CODE = "loaded screen: view public key generator",
+  VIEW_SCAN_QR_CODE = "loaded screen: scan qr code",
   VIEW_GRANT_DAPP_ACCESS = "loaded screen: grant access",
   VIEW_SIGN_DAPP_TRANSACTION = "loaded screen: sign transaction",
   VIEW_SIGN_DAPP_TRANSACTION_DETAILS = "loaded screen: sign transaction details",
@@ -231,6 +232,11 @@ const getRoutesWithoutAnalytics = (): Set<string> => {
     });
   });
 
+  // The unified Scan/Receive screen fires per-tab view events manually
+  // (VIEW_SCAN_QR_CODE / VIEW_ACCOUNT_QR_CODE), so the route itself must not
+  // auto-track a generic view event.
+  excludedRoutes.add("ScanReceiveScreen");
+
   return excludedRoutes;
 };
 
@@ -258,7 +264,6 @@ export const CUSTOM_ROUTE_MAPPINGS: Record<string, AnalyticsEvent> = {
   Discovery: AnalyticsEvent.VIEW_DISCOVERY,
 
   // Root navigator overrides
-  AccountQRCodeScreen: AnalyticsEvent.VIEW_ACCOUNT_QR_CODE,
   TokenDetailsScreen: AnalyticsEvent.VIEW_TOKEN_DETAILS,
 
   // Send payment overrides (extension uses different names)
