@@ -431,7 +431,8 @@
     "empty": "Nenhum colecionável ainda",
     "emptyHidden": "Nenhum colecionável oculto",
     "menuAddManually": "Adicionar manualmente",
-    "menuHidenCollectibles": "Colecionáveis ocultos"
+    "menuHidenCollectibles": "Colecionáveis ocultos",
+    "itemHiddenLabel": "{{name}}, oculto"
   },
   "collectibleDetails": {
     "title": "Detalhes do Colecionável",

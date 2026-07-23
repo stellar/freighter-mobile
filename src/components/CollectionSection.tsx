@@ -4,6 +4,7 @@ import Icon from "components/sds/Icon";
 import { DEFAULT_PADDING, DEFAULT_PRESS_DELAY } from "config/constants";
 import { Collectible, Collection } from "ducks/collectibles";
 import { pxValue } from "helpers/dimensions";
+import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useState } from "react";
 import { TouchableOpacity, View } from "react-native";
@@ -54,23 +55,33 @@ export const CollectionSection: React.FC<CollectionSectionProps> = ({
   testID,
 }) => {
   const { themeColors } = useColors();
+  const { t } = useAppTranslation();
   const [isExpanded, setIsExpanded] = useState(true);
 
   const toggleExpanded = () => setIsExpanded((prev) => !prev);
 
-  const renderTile = (item: Collectible) => (
-    <TouchableOpacity
-      key={item.tokenId}
-      className="flex-1 aspect-square rounded-xl overflow-hidden"
-      delayPressIn={DEFAULT_PRESS_DELAY}
-      testID={`collectible-tile-${item.tokenId}`}
-      onPress={() =>
-        onCollectiblePress?.({
-          collectionAddress: item.collectionAddress,
-          tokenId: item.tokenId,
-        })
-      }
-    >
+  const renderTile = (item: Collectible) => {
+    const itemLabel = item.name || `${item.collectionName} #${item.tokenId}`;
+
+    return (
+      <TouchableOpacity
+        key={item.tokenId}
+        className="flex-1 aspect-square rounded-xl overflow-hidden"
+        delayPressIn={DEFAULT_PRESS_DELAY}
+        testID={`collectible-tile-${item.tokenId}`}
+        accessibilityRole="button"
+        accessibilityLabel={
+          item.isHidden
+            ? t("collectiblesGrid.itemHiddenLabel", { name: itemLabel })
+            : itemLabel
+        }
+        onPress={() =>
+          onCollectiblePress?.({
+            collectionAddress: item.collectionAddress,
+            tokenId: item.tokenId,
+          })
+        }
+      >
       <View
         className="w-full h-full"
         style={
@@ -88,8 +99,9 @@ export const CollectionSection: React.FC<CollectionSectionProps> = ({
           <Icon.EyeOff size={20} color={themeColors.text.primary} />
         </View>
       )}
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   const rows = chunkIntoPairs(collection.items);
 

@@ -49,6 +49,14 @@ describe("CollectionSection", () => {
     expect(screen.queryByTestId("collection-header-divider")).toBeNull();
   });
 
+  it("exposes each tile as a button labeled for screen readers", () => {
+    render(<CollectionSection collection={buildCollection()} />);
+
+    const tile = screen.getByTestId("collectible-tile-1");
+    expect(tile.props.accessibilityRole).toBe("button");
+    expect(tile.props.accessibilityLabel).toBe("Soroban Frogs #1");
+  });
+
   it("shows tiles when expanded by default and hides them when the header is tapped", () => {
     render(<CollectionSection collection={buildCollection()} />);
 
