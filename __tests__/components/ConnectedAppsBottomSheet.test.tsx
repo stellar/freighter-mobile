@@ -32,7 +32,6 @@ describe("ConnectedAppsBottomSheet", () => {
         discoverEnabled
         onDisconnect={jest.fn()}
         onGoToDiscover={jest.fn()}
-        onClose={jest.fn()}
       />,
     );
     expect(getByText("StellarX")).toBeTruthy();
@@ -47,7 +46,6 @@ describe("ConnectedAppsBottomSheet", () => {
         discoverEnabled
         onDisconnect={onDisconnect}
         onGoToDiscover={jest.fn()}
-        onClose={jest.fn()}
       />,
     );
     fireEvent.press(getByTestId("disconnect-topic-1"));
@@ -62,7 +60,6 @@ describe("ConnectedAppsBottomSheet", () => {
         discoverEnabled
         onDisconnect={jest.fn()}
         onGoToDiscover={onGoToDiscover}
-        onClose={jest.fn()}
       />,
     );
     expect(getByText("connectedApps.noConnectedDappsTitle")).toBeTruthy();
@@ -78,7 +75,6 @@ describe("ConnectedAppsBottomSheet", () => {
         discoverEnabled={false}
         onDisconnect={jest.fn()}
         onGoToDiscover={jest.fn()}
-        onClose={jest.fn()}
       />,
     );
     expect(getByText("connectedApps.noConnectedDappsNoDiscover")).toBeTruthy();

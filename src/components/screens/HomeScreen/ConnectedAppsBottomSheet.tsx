@@ -22,7 +22,6 @@ interface ConnectedAppsBottomSheetProps {
   discoverEnabled: boolean;
   onDisconnect: (topic: string) => void;
   onGoToDiscover: () => void;
-  onClose: () => void;
 }
 
 const ConnectedAppsBottomSheet: React.FC<ConnectedAppsBottomSheetProps> = ({
@@ -30,7 +29,6 @@ const ConnectedAppsBottomSheet: React.FC<ConnectedAppsBottomSheetProps> = ({
   discoverEnabled,
   onDisconnect,
   onGoToDiscover,
-  onClose,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
@@ -55,56 +53,39 @@ const ConnectedAppsBottomSheet: React.FC<ConnectedAppsBottomSheetProps> = ({
     [connectedDapps, onDisconnect],
   );
 
-  return (
-    <View className="w-full gap-6">
-      <View className="flex-row items-center justify-between">
-        <Text xl medium>
-          {t("connectedApps.title")}
-        </Text>
-        <TouchableOpacity
-          onPress={onClose}
-          className="size-10 items-center justify-center rounded-full bg-background-tertiary"
-          testID="connected-apps-close-button"
-        >
-          <Icon.X color={themeColors.foreground.primary} />
-        </TouchableOpacity>
+  return connectedDapps.length > 0 ? (
+    <List items={listItems} variant="secondary" />
+  ) : (
+    <View
+      className="w-full items-center px-4 pt-6 gap-3"
+      style={{
+        paddingBottom: insets.bottom + pxValue(DEFAULT_PADDING * 2),
+      }}
+    >
+      <View className="size-12 items-center justify-center rounded-full bg-background-tertiary">
+        <Icon.NotificationBox
+          size={24}
+          color={themeColors.foreground.primary}
+        />
       </View>
-
-      {connectedDapps.length > 0 ? (
-        <List items={listItems} variant="secondary" />
-      ) : (
-        <View
-          className="w-full items-center px-4 pt-6 gap-3"
-          style={{
-            paddingBottom: insets.bottom + pxValue(DEFAULT_PADDING * 2),
-          }}
-        >
-          <View className="size-12 items-center justify-center rounded-full bg-background-tertiary">
-            <Icon.NotificationBox
-              size={24}
-              color={themeColors.foreground.primary}
-            />
+      {discoverEnabled ? (
+        <>
+          <Text md primary medium textAlign="center">
+            {t("connectedApps.noConnectedDappsTitle")}
+          </Text>
+          <Text sm secondary regular textAlign="center">
+            {t("connectedApps.noConnectedDappsDescription")}
+          </Text>
+          <View className="mt-2">
+            <Button xl tertiary onPress={onGoToDiscover}>
+              {t("connectedApps.goToDiscover")}
+            </Button>
           </View>
-          {discoverEnabled ? (
-            <>
-              <Text md primary medium textAlign="center">
-                {t("connectedApps.noConnectedDappsTitle")}
-              </Text>
-              <Text sm secondary regular textAlign="center">
-                {t("connectedApps.noConnectedDappsDescription")}
-              </Text>
-              <View className="mt-2">
-                <Button xl tertiary onPress={onGoToDiscover}>
-                  {t("connectedApps.goToDiscover")}
-                </Button>
-              </View>
-            </>
-          ) : (
-            <Text md secondary medium textAlign="center">
-              {t("connectedApps.noConnectedDappsNoDiscover")}
-            </Text>
-          )}
-        </View>
+        </>
+      ) : (
+        <Text md secondary medium textAlign="center">
+          {t("connectedApps.noConnectedDappsNoDiscover")}
+        </Text>
       )}
     </View>
   );

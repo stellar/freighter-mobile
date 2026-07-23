@@ -5,6 +5,8 @@ import ConnectedAppsBottomSheet, {
   ConnectedDapp,
 } from "components/screens/HomeScreen/ConnectedAppsBottomSheet";
 import { Button } from "components/sds/Button";
+import Icon from "components/sds/Icon";
+import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { DEFAULT_PADDING, VISUAL_DELAY_MS } from "config/constants";
 import {
@@ -19,9 +21,10 @@ import { useWalletKitStore } from "ducks/walletKit";
 import { pxValue } from "helpers/dimensions";
 import { findMatchedProtocol } from "helpers/protocols";
 import useAppTranslation from "hooks/useAppTranslation";
+import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React, { useCallback, useMemo, useRef, useState } from "react";
-import { useWindowDimensions, View } from "react-native";
+import { TouchableOpacity, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface ConnectedAppsProps {
@@ -37,6 +40,7 @@ const ConnectedApps: React.FC<ConnectedAppsProps> = ({
   bottomSheetRef,
 }) => {
   const { t } = useAppTranslation();
+  const { themeColors } = useColors();
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
   const { protocols } = useProtocolsStore();
@@ -109,6 +113,26 @@ const ConnectedApps: React.FC<ConnectedAppsProps> = ({
 
   const hasSessions = connectedDapps.length > 0;
 
+  // Pinned in the sheet handle so the title and close button stay accessible
+  // while the app list scrolls.
+  const renderStickyHeader = useCallback(
+    () => (
+      <View className="flex-row items-center justify-between px-6 pt-4 pb-2">
+        <Text xl medium>
+          {t("connectedApps.title")}
+        </Text>
+        <TouchableOpacity
+          onPress={handleClose}
+          className="size-10 items-center justify-center rounded-full bg-background-tertiary"
+          testID="connected-apps-close-button"
+        >
+          <Icon.X color={themeColors.foreground.primary} />
+        </TouchableOpacity>
+      </View>
+    ),
+    [t, handleClose, themeColors],
+  );
+
   const renderFooter = useCallback(
     () => (
       <View
@@ -138,6 +162,7 @@ const ConnectedApps: React.FC<ConnectedAppsProps> = ({
       maxDynamicContentSize={windowHeight * 0.9}
       bottomSheetModalProps={{ onDismiss: handleDismiss }}
       analyticsEvent={AnalyticsEvent.VIEW_MANAGE_CONNECTED_APPS}
+      stickyHeaderComponent={renderStickyHeader}
       scrollViewFooterComponent={hasSessions ? renderFooter : undefined}
       customContent={
         <ConnectedAppsBottomSheet
@@ -145,7 +170,6 @@ const ConnectedApps: React.FC<ConnectedAppsProps> = ({
           discoverEnabled={discoverEnabled}
           onDisconnect={handleDisconnectSession}
           onGoToDiscover={handleGoToDiscover}
-          onClose={handleClose}
         />
       }
     />
