@@ -216,6 +216,12 @@ export enum AnalyticsEvent {
   // BLOCKAID_SCAN_FAILED (scan_target + reason_code).
   BLOCKAID_SCAN_COMPLETED = "blockaid.scan_completed",
   BLOCKAID_SCAN_FAILED = "blockaid.scan_failed",
+  // Reserved: the extension emits this from its "report warning" affordance
+  // (reportAssetWarning / reportTransactionWarning); mobile has no such
+  // affordance yet. Kept in the catalog so the wire string isn't reinvented and
+  // drifts if mobile adds one — mirrors how one-sided events are reserved on
+  // both platforms (e.g. transaction.submitted, dapp_access.blocked).
+  BLOCKAID_WARNING_REPORTED = "blockaid.warning_reported",
 
   // Onramp
   COINBASE_ONRAMP_OPENED = "onramp.coinbase_opened",

@@ -245,7 +245,10 @@ export const trackAccountScreenImportAccountFail = (error: string): void => {
   // secret-key import path (mnemonic restore emits account_recovery.* instead).
   track(AnalyticsEvent.ACCOUNT_SCREEN_IMPORT_ACCOUNT_FAIL, {
     import_method: "secret_key",
-    reason_code: error,
+    // Scrub inside the helper (not just at the caller): this is the secret-key
+    // import path, so a failure message is the likeliest place to embed an S…
+    // seed. Matches the other track*Error helpers.
+    reason_code: scrubStrKeys(error) ?? error,
   });
 };
 
@@ -327,5 +330,10 @@ export const trackQRScanSuccess = (
 };
 
 export const trackQRScanError = (context: string, error: string): void => {
-  track(AnalyticsEvent.QR_SCAN_ERROR, { context, reason_code: error });
+  // Scrub StrKeys — QR payloads routinely carry G…/S… keys, so a scan-error
+  // message can echo one into Amplitude (a third-party sink).
+  track(AnalyticsEvent.QR_SCAN_ERROR, {
+    context,
+    reason_code: scrubStrKeys(error) ?? error,
+  });
 };

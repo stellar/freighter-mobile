@@ -3,15 +3,20 @@ import { AnalyticsEvent } from "config/analyticsConfig";
 import { NETWORKS } from "config/constants";
 import { analytics } from "services/analytics";
 import { freighterBackendV1 } from "services/backend";
-import { scanBulkTokens, scanToken } from "services/blockaid/api";
+import {
+  scanBulkTokens,
+  scanToken,
+  scanTransaction,
+} from "services/blockaid/api";
 
 jest.mock("services/backend", () => ({
-  freighterBackendV1: { get: jest.fn() },
+  freighterBackendV1: { get: jest.fn(), post: jest.fn() },
 }));
 jest.mock("services/analytics", () => ({ analytics: { track: jest.fn() } }));
 jest.mock("helpers/networks", () => ({ isMainnet: () => true }));
 
 const mockGet = freighterBackendV1.get as jest.Mock;
+const mockPost = freighterBackendV1.post as jest.Mock;
 const mockTrack = analytics.track as jest.Mock;
 
 describe("scanBulkTokens error handling", () => {
@@ -143,6 +148,67 @@ describe("blockaid scan analytics (#2883 consolidation)", () => {
     expect(mockTrack).toHaveBeenCalledWith(
       AnalyticsEvent.BLOCKAID_SCAN_COMPLETED,
       expect.objectContaining({ scan_target: "asset_bulk", result: "unknown" }),
+    );
+  });
+
+  // D1 parity: transaction-scan result must derive from the raw
+  // validation.result_type (matching the extension + mobile's token path), NOT
+  // the UI security model that defaults unclassifiable -> safe and
+  // simulation.error -> warn.
+  it("transaction scan maps a recognized validation.result_type", async () => {
+    mockPost.mockResolvedValue({
+      data: { data: { validation: { result_type: "Malicious" } } },
+    });
+
+    await scanTransaction({
+      xdr: "AAAA",
+      url: "https://dapp.example",
+      network: NETWORKS.PUBLIC,
+    });
+
+    expect(mockTrack).toHaveBeenCalledWith(
+      AnalyticsEvent.BLOCKAID_SCAN_COMPLETED,
+      expect.objectContaining({ scan_target: "transaction", result: "block" }),
+    );
+  });
+
+  it("transaction scan reports unknown for missing/unrecognized validation (not safe)", async () => {
+    mockPost.mockResolvedValue({ data: { data: { simulation: {} } } });
+
+    await scanTransaction({
+      xdr: "AAAA",
+      url: "https://dapp.example",
+      network: NETWORKS.PUBLIC,
+    });
+
+    expect(mockTrack).toHaveBeenCalledWith(
+      AnalyticsEvent.BLOCKAID_SCAN_COMPLETED,
+      expect.objectContaining({
+        scan_target: "transaction",
+        result: "unknown",
+      }),
+    );
+  });
+
+  it("transaction scan ignores simulation.error — a benign validation stays safe (not warn)", async () => {
+    mockPost.mockResolvedValue({
+      data: {
+        data: {
+          validation: { result_type: "Benign" },
+          simulation: { error: "simulation blew up" },
+        },
+      },
+    });
+
+    await scanTransaction({
+      xdr: "AAAA",
+      url: "https://dapp.example",
+      network: NETWORKS.PUBLIC,
+    });
+
+    expect(mockTrack).toHaveBeenCalledWith(
+      AnalyticsEvent.BLOCKAID_SCAN_COMPLETED,
+      expect.objectContaining({ scan_target: "transaction", result: "safe" }),
     );
   });
 

@@ -11,10 +11,7 @@ import {
   BLOCKAID_RESULT_TYPES,
   SecurityLevel,
 } from "services/blockaid/constants";
-import {
-  assessSiteSecurity,
-  assessTransactionSecurity,
-} from "services/blockaid/helper";
+import { assessSiteSecurity } from "services/blockaid/helper";
 import {
   BlockaidApiResponse,
   ScanTokenParams,
@@ -278,11 +275,22 @@ export const scanTransaction = async (
     const scanResult = response.data
       .data as Blockaid.StellarTransactionScanResponse;
 
+    // Derive from the raw validation.result_type (missing/unrecognized ->
+    // "unknown"), NOT assessTransactionSecurity().level — the UI model defaults
+    // unclassifiable results to SAFE and maps simulation.error to SUSPICIOUS,
+    // both of which would diverge from the extension (which reads the raw
+    // result_type and ignores simulation). Guard the validation union exactly
+    // like the extension's `"result_type" in validation` check. Mirrors mobile's
+    // own token path (resultFromResultType) so all scan targets bucket alike.
+    const { validation } = scanResult;
+    const validationResultType =
+      validation && "result_type" in validation
+        ? validation.result_type
+        : undefined;
+
     analytics.track(AnalyticsEvent.BLOCKAID_SCAN_COMPLETED, {
       scan_target: "transaction",
-      result: toBlockaidResultLevel(
-        assessTransactionSecurity(scanResult).level,
-      ),
+      result: resultFromResultType(validationResultType),
     });
 
     return scanResult;
