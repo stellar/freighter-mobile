@@ -20,7 +20,7 @@ import { pxValue } from "helpers/dimensions";
 import { findMatchedProtocol } from "helpers/protocols";
 import useAppTranslation from "hooks/useAppTranslation";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -92,17 +92,27 @@ const ConnectedApps: React.FC<ConnectedAppsProps> = ({
     setTimeout(() => setIsDisconnecting(false), VISUAL_DELAY_MS);
   }, [disconnectAllSessions, publicKey, network]);
 
+  // Defer navigation until the sheet has finished dismissing (see
+  // `handleDismiss`) so the transition isn't abrupt.
+  const shouldNavigateToDiscoverRef = useRef(false);
+
   const handleGoToDiscover = useCallback(() => {
+    shouldNavigateToDiscoverRef.current = true;
     handleClose();
+  }, [handleClose]);
+
+  const handleDismiss = useCallback(() => {
+    if (!shouldNavigateToDiscoverRef.current) return;
+    shouldNavigateToDiscoverRef.current = false;
     navigation?.navigate(MAIN_TAB_ROUTES.TAB_DISCOVERY);
-  }, [handleClose, navigation]);
+  }, [navigation]);
 
   const hasSessions = connectedDapps.length > 0;
 
   const renderFooter = useCallback(
     () => (
       <View
-        className="px-6 pt-4 bg-background-primary"
+        className="w-full px-6 pt-6 mt-6 bg-background-primary"
         style={{ paddingBottom: insets.bottom + pxValue(DEFAULT_PADDING) }}
       >
         <Button
@@ -126,6 +136,7 @@ const ConnectedApps: React.FC<ConnectedAppsProps> = ({
       scrollable
       useInsetsBottomPadding={false}
       maxDynamicContentSize={windowHeight * 0.9}
+      bottomSheetModalProps={{ onDismiss: handleDismiss }}
       analyticsEvent={AnalyticsEvent.VIEW_MANAGE_CONNECTED_APPS}
       scrollViewFooterComponent={hasSessions ? renderFooter : undefined}
       customContent={

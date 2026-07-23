@@ -3,10 +3,13 @@ import { App } from "components/sds/App";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
+import { DEFAULT_PADDING } from "config/constants";
+import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useMemo } from "react";
 import { TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export interface ConnectedDapp {
   topic: string;
@@ -31,6 +34,7 @@ const ConnectedAppsBottomSheet: React.FC<ConnectedAppsBottomSheetProps> = ({
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
+  const insets = useSafeAreaInsets();
 
   const listItems = useMemo<ListItemProps[]>(
     () =>
@@ -69,11 +73,18 @@ const ConnectedAppsBottomSheet: React.FC<ConnectedAppsBottomSheetProps> = ({
       {connectedDapps.length > 0 ? (
         <List items={listItems} variant="secondary" />
       ) : (
-        <View className="w-full items-center bg-background-tertiary rounded-2xl px-4 py-6 gap-3">
-          <Icon.NotificationBox
-            size={24}
-            color={themeColors.foreground.primary}
-          />
+        <View
+          className="w-full items-center px-4 pt-6 gap-3"
+          style={{
+            paddingBottom: insets.bottom + pxValue(DEFAULT_PADDING * 2),
+          }}
+        >
+          <View className="size-12 items-center justify-center rounded-full bg-background-tertiary">
+            <Icon.NotificationBox
+              size={24}
+              color={themeColors.foreground.primary}
+            />
+          </View>
           {discoverEnabled ? (
             <>
               <Text md primary medium textAlign="center">
@@ -82,9 +93,11 @@ const ConnectedAppsBottomSheet: React.FC<ConnectedAppsBottomSheetProps> = ({
               <Text sm secondary regular textAlign="center">
                 {t("connectedApps.noConnectedDappsDescription")}
               </Text>
-              <Button xl secondary onPress={onGoToDiscover}>
-                {t("connectedApps.goToDiscover")}
-              </Button>
+              <View className="mt-2">
+                <Button xl tertiary onPress={onGoToDiscover}>
+                  {t("connectedApps.goToDiscover")}
+                </Button>
+              </View>
             </>
           ) : (
             <Text md secondary medium textAlign="center">
