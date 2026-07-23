@@ -423,7 +423,8 @@
       "fundAccountButton": "Adicionar XLM"
     },
     "menuAddToken": "Adicionar um token",
-    "menuManageTokens": "Gerenciar tokens"
+    "menuManageTokens": "Gerenciar tokens",
+    "addTokenButton": "Adicionar token"
   },
   "collectiblesGrid": {
     "title": "Colecionáveis",
@@ -431,7 +432,8 @@
     "empty": "Nenhum colecionável ainda",
     "emptyHidden": "Nenhum colecionável oculto",
     "menuAddManually": "Adicionar manualmente",
-    "menuHidenCollectibles": "Colecionáveis ocultos"
+    "menuHidenCollectibles": "Colecionáveis ocultos",
+    "addCollectibleButton": "Adicionar colecionável"
   },
   "collectibleDetails": {
     "title": "Detalhes do Colecionável",
@@ -466,7 +468,8 @@
     "description": "Se um colecionável estiver ausente da sua carteira, você pode adicioná-lo manualmente aqui.",
     "toastSuccess": "Colecionável adicionado com sucesso",
     "toastError": "Erro ao adicionar colecionável. {{errorMessage}}",
-    "alreadyInWallet": "Este colecionável já está na sua carteira"
+    "alreadyInWallet": "Este colecionável já está na sua carteira",
+    "showHidden": "Mostrar ocultos"
   },
   "hiddenCollectiblesScreen": {
     "title": "Colecionáveis Ocultos"

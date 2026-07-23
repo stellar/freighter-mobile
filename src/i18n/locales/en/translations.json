@@ -460,7 +460,8 @@
       "fundAccountButton": "Add XLM"
     },
     "menuAddToken": "Add a token",
-    "menuManageTokens": "Manage tokens"
+    "menuManageTokens": "Manage tokens",
+    "addTokenButton": "Add token"
   },
   "collectiblesGrid": {
     "title": "Collectibles",
@@ -468,7 +469,8 @@
     "empty": "No collectibles yet",
     "emptyHidden": "No hidden collectibles",
     "menuAddManually": "Add manually",
-    "menuHidenCollectibles": "Hidden collectibles"
+    "menuHidenCollectibles": "Hidden collectibles",
+    "addCollectibleButton": "Add collectible"
   },
   "collectibleDetails": {
     "title": "Collectible Details",
@@ -503,7 +505,8 @@
     "description": "If a collectible is missing from your wallet, you can manually add it here.",
     "toastSuccess": "Successfully added collectible",
     "toastError": "Error adding collectible. {{errorMessage}}",
-    "alreadyInWallet": "This collectible is already in your wallet"
+    "alreadyInWallet": "This collectible is already in your wallet",
+    "showHidden": "Show hidden"
   },
   "hiddenCollectiblesScreen": {
     "title": "Hidden Collectibles"
