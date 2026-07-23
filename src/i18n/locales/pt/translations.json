@@ -422,8 +422,6 @@
       "learnMore": "Saiba mais",
       "fundAccountButton": "Adicionar XLM"
     },
-    "menuAddToken": "Adicionar um token",
-    "menuManageTokens": "Gerenciar tokens",
     "addTokenButton": "Adicionar token"
   },
   "collectiblesGrid": {
@@ -431,8 +429,6 @@
     "error": "Erro ao carregar colecionáveis",
     "empty": "Nenhum colecionável ainda",
     "emptyHidden": "Nenhum colecionável oculto",
-    "menuAddManually": "Adicionar manualmente",
-    "menuHidenCollectibles": "Colecionáveis ocultos",
     "addCollectibleButton": "Adicionar colecionável"
   },
   "collectibleDetails": {

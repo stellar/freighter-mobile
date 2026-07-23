@@ -53,16 +53,4 @@ describe("TokensCollectiblesTabs", () => {
     expect(screen.getByTestId("tab-tokens")).toBeTruthy();
     expect(screen.getByTestId("tab-collectibles")).toBeTruthy();
   });
-
-  it("does not render a settings menu button", () => {
-    const { queryByTestId } = renderTabs();
-
-    // The Sliders settings context menu has been removed; only the plain tab
-    // headers remain, with no trailing menu trigger.
-    expect(queryByTestId("tab-tokens")).toBeTruthy();
-    expect(queryByTestId("tab-collectibles")).toBeTruthy();
-    expect(
-      screen.queryByTestId("tokens-collectibles-settings-menu"),
-    ).toBeNull();
-  });
 });

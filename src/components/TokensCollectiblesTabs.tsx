@@ -58,7 +58,7 @@ interface Props {
  * TokensCollectiblesTabs Component
  *
  * A reusable tab component for switching between Tokens and Collectibles views.
- * Used in HomeScreen and TransactionTokenScreen to provide consistent navigation
+ * Used in HomeScreen to provide consistent navigation
  * between different asset types.
  *
  * Features:

@@ -459,8 +459,6 @@
       "learnMore": "Learn more",
       "fundAccountButton": "Add XLM"
     },
-    "menuAddToken": "Add a token",
-    "menuManageTokens": "Manage tokens",
     "addTokenButton": "Add token"
   },
   "collectiblesGrid": {
@@ -468,8 +466,6 @@
     "error": "Error loading collectibles",
     "empty": "No collectibles yet",
     "emptyHidden": "No hidden collectibles",
-    "menuAddManually": "Add manually",
-    "menuHidenCollectibles": "Hidden collectibles",
     "addCollectibleButton": "Add collectible"
   },
   "collectibleDetails": {
