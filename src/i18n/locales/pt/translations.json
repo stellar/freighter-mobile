@@ -264,8 +264,7 @@
     "disconnectApp": "Desconectar {{appName}}",
     "appDisconnected": "{{appName}} desconectado",
     "appDisconnectedFallback": "Aplicativo desconectado",
-    "allAppsDisconnected": "Todos os aplicativos desconectados",
-    "disconnectError": "Não foi possível desconectar. Tente novamente."
+    "allAppsDisconnected": "Todos os aplicativos desconectados"
   },
   "discovery": {
     "discover": "Descobrir",

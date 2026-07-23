@@ -92,45 +92,28 @@ const ConnectedApps: React.FC<ConnectedAppsProps> = ({
     (topic: string) => {
       // Capture the name before disconnecting removes it from the list.
       const appName = connectedDapps.find((dapp) => dapp.topic === topic)?.name;
-      disconnectSession({ topic, publicKey, network })
-        .then(() => {
-          showToast({
-            variant: "success",
-            title: appName
-              ? t("connectedApps.appDisconnected", { appName })
-              : t("connectedApps.appDisconnectedFallback"),
-            toastId: `app-disconnected-${topic}`,
-          });
-        })
-        .catch(() => {
-          showToast({
-            variant: "error",
-            title: t("connectedApps.disconnectError"),
-            toastId: `app-disconnect-error-${topic}`,
-          });
+      disconnectSession({ topic, publicKey, network }).then(() => {
+        showToast({
+          variant: "success",
+          title: appName
+            ? t("connectedApps.appDisconnected", { appName })
+            : t("connectedApps.appDisconnectedFallback"),
+          toastId: `app-disconnected-${topic}`,
         });
+      });
     },
     [connectedDapps, disconnectSession, publicKey, network, showToast, t],
   );
 
   const handleDisconnectAll = useCallback(async () => {
     setIsDisconnecting(true);
-    try {
-      await disconnectAllSessions(publicKey, network);
-      showToast({
-        variant: "success",
-        title: t("connectedApps.allAppsDisconnected"),
-        toastId: "all-apps-disconnected",
-      });
-    } catch {
-      showToast({
-        variant: "error",
-        title: t("connectedApps.disconnectError"),
-        toastId: "all-apps-disconnect-error",
-      });
-    } finally {
-      setTimeout(() => setIsDisconnecting(false), VISUAL_DELAY_MS);
-    }
+    await disconnectAllSessions(publicKey, network);
+    showToast({
+      variant: "success",
+      title: t("connectedApps.allAppsDisconnected"),
+      toastId: "all-apps-disconnected",
+    });
+    setTimeout(() => setIsDisconnecting(false), VISUAL_DELAY_MS);
   }, [disconnectAllSessions, publicKey, network, showToast, t]);
 
   // Defer navigation until the sheet has finished dismissing (see
@@ -162,6 +145,8 @@ const ConnectedApps: React.FC<ConnectedAppsProps> = ({
           onPress={handleClose}
           className="size-10 items-center justify-center rounded-full bg-background-tertiary"
           testID="connected-apps-close-button"
+          accessibilityRole="button"
+          accessibilityLabel={t("common.close")}
         >
           <Icon.X color={themeColors.foreground.primary} />
         </TouchableOpacity>

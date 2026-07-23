@@ -301,8 +301,7 @@
     "disconnectApp": "Disconnect {{appName}}",
     "appDisconnected": "{{appName}} disconnected",
     "appDisconnectedFallback": "App disconnected",
-    "allAppsDisconnected": "All apps disconnected",
-    "disconnectError": "Couldn't disconnect. Please try again."
+    "allAppsDisconnected": "All apps disconnected"
   },
   "discovery": {
     "discover": "Discover",
