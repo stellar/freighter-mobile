@@ -1,26 +1,16 @@
-import { NavigationProp, useNavigation } from "@react-navigation/native";
 import { BalancesList } from "components/BalancesList";
 import { CollectiblesGrid } from "components/CollectiblesGrid";
-import ContextMenuButton, { MenuItem } from "components/ContextMenuButton";
-import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import {
   DEFAULT_PADDING,
   NETWORKS,
   TransactionContext,
 } from "config/constants";
-import {
-  MANAGE_TOKENS_ROUTES,
-  ROOT_NAVIGATOR_ROUTES,
-  RootStackParamList,
-} from "config/routes";
-import { useCollectiblesStore } from "ducks/collectibles";
-import { isIOS } from "helpers/device";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useState, useCallback, useMemo } from "react";
-import { Platform, TouchableOpacity, View } from "react-native";
+import { TouchableOpacity, View } from "react-native";
 
 /**
  * Available tab types for the TokensCollectiblesTabs component
@@ -38,10 +28,6 @@ export enum TabType {
 interface Props {
   /** The default active tab when the component mounts */
   defaultTab?: TabType;
-  /** Whether to show the settings menu button for tokens tab */
-  showTokensSettings?: boolean;
-  /** Whether to show the settings menu button for collectibles tab */
-  showCollectiblesSettings?: boolean;
   /** Callback function triggered when tab changes */
   onTabChange?: (tab: TabType) => void;
   /** The public key of the wallet to display data for */
@@ -81,7 +67,6 @@ interface Props {
  * - Memoized content rendering for performance
  * - Dynamic tab styling based on active state
  * - Callback support for tab changes and item interactions
- * - Collectibles settings context menu with "Add manually" option
  * - Smart padding management for different content types
  *
  * @param {Props} props - Component props
@@ -90,8 +75,6 @@ interface Props {
 export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
   ({
     defaultTab = TabType.TOKENS,
-    showTokensSettings = true,
-    showCollectiblesSettings = true,
     onTabChange,
     publicKey,
     network,
@@ -102,13 +85,8 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
     disableInnerScrolling = false,
     balanceRowTestIDPrefix,
   }) => {
-    const navigation = useNavigation<NavigationProp<RootStackParamList>>();
     const { t } = useAppTranslation();
     const { themeColors } = useColors();
-
-    const isCollectiblesLoading = useCollectiblesStore(
-      (state) => state.isLoading,
-    );
 
     const [activeTab, setActiveTab] = useState<TabType>(defaultTab);
 
@@ -123,71 +101,6 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
       },
       [onTabChange],
     );
-
-    /**
-     * Context menu actions for tokens settings
-     */
-    const tokensMenuActions: MenuItem[] = useMemo(() => {
-      const actions = [
-        {
-          title: t("balancesList.menuManageTokens"),
-          systemIcon: Platform.select({
-            ios: "pencil",
-            android: "edit",
-          }),
-          onPress: () =>
-            navigation.navigate(ROOT_NAVIGATOR_ROUTES.MANAGE_TOKENS_STACK, {
-              screen: MANAGE_TOKENS_ROUTES.MANAGE_TOKENS_SCREEN,
-            }),
-        },
-        {
-          title: t("balancesList.menuAddToken"),
-          systemIcon: Platform.select({
-            ios: "plus.circle",
-            android: "add_circle",
-          }),
-          onPress: () =>
-            navigation.navigate(ROOT_NAVIGATOR_ROUTES.MANAGE_TOKENS_STACK, {
-              screen: MANAGE_TOKENS_ROUTES.ADD_TOKEN_SCREEN,
-            }),
-        },
-      ];
-
-      // Reverse the array for iOS to match Android behavior
-      return isIOS ? actions.reverse() : actions;
-    }, [t, navigation]);
-
-    /**
-     * Context menu actions for collectibles settings
-     */
-    const collectiblesMenuActions: MenuItem[] = useMemo(() => {
-      const actions = [
-        {
-          title: t("collectiblesGrid.menuAddManually"),
-          systemIcon: Platform.select({
-            ios: "plus.rectangle.on.rectangle",
-            android: "add_box",
-          }),
-          disabled: isCollectiblesLoading,
-          onPress: () =>
-            navigation.navigate(ROOT_NAVIGATOR_ROUTES.ADD_COLLECTIBLE_SCREEN),
-        },
-        {
-          title: t("collectiblesGrid.menuHidenCollectibles"),
-          systemIcon: Platform.select({
-            ios: "eye.slash",
-            android: "visibility_off",
-          }),
-          onPress: () =>
-            navigation.navigate(
-              ROOT_NAVIGATOR_ROUTES.HIDDEN_COLLECTIBLES_SCREEN,
-            ),
-        },
-      ];
-
-      // Reverse the array for iOS to match Android behavior
-      return isIOS ? actions.reverse() : actions;
-    }, [t, navigation, isCollectiblesLoading]);
 
     /**
      * Renders the tokens/balances list content
@@ -252,16 +165,6 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
       return renderCollectiblesContent;
     }, [activeTab, renderTokensContent, renderCollectiblesContent]);
 
-    /**
-     * Determines whether to show the settings menu button based on active tab
-     */
-    const showSettingsMenu = useMemo(() => {
-      if (activeTab === TabType.TOKENS) {
-        return showTokensSettings;
-      }
-      return showCollectiblesSettings;
-    }, [activeTab, showTokensSettings, showCollectiblesSettings]);
-
     return (
       <View
         className="flex-1"
@@ -303,24 +206,6 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
           </TouchableOpacity>
 
           <View className="flex-1" />
-
-          {showSettingsMenu && (
-            <ContextMenuButton
-              contextMenuProps={{
-                actions:
-                  activeTab === TabType.TOKENS
-                    ? tokensMenuActions
-                    : collectiblesMenuActions,
-              }}
-              side="bottom"
-              align="end"
-              sideOffset={8}
-            >
-              <View className="-mr-2">
-                <Icon.Sliders01 size={20} color={themeColors.text.secondary} />
-              </View>
-            </ContextMenuButton>
-          )}
         </View>
 
         {renderContent}
