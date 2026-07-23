@@ -1,8 +1,5 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
-import {
-  BottomTabScreenProps,
-  useBottomTabBarHeight,
-} from "@react-navigation/bottom-tabs";
+import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import { FloatingTabActionButton } from "components/FloatingTabActionButton";
 import { IconButton } from "components/IconButton";
 import {
@@ -22,7 +19,7 @@ import WelcomeBannerBottomSheet from "components/screens/HomeScreen/WelcomeBanne
 import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
-import { NATIVE_TOKEN_CODE } from "config/constants";
+import { DEFAULT_PADDING, NATIVE_TOKEN_CODE } from "config/constants";
 import {
   MainTabStackParamList,
   MAIN_TAB_ROUTES,
@@ -40,6 +37,7 @@ import { useCollectiblesStore } from "ducks/collectibles";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { useWalletKitStore } from "ducks/walletKit";
 import { getTokenType } from "helpers/balances";
+import { pxValue } from "helpers/dimensions";
 import { isContractId } from "helpers/soroban";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
@@ -85,7 +83,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
 
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [activeTab, setActiveTab] = useState<TabType>(TabType.TOKENS);
-    const tabBarHeight = useBottomTabBarHeight();
 
     const { t } = useAppTranslation();
     const { copyToClipboard } = useClipboard();
@@ -374,7 +371,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
         <View
           pointerEvents="box-none"
           className="absolute left-0 right-0 items-center"
-          style={{ bottom: tabBarHeight + 24 }}
+          style={{ bottom: pxValue(DEFAULT_PADDING) }}
         >
           {activeTab === TabType.TOKENS ? (
             <FloatingTabActionButton
