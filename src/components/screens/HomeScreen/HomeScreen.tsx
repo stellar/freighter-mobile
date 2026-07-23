@@ -22,7 +22,7 @@ import WelcomeBannerBottomSheet from "components/screens/HomeScreen/WelcomeBanne
 import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
-import { DEFAULT_PADDING, NATIVE_TOKEN_CODE } from "config/constants";
+import { NATIVE_TOKEN_CODE } from "config/constants";
 import {
   MainTabStackParamList,
   MAIN_TAB_ROUTES,
@@ -40,7 +40,6 @@ import { useCollectiblesStore } from "ducks/collectibles";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { useWalletKitStore } from "ducks/walletKit";
 import { getTokenType } from "helpers/balances";
-import { pxValue } from "helpers/dimensions";
 import { isContractId } from "helpers/soroban";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
@@ -375,7 +374,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
         <View
           pointerEvents="box-none"
           className="absolute left-0 right-0 items-center"
-          style={{ bottom: tabBarHeight + pxValue(DEFAULT_PADDING) }}
+          style={{ bottom: tabBarHeight + 24 }}
         >
           {activeTab === TabType.TOKENS ? (
             <FloatingTabActionButton

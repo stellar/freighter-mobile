@@ -30,10 +30,10 @@ export const FloatingTabActionButton: React.FC<
       testID={testID}
       onPress={onPress}
       activeOpacity={0.8}
-      className="flex-row items-center gap-2 self-center px-5 py-3 rounded-full bg-background-tertiary border border-border-primary"
+      className="flex-row items-center gap-1 self-center px-5 py-3 rounded-full bg-background-tertiary border border-border-primary"
     >
-      <Icon.Plus size={18} color={themeColors.text.primary} />
-      <Text medium>{label}</Text>
+      <Icon.Plus size={18} color={themeColors.foreground.primary} />
+      <Text semiBold>{label}</Text>
     </TouchableOpacity>
   );
 };
