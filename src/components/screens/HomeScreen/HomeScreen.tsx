@@ -1,7 +1,14 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
-import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
+import {
+  BottomTabScreenProps,
+  useBottomTabBarHeight,
+} from "@react-navigation/bottom-tabs";
+import { FloatingTabActionButton } from "components/FloatingTabActionButton";
 import { IconButton } from "components/IconButton";
-import { TokensCollectiblesTabs } from "components/TokensCollectiblesTabs";
+import {
+  TabType,
+  TokensCollectiblesTabs,
+} from "components/TokensCollectiblesTabs";
 import {
   WalletConnectE2EHelper,
   WalletConnectE2EHelperTrigger,
@@ -15,10 +22,11 @@ import WelcomeBannerBottomSheet from "components/screens/HomeScreen/WelcomeBanne
 import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
-import { NATIVE_TOKEN_CODE } from "config/constants";
+import { DEFAULT_PADDING, NATIVE_TOKEN_CODE } from "config/constants";
 import {
   MainTabStackParamList,
   MAIN_TAB_ROUTES,
+  MANAGE_TOKENS_ROUTES,
   ROOT_NAVIGATOR_ROUTES,
   RootStackParamList,
   ADD_FUNDS_ROUTES,
@@ -32,6 +40,7 @@ import { useCollectiblesStore } from "ducks/collectibles";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { useWalletKitStore } from "ducks/walletKit";
 import { getTokenType } from "helpers/balances";
+import { pxValue } from "helpers/dimensions";
 import { isContractId } from "helpers/soroban";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
@@ -76,6 +85,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
     const walletConnectE2EHelperRef = useRef<WalletConnectE2EHelperRef>(null);
 
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [activeTab, setActiveTab] = useState<TabType>(TabType.TOKENS);
+    const tabBarHeight = useBottomTabBarHeight();
 
     const { t } = useAppTranslation();
     const { copyToClipboard } = useClipboard();
@@ -91,10 +102,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
     const { fetchActiveSessions } = useWalletKitStore();
     const { swap_enabled: swapEnabled } = useRemoteConfigStore();
 
-    const hasTokens = useMemo(
-      () => Object.keys(balances).length > 0,
-      [balances],
-    );
     // Send/Swap require something to spend. Gate on actual holdings (any
     // non-zero token balance), not fiat value — fiat is unavailable on testnet
     // by design, so a fiat-based gate would wrongly disable a funded account.
@@ -209,6 +216,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
         screen: SWAP_ROUTES.SWAP_AMOUNT_SCREEN,
         params: { tokenId: NATIVE_TOKEN_CODE, tokenSymbol: NATIVE_TOKEN_CODE },
       });
+    }, [navigation]);
+
+    const handleAddTokenPress = useCallback(() => {
+      navigation.navigate(ROOT_NAVIGATOR_ROUTES.MANAGE_TOKENS_STACK, {
+        screen: MANAGE_TOKENS_ROUTES.ADD_TOKEN_SCREEN,
+      });
+    }, [navigation]);
+
+    const handleAddCollectiblePress = useCallback(() => {
+      navigation.navigate(ROOT_NAVIGATOR_ROUTES.ADD_COLLECTIBLE_SCREEN);
     }, [navigation]);
 
     const handleManageAccountsPress = useCallback(() => {
@@ -346,7 +363,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
           <TokensCollectiblesTabs
             // Should disable inner scrolling here since the whole Home screen is scrollable
             disableInnerScrolling
-            showTokensSettings={hasTokens}
+            onTabChange={setActiveTab}
             publicKey={account?.publicKey ?? ""}
             network={network}
             onTokenPress={handleTokenPress}
@@ -354,6 +371,26 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
             balanceRowTestIDPrefix="home-token"
           />
         </ScrollView>
+
+        <View
+          pointerEvents="box-none"
+          className="absolute left-0 right-0 items-center"
+          style={{ bottom: tabBarHeight + pxValue(DEFAULT_PADDING) }}
+        >
+          {activeTab === TabType.TOKENS ? (
+            <FloatingTabActionButton
+              label={t("balancesList.addTokenButton")}
+              onPress={handleAddTokenPress}
+              testID="home-add-token-button"
+            />
+          ) : (
+            <FloatingTabActionButton
+              label={t("collectiblesGrid.addCollectibleButton")}
+              onPress={handleAddCollectiblePress}
+              testID="home-add-collectible-button"
+            />
+          )}
+        </View>
 
         {__DEV__ && (
           <DebugBottomSheet
