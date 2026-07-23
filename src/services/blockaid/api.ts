@@ -3,6 +3,7 @@ import axios from "axios";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { isNativeAssetId } from "config/constants";
 import { isMainnet } from "helpers/networks";
+import { scrubStrKeys } from "helpers/stellarStrKey";
 import { analytics } from "services/analytics";
 import { freighterBackendV1 } from "services/backend";
 import {
@@ -105,7 +106,9 @@ const trackScanFailed = (
 
   analytics.track(AnalyticsEvent.BLOCKAID_SCAN_FAILED, {
     scan_target: scanTarget,
-    reason_code: reasonCode,
+    // Scrub StrKeys — a backend/validation error can echo a G…/C… address, and
+    // this is the last raw error path (matches the other track*Error helpers).
+    reason_code: scrubStrKeys(reasonCode) ?? reasonCode,
   });
 };
 

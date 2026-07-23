@@ -46,6 +46,43 @@ const stellarNamespaceMethods = [
 /** Supported Stellar RPC events for WalletKit */
 const stellarNamespaceEvents = [StellarRpcEvents.ACCOUNTS_CHANGED];
 
+/**
+ * Decide which signing.*_rejected event (if any) a dApp-request teardown should
+ * emit. Pure so the reject-vs-not decision is unit-testable without rendering
+ * the provider.
+ *
+ * A rejection is emitted ONLY for a genuine user dismissal of a still-pending
+ * request:
+ * - `hasResponded` (approveSessionRequest already sent a WC response) => the
+ *   request was approved/completed, never a rejection.
+ * - `approvalInFlight` (the user hit Approve — success OR an unexpected throw in
+ *   approveSessionRequest) => an approval attempt, not a dismissal; the throw
+ *   still triggers a WC-level fallback rejection but must not be counted as a
+ *   user reject in analytics.
+ * - no active `requestEvent` => nothing to reject.
+ */
+export const resolveDappRejectionEvent = (args: {
+  requestMethod?: StellarRpcMethods;
+  hasRequestEvent: boolean;
+  hasResponded: boolean;
+  approvalInFlight: boolean;
+}): "message" | "auth_entry" | "transaction" | null => {
+  if (!args.hasRequestEvent || args.hasResponded || args.approvalInFlight) {
+    return null;
+  }
+  switch (args.requestMethod) {
+    case StellarRpcMethods.SIGN_MESSAGE:
+      return "message";
+    case StellarRpcMethods.SIGN_AUTH_ENTRY:
+      return "auth_entry";
+    case StellarRpcMethods.SIGN_XDR:
+    case StellarRpcMethods.SIGN_AND_SUBMIT_XDR:
+      return "transaction";
+    default:
+      return null;
+  }
+};
+
 /** Global WalletKit instance */
 // eslint-disable-next-line import/no-mutable-exports
 export let walletKit: IWalletKit;

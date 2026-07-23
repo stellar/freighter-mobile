@@ -267,15 +267,13 @@ export const useSwapTransaction = ({
         // event instead of SWAP_FAIL and prompt the user to retry for a
         // fresh quote. `resultCode` carries the Horizon op code(s) that drove
         // the expiry so we can slice by reason.
+        // Amounts intentionally dropped (parity with swap.completed/failed,
+        // which carry no amounts). Bare asset codes so from/to_asset_code match
+        // the extension.
         analytics.track(AnalyticsEvent.SWAP_QUOTE_EXPIRED, {
-          sourceToken: sourceBalance?.tokenCode,
-          destToken: destinationTokenInput?.tokenCode,
-          sourceAmount,
-          destAmount: pathResult?.destinationAmount,
-          allowedSlippage: useSwapSettingsStore
-            .getState()
-            .swapSlippage?.toString(),
-          resultCode: quoteExpiredCodes.join(", "),
+          from_asset_code: sourceBalance?.tokenCode,
+          to_asset_code: destinationTokenInput?.tokenCode,
+          result_code: quoteExpiredCodes.join(", "),
         });
 
         showToast({

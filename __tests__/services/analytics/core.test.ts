@@ -3,15 +3,19 @@
 //
 // Shared mock header for the analytics core suite. Tasks M2–M7 extend this
 // file, so the conventions below must stay:
-//   • The module under test is loaded via `jest.requireActual("./core")`, NOT
-//     an `import ... from "services/analytics/core"`. Two repo-wide mechanisms
+//   • The module under test is loaded via
+//     `jest.requireActual("../../../src/services/analytics/core")`, NOT an
+//     `import ... from "services/analytics/core"`. Two repo-wide mechanisms
 //     otherwise hand back a mock instead of the real module: (1) the Jest
 //     `^services/(.*)$` moduleNameMapper redirects bare `services/*` imports to
 //     `__mocks__/` stubs, and (2) jest.setup.js globally
 //     `jest.mock("services/analytics/core", ...)`. `requireActual` with a
-//     relative specifier bypasses both. It is a call expression (not an import
+//     relative specifier bypasses both (the mapper only rewrites bare
+//     `services/*` specifiers). It is a call expression (not an import
 //     declaration), so it also satisfies the repo's no-relative-import lint
-//     rule, which a literal `import "./core"` would violate.
+//     rule that a literal relative `import` would violate. The extra `../`
+//     hops are because this suite now lives under `__tests__/` (moved from
+//     `src/services/analytics/`), while the real module stays in `src/`.
 //   • `@amplitude/analytics-react-native` is mocked with an explicit factory,
 //     not a bare auto-mock. Auto-mocking loads the real RN SDK to introspect
 //     it, which crashes in the Jest env on native async-storage
@@ -82,7 +86,7 @@ jest.mock("ducks/balances", () => ({
   },
 }));
 
-// Load the REAL core module (see header for why requireActual + "./core").
+// Load the REAL core module (see header for why requireActual + relative path).
 const {
   getAccountIdHash,
   getSurface,
@@ -91,7 +95,9 @@ const {
   initAnalytics,
   trackAppOpened,
   track,
-} = jest.requireActual<typeof import("services/analytics/core")>("./core");
+} = jest.requireActual<typeof import("services/analytics/core")>(
+  "../../../src/services/analytics/core",
+);
 
 describe("getAccountIdHash", () => {
   const PK = "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF";
@@ -379,8 +385,9 @@ describe("syncIdentifyTraits (consent gating)", () => {
     let isolatedIdentify: jest.Mock;
 
     jest.isolateModules(() => {
-      mod =
-        jest.requireActual<typeof import("services/analytics/core")>("./core");
+      mod = jest.requireActual<typeof import("services/analytics/core")>(
+        "../../../src/services/analytics/core",
+      );
       // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
       isolatedAnalyticsStore = require("ducks/analytics").useAnalyticsStore;
       // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
@@ -415,8 +422,9 @@ describe("syncIdentifyTraits (consent gating)", () => {
     let isolatedIdentify: jest.Mock;
 
     jest.isolateModules(() => {
-      mod =
-        jest.requireActual<typeof import("services/analytics/core")>("./core");
+      mod = jest.requireActual<typeof import("services/analytics/core")>(
+        "../../../src/services/analytics/core",
+      );
       // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
       isolatedAnalyticsStore = require("ducks/analytics").useAnalyticsStore;
       // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
@@ -449,8 +457,9 @@ describe("syncIdentifyTraits (consent gating)", () => {
     let isolatedIdentify: jest.Mock;
 
     jest.isolateModules(() => {
-      mod =
-        jest.requireActual<typeof import("services/analytics/core")>("./core");
+      mod = jest.requireActual<typeof import("services/analytics/core")>(
+        "../../../src/services/analytics/core",
+      );
       // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
       isolatedAnalyticsStore = require("ducks/analytics").useAnalyticsStore;
       // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
@@ -503,8 +512,9 @@ describe("syncIdentifyTraits (consent gating)", () => {
     let identify: jest.Mock;
 
     jest.isolateModules(() => {
-      mod =
-        jest.requireActual<typeof import("services/analytics/core")>("./core");
+      mod = jest.requireActual<typeof import("services/analytics/core")>(
+        "../../../src/services/analytics/core",
+      );
       // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
       store = require("ducks/analytics").useAnalyticsStore;
       // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
@@ -551,8 +561,9 @@ describe("syncIdentifyTraits (consent gating)", () => {
     let identify: jest.Mock;
 
     jest.isolateModules(() => {
-      mod =
-        jest.requireActual<typeof import("services/analytics/core")>("./core");
+      mod = jest.requireActual<typeof import("services/analytics/core")>(
+        "../../../src/services/analytics/core",
+      );
       // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
       store = require("ducks/analytics").useAnalyticsStore;
       // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires

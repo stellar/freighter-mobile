@@ -387,13 +387,19 @@ describe("useSwapTransaction", () => {
       expect(mockTrack).toHaveBeenCalledWith(
         AnalyticsEvent.SWAP_QUOTE_EXPIRED,
         expect.objectContaining({
-          sourceToken: "XLM",
-          destToken: "USDC",
-          sourceAmount: "1",
-          destAmount: "2.5",
-          resultCode: "op_under_dest_min",
+          from_asset_code: "XLM",
+          to_asset_code: "USDC",
+          result_code: "op_under_dest_min",
         }),
       );
+      // Amounts are intentionally no longer emitted (parity with completed/failed).
+      const quoteExpiredCall = mockTrack.mock.calls.find(
+        (call: unknown[]) =>
+          (call[0] as AnalyticsEvent) === AnalyticsEvent.SWAP_QUOTE_EXPIRED,
+      );
+      expect(quoteExpiredCall?.[1]).not.toHaveProperty("sourceAmount");
+      expect(quoteExpiredCall?.[1]).not.toHaveProperty("destAmount");
+      expect(quoteExpiredCall?.[1]).not.toHaveProperty("allowedSlippage");
       // Quote-expiry is a distinct funnel step — the generic SWAP_FAIL must NOT fire.
       expect(mockTrackTransactionError).not.toHaveBeenCalled();
       expect(mockShowToast).toHaveBeenCalledWith(
