@@ -60,6 +60,7 @@ type HomeScreenProps = BottomTabScreenProps<
   typeof MAIN_TAB_ROUTES.TAB_HOME
 >;
 
+// test
 export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
   ({ navigation }) => {
     const { account } = useGetActiveAccount();
