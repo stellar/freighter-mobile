@@ -93,7 +93,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
     (transactionDetail: TransactionDetails) => {
       setTransactionDetails(transactionDetail);
       transactionDetailsBottomSheetModalRef.current?.present();
-      analytics.trackHistoryOpenItem(transactionDetail.operation.id);
+      analytics.trackHistoryOpenItem("history_list");
     },
     [],
   );

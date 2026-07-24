@@ -776,8 +776,15 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             sourceToken: selectedBalance?.tokenCode || "unknown",
           });
         } else {
+          // Prefer the Horizon op/tx result code as reason_code (buckets with
+          // the extension); submitTransaction stashes it rather than throwing.
+          const { error: submitError, submitErrorResultCodes } =
+            useTransactionBuilderStore.getState();
           analytics.trackTransactionError({
-            error: "Transaction failed",
+            error: submitError || "Transaction failed",
+            errorCode:
+              submitErrorResultCodes?.operations?.[0] ||
+              submitErrorResultCodes?.transaction,
             operationType: TransactionOperationType.Payment,
           });
         }

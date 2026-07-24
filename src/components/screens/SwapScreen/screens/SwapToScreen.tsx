@@ -146,8 +146,8 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
           ? SwapSelectionSource.SEARCH
           : SwapSelectionSource.BALANCES;
       analytics.track(AnalyticsEvent.SWAP_SOURCE_SELECTED, {
-        tokenCode: balance.tokenCode ?? "",
-        tokenIssuer: descriptor.issuer ?? "",
+        asset_code: balance.tokenCode ?? "",
+        asset_issuer: descriptor.issuer ?? "",
         source: sourceSource,
       });
       dismissThenApply(() => {
@@ -163,9 +163,9 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
       });
     } else {
       analytics.track(AnalyticsEvent.SWAP_DESTINATION_SELECTED, {
-        tokenCode: balance.tokenCode ?? "",
-        tokenIssuer: descriptor.issuer ?? "",
-        requiresTrustline: descriptor.requiresTrustline,
+        asset_code: balance.tokenCode ?? "",
+        asset_issuer: descriptor.issuer ?? "",
+        requires_trustline: descriptor.requiresTrustline,
         source,
       });
       dismissThenApply(() => {
@@ -188,9 +188,9 @@ export const SwapToScreen: React.FC<SwapToScreenProps> = ({
   ) => {
     const descriptor = descriptorFromSearchRecord(record);
     analytics.track(AnalyticsEvent.SWAP_DESTINATION_SELECTED, {
-      tokenCode: record.tokenCode,
-      tokenIssuer: descriptor.issuer ?? "",
-      requiresTrustline: descriptor.requiresTrustline,
+      asset_code: record.tokenCode,
+      asset_issuer: descriptor.issuer ?? "",
+      requires_trustline: descriptor.requiresTrustline,
       source,
     });
     dismissThenApply(() => {
