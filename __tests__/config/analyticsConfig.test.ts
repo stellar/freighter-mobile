@@ -208,4 +208,16 @@ describe("Analytics Configuration", () => {
       });
     });
   });
+
+  describe("ScanReceiveScreen analytics", () => {
+    it("excludes the unified route from auto view-tracking", () => {
+      expect(processRouteForAnalytics("ScanReceiveScreen")).toBeNull();
+    });
+
+    it("exposes the scan view event used for the Scan tab", () => {
+      // snake_case screen_name per the property-model foundation
+      // (was the legacy "loaded screen: scan qr code").
+      expect(AnalyticsEvent.VIEW_SCAN_QR_CODE).toBe("scan_qr_code");
+    });
+  });
 });

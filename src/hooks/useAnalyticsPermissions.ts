@@ -1,6 +1,8 @@
 import { MIN_IOS_VERSION_FOR_ATT_REQUEST } from "config/constants";
 import { logger } from "config/logger";
+import { AUTH_STATUS } from "config/types";
 import { useAnalyticsStore } from "ducks/analytics";
+import { useAuthenticationStore } from "ducks/auth";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { isE2ETest } from "helpers/isEnv";
 import useDebounce from "hooks/useDebounce";
@@ -15,6 +17,7 @@ import {
 } from "react-native-permissions";
 import { analytics } from "services/analytics";
 import { initAnalytics } from "services/analytics/core";
+import { reconcileAnalyticsUserId } from "services/analytics/reconcileUserId";
 
 interface UseAnalyticsPermissionsParams {
   previousState?: AppStateStatus | "none";
@@ -72,6 +75,7 @@ export const useAnalyticsPermissions = ({
 }: UseAnalyticsPermissionsParams = {}): UseAnalyticsPermissionsReturn => {
   const isAttRequested = useAnalyticsStore((state) => state.attRequested);
   const isEnabled = useAnalyticsStore((state) => state.isEnabled);
+  const authStatus = useAuthenticationStore((state) => state.authStatus);
 
   const [isPermissionLoading, setIsPermissionLoading] = useState(false);
   const [showPermissionModal, setShowPermissionModal] = useState(false);
@@ -333,6 +337,22 @@ export const useAnalyticsPermissions = ({
     checkTrackingPermission,
     syncTrackingPermission,
   ]);
+
+  // Reconcile the analytics/Sentry identity when the session unlocks. The
+  // initialize effect above runs once on mount, which on a cold start happens
+  // while the wallet is still locked — the seed-derived auth id is only
+  // derivable from an unlocked session. This host (RootNavigator) stays mounted
+  // across the lock→unlock transition, so nothing else re-runs identification.
+  // Once auth transitions to AUTHENTICATED the auth id becomes available;
+  // reconcile so existing users migrate from their random id to the stable auth
+  // id (and it reaches Sentry in-session). reconcileAnalyticsUserId is a no-op
+  // once already migrated and never throws into this fire-and-forget caller.
+  useEffect(() => {
+    if (authStatus === AUTH_STATUS.AUTHENTICATED) {
+      // Fire-and-forget: reconcileAnalyticsUserId never throws into callers.
+      reconcileAnalyticsUserId();
+    }
+  }, [authStatus]);
 
   return {
     isTrackingEnabled: isEnabled,

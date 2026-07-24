@@ -92,6 +92,7 @@ jest.mock("@react-navigation/native", () => {
       replace: jest.fn(),
       goBack: jest.fn(),
     }),
+    useIsFocused: jest.fn().mockReturnValue(true),
     createNavigationContainerRef,
   };
 });
