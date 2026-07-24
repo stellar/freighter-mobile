@@ -1,5 +1,5 @@
 diff --git a/node_modules/react-native-webview/android/src/main/java/com/reactnativecommunity/webview/RNCWebChromeClient.java b/node_modules/react-native-webview/android/src/main/java/com/reactnativecommunity/webview/RNCWebChromeClient.java
-index 07f73fd0..9719b3a8 100644
+index 07f73fd0..b11c5d69 100644
 --- a/node_modules/react-native-webview/android/src/main/java/com/reactnativecommunity/webview/RNCWebChromeClient.java
 +++ b/node_modules/react-native-webview/android/src/main/java/com/reactnativecommunity/webview/RNCWebChromeClient.java
 @@ -3,6 +3,8 @@ package com.reactnativecommunity.webview;
@@ -15,26 +15,36 @@ index 07f73fd0..9719b3a8 100644
  
  import java.util.ArrayList;
  import java.util.Collections;
-+import java.util.HashMap;
++import java.util.HashSet;
  import java.util.List;
-+import java.util.Map;
++import java.util.Set;
  
  public class RNCWebChromeClient extends WebChromeClient implements LifecycleEventListener {
      protected static final FrameLayout.LayoutParams FULLSCREEN_LAYOUT_PARAMS = new FrameLayout.LayoutParams(
-@@ -66,6 +70,12 @@ public class RNCWebChromeClient extends WebChromeClient implements LifecycleEven
+@@ -66,6 +70,22 @@ public class RNCWebChromeClient extends WebChromeClient implements LifecycleEven
      // Webview camera & audio permission already granted
      protected List<String> grantedPermissions;
  
-+    // Per-origin, per-session consent memory for camera/microphone access, so a
-+    // web origin's request is confirmed by the user once rather than inheriting
-+    // the app's OS-level camera permission. Keyed by "origin|sorted-resources";
-+    // static so the decision is shared across WebView instances for the session.
-+    protected static final Map<String, Boolean> sMediaCaptureConsent = new HashMap<>();
++    // Camera/microphone grants the user has explicitly approved, so a repeat
++    // request from the same origin isn't re-prompted within the session. Denials
++    // are intentionally NOT stored: a deny simply re-prompts next time (fail-safe),
++    // which avoids an unrecoverable "blocked forever" state with no way to undo.
++    // Cleared on logout / data wipe via clearMediaCaptureConsent(). Keyed by
++    // "origin|sorted-resources".
++    protected static final Set<String> sMediaCaptureAllowed =
++            Collections.synchronizedSet(new HashSet<String>());
++
++    // Invoked from the app's logout / data-wipe path (via a native module) so
++    // camera/microphone consent doesn't outlive the session or leak to another
++    // account signed in on the same device.
++    public static void clearMediaCaptureConsent() {
++        sMediaCaptureAllowed.clear();
++    }
 +
      // Webview geolocation permission callback
      protected GeolocationPermissions.Callback geolocationPermissionCallback;
      // Webview geolocation permission origin callback
-@@ -144,6 +154,102 @@ public class RNCWebChromeClient extends WebChromeClient implements LifecycleEven
+@@ -144,6 +164,98 @@ public class RNCWebChromeClient extends WebChromeClient implements LifecycleEven
  
      @Override
      public void onPermissionRequest(final PermissionRequest request) {
@@ -63,13 +73,8 @@ index 07f73fd0..9719b3a8 100644
 +        final String consentKey =
 +                (request.getOrigin() != null ? request.getOrigin().toString() : "")
 +                        + "|" + android.text.TextUtils.join(",", sortedResources);
-+        final Boolean remembered = sMediaCaptureConsent.get(consentKey);
-+        if (remembered != null) {
-+            if (remembered) {
-+                grantPermissionRequest(request);
-+            } else {
-+                request.deny();
-+            }
++        if (sMediaCaptureAllowed.contains(consentKey)) {
++            grantPermissionRequest(request);
 +            return;
 +        }
 +
@@ -109,14 +114,15 @@ index 07f73fd0..9719b3a8 100644
 +                        .setPositiveButton("Allow", new DialogInterface.OnClickListener() {
 +                            @Override
 +                            public void onClick(DialogInterface dialog, int which) {
-+                                sMediaCaptureConsent.put(consentKey, Boolean.TRUE);
++                                sMediaCaptureAllowed.add(consentKey);
 +                                grantPermissionRequest(request);
 +                            }
 +                        })
 +                        .setNegativeButton("Don't allow", new DialogInterface.OnClickListener() {
 +                            @Override
 +                            public void onClick(DialogInterface dialog, int which) {
-+                                sMediaCaptureConsent.put(consentKey, Boolean.FALSE);
++                                // Deny only this request; do not remember it, so the
++                                // user can be re-prompted rather than locked out.
 +                                request.deny();
 +                            }
 +                        })
