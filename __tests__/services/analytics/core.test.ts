@@ -3,20 +3,24 @@
 //
 // Shared mock header for the analytics core suite. Tasks M2–M7 extend this
 // file, so the conventions below must stay:
-//   • The module under test is loaded via `jest.requireActual("./core")`, NOT
-//     an `import ... from "services/analytics/core"`. Two repo-wide mechanisms
+//   • The module under test is loaded via
+//     `jest.requireActual("../../../src/services/analytics/core")`, NOT an
+//     `import ... from "services/analytics/core"`. Two repo-wide mechanisms
 //     otherwise hand back a mock instead of the real module: (1) the Jest
 //     `^services/(.*)$` moduleNameMapper redirects bare `services/*` imports to
 //     `__mocks__/` stubs, and (2) jest.setup.js globally
 //     `jest.mock("services/analytics/core", ...)`. `requireActual` with a
-//     relative specifier bypasses both. It is a call expression (not an import
+//     relative specifier bypasses both (the mapper only rewrites bare
+//     `services/*` specifiers). It is a call expression (not an import
 //     declaration), so it also satisfies the repo's no-relative-import lint
-//     rule, which a literal `import "./core"` would violate.
+//     rule that a literal relative `import` would violate. The extra `../`
+//     hops are because this suite now lives under `__tests__/` (moved from
+//     `src/services/analytics/`), while the real module stays in `src/`.
 //   • `@amplitude/analytics-react-native` is mocked with an explicit factory,
 //     not a bare auto-mock. Auto-mocking loads the real RN SDK to introspect
 //     it, which crashes in the Jest env on native async-storage
 //     (`PlatformLocalStorage`). The factory stubs only what core.ts touches.
-import { AnalyticsEvent } from "config/analyticsConfig";
+import { AnalyticsEvent, buildScreenViewedProps } from "config/analyticsConfig";
 import { useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
 
@@ -82,7 +86,7 @@ jest.mock("ducks/balances", () => ({
   },
 }));
 
-// Load the REAL core module (see header for why requireActual + "./core").
+// Load the REAL core module (see header for why requireActual + relative path).
 const {
   getAccountIdHash,
   getSurface,
@@ -90,7 +94,10 @@ const {
   deriveIdentifyTraits,
   initAnalytics,
   trackAppOpened,
-} = jest.requireActual<typeof import("services/analytics/core")>("./core");
+  track,
+} = jest.requireActual<typeof import("services/analytics/core")>(
+  "../../../src/services/analytics/core",
+);
 
 describe("getAccountIdHash", () => {
   const PK = "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF";
@@ -297,6 +304,170 @@ describe("trackAppOpened (one-time connectivity snapshot)", () => {
   });
 });
 
+describe("screen.viewed emission (hard cutover)", () => {
+  // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
+  const amplitudeMock = require("@amplitude/analytics-react-native");
+
+  beforeEach(() => {
+    initAnalytics();
+    (amplitudeMock.track as jest.Mock).mockClear();
+  });
+
+  it("emits the single canonical event with screen_name, flow, and surface", () => {
+    track(
+      AnalyticsEvent.SCREEN_VIEWED,
+      buildScreenViewedProps(AnalyticsEvent.VIEW_SEND_AMOUNT),
+    );
+
+    expect(amplitudeMock.track).toHaveBeenCalledTimes(1);
+    expect(amplitudeMock.track).toHaveBeenCalledWith(
+      "screen.viewed",
+      expect.objectContaining({
+        screen_name: "send_payment_amount",
+        flow: "send",
+        // surface comes from the Slice-A common context (getSurface()).
+        surface: "mobile_ios",
+        schema_version: "2",
+      }),
+    );
+  });
+
+  it("carries a step for completion/sub-step screens", () => {
+    track(
+      AnalyticsEvent.SCREEN_VIEWED,
+      buildScreenViewedProps(AnalyticsEvent.VIEW_SEND_PROCESSING),
+    );
+
+    expect(amplitudeMock.track).toHaveBeenCalledWith(
+      "screen.viewed",
+      expect.objectContaining({
+        screen_name: "send_payment_processing",
+        flow: "send",
+        step: "processing",
+      }),
+    );
+  });
+
+  it("never emits a legacy 'loaded screen: X' event for ANY screen in the catalog", () => {
+    // Drive every VIEW_* screen through the navigation retargeting path and
+    // assert the emitted event name is always the canonical one.
+    Object.entries(AnalyticsEvent)
+      .filter(([key]) => key.startsWith("VIEW_"))
+      .forEach(([, legacy]) => {
+        track(AnalyticsEvent.SCREEN_VIEWED, buildScreenViewedProps(legacy));
+      });
+
+    const emittedEventNames = (amplitudeMock.track as jest.Mock).mock.calls.map(
+      (call) => call[0] as string,
+    );
+
+    expect(emittedEventNames.length).toBeGreaterThan(0);
+    emittedEventNames.forEach((name) => {
+      expect(name).toBe(AnalyticsEvent.SCREEN_VIEWED);
+      expect(name.startsWith("loaded screen:")).toBe(false);
+    });
+  });
+});
+
+describe("screen.viewed throttling (D1: cross-screen collapse regression)", () => {
+  // The rest of the suite disables the throttle for determinism
+  // (THROTTLE_DUPLICATE_EVENTS: false). These tests instead exercise the
+  // PRODUCTION throttle path, because that is where a burst of navigations
+  // (fast tap-through, or synchronous programmatic nav like popToTop() +
+  // navigate()) could silently drop screen views: every screen shares the
+  // single "screen.viewed" event name, so a name-keyed throttle would collapse
+  // distinct screens into one. `core.ts` reads THROTTLE_DUPLICATE_EVENTS off
+  // the (mutable) mocked ANALYTICS_CONFIG at call time, so we flip it on the
+  // shared reference here and restore it afterwards.
+  const THROTTLE_DELAY_MS = 500; // must match the TIMING constants mock
+
+  // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
+  const constantsMock = require("services/analytics/constants");
+  // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
+  const amplitudeMock = require("@amplitude/analytics-react-native");
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    constantsMock.ANALYTICS_CONFIG.THROTTLE_DUPLICATE_EVENTS = true;
+    initAnalytics();
+    (amplitudeMock.track as jest.Mock).mockClear();
+  });
+  afterEach(() => {
+    jest.runOnlyPendingTimers();
+    jest.useRealTimers();
+    constantsMock.ANALYTICS_CONFIG.THROTTLE_DUPLICATE_EVENTS = false; // restore
+  });
+
+  it("emits every distinct screen in a rapid navigation burst", () => {
+    // Three distinct screens tracked within one THROTTLE_DELAY_MS window.
+    track(AnalyticsEvent.SCREEN_VIEWED, { screen_name: "send_payment_to" });
+    track(AnalyticsEvent.SCREEN_VIEWED, { screen_name: "send_payment_amount" });
+    track(AnalyticsEvent.SCREEN_VIEWED, {
+      screen_name: "send_payment_confirm",
+    });
+
+    // Proves the throttle is genuinely engaged: with leading:false nothing has
+    // dispatched yet (a disabled throttle would have fired 3 immediate calls).
+    expect(amplitudeMock.track).toHaveBeenCalledTimes(0);
+
+    jest.advanceTimersByTime(THROTTLE_DELAY_MS + 1);
+
+    // Before the screen-aware throttle key this collapsed to a single trailing
+    // emit carrying only "send_payment_confirm".
+    expect(amplitudeMock.track).toHaveBeenCalledTimes(3);
+    const names = (amplitudeMock.track as jest.Mock).mock.calls.map(
+      (call) => (call[1] as { screen_name: string }).screen_name,
+    );
+    // Order is preserved (trailing timers fire in scheduling order), so the
+    // funnel stays intact.
+    expect(names).toEqual([
+      "send_payment_to",
+      "send_payment_amount",
+      "send_payment_confirm",
+    ]);
+  });
+
+  it("still dedups rapid re-emits of the SAME screen (throttle intent preserved)", () => {
+    track(AnalyticsEvent.SCREEN_VIEWED, { screen_name: "account" });
+    track(AnalyticsEvent.SCREEN_VIEWED, { screen_name: "account" });
+
+    jest.advanceTimersByTime(THROTTLE_DELAY_MS + 1);
+
+    expect(amplitudeMock.track).toHaveBeenCalledTimes(1);
+    expect(amplitudeMock.track).toHaveBeenCalledWith(
+      "screen.viewed",
+      expect.objectContaining({ screen_name: "account" }),
+    );
+  });
+});
+
+describe("screen-view bypass guard (D7)", () => {
+  // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
+  const amplitudeMock = require("@amplitude/analytics-react-native");
+
+  beforeEach(() => {
+    initAnalytics();
+    (amplitudeMock.track as jest.Mock).mockClear();
+  });
+
+  it("drops a catalogued screen slug passed directly to track (never leaks a bare slug as event name)", () => {
+    // Simulate a future call site bypassing the navigation/BottomSheet choke
+    // points by passing a VIEW_* screen member straight to track(). Its value
+    // ("send_payment_amount") is a SCREEN_CATALOG key, so the guard must drop it
+    // rather than emit it as an Amplitude event name.
+    track(AnalyticsEvent.VIEW_SEND_AMOUNT);
+    expect(amplitudeMock.track).not.toHaveBeenCalled();
+  });
+
+  it("still emits the canonical SCREEN_VIEWED event and non-screen action events", () => {
+    // The choke-point path (event = SCREEN_VIEWED, slug in props) is allowed...
+    track(AnalyticsEvent.SCREEN_VIEWED, { screen_name: "send_payment_amount" });
+    // ...as are action-style VIEW_* members that are NOT catalogued screens.
+    track(AnalyticsEvent.VIEW_PUBLIC_KEY_CLICKED_STELLAR_EXPERT);
+    expect(amplitudeMock.track).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe("syncIdentifyTraits (consent gating)", () => {
   it("does not cache or send Identify while opted out; sends once opted in with the same traits", () => {
     // syncIdentifyTraits guards on module-level `hasInitialised`/fingerprint
@@ -313,8 +484,9 @@ describe("syncIdentifyTraits (consent gating)", () => {
     let isolatedIdentify: jest.Mock;
 
     jest.isolateModules(() => {
-      mod =
-        jest.requireActual<typeof import("services/analytics/core")>("./core");
+      mod = jest.requireActual<typeof import("services/analytics/core")>(
+        "../../../src/services/analytics/core",
+      );
       // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
       isolatedAnalyticsStore = require("ducks/analytics").useAnalyticsStore;
       // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
@@ -349,8 +521,9 @@ describe("syncIdentifyTraits (consent gating)", () => {
     let isolatedIdentify: jest.Mock;
 
     jest.isolateModules(() => {
-      mod =
-        jest.requireActual<typeof import("services/analytics/core")>("./core");
+      mod = jest.requireActual<typeof import("services/analytics/core")>(
+        "../../../src/services/analytics/core",
+      );
       // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
       isolatedAnalyticsStore = require("ducks/analytics").useAnalyticsStore;
       // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
@@ -383,8 +556,9 @@ describe("syncIdentifyTraits (consent gating)", () => {
     let isolatedIdentify: jest.Mock;
 
     jest.isolateModules(() => {
-      mod =
-        jest.requireActual<typeof import("services/analytics/core")>("./core");
+      mod = jest.requireActual<typeof import("services/analytics/core")>(
+        "../../../src/services/analytics/core",
+      );
       // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
       isolatedAnalyticsStore = require("ducks/analytics").useAnalyticsStore;
       // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
@@ -437,8 +611,9 @@ describe("syncIdentifyTraits (consent gating)", () => {
     let identify: jest.Mock;
 
     jest.isolateModules(() => {
-      mod =
-        jest.requireActual<typeof import("services/analytics/core")>("./core");
+      mod = jest.requireActual<typeof import("services/analytics/core")>(
+        "../../../src/services/analytics/core",
+      );
       // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
       store = require("ducks/analytics").useAnalyticsStore;
       // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
@@ -485,8 +660,9 @@ describe("syncIdentifyTraits (consent gating)", () => {
     let identify: jest.Mock;
 
     jest.isolateModules(() => {
-      mod =
-        jest.requireActual<typeof import("services/analytics/core")>("./core");
+      mod = jest.requireActual<typeof import("services/analytics/core")>(
+        "../../../src/services/analytics/core",
+      );
       // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
       store = require("ducks/analytics").useAnalyticsStore;
       // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
@@ -519,5 +695,105 @@ describe("syncIdentifyTraits (consent gating)", () => {
     identify!.mockClear();
     mod!.syncIdentifyTraits(accounts);
     expect(identify!).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("domain event catalog (#2883)", () => {
+  // eslint-disable-next-line global-require, @typescript-eslint/no-var-requires
+  const amplitudeMock = require("@amplitude/analytics-react-native");
+
+  beforeEach(() => {
+    initAnalytics();
+    (amplitudeMock.track as jest.Mock).mockClear();
+  });
+
+  it("emits the renamed domain wire strings verbatim, merged with common context", () => {
+    track(AnalyticsEvent.SEND_PAYMENT_SUCCESS, { payment_type: "payment" });
+
+    expect(amplitudeMock.track).toHaveBeenCalledWith(
+      "payment.completed",
+      expect.objectContaining({
+        payment_type: "payment",
+        // schema_version / surface / network come from buildCommonContext and
+        // must not be hand-added at call sites.
+        schema_version: "2",
+        surface: "mobile_ios",
+      }),
+    );
+  });
+
+  it("carries the scan_target + result discriminators on the consolidated blockaid scan event", () => {
+    track(AnalyticsEvent.BLOCKAID_SCAN_COMPLETED, {
+      scan_target: "asset",
+      result: "safe",
+    });
+
+    expect(amplitudeMock.track).toHaveBeenCalledWith(
+      "blockaid.scan_completed",
+      expect.objectContaining({ scan_target: "asset", result: "safe" }),
+    );
+  });
+
+  it("emits the added blockaid.scan_failed event with scan_target + reason_code", () => {
+    track(AnalyticsEvent.BLOCKAID_SCAN_FAILED, {
+      scan_target: "domain",
+      reason_code: "boom",
+    });
+
+    expect(amplitudeMock.track).toHaveBeenCalledWith(
+      "blockaid.scan_failed",
+      expect.objectContaining({ scan_target: "domain", reason_code: "boom" }),
+    );
+  });
+
+  it("consolidates the swap pickers into swap.picker_opened discriminated by side", () => {
+    track(AnalyticsEvent.SWAP_PICKER_OPENED, { side: "from", source: "cta" });
+    track(AnalyticsEvent.SWAP_PICKER_OPENED, {
+      side: "to",
+      source: "dropdown",
+    });
+
+    expect(amplitudeMock.track).toHaveBeenNthCalledWith(
+      1,
+      "swap.picker_opened",
+      expect.objectContaining({ side: "from", source: "cta" }),
+    );
+    expect(amplitudeMock.track).toHaveBeenNthCalledWith(
+      2,
+      "swap.picker_opened",
+      expect.objectContaining({ side: "to", source: "dropdown" }),
+    );
+  });
+
+  it("consolidates the add-token prompt responses into asset_add.responded by decision", () => {
+    track(AnalyticsEvent.ASSET_ADD_RESPONDED, { decision: "reject" });
+
+    expect(amplitudeMock.track).toHaveBeenCalledWith(
+      "asset_add.responded",
+      expect.objectContaining({ decision: "reject" }),
+    );
+  });
+
+  it("consolidates the store-open events into app_update.store_opened by source", () => {
+    track(AnalyticsEvent.APP_UPDATE_STORE_OPENED, { source: "banner" });
+
+    expect(amplitudeMock.track).toHaveBeenCalledWith(
+      "app_update.store_opened",
+      expect.objectContaining({ source: "banner" }),
+    );
+  });
+
+  it("keeps every non-screen domain event on the domain.action_past grammar", () => {
+    // The property-model foundation owns these three; everything else must be
+    // a single-dot, snake_case `domain.action_past` string.
+    const FOUNDATION_VALUES = new Set([AnalyticsEvent.APP_OPENED]);
+    const GRAMMAR = /^[a-z0-9]+(?:_[a-z0-9]+)*\.[a-z0-9]+(?:_[a-z0-9]+)*$/;
+
+    Object.entries(AnalyticsEvent)
+      .filter(([key]) => key !== "SCREEN_VIEWED" && !key.startsWith("VIEW_"))
+      .filter(([, value]) => !FOUNDATION_VALUES.has(value))
+      .forEach(([, value]) => {
+        expect(value).toMatch(GRAMMAR);
+      });
   });
 });

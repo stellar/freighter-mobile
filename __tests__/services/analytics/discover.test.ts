@@ -67,10 +67,11 @@ describe("Discover Analytics", () => {
       expect(track).toHaveBeenCalledWith(
         AnalyticsEvent.DISCOVER_PROTOCOL_OPENED,
         {
+          protocol_id: "StellarX",
           url: "https://stellarx.com/",
-          protocolName: "StellarX",
+          protocol_name: "StellarX",
           source: "trending_carousel",
-          isKnownProtocol: true,
+          is_known_protocol: true,
         },
       );
     });
@@ -87,10 +88,11 @@ describe("Discover Analytics", () => {
       expect(track).toHaveBeenCalledWith(
         AnalyticsEvent.DISCOVER_PROTOCOL_OPENED,
         {
+          protocol_id: undefined,
           url: "https://unknown-site.com/",
-          protocolName: undefined,
+          protocol_name: undefined,
           source: "url_bar",
-          isKnownProtocol: false,
+          is_known_protocol: false,
         },
       );
     });
@@ -118,7 +120,8 @@ describe("Discover Analytics", () => {
       expect(track).toHaveBeenCalledWith(
         AnalyticsEvent.DISCOVER_PROTOCOL_DETAILS_VIEWED,
         {
-          protocolName: "StellarX",
+          protocol_id: "StellarX",
+          protocol_name: "StellarX",
           tags: ["DEX", "Swap"],
         },
       );
@@ -135,7 +138,8 @@ describe("Discover Analytics", () => {
       expect(track).toHaveBeenCalledWith(
         AnalyticsEvent.DISCOVER_PROTOCOL_OPENED_FROM_DETAILS,
         {
-          protocolName: "StellarX",
+          protocol_id: "StellarX",
+          protocol_name: "StellarX",
           url: "https://stellarx.com/",
         },
       );
