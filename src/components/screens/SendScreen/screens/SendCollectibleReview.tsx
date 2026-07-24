@@ -391,8 +391,13 @@ const SendCollectibleReviewScreen: React.FC<
             tokenId: selectedCollectible.tokenId,
           });
         } else {
+          const { error: submitError, submitErrorResultCodes } =
+            useTransactionBuilderStore.getState();
           analytics.trackTransactionError({
-            error: "Transaction failed",
+            error: submitError || "Transaction failed",
+            errorCode:
+              submitErrorResultCodes?.operations?.[0] ||
+              submitErrorResultCodes?.transaction,
             operationType: TransactionOperationType.SendCollectible,
           });
         }

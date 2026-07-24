@@ -96,8 +96,9 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
   const handleAddAnotherWallet = useCallback(() => {
     if (!navigation) return;
 
-    analytics.track(AnalyticsEvent.ACCOUNT_SCREEN_ADD_ACCOUNT);
-
+    // account.created (ACCOUNT_SCREEN_ADD_ACCOUNT) fires on the actual
+    // creation-success path (ducks/auth createAccount), not here at tap time —
+    // so it isn't counted when the add flow is abandoned.
     bottomSheetRef.current?.dismiss();
     navigation.navigate(ROOT_NAVIGATOR_ROUTES.MANAGE_WALLETS_STACK);
   }, [navigation, bottomSheetRef]);
@@ -106,10 +107,7 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
     async (newAccountName: string) => {
       if (!accountToRename || !activeAccount) return;
 
-      analytics.trackViewPublicKeyAccountRenamed(
-        accountToRename.name,
-        newAccountName,
-      );
+      analytics.trackViewPublicKeyAccountRenamed();
 
       await renameAccount({
         accountName: newAccountName,
