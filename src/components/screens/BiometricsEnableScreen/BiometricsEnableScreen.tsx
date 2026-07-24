@@ -9,7 +9,6 @@ import { OnboardLayout } from "components/layout/OnboardLayout";
 import { IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { AnalyticsEvent } from "config/analyticsConfig";
 import {
   BiometricsSource,
   FACE_ID_BIOMETRY_TYPES,
@@ -34,7 +33,6 @@ import React, { useCallback, useMemo, useState } from "react";
 import { View, Image } from "react-native";
 import { BIOMETRY_TYPE } from "react-native-keychain";
 import { Svg, Defs, Rect, LinearGradient, Stop } from "react-native-svg";
-import { analytics } from "services/analytics";
 import { dataStorage } from "services/storage/storageFactory";
 
 type BiometricsOnboardingScreenProps = NativeStackScreenProps<
@@ -210,7 +208,9 @@ export const BiometricsOnboardingScreen: React.FC<
         return Promise.resolve();
       });
 
-      analytics.track(AnalyticsEvent.ACCOUNT_CREATOR_FINISHED);
+      // onboarding.completed / account_recovery.completed now fire from the
+      // signUp / importWallet store actions respectively (single terminal
+      // point), so the biometrics screen no longer emits completion itself.
     } catch (error) {
       logger.error(
         "BiometricsOnboardingScreen",
@@ -264,11 +264,10 @@ export const BiometricsOnboardingScreen: React.FC<
 
       if (!success) {
         notifySetupFailed();
-        return;
       }
 
-      // Track analytics for successful completion
-      analytics.track(AnalyticsEvent.ACCOUNT_CREATOR_FINISHED);
+      // Completion (onboarding.completed / account_recovery.completed) is
+      // emitted from the signUp / importWallet store actions, not here.
     } catch (error) {
       logger.error(
         "BiometricsOnboardingScreen",

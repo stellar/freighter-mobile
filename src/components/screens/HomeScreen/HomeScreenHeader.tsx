@@ -42,7 +42,9 @@ const HomeScreenHeader = (
 
   const handleBannerPress = useCallback(() => {
     openAppStore().then(() => {
-      analytics.track(AnalyticsEvent.APP_UPDATE_OPEN_STORE_FROM_BANNER);
+      analytics.track(AnalyticsEvent.APP_UPDATE_STORE_OPENED, {
+        source: "banner",
+      });
     });
   }, [openAppStore]);
 

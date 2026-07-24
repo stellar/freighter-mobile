@@ -249,6 +249,8 @@ jest.mock("ducks/walletKit", () => ({
   StellarRpcMethods: {
     SIGN_XDR: "SIGN_XDR",
     SIGN_AND_SUBMIT_XDR: "SIGN_AND_SUBMIT_XDR",
+    SIGN_MESSAGE: "SIGN_MESSAGE",
+    SIGN_AUTH_ENTRY: "SIGN_AUTH_ENTRY",
   },
   StellarRpcChains: {
     PUBLIC: "PUBLIC",

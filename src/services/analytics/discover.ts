@@ -48,10 +48,11 @@ export const trackDiscoverProtocolOpened = (
 ): void => {
   const matchedProtocol = findMatchedProtocol({ protocols, searchUrl: url });
   track(AnalyticsEvent.DISCOVER_PROTOCOL_OPENED, {
+    protocol_id: matchedProtocol?.name,
     url: stripQueryParams(url),
-    protocolName: matchedProtocol?.name,
+    protocol_name: matchedProtocol?.name,
     source,
-    isKnownProtocol: !!matchedProtocol,
+    is_known_protocol: !!matchedProtocol,
   });
 };
 
@@ -60,7 +61,8 @@ export const trackDiscoverProtocolDetailsViewed = (
   tags: string[],
 ): void => {
   track(AnalyticsEvent.DISCOVER_PROTOCOL_DETAILS_VIEWED, {
-    protocolName,
+    protocol_id: protocolName,
+    protocol_name: protocolName,
     tags,
   });
 };
@@ -70,7 +72,8 @@ export const trackDiscoverProtocolOpenedFromDetails = (
   url: string,
 ): void => {
   track(AnalyticsEvent.DISCOVER_PROTOCOL_OPENED_FROM_DETAILS, {
-    protocolName,
+    protocol_id: protocolName,
+    protocol_name: protocolName,
     url: stripQueryParams(url),
   });
 };

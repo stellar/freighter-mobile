@@ -75,130 +75,189 @@ export enum AnalyticsEvent {
   VIEW_SEARCH_TOKEN = "search_asset",
   VIEW_ADD_TOKEN_MANUALLY = "add_asset_manually",
 
-  // User Action Events (Manual tracking)
-  CREATE_PASSWORD_SUCCESS = "account creator: create password: success",
-  CREATE_PASSWORD_FAIL = "account creator: create password: error",
-  VIEWED_RECOVERY_PHRASE = "account creator: viewed phrase",
-  CONFIRM_RECOVERY_PHRASE_SUCCESS = "account creator: confirm phrase: confirmed phrase",
-  CONFIRM_RECOVERY_PHRASE_FAIL = "account creator: confirm phrase: error confirming",
-  ACCOUNT_CREATOR_CONFIRM_MNEMONIC_BACK = "account creator: confirm phrase: back to phrase",
-  ACCOUNT_CREATOR_FINISHED = "account creator finished: closed account creator flow",
+  // ---------------------------------------------------------------------------
+  // Domain (action / outcome) events (#2883)
+  //
+  // Wire strings follow the shared cross-platform grammar `domain.action_past`
+  // (dot domain, snake_case verb phrase). Terminal outcomes are separate events
+  // (`completed` / `failed` / `rejected` / `blocked` / `submitted`). Several
+  // legacy events collapse into one event carrying a discriminator property
+  // (scan_target / decision / side / payment_type / safety / operation /
+  // reason_code) supplied at the call site. `schema_version`, `surface`,
+  // `network` and `account_id_hash` are added by buildCommonContext and must
+  // NOT be hand-added at call sites.
+  // ---------------------------------------------------------------------------
 
-  // Authentication Events
-  RE_AUTH_SUCCESS = "re-auth: success",
-  RE_AUTH_FAIL = "re-auth: error",
-  RECOVER_ACCOUNT_SUCCESS = "recover account: success",
-  RECOVER_ACCOUNT_FAIL = "recover account: error",
+  // Onboarding / account creation
+  CREATE_PASSWORD_SUCCESS = "onboarding.password_created",
+  // carries reason_code
+  CREATE_PASSWORD_FAIL = "onboarding.password_create_failed",
+  VIEWED_RECOVERY_PHRASE = "onboarding.recovery_phrase_viewed",
+  CONFIRM_RECOVERY_PHRASE_SUCCESS = "onboarding.recovery_phrase_confirmed",
+  // carries reason_code
+  CONFIRM_RECOVERY_PHRASE_FAIL = "onboarding.recovery_phrase_confirm_failed",
+  ACCOUNT_CREATOR_CONFIRM_MNEMONIC_BACK = "onboarding.recovery_phrase_back_clicked",
+  // Fires once from the signUp store action's success path (create-account
+  // terminal point) — NOT from the recovery-phrase / biometrics UI screens.
+  // The import/recover flow emits account_recovery.completed instead, matching
+  // the extension's create-vs-recover split. Completion lifecycle still differs
+  // from the extension (mobile: wallet-creation call; extension: mnemonic
+  // confirm), so the two series aren't naively comparable.
+  ACCOUNT_CREATOR_FINISHED = "onboarding.completed",
 
-  // Send Payment Events
-  SEND_PAYMENT_SUCCESS = "send payment: payment success",
-  SEND_PAYMENT_FAIL = "send payment: error",
-  SEND_PAYMENT_SET_MAX = "send payment: set max",
-  SEND_PAYMENT_TYPE_PAYMENT = "send payment: selected type payment",
-  SEND_PAYMENT_TYPE_PATH_PAYMENT = "send payment: selected type path payment",
-  SEND_PAYMENT_RECENT_ADDRESS = "send payment: recent address",
-  SWAP_SUCCESS = "swap: success",
-  SWAP_FAIL = "swap: error",
-  SWAP_TO_PICKER_OPENED = "swap: to-picker opened",
-  SWAP_FROM_PICKER_OPENED = "swap: from-picker opened",
-  SWAP_DIRECTION_TOGGLED = "swap: direction toggled",
-  SWAP_TRENDING_TOKEN_TAPPED = "swap: trending token tapped",
-  SWAP_TRENDING_SWAP_TO_PRESSED = "swap: trending swap-to pressed",
-  SWAP_DESTINATION_SELECTED = "swap: destination selected",
-  SWAP_SOURCE_SELECTED = "swap: source selected",
-  SWAP_TRUSTLINE_ADDED = "swap: trustline added",
-  SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN = "swap: xlm reserve insufficient shown",
-  SWAP_QUOTE_EXPIRED = "swap: quote expired",
+  // Authentication / recovery
+  // NOTE: re-auth has no cross-platform mapping in #2883; the grammar is
+  // applied consistently here (terminal completed / failed) and flagged for
+  // review.
+  RE_AUTH_SUCCESS = "reauth.completed",
+  RE_AUTH_FAIL = "reauth.failed",
+  RECOVER_ACCOUNT_SUCCESS = "account_recovery.completed",
+  // carries reason_code
+  RECOVER_ACCOUNT_FAIL = "account_recovery.failed",
 
-  // Send Collectible Events
-  SEND_COLLECTIBLE_SUCCESS = "send collectible: success",
-  SEND_COLLECTIBLE_FAIL = "send collectible: error",
+  // Payments / send
+  // payment.completed carries payment_type (payment | path_payment). Path /
+  // routed payment outcomes are reported as swaps (see the analytics helper),
+  // so a path-payment success emits swap.completed and a failure swap.failed.
+  SEND_PAYMENT_SUCCESS = "payment.completed",
+  // carries reason_code (direct payments only; path outcomes -> swap.failed)
+  SEND_PAYMENT_FAIL = "payment.failed",
+  SEND_PAYMENT_SET_MAX = "payment.max_amount_selected",
+  // Reserved: not currently emitted on either platform (the legacy
+  // type-selection events were retired without a replacement call site). Would
+  // carry payment_type (payment | path_payment) if wired.
+  PAYMENT_TYPE_SELECTED = "payment.type_selected",
+  SEND_PAYMENT_RECENT_ADDRESS = "payment.recipient_recent_selected",
+  // carries reason_code
+  SIMULATE_TOKEN_PAYMENT_ERROR = "payment.simulation_failed",
 
-  // Copy Events
-  COPY_PUBLIC_KEY = "viewPublicKey: copied public key",
-  COPY_BACKUP_PHRASE = "backup phrase: copied phrase",
-  DOWNLOAD_BACKUP_PHRASE = "backup phrase: downloaded phrase",
+  // Swap
+  SWAP_SUCCESS = "swap.completed",
+  // carries reason_code
+  SWAP_FAIL = "swap.failed",
+  // Consolidates the to-/from-picker opened events; carries side (from | to).
+  SWAP_PICKER_OPENED = "swap.picker_opened",
+  SWAP_DIRECTION_TOGGLED = "swap.direction_toggled",
+  SWAP_TRENDING_TOKEN_TAPPED = "swap.trending_token_tapped",
+  SWAP_TRENDING_SWAP_TO_PRESSED = "swap.trending_swap_to_pressed",
+  SWAP_DESTINATION_SELECTED = "swap.destination_selected",
+  SWAP_SOURCE_SELECTED = "swap.source_selected",
+  SWAP_TRUSTLINE_ADDED = "swap.trustline_added",
+  SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN = "swap.xlm_reserve_insufficient_shown",
+  SWAP_QUOTE_EXPIRED = "swap.quote_expired",
 
-  // Transaction & Simulation Events
-  SIMULATE_TOKEN_PAYMENT_ERROR = "failed to simulate token payment",
-  SIGN_TRANSACTION_SUCCESS = "sign transaction: confirmed",
-  SIGN_TRANSACTION_FAIL = "sign transaction: rejected",
-  SIGN_TRANSACTION_MEMO_REQUIRED_FAIL = "sign transaction: memo required error",
-  SUBMIT_TRANSACTION_SUCCESS = "submit transaction: confirmed",
-  SIGN_MESSAGE_SUCCESS = "sign message: confirmed",
-  SIGN_MESSAGE_FAIL = "sign message: error",
-  SIGN_AUTH_ENTRY_SUCCESS = "sign auth entry: confirmed",
-  SIGN_AUTH_ENTRY_FAIL = "sign auth entry: error",
+  // Send collectible
+  SEND_COLLECTIBLE_SUCCESS = "collectible_send.completed",
+  // carries reason_code
+  SEND_COLLECTIBLE_FAIL = "collectible_send.failed",
 
-  // Token Management Events
-  ADD_TOKEN_SUCCESS = "manage asset: add asset",
-  ADD_UNSAFE_TOKEN_SUCCESS = "manage asset: add unsafe asset",
-  REMOVE_TOKEN_SUCCESS = "manage asset: remove asset",
-  TOKEN_MANAGEMENT_FAIL = "manage asset: error",
-  ADD_TOKEN_CONFIRMED = "add token: confirmed",
-  ADD_TOKEN_REJECTED = "add token: rejected",
-  REMOVE_TOKEN_CONFIRMED = "remove token: confirmed",
-  REMOVE_TOKEN_REJECTED = "remove token: rejected",
-  MANAGE_TOKEN_LISTS_MODIFY = "manage asset list: modify asset list",
+  // Signing / dApp
+  GRANT_DAPP_ACCESS_SUCCESS = "dapp_access.granted",
+  // User declined the connection prompt; carries origin only.
+  GRANT_DAPP_ACCESS_FAIL = "dapp_access.rejected",
+  // System auto-declined a connection (not a user decision); carries
+  // origin + reason_code (e.g. not_authenticated).
+  GRANT_DAPP_ACCESS_BLOCKED = "dapp_access.blocked",
+  SIGN_TRANSACTION_SUCCESS = "signing.transaction_approved",
+  SIGN_TRANSACTION_FAIL = "signing.transaction_rejected",
+  // signing.transaction_blocked (memo_required): NOT emitted on mobile — the
+  // memo-required state is a passive UI gate (disabled confirm button), not a
+  // reachable block/refuse branch. Extension emits it; kept for a shared catalog.
+  SIGN_TRANSACTION_MEMO_REQUIRED_FAIL = "signing.transaction_blocked",
+  SUBMIT_TRANSACTION_SUCCESS = "transaction.submitted",
+  SIGN_MESSAGE_SUCCESS = "signing.message_approved",
+  // Runtime signing failure (carries reason_code).
+  SIGN_MESSAGE_FAIL = "signing.message_failed",
+  // User-reject case; emitted from WalletKitProvider's reject path (distinct
+  // from the runtime SIGN_MESSAGE_FAIL).
+  SIGN_MESSAGE_REJECTED = "signing.message_rejected",
+  SIGN_AUTH_ENTRY_SUCCESS = "signing.auth_entry_approved",
+  // Runtime signing failure (carries reason_code).
+  SIGN_AUTH_ENTRY_FAIL = "signing.auth_entry_failed",
+  // Catalog member for the user-reject case; see SIGN_MESSAGE_REJECTED.
+  SIGN_AUTH_ENTRY_REJECTED = "signing.auth_entry_rejected",
 
-  // Trustline Error Events
-  TRUSTLINE_INSUFFICIENT_BALANCE_FAIL = "trustline removal error: asset has balance",
-  TRUSTLINE_HAS_LIABILITIES_FAIL = "trustline removal error: asset has buying liabilties",
-  TRUSTLINE_LOW_RESERVE_FAIL = "trustline removal error: asset has low reserve",
+  // Assets / trustlines
+  // asset.added carries asset_code + asset_issuer.
+  ADD_TOKEN_SUCCESS = "asset.added",
+  REMOVE_TOKEN_SUCCESS = "asset.removed",
+  // carries operation (add | remove) + reason_code
+  TOKEN_MANAGEMENT_FAIL = "asset.operation_failed",
+  // Consolidates the add-token confirmed / rejected prompt responses; carries
+  // decision (confirm | reject) + asset_code + source (manage_assets on mobile).
+  ASSET_ADD_RESPONDED = "asset_add.responded",
+  // Consolidates the remove-token confirmed / rejected prompt responses;
+  // carries decision (confirm | reject) + asset_code + source (manage_assets).
+  ASSET_REMOVE_RESPONDED = "asset_remove.responded",
+  MANAGE_TOKEN_LISTS_MODIFY = "asset_list.modified",
+  // Consolidates the three trustline-removal failure reasons; carries
+  // reason_code (has_balance | buying_liabilities | low_reserve).
+  TRUSTLINE_REMOVE_FAILED = "trustline_remove.failed",
 
-  // Account Management Events
-  ACCOUNT_SCREEN_ADD_ACCOUNT = "account screen: created new account",
-  ACCOUNT_SCREEN_COPY_PUBLIC_KEY = "account screen: copied public key",
-  ACCOUNT_SCREEN_IMPORT_ACCOUNT = "account screen: imported new account",
-  ACCOUNT_SCREEN_IMPORT_ACCOUNT_FAIL = "account screen: imported new account: error",
-  VIEW_PUBLIC_KEY_ACCOUNT_RENAMED = "viewPublicKey: renamed account",
-  VIEW_PUBLIC_KEY_CLICKED_STELLAR_EXPERT = "viewPublicKey: clicked StellarExpert",
+  // Account management
+  ACCOUNT_SCREEN_ADD_ACCOUNT = "account.created",
+  ACCOUNT_SCREEN_IMPORT_ACCOUNT = "account.imported",
+  // carries reason_code
+  ACCOUNT_SCREEN_IMPORT_ACCOUNT_FAIL = "account.import_failed",
+  VIEW_PUBLIC_KEY_ACCOUNT_RENAMED = "account.renamed",
+  COPY_PUBLIC_KEY = "account.public_key_copied",
+  VIEW_PUBLIC_KEY_CLICKED_STELLAR_EXPERT = "account.stellar_expert_opened",
 
-  // WalletConnect/dApp Events
-  GRANT_DAPP_ACCESS_SUCCESS = "grant access: granted",
-  GRANT_DAPP_ACCESS_FAIL = "grant access: rejected",
+  // Recovery phrase
+  COPY_BACKUP_PHRASE = "recovery_phrase.copied",
+  DOWNLOAD_BACKUP_PHRASE = "recovery_phrase.downloaded",
 
-  // History Events
-  HISTORY_OPEN_FULL_HISTORY = "history: opened full history on external website",
-  HISTORY_OPEN_ITEM = "history: opened item on external website",
+  // History
+  // Extension-only: mobile's history is a full tab screen (covered by
+  // screen.viewed); there is no discrete "open full history" gesture to
+  // instrument. Kept for a shared catalog.
+  HISTORY_OPEN_FULL_HISTORY = "history.full_history_opened",
+  HISTORY_OPEN_ITEM = "history.item_opened",
 
+  // Canonical app-open event (property-model foundation, #2883).
   APP_OPENED = "event: App Opened",
 
-  // Mobile-Only Events
-  QR_SCAN_SUCCESS = "mobile: qr scan success",
-  QR_SCAN_ERROR = "mobile: qr scan error",
+  // Blockaid
+  // Consolidates the four scan events; carries scan_target
+  // (domain | transaction | asset | asset_bulk) + result. A scan failure emits
+  // BLOCKAID_SCAN_FAILED (scan_target + reason_code).
+  BLOCKAID_SCAN_COMPLETED = "blockaid.scan_completed",
+  BLOCKAID_SCAN_FAILED = "blockaid.scan_failed",
+  // Reserved: the extension emits this from its "report warning" affordance
+  // (reportAssetWarning / reportTransactionWarning); mobile has no such
+  // affordance yet. Kept in the catalog so the wire string isn't reinvented and
+  // drifts if mobile adds one — mirrors how one-sided events are reserved on
+  // both platforms (e.g. transaction.submitted, dapp_access.blocked).
+  BLOCKAID_WARNING_REPORTED = "blockaid.warning_reported",
 
-  // App Update Events
-  APP_UPDATE_OPEN_STORE_FROM_BANNER = "app update: opened app store from banner",
-  APP_UPDATE_OPEN_STORE_FROM_SCREEN = "app update: opened app store from screen",
-  APP_UPDATE_CONFIRMED_SKIP_ON_SCREEN = "app update: confirmed skip on screen",
+  // Onramp
+  COINBASE_ONRAMP_OPENED = "onramp.coinbase_opened",
 
-  // Blockaid Events
-  BLOCKAID_BULK_TOKEN_SCAN = "blockaid: bulk scanned tokens",
-  BLOCKAID_TOKEN_SCAN = "blockaid: scanned asset",
-  BLOCKAID_SITE_SCAN = "blockaid: scanned domain",
-  BLOCKAID_TRANSACTION_SCAN = "blockaid: scanned transaction",
+  // Discover
+  DISCOVER_PROTOCOL_OPENED = "discover.protocol_opened",
+  DISCOVER_PROTOCOL_DETAILS_VIEWED = "discover.protocol_details_viewed",
+  DISCOVER_PROTOCOL_OPENED_FROM_DETAILS = "discover.protocol_opened_from_details",
+  DISCOVER_TAB_CREATED = "discover.tab_created",
+  DISCOVER_TAB_CLOSED = "discover.tab_closed",
+  DISCOVER_ALL_TABS_CLOSED = "discover.all_tabs_closed",
+  DISCOVER_WELCOME_MODAL_VIEWED = "discover.welcome_modal_viewed",
 
-  // Onramp Events
-  COINBASE_ONRAMP_OPENED = "coinbase onramp: opened",
-
-  // Jailbreak Events
-  DEVICE_JAILBREAK_DETECTED = "device security: jailbreak detected",
-  DEVICE_JAILBREAK_FAILED = "device security: jailbreak detection failed",
-
-  // Discover Events
-  DISCOVER_PROTOCOL_OPENED = "discover: protocol opened",
-  DISCOVER_PROTOCOL_DETAILS_VIEWED = "discover: protocol details viewed",
-  DISCOVER_PROTOCOL_OPENED_FROM_DETAILS = "discover: protocol opened from details",
-  DISCOVER_TAB_CREATED = "discover: tab created",
-  DISCOVER_TAB_CLOSED = "discover: tab closed",
-  DISCOVER_ALL_TABS_CLOSED = "discover: all tabs closed",
-  DISCOVER_WELCOME_MODAL_VIEWED = "discover: welcome modal viewed",
+  // Platform-only events (retained; renamed to the shared grammar)
+  QR_SCAN_SUCCESS = "qr_scan.completed",
+  // carries reason_code
+  QR_SCAN_ERROR = "qr_scan.failed",
+  // Consolidates the banner / screen store-open events; carries
+  // source (banner | screen).
+  APP_UPDATE_STORE_OPENED = "app_update.store_opened",
+  APP_UPDATE_CONFIRMED_SKIP_ON_SCREEN = "app_update.skip_confirmed",
+  DEVICE_JAILBREAK_DETECTED = "device_security.jailbreak_detected",
+  // carries reason_code
+  DEVICE_JAILBREAK_FAILED = "device_security.jailbreak_detection_failed",
 }
 
 /**
- * Tags how the user reached the Swap source / destination picker, for the
- * SWAP_FROM_PICKER_OPENED + SWAP_TO_PICKER_OPENED analytics events.
+ * Tags how the user reached the Swap source / destination picker, carried as
+ * the `source` property on the SWAP_PICKER_OPENED analytics event.
  *
  * - CTA: the missing-side prompt button (e.g. "Select a token" / "Sell")
  *   on SwapAmountScreen fired the navigation.
