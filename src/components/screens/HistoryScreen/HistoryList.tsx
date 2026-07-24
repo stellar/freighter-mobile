@@ -130,6 +130,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
     () => (
       <TransactionDetailsFooter
         externalUrl={transactionDetails?.externalUrl ?? ""}
+        floating
       />
     ),
     [transactionDetails?.externalUrl],
@@ -204,6 +205,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
         handleCloseModal={() =>
           transactionDetailsBottomSheetModalRef.current?.dismiss()
         }
+        floating
         scrollable
         useInsetsBottomPadding={false}
         maxDynamicContentSize={windowHeight * 0.9}

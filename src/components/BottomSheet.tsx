@@ -10,7 +10,11 @@ import { BottomSheetViewProps } from "@gorhom/bottom-sheet/lib/typescript/compon
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
-import { DEFAULT_PADDING } from "config/constants";
+import {
+  BOTTOM_SHEET_FLOATING_CORNER_RADIUS,
+  BOTTOM_SHEET_FLOATING_MARGIN,
+  DEFAULT_PADDING,
+} from "config/constants";
 import { pxValue } from "helpers/dimensions";
 import useColors from "hooks/useColors";
 import { useKeyboardHeight } from "hooks/useKeyboardHeight";
@@ -87,6 +91,12 @@ export type BottomSheetProps = {
   analyticsProps?: AnalyticsProps;
   scrollViewFooterComponent?: () => React.ReactNode;
   scrollable?: boolean;
+  /**
+   * Render as a detached "floating" card: small transparent margins on the
+   * sides and bottom, all four corners rounded, and no drag handle. Opt-in;
+   * defaults to the classic bottom-attached sheet.
+   */
+  floating?: boolean;
 };
 
 const BottomSheet: React.FC<BottomSheetProps> = ({
@@ -109,6 +119,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
   analyticsProps,
   scrollViewFooterComponent = undefined,
   scrollable = false,
+  floating = false,
 }) => {
   if (__DEV__ && scrollable && snapPoints) {
     throw new Error(
@@ -224,6 +235,24 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
     [],
   );
 
+  // Floating cards drop the content background so the rounded (borderRadius)
+  // sheet background shows through the corners; the classic variant keeps its
+  // own background because its rounded top comes from the handle instead.
+  const contentClassName = floating
+    ? "pl-6 pr-6 pt-6 gap-6"
+    : "bg-background-primary pl-6 pr-6 pt-6 gap-6";
+
+  // Floating sheets are already lifted off the safe area by `bottomInset`, so
+  // the content must not add `insets.bottom` again (that would double the gap).
+  const contentPaddingBottom = (() => {
+    if (!useInsetsBottomPadding) {
+      return 0;
+    }
+    return floating
+      ? pxValue(DEFAULT_PADDING)
+      : insets.bottom + pxValue(DEFAULT_PADDING);
+  })();
+
   return (
     <>
       {/* Pre-measurement render — kept off-screen and out of the
@@ -263,10 +292,22 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
         enableOverDrag={false}
         snapPoints={snapPoints}
         topInset={scrollable ? insets.top : undefined}
+        detached={floating || undefined}
+        bottomInset={
+          floating ? insets.bottom + BOTTOM_SHEET_FLOATING_MARGIN : undefined
+        }
+        style={
+          floating
+            ? { marginHorizontal: BOTTOM_SHEET_FLOATING_MARGIN }
+            : undefined
+        }
         backdropComponent={renderBackdrop}
-        handleComponent={renderHandle}
+        handleComponent={floating ? null : renderHandle}
         backgroundStyle={{
           backgroundColor: themeColors.background.primary,
+          ...(floating
+            ? { borderRadius: BOTTOM_SHEET_FLOATING_CORNER_RADIUS }
+            : {}),
         }}
         {...bottomSheetModalProps}
         onChange={handleChange}
@@ -274,12 +315,10 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
         {scrollable ? (
           <View>
             <BottomSheetScrollView
-              className="bg-background-primary pl-6 pr-6 pt-6 gap-6"
+              className={contentClassName}
               showsVerticalScrollIndicator={false}
               style={{
-                paddingBottom: useInsetsBottomPadding
-                  ? insets.bottom + pxValue(DEFAULT_PADDING)
-                  : 0,
+                paddingBottom: contentPaddingBottom,
               }}
               {...bottomSheetViewProps}
             >
@@ -291,12 +330,25 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
             </BottomSheetScrollView>
             {scrollViewFooterComponent && (
               <View
+                testID="bottom-sheet-scroll-footer"
                 style={{
                   position: "absolute",
                   bottom:
                     keyboardHeight > 0 ? keyboardHeight - insets.bottom : 0,
                   left: 0,
                   right: 0,
+                  // On a floating card the footer sits over the rounded bottom
+                  // edge; round + clip it so an opaque footer background does
+                  // not square off the card's bottom corners.
+                  ...(floating
+                    ? {
+                        borderBottomLeftRadius:
+                          BOTTOM_SHEET_FLOATING_CORNER_RADIUS,
+                        borderBottomRightRadius:
+                          BOTTOM_SHEET_FLOATING_CORNER_RADIUS,
+                        overflow: "hidden" as const,
+                      }
+                    : {}),
                 }}
               >
                 {scrollViewFooterComponent()}
@@ -305,11 +357,9 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
           </View>
         ) : (
           <BottomSheetView
-            className="bg-background-primary pl-6 pr-6 pt-6 gap-6"
+            className={contentClassName}
             style={{
-              paddingBottom: useInsetsBottomPadding
-                ? insets.bottom + pxValue(DEFAULT_PADDING)
-                : 0,
+              paddingBottom: contentPaddingBottom,
             }}
             {...bottomSheetViewProps}
           >

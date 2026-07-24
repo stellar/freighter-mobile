@@ -1,11 +1,13 @@
 import {
   BOTTOM_SHEET_CONTENT_GAP,
   BOTTOM_SHEET_CONTENT_TOP_PADDING,
+  BOTTOM_SHEET_FLOATING_MARGIN,
   BOTTOM_SHEET_MAX_HEIGHT_RATIO,
 } from "config/constants";
 import { calculateScrollableMaxHeight } from "helpers/bottomSheet";
 import React, { useMemo, useState } from "react";
 import { View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface BottomSheetAdaptiveContainerProps {
   header?: React.ReactNode;
@@ -14,6 +16,13 @@ interface BottomSheetAdaptiveContainerProps {
   topPaddingPx?: number;
   bottomPaddingPx?: number;
   contentGapPx?: number;
+  /**
+   * Set when the host sheet uses the floating variant. A floating sheet is
+   * lifted off the bottom by its inset, so gorhom gives it a shorter container;
+   * this reserves that inset in the height budget so scroll content fits the
+   * card instead of overflowing its rounded bottom.
+   */
+  floating?: boolean;
 }
 
 /**
@@ -55,17 +64,38 @@ const BottomSheetAdaptiveContainer: React.FC<
   topPaddingPx = BOTTOM_SHEET_CONTENT_TOP_PADDING,
   bottomPaddingPx = 0,
   contentGapPx = BOTTOM_SHEET_CONTENT_GAP,
+  floating = false,
 }) => {
+  const insets = useSafeAreaInsets();
   const [headerHeight, setHeaderHeight] = useState(0);
+  // A floating sheet's gorhom container is shorter by its bottom inset
+  // (safe-area bottom + the floating margin); reserve that here so scroll
+  // content fits the card instead of overflowing its rounded bottom.
+  const reservedVerticalPx = floating
+    ? insets.bottom + BOTTOM_SHEET_FLOATING_MARGIN
+    : 0;
+  // The header carries a `contentGapPx` marginBottom that the base height calc
+  // omits. On a floating card that must fit exactly, fold it into the header
+  // height so the scroll area accounts for it. (Classic sheets tolerate the
+  // omission because gorhom clips their overflow.)
+  const effectiveHeaderHeightPx =
+    floating && header ? headerHeight + contentGapPx : headerHeight;
   const maxContentHeight = useMemo(
     () =>
       calculateScrollableMaxHeight({
-        headerHeightPx: headerHeight,
+        headerHeightPx: effectiveHeaderHeightPx,
         sheetMaxHeightRatio,
         topPaddingPx,
         bottomPaddingPx,
+        reservedVerticalPx,
       }),
-    [headerHeight, bottomPaddingPx, sheetMaxHeightRatio, topPaddingPx],
+    [
+      effectiveHeaderHeightPx,
+      bottomPaddingPx,
+      sheetMaxHeightRatio,
+      topPaddingPx,
+      reservedVerticalPx,
+    ],
   );
 
   return (

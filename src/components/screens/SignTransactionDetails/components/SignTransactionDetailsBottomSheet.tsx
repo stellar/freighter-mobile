@@ -14,11 +14,14 @@ import { View } from "react-native";
 interface SignTransactionDetailsBottomSheetProps {
   data: SignTransactionDetailsInterface;
   onDismiss: () => void;
+  /** Set when hosted in a floating BottomSheet so the scroll area fits the card. */
+  floating?: boolean;
 }
 
 const SignTransactionDetailsBottomSheet = ({
   data,
   onDismiss,
+  floating = false,
 }: SignTransactionDetailsBottomSheetProps) => {
   const { t } = useAppTranslation();
 
@@ -26,6 +29,7 @@ const SignTransactionDetailsBottomSheet = ({
     <View className="flex-1 gap-[16px] w-full pb-[64px]">
       {/* Header */}
       <BottomSheetAdaptiveContainer
+        floating={floating}
         header={
           <View className="w-full gap-[16px]">
             <View className="flex-row items-center justify-between">

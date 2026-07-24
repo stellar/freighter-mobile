@@ -239,6 +239,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
           handleCloseModal={() =>
             swapTransactionDetailsBottomSheetModalRef.current?.dismiss()
           }
+          floating
           enableDynamicSizing={false}
           useInsetsBottomPadding={false}
           enablePanDownToClose={false}
@@ -248,12 +249,14 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
             <SignTransactionDetailsBottomSheet
               data={transactionDetails}
               onDismiss={handleDismiss}
+              floating
             />
           }
         />
       )}
       <BottomSheet
         modalRef={trustlineInfoRef}
+        floating
         handleCloseModal={() => trustlineInfoRef.current?.dismiss()}
         customContent={
           <TrustlineInfoBottomSheet
