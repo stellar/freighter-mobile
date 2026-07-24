@@ -35,13 +35,24 @@ import { useRightHeaderMenu } from "hooks/useRightHeader";
 import { useTokenActions } from "hooks/useTokenActions";
 import useTokenDetails from "hooks/useTokenDetails";
 import React, { useCallback, useLayoutEffect, useMemo, useRef } from "react";
-import { View, Dimensions } from "react-native";
+import { View, Dimensions, Platform } from "react-native";
 import { analytics } from "services/analytics";
 import { SecurityContext, SecurityLevel } from "services/blockaid/constants";
 import {
   assessTokenSecurity,
   extractSecurityWarnings,
 } from "services/blockaid/helper";
+
+const headerMenuIcons = Platform.select({
+  ios: {
+    copyAddress: "doc.on.doc",
+    removeToken: "minus.circle",
+  },
+  android: {
+    copyAddress: "baseline_format_paint",
+    removeToken: "outline_circle",
+  },
+});
 
 type TokenDetailsScreenProps = NativeStackScreenProps<
   RootStackParamList,
@@ -130,6 +141,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
     () => [
       {
         title: t("manageTokenRightContent.copyAddress"),
+        systemIcon: headerMenuIcons!.copyAddress,
         onPress: () =>
           copyTokenAddress(
             tokenId,
@@ -138,6 +150,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
       },
       {
         title: t("common.remove"),
+        systemIcon: headerMenuIcons!.removeToken,
         destructive: true,
         onPress: () => removeTokenBottomSheetModalRef.current?.present(),
       },
