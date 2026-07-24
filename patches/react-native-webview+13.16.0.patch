@@ -1,5 +1,5 @@
 diff --git a/node_modules/react-native-webview/android/src/main/java/com/reactnativecommunity/webview/RNCWebChromeClient.java b/node_modules/react-native-webview/android/src/main/java/com/reactnativecommunity/webview/RNCWebChromeClient.java
-index 07f73fd0..133412d2 100644
+index 07f73fd0..9719b3a8 100644
 --- a/node_modules/react-native-webview/android/src/main/java/com/reactnativecommunity/webview/RNCWebChromeClient.java
 +++ b/node_modules/react-native-webview/android/src/main/java/com/reactnativecommunity/webview/RNCWebChromeClient.java
 @@ -3,6 +3,8 @@ package com.reactnativecommunity.webview;
@@ -27,14 +27,14 @@ index 07f73fd0..133412d2 100644
  
 +    // Per-origin, per-session consent memory for camera/microphone access, so a
 +    // web origin's request is confirmed by the user once rather than inheriting
-+    // the app's OS-level camera permission. Keyed by "origin|resources"; static so
-+    // the decision is shared across WebView instances for the session.
++    // the app's OS-level camera permission. Keyed by "origin|sorted-resources";
++    // static so the decision is shared across WebView instances for the session.
 +    protected static final Map<String, Boolean> sMediaCaptureConsent = new HashMap<>();
 +
      // Webview geolocation permission callback
      protected GeolocationPermissions.Callback geolocationPermissionCallback;
      // Webview geolocation permission origin callback
-@@ -144,6 +154,96 @@ public class RNCWebChromeClient extends WebChromeClient implements LifecycleEven
+@@ -144,6 +154,102 @@ public class RNCWebChromeClient extends WebChromeClient implements LifecycleEven
  
      @Override
      public void onPermissionRequest(final PermissionRequest request) {
@@ -56,9 +56,13 @@ index 07f73fd0..133412d2 100644
 +            return;
 +        }
 +
++        // Sort the requested resources so the key is stable regardless of the
++        // order the WebView lists them in (e.g. audio+video vs video+audio).
++        final String[] sortedResources = request.getResources().clone();
++        java.util.Arrays.sort(sortedResources);
 +        final String consentKey =
 +                (request.getOrigin() != null ? request.getOrigin().toString() : "")
-+                        + "|" + android.text.TextUtils.join(",", request.getResources());
++                        + "|" + android.text.TextUtils.join(",", sortedResources);
 +        final Boolean remembered = sMediaCaptureConsent.get(consentKey);
 +        if (remembered != null) {
 +            if (remembered) {
@@ -88,9 +92,11 @@ index 07f73fd0..133412d2 100644
 +        final String what = (wantsCamera && wantsMic)
 +                ? "camera and microphone"
 +                : (wantsCamera ? "camera" : "microphone");
-+        final String host =
-+                (request.getOrigin() != null && request.getOrigin().getHost() != null)
-+                        ? request.getOrigin().getHost()
++        // Show the full serialized origin (scheme + host + port), not just the
++        // host, so distinct origins are distinguishable in the prompt.
++        final String originLabel =
++                (request.getOrigin() != null && request.getOrigin().toString().length() > 0)
++                        ? request.getOrigin().toString()
 +                        : "This site";
 +
 +        activity.runOnUiThread(new Runnable() {
@@ -98,7 +104,7 @@ index 07f73fd0..133412d2 100644
 +            public void run() {
 +                new AlertDialog.Builder(activity)
 +                        .setTitle("Allow " + what + " access?")
-+                        .setMessage("\"" + host + "\" is requesting access to your "
++                        .setMessage("\"" + originLabel + "\" is requesting access to your "
 +                                + what + ".")
 +                        .setPositiveButton("Allow", new DialogInterface.OnClickListener() {
 +                            @Override
