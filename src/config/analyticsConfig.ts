@@ -214,8 +214,11 @@ export enum AnalyticsEvent {
   HISTORY_OPEN_FULL_HISTORY = "history.full_history_opened",
   HISTORY_OPEN_ITEM = "history.item_opened",
 
-  // Canonical app-open event (property-model foundation, #2883).
-  APP_OPENED = "event: App Opened",
+  // Cross-platform aligned wire string — matches the extension's `app.opened`
+  // so the app-open funnel merges across platforms. (The domain.action_past
+  // renames for other events land in later slices; app.opened is
+  // foundation-owned, so its alignment belongs here.)
+  APP_OPENED = "app.opened",
 
   // Blockaid
   // Consolidates the four scan events; carries scan_target
