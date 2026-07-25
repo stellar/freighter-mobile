@@ -54,6 +54,10 @@ target 'freighter-mobile' do
   # SecureClipboard is now part of the main project
   pod 'SecureClipboard', :path => './'
 
+  # PrivacyShield native module (local pod) — JS dismisses the native privacy
+  # shield once the auto-lock decision has finished
+  pod 'PrivacyShield', :path => './'
+
   use_react_native!(
     :path => config[:reactNativePath],
     # An absolute path to your application root.

@@ -63,6 +63,16 @@ const SecurityScreen: React.FC<SecurityScreenProps> = ({ navigation }) => {
       testID: "face-id-settings-button",
     });
   }
+  listItems.push({
+    icon: <Icon.ClockSnooze color={themeColors.foreground.primary} />,
+    title: t("securityScreen.autoLock"),
+    titleColor: themeColors.text.primary,
+    onPress: () => navigation.navigate(SETTINGS_ROUTES.AUTO_LOCK_TIMER_SCREEN),
+    trailingContent: (
+      <Icon.ChevronRight color={themeColors.foreground.primary} />
+    ),
+    testID: "auto-lock-button",
+  });
 
   return (
     <BaseLayout insets={{ top: false }}>

@@ -431,7 +431,8 @@
     "empty": "Nenhum colecionável ainda",
     "emptyHidden": "Nenhum colecionável oculto",
     "menuAddManually": "Adicionar manualmente",
-    "menuHidenCollectibles": "Colecionáveis ocultos"
+    "menuHidenCollectibles": "Colecionáveis ocultos",
+    "itemHiddenLabel": "{{name}}, oculto"
   },
   "collectibleDetails": {
     "title": "Detalhes do Colecionável",
@@ -652,7 +653,8 @@
     "swapped": "Trocado"
   },
   "transactionTokenScreen": {
-    "title": "Enviando"
+    "title": "Enviando",
+    "empty": "Nenhum token ou colecionável para enviar"
   },
   "transactionSettings": {
     "feeTitle": "Taxa da transação",
@@ -920,12 +922,13 @@
       "unexpectedSearchError": "Ocorreu um erro inesperado durante a pesquisa"
     }
   },
-  "accountQRCodeScreen": {
-    "title": "Receber fundos",
-    "copyButton": "Copiar endereço",
-    "helperText": "Digitalize o código QR ou \n copie seu endereço",
-    "bottomSheet": {
-      "description": "Peça ao remetente para digitalizar o código QR em seu aplicativo Freighter para recuperar seu endereço de carteira com segurança."
+  "scanReceiveScreen": {
+    "scanTab": "Escanear",
+    "receiveTab": "Receber",
+    "receive": {
+      "network": "Stellar",
+      "networkSupport": "Este endereço é compatível com a rede Stellar.",
+      "copyButton": "Copiar endereço da carteira"
     }
   },
   "walletConnect": {
@@ -968,6 +971,7 @@
   "securityScreen": {
     "title": "Segurança",
     "showRecoveryPhrase": "Mostrar frase de recuperação",
+    "autoLock": "Bloqueio automático",
     "faceId": {
       "title": "Autenticação Face ID",
       "description": "Habilite a autenticação Face ID para uma camada adicional de segurança. Use a autenticação biométrica para desbloquear sua carteira e aprovar transações rapidamente e com segurança.",
@@ -1010,6 +1014,20 @@
       "disableAlertTitle": "Desabilitar Iris?",
       "disableAlertMessage": "Tem certeza que deseja desabilitar Iris?"
     }
+  },
+  "autoLockTimerScreen": {
+    "title": "Temporizador de Bloqueio Automático",
+    "options": {
+      "oneMinute": "1 minuto",
+      "fiveMinutes": "5 minutos",
+      "fifteenMinutes": "15 minutos",
+      "thirtyMinutes": "30 minutos",
+      "oneHour": "1 hora",
+      "sixHours": "6 horas",
+      "twelveHours": "12 horas",
+      "twentyFourHours": "24 horas"
+    },
+    "footer": "Após um período definido, sua senha será solicitada novamente como medida extra de segurança."
   },
   "showRecoveryPhraseScreen": {
     "title": "Mostrar Frase de Recuperação",

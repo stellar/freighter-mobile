@@ -14,6 +14,12 @@ jest.mock("services/apiFactory", () => ({
   createApiService: jest.fn(() => ({
     get: jest.fn(),
     post: jest.fn(),
+    getInstance: jest.fn(() => ({
+      interceptors: {
+        request: { use: jest.fn() },
+        response: { use: jest.fn() },
+      },
+    })),
   })),
   isRequestCanceled: jest.fn(),
 }));

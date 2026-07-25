@@ -14,7 +14,7 @@ import { logger } from "config/logger";
 import { THEME } from "config/theme";
 import { NonNativeToken, NativeToken } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
-import { usePricesStore } from "ducks/prices";
+import { usePricesForNetwork } from "ducks/prices";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { calculateSwapRate } from "helpers/balances";
@@ -147,7 +147,7 @@ const SwapTransactionDetailsBottomSheet: React.FC<
   // Thread the live prices map so non-held destinations resolve their
   // fiat via the token-id lookup (strategy 3) — without it, the
   // destination row renders "--" after every swap to a new token.
-  const prices = usePricesStore((state) => state.prices);
+  const prices = usePricesForNetwork(network);
 
   const sourceTokenFiatAmountValue = calculateTokenFiatAmount({
     token: sourceToken,

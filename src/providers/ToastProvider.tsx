@@ -1,10 +1,12 @@
 import { Toast, ToastProps, ToastVariant } from "components/sds/Toast";
-import { DEFAULT_PADDING } from "config/constants";
+import { DEFAULT_PADDING, SOFT_LOCK_ALLOWED_TOAST_IDS } from "config/constants";
+import { useAuthenticationStore } from "ducks/auth";
 import { px, pxValue } from "helpers/dimensions";
 import React, {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useState,
   useMemo,
 } from "react";
@@ -102,7 +104,40 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
   const [toasts, setToasts] = useState<ToastPropsWithId[]>([]);
   const insets = useSafeAreaInsets();
 
+  // Track soft-lock reactively so any toast already visible when the lock
+  // engages is dropped from the render (showToast only blocks NEW ones). A
+  // native/absolute toast would otherwise sit above the in-tree lock overlay.
+  // Subscribe rather than a reactive selector to keep this low-level provider
+  // decoupled from the auth store shape under test mocks.
+  const [isSoftLocked, setIsSoftLocked] = useState<boolean>(
+    () => useAuthenticationStore.getState?.()?.isSoftLocked ?? false,
+  );
+  useEffect(() => {
+    const unsubscribe = useAuthenticationStore.subscribe?.((state) =>
+      setIsSoftLocked(state.isSoftLocked),
+    );
+    return unsubscribe;
+  }, []);
+
   const showToast = useCallback((options: ToastOptions) => {
+    // While soft-locked, the navigation tree stays mounted under the lock
+    // overlay and may still emit toasts (stale network errors, re-run
+    // validations). Suppress everything except the lock overlay's own
+    // messaging so nothing surfaces over the lock until the app is usable.
+    // Read imperatively (not via a reactive selector) to avoid coupling this
+    // low-level provider's render cycle to the auth store; the optional chain
+    // keeps it safe under test mocks that stub the store without getState.
+    const softLockedNow =
+      useAuthenticationStore.getState?.()?.isSoftLocked ?? false;
+    if (
+      softLockedNow &&
+      !(
+        options.toastId && SOFT_LOCK_ALLOWED_TOAST_IDS.includes(options.toastId)
+      )
+    ) {
+      return;
+    }
+
     const newToast: ToastPropsWithId = {
       ...options,
       toastId: options.toastId ?? Date.now().toString(),
@@ -131,11 +166,19 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
     [showToast, dismissToast],
   );
 
+  // While soft-locked, only the lock overlay's own allowlisted toasts render;
+  // everything else is hidden until the wallet is usable again.
+  const visibleToasts = isSoftLocked
+    ? toasts.filter((toast) =>
+        SOFT_LOCK_ALLOWED_TOAST_IDS.includes(toast.toastId),
+      )
+    : toasts;
+
   return (
     <ToastContext.Provider value={contextValue}>
       <ToastContainer>
         <ToastWrapper $insets={insets}>
-          {toasts.map((toast) => (
+          {visibleToasts.map((toast) => (
             <Toast
               key={toast.toastId}
               {...toast}

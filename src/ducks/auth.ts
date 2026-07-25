@@ -12,7 +12,9 @@ import {
 import { AnalyticsEvent } from "config/analyticsConfig";
 import {
   ACCOUNTS_TO_VERIFY_ON_EXISTING_MNEMONIC_PHRASE,
+  AUTO_LOCK_TIMER_MS,
   BIOMETRIC_STORAGE_KEYS,
+  DEFAULT_AUTO_LOCK_TIMER,
   FACE_ID_BIOMETRY_TYPES,
   FINGERPRINT_BIOMETRY_TYPES,
   HASH_KEY_EXPIRATION_MS,
@@ -51,9 +53,17 @@ import { clearScreenshotDek } from "helpers/screenshotCrypto";
 import { scrubStrKeys } from "helpers/stellarStrKey";
 import { clearWalletKitStorage } from "helpers/walletKitUtil";
 import { t } from "i18next";
+import { AppState, Keyboard } from "react-native";
 import ReactNativeBiometrics from "react-native-biometrics";
 import * as Keychain from "react-native-keychain";
 import { analytics } from "services/analytics";
+import { clearAuthKeypairCache } from "services/auth/authKeypairCache";
+import {
+  clearBackgroundedAt,
+  getAutoLockTimer,
+  getBackgroundedAt,
+  persistAutoLockTimer,
+} from "services/autoLock";
 import { getAccount } from "services/stellar";
 import {
   clearNonSensitiveData,
@@ -207,6 +217,16 @@ interface AuthState {
   isSwitchingAccount: boolean;
   error: string | null;
   authStatus: AuthStatus;
+  // True when the wallet was soft-locked in-process (auto-lock timer): the
+  // navigation tree stays mounted under a lock overlay so the user resumes
+  // exactly where they were after unlocking.
+  isSoftLocked: boolean;
+  // True when the lock happened while the user was actively present in the
+  // app — a foreground-idle timeout or a manual lock/logout. The lock screen
+  // uses this to suppress the biometric auto-prompt: an unprompted Face ID is
+  // jarring when the user just locked it themselves or stepped away. The
+  // prompt still fires on cold start and on return from the background.
+  suppressBiometricAutoPrompt: boolean;
   allAccounts: Account[];
 
   // Active account state
@@ -217,7 +237,6 @@ interface AuthState {
 
   // Biometric authentication state
   signInMethod: LoginType;
-  hasTriggeredAppOpenBiometricsLogin: boolean;
 }
 
 /**
@@ -280,6 +299,7 @@ interface ImportSecretKeyParams {
  */
 interface AuthActions {
   logout: (shouldWipeAllData?: boolean) => void;
+  softLock: (options?: { suppressBiometricPrompt?: boolean }) => Promise<void>;
   signUp: (params: SignUpParams) => Promise<boolean>;
   signIn: (params: SignInParams) => Promise<void>;
   importWallet: (params: ImportWalletParams) => Promise<boolean>;
@@ -320,7 +340,6 @@ interface AuthActions {
 
   // Biometric authentication actions
   setSignInMethod: (method: LoginType) => void;
-  setHasTriggeredAppOpenBiometricsLogin: (hasTriggered: boolean) => void;
 }
 
 /**
@@ -343,6 +362,8 @@ const initialState: Omit<AuthState, "network"> = {
   isSwitchingAccount: false,
   error: null,
   authStatus: AUTH_STATUS.NOT_AUTHENTICATED,
+  isSoftLocked: false,
+  suppressBiometricAutoPrompt: false,
   allAccounts: [],
   // Active account initial state
   account: null,
@@ -351,7 +372,6 @@ const initialState: Omit<AuthState, "network"> = {
   navigationRef: null,
   // Biometric authentication initial state
   signInMethod: LoginType.PASSWORD,
-  hasTriggeredAppOpenBiometricsLogin: false,
 };
 
 /**
@@ -426,10 +446,23 @@ const loadPersistedNetwork = async (
 const keyManager = createKeyManager(Networks.PUBLIC);
 
 /**
- * Checks if a hash key is expired
+ * Checks if a hash key is expired.
+ *
+ * Clock-rollback backstop: a key whose generatedAt is in the future means the
+ * device clock was moved backward below the key's creation time — a rolled-back
+ * clock would otherwise keep `now <= expiresAt` true indefinitely and prevent
+ * the hard-expiry from ever forcing a full re-auth. Treat that as expired
+ * (mirrors getBackgroundedAt's future-timestamp guard for the soft timer).
+ * generatedAt is optional so keys persisted before this field fall back to the
+ * plain expiry check.
  */
-const isHashKeyExpired = (hashKey: HashKey): boolean =>
-  Date.now() > hashKey.expiresAt;
+const isHashKeyExpired = (hashKey: HashKey): boolean => {
+  const now = Date.now();
+  if (hashKey.generatedAt !== undefined && hashKey.generatedAt > now) {
+    return true;
+  }
+  return now > hashKey.expiresAt;
+};
 
 /**
  * Gets all accounts from the account list
@@ -491,9 +524,49 @@ const getAuthStatus = async (): Promise<AuthStatus> => {
       return AUTH_STATUS.HASH_KEY_EXPIRED;
     }
 
-    // Check if hash key is expired (only relevant when not LOCKED)
+    // Hard expiry wins over the soft timer lock: checked before the timer so a
+    // session backgrounded past the hash-key TTL forces a full re-auth instead
+    // of a fast-path LOCKED that would just refresh the expired key. (The
+    // persisted-LOCKED branch above keeps the fast path — there it's intended.)
     if (hashKey && isHashKeyExpired(hashKey)) {
       return AUTH_STATUS.HASH_KEY_EXPIRED;
+    }
+
+    // Auto-lock timer: useAuthCheck records a timestamp on background; on
+    // return (warm or cold start), elapsed >= the selected duration soft-locks
+    // via the fast unlock path. Uses wall-clock time, so a clock rollback can
+    // dodge it — the hash-key expiry above still bounds the session.
+    const backgroundedAt = await getBackgroundedAt();
+    // Explicit null check, not truthiness: a clock-rollback returns 0 (epoch)
+    // to force a conservative lock, and 0 is falsey — `if (backgroundedAt)`
+    // would skip it and leave the session AUTHENTICATED.
+    if (backgroundedAt !== null) {
+      const autoLockTimer = await getAutoLockTimer();
+      const autoLockTimerMs = AUTO_LOCK_TIMER_MS[autoLockTimer];
+      const elapsedInBackground = Date.now() - backgroundedAt;
+
+      // Backgrounded past the selected duration: soft-lock via the fast
+      // unlock path (all presets are positive durations, so no zero/null case
+      // to exclude).
+      if (elapsedInBackground >= autoLockTimerMs && temporaryStore) {
+        await secureDataStorage.setItem(
+          SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
+          AUTH_STATUS.LOCKED,
+        );
+        await clearBackgroundedAt();
+        return AUTH_STATUS.LOCKED;
+      }
+
+      if (AppState.currentState === "active") {
+        // Returned within the timer: consume the timestamp so the foreground
+        // interval can't lock mid-use. The hash-key TTL is deliberately NOT
+        // refreshed here — it's only anchored at credential-verified moments
+        // (signIn / generateHashKey) so key material stays bounded however
+        // often the app is reopened.
+        await clearBackgroundedAt();
+      }
+      // Still backgrounded (periodic background check): leave the timestamp
+      // intact so the timer keeps counting from the original moment.
     }
 
     // All conditions for authentication are met
@@ -804,14 +877,18 @@ const generateHashKey = async (password: string): Promise<HashKey> => {
     // Convert to base64 for storage
     const hashKey = base64Encode(hashKeyBytes);
 
-    // Calculate the expiration timestamp
-    const expirationTime = Date.now() + HASH_KEY_EXPIRATION_MS;
+    // Calculate the hard-expiry timestamp (the coarse security backstop that
+    // forces a full re-auth; the soft auto-lock timer is enforced separately).
+    const now = Date.now();
+    const expirationTime = now + HASH_KEY_EXPIRATION_MS;
 
-    // Return the hash key object (caller will store it)
+    // Return the hash key object (caller will store it). generatedAt anchors
+    // the clock-rollback backstop in isHashKeyExpired.
     return {
       hashKey,
       salt,
       expiresAt: expirationTime,
+      generatedAt: now,
     };
   } catch (error) {
     throw new Error(`Failed to generate hash key: ${String(error)}`);
@@ -1026,6 +1103,7 @@ const deriveKeyPair = (params: DeriveKeypairParams) => {
  */
 const clearAllData = async (): Promise<void> => {
   clearDerivedKeyCache();
+  clearAuthKeypairCache();
 
   const allKeys = await keyManager.loadAllKeyIds();
 
@@ -1034,6 +1112,23 @@ const clearAllData = async (): Promise<void> => {
     clearTemporaryData(),
     clearNonSensitiveData(),
     dataStorage.remove(STORAGE_KEYS.COLLECTIBLES_LIST),
+  ]);
+};
+
+/**
+ * Resets the auto-lock setting to the default for a freshly established wallet
+ * (first install, sign up, import, or wipe). Writes the default to both the
+ * zustand store and the secure mirror and clears any stale background
+ * timestamp, so a new wallet never inherits the previous one's policy — e.g. a
+ * prior "None" would otherwise bake a never-expiring hash key. The secure
+ * write is awaited so generateHashKey reads the default expiry, and so first
+ * install lands on 24h even though the mirror was never written manually.
+ */
+const resetAutoLockForNewWallet = async (): Promise<void> => {
+  usePreferencesStore.setState({ autoLockTimer: DEFAULT_AUTO_LOCK_TIMER });
+  await Promise.all([
+    persistAutoLockTimer(DEFAULT_AUTO_LOCK_TIMER),
+    clearBackgroundedAt(),
   ]);
 };
 
@@ -1283,6 +1378,8 @@ export function clearAccountData(): void {
     scanResults: {},
     isLoading: false,
     isFunded: false,
+    fetchedPublicKey: null,
+    fetchedNetwork: null,
     subentryCount: 0,
     error: null,
   });
@@ -1298,7 +1395,8 @@ export function clearAccountData(): void {
 
   // Clear prices data
   usePricesStore.setState({
-    prices: {},
+    pricesByNetwork: {},
+    sourceByNetwork: {},
     isLoading: false,
     error: null,
     lastUpdated: null,
@@ -1397,12 +1495,16 @@ const signIn = async ({
       SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE,
     );
     if (existingHashKey && existingTempStore) {
-      // Fast path: temp store is intact — just refresh TTL.
+      // Fast path: temp store is intact — just refresh the hard-expiry TTL.
+      // Re-anchor generatedAt too (this is a credential-verified moment) so the
+      // clock-rollback backstop stays aligned with the new expiry.
+      const refreshNow = Date.now();
       await secureDataStorage.setItem(
         SENSITIVE_STORAGE_KEYS.HASH_KEY,
         JSON.stringify({
           ...existingHashKey,
-          expiresAt: Date.now() + HASH_KEY_EXPIRATION_MS,
+          expiresAt: refreshNow + HASH_KEY_EXPIRATION_MS,
+          generatedAt: refreshNow,
         }),
       );
     } else {
@@ -1499,16 +1601,21 @@ const importWallet = async ({
       AUTH_STATUS.AUTHENTICATED,
     );
 
-    analytics.track(AnalyticsEvent.ACCOUNT_SCREEN_IMPORT_ACCOUNT);
+    // Restoring a wallet from a recovery phrase is account_recovery.*, NOT
+    // account.import* (that is the secret-key path). This corrects a
+    // cross-platform mislabel — the extension already classifies it this way.
+    analytics.track(AnalyticsEvent.RECOVER_ACCOUNT_SUCCESS, {
+      recovery_method: "recovery_phrase",
+    });
   } catch (error) {
     // Scrub Stellar StrKeys before sending to analytics — this is a
     // third-party sink (Amplitude) not covered by Sentry's beforeSend, and the
     // forwarded message can include uncontrolled native error text.
     const importFailureMessage =
       error instanceof Error ? error.message : String(error);
-    analytics.trackAccountScreenImportAccountFail(
-      scrubStrKeys(importFailureMessage) ?? importFailureMessage,
-    );
+    analytics.track(AnalyticsEvent.RECOVER_ACCOUNT_FAIL, {
+      reason_code: scrubStrKeys(importFailureMessage) ?? importFailureMessage,
+    });
     // Clean up any partial data on error
     clearAccountData();
     await clearAllData();
@@ -1881,7 +1988,10 @@ const importSecretKeyLocal = async (
       importedFromSecretKey: true,
     });
 
-    analytics.track(AnalyticsEvent.ACCOUNT_SCREEN_IMPORT_ACCOUNT);
+    // account.imported carries import_method (secret-key path).
+    analytics.track(AnalyticsEvent.ACCOUNT_SCREEN_IMPORT_ACCOUNT, {
+      import_method: "secret_key",
+    });
   } catch (error) {
     // Scrub Stellar StrKeys before sending to analytics — third-party sink
     // (Amplitude) not covered by Sentry's beforeSend.
@@ -2053,12 +2163,17 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
           if (hasAccountList && !shouldWipeAllData) {
             // Don't expire hash key - preserve temporary store accessibility
             // Security comes from app being locked, not key expiration
+            clearAuthKeypairCache();
 
             set({
               account: null,
               isLoadingAccount: false,
               accountError: null,
               authStatus: AUTH_STATUS.LOCKED,
+              // The user locked the app themselves — don't auto-prompt
+              // biometrics on the lock screen; that only fires on cold start
+              // or return from the background.
+              suppressBiometricAutoPrompt: true,
               isLoading: false,
             });
 
@@ -2080,6 +2195,7 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
             // Wipe path: clear derived key cache and use resetRoot so the auth screen is
             // visible before the long async cleanup begins.
             clearDerivedKeyCache();
+            clearAuthKeypairCache();
 
             // Capture navigationRef before ...initialState clears it to null
             const { navigationRef: navRef } = get();
@@ -2118,6 +2234,13 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
             await clearNonSensitiveData();
             await dataStorage.remove(STORAGE_KEYS.COLLECTIBLES_LIST);
 
+            // Reset auto-lock so the next wallet on this device doesn't
+            // inherit the previous user's timer. The awaited secure-mirror
+            // write (source of truth for getAuthStatus / generateHashKey)
+            // means an interrupted wipe can't leave a weaker policy — e.g.
+            // NONE's never-expire — behind for the next wallet.
+            await resetAutoLockForNewWallet();
+
             await clearBiometricsData();
 
             set({ isLoading: false });
@@ -2135,6 +2258,54 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
   },
 
   /**
+   * Soft-locks the wallet in-process (auto-lock timer).
+   *
+   * Unlike logout(), keeps the navigation tree mounted under the lock overlay
+   * so the user resumes where they were after unlocking. Sensitive reads stay
+   * gated while LOCKED (getActiveAccount, WalletKit). The active account is
+   * left in the store so the mounted screens don't re-run validations and flash
+   * errors; signing is independently blocked while LOCKED. Persisting LOCKED
+   * covers cold starts (which fall back to the LockScreen route).
+   */
+  softLock: async (options?: { suppressBiometricPrompt?: boolean }) => {
+    Keyboard.dismiss();
+
+    // Atomic update: RootNavigator must never see LOCKED && !isSoftLocked
+    // (it would unmount the preserved tree). Clear account so the decrypted
+    // private key isn't held while locked — it re-populates on unlock.
+    set({
+      authStatus: AUTH_STATUS.LOCKED,
+      isSoftLocked: true,
+      account: null,
+      // A foreground-idle lock suppresses the lock screen's biometric
+      // auto-prompt; background / cold-start locks still prompt.
+      suppressBiometricAutoPrompt: options?.suppressBiometricPrompt ?? false,
+      isLoading: false,
+    });
+    clearAuthKeypairCache();
+
+    // Persist LOCKED (covers tampering + cold starts). Retry once and rethrow
+    // on failure: a swallowed write would leave the wallet auto-unlockable on
+    // the next cold launch.
+    try {
+      await secureDataStorage.setItem(
+        SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
+        AUTH_STATUS.LOCKED,
+      );
+    } catch (firstError) {
+      logger.error(
+        "softLock",
+        "Failed to persist LOCKED status, retrying",
+        firstError,
+      );
+      await secureDataStorage.setItem(
+        SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
+        AUTH_STATUS.LOCKED,
+      );
+    }
+  },
+
+  /**
    * Signs up a new user with the provided credentials
    *
    * @param {SignUpParams} params - The signup parameters
@@ -2143,9 +2314,22 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
   signUp: async (params): Promise<boolean> => {
     set((state) => ({ ...state, isLoading: true, error: null }));
     try {
+      // Fresh wallet: reset auto-lock to the default before the hash key is
+      // generated so it doesn't inherit a previous wallet's timer.
+      await resetAutoLockForNewWallet();
       await signUp(params);
+      // Mirror the extension's onboarding.password_created (createAccount.fulfilled)
+      // so the create-password funnel has a success side on mobile (was fail-only).
+      analytics.track(AnalyticsEvent.CREATE_PASSWORD_SUCCESS);
+      // onboarding.completed at the single create-account terminal point (mirrors
+      // the extension's confirmMnemonicPhrase.fulfilled). Consolidated here from
+      // four UI-site emits (recovery-phrase / biometrics screens) that risked
+      // double-counting. The import/recover flow emits account_recovery.completed
+      // instead (see module importWallet), matching the extension's split.
+      analytics.track(AnalyticsEvent.ACCOUNT_CREATOR_FINISHED);
       set({
         ...initialState,
+        navigationRef: get().navigationRef,
         isLoading: false,
         authStatus: AUTH_STATUS.AUTHENTICATED,
       });
@@ -2154,6 +2338,15 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
       return true;
     } catch (error) {
       logger.error("useAuthenticationStore.signUp", "Sign up failed", error);
+      // Mirror the extension's onboarding.password_create_failed emit so the
+      // create-password failure funnel has cross-platform coverage.
+      // Scrub Stellar StrKeys first — analytics is a third-party sink
+      // (Amplitude) and the error text can include uncontrolled native content.
+      const signUpFailureMessage =
+        error instanceof Error ? error.message : String(error);
+      analytics.track(AnalyticsEvent.CREATE_PASSWORD_FAIL, {
+        reason_code: scrubStrKeys(signUpFailureMessage) ?? signUpFailureMessage,
+      });
       set({
         error: getUserFacingError(error, "authStore.error.failedToSignUp"),
         isLoading: false,
@@ -2177,28 +2370,61 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
 
       await signIn({ ...params, shouldCreateTempStore });
 
+      // Clear the persisted LOCKED marker and stale backgrounded-at timestamp
+      // before flipping to AUTHENTICATED — awaited so the auto-lock funnel
+      // can't observe the old values and re-lock the fresh session.
+      await Promise.all([
+        secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.AUTH_STATUS),
+        clearBackgroundedAt(),
+      ]);
+
       // Password verified — unblock navigation immediately.
       // getActiveAccount is slow (derivePrivateKeyFromMnemonic) so we run it
       // in the background and let the home screen render with isLoadingAccount=true.
       analytics.trackReAuthSuccess();
       set({
         ...initialState,
+        // Preserve navigationRef: nothing remounts to re-set it after a soft
+        // unlock, so later lock navigations would otherwise no-op
+        navigationRef: get().navigationRef,
+        // Preserve signInMethod: resetting it to PASSWORD would make the
+        // still-mounted biometric buttons drop biometric enforcement after a
+        // soft unlock, letting transactions confirm without verification
+        signInMethod: get().signInMethod,
         authStatus: AUTH_STATUS.AUTHENTICATED,
         isLoading: false,
         isLoadingAccount: true,
       });
 
+      // Drop any stale isSessionAuthValid memo captured while locked — otherwise
+      // the post-unlock request burst (balances + prices + history) could read a
+      // cached `false` for up to the TTL and go out anonymous, defeating the auth
+      // this feature exists to attach. (Defined below; resolved at call time.)
+      // eslint-disable-next-line @typescript-eslint/no-use-before-define
+      clearSessionAuthValidMemo();
+
       getActiveAccount(AUTH_STATUS.AUTHENTICATED)
         .then((activeAccount) => {
           if (!activeAccount) {
-            // Sign-in succeeded but no active account was found — lock and
-            // surface an error so the user knows something went wrong.
+            // No active account after sign-in: lock and surface an error.
+            // isSoftLocked must accompany LOCKED (RootNavigator unmounts the
+            // tree on LOCKED && !isSoftLocked).
             set({
               isLoadingAccount: false,
               authStatus: AUTH_STATUS.LOCKED,
+              isSoftLocked: true,
+              account: null,
               error: t("authStore.error.failedToLoadAccount"),
             });
             get().navigateToLockScreen();
+            return;
+          }
+          // A soft-lock may have engaged during the slow key derivation above
+          // (softLock clears account to null). Drop this stale load rather than
+          // repopulating the private key into a locked store — the next unlock
+          // reloads it.
+          if (get().isSoftLocked) {
+            set({ isLoadingAccount: false });
             return;
           }
           set({ account: activeAccount, isLoadingAccount: false });
@@ -2212,19 +2438,18 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
           set({
             isLoadingAccount: false,
             authStatus: AUTH_STATUS.LOCKED,
+            isSoftLocked: true,
+            account: null,
             error: t("authStore.error.failedToLoadAccount"),
           });
           get().navigateToLockScreen();
         });
-
-      // Clear persisted auth status in background (non-blocking)
-      secureDataStorage
-        .remove(SENSITIVE_STORAGE_KEYS.AUTH_STATUS)
-        .catch((e) =>
-          logger.debug("signIn", "Failed to clear persisted auth status", e),
-        );
     } catch (error) {
-      analytics.trackReAuthFail();
+      const reAuthFailureMessage =
+        error instanceof Error ? error.message : String(error);
+      analytics.trackReAuthFail(
+        scrubStrKeys(reAuthFailureMessage) ?? reAuthFailureMessage,
+      );
       logger.error("useAuthenticationStore.signIn", "Sign in failed", error);
       set({
         error: getUserFacingError(error, "authStore.error.failedToSignIn"),
@@ -2563,9 +2788,13 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
     set({ isLoading: true, error: null });
 
     try {
+      // Re-import replaces the wallet: reset auto-lock to the default before
+      // the hash key is generated so it doesn't inherit the previous timer.
+      await resetAutoLockForNewWallet();
       await importWallet(params);
       set({
         ...initialState,
+        navigationRef: get().navigationRef,
         authStatus: AUTH_STATUS.AUTHENTICATED,
         isLoading: false,
       });
@@ -2591,18 +2820,58 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
   },
 
   /**
-   * Gets the current authentication status
+   * Gets the current authentication status.
    *
-   * @returns {Promise<AuthStatus>} The current authentication status
+   * Single funnel for lock transitions: an AUTHENTICATED→LOCKED transition
+   * (auto-lock timer) goes through softLock for every caller (periodic checks,
+   * fetchActiveAccount, selectAccount), keeping the navigation tree mounted
+   * instead of racing it with navigation resets.
    */
   getAuthStatus: async () => {
-    // Always re-validate auth status to ensure consistency
-    // Don't rely on cached status as it may be stale after app updates
+    // Re-validate from storage; cached status may be stale after app updates
+    const previousAuthStatus = get().authStatus;
     const authStatus = await getAuthStatus();
+
+    if (
+      authStatus === AUTH_STATUS.LOCKED &&
+      previousAuthStatus === AUTH_STATUS.AUTHENTICATED
+    ) {
+      // Auto-lock timer fired: soft lock atomically so the tree never unmounts
+      await get().softLock();
+      return authStatus;
+    }
+
+    // Don't let a stale read (resolved just before the LOCKED persist landed)
+    // downgrade an active soft lock to AUTHENTICATED. Only signIn clears
+    // isSoftLocked; disk already holds LOCKED, so the next check self-heals.
+    if (get().isSoftLocked && authStatus === AUTH_STATUS.AUTHENTICATED) {
+      return get().authStatus;
+    }
+
+    // A soft lock is only valid over an authenticated session. If the session
+    // is gone (wipe) or hard-expired, clear isSoftLocked too — otherwise the
+    // overlay stays stranded over an accountless/expired app until kill.
+    if (
+      get().isSoftLocked &&
+      (authStatus === AUTH_STATUS.NOT_AUTHENTICATED ||
+        authStatus === AUTH_STATUS.HASH_KEY_EXPIRED)
+    ) {
+      set({ authStatus, isSoftLocked: false });
+      // Session is no longer authenticated — evict the derived auth keypair so
+      // private-key material never outlives the session (as softLock does).
+      clearAuthKeypairCache();
+      if (authStatus === AUTH_STATUS.HASH_KEY_EXPIRED) {
+        get().navigateToLockScreen();
+      }
+      return authStatus;
+    }
+
     set({ authStatus });
 
-    // If the hash key is expired, navigate to lock screen
+    // If the hash key is expired, evict the cached auth keypair (retention, not
+    // just use, must end at hard-expiry) and navigate to lock screen.
     if (authStatus === AUTH_STATUS.HASH_KEY_EXPIRED) {
+      clearAuthKeypairCache();
       get().navigateToLockScreen();
     }
 
@@ -2624,6 +2893,12 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
    * Used when authentication expires or user needs to re-authenticate
    */
   navigateToLockScreen: () => {
+    // Soft-locked: the lock overlay is already covering the app and the
+    // navigation tree must stay intact so the user resumes where they were.
+    if (get().isSoftLocked) {
+      return;
+    }
+
     const { navigationRef } = get();
     if (navigationRef && navigationRef.isReady()) {
       // Check if we're already on the lock screen to prevent navigation loops
@@ -2652,22 +2927,15 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
     set({ isLoadingAccount: true, accountError: null });
 
     try {
-      // Check auth status first
-      const authStatus = await getAuthStatus();
+      // Via the store funnel so an auto-lock here soft-locks atomically
+      // rather than racing a navigation reset
+      const authStatus = await get().getAuthStatus();
 
-      // Security: Block access when hash key is expired or when locked
-      // LOCKED state requires password re-entry before accessing sensitive data
+      // Block sensitive data while expired/locked (funnel already navigated)
       if (
         authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ||
         authStatus === AUTH_STATUS.LOCKED
       ) {
-        set({
-          authStatus,
-        });
-
-        // Navigate to lock screen
-        get().navigateToLockScreen();
-
         set({ isLoadingAccount: false });
         return null;
       }
@@ -2771,6 +3039,14 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
 
       await Promise.all([get().getAllAccounts(), get().fetchActiveAccount()]);
 
+      // account.created on the creation-success path with the real post-creation
+      // count (matches the extension's addAccount.fulfilled -> allAccounts.length).
+      // Replaces the former tap-time emit in ManageAccounts, which over-counted
+      // abandoned add flows.
+      analytics.track(AnalyticsEvent.ACCOUNT_SCREEN_ADD_ACCOUNT, {
+        number_of_accounts: get().allAccounts.length,
+      });
+
       set({ isCreatingAccount: false, error: null });
     } catch (error) {
       logger.error(
@@ -2792,15 +3068,12 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
   selectAccount: async (publicKey: string) => {
     set({ isSwitchingAccount: true, error: null });
     try {
-      // Security: Check auth status before allowing account switching
-      // Block access when hash key is expired or when locked
-      const authStatus = await getAuthStatus();
+      // Via the store funnel so an auto-lock here soft-locks atomically
+      const authStatus = await get().getAuthStatus();
       if (
         authStatus === AUTH_STATUS.HASH_KEY_EXPIRED ||
         authStatus === AUTH_STATUS.LOCKED
       ) {
-        set({ authStatus });
-        get().navigateToLockScreen();
         set({ isSwitchingAccount: false });
         return;
       }
@@ -2889,8 +3162,95 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
   setSignInMethod: (method: LoginType) => {
     set({ signInMethod: method });
   },
-
-  setHasTriggeredAppOpenBiometricsLogin: (hasTriggered: boolean) => {
-    set({ hasTriggeredAppOpenBiometricsLogin: hasTriggered });
-  },
 }));
+
+/**
+ * Returns the mnemonic phrase from the unlocked temporary store,
+ * or null when the wallet is not fully authenticated (AUTHENTICATED),
+ * locked, or the store is unavailable.
+ */
+export const getActiveMnemonicPhrase = async (): Promise<string | null> => {
+  if (
+    useAuthenticationStore.getState().authStatus !== AUTH_STATUS.AUTHENTICATED
+  ) {
+    return null;
+  }
+  try {
+    const store = await getTemporaryStore(
+      useAuthenticationStore.getState().authStatus,
+    );
+    // Re-check after the async decrypt: a lock (soft-lock / auto-lock) may have
+    // landed while awaiting SecureStorage. If so, do NOT return the pre-lock
+    // mnemonic — otherwise getAuthKeypair could derive and re-cache a signing
+    // key after softLock() already cleared the cache (TOCTOU race).
+    if (
+      useAuthenticationStore.getState().authStatus !== AUTH_STATUS.AUTHENTICATED
+    ) {
+      return null;
+    }
+    return store?.mnemonicPhrase ?? null;
+  } catch (error) {
+    // Unreachable today (getTemporaryStore is itself total), but keep the guard
+    // so a future throwing edit surfaces in Sentry instead of masquerading as a
+    // normal locked session with an empty breadcrumb trail.
+    logger.error(
+      "getActiveMnemonicPhrase",
+      "Failed to read active mnemonic",
+      error,
+    );
+    return null;
+  }
+};
+
+// Short-TTL memo + in-flight dedup for the session-validity funnel result.
+// getAuthKeypair runs isSessionAuthValid on every call — per backend request
+// once the JWT interceptor is wired — and each funnel run is ~5 keychain reads.
+// The in-flight promise collapses a near-simultaneous burst (balances + prices
+// + history on unlock) to one run; the value memo collapses sequential calls
+// within the window.
+//
+// Tradeoff: a transition detected ONLY by the funnel (auto-lock timer elapse,
+// hash hard-expiry) is reflected at this gate up to SESSION_AUTH_VALID_TTL_MS
+// late. That is bounded and immaterial in practice (auto-lock windows are
+// minutes to hours) and does not leak key material: explicit lock/logout/wipe
+// paths clear the keypair cache AND flip in-memory authStatus, so during a
+// stale-true memo getAuthKeypair's warm-cache path finds an empty cache and its
+// derive path is blocked by getActiveMnemonicPhrase's AUTHENTICATED gate.
+export const SESSION_AUTH_VALID_TTL_MS = 1000;
+let sessionAuthValidMemo: { value: boolean; expiresAt: number } | null = null;
+let sessionAuthValidInFlight: Promise<boolean> | null = null;
+
+/** Drops the isSessionAuthValid memo (tests + any caller needing a fresh read). */
+export const clearSessionAuthValidMemo = (): void => {
+  sessionAuthValidMemo = null;
+};
+
+/**
+ * Session-validity gate for backend auth-key use. Delegates to the authoritative
+ * `getAuthStatus()` funnel — the single source of truth for lock transitions —
+ * so it evaluates account existence, persisted LOCKED, hash-key hard-expiry AND
+ * the auto-lock timer (`backgroundedAt` + `autoLockTimer`), rather than
+ * re-implementing a subset. Result is memoized for SESSION_AUTH_VALID_TTL_MS
+ * (see above). Does not decrypt the temporary store (no PBKDF2); persisted/secure
+ * reads only.
+ */
+export const isSessionAuthValid = async (): Promise<boolean> => {
+  const memo = sessionAuthValidMemo;
+  if (memo && Date.now() < memo.expiresAt) return memo.value;
+
+  if (!sessionAuthValidInFlight) {
+    sessionAuthValidInFlight = (async () => {
+      try {
+        const value = (await getAuthStatus()) === AUTH_STATUS.AUTHENTICATED;
+        sessionAuthValidMemo = {
+          value,
+          expiresAt: Date.now() + SESSION_AUTH_VALID_TTL_MS,
+        };
+        return value;
+      } finally {
+        sessionAuthValidInFlight = null;
+      }
+    })();
+  }
+  return sessionAuthValidInFlight;
+};

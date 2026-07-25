@@ -6,6 +6,7 @@ import BigNumber from "bignumber.js";
 import SwapAmountScreen from "components/screens/SwapScreen/screens/SwapAmountScreen";
 import Icon from "components/sds/Icon";
 import { AnalyticsEvent } from "config/analyticsConfig";
+import { NETWORKS } from "config/constants";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import { useSwapStore } from "ducks/swap";
 import { renderWithProviders } from "helpers/testUtils";
@@ -276,11 +277,13 @@ const mockPrices: Record<
 jest.mock("ducks/prices", () => ({
   usePricesStore: (selector?: (s: unknown) => unknown): unknown => {
     const state = {
-      prices: mockPrices,
+      pricesByNetwork: {},
+      sourceByNetwork: {},
       fetchPricesForTokenIds: mockFetchPricesForTokenIds,
     };
     return selector ? selector(state) : state;
   },
+  usePricesForNetwork: () => mockPrices,
 }));
 // Cache the return value so account / spendableAmount memos stay stable across
 // re-renders — otherwise the amountError useEffect can re-fire forever when
@@ -902,6 +905,8 @@ describe("SwapAmountScreen", () => {
           "yXLM:GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55",
           "FTT:GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH",
         ],
+        network: NETWORKS.PUBLIC,
+        useV2: true,
       });
     });
 
@@ -1195,7 +1200,7 @@ describe("SwapAmountScreen", () => {
       expect(queryByTestId("swap-receive-pill")).toBeNull();
     });
 
-    it("fires SWAP_TO_PICKER_OPENED with source:dropdown when the Receive pill is tapped", () => {
+    it("fires SWAP_PICKER_OPENED side:to with source:dropdown when the Receive pill is tapped", () => {
       jest.spyOn(analytics, "track").mockClear();
 
       setSwapStoreState({
@@ -1217,8 +1222,8 @@ describe("SwapAmountScreen", () => {
       fireEvent.press(getByTestId("swap-receive-pill"));
 
       expect(analytics.track).toHaveBeenCalledWith(
-        AnalyticsEvent.SWAP_TO_PICKER_OPENED,
-        { source: "dropdown" },
+        AnalyticsEvent.SWAP_PICKER_OPENED,
+        { side: "to", source: "dropdown" },
       );
     });
   });
@@ -1352,7 +1357,7 @@ describe("SwapAmountScreen", () => {
       jest.spyOn(analytics, "track").mockClear();
     });
 
-    it("fires SWAP_TO_PICKER_OPENED with source:cta when the 'Select a token' CTA is pressed", async () => {
+    it("fires SWAP_PICKER_OPENED side:to with source:cta when the 'Select a token' CTA is pressed", async () => {
       setSwapStoreState({ destinationToken: null, sourceAmount: "0" });
 
       const navigation = makeNavigation();
@@ -1368,12 +1373,12 @@ describe("SwapAmountScreen", () => {
       });
 
       expect(analytics.track).toHaveBeenCalledWith(
-        AnalyticsEvent.SWAP_TO_PICKER_OPENED,
-        { source: "cta" },
+        AnalyticsEvent.SWAP_PICKER_OPENED,
+        { side: "to", source: "cta" },
       );
     });
 
-    it("fires SWAP_TO_PICKER_OPENED with source:dropdown when the Receive dropdown is tapped", () => {
+    it("fires SWAP_PICKER_OPENED side:to with source:dropdown when the Receive dropdown is tapped", () => {
       // destinationToken is null so the "Select a token" placeholder pill is rendered
       setSwapStoreState({ destinationToken: null, sourceAmount: "0" });
 
@@ -1384,12 +1389,12 @@ describe("SwapAmountScreen", () => {
       fireEvent.press(getByTestId("swap-receive-choose-pill"));
 
       expect(analytics.track).toHaveBeenCalledWith(
-        AnalyticsEvent.SWAP_TO_PICKER_OPENED,
-        { source: "dropdown" },
+        AnalyticsEvent.SWAP_PICKER_OPENED,
+        { side: "to", source: "dropdown" },
       );
     });
 
-    it("fires SWAP_FROM_PICKER_OPENED with source:dropdown when the Sell pill is tapped", () => {
+    it("fires SWAP_PICKER_OPENED side:from with source:dropdown when the Sell pill is tapped", () => {
       // Held source (XLM) → "swap-sell-pill" is rendered; press routes
       // through navigateToSelectSourceTokenScreen which is the only call
       // site for the source-side picker event.
@@ -1405,14 +1410,13 @@ describe("SwapAmountScreen", () => {
       fireEvent.press(getByTestId("swap-sell-pill"));
 
       expect(analytics.track).toHaveBeenCalledWith(
-        AnalyticsEvent.SWAP_FROM_PICKER_OPENED,
-        { source: "dropdown" },
+        AnalyticsEvent.SWAP_PICKER_OPENED,
+        { side: "from", source: "dropdown" },
       );
-      // Negative assertion: source picker MUST NOT reuse the destination
-      // event after the caa4aeab split.
+      // Negative assertion: the source picker MUST tag side:from, never side:to.
       expect(analytics.track).not.toHaveBeenCalledWith(
-        AnalyticsEvent.SWAP_TO_PICKER_OPENED,
-        { source: "dropdown" },
+        AnalyticsEvent.SWAP_PICKER_OPENED,
+        { side: "to", source: "dropdown" },
       );
     });
 

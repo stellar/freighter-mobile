@@ -15,6 +15,9 @@ jest.mock("react-native-device-info", () => ({
   getVersion: () => "1.2.3",
   getBuildNumber: () => "42",
   hasNotch: jest.fn(() => false),
+  // Needed because AboutScreen's import graph reaches helpers/isEnv, which
+  // calls getBundleId() at module load; without it the suite fails to run.
+  getBundleId: () => "org.stellar.freighterwallet",
 }));
 
 const mockOpenInAppBrowser = jest.fn();

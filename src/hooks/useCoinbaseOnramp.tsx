@@ -70,7 +70,9 @@ function useCoinbaseOnramp({ token }: UseCoinbaseOnrampParams) {
       const data = await fetchData();
       const url = getCoinbaseUrl({ sessionToken: data.token, token });
 
-      analytics.track(AnalyticsEvent.COINBASE_ONRAMP_OPENED);
+      // `asset` matches the extension's onramp.coinbase_opened { asset }
+      // (undefined when no asset was preselected, same as extension).
+      analytics.track(AnalyticsEvent.COINBASE_ONRAMP_OPENED, { asset: token });
 
       await openInAppBrowser(url);
     } catch (error) {

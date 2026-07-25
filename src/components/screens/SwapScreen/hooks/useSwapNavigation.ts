@@ -12,9 +12,9 @@ type SwapNavigation = NativeStackNavigationProp<
 
 /**
  * Centralises the SwapAmountScreen's two "open the SwapToScreen picker"
- * navigation callbacks. Each emits its own analytics event
- * (SWAP_TO_PICKER_OPENED vs SWAP_FROM_PICKER_OPENED) tagged with the
- * picker entrypoint (cta vs dropdown), then routes to the same
+ * navigation callbacks. Each emits the shared SWAP_PICKER_OPENED event
+ * discriminated by `side` (to vs from) and tagged with the picker
+ * entrypoint (cta vs dropdown via `source`), then routes to the same
  * SWAP_SCREEN with the corresponding selectionType.
  *
  * Returns:
@@ -40,7 +40,10 @@ export const useSwapNavigation = ({
 } => {
   const openDestinationPicker = useCallback(
     (source: SwapPickerEntrypoint = SwapPickerEntrypoint.DROPDOWN) => {
-      analytics.track(AnalyticsEvent.SWAP_TO_PICKER_OPENED, { source });
+      analytics.track(AnalyticsEvent.SWAP_PICKER_OPENED, {
+        side: "to",
+        source,
+      });
       navigation.navigate(SWAP_ROUTES.SWAP_SCREEN, {
         selectionType: SWAP_SELECTION_TYPES.DESTINATION,
       });
@@ -54,7 +57,10 @@ export const useSwapNavigation = ({
 
   const openSourcePicker = useCallback(
     (source: SwapPickerEntrypoint) => {
-      analytics.track(AnalyticsEvent.SWAP_FROM_PICKER_OPENED, { source });
+      analytics.track(AnalyticsEvent.SWAP_PICKER_OPENED, {
+        side: "from",
+        source,
+      });
       navigation.navigate(SWAP_ROUTES.SWAP_SCREEN, {
         selectionType: SWAP_SELECTION_TYPES.SOURCE,
       });

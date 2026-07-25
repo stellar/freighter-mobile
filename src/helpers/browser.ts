@@ -2,6 +2,7 @@ import CookieManager from "@react-native-cookies/cookies";
 import { BROWSER_CONSTANTS } from "config/constants";
 import { logger } from "config/logger";
 import { clearAllScreenshots } from "helpers/screenshots";
+import { clearWebViewMediaConsent } from "helpers/webViewMediaConsent";
 
 /**
  * Checks if the given URL is the homepage URL.
@@ -164,6 +165,10 @@ export const clearAllWebViewData = async (): Promise<boolean> => {
     const [cookieResult, screenshotResult] = await Promise.all([
       clearAllCookies(),
       clearAllScreenshots(),
+      // Android-only, best-effort (returns void, not part of the success
+      // signal): drop the in-app browser's per-origin camera/mic consent so it
+      // doesn't survive logout or leak to another account on this device.
+      clearWebViewMediaConsent(),
     ]);
 
     const success = cookieResult && screenshotResult;

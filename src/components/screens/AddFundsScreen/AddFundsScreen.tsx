@@ -74,7 +74,9 @@ const AddFundsScreen: React.FC<AddFundsScreenProps> = ({
           <TouchableOpacity
             className="bg-background-tertiary rounded-2xl p-5 w-full gap-[12px]"
             onPress={() =>
-              navigation.navigate(ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN)
+              navigation.navigate(ROOT_NAVIGATOR_ROUTES.SCAN_RECEIVE_SCREEN, {
+                initialTab: "receive",
+              })
             }
           >
             <Icon.QrCode01

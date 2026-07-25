@@ -10,11 +10,13 @@ import {
   TokenIdentifier,
   NonNativeToken,
 } from "config/types";
-import { usePricesStore } from "ducks/prices";
+import { useAuthenticationStore } from "ducks/auth";
+import { usePricesForNetwork, usePricesStore } from "ducks/prices";
+import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { formatTokenForDisplay, formatFiatAmount } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { View } from "react-native";
 import { getTransactionBalanceChanges } from "services/blockaid/helper";
 
@@ -35,6 +37,46 @@ export const useTransactionBalanceListItems = (
 ): ListItemProps[] => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
+  // Subscribe to the active network and endpoint flag so the price-fetch effect
+  // re-runs on a network switch or v1/v2 rollback — v2 prices are network-scoped
+  // and the rollback must re-query the new source.
+  const network = useAuthenticationStore((state) => state.network);
+  const useV2 = useRemoteConfigStore((state) => state.use_token_prices_v2);
+  // Subscribe to the active network's prices so the list recomputes when an
+  // async price response lands (reading via getState alone would not trigger a
+  // re-render) and never shows another network's prices.
+  const prices = usePricesForNetwork(network);
+
+  // Balance changes for this transaction: null = unable to simulate.
+  const balanceUpdates = useMemo(
+    () => (scanResult ? getTransactionBalanceChanges(scanResult) : null),
+    [scanResult],
+  );
+
+  // Token ids affected by the transaction. Memoized so its identity is stable
+  // across renders (changes only with the scan result), which keeps the
+  // price-fetch effect below from firing on every render.
+  const tokenIds = useMemo<TokenIdentifier[]>(
+    () =>
+      (balanceUpdates ?? []).map((change) =>
+        change.isNative
+          ? NATIVE_TOKEN_CODE
+          : `${change.assetCode}:${change.assetIssuer ?? ""}`,
+      ),
+    [balanceUpdates],
+  );
+
+  // Fetch prices as a side effect — never during render, since the store action
+  // synchronously mutates the price store (clearing it on a source change).
+  // Pass all ids: the store dedupes already-loaded tokens and clears/refetches
+  // when the source (network or v1/v2 flag) changes.
+  useEffect(() => {
+    if (tokenIds.length === 0) return;
+    const { fetchPricesForTokenIds } = usePricesStore.getState();
+    // Fire and ignore resolution; the store handles errors.
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
+    fetchPricesForTokenIds({ tokens: tokenIds, network, useV2 });
+  }, [tokenIds, network, useV2]);
 
   return useMemo(() => {
     const items: ListItemProps[] = [];
@@ -87,8 +129,6 @@ export const useTransactionBalanceListItems = (
       ];
     }
 
-    const balanceUpdates = getTransactionBalanceChanges(scanResult);
-
     // Unable to simulate
     if (balanceUpdates === null) {
       // If we have change trust operations, show them along with the error
@@ -127,20 +167,6 @@ export const useTransactionBalanceListItems = (
       ];
     }
 
-    // Build token IDs and optionally fetch missing prices
-    const tokenIds: TokenIdentifier[] = balanceUpdates.map((c) =>
-      c.isNative ? NATIVE_TOKEN_CODE : `${c.assetCode}:${c.assetIssuer ?? ""}`,
-    );
-
-    // Fire-and-forget fetch of missing prices (non-blocking render)
-    const { prices, fetchPricesForTokenIds } = usePricesStore.getState();
-    const missing = tokenIds.filter((id) => !prices[id]);
-    if (missing.length > 0) {
-      // Fire and ignore resolution; store handles errors
-      // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      fetchPricesForTokenIds({ tokens: missing });
-    }
-
     // Add balance changes to the list
     balanceUpdates.forEach((change) => {
       const {
@@ -156,7 +182,7 @@ export const useTransactionBalanceListItems = (
       const tokenId: TokenIdentifier = isNative
         ? NATIVE_TOKEN_CODE
         : `${tokenCode}:${tokenIssuer ?? ""}`;
-      const price = usePricesStore.getState().prices[tokenId]?.currentPrice;
+      const price = prices[tokenId]?.currentPrice;
       const hasFiat = !!price;
       const fiatValue = hasFiat ? price.multipliedBy(amount.abs()) : null;
 
@@ -194,6 +220,8 @@ export const useTransactionBalanceListItems = (
 
     return items;
   }, [
+    balanceUpdates,
+    prices,
     scanResult,
     signTransactionDetails?.hasTrustlineChanges,
     signTransactionDetails?.operations,

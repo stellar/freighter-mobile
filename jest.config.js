@@ -27,6 +27,7 @@ module.exports = {
       "react-native-reanimated",
       "@gorhom/bottom-sheet",
       "react-native-worklets",
+      "react-native-keyboard-controller",
       "react-native-qrcode-svg",
       "stellar-hd-wallet",
       // v16 ships ESM-only deps (@noble/*, smol-toml, uint8array-extras,
@@ -47,6 +48,11 @@ module.exports = {
     ].join("|")})/)`,
   ],
   moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json", "node", "mjs"],
+  // Ignore nested git worktrees created under .claude/ (e.g. by Claude Code
+  // sessions). They are full repo copies whose node_modules/__mocks__ otherwise
+  // collide via Haste and break the whole suite.
+  modulePathIgnorePatterns: ["<rootDir>/.claude/"],
+  testPathIgnorePatterns: ["/node_modules/", "<rootDir>/.claude/"],
   coveragePathIgnorePatterns: ["/node_modules/", "/jest"],
   transform: {
     "^.+\\.(js|jsx|ts|tsx|mjs)$": "babel-jest",

@@ -75,6 +75,11 @@ export type HashKey = {
   hashKey: string;
   salt: string;
   expiresAt: number;
+  // Wall-clock time the key was (re)anchored. Used to detect a backward clock
+  // change: a key that claims to have been generated in the future means the
+  // device clock moved back below its creation time. Optional for backward
+  // compatibility with keys persisted before this field existed.
+  generatedAt?: number;
 };
 
 export const AUTH_STATUS = {

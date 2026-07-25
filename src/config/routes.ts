@@ -13,6 +13,9 @@ export enum ScreenTransition {
   Default = "default",
 }
 
+/** Which tab the unified Scan/Receive screen opens on. */
+export type ScanReceiveTab = "scan" | "receive";
+
 /**
  * ROUTE NAMING CONVENTIONS FOR ANALYTICS
  *
@@ -49,8 +52,8 @@ export const ROOT_NAVIGATOR_ROUTES = {
   MANAGE_WALLETS_STACK: "ManageWalletsStack",
   // This screen can be called on both stacks.
   LOCK_SCREEN: "LockScreen",
-  ACCOUNT_QR_CODE_SCREEN: "AccountQRCodeScreen",
   SCAN_QR_CODE_SCREEN: "ScanQRCodeScreen",
+  SCAN_RECEIVE_SCREEN: "ScanReceiveScreen",
   CONNECTED_APPS_SCREEN: "ConnectedAppsScreen",
   TOKEN_DETAILS_SCREEN: "TokenDetailsScreen",
   COLLECTIBLE_DETAILS_SCREEN: "CollectibleDetailsScreen",
@@ -94,6 +97,7 @@ export const SETTINGS_ROUTES = {
   SHOW_RECOVERY_PHRASE_SCREEN: "ShowRecoveryPhraseScreen",
   YOUR_RECOVERY_PHRASE_SCREEN: "YourRecoveryPhraseScreen",
   BIOMETRICS_SETTINGS_SCREEN: "BiometricsSettingsScreen",
+  AUTO_LOCK_TIMER_SCREEN: "AutoLockTimerScreen",
 } as const;
 
 export const MANAGE_WALLETS_ROUTES = {
@@ -147,10 +151,12 @@ export type RootStackParamList = {
   [ROOT_NAVIGATOR_ROUTES.MANAGE_WALLETS_STACK]: undefined;
   [ROOT_NAVIGATOR_ROUTES.LOCK_SCREEN]: undefined;
   [ROOT_NAVIGATOR_ROUTES.SETTINGS_STACK]: undefined;
-  [ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN]: undefined;
   [ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN]: {
     source?: QRCodeSource;
     transition?: ScreenTransition;
+  };
+  [ROOT_NAVIGATOR_ROUTES.SCAN_RECEIVE_SCREEN]: {
+    initialTab?: ScanReceiveTab;
   };
   [ROOT_NAVIGATOR_ROUTES.CONNECTED_APPS_SCREEN]: undefined;
   [ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK]: NavigatorScreenParams<AddFundsStackParamList>;
@@ -210,6 +216,7 @@ export type SettingsStackParamList = {
   [SETTINGS_ROUTES.SHOW_RECOVERY_PHRASE_SCREEN]: undefined;
   [SETTINGS_ROUTES.YOUR_RECOVERY_PHRASE_SCREEN]: undefined;
   [SETTINGS_ROUTES.BIOMETRICS_SETTINGS_SCREEN]: undefined;
+  [SETTINGS_ROUTES.AUTO_LOCK_TIMER_SCREEN]: undefined;
 };
 
 export type ManageWalletsStackParamList = {
@@ -222,7 +229,9 @@ export type AddFundsStackParamList = {
   [ADD_FUNDS_ROUTES.ADD_FUNDS_SCREEN]: {
     isUnfunded: boolean;
   };
-  [ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN]: undefined;
+  [ROOT_NAVIGATOR_ROUTES.SCAN_RECEIVE_SCREEN]: {
+    initialTab?: ScanReceiveTab;
+  };
 };
 
 export type SendPaymentStackParamList = {

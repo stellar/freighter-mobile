@@ -129,12 +129,13 @@
       "termsOfService": "Terms of Service"
     }
   },
-  "accountQRCodeScreen": {
-    "title": "Receive funds",
-    "copyButton": "Copy address",
-    "helperText": "Scan the QR code or \ncopy your address",
-    "bottomSheet": {
-      "description": "Have the sender scan the QR code on their Freighter app to retrieve your wallet address securely."
+  "scanReceiveScreen": {
+    "scanTab": "Scan",
+    "receiveTab": "Receive",
+    "receive": {
+      "network": "Stellar",
+      "networkSupport": "This address supports the Stellar network.",
+      "copyButton": "Copy wallet address"
     }
   },
   "walletConnect": {
@@ -467,7 +468,8 @@
     "empty": "No collectibles yet",
     "emptyHidden": "No hidden collectibles",
     "menuAddManually": "Add manually",
-    "menuHidenCollectibles": "Hidden collectibles"
+    "menuHidenCollectibles": "Hidden collectibles",
+    "itemHiddenLabel": "{{name}}, hidden"
   },
   "collectibleDetails": {
     "title": "Collectible Details",
@@ -688,7 +690,8 @@
     "swapped": "Swapped"
   },
   "transactionTokenScreen": {
-    "title": "Sending"
+    "title": "Sending",
+    "empty": "No tokens or collectibles to send"
   },
   "transactionSettings": {
     "feeTitle": "Transaction fee",
@@ -968,6 +971,7 @@
   "securityScreen": {
     "title": "Security",
     "showRecoveryPhrase": "Show recovery phrase",
+    "autoLock": "Auto-lock",
     "faceId": {
       "title": "Face ID authentication",
       "description": "Enable Face ID for an added layer of security. Use biometric authentication to unlock your wallet and approve transactions quickly and securely.",
@@ -1010,6 +1014,20 @@
       "disableAlertTitle": "Disable Iris?",
       "disableAlertMessage": "Are you sure you want to disable Iris?"
     }
+  },
+  "autoLockTimerScreen": {
+    "title": "Auto-Lock Timer",
+    "options": {
+      "oneMinute": "1 minute",
+      "fiveMinutes": "5 minutes",
+      "fifteenMinutes": "15 minutes",
+      "thirtyMinutes": "30 minutes",
+      "oneHour": "1 hour",
+      "sixHours": "6 hours",
+      "twelveHours": "12 hours",
+      "twentyFourHours": "24 hours"
+    },
+    "footer": "After a set time, you will be prompted for your password again as an extra security measure."
   },
   "showRecoveryPhraseScreen": {
     "title": "Show Recovery Phrase",

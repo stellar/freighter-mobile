@@ -50,7 +50,6 @@ export const HiddenCollectiblesScreen: React.FC<
       <CollectiblesGrid
         onCollectiblePress={handleCollectiblePress}
         type={CollectibleFilterType.HIDDEN}
-        disableInnerScrolling
       />
     </BaseLayout>
   );

@@ -21,6 +21,7 @@ import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
+import { isWalletUnlocked } from "hooks/useGetActiveAccount";
 import { useToast } from "providers/ToastProvider";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { analytics } from "services/analytics";
@@ -184,6 +185,16 @@ export const useSwapTransaction = ({
     setIsProcessing(true);
 
     try {
+      // Abort cleanly if an auto-lock engaged after the swap was prepared.
+      // Return (don't throw): being locked isn't a swap failure, so skip the
+      // catch's analytics + error-toast path — a hard-coded throw would also
+      // surface as a non-localized toast title. A return (not a throw) keeps
+      // the fire-and-forget executeSwap() from rejecting unhandled.
+      if (!isWalletUnlocked()) {
+        setIsProcessing(false);
+        return;
+      }
+
       const signedXDR = signTransaction({
         secretKey: account.privateKey,
         network,
@@ -206,10 +217,12 @@ export const useSwapTransaction = ({
         const errorMessage = submitError || "Failed to submit transaction";
         const submitFailure = new Error(errorMessage) as Error & {
           quoteExpiredCodes?: string[];
+          resultCodes?: { transaction?: string; operations?: string[] } | null;
         };
         submitFailure.quoteExpiredCodes = getQuoteExpiredOperationCodes(
           submitErrorResultCodes,
         );
+        submitFailure.resultCodes = submitErrorResultCodes;
         throw submitFailure;
       }
 
@@ -231,8 +244,8 @@ export const useSwapTransaction = ({
       const { destinationToken: swappedDestination } = useSwapStore.getState();
       if (swappedDestination?.requiresTrustline) {
         analytics.track(AnalyticsEvent.SWAP_TRUSTLINE_ADDED, {
-          tokenCode: destinationTokenInput.tokenCode,
-          tokenIssuer: swappedDestination.issuer ?? "",
+          asset_code: destinationTokenInput.tokenCode,
+          asset_issuer: swappedDestination.issuer ?? "",
         });
       }
     } catch (error) {
@@ -254,15 +267,13 @@ export const useSwapTransaction = ({
         // event instead of SWAP_FAIL and prompt the user to retry for a
         // fresh quote. `resultCode` carries the Horizon op code(s) that drove
         // the expiry so we can slice by reason.
+        // Amounts intentionally dropped (parity with swap.completed/failed,
+        // which carry no amounts). Bare asset codes so from/to_asset_code match
+        // the extension.
         analytics.track(AnalyticsEvent.SWAP_QUOTE_EXPIRED, {
-          sourceToken: sourceBalance?.tokenCode,
-          destToken: destinationTokenInput?.tokenCode,
-          sourceAmount,
-          destAmount: pathResult?.destinationAmount,
-          allowedSlippage: useSwapSettingsStore
-            .getState()
-            .swapSlippage?.toString(),
-          resultCode: quoteExpiredCodes.join(", "),
+          from_asset_code: sourceBalance?.tokenCode,
+          to_asset_code: destinationTokenInput?.tokenCode,
+          result_code: quoteExpiredCodes.join(", "),
         });
 
         showToast({
@@ -294,8 +305,18 @@ export const useSwapTransaction = ({
         return;
       }
 
+      const submitResultCodes =
+        error instanceof Error
+          ? (
+              error as Error & {
+                resultCodes?: { transaction?: string; operations?: string[] };
+              }
+            ).resultCodes
+          : undefined;
       analytics.trackTransactionError({
         error: error instanceof Error ? error.message : String(error),
+        errorCode:
+          submitResultCodes?.operations?.[0] || submitResultCodes?.transaction,
         isSwap: true,
         sourceToken: sourceBalance?.tokenCode,
         destToken: destinationTokenInput?.tokenCode,

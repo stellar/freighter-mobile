@@ -92,6 +92,7 @@ jest.mock("@react-navigation/native", () => {
       replace: jest.fn(),
       goBack: jest.fn(),
     }),
+    useIsFocused: jest.fn().mockReturnValue(true),
     createNavigationContainerRef,
   };
 });
@@ -249,6 +250,8 @@ jest.mock("ducks/walletKit", () => ({
   StellarRpcMethods: {
     SIGN_XDR: "SIGN_XDR",
     SIGN_AND_SUBMIT_XDR: "SIGN_AND_SUBMIT_XDR",
+    SIGN_MESSAGE: "SIGN_MESSAGE",
+    SIGN_AUTH_ENTRY: "SIGN_AUTH_ENTRY",
   },
   StellarRpcChains: {
     PUBLIC: "PUBLIC",
@@ -475,7 +478,14 @@ jest.mock("hooks/useGetActiveAccount", () => ({
     refreshAccount: jest.fn(),
     signTransaction: jest.fn(),
   })),
+  // Named guard used at direct signing sites; default to "unlocked" in tests
+  isWalletUnlocked: jest.fn(() => true),
 }));
+
+// react-native-keyboard-controller ships a jest mock for its native bindings
+jest.mock("react-native-keyboard-controller", () =>
+  require("react-native-keyboard-controller/jest"),
+);
 
 jest.mock("hooks/useBalancesList", () => ({
   useBalancesList: jest.fn(() => ({

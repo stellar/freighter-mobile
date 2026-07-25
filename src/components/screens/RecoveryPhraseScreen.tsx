@@ -136,7 +136,8 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
           return;
         }
         clearLoginData(); // Clear sensitive data after successful signup
-        analytics.track(AnalyticsEvent.ACCOUNT_CREATOR_FINISHED);
+        // onboarding.completed now fires once from the signUp store action's
+        // success path (single terminal point), not per UI screen.
       });
     }
 
