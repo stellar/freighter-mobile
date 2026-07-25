@@ -1,5 +1,6 @@
 import { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { BigNumber } from "bignumber.js";
+import { DefaultListFooter } from "components/DefaultListFooter";
 import BottomSheetAdaptiveContainer from "components/primitives/BottomSheetAdaptiveContainer";
 import AccountItemRow from "components/screens/HomeScreen/AccountItemRow";
 import Avatar from "components/sds/Avatar";
@@ -200,6 +201,7 @@ export const ManageAccountBottomSheet: React.FC<
               testID={`account-row-${index}`}
             />
           ))}
+          <DefaultListFooter />
         </BottomSheetScrollView>
         {showAddWallet && (
           <TouchableOpacity
