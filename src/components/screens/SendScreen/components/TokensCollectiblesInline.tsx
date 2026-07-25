@@ -1,7 +1,7 @@
 import { BalancesList } from "components/BalancesList";
-import { CollectibleImage } from "components/CollectibleImage";
 import { DefaultListFooter } from "components/DefaultListFooter";
 import Spinner from "components/Spinner";
+import { SendCollectibleCollection } from "components/screens/SendScreen/components/SendCollectibleCollection";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import {
@@ -16,7 +16,7 @@ import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
 import { useFilteredCollectibles } from "hooks/useFilteredCollectibles";
 import React from "react";
-import { ScrollView, TouchableOpacity, View } from "react-native";
+import { ScrollView, View } from "react-native";
 
 interface TokensCollectiblesInlineProps {
   publicKey: string;
@@ -119,38 +119,11 @@ export const TokensCollectiblesInline: React.FC<
 
   const renderCollectibles = () =>
     visibleCollectibles.map((collection) => (
-      <View key={collection.collectionAddress}>
-        <View className="flex-row items-center gap-[12px] mb-3 mt-3">
-          <Text md secondary numberOfLines={1}>
-            {collection.collectionName}
-          </Text>
-          <View className="flex-1 h-[1px] bg-gray-3" />
-          <Text md secondary>
-            {collection.items.length}
-          </Text>
-        </View>
-
-        {collection.items.map((item) => (
-          <TouchableOpacity
-            key={`${item.collectionAddress}-${item.tokenId}`}
-            className="flex-row items-center gap-4 py-3"
-            onPress={() =>
-              onCollectiblePress?.({
-                collectionAddress: item.collectionAddress,
-                tokenId: item.tokenId,
-              })
-            }
-          >
-            <View className="w-[40px] h-[40px] rounded-[8px] overflow-hidden bg-background-tertiary">
-              <CollectibleImage imageUri={item.image} placeholderIconSize={20} />
-            </View>
-
-            <Text md medium numberOfLines={1} style={{ flexShrink: 1 }}>
-              {item.name || `${collection.collectionName} #${item.tokenId}`}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      <SendCollectibleCollection
+        key={collection.collectionAddress}
+        collection={collection}
+        onCollectiblePress={onCollectiblePress}
+      />
     ));
 
   const renderContent = () => {

@@ -9,7 +9,7 @@ import {
 import { BottomSheetViewProps } from "@gorhom/bottom-sheet/lib/typescript/components/bottomSheetView/types";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { AnalyticsEvent } from "config/analyticsConfig";
+import { AnalyticsEvent, getScreenViewedProps } from "config/analyticsConfig";
 import { DEFAULT_PADDING } from "config/constants";
 import { pxValue } from "helpers/dimensions";
 import useColors from "hooks/useColors";
@@ -159,7 +159,18 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
     (index: number) => {
       // index >= 0 means sheet is visible
       if (analyticsEvent && index >= 0 && !hasTrackedRef.current) {
-        track(analyticsEvent, analyticsProps);
+        // Screens presented via a bottom sheet are screen loads too: retarget
+        // any catalogued screen-view analyticsEvent to the single canonical
+        // `screen.viewed` event. Non-screen events pass through unchanged.
+        const screenViewedProps = getScreenViewedProps(analyticsEvent);
+        if (screenViewedProps) {
+          track(AnalyticsEvent.SCREEN_VIEWED, {
+            ...screenViewedProps,
+            ...analyticsProps,
+          });
+        } else {
+          track(analyticsEvent, analyticsProps);
+        }
         hasTrackedRef.current = true;
       }
 

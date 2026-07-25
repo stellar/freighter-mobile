@@ -2203,6 +2203,8 @@ describe("auth duck", () => {
         scanResults: {},
         isLoading: false,
         isFunded: false,
+        fetchedPublicKey: null,
+        fetchedNetwork: null,
         subentryCount: 0,
         error: null,
       });
@@ -2295,6 +2297,21 @@ describe("auth duck", () => {
       expect(balancesCall?.scanResults).toEqual({});
       expect(balancesCall?.isFunded).toBe(false);
       expect(balancesCall?.subentryCount).toBe(0);
+    });
+
+    it("should reset fetchedPublicKey and fetchedNetwork so account_funded fails closed across an account switch", () => {
+      // Regression: clearAccountData must reset fetchedPublicKey/fetchedNetwork
+      // alongside isFunded. Otherwise, during the selectAccount switch window the
+      // balances snapshot reads isFunded=false while fetchedPublicKey still equals
+      // the (still-active) previous account, so buildCommonContext's
+      // `fetchedPublicKey === activePublicKey` guard matches and emits a wrong
+      // account_funded=false for an account that is actually funded.
+      clearAccountData();
+
+      const balancesCall = (useBalancesStore.setState as jest.Mock).mock
+        .calls[0]?.[0];
+      expect(balancesCall?.fetchedPublicKey).toBeNull();
+      expect(balancesCall?.fetchedNetwork).toBeNull();
     });
 
     it("should reset history store to null values and false flags", () => {

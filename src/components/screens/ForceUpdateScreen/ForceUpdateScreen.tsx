@@ -34,7 +34,9 @@ export const ForceUpdateScreen: React.FC<ForceUpdateScreenProps> = ({
 
   const handleGoToAppStore = () => {
     openAppStore().then(() => {
-      analytics.track(AnalyticsEvent.APP_UPDATE_OPEN_STORE_FROM_SCREEN);
+      analytics.track(AnalyticsEvent.APP_UPDATE_STORE_OPENED, {
+        source: "screen",
+      });
       onDismiss?.();
     });
   };
