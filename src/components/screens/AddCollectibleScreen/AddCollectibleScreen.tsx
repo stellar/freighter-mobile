@@ -255,6 +255,7 @@ export const AddCollectibleScreen: React.FC<AddCollectibleScreenProps> = ({
           text={t("addCollectibleScreen.showHidden")}
           variant="tertiary"
           className="py-1"
+          hitSlop={{ top: 6, bottom: 6 }}
           onPress={() =>
             navigation.navigate(
               ROOT_NAVIGATOR_ROUTES.HIDDEN_COLLECTIBLES_SCREEN,
