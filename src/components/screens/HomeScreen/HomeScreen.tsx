@@ -80,7 +80,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
     const { t } = useAppTranslation();
     const { copyToClipboard } = useClipboard();
 
-    const { formattedBalance, hasFiatTotal } = useTotalBalance();
+    const { formattedBalance } = useTotalBalance();
     const {
       balances,
       isFunded,
@@ -302,11 +302,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
                   />
                 </View>
               </TouchableOpacity>
-              {hasFiatTotal && (
-                <Display lg medium>
-                  {formattedBalance}
-                </Display>
-              )}
+              <Display lg medium>
+                {formattedBalance}
+              </Display>
             </View>
 
             <View className="flex-row gap-[24px] items-center justify-center my-8">

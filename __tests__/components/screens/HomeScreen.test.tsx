@@ -271,6 +271,19 @@ describe("HomeScreen", () => {
     expect(getByText("$350.75")).toBeTruthy();
   });
 
+  it("shows a zero fiat total when no balance is priced", () => {
+    const { useTotalBalance } = jest.requireMock("hooks/useTotalBalance");
+    useTotalBalance.mockReturnValueOnce({
+      formattedBalance: "$0.00",
+      totalBalance: "0",
+      hasFiatTotal: false,
+    });
+
+    const { getByText } = renderHomeScreen();
+
+    expect(getByText("$0.00")).toBeTruthy();
+  });
+
   it("handles clipboard copy when copy button is pressed", async () => {
     const { getByTestId } = renderHomeScreen();
 
