@@ -249,12 +249,12 @@ export const AddCollectibleScreen: React.FC<AddCollectibleScreenProps> = ({
         />
       </View>
 
-      <View className="mb-6">
+      <View className="mb-4 self-start">
         <TextButton
           testID="add-collectible-show-hidden"
           text={t("addCollectibleScreen.showHidden")}
           variant="tertiary"
-          className="items-start py-3"
+          className="py-1"
           onPress={() =>
             navigation.navigate(
               ROOT_NAVIGATOR_ROUTES.HIDDEN_COLLECTIBLES_SCREEN,
