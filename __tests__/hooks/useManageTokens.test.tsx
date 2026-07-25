@@ -53,6 +53,8 @@ jest.mock("services/stellar", () => ({
     Promise.resolve(mockBuildChangeTrustTx(params)),
   signTransaction: (params: SignTxParams) => mockSignTransaction(params),
   submitTx: (params: SubmitTxParams) => Promise.resolve(mockSubmitTx(params)),
+  isHorizonError: (val: unknown) =>
+    typeof val === "object" && val !== null && "response" in val,
 }));
 
 jest.mock("helpers/balances", () => ({

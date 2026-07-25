@@ -429,7 +429,10 @@
     "error": "Erro ao carregar colecionáveis",
     "empty": "Nenhum colecionável ainda",
     "emptyHidden": "Nenhum colecionável oculto",
-    "addCollectibleButton": "Adicionar colecionável"
+    "addCollectibleButton": "Adicionar colecionável",
+    "menuAddManually": "Adicionar manualmente",
+    "menuHidenCollectibles": "Colecionáveis ocultos",
+    "itemHiddenLabel": "{{name}}, oculto"
   },
   "collectibleDetails": {
     "title": "Detalhes do Colecionável",

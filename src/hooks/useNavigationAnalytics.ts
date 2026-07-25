@@ -1,5 +1,9 @@
 import { NavigationState, PartialState } from "@react-navigation/native";
-import { processRouteForAnalytics } from "config/analyticsConfig";
+import {
+  AnalyticsEvent,
+  buildScreenViewedProps,
+  processRouteForAnalytics,
+} from "config/analyticsConfig";
 import { useRef } from "react";
 import { track } from "services/analytics/core";
 
@@ -35,10 +39,14 @@ export const useNavigationAnalytics = () => {
     const currentRouteName = getActiveRouteName(state);
 
     if (previousRouteName !== currentRouteName) {
-      const event = processRouteForAnalytics(currentRouteName);
+      // processRouteForAnalytics resolves the route to its canonical
+      // screen_name; we emit a single `screen.viewed` event carrying
+      // { screen_name, flow } (surface is added by the Slice-A common
+      // context).
+      const screenName = processRouteForAnalytics(currentRouteName);
 
-      if (event) {
-        track(event);
+      if (screenName) {
+        track(AnalyticsEvent.SCREEN_VIEWED, buildScreenViewedProps(screenName));
       }
     }
 

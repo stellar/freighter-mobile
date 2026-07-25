@@ -10,14 +10,10 @@ export type AnalyticsEventName = AnalyticsEvent;
 export type AnalyticsProps = Record<string, unknown> | undefined;
 
 export interface SignedTransactionEvent {
-  transactionHash: string;
-  transactionType?: TransactionType | string;
   dappDomain?: string;
 }
 
 export interface SubmittedTransactionEvent {
-  transactionHash: string;
-  transactionType?: TransactionType | string;
   dappDomain?: string;
 }
 
