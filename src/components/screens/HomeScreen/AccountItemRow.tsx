@@ -24,7 +24,8 @@ interface AccountItemRowProps {
   isSwitchingToThisAccount: boolean;
   /**
    * Account's total USD value. `undefined` while it hasn't been fetched yet,
-   * `null` when unavailable (fetch failed or fiat-less network).
+   * `null` when unavailable (fetch failed or fiat-less network) — both render
+   * as a zero total, matching the Home screen's always-visible fiat balance.
    */
   fiatTotal?: BigNumber | null;
   isLoadingFiatTotal?: boolean;
@@ -53,14 +54,6 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
   }, [account.publicKey, handleSelectAccount]);
 
   const renderFiatTotal = () => {
-    if (fiatTotal) {
-      return (
-        <Text md medium primary testID={testID ? `${testID}-total` : undefined}>
-          {formatFiatAmount(fiatTotal)}
-        </Text>
-      );
-    }
-
     if (fiatTotal === undefined && isLoadingFiatTotal) {
       return (
         <Text md medium secondary>
@@ -69,7 +62,11 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
       );
     }
 
-    return null;
+    return (
+      <Text md medium primary testID={testID ? `${testID}-total` : undefined}>
+        {formatFiatAmount(fiatTotal ?? "0")}
+      </Text>
+    );
   };
 
   return (

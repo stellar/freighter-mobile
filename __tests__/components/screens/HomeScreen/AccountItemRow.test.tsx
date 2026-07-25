@@ -72,13 +72,21 @@ describe("AccountItemRow", () => {
     expect(getByText("...")).toBeTruthy();
   });
 
-  it("shows no fiat total when it is unavailable", () => {
-    const { queryByTestId, queryByText } = renderWithProviders(
+  it("shows a zero fiat total when it is unavailable", () => {
+    const { getByText, queryByText } = renderWithProviders(
       <AccountItemRow {...defaultProps} fiatTotal={null} />,
     );
 
-    expect(queryByTestId("account-row-0-total")).toBeNull();
+    expect(getByText("$0.00")).toBeTruthy();
     expect(queryByText("...")).toBeNull();
+  });
+
+  it("shows a zero fiat total when none was fetched and nothing is loading", () => {
+    const { getByText } = renderWithProviders(
+      <AccountItemRow {...defaultProps} />,
+    );
+
+    expect(getByText("$0.00")).toBeTruthy();
   });
 
   it("shows no selected badge on unselected accounts", () => {
