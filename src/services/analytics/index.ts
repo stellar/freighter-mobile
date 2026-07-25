@@ -20,6 +20,9 @@ import {
   trackSignedAuthEntry,
   trackSignedMessageError,
   trackSignedAuthEntryError,
+  trackSignedMessageRejected,
+  trackSignedAuthEntryRejected,
+  trackSignedTransactionRejected,
   trackSubmittedTransaction,
   trackSimulationError,
   trackReAuthSuccess,
@@ -39,6 +42,7 @@ import {
   trackViewPublicKeyAccountRenamed,
   trackGrantAccessSuccess,
   trackGrantAccessFail,
+  trackGrantAccessBlocked,
   trackHistoryOpenItem,
   trackSendCollectibleSuccess,
 } from "services/analytics/transactions";
@@ -63,6 +67,9 @@ export interface AnalyticsInstance {
   readonly trackSignedAuthEntry: typeof trackSignedAuthEntry;
   readonly trackSignedMessageError: typeof trackSignedMessageError;
   readonly trackSignedAuthEntryError: typeof trackSignedAuthEntryError;
+  readonly trackSignedMessageRejected: typeof trackSignedMessageRejected;
+  readonly trackSignedAuthEntryRejected: typeof trackSignedAuthEntryRejected;
+  readonly trackSignedTransactionRejected: typeof trackSignedTransactionRejected;
   readonly trackSubmittedTransaction: typeof trackSubmittedTransaction;
   readonly trackSimulationError: typeof trackSimulationError;
   readonly trackCopyPublicKey: typeof trackCopyPublicKey;
@@ -87,6 +94,7 @@ export interface AnalyticsInstance {
   // WalletConnect/dApp analytics
   readonly trackGrantAccessSuccess: typeof trackGrantAccessSuccess;
   readonly trackGrantAccessFail: typeof trackGrantAccessFail;
+  readonly trackGrantAccessBlocked: typeof trackGrantAccessBlocked;
 
   // History analytics
   readonly trackHistoryOpenItem: typeof trackHistoryOpenItem;
@@ -132,6 +140,9 @@ export const analytics: AnalyticsInstance = {
   trackSignedAuthEntry,
   trackSignedMessageError,
   trackSignedAuthEntryError,
+  trackSignedMessageRejected,
+  trackSignedAuthEntryRejected,
+  trackSignedTransactionRejected,
   trackSubmittedTransaction,
   trackSimulationError,
   trackCopyPublicKey,
@@ -150,6 +161,7 @@ export const analytics: AnalyticsInstance = {
   trackViewPublicKeyAccountRenamed,
   trackGrantAccessSuccess,
   trackGrantAccessFail,
+  trackGrantAccessBlocked,
   trackHistoryOpenItem,
   trackDiscoverProtocolOpened,
   trackDiscoverProtocolDetailsViewed,

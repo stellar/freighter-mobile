@@ -223,6 +223,26 @@ describe("balances duck", () => {
       expect(result.current.error).toBeNull();
     });
 
+    it("should record fetchedPublicKey and fetchedNetwork after a successful fetch", async () => {
+      mockFetchBalances.mockResolvedValueOnce({
+        balances: {},
+        isFunded: false,
+        subentryCount: 0,
+      });
+      (usePricesStore.getState as jest.Mock).mockReturnValue(
+        createMockPricesStore(),
+      );
+
+      const { result } = renderHook(() => useBalancesStore());
+
+      await act(async () => {
+        await result.current.fetchAccountBalances(mockParams);
+      });
+
+      expect(result.current.fetchedPublicKey).toBe(mockParams.publicKey);
+      expect(result.current.fetchedNetwork).toBe(mockParams.network);
+    });
+
     it("should handle fetch with contractIds", async () => {
       // Mock custom token storage
       const mockCustomTokens = {

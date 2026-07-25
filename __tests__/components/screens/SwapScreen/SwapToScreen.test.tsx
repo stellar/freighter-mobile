@@ -652,7 +652,7 @@ describe("SwapToScreen", () => {
 
       expect(analytics.track).toHaveBeenCalledWith(
         AnalyticsEvent.SWAP_DESTINATION_SELECTED,
-        expect.objectContaining({ source: "popular", tokenCode: "AQUA" }),
+        expect.objectContaining({ source: "popular", asset_code: "AQUA" }),
       );
     });
 
@@ -675,7 +675,7 @@ describe("SwapToScreen", () => {
 
       expect(analytics.track).toHaveBeenCalledWith(
         AnalyticsEvent.SWAP_DESTINATION_SELECTED,
-        expect.objectContaining({ source: "search", tokenCode: "AQUA" }),
+        expect.objectContaining({ source: "search", asset_code: "AQUA" }),
       );
     });
 
@@ -698,8 +698,8 @@ describe("SwapToScreen", () => {
         AnalyticsEvent.SWAP_SOURCE_SELECTED,
         expect.objectContaining({
           source: "balances",
-          tokenCode: "USDC",
-          tokenIssuer:
+          asset_code: "USDC",
+          asset_issuer:
             "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
         }),
       );
