@@ -61,6 +61,10 @@ import {
 } from "react-native";
 import { analytics } from "services/analytics";
 
+// Bottom padding reserved at the end of the Home scroll content so the floating
+// "+ Add" pill (its height plus its bottom offset) never covers the last row.
+const FLOATING_ADD_BUTTON_CLEARANCE = 88;
+
 type HomeScreenProps = BottomTabScreenProps<
   MainTabStackParamList & RootStackParamList,
   typeof MAIN_TAB_ROUTES.TAB_HOME
@@ -304,7 +308,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
             flexGrow: 1,
             // Reserve space so the floating add pill never obscures the last
             // list row when scrolled to the bottom.
-            paddingBottom: pxValue(88),
+            paddingBottom: pxValue(FLOATING_ADD_BUTTON_CLEARANCE),
           }}
         >
           <View className="pt-8 w-full items-center">

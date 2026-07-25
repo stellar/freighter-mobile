@@ -467,8 +467,6 @@
     "empty": "No collectibles yet",
     "emptyHidden": "No hidden collectibles",
     "addCollectibleButton": "Add collectible",
-    "menuAddManually": "Add manually",
-    "menuHidenCollectibles": "Hidden collectibles",
     "itemHiddenLabel": "{{name}}, hidden"
   },
   "collectibleDetails": {
