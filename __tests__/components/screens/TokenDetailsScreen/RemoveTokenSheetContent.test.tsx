@@ -65,6 +65,17 @@ describe("RemoveTokenSheetContent", () => {
     expect(getByText("cannot-hasBalance")).toBeTruthy();
   });
 
+  it("shows the hasBalance cannot-remove sheet for a zero-balance LP-share token", () => {
+    const token = makeToken({
+      total: new BigNumber(0),
+      tokenType: TokenTypeWithCustomToken.LIQUIDITY_POOL_SHARES,
+    });
+    const { getByText } = render(
+      <RemoveTokenSheetContent {...baseProps} selectedToken={token} />,
+    );
+    expect(getByText("cannot-hasBalance")).toBeTruthy();
+  });
+
   it("shows the removable content for a zero-balance non-native token", () => {
     const token = makeToken({ total: new BigNumber(0) });
     const { getByText } = render(

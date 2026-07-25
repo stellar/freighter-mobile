@@ -94,7 +94,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
       isLoading: isLoadingBalances,
       fetchAccountBalances,
     } = useBalancesStore();
-    const { fetchCollectibles } = useCollectiblesStore();
+    const { fetchCollectibles, isLoading: isCollectiblesLoading } =
+      useCollectiblesStore();
     const { fetchActiveSessions } = useWalletKitStore();
     const { swap_enabled: swapEnabled } = useRemoteConfigStore();
 
@@ -299,7 +300,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
               tintColor={themeColors.secondary}
             />
           }
-          contentContainerStyle={{ flexGrow: 1 }}
+          contentContainerStyle={{
+            flexGrow: 1,
+            // Reserve space so the floating add pill never obscures the last
+            // list row when scrolled to the bottom.
+            paddingBottom: pxValue(88),
+          }}
         >
           <View className="pt-8 w-full items-center">
             <View className="flex-col gap-3 items-center">
@@ -383,6 +389,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
             <FloatingTabActionButton
               label={t("collectiblesGrid.addCollectibleButton")}
               onPress={handleAddCollectiblePress}
+              disabled={isCollectiblesLoading}
               testID="home-add-collectible-button"
             />
           )}

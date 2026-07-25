@@ -3,6 +3,7 @@ import { BaseLayout } from "components/layout/BaseLayout";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
+import { TextButton } from "components/sds/TextButton";
 import { Text } from "components/sds/Typography";
 import { logger } from "config/logger";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
@@ -15,7 +16,7 @@ import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useToast } from "providers/ToastProvider";
 import React, { useState, useCallback, useRef } from "react";
-import { View, TextInput, TouchableOpacity } from "react-native";
+import { View, TextInput } from "react-native";
 
 type AddCollectibleScreenProps = NativeStackScreenProps<
   RootStackParamList,
@@ -248,19 +249,18 @@ export const AddCollectibleScreen: React.FC<AddCollectibleScreenProps> = ({
         />
       </View>
 
-      <View className="mb-6 flex-row">
-        <TouchableOpacity
+      <View className="mb-6">
+        <TextButton
           testID="add-collectible-show-hidden"
+          text={t("addCollectibleScreen.showHidden")}
+          variant="tertiary"
+          className="items-start py-3"
           onPress={() =>
             navigation.navigate(
               ROOT_NAVIGATOR_ROUTES.HIDDEN_COLLECTIBLES_SCREEN,
             )
           }
-        >
-          <Text sm medium color={themeColors.primary}>
-            {t("addCollectibleScreen.showHidden")}
-          </Text>
-        </TouchableOpacity>
+        />
       </View>
 
       <View className="mb-8">

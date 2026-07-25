@@ -188,6 +188,12 @@ export const useManageTokens = ({
       analytics.track(AnalyticsEvent.ADD_TOKEN_SUCCESS, {
         asset: `${tokenCode}:${issuer}`,
       });
+
+      // Fire onSuccess only on a confirmed success. Delay slightly so the
+      // bottom sheet finishes dismissing before any navigation runs.
+      setTimeout(() => {
+        onSuccess?.();
+      }, 100);
     } catch (error) {
       analytics.track(AnalyticsEvent.TOKEN_MANAGEMENT_FAIL, {
         error: error instanceof Error ? error.message : String(error),
@@ -213,11 +219,6 @@ export const useManageTokens = ({
 
       // Execute onComplete callback if provided
       onComplete?.();
-
-      // Execute onSuccess callback after a slight delay to ensure modal is dismissed first
-      setTimeout(() => {
-        onSuccess?.();
-      }, 100);
     }
   };
 
@@ -316,6 +317,12 @@ export const useManageTokens = ({
       analytics.track(AnalyticsEvent.REMOVE_TOKEN_SUCCESS, {
         asset: tokenIdentifier,
       });
+
+      // Fire onSuccess only on a confirmed success. Delay slightly so the
+      // bottom sheet finishes dismissing before any navigation runs.
+      setTimeout(() => {
+        onSuccess?.();
+      }, 100);
     } catch (error) {
       analytics.track(AnalyticsEvent.TOKEN_MANAGEMENT_FAIL, {
         error: error instanceof Error ? error.message : String(error),
@@ -338,11 +345,6 @@ export const useManageTokens = ({
     } finally {
       setIsRemovingToken(false);
       showToast(toastOptions);
-
-      // Execute onSuccess callback after a slight delay to ensure modal is dismissed first
-      setTimeout(() => {
-        onSuccess?.();
-      }, 100);
     }
   };
 

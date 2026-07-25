@@ -17,4 +17,19 @@ describe("FloatingTabActionButton", () => {
     fireEvent.press(getByTestId("floating-add-button"));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
+
+  it("does not fire onPress when disabled", () => {
+    const onPress = jest.fn();
+    const { getByTestId } = render(
+      <FloatingTabActionButton
+        label="Add collectible"
+        onPress={onPress}
+        disabled
+        testID="floating-add-button"
+      />,
+    );
+
+    fireEvent.press(getByTestId("floating-add-button"));
+    expect(onPress).not.toHaveBeenCalled();
+  });
 });

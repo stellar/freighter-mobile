@@ -9,6 +9,8 @@ interface FloatingTabActionButtonProps {
   label: string;
   /** Called when the pill is pressed */
   onPress: () => void;
+  /** When true, the pill is dimmed and does not respond to presses */
+  disabled?: boolean;
   /** Optional testID for the touchable */
   testID?: string;
 }
@@ -22,15 +24,18 @@ interface FloatingTabActionButtonProps {
  */
 export const FloatingTabActionButton: React.FC<
   FloatingTabActionButtonProps
-> = ({ label, onPress, testID }) => {
+> = ({ label, onPress, disabled = false, testID }) => {
   const { themeColors } = useColors();
 
   return (
     <TouchableOpacity
       testID={testID}
       onPress={onPress}
+      disabled={disabled}
       activeOpacity={0.8}
-      className="flex-row items-center gap-1 self-center px-5 py-3 rounded-full bg-background-tertiary border border-border-primary"
+      className={`flex-row items-center gap-1 self-center px-5 py-3 rounded-full bg-background-tertiary border border-border-primary ${
+        disabled ? "opacity-50" : ""
+      }`}
     >
       <Icon.Plus size={18} color={themeColors.foreground.primary} />
       <Text semiBold>{label}</Text>

@@ -261,6 +261,9 @@ describe("useManageTokens", () => {
         variant: "error",
       });
       expect(result.current.isAddingToken).toBe(false);
+      // onSuccess must NOT fire on failure (would otherwise navigate away
+      // from a token that was never added).
+      expect(mockOnSuccess).not.toHaveBeenCalled();
     });
 
     it("should do nothing if token is null", async () => {
@@ -582,6 +585,9 @@ describe("useManageTokens", () => {
         variant: "error",
       });
       expect(result.current.isRemovingToken).toBe(false);
+      // onSuccess must NOT fire on failure (would otherwise navigate away
+      // from a token that was never removed).
+      expect(mockOnSuccess).not.toHaveBeenCalled();
     });
   });
 });
