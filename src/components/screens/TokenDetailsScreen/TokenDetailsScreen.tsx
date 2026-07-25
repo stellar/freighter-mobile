@@ -102,7 +102,11 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
     tokenId,
   });
 
-  const { scanResults, balanceItems } = useBalancesList({
+  const {
+    scanResults,
+    balanceItems,
+    handleRefresh: refreshBalances,
+  } = useBalancesList({
     publicKey: account?.publicKey ?? "",
     network,
   });
@@ -127,7 +131,12 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
     network,
     account,
     bottomSheetRefRemove: removeTokenBottomSheetModalRef,
-    onSuccess: () => navigation.goBack(),
+    onSuccess: () => {
+      // Refresh balances so Home reflects the removal immediately instead of
+      // waiting for the next focused poll.
+      refreshBalances();
+      navigation.goBack();
+    },
   });
 
   const handleCancelTokenRemoval = useCallback(() => {
