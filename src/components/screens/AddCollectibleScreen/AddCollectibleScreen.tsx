@@ -233,7 +233,7 @@ export const AddCollectibleScreen: React.FC<AddCollectibleScreenProps> = ({
         />
       </View>
 
-      <View className="mb-6">
+      <View className="mb-3">
         <Input
           ref={tokenIdRef}
           placeholder={t("addCollectibleScreen.tokenId")}
@@ -249,7 +249,7 @@ export const AddCollectibleScreen: React.FC<AddCollectibleScreenProps> = ({
         />
       </View>
 
-      <View className="mb-4 self-start">
+      <View className="mb-3 self-start">
         <TextButton
           testID="add-collectible-show-hidden"
           text={t("addCollectibleScreen.showHidden")}
