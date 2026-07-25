@@ -32,6 +32,7 @@ import {
   approveSessionRequest,
   rejectSessionRequest,
   rejectSessionProposal,
+  resolveDappRejectionEvent,
 } from "helpers/walletKitUtil";
 import {
   validateSignMessageContent,
@@ -140,6 +141,12 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   // its own response (success or handled error) so handleClearDappRequest doesn't
   // send a duplicate rejection when it fires via .finally().
   const hasRespondedRef = useRef(false);
+  // True once the user has committed to approving (handleDappRequest called
+  // approveSessionRequest). Distinguishes an approval attempt — whether it
+  // succeeds or throws — from a genuine user dismissal, so the exceptional
+  // approve-threw path isn't miscounted as a signing.*_rejected. Reset with
+  // hasRespondedRef in the teardown.
+  const approvalInFlightRef = useRef(false);
 
   const xdr = useMemo(
     () =>
@@ -437,12 +444,37 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 
     // We need to explicitly reject the request here otherwise
     // the app will show the request again on next app launch.
-    // Skip if approveSessionRequest already sent a response.
+    // Skip if approveSessionRequest already sent a response. This WC-level
+    // fallback fires on BOTH a user dismissal AND the exceptional case where
+    // approveSessionRequest threw (so the dApp isn't left hanging).
     if (requestEvent && !hasRespondedRef.current) {
       rejectSessionRequest({
         sessionRequest: requestEvent,
         message: t("walletKit.userRejected"),
       });
+    }
+
+    // Analytics rejection is narrower than the WC fallback: only a genuine user
+    // dismissal of a pending request counts. An approved/completed request
+    // (hasResponded) or an approve-attempt that threw (approvalInFlight) is not
+    // a user reject — resolveDappRejectionEvent encodes exactly that.
+    const rejectionEvent = resolveDappRejectionEvent({
+      requestMethod: requestMethod as StellarRpcMethods | undefined,
+      hasRequestEvent: !!requestEvent,
+      hasResponded: hasRespondedRef.current,
+      approvalInFlight: approvalInFlightRef.current,
+    });
+    if (rejectionEvent && requestEvent) {
+      const dappDomain =
+        getDappMetadataFromEvent(requestEvent, activeSessions)?.url || "";
+      const payload = dappDomain ? { dappDomain } : {};
+      if (rejectionEvent === "message") {
+        analytics.trackSignedMessageRejected(payload);
+      } else if (rejectionEvent === "auth_entry") {
+        analytics.trackSignedAuthEntryRejected(payload);
+      } else {
+        analytics.trackSignedTransactionRejected(payload);
+      }
     }
 
     setTimeout(() => {
@@ -455,6 +487,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       saveMemo("");
       clearEvent();
       hasRespondedRef.current = false;
+      approvalInFlightRef.current = false;
 
       // Mark processing as complete and process pending request if any
       isProcessingRequestRef.current = false;
@@ -535,6 +568,9 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     }
 
     setIsSigning(true);
+    // The user committed to approving — mark it so a teardown (including the
+    // exceptional approve-threw .catch path) is not miscounted as a user reject.
+    approvalInFlightRef.current = true;
 
     approveSessionRequest({
       sessionRequest: requestEvent,
@@ -877,9 +913,11 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         message: t("walletKit.userNotAuthenticated"),
       });
 
-      analytics.trackGrantAccessFail(
+      // Auto-declined because the wallet isn't authenticated — a system block,
+      // not a user rejection → dapp_access.blocked (distinct from .rejected).
+      analytics.trackGrantAccessBlocked(
         sessionProposal.params.proposer.metadata.url,
-        "user_not_authenticated",
+        "not_authenticated",
       );
 
       clearEvent();
