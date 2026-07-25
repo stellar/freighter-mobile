@@ -491,8 +491,6 @@
     "title": "Adicionar saldo com Friendbot"
   },
   "manageTokensScreen": {
-    "title": "Gerenciar tokens",
-    "addTokenButton": "Adicionar um token",
     "moreInfo": {
       "title": "Gerenciar Tokens",
       "block1": "Quando você gerencia tokens, está escolhendo quais tokens sua carteira pode manter e usar na rede Stellar. Para Stellar Classic, adicionar um token cria uma trustline, permitindo que sua carteira o reconheça e interaja com ele. Tokens Soroban não usam trustlines, mas ainda podem ser gerenciados e acessados aqui.",

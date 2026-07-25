@@ -528,8 +528,6 @@
     "title": "Fund with Friendbot"
   },
   "manageTokensScreen": {
-    "title": "Manage tokens",
-    "addTokenButton": "Add a token",
     "moreInfo": {
       "title": "Manage Tokens",
       "block1": "When you manage tokens, you're choosing which tokens your wallet can hold and use on the Stellar network. For Stellar Classic, adding a token creates a trustline, allowing your wallet to recognize and interact with it. Soroban tokens don't use trustlines but can still be managed and accessed here.",
