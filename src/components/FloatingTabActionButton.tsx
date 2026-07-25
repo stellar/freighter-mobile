@@ -37,7 +37,7 @@ export const FloatingTabActionButton: React.FC<
         disabled ? "opacity-50" : ""
       }`}
     >
-      <Icon.Plus size={18} color={themeColors.foreground.primary} />
+      <Icon.PlusDouble size={18} color={themeColors.foreground.primary} />
       <Text semiBold>{label}</Text>
     </TouchableOpacity>
   );
