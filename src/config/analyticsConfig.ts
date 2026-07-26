@@ -388,7 +388,12 @@ const SCREEN_CATALOG: Record<string, { flow?: AnalyticsFlow; step?: Step }> = {
   [AnalyticsEvent.VIEW_TOKEN_DETAILS]: {
     flow: AnalyticsFlow.ASSETS,
   },
+  // Both tabs of the unified Scan/Receive screen. They are catalogued like any
+  // other screen so the manual per-tab emission retargets to `screen.viewed`.
   [AnalyticsEvent.VIEW_ACCOUNT_QR_CODE]: {
+    flow: AnalyticsFlow.ASSETS,
+  },
+  [AnalyticsEvent.VIEW_SCAN_QR_CODE]: {
     flow: AnalyticsFlow.ASSETS,
   },
   [AnalyticsEvent.VIEW_MANAGE_TOKENS]: {
