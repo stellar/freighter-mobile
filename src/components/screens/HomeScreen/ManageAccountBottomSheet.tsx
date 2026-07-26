@@ -1,29 +1,23 @@
-import { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { BigNumber } from "bignumber.js";
 import { DefaultListFooter } from "components/DefaultListFooter";
-import BottomSheetAdaptiveContainer from "components/primitives/BottomSheetAdaptiveContainer";
 import AccountItemRow from "components/screens/HomeScreen/AccountItemRow";
 import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { Account } from "config/types";
 import { ActiveAccount } from "ducks/auth";
-import { pxValue } from "helpers/dimensions";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React from "react";
 import { TouchableOpacity, View } from "react-native";
-import { heightPercentageToDP } from "react-native-responsive-screen";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface ManageAccountBottomSheetProps {
-  handleCloseModal: () => void;
-  onPressSettings: () => void;
   onPressMyQRCode: () => void;
   onPressCopyAddress: () => void;
   onPressViewOnExplorer: () => void;
   onPressRenameAccount: () => void;
-  onPressAddAnotherWallet: () => void;
   accounts: Account[];
   activeAccount: ActiveAccount | null;
   handleSelectAccount: (publicKey: string) => Promise<void>;
@@ -31,10 +25,12 @@ interface ManageAccountBottomSheetProps {
   switchingToPublicKey: string | null;
   fiatTotals: Record<string, BigNumber | null>;
   isLoadingFiatTotals: boolean;
-  showAddWallet?: boolean;
 }
 
-const SNAP_VALUE_PERCENT = 80;
+interface ManageAccountSheetHeaderProps {
+  onPressSettings: () => void;
+  onPressClose: () => void;
+}
 
 const HEADER_ICON_SIZE = 24;
 const ACTION_ICON_SIZE = 20;
@@ -69,16 +65,48 @@ const CircleButton: React.FC<CircleButtonProps> = ({
   </TouchableOpacity>
 );
 
+/**
+ * Settings/close row pinned above the manage-accounts sheet's scrollable
+ * content (rendered via the BottomSheet wrapper's scrollViewHeaderComponent,
+ * hence the opaque background).
+ */
+export const ManageAccountSheetHeader: React.FC<
+  ManageAccountSheetHeaderProps
+> = ({ onPressSettings, onPressClose }) => {
+  const { t } = useAppTranslation();
+  const { themeColors } = useColors();
+
+  const iconColor = themeColors.foreground.primary;
+
+  return (
+    <View className="bg-background-primary flex-row items-center justify-between w-full px-6 pt-6 pb-[24px]">
+      <CircleButton
+        sizeClassName="w-[40px] h-[40px]"
+        onPress={onPressSettings}
+        accessibilityLabel={t("home.actions.settings")}
+        testID="manage-accounts-settings-button"
+      >
+        <Icon.Settings02 size={HEADER_ICON_SIZE} color={iconColor} />
+      </CircleButton>
+      <CircleButton
+        sizeClassName="w-[40px] h-[40px]"
+        onPress={onPressClose}
+        accessibilityLabel={t("common.close")}
+        testID="manage-accounts-close-button"
+      >
+        <Icon.X size={HEADER_ICON_SIZE} color={iconColor} />
+      </CircleButton>
+    </View>
+  );
+};
+
 export const ManageAccountBottomSheet: React.FC<
   ManageAccountBottomSheetProps
 > = ({
-  handleCloseModal,
-  onPressSettings,
   onPressMyQRCode,
   onPressCopyAddress,
   onPressViewOnExplorer,
   onPressRenameAccount,
-  onPressAddAnotherWallet,
   accounts,
   activeAccount,
   handleSelectAccount,
@@ -86,14 +114,12 @@ export const ManageAccountBottomSheet: React.FC<
   switchingToPublicKey,
   fiatTotals,
   isLoadingFiatTotals,
-  showAddWallet = true,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
+  const insets = useSafeAreaInsets();
 
   const iconColor = themeColors.foreground.primary;
-  const isSwitchInProgress =
-    isAccountSwitching || switchingToPublicKey !== null;
 
   const activeAccountActions = [
     {
@@ -123,103 +149,63 @@ export const ManageAccountBottomSheet: React.FC<
   ];
 
   return (
-    <View className="flex-1 justify-between items-center w-full relative">
-      <BottomSheetAdaptiveContainer
-        bottomPaddingPx={heightPercentageToDP(100 - SNAP_VALUE_PERCENT)}
-        contentGapPx={pxValue(24)}
-        header={
-          <View className="flex-row items-center justify-between w-full">
-            <CircleButton
-              sizeClassName="w-[40px] h-[40px]"
-              onPress={onPressSettings}
-              accessibilityLabel={t("home.actions.settings")}
-              testID="manage-accounts-settings-button"
-            >
-              <Icon.Settings02 size={HEADER_ICON_SIZE} color={iconColor} />
-            </CircleButton>
-            <CircleButton
-              sizeClassName="w-[40px] h-[40px]"
-              onPress={handleCloseModal}
-              accessibilityLabel={t("common.close")}
-              testID="manage-accounts-close-button"
-            >
-              <Icon.X size={HEADER_ICON_SIZE} color={iconColor} />
-            </CircleButton>
-          </View>
-        }
-      >
-        <BottomSheetScrollView
-          className="w-full"
-          showsVerticalScrollIndicator={false}
-          alwaysBounceVertical={false}
-          contentContainerStyle={{
-            gap: pxValue(24),
-          }}
-        >
-          <View className="items-center">
-            <Avatar
-              size="xxl"
-              publicAddress={activeAccount?.publicKey ?? ""}
-              testID="manage-accounts-active-avatar"
-            />
-          </View>
-          <View className="items-center">
-            <Text xl medium primary numberOfLines={1}>
-              {activeAccount?.accountName ?? ""}
-            </Text>
-            <Text md secondary>
-              {truncateAddress(activeAccount?.publicKey ?? "")}
-            </Text>
-          </View>
-          <View className="flex-row justify-center gap-[16px]">
-            {activeAccountActions.map((action) => (
-              <CircleButton
-                key={action.testID}
-                sizeClassName="w-[48px] h-[48px]"
-                onPress={action.onPress}
-                disabled={isAccountSwitching}
-                accessibilityLabel={action.accessibilityLabel}
-                testID={action.testID}
-              >
-                {action.icon}
-              </CircleButton>
-            ))}
-          </View>
-          <View className="w-full border-b border-border-primary" />
-          {accounts.map((account, index) => (
-            <AccountItemRow
-              key={account.publicKey}
-              account={account}
-              handleSelectAccount={handleSelectAccount}
-              isSelected={account.publicKey === activeAccount?.publicKey}
-              isAccountSwitching={isAccountSwitching}
-              isSwitchingToThisAccount={
-                switchingToPublicKey === account.publicKey
-              }
-              fiatTotal={fiatTotals[account.publicKey]}
-              isLoadingFiatTotal={isLoadingFiatTotals}
-              testID={`account-row-${index}`}
-            />
-          ))}
-          <DefaultListFooter />
-        </BottomSheetScrollView>
-        {showAddWallet && (
-          <TouchableOpacity
-            className="flex-row items-center gap-[16px] w-full mt-[24px]"
-            onPress={onPressAddAnotherWallet}
-            disabled={isSwitchInProgress}
-            accessibilityRole="button"
-            testID="manage-accounts-add-wallet-button"
+    <View className="w-full gap-[24px]">
+      <View className="items-center">
+        <Avatar
+          size="xxl"
+          publicAddress={activeAccount?.publicKey ?? ""}
+          testID="manage-accounts-active-avatar"
+        />
+      </View>
+      <View className="items-center">
+        <Text xl medium primary numberOfLines={1}>
+          {activeAccount?.accountName ?? ""}
+        </Text>
+        <Text md secondary>
+          {truncateAddress(activeAccount?.publicKey ?? "")}
+        </Text>
+      </View>
+      <View className="flex-row justify-center gap-[16px]">
+        {activeAccountActions.map((action) => (
+          <CircleButton
+            key={action.testID}
+            sizeClassName="w-[48px] h-[48px]"
+            onPress={action.onPress}
+            disabled={isAccountSwitching}
+            accessibilityLabel={action.accessibilityLabel}
+            testID={action.testID}
           >
-            <View className="w-[34px] h-[34px] rounded-full bg-lilac-2 justify-center items-center">
-              <Icon.Plus size={14} color={themeColors.lilac[9]} />
-            </View>
-            <Text md medium color={themeColors.lilac[11]}>
-              {t("home.manageAccount.addWallet")}
-            </Text>
-          </TouchableOpacity>
-        )}
-      </BottomSheetAdaptiveContainer>
+            {action.icon}
+          </CircleButton>
+        ))}
+      </View>
+      <View className="w-full border-b border-border-primary" />
+      {accounts.map((account, index) => (
+        <AccountItemRow
+          key={account.publicKey}
+          account={account}
+          handleSelectAccount={handleSelectAccount}
+          isSelected={account.publicKey === activeAccount?.publicKey}
+          isAccountSwitching={isAccountSwitching}
+          isSwitchingToThisAccount={switchingToPublicKey === account.publicKey}
+          fiatTotal={fiatTotals[account.publicKey]}
+          isLoadingFiatTotal={isLoadingFiatTotals}
+          testID={`account-row-${index}`}
+        />
+      ))}
+      {/*
+        Scroll-end clearance must live in the scrollable content: the
+        wrapper's inset padding is a ScrollView *style*, which doesn't add
+        scroll extent on Android. insets.bottom covers devices whose
+        navigation bar overlaps the sheet (e.g. 48dp three-button bars, where
+        the 40dp spacer alone isn't enough).
+      */}
+      <View
+        testID="manage-accounts-list-end-spacing"
+        style={{ paddingBottom: insets.bottom }}
+      >
+        <DefaultListFooter />
+      </View>
     </View>
   );
 };

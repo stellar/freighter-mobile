@@ -31,6 +31,9 @@ jest.mock("components/screens/HomeScreen/ManageAccountBottomSheet", () => ({
   default: function MockManageAccountBottomSheet() {
     return null;
   },
+  ManageAccountSheetHeader: function MockManageAccountSheetHeader() {
+    return null;
+  },
 }));
 
 jest.mock("components/analytics/DebugBottomSheet", () => ({

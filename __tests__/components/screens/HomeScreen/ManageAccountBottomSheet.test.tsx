@@ -1,22 +1,12 @@
 import { fireEvent } from "@testing-library/react-native";
 import { BigNumber } from "bignumber.js";
-import ManageAccountBottomSheet from "components/screens/HomeScreen/ManageAccountBottomSheet";
+import ManageAccountBottomSheet, {
+  ManageAccountSheetHeader,
+} from "components/screens/HomeScreen/ManageAccountBottomSheet";
 import { Account } from "config/types";
 import { ActiveAccount } from "ducks/auth";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
-
-// BottomSheetScrollView needs a presented bottom sheet's internal context;
-// swap it for a plain ScrollView so the sheet content can render standalone.
-jest.mock("@gorhom/bottom-sheet", () => {
-  const { ScrollView } = jest.requireActual("react-native");
-
-  return {
-    __esModule: true,
-    ...jest.requireActual("@gorhom/bottom-sheet"),
-    BottomSheetScrollView: ScrollView,
-  };
-});
 
 describe("ManageAccountBottomSheet", () => {
   const PK_1 = "GDNF5WJ2BEPABVBXCF4C7KZKM3XYXP27VUE3SCGPZA3VXWWZ7OFA3VPM";
@@ -36,13 +26,10 @@ describe("ManageAccountBottomSheet", () => {
   };
 
   const defaultProps = {
-    handleCloseModal: jest.fn(),
-    onPressSettings: jest.fn(),
     onPressMyQRCode: jest.fn(),
     onPressCopyAddress: jest.fn(),
     onPressViewOnExplorer: jest.fn(),
     onPressRenameAccount: jest.fn(),
-    onPressAddAnotherWallet: jest.fn(),
     accounts: mockAccounts,
     activeAccount: mockActiveAccount,
     handleSelectAccount: jest.fn().mockResolvedValue(undefined),
@@ -81,13 +68,10 @@ describe("ManageAccountBottomSheet", () => {
   });
 
   it.each([
-    ["manage-accounts-settings-button", "onPressSettings"],
-    ["manage-accounts-close-button", "handleCloseModal"],
     ["manage-accounts-qr-button", "onPressMyQRCode"],
     ["manage-accounts-copy-button", "onPressCopyAddress"],
     ["manage-accounts-explorer-button", "onPressViewOnExplorer"],
     ["manage-accounts-rename-button", "onPressRenameAccount"],
-    ["manage-accounts-add-wallet-button", "onPressAddAnotherWallet"],
   ] as const)("pressing %s calls %s", (testID, handlerName) => {
     const { getByTestId } = renderWithProviders(
       <ManageAccountBottomSheet {...defaultProps} />,
@@ -117,33 +101,31 @@ describe("ManageAccountBottomSheet", () => {
     expect(queryByTestId("account-row-1-selected-badge")).toBeNull();
   });
 
-  it("hides the add wallet button when showAddWallet is false", () => {
-    const { queryByTestId } = renderWithProviders(
-      <ManageAccountBottomSheet {...defaultProps} showAddWallet={false} />,
-    );
-
-    expect(queryByTestId("manage-accounts-add-wallet-button")).toBeNull();
-  });
-
-  it("disables the add wallet button while switching accounts", () => {
+  it("always renders list-end spacing after the last row", () => {
     const { getByTestId } = renderWithProviders(
-      <ManageAccountBottomSheet
-        {...defaultProps}
-        isAccountSwitching
-        switchingToPublicKey={PK_2}
-      />,
-    );
-
-    fireEvent.press(getByTestId("manage-accounts-add-wallet-button"));
-
-    expect(defaultProps.onPressAddAnotherWallet).not.toHaveBeenCalled();
-  });
-
-  it("renders the add wallet label", () => {
-    const { getByText } = renderWithProviders(
       <ManageAccountBottomSheet {...defaultProps} />,
     );
 
-    expect(getByText("Add wallet")).toBeTruthy();
+    expect(getByTestId("manage-accounts-list-end-spacing")).toBeTruthy();
+  });
+});
+
+describe("ManageAccountSheetHeader", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it.each([
+    ["manage-accounts-settings-button", "onPressSettings"],
+    ["manage-accounts-close-button", "onPressClose"],
+  ] as const)("pressing %s calls %s", (testID, handlerName) => {
+    const props = { onPressSettings: jest.fn(), onPressClose: jest.fn() };
+    const { getByTestId } = renderWithProviders(
+      <ManageAccountSheetHeader {...props} />,
+    );
+
+    fireEvent.press(getByTestId(testID));
+
+    expect(props[handlerName]).toHaveBeenCalledTimes(1);
   });
 });

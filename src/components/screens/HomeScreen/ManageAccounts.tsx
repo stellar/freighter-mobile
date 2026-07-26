@@ -1,7 +1,10 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NavigationProp, useNavigation } from "@react-navigation/native";
 import BottomSheet from "components/BottomSheet";
-import ManageAccountBottomSheet from "components/screens/HomeScreen/ManageAccountBottomSheet";
+import AddWalletFooter from "components/screens/HomeScreen/AddWalletFooter";
+import ManageAccountBottomSheet, {
+  ManageAccountSheetHeader,
+} from "components/screens/HomeScreen/ManageAccountBottomSheet";
 import RenameAccountModal from "components/screens/HomeScreen/RenameAccountModal";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { ERROR_TOAST_DURATION } from "config/constants";
@@ -9,13 +12,13 @@ import { RootStackParamList, ROOT_NAVIGATOR_ROUTES } from "config/routes";
 import { Account } from "config/types";
 import { useAccountsFiatTotalsStore } from "ducks/accountsFiatTotals";
 import { ActiveAccount, useAuthenticationStore } from "ducks/auth";
-import { toPercent } from "helpers/dimensions";
 import { getStellarExpertUrl } from "helpers/stellarExpert";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
 import { useToast } from "providers/ToastProvider";
 import React, { useCallback, useState } from "react";
+import { useWindowDimensions } from "react-native";
 import { analytics } from "services/analytics";
 
 interface ManageAccountsProps {
@@ -26,7 +29,7 @@ interface ManageAccountsProps {
   isLoadingAccounts?: boolean;
 }
 
-const SNAP_VALUE_PERCENT = 80;
+const MAX_SHEET_HEIGHT_RATIO = 0.83;
 const ACCOUNT_SWITCH_DISMISS_DELAY_MS = 500;
 
 const ManageAccounts: React.FC<ManageAccountsProps> = ({
@@ -203,25 +206,55 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
     bottomSheetRef.current?.dismiss();
   }, [bottomSheetRef]);
 
+  const { height: windowHeight } = useWindowDimensions();
+  const isSwitchInProgress =
+    isSwitchingAccount || switchingToPublicKey !== null;
+
+  const renderSheetHeader = useCallback(
+    () => (
+      <ManageAccountSheetHeader
+        onPressSettings={handleOpenSettings}
+        onPressClose={handleCloseModal}
+      />
+    ),
+    [handleOpenSettings, handleCloseModal],
+  );
+
+  const renderAddWalletFooter = useCallback(
+    () => (
+      <AddWalletFooter
+        onPress={handleAddAnotherWallet}
+        disabled={isSwitchInProgress}
+      />
+    ),
+    [handleAddAnotherWallet, isSwitchInProgress],
+  );
+
   return (
     <>
+      {/* Scrollable mode (same recipe as the history details sheet): the
+          pinned header/footer live inside the sheet's content tree, so the
+          whole sheet slides in as one unit, and dynamic sizing measures the
+          content before animating. The footer owns the safe-area padding;
+          without a footer the wrapper's inset padding takes over. */}
       <BottomSheet
-        snapPoints={[toPercent(SNAP_VALUE_PERCENT)]}
         modalRef={bottomSheetRef}
         handleCloseModal={handleCloseModal}
-        enablePanDownToClose={false}
-        enableDynamicSizing={false}
+        scrollable
+        useInsetsBottomPadding={!showAddWallet}
+        maxDynamicContentSize={windowHeight * MAX_SHEET_HEIGHT_RATIO}
         analyticsEvent={AnalyticsEvent.VIEW_MANAGE_WALLETS}
         bottomSheetModalProps={{ onChange: handleSheetPresent }}
+        scrollViewHeaderComponent={renderSheetHeader}
+        scrollViewFooterComponent={
+          showAddWallet ? renderAddWalletFooter : undefined
+        }
         customContent={
           <ManageAccountBottomSheet
-            handleCloseModal={handleCloseModal}
-            onPressSettings={handleOpenSettings}
             onPressMyQRCode={handleOpenMyQRCode}
             onPressCopyAddress={handleCopyActiveAddress}
             onPressViewOnExplorer={handleViewActiveOnExplorer}
             onPressRenameAccount={handleOpenRenameActiveAccount}
-            onPressAddAnotherWallet={handleAddAnotherWallet}
             accounts={accounts}
             activeAccount={activeAccount}
             handleSelectAccount={handleSelectAccount}
@@ -229,7 +262,6 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
             switchingToPublicKey={switchingToPublicKey}
             fiatTotals={fiatTotals}
             isLoadingFiatTotals={isLoadingFiatTotals}
-            showAddWallet={showAddWallet}
           />
         }
       />
