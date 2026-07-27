@@ -267,17 +267,21 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
         className="flex-1"
         style={{ paddingHorizontal: pxValue(DEFAULT_PADDING) }}
       >
-        <View className="flex-row items-center gap-3 mb-4">
+        <View className="flex-row items-center gap-1 mb-6">
           <TouchableOpacity
-            className="py-2"
+            className={`px-3 py-2 border-b-2 ${
+              activeTab === TabType.TOKENS
+                ? "border-lilac-9"
+                : "border-transparent"
+            }`}
             onPress={() => handleTabChange(TabType.TOKENS)}
             testID="tab-tokens"
           >
             <Text
-              medium
+              weight={activeTab === TabType.TOKENS ? "medium" : "semiBold"}
               color={
                 activeTab === TabType.TOKENS
-                  ? themeColors.text.primary
+                  ? themeColors.lilac[11]
                   : themeColors.text.secondary
               }
             >
@@ -286,15 +290,21 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
           </TouchableOpacity>
 
           <TouchableOpacity
-            className="py-2"
+            className={`px-3 py-2 border-b-2 ${
+              activeTab === TabType.COLLECTIBLES
+                ? "border-lilac-9"
+                : "border-transparent"
+            }`}
             onPress={() => handleTabChange(TabType.COLLECTIBLES)}
             testID="tab-collectibles"
           >
             <Text
-              medium
+              weight={
+                activeTab === TabType.COLLECTIBLES ? "medium" : "semiBold"
+              }
               color={
                 activeTab === TabType.COLLECTIBLES
-                  ? themeColors.text.primary
+                  ? themeColors.lilac[11]
                   : themeColors.text.secondary
               }
             >

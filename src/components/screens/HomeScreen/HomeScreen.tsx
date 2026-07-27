@@ -1,6 +1,6 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
-import { IconButton } from "components/IconButton";
+import { HomeActionButton } from "components/HomeActionButton";
 import { TokensCollectiblesTabs } from "components/TokensCollectiblesTabs";
 import {
   WalletConnectE2EHelper,
@@ -12,9 +12,8 @@ import { DebugTrigger } from "components/debug/DebugTrigger";
 import { BaseLayout } from "components/layout/BaseLayout";
 import ManageAccounts from "components/screens/HomeScreen/ManageAccounts";
 import WelcomeBannerBottomSheet from "components/screens/HomeScreen/WelcomeBannerBottomSheet";
-import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
-import { Display, Text } from "components/sds/Typography";
+import { Display } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import {
   MainTabStackParamList,
@@ -35,7 +34,6 @@ import { useWalletKitStore } from "ducks/walletKit";
 import { getTokenType } from "helpers/balances";
 import { isContractId } from "helpers/soroban";
 import useAppTranslation from "hooks/useAppTranslation";
-import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useHomeHeaders } from "hooks/useHomeHeaders";
@@ -48,13 +46,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import {
-  TouchableOpacity,
-  View,
-  ScrollView,
-  RefreshControl,
-} from "react-native";
-import { analytics } from "services/analytics";
+import { View, ScrollView, RefreshControl } from "react-native";
 
 type HomeScreenProps = BottomTabScreenProps<
   MainTabStackParamList & RootStackParamList,
@@ -79,7 +71,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
     const [isRefreshing, setIsRefreshing] = useState(false);
 
     const { t } = useAppTranslation();
-    const { copyToClipboard } = useClipboard();
 
     const { formattedBalance } = useTotalBalance();
     const {
@@ -110,8 +101,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
       [balances],
     );
 
-    // Set up navigation headers (hook handles navigation.setOptions internally)
-    useHomeHeaders({ navigation });
+    const handleManageAccountsPress = useCallback(() => {
+      manageAccountsBottomSheetRef.current?.present();
+    }, []);
+
+    // Set up navigation headers (hook handles navigation.setOptions
+    // internally); the account switcher lives in the header now.
+    useHomeHeaders({ navigation, onAccountPress: handleManageAccountsPress });
 
     const { welcomeBannerBottomSheetModalRef, handleWelcomeBannerDismiss } =
       useWelcomeBanner({
@@ -139,19 +135,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
         params: { isUnfunded: !isFunded },
       });
     }, [navigation, isFunded]);
-
-    const handleCopyAddress = useCallback(
-      (publicKey?: string) => {
-        if (!publicKey) return;
-
-        analytics.trackCopyPublicKey();
-
-        copyToClipboard(publicKey, {
-          notificationMessage: t("accountAddressCopied"),
-        });
-      },
-      [copyToClipboard, t],
-    );
 
     const handleTokenPress = useCallback(
       (tokenId: string) => {
@@ -214,10 +197,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
         params: { tokenId: NATIVE_TOKEN_CODE, tokenSymbol: NATIVE_TOKEN_CODE },
       });
     }, [navigation]);
-
-    const handleManageAccountsPress = useCallback(() => {
-      manageAccountsBottomSheetRef.current?.present();
-    }, []);
 
     const handleDebugPress = useCallback(() => {
       debugBottomSheetRef.current?.present();
@@ -304,57 +283,35 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
           }
           contentContainerStyle={{ flexGrow: 1 }}
         >
-          <View className="pt-8 w-full items-center">
-            <View className="flex-col gap-3 items-center">
-              <TouchableOpacity
-                onPress={handleManageAccountsPress}
-                testID="home-account-switcher"
-              >
-                <View className="flex-row items-center gap-2">
-                  <Avatar size="sm" publicAddress={account?.publicKey ?? ""} />
-                  <Text>{account?.accountName ?? t("home.title")}</Text>
-                  <Icon.ChevronDown
-                    size={16}
-                    color={themeColors.foreground.primary}
-                  />
-                </View>
-              </TouchableOpacity>
-              <Display lg medium>
-                {formattedBalance}
-              </Display>
-            </View>
+          <View className="pt-[35px] w-full items-center">
+            <Display lg medium>
+              {formattedBalance}
+            </Display>
+          </View>
 
-            <View className="flex-row gap-[24px] items-center justify-center my-8">
-              <IconButton
-                Icon={Icon.Plus}
-                title={t("home.buy")}
-                onPress={navigateToBuyXLM}
-                testID="icon-button-buy"
-              />
-              <IconButton
-                Icon={Icon.ArrowUp}
-                title={t("home.send")}
+          <View className="flex-row gap-[12px] w-full px-6 py-6">
+            <HomeActionButton
+              Icon={Icon.Plus}
+              title={t("home.buy")}
+              onPress={navigateToBuyXLM}
+              testID="icon-button-buy"
+            />
+            <HomeActionButton
+              Icon={Icon.ArrowUp}
+              title={t("home.send")}
+              disabled={hasZeroBalance}
+              onPress={handleSendPress}
+              testID="icon-button-send"
+            />
+            {swapEnabled && (
+              <HomeActionButton
+                Icon={Icon.RefreshCw02}
+                title={t("home.swap")}
                 disabled={hasZeroBalance}
-                onPress={handleSendPress}
-                testID="icon-button-send"
+                onPress={handleSwapPress}
+                testID="icon-button-swap"
               />
-              {swapEnabled && (
-                <IconButton
-                  Icon={Icon.RefreshCw02}
-                  title={t("home.swap")}
-                  disabled={hasZeroBalance}
-                  onPress={handleSwapPress}
-                  testID="icon-button-swap"
-                />
-              )}
-              <IconButton
-                Icon={Icon.Copy01}
-                title={t("common.copy")}
-                onPress={() => handleCopyAddress(account?.publicKey)}
-                testID="icon-button-copy"
-              />
-            </View>
-            <View className="w-full border-b mb-4 border-border-primary" />
+            )}
           </View>
 
           <TokensCollectiblesTabs

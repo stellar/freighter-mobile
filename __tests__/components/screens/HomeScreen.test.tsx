@@ -1,4 +1,4 @@
-import { userEvent, act } from "@testing-library/react-native";
+import { act } from "@testing-library/react-native";
 import HomeScreen from "components/screens/HomeScreen";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
@@ -186,10 +186,9 @@ jest.mock("hooks/useAppTranslation", () => () => ({
   t: (key: string) => {
     const translations: Record<string, string> = {
       "home.title": "Tokens",
-      "home.buy": "Buy",
+      "home.buy": "Add",
       "home.send": "Send",
       "home.swap": "Swap",
-      "common.copy": "Copy",
       accountAddressCopied: "Address copied",
       "home.actions.settings": "Settings",
       "home.actions.manageTokens": "Manage Tokens",
@@ -286,9 +285,8 @@ describe("HomeScreen", () => {
       />,
     );
 
-  it("renders correctly with account information", () => {
+  it("renders the total fiat balance", () => {
     const { getByText } = renderHomeScreen();
-    expect(getByText("Test Account")).toBeTruthy();
     expect(getByText("$350.75")).toBeTruthy();
   });
 
@@ -305,23 +303,13 @@ describe("HomeScreen", () => {
     expect(getByText("$0.00")).toBeTruthy();
   });
 
-  it("handles clipboard copy when copy button is pressed", async () => {
-    const { getByTestId } = renderHomeScreen();
+  it("renders action buttons correctly, without the removed copy button", () => {
+    const { getByText, queryByTestId } = renderHomeScreen();
 
-    const copyButton = getByTestId("icon-button-copy");
-    await userEvent.press(copyButton);
-
-    expect(mockCopyToClipboard).toHaveBeenCalledWith("test-public-key", {
-      notificationMessage: "Address copied",
-    });
-  });
-
-  it("renders action buttons correctly", () => {
-    const { getByText } = renderHomeScreen();
-
-    expect(getByText("Buy")).toBeTruthy();
+    expect(getByText("Add")).toBeTruthy();
     expect(getByText("Send")).toBeTruthy();
-    expect(getByText("Copy")).toBeTruthy();
+    // Copy moved into the manage-accounts sheet
+    expect(queryByTestId("icon-button-copy")).toBeNull();
   });
 
   it("calls all fetch functions when refresh is triggered", async () => {

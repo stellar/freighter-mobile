@@ -13,6 +13,8 @@ interface CustomHeaderButtonProps {
   onPress?: () => void;
   icon?: React.ComponentType<{ size?: number; color?: string }>;
   iconSize?: number;
+  /** Icon color; defaults to themeColors.base[1]. */
+  iconColor?: string;
   className?: string;
   hitSlop?: {
     top: number;
@@ -98,13 +100,14 @@ export const CustomHeaderButton: React.FC<CustomHeaderButtonProps> = ({
   onPress,
   icon: CustomIcon,
   iconSize = 24,
+  iconColor,
   className: customClassName,
   hitSlop = { top: 10, bottom: 10, left: 10, right: 10 },
   testID = "header-button",
 }) => {
   const navigation = useNavigation();
   const { themeColors } = useColors();
-  const baseColor = themeColors.base[1];
+  const baseColor = iconColor ?? themeColors.base[1];
 
   // Default icon alignment based on position
   const getClassName = () => {
