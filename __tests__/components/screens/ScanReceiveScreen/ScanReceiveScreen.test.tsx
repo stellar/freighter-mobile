@@ -2,7 +2,7 @@ import { useIsFocused } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { act, fireEvent } from "@testing-library/react-native";
 import ScanReceiveScreen from "components/screens/ScanReceiveScreen";
-import { AnalyticsEvent } from "config/analyticsConfig";
+import { AnalyticsEvent, AnalyticsFlow } from "config/analyticsConfig";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
@@ -79,14 +79,22 @@ describe("ScanReceiveScreen", () => {
       previousAppState;
   });
 
+  // Per-tab views go out as the canonical screen.viewed event carrying the
+  // tab's screen_name -- track() drops a VIEW_* slug passed as an event name.
   it("fires the scan view event by default", () => {
     renderWithProviders(<ScanReceiveScreen {...makeProps()} />);
-    expect(mockTrack).toHaveBeenCalledWith(AnalyticsEvent.VIEW_SCAN_QR_CODE);
+    expect(mockTrack).toHaveBeenCalledWith(AnalyticsEvent.SCREEN_VIEWED, {
+      screen_name: AnalyticsEvent.VIEW_SCAN_QR_CODE,
+      flow: AnalyticsFlow.ASSETS,
+    });
   });
 
   it("fires the account-qr view event when opened on the receive tab", () => {
     renderWithProviders(<ScanReceiveScreen {...makeProps("receive")} />);
-    expect(mockTrack).toHaveBeenCalledWith(AnalyticsEvent.VIEW_ACCOUNT_QR_CODE);
+    expect(mockTrack).toHaveBeenCalledWith(AnalyticsEvent.SCREEN_VIEWED, {
+      screen_name: AnalyticsEvent.VIEW_ACCOUNT_QR_CODE,
+      flow: AnalyticsFlow.ASSETS,
+    });
   });
 
   it("fires the account-qr view event when switching to Receive", () => {
@@ -95,7 +103,25 @@ describe("ScanReceiveScreen", () => {
     );
     mockTrack.mockClear();
     fireEvent.press(getByText("Receive"));
-    expect(mockTrack).toHaveBeenCalledWith(AnalyticsEvent.VIEW_ACCOUNT_QR_CODE);
+    expect(mockTrack).toHaveBeenCalledWith(AnalyticsEvent.SCREEN_VIEWED, {
+      screen_name: AnalyticsEvent.VIEW_ACCOUNT_QR_CODE,
+      flow: AnalyticsFlow.ASSETS,
+    });
+  });
+
+  it("never passes a VIEW_* slug to track() as an event name", () => {
+    const { getByText } = renderWithProviders(
+      <ScanReceiveScreen {...makeProps("scan")} />,
+    );
+    fireEvent.press(getByText("Receive"));
+
+    // Assert the calls happened before inspecting them: if both tabs stopped
+    // resolving to catalogued screens the screen would track nothing at all,
+    // and a loop over an empty call list would pass vacuously.
+    expect(mockTrack).toHaveBeenCalledTimes(2);
+    mockTrack.mock.calls.forEach(([event]) => {
+      expect(event).toBe(AnalyticsEvent.SCREEN_VIEWED);
+    });
   });
 
   it("closes via goBack when the close button is pressed", () => {
