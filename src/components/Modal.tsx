@@ -7,11 +7,20 @@ import {
   Keyboard,
   type KeyboardEvent,
   KeyboardAvoidingView,
-  LayoutAnimation,
   Modal as RNModal,
   Platform,
   TouchableWithoutFeedback,
 } from "react-native";
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
+
+/** Gap kept between the card and the keyboard in "keyboard" position mode. */
+const KEYBOARD_GAP = 20;
+const KEYBOARD_FALLBACK_DURATION_MS = 250;
 
 interface ModalProps {
   visible: boolean;
@@ -23,8 +32,8 @@ interface ModalProps {
   contentStyle?: StyleProp<ViewStyle>;
   /**
    * Where the card sits: centered in the free space (default), or — for
-   * text-input modals — hugging the keyboard while it's visible and centered
-   * once it's dismissed.
+   * text-input modals — sliding up just enough to clear the keyboard while
+   * it's visible and back to the center once it's dismissed.
    */
   position?: "center" | "keyboard";
   testID?: string;
@@ -38,15 +47,13 @@ interface ModalProps {
 }
 
 /**
- * Tracks keyboard visibility for the "keyboard" position mode. Flips on
- * keyboardWillShow/Hide (iOS) so the justify-end switch happens in the same
- * layout pass as KeyboardAvoidingView's padding, and animates that pass with
- * the keyboard's own duration — otherwise the card is briefly re-centered in
- * the shrunken space (jumping up) before dropping down next to the keyboard.
- * Android has no will* events, so did* is used there.
+ * Animated keyboard height. Driven by keyboardWillShow/Hide on iOS (so the
+ * slide runs in sync with the keyboard) and keyboardDidShow/Hide on Android
+ * (which has no will* events), easing over the keyboard's own duration when
+ * the platform reports one.
  */
-const useKeyboardVisible = () => {
-  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+const useKeyboardSpace = () => {
+  const keyboardSpace = useSharedValue(0);
 
   useEffect(() => {
     const showEvent =
@@ -54,44 +61,31 @@ const useKeyboardVisible = () => {
     const hideEvent =
       Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
 
-    const animateWithKeyboard = (event: KeyboardEvent) => {
-      LayoutAnimation.configureNext({
-        duration: event?.duration > 0 ? event.duration : 250,
-        update: { type: LayoutAnimation.Types.keyboard },
-      });
-    };
+    const timingConfig = (event: KeyboardEvent) => ({
+      duration:
+        event?.duration && event.duration > 0
+          ? event.duration
+          : KEYBOARD_FALLBACK_DURATION_MS,
+      easing: Easing.out(Easing.quad),
+    });
 
     const showSubscription = Keyboard.addListener(showEvent, (event) => {
-      animateWithKeyboard(event);
-      setIsKeyboardVisible(true);
+      keyboardSpace.value = withTiming(
+        event.endCoordinates?.height ?? 0,
+        timingConfig(event),
+      );
     });
     const hideSubscription = Keyboard.addListener(hideEvent, (event) => {
-      animateWithKeyboard(event);
-      setIsKeyboardVisible(false);
+      keyboardSpace.value = withTiming(0, timingConfig(event));
     });
 
     return () => {
       showSubscription.remove();
       hideSubscription.remove();
     };
-  }, []);
+  }, [keyboardSpace]);
 
-  return isKeyboardVisible;
-};
-
-const getContainerClassName = (
-  position: "center" | "keyboard",
-  isKeyboardVisible: boolean,
-) => {
-  if (position === "keyboard") {
-    // Hug the keyboard while typing (the KeyboardAvoidingView pads the
-    // bottom); float back to the center once it's dismissed.
-    return isKeyboardVisible
-      ? "flex-1 justify-end pb-5 mx-2"
-      : "flex-1 justify-center mx-2";
-  }
-
-  return "flex-1 items-center justify-center mx-6";
+  return keyboardSpace;
 };
 
 const Modal: React.FC<ModalProps> = ({
@@ -112,12 +106,58 @@ const Modal: React.FC<ModalProps> = ({
   // Skipped for the lock screen's own modals, which must remain interactive
   // while the wallet is soft-locked.
   const isSoftLocked = useAuthenticationStore((state) => state.isSoftLocked);
-  const isKeyboardVisible = useKeyboardVisible();
   useEffect(() => {
     if (visible && isSoftLocked && dismissOnSoftLock) {
       onClose();
     }
   }, [visible, isSoftLocked, dismissOnSoftLock, onClose]);
+
+  const keyboardSpace = useKeyboardSpace();
+  const [containerHeight, setContainerHeight] = useState(0);
+  const [cardHeight, setCardHeight] = useState(0);
+
+  // The card rests centered; as the animated keyboard height grows, it gets
+  // "pushed" up only once the keyboard would overlap it (plus the gap), so
+  // both show and hide are a single continuous slide instead of a jump.
+  const slideStyle = useAnimatedStyle(() => {
+    if (!containerHeight || !cardHeight) {
+      return {};
+    }
+
+    const centeredCardBottom = (containerHeight + cardHeight) / 2;
+    const keyboardTopLimit =
+      containerHeight - keyboardSpace.value - KEYBOARD_GAP;
+
+    return {
+      transform: [
+        { translateY: Math.min(0, keyboardTopLimit - centeredCardBottom) },
+      ],
+    };
+  }, [containerHeight, cardHeight]);
+
+  const backdrop = (
+    <TouchableWithoutFeedback
+      onPress={() => {
+        if (closeOnOverlayPress) {
+          onClose();
+        }
+      }}
+    >
+      <View className="absolute top-0 bottom-0 left-0 right-0" />
+    </TouchableWithoutFeedback>
+  );
+
+  const card = (
+    <View
+      className={
+        contentClassName ?? "py-8 px-6 bg-background-primary rounded-[32px]"
+      }
+      style={contentStyle}
+      testID={testID}
+    >
+      {children}
+    </View>
+  );
 
   return (
     <RNModal
@@ -130,30 +170,33 @@ const Modal: React.FC<ModalProps> = ({
         onClose();
       }}
     >
-      <KeyboardAvoidingView behavior="padding" className="flex-1">
-        <TouchableWithoutFeedback
-          onPress={() => {
-            if (closeOnOverlayPress) {
-              onClose();
-            }
-          }}
+      {position === "keyboard" ? (
+        <View
+          className="flex-1"
+          onLayout={(event) =>
+            setContainerHeight(event.nativeEvent.layout.height)
+          }
         >
-          <View className="absolute top-0 bottom-0 left-0 right-0" />
-        </TouchableWithoutFeedback>
-
-        <View className={getContainerClassName(position, isKeyboardVisible)}>
-          <View
-            className={
-              contentClassName ??
-              "py-8 px-6 bg-background-primary rounded-[32px]"
-            }
-            style={contentStyle}
-            testID={testID}
-          >
-            {children}
+          {backdrop}
+          <View className="flex-1 justify-center mx-2">
+            <Animated.View
+              style={slideStyle}
+              onLayout={(event) =>
+                setCardHeight(event.nativeEvent.layout.height)
+              }
+            >
+              {card}
+            </Animated.View>
           </View>
         </View>
-      </KeyboardAvoidingView>
+      ) : (
+        <KeyboardAvoidingView behavior="padding" className="flex-1">
+          {backdrop}
+          <View className="flex-1 items-center justify-center mx-6">
+            {card}
+          </View>
+        </KeyboardAvoidingView>
+      )}
     </RNModal>
   );
 };
