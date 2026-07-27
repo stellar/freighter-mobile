@@ -29,7 +29,7 @@ import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
 import React, { ReactNode, useMemo } from "react";
-import { FlatList, RefreshControl } from "react-native";
+import { FlatList, RefreshControl, View } from "react-native";
 import styled from "styled-components/native";
 
 const ListWrapper = styled.View`
@@ -158,11 +158,16 @@ export const BalancesList: React.FC<BalancesListProps> = ({
     network,
   );
 
-  // Display error state if there's an error loading balances
+  // Display error state if there's an error loading balances (same style as
+  // the collectibles grid's error state)
   if (error) {
     return (
       <ListWrapper>
-        <Text md>{t("balancesList.error")}</Text>
+        <View className="pt-4">
+          <Text md secondary>
+            {t("balancesList.error")}
+          </Text>
+        </View>
       </ListWrapper>
     );
   }
