@@ -417,9 +417,12 @@
     "title": "Tokens",
     "error": "Erro ao carregar saldos",
     "unfundedAccount": {
-      "message": "Para começar a usar esta conta, financie-a com pelo menos 1 XLM.",
       "learnMore": "Saiba mais",
-      "fundAccountButton": "Adicionar XLM"
+      "fundAccountButton": "Adicionar XLM",
+      "title": "Um pouco vazio por aqui...",
+      "messageStart": "Adicione pelo menos",
+      "messageAmount": "2 XLM",
+      "messageEnd": "para ativar sua carteira. Depois de financiada, você poderá adicionar tokens e fazer transações."
     },
     "menuAddToken": "Adicionar um token",
     "menuManageTokens": "Gerenciar tokens"
@@ -431,7 +434,8 @@
     "emptyHidden": "Nenhum colecionável oculto",
     "menuAddManually": "Adicionar manualmente",
     "menuHidenCollectibles": "Colecionáveis ocultos",
-    "itemHiddenLabel": "{{name}}, oculto"
+    "itemHiddenLabel": "{{name}}, oculto",
+    "emptyDescription": "Os colecionáveis que você possui aparecerão aqui."
   },
   "collectibleDetails": {
     "title": "Detalhes do Colecionável",

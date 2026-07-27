@@ -454,9 +454,12 @@
     "title": "Tokens",
     "error": "Error loading balances",
     "unfundedAccount": {
-      "message": "To start using this account, fund it with at least 1 XLM.",
       "learnMore": "Learn more",
-      "fundAccountButton": "Add XLM"
+      "fundAccountButton": "Add XLM",
+      "title": "Looking a little empty...",
+      "messageStart": "Add at least",
+      "messageAmount": "2 XLM",
+      "messageEnd": "to activate your wallet. Once funded, you'll be able to add tokens and make transactions."
     },
     "menuAddToken": "Add a token",
     "menuManageTokens": "Manage tokens"
@@ -468,7 +471,8 @@
     "emptyHidden": "No hidden collectibles",
     "menuAddManually": "Add manually",
     "menuHidenCollectibles": "Hidden collectibles",
-    "itemHiddenLabel": "{{name}}, hidden"
+    "itemHiddenLabel": "{{name}}, hidden",
+    "emptyDescription": "Collectibles you own will appear here."
   },
   "collectibleDetails": {
     "title": "Collectible Details",

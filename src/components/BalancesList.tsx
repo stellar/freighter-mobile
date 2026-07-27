@@ -2,14 +2,15 @@ import { NavigationProp, useNavigation } from "@react-navigation/native";
 import BigNumber from "bignumber.js";
 import { BalanceRow } from "components/BalanceRow";
 import { DefaultListFooter } from "components/DefaultListFooter";
+import { EmptyState } from "components/EmptyState";
 import { FriendbotButton } from "components/FriendbotButton";
 import { Button } from "components/sds/Button";
-import { Notification } from "components/sds/Notification";
+import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import {
-  CREATE_ACCOUNT_TUTORIAL_URL,
   NETWORKS,
   TransactionContext,
+  UNFUNDED_ACCOUNT_HELP_URL,
 } from "config/constants";
 import {
   ADD_FUNDS_ROUTES,
@@ -24,6 +25,7 @@ import { calculateSpendableAmount } from "helpers/balances";
 import { px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
+import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
 import React, { ReactNode, useMemo } from "react";
@@ -43,15 +45,6 @@ const SpinnerWrapper = styled(ListWrapper)`
 const Spinner = styled.ActivityIndicator`
   margin-top: ${px(24)};
   width: 100%;
-  align-items: center;
-`;
-
-const NotificationWrapper = styled.View`
-  margin-bottom: ${px(24)};
-`;
-
-const NotificationContent = styled.View`
-  flex-direction: row;
   align-items: center;
 `;
 
@@ -103,6 +96,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
   balanceRowTestIDPrefix,
 }) => {
   const { t } = useAppTranslation();
+  const { themeColors } = useColors();
   const { open: openInAppBrowser } = useInAppBrowser();
   const { account } = useGetActiveAccount();
   const { transactionFee } = useTransactionSettingsStore();
@@ -190,46 +184,51 @@ export const BalancesList: React.FC<BalancesListProps> = ({
   if (noBalances && !isFunded) {
     return (
       <ListWrapper>
-        <NotificationWrapper>
-          <Notification
-            variant="primary"
-            onPress={() => {
-              openInAppBrowser(CREATE_ACCOUNT_TUTORIAL_URL);
-            }}
-            customContent={
-              <NotificationContent>
-                <Text sm>
-                  {t("balancesList.unfundedAccount.message")}{" "}
-                  <Text sm semiBold color={THEME.colors.primary}>
-                    {t("balancesList.unfundedAccount.learnMore")}
-                  </Text>
-                </Text>
-              </NotificationContent>
-            }
-          />
-        </NotificationWrapper>
+        <EmptyState
+          Icon={Icon.Coins01}
+          title={t("balancesList.unfundedAccount.title")}
+          testID="unfunded-account-empty-state"
+          description={
+            <>
+              {t("balancesList.unfundedAccount.messageStart")}{" "}
+              <Text sm medium primary>
+                {t("balancesList.unfundedAccount.messageAmount")}
+              </Text>{" "}
+              {t("balancesList.unfundedAccount.messageEnd")}{" "}
+              <Text
+                sm
+                medium
+                color={themeColors.lilac[11]}
+                onPress={() => {
+                  openInAppBrowser(UNFUNDED_ACCOUNT_HELP_URL);
+                }}
+              >
+                {t("balancesList.unfundedAccount.learnMore")}
+              </Text>
+            </>
+          }
+        >
+          {/* Only show fund account button if navigation is available and not test network */}
+          {!disableNavigation && !isTestNetwork && (
+            <Button
+              tertiary
+              xl
+              onPress={() =>
+                navigation?.navigate(ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK, {
+                  screen: ADD_FUNDS_ROUTES.ADD_FUNDS_SCREEN,
+                  params: { isUnfunded: true },
+                })
+              }
+            >
+              {t("balancesList.unfundedAccount.fundAccountButton")}
+            </Button>
+          )}
 
-        {/* Only show fund account button if navigation is available and not test network */}
-        {!disableNavigation && !isTestNetwork && (
-          <Button
-            isFullWidth
-            tertiary
-            xl
-            onPress={() =>
-              navigation?.navigate(ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK, {
-                screen: ADD_FUNDS_ROUTES.ADD_FUNDS_SCREEN,
-                params: { isUnfunded: true },
-              })
-            }
-          >
-            {t("balancesList.unfundedAccount.fundAccountButton")}
-          </Button>
-        )}
-
-        {/* Show friendbot button for test networks regardless of navigation */}
-        {isTestNetwork && (
-          <FriendbotButton publicKey={publicKey} network={network} />
-        )}
+          {/* Show friendbot button for test networks regardless of navigation */}
+          {isTestNetwork && (
+            <FriendbotButton publicKey={publicKey} network={network} />
+          )}
+        </EmptyState>
       </ListWrapper>
     );
   }
