@@ -26,6 +26,7 @@ import {
   SWAP_ROUTES,
 } from "config/routes";
 import { TokenTypeWithCustomToken } from "config/types";
+import { useAccountsFiatTotalsStore } from "ducks/accountsFiatTotals";
 import { useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
 import { useCollectiblesStore } from "ducks/collectibles";
@@ -90,6 +91,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
     const { fetchCollectibles } = useCollectiblesStore();
     const { fetchActiveSessions } = useWalletKitStore();
     const { swap_enabled: swapEnabled } = useRemoteConfigStore();
+    const fetchAccountsFiatTotals = useAccountsFiatTotalsStore(
+      (state) => state.fetchAccountsFiatTotals,
+    );
 
     const hasTokens = useMemo(
       () => Object.keys(balances).length > 0,
@@ -244,6 +248,17 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
             network,
           }),
           Promise.resolve(fetchActiveSessions(account.publicKey, network)),
+          // Refresh the manage-accounts sheet's per-account USD totals too,
+          // so a pull-to-refresh reflects transfers between own accounts.
+          allAccounts.length > 0
+            ? fetchAccountsFiatTotals({
+                publicKeys: allAccounts.map(
+                  (walletAccount) => walletAccount.publicKey,
+                ),
+                network,
+                forceRefresh: true,
+              })
+            : Promise.resolve(),
         ]);
       } finally {
         setIsRefreshing(false);
@@ -254,6 +269,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
       fetchAccountBalances,
       fetchCollectibles,
       fetchActiveSessions,
+      fetchAccountsFiatTotals,
+      allAccounts,
     ]);
 
     return (

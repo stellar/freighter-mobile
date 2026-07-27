@@ -199,6 +199,24 @@ jest.mock("hooks/useAppTranslation", () => () => ({
   },
 }));
 
+const mockFetchAccountsFiatTotals = jest.fn().mockResolvedValue(undefined);
+jest.mock("ducks/accountsFiatTotals", () => ({
+  // State is built per call so the jest-hoisted factory doesn't capture
+  // mockFetchAccountsFiatTotals before its const initializes.
+  useAccountsFiatTotalsStore: (
+    selector?: (storeState: Record<string, unknown>) => unknown,
+  ) => {
+    const state = {
+      fiatTotals: {},
+      isLoading: false,
+      fetchAccountsFiatTotals: mockFetchAccountsFiatTotals,
+      syncAccountFiatTotal: jest.fn(),
+    };
+
+    return selector ? selector(state) : state;
+  },
+}));
+
 jest.mock("ducks/auth", () => ({
   useAuthenticationStore: () => ({
     network: "TESTNET",
@@ -324,6 +342,11 @@ describe("HomeScreen", () => {
     expect(mockFetchAccountBalances).toHaveBeenCalledWith({
       publicKey: "test-public-key",
       network: "TESTNET",
+    });
+    expect(mockFetchAccountsFiatTotals).toHaveBeenCalledWith({
+      publicKeys: ["GTESTPUBLICKEY"],
+      network: "TESTNET",
+      forceRefresh: true,
     });
     expect(mockFetchCollectibles).toHaveBeenCalledWith({
       publicKey: "test-public-key",

@@ -414,6 +414,109 @@ describe("accountsFiatTotals duck", () => {
     ).toBe("250");
   });
 
+  describe("syncAccountFiatTotal", () => {
+    const pricedBalances = {
+      XLM: {
+        ...nativeBalance,
+        fiatTotal: new BigNumber("50"),
+      },
+      [`USDC:${USDC_ISSUER}`]: {
+        ...usdcBalance,
+        fiatTotal: new BigNumber("200"),
+      },
+    };
+
+    it("seeds an unfetched account's total without touching the TTL", () => {
+      const { syncAccountFiatTotal } = useAccountsFiatTotalsStore.getState();
+
+      syncAccountFiatTotal({
+        publicKey: PK_1,
+        network: NETWORKS.PUBLIC,
+        pricedBalances,
+      });
+
+      const { fiatTotals, lastUpdatedAt } =
+        useAccountsFiatTotalsStore.getState();
+      expect(fiatTotals[PK_1]?.toString()).toBe("250");
+      expect(lastUpdatedAt).toBeNull();
+    });
+
+    it("updates the total and marks the cache stale when the value changes", () => {
+      const now = Date.now();
+      useAccountsFiatTotalsStore.setState({
+        fiatTotals: {
+          [PK_1]: new BigNumber("100"),
+          [PK_2]: new BigNumber("7"),
+        },
+        lastUpdatedAt: now,
+        lastNetwork: NETWORKS.PUBLIC,
+      });
+
+      const { syncAccountFiatTotal } = useAccountsFiatTotalsStore.getState();
+
+      syncAccountFiatTotal({
+        publicKey: PK_1,
+        network: NETWORKS.PUBLIC,
+        pricedBalances,
+      });
+
+      const { fiatTotals, lastUpdatedAt } =
+        useAccountsFiatTotalsStore.getState();
+      expect(fiatTotals[PK_1]?.toString()).toBe("250");
+      // Other accounts keep their values but the cache is stale, so the
+      // next sheet open refetches everyone (e.g. the receiving account of
+      // a self-transfer).
+      expect(fiatTotals[PK_2]?.toString()).toBe("7");
+      expect(lastUpdatedAt).toBeNull();
+    });
+
+    it("does nothing when the total is unchanged", () => {
+      const now = Date.now();
+      useAccountsFiatTotalsStore.setState({
+        fiatTotals: { [PK_1]: new BigNumber("250") },
+        lastUpdatedAt: now,
+        lastNetwork: NETWORKS.PUBLIC,
+      });
+
+      const { syncAccountFiatTotal } = useAccountsFiatTotalsStore.getState();
+
+      syncAccountFiatTotal({
+        publicKey: PK_1,
+        network: NETWORKS.PUBLIC,
+        pricedBalances,
+      });
+
+      expect(useAccountsFiatTotalsStore.getState().lastUpdatedAt).toBe(now);
+    });
+
+    it.each([
+      [
+        "empty balances (mid account-switch)",
+        { publicKey: PK_1, network: NETWORKS.PUBLIC, pricedBalances: {} },
+      ],
+      [
+        "unpriced balances (prices not loaded yet)",
+        {
+          publicKey: PK_1,
+          network: NETWORKS.PUBLIC,
+          pricedBalances: { XLM: { ...nativeBalance } },
+        },
+      ],
+      [
+        "non-mainnet networks",
+        { publicKey: PK_1, network: NETWORKS.TESTNET, pricedBalances },
+      ],
+    ])("ignores %s", (_label, params) => {
+      const { syncAccountFiatTotal } = useAccountsFiatTotalsStore.getState();
+
+      syncAccountFiatTotal(params);
+
+      expect(
+        useAccountsFiatTotalsStore.getState().fiatTotals[PK_1],
+      ).toBeUndefined();
+    });
+  });
+
   it("clears totals from another network before fetching", async () => {
     useAccountsFiatTotalsStore.setState({
       fiatTotals: { STALE_KEY: new BigNumber("999") },

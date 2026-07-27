@@ -1,6 +1,6 @@
 import { BigNumber } from "bignumber.js";
 import { NETWORKS } from "config/constants";
-import { BalanceMap, TokenPricesMap } from "config/types";
+import { BalanceMap, PricedBalanceMap, TokenPricesMap } from "config/types";
 import { usePricesStore } from "ducks/prices";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import {
@@ -30,6 +30,12 @@ interface FetchAccountsFiatTotalsParams {
   forceRefresh?: boolean;
 }
 
+interface SyncAccountFiatTotalParams {
+  publicKey: string;
+  network: NETWORKS;
+  pricedBalances: PricedBalanceMap;
+}
+
 /**
  * State for the accounts fiat totals store
  *
@@ -50,6 +56,7 @@ interface AccountsFiatTotalsState {
   fetchAccountsFiatTotals: (
     params: FetchAccountsFiatTotalsParams,
   ) => Promise<void>;
+  syncAccountFiatTotal: (params: SyncAccountFiatTotalParams) => void;
 }
 
 /**
@@ -220,6 +227,56 @@ export const useAccountsFiatTotalsStore = create<AccountsFiatTotalsState>(
           set({ isLoading: false, lastNetwork: network });
         }
       }
+    },
+
+    /**
+     * Keeps an account's total in step with balances the app already holds
+     * (the active account's store), without hitting the backend. When the
+     * value actually changes — e.g. after a send — the cache is marked stale
+     * so the next sheet open refetches every account (a self-transfer also
+     * moves the receiving account's total).
+     */
+    syncAccountFiatTotal: ({ publicKey, network, pricedBalances }) => {
+      // Fiat totals are mainnet-only, and this gate is not redundant with the
+      // unpriced-balances one below: right after a switch to another network,
+      // the balances store still briefly holds the previous mainnet data —
+      // real fiatTotal values included — until the refetch replaces it.
+      // Syncing in that window would write USD totals into a store that was
+      // just cleared for the new network.
+      if (!isMainnet(network)) {
+        return;
+      }
+
+      const entries = Object.values(pricedBalances);
+
+      // An empty map is indistinguishable from the transient cleared state
+      // during an account switch, and balances without fiat values are just
+      // prices that haven't loaded yet — syncing either would write a bogus
+      // zero over a real total.
+      if (
+        entries.length === 0 ||
+        !entries.some((balance) => balance.fiatTotal != null)
+      ) {
+        return;
+      }
+
+      const total = entries.reduce(
+        (sum, balance) => sum.plus(balance.fiatTotal || 0),
+        new BigNumber(0),
+      );
+
+      const current = get().fiatTotals[publicKey];
+
+      if (current?.isEqualTo(total)) {
+        return;
+      }
+
+      set({
+        fiatTotals: { ...get().fiatTotals, [publicKey]: total },
+        // Only a change to a previously-known value signals real balance
+        // movement worth invalidating the other accounts' cache for.
+        ...(current ? { lastUpdatedAt: null } : {}),
+      });
     },
   }),
 );
