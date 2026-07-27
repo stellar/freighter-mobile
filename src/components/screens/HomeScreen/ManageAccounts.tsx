@@ -249,6 +249,9 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
         scrollViewFooterComponent={
           showAddWallet ? renderAddWalletFooter : undefined
         }
+        // The only keyboard over this sheet belongs to the rename modal on
+        // top — keep the add-wallet footer stuck to the bottom.
+        scrollViewFooterAvoidsKeyboard={false}
         customContent={
           <ManageAccountBottomSheet
             onPressMyQRCode={handleOpenMyQRCode}

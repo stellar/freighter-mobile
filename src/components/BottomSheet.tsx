@@ -92,6 +92,12 @@ export type BottomSheetProps = {
   analyticsProps?: AnalyticsProps;
   scrollViewFooterComponent?: () => React.ReactNode;
   scrollViewHeaderComponent?: () => React.ReactNode;
+  /**
+   * Whether the pinned footer lifts above the keyboard (default). Disable
+   * when the keyboard belongs to an overlay (e.g. a modal on top of the
+   * sheet) so the footer stays stuck to the bottom instead of jumping.
+   */
+  scrollViewFooterAvoidsKeyboard?: boolean;
   scrollable?: boolean;
 };
 
@@ -115,6 +121,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
   analyticsProps,
   scrollViewFooterComponent = undefined,
   scrollViewHeaderComponent = undefined,
+  scrollViewFooterAvoidsKeyboard = true,
   scrollable = false,
 }) => {
   if (__DEV__ && scrollable && snapPoints) {
@@ -393,7 +400,9 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
                 style={{
                   position: "absolute",
                   bottom:
-                    keyboardHeight > 0 ? keyboardHeight - insets.bottom : 0,
+                    scrollViewFooterAvoidsKeyboard && keyboardHeight > 0
+                      ? keyboardHeight - insets.bottom
+                      : 0,
                   left: 0,
                   right: 0,
                 }}

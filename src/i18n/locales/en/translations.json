@@ -64,7 +64,6 @@
     }
   },
   "renameAccountModal": {
-    "currentName": "Current name",
     "saveName": "Save name",
     "nameInputPlaceholder": "Enter a name for your account"
   },

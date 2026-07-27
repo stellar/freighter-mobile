@@ -64,7 +64,6 @@
     }
   },
   "renameAccountModal": {
-    "currentName": "Nome atual",
     "saveName": "Salvar nome",
     "nameInputPlaceholder": "Digite um nome para sua carteira"
   },

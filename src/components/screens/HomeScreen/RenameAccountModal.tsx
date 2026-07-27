@@ -3,17 +3,17 @@ import { Avatar } from "components/sds/Avatar";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
-import { Text } from "components/sds/Typography";
 import {
   ACCOUNT_NAME_MAX_LENGTH,
   ACCOUNT_NAME_MIN_LENGTH,
+  DEFAULT_PADDING,
 } from "config/constants";
 import { Account } from "config/types";
-import { truncateAddress } from "helpers/stellar";
+import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useEffect, useMemo, useState } from "react";
-import { View } from "react-native";
+import { TouchableOpacity, View } from "react-native";
 
 interface RenameAccountModalProps {
   modalVisible: boolean;
@@ -50,52 +50,58 @@ const RenameAccountModal: React.FC<RenameAccountModalProps> = ({
       visible={modalVisible}
       onClose={() => setModalVisible(false)}
       closeOnOverlayPress={false}
+      position="keyboard"
+      contentClassName="bg-background-primary rounded-[32px] w-full"
+      contentStyle={{ padding: pxValue(DEFAULT_PADDING) }}
     >
-      <View className="justify-center items-center">
-        <Avatar size="md" publicAddress={account?.publicKey ?? ""} />
-        <View className="h-4" />
-        <Text primary md medium>
-          {truncateAddress(account?.publicKey ?? "")}
-        </Text>
-        <Text secondary sm regular>
-          {t("renameAccountModal.currentName")}
-        </Text>
-        <View className="h-8" />
-      </View>
-      <View>
+      <View className="gap-6">
+        <View className="items-center">
+          <View className="w-full items-end">
+            <TouchableOpacity
+              className="w-[40px] h-[40px] rounded-full bg-background-tertiary justify-center items-center"
+              onPress={() => setModalVisible(false)}
+              disabled={isRenamingAccount}
+              accessibilityRole="button"
+              accessibilityLabel={t("common.close")}
+              testID="rename-account-close-button"
+            >
+              <Icon.X size={24} color={themeColors.foreground.primary} />
+            </TouchableOpacity>
+          </View>
+          <Avatar size="xxl" publicAddress={account?.publicKey ?? ""} />
+        </View>
         <Input
           placeholder={t("renameAccountModal.nameInputPlaceholder")}
           fieldSize="lg"
-          leftElement={
-            <Icon.UserCircle size={16} color={themeColors.foreground.primary} />
-          }
           value={accountName}
           onChangeText={setAccountName}
           autoCorrect={false}
+          autoFocus
         />
-      </View>
-      <View className="h-4" />
-      <View className="flex-row justify-between w-full mt-6 gap-3">
-        <View className="flex-1">
-          <Button
-            secondary
-            isFullWidth
-            onPress={() => setModalVisible(false)}
-            disabled={isRenamingAccount}
-          >
-            {t("common.cancel")}
-          </Button>
-        </View>
-        <View className="flex-1">
-          <Button
-            tertiary
-            isFullWidth
-            onPress={() => handleRenameAccount(accountName.trim())}
-            isLoading={isRenamingAccount}
-            disabled={!isAccountNameValid}
-          >
-            {t("renameAccountModal.saveName")}
-          </Button>
+        <View className="flex-row gap-2">
+          <View className="flex-1">
+            <Button
+              secondary
+              xl
+              isFullWidth
+              onPress={() => setModalVisible(false)}
+              disabled={isRenamingAccount}
+            >
+              {t("common.cancel")}
+            </Button>
+          </View>
+          <View className="flex-1">
+            <Button
+              tertiary
+              xl
+              isFullWidth
+              onPress={() => handleRenameAccount(accountName.trim())}
+              isLoading={isRenamingAccount}
+              disabled={!isAccountNameValid}
+            >
+              {t("renameAccountModal.saveName")}
+            </Button>
+          </View>
         </View>
       </View>
     </Modal>
