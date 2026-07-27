@@ -114,6 +114,11 @@ describe("ScanReceiveScreen", () => {
       <ScanReceiveScreen {...makeProps("scan")} />,
     );
     fireEvent.press(getByText("Receive"));
+
+    // Assert the calls happened before inspecting them: if both tabs stopped
+    // resolving to catalogued screens the screen would track nothing at all,
+    // and a loop over an empty call list would pass vacuously.
+    expect(mockTrack).toHaveBeenCalledTimes(2);
     mockTrack.mock.calls.forEach(([event]) => {
       expect(event).toBe(AnalyticsEvent.SCREEN_VIEWED);
     });
