@@ -761,16 +761,12 @@
     "checkMemoRequirements": "Verifique os requisitos de memo da conta de destino e inclua-o na transação."
   },
   "addAnotherWalletScreen": {
-    "title": "Adicionar outra carteira",
+    "title": "Adicionar carteira",
     "actions": {
       "createNewWallet": "Criar uma nova carteira",
       "createNewWalletDescription": "Criar uma carteira na sua frase de recuperação",
       "importSecretKey": "Importar uma chave secreta Stellar",
       "importSecretKeyDescription": "Adicionar uma carteira usando uma chave secreta"
-    },
-    "helperBottomSheet": {
-      "title": "Adicionar outra carteira",
-      "description": "Você precisa de pelo menos 1 XLM para ter uma conta na Stellar. Compre Stellar Lumens (XLM) facilmente usando um de nossos on-ramps ou transfira XLM de outra carteira para esta carteira."
     }
   },
   "verifyPasswordScreen": {

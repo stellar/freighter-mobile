@@ -798,16 +798,12 @@
     "checkMemoRequirements": "Check the destination account memo requirements and include it in the transaction."
   },
   "addAnotherWalletScreen": {
-    "title": "Add another wallet",
+    "title": "Add wallet",
     "actions": {
       "createNewWallet": "Create a new wallet",
       "createNewWalletDescription": "Create a wallet on your seed phrase",
       "importSecretKey": "Import a Stellar secret key",
       "importSecretKeyDescription": "Add a wallet using a secret key"
-    },
-    "helperBottomSheet": {
-      "title": "Add another wallet",
-      "description": "You need at least 1 XLM to have an account on Stellar. Buy Stellar Lumens (XLM) easily using one of our on-ramps or transfer XLM from another wallet to this wallet."
     }
   },
   "verifyPasswordScreen": {
