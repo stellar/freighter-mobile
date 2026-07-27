@@ -219,5 +219,21 @@ describe("Analytics Configuration", () => {
       // (was the legacy "loaded screen: scan qr code").
       expect(AnalyticsEvent.VIEW_SCAN_QR_CODE).toBe("scan_qr_code");
     });
+
+    it("catalogues both tab views so they retarget to screen.viewed", () => {
+      // The screen fires these two manually; an uncatalogued one would slip
+      // past track()'s screen-view guard and leak its bare slug as an
+      // Amplitude event name instead of becoming screen.viewed.
+      expect(getScreenViewedProps(AnalyticsEvent.VIEW_SCAN_QR_CODE)).toEqual({
+        screen_name: "scan_qr_code",
+        flow: AnalyticsFlow.ASSETS,
+      });
+      expect(getScreenViewedProps(AnalyticsEvent.VIEW_ACCOUNT_QR_CODE)).toEqual(
+        {
+          screen_name: "view_public_key_generator",
+          flow: AnalyticsFlow.ASSETS,
+        },
+      );
+    });
   });
 });
