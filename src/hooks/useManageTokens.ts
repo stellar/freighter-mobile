@@ -281,9 +281,12 @@ export const useManageTokens = ({
         // Get current storage
         const storage = await getCustomTokenStorage();
 
-        // Check if the user has any custom tokens for this network
+        // No custom tokens stored for this account/network. Treat it as a
+        // failure (not a silent no-op) so the user gets an error toast and
+        // onSuccess is skipped — otherwise `finally` would show the default
+        // success toast while nothing was removed.
         if (!storage[publicKey] || !storage[publicKey][network]) {
-          return;
+          throw new Error("No custom tokens found for this account");
         }
 
         // Filter out the token to remove

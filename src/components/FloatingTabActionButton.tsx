@@ -32,6 +32,9 @@ export const FloatingTabActionButton: React.FC<
       testID={testID}
       onPress={onPress}
       disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled }}
       activeOpacity={0.8}
       className={`flex-row items-center gap-1 self-center px-5 py-3 rounded-full bg-background-tertiary border border-border-primary ${
         disabled ? "opacity-50" : ""

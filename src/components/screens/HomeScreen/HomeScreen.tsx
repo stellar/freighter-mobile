@@ -98,8 +98,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
       isLoading: isLoadingBalances,
       fetchAccountBalances,
     } = useBalancesStore();
-    const { fetchCollectibles, isLoading: isCollectiblesLoading } =
-      useCollectiblesStore();
+    const fetchCollectibles = useCollectiblesStore((s) => s.fetchCollectibles);
+    const isCollectiblesLoading = useCollectiblesStore((s) => s.isLoading);
     const { fetchActiveSessions } = useWalletKitStore();
     const { swap_enabled: swapEnabled } = useRemoteConfigStore();
 
@@ -383,13 +383,17 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
           className="absolute left-0 right-0 items-center"
           style={{ bottom: pxValue(DEFAULT_PADDING) }}
         >
-          {activeTab === TabType.TOKENS ? (
+          {/* Adding a token creates a trustline, which needs XLM for the
+              reserve + fee — so the pill is only useful once the account is
+              funded. */}
+          {activeTab === TabType.TOKENS && isFunded && (
             <FloatingTabActionButton
               label={t("balancesList.addTokenButton")}
               onPress={handleAddTokenPress}
               testID="home-add-token-button"
             />
-          ) : (
+          )}
+          {activeTab === TabType.COLLECTIBLES && (
             <FloatingTabActionButton
               label={t("collectiblesGrid.addCollectibleButton")}
               onPress={handleAddCollectiblePress}
