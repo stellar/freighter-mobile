@@ -112,6 +112,32 @@ describe("useManageToken", () => {
     expect(mockBottomSheetRemove.current.dismiss).toHaveBeenCalled();
   });
 
+  it("derives tokenId from code:issuer when the token has no id", async () => {
+    // Search-result tokens (e.g. the Add Token list) carry no `id`.
+    const tokenWithoutId = { ...mockToken, id: undefined };
+
+    const { result } = renderHook(() =>
+      useManageToken({
+        account: null,
+        network: NETWORKS.TESTNET,
+        bottomSheetRefRemove: mockBottomSheetRemove,
+        token: tokenWithoutId,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.removeToken();
+    });
+
+    // Must forward a resolved identifier, not `undefined` (which would make
+    // removeToken throw "No token ID or token record provided").
+    expect(mockRemoveToken).toHaveBeenCalledWith({
+      tokenId: `${mockCode}:${mockIssuer}`,
+      tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+    });
+    expect(mockBottomSheetRemove.current.dismiss).toHaveBeenCalled();
+  });
+
   it("should not call actions if token is null", async () => {
     const { result } = renderHook(() =>
       useManageToken({

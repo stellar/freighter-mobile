@@ -1,7 +1,11 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
+import { FloatingTabActionButton } from "components/FloatingTabActionButton";
 import { HomeActionButton } from "components/HomeActionButton";
-import { TokensCollectiblesTabs } from "components/TokensCollectiblesTabs";
+import {
+  TabType,
+  TokensCollectiblesTabs,
+} from "components/TokensCollectiblesTabs";
 import {
   WalletConnectE2EHelper,
   WalletConnectE2EHelperTrigger,
@@ -14,10 +18,11 @@ import ManageAccounts from "components/screens/HomeScreen/ManageAccounts";
 import WelcomeBannerBottomSheet from "components/screens/HomeScreen/WelcomeBannerBottomSheet";
 import Icon from "components/sds/Icon";
 import { Display } from "components/sds/Typography";
-import { NATIVE_TOKEN_CODE } from "config/constants";
+import { DEFAULT_PADDING, NATIVE_TOKEN_CODE } from "config/constants";
 import {
   MainTabStackParamList,
   MAIN_TAB_ROUTES,
+  MANAGE_TOKENS_ROUTES,
   ROOT_NAVIGATOR_ROUTES,
   RootStackParamList,
   ADD_FUNDS_ROUTES,
@@ -32,6 +37,7 @@ import { useCollectiblesStore } from "ducks/collectibles";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { useWalletKitStore } from "ducks/walletKit";
 import { getTokenType } from "helpers/balances";
+import { pxValue } from "helpers/dimensions";
 import { isContractId } from "helpers/soroban";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
@@ -48,6 +54,10 @@ import React, {
   useState,
 } from "react";
 import { View, ScrollView, RefreshControl } from "react-native";
+
+// Bottom padding reserved at the end of the Home scroll content so the floating
+// "+ Add" pill (its height plus its bottom offset) never covers the last row.
+const FLOATING_ADD_BUTTON_CLEARANCE = 88;
 
 type HomeScreenProps = BottomTabScreenProps<
   MainTabStackParamList & RootStackParamList,
@@ -70,6 +80,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
     const walletConnectE2EHelperRef = useRef<WalletConnectE2EHelperRef>(null);
 
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [activeTab, setActiveTab] = useState<TabType>(TabType.TOKENS);
 
     const { t } = useAppTranslation();
 
@@ -80,17 +91,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
       isLoading: isLoadingBalances,
       fetchAccountBalances,
     } = useBalancesStore();
-    const { fetchCollectibles } = useCollectiblesStore();
+    const fetchCollectibles = useCollectiblesStore((s) => s.fetchCollectibles);
+    const isCollectiblesLoading = useCollectiblesStore((s) => s.isLoading);
     const { fetchActiveSessions } = useWalletKitStore();
     const { swap_enabled: swapEnabled } = useRemoteConfigStore();
     const fetchAccountsFiatTotals = useAccountsFiatTotalsStore(
       (state) => state.fetchAccountsFiatTotals,
     );
 
-    const hasTokens = useMemo(
-      () => Object.keys(balances).length > 0,
-      [balances],
-    );
     // Send/Swap require something to spend. Gate on actual holdings (any
     // non-zero token balance), not fiat value — fiat is unavailable on testnet
     // by design, so a fiat-based gate would wrongly disable a funded account.
@@ -203,6 +211,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
       });
     }, [navigation]);
 
+    const handleAddTokenPress = useCallback(() => {
+      navigation.navigate(ROOT_NAVIGATOR_ROUTES.MANAGE_TOKENS_STACK, {
+        screen: MANAGE_TOKENS_ROUTES.ADD_TOKEN_SCREEN,
+      });
+    }, [navigation]);
+
+    const handleAddCollectiblePress = useCallback(() => {
+      navigation.navigate(ROOT_NAVIGATOR_ROUTES.ADD_COLLECTIBLE_SCREEN);
+    }, [navigation]);
+
     const handleDebugPress = useCallback(() => {
       debugBottomSheetRef.current?.present();
     }, []);
@@ -286,7 +304,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
               tintColor={themeColors.secondary}
             />
           }
-          contentContainerStyle={{ flexGrow: 1 }}
+          contentContainerStyle={{
+            flexGrow: 1,
+            // Reserve space so the floating add pill never obscures the last
+            // list row when scrolled to the bottom.
+            paddingBottom: pxValue(FLOATING_ADD_BUTTON_CLEARANCE),
+          }}
         >
           <View className="pt-[35px] w-full items-center">
             <Display lg medium>
@@ -322,7 +345,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
           <TokensCollectiblesTabs
             // Should disable inner scrolling here since the whole Home screen is scrollable
             disableInnerScrolling
-            showTokensSettings={hasTokens}
+            onTabChange={setActiveTab}
             publicKey={account?.publicKey ?? ""}
             network={network}
             onTokenPress={handleTokenPress}
@@ -330,6 +353,31 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
             balanceRowTestIDPrefix="home-token"
           />
         </ScrollView>
+
+        <View
+          pointerEvents="box-none"
+          className="absolute left-0 right-0 items-center"
+          style={{ bottom: pxValue(DEFAULT_PADDING) }}
+        >
+          {/* Adding a token creates a trustline, which needs XLM for the
+              reserve + fee — so the pill is only useful once the account is
+              funded. */}
+          {activeTab === TabType.TOKENS && isFunded && (
+            <FloatingTabActionButton
+              label={t("balancesList.addTokenButton")}
+              onPress={handleAddTokenPress}
+              testID="home-add-token-button"
+            />
+          )}
+          {activeTab === TabType.COLLECTIBLES && (
+            <FloatingTabActionButton
+              label={t("collectiblesGrid.addCollectibleButton")}
+              onPress={handleAddCollectiblePress}
+              disabled={isCollectiblesLoading}
+              testID="home-add-collectible-button"
+            />
+          )}
+        </View>
 
         {__DEV__ && (
           <DebugBottomSheet

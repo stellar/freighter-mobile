@@ -423,14 +423,14 @@
       "messageAmount": "2 XLM",
       "messageEnd": "para ativar sua carteira. Depois de financiada, você poderá adicionar tokens e fazer transações."
     },
-    "menuAddToken": "Adicionar um token",
-    "menuManageTokens": "Gerenciar tokens"
+    "addTokenButton": "Adicionar token"
   },
   "collectiblesGrid": {
     "title": "Colecionáveis",
     "error": "Erro ao carregar colecionáveis",
     "empty": "Nenhum colecionável ainda",
     "emptyHidden": "Nenhum colecionável oculto",
+    "addCollectibleButton": "Adicionar colecionável",
     "menuAddManually": "Adicionar manualmente",
     "menuHidenCollectibles": "Colecionáveis ocultos",
     "itemHiddenLabel": "{{name}}, oculto",
@@ -469,7 +469,8 @@
     "description": "Se um colecionável estiver ausente da sua carteira, você pode adicioná-lo manualmente aqui.",
     "toastSuccess": "Colecionável adicionado com sucesso",
     "toastError": "Erro ao adicionar colecionável. {{errorMessage}}",
-    "alreadyInWallet": "Este colecionável já está na sua carteira"
+    "alreadyInWallet": "Este colecionável já está na sua carteira",
+    "showHidden": "Mostrar ocultos"
   },
   "hiddenCollectiblesScreen": {
     "title": "Colecionáveis Ocultos"
@@ -492,8 +493,6 @@
     "title": "Adicionar saldo com Friendbot"
   },
   "manageTokensScreen": {
-    "title": "Gerenciar tokens",
-    "addTokenButton": "Adicionar um token",
     "moreInfo": {
       "title": "Gerenciar Tokens",
       "block1": "Quando você gerencia tokens, está escolhendo quais tokens sua carteira pode manter e usar na rede Stellar. Para Stellar Classic, adicionar um token cria uma trustline, permitindo que sua carteira o reconheça e interaja com ele. Tokens Soroban não usam trustlines, mas ainda podem ser gerenciados e acessados aqui.",
