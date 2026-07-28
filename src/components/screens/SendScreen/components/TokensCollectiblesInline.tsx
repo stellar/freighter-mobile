@@ -50,8 +50,11 @@ export const TokensCollectiblesInline: React.FC<
 
   // Tokens state, lifted from the same hook BalancesList uses internally so we
   // can drive a single page-level spinner/error.
-  const { isLoading: tokensLoading, error: tokensError, noBalances } =
-    useBalancesList({ publicKey, network });
+  const {
+    isLoading: tokensLoading,
+    error: tokensError,
+    noBalances,
+  } = useBalancesList({ publicKey, network });
 
   // Collectibles state.
   const collectiblesLoading = useCollectiblesStore((state) => state.isLoading);
@@ -86,7 +89,8 @@ export const TokensCollectiblesInline: React.FC<
   // still renders its content. A section is "shown" when it either has data or
   // has errored.
   const tokensSectionShown = Boolean(tokensError) || hasTokens;
-  const collectiblesSectionShown = Boolean(collectiblesError) || hasCollectibles;
+  const collectiblesSectionShown =
+    Boolean(collectiblesError) || hasCollectibles;
 
   // The combined empty fallback only applies when both sources succeeded with
   // no data; an error in either section takes its place instead.

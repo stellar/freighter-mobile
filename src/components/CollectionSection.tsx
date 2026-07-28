@@ -82,23 +82,23 @@ export const CollectionSection: React.FC<CollectionSectionProps> = ({
           })
         }
       >
-      <View
-        className="w-full h-full"
-        style={
-          item.isHidden ? { opacity: HIDDEN_COLLECTIBLE_OPACITY } : undefined
-        }
-      >
-        <CollectibleImage imageUri={item.image} placeholderIconSize={45} />
-      </View>
-      {item.isHidden && (
         <View
-          className="absolute inset-0 items-center justify-center z-10"
-          pointerEvents="none"
-          testID={`collectible-hidden-overlay-${item.tokenId}`}
+          className="w-full h-full"
+          style={
+            item.isHidden ? { opacity: HIDDEN_COLLECTIBLE_OPACITY } : undefined
+          }
         >
-          <Icon.EyeOff size={20} color={themeColors.text.primary} />
+          <CollectibleImage imageUri={item.image} placeholderIconSize={45} />
         </View>
-      )}
+        {item.isHidden && (
+          <View
+            className="absolute inset-0 items-center justify-center z-10"
+            pointerEvents="none"
+            testID={`collectible-hidden-overlay-${item.tokenId}`}
+          >
+            <Icon.EyeOff size={20} color={themeColors.text.primary} />
+          </View>
+        )}
       </TouchableOpacity>
     );
   };

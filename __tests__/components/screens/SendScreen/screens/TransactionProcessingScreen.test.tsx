@@ -53,7 +53,9 @@ jest.mock("@react-navigation/native", () => ({
 // Heavy presentational children are irrelevant to the emission under test.
 jest.mock("components/BottomSheet", () => () => null);
 jest.mock("components/TransactionDetailsBottomSheet", () => () => null);
-jest.mock("components/CollectibleImage", () => ({ CollectibleImage: () => null }));
+jest.mock("components/CollectibleImage", () => ({
+  CollectibleImage: () => null,
+}));
 jest.mock("components/TokenIcon", () => ({ TokenIcon: () => null }));
 jest.mock("components/Spinner", () => () => null);
 jest.mock("components/layout/BaseLayout", () => ({

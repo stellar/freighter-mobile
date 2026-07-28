@@ -459,16 +459,14 @@
       "learnMore": "Learn more",
       "fundAccountButton": "Add XLM"
     },
-    "menuAddToken": "Add a token",
-    "menuManageTokens": "Manage tokens"
+    "addTokenButton": "Add token"
   },
   "collectiblesGrid": {
     "title": "Collectibles",
     "error": "Error loading collectibles",
     "empty": "No collectibles yet",
     "emptyHidden": "No hidden collectibles",
-    "menuAddManually": "Add manually",
-    "menuHidenCollectibles": "Hidden collectibles",
+    "addCollectibleButton": "Add collectible",
     "itemHiddenLabel": "{{name}}, hidden"
   },
   "collectibleDetails": {
@@ -504,7 +502,8 @@
     "description": "If a collectible is missing from your wallet, you can manually add it here.",
     "toastSuccess": "Successfully added collectible",
     "toastError": "Error adding collectible. {{errorMessage}}",
-    "alreadyInWallet": "This collectible is already in your wallet"
+    "alreadyInWallet": "This collectible is already in your wallet",
+    "showHidden": "Show hidden"
   },
   "hiddenCollectiblesScreen": {
     "title": "Hidden Collectibles"
@@ -527,8 +526,6 @@
     "title": "Fund with Friendbot"
   },
   "manageTokensScreen": {
-    "title": "Manage tokens",
-    "addTokenButton": "Add a token",
     "moreInfo": {
       "title": "Manage Tokens",
       "block1": "When you manage tokens, you're choosing which tokens your wallet can hold and use on the Stellar network. For Stellar Classic, adding a token creates a trustline, allowing your wallet to recognize and interact with it. Soroban tokens don't use trustlines but can still be managed and accessed here.",

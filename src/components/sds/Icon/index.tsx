@@ -866,6 +866,7 @@ import PlayCircle from "assets/icons/play-circle.svg";
 import PlaySquare from "assets/icons/play-square.svg";
 import Play from "assets/icons/play.svg";
 import PlusCircle from "assets/icons/plus-circle.svg";
+import PlusDouble from "assets/icons/plus-double.svg";
 import PlusSquare from "assets/icons/plus-square.svg";
 import Plus from "assets/icons/plus.svg";
 import Podcast from "assets/icons/podcast.svg";
@@ -2053,6 +2054,7 @@ export const Icons = {
   PlaySquare,
   Play,
   PlusCircle,
+  PlusDouble,
   PlusSquare,
   Plus,
   Podcast,

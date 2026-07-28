@@ -212,6 +212,12 @@ export const useManageTokens = ({
         asset_code: tokenCode,
         asset_issuer: issuer,
       });
+
+      // Fire onSuccess only on a confirmed success. Delay slightly so the
+      // bottom sheet finishes dismissing before any navigation runs.
+      setTimeout(() => {
+        onSuccess?.();
+      }, 100);
     } catch (error) {
       analytics.track(AnalyticsEvent.TOKEN_MANAGEMENT_FAIL, {
         reason_code: operationFailedReasonCode(error),
@@ -238,11 +244,6 @@ export const useManageTokens = ({
 
       // Execute onComplete callback if provided
       onComplete?.();
-
-      // Execute onSuccess callback after a slight delay to ensure modal is dismissed first
-      setTimeout(() => {
-        onSuccess?.();
-      }, 100);
     }
   };
 
@@ -280,9 +281,12 @@ export const useManageTokens = ({
         // Get current storage
         const storage = await getCustomTokenStorage();
 
-        // Check if the user has any custom tokens for this network
+        // No custom tokens stored for this account/network. Treat it as a
+        // failure (not a silent no-op) so the user gets an error toast and
+        // onSuccess is skipped — otherwise `finally` would show the default
+        // success toast while nothing was removed.
         if (!storage[publicKey] || !storage[publicKey][network]) {
-          return;
+          throw new Error("No custom tokens found for this account");
         }
 
         // Filter out the token to remove
@@ -342,6 +346,12 @@ export const useManageTokens = ({
         asset_code: tokenCode,
         asset_issuer: tokenIssuer,
       });
+
+      // Fire onSuccess only on a confirmed success. Delay slightly so the
+      // bottom sheet finishes dismissing before any navigation runs.
+      setTimeout(() => {
+        onSuccess?.();
+      }, 100);
     } catch (error) {
       analytics.track(AnalyticsEvent.TOKEN_MANAGEMENT_FAIL, {
         reason_code: operationFailedReasonCode(error),
@@ -391,11 +401,6 @@ export const useManageTokens = ({
     } finally {
       setIsRemovingToken(false);
       showToast(toastOptions);
-
-      // Execute onSuccess callback after a slight delay to ensure modal is dismissed first
-      setTimeout(() => {
-        onSuccess?.();
-      }, 100);
     }
   };
 
