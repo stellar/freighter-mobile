@@ -81,7 +81,6 @@ export const MAIN_TAB_ROUTES = {
 } as const;
 
 export const MANAGE_TOKENS_ROUTES = {
-  MANAGE_TOKENS_SCREEN: "ManageAssetsScreen",
   ADD_TOKEN_SCREEN: "AddAssetScreen",
 } as const;
 
@@ -197,7 +196,6 @@ export type MainTabStackParamList = {
 };
 
 export type ManageTokensStackParamList = {
-  [MANAGE_TOKENS_ROUTES.MANAGE_TOKENS_SCREEN]: undefined;
   [MANAGE_TOKENS_ROUTES.ADD_TOKEN_SCREEN]: undefined;
 };
 

@@ -40,7 +40,10 @@ export const useSwapNavigation = ({
 } => {
   const openDestinationPicker = useCallback(
     (source: SwapPickerEntrypoint = SwapPickerEntrypoint.DROPDOWN) => {
-      analytics.track(AnalyticsEvent.SWAP_PICKER_OPENED, { side: "to", source });
+      analytics.track(AnalyticsEvent.SWAP_PICKER_OPENED, {
+        side: "to",
+        source,
+      });
       navigation.navigate(SWAP_ROUTES.SWAP_SCREEN, {
         selectionType: SWAP_SELECTION_TYPES.DESTINATION,
       });
