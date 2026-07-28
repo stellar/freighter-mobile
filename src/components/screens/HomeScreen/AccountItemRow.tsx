@@ -56,9 +56,11 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
   const renderFiatTotal = () => {
     if (fiatTotal === undefined && isLoadingFiatTotal) {
       return (
-        <Text md medium secondary>
-          ...
-        </Text>
+        <ActivityIndicator
+          size="small"
+          color={themeColors.foreground.primary}
+          testID={testID ? `${testID}-total-spinner` : undefined}
+        />
       );
     }
 

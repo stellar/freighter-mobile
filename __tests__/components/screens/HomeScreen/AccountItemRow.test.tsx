@@ -64,21 +64,22 @@ describe("AccountItemRow", () => {
     expect(getByText("$1,149.23")).toBeTruthy();
   });
 
-  it("shows a placeholder while the fiat total is loading", () => {
-    const { getByText } = renderWithProviders(
+  it("shows a spinner while the fiat total is loading", () => {
+    const { getByTestId, queryByText } = renderWithProviders(
       <AccountItemRow {...defaultProps} isLoadingFiatTotal />,
     );
 
-    expect(getByText("...")).toBeTruthy();
+    expect(getByTestId("account-row-0-total-spinner")).toBeTruthy();
+    expect(queryByText("$0.00")).toBeNull();
   });
 
   it("shows a zero fiat total when it is unavailable", () => {
-    const { getByText, queryByText } = renderWithProviders(
+    const { getByText, queryByTestId } = renderWithProviders(
       <AccountItemRow {...defaultProps} fiatTotal={null} />,
     );
 
     expect(getByText("$0.00")).toBeTruthy();
-    expect(queryByText("...")).toBeNull();
+    expect(queryByTestId("account-row-0-total-spinner")).toBeNull();
   });
 
   it("shows a zero fiat total when none was fetched and nothing is loading", () => {

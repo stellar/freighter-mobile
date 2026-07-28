@@ -100,12 +100,16 @@ const mockFetchAccountBalances = jest.fn().mockResolvedValue(undefined);
 const mockFetchCollectibles = jest.fn().mockResolvedValue(undefined);
 const mockFetchActiveSessions = jest.fn().mockResolvedValue(undefined);
 
+// Mutable so tests can simulate the initial balances fetch settling
+// (read lazily at render time, after jest hoisting).
+let mockIsLoadingBalances = false;
+
 jest.mock("ducks/balances", () => ({
   useBalancesStore: jest.fn((selector) => {
     const mockState = {
       balances: {},
       pricedBalances: {},
-      isLoading: false,
+      isLoading: mockIsLoadingBalances,
       isFunded: true,
       error: null,
       fetchAccountBalances: mockFetchAccountBalances,
@@ -265,6 +269,7 @@ describe("HomeScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useFakeTimers();
+    mockIsLoadingBalances = false;
   });
 
   afterEach(() => {
@@ -344,5 +349,31 @@ describe("HomeScreen", () => {
       "test-public-key",
       "TESTNET",
     );
+  });
+
+  it("warms up the wallets-list fiat totals once the balances fetch settles", () => {
+    const buildProps = () => ({
+      navigation: {
+        replace: jest.fn(),
+        navigate: jest.fn(),
+        setOptions: jest.fn(),
+      } as never,
+      route: {} as never,
+    });
+
+    mockIsLoadingBalances = true;
+    const { rerender } = renderWithProviders(<HomeScreen {...buildProps()} />);
+
+    // Balances are still loading — the warm-up must wait its turn.
+    expect(mockFetchAccountsFiatTotals).not.toHaveBeenCalled();
+
+    mockIsLoadingBalances = false;
+    // Fresh props so React.memo doesn't bail out of the re-render.
+    rerender(<HomeScreen {...buildProps()} />);
+
+    expect(mockFetchAccountsFiatTotals).toHaveBeenCalledWith({
+      publicKeys: ["GTESTPUBLICKEY"],
+      network: "TESTNET",
+    });
   });
 });

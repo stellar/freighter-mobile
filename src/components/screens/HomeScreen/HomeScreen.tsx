@@ -79,7 +79,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
       isLoading: isLoadingBalances,
       fetchAccountBalances,
     } = useBalancesStore();
-    const { fetchCollectibles } = useCollectiblesStore();
+    const { fetchCollectibles, isLoading: isLoadingCollectibles } =
+      useCollectiblesStore();
     const { fetchActiveSessions } = useWalletKitStore();
     const { swap_enabled: swapEnabled } = useRemoteConfigStore();
     const fetchAccountsFiatTotals = useAccountsFiatTotalsStore(
@@ -127,6 +128,41 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
 
       fetchAccounts();
     }, [getAllAccounts]);
+
+    // Warm up the wallets-list USD totals in the background while the user is
+    // still on Home, so the account list already shows final values the first
+    // time it opens. Deliberately deferred until the more critical Home
+    // requests (the active account's balances and collectibles) have settled;
+    // since a balances refetch (account/network switch, transfers) resets the
+    // wait, totals re-warm behind the scenes too. Redundant runs are no-ops
+    // thanks to the store's TTL.
+    const hasBalancesFetchStarted = useRef(false);
+
+    useEffect(() => {
+      if (isLoadingBalances) {
+        hasBalancesFetchStarted.current = true;
+        return;
+      }
+
+      if (
+        !hasBalancesFetchStarted.current ||
+        isLoadingCollectibles ||
+        allAccounts.length === 0
+      ) {
+        return;
+      }
+
+      fetchAccountsFiatTotals({
+        publicKeys: allAccounts.map((walletAccount) => walletAccount.publicKey),
+        network,
+      });
+    }, [
+      isLoadingBalances,
+      isLoadingCollectibles,
+      allAccounts,
+      network,
+      fetchAccountsFiatTotals,
+    ]);
 
     const navigateToBuyXLM = useCallback(() => {
       // Navigation analytics already tracked by useNavigationAnalytics
