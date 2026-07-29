@@ -8,7 +8,6 @@ import {
 import AddCollectibleScreen from "components/screens/AddCollectibleScreen";
 import { BiometricsOnboardingScreen } from "components/screens/BiometricsEnableScreen/BiometricsEnableScreen";
 import CollectibleDetailsScreen from "components/screens/CollectibleDetailsScreen";
-import ConnectedAppsScreen from "components/screens/ConnectedAppsScreen";
 import { ForceUpdateScreen } from "components/screens/ForceUpdateScreen/ForceUpdateScreen";
 import HiddenCollectiblesScreen from "components/screens/HiddenCollectiblesScreen";
 import { LoadingScreen } from "components/screens/LoadingScreen";
@@ -263,11 +262,6 @@ export const RootNavigator = () => {
               name={ROOT_NAVIGATOR_ROUTES.SCAN_RECEIVE_SCREEN}
               component={ScanReceiveScreen}
               options={getScreenOptionsNoHeader()}
-            />
-            <RootStack.Screen
-              name={ROOT_NAVIGATOR_ROUTES.CONNECTED_APPS_SCREEN}
-              component={ConnectedAppsScreen}
-              options={getScreenBottomNavigateOptions(t("connectedApps.title"))}
             />
             <RootStack.Screen
               name={ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK}

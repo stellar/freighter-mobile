@@ -86,6 +86,11 @@ export type BottomSheetProps = {
   analyticsEvent?: AnalyticsEvent;
   analyticsProps?: AnalyticsProps;
   scrollViewFooterComponent?: () => React.ReactNode;
+  /**
+   * Content pinned inside the handle area (above the scroll view), so it stays
+   * visible while the body scrolls. Only rendered in `scrollable` mode.
+   */
+  stickyHeaderComponent?: () => React.ReactNode;
   scrollable?: boolean;
 };
 
@@ -108,6 +113,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
   analyticsEvent,
   analyticsProps,
   scrollViewFooterComponent = undefined,
+  stickyHeaderComponent = undefined,
   scrollable = false,
 }) => {
   if (__DEV__ && scrollable && snapPoints) {
@@ -139,11 +145,14 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
 
   const renderHandle = useCallback(
     () => (
-      <View className="bg-background-primary w-full items-center justify-center pt-2 rounded-t-3xl rounded-tr-3xl">
-        <View className="h-[6px] w-[40px] rounded-full bg-gray-8 opacity-[.32]" />
+      <View className="bg-background-primary w-full pt-2 rounded-t-3xl rounded-tr-3xl">
+        <View className="items-center justify-center">
+          <View className="h-[6px] w-[40px] rounded-full bg-gray-8 opacity-[.32]" />
+        </View>
+        {scrollable && stickyHeaderComponent?.()}
       </View>
     ),
-    [],
+    [scrollable, stickyHeaderComponent],
   );
 
   const handleChange = useCallback(
@@ -285,7 +294,14 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
         {scrollable ? (
           <View>
             <BottomSheetScrollView
-              className="bg-background-primary pl-6 pr-6 pt-6 gap-6"
+              // With a sticky header, shift the scroll frame down (mt-3) and
+              // trim the content's top padding (pt-3). The margin is outside
+              // the scrollable content, so it stays as a gap below the fixed
+              // header while the list scrolls, without pushing the initial
+              // content further down.
+              className={`bg-background-primary pl-6 pr-6 gap-6 ${
+                stickyHeaderComponent ? "mt-3 pt-3" : "pt-6"
+              }`}
               showsVerticalScrollIndicator={false}
               style={{
                 paddingBottom: useInsetsBottomPadding
@@ -297,8 +313,13 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
               {renderContent()}
               {/* Spacer reserves room for the absolutely-positioned footer
                   below. Sized from the out-of-modal pre-measurement
-                  above so it's already correct on first render. */}
-              {footerHeight > 0 && <View style={{ height: footerHeight }} />}
+                  above so it's already correct on first render. Guarded by
+                  `scrollViewFooterComponent` (like the overlay below) so a
+                  stale `footerHeight` from a previously-rendered footer
+                  doesn't leave a phantom gap once the footer is removed. */}
+              {scrollViewFooterComponent && footerHeight > 0 && (
+                <View style={{ height: footerHeight }} />
+              )}
             </BottomSheetScrollView>
             {scrollViewFooterComponent && (
               <View

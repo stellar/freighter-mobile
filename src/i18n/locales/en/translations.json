@@ -293,10 +293,15 @@
   },
   "connectedApps": {
     "title": "Connected Apps",
-    "noConnectedDapps": "No connected apps. Find apps\nto use on Discover.",
+    "noConnectedDappsTitle": "Nothing connected yet",
+    "noConnectedDappsDescription": "Discover apps and connect your first one.",
     "noConnectedDappsNoDiscover": "No connected apps.",
     "goToDiscover": "Go to Discover",
-    "disconnectAllSessions": "Disconnect all"
+    "disconnectAllSessions": "Disconnect all",
+    "disconnectApp": "Disconnect {{appName}}",
+    "appDisconnected": "{{appName}} disconnected",
+    "appDisconnectedFallback": "App disconnected",
+    "allAppsDisconnected": "All apps disconnected"
   },
   "discovery": {
     "discover": "Discover",
