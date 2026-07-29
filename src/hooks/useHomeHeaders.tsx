@@ -35,15 +35,17 @@ interface UseHomeHeadersProps {
     typeof MAIN_TAB_ROUTES.TAB_HOME
   >;
   onAccountPress: () => void;
+  onConnectedAppsPress: () => void;
 }
 
 export const useHomeHeaders = ({
   navigation,
   onAccountPress,
+  onConnectedAppsPress,
 }: UseHomeHeadersProps) => {
+  const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const { account } = useGetActiveAccount();
-  const { t } = useAppTranslation();
 
   const accountName = account?.accountName ?? "";
   const publicKey = account?.publicKey ?? "";
@@ -112,13 +114,11 @@ export const useHomeHeaders = ({
           hitSlop={HEADER_BUTTON_HIT_SLOP}
           testID="home-screen-connected-apps-button"
           accessibilityLabel={t("connectedApps.title")}
-          onPress={() =>
-            navigation.navigate(ROOT_NAVIGATOR_ROUTES.CONNECTED_APPS_SCREEN)
-          }
+          onPress={onConnectedAppsPress}
         />
       </View>
     ),
-    [themeColors, navigation, t],
+    [themeColors, navigation, onConnectedAppsPress, t],
   );
 
   // useLayoutEffect is the official recommended hook to use for setting up

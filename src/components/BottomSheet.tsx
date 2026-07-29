@@ -380,8 +380,13 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
               {renderContent()}
               {/* Spacer reserves room for the absolutely-positioned footer
                   below. Sized from the out-of-modal pre-measurement
-                  above so it's already correct on first render. */}
-              {footerHeight > 0 && <View style={{ height: footerHeight }} />}
+                  above so it's already correct on first render. Guarded by
+                  `scrollViewFooterComponent` (like the overlay below) so a
+                  stale `footerHeight` from a previously-rendered footer
+                  doesn't leave a phantom gap once the footer is removed. */}
+              {scrollViewFooterComponent && footerHeight > 0 && (
+                <View style={{ height: footerHeight }} />
+              )}
             </BottomSheetScrollView>
             {scrollViewHeaderComponent && (
               <View
