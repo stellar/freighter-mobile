@@ -33,6 +33,14 @@ interface ManageAccountsProps {
 const MAX_SHEET_HEIGHT_RATIO = 0.83;
 const ACCOUNT_SWITCH_DISMISS_DELAY_MS = 500;
 
+/**
+ * Manage-accounts (wallets) bottom sheet orchestrator: owns the sheet
+ * lifecycle and all its actions — active-account quick actions (QR code,
+ * copy, explorer, rename), account switching with its post-switch dismiss
+ * delay, the rename modal, and the "+ Add wallet" footer. Presents through
+ * the shared BottomSheet in scrollable mode with a pinned header/footer,
+ * and triggers the TTL-gated per-account USD totals fetch on present.
+ */
 const ManageAccounts: React.FC<ManageAccountsProps> = ({
   accounts,
   activeAccount,

@@ -105,6 +105,12 @@ export const ManageAccountSheetHeader: React.FC<
   );
 };
 
+/**
+ * Scrollable body of the manage-accounts sheet: hero with the active
+ * wallet's avatar/name/address, its four quick-action buttons, and the
+ * all-wallets list with per-account USD totals. Presentation-only — every
+ * action and the switching state are owned by the ManageAccounts wrapper.
+ */
 export const ManageAccountBottomSheet: React.FC<
   ManageAccountBottomSheetProps
 > = ({

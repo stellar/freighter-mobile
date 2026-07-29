@@ -24,6 +24,11 @@ interface RenameAccountModalProps {
   isRenamingAccount: boolean;
 }
 
+/**
+ * Modal for renaming a wallet: avatar, a single autofocused name input and
+ * Cancel / Save name actions. Uses the shared Modal's `position="keyboard"`
+ * mode so the card slides with the keyboard instead of jumping.
+ */
 const RenameAccountModal: React.FC<RenameAccountModalProps> = ({
   modalVisible,
   setModalVisible,

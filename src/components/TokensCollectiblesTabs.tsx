@@ -178,6 +178,8 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
                 : "border-transparent"
             }`}
             onPress={() => handleTabChange(TabType.TOKENS)}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: activeTab === TabType.TOKENS }}
             testID="tab-tokens"
           >
             <Text
@@ -199,6 +201,10 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
                 : "border-transparent"
             }`}
             onPress={() => handleTabChange(TabType.COLLECTIBLES)}
+            accessibilityRole="tab"
+            accessibilityState={{
+              selected: activeTab === TabType.COLLECTIBLES,
+            }}
             testID="tab-collectibles"
           >
             <Text

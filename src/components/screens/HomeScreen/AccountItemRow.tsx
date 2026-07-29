@@ -34,6 +34,12 @@ interface AccountItemRowProps {
   testID?: string;
 }
 
+/**
+ * One wallet row in the manage-accounts list: avatar with a selected badge,
+ * name, truncated address (plus an "Imported" tag when applicable) and the
+ * account's USD total — a spinner while the total is loading, and a
+ * switching overlay while this account is being switched to.
+ */
 const AccountItemRow: React.FC<AccountItemRowProps> = ({
   account,
   handleSelectAccount,
