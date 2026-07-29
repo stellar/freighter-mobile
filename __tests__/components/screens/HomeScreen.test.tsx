@@ -33,6 +33,13 @@ jest.mock("components/screens/HomeScreen/ManageAccountBottomSheet", () => ({
   },
 }));
 
+jest.mock("components/screens/HomeScreen/ConnectedApps", () => ({
+  __esModule: true,
+  default: function MockConnectedApps() {
+    return null;
+  },
+}));
+
 jest.mock("components/analytics/DebugBottomSheet", () => ({
   DebugBottomSheet: function MockDebugBottomSheet() {
     return null;

@@ -24,9 +24,13 @@ interface UseHomeHeadersProps {
     MainTabStackParamList & RootStackParamList,
     typeof MAIN_TAB_ROUTES.TAB_HOME
   >;
+  onConnectedAppsPress: () => void;
 }
 
-export const useHomeHeaders = ({ navigation }: UseHomeHeadersProps) => {
+export const useHomeHeaders = ({
+  navigation,
+  onConnectedAppsPress,
+}: UseHomeHeadersProps) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
 
@@ -96,13 +100,11 @@ export const useHomeHeaders = ({ navigation }: UseHomeHeadersProps) => {
         <CustomHeaderButton
           position="left"
           icon={Icon.NotificationBox}
-          onPress={() =>
-            navigation.navigate(ROOT_NAVIGATOR_ROUTES.CONNECTED_APPS_SCREEN)
-          }
+          onPress={onConnectedAppsPress}
         />
       </View>
     ),
-    [menuActions, themeColors, navigation],
+    [menuActions, themeColors, navigation, onConnectedAppsPress],
   );
 
   const HeaderRightComponent = useCallback(
