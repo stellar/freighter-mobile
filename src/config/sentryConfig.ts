@@ -185,7 +185,15 @@ export const updateSentryContext = (): void => {
 let isSentryInitialized = false;
 
 /**
- * Initialize Sentry with privacy-conscious configuration
+ * Initialize Sentry with privacy-conscious configuration.
+ *
+ * No-ops (does not call Sentry.init) in three cases:
+ * - during e2e tests;
+ * - if Sentry is already initialized (idempotent — safe to call from both
+ *   App's startup effect and the analytics-store subscription regardless of
+ *   order);
+ * - if data sharing is currently OFF (master switch; mirrors the extension).
+ * syncSentryEnablement() re-invokes this when the user turns sharing back on.
  */
 export const initializeSentry = (): void => {
   // Disable Sentry during e2e tests
@@ -364,31 +372,41 @@ export const initializeSentry = (): void => {
 /**
  * Reconcile Sentry with the current data-sharing preference. Idempotent and
  * safe to call on any analytics-store change: when sharing is ON it
- * (re)initializes Sentry; when sharing is OFF it clears the user and shuts the
- * client down so nothing further is reported. Mirrors the extension's
- * init-when-allowed / close-on-disable behavior.
+ * (re)initializes Sentry; when sharing is OFF it clears the user and disables
+ * the client so nothing further is reported. Mirrors the extension's
+ * init-when-allowed / disable-on-opt-out behavior.
  */
 export const syncSentryEnablement = (): void => {
+  // Consent (isEnabled) is persisted to AsyncStorage and hydrates
+  // asynchronously; before hydration the store holds its default, which is
+  // `true` on Android (ANALYTICS_CONFIG.DEFAULT_ENABLED). This runs from the
+  // analytics-store subscription, which can fire pre-hydration (e.g. setUserId
+  // during identify), so reading isEnabled now could initialize Sentry for a
+  // returning opted-out user. Treat persisted consent as authoritative and
+  // skip until hydration completes — App's startup effect performs the initial
+  // reconcile from onFinishHydration. Mirrors syncIdentifyTraits in
+  // services/analytics/core.ts.
+  if (!useAnalyticsStore.persist.hasHydrated()) return;
+
   const { isEnabled } = useAnalyticsStore.getState();
 
   if (isEnabled && !isSentryInitialized) {
     initializeSentry();
   } else if (!isEnabled && isSentryInitialized) {
-    // Drop the identity, then disable the client. We call close() with a 0ms
-    // flush timeout (Sentry.close() itself always does a full-drain flush, so
-    // go through the client directly): on opt-out we want to *stop* sending,
-    // not actively drain the transport backlog — a full flush would push out
-    // any events buffered under prior consent (e.g. from an offline window),
-    // which contradicts "off means off". close() still sets enabled=false, so
-    // no future event is captured or sent, and beforeSend hard-drops anything
-    // captured in the gap before it resolves. In-flight requests already handed
-    // to the network can't be recalled, but nothing new is drained.
+    // Drop the identity, then disable the client WITHOUT flushing. Neither
+    // Sentry.close() nor client.close(0) work here: close() always runs
+    // flush(timeout) first, and PromiseBuffer.drain treats a falsy timeout
+    // (0 or undefined) as "wait until the whole queue drains" — so both would
+    // push out events buffered under prior consent (e.g. from an offline
+    // window), contradicting "off means off". Flip `enabled = false` directly
+    // (what close() does after its flush): captureEvent's `_isEnabled()` guard
+    // then blocks every future send, and beforeSend hard-drops anything caught
+    // in the gap. In-flight network requests already handed off can't be
+    // recalled, but nothing new is drained.
     Sentry.setUser(null);
     const client = Sentry.getClient();
     if (client) {
-      client.close(0);
-    } else {
-      Sentry.close();
+      client.getOptions().enabled = false;
     }
     isSentryInitialized = false;
   }

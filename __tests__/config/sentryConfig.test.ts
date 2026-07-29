@@ -9,11 +9,17 @@ import {
   updateSentryContext,
 } from "config/sentryConfig";
 
+// Shared client options object so tests can assert that opt-out flips
+// `enabled` to false (the non-flushing disable) rather than calling close().
+const mockClientOptions: { enabled: boolean } = { enabled: true };
 const mockClientClose = jest.fn();
 jest.mock("@sentry/react-native", () => ({
   init: jest.fn(),
   close: jest.fn(),
-  getClient: jest.fn(() => ({ close: mockClientClose })),
+  getClient: jest.fn(() => ({
+    close: mockClientClose,
+    getOptions: () => mockClientOptions,
+  })),
   setContext: jest.fn(),
   setTag: jest.fn(),
   setUser: jest.fn(),
@@ -38,8 +44,14 @@ const mockAnalyticsState: { isEnabled: boolean; userId: string | null } = {
   isEnabled: true,
   userId: null,
 };
+// Persisted-consent hydration flag. Default true so direct-call tests exercise
+// the post-hydration path; a dedicated test flips it false to cover the race.
+const mockHydration = { hydrated: true };
 jest.mock("ducks/analytics", () => ({
-  useAnalyticsStore: { getState: () => mockAnalyticsState },
+  useAnalyticsStore: {
+    getState: () => mockAnalyticsState,
+    persist: { hasHydrated: () => mockHydration.hydrated },
+  },
 }));
 jest.mock("ducks/auth", () => ({
   useAuthenticationStore: {
@@ -93,9 +105,13 @@ const runBeforeSendWith = (event: Partial<ErrorEvent>): ErrorEvent | null => {
 // it to "not initialized" via the public syncSentryEnablement path) so each
 // test starts fresh and stays isolated.
 beforeEach(() => {
+  mockHydration.hydrated = true;
   mockAnalyticsState.isEnabled = false;
   syncSentryEnablement();
   mockAnalyticsState.isEnabled = true;
+  // Reset AFTER the syncSentryEnablement reset above, which flips enabled off
+  // when a prior test left the client initialized.
+  mockClientOptions.enabled = true;
   jest.clearAllMocks();
 });
 
@@ -553,7 +569,7 @@ describe("data-sharing master switch", () => {
     expect(beforeSend!(event, {})).toBeNull();
   });
 
-  it("syncSentryEnablement shuts the client down (clears user + close) on toggle-off", () => {
+  it("syncSentryEnablement disables the client on toggle-off without flushing", () => {
     // Bring the client up first so the internal flag is set.
     mockAnalyticsState.isEnabled = true;
     initializeSentry();
@@ -562,15 +578,18 @@ describe("data-sharing master switch", () => {
     mockAnalyticsState.isEnabled = false;
     syncSentryEnablement();
     expect(mockedSentry.setUser).toHaveBeenCalledWith(null);
-    // Disable via the client with a 0ms flush timeout — stop sending without
-    // draining the transport backlog (Sentry.close() would full-flush).
-    expect(mockClientClose).toHaveBeenCalledWith(0);
+    // Disable by flipping enabled=false directly — NOT via close()/close(0),
+    // both of which full-drain the transport (PromiseBuffer.drain treats a
+    // falsy timeout as "wait for the whole queue"). We must not push out the
+    // backlog buffered under prior consent.
+    expect(mockClientOptions.enabled).toBe(false);
+    expect(mockClientClose).not.toHaveBeenCalled();
     expect(mockedSentry.close).not.toHaveBeenCalled();
     expect(mockedSentry.init).not.toHaveBeenCalled();
   });
 
   it("syncSentryEnablement re-initializes the client on toggle-on", () => {
-    // Drive to a shut-down state (init, then close via sync).
+    // Drive to a shut-down state (init, then disable via sync).
     mockAnalyticsState.isEnabled = true;
     initializeSentry();
     mockAnalyticsState.isEnabled = false;
@@ -580,5 +599,17 @@ describe("data-sharing master switch", () => {
     mockAnalyticsState.isEnabled = true;
     syncSentryEnablement();
     expect(mockedSentry.init).toHaveBeenCalledTimes(1);
+  });
+
+  it("syncSentryEnablement is a no-op before persisted consent hydrates", () => {
+    // Returning opted-out user on Android: store default is `true`, but the
+    // persisted preference (still un-hydrated) is `false`. The subscription
+    // must not initialize Sentry off the pre-hydration default.
+    mockHydration.hydrated = false;
+    mockAnalyticsState.isEnabled = true;
+
+    syncSentryEnablement();
+
+    expect(mockedSentry.init).not.toHaveBeenCalled();
   });
 });
