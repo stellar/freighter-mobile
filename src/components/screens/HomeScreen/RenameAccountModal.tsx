@@ -19,7 +19,8 @@ interface RenameAccountModalProps {
   modalVisible: boolean;
   setModalVisible: (visible: boolean) => void;
   handleRenameAccount: (newAccountName: string) => Promise<void>;
-  account: Account;
+  /** Account being renamed; null until a rename is requested. */
+  account: Account | null;
   isRenamingAccount: boolean;
 }
 

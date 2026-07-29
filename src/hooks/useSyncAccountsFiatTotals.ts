@@ -21,6 +21,9 @@ export const useSyncAccountsFiatTotals = ({
   network,
 }: UseSyncAccountsFiatTotalsParams) => {
   const pricedBalances = useBalancesStore((state) => state.pricedBalances);
+  const fetchedPublicKey = useBalancesStore((state) => state.fetchedPublicKey);
+  const fetchedNetwork = useBalancesStore((state) => state.fetchedNetwork);
+  const isLoadingBalances = useBalancesStore((state) => state.isLoading);
   const syncAccountFiatTotal = useAccountsFiatTotalsStore(
     (state) => state.syncAccountFiatTotal,
   );
@@ -30,6 +33,28 @@ export const useSyncAccountsFiatTotals = ({
       return;
     }
 
+    // Right after an account (or network) switch, the balances snapshot
+    // still belongs to the PREVIOUS account for a moment — syncing then
+    // would write the old account's total under the new key. Only sync when
+    // the snapshot provably matches: same account/network stamp and no
+    // fetch in flight (the stamp is written with the raw balances, before
+    // pricedBalances catches up).
+    if (
+      fetchedPublicKey !== publicKey ||
+      fetchedNetwork !== network ||
+      isLoadingBalances
+    ) {
+      return;
+    }
+
     syncAccountFiatTotal({ publicKey, network, pricedBalances });
-  }, [publicKey, network, pricedBalances, syncAccountFiatTotal]);
+  }, [
+    publicKey,
+    network,
+    pricedBalances,
+    fetchedPublicKey,
+    fetchedNetwork,
+    isLoadingBalances,
+    syncAccountFiatTotal,
+  ]);
 };

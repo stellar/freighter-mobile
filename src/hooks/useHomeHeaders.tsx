@@ -67,6 +67,9 @@ export const useHomeHeaders = ({
         className="flex-row items-center gap-[12px]"
         onPress={onAccountPress}
         accessibilityRole="button"
+        // Without an explicit label the announcement falls back to the child
+        // text, which includes the truncated address gibberish.
+        accessibilityLabel={accountName}
         testID="home-account-switcher"
       >
         <Avatar size="lg" publicAddress={publicKey} />

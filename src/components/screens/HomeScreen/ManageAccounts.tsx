@@ -295,7 +295,7 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
         modalVisible={renameAccountModalVisible}
         setModalVisible={setRenameAccountModalVisible}
         handleRenameAccount={handleRenameAccount}
-        account={accountToRename!}
+        account={accountToRename}
         isRenamingAccount={isRenamingAccount}
       />
     </>
