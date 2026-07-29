@@ -86,6 +86,17 @@ const runBeforeSendWith = (event: Partial<ErrorEvent>): ErrorEvent | null => {
   return initOpts.beforeSend(event as ErrorEvent, {}) as ErrorEvent | null;
 };
 
+// initializeSentry() is idempotent — it guards on an internal
+// `isSentryInitialized` flag. Reset that module state before every test (drive
+// it to "not initialized" via the public syncSentryEnablement path) so each
+// test starts fresh and stays isolated.
+beforeEach(() => {
+  mockAnalyticsState.isEnabled = false;
+  syncSentryEnablement();
+  mockAnalyticsState.isEnabled = true;
+  jest.clearAllMocks();
+});
+
 describe("updateSentryContext user-identity consent gate", () => {
   beforeEach(() => {
     jest.clearAllMocks();

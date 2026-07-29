@@ -193,6 +193,14 @@ export const initializeSentry = (): void => {
     return;
   }
 
+  // Idempotent: never run Sentry.init() twice. Both App's startup effect and
+  // the analytics-store subscription (via syncSentryEnablement) can reach here,
+  // and their order isn't guaranteed — guard the initializer itself so whichever
+  // runs second is a no-op.
+  if (isSentryInitialized) {
+    return;
+  }
+
   // Master switch: with data sharing OFF, do not initialize Sentry at all —
   // mirrors the extension (no init when sharing is disabled), so nothing is
   // reported. syncSentryEnablement() re-initializes if the user turns it on.
