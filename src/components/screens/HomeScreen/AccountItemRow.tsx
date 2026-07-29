@@ -144,4 +144,6 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
   );
 };
 
-export default AccountItemRow;
+// Memoized: rendered per account in the manage-accounts list, so a row only
+// re-renders when its own props change.
+export default React.memo(AccountItemRow);

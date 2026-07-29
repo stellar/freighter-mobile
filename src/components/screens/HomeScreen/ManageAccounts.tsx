@@ -8,6 +8,7 @@ import ManageAccountBottomSheet, {
 import RenameAccountModal from "components/screens/HomeScreen/RenameAccountModal";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { ERROR_TOAST_DURATION } from "config/constants";
+import { logger } from "config/logger";
 import { RootStackParamList, ROOT_NAVIGATOR_ROUTES } from "config/routes";
 import { Account } from "config/types";
 import { useAccountsFiatTotalsStore } from "ducks/accountsFiatTotals";
@@ -132,7 +133,13 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
     const url = `${getStellarExpertUrl(network)}/account/${activeAccount.publicKey}`;
     analytics.track(AnalyticsEvent.VIEW_PUBLIC_KEY_CLICKED_STELLAR_EXPERT);
 
-    openInAppBrowser(url);
+    openInAppBrowser(url).catch((error) =>
+      logger.warn(
+        "ManageAccounts",
+        "Error opening account on stellar.expert:",
+        error,
+      ),
+    );
   }, [activeAccount, network, openInAppBrowser]);
 
   const handleOpenRenameActiveAccount = useCallback(() => {

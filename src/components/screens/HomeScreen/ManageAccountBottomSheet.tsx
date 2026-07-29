@@ -45,25 +45,30 @@ interface CircleButtonProps {
   testID?: string;
 }
 
-const CircleButton: React.FC<CircleButtonProps> = ({
-  children,
-  onPress,
-  sizeClassName,
-  accessibilityLabel,
-  disabled,
-  testID,
-}) => (
-  <TouchableOpacity
-    className={`${sizeClassName} rounded-full bg-background-tertiary justify-center items-center`}
-    onPress={onPress}
-    disabled={disabled}
-    accessibilityRole="button"
-    accessibilityLabel={accessibilityLabel}
-    testID={testID}
-  >
-    {children}
-  </TouchableOpacity>
+// Memoized: rendered via the quick-actions map below.
+const CircleButton: React.FC<CircleButtonProps> = React.memo(
+  ({
+    children,
+    onPress,
+    sizeClassName,
+    accessibilityLabel,
+    disabled,
+    testID,
+  }) => (
+    <TouchableOpacity
+      className={`${sizeClassName} rounded-full bg-background-tertiary justify-center items-center`}
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      testID={testID}
+    >
+      {children}
+    </TouchableOpacity>
+  ),
 );
+
+CircleButton.displayName = "CircleButton";
 
 /**
  * Settings/close row pinned above the manage-accounts sheet's scrollable

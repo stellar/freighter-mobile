@@ -231,15 +231,23 @@ jest.mock("ducks/accountsFiatTotals", () => ({
 }));
 
 jest.mock("ducks/auth", () => ({
-  useAuthenticationStore: () => ({
-    network: "TESTNET",
-    getAllAccounts: jest.fn().mockResolvedValue([]),
-    renameAccount: jest.fn().mockResolvedValue(Promise.resolve()),
-    selectAccount: jest.fn().mockResolvedValue(Promise.resolve()),
-    isRenamingAccount: false,
-    allAccounts: [{ publicKey: "GTESTPUBLICKEY", accountName: "Test Account" }],
-    setSignInMethod: jest.fn(),
-  }),
+  useAuthenticationStore: (
+    selector?: (storeState: Record<string, unknown>) => unknown,
+  ) => {
+    const state = {
+      network: "TESTNET",
+      getAllAccounts: jest.fn().mockResolvedValue([]),
+      renameAccount: jest.fn().mockResolvedValue(Promise.resolve()),
+      selectAccount: jest.fn().mockResolvedValue(Promise.resolve()),
+      isRenamingAccount: false,
+      allAccounts: [
+        { publicKey: "GTESTPUBLICKEY", accountName: "Test Account" },
+      ],
+      setSignInMethod: jest.fn(),
+    };
+
+    return selector ? selector(state) : state;
+  },
   getLoginType: jest.fn((biometryType) => {
     if (!biometryType) return "password";
     if (biometryType === "FaceID" || biometryType === "Face") return "face";

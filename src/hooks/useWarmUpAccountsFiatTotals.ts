@@ -14,9 +14,12 @@ import { useEffect, useRef } from "react";
  * the accounts-fiat-totals store's TTL.
  */
 export const useWarmUpAccountsFiatTotals = () => {
-  const { network, allAccounts } = useAuthenticationStore();
-  const { isLoading: isLoadingBalances } = useBalancesStore();
-  const { isLoading: isLoadingCollectibles } = useCollectiblesStore();
+  const network = useAuthenticationStore((state) => state.network);
+  const allAccounts = useAuthenticationStore((state) => state.allAccounts);
+  const isLoadingBalances = useBalancesStore((state) => state.isLoading);
+  const isLoadingCollectibles = useCollectiblesStore(
+    (state) => state.isLoading,
+  );
   const fetchAccountsFiatTotals = useAccountsFiatTotalsStore(
     (state) => state.fetchAccountsFiatTotals,
   );
