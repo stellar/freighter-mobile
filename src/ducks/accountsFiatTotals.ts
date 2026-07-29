@@ -141,7 +141,10 @@ export const useAccountsFiatTotalsStore = create<AccountsFiatTotalsState>(
 
         const { fiatTotals, isLoading, lastUpdatedAt, lastNetwork } = get();
 
-        if (isLoading) {
+        // A forced call (pull-to-refresh, account switch) supersedes an
+        // in-flight cycle instead of being dropped: the generation bump
+        // below makes the old cycle abort at its next checkpoint.
+        if (isLoading && !forceRefresh) {
           return;
         }
 
@@ -280,11 +283,15 @@ export const useAccountsFiatTotalsStore = create<AccountsFiatTotalsState>(
             set({ fiatTotals: { ...get().fiatTotals, ...batchTotals } });
           }
 
-          set({
-            isLoading: false,
-            lastUpdatedAt: Date.now(),
-            lastNetwork: network,
-          });
+          // Superseded after the last batch checkpoint? The newer cycle
+          // owns isLoading and the freshness stamp — don't stomp them.
+          if (fetchGeneration === thisGeneration) {
+            set({
+              isLoading: false,
+              lastUpdatedAt: Date.now(),
+              lastNetwork: network,
+            });
+          }
         } catch (error) {
           // Per-account and price errors are already handled above; this is a
           // safety net so isLoading can't get stuck if something unexpected

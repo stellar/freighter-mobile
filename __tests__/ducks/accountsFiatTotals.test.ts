@@ -388,6 +388,53 @@ describe("accountsFiatTotals duck", () => {
     expect(mockFetchBalances).toHaveBeenCalledTimes(1);
   });
 
+  it("lets a forced call supersede an in-flight cycle", async () => {
+    let resolveBalances!: (value: {
+      balances: typeof mockBalanceMap;
+      isFunded: boolean;
+      subentryCount: number;
+    }) => void;
+    mockFetchBalances.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveBalances = resolve;
+      }),
+    );
+    mockFetchBalances.mockResolvedValue({
+      balances: mockBalanceMap,
+      isFunded: true,
+      subentryCount: 1,
+    });
+
+    const { fetchAccountsFiatTotals } = useAccountsFiatTotalsStore.getState();
+
+    const slowCycle = fetchAccountsFiatTotals({
+      publicKeys: [PK_1],
+      network: NETWORKS.PUBLIC,
+    });
+    const forcedCycle = fetchAccountsFiatTotals({
+      publicKeys: [PK_1, PK_2],
+      network: NETWORKS.PUBLIC,
+      forceRefresh: true,
+    });
+
+    resolveBalances({
+      balances: mockBalanceMap,
+      isFunded: true,
+      subentryCount: 1,
+    });
+    await Promise.all([slowCycle, forcedCycle]);
+
+    // The forced cycle fetched both accounts; the superseded cycle's PK_1
+    // result was discarded at its checkpoint, not written over forced data.
+    expect(mockFetchBalances).toHaveBeenCalledTimes(3);
+    const { fiatTotals, isLoading, lastUpdatedAt } =
+      useAccountsFiatTotalsStore.getState();
+    expect(fiatTotals[PK_1]?.toString()).toBe("250");
+    expect(fiatTotals[PK_2]?.toString()).toBe("250");
+    expect(isLoading).toBe(false);
+    expect(lastUpdatedAt).not.toBeNull();
+  });
+
   it("aborts an in-flight mainnet fetch when the network switches", async () => {
     const publicKeys = Array.from(
       { length: ACCOUNTS_FIAT_TOTALS_BATCH_SIZE + 1 },
