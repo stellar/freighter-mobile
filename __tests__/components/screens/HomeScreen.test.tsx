@@ -230,12 +230,16 @@ jest.mock("ducks/accountsFiatTotals", () => ({
   },
 }));
 
+// Mutable so tests can simulate a network switch (read lazily at render
+// time, after jest hoisting).
+let mockNetwork = "TESTNET";
+
 jest.mock("ducks/auth", () => ({
   useAuthenticationStore: (
     selector?: (storeState: Record<string, unknown>) => unknown,
   ) => {
     const state = {
-      network: "TESTNET",
+      network: mockNetwork,
       getAllAccounts: jest.fn().mockResolvedValue([]),
       renameAccount: jest.fn().mockResolvedValue(Promise.resolve()),
       selectAccount: jest.fn().mockResolvedValue(Promise.resolve()),
@@ -288,6 +292,16 @@ describe("HomeScreen", () => {
     jest.clearAllMocks();
     jest.useFakeTimers();
     mockIsLoadingBalances = false;
+    mockNetwork = "TESTNET";
+  });
+
+  const buildProps = () => ({
+    navigation: {
+      replace: jest.fn(),
+      navigate: jest.fn(),
+      setOptions: jest.fn(),
+    } as never,
+    route: {} as never,
   });
 
   afterEach(() => {
@@ -371,15 +385,6 @@ describe("HomeScreen", () => {
   });
 
   it("warms up the wallets-list fiat totals once the balances fetch settles", () => {
-    const buildProps = () => ({
-      navigation: {
-        replace: jest.fn(),
-        navigate: jest.fn(),
-        setOptions: jest.fn(),
-      } as never,
-      route: {} as never,
-    });
-
     mockIsLoadingBalances = true;
     const { rerender } = renderWithProviders(<HomeScreen {...buildProps()} />);
 
@@ -396,13 +401,35 @@ describe("HomeScreen", () => {
       excludePublicKey: "test-public-key",
     });
 
-    // One-shot: later balances polls must not re-trigger the warm-up.
+    // One-shot per network: later balances polls must not re-trigger it.
     mockIsLoadingBalances = true;
     rerender(<HomeScreen {...buildProps()} />);
     mockIsLoadingBalances = false;
     rerender(<HomeScreen {...buildProps()} />);
 
     expect(mockFetchAccountsFiatTotals).toHaveBeenCalledTimes(1);
+  });
+
+  it("re-warms the wallets-list fiat totals after a network switch", () => {
+    mockIsLoadingBalances = true;
+    const { rerender } = renderWithProviders(<HomeScreen {...buildProps()} />);
+    mockIsLoadingBalances = false;
+    rerender(<HomeScreen {...buildProps()} />);
+    expect(mockFetchAccountsFiatTotals).toHaveBeenCalledTimes(1);
+
+    // Switching networks refetches balances for the new network; once they
+    // settle, the totals warm up again so the sheet opens with the right
+    // values instead of the previous network's.
+    mockNetwork = "PUBLIC";
+    mockIsLoadingBalances = true;
+    rerender(<HomeScreen {...buildProps()} />);
+    mockIsLoadingBalances = false;
+    rerender(<HomeScreen {...buildProps()} />);
+
+    expect(mockFetchAccountsFiatTotals).toHaveBeenCalledTimes(2);
+    expect(mockFetchAccountsFiatTotals).toHaveBeenLastCalledWith(
+      expect.objectContaining({ network: "PUBLIC" }),
+    );
   });
 
   describe("HomeScreen floating add buttons", () => {
