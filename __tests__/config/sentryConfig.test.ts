@@ -9,9 +9,11 @@ import {
   updateSentryContext,
 } from "config/sentryConfig";
 
+const mockClientClose = jest.fn();
 jest.mock("@sentry/react-native", () => ({
   init: jest.fn(),
   close: jest.fn(),
+  getClient: jest.fn(() => ({ close: mockClientClose })),
   setContext: jest.fn(),
   setTag: jest.fn(),
   setUser: jest.fn(),
@@ -560,7 +562,10 @@ describe("data-sharing master switch", () => {
     mockAnalyticsState.isEnabled = false;
     syncSentryEnablement();
     expect(mockedSentry.setUser).toHaveBeenCalledWith(null);
-    expect(mockedSentry.close).toHaveBeenCalled();
+    // Disable via the client with a 0ms flush timeout — stop sending without
+    // draining the transport backlog (Sentry.close() would full-flush).
+    expect(mockClientClose).toHaveBeenCalledWith(0);
+    expect(mockedSentry.close).not.toHaveBeenCalled();
     expect(mockedSentry.init).not.toHaveBeenCalled();
   });
 

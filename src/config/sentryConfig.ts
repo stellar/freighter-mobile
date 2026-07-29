@@ -374,10 +374,22 @@ export const syncSentryEnablement = (): void => {
   if (isEnabled && !isSentryInitialized) {
     initializeSentry();
   } else if (!isEnabled && isSentryInitialized) {
-    // Drop the identity, then shut the client down. beforeSend also hard-drops
-    // events while disabled, so nothing leaks in the gap before close resolves.
+    // Drop the identity, then disable the client. We call close() with a 0ms
+    // flush timeout (Sentry.close() itself always does a full-drain flush, so
+    // go through the client directly): on opt-out we want to *stop* sending,
+    // not actively drain the transport backlog — a full flush would push out
+    // any events buffered under prior consent (e.g. from an offline window),
+    // which contradicts "off means off". close() still sets enabled=false, so
+    // no future event is captured or sent, and beforeSend hard-drops anything
+    // captured in the gap before it resolves. In-flight requests already handed
+    // to the network can't be recalled, but nothing new is drained.
     Sentry.setUser(null);
-    Sentry.close();
+    const client = Sentry.getClient();
+    if (client) {
+      client.close(0);
+    } else {
+      Sentry.close();
+    }
     isSentryInitialized = false;
   }
 };
