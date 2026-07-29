@@ -165,9 +165,22 @@ export const useAccountsFiatTotalsStore = create<AccountsFiatTotalsState>(
           return;
         }
 
-        // Totals from another network are meaningless here — drop them so the
-        // list never shows stale values while the new fetch is in flight.
-        set({ isLoading: true, ...(isSameNetwork ? {} : { fiatTotals: {} }) });
+        // Totals from another network are meaningless here — drop them so
+        // the list never shows stale values while the new fetch is in
+        // flight. The excluded (active) account's entry survives the clear:
+        // it's owned by the sync, which only writes values for the current
+        // network, and this cycle won't refetch it — on first launch the
+        // sync usually lands just before this first cycle, and wiping it
+        // would leave the active row stuck at $0.00.
+        const preservedTotals =
+          excludePublicKey != null && fiatTotals[excludePublicKey] != null
+            ? { [excludePublicKey]: fiatTotals[excludePublicKey] }
+            : {};
+
+        set({
+          isLoading: true,
+          ...(isSameNetwork ? {} : { fiatTotals: preservedTotals }),
+        });
 
         fetchGeneration += 1;
         const thisGeneration = fetchGeneration;

@@ -620,4 +620,28 @@ describe("accountsFiatTotals duck", () => {
     expect(fiatTotals.STALE_KEY).toBeUndefined();
     expect(fiatTotals[PK_1]?.toString()).toBe("250");
   });
+
+  it("preserves the excluded account's synced total through the network clear", async () => {
+    // First launch: the sync has already written the active account's total
+    // (current network) but the store has never fetched (lastNetwork null),
+    // so the cycle takes the different-network clear path. The active entry
+    // must survive — this cycle won't refetch it.
+    useAccountsFiatTotalsStore.setState({
+      fiatTotals: { [PK_1]: new BigNumber("44") },
+      lastNetwork: null,
+    });
+
+    const { fetchAccountsFiatTotals } = useAccountsFiatTotalsStore.getState();
+
+    await fetchAccountsFiatTotals({
+      publicKeys: [PK_1, PK_2],
+      network: NETWORKS.PUBLIC,
+      excludePublicKey: PK_1,
+    });
+
+    const { fiatTotals } = useAccountsFiatTotalsStore.getState();
+    expect(fiatTotals[PK_1]?.toString()).toBe("44");
+    expect(fiatTotals[PK_2]?.toString()).toBe("250");
+    expect(mockFetchBalances).toHaveBeenCalledTimes(1);
+  });
 });
