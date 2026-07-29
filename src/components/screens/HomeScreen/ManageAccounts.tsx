@@ -47,11 +47,13 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
     isRenamingAccount,
     isSwitchingAccount,
   } = useAuthenticationStore();
-  const {
-    fiatTotals,
-    isLoading: isLoadingFiatTotals,
-    fetchAccountsFiatTotals,
-  } = useAccountsFiatTotalsStore();
+  const fiatTotals = useAccountsFiatTotalsStore((state) => state.fiatTotals);
+  const isLoadingFiatTotals = useAccountsFiatTotalsStore(
+    (state) => state.isLoading,
+  );
+  const fetchAccountsFiatTotals = useAccountsFiatTotalsStore(
+    (state) => state.fetchAccountsFiatTotals,
+  );
   const { copyToClipboard } = useClipboard();
   const { open: openInAppBrowser } = useInAppBrowser();
   const { showToast } = useToast();
@@ -153,8 +155,6 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
   }, [accounts, activeAccount]);
 
   const handleAddAnotherWallet = useCallback(() => {
-    analytics.track(AnalyticsEvent.ACCOUNT_SCREEN_ADD_ACCOUNT);
-
     if (!navigation) return;
 
     // account.created (ACCOUNT_SCREEN_ADD_ACCOUNT) fires on the actual

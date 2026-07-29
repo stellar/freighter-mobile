@@ -23,9 +23,11 @@ interface AccountItemRowProps {
   isAccountSwitching: boolean;
   isSwitchingToThisAccount: boolean;
   /**
-   * Account's total USD value. `undefined` while it hasn't been fetched yet,
-   * `null` when unavailable (fetch failed or fiat-less network) — both render
-   * as a zero total, matching the Home screen's always-visible fiat balance.
+   * Account's total USD value. `undefined` while it hasn't been fetched yet —
+   * rendered as a spinner while `isLoadingFiatTotal`, falling back to a zero
+   * total once loading settles. `null` means unavailable (fetch failed or
+   * fiat-less network) and renders as a zero total, matching the Home
+   * screen's always-visible fiat balance.
    */
   fiatTotal?: BigNumber | null;
   isLoadingFiatTotal?: boolean;

@@ -1,5 +1,6 @@
 import { BigNumber } from "bignumber.js";
 import { NETWORKS } from "config/constants";
+import { logger } from "config/logger";
 import { BalanceMap, PricedBalanceMap, TokenPricesMap } from "config/types";
 import { usePricesStore } from "ducks/prices";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
@@ -189,7 +190,16 @@ export const useAccountsFiatTotalsStore = create<AccountsFiatTotalsState>(
 
                 return { publicKey, balances: balances ?? {} };
               } catch (error) {
-                // One account failing shouldn't blank out the whole list.
+                // One account failing shouldn't blank out the whole list —
+                // its row falls back to a zero total. Warn (not error): a
+                // per-account fetch failing is an expected offline/backend
+                // hiccup, logged as forensic context.
+                logger.warn(
+                  "fetchAccountsFiatTotals",
+                  "Failed to fetch balances for account",
+                  { publicKey, error },
+                );
+
                 return { publicKey, balances: null };
               }
             }),
@@ -255,7 +265,14 @@ export const useAccountsFiatTotalsStore = create<AccountsFiatTotalsState>(
       } catch (error) {
         // Per-account and price errors are already handled above; this is a
         // safety net so isLoading can't get stuck if something unexpected
-        // throws mid-cycle.
+        // throws mid-cycle. Warn (not error): the wallets-list totals are a
+        // nice-to-have, and rows degrade gracefully to zero totals.
+        logger.warn(
+          "fetchAccountsFiatTotals",
+          "Unexpected error during totals fetch cycle",
+          { error },
+        );
+
         if (fetchGeneration === thisGeneration) {
           set({ isLoading: false, lastNetwork: network });
         }
