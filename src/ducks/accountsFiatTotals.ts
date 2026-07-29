@@ -68,6 +68,14 @@ interface AccountsFiatTotalsState {
 let fetchGeneration = 0;
 
 /**
+ * Bumped whenever `syncAccountFiatTotal` invalidates the cache (a known
+ * total changed, i.e. real balance movement). A fetch cycle that completes
+ * after such a bump skips its freshness stamp: its balances may predate the
+ * movement, so the next trigger must refetch instead of trusting the TTL.
+ */
+let syncInvalidationRevision = 0;
+
+/**
  * Sums the USD value of every priced token in an account's balances.
  * Tokens without a known price (custom tokens, LP shares, price fetch
  * failures) contribute zero, so an unfunded account totals $0.00.
@@ -147,7 +155,16 @@ export const useAccountsFiatTotalsStore = create<AccountsFiatTotalsState>(
 
       fetchGeneration += 1;
       const thisGeneration = fetchGeneration;
+      const startSyncRevision = syncInvalidationRevision;
       const useV2 = useRemoteConfigStore.getState().use_token_prices_v2;
+
+      // The prices store skips identifiers it already holds, so without an
+      // occasional forced pass a quote fetched once would price totals for
+      // the whole session. Forced and stale (TTL-expired / other-network)
+      // cycles refresh quotes; each identifier only once per cycle, so
+      // tokens shared across accounts (e.g. XLM) aren't refetched per batch.
+      const shouldRefreshPrices = forceRefresh || !isFresh || !isSameNetwork;
+      const refreshedTokens = new Set<string>();
 
       try {
         for (
@@ -186,14 +203,26 @@ export const useAccountsFiatTotalsStore = create<AccountsFiatTotalsState>(
             ),
           ];
 
-          // Deduped against the shared prices cache, so tokens held by
-          // several accounts (e.g. XLM) are only requested once.
-          // eslint-disable-next-line no-await-in-loop
-          await usePricesStore.getState().fetchPricesForTokenIds({
-            tokens,
-            network,
-            useV2,
-          });
+          const tokensToPrice = shouldRefreshPrices
+            ? tokens.filter((token) => !refreshedTokens.has(token))
+            : tokens;
+
+          if (tokensToPrice.length > 0) {
+            // On non-refreshing cycles this still dedupes against the shared
+            // prices cache, so tokens held by several accounts (e.g. XLM)
+            // are only requested once.
+            // eslint-disable-next-line no-await-in-loop
+            await usePricesStore.getState().fetchPricesForTokenIds({
+              tokens: tokensToPrice,
+              network,
+              useV2,
+              forceRefresh: shouldRefreshPrices,
+            });
+
+            if (shouldRefreshPrices) {
+              tokensToPrice.forEach((token) => refreshedTokens.add(token));
+            }
+          }
 
           // Superseded (e.g. the network switched mid-flight)? The newer
           // cycle owns the state now — abort without writing.
@@ -216,7 +245,11 @@ export const useAccountsFiatTotalsStore = create<AccountsFiatTotalsState>(
 
         set({
           isLoading: false,
-          lastUpdatedAt: Date.now(),
+          // A sync invalidated the cache mid-cycle (balances moved while we
+          // were fetching, so ours may predate the movement) — leave the
+          // cache stale so the next trigger refetches.
+          lastUpdatedAt:
+            syncInvalidationRevision === startSyncRevision ? Date.now() : null,
           lastNetwork: network,
         });
       } catch (error) {
@@ -271,10 +304,16 @@ export const useAccountsFiatTotalsStore = create<AccountsFiatTotalsState>(
         return;
       }
 
+      // Only a change to a previously-known value signals real balance
+      // movement worth invalidating the other accounts' cache for. The
+      // revision bump also stops an in-flight fetch cycle from re-stamping
+      // the cache fresh over this invalidation.
+      if (current) {
+        syncInvalidationRevision += 1;
+      }
+
       set({
         fiatTotals: { ...get().fiatTotals, [publicKey]: total },
-        // Only a change to a previously-known value signals real balance
-        // movement worth invalidating the other accounts' cache for.
         ...(current ? { lastUpdatedAt: null } : {}),
       });
     },

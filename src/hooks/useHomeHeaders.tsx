@@ -15,6 +15,7 @@ import {
   MAIN_TAB_ROUTES,
 } from "config/routes";
 import { truncateAddress } from "helpers/stellar";
+import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React, { useCallback, useLayoutEffect } from "react";
@@ -42,6 +43,7 @@ export const useHomeHeaders = ({
 }: UseHomeHeadersProps) => {
   const { themeColors } = useColors();
   const { account } = useGetActiveAccount();
+  const { t } = useAppTranslation();
 
   const accountName = account?.accountName ?? "";
   const publicKey = account?.publicKey ?? "";
@@ -95,6 +97,7 @@ export const useHomeHeaders = ({
           iconColor={themeColors.text.secondary}
           hitSlop={HEADER_BUTTON_HIT_SLOP}
           testID="home-screen-scan-button"
+          accessibilityLabel={t("homeScanner.title")}
           onPress={() =>
             navigation.navigate(ROOT_NAVIGATOR_ROUTES.SCAN_RECEIVE_SCREEN, {
               initialTab: "scan",
@@ -108,13 +111,14 @@ export const useHomeHeaders = ({
           iconColor={themeColors.text.secondary}
           hitSlop={HEADER_BUTTON_HIT_SLOP}
           testID="home-screen-connected-apps-button"
+          accessibilityLabel={t("connectedApps.title")}
           onPress={() =>
             navigation.navigate(ROOT_NAVIGATOR_ROUTES.CONNECTED_APPS_SCREEN)
           }
         />
       </View>
     ),
-    [themeColors, navigation],
+    [themeColors, navigation, t],
   );
 
   // useLayoutEffect is the official recommended hook to use for setting up

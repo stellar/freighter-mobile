@@ -83,6 +83,12 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
         disabled={isAccountSwitching}
         delayPressIn={DEFAULT_PRESS_DELAY}
         testID={testID ? `${testID}-select` : undefined}
+        accessibilityRole="button"
+        accessibilityLabel={account.name}
+        accessibilityState={{
+          selected: showSelectedBadge,
+          disabled: isAccountSwitching,
+        }}
       >
         <View>
           <Avatar size="lg" publicAddress={account.publicKey} />

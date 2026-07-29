@@ -204,6 +204,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
                 sm
                 medium
                 color={themeColors.lilac[11]}
+                accessibilityRole="link"
                 onPress={() => {
                   openInAppBrowser(UNFUNDED_ACCOUNT_HELP_URL);
                 }}

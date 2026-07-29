@@ -181,7 +181,14 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
 
   const handleSelectAccount = useCallback(
     async (publicKey: string) => {
-      if (publicKey === activeAccount?.publicKey || isSwitchingAccount) {
+      // switchingToPublicKey covers the post-switch window where the auth
+      // store has already cleared its flag but the sheet is still showing
+      // the loaded state before dismissing.
+      if (
+        publicKey === activeAccount?.publicKey ||
+        isSwitchingAccount ||
+        switchingToPublicKey !== null
+      ) {
         return;
       }
 
@@ -199,7 +206,13 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
         setSwitchingToPublicKey(null);
       }
     },
-    [activeAccount, isSwitchingAccount, selectAccount, bottomSheetRef],
+    [
+      activeAccount,
+      isSwitchingAccount,
+      switchingToPublicKey,
+      selectAccount,
+      bottomSheetRef,
+    ],
   );
 
   const handleCloseModal = useCallback(() => {
@@ -261,7 +274,10 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
             accounts={accounts}
             activeAccount={activeAccount}
             handleSelectAccount={handleSelectAccount}
-            isAccountSwitching={isSwitchingAccount}
+            // The composite flag keeps rows and quick actions disabled through
+            // the post-switch dismiss delay, not just while the auth store is
+            // switching.
+            isAccountSwitching={isSwitchInProgress}
             switchingToPublicKey={switchingToPublicKey}
             fiatTotals={fiatTotals}
             isLoadingFiatTotals={isLoadingFiatTotals}

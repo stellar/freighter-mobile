@@ -23,6 +23,11 @@ interface CustomHeaderButtonProps {
     right: number;
   };
   testID?: string;
+  /**
+   * Screen-reader name for the button. Icon-only buttons have no text for
+   * assistive tech to announce, so callers should always provide one.
+   */
+  accessibilityLabel?: string;
 }
 
 /**
@@ -104,6 +109,7 @@ export const CustomHeaderButton: React.FC<CustomHeaderButtonProps> = ({
   className: customClassName,
   hitSlop = { top: 10, bottom: 10, left: 10, right: 10 },
   testID = "header-button",
+  accessibilityLabel,
 }) => {
   const navigation = useNavigation();
   const { themeColors } = useColors();
@@ -143,6 +149,8 @@ export const CustomHeaderButton: React.FC<CustomHeaderButtonProps> = ({
       hitSlop={hitSlop}
       disabled={!handlePress}
       testID={testID}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
     >
       <IconComponent size={iconSize} color={baseColor} />
     </TouchableOpacity>

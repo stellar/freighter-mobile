@@ -285,7 +285,7 @@ describe("accountsFiatTotals duck", () => {
     expect(mockFetchBalances).toHaveBeenCalledTimes(2);
   });
 
-  it("fetches accounts in sequential batches with one price fetch per batch", async () => {
+  it("fetches accounts in sequential batches, refreshing each quote once per cycle", async () => {
     const publicKeys = Array.from(
       { length: ACCOUNTS_FIAT_TOTALS_BATCH_SIZE + 1 },
       (_, i) => `${PK_1.slice(0, -2)}${String(i).padStart(2, "0")}`,
@@ -299,17 +299,60 @@ describe("accountsFiatTotals duck", () => {
     });
 
     expect(mockFetchBalances).toHaveBeenCalledTimes(publicKeys.length);
-    expect(mockFetchPricesForTokenIds).toHaveBeenCalledTimes(2);
+    // A stale (never-fetched) cycle force-refreshes quotes, and tokens shared
+    // across batches are only refreshed once — the second batch holds the
+    // same two tokens, so no second price request goes out.
+    expect(mockFetchPricesForTokenIds).toHaveBeenCalledTimes(1);
     expect(mockFetchPricesForTokenIds).toHaveBeenCalledWith({
       tokens: ["XLM", `USDC:${USDC_ISSUER}`],
       network: NETWORKS.PUBLIC,
       useV2: true,
+      forceRefresh: true,
     });
 
     const { fiatTotals } = useAccountsFiatTotalsStore.getState();
     publicKeys.forEach((publicKey) => {
       expect(fiatTotals[publicKey]?.toString()).toBe("250");
     });
+  });
+
+  it("reuses cached quotes on within-TTL cycles for newly added accounts", async () => {
+    const { fetchAccountsFiatTotals } = useAccountsFiatTotalsStore.getState();
+
+    await fetchAccountsFiatTotals({
+      publicKeys: [PK_1],
+      network: NETWORKS.PUBLIC,
+    });
+
+    // Fresh cache, new account — the cycle runs but doesn't force quotes.
+    await fetchAccountsFiatTotals({
+      publicKeys: [PK_1, PK_2],
+      network: NETWORKS.PUBLIC,
+    });
+
+    expect(mockFetchPricesForTokenIds).toHaveBeenLastCalledWith(
+      expect.objectContaining({ forceRefresh: false }),
+    );
+  });
+
+  it("force-refreshes cached quotes on forced and TTL-expired cycles", async () => {
+    const { fetchAccountsFiatTotals } = useAccountsFiatTotalsStore.getState();
+
+    await fetchAccountsFiatTotals({
+      publicKeys: [PK_1],
+      network: NETWORKS.PUBLIC,
+    });
+
+    await fetchAccountsFiatTotals({
+      publicKeys: [PK_1],
+      network: NETWORKS.PUBLIC,
+      forceRefresh: true,
+    });
+
+    expect(mockFetchPricesForTokenIds).toHaveBeenCalledTimes(2);
+    expect(mockFetchPricesForTokenIds).toHaveBeenLastCalledWith(
+      expect.objectContaining({ forceRefresh: true }),
+    );
   });
 
   it("ignores concurrent calls while a fetch is in flight", async () => {
@@ -515,6 +558,56 @@ describe("accountsFiatTotals duck", () => {
         useAccountsFiatTotalsStore.getState().fiatTotals[PK_1],
       ).toBeUndefined();
     });
+  });
+
+  it("skips the freshness stamp when a sync invalidates the cache mid-cycle", async () => {
+    let resolveBalances!: (value: {
+      balances: typeof mockBalanceMap;
+      isFunded: boolean;
+      subentryCount: number;
+    }) => void;
+    mockFetchBalances.mockReturnValue(
+      new Promise((resolve) => {
+        resolveBalances = resolve;
+      }),
+    );
+
+    // PK_2 has a known total, so a changed sync value counts as real
+    // balance movement (and invalidates the cache). Same network, so the
+    // cycle doesn't clear the totals on start.
+    useAccountsFiatTotalsStore.setState({
+      fiatTotals: { [PK_2]: new BigNumber("7") },
+      lastNetwork: NETWORKS.PUBLIC,
+    });
+
+    const { fetchAccountsFiatTotals, syncAccountFiatTotal } =
+      useAccountsFiatTotalsStore.getState();
+
+    const inFlight = fetchAccountsFiatTotals({
+      publicKeys: [PK_1],
+      network: NETWORKS.PUBLIC,
+    });
+
+    syncAccountFiatTotal({
+      publicKey: PK_2,
+      network: NETWORKS.PUBLIC,
+      pricedBalances: {
+        XLM: { ...nativeBalance, fiatTotal: new BigNumber("50") },
+      },
+    });
+
+    resolveBalances({
+      balances: mockBalanceMap,
+      isFunded: true,
+      subentryCount: 1,
+    });
+    await inFlight;
+
+    const { lastUpdatedAt, isLoading } = useAccountsFiatTotalsStore.getState();
+    // The cycle's balances may predate the movement the sync observed, so
+    // it must not mark the cache fresh — the next trigger refetches.
+    expect(lastUpdatedAt).toBeNull();
+    expect(isLoading).toBe(false);
   });
 
   it("clears totals from another network before fetching", async () => {
