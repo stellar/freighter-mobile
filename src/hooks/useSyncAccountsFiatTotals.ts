@@ -12,9 +12,9 @@ interface UseSyncAccountsFiatTotalsParams {
  * Mirrors the active account's balance changes into the accounts fiat totals
  * store (the manage-accounts sheet's per-account USD values). Whenever the
  * balances store updates — polling, pull-to-refresh, post-transaction — the
- * active account's row stays current without extra requests, and a real
- * value change marks the other accounts' totals stale so the next sheet
- * open refetches them.
+ * active account's row stays current without extra requests; fetch cycles
+ * skip it entirely, and the other accounts' rows only refresh on the
+ * explicit triggers (warm-up, pull-to-refresh, sheet open, account switch).
  */
 export const useSyncAccountsFiatTotals = ({
   publicKey,

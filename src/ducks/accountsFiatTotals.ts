@@ -96,11 +96,11 @@ const computeFiatTotal = (
  * cache, with results applied progressively so rows fill in batch by batch.
  *
  * Fetches are deliberately infrequent — users mostly live on one account, so
- * the list only refreshes on the Home warm-up, pull-to-refresh, sheet open
- * (TTL-gated) and account switches; the active account's own row is instead
- * kept current from the app's balances via `syncAccountFiatTotal`. Notably,
- * neither the 30s balances poll nor active-account movement triggers a
- * refetch of the other accounts.
+ * the list only refreshes on the Home warm-up (once per network landing),
+ * pull-to-refresh, sheet open (TTL-gated) and account switches; the active
+ * account's own row is instead kept current from the app's balances via
+ * `syncAccountFiatTotal`. Notably, neither the 30s balances poll nor
+ * active-account movement triggers a refetch of the other accounts.
  *
  * Fiat values are mainnet-only: on other networks the store clears itself and
  * never hits the backend.

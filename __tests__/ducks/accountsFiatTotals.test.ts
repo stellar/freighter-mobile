@@ -355,7 +355,7 @@ describe("accountsFiatTotals duck", () => {
     );
   });
 
-  it("ignores concurrent calls while a fetch is in flight", async () => {
+  it("ignores concurrent unforced calls while a fetch is in flight", async () => {
     let resolveBalances!: (value: {
       balances: typeof mockBalanceMap;
       isFunded: boolean;
