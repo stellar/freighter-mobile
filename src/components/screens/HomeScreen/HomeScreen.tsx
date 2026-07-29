@@ -262,6 +262,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
           Promise.resolve(fetchActiveSessions(account.publicKey, network)),
           // Refresh the manage-accounts sheet's per-account USD totals too,
           // so a pull-to-refresh reflects transfers between own accounts.
+          // The active account is skipped — the balances fetch above updates
+          // it through the sync.
           allAccounts.length > 0
             ? fetchAccountsFiatTotals({
                 publicKeys: allAccounts.map(
@@ -269,6 +271,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
                 ),
                 network,
                 forceRefresh: true,
+                excludePublicKey: account.publicKey,
               })
             : Promise.resolve(),
         ]);

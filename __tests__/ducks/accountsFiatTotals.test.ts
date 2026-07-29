@@ -484,7 +484,7 @@ describe("accountsFiatTotals duck", () => {
       expect(lastUpdatedAt).toBeNull();
     });
 
-    it("updates the total and marks the cache stale when the value changes", () => {
+    it("updates the total without invalidating the cache", () => {
       const now = Date.now();
       useAccountsFiatTotalsStore.setState({
         fiatTotals: {
@@ -506,11 +506,12 @@ describe("accountsFiatTotals duck", () => {
       const { fiatTotals, lastUpdatedAt } =
         useAccountsFiatTotalsStore.getState();
       expect(fiatTotals[PK_1]?.toString()).toBe("250");
-      // Other accounts keep their values but the cache is stale, so the
-      // next sheet open refetches everyone (e.g. the receiving account of
-      // a self-transfer).
       expect(fiatTotals[PK_2]?.toString()).toBe("7");
-      expect(lastUpdatedAt).toBeNull();
+      // Value changes are mostly price drift (fiatTotals move with live
+      // prices on every balances poll) — invalidating here used to defeat
+      // the TTL and refetch every account per poll. The other rows refresh
+      // via the explicit triggers instead.
+      expect(lastUpdatedAt).toBe(now);
     });
 
     it("does nothing when the total is unchanged", () => {
@@ -560,54 +561,45 @@ describe("accountsFiatTotals duck", () => {
     });
   });
 
-  it("skips the freshness stamp when a sync invalidates the cache mid-cycle", async () => {
-    let resolveBalances!: (value: {
-      balances: typeof mockBalanceMap;
-      isFunded: boolean;
-      subentryCount: number;
-    }) => void;
-    mockFetchBalances.mockReturnValue(
-      new Promise((resolve) => {
-        resolveBalances = resolve;
-      }),
+  it("skips the excluded account's fetch but still prices the rest", async () => {
+    const { fetchAccountsFiatTotals } = useAccountsFiatTotalsStore.getState();
+
+    await fetchAccountsFiatTotals({
+      publicKeys: [PK_1, PK_2],
+      network: NETWORKS.PUBLIC,
+      excludePublicKey: PK_1,
+    });
+
+    expect(mockFetchBalances).toHaveBeenCalledTimes(1);
+    expect(mockFetchBalances).toHaveBeenCalledWith(
+      expect.objectContaining({ publicKey: PK_2 }),
     );
 
-    // PK_2 has a known total, so a changed sync value counts as real
-    // balance movement (and invalidates the cache). Same network, so the
-    // cycle doesn't clear the totals on start.
-    useAccountsFiatTotalsStore.setState({
-      fiatTotals: { [PK_2]: new BigNumber("7") },
-      lastNetwork: NETWORKS.PUBLIC,
-    });
+    const { fiatTotals, lastUpdatedAt } = useAccountsFiatTotalsStore.getState();
+    expect(fiatTotals[PK_2]?.toString()).toBe("250");
+    // The excluded (active) account is the sync's responsibility.
+    expect(fiatTotals[PK_1]).toBeUndefined();
+    expect(lastUpdatedAt).not.toBeNull();
+  });
 
-    const { fetchAccountsFiatTotals, syncAccountFiatTotal } =
-      useAccountsFiatTotalsStore.getState();
+  it("treats the cache as complete without the excluded account", async () => {
+    const { fetchAccountsFiatTotals } = useAccountsFiatTotalsStore.getState();
 
-    const inFlight = fetchAccountsFiatTotals({
-      publicKeys: [PK_1],
+    await fetchAccountsFiatTotals({
+      publicKeys: [PK_1, PK_2],
       network: NETWORKS.PUBLIC,
+      excludePublicKey: PK_1,
     });
+    expect(mockFetchBalances).toHaveBeenCalledTimes(1);
 
-    syncAccountFiatTotal({
-      publicKey: PK_2,
+    // Within the TTL and every non-excluded account cached — no refetch,
+    // even though the excluded account has no entry.
+    await fetchAccountsFiatTotals({
+      publicKeys: [PK_1, PK_2],
       network: NETWORKS.PUBLIC,
-      pricedBalances: {
-        XLM: { ...nativeBalance, fiatTotal: new BigNumber("50") },
-      },
+      excludePublicKey: PK_1,
     });
-
-    resolveBalances({
-      balances: mockBalanceMap,
-      isFunded: true,
-      subentryCount: 1,
-    });
-    await inFlight;
-
-    const { lastUpdatedAt, isLoading } = useAccountsFiatTotalsStore.getState();
-    // The cycle's balances may predate the movement the sync observed, so
-    // it must not mark the cache fresh — the next trigger refetches.
-    expect(lastUpdatedAt).toBeNull();
-    expect(isLoading).toBe(false);
+    expect(mockFetchBalances).toHaveBeenCalledTimes(1);
   });
 
   it("clears totals from another network before fetching", async () => {

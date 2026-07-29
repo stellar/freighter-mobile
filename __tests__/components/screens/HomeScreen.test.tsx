@@ -358,6 +358,7 @@ describe("HomeScreen", () => {
       publicKeys: ["GTESTPUBLICKEY"],
       network: "TESTNET",
       forceRefresh: true,
+      excludePublicKey: "test-public-key",
     });
     expect(mockFetchCollectibles).toHaveBeenCalledWith({
       publicKey: "test-public-key",
@@ -392,7 +393,16 @@ describe("HomeScreen", () => {
     expect(mockFetchAccountsFiatTotals).toHaveBeenCalledWith({
       publicKeys: ["GTESTPUBLICKEY"],
       network: "TESTNET",
+      excludePublicKey: "test-public-key",
     });
+
+    // One-shot: later balances polls must not re-trigger the warm-up.
+    mockIsLoadingBalances = true;
+    rerender(<HomeScreen {...buildProps()} />);
+    mockIsLoadingBalances = false;
+    rerender(<HomeScreen {...buildProps()} />);
+
+    expect(mockFetchAccountsFiatTotals).toHaveBeenCalledTimes(1);
   });
 
   describe("HomeScreen floating add buttons", () => {

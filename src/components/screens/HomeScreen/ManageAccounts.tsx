@@ -84,9 +84,12 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
       }
 
       if (accounts.length > 0) {
+        // Silent background refresh; the store's TTL keeps frequent
+        // open/close cycles from spamming requests.
         fetchAccountsFiatTotals({
           publicKeys: accounts.map((account) => account.publicKey),
           network,
+          excludePublicKey: activeAccount?.publicKey,
         });
       }
     },
@@ -204,6 +207,17 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
       // Keep sheet open and start account switch immediately
       try {
         await selectAccount(publicKey);
+
+        // A switch is one of the few moments the whole list refreshes;
+        // background fire-and-forget, skipping the now-active account
+        // (synced from the app's own balances).
+        fetchAccountsFiatTotals({
+          publicKeys: accounts.map((account) => account.publicKey),
+          network,
+          forceRefresh: true,
+          excludePublicKey: publicKey,
+        });
+
         // Wait for data to load and show the loaded state briefly
         await new Promise((resolve) => {
           setTimeout(resolve, ACCOUNT_SWITCH_DISMISS_DELAY_MS);
@@ -219,6 +233,9 @@ const ManageAccounts: React.FC<ManageAccountsProps> = ({
       switchingToPublicKey,
       selectAccount,
       bottomSheetRef,
+      accounts,
+      network,
+      fetchAccountsFiatTotals,
     ],
   );
 
