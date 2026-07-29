@@ -179,12 +179,40 @@ export const updateSentryContext = (): void => {
   }
 };
 
+// Tracks whether the Sentry client is currently running, so the data-sharing
+// toggle can (re)initialize or shut it down idempotently (see
+// syncSentryEnablement).
+let isSentryInitialized = false;
+
 /**
- * Initialize Sentry with privacy-conscious configuration
+ * Initialize Sentry with privacy-conscious configuration.
+ *
+ * No-ops (does not call Sentry.init) in three cases:
+ * - during e2e tests;
+ * - if Sentry is already initialized (idempotent — safe to call from both
+ *   App's startup effect and the analytics-store subscription regardless of
+ *   order);
+ * - if data sharing is currently OFF (master switch; mirrors the extension).
+ * syncSentryEnablement() re-invokes this when the user turns sharing back on.
  */
 export const initializeSentry = (): void => {
   // Disable Sentry during e2e tests
   if (isE2ETest) {
+    return;
+  }
+
+  // Idempotent: never run Sentry.init() twice. Both App's startup effect and
+  // the analytics-store subscription (via syncSentryEnablement) can reach here,
+  // and their order isn't guaranteed — guard the initializer itself so whichever
+  // runs second is a no-op.
+  if (isSentryInitialized) {
+    return;
+  }
+
+  // Master switch: with data sharing OFF, do not initialize Sentry at all —
+  // mirrors the extension (no init when sharing is disabled), so nothing is
+  // reported. syncSentryEnablement() re-initializes if the user turns it on.
+  if (!useAnalyticsStore.getState().isEnabled) {
     return;
   }
 
@@ -208,6 +236,13 @@ export const initializeSentry = (): void => {
     appHangTimeoutInterval: 5,
 
     beforeSend(event) {
+      // Master switch (defense-in-depth): if data sharing is off, drop every
+      // event. Covers the window between a runtime toggle-off and client
+      // teardown, and any event from a lingering or native-layer client.
+      if (!useAnalyticsStore.getState().isEnabled) {
+        return null;
+      }
+
       // Drop or downgrade known-noise patterns before any PII scrubbing
       // or context updates. Each entry should describe a noise source
       // we've seen in production (third-party SDK quirks, native auth
@@ -328,6 +363,51 @@ export const initializeSentry = (): void => {
     },
   });
 
+  isSentryInitialized = true;
+
   // Set initial context and tags
   updateSentryContext();
+};
+
+/**
+ * Reconcile Sentry with the current data-sharing preference. Idempotent and
+ * safe to call on any analytics-store change: when sharing is ON it
+ * (re)initializes Sentry; when sharing is OFF it clears the user and disables
+ * the client so nothing further is reported. Mirrors the extension's
+ * init-when-allowed / disable-on-opt-out behavior.
+ */
+export const syncSentryEnablement = (): void => {
+  // Consent (isEnabled) is persisted to AsyncStorage and hydrates
+  // asynchronously; before hydration the store holds its default, which is
+  // `true` on Android (ANALYTICS_CONFIG.DEFAULT_ENABLED). This runs from the
+  // analytics-store subscription, which can fire pre-hydration (e.g. setUserId
+  // during identify), so reading isEnabled now could initialize Sentry for a
+  // returning opted-out user. Treat persisted consent as authoritative and
+  // skip until hydration completes — App's startup effect performs the initial
+  // reconcile from onFinishHydration. Mirrors syncIdentifyTraits in
+  // services/analytics/core.ts.
+  if (!useAnalyticsStore.persist.hasHydrated()) return;
+
+  const { isEnabled } = useAnalyticsStore.getState();
+
+  if (isEnabled && !isSentryInitialized) {
+    initializeSentry();
+  } else if (!isEnabled && isSentryInitialized) {
+    // Drop the identity, then disable the client WITHOUT flushing. Neither
+    // Sentry.close() nor client.close(0) work here: close() always runs
+    // flush(timeout) first, and PromiseBuffer.drain treats a falsy timeout
+    // (0 or undefined) as "wait until the whole queue drains" — so both would
+    // push out events buffered under prior consent (e.g. from an offline
+    // window), contradicting "off means off". Flip `enabled = false` directly
+    // (what close() does after its flush): captureEvent's `_isEnabled()` guard
+    // then blocks every future send, and beforeSend hard-drops anything caught
+    // in the gap. In-flight network requests already handed off can't be
+    // recalled, but nothing new is drained.
+    Sentry.setUser(null);
+    const client = Sentry.getClient();
+    if (client) {
+      client.getOptions().enabled = false;
+    }
+    isSentryInitialized = false;
+  }
 };

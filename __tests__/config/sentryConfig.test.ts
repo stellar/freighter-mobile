@@ -5,11 +5,21 @@ import {
   PASSWORD_TYPO_MESSAGES,
   initializeSentry,
   scrubStrKeys,
+  syncSentryEnablement,
   updateSentryContext,
 } from "config/sentryConfig";
 
+// Shared client options object so tests can assert that opt-out flips
+// `enabled` to false (the non-flushing disable) rather than calling close().
+const mockClientOptions: { enabled: boolean } = { enabled: true };
+const mockClientClose = jest.fn();
 jest.mock("@sentry/react-native", () => ({
   init: jest.fn(),
+  close: jest.fn(),
+  getClient: jest.fn(() => ({
+    close: mockClientClose,
+    getOptions: () => mockClientOptions,
+  })),
   setContext: jest.fn(),
   setTag: jest.fn(),
   setUser: jest.fn(),
@@ -34,8 +44,14 @@ const mockAnalyticsState: { isEnabled: boolean; userId: string | null } = {
   isEnabled: true,
   userId: null,
 };
+// Persisted-consent hydration flag. Default true so direct-call tests exercise
+// the post-hydration path; a dedicated test flips it false to cover the race.
+const mockHydration = { hydrated: true };
 jest.mock("ducks/analytics", () => ({
-  useAnalyticsStore: { getState: () => mockAnalyticsState },
+  useAnalyticsStore: {
+    getState: () => mockAnalyticsState,
+    persist: { hasHydrated: () => mockHydration.hydrated },
+  },
 }));
 jest.mock("ducks/auth", () => ({
   useAuthenticationStore: {
@@ -83,6 +99,21 @@ const runBeforeSendWith = (event: Partial<ErrorEvent>): ErrorEvent | null => {
   }
   return initOpts.beforeSend(event as ErrorEvent, {}) as ErrorEvent | null;
 };
+
+// initializeSentry() is idempotent — it guards on an internal
+// `isSentryInitialized` flag. Reset that module state before every test (drive
+// it to "not initialized" via the public syncSentryEnablement path) so each
+// test starts fresh and stays isolated.
+beforeEach(() => {
+  mockHydration.hydrated = true;
+  mockAnalyticsState.isEnabled = false;
+  syncSentryEnablement();
+  mockAnalyticsState.isEnabled = true;
+  // Reset AFTER the syncSentryEnablement reset above, which flips enabled off
+  // when a prior test left the client initialized.
+  mockClientOptions.enabled = true;
+  jest.clearAllMocks();
+});
 
 describe("updateSentryContext user-identity consent gate", () => {
   beforeEach(() => {
@@ -496,5 +527,89 @@ describe("sentryConfig.beforeSend filters", () => {
         expect(JSON.stringify(result?.extra)).toContain("[MAX_DEPTH_EXCEEDED]");
       });
     });
+  });
+});
+
+// Mirrors the extension: the data-sharing toggle is the master switch for
+// Sentry — off means the client is never initialized (cold start) and every
+// event is dropped (runtime), and toggling flips the client on/off.
+describe("data-sharing master switch", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockAnalyticsState.isEnabled = true;
+  });
+
+  it("does NOT initialize Sentry when data sharing is off", () => {
+    mockAnalyticsState.isEnabled = false;
+    initializeSentry();
+    expect(mockedSentry.init).not.toHaveBeenCalled();
+  });
+
+  it("initializes Sentry when data sharing is on", () => {
+    mockAnalyticsState.isEnabled = true;
+    initializeSentry();
+    expect(mockedSentry.init).toHaveBeenCalledTimes(1);
+  });
+
+  it("beforeSend drops every event while data sharing is off, passes when on", () => {
+    mockAnalyticsState.isEnabled = true;
+    initializeSentry();
+    const beforeSend = mockedSentry.init.mock.calls[0]?.[0]?.beforeSend;
+    expect(beforeSend).toBeDefined();
+
+    const event = {
+      exception: { values: [{ type: "Error", value: "a real bug" }] },
+    } as unknown as ErrorEvent;
+
+    // Enabled: a normal event passes through.
+    expect(beforeSend!(event, {})).not.toBeNull();
+
+    // Disabled: the same event is dropped.
+    mockAnalyticsState.isEnabled = false;
+    expect(beforeSend!(event, {})).toBeNull();
+  });
+
+  it("syncSentryEnablement disables the client on toggle-off without flushing", () => {
+    // Bring the client up first so the internal flag is set.
+    mockAnalyticsState.isEnabled = true;
+    initializeSentry();
+    jest.clearAllMocks();
+
+    mockAnalyticsState.isEnabled = false;
+    syncSentryEnablement();
+    expect(mockedSentry.setUser).toHaveBeenCalledWith(null);
+    // Disable by flipping enabled=false directly — NOT via close()/close(0),
+    // both of which full-drain the transport (PromiseBuffer.drain treats a
+    // falsy timeout as "wait for the whole queue"). We must not push out the
+    // backlog buffered under prior consent.
+    expect(mockClientOptions.enabled).toBe(false);
+    expect(mockClientClose).not.toHaveBeenCalled();
+    expect(mockedSentry.close).not.toHaveBeenCalled();
+    expect(mockedSentry.init).not.toHaveBeenCalled();
+  });
+
+  it("syncSentryEnablement re-initializes the client on toggle-on", () => {
+    // Drive to a shut-down state (init, then disable via sync).
+    mockAnalyticsState.isEnabled = true;
+    initializeSentry();
+    mockAnalyticsState.isEnabled = false;
+    syncSentryEnablement();
+    jest.clearAllMocks();
+
+    mockAnalyticsState.isEnabled = true;
+    syncSentryEnablement();
+    expect(mockedSentry.init).toHaveBeenCalledTimes(1);
+  });
+
+  it("syncSentryEnablement is a no-op before persisted consent hydrates", () => {
+    // Returning opted-out user on Android: store default is `true`, but the
+    // persisted preference (still un-hydrated) is `false`. The subscription
+    // must not initialize Sentry off the pre-hydration default.
+    mockHydration.hydrated = false;
+    mockAnalyticsState.isEnabled = true;
+
+    syncSentryEnablement();
+
+    expect(mockedSentry.init).not.toHaveBeenCalled();
   });
 });
