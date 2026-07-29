@@ -5,11 +5,13 @@ import {
   PASSWORD_TYPO_MESSAGES,
   initializeSentry,
   scrubStrKeys,
+  syncSentryEnablement,
   updateSentryContext,
 } from "config/sentryConfig";
 
 jest.mock("@sentry/react-native", () => ({
   init: jest.fn(),
+  close: jest.fn(),
   setContext: jest.fn(),
   setTag: jest.fn(),
   setUser: jest.fn(),
@@ -496,5 +498,71 @@ describe("sentryConfig.beforeSend filters", () => {
         expect(JSON.stringify(result?.extra)).toContain("[MAX_DEPTH_EXCEEDED]");
       });
     });
+  });
+});
+
+// Mirrors the extension: the data-sharing toggle is the master switch for
+// Sentry — off means the client is never initialized (cold start) and every
+// event is dropped (runtime), and toggling flips the client on/off.
+describe("data-sharing master switch", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockAnalyticsState.isEnabled = true;
+  });
+
+  it("does NOT initialize Sentry when data sharing is off", () => {
+    mockAnalyticsState.isEnabled = false;
+    initializeSentry();
+    expect(mockedSentry.init).not.toHaveBeenCalled();
+  });
+
+  it("initializes Sentry when data sharing is on", () => {
+    mockAnalyticsState.isEnabled = true;
+    initializeSentry();
+    expect(mockedSentry.init).toHaveBeenCalledTimes(1);
+  });
+
+  it("beforeSend drops every event while data sharing is off, passes when on", () => {
+    mockAnalyticsState.isEnabled = true;
+    initializeSentry();
+    const beforeSend = mockedSentry.init.mock.calls[0]?.[0]?.beforeSend;
+    expect(beforeSend).toBeDefined();
+
+    const event = {
+      exception: { values: [{ type: "Error", value: "a real bug" }] },
+    } as unknown as ErrorEvent;
+
+    // Enabled: a normal event passes through.
+    expect(beforeSend!(event, {})).not.toBeNull();
+
+    // Disabled: the same event is dropped.
+    mockAnalyticsState.isEnabled = false;
+    expect(beforeSend!(event, {})).toBeNull();
+  });
+
+  it("syncSentryEnablement shuts the client down (clears user + close) on toggle-off", () => {
+    // Bring the client up first so the internal flag is set.
+    mockAnalyticsState.isEnabled = true;
+    initializeSentry();
+    jest.clearAllMocks();
+
+    mockAnalyticsState.isEnabled = false;
+    syncSentryEnablement();
+    expect(mockedSentry.setUser).toHaveBeenCalledWith(null);
+    expect(mockedSentry.close).toHaveBeenCalled();
+    expect(mockedSentry.init).not.toHaveBeenCalled();
+  });
+
+  it("syncSentryEnablement re-initializes the client on toggle-on", () => {
+    // Drive to a shut-down state (init, then close via sync).
+    mockAnalyticsState.isEnabled = true;
+    initializeSentry();
+    mockAnalyticsState.isEnabled = false;
+    syncSentryEnablement();
+    jest.clearAllMocks();
+
+    mockAnalyticsState.isEnabled = true;
+    syncSentryEnablement();
+    expect(mockedSentry.init).toHaveBeenCalledTimes(1);
   });
 });

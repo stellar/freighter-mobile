@@ -179,12 +179,24 @@ export const updateSentryContext = (): void => {
   }
 };
 
+// Tracks whether the Sentry client is currently running, so the data-sharing
+// toggle can (re)initialize or shut it down idempotently (see
+// syncSentryEnablement).
+let isSentryInitialized = false;
+
 /**
  * Initialize Sentry with privacy-conscious configuration
  */
 export const initializeSentry = (): void => {
   // Disable Sentry during e2e tests
   if (isE2ETest) {
+    return;
+  }
+
+  // Master switch: with data sharing OFF, do not initialize Sentry at all —
+  // mirrors the extension (no init when sharing is disabled), so nothing is
+  // reported. syncSentryEnablement() re-initializes if the user turns it on.
+  if (!useAnalyticsStore.getState().isEnabled) {
     return;
   }
 
@@ -208,6 +220,13 @@ export const initializeSentry = (): void => {
     appHangTimeoutInterval: 5,
 
     beforeSend(event) {
+      // Master switch (defense-in-depth): if data sharing is off, drop every
+      // event. Covers the window between a runtime toggle-off and client
+      // teardown, and any event from a lingering or native-layer client.
+      if (!useAnalyticsStore.getState().isEnabled) {
+        return null;
+      }
+
       // Drop or downgrade known-noise patterns before any PII scrubbing
       // or context updates. Each entry should describe a noise source
       // we've seen in production (third-party SDK quirks, native auth
@@ -328,6 +347,29 @@ export const initializeSentry = (): void => {
     },
   });
 
+  isSentryInitialized = true;
+
   // Set initial context and tags
   updateSentryContext();
+};
+
+/**
+ * Reconcile Sentry with the current data-sharing preference. Idempotent and
+ * safe to call on any analytics-store change: when sharing is ON it
+ * (re)initializes Sentry; when sharing is OFF it clears the user and shuts the
+ * client down so nothing further is reported. Mirrors the extension's
+ * init-when-allowed / close-on-disable behavior.
+ */
+export const syncSentryEnablement = (): void => {
+  const { isEnabled } = useAnalyticsStore.getState();
+
+  if (isEnabled && !isSentryInitialized) {
+    initializeSentry();
+  } else if (!isEnabled && isSentryInitialized) {
+    // Drop the identity, then shut the client down. beforeSend also hard-drops
+    // events while disabled, so nothing leaks in the gap before close resolves.
+    Sentry.setUser(null);
+    Sentry.close();
+    isSentryInitialized = false;
+  }
 };
