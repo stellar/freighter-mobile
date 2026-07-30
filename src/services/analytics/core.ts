@@ -3,6 +3,7 @@ import { Experiment } from "@amplitude/experiment-react-native-client";
 import { hash } from "@stellar/stellar-sdk";
 import { AnalyticsEvent, isScreenViewEvent } from "config/analyticsConfig";
 import { logger } from "config/logger";
+import { syncSentryEnablement } from "config/sentryConfig";
 import { useAnalyticsStore } from "ducks/analytics";
 import { useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
@@ -501,6 +502,19 @@ useAnalyticsStore.subscribe((state) => {
     logger.error(
       DEBUG_CONFIG.LOG_PREFIX,
       "Failed to update Amplitude opt-out state",
+      error,
+    );
+  }
+
+  // Turn Sentry fully on/off with the same toggle (mirrors the extension):
+  // (re)initialize when sharing is enabled, shut the client down when disabled.
+  // Also covers consent that hydrates/enables AFTER the initial init ran.
+  try {
+    syncSentryEnablement();
+  } catch (error) {
+    logger.error(
+      DEBUG_CONFIG.LOG_PREFIX,
+      "Failed to sync Sentry enablement",
       error,
     );
   }
