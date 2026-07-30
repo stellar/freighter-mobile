@@ -858,7 +858,7 @@
     "errorAuthEntryNetworkMismatch": "A entrada de autorização é para uma rede diferente",
     "errorAuthEntryAddressMismatch": "A entrada de autorização está vinculada a uma conta diferente",
     "errorEmptyMessage": "Não é possível assinar mensagem vazia",
-    "errorMessageTooLong": "Mensagem muito longa (máximo 1KB)",
+    "errorMessageTooLong": "Mensagem muito longa (máximo 10KB)",
     "errorSubmitting": "Erro ao enviar a transação",
     "errorRespondingRequest": "Erro ao responder à solicitação de transação",
     "errorWrongNetwork": "Rede incorreta",
