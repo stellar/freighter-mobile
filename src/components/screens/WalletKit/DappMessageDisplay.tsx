@@ -3,7 +3,7 @@ import { Text } from "components/sds/Typography";
 import useColors from "hooks/useColors";
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { ScrollView, View } from "react-native";
+import { Dimensions, ScrollView, View } from "react-native";
 
 /**
  * Props for the DappMessageDisplay component
@@ -28,7 +28,7 @@ const isJsonString = (str: string): boolean => {
 /**
  * DappMessageDisplay component for showing SEP-53 messages
  * Displays the message with the SEP-53 prefix and handles JSON formatting
- * Dynamically increases height based on message length
+ * Grows with the message up to a capped height, then scrolls
  *
  * @component
  * @param {DappMessageDisplayProps} props - The component props
@@ -63,7 +63,13 @@ export const DappMessageDisplay: React.FC<DappMessageDisplayProps> = ({
           {t("common.message")}
         </Text>
       </View>
-      <ScrollView testID="message-display-content-scroll">
+      <ScrollView
+        // Cap the message area so long messages scroll instead of growing the
+        // sheet past the screen and pushing the action buttons out of view.
+        style={{ maxHeight: Dimensions.get("window").height * 0.3 }}
+        showsVerticalScrollIndicator={false}
+        testID="message-display-content-scroll"
+      >
         <Text
           sm
           primary
