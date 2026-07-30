@@ -42,4 +42,24 @@ describe("DappMessageDisplay", () => {
       Dimensions.get("window").height * 0.5,
     );
   });
+
+  it("can shrink below the cap (with a usable floor) when the sheet needs the room", () => {
+    // With a security banner + stacked warning buttons the sheet's fixed
+    // content grows; the message box must yield height so the action buttons
+    // stay on screen, while keeping a scrollable sliver of the message.
+    const { getByTestId } = renderWithProviders(
+      <DappMessageDisplay message={"x".repeat(10000)} />,
+    );
+
+    const boxStyle = StyleSheet.flatten(
+      getByTestId("message-display").props.style,
+    );
+    const scrollStyle = StyleSheet.flatten(
+      getByTestId("message-display-content-scroll").props.style,
+    );
+
+    expect(boxStyle.flexShrink).toBe(1);
+    expect(scrollStyle.flexShrink).toBe(1);
+    expect(scrollStyle.minHeight).toBeGreaterThan(0);
+  });
 });

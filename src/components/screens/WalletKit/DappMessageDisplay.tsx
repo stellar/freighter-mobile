@@ -49,7 +49,13 @@ export const DappMessageDisplay: React.FC<DappMessageDisplayProps> = ({
   return (
     <View
       className="rounded-2xl p-4 my-3"
-      style={{ backgroundColor: themeColors.background.secondary }}
+      // flexShrink lets this box give up height first when the sheet content
+      // is taller than the screen (e.g. security banner + stacked warning
+      // buttons), keeping the action buttons visible.
+      style={{
+        backgroundColor: themeColors.background.secondary,
+        flexShrink: 1,
+      }}
       testID="message-display"
     >
       <View className="flex-row items-center gap-2 mb-4">
@@ -66,7 +72,13 @@ export const DappMessageDisplay: React.FC<DappMessageDisplayProps> = ({
       <ScrollView
         // Cap the message area so long messages scroll instead of growing the
         // sheet past the screen and pushing the action buttons out of view.
-        style={{ maxHeight: Dimensions.get("window").height * 0.3 }}
+        // flexShrink + minHeight let it shrink further when the rest of the
+        // sheet needs the room, while always leaving a usable scroll window.
+        style={{
+          maxHeight: Dimensions.get("window").height * 0.3,
+          flexShrink: 1,
+          minHeight: 56,
+        }}
         showsVerticalScrollIndicator={false}
         testID="message-display-content-scroll"
       >
