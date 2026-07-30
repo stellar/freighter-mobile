@@ -1,6 +1,6 @@
 {
   "name": "freighter-mobile",
-  "version": "1.20.27",
+  "version": "1.99.99",
   "license": "Apache-2.0",
   "scripts": {
     "android": "yarn android-dev",
