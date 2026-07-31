@@ -1054,7 +1054,8 @@
       "invalidRecipientAddress": "Invalid recipient address",
       "cannotSendToSelf": "Cannot send to yourself",
       "invalidDecimals": "Invalid or missing decimals for custom token",
-      "invalidFederationMemo": "The federation server returned an invalid memo. Please verify the address and try again."
+      "invalidFederationMemo": "The federation server returned an invalid memo. Please verify the address and try again.",
+      "recipientIsTokenContract": "Cannot send to the token's own contract"
     }
   },
   "welcomeBanner": {
