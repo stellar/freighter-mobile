@@ -445,18 +445,25 @@ export const buildPaymentTransaction = async (
       if (isCustomToken) {
         contractId = selectedBalance.contractId;
       } else {
-        try {
-          const token = getTokenForPayment(selectedBalance);
-          contractId = token.isNative()
-            ? getContractIdForNativeToken(network)
-            : recipientAddress;
-        } catch (error) {
-          if (isCustomToken) {
-            contractId = selectedBalance.contractId;
-          } else {
-            throw error;
-          }
-        }
+        // The token contract is a property of the ASSET being sent, never of
+        // the recipient. For a classic asset that contract is its Stellar
+        // Asset Contract, whose address derives deterministically from
+        // (code, issuer, network passphrase). Using the recipient here would
+        // invoke an arbitrary contract chosen by the destination address and
+        // move whichever asset that contract governs, not the selected one.
+        const token = getTokenForPayment(selectedBalance);
+        contractId = token.isNative()
+          ? getContractIdForNativeToken(network)
+          : token.contractId(networkDetails.networkPassphrase);
+      }
+
+      // Defence in depth against the above being wired wrongly again: a token
+      // transferred to its own token contract is credited to the contract's
+      // own address, where nothing can ever spend it again — the SAC only
+      // moves a balance on `from.require_auth()` and never authorizes on
+      // behalf of itself. Refuse rather than build an irreversible burn.
+      if (contractId === recipientAddress) {
+        throw new Error(t("transaction.errors.recipientIsTokenContract"));
       }
 
       const contractSupportsMuxed = await checkContractMuxedSupport({
