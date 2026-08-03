@@ -152,9 +152,6 @@
   },
   "addFundsScreen": {
     "title": "Add funds",
-    "bottomSheet": {
-      "description": "You need at least 1 XLM to have an account on Stellar. Buy Stellar Lumens (XLM) easily using one of our on-ramps or transfer XLM from another wallet to this wallet."
-    },
     "transferFromAnotherAccount": {
       "title": "Transfer from another account",
       "description": "Receive funds from another wallet"
@@ -1058,8 +1055,8 @@
   "welcomeBanner": {
     "welcomeMessage": "Welcome to Freighter!",
     "fundingText": "To start using this account, ",
-    "fundingText2": "fund it with at least 1 XLM.",
-    "minimumBalanceText": "Stellar accounts require a minimum balance of 1 XLM to ensure network security and prevent spam.",
+    "fundingText2": "fund it with at least 2 XLM.",
+    "minimumBalanceText": "Stellar accounts require a minimum balance of 2 XLM to ensure network security and prevent spam.",
     "reserveExplanationText": "This reserve helps maintain the ledger by covering transaction fees and discouraging the creation of unnecessary accounts, keeping the system efficient and functional.",
     "addXLM": "Add XLM",
     "doThisLater": "Do this later"
