@@ -154,10 +154,21 @@ const buildSentryContext = (): Record<string, unknown> => {
  * This should be called whenever relevant state changes (auth, analytics, etc.)
  */
 export const updateSentryContext = (): void => {
-  const { isEnabled: analyticsEnabled } = useAnalyticsStore.getState();
+  const { isEnabled: analyticsEnabled, userId } = useAnalyticsStore.getState();
   const { account } = useAuthenticationStore.getState();
 
   Sentry.setContext("appContext", buildSentryContext());
+
+  // Consent-gate the Sentry user identity. The analytics user id is the
+  // seed-derived auth pubkey (== the backend JWT `sub`): a stable,
+  // cross-service, reinstall-surviving identifier. When the user has not
+  // consented to data sharing it must not ride along on crash telemetry, so
+  // clear it. This is the single owner of the Sentry user across the toggle
+  // and auth transitions (useSentryContext re-runs this on both), which also
+  // sidesteps the persist-hydration race a one-shot read at launch would hit.
+  // Mirrors the extension, which only calls Sentry.setUser when data-sharing
+  // is allowed.
+  Sentry.setUser(analyticsEnabled && userId ? { id: userId } : null);
 
   // Update tags based on analytics preferences
   if (analyticsEnabled && account?.publicKey) {

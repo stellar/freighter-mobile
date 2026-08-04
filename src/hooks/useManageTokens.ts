@@ -13,6 +13,7 @@ import {
   FormattedSearchTokenRecord,
 } from "config/types";
 import { ActiveAccount } from "ducks/auth";
+import { useBalancesStore } from "ducks/balances";
 import { formatTokenIdentifier } from "helpers/balances";
 import useAppTranslation from "hooks/useAppTranslation";
 import { isWalletUnlocked } from "hooks/useGetActiveAccount";
@@ -21,12 +22,34 @@ import { useState } from "react";
 import { analytics } from "services/analytics";
 import {
   buildChangeTrustTx,
+  isHorizonError,
   signTransaction,
   submitTx,
 } from "services/stellar";
 import { dataStorage } from "services/storage/storageFactory";
 
 const WALLET_LOCKED_ERROR = "Wallet is locked";
+
+// Extract the Horizon CHANGE_TRUST operation result codes (op_low_reserve,
+// op_no_trust, op_invalid_limit, ...) from a thrown error, if present.
+const opResultCodesOf = (error: unknown): string[] | undefined =>
+  isHorizonError(error)
+    ? (
+        error as {
+          response?: {
+            data?: { extras?: { result_codes?: { operations?: string[] } } };
+          };
+        }
+      ).response?.data?.extras?.result_codes?.operations
+    : undefined;
+
+// asset.operation_failed.reason_code = the first machine-readable op result
+// code, or "unknown". Deliberately bounded (NOT the free-text error message) so
+// it buckets with the extension's `opCodes[0] || "unknown"` on a shared
+// failure dashboard, matching the discipline already applied to
+// payment.failed/swap.failed.
+const operationFailedReasonCode = (error: unknown): string =>
+  opResultCodesOf(error)?.[0] ?? "unknown";
 
 interface UseManageTokensProps {
   network: NETWORKS;
@@ -186,13 +209,21 @@ export const useManageTokens = ({
         });
       }
       analytics.track(AnalyticsEvent.ADD_TOKEN_SUCCESS, {
-        asset: `${tokenCode}:${issuer}`,
+        asset_code: tokenCode,
+        asset_issuer: issuer,
       });
+
+      // Fire onSuccess only on a confirmed success. Delay slightly so the
+      // bottom sheet finishes dismissing before any navigation runs.
+      setTimeout(() => {
+        onSuccess?.();
+      }, 100);
     } catch (error) {
       analytics.track(AnalyticsEvent.TOKEN_MANAGEMENT_FAIL, {
-        error: error instanceof Error ? error.message : String(error),
-        action: "add",
-        asset: `${tokenCode}:${issuer}`,
+        reason_code: operationFailedReasonCode(error),
+        operation: "add",
+        asset_code: tokenCode,
+        asset_issuer: issuer,
       });
 
       logger.error(
@@ -213,11 +244,6 @@ export const useManageTokens = ({
 
       // Execute onComplete callback if provided
       onComplete?.();
-
-      // Execute onSuccess callback after a slight delay to ensure modal is dismissed first
-      setTimeout(() => {
-        onSuccess?.();
-      }, 100);
     }
   };
 
@@ -255,9 +281,12 @@ export const useManageTokens = ({
         // Get current storage
         const storage = await getCustomTokenStorage();
 
-        // Check if the user has any custom tokens for this network
+        // No custom tokens stored for this account/network. Treat it as a
+        // failure (not a silent no-op) so the user gets an error toast and
+        // onSuccess is skipped — otherwise `finally` would show the default
+        // success toast while nothing was removed.
         if (!storage[publicKey] || !storage[publicKey][network]) {
-          return;
+          throw new Error("No custom tokens found for this account");
         }
 
         // Filter out the token to remove
@@ -314,14 +343,48 @@ export const useManageTokens = ({
         });
       }
       analytics.track(AnalyticsEvent.REMOVE_TOKEN_SUCCESS, {
-        asset: tokenIdentifier,
+        asset_code: tokenCode,
+        asset_issuer: tokenIssuer,
       });
+
+      // Fire onSuccess only on a confirmed success. Delay slightly so the
+      // bottom sheet finishes dismissing before any navigation runs.
+      setTimeout(() => {
+        onSuccess?.();
+      }, 100);
     } catch (error) {
       analytics.track(AnalyticsEvent.TOKEN_MANAGEMENT_FAIL, {
-        error: error instanceof Error ? error.message : String(error),
-        action: "remove",
-        asset: tokenIdentifier,
+        reason_code: operationFailedReasonCode(error),
+        operation: "remove",
+        asset_code: tokenCode,
+        asset_issuer: tokenIssuer,
       });
+
+      // Additionally emit the granular trustline_remove.failed, mirroring
+      // the extension. Derive reason_code from the CHANGE_TRUST op result codes
+      // (op_low_reserve -> low_reserve; op_invalid_limit split by whether the
+      // asset carries buying liabilities). Only fires for the trustline-specific
+      // failures — wallet-locked/build/sign errors won't set a reason.
+      const opResultCodes = opResultCodesOf(error);
+      let trustlineReason: string | undefined;
+      if (opResultCodes?.includes("op_low_reserve")) {
+        trustlineReason = "low_reserve";
+      } else if (opResultCodes?.includes("op_invalid_limit")) {
+        const balance = useBalancesStore.getState().balances[tokenIdentifier];
+        const buyingLiabilities =
+          balance && "buyingLiabilities" in balance
+            ? Number(balance.buyingLiabilities ?? 0)
+            : 0;
+        trustlineReason =
+          buyingLiabilities > 0 ? "buying_liabilities" : "has_balance";
+      }
+      if (trustlineReason) {
+        analytics.track(AnalyticsEvent.TRUSTLINE_REMOVE_FAILED, {
+          reason_code: trustlineReason,
+          asset_code: tokenCode,
+          asset_issuer: tokenIssuer,
+        });
+      }
 
       logger.error(
         "useManageTokens.removeToken",
@@ -338,11 +401,6 @@ export const useManageTokens = ({
     } finally {
       setIsRemovingToken(false);
       showToast(toastOptions);
-
-      // Execute onSuccess callback after a slight delay to ensure modal is dismissed first
-      setTimeout(() => {
-        onSuccess?.();
-      }, 100);
     }
   };
 

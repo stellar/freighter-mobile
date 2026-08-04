@@ -1,4 +1,4 @@
-import { userEvent, act } from "@testing-library/react-native";
+import { fireEvent, userEvent, act } from "@testing-library/react-native";
 import HomeScreen from "components/screens/HomeScreen";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
@@ -29,6 +29,13 @@ jest.mock("components/sds/Icon", () => ({
 jest.mock("components/screens/HomeScreen/ManageAccountBottomSheet", () => ({
   __esModule: true,
   default: function MockManageAccountBottomSheet() {
+    return null;
+  },
+}));
+
+jest.mock("components/screens/HomeScreen/ConnectedApps", () => ({
+  __esModule: true,
+  default: function MockConnectedApps() {
     return null;
   },
 }));
@@ -124,12 +131,15 @@ jest.mock("ducks/prices", () => ({
 }));
 
 jest.mock("ducks/collectibles", () => ({
-  useCollectiblesStore: jest.fn(() => ({
-    collections: [],
-    isLoading: false,
-    error: null,
-    fetchCollectibles: mockFetchCollectibles,
-  })),
+  useCollectiblesStore: jest.fn((selector) => {
+    const mockState = {
+      collections: [],
+      isLoading: false,
+      error: null,
+      fetchCollectibles: mockFetchCollectibles,
+    };
+    return selector ? selector(mockState) : mockState;
+  }),
 }));
 
 jest.mock("ducks/walletKit", () => ({
@@ -317,5 +327,21 @@ describe("HomeScreen", () => {
       "test-public-key",
       "TESTNET",
     );
+  });
+
+  describe("HomeScreen floating add buttons", () => {
+    it("shows Add token on the tokens tab and Add collectible after switching", () => {
+      const { getByTestId, queryByTestId } = renderHomeScreen();
+
+      // Tokens tab is the default
+      expect(getByTestId("home-add-token-button")).toBeTruthy();
+      expect(queryByTestId("home-add-collectible-button")).toBeNull();
+
+      // Switch to the collectibles tab
+      fireEvent.press(getByTestId("tab-collectibles"));
+
+      expect(getByTestId("home-add-collectible-button")).toBeTruthy();
+      expect(queryByTestId("home-add-token-button")).toBeNull();
+    });
   });
 });

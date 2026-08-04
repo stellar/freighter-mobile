@@ -92,6 +92,7 @@ jest.mock("@react-navigation/native", () => {
       replace: jest.fn(),
       goBack: jest.fn(),
     }),
+    useIsFocused: jest.fn().mockReturnValue(true),
     createNavigationContainerRef,
   };
 });
@@ -249,6 +250,8 @@ jest.mock("ducks/walletKit", () => ({
   StellarRpcMethods: {
     SIGN_XDR: "SIGN_XDR",
     SIGN_AND_SUBMIT_XDR: "SIGN_AND_SUBMIT_XDR",
+    SIGN_MESSAGE: "SIGN_MESSAGE",
+    SIGN_AUTH_ENTRY: "SIGN_AUTH_ENTRY",
   },
   StellarRpcChains: {
     PUBLIC: "PUBLIC",

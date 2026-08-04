@@ -129,12 +129,13 @@
       "termsOfService": "Terms of Service"
     }
   },
-  "accountQRCodeScreen": {
-    "title": "Receive funds",
-    "copyButton": "Copy address",
-    "helperText": "Scan the QR code or \ncopy your address",
-    "bottomSheet": {
-      "description": "Have the sender scan the QR code on their Freighter app to retrieve your wallet address securely."
+  "scanReceiveScreen": {
+    "scanTab": "Scan",
+    "receiveTab": "Receive",
+    "receive": {
+      "network": "Stellar",
+      "networkSupport": "This address supports the Stellar network.",
+      "copyButton": "Copy wallet address"
     }
   },
   "walletConnect": {
@@ -292,10 +293,15 @@
   },
   "connectedApps": {
     "title": "Connected Apps",
-    "noConnectedDapps": "No connected apps. Find apps\nto use on Discover.",
+    "noConnectedDappsTitle": "Nothing connected yet",
+    "noConnectedDappsDescription": "Discover apps and connect your first one.",
     "noConnectedDappsNoDiscover": "No connected apps.",
     "goToDiscover": "Go to Discover",
-    "disconnectAllSessions": "Disconnect all"
+    "disconnectAllSessions": "Disconnect all",
+    "disconnectApp": "Disconnect {{appName}}",
+    "appDisconnected": "{{appName}} disconnected",
+    "appDisconnectedFallback": "App disconnected",
+    "allAppsDisconnected": "All apps disconnected"
   },
   "discovery": {
     "discover": "Discover",
@@ -458,16 +464,15 @@
       "learnMore": "Learn more",
       "fundAccountButton": "Add XLM"
     },
-    "menuAddToken": "Add a token",
-    "menuManageTokens": "Manage tokens"
+    "addTokenButton": "Add token"
   },
   "collectiblesGrid": {
     "title": "Collectibles",
     "error": "Error loading collectibles",
     "empty": "No collectibles yet",
     "emptyHidden": "No hidden collectibles",
-    "menuAddManually": "Add manually",
-    "menuHidenCollectibles": "Hidden collectibles"
+    "addCollectibleButton": "Add collectible",
+    "itemHiddenLabel": "{{name}}, hidden"
   },
   "collectibleDetails": {
     "title": "Collectible Details",
@@ -502,7 +507,8 @@
     "description": "If a collectible is missing from your wallet, you can manually add it here.",
     "toastSuccess": "Successfully added collectible",
     "toastError": "Error adding collectible. {{errorMessage}}",
-    "alreadyInWallet": "This collectible is already in your wallet"
+    "alreadyInWallet": "This collectible is already in your wallet",
+    "showHidden": "Show hidden"
   },
   "hiddenCollectiblesScreen": {
     "title": "Hidden Collectibles"
@@ -525,8 +531,6 @@
     "title": "Fund with Friendbot"
   },
   "manageTokensScreen": {
-    "title": "Manage tokens",
-    "addTokenButton": "Add a token",
     "moreInfo": {
       "title": "Manage Tokens",
       "block1": "When you manage tokens, you're choosing which tokens your wallet can hold and use on the Stellar network. For Stellar Classic, adding a token creates a trustline, allowing your wallet to recognize and interact with it. Soroban tokens don't use trustlines but can still be managed and accessed here.",
@@ -1050,7 +1054,8 @@
       "invalidRecipientAddress": "Invalid recipient address",
       "cannotSendToSelf": "Cannot send to yourself",
       "invalidDecimals": "Invalid or missing decimals for custom token",
-      "invalidFederationMemo": "The federation server returned an invalid memo. Please verify the address and try again."
+      "invalidFederationMemo": "The federation server returned an invalid memo. Please verify the address and try again.",
+      "recipientIsTokenContract": "Cannot send to the token's own contract"
     }
   },
   "welcomeBanner": {

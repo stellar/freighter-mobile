@@ -3,6 +3,7 @@ import { BaseLayout } from "components/layout/BaseLayout";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
+import { TextButton } from "components/sds/TextButton";
 import { Text } from "components/sds/Typography";
 import { logger } from "config/logger";
 import { ROOT_NAVIGATOR_ROUTES, RootStackParamList } from "config/routes";
@@ -232,7 +233,7 @@ export const AddCollectibleScreen: React.FC<AddCollectibleScreenProps> = ({
         />
       </View>
 
-      <View className="mb-6">
+      <View className="mb-3">
         <Input
           ref={tokenIdRef}
           placeholder={t("addCollectibleScreen.tokenId")}
@@ -245,6 +246,21 @@ export const AddCollectibleScreen: React.FC<AddCollectibleScreenProps> = ({
             ),
             onPress: handlePasteTokenId,
           }}
+        />
+      </View>
+
+      <View className="mb-3 self-start">
+        <TextButton
+          testID="add-collectible-show-hidden"
+          text={t("addCollectibleScreen.showHidden")}
+          variant="tertiary"
+          className="py-1"
+          hitSlop={{ top: 6, bottom: 6 }}
+          onPress={() =>
+            navigation.navigate(
+              ROOT_NAVIGATOR_ROUTES.HIDDEN_COLLECTIBLES_SCREEN,
+            )
+          }
         />
       </View>
 

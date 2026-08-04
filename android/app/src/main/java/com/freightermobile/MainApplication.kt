@@ -23,6 +23,7 @@ class MainApplication : Application(), ReactApplication {
               // add(MyReactNativePackage())
               add(org.stellar.freighterwallet.SecureClipboardPackage())
               add(org.stellar.freighterwallet.PrivacyShieldPackage())
+              add(org.stellar.freighterwallet.WebViewMediaConsentPackage())
             }
 
         override fun getJSMainModuleName(): String = "index"

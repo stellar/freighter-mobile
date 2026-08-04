@@ -11,6 +11,7 @@ import Avatar from "components/sds/Avatar";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
+import { AnalyticsEvent, buildScreenViewedProps } from "config/analyticsConfig";
 import { TokenTypeWithCustomToken, PricedBalance } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { Collectible } from "ducks/collectibles";
@@ -24,6 +25,7 @@ import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { View } from "react-native";
+import { track } from "services/analytics/core";
 
 const TransactionStatus = {
   SENDING: "sending",
@@ -84,8 +86,37 @@ const TransactionProcessingScreen: React.FC<
   const [status, setStatus] = useState<TransactionStatusType>(
     TransactionStatus.SENDING,
   );
+  const hasEmittedSuccess = useRef(false);
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const isContractAddress = isContractId(recipientAddress);
+
+  // Emit the canonical screen.viewed for the in-flight submission stage. This
+  // screen is the mobile analog of the extension's PENDING state (stellar/
+  // freighter#2907), which emits the same send_payment_processing (flow:"send",
+  // step:"processing") event -- keeping the processing funnel stage joined
+  // cross-platform. The component is mounted only while submitting, so a bare
+  // mount effect fires this exactly once per submission.
+  useEffect(() => {
+    track(
+      AnalyticsEvent.SCREEN_VIEWED,
+      buildScreenViewedProps(AnalyticsEvent.VIEW_SEND_PROCESSING),
+    );
+  }, []);
+
+  // This one screen also renders the terminal success state, so emit the
+  // success funnel stage (send_payment_success, flow:"send", step:"success")
+  // when the submission settles into SENT -- completing confirm -> processing
+  // -> success on mobile and matching the extension's success emission. Guarded
+  // to fire at most once per mount (the SENT status is terminal here anyway).
+  useEffect(() => {
+    if (status === TransactionStatus.SENT && !hasEmittedSuccess.current) {
+      hasEmittedSuccess.current = true;
+      track(
+        AnalyticsEvent.SCREEN_VIEWED,
+        buildScreenViewedProps(AnalyticsEvent.VIEW_SEND_SUCCESS),
+      );
+    }
+  }, [status]);
 
   useLayoutEffect(() => {
     navigation.setOptions({

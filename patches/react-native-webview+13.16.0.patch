@@ -1,0 +1,145 @@
+diff --git a/node_modules/react-native-webview/android/src/main/java/com/reactnativecommunity/webview/RNCWebChromeClient.java b/node_modules/react-native-webview/android/src/main/java/com/reactnativecommunity/webview/RNCWebChromeClient.java
+index 07f73fd0..b11c5d69 100644
+--- a/node_modules/react-native-webview/android/src/main/java/com/reactnativecommunity/webview/RNCWebChromeClient.java
++++ b/node_modules/react-native-webview/android/src/main/java/com/reactnativecommunity/webview/RNCWebChromeClient.java
+@@ -3,6 +3,8 @@ package com.reactnativecommunity.webview;
+ import android.Manifest;
+ import android.annotation.TargetApi;
+ import android.app.Activity;
++import android.app.AlertDialog;
++import android.content.DialogInterface;
+ import android.content.pm.PackageManager;
+ import android.net.Uri;
+ import android.os.Build;
+@@ -34,7 +36,9 @@ import com.reactnativecommunity.webview.events.TopOpenWindowEvent;
+ 
+ import java.util.ArrayList;
+ import java.util.Collections;
++import java.util.HashSet;
+ import java.util.List;
++import java.util.Set;
+ 
+ public class RNCWebChromeClient extends WebChromeClient implements LifecycleEventListener {
+     protected static final FrameLayout.LayoutParams FULLSCREEN_LAYOUT_PARAMS = new FrameLayout.LayoutParams(
+@@ -66,6 +70,22 @@ public class RNCWebChromeClient extends WebChromeClient implements LifecycleEven
+     // Webview camera & audio permission already granted
+     protected List<String> grantedPermissions;
+ 
++    // Camera/microphone grants the user has explicitly approved, so a repeat
++    // request from the same origin isn't re-prompted within the session. Denials
++    // are intentionally NOT stored: a deny simply re-prompts next time (fail-safe),
++    // which avoids an unrecoverable "blocked forever" state with no way to undo.
++    // Cleared on logout / data wipe via clearMediaCaptureConsent(). Keyed by
++    // "origin|sorted-resources".
++    protected static final Set<String> sMediaCaptureAllowed =
++            Collections.synchronizedSet(new HashSet<String>());
++
++    // Invoked from the app's logout / data-wipe path (via a native module) so
++    // camera/microphone consent doesn't outlive the session or leak to another
++    // account signed in on the same device.
++    public static void clearMediaCaptureConsent() {
++        sMediaCaptureAllowed.clear();
++    }
++
+     // Webview geolocation permission callback
+     protected GeolocationPermissions.Callback geolocationPermissionCallback;
+     // Webview geolocation permission origin callback
+@@ -144,6 +164,98 @@ public class RNCWebChromeClient extends WebChromeClient implements LifecycleEven
+ 
+     @Override
+     public void onPermissionRequest(final PermissionRequest request) {
++        // Require explicit, per-origin user consent before granting camera or
++        // microphone access to web content, instead of auto-granting based on the
++        // app's OS-level permission. Camera/mic requests surface a per-origin
++        // prompt; other permission requests keep the default handling.
++        boolean requestsMediaCapture = false;
++        for (String requestedResource : request.getResources()) {
++            if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(requestedResource)
++                    || PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(requestedResource)) {
++                requestsMediaCapture = true;
++                break;
++            }
++        }
++
++        if (!requestsMediaCapture) {
++            grantPermissionRequest(request);
++            return;
++        }
++
++        // Sort the requested resources so the key is stable regardless of the
++        // order the WebView lists them in (e.g. audio+video vs video+audio).
++        final String[] sortedResources = request.getResources().clone();
++        java.util.Arrays.sort(sortedResources);
++        final String consentKey =
++                (request.getOrigin() != null ? request.getOrigin().toString() : "")
++                        + "|" + android.text.TextUtils.join(",", sortedResources);
++        if (sMediaCaptureAllowed.contains(consentKey)) {
++            grantPermissionRequest(request);
++            return;
++        }
++
++        final Activity activity = this.mWebView.getThemedReactContext().getCurrentActivity();
++        if (activity == null || activity.isFinishing()) {
++            // No UI available to confirm access -- deny the request.
++            request.deny();
++            return;
++        }
++
++        boolean wantsCamera = false;
++        boolean wantsMic = false;
++        for (String requestedResource : request.getResources()) {
++            if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(requestedResource)) {
++                wantsCamera = true;
++            } else if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(requestedResource)) {
++                wantsMic = true;
++            }
++        }
++        final String what = (wantsCamera && wantsMic)
++                ? "camera and microphone"
++                : (wantsCamera ? "camera" : "microphone");
++        // Show the full serialized origin (scheme + host + port), not just the
++        // host, so distinct origins are distinguishable in the prompt.
++        final String originLabel =
++                (request.getOrigin() != null && request.getOrigin().toString().length() > 0)
++                        ? request.getOrigin().toString()
++                        : "This site";
++
++        activity.runOnUiThread(new Runnable() {
++            @Override
++            public void run() {
++                new AlertDialog.Builder(activity)
++                        .setTitle("Allow " + what + " access?")
++                        .setMessage("\"" + originLabel + "\" is requesting access to your "
++                                + what + ".")
++                        .setPositiveButton("Allow", new DialogInterface.OnClickListener() {
++                            @Override
++                            public void onClick(DialogInterface dialog, int which) {
++                                sMediaCaptureAllowed.add(consentKey);
++                                grantPermissionRequest(request);
++                            }
++                        })
++                        .setNegativeButton("Don't allow", new DialogInterface.OnClickListener() {
++                            @Override
++                            public void onClick(DialogInterface dialog, int which) {
++                                // Deny only this request; do not remember it, so the
++                                // user can be re-prompted rather than locked out.
++                                request.deny();
++                            }
++                        })
++                        .setOnCancelListener(new DialogInterface.OnCancelListener() {
++                            @Override
++                            public void onCancel(DialogInterface dialog) {
++                                request.deny();
++                            }
++                        })
++                        .show();
++            }
++        });
++    }
++
++    // Original react-native-webview grant flow. Now only reached after per-origin
++    // consent has been granted (camera/mic) or for non-media permission requests.
++    private void grantPermissionRequest(final PermissionRequest request) {
+ 
+         grantedPermissions = new ArrayList<>();
+ 

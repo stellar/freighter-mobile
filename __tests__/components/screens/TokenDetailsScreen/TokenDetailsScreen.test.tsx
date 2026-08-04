@@ -69,9 +69,16 @@ jest.mock("hooks/useAppTranslation", () => () => ({
   t: (key: string, params?: { tokenName?: string }) => {
     const translations: Record<string, string> = {
       "tokenDetailsScreen.listHeader": `${params?.tokenName || "Token"} transaction history`,
+      "manageTokenRightContent.copyAddress": "Copy address",
+      "common.remove": "Remove",
     };
     return translations[key] || key;
   },
+}));
+
+jest.mock("hooks/useRightHeader", () => ({
+  useRightHeaderMenu: jest.fn(),
+  useRightHeaderButton: jest.fn(),
 }));
 
 type TokenDetailsScreenProps = NativeStackScreenProps<
@@ -132,5 +139,22 @@ describe("TokenDetailsScreen", () => {
 
     // The component should render successfully
     // Data loading is now handled by the store's polling mechanism
+  });
+
+  it("configures a Copy address + Remove header menu", () => {
+    const { useRightHeaderMenu } = jest.requireMock("hooks/useRightHeader");
+
+    renderWithProviders(
+      <TokenDetailsScreen navigation={mockNavigation} route={mockRoute} />,
+    );
+
+    const { actions } = useRightHeaderMenu.mock.calls.at(-1)[0];
+    const titles = actions.map((a: { title: string }) => a.title);
+
+    expect(titles).toContain("Copy address");
+    expect(titles).toContain("Remove");
+    expect(
+      actions.find((a: { title: string }) => a.title === "Remove").destructive,
+    ).toBe(true);
   });
 });

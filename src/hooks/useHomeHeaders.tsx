@@ -7,7 +7,6 @@ import ContextMenuButton from "components/ContextMenuButton";
 import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import HomeScreenHeader from "components/screens/HomeScreen/HomeScreenHeader";
 import Icon from "components/sds/Icon";
-import { QRCodeSource } from "config/constants";
 import {
   ROOT_NAVIGATOR_ROUTES,
   MainTabStackParamList,
@@ -25,9 +24,13 @@ interface UseHomeHeadersProps {
     MainTabStackParamList & RootStackParamList,
     typeof MAIN_TAB_ROUTES.TAB_HOME
   >;
+  onConnectedAppsPress: () => void;
 }
 
-export const useHomeHeaders = ({ navigation }: UseHomeHeadersProps) => {
+export const useHomeHeaders = ({
+  navigation,
+  onConnectedAppsPress,
+}: UseHomeHeadersProps) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
 
@@ -50,7 +53,9 @@ export const useHomeHeaders = ({ navigation }: UseHomeHeadersProps) => {
           android: "qr_code_scanner",
         }),
         onPress: () =>
-          navigation.navigate(ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN),
+          navigation.navigate(ROOT_NAVIGATOR_ROUTES.SCAN_RECEIVE_SCREEN, {
+            initialTab: "receive",
+          }),
       },
     ],
     [t, navigation],
@@ -95,13 +100,11 @@ export const useHomeHeaders = ({ navigation }: UseHomeHeadersProps) => {
         <CustomHeaderButton
           position="left"
           icon={Icon.NotificationBox}
-          onPress={() =>
-            navigation.navigate(ROOT_NAVIGATOR_ROUTES.CONNECTED_APPS_SCREEN)
-          }
+          onPress={onConnectedAppsPress}
         />
       </View>
     ),
-    [menuActions, themeColors, navigation],
+    [menuActions, themeColors, navigation, onConnectedAppsPress],
   );
 
   const HeaderRightComponent = useCallback(
@@ -111,8 +114,8 @@ export const useHomeHeaders = ({ navigation }: UseHomeHeadersProps) => {
         icon={Icon.Scan}
         testID="home-screen-scan-button"
         onPress={() =>
-          navigation.navigate(ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN, {
-            source: QRCodeSource.HOME_SCANNER,
+          navigation.navigate(ROOT_NAVIGATOR_ROUTES.SCAN_RECEIVE_SCREEN, {
+            initialTab: "scan",
           })
         }
       />
