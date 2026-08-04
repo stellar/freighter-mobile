@@ -13,7 +13,16 @@ import { WalletKitSessionRequest } from "ducks/walletKit";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useMemo } from "react";
-import { View } from "react-native";
+import { useWindowDimensions, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+/**
+ * Vertical space the bottom sheet adds around this content (drag handle plus
+ * the BottomSheetView paddings — see components/BottomSheet). Used to bound
+ * the content to the usable window height so the message box can flex-shrink
+ * instead of pushing the action buttons off-screen.
+ */
+const SHEET_CHROME_HEIGHT = 80;
 
 interface DappSignMessageBottomSheetContentProps {
   requestEvent: WalletKitSessionRequest | null;
@@ -46,6 +55,10 @@ export const DappSignMessageBottomSheetContent: React.FC<
 }) => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
+  const { height: windowHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const maxContentHeight =
+    windowHeight - insets.top - insets.bottom - SHEET_CHROME_HEIGHT;
 
   const accountList = useMemo(
     () => [
@@ -89,6 +102,7 @@ export const DappSignMessageBottomSheetContent: React.FC<
   return (
     <View
       className="flex-1 justify-center mt-2 gap-[16px]"
+      style={{ maxHeight: maxContentHeight }}
       testID="dapp-request-bottom-sheet"
     >
       <View className="flex-row items-center gap-[12px] w-full">
@@ -112,7 +126,9 @@ export const DappSignMessageBottomSheetContent: React.FC<
         securityWarningAction={securityWarningAction}
       />
 
-      <View className="gap-[12px]">
+      {/* flexShrink lets the message box inside absorb the squeeze when the
+          sheet is taller than the screen; the account list keeps its size. */}
+      <View className="gap-[12px]" style={{ flexShrink: 1 }}>
         <DappMessageDisplay message={message} />
         <List variant="secondary" items={accountList} />
       </View>

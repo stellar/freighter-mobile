@@ -148,13 +148,22 @@ describe("validateSignMessageLength", () => {
     }
   });
 
-  it("returns valid for a message exactly at the 1 KB limit", () => {
+  it("allows a multi-KB JSON payload (limit is 10 KB, not 1 KB)", () => {
+    // Regression for stellar/freighter-mobile#957: dApps sign JSON payloads
+    // that routinely exceed 1 KB. SEP-53 imposes no size limit.
+    expect(SIGN_MESSAGE_MAX_BYTES).toBe(10240);
+    const message = JSON.stringify({ data: "a".repeat(4000) });
+    const result = validateSignMessageLength(message);
+    expect(result.valid).toBe(true);
+  });
+
+  it("returns valid for a message exactly at the limit", () => {
     const message = "a".repeat(SIGN_MESSAGE_MAX_BYTES);
     const result = validateSignMessageLength(message);
     expect(result.valid).toBe(true);
   });
 
-  it("returns error for a message exceeding 1 KB (ASCII)", () => {
+  it("returns error for a message exceeding the limit (ASCII)", () => {
     const message = "a".repeat(SIGN_MESSAGE_MAX_BYTES + 1);
     const result = validateSignMessageLength(message);
     expect(result.valid).toBe(false);
@@ -163,9 +172,9 @@ describe("validateSignMessageLength", () => {
     }
   });
 
-  it("returns error for a message exceeding 1 KB due to multi-byte UTF-8 chars", () => {
-    // Each emoji is 4 bytes in UTF-8 — 257 emojis = 1028 bytes > 1024
-    const message = "🚀".repeat(257);
+  it("returns error for a message exceeding the limit due to multi-byte UTF-8 chars", () => {
+    // Each emoji is 4 bytes in UTF-8, so this is 4 bytes over the limit
+    const message = "🚀".repeat(SIGN_MESSAGE_MAX_BYTES / 4 + 1);
     const result = validateSignMessageLength(message);
     expect(result.valid).toBe(false);
     if (!result.valid) {
@@ -173,9 +182,9 @@ describe("validateSignMessageLength", () => {
     }
   });
 
-  it("returns valid for multi-byte chars that stay within 1 KB", () => {
-    // 256 emojis = 1024 bytes — exactly at the limit
-    const message = "🚀".repeat(256);
+  it("returns valid for multi-byte chars that stay within the limit", () => {
+    // Each emoji is 4 bytes in UTF-8 — exactly at the limit
+    const message = "🚀".repeat(SIGN_MESSAGE_MAX_BYTES / 4);
     const result = validateSignMessageLength(message);
     expect(result.valid).toBe(true);
   });
