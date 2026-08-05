@@ -14,8 +14,8 @@ import {
 } from "components/screens/SignTransactionDetails/components/KeyVal";
 import Avatar from "components/sds/Avatar";
 import { Badge } from "components/sds/Badge";
+import { Banner } from "components/sds/Banner";
 import Icon from "components/sds/Icon";
-import { Notification } from "components/sds/Notification";
 import { Text } from "components/sds/Typography";
 import {
   mapNetworkToNetworkDetails,
@@ -57,16 +57,12 @@ const formatOfferPriceRatio = (
 const MasterKeyDisableWarning = () => {
   const { t } = useAppTranslation();
   return (
-    <View testID="MasterKeyDisableWarning">
-      <Notification
-        variant="error"
-        icon={<Icon.AlertTriangle />}
-        title={t("signTransactionDetails.operations.masterKeyWarningTitle")}
-        message={t(
-          "signTransactionDetails.operations.masterKeyWarningMessage",
-        )}
-      />
-    </View>
+    <Banner
+      variant="error"
+      showChevron={false}
+      testID="MasterKeyDisableWarning"
+      text={t("signTransactionDetails.operations.masterKeyWarningMessage")}
+    />
   );
 };
 
@@ -541,30 +537,22 @@ const RenderOperationByType = ({
         });
       }
 
-      if (setFlags !== undefined && setFlags !== null) {
-        items.push({
-          title: t("signTransactionDetails.operations.setFlags"),
-          trailingContent: (
-            <Text>{decodeAuthorizationFlags(Number(setFlags))}</Text>
-          ),
-          titleColor: themeColors.text.secondary,
-        });
-      }
-
-      if (clearFlags !== undefined && clearFlags !== null) {
-        items.push({
-          title: t("signTransactionDetails.operations.clearFlags"),
-          trailingContent: (
-            <Text>{decodeAuthorizationFlags(Number(clearFlags))}</Text>
-          ),
-          titleColor: themeColors.text.secondary,
-        });
-      }
-
       return (
         <View className="gap-[16px]">
           {signer && <KeyValueSigner signer={signer} />}
           {items.length > 0 && <List variant="secondary" items={items} />}
+          {setFlags !== undefined && setFlags !== null && (
+            <KeyValueListItem
+              operationKey={t("signTransactionDetails.operations.setFlags")}
+              operationValue={decodeAuthorizationFlags(Number(setFlags))}
+            />
+          )}
+          {clearFlags !== undefined && clearFlags !== null && (
+            <KeyValueListItem
+              operationKey={t("signTransactionDetails.operations.clearFlags")}
+              operationValue={decodeAuthorizationFlags(Number(clearFlags))}
+            />
+          )}
           {masterWeight === 0 && <MasterKeyDisableWarning />}
         </View>
       );
@@ -676,29 +664,27 @@ const RenderOperationByType = ({
     }
     case "manageData": {
       const { name, value } = operation;
-
       const isDeletingEntry = value === undefined || value === null;
-
-      const items: ListItemProps[] = [
-        {
-          title: t("signTransactionDetails.operations.name"),
-          trailingContent: <Text>{name}</Text>,
-          titleColor: themeColors.text.secondary,
-        },
-        {
-          title: t("signTransactionDetails.operations.value"),
-          trailingContent: isDeletingEntry ? (
-            <Badge variant="tertiary" size="sm">
-              {t("signTransactionDetails.operations.deleted")}
-            </Badge>
-          ) : (
-            <Text>{value.toString()}</Text>
-          ),
-          titleColor: themeColors.text.secondary,
-        },
-      ];
-
-      return <List variant="secondary" items={items} />;
+      return (
+        <View className="gap-[16px]">
+          <KeyValueListItem
+            operationKey={t("signTransactionDetails.operations.name")}
+            operationValue={name}
+          />
+          <KeyValueListItem
+            operationKey={t("signTransactionDetails.operations.value")}
+            operationValue={
+              isDeletingEntry ? (
+                <Badge variant="tertiary" size="sm">
+                  {t("signTransactionDetails.operations.deleted")}
+                </Badge>
+              ) : (
+                value.toString()
+              )
+            }
+          />
+        </View>
+      );
     }
     case "bumpSequence": {
       const { bumpTo } = operation;

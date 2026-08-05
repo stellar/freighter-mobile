@@ -1250,7 +1250,6 @@
       "accountId": "ID da conta",
       "salt": "Salt",
       "executableWasmHash": "Hash WASM executável",
-      "masterKeyWarningTitle": "Chave mestra desativada",
       "masterKeyWarningMessage": "Esta transação desativa a chave mestra da sua conta. Você pode perder permanentemente o acesso a esta conta, a menos que outro assinante com peso suficiente seja adicionado.",
       "cleared": "Limpo",
       "deleted": "Excluído",

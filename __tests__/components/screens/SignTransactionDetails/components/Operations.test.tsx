@@ -254,6 +254,7 @@ describe("SignTransactionDetails > Operations: setOptions presence checks & mast
 
     const { findByText } = render(<Operations operations={ops} />);
 
+    expect(await findByText(label("setFlags"), {}, FIND)).toBeTruthy();
     expect(
       await findByText(
         "Authorization Required, Authorization Immutable",
@@ -271,6 +272,7 @@ describe("SignTransactionDetails > Operations: setOptions presence checks & mast
 
     const { findByText } = render(<Operations operations={ops} />);
 
+    expect(await findByText(label("clearFlags"), {}, FIND)).toBeTruthy();
     expect(
       await findByText(
         "Authorization Required, Authorization Revocable",
