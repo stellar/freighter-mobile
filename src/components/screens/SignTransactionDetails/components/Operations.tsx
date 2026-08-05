@@ -13,7 +13,9 @@ import {
   KeyValueInvokeHostFnArgs,
 } from "components/screens/SignTransactionDetails/components/KeyVal";
 import Avatar from "components/sds/Avatar";
+import { Badge } from "components/sds/Badge";
 import Icon from "components/sds/Icon";
+import { Notification } from "components/sds/Notification";
 import { Text } from "components/sds/Typography";
 import {
   mapNetworkToNetworkDetails,
@@ -52,6 +54,22 @@ const formatOfferPriceRatio = (
   baseCode: string,
 ) => `${formatTokenForDisplay(price)} ${quoteCode} / ${baseCode}`;
 
+const MasterKeyDisableWarning = () => {
+  const { t } = useAppTranslation();
+  return (
+    <View testID="MasterKeyDisableWarning">
+      <Notification
+        variant="error"
+        icon={<Icon.AlertTriangle />}
+        title={t("signTransactionDetails.operations.masterKeyWarningTitle")}
+        message={t(
+          "signTransactionDetails.operations.masterKeyWarningMessage",
+        )}
+      />
+    </View>
+  );
+};
+
 const RenderOperationByType = ({
   operation,
 }: {
@@ -63,6 +81,21 @@ const RenderOperationByType = ({
   const { type } = operation;
   const { copyToClipboard } = useClipboard();
   const { themeColors } = useColors();
+
+  const issuerListItem = (issuer: string): ListItemProps => ({
+    title: t("signTransactionDetails.operations.tokenIssuer"),
+    trailingContent: (
+      <View className="flex-row items-center gap-[8px]">
+        <Icon.Copy01
+          size={16}
+          themeColor="gray"
+          onPress={() => copyToClipboard(issuer)}
+        />
+        <Text>{truncateAddress(issuer)}</Text>
+      </View>
+    ),
+    titleColor: themeColors.text.secondary,
+  });
 
   const authorizationMap: AuthorizationMap = {
     "1": "Authorization Required",
@@ -170,6 +203,7 @@ const RenderOperationByType = ({
           trailingContent: <Text>{asset.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
+        ...(asset.issuer ? [issuerListItem(asset.issuer)] : []),
         {
           title: t("signTransactionDetails.operations.amount"),
           trailingContent: (
@@ -191,6 +225,7 @@ const RenderOperationByType = ({
           trailingContent: <Text>{sendAsset.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
+        ...(sendAsset.issuer ? [issuerListItem(sendAsset.issuer)] : []),
         {
           title: t("signTransactionDetails.operations.sendMax"),
           trailingContent: (
@@ -213,6 +248,7 @@ const RenderOperationByType = ({
           trailingContent: <Text>{destAsset.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
+        ...(destAsset.issuer ? [issuerListItem(destAsset.issuer)] : []),
         {
           title: t("signTransactionDetails.operations.destinationAmount"),
           trailingContent: (
@@ -240,6 +276,7 @@ const RenderOperationByType = ({
           trailingContent: <Text>{sendAsset.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
+        ...(sendAsset.issuer ? [issuerListItem(sendAsset.issuer)] : []),
         {
           title: t("signTransactionDetails.operations.sendAmount"),
           trailingContent: (
@@ -262,6 +299,7 @@ const RenderOperationByType = ({
           trailingContent: <Text>{destAsset.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
+        ...(destAsset.issuer ? [issuerListItem(destAsset.issuer)] : []),
         {
           title: t("signTransactionDetails.operations.destinationMinimum"),
           trailingContent: (
@@ -288,6 +326,7 @@ const RenderOperationByType = ({
           trailingContent: <Text>{selling.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
+        ...(selling.issuer ? [issuerListItem(selling.issuer)] : []),
         {
           title: t("signTransactionDetails.operations.sellingAmount"),
           trailingContent: (
@@ -300,6 +339,7 @@ const RenderOperationByType = ({
           trailingContent: <Text>{buying.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
+        ...(buying.issuer ? [issuerListItem(buying.issuer)] : []),
         {
           title: t("signTransactionDetails.operations.price"),
           trailingContent: (
@@ -327,6 +367,7 @@ const RenderOperationByType = ({
           trailingContent: <Text>{selling.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
+        ...(selling.issuer ? [issuerListItem(selling.issuer)] : []),
         {
           title: t("signTransactionDetails.operations.sellingAmount"),
           trailingContent: (
@@ -339,6 +380,7 @@ const RenderOperationByType = ({
           trailingContent: <Text>{buying.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
+        ...(buying.issuer ? [issuerListItem(buying.issuer)] : []),
         {
           title: t("signTransactionDetails.operations.price"),
           trailingContent: (
@@ -366,6 +408,7 @@ const RenderOperationByType = ({
           trailingContent: <Text>{buying.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
+        ...(buying.issuer ? [issuerListItem(buying.issuer)] : []),
         {
           title: t("signTransactionDetails.operations.buyingAmount"),
           trailingContent: (
@@ -378,6 +421,7 @@ const RenderOperationByType = ({
           trailingContent: <Text>{selling.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
+        ...(selling.issuer ? [issuerListItem(selling.issuer)] : []),
         {
           title: t("signTransactionDetails.operations.price"),
           trailingContent: (
@@ -404,6 +448,28 @@ const RenderOperationByType = ({
         signer,
       } = operation;
 
+      const decodeAuthorizationFlags = (bits: number): string => {
+        const labels: string[] = [];
+        let remaining = bits;
+        Object.entries(authorizationMap).forEach(([bit, label]) => {
+          const value = Number(bit);
+          /* eslint-disable no-bitwise */
+          if ((bits & value) !== 0) {
+            labels.push(label);
+            remaining &= ~value;
+          }
+          /* eslint-enable no-bitwise */
+        });
+        if (remaining !== 0) {
+          labels.push(
+            t("signTransactionDetails.operations.unknownFlags", {
+              bits: remaining,
+            }),
+          );
+        }
+        return labels.join(", ");
+      };
+
       const items: ListItemProps[] = [];
 
       if (inflationDest) {
@@ -423,15 +489,27 @@ const RenderOperationByType = ({
         });
       }
 
-      if (homeDomain) {
+      if (homeDomain !== undefined) {
         items.push({
           title: t("signTransactionDetails.operations.homeDomain"),
-          trailingContent: <Text>{homeDomain}</Text>,
+          trailingContent:
+            homeDomain === "" ? (
+              <Badge variant="tertiary" size="sm">
+                {t("signTransactionDetails.operations.cleared")}
+              </Badge>
+            ) : (
+              <Text>{homeDomain}</Text>
+            ),
           titleColor: themeColors.text.secondary,
         });
       }
 
-      if (highThreshold) {
+      // The SDK's XDR-optional accessors (masterWeight/thresholds/flags)
+      // return `null` -- not `undefined` -- when the field is absent from
+      // the operation, unlike homeDomain above. Guard against both so an
+      // ordinary setOptions that only touches one field doesn't render the
+      // rest as a literal "null" (or throw on `null.toString()`).
+      if (highThreshold !== undefined && highThreshold !== null) {
         items.push({
           title: t("signTransactionDetails.operations.highThreshold"),
           trailingContent: <Text>{highThreshold.toString()}</Text>,
@@ -439,7 +517,7 @@ const RenderOperationByType = ({
         });
       }
 
-      if (medThreshold) {
+      if (medThreshold !== undefined && medThreshold !== null) {
         items.push({
           title: t("signTransactionDetails.operations.mediumThreshold"),
           trailingContent: <Text>{medThreshold.toString()}</Text>,
@@ -447,7 +525,7 @@ const RenderOperationByType = ({
         });
       }
 
-      if (lowThreshold) {
+      if (lowThreshold !== undefined && lowThreshold !== null) {
         items.push({
           title: t("signTransactionDetails.operations.lowThreshold"),
           trailingContent: <Text>{lowThreshold.toString()}</Text>,
@@ -455,7 +533,7 @@ const RenderOperationByType = ({
         });
       }
 
-      if (masterWeight) {
+      if (masterWeight !== undefined && masterWeight !== null) {
         items.push({
           title: t("signTransactionDetails.operations.masterWeight"),
           trailingContent: <Text>{masterWeight.toString()}</Text>,
@@ -463,19 +541,21 @@ const RenderOperationByType = ({
         });
       }
 
-      if (setFlags) {
+      if (setFlags !== undefined && setFlags !== null) {
         items.push({
           title: t("signTransactionDetails.operations.setFlags"),
-          trailingContent: <Text>{authorizationMap[setFlags.toString()]}</Text>,
+          trailingContent: (
+            <Text>{decodeAuthorizationFlags(Number(setFlags))}</Text>
+          ),
           titleColor: themeColors.text.secondary,
         });
       }
 
-      if (clearFlags) {
+      if (clearFlags !== undefined && clearFlags !== null) {
         items.push({
           title: t("signTransactionDetails.operations.clearFlags"),
           trailingContent: (
-            <Text>{authorizationMap[clearFlags.toString()]}</Text>
+            <Text>{decodeAuthorizationFlags(Number(clearFlags))}</Text>
           ),
           titleColor: themeColors.text.secondary,
         });
@@ -485,6 +565,7 @@ const RenderOperationByType = ({
         <View className="gap-[16px]">
           {signer && <KeyValueSigner signer={signer} />}
           {items.length > 0 && <List variant="secondary" items={items} />}
+          {masterWeight === 0 && <MasterKeyDisableWarning />}
         </View>
       );
     }
@@ -596,21 +677,26 @@ const RenderOperationByType = ({
     case "manageData": {
       const { name, value } = operation;
 
+      const isDeletingEntry = value === undefined || value === null;
+
       const items: ListItemProps[] = [
         {
           title: t("signTransactionDetails.operations.name"),
           trailingContent: <Text>{name}</Text>,
           titleColor: themeColors.text.secondary,
         },
-      ];
-
-      if (value) {
-        items.push({
+        {
           title: t("signTransactionDetails.operations.value"),
-          trailingContent: <Text>{value.toString()}</Text>,
+          trailingContent: isDeletingEntry ? (
+            <Badge variant="tertiary" size="sm">
+              {t("signTransactionDetails.operations.deleted")}
+            </Badge>
+          ) : (
+            <Text>{value.toString()}</Text>
+          ),
           titleColor: themeColors.text.secondary,
-        });
-      }
+        },
+      ];
 
       return <List variant="secondary" items={items} />;
     }
@@ -636,6 +722,7 @@ const RenderOperationByType = ({
           trailingContent: <Text>{asset.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
+        ...(asset.issuer ? [issuerListItem(asset.issuer)] : []),
         {
           title: t("signTransactionDetails.operations.amount"),
           trailingContent: (
@@ -698,6 +785,7 @@ const RenderOperationByType = ({
           trailingContent: <Text>{asset.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
+        ...(asset.issuer ? [issuerListItem(asset.issuer)] : []),
         {
           title: t("signTransactionDetails.operations.amount"),
           trailingContent: (
@@ -751,32 +839,49 @@ const RenderOperationByType = ({
           trailingContent: <Text>{asset.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
+        ...(asset.issuer ? [issuerListItem(asset.issuer)] : []),
       ];
 
-      if (flags.authorized) {
+      if (flags.authorized !== undefined) {
         items.push({
           title: t("signTransactionDetails.operations.flags.authorized"),
-          trailingContent: <Text>{String(flags.authorized)}</Text>,
+          trailingContent: (
+            <Text>
+              {flags.authorized
+                ? t("signTransactionDetails.operations.enabled")
+                : t("signTransactionDetails.operations.disabled")}
+            </Text>
+          ),
           titleColor: themeColors.text.secondary,
         });
       }
 
-      if (flags.authorizedToMaintainLiabilities) {
+      if (flags.authorizedToMaintainLiabilities !== undefined) {
         items.push({
           title: t(
             "signTransactionDetails.operations.flags.authorizedToMaintainLiabilities",
           ),
           trailingContent: (
-            <Text>{String(flags.authorizedToMaintainLiabilities)}</Text>
+            <Text>
+              {flags.authorizedToMaintainLiabilities
+                ? t("signTransactionDetails.operations.enabled")
+                : t("signTransactionDetails.operations.disabled")}
+            </Text>
           ),
           titleColor: themeColors.text.secondary,
         });
       }
 
-      if (flags.clawbackEnabled) {
+      if (flags.clawbackEnabled !== undefined) {
         items.push({
           title: t("signTransactionDetails.operations.flags.clawbackEnabled"),
-          trailingContent: <Text>{String(flags.clawbackEnabled)}</Text>,
+          trailingContent: (
+            <Text>
+              {flags.clawbackEnabled
+                ? t("signTransactionDetails.operations.enabled")
+                : t("signTransactionDetails.operations.disabled")}
+            </Text>
+          ),
           titleColor: themeColors.text.secondary,
         });
       }

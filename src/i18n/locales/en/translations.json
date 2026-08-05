@@ -1249,7 +1249,14 @@
       "executableType": "Executable Type",
       "accountId": "Account ID",
       "salt": "Salt",
-      "executableWasmHash": "Executable WASM Hash"
+      "executableWasmHash": "Executable WASM Hash",
+      "masterKeyWarningTitle": "Master key disabled",
+      "masterKeyWarningMessage": "This transaction disables your account's master key. You may permanently lose access to this account unless another signer with sufficient weight is added.",
+      "cleared": "Cleared",
+      "deleted": "Deleted",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "unknownFlags": "Unknown ({{bits}})"
     },
     "claimPredicates": {
       "unconditional": "Unconditional",
