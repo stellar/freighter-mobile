@@ -388,4 +388,18 @@ describe("SignTransactionDetails > Operations: asset issuer disclosure", () => {
 
     expect(await findByText(label("tokenIssuer"), {}, FIND)).toBeTruthy();
   });
+
+  it("revokeTrustlineSponsorship renders the token issuer for a non-native asset", async () => {
+    const ops = operationsFor(
+      Operation.revokeTrustlineSponsorship({
+        account: SOURCE,
+        asset: WBTC,
+      }),
+    );
+
+    const { findByText } = render(<Operations operations={ops} />);
+
+    expect(await findByText(label("tokenCode"), {}, FIND)).toBeTruthy();
+    expect(await findByText(label("tokenIssuer"), {}, FIND)).toBeTruthy();
+  });
 });

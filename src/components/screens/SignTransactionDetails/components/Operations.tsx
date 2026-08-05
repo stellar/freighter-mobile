@@ -1066,6 +1066,11 @@ const RenderOperationByType = ({
             trailingContent: <Text>{asset.code}</Text>,
             titleColor: themeColors.text.secondary,
           });
+          // Disclose the issuer so the revoked trustline's asset is
+          // unambiguous, matching every other asset row on this screen.
+          if (asset.issuer) {
+            items.push(issuerListItem(asset.issuer));
+          }
         }
 
         return <List variant="secondary" items={items} />;
