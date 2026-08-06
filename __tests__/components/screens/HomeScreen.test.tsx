@@ -340,6 +340,27 @@ describe("HomeScreen", () => {
     expect(getByText("$0.00")).toBeTruthy();
   });
 
+  it("shows a spinner instead of a placeholder $0.00 while balances load", () => {
+    const { useTotalBalance } = jest.requireMock("hooks/useTotalBalance");
+    useTotalBalance.mockReturnValue({
+      formattedBalance: "$0.00",
+      totalBalance: "0",
+      hasFiatTotal: false,
+    });
+    mockIsLoadingBalances = true;
+
+    const { getByTestId, queryByText } = renderHomeScreen();
+
+    expect(getByTestId("home-fiat-total-spinner")).toBeTruthy();
+    expect(queryByText("$0.00")).toBeNull();
+
+    useTotalBalance.mockReturnValue({
+      formattedBalance: "$350.75",
+      totalBalance: "350.75",
+      hasFiatTotal: true,
+    });
+  });
+
   it("renders action buttons correctly, without the removed copy button", () => {
     const { getByText, queryByTestId } = renderHomeScreen();
 

@@ -82,6 +82,15 @@ describe("AccountItemRow", () => {
     expect(queryByTestId("account-row-0-total-spinner")).toBeNull();
   });
 
+  it("shows the spinner while a failed total is being retried", () => {
+    const { getByTestId, queryByText } = renderWithProviders(
+      <AccountItemRow {...defaultProps} fiatTotal={null} isLoadingFiatTotal />,
+    );
+
+    expect(getByTestId("account-row-0-total-spinner")).toBeTruthy();
+    expect(queryByText("$0.00")).toBeNull();
+  });
+
   it("shows a zero fiat total when none was fetched and nothing is loading", () => {
     const { getByText } = renderWithProviders(
       <AccountItemRow {...defaultProps} />,

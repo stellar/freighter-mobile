@@ -38,7 +38,7 @@ import { useCollectiblesStore } from "ducks/collectibles";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { useWalletKitStore } from "ducks/walletKit";
 import { getTokenType } from "helpers/balances";
-import { pxValue } from "helpers/dimensions";
+import { fsValue, pxValue } from "helpers/dimensions";
 import { isContractId } from "helpers/soroban";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
@@ -54,11 +54,21 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { View, ScrollView, RefreshControl } from "react-native";
+import {
+  ActivityIndicator,
+  View,
+  ScrollView,
+  RefreshControl,
+} from "react-native";
 
 // Bottom padding reserved at the end of the Home scroll content so the floating
 // "+ Add" pill (its height plus its bottom offset) never covers the last row.
 const FLOATING_ADD_BUTTON_CLEARANCE = 88;
+
+// Line height of the `Display lg` fiat hero (see Typography's DISPLAY_SIZES):
+// the hero's container is fixed to it so swapping between the loading spinner
+// and the total never shifts the layout below.
+const DISPLAY_LG_LINE_HEIGHT = 56;
 
 type HomeScreenProps = BottomTabScreenProps<
   MainTabStackParamList & RootStackParamList,
@@ -86,7 +96,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
 
     const { t } = useAppTranslation();
 
-    const { formattedBalance } = useTotalBalance();
+    const { formattedBalance, hasFiatTotal } = useTotalBalance();
     const {
       balances,
       isFunded,
@@ -328,10 +338,27 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
             paddingBottom: pxValue(FLOATING_ADD_BUTTON_CLEARANCE),
           }}
         >
-          <View className="pt-[35px] w-full items-center">
-            <Display lg medium>
-              {formattedBalance}
-            </Display>
+          {/* Fixed at the Display lg line height so swapping between the
+              spinner and the total never shifts the layout below. */}
+          <View
+            className="pt-[35px] w-full items-center justify-center"
+            style={{ height: pxValue(35) + fsValue(DISPLAY_LG_LINE_HEIGHT) }}
+          >
+            {isLoadingBalances && !hasFiatTotal ? (
+              // On a cold start the sum of an empty/unpriced map is a
+              // placeholder $0.00 — a spinner beats flashing a scary zero
+              // at the top of a funded wallet. Once a real total exists,
+              // later loads keep showing it (no spinner flicker per poll).
+              <ActivityIndicator
+                testID="home-fiat-total-spinner"
+                size="large"
+                color={themeColors.foreground.primary}
+              />
+            ) : (
+              <Display lg medium>
+                {formattedBalance}
+              </Display>
+            )}
           </View>
 
           <View className="flex-row gap-[12px] w-full px-6 py-6">
