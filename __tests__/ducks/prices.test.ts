@@ -418,7 +418,7 @@ describe("prices duck", () => {
         }),
       );
 
-      let pending: Promise<void> = Promise.resolve();
+      let pending: Promise<boolean> = Promise.resolve(true);
       act(() => {
         pending = result.current.fetchPricesForTokenIds({
           tokens: trendingIds,

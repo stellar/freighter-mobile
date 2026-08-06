@@ -98,7 +98,7 @@ describe("accountsFiatTotals duck", () => {
       lastUpdatedAt: null,
       lastNetwork: null,
     });
-    mockFetchPricesForTokenIds.mockResolvedValue(undefined);
+    mockFetchPricesForTokenIds.mockResolvedValue(true);
     mockPricesState();
     mockFetchBalances.mockResolvedValue({
       balances: mockBalanceMap,
@@ -647,6 +647,69 @@ describe("accountsFiatTotals duck", () => {
       excludePublicKey: PK_1,
     });
     expect(mockFetchBalances).toHaveBeenCalledTimes(1);
+  });
+
+  it("skips the freshness stamp when a price fetch fails mid-cycle", async () => {
+    mockFetchPricesForTokenIds.mockResolvedValue(false);
+
+    const { fetchAccountsFiatTotals } = useAccountsFiatTotalsStore.getState();
+
+    await fetchAccountsFiatTotals({
+      publicKeys: [PK_1],
+      network: NETWORKS.PUBLIC,
+    });
+
+    // Totals may be computed from missing quotes — the TTL must not protect
+    // them, so the next trigger refetches.
+    const { lastUpdatedAt, isLoading } = useAccountsFiatTotalsStore.getState();
+    expect(lastUpdatedAt).toBeNull();
+    expect(isLoading).toBe(false);
+
+    await fetchAccountsFiatTotals({
+      publicKeys: [PK_1],
+      network: NETWORKS.PUBLIC,
+    });
+    expect(mockFetchBalances).toHaveBeenCalledTimes(2);
+  });
+
+  it("resets totals and aborts the in-flight cycle on resetAccountsFiatTotals", async () => {
+    let resolveBalances!: (value: {
+      balances: typeof mockBalanceMap;
+      isFunded: boolean;
+      subentryCount: number;
+    }) => void;
+    mockFetchBalances.mockReturnValue(
+      new Promise((resolve) => {
+        resolveBalances = resolve;
+      }),
+    );
+
+    const { fetchAccountsFiatTotals, resetAccountsFiatTotals } =
+      useAccountsFiatTotalsStore.getState();
+
+    const inFlight = fetchAccountsFiatTotals({
+      publicKeys: [PK_1],
+      network: NETWORKS.PUBLIC,
+    });
+
+    // Wipe while the cycle is still fetching (e.g. logout mid-flight).
+    resetAccountsFiatTotals();
+
+    resolveBalances({
+      balances: mockBalanceMap,
+      isFunded: true,
+      subentryCount: 1,
+    });
+    await inFlight;
+
+    // The aborted cycle must not write pre-wipe totals back or re-stamp
+    // the cache fresh after the reset.
+    const { fiatTotals, lastUpdatedAt, isLoading, lastNetwork } =
+      useAccountsFiatTotalsStore.getState();
+    expect(fiatTotals).toEqual({});
+    expect(lastUpdatedAt).toBeNull();
+    expect(isLoading).toBe(false);
+    expect(lastNetwork).toBeNull();
   });
 
   it("clears totals from another network before fetching", async () => {

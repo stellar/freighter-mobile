@@ -33,6 +33,7 @@ import {
   KeyPair,
   TemporaryStore,
 } from "config/types";
+import { useAccountsFiatTotalsStore } from "ducks/accountsFiatTotals";
 import { useBalancesStore } from "ducks/balances";
 import { useBrowserTabsStore } from "ducks/browserTabs";
 import { useCollectiblesStore } from "ducks/collectibles";
@@ -1408,6 +1409,11 @@ export function clearAccountData(): void {
     isLoading: false,
     error: null,
   });
+
+  // Clear the wallets-list fiat totals. Uses the store action (not setState)
+  // so any in-flight fetch cycle is aborted too — otherwise it would write
+  // its pre-reset totals back a moment after this wipe.
+  useAccountsFiatTotalsStore.getState().resetAccountsFiatTotals();
 }
 
 /**
@@ -3037,6 +3043,10 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
     try {
       await createAccount(password);
 
+      // The new account becomes active: drop the previous account's data so
+      // nothing (e.g. priced balances) carries over into its first render.
+      clearAccountData();
+
       await Promise.all([get().getAllAccounts(), get().fetchActiveAccount()]);
 
       // account.created on the creation-success path with the real post-creation
@@ -3127,6 +3137,11 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
 
     try {
       await importSecretKeyLocal(params, get().authStatus);
+
+      // The imported account becomes active: drop the previous account's
+      // data so nothing (e.g. priced balances) carries over into its first
+      // render.
+      clearAccountData();
 
       await Promise.all([get().getAllAccounts(), get().fetchActiveAccount()]);
 

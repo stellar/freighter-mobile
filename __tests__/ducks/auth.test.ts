@@ -223,6 +223,15 @@ jest.mock("ducks/prices", () => ({
   },
 }));
 
+const mockResetAccountsFiatTotals = jest.fn();
+jest.mock("ducks/accountsFiatTotals", () => ({
+  useAccountsFiatTotalsStore: {
+    getState: jest.fn(() => ({
+      resetAccountsFiatTotals: mockResetAccountsFiatTotals,
+    })),
+  },
+}));
+
 describe("auth duck", () => {
   // Mock keyManager
   const mockKeyManager = {
@@ -2238,14 +2247,22 @@ describe("auth duck", () => {
       });
     });
 
-    it("should clear all three stores in a single call", () => {
-      // Verify all three stores are cleared
+    it("should reset the accounts fiat totals store through its action", () => {
+      // The action (not setState) also aborts any in-flight fetch cycle, so
+      // a cycle running during a wipe can't write pre-wipe totals back.
+      clearAccountData();
+
+      expect(mockResetAccountsFiatTotals).toHaveBeenCalledTimes(1);
+    });
+
+    it("should clear every account-scoped store in a single call", () => {
       clearAccountData();
 
       expect(useBalancesStore.setState).toHaveBeenCalledTimes(1);
       expect(useHistoryStore.setState).toHaveBeenCalledTimes(1);
       expect(usePricesStore.setState).toHaveBeenCalledTimes(1);
       expect(useCollectiblesStore.setState).toHaveBeenCalledTimes(1);
+      expect(mockResetAccountsFiatTotals).toHaveBeenCalledTimes(1);
     });
 
     it("should reset loading flags to false", () => {

@@ -65,6 +65,12 @@ interface AccountsFiatTotalsState {
     params: FetchAccountsFiatTotalsParams,
   ) => Promise<void>;
   syncAccountFiatTotal: (params: SyncAccountFiatTotalParams) => void;
+  /**
+   * Wipes all totals and aborts any in-flight fetch cycle. Called from
+   * `clearAccountData` so one wallet lifetime's totals never bleed into the
+   * next (e.g. wipe → restore of the same seed within the TTL).
+   */
+  resetAccountsFiatTotals: () => void;
 }
 
 /**
@@ -129,13 +135,8 @@ export const useAccountsFiatTotalsStore = create<AccountsFiatTotalsState>(
         excludePublicKey = undefined,
       }) => {
         if (!isMainnet(network)) {
-          fetchGeneration += 1;
-          set({
-            fiatTotals: {},
-            isLoading: false,
-            lastUpdatedAt: null,
-            lastNetwork: network,
-          });
+          get().resetAccountsFiatTotals();
+          set({ lastNetwork: network });
           return;
         }
 
@@ -196,6 +197,11 @@ export const useAccountsFiatTotalsStore = create<AccountsFiatTotalsState>(
         // tokens shared across accounts (e.g. XLM) aren't refetched per batch.
         const shouldRefreshPrices = forceRefresh || !isFresh || !isSameNetwork;
         const refreshedTokens = new Set<string>();
+        // The prices store swallows fetch errors (keeping whatever quotes it
+        // had), so totals computed after a failed fetch can be silently
+        // understated. Track it and skip the freshness stamp below — the TTL
+        // must not protect known-suspect numbers from the next trigger.
+        let pricesFetchFailed = false;
 
         try {
           for (
@@ -252,14 +258,18 @@ export const useAccountsFiatTotalsStore = create<AccountsFiatTotalsState>(
               // prices cache, so tokens held by several accounts (e.g. XLM)
               // are only requested once.
               // eslint-disable-next-line no-await-in-loop
-              await usePricesStore.getState().fetchPricesForTokenIds({
-                tokens: tokensToPrice,
-                network,
-                useV2,
-                forceRefresh: shouldRefreshPrices,
-              });
+              const pricesOk = await usePricesStore
+                .getState()
+                .fetchPricesForTokenIds({
+                  tokens: tokensToPrice,
+                  network,
+                  useV2,
+                  forceRefresh: shouldRefreshPrices,
+                });
 
-              if (shouldRefreshPrices) {
+              if (!pricesOk) {
+                pricesFetchFailed = true;
+              } else if (shouldRefreshPrices) {
                 tokensToPrice.forEach((token) => refreshedTokens.add(token));
               }
             }
@@ -288,7 +298,11 @@ export const useAccountsFiatTotalsStore = create<AccountsFiatTotalsState>(
           if (fetchGeneration === thisGeneration) {
             set({
               isLoading: false,
-              lastUpdatedAt: Date.now(),
+              // Totals possibly computed from missing quotes don't get the
+              // TTL's protection: leave the cache stale so the next trigger
+              // refetches. Legitimately unpriced tokens (no market price)
+              // are unaffected — this only trips on request failures.
+              lastUpdatedAt: pricesFetchFailed ? null : Date.now(),
               lastNetwork: network,
             });
           }
@@ -355,6 +369,20 @@ export const useAccountsFiatTotalsStore = create<AccountsFiatTotalsState>(
         }
 
         set({ fiatTotals: { ...get().fiatTotals, [publicKey]: total } });
+      },
+
+      resetAccountsFiatTotals: () => {
+        // The generation bump aborts any in-flight cycle at its next
+        // checkpoint — an external setState alone couldn't, and the old
+        // cycle would write its (pre-reset) totals back a moment later.
+        fetchGeneration += 1;
+
+        set({
+          fiatTotals: {},
+          isLoading: false,
+          lastUpdatedAt: null,
+          lastNetwork: null,
+        });
       },
     };
   },
