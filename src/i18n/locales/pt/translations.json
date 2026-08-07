@@ -767,7 +767,7 @@
     "title": "Adicionar outra carteira",
     "actions": {
       "createNewWallet": "Criar uma nova carteira",
-      "createNewWalletDescription": "Criar uma carteira na sua frase de recuperação",
+      "createNewWalletDescription": "Criar uma carteira a partir da sua frase de recuperação",
       "importSecretKey": "Importar uma chave secreta Stellar",
       "importSecretKeyDescription": "Adicionar uma carteira usando uma chave secreta"
     },

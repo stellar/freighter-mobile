@@ -804,7 +804,7 @@
     "title": "Add another wallet",
     "actions": {
       "createNewWallet": "Create a new wallet",
-      "createNewWalletDescription": "Create a wallet on your seed phrase",
+      "createNewWalletDescription": "Create a wallet from your seed phrase",
       "importSecretKey": "Import a Stellar secret key",
       "importSecretKeyDescription": "Add a wallet using a secret key"
     },
