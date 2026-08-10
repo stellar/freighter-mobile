@@ -1,3 +1,4 @@
+import { Asset, Networks } from "@stellar/stellar-sdk";
 import { BigNumber } from "bignumber.js";
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import {
@@ -17,6 +18,7 @@ import {
   calculateSpendableAmount,
   isAmountSpendable,
   getIssuerFromIdentifier,
+  isSacContractForAsset,
 } from "helpers/balances";
 
 describe("balances helpers", () => {
@@ -448,6 +450,51 @@ describe("balances helpers", () => {
     it("should return empty string for empty identifier", () => {
       const issuer = getIssuerFromIdentifier("");
       expect(issuer).toBe("");
+    });
+  });
+  describe("isSacContractForAsset", () => {
+    const issuer = "GCEODJVUUVYVFD5KT4TOEDTMXQ76OPFOQC2EMYYMLPXQCUVPOB6XRWPQ";
+    const canonical = `USDC:${issuer}`;
+    const sacContract = new Asset("USDC", issuer).contractId(Networks.TESTNET);
+
+    it("matches the asset's own SAC address", () => {
+      expect(
+        isSacContractForAsset(canonical, sacContract, Networks.TESTNET),
+      ).toBe(true);
+    });
+
+    it("rejects a contract that is not that asset's SAC", () => {
+      // The whole point of deriving rather than pattern-matching the name: a
+      // SEP-41 token can be named CODE:ISSUER without being that asset's SAC.
+      expect(
+        isSacContractForAsset(
+          canonical,
+          "CDMLFMKMMD7MWZP3FKUBZPVHTUEDLSX4BYGYKH4GCESXYHS3IHQ4EIG4",
+          Networks.TESTNET,
+        ),
+      ).toBe(false);
+    });
+
+    it("rejects the same asset's SAC derived for another network", () => {
+      expect(
+        isSacContractForAsset(canonical, sacContract, Networks.PUBLIC),
+      ).toBe(false);
+    });
+
+    it("returns false for a name that is not a canonical asset", () => {
+      expect(
+        isSacContractForAsset("My Token", sacContract, Networks.TESTNET),
+      ).toBe(false);
+      expect(isSacContractForAsset("", sacContract, Networks.TESTNET)).toBe(
+        false,
+      );
+      expect(
+        isSacContractForAsset(
+          "USDC:not-an-issuer",
+          sacContract,
+          Networks.TESTNET,
+        ),
+      ).toBe(false);
     });
   });
 });

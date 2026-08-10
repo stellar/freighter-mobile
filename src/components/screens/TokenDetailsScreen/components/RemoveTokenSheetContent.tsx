@@ -12,6 +12,11 @@ import React from "react";
 interface RemoveTokenSheetContentProps {
   /** The balance row the user chose to remove, or null when none selected */
   selectedToken: HeldBalanceItem | null;
+  /**
+   * Contract IDs that are in the balances list only because the user saved them
+   * locally — the only contract tokens removal can actually take off the list.
+   */
+  localOnlyTokenIds: string[];
   /** Active account (used to render the removal confirmation details) */
   account: ActiveAccount | null;
   /** Called when the user cancels the removal */
@@ -30,6 +35,7 @@ interface RemoveTokenSheetContentProps {
  * Decides which bottom-sheet body to show when removing a token:
  * - XLM (native)                        -> CannotRemove (native)
  * - positive balance or LP-share token  -> CannotRemove (hasBalance)
+ * - backend-reported contract token     -> CannotRemove (notLocallyAdded)
  * - zero-balance non-native token       -> the removable confirmation content
  *
  * Extracted from the deleted SimpleBalancesList so Token Details owns a single
@@ -39,6 +45,7 @@ export const RemoveTokenSheetContent: React.FC<
   RemoveTokenSheetContentProps
 > = ({
   selectedToken,
+  localOnlyTokenIds,
   account,
   onCancel,
   onRemoveToken,
@@ -75,6 +82,24 @@ export const RemoveTokenSheetContent: React.FC<
     return (
       <CannotRemoveTokenBottomSheet
         type={CannotRemoveType.hasBalance}
+        onDismiss={onDismiss}
+      />
+    );
+  }
+
+  // Removing a contract token only drops it from the local custom-token list,
+  // so it works only for tokens that are on screen *because* of that list. One
+  // the backend reports on its own would come straight back on the next poll;
+  // that case is hide-only. Classic trustlines are unaffected — removing those
+  // is a real changeTrust operation.
+  const isBackendReportedCustomToken =
+    selectedToken?.tokenType === TokenTypeWithCustomToken.CUSTOM_TOKEN &&
+    !localOnlyTokenIds.includes(selectedTokenIssuer);
+
+  if (isBackendReportedCustomToken) {
+    return (
+      <CannotRemoveTokenBottomSheet
+        type={CannotRemoveType.notLocallyAdded}
         onDismiss={onDismiss}
       />
     );

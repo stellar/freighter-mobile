@@ -1,4 +1,4 @@
-import { Asset as SdkToken, StrKey } from "@stellar/stellar-sdk";
+import { Asset as SdkToken, Networks, StrKey } from "@stellar/stellar-sdk";
 import BigNumber from "bignumber.js";
 import {
   NATIVE_TOKEN_CODE,
@@ -501,6 +501,40 @@ export function isSacContract(name: string): boolean {
     const token = new SdkToken(code, issuer);
     return true;
   } catch {
+    return false;
+  }
+}
+
+/**
+ * Answers whether `contractId` is the Stellar Asset Contract for the classic
+ * asset named `name` (a canonical `CODE:ISSUER` string).
+ *
+ * Stricter than `isSacContract`, which only checks that `name` parses as
+ * `CODE:ISSUER` and so returns true for any SEP-41 token that happens to be
+ * named that way. Here the SAC address is derived from the asset and compared
+ * to the contract in hand, so a false positive would require a genuine SAC.
+ *
+ * Used to dedupe a locally added SAC against the classic trustline for the
+ * same asset: the two are the same holding under different identities, and a
+ * classic balance is keyed by `CODE:ISSUER` rather than by contract ID.
+ */
+export function isSacContractForAsset(
+  name: string,
+  contractId: string,
+  networkPassphrase: Networks,
+): boolean {
+  if (!name || !name.includes(":")) {
+    return false;
+  }
+
+  const [code, issuer] = name.split(":");
+
+  try {
+    return (
+      new SdkToken(code, issuer).contractId(networkPassphrase) === contractId
+    );
+  } catch {
+    // `name` is not a valid classic asset (bad code or issuer).
     return false;
   }
 }

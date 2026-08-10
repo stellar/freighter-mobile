@@ -133,6 +133,15 @@ export interface MappedAccountBalances {
   balances: BalanceMap;
   isFunded: boolean;
   subentryCount: number;
+  /**
+   * Contract IDs whose presence in `balances` comes from the user's locally
+   * saved custom-token list rather than from the backend, stamped by
+   * `injectLocalTokenBalances`. These are the only contract tokens a user can
+   * remove from their balances view — everything the backend returns on its own
+   * can be hidden but not removed, because dropping the local entry would not
+   * stop the backend from returning it.
+   */
+  localOnlyTokenIds?: string[];
 }
 
 /**

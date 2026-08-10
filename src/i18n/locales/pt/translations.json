@@ -508,6 +508,10 @@
     "cantRemoveBalance": {
       "title": "O token ainda possui saldo",
       "description": "Você ainda não pode remover este token. Para remover uma token, o saldo deste token deve ser 0. Você precisa enviar ou vender o saldo restante antes de tentar novamente."
+    },
+    "cantRemoveNotLocallyAdded": {
+      "title": "Não é possível remover este token",
+      "description": "Este token foi adicionado à sua carteira automaticamente porque sua conta interage com ele, portanto removê-lo não o retirará da lista. Em vez disso, você pode ocultá-lo."
     }
   },
   "addTokenScreen": {

@@ -16,7 +16,12 @@
 /* eslint-disable arrow-body-style */
 import { Horizon, TransactionBuilder } from "@stellar/stellar-sdk";
 import { AxiosError } from "axios";
-import { NATIVE_TOKEN_CODE, NetworkDetails, NETWORKS } from "config/constants";
+import {
+  mapNetworkToNetworkDetails,
+  NATIVE_TOKEN_CODE,
+  NetworkDetails,
+  NETWORKS,
+} from "config/constants";
 import { BackendEnvConfig } from "config/envConfig";
 import { logger, normalizeError } from "config/logger";
 import {
@@ -32,6 +37,7 @@ import {
 import { addBlockaidScanResults } from "helpers/addBlockaidScanResults";
 import { getTokenType } from "helpers/balances";
 import { bigize } from "helpers/bigize";
+import { injectLocalTokenBalances } from "helpers/injectLocalTokenBalances";
 import {
   mapAccountBalancesV2,
   V2AccountBalances,
@@ -228,6 +234,12 @@ export type FetchBalancesResponse = {
   /* eslint-disable @typescript-eslint/no-explicit-any */
   error?: { horizon: any; soroban: any };
   /* eslint-enable @typescript-eslint/no-explicit-any */
+  /**
+   * Contract IDs present in `balances` only because they are in the user's
+   * locally saved custom-token list. The only contract tokens that may be
+   * removed from the balances view — see `MappedAccountBalances`.
+   */
+  localOnlyTokenIds?: string[];
 };
 
 /**
@@ -252,9 +264,17 @@ type FetchBalancesParams = {
  *
  * Multi-address fan-out endpoint; the app fetches one account at a time.
  * Addresses travel in the POST body, so the URL carries no G-address. The v2
- * response covers every token the account holds — trustlines, SACs, SEP-41
+ * response covers every token the account *holds* — trustlines, SACs, SEP-41
  * contract balances, and pool shares — so unlike v1 there is no `contract_ids`
- * param: custom tokens the wallet-backend has indexed come back automatically.
+ * param.
+ *
+ * "Holds" is the catch: the indexer only knows about tokens an account has a
+ * balance for, so a zero-balance SEP-41 token the user added by hand never
+ * comes back and would silently disappear. `contractIds` (the locally saved
+ * custom-token list) is therefore merged back in client-side by
+ * `injectLocalTokenBalances`, which is what v1 did server-side with its
+ * `contract_ids` hints. Skipped for an unfunded account: the not-funded UI
+ * renders in place of balances, so resolving tokens would only burn requests.
  *
  * The backend contract guarantees one result per requested address — an
  * unfunded account comes back as a matching entry with `is_funded: false`,
@@ -265,14 +285,17 @@ type FetchBalancesParams = {
  *
  * The v2 response has no Blockaid data yet — `addBlockaidScanResults`
  * replicates the v1 backend's scan-and-merge client-side so both paths return
- * the same payload.
+ * the same payload. It runs after the local merge so locally added tokens get
+ * Blockaid verdicts too, as they did on v1.
  */
 export const fetchBalancesV2 = async ({
   publicKey,
   network,
+  contractIds,
 }: {
   publicKey: string;
   network: NETWORKS;
+  contractIds?: string[];
 }): Promise<FetchBalancesResponse> => {
   const { data } = await freighterBackendV2.post<{
     data: V2AccountBalances[];
@@ -288,7 +311,31 @@ export const fetchBalancesV2 = async ({
     );
   }
 
-  return addBlockaidScanResults(mapAccountBalancesV2(account), network);
+  const mappedBalances = mapAccountBalancesV2(account);
+  const mergedBalances = account.is_funded
+    ? await injectLocalTokenBalances({
+        accountBalances: mappedBalances,
+        backendTokenIds: new Set(
+          (account.balances || []).map((balance) => balance.token_id),
+        ),
+        localTokenIds: contractIds,
+        networkPassphrase:
+          mapNetworkToNetworkDetails(network).networkPassphrase,
+        // getTokenDetails is defined further down this module. Safe: this
+        // closure only runs once a caller invokes the fetcher, long after the
+        // module has finished evaluating.
+        fetchTokenDetails: (contractId) =>
+          // eslint-disable-next-line @typescript-eslint/no-use-before-define
+          getTokenDetails({
+            contractId,
+            publicKey,
+            network,
+            shouldFetchBalance: true,
+          }),
+      })
+    : mappedBalances;
+
+  return addBlockaidScanResults(mergedBalances, network);
 };
 
 /**
@@ -330,12 +377,13 @@ export const fetchBalances = async ({
   useV2,
 }: FetchBalancesParams): Promise<FetchBalancesResponse> => {
   // The v2 balances endpoint only supports pubnet and testnet; Futurenet
-  // stays on v1 regardless of the flag. The v2 path needs no contractIds —
-  // indexed contract-token balances come back automatically.
+  // stays on v1 regardless of the flag. v2 sends no contract_ids — indexed
+  // contract-token balances come back on their own — but it still needs the
+  // local list to merge back the zero-balance tokens the indexer never returns.
   const isV2SupportedNetwork =
     network === NETWORKS.PUBLIC || network === NETWORKS.TESTNET;
   if (useV2 && isV2SupportedNetwork) {
-    return fetchBalancesV2({ publicKey, network });
+    return fetchBalancesV2({ publicKey, network, contractIds });
   }
 
   const params = new URLSearchParams({
@@ -378,6 +426,9 @@ export const fetchBalances = async ({
   return {
     ...data,
     balances: bigizedBalances,
+    // v1 returns a contract-token balance only for an ID it was handed, so
+    // every locally saved contract is removable from the balances view.
+    localOnlyTokenIds: contractIds ?? [],
   };
 };
 
@@ -611,6 +662,7 @@ export const getTokenDetails = async ({
   contractId,
   publicKey,
   network,
+  shouldFetchBalance,
   signal,
 }: GetTokenDetailsParams): Promise<TokenDetailsResponse | null> => {
   try {
@@ -622,6 +674,9 @@ export const getTokenDetails = async ({
         params: {
           pub_key: publicKey,
           network,
+          // Off by default: the balance costs the backend an extra contract
+          // call, and most callers only want the token's metadata.
+          ...(shouldFetchBalance ? { should_fetch_balance: true } : {}),
         },
         signal,
       },

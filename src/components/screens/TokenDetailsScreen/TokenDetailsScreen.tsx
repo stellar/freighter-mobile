@@ -105,6 +105,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
   const {
     scanResults,
     balanceItems,
+    localOnlyTokenIds,
     handleRefresh: refreshBalances,
   } = useBalancesList({
     publicKey: account?.publicKey ?? "",
@@ -332,6 +333,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
         customContent={
           <RemoveTokenSheetContent
             selectedToken={selectedBalance}
+            localOnlyTokenIds={localOnlyTokenIds}
             account={account}
             onCancel={handleCancelTokenRemoval}
             onRemoveToken={removeToken}
