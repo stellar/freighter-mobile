@@ -1249,7 +1249,13 @@
       "executableType": "Tipo de executável",
       "accountId": "ID da conta",
       "salt": "Salt",
-      "executableWasmHash": "Hash WASM executável"
+      "executableWasmHash": "Hash WASM executável",
+      "masterKeyWarningMessage": "Esta transação desativa a chave mestra da sua conta. Você pode perder permanentemente o acesso a esta conta, a menos que outro assinante com peso suficiente seja adicionado.",
+      "cleared": "Limpo",
+      "deleted": "Excluído",
+      "enabled": "Habilitado",
+      "disabled": "Desabilitado",
+      "unknownFlags": "Desconhecido ({{bits}})"
     },
     "claimPredicates": {
       "unconditional": "Incondicional",
