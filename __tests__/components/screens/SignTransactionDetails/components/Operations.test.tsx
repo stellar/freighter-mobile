@@ -281,6 +281,41 @@ describe("SignTransactionDetails > Operations: setOptions presence checks & mast
       ),
     ).toBeTruthy();
   });
+
+  it("setFlags: 0 discloses the raw value instead of a blank row", async () => {
+    const ops = operationsFor(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      Operation.setOptions({ setFlags: 0 as any }),
+    );
+
+    const { findByText } = render(<Operations operations={ops} />);
+
+    expect(await findByText(label("setFlags"), {}, FIND)).toBeTruthy();
+    // A present-but-zero mask must not render an empty value.
+    expect(await findByText("0", {}, FIND)).toBeTruthy();
+  });
+
+  it("setFlags with an unrecognized high bit still decodes the known flag and an unknown remainder", async () => {
+    // REQUIRED (1) | high bit (0x80000000). The high bit must surface as an
+    // unknown remainder, not be lost to signed-int coercion.
+    const ops = operationsFor(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      Operation.setOptions({ setFlags: 0x80000001 as any }),
+    );
+
+    const { findByText } = render(<Operations operations={ops} />);
+
+    // The mocked t() drops interpolation, so the unknown-bits value can't be
+    // asserted here; assert the known flag and that an unknown-remainder row is
+    // emitted (proving the high bit wasn't silently dropped).
+    expect(
+      await findByText(
+        /Authorization Required.*unknownFlags/,
+        {},
+        FIND,
+      ),
+    ).toBeTruthy();
+  });
 });
 
 describe("SignTransactionDetails > Operations: manageData presence checks", () => {

@@ -444,17 +444,20 @@ const RenderOperationByType = ({
         signer,
       } = operation;
 
+      // Account flags are a uint32 bitmask. JS bitwise operators coerce their
+      // operands to signed int32, so force the result back to unsigned with
+      // `>>> 0` when clearing matched bits — otherwise a set high bit (e.g.
+      // 0x80000000) would surface as a negative "Unknown" value.
+      /* eslint-disable no-bitwise */
       const decodeAuthorizationFlags = (bits: number): string => {
         const labels: string[] = [];
-        let remaining = bits;
+        let remaining = bits >>> 0;
         Object.entries(authorizationMap).forEach(([bit, label]) => {
           const value = Number(bit);
-          /* eslint-disable no-bitwise */
-          if ((bits & value) !== 0) {
+          if ((remaining & value) !== 0) {
             labels.push(label);
-            remaining &= ~value;
+            remaining = (remaining & ~value) >>> 0;
           }
-          /* eslint-enable no-bitwise */
         });
         if (remaining !== 0) {
           labels.push(
@@ -463,8 +466,12 @@ const RenderOperationByType = ({
             }),
           );
         }
-        return labels.join(", ");
+        // A present-but-zero mask (setFlags/clearFlags: 0) sets no bits, so no
+        // label matches. Disclose the raw value rather than an empty row — the
+        // whole point of this screen is not to hide a present field.
+        return labels.length > 0 ? labels.join(", ") : String(bits >>> 0);
       };
+      /* eslint-enable no-bitwise */
 
       const items: ListItemProps[] = [];
 
