@@ -1,0 +1,392 @@
+# ----------------------------------------------------------------------
+# SECURITY INVARIANT — read before editing.
+#
+# This workflow builds a DEBUG-SIGNED Android APK for PR review, signed with
+# the checked-in universal debug keystore (android/keystores/debug.keystore,
+# creds android/androiddebugkey). It deliberately references NO Play Console
+# / production signing credentials — no service-account JSON, no dev/prod
+# release keystore, no upload. If you find yourself adding any of those, you
+# are turning this into a Play/Closed-Testing workflow; that's a Phase 3
+# problem with a different threat model. Stop and read the design doc first.
+#
+# Do NOT add any of these triggers:
+#   issue_comment, pull_request_target, pull_request_review,
+#   pull_request_review_comment, workflow_run
+# They run with FULL repo secrets and a writable GITHUB_TOKEN even for fork
+# PRs — combined with checkout-of-PR-head + execute-code-from-PR (yarn
+# lifecycle scripts, ./scripts/gh-android-env, gradle), they enable RCE by
+# anyone who can open/comment on a PR.
+#
+# The job-level `if:` gate runs BEFORE secrets are injected. Keep it there.
+#
+# See "Fullstack PR Preview Flow" design doc, § Security and
+# § Pathways → Mobile → Android.
+# ----------------------------------------------------------------------
+---
+name: PR Preview Android Emulator
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+
+permissions: {}
+
+concurrency:
+  group: pr-preview-android-emulator-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build Android Emulator APK for PR Preview
+    if: >-
+      github.event.action != 'closed' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest-16-cores
+    timeout-minutes: 45
+    permissions:
+      contents: write # draft release create/delete + tag operations
+      pull-requests: write # sticky preview-link comment + add/remove preview-degraded label
+      issues: write # create the `preview-degraded` label definition if missing
+    env:
+      NODE_VERSION: "22"
+      RUBY_VERSION: 3.1.4
+      JAVA_VERSION: 17
+      # === Telemetry intentionally disabled in previews ===
+      SENTRY_PROPERTIES_CONTENT: "disabled-for-preview"
+      SENTRY_DSN: "disabled-for-preview"
+      AMPLITUDE_API_KEY: "disabled-for-preview"
+      AMPLITUDE_EXPERIMENT_DEPLOYMENT_KEY: "disabled-for-preview"
+      # === Backend URLs ===
+      # The six FREIGHTER_BACKEND_V{1,2}_{PROD,STG,DEV}_URL values are NOT set
+      # here — the "Resolve backend URLs" step sets them (sandbox from
+      # freighter-config, else staging) and writes them to $GITHUB_ENV before
+      # "Set env (preview routing)" materializes .env. Setting them here too
+      # would create a job-env-vs-$GITHUB_ENV precedence ambiguity.
+      # === WalletKit dev keys (existing isolation; production keys never injected) ===
+      WALLET_KIT_PROJECT_ID_PROD: ${{ secrets.WALLET_KIT_PROJECT_ID_DEV }}
+      WALLET_KIT_MT_NAME_PROD: ${{ vars.WALLET_KIT_MT_NAME_DEV }}
+      WALLET_KIT_MT_DESCRIPTION_PROD: ${{ vars.WALLET_KIT_MT_DESCRIPTION_DEV }}
+      WALLET_KIT_MT_URL_PROD: ${{ vars.WALLET_KIT_MT_URL_DEV }}
+      WALLET_KIT_MT_ICON_PROD: ${{ vars.WALLET_KIT_MT_ICON_DEV }}
+      WALLET_KIT_MT_REDIRECT_NATIVE_PROD:
+        ${{ vars.WALLET_KIT_MT_REDIRECT_NATIVE_DEV }}
+      WALLET_KIT_PROJECT_ID_DEV: ${{ secrets.WALLET_KIT_PROJECT_ID_DEV }}
+      WALLET_KIT_MT_NAME_DEV: ${{ vars.WALLET_KIT_MT_NAME_DEV }}
+      WALLET_KIT_MT_DESCRIPTION_DEV: ${{ vars.WALLET_KIT_MT_DESCRIPTION_DEV }}
+      WALLET_KIT_MT_URL_DEV: ${{ vars.WALLET_KIT_MT_URL_DEV }}
+      WALLET_KIT_MT_ICON_DEV: ${{ vars.WALLET_KIT_MT_ICON_DEV }}
+      WALLET_KIT_MT_REDIRECT_NATIVE_DEV:
+        ${{ vars.WALLET_KIT_MT_REDIRECT_NATIVE_DEV }}
+      MP_COLLECTIONS_ADDRESSES: ${{ vars.MP_COLLECTIONS_ADDRESSES }}
+      IS_E2E_TEST: "false"
+      E2E_TEST_RECOVERY_PHRASE: ""
+
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      # ── Phase 2: fetch the PR author's sandbox URL map from freighter-config ──
+      # Runs immediately after checkout, BEFORE any PR-controlled code executes,
+      # so the read-only deploy key is never in process scope while PR-authored
+      # code runs. Key material lives only inside this step. NEVER fails the
+      # build: unreachable/malformed config degrades to staging in "Resolve".
+      - name: Fetch freighter-config (sandbox URL map)
+        id: fetch_config
+        env:
+          FREIGHTER_CONFIG_DEPLOY_KEY:
+            ${{ secrets.FREIGHTER_CONFIG_DEPLOY_KEY }}
+        run: |
+          set -uo pipefail
+          KEY_FILE="$(mktemp)"
+          KNOWN_HOSTS="$(mktemp)"
+          CLONE_DIR="$(mktemp -d)"
+          CONFIG_OUT="${RUNNER_TEMP}/freighter-config.json"
+          cleanup() { rm -f "$KEY_FILE" "$KNOWN_HOSTS"; rm -rf "$CLONE_DIR"; }
+          trap cleanup EXIT
+
+          if [ -z "${FREIGHTER_CONFIG_DEPLOY_KEY}" ]; then
+            echo "config_available=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::FREIGHTER_CONFIG_DEPLOY_KEY is not set; falling back to staging"
+            exit 0
+          fi
+
+          printf '%s\n' "${FREIGHTER_CONFIG_DEPLOY_KEY}" > "$KEY_FILE"
+          chmod 600 "$KEY_FILE"
+
+          # Pin GitHub's SSH host keys (fetched over TLS-authenticated HTTPS —
+          # always current, no hardcoded key to rot) + StrictHostKeyChecking=yes
+          # so a network impersonator can't MITM the clone and serve an
+          # attacker-controlled config.json. If keys can't be fetched, degrade.
+          if ! curl -fsS --max-time 15 https://api.github.com/meta \
+               | jq -r '.ssh_keys[] | "github.com \(.)"' > "$KNOWN_HOSTS" \
+             || [ ! -s "$KNOWN_HOSTS" ]; then
+            echo "config_available=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Could not fetch GitHub SSH host keys; falling back to staging"
+            exit 0
+          fi
+
+          if GIT_SSH_COMMAND="ssh -i $KEY_FILE -o IdentitiesOnly=yes -o UserKnownHostsFile=$KNOWN_HOSTS -o StrictHostKeyChecking=yes" \
+               git clone --depth 1 git@github.com:stellar/freighter-config.git "$CLONE_DIR" 2>/tmp/fc-clone.err \
+             && [ -f "$CLONE_DIR/config.json" ] \
+             && jq empty "$CLONE_DIR/config.json" 2>/dev/null; then
+            cp "$CLONE_DIR/config.json" "$CONFIG_OUT"
+            echo "config_available=true" >> "$GITHUB_OUTPUT"
+            echo "Fetched freighter-config/config.json"
+          else
+            echo "config_available=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::freighter-config unreachable or config.json missing/invalid; falling back to staging"
+            cat /tmp/fc-clone.err 2>/dev/null || true
+          fi
+
+      # ── Phase 2: choose sandbox vs staging and inject the six backend URLs ──
+      - name: Resolve backend URLs (sandbox vs staging)
+        id: resolve_backend
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          CONFIG_AVAILABLE: ${{ steps.fetch_config.outputs.config_available }}
+          STAGING_V1_URL: ${{ vars.FREIGHTER_BACKEND_V1_PROD_URL }}
+          STAGING_V2_URL: ${{ vars.FREIGHTER_BACKEND_V2_STG_URL }}
+        run: |
+          set -euo pipefail
+          CONFIG_OUT="${RUNNER_TEMP}/freighter-config.json"
+          V1_URL=""; V2_URL=""; TARGET=""; DESC=""; NOTE=""; DEGRADED="false"
+
+          if [ "${CONFIG_AVAILABLE}" = "true" ]; then
+            V1_URL=$(jq -r --arg u "$PR_AUTHOR" '.engineers[$u].v1 // empty' "$CONFIG_OUT" 2>/dev/null || echo "")
+            V2_URL=$(jq -r --arg u "$PR_AUTHOR" '.engineers[$u].v2 // empty' "$CONFIG_OUT" 2>/dev/null || echo "")
+            if [ -n "$V1_URL" ] && [ -n "$V2_URL" ]; then
+              TARGET="sandbox"
+              DESC="sandbox (${PR_AUTHOR})"
+              NOTE="This preview points at a per-engineer **sandbox** backend — you must have sshuttle connected to reach it (see the \`/preview\` skill)."
+            else
+              TARGET="staging"
+              DESC="V1 prod + V2 staging (no sandbox configured for @${PR_AUTHOR})"
+              NOTE="This preview points at the public V1-production / V2-staging backend — no VPN needed."
+            fi
+          else
+            TARGET="staging-degraded"; DEGRADED="true"
+            DESC="V1 prod + V2 staging — freighter-config unreachable (preview degraded)"
+            NOTE="This preview points at the public V1-production / V2-staging backend — no VPN needed."
+          fi
+
+          if [ "$TARGET" != "sandbox" ]; then
+            V1_URL="$STAGING_V1_URL"
+            V2_URL="$STAGING_V2_URL"
+          fi
+
+          if [ -z "$V1_URL" ] || [ -z "$V2_URL" ]; then
+            echo "::error::Resolved backend URLs are empty (V1='$V1_URL' V2='$V2_URL'). Check repo vars FREIGHTER_BACKEND_V1_PROD_URL / FREIGHTER_BACKEND_V2_STG_URL."
+            exit 1
+          fi
+
+          {
+            echo "FREIGHTER_BACKEND_V1_PROD_URL=${V1_URL}"
+            echo "FREIGHTER_BACKEND_V1_STG_URL=${V1_URL}"
+            echo "FREIGHTER_BACKEND_V1_DEV_URL=${V1_URL}"
+            echo "FREIGHTER_BACKEND_V2_PROD_URL=${V2_URL}"
+            echo "FREIGHTER_BACKEND_V2_STG_URL=${V2_URL}"
+            echo "FREIGHTER_BACKEND_V2_DEV_URL=${V2_URL}"
+            echo "BACKEND_TARGET=${TARGET}"
+            echo "BACKEND_DESC=${DESC}"
+            echo "BACKEND_NOTE=${NOTE}"
+          } >> "$GITHUB_ENV"
+          echo "Backend target: ${TARGET} — ${DESC}"
+
+          gh label create preview-degraded --repo "$GH_REPO" \
+            --color B60205 \
+            --description "PR preview fell back to staging because freighter-config was unreachable" \
+            2>/dev/null || true
+          if [ "$DEGRADED" = "true" ]; then
+            gh pr edit "$PR_NUMBER" --repo "$GH_REPO" --add-label preview-degraded || true
+          else
+            gh pr edit "$PR_NUMBER" --repo "$GH_REPO" --remove-label preview-degraded || true
+          fi
+
+      - name: Make scripts executable
+        run: find scripts -type f -exec chmod +x {} \;
+
+      - name: Stub sentry.properties (no real telemetry in previews)
+        run: echo "disabled-for-preview" > ./android/sentry.properties
+
+      - name: Set env (preview routing)
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          export ANDROID_FLAVOR="dev"
+          # Allowlist what scripts/gh-android-env can write into $GITHUB_ENV
+          # (PR-controlled code running before privileged steps — same tripwire
+          # rationale as the iOS workflow). This also creates .env via
+          # EnvFileCreator, reading the FREIGHTER_BACKEND_* values set above.
+          ./scripts/gh-android-env \
+            | grep -E '^(ANDROID_FLAVOR|FASTLANE_LANE|APP_ID|APP_VERSION|APP_NAME|BUILD_VERSION|ENVFILE)=' \
+            >> "$GITHUB_ENV"
+          {
+            echo "PR_NUMBER=${PR_NUMBER}"
+            echo "PR_HEAD_SHA=${PR_HEAD_SHA}"
+          } >> "$GITHUB_ENV"
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Set up Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "yarn"
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@6aaa311d81eba98ae12eaffbcb63296ace0efcde # v1
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          bundler-cache: true
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v5
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: zulu
+          cache: gradle
+
+      - name: Set up Android SDK and NDK for 16KB page size alignment
+        run: ./scripts/setup-android-ndk-16kb
+
+      - name: Run Yarn Install
+        run: yarn install --immutable
+
+      - name: Run Post Install
+        run: yarn postinstall
+
+      - name: Build Android Emulator APK (dev flavor, release, debug-signed)
+        run: |
+          set -euo pipefail
+          # Release build so React Native's bundle task embeds the JS into the
+          # APK (a Debug build would need a Metro dev server at runtime, forcing
+          # reviewers to run Metro). We override signing to the checked-in
+          # universal debug keystore via gradle's injected-signing properties —
+          # this yields an installable APK with NO real/dev/prod signing
+          # credentials referenced (parallels the iOS ad-hoc-signing choice).
+          cd android
+          ./gradlew assembleDevRelease --no-daemon \
+            -Pandroid.injected.signing.store.file="${GITHUB_WORKSPACE}/android/keystores/debug.keystore" \
+            -Pandroid.injected.signing.store.password=android \
+            -Pandroid.injected.signing.key.alias=androiddebugkey \
+            -Pandroid.injected.signing.key.password=android
+
+      - name: Locate APK
+        id: pack
+        env:
+          PR_NUMBER: ${{ env.PR_NUMBER }}
+        run: |
+          set -euo pipefail
+          APK_PATH=$(find android/app/build/outputs/apk/dev/release -maxdepth 1 -name "*.apk" -type f | head -1)
+          if [ -z "$APK_PATH" ]; then
+            echo "::error::No APK found in android/app/build/outputs/apk/dev/release"
+            find android/app/build/outputs -name "*.apk" -type f | head -10
+            exit 1
+          fi
+          DEST="/tmp/freighter-emulator-pr-${PR_NUMBER}.apk"
+          cp "$APK_PATH" "$DEST"
+          ls -lh "$DEST"
+          echo "apk_path=${DEST}" >> "$GITHUB_OUTPUT"
+
+      - name: Delete existing preview release (idempotent)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ env.PR_NUMBER }}
+        run: |
+          if gh release view "pr-preview-android-${PR_NUMBER}" > /dev/null 2>&1; then
+            IS_DRAFT=$(gh release view "pr-preview-android-${PR_NUMBER}" --json isDraft --jq '.isDraft')
+            if [ "$IS_DRAFT" = "true" ]; then
+              gh release delete "pr-preview-android-${PR_NUMBER}" --yes
+            else
+              gh release delete "pr-preview-android-${PR_NUMBER}" --yes --cleanup-tag
+            fi
+          fi
+
+      - name: Create draft preview release
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ env.PR_NUMBER }}
+          PR_HEAD_SHA: ${{ env.PR_HEAD_SHA }}
+          APK_PATH: ${{ steps.pack.outputs.apk_path }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          set -euo pipefail
+          cat > /tmp/release-notes.md <<EOF
+          Internal preview Android Emulator APK for PR [#${PR_NUMBER}](${PR_URL}). SDF collaborators only — non-SDF GitHub users get 404 on this page. Auto-deleted when the PR is closed.
+
+          **Commit:** ${PR_HEAD_SHA}
+          **Backend:** ${BACKEND_DESC} (read-only indexer; wallet writes go direct to Horizon/RPC)
+
+          ${BACKEND_NOTE}
+
+          ### How to install (Android Emulator, requires Android Studio)
+
+          1. Download the \`.apk\` from the Assets section below
+          2. Start an emulator (Android Studio → Device Manager), or use a running one
+          3. Drag the \`.apk\` onto the emulator window, or run \`adb install <path-to-apk>\`
+
+          ### Important
+
+          This code is still under review and may contain bugs that have not been caught yet. **Use caution before signing transactions with real funds** — consider testing with a testnet wallet instead.
+
+          _Physical-device Android testing returns in Phase 3 (Tailscale + Closed Testing) — not available today._
+          EOF
+          gh release create "pr-preview-android-${PR_NUMBER}" \
+            "${APK_PATH}" \
+            --title "PR Preview #${PR_NUMBER} (Android Emulator)" \
+            --notes-file /tmp/release-notes.md \
+            --draft > /dev/null
+          URL=$(gh release view "pr-preview-android-${PR_NUMBER}" --json url --jq '.url')
+          echo "url=${URL}" >> "$GITHUB_OUTPUT"
+
+      - name: Post/update sticky PR comment with download link
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ env.PR_NUMBER }}
+          RELEASE_URL: ${{ steps.release.outputs.url }}
+        run: |
+          set -euo pipefail
+          MARKER="<!-- pr-preview-android-emulator-comment -->"
+          BODY="${MARKER}"$'\n'"Android Emulator preview APK is ready: ${RELEASE_URL}"$'\n'"Backend: ${BACKEND_DESC}. SDF collaborators only — install instructions in the release description."
+          EXISTING=$(gh api --paginate "repos/${GH_REPO}/issues/${PR_NUMBER}/comments" \
+            --jq ".[] | select(.body | startswith(\"${MARKER}\")) | .id" | head -1)
+          if [ -n "$EXISTING" ]; then
+            gh api -X PATCH "repos/${GH_REPO}/issues/comments/${EXISTING}" -f body="$BODY"
+          else
+            gh pr comment "${PR_NUMBER}" --body "$BODY"
+          fi
+
+  cleanup:
+    name: Cleanup PR Preview Draft Release (Android)
+    if: >-
+      github.event.action == 'closed' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: Delete draft release and tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          if gh release view "pr-preview-android-${PR_NUMBER}" > /dev/null 2>&1; then
+            IS_DRAFT=$(gh release view "pr-preview-android-${PR_NUMBER}" --json isDraft --jq '.isDraft')
+            if [ "$IS_DRAFT" = "true" ]; then
+              gh release delete "pr-preview-android-${PR_NUMBER}" --yes
+            else
+              gh release delete "pr-preview-android-${PR_NUMBER}" --yes --cleanup-tag
+            fi
+          fi
