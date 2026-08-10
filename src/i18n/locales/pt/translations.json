@@ -771,7 +771,7 @@
     "title": "Adicionar outra carteira",
     "actions": {
       "createNewWallet": "Criar uma nova carteira",
-      "createNewWalletDescription": "Criar uma carteira na sua frase de recuperação",
+      "createNewWalletDescription": "Criar uma carteira a partir da sua frase de recuperação",
       "importSecretKey": "Importar uma chave secreta Stellar",
       "importSecretKeyDescription": "Adicionar uma carteira usando uma chave secreta"
     },
@@ -862,7 +862,7 @@
     "errorAuthEntryNetworkMismatch": "A entrada de autorização é para uma rede diferente",
     "errorAuthEntryAddressMismatch": "A entrada de autorização está vinculada a uma conta diferente",
     "errorEmptyMessage": "Não é possível assinar mensagem vazia",
-    "errorMessageTooLong": "Mensagem muito longa (máximo 1KB)",
+    "errorMessageTooLong": "Mensagem muito longa (máximo 10KB)",
     "errorSubmitting": "Erro ao enviar a transação",
     "errorRespondingRequest": "Erro ao responder à solicitação de transação",
     "errorWrongNetwork": "Rede incorreta",
