@@ -803,7 +803,7 @@
     "title": "Add wallet",
     "actions": {
       "createNewWallet": "Create a new wallet",
-      "createNewWalletDescription": "Create a wallet on your seed phrase",
+      "createNewWalletDescription": "Create a wallet from your seed phrase",
       "importSecretKey": "Import a Stellar secret key",
       "importSecretKeyDescription": "Add a wallet using a secret key"
     }
@@ -1244,7 +1244,13 @@
       "executableType": "Executable Type",
       "accountId": "Account ID",
       "salt": "Salt",
-      "executableWasmHash": "Executable WASM Hash"
+      "executableWasmHash": "Executable WASM Hash",
+      "masterKeyWarningMessage": "This transaction disables your account's master key. You may permanently lose access to this account unless another signer with sufficient weight is added.",
+      "cleared": "Cleared",
+      "deleted": "Deleted",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "unknownFlags": "Unknown ({{bits}})"
     },
     "claimPredicates": {
       "unconditional": "Unconditional",
