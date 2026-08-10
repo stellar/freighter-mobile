@@ -19,10 +19,13 @@
 # membership; verify it behaves as expected for teammates whose org membership
 # is private before relying on it.
 #
-# Requires a SLACK_WEBHOOK secret. This repo had no Slack workflows before, so
-# confirm the secret resolves here — it is used by several workflows in
-# stellar/freighter, but if it is a repo-level secret there rather than an
-# org-level one it must be added to this repo separately.
+# Requires a SLACK_WEBHOOK_GH_ISSUES secret on this repo, holding an incoming
+# webhook bound to #gh-wallet-eng. This is deliberately separate from the
+# SLACK_WEBHOOK secret used by the freighter release workflows: a Slack-app
+# incoming webhook is bound to the channel it was installed against and
+# ignores the channel in the payload, so posting to a different channel needs
+# its own webhook. SLACK_CHANNEL below is kept for documentation and only
+# takes effect on legacy webhooks.
 
 name: Notify Slack of new issue
 
@@ -51,4 +54,4 @@ jobs:
             github.event.issue.user.login }}"
           SLACK_TITLE: "New issue in ${{ github.repository }}"
           SLACK_USERNAME: Freighter Administrative Assistant
-          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_GH_ISSUES }}
