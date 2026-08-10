@@ -16,8 +16,13 @@ export const ValidationErrorKeys = {
   AUTH_ENTRY_ADDRESS_MISMATCH: "walletKit.errorAuthEntryAddressMismatch",
 } as const;
 
-/** Max UTF-8 byte length for sign_message content per SEP-53. */
-export const SIGN_MESSAGE_MAX_BYTES = 1024;
+/**
+ * Max UTF-8 byte length for sign_message content. SEP-53 imposes no size
+ * limit (and the browser extension enforces none) — this is a sanity cap
+ * against absurd WalletConnect payloads, sized to comfortably fit the JSON
+ * payloads dApps actually sign (see stellar/freighter-mobile#957).
+ */
+export const SIGN_MESSAGE_MAX_BYTES = 10240;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -46,7 +51,7 @@ export function validateSignMessageContent(
 }
 
 /**
- * Validates sign_message length: max 1KB UTF-8 bytes per SEP-53.
+ * Validates sign_message length against SIGN_MESSAGE_MAX_BYTES (UTF-8 bytes).
  */
 export function validateSignMessageLength(
   message: string,

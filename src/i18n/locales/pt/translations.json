@@ -767,7 +767,7 @@
     "title": "Adicionar outra carteira",
     "actions": {
       "createNewWallet": "Criar uma nova carteira",
-      "createNewWalletDescription": "Criar uma carteira na sua frase de recuperação",
+      "createNewWalletDescription": "Criar uma carteira a partir da sua frase de recuperação",
       "importSecretKey": "Importar uma chave secreta Stellar",
       "importSecretKeyDescription": "Adicionar uma carteira usando uma chave secreta"
     },
@@ -858,7 +858,7 @@
     "errorAuthEntryNetworkMismatch": "A entrada de autorização é para uma rede diferente",
     "errorAuthEntryAddressMismatch": "A entrada de autorização está vinculada a uma conta diferente",
     "errorEmptyMessage": "Não é possível assinar mensagem vazia",
-    "errorMessageTooLong": "Mensagem muito longa (máximo 1KB)",
+    "errorMessageTooLong": "Mensagem muito longa (máximo 10KB)",
     "errorSubmitting": "Erro ao enviar a transação",
     "errorRespondingRequest": "Erro ao responder à solicitação de transação",
     "errorWrongNetwork": "Rede incorreta",
@@ -1054,7 +1054,8 @@
       "invalidRecipientAddress": "Endereço do destinatário inválido",
       "cannotSendToSelf": "Não é possível enviar para você mesmo",
       "invalidDecimals": "Decimais inválidos ou ausentes para token personalizado",
-      "invalidFederationMemo": "O servidor de federação retornou um memo inválido. Por favor, verifique o endereço e tente novamente."
+      "invalidFederationMemo": "O servidor de federação retornou um memo inválido. Por favor, verifique o endereço e tente novamente.",
+      "recipientIsTokenContract": "Não é possível enviar para o contrato do próprio token"
     }
   },
   "welcomeBanner": {
