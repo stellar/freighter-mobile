@@ -125,15 +125,22 @@ jest.mock("ducks/balances", () => ({
   }),
 }));
 
+// Mutable so tests can simulate the balances store's 3s price-timeout path
+// (balances settled, quotes still in flight).
+let mockIsPricesLoading = false;
+
 jest.mock("ducks/prices", () => ({
-  usePricesStore: jest.fn(() => ({
-    pricesByNetwork: {},
-    sourceByNetwork: {},
-    isLoading: false,
-    error: null,
-    lastUpdated: null,
-    fetchPricesForBalances: jest.fn(),
-  })),
+  usePricesStore: jest.fn((selector) => {
+    const mockState = {
+      pricesByNetwork: {},
+      sourceByNetwork: {},
+      isLoading: mockIsPricesLoading,
+      error: null,
+      lastUpdated: null,
+      fetchPricesForBalances: jest.fn(),
+    };
+    return selector ? selector(mockState) : mockState;
+  }),
   usePricesForNetwork: jest.fn(() => ({})),
 }));
 
@@ -292,6 +299,7 @@ describe("HomeScreen", () => {
     jest.clearAllMocks();
     jest.useFakeTimers();
     mockIsLoadingBalances = false;
+    mockIsPricesLoading = false;
     mockNetwork = "TESTNET";
   });
 
@@ -359,6 +367,24 @@ describe("HomeScreen", () => {
       totalBalance: "350.75",
       hasFiatTotal: true,
     });
+  });
+
+  it("keeps the hero spinner through the price-timeout window", () => {
+    // Balances settled unpriced (the store's 3s timeout path) while the
+    // quotes are still in flight — the hero must not flash $0.00.
+    const { useTotalBalance } = jest.requireMock("hooks/useTotalBalance");
+    useTotalBalance.mockReturnValueOnce({
+      formattedBalance: "$0.00",
+      totalBalance: "0",
+      hasFiatTotal: false,
+    });
+    mockIsLoadingBalances = false;
+    mockIsPricesLoading = true;
+
+    const { getByTestId, queryByText } = renderHomeScreen();
+
+    expect(getByTestId("home-fiat-total-spinner")).toBeTruthy();
+    expect(queryByText("$0.00")).toBeNull();
   });
 
   it("renders action buttons correctly, without the removed copy button", () => {

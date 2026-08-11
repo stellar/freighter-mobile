@@ -35,6 +35,7 @@ import { useAccountsFiatTotalsStore } from "ducks/accountsFiatTotals";
 import { useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
 import { useCollectiblesStore } from "ducks/collectibles";
+import { usePricesStore } from "ducks/prices";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { useWalletKitStore } from "ducks/walletKit";
 import { getTokenType } from "helpers/balances";
@@ -105,6 +106,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
     } = useBalancesStore();
     const fetchCollectibles = useCollectiblesStore((s) => s.fetchCollectibles);
     const isCollectiblesLoading = useCollectiblesStore((s) => s.isLoading);
+    // Covers the balances store's 3s price-timeout path: balances settle
+    // with an unpriced map while quotes are still in flight, so the hero
+    // must keep its spinner until the prices store finishes too.
+    const isPricesLoading = usePricesStore((state) => state.isLoading);
     const { fetchActiveSessions } = useWalletKitStore();
     const { swap_enabled: swapEnabled } = useRemoteConfigStore();
     const fetchAccountsFiatTotals = useAccountsFiatTotalsStore(
@@ -344,7 +349,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
             className="pt-[35px] w-full items-center justify-center"
             style={{ height: pxValue(35) + fsValue(DISPLAY_LG_LINE_HEIGHT) }}
           >
-            {isLoadingBalances && !hasFiatTotal ? (
+            {(isLoadingBalances || isPricesLoading) && !hasFiatTotal ? (
               // On a cold start the sum of an empty/unpriced map is a
               // placeholder $0.00 — a spinner beats flashing a scary zero
               // at the top of a funded wallet. Once a real total exists,
