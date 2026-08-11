@@ -2255,6 +2255,17 @@ describe("auth duck", () => {
       expect(mockResetAccountsFiatTotals).toHaveBeenCalledTimes(1);
     });
 
+    it("should keep the wallets-list totals when keepAccountsFiatTotals is set", () => {
+      // Same-wallet transitions (account switch, add/import account) keep
+      // the other accounts' totals — they're still valid, and dropping them
+      // flashes $0.00 rows in the open wallets sheet mid-switch.
+      clearAccountData({ keepAccountsFiatTotals: true });
+
+      expect(mockResetAccountsFiatTotals).not.toHaveBeenCalled();
+      // The account-scoped stores still reset as usual.
+      expect(useBalancesStore.setState).toHaveBeenCalledTimes(1);
+    });
+
     it("should clear every account-scoped store in a single call", () => {
       clearAccountData();
 
