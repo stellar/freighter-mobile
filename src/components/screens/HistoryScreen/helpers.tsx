@@ -295,9 +295,19 @@ const settingsGlyphIcon = (glyph: SettingsGlyph): React.ReactElement | null => {
   }
 };
 
-/** Turns a v2 RowIconDescriptor into the row's leading icon element. */
+/**
+ * Turns a v2 RowIconDescriptor into the row's leading icon element.
+ *
+ * `themeColors` is required, not optional: `Icon` defaults to
+ * `THEME.colors.primary` (Icon/index.tsx), which is `PALETTE.dark.lilac["09"]` —
+ * the brand lilac — so an icon rendered without an explicit `color` comes out
+ * purple. Every v1 mapper passes `themeColors.foreground.primary` (see
+ * payment.tsx), and these renderers shipped without it, which is exactly how
+ * the purple icons reached a device.
+ */
 export const renderRowIcon = (
   descriptor: RowIconDescriptor,
+  themeColors: ThemeColors,
 ): React.ReactElement | null => {
   switch (descriptor.type) {
     case "asset":
@@ -306,12 +316,24 @@ export const renderRowIcon = (
       return renderProtocolIcon(descriptor.src);
     case "contract":
       // mirrors soroban.tsx's generic contract-interaction row icon
-      return <Icon.FileCode02 size={26} circle />;
+      return (
+        <Icon.FileCode02
+          size={26}
+          circle
+          color={themeColors.foreground.primary}
+        />
+      );
     case "settings":
       return settingsGlyphIcon(descriptor.glyph);
     case "failed":
       // mirrors failed.tsx's row icon
-      return <Icon.Wallet03 size={26} circle />;
+      return (
+        <Icon.Wallet03
+          size={26}
+          circle
+          color={themeColors.foreground.primary}
+        />
+      );
     case "account":
       // create and merge share createAccount.tsx's funding-view icon: v1 has
       // no distinct "merge" treatment (see the Step 4 inventory in the task
@@ -333,33 +355,43 @@ export const renderRowIcon = (
   }
 };
 
-/** Turns a v2 HistoryEntry's secondaryIcon into the row's trailing icon. */
+/**
+ * Turns a v2 HistoryEntry's secondaryIcon into the row's trailing icon.
+ *
+ * See renderRowIcon on why `themeColors` is required: without an explicit
+ * `color`, `Icon` falls back to the brand lilac and these render purple.
+ * v1's payment.tsx passes `themeColors.foreground.primary` for the very same
+ * arrow icons.
+ */
 export const renderSecondaryIcon = (
   icon: HistoryEntry["secondaryIcon"],
+  themeColors: ThemeColors,
 ): React.ReactElement | null => {
   if (!icon) {
     return null;
   }
 
+  const color = themeColors.foreground.primary;
+
   switch (icon) {
     case "sent":
       // mirrors payment.tsx's sent action icon
-      return <Icon.ArrowCircleUp size={16} />;
+      return <Icon.ArrowCircleUp size={16} color={color} />;
     case "received":
       // mirrors payment.tsx's received action icon
-      return <Icon.ArrowCircleDown size={16} />;
+      return <Icon.ArrowCircleDown size={16} color={color} />;
     case "swap":
       // mirrors swap.tsx's action icon
-      return <Icon.RefreshCw05 size={16} />;
+      return <Icon.RefreshCw05 size={16} color={color} />;
     case "add":
       // mirrors changeTrust.tsx / createAccount.tsx's "added" action icon
-      return <Icon.PlusCircle size={16} />;
+      return <Icon.PlusCircle size={16} color={color} />;
     case "remove":
       // mirrors changeTrust.tsx's "removed" action icon
-      return <Icon.MinusCircle size={16} />;
+      return <Icon.MinusCircle size={16} color={color} />;
     case "contract":
       // mirrors soroban.tsx's contract action icon
-      return <Icon.FileCode02 size={16} />;
+      return <Icon.FileCode02 size={16} color={color} />;
     case "failed":
       // mirrors failed.tsx's action icon exactly, themeColor included
       return <Icon.XCircle size={16} themeColor="red" />;

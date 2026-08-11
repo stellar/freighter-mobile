@@ -906,10 +906,22 @@ describe("formatAmount helpers", () => {
     });
 
     it("does not lose precision for a whole part above Number.MAX_SAFE_INTEGER", () => {
-      // 2^53 - 1 = 9007199254740991; one past it would silently round under
-      // Number, but BigInt formatting preserves every digit.
+      // 2^53 - 1 = 9007199254740991. Rounding this to ...992 is the failure
+      // this test exists to prevent, so assert that directly rather than only
+      // via the formatted string.
       const huge = "9007199254740993.1234567";
-      expect(formatAmount(huge, "en-US")).toBe("9,007,199,254,740,993.1234567");
+      const formatted = formatAmount(huge, "en-US");
+
+      expect(formatted).toContain("9007199254740993");
+      expect(formatted).not.toContain("9007199254740992");
+
+      // Grouping is deliberately dropped past the safe-integer boundary: the
+      // whole part can no longer go through Intl (Hermes rejects BigInt), and
+      // hand-rolling separators would get non-3-digit grouping locales wrong.
+      // Digits are preserved, which is the point. Unreachable for real amounts
+      // — formatTokenAmount pre-scales, so the largest possible XLM whole part
+      // is 922337203685, twelve digits.
+      expect(formatted).toBe("9007199254740993.1234567");
     });
 
     it("handles a leading-dot input with no whole-part digits", () => {
@@ -1033,6 +1045,65 @@ describe("formatAmount helpers", () => {
           );
         },
       );
+    });
+
+    /**
+     * Hermes regression guard.
+     *
+     * These two assertions exist because the shipped bug was invisible to every
+     * output-based test: Node's `Intl.NumberFormat.prototype.format` accepts a
+     * BigInt (ES2020), so Jest passed, while Hermes throws
+     * `TypeError: Cannot convert BigInt to number` and the History tab crashed
+     * on device. `formatToParts` is likewise absent from Hermes. So these
+     * assert the *contract with the JS runtime* rather than the output — the
+     * only form of assertion that can fail in Node for a Hermes-only defect.
+     */
+    describe("Hermes runtime contract", () => {
+      it("never passes a BigInt to Intl.NumberFormat#format", () => {
+        // `format` is an ACCESSOR on the prototype (a getter returning a bound
+        // function), not a plain method, so it cannot be intercepted with
+        // jest.spyOn — TypeScript models it as a method, and the accessor
+        // overload resolves to `never`. Swap the descriptor directly instead,
+        // and restore it in `finally` so a failure cannot leak the patch into
+        // other tests in this file.
+        const seen: string[] = [];
+        const proto = Intl.NumberFormat.prototype;
+        const descriptor = Object.getOwnPropertyDescriptor(proto, "format")!;
+        const originalGetter = descriptor.get!;
+
+        Object.defineProperty(proto, "format", {
+          ...descriptor,
+          get(this: Intl.NumberFormat) {
+            const bound = originalGetter.call(this) as (v: unknown) => string;
+            return (v: unknown) => {
+              seen.push(typeof v);
+              return bound(v);
+            };
+          },
+        });
+
+        try {
+          formatAmount("1234.56", "en-US");
+          formatAmount("922337203685.4775807", "pt");
+          formatAmount("1234", "en-US");
+        } finally {
+          Object.defineProperty(proto, "format", descriptor);
+        }
+
+        expect(seen.length).toBeGreaterThan(0);
+        expect(seen).not.toContain("bigint");
+      });
+
+      it("never calls Intl.NumberFormat#formatToParts", () => {
+        const spy = jest.spyOn(Intl.NumberFormat.prototype, "formatToParts");
+
+        formatAmount("1234.56", "en-US");
+        formatAmount("1234,56".replace(",", "."), "pt");
+
+        const calls = spy.mock.calls.length;
+        spy.mockRestore();
+        expect(calls).toBe(0);
+      });
     });
   });
 });

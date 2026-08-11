@@ -19,10 +19,12 @@ import {
 } from "components/screens/HistoryScreen/types";
 import { formatMonthDay } from "helpers/date";
 import { HistoryEntry } from "helpers/history/v2/model";
+import { ThemeColors } from "hooks/useColors";
 import { t } from "i18next";
 
 export const mapV2EntryToHistoryItemData = (
   entry: HistoryEntry,
+  themeColors: ThemeColors,
 ): HistoryItemData => {
   const { amounts } = entry;
 
@@ -44,8 +46,8 @@ export const mapV2EntryToHistoryItemData = (
     dateText: formatMonthDay(entry.createdAt),
     amountText,
     isAddingFunds: primaryAmount ? primaryAmount.direction === "credit" : false,
-    IconComponent: renderRowIcon(entry.rowIcon),
-    ActionIconComponent: renderSecondaryIcon(entry.secondaryIcon),
+    IconComponent: renderRowIcon(entry.rowIcon, themeColors),
+    ActionIconComponent: renderSecondaryIcon(entry.secondaryIcon, themeColors),
     transactionStatus:
       entry.details.status === "failed"
         ? TransactionStatus.FAILED

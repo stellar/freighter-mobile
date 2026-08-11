@@ -427,27 +427,12 @@
         "spender": "Spender",
         "amount": "Amount",
         "expirationLedger": "Expiration ledger",
-        "fee": "Fee",
-        "rate": "Rate",
-        "counterparty": "To / From",
-        "balanceChanges": "Balance changes",
-        "statusFailed": "Failed",
         "advancedTitle": "Transaction details",
         "back": "Back",
         "operations": "Operations",
         "xdrDecodeFailed": "Failed to decode",
         "dataEntryValue": "Value",
-        "dataEntryPreviousValue": "Previous value",
-        "cardAccountCreated": "New account",
-        "cardAccountMerged": "Account merge",
-        "cardSigners": "Signers",
-        "cardThresholds": "Thresholds",
-        "cardDataEntry": "Data entry",
-        "cardHomeDomain": "Domain",
-        "cardFlags": "Flags",
-        "cardTrustlines": "Trustline limit",
-        "cardBalanceAuthorizations": "Balance authorization",
-        "cardAllowance": "Allowance"
+        "dataEntryPreviousValue": "Previous value"
       }
     }
   },

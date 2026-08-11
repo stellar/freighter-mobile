@@ -898,6 +898,22 @@ export const formatFiatInputDisplay = (value: string): string => {
 };
 
 /**
+ * A formatter's decimal separator, derived by formatting a known value and
+ * stripping its digits.
+ *
+ * `Intl.NumberFormat#formatToParts` is the obvious way to ask, but it does not
+ * exist on Hermes — calling it throws `TypeError: undefined is not a function`
+ * on device while passing under Jest's Node runtime. `format()` exists on both.
+ *
+ * `react-native-localize`'s `getNumberFormatSettings()` is this file's usual
+ * source for separators (see lines 13, 650, 770) and is also Hermes-safe, but
+ * it reports the *device's* setting and therefore cannot honour `formatAmount`'s
+ * explicit `locale` argument, which callers and tests depend on.
+ */
+const decimalSeparatorFor = (formatter: Intl.NumberFormat) =>
+  formatter.format(1.1).replace(/\d/g, "") || ".";
+
+/**
  * Adapted from the browser extension's popup/helpers/formatters.ts
  * (`formatAmount`) for the v2 history mapping pipeline (helpers/history/v2/
  * classify.ts), which needs thousands grouping on the integer part with the
@@ -916,11 +932,18 @@ export const formatFiatInputDisplay = (value: string): string => {
  * separator (e.g. "1.234"), so joining with a literal "." would produce
  * "1.234.56" — ambiguous and wrong, the same positional-string-parsing
  * hazard the ported date formatters had to avoid. Instead, the decimal
- * separator is read back from the formatter itself via `formatToParts`.
+ * separator is derived from the formatter itself — see `decimalSeparatorFor`.
  *
- * The whole part is formatted via `BigInt`, not `Number`: it can exceed
- * 2^53 for high-decimal SEP-41 amounts, and `Number` would silently lose
- * precision. `|| "0"` covers a leading-dot input like ".5".
+ * Both of the runtime APIs this function touches are constrained by Hermes,
+ * and both constraints are invisible to Jest because Node is more permissive:
+ *
+ * - `format()` must be given a **number, never a BigInt**. Node accepts BigInt
+ *   (ES2020); Hermes throws `TypeError: Cannot convert BigInt to number`, which
+ *   crashed the History tab on device while every test passed.
+ * - `formatToParts()` **does not exist on Hermes** at all, so it cannot be used
+ *   to look up the separator.
+ *
+ * `|| "0"` covers a leading-dot input like ".5".
  *
  * Caveat: the remainder digits are appended raw (ASCII), so a locale using
  * non-Latin numerals (e.g. Arabic-Indic digits) would mix digit systems
@@ -934,28 +957,27 @@ export const formatAmount = (val: string, locale?: string) => {
     style: "decimal",
   });
   const wholeValForFormat = wholeVal || "0";
-  // BigInt() throws a SyntaxError for anything that isn't a plain integer
-  // string — e.g. "NaN" (a malformed wire `amount` makes `formatTokenAmount`
-  // return the string "NaN", which reaches here unchanged) or the
-  // exponential notation BigNumber#toString() can emit on the
-  // `decimals === 0` branch of formatTokenAmount (e.g. "1e+21"). Falling
-  // back to Number() there — the same degradation the browser extension
-  // used everywhere — renders an ugly-but-harmless value for this one row
-  // instead of throwing all the way up through mapV2Transaction and
-  // failing the entire history page for one bad transaction.
-  const formattedWholeVal = formatter.format(
-    /^-?\d+$/.test(wholeValForFormat)
-      ? BigInt(wholeValForFormat)
-      : Number(wholeValForFormat),
-  );
+
+  // Number(), never BigInt() — see the Hermes note above. A non-numeric input
+  // such as "NaN" (a malformed wire `amount` makes formatTokenAmount return the
+  // string "NaN") or the exponential notation BigNumber#toString() can emit on
+  // formatTokenAmount's `decimals === 0` branch (e.g. "1e+21") coerces to NaN
+  // or a float here and renders ugly-but-harmless for that one row, rather than
+  // throwing up through mapV2Transaction and failing the whole history page.
+  //
+  // Number() is exact only to 2^53, so an integer part longer than 15 digits is
+  // emitted ungrouped rather than silently corrupted. That is unreachable for
+  // real amounts: formatTokenAmount has already divided by the token's decimals
+  // before this point, so the integer part is the human-readable magnitude —
+  // the largest possible XLM amount is 922337203685, twelve digits.
+  const digitCount = wholeValForFormat.replace("-", "").length;
+  const formattedWholeVal =
+    digitCount > 15 && /^-?\d+$/.test(wholeValForFormat)
+      ? wholeValForFormat
+      : formatter.format(Number(wholeValForFormat));
 
   if (remainderVal) {
-    // Ask the formatter what its decimal separator is rather than hard-coding
-    // ".", so a comma-decimal locale composes correctly.
-    const decimalSeparator =
-      formatter.formatToParts(1.1).find((part) => part.type === "decimal")
-        ?.value ?? ".";
-    return `${formattedWholeVal}${decimalSeparator}${remainderVal}`;
+    return `${formattedWholeVal}${decimalSeparatorFor(formatter)}${remainderVal}`;
   }
 
   return formattedWholeVal;

@@ -1,88 +1,178 @@
 import { List, ListItemProps } from "components/List";
 import { AdvancedDetails } from "components/screens/HistoryScreen/TransactionDetailsV2/AdvancedDetails";
-import { BalanceChangesCard } from "components/screens/HistoryScreen/TransactionDetailsV2/BalanceChangesCard";
 import { DataEntryDetails } from "components/screens/HistoryScreen/TransactionDetailsV2/DataEntryDetails";
 import { DetailHeader } from "components/screens/HistoryScreen/TransactionDetailsV2/DetailHeader";
-import { MetaCard } from "components/screens/HistoryScreen/TransactionDetailsV2/MetaCard";
 import {
   buildStateChangeItems,
   StateChangeItemContext,
 } from "components/screens/HistoryScreen/TransactionDetailsV2/stateChangeItems";
-import { TextButton } from "components/sds/TextButton";
+import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import {
-  DataEntrySelection,
-  HistoryEntry,
-  StateChangeCardData,
-} from "helpers/history/v2/model";
+import { NATIVE_TOKEN_CODE } from "config/constants";
+import { formatTokenForDisplay } from "helpers/formatAmount";
+import { DataEntrySelection, HistoryEntry } from "helpers/history/v2/model";
+import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
-import React, { useState } from "react";
+import useColors from "hooks/useColors";
+import React, { useMemo, useState } from "react";
 import { View } from "react-native";
 
 /**
- * Short heading i18n key per state-change card kind, keyed by `card.kind` —
- * this is the composition layer, not the pure-data builder module
- * (stateChangeItems.tsx), so it's the right place for these: nothing there
- * ever barred a header, there's just never been one rendered until now.
- * Without it, a signers card reads as a bare address + "Added 2" ("2" of
- * what?) and a trustlines card reads as a token code + "Added 500" (a
- * limit) — the card's own kind is the only thing that disambiguates either.
- *
- * A `satisfies Record<..., string>` object (rather than a switch calling
- * `t()` directly) for two reasons: it keeps the exhaustiveness check (a new
- * `kind` without an entry here fails to typecheck) without also having to
- * pass i18next's overloaded `TFunction` into this function — doing that
- * crashes tsc 5.8.3 ("Debug Failure. No error for last overload signature")
- * when the call is inlined inside a JSX expression. Callers call `t()`
- * themselves with the key this returns.
- */
-const CARD_HEADING_KEYS = {
-  accountCreated: "history.v2.detail.cardAccountCreated",
-  accountMerged: "history.v2.detail.cardAccountMerged",
-  signers: "history.v2.detail.cardSigners",
-  thresholds: "history.v2.detail.cardThresholds",
-  dataEntry: "history.v2.detail.cardDataEntry",
-  homeDomain: "history.v2.detail.cardHomeDomain",
-  flags: "history.v2.detail.cardFlags",
-  trustlines: "history.v2.detail.cardTrustlines",
-  balanceAuthorizations: "history.v2.detail.cardBalanceAuthorizations",
-  allowance: "history.v2.detail.cardAllowance",
-} as const satisfies Record<StateChangeCardData["kind"], string>;
-
-const cardHeadingKey = (kind: StateChangeCardData["kind"]) =>
-  CARD_HEADING_KEYS[kind];
-
-/**
  * "detail" is the sheet's resting state; "advanced" and "dataEntry" are
- * swapped in over it in place. Mirrors the extension's single-sheet
- * `SheetView` state machine (history-redesign-plan.md) rather than stacking
- * a second BottomSheet on top of the one HistoryList already owns.
+ * swapped in over it in place, rather than stacking a second BottomSheet on
+ * top of the one HistoryList already owns.
  */
 type SheetView = "detail" | "advanced" | "dataEntry";
 
 /**
- * The v2 transaction detail sheet: a view state machine composing every
- * piece built in Tasks 1-6 (state-change card builders, DetailHeader,
- * BalanceChangesCard, MetaCard, AdvancedDetails, DataEntryDetails) into the
- * three views the extension's design calls for. Rendered as the
- * `customContent` of the bottom sheet HistoryList already owns (Task 8) —
- * this component never opens a BottomSheet of its own.
+ * The v2 transaction detail sheet.
+ *
+ * Deliberately the same shape as v1's
+ * TransactionDetailsBottomSheetCustomContent — a `gap-6` column of header,
+ * one changes card, one metadata card — because the v2 design changes what
+ * goes in those cards, not the sheet itself. The two things it does add: the
+ * state-change rows (which share the changes card with the balance changes,
+ * rather than getting cards of their own) and the "Transaction details" row
+ * that opens the advanced view.
+ *
+ * Both card item lists are built here in `useMemo`s, mirroring v1's
+ * `detailItems`, so the whole sheet's row composition is readable in one
+ * place and no i18next `TFunction` crosses a function boundary (passing one
+ * into a helper called inline from JSX crashes tsc 5.8.3 with "Debug Failure.
+ * No error for last overload signature").
  */
 export const TransactionDetailsV2: React.FC<{ entry: HistoryEntry }> = ({
   entry,
 }) => {
   const { t } = useAppTranslation();
+  const { themeColors } = useColors();
   const [view, setView] = useState<SheetView>("detail");
   const [selection, setSelection] = useState<DataEntrySelection | null>(null);
 
   const backToDetail = (): void => setView("detail");
 
-  const ctx: StateChangeItemContext = {
-    onSelectDataEntry: (nextSelection) => {
-      setSelection(nextSelection);
-      setView("dataEntry");
-    },
-  };
+  const { details } = entry;
+  const isSuccess = details.status === "success";
+
+  /**
+   * The single changes card: counterparty, then state changes, then balance
+   * changes — the order the design shows for both a plain payment ("To",
+   * "Sent") and a config change ("Added signer", "Sent", "Received").
+   */
+  const changeItems = useMemo(() => {
+    const ctx: StateChangeItemContext = {
+      onSelectDataEntry: (nextSelection) => {
+        setSelection(nextSelection);
+        setView("dataEntry");
+      },
+    };
+
+    // Credits-only means the funds came to us, so the counterparty is a
+    // sender. Mirrors v1's `isReceiving` derivation from its asset diffs.
+    const isReceiving =
+      details.balanceChanges.length > 0 &&
+      details.balanceChanges.every((row) => row.direction === "credit");
+
+    const counterpartyItem: ListItemProps[] = details.counterparty
+      ? [
+          {
+            key: "counterparty",
+            icon: <Icon.User01 size={16} themeColor="gray" />,
+            titleComponent: (
+              <Text md secondary>
+                {isReceiving
+                  ? t("history.transactionDetails.from")
+                  : t("history.transactionDetails.to")}
+              </Text>
+            ),
+            value: truncateAddress(details.counterparty),
+          },
+        ]
+      : [];
+
+    const stateChangeItems = details.stateChangeCards.flatMap((card) =>
+      buildStateChangeItems(card, ctx),
+    );
+
+    // Same treatment as v1's AssetDiffRow: a direction arrow, the verb as the
+    // label, and the signed amount — with success/error colour carrying the
+    // direction on both the label and the amount, as the design shows.
+    const balanceItems: ListItemProps[] = details.balanceChanges.map(
+      (row, index) => {
+        const isCredit = row.direction === "credit";
+        const color = isCredit
+          ? themeColors.status.success
+          : themeColors.status.error;
+
+        return {
+          key: `${row.token.contractId ?? row.token.code}-${index}`,
+          icon: isCredit ? (
+            <Icon.ArrowCircleDown size={16} color={color} />
+          ) : (
+            <Icon.ArrowCircleUp size={16} color={color} />
+          ),
+          titleComponent: (
+            <Text md medium color={color}>
+              {isCredit
+                ? t("history.transactionHistory.received")
+                : t("history.transactionHistory.sent")}
+            </Text>
+          ),
+          // A null amount means the token's decimal scale was never resolved,
+          // so the sign would be the only truthful part of a formatted number.
+          value:
+            row.amount === null
+              ? row.token.code
+              : `${isCredit ? "+" : "-"}${formatTokenForDisplay(row.amount, row.token.code)}`,
+          valueColor: color,
+        };
+      },
+    );
+
+    return [...counterpartyItem, ...stateChangeItems, ...balanceItems];
+  }, [details, t, themeColors.status.success, themeColors.status.error]);
+
+  /** Status, rate, fee — v1's metadata card minus the rows the design moves
+   * into the advanced view (XDR) or the changes card (counterparty). */
+  const metaItems = useMemo(
+    () =>
+      [
+        {
+          key: "status",
+          icon: <Icon.ClockCheck size={16} themeColor="gray" />,
+          titleComponent: (
+            <Text md secondary>
+              {t("history.transactionDetails.status")}
+            </Text>
+          ),
+          value: isSuccess
+            ? t("history.transactionDetails.statusSuccess")
+            : t("history.transactionDetails.statusFailed"),
+        },
+        details.rate && {
+          key: "rate",
+          icon: <Icon.Divide03 size={16} themeColor="gray" />,
+          titleComponent: (
+            <Text md secondary>
+              {t("history.transactionDetails.rate")}
+            </Text>
+          ),
+          value: details.rate,
+        },
+        {
+          key: "fee",
+          icon: <Icon.Route size={16} themeColor="gray" />,
+          titleComponent: (
+            <Text md secondary>
+              {t("history.transactionDetails.fee")}
+            </Text>
+          ),
+          value: formatTokenForDisplay(details.fee, NATIVE_TOKEN_CODE),
+        },
+        // filter out the absent rate row to keep the remaining order.
+      ].filter(Boolean) as ListItemProps[],
+    [details.rate, details.fee, isSuccess, t],
+  );
 
   if (view === "advanced") {
     return <AdvancedDetails entry={entry} onBack={backToDetail} />;
@@ -98,40 +188,30 @@ export const TransactionDetailsV2: React.FC<{ entry: HistoryEntry }> = ({
   }
 
   return (
-    <View className="gap-[24px]">
+    <View className="gap-6">
       <DetailHeader entry={entry} />
 
-      {entry.details.stateChangeCards.map((card, index) => {
-        const items: ListItemProps[] = buildStateChangeItems(card, ctx);
-        return (
-          <View
-            // Cards have no stable id of their own; kind+index is stable for
-            // the life of this render and cards never reorder in place.
-            // eslint-disable-next-line react/no-array-index-key
-            key={`${card.kind}-${index}`}
-            testID="state-change-card"
-            className="gap-3"
-          >
-            {/* Disambiguates otherwise-ambiguous rows — e.g. a signers card's
-              "Added 2" (2 of what?) or a trustlines card's "Added 500" (a
-              limit) only read correctly once the card's own kind is named. */}
-            <Text sm secondary>
-              {t(cardHeadingKey(card.kind))}
-            </Text>
-            <List items={items} variant="secondary" />
-          </View>
-        );
-      })}
+      {changeItems.length > 0 && (
+        <List items={changeItems} variant="secondary" />
+      )}
 
-      <BalanceChangesCard rows={entry.details.balanceChanges} />
+      <List items={metaItems} variant="secondary" />
 
-      <MetaCard details={entry.details} />
-
-      <TextButton
-        testID="advanced-details-link"
-        text={t("history.v2.detail.advancedTitle")}
-        variant="tertiary"
-        onPress={() => setView("advanced")}
+      <List
+        variant="secondary"
+        items={[
+          {
+            key: "advanced",
+            testID: "advanced-details-link",
+            icon: <Icon.Dotpoints01 size={16} color={themeColors.lilac[11]} />,
+            titleComponent: (
+              <Text md medium color={themeColors.lilac[11]}>
+                {t("history.v2.detail.advancedTitle")}
+              </Text>
+            ),
+            onPress: () => setView("advanced"),
+          },
+        ]}
       />
     </View>
   );

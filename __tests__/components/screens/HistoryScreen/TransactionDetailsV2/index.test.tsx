@@ -175,112 +175,45 @@ describe("TransactionDetailsV2", () => {
     expect(queryByText("Previous value")).toBeNull();
   });
 
-  it("renders one List per state-change card", () => {
+  it("puts every state-change card's rows in one shared changes card, with no per-card headings", () => {
     const withCards = entry({
       stateChangeCards: [
         { kind: "accountMerged" },
         { kind: "flags", set: ["AUTH_REQUIRED"], cleared: [] },
       ],
-    });
-    const { getAllByTestId } = render(
-      <TransactionDetailsV2 entry={withCards} />,
-    );
-    expect(getAllByTestId("state-change-card")).toHaveLength(2);
-  });
-
-  it("gives every state-change card kind a literal, exact-string heading, so a signers card reads as signers and a trustlines card reads as a limit rather than an ambiguous bare row", () => {
-    const withEveryCardKind = entry({
-      stateChangeCards: [
-        { kind: "accountCreated", address: "GADDRESS", funder: null },
-        { kind: "accountMerged" },
+      balanceChanges: [
         {
-          kind: "signers",
-          verb: "added",
-          entries: [{ address: "GADDRESS", weightOld: null, weightNew: 2 }],
-        },
-        {
-          kind: "thresholds",
-          level: "medium",
-          valueOld: "1",
-          valueNew: "2",
-        },
-        {
-          kind: "dataEntry",
-          verb: "added",
-          entries: [{ key: "k", valueOldB64: null, valueNewB64: null }],
-        },
-        {
-          kind: "homeDomain",
-          verb: "set",
-          domainOld: null,
-          domainNew: "a.com",
-        },
-        { kind: "flags", set: ["AUTH_REQUIRED"], cleared: [] },
-        {
-          kind: "trustlines",
-          verb: "created",
-          entries: [
-            {
-              token: {
-                code: "USDC",
-                contractId: null,
-                issuer: null,
-                icon: null,
-                decimals: 7,
-              },
-              limitOld: null,
-              limitNew: "1",
-            },
-          ],
-        },
-        {
-          kind: "balanceAuthorizations",
-          authorized: false,
-          tokens: [
-            {
-              code: "USDC",
-              contractId: null,
-              issuer: null,
-              icon: null,
-              decimals: 7,
-            },
-          ],
-        },
-        {
-          kind: "allowance",
           token: {
-            code: "USDC",
+            code: "XLM",
             contractId: null,
             issuer: null,
             icon: null,
             decimals: 7,
           },
-          spender: "GADDRESS",
-          amount: "1",
-          expirationLedger: 1,
+          amount: "40",
+          direction: "debit",
         },
       ],
     });
 
-    const { getByText } = render(
-      <TransactionDetailsV2 entry={withEveryCardKind} />,
+    const { getByText, queryByText, queryAllByTestId } = render(
+      <TransactionDetailsV2 entry={withCards} />,
     );
 
-    // Exact match, not a substring regex: a typo'd key path would fall back
-    // to the raw key path, which a loose match could still satisfy. Headings
-    // are deliberately worded distinctly from any row text the same card
-    // also renders (e.g. "New account" vs. the accountCreated row's own
-    // "Account created" title) — otherwise getByText would hit two matches.
-    expect(getByText("New account")).toBeTruthy();
-    expect(getByText("Account merge")).toBeTruthy();
-    expect(getByText("Signers")).toBeTruthy();
-    expect(getByText("Thresholds")).toBeTruthy();
-    expect(getByText("Data entry")).toBeTruthy();
-    expect(getByText("Domain")).toBeTruthy();
-    expect(getByText("Flags")).toBeTruthy();
-    expect(getByText("Trustline limit")).toBeTruthy();
-    expect(getByText("Balance authorization")).toBeTruthy();
-    expect(getByText("Allowance")).toBeTruthy();
+    // Rows from both state-change cards and from the balance changes all
+    // render, because the design puts them in a single card together.
+    expect(getByText("Account merged")).toBeTruthy();
+    expect(getByText("Flags set")).toBeTruthy();
+    expect(getByText("Sent")).toBeTruthy();
+
+    // The per-card headings an earlier revision rendered above each card are
+    // not in the design. Exact-string queries, so "Flags" here cannot be
+    // satisfied by the "Flags set" row text above it.
+    expect(queryByText("Account merge")).toBeNull();
+    expect(queryByText("Flags")).toBeNull();
+
+    // ...and each card no longer gets a container of its own.
+    expect(queryAllByTestId("state-change-card")).toHaveLength(0);
   });
 
   it("shows the advanced-details link with its literal copy", () => {

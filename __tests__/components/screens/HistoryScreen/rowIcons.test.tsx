@@ -16,6 +16,8 @@ import {
 } from "components/screens/HistoryScreen/helpers";
 import Icon from "components/sds/Icon";
 import { Token as TokenComponent } from "components/sds/Token";
+import { getThemeColors } from "config/colors";
+import { THEME } from "config/theme";
 import { TokenTypeWithCustomToken } from "config/types";
 import {
   HistoryEntry,
@@ -24,6 +26,10 @@ import {
 } from "helpers/history/v2/model";
 import React from "react";
 import { View } from "react-native";
+
+// A real ThemeColors value, so colour assertions check the actual token
+// rather than a hand-made stand-in.
+const themeColors = getThemeColors("dark");
 
 /**
  * These renderers return `React.ReactElement | null` with no props generic,
@@ -56,7 +62,10 @@ const usdc = (overrides: Partial<ResolvedToken> = {}): ResolvedToken => ({
 
 describe("renderRowIcon", () => {
   it("renders a single TokenIcon for a 1-token asset descriptor", () => {
-    const element = renderRowIcon({ type: "asset", tokens: [usdc()] });
+    const element = renderRowIcon(
+      { type: "asset", tokens: [usdc()] },
+      themeColors,
+    );
 
     expect(element?.type).toBe(TokenIcon);
     expect(propsOf(element).size).toBe("lg");
@@ -64,7 +73,10 @@ describe("renderRowIcon", () => {
   });
 
   it("renders an overlapping swap-pair Token for a 2-token asset descriptor", () => {
-    const element = renderRowIcon({ type: "asset", tokens: [xlm(), usdc()] });
+    const element = renderRowIcon(
+      { type: "asset", tokens: [xlm(), usdc()] },
+      themeColors,
+    );
 
     expect(element?.type).toBe(TokenComponent);
     expect(propsOf(element).variant).toBe("swap");
@@ -78,7 +90,7 @@ describe("renderRowIcon", () => {
       xlm(),
       usdc({ code: "AQUA", contractId: "C_AQUA" }),
     ];
-    const element = renderRowIcon({ type: "asset", tokens });
+    const element = renderRowIcon({ type: "asset", tokens }, themeColors);
 
     expect(element?.type).toBe(View);
     // children: [renderSingleAssetIcon(tokens[0]), badge View]
@@ -95,16 +107,22 @@ describe("renderRowIcon", () => {
   it("renders the token resolver's fallback icon (contractId truncation) when a resolved token has no code match for native", () => {
     // Sanity: a 1-token descriptor with a non-native code still routes
     // through renderSingleAssetIcon, not the native-XLM branch.
-    const element = renderRowIcon({ type: "asset", tokens: [usdc()] });
+    const element = renderRowIcon(
+      { type: "asset", tokens: [usdc()] },
+      themeColors,
+    );
     expect(element?.type).toBe(TokenIcon);
   });
 
   it("renders a protocol logo wrapped in the rounded image container", () => {
-    const element = renderRowIcon({
-      type: "protocol",
-      src: "https://example.com/aqua.png",
-      name: "Aquarius",
-    });
+    const element = renderRowIcon(
+      {
+        type: "protocol",
+        src: "https://example.com/aqua.png",
+        name: "Aquarius",
+      },
+      themeColors,
+    );
 
     expect(element?.type).toBe(View);
     const image = propsOf(element).children;
@@ -113,19 +131,19 @@ describe("renderRowIcon", () => {
   });
 
   it("renders the generic contract icon", () => {
-    const element = renderRowIcon({ type: "contract" });
+    const element = renderRowIcon({ type: "contract" }, themeColors);
     expect(element?.type).toBe(Icon.FileCode02);
   });
 
   it("renders the failed-transaction icon", () => {
-    const element = renderRowIcon({ type: "failed" });
+    const element = renderRowIcon({ type: "failed" }, themeColors);
     expect(element?.type).toBe(Icon.Wallet03);
   });
 
   it.each(["create", "merge"] as const)(
     "renders the native TokenIcon for account variant %s (v1 has no distinct merge treatment)",
     (variant) => {
-      const element = renderRowIcon({ type: "account", variant });
+      const element = renderRowIcon({ type: "account", variant }, themeColors);
 
       expect(element?.type).toBe(TokenIcon);
       expect(propsOf(element).token).toEqual({
@@ -154,14 +172,16 @@ describe("renderRowIcon", () => {
     ];
 
     it.each(glyphs)("returns null for glyph %s", (glyph) => {
-      expect(renderRowIcon({ type: "settings", glyph })).toBeNull();
+      expect(
+        renderRowIcon({ type: "settings", glyph }, themeColors),
+      ).toBeNull();
     });
   });
 });
 
 describe("renderSecondaryIcon", () => {
   it("returns null when there is no secondary icon", () => {
-    expect(renderSecondaryIcon(null)).toBeNull();
+    expect(renderSecondaryIcon(null, themeColors)).toBeNull();
   });
 
   const cases: [HistoryEntry["secondaryIcon"], unknown][] = [
@@ -174,12 +194,12 @@ describe("renderSecondaryIcon", () => {
   ];
 
   it.each(cases)("renders %s as its mirrored v1 icon", (value, expected) => {
-    const element = renderSecondaryIcon(value);
+    const element = renderSecondaryIcon(value, themeColors);
     expect(element?.type).toBe(expected);
   });
 
   it("renders the failed icon with the red theme color (mirrors failed.tsx exactly)", () => {
-    const element = renderSecondaryIcon("failed");
+    const element = renderSecondaryIcon("failed", themeColors);
     expect(element?.type).toBe(Icon.XCircle);
     expect(propsOf(element).themeColor).toBe("red");
   });
@@ -187,7 +207,48 @@ describe("renderSecondaryIcon", () => {
   it.each(["globe", "settings"] as const)(
     "returns null for %s (no v1 action-icon precedent yet)",
     (value) => {
-      expect(renderSecondaryIcon(value)).toBeNull();
+      expect(renderSecondaryIcon(value, themeColors)).toBeNull();
     },
   );
+});
+
+describe("theme colour (regression: purple icons)", () => {
+  /**
+   * These icons shipped purple to a device. `Icon` defaults to
+   * `THEME.colors.primary` — the brand lilac — when given no `color`, and every
+   * v1 mapper passes `themeColors.foreground.primary` (payment.tsx) while these
+   * renderers passed nothing. The existing tests asserted element type and key
+   * props but never colour, so nothing caught it.
+   */
+  const expected = themeColors.foreground.primary;
+
+  it.each(
+    [
+      ["sent", "received", "swap", "add", "remove", "contract"].map((v) => [v]),
+    ].flat() as [Exclude<HistoryEntry["secondaryIcon"], null>][],
+  )(
+    "renderSecondaryIcon(%s) passes the foreground colour, not the brand default",
+    (value) => {
+      const element = renderSecondaryIcon(value, themeColors);
+      expect(propsOf(element).color).toBe(expected);
+      expect(propsOf(element).color).not.toBe(THEME.colors.primary);
+    },
+  );
+
+  it("keeps the failed icon red rather than the foreground colour", () => {
+    const element = renderSecondaryIcon("failed", themeColors);
+    expect(propsOf(element).themeColor).toBe("red");
+  });
+
+  it("renderRowIcon passes the foreground colour for the contract glyph", () => {
+    const element = renderRowIcon({ type: "contract" }, themeColors);
+    expect(propsOf(element).color).toBe(expected);
+    expect(propsOf(element).color).not.toBe(THEME.colors.primary);
+  });
+
+  it("renderRowIcon passes the foreground colour for the failed glyph", () => {
+    const element = renderRowIcon({ type: "failed" }, themeColors);
+    expect(propsOf(element).color).toBe(expected);
+    expect(propsOf(element).color).not.toBe(THEME.colors.primary);
+  });
 });

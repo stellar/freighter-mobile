@@ -24,6 +24,7 @@ import { NetworkDetails } from "config/constants";
 import { HistoryEntry } from "helpers/history/v2/model";
 import { getStellarExpertUrl } from "helpers/stellarExpert";
 import useAppTranslation from "hooks/useAppTranslation";
+import useColors from "hooks/useColors";
 import {
   HistorySection,
   HistoryData,
@@ -107,6 +108,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
   refreshActionPosition = "center",
 }) => {
   const { t } = useAppTranslation();
+  const { themeColors } = useColors();
   const { height: windowHeight } = useWindowDimensions();
   const [transactionDetails, setTransactionDetails] =
     useState<TransactionDetails | null>(null);
@@ -250,7 +252,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
         data: historyMonth.entries.map(
           (entry): V2Row => ({
             entry,
-            historyItemData: mapV2EntryToHistoryItemData(entry),
+            historyItemData: mapV2EntryToHistoryItemData(entry, themeColors),
           }),
         ),
       }));
@@ -261,7 +263,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
       title: historyMonth.monthYear,
       data: historyMonth.operations,
     }));
-  }, [historyData]);
+  }, [historyData, themeColors]);
 
   const getEmptyListClasses = (
     position: "start" | "center" | "end",
