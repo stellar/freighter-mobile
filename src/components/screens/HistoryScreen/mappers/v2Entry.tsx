@@ -50,10 +50,15 @@ export const mapV2EntryToHistoryItemData = (
       entry.details.status === "failed"
         ? TransactionStatus.FAILED
         : TransactionStatus.SUCCESS,
-    // Phase A keeps the existing v1 detail sheet, which reads a Horizon
-    // operation this model does not carry. Tapping a v2 row is guarded in
-    // HistoryItem.tsx (see the transactionDetails check in its onPress) so
-    // this undefined never reaches handleTransactionDetails.
+    // The v1 detail sheet reads a Horizon operation this model does not
+    // carry, so v2 rows never populate this field. `historyEntry` below is
+    // what HistoryItem's press handler uses instead (see the
+    // handleV2TransactionDetails branch in HistoryItem.tsx).
     transactionDetails: undefined,
+    // Carries the raw entry through so HistoryItem's press handler can open
+    // the v2 sheet (Task 8) with it, without needing to change this
+    // function's signature. Goes away with the rest of this adapter in
+    // Phase B.
+    historyEntry: entry,
   };
 };

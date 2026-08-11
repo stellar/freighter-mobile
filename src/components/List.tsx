@@ -12,6 +12,16 @@ export interface ListItemProps {
   titleColor?: string;
   description?: string;
   descriptionColor?: string;
+  /**
+   * A plain-data value slot for rows whose builder can only return data (not
+   * JSX) — e.g. state-change card rows built in stateChangeItems.tsx. Renders
+   * to the right of the title/description, matching the primary,
+   * right-aligned treatment `trailingContent` JSX rows already get elsewhere
+   * in this app (see TransactionDetailsBottomSheetCustomContent.tsx). Additive
+   * only: existing callers never set this, so their rendering is unaffected.
+   */
+  value?: string;
+  valueColor?: string;
   trailingContent?: React.ReactNode;
   onPress?: () => void;
   testID?: string;
@@ -92,6 +102,18 @@ export const List: React.FC<ListProps> = ({
               </View>
             )}
           </View>
+          {item.value !== undefined && (
+            <View className={item.description ? "mt-1" : ""}>
+              <Text
+                md
+                medium
+                numberOfLines={1}
+                color={item.valueColor || THEME.colors.text.primary}
+              >
+                {item.value}
+              </Text>
+            </View>
+          )}
           {item.trailingContent && (
             <View className={item.description ? "mt-1" : ""}>
               {item.trailingContent}

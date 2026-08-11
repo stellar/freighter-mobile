@@ -24,6 +24,7 @@ const HistoryItem: React.FC<HistoryItemProps> = ({
   publicKey,
   networkDetails,
   handleTransactionDetails,
+  handleV2TransactionDetails,
   historyItemData: preBuiltHistoryItemData,
 }) => {
   const { network } = networkDetails;
@@ -91,9 +92,15 @@ const HistoryItem: React.FC<HistoryItemProps> = ({
   return (
     <TouchableOpacity
       onPress={() => {
-        // v2 rows have no transactionDetails in this phase (mappers/v2Entry.tsx
-        // never populates it) — the v1 detail sheet reads a Horizon operation
-        // the v2 model doesn't carry, so tapping a v2 row is a no-op for now.
+        // v2 rows carry a historyEntry instead of transactionDetails (see
+        // mappers/v2Entry.tsx) — the v1 detail sheet reads a Horizon
+        // operation the v2 model doesn't carry, so a v2 row opens the v2
+        // sheet via a different handler instead.
+        if (historyItem.historyEntry) {
+          handleV2TransactionDetails(historyItem.historyEntry);
+          return;
+        }
+
         if (!historyItem.transactionDetails) {
           return;
         }

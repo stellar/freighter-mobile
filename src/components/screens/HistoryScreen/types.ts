@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Horizon } from "@stellar/stellar-sdk";
 import { HistorySectionV2 } from "ducks/history";
+import { HistoryEntry } from "helpers/history/v2/model";
 import { SorobanTokenInterface } from "helpers/soroban";
 import { ImageSourcePropType } from "react-native";
 
@@ -126,12 +127,20 @@ export interface TransactionDetails {
 // Additional types for HistoryItem component
 export interface HistoryItemData {
   /**
-   * Absent for v2 entries in Phase A: the v1 detail sheet reads a Horizon
-   * operation the v2 model does not carry, so v2 rows do not open the sheet
-   * yet (see mappers/v2Entry.tsx). Phase B replaces the sheet and makes this
-   * required again.
+   * Absent for v2 entries: the v1 detail sheet reads a Horizon operation the
+   * v2 model does not carry, so v2 rows never populate this field (see
+   * mappers/v2Entry.tsx). `historyEntry` below is what a v2 row carries
+   * instead.
    */
   transactionDetails?: TransactionDetails;
+  /**
+   * THROWAWAY (see mappers/v2Entry.tsx): set only for v2 rows, carrying the
+   * raw HistoryEntry alongside the v1-shaped fields above so HistoryItem's
+   * press handler has something to open the v2 sheet with. Goes away with
+   * the rest of the adapter in Phase B, when HistoryItem renders
+   * HistoryEntry directly instead of bridging it onto this type.
+   */
+  historyEntry?: HistoryEntry;
   rowText: string;
   actionText: string | null;
   ActionIconComponent: React.ReactElement | null;
@@ -148,6 +157,13 @@ export interface HistoryItemProps {
   publicKey: string;
   networkDetails: any; // Using any here to match existing code
   handleTransactionDetails: (transactionDetail: TransactionDetails) => void;
+  /**
+   * THROWAWAY: opens the v2 sheet for a v2 row, mirroring
+   * handleTransactionDetails' role for v1 rows. Called with the row's
+   * historyItemData.historyEntry when present. Goes away with the rest of
+   * the adapter in Phase B.
+   */
+  handleV2TransactionDetails: (entry: HistoryEntry) => void;
   /**
    * THROWAWAY: pre-built row data for v2 entries, bypassing HistoryItem's own
    * useEffect mapping (mapHistoryItemData reads a Horizon operation, which

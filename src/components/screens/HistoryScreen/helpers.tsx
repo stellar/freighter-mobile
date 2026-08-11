@@ -147,21 +147,27 @@ export const shouldShowMemo = (
 // =============================================================================
 
 /**
- * Exhaustiveness guard for the switches below: `value`'s type is `never`
+ * Exhaustiveness guard for the switches below (and, by import, for
+ * stateChangeItems.tsx's card-kind dispatcher): `value`'s type is `never`
  * only when every other case of the switch has already been handled, so
  * this line fails to typecheck the moment a new union member is added
  * without a matching case — the "yarn lint:ts catches a missing arm"
  * behavior the task calls for. Also satisfies eslint's default-case /
  * consistent-return rules, which a bare "no default" switch does not.
+ *
+ * `label` identifies which dispatcher hit this — this file's own switches
+ * (icon renderers) and stateChangeItems.tsx's card dispatcher both use it, so
+ * a single generic message would leave the log ambiguous about which one
+ * fired. Defaults to this file's original wording so its three existing
+ * call sites need no change.
  */
-const assertNever = (value: never): null => {
+export const assertNever = (value: never, label = "v2 icon renderer"): null => {
   // Dev-time signal only; the type system already prevents reaching here for
-  // any real SettingsGlyph / RowIconDescriptor / secondaryIcon value, so this
-  // can't fire in production — only if a new union member is added and this
-  // file isn't updated to match (in which case tsc, not this log, is the
-  // real guard).
+  // any real known union value, so this can't fire in production — only if a
+  // new union member is added and the caller's switch isn't updated to match
+  // (in which case tsc, not this log, is the real guard).
   // eslint-disable-next-line no-console -- see comment above
-  console.error("Unhandled case in v2 icon renderer:", value);
+  console.error(`Unhandled case in ${label}:`, value);
   return null;
 };
 

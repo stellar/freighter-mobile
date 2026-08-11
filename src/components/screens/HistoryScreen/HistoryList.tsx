@@ -14,6 +14,7 @@ import {
   TransactionDetailsBottomSheetCustomContent,
   TransactionDetailsFooter,
 } from "components/screens/HistoryScreen/TransactionDetailsBottomSheetCustomContent";
+import { TransactionDetailsV2 } from "components/screens/HistoryScreen/TransactionDetailsV2";
 // THROWAWAY: mapV2EntryToHistoryItemData and the v2 branch below go away in
 // Phase B, when this list renders HistoryEntry directly instead of bridging
 // it onto the v1 HistoryItemData shape.
@@ -21,6 +22,7 @@ import { mapV2EntryToHistoryItemData } from "components/screens/HistoryScreen/ma
 import { HistoryItemData } from "components/screens/HistoryScreen/types";
 import { NetworkDetails } from "config/constants";
 import { HistoryEntry } from "helpers/history/v2/model";
+import { getStellarExpertUrl } from "helpers/stellarExpert";
 import useAppTranslation from "hooks/useAppTranslation";
 import {
   HistorySection,
@@ -108,6 +110,14 @@ const HistoryList: React.FC<HistoryListProps> = ({
   const { height: windowHeight } = useWindowDimensions();
   const [transactionDetails, setTransactionDetails] =
     useState<TransactionDetails | null>(null);
+  // THROWAWAY: v2Entry and the branch below go away with the rest of the
+  // adapter in Phase B, when a v2 row opens a sheet built for HistoryEntry
+  // directly rather than through this second piece of state. Not a second
+  // BottomSheet — both this and transactionDetails feed the same modal ref
+  // and customContent below, and every setter clears the other field so the
+  // two can never both be non-null (the same both-fields discipline the
+  // history duck uses for rawHistoryData/rawHistoryV2Data).
+  const [v2Entry, setV2Entry] = useState<HistoryEntry | null>(null);
   const transactionDetailsBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const sectionListRef = useRef<SectionList>(null);
 
@@ -127,11 +137,24 @@ const HistoryList: React.FC<HistoryListProps> = ({
   const handleTransactionDetails = useCallback(
     (transactionDetail: TransactionDetails) => {
       setTransactionDetails(transactionDetail);
+      // Clears the other payload so the v1 and v2 sheet states can never
+      // both be set (see the v2Entry declaration above).
+      setV2Entry(null);
       transactionDetailsBottomSheetModalRef.current?.present();
       analytics.trackHistoryOpenItem("history_list");
     },
     [],
   );
+
+  // THROWAWAY: goes away with the rest of the adapter in Phase B.
+  const handleV2TransactionDetails = useCallback((entry: HistoryEntry) => {
+    setV2Entry(entry);
+    // Clears the other payload so the v1 and v2 sheet states can never both
+    // be set (see the v2Entry declaration above).
+    setTransactionDetails(null);
+    transactionDetailsBottomSheetModalRef.current?.present();
+    analytics.trackHistoryOpenItem("history_list");
+  }, []);
 
   const renderSectionHeader = useCallback(
     ({ section }: { section: SectionListData<SectionItem> }) => (
@@ -156,6 +179,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
             networkDetails={networkDetails}
             publicKey={publicKey}
             handleTransactionDetails={handleTransactionDetails}
+            handleV2TransactionDetails={handleV2TransactionDetails}
           />
         );
       }
@@ -168,6 +192,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
           networkDetails={networkDetails}
           publicKey={publicKey}
           handleTransactionDetails={handleTransactionDetails}
+          handleV2TransactionDetails={handleV2TransactionDetails}
         />
       );
     },
@@ -175,6 +200,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
       publicKey,
       historyData?.balances,
       handleTransactionDetails,
+      handleV2TransactionDetails,
       networkDetails,
     ],
   );
@@ -184,13 +210,24 @@ const HistoryList: React.FC<HistoryListProps> = ({
     [],
   );
 
+  // Renders on both the v1 and v2 paths. HistoryEntry.id IS the transaction
+  // hash (see helpers/history/v2/model.ts), so the v2 path builds its
+  // externalUrl the same way TransactionDetailsBottomSheet.tsx already does
+  // for its own explorer link: `${getStellarExpertUrl(network)}/tx/${hash}`.
+  // (A prior version of this comment claimed the v2 model had no
+  // externalUrl to build a footer from and disabled the footer entirely on
+  // that path — that premise was false; HistoryEntry.id was always the hash.)
   const renderFooterComponent = useCallback(
     () => (
       <TransactionDetailsFooter
-        externalUrl={transactionDetails?.externalUrl ?? ""}
+        externalUrl={
+          v2Entry
+            ? `${getStellarExpertUrl(networkDetails.network)}/tx/${v2Entry.id}`
+            : (transactionDetails?.externalUrl ?? "")
+        }
       />
     ),
-    [transactionDetails?.externalUrl],
+    [transactionDetails?.externalUrl, v2Entry, networkDetails.network],
   );
 
   // THROWAWAY: the v2 branch (mapping each entry through
@@ -293,10 +330,29 @@ const HistoryList: React.FC<HistoryListProps> = ({
         useInsetsBottomPadding={false}
         maxDynamicContentSize={windowHeight * 0.9}
         customContent={
-          <TransactionDetailsBottomSheetCustomContent
-            transactionDetails={transactionDetails!}
-          />
+          v2Entry ? (
+            // key is load-bearing, not decorative: TransactionDetailsV2 owns
+            // its own view state (detail/advanced/dataEntry) in useState.
+            // Without a key tied to the entry's identity, pressing a
+            // different v2 row while this component is already mounted (the
+            // sheet re-presents onto the SAME component instance, since
+            // customContent is just a prop, not a remount trigger) would
+            // update `entry` but preserve whatever sub-view the PREVIOUS
+            // entry had navigated into — showing one transaction's
+            // data-entry/advanced view under a different transaction's data.
+            // Keying on entry.id forces React to unmount and remount on
+            // every entry change, so the reset is guaranteed by React's own
+            // reconciliation rules instead of resting on
+            // @gorhom/bottom-sheet happening to unmount on dismiss.
+            <TransactionDetailsV2 key={v2Entry.id} entry={v2Entry} />
+          ) : (
+            <TransactionDetailsBottomSheetCustomContent
+              transactionDetails={transactionDetails!}
+            />
+          )
         }
+        // Renders on both paths now — renderFooterComponent above branches
+        // on v2Entry itself to build the right externalUrl.
         scrollViewFooterComponent={renderFooterComponent}
       />
 

@@ -59,6 +59,45 @@ describe("List", () => {
     });
   });
 
+  it("renders list items with a value slot, primary-colored and separate from description", () => {
+    const itemsWithValue = mockItems.map((item) => ({
+      ...item,
+      value: `${item.title}-value`,
+    }));
+
+    const { getByText } = renderWithProviders(<List items={itemsWithValue} />);
+
+    itemsWithValue.forEach((item) => {
+      const valueNode = getByText(item.value);
+      expect(valueNode).toBeTruthy();
+      expect(valueNode.props.style).toMatchObject({
+        color: THEME.colors.text.primary,
+      });
+    });
+  });
+
+  it("renders a custom valueColor on the value slot when provided", () => {
+    const itemsWithValueColor = mockItems.map((item) => ({
+      ...item,
+      value: `${item.title}-value`,
+      valueColor: THEME.colors.status.success,
+    }));
+
+    const { getByText } = renderWithProviders(
+      <List items={itemsWithValueColor} />,
+    );
+
+    const valueNode = getByText(itemsWithValueColor[0].value);
+    expect(valueNode.props.style).toMatchObject({
+      color: THEME.colors.status.success,
+    });
+  });
+
+  it("does not render a value slot when value is not provided (existing callers unaffected)", () => {
+    const { queryByText } = renderWithProviders(<List items={mockItems} />);
+    expect(queryByText("Item 1-value")).toBeNull();
+  });
+
   it("calls onPress when an item is pressed", () => {
     const mockOnPress = jest.fn();
     const itemsWithOnPress = mockItems.map((item) => ({
