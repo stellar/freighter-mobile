@@ -1,5 +1,5 @@
 import { DEFAULT_REFRESH_DELAY, NetworkDetails } from "config/constants";
-import { useHistoryStore, HistoryData } from "ducks/history";
+import { useHistoryStore, HistoryData, HistoryDataV2 } from "ducks/history";
 import { usePreferencesStore } from "ducks/preferences";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -10,7 +10,7 @@ interface UseGetHistoryDataProps {
 }
 
 interface UseGetHistoryDataReturn {
-  historyData: HistoryData | null;
+  historyData: HistoryData | HistoryDataV2 | null;
   error: string | null;
   isLoading: boolean;
   isRefreshing: boolean;
@@ -39,6 +39,7 @@ function useGetHistoryData({
 }: UseGetHistoryDataProps): UseGetHistoryDataReturn {
   const {
     rawHistoryData,
+    rawHistoryV2Data,
     isLoading,
     error,
     hasRecentTransaction,
@@ -52,18 +53,27 @@ function useGetHistoryData({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { isHideDustEnabled } = usePreferencesStore();
 
+  // rawHistoryData and rawHistoryV2Data are mutually exclusive in
+  // ducks/history.ts (never both set — see loadedHistoryAccount), so this
+  // hook doesn't need to pick a shape itself: whichever field is populated
+  // determines which shape getFilteredHistoryData hands back. Gate on both
+  // so a v2-only account (rawHistoryData null, rawHistoryV2Data populated)
+  // still renders instead of being treated as "no data yet".
   const historyData = useMemo(() => {
-    if (!rawHistoryData) return null;
+    if (!rawHistoryData && !rawHistoryV2Data) return null;
 
     return getFilteredHistoryData({
       publicKey,
+      network: networkDetails.network,
       tokenId,
       isHideDustEnabled,
     });
   }, [
     rawHistoryData,
+    rawHistoryV2Data,
     getFilteredHistoryData,
     publicKey,
+    networkDetails.network,
     tokenId,
     isHideDustEnabled,
   ]);
@@ -119,7 +129,10 @@ function useGetHistoryData({
 
   // Only show full-screen loading when there's no existing data and we're loading for the first time
   const shouldShowFullScreenLoading =
-    (isLoading || isMounting) && !isRefreshing && !rawHistoryData;
+    (isLoading || isMounting) &&
+    !isRefreshing &&
+    !rawHistoryData &&
+    !rawHistoryV2Data;
 
   const shouldShowRefreshIndicator = hasRecentTransaction && isFetching;
 
@@ -137,5 +150,7 @@ export { useGetHistoryData };
 export type {
   HistoryItemOperation,
   HistorySection,
+  HistorySectionV2,
   HistoryData,
+  HistoryDataV2,
 } from "ducks/history";

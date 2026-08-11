@@ -17,6 +17,8 @@ import {
   parseDisplayNumberToBigNumber,
   formatBalanceAmount,
   getPerOperationBaseFeeStroops,
+  formatAmount,
+  trimTrailingZeros,
 } from "helpers/formatAmount";
 
 // Mock react-native-localize for consistent test behavior
@@ -882,6 +884,155 @@ describe("formatAmount helpers", () => {
     it("floors fractional stroop division", () => {
       // 0.0000301 XLM = 301 stroops; 2 ops => floor(150.5) = 150/op.
       expect(getPerOperationBaseFeeStroops("0.0000301", 2)).toBe("150");
+    });
+  });
+
+  describe("formatAmount", () => {
+    it("groups the integer part and keeps the decimal part untouched (en-US)", () => {
+      expect(formatAmount("1234.56", "en-US")).toBe("1,234.56");
+    });
+
+    it("composes with the target locale's own decimal separator, not a literal dot", () => {
+      // Under a comma-decimal locale, Intl uses "." as the *grouping*
+      // separator for the whole part (e.g. "1.234"). A naive
+      // `${wholePart}.${remainder}` join would produce "1.234.56" —
+      // ambiguous and wrong. The real separator must be a comma.
+      expect(formatAmount("1234.56", "de-DE")).toBe("1.234,56");
+      expect(formatAmount("1234.56", "pt-BR")).toBe("1.234,56");
+    });
+
+    it("returns just the grouped whole part when there is no remainder", () => {
+      expect(formatAmount("1234", "en-US")).toBe("1,234");
+    });
+
+    it("does not lose precision for a whole part above Number.MAX_SAFE_INTEGER", () => {
+      // 2^53 - 1 = 9007199254740991; one past it would silently round under
+      // Number, but BigInt formatting preserves every digit.
+      const huge = "9007199254740993.1234567";
+      expect(formatAmount(huge, "en-US")).toBe("9,007,199,254,740,993.1234567");
+    });
+
+    it("handles a leading-dot input with no whole-part digits", () => {
+      expect(formatAmount(".5", "en-US")).toBe("0.5");
+    });
+
+    describe("degrades instead of throwing on a malformed whole part", () => {
+      // Regression: BigInt() raises a SyntaxError for anything that isn't a
+      // plain integer string. formatAmount is reachable from
+      // mapV2Transaction (via classify.ts's signedAmount) with exactly
+      // these shapes when a wire `amount` is malformed, and an uncaught
+      // throw there fails the entire history page for one bad transaction
+      // instead of degrading a single row.
+
+      it('formats the string "NaN" without throwing (a malformed wire amount makes new BigNumber(...) NaN, and formatTokenAmount passes "NaN" straight through)', () => {
+        expect(() => formatAmount("NaN", "en-US")).not.toThrow();
+        expect(formatAmount("NaN", "en-US")).toBe("NaN");
+      });
+
+      it("formats exponential notation without throwing (BigNumber#toString() can emit this on formatTokenAmount's decimals === 0 branch)", () => {
+        expect(() => formatAmount("1e+21", "en-US")).not.toThrow();
+        expect(formatAmount("1e+21", "en-US")).toBe(
+          "1,000,000,000,000,000,000,000",
+        );
+      });
+
+      it("formats an empty whole part without throwing", () => {
+        expect(() => formatAmount("", "en-US")).not.toThrow();
+        expect(formatAmount("", "en-US")).toBe("0");
+      });
+    });
+  });
+
+  describe("trimTrailingZeros", () => {
+    it("trims trailing zeros but keeps the decimal point when digits remain", () => {
+      expect(trimTrailingZeros("1.5000")).toBe("1.5");
+    });
+
+    it("drops the decimal point entirely when every decimal digit is zero", () => {
+      expect(trimTrailingZeros("100.0000")).toBe("100");
+    });
+
+    it("returns whole numbers unchanged", () => {
+      expect(trimTrailingZeros("100")).toBe("100");
+    });
+  });
+
+  describe("formatAmount + trimTrailingZeros call order (helpers/history/v2/classify.ts)", () => {
+    // NOTE on reachability: `row.amount` — the only value signedAmount ever
+    // passes through these two helpers — comes from formatTokenAmount,
+    // which already strips decimal padding zeros itself. So a value shaped
+    // like "1234.0000" (a decimal point followed by an all-zero fraction)
+    // can never actually reach this call site; formatTokenAmount would have
+    // already reduced it to "1234" before signedAmount ever sees it. The
+    // two tests below document real helper behavior on that shape, but they
+    // are NOT the regression guard for the call order — see the
+    // "regression: order matters on a reachable input shape" block below
+    // for the input shape that actually protects classify.ts.
+    it("trimming before formatting keeps a comma-decimal result correct (documents helper behavior on an unreachable-from-signedAmount shape)", () => {
+      // classify.ts calls formatAmount(trimTrailingZeros(row.amount)), not
+      // the reverse: row.amount is always "."-joined (straight from
+      // formatTokenAmount), and trimTrailingZeros hard-codes "." — so it
+      // must run first, while the string is still "."-joined.
+      expect(formatAmount(trimTrailingZeros("1234.0000"), "de-DE")).toBe(
+        "1.234",
+      );
+    });
+
+    it("demonstrates the corruption the correct order avoids (documents helper behavior on an unreachable-from-signedAmount shape)", () => {
+      // The broken order: formatAmount runs first, producing "1.234,0000"
+      // under de-DE (dot is the *grouping* separator here, comma is the
+      // decimal). trimTrailingZeros then strips the trailing "0000" but
+      // finds no "." immediately adjacent to it (the adjacent character is
+      // ",", not "."), so it leaves a dangling comma with nothing after
+      // it — a broken, unparseable amount — instead of the clean "1.234"
+      // the correct order produces above.
+      expect(trimTrailingZeros(formatAmount("1234.0000", "de-DE"))).toBe(
+        "1.234,",
+      );
+    });
+
+    describe("regression: order matters on a reachable input shape", () => {
+      // The shape that actually reaches signedAmount is an
+      // already-trimmed whole number ending in a real zero digit — a round
+      // balance like "1230". formatTokenAmount never produces a value with
+      // a "." followed only by zeros (it strips those itself), but it
+      // absolutely can produce "1230", "1200", or "10" for a round balance.
+      //
+      // The bug: `formatAmount` groups a whole number's digits using "."
+      // as the *grouping* separator under a comma-decimal locale (e.g.
+      // "1230" -> "1.230" under "pt"). If trimTrailingZeros runs
+      // afterward, it treats that grouping dot as a decimal point and
+      // strips the trailing zero(s) that follow it — silently corrupting
+      // the magnitude, not just the punctuation. It is invisible under the
+      // shipped order (trim-then-format) and under the "en" locale (comma
+      // grouping, so trimTrailingZeros never finds a "." to misread) —
+      // which is exactly why a future accidental reversal of classify.ts's
+      // argument order would pass every existing test and still ship wrong
+      // amounts to pt users.
+      it.each([
+        ["1230", "1.230", "1.23"],
+        ["1200", "1.200", "1.2"],
+        ["10", "10", "10"],
+      ])(
+        "round balance %s: correct order -> %s, reversed order -> %s (the bug)",
+        (raw, correct, reversedWrong) => {
+          // Shipped order (classify.ts): trim first, then format. This is
+          // what must keep working.
+          expect(formatAmount(trimTrailingZeros(raw), "pt")).toBe(correct);
+
+          // Reversed order: format first, then trim. Asserted as the WRONG
+          // result — named here as the bug this ordering guards against,
+          // not as desired behavior. For "10" the two orders happen to
+          // coincide (no grouping separator is introduced below 1000), so
+          // this row is a "still correct, no corruption" sanity check
+          // rather than a demonstration of the bug; "1230" and "1200" are
+          // where reversing the order actually corrupts the magnitude
+          // (1230 -> 1.23, i.e. off by roughly 1000x).
+          expect(trimTrailingZeros(formatAmount(raw, "pt"))).toBe(
+            reversedWrong,
+          );
+        },
+      );
     });
   });
 });

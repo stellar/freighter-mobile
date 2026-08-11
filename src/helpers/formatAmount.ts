@@ -2,6 +2,7 @@ import BigNumber from "bignumber.js";
 import { DEFAULT_DECIMALS, MIN_TRANSACTION_FEE } from "config/constants";
 import { Balance, PricedBalance } from "config/types";
 import { hasDecimals } from "helpers/balances";
+import { getDeviceLanguage } from "helpers/localeUtils";
 import { formatTokenForDisplay as formatSorobanTokenAmount } from "helpers/soroban";
 import { getNumberFormatSettings } from "react-native-localize";
 
@@ -894,4 +895,87 @@ export const formatFiatInputDisplay = (value: string): string => {
   }
 
   return value;
+};
+
+/**
+ * Adapted from the browser extension's popup/helpers/formatters.ts
+ * (`formatAmount`) for the v2 history mapping pipeline (helpers/history/v2/
+ * classify.ts), which needs thousands grouping on the integer part with the
+ * decimal part passed through untouched. Deliberately does not use this
+ * file's other formatters (e.g. formatTokenForDisplay), which apply a
+ * minimum of 2 decimal places and would change the extension's row-amount
+ * shape (e.g. "5" would become "5.00").
+ *
+ * Unlike the extension (English-only), this app ships `en` and `pt` and
+ * localizes to the device — see date.ts's `locale ?? getDeviceLanguage()`
+ * pattern, which this matches. That rules out the extension's original
+ * fixed `en-US` grouping (history rows would render US-formatted numbers
+ * inside a Portuguese app) and it also rules out a naive
+ * `` `${formattedWholeVal}.${remainderVal}` `` join: under a comma-decimal
+ * locale, `Intl` formats the whole part using "." as a *grouping*
+ * separator (e.g. "1.234"), so joining with a literal "." would produce
+ * "1.234.56" — ambiguous and wrong, the same positional-string-parsing
+ * hazard the ported date formatters had to avoid. Instead, the decimal
+ * separator is read back from the formatter itself via `formatToParts`.
+ *
+ * The whole part is formatted via `BigInt`, not `Number`: it can exceed
+ * 2^53 for high-decimal SEP-41 amounts, and `Number` would silently lose
+ * precision. `|| "0"` covers a leading-dot input like ".5".
+ *
+ * Caveat: the remainder digits are appended raw (ASCII), so a locale using
+ * non-Latin numerals (e.g. Arabic-Indic digits) would mix digit systems
+ * with the formatted whole part. This app ships only `en` and `pt`, both
+ * Latin-numeral locales, so it is not a live problem — noted for whoever
+ * localizes to a non-Latin-numeral language later.
+ */
+export const formatAmount = (val: string, locale?: string) => {
+  const [wholeVal, remainderVal] = val.split(".");
+  const formatter = new Intl.NumberFormat(locale ?? getDeviceLanguage(), {
+    style: "decimal",
+  });
+  const wholeValForFormat = wholeVal || "0";
+  // BigInt() throws a SyntaxError for anything that isn't a plain integer
+  // string — e.g. "NaN" (a malformed wire `amount` makes `formatTokenAmount`
+  // return the string "NaN", which reaches here unchanged) or the
+  // exponential notation BigNumber#toString() can emit on the
+  // `decimals === 0` branch of formatTokenAmount (e.g. "1e+21"). Falling
+  // back to Number() there — the same degradation the browser extension
+  // used everywhere — renders an ugly-but-harmless value for this one row
+  // instead of throwing all the way up through mapV2Transaction and
+  // failing the entire history page for one bad transaction.
+  const formattedWholeVal = formatter.format(
+    /^-?\d+$/.test(wholeValForFormat)
+      ? BigInt(wholeValForFormat)
+      : Number(wholeValForFormat),
+  );
+
+  if (remainderVal) {
+    // Ask the formatter what its decimal separator is rather than hard-coding
+    // ".", so a comma-decimal locale composes correctly.
+    const decimalSeparator =
+      formatter.formatToParts(1.1).find((part) => part.type === "decimal")
+        ?.value ?? ".";
+    return `${formattedWholeVal}${decimalSeparator}${remainderVal}`;
+  }
+
+  return formattedWholeVal;
+};
+
+/**
+ * Ported from the browser extension's popup/helpers/formatters.ts
+ * (`trimTrailingZeros`) — see `formatAmount` above for why this lives here
+ * rather than being folded into this file's existing formatters.
+ *
+ * Removes trailing zeros from decimal numbers and removes decimal point if all decimals were zeros
+ * @param amount - Numeric string to trim
+ * @returns Trimmed numeric string
+ * @example trimTrailingZeros("1.5000") // returns "1.5"
+ * @example trimTrailingZeros("100.0000") // returns "100"
+ */
+export const trimTrailingZeros = (amount: string): string => {
+  if (!amount.includes(".")) {
+    return amount;
+  }
+
+  return amount.replace(/\.?0+$/, "");
 };

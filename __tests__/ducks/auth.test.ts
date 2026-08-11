@@ -2217,6 +2217,8 @@ describe("auth duck", () => {
       // Verify setState was called with correct reset values
       expect(useHistoryStore.setState).toHaveBeenCalledWith({
         rawHistoryData: null,
+        rawHistoryV2Data: null,
+        loadedHistoryAccount: null,
         isLoading: false,
         error: null,
         hasRecentTransaction: false,
@@ -2321,6 +2323,45 @@ describe("auth duck", () => {
         .calls[0]?.[0];
       expect(historyCall?.rawHistoryData).toBeNull();
       expect(historyCall?.hasRecentTransaction).toBe(false);
+    });
+
+    it("should reset rawHistoryV2Data and loadedHistoryAccount so a stale v2 payload is not left resident", () => {
+      // Regression: clearAccountData used to reset rawHistoryData but not
+      // rawHistoryV2Data/loadedHistoryAccount. getFilteredHistoryData's
+      // identity guard means a resident stale v2 payload is never *served*
+      // for the new account, but useGetHistoryData's
+      // shouldShowFullScreenLoading checks `!rawHistoryV2Data` directly, so
+      // without this reset the spinner is suppressed and the user sees the
+      // empty state instead of a loading indicator on every account switch.
+      clearAccountData();
+
+      const historyCall = (useHistoryStore.setState as jest.Mock).mock
+        .calls[0]?.[0];
+      expect(historyCall?.rawHistoryV2Data).toBeNull();
+      expect(historyCall?.loadedHistoryAccount).toBeNull();
+    });
+
+    it("satisfies useGetHistoryData's shouldShowFullScreenLoading data-residency check, so the loading spinner (not the empty state) can show on the next account switch", () => {
+      // useGetHistoryData.ts computes:
+      //   shouldShowFullScreenLoading =
+      //     (isLoading || isMounting) && !isRefreshing &&
+      //     !rawHistoryData && !rawHistoryV2Data;
+      // Before this fix, a resident stale rawHistoryV2Data from the
+      // previous account made the `!rawHistoryV2Data` term false, which
+      // suppressed the spinner on every account switch regardless of
+      // isLoading/isMounting — the user saw the empty state instead. This
+      // asserts the reset payload actually clears the term that gated it.
+      clearAccountData();
+
+      const historyCall = (useHistoryStore.setState as jest.Mock).mock
+        .calls[0]?.[0];
+      // Strict `=== null` (not a truthiness check): an *absent* key would
+      // read as `undefined`, which is just as falsy as `null` for `!x`, so
+      // a truthiness check alone would pass even if the field were never
+      // reset at all. Only an explicit `null` proves the field is actually
+      // reset in the setState payload.
+      expect(historyCall?.rawHistoryData).toBe(null);
+      expect(historyCall?.rawHistoryV2Data).toBe(null);
     });
 
     it("should reset prices store to empty object and null values", () => {

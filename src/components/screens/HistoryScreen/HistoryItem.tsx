@@ -24,14 +24,24 @@ const HistoryItem: React.FC<HistoryItemProps> = ({
   publicKey,
   networkDetails,
   handleTransactionDetails,
+  historyItemData: preBuiltHistoryItemData,
 }) => {
   const { network } = networkDetails;
   const { themeColors } = useColors();
+  // THROWAWAY: preBuiltHistoryItemData is the v2 adapter's escape hatch
+  // (mappers/v2Entry.tsx) — when present, this component renders it
+  // directly and never runs the mapHistoryItemData effect below, which
+  // reads a v1 Horizon operation that doesn't exist for a v2 entry. Goes
+  // away with the adapter in Phase B.
   const [isLoading, setIsLoading] = useState(true);
-  const [historyItem, setHistoryItem] = useState<any>(null);
+  const [mappedHistoryItem, setMappedHistoryItem] = useState<any>(null);
 
   // Load history item data on component mount or when dependencies change
   useEffect(() => {
+    if (preBuiltHistoryItemData) {
+      return;
+    }
+
     const buildHistoryItem = async () => {
       try {
         const historyItemData = await mapHistoryItemData({
@@ -43,7 +53,7 @@ const HistoryItem: React.FC<HistoryItemProps> = ({
           themeColors,
         });
 
-        setHistoryItem(historyItemData);
+        setMappedHistoryItem(historyItemData);
         setIsLoading(false);
       } catch (error) {
         setIsLoading(false);
@@ -52,6 +62,7 @@ const HistoryItem: React.FC<HistoryItemProps> = ({
 
     buildHistoryItem();
   }, [
+    preBuiltHistoryItemData,
     operation,
     accountBalances,
     publicKey,
@@ -60,8 +71,11 @@ const HistoryItem: React.FC<HistoryItemProps> = ({
     themeColors,
   ]);
 
-  // Show loading spinner while data is being fetched
-  if (isLoading) {
+  const historyItem = preBuiltHistoryItemData ?? mappedHistoryItem;
+
+  // Show loading spinner while data is being fetched (never true for the
+  // pre-built v2 path, which has its data synchronously on first render)
+  if (!preBuiltHistoryItemData && isLoading) {
     return (
       <View className="flex-0 items-start py-2">
         <Spinner size="small" />
@@ -77,6 +91,13 @@ const HistoryItem: React.FC<HistoryItemProps> = ({
   return (
     <TouchableOpacity
       onPress={() => {
+        // v2 rows have no transactionDetails in this phase (mappers/v2Entry.tsx
+        // never populates it) — the v1 detail sheet reads a Horizon operation
+        // the v2 model doesn't carry, so tapping a v2 row is a no-op for now.
+        if (!historyItem.transactionDetails) {
+          return;
+        }
+
         handleTransactionDetails(historyItem.transactionDetails);
       }}
       delayPressIn={DEFAULT_PRESS_DELAY}

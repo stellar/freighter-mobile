@@ -1,5 +1,6 @@
 import { renderHook, waitFor, act } from "@testing-library/react-native";
 import { PUBLIC_NETWORK_DETAILS } from "config/constants";
+import { HistoryData, HistoryDataV2 } from "ducks/history";
 import { useGetHistoryData } from "hooks/useGetHistoryData";
 
 jest.mock("services/backend");
@@ -14,16 +15,25 @@ jest.mock("ducks/balances", () => ({
 const mockFetchAccountHistory = jest.fn().mockResolvedValue(undefined);
 const mockStartPolling = jest.fn();
 const mockStopPolling = jest.fn();
+const mockGetFilteredHistoryData = jest.fn(
+  (): HistoryData | HistoryDataV2 | null => null,
+);
+
+// Mutable so a single test can populate rawHistoryV2Data without disturbing
+// the other (v1-only, both null) tests; reset in beforeEach.
+let mockRawHistoryV2Data: unknown = null;
 
 jest.mock("ducks/history", () => ({
   useHistoryStore: () => ({
     rawHistoryData: null,
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- mockRawHistoryV2Data is intentionally reassigned by tests
+    rawHistoryV2Data: mockRawHistoryV2Data,
     isLoading: false,
     error: null,
     hasRecentTransaction: false,
     isFetching: false,
     fetchAccountHistory: mockFetchAccountHistory,
-    getFilteredHistoryData: jest.fn(() => null),
+    getFilteredHistoryData: mockGetFilteredHistoryData,
     startPolling: mockStartPolling,
     stopPolling: mockStopPolling,
   }),
@@ -38,6 +48,9 @@ describe("useGetHistoryData - Hide create claimable balance spam", () => {
     mockFetchAccountHistory.mockClear();
     mockStartPolling.mockClear();
     mockStopPolling.mockClear();
+    mockGetFilteredHistoryData.mockClear();
+    mockGetFilteredHistoryData.mockReturnValue(null);
+    mockRawHistoryV2Data = null;
   });
 
   it("should call fetchAccountHistory with correct parameters", async () => {
@@ -178,5 +191,52 @@ describe("useGetHistoryData - Hide create claimable balance spam", () => {
       network: PUBLIC_NETWORK_DETAILS.network,
       isBackgroundRefresh: false,
     });
+  });
+
+  it("passes network through to getFilteredHistoryData", async () => {
+    const { result } = renderHook(() =>
+      useGetHistoryData({
+        publicKey: mockPublicKey,
+        networkDetails: PUBLIC_NETWORK_DETAILS,
+        tokenId: undefined,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    // The memo's `if (!rawHistoryData && !rawHistoryV2Data) return null`
+    // gate replaced Task 7's `if (!rawHistoryData) return null` — both
+    // fields are null in this suite's default mock, so
+    // getFilteredHistoryData is never called and historyData stays null.
+    expect(mockGetFilteredHistoryData).not.toHaveBeenCalled();
+    expect(result.current.historyData).toBe(null);
+  });
+
+  it("reads through rawHistoryV2Data — the v1-only `if (!rawHistoryData) return null` gate this replaced would have kept historyData null forever on a v2-only account", async () => {
+    mockRawHistoryV2Data = { balances: {}, entries: [] };
+    const v2FilteredResult = { balances: {}, history: [] };
+    mockGetFilteredHistoryData.mockReturnValue(v2FilteredResult);
+
+    const { result } = renderHook(() =>
+      useGetHistoryData({
+        publicKey: mockPublicKey,
+        networkDetails: PUBLIC_NETWORK_DETAILS,
+        tokenId: undefined,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(mockGetFilteredHistoryData).toHaveBeenCalledWith({
+      publicKey: mockPublicKey,
+      network: PUBLIC_NETWORK_DETAILS.network,
+      tokenId: undefined,
+      isHideDustEnabled: expect.any(Boolean),
+    });
+    expect(result.current.historyData).toBe(v2FilteredResult);
   });
 });

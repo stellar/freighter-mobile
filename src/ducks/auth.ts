@@ -1387,6 +1387,15 @@ export function clearAccountData(): void {
   // Clear history data
   useHistoryStore.setState({
     rawHistoryData: null,
+    // Without these, a resident v2 payload from the previous account stays
+    // in memory indefinitely: getFilteredHistoryData's identity guard means
+    // it is never *served* (loadedHistoryAccount no longer matches), but
+    // useGetHistoryData's shouldShowFullScreenLoading also checks
+    // `!rawHistoryV2Data` directly, so the stale payload suppresses the
+    // loading spinner and the user sees the empty state instead on every
+    // account switch, until the new account's fetch completes.
+    rawHistoryV2Data: null,
+    loadedHistoryAccount: null,
     isLoading: false,
     error: null,
     hasRecentTransaction: false,

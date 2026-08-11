@@ -14,10 +14,21 @@ import {
   TransactionDetailsBottomSheetCustomContent,
   TransactionDetailsFooter,
 } from "components/screens/HistoryScreen/TransactionDetailsBottomSheetCustomContent";
+// THROWAWAY: mapV2EntryToHistoryItemData and the v2 branch below go away in
+// Phase B, when this list renders HistoryEntry directly instead of bridging
+// it onto the v1 HistoryItemData shape.
+import { mapV2EntryToHistoryItemData } from "components/screens/HistoryScreen/mappers/v2Entry";
+import { HistoryItemData } from "components/screens/HistoryScreen/types";
 import { NetworkDetails } from "config/constants";
+import { HistoryEntry } from "helpers/history/v2/model";
 import useAppTranslation from "hooks/useAppTranslation";
-import { HistorySection, HistoryData } from "hooks/useGetHistoryData";
-import React, { useCallback, useRef, useState } from "react";
+import {
+  HistorySection,
+  HistoryData,
+  HistorySectionV2,
+  HistoryDataV2,
+} from "hooks/useGetHistoryData";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   RefreshControl,
   SectionList,
@@ -35,8 +46,32 @@ interface Operation {
   [key: string]: any;
 }
 
+/**
+ * THROWAWAY: one row of a v2 section — the raw entry plus its pre-built
+ * HistoryItemData, computed once here rather than inside HistoryItem's
+ * per-row effect (see the historyItemData prop on HistoryItemProps). Goes
+ * away with the rest of the v2 adapter in Phase B.
+ */
+interface V2Row {
+  entry: HistoryEntry;
+  historyItemData: HistoryItemData;
+}
+
+type SectionItem = Operation | V2Row;
+
+/** Discriminates the two row shapes SectionList can be handed. */
+const isV2Row = (item: SectionItem): item is V2Row => "entry" in item;
+
+/** Discriminates the two section shapes getFilteredHistoryData can return,
+ *  by inspecting a section rather than the top-level HistoryData/HistoryDataV2
+ *  object (which are structurally identical at that level — both are just
+ *  `{ balances, history }`). */
+const isV2Section = (
+  section: HistorySection | HistorySectionV2,
+): section is HistorySectionV2 => "entries" in section;
+
 interface HistoryListProps {
-  historyData: HistoryData | null;
+  historyData: HistoryData | HistoryDataV2 | null;
   isLoading: boolean;
   error: string | null;
   publicKey: string;
@@ -99,23 +134,43 @@ const HistoryList: React.FC<HistoryListProps> = ({
   );
 
   const renderSectionHeader = useCallback(
-    ({ section }: { section: SectionListData<Operation> }) => (
+    ({ section }: { section: SectionListData<SectionItem> }) => (
       <MonthHeader month={section.title} />
     ),
     [],
   );
 
   const renderItem = useCallback(
-    ({ item }: { item: Operation }) => (
-      <HistoryItem
-        key={item.id}
-        operation={item}
-        accountBalances={historyData?.balances || {}}
-        networkDetails={networkDetails}
-        publicKey={publicKey}
-        handleTransactionDetails={handleTransactionDetails}
-      />
-    ),
+    ({ item }: { item: SectionItem }) => {
+      // THROWAWAY: v2 rows carry their HistoryItemData pre-built (see
+      // mapV2EntryToHistoryItemData in the sections memo below), so
+      // HistoryItem skips its own mapHistoryItemData effect for them —
+      // goes away with the rest of the adapter in Phase B.
+      if (isV2Row(item)) {
+        return (
+          <HistoryItem
+            key={item.entry.id}
+            operation={item.entry}
+            historyItemData={item.historyItemData}
+            accountBalances={historyData?.balances || {}}
+            networkDetails={networkDetails}
+            publicKey={publicKey}
+            handleTransactionDetails={handleTransactionDetails}
+          />
+        );
+      }
+
+      return (
+        <HistoryItem
+          key={item.id}
+          operation={item}
+          accountBalances={historyData?.balances || {}}
+          networkDetails={networkDetails}
+          publicKey={publicKey}
+          handleTransactionDetails={handleTransactionDetails}
+        />
+      );
+    },
     [
       publicKey,
       historyData?.balances,
@@ -124,7 +179,10 @@ const HistoryList: React.FC<HistoryListProps> = ({
     ],
   );
 
-  const keyExtractor = useCallback((item: Operation) => item.id.toString(), []);
+  const keyExtractor = useCallback(
+    (item: SectionItem) => (isV2Row(item) ? item.entry.id : item.id.toString()),
+    [],
+  );
 
   const renderFooterComponent = useCallback(
     () => (
@@ -134,6 +192,39 @@ const HistoryList: React.FC<HistoryListProps> = ({
     ),
     [transactionDetails?.externalUrl],
   );
+
+  // THROWAWAY: the v2 branch (mapping each entry through
+  // mapV2EntryToHistoryItemData up front) goes away in Phase B along with
+  // the rest of the adapter, leaving only the v1 branch below unchanged.
+  // Computed unconditionally (before the isLoading/error early returns)
+  // because it's a hook — calling it after a conditional return would
+  // violate the rules of hooks on whichever render takes that branch.
+  const sections = useMemo(() => {
+    if (!historyData || historyData.history.length === 0) {
+      return [];
+    }
+
+    const [firstSection] = historyData.history;
+
+    if (isV2Section(firstSection)) {
+      const v2History = historyData.history as HistorySectionV2[];
+      return v2History.map((historyMonth) => ({
+        title: historyMonth.monthYear,
+        data: historyMonth.entries.map(
+          (entry): V2Row => ({
+            entry,
+            historyItemData: mapV2EntryToHistoryItemData(entry),
+          }),
+        ),
+      }));
+    }
+
+    const v1History = historyData.history as HistorySection[];
+    return v1History.map((historyMonth) => ({
+      title: historyMonth.monthYear,
+      data: historyMonth.operations,
+    }));
+  }, [historyData]);
 
   const getEmptyListClasses = (
     position: "start" | "center" | "end",
@@ -175,12 +266,6 @@ const HistoryList: React.FC<HistoryListProps> = ({
       </BaseLayout>
     );
   }
-
-  const sections =
-    historyData?.history.map((historyMonth: HistorySection) => ({
-      title: historyMonth.monthYear,
-      data: historyMonth.operations,
-    })) || [];
 
   if (sections.length === 0) {
     return (

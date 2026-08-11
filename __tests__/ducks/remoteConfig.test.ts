@@ -402,4 +402,16 @@ describe("remoteConfig duck", () => {
       });
     });
   });
+
+  describe("use_history_v2 flag", () => {
+    it("is exposed on the store", () => {
+      const state = useRemoteConfigStore.getState();
+      expect(typeof state.use_history_v2).toBe("boolean");
+    });
+
+    it("is enabled by default in dev builds", () => {
+      // isDev/__DEV__ are true under Jest, so the dev default object applies.
+      expect(useRemoteConfigStore.getState().use_history_v2).toBe(true);
+    });
+  });
 });

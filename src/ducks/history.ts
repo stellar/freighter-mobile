@@ -1,21 +1,40 @@
-import { Horizon } from "@stellar/stellar-sdk";
+import { Asset, Horizon } from "@stellar/stellar-sdk";
 import {
+  NATIVE_TOKEN_CODE,
   NETWORKS,
   mapNetworkToNetworkDetails,
   HISTORY_FETCH_POLLING_INTERVAL,
 } from "config/constants";
 import { logger } from "config/logger";
 import { BalanceMap } from "config/types";
-import { useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
+import { useRemoteConfigStore } from "ducks/remoteConfig";
+import { useVerifiedTokensStore } from "ducks/verifiedTokens";
+import { getMonthYearKey } from "helpers/date";
+import { getIconUrlFromTokensLists } from "helpers/getIconUrlFromTokensLists";
 import {
   getIsDustPayment,
   getIsPayment,
   getIsSwap,
+  getTokenFromTokenId,
   filterOperationsByToken,
   getIsCreateClaimableBalanceSpam,
 } from "helpers/history";
-import { getAccountHistory } from "services/backend";
+import { collectTokenIds, mapV2Transaction } from "helpers/history/v2";
+import {
+  filterHistoryEntries,
+  filterHistoryEntriesByToken,
+} from "helpers/history/v2/filters";
+import { HistoryEntry } from "helpers/history/v2/model";
+import { buildTokenContext } from "helpers/history/v2/tokenResolver";
+import { isDev } from "helpers/isEnv";
+import { getNativeContractDetails } from "helpers/soroban";
+import {
+  getAccountHistory,
+  getAccountHistoryV2,
+  getTokenDetails,
+  IS_HISTORY_V2_MOCKED,
+} from "services/backend";
 import { create } from "zustand";
 
 let pollingIntervalId: NodeJS.Timeout | null = null;
@@ -63,6 +82,22 @@ export interface HistoryData {
   history: HistorySection[];
 }
 
+/** v2 section — one row per transaction, where v1 is one row per operation. */
+export type HistorySectionV2 = {
+  monthYear: string; // "{month}:{year}", same key format as v1
+  entries: HistoryEntry[];
+};
+
+export interface RawHistoryV2Data {
+  balances: BalanceMap;
+  entries: HistoryEntry[];
+}
+
+export interface HistoryDataV2 {
+  balances: BalanceMap;
+  history: HistorySectionV2[];
+}
+
 /**
  * History State Interface
  *
@@ -83,6 +118,19 @@ export interface HistoryData {
  */
 interface HistoryState {
   rawHistoryData: RawHistoryData | null;
+  rawHistoryV2Data: RawHistoryV2Data | null;
+  /**
+   * Which account/network the stored history data (either field above)
+   * belongs to. `getFilteredHistoryData` checks this against its own
+   * `params.publicKey` *and* `params.network` before returning either
+   * field, so a stale `rawHistoryV2Data`/`rawHistoryData` left behind by a
+   * same-account failed refresh (see the `catch` in `fetchAccountHistory`)
+   * can never be served for a *different* account or network — e.g. the
+   * same public key on mainnet vs. testnet. Set alongside the data on every
+   * `set()` that populates history; never touched by the `catch` (that's
+   * the point).
+   */
+  loadedHistoryAccount: { publicKey: string; network: NETWORKS } | null;
   isLoading: boolean;
   error: string | null;
   hasRecentTransaction: boolean;
@@ -95,12 +143,67 @@ interface HistoryState {
   }) => Promise<void>;
   getFilteredHistoryData: (params: {
     publicKey: string;
+    /**
+     * Compared against loadedHistoryAccount.network alongside publicKey.
+     * Without this, the same account on mainnet vs. testnet is not
+     * distinguished: a network switch whose fetch throws (landing in the
+     * catch, which deliberately leaves the previous network's data in
+     * place) or is skipped by the isFetching duplicate-request guard would
+     * otherwise be served under the new network's identity.
+     */
+    network: NETWORKS;
     tokenId?: string;
     isHideDustEnabled?: boolean;
-  }) => HistoryData | null;
+  }) => HistoryData | HistoryDataV2 | null;
   startPolling: (params: { publicKey: string; network: NETWORKS }) => void;
   stopPolling: () => void;
 }
+
+/**
+ * Resolves a token-detail-screen tokenId (a balances-map key, e.g. "XLM" or
+ * "CODE:ISSUER" — see getTokenIdentifier in helpers/balances.ts) to the
+ * contract id filterHistoryEntriesByToken matches on (row.token.contractId,
+ * always a C... address). Mirrors how the v1 path normalizes via
+ * getTokenFromTokenId in filterOperationsByToken, so the v2 path filters on
+ * the same identifier space instead of comparing a balances-map key against
+ * a contract id and silently matching nothing.
+ *
+ * Returns null when the tokenId cannot be resolved (e.g. a classic
+ * CODE:ISSUER pair whose Asset.contractId derivation throws) so the caller
+ * can fall back to "no filter" rather than filtering on a wrong value.
+ */
+const resolveTokenIdToContractId = (
+  tokenId: string,
+  network: NETWORKS,
+): string | null => {
+  const target = getTokenFromTokenId(tokenId);
+
+  // Already a contract id (Soroban token passed straight through).
+  if (target.contractId) {
+    return target.contractId;
+  }
+
+  // Native XLM: getTokenFromTokenId maps both "native" and "XLM" to
+  // { code: "XLM" }.
+  if (target.code === NATIVE_TOKEN_CODE && !target.issuer) {
+    return getNativeContractDetails(network).contract || null;
+  }
+
+  // Classic CODE:ISSUER pair: derive the SAC contract id the same way
+  // tokenResolver.ts's indexBalancesByContractId does.
+  if (target.code && target.issuer) {
+    try {
+      const { networkPassphrase } = mapNetworkToNetworkDetails(network);
+      return new Asset(target.code, target.issuer).contractId(
+        networkPassphrase,
+      );
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+};
 
 /**
  * Creates history sections from raw operations
@@ -182,6 +285,8 @@ const createHistorySections = (
  */
 export const useHistoryStore = create<HistoryState>((set, get) => ({
   rawHistoryData: null,
+  rawHistoryV2Data: null,
+  loadedHistoryAccount: null,
   isLoading: false,
   error: null,
   hasRecentTransaction: false,
@@ -237,6 +342,106 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
             balances: getBalances(),
             rawOperations: [],
           },
+          // Without this, switching from a funded v2-fetched account to an
+          // unfunded account would leave the previous account's entries in
+          // rawHistoryV2Data — and getFilteredHistoryData checks that field
+          // first, so it would render the wrong account's transaction history.
+          rawHistoryV2Data: null,
+          loadedHistoryAccount: {
+            publicKey: params.publicKey,
+            network: params.network,
+          },
+          isLoading: false,
+          error: null,
+          isFetching: false,
+          hasRecentTransaction: false,
+        });
+
+        return;
+      }
+
+      // Interlock: use_history_v2 is a BOOLEAN_FLAGS entry, so
+      // fetchFeatureFlags can overwrite its production `false` default from
+      // Amplitude on any released build, with no app release. IS_HISTORY_V2_MOCKED
+      // is a source constant that only changes with a release. Without this
+      // interlock, an operator flipping the Amplitude experiment alone would
+      // make every pubnet/testnet account render mockFetchAccountHistoryV2's
+      // fabricated fixture list as its own transaction history — fabricated
+      // payments, amounts, and counterparties, in a non-custodial wallet,
+      // and identical across every account since the mock ignores its
+      // `address` argument. Gating on `isDev || __DEV__` (rather than
+      // hard-disabling whenever mocked) keeps the fixtures usable for local
+      // development, which is the reason they exist, while making it
+      // impossible for the remote flag alone to activate v2 for a real user.
+      const useV2 =
+        useRemoteConfigStore.getState().use_history_v2 &&
+        (!IS_HISTORY_V2_MOCKED || isDev || __DEV__);
+      const nativeTokenId =
+        getNativeContractDetails(params.network).contract || null;
+      // v2 serves pubnet and testnet only; anything else falls through to v1
+      // rather than throwing, because mobile has no legacy-screen pre-route.
+      const isV2Network =
+        params.network === NETWORKS.PUBLIC ||
+        params.network === NETWORKS.TESTNET;
+
+      if (useV2 && isV2Network) {
+        const page = await getAccountHistoryV2({
+          publicKey: params.publicKey,
+          networkDetails,
+        });
+
+        const tokens = await buildTokenContext({
+          tokenIds: collectTokenIds(page.data),
+          networkDetails,
+          publicKey: params.publicKey,
+          balances: getBalances(),
+          // Disk-cached with a 30-minute TTL, so this is cheap on the common
+          // path. Resolution step 3 reads it to get code/decimals/icon without
+          // a per-token network call.
+          tokenListItems: await useVerifiedTokensStore
+            .getState()
+            .getVerifiedTokens({ network: params.network }),
+          // Shim: the resolver's injected signature takes `networkDetails`
+          // (the extension's shape), while this repo's getTokenDetails takes a
+          // NETWORKS value. Returns TokenDetailsResponse | null, whose `symbol`
+          // and `decimals` are what the resolver reads.
+          getTokenDetailsFn: ({ contractId, publicKey }) =>
+            getTokenDetails({
+              contractId,
+              publicKey,
+              network: params.network,
+            }),
+          // getIconUrlFromTokensLists takes `{ asset: { contractId, issuer }, network }`
+          // and resolves to `string | undefined` — the icon URL itself, not a
+          // record — so the shim wraps it into the `{ icon } | null` the
+          // resolver expects. It re-reads the verified-token list internally
+          // rather than taking the array we already pass as `tokenListItems`;
+          // that list is disk-cached with a 30-minute TTL, so the second read
+          // is cheap, and threading it in would mean forking the helper.
+          getIconFn: async ({ contractId }) => {
+            const icon = await getIconUrlFromTokensLists({
+              asset: { contractId },
+              network: params.network,
+            });
+            return icon ? { icon } : null;
+          },
+        });
+
+        const entries = page.data.map((tx) =>
+          mapV2Transaction(tx, {
+            tokens,
+            publicKey: params.publicKey,
+            nativeTokenId,
+          }),
+        );
+
+        set({
+          rawHistoryV2Data: { balances: getBalances(), entries },
+          rawHistoryData: null,
+          loadedHistoryAccount: {
+            publicKey: params.publicKey,
+            network: params.network,
+          },
           isLoading: false,
           error: null,
           isFetching: false,
@@ -259,6 +464,11 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
 
       set({
         rawHistoryData,
+        rawHistoryV2Data: null,
+        loadedHistoryAccount: {
+          publicKey: params.publicKey,
+          network: params.network,
+        },
         isLoading: false,
         error: null,
         isFetching: false,
@@ -269,6 +479,18 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
       const errorMessage =
         error instanceof Error ? error.message : "Failed to fetch history";
 
+      // Deliberately does not touch rawHistoryData / rawHistoryV2Data /
+      // loadedHistoryAccount: a failed refresh should leave whatever history
+      // was already loaded on screen (matches v1's original behavior) rather
+      // than blanking it. This is safe from the cross-account leak that
+      // motivated loadedHistoryAccount: getFilteredHistoryData validates
+      // loadedHistoryAccount.publicKey against its own params.publicKey
+      // before returning either data field, so a same-account failed
+      // refresh still serves the (correct, stale) previously loaded data,
+      // while a failure reached by switching accounts first (fetchAccountBalances
+      // succeeds for the new account, then getAccountHistoryV2/getAccountHistory
+      // throws before any set() for the new account runs) can never serve the
+      // previous account's stale entries under the new account's identity.
       set({
         error: errorMessage,
         isLoading: false,
@@ -280,6 +502,74 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
   },
 
   getFilteredHistoryData: (params) => {
+    const { loadedHistoryAccount, rawHistoryV2Data } = get();
+
+    // Identity guard, checked before either data field: the stored data
+    // (v1 or v2) only belongs to the account/network it was fetched for.
+    // Without this, a same-account failed refresh correctly leaves stale
+    // data in place (see the catch in fetchAccountHistory), but a failure
+    // reached by switching accounts (or networks) first — fetchAccountBalances
+    // succeeds for the new account so the unfunded short-circuit doesn't
+    // fire, then getAccountHistoryV2/getAccountHistory throws before any
+    // set() for the new account runs — would otherwise leave the *previous*
+    // account/network's rawHistoryV2Data/rawHistoryData in place, and this
+    // function would serve it under the new identity. The network half also
+    // covers a plain network switch skipped by the isFetching duplicate-
+    // request guard: the same public key on mainnet vs. testnet must not
+    // share loaded data.
+    if (
+      !loadedHistoryAccount ||
+      loadedHistoryAccount.publicKey !== params.publicKey ||
+      loadedHistoryAccount.network !== params.network
+    ) {
+      return null;
+    }
+
+    if (rawHistoryV2Data) {
+      const nativeTokenId =
+        getNativeContractDetails(params.network).contract || null;
+
+      let { entries } = rawHistoryV2Data;
+      if (params.tokenId) {
+        // params.tokenId is a balances-map key (e.g. "XLM", "CODE:ISSUER"),
+        // not a contract id — see resolveTokenIdToContractId. When it can't
+        // be resolved, skip filtering rather than filtering on a wrong
+        // value: an unfiltered list is a safer failure than a silently
+        // wrong one.
+        const contractTokenId = resolveTokenIdToContractId(
+          params.tokenId,
+          params.network,
+        );
+        if (contractTokenId) {
+          entries = filterHistoryEntriesByToken(entries, contractTokenId);
+        }
+      }
+      entries = filterHistoryEntries(entries, {
+        isHideDustEnabled: params.isHideDustEnabled ?? true,
+        nativeTokenId,
+      });
+
+      const history = entries.reduce((sections: HistorySectionV2[], entry) => {
+        // Use the ported getMonthYearKey rather than rebuilding the key inline:
+        // it is the one definition of the "{month}:{year}" format that
+        // MonthHeader parses back apart, and it deliberately returns "NaN:NaN"
+        // for an unparseable date instead of a confident "January".
+        const monthYear = getMonthYearKey(entry.createdAt);
+        const lastSection = sections[sections.length - 1];
+
+        if (!lastSection) {
+          return [{ monthYear, entries: [entry] }];
+        }
+        if (lastSection.monthYear === monthYear) {
+          lastSection.entries.push(entry);
+          return sections;
+        }
+        return [...sections, { monthYear, entries: [entry] }];
+      }, []);
+
+      return { balances: rawHistoryV2Data.balances, history };
+    }
+
     const { rawHistoryData } = get();
 
     if (!rawHistoryData) {
@@ -290,8 +580,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
     let filteredOperations = rawOperations;
 
     if (params.tokenId) {
-      const { network } = useAuthenticationStore.getState();
-      const networkDetails = mapNetworkToNetworkDetails(network);
+      const networkDetails = mapNetworkToNetworkDetails(params.network);
       filteredOperations = filterOperationsByToken(
         rawOperations,
         params.tokenId,
