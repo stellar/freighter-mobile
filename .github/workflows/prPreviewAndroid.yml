@@ -264,6 +264,14 @@ jobs:
         run: yarn postinstall
 
       - name: Build Android Emulator APK (dev flavor, release, debug-signed)
+        env:
+          # The dev-release build runs a Sentry sourcemap-upload gradle task
+          # (createBundleDevRelease..._SentryUpload) via @sentry/react-native's
+          # gradle integration. Preview builds disable Sentry, but the task
+          # still tries to upload and fails with "An organization ID or slug is
+          # required". SENTRY_DISABLE_AUTO_UPLOAD tells it to skip the upload.
+          # Mirrors prPreviewIos.yml's SENTRY_DISABLE_AUTO_UPLOAD.
+          SENTRY_DISABLE_AUTO_UPLOAD: "true"
         run: |
           set -euo pipefail
           # Release build so React Native's bundle task embeds the JS into the
