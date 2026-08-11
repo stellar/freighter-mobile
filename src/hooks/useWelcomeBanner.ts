@@ -3,6 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { STORAGE_KEYS } from "config/constants";
 import { logger } from "config/logger";
 import { ActiveAccount } from "ducks/auth";
+import { useBalancesStore } from "ducks/balances";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 interface UseWelcomeBannerProps {
@@ -27,6 +28,11 @@ export const useWelcomeBanner = ({
   isSwitchingAccount,
 }: UseWelcomeBannerProps): UseWelcomeBannerReturn => {
   const welcomeBannerBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  // Which account the current balances snapshot was fetched for — right
+  // after clearAccountData (account create/import/switch) the store is
+  // empty with a null stamp, and deciding fundedness from that transient
+  // state would present the banner for accounts that are actually funded.
+  const fetchedPublicKey = useBalancesStore((state) => state.fetchedPublicKey);
   const [hasAccountSeenWelcome, setHasAccountSeenWelcome] = useState<
     boolean | undefined
   >(undefined);
@@ -65,11 +71,14 @@ export const useWelcomeBanner = ({
   // Check if welcome modal should be shown for new accounts
   const checkWelcomeBannerStatus = useCallback(() => {
     // Only check when account switching is complete AND balances are loaded
+    // AND the loaded snapshot actually belongs to this account — isFunded
+    // is meaningless (cleared to false) until then.
     if (
       !account?.publicKey ||
       isLoadingBalances ||
       isSwitchingAccount ||
-      !accountSwitchCompleted
+      !accountSwitchCompleted ||
+      fetchedPublicKey !== account.publicKey
     ) {
       return;
     }
@@ -93,6 +102,7 @@ export const useWelcomeBanner = ({
     isLoadingBalances,
     isSwitchingAccount,
     accountSwitchCompleted,
+    fetchedPublicKey,
   ]);
 
   useEffect(() => {
