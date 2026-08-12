@@ -436,6 +436,44 @@ describe("balances duck", () => {
       ).toBeUndefined();
     });
 
+    it("recomputes carried fiatTotals from the cached price, not verbatim", async () => {
+      // Previous account's snapshot: 1000 XLM priced at $0.5 → fiatTotal 500.
+      useBalancesStore.setState({
+        pricedBalances: {
+          XLM: {
+            ...mockNativeBalance,
+            tokenCode: "XLM",
+            displayName: "Stellar Lumens",
+            total: new BigNumber("1000"),
+            currentPrice: new BigNumber("0.5"),
+            fiatTotal: new BigNumber("500"),
+          },
+        },
+      });
+
+      // New fetch (e.g. a just-imported account) holds 100.5 XLM, and the
+      // price fetch fails, so the carried map becomes state.
+      mockFetchBalances.mockResolvedValueOnce({ balances: mockBalances });
+      (usePricesStore.getState as jest.Mock).mockReturnValue(
+        createMockPricesStore({
+          prices: {},
+          error: "Failed to fetch token prices",
+        }),
+      );
+
+      const { result } = renderHook(() => useBalancesStore());
+
+      await act(async () => {
+        await result.current.fetchAccountBalances(mockParams);
+      });
+
+      // fiatTotal must be THIS balance's total × the cached price — never
+      // the previous balance's product carried verbatim.
+      expect(result.current.pricedBalances.XLM.fiatTotal?.toString()).toBe(
+        new BigNumber("100.5").multipliedBy("0.5").toString(),
+      );
+    });
+
     it("should extract scanResults from backend balance data", async () => {
       mockFetchBalances.mockResolvedValueOnce({ balances: mockBalances });
       (usePricesStore.getState as jest.Mock).mockReturnValue(

@@ -6,10 +6,15 @@ import SignTransactionSummary from "components/screens/SignTransactionDetails/co
 import { SignTransactionDetailsInterface } from "components/screens/SignTransactionDetails/types";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
+import {
+  BOTTOM_SHEET_CONTENT_BOTTOM_PADDING,
+  DEFAULT_PADDING,
+} from "config/constants";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import React from "react";
 import { View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface SignTransactionDetailsBottomSheetProps {
   data: SignTransactionDetailsInterface;
@@ -21,6 +26,7 @@ const SignTransactionDetailsBottomSheet = ({
   onDismiss,
 }: SignTransactionDetailsBottomSheetProps) => {
   const { t } = useAppTranslation();
+  const insets = useSafeAreaInsets();
 
   return (
     <View className="flex-1 gap-[16px] w-full pb-[64px]">
@@ -49,7 +55,13 @@ const SignTransactionDetailsBottomSheet = ({
           alwaysBounceVertical={false}
           contentContainerStyle={{
             gap: pxValue(16),
-            paddingBottom: pxValue(64),
+            // insets.bottom + DEFAULT_PADDING keeps the scroll tail clear of
+            // navigation bars that overlap the sheet under edge-to-edge
+            // (host sheets opt out of the wrapper's inset padding).
+            paddingBottom:
+              pxValue(BOTTOM_SHEET_CONTENT_BOTTOM_PADDING) +
+              insets.bottom +
+              pxValue(DEFAULT_PADDING),
           }}
         >
           <SignTransactionSummary summary={data.summary} />

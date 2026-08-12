@@ -25,18 +25,6 @@ jest.mock("hooks/useAppTranslation", () => ({
   }),
 }));
 
-jest.mock("hooks/useColors", () => ({
-  __esModule: true,
-  default: () => ({
-    themeColors: {
-      text: {
-        primary: "#000",
-        secondary: "#111",
-      },
-    },
-  }),
-}));
-
 const renderTabs = (props = {}) =>
   render(
     <TokensCollectiblesTabs

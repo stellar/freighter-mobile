@@ -61,6 +61,11 @@ const Icons = {
  * Rendered absolutely at the bottom of the sheet; a matching spacer is
  * injected into the scroll content so nothing is obscured.
  *
+ * **Header** (`scrollViewHeaderComponent`): only valid in scrollable mode.
+ * Rendered absolutely at the top of the sheet content (below the drag
+ * handle) with a matching spacer at the start of the scroll content, so the
+ * content scrolls underneath it. Give it an opaque background.
+ *
  * **Snap points** (`snapPoints`): fixes the sheet at explicit heights. Disables
  * dynamic sizing. Cannot be combined with `scrollable`.
  *
@@ -86,11 +91,13 @@ export type BottomSheetProps = {
   analyticsEvent?: AnalyticsEvent;
   analyticsProps?: AnalyticsProps;
   scrollViewFooterComponent?: () => React.ReactNode;
+  scrollViewHeaderComponent?: () => React.ReactNode;
   /**
-   * Content pinned inside the handle area (above the scroll view), so it stays
-   * visible while the body scrolls. Only rendered in `scrollable` mode.
+   * Whether the pinned footer lifts above the keyboard (default). Disable
+   * when the keyboard belongs to an overlay (e.g. a modal on top of the
+   * sheet) so the footer stays stuck to the bottom instead of jumping.
    */
-  stickyHeaderComponent?: () => React.ReactNode;
+  scrollViewFooterAvoidsKeyboard?: boolean;
   scrollable?: boolean;
 };
 
@@ -113,7 +120,8 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
   analyticsEvent,
   analyticsProps,
   scrollViewFooterComponent = undefined,
-  stickyHeaderComponent = undefined,
+  scrollViewHeaderComponent = undefined,
+  scrollViewFooterAvoidsKeyboard = true,
   scrollable = false,
 }) => {
   if (__DEV__ && scrollable && snapPoints) {
@@ -122,10 +130,17 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
     );
   }
 
+  if (__DEV__ && scrollViewHeaderComponent && !scrollable) {
+    throw new Error(
+      "BottomSheet: `scrollViewHeaderComponent` is only supported in `scrollable` mode.",
+    );
+  }
+
   const { themeColors } = useColors();
   const IconData = icon ? Icons[icon] : Icons.Announcement;
   const insets = useSafeAreaInsets();
   const [footerHeight, setFooterHeight] = useState(0);
+  const [headerHeight, setHeaderHeight] = useState(0);
   const keyboardHeight = useKeyboardHeight();
   // Track bottom-sheet open exactly once per presentation
   const hasTrackedRef = useRef(false);
@@ -145,14 +160,18 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
 
   const renderHandle = useCallback(
     () => (
-      <View className="bg-background-primary w-full pt-2 rounded-t-3xl rounded-tr-3xl">
-        <View className="items-center justify-center">
-          <View className="h-[6px] w-[40px] rounded-full bg-gray-8 opacity-[.32]" />
-        </View>
-        {scrollable && stickyHeaderComponent?.()}
+      <View className="bg-background-primary w-full items-center justify-center pt-2 rounded-t-3xl rounded-tr-3xl">
+        {/* The pill advertises drag-to-dismiss, so hide it when that gesture
+            is disabled. opacity keeps the handle's height, preserving the
+            sheet's top spacing and rounded corners. */}
+        <View
+          className={`h-[6px] w-[40px] rounded-full bg-gray-8 ${
+            enablePanDownToClose ? "opacity-[.32]" : "opacity-0"
+          }`}
+        />
       </View>
     ),
-    [scrollable, stickyHeaderComponent],
+    [enablePanDownToClose],
   );
 
   const handleChange = useCallback(
@@ -244,6 +263,38 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
     [],
   );
 
+  const handleHeaderLayout = useCallback(
+    (event: { nativeEvent: { layout: { height: number } } }) => {
+      const { height } = event.nativeEvent.layout;
+      // Same sub-pixel guard as handleFooterLayout.
+      setHeaderHeight((prev) => (Math.abs(prev - height) < 1 ? prev : height));
+    },
+    [],
+  );
+
+  const fixedContent = (
+    <BottomSheetView
+      className="bg-background-primary pl-6 pr-6 pt-6 gap-6"
+      style={{
+        paddingBottom: useInsetsBottomPadding
+          ? insets.bottom + pxValue(DEFAULT_PADDING)
+          : 0,
+      }}
+      {...bottomSheetViewProps}
+    >
+      {renderContent()}
+      {/*
+        Workaround for BottomSheetTextInput layout issues with @gorhom/bottom-sheet.
+        When the keyboard appears, BottomSheetView can shrink unexpectedly, causing
+        text inputs to become unusable. This conditional rendering adds padding
+        to maintain proper layout when keyboard is visible.
+      */}
+      {keyboardHeight > 0 && (
+        <View style={{ height: keyboardHeight - insets.bottom }} />
+      )}
+    </BottomSheetView>
+  );
+
   return (
     <>
       {/* Pre-measurement render — kept off-screen and out of the
@@ -274,6 +325,24 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
           {scrollViewFooterComponent()}
         </View>
       )}
+      {/* Same pre-measurement pattern for the pinned header (see above). */}
+      {scrollable && scrollViewHeaderComponent && (
+        <View
+          style={{
+            position: "absolute",
+            top: -4000,
+            left: 0,
+            right: 0,
+            opacity: 0,
+          }}
+          pointerEvents="none"
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          onLayout={handleHeaderLayout}
+        >
+          {scrollViewHeaderComponent()}
+        </View>
+      )}
       <BottomSheetModal
         ref={modalRef}
         enablePanDownToClose={enablePanDownToClose}
@@ -294,14 +363,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
         {scrollable ? (
           <View>
             <BottomSheetScrollView
-              // With a sticky header, shift the scroll frame down (mt-3) and
-              // trim the content's top padding (pt-3). The margin is outside
-              // the scrollable content, so it stays as a gap below the fixed
-              // header while the list scrolls, without pushing the initial
-              // content further down.
-              className={`bg-background-primary pl-6 pr-6 gap-6 ${
-                stickyHeaderComponent ? "mt-3 pt-3" : "pt-6"
-              }`}
+              className="bg-background-primary pl-6 pr-6 pt-6 gap-6"
               showsVerticalScrollIndicator={false}
               style={{
                 paddingBottom: useInsetsBottomPadding
@@ -310,6 +372,11 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
               }}
               {...bottomSheetViewProps}
             >
+              {/* Spacer reserves room for the absolutely-positioned pinned
+                  header below, mirroring the footer spacer. */}
+              {scrollViewHeaderComponent && headerHeight > 0 && (
+                <View style={{ height: headerHeight }} />
+              )}
               {renderContent()}
               {/* Spacer reserves room for the absolutely-positioned footer
                   below. Sized from the out-of-modal pre-measurement
@@ -321,12 +388,26 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
                 <View style={{ height: footerHeight }} />
               )}
             </BottomSheetScrollView>
+            {scrollViewHeaderComponent && (
+              <View
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                }}
+              >
+                {scrollViewHeaderComponent()}
+              </View>
+            )}
             {scrollViewFooterComponent && (
               <View
                 style={{
                   position: "absolute",
                   bottom:
-                    keyboardHeight > 0 ? keyboardHeight - insets.bottom : 0,
+                    scrollViewFooterAvoidsKeyboard && keyboardHeight > 0
+                      ? keyboardHeight - insets.bottom
+                      : 0,
                   left: 0,
                   right: 0,
                 }}
@@ -336,26 +417,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
             )}
           </View>
         ) : (
-          <BottomSheetView
-            className="bg-background-primary pl-6 pr-6 pt-6 gap-6"
-            style={{
-              paddingBottom: useInsetsBottomPadding
-                ? insets.bottom + pxValue(DEFAULT_PADDING)
-                : 0,
-            }}
-            {...bottomSheetViewProps}
-          >
-            {renderContent()}
-            {/*
-              Workaround for BottomSheetTextInput layout issues with @gorhom/bottom-sheet.
-              When the keyboard appears, BottomSheetView can shrink unexpectedly, causing
-              text inputs to become unusable. This conditional rendering adds padding
-              to maintain proper layout when keyboard is visible.
-            */}
-            {keyboardHeight > 0 && (
-              <View style={{ height: keyboardHeight - insets.bottom }} />
-            )}
-          </BottomSheetView>
+          fixedContent
         )}
       </BottomSheetModal>
     </>

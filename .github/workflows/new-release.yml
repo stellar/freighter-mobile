@@ -48,9 +48,26 @@ jobs:
           echo "APP_VERSION=${APP_VERSION}" >> $GITHUB_ENV
           echo "✓ Using normalized version: ${APP_VERSION}"
 
+      # Events created with the default GITHUB_TOKEN don't trigger other
+      # workflows, so release/bump-version PRs opened with it never run the unit
+      # or e2e test workflows. A GitHub App installation token is not subject to
+      # that limitation.
+      - name: Generate release automation token
+        id: release-token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          # It's preferable to hardcode "stellar" here for security reasons instead of "github.repository_owner"
+          owner: stellar
+          repositories: freighter-mobile
+
       - name: Checkout repository
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
         with:
+          # Persist the App token so the git push steps below push with it
+          token: ${{ steps.release-token.outputs.token }}
+          persist-credentials: true
           fetch-depth: 0
           fetch-tags: true
 
@@ -233,6 +250,8 @@ jobs:
           VERSION_BRANCH: ${{ steps.set_branches.outputs.version_branch }}
           BRANCH_FROM: ${{ steps.validate_branch_from.outputs.branch_or_tag }}
         with:
+          # Use the App token so `pull_request: opened` triggers the test workflows
+          github-token: ${{ steps.release-token.outputs.token }}
           script: |
             const releaseBranch = process.env.RELEASE_BRANCH;
             const versionBranch = process.env.VERSION_BRANCH;
@@ -334,6 +353,8 @@ jobs:
         env:
           APP_VERSION: ${{ steps.normalize_version.outputs.app_version }}
         with:
+          # Use the App token so `pull_request: opened` triggers the test workflows
+          github-token: ${{ steps.release-token.outputs.token }}
           script: |
             const version = process.env.APP_VERSION;
             const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/");

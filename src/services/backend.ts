@@ -249,12 +249,14 @@ export type FetchBalancesResponse = {
  * @property {NETWORKS} network - The network to query (mainnet/testnet)
  * @property {string[]} [contractIds] - Optional contract IDs to include in balance calculation
  * @property {boolean} useV2 - Whether to hit the v2 balances endpoint (remote-config gated)
+ * @property {boolean} [shouldSkipScan] - Skip Blockaid asset scanning (faster; for list views that don't render scan results)
  */
 type FetchBalancesParams = {
   publicKey: string;
   network: NETWORKS;
   contractIds?: string[];
   useV2: boolean;
+  shouldSkipScan?: boolean;
 };
 
 /**
@@ -286,16 +288,20 @@ type FetchBalancesParams = {
  * The v2 response has no Blockaid data yet — `addBlockaidScanResults`
  * replicates the v1 backend's scan-and-merge client-side so both paths return
  * the same payload. It runs after the local merge so locally added tokens get
- * Blockaid verdicts too, as they did on v1.
+ * Blockaid verdicts too, as they did on v1. `shouldSkipScan` bypasses it for
+ * callers that never render scan results, mirroring the `should_skip_scan`
+ * param the v1 path forwards to the backend.
  */
 export const fetchBalancesV2 = async ({
   publicKey,
   network,
   contractIds,
+  shouldSkipScan,
 }: {
   publicKey: string;
   network: NETWORKS;
   contractIds?: string[];
+  shouldSkipScan?: boolean;
 }): Promise<FetchBalancesResponse> => {
   const { data } = await freighterBackendV2.post<{
     data: V2AccountBalances[];
@@ -339,6 +345,10 @@ export const fetchBalancesV2 = async ({
       })
     : mappedBalances;
 
+  if (shouldSkipScan) {
+    return mergedBalances;
+  }
+
   return addBlockaidScanResults(mergedBalances, network);
 };
 
@@ -379,6 +389,7 @@ export const fetchBalances = async ({
   network,
   contractIds,
   useV2,
+  shouldSkipScan,
 }: FetchBalancesParams): Promise<FetchBalancesResponse> => {
   // The v2 balances endpoint only supports pubnet and testnet; Futurenet
   // stays on v1 regardless of the flag. v2 sends no contract_ids — indexed
@@ -387,7 +398,7 @@ export const fetchBalances = async ({
   const isV2SupportedNetwork =
     network === NETWORKS.PUBLIC || network === NETWORKS.TESTNET;
   if (useV2 && isV2SupportedNetwork) {
-    return fetchBalancesV2({ publicKey, network, contractIds });
+    return fetchBalancesV2({ publicKey, network, contractIds, shouldSkipScan });
   }
 
   const params = new URLSearchParams({
@@ -398,6 +409,10 @@ export const fetchBalances = async ({
     contractIds.forEach((id) => {
       params.append("contract_ids", id);
     });
+  }
+
+  if (shouldSkipScan) {
+    params.append("should_skip_scan", "true");
   }
 
   const { data } = await freighterBackendV1.get<FetchBalancesResponse>(
