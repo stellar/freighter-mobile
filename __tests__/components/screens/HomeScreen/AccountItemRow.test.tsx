@@ -137,4 +137,31 @@ describe("AccountItemRow", () => {
 
     expect(getByText(/Imported/)).toBeTruthy();
   });
+
+  it("announces the row's visible content, skipping the total while it loads", () => {
+    const { getByTestId, rerender } = renderWithProviders(
+      <AccountItemRow
+        {...defaultProps}
+        account={{ ...mockAccount, importedFromSecretKey: true }}
+        fiatTotal={new BigNumber("1149.23")}
+      />,
+    );
+
+    expect(getByTestId("account-row-0-select").props.accessibilityLabel).toBe(
+      "my account 1, Imported, $1,149.23",
+    );
+
+    // While the total is loading (spinner), no placeholder $0.00 is spoken.
+    rerender(
+      <AccountItemRow
+        {...defaultProps}
+        account={mockAccount}
+        isLoadingFiatTotal
+      />,
+    );
+
+    expect(getByTestId("account-row-0-select").props.accessibilityLabel).toBe(
+      "my account 1",
+    );
+  });
 });

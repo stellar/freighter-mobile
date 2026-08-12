@@ -64,7 +64,10 @@ export const useHomeHeaders = ({
   const HeaderLeftComponent = useCallback(
     () => (
       <TouchableOpacity
-        className="flex-row items-center gap-[12px]"
+        // flex-1 + the shrink chain below cap the switcher at the space the
+        // header row actually has (long names ellipsize instead of pushing
+        // the right-side buttons); mr-3 keeps a gap from the Scan button.
+        className="flex-1 flex-row items-center gap-[12px] mr-3"
         onPress={onAccountPress}
         accessibilityRole="button"
         // Without an explicit label the announcement falls back to the child
@@ -73,11 +76,13 @@ export const useHomeHeaders = ({
         testID="home-account-switcher"
       >
         <Avatar size="lg" publicAddress={publicKey} />
-        <View>
+        <View className="shrink">
           <View className="flex-row items-center gap-[4px]">
-            <Text md medium primary numberOfLines={1}>
-              {accountName}
-            </Text>
+            <View className="shrink">
+              <Text md medium primary numberOfLines={1}>
+                {accountName}
+              </Text>
+            </View>
             <Icon.ChevronDownBold
               size={CHEVRON_SIZE}
               color={themeColors.text.primary}

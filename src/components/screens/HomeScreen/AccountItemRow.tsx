@@ -56,16 +56,29 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
   const truncatedPublicKey = truncateAddress(account.publicKey);
   const showSelectedBadge =
     isSwitchingToThisAccount || (isSelected && !isAccountSwitching);
+  // Covers both never-fetched (undefined) and failed (null) totals: a
+  // failed row is retried by the next cycle, and showing the spinner
+  // during the retry beats asserting a confident $0.00.
+  const isTotalLoading = fiatTotal == null && isLoadingFiatTotal;
+
+  // Announce what the row shows — name, imported marker and USD total (only
+  // once one is actually displayed, never a placeholder $0.00 mid-load).
+  // The truncated address is deliberately left out: spoken character soup
+  // identifies the account worse than its name does.
+  const rowAccessibilityLabel = [
+    account.name,
+    account.importedFromSecretKey ? t("home.account.imported") : null,
+    isTotalLoading ? null : formatFiatAmount(fiatTotal ?? "0"),
+  ]
+    .filter(Boolean)
+    .join(", ");
 
   const handleSelectAccountPress = useCallback(() => {
     handleSelectAccount(account.publicKey);
   }, [account.publicKey, handleSelectAccount]);
 
   const renderFiatTotal = () => {
-    // Covers both never-fetched (undefined) and failed (null) totals: a
-    // failed row is retried by the next cycle, and showing the spinner
-    // during the retry beats asserting a confident $0.00.
-    if (fiatTotal == null && isLoadingFiatTotal) {
+    if (isTotalLoading) {
       return (
         <ActivityIndicator
           size="small"
@@ -95,7 +108,7 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
         delayPressIn={DEFAULT_PRESS_DELAY}
         testID={testID ? `${testID}-select` : undefined}
         accessibilityRole="button"
-        accessibilityLabel={account.name}
+        accessibilityLabel={rowAccessibilityLabel}
         accessibilityState={{
           selected: showSelectedBadge,
           disabled: isAccountSwitching,
