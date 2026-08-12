@@ -218,6 +218,11 @@ export const useAccountsFiatTotalsStore = create<AccountsFiatTotalsState>(
             const results = await Promise.all(
               batch.map(async (publicKey) => {
                 try {
+                  // Deliberately no contractIds (locally-added custom
+                  // tokens): the prices backend rejects contract ids on
+                  // both v1 and v2, so those balances would contribute $0
+                  // to the total either way — the extension's wallets list
+                  // makes the same trade-off.
                   const { balances } = await fetchBalances({
                     publicKey,
                     network,
