@@ -7,7 +7,7 @@ on:
   pull_request:
     branches: [main, release, emergency-release, "v*.*.*"]
   push:
-    branches: [main, release, emergency-release, "v*.*.*"]
+    branches: [main, release, emergency-release]
   workflow_dispatch:
     inputs:
       ref:
