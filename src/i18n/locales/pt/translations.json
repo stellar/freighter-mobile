@@ -54,8 +54,7 @@
       "myQRCode": "Meu QR code"
     },
     "manageAccount": {
-      "title": "Carteiras",
-      "addWallet": "Adicionar uma carteira",
+      "addWallet": "Adicionar carteira",
       "renameWallet": "Renomear carteira",
       "copyAddress": "Copiar endereço",
       "viewOnExplorer": "Ver no stellar.expert"
@@ -65,7 +64,6 @@
     }
   },
   "renameAccountModal": {
-    "currentName": "Nome atual",
     "saveName": "Salvar nome",
     "nameInputPlaceholder": "Digite um nome para sua carteira"
   },
@@ -423,9 +421,12 @@
     "title": "Tokens",
     "error": "Erro ao carregar saldos",
     "unfundedAccount": {
-      "message": "Para começar a usar esta conta, financie-a com pelo menos 1 XLM.",
       "learnMore": "Saiba mais",
-      "fundAccountButton": "Adicionar XLM"
+      "fundAccountButton": "Adicionar XLM",
+      "title": "Um pouco vazio por aqui...",
+      "messageStart": "Adicione pelo menos",
+      "messageAmount": "2 XLM",
+      "messageEnd": "para ativar sua carteira. Depois de financiada, você poderá adicionar tokens e fazer transações."
     },
     "addTokenButton": "Adicionar token"
   },
@@ -435,7 +436,8 @@
     "empty": "Nenhum colecionável ainda",
     "emptyHidden": "Nenhum colecionável oculto",
     "addCollectibleButton": "Adicionar colecionável",
-    "itemHiddenLabel": "{{name}}, oculto"
+    "itemHiddenLabel": "{{name}}, oculto",
+    "emptyDescription": "Os colecionáveis que você possui aparecerão aqui."
   },
   "collectibleDetails": {
     "title": "Detalhes do Colecionável",
@@ -764,16 +766,12 @@
     "checkMemoRequirements": "Verifique os requisitos de memo da conta de destino e inclua-o na transação."
   },
   "addAnotherWalletScreen": {
-    "title": "Adicionar outra carteira",
+    "title": "Adicionar carteira",
     "actions": {
       "createNewWallet": "Criar uma nova carteira",
       "createNewWalletDescription": "Criar uma carteira a partir da sua frase de recuperação",
       "importSecretKey": "Importar uma chave secreta Stellar",
       "importSecretKeyDescription": "Adicionar uma carteira usando uma chave secreta"
-    },
-    "helperBottomSheet": {
-      "title": "Adicionar outra carteira",
-      "description": "Você precisa de pelo menos 1 XLM para ter uma conta na Stellar. Compre Stellar Lumens (XLM) facilmente usando um de nossos on-ramps ou transfira XLM de outra carteira para esta carteira."
     }
   },
   "verifyPasswordScreen": {
@@ -944,9 +942,6 @@
   },
   "addFundsScreen": {
     "title": "Adicionar fundos",
-    "bottomSheet": {
-      "description": "Você precisa de pelo menos 1 XLM para ter uma conta na Stellar. Adicione Stellar Lumens (XLM) facilmente transferindo de outra carteira para esta carteira."
-    },
     "transferFromAnotherAccount": {
       "title": "Transferir de outra conta",
       "description": "Receber fundos de outra carteira"
@@ -1061,8 +1056,8 @@
   "welcomeBanner": {
     "welcomeMessage": "Bem-vindo ao Freighter!",
     "fundingText": "Para começar a usar esta conta, ",
-    "fundingText2": "financie-a com pelo menos 1 XLM.",
-    "minimumBalanceText": "As contas Stellar exigem um saldo mínimo de 1 XLM para garantir a segurança da rede e prevenir spam.",
+    "fundingText2": "financie-a com pelo menos 2 XLM.",
+    "minimumBalanceText": "As contas Stellar exigem um saldo mínimo de 2 XLM para garantir a segurança da rede e prevenir spam.",
     "reserveExplanationText": "Esta reserva ajuda a manter o ledger cobrindo taxas de transação e desencorajando a criação de contas desnecessárias, mantendo o sistema eficiente e funcional.",
     "addXLM": "Adicionar XLM",
     "doThisLater": "Fazer isso depois"

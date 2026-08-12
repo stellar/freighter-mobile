@@ -92,7 +92,14 @@ export const App = (): React.JSX.Element => {
   }, []);
 
   return (
-    <KeyboardProvider>
+    /*
+      The translucent flags tell keyboard-controller the app already runs
+      edge-to-edge (Android 15+ enforces it), so its native layer must NOT
+      inset the content view by the system-bar sizes. Without them it margins
+      the content and consumes the window insets, making useSafeAreaInsets()
+      report 0 for every edge on Android.
+    */
+    <KeyboardProvider statusBarTranslucent navigationBarTranslucent>
       {/* Paints the area behind transparent system bars under Android 15+
           enforced edge-to-edge so the status/nav strips match app chrome. */}
       <GestureHandlerRootView

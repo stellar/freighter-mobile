@@ -35,7 +35,6 @@ jest.mock("hooks/useAppTranslation", () => () => ({
       "addFundsScreen.buyWithCoinbase.title": "Buy with Coinbase",
       "addFundsScreen.buyWithCoinbase.description":
         "Transfer from Coinbase & other options",
-      "addFundsScreen.bottomSheet.description": "Bottom Sheet Description",
     };
     return translations[key] || key;
   },

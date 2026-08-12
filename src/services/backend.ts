@@ -231,11 +231,13 @@ export type FetchBalancesResponse = {
  * @property {string} publicKey - The public key of the account
  * @property {NETWORKS} network - The network to query (mainnet/testnet)
  * @property {string[]} [contractIds] - Optional contract IDs to include in balance calculation
+ * @property {boolean} [shouldSkipScan] - Skip Blockaid asset scanning (faster; for list views that don't render scan results)
  */
 type FetchBalancesParams = {
   publicKey: string;
   network: NETWORKS;
   contractIds?: string[];
+  shouldSkipScan?: boolean;
 };
 
 /**
@@ -270,6 +272,7 @@ export const fetchBalances = async ({
   publicKey,
   network,
   contractIds,
+  shouldSkipScan,
 }: FetchBalancesParams): Promise<FetchBalancesResponse> => {
   const params = new URLSearchParams({
     network,
@@ -279,6 +282,10 @@ export const fetchBalances = async ({
     contractIds.forEach((id) => {
       params.append("contract_ids", id);
     });
+  }
+
+  if (shouldSkipScan) {
+    params.append("should_skip_scan", "true");
   }
 
   const { data } = await freighterBackendV1.get<FetchBalancesResponse>(

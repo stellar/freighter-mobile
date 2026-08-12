@@ -7,7 +7,7 @@ appId: org.stellar.freighterdev
 #
 # Freshly imported wallets always land on Mainnet where the account is unfunded,
 # so the "Welcome to Freighter!" bottom sheet appears every time and covers the
-# header (including the e2e-open-settings button). And if the Mainnet account
+# header (including the account switcher). And if the Mainnet account
 # fetch flakes, an "Account not loaded" toast appears at the top and also
 # overlays the header. Both are handled here so the network-switch tap is
 # never blocked.
@@ -51,9 +51,16 @@ appId: org.stellar.freighterdev
             text: ".*could not be loaded.*"
           direction: UP
 
-# 4. Open settings from the home screen (E2E only button)
+# 4. Open settings via the manage-accounts sheet (settings moved there from
+#    the old header context menu)
 - tapOn:
-    id: e2e-open-settings
+    id: home-account-switcher
+- extendedWaitUntil:
+    visible:
+      id: manage-accounts-settings-button
+    timeout: 15000
+- tapOn:
+    id: manage-accounts-settings-button
 
 # Wait for change network button to be visible (confirms settings screen loaded)
 - extendedWaitUntil:
