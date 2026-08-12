@@ -1047,9 +1047,24 @@ describe("Backend Service - fetchBalances v2 routing", () => {
         network: NETWORKS.PUBLIC,
         useV2: true,
       }),
-    ).rejects.toThrow(
-      `v2 balances response is missing the requested account ${publicKey}`,
-    );
+    ).rejects.toThrow("v2 balances response is missing the requested account");
+  });
+
+  it("keeps the public key out of the thrown message (it becomes the Sentry title)", async () => {
+    // The message is used verbatim as the Sentry issue title, which bypasses
+    // sanitizeLogData — that redactor only walks structured `extra.args` and
+    // returns an Error's `message` untouched. Interpolating the key would
+    // also give every account its own issue, breaking grouping.
+    mockV2Post.mockResolvedValueOnce({ data: { data: [] } });
+
+    const error = await fetchBalances({
+      publicKey,
+      network: NETWORKS.PUBLIC,
+      useV2: true,
+    }).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).not.toContain(publicKey);
   });
 
   it("propagates a v2 server error without falling back to v1", async () => {

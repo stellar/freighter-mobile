@@ -306,9 +306,13 @@ export const fetchBalancesV2 = async ({
   );
 
   if (!account) {
-    throw new Error(
-      `v2 balances response is missing the requested account ${publicKey}`,
-    );
+    // The public key stays out of this message deliberately: it becomes the
+    // Sentry issue title verbatim, which bypasses sanitizeLogData (that walk
+    // is key-based and returns an Error's `message` untouched) and would ship
+    // the key regardless of the analytics opt-in. Callers pass it as a
+    // structured extra instead. Keeping the message constant also keeps every
+    // occurrence grouped under one Sentry issue rather than one per account.
+    throw new Error("v2 balances response is missing the requested account");
   }
 
   const mappedBalances = mapAccountBalancesV2(account);

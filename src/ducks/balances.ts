@@ -395,6 +395,9 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
         error,
         {
           network: params.network,
+          // Structured, so sanitizeLogData can redact it for opt-out users —
+          // interpolating it into an error message would bypass the redactor.
+          publicKey: params.publicKey,
           ...(apiError && {
             status: apiError.status,
             isNetworkError: apiError.isNetworkError,
