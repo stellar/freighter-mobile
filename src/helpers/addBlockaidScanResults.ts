@@ -44,11 +44,21 @@ export const addBlockaidScanResults = async (
   // Balance-map keys are `CODE:ISSUER` / `SYMBOL:CONTRACT_ID`; Blockaid ids
   // swap the separator: `CODE-ISSUER` (same convention as
   // extractScanResultsFromBalances and scanToken's formatAddress).
-  const scannableIds = keys.filter(
-    (key) => key !== NATIVE_TOKEN_CODE && !key.endsWith(":lp"),
-  );
+  //
+  // Remember which balance key produced each id rather than converting the id
+  // back afterwards. The reverse direction is ambiguous: a SEP-41 `symbol()`
+  // is an unconstrained String, so `MY-TOKEN:C…` becomes `MY-TOKEN-C…` and no
+  // split rule recovers the original. Since `scanBulkWithCache` keys its
+  // results by exactly the strings we send, this lookup cannot drift.
+  const scanIdToBalanceKey = new Map<string, string>();
+  keys.forEach((key) => {
+    if (key === NATIVE_TOKEN_CODE || key.endsWith(":lp")) {
+      return;
+    }
+    scanIdToBalanceKey.set(key.replace(":", "-"), key);
+  });
 
-  if (!isMainnet(network) || !scannableIds.length) {
+  if (!isMainnet(network) || !scanIdToBalanceKey.size) {
     // Blockaid only supports Stellar mainnet; on other networks every entry
     // keeps the benign default.
     return accountBalances;
@@ -62,15 +72,23 @@ export const addBlockaidScanResults = async (
     const { results } = await useBlockaidTokenScansStore
       .getState()
       .scanBulkWithCache({
-        addressList: scannableIds.map((id) => id.replace(":", "-")),
+        addressList: Array.from(scanIdToBalanceKey.keys()),
         network,
       });
 
     Object.entries(results || {}).forEach(([assetId, scanResult]) => {
-      const balanceKey = assetId.replace("-", ":");
-      if (balances[balanceKey]) {
-        (balances[balanceKey] as ScannableBalance).blockaidData = scanResult;
+      const balanceKey = scanIdToBalanceKey.get(assetId);
+      if (!balanceKey) {
+        // Every entry is pre-stamped benign, so a discarded verdict is an
+        // affirmative "safe" claim rather than a missing badge — never let one
+        // pass silently.
+        logger.warn(
+          "addBlockaidScanResults",
+          `Discarded scan result for unrecognized asset id: ${assetId}`,
+        );
+        return;
       }
+      (balances[balanceKey] as ScannableBalance).blockaidData = scanResult;
     });
   } catch (error) {
     // Non-fatal: spam/scam badges fall back to benign defaults.

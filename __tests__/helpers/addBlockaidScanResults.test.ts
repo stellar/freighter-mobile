@@ -147,6 +147,54 @@ describe("addBlockaidScanResults", () => {
     warnSpy.mockRestore();
   });
 
+  it("applies the verdict to a Soroban token whose symbol contains a hyphen", async () => {
+    // A SEP-41 `symbol()` is an unconstrained String, so the balance-map key
+    // `<symbol>:<contractId>` can carry hyphens in the symbol half. The
+    // Blockaid id is then `MY-TOKEN-CTOKEN789`, which cannot be split back
+    // into the key by a first-hyphen rule.
+    const hyphenated = {
+      isFunded: true,
+      subentryCount: 0,
+      balances: {
+        "MY-TOKEN:CTOKEN789": {
+          token: { code: "MY-TOKEN", issuer: { key: "CTOKEN789" } },
+          contractId: "CTOKEN789",
+          total: new BigNumber("5"),
+          available: new BigNumber("5"),
+        },
+      },
+    } as any;
+
+    mockScanBulkTokens.mockResolvedValueOnce({
+      results: { "MY-TOKEN-CTOKEN789": maliciousResult },
+    } as any);
+
+    const result = await addBlockaidScanResults(hyphenated, NETWORKS.PUBLIC);
+
+    expect(mockScanBulkTokens).toHaveBeenCalledWith(
+      { addressList: ["MY-TOKEN-CTOKEN789"], network: NETWORKS.PUBLIC },
+      undefined,
+    );
+    expect((result.balances["MY-TOKEN:CTOKEN789"] as any).blockaidData).toEqual(
+      maliciousResult,
+    );
+  });
+
+  it("logs a returned asset id that matches no balance instead of dropping it silently", async () => {
+    const warnSpy = jest.spyOn(logger, "warn").mockImplementation(() => {});
+    mockScanBulkTokens.mockResolvedValueOnce({
+      results: { "GHOST-CNOTHELD": maliciousResult },
+    } as any);
+
+    await addBlockaidScanResults(makeBalances(), NETWORKS.PUBLIC);
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      "addBlockaidScanResults",
+      expect.stringContaining("GHOST-CNOTHELD"),
+    );
+    warnSpy.mockRestore();
+  });
+
   it("does not scan when there is nothing scannable", async () => {
     const onlyNative = {
       isFunded: true,
