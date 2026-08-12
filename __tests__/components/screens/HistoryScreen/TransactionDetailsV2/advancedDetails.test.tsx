@@ -115,49 +115,54 @@ const entry = (overrides: Partial<HistoryEntry> = {}): HistoryEntry =>
   }) as HistoryEntry;
 
 describe("decodeOperations", () => {
-  it("returns an empty array when every operation's XDR is malformed", () => {
-    // All-bad batch: nothing decodes, so the result is empty. The mixed
-    // batch (bad + good, "one operation degrades itself without emptying
-    // the rest") is the separate test below.
-    const result = decodeOperations([op("not-valid-xdr"), op("also-bad")]);
-    expect(result).toEqual([]);
+  it("records no operations, and reports every id as failed, when all the XDR is malformed", () => {
+    // All-bad batch: nothing decodes. The mixed batch (bad + good, "one
+    // operation degrades itself without emptying the rest") is the separate
+    // test below.
+    const { records, failedIds } = decodeOperations([
+      op("not-valid-xdr", { id: "a" }),
+      op("also-bad", { id: "b" }),
+    ]);
+
+    expect(records).toEqual([]);
+    // The ids matter: the XDR list keeps a row per operation and marks the
+    // failures, so a decoder that returned an empty `failedIds` here would
+    // silently unmark every one of them.
+    expect([...failedIds].sort()).toEqual(["a", "b"]);
   });
 
-  it("returns an empty array for no operations", () => {
-    expect(decodeOperations([])).toEqual([]);
+  it("returns both halves empty for no operations", () => {
+    const { records, failedIds } = decodeOperations([]);
+    expect(records).toEqual([]);
+    expect(failedIds.size).toBe(0);
   });
 
   it("does not throw on malformed input", () => {
     expect(() => decodeOperations([op("!!!")])).not.toThrow();
   });
 
-  it("decodes a valid operation", () => {
-    const payment = Operation.payment({
-      destination: "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
-      asset: Asset.native(),
-      amount: "1",
-    });
-    const encoded = payment.toXDR().toString("base64");
+  it("decodes a valid operation and reports no failures", () => {
+    const { records, failedIds } = decodeOperations([op(validPaymentXdr())]);
 
-    const result = decodeOperations([op(encoded)]);
-    expect(result).toHaveLength(1);
-    expect(result[0].type).toBe("payment");
+    expect(records).toHaveLength(1);
+    expect(records[0].type).toBe("payment");
+    expect(failedIds.size).toBe(0);
   });
 
-  it("drops a malformed operation while keeping a valid one alongside it", () => {
+  it("drops a malformed operation while keeping a valid one alongside it, reporting only the bad id", () => {
     // The brief's own cases only cover all-bad and all-good; a mixed batch is
     // the actual "one operation degrades itself, not the view" scenario this
     // decoder exists for.
-    const payment = Operation.payment({
-      destination: "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
-      asset: Asset.native(),
-      amount: "1",
-    });
-    const encoded = payment.toXDR().toString("base64");
+    const { records, failedIds } = decodeOperations([
+      op("not-valid-xdr", { id: "bad" }),
+      op(validPaymentXdr(), { id: "good" }),
+    ]);
 
-    const result = decodeOperations([op("not-valid-xdr"), op(encoded)]);
-    expect(result).toHaveLength(1);
-    expect(result[0].type).toBe("payment");
+    expect(records).toHaveLength(1);
+    expect(records[0].type).toBe("payment");
+    // Exactly the bad one — a decoder that flagged both would mark the valid
+    // operation's XDR row as a decode failure.
+    expect([...failedIds]).toEqual(["bad"]);
   });
 });
 
@@ -262,5 +267,34 @@ describe("AdvancedDetails", () => {
     // it's still here (and why the row count exceeds `Operations`' card
     // count) instead of silently outnumbering the decoded cards.
     expect(getByText("CREATE_ACCOUNT · Failed to decode")).toBeTruthy();
+  });
+
+  it("renders the decoded operations immediately, with no loading step", () => {
+    // The shared `Operations` component holds a VISUAL_DELAY_MS (500ms)
+    // spinner before its first render, for the sign flow's collapsible-section
+    // layout. Nothing here is async — `decodeOperations` runs synchronously in
+    // a useMemo before `Operations` mounts — so AdvancedDetails passes
+    // deferInitialRender={false} and the operation content must be present on
+    // the first render pass.
+    //
+    // getByText, deliberately not findByText: findByText would also pass with
+    // the delay in place, which is exactly the bug. A synchronous query is the
+    // only form of this assertion that can fail.
+    const testEntry = entry({
+      details: {
+        ...entry().details,
+        operations: [op(validPaymentXdr(), { id: "op-1" })],
+      },
+    });
+
+    const { getByText } = render(
+      <AdvancedDetails entry={testEntry} onBack={jest.fn()} />,
+    );
+
+    // "Payment" is the OPERATION_TYPES label (config/constants.ts) that
+    // Operations renders for a decoded payment. It exists only inside the
+    // gated subtree, so its synchronous presence proves the gate is open —
+    // not merely that the surrounding chrome rendered.
+    expect(getByText("Payment")).toBeTruthy();
   });
 });

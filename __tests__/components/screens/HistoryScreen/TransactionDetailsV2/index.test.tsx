@@ -77,10 +77,10 @@ describe("TransactionDetailsV2", () => {
     expect(getByText("Sent XLM")).toBeTruthy();
   });
 
-  it("navigates to the advanced view (with real, decodable operations) and back", async () => {
+  it("navigates to the advanced view (with real, decodable operations) and back", () => {
     const withOperations = entry({ operations: [validPaymentOperation()] });
 
-    const { getByTestId, getByText, findByText, queryByTestId } = render(
+    const { getByTestId, getByText, queryByTestId } = render(
       <TransactionDetailsV2 entry={withOperations} />,
     );
 
@@ -98,19 +98,13 @@ describe("TransactionDetailsV2", () => {
     // "payment" case in Operations.tsx), so it renders exclusively when the
     // XDR above actually decoded. This is what proves the composed path
     // decodes and renders a real operation, not just that the array was
-    // non-empty. findByText (not getByText): Operations gates its real
-    // content behind a VISUAL_DELAY_MS-timed "isReady" flag (see
-    // Operations.tsx), the same real-timer wait
-    // Operations.test.tsx's own suite uses (its `FIND = { timeout: 3000 }`).
-    expect(
-      await findByText(
-        truncateAddress(PAYMENT_DESTINATION),
-        {},
-        {
-          timeout: 3000,
-        },
-      ),
-    ).toBeTruthy();
+    // non-empty.
+    //
+    // Synchronous getByText: AdvancedDetails passes deferInitialRender={false},
+    // so Operations skips the VISUAL_DELAY_MS spinner it holds for the sign
+    // flow's collapsible sections. Nothing on this path is async, so a
+    // findByText here would pass whether or not that opt-out worked.
+    expect(getByText(truncateAddress(PAYMENT_DESTINATION))).toBeTruthy();
 
     fireEvent.press(getByTestId("detail-sheet-back"));
     expect(getByText("Sent XLM")).toBeTruthy();

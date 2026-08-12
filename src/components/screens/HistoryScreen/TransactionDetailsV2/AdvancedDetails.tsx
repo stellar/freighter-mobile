@@ -16,28 +16,40 @@ import { TouchableOpacity, View } from "react-native";
 /**
  * Decode the base64 xdr.Operation each HistoryOperation carries.
  *
- * A failure drops that one operation rather than failing the view — the same
- * discipline the history page needed when a single malformed amount could throw
- * and blank the whole list.
+ * A failure drops that one operation from `records` rather than failing the
+ * view — the same discipline the history page needed when a single malformed
+ * amount could throw and blank the whole list.
+ *
+ * Failures are *reported* in `failedIds` rather than merely dropped, because
+ * the XDR list below deliberately keeps a row for every operation including
+ * the ones that failed (see the comment on `xdrItems`). Returning both from
+ * one pass is what keeps that list from having to decode everything a second
+ * time just to learn which ids failed.
  *
  * Note: `Operation.fromXDRObject` is typed to return `OperationRecord` (the
  * parsed-operation union), not the `Operation` class itself — `Operation` is
  * the builder/static-methods surface, `OperationRecord` is what parsing one
- * back out actually produces. This return type is `OperationRecord[]`
- * accordingly, matching what `Operations`' `operations` prop expects.
+ * back out actually produces. `records` is `OperationRecord[]` accordingly,
+ * matching what `Operations`' `operations` prop expects.
  */
 export const decodeOperations = (
   operations: HistoryOperation[],
-): OperationRecord[] =>
-  operations
-    .map((op) => {
-      try {
-        return Operation.fromXDRObject(xdr.Operation.fromXDR(op.xdr, "base64"));
-      } catch {
-        return null;
-      }
-    })
-    .filter((op): op is OperationRecord => op !== null);
+): { records: OperationRecord[]; failedIds: Set<string> } => {
+  const records: OperationRecord[] = [];
+  const failedIds = new Set<string>();
+
+  operations.forEach((op) => {
+    try {
+      records.push(
+        Operation.fromXDRObject(xdr.Operation.fromXDR(op.xdr, "base64")),
+      );
+    } catch {
+      failedIds.add(op.id);
+    }
+  });
+
+  return { records, failedIds };
+};
 
 /**
  * The "advanced" view of the v2 transaction detail sheet: decoded operations
@@ -63,7 +75,7 @@ export const AdvancedDetails: React.FC<{
   const { t } = useAppTranslation();
   const { copyToClipboard } = useClipboard();
 
-  const decoded = useMemo(
+  const { records, failedIds } = useMemo(
     () => decodeOperations(entry.details.operations),
     [entry.details.operations],
   );
@@ -75,7 +87,7 @@ export const AdvancedDetails: React.FC<{
   // mapping (filter invokeHostFunction ops -> flatten their auth entries -> map
   // to { invocation, boundAddress }) is duplicated here rather than reused.
   const authEntries: AuthEntryDisplay[] = useMemo(() => {
-    const allAuthEntries = decoded
+    const allAuthEntries = records
       .filter(
         (operation): operation is Operation.InvokeHostFunction =>
           operation.type === "invokeHostFunction",
@@ -88,34 +100,22 @@ export const AdvancedDetails: React.FC<{
       invocation: authEntry.rootInvocation(),
       boundAddress: getAuthEntryBoundAddress(authEntry),
     }));
-  }, [decoded]);
+  }, [records]);
 
   // Built from the raw (not decoded) operations, deliberately: an operation
   // that failed to decode is precisely the one whose XDR a user most needs to
   // copy (to inspect it elsewhere, file a bug, etc.), so dropping it here
   // would remove the most useful row rather than the least useful one.
   //
-  // Because this list can therefore be longer than `decoded` (one row goes
+  // Because this list can therefore be longer than `records` (one row goes
   // missing from `Operations` per failure, none go missing here), each row
   // is titled by the operation's own raw `type` — present regardless of
   // decode success — so it still correlates with the matching card above,
   // and rows whose operation failed to decode are explicitly marked rather
   // than silently outnumbering the operation cards with no explanation.
-  const decodeFailedOperationIds = useMemo(() => {
-    const failedIds = new Set<string>();
-    entry.details.operations.forEach((operation) => {
-      try {
-        Operation.fromXDRObject(xdr.Operation.fromXDR(operation.xdr, "base64"));
-      } catch {
-        failedIds.add(operation.id);
-      }
-    });
-    return failedIds;
-  }, [entry.details.operations]);
-
   const xdrItems: ListItemProps[] = entry.details.operations.map(
     (operation) => {
-      const decodeFailed = decodeFailedOperationIds.has(operation.id);
+      const decodeFailed = failedIds.has(operation.id);
 
       return {
         key: `xdr-${operation.id}`,
@@ -157,7 +157,10 @@ export const AdvancedDetails: React.FC<{
         <Text sm secondary>
           {t("history.v2.detail.operations")}
         </Text>
-        <Operations operations={decoded} />
+        {/* deferInitialRender={false}: `records` is decoded synchronously
+            above, before this mounts, so the shared component's 500ms
+            spinner would be waiting on nothing. */}
+        <Operations operations={records} deferInitialRender={false} />
       </View>
 
       {authEntries.length > 0 && (

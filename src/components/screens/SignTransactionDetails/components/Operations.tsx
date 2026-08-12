@@ -35,6 +35,15 @@ import { scanToken } from "services/blockaid/api";
 
 interface OperationsProps {
   operations: OperationRecord[];
+  /**
+   * Hold a spinner for VISUAL_DELAY_MS before the first render. Defaults to
+   * true for the sign flow, whose collapsible sections need it (see
+   * SignTransactionOperationDetails' own ref-freezing comment). Consumers whose
+   * operations are already fully decoded before this mounts — the history
+   * sheet's AdvancedDetails decodes them synchronously in a useMemo — pass
+   * false: there is nothing to wait for, so the delay is pure latency.
+   */
+  deferInitialRender?: boolean;
 }
 
 type AuthorizationMap = {
@@ -1204,15 +1213,25 @@ const RenderOperationArgsByType = ({
   }
 };
 
-const Operations = ({ operations }: OperationsProps) => {
+const Operations = ({
+  operations,
+  deferInitialRender = true,
+}: OperationsProps) => {
   const { t } = useAppTranslation();
-  const [isReady, setIsReady] = useState(false);
+  // Seeded ready (rather than flipped in the effect below) when the delay is
+  // off, so content renders on the very first pass instead of after a state
+  // flush — otherwise opting out would still cost a frame of the spinner.
+  const [isReady, setIsReady] = useState(!deferInitialRender);
 
   useEffect(() => {
+    if (!deferInitialRender) {
+      return undefined;
+    }
+
     // small delay to avoid rendering broken content before the content is ready
     const timer = setTimeout(() => setIsReady(true), VISUAL_DELAY_MS);
     return () => clearTimeout(timer);
-  }, []);
+  }, [deferInitialRender]);
 
   if (!isReady) {
     return (
