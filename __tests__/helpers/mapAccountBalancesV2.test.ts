@@ -111,10 +111,43 @@ describe("mapAccountBalancesV2", () => {
       expect((native.total as BigNumber).toString()).toBe("100");
       // available passes through from the server: 100 - 10 - 1.5
       expect((native.available as BigNumber).toString()).toBe("88.5");
-      expect((native.minimumBalance as BigNumber).toString()).toBe("1.5");
+      // The server's `minimum_balance` is the pure base reserve; the v1
+      // contract folds selling liabilities in, so the mapper does too:
+      // 1.5 + 10 = 11.5
+      expect((native.minimumBalance as BigNumber).toString()).toBe("11.5");
       // The server keys native "native" (v1 convention); the mapper re-keys
       // it to the app convention, so no leftover "native" entry.
       expect(result.balances.native).toBeUndefined();
+    });
+
+    it("folds selling liabilities into minimumBalance", () => {
+      const result = mapAccountBalancesV2(
+        makeAccount([
+          {
+            ...nativeBalance,
+            minimum_balance: "2.5",
+            selling_liabilities: "40",
+          },
+        ]),
+      );
+      const native = result.balances.XLM as any;
+
+      expect((native.minimumBalance as BigNumber).toString()).toBe("42.5");
+    });
+
+    it("leaves minimumBalance at the bare reserve when there are no open offers", () => {
+      const result = mapAccountBalancesV2(
+        makeAccount([
+          {
+            ...nativeBalance,
+            minimum_balance: "2.5",
+            selling_liabilities: "0",
+          },
+        ]),
+      );
+      const native = result.balances.XLM as any;
+
+      expect((native.minimumBalance as BigNumber).toString()).toBe("2.5");
     });
   });
 

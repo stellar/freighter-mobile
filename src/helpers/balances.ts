@@ -386,10 +386,17 @@ export const calculateSpendableAmount = ({
   if ("token" in balance && balance.token.type === "native") {
     const fee = new BigNumber(transactionFee);
 
-    // Calculate minimum balance: (2 + subentryCount) * BASE_RESERVE
-    const minBalance = new BigNumber(2 + subentryCount).multipliedBy(
-      BASE_RESERVE,
-    );
+    // Prefer the server-derived `minimumBalance`. Both balance paths define it
+    // as base reserve + selling liabilities, so it accounts for XLM locked by
+    // open sell offers — which the local formula below cannot see — and it
+    // also reflects sponsorship netting the local formula ignores. Falling
+    // back to the local `(2 + subentryCount) * BASE_RESERVE` keeps a
+    // reserve-safe floor if the field is ever missing (e.g. a balance cached
+    // before this mapping landed), rather than treating the reserve as zero.
+    const minBalance =
+      "minimumBalance" in balance && balance.minimumBalance
+        ? new BigNumber(balance.minimumBalance)
+        : new BigNumber(2 + subentryCount).multipliedBy(BASE_RESERVE);
 
     // Calculate spendable: total - minimum balance - transaction fee
     const spendableAmount = totalBalance.minus(minBalance).minus(fee);

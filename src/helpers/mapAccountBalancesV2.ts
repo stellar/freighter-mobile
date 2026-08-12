@@ -181,7 +181,14 @@ const mapNative = (b: V2NativeBalance): MappedEntry => ({
     token: b.token,
     total: new BigNumber(b.total),
     available: new BigNumber(b.available),
-    minimumBalance: new BigNumber(b.minimum_balance),
+    // The v2 server reports `minimum_balance` as the pure base reserve and
+    // keeps selling liabilities as a separate subtrahend, but the v1 contract
+    // this map targets folds both into `minimumBalance`. Fold it here so
+    // consumers (notably `calculateSpendableAmount`) get the same meaning on
+    // either path: XLM locked by open sell offers is not spendable.
+    minimumBalance: new BigNumber(b.minimum_balance).plus(
+      b.selling_liabilities,
+    ),
     buyingLiabilities: b.buying_liabilities,
     sellingLiabilities: b.selling_liabilities,
   } as NativeBalance,

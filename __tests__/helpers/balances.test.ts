@@ -307,11 +307,59 @@ describe("balances helpers", () => {
           type: "native",
         } as NativeToken,
         total: new BigNumber("10"),
-        available: new BigNumber("9.5"),
-        minimumBalance: new BigNumber("1"),
+        available: new BigNumber("7.5"),
+        minimumBalance: new BigNumber("2.5"),
         buyingLiabilities: "0",
         sellingLiabilities: "0",
       };
+
+      // The server-provided minimumBalance is authoritative: 2.5 XLM
+      // spendable = 10 - 2.5 - 0.00001 = 7.49999 XLM
+      const spendable = calculateSpendableAmount({
+        balance: xlmBalance,
+        subentryCount: 3,
+        transactionFee: "0.00001",
+      });
+      expect(spendable.toString()).toBe("7.49999");
+    });
+
+    it("should subtract XLM locked by open sell offers", () => {
+      const xlmBalance: NativeBalance = {
+        token: {
+          code: "XLM",
+          issuer: null,
+          type: "native",
+        } as NativeToken,
+        total: new BigNumber("10"),
+        available: new BigNumber("3.5"),
+        // reserve (2.5) + selling liabilities (4), as both balance paths
+        // supply it
+        minimumBalance: new BigNumber("6.5"),
+        buyingLiabilities: "0",
+        sellingLiabilities: "4",
+      };
+
+      // spendable = 10 - 6.5 - 0.00001 = 3.49999 XLM
+      const spendable = calculateSpendableAmount({
+        balance: xlmBalance,
+        subentryCount: 3,
+        transactionFee: "0.00001",
+      });
+      expect(spendable.toString()).toBe("3.49999");
+    });
+
+    it("should fall back to the locally derived reserve when minimumBalance is absent", () => {
+      const xlmBalance = {
+        token: {
+          code: "XLM",
+          issuer: null,
+          type: "native",
+        } as NativeToken,
+        total: new BigNumber("10"),
+        available: new BigNumber("9.5"),
+        buyingLiabilities: "0",
+        sellingLiabilities: "0",
+      } as unknown as NativeBalance;
 
       // subentryCount = 3, so minimum balance = (2 + 3) * 0.5 = 2.5 XLM
       // spendable = 10 - 2.5 - 0.00001 = 7.49999 XLM
@@ -392,8 +440,9 @@ describe("balances helpers", () => {
           type: "native",
         } as NativeToken,
         total: new BigNumber("10"),
-        available: new BigNumber("9.5"),
-        minimumBalance: new BigNumber("1"),
+        available: new BigNumber("7.5"),
+        // subentryCount = 3, so the reserve is (2 + 3) * 0.5 = 2.5 XLM
+        minimumBalance: new BigNumber("2.5"),
         buyingLiabilities: "0",
         sellingLiabilities: "0",
       };
@@ -415,8 +464,10 @@ describe("balances helpers", () => {
           type: "native",
         } as NativeToken,
         total: new BigNumber("10"),
-        available: new BigNumber("9.5"),
-        minimumBalance: new BigNumber("1"),
+        available: new BigNumber("7.5"),
+        // subentryCount = 3, so the reserve is (2 + 3) * 0.5 = 2.5 XLM,
+        // leaving 7.49999 spendable — 8 is over it
+        minimumBalance: new BigNumber("2.5"),
         buyingLiabilities: "0",
         sellingLiabilities: "0",
       };
