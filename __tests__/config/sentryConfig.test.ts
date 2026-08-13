@@ -7,18 +7,23 @@ import {
   scrubStrKeys,
   syncSentryEnablement,
   updateSentryContext,
+  whenSentryLifecycleSettled,
 } from "config/sentryConfig";
 
 // Shared client options object so tests can assert that opt-out flips
-// `enabled` to false (the non-flushing disable) rather than calling close().
+// `enabled` to false immediately, ahead of the async native shutdown.
 const mockClientOptions: { enabled: boolean } = { enabled: true };
-const mockClientClose = jest.fn();
+const mockClientClose = jest.fn(() => Promise.resolve(true));
+const mockClearBreadcrumbs = jest.fn();
 jest.mock("@sentry/react-native", () => ({
   init: jest.fn(),
   close: jest.fn(),
   getClient: jest.fn(() => ({
     close: mockClientClose,
     getOptions: () => mockClientOptions,
+  })),
+  getIsolationScope: jest.fn(() => ({
+    clearBreadcrumbs: mockClearBreadcrumbs,
   })),
   setContext: jest.fn(),
   setTag: jest.fn(),
@@ -100,14 +105,24 @@ const runBeforeSendWith = (event: Partial<ErrorEvent>): ErrorEvent | null => {
   return initOpts.beforeSend(event as ErrorEvent, {}) as ErrorEvent | null;
 };
 
+// Drain the microtask queue so queued lifecycle transitions get a chance to
+// start (and park on their first await) without settling the whole chain.
+const flushMicrotasks = (): Promise<void> =>
+  new Promise<void>((resolve) => {
+    setImmediate(resolve);
+  });
+
 // initializeSentry() is idempotent — it guards on an internal
 // `isSentryInitialized` flag. Reset that module state before every test (drive
 // it to "not initialized" via the public syncSentryEnablement path) so each
-// test starts fresh and stays isolated.
-beforeEach(() => {
+// test starts fresh and stays isolated. The teardown half of that path is
+// async (it awaits the native close), so await the lifecycle chain before
+// handing the test a clean slate.
+beforeEach(async () => {
   mockHydration.hydrated = true;
   mockAnalyticsState.isEnabled = false;
   syncSentryEnablement();
+  await whenSentryLifecycleSettled();
   mockAnalyticsState.isEnabled = true;
   // Reset AFTER the syncSentryEnablement reset above, which flips enabled off
   // when a prior test left the client initialized.
@@ -569,7 +584,7 @@ describe("data-sharing master switch", () => {
     expect(beforeSend!(event, {})).toBeNull();
   });
 
-  it("syncSentryEnablement disables the client on toggle-off without flushing", () => {
+  it("syncSentryEnablement stops the JS client synchronously on toggle-off", () => {
     // Bring the client up first so the internal flag is set.
     mockAnalyticsState.isEnabled = true;
     initializeSentry();
@@ -577,27 +592,158 @@ describe("data-sharing master switch", () => {
 
     mockAnalyticsState.isEnabled = false;
     syncSentryEnablement();
+
+    // No await: consent must take effect the instant the user toggles, ahead
+    // of the async native shutdown queued behind it.
     expect(mockedSentry.setUser).toHaveBeenCalledWith(null);
-    // Disable by flipping enabled=false directly — NOT via close()/close(0),
-    // both of which full-drain the transport (PromiseBuffer.drain treats a
-    // falsy timeout as "wait for the whole queue"). We must not push out the
-    // backlog buffered under prior consent.
     expect(mockClientOptions.enabled).toBe(false);
-    expect(mockClientClose).not.toHaveBeenCalled();
-    expect(mockedSentry.close).not.toHaveBeenCalled();
     expect(mockedSentry.init).not.toHaveBeenCalled();
   });
 
-  it("syncSentryEnablement re-initializes the client on toggle-on", () => {
+  it("syncSentryEnablement clears buffered breadcrumbs on toggle-off", () => {
+    mockAnalyticsState.isEnabled = true;
+    initializeSentry();
+    jest.clearAllMocks();
+
+    mockAnalyticsState.isEnabled = false;
+    syncSentryEnablement();
+
+    // addBreadcrumb() ignores the `enabled` flag, so anything accumulated
+    // before opt-out would otherwise ride along on the first post-opt-in event.
+    expect(mockClearBreadcrumbs).toHaveBeenCalledTimes(1);
+  });
+
+  it("syncSentryEnablement closes the native SDK on toggle-off", async () => {
+    mockAnalyticsState.isEnabled = true;
+    initializeSentry();
+    jest.clearAllMocks();
+
+    mockAnalyticsState.isEnabled = false;
+    syncSentryEnablement();
+    await whenSentryLifecycleSettled();
+
+    // client.close() is the only path that reaches NATIVE.closeNativeSdk();
+    // without it the Cocoa/Android SDK keeps reporting native crashes, app
+    // hangs and ANRs, none of which pass through our JS beforeSend.
+    expect(mockClientClose).toHaveBeenCalledTimes(1);
+
+    // Must be a positive timeout: Client._isClientDoneProcessing and
+    // PromiseBuffer.drain both read a falsy timeout as "wait indefinitely".
+    const [timeout] = mockClientClose.mock.calls[0] as unknown as [number];
+    expect(timeout).toBeGreaterThan(0);
+  });
+
+  it("syncSentryEnablement re-initializes the client on toggle-on", async () => {
     // Drive to a shut-down state (init, then disable via sync).
     mockAnalyticsState.isEnabled = true;
     initializeSentry();
     mockAnalyticsState.isEnabled = false;
     syncSentryEnablement();
+    await whenSentryLifecycleSettled();
     jest.clearAllMocks();
 
     mockAnalyticsState.isEnabled = true;
     syncSentryEnablement();
+    await whenSentryLifecycleSettled();
+    expect(mockedSentry.init).toHaveBeenCalledTimes(1);
+  });
+
+  it("serializes a rapid off→on toggle so the native close cannot outlive the re-init", async () => {
+    mockAnalyticsState.isEnabled = true;
+    initializeSentry();
+    jest.clearAllMocks();
+
+    // Make the native close settle slowly, so an unserialized implementation
+    // would let the re-init land first and be torn down by the late close.
+    let releaseClose: () => void = () => {};
+    const closeGate = new Promise<void>((resolve) => {
+      releaseClose = resolve;
+    });
+    mockClientClose.mockImplementationOnce(() => closeGate.then(() => true));
+
+    mockAnalyticsState.isEnabled = false;
+    syncSentryEnablement();
+
+    // Let the teardown actually reach `await client.close(...)` before the
+    // opt-in arrives. Without this the two transitions queue in the same tick
+    // and collapse, which exercises a different path (see the burst test).
+    await flushMicrotasks();
+    expect(mockClientClose).toHaveBeenCalledTimes(1);
+
+    mockAnalyticsState.isEnabled = true;
+    syncSentryEnablement();
+    await flushMicrotasks();
+
+    // Re-init must not have run yet — it is queued behind the in-flight close.
+    expect(mockedSentry.init).not.toHaveBeenCalled();
+
+    releaseClose();
+    await whenSentryLifecycleSettled();
+
+    // Ordering held: the close completed, and only then did the client come
+    // back up. Native is left running, not torn down by a stale close.
+    expect(mockClientClose).toHaveBeenCalledTimes(1);
+    expect(mockedSentry.init).toHaveBeenCalledTimes(1);
+  });
+
+  it("re-arms a client whose opt-out was reversed within the same tick", async () => {
+    mockAnalyticsState.isEnabled = true;
+    initializeSentry();
+    jest.clearAllMocks();
+
+    // off→on with no tick in between: the teardown never runs, so the client
+    // stays up — but the synchronous path already flipped `enabled` off. It has
+    // to come back on, or Sentry is silently dead for the rest of the process.
+    mockAnalyticsState.isEnabled = false;
+    syncSentryEnablement();
+    expect(mockClientOptions.enabled).toBe(false);
+
+    mockAnalyticsState.isEnabled = true;
+    syncSentryEnablement();
+    await whenSentryLifecycleSettled();
+
+    expect(mockClientOptions.enabled).toBe(true);
+    expect(mockClientClose).not.toHaveBeenCalled();
+    // Still the original client — no teardown happened, so no re-init either.
+    expect(mockedSentry.init).not.toHaveBeenCalled();
+  });
+
+  it("collapses a burst of toggles to the final state", async () => {
+    mockAnalyticsState.isEnabled = true;
+    initializeSentry();
+    jest.clearAllMocks();
+
+    // off → on → off: the reconcile reads intent at execution time, so the
+    // intermediate on is never applied and the client ends up down.
+    mockAnalyticsState.isEnabled = false;
+    syncSentryEnablement();
+    mockAnalyticsState.isEnabled = true;
+    syncSentryEnablement();
+    mockAnalyticsState.isEnabled = false;
+    syncSentryEnablement();
+    await whenSentryLifecycleSettled();
+
+    expect(mockClientOptions.enabled).toBe(false);
+    expect(mockedSentry.init).not.toHaveBeenCalled();
+  });
+
+  it("keeps the lifecycle chain usable after a failed native close", async () => {
+    mockAnalyticsState.isEnabled = true;
+    initializeSentry();
+    jest.clearAllMocks();
+
+    mockClientClose.mockRejectedValueOnce(new Error("native close failed"));
+
+    mockAnalyticsState.isEnabled = false;
+    syncSentryEnablement();
+    await whenSentryLifecycleSettled();
+
+    // A rejected teardown must not poison the chain — the next opt-in still
+    // brings the client back up.
+    mockAnalyticsState.isEnabled = true;
+    syncSentryEnablement();
+    await whenSentryLifecycleSettled();
+
     expect(mockedSentry.init).toHaveBeenCalledTimes(1);
   });
 
