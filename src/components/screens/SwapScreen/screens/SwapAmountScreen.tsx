@@ -132,7 +132,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     network,
   });
 
-  const { recommendedFee, networkCongestion } = useNetworkFees();
+  const { recommendedFee, networkCongestion, feePresets } = useNetworkFees();
 
   const {
     sourceTokenId,
@@ -412,6 +412,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     TransactionContext.Swap,
     swapOperationCount,
     networkCongestion,
+    feePresets,
   );
 
   const {

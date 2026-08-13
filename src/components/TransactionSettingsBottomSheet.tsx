@@ -114,6 +114,7 @@ const TransactionSettingsBottomSheet: React.FC<
     context,
     operationCount,
     networkCongestion,
+    feePresets,
   );
 
   const timeoutInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
