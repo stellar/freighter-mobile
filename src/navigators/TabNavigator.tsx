@@ -19,6 +19,7 @@ import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useHistoryPolling } from "hooks/useHistoryPolling";
 import { usePricedBalancesPolling } from "hooks/usePricedBalancesPolling";
 import { useSwapTokenListsPrewarm } from "hooks/useSwapTokenListsPrewarm";
+import { useSyncAccountsFiatTotals } from "hooks/useSyncAccountsFiatTotals";
 import React, { useEffect, useMemo } from "react";
 import styled from "styled-components/native";
 
@@ -95,6 +96,13 @@ export const TabNavigator = () => {
 
   // Start polling for balance and price updates
   usePricedBalancesPolling({
+    publicKey: publicKey ?? "",
+    network: networkDetails.network,
+  });
+
+  // Mirror active-account balance changes into the manage-accounts sheet's
+  // per-account USD totals
+  useSyncAccountsFiatTotals({
     publicKey: publicKey ?? "",
     network: networkDetails.network,
   });

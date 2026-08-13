@@ -21,6 +21,11 @@ interface CollapsibleCollectionHeaderProps {
    * badge (used by the Send flow to match its previous list header).
    */
   showDivider?: boolean;
+  /**
+   * Render the collection name in the primary text color (used by the Home
+   * Collectibles tab); defaults to the secondary color the Send flow keeps.
+   */
+  titlePrimary?: boolean;
 }
 
 /**
@@ -44,6 +49,7 @@ export const CollapsibleCollectionHeader: React.FC<
   onToggle,
   testID,
   showDivider = false,
+  titlePrimary = false,
 }) => {
   const { themeColors } = useColors();
 
@@ -64,11 +70,24 @@ export const CollapsibleCollectionHeader: React.FC<
       accessibilityLabel={`${collectionName}, ${countLabel}`}
     >
       {showDivider ? (
-        <Text md medium secondary numberOfLines={1} style={{ flexShrink: 1 }}>
+        <Text
+          md
+          medium
+          primary={titlePrimary}
+          secondary={!titlePrimary}
+          numberOfLines={1}
+          style={{ flexShrink: 1 }}
+        >
           {collectionName}
         </Text>
       ) : (
-        <Text md medium secondary style={{ flex: 1 }}>
+        <Text
+          md
+          medium
+          primary={titlePrimary}
+          secondary={!titlePrimary}
+          style={{ flex: 1 }}
+        >
           {collectionName}
         </Text>
       )}

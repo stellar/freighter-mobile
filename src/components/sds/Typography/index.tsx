@@ -3,7 +3,13 @@ import { THEME } from "config/theme";
 import { fs } from "helpers/dimensions";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
 import React from "react";
-import { Text as RNText, Platform, StyleProp, TextStyle } from "react-native";
+import {
+  Text as RNText,
+  AccessibilityRole,
+  Platform,
+  StyleProp,
+  TextStyle,
+} from "react-native";
 import styled from "styled-components/native";
 
 // =============================================================================
@@ -274,6 +280,11 @@ export interface TextProps extends TypographyBaseProps {
   numberOfLines?: number;
   onPress?: () => void;
   textAlign?: "left" | "center" | "right";
+  /**
+   * Forwarded to the native Text so interactive spans (e.g. an inline
+   * "Learn more" link) can announce themselves to screen readers.
+   */
+  accessibilityRole?: AccessibilityRole;
 }
 
 const StyledText = styled(BaseText)<{

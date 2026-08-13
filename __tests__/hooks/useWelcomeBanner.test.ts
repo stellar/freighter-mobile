@@ -35,6 +35,16 @@ jest.mock("@gorhom/bottom-sheet", () => ({
   BottomSheetModal: jest.fn(),
 }));
 
+// Mutable so tests can simulate the balances snapshot belonging to another
+// account (e.g. right after clearAccountData). Defaults to the test account.
+let mockFetchedPublicKey: string | null =
+  "GCKUVXILBNYS4FDNWCGCYSJBY2PBQ4KAW2M5CODRVJPUFM62IJFH67J2";
+
+jest.mock("ducks/balances", () => ({
+  useBalancesStore: (selector: (state: Record<string, unknown>) => unknown) =>
+    selector({ fetchedPublicKey: mockFetchedPublicKey }),
+}));
+
 describe("useWelcomeBanner", () => {
   const mockAccount: ActiveAccount = {
     id: "account-1",
@@ -58,6 +68,7 @@ describe("useWelcomeBanner", () => {
     // Set up mocks to resolve immediately
     (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
     (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+    mockFetchedPublicKey = mockAccount.publicKey;
   });
 
   afterEach(() => {
@@ -265,6 +276,51 @@ describe("useWelcomeBanner", () => {
       await advanceTime(200);
 
       // Wait for the banner to be presented
+      expect(mockPresent).toHaveBeenCalled();
+    });
+
+    it("does not present while the balances snapshot belongs to another account", async () => {
+      // Right after clearAccountData (account create/import/switch) the
+      // balances store is empty with a null stamp and isFunded is a cleared
+      // false — deciding from that state used to present the banner for
+      // funded accounts, from a screen instance about to be unmounted.
+      mockFetchedPublicKey = null;
+      (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
+
+      const { result, rerender } = renderHook(
+        (props: UseWelcomeBannerProps) => useWelcomeBanner(props),
+        {
+          initialProps: {
+            account: mockAccount,
+            isFunded: false,
+            isLoadingBalances: false,
+            isSwitchingAccount: false,
+          },
+        },
+      );
+
+      const mockRef = { present: mockPresent, dismiss: mockDismiss };
+      act(() => {
+        (result.current.welcomeBannerBottomSheetModalRef as any).current =
+          mockRef;
+      });
+
+      await advanceTime(200);
+      expect(mockPresent).not.toHaveBeenCalled();
+
+      // The new account's balances land (stamp now matches): the banner may
+      // present, now based on the account's real fundedness.
+      mockFetchedPublicKey = mockAccount.publicKey;
+      await act(() => {
+        rerender({
+          account: mockAccount,
+          isFunded: false,
+          isLoadingBalances: false,
+          isSwitchingAccount: false,
+        });
+      });
+      await advanceTime(200);
+
       expect(mockPresent).toHaveBeenCalled();
     });
 

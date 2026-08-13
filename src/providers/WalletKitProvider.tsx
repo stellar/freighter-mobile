@@ -724,7 +724,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       return false;
     }
 
-    // Step 2: Validate message length (1KB limit per SEP-53)
+    // Step 2: Validate message length (sanity cap; SEP-53 imposes no limit)
     const lengthResult = validateSignMessageLength(contentResult.value);
     if (!lengthResult.valid) {
       showToast({

@@ -1,5 +1,6 @@
 import { CollectionSection } from "components/CollectionSection";
 import { DefaultListFooter } from "components/DefaultListFooter";
+import { EmptyState } from "components/EmptyState";
 import Spinner from "components/Spinner";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
@@ -149,17 +150,18 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
 
     const renderEmptyView = () => (
       <View className="flex-1">
-        <View
-          className="flex-row items-center justify-center pt-5 gap-2"
-          style={{ paddingHorizontal: pxValue(DEFAULT_PADDING) }}
-        >
-          <Icon.Grid01 size={20} color={themeColors.text.secondary} />
-          <Text md medium secondary>
-            {isTypeHidden
+        <EmptyState
+          Icon={Icon.Image01}
+          title={
+            isTypeHidden
               ? t("collectiblesGrid.emptyHidden")
-              : t("collectiblesGrid.empty")}
-          </Text>
-        </View>
+              : t("collectiblesGrid.empty")
+          }
+          description={
+            isTypeHidden ? undefined : t("collectiblesGrid.emptyDescription")
+          }
+          testID="collectibles-empty-state"
+        />
       </View>
     );
 

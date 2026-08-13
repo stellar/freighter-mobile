@@ -37,7 +37,13 @@ interface PricesState {
     /** Endpoint version, from the `use_token_prices_v2` flag. */
     useV2: boolean;
   }) => Promise<void>;
-  /** Fetch prices for arbitrary token identifiers (e.g., from Blockaid diffs) */
+  /**
+   * Fetch prices for arbitrary token identifiers (e.g., from Blockaid
+   * diffs). Resolves `true` when the requested quotes are available (fetched
+   * or already cached), `false` when the request failed — so callers that
+   * derive values from these quotes can avoid caching results computed from
+   * missing prices.
+   */
   fetchPricesForTokenIds: (params: {
     tokens: TokenIdentifier[];
     /** Active network — required by the network-scoped v2 prices endpoint. */
@@ -46,7 +52,7 @@ interface PricesState {
     useV2: boolean;
     /** Refetch even tokens already in the map (e.g. pull-to-refresh). */
     forceRefresh?: boolean;
-  }) => Promise<void>;
+  }) => Promise<boolean>;
 }
 
 /**
@@ -132,7 +138,7 @@ export const usePricesStore = create<PricesState>((set, get) => ({
     forceRefresh = false,
   }) => {
     try {
-      if (!tokens || tokens.length === 0) return;
+      if (!tokens || tokens.length === 0) return true;
 
       reconcileSource(get, set, network, useV2);
 
@@ -141,7 +147,7 @@ export const usePricesStore = create<PricesState>((set, get) => ({
       // fetched once would never update for the rest of the session.
       const cached = get().pricesByNetwork[network] ?? EMPTY_PRICES;
       const toFetch = forceRefresh ? tokens : tokens.filter((t) => !cached[t]);
-      if (toFetch.length === 0) return;
+      if (toFetch.length === 0) return true;
 
       const response = await fetchTokenPrices({
         tokens: toFetch,
@@ -151,7 +157,7 @@ export const usePricesStore = create<PricesState>((set, get) => ({
 
       // Drop the response if a v1<->v2 rollback superseded its endpoint while
       // it was in flight (see fetchPricesForBalances for the rationale).
-      if (get().sourceByNetwork[network] !== useV2) return;
+      if (get().sourceByNetwork[network] !== useV2) return false;
 
       set({
         pricesByNetwork: {
@@ -163,8 +169,12 @@ export const usePricesStore = create<PricesState>((set, get) => ({
         },
         lastUpdated: Date.now(),
       });
+
+      return true;
     } catch (error) {
-      // Silently keep existing prices on error.
+      // Silently keep existing prices on error; the return value lets
+      // callers know the quotes they asked for may be missing.
+      return false;
     }
   },
 }));
