@@ -1,6 +1,4 @@
-import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import BottomSheet from "components/BottomSheet";
 import { BaseLayout } from "components/layout/BaseLayout";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
@@ -12,8 +10,7 @@ import {
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useCoinbaseOnramp } from "hooks/useCoinbaseOnramp";
-import { useRightHeaderButton } from "hooks/useRightHeader";
-import React, { useCallback, useRef } from "react";
+import React, { useCallback } from "react";
 import { TouchableOpacity, View } from "react-native";
 
 type AddFundsScreenProps = NativeStackScreenProps<
@@ -27,15 +24,10 @@ const AddFundsScreen: React.FC<AddFundsScreenProps> = ({
 }) => {
   const { t } = useAppTranslation();
   const { isUnfunded } = route.params;
-  const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const { openCoinbaseUrl, isLoading } = useCoinbaseOnramp({
     ...(isUnfunded ? { token: "XLM" } : {}),
   });
   const { onramp_enabled: onRampEnabled } = useRemoteConfigStore();
-
-  useRightHeaderButton({
-    onPress: () => bottomSheetModalRef.current?.present(),
-  });
 
   const onCoinbasePress = useCallback(() => {
     openCoinbaseUrl();
@@ -43,13 +35,6 @@ const AddFundsScreen: React.FC<AddFundsScreenProps> = ({
 
   return (
     <BaseLayout insets={{ top: false }}>
-      <BottomSheet
-        title={t("addFundsScreen.title")}
-        description={t("addFundsScreen.bottomSheet.description")}
-        modalRef={bottomSheetModalRef}
-        icon="Plus"
-        handleCloseModal={() => bottomSheetModalRef.current?.dismiss()}
-      />
       <View className="flex-1 justify-start align-start pt-5">
         {onRampEnabled && (
           <View className="items-center mt-5 w-full">

@@ -1,0 +1,108 @@
+import { renderHook } from "@testing-library/react-hooks";
+import { BigNumber } from "bignumber.js";
+import { NETWORKS } from "config/constants";
+import { useSyncAccountsFiatTotals } from "hooks/useSyncAccountsFiatTotals";
+
+const PK_OLD = "GDNF5WJ2BEPABVBXCF4C7KZKM3XYXP27VUE3SCGPZA3VXWWZ7OFA3VPM";
+const PK_NEW = "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
+
+const mockPricedBalances = {
+  XLM: { fiatTotal: new BigNumber("50") },
+};
+
+// Mutable balances-store state, read lazily at render time so each test can
+// shape the snapshot the hook sees.
+let mockBalancesState: Record<string, unknown> = {};
+
+jest.mock("ducks/balances", () => ({
+  useBalancesStore: (selector: (state: Record<string, unknown>) => unknown) =>
+    selector(mockBalancesState),
+}));
+
+const mockSyncAccountFiatTotal = jest.fn();
+
+jest.mock("ducks/accountsFiatTotals", () => ({
+  useAccountsFiatTotalsStore: (
+    selector: (state: Record<string, unknown>) => unknown,
+  ) => selector({ syncAccountFiatTotal: mockSyncAccountFiatTotal }),
+}));
+
+describe("useSyncAccountsFiatTotals", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockBalancesState = {
+      pricedBalances: mockPricedBalances,
+      fetchedPublicKey: PK_OLD,
+      fetchedNetwork: NETWORKS.PUBLIC,
+      isLoading: false,
+    };
+  });
+
+  it("syncs when the balances snapshot matches the active account", () => {
+    renderHook(() =>
+      useSyncAccountsFiatTotals({
+        publicKey: PK_OLD,
+        network: NETWORKS.PUBLIC,
+      }),
+    );
+
+    expect(mockSyncAccountFiatTotal).toHaveBeenCalledWith({
+      publicKey: PK_OLD,
+      network: NETWORKS.PUBLIC,
+      pricedBalances: mockPricedBalances,
+    });
+  });
+
+  it("skips the sync while the snapshot still belongs to the previous account", () => {
+    // Account switched to PK_NEW but the balances store still holds PK_OLD's
+    // snapshot — syncing would write the old total under the new key.
+    renderHook(() =>
+      useSyncAccountsFiatTotals({
+        publicKey: PK_NEW,
+        network: NETWORKS.PUBLIC,
+      }),
+    );
+
+    expect(mockSyncAccountFiatTotal).not.toHaveBeenCalled();
+  });
+
+  it("skips the sync while a balances fetch is in flight", () => {
+    // Mid-fetch, the account stamp is already updated (written with the raw
+    // balances) but pricedBalances hasn't caught up yet.
+    mockBalancesState = {
+      ...mockBalancesState,
+      fetchedPublicKey: PK_NEW,
+      isLoading: true,
+    };
+
+    renderHook(() =>
+      useSyncAccountsFiatTotals({
+        publicKey: PK_NEW,
+        network: NETWORKS.PUBLIC,
+      }),
+    );
+
+    expect(mockSyncAccountFiatTotal).not.toHaveBeenCalled();
+  });
+
+  it("skips the sync when the snapshot belongs to another network", () => {
+    renderHook(() =>
+      useSyncAccountsFiatTotals({
+        publicKey: PK_OLD,
+        network: NETWORKS.TESTNET,
+      }),
+    );
+
+    expect(mockSyncAccountFiatTotal).not.toHaveBeenCalled();
+  });
+
+  it("skips the sync without a public key", () => {
+    mockBalancesState = { ...mockBalancesState, fetchedPublicKey: "" };
+
+    renderHook(() =>
+      useSyncAccountsFiatTotals({ publicKey: "", network: NETWORKS.PUBLIC }),
+    );
+
+    expect(mockSyncAccountFiatTotal).not.toHaveBeenCalled();
+  });
+});

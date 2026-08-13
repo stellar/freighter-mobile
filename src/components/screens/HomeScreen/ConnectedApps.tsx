@@ -133,11 +133,12 @@ const ConnectedApps: React.FC<ConnectedAppsProps> = ({
 
   const hasSessions = connectedDapps.length > 0;
 
-  // Pinned in the sheet handle so the title and close button stay accessible
-  // while the app list scrolls.
-  const renderStickyHeader = useCallback(
+  // Pinned above the scrolling list so the title and close button stay
+  // accessible; the list scrolls underneath, so the background must be
+  // opaque.
+  const renderSheetHeader = useCallback(
     () => (
-      <View className="flex-row items-center justify-between px-6 pt-4 pb-2">
+      <View className="bg-background-primary flex-row items-center justify-between px-6 pt-4 pb-2">
         <Text xl medium>
           {t("connectedApps.title")}
         </Text>
@@ -184,7 +185,7 @@ const ConnectedApps: React.FC<ConnectedAppsProps> = ({
       maxDynamicContentSize={windowHeight * 0.9}
       bottomSheetModalProps={{ onDismiss: handleDismiss }}
       analyticsEvent={AnalyticsEvent.VIEW_MANAGE_CONNECTED_APPS}
-      stickyHeaderComponent={renderStickyHeader}
+      scrollViewHeaderComponent={renderSheetHeader}
       scrollViewFooterComponent={hasSessions ? renderFooter : undefined}
       customContent={
         <ConnectedAppsBottomSheet

@@ -33,6 +33,7 @@ import {
   KeyPair,
   TemporaryStore,
 } from "config/types";
+import { useAccountsFiatTotalsStore } from "ducks/accountsFiatTotals";
 import { useBalancesStore } from "ducks/balances";
 import { useBrowserTabsStore } from "ducks/browserTabs";
 import { useCollectiblesStore } from "ducks/collectibles";
@@ -1370,7 +1371,9 @@ const verifyAndCreateExistingAccountsOnNetwork = async (
  *   `error` values, so callers must ensure that subsequent fetch logic correctly
  *   updates these flags for the newly active account.
  */
-export function clearAccountData(): void {
+export function clearAccountData(
+  options: { keepAccountsFiatTotals?: boolean } = {},
+): void {
   // Clear balances data
   useBalancesStore.setState({
     balances: {},
@@ -1408,6 +1411,18 @@ export function clearAccountData(): void {
     isLoading: false,
     error: null,
   });
+
+  // Clear the wallets-list fiat totals by default, so one wallet lifetime's
+  // totals can't bleed into the next (wipe → restore of the same seed).
+  // Uses the store action (not setState) so any in-flight fetch cycle is
+  // aborted too — otherwise it would write its pre-reset totals back a
+  // moment after this wipe. Same-wallet transitions (account switch,
+  // add/import account) opt out: the other accounts' totals are still
+  // valid, and dropping them makes the open wallets sheet flash $0.00 on
+  // every row mid-switch.
+  if (!options.keepAccountsFiatTotals) {
+    useAccountsFiatTotalsStore.getState().resetAccountsFiatTotals();
+  }
 }
 
 /**
@@ -3037,6 +3052,11 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
     try {
       await createAccount(password);
 
+      // The new account becomes active: drop the previous account's data so
+      // nothing (e.g. priced balances) carries over into its first render.
+      // Same wallet, so the other accounts' list totals stay valid.
+      clearAccountData({ keepAccountsFiatTotals: true });
+
       await Promise.all([get().getAllAccounts(), get().fetchActiveAccount()]);
 
       // account.created on the creation-success path with the real post-creation
@@ -3080,7 +3100,10 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
 
       // Only clear stale data once the switch is confirmed to proceed —
       // if anything above throws, the previous account's data stays intact.
-      clearAccountData();
+      // The wallets-list totals survive: same wallet, still valid, and
+      // dropping them would flash $0.00 rows in the sheet mid-switch (the
+      // switch itself force-refreshes them in the background).
+      clearAccountData({ keepAccountsFiatTotals: true });
       await selectAccount(publicKey);
       const activeAccount = await getActiveAccount(authStatus);
       set({ account: activeAccount, isSwitchingAccount: false });
@@ -3127,6 +3150,11 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
 
     try {
       await importSecretKeyLocal(params, get().authStatus);
+
+      // The imported account becomes active: drop the previous account's
+      // data so nothing (e.g. priced balances) carries over into its first
+      // render. Same wallet, so the other accounts' list totals stay valid.
+      clearAccountData({ keepAccountsFiatTotals: true });
 
       await Promise.all([get().getAllAccounts(), get().fetchActiveAccount()]);
 
