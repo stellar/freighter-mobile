@@ -80,10 +80,21 @@ export const useNetworkFees = (): NetworkFeesData => {
         if (!pending) {
           const { networkUrl } = mapNetworkToNetworkDetails(network);
           const server = stellarSdkServer(networkUrl);
-          pending = getNetworkFees(server).finally(() => {
-            delete inflightFetches[network];
+          // Clear by identity, not by key: a flow that exits mid-fetch has its
+          // entry dropped by `clearNetworkFeesCache`, and the next flow may
+          // already have registered its own request by the time this one
+          // settles. Deleting blindly would evict that newer request and let a
+          // third fetch start, whose response could then overwrite the snapshot
+          // the flow's other consumers are already showing.
+          const request: Promise<NetworkFeesData> = getNetworkFees(
+            server,
+          ).finally(() => {
+            if (inflightFetches[network] === request) {
+              delete inflightFetches[network];
+            }
           });
-          inflightFetches[network] = pending;
+          inflightFetches[network] = request;
+          pending = request;
         }
 
         const data = await pending;

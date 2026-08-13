@@ -103,4 +103,66 @@ describe("useNetworkFees", () => {
     second.unmount();
     expect(mockGetNetworkFees).toHaveBeenCalledTimes(2);
   });
+
+  it("a fetch settling after a flow exit doesn't evict the next flow's fetch", async () => {
+    // Flow A leaves while its fetch is still pending, then flow B starts its
+    // own before A's settles. A's cleanup must not drop B's entry, or a later
+    // consumer starts a third fetch whose response can overwrite the snapshot
+    // B's consumers are already showing.
+    let resolveFirst: (value: unknown) => void = () => {};
+    mockGetNetworkFees.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveFirst = resolve;
+      }),
+    );
+
+    const flowA = renderHook(() => useNetworkFees());
+    expect(mockGetNetworkFees).toHaveBeenCalledTimes(1);
+
+    // Flow A exits mid-fetch.
+    flowA.unmount();
+    act(() => {
+      clearNetworkFeesCache();
+    });
+
+    // Flow B starts its own fetch, still pending.
+    let resolveSecond: (value: unknown) => void = () => {};
+    mockGetNetworkFees.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveSecond = resolve;
+      }),
+    );
+    const flowBPrewarm = renderHook(() => useNetworkFees());
+    expect(mockGetNetworkFees).toHaveBeenCalledTimes(2);
+
+    // A's fetch settles now — it must leave B's in-flight entry alone.
+    await act(async () => {
+      resolveFirst({
+        recommendedFee: "0.005",
+        networkCongestion: NetworkCongestion.HIGH,
+        feePresets: { low: "0.001", medium: "0.003", high: "0.005" },
+      });
+      await Promise.resolve();
+    });
+
+    // A second consumer in flow B joins B's fetch instead of starting a third.
+    const flowBScreen = renderHook(() => useNetworkFees());
+    expect(mockGetNetworkFees).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      resolveSecond({
+        recommendedFee: "0.009",
+        networkCongestion: NetworkCongestion.MEDIUM,
+        feePresets: { low: "0.002", medium: "0.009", high: "0.02" },
+      });
+      await Promise.resolve();
+    });
+
+    // Both consumers show the same snapshot — B's.
+    expect(flowBPrewarm.result.current.recommendedFee).toBe("0.009");
+    expect(flowBScreen.result.current.recommendedFee).toBe("0.009");
+
+    flowBPrewarm.unmount();
+    flowBScreen.unmount();
+  });
 });
