@@ -173,6 +173,22 @@ export const submitTx = async (
   return submittedTx;
 };
 
+/**
+ * Reads the Horizon fee statistics and derives the inclusion-fee presets that
+ * back the Low / Medium / High priority tiers.
+ *
+ * Presets map to the `max_fee` percentile distribution (Low = p10,
+ * Medium = p50, High = p90). Congestion comes from `ledger_capacity_usage`, and
+ * `recommendedFee` is the preset matching that congestion level (1:1).
+ *
+ * Every returned amount is in XLM, never raw stroops — consumers convert to
+ * stroops at build time. A failed `feeStats()` call, or any percentile that
+ * isn't a finite number, falls back to `MIN_TRANSACTION_FEE`.
+ *
+ * @param server The Horizon server to read fee stats from
+ * @returns The recommended fee (XLM), the current network congestion level, and
+ * the Low/Med/High inclusion-fee presets (XLM)
+ */
 export const getNetworkFees = async (server: Horizon.Server) => {
   let recommendedFee = "";
   let networkCongestion = "" as NetworkCongestion;
@@ -187,12 +203,16 @@ export const getNetworkFees = async (server: Horizon.Server) => {
   };
 
   const safePresetFee = (percentile: string): string => {
-    if (!Number.isFinite(Number(percentile))) {
+    const xlmFee = stroopToXlm(percentile);
+
+    // A non-numeric percentile would surface as "NaN" in the UI, and a blank one
+    // coerces to 0 — a fee below the network floor that gets the transaction
+    // rejected. Both degrade to the minimum instead.
+    if (!xlmFee.isFinite() || xlmFee.isLessThan(MIN_TRANSACTION_FEE)) {
       return MIN_TRANSACTION_FEE;
     }
 
-    const xlmFee = stroopToXlm(percentile).toFixed();
-    return Number.isFinite(Number(xlmFee)) ? xlmFee : MIN_TRANSACTION_FEE;
+    return xlmFee.toFixed();
   };
 
   try {

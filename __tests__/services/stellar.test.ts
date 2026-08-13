@@ -139,6 +139,25 @@ describe("stellar service - getNetworkFees", () => {
     expect(high.recommendedFee).toBe(high.feePresets[FeePriority.HIGH]);
   });
 
+  it("falls back to the minimum for a non-numeric percentile", async () => {
+    // Horizon answered, but a single percentile is unusable — only that tier
+    // degrades, and it must never surface as "NaN" in the UI.
+    const server = buildFeeStatsServer(() =>
+      Promise.resolve({
+        ledger_capacity_usage: "0.2",
+        max_fee: buildFeeDistribution({ p50: "not-a-number", p90: "" }),
+      }),
+    );
+
+    const { feePresets, recommendedFee } = await getNetworkFees(server);
+
+    expect(feePresets[FeePriority.LOW]).toBe("0.00001"); // p10 = 100, still valid
+    expect(feePresets[FeePriority.MEDIUM]).toBe(MIN_TRANSACTION_FEE);
+    expect(feePresets[FeePriority.HIGH]).toBe(MIN_TRANSACTION_FEE);
+    // Low congestion → the recommended fee tracks the (valid) Low preset.
+    expect(recommendedFee).toBe("0.00001");
+  });
+
   it("falls back to defaults when feeStats fails", async () => {
     const server = buildFeeStatsServer(() =>
       Promise.reject(new Error("network error")),

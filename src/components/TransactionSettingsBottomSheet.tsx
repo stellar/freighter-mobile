@@ -7,7 +7,7 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
 import { NetworkCongestionIndicator } from "components/sds/NetworkCongestionIndicator";
-import SegmentedControl from "components/sds/SegmentedControl";
+import { SegmentedControl } from "components/sds/SegmentedControl";
 import { Text } from "components/sds/Typography";
 import {
   MAX_SLIPPAGE,

@@ -27,7 +27,7 @@ const SEGMENT_HIT_SLOP = 8;
  * @param {SegmentedControlProps} props - Component props
  * @returns {JSX.Element} The rendered component
  */
-const SegmentedControl: React.FC<SegmentedControlProps> = ({
+export const SegmentedControl: React.FC<SegmentedControlProps> = ({
   options,
   selectedValue,
   onValueChange,
@@ -71,5 +71,3 @@ const SegmentedControl: React.FC<SegmentedControlProps> = ({
     </View>
   );
 };
-
-export default SegmentedControl;

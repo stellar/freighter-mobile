@@ -58,10 +58,11 @@ const FeeBreakdownBottomSheet: React.FC<FeeBreakdownBottomSheetProps> = ({
   const effectiveInclusionFeeXlm =
     inclusionFeeXlmOverride ?? sorobanInclusionFeeXlm ?? transactionFee;
 
-  // computeTotalFeeXlm uses the 3rd arg only in the CLASSIC branch (when there's
-  // no Soroban inclusion+resource pair). There it must be the effective fee,
-  // which for a preview is the override — hence arg1 and arg3 share the same
-  // expression by design.
+  // computeTotalFeeXlm sums args 1+2 only when both Soroban legs are present,
+  // and otherwise returns the 3rd (CLASSIC branch). Arg1 deliberately omits the
+  // `?? transactionFee` fallback that `effectiveInclusionFeeXlm` carries: it has
+  // to stay nullable so a classic transaction falls through to arg3 instead of
+  // being summed against a missing resource fee.
   const totalFeeXlm = computeTotalFeeXlm(
     inclusionFeeXlmOverride ?? sorobanInclusionFeeXlm,
     sorobanResourceFeeXlm,
