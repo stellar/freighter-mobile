@@ -395,6 +395,48 @@ describe("TransactionSettingsBottomSheet - onSettingsChange Integration", () => 
     });
   });
 
+  it("still follows the stored tier after a preset tap discarded while loading", async () => {
+    // A tap that gets ignored (presets not loaded yet) must not count as user
+    // interaction — otherwise the tab stays stuck once the real tier lands.
+    mockNetworkFees = {
+      ...mockDefaultNetworkFees,
+      feePresets: { low: "", medium: "", high: "" },
+    };
+    mockUseTransactionSettingsStore.mockReturnValue({
+      ...mockTransactionSettingsState,
+      feePriority: "custom",
+    });
+    const props = {
+      onCancel: mockOnCancel,
+      onConfirm: mockOnConfirm,
+      context: TransactionContext.Send,
+      onSettingsChange: mockOnSettingsChange,
+    };
+    const { getByTestId, getByText, rerender } = renderWithProviders(
+      <TransactionSettingsBottomSheet {...props} />,
+    );
+    await waitFor(() => {
+      expect(getByTestId("fee-input").props.editable).toBe(true);
+    });
+
+    // Ignored — presets aren't available yet, so the tier stays Custom.
+    fireEvent.press(getByText("transactionSettings.priorityHigh"));
+    expect(getByTestId("fee-input").props.editable).toBe(true);
+
+    // Presets land and the congestion-derived tier reaches the store.
+    mockNetworkFees = mockDefaultNetworkFees;
+    mockUseTransactionSettingsStore.mockReturnValue({
+      ...mockTransactionSettingsState,
+      feePriority: "high",
+    });
+    rerender(<TransactionSettingsBottomSheet {...props} />);
+
+    // The tab follows the store (preset tier → input locked).
+    await waitFor(() => {
+      expect(getByTestId("fee-input").props.editable).toBe(false);
+    });
+  });
+
   it("scales the preset fee by operationCount (saves the total across ops)", async () => {
     // Default tier is Med; the Medium preset is 0.001. A 2-op transaction
     // (e.g. swap-to-new-token) stores the total: 0.001 × 2 = 0.002.

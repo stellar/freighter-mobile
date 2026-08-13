@@ -429,14 +429,18 @@ const TransactionSettingsBottomSheet: React.FC<
 
   const handleFeePriorityChange = useCallback(
     (value: string | number) => {
-      feeInteractedRef.current = true;
       const priority = value as FeePriority;
 
       // Keep preset tiers unavailable until we have a fetched preset snapshot.
       // Custom remains selectable so users can still set a manual fee.
+      // Bail out before flagging the interaction: a discarded tap must not
+      // disable the storeFeePriority sync, or the tab would stay stuck on the
+      // stale tier once the recommended one lands.
       if (priority !== FeePriority.CUSTOM && !areFeePresetsLoaded) {
         return;
       }
+
+      feeInteractedRef.current = true;
 
       // Preset tiers derive their shown value automatically; switching to
       // Custom seeds the editable input with the amount currently shown so it
