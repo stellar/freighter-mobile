@@ -3,59 +3,52 @@ import {
   BottomTabNavigationProp,
 } from "@react-navigation/bottom-tabs";
 import { NativeStackHeaderProps } from "@react-navigation/native-stack";
-import ContextMenuButton from "components/ContextMenuButton";
 import { CustomHeaderButton } from "components/layout/CustomHeaderButton";
 import HomeScreenHeader from "components/screens/HomeScreen/HomeScreenHeader";
+import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
+import { Text } from "components/sds/Typography";
 import {
   ROOT_NAVIGATOR_ROUTES,
   MainTabStackParamList,
   RootStackParamList,
   MAIN_TAB_ROUTES,
 } from "config/routes";
-import { isE2ETest } from "helpers/isEnv";
+import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
-import React, { useCallback, useLayoutEffect, useMemo } from "react";
-import { Platform, View } from "react-native";
+import useGetActiveAccount from "hooks/useGetActiveAccount";
+import React, { useCallback, useLayoutEffect } from "react";
+import { TouchableOpacity, View } from "react-native";
+
+const HEADER_ICON_SIZE = 24;
+const CHEVRON_SIZE = 20;
+
+// Identical touch tiles for the two header-right buttons: 4px horizontal
+// slop exactly fills the 8px gap between the 40px buttons, so the tap areas
+// are equal-sized and adjacent without overlapping.
+const HEADER_BUTTON_HIT_SLOP = { top: 10, bottom: 10, left: 4, right: 4 };
 
 interface UseHomeHeadersProps {
   navigation: BottomTabNavigationProp<
     MainTabStackParamList & RootStackParamList,
     typeof MAIN_TAB_ROUTES.TAB_HOME
   >;
+  onAccountPress: () => void;
+  onConnectedAppsPress: () => void;
 }
 
-export const useHomeHeaders = ({ navigation }: UseHomeHeadersProps) => {
+export const useHomeHeaders = ({
+  navigation,
+  onAccountPress,
+  onConnectedAppsPress,
+}: UseHomeHeadersProps) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
+  const { account } = useGetActiveAccount();
 
-  const menuActions = useMemo(
-    () => [
-      {
-        title: t("home.actions.settings"),
-        systemIcon: Platform.select({
-          ios: "gear",
-          android: "baseline_settings",
-        }),
-        onPress: () =>
-          navigation.navigate(ROOT_NAVIGATOR_ROUTES.SETTINGS_STACK),
-        testID: "settings-menu-item",
-      },
-      {
-        title: t("home.actions.myQRCode"),
-        systemIcon: Platform.select({
-          ios: "qrcode",
-          android: "qr_code_scanner",
-        }),
-        onPress: () =>
-          navigation.navigate(ROOT_NAVIGATOR_ROUTES.SCAN_RECEIVE_SCREEN, {
-            initialTab: "receive",
-          }),
-      },
-    ],
-    [t, navigation],
-  );
+  const accountName = account?.accountName ?? "";
+  const publicKey = account?.publicKey ?? "";
 
   // Memoize the header components outside of the useLayoutEffect to improve
   // performance by preventing unnecessary re-creations of the header components.
@@ -66,59 +59,74 @@ export const useHomeHeaders = ({ navigation }: UseHomeHeadersProps) => {
     [],
   );
 
+  // Account switcher: avatar + name/address dropdown that opens the
+  // manage-accounts sheet (Settings and the QR code now live inside it).
   const HeaderLeftComponent = useCallback(
     () => (
-      <View className="flex-row gap-4">
-        {/* Menu button - only show in production (when not E2E test) */}
-        {isE2ETest ? ( // testID press not working on Dropdown items
-          <View testID="home-screen-settings-button" accessible>
-            <CustomHeaderButton
-              position="left"
-              testID="e2e-open-settings"
-              onPress={() =>
-                navigation.navigate(ROOT_NAVIGATOR_ROUTES.SETTINGS_STACK)
-              }
-              icon={Icon.Settings01}
+      <TouchableOpacity
+        // flex-1 + the shrink chain below cap the switcher at the space the
+        // header row actually has (long names ellipsize instead of pushing
+        // the right-side buttons); mr-3 keeps a gap from the Scan button.
+        className="flex-1 flex-row items-center gap-[12px] mr-3"
+        onPress={onAccountPress}
+        accessibilityRole="button"
+        // Without an explicit label the announcement falls back to the child
+        // text, which includes the truncated address gibberish.
+        accessibilityLabel={accountName}
+        testID="home-account-switcher"
+      >
+        <Avatar size="lg" publicAddress={publicKey} />
+        <View className="shrink">
+          <View className="flex-row items-center gap-[4px]">
+            <View className="shrink">
+              <Text md medium primary numberOfLines={1}>
+                {accountName}
+              </Text>
+            </View>
+            <Icon.ChevronDownBold
+              size={CHEVRON_SIZE}
+              color={themeColors.text.primary}
             />
           </View>
-        ) : (
-          <View testID="home-screen-menu-button" accessible>
-            <ContextMenuButton
-              contextMenuProps={{
-                actions: menuActions,
-              }}
-            >
-              <Icon.DotsHorizontal color={themeColors.base[1]} />
-            </ContextMenuButton>
-          </View>
-        )}
-
-        <CustomHeaderButton
-          position="left"
-          icon={Icon.NotificationBox}
-          onPress={() =>
-            navigation.navigate(ROOT_NAVIGATOR_ROUTES.CONNECTED_APPS_SCREEN)
-          }
-        />
-      </View>
+          <Text sm medium secondary>
+            {truncateAddress(publicKey)}
+          </Text>
+        </View>
+      </TouchableOpacity>
     ),
-    [menuActions, themeColors, navigation],
+    [onAccountPress, publicKey, accountName, themeColors],
   );
 
   const HeaderRightComponent = useCallback(
     () => (
-      <CustomHeaderButton
-        position="right"
-        icon={Icon.Scan}
-        testID="home-screen-scan-button"
-        onPress={() =>
-          navigation.navigate(ROOT_NAVIGATOR_ROUTES.SCAN_RECEIVE_SCREEN, {
-            initialTab: "scan",
-          })
-        }
-      />
+      <View className="flex-row items-center gap-[8px]">
+        <CustomHeaderButton
+          position="right"
+          icon={Icon.ScanCircle}
+          iconSize={HEADER_ICON_SIZE}
+          iconColor={themeColors.text.secondary}
+          hitSlop={HEADER_BUTTON_HIT_SLOP}
+          testID="home-screen-scan-button"
+          accessibilityLabel={t("homeScanner.title")}
+          onPress={() =>
+            navigation.navigate(ROOT_NAVIGATOR_ROUTES.SCAN_RECEIVE_SCREEN, {
+              initialTab: "scan",
+            })
+          }
+        />
+        <CustomHeaderButton
+          position="right"
+          icon={Icon.NotificationBox}
+          iconSize={HEADER_ICON_SIZE}
+          iconColor={themeColors.text.secondary}
+          hitSlop={HEADER_BUTTON_HIT_SLOP}
+          testID="home-screen-connected-apps-button"
+          accessibilityLabel={t("connectedApps.title")}
+          onPress={onConnectedAppsPress}
+        />
+      </View>
     ),
-    [navigation],
+    [themeColors, navigation, onConnectedAppsPress, t],
   );
 
   // useLayoutEffect is the official recommended hook to use for setting up

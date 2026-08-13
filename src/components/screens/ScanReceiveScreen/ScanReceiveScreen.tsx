@@ -5,7 +5,7 @@ import { ReceiveTabView } from "components/screens/ScanReceiveScreen/ReceiveTabV
 import { ScanTabView } from "components/screens/ScanReceiveScreen/ScanTabView";
 import Icon from "components/sds/Icon";
 import Tabs from "components/sds/Tabs";
-import { AnalyticsEvent } from "config/analyticsConfig";
+import { AnalyticsEvent, getScreenViewedProps } from "config/analyticsConfig";
 import { DEFAULT_PADDING } from "config/constants";
 import {
   ROOT_NAVIGATOR_ROUTES,
@@ -96,13 +96,20 @@ const ScanReceiveScreen: React.FC<ScanReceiveScreenProps> = ({
   }, [activeTab, receiveAnim]);
 
   // Per-tab screen-view analytics (preserves prior per-screen tracking): fires
-  // on initial mount and on every tab switch.
+  // on initial mount and on every tab switch. Each tab is a screen load, so it
+  // goes out as the canonical `screen.viewed` event carrying that tab's
+  // screen_name -- passing the VIEW_* slug as the event name would be dropped
+  // by track()'s screen-view guard.
   useEffect(() => {
-    track(
+    const screenViewedProps = getScreenViewedProps(
       activeTab === "receive"
         ? AnalyticsEvent.VIEW_ACCOUNT_QR_CODE
         : AnalyticsEvent.VIEW_SCAN_QR_CODE,
     );
+
+    if (screenViewedProps) {
+      track(AnalyticsEvent.SCREEN_VIEWED, screenViewedProps);
+    }
   }, [activeTab]);
 
   const insetsTop = insets.top || pxValue(MIN_INSETS_TOP - DEFAULT_PADDING);

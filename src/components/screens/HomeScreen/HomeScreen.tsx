@@ -1,7 +1,11 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
-import { IconButton } from "components/IconButton";
-import { TokensCollectiblesTabs } from "components/TokensCollectiblesTabs";
+import { FloatingTabActionButton } from "components/FloatingTabActionButton";
+import { HomeActionButton } from "components/HomeActionButton";
+import {
+  TabType,
+  TokensCollectiblesTabs,
+} from "components/TokensCollectiblesTabs";
 import {
   WalletConnectE2EHelper,
   WalletConnectE2EHelperTrigger,
@@ -10,15 +14,16 @@ import {
 import { DebugBottomSheet } from "components/analytics/DebugBottomSheet";
 import { DebugTrigger } from "components/debug/DebugTrigger";
 import { BaseLayout } from "components/layout/BaseLayout";
+import ConnectedApps from "components/screens/HomeScreen/ConnectedApps";
 import ManageAccounts from "components/screens/HomeScreen/ManageAccounts";
 import WelcomeBannerBottomSheet from "components/screens/HomeScreen/WelcomeBannerBottomSheet";
-import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
-import { Display, Text } from "components/sds/Typography";
-import { NATIVE_TOKEN_CODE } from "config/constants";
+import { Display } from "components/sds/Typography";
+import { DEFAULT_PADDING, NATIVE_TOKEN_CODE } from "config/constants";
 import {
   MainTabStackParamList,
   MAIN_TAB_ROUTES,
+  MANAGE_TOKENS_ROUTES,
   ROOT_NAVIGATOR_ROUTES,
   RootStackParamList,
   ADD_FUNDS_ROUTES,
@@ -26,19 +31,22 @@ import {
   SWAP_ROUTES,
 } from "config/routes";
 import { TokenTypeWithCustomToken } from "config/types";
+import { useAccountsFiatTotalsStore } from "ducks/accountsFiatTotals";
 import { useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
 import { useCollectiblesStore } from "ducks/collectibles";
+import { usePricesStore } from "ducks/prices";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { useWalletKitStore } from "ducks/walletKit";
 import { getTokenType } from "helpers/balances";
+import { fsValue, pxValue } from "helpers/dimensions";
 import { isContractId } from "helpers/soroban";
 import useAppTranslation from "hooks/useAppTranslation";
-import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useHomeHeaders } from "hooks/useHomeHeaders";
 import { useTotalBalance } from "hooks/useTotalBalance";
+import { useWarmUpAccountsFiatTotals } from "hooks/useWarmUpAccountsFiatTotals";
 import { useWelcomeBanner } from "hooks/useWelcomeBanner";
 import React, {
   useCallback,
@@ -48,12 +56,20 @@ import React, {
   useState,
 } from "react";
 import {
-  TouchableOpacity,
+  ActivityIndicator,
   View,
   ScrollView,
   RefreshControl,
 } from "react-native";
-import { analytics } from "services/analytics";
+
+// Bottom padding reserved at the end of the Home scroll content so the floating
+// "+ Add" pill (its height plus its bottom offset) never covers the last row.
+const FLOATING_ADD_BUTTON_CLEARANCE = 88;
+
+// Line height of the `Display lg` fiat hero (see Typography's DISPLAY_SIZES):
+// the hero's container is fixed to it so swapping between the loading spinner
+// and the total never shifts the layout below.
+const DISPLAY_LG_LINE_HEIGHT = 56;
 
 type HomeScreenProps = BottomTabScreenProps<
   MainTabStackParamList & RootStackParamList,
@@ -72,13 +88,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
     } = useAuthenticationStore();
     const { themeColors } = useColors();
     const manageAccountsBottomSheetRef = useRef<BottomSheetModal>(null);
+    const connectedAppsBottomSheetRef = useRef<BottomSheetModal>(null);
     const debugBottomSheetRef = useRef<BottomSheetModal>(null);
     const walletConnectE2EHelperRef = useRef<WalletConnectE2EHelperRef>(null);
 
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [activeTab, setActiveTab] = useState<TabType>(TabType.TOKENS);
 
     const { t } = useAppTranslation();
-    const { copyToClipboard } = useClipboard();
 
     const { formattedBalance, hasFiatTotal } = useTotalBalance();
     const {
@@ -87,14 +104,18 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
       isLoading: isLoadingBalances,
       fetchAccountBalances,
     } = useBalancesStore();
-    const { fetchCollectibles } = useCollectiblesStore();
+    const fetchCollectibles = useCollectiblesStore((s) => s.fetchCollectibles);
+    const isCollectiblesLoading = useCollectiblesStore((s) => s.isLoading);
+    // Covers the balances store's 3s price-timeout path: balances settle
+    // with an unpriced map while quotes are still in flight, so the hero
+    // must keep its spinner until the prices store finishes too.
+    const isPricesLoading = usePricesStore((state) => state.isLoading);
     const { fetchActiveSessions } = useWalletKitStore();
     const { swap_enabled: swapEnabled } = useRemoteConfigStore();
-
-    const hasTokens = useMemo(
-      () => Object.keys(balances).length > 0,
-      [balances],
+    const fetchAccountsFiatTotals = useAccountsFiatTotalsStore(
+      (state) => state.fetchAccountsFiatTotals,
     );
+
     // Send/Swap require something to spend. Gate on actual holdings (any
     // non-zero token balance), not fiat value — fiat is unavailable on testnet
     // by design, so a fiat-based gate would wrongly disable a funded account.
@@ -106,8 +127,21 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
       [balances],
     );
 
-    // Set up navigation headers (hook handles navigation.setOptions internally)
-    useHomeHeaders({ navigation });
+    const handleManageAccountsPress = useCallback(() => {
+      manageAccountsBottomSheetRef.current?.present();
+    }, []);
+
+    const handleConnectedAppsPress = useCallback(() => {
+      connectedAppsBottomSheetRef.current?.present();
+    }, []);
+
+    // Set up navigation headers (hook handles navigation.setOptions
+    // internally); the account switcher lives in the header now.
+    useHomeHeaders({
+      navigation,
+      onAccountPress: handleManageAccountsPress,
+      onConnectedAppsPress: handleConnectedAppsPress,
+    });
 
     const { welcomeBannerBottomSheetModalRef, handleWelcomeBannerDismiss } =
       useWelcomeBanner({
@@ -128,6 +162,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
       fetchAccounts();
     }, [getAllAccounts]);
 
+    // Prefetch the wallets-list USD totals in the background so the account
+    // list opens with final values instead of loading placeholders.
+    useWarmUpAccountsFiatTotals();
+
     const navigateToBuyXLM = useCallback(() => {
       // Navigation analytics already tracked by useNavigationAnalytics
       navigation.navigate(ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK, {
@@ -135,19 +173,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
         params: { isUnfunded: !isFunded },
       });
     }, [navigation, isFunded]);
-
-    const handleCopyAddress = useCallback(
-      (publicKey?: string) => {
-        if (!publicKey) return;
-
-        analytics.trackCopyPublicKey();
-
-        copyToClipboard(publicKey, {
-          notificationMessage: t("accountAddressCopied"),
-        });
-      },
-      [copyToClipboard, t],
-    );
 
     const handleTokenPress = useCallback(
       (tokenId: string) => {
@@ -211,9 +236,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
       });
     }, [navigation]);
 
-    const handleManageAccountsPress = useCallback(() => {
-      manageAccountsBottomSheetRef.current?.present();
-    }, []);
+    const handleAddTokenPress = useCallback(() => {
+      navigation.navigate(ROOT_NAVIGATOR_ROUTES.MANAGE_TOKENS_STACK, {
+        screen: MANAGE_TOKENS_ROUTES.ADD_TOKEN_SCREEN,
+      });
+    }, [navigation]);
+
+    const handleAddCollectiblePress = useCallback(() => {
+      navigation.navigate(ROOT_NAVIGATOR_ROUTES.ADD_COLLECTIBLE_SCREEN);
+    }, [navigation]);
 
     const handleDebugPress = useCallback(() => {
       debugBottomSheetRef.current?.present();
@@ -244,6 +275,20 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
             network,
           }),
           Promise.resolve(fetchActiveSessions(account.publicKey, network)),
+          // Refresh the manage-accounts sheet's per-account USD totals too,
+          // so a pull-to-refresh reflects transfers between own accounts.
+          // The active account is skipped — the balances fetch above updates
+          // it through the sync.
+          allAccounts.length > 0
+            ? fetchAccountsFiatTotals({
+                publicKeys: allAccounts.map(
+                  (walletAccount) => walletAccount.publicKey,
+                ),
+                network,
+                forceRefresh: true,
+                excludePublicKey: account.publicKey,
+              })
+            : Promise.resolve(),
         ]);
       } finally {
         setIsRefreshing(false);
@@ -254,6 +299,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
       fetchAccountBalances,
       fetchCollectibles,
       fetchActiveSessions,
+      fetchAccountsFiatTotals,
+      allAccounts,
     ]);
 
     return (
@@ -267,11 +314,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
           onDismiss={handleWelcomeBannerDismiss}
         />
         <ManageAccounts
-          navigation={navigation}
           accounts={allAccounts}
           activeAccount={account}
           bottomSheetRef={manageAccountsBottomSheetRef}
           isLoadingAccounts={isLoadingAllAccounts}
+        />
+        <ConnectedApps
+          navigation={navigation}
+          bottomSheetRef={connectedAppsBottomSheetRef}
         />
 
         <ScrollView
@@ -286,67 +336,65 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
               tintColor={themeColors.secondary}
             />
           }
-          contentContainerStyle={{ flexGrow: 1 }}
+          contentContainerStyle={{
+            flexGrow: 1,
+            // Reserve space so the floating add pill never obscures the last
+            // list row when scrolled to the bottom.
+            paddingBottom: pxValue(FLOATING_ADD_BUTTON_CLEARANCE),
+          }}
         >
-          <View className="pt-8 w-full items-center">
-            <View className="flex-col gap-3 items-center">
-              <TouchableOpacity
-                onPress={handleManageAccountsPress}
-                testID="home-account-switcher"
-              >
-                <View className="flex-row items-center gap-2">
-                  <Avatar size="sm" publicAddress={account?.publicKey ?? ""} />
-                  <Text>{account?.accountName ?? t("home.title")}</Text>
-                  <Icon.ChevronDown
-                    size={16}
-                    color={themeColors.foreground.primary}
-                  />
-                </View>
-              </TouchableOpacity>
-              {hasFiatTotal && (
-                <Display lg medium>
-                  {formattedBalance}
-                </Display>
-              )}
-            </View>
+          {/* Fixed at the Display lg line height so swapping between the
+              spinner and the total never shifts the layout below. */}
+          <View
+            className="pt-[35px] w-full items-center justify-center"
+            style={{ height: pxValue(35) + fsValue(DISPLAY_LG_LINE_HEIGHT) }}
+          >
+            {(isLoadingBalances || isPricesLoading) && !hasFiatTotal ? (
+              // On a cold start the sum of an empty/unpriced map is a
+              // placeholder $0.00 — a spinner beats flashing a scary zero
+              // at the top of a funded wallet. Once a real total exists,
+              // later loads keep showing it (no spinner flicker per poll).
+              <ActivityIndicator
+                testID="home-fiat-total-spinner"
+                size="large"
+                color={themeColors.foreground.primary}
+              />
+            ) : (
+              <Display lg medium>
+                {formattedBalance}
+              </Display>
+            )}
+          </View>
 
-            <View className="flex-row gap-[24px] items-center justify-center my-8">
-              <IconButton
-                Icon={Icon.Plus}
-                title={t("home.buy")}
-                onPress={navigateToBuyXLM}
-                testID="icon-button-buy"
-              />
-              <IconButton
-                Icon={Icon.ArrowUp}
-                title={t("home.send")}
+          <View className="flex-row gap-[12px] w-full px-6 py-6">
+            <HomeActionButton
+              Icon={Icon.Plus}
+              title={t("home.buy")}
+              onPress={navigateToBuyXLM}
+              testID="icon-button-buy"
+            />
+            <HomeActionButton
+              Icon={Icon.ArrowUp}
+              title={t("home.send")}
+              disabled={hasZeroBalance}
+              onPress={handleSendPress}
+              testID="icon-button-send"
+            />
+            {swapEnabled && (
+              <HomeActionButton
+                Icon={Icon.RefreshCw02}
+                title={t("home.swap")}
                 disabled={hasZeroBalance}
-                onPress={handleSendPress}
-                testID="icon-button-send"
+                onPress={handleSwapPress}
+                testID="icon-button-swap"
               />
-              {swapEnabled && (
-                <IconButton
-                  Icon={Icon.RefreshCw02}
-                  title={t("home.swap")}
-                  disabled={hasZeroBalance}
-                  onPress={handleSwapPress}
-                  testID="icon-button-swap"
-                />
-              )}
-              <IconButton
-                Icon={Icon.Copy01}
-                title={t("common.copy")}
-                onPress={() => handleCopyAddress(account?.publicKey)}
-                testID="icon-button-copy"
-              />
-            </View>
-            <View className="w-full border-b mb-4 border-border-primary" />
+            )}
           </View>
 
           <TokensCollectiblesTabs
             // Should disable inner scrolling here since the whole Home screen is scrollable
             disableInnerScrolling
-            showTokensSettings={hasTokens}
+            onTabChange={setActiveTab}
             publicKey={account?.publicKey ?? ""}
             network={network}
             onTokenPress={handleTokenPress}
@@ -354,6 +402,31 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
             balanceRowTestIDPrefix="home-token"
           />
         </ScrollView>
+
+        <View
+          pointerEvents="box-none"
+          className="absolute left-0 right-0 items-center"
+          style={{ bottom: pxValue(DEFAULT_PADDING) }}
+        >
+          {/* Adding a token creates a trustline, which needs XLM for the
+              reserve + fee — so the pill is only useful once the account is
+              funded. */}
+          {activeTab === TabType.TOKENS && isFunded && (
+            <FloatingTabActionButton
+              label={t("balancesList.addTokenButton")}
+              onPress={handleAddTokenPress}
+              testID="home-add-token-button"
+            />
+          )}
+          {activeTab === TabType.COLLECTIBLES && (
+            <FloatingTabActionButton
+              label={t("collectiblesGrid.addCollectibleButton")}
+              onPress={handleAddCollectiblePress}
+              disabled={isCollectiblesLoading}
+              testID="home-add-collectible-button"
+            />
+          )}
+        </View>
 
         {__DEV__ && (
           <DebugBottomSheet

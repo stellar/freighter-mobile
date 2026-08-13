@@ -119,6 +119,7 @@ export const useRightHeaderMenu = ({
   actions: Array<{
     title: string;
     onPress: () => void;
+    systemIcon?: string;
     disabled?: boolean;
     destructive?: boolean;
   }>;

@@ -54,7 +54,6 @@ export const ROOT_NAVIGATOR_ROUTES = {
   LOCK_SCREEN: "LockScreen",
   SCAN_QR_CODE_SCREEN: "ScanQRCodeScreen",
   SCAN_RECEIVE_SCREEN: "ScanReceiveScreen",
-  CONNECTED_APPS_SCREEN: "ConnectedAppsScreen",
   TOKEN_DETAILS_SCREEN: "TokenDetailsScreen",
   COLLECTIBLE_DETAILS_SCREEN: "CollectibleDetailsScreen",
   ADD_COLLECTIBLE_SCREEN: "AddCollectibleScreen",
@@ -82,7 +81,6 @@ export const MAIN_TAB_ROUTES = {
 } as const;
 
 export const MANAGE_TOKENS_ROUTES = {
-  MANAGE_TOKENS_SCREEN: "ManageAssetsScreen",
   ADD_TOKEN_SCREEN: "AddAssetScreen",
 } as const;
 
@@ -158,7 +156,6 @@ export type RootStackParamList = {
   [ROOT_NAVIGATOR_ROUTES.SCAN_RECEIVE_SCREEN]: {
     initialTab?: ScanReceiveTab;
   };
-  [ROOT_NAVIGATOR_ROUTES.CONNECTED_APPS_SCREEN]: undefined;
   [ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK]: NavigatorScreenParams<AddFundsStackParamList>;
   [ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK]: NavigatorScreenParams<SendPaymentStackParamList>;
   [ROOT_NAVIGATOR_ROUTES.SWAP_STACK]: NavigatorScreenParams<SwapStackParamList>;
@@ -199,7 +196,6 @@ export type MainTabStackParamList = {
 };
 
 export type ManageTokensStackParamList = {
-  [MANAGE_TOKENS_ROUTES.MANAGE_TOKENS_SCREEN]: undefined;
   [MANAGE_TOKENS_ROUTES.ADD_TOKEN_SCREEN]: undefined;
 };
 

@@ -263,6 +263,9 @@ describe("useManageTokens", () => {
         variant: "error",
       });
       expect(result.current.isAddingToken).toBe(false);
+      // onSuccess must NOT fire on failure (would otherwise navigate away
+      // from a token that was never added).
+      expect(mockOnSuccess).not.toHaveBeenCalled();
     });
 
     it("should do nothing if token is null", async () => {
@@ -456,6 +459,37 @@ describe("useManageTokens", () => {
       expect(result.current.isRemovingToken).toBe(false);
     });
 
+    it("errors (no success toast, no onSuccess) when custom-token storage is empty", async () => {
+      // No custom tokens stored for this account/network.
+      mockGetItem.mockImplementation(() => Promise.resolve(null));
+
+      const { result } = renderHook(() =>
+        useManageTokens({
+          network: mockNetwork,
+          account: mockAccount,
+          onSuccess: mockOnSuccess,
+        }),
+      );
+
+      await act(async () => {
+        await result.current.removeToken({
+          tokenRecord: mockCustomToken,
+          tokenType: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+        });
+      });
+
+      jest.runAllTimers();
+
+      // Nothing written, error toast shown, and onSuccess must NOT fire (it
+      // would otherwise refresh/navigate for a token that wasn't removed).
+      expect(mockSetItem).not.toHaveBeenCalled();
+      expect(mockShowToast).toHaveBeenCalledWith({
+        title: `Failed to remove ${mockCustomToken.tokenCode}`,
+        variant: "error",
+      });
+      expect(mockOnSuccess).not.toHaveBeenCalled();
+    });
+
     it("should handle cleanup when removing the last custom token for a network", async () => {
       // Setup initial storage with a custom token
       const initialStorage: CustomTokenStorage = {
@@ -584,6 +618,9 @@ describe("useManageTokens", () => {
         variant: "error",
       });
       expect(result.current.isRemovingToken).toBe(false);
+      // onSuccess must NOT fire on failure (would otherwise navigate away
+      // from a token that was never removed).
+      expect(mockOnSuccess).not.toHaveBeenCalled();
     });
   });
 });

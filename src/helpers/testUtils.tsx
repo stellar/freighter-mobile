@@ -45,9 +45,9 @@ const AllProviders: React.FC<{ children: React.ReactNode }> = ({
 
 export const renderWithProviders: RenderWithProviderType = (component) => {
   try {
-    // Use the `wrapper` option (rather than wrapping inline) so the returned
-    // `rerender` keeps the providers in place across re-renders.
-    return render(component, { wrapper: AllProviders });
+    // The `wrapper` option (rather than wrapping the element inline) keeps
+    // the providers in place across `rerender` calls too.
+    return render(React.Children.only(component), { wrapper: AllProviders });
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error("Error rendering component:", error);

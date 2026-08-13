@@ -54,8 +54,7 @@
       "myQRCode": "Meu QR code"
     },
     "manageAccount": {
-      "title": "Carteiras",
-      "addWallet": "Adicionar uma carteira",
+      "addWallet": "Adicionar carteira",
       "renameWallet": "Renomear carteira",
       "copyAddress": "Copiar endereço",
       "viewOnExplorer": "Ver no stellar.expert"
@@ -65,7 +64,6 @@
     }
   },
   "renameAccountModal": {
-    "currentName": "Nome atual",
     "saveName": "Salvar nome",
     "nameInputPlaceholder": "Digite um nome para sua carteira"
   },
@@ -256,10 +254,15 @@
   },
   "connectedApps": {
     "title": "Aplicativos Conectados",
-    "noConnectedDapps": "Nenhum aplicativo conectado. Encontre aplicativos\npara usar em Discover.",
+    "noConnectedDappsTitle": "Nada conectado ainda",
+    "noConnectedDappsDescription": "Descubra aplicativos e conecte o seu primeiro.",
     "noConnectedDappsNoDiscover": "Nenhum aplicativo conectado.",
     "goToDiscover": "Ir para o Discover",
-    "disconnectAllSessions": "Desconectar todos"
+    "disconnectAllSessions": "Desconectar todos",
+    "disconnectApp": "Desconectar {{appName}}",
+    "appDisconnected": "{{appName}} desconectado",
+    "appDisconnectedFallback": "Aplicativo desconectado",
+    "allAppsDisconnected": "Todos os aplicativos desconectados"
   },
   "discovery": {
     "discover": "Descobrir",
@@ -418,21 +421,23 @@
     "title": "Tokens",
     "error": "Erro ao carregar saldos",
     "unfundedAccount": {
-      "message": "Para começar a usar esta conta, financie-a com pelo menos 1 XLM.",
       "learnMore": "Saiba mais",
-      "fundAccountButton": "Adicionar XLM"
+      "fundAccountButton": "Adicionar XLM",
+      "title": "Um pouco vazio por aqui...",
+      "messageStart": "Adicione pelo menos",
+      "messageAmount": "2 XLM",
+      "messageEnd": "para ativar sua carteira. Depois de financiada, você poderá adicionar tokens e fazer transações."
     },
-    "menuAddToken": "Adicionar um token",
-    "menuManageTokens": "Gerenciar tokens"
+    "addTokenButton": "Adicionar token"
   },
   "collectiblesGrid": {
     "title": "Colecionáveis",
     "error": "Erro ao carregar colecionáveis",
     "empty": "Nenhum colecionável ainda",
     "emptyHidden": "Nenhum colecionável oculto",
-    "menuAddManually": "Adicionar manualmente",
-    "menuHidenCollectibles": "Colecionáveis ocultos",
-    "itemHiddenLabel": "{{name}}, oculto"
+    "addCollectibleButton": "Adicionar colecionável",
+    "itemHiddenLabel": "{{name}}, oculto",
+    "emptyDescription": "Os colecionáveis que você possui aparecerão aqui."
   },
   "collectibleDetails": {
     "title": "Detalhes do Colecionável",
@@ -467,7 +472,8 @@
     "description": "Se um colecionável estiver ausente da sua carteira, você pode adicioná-lo manualmente aqui.",
     "toastSuccess": "Colecionável adicionado com sucesso",
     "toastError": "Erro ao adicionar colecionável. {{errorMessage}}",
-    "alreadyInWallet": "Este colecionável já está na sua carteira"
+    "alreadyInWallet": "Este colecionável já está na sua carteira",
+    "showHidden": "Mostrar ocultos"
   },
   "hiddenCollectiblesScreen": {
     "title": "Colecionáveis Ocultos"
@@ -490,8 +496,6 @@
     "title": "Adicionar saldo com Friendbot"
   },
   "manageTokensScreen": {
-    "title": "Gerenciar tokens",
-    "addTokenButton": "Adicionar um token",
     "moreInfo": {
       "title": "Gerenciar Tokens",
       "block1": "Quando você gerencia tokens, está escolhendo quais tokens sua carteira pode manter e usar na rede Stellar. Para Stellar Classic, adicionar um token cria uma trustline, permitindo que sua carteira o reconheça e interaja com ele. Tokens Soroban não usam trustlines, mas ainda podem ser gerenciados e acessados aqui.",
@@ -767,16 +771,12 @@
     "checkMemoRequirements": "Verifique os requisitos de memo da conta de destino e inclua-o na transação."
   },
   "addAnotherWalletScreen": {
-    "title": "Adicionar outra carteira",
+    "title": "Adicionar carteira",
     "actions": {
       "createNewWallet": "Criar uma nova carteira",
-      "createNewWalletDescription": "Criar uma carteira na sua frase de recuperação",
+      "createNewWalletDescription": "Criar uma carteira a partir da sua frase de recuperação",
       "importSecretKey": "Importar uma chave secreta Stellar",
       "importSecretKeyDescription": "Adicionar uma carteira usando uma chave secreta"
-    },
-    "helperBottomSheet": {
-      "title": "Adicionar outra carteira",
-      "description": "Você precisa de pelo menos 1 XLM para ter uma conta na Stellar. Compre Stellar Lumens (XLM) facilmente usando um de nossos on-ramps ou transfira XLM de outra carteira para esta carteira."
     }
   },
   "verifyPasswordScreen": {
@@ -861,7 +861,7 @@
     "errorAuthEntryNetworkMismatch": "A entrada de autorização é para uma rede diferente",
     "errorAuthEntryAddressMismatch": "A entrada de autorização está vinculada a uma conta diferente",
     "errorEmptyMessage": "Não é possível assinar mensagem vazia",
-    "errorMessageTooLong": "Mensagem muito longa (máximo 1KB)",
+    "errorMessageTooLong": "Mensagem muito longa (máximo 10KB)",
     "errorSubmitting": "Erro ao enviar a transação",
     "errorRespondingRequest": "Erro ao responder à solicitação de transação",
     "errorWrongNetwork": "Rede incorreta",
@@ -947,9 +947,6 @@
   },
   "addFundsScreen": {
     "title": "Adicionar fundos",
-    "bottomSheet": {
-      "description": "Você precisa de pelo menos 1 XLM para ter uma conta na Stellar. Adicione Stellar Lumens (XLM) facilmente transferindo de outra carteira para esta carteira."
-    },
     "transferFromAnotherAccount": {
       "title": "Transferir de outra conta",
       "description": "Receber fundos de outra carteira"
@@ -1057,14 +1054,15 @@
       "invalidRecipientAddress": "Endereço do destinatário inválido",
       "cannotSendToSelf": "Não é possível enviar para você mesmo",
       "invalidDecimals": "Decimais inválidos ou ausentes para token personalizado",
-      "invalidFederationMemo": "O servidor de federação retornou um memo inválido. Por favor, verifique o endereço e tente novamente."
+      "invalidFederationMemo": "O servidor de federação retornou um memo inválido. Por favor, verifique o endereço e tente novamente.",
+      "recipientIsTokenContract": "Não é possível enviar para o contrato do próprio token"
     }
   },
   "welcomeBanner": {
     "welcomeMessage": "Bem-vindo ao Freighter!",
     "fundingText": "Para começar a usar esta conta, ",
-    "fundingText2": "financie-a com pelo menos 1 XLM.",
-    "minimumBalanceText": "As contas Stellar exigem um saldo mínimo de 1 XLM para garantir a segurança da rede e prevenir spam.",
+    "fundingText2": "financie-a com pelo menos 2 XLM.",
+    "minimumBalanceText": "As contas Stellar exigem um saldo mínimo de 2 XLM para garantir a segurança da rede e prevenir spam.",
     "reserveExplanationText": "Esta reserva ajuda a manter o ledger cobrindo taxas de transação e desencorajando a criação de contas desnecessárias, mantendo o sistema eficiente e funcional.",
     "addXLM": "Adicionar XLM",
     "doThisLater": "Fazer isso depois"
@@ -1251,7 +1249,13 @@
       "executableType": "Tipo de executável",
       "accountId": "ID da conta",
       "salt": "Salt",
-      "executableWasmHash": "Hash WASM executável"
+      "executableWasmHash": "Hash WASM executável",
+      "masterKeyWarningMessage": "Esta transação desativa a chave mestra da sua conta. Você pode perder permanentemente o acesso a esta conta, a menos que outro assinante com peso suficiente seja adicionado.",
+      "cleared": "Limpo",
+      "deleted": "Excluído",
+      "enabled": "Habilitado",
+      "disabled": "Desabilitado",
+      "unknownFlags": "Desconhecido ({{bits}})"
     },
     "claimPredicates": {
       "unconditional": "Incondicional",

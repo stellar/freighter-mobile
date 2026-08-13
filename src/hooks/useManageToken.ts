@@ -107,11 +107,15 @@ export const useManageToken = ({
     if (!token) {
       return;
     }
-    const { id, type } = token;
+    const { id, code, issuer, type } = token;
     analytics.trackRemoveTokenConfirmed(token.code);
 
+    // Search results (e.g. the Add Token list) carry no `id`, so fall back to
+    // the canonical `code:issuer` identifier — otherwise removeToken throws
+    // "No token ID or token record provided". Screens that pass an `id`
+    // (e.g. Token Details) are unaffected.
     await removeTokenAction({
-      tokenId: id,
+      tokenId: id ?? `${code}:${issuer}`,
       tokenType: type,
     });
 

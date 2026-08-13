@@ -227,6 +227,7 @@ import CheckVerified01 from "assets/icons/check-verified-01.svg";
 import CheckVerified02 from "assets/icons/check-verified-02.svg";
 import CheckVerified03 from "assets/icons/check-verified-03.svg";
 import Check from "assets/icons/check.svg";
+import ChevronDownBold from "assets/icons/chevron-down-bold.svg";
 import ChevronDownDouble from "assets/icons/chevron-down-double.svg";
 import ChevronDown from "assets/icons/chevron-down.svg";
 import ChevronLeftDouble from "assets/icons/chevron-left-double.svg";
@@ -866,6 +867,7 @@ import PlayCircle from "assets/icons/play-circle.svg";
 import PlaySquare from "assets/icons/play-square.svg";
 import Play from "assets/icons/play.svg";
 import PlusCircle from "assets/icons/plus-circle.svg";
+import PlusDouble from "assets/icons/plus-double.svg";
 import PlusSquare from "assets/icons/plus-square.svg";
 import Plus from "assets/icons/plus.svg";
 import Podcast from "assets/icons/podcast.svg";
@@ -928,6 +930,7 @@ import Scale02 from "assets/icons/scale-02.svg";
 import Scale03 from "assets/icons/scale-03.svg";
 import Scales01 from "assets/icons/scales-01.svg";
 import Scales02 from "assets/icons/scales-02.svg";
+import ScanCircle from "assets/icons/scan-circle.svg";
 import Scan from "assets/icons/scan.svg";
 import Scissors01 from "assets/icons/scissors-01.svg";
 import Scissors02 from "assets/icons/scissors-02.svg";
@@ -1414,6 +1417,7 @@ export const Icons = {
   CheckVerified02,
   CheckVerified03,
   Check,
+  ChevronDownBold,
   ChevronDownDouble,
   ChevronDown,
   ChevronLeftDouble,
@@ -2053,6 +2057,7 @@ export const Icons = {
   PlaySquare,
   Play,
   PlusCircle,
+  PlusDouble,
   PlusSquare,
   Plus,
   Podcast,
@@ -2116,6 +2121,7 @@ export const Icons = {
   Scales01,
   Scales02,
   Scan,
+  ScanCircle,
   Scissors01,
   Scissors02,
   ScissorsCut01,
