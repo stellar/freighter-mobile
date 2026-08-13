@@ -600,7 +600,7 @@ describe("data-sharing master switch", () => {
     expect(mockedSentry.init).not.toHaveBeenCalled();
   });
 
-  it("syncSentryEnablement clears buffered breadcrumbs on toggle-off", () => {
+  it("syncSentryEnablement clears breadcrumbs recorded before toggle-off", () => {
     mockAnalyticsState.isEnabled = true;
     initializeSentry();
     jest.clearAllMocks();
@@ -608,8 +608,32 @@ describe("data-sharing master switch", () => {
     mockAnalyticsState.isEnabled = false;
     syncSentryEnablement();
 
-    // addBreadcrumb() ignores the `enabled` flag, so anything accumulated
-    // before opt-out would otherwise ride along on the first post-opt-in event.
+    // Drops activity from the consented period once consent is withdrawn.
+    expect(mockClearBreadcrumbs).toHaveBeenCalledTimes(1);
+  });
+
+  it("clears breadcrumbs recorded DURING the opted-out window on re-init", async () => {
+    mockAnalyticsState.isEnabled = true;
+    initializeSentry();
+
+    mockAnalyticsState.isEnabled = false;
+    syncSentryEnablement();
+    await whenSentryLifecycleSettled();
+
+    // Everything from here on simulates the opted-out window: close() does not
+    // unbind the client and addBreadcrumb() checks only `if (!client) return`,
+    // so logger.warn and the automatic integrations keep appending. Clearing at
+    // toggle-off cannot have covered any of it.
+    jest.clearAllMocks();
+
+    mockAnalyticsState.isEnabled = true;
+    syncSentryEnablement();
+    await whenSentryLifecycleSettled();
+
+    // Sentry.init() rebinds the client but leaves the isolation scope intact,
+    // so the re-init path must clear or the first post-opt-in event ships
+    // breadcrumbs recorded while the user was opted out.
+    expect(mockedSentry.init).toHaveBeenCalledTimes(1);
     expect(mockClearBreadcrumbs).toHaveBeenCalledTimes(1);
   });
 
@@ -627,10 +651,11 @@ describe("data-sharing master switch", () => {
     // hangs and ANRs, none of which pass through our JS beforeSend.
     expect(mockClientClose).toHaveBeenCalledTimes(1);
 
-    // Must be a positive timeout: Client._isClientDoneProcessing and
-    // PromiseBuffer.drain both read a falsy timeout as "wait indefinitely".
-    const [timeout] = mockClientClose.mock.calls[0] as unknown as [number];
-    expect(timeout).toBeGreaterThan(0);
+    // Called with no arguments on purpose. ReactNativeClient overrides close()
+    // with a zero-parameter signature and calls super.close() with no args, so
+    // a timeout passed here would be silently discarded — asserting one would
+    // only be asserting against this mock, not the real SDK.
+    expect(mockClientClose).toHaveBeenCalledWith();
   });
 
   it("syncSentryEnablement re-initializes the client on toggle-on", async () => {

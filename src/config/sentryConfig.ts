@@ -197,13 +197,6 @@ let desiredSentryEnabled = false;
 // re-init can never start until the preceding teardown has fully settled.
 let sentryLifecycle: Promise<void> = Promise.resolve();
 
-// Upper bound (ms) on the flush that client.close() performs before it closes
-// the native SDK. Must be positive: both Client._isClientDoneProcessing and
-// PromiseBuffer.drain treat a falsy timeout (0 or undefined) as "wait until
-// everything drains", which is unbounded and would also push out events
-// captured under prior consent.
-const SENTRY_SHUTDOWN_FLUSH_MS = 2000;
-
 /**
  * Initialize Sentry with privacy-conscious configuration.
  *
@@ -389,6 +382,18 @@ export const initializeSentry = (): void => {
   // syncSentryEnablement, so a later reconcile doesn't read a stale `false`.
   desiredSentryEnabled = true;
 
+  // Discard anything the isolation scope accumulated before this client
+  // existed. This is the clear that actually closes the opted-out-window leak:
+  // disabling (or even closing) a client does not unbind it, and addBreadcrumb()
+  // checks only `if (!client) return`, so logger.warn and the automatic
+  // integrations keep appending for the entire time consent is off. Sentry.init()
+  // rebinds the client but leaves the isolation scope untouched (initAndBind
+  // only calls getCurrentScope().update(initialScope)), so without this the
+  // first event after a re-opt-in would ship activity recorded while the user
+  // was opted out. The matching clear in syncSentryEnablement only covers
+  // breadcrumbs from *before* opt-out, which is the wrong side of the window.
+  Sentry.getIsolationScope().clearBreadcrumbs();
+
   // Set initial context and tags
   updateSentryContext();
 };
@@ -444,14 +449,26 @@ const reconcileSentryEnablement = async (): Promise<void> => {
     // that layer without ever passing through our JS beforeSend, so disabling
     // the JS client alone leaves them reporting for the rest of the process.
     //
-    // The bounded flush this performs is not the consent leak it might look
-    // like: the RN NativeTransport hands each envelope straight to
+    // Deliberately called with NO timeout argument. ReactNativeClient overrides
+    // close() as `close(): PromiseLike<boolean>` — it takes no parameter and
+    // invokes `super.close()` with zero arguments — so any value passed here is
+    // silently discarded and the base always runs the unbounded flush path
+    // (`_isClientDoneProcessing` loops `while (!timeout || ...)`, and
+    // `PromiseBuffer.drain` returns the undrained promise when `!timeout`).
+    // tsc does not catch a stray argument because getClient() is typed as the
+    // base Client, whose close(timeout?: number) does accept one. Passing a
+    // constant here would advertise a bound that does not exist.
+    //
+    // The unbounded flush is tolerable, and is not the consent leak it might
+    // look like: the RN NativeTransport hands each envelope straight to
     // NATIVE.sendEnvelope() on send(), and its promise buffer tracks in-flight
-    // handoffs rather than an offline retry queue. There is no JS-side backlog
-    // of events captured under prior consent for the flush to push out — that
-    // queueing lives natively, on disk, and is retried by the native SDK
-    // regardless of the JS `enabled` flag.
-    await client.close(SENTRY_SHUTDOWN_FLUSH_MS);
+    // bridge handoffs rather than an offline retry queue. There is no JS-side
+    // backlog of events captured under prior consent for the flush to push out
+    // — that queueing lives natively, on disk, and is retried by the native SDK
+    // regardless of the JS `enabled` flag. The awaited work is bridge handoff
+    // plus in-process event handling, not a network round-trip, so it settles
+    // in about a tick.
+    await client.close();
   }
 };
 
@@ -493,13 +510,11 @@ export const syncSentryEnablement = (): void => {
       client.getOptions().enabled = false;
     }
 
-    // Drop breadcrumbs accumulated up to this point. `enabled = false` does not
-    // unbind the client, and addBreadcrumb() never consults that flag — it
-    // checks only that a client exists — so logger calls and the automatic
-    // integrations keep appending to the isolation scope while consent is off.
-    // Sentry.init() rebinds the client but leaves the isolation scope intact,
-    // so without this the first event after a re-opt-in would ship activity
-    // recorded during the opted-out window.
+    // Drop breadcrumbs recorded *before* this moment, so activity from the
+    // consented period is not retained once consent is withdrawn. This alone
+    // does NOT close the re-opt-in leak: the client stays bound and
+    // addBreadcrumb() keeps appending throughout the opted-out window. The
+    // clear in initializeSentry() is the one that handles that side.
     Sentry.getIsolationScope().clearBreadcrumbs();
   }
 
