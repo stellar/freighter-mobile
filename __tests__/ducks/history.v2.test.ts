@@ -1,10 +1,13 @@
+/* eslint-disable @fnando/consistent-import/consistent-import */
 import { Asset } from "@stellar/stellar-sdk";
 import { NETWORKS, mapNetworkToNetworkDetails } from "config/constants";
 import { HistoryDataV2, useHistoryStore } from "ducks/history";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { HistoryEntry } from "helpers/history/v2/model";
 import { getNativeContractDetails } from "helpers/soroban";
-import { getAccountHistoryV2, IS_HISTORY_V2_MOCKED } from "services/backend";
+import { getAccountHistoryV2 } from "services/backend";
+
+import { mockHistoryTransactions } from "../../__mocks__/services/fixtures/historyV2";
 
 const PUBLIC_KEY = "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H";
 const OTHER_PUBLIC_KEY =
@@ -28,15 +31,40 @@ jest.mock("ducks/balances", () => ({
   },
 }));
 
-// Wraps the real getAccountHistoryV2 (which serves the mock fixture) so a
-// single test can force it to reject without disturbing the other tests,
-// which rely on the fixture data actually being mapped.
+// getAccountHistoryV2 is a plain jest.fn, NOT a spy wrapping the real one:
+// the real implementation makes an HTTP request to freighter-backend-v2, which
+// a duck test has no business exercising. Its default implementation below
+// serves the captured-pubnet test fixture, so the tests that assert on mapped
+// entries get realistic input, and individual tests can still override it with
+// mockRejectedValueOnce to drive the failure paths.
 jest.mock("services/backend", () => {
   const actual = jest.requireActual("services/backend");
   return {
     ...actual,
-    getAccountHistoryV2: jest.fn(actual.getAccountHistoryV2),
+    getAccountHistoryV2: jest.fn(),
   };
+});
+
+/** The endpoint's PaginatedResponse envelope around the whole fixture list. */
+const fixturePage = () => ({
+  data: mockHistoryTransactions,
+  pagination: {
+    next_cursor: null,
+    prev_cursor: null,
+    has_next: false,
+    has_previous: false,
+  },
+});
+
+// File-scope so it applies to every describe below, and re-applied per test so
+// a mockRejectedValueOnce in one test cannot leak into the next.
+beforeEach(() => {
+  (getAccountHistoryV2 as jest.Mock).mockReset();
+  // A fresh page object per call, so a test that mutates what it received
+  // cannot corrupt the next test's input.
+  (getAccountHistoryV2 as jest.Mock).mockImplementation(() =>
+    Promise.resolve(fixturePage()),
+  );
 });
 
 describe("useHistoryStore — v2 branch", () => {
@@ -428,41 +456,37 @@ describe("useHistoryStore — v2 tokenId resolution (FIX 1)", () => {
   });
 });
 
-// FIX 2: use_history_v2 is a BOOLEAN_FLAGS entry, so fetchFeatureFlags can
-// overwrite its production default from Amplitude on any released build,
-// with no app release. IS_HISTORY_V2_MOCKED only changes with a release, so
-// nothing coupled the two — an operator flipping the Amplitude experiment
-// alone would make every pubnet/testnet account render
-// mockFetchAccountHistoryV2's fabricated fixture list as its own history.
-// The interlock in ducks/history.ts only allows v2 while mocked when
-// isDev/__DEV__ signal a non-released build (so the fixtures stay usable
-// for local development).
+// `use_history_v2` is a BOOLEAN_FLAGS entry, so fetchFeatureFlags can overwrite
+// its `false` default from Amplitude with no app release. That is now the whole
+// gate: the fixture-serving mock this path used to have is gone, so the flag
+// turning on means real requests to the real endpoint, in any build.
+//
+// An earlier revision interlocked the flag with an IS_HISTORY_V2_MOCKED source
+// constant so the remote flag alone could not surface fabricated fixture data to
+// a real user. With no mock left there is nothing to interlock against, and the
+// tests below assert the flag acts alone — deliberately the inverse of what the
+// interlock tests asserted.
+//
 // `__DEV__` is declared globally as `const __DEV__: boolean` (see
 // @types/react-native), so `global.__DEV__` is not a recognized property of
-// `typeof globalThis` to tsc even though it's how the jest/RN runtime
-// actually sets it. This narrow cast is the only way to override it for a
-// single test.
+// `typeof globalThis` to tsc even though it's how the jest/RN runtime actually
+// sets it. This narrow cast is the only way to override it for a single test.
 const globalWithDev = global as typeof globalThis & { __DEV__: boolean };
 
-describe("useHistoryStore — v2 mock interlock (FIX 2)", () => {
+describe("useHistoryStore — the v2 flag is the only gate", () => {
   // eslint-disable-next-line no-underscore-dangle -- __DEV__ is the React Native global, not an internal/private convention name.
   const originalDev = globalWithDev.__DEV__;
-
-  beforeEach(() => {
-    (getAccountHistoryV2 as jest.Mock).mockClear();
-  });
 
   afterEach(() => {
     // eslint-disable-next-line no-underscore-dangle -- see the declaration above.
     globalWithDev.__DEV__ = originalDev;
   });
 
-  it("does not activate v2 from the remote flag alone while the endpoint is mocked, in a production-like environment", async () => {
-    // isDev (helpers/isEnv) reads getBundleId(), which the react-native-device-info
-    // jest mock returns as "unknown" — so isDev is already false under Jest.
-    // Forcing __DEV__ false as well simulates a released build, where the
-    // interlock is the only thing standing between the remote flag and
-    // fixture data reaching a real user.
+  it("activates v2 from the remote flag alone in a production-like build", async () => {
+    // isDev (helpers/isEnv) reads getBundleId(), which the
+    // react-native-device-info jest mock returns as "unknown" — so isDev is
+    // already false under Jest. Forcing __DEV__ false as well simulates a
+    // released build: nothing about the build environment should gate v2 now.
     // eslint-disable-next-line no-underscore-dangle -- see the declaration above.
     globalWithDev.__DEV__ = false;
     useRemoteConfigStore.setState({ use_history_v2: true });
@@ -472,15 +496,13 @@ describe("useHistoryStore — v2 mock interlock (FIX 2)", () => {
       network: NETWORKS.PUBLIC,
     });
 
-    // IS_HISTORY_V2_MOCKED is true (fixtures) at this point in the rollout —
-    // asserted here so this test fails loudly, instead of silently passing
-    // for the wrong reason, on the day it flips to false.
-    expect(IS_HISTORY_V2_MOCKED).toBe(true);
-    expect(getAccountHistoryV2).not.toHaveBeenCalled();
-    expect(useHistoryStore.getState().rawHistoryV2Data).toBeNull();
+    expect(getAccountHistoryV2).toHaveBeenCalled();
+    expect(
+      useHistoryStore.getState().rawHistoryV2Data?.entries.length,
+    ).toBeGreaterThan(0);
   });
 
-  it("still activates v2 in a dev build even while the endpoint is mocked (fixtures stay usable for local work)", async () => {
+  it("activates v2 in a dev build too", async () => {
     // eslint-disable-next-line no-underscore-dangle -- see the declaration above.
     globalWithDev.__DEV__ = true;
     useRemoteConfigStore.setState({ use_history_v2: true });
@@ -495,4 +517,26 @@ describe("useHistoryStore — v2 mock interlock (FIX 2)", () => {
       useHistoryStore.getState().rawHistoryV2Data?.entries.length,
     ).toBeGreaterThan(0);
   });
+
+  // Both builds, since the removed interlock keyed off exactly this signal —
+  // the flag being off has to be sufficient on its own either way.
+  it.each([
+    ["a production-like build", false],
+    ["a dev build", true],
+  ])(
+    "never calls the v2 endpoint while the flag is off, in %s",
+    async (_label, dev) => {
+      // eslint-disable-next-line no-underscore-dangle -- see the declaration above.
+      globalWithDev.__DEV__ = dev;
+      useRemoteConfigStore.setState({ use_history_v2: false });
+
+      await useHistoryStore.getState().fetchAccountHistory({
+        publicKey: PUBLIC_KEY,
+        network: NETWORKS.PUBLIC,
+      });
+
+      expect(getAccountHistoryV2).not.toHaveBeenCalled();
+      expect(useHistoryStore.getState().rawHistoryV2Data).toBeNull();
+    },
+  );
 });

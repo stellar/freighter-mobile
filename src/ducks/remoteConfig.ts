@@ -72,9 +72,12 @@ const INITIAL_REMOTE_CONFIG_STATE =
         discover_enabled: true,
         onramp_enabled: true,
         use_token_prices_v2: true,
-        // v2 state-change history. Dev-on so the pipeline is exercised without
-        // an Amplitude key; production defaults off until the endpoint deploys.
-        use_history_v2: true,
+        // v2 state-change history. Off in dev too, unlike the other flags here:
+        // the freighter-backend-v2 transactions endpoint is not deployed, so
+        // getAccountHistoryV2 throws and the history screen shows an error state
+        // rather than falling back to v1. Turn on locally (or in Amplitude) once
+        // the endpoint is live.
+        use_history_v2: false,
         required_app_version: currentAppVersion,
         latest_app_version: currentAppVersion,
         app_update_banner_text: {

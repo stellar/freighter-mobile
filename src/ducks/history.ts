@@ -27,13 +27,11 @@ import {
 } from "helpers/history/v2/filters";
 import { HistoryEntry } from "helpers/history/v2/model";
 import { buildTokenContext } from "helpers/history/v2/tokenResolver";
-import { isDev } from "helpers/isEnv";
 import { getNativeContractDetails } from "helpers/soroban";
 import {
   getAccountHistory,
   getAccountHistoryV2,
   getTokenDetails,
-  IS_HISTORY_V2_MOCKED,
 } from "services/backend";
 import { create } from "zustand";
 
@@ -360,22 +358,11 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
         return;
       }
 
-      // Interlock: use_history_v2 is a BOOLEAN_FLAGS entry, so
-      // fetchFeatureFlags can overwrite its production `false` default from
-      // Amplitude on any released build, with no app release. IS_HISTORY_V2_MOCKED
-      // is a source constant that only changes with a release. Without this
-      // interlock, an operator flipping the Amplitude experiment alone would
-      // make every pubnet/testnet account render mockFetchAccountHistoryV2's
-      // fabricated fixture list as its own transaction history — fabricated
-      // payments, amounts, and counterparties, in a non-custodial wallet,
-      // and identical across every account since the mock ignores its
-      // `address` argument. Gating on `isDev || __DEV__` (rather than
-      // hard-disabling whenever mocked) keeps the fixtures usable for local
-      // development, which is the reason they exist, while making it
-      // impossible for the remote flag alone to activate v2 for a real user.
-      const useV2 =
-        useRemoteConfigStore.getState().use_history_v2 &&
-        (!IS_HISTORY_V2_MOCKED || isDev || __DEV__);
+      // `use_history_v2` is a BOOLEAN_FLAGS entry, so fetchFeatureFlags can
+      // overwrite its `false` default from Amplitude with no app release —
+      // which is the intended rollout gesture now that this path serves the
+      // real endpoint and no longer has fixtures behind it.
+      const useV2 = useRemoteConfigStore.getState().use_history_v2;
       const nativeTokenId =
         getNativeContractDetails(params.network).contract || null;
       // v2 serves pubnet and testnet only; anything else falls through to v1

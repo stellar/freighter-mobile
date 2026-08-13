@@ -409,9 +409,12 @@ describe("remoteConfig duck", () => {
       expect(typeof state.use_history_v2).toBe("boolean");
     });
 
-    it("is enabled by default in dev builds", () => {
-      // isDev/__DEV__ are true under Jest, so the dev default object applies.
-      expect(useRemoteConfigStore.getState().use_history_v2).toBe(true);
+    it("is disabled by default even in dev builds", () => {
+      // isDev/__DEV__ are true under Jest, so the dev default object applies —
+      // and unlike the other dev defaults, this one is off: the
+      // freighter-backend-v2 transactions endpoint is not deployed, so turning
+      // it on makes the history screen error rather than fall back to v1.
+      expect(useRemoteConfigStore.getState().use_history_v2).toBe(false);
     });
   });
 });

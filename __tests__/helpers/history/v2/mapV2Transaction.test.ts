@@ -1,3 +1,4 @@
+/* eslint-disable @fnando/consistent-import/consistent-import */
 // Initialize the app i18n instance so t() resolves real translations rather
 // than returning raw "history.v2.…" key paths (which would make the
 // string-literal assertions below vacuous). Mirrors the pattern in
@@ -12,6 +13,7 @@ import { BalanceChangeRow, ResolvedToken } from "helpers/history/v2/model";
 import { TokenContext } from "helpers/history/v2/tokenResolver";
 import { getDeviceLanguage } from "helpers/localeUtils";
 import "i18n";
+
 import {
   MOCK_SELF as REAL_ACCOUNT,
   MOCK_XLM_SAC as REAL_XLM_SAC,
@@ -19,7 +21,7 @@ import {
   MOCK_BLND_SAC as REAL_BLND_SAC,
   MOCK_CETES_SAC as REAL_CETES_SAC,
   mockHistoryTransactions,
-} from "services/fixtures/historyV2";
+} from "../../../../__mocks__/services/fixtures/historyV2";
 import {
   MOCK_ACCOUNT_2,
   MOCK_EURC_SAC,
@@ -51,7 +53,7 @@ import {
   mockTrustlineAdded,
   mockTrustlineMulti,
   mockScenarioTransactions,
-} from "services/fixtures/historyV2Scenarios";
+} from "../../../../__mocks__/services/fixtures/historyV2Scenarios";
 
 // Mock the OS locale detection for consistent test behavior, matching the
 // pattern used elsewhere in this repo (e.g.

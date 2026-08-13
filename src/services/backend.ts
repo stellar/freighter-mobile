@@ -39,7 +39,6 @@ import {
   logApiError,
 } from "services/apiFactory";
 import { attachAuthInterceptors } from "services/auth/attachAuth";
-import { mockFetchAccountHistoryV2 } from "services/fixtures/historyV2";
 
 // Create dedicated API services for backend operations
 export const freighterBackendV1 = createApiService({
@@ -752,27 +751,15 @@ const PASSPHRASE_TO_V2_NETWORK: Record<string, NETWORKS> = {
   [Networks.TESTNET]: NETWORKS.TESTNET,
 };
 
-// The v2 account-history endpoint exists in freighter-backend-v2
-// (GET /api/v1/accounts/{address}/transactions) but is not deployed yet, so
-// getAccountHistoryV2 serves fixtures matching the real wire shape. Flip to
-// false when the endpoint is live — in lockstep with the browser extension.
-//
-// Exported (rather than kept private) because ducks/history.ts reads it to
-// gate the `use_history_v2` remote-config flag: that flag lives in
-// BOOLEAN_FLAGS, so an operator flipping the Amplitude experiment can
-// overwrite its production default at runtime, with no release. Without
-// this constant in the gate, that ordinary rollout gesture would make every
-// pubnet/testnet account render mockFetchAccountHistoryV2's fabricated
-// fixture list (which also ignores the `address` argument, so every account
-// would show the identical fake data) as its own transaction history.
-export const IS_HISTORY_V2_MOCKED = true;
-
 /**
- * Fetches account history from the v2 state-change endpoint.
+ * Fetches account history from the v2 state-change endpoint
+ * (GET /api/v1/accounts/{address}/transactions in freighter-backend-v2).
  *
  * Throws rather than returning an empty page: unlike getIndexerAccountHistory,
  * a failure here must reach the duck's catch so the user sees an error state
- * instead of an empty history.
+ * instead of an empty history. That matters more than usual right now — the
+ * endpoint is not deployed yet, so this call fails until it is, which is why
+ * `use_history_v2` defaults off (see ducks/remoteConfig.ts).
  */
 export const getAccountHistoryV2 = async ({
   publicKey,
@@ -793,16 +780,11 @@ export const getAccountHistoryV2 = async ({
     );
   }
 
-  if (IS_HISTORY_V2_MOCKED) {
-    return mockFetchAccountHistoryV2({ address: publicKey, limit, cursor });
-  }
-
   // The query does not need to live in the path for JWT signing purposes —
   // attachAuth.ts derives the signed methodAndPath via `instance.getUri(config)`,
   // which already serializes `config.params` into the URI. It is built here
   // as a literal query string instead purely to match this function's
-  // existing call shape; this branch is unreachable while
-  // IS_HISTORY_V2_MOCKED is true, so it hasn't been exercised.
+  // existing call shape.
   const search = new URLSearchParams({ network: historyNetwork });
   if (limit !== undefined) {
     search.set("limit", String(limit));
