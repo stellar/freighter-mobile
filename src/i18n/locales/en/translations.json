@@ -407,7 +407,19 @@
         "liquidityPoolDeposit": "Liquidity pool deposit",
         "liquidityPoolWithdraw": "Liquidity pool withdrawal",
         "allowTrust": "Trustline authorization",
-        "inflation": "Inflation"
+        "inflation": "Inflation",
+        "createAccount": "Account created",
+        "payment": "Payment",
+        "pathPaymentStrictReceive": "Path payment",
+        "pathPaymentStrictSend": "Path payment",
+        "setOptions": "Account settings updated",
+        "changeTrust": "Trustline updated",
+        "setTrustLineFlags": "Trustline authorization",
+        "accountMerge": "Account merged",
+        "manageData": "Data entry updated",
+        "createClaimableBalance": "Claimable balance created",
+        "clawback": "Clawback",
+        "invokeHostFunction": "Contract"
       },
       "labels": {
         "claimableBalanceCreated": "Claimable balance created",
@@ -443,7 +455,9 @@
         "swapped": "Swapped",
         "sent": "Sent",
         "received": "Received",
-        "multipleBalanceChanges": "Multiple balance changes"
+        "multipleBalanceChanges": "Multiple balance changes",
+        "offer": "Offer",
+        "claimed": "Claimed"
       },
       "amounts": {
         "multiple": "Multiple"
@@ -1342,13 +1356,13 @@
       "signedPayload": "Signed Payload",
       "account": "Account",
       "seller": "Seller",
-      "wasm": "WASM",
       "parameters": "Parameters",
       "source": "Source",
       "executableType": "Executable Type",
       "accountId": "Account ID",
       "salt": "Salt",
-      "executableWasmHash": "Executable WASM Hash"
+      "executableWasmHash": "Executable WASM Hash",
+      "wasmHash": "Wasm Hash"
     },
     "claimPredicates": {
       "unconditional": "Unconditional",

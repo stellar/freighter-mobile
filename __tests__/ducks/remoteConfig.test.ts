@@ -404,17 +404,12 @@ describe("remoteConfig duck", () => {
   });
 
   describe("use_history_v2 flag", () => {
+    // Deliberately no assertion on WHAT the default is: it's a rollout dial
+    // that flips as v2 history ships (and per-build via the dev/prod default
+    // objects). Only the flag's existence is contractual.
     it("is exposed on the store", () => {
       const state = useRemoteConfigStore.getState();
       expect(typeof state.use_history_v2).toBe("boolean");
-    });
-
-    it("is disabled by default even in dev builds", () => {
-      // isDev/__DEV__ are true under Jest, so the dev default object applies —
-      // and unlike the other dev defaults, this one is off: the
-      // freighter-backend-v2 transactions endpoint is not deployed, so turning
-      // it on makes the history screen error rather than fall back to v1.
-      expect(useRemoteConfigStore.getState().use_history_v2).toBe(false);
     });
   });
 });

@@ -153,7 +153,11 @@ describe("soroban helpers", () => {
     });
 
     describe("mint function", () => {
-      it("should parse mint function arguments correctly", () => {
+      it("parses a 2-arg mint(to, amount) without throwing", () => {
+        // Regression: an unconditional args[2] read used to throw on every
+        // mint (mint has only two args), and callers swallowed the throw —
+        // silently degrading mints to generic invocations in both history
+        // paths. No dummy third argument here, deliberately.
         const mockToAddress = xdr.ScVal.scvAddress(
           xdr.ScAddress.scAddressTypeAccount(
             xdr.PublicKey.publicKeyTypeEd25519(Buffer.alloc(32, 1)),
@@ -165,21 +169,46 @@ describe("soroban helpers", () => {
             hi: xdr.Int64.fromString("0"),
           }),
         );
-        // Add a dummy third argument to satisfy the implementation
-        const mockDummy = xdr.ScVal.scvVoid();
 
-        const args = [mockToAddress, mockAmount, mockDummy];
+        const args = [mockToAddress, mockAmount];
 
         const result = getArgsForTokenInvocation(
           SorobanTokenInterface.mint,
           args,
         );
 
-        expect(result).toHaveProperty("to");
-        expect(result).toHaveProperty("amount");
         expect(result.to).toBeTruthy();
-        expect(result.amount).toBeDefined();
+        expect(result.amount).toBe(BigInt(5000000));
         expect(result.from).toBe("");
+      });
+    });
+
+    describe("muxed (CAP-67) transfer recipient", () => {
+      it("returns the muxed (M...) string verbatim for a muxed transfer recipient", () => {
+        // CAP-67: the `to` ScAddress can be scAddressTypeMuxedAccount.
+        // addressToString must surface the M-form, not crash or strip it.
+        const MUXED_SELF =
+          "MCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYAAAAAAAAABQHFTBG";
+        const mockFromAddress = xdr.ScVal.scvAddress(
+          xdr.ScAddress.scAddressTypeAccount(
+            xdr.PublicKey.publicKeyTypeEd25519(Buffer.alloc(32, 1)),
+          ),
+        );
+        const mockToAddress = new Address(MUXED_SELF).toScVal();
+        const mockAmount = xdr.ScVal.scvI128(
+          new xdr.Int128Parts({
+            lo: xdr.Uint64.fromString("404000000"),
+            hi: xdr.Int64.fromString("0"),
+          }),
+        );
+
+        const result = getArgsForTokenInvocation(
+          SorobanTokenInterface.transfer,
+          [mockFromAddress, mockToAddress, mockAmount],
+        );
+
+        expect(result.to).toBe(MUXED_SELF);
+        expect(result.amount).toBe(BigInt(404000000));
       });
     });
 

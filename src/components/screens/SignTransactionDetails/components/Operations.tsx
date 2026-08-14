@@ -1,5 +1,11 @@
 /* eslint-disable react/no-array-index-key */
-import { Address, Operation, OperationRecord, xdr } from "@stellar/stellar-sdk";
+import {
+  Address,
+  hash,
+  Operation,
+  OperationRecord,
+  xdr,
+} from "@stellar/stellar-sdk";
 import { List, ListItemProps } from "components/List";
 import Spinner from "components/Spinner";
 import {
@@ -1097,6 +1103,7 @@ const RenderOperationArgsByType = ({
 }) => {
   const { t } = useAppTranslation();
   const { network } = useAuthenticationStore();
+  const { copyToClipboard } = useClipboard();
   const networkDetails = mapNetworkToNetworkDetails(network);
   const { type } = operation;
 
@@ -1190,12 +1197,24 @@ const RenderOperationArgsByType = ({
           }
 
           case xdr.HostFunctionType.hostFunctionTypeUploadContractWasm(): {
-            const wasm = func.wasm().toString();
+            // The parameter IS the raw wasm blob — render its identity (the
+            // SHA-256 hash the ledger stores it under), never a UTF-8
+            // decode of the bytes, which prints as mojibake.
+            const uploadedWasmHash = hash(func.wasm()).toString("hex");
 
             return (
               <KeyValueListItem
-                operationKey={t("signTransactionDetails.operations.wasm")}
-                operationValue={wasm}
+                operationKey={t("signTransactionDetails.operations.wasmHash")}
+                operationValue={
+                  <View className="flex-row items-center gap-[8px]">
+                    <Icon.Copy01
+                      size={16}
+                      themeColor="gray"
+                      onPress={() => copyToClipboard(uploadedWasmHash)}
+                    />
+                    <Text>{truncateAddress(uploadedWasmHash, 8, 8)}</Text>
+                  </View>
+                }
               />
             );
           }
@@ -1210,6 +1229,32 @@ const RenderOperationArgsByType = ({
     default: {
       return <View />;
     }
+  }
+};
+
+/**
+ * Whether an invoke-host-function operation has anything to show under the
+ * "Parameters" header — a no-arg call (decimals(), name(), …) must not
+ * render the header over an empty row.
+ */
+const hasInvokeParameters = (operation: OperationRecord): boolean => {
+  if (operation.type !== "invokeHostFunction") {
+    return false;
+  }
+  const hostfn = operation.func;
+  switch (hostfn.switch()) {
+    case xdr.HostFunctionType.hostFunctionTypeInvokeContract():
+      return hostfn.invokeContract().args().length > 0;
+    case xdr.HostFunctionType.hostFunctionTypeCreateContractV2():
+    case xdr.HostFunctionType.hostFunctionTypeCreateContract(): {
+      const { constructorArgs } = getCreateContractArgs(hostfn);
+      return Boolean(constructorArgs && constructorArgs.length > 0);
+    }
+    case xdr.HostFunctionType.hostFunctionTypeUploadContractWasm():
+      // the uploaded blob's hash renders as the parameter
+      return true;
+    default:
+      return false;
   }
 };
 
@@ -1265,19 +1310,20 @@ const Operations = ({
               )}
               <RenderOperationByType operation={operation} />
             </View>
-            {type === "invokeHostFunction" && (
-              <>
-                <View className="flex-row items-center gap-[8px]">
-                  <Icon.BracketsEllipses size={16} themeColor="gray" />
-                  <Text secondary>
-                    {t("signTransactionDetails.operations.parameters")}
-                  </Text>
-                </View>
-                <View>
-                  <RenderOperationArgsByType operation={operation} />
-                </View>
-              </>
-            )}
+            {type === "invokeHostFunction" &&
+              hasInvokeParameters(operation) && (
+                <>
+                  <View className="flex-row items-center gap-[8px]">
+                    <Icon.BracketsEllipses size={16} themeColor="gray" />
+                    <Text secondary>
+                      {t("signTransactionDetails.operations.parameters")}
+                    </Text>
+                  </View>
+                  <View>
+                    <RenderOperationArgsByType operation={operation} />
+                  </View>
+                </>
+              )}
           </View>
         );
       })}
