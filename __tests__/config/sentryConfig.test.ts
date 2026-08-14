@@ -733,6 +733,35 @@ describe("data-sharing master switch", () => {
     expect(mockedSentry.init).not.toHaveBeenCalled();
   });
 
+  it("clears consent-gap breadcrumbs when re-arming a reversed opt-out", async () => {
+    mockAnalyticsState.isEnabled = true;
+    initializeSentry();
+
+    mockAnalyticsState.isEnabled = false;
+    syncSentryEnablement();
+
+    // Everything after this point stands in for the gap between the synchronous
+    // opt-out block and the queued reconcile. The client is still bound and
+    // addBreadcrumb() only checks `if (!client)`, so writes here land on the
+    // isolation scope while consent is off — and the opt-out clear has already
+    // run, so it cannot have covered them.
+    jest.clearAllMocks();
+
+    mockAnalyticsState.isEnabled = true;
+    syncSentryEnablement();
+    await whenSentryLifecycleSettled();
+
+    // The re-arm path re-enables reporting without going through
+    // initializeSentry(), so it has to clear on its own or those breadcrumbs
+    // ride along on the next captured event.
+    // Count is deliberately not pinned: both the pending opt-out reconcile and
+    // the opt-in one settle here, and both take the re-arm branch. The clear is
+    // idempotent, so more than one call is correct, not a defect.
+    expect(mockedSentry.init).not.toHaveBeenCalled();
+    expect(mockClearBreadcrumbs).toHaveBeenCalled();
+    expect(mockClientOptions.enabled).toBe(true);
+  });
+
   it("collapses a burst of toggles to the final state", async () => {
     mockAnalyticsState.isEnabled = true;
     initializeSentry();

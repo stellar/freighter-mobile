@@ -198,6 +198,30 @@ let desiredSentryEnabled = false;
 let sentryLifecycle: Promise<void> = Promise.resolve();
 
 /**
+ * Drop breadcrumbs the isolation scope accumulated while consent was off.
+ *
+ * INVARIANT: every path that (re-)enables reporting must call this first.
+ * There are two — `initializeSentry()` and the re-arm branch of
+ * `reconcileSentryEnablement()` — and missing either one leaks. Centralized so
+ * a third path can't quietly forget: this has been got wrong more than once.
+ *
+ * Why it's needed at all: neither disabling nor closing a client unbinds it,
+ * and `addBreadcrumb()` checks only `if (!client) return` — never the `enabled`
+ * flag — so `logger.warn` and the automatic integrations keep appending for the
+ * entire time consent is off. `Sentry.init()` rebinds the client but leaves the
+ * isolation scope untouched (`initAndBind` only calls
+ * `getCurrentScope().update(initialScope)`), so without this the first event
+ * after a re-opt-in would ship activity recorded while the user was opted out.
+ *
+ * The clear in `syncSentryEnablement` is a different, complementary one: it
+ * drops breadcrumbs from *before* opt-out, which is the other side of the
+ * window and does not cover this case.
+ */
+const dropConsentGapBreadcrumbs = (): void => {
+  Sentry.getIsolationScope().clearBreadcrumbs();
+};
+
+/**
  * Initialize Sentry with privacy-conscious configuration.
  *
  * No-ops (does not call Sentry.init) in three cases:
@@ -382,17 +406,7 @@ export const initializeSentry = (): void => {
   // syncSentryEnablement, so a later reconcile doesn't read a stale `false`.
   desiredSentryEnabled = true;
 
-  // Discard anything the isolation scope accumulated before this client
-  // existed. This is the clear that actually closes the opted-out-window leak:
-  // disabling (or even closing) a client does not unbind it, and addBreadcrumb()
-  // checks only `if (!client) return`, so logger.warn and the automatic
-  // integrations keep appending for the entire time consent is off. Sentry.init()
-  // rebinds the client but leaves the isolation scope untouched (initAndBind
-  // only calls getCurrentScope().update(initialScope)), so without this the
-  // first event after a re-opt-in would ship activity recorded while the user
-  // was opted out. The matching clear in syncSentryEnablement only covers
-  // breadcrumbs from *before* opt-out, which is the wrong side of the window.
-  Sentry.getIsolationScope().clearBreadcrumbs();
+  dropConsentGapBreadcrumbs();
 
   // Set initial context and tags
   updateSentryContext();
@@ -418,6 +432,13 @@ const reconcileSentryEnablement = async (): Promise<void> => {
     // ran (off→on inside a single tick collapses to "still initialized"). Left
     // alone, that client would stay silently disabled forever while every
     // subsequent reconcile short-circuits as a no-op. Re-arm it.
+    //
+    // This re-enables reporting without going through initializeSentry(), so it
+    // owns the consent-gap clear itself. Breadcrumbs written in the gap between
+    // the synchronous opt-out block and this reconcile were recorded while
+    // consent was off, and would otherwise ride along on the next event.
+    dropConsentGapBreadcrumbs();
+
     const client = Sentry.getClient();
     if (client) {
       client.getOptions().enabled = true;
