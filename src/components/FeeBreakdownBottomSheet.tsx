@@ -19,6 +19,13 @@ type FeeBreakdownBottomSheetProps = {
    * whether simulation has completed yet.
    */
   isSorobanContext: boolean;
+  /**
+   * In-progress inclusion fee (XLM) to preview before it is saved. When the
+   * breakdown is opened from the settings sheet mid-edit, this reflects the
+   * user's current (unsaved) selection so the inclusion/total update without
+   * committing the fee — Cancel still reverts to the stored value.
+   */
+  inclusionFeeXlmOverride?: string;
 };
 
 /**
@@ -35,6 +42,7 @@ type FeeBreakdownBottomSheetProps = {
 const FeeBreakdownBottomSheet: React.FC<FeeBreakdownBottomSheetProps> = ({
   onClose,
   isSorobanContext,
+  inclusionFeeXlmOverride,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
@@ -46,10 +54,19 @@ const FeeBreakdownBottomSheet: React.FC<FeeBreakdownBottomSheetProps> = ({
   } = useTransactionBuilderStore();
   const { transactionFee } = useTransactionSettingsStore();
 
+  // Preview the in-progress fee when provided, otherwise the built/stored fee.
+  const effectiveInclusionFeeXlm =
+    inclusionFeeXlmOverride ?? sorobanInclusionFeeXlm ?? transactionFee;
+
+  // computeTotalFeeXlm sums args 1+2 only when both Soroban legs are present,
+  // and otherwise returns the 3rd (CLASSIC branch). Arg1 deliberately omits the
+  // `?? transactionFee` fallback that `effectiveInclusionFeeXlm` carries: it has
+  // to stay nullable so a classic transaction falls through to arg3 instead of
+  // being summed against a missing resource fee.
   const totalFeeXlm = computeTotalFeeXlm(
-    sorobanInclusionFeeXlm,
+    inclusionFeeXlmOverride ?? sorobanInclusionFeeXlm,
     sorobanResourceFeeXlm,
-    transactionFee,
+    effectiveInclusionFeeXlm,
   );
 
   // When simulation has failed the stored fee fields are null — show a dash
@@ -102,8 +119,7 @@ const FeeBreakdownBottomSheet: React.FC<FeeBreakdownBottomSheetProps> = ({
                 {hasBuildError
                   ? "—"
                   : formatTokenForDisplay(
-                      // Pre-simulation: show the user-selected base fee; post-simulation: show the simulated inclusion fee
-                      sorobanInclusionFeeXlm ?? transactionFee,
+                      effectiveInclusionFeeXlm,
                       NATIVE_TOKEN_CODE,
                     )}
               </Text>
