@@ -274,8 +274,16 @@ export const initializeSentry = (): void => {
 
     beforeSend(event) {
       // Master switch (defense-in-depth): if data sharing is off, drop every
-      // event. Covers the window between a runtime toggle-off and client
-      // teardown, and any event from a lingering or native-layer client.
+      // event that reaches this hook. Covers the window between a runtime
+      // toggle-off and client teardown, and anything captured by a lingering
+      // JS client.
+      //
+      // It does NOT cover the native layer. Native crashes, iOS app hangs and
+      // Android ANRs are captured and transmitted by the Cocoa/Android SDKs
+      // without ever passing through beforeSend, so this hook is not a
+      // substitute for the client.close() in reconcileSentryEnablement —
+      // removing that close on the assumption this covers it would silently
+      // restore native crash reporting for opted-out users.
       if (!useAnalyticsStore.getState().isEnabled) {
         return null;
       }
