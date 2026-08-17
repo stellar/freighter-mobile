@@ -191,19 +191,25 @@ export const ManageAccountBottomSheet: React.FC<
         ))}
       </View>
       <View className="w-full border-b border-border-primary" />
-      {accounts.map((account, index) => (
-        <AccountItemRow
-          key={account.publicKey}
-          account={account}
-          handleSelectAccount={handleSelectAccount}
-          isSelected={account.publicKey === activeAccount?.publicKey}
-          isAccountSwitching={isAccountSwitching}
-          isSwitchingToThisAccount={switchingToPublicKey === account.publicKey}
-          fiatTotal={fiatTotals[account.publicKey]}
-          isLoadingFiatTotal={isLoadingFiatTotals}
-          testID={`account-row-${index}`}
-        />
-      ))}
+      {/* Own gap: rows sit 16px apart, tighter than the 24px rhythm that
+      separates the hero, quick actions and the list as a whole. */}
+      <View className="w-full gap-[16px]">
+        {accounts.map((account, index) => (
+          <AccountItemRow
+            key={account.publicKey}
+            account={account}
+            handleSelectAccount={handleSelectAccount}
+            isSelected={account.publicKey === activeAccount?.publicKey}
+            isAccountSwitching={isAccountSwitching}
+            isSwitchingToThisAccount={
+              switchingToPublicKey === account.publicKey
+            }
+            fiatTotal={fiatTotals[account.publicKey]}
+            isLoadingFiatTotal={isLoadingFiatTotals}
+            testID={`account-row-${index}`}
+          />
+        ))}
+      </View>
       {/*
         Scroll-end clearance must live in the scrollable content: the
         wrapper's inset padding is a ScrollView *style*, which doesn't add

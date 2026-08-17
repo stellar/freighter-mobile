@@ -39,7 +39,9 @@ export const AddWalletFooter: React.FC<AddWalletFooterProps> = ({
         accessibilityRole="button"
         testID="manage-accounts-add-wallet-button"
       >
-        <View className="w-[34px] h-[34px] rounded-full bg-lilac-2 justify-center items-center">
+        {/* 40px matches the lg account avatars, so the "+" lines up with the
+        identicons in the list above it. */}
+        <View className="w-[40px] h-[40px] rounded-full bg-lilac-2 justify-center items-center">
           <Icon.Plus size={14} color={themeColors.lilac[9]} />
         </View>
         <Text md medium color={themeColors.lilac[11]}>
