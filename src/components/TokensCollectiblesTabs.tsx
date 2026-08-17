@@ -52,6 +52,17 @@ interface Props {
   disableInnerScrolling?: boolean;
   /** Optional testID prefix forwarded to each balance row (e.g. "token-option" → "token-option-XLM") */
   balanceRowTestIDPrefix?: string;
+  /**
+   * Show the Add CTA inside each tab's empty state instead of relying on the
+   * caller's floating action button.
+   *
+   * The two tabs move together on purpose: the caller passes a single value
+   * derived from BOTH tabs being empty, so a user never sees an in-empty-state
+   * CTA on one tab and a floating pill on the other.
+   */
+  showEmptyStateCta?: boolean;
+  /** Press handler for the collectibles empty-state CTA. */
+  onAddCollectiblePress?: () => void;
 }
 
 /**
@@ -84,6 +95,8 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
     feeContext = TransactionContext.Send,
     disableInnerScrolling = false,
     balanceRowTestIDPrefix,
+    showEmptyStateCta = true,
+    onAddCollectiblePress,
   }) => {
     const { t } = useAppTranslation();
     const { themeColors } = useColors();
@@ -116,6 +129,7 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
           showSpendableAmount={showSpendableAmount}
           feeContext={feeContext}
           balanceRowTestIDPrefix={balanceRowTestIDPrefix}
+          showEmptyStateCta={showEmptyStateCta}
         />
       ),
       [
@@ -126,6 +140,7 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
         feeContext,
         disableInnerScrolling,
         balanceRowTestIDPrefix,
+        showEmptyStateCta,
       ],
     );
 
@@ -146,10 +161,17 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
           <CollectiblesGrid
             onCollectiblePress={onCollectiblePress}
             disableInnerScrolling={disableInnerScrolling}
+            showEmptyStateCta={showEmptyStateCta}
+            onAddCollectiblePress={onAddCollectiblePress}
           />
         </View>
       ),
-      [onCollectiblePress, disableInnerScrolling],
+      [
+        onCollectiblePress,
+        disableInnerScrolling,
+        showEmptyStateCta,
+        onAddCollectiblePress,
+      ],
     );
 
     /**

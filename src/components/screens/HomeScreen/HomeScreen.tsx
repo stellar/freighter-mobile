@@ -43,6 +43,7 @@ import { fsValue, pxValue } from "helpers/dimensions";
 import { isContractId } from "helpers/soroban";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
+import { useFilteredCollectibles } from "hooks/useFilteredCollectibles";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useHomeHeaders } from "hooks/useHomeHeaders";
 import { useTotalBalance } from "hooks/useTotalBalance";
@@ -106,6 +107,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
     } = useBalancesStore();
     const fetchCollectibles = useCollectiblesStore((s) => s.fetchCollectibles);
     const isCollectiblesLoading = useCollectiblesStore((s) => s.isLoading);
+    // Same source the collectibles grid renders from, so "empty" here means
+    // exactly what the user sees on that tab.
+    const { visibleCollectibles } = useFilteredCollectibles();
     // Covers the balances store's 3s price-timeout path: balances settle
     // with an unpriced map while quotes are still in flight, so the hero
     // must keep its spinner until the prices store finishes too.
@@ -126,6 +130,26 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
         ),
       [balances],
     );
+
+    // Where the Add CTA lives is decided once, from BOTH tabs, so the two
+    // never disagree: while the wallet is completely empty each tab carries
+    // its own CTA inside its empty state, and the moment anything lands the
+    // floating pill takes over on both. The pill and an in-empty-state CTA are
+    // therefore never on screen at the same time.
+    //
+    // A funded account always holds XLM, so `isFunded` IS "has tokens" — the
+    // tokens list can only be empty before the account is funded.
+    const hasCollectibles = visibleCollectibles.length > 0;
+    const showEmptyStateCtas = !isFunded && !hasCollectibles;
+
+    // Adding a token creates a trustline, which needs XLM for the reserve +
+    // fee, so while the tokens tab is still empty the pill offers funding
+    // instead of a trustline it can't pay for. On mainnet that is the same
+    // label and destination as the tokens empty state's own CTA; on test
+    // networks the empty state funds via Friendbot instead, but this variant
+    // only appears when something else is already held, which an unfunded
+    // account can't be.
+    const isTokensTabUnfunded = !isFunded;
 
     const handleManageAccountsPress = useCallback(() => {
       manageAccountsBottomSheetRef.current?.present();
@@ -339,8 +363,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
           contentContainerStyle={{
             flexGrow: 1,
             // Reserve space so the floating add pill never obscures the last
-            // list row when scrolled to the bottom.
-            paddingBottom: pxValue(FLOATING_ADD_BUTTON_CLEARANCE),
+            // list row when scrolled to the bottom — only while a pill is
+            // actually shown, so the empty states aren't padded away from
+            // center by clearance for a button that isn't there.
+            paddingBottom: showEmptyStateCtas
+              ? 0
+              : pxValue(FLOATING_ADD_BUTTON_CLEARANCE),
           }}
         >
           {/* Fixed at the Display lg line height so swapping between the
@@ -400,6 +428,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
             onTokenPress={handleTokenPress}
             onCollectiblePress={handleCollectiblePress}
             balanceRowTestIDPrefix="home-token"
+            showEmptyStateCta={showEmptyStateCtas}
+            onAddCollectiblePress={handleAddCollectiblePress}
           />
         </ScrollView>
 
@@ -408,17 +438,22 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
           className="absolute left-0 right-0 items-center"
           style={{ bottom: pxValue(DEFAULT_PADDING) }}
         >
-          {/* Adding a token creates a trustline, which needs XLM for the
-              reserve + fee — so the pill is only useful once the account is
-              funded. */}
-          {activeTab === TabType.TOKENS && isFunded && (
+          {/* Both pills are suppressed while the empty states carry their own
+              CTAs, so the two affordances never compete. */}
+          {activeTab === TabType.TOKENS && !showEmptyStateCtas && (
             <FloatingTabActionButton
-              label={t("balancesList.addTokenButton")}
-              onPress={handleAddTokenPress}
+              label={
+                isTokensTabUnfunded
+                  ? t("balancesList.unfundedAccount.fundAccountButton")
+                  : t("balancesList.addTokenButton")
+              }
+              onPress={
+                isTokensTabUnfunded ? navigateToBuyXLM : handleAddTokenPress
+              }
               testID="home-add-token-button"
             />
           )}
-          {activeTab === TabType.COLLECTIBLES && (
+          {activeTab === TabType.COLLECTIBLES && !showEmptyStateCtas && (
             <FloatingTabActionButton
               label={t("collectiblesGrid.addCollectibleButton")}
               onPress={handleAddCollectiblePress}

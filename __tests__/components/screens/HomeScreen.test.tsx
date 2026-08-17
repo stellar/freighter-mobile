@@ -110,6 +110,9 @@ const mockFetchActiveSessions = jest.fn().mockResolvedValue(undefined);
 // Mutable so tests can simulate the initial balances fetch settling
 // (read lazily at render time, after jest hoisting).
 let mockIsLoadingBalances = false;
+// Mutable so tests can put the wallet in the completely-empty state that moves
+// the Add CTA from the floating pill into each tab's empty state.
+let mockIsFunded = true;
 
 jest.mock("ducks/balances", () => ({
   useBalancesStore: jest.fn((selector) => {
@@ -117,7 +120,7 @@ jest.mock("ducks/balances", () => ({
       balances: {},
       pricedBalances: {},
       isLoading: mockIsLoadingBalances,
-      isFunded: true,
+      isFunded: mockIsFunded,
       error: null,
       fetchAccountBalances: mockFetchAccountBalances,
     };
@@ -144,10 +147,13 @@ jest.mock("ducks/prices", () => ({
   usePricesForNetwork: jest.fn(() => ({})),
 }));
 
+// Mutable so tests can land a collectible without funding the account.
+let mockCollections: unknown[] = [];
+
 jest.mock("ducks/collectibles", () => ({
   useCollectiblesStore: jest.fn((selector) => {
     const mockState = {
-      collections: [],
+      collections: mockCollections,
       isLoading: false,
       error: null,
       fetchCollectibles: mockFetchCollectibles,
@@ -274,9 +280,11 @@ jest.mock("hooks/useBalancesList", () => ({
     balanceItems: [],
     isLoading: false,
     error: null,
-    noBalances: false,
+    // Mirrors mockIsFunded: an unfunded account has no balances, which is what
+    // makes the tokens tab render its empty state.
+    noBalances: !mockIsFunded,
     isRefreshing: false,
-    isFunded: true,
+    isFunded: mockIsFunded,
     handleRefresh: jest.fn(),
   })),
 }));
@@ -301,6 +309,8 @@ describe("HomeScreen", () => {
     mockIsLoadingBalances = false;
     mockIsPricesLoading = false;
     mockNetwork = "TESTNET";
+    mockIsFunded = true;
+    mockCollections = [];
   });
 
   const buildProps = () => ({
@@ -492,6 +502,100 @@ describe("HomeScreen", () => {
 
       expect(getByTestId("home-add-collectible-button")).toBeTruthy();
       expect(queryByTestId("home-add-token-button")).toBeNull();
+    });
+
+    // The whole point of the coupling: an empty wallet gets a CTA inside each
+    // tab, and neither tab gets a pill.
+    it("hands the CTA to both empty states while the wallet is empty", () => {
+      mockNetwork = "PUBLIC";
+      mockIsFunded = false;
+      mockCollections = [];
+
+      const { getByTestId, queryByTestId } = renderHomeScreen();
+
+      expect(queryByTestId("home-add-token-button")).toBeNull();
+      expect(getByTestId("fund-account-empty-state-button")).toBeTruthy();
+
+      fireEvent.press(getByTestId("tab-collectibles"));
+
+      expect(queryByTestId("home-add-collectible-button")).toBeNull();
+      expect(getByTestId("add-collectible-empty-state-button")).toBeTruthy();
+    });
+
+    // One collectible is enough to flip BOTH tabs over to the pill, so the
+    // tokens tab must not keep its in-empty-state CTA.
+    it("switches both tabs to pills once a collectible lands", () => {
+      mockNetwork = "PUBLIC";
+      mockIsFunded = false;
+      mockCollections = [
+        {
+          collectionAddress: "CCOLLECTION",
+          collectionName: "Test Collection",
+          count: 1,
+          items: [{ tokenId: "1", isHidden: false }],
+        },
+      ];
+
+      const { getByTestId, queryByTestId } = renderHomeScreen();
+
+      expect(getByTestId("home-add-token-button")).toBeTruthy();
+      expect(queryByTestId("fund-account-empty-state-button")).toBeNull();
+
+      fireEvent.press(getByTestId("tab-collectibles"));
+
+      expect(getByTestId("home-add-collectible-button")).toBeTruthy();
+      expect(queryByTestId("add-collectible-empty-state-button")).toBeNull();
+    });
+
+    // Adding a token needs XLM for the trustline reserve, so while the tokens
+    // tab is still empty the pill offers funding instead of "Add token".
+    it("labels the tokens pill Add XLM while the account is unfunded", () => {
+      mockNetwork = "PUBLIC";
+      mockIsFunded = false;
+      mockCollections = [
+        {
+          collectionAddress: "CCOLLECTION",
+          collectionName: "Test Collection",
+          count: 1,
+          items: [{ tokenId: "1", isHidden: false }],
+        },
+      ];
+
+      const { getByTestId } = renderHomeScreen();
+
+      expect(
+        getByTestId("home-add-token-button").props.accessibilityLabel,
+      ).toBe("balancesList.unfundedAccount.fundAccountButton");
+    });
+
+    it("labels the tokens pill Add token once the account is funded", () => {
+      mockIsFunded = true;
+
+      const { getByTestId } = renderHomeScreen();
+
+      expect(
+        getByTestId("home-add-token-button").props.accessibilityLabel,
+      ).toBe("balancesList.addTokenButton");
+    });
+
+    // Hidden collectibles are not holdings the user can see on the tab, so
+    // they must not flip the wallet out of its empty state.
+    it("treats a wallet holding only hidden collectibles as empty", () => {
+      mockNetwork = "PUBLIC";
+      mockIsFunded = false;
+      mockCollections = [
+        {
+          collectionAddress: "CCOLLECTION",
+          collectionName: "Test Collection",
+          count: 1,
+          items: [{ tokenId: "1", isHidden: true }],
+        },
+      ];
+
+      const { getByTestId, queryByTestId } = renderHomeScreen();
+
+      expect(queryByTestId("home-add-token-button")).toBeNull();
+      expect(getByTestId("fund-account-empty-state-button")).toBeTruthy();
     });
   });
 });

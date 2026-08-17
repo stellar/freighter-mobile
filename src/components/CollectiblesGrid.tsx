@@ -2,6 +2,7 @@ import { CollectionSection } from "components/CollectionSection";
 import { DefaultListFooter } from "components/DefaultListFooter";
 import { EmptyState } from "components/EmptyState";
 import Spinner from "components/Spinner";
+import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { DEFAULT_PADDING, DEFAULT_REFRESH_DELAY } from "config/constants";
@@ -40,6 +41,20 @@ interface CollectiblesGridProps {
 
   /** Type to determine which collectibles to display. Defaults to VISIBLE. */
   type?: CollectibleFilterType;
+  /**
+   * Renders an "Add collectible" action inside the empty state.
+   *
+   * Home turns this on only while BOTH of its tabs are empty, so the
+   * in-empty-state CTA and the floating pill are never on screen at the same
+   * time. Off by default: every other caller (e.g. the hidden-collectibles
+   * screen) has no floating pill to coordinate with.
+   */
+  showEmptyStateCta?: boolean;
+  /**
+   * Press handler for the empty-state CTA. The CTA only renders when this is
+   * provided, so the button can never be a dead end.
+   */
+  onAddCollectiblePress?: () => void;
 }
 
 /**
@@ -72,6 +87,8 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
     onCollectiblePress,
     disableInnerScrolling = false,
     type = CollectibleFilterType.VISIBLE,
+    showEmptyStateCta = false,
+    onAddCollectiblePress,
   }) => {
     const { t } = useAppTranslation();
     const { themeColors } = useColors();
@@ -148,6 +165,11 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
       </View>
     );
 
+    // The hidden-collectibles list is a management view, not a place to add
+    // anything, so it never gets the CTA regardless of what the caller passes.
+    const shouldShowEmptyStateCta =
+      showEmptyStateCta && !isTypeHidden && Boolean(onAddCollectiblePress);
+
     const renderEmptyView = () => (
       <View className="flex-1">
         <EmptyState
@@ -161,7 +183,21 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
             isTypeHidden ? undefined : t("collectiblesGrid.emptyDescription")
           }
           testID="collectibles-empty-state"
-        />
+        >
+          {/* Mirrors the tokens empty state's CTA: same Button variant/size,
+              and EmptyState's own gap supplies the spacing, so the two tabs
+              line up without either one hardcoding a margin. */}
+          {shouldShowEmptyStateCta && (
+            <Button
+              tertiary
+              xl
+              onPress={onAddCollectiblePress}
+              testID="add-collectible-empty-state-button"
+            >
+              {t("collectiblesGrid.addCollectibleButton")}
+            </Button>
+          )}
+        </EmptyState>
       </View>
     );
 
