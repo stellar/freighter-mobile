@@ -112,15 +112,9 @@ const mockFetchActiveSessions = jest.fn().mockResolvedValue(undefined);
 // store mocks below, which close over them.
 let mockNetwork = "TESTNET";
 let mockIsLoadingBalances = false;
-// Mutable so tests can put the wallet in the completely-empty state that moves
-// the Add CTA from the floating pill into each tab's empty state.
+// Mutable so tests can put the tokens tab in its empty state, which is what
+// decides the Add button style for BOTH tabs.
 let mockIsFunded = true;
-// Whether each store has reported for the active account yet — the guard that
-// keeps the CTA from flashing into the wrong place on a cold start.
-let mockBalancesReported = true;
-let mockCollectiblesReported = true;
-// A failed fetch counts as having reported, so the placement still resolves.
-let mockCollectiblesError: string | null = null;
 
 jest.mock("ducks/balances", () => ({
   useBalancesStore: jest.fn((selector) => {
@@ -130,11 +124,6 @@ jest.mock("ducks/balances", () => ({
       isLoading: mockIsLoadingBalances,
       isFunded: mockIsFunded,
       error: null,
-      // Stamped for the active account by default: most tests care about the
-      // settled state, and Home shows no Add affordance until both stores have
-      // reported. mockBalancesReported flips it back to "not yet".
-      fetchedPublicKey: mockBalancesReported ? "test-public-key" : null,
-      fetchedNetwork: mockBalancesReported ? mockNetwork : null,
       fetchAccountBalances: mockFetchAccountBalances,
     };
     return selector ? selector(mockState) : mockState;
@@ -168,9 +157,7 @@ jest.mock("ducks/collectibles", () => ({
     const mockState = {
       collections: mockCollections,
       isLoading: false,
-      error: mockCollectiblesError,
-      fetchedPublicKey: mockCollectiblesReported ? "test-public-key" : null,
-      fetchedNetwork: mockCollectiblesReported ? mockNetwork : null,
+      error: null,
       fetchCollectibles: mockFetchCollectibles,
     };
     return selector ? selector(mockState) : mockState;
@@ -258,9 +245,6 @@ jest.mock("ducks/accountsFiatTotals", () => ({
   },
 }));
 
-// Mutable so tests can simulate a network switch (read lazily at render
-// time, after jest hoisting).
-
 jest.mock("ducks/auth", () => ({
   useAuthenticationStore: (
     selector?: (storeState: Record<string, unknown>) => unknown,
@@ -325,9 +309,6 @@ describe("HomeScreen", () => {
     mockNetwork = "TESTNET";
     mockIsFunded = true;
     mockCollections = [];
-    mockBalancesReported = true;
-    mockCollectiblesReported = true;
-    mockCollectiblesError = null;
   });
 
   const buildProps = () => ({
@@ -506,7 +487,7 @@ describe("HomeScreen", () => {
     );
   });
 
-  describe("HomeScreen floating add buttons", () => {
+  describe("HomeScreen add button style", () => {
     it("shows Add token on the tokens tab and Add collectible after switching", () => {
       const { getByTestId, queryByTestId } = renderHomeScreen();
 
@@ -521,28 +502,47 @@ describe("HomeScreen", () => {
       expect(queryByTestId("home-add-token-button")).toBeNull();
     });
 
-    // The whole point of the coupling: an empty wallet gets a CTA inside each
-    // tab, and neither tab gets a pill.
-    it("hands the CTA to both empty states while the wallet is empty", () => {
-      mockNetwork = "PUBLIC";
+    // The tokens tab is showing its empty state, so the collectibles tab
+    // matches its button style instead of floating a pill over it.
+    it("puts the collectibles CTA in the empty state while the account is unfunded", () => {
       mockIsFunded = false;
-      mockCollections = [];
+
+      const { getByTestId, queryByTestId } = renderHomeScreen();
+
+      fireEvent.press(getByTestId("tab-collectibles"));
+
+      expect(getByTestId("add-collectible-empty-state-button")).toBeTruthy();
+      expect(queryByTestId("home-add-collectible-button")).toBeNull();
+    });
+
+    it("keeps the collectibles pill and drops its CTA once the account is funded", () => {
+      mockIsFunded = true;
+
+      const { getByTestId, queryByTestId } = renderHomeScreen();
+
+      fireEvent.press(getByTestId("tab-collectibles"));
+
+      expect(getByTestId("home-add-collectible-button")).toBeTruthy();
+      expect(queryByTestId("add-collectible-empty-state-button")).toBeNull();
+    });
+
+    // Neither pill shows while the tokens tab is unfunded, so a pill and an
+    // in-empty-state CTA can't be on screen together.
+    it("shows no pill on either tab while the account is unfunded", () => {
+      mockIsFunded = false;
 
       const { getByTestId, queryByTestId } = renderHomeScreen();
 
       expect(queryByTestId("home-add-token-button")).toBeNull();
-      expect(getByTestId("fund-account-empty-state-button")).toBeTruthy();
 
       fireEvent.press(getByTestId("tab-collectibles"));
 
       expect(queryByTestId("home-add-collectible-button")).toBeNull();
-      expect(getByTestId("add-collectible-empty-state-button")).toBeTruthy();
     });
 
-    // One collectible is enough to flip BOTH tabs over to the pill, so the
-    // tokens tab must not keep its in-empty-state CTA.
-    it("switches both tabs to pills once a collectible lands", () => {
-      mockNetwork = "PUBLIC";
+    // The collectibles tab follows the TOKENS tab, not its own contents: what
+    // the user holds in collectibles must not change the button style.
+    it("ignores collectibles content when choosing the button style", () => {
       mockIsFunded = false;
       mockCollections = [
         {
@@ -555,131 +555,11 @@ describe("HomeScreen", () => {
 
       const { getByTestId, queryByTestId } = renderHomeScreen();
 
-      expect(getByTestId("home-add-token-button")).toBeTruthy();
-      expect(queryByTestId("fund-account-empty-state-button")).toBeNull();
-
       fireEvent.press(getByTestId("tab-collectibles"));
 
-      expect(getByTestId("home-add-collectible-button")).toBeTruthy();
-      expect(queryByTestId("add-collectible-empty-state-button")).toBeNull();
-    });
-
-    // Adding a token needs XLM for the trustline reserve, so while the tokens
-    // tab is still empty the pill offers funding instead of "Add token".
-    it("labels the tokens pill Add XLM while the account is unfunded", () => {
-      mockNetwork = "PUBLIC";
-      mockIsFunded = false;
-      mockCollections = [
-        {
-          collectionAddress: "CCOLLECTION",
-          collectionName: "Test Collection",
-          count: 1,
-          items: [{ tokenId: "1", isHidden: false }],
-        },
-      ];
-
-      const { getByTestId } = renderHomeScreen();
-
-      expect(
-        getByTestId("home-add-token-button").props.accessibilityLabel,
-      ).toBe("balancesList.unfundedAccount.fundAccountButton");
-    });
-
-    it("labels the tokens pill Add token once the account is funded", () => {
-      mockIsFunded = true;
-
-      const { getByTestId } = renderHomeScreen();
-
-      expect(
-        getByTestId("home-add-token-button").props.accessibilityLabel,
-      ).toBe("balancesList.addTokenButton");
-    });
-
-    // Regression: a wallet holding a collectible but no tokens used to show
-    // the tokens empty state's CTA and then swap it for the pill, because an
-    // unreported collectibles store looks exactly like an empty one.
-    it("shows no CTA and no pill until the collectibles store has reported", () => {
-      mockNetwork = "PUBLIC";
-      mockIsFunded = false;
-      mockCollectiblesReported = false;
-      // What the store looks like before its first fetch lands: empty, and
-      // not loading.
-      mockCollections = [];
-
-      const { queryByTestId } = renderHomeScreen();
-
-      expect(queryByTestId("fund-account-empty-state-button")).toBeNull();
-      expect(queryByTestId("home-add-token-button")).toBeNull();
-    });
-
-    // Regression: requiring both stores delayed the pill by a whole fetch on
-    // every launch of a funded wallet. A funded account is provably not empty,
-    // so collectibles can't change the placement and it shouldn't wait on them.
-    it("shows the tokens pill as soon as balances report for a funded account", () => {
-      mockIsFunded = true;
-      mockCollectiblesReported = false;
-      mockCollections = [];
-
-      const { getByTestId, queryByTestId } = renderHomeScreen();
-
-      expect(getByTestId("home-add-token-button")).toBeTruthy();
-      expect(queryByTestId("fund-account-empty-state-button")).toBeNull();
-    });
-
-    it("shows the collectibles pill too without waiting on collectibles", () => {
-      mockIsFunded = true;
-      mockCollectiblesReported = false;
-
-      const { getByTestId, queryByTestId } = renderHomeScreen();
-
-      fireEvent.press(getByTestId("tab-collectibles"));
-
-      expect(getByTestId("home-add-collectible-button")).toBeTruthy();
-      expect(queryByTestId("add-collectible-empty-state-button")).toBeNull();
-    });
-
-    it("shows no CTA and no pill until the balances store has reported", () => {
-      mockNetwork = "PUBLIC";
-      mockIsFunded = false;
-      mockBalancesReported = false;
-
-      const { queryByTestId } = renderHomeScreen();
-
-      expect(queryByTestId("fund-account-empty-state-button")).toBeNull();
-      expect(queryByTestId("home-add-token-button")).toBeNull();
-    });
-
-    // A fetch that failed still counts as reported — waiting longer teaches us
-    // nothing, and no Add affordance at all would be worse.
-    it("commits to a placement once a fetch has failed", () => {
-      mockNetwork = "PUBLIC";
-      mockIsFunded = false;
-      mockCollectiblesReported = false;
-      mockCollectiblesError = "boom";
-
-      const { getByTestId } = renderHomeScreen();
-
-      expect(getByTestId("fund-account-empty-state-button")).toBeTruthy();
-    });
-
-    // Hidden collectibles are not holdings the user can see on the tab, so
-    // they must not flip the wallet out of its empty state.
-    it("treats a wallet holding only hidden collectibles as empty", () => {
-      mockNetwork = "PUBLIC";
-      mockIsFunded = false;
-      mockCollections = [
-        {
-          collectionAddress: "CCOLLECTION",
-          collectionName: "Test Collection",
-          count: 1,
-          items: [{ tokenId: "1", isHidden: true }],
-        },
-      ];
-
-      const { getByTestId, queryByTestId } = renderHomeScreen();
-
-      expect(queryByTestId("home-add-token-button")).toBeNull();
-      expect(getByTestId("fund-account-empty-state-button")).toBeTruthy();
+      // No pill, because the tokens tab is unfunded — what the collectibles
+      // tab itself holds doesn't get a vote.
+      expect(queryByTestId("home-add-collectible-button")).toBeNull();
     });
   });
 });

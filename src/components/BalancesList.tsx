@@ -66,14 +66,6 @@ interface BalancesListProps {
   feeContext?: TransactionContext;
   /** Optional prefix for BalanceRow testIDs (e.g. "token-option" -> "token-option-XLM") */
   balanceRowTestIDPrefix?: string;
-  /**
-   * Renders the funding action inside the unfunded empty state.
-   *
-   * On by default, which is every caller's existing behavior. Home turns it
-   * off once it has switched to its floating pill, so the in-empty-state CTA
-   * and the pill are never on screen at the same time.
-   */
-  showEmptyStateCta?: boolean;
 }
 
 /**
@@ -102,7 +94,6 @@ export const BalancesList: React.FC<BalancesListProps> = ({
   showSpendableAmount = false,
   feeContext = TransactionContext.Send,
   balanceRowTestIDPrefix,
-  showEmptyStateCta = true,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
@@ -224,7 +215,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
           }
         >
           {/* Only show fund account button if navigation is available and not test network */}
-          {showEmptyStateCta && !disableNavigation && !isTestNetwork && (
+          {!disableNavigation && !isTestNetwork && (
             <Button
               tertiary
               xl
@@ -234,14 +225,13 @@ export const BalancesList: React.FC<BalancesListProps> = ({
                   params: { isUnfunded: true },
                 })
               }
-              testID="fund-account-empty-state-button"
             >
               {t("balancesList.unfundedAccount.fundAccountButton")}
             </Button>
           )}
 
           {/* Show friendbot button for test networks regardless of navigation */}
-          {showEmptyStateCta && isTestNetwork && (
+          {isTestNetwork && (
             <FriendbotButton publicKey={publicKey} network={network} />
           )}
         </EmptyState>

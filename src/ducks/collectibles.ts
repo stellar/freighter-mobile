@@ -81,16 +81,6 @@ interface CollectiblesState {
   isLoading: boolean;
   /** Error message if fetch fails */
   error: string | null;
-  /**
-   * Account the current `collections` snapshot was fetched for, null before the
-   * first fetch. An empty `collections` alone can't say whether the account
-   * holds nothing or simply hasn't been looked at yet, so callers that must
-   * distinguish those (e.g. deciding where Home puts its Add CTA) check this
-   * stamp instead of guessing from the array. Mirrors the balances store.
-   */
-  fetchedPublicKey: string | null;
-  /** Network the current `collections` snapshot was fetched for. */
-  fetchedNetwork: string | null;
   /** Function to fetch collectibles from API */
   fetchCollectibles: (params: {
     publicKey: string;
@@ -317,8 +307,6 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
   collections: [],
   isLoading: false,
   error: null,
-  fetchedPublicKey: null,
-  fetchedNetwork: null,
 
   /**
    * Fetches collectibles from the API and updates the store
@@ -483,14 +471,11 @@ export const useCollectiblesStore = create<CollectiblesState>((set, get) => ({
         hiddenCollectiblesContracts,
       );
 
-      // Set the transformed collections. The stamp is written in the same
-      // update, so `collections` and "who it belongs to" can never disagree.
+      // Set the transformed collections
       set({
         collections: transformedCollections,
         isLoading: false,
         error: null,
-        fetchedPublicKey: publicKey,
-        fetchedNetwork: network,
       });
     } catch (error) {
       set({

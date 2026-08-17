@@ -53,12 +53,12 @@ interface Props {
   /** Optional testID prefix forwarded to each balance row (e.g. "token-option" → "token-option-XLM") */
   balanceRowTestIDPrefix?: string;
   /**
-   * Show the Add CTA inside each tab's empty state instead of relying on the
-   * caller's floating action button.
+   * Show the collectibles Add CTA inside its empty state rather than relying
+   * on the caller's floating action button.
    *
-   * The two tabs move together on purpose: the caller passes a single value
-   * derived from BOTH tabs being empty, so a user never sees an in-empty-state
-   * CTA on one tab and a floating pill on the other.
+   * The caller derives this from the tokens tab, which owns the decision: both
+   * tabs use the same kind of button, so the collectibles CTA is on exactly
+   * while the tokens tab is showing its own empty state.
    */
   showEmptyStateCta?: boolean;
   /** Press handler for the collectibles empty-state CTA. */
@@ -129,7 +129,6 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
           showSpendableAmount={showSpendableAmount}
           feeContext={feeContext}
           balanceRowTestIDPrefix={balanceRowTestIDPrefix}
-          showEmptyStateCta={showEmptyStateCta}
         />
       ),
       [
@@ -140,7 +139,6 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
         feeContext,
         disableInnerScrolling,
         balanceRowTestIDPrefix,
-        showEmptyStateCta,
       ],
     );
 
