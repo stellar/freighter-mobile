@@ -612,6 +612,32 @@ describe("HomeScreen", () => {
       expect(queryByTestId("home-add-token-button")).toBeNull();
     });
 
+    // Regression: requiring both stores delayed the pill by a whole fetch on
+    // every launch of a funded wallet. A funded account is provably not empty,
+    // so collectibles can't change the placement and it shouldn't wait on them.
+    it("shows the tokens pill as soon as balances report for a funded account", () => {
+      mockIsFunded = true;
+      mockCollectiblesReported = false;
+      mockCollections = [];
+
+      const { getByTestId, queryByTestId } = renderHomeScreen();
+
+      expect(getByTestId("home-add-token-button")).toBeTruthy();
+      expect(queryByTestId("fund-account-empty-state-button")).toBeNull();
+    });
+
+    it("shows the collectibles pill too without waiting on collectibles", () => {
+      mockIsFunded = true;
+      mockCollectiblesReported = false;
+
+      const { getByTestId, queryByTestId } = renderHomeScreen();
+
+      fireEvent.press(getByTestId("tab-collectibles"));
+
+      expect(getByTestId("home-add-collectible-button")).toBeTruthy();
+      expect(queryByTestId("add-collectible-empty-state-button")).toBeNull();
+    });
+
     it("shows no CTA and no pill until the balances store has reported", () => {
       mockNetwork = "PUBLIC";
       mockIsFunded = false;

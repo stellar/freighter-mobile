@@ -149,16 +149,25 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
     //
     // A funded account always holds XLM, so `isFunded` IS "has tokens" — the
     // tokens list can only be empty before the account is funded.
-    const hasCollectibles = visibleCollectibles.length > 0;
+    // Switching networks only sets `network` — it doesn't clear the
+    // collectibles store — so `collections` can still hold the previous
+    // network's rows. Counting those would make an empty wallet look like it
+    // holds something, so only a snapshot stamped for this account and network
+    // gets a vote.
+    const collectiblesMatchSession =
+      collectiblesFetchedPublicKey === account?.publicKey &&
+      collectiblesFetchedNetwork === network;
+    const hasCollectibles =
+      collectiblesMatchSession && visibleCollectibles.length > 0;
     const isWalletEmpty = !isFunded && !hasCollectibles;
 
-    // Both stores start out empty-and-not-loading, which is indistinguishable
-    // from "fetched, and genuinely empty". Deciding the placement from that
+    // A store that starts out empty-and-not-loading is indistinguishable from
+    // one that fetched and found nothing. Deciding the placement from that
     // initial state guesses "empty", so a wallet that turns out to hold
     // something showed the in-empty-state CTA for a moment and then swapped it
-    // for the pill. Each store therefore has to have reported for THIS account
-    // before we commit — which gives a real third state where neither
-    // affordance shows, rather than a wrong one that corrects itself.
+    // for the pill. Whoever gets a say therefore has to have reported for THIS
+    // account first — which gives a real third state where neither affordance
+    // shows, rather than a wrong one that corrects itself.
     //
     // A failed fetch counts as reported: waiting longer won't teach us more,
     // and leaving Home with no way to add anything would be worse than
@@ -168,14 +177,21 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
         balancesFetchedNetwork === network) ||
       balancesError != null;
     const collectiblesReported =
-      (collectiblesFetchedPublicKey === account?.publicKey &&
-        collectiblesFetchedNetwork === network) ||
-      collectiblesError != null;
+      collectiblesMatchSession || collectiblesError != null;
+    // Collectibles only get a say when the account is unfunded, because that's
+    // the only case where they change the answer: a funded account is provably
+    // not empty whatever they turn out to be, so its pill paints with the
+    // balances rather than waiting on a second request. Asking for both
+    // unconditionally delayed the pill by a whole fetch on every launch of a
+    // funded wallet, for an answer that was already decided.
+    //
     // The stamps are nulled by clearAccountData, so a switch already reads as
     // unknown; isSwitchingAccount additionally covers the window before that
     // reset lands.
     const areHoldingsKnown =
-      balancesReported && collectiblesReported && !isSwitchingAccount;
+      !isSwitchingAccount &&
+      balancesReported &&
+      (isFunded || collectiblesReported);
 
     const showEmptyStateCtas = areHoldingsKnown && isWalletEmpty;
     const showFloatingPill = areHoldingsKnown && !isWalletEmpty;
