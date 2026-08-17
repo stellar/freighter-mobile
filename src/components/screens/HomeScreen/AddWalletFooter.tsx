@@ -40,9 +40,11 @@ export const AddWalletFooter: React.FC<AddWalletFooterProps> = ({
         testID="manage-accounts-add-wallet-button"
       >
         {/* 40px matches the lg account avatars, so the "+" lines up with the
-        identicons in the list above it. */}
+        identicons in the list above it. PlusBold rather than Plus: at 16px the
+        standard asset's stroke scales down to ~1.3px, where the bold variant
+        renders the 2px the design calls for. */}
         <View className="w-[40px] h-[40px] rounded-full bg-lilac-2 justify-center items-center">
-          <Icon.Plus size={14} color={themeColors.lilac[9]} />
+          <Icon.PlusBold size={16} color={themeColors.lilac[9]} />
         </View>
         <Text md medium color={themeColors.lilac[11]}>
           {t("home.manageAccount.addWallet")}

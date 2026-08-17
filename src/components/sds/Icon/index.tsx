@@ -866,6 +866,7 @@ import Plane from "assets/icons/plane.svg";
 import PlayCircle from "assets/icons/play-circle.svg";
 import PlaySquare from "assets/icons/play-square.svg";
 import Play from "assets/icons/play.svg";
+import PlusBold from "assets/icons/plus-bold.svg";
 import PlusCircle from "assets/icons/plus-circle.svg";
 import PlusDouble from "assets/icons/plus-double.svg";
 import PlusSquare from "assets/icons/plus-square.svg";
@@ -2056,6 +2057,11 @@ export const Icons = {
   PlayCircle,
   PlaySquare,
   Play,
+  // Not part of the Untitled UI set: a heavier-stroked `Plus` for small
+  // renders. The set's stroke width is baked into each asset in viewBox
+  // units, so it scales down with `size` — below ~24px the standard `Plus`
+  // thins out past what the design calls for.
+  PlusBold,
   PlusCircle,
   PlusDouble,
   PlusSquare,
