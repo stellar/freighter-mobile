@@ -2368,6 +2368,10 @@ describe("auth duck", () => {
         collections: [],
         isLoading: false,
         error: null,
+        // Cleared with the collections, so the next account can't read as
+        // "already known to hold no collectibles".
+        fetchedPublicKey: null,
+        fetchedNetwork: null,
       });
     });
   });

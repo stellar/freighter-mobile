@@ -108,11 +108,19 @@ const mockFetchCollectibles = jest.fn().mockResolvedValue(undefined);
 const mockFetchActiveSessions = jest.fn().mockResolvedValue(undefined);
 
 // Mutable so tests can simulate the initial balances fetch settling
-// (read lazily at render time, after jest hoisting).
+// (read lazily at render time, after jest hoisting). Declared ahead of the
+// store mocks below, which close over them.
+let mockNetwork = "TESTNET";
 let mockIsLoadingBalances = false;
 // Mutable so tests can put the wallet in the completely-empty state that moves
 // the Add CTA from the floating pill into each tab's empty state.
 let mockIsFunded = true;
+// Whether each store has reported for the active account yet — the guard that
+// keeps the CTA from flashing into the wrong place on a cold start.
+let mockBalancesReported = true;
+let mockCollectiblesReported = true;
+// A failed fetch counts as having reported, so the placement still resolves.
+let mockCollectiblesError: string | null = null;
 
 jest.mock("ducks/balances", () => ({
   useBalancesStore: jest.fn((selector) => {
@@ -122,6 +130,11 @@ jest.mock("ducks/balances", () => ({
       isLoading: mockIsLoadingBalances,
       isFunded: mockIsFunded,
       error: null,
+      // Stamped for the active account by default: most tests care about the
+      // settled state, and Home shows no Add affordance until both stores have
+      // reported. mockBalancesReported flips it back to "not yet".
+      fetchedPublicKey: mockBalancesReported ? "test-public-key" : null,
+      fetchedNetwork: mockBalancesReported ? mockNetwork : null,
       fetchAccountBalances: mockFetchAccountBalances,
     };
     return selector ? selector(mockState) : mockState;
@@ -155,7 +168,9 @@ jest.mock("ducks/collectibles", () => ({
     const mockState = {
       collections: mockCollections,
       isLoading: false,
-      error: null,
+      error: mockCollectiblesError,
+      fetchedPublicKey: mockCollectiblesReported ? "test-public-key" : null,
+      fetchedNetwork: mockCollectiblesReported ? mockNetwork : null,
       fetchCollectibles: mockFetchCollectibles,
     };
     return selector ? selector(mockState) : mockState;
@@ -245,7 +260,6 @@ jest.mock("ducks/accountsFiatTotals", () => ({
 
 // Mutable so tests can simulate a network switch (read lazily at render
 // time, after jest hoisting).
-let mockNetwork = "TESTNET";
 
 jest.mock("ducks/auth", () => ({
   useAuthenticationStore: (
@@ -311,6 +325,9 @@ describe("HomeScreen", () => {
     mockNetwork = "TESTNET";
     mockIsFunded = true;
     mockCollections = [];
+    mockBalancesReported = true;
+    mockCollectiblesReported = true;
+    mockCollectiblesError = null;
   });
 
   const buildProps = () => ({
@@ -576,6 +593,47 @@ describe("HomeScreen", () => {
       expect(
         getByTestId("home-add-token-button").props.accessibilityLabel,
       ).toBe("balancesList.addTokenButton");
+    });
+
+    // Regression: a wallet holding a collectible but no tokens used to show
+    // the tokens empty state's CTA and then swap it for the pill, because an
+    // unreported collectibles store looks exactly like an empty one.
+    it("shows no CTA and no pill until the collectibles store has reported", () => {
+      mockNetwork = "PUBLIC";
+      mockIsFunded = false;
+      mockCollectiblesReported = false;
+      // What the store looks like before its first fetch lands: empty, and
+      // not loading.
+      mockCollections = [];
+
+      const { queryByTestId } = renderHomeScreen();
+
+      expect(queryByTestId("fund-account-empty-state-button")).toBeNull();
+      expect(queryByTestId("home-add-token-button")).toBeNull();
+    });
+
+    it("shows no CTA and no pill until the balances store has reported", () => {
+      mockNetwork = "PUBLIC";
+      mockIsFunded = false;
+      mockBalancesReported = false;
+
+      const { queryByTestId } = renderHomeScreen();
+
+      expect(queryByTestId("fund-account-empty-state-button")).toBeNull();
+      expect(queryByTestId("home-add-token-button")).toBeNull();
+    });
+
+    // A fetch that failed still counts as reported — waiting longer teaches us
+    // nothing, and no Add affordance at all would be worse.
+    it("commits to a placement once a fetch has failed", () => {
+      mockNetwork = "PUBLIC";
+      mockIsFunded = false;
+      mockCollectiblesReported = false;
+      mockCollectiblesError = "boom";
+
+      const { getByTestId } = renderHomeScreen();
+
+      expect(getByTestId("fund-account-empty-state-button")).toBeTruthy();
     });
 
     // Hidden collectibles are not holdings the user can see on the tab, so

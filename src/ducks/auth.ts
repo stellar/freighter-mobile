@@ -1405,11 +1405,15 @@ export function clearAccountData(
     lastUpdated: null,
   });
 
-  // Clear collectibles data
+  // Clear collectibles data. The fetch stamp has to go too, or the next
+  // account would briefly look like its collectibles were already known to be
+  // empty.
   useCollectiblesStore.setState({
     collections: [],
     isLoading: false,
     error: null,
+    fetchedPublicKey: null,
+    fetchedNetwork: null,
   });
 
   // Clear the wallets-list fiat totals by default, so one wallet lifetime's
