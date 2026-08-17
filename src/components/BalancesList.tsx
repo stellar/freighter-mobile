@@ -179,7 +179,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
         <Spinner
           testID="balances-list-spinner"
           size="large"
-          color={THEME.colors.secondary}
+          color={themeColors.foreground.primary}
         />
       </SpinnerWrapper>
     );

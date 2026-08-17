@@ -129,7 +129,7 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
           <Spinner
             testID="collectibles-grid-spinner"
             size="large"
-            color={themeColors.secondary}
+            color={themeColors.foreground.primary}
           />
         </View>
       );
