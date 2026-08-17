@@ -97,7 +97,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
 
     const { t } = useAppTranslation();
 
-    const { formattedBalance, hasFiatTotal } = useTotalBalance();
+    const { totalLabel, hasFiatTotal } = useTotalBalance();
     const {
       balances,
       isFunded,
@@ -361,7 +361,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
               />
             ) : (
               <Display lg medium>
-                {formattedBalance}
+                {totalLabel}
               </Display>
             )}
           </View>

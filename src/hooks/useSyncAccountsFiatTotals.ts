@@ -24,6 +24,10 @@ export const useSyncAccountsFiatTotals = ({
   const fetchedPublicKey = useBalancesStore((state) => state.fetchedPublicKey);
   const fetchedNetwork = useBalancesStore((state) => state.fetchedNetwork);
   const isLoadingBalances = useBalancesStore((state) => state.isLoading);
+  // Funded state and the fetch error decide between "$0.00" and "--" for the
+  // active account's row, the same way they do for the Home header.
+  const isFunded = useBalancesStore((state) => state.isFunded);
+  const balancesError = useBalancesStore((state) => state.error);
   const syncAccountFiatTotal = useAccountsFiatTotalsStore(
     (state) => state.syncAccountFiatTotal,
   );
@@ -47,7 +51,13 @@ export const useSyncAccountsFiatTotals = ({
       return;
     }
 
-    syncAccountFiatTotal({ publicKey, network, pricedBalances });
+    syncAccountFiatTotal({
+      publicKey,
+      network,
+      pricedBalances,
+      isFunded,
+      hasError: balancesError != null,
+    });
   }, [
     publicKey,
     network,
@@ -55,6 +65,8 @@ export const useSyncAccountsFiatTotals = ({
     fetchedPublicKey,
     fetchedNetwork,
     isLoadingBalances,
+    isFunded,
+    balancesError,
     syncAccountFiatTotal,
   ]);
 };

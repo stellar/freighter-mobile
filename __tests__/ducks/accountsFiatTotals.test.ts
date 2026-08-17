@@ -123,8 +123,8 @@ describe("accountsFiatTotals duck", () => {
       useAccountsFiatTotalsStore.getState();
 
     // 100 XLM * $0.5 + 200 USDC * $1 = $250
-    expect(fiatTotals[PK_1]?.toString()).toBe("250");
-    expect(fiatTotals[PK_2]?.toString()).toBe("250");
+    expect(fiatTotals[PK_1]?.label).toBe("$250.00");
+    expect(fiatTotals[PK_2]?.label).toBe("$250.00");
     expect(isLoading).toBe(false);
     expect(lastUpdatedAt).not.toBeNull();
     expect(lastNetwork).toBe(NETWORKS.PUBLIC);
@@ -152,8 +152,8 @@ describe("accountsFiatTotals duck", () => {
 
     // Only XLM priced: 100 * $0.5
     expect(
-      useAccountsFiatTotalsStore.getState().fiatTotals[PK_1]?.toString(),
-    ).toBe("50");
+      useAccountsFiatTotalsStore.getState().fiatTotals[PK_1]?.label,
+    ).toBe("$50.00");
   });
 
   it("returns zero for unfunded accounts (empty balances)", async () => {
@@ -171,11 +171,11 @@ describe("accountsFiatTotals duck", () => {
     });
 
     expect(
-      useAccountsFiatTotalsStore.getState().fiatTotals[PK_1]?.toString(),
-    ).toBe("0");
+      useAccountsFiatTotalsStore.getState().fiatTotals[PK_1]?.label,
+    ).toBe("$0.00");
   });
 
-  it("isolates per-account fetch failures as null totals", async () => {
+  it("isolates per-account fetch failures behind the placeholder", async () => {
     mockFetchBalances.mockImplementation(({ publicKey }) =>
       publicKey === PK_2
         ? Promise.reject(new Error("network error"))
@@ -194,14 +194,16 @@ describe("accountsFiatTotals duck", () => {
     });
 
     const { fiatTotals, isLoading } = useAccountsFiatTotalsStore.getState();
-    expect(fiatTotals[PK_1]?.toString()).toBe("250");
-    expect(fiatTotals[PK_2]).toBeNull();
+    expect(fiatTotals[PK_1]?.label).toBe("$250.00");
+    // A zero here would claim the account is empty when its balances are
+    // simply unknown; hasError keeps it eligible for the next retry.
+    expect(fiatTotals[PK_2]).toEqual({ label: "--", hasError: true });
     expect(isLoading).toBe(false);
   });
 
   it("does not fetch on non-mainnet networks and clears totals", async () => {
     useAccountsFiatTotalsStore.setState({
-      fiatTotals: { [PK_1]: new BigNumber("250") },
+      fiatTotals: { [PK_1]: { label: "$250.00", hasError: false } },
       lastUpdatedAt: Date.now(),
       lastNetwork: NETWORKS.PUBLIC,
     });
@@ -214,7 +216,12 @@ describe("accountsFiatTotals duck", () => {
     });
 
     expect(mockFetchBalances).not.toHaveBeenCalled();
-    expect(useAccountsFiatTotalsStore.getState().fiatTotals).toEqual({});
+    // No feed here, so every account's total is a known zero rather than a
+    // missing entry the row would have to interpret — and never "--", which
+    // would imply a reading was attempted and failed.
+    expect(useAccountsFiatTotalsStore.getState().fiatTotals).toEqual({
+      [PK_1]: { label: "$0.00", hasError: false },
+    });
   });
 
   it("skips refetch within the TTL when all accounts are cached", async () => {
@@ -312,7 +319,7 @@ describe("accountsFiatTotals duck", () => {
 
     const { fiatTotals } = useAccountsFiatTotalsStore.getState();
     publicKeys.forEach((publicKey) => {
-      expect(fiatTotals[publicKey]?.toString()).toBe("250");
+      expect(fiatTotals[publicKey]?.label).toBe("$250.00");
     });
   });
 
@@ -429,8 +436,8 @@ describe("accountsFiatTotals duck", () => {
     expect(mockFetchBalances).toHaveBeenCalledTimes(3);
     const { fiatTotals, isLoading, lastUpdatedAt } =
       useAccountsFiatTotalsStore.getState();
-    expect(fiatTotals[PK_1]?.toString()).toBe("250");
-    expect(fiatTotals[PK_2]?.toString()).toBe("250");
+    expect(fiatTotals[PK_1]?.label).toBe("$250.00");
+    expect(fiatTotals[PK_2]?.label).toBe("$250.00");
     expect(isLoading).toBe(false);
     expect(lastUpdatedAt).not.toBeNull();
   });
@@ -474,7 +481,11 @@ describe("accountsFiatTotals duck", () => {
     await mainnetFetch;
 
     const { fiatTotals, lastNetwork } = useAccountsFiatTotalsStore.getState();
-    expect(fiatTotals).toEqual({});
+    // Every entry is the testnet zero the switch wrote — none of the aborted
+    // cycle's mainnet totals leaked through.
+    expect(Object.values(fiatTotals)).toEqual(
+      publicKeys.map(() => ({ label: "$0.00", hasError: false })),
+    );
     expect(lastNetwork).toBe(NETWORKS.TESTNET);
     // Second mainnet batch never starts after the abort
     expect(mockFetchBalances).toHaveBeenCalledTimes(
@@ -482,7 +493,7 @@ describe("accountsFiatTotals duck", () => {
     );
   });
 
-  it("retries failed (null) totals on the next fetch within the TTL", async () => {
+  it("retries failed totals on the next fetch within the TTL", async () => {
     mockFetchBalances.mockRejectedValueOnce(new Error("offline"));
 
     const { fetchAccountsFiatTotals } = useAccountsFiatTotalsStore.getState();
@@ -491,7 +502,10 @@ describe("accountsFiatTotals duck", () => {
       publicKeys: [PK_1],
       network: NETWORKS.PUBLIC,
     });
-    expect(useAccountsFiatTotalsStore.getState().fiatTotals[PK_1]).toBeNull();
+    expect(useAccountsFiatTotalsStore.getState().fiatTotals[PK_1]).toEqual({
+      label: "--",
+      hasError: true,
+    });
 
     await fetchAccountsFiatTotals({
       publicKeys: [PK_1],
@@ -500,8 +514,8 @@ describe("accountsFiatTotals duck", () => {
 
     expect(mockFetchBalances).toHaveBeenCalledTimes(2);
     expect(
-      useAccountsFiatTotalsStore.getState().fiatTotals[PK_1]?.toString(),
-    ).toBe("250");
+      useAccountsFiatTotalsStore.getState().fiatTotals[PK_1]?.label,
+    ).toBe("$250.00");
   });
 
   describe("syncAccountFiatTotal", () => {
@@ -523,11 +537,13 @@ describe("accountsFiatTotals duck", () => {
         publicKey: PK_1,
         network: NETWORKS.PUBLIC,
         pricedBalances,
+        isFunded: true,
+        hasError: false,
       });
 
       const { fiatTotals, lastUpdatedAt } =
         useAccountsFiatTotalsStore.getState();
-      expect(fiatTotals[PK_1]?.toString()).toBe("250");
+      expect(fiatTotals[PK_1]?.label).toBe("$250.00");
       expect(lastUpdatedAt).toBeNull();
     });
 
@@ -535,8 +551,8 @@ describe("accountsFiatTotals duck", () => {
       const now = Date.now();
       useAccountsFiatTotalsStore.setState({
         fiatTotals: {
-          [PK_1]: new BigNumber("100"),
-          [PK_2]: new BigNumber("7"),
+          [PK_1]: { label: "$100.00", hasError: false },
+          [PK_2]: { label: "$7.00", hasError: false },
         },
         lastUpdatedAt: now,
         lastNetwork: NETWORKS.PUBLIC,
@@ -548,12 +564,14 @@ describe("accountsFiatTotals duck", () => {
         publicKey: PK_1,
         network: NETWORKS.PUBLIC,
         pricedBalances,
+        isFunded: true,
+        hasError: false,
       });
 
       const { fiatTotals, lastUpdatedAt } =
         useAccountsFiatTotalsStore.getState();
-      expect(fiatTotals[PK_1]?.toString()).toBe("250");
-      expect(fiatTotals[PK_2]?.toString()).toBe("7");
+      expect(fiatTotals[PK_1]?.label).toBe("$250.00");
+      expect(fiatTotals[PK_2]?.label).toBe("$7.00");
       // Value changes are mostly price drift (fiatTotals move with live
       // prices on every balances poll) — invalidating here used to defeat
       // the TTL and refetch every account per poll. The other rows refresh
@@ -564,7 +582,7 @@ describe("accountsFiatTotals duck", () => {
     it("does nothing when the total is unchanged", () => {
       const now = Date.now();
       useAccountsFiatTotalsStore.setState({
-        fiatTotals: { [PK_1]: new BigNumber("250") },
+        fiatTotals: { [PK_1]: { label: "$250.00", hasError: false } },
         lastUpdatedAt: now,
         lastNetwork: NETWORKS.PUBLIC,
       });
@@ -575,6 +593,8 @@ describe("accountsFiatTotals duck", () => {
         publicKey: PK_1,
         network: NETWORKS.PUBLIC,
         pricedBalances,
+        isFunded: true,
+        hasError: false,
       });
 
       expect(useAccountsFiatTotalsStore.getState().lastUpdatedAt).toBe(now);
@@ -583,7 +603,13 @@ describe("accountsFiatTotals duck", () => {
     it.each([
       [
         "empty balances (mid account-switch)",
-        { publicKey: PK_1, network: NETWORKS.PUBLIC, pricedBalances: {} },
+        {
+          publicKey: PK_1,
+          network: NETWORKS.PUBLIC,
+          pricedBalances: {},
+          isFunded: true,
+          hasError: false,
+        },
       ],
       [
         "unpriced balances (prices not loaded yet)",
@@ -591,11 +617,19 @@ describe("accountsFiatTotals duck", () => {
           publicKey: PK_1,
           network: NETWORKS.PUBLIC,
           pricedBalances: { XLM: { ...nativeBalance } },
+          isFunded: true,
+          hasError: false,
         },
       ],
       [
         "non-mainnet networks",
-        { publicKey: PK_1, network: NETWORKS.TESTNET, pricedBalances },
+        {
+          publicKey: PK_1,
+          network: NETWORKS.TESTNET,
+          pricedBalances,
+          isFunded: true,
+          hasError: false,
+        },
       ],
     ])("ignores %s", (_label, params) => {
       const { syncAccountFiatTotal } = useAccountsFiatTotalsStore.getState();
@@ -623,7 +657,7 @@ describe("accountsFiatTotals duck", () => {
     );
 
     const { fiatTotals, lastUpdatedAt } = useAccountsFiatTotalsStore.getState();
-    expect(fiatTotals[PK_2]?.toString()).toBe("250");
+    expect(fiatTotals[PK_2]?.label).toBe("$250.00");
     // The excluded (active) account is the sync's responsibility.
     expect(fiatTotals[PK_1]).toBeUndefined();
     expect(lastUpdatedAt).not.toBeNull();
@@ -714,7 +748,7 @@ describe("accountsFiatTotals duck", () => {
 
   it("clears totals from another network before fetching", async () => {
     useAccountsFiatTotalsStore.setState({
-      fiatTotals: { STALE_KEY: new BigNumber("999") },
+      fiatTotals: { STALE_KEY: { label: "$999.00", hasError: false } },
       lastUpdatedAt: Date.now(),
       lastNetwork: NETWORKS.TESTNET,
     });
@@ -728,7 +762,7 @@ describe("accountsFiatTotals duck", () => {
 
     const { fiatTotals } = useAccountsFiatTotalsStore.getState();
     expect(fiatTotals.STALE_KEY).toBeUndefined();
-    expect(fiatTotals[PK_1]?.toString()).toBe("250");
+    expect(fiatTotals[PK_1]?.label).toBe("$250.00");
   });
 
   it("preserves the excluded account's synced total through the network clear", async () => {
@@ -737,7 +771,7 @@ describe("accountsFiatTotals duck", () => {
     // so the cycle takes the different-network clear path. The active entry
     // must survive — this cycle won't refetch it.
     useAccountsFiatTotalsStore.setState({
-      fiatTotals: { [PK_1]: new BigNumber("44") },
+      fiatTotals: { [PK_1]: { label: "$44.00", hasError: false } },
       lastNetwork: null,
     });
 
@@ -750,8 +784,8 @@ describe("accountsFiatTotals duck", () => {
     });
 
     const { fiatTotals } = useAccountsFiatTotalsStore.getState();
-    expect(fiatTotals[PK_1]?.toString()).toBe("44");
-    expect(fiatTotals[PK_2]?.toString()).toBe("250");
+    expect(fiatTotals[PK_1]?.label).toBe("$44.00");
+    expect(fiatTotals[PK_2]?.label).toBe("$250.00");
     expect(mockFetchBalances).toHaveBeenCalledTimes(1);
   });
 });

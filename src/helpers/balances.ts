@@ -17,6 +17,7 @@ import {
   NonNativeToken,
   Token,
 } from "config/types";
+import { formatFiatAmount, NO_FIAT_VALUE } from "helpers/formatAmount";
 
 interface GetTokenPriceFromBalanceParams {
   prices: TokenPricesMap;
@@ -402,32 +403,6 @@ export const calculateSpendableAmount = ({
 };
 
 /**
- * Checks if a balance carries an explicit `decimals` field — the marker for
- * a Soroban / custom token, regardless of whether that value is zero. Classic
- * Stellar balances don't have this field and rely on the protocol's fixed
- * 7-decimal precision instead.
- *
- * Note: `decimals === 0` is a legitimate value for a custom token that uses
- * integer-only units (no fractional part), and must still discriminate as
- * "has decimals" so downstream logic doesn't fall back to the classic default.
- *
- * @param {Balance | PricedBalance} balance - The balance to check
- * @returns {boolean} True when the balance has a non-negative `decimals` field
- *
- * @example
- * if (hasDecimals(balance)) {
- *   // Use decimal-aware formatting
- *   const formatted = formatSorobanTokenAmount(amount, balance.decimals);
- * }
- */
-export const hasDecimals = (
-  balance: Balance | PricedBalance,
-): balance is Balance & { decimals: number } =>
-  "decimals" in balance &&
-  typeof balance.decimals === "number" &&
-  balance.decimals >= 0;
-
-/**
  * Validates if an amount exceeds the spendable balance
  *
  * @param {IsAmountSpendableParams} params - Object containing amount, balance, subentry count, and transaction fee
@@ -562,4 +537,58 @@ export const getIssuerFromIdentifier = (
   const [_, issuer] = identifier.split(delimeter);
   /* eslint-enable */
   return issuer;
+};
+
+interface GetTotalUsdLabelParams {
+  /** Balances failed to load for the account. */
+  hasError: boolean;
+  /** Whether the network prices tokens at all (mainnet-only today). */
+  hasPriceFeed: boolean;
+  isFunded: boolean;
+  /**
+   * Whether any of the account's own held tokens resolved to a price. False
+   * when the price fetch failed or returned nothing for them — which is what
+   * separates a genuine zero from a total that could not be read.
+   */
+  hasPrices: boolean;
+  /** Omit where no total was computed; the branches that ignore it win. */
+  totalUsd?: BigNumber;
+}
+
+/**
+ * Picks what to show for an account's total USD value.
+ *
+ * Zero and "no value" are different answers. Zero is a fact when there is
+ * nothing to value; the placeholder means the total could not be determined.
+ *
+ * This is the single place that decision is made, so the Home header and every
+ * wallets-list row always agree. Ported from the extension's `getTotalUsdLabel`
+ * to keep both clients on one rule.
+ */
+export const getTotalUsdLabel = ({
+  hasError,
+  hasPriceFeed,
+  isFunded,
+  hasPrices,
+  totalUsd,
+}: GetTotalUsdLabelParams): string => {
+  // Balances are unknown, so any figure would be a claim rather than a total.
+  if (hasError) {
+    return NO_FIAT_VALUE;
+  }
+
+  // Nothing to value: the network prices no tokens, or the account holds
+  // none. "$0.00" here is a real zero, not a stand-in for a total that could
+  // not be read.
+  if (!hasPriceFeed || !isFunded) {
+    return formatFiatAmount("0");
+  }
+
+  // A funded account on a network that prices tokens, yet nothing priced —
+  // the total exists but could not be read.
+  if (!hasPrices) {
+    return NO_FIAT_VALUE;
+  }
+
+  return formatFiatAmount(totalUsd ?? "0");
 };

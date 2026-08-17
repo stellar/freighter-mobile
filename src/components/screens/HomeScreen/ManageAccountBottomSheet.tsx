@@ -1,10 +1,10 @@
-import { BigNumber } from "bignumber.js";
 import { DefaultListFooter } from "components/DefaultListFooter";
 import AccountItemRow from "components/screens/HomeScreen/AccountItemRow";
 import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { Account } from "config/types";
+import { AccountFiatTotal } from "ducks/accountsFiatTotals";
 import { ActiveAccount } from "ducks/auth";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -23,7 +23,7 @@ interface ManageAccountBottomSheetProps {
   handleSelectAccount: (publicKey: string) => Promise<void>;
   isAccountSwitching: boolean;
   switchingToPublicKey: string | null;
-  fiatTotals: Record<string, BigNumber | null>;
+  fiatTotals: Record<string, AccountFiatTotal>;
   isLoadingFiatTotals: boolean;
 }
 

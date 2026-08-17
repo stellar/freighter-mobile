@@ -1,5 +1,4 @@
 import { fireEvent } from "@testing-library/react-native";
-import { BigNumber } from "bignumber.js";
 import ManageAccountBottomSheet, {
   ManageAccountSheetHeader,
 } from "components/screens/HomeScreen/ManageAccountBottomSheet";
@@ -36,8 +35,8 @@ describe("ManageAccountBottomSheet", () => {
     isAccountSwitching: false,
     switchingToPublicKey: null,
     fiatTotals: {
-      [PK_1]: new BigNumber("1149.23"),
-      [PK_2]: new BigNumber("872.48"),
+      [PK_1]: { label: "$1,149.23", hasError: false },
+      [PK_2]: { label: "$872.48", hasError: false },
     },
     isLoadingFiatTotals: false,
   };

@@ -1,7 +1,6 @@
 import BigNumber from "bignumber.js";
 import { DEFAULT_DECIMALS, MIN_TRANSACTION_FEE } from "config/constants";
 import { Balance, PricedBalance } from "config/types";
-import { hasDecimals } from "helpers/balances";
 import { formatTokenForDisplay as formatSorobanTokenAmount } from "helpers/soroban";
 import { getNumberFormatSettings } from "react-native-localize";
 
@@ -258,6 +257,16 @@ export const formatFiatAmount = (amount: string | BigNumber) => {
 
   return `$${formattedAmount}`;
 };
+
+/**
+ * Stands in for a fiat value that could not be determined — an unpriced token,
+ * or a total that could not be read.
+ *
+ * Distinct from "$0.00", which asserts a known zero. Prefer that wherever the
+ * absence of value is a fact rather than a gap: an unfunded account, or a
+ * network that prices no tokens.
+ */
+export const NO_FIAT_VALUE = "--";
 
 /**
  * Formats a numeric value as a percentage with sign indicator
@@ -805,6 +814,32 @@ export const getPerOperationBaseFeeStroops = (
     xlmToStroop(totalFeeXlm).idiv(operationCount),
     xlmToStroop(MIN_TRANSACTION_FEE),
   ).toFixed(0);
+
+/**
+ * Checks if a balance carries an explicit `decimals` field — the marker for
+ * a Soroban / custom token, regardless of whether that value is zero. Classic
+ * Stellar balances don't have this field and rely on the protocol's fixed
+ * 7-decimal precision instead.
+ *
+ * Note: `decimals === 0` is a legitimate value for a custom token that uses
+ * integer-only units (no fractional part), and must still discriminate as
+ * "has decimals" so downstream logic doesn't fall back to the classic default.
+ *
+ * @param {Balance | PricedBalance} balance - The balance to check
+ * @returns {boolean} True when the balance has a non-negative `decimals` field
+ *
+ * @example
+ * if (hasDecimals(balance)) {
+ *   // Use decimal-aware formatting
+ *   const formatted = formatSorobanTokenAmount(amount, balance.decimals);
+ * }
+ */
+export const hasDecimals = (
+  balance: Balance | PricedBalance,
+): balance is Balance & { decimals: number } =>
+  "decimals" in balance &&
+  typeof balance.decimals === "number" &&
+  balance.decimals >= 0;
 
 /**
  * Formats a balance amount for display, handling custom tokens with decimals
