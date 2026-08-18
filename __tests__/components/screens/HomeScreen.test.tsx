@@ -536,8 +536,10 @@ describe("HomeScreen", () => {
       expect(queryByTestId("home-add-collectible-button")).toBeNull();
     });
 
-    // The collectibles tab follows the tokens tab, not its own contents.
-    it("ignores collectibles content when choosing the button style", () => {
+    // Regression: the CTA can only mount inside the empty state, so with a
+    // populated grid the pill has to stay or the tab offers nothing at all.
+    // Holding a collectible needs no funded account, so this is reachable.
+    it("keeps the pill when unfunded but the grid has content", () => {
       mockIsFunded = false;
       mockCollections = [
         {
@@ -552,6 +554,29 @@ describe("HomeScreen", () => {
 
       fireEvent.press(getByTestId("tab-collectibles"));
 
+      // No empty state to host the CTA, so the pill is the only affordance.
+      expect(getByTestId("home-add-collectible-button")).toBeTruthy();
+      expect(queryByTestId("add-collectible-empty-state-button")).toBeNull();
+    });
+
+    // Hidden items aren't on the visible grid, so it still renders its empty
+    // state — which means the CTA hosts the action and the pill stands down.
+    it("treats a grid of only hidden collectibles as empty", () => {
+      mockIsFunded = false;
+      mockCollections = [
+        {
+          collectionAddress: "CCOLLECTION",
+          collectionName: "Test Collection",
+          count: 1,
+          items: [{ tokenId: "1", isHidden: true }],
+        },
+      ];
+
+      const { getByTestId, queryByTestId } = renderHomeScreen();
+
+      fireEvent.press(getByTestId("tab-collectibles"));
+
+      expect(getByTestId("add-collectible-empty-state-button")).toBeTruthy();
       expect(queryByTestId("home-add-collectible-button")).toBeNull();
     });
   });
