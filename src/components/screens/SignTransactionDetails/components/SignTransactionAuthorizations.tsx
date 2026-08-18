@@ -1,10 +1,10 @@
 /* eslint-disable react/no-array-index-key */
-import { xdr } from "@stellar/stellar-sdk";
 import CollapsibleSection from "components/CollapsibleSection";
 import {
   KeyValueListItem,
   KeyValueInvokeHostFnArgs,
 } from "components/screens/SignTransactionDetails/components/KeyVal";
+import { AuthEntryDisplay } from "components/screens/SignTransactionDetails/types";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import {
@@ -21,7 +21,7 @@ import React from "react";
 import { View } from "react-native";
 
 interface SignTransactionAuthorizationsProps {
-  authEntries: xdr.SorobanAuthorizedInvocation[];
+  authEntries: AuthEntryDisplay[];
 }
 
 const SignTransactionAuthorizations = ({
@@ -170,11 +170,26 @@ const SignTransactionAuthorizations = ({
     }
   };
 
-  const renderAuthEntry = (authEntry: xdr.SorobanAuthorizedInvocation) => {
-    const invocationDetails = getInvocationDetails(authEntry);
+  const renderAuthEntry = ({ invocation, boundAddress }: AuthEntryDisplay) => {
+    const invocationDetails = getInvocationDetails(invocation);
 
     return (
       <View className="gap-[12px]">
+        {boundAddress && (
+          <KeyValueListItem
+            operationKey={t("signTransactionDetails.authorizations.address")}
+            operationValue={
+              <View className="flex-row items-center gap-[4px]">
+                <Text>{truncateAddress(boundAddress)}</Text>
+                <Icon.Copy01
+                  size={14}
+                  themeColor="gray"
+                  onPress={() => copyToClipboard(boundAddress)}
+                />
+              </View>
+            }
+          />
+        )}
         {invocationDetails.map((detail, detailIndex) => (
           <View
             key={`${getAuthEntryKey(detail)}-${detailIndex}`}
@@ -205,9 +220,11 @@ const SignTransactionAuthorizations = ({
           {t("signTransactionDetails.authorizations.title")}
         </Text>
       </View>
-      {authEntries.map((authEntry, index) => (
-        <View key={`auth-entry-${index}-${authEntry.toXDR("raw").toString()}`}>
-          {renderAuthEntry(authEntry)}
+      {authEntries.map((entry, index) => (
+        <View
+          key={`auth-entry-${index}-${entry.invocation.toXDR("raw").toString()}`}
+        >
+          {renderAuthEntry(entry)}
         </View>
       ))}
     </View>

@@ -114,7 +114,10 @@ export const normalizeError = (error: unknown): Error => {
   // Network errors (fetch, axios, etc.)
   if ("code" in error || "status" in error || "statusCode" in error) {
     const errorObj = error as Record<string, unknown>;
-    const code = errorObj.code || errorObj.status || errorObj.statusCode;
+    // Use `??` so a numeric `status: 0` (apiFactory's "no response"
+    // sentinel) flows through as "Network error 0: ..." rather than
+    // falling through to undefined.
+    const code = errorObj.code ?? errorObj.status ?? errorObj.statusCode;
     const message =
       errorObj.message || errorObj.error || "Network request failed";
 
@@ -356,57 +359,117 @@ class Logger {
  */
 export const logger = Logger.getInstance();
 
+// Common PII / secret fields to redact from logged payloads. Match
+// case-insensitively against the literal lowercased key. The list
+// includes both camelCase (frontend-shaped) and snake_case
+// (backend-shaped) variants since payloads from the Freighter
+// backend / Horizon arrive snake_case and would slip past a
+// camelCase-only list. Keep this conservative - it's safer to
+// over-redact than to leak.
+//
+// publicKey is included because, while Stellar public keys are not
+// strictly secret, this codebase deliberately gates them on the
+// analytics opt-in (see buildSentryContext in sentryConfig.ts).
+// Redacting them in logger payloads keeps that opt-out promise on
+// breadcrumbs and event extras as well as the appContext block.
+const PII_FIELDS_LOWER = [
+  "email",
+  "phone",
+  "address",
+  "name",
+  "firstName",
+  "first_name",
+  "lastName",
+  "last_name",
+  "username",
+  "userId",
+  "user_id",
+  "accountId",
+  "account_id",
+  "publicKey",
+  "public_key",
+  "privateKey",
+  "private_key",
+  "seed",
+  "mnemonic",
+  "password",
+  "token",
+  "jwt",
+  "session",
+  "ip",
+  "ipAddress",
+  "ip_address",
+  "location",
+  "coordinates",
+  "auth",
+  "key",
+  "apiKey",
+  "api_key",
+  "secret",
+  "secretKey",
+  "secret_key",
+  "recovery",
+  "recoveryPhrase",
+  "recovery_phrase",
+  "mnemonicPhrase",
+  "mnemonic_phrase",
+].map((f) => f.toLowerCase());
+
 /**
- * Sanitize data to remove potential PII before sending to Sentry
- * Add or remove fields on the list if necessary
+ * Shared depth cap for recursive structured-data walks (sanitization here
+ * and StrKey scrubbing in `sentryConfig.deepScrubStrKeys`). Both walks need
+ * to stop at the same point: deep enough to cover realistic payloads, but
+ * shallow enough that cyclic structures cannot escape into Sentry.
  */
-export const sanitizeLogData = (data: unknown): unknown => {
+export const MAX_RECURSIVE_DEPTH = 8;
+export const MAX_DEPTH_SENTINEL = "[MAX_DEPTH_EXCEEDED]";
+
+/**
+ * Sanitize data to redact potential PII before sending to Sentry.
+ *
+ * Recurses into nested objects and arrays so a key like `password`
+ * is redacted no matter how deep it is in the payload (e.g. when
+ * logger forwards a variadic argument list whose items contain
+ * objects). Values are otherwise preserved.
+ *
+ * At the depth cap, return a sentinel string rather than the
+ * original reference so cyclic structures (e.g. obj.self = obj)
+ * can't escape into Sentry serialization and crash the breadcrumb
+ * payload.
+ */
+export const sanitizeLogData = (data: unknown, depth = 0): unknown => {
+  if (depth >= MAX_RECURSIVE_DEPTH) {
+    return MAX_DEPTH_SENTINEL;
+  }
+
+  // Error instances need explicit handling - `name`, `message`, and
+  // `stack` are non-enumerable per spec, so a generic `Object.entries`
+  // walk would drop them and produce `{}`. That silently strips the
+  // diagnostic detail every time a caller passes an error as a warn arg.
+  if (data instanceof Error) {
+    return {
+      name: data.name,
+      message: data.message,
+      stack: data.stack,
+    };
+  }
+
+  if (Array.isArray(data)) {
+    return data.map((item) => sanitizeLogData(item, depth + 1));
+  }
+
   if (!data || typeof data !== "object") {
     return data;
   }
 
-  const sanitized = { ...(data as Record<string, unknown>) };
-
-  // Remove common PII fields
-  const piiFields = [
-    "email",
-    "phone",
-    "address",
-    "name",
-    "firstName",
-    "lastName",
-    "username",
-    "userId",
-    "accountId",
-    "privateKey",
-    "seed",
-    "mnemonic",
-    "password",
-    "token",
-    "jwt",
-    "session",
-    "ip",
-    "ipAddress",
-    "location",
-    "coordinates",
-    "auth",
-    "key",
-    "secret",
-    "secretKey",
-    "recovery",
-    "recoveryPhrase",
-    "mnemonicPhrase",
-  ];
-
-  const sanitizedKeys = Object.keys(sanitized);
-  const piiFieldsLower = piiFields.map((field) => field.toLowerCase());
-
-  sanitizedKeys.forEach((key) => {
-    if (piiFieldsLower.includes(key.toLowerCase())) {
+  const sanitized: Record<string, unknown> = {};
+  Object.entries(data as Record<string, unknown>).forEach(([key, value]) => {
+    if (PII_FIELDS_LOWER.includes(key.toLowerCase())) {
       sanitized[key] = "[REDACTED]";
+    } else {
+      sanitized[key] = sanitizeLogData(value, depth + 1);
     }
   });
-
   return sanitized;
 };
 
@@ -416,13 +479,21 @@ export const sanitizeLogData = (data: unknown): unknown => {
 const sentryAdapter: LoggerAdapter = {
   debug: () => {},
   info: () => {},
-  warn: (context: string, message: string) => {
+  warn: (context: string, message: string, ...args: unknown[]) => {
     // Skip Sentry during e2e tests
     if (isE2ETest) {
       return;
     }
-    // capture a message for warning level
-    Sentry.captureMessage(`[${context}] ${message}`, "warning");
+    // Add as a breadcrumb so the warning is attached to any subsequent
+    // captured event without creating its own top-level Sentry issue.
+    // Breadcrumbs sit in an in-memory ring buffer (default 100) and are
+    // only sent when an error/message is captured — no extra quota cost.
+    Sentry.addBreadcrumb({
+      category: context,
+      message,
+      level: "warning",
+      data: args.length > 0 ? { args: sanitizeLogData(args) } : undefined,
+    });
   },
   error: (
     context: string,
@@ -436,10 +507,18 @@ const sentryAdapter: LoggerAdapter = {
     }
     const normalizedError = normalizeError(error);
 
-    // capture the error with context and sanitized extra data
+    // Include the caller-supplied `message` in the event extras so the
+    // intent isn't lost - Sentry's issue title still comes from the
+    // Error's own message (preserves grouping), but the message arg is
+    // inspectable in the event payload alongside any extra args.
+    const extra: Record<string, unknown> = { message };
+    if (args.length > 0) {
+      extra.args = sanitizeLogData(args);
+    }
+
     Sentry.captureException(normalizedError, {
       tags: { context },
-      extra: args.length > 0 ? { args: sanitizeLogData(args) } : undefined,
+      extra,
     });
   },
 };

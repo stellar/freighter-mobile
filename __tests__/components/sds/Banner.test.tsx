@@ -47,6 +47,15 @@ describe("Banner", () => {
     expect(getByText("Test banner message")).toBeTruthy();
   });
 
+  it("renders correctly with highlight variant", () => {
+    const { getByText } = renderBanner({
+      ...defaultProps,
+      variant: "highlight",
+    });
+
+    expect(getByText("Test banner message")).toBeTruthy();
+  });
+
   it("renders correctly without onPress", () => {
     const { getByText } = renderBanner(defaultProps);
 

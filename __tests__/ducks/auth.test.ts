@@ -1,6 +1,8 @@
 import { NavigationContainerRef } from "@react-navigation/native";
 import { act, renderHook } from "@testing-library/react-hooks";
 import {
+  AUTO_LOCK_TIMER,
+  DEFAULT_AUTO_LOCK_TIMER,
   NETWORKS,
   STORAGE_KEYS,
   SENSITIVE_STORAGE_KEYS,
@@ -14,6 +16,10 @@ import {
   ActiveAccount,
   appendAccounts,
   clearAccountData,
+  isSessionAuthValid,
+  clearSessionAuthValidMemo,
+  SESSION_AUTH_VALID_TTL_MS,
+  getActiveMnemonicPhrase,
 } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
 import { useCollectiblesStore } from "ducks/collectibles";
@@ -29,7 +35,10 @@ import {
   encryptDataWithDerivedKey,
 } from "helpers/encryptPassword";
 import { createKeyManager } from "helpers/keyManager/keyManager";
+import { clearScreenshotDek } from "helpers/screenshotCrypto";
+import { AppState } from "react-native";
 import { getSupportedBiometryType, BIOMETRY_TYPE } from "react-native-keychain";
+import { clearAuthKeypairCache } from "services/auth/authKeypairCache";
 import {
   clearNonSensitiveData,
   clearTemporaryData,
@@ -110,7 +119,11 @@ jest.mock("services/storage/secureStorage", () => ({
 
 jest.mock("ducks/preferences", () => ({
   usePreferencesStore: {
-    getState: jest.fn(),
+    getState: jest.fn(() => ({
+      isBiometricsEnabled: false,
+      setAutoLockTimer: jest.fn(),
+    })),
+    setState: jest.fn(),
   },
 }));
 
@@ -139,6 +152,12 @@ jest.mock("config/logger", () => ({
   },
 }));
 
+jest.mock("services/auth/authKeypairCache", () => ({
+  clearAuthKeypairCache: jest.fn(),
+  getCachedAuthKeypair: jest.fn(() => null),
+  setCachedAuthKeypair: jest.fn(),
+}));
+
 jest.mock("i18next", () => ({
   t: (key: string) => key,
 }));
@@ -157,6 +176,10 @@ jest.mock("helpers/walletKitUtil", () => ({
 
 jest.mock("helpers/browser", () => ({
   clearAllWebViewData: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock("helpers/screenshotCrypto", () => ({
+  clearScreenshotDek: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock("ducks/browserTabs", () => ({
@@ -197,6 +220,15 @@ jest.mock("ducks/prices", () => ({
       fetchPrices: jest.fn().mockResolvedValue(undefined),
     })),
     setState: jest.fn(),
+  },
+}));
+
+const mockResetAccountsFiatTotals = jest.fn();
+jest.mock("ducks/accountsFiatTotals", () => ({
+  useAccountsFiatTotalsStore: {
+    getState: jest.fn(() => ({
+      resetAccountsFiatTotals: mockResetAccountsFiatTotals,
+    })),
   },
 }));
 
@@ -261,6 +293,7 @@ describe("auth duck", () => {
     setNavigationRef: useAuthenticationStore.getState().setNavigationRef,
     signIn: useAuthenticationStore.getState().signIn,
     initializeNetwork: useAuthenticationStore.getState().initializeNetwork,
+    softLock: useAuthenticationStore.getState().softLock,
   };
 
   beforeEach(() => {
@@ -1118,6 +1151,32 @@ describe("auth duck", () => {
         });
       });
 
+      it("should treat a hash key with a future generatedAt as expired (clock rollback)", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+
+        // Device clock rolled back below the key's creation time: generatedAt
+        // is in the future even though expiresAt hasn't been reached by wall
+        // clock. Must be treated as expired so a rolled-back clock can't keep
+        // stale key material usable past the hard-expiry backstop.
+        const rolledBackHashKey = {
+          ...mockHashKeyObj,
+          generatedAt: Date.now() + 60_000,
+          expiresAt: Date.now() + 3_600_000,
+        };
+        (getHashKey as jest.Mock).mockResolvedValue(rolledBackHashKey);
+
+        act(() => {
+          useAuthenticationStore.setState({
+            authStatus: AUTH_STATUS.AUTHENTICATED,
+          });
+        });
+
+        await act(async () => {
+          const success = await result.current.initBiometricPassword();
+          expect(success).toBe(false);
+        });
+      });
+
       it("should return false when auth status is HASH_KEY_EXPIRED", async () => {
         const { result } = renderHook(() => useAuthenticationStore());
 
@@ -1171,8 +1230,11 @@ describe("auth duck", () => {
           expect(success).toBe(false);
         });
 
-        // Should clear temporary data on decryption failure
+        // Should clear temporary data on decryption failure, but the
+        // screenshot DEK must survive: tabs and screenshot files are not
+        // cleared on this path, and rotating the key would orphan them.
         expect(clearTemporaryData).toHaveBeenCalled();
+        expect(clearScreenshotDek).not.toHaveBeenCalled();
       });
 
       it("should return false when temporary store has invalid structure", async () => {
@@ -1297,11 +1359,17 @@ describe("auth duck", () => {
           });
         }
 
-        // Should log suspicious repeated failures after threshold
+        // Should log suspicious repeated failures after threshold.
+        // Stable Error message + variable count moved to extra args
+        // so events group as a single Sentry issue across counts.
         expect(logger.error).toHaveBeenCalledWith(
           "[getTemporaryStore]",
-          "Repeated failures detected",
-          expect.stringContaining("Multiple unauthorized access attempts"),
+          expect.stringContaining("Repeated decryption failures"),
+          expect.any(Error),
+          expect.objectContaining({
+            failureCount: expect.any(Number),
+            failureResetWindowMs: expect.any(Number),
+          }),
         );
       });
 
@@ -1419,6 +1487,11 @@ describe("auth duck", () => {
           SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
           AUTH_STATUS.LOCKED,
         );
+
+        // A manual lock suppresses the lock screen's biometric auto-prompt
+        expect(
+          useAuthenticationStore.getState().suppressBiometricAutoPrompt,
+        ).toBe(true);
       });
 
       it("should wipe all data on logout when shouldWipeAllData is true", async () => {
@@ -1455,9 +1528,16 @@ describe("auth duck", () => {
         // Verify data was cleared
         expect(clearTemporaryData).toHaveBeenCalled();
         expect(clearNonSensitiveData).toHaveBeenCalled();
+        expect(clearScreenshotDek).toHaveBeenCalled();
         expect(dataStorage.remove).toHaveBeenCalledWith(
           STORAGE_KEYS.COLLECTIBLES_LIST,
         );
+
+        // Auto-lock is reset to the default so the next wallet doesn't inherit
+        // the wiped wallet's timer
+        expect(usePreferencesStore.setState).toHaveBeenCalledWith({
+          autoLockTimer: DEFAULT_AUTO_LOCK_TIMER,
+        });
       });
 
       it("should call resetRoot to AUTH_STACK on logout(true) even though ...initialState clears navigationRef", async () => {
@@ -1592,6 +1672,333 @@ describe("auth duck", () => {
         expect(secureDataStorage.remove).toHaveBeenCalledWith(
           SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
         );
+      });
+    });
+
+    describe("getAuthStatus with auto-lock timer", () => {
+      const ONE_HOUR_MS = 3600000;
+
+      const mockAuthenticatedStorage = ({
+        backgroundedAt,
+        autoLockTimer,
+      }: {
+        backgroundedAt: number | null;
+        autoLockTimer: AUTO_LOCK_TIMER | null;
+      }) => {
+        (dataStorage.getItem as jest.Mock).mockImplementation((key) => {
+          if (key === STORAGE_KEYS.ACCOUNT_LIST) {
+            return Promise.resolve(JSON.stringify([mockAccount]));
+          }
+          return Promise.resolve(null);
+        });
+
+        (secureDataStorage.getItem as jest.Mock).mockImplementation((key) => {
+          if (key === SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE) {
+            return Promise.resolve("encrypted-temp-store");
+          }
+          if (key === SENSITIVE_STORAGE_KEYS.AUTO_LOCK_BACKGROUNDED_AT) {
+            return Promise.resolve(
+              backgroundedAt ? String(backgroundedAt) : null,
+            );
+          }
+          if (key === SENSITIVE_STORAGE_KEYS.AUTO_LOCK_TIMER_SETTING) {
+            return Promise.resolve(autoLockTimer);
+          }
+          // No persisted AUTH_STATUS (not LOCKED)
+          return Promise.resolve(null);
+        });
+
+        (getHashKey as jest.Mock).mockResolvedValue({
+          hashKey: "mock-hash-key",
+          salt: "mock-salt",
+          expiresAt: Date.now() + ONE_HOUR_MS,
+        });
+
+        (secureDataStorage.remove as jest.Mock).mockResolvedValue(undefined);
+        (secureDataStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+      };
+
+      const restoreGetAuthStatus = () => {
+        act(() => {
+          useAuthenticationStore.setState({
+            getAuthStatus: originalStoreMethods.getAuthStatus,
+          });
+        });
+      };
+
+      it("should soft-lock when the background duration exceeds the timer", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+        restoreGetAuthStatus();
+
+        mockAuthenticatedStorage({
+          backgroundedAt: Date.now() - 2 * ONE_HOUR_MS,
+          autoLockTimer: AUTO_LOCK_TIMER.ONE_HOUR,
+        });
+
+        await act(async () => {
+          const status = await result.current.getAuthStatus();
+          expect(status).toBe(AUTH_STATUS.LOCKED);
+        });
+
+        // LOCKED state is persisted and the timestamp is consumed
+        expect(secureDataStorage.setItem).toHaveBeenCalledWith(
+          SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
+          AUTH_STATUS.LOCKED,
+        );
+        expect(secureDataStorage.remove).toHaveBeenCalledWith(
+          SENSITIVE_STORAGE_KEYS.AUTO_LOCK_BACKGROUNDED_AT,
+        );
+      });
+
+      it("should stay authenticated and consume the timestamp WITHOUT refreshing the hash key TTL", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+        restoreGetAuthStatus();
+
+        // The jest AppState mock has no real currentState; the consume
+        // branch only runs when the app is actively foregrounded
+        const previousAppState = AppState.currentState;
+        (AppState as { currentState: string }).currentState = "active";
+
+        mockAuthenticatedStorage({
+          backgroundedAt: Date.now() - 60000, // 1 minute ago
+          autoLockTimer: AUTO_LOCK_TIMER.ONE_HOUR,
+        });
+
+        await act(async () => {
+          const status = await result.current.getAuthStatus();
+          expect(status).toBe(AUTH_STATUS.AUTHENTICATED);
+        });
+
+        // Timestamp is consumed...
+        expect(secureDataStorage.remove).toHaveBeenCalledWith(
+          SENSITIVE_STORAGE_KEYS.AUTO_LOCK_BACKGROUNDED_AT,
+        );
+        // ...but the hash key expiry must NOT advance without credential
+        // verification (key material lifetime stays bounded)
+        expect(secureDataStorage.setItem).not.toHaveBeenCalledWith(
+          SENSITIVE_STORAGE_KEYS.HASH_KEY,
+          expect.any(String),
+        );
+
+        (AppState as { currentState: typeof previousAppState }).currentState =
+          previousAppState;
+      });
+
+      it("should return HASH_KEY_EXPIRED when the hash key expired even if within the timer", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+        restoreGetAuthStatus();
+
+        const previousAppState = AppState.currentState;
+        (AppState as { currentState: string }).currentState = "active";
+
+        mockAuthenticatedStorage({
+          backgroundedAt: Date.now() - 60000, // 1 minute ago, within timer
+          autoLockTimer: AUTO_LOCK_TIMER.ONE_HOUR,
+        });
+
+        // Hash key hard-expired (e.g. > 72h since the last unlock)
+        (getHashKey as jest.Mock).mockResolvedValue({
+          hashKey: "mock-hash-key",
+          salt: "mock-salt",
+          expiresAt: Date.now() - ONE_HOUR_MS,
+        });
+
+        (clearAuthKeypairCache as jest.Mock).mockClear();
+
+        await act(async () => {
+          const status = await result.current.getAuthStatus();
+          expect(status).toBe(AUTH_STATUS.HASH_KEY_EXPIRED);
+        });
+
+        // Hard-expiry must evict the derived auth keypair — retention, not just
+        // use, ends at expiry (the eviction-coverage gap raised in review).
+        expect(clearAuthKeypairCache).toHaveBeenCalled();
+
+        (AppState as { currentState: typeof previousAppState }).currentState =
+          previousAppState;
+      });
+
+      it("should return HASH_KEY_EXPIRED (not LOCKED) when backgrounded beyond BOTH the timer and the hash-key TTL", async () => {
+        // The reviewer's scenario: the timer branch would otherwise return a
+        // fast-path LOCKED that refreshes the expired key, silently defeating
+        // the hard-expiry backstop. Expiry must win → full re-auth.
+        const { result } = renderHook(() => useAuthenticationStore());
+        restoreGetAuthStatus();
+
+        mockAuthenticatedStorage({
+          backgroundedAt: Date.now() - 2 * ONE_HOUR_MS, // beyond the 1h timer
+          autoLockTimer: AUTO_LOCK_TIMER.ONE_HOUR,
+        });
+
+        // ...and the hash key has hard-expired (beyond its TTL)
+        (getHashKey as jest.Mock).mockResolvedValue({
+          hashKey: "mock-hash-key",
+          salt: "mock-salt",
+          expiresAt: Date.now() - ONE_HOUR_MS,
+        });
+
+        await act(async () => {
+          const status = await result.current.getAuthStatus();
+          expect(status).toBe(AUTH_STATUS.HASH_KEY_EXPIRED);
+        });
+
+        // Must NOT have converted the session to a soft timer lock
+        expect(secureDataStorage.setItem).not.toHaveBeenCalledWith(
+          SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
+          AUTH_STATUS.LOCKED,
+        );
+      });
+
+      it("should default to 12 hours when no timer preference is persisted", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+        restoreGetAuthStatus();
+
+        // 13h exceeds the 12h default but not the old 24h, so this pins the
+        // default at 12h (matching the extension) rather than merely "some
+        // default under 13h".
+        mockAuthenticatedStorage({
+          backgroundedAt: Date.now() - 13 * ONE_HOUR_MS,
+          autoLockTimer: null,
+        });
+
+        await act(async () => {
+          const status = await result.current.getAuthStatus();
+          expect(status).toBe(AUTH_STATUS.LOCKED);
+        });
+      });
+
+      it("should not evaluate the timer when no backgrounded-at timestamp exists", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+        restoreGetAuthStatus();
+
+        mockAuthenticatedStorage({
+          backgroundedAt: null,
+          autoLockTimer: AUTO_LOCK_TIMER.ONE_HOUR,
+        });
+
+        await act(async () => {
+          const status = await result.current.getAuthStatus();
+          expect(status).toBe(AUTH_STATUS.AUTHENTICATED);
+        });
+
+        expect(secureDataStorage.remove).not.toHaveBeenCalledWith(
+          SENSITIVE_STORAGE_KEYS.AUTO_LOCK_BACKGROUNDED_AT,
+        );
+      });
+    });
+
+    describe("softLock", () => {
+      it("should set LOCKED with isSoftLocked and persist the status without touching navigation", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+
+        const mockResetRoot = jest.fn();
+        const softLockNavigationRef = {
+          isReady: jest.fn().mockReturnValue(true),
+          getCurrentRoute: jest.fn().mockReturnValue({ name: "Home" }),
+          resetRoot: mockResetRoot,
+        } as unknown as NavigationContainerRef<RootStackParamList>;
+
+        act(() => {
+          useAuthenticationStore.setState({
+            authStatus: AUTH_STATUS.AUTHENTICATED,
+            isSoftLocked: false,
+            navigationRef: softLockNavigationRef,
+          });
+        });
+
+        await act(async () => {
+          await result.current.softLock();
+        });
+
+        expect(result.current.authStatus).toBe(AUTH_STATUS.LOCKED);
+        expect(result.current.isSoftLocked).toBe(true);
+        // The whole point of softLock: the navigation tree stays untouched
+        expect(mockResetRoot).not.toHaveBeenCalled();
+        expect(secureDataStorage.setItem).toHaveBeenCalledWith(
+          SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
+          AUTH_STATUS.LOCKED,
+        );
+      });
+
+      it("should funnel a warm timer lock through softLock atomically", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+        act(() => {
+          useAuthenticationStore.setState({
+            getAuthStatus: originalStoreMethods.getAuthStatus,
+            softLock: originalStoreMethods.softLock,
+            authStatus: AUTH_STATUS.AUTHENTICATED,
+            isSoftLocked: false,
+          });
+        });
+
+        // Storage says the auto-lock timer fired while we were AUTHENTICATED
+        (dataStorage.getItem as jest.Mock).mockImplementation((key) => {
+          if (key === STORAGE_KEYS.ACCOUNT_LIST) {
+            return Promise.resolve(JSON.stringify([mockAccount]));
+          }
+          return Promise.resolve(null);
+        });
+        (secureDataStorage.getItem as jest.Mock).mockImplementation((key) => {
+          if (key === SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE) {
+            return Promise.resolve("encrypted-temp-store");
+          }
+          if (key === SENSITIVE_STORAGE_KEYS.AUTO_LOCK_BACKGROUNDED_AT) {
+            return Promise.resolve(String(Date.now() - 7200000)); // 2h ago
+          }
+          if (key === SENSITIVE_STORAGE_KEYS.AUTO_LOCK_TIMER_SETTING) {
+            return Promise.resolve(AUTO_LOCK_TIMER.ONE_HOUR);
+          }
+          return Promise.resolve(null);
+        });
+        (getHashKey as jest.Mock).mockResolvedValue({
+          hashKey: "mock-hash-key",
+          salt: "mock-salt",
+          expiresAt: Date.now() + 3600000,
+        });
+
+        // RootNavigator must NEVER observe LOCKED && !isSoftLocked — that
+        // combination unmounts the preserved navigation tree
+        const observedInvalidStates: string[] = [];
+        const unsubscribe = useAuthenticationStore.subscribe((state) => {
+          if (state.authStatus === AUTH_STATUS.LOCKED && !state.isSoftLocked) {
+            observedInvalidStates.push(state.authStatus);
+          }
+        });
+
+        await act(async () => {
+          const status = await result.current.getAuthStatus();
+          expect(status).toBe(AUTH_STATUS.LOCKED);
+        });
+
+        unsubscribe();
+        expect(observedInvalidStates).toHaveLength(0);
+        expect(result.current.authStatus).toBe(AUTH_STATUS.LOCKED);
+        expect(result.current.isSoftLocked).toBe(true);
+      });
+
+      it("should make navigateToLockScreen a no-op while soft-locked", () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+
+        const mockResetRoot = jest.fn();
+        const softLockedNavigationRef = {
+          isReady: jest.fn().mockReturnValue(true),
+          getCurrentRoute: jest.fn().mockReturnValue({ name: "Home" }),
+          resetRoot: mockResetRoot,
+        } as unknown as NavigationContainerRef<RootStackParamList>;
+
+        act(() => {
+          useAuthenticationStore.setState({
+            authStatus: AUTH_STATUS.LOCKED,
+            isSoftLocked: true,
+            navigationRef: softLockedNavigationRef,
+          });
+        });
+
+        act(() => {
+          result.current.navigateToLockScreen();
+        });
+
+        expect(mockResetRoot).not.toHaveBeenCalled();
       });
     });
 
@@ -1805,6 +2212,8 @@ describe("auth duck", () => {
         scanResults: {},
         isLoading: false,
         isFunded: false,
+        fetchedPublicKey: null,
+        fetchedNetwork: null,
         subentryCount: 0,
         error: null,
       });
@@ -1830,21 +2239,41 @@ describe("auth duck", () => {
 
       // Verify setState was called with correct reset values
       expect(usePricesStore.setState).toHaveBeenCalledWith({
-        prices: {},
+        pricesByNetwork: {},
+        sourceByNetwork: {},
         isLoading: false,
         error: null,
         lastUpdated: null,
       });
     });
 
-    it("should clear all three stores in a single call", () => {
-      // Verify all three stores are cleared
+    it("should reset the accounts fiat totals store through its action", () => {
+      // The action (not setState) also aborts any in-flight fetch cycle, so
+      // a cycle running during a wipe can't write pre-wipe totals back.
+      clearAccountData();
+
+      expect(mockResetAccountsFiatTotals).toHaveBeenCalledTimes(1);
+    });
+
+    it("should keep the wallets-list totals when keepAccountsFiatTotals is set", () => {
+      // Same-wallet transitions (account switch, add/import account) keep
+      // the other accounts' totals — they're still valid, and dropping them
+      // flashes $0.00 rows in the open wallets sheet mid-switch.
+      clearAccountData({ keepAccountsFiatTotals: true });
+
+      expect(mockResetAccountsFiatTotals).not.toHaveBeenCalled();
+      // The account-scoped stores still reset as usual.
+      expect(useBalancesStore.setState).toHaveBeenCalledTimes(1);
+    });
+
+    it("should clear every account-scoped store in a single call", () => {
       clearAccountData();
 
       expect(useBalancesStore.setState).toHaveBeenCalledTimes(1);
       expect(useHistoryStore.setState).toHaveBeenCalledTimes(1);
       expect(usePricesStore.setState).toHaveBeenCalledTimes(1);
       expect(useCollectiblesStore.setState).toHaveBeenCalledTimes(1);
+      expect(mockResetAccountsFiatTotals).toHaveBeenCalledTimes(1);
     });
 
     it("should reset loading flags to false", () => {
@@ -1898,6 +2327,21 @@ describe("auth duck", () => {
       expect(balancesCall?.subentryCount).toBe(0);
     });
 
+    it("should reset fetchedPublicKey and fetchedNetwork so account_funded fails closed across an account switch", () => {
+      // Regression: clearAccountData must reset fetchedPublicKey/fetchedNetwork
+      // alongside isFunded. Otherwise, during the selectAccount switch window the
+      // balances snapshot reads isFunded=false while fetchedPublicKey still equals
+      // the (still-active) previous account, so buildCommonContext's
+      // `fetchedPublicKey === activePublicKey` guard matches and emits a wrong
+      // account_funded=false for an account that is actually funded.
+      clearAccountData();
+
+      const balancesCall = (useBalancesStore.setState as jest.Mock).mock
+        .calls[0]?.[0];
+      expect(balancesCall?.fetchedPublicKey).toBeNull();
+      expect(balancesCall?.fetchedNetwork).toBeNull();
+    });
+
     it("should reset history store to null values and false flags", () => {
       clearAccountData();
 
@@ -1912,7 +2356,8 @@ describe("auth duck", () => {
 
       const pricesCall = (usePricesStore.setState as jest.Mock).mock
         .calls[0]?.[0];
-      expect(pricesCall?.prices).toEqual({});
+      expect(pricesCall?.pricesByNetwork).toEqual({});
+      expect(pricesCall?.sourceByNetwork).toEqual({});
       expect(pricesCall?.lastUpdated).toBeNull();
     });
 
@@ -1971,6 +2416,200 @@ describe("auth duck", () => {
       });
 
       expect(result.current.network).toBe(NETWORKS.PUBLIC);
+    });
+  });
+
+  describe("isSessionAuthValid", () => {
+    // isSessionAuthValid now delegates to the authoritative getAuthStatus()
+    // funnel, so these drive the real computation via storage mocks (one source
+    // of truth) rather than the in-memory authStatus + hash key alone.
+    const ONE_HOUR = 3_600_000;
+
+    const mockFunnelStorage = ({
+      backgroundedAt = null,
+      autoLockTimer = null,
+      hashKey = {
+        hashKey: "mock-hash-key",
+        salt: "mock-salt",
+        expiresAt: Date.now() + ONE_HOUR,
+      } as unknown,
+      hasTempStore = true,
+      hasAccount = true,
+      persistedLocked = false,
+    }: {
+      backgroundedAt?: number | null;
+      autoLockTimer?: AUTO_LOCK_TIMER | null;
+      hashKey?: unknown;
+      hasTempStore?: boolean;
+      hasAccount?: boolean;
+      persistedLocked?: boolean;
+    } = {}) => {
+      (dataStorage.getItem as jest.Mock).mockImplementation((key) =>
+        Promise.resolve(
+          key === STORAGE_KEYS.ACCOUNT_LIST && hasAccount
+            ? JSON.stringify([mockAccount])
+            : null,
+        ),
+      );
+      (secureDataStorage.getItem as jest.Mock).mockImplementation((key) => {
+        if (key === SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE) {
+          return Promise.resolve(hasTempStore ? "encrypted-temp-store" : null);
+        }
+        if (key === SENSITIVE_STORAGE_KEYS.AUTO_LOCK_BACKGROUNDED_AT) {
+          return Promise.resolve(
+            backgroundedAt !== null ? String(backgroundedAt) : null,
+          );
+        }
+        if (key === SENSITIVE_STORAGE_KEYS.AUTO_LOCK_TIMER_SETTING) {
+          return Promise.resolve(autoLockTimer);
+        }
+        if (key === SENSITIVE_STORAGE_KEYS.AUTH_STATUS) {
+          return Promise.resolve(persistedLocked ? AUTH_STATUS.LOCKED : null);
+        }
+        return Promise.resolve(null);
+      });
+      (getHashKey as jest.Mock).mockResolvedValue(hashKey);
+      (secureDataStorage.remove as jest.Mock).mockResolvedValue(undefined);
+      (secureDataStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+    };
+
+    // The memo is module-scoped state that would otherwise leak across tests.
+    beforeEach(() => {
+      clearSessionAuthValidMemo();
+    });
+
+    it("returns true when the funnel reports AUTHENTICATED (accounts + valid hash + within timer)", async () => {
+      mockFunnelStorage();
+      expect(await isSessionAuthValid()).toBe(true);
+    });
+
+    it("returns false when no accounts exist (NOT_AUTHENTICATED)", async () => {
+      mockFunnelStorage({ hasAccount: false });
+      expect(await isSessionAuthValid()).toBe(false);
+    });
+
+    it("returns false when the hash key is absent and no temp store (HASH_KEY_EXPIRED)", async () => {
+      mockFunnelStorage({ hashKey: null, hasTempStore: false });
+      expect(await isSessionAuthValid()).toBe(false);
+    });
+
+    it("returns false when the hash key is expired", async () => {
+      mockFunnelStorage({
+        hashKey: {
+          hashKey: "mock-hash-key",
+          salt: "mock-salt",
+          expiresAt: Date.now() - 1000,
+        },
+      });
+      expect(await isSessionAuthValid()).toBe(false);
+    });
+
+    it("returns false when the session is persisted LOCKED", async () => {
+      mockFunnelStorage({ persistedLocked: true });
+      expect(await isSessionAuthValid()).toBe(false);
+    });
+
+    it("returns false once the auto-lock timer has elapsed even though the hash key is still within its TTL (foreground-before-funnel window)", async () => {
+      // The Codex regression: a stale in-memory AUTHENTICATED + within-TTL hash
+      // key would report valid, but the funnel soft-locks on the elapsed timer.
+      mockFunnelStorage({
+        backgroundedAt: Date.now() - 2 * ONE_HOUR, // beyond the 1h timer
+        autoLockTimer: AUTO_LOCK_TIMER.ONE_HOUR,
+        // hashKey left at the default (expiresAt = +1h, i.e. still valid)
+      });
+      expect(await isSessionAuthValid()).toBe(false);
+    });
+
+    it("dedupes a concurrent burst into a single funnel run (in-flight promise shared)", async () => {
+      mockFunnelStorage();
+      (getHashKey as jest.Mock).mockClear();
+
+      const results = await Promise.all([
+        isSessionAuthValid(),
+        isSessionAuthValid(),
+        isSessionAuthValid(),
+      ]);
+
+      expect(results).toEqual([true, true, true]);
+      // getAuthStatus (→ getHashKey once per run) ran a single time for all three.
+      expect(getHashKey).toHaveBeenCalledTimes(1);
+    });
+
+    it("memoizes within the TTL and re-runs the funnel once it expires", async () => {
+      const nowSpy = jest.spyOn(Date, "now").mockReturnValue(1_000_000);
+      mockFunnelStorage();
+      (getHashKey as jest.Mock).mockClear();
+
+      await isSessionAuthValid();
+      await isSessionAuthValid();
+      await isSessionAuthValid();
+      // Second and third calls are served from the memo — one funnel run.
+      expect(getHashKey).toHaveBeenCalledTimes(1);
+
+      // Advance past the TTL: the memo expires and the funnel runs again.
+      nowSpy.mockReturnValue(1_000_000 + SESSION_AUTH_VALID_TTL_MS + 1);
+      await isSessionAuthValid();
+      expect(getHashKey).toHaveBeenCalledTimes(2);
+
+      nowSpy.mockRestore();
+    });
+  });
+
+  describe("getActiveMnemonicPhrase lock race (TOCTOU)", () => {
+    beforeEach(() => {
+      // Working temporary-store decrypt (mirrors the "authentication
+      // mechanisms" setup) so the happy path actually yields the mnemonic —
+      // otherwise the race test's null would pass for the wrong reason.
+      (secureDataStorage.getItem as jest.Mock).mockImplementation((key) => {
+        if (key === SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE) {
+          return Promise.resolve(mockEncryptedData);
+        }
+        if (key === SENSITIVE_STORAGE_KEYS.HASH_KEY) {
+          return Promise.resolve(JSON.stringify(mockHashKeyObj));
+        }
+        return Promise.resolve(null);
+      });
+      (decryptDataWithDerivedKey as jest.Mock).mockReturnValue(
+        mockTemporaryStore,
+      );
+    });
+
+    it("returns the mnemonic when AUTHENTICATED throughout the decrypt", async () => {
+      act(() => {
+        useAuthenticationStore.setState({
+          authStatus: AUTH_STATUS.AUTHENTICATED,
+        });
+      });
+      (getHashKey as jest.Mock).mockResolvedValue(mockHashKeyObj);
+
+      const result = await getActiveMnemonicPhrase();
+
+      expect(result).toBe(mockMnemonicPhrase);
+    });
+
+    it("returns null if a lock lands during the temporary-store decrypt", async () => {
+      act(() => {
+        useAuthenticationStore.setState({
+          authStatus: AUTH_STATUS.AUTHENTICATED,
+        });
+      });
+      // Simulate a soft-lock / auto-lock landing while getTemporaryStore is
+      // awaiting SecureStorage: flip the store to LOCKED during the decrypt
+      // path (getHashKey is awaited inside getTemporaryStore). The pre-lock
+      // AUTHENTICATED status was already captured, so the store still decrypts
+      // — but getActiveMnemonicPhrase must re-check afterward and refuse to
+      // return the pre-lock mnemonic (otherwise getAuthKeypair could re-cache a
+      // signing key after softLock cleared it).
+      (getHashKey as jest.Mock).mockImplementation(() => {
+        useAuthenticationStore.setState({
+          authStatus: AUTH_STATUS.LOCKED,
+        });
+        return Promise.resolve(mockHashKeyObj);
+      });
+
+      const result = await getActiveMnemonicPhrase();
+
+      expect(result).toBeNull();
     });
   });
 });

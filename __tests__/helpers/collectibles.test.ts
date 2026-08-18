@@ -559,7 +559,7 @@ describe("collectibles helpers", () => {
         isHidden: false,
       });
 
-      expect(logger.error).toHaveBeenCalledWith(
+      expect(logger.warn).toHaveBeenCalledWith(
         "transformBackendCollections",
         "Failed to fetch metadata for token token1:",
         expect.any(Error),
@@ -614,7 +614,7 @@ describe("collectibles helpers", () => {
         isHidden: false,
       });
 
-      expect(logger.error).toHaveBeenCalledWith(
+      expect(logger.warn).toHaveBeenCalledWith(
         "transformBackendCollections",
         "Failed to fetch metadata for token token1:",
         expect.any(Error),

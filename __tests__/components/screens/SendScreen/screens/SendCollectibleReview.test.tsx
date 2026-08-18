@@ -51,6 +51,21 @@ jest.mock("hooks/useGetActiveAccount");
 jest.mock("hooks/useRightHeader");
 jest.mock("hooks/blockaid/useBlockaidTransaction");
 
+// `useNetworkFees` fetches feeStats over the network and calls `setFees` when
+// it resolves. These tests render synchronously, so that update lands after the
+// test body has returned — outside `act(...)` — and React reports it as an
+// empty AggregateError against whichever test happens to be running when the
+// request settles. Mock the hook so the fee snapshot is available on first
+// render and nothing is left in flight.
+jest.mock("hooks/useNetworkFees", () => ({
+  useNetworkFees: () => ({
+    recommendedFee: "0.00001",
+    networkCongestion: "Low",
+    feePresets: { low: "0.00001", medium: "0.00002", high: "0.00003" },
+  }),
+  clearNetworkFeesCache: jest.fn(),
+}));
+
 // Component mocks
 jest.mock("components/CollectibleImage", () => ({
   CollectibleImage: "View",
@@ -82,15 +97,17 @@ jest.mock(
     })),
   }),
 );
-jest.mock("components/blockaid/SecurityDetailBottomSheet", () => ({
-  __esModule: true,
-  default: function MockSecurityDetailBottomSheet(
-    props: Record<string, unknown>,
-  ) {
+jest.mock("components/blockaid/SecurityDetailBottomSheet", () => {
+  const MockSecurityDetailBottomSheet = (props: Record<string, unknown>) => {
     mockSecurityDetailBottomSheetProps = props;
     return null;
-  },
-}));
+  };
+  return {
+    __esModule: true,
+    default: MockSecurityDetailBottomSheet,
+    SecurityDetailBottomSheet: MockSecurityDetailBottomSheet,
+  };
+});
 jest.mock("components/sds/Icon", () => ({
   __esModule: true,
   default: new Proxy({}, { get: () => "View" }),
@@ -245,6 +262,8 @@ const setupDefaultMocks = () => {
     transactionMemo: "",
     transactionFee: "0.00001",
     transactionTimeout: 30,
+    feePriority: "low",
+    feeManuallyChanged: false,
     recipientAddress: mockRecipientAddress,
     selectedTokenId: "",
     selectedCollectibleDetails: {
@@ -253,6 +272,8 @@ const setupDefaultMocks = () => {
     },
     saveMemo: jest.fn(),
     saveTransactionFee: jest.fn(),
+    saveFeePriority: jest.fn(),
+    markFeeManuallyChanged: jest.fn(),
     saveTransactionTimeout: jest.fn(),
     saveRecipientAddress: jest.fn(),
     saveSelectedTokenId: jest.fn(),
@@ -374,6 +395,8 @@ describe("SendCollectibleReview - Banner Content", () => {
     transactionMemo: "",
     transactionFee: "0.00001",
     transactionTimeout: 30,
+    feePriority: "low",
+    feeManuallyChanged: false,
     recipientAddress: mockRecipientAddress,
     selectedTokenId: "",
     selectedCollectibleDetails: {
@@ -382,6 +405,8 @@ describe("SendCollectibleReview - Banner Content", () => {
     },
     saveMemo: jest.fn(),
     saveTransactionFee: jest.fn(),
+    saveFeePriority: jest.fn(),
+    markFeeManuallyChanged: jest.fn(),
     saveTransactionTimeout: jest.fn(),
     saveRecipientAddress: jest.fn(),
     saveSelectedTokenId: jest.fn(),
@@ -499,6 +524,7 @@ describe("SendCollectibleReview - Banner Content", () => {
       {
         id: "malicious-warning",
         description: "Malicious transaction detected",
+        severity: "malicious",
       },
     ]);
 
@@ -532,6 +558,7 @@ describe("SendCollectibleReview - Banner Content", () => {
       {
         id: "suspicious-warning",
         description: "Suspicious transaction detected",
+        severity: "warning",
       },
     ]);
 
@@ -565,6 +592,7 @@ describe("SendCollectibleReview - Banner Content", () => {
       {
         id: "malicious-warning",
         description: "Malicious transaction detected",
+        severity: "malicious",
       },
     ]);
 
@@ -686,6 +714,7 @@ describe("SendCollectibleReview - Unable to Scan States", () => {
       {
         id: "unable-to-scan",
         description: "Unable to scan transaction",
+        severity: "warning",
       },
     ]);
 
@@ -795,6 +824,7 @@ describe("SendCollectibleReview - Unfunded Recipient Handling", () => {
       {
         id: "expected-to-fail",
         description: "Transaction is expected to fail",
+        severity: "malicious",
       },
     ]);
 

@@ -1,5 +1,5 @@
 import Icon from "components/sds/Icon";
-import SegmentedControl from "components/sds/SegmentedControl";
+import Tabs from "components/sds/Tabs";
 import { Text } from "components/sds/Typography";
 import {
   DevBackendEnvironment,
@@ -76,7 +76,8 @@ const DeveloperBackendConfig: React.FC = () => {
         <Text secondary sm medium>
           {t("changeNetworkScreen.developerSettings.backendV1Environment")}
         </Text>
-        <SegmentedControl
+        <Tabs
+          sizing="fill"
           options={backendEnvironmentOptions}
           selectedValue={backendV1Env}
           onValueChange={(value) =>
@@ -89,7 +90,8 @@ const DeveloperBackendConfig: React.FC = () => {
         <Text secondary sm medium>
           {t("changeNetworkScreen.developerSettings.backendV2Environment")}
         </Text>
-        <SegmentedControl
+        <Tabs
+          sizing="fill"
           options={backendEnvironmentOptions}
           selectedValue={backendV2Env}
           onValueChange={(value) =>

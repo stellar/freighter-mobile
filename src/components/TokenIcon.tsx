@@ -33,6 +33,13 @@ interface TokenIconProps {
   backgroundColor?: string;
   /** Optional icon URL, takes precedence over cache */
   iconUrl?: string;
+  /**
+   * Render only the first letter of the code in the no-image fallback (instead
+   * of the default two). Useful in small circles like the AmountCard picker
+   * chip, where two letters look cramped and the token code is already shown as
+   * an adjacent label. Only affects standard (non-native, non-LP) tokens.
+   */
+  singleLetterFallback?: boolean;
 }
 
 /**
@@ -276,19 +283,28 @@ const StandardTokenIcon: React.FC<{
   size?: TokenSize;
   backgroundColor?: string;
   iconUrl?: string;
-}> = ({ token, size = "lg", backgroundColor, iconUrl }) => {
+  singleLetterFallback?: boolean;
+}> = ({
+  token,
+  size = "lg",
+  backgroundColor,
+  iconUrl,
+  singleLetterFallback,
+}) => {
   const fallbackTextSize = React.useMemo(
     () => getFallbackTextSize(size),
     [size],
   );
 
+  const initialsCount = singleLetterFallback || size === "sm" ? 1 : 2;
+
   const renderInitialsContent = React.useCallback(
     () => (
       <Text size={fallbackTextSize} bold secondary isVerticallyCentered>
-        {token.code?.slice(0, size === "sm" ? 1 : 2) || ""}
+        {token.code?.slice(0, initialsCount) || ""}
       </Text>
     ),
-    [fallbackTextSize, token.code, size],
+    [fallbackTextSize, token.code, initialsCount],
   );
 
   return (
@@ -307,6 +323,7 @@ export const TokenIcon: React.FC<TokenIconProps> = ({
   size = "lg",
   backgroundColor,
   iconUrl,
+  singleLetterFallback,
 }) => {
   if (isLiquidityPool(tokenProp)) {
     return (
@@ -346,6 +363,7 @@ export const TokenIcon: React.FC<TokenIconProps> = ({
       size={size}
       backgroundColor={backgroundColor}
       iconUrl={iconUrl}
+      singleLetterFallback={singleLetterFallback}
     />
   );
 };

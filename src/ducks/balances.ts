@@ -8,12 +8,14 @@ import {
   TokenPricesMap,
 } from "config/types";
 import { usePricesStore } from "ducks/prices";
+import { useRemoteConfigStore } from "ducks/remoteConfig";
 import {
   getLPShareCode,
   isLiquidityPool,
   sortBalances,
 } from "helpers/balances";
 import { isMainnet } from "helpers/networks";
+import { ApiError, logApiError } from "services/apiFactory";
 import { fetchBalances } from "services/backend";
 import { dataStorage } from "services/storage/storageFactory";
 import { create } from "zustand";
@@ -34,6 +36,8 @@ import { create } from "zustand";
  * @property {boolean} isFunded - Whether the account is funded
  * @property {number} subentryCount - The number of subentries for the account
  * @property {string | null} error - Error message if fetch failed, null otherwise
+ * @property {string | null} fetchedPublicKey - The public key the current balances snapshot was fetched for, null before the first fetch
+ * @property {NETWORKS | null} fetchedNetwork - The network the current balances snapshot was fetched for, null before the first fetch
  * @property {Function} fetchAccountBalances - Function to fetch account balances from the backend
  */
 interface BalancesState {
@@ -44,6 +48,8 @@ interface BalancesState {
   isFunded: boolean;
   subentryCount: number;
   error: string | null;
+  fetchedPublicKey: string | null;
+  fetchedNetwork: NETWORKS | null;
   fetchAccountBalances: (params: {
     publicKey: string;
     network: NETWORKS;
@@ -92,7 +98,15 @@ const getExistingPricedBalances = (
       currentPrice: existingPriceData?.currentPrice,
       percentagePriceChange24h: existingPriceData?.percentagePriceChange24h,
       fiatCode: existingPriceData?.fiatCode,
-      fiatTotal: existingPriceData?.fiatTotal,
+      // fiatTotal is a derived product (total × price), so recompute it
+      // against THIS balance's total instead of carrying the previous map's
+      // product verbatim — the carried value belongs to whatever balance
+      // produced it (e.g. another account's XLM right after an add/import
+      // wallet, or a pre-send total), and on price-fetch failures this map
+      // becomes state, making the wrong value stick.
+      fiatTotal:
+        existingPriceData?.currentPrice &&
+        balance.total.multipliedBy(existingPriceData.currentPrice),
     };
 
     // Return entry as [id, pricedBalance] tuple
@@ -149,12 +163,14 @@ const fetchPricedBalances = async (
   );
 
   const { fetchPricesForBalances } = usePricesStore.getState();
+  const useV2 = useRemoteConfigStore.getState().use_token_prices_v2;
 
   // Fetch updated prices for the balances using the prices store
   const priceFetchPromise = fetchPricesForBalances({
     balances,
     publicKey: params.publicKey,
     network: params.network,
+    useV2,
   });
 
   // Wait a maximum of 3 seconds for prices to be fetched
@@ -174,10 +190,11 @@ const fetchPricedBalances = async (
   // Make sure to wait until the prices finishes fetching
   await priceFetchPromise;
 
-  // Get the updated prices from the store
-  const { prices, error: pricesError } = usePricesStore.getState();
+  // Get the updated prices for this network from the store
+  const { pricesByNetwork, error: pricesError } = usePricesStore.getState();
+  const prices = pricesByNetwork[params.network] ?? {};
 
-  if (pricesError || !prices || Object.keys(prices).length === 0) {
+  if (pricesError || Object.keys(prices).length === 0) {
     // Return existing data in case of price fetch error
     return existingPricedBalances;
   }
@@ -284,6 +301,8 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
   isFunded: false,
   subentryCount: 0,
   error: null,
+  fetchedPublicKey: null,
+  fetchedNetwork: null,
   fetchAccountBalances: async (params) => {
     try {
       // It can happen that the public key is not available yet during app initialization
@@ -319,6 +338,8 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
         balances,
         isFunded: isFunded ?? false,
         subentryCount: subentryCount ?? 0,
+        fetchedPublicKey: params.publicKey,
+        fetchedNetwork: params.network,
       });
 
       // Get existing state priced balances to preserve price data
@@ -349,9 +370,37 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
         error: null,
       });
     } catch (error) {
+      // Backend API errors come from the axios interceptor as plain ApiError
+      // objects (not Error instances) with the server's reason in `data`.
+      const apiError =
+        typeof error === "object" &&
+        error !== null &&
+        "isNetworkError" in error &&
+        "status" in error
+          ? (error as ApiError)
+          : null;
+
+      const message =
+        apiError?.message ??
+        (error instanceof Error ? error.message : "Failed to fetch balances");
+
+      logApiError(
+        "balances.fetchAccountBalances",
+        "Network unreachable while fetching account balances",
+        "Failed to fetch account balances",
+        error,
+        {
+          network: params.network,
+          ...(apiError && {
+            status: apiError.status,
+            isNetworkError: apiError.isNetworkError,
+            responseData: apiError.data,
+          }),
+        },
+      );
+
       set({
-        error:
-          error instanceof Error ? error.message : "Failed to fetch balances",
+        error: message,
         isLoading: false,
       });
     }

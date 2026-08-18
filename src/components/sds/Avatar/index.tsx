@@ -18,6 +18,7 @@ export const AvatarSizes = {
   MEDIUM: "md",
   LARGE: "lg",
   EXTRA_LARGE: "xl",
+  DOUBLE_EXTRA_LARGE: "xxl",
 } as const;
 
 export type AvatarSize = (typeof AvatarSizes)[keyof typeof AvatarSizes];
@@ -54,6 +55,14 @@ const AVATAR_DIMENSIONS = {
     height: 50,
     iconSize: 24,
     indicatorSize: 12,
+  },
+  [AvatarSizes.DOUBLE_EXTRA_LARGE]: {
+    dimension: 74,
+    fontSize: 24,
+    width: 74,
+    height: 74,
+    iconSize: 32,
+    indicatorSize: 16,
   },
 } as const;
 
@@ -132,6 +141,7 @@ const AvatarWrapper: React.FC<AvatarWrapperProps> = ({
       md: "w-[38px] h-[38px]",
       lg: "w-[40px] h-[40px]",
       xl: "w-[50px] h-[50px]",
+      xxl: "w-[74px] h-[74px]",
     };
 
     return classes[size];
@@ -160,6 +170,7 @@ const AvatarWrapper: React.FC<AvatarWrapperProps> = ({
       md: "w-4 h-4",
       lg: "w-5 h-5",
       xl: "w-6 h-6",
+      xxl: "w-6 h-6",
     };
 
     return `absolute z-20 -bottom-1 right-0 ${indicatorSizeClasses[size]} rounded-full bg-primary justify-center items-center`;
@@ -308,7 +319,11 @@ export const Avatar: React.FC<AvatarProps> = ({
       hasBackground={hasBackground}
       hasDarkBackground={hasDarkBackground}
     >
-      <Text bold secondary size={size}>
+      <Text
+        bold
+        secondary
+        size={size === AvatarSizes.DOUBLE_EXTRA_LARGE ? "xl" : size}
+      >
         {initials}
       </Text>
     </AvatarWrapper>

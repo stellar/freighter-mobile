@@ -1,4 +1,5 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
+import BigNumber from "bignumber.js";
 import BottomSheet from "components/BottomSheet";
 import { IconButton } from "components/IconButton";
 import InformationBottomSheet from "components/InformationBottomSheet";
@@ -6,6 +7,7 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Input } from "components/sds/Input";
 import { NetworkCongestionIndicator } from "components/sds/NetworkCongestionIndicator";
+import { SegmentedControl } from "components/sds/SegmentedControl";
 import { Text } from "components/sds/Typography";
 import {
   MAX_SLIPPAGE,
@@ -16,7 +18,7 @@ import {
   TransactionSetting,
   mapNetworkToNetworkDetails,
 } from "config/constants";
-import { NetworkCongestion } from "config/types";
+import { FeePresets, FeePriority } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
@@ -25,14 +27,12 @@ import {
   formatNumberForDisplay,
 } from "helpers/formatAmount";
 import { getMemoDisabledState } from "helpers/muxedAddress";
-import {
-  isContractId,
-  isSorobanTransaction as checkIsSorobanTransaction,
-} from "helpers/soroban";
+import { isContractId } from "helpers/soroban";
 import { enforceSettingInputDecimalSeparator } from "helpers/transactionSettingsUtils";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
+import { useFeeDetailsBottomSheet } from "hooks/useFeeDetailsBottomSheet";
 import { useInitialRecommendedFee } from "hooks/useInitialRecommendedFee";
 import { useNetworkFees } from "hooks/useNetworkFees";
 import { useValidateMemo } from "hooks/useValidateMemo";
@@ -53,18 +53,36 @@ type TransactionSettingsBottomSheetProps = {
   onConfirm: () => void;
   context: TransactionContext;
   onSettingsChange?: () => void;
+  /**
+   * Number of operations the transaction bundles. The fee is the TOTAL across
+   * all ops, so the recommended default scales by this and the minimum is
+   * `operationCount × MIN_TRANSACTION_FEE` (a 2-op swap-to-new-token can't
+   * total below 2 × the network per-op minimum). Defaults to 1 (single-op).
+   */
+  operationCount?: number;
 };
 
 // Constants
 const STEP_SIZE_PERCENT = 0.5;
+const PRESET_PRIORITIES: Array<keyof FeePresets> = [
+  FeePriority.LOW,
+  FeePriority.MEDIUM,
+  FeePriority.HIGH,
+];
 
 const TransactionSettingsBottomSheet: React.FC<
   TransactionSettingsBottomSheetProps
-> = ({ onCancel, onConfirm, context, onSettingsChange }) => {
+> = ({
+  onCancel,
+  onConfirm,
+  context,
+  onSettingsChange,
+  operationCount = 1,
+}) => {
   // All hooks at the top
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
-  const { recommendedFee, networkCongestion } = useNetworkFees();
+  const { recommendedFee, networkCongestion, feePresets } = useNetworkFees();
 
   const {
     transactionMemo,
@@ -76,6 +94,8 @@ const TransactionSettingsBottomSheet: React.FC<
     saveMemo: saveTransactionMemo,
     saveTransactionFee,
     saveTransactionTimeout,
+    feePriority: txFeePriority,
+    saveFeePriority: saveTxFeePriority,
   } = useTransactionSettingsStore();
 
   const {
@@ -85,15 +105,19 @@ const TransactionSettingsBottomSheet: React.FC<
     saveSwapFee,
     saveSwapTimeout,
     saveSwapSlippage,
+    feePriority: swapFeePriority,
+    saveFeePriority: saveSwapFeePriority,
   } = useSwapSettingsStore();
 
   const { markAsManuallyChanged } = useInitialRecommendedFee(
     recommendedFee,
     context,
+    operationCount,
+    networkCongestion,
+    feePresets,
   );
 
   const timeoutInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
-  const feeInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const memoInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const slippageInfoBottomSheetModalRef = useRef<BottomSheetModal>(null);
 
@@ -107,15 +131,10 @@ const TransactionSettingsBottomSheet: React.FC<
   const selectedBalance = balanceItems.find(
     (item) => item.id === (selectedTokenId || NATIVE_TOKEN_CODE),
   );
+
   const isCollectibleTransfer =
     Boolean(selectedCollectibleDetails?.collectionAddress) &&
     Boolean(selectedCollectibleDetails?.tokenId);
-
-  // Soroban transaction: collectible transfer, custom token, or recipient is contract address
-  const isSorobanTransaction = Boolean(
-    isCollectibleTransfer ||
-      checkIsSorobanTransaction(selectedBalance, recipientAddress),
-  );
 
   // Keep isCustomToken for contractId determination below
   const isCustomToken = Boolean(
@@ -126,6 +145,13 @@ const TransactionSettingsBottomSheet: React.FC<
 
   const isSorobanRecipient = Boolean(
     recipientAddress && isContractId(recipientAddress),
+  );
+
+  // Derived from current context parameters (balance, recipient, collectible)
+  // rather than the builder store, which may be stale or reflect a different
+  // transaction flow (e.g. a previous send or a swap transaction).
+  const isSorobanTransaction = Boolean(
+    isCollectibleTransfer || isCustomToken || isSorobanRecipient,
   );
 
   // Determine contract ID for Soroban transactions
@@ -193,6 +219,12 @@ const TransactionSettingsBottomSheet: React.FC<
   const memo = context === TransactionContext.Swap ? "" : transactionMemo;
   const storeFee =
     context === TransactionContext.Swap ? swapFee : transactionFee;
+  const storeFeePriority =
+    context === TransactionContext.Swap ? swapFeePriority : txFeePriority;
+  const saveFeePriorityForContext =
+    context === TransactionContext.Swap
+      ? saveSwapFeePriority
+      : saveTxFeePriority;
 
   const timeout =
     context === TransactionContext.Swap ? swapTimeout : transactionTimeout;
@@ -211,13 +243,61 @@ const TransactionSettingsBottomSheet: React.FC<
           TransactionSetting.Memo,
         ];
 
-  // State hooks
-  const [localFee, setLocalFee] = useState(formatNumberForDisplay(storeFee));
+  // Each op needs at least MIN_TRANSACTION_FEE, so a multi-op transaction (e.g.
+  // a swap-to-new-token's changeTrust + path payment) floors the total at
+  // operationCount × that.
+  const minTotalFee = new BigNumber(MIN_TRANSACTION_FEE).times(operationCount);
+  const storeFeeBn = new BigNumber(storeFee);
+  const flooredStoreFee = formatNumberForDisplay(
+    (storeFeeBn.isFinite()
+      ? BigNumber.max(storeFeeBn, minTotalFee)
+      : minTotalFee
+    ).toString(),
+  );
+
+  // Presets are per-op rates; the shown/stored fee is the TOTAL across all ops.
+  // Returns undefined when the preset hasn't loaded yet (empty/NaN), e.g. on a
+  // cold start before the first feeStats fetch resolves.
+  const presetTotalFee = (priority: keyof FeePresets): string | undefined => {
+    const preset = feePresets[priority];
+    if (!preset || new BigNumber(preset).isNaN()) {
+      return undefined;
+    }
+    return new BigNumber(preset).times(operationCount).toString();
+  };
+
+  // The selected tier. Until the user interacts, it mirrors the stored tier
+  // (set from network congestion once the frozen fee snapshot lands), so the
+  // tab, the shown fee, and the congestion icon stay consistent during the
+  // initial load instead of the tab sticking while the others update. Once the
+  // user picks a tier or types, their choice sticks (no further syncing).
+  const feeInteractedRef = useRef(false);
+  const [selectedFeePriority, setSelectedFeePriority] =
+    useState<FeePriority>(storeFeePriority);
+  useEffect(() => {
+    if (!feeInteractedRef.current) {
+      setSelectedFeePriority(storeFeePriority);
+    }
+  }, [storeFeePriority]);
+  // The editable value, used while on the "Custom" tier.
+  const [customFee, setCustomFee] = useState(flooredStoreFee);
   const [localMemo, setLocalMemo] = useState(memo);
   const [localTimeout, setLocalTimeout] = useState(timeout.toString());
   const [localSlippage, setLocalSlippage] = useState(
     enforceSettingInputDecimalSeparator(slippage.toString()),
   );
+
+  // The value shown in the input: for a preset tier it's the current preset
+  // total (kept in step with refetched fees); for Custom it's the editable
+  // amount. (Falls back to the floored store fee if the preset hasn't loaded.)
+  const presetTotal =
+    selectedFeePriority === FeePriority.CUSTOM
+      ? undefined
+      : presetTotalFee(selectedFeePriority);
+  const localFee =
+    selectedFeePriority === FeePriority.CUSTOM
+      ? customFee
+      : (presetTotal && formatNumberForDisplay(presetTotal)) || flooredStoreFee;
 
   useEffect(() => {
     if (isMemoDisabled && localMemo) {
@@ -228,7 +308,10 @@ const TransactionSettingsBottomSheet: React.FC<
 
   // Validation hooks
   const { error: memoError } = useValidateMemo(localMemo);
-  const { error: feeError } = useValidateTransactionFee(localFee);
+  const { error: feeError } = useValidateTransactionFee(
+    localFee,
+    operationCount,
+  );
   const { error: timeoutError } = useValidateTransactionTimeout(localTimeout);
   const { error: slippageError } = useValidateSlippage(localSlippage);
 
@@ -313,8 +396,10 @@ const TransactionSettingsBottomSheet: React.FC<
   );
 
   const handleFeeChange = useCallback((text: string) => {
+    // Manual typing is only possible on the Custom tier; update its value.
+    feeInteractedRef.current = true;
     const normalizedText = enforceSettingInputDecimalSeparator(text);
-    setLocalFee(normalizedText);
+    setCustomFee(normalizedText);
   }, []);
 
   const handleTimeoutChange = useCallback((text: string) => {
@@ -322,21 +407,60 @@ const TransactionSettingsBottomSheet: React.FC<
     setLocalTimeout(integerOnly);
   }, []);
 
-  const getLocalizedCongestionLevel = useCallback(
-    (congestion: NetworkCongestion): string => {
-      switch (congestion) {
-        case NetworkCongestion.LOW:
-          return t("low");
-        case NetworkCongestion.MEDIUM:
-          return t("medium");
-        case NetworkCongestion.HIGH:
-          return t("high");
-        default:
-          return t("low");
-      }
-    },
+  const feePriorityOptions = useMemo(
+    () => [
+      { label: t("transactionSettings.priorityLow"), value: FeePriority.LOW },
+      {
+        label: t("transactionSettings.priorityMed"),
+        value: FeePriority.MEDIUM,
+      },
+      { label: t("transactionSettings.priorityHigh"), value: FeePriority.HIGH },
+      {
+        label: t("transactionSettings.priorityCustom"),
+        value: FeePriority.CUSTOM,
+      },
+    ],
     [t],
   );
+
+  const areFeePresetsLoaded = useMemo(
+    () => PRESET_PRIORITIES.every((priority) => !!feePresets[priority]),
+    [feePresets],
+  );
+
+  const handleFeePriorityChange = useCallback(
+    (value: string | number) => {
+      const priority = value as FeePriority;
+
+      // Keep preset tiers unavailable until we have a fetched preset snapshot.
+      // Custom remains selectable so users can still set a manual fee.
+      // Bail out before flagging the interaction: a discarded tap must not
+      // disable the storeFeePriority sync, or the tab would stay stuck on the
+      // stale tier once the recommended one lands.
+      if (priority !== FeePriority.CUSTOM && !areFeePresetsLoaded) {
+        return;
+      }
+
+      feeInteractedRef.current = true;
+
+      // Preset tiers derive their shown value automatically; switching to
+      // Custom seeds the editable input with the amount currently shown so it
+      // doesn't blank or jump. Persisted on Save (settingSaveCallbacks).
+      if (priority === FeePriority.CUSTOM) {
+        setCustomFee(localFee);
+      }
+      setSelectedFeePriority(priority);
+    },
+    [areFeePresetsLoaded, localFee],
+  );
+
+  // Preview the unsaved fee in the breakdown; skip the override while invalid.
+  const { openFeeDetails, feeDetailsSheets } = useFeeDetailsBottomSheet({
+    isSorobanContext: isSorobanTransaction,
+    inclusionFeeXlmOverride: feeError
+      ? undefined
+      : parseDisplayNumber(localFee).toString(),
+  });
 
   // Data objects and configurations
   const settingErrors = {
@@ -352,6 +476,7 @@ const TransactionSettingsBottomSheet: React.FC<
       saveSlippage(Number(parseDisplayNumber(localSlippage))),
     [TransactionSetting.Fee]: () => {
       markAsManuallyChanged();
+      saveFeePriorityForContext(selectedFeePriority);
       saveFee(parseDisplayNumber(localFee).toString());
     },
     [TransactionSetting.Timeout]: () => saveTimeout(Number(localTimeout)),
@@ -368,9 +493,9 @@ const TransactionSettingsBottomSheet: React.FC<
     // Notify that settings have changed
     onSettingsChange?.();
 
-    // Dismiss the sheet and keyboard together
-    onConfirm();
+    // Dismiss keyboard before onConfirm so any focus side-effects don't reopen it
     Keyboard.dismiss();
+    onConfirm();
   };
 
   // Render functions
@@ -491,53 +616,34 @@ const TransactionSettingsBottomSheet: React.FC<
         <View className="flex flex-row items-center justify-between">
           <View className="flex flex-row items-center gap-2">
             <Text sm secondary>
-              {t("transactionSettings.feeTitle")}
+              {isSorobanTransaction
+                ? t("transactionSettings.inclusionFeeTitle")
+                : t("transactionSettings.feeTitle")}
             </Text>
-            <TouchableOpacity
-              onPress={() => feeInfoBottomSheetModalRef.current?.present()}
-            >
+            <TouchableOpacity testID="fee-info-button" onPress={openFeeDetails}>
               <Icon.InfoCircle themeColor="gray" size={16} />
             </TouchableOpacity>
           </View>
-          <TouchableOpacity
-            onPress={() => {
-              markAsManuallyChanged();
-              setLocalFee(
-                formatNumberForDisplay(recommendedFee || MIN_TRANSACTION_FEE),
-              );
-            }}
-          >
-            <Text sm medium color={themeColors.lilac[11]}>
-              {t("transactionSettings.resetFee")}
+          <View className="flex flex-row items-center gap-2">
+            <NetworkCongestionIndicator level={networkCongestion} size={16} />
+            <Text sm secondary>
+              {t("transactionSettings.network")}
             </Text>
-          </TouchableOpacity>
+          </View>
         </View>
         <View className="flex flex-row mt-[4px] items-center gap-2">
           <Input
             fieldSize="lg"
+            testID="fee-input"
             value={localFee}
             leftElement={<Icon.Route size={16} themeColor="gray" />}
             onChangeText={handleFeeChange}
             keyboardType="numeric"
             placeholder={formatNumberForDisplay(MIN_TRANSACTION_FEE)}
             error={feeError}
-            note={
-              <View className="flex-row items-center gap-2">
-                <NetworkCongestionIndicator
-                  level={networkCongestion}
-                  size={16}
-                />
-
-                <View className="h-6">
-                  <Text sm secondary>
-                    {t("transactionSettings.congestion", {
-                      networkCongestion:
-                        getLocalizedCongestionLevel(networkCongestion),
-                    })}
-                  </Text>
-                </View>
-              </View>
-            }
+            // Low/Med/High lock the fee to a network preset; only "Custom"
+            // allows manual entry.
+            editable={selectedFeePriority === FeePriority.CUSTOM}
             rightElement={
               <Text md secondary>
                 {NATIVE_TOKEN_CODE}
@@ -545,18 +651,26 @@ const TransactionSettingsBottomSheet: React.FC<
             }
           />
         </View>
+        <View className="mt-[4px]">
+          <SegmentedControl
+            options={feePriorityOptions}
+            selectedValue={selectedFeePriority}
+            onValueChange={handleFeePriorityChange}
+          />
+        </View>
       </View>
     ),
     [
+      isSorobanTransaction,
+      openFeeDetails,
       localFee,
       feeError,
       t,
-      themeColors.lilac,
       networkCongestion,
-      getLocalizedCongestionLevel,
       handleFeeChange,
-      recommendedFee,
-      markAsManuallyChanged,
+      feePriorityOptions,
+      selectedFeePriority,
+      handleFeePriorityChange,
     ],
   );
 
@@ -624,23 +738,6 @@ const TransactionSettingsBottomSheet: React.FC<
         {
           key: "description",
           value: t("transactionSettings.slippageInfo.description"),
-        },
-      ],
-    },
-    {
-      IconComponent: Icon.Route,
-      key: "feeInfo" as const,
-      modalRef: feeInfoBottomSheetModalRef,
-      title: t("transactionSettings.feeInfo.title"),
-      onClose: () => feeInfoBottomSheetModalRef.current?.dismiss(),
-      texts: [
-        {
-          key: "description",
-          value: t("transactionSettings.feeInfo.description"),
-        },
-        {
-          key: "additionalInfo",
-          value: t("transactionSettings.feeInfo.additionalInfo"),
         },
       ],
     },
@@ -714,6 +811,7 @@ const TransactionSettingsBottomSheet: React.FC<
           />
         ),
       )}
+      {feeDetailsSheets}
     </View>
   );
 };

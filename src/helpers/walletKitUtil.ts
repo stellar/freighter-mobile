@@ -46,6 +46,43 @@ const stellarNamespaceMethods = [
 /** Supported Stellar RPC events for WalletKit */
 const stellarNamespaceEvents = [StellarRpcEvents.ACCOUNTS_CHANGED];
 
+/**
+ * Decide which signing.*_rejected event (if any) a dApp-request teardown should
+ * emit. Pure so the reject-vs-not decision is unit-testable without rendering
+ * the provider.
+ *
+ * A rejection is emitted ONLY for a genuine user dismissal of a still-pending
+ * request:
+ * - `hasResponded` (approveSessionRequest already sent a WC response) => the
+ *   request was approved/completed, never a rejection.
+ * - `approvalInFlight` (the user hit Approve — success OR an unexpected throw in
+ *   approveSessionRequest) => an approval attempt, not a dismissal; the throw
+ *   still triggers a WC-level fallback rejection but must not be counted as a
+ *   user reject in analytics.
+ * - no active `requestEvent` => nothing to reject.
+ */
+export const resolveDappRejectionEvent = (args: {
+  requestMethod?: StellarRpcMethods;
+  hasRequestEvent: boolean;
+  hasResponded: boolean;
+  approvalInFlight: boolean;
+}): "message" | "auth_entry" | "transaction" | null => {
+  if (!args.hasRequestEvent || args.hasResponded || args.approvalInFlight) {
+    return null;
+  }
+  switch (args.requestMethod) {
+    case StellarRpcMethods.SIGN_MESSAGE:
+      return "message";
+    case StellarRpcMethods.SIGN_AUTH_ENTRY:
+      return "auth_entry";
+    case StellarRpcMethods.SIGN_XDR:
+    case StellarRpcMethods.SIGN_AND_SUBMIT_XDR:
+      return "transaction";
+    default:
+      return null;
+  }
+};
+
 /** Global WalletKit instance */
 // eslint-disable-next-line import/no-mutable-exports
 export let walletKit: IWalletKit;
@@ -235,6 +272,7 @@ export const approveSessionRequest = async ({
   signMessage,
   signAuthEntry,
   networkPassphrase,
+  publicKey,
   activeChain,
   showToast,
   t,
@@ -248,6 +286,7 @@ export const approveSessionRequest = async ({
     preimageXdr: string,
   ) => { signedAuthEntry: string; signerAddress: string } | null;
   networkPassphrase: string;
+  publicKey: string;
   activeChain: string;
   showToast: (options: ToastOptions) => void;
   t: TFunction<"translations", undefined>;
@@ -392,7 +431,11 @@ export const approveSessionRequest = async ({
     // Defense-in-depth: validate content, XDR format, and network ID.
     // These should already be caught by WalletKitProvider pre-validation,
     // but we re-check at approval time to prevent any bypass.
-    const validationResult = validateSignAuthEntry(entryXdr, networkPassphrase);
+    const validationResult = validateSignAuthEntry(
+      entryXdr,
+      networkPassphrase,
+      publicKey,
+    );
     if (!validationResult.valid) {
       const errorMessage = t(validationResult.errorKey);
       showToast({
@@ -508,7 +551,6 @@ export const approveSessionRequest = async ({
     dappDomain = dappMetadata?.url;
 
     analytics.trackSignedTransaction({
-      transactionHash: transaction.hash().toString("hex"),
       ...(dappDomain ? { dappDomain } : {}),
     });
   } catch (error) {
@@ -535,7 +577,6 @@ export const approveSessionRequest = async ({
       });
 
       analytics.trackSubmittedTransaction({
-        transactionHash: transaction.hash().toString("hex"),
         ...(dappDomain ? { dappDomain } : {}),
       });
     } catch (error) {
@@ -685,7 +726,10 @@ export const disconnectSession = async (topic: string): Promise<void> => {
   } catch (error) {
     logger.error(
       "disconnectSession",
-      `Failed to disconnect session. topic: ${topic}`,
+      // Truncate the WC topic - it's a session-scoped token, not
+      // useful in full and unnecessary to ship verbatim to Sentry.
+      // Prefix is enough for cross-log correlation within a session.
+      `Failed to disconnect session. topic: ${topic.slice(0, 8)}...`,
       error,
     );
   }
@@ -733,11 +777,15 @@ export const disconnectAllSessions = async (
       "All sessions disconnected successfully",
     );
   } catch (error) {
-    // Let's not block the user from logging out if this fails
+    // Let's not block the user from logging out if this fails.
+    // publicKey goes through the args extras so sanitizeLogData can
+    // redact it for opt-out users (interpolating it into the message
+    // would bypass the redactor and ship it to Sentry verbatim).
     logger.error(
       "disconnectAllSessions",
-      `Failed to disconnect all sessions. publicKey: ${publicKey}, network: ${network}`,
+      "Failed to disconnect all sessions",
       error,
+      { publicKey, network },
     );
   }
 };

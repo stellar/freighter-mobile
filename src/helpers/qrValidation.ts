@@ -102,3 +102,55 @@ export const validateQRCodeWalletAddress = (
     error: QRCodeError.INVALID_FORMAT,
   };
 };
+
+/**
+ * Discriminated union representing the result of parsing a QR code payload.
+ * This is purely syntactic — async validation (federation resolution,
+ * destination-funded checks) happens in the calling hook via searchAddress().
+ */
+export type QRPayload =
+  | { type: "stellar_address"; address: string }
+  | { type: "wallet_connect"; uri: string }
+  | { type: "invalid"; error: QRCodeError };
+
+/**
+ * Parse a QR code payload into a typed discriminated union.
+ *
+ * Priority order:
+ * 1. WalletConnect URI (unambiguous "wc:" prefix)
+ * 2. Stellar address (G, C, M, or federation)
+ * 3. Invalid
+ *
+ * Self-send check (exact string match) is included since it's synchronous.
+ * Async validation (federation resolution, muxed equivalence, destination
+ * status) is NOT handled here — that's the responsibility of searchAddress().
+ *
+ * @param data - Raw QR code string
+ * @param currentPublicKey - Current user's public key for self-send detection
+ * @returns Typed payload result
+ */
+export const parseQRPayload = (
+  data: string,
+  currentPublicKey?: string,
+): QRPayload => {
+  const trimmed = data.trim();
+
+  // Priority 1: WalletConnect URI (unambiguous prefix)
+  if (isValidWalletConnectURI(trimmed)) {
+    return { type: "wallet_connect", uri: trimmed };
+  }
+
+  // Priority 2: Stellar address
+  const addressResult = validateQRCodeWalletAddress(trimmed, currentPublicKey);
+  if (addressResult.isValid) {
+    return { type: "stellar_address", address: trimmed };
+  }
+
+  // If it was detected as a Stellar address but failed self-send check
+  if (addressResult.type === QRCodeType.STELLAR_ADDRESS) {
+    return { type: "invalid", error: addressResult.error! };
+  }
+
+  // Priority 3: Invalid
+  return { type: "invalid", error: QRCodeError.INVALID_FORMAT };
+};

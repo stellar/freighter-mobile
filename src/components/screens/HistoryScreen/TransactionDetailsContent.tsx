@@ -13,9 +13,7 @@ const TransactionDetailsContent: React.FC<TransactionDetailsContentProps> = ({
   children,
   className,
 }) => (
-  <View
-    className={`flex-1 justify-center bg-background-tertiary rounded-2xl p-6 gap-3 ${className}`}
-  >
+  <View className={`bg-background-tertiary rounded-2xl p-6 gap-3 ${className}`}>
     {children}
   </View>
 );

@@ -6,6 +6,9 @@ import {
   recalculateFiatAmountFromToken,
   normalizeInternalAmount,
   areNumericValuesEqual,
+  createTokenFiatConverterReducer,
+  initialState,
+  TokenFiatConverterActionType,
 } from "hooks/useTokenFiatConverter/reducer";
 import * as ReactNativeLocalize from "react-native-localize";
 
@@ -184,6 +187,47 @@ describe("useTokenFiatConverter reducer helper functions", () => {
         const result = areNumericValuesEqual(value1, value2);
         expect(result).toBe(false);
       },
+    );
+  });
+});
+
+describe("SET_DISPLAY_AMOUNT_FROM_TEXT — paste sanitization", () => {
+  beforeEach(() => {
+    // US locale: decimal ".", grouping ",".
+    jest
+      .spyOn(ReactNativeLocalize, "getNumberFormatSettings")
+      .mockReturnValue({ decimalSeparator: ".", groupingSeparator: "," });
+  });
+
+  const reduce = (text: string, state = initialState) => {
+    const reducer = createTokenFiatConverterReducer(
+      new BigNumber(0),
+      DEFAULT_DECIMALS,
+    );
+    return reducer(state, {
+      type: TokenFiatConverterActionType.SET_DISPLAY_AMOUNT_FROM_TEXT,
+      payload: { text },
+    });
+  };
+
+  it("accepts a grouped paste and stores the parsed token amount", () => {
+    expect(reduce("1,234.56").tokenAmount).toBe("1234.56");
+  });
+
+  it("reads a foreign-decimal paste via group-width validation (5,2 → 5.2)", () => {
+    expect(reduce("5,2").tokenAmount).toBe("5.2");
+  });
+
+  it("rejects an unparseable paste: bumps pasteRejectNonce, keeps the amount", () => {
+    const start = { ...initialState, tokenAmount: "10" };
+    const result = reduce("1.2.3", start);
+    expect(result.tokenAmount).toBe("10");
+    expect(result.pasteRejectNonce).toBe(start.pasteRejectNonce + 1);
+  });
+
+  it("does not bump pasteRejectNonce on a valid paste", () => {
+    expect(reduce("1,234.56").pasteRejectNonce).toBe(
+      initialState.pasteRejectNonce,
     );
   });
 });

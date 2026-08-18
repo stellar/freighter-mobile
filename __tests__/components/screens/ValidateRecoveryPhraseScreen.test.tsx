@@ -62,9 +62,14 @@ jest.mock("hooks/useAppTranslation", () => () => ({
   },
 }));
 
-const mockSignUp = jest.fn(() => Promise.resolve());
+const mockSignUp = jest.fn(() => Promise.resolve(true));
+const mockNotifySetupFailed = jest.fn();
 let mockIsLoading = false;
 let mockError: string | null = null;
+
+jest.mock("hooks/useSetupFailedToast", () => ({
+  useSetupFailedToast: () => mockNotifySetupFailed,
+}));
 
 jest.mock("ducks/auth", () => ({
   useAuthenticationStore: jest.fn((selector) => {
@@ -73,6 +78,7 @@ jest.mock("ducks/auth", () => ({
         signUp: mockSignUp,
         error: mockError,
         isLoading: mockIsLoading,
+        clearError: jest.fn(),
         setSignInMethod: jest.fn(),
         storeBiometricPassword: jest.fn(() => Promise.resolve()),
       });
@@ -81,6 +87,7 @@ jest.mock("ducks/auth", () => ({
       signUp: mockSignUp,
       error: mockError,
       isLoading: mockIsLoading,
+      clearError: jest.fn(),
       setSignInMethod: jest.fn(),
       storeBiometricPassword: jest.fn(() => Promise.resolve()),
     };
@@ -219,6 +226,36 @@ describe("ValidateRecoveryPhraseScreen", () => {
         mnemonicPhrase:
           "test phrase one two three four five six seven eight nine ten eleven twelve",
       });
+    });
+  });
+
+  it("notifies setup failure (and does not finish) when signUp returns false", async () => {
+    // signUp returns false (rather than throwing) on failure — the screen must
+    // surface a setup-failed toast and not proceed as success.
+    mockSignUp.mockResolvedValueOnce(false);
+    renderScreen();
+
+    let button = screen.getByTestId("default-action-button");
+    await user.press(screen.getByTestId(`word-bubble-${words[0]}`));
+    await user.press(button);
+    await waitFor(() => {
+      expect(screen.getByText(/enter word #2/i)).toBeTruthy();
+    });
+
+    button = screen.getByTestId("default-action-button");
+    await user.press(screen.getByTestId(`word-bubble-${words[1]}`));
+    await user.press(button);
+    await waitFor(() => {
+      expect(screen.getByText(/enter word #3/i)).toBeTruthy();
+    });
+
+    button = screen.getByTestId("default-action-button");
+    await user.press(screen.getByTestId(`word-bubble-${words[2]}`));
+    await user.press(button);
+
+    await waitFor(() => {
+      expect(mockSignUp).toHaveBeenCalled();
+      expect(mockNotifySetupFailed).toHaveBeenCalledTimes(1);
     });
   });
 

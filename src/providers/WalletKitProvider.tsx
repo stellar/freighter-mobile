@@ -32,6 +32,7 @@ import {
   approveSessionRequest,
   rejectSessionRequest,
   rejectSessionProposal,
+  resolveDappRejectionEvent,
 } from "helpers/walletKitUtil";
 import {
   validateSignMessageContent,
@@ -39,6 +40,7 @@ import {
   validateSignAuthEntryContent,
   parseAuthEntryPreimage,
   validateAuthEntryNetwork,
+  validateAuthEntryAddress,
 } from "helpers/walletKitValidation";
 import { useBlockaidSite } from "hooks/blockaid/useBlockaidSite";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
@@ -139,6 +141,12 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   // its own response (success or handled error) so handleClearDappRequest doesn't
   // send a duplicate rejection when it fires via .finally().
   const hasRespondedRef = useRef(false);
+  // True once the user has committed to approving (handleDappRequest called
+  // approveSessionRequest). Distinguishes an approval attempt — whether it
+  // succeeds or throws — from a genuine user dismissal, so the exceptional
+  // approve-threw path isn't miscounted as a signing.*_rejected. Reset with
+  // hasRespondedRef in the teardown.
+  const approvalInFlightRef = useRef(false);
 
   const xdr = useMemo(
     () =>
@@ -264,7 +272,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
    * Security warnings extracted from scan result
    * @type {SecurityWarning[]}
    */
-  const siteSecurityWarnings = useMemo(() => {
+  const siteSecurityWarnings = useMemo<SecurityWarning[]>(() => {
     if (siteSecurityAssessment.isUnableToScan) {
       // For "Unable to scan" cases, always provide a warning so the list renders
       return [
@@ -273,6 +281,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
           description:
             siteSecurityAssessment.details ||
             t("blockaid.unableToScan.site.description"),
+          severity: "warning",
         },
       ];
     }
@@ -298,7 +307,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     t,
   ]);
 
-  const transactionSecurityWarnings = useMemo(() => {
+  const transactionSecurityWarnings = useMemo<SecurityWarning[]>(() => {
     if (transactionSecurityAssessment.isUnableToScan) {
       // For "Unable to scan" cases, always provide a warning so the list renders
       return [
@@ -307,6 +316,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
           description:
             transactionSecurityAssessment.details ||
             t("securityWarning.unsafeTransaction"),
+          severity: "warning",
         },
       ];
     }
@@ -434,12 +444,37 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 
     // We need to explicitly reject the request here otherwise
     // the app will show the request again on next app launch.
-    // Skip if approveSessionRequest already sent a response.
+    // Skip if approveSessionRequest already sent a response. This WC-level
+    // fallback fires on BOTH a user dismissal AND the exceptional case where
+    // approveSessionRequest threw (so the dApp isn't left hanging).
     if (requestEvent && !hasRespondedRef.current) {
       rejectSessionRequest({
         sessionRequest: requestEvent,
         message: t("walletKit.userRejected"),
       });
+    }
+
+    // Analytics rejection is narrower than the WC fallback: only a genuine user
+    // dismissal of a pending request counts. An approved/completed request
+    // (hasResponded) or an approve-attempt that threw (approvalInFlight) is not
+    // a user reject — resolveDappRejectionEvent encodes exactly that.
+    const rejectionEvent = resolveDappRejectionEvent({
+      requestMethod: requestMethod as StellarRpcMethods | undefined,
+      hasRequestEvent: !!requestEvent,
+      hasResponded: hasRespondedRef.current,
+      approvalInFlight: approvalInFlightRef.current,
+    });
+    if (rejectionEvent && requestEvent) {
+      const dappDomain =
+        getDappMetadataFromEvent(requestEvent, activeSessions)?.url || "";
+      const payload = dappDomain ? { dappDomain } : {};
+      if (rejectionEvent === "message") {
+        analytics.trackSignedMessageRejected(payload);
+      } else if (rejectionEvent === "auth_entry") {
+        analytics.trackSignedAuthEntryRejected(payload);
+      } else {
+        analytics.trackSignedTransactionRejected(payload);
+      }
     }
 
     setTimeout(() => {
@@ -452,6 +487,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       saveMemo("");
       clearEvent();
       hasRespondedRef.current = false;
+      approvalInFlightRef.current = false;
 
       // Mark processing as complete and process pending request if any
       isProcessingRequestRef.current = false;
@@ -532,6 +568,9 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     }
 
     setIsSigning(true);
+    // The user committed to approving — mark it so a teardown (including the
+    // exceptional approve-threw .catch path) is not miscounted as a user reject.
+    approvalInFlightRef.current = true;
 
     approveSessionRequest({
       sessionRequest: requestEvent,
@@ -539,6 +578,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       signMessage,
       signAuthEntry,
       networkPassphrase: networkDetails.networkPassphrase,
+      publicKey,
       activeChain,
       showToast,
       t,
@@ -684,7 +724,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       return false;
     }
 
-    // Step 2: Validate message length (1KB limit per SEP-53)
+    // Step 2: Validate message length (sanity cap; SEP-53 imposes no limit)
     const lengthResult = validateSignMessageLength(contentResult.value);
     if (!lengthResult.valid) {
       showToast({
@@ -795,6 +835,33 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   };
 
   /**
+   * Validates that a CAP-71 (ADDRESS_V2) preimage is bound to the active
+   * wallet account. Rejects the request on mismatch.
+   */
+  const prevalidateSignAuthEntryAddress = (
+    sessionRequest: WalletKitSessionRequest,
+    preimage: stellarXdr.HashIdPreimage,
+  ): boolean => {
+    const result = validateAuthEntryAddress(preimage, publicKey);
+    if (!result.valid) {
+      showToast({
+        title: t("walletKit.invalidRequestTitle"),
+        message: t(result.errorKey),
+        variant: "error",
+      });
+      rejectSessionRequest({
+        sessionRequest,
+        message: t(result.errorKey),
+      });
+      clearEvent();
+      isProcessingRequestRef.current = false;
+      return false;
+    }
+
+    return true;
+  };
+
+  /**
    * Orchestrates all sign_auth_entry pre-validations.
    * @returns true if all validations pass, false if any fail (rejection handled)
    */
@@ -821,6 +888,11 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       return false;
     }
 
+    // Step 4: Validate bound address (CAP-71 ADDRESS_V2) matches active wallet
+    if (!prevalidateSignAuthEntryAddress(sessionRequest, preimage)) {
+      return false;
+    }
+
     return true;
   };
 
@@ -841,9 +913,11 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         message: t("walletKit.userNotAuthenticated"),
       });
 
-      analytics.trackGrantAccessFail(
+      // Auto-declined because the wallet isn't authenticated — a system block,
+      // not a user rejection → dapp_access.blocked (distinct from .rejected).
+      analytics.trackGrantAccessBlocked(
         sessionProposal.params.proposer.metadata.url,
-        "user_not_authenticated",
+        "not_authenticated",
       );
 
       clearEvent();
@@ -907,7 +981,8 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   const handleSessionRequest = (sessionRequest: WalletKitSessionRequest) => {
     // Simple queue: if already processing a request, store this one as pending
     if (isProcessingRequestRef.current) {
-      logger.warn(
+      // Normal queue flow, not an error condition.
+      logger.info(
         "WalletKitProvider",
         "Request already in progress, queuing new request",
         {
@@ -1012,17 +1087,19 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         variant: "error",
       });
 
+      // The exact-hostname comparison above produces false positives
+      // on legitimate subdomain drift — every flagged origin
+      // inspected so far has been a legitimate dApp or developer
+      // environment. The factual message + the
+      // transactionRequestOrigin arg below are enough to triage which
+      // dApp tripped the check.
       logger.error(
         "WalletKitProvider",
         "Invalid transaction origin",
         new Error(
-          "Untrusted Transaction Domain. Bad actor potentially found in transaction request.",
+          "WalletConnect transaction request origin does not match any active session hostname",
         ),
-        {
-          transactionRequestOrigin,
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-          xdr: sessionRequest.params?.request?.params?.xdr,
-        },
+        { transactionRequestOrigin },
       );
 
       rejectSessionRequest({

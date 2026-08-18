@@ -5,10 +5,19 @@ import { useBalancesStore } from "ducks/balances";
 import { getTokenType } from "helpers/balances";
 import { useCallback, useMemo, useState } from "react";
 
+/**
+ * A held PricedBalance that carries the canonical `id` ("XLM" or
+ * "CODE:ISSUER") plus the resolved `tokenType`. Re-exported so swap
+ * hooks share a single source of truth instead of redeclaring this
+ * intersection locally.
+ */
+export type HeldBalanceItem = PricedBalance & {
+  id: string;
+  tokenType: TokenTypeWithCustomToken;
+};
+
 interface UseBalancesListResult {
-  balanceItems: Array<
-    PricedBalance & { id: string; tokenType: TokenTypeWithCustomToken }
-  >;
+  balanceItems: HeldBalanceItem[];
   scanResults: Blockaid.TokenBulk.TokenBulkScanResponse["results"];
   isLoading: boolean;
   error: string | null;

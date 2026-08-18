@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from "axios";
+import { logger } from "config/logger";
 import { debug } from "helpers/debug";
 
 /**
@@ -91,6 +92,43 @@ export interface ApiServiceOptions {
   headers?: Record<string, string>;
   /** Whether to log requests and responses */
   logRequests?: boolean;
+  /**
+   * Optional hook invoked on the raw AxiosInstance BEFORE the error-normalizing
+   * response interceptor is registered.  Use this to attach interceptors that
+   * must run BEFORE the normalizer on the error path (e.g. a 401-retry handler
+   * that needs access to `error.response` and `error.config` — both of which
+   * the normalizer strips when it converts the AxiosError into a plain ApiError).
+   *
+   * Axios runs response interceptors in registration order, so any response
+   * interceptor added here is guaranteed to see the raw AxiosError.
+   *
+   * @example
+   * createApiService({ baseURL, configureInstance: attachAuthInterceptors })
+   */
+  configureInstance?: (instance: AxiosInstance) => void;
+}
+
+/**
+ * Type guard that returns true for any value that has already been normalized
+ * into an ApiError by the apiFactory response interceptor.  Used by the
+ * normalizer itself to make error normalization idempotent: when a nested
+ * instance.request() (e.g. the JWT 401-retry in attachAuth) surfaces an
+ * ApiError up through the outer interceptor chain, the normalizer must not
+ * re-process it — doing so would clobber the real status (e.g. 401 → 0)
+ * because ApiError carries no .response field.
+ */
+export function isApiError(error: unknown): error is ApiError {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    !axios.isAxiosError(error) &&
+    "status" in error &&
+    typeof (error as ApiError).status === "number" &&
+    "isNetworkError" in error &&
+    typeof (error as ApiError).isNetworkError === "boolean" &&
+    "message" in error &&
+    typeof (error as ApiError).message === "string"
+  );
 }
 
 /**
@@ -135,6 +173,7 @@ export function createApiService(options: ApiServiceOptions) {
       Accept: "application/json",
     },
     logRequests = false,
+    configureInstance,
   } = options;
 
   // Create axios instance
@@ -145,27 +184,72 @@ export function createApiService(options: ApiServiceOptions) {
   });
 
   if (logRequests) {
+    // Never log the Bearer token (this instance may carry per-request JWT auth
+    // via configureInstance). Mask any Authorization header at any depth —
+    // covers request.headers and response.config.headers.
+    const redactAuth = (key: string, value: unknown) =>
+      /^authorization$/i.test(key) ? "[REDACTED]" : value;
+
     instance.interceptors.request.use((request) => {
-      debug("Starting Request", JSON.stringify(request, null, 2));
+      debug("Starting Request", JSON.stringify(request, redactAuth, 2));
       return request;
     });
 
     instance.interceptors.response.use((response) => {
-      debug("Response:", JSON.stringify(response, null, 2));
+      debug("Response:", JSON.stringify(response, redactAuth, 2));
       return response;
     });
   }
+
+  // Allow the caller to register interceptors on the raw instance BEFORE the
+  // error-normalizing response interceptor below.  Axios runs response
+  // interceptors in registration order, so any response interceptor added by
+  // this hook sees the original AxiosError (with .response / .config intact)
+  // before the normalizer converts it to a plain ApiError and drops those
+  // fields.  This is the correct insertion point for a 401-retry handler.
+  configureInstance?.(instance);
 
   // Add response interceptor for error handling
   instance.interceptors.response.use(
     (response) => response,
     /* eslint-disable @typescript-eslint/no-unsafe-member-access */
     (error) => {
+      // If the error is already a normalized ApiError (e.g. surfaced from a
+      // nested instance.request() inside another interceptor, like the JWT
+      // 401-retry), don't re-normalize — a second pass would clobber the
+      // real status (e.g. 401) to 0 because ApiError has no .response field.
+      if (isApiError(error)) {
+        // eslint-disable-next-line @typescript-eslint/no-throw-literal
+        throw error;
+      }
+
+      // When the server didn't respond at all (offline, DNS, TLS failure,
+      // captive portal, request aborted before headers), use 0 as the
+      // status to match the ApiError contract ("HTTP status code (or 0
+      // if no response)"). Avoid defaulting to a real HTTP code like
+      // 500: that would make connectivity failures indistinguishable
+      // from genuine backend errors in error reporting.
+      //
+      // `isNetworkError` is reserved for genuine connectivity failures
+      // (offline, DNS, TLS, captive portal). Axios timeouts also have
+      // `error.response === undefined` but represent backend latency,
+      // not connectivity - they are deliberately excluded so consumers
+      // branching on `isApiNetworkError` route them to `logger.error`
+      // and preserve Sentry visibility for latency regressions.
       const apiError: ApiError = {
         message: error.message || "An error occurred",
-        status: error.response?.status || 500,
+        status: error.response?.status ?? 0,
         data: error.response?.data,
-        isNetworkError: !error.response,
+        // ECONNABORTED is the axios code for "request aborted by the
+        // client" - which in practice almost always means the
+        // configured `timeout` elapsed before the server responded.
+        // Excluding it from `isNetworkError` keeps timeouts on the
+        // logger.error path (real backend latency) rather than the
+        // logger.warn / connectivity path.
+        isNetworkError:
+          axios.isAxiosError(error) &&
+          !error.response &&
+          error.code !== "ECONNABORTED",
       };
       /* eslint-enable @typescript-eslint/no-unsafe-member-access */
 
@@ -266,7 +350,11 @@ export function createApiService(options: ApiServiceOptions) {
      * Makes a POST request
      *
      * @param url The URL to request (will be appended to baseURL)
-     * @param data The data to send in the request body
+     * @param data The request body, typed `unknown` — pass a plain object.
+     * (The `TWriteBody` generic was removed with the string-only body contract.)
+     * On an auth-wired instance (see `configureInstance`), the request
+     * interceptor JSON-serializes object bodies centrally so the signed JWT
+     * `bodyHash` matches the wire bytes; string bodies pass through untouched.
      * @param config Additional request configuration
      * @returns Promise with the API response
      *
@@ -282,9 +370,9 @@ export function createApiService(options: ApiServiceOptions) {
      *   { headers: { 'X-Custom-Header': 'value' } }
      * );
      */
-    async post<T, D = unknown>(
+    async post<T>(
       url: string,
-      data?: D,
+      data?: unknown,
       config?: RequestConfig,
     ): Promise<ApiResponse<T>> {
       const { retry, ...axiosConfig } = config || {};
@@ -303,7 +391,11 @@ export function createApiService(options: ApiServiceOptions) {
      * Makes a PUT request
      *
      * @param url The URL to request (will be appended to baseURL)
-     * @param data The data to send in the request body
+     * @param data The request body, typed `unknown` — pass a plain object.
+     * (The `TWriteBody` generic was removed with the string-only body contract.)
+     * On an auth-wired instance (see `configureInstance`), the request
+     * interceptor JSON-serializes object bodies centrally so the signed JWT
+     * `bodyHash` matches the wire bytes; string bodies pass through untouched.
      * @param config Additional request configuration
      * @returns Promise with the API response
      *
@@ -311,9 +403,9 @@ export function createApiService(options: ApiServiceOptions) {
      * // Basic PUT request
      * const { data } = await api.put('/users/123', { name: 'Updated Name' });
      */
-    async put<T, D = unknown>(
+    async put<T>(
       url: string,
-      data?: D,
+      data?: unknown,
       config?: RequestConfig,
     ): Promise<ApiResponse<T>> {
       const { retry, ...axiosConfig } = config || {};
@@ -394,15 +486,53 @@ export function createApiService(options: ApiServiceOptions) {
 }
 
 export function isRequestCanceled(error: unknown): boolean {
-  // Axios <1 style
+  // Axios <1 cancels.
   if (axios.isCancel(error)) return true;
 
-  // Axios >=1 + AbortController style
+  // Axios >=1 + AbortController surfaces a cancel as a plain object
+  // with `message: "canceled"`.
+  if (typeof error !== "object" || error === null) return false;
   return (
-    (error instanceof DOMException && error.name === "CanceledError") ||
-    (typeof error === "object" &&
-      error !== null &&
-      "message" in error &&
-      error.message === "canceled")
+    "message" in error && (error as { message?: string }).message === "canceled"
   );
 }
+
+/**
+ * Type guard for ApiError values produced by the apiFactory response
+ * interceptor when the server didn't respond at all (offline, DNS, TLS,
+ * captive portal, etc.). Use this to branch error handling so connectivity
+ * failures don't get logged with the same severity as real backend bugs.
+ */
+export function isApiNetworkError(error: unknown): error is ApiError {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "isNetworkError" in error &&
+    (error as ApiError).isNetworkError === true
+  );
+}
+
+/**
+ * Routes an API error to `logger.warn` (connectivity failures) or
+ * `logger.error` (real backend bugs / timeouts) based on
+ * `isApiNetworkError`.
+ *
+ * @param context     Logger context (typically the module/function name)
+ * @param warnMessage Message used when the failure is a connectivity issue
+ * @param errorMessage Message used when the failure is a real backend bug
+ * @param error       The thrown value from the API call
+ * @param args        Optional structured args forwarded to the logger
+ */
+export const logApiError = (
+  context: string,
+  warnMessage: string,
+  errorMessage: string,
+  error: unknown,
+  ...args: unknown[]
+): void => {
+  if (isApiNetworkError(error)) {
+    logger.warn(context, warnMessage, error, ...args);
+  } else {
+    logger.error(context, errorMessage, error, ...args);
+  }
+};

@@ -265,7 +265,7 @@ describe("browser helpers", () => {
       const result = await clearAllCookies();
 
       expect(result).toBe(false);
-      expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect(mockLogger.info).toHaveBeenCalledWith(
         "clearAllCookies",
         "Cookie cleanup may have failed",
       );
@@ -313,7 +313,7 @@ describe("browser helpers", () => {
       const result = await clearAllWebViewData();
 
       expect(result).toBe(false);
-      expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect(mockLogger.info).toHaveBeenCalledWith(
         "clearAllWebViewData",
         "WebView data cleanup may have failed",
       );
@@ -326,7 +326,7 @@ describe("browser helpers", () => {
       const result = await clearAllWebViewData();
 
       expect(result).toBe(false);
-      expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect(mockLogger.info).toHaveBeenCalledWith(
         "clearAllWebViewData",
         "WebView data cleanup may have failed",
       );

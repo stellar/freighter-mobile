@@ -1,4 +1,4 @@
-import { userEvent, act } from "@testing-library/react-native";
+import { fireEvent, act } from "@testing-library/react-native";
 import HomeScreen from "components/screens/HomeScreen";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
@@ -29,6 +29,16 @@ jest.mock("components/sds/Icon", () => ({
 jest.mock("components/screens/HomeScreen/ManageAccountBottomSheet", () => ({
   __esModule: true,
   default: function MockManageAccountBottomSheet() {
+    return null;
+  },
+  ManageAccountSheetHeader: function MockManageAccountSheetHeader() {
+    return null;
+  },
+}));
+
+jest.mock("components/screens/HomeScreen/ConnectedApps", () => ({
+  __esModule: true,
+  default: function MockConnectedApps() {
     return null;
   },
 }));
@@ -97,12 +107,16 @@ const mockFetchAccountBalances = jest.fn().mockResolvedValue(undefined);
 const mockFetchCollectibles = jest.fn().mockResolvedValue(undefined);
 const mockFetchActiveSessions = jest.fn().mockResolvedValue(undefined);
 
+// Mutable so tests can simulate the initial balances fetch settling
+// (read lazily at render time, after jest hoisting).
+let mockIsLoadingBalances = false;
+
 jest.mock("ducks/balances", () => ({
   useBalancesStore: jest.fn((selector) => {
     const mockState = {
       balances: {},
       pricedBalances: {},
-      isLoading: false,
+      isLoading: mockIsLoadingBalances,
       isFunded: true,
       error: null,
       fetchAccountBalances: mockFetchAccountBalances,
@@ -111,23 +125,35 @@ jest.mock("ducks/balances", () => ({
   }),
 }));
 
+// Mutable so tests can simulate the balances store's 3s price-timeout path
+// (balances settled, quotes still in flight).
+let mockIsPricesLoading = false;
+
 jest.mock("ducks/prices", () => ({
-  usePricesStore: jest.fn(() => ({
-    prices: {},
-    isLoading: false,
-    error: null,
-    lastUpdated: null,
-    fetchPricesForBalances: jest.fn(),
-  })),
+  usePricesStore: jest.fn((selector) => {
+    const mockState = {
+      pricesByNetwork: {},
+      sourceByNetwork: {},
+      isLoading: mockIsPricesLoading,
+      error: null,
+      lastUpdated: null,
+      fetchPricesForBalances: jest.fn(),
+    };
+    return selector ? selector(mockState) : mockState;
+  }),
+  usePricesForNetwork: jest.fn(() => ({})),
 }));
 
 jest.mock("ducks/collectibles", () => ({
-  useCollectiblesStore: jest.fn(() => ({
-    collections: [],
-    isLoading: false,
-    error: null,
-    fetchCollectibles: mockFetchCollectibles,
-  })),
+  useCollectiblesStore: jest.fn((selector) => {
+    const mockState = {
+      collections: [],
+      isLoading: false,
+      error: null,
+      fetchCollectibles: mockFetchCollectibles,
+    };
+    return selector ? selector(mockState) : mockState;
+  }),
 }));
 
 jest.mock("ducks/walletKit", () => ({
@@ -137,6 +163,18 @@ jest.mock("ducks/walletKit", () => ({
     error: null,
     fetchActiveSessions: mockFetchActiveSessions,
   })),
+  StellarRpcMethods: {
+    SIGN_XDR: "stellar_signXDR",
+    SIGN_AND_SUBMIT_XDR: "stellar_signAndSubmitXDR",
+    SIGN_MESSAGE: "stellar_signMessage",
+    SIGN_AUTH_ENTRY: "stellar_signAuthEntry",
+  },
+  StellarRpcEvents: {
+    ACCOUNTS_CHANGED: "accountsChanged",
+  },
+  StellarRpcChains: {},
+  WALLET_KIT_METADATA: {},
+  WALLET_KIT_PROJECT_ID: "test-project-id",
 }));
 
 jest.mock("ducks/remoteConfig", () => ({
@@ -169,10 +207,9 @@ jest.mock("hooks/useAppTranslation", () => () => ({
   t: (key: string) => {
     const translations: Record<string, string> = {
       "home.title": "Tokens",
-      "home.buy": "Buy",
+      "home.buy": "Add",
       "home.send": "Send",
       "home.swap": "Swap",
-      "common.copy": "Copy",
       accountAddressCopied: "Address copied",
       "home.actions.settings": "Settings",
       "home.actions.manageTokens": "Manage Tokens",
@@ -182,16 +219,46 @@ jest.mock("hooks/useAppTranslation", () => () => ({
   },
 }));
 
+const mockFetchAccountsFiatTotals = jest.fn().mockResolvedValue(undefined);
+jest.mock("ducks/accountsFiatTotals", () => ({
+  // State is built per call so the jest-hoisted factory doesn't capture
+  // mockFetchAccountsFiatTotals before its const initializes.
+  useAccountsFiatTotalsStore: (
+    selector?: (storeState: Record<string, unknown>) => unknown,
+  ) => {
+    const state = {
+      fiatTotals: {},
+      isLoading: false,
+      fetchAccountsFiatTotals: mockFetchAccountsFiatTotals,
+      syncAccountFiatTotal: jest.fn(),
+    };
+
+    return selector ? selector(state) : state;
+  },
+}));
+
+// Mutable so tests can simulate a network switch (read lazily at render
+// time, after jest hoisting).
+let mockNetwork = "TESTNET";
+
 jest.mock("ducks/auth", () => ({
-  useAuthenticationStore: () => ({
-    network: "TESTNET",
-    getAllAccounts: jest.fn().mockResolvedValue([]),
-    renameAccount: jest.fn().mockResolvedValue(Promise.resolve()),
-    selectAccount: jest.fn().mockResolvedValue(Promise.resolve()),
-    isRenamingAccount: false,
-    allAccounts: [{ publicKey: "GTESTPUBLICKEY", accountName: "Test Account" }],
-    setSignInMethod: jest.fn(),
-  }),
+  useAuthenticationStore: (
+    selector?: (storeState: Record<string, unknown>) => unknown,
+  ) => {
+    const state = {
+      network: mockNetwork,
+      getAllAccounts: jest.fn().mockResolvedValue([]),
+      renameAccount: jest.fn().mockResolvedValue(Promise.resolve()),
+      selectAccount: jest.fn().mockResolvedValue(Promise.resolve()),
+      isRenamingAccount: false,
+      allAccounts: [
+        { publicKey: "GTESTPUBLICKEY", accountName: "Test Account" },
+      ],
+      setSignInMethod: jest.fn(),
+    };
+
+    return selector ? selector(state) : state;
+  },
   getLoginType: jest.fn((biometryType) => {
     if (!biometryType) return "password";
     if (biometryType === "FaceID" || biometryType === "Face") return "face";
@@ -218,6 +285,7 @@ jest.mock("hooks/useTotalBalance", () => ({
   useTotalBalance: jest.fn(() => ({
     formattedBalance: "$350.75",
     totalBalance: "350.75",
+    hasFiatTotal: true,
   })),
 }));
 
@@ -230,6 +298,18 @@ describe("HomeScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useFakeTimers();
+    mockIsLoadingBalances = false;
+    mockIsPricesLoading = false;
+    mockNetwork = "TESTNET";
+  });
+
+  const buildProps = () => ({
+    navigation: {
+      replace: jest.fn(),
+      navigate: jest.fn(),
+      setOptions: jest.fn(),
+    } as never,
+    route: {} as never,
   });
 
   afterEach(() => {
@@ -250,29 +330,70 @@ describe("HomeScreen", () => {
       />,
     );
 
-  it("renders correctly with account information", () => {
+  it("renders the total fiat balance", () => {
     const { getByText } = renderHomeScreen();
-    expect(getByText("Test Account")).toBeTruthy();
     expect(getByText("$350.75")).toBeTruthy();
   });
 
-  it("handles clipboard copy when copy button is pressed", async () => {
-    const { getByTestId } = renderHomeScreen();
+  it("shows a zero fiat total when no balance is priced", () => {
+    const { useTotalBalance } = jest.requireMock("hooks/useTotalBalance");
+    useTotalBalance.mockReturnValueOnce({
+      formattedBalance: "$0.00",
+      totalBalance: "0",
+      hasFiatTotal: false,
+    });
 
-    const copyButton = getByTestId("icon-button-copy");
-    await userEvent.press(copyButton);
+    const { getByText } = renderHomeScreen();
 
-    expect(mockCopyToClipboard).toHaveBeenCalledWith("test-public-key", {
-      notificationMessage: "Address copied",
+    expect(getByText("$0.00")).toBeTruthy();
+  });
+
+  it("shows a spinner instead of a placeholder $0.00 while balances load", () => {
+    const { useTotalBalance } = jest.requireMock("hooks/useTotalBalance");
+    useTotalBalance.mockReturnValue({
+      formattedBalance: "$0.00",
+      totalBalance: "0",
+      hasFiatTotal: false,
+    });
+    mockIsLoadingBalances = true;
+
+    const { getByTestId, queryByText } = renderHomeScreen();
+
+    expect(getByTestId("home-fiat-total-spinner")).toBeTruthy();
+    expect(queryByText("$0.00")).toBeNull();
+
+    useTotalBalance.mockReturnValue({
+      formattedBalance: "$350.75",
+      totalBalance: "350.75",
+      hasFiatTotal: true,
     });
   });
 
-  it("renders action buttons correctly", () => {
-    const { getByText } = renderHomeScreen();
+  it("keeps the hero spinner through the price-timeout window", () => {
+    // Balances settled unpriced (the store's 3s timeout path) while the
+    // quotes are still in flight — the hero must not flash $0.00.
+    const { useTotalBalance } = jest.requireMock("hooks/useTotalBalance");
+    useTotalBalance.mockReturnValueOnce({
+      formattedBalance: "$0.00",
+      totalBalance: "0",
+      hasFiatTotal: false,
+    });
+    mockIsLoadingBalances = false;
+    mockIsPricesLoading = true;
 
-    expect(getByText("Buy")).toBeTruthy();
+    const { getByTestId, queryByText } = renderHomeScreen();
+
+    expect(getByTestId("home-fiat-total-spinner")).toBeTruthy();
+    expect(queryByText("$0.00")).toBeNull();
+  });
+
+  it("renders action buttons correctly, without the removed copy button", () => {
+    const { getByText, queryByTestId } = renderHomeScreen();
+
+    expect(getByText("Add")).toBeTruthy();
     expect(getByText("Send")).toBeTruthy();
-    expect(getByText("Copy")).toBeTruthy();
+    // Copy moved into the manage-accounts sheet
+    expect(queryByTestId("icon-button-copy")).toBeNull();
   });
 
   it("calls all fetch functions when refresh is triggered", async () => {
@@ -294,6 +415,12 @@ describe("HomeScreen", () => {
       publicKey: "test-public-key",
       network: "TESTNET",
     });
+    expect(mockFetchAccountsFiatTotals).toHaveBeenCalledWith({
+      publicKeys: ["GTESTPUBLICKEY"],
+      network: "TESTNET",
+      forceRefresh: true,
+      excludePublicKey: "test-public-key",
+    });
     expect(mockFetchCollectibles).toHaveBeenCalledWith({
       publicKey: "test-public-key",
       network: "TESTNET",
@@ -302,5 +429,69 @@ describe("HomeScreen", () => {
       "test-public-key",
       "TESTNET",
     );
+  });
+
+  it("warms up the wallets-list fiat totals once the balances fetch settles", () => {
+    mockIsLoadingBalances = true;
+    const { rerender } = renderWithProviders(<HomeScreen {...buildProps()} />);
+
+    // Balances are still loading — the warm-up must wait its turn.
+    expect(mockFetchAccountsFiatTotals).not.toHaveBeenCalled();
+
+    mockIsLoadingBalances = false;
+    // Fresh props so React.memo doesn't bail out of the re-render.
+    rerender(<HomeScreen {...buildProps()} />);
+
+    expect(mockFetchAccountsFiatTotals).toHaveBeenCalledWith({
+      publicKeys: ["GTESTPUBLICKEY"],
+      network: "TESTNET",
+      excludePublicKey: "test-public-key",
+    });
+
+    // One-shot per network: later balances polls must not re-trigger it.
+    mockIsLoadingBalances = true;
+    rerender(<HomeScreen {...buildProps()} />);
+    mockIsLoadingBalances = false;
+    rerender(<HomeScreen {...buildProps()} />);
+
+    expect(mockFetchAccountsFiatTotals).toHaveBeenCalledTimes(1);
+  });
+
+  it("re-warms the wallets-list fiat totals after a network switch", () => {
+    mockIsLoadingBalances = true;
+    const { rerender } = renderWithProviders(<HomeScreen {...buildProps()} />);
+    mockIsLoadingBalances = false;
+    rerender(<HomeScreen {...buildProps()} />);
+    expect(mockFetchAccountsFiatTotals).toHaveBeenCalledTimes(1);
+
+    // Switching networks refetches balances for the new network; once they
+    // settle, the totals warm up again so the sheet opens with the right
+    // values instead of the previous network's.
+    mockNetwork = "PUBLIC";
+    mockIsLoadingBalances = true;
+    rerender(<HomeScreen {...buildProps()} />);
+    mockIsLoadingBalances = false;
+    rerender(<HomeScreen {...buildProps()} />);
+
+    expect(mockFetchAccountsFiatTotals).toHaveBeenCalledTimes(2);
+    expect(mockFetchAccountsFiatTotals).toHaveBeenLastCalledWith(
+      expect.objectContaining({ network: "PUBLIC" }),
+    );
+  });
+
+  describe("HomeScreen floating add buttons", () => {
+    it("shows Add token on the tokens tab and Add collectible after switching", () => {
+      const { getByTestId, queryByTestId } = renderHomeScreen();
+
+      // Tokens tab is the default
+      expect(getByTestId("home-add-token-button")).toBeTruthy();
+      expect(queryByTestId("home-add-collectible-button")).toBeNull();
+
+      // Switch to the collectibles tab
+      fireEvent.press(getByTestId("tab-collectibles"));
+
+      expect(getByTestId("home-add-collectible-button")).toBeTruthy();
+      expect(queryByTestId("home-add-token-button")).toBeNull();
+    });
   });
 });

@@ -3,6 +3,7 @@ import {
   DEFAULT_TRANSACTION_TIMEOUT,
   MIN_TRANSACTION_FEE,
 } from "config/constants";
+import { FeePriority } from "config/types";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 
 const store = useTransactionSettingsStore;
@@ -20,7 +21,17 @@ describe("transactionSettings Duck", () => {
     expect(initialState.transactionFee).toBe(MIN_TRANSACTION_FEE);
     expect(initialState.transactionTimeout).toBe(DEFAULT_TRANSACTION_TIMEOUT);
     expect(initialState.recipientAddress).toBe("");
+    expect(initialState.federationAddress).toBe("");
+    expect(initialState.recipientName).toBe("");
     expect(initialState.selectedTokenId).toBe("");
+    expect(initialState.feePriority).toBe(FeePriority.MEDIUM);
+  });
+
+  it("should save fee priority", () => {
+    act(() => {
+      store.getState().saveFeePriority(FeePriority.HIGH);
+    });
+    expect(store.getState().feePriority).toBe(FeePriority.HIGH);
   });
 
   it("should save memo", () => {
@@ -56,6 +67,30 @@ describe("transactionSettings Duck", () => {
     expect(store.getState().recipientAddress).toBe(newAddress);
   });
 
+  it("should save federation address", () => {
+    const newFederationAddress = "alice*example.com";
+
+    act(() => {
+      store.getState().saveFederationAddress(newFederationAddress);
+    });
+
+    expect(store.getState().federationAddress).toBe(newFederationAddress);
+    // recipientName must remain untouched
+    expect(store.getState().recipientName).toBe("");
+  });
+
+  it("should save recipient name", () => {
+    const newName = "Account 2";
+
+    act(() => {
+      store.getState().saveRecipientName(newName);
+    });
+
+    expect(store.getState().recipientName).toBe(newName);
+    // federationAddress must remain untouched
+    expect(store.getState().federationAddress).toBe("");
+  });
+
   it("should save selected token ID", () => {
     const newTokenId =
       "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
@@ -71,6 +106,8 @@ describe("transactionSettings Duck", () => {
     const newTimeout = 600;
     const newAddress =
       "GCVOLU545KR4QKJ5J57Q4AP3ZT6M2PX5FQOOWEVJ6VAMSHMWWUH4Y3QF";
+    const newFederationAddress = "alice*example.com";
+    const newRecipientName = "Account 2";
     const newTokenId = "TEST:TEST";
 
     act(() => {
@@ -78,14 +115,20 @@ describe("transactionSettings Duck", () => {
       store.getState().saveTransactionFee(newFee);
       store.getState().saveTransactionTimeout(newTimeout);
       store.getState().saveRecipientAddress(newAddress);
+      store.getState().saveFederationAddress(newFederationAddress);
+      store.getState().saveRecipientName(newRecipientName);
       store.getState().saveSelectedTokenId(newTokenId);
+      store.getState().saveFeePriority(FeePriority.HIGH);
     });
 
     expect(store.getState().transactionMemo).toBe(newMemo);
     expect(store.getState().transactionFee).toBe(newFee);
     expect(store.getState().transactionTimeout).toBe(newTimeout);
     expect(store.getState().recipientAddress).toBe(newAddress);
+    expect(store.getState().federationAddress).toBe(newFederationAddress);
+    expect(store.getState().recipientName).toBe(newRecipientName);
     expect(store.getState().selectedTokenId).toBe(newTokenId);
+    expect(store.getState().feePriority).toBe(FeePriority.HIGH);
 
     act(() => {
       store.getState().resetSettings();
@@ -97,7 +140,10 @@ describe("transactionSettings Duck", () => {
       DEFAULT_TRANSACTION_TIMEOUT,
     );
     expect(store.getState().recipientAddress).toBe("");
+    expect(store.getState().federationAddress).toBe("");
+    expect(store.getState().recipientName).toBe("");
     expect(store.getState().selectedTokenId).toBe("");
+    expect(store.getState().feePriority).toBe(FeePriority.MEDIUM);
   });
 
   describe("selectedCollectibleDetails", () => {

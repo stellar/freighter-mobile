@@ -3,7 +3,7 @@ import { Text, FontWeight } from "components/sds/Typography";
 import { useAuthenticationStore } from "ducks/auth";
 import useColors from "hooks/useColors";
 import React, { useCallback } from "react";
-import { TouchableOpacity, View } from "react-native";
+import { Insets, TouchableOpacity, View } from "react-native";
 
 export type TextButtonVariant =
   | "primary"
@@ -31,6 +31,8 @@ export interface TextButtonProps {
   testID?: string;
   /** Whether the button is a biometric button */
   biometric?: boolean;
+  /** Expands the touch target beyond the visible bounds without affecting layout */
+  hitSlop?: Insets;
 }
 
 /**
@@ -76,6 +78,7 @@ export const TextButton: React.FC<TextButtonProps> = ({
   weight = "semiBold",
   className = "",
   biometric = false,
+  hitSlop,
   testID,
 }) => {
   const { themeColors } = useColors();
@@ -129,6 +132,7 @@ export const TextButton: React.FC<TextButtonProps> = ({
       <TouchableOpacity
         onPress={handlePress}
         className="w-full"
+        hitSlop={hitSlop}
         testID={testID}
       >
         {content}

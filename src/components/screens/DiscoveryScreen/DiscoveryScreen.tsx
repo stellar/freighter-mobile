@@ -58,7 +58,7 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
   const overlayFadeAnim = useRef(new Animated.Value(0)).current;
   const { t } = useAppTranslation();
   const { account } = useGetActiveAccount();
-  const { allAccounts } = useAuthenticationStore();
+  const { allAccounts, isLoadingAllAccounts } = useAuthenticationStore();
 
   const {
     tabs,
@@ -421,6 +421,7 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
       <ManageAccounts
         accounts={allAccounts}
         activeAccount={account}
+        isLoadingAccounts={isLoadingAllAccounts}
         bottomSheetRef={manageAccountsRef}
         showAddWallet={false}
       />

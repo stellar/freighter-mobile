@@ -97,9 +97,10 @@ e2e/
     │   ├── CreateWallet.yaml
     │   ├── ImportWallet.yaml
     │   └── ImportFundedWallet.yaml
-    ├── transactions/     # Transaction flows (send and swap on mainnet)
-    │   ├── SendClassicTokenMainnet.yaml      # Send 0.000001 XLM to a different address
-    │   └── SwapClassicTokenMainnet.yaml      # Swap 0.000001 XLM → USDC on mainnet
+    ├── transactions/     # Transaction flows (send and swap on testnet)
+    │   ├── SendClassicToken.yaml             # Send 0.000001 XLM on testnet to a provisioned recipient
+    │   ├── SendFederatedAddress.yaml         # Send 0.000001 XLM and 0.000001 USDC on testnet to a federated address (freighter.c7*lobstr.co)
+    │   └── SwapClassicToken.yaml             # Swap 0.000001 XLM → USDC on testnet
     └── walletconnect/    # WalletConnect integration tests
         └── SignMessageMockDapp.yaml
 ```
@@ -135,14 +136,15 @@ e2e/
 
 ## Test Flows
 
-| Flow                             | File                                              | Description                                                                                   |
-| -------------------------------- | ------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| **Create Wallet**                | `flows/onboarding/CreateWallet.yaml`              | "Create a new wallet" → password → recovery phrase → skip validation → skip biometrics → home |
-| **Import Wallet**                | `flows/onboarding/ImportWallet.yaml`              | "I already have a wallet" → password → recovery phrase → skip biometrics → home               |
-| **Import Funded Wallet**         | `flows/onboarding/ImportFundedWallet.yaml`        | Import wallet with funded account (uses `E2E_TEST_FUNDED_RECOVERY_PHRASE`)                    |
-| **Send Classic Token (Mainnet)** | `flows/transactions/SendClassicTokenMainnet.yaml` | Imports funded wallet → home → send 0.000001 XLM to recipient → confirm → "Sent"              |
-| **Swap Classic Token (Mainnet)** | `flows/transactions/SwapClassicTokenMainnet.yaml` | Imports funded wallet → home → swap 0.000001 XLM → USDC → confirm → "Swapped"                 |
-| **WC Sign Message (Mock dApp)**  | `flows/walletconnect/SignMessageMockDapp.yaml`    | Connect to dApp → approve signMessage → verify signature returned                             |
+| Flow                            | File                                           | Description                                                                                                                                                          |
+| ------------------------------- | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Create Wallet**               | `flows/onboarding/CreateWallet.yaml`           | "Create a new wallet" → password → recovery phrase → skip validation → skip biometrics → home                                                                        |
+| **Import Wallet**               | `flows/onboarding/ImportWallet.yaml`           | "I already have a wallet" → password → recovery phrase → skip biometrics → home                                                                                      |
+| **Import Funded Wallet**        | `flows/onboarding/ImportFundedWallet.yaml`     | Import wallet with funded account (uses `E2E_TEST_FUNDED_RECOVERY_PHRASE`)                                                                                           |
+| **Send Classic Token**          | `flows/transactions/SendClassicToken.yaml`     | Imports funded wallet → home → switch to testnet → send 0.000001 XLM to provisioned recipient → confirm → "Sent"                                                     |
+| **Send Federated Address**      | `flows/transactions/SendFederatedAddress.yaml` | Imports provisioned funded wallet → home → switch to testnet → send 0.000001 XLM then 0.000001 USDC to a federated address (`freighter.c7*lobstr.co`) → confirm each |
+| **Swap Classic Token**          | `flows/transactions/SwapClassicToken.yaml`     | Imports funded wallet → home → switch to testnet → swap 0.000001 XLM → USDC → confirm → "Swapped"                                                                    |
+| **WC Sign Message (Mock dApp)** | `flows/walletconnect/SignMessageMockDapp.yaml` | Connect to dApp → approve signMessage → verify signature returned                                                                                                    |
 
 **Test data**: Password `TestPassword123!`;
 

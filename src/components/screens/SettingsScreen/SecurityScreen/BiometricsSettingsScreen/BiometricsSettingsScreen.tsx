@@ -3,10 +3,12 @@ import ConfirmationModal from "components/ConfirmationModal";
 import { List } from "components/List";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { Toggle } from "components/sds/Toggle";
+import { ERROR_TOAST_DURATION } from "config/constants";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBiometrics } from "hooks/useBiometrics";
 import useColors from "hooks/useColors";
+import { useToast } from "providers/ToastProvider";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { View } from "react-native";
 import { BIOMETRY_TYPE } from "react-native-keychain";
@@ -30,6 +32,7 @@ const BiometricsSettingsScreen: React.FC<
 > = () => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
+  const { showToast } = useToast();
   const {
     isBiometricsEnabled,
     enableBiometrics,
@@ -47,9 +50,19 @@ const BiometricsSettingsScreen: React.FC<
   useEffect(() => {
     if (shouldTriggerBiometricsDisable) {
       setShouldTriggerBiometricsDisable(false);
-      disableBiometrics();
+      disableBiometrics().then((success) => {
+        if (!success) {
+          showToast({
+            toastId: "disable-biometrics-error",
+            variant: "error",
+            title: t("authStore.error.disableBiometricsFailedTitle"),
+            message: t("authStore.error.disableBiometricsFailedMessage"),
+            duration: ERROR_TOAST_DURATION,
+          });
+        }
+      });
     }
-  }, [shouldTriggerBiometricsDisable, disableBiometrics]);
+  }, [shouldTriggerBiometricsDisable, disableBiometrics, showToast, t]);
 
   const disableAlertTitle: Record<BIOMETRY_TYPE, string> = useMemo(
     () => ({

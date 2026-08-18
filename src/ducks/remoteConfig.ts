@@ -1,6 +1,7 @@
 import { logger } from "config/logger";
+import { useNetworkStore } from "ducks/networkInfo";
 import { isAndroid } from "helpers/device";
-import { isE2ETest } from "helpers/isEnv";
+import { isDev } from "helpers/isEnv";
 import { getBundleId, getVersion } from "react-native-device-info";
 import { ANALYTICS_CONFIG } from "services/analytics/constants";
 import { getExperimentClient } from "services/analytics/core";
@@ -16,6 +17,7 @@ const BOOLEAN_FLAGS = [
   "swap_enabled",
   "discover_enabled",
   "onramp_enabled",
+  "use_token_prices_v2",
 ] as const;
 
 const VERSION_FLAGS = ["required_app_version", "latest_app_version"] as const;
@@ -59,14 +61,16 @@ interface RemoteConfigState extends FeatureFlags {
 // Get current app version for default values
 const currentAppVersion = getVersion();
 
-// While developing locally or during e2e tests we don't set the Amplitude API keys which prevents
-// us from fetching feature flags so let's set all "true" by default in __DEV__ or isE2ETest
+// In any dev context (the dev app — local Metro, CI previews, TestFlight dev, e2e —
+// or a debug build) Amplitude keys are not configured so feature flags can't be
+// fetched — default all features to enabled. isE2ETest is subsumed by isDev.
 const INITIAL_REMOTE_CONFIG_STATE =
-  __DEV__ || isE2ETest
+  isDev || __DEV__
     ? {
         swap_enabled: true,
         discover_enabled: true,
         onramp_enabled: true,
+        use_token_prices_v2: true,
         required_app_version: currentAppVersion,
         latest_app_version: currentAppVersion,
         app_update_banner_text: {
@@ -87,6 +91,7 @@ const INITIAL_REMOTE_CONFIG_STATE =
         swap_enabled: isAndroid,
         discover_enabled: isAndroid,
         onramp_enabled: isAndroid,
+        use_token_prices_v2: true,
         required_app_version: currentAppVersion,
         latest_app_version: currentAppVersion,
         app_update_banner_text: {
@@ -183,11 +188,27 @@ export const useRemoteConfigStore = create<RemoteConfigState>()((set, get) => ({
       // Mark as initialized after successful fetch
       set({ isInitialized: true });
     } catch (error) {
-      logger.warn(
-        "remoteConfig.fetchFeatureFlags",
-        "Failed to fetch feature flags",
-        error,
-      );
+      // Feature flags are load-bearing for runtime behavior - we want
+      // visibility on real SDK / backend / config failures - but the
+      // poll runs hourly, so reporting every transient connectivity
+      // loss as an error would generate exactly the noise pattern we
+      // are trying to remove. Split: device offline → warn breadcrumb
+      // (not actionable, self-resolves when connectivity returns); any
+      // other failure → logger.error (real SDK / config / outage).
+      const { isOffline } = useNetworkStore.getState();
+      if (isOffline) {
+        logger.warn(
+          "remoteConfig.fetchFeatureFlags",
+          "Failed to fetch feature flags (device offline)",
+          error,
+        );
+      } else {
+        logger.error(
+          "remoteConfig.fetchFeatureFlags",
+          "Failed to fetch feature flags",
+          error,
+        );
+      }
 
       // Mark as initialized even on error to prevent infinite loading
       set({ isInitialized: true });

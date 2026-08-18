@@ -11,6 +11,7 @@ import Avatar from "components/sds/Avatar";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
+import { AnalyticsEvent, buildScreenViewedProps } from "config/analyticsConfig";
 import { TokenTypeWithCustomToken, PricedBalance } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { Collectible } from "ducks/collectibles";
@@ -19,11 +20,12 @@ import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { formatTokenForDisplay } from "helpers/formatAmount";
 import { isContractId } from "helpers/soroban";
-import { truncateAddress } from "helpers/stellar";
+import { isSameAccount, truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { View } from "react-native";
+import { track } from "services/analytics/core";
 
 const TransactionStatus = {
   SENDING: "sending",
@@ -63,9 +65,10 @@ const TransactionProcessingScreen: React.FC<
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const navigation = useNavigation();
-  const { network } = useAuthenticationStore();
+  const { network, allAccounts } = useAuthenticationStore();
 
-  const { recipientAddress } = useTransactionSettingsStore();
+  const { recipientAddress, federationAddress, recipientName } =
+    useTransactionSettingsStore();
 
   const {
     isSubmitting,
@@ -77,11 +80,43 @@ const TransactionProcessingScreen: React.FC<
   const { addRecentAddress } = useSendRecipientStore();
 
   const slicedAddress = truncateAddress(recipientAddress, 4, 4);
+  const isSelfOwnedRecipient = (allAccounts ?? []).some((account) =>
+    isSameAccount(account.publicKey, recipientAddress),
+  );
   const [status, setStatus] = useState<TransactionStatusType>(
     TransactionStatus.SENDING,
   );
+  const hasEmittedSuccess = useRef(false);
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const isContractAddress = isContractId(recipientAddress);
+
+  // Emit the canonical screen.viewed for the in-flight submission stage. This
+  // screen is the mobile analog of the extension's PENDING state (stellar/
+  // freighter#2907), which emits the same send_payment_processing (flow:"send",
+  // step:"processing") event -- keeping the processing funnel stage joined
+  // cross-platform. The component is mounted only while submitting, so a bare
+  // mount effect fires this exactly once per submission.
+  useEffect(() => {
+    track(
+      AnalyticsEvent.SCREEN_VIEWED,
+      buildScreenViewedProps(AnalyticsEvent.VIEW_SEND_PROCESSING),
+    );
+  }, []);
+
+  // This one screen also renders the terminal success state, so emit the
+  // success funnel stage (send_payment_success, flow:"send", step:"success")
+  // when the submission settles into SENT -- completing confirm -> processing
+  // -> success on mobile and matching the extension's success emission. Guarded
+  // to fire at most once per mount (the SENT status is terminal here anyway).
+  useEffect(() => {
+    if (status === TransactionStatus.SENT && !hasEmittedSuccess.current) {
+      hasEmittedSuccess.current = true;
+      track(
+        AnalyticsEvent.SCREEN_VIEWED,
+        buildScreenViewedProps(AnalyticsEvent.VIEW_SEND_SUCCESS),
+      );
+    }
+  }, [status]);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -103,7 +138,14 @@ const TransactionProcessingScreen: React.FC<
       setStatus(TransactionStatus.FAILED);
     } else if (transactionHash) {
       setStatus(TransactionStatus.SENT);
-      addRecentAddress(recipientAddress);
+      if (!isSelfOwnedRecipient) {
+        // Persist the most meaningful label: custom recipient name first,
+        // then federation address as a fallback.
+        addRecentAddress(
+          recipientAddress,
+          recipientName || federationAddress || undefined,
+        );
+      }
     } else if (isContractAddress && !isSubmitting) {
       setStatus(TransactionStatus.UNSUPPORTED);
     }
@@ -116,6 +158,9 @@ const TransactionProcessingScreen: React.FC<
     isContractAddress,
     network,
     recipientAddress,
+    federationAddress,
+    recipientName,
+    isSelfOwnedRecipient,
     addRecentAddress,
   ]);
 
@@ -180,15 +225,15 @@ const TransactionProcessingScreen: React.FC<
   return (
     <BaseLayout insets={{ top: false }}>
       <View className="flex-1 justify-between" testID="send-processing-screen">
-        <View className="flex-1 items-center justify-center">
-          <View className="items-center gap-[8px] w-full">
+        <View className="flex-1 items-center justify-center px-[16px]">
+          <View className="items-center gap-[12px] w-full">
             {getStatusIcon()}
 
             <Display xs medium>
               {getStatusText()}
             </Display>
 
-            <View className="rounded-[16px] p-[24px] gap-[24px] bg-background-secondary w-full">
+            <View className="rounded-[16px] p-[20px] gap-[20px] bg-background-secondary w-full">
               <View className="flex-row items-center justify-center gap-[16px]">
                 {type === SendType.Token && selectedBalance && (
                   <TokenIcon token={selectedBalance} size="lg" />
@@ -213,7 +258,7 @@ const TransactionProcessingScreen: React.FC<
               </View>
 
               <View className="items-center">
-                <View className="flex-row flex-wrap items-center justify-center min-h-14">
+                <View className="flex-row flex-wrap items-center justify-center min-h-12">
                   <Text xl medium primary>
                     {type === SendType.Token && transactionAmount
                       ? formatTokenForDisplay(
@@ -229,7 +274,7 @@ const TransactionProcessingScreen: React.FC<
                     {getMessageText()}
                   </Text>
                   <Text xl medium primary>
-                    {slicedAddress}
+                    {recipientName || federationAddress || slicedAddress}
                   </Text>
                 </View>
               </View>
@@ -238,7 +283,7 @@ const TransactionProcessingScreen: React.FC<
         </View>
 
         {status === TransactionStatus.SENT ? (
-          <View className="gap-[16px]">
+          <View className="gap-[12px] pb-[8px]">
             <Button
               secondary
               xl
@@ -257,7 +302,7 @@ const TransactionProcessingScreen: React.FC<
             </Button>
           </View>
         ) : (
-          <View className="gap-[16px]">
+          <View className="gap-[12px] pb-[8px]">
             <Text sm medium secondary textAlign="center">
               {t("transactionProcessingScreen.closeMessage")}
             </Text>

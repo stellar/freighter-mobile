@@ -31,6 +31,32 @@ export enum NetworkCongestion {
   HIGH = "High",
 }
 
+export enum FeePriority {
+  LOW = "low",
+  MEDIUM = "medium",
+  HIGH = "high",
+  CUSTOM = "custom",
+}
+
+/**
+ * Recommended inclusion fees (in XLM) for each non-custom priority tier,
+ * derived from the Horizon `feeStats().max_fee` percentile distribution.
+ */
+export type FeePresets = Record<
+  FeePriority.LOW | FeePriority.MEDIUM | FeePriority.HIGH,
+  string
+>;
+
+/** Network congestion maps 1:1 to the default fee priority tier. */
+export const CONGESTION_TO_FEE_PRIORITY: Record<
+  NetworkCongestion,
+  FeePriority.LOW | FeePriority.MEDIUM | FeePriority.HIGH
+> = {
+  [NetworkCongestion.LOW]: FeePriority.LOW,
+  [NetworkCongestion.MEDIUM]: FeePriority.MEDIUM,
+  [NetworkCongestion.HIGH]: FeePriority.HIGH,
+};
+
 export enum HookStatus {
   IDLE = "idle",
   LOADING = "loading",
@@ -49,6 +75,11 @@ export type HashKey = {
   hashKey: string;
   salt: string;
   expiresAt: number;
+  // Wall-clock time the key was (re)anchored. Used to detect a backward clock
+  // change: a key that claims to have been generated in the future means the
+  // device clock moved back below its creation time. Optional for backward
+  // compatibility with keys persisted before this field existed.
+  generatedAt?: number;
 };
 
 export const AUTH_STATUS = {
@@ -252,35 +283,43 @@ export interface SearchTokenResponse {
   _embedded: {
     records: {
       asset: string;
-      supply: number;
+      supply: string;
       traded_amount: number;
       payments_amount: number;
-      created: number;
-      trustlines: number[];
       payments: number;
+      trades: number;
+      trustlines: number[];
+      price: number;
+      created: number;
       domain?: string;
+      price7d?: [timestamp: number, price: number][];
+      volume7d?: number;
       rating: {
         age: number;
-        trades: number;
-        payments: number;
+        activity: number;
         trustlines: number;
+        liquidity: number;
         volume7d: number;
         interop: number;
-        liquidity: number;
         average: number;
       };
-      score: number;
       paging_token: number;
       tomlInfo?: {
         code: string;
-        image?: string;
         issuer: string;
+        image?: string;
         decimals?: number;
         name?: string;
+        status?: string;
+        anchorAssetType?: string;
+        anchorAsset?: string;
+        orgName?: string;
+        orgLogo?: string;
       };
       code?: string;
       token_name?: string;
       decimals?: number;
+      features?: string[];
     }[];
   };
 }
@@ -315,6 +354,12 @@ export type FormattedSearchTokenRecord = {
   isUnableToScan?: boolean;
   securityLevel?: SecurityLevel;
   securityWarnings?: SecurityWarning[];
+  /**
+   * Spot price from the stellar.expert search response. Used as a fallback
+   * when the freighter-backend /token-prices endpoint returns no entry for
+   * this token (no 24h % available in this fallback case).
+   */
+  price?: number;
 };
 
 /**

@@ -2,6 +2,7 @@ import CookieManager from "@react-native-cookies/cookies";
 import { BROWSER_CONSTANTS } from "config/constants";
 import { logger } from "config/logger";
 import { clearAllScreenshots } from "helpers/screenshots";
+import { clearWebViewMediaConsent } from "helpers/webViewMediaConsent";
 
 /**
  * Checks if the given URL is the homepage URL.
@@ -138,7 +139,10 @@ export const clearAllCookies = async (): Promise<boolean> => {
     if (result) {
       logger.debug("clearAllCookies", "All cookies cleared successfully");
     } else {
-      logger.warn("clearAllCookies", "Cookie cleanup may have failed");
+      // Best-effort cleanup - the "may have failed" wording reflects
+      // CookieManager's fuzzy success signal. Not actionable as a
+      // breadcrumb for downstream errors.
+      logger.info("clearAllCookies", "Cookie cleanup may have failed");
     }
 
     return result;
@@ -161,6 +165,10 @@ export const clearAllWebViewData = async (): Promise<boolean> => {
     const [cookieResult, screenshotResult] = await Promise.all([
       clearAllCookies(),
       clearAllScreenshots(),
+      // Android-only, best-effort (returns void, not part of the success
+      // signal): drop the in-app browser's per-origin camera/mic consent so it
+      // doesn't survive logout or leak to another account on this device.
+      clearWebViewMediaConsent(),
     ]);
 
     const success = cookieResult && screenshotResult;
@@ -170,7 +178,8 @@ export const clearAllWebViewData = async (): Promise<boolean> => {
         "WebView data cleanup completed successfully",
       );
     } else {
-      logger.warn(
+      // Best-effort cleanup - same shape as clearAllCookies above.
+      logger.info(
         "clearAllWebViewData",
         "WebView data cleanup may have failed",
       );

@@ -30,11 +30,84 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
       launchOptions: launchOptions
     )
 
+    // The PrivacyShield native module (local pod) can't reference this class
+    // directly, so it requests dismissal via this notification.
+    NotificationCenter.default.addObserver(
+      self,
+      selector: #selector(handlePrivacyShieldHideRequest),
+      name: Notification.Name("FreighterPrivacyShieldHide"),
+      object: nil
+    )
+
     return true
+  }
+
+  @objc private func handlePrivacyShieldHideRequest() {
+    // hidePrivacyShield no-ops unless the app is active, so a hide() that
+    // lands during a background bounce won't expose the wallet.
+    DispatchQueue.main.async { [weak self] in
+      self?.hidePrivacyShield()
+    }
   }
   
   func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
     return RCTLinkingManager.application(app, open: url, options: options)
+  }
+
+  // Privacy shield: cover wallet content with the BootSplash when the app is
+  // backgrounded, so the OS app-switcher snapshot never reveals it. Uses
+  // didEnterBackground (not willResignActive) so it does NOT trigger for the
+  // Face ID prompt / control center, which only make the app inactive — the
+  // snapshot is still taken after didEnterBackground, so it's in time.
+  //
+  // The shield stays up after the app becomes active until JS finishes the
+  // auto-lock decision and calls PrivacyShield.hide() (the PrivacyShield pod
+  // posts the FreighterPrivacyShieldHide notification observed above), so a
+  // soft-lock overlay can mount before the wallet is revealed (no flash of
+  // the unlocked screen). The fallback timer guarantees it can never get
+  // stuck if JS doesn't run, and degrades to a bounded splash if the
+  // PrivacyShield pod isn't installed (run `pod install`).
+  private var privacyWindow: UIWindow?
+  private var privacyShieldFallbackTimer: Timer?
+  private static let privacyShieldFallbackTimeout: TimeInterval = 1.0
+
+  func applicationDidEnterBackground(_ application: UIApplication) {
+    // Cancel any fallback timer pending from a previous resume so it can't fire
+    // during this new background period and tear down the shield we just want
+    // to keep up.
+    privacyShieldFallbackTimer?.invalidate()
+    privacyShieldFallbackTimer = nil
+
+    guard privacyWindow == nil else { return }
+    let overlay = UIWindow(frame: UIScreen.main.bounds)
+    overlay.windowLevel = .alert + 1
+    overlay.rootViewController = UIStoryboard(name: "BootSplash", bundle: nil)
+      .instantiateInitialViewController()
+    overlay.isHidden = false
+    privacyWindow = overlay
+  }
+
+  func applicationDidBecomeActive(_ application: UIApplication) {
+    guard privacyWindow != nil else { return }
+    privacyShieldFallbackTimer?.invalidate()
+    privacyShieldFallbackTimer = Timer.scheduledTimer(
+      withTimeInterval: Self.privacyShieldFallbackTimeout,
+      repeats: false
+    ) { [weak self] _ in
+      self?.hidePrivacyShield()
+    }
+  }
+
+  // Called from the PrivacyShield native module once JS has settled the lock
+  // decision (and any lock overlay has mounted). Must run on the main thread.
+  func hidePrivacyShield() {
+    // Only reveal while the app is actually active: a JS hide() or fallback
+    // timer that lands during a background bounce must not expose the wallet.
+    guard UIApplication.shared.applicationState == .active else { return }
+    privacyShieldFallbackTimer?.invalidate()
+    privacyShieldFallbackTimer = nil
+    privacyWindow?.isHidden = true
+    privacyWindow = nil
   }
 }
 

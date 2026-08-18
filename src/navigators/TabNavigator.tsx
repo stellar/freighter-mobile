@@ -18,6 +18,8 @@ import { useFetchTokenIcons } from "hooks/useFetchTokenIcons";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useHistoryPolling } from "hooks/useHistoryPolling";
 import { usePricedBalancesPolling } from "hooks/usePricedBalancesPolling";
+import { useSwapTokenListsPrewarm } from "hooks/useSwapTokenListsPrewarm";
+import { useSyncAccountsFiatTotals } from "hooks/useSyncAccountsFiatTotals";
 import React, { useEffect, useMemo } from "react";
 import styled from "styled-components/native";
 
@@ -89,8 +91,18 @@ export const TabNavigator = () => {
   // Fetch icons whenever balances are updated
   useFetchTokenIcons(networkDetails.network);
 
+  // Pre-warm Swap token-list caches (top-50 + verified + Blockaid)
+  useSwapTokenListsPrewarm(networkDetails.network);
+
   // Start polling for balance and price updates
   usePricedBalancesPolling({
+    publicKey: publicKey ?? "",
+    network: networkDetails.network,
+  });
+
+  // Mirror active-account balance changes into the manage-accounts sheet's
+  // per-account USD totals
+  useSyncAccountsFiatTotals({
     publicKey: publicKey ?? "",
     network: networkDetails.network,
   });
@@ -141,8 +153,13 @@ export const TabNavigator = () => {
       <MainTab.Screen
         name={MAIN_TAB_ROUTES.TAB_HISTORY}
         component={HistoryScreen}
+        options={{ tabBarButtonTestID: "tab-history" }}
       />
-      <MainTab.Screen name={MAIN_TAB_ROUTES.TAB_HOME} component={HomeScreen} />
+      <MainTab.Screen
+        name={MAIN_TAB_ROUTES.TAB_HOME}
+        component={HomeScreen}
+        options={{ tabBarButtonTestID: "tab-home" }}
+      />
       {discoverEnabled && (
         <MainTab.Screen
           name={MAIN_TAB_ROUTES.TAB_DISCOVERY}

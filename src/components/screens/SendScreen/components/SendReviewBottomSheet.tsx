@@ -19,10 +19,16 @@ import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { isLiquidityPool } from "helpers/balances";
 import { pxValue } from "helpers/dimensions";
 import { formatTokenForDisplay, formatFiatAmount } from "helpers/formatAmount";
-import { truncateAddress, isMuxedAccount } from "helpers/stellar";
+import { computeTotalFeeXlm, isSorobanTransaction } from "helpers/soroban";
+import {
+  truncateAddress,
+  truncateFedAddress,
+  isMuxedAccount,
+} from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
+import { useFeeDetailsBottomSheet } from "hooks/useFeeDetailsBottomSheet";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React, { useCallback, useMemo } from "react";
 import { ActivityIndicator, TouchableOpacity, View } from "react-native";
@@ -90,12 +96,43 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
-  const { recipientAddress, transactionMemo, transactionFee } =
-    useTransactionSettingsStore();
+  const {
+    recipientAddress,
+    federationAddress,
+    recipientName,
+    transactionMemo,
+    transactionFee,
+  } = useTransactionSettingsStore();
   const { account } = useGetActiveAccount();
   const { copyToClipboard } = useClipboard();
   const slicedAddress = truncateAddress(recipientAddress, 4, 4);
-  const { transactionXDR, isBuilding, error } = useTransactionBuilderStore();
+  const {
+    transactionXDR,
+    isBuilding,
+    error,
+    sorobanInclusionFeeXlm,
+    sorobanResourceFeeXlm,
+  } = useTransactionBuilderStore();
+
+  // Derived from current context (collectible or Soroban token/address) rather
+  // than the builder store so the fee breakdown sheet shows Soroban rows and
+  // description even before simulation has completed.
+  const isSorobanContext =
+    type === SendType.Collectible ||
+    isSorobanTransaction(selectedBalance, recipientAddress);
+
+  const effectiveInclusionFeeXlm = sorobanInclusionFeeXlm ?? transactionFee;
+
+  // Match FeeBreakdownBottomSheet: review sheet should show total fee.
+  const totalFeeXlm = computeTotalFeeXlm(
+    sorobanInclusionFeeXlm,
+    sorobanResourceFeeXlm,
+    effectiveInclusionFeeXlm,
+  );
+
+  const { openFeeDetails, feeDetailsSheets } = useFeeDetailsBottomSheet({
+    isSorobanContext,
+  });
 
   // Use amountError from props (calculated in parent component)
   const amountError = propAmountError;
@@ -115,27 +152,12 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
       );
     }
 
-    if (error) {
-      return (
-        <Text md medium color={themeColors.status.error}>
-          {t("common.error", { errorMessage: error })}
-        </Text>
-      );
-    }
-
     if (transactionXDR) {
       return truncateAddress(transactionXDR, 10, 4);
     }
 
     return t("common.none");
-  }, [
-    error,
-    isBuilding,
-    t,
-    themeColors.status.error,
-    themeColors.text.secondary,
-    transactionXDR,
-  ]);
+  }, [isBuilding, t, themeColors.text.secondary, transactionXDR]);
 
   /**
    * Renders the memo section title with appropriate icon and warning indicator
@@ -176,6 +198,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
 
     return (
       <Banner
+        testID="security-warning-banner"
         variant={displayBannerVariant}
         text={displayBannerText}
         onPress={amountError ? undefined : onBannerPress}
@@ -193,6 +216,44 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
    */
 
   const isRecipientMuxed = isMuxedAccount(recipientAddress);
+
+  /**
+   * Renders the recipient display label. Priority order:
+   * 1. recipientName (wallet nicknames or custom contact labels)
+   * 2. federationAddress (truncated, when no custom name is set)
+   * 3. The truncated public key alone (fallback)
+   */
+  const renderRecipientLabel = () => {
+    if (recipientName) {
+      return (
+        <>
+          <Text xl medium numberOfLines={2}>
+            {recipientName}
+          </Text>
+          <Text md medium secondary numberOfLines={1}>
+            {slicedAddress}
+          </Text>
+        </>
+      );
+    }
+    if (federationAddress) {
+      return (
+        <>
+          <Text xl medium>
+            {truncateFedAddress(federationAddress)}
+          </Text>
+          <Text md medium secondary>
+            {slicedAddress}
+          </Text>
+        </>
+      );
+    }
+    return (
+      <Text xl medium>
+        {slicedAddress}
+      </Text>
+    );
+  };
 
   const transactionDetailsList: ListItemProps[] = useMemo(
     () =>
@@ -230,47 +291,77 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
               ),
             }
           : undefined,
+        // Fee row — shows the total fee (matching FeeBreakdownBottomSheet).
+        // The info icon opens the breakdown for Soroban
+        // (inclusion/resource/total) or a plain fee info sheet for classic
+        // transactions.
         {
           icon: <Icon.Route size={16} color={themeColors.foreground.primary} />,
           title: t("transactionAmountScreen.details.fee"),
           titleColor: themeColors.text.secondary,
-          trailingContent: (
-            <Text md primary>
-              {formatTokenForDisplay(transactionFee, NATIVE_TOKEN_CODE)}
-            </Text>
-          ),
-        },
-        {
-          icon: (
-            <Icon.FileCode02 size={16} color={themeColors.foreground.primary} />
-          ),
-          title: t("transactionAmountScreen.details.xdr"),
-          titleColor: themeColors.text.secondary,
-          trailingContent: (
-            <TouchableOpacity
-              onPress={handleCopyXdr}
-              disabled={isBuilding || !transactionXDR}
-              className="flex-row items-center gap-[8px]"
-            >
-              <Icon.Copy01 size={16} color={themeColors.foreground.primary} />
-              <Text md medium secondary={isBuilding}>
-                {renderXdrContent()}
+          trailingContent: isBuilding ? (
+            <ActivityIndicator
+              size="small"
+              color={themeColors.text.secondary}
+            />
+          ) : (
+            <View className="flex-row items-center gap-[8px]">
+              <TouchableOpacity
+                onPress={openFeeDetails}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                className="mt-[2px]"
+              >
+                <Icon.InfoCircle themeColor="gray" size={16} />
+              </TouchableOpacity>
+              <Text md primary>
+                {formatTokenForDisplay(totalFeeXlm, NATIVE_TOKEN_CODE)}
               </Text>
-            </TouchableOpacity>
+            </View>
           ),
         },
+        // Hide the XDR row entirely on build errors — the error is shown above
+        // the confirm/cancel buttons in the footer instead.
+        error
+          ? undefined
+          : {
+              icon: (
+                <Icon.FileCode02
+                  size={16}
+                  color={themeColors.foreground.primary}
+                />
+              ),
+              title: t("transactionAmountScreen.details.xdr"),
+              titleColor: themeColors.text.secondary,
+              trailingContent: (
+                <TouchableOpacity
+                  onPress={handleCopyXdr}
+                  disabled={isBuilding || !transactionXDR}
+                  className="flex-row items-center gap-[8px]"
+                >
+                  <Icon.Copy01
+                    size={16}
+                    color={themeColors.foreground.primary}
+                  />
+                  <Text md medium secondary={isBuilding}>
+                    {renderXdrContent()}
+                  </Text>
+                </TouchableOpacity>
+              ),
+            },
       ].filter(Boolean) as ListItemProps[],
     [
       account?.accountName,
       account?.publicKey,
+      error,
       handleCopyXdr,
+      openFeeDetails,
       isBuilding,
       renderMemoTitle,
       renderXdrContent,
       t,
       themeColors.foreground.primary,
       themeColors.text.secondary,
-      transactionFee,
+      totalFeeXlm,
       transactionMemo,
       transactionXDR,
       isRecipientMuxed,
@@ -337,11 +428,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
               publicAddress={recipientAddress}
               hasDarkBackground
             />
-            <View className="flex-1">
-              <Text xl medium>
-                {slicedAddress}
-              </Text>
-            </View>
+            <View className="flex-1">{renderRecipientLabel()}</View>
           </View>
         </View>
       </View>
@@ -353,6 +440,7 @@ const SendReviewBottomSheet: React.FC<SendReviewBottomSheetProps> = ({
           analyticsEvent={AnalyticsEvent.VIEW_SEND_TRANSACTION_DETAILS}
         />
       )}
+      {feeDetailsSheets}
     </View>
   );
 };
@@ -374,8 +462,14 @@ type SendReviewFooterProps = {
 export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
   (props) => {
     const { t } = useAppTranslation();
+    const { themeColors } = useColors();
     const { transactionXDR, isBuilding, error } = useTransactionBuilderStore();
     const insets = useSafeAreaInsets();
+
+    // Localized build-error string shown above the buttons.
+    const errorMessage = error
+      ? t("common.error", { errorMessage: error })
+      : null;
 
     const {
       onCancel,
@@ -470,12 +564,11 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
       const cancelButton = (
         <View className={`${shouldUseRowLayout ? "flex-1" : "w-full"}`}>
           <Button
-            tertiary={(isSuspicious && !isUnableToScan) || isExpectedToFail}
-            destructive={isMalicious && !shouldUseRowLayout}
+            tertiary={isSuspicious || isUnableToScan || isExpectedToFail}
+            destructive={isMalicious}
             secondary={shouldUseRowLayout}
             isFullWidth
             onPress={onCancel}
-            disabled={isDisabled}
             testID="send-review-cancel-button"
           >
             {t("common.cancel")}
@@ -532,15 +625,24 @@ export const SendReviewFooter: React.FC<SendReviewFooterProps> = React.memo(
 
     return (
       <View
-        className={`${
-          shouldUseRowLayout ? "flex-row" : "flex-col"
-        } bg-background-primary w-full gap-[12px] mt-[24px] flex-column px-6 py-6`}
-        style={{
-          paddingBottom: insets.bottom + pxValue(DEFAULT_PADDING),
-          gap: pxValue(12),
-        }}
+        className="bg-background-primary w-full mt-[24px] px-6 py-6"
+        style={{ paddingBottom: insets.bottom + pxValue(DEFAULT_PADDING) }}
       >
-        {renderButtons()}
+        {errorMessage && (
+          <View className="mb-[16px]">
+            <Text md medium color={themeColors.status.error}>
+              {errorMessage}
+            </Text>
+          </View>
+        )}
+        <View
+          className={`${
+            shouldUseRowLayout ? "flex-row" : "flex-col"
+          } w-full gap-[12px]`}
+          style={{ gap: pxValue(12) }}
+        >
+          {renderButtons()}
+        </View>
       </View>
     );
   },

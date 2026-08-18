@@ -1,5 +1,5 @@
 /* eslint-disable react/no-array-index-key */
-import { Address, Operation, xdr } from "@stellar/stellar-sdk";
+import { Address, Operation, OperationRecord, xdr } from "@stellar/stellar-sdk";
 import { List, ListItemProps } from "components/List";
 import Spinner from "components/Spinner";
 import {
@@ -13,6 +13,8 @@ import {
   KeyValueInvokeHostFnArgs,
 } from "components/screens/SignTransactionDetails/components/KeyVal";
 import Avatar from "components/sds/Avatar";
+import { Badge } from "components/sds/Badge";
+import { Banner } from "components/sds/Banner";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import {
@@ -21,8 +23,9 @@ import {
   OPERATION_TYPES,
   VISUAL_DELAY_MS,
 } from "config/constants";
+import { logger } from "config/logger";
 import { useAuthenticationStore } from "ducks/auth";
-import { formatTokenForDisplay, formatFiatAmount } from "helpers/formatAmount";
+import { formatTokenForDisplay } from "helpers/formatAmount";
 import { getCreateContractArgs } from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -33,20 +36,62 @@ import { View } from "react-native";
 import { scanToken } from "services/blockaid/api";
 
 interface OperationsProps {
-  operations: Operation[];
+  operations: OperationRecord[];
 }
 
 type AuthorizationMap = {
   [index: string]: string;
 };
 
-const RenderOperationByType = ({ operation }: { operation: Operation }) => {
+/**
+ * A classic offer price is an asset-to-asset exchange rate, not a fiat amount.
+ * It reads as `quoteCode` units per 1 `baseCode` unit: buying-per-selling for
+ * sell offers, selling-per-buying for buy offers.
+ */
+const formatOfferPriceRatio = (
+  price: string,
+  quoteCode: string,
+  baseCode: string,
+) => `${formatTokenForDisplay(price)} ${quoteCode} / ${baseCode}`;
+
+const MasterKeyDisableWarning = () => {
+  const { t } = useAppTranslation();
+  return (
+    <Banner
+      variant="error"
+      showChevron={false}
+      testID="MasterKeyDisableWarning"
+      text={t("signTransactionDetails.operations.masterKeyWarningMessage")}
+    />
+  );
+};
+
+const RenderOperationByType = ({
+  operation,
+}: {
+  operation: OperationRecord;
+}) => {
   const { t } = useAppTranslation();
   const { network } = useAuthenticationStore();
   const networkDetails = mapNetworkToNetworkDetails(network);
   const { type } = operation;
   const { copyToClipboard } = useClipboard();
   const { themeColors } = useColors();
+
+  const issuerListItem = (issuer: string): ListItemProps => ({
+    title: t("signTransactionDetails.operations.tokenIssuer"),
+    trailingContent: (
+      <View className="flex-row items-center gap-[8px]">
+        <Icon.Copy01
+          size={16}
+          themeColor="gray"
+          onPress={() => copyToClipboard(issuer)}
+        />
+        <Text>{truncateAddress(issuer)}</Text>
+      </View>
+    ),
+    titleColor: themeColors.text.secondary,
+  });
 
   const authorizationMap: AuthorizationMap = {
     "1": "Authorization Required",
@@ -96,7 +141,15 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
       }
     };
 
-    scanOperationTokens();
+    // Pre-flight informational scan: failures are non-fatal and the user
+    // still proceeds with sign. Wrap to avoid an unhandled promise rejection
+    // bubbling to the global handler (mechanism=onunhandledrejection).
+    scanOperationTokens().catch((error) => {
+      // Pass the Error through directly - sanitizeLogData extracts
+      // name/message/stack so the breadcrumb keeps the full
+      // diagnostic instead of just the message string.
+      logger.warn("Operations", "Pre-flight token scan failed", error);
+    });
   }, [type, networkDetails.network, operation]);
 
   switch (type) {
@@ -146,6 +199,7 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
           trailingContent: <Text>{asset.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
+        ...(asset.issuer ? [issuerListItem(asset.issuer)] : []),
         {
           title: t("signTransactionDetails.operations.amount"),
           trailingContent: (
@@ -167,6 +221,7 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
           trailingContent: <Text>{sendAsset.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
+        ...(sendAsset.issuer ? [issuerListItem(sendAsset.issuer)] : []),
         {
           title: t("signTransactionDetails.operations.sendMax"),
           trailingContent: (
@@ -189,6 +244,7 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
           trailingContent: <Text>{destAsset.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
+        ...(destAsset.issuer ? [issuerListItem(destAsset.issuer)] : []),
         {
           title: t("signTransactionDetails.operations.destinationAmount"),
           trailingContent: (
@@ -216,6 +272,7 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
           trailingContent: <Text>{sendAsset.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
+        ...(sendAsset.issuer ? [issuerListItem(sendAsset.issuer)] : []),
         {
           title: t("signTransactionDetails.operations.sendAmount"),
           trailingContent: (
@@ -238,6 +295,7 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
           trailingContent: <Text>{destAsset.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
+        ...(destAsset.issuer ? [issuerListItem(destAsset.issuer)] : []),
         {
           title: t("signTransactionDetails.operations.destinationMinimum"),
           trailingContent: (
@@ -260,25 +318,31 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
 
       const items: ListItemProps[] = [
         {
-          title: t("signTransactionDetails.operations.buying"),
-          trailingContent: <Text>{buying.code}</Text>,
-          titleColor: themeColors.text.secondary,
-        },
-        {
-          title: t("signTransactionDetails.operations.amount"),
-          trailingContent: (
-            <Text>{formatTokenForDisplay(amount, buying.code)}</Text>
-          ),
-          titleColor: themeColors.text.secondary,
-        },
-        {
           title: t("signTransactionDetails.operations.selling"),
           trailingContent: <Text>{selling.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
+        ...(selling.issuer ? [issuerListItem(selling.issuer)] : []),
+        {
+          title: t("signTransactionDetails.operations.sellingAmount"),
+          trailingContent: (
+            <Text>{formatTokenForDisplay(amount, selling.code)}</Text>
+          ),
+          titleColor: themeColors.text.secondary,
+        },
+        {
+          title: t("signTransactionDetails.operations.buying"),
+          trailingContent: <Text>{buying.code}</Text>,
+          titleColor: themeColors.text.secondary,
+        },
+        ...(buying.issuer ? [issuerListItem(buying.issuer)] : []),
         {
           title: t("signTransactionDetails.operations.price"),
-          trailingContent: <Text>{formatFiatAmount(price)}</Text>,
+          trailingContent: (
+            <Text>
+              {formatOfferPriceRatio(price, buying.code, selling.code)}
+            </Text>
+          ),
           titleColor: themeColors.text.secondary,
         },
       ];
@@ -299,21 +363,27 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
           trailingContent: <Text>{selling.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
+        ...(selling.issuer ? [issuerListItem(selling.issuer)] : []),
+        {
+          title: t("signTransactionDetails.operations.sellingAmount"),
+          trailingContent: (
+            <Text>{formatTokenForDisplay(amount, selling.code)}</Text>
+          ),
+          titleColor: themeColors.text.secondary,
+        },
         {
           title: t("signTransactionDetails.operations.buying"),
           trailingContent: <Text>{buying.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
-        {
-          title: t("signTransactionDetails.operations.amount"),
-          trailingContent: (
-            <Text>{formatTokenForDisplay(amount, buying.code)}</Text>
-          ),
-          titleColor: themeColors.text.secondary,
-        },
+        ...(buying.issuer ? [issuerListItem(buying.issuer)] : []),
         {
           title: t("signTransactionDetails.operations.price"),
-          trailingContent: <Text>{formatFiatAmount(price)}</Text>,
+          trailingContent: (
+            <Text>
+              {formatOfferPriceRatio(price, buying.code, selling.code)}
+            </Text>
+          ),
           titleColor: themeColors.text.secondary,
         },
       ];
@@ -334,8 +404,9 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
           trailingContent: <Text>{buying.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
+        ...(buying.issuer ? [issuerListItem(buying.issuer)] : []),
         {
-          title: t("signTransactionDetails.operations.buyAmount"),
+          title: t("signTransactionDetails.operations.buyingAmount"),
           trailingContent: (
             <Text>{formatTokenForDisplay(buyAmount, buying.code)}</Text>
           ),
@@ -346,9 +417,14 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
           trailingContent: <Text>{selling.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
+        ...(selling.issuer ? [issuerListItem(selling.issuer)] : []),
         {
           title: t("signTransactionDetails.operations.price"),
-          trailingContent: <Text>{formatFiatAmount(price)}</Text>,
+          trailingContent: (
+            <Text>
+              {formatOfferPriceRatio(price, selling.code, buying.code)}
+            </Text>
+          ),
           titleColor: themeColors.text.secondary,
         },
       ];
@@ -367,6 +443,35 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
         homeDomain,
         signer,
       } = operation;
+
+      // Account flags are a uint32 bitmask. JS bitwise operators coerce their
+      // operands to signed int32, so force the result back to unsigned with
+      // `>>> 0` when clearing matched bits — otherwise a set high bit (e.g.
+      // 0x80000000) would surface as a negative "Unknown" value.
+      /* eslint-disable no-bitwise */
+      const decodeAuthorizationFlags = (bits: number): string => {
+        const labels: string[] = [];
+        let remaining = bits >>> 0;
+        Object.entries(authorizationMap).forEach(([bit, label]) => {
+          const value = Number(bit);
+          if ((remaining & value) !== 0) {
+            labels.push(label);
+            remaining = (remaining & ~value) >>> 0;
+          }
+        });
+        if (remaining !== 0) {
+          labels.push(
+            t("signTransactionDetails.operations.unknownFlags", {
+              bits: remaining,
+            }),
+          );
+        }
+        // A present-but-zero mask (setFlags/clearFlags: 0) sets no bits, so no
+        // label matches. Disclose the raw value rather than an empty row — the
+        // whole point of this screen is not to hide a present field.
+        return labels.length > 0 ? labels.join(", ") : String(bits >>> 0);
+      };
+      /* eslint-enable no-bitwise */
 
       const items: ListItemProps[] = [];
 
@@ -387,15 +492,27 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
         });
       }
 
-      if (homeDomain) {
+      if (homeDomain !== undefined) {
         items.push({
           title: t("signTransactionDetails.operations.homeDomain"),
-          trailingContent: <Text>{homeDomain}</Text>,
+          trailingContent:
+            homeDomain === "" ? (
+              <Badge variant="tertiary" size="sm">
+                {t("signTransactionDetails.operations.cleared")}
+              </Badge>
+            ) : (
+              <Text>{homeDomain}</Text>
+            ),
           titleColor: themeColors.text.secondary,
         });
       }
 
-      if (highThreshold) {
+      // The SDK's XDR-optional accessors (masterWeight/thresholds/flags)
+      // return `null` -- not `undefined` -- when the field is absent from
+      // the operation, unlike homeDomain above. Guard against both so an
+      // ordinary setOptions that only touches one field doesn't render the
+      // rest as a literal "null" (or throw on `null.toString()`).
+      if (highThreshold !== undefined && highThreshold !== null) {
         items.push({
           title: t("signTransactionDetails.operations.highThreshold"),
           trailingContent: <Text>{highThreshold.toString()}</Text>,
@@ -403,7 +520,7 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
         });
       }
 
-      if (medThreshold) {
+      if (medThreshold !== undefined && medThreshold !== null) {
         items.push({
           title: t("signTransactionDetails.operations.mediumThreshold"),
           trailingContent: <Text>{medThreshold.toString()}</Text>,
@@ -411,7 +528,7 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
         });
       }
 
-      if (lowThreshold) {
+      if (lowThreshold !== undefined && lowThreshold !== null) {
         items.push({
           title: t("signTransactionDetails.operations.lowThreshold"),
           trailingContent: <Text>{lowThreshold.toString()}</Text>,
@@ -419,28 +536,10 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
         });
       }
 
-      if (masterWeight) {
+      if (masterWeight !== undefined && masterWeight !== null) {
         items.push({
           title: t("signTransactionDetails.operations.masterWeight"),
           trailingContent: <Text>{masterWeight.toString()}</Text>,
-          titleColor: themeColors.text.secondary,
-        });
-      }
-
-      if (setFlags) {
-        items.push({
-          title: t("signTransactionDetails.operations.setFlags"),
-          trailingContent: <Text>{authorizationMap[setFlags.toString()]}</Text>,
-          titleColor: themeColors.text.secondary,
-        });
-      }
-
-      if (clearFlags) {
-        items.push({
-          title: t("signTransactionDetails.operations.clearFlags"),
-          trailingContent: (
-            <Text>{authorizationMap[clearFlags.toString()]}</Text>
-          ),
           titleColor: themeColors.text.secondary,
         });
       }
@@ -449,6 +548,19 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
         <View className="gap-[16px]">
           {signer && <KeyValueSigner signer={signer} />}
           {items.length > 0 && <List variant="secondary" items={items} />}
+          {setFlags !== undefined && setFlags !== null && (
+            <KeyValueListItem
+              operationKey={t("signTransactionDetails.operations.setFlags")}
+              operationValue={decodeAuthorizationFlags(Number(setFlags))}
+            />
+          )}
+          {clearFlags !== undefined && clearFlags !== null && (
+            <KeyValueListItem
+              operationKey={t("signTransactionDetails.operations.clearFlags")}
+              operationValue={decodeAuthorizationFlags(Number(clearFlags))}
+            />
+          )}
+          {masterWeight === 0 && <MasterKeyDisableWarning />}
         </View>
       );
     }
@@ -475,11 +587,27 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
           },
         );
       } else {
-        items.push({
-          title: t("signTransactionDetails.operations.tokenCode"),
-          trailingContent: <Text>{line.code}</Text>,
-          titleColor: themeColors.text.secondary,
-        });
+        items.push(
+          {
+            title: t("signTransactionDetails.operations.tokenCode"),
+            trailingContent: <Text>{line.code}</Text>,
+            titleColor: themeColors.text.secondary,
+          },
+          {
+            title: t("signTransactionDetails.operations.tokenIssuer"),
+            trailingContent: (
+              <View className="flex-row items-center gap-[8px]">
+                <Icon.Copy01
+                  size={16}
+                  themeColor="gray"
+                  onPress={() => copyToClipboard(line.issuer ?? "")}
+                />
+                <Text>{truncateAddress(line.issuer ?? "")}</Text>
+              </View>
+            ),
+            titleColor: themeColors.text.secondary,
+          },
+        );
       }
 
       items.push({
@@ -543,24 +671,27 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
     }
     case "manageData": {
       const { name, value } = operation;
-
-      const items: ListItemProps[] = [
-        {
-          title: t("signTransactionDetails.operations.name"),
-          trailingContent: <Text>{name}</Text>,
-          titleColor: themeColors.text.secondary,
-        },
-      ];
-
-      if (value) {
-        items.push({
-          title: t("signTransactionDetails.operations.value"),
-          trailingContent: <Text>{value.toString()}</Text>,
-          titleColor: themeColors.text.secondary,
-        });
-      }
-
-      return <List variant="secondary" items={items} />;
+      const isDeletingEntry = value === undefined || value === null;
+      return (
+        <View className="gap-[16px]">
+          <KeyValueListItem
+            operationKey={t("signTransactionDetails.operations.name")}
+            operationValue={name}
+          />
+          <KeyValueListItem
+            operationKey={t("signTransactionDetails.operations.value")}
+            operationValue={
+              isDeletingEntry ? (
+                <Badge variant="tertiary" size="sm">
+                  {t("signTransactionDetails.operations.deleted")}
+                </Badge>
+              ) : (
+                value.toString()
+              )
+            }
+          />
+        </View>
+      );
     }
     case "bumpSequence": {
       const { bumpTo } = operation;
@@ -584,6 +715,7 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
           trailingContent: <Text>{asset.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
+        ...(asset.issuer ? [issuerListItem(asset.issuer)] : []),
         {
           title: t("signTransactionDetails.operations.amount"),
           trailingContent: (
@@ -646,6 +778,7 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
           trailingContent: <Text>{asset.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
+        ...(asset.issuer ? [issuerListItem(asset.issuer)] : []),
         {
           title: t("signTransactionDetails.operations.amount"),
           trailingContent: (
@@ -699,32 +832,49 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
           trailingContent: <Text>{asset.code}</Text>,
           titleColor: themeColors.text.secondary,
         },
+        ...(asset.issuer ? [issuerListItem(asset.issuer)] : []),
       ];
 
-      if (flags.authorized) {
+      if (flags.authorized !== undefined) {
         items.push({
           title: t("signTransactionDetails.operations.flags.authorized"),
-          trailingContent: <Text>{String(flags.authorized)}</Text>,
+          trailingContent: (
+            <Text>
+              {flags.authorized
+                ? t("signTransactionDetails.operations.enabled")
+                : t("signTransactionDetails.operations.disabled")}
+            </Text>
+          ),
           titleColor: themeColors.text.secondary,
         });
       }
 
-      if (flags.authorizedToMaintainLiabilities) {
+      if (flags.authorizedToMaintainLiabilities !== undefined) {
         items.push({
           title: t(
             "signTransactionDetails.operations.flags.authorizedToMaintainLiabilities",
           ),
           trailingContent: (
-            <Text>{String(flags.authorizedToMaintainLiabilities)}</Text>
+            <Text>
+              {flags.authorizedToMaintainLiabilities
+                ? t("signTransactionDetails.operations.enabled")
+                : t("signTransactionDetails.operations.disabled")}
+            </Text>
           ),
           titleColor: themeColors.text.secondary,
         });
       }
 
-      if (flags.clawbackEnabled) {
+      if (flags.clawbackEnabled !== undefined) {
         items.push({
           title: t("signTransactionDetails.operations.flags.clawbackEnabled"),
-          trailingContent: <Text>{String(flags.clawbackEnabled)}</Text>,
+          trailingContent: (
+            <Text>
+              {flags.clawbackEnabled
+                ? t("signTransactionDetails.operations.enabled")
+                : t("signTransactionDetails.operations.disabled")}
+            </Text>
+          ),
           titleColor: themeColors.text.secondary,
         });
       }
@@ -909,6 +1059,11 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
             trailingContent: <Text>{asset.code}</Text>,
             titleColor: themeColors.text.secondary,
           });
+          // Disclose the issuer so the revoked trustline's asset is
+          // unambiguous, matching every other asset row on this screen.
+          if (asset.issuer) {
+            items.push(issuerListItem(asset.issuer));
+          }
         }
 
         return <List variant="secondary" items={items} />;
@@ -1029,7 +1184,11 @@ const RenderOperationByType = ({ operation }: { operation: Operation }) => {
   }
 };
 
-const RenderOperationArgsByType = ({ operation }: { operation: Operation }) => {
+const RenderOperationArgsByType = ({
+  operation,
+}: {
+  operation: OperationRecord;
+}) => {
   const { t } = useAppTranslation();
   const { network } = useAuthenticationStore();
   const networkDetails = mapNetworkToNetworkDetails(network);
@@ -1073,7 +1232,15 @@ const RenderOperationArgsByType = ({ operation }: { operation: Operation }) => {
       }
     };
 
-    scanOperationTokens();
+    // Pre-flight informational scan: failures are non-fatal and the user
+    // still proceeds with sign. Wrap to avoid an unhandled promise rejection
+    // bubbling to the global handler (mechanism=onunhandledrejection).
+    scanOperationTokens().catch((error) => {
+      // Pass the Error through directly - sanitizeLogData extracts
+      // name/message/stack so the breadcrumb keeps the full
+      // diagnostic instead of just the message string.
+      logger.warn("Operations", "Pre-flight token scan failed", error);
+    });
   }, [type, networkDetails.network, operation]);
 
   switch (type) {
@@ -1169,7 +1336,9 @@ const Operations = ({ operations }: OperationsProps) => {
           >
             <View className="flex-row items-center gap-[8px]">
               <Icon.Cube02 size={16} themeColor="gray" />
-              <Text secondary>{OPERATION_TYPES[type] || type}</Text>
+              <Text secondary>
+                {OPERATION_TYPES[type as keyof typeof OPERATION_TYPES] || type}
+              </Text>
             </View>
             <View className="gap-[16px] mb-4">
               {source && (

@@ -32,6 +32,8 @@ export interface SwapProcessingScreenProps {
   sourceToken: NonNativeToken | NativeToken;
   destinationAmount: string;
   destinationToken: NonNativeToken | NativeToken;
+  /** Forwarded to the destination `<TokenIcon>` so non-held destinations render a logo instead of a 2-letter avatar until the trustline lands. */
+  destinationIconUrl?: string;
 }
 
 const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
@@ -40,6 +42,7 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
   sourceToken,
   destinationAmount,
   destinationToken,
+  destinationIconUrl,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
@@ -196,7 +199,11 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
                   size={16}
                   color={themeColors.text.secondary}
                 />
-                <TokenIcon token={displayData.destinationToken} size="lg" />
+                <TokenIcon
+                  token={displayData.destinationToken}
+                  size="lg"
+                  iconUrl={destinationIconUrl}
+                />
               </View>
 
               <View className="items-center">

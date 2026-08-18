@@ -1,8 +1,23 @@
 /**
  * Tests for stellar service, focusing on submitTx retry logic with exponential backoff
- * This test uses the actual isHorizonError function from stellar.ts
+ * and buildChangeTrustOperation helper.
+ * This test uses the actual functions from stellar.ts
  */
-import { calculateBackoffDelay, isHorizonError } from "services/stellar";
+import { Asset as SdkToken, Operation } from "@stellar/stellar-sdk";
+import { MIN_TRANSACTION_FEE } from "config/constants";
+import { FeePriority, NetworkCongestion } from "config/types";
+import {
+  buildChangeTrustOperation,
+  calculateBackoffDelay,
+  getNetworkFees,
+  isHorizonError,
+} from "services/stellar";
+
+type FeeStatsServer = Parameters<typeof getNetworkFees>[0];
+
+const buildFeeStatsServer = (
+  feeStats: () => Promise<unknown>,
+): FeeStatsServer => ({ feeStats }) as unknown as FeeStatsServer;
 
 describe("stellar service - submitTx retry logic", () => {
   it("should implement correct delay timing", async () => {
@@ -54,5 +69,143 @@ describe("stellar service - submitTx retry logic", () => {
     expect(shouldRetry(horizon504Error)).toBe(true);
     expect(shouldRetry(horizon400Error)).toBe(false);
     expect(shouldRetry(nonHorizonError)).toBe(false);
+  });
+});
+
+describe("stellar service - getNetworkFees", () => {
+  const buildFeeDistribution = (overrides = {}) => ({
+    max: "20000",
+    min: "100",
+    mode: "500",
+    p10: "100",
+    p20: "200",
+    p30: "300",
+    p40: "400",
+    p50: "1000",
+    p60: "2000",
+    p70: "3000",
+    p80: "5000",
+    p90: "10000",
+    p95: "15000",
+    p99: "20000",
+    ...overrides,
+  });
+
+  it("maps max_fee p10/p50/p90 to Low/Med/High presets (XLM)", async () => {
+    const server = buildFeeStatsServer(() =>
+      Promise.resolve({
+        ledger_capacity_usage: "0.2",
+        max_fee: buildFeeDistribution(),
+      }),
+    );
+
+    const { feePresets } = await getNetworkFees(server);
+
+    expect(feePresets[FeePriority.LOW]).toBe("0.00001"); // p10 = 100
+    expect(feePresets[FeePriority.MEDIUM]).toBe("0.0001"); // p50 = 1000
+    expect(feePresets[FeePriority.HIGH]).toBe("0.001"); // p90 = 10000
+  });
+
+  it("derives congestion level and a recommended fee matching it (1:1)", async () => {
+    const lowServer = buildFeeStatsServer(() =>
+      Promise.resolve({
+        ledger_capacity_usage: "0.2",
+        max_fee: buildFeeDistribution(),
+      }),
+    );
+    const mediumServer = buildFeeStatsServer(() =>
+      Promise.resolve({
+        ledger_capacity_usage: "0.6",
+        max_fee: buildFeeDistribution(),
+      }),
+    );
+    const highServer = buildFeeStatsServer(() =>
+      Promise.resolve({
+        ledger_capacity_usage: "0.9",
+        max_fee: buildFeeDistribution(),
+      }),
+    );
+
+    const low = await getNetworkFees(lowServer);
+    expect(low.networkCongestion).toBe(NetworkCongestion.LOW);
+    expect(low.recommendedFee).toBe(low.feePresets[FeePriority.LOW]);
+
+    const medium = await getNetworkFees(mediumServer);
+    expect(medium.networkCongestion).toBe(NetworkCongestion.MEDIUM);
+    expect(medium.recommendedFee).toBe(medium.feePresets[FeePriority.MEDIUM]);
+
+    const high = await getNetworkFees(highServer);
+    expect(high.networkCongestion).toBe(NetworkCongestion.HIGH);
+    expect(high.recommendedFee).toBe(high.feePresets[FeePriority.HIGH]);
+  });
+
+  it("falls back to the minimum for a non-numeric percentile", async () => {
+    // Horizon answered, but a single percentile is unusable — only that tier
+    // degrades, and it must never surface as "NaN" in the UI.
+    const server = buildFeeStatsServer(() =>
+      Promise.resolve({
+        ledger_capacity_usage: "0.2",
+        max_fee: buildFeeDistribution({ p50: "not-a-number", p90: "" }),
+      }),
+    );
+
+    const { feePresets, recommendedFee } = await getNetworkFees(server);
+
+    expect(feePresets[FeePriority.LOW]).toBe("0.00001"); // p10 = 100, still valid
+    expect(feePresets[FeePriority.MEDIUM]).toBe(MIN_TRANSACTION_FEE);
+    expect(feePresets[FeePriority.HIGH]).toBe(MIN_TRANSACTION_FEE);
+    // Low congestion → the recommended fee tracks the (valid) Low preset.
+    expect(recommendedFee).toBe("0.00001");
+  });
+
+  it("falls back to defaults when feeStats fails", async () => {
+    const server = buildFeeStatsServer(() =>
+      Promise.reject(new Error("network error")),
+    );
+
+    const { recommendedFee, networkCongestion, feePresets } =
+      await getNetworkFees(server);
+
+    // Fallbacks are the XLM network minimum (NOT raw stroops): every consumer
+    // treats these as XLM and converts to stroops at build time, so a stroop
+    // value here would be a ~1,000,000× fee overpayment.
+    expect(recommendedFee).toBe(MIN_TRANSACTION_FEE);
+    expect(networkCongestion).toBe(NetworkCongestion.LOW);
+    expect(feePresets[FeePriority.LOW]).toBe(MIN_TRANSACTION_FEE);
+    expect(feePresets[FeePriority.MEDIUM]).toBe(MIN_TRANSACTION_FEE);
+    expect(feePresets[FeePriority.HIGH]).toBe(MIN_TRANSACTION_FEE);
+  });
+});
+
+describe("buildChangeTrustOperation", () => {
+  const ISSUER = "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
+
+  it("returns a changeTrust operation for the requested asset with no explicit limit", () => {
+    const op = buildChangeTrustOperation({ tokenCode: "USDC", issuer: ISSUER });
+    const decoded = Operation.fromXDRObject(op);
+
+    expect(decoded.type).toBe("changeTrust");
+    expect((decoded as any).line).toBeInstanceOf(SdkToken);
+    expect((decoded as any).line.code).toBe("USDC");
+    expect((decoded as any).line.issuer).toBe(ISSUER);
+    // No `limit` argument was passed — SDK defaults to the max trustline limit.
+    // We don't pin that string here, but we assert the limit is not 0,
+    // which is the remove-path sentinel.
+    expect(parseFloat((decoded as any).limit)).toBeGreaterThan(0);
+  });
+
+  it("sets limit to '0' when isRemove is true (remove-trustline op)", () => {
+    const op = buildChangeTrustOperation({
+      tokenCode: "USDC",
+      issuer: ISSUER,
+      isRemove: true,
+    });
+    const decoded = Operation.fromXDRObject(op);
+
+    expect(decoded.type).toBe("changeTrust");
+    // The Stellar SDK normalizes the limit to 7 decimal places on decode.
+    expect(parseFloat((decoded as any).limit)).toBe(0);
+    expect((decoded as any).line.code).toBe("USDC");
+    expect((decoded as any).line.issuer).toBe(ISSUER);
   });
 });

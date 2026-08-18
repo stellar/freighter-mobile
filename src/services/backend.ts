@@ -16,7 +16,7 @@
 /* eslint-disable arrow-body-style */
 import { Horizon, TransactionBuilder } from "@stellar/stellar-sdk";
 import { AxiosError } from "axios";
-import { NetworkDetails, NETWORKS } from "config/constants";
+import { NATIVE_TOKEN_CODE, NetworkDetails, NETWORKS } from "config/constants";
 import { BackendEnvConfig } from "config/envConfig";
 import { logger, normalizeError } from "config/logger";
 import {
@@ -32,14 +32,26 @@ import {
 import { getTokenType } from "helpers/balances";
 import { bigize } from "helpers/bigize";
 import { getNativeContractDetails } from "helpers/soroban";
-import { createApiService, isRequestCanceled } from "services/apiFactory";
+import {
+  createApiService,
+  isRequestCanceled,
+  logApiError,
+} from "services/apiFactory";
+import { attachAuthInterceptors } from "services/auth/attachAuth";
 
 // Create dedicated API services for backend operations
 export const freighterBackendV1 = createApiService({
   baseURL: BackendEnvConfig.FREIGHTER_BACKEND_V1_URL,
 });
+// Attach per-request JWT auth to the v2 backend instance via the
+// configureInstance hook so the auth interceptors are registered BEFORE
+// apiFactory's error-normalizing response interceptor.  Axios runs response
+// interceptors in registration order; if attachAuthInterceptors were called
+// after createApiService returns, the 401-retry handler would run AFTER the
+// normalizer and never see error.response (already converted to ApiError).
 export const freighterBackendV2 = createApiService({
   baseURL: BackendEnvConfig.FREIGHTER_BACKEND_V2_URL,
+  configureInstance: attachAuthInterceptors,
 });
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -219,11 +231,13 @@ export type FetchBalancesResponse = {
  * @property {string} publicKey - The public key of the account
  * @property {NETWORKS} network - The network to query (mainnet/testnet)
  * @property {string[]} [contractIds] - Optional contract IDs to include in balance calculation
+ * @property {boolean} [shouldSkipScan] - Skip Blockaid asset scanning (faster; for list views that don't render scan results)
  */
 type FetchBalancesParams = {
   publicKey: string;
   network: NETWORKS;
   contractIds?: string[];
+  shouldSkipScan?: boolean;
 };
 
 /**
@@ -258,6 +272,7 @@ export const fetchBalances = async ({
   publicKey,
   network,
   contractIds,
+  shouldSkipScan,
 }: FetchBalancesParams): Promise<FetchBalancesResponse> => {
   const params = new URLSearchParams({
     network,
@@ -267,6 +282,10 @@ export const fetchBalances = async ({
     contractIds.forEach((id) => {
       params.append("contract_ids", id);
     });
+  }
+
+  if (shouldSkipScan) {
+    params.append("should_skip_scan", "true");
   }
 
   const { data } = await freighterBackendV1.get<FetchBalancesResponse>(
@@ -317,22 +336,52 @@ interface TokenPricesResponse {
 export interface FetchTokenPricesParams {
   /** Array of token identifiers to fetch prices for */
   tokens: TokenIdentifier[];
+  /** Active network — the v2 endpoint is network-scoped */
+  network: NETWORKS;
+  /** Whether to hit the network-scoped v2 endpoint (remote-config gated) */
+  useV2: boolean;
 }
 
 /**
- * NOTE: This is a FAKE implementation that returns random data after a 1-second delay
- * Simulates fetching the current USD prices and 24h percentage changes for the specified tokens
+ * Networks we fetch fiat prices for, mapped to the `network` query value the v2
+ * endpoint expects. Only mainnet has a real price source — testnet assets have
+ * no market and v2 returns $0, so (like the browser extension) we gate testnet
+ * out and show no fiat there. Networks absent from this map (testnet, futurenet)
+ * are skipped on both v1 and v2, so a rollback can't reintroduce testnet fiat.
+ */
+const PRICE_NETWORK_PARAMS: Partial<Record<NETWORKS, string>> = {
+  [NETWORKS.PUBLIC]: NETWORKS.PUBLIC,
+};
+
+/**
+ * Wire identifier the v2 /token-prices endpoint expects for the native asset.
+ * The app uses NATIVE_TOKEN_CODE ("XLM") everywhere, but v2 keys the native
+ * asset as "native" (matching the browser extension). We translate only at the
+ * v2 request/response boundary so the rest of the app keeps using "XLM".
+ */
+const V2_NATIVE_PRICE_ID = "native";
+
+/**
+ * Fetches the current USD prices and 24h percentage changes for the given tokens.
  *
- * @param params Object containing the list of tokens to fetch prices for
+ * When `useV2` is true, hits the network-scoped v2 endpoint, passing the active
+ * network as a `network` query param; networks the endpoint doesn't serve (e.g.
+ * Futurenet) are skipped and return null prices. When false, falls back to the
+ * v1 endpoint. LP shares and custom tokens are always filtered out before the
+ * request, and any requested token without a returned price is filled with null.
+ *
+ * @param params Tokens to price, the active network, and the v2 flag
  * @returns Promise resolving to a map of token identifiers to their price information
  *
  * @example
- * // Fetch prices for XLM and USDC
+ * // Fetch prices for XLM and USDC on mainnet via v2
  * const prices = await fetchTokenPrices({
  *   tokens: [
  *     "XLM",
  *     "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
- *   ]
+ *   ],
+ *   network: NETWORKS.PUBLIC,
+ *   useV2: true,
  * });
  *
  * // Access individual token prices
@@ -341,6 +390,8 @@ export interface FetchTokenPricesParams {
  */
 export const fetchTokenPrices = async ({
   tokens,
+  network,
+  useV2,
 }: FetchTokenPricesParams): Promise<TokenPricesMap> => {
   // NOTE: API does not accept LP IDs or custom tokens
   const filteredTokens = tokens.filter((tokenId) => {
@@ -351,18 +402,79 @@ export const fetchTokenPrices = async ({
     );
   });
 
-  const { data } = await freighterBackendV1.post<TokenPricesResponse>(
-    "/token-prices",
-    {
-      tokens: filteredTokens,
-    },
-  );
+  // Skip the request entirely — returning empty prices that the loop below
+  // fills with nulls (→ "--" in the UI) — when there's nothing to ask for, or
+  // when the active network isn't priceable (testnet/futurenet). Fiat is
+  // mainnet-only; gating here applies to both v1 and v2 so a rollback can't
+  // reintroduce testnet fiat, and avoids guaranteed-failing/zero-value calls.
+  const priceNetwork = PRICE_NETWORK_PARAMS[network];
+  const shouldSkipRequest = filteredTokens.length === 0 || !priceNetwork;
+
+  let pricesMap: TokenPricesMap = {};
+
+  if (!shouldSkipRequest) {
+    try {
+      let data: TokenPricesResponse;
+      if (useV2) {
+        // The v2 endpoint is network-scoped via a `network` query param and keys
+        // the native asset as "native", so translate "XLM" -> "native" on the
+        // way out (v1, below, is neither network-scoped nor native-translated).
+        const v2Tokens = filteredTokens.map((tokenId) =>
+          tokenId === NATIVE_TOKEN_CODE ? V2_NATIVE_PRICE_ID : tokenId,
+        );
+        ({ data } = await freighterBackendV2.post<TokenPricesResponse>(
+          "/token-prices",
+          { tokens: v2Tokens },
+          { params: { network: priceNetwork } },
+        ));
+      } else {
+        ({ data } = await freighterBackendV1.post<TokenPricesResponse>(
+          "/token-prices",
+          { tokens: filteredTokens },
+        ));
+      }
+
+      // Defensive: if the endpoint returns an unexpected shape (e.g. v2
+      // diverges from `{ data: TokenPricesMap }`), fall back to an empty map so
+      // the null-fill loop below still produces a valid TokenPricesMap instead
+      // of throwing and silently wiping out all prices.
+      if (!data?.data) {
+        logger.warn(
+          "backendApi.fetchTokenPrices",
+          "Unexpected token-prices response shape",
+          { useV2, topLevelKeys: data ? Object.keys(data) : [] },
+        );
+      }
+      pricesMap = data?.data ?? {};
+
+      // Translate the native price back to the app's "XLM" convention. The
+      // null-fill loop below keys off the original (un-translated) `tokens`, so
+      // remapping here ensures the XLM entry is present and not null-filled.
+      if (useV2 && pricesMap[V2_NATIVE_PRICE_ID]) {
+        pricesMap[NATIVE_TOKEN_CODE] = pricesMap[V2_NATIVE_PRICE_ID];
+        delete pricesMap[V2_NATIVE_PRICE_ID];
+      }
+    } catch (error) {
+      // Without this, the store callers swallow price-fetch failures (keeping
+      // stale prices / a local error string) with no Sentry signal — so a
+      // broadly-failing endpoint (e.g. a bad v2 rollout) would be invisible.
+      // Connectivity failures (offline/DNS/TLS) demote to a warn breadcrumb;
+      // backend 4xx/5xx and timeouts surface as logger.error. Rethrow so the
+      // callers still manage UI state.
+      logApiError(
+        "backendApi.fetchTokenPrices",
+        "Network unreachable while fetching token prices",
+        "Error fetching token prices",
+        error,
+      );
+      throw error;
+    }
+  }
 
   /*
   // ========================================================
-  // Uncomment this to simulate token-prices response
-  // This may be useful for testing the UI with token prices on Testnet
-  // as the /token-prices endpoint only returns prices for Mainnet
+  // Uncomment this to simulate a token-prices response — useful for exercising
+  // the price UI locally without depending on live backend data.
 
   // Simulate network delay
   // eslint-disable-next-line no-promise-executor-return
@@ -397,7 +509,6 @@ export const fetchTokenPrices = async ({
 
   // Make sure it's compliant with the TokenPricesMap type as the backend
   // returns { "code:issuer" : null } for tokens that are not supported
-  const pricesMap = data.data;
   tokens.forEach((token) => {
     if (!pricesMap[token]) {
       pricesMap[token] = {
@@ -468,8 +579,15 @@ export const getTokenDetails = async ({
     }
 
     if (!isRequestCanceled(error)) {
-      logger.error(
+      // Connectivity failures (offline, DNS, TLS, captive portal) -
+      // demote to warn so they remain as breadcrumb context without
+      // creating top-level Sentry issues. Backend bugs (4xx/5xx
+      // responses, malformed payloads) and axios client-side timeouts
+      // (carved out of isApiNetworkError so latency regressions stay
+      // visible) still surface as logger.error.
+      logApiError(
         "backendApi.getTokenDetails",
+        "Network unreachable while fetching token details",
         "Error fetching token details",
         error,
       );
@@ -525,8 +643,9 @@ export const isSacContractExecutable = async (
 
     return response.data.isSacContract;
   } catch (error) {
-    logger.error(
+    logApiError(
       "backendApi.isSacContractExecutable",
+      "Network unreachable while checking SAC contract",
       "Error fetching sac contract executable",
       error,
     );
@@ -583,8 +702,9 @@ export const getIndexerAccountHistory = async ({
 
     return response.data;
   } catch (error) {
-    logger.error(
+    logApiError(
       "backendApi.getAccountHistory",
+      "Network unreachable while fetching account history",
       "Error fetching account history",
       error,
     );
@@ -714,7 +834,7 @@ export const handleContractLookup = async (
  * @property {Object} params - Transfer parameters
  * @property {string} params.publicKey - Sender's public key
  * @property {string} params.destination - Recipient's address
- * @property {string} params.amount - Amount to transfer
+ * @property {string} params.amount - Amount to transfer in base units
  * @property {string} network_url - Network URL for simulation
  * @property {string} network_passphrase - Network passphrase
  */
@@ -735,12 +855,16 @@ export interface SimulateTokenTransferParams {
 /**
  * Response from token transfer simulation
  * @interface SimulateTransactionResponse
- * @property {unknown} simulationResponse - Raw simulation response from backend
+ * @property {SorobanSimulationResponse} simulationResponse - Soroban simulation response with fee data
  * @property {string} preparedTransaction - XDR-encoded prepared transaction
  */
 export interface SimulateTransactionResponse {
-  simulationResponse: unknown;
+  simulationResponse: SorobanSimulationResponse;
   preparedTransaction: string;
+}
+
+export interface SorobanSimulationResponse {
+  minResourceFee?: string;
 }
 
 /**
@@ -1092,18 +1216,25 @@ export const fetchCollectibles = async ({
 > => {
   try {
     const { data } = await freighterBackendV2.post<CollectiblesResponse>(
-      `/collectibles?network=${network}`,
-      {
-        owner,
-        contracts,
-      },
+      "/collectibles",
+      { owner, contracts },
+      { params: { network } },
     );
 
     if (!data.data || !data.data.collections) {
-      logger.error(
+      // Demote this inner log to a breadcrumb so it doesn't fire its
+      // own captureException - the catch below already logs the
+      // thrown Error once. Without this, one bad payload produced
+      // two Sentry events. Capture only the payload shape (top-level
+      // and inner keys) so we can recognize a backend contract change
+      // without uploading user-identifying values like account IDs.
+      logger.warn(
         "backendApi.fetchCollectibles",
-        "Invalid response from server",
-        data,
+        "Invalid response shape - missing data.collections",
+        {
+          topLevelKeys: Object.keys(data ?? {}),
+          innerKeys: Object.keys((data as { data?: unknown })?.data ?? {}),
+        },
       );
 
       throw new Error("Invalid response from server");
@@ -1111,8 +1242,16 @@ export const fetchCollectibles = async ({
 
     return data.data.collections;
   } catch (error) {
-    logger.error(
+    // Connectivity failures (offline, DNS, TLS, captive portal) are not
+    // backend bugs — demote to warn so they remain as breadcrumb context
+    // without creating top-level Sentry issues. Backend bugs (4xx/5xx
+    // responses, malformed payloads, the "Invalid response from server"
+    // throw above) and axios client-side timeouts (carved out of
+    // isApiNetworkError so latency regressions stay visible) still
+    // surface as logger.error.
+    logApiError(
       "backendApi.fetchCollectibles",
+      "Network unreachable while fetching collectibles",
       "Error fetching collectibles",
       error,
     );

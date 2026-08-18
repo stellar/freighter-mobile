@@ -1,20 +1,35 @@
 import { Networks, xdr } from "@stellar/stellar-sdk";
-import { NETWORK_URLS } from "config/constants";
+import { NETWORK_URLS, NETWORKS } from "config/constants";
+import { logger } from "config/logger";
 import {
+  fetchCollectibles,
+  fetchTokenPrices,
   freighterBackendV1,
+  freighterBackendV2,
   simulateTransaction,
   submitTransaction,
   SimulateTransactionParams,
   SubmitTransactionBody,
 } from "services/backend";
 
-jest.mock("services/apiFactory", () => ({
-  createApiService: jest.fn(() => ({
-    get: jest.fn(),
-    post: jest.fn(),
-  })),
-  isRequestCanceled: jest.fn(),
-}));
+jest.mock("services/apiFactory", () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports, global-require
+  const actual = jest.requireActual("services/apiFactory");
+  return {
+    ...actual,
+    createApiService: jest.fn(() => ({
+      get: jest.fn(),
+      post: jest.fn(),
+      getInstance: jest.fn(() => ({
+        interceptors: {
+          request: { use: jest.fn() },
+          response: { use: jest.fn() },
+        },
+      })),
+    })),
+    isRequestCanceled: jest.fn(),
+  };
+});
 
 jest.mock("config/logger", () => ({
   logger: {
@@ -570,5 +585,335 @@ describe("Backend Service - Transaction Operations", () => {
       expect(submitResult.successful).toBe(true);
       expect(mockPost).toHaveBeenCalledTimes(2);
     });
+  });
+});
+
+describe("Backend Service - fetchCollectibles severity split", () => {
+  let mockV2Post: jest.MockedFunction<any>;
+  let warnSpy: jest.SpyInstance;
+  let errorSpy: jest.SpyInstance;
+
+  const params = {
+    owner: "GCMTT4N6CZ5CU7JTKDLVUCDK4JZVFQCRUVQJ7BMKYSJWCSIDG3BIW4PH",
+    contracts: [{ id: "C...", token_ids: ["abc"] }],
+    network: NETWORKS.PUBLIC,
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockV2Post = freighterBackendV2.post as jest.MockedFunction<any>;
+    warnSpy = jest.spyOn(logger, "warn").mockImplementation(() => {});
+    errorSpy = jest.spyOn(logger, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    warnSpy.mockRestore();
+    errorSpy.mockRestore();
+  });
+
+  it("logs warn (not error) on connectivity failures from apiFactory", async () => {
+    // apiFactory throws a plain ApiError object on no-response failures
+    // (offline, DNS, TLS, captive portal). isApiNetworkError matches that
+    // shape, so the catch should demote to logger.warn.
+    const networkError = {
+      message: "Network Error",
+      status: 0,
+      isNetworkError: true,
+    };
+    mockV2Post.mockRejectedValue(networkError);
+
+    await expect(fetchCollectibles(params)).rejects.toEqual(networkError);
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      "backendApi.fetchCollectibles",
+      expect.stringContaining("Network unreachable"),
+      networkError,
+    );
+    expect(errorSpy).not.toHaveBeenCalled();
+  });
+
+  it("logs error (NOT warn) on axios timeouts so latency regressions stay visible in Sentry", async () => {
+    // apiFactory carves timeouts out of the isNetworkError bucket
+    // (status: 0, isNetworkError: false, message: "timeout of ...").
+    // A timeout is backend latency, not connectivity, so the
+    // fetchCollectibles catch must take the error branch - not the
+    // warn branch shared with offline events. Without this carve-out
+    // we'd silently demote slow/hung backends and lose Sentry signal
+    // for latency regressions.
+    const timeoutError = {
+      message: "timeout of 15000ms exceeded",
+      status: 0,
+      isNetworkError: false,
+    };
+    mockV2Post.mockRejectedValue(timeoutError);
+
+    await expect(fetchCollectibles(params)).rejects.toEqual(timeoutError);
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      "backendApi.fetchCollectibles",
+      "Error fetching collectibles",
+      timeoutError,
+    );
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it("logs error on backend response errors (4xx/5xx)", async () => {
+    const backendError = {
+      message: "Internal Server Error",
+      status: 500,
+      isNetworkError: false,
+    };
+    mockV2Post.mockRejectedValue(backendError);
+
+    await expect(fetchCollectibles(params)).rejects.toEqual(backendError);
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      "backendApi.fetchCollectibles",
+      "Error fetching collectibles",
+      backendError,
+    );
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it("logs malformed response (data.collections missing) exactly once", async () => {
+    // Server returned 200 but the payload is missing the expected
+    // collections field. This is a contract violation, not a
+    // connectivity failure. Inner shape mismatch should ship as a
+    // warn breadcrumb (with the raw payload for inspection); the
+    // outer catch fires a single logger.error for the thrown Error.
+    // Earlier this path produced TWO Sentry events for one bad
+    // payload (inner logger.error + catch logger.error).
+    mockV2Post.mockResolvedValue({
+      data: { data: {} },
+      status: 200,
+      statusText: "OK",
+    });
+
+    await expect(fetchCollectibles(params)).rejects.toThrow(
+      "Invalid response from server",
+    );
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      "backendApi.fetchCollectibles",
+      expect.stringContaining("Invalid response shape"),
+      // Args carry only the payload SHAPE (key names) - no values,
+      // so a malformed payload can't smuggle account IDs through
+      // breadcrumb data on opt-out users' Sentry events.
+      expect.objectContaining({
+        topLevelKeys: expect.any(Array),
+        innerKeys: expect.any(Array),
+      }),
+    );
+    expect(errorSpy).toHaveBeenCalledTimes(1);
+    expect(errorSpy).toHaveBeenCalledWith(
+      "backendApi.fetchCollectibles",
+      "Error fetching collectibles",
+      expect.any(Error),
+    );
+  });
+
+  it("sends a pre-serialized string body and query-in-URL so the JWT interceptor hashes the correct bytes", async () => {
+    // The JWT request interceptor hashes config.data ONLY when it is already a
+    // string. If the body is an object the interceptor would sign the empty-string
+    // hash, producing a token that never validates on the backend. This test locks
+    // the contract: body must be a string, query must be in the URL.
+    mockV2Post.mockResolvedValue({
+      data: {
+        data: {
+          collections: [
+            {
+              contract_id: "C...",
+              collection_name: "Test",
+              nfts: [],
+            },
+          ],
+        },
+      },
+      status: 200,
+      statusText: "OK",
+    });
+
+    await fetchCollectibles(params);
+
+    // Idiomatic axios: the network goes via `{ params }` (the JWT interceptor
+    // folds it into the signed path via getUri) and the body is a plain object
+    // (the interceptor serializes it so bodyHash matches the wire).
+    expect(mockV2Post).toHaveBeenCalledWith(
+      "/collectibles",
+      { owner: params.owner, contracts: params.contracts },
+      { params: { network: params.network } },
+    );
+  });
+});
+
+describe("Backend Service - fetchTokenPrices v2 migration", () => {
+  let mockV1Post: jest.MockedFunction<any>;
+  let mockV2Post: jest.MockedFunction<any>;
+
+  const tokens = [
+    "XLM",
+    "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+  ];
+  // What the v2 request body should contain: native "XLM" mapped to "native".
+  const v2Tokens = [
+    "native",
+    "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+  ];
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockV1Post = freighterBackendV1.post as jest.MockedFunction<any>;
+    mockV2Post = freighterBackendV2.post as jest.MockedFunction<any>;
+    const response = {
+      data: {
+        data: { XLM: { currentPrice: "0.5", percentagePriceChange24h: 0.02 } },
+      },
+    };
+    mockV1Post.mockResolvedValue(response);
+    mockV2Post.mockResolvedValue(response);
+  });
+
+  it("hits the v2 client with a network query param and native id when useV2 is true", async () => {
+    await fetchTokenPrices({ tokens, network: NETWORKS.PUBLIC, useV2: true });
+
+    // Native "XLM" is sent to v2 as "native"; the network goes via `{ params }`
+    // (the JWT interceptor folds it into the signed path via getUri). The body
+    // is a plain object — the interceptor serializes it centrally so bodyHash
+    // matches the wire bytes.
+    expect(mockV2Post).toHaveBeenCalledWith(
+      "/token-prices",
+      { tokens: v2Tokens },
+      { params: { network: "PUBLIC" } },
+    );
+    expect(mockV1Post).not.toHaveBeenCalled();
+  });
+
+  it("gates testnet entirely — no request, null prices (fiat is mainnet-only)", async () => {
+    const result = await fetchTokenPrices({
+      tokens,
+      network: NETWORKS.TESTNET,
+      useV2: true,
+    });
+
+    expect(mockV2Post).not.toHaveBeenCalled();
+    expect(mockV1Post).not.toHaveBeenCalled();
+    expect(result.XLM).toEqual({
+      currentPrice: null,
+      percentagePriceChange24h: null,
+    });
+  });
+
+  it("gates testnet on the v1 fallback too (rollback can't reintroduce testnet fiat)", async () => {
+    const result = await fetchTokenPrices({
+      tokens,
+      network: NETWORKS.TESTNET,
+      useV2: false,
+    });
+
+    expect(mockV1Post).not.toHaveBeenCalled();
+    expect(mockV2Post).not.toHaveBeenCalled();
+    expect(result.XLM).toEqual({
+      currentPrice: null,
+      percentagePriceChange24h: null,
+    });
+  });
+
+  it("remaps the v2 'native' price back to the app's 'XLM' key", async () => {
+    mockV2Post.mockResolvedValueOnce({
+      data: {
+        data: {
+          native: { currentPrice: "0.5", percentagePriceChange24h: 0.02 },
+        },
+      },
+    });
+
+    const result = await fetchTokenPrices({
+      tokens,
+      network: NETWORKS.PUBLIC,
+      useV2: true,
+    });
+
+    expect(result.XLM?.currentPrice?.toString()).toBe("0.5");
+    expect(result.native).toBeUndefined();
+  });
+
+  it("hits the v1 client with the 'XLM' native id and no network param when useV2 is false", async () => {
+    await fetchTokenPrices({ tokens, network: NETWORKS.PUBLIC, useV2: false });
+
+    // v1 is not native-translated — it still receives "XLM".
+    expect(mockV1Post).toHaveBeenCalledWith("/token-prices", { tokens });
+    expect(mockV2Post).not.toHaveBeenCalled();
+  });
+
+  it("short-circuits on unsupported networks (Futurenet) without any request", async () => {
+    const result = await fetchTokenPrices({
+      tokens,
+      network: NETWORKS.FUTURENET,
+      useV2: true,
+    });
+
+    expect(mockV1Post).not.toHaveBeenCalled();
+    expect(mockV2Post).not.toHaveBeenCalled();
+    // Every requested token is present with null prices.
+    expect(result.XLM).toEqual({
+      currentPrice: null,
+      percentagePriceChange24h: null,
+    });
+  });
+
+  it("short-circuits when all tokens filter out (custom tokens) without any request", async () => {
+    const customTokens = ["USDC:CUSTOM_CONTRACT_ID"];
+    const result = await fetchTokenPrices({
+      tokens: customTokens,
+      network: NETWORKS.PUBLIC,
+      useV2: true,
+    });
+
+    expect(mockV1Post).not.toHaveBeenCalled();
+    expect(mockV2Post).not.toHaveBeenCalled();
+    expect(result["USDC:CUSTOM_CONTRACT_ID"]).toEqual({
+      currentPrice: null,
+      percentagePriceChange24h: null,
+    });
+  });
+
+  it("logs an error to Sentry and rethrows on a backend failure", async () => {
+    const backendError = {
+      message: "Internal Server Error",
+      status: 500,
+      isNetworkError: false,
+    };
+    mockV2Post.mockRejectedValueOnce(backendError);
+
+    await expect(
+      fetchTokenPrices({ tokens, network: NETWORKS.PUBLIC, useV2: true }),
+    ).rejects.toEqual(backendError);
+
+    expect(logger.error).toHaveBeenCalledWith(
+      "backendApi.fetchTokenPrices",
+      "Error fetching token prices",
+      backendError,
+    );
+    expect(logger.warn).not.toHaveBeenCalled();
+  });
+
+  it("demotes a connectivity failure to a warn breadcrumb (no Sentry error)", async () => {
+    const networkError = {
+      message: "Network Error",
+      status: 0,
+      isNetworkError: true,
+    };
+    mockV2Post.mockRejectedValueOnce(networkError);
+
+    await expect(
+      fetchTokenPrices({ tokens, network: NETWORKS.PUBLIC, useV2: true }),
+    ).rejects.toEqual(networkError);
+
+    expect(logger.warn).toHaveBeenCalledWith(
+      "backendApi.fetchTokenPrices",
+      "Network unreachable while fetching token prices",
+      networkError,
+    );
+    expect(logger.error).not.toHaveBeenCalled();
   });
 });

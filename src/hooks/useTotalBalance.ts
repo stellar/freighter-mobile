@@ -6,6 +6,14 @@ import { useMemo } from "react";
 interface TotalBalance {
   formattedBalance: string;
   rawBalance: BigNumber;
+  /**
+   * Whether any held asset is actually priced. False on e.g. testnet (fiat
+   * is gated off) or before prices load, where the summed total is a
+   * placeholder "$0.00" rather than a real value. The Home header shows the
+   * total either way by design; consumers that prefer hiding a placeholder
+   * can gate on this.
+   */
+  hasFiatTotal: boolean;
 }
 
 /**
@@ -27,9 +35,17 @@ export const useTotalBalance = (): TotalBalance => {
       new BigNumber(0),
     );
 
+    // A total is only "real" when at least one held asset is priced;
+    // otherwise (e.g. testnet, where fiat is gated off, or before prices
+    // load) the sum is a placeholder zero.
+    const hasFiatTotal = Object.values(pricedBalances).some(
+      (balance) => balance.fiatTotal != null,
+    );
+
     return {
       formattedBalance: formatFiatAmount(rawBalance),
       rawBalance,
+      hasFiatTotal,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fiatTotalsKey]);

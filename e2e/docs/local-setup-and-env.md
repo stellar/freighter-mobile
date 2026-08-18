@@ -7,12 +7,12 @@ secrets/variables are used in CI.
 
 Create a `.env` from `.env.example` and set at least:
 
-| Variable                          | Required                    | Description                                                                               |
-| --------------------------------- | --------------------------- | ----------------------------------------------------------------------------------------- |
-| `IS_E2E_TEST`                     | Yes                         | Set to `true` for E2E. Enables test-specific behavior in the app.                         |
-| `E2E_TEST_RECOVERY_PHRASE`        | For Import/Send/Swap        | Recovery phrase used by Import Wallet and flows that `runFlow` it.                        |
-| `E2E_TEST_FUNDED_RECOVERY_PHRASE` | For Send/Swap/WalletConnect | Recovery phrase for funded wallet used by ImportFundedWallet and flows that `runFlow` it. |
-| `E2E_TEST_RECIPIENT_ADDRESS`      | For Send                    | Recipient address used by SendClassicTokenMainnet flow (must not be the active account).  |
+| Variable                          | Required                    | Description                                                                                                                                                                                            |
+| --------------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `IS_E2E_TEST`                     | Yes                         | Set to `true` for E2E. Enables test-specific behavior in the app.                                                                                                                                      |
+| `E2E_TEST_RECOVERY_PHRASE`        | For Import/Send/Swap        | Recovery phrase used by Import Wallet and flows that `runFlow` it.                                                                                                                                     |
+| `E2E_TEST_FUNDED_RECOVERY_PHRASE` | For Send/Swap/WalletConnect | Recovery phrase for funded wallet used by ImportFundedWallet and flows that `runFlow` it.                                                                                                              |
+| `E2E_TEST_RECIPIENT_ADDRESS`      | Auto-provisioned            | No longer set by the developer. The runner provisions a fresh testnet account per run via `e2e/scripts/provision-test-account.mjs` and exports this for the `SendClassicToken` flow (runs on testnet). |
 
 Example:
 
@@ -21,8 +21,10 @@ IS_E2E_TEST=true
 # DO NOT add quotes around the recovery phrase as it will break the ImportWallet flow
 E2E_TEST_RECOVERY_PHRASE=word1 word2 ... word12
 E2E_TEST_FUNDED_RECOVERY_PHRASE=word1 word2 ... word12
-E2E_TEST_RECIPIENT_ADDRESS=G...TESTNET_RECIPIENT
 ```
+
+`E2E_TEST_RECIPIENT_ADDRESS` is no longer set here: the runner auto-provisions a
+fresh testnet account per run via `e2e/scripts/provision-test-account.mjs`.
 
 `run-e2e-tests.sh` loads `E2E_TEST_RECOVERY_PHRASE` and
 `E2E_TEST_FUNDED_RECOVERY_PHRASE` from `.env` when they're not already set. **Do
@@ -35,8 +37,9 @@ not commit `.env`** or use a phrase that holds real funds.
   `secrets.E2E_TEST_RECOVERY_PHRASE` in CI).
 - **Funded recovery phrase**: From `E2E_TEST_FUNDED_RECOVERY_PHRASE` (`.env`
   locally, `secrets.E2E_TEST_FUNDED_RECOVERY_PHRASE` in CI).
-- **Recipient address**: From `E2E_TEST_RECIPIENT_ADDRESS` for
-  SendClassicTokenMainnet.
+- **Recipient address**: `E2E_TEST_RECIPIENT_ADDRESS`, auto-provisioned per run
+  on testnet by `e2e/scripts/provision-test-account.mjs` and consumed by the
+  `SendClassicToken` flow.
 
 ## Secrets and variables in CI
 

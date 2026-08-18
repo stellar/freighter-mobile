@@ -21,33 +21,16 @@ export interface SecurityDetailBottomSheetProps {
   securityContext?: SecurityContext;
   severity?: Exclude<SecurityLevel, SecurityLevel.SAFE>;
   /** The text to display for the "proceed anyway" button */
-  proceedAnywayText: string;
+  proceedAnywayText?: string;
 }
 
 /**
- * Reusable security detail bottom sheet component for displaying security warnings.
- * Can be used for both token security warnings and dApp connection warnings.
+ * Reusable security detail bottom sheet for displaying security warnings.
+ * Used for token, site, and transaction security warnings.
  *
- * @example
- * // For Add Token flow
- * <SecurityDetailBottomSheet
- *   warnings={warnings}
- *   onCancel={handleCancel}
- *   onProceedAnyway={handleProceed}
- *   onClose={handleClose}
- *   severity={SecurityLevel.MALICIOUS}
- *   proceedAnywayText={t("addTokenScreen.approveAnyway")}
- * />
- *
- * // For DApp Connection flow
- * <SecurityDetailBottomSheet
- *   warnings={warnings}
- *   onCancel={handleCancel}
- *   onProceedAnyway={handleProceed}
- *   onClose={handleClose}
- *   severity={SecurityLevel.SUSPICIOUS}
- *   proceedAnywayText={t("dappConnectionBottomSheetContent.connectAnyway")}
- * />
+ * Severity defaults to MALICIOUS (the most cautious header) and drives the
+ * HEADER copy/icon only. Per-row icons come from each `warning.severity` so
+ * a Malicious-level sheet can still show amber Warning-typed rows correctly.
  */
 export const SecurityDetailBottomSheet: React.FC<
   SecurityDetailBottomSheetProps
@@ -101,12 +84,17 @@ export const SecurityDetailBottomSheet: React.FC<
 
   const getListItems = () =>
     warnings.map((warning) => ({
+      // Stable React key from feature_id (falls back to title in List
+      // when key is absent, which collides when source + dest produce
+      // the same feature_id).
+      key: warning.id,
       title: warning.description,
-      icon: isMalicious ? (
-        <Icon.XCircle size={16} themeColor="red" />
-      ) : (
-        <Icon.MinusCircle size={16} themeColor="gray" />
-      ),
+      icon:
+        warning.severity === "malicious" ? (
+          <Icon.XCircle size={16} themeColor="red" />
+        ) : (
+          <Icon.AlertTriangle size={16} themeColor="amber" />
+        ),
     }));
 
   const renderButtons = () => {
@@ -116,7 +104,13 @@ export const SecurityDetailBottomSheet: React.FC<
         <View className="flex-row gap-3">
           {onCancel && (
             <View className="flex-1">
-              <Button xl isFullWidth onPress={onCancel} variant="secondary">
+              <Button
+                xl
+                isFullWidth
+                onPress={onCancel}
+                variant="secondary"
+                testID="security-warning-cancel-button"
+              >
                 {t("common.cancel")}
               </Button>
             </View>
@@ -128,6 +122,7 @@ export const SecurityDetailBottomSheet: React.FC<
                 isFullWidth
                 onPress={onProceedAnyway}
                 variant="tertiary"
+                testID="security-warning-proceed-button"
               >
                 {proceedAnywayText}
               </Button>
@@ -146,15 +141,17 @@ export const SecurityDetailBottomSheet: React.FC<
             isFullWidth
             onPress={onCancel}
             variant={isMalicious ? "destructive" : "tertiary"}
+            testID="security-warning-cancel-button"
           >
             {t("common.cancel")}
           </Button>
         )}
         {onProceedAnyway && (
           <TextButton
-            text={proceedAnywayText}
+            text={proceedAnywayText ?? ""}
             onPress={onProceedAnyway}
             variant={isMalicious ? "error" : "secondary"}
+            testID="security-warning-proceed-button"
           />
         )}
       </View>

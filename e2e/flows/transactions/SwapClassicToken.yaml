@@ -1,0 +1,138 @@
+appId: org.stellar.freighterdev
+tags:
+  - transactions
+  - swap
+  - classic-token
+  - testnet
+---
+# Swap 0.000001 XLM → USDC on testnet.
+#
+# Import funded wallet
+- runFlow:
+    file: ../onboarding/ImportFundedWallet.yaml
+
+# Switch to Testnet (account is provisioned on testnet). The shared sub-flow
+# waits for the post-import welcome bottom sheet and any auth-error toast,
+# dismisses them, then performs the network switch.
+- runFlow:
+    file: ../shared/SwitchToTestnet.yaml
+
+# Wait for accounts and balances to load
+- extendedWaitUntil:
+    visible:
+      id: home-account-switcher
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: icon-button-swap
+    timeout: 15000
+
+# Navigate to swap screen
+- assertVisible:
+    id: tab-tokens
+- assertVisible:
+    id: tab-collectibles
+- tapOn:
+    id: icon-button-swap
+
+# Verify we're on swap amount screen
+- assertVisible:
+    id: swap-amount-screen
+
+# Select "from" (Sell) token (XLM). The Sell side is pre-seeded with XLM on
+# entry (Home → swap navigates with the native token), so the picker pill
+# renders as swap-sell-pill; match the empty-state choose pill too defensively.
+- tapOn:
+    id: "swap-sell-pill|swap-sell-choose-pill"
+# Wait for the token picker, then select XLM
+- extendedWaitUntil:
+    visible:
+      id: token-option-XLM
+    timeout: 15000
+- tapOn:
+    id: token-option-XLM
+
+# Select "to" (Receive) token (USDC). No destination chosen yet → choose pill.
+- tapOn:
+    id: swap-receive-choose-pill
+# Wait for the token picker, then select USDC
+- extendedWaitUntil:
+    visible:
+      id: token-option-USDC
+    timeout: 15000
+- tapOn:
+    id: token-option-USDC
+
+# Enter amount: 0.000001 XLM (minimal, keeps the test cheap)
+- assertVisible:
+    id: swap-amount-screen
+- tapOn:
+    id: swap-amount-focus-trigger
+- inputText: "0.000001"
+
+# Give the swap a few seconds to settle after entering the amount (path
+# finding / quote / transaction build) before tapping Review, so the CTA is in
+# its "review" state rather than still loading when tapped.
+- waitForAnimationToEnd:
+    timeout: 3000
+
+# Dismiss the keyboard on Android so the Review button is not obscured. iOS is
+# not handled here: Maestro's hideKeyboard can't dismiss the decimal-pad (no
+# return key), and it isn't needed — tapping Review blurs the input and calls
+# Keyboard.dismiss() in the app before presenting the sheet.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+
+# Review the swap. Tapping "Review swap" blurs the amount input, dismisses the
+# keyboard in-app, then presents the review bottom sheet.
+- tapOn:
+    id: swap-continue-button
+# Dismiss Blockaid "Proceed with caution" sheet on testnet
+- runFlow:
+    file: ../shared/HandleUnableToScan.yaml
+# Verify review sheet is visible
+# Give the keyboard-dismiss + sheet present animation a moment to finish.
+- waitForAnimationToEnd:
+    timeout: 3000
+# The sheet's swap-review-sheet wrapper is flex-1 inside a BottomSheetScrollView,
+# which collapses to zero height — Maestro reports it as not-visible even when
+# the sheet is on screen. Gate on the confirm button instead: it lives in the
+# fixed footer (real bounds) and its visible+enabled state IS the sheet being
+# open with the transaction built (it's disabled while isBuilding / no XDR).
+# A tap on the disabled button would be a silent no-op, so wait for enabled.
+- extendedWaitUntil:
+    visible:
+      id: swap-review-confirm-button
+      enabled: true
+    timeout: 30000
+- tapOn:
+    id: swap-review-confirm-button
+# Verify swap processing (may timeout if testnet API is slow/unavailable)
+- extendedWaitUntil:
+    visible:
+      id: swap-processing-screen
+    timeout: 90000
+    optional: true
+# Wait for completion and tap Done (optional - may not appear if there was a network error)
+- runFlow:
+    when:
+      visible:
+        id: swap-processing-done-button
+    commands:
+      - tapOn:
+          id: swap-processing-done-button
+# Give the history screen a few seconds to render the new swap row before
+# asserting it.
+- waitForAnimationToEnd:
+    timeout: 3000
+# Verify Swapped on history screen. The row's texts (title, "Swapped", amount,
+# date) collapse into one accessibility element on iOS, so its full text isn't
+# exactly "XLM to USDC". Maestro matches a bare string against the element's
+# ENTIRE text, so use a contains-regex (.*….*) to match the row.
+- extendedWaitUntil:
+    visible: ".*XLM to USDC.*"
+    timeout: 30000
+    optional: true

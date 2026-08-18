@@ -183,6 +183,9 @@ export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
         saveSelectedTokenId("");
         navigation.navigate(ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK, {
           screen: SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN,
+          params: {
+            dismissToPreviousScreen: true,
+          },
         });
       }
     };
@@ -289,7 +292,10 @@ export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
           )}
         </ScrollView>
 
-        <View className="pb-3 gap-7">
+        <View
+          className="pb-3 gap-7"
+          style={{ marginTop: pxValue(DEFAULT_PADDING) }}
+        >
           <View className={collectible?.externalUrl ? "flex-row gap-3" : ""}>
             {collectible?.externalUrl && (
               <View className="flex-1">

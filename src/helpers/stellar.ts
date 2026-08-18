@@ -8,6 +8,10 @@ import {
 } from "@stellar/stellar-sdk";
 import { logger } from "config/logger";
 import { isContractId } from "helpers/soroban";
+import {
+  normalizeAuthPreimage,
+  validateAuthEntryAddress,
+} from "helpers/walletKitValidation";
 
 /**
  * Checks if an address is a federation address (username*domain.com format)
@@ -15,9 +19,69 @@ import { isContractId } from "helpers/soroban";
  * @param address The address to check
  * @returns True if the address is a federation address
  */
+const hasInvalidFederationChars = (value: string): boolean =>
+  value.split("").some((char) => char === "@" || char === "*" || char <= " ");
+
 export const isFederationAddress = (address: string): boolean => {
-  const federationAddressRegex = /^[^*@]+\*[^*@]+(\.[^*@]+)+$/;
-  return federationAddressRegex.test(address);
+  if (!address) {
+    return false;
+  }
+
+  // Reject non-ASCII to prevent homoglyph spoofing (SEP-0002 addresses are ASCII-only)
+  if (address.split("").some((char) => char.charCodeAt(0) > 127)) {
+    return false;
+  }
+
+  const separatorIndex = address.indexOf("*");
+
+  if (
+    separatorIndex <= 0 ||
+    separatorIndex !== address.lastIndexOf("*") ||
+    separatorIndex === address.length - 1
+  ) {
+    return false;
+  }
+
+  const localPart = address.slice(0, separatorIndex);
+  const domainPart = address.slice(separatorIndex + 1);
+
+  if (
+    hasInvalidFederationChars(localPart) ||
+    hasInvalidFederationChars(domainPart)
+  ) {
+    return false;
+  }
+
+  const domainLabels = domainPart.split(".");
+
+  return (
+    domainLabels.length > 1 &&
+    domainLabels.every(
+      (label) => label.length > 0 && !hasInvalidFederationChars(label),
+    )
+  );
+};
+
+/**
+ * Truncates a long federation address for display.
+ * Keeps the local part up to maxLocal chars and the domain up to maxDomain chars.
+ * e.g. "averylongusername*averylongdomain.com" → "averylon…*averylon…"
+ */
+export const truncateFedAddress = (
+  address: string,
+  maxLocal = 10,
+  maxDomain = 12,
+): string => {
+  if (!address) return address;
+  const starIdx = address.indexOf("*");
+  if (starIdx === -1) return address;
+  const local = address.slice(0, starIdx);
+  const domain = address.slice(starIdx + 1);
+  const truncLocal =
+    local.length > maxLocal ? `${local.slice(0, maxLocal)}…` : local;
+  const truncDomain =
+    domain.length > maxDomain ? `${domain.slice(0, maxDomain)}…` : domain;
+  return `${truncLocal}*${truncDomain}`;
 };
 
 /**
@@ -327,7 +391,8 @@ export const signMessage = (message: string, privateKey: string): string => {
  * Ed25519 signature alongside the signer address.
  *
  * @param preimageXdr - Base64-encoded HashIdPreimage XDR
- *   (HashIdPreimage.envelopeTypeSorobanAuthorization)
+ *   (envelopeTypeSorobanAuthorization, or the CAP-71 / Protocol 27
+ *   envelopeTypeSorobanAuthorizationWithAddress sent for ADDRESS_V2 credentials)
  * @param privateKey - Account's secret key (S...)
  * @returns signedAuthEntry (base64 Ed25519 signature) and signerAddress (G... public key)
  *
@@ -343,11 +408,22 @@ export const signAuthEntry = (
   preimageXdr: string,
   privateKey: string,
 ): { signedAuthEntry: string; signerAddress: string } => {
-  // Validate that the XDR is a HashIdPreimage.envelopeTypeSorobanAuthorization
-  // before signing — rejects arbitrary blobs that do not conform to SEP-43.
-  xdr.HashIdPreimage.fromXDR(preimageXdr, "base64").sorobanAuthorization();
+  // Validate that the XDR is a Soroban authorization HashIdPreimage (either
+  // arm) before signing — rejects arbitrary blobs that do not conform to SEP-43.
+  const preimage = xdr.HashIdPreimage.fromXDR(preimageXdr, "base64");
+  if (!normalizeAuthPreimage(preimage)) {
+    throw new Error("Unsupported auth entry preimage type");
+  }
 
   const keyPair = Keypair.fromSecret(privateKey);
+
+  // Defense-in-depth: a CAP-71 (ADDRESS_V2) preimage binds a signer address —
+  // never sign one bound to a different account. Pre-validation should already
+  // have rejected this, so it's a backstop against bypass.
+  if (!validateAuthEntryAddress(preimage, keyPair.publicKey()).valid) {
+    throw new Error("Auth entry is bound to a different account");
+  }
+
   // SEP-43: hash the raw preimage bytes and sign — identical to the extension
   const signingPayload = hash(Buffer.from(preimageXdr, "base64"));
   const signature = keyPair.sign(signingPayload);

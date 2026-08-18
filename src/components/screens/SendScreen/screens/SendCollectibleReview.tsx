@@ -8,7 +8,7 @@ import InformationBottomSheet from "components/InformationBottomSheet";
 import { List, ListItemProps } from "components/List";
 import MuxedAddressWarningBottomSheet from "components/MuxedAddressWarningBottomSheet";
 import TransactionSettingsBottomSheet from "components/TransactionSettingsBottomSheet";
-import SecurityDetailBottomSheet from "components/blockaid/SecurityDetailBottomSheet";
+import { SecurityDetailBottomSheet } from "components/blockaid";
 import { BaseLayout } from "components/layout/BaseLayout";
 import {
   ContactRow,
@@ -36,6 +36,7 @@ import {
   SendPaymentStackParamList,
   ROOT_NAVIGATOR_ROUTES,
   MAIN_TAB_ROUTES,
+  ScreenTransition,
 } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import { useCollectiblesStore } from "ducks/collectibles";
@@ -49,7 +50,9 @@ import { isMuxedAccount } from "helpers/stellar";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
-import useGetActiveAccount from "hooks/useGetActiveAccount";
+import useGetActiveAccount, {
+  isWalletUnlocked,
+} from "hooks/useGetActiveAccount";
 import { useInitialRecommendedFee } from "hooks/useInitialRecommendedFee";
 import { useNetworkFees } from "hooks/useNetworkFees";
 import { useRightHeaderButton } from "hooks/useRightHeader";
@@ -61,7 +64,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { View } from "react-native";
+import { Keyboard, View } from "react-native";
 import { analytics } from "services/analytics";
 import { TransactionOperationType } from "services/analytics/types";
 
@@ -81,7 +84,10 @@ type SendCollectibleReviewScreenProps = NativeStackScreenProps<
 const SendCollectibleReviewScreen: React.FC<
   SendCollectibleReviewScreenProps
 > = ({ navigation, route }) => {
-  const { tokenId, collectionAddress } = route.params;
+  const { tokenId, collectionAddress } = route.params ?? {
+    tokenId: "",
+    collectionAddress: "",
+  };
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const { account } = useGetActiveAccount();
@@ -99,9 +105,14 @@ const SendCollectibleReviewScreen: React.FC<
     }
   }, [tokenId, collectionAddress, saveSelectedCollectibleDetails]);
 
-  const { recommendedFee } = useNetworkFees();
+  const { recommendedFee, networkCongestion } = useNetworkFees();
 
-  useInitialRecommendedFee(recommendedFee, TransactionContext.Send);
+  useInitialRecommendedFee(
+    recommendedFee,
+    TransactionContext.Send,
+    1,
+    networkCongestion,
+  );
 
   const {
     buildSendCollectibleTransaction,
@@ -173,9 +184,11 @@ const SendCollectibleReviewScreen: React.FC<
   };
 
   const navigateToSelectContactScreen = () => {
-    // Use popTo to navigate back to SearchContacts
-    // If SearchContacts exists in stack, pops back to it; otherwise adds it
-    navigation.popTo(SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN);
+    // Navigate to SearchContacts with slide from bottom transition
+    navigation.navigate(SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN, {
+      dismissToPreviousScreen: true,
+      transition: ScreenTransition.SlideFromBottom,
+    });
   };
 
   const selectedCollectible = useMemo(
@@ -202,8 +215,16 @@ const SendCollectibleReviewScreen: React.FC<
   );
 
   useEffect(() => {
+    let isCancelled = false;
+
     const checkContract = async () => {
-      if (!collectionAddress || !recipientAddress || !network) {
+      // Contract muxed support only matters for M-address recipients.
+      if (
+        !isRecipientMuxed ||
+        !collectionAddress ||
+        !recipientAddress ||
+        !network
+      ) {
         setContractSupportsMuxed(null);
         return;
       }
@@ -214,15 +235,24 @@ const SendCollectibleReviewScreen: React.FC<
           contractId: collectionAddress,
           networkDetails,
         });
-        setContractSupportsMuxed(supportsMuxed);
+
+        if (!isCancelled) {
+          setContractSupportsMuxed(supportsMuxed);
+        }
       } catch (error) {
         // On error, assume no support for safety
-        setContractSupportsMuxed(false);
+        if (!isCancelled) {
+          setContractSupportsMuxed(false);
+        }
       }
     };
 
     checkContract();
-  }, [collectionAddress, recipientAddress, network]);
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [collectionAddress, recipientAddress, network, isRecipientMuxed]);
 
   // Determine if M address + contract doesn't support muxed
   const isMuxedAddressWithoutMemoSupport = Boolean(
@@ -231,6 +261,7 @@ const SendCollectibleReviewScreen: React.FC<
 
   const handleTransactionScanSuccess = useCallback(
     (scanResult: Blockaid.StellarTransactionScanResponse | undefined) => {
+      Keyboard.dismiss();
       const security = getTransactionSecurity(
         scanResult,
         overriddenBlockaidResponse,
@@ -320,6 +351,28 @@ const SendCollectibleReviewScreen: React.FC<
     prepareTransaction(false);
   };
 
+  // Tracks the (recipient, tokenId) pair for which auto-simulation has
+  // already been requested. Prevents re-triggering after isBuilding drops back
+  // to false at the end of the build itself.
+  const lastAutoSimulatedKey = useRef<string | null>(null);
+
+  // Auto-simulate to populate the Soroban fee breakdown as soon as the
+  // collectible and recipient are available. Collectibles are always Soroban
+  // transactions, so fees include an inclusion + resource component.
+  useEffect(() => {
+    const currentKey = `${recipientAddress}|${selectedCollectible?.tokenId}`;
+
+    if (
+      !isBuilding &&
+      recipientAddress &&
+      selectedCollectible &&
+      lastAutoSimulatedKey.current !== currentKey
+    ) {
+      lastAutoSimulatedKey.current = currentKey;
+      prepareTransaction(false);
+    }
+  }, [recipientAddress, selectedCollectible, isBuilding, prepareTransaction]);
+
   const handleTransactionConfirmation = useCallback(() => {
     setIsProcessing(true);
     reviewBottomSheetModalRef.current?.dismiss();
@@ -328,6 +381,17 @@ const SendCollectibleReviewScreen: React.FC<
       try {
         if (!account?.privateKey || !selectedCollectible || !recipientAddress) {
           throw new Error("Missing account or collectible information");
+        }
+
+        // Refuse to sign if the wallet locked between opening the review sheet
+        // and confirming (e.g. a short auto-lock timer fired) — every other
+        // signing path enforces the same guard. Abort cleanly: reset the
+        // processing UI so the user returns to the review screen after
+        // unlocking rather than a stranded "sending" spinner. Being locked
+        // isn't a transaction error, so skip the failure toast/analytics path.
+        if (!isWalletUnlocked()) {
+          setIsProcessing(false);
+          return;
         }
 
         const { privateKey } = account;
@@ -347,8 +411,13 @@ const SendCollectibleReviewScreen: React.FC<
             tokenId: selectedCollectible.tokenId,
           });
         } else {
+          const { error: submitError, submitErrorResultCodes } =
+            useTransactionBuilderStore.getState();
           analytics.trackTransactionError({
-            error: "Transaction failed",
+            error: submitError || "Transaction failed",
+            errorCode:
+              submitErrorResultCodes?.operations?.[0] ||
+              submitErrorResultCodes?.transaction,
             operationType: TransactionOperationType.SendCollectible,
           });
         }
@@ -523,6 +592,7 @@ const SendCollectibleReviewScreen: React.FC<
       !transactionScanResult || transactionSecurityAssessment.isUnableToScan;
 
     if (isUnableToScan) {
+      Keyboard.dismiss();
       reviewBottomSheetModalRef.current?.present();
     } else {
       handleTransactionConfirmation();

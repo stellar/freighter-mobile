@@ -9,7 +9,7 @@ import {
 import { BottomSheetViewProps } from "@gorhom/bottom-sheet/lib/typescript/components/bottomSheetView/types";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { AnalyticsEvent } from "config/analyticsConfig";
+import { AnalyticsEvent, getScreenViewedProps } from "config/analyticsConfig";
 import { DEFAULT_PADDING } from "config/constants";
 import { pxValue } from "helpers/dimensions";
 import useColors from "hooks/useColors";
@@ -61,6 +61,11 @@ const Icons = {
  * Rendered absolutely at the bottom of the sheet; a matching spacer is
  * injected into the scroll content so nothing is obscured.
  *
+ * **Header** (`scrollViewHeaderComponent`): only valid in scrollable mode.
+ * Rendered absolutely at the top of the sheet content (below the drag
+ * handle) with a matching spacer at the start of the scroll content, so the
+ * content scrolls underneath it. Give it an opaque background.
+ *
  * **Snap points** (`snapPoints`): fixes the sheet at explicit heights. Disables
  * dynamic sizing. Cannot be combined with `scrollable`.
  *
@@ -86,6 +91,13 @@ export type BottomSheetProps = {
   analyticsEvent?: AnalyticsEvent;
   analyticsProps?: AnalyticsProps;
   scrollViewFooterComponent?: () => React.ReactNode;
+  scrollViewHeaderComponent?: () => React.ReactNode;
+  /**
+   * Whether the pinned footer lifts above the keyboard (default). Disable
+   * when the keyboard belongs to an overlay (e.g. a modal on top of the
+   * sheet) so the footer stays stuck to the bottom instead of jumping.
+   */
+  scrollViewFooterAvoidsKeyboard?: boolean;
   scrollable?: boolean;
 };
 
@@ -108,6 +120,8 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
   analyticsEvent,
   analyticsProps,
   scrollViewFooterComponent = undefined,
+  scrollViewHeaderComponent = undefined,
+  scrollViewFooterAvoidsKeyboard = true,
   scrollable = false,
 }) => {
   if (__DEV__ && scrollable && snapPoints) {
@@ -116,10 +130,17 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
     );
   }
 
+  if (__DEV__ && scrollViewHeaderComponent && !scrollable) {
+    throw new Error(
+      "BottomSheet: `scrollViewHeaderComponent` is only supported in `scrollable` mode.",
+    );
+  }
+
   const { themeColors } = useColors();
   const IconData = icon ? Icons[icon] : Icons.Announcement;
   const insets = useSafeAreaInsets();
   const [footerHeight, setFooterHeight] = useState(0);
+  const [headerHeight, setHeaderHeight] = useState(0);
   const keyboardHeight = useKeyboardHeight();
   // Track bottom-sheet open exactly once per presentation
   const hasTrackedRef = useRef(false);
@@ -140,17 +161,35 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
   const renderHandle = useCallback(
     () => (
       <View className="bg-background-primary w-full items-center justify-center pt-2 rounded-t-3xl rounded-tr-3xl">
-        <View className="h-[6px] w-[40px] rounded-full bg-gray-8 opacity-[.32]" />
+        {/* The pill advertises drag-to-dismiss, so hide it when that gesture
+            is disabled. opacity keeps the handle's height, preserving the
+            sheet's top spacing and rounded corners. */}
+        <View
+          className={`h-[6px] w-[40px] rounded-full bg-gray-8 ${
+            enablePanDownToClose ? "opacity-[.32]" : "opacity-0"
+          }`}
+        />
       </View>
     ),
-    [],
+    [enablePanDownToClose],
   );
 
   const handleChange = useCallback(
     (index: number) => {
       // index >= 0 means sheet is visible
       if (analyticsEvent && index >= 0 && !hasTrackedRef.current) {
-        track(analyticsEvent, analyticsProps);
+        // Screens presented via a bottom sheet are screen loads too: retarget
+        // any catalogued screen-view analyticsEvent to the single canonical
+        // `screen.viewed` event. Non-screen events pass through unchanged.
+        const screenViewedProps = getScreenViewedProps(analyticsEvent);
+        if (screenViewedProps) {
+          track(AnalyticsEvent.SCREEN_VIEWED, {
+            ...screenViewedProps,
+            ...analyticsProps,
+          });
+        } else {
+          track(analyticsEvent, analyticsProps);
+        }
         hasTrackedRef.current = true;
       }
 
@@ -215,86 +254,173 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
   const handleFooterLayout = useCallback(
     (event: { nativeEvent: { layout: { height: number } } }) => {
       const { height } = event.nativeEvent.layout;
-      setFooterHeight(height);
+      // iOS reports onLayout sub-pixel heights (e.g. 187.333 vs
+      // 187.666) that flip on every re-render. Setting state every
+      // time would loop forever — bail when the change is smaller
+      // than one pixel.
+      setFooterHeight((prev) => (Math.abs(prev - height) < 1 ? prev : height));
     },
     [],
   );
 
-  return (
-    <BottomSheetModal
-      ref={modalRef}
-      enablePanDownToClose={enablePanDownToClose}
-      enableContentPanningGesture={enableContentPanningGesture}
-      enableDynamicSizing={enableDynamicSizing}
-      maxDynamicContentSize={maxDynamicContentSize}
-      enableOverDrag={false}
-      snapPoints={snapPoints}
-      topInset={scrollable ? insets.top : undefined}
-      backdropComponent={renderBackdrop}
-      handleComponent={renderHandle}
-      backgroundStyle={{
-        backgroundColor: themeColors.background.primary,
+  const handleHeaderLayout = useCallback(
+    (event: { nativeEvent: { layout: { height: number } } }) => {
+      const { height } = event.nativeEvent.layout;
+      // Same sub-pixel guard as handleFooterLayout.
+      setHeaderHeight((prev) => (Math.abs(prev - height) < 1 ? prev : height));
+    },
+    [],
+  );
+
+  const fixedContent = (
+    <BottomSheetView
+      className="bg-background-primary pl-6 pr-6 pt-6 gap-6"
+      style={{
+        paddingBottom: useInsetsBottomPadding
+          ? insets.bottom + pxValue(DEFAULT_PADDING)
+          : 0,
       }}
-      {...bottomSheetModalProps}
-      onChange={handleChange}
+      {...bottomSheetViewProps}
     >
-      {scrollable ? (
-        <View>
-          <BottomSheetScrollView
-            className="bg-background-primary pl-6 pr-6 pt-6 gap-6"
-            showsVerticalScrollIndicator={false}
-            style={{
-              paddingBottom: useInsetsBottomPadding
-                ? insets.bottom + pxValue(DEFAULT_PADDING)
-                : 0,
-            }}
-            {...bottomSheetViewProps}
-          >
-            {renderContent()}
-            {/* Spacer to prevent content from hiding behind the absolute-positioned footer */}
-            {footerHeight > 0 && <View style={{ height: footerHeight }} />}
-          </BottomSheetScrollView>
-          {scrollViewFooterComponent && (
-            // onLayout measures the footer height so the scroll spacer above
-            // (`footerHeight > 0 && <View style={{ height: footerHeight }}`)
-            // can reserve exactly enough room to keep content from sliding
-            // behind this absolutely-positioned footer.
-            <View
-              onLayout={handleFooterLayout}
-              style={{
-                position: "absolute",
-                bottom: keyboardHeight > 0 ? keyboardHeight - insets.bottom : 0,
-                left: 0,
-                right: 0,
-              }}
-            >
-              {scrollViewFooterComponent()}
-            </View>
-          )}
-        </View>
-      ) : (
-        <BottomSheetView
-          className="bg-background-primary pl-6 pr-6 pt-6 gap-6"
-          style={{
-            paddingBottom: useInsetsBottomPadding
-              ? insets.bottom + pxValue(DEFAULT_PADDING)
-              : 0,
-          }}
-          {...bottomSheetViewProps}
-        >
-          {renderContent()}
-          {/* 
-            Workaround for BottomSheetTextInput layout issues with @gorhom/bottom-sheet.
-            When the keyboard appears, BottomSheetView can shrink unexpectedly, causing
-            text inputs to become unusable. This conditional rendering adds padding
-            to maintain proper layout when keyboard is visible.
-          */}
-          {keyboardHeight > 0 && (
-            <View style={{ height: keyboardHeight - insets.bottom }} />
-          )}
-        </BottomSheetView>
+      {renderContent()}
+      {/*
+        Workaround for BottomSheetTextInput layout issues with @gorhom/bottom-sheet.
+        When the keyboard appears, BottomSheetView can shrink unexpectedly, causing
+        text inputs to become unusable. This conditional rendering adds padding
+        to maintain proper layout when keyboard is visible.
+      */}
+      {keyboardHeight > 0 && (
+        <View style={{ height: keyboardHeight - insets.bottom }} />
       )}
-    </BottomSheetModal>
+    </BottomSheetView>
+  );
+
+  return (
+    <>
+      {/* Pre-measurement render — kept off-screen and out of the
+          BottomSheetModal so the footer's onLayout fires DURING the
+          wrapper's mount, not during the open animation. With
+          footerHeight set up-front, the in-modal spacer is already
+          correctly sized on the first render after .present(), and
+          BottomSheetModal's dynamic-sizing measures the full content
+          once. Without this, footer onLayout used to fire mid-open,
+          mutating the scroll content size and triggering a
+          re-measure + re-animate — visible as a first-render glitch on
+          Android. The actual user-facing footer is still rendered
+          inside the modal below; this one is purely a measure probe. */}
+      {scrollable && scrollViewFooterComponent && (
+        <View
+          style={{
+            position: "absolute",
+            top: -4000,
+            left: 0,
+            right: 0,
+            opacity: 0,
+          }}
+          pointerEvents="none"
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          onLayout={handleFooterLayout}
+        >
+          {scrollViewFooterComponent()}
+        </View>
+      )}
+      {/* Same pre-measurement pattern for the pinned header (see above). */}
+      {scrollable && scrollViewHeaderComponent && (
+        <View
+          style={{
+            position: "absolute",
+            top: -4000,
+            left: 0,
+            right: 0,
+            opacity: 0,
+          }}
+          pointerEvents="none"
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          onLayout={handleHeaderLayout}
+        >
+          {scrollViewHeaderComponent()}
+        </View>
+      )}
+      <BottomSheetModal
+        ref={modalRef}
+        enablePanDownToClose={enablePanDownToClose}
+        enableContentPanningGesture={enableContentPanningGesture}
+        enableDynamicSizing={enableDynamicSizing}
+        maxDynamicContentSize={maxDynamicContentSize}
+        enableOverDrag={false}
+        snapPoints={snapPoints}
+        topInset={scrollable ? insets.top : undefined}
+        backdropComponent={renderBackdrop}
+        handleComponent={renderHandle}
+        backgroundStyle={{
+          backgroundColor: themeColors.background.primary,
+        }}
+        {...bottomSheetModalProps}
+        onChange={handleChange}
+      >
+        {scrollable ? (
+          <View>
+            <BottomSheetScrollView
+              className="bg-background-primary pl-6 pr-6 pt-6 gap-6"
+              showsVerticalScrollIndicator={false}
+              style={{
+                paddingBottom: useInsetsBottomPadding
+                  ? insets.bottom + pxValue(DEFAULT_PADDING)
+                  : 0,
+              }}
+              {...bottomSheetViewProps}
+            >
+              {/* Spacer reserves room for the absolutely-positioned pinned
+                  header below, mirroring the footer spacer. */}
+              {scrollViewHeaderComponent && headerHeight > 0 && (
+                <View style={{ height: headerHeight }} />
+              )}
+              {renderContent()}
+              {/* Spacer reserves room for the absolutely-positioned footer
+                  below. Sized from the out-of-modal pre-measurement
+                  above so it's already correct on first render. Guarded by
+                  `scrollViewFooterComponent` (like the overlay below) so a
+                  stale `footerHeight` from a previously-rendered footer
+                  doesn't leave a phantom gap once the footer is removed. */}
+              {scrollViewFooterComponent && footerHeight > 0 && (
+                <View style={{ height: footerHeight }} />
+              )}
+            </BottomSheetScrollView>
+            {scrollViewHeaderComponent && (
+              <View
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                }}
+              >
+                {scrollViewHeaderComponent()}
+              </View>
+            )}
+            {scrollViewFooterComponent && (
+              <View
+                style={{
+                  position: "absolute",
+                  bottom:
+                    scrollViewFooterAvoidsKeyboard && keyboardHeight > 0
+                      ? keyboardHeight - insets.bottom
+                      : 0,
+                  left: 0,
+                  right: 0,
+                }}
+              >
+                {scrollViewFooterComponent()}
+              </View>
+            )}
+          </View>
+        ) : (
+          fixedContent
+        )}
+      </BottomSheetModal>
+    </>
   );
 };
 

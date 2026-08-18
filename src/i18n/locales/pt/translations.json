@@ -5,8 +5,10 @@
   "noInternetConnection": "Sem conexão com a internet",
   "accountAddressCopied": "Endereço da conta copiado!",
   "tokenAddress": "Endereço do Token",
+  "amountCard": {
+    "unreadableAmount": "Não foi possível ler esse valor — insira-o novamente"
+  },
   "common": {
-    "edit": "Editar",
     "close": "Fechar",
     "paste": "Colar",
     "done": "Concluído",
@@ -23,11 +25,10 @@
     "loading": "Carregando...",
     "error": "Erro: {{errorMessage}}",
     "unknownError": "Erro desconhecido",
-    "review": "Revisar",
     "and": " e ",
+    "available": "disponível",
     "yes": "Sim",
     "message": "Mensagem",
-    "allow": "Permitir",
     "skip": "Pular",
     "enable": "Habilitar",
     "token": "Token",
@@ -50,12 +51,10 @@
     "swap": "Trocar",
     "actions": {
       "settings": "Configurações",
-      "manageTokens": "Gerenciar tokens",
       "myQRCode": "Meu QR code"
     },
     "manageAccount": {
-      "title": "Carteiras",
-      "addWallet": "Adicionar uma carteira",
+      "addWallet": "Adicionar carteira",
       "renameWallet": "Renomear carteira",
       "copyAddress": "Copiar endereço",
       "viewOnExplorer": "Ver no stellar.expert"
@@ -65,7 +64,6 @@
     }
   },
   "renameAccountModal": {
-    "currentName": "Nome atual",
     "saveName": "Salvar nome",
     "nameInputPlaceholder": "Digite um nome para sua carteira"
   },
@@ -85,19 +83,19 @@
     "deleteAccountConfirmMessage": "Certifique-se de que você tem sua frase de recuperação em um local seguro. Você não conseguirá recuperar sua carteira sem ela."
   },
   "preferences": {
-    "anonymousDataSharing": {
-      "title": "Compartilhamento de dados anônimos",
-      "description": "Permitir que o Freighter colete informações limitadas sobre o uso. Coletaremos chaves públicas, valores de transações e saldos. Essas informações não serão usadas para marketing ou para identificar você pessoalmente. Não coletaremos informações como nome, endereço, e-mails, números de telefone, etc."
+    "usageDataSharing": {
+      "title": "Compartilhamento de dados de uso",
+      "description": "Ajude-nos a melhorar o Freighter compartilhando dados de uso, do dispositivo e de atividade — incluindo suas chaves públicas, endereço IP e um ID persistente que vincula sua carteira entre a extensão e o aplicativo móvel — com nossos provedores de análise de dados e de relatórios de falhas. Você pode desativar essa opção a qualquer momento. Consulte nossa Política de Privacidade para mais detalhes."
     },
     "permissionModal": {
       "enable": {
         "title": "Habilitar Analytics",
-        "description": "Para habilitar o compartilhamento de dados anônimos, você precisará permitir permissões de rastreamento nas configurações do seu dispositivo.",
+        "description": "Para habilitar o compartilhamento de dados de uso, você precisará permitir permissões de rastreamento nas configurações do seu dispositivo.",
         "instruction": "Toque em \"Abrir Configurações\" abaixo, depois encontre Freighter e habilite \"Permitir Rastreamento\"."
       },
       "disable": {
         "title": "Desabilitar Analytics",
-        "description": "Para desabilitar o compartilhamento de dados anônimos, você precisará alterar as permissões de rastreamento nas configurações do seu dispositivo.",
+        "description": "Para desabilitar o compartilhamento de dados de uso, você precisará alterar as permissões de rastreamento nas configurações do seu dispositivo.",
         "instruction": "Toque em \"Abrir Configurações\" abaixo, depois encontre Freighter e desabilite \"Permitir Rastreamento\"."
       },
       "openSettings": "Abrir Configurações",
@@ -129,7 +127,6 @@
     }
   },
   "changeNetworkScreen": {
-    "title": "Mudar Rede",
     "currentNetwork": "Rede atual",
     "networkSettings": "Configurações de Rede",
     "developerSettings": {
@@ -182,7 +179,6 @@
     "title": "Sua Frase de Recuperação",
     "warning": "Isso é só para seus olhos. Nunca compartilhe isso.",
     "copyButtonText": "Copiar para a área de transferência",
-    "defaultActionButtonText": "Continuar",
     "footerNoteText": "Certifique-se de manter isso em um\nlocal seguro antes de continuar"
   },
   "validateRecoveryPhraseScreen": {
@@ -195,47 +191,32 @@
     "faceId": {
       "title": "Habilitar Face ID",
       "description": "Adicione outro nível de segurança ao exigir Face ID para desbloquear sua carteira ou aprovar transações.",
-      "promptTitle": "Habilitar Face ID?",
-      "promptDescription": "Use Face ID para fazer login e aprovar transações de forma segura.",
       "footerNoteText": "Você pode alterar isso mais tarde nas Configurações."
     },
     "touchId": {
       "title": "Habilitar Touch ID",
       "description": "Adicione outro nível de segurança ao exigir Touch ID para desbloquear sua carteira ou aprovar transações.",
-      "promptTitle": "Habilitar Touch ID?",
-      "promptDescription": "Use Touch ID para fazer login e aprovar transações de forma segura.",
       "footerNoteText": "Você pode alterar isso mais tarde nas Configurações."
     },
     "fingerprint": {
       "title": "Habilitar Impressão Digital",
       "description": "Adicione outro nível de segurança ao exigir Impressão Digital para desbloquear sua carteira ou aprovar transações.",
-      "promptTitle": "Habilitar Impressão Digital?",
-      "promptDescription": "Use Impressão Digital para fazer login e aprovar transações de forma segura.",
       "footerNoteText": "Você pode alterar isso mais tarde nas Configurações."
     },
     "faceBiometrics": {
       "title": "Habilitar Reconhecimento Facial",
       "description": "Adicione outro nível de segurança ao exigir Reconhecimento Facial para desbloquear sua carteira ou aprovar transações.",
-      "promptTitle": "Habilitar Reconhecimento Facial?",
-      "promptDescription": "Use Reconhecimento Facial para fazer login e aprovar transações de forma segura.",
       "footerNoteText": "Você pode alterar isso mais tarde nas Configurações."
     },
     "opticId": {
       "title": "Habilitar Optic ID",
-      "description": "Adicione outro nível de segurança ao exigir Optic ID para desbloquear sua carteira ou aprovar transações.",
-      "promptTitle": "Habilitar Optic ID?",
-      "promptDescription": "Use Optic ID para fazer login e aprovar transações de forma segura.",
       "footerNoteText": "Você pode alterar isso mais tarde nas Configurações."
     },
     "iris": {
       "title": "Habilitar Iris",
-      "description": "Adicione outro nível de segurança ao exigir Iris para desbloquear sua carteira ou aprovar transações.",
-      "promptTitle": "Habilitar Iris?",
-      "promptDescription": "Use Iris para fazer login e aprovar transações de forma segura.",
       "footerNoteText": "Você pode alterar isso mais tarde nas Configurações."
     }
   },
-
   "importWalletScreen": {
     "title": "Importar Carteira",
     "textAreaPlaceholder": "Digite a frase de recuperação",
@@ -258,21 +239,29 @@
     "errorUnlockingWalletTitle": "Erro ao desbloquear carteira",
     "errorUnlockingWalletMessage": "Se o problema persistir, toque em \"Esqueci minha senha\" e reimporte sua carteira.",
     "failedToLoadAccountTitle": "Conta não carregada",
-    "failedToLoadAccountMessage": "Sua conta não pôde ser carregada após o login. Tente novamente."
+    "failedToLoadAccountMessage": "Sua conta não pôde ser carregada após o login. Tente novamente.",
+    "forgotPasswordWarningTitle": "Tem certeza?",
+    "forgotPasswordWarningMessage1": "Não podemos recuperar sua senha para você. Este processo apagará sua carteira e você precisará passar pelo fluxo de importação da carteira para reimportá-la com sua frase de recuperação.",
+    "forgotPasswordWarningMessage2": "Você perderá permanentemente o acesso à conta atualmente armazenada no Freighter.",
+    "forgotPasswordWarningMessage3": "Só faça isso se você tiver sua frase guardada em segurança em outro lugar.",
+    "forgotPasswordWarningResetButton": "Redefinir Freighter"
   },
   "onboarding": {
     "continue": "Continuar",
-    "typePassword": "Digite sua senha",
-    "typePasswordNote": "Deve ter pelo menos 8 caracteres.",
     "pasteFromClipboard": "Colar da área de transferência",
     "doThisLaterButtonText": "Fazer isso depois"
   },
   "connectedApps": {
     "title": "Aplicativos Conectados",
-    "noConnectedDapps": "Nenhum aplicativo conectado. Encontre aplicativos\npara usar em Discover.",
+    "noConnectedDappsTitle": "Nada conectado ainda",
+    "noConnectedDappsDescription": "Descubra aplicativos e conecte o seu primeiro.",
     "noConnectedDappsNoDiscover": "Nenhum aplicativo conectado.",
     "goToDiscover": "Ir para o Discover",
-    "disconnectAllSessions": "Desconectar todos"
+    "disconnectAllSessions": "Desconectar todos",
+    "disconnectApp": "Desconectar {{appName}}",
+    "appDisconnected": "{{appName}} desconectado",
+    "appDisconnectedFallback": "Aplicativo desconectado",
+    "allAppsDisconnected": "Todos os aplicativos desconectados"
   },
   "discovery": {
     "discover": "Descobrir",
@@ -304,7 +293,6 @@
     "showTabs": "Mostrar {{count}} abas"
   },
   "history": {
-    "title": "Histórico",
     "emptyState": {
       "title": "Nenhuma transação para mostrar"
     },
@@ -313,7 +301,6 @@
     "refreshing": "Atualizando...",
     "transactionHistory": {
       "transaction": "Transação",
-      "createAccount": "Criar conta",
       "accountFunded": "Conta creditada",
       "addedTrustline": "Trustline adicionada",
       "removedTrustline": "Trustline removida",
@@ -328,7 +315,6 @@
       "interacted": "Interagiu",
       "minted": "Emitido",
       "mintedToSelf": "Emitido {{tokenSymbol}} para si mesmo",
-      "unknown": "Desconhecido",
       "ops": "ops",
       "multiple": "Múltiplos",
       "collectibleTransfer": {
@@ -343,19 +329,13 @@
       "statusSuccess": "Sucesso",
       "statusFailed": "Falhou",
       "rate": "Cotação",
-      "firstTimeSend": "Envio pela primeira vez",
-      "addressCopied": "Endereço copiado para a área de transferência",
       "startingBalance": "Saldo inicial:",
-      "minter": "Emissor",
-      "mintedTo": "Emitido para",
-      "assetChanges": "Mudanças de Ativos",
       "from": "De",
       "to": "Para"
     }
   },
   "tokenDetailsScreen": {
     "sorobanToken": "Token Soroban",
-    "priceChange": "{{percentage}}%",
     "balance": "Saldo",
     "value": "Valor",
     "listHeader": "Sua atividade de {{tokenName}}",
@@ -390,65 +370,73 @@
       "accountAlreadyExists": "Conta já existe",
       "failedToImportSecretKey": "Falha ao importar chave secreta",
       "failedToReEncryptData": "Falha ao re-criptografar dados. Por favor, faça login novamente.",
-      "failedToDecryptData": "Falha ao descriptografar dados. Por favor, faça login novamente."
+      "failedToDecryptData": "Falha ao descriptografar dados. Por favor, faça login novamente.",
+      "failedToRenameAccount": "Falha ao renomear conta",
+      "failedToGetAllAccounts": "Falha ao carregar contas",
+      "failedToSelectAccount": "Falha ao selecionar conta",
+      "notificationTitle": "Algo deu errado",
+      "setupFailedTitle": "Não foi possível concluir a configuração",
+      "setupFailedMessage": "Não conseguimos concluir a configuração da sua carteira. Por favor, tente novamente.",
+      "signInFailedTitle": "Não foi possível entrar",
+      "signInFailedMessage": "Senha incorreta ou sessão expirada. Por favor, tente novamente.",
+      "logoutFailedTitle": "Não foi possível sair",
+      "logoutFailedMessage": "Algo deu errado ao sair. Por favor, tente novamente.",
+      "createAccountFailedTitle": "Conta não criada",
+      "createAccountFailedMessage": "Não conseguimos criar sua conta. Por favor, tente novamente.",
+      "selectAccountFailedTitle": "Não foi possível trocar de conta",
+      "selectAccountFailedMessage": "Não conseguimos trocar para essa conta. Por favor, tente novamente.",
+      "renameAccountFailedTitle": "Falha ao renomear",
+      "renameAccountFailedMessage": "Não conseguimos renomear sua conta. Por favor, tente novamente.",
+      "importSecretKeyFailedTitle": "Falha na importação",
+      "importSecretKeyFailedMessage": "Não conseguimos importar sua chave secreta. Por favor, tente novamente.",
+      "getAccountsFailedTitle": "Contas indisponíveis",
+      "getAccountsFailedMessage": "Não conseguimos carregar sua lista de contas. Por favor, tente novamente.",
+      "sessionExpiredTitle": "Sessão expirada",
+      "sessionExpiredMessage": "Sua sessão não é mais válida. Por favor, entre novamente.",
+      "disableBiometricsFailedTitle": "Não foi possível desativar a biometria",
+      "disableBiometricsFailedMessage": "Não conseguimos verificar sua identidade. Por favor, tente novamente."
     },
     "account": "Conta {{number}}",
     "faceId": {
-      "disableTitle": "Confirmar para desabilitar Face ID",
-      "disableSubtitle": "Desabilitar Face ID diminui a segurança. Você pode reabilitá-lo nas Configurações.",
-      "signInTitle": "Confirmar para prosseguir",
-      "signInSubtitle": "Use Face ID para fazer login e aprovar transações de forma segura."
+      "signInTitle": "Confirmar para prosseguir"
     },
     "touchId": {
-      "disableTitle": "Confirmar para desabilitar Touch ID",
-      "disableSubtitle": "Desabilitar Touch ID diminui a segurança. Você pode reabilitá-lo nas Configurações.",
-      "signInTitle": "Confirmar para prosseguir",
-      "signInSubtitle": "Use Touch ID para fazer login e aprovar transações de forma segura."
+      "signInTitle": "Confirmar para prosseguir"
     },
     "faceBiometrics": {
-      "disableTitle": "Confirmar para desabilitar Reconhecimento Facial",
-      "disableSubtitle": "Desabilitar Reconhecimento Facial diminui a segurança. Você pode reabilitá-lo nas Configurações.",
-      "signInTitle": "Confirmar para prosseguir",
-      "signInSubtitle": "Use Reconhecimento Facial para fazer login e aprovar transações de forma segura."
+      "signInTitle": "Confirmar para prosseguir"
     },
     "fingerprint": {
-      "disableTitle": "Confirmar para desabilitar Impressão Digital",
-      "disableSubtitle": "Desabilitar Impressão Digital diminui a segurança. Você pode reabilitá-lo nas Configurações.",
-      "signInTitle": "Confirmar para prosseguir",
-      "signInSubtitle": "Use Impressão Digital para fazer login e aprovar transações de forma segura."
+      "signInTitle": "Confirmar para prosseguir"
     },
     "opticId": {
-      "disableTitle": "Confirmar para desabilitar Optic ID",
-      "disableSubtitle": "Desabilitar Optic ID diminui a segurança. Você pode reabilitá-lo nas Configurações.",
-      "signInTitle": "Confirmar para prosseguir",
-      "signInSubtitle": "Use Optic ID para fazer login e aprovar transações de forma segura."
+      "signInTitle": "Confirmar para prosseguir"
     },
     "iris": {
-      "disableTitle": "Confirmar para desabilitar Iris",
-      "disableSubtitle": "Desabilitar Iris diminui a segurança. Você pode reabilitá-lo nas Configurações.",
-      "signInTitle": "Confirmar para prosseguir",
-      "signInSubtitle": "Use Iris para fazer login e aprovar transações de forma segura."
+      "signInTitle": "Confirmar para prosseguir"
     }
   },
   "balancesList": {
     "title": "Tokens",
     "error": "Erro ao carregar saldos",
-    "empty": "Nenhum saldo encontrado",
     "unfundedAccount": {
-      "message": "Para começar a usar esta conta, financie-a com pelo menos 1 XLM.",
       "learnMore": "Saiba mais",
-      "fundAccountButton": "Adicionar XLM"
+      "fundAccountButton": "Adicionar XLM",
+      "title": "Um pouco vazio por aqui...",
+      "messageStart": "Adicione pelo menos",
+      "messageAmount": "2 XLM",
+      "messageEnd": "para ativar sua carteira. Depois de financiada, você poderá adicionar tokens e fazer transações."
     },
-    "menuAddToken": "Adicionar um token",
-    "menuManageTokens": "Gerenciar tokens"
+    "addTokenButton": "Adicionar token"
   },
   "collectiblesGrid": {
     "title": "Colecionáveis",
     "error": "Erro ao carregar colecionáveis",
     "empty": "Nenhum colecionável ainda",
     "emptyHidden": "Nenhum colecionável oculto",
-    "menuAddManually": "Adicionar manualmente",
-    "menuHidenCollectibles": "Colecionáveis ocultos"
+    "addCollectibleButton": "Adicionar colecionável",
+    "itemHiddenLabel": "{{name}}, oculto",
+    "emptyDescription": "Os colecionáveis que você possui aparecerão aqui."
   },
   "collectibleDetails": {
     "title": "Detalhes do Colecionável",
@@ -479,12 +467,12 @@
     "enterDetails": "Inserir detalhes",
     "invalidAddress": "Endereço inválido",
     "addressNoSpaces": "Endereço não pode conter espaços",
-    "invalidTokenId": "ID do token inválido",
     "tokenIdNoSpaces": "O ID do token não pode conter espaços",
     "description": "Se um colecionável estiver ausente da sua carteira, você pode adicioná-lo manualmente aqui.",
     "toastSuccess": "Colecionável adicionado com sucesso",
     "toastError": "Erro ao adicionar colecionável. {{errorMessage}}",
-    "alreadyInWallet": "Este colecionável já está na sua carteira"
+    "alreadyInWallet": "Este colecionável já está na sua carteira",
+    "showHidden": "Mostrar ocultos"
   },
   "hiddenCollectiblesScreen": {
     "title": "Colecionáveis Ocultos"
@@ -507,31 +495,16 @@
     "title": "Adicionar saldo com Friendbot"
   },
   "manageTokensScreen": {
-    "title": "Gerenciar tokens",
-    "hiddenTokens": "Tokens ocultos",
-    "addTokenButton": "Adicionar um token",
-    "removeTokenButton": "Aprovar",
-    "tokenAddressCopied": "Endereço do token copiado!",
     "moreInfo": {
       "title": "Gerenciar Tokens",
       "block1": "Quando você gerencia tokens, está escolhendo quais tokens sua carteira pode manter e usar na rede Stellar. Para Stellar Classic, adicionar um token cria uma trustline, permitindo que sua carteira o reconheça e interaja com ele. Tokens Soroban não usam trustlines, mas ainda podem ser gerenciados e acessados aqui.",
       "block2": "Tokens verificados vêm de listas de tokens confiáveis do ecossistema. Tokens não verificados não estão incluídos nessas listas, então proceda com cautela ao adicionar ou fazer transações com eles."
     },
-    "actions": {
-      "copyAddress": "Copiar endereço",
-      "removeToken": "Remover token"
-    },
-    "removeTokenAlert": {
-      "title": "Remover token",
-      "message": "Tem certeza que deseja remover este token?",
-      "cancel": "Cancelar",
-      "remove": "Remover"
-    },
     "removeTokenError": "Erro ao remover token {{tokenCode}}",
     "removeTokenSuccess": "{{tokenCode}} removido com sucesso",
     "cantRemoveXlm": {
       "title": "Não é possível remover XLM",
-      "description": "O XLM é o ativo nativo da rede Stellar e não pode ser removido. Ele é necessário para manter sua conta e pagar as taxas de transação."
+      "description": "O XLM é o token nativo da rede Stellar e não pode ser removido. Ele é necessário para manter sua conta e pagar as taxas de transação."
     },
     "cantRemoveBalance": {
       "title": "O token ainda possui saldo",
@@ -544,19 +517,13 @@
     "removeTokenButton": "Aprovar",
     "searchPlaceholder": "Nome ou endereço do token",
     "pasteFromClipboard": "Colar da área de transferência",
-    "tokenAddressCopied": "Endereço do token copiado!",
-    "popular": "Popular",
-    "native": "Nativo",
-    "onYourList": "Na sua lista",
     "addToken": "Adicionar token",
     "removeToken": "Remover token",
-    "approveTrustline": "Aprovar Trustline",
     "disclaimer": "Permitir que o token seja exibido na sua carteira. Isso não adiciona o token à sua conta.",
     "removeDisclaimer": "Remover o token de ser exibido e usado com este endereço de carteira",
     "confirmTrust": "Só confirme se você confia neste token",
     "maliciousToken": "Este token foi marcado como malicioso",
     "suspiciousToken": "Este token foi marcado como suspeito",
-    "unableToScanToken": "Não foi possível escanear o token",
     "tokenAddress": "Endereço do Token",
     "approveAnyway": "Aprovar mesmo assim",
     "verified": "Verificado",
@@ -575,33 +542,12 @@
     "expectedToFailDescription": "Esta transação deve falhar pelos seguintes motivos:",
     "unsafeTransaction": "Esta transação não parece segura pelos seguintes motivos:",
     "token": "Este token não parece seguro pelos seguintes motivos:",
-    "cancel": "Cancelar",
-    "connectAnyway": "Conectar mesmo assim",
     "poweredBy": "Desenvolvido por",
-    "feedback": "Feedback?",
-    "maliciousToken": "Este token é uma fraude",
-    "lowLiquidity": "Este token tem baixa liquidez",
-    "maliciousSite": "Este site é um aplicativo malicioso"
-  },
-  "security": {
-    "notOnYourLists": "Este token não está em uma das suas listas",
-    "relativelyNewToken": "Este é um token relativamente novo",
-    "tokenIsScam": "Este token é uma fraude",
-    "suspiciousToken": "Este token pode ser suspeito",
-    "lowLiquidity": "Este token tem baixa liquidez",
-    "poweredByBlockaid": "Powered by",
-    "learnMore": "Saiba mais",
-    "addAnyway": "Adicionar mesmo assim"
+    "feedback": "Feedback?"
   },
   "manageTokenRightContent": {
     "copyAddress": "Copiar endereço",
-    "hideToken": "Ocultar token",
-    "unhideToken": "Mostrar token",
-    "tokenAddressCopied": "Endereço do token copiado!",
-    "removeTokenModal": {
-      "title": "Remover {{tokenCode}}?",
-      "message": "Tem certeza que deseja remover este token?\nDepois de remover um token, você terá que adicioná-lo novamente mais tarde."
-    }
+    "tokenAddressCopied": "Endereço do token copiado!"
   },
   "sendPaymentScreen": {
     "title": "Enviar para",
@@ -613,6 +559,7 @@
     "scanQRCodeText": "Escanear um QR Code do Freighter"
   },
   "sendSearchContacts": {
+    "myWallets": "Minhas carteiras",
     "unfunded": {
       "title": "A conta de destino não existe",
       "action": "Envie pelo menos 1 XLM para criar a conta.",
@@ -623,27 +570,25 @@
     "swapFrom": "Trocar de",
     "swapTo": "Trocar para",
     "title": "Trocar",
-    "searchTokenInputPlaceholder": "Pesq. por nome ou endereço",
-    "setMax": "Definir máximo",
-    "receive": "Receber",
-    "chooseToken": "Escolher token",
-    "selectToken": "Selecionar um token",
-    "swapScreenTokenListTitle": "Seus tokens",
+    "youSell": "Você vende",
+    "youReceive": "Você recebe",
+    "refreshFailed": "Não foi possível atualizar — usando dados em cache",
+    "selectToken": "Selecionar",
+    "cta": {
+      "select": "Selecionar um token",
+      "enterAmount": "Insira um valor",
+      "insufficientBalance": "Saldo insuficiente",
+      "review": "Revisar troca"
+    },
     "copyContractAddress": "Copiar endereço do contrato",
     "viewOnStellarExpert": "Ver no stellar.expert",
-    "menu": {
-      "fee": "Taxa: {{fee}} XLM",
-      "timeout": "Tempo limite: {{timeout}}(s)",
-      "slippage": "Slippage: {{slippage}}%"
-    },
     "review": {
       "title": "Você está trocando",
       "wallet": "Carteira",
       "minimum": "Mínimo",
       "rate": "Taxa",
       "fee": "Taxa",
-      "xdr": "XDR",
-      "warning": "Certifique-se de revisar a transação acima, uma vez confirmada é irreversível"
+      "xdr": "XDR"
     },
     "errors": {
       "failedToSetupTransaction": "Falha ao configurar transação de troca",
@@ -652,9 +597,50 @@
       "insufficientXlmForFees": "XLM insuficiente para taxas de transação. Você precisa de pelo menos {{fee}} XLM para pagar a taxa de transação.",
       "noPathFound": "Nenhum caminho encontrado entre estes tokens",
       "pathFindFailed": "Não foi possível buscar o caminho de troca. Tente novamente.",
-      "customTokenSwapNotSupported": "Troca de tokens customizados ainda não é suportada"
+      "customTokenSwapNotSupported": "Troca de tokens customizados ainda não é suportada",
+      "quoteExpired": "A cotação expirou, tente novamente para obter uma nova cotação"
     },
-    "proceedAnyway": "Prosseguir mesmo assim"
+    "stellarExpertDown": "A descoberta de tokens está temporariamente indisponível. Você ainda pode trocar entre tokens que já possui.",
+    "sorobanEmptyState": "Tokens de contrato Soroban não são suportados para trocas ainda. Tente buscar por um token Clássico.",
+    "noResults": "Nenhum token corresponde a {{term}}",
+    "yourTokenSection": "Seu token",
+    "yourTokensSection": "Seus tokens",
+    "popularTokensSection": "Tokens populares",
+    "verifiedSection": "Verificado",
+    "unverifiedSection": "Não verificado",
+    "verifiedInfo": {
+      "title": "Token verificado",
+      "body": "Das listas de tokens confiáveis do ecossistema Stellar."
+    },
+    "unverifiedInfo": {
+      "title": "Token não verificado",
+      "body": "Não está nas listas de tokens confiáveis. Tenha cuidado ao adicionar ou transacionar."
+    },
+    "trendingDetail": {
+      "swapTo": "Trocar para {{tokenCode}}",
+      "swapToAnyway": "Trocar para {{tokenCode}} mesmo assim",
+      "issuer": "Emissor",
+      "tokenAddress": "Endereço do token",
+      "domain": "Domínio",
+      "stellarNetwork": "Rede Stellar"
+    },
+    "trustlineInfo": {
+      "title": "Isto adicionará uma trustline para {{tokenCode}}",
+      "bodyPrefix": "Para manter {{tokenCode}} na sua carteira, a Stellar exige uma trustline. ",
+      "bodyEmphasis": "0,5 XLM serão reservados",
+      "bodySuffix": " do seu saldo. Você poderá recuperá-los removendo a trustline quando o saldo de {{tokenCode}} for zero.",
+      "confirm": "Entendi"
+    },
+    "trustlineBanner": "Isso adicionará uma trustline para {{tokenCode}}",
+    "xlmReserve": {
+      "title": "Você precisa de XLM para criar uma trustline",
+      "bodyPrefix": "Para receber {{tokenCode}}, sua carteira precisa de uma trustline na Stellar. ",
+      "whyDoINeedXlm": "Por que preciso de XLM?",
+      "infoCardTitle": "0,5 XLM necessário",
+      "infoCardBody": "A Stellar exige essa reserva para adicionar {{tokenCode}}. Você pode recuperá-la quando o saldo de {{tokenCode}} for zero.",
+      "swapXlm": "Trocar por 0,5 XLM",
+      "copyAddress": "Copiar meu endereço da carteira"
+    }
   },
   "swapProcessingScreen": {
     "swapping": "Trocando",
@@ -667,16 +653,15 @@
     "closeMessage": "Você pode fechar esta tela, sua transação deve ser concluída em menos de um minuto"
   },
   "swapTransactionDetails": {
-    "swapped": "Trocado",
-    "conversionRate": "Taxa de conversão",
-    "minimumReceived": "Mínimo recebido"
+    "swapped": "Trocado"
   },
   "transactionTokenScreen": {
-    "title": "Enviando"
+    "title": "Enviando",
+    "empty": "Nenhum token ou colecionável para enviar"
   },
   "transactionSettings": {
-    "title": "Configurações da transação",
     "feeTitle": "Taxa da transação",
+    "inclusionFeeTitle": "Taxa de inclusão",
     "memoTitle": "Memo",
     "slippageTitle": "Deslizamento permitido",
     "timeoutTitle": "Tempo limite da transação",
@@ -686,22 +671,22 @@
     "timeoutPlaceholder": "Digite o tempo limite",
     "seconds": "segundos",
     "congestion": "Congestionamento {{networkCongestion}}",
+    "network": "Rede",
+    "priorityLow": "Baixa",
+    "priorityMed": "Méd",
+    "priorityHigh": "Alta",
+    "priorityCustom": "Personalizada",
     "memoInfo": {
       "title": "Memo",
       "description": "Algumas contas de destino na rede Stellar requerem um memo para identificar seu pagamento.",
       "additionalInfo": "Se um memo necessário estiver ausente ou incorreto, seus fundos podem não chegar ao destinatário pretendido.",
       "sorobanInfo": "Para transações Soroban (como transferências de colecionáveis ou tokens personalizados), o suporte a memo depende do contrato de destino.",
-      "sorobanNoteTransaction": "Certifique-se de que o destino suporta memo.",
-      "sorobanNoteCollectible": "Certifique-se de que o destino suporta memo.",
-      "memoEmbeddedInMuxedAddress": "O memo já está incluído neste endereço e será usado automaticamente.",
       "memoDisabledForTransaction": "O memo está desabilitado para esta transação.",
-      "memoNotSupportedForOperation": "Memo não é suportado para esta operação.",
-      "muxedNotSupportedBaseGWillBeUsed": "A conta G base será usada. Endereço muxed não é suportado para esta operação."
+      "memoNotSupportedForOperation": "Memo não é suportado para esta operação."
     },
     "slippageInfo": {
       "title": "Deslizamento permitido",
-      "description": "O deslizamento é a diferença entre o preço esperado de uma negociação e o preço real pelo qual a negociação é executada.",
-      "additionalInfo": "Uma tolerância de deslizamento maior significa que você está disposto a aceitar uma diferença de preço maior, o que pode ajudar a garantir que sua negociação seja executada, mas pode resultar em um preço menos favorável."
+      "description": "O deslizamento é a diferença entre o preço esperado de uma negociação e o preço real pelo qual a negociação é executada."
     },
     "timeoutInfo": {
       "title": "Tempo limite da transação",
@@ -738,6 +723,7 @@
   },
   "transactionAmountScreen": {
     "title": "Enviar",
+    "sendingLabel": "Enviando",
     "percentageButtons": {
       "twentyFive": "25%",
       "fifty": "50%",
@@ -745,18 +731,15 @@
       "max": "Máx"
     },
     "chooseRecipient": "Escolher destinatário",
-    "setAmount": "Definir valor",
-    "reviewButton": "Revisar",
-    "menu": {
-      "fee": "Taxa: {{fee}} XLM",
-      "timeout": "Tempo limite: {{timeout}}(s)",
-      "editMemo": "Editar memo"
-    },
+    "setAmount": "Insira um valor",
+    "reviewButton": "Revisar envio",
     "details": {
-      "from": "De",
       "memo": "Memo",
       "none": "Nenhum",
       "fee": "Taxa",
+      "inclusionFee": "Taxa de inclusão",
+      "resourceFee": "Taxa de recursos",
+      "totalFee": "Taxa total",
       "xdr": "XDR"
     },
     "errors": {
@@ -770,12 +753,15 @@
       },
       "malicious": "Este endereço foi marcado como malicioso",
       "suspicious": "Este endereço foi marcado como suspeito",
-      "maliciousTransaction": "Esta transação foi marcada como maliciosa",
-      "maliciousAsset": "Um ativo foi marcado como malicioso",
-      "suspiciousTransaction": "Esta transação foi marcada como suspeita",
-      "suspiciousAsset": "Um ativo foi marcado como suspeito"
+      "maliciousToken": "Um token foi marcado como malicioso",
+      "suspiciousToken": "Um token foi marcado como suspeito"
     },
     "confirmAnyway": "Confirmar mesmo assim"
+  },
+  "feeBreakdown": {
+    "title": "Taxas",
+    "descriptionClassic": "Essas taxas vão para a rede para processar sua transação.",
+    "descriptionSoroban": "Essas taxas vão para a rede para processar sua transação. Para transações Soroban, executamos uma simulação primeiro, então você pode ver a taxa total ser ajustada."
   },
   "addMemoExplanationBottomSheet": {
     "title": "Memo é obrigatório",
@@ -784,21 +770,16 @@
     "checkMemoRequirements": "Verifique os requisitos de memo da conta de destino e inclua-o na transação."
   },
   "addAnotherWalletScreen": {
-    "title": "Adicionar outra carteira",
+    "title": "Adicionar carteira",
     "actions": {
       "createNewWallet": "Criar uma nova carteira",
-      "createNewWalletDescription": "Criar uma carteira na sua frase de recuperação",
+      "createNewWalletDescription": "Criar uma carteira a partir da sua frase de recuperação",
       "importSecretKey": "Importar uma chave secreta Stellar",
       "importSecretKeyDescription": "Adicionar uma carteira usando uma chave secreta"
-    },
-    "helperBottomSheet": {
-      "title": "Adicionar outra carteira",
-      "description": "Você precisa de pelo menos 1 XLM para ter uma conta na Stellar. Compre Stellar Lumens (XLM) facilmente usando um de nossos on-ramps ou transfira XLM de outra carteira para esta carteira."
     }
   },
   "verifyPasswordScreen": {
     "title": "Verificar Senha",
-    "genericError": "Algo deu errado. Por favor, tente novamente.",
     "verifyPasswordTemplateTitle": "Digite sua senha",
     "verifyPasswordTemplateDescription": "Digite sua senha para verificar sua conta.",
     "actions": {
@@ -825,10 +806,7 @@
   "medium": "médio",
   "high": "alto",
   "transactionReviewScreen": {
-    "title": "Você está enviando",
-    "previousSend": "1 envio anterior",
-    "previousSends": "{{count}} envios anteriores",
-    "reviewMessage": "Certifique-se de revisar a transação acima, uma vez que você confirme, ela é irreversível"
+    "title": "Você está enviando"
   },
   "transactionProcessingScreen": {
     "sending": "Enviando",
@@ -844,27 +822,18 @@
   "transactionDetailsBottomSheet": {
     "sent": "Enviado {{tokenCode}}",
     "sentCollectible": "Enviado Colecionável",
-    "firstTimeSend": "Primeiro envio",
     "status": "Status",
     "statusSuccess": "Sucesso",
     "statusFailed": "Falhou",
     "statusPending": "Pendente",
-    "rate": "Taxa",
-    "fee": "Comissão",
-    "transactionHash": "Hash da Transação",
-    "couldNotBeSentTo": "não pôde ser enviado para",
     "viewOnExpert": "Ver no stellar.expert"
   },
   "dappRequestBottomSheetContent": {
-    "transactionRequest": "Solicitação de transação",
     "confirmTransaction": "Confirmar transação",
     "signMessage": "Assinar mensagem",
     "signAuthEntry": "Assinar entrada de autorização",
-    "cancel": "Cancelar",
     "confirm": "Confirmar",
     "confirmAnyway": "Confirmar mesmo assim",
-    "xdrItem": "XDR",
-    "itemCopied": "{{itemName}} copiado para a área de transferência!",
     "transactionDetails": "Detalhes da transação",
     "authEntryDetails": "Detalhes da entrada de autorização"
   },
@@ -881,7 +850,6 @@
     "userRejected": "O usuário rejeitou a solicitação",
     "errorInitializing": "Erro ao inicializar o WalletConnect",
     "errorPairing": "Falha ao parear com o dApp",
-    "errorNoUriParam": "Nenhum parâmetro URI encontrado no link",
     "errorConnecting": "Erro ao conectar com {{dappName}}",
     "errorSigning": "Erro ao assinar a transação",
     "errorSigningMessage": "Erro ao assinar a mensagem",
@@ -890,8 +858,9 @@
     "errorInvalidMessage": "A mensagem está ausente ou vazia",
     "errorInvalidAuthEntry": "O XDR da entrada de autorização está ausente ou malformado",
     "errorAuthEntryNetworkMismatch": "A entrada de autorização é para uma rede diferente",
+    "errorAuthEntryAddressMismatch": "A entrada de autorização está vinculada a uma conta diferente",
     "errorEmptyMessage": "Não é possível assinar mensagem vazia",
-    "errorMessageTooLong": "Mensagem muito longa (máximo 1KB)",
+    "errorMessageTooLong": "Mensagem muito longa (máximo 10KB)",
     "errorSubmitting": "Erro ao enviar a transação",
     "errorRespondingRequest": "Erro ao responder à solicitação de transação",
     "errorWrongNetwork": "Rede incorreta",
@@ -911,11 +880,9 @@
     "pleaseUnlockToSignTransaction": "Por favor, desbloqueie sua carteira para assinar esta transação",
     "connectionNotFound": "Conexão não encontrada",
     "connectionNotFoundMessage": "Por favor, tente criar uma nova conexão ou alternar para outra conta que possui a conexão na sua carteira Freighter",
-    "walletIsLocked": "Carteira bloqueada",
     "userNotAuthenticated": "Usuário não autenticado",
     "invalidTransactionOrigin": "Domínio de transação não confiável",
     "invalidTransactionOriginMessage": "Uma solicitação de transação WalletConnect foi recebida de {{transactionRequestOrigin}}, mas este domínio não está conectado na sua carteira Freighter.",
-    "errorAuthEntryTooLarge": "Entrada de autorização excede o tamanho máximo permitido",
     "unableToLoadAuthEntry": "Não foi possível carregar os detalhes da solicitação",
     "failedToProcessAuthEntry": "Não foi possível assinar — a entrada de autorização está malformada ou inválida",
     "e2eHelper": {
@@ -944,9 +911,6 @@
       "network": "Rede"
     }
   },
-  "soroban": {
-    "onlyCredentialsAddressSupported": "signAuthEntry: somente entradas sorobanCredentialsAddress são suportadas"
-  },
   "sendRecipient": {
     "error": {
       "invalidAddressFormat": "Formato de endereço Stellar inválido",
@@ -957,34 +921,31 @@
       "unexpectedSearchError": "Ocorreu um erro inesperado durante a pesquisa"
     }
   },
-  "accountQRCodeScreen": {
-    "title": "Receber fundos",
-    "copyButton": "Copiar endereço",
-    "helperText": "Digitalize o código QR ou \n copie seu endereço",
-    "bottomSheet": {
-      "title": "QR Code",
-      "description": "Peça ao remetente para digitalizar o código QR em seu aplicativo Freighter para recuperar seu endereço de carteira com segurança."
+  "scanReceiveScreen": {
+    "scanTab": "Escanear",
+    "receiveTab": "Receber",
+    "receive": {
+      "network": "Stellar",
+      "networkSupport": "Este endereço é compatível com a rede Stellar.",
+      "copyButton": "Copiar endereço da carteira"
     }
   },
   "walletConnect": {
-    "title": "Escaneie para Conectar",
-    "scanWCQrCode": "Escaneie um código QR do WalletConnect",
+    "pairingError": "Falha ao parear",
+    "connect": "Conectar",
     "connectWithWalletConnect": "Cole um URI do WalletConnect",
     "inputPlaceholder": "URI do WalletConnect",
-    "connect": "Conectar",
-    "pairingError": "Falha ao parear",
-    "invalidUriError": "Por favor, insira um URI do WalletConnect válido",
-    "invalidQrScanUriError": "Endereço WalletConnect Inválido"
+    "invalidUriError": "Por favor, insira um URI do WalletConnect válido"
   },
   "qrCodeScannerScreen": {
     "title": "Escanear para enviar"
   },
+  "homeScanner": {
+    "title": "Escanear um código QR",
+    "scanQRCodeText": "Escaneie um código QR para enviar ou conectar"
+  },
   "addFundsScreen": {
     "title": "Adicionar fundos",
-    "bottomSheet": {
-      "description": "Você precisa de pelo menos 1 XLM para ter uma conta na Stellar. Adicione Stellar Lumens (XLM) facilmente transferindo de outra carteira para esta carteira.",
-      "subDescription": "Compre facilmente com a Coinbase ou envie XLM de outra carteira."
-    },
     "transferFromAnotherAccount": {
       "title": "Transferir de outra conta",
       "description": "Receber fundos de outra carteira"
@@ -1006,6 +967,7 @@
   "securityScreen": {
     "title": "Segurança",
     "showRecoveryPhrase": "Mostrar frase de recuperação",
+    "autoLock": "Bloqueio automático",
     "faceId": {
       "title": "Autenticação Face ID",
       "description": "Habilite a autenticação Face ID para uma camada adicional de segurança. Use a autenticação biométrica para desbloquear sua carteira e aprovar transações rapidamente e com segurança.",
@@ -1049,6 +1011,20 @@
       "disableAlertMessage": "Tem certeza que deseja desabilitar Iris?"
     }
   },
+  "autoLockTimerScreen": {
+    "title": "Temporizador de Bloqueio Automático",
+    "options": {
+      "oneMinute": "1 minuto",
+      "fiveMinutes": "5 minutos",
+      "fifteenMinutes": "15 minutos",
+      "thirtyMinutes": "30 minutos",
+      "oneHour": "1 hora",
+      "sixHours": "6 horas",
+      "twelveHours": "12 horas",
+      "twentyFourHours": "24 horas"
+    },
+    "footer": "Após um período definido, sua senha será solicitada novamente como medida extra de segurança."
+  },
   "showRecoveryPhraseScreen": {
     "title": "Mostrar Frase de Recuperação",
     "keepSafe": "Mantenha sua frase de recuperação em um local seguro.",
@@ -1076,23 +1052,16 @@
       "cannotSwapSameToken": "Não é possível trocar pelo mesmo token",
       "invalidRecipientAddress": "Endereço do destinatário inválido",
       "cannotSendToSelf": "Não é possível enviar para você mesmo",
-      "publicKeyRequired": "Chave pública é obrigatória",
-      "recipientAddressRequired": "Endereço do destinatário é obrigatório",
-      "selectedBalanceNotFound": "Saldo selecionado não encontrado",
-      "sourceBalanceNotFound": "Saldo de origem não encontrado",
-      "destinationBalanceNotFound": "Saldo de destino não encontrado",
-      "transactionFeeRequired": "Taxa de transação é obrigatória",
-      "transactionTimeoutRequired": "Tempo limite da transação é obrigatório",
-      "networkRequired": "Rede é obrigatória",
-      "minimumXlmForNewAccount": "Mínimo de 1 XLM necessário para criar uma nova conta",
-      "invalidDecimals": "Decimais inválidos ou ausentes para token personalizado"
+      "invalidDecimals": "Decimais inválidos ou ausentes para token personalizado",
+      "invalidFederationMemo": "O servidor de federação retornou um memo inválido. Por favor, verifique o endereço e tente novamente.",
+      "recipientIsTokenContract": "Não é possível enviar para o contrato do próprio token"
     }
   },
   "welcomeBanner": {
     "welcomeMessage": "Bem-vindo ao Freighter!",
     "fundingText": "Para começar a usar esta conta, ",
-    "fundingText2": "financie-a com pelo menos 1 XLM.",
-    "minimumBalanceText": "As contas Stellar exigem um saldo mínimo de 1 XLM para garantir a segurança da rede e prevenir spam.",
+    "fundingText2": "financie-a com pelo menos 2 XLM.",
+    "minimumBalanceText": "As contas Stellar exigem um saldo mínimo de 2 XLM para garantir a segurança da rede e prevenir spam.",
     "reserveExplanationText": "Esta reserva ajuda a manter o ledger cobrindo taxas de transação e desencorajando a criação de contas desnecessárias, mantendo o sistema eficiente e funcional.",
     "addXLM": "Adicionar XLM",
     "doThisLater": "Fazer isso depois"
@@ -1147,13 +1116,7 @@
       "submitDisabled": "Forçar Falha no Envio",
       "swapPathForceEnabled": "✓ Forçar Falha de Caminho",
       "swapPathForceDisabled": "Forçar Falha de Caminho",
-      "clearAll": "Limpar Todas as Falhas",
-      "debugMessages": {
-        "buildFailure": "[DEBUG] Falha forçada na construção de transação - testando tratamento de erros",
-        "signFailure": "[DEBUG] Falha forçada na assinatura de transação - testando tratamento de erros",
-        "submitFailure": "[DEBUG] Falha forçada no envio de transação - testando tratamento de erros",
-        "swapPathFailure": "[DEBUG] Falha forçada na busca de caminho de troca - testando tratamento de erros"
-      }
+      "clearAll": "Limpar Todas as Falhas"
     }
   },
   "blockaid": {
@@ -1182,10 +1145,6 @@
       }
     },
     "unableToScan": {
-      "default": {
-        "title": "Não foi possível escanear",
-        "description": "Não conseguimos escanear este item em busca de ameaças de segurança. Prossiga com cautela."
-      },
       "token": "Não foi possível escanear o token",
       "site": {
         "title": "Não foi possível escanear o site",
@@ -1213,13 +1172,15 @@
       "contractId": "ID do Contrato",
       "functionName": "Nome da função",
       "parameters": "Parâmetros",
-      "contractAddress": "Endereço do contrato"
+      "contractAddress": "Endereço do contrato",
+      "address": "Endereço do signatário"
     },
     "operations": {
       "destinationWithNumber": "Destino #{{number}}",
       "destination": "Destino",
       "startingBalance": "Saldo inicial",
       "tokenCode": "Código do token",
+      "tokenIssuer": "Emissor do token",
       "token": "Token",
       "amount": "Valor",
       "sendMax": "Enviar máximo",
@@ -1233,7 +1194,8 @@
       "selling": "Vendendo",
       "price": "Preço",
       "offerId": "ID da oferta",
-      "buyAmount": "Quantidade de compra",
+      "buyingAmount": "Quantidade de compra",
+      "sellingAmount": "Quantidade de venda",
       "signer": "Assinante",
       "signerWeight": "Peso do assinante",
       "inflationDestination": "Destino da inflação",
@@ -1286,7 +1248,13 @@
       "executableType": "Tipo de executável",
       "accountId": "ID da conta",
       "salt": "Salt",
-      "executableWasmHash": "Hash WASM executável"
+      "executableWasmHash": "Hash WASM executável",
+      "masterKeyWarningMessage": "Esta transação desativa a chave mestra da sua conta. Você pode perder permanentemente o acesso a esta conta, a menos que outro assinante com peso suficiente seja adicionado.",
+      "cleared": "Limpo",
+      "deleted": "Excluído",
+      "enabled": "Habilitado",
+      "disabled": "Desabilitado",
+      "unknownFlags": "Desconhecido ({{bits}})"
     },
     "claimPredicates": {
       "unconditional": "Incondicional",

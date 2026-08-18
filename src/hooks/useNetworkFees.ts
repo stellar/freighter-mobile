@@ -1,33 +1,112 @@
-import { mapNetworkToNetworkDetails } from "config/constants";
+import { mapNetworkToNetworkDetails, NETWORKS } from "config/constants";
 import { logger } from "config/logger";
-import { NetworkCongestion } from "config/types";
+import { FeePresets, FeePriority, NetworkCongestion } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useEffect, useState } from "react";
 import { getNetworkFees, stellarSdkServer } from "services/stellar";
 
+export interface NetworkFeesData {
+  recommendedFee: string;
+  networkCongestion: NetworkCongestion;
+  feePresets: FeePresets;
+}
+
+// Empty presets until the first fetch resolves: a selected preset tier then
+// shows the floored store fee (presetTotalFee returns undefined) rather than a
+// bogus value. This is a DIFFERENT "no data" representation than the
+// fetch-error path, where `getNetworkFees` falls back to the XLM minimum fee.
+const EMPTY_FEE_PRESETS: FeePresets = {
+  [FeePriority.LOW]: "",
+  [FeePriority.MEDIUM]: "",
+  [FeePriority.HIGH]: "",
+};
+
+const DEFAULT_NETWORK_FEES: NetworkFeesData = {
+  recommendedFee: "",
+  networkCongestion: NetworkCongestion.LOW,
+  feePresets: EMPTY_FEE_PRESETS,
+};
+
 /**
- * Hook to retrieve and monitor network fees and congestion levels.
- *
- * @returns An object containing the recommended fee and network congestion level
+ * Fee snapshot per network, fetched once and then frozen for the duration of a
+ * send/swap/collectible flow so the congestion level and fees stay consistent
+ * to the user (and only change when they manually edit). Cleared on flow exit
+ * via `clearNetworkFeesCache`, so the next flow re-fetches fresh values.
  */
-export const useNetworkFees = () => {
-  const [recommendedFee, setRecommendedFee] = useState("");
-  const [networkCongestion, setNetworkCongestion] = useState<NetworkCongestion>(
-    NetworkCongestion.LOW,
-  );
+const networkFeesCache: Partial<Record<NETWORKS, NetworkFeesData>> = {};
+
+// In-flight fetch per network, so the navigator's prewarm and the screen that
+// mounts right after it share a single feeStats round-trip instead of racing
+// two. Cleared once the fetch settles (and on flow exit).
+const inflightFetches: Partial<Record<NETWORKS, Promise<NetworkFeesData>>> = {};
+
+/** Clears the frozen fee snapshot so the next flow re-fetches. Call on flow exit. */
+export const clearNetworkFeesCache = (): void => {
+  (Object.keys(networkFeesCache) as NETWORKS[]).forEach((key) => {
+    delete networkFeesCache[key];
+  });
+  (Object.keys(inflightFetches) as NETWORKS[]).forEach((key) => {
+    delete inflightFetches[key];
+  });
+};
+
+/**
+ * Hook to retrieve network fees and congestion for the current flow.
+ *
+ * The values are fetched once and frozen (no polling): the first consumer to
+ * mount populates the cache, later consumers (e.g. the settings sheet) read the
+ * same snapshot, and it stays put for the whole flow.
+ *
+ * @returns The recommended fee, network congestion, and Low/Med/High presets.
+ */
+export const useNetworkFees = (): NetworkFeesData => {
   const { network } = useAuthenticationStore();
+  const [fees, setFees] = useState<NetworkFeesData>(
+    () => networkFeesCache[network] ?? DEFAULT_NETWORK_FEES,
+  );
 
   useEffect(() => {
+    const cached = networkFeesCache[network];
+    if (cached) {
+      // Frozen snapshot already loaded for this flow — reuse it, don't refetch.
+      setFees(cached);
+      return undefined;
+    }
+
+    let cancelled = false;
     const fetchNetworkFees = async () => {
       try {
-        const { networkUrl } = mapNetworkToNetworkDetails(network);
-        const server = stellarSdkServer(networkUrl);
+        let pending = inflightFetches[network];
+        if (!pending) {
+          const { networkUrl } = mapNetworkToNetworkDetails(network);
+          const server = stellarSdkServer(networkUrl);
+          // Clear by identity, not by key: a flow that exits mid-fetch has its
+          // entry dropped by `clearNetworkFeesCache`, and the next flow may
+          // already have registered its own request by the time this one
+          // settles. Deleting blindly would evict that newer request and let a
+          // third fetch start, whose response could then overwrite the snapshot
+          // the flow's other consumers are already showing.
+          const request: Promise<NetworkFeesData> = getNetworkFees(
+            server,
+          ).finally(() => {
+            if (inflightFetches[network] === request) {
+              delete inflightFetches[network];
+            }
+          });
+          inflightFetches[network] = request;
+          pending = request;
+        }
 
-        const { recommendedFee: fee, networkCongestion: congestion } =
-          await getNetworkFees(server);
+        const data = await pending;
 
-        setRecommendedFee(fee);
-        setNetworkCongestion(congestion);
+        // Guard against an invalid/empty result so the hook never returns
+        // undefined to consumers.
+        if (cancelled || !data?.recommendedFee) {
+          return;
+        }
+
+        networkFeesCache[network] = data;
+        setFees(data);
       } catch (error) {
         logger.error("[useNetworkFees]", "Error fetching network fees:", error);
       }
@@ -35,12 +114,10 @@ export const useNetworkFees = () => {
 
     fetchNetworkFees();
 
-    const interval = setInterval(() => {
-      fetchNetworkFees();
-    }, 30000);
-
-    return () => clearInterval(interval);
+    return () => {
+      cancelled = true;
+    };
   }, [network]);
 
-  return { recommendedFee, networkCongestion };
+  return fees;
 };

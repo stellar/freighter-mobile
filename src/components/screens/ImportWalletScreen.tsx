@@ -12,6 +12,7 @@ import { normalizeAndTrimRecoveryPhrase } from "helpers/recoveryPhrase";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBiometrics } from "hooks/useBiometrics";
 import useColors from "hooks/useColors";
+import { useSetupFailedToast } from "hooks/useSetupFailedToast";
 import React, { useCallback, useEffect, useState } from "react";
 import { View, Pressable } from "react-native";
 
@@ -32,6 +33,7 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
   const { storeBiometricPassword } = useAuthenticationStore();
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
+  const notifySetupFailed = useSetupFailedToast();
   const [isImporting, setIsImporting] = useState(false);
   const [showMasked, setShowMasked] = useState(true);
 
@@ -56,18 +58,25 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
         setPassword(password);
 
         if (biometryType) {
-          storeBiometricPassword(password!).then(() => {
-            navigation.navigate(AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN, {
-              source: BiometricsSource.IMPORT_WALLET,
-            });
-          });
+          storeBiometricPassword(password!)
+            .then(() => {
+              navigation.navigate(AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN, {
+                source: BiometricsSource.IMPORT_WALLET,
+              });
+            })
+            .catch(notifySetupFailed);
         } else {
-          // No biometrics available, proceed with normal import
-          await importWallet({
+          // No biometrics available, proceed with normal import.
+          // importWallet returns false (rather than throwing) on failure, so
+          // gate cleanup on the result instead of treating failure as success.
+          // The failure is surfaced inline via the store error.
+          const success = await importWallet({
             mnemonicPhrase: localMnemonicPhrase,
             password: password!,
           });
-          clearLoginData(); // Clear sensitive data after successful import
+          if (success) {
+            clearLoginData(); // Clear sensitive data after successful import
+          }
         }
         setIsImporting(false);
       })();
@@ -82,6 +91,7 @@ export const ImportWalletScreen: React.FC<ImportWalletScreenProps> = ({
     storeBiometricPassword,
     setMnemonicPhrase,
     setPassword,
+    notifySetupFailed,
     clearLoginData,
   ]);
 

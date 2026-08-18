@@ -402,13 +402,19 @@ export const calculateSpendableAmount = ({
 };
 
 /**
- * Checks if a balance has valid decimals property for decimal-aware formatting
+ * Checks if a balance carries an explicit `decimals` field — the marker for
+ * a Soroban / custom token, regardless of whether that value is zero. Classic
+ * Stellar balances don't have this field and rely on the protocol's fixed
+ * 7-decimal precision instead.
+ *
+ * Note: `decimals === 0` is a legitimate value for a custom token that uses
+ * integer-only units (no fractional part), and must still discriminate as
+ * "has decimals" so downstream logic doesn't fall back to the classic default.
  *
  * @param {Balance | PricedBalance} balance - The balance to check
- * @returns {boolean} True if balance has valid decimals property, false otherwise
+ * @returns {boolean} True when the balance has a non-negative `decimals` field
  *
  * @example
- * // Check if balance has decimals
  * if (hasDecimals(balance)) {
  *   // Use decimal-aware formatting
  *   const formatted = formatSorobanTokenAmount(amount, balance.decimals);
@@ -419,7 +425,7 @@ export const hasDecimals = (
 ): balance is Balance & { decimals: number } =>
   "decimals" in balance &&
   typeof balance.decimals === "number" &&
-  balance.decimals > 0;
+  balance.decimals >= 0;
 
 /**
  * Validates if an amount exceeds the spendable balance

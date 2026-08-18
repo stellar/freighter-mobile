@@ -31,7 +31,8 @@ jest.mock("ducks/prices", () => ({
   usePricesStore: {
     getState: jest.fn().mockReturnValue({
       fetchPricesForBalances: jest.fn(),
-      prices: {},
+      pricesByNetwork: {},
+      sourceByNetwork: {},
       error: null,
       isLoading: false,
       lastUpdated: null,
@@ -49,7 +50,9 @@ describe("balances duck", () => {
   >;
   const mockGetItem = jest.fn();
 
-  // Helper function to create a mock prices store state
+  // Helper function to create a mock prices store state. The `prices` override
+  // is exposed under every network so `pricesByNetwork[params.network]` resolves
+  // regardless of which network a test uses.
   const createMockPricesStore = (
     overrides: Partial<{
       fetchPricesForBalances: jest.Mock;
@@ -58,14 +61,22 @@ describe("balances duck", () => {
       isLoading: boolean;
       lastUpdated: number | null;
     }> = {},
-  ) => ({
-    fetchPricesForBalances: jest.fn().mockResolvedValue(undefined),
-    prices: {},
-    error: null,
-    isLoading: false,
-    lastUpdated: null,
-    ...overrides,
-  });
+  ) => {
+    const { prices = {}, ...rest } = overrides;
+    return {
+      fetchPricesForBalances: jest.fn().mockResolvedValue(undefined),
+      pricesByNetwork: {
+        [NETWORKS.PUBLIC]: prices,
+        [NETWORKS.TESTNET]: prices,
+        [NETWORKS.FUTURENET]: prices,
+      },
+      sourceByNetwork: {},
+      error: null,
+      isLoading: false,
+      lastUpdated: null,
+      ...rest,
+    };
+  };
 
   // Mock data
   const mockNativeBalance: NativeBalance = {
@@ -212,6 +223,26 @@ describe("balances duck", () => {
       expect(result.current.error).toBeNull();
     });
 
+    it("should record fetchedPublicKey and fetchedNetwork after a successful fetch", async () => {
+      mockFetchBalances.mockResolvedValueOnce({
+        balances: {},
+        isFunded: false,
+        subentryCount: 0,
+      });
+      (usePricesStore.getState as jest.Mock).mockReturnValue(
+        createMockPricesStore(),
+      );
+
+      const { result } = renderHook(() => useBalancesStore());
+
+      await act(async () => {
+        await result.current.fetchAccountBalances(mockParams);
+      });
+
+      expect(result.current.fetchedPublicKey).toBe(mockParams.publicKey);
+      expect(result.current.fetchedNetwork).toBe(mockParams.network);
+    });
+
     it("should handle fetch with contractIds", async () => {
       // Mock custom token storage
       const mockCustomTokens = {
@@ -286,7 +317,8 @@ describe("balances duck", () => {
       mockFetchBalances.mockResolvedValueOnce({ balances: {} });
       (usePricesStore.getState as jest.Mock).mockReturnValue({
         fetchPricesForBalances: jest.fn().mockResolvedValue(undefined),
-        prices: {},
+        pricesByNetwork: {},
+        sourceByNetwork: {},
         error: null,
         isLoading: false,
         lastUpdated: null,
@@ -368,6 +400,44 @@ describe("balances duck", () => {
       expect(
         result.current.pricedBalances.XLM.percentagePriceChange24h,
       ).toBeUndefined();
+    });
+
+    it("recomputes carried fiatTotals from the cached price, not verbatim", async () => {
+      // Previous account's snapshot: 1000 XLM priced at $0.5 → fiatTotal 500.
+      useBalancesStore.setState({
+        pricedBalances: {
+          XLM: {
+            ...mockNativeBalance,
+            tokenCode: "XLM",
+            displayName: "Stellar Lumens",
+            total: new BigNumber("1000"),
+            currentPrice: new BigNumber("0.5"),
+            fiatTotal: new BigNumber("500"),
+          },
+        },
+      });
+
+      // New fetch (e.g. a just-imported account) holds 100.5 XLM, and the
+      // price fetch fails, so the carried map becomes state.
+      mockFetchBalances.mockResolvedValueOnce({ balances: mockBalances });
+      (usePricesStore.getState as jest.Mock).mockReturnValue(
+        createMockPricesStore({
+          prices: {},
+          error: "Failed to fetch token prices",
+        }),
+      );
+
+      const { result } = renderHook(() => useBalancesStore());
+
+      await act(async () => {
+        await result.current.fetchAccountBalances(mockParams);
+      });
+
+      // fiatTotal must be THIS balance's total × the cached price — never
+      // the previous balance's product carried verbatim.
+      expect(result.current.pricedBalances.XLM.fiatTotal?.toString()).toBe(
+        new BigNumber("100.5").multipliedBy("0.5").toString(),
+      );
     });
 
     it("should extract scanResults from backend balance data", async () => {

@@ -11,10 +11,12 @@ describe("SecurityDetailBottomSheet", () => {
     {
       id: "warning-1",
       description: "This token appears to be malicious",
+      severity: "malicious",
     },
     {
       id: "warning-2",
       description: "Domain verification failed",
+      severity: "warning",
     },
   ];
 
@@ -30,7 +32,7 @@ describe("SecurityDetailBottomSheet", () => {
     jest.clearAllMocks();
   });
 
-  it("renders correctly with malicious severity", () => {
+  it("renders both warnings", () => {
     const { getByText } = renderWithProviders(
       <SecurityDetailBottomSheet
         {...defaultProps}
@@ -57,37 +59,34 @@ describe("SecurityDetailBottomSheet", () => {
   it("calls onCancel when cancel button is pressed", async () => {
     const user = userEvent.setup();
     const { getByText } = renderWithProviders(
-      <SecurityDetailBottomSheet {...defaultProps} />,
+      <SecurityDetailBottomSheet
+        {...defaultProps}
+        severity={SecurityLevel.MALICIOUS}
+      />,
     );
 
     await user.press(getByText("Cancel"));
     expect(defaultProps.onCancel).toHaveBeenCalledTimes(1);
   });
 
-  it("calls onProceedAnyway when proceed anyway text is pressed", async () => {
+  it("calls onProceedAnyway when proceed-anyway text is pressed", async () => {
     const user = userEvent.setup();
     const { getByText } = renderWithProviders(
-      <SecurityDetailBottomSheet {...defaultProps} />,
+      <SecurityDetailBottomSheet
+        {...defaultProps}
+        severity={SecurityLevel.MALICIOUS}
+      />,
     );
 
     await user.press(getByText("Approve anyway"));
     expect(defaultProps.onProceedAnyway).toHaveBeenCalledTimes(1);
   });
 
-  it("calls onClose when close button is pressed", () => {
-    const { getByText } = renderWithProviders(
-      <SecurityDetailBottomSheet {...defaultProps} />,
-    );
-
-    // For now, we'll test that the component renders correctly
-    // The close button interaction can be tested in integration tests
-    expect(getByText("This token appears to be malicious")).toBeTruthy();
-  });
-
-  it("uses different proceed anyway text based on proceedAnywayText", () => {
+  it("uses the provided proceedAnywayText", () => {
     const { getByText } = renderWithProviders(
       <SecurityDetailBottomSheet
         {...defaultProps}
+        severity={SecurityLevel.MALICIOUS}
         proceedAnywayText="Connect anyway"
       />,
     );
@@ -95,7 +94,7 @@ describe("SecurityDetailBottomSheet", () => {
     expect(getByText("Connect anyway")).toBeTruthy();
   });
 
-  it("renders with different variants for malicious vs warning vs expected to fail", () => {
+  it("renders with different titles for malicious vs warning vs expected to fail", () => {
     const { getByText: getByTextMalicious } = renderWithProviders(
       <SecurityDetailBottomSheet
         {...defaultProps}
@@ -103,7 +102,6 @@ describe("SecurityDetailBottomSheet", () => {
       />,
     );
 
-    // Should show "Do not proceed" for malicious
     expect(getByTextMalicious(/do not proceed/i)).toBeTruthy();
 
     const { getByText: getByTextWarning } = renderWithProviders(
@@ -113,7 +111,6 @@ describe("SecurityDetailBottomSheet", () => {
       />,
     );
 
-    // Should show "Suspicious request" for warning
     expect(getByTextWarning(/suspicious request/i)).toBeTruthy();
 
     const { getByText: getByTextExpectedToFail } = renderWithProviders(
@@ -123,7 +120,6 @@ describe("SecurityDetailBottomSheet", () => {
       />,
     );
 
-    // Should show Blockaid-style warning title and expected-to-fail subtitle
     expect(getByTextExpectedToFail(/warning/i)).toBeTruthy();
     expect(
       getByTextExpectedToFail(
@@ -137,6 +133,7 @@ describe("SecurityDetailBottomSheet", () => {
     const tokenContext = renderWithProviders(
       <SecurityDetailBottomSheet
         {...defaultProps}
+        severity={SecurityLevel.MALICIOUS}
         securityContext={SecurityContext.TOKEN}
       />,
     );
@@ -147,6 +144,7 @@ describe("SecurityDetailBottomSheet", () => {
     const siteContext = renderWithProviders(
       <SecurityDetailBottomSheet
         {...defaultProps}
+        severity={SecurityLevel.MALICIOUS}
         securityContext={SecurityContext.SITE}
       />,
     );
@@ -159,6 +157,7 @@ describe("SecurityDetailBottomSheet", () => {
     const transactionContext = renderWithProviders(
       <SecurityDetailBottomSheet
         {...defaultProps}
+        severity={SecurityLevel.MALICIOUS}
         securityContext={SecurityContext.TRANSACTION}
       />,
     );
@@ -169,10 +168,11 @@ describe("SecurityDetailBottomSheet", () => {
     ).toBeTruthy();
   });
 
-  it("renders correctly when onCancel and onProceedAnyway are not provided", () => {
+  it("renders no buttons when onCancel + onProceedAnyway are not provided", () => {
     const { queryByText } = renderWithProviders(
       <SecurityDetailBottomSheet
         {...defaultProps}
+        severity={SecurityLevel.MALICIOUS}
         onCancel={undefined}
         onProceedAnyway={undefined}
       />,

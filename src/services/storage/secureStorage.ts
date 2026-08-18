@@ -29,6 +29,26 @@ export const SECURE_STORAGE_SERVICE = "freighter_secure_storage";
 export const BIOMETRIC_STORAGE_SERVICE = "freighter_biometric_storage";
 
 /**
+ * react-native-keychain's iOS bridge translates the Security framework's
+ * errSecInteractionNotAllowed (-25308) status code into this exact string.
+ * It fires when the device is locked or the app is backgrounded and our
+ * BIOMETRY_ANY_OR_DEVICE_PASSCODE access control can't surface a prompt.
+ *
+ * This is an environmental condition (Zustand rehydration on cold start
+ * before unlock, WalletConnect session restore, push notification
+ * handlers reaching for stored credentials), not a real failure — the
+ * caller already handles the empty result gracefully.
+ */
+const IOS_INTERACTION_NOT_ALLOWED = "User interaction is not allowed.";
+
+const isInteractionNotAllowed = (error: unknown): boolean => {
+  if (!error || typeof error !== "object") return false;
+  return (
+    (error as { message?: unknown }).message === IOS_INTERACTION_NOT_ALLOWED
+  );
+};
+
+/**
  * Options for storing/retrieving items from secure storage
  */
 export interface SecureStorageOptions {
@@ -73,6 +93,11 @@ export const createSecureStorage = (serviceName: string) => ({
 
       await Keychain.setGenericPassword(key, value, storageOptions);
     } catch (error) {
+      // Writes happen on auth-critical paths (createTemporaryStore,
+      // biometricDataStorage.setItem during sign-in/import). The user is
+      // in foreground when these run, so errSecInteractionNotAllowed here
+      // is unusual and indicates a real failure to persist credentials -
+      // keep on logger.error so we have visibility on auth-flow regressions.
       logger.error(
         "secureStorage.setItem",
         "Error storing item in keychain",
@@ -117,11 +142,18 @@ export const createSecureStorage = (serviceName: string) => ({
       const result = await Keychain.getGenericPassword(getOptions);
       return result;
     } catch (error) {
-      logger.error(
-        "secureStorage.getItem",
-        "Error retrieving item from keychain",
-        error,
-      );
+      if (isInteractionNotAllowed(error)) {
+        logger.warn(
+          "secureStorage.getItem",
+          "Keychain read blocked - app likely backgrounded or device locked",
+        );
+      } else {
+        logger.error(
+          "secureStorage.getItem",
+          "Error retrieving item from keychain",
+          error,
+        );
+      }
       return false;
     }
   },
@@ -148,6 +180,9 @@ export const createSecureStorage = (serviceName: string) => ({
         service: `${serviceName}_${keys}`,
       });
     } catch (error) {
+      // Removal failures are security-relevant (used to delete sensitive
+      // keys during logout / wipe / account deletion). Silent failures
+      // would leave stale credentials on device - keep on logger.error.
       logger.error(
         "secureStorage.remove",
         "Error removing keys from keychain",
@@ -170,11 +205,18 @@ export const createSecureStorage = (serviceName: string) => ({
       });
       return result;
     } catch (error) {
-      logger.error(
-        "secureStorage.checkIfExists",
-        "Error checking if item exists",
-        error,
-      );
+      if (isInteractionNotAllowed(error)) {
+        logger.warn(
+          "secureStorage.checkIfExists",
+          "Keychain check blocked - app likely backgrounded or device locked",
+        );
+      } else {
+        logger.error(
+          "secureStorage.checkIfExists",
+          "Error checking if item exists",
+          error,
+        );
+      }
       return false;
     }
   },
@@ -195,6 +237,10 @@ export const createSecureStorage = (serviceName: string) => ({
         matching.map((service) => Keychain.resetGenericPassword({ service })),
       );
     } catch (error) {
+      // clear() is part of the logout / wipe path. If keychain deletion
+      // is blocked the method swallows the failure (no throw) and logout
+      // proceeds, leaving credentials on device. That's security-relevant
+      // and we want full visibility - keep on logger.error.
       logger.error("secureStorage.clear", "Error clearing keychain", error);
     }
   },

@@ -22,7 +22,10 @@ import {
 import { logger } from "config/logger";
 import { Balance, NativeBalance, PricedBalance } from "config/types";
 import { isLiquidityPool } from "helpers/balances";
-import { xlmToStroop } from "helpers/formatAmount";
+import {
+  getPerOperationBaseFeeStroops,
+  xlmToStroop,
+} from "helpers/formatAmount";
 import {
   determineMuxedDestination,
   checkContractMuxedSupport,
@@ -36,14 +39,16 @@ import {
 } from "helpers/stellar";
 import { t } from "i18next";
 import { analytics } from "services/analytics";
+import { SimulationTransactionType } from "services/analytics/types";
 import { simulateTokenTransfer, simulateTransaction } from "services/backend";
-import { stellarSdkServer } from "services/stellar";
+import { buildChangeTrustOperation, stellarSdkServer } from "services/stellar";
 
 export interface BuildPaymentTransactionParams {
   tokenAmount: string;
   selectedBalance?: PricedBalance;
   recipientAddress?: string;
   transactionMemo?: string;
+  transactionMemoType?: string;
   transactionFee?: string;
   transactionTimeout?: number;
   network?: NETWORKS;
@@ -61,6 +66,14 @@ export interface BuildSwapTransactionParams {
   transactionTimeout?: number;
   network?: NETWORKS;
   senderAddress?: string;
+  /**
+   * When present, the builder prepends a `changeTrust` op as op #0 so the
+   * trustline and the path payment submit atomically as a single transaction.
+   * Used for swaps to a new (non-held) destination token. Pass this only when
+   * `destinationToken.requiresTrustline === true` (i.e. the user does not yet hold a
+   * trustline for the destination asset).
+   */
+  includeTrustline?: { tokenCode: string; issuer: string };
 }
 
 export interface BuildSendCollectibleParams {
@@ -87,6 +100,7 @@ interface IValidateTransactionParams {
   destination: string;
   fee: string;
   timeout: number;
+  skipAmountValidation?: boolean;
 }
 
 /**
@@ -97,8 +111,8 @@ export const validateTransactionParams = (
   params: IValidateTransactionParams,
 ): string | null => {
   const { senderAddress, balance, amount, destination, fee, timeout } = params;
-  // Validate amount is positive
-  if (Number(amount) <= 0) {
+  // Validate amount is positive (skipped for Soroban fee estimation with amount 0)
+  if (!params.skipAmountValidation && Number(amount) <= 0) {
     return t("transaction.errors.amountRequired");
   }
 
@@ -330,6 +344,7 @@ export const buildPaymentTransaction = async (
     selectedBalance,
     recipientAddress,
     transactionMemo: memo,
+    transactionMemoType: memoType,
     transactionFee,
     transactionTimeout,
     network,
@@ -347,6 +362,15 @@ export const buildPaymentTransaction = async (
       throw new Error("Missing required parameters for building transaction");
     }
 
+    // Soroban fee estimation can use amount 0 — resource fees are
+    // independent of the transfer amount. Skip only the amount check;
+    // all other validations (fee, timeout, address, balance) still run.
+    const isSorobanTransfer =
+      (selectedBalance &&
+        "contractId" in selectedBalance &&
+        Boolean(selectedBalance.contractId)) ||
+      isContractId(recipientAddress);
+
     const validationError = validateTransactionParams({
       senderAddress,
       balance: selectedBalance,
@@ -354,6 +378,7 @@ export const buildPaymentTransaction = async (
       destination: recipientAddress,
       fee: transactionFee,
       timeout: transactionTimeout,
+      skipAmountValidation: isSorobanTransfer && Number(amount) === 0,
     });
 
     if (validationError) {
@@ -382,7 +407,36 @@ export const buildPaymentTransaction = async (
     // For normal transactions (non-Soroban), only add memo if recipient is not M address
     // For Soroban transactions, memo handling is done in buildSorobanTransferOperation
     if (memo && !shouldUseSorobanTransfer && !isRecipientMuxed) {
-      transactionBuilder.addMemo(new Memo(Memo.text(memo).type, memo));
+      // Honour the memo type returned by the federation server so that exchange
+      // destinations that require memo_type:"id" receive the correct Stellar memo.
+      if (memoType === "id") {
+        // Memo.id validates numeric range (0..2^64-1); throw on invalid value so
+        // the send is aborted rather than silently downgraded to a text memo.
+        // A silent downgrade would cause exchange deposits to arrive at the omnibus
+        // address without being credited to the user's sub-account.
+        if (!/^\d+$/.test(memo)) {
+          throw new Error(t("transaction.errors.invalidFederationMemo"));
+        }
+        try {
+          transactionBuilder.addMemo(Memo.id(memo));
+        } catch {
+          throw new Error(t("transaction.errors.invalidFederationMemo"));
+        }
+      } else if (memoType === "hash") {
+        try {
+          const hashBytes = Buffer.from(memo, "base64");
+          if (hashBytes.length !== 32) {
+            throw new Error(t("transaction.errors.invalidFederationMemo"));
+          }
+          transactionBuilder.addMemo(Memo.hash(hashBytes));
+        } catch (error) {
+          throw error instanceof Error
+            ? error
+            : new Error(t("transaction.errors.invalidFederationMemo"));
+        }
+      } else {
+        transactionBuilder.addMemo(Memo.text(memo));
+      }
     }
 
     if (shouldUseSorobanTransfer) {
@@ -391,18 +445,25 @@ export const buildPaymentTransaction = async (
       if (isCustomToken) {
         contractId = selectedBalance.contractId;
       } else {
-        try {
-          const token = getTokenForPayment(selectedBalance);
-          contractId = token.isNative()
-            ? getContractIdForNativeToken(network)
-            : recipientAddress;
-        } catch (error) {
-          if (isCustomToken) {
-            contractId = selectedBalance.contractId;
-          } else {
-            throw error;
-          }
-        }
+        // The token contract is a property of the ASSET being sent, never of
+        // the recipient. For a classic asset that contract is its Stellar
+        // Asset Contract, whose address derives deterministically from
+        // (code, issuer, network passphrase). Using the recipient here would
+        // invoke an arbitrary contract chosen by the destination address and
+        // move whichever asset that contract governs, not the selected one.
+        const token = getTokenForPayment(selectedBalance);
+        contractId = token.isNative()
+          ? getContractIdForNativeToken(network)
+          : token.contractId(networkDetails.networkPassphrase);
+      }
+
+      // Defence in depth against the above being wired wrongly again: a token
+      // transferred to its own token contract is credited to the contract's
+      // own address, where nothing can ever spend it again — the SAC only
+      // moves a balance on `from.require_auth()` and never authorizes on
+      // behalf of itself. Refuse rather than build an irreversible burn.
+      if (contractId === recipientAddress) {
+        throw new Error(t("transaction.errors.recipientIsTokenContract"));
       }
 
       const contractSupportsMuxed = await checkContractMuxedSupport({
@@ -543,6 +604,7 @@ export const buildSwapTransaction = async (
     transactionTimeout,
     network,
     senderAddress,
+    includeTrustline,
   } = params;
 
   try {
@@ -566,7 +628,14 @@ export const buildSwapTransaction = async (
     const networkDetails = mapNetworkToNetworkDetails(network);
     const server = stellarSdkServer(networkDetails.networkUrl);
     const sourceAccount = await server.loadAccount(senderAddress);
-    const fee = xlmToStroop(transactionFee).toString();
+    // transactionFee is the TOTAL the user set; the SDK fee is per-operation
+    // and the network charges baseFee × numOps. Adding a changeTrust op makes
+    // this a 2-op tx, so split the total across ops to keep the charged total
+    // equal to what the user set/sees.
+    const fee = getPerOperationBaseFeeStroops(
+      transactionFee,
+      includeTrustline ? 2 : 1,
+    );
 
     const txBuilder = new TransactionBuilder(sourceAccount, {
       fee,
@@ -585,6 +654,17 @@ export const buildSwapTransaction = async (
 
       return new SdkToken(code, issuer);
     });
+
+    // Op ordering is load-bearing: changeTrust must be op #0 so the trustline
+    // is established before the path-payment op consumes the destination asset.
+    if (includeTrustline) {
+      txBuilder.addOperation(
+        buildChangeTrustOperation({
+          tokenCode: includeTrustline.tokenCode,
+          issuer: includeTrustline.issuer,
+        }),
+      );
+    }
 
     txBuilder.addOperation(
       Operation.pathPaymentStrictSend({
@@ -694,6 +774,7 @@ interface SimulateContractTransferParams {
   transaction: Transaction;
   networkDetails: NetworkDetails;
   memo: string;
+  fee?: string;
   params: {
     publicKey: string;
     destination: string;
@@ -706,6 +787,7 @@ export const simulateContractTransfer = async ({
   transaction,
   networkDetails,
   memo,
+  fee,
   params,
   contractAddress,
 }: SimulateContractTransferParams) => {
@@ -718,13 +800,13 @@ export const simulateContractTransfer = async ({
   }
 
   try {
-    // Note: If destination is already muxed (from buildPaymentTransaction),
-    // it will be passed through here. The memo parameter is kept for backward compatibility
-    // but for CAP-0067, memo should be embedded in the muxed address.
+    // Follow the extension pattern: use /simulate-token-transfer which
+    // builds and simulates the transaction on the backend.
     const result = await simulateTokenTransfer({
       address: contractAddress,
       pub_key: transaction.source,
       memo, // This may be redundant if destination is muxed, but kept for compatibility
+      fee: fee ? xlmToStroop(fee).toString() : undefined,
       params,
       network_url: networkDetails.sorobanRpcUrl,
       network_passphrase: networkDetails.networkPassphrase,
@@ -732,11 +814,17 @@ export const simulateContractTransfer = async ({
 
     // Use the preparedTransaction XDR directly from the backend
     // The backend builds, simulates, and prepares the transaction
-    return result.preparedTransaction;
+    return {
+      preparedTransaction: result.preparedTransaction,
+      minResourceFee: result.simulationResponse?.minResourceFee,
+    };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
 
-    analytics.trackSimulationError(errorMessage, "contract_transfer");
+    analytics.trackSimulationError(
+      errorMessage,
+      SimulationTransactionType.ContractTransfer,
+    );
 
     throw error;
   }
@@ -745,11 +833,13 @@ export const simulateContractTransfer = async ({
 interface SimulateCollectibleTransferParams {
   transactionXdr: string;
   networkDetails: NetworkDetails;
+  analyticsCategory?: SimulationTransactionType;
 }
 
 export const simulateCollectibleTransfer = async ({
   transactionXdr,
   networkDetails,
+  analyticsCategory = SimulationTransactionType.CollectibleTransfer,
 }: SimulateCollectibleTransferParams) => {
   if (!networkDetails.sorobanRpcUrl) {
     throw new Error("Soroban RPC URL is not defined for this network");
@@ -762,11 +852,14 @@ export const simulateCollectibleTransfer = async ({
       network_passphrase: networkDetails.networkPassphrase,
     });
 
-    return result.preparedTransaction;
+    return {
+      preparedTransaction: result.preparedTransaction,
+      minResourceFee: result.simulationResponse?.minResourceFee,
+    };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
 
-    analytics.trackSimulationError(errorMessage, "collectible_transfer");
+    analytics.trackSimulationError(errorMessage, analyticsCategory);
     throw error;
   }
 };

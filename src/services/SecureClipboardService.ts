@@ -19,6 +19,14 @@ const SecureClipboardModule = SecureClipboard as SecureClipboardNative;
  * - iOS: Uses manual expiration with content verification to prevent overwriting user data (iOS 15.1+)
  * - Both platforms: Graceful fallback to standard clipboard if native modules fail
  * - Safety: Only clears clipboard if content hasn't been overwritten by other applications
+ *
+ * Native-module fallback logging: when the native module is
+ * unavailable (older Android versions, iOS quirks) the catches below
+ * fall back to the standard clipboard. We log at `warn` so we have a
+ * Sentry breadcrumb if mnemonic copy/paste flows ever regress on a
+ * supported device. Call sites are onboarding-only and historical
+ * fallback rate is essentially zero, so buffer pressure is not a
+ * concern.
  */
 export class SecureClipboardService {
   /**
@@ -39,7 +47,8 @@ export class SecureClipboardService {
         Clipboard.setString(text);
       }
     } catch (error) {
-      // Fallback to standard clipboard if native module fails
+      // Fall back to the standard clipboard. Logged at warn — see
+      // class-level rationale.
       logger.warn(
         "SecureClipboardService.copyToClipboard",
         "Native module failed, falling back to standard clipboard",
@@ -60,7 +69,8 @@ export class SecureClipboardService {
         Clipboard.setString("");
       }
     } catch (error) {
-      // Fallback to standard clipboard if native module fails
+      // Fall back to the standard clipboard. Logged at warn — see
+      // class-level rationale.
       logger.warn(
         "SecureClipboardService.clearClipboard",
         "Native clear failed, falling back to standard clipboard",
@@ -80,7 +90,8 @@ export class SecureClipboardService {
       }
       return await Clipboard.getString();
     } catch (error) {
-      // Fallback to standard clipboard if native module fails
+      // Fall back to the standard clipboard. Logged at warn — see
+      // class-level rationale.
       logger.warn(
         "SecureClipboardService.getClipboardText",
         "Native getString failed, falling back to standard clipboard",

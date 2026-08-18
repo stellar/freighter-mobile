@@ -242,6 +242,9 @@ describe("CollectibleDetailsScreen", () => {
       "SendPaymentStack",
       {
         screen: "SendSearchContactsScreen",
+        params: {
+          dismissToPreviousScreen: true,
+        },
       },
     );
   });

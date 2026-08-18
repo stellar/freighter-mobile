@@ -90,6 +90,34 @@ describe("List", () => {
     });
   });
 
+  it("renders repeated titles without colliding React keys", () => {
+    // Operations that carry both a source and a destination asset render two
+    // rows with the same label (e.g. "Token Issuer" on a path payment), so the
+    // title alone can't identify a row.
+    const consoleErrorSpy = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+
+    const duplicateTitleItems = [
+      { title: "Token Issuer", testID: "issuer-source" },
+      { title: "Token Issuer", testID: "issuer-destination" },
+    ];
+
+    const { getByTestId } = renderWithProviders(
+      <List items={duplicateTitleItems} />,
+    );
+
+    expect(getByTestId("issuer-source")).toBeTruthy();
+    expect(getByTestId("issuer-destination")).toBeTruthy();
+    const duplicateKeyWarnings = consoleErrorSpy.mock.calls.filter((args) =>
+      args.some((arg) => String(arg).includes("same key")),
+    );
+
+    consoleErrorSpy.mockRestore();
+
+    expect(duplicateKeyWarnings).toHaveLength(0);
+  });
+
   it("renders dividers between items", () => {
     const { getByTestId } = renderWithProviders(<List items={mockItems} />);
 

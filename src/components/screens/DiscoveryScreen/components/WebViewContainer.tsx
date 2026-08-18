@@ -65,7 +65,8 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
       try {
         webViewInstance.clearCache?.(false); // false = preserve cookies
       } catch (error) {
-        logger.warn("WebViewContainer", "Failed to clear WebView cache", error);
+        // Best-effort cleanup, not actionable for downstream errors.
+        logger.info("WebViewContainer", "Failed to clear WebView cache", error);
       }
     };
 
@@ -117,7 +118,10 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
             webViewInstance.clearCache?.(true); // true = clear everything including cookies
             webViewInstance.clearHistory?.();
           } catch (error) {
-            logger.warn(
+            // Disposal race - same family as the screenshot capture
+            // failures (the WebView may have already been unmounted).
+            // Not actionable for downstream errors.
+            logger.info(
               "WebViewContainer",
               `Failed to dispose WebView for tab ${tabId}`,
               error,

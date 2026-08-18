@@ -1,4 +1,4 @@
-import { xdr } from "@stellar/stellar-sdk";
+import { Address, xdr } from "@stellar/stellar-sdk";
 import { BigNumber } from "bignumber.js";
 import {
   ClassicBalance,
@@ -7,7 +7,9 @@ import {
   TokenTypeWithCustomToken,
 } from "config/types";
 import {
+  computeTotalFeeXlm,
   getArgsForTokenInvocation,
+  getAuthEntryBoundAddress,
   SorobanTokenInterface,
   addressToString,
   isSorobanTransaction,
@@ -232,6 +234,110 @@ describe("soroban helpers", () => {
       expect(result).toBeTruthy();
       // Should start with 'C' for contract addresses
       expect(result[0]).toBe("C");
+    });
+  });
+
+  describe("getAuthEntryBoundAddress", () => {
+    const BOUND_ADDRESS =
+      "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3";
+
+    const rootInvocation = () =>
+      new xdr.SorobanAuthorizedInvocation({
+        function:
+          xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeContractFn(
+            new xdr.InvokeContractArgs({
+              contractAddress: new Address(
+                "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSC4",
+              ).toScAddress(),
+              functionName: "transfer",
+              args: [],
+            }),
+          ),
+        subInvocations: [],
+      });
+
+    const addressCreds = () =>
+      new xdr.SorobanAddressCredentials({
+        address: new Address(BOUND_ADDRESS).toScAddress(),
+        nonce: xdr.Int64.fromString("1") as xdr.Int64,
+        signatureExpirationLedger: 999999,
+        signature: xdr.ScVal.scvVoid(),
+      });
+
+    const buildEntry = (credentials: xdr.SorobanCredentials) =>
+      new xdr.SorobanAuthorizationEntry({
+        credentials,
+        rootInvocation: rootInvocation(),
+      });
+
+    it("returns undefined for source-account credentials", () => {
+      const entry = buildEntry(
+        xdr.SorobanCredentials.sorobanCredentialsSourceAccount(),
+      );
+      expect(getAuthEntryBoundAddress(entry)).toBeUndefined();
+    });
+
+    it("returns the bound address for ADDRESS credentials", () => {
+      const entry = buildEntry(
+        xdr.SorobanCredentials.sorobanCredentialsAddress(addressCreds()),
+      );
+      expect(getAuthEntryBoundAddress(entry)).toBe(BOUND_ADDRESS);
+    });
+
+    it("returns the bound address for ADDRESS_V2 credentials", () => {
+      const entry = buildEntry(
+        xdr.SorobanCredentials.sorobanCredentialsAddressV2(addressCreds()),
+      );
+      expect(getAuthEntryBoundAddress(entry)).toBe(BOUND_ADDRESS);
+    });
+
+    it("returns the top-level bound address for ADDRESS_WITH_DELEGATES credentials", () => {
+      const entry = buildEntry(
+        xdr.SorobanCredentials.sorobanCredentialsAddressWithDelegates(
+          new xdr.SorobanAddressCredentialsWithDelegates({
+            addressCredentials: addressCreds(),
+            delegates: [],
+          }),
+        ),
+      );
+      expect(getAuthEntryBoundAddress(entry)).toBe(BOUND_ADDRESS);
+    });
+  });
+
+  describe("computeTotalFeeXlm", () => {
+    const CLASSIC_FEE = "0.00001";
+
+    it("returns the sum of inclusion and resource fees for Soroban", () => {
+      expect(computeTotalFeeXlm("0.00001", "0.00123", CLASSIC_FEE)).toBe(
+        "0.00124",
+      );
+    });
+
+    it("returns transactionFee when inclusionFee is null", () => {
+      expect(computeTotalFeeXlm(null, "0.00123", CLASSIC_FEE)).toBe(
+        CLASSIC_FEE,
+      );
+    });
+
+    it("returns transactionFee when resourceFee is null", () => {
+      expect(computeTotalFeeXlm("0.00001", null, CLASSIC_FEE)).toBe(
+        CLASSIC_FEE,
+      );
+    });
+
+    it("returns transactionFee when both fees are null", () => {
+      expect(computeTotalFeeXlm(null, null, CLASSIC_FEE)).toBe(CLASSIC_FEE);
+    });
+
+    it("preserves BigNumber precision for very small Soroban fees", () => {
+      expect(computeTotalFeeXlm("0.0000100", "0.0000001", CLASSIC_FEE)).toBe(
+        "0.0000101",
+      );
+    });
+
+    it("returns transactionFee when either fee is an empty string (falsy)", () => {
+      expect(computeTotalFeeXlm("", "0.00123", CLASSIC_FEE)).toBe(CLASSIC_FEE);
+      expect(computeTotalFeeXlm("0.00001", "", CLASSIC_FEE)).toBe(CLASSIC_FEE);
     });
   });
 

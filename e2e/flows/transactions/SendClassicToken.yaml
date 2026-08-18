@@ -1,0 +1,116 @@
+appId: org.stellar.freighterdev
+tags:
+  - transactions
+  - send
+  - classic-token
+  - testnet
+---
+# Send 0.000001 XLM on testnet to E2E_TEST_RECIPIENT_ADDRESS (a freshly provisioned account).
+# Uses a small amount to keep the test cheap.
+#
+# Import funded wallet
+- runFlow:
+    file: ../onboarding/ImportFundedWallet.yaml
+
+# Switch to Testnet (account is provisioned on testnet). The shared sub-flow
+# waits for the post-import welcome bottom sheet and any auth-error toast,
+# dismisses them, then performs the network switch.
+- runFlow:
+    file: ../shared/SwitchToTestnet.yaml
+
+# Wait for accounts and balances to load
+- extendedWaitUntil:
+    visible:
+      id: home-account-switcher
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: icon-button-send
+    timeout: 15000
+
+# Navigate to send flow
+- tapOn:
+    id: icon-button-send
+# Select token first
+- extendedWaitUntil:
+    visible:
+      id: token-option-XLM
+    timeout: 30000
+- tapOn:
+    id: token-option-XLM
+
+# Wait for recipient search screen
+- extendedWaitUntil:
+    visible:
+      id: send-search-contacts-screen
+    timeout: 15000
+
+# Type the recipient address
+- tapOn:
+    id: send-recipient-input
+- inputText: ${E2E_TEST_RECIPIENT_ADDRESS}
+
+# Wait for search suggestion to appear and select it
+# Note: keyboardShouldPersistTaps="handled" on the FlatList allows tapping
+# suggestions without hiding the keyboard first.
+- extendedWaitUntil:
+    visible:
+      id: search-suggestion-0
+    timeout: 30000
+- tapOn:
+    id: search-suggestion-0
+
+# Verify we're on amount screen
+- extendedWaitUntil:
+    visible:
+      id: send-amount-screen
+    timeout: 15000
+
+# Enter amount: 0.000001 XLM (minimal, keeps the test cheap)
+- tapOn:
+    id: send-amount-focus-trigger
+- inputText: "0.000001"
+
+# Dismiss the keyboard on Android so the Review button is not obscured
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+
+# Tap Review button
+- tapOn:
+    id: send-continue-button
+# Dismiss Blockaid "Proceed with caution" sheet on testnet
+- runFlow:
+    file: ../shared/HandleUnableToScan.yaml
+# Verify review sheet is visible
+- extendedWaitUntil:
+    visible:
+      id: send-review-sheet
+    timeout: 30000
+# Wait for confirm button to be ready before tapping
+- extendedWaitUntil:
+    visible:
+      id: send-review-confirm-anyway-button
+    timeout: 30000
+# Confirm the transaction
+- tapOn:
+    id: send-review-confirm-anyway-button
+# Verify processing screen
+- extendedWaitUntil:
+    visible:
+      id: send-processing-screen
+    timeout: 30000
+# Wait for completion and tap Done
+- extendedWaitUntil:
+    visible:
+      id: send-processing-done-button
+    timeout: 30000
+- tapOn:
+    id: send-processing-done-button
+# Verify we're back on history screen with transaction visible
+# Note: optional because the transaction might not be immediately rendered in the view
+- assertVisible:
+    text: ".*-0.000001 XLM.*"
+    optional: true

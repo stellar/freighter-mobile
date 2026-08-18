@@ -2,6 +2,7 @@
 /* eslint-disable import/no-unresolved */
 /* eslint-disable @typescript-eslint/no-var-requires */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 const { mergeConfig, getDefaultConfig } = require("@react-native/metro-config");
 const { withSentryConfig } = require("@sentry/react-native/metro");
 const { withNativeWind } = require("nativewind/metro");
@@ -63,7 +64,31 @@ const config = {
         };
       }
 
-      return context.resolveRequest(context, moduleName, platform);
+      const resolved = context.resolveRequest(context, moduleName, platform);
+
+      // bignumber.js v11 (pulled in by @stellar/stellar-sdk 16.x) ships a valid
+      // CommonJS entry at dist/bignumber.cjs, but its package.json "react-native"
+      // field redirects it to dist/bignumber.js — a browser-globals UMD build
+      // that sets no module.exports. Metro honors that field, so
+      // `require("bignumber.js")` resolves to {} and the SDK's
+      // `_interopDefault(...).default.clone()` throws. Rewrite that one broken
+      // target back to the real CJS build. (v9, used by stellar-base, is fine.)
+      // Normalize separators so the match also holds on Windows (backslashes).
+      const resolvedPath = resolved?.filePath?.replace(/\\/g, "/");
+      if (
+        moduleName === "bignumber.js" &&
+        resolvedPath?.endsWith("/dist/bignumber.js")
+      ) {
+        return {
+          ...resolved,
+          filePath: resolved.filePath.replace(
+            /bignumber\.js$/,
+            "bignumber.cjs",
+          ),
+        };
+      }
+
+      return resolved;
     },
   },
 };

@@ -13,6 +13,7 @@ import { useLoginDataStore } from "ducks/loginData";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBiometrics } from "hooks/useBiometrics";
 import useColors from "hooks/useColors";
+import { useSetupFailedToast } from "hooks/useSetupFailedToast";
 import { useWordSelection } from "hooks/useWordSelection";
 import React, {
   useCallback,
@@ -41,6 +42,7 @@ export const ValidateRecoveryPhraseScreen: React.FC<
 
   const { signUp, storeBiometricPassword } = useAuthenticationStore();
   const { t } = useAppTranslation();
+  const notifySetupFailed = useSetupFailedToast();
   const { themeColors } = useColors();
 
   const { words, selectedIndexes, generateWordOptionsForRound } =
@@ -72,20 +74,27 @@ export const ValidateRecoveryPhraseScreen: React.FC<
 
   const handleFinishSignUp = useCallback(() => {
     if (biometryType) {
-      storeBiometricPassword(password!).then(() => {
-        navigation.navigate(AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN, {
-          source: BiometricsSource.ONBOARDING,
-        });
-      });
+      storeBiometricPassword(password!)
+        .then(() => {
+          navigation.navigate(AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN, {
+            source: BiometricsSource.ONBOARDING,
+          });
+        })
+        .catch(notifySetupFailed);
     } else {
       // No biometrics available, proceed with normal signup
       signUp({
         password: password!,
         mnemonicPhrase: mnemonicPhrase!,
-      }).then(() => {
+      }).then((success) => {
+        if (!success) {
+          notifySetupFailed();
+          return;
+        }
         clearLoginData(); // Clear sensitive data after successful signup
         analytics.track(AnalyticsEvent.CONFIRM_RECOVERY_PHRASE_SUCCESS);
-        analytics.track(AnalyticsEvent.ACCOUNT_CREATOR_FINISHED);
+        // onboarding.completed now fires once from the signUp store action's
+        // success path (single terminal point), not per UI screen.
       });
     }
   }, [
@@ -96,6 +105,7 @@ export const ValidateRecoveryPhraseScreen: React.FC<
     biometryType,
     storeBiometricPassword,
     clearLoginData,
+    notifySetupFailed,
   ]);
   const handleWordSelect = useCallback((word: string) => {
     setSelectedWord(word);
@@ -106,7 +116,9 @@ export const ValidateRecoveryPhraseScreen: React.FC<
     if (!canContinue) {
       // Word is incorrect - show error and generate new words
       setError(t("validateRecoveryPhraseScreen.errorText"));
-      analytics.track(AnalyticsEvent.CONFIRM_RECOVERY_PHRASE_FAIL);
+      analytics.track(AnalyticsEvent.CONFIRM_RECOVERY_PHRASE_FAIL, {
+        reason_code: "incorrect_word",
+      });
       regenerateWords();
       return;
     }

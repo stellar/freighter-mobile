@@ -1,4 +1,3 @@
-import { Asset } from "@stellar/stellar-sdk";
 import { List } from "components/List";
 import { TokenIcon } from "components/TokenIcon";
 import Avatar from "components/sds/Avatar";
@@ -18,7 +17,7 @@ import {
   FormattedSearchTokenRecord,
 } from "config/types";
 import { ActiveAccount, useAuthenticationStore } from "ducks/auth";
-import { isContractId } from "helpers/soroban";
+import { getTokenSacAddress, isContractId } from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
@@ -167,9 +166,11 @@ const AddTokenBottomSheetContent: React.FC<AddTokenBottomSheetContentProps> = ({
       if (isContractId(token.issuer)) return token.issuer;
       if (isContractId(token.tokenCode)) return token.tokenCode;
 
-      // without the above guard, `new Asset()` would
-      // throw because contract IDs exceed the 12-char asset code limit
-      return new Asset(token.tokenCode, token.issuer).contractId(
+      // without the above guard, getTokenSacAddress (via new Asset())
+      // would throw because contract IDs exceed the 12-char asset code limit
+      return getTokenSacAddress(
+        token.tokenCode,
+        token.issuer,
         networkPassphrase,
       );
     };

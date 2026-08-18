@@ -33,3 +33,14 @@ export const INDEX_KEYCHAIN_OPTIONS = {
   accessible: Keychain.ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
   // No accessControl - metadata only, no biometric prompt needed
 };
+
+/**
+ * Options for the screenshot data-encryption key (DEK).
+ *
+ * Screenshots must render without a biometric prompt, so accessControl is
+ * intentionally omitted here. The DEK is a random key (not wallet material),
+ * stored only so thumbnails survive app restarts without re-capture.
+ */
+export const SCREENSHOT_KEYCHAIN_OPTIONS = {
+  accessible: Keychain.ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+};

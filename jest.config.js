@@ -27,19 +27,34 @@ module.exports = {
       "react-native-reanimated",
       "@gorhom/bottom-sheet",
       "react-native-worklets",
+      "react-native-keyboard-controller",
       "react-native-qrcode-svg",
       "stellar-hd-wallet",
+      // v16 ships ESM-only deps (@noble/*, smol-toml, uint8array-extras,
+      // eventsource), some nested under the SDK; transform these so Jest can
+      // load the SDK's CJS build.
+      "@stellar/stellar-sdk",
+      "@noble",
+      "smol-toml",
+      "uint8array-extras",
+      "eventsource",
       "react-native-config",
       "@react-native-cookies/cookies",
       "react-native-view-shot",
       "react-native-webview",
-      "react-native-fast-opencv",
+      "react-native-quick-crypto",
+      "react-native-nitro-modules",
       "react-native-inappbrowser-reborn",
     ].join("|")})/)`,
   ],
-  moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json", "node"],
+  moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json", "node", "mjs"],
+  // Ignore nested git worktrees created under .claude/ (e.g. by Claude Code
+  // sessions). They are full repo copies whose node_modules/__mocks__ otherwise
+  // collide via Haste and break the whole suite.
+  modulePathIgnorePatterns: ["<rootDir>/.claude/"],
+  testPathIgnorePatterns: ["/node_modules/", "<rootDir>/.claude/"],
   coveragePathIgnorePatterns: ["/node_modules/", "/jest"],
   transform: {
-    "^.+\\.(js|jsx|ts|tsx)$": "babel-jest",
+    "^.+\\.(js|jsx|ts|tsx|mjs)$": "babel-jest",
   },
 };

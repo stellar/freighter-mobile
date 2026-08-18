@@ -30,6 +30,9 @@ interface InputPasswordTemplateProps {
   description?: string;
   showLogo?: boolean;
   insets?: BaseLayoutInsets;
+  testID?: string;
+  continueButtonTestID?: string;
+  forgotPasswordButtonTestID?: string;
 }
 
 const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
@@ -43,6 +46,9 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
   description,
   insets,
   showLogo = true,
+  testID,
+  continueButtonTestID,
+  forgotPasswordButtonTestID,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
@@ -64,7 +70,12 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
   }, []);
 
   return (
-    <BaseLayout useSafeArea useKeyboardAvoidingView insets={insets}>
+    <BaseLayout
+      useSafeArea
+      useKeyboardAvoidingView
+      insets={insets}
+      testID={testID}
+    >
       <View className="flex-1 justify-between">
         <View className="items-center mt-10">
           {showLogo && <FreighterLogo />}
@@ -121,6 +132,7 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
               }}
               disabled={!canContinue}
               isLoading={isLoading}
+              testID={continueButtonTestID}
             >
               {continueButtonText ?? t("lockScreen.unlockButtonText")}
             </Button>
@@ -130,7 +142,12 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
 
         <View className="mt-4">
           {handleLogout && (
-            <Button secondary xl onPress={handleLogout}>
+            <Button
+              secondary
+              xl
+              onPress={handleLogout}
+              testID={forgotPasswordButtonTestID}
+            >
               {t("lockScreen.forgotPasswordButtonText")}
             </Button>
           )}

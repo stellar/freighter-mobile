@@ -3,6 +3,7 @@ import { BROWSER_CONSTANTS } from "config/constants";
 import { generateTabId, isHomepageUrl } from "helpers/browser";
 import {
   findTabScreenshot,
+  migrateOldScreenshots,
   pruneScreenshots,
   removeTabScreenshot,
 } from "helpers/screenshots";
@@ -208,6 +209,9 @@ export const useBrowserTabsStore = create<BrowserTabsState>()(
       },
 
       loadScreenshots: async () => {
+        // One-time migration: wipe old unencrypted blob if present
+        await migrateOldScreenshots();
+
         const state = get();
         const updatedTabs = [...state.tabs];
 

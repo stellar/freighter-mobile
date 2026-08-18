@@ -7,9 +7,12 @@ import { SecurityDetailBottomSheet } from "components/blockaid";
 import { BaseLayout } from "components/layout/BaseLayout";
 import HistoryList from "components/screens/HistoryScreen/HistoryList";
 import { TokenBalanceHeader } from "components/screens/TokenDetailsScreen/components";
+import { RemoveTokenSheetContent } from "components/screens/TokenDetailsScreen/components/RemoveTokenSheetContent";
 import { Banner } from "components/sds/Banner";
 import { Button } from "components/sds/Button";
+import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import { mapNetworkToNetworkDetails } from "config/constants";
 import {
   ROOT_NAVIGATOR_ROUTES,
@@ -17,21 +20,39 @@ import {
   SWAP_ROUTES,
   SEND_PAYMENT_ROUTES,
 } from "config/routes";
+import { TokenTypeWithCustomToken } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useDebugStore } from "ducks/debug";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
+import { useTransactionSettingsStore } from "ducks/transactionSettings";
+import { getTokenType, getIssuerFromIdentifier } from "helpers/balances";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useGetHistoryData } from "hooks/useGetHistoryData";
+import { useManageToken } from "hooks/useManageToken";
+import { useRightHeaderMenu } from "hooks/useRightHeader";
+import { useTokenActions } from "hooks/useTokenActions";
 import useTokenDetails from "hooks/useTokenDetails";
 import React, { useCallback, useLayoutEffect, useMemo, useRef } from "react";
-import { View, Dimensions } from "react-native";
+import { View, Dimensions, Platform } from "react-native";
+import { analytics } from "services/analytics";
 import { SecurityContext, SecurityLevel } from "services/blockaid/constants";
 import {
   assessTokenSecurity,
   extractSecurityWarnings,
 } from "services/blockaid/helper";
+
+const headerMenuIcons = Platform.select({
+  ios: {
+    copyAddress: "doc.on.doc",
+    removeToken: "minus.circle",
+  },
+  android: {
+    copyAddress: "baseline_format_paint",
+    removeToken: "outline_circle",
+  },
+});
 
 type TokenDetailsScreenProps = NativeStackScreenProps<
   RootStackParamList,
@@ -52,6 +73,8 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
   const { width } = Dimensions.get("window");
   const { swap_enabled: swapEnabled } = useRemoteConfigStore();
   const { overriddenBlockaidResponse } = useDebugStore();
+  const { saveSelectedTokenId, saveSelectedCollectibleDetails } =
+    useTransactionSettingsStore();
   const securityWarningBottomSheetModalRef = useRef<BottomSheetModal>(null);
 
   const { actualTokenDetails, displayTitle } = useTokenDetails({
@@ -79,9 +102,74 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
     tokenId,
   });
 
-  const { scanResults } = useBalancesList({
+  const {
+    scanResults,
+    balanceItems,
+    handleRefresh: refreshBalances,
+  } = useBalancesList({
     publicKey: account?.publicKey ?? "",
     network,
+  });
+
+  const removeTokenBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const { copyTokenAddress } = useTokenActions();
+
+  const selectedBalance = useMemo(
+    () => balanceItems.find((item) => item.id === tokenId) ?? null,
+    [balanceItems, tokenId],
+  );
+
+  const { removeToken, isRemovingToken } = useManageToken({
+    token: selectedBalance
+      ? {
+          type: selectedBalance.tokenType,
+          code: selectedBalance.tokenCode!,
+          id: selectedBalance.id,
+          issuer: getIssuerFromIdentifier(selectedBalance.id),
+        }
+      : null,
+    network,
+    account,
+    bottomSheetRefRemove: removeTokenBottomSheetModalRef,
+    onSuccess: () => {
+      // Refresh balances so Home reflects the removal immediately instead of
+      // waiting for the next focused poll.
+      refreshBalances();
+      navigation.goBack();
+    },
+  });
+
+  const handleCancelTokenRemoval = useCallback(() => {
+    if (selectedBalance) {
+      analytics.trackRemoveTokenRejected(selectedBalance.tokenCode);
+    }
+    removeTokenBottomSheetModalRef.current?.dismiss();
+  }, [selectedBalance]);
+
+  const headerMenuActions = useMemo(
+    () => [
+      {
+        title: t("manageTokenRightContent.copyAddress"),
+        systemIcon: headerMenuIcons!.copyAddress,
+        onPress: () =>
+          copyTokenAddress(
+            tokenId,
+            "manageTokenRightContent.tokenAddressCopied",
+          ),
+      },
+      {
+        title: t("common.remove"),
+        systemIcon: headerMenuIcons!.removeToken,
+        destructive: true,
+        onPress: () => removeTokenBottomSheetModalRef.current?.present(),
+      },
+    ],
+    [t, copyTokenAddress, tokenId],
+  );
+
+  useRightHeaderMenu({
+    actions: headerMenuActions,
+    icon: Icon.DotsHorizontal,
   });
 
   useLayoutEffect(() => {
@@ -101,10 +189,22 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
     });
   };
 
+  // Classic Stellar assets = native (XLM) + credit_alphanum4/12. Soroban
+  // custom tokens (CUSTOM_TOKEN) and liquidity-pool shares aren't supported
+  // by the swap flow yet, so the Swap CTA is gated on this.
+  const isClassicAsset =
+    getTokenType(tokenId) === TokenTypeWithCustomToken.NATIVE ||
+    getTokenType(tokenId) === TokenTypeWithCustomToken.CREDIT_ALPHANUM4 ||
+    getTokenType(tokenId) === TokenTypeWithCustomToken.CREDIT_ALPHANUM12;
+
   const handleSendPress = () => {
+    saveSelectedTokenId(tokenId);
+    saveSelectedCollectibleDetails({ collectionAddress: "", tokenId: "" });
     navigation.navigate(ROOT_NAVIGATOR_ROUTES.SEND_PAYMENT_STACK, {
-      screen: SEND_PAYMENT_ROUTES.TRANSACTION_AMOUNT_SCREEN,
-      params: { tokenId },
+      screen: SEND_PAYMENT_ROUTES.SEND_SEARCH_CONTACTS_SCREEN,
+      params: {
+        dismissToPreviousScreen: true,
+      },
     });
   };
   const scanResult = scanResults[tokenId.replace(":", "-")];
@@ -134,7 +234,10 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
 
   return (
     <BaseLayout insets={{ top: false, bottom: false }}>
-      <View className="flex-1 gap-8 mt-5 max-xs:mt-2 max-xs:gap-4">
+      <View
+        testID="token-details-screen"
+        className="flex-1 gap-8 mt-5 max-xs:mt-2 max-xs:gap-4"
+      >
         <TokenBalanceHeader
           tokenId={tokenId}
           tokenSymbol={tokenSymbol}
@@ -179,7 +282,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
       </View>
       <View className="mt-7 pb-3 gap-7">
         <View className="flex-row gap-3">
-          {swapEnabled && (
+          {swapEnabled && isClassicAsset && (
             <View className="flex-1">
               <Button tertiary xl isFullWidth onPress={handleSwapPress}>
                 {t("tokenDetailsScreen.swap")}
@@ -187,7 +290,13 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
             </View>
           )}
           <View className="flex-1">
-            <Button tertiary xl isFullWidth onPress={handleSendPress}>
+            <Button
+              tertiary
+              xl
+              isFullWidth
+              onPress={handleSendPress}
+              testID="token-details-send-button"
+            >
               {t("tokenDetailsScreen.send")}
             </Button>
           </View>
@@ -210,7 +319,24 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
             }
             severity={securitySeverity}
             securityContext={SecurityContext.TOKEN}
-            proceedAnywayText={t("transactionAmountScreen.confirmAnyway")}
+          />
+        }
+      />
+      <BottomSheet
+        modalRef={removeTokenBottomSheetModalRef}
+        handleCloseModal={() =>
+          removeTokenBottomSheetModalRef.current?.dismiss()
+        }
+        analyticsEvent={AnalyticsEvent.VIEW_REMOVE_TOKEN}
+        shouldCloseOnPressBackdrop={!!selectedBalance}
+        customContent={
+          <RemoveTokenSheetContent
+            selectedToken={selectedBalance}
+            account={account}
+            onCancel={handleCancelTokenRemoval}
+            onRemoveToken={removeToken}
+            isRemovingToken={isRemovingToken}
+            onDismiss={() => removeTokenBottomSheetModalRef.current?.dismiss()}
           />
         }
       />
