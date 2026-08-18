@@ -77,14 +77,14 @@ describe("CollectiblesGrid empty-state CTA", () => {
     expect(onAddCollectiblePress).toHaveBeenCalledTimes(1);
   });
 
-  // A button with no handler would be a dead end, so the handler gates it.
+  // A handler-less button would be a dead end.
   it("renders no CTA when asked but given no handler", () => {
     const { queryByTestId } = render(<CollectiblesGrid showEmptyStateCta />);
 
     expect(queryByTestId("add-collectible-empty-state-button")).toBeNull();
   });
 
-  // The hidden list is a management view — adding from it makes no sense.
+  // The hidden list is a management view, not a place to add.
   it("never renders the CTA on the hidden-collectibles list", () => {
     const { queryByTestId } = render(
       <CollectiblesGrid
@@ -97,8 +97,7 @@ describe("CollectiblesGrid empty-state CTA", () => {
     expect(queryByTestId("add-collectible-empty-state-button")).toBeNull();
   });
 
-  // Nothing should be offered while the grid is still a spinner, or the CTA
-  // would flash in before we know whether the tab is really empty.
+  // Nothing to offer while the grid is still a spinner.
   it("renders no empty state or CTA while loading", () => {
     mockIsLoading = true;
 

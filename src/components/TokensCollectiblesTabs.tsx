@@ -53,12 +53,9 @@ interface Props {
   /** Optional testID prefix forwarded to each balance row (e.g. "token-option" → "token-option-XLM") */
   balanceRowTestIDPrefix?: string;
   /**
-   * Show the collectibles Add CTA inside its empty state rather than relying
-   * on the caller's floating action button.
-   *
-   * The caller derives this from the tokens tab, which owns the decision: both
-   * tabs use the same kind of button, so the collectibles CTA is on exactly
-   * while the tokens tab is showing its own empty state.
+   * Show the collectibles Add CTA inside its empty state instead of the
+   * caller's floating pill. Derived from the tokens tab, which owns the
+   * decision so both tabs use the same kind of button.
    */
   showEmptyStateCta?: boolean;
   /** Press handler for the collectibles empty-state CTA. */

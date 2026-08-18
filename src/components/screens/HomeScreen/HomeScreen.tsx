@@ -127,16 +127,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
       [balances],
     );
 
-    // The tokens tab decides which kind of Add button BOTH tabs use, so the
-    // two never show different styles at the same time: while it is showing
-    // its empty state, the collectibles tab puts its CTA inside its empty
-    // state too; once the tokens tab switches to the floating pill, so does
-    // the collectibles tab.
-    //
-    // `isFunded` is exactly where the tokens tab flips — adding a token
-    // creates a trustline, which needs XLM for the reserve + fee, so its pill
-    // only appears once the account is funded. Deriving both tabs from that
-    // one flag makes the CTA and the pill exact complements.
+    // The tokens tab decides the Add button style for both tabs, and its pill
+    // appears exactly when funded — so driving both off that one flag keeps
+    // the in-empty-state CTA and the pill exact complements.
     const showEmptyStateCta = !isFunded;
 
     const handleManageAccountsPress = useCallback(() => {
@@ -432,9 +425,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
               testID="home-add-token-button"
             />
           )}
-          {/* Follows the tokens tab: while that one is still showing its empty
-              state, the collectibles CTA lives inside the empty state instead
-              of floating here. */}
+          {/* Follows the tokens tab: until it is funded, this CTA lives
+              inside the collectibles empty state instead. */}
           {activeTab === TabType.COLLECTIBLES && isFunded && (
             <FloatingTabActionButton
               label={t("collectiblesGrid.addCollectibleButton")}

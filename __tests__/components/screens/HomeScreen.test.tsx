@@ -112,8 +112,7 @@ const mockFetchActiveSessions = jest.fn().mockResolvedValue(undefined);
 // store mocks below, which close over them.
 let mockNetwork = "TESTNET";
 let mockIsLoadingBalances = false;
-// Mutable so tests can put the tokens tab in its empty state, which is what
-// decides the Add button style for BOTH tabs.
+// Drives the tokens tab's empty state, which decides both tabs' button style.
 let mockIsFunded = true;
 
 jest.mock("ducks/balances", () => ({
@@ -278,8 +277,7 @@ jest.mock("hooks/useBalancesList", () => ({
     balanceItems: [],
     isLoading: false,
     error: null,
-    // Mirrors mockIsFunded: an unfunded account has no balances, which is what
-    // makes the tokens tab render its empty state.
+    // An unfunded account has no balances, hence the empty state.
     noBalances: !mockIsFunded,
     isRefreshing: false,
     isFunded: mockIsFunded,
@@ -502,8 +500,7 @@ describe("HomeScreen", () => {
       expect(queryByTestId("home-add-token-button")).toBeNull();
     });
 
-    // The tokens tab is showing its empty state, so the collectibles tab
-    // matches its button style instead of floating a pill over it.
+    // Tokens tab is in its empty state, so collectibles matches that style.
     it("puts the collectibles CTA in the empty state while the account is unfunded", () => {
       mockIsFunded = false;
 
@@ -526,8 +523,7 @@ describe("HomeScreen", () => {
       expect(queryByTestId("add-collectible-empty-state-button")).toBeNull();
     });
 
-    // Neither pill shows while the tokens tab is unfunded, so a pill and an
-    // in-empty-state CTA can't be on screen together.
+    // Guards the invariant: a pill and a CTA are never on screen together.
     it("shows no pill on either tab while the account is unfunded", () => {
       mockIsFunded = false;
 
@@ -540,8 +536,7 @@ describe("HomeScreen", () => {
       expect(queryByTestId("home-add-collectible-button")).toBeNull();
     });
 
-    // The collectibles tab follows the TOKENS tab, not its own contents: what
-    // the user holds in collectibles must not change the button style.
+    // The collectibles tab follows the tokens tab, not its own contents.
     it("ignores collectibles content when choosing the button style", () => {
       mockIsFunded = false;
       mockCollections = [
@@ -557,8 +552,6 @@ describe("HomeScreen", () => {
 
       fireEvent.press(getByTestId("tab-collectibles"));
 
-      // No pill, because the tokens tab is unfunded — what the collectibles
-      // tab itself holds doesn't get a vote.
       expect(queryByTestId("home-add-collectible-button")).toBeNull();
     });
   });

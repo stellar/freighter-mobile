@@ -42,18 +42,12 @@ interface CollectiblesGridProps {
   /** Type to determine which collectibles to display. Defaults to VISIBLE. */
   type?: CollectibleFilterType;
   /**
-   * Renders an "Add collectible" action inside the empty state.
-   *
-   * Home turns this on only while BOTH of its tabs are empty, so the
-   * in-empty-state CTA and the floating pill are never on screen at the same
-   * time. Off by default: every other caller (e.g. the hidden-collectibles
-   * screen) has no floating pill to coordinate with.
+   * Renders an "Add collectible" action inside the empty state. Home turns it
+   * on while its tokens tab shows an empty state, so both tabs offer the same
+   * kind of button. Off by default — other callers have no pill to match.
    */
   showEmptyStateCta?: boolean;
-  /**
-   * Press handler for the empty-state CTA. The CTA only renders when this is
-   * provided, so the button can never be a dead end.
-   */
+  /** Press handler for the CTA; it only renders when one is provided. */
   onAddCollectiblePress?: () => void;
 }
 
@@ -165,8 +159,7 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
       </View>
     );
 
-    // The hidden-collectibles list is a management view, not a place to add
-    // anything, so it never gets the CTA regardless of what the caller passes.
+    // Never on the hidden list: a management view, not a place to add.
     const shouldShowEmptyStateCta =
       showEmptyStateCta && !isTypeHidden && Boolean(onAddCollectiblePress);
 
@@ -184,9 +177,8 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
           }
           testID="collectibles-empty-state"
         >
-          {/* Mirrors the tokens empty state's CTA: same Button variant/size,
-              and EmptyState's own gap supplies the spacing, so the two tabs
-              line up without either one hardcoding a margin. */}
+          {/* Same variant/size as the tokens CTA, and EmptyState's own gap
+              supplies the spacing, so neither tab hardcodes a margin. */}
           {shouldShowEmptyStateCta && (
             <Button
               tertiary
