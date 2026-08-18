@@ -100,6 +100,28 @@ describe("ManageAccountBottomSheet", () => {
     expect(queryByTestId("account-row-1-selected-badge")).toBeNull();
   });
 
+  // Regression: the rows wrapper is a flex child of a gap-[24px] column, so
+  // rendering it empty claimed a gap slot and left a blank band under the
+  // divider while the account list was still loading.
+  it("skips the rows wrapper entirely when there are no accounts", () => {
+    const { queryByTestId, getByTestId } = renderWithProviders(
+      <ManageAccountBottomSheet {...defaultProps} accounts={[]} />,
+    );
+
+    expect(queryByTestId("manage-accounts-list")).toBeNull();
+    // The rest of the sheet still renders.
+    expect(getByTestId("manage-accounts-active-avatar")).toBeTruthy();
+    expect(getByTestId("manage-accounts-list-end-spacing")).toBeTruthy();
+  });
+
+  it("renders the rows wrapper once there are accounts", () => {
+    const { getByTestId } = renderWithProviders(
+      <ManageAccountBottomSheet {...defaultProps} />,
+    );
+
+    expect(getByTestId("manage-accounts-list")).toBeTruthy();
+  });
+
   it("always renders list-end spacing after the last row", () => {
     const { getByTestId } = renderWithProviders(
       <ManageAccountBottomSheet {...defaultProps} />,

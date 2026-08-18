@@ -112,7 +112,6 @@
   },
   "shareFeedbackScreen": {
     "title": "Share Feedback",
-    "discord": "Join community Discord",
     "github": "Report issue on Github"
   },
   "aboutScreen": {
