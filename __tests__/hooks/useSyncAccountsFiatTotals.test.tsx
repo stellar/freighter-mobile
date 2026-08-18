@@ -72,6 +72,48 @@ describe("useSyncAccountsFiatTotals", () => {
     expect(mockSyncAccountFiatTotal).not.toHaveBeenCalled();
   });
 
+  // Regression: a failed fetch is never stamped, so the guard used to drop the
+  // error and leave the row on "$0.00" while the Home header showed "--".
+  it("syncs a failed fetch even though it was never stamped", () => {
+    mockBalancesState = {
+      ...mockBalancesState,
+      fetchedPublicKey: null,
+      fetchedNetwork: null,
+      error: "Failed to fetch balances",
+    };
+
+    renderHook(() =>
+      useSyncAccountsFiatTotals({
+        publicKey: PK_OLD,
+        network: NETWORKS.PUBLIC,
+      }),
+    );
+
+    expect(mockSyncAccountFiatTotal).toHaveBeenCalledWith(
+      expect.objectContaining({ publicKey: PK_OLD, hasError: true }),
+    );
+  });
+
+  // The error is only worth writing once the request has actually settled.
+  it("still waits for an in-flight fetch before syncing an error", () => {
+    mockBalancesState = {
+      ...mockBalancesState,
+      fetchedPublicKey: null,
+      fetchedNetwork: null,
+      error: "Failed to fetch balances",
+      isLoading: true,
+    };
+
+    renderHook(() =>
+      useSyncAccountsFiatTotals({
+        publicKey: PK_OLD,
+        network: NETWORKS.PUBLIC,
+      }),
+    );
+
+    expect(mockSyncAccountFiatTotal).not.toHaveBeenCalled();
+  });
+
   it("skips the sync while a balances fetch is in flight", () => {
     // Mid-fetch, the account stamp is already updated (written with the raw
     // balances) but pricedBalances hasn't caught up yet.

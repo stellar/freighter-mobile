@@ -37,17 +37,21 @@ export const useSyncAccountsFiatTotals = ({
       return;
     }
 
+    const hasError = balancesError != null;
     // Right after an account (or network) switch, the balances snapshot
     // still belongs to the PREVIOUS account for a moment — syncing then
     // would write the old account's total under the new key. Only sync when
     // the snapshot provably matches: same account/network stamp and no
     // fetch in flight (the stamp is written with the raw balances, before
     // pricedBalances catches up).
-    if (
-      fetchedPublicKey !== publicKey ||
-      fetchedNetwork !== network ||
-      isLoadingBalances
-    ) {
+    const snapshotMatches =
+      fetchedPublicKey === publicKey && fetchedNetwork === network;
+
+    // A failed fetch is never stamped, so requiring the stamp would drop the
+    // error and leave this row on a confident "$0.00" while the Home header
+    // shows "--" for the same account. The failure label doesn't read the
+    // snapshot at all, so syncing it without that proof is safe.
+    if (isLoadingBalances || (!snapshotMatches && !hasError)) {
       return;
     }
 
@@ -56,7 +60,7 @@ export const useSyncAccountsFiatTotals = ({
       network,
       pricedBalances,
       isFunded,
-      hasError: balancesError != null,
+      hasError,
     });
   }, [
     publicKey,
