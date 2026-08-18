@@ -2057,11 +2057,6 @@ export const Icons = {
   PlaySquare,
   Play,
   PlusCircle,
-  // Not two plus signs, despite the name: a heavier-stroked `Plus` for small
-  // renders. Stroke width is baked into each asset in viewBox units, so it
-  // scales down with `size` — below ~24px the standard `Plus` thins out past
-  // what the design calls for. Reach for this instead of adding another
-  // bold variant.
   PlusDouble,
   PlusSquare,
   Plus,
