@@ -291,7 +291,6 @@ jest.mock("hooks/useBalancesList", () => ({
 
 jest.mock("hooks/useTotalBalance", () => ({
   useTotalBalance: jest.fn(() => ({
-    formattedBalance: "$350.75",
     totalLabel: "$350.75",
     totalBalance: "350.75",
     hasFiatTotal: true,
@@ -351,7 +350,6 @@ describe("HomeScreen", () => {
   it("shows a zero fiat total when no balance is priced", () => {
     const { useTotalBalance } = jest.requireMock("hooks/useTotalBalance");
     useTotalBalance.mockReturnValueOnce({
-      formattedBalance: "$0.00",
       totalLabel: "$0.00",
       totalBalance: "0",
       hasFiatTotal: false,
@@ -367,7 +365,6 @@ describe("HomeScreen", () => {
     // confident $0.00 would misreport a funded wallet as empty.
     const { useTotalBalance } = jest.requireMock("hooks/useTotalBalance");
     useTotalBalance.mockReturnValueOnce({
-      formattedBalance: "$0.00",
       totalLabel: "--",
       totalBalance: "0",
       hasFiatTotal: false,
@@ -383,7 +380,6 @@ describe("HomeScreen", () => {
   it("shows a spinner instead of a placeholder $0.00 while balances load", () => {
     const { useTotalBalance } = jest.requireMock("hooks/useTotalBalance");
     useTotalBalance.mockReturnValue({
-      formattedBalance: "$0.00",
       totalLabel: "$0.00",
       totalBalance: "0",
       hasFiatTotal: false,
@@ -396,7 +392,6 @@ describe("HomeScreen", () => {
     expect(queryByText("$0.00")).toBeNull();
 
     useTotalBalance.mockReturnValue({
-      formattedBalance: "$350.75",
       totalLabel: "$350.75",
       totalBalance: "350.75",
       hasFiatTotal: true,
@@ -408,7 +403,6 @@ describe("HomeScreen", () => {
     // quotes are still in flight — the hero must not flash $0.00.
     const { useTotalBalance } = jest.requireMock("hooks/useTotalBalance");
     useTotalBalance.mockReturnValueOnce({
-      formattedBalance: "$0.00",
       totalLabel: "$0.00",
       totalBalance: "0",
       hasFiatTotal: false,

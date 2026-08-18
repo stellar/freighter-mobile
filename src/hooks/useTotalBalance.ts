@@ -2,18 +2,16 @@ import { BigNumber } from "bignumber.js";
 import { useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
 import { getTotalUsdLabel } from "helpers/balances";
-import { formatFiatAmount } from "helpers/formatAmount";
 import { isMainnet } from "helpers/networks";
 import { useMemo } from "react";
 
 interface TotalBalance {
-  formattedBalance: string;
   /**
    * What the Home header should actually show: an amount, "$0.00" or "--".
-   * Unlike `formattedBalance` (a bare sum, which reads as a confident $0.00
-   * when prices are missing), this routes through {@link getTotalUsdLabel} —
-   * the same rule the wallets-list rows use, so the header and the active
-   * account's row always agree.
+   * Routed through {@link getTotalUsdLabel} rather than formatting the bare
+   * sum, which reads as a confident $0.00 when prices are missing. Same rule
+   * the wallets-list rows use, so the header and the active account's row
+   * always agree.
    */
   totalLabel: string;
   rawBalance: BigNumber;
@@ -57,7 +55,6 @@ export const useTotalBalance = (): TotalBalance => {
     );
 
     return {
-      formattedBalance: formatFiatAmount(rawBalance),
       totalLabel: getTotalUsdLabel({
         hasError: balancesError != null,
         hasPriceFeed: isMainnet(network),
