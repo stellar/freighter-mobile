@@ -42,6 +42,7 @@ import { analytics } from "services/analytics";
 import { SimulationTransactionType } from "services/analytics/types";
 import { simulateTokenTransfer, simulateTransaction } from "services/backend";
 import { buildChangeTrustOperation, stellarSdkServer } from "services/stellar";
+import { verifyFlatTransferPreparedTransaction } from "services/verifyPreparedTransaction";
 
 export interface BuildPaymentTransactionParams {
   tokenAmount: string;
@@ -850,6 +851,18 @@ export const simulateCollectibleTransfer = async ({
       xdr: transactionXdr,
       network_url: networkDetails.sorobanRpcUrl,
       network_passphrase: networkDetails.networkPassphrase,
+    });
+
+    // The backend derives this transaction's authorization entries, fee, and
+    // resource data from simulating the target contract, not from what the
+    // wallet built. Confirm the assembled transaction still matches the flat
+    // transfer we intended before it can be signed, so no additional
+    // authorization or fee can ride along on the user's source-account signature.
+    verifyFlatTransferPreparedTransaction({
+      builtTransactionXdr: transactionXdr,
+      preparedTransactionXdr: result.preparedTransaction,
+      networkPassphrase: networkDetails.networkPassphrase,
+      maxResourceFee: result.simulationResponse?.minResourceFee ?? "0",
     });
 
     return {

@@ -48,6 +48,11 @@ jest.mock("services/backend", () => ({
   checkContractSupportsMuxed: jest.fn().mockResolvedValue(false),
 }));
 
+// Prepared-transaction verification parses real XDR; these suites exercise
+// fee/plumbing behaviour with placeholder XDR, so stub it out here. The
+// verification itself is covered in verifyPreparedTransaction.test.ts.
+jest.mock("services/verifyPreparedTransaction");
+
 describe("buildSendCollectibleTransaction", () => {
   const mockSenderKeypair = Keypair.random();
   const mockRecipientKeypair = Keypair.random();
