@@ -1,10 +1,10 @@
-import { BigNumber } from "bignumber.js";
 import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { DEFAULT_PRESS_DELAY } from "config/constants";
 import { Account } from "config/types";
-import { formatFiatAmount } from "helpers/formatAmount";
+import { AccountFiatTotal } from "ducks/accountsFiatTotals";
+import { getTotalUsdLabel } from "helpers/balances";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
@@ -23,13 +23,12 @@ interface AccountItemRowProps {
   isAccountSwitching: boolean;
   isSwitchingToThisAccount: boolean;
   /**
-   * Account's total USD value. `undefined` means not fetched yet; `null`
-   * means unavailable (fetch failed or fiat-less network). Both render a
-   * spinner while `isLoadingFiatTotal` (a failed row shows it during its
-   * retry) and fall back to a zero total once loading settles, matching the
-   * Home screen's always-visible fiat balance.
+   * The account's total USD value, already resolved to what should be shown —
+   * an amount, "$0.00" or "--" — by {@link getTotalUsdLabel} in the accounts
+   * fiat totals store. `undefined` means not fetched yet, which renders a
+   * spinner while `isLoadingFiatTotal` and a zero total once loading settles.
    */
-  fiatTotal?: BigNumber | null;
+  fiatTotal?: AccountFiatTotal;
   isLoadingFiatTotal?: boolean;
   testID?: string;
 }
@@ -56,10 +55,23 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
   const truncatedPublicKey = truncateAddress(account.publicKey);
   const showSelectedBadge =
     isSwitchingToThisAccount || (isSelected && !isAccountSwitching);
-  // Covers both never-fetched (undefined) and failed (null) totals: a
-  // failed row is retried by the next cycle, and showing the spinner
-  // during the retry beats asserting a confident $0.00.
-  const isTotalLoading = fiatTotal == null && isLoadingFiatTotal;
+  // Spins only while a fetch is actually in flight for a row that has no
+  // successful value: never fetched, or failed and now being retried. Once a
+  // cycle settles, a failed row shows "--" rather than spinning forever, and a
+  // row that already has a total keeps showing it across refreshes.
+  const isTotalLoading =
+    isLoadingFiatTotal && (fiatTotal == null || fiatTotal.hasError);
+  // No entry yet (idle before the first cycle) means nothing is known about
+  // this account, so route that through the same helper rather than hardcoding
+  // a second zero string.
+  const fiatTotalLabel =
+    fiatTotal?.label ??
+    getTotalUsdLabel({
+      hasError: false,
+      hasPriceFeed: false,
+      isFunded: false,
+      hasPrices: false,
+    });
 
   // Announce what the row shows — name, imported marker and USD total (only
   // once one is actually displayed, never a placeholder $0.00 mid-load).
@@ -68,7 +80,7 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
   const rowAccessibilityLabel = [
     account.name,
     account.importedFromSecretKey ? t("home.account.imported") : null,
-    isTotalLoading ? null : formatFiatAmount(fiatTotal ?? "0"),
+    isTotalLoading ? null : fiatTotalLabel,
   ]
     .filter(Boolean)
     .join(", ");
@@ -90,7 +102,7 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
 
     return (
       <Text md medium primary testID={testID ? `${testID}-total` : undefined}>
-        {formatFiatAmount(fiatTotal ?? "0")}
+        {fiatTotalLabel}
       </Text>
     );
   };

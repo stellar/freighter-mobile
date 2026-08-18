@@ -1,8 +1,10 @@
 import BigNumber from "bignumber.js";
 import { CLASSIC_TOKEN_MAX_AMOUNT, DEFAULT_DECIMALS } from "config/constants";
 import { PricedBalance } from "config/types";
-import { hasDecimals } from "helpers/balances";
-import { formatBigNumberForDisplay } from "helpers/formatAmount";
+import {
+  formatBigNumberForDisplay,
+  hasDecimals,
+} from "helpers/formatAmount";
 import { recordUserActivity } from "helpers/userActivity";
 import {
   createTokenFiatConverterReducer,

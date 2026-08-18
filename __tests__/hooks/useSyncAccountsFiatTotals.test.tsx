@@ -35,6 +35,10 @@ describe("useSyncAccountsFiatTotals", () => {
       fetchedPublicKey: PK_OLD,
       fetchedNetwork: NETWORKS.PUBLIC,
       isLoading: false,
+      // Funded state and the fetch error travel with the snapshot: the store
+      // needs both to pick between "$0.00" and "--" for the active row.
+      isFunded: true,
+      error: null,
     };
   });
 
@@ -50,6 +54,8 @@ describe("useSyncAccountsFiatTotals", () => {
       publicKey: PK_OLD,
       network: NETWORKS.PUBLIC,
       pricedBalances: mockPricedBalances,
+      isFunded: true,
+      hasError: false,
     });
   });
 
@@ -59,6 +65,48 @@ describe("useSyncAccountsFiatTotals", () => {
     renderHook(() =>
       useSyncAccountsFiatTotals({
         publicKey: PK_NEW,
+        network: NETWORKS.PUBLIC,
+      }),
+    );
+
+    expect(mockSyncAccountFiatTotal).not.toHaveBeenCalled();
+  });
+
+  // Regression: a failed fetch is never stamped, so the guard used to drop the
+  // error and leave the row on "$0.00" while the Home header showed "--".
+  it("syncs a failed fetch even though it was never stamped", () => {
+    mockBalancesState = {
+      ...mockBalancesState,
+      fetchedPublicKey: null,
+      fetchedNetwork: null,
+      error: "Failed to fetch balances",
+    };
+
+    renderHook(() =>
+      useSyncAccountsFiatTotals({
+        publicKey: PK_OLD,
+        network: NETWORKS.PUBLIC,
+      }),
+    );
+
+    expect(mockSyncAccountFiatTotal).toHaveBeenCalledWith(
+      expect.objectContaining({ publicKey: PK_OLD, hasError: true }),
+    );
+  });
+
+  // The error is only worth writing once the request has actually settled.
+  it("still waits for an in-flight fetch before syncing an error", () => {
+    mockBalancesState = {
+      ...mockBalancesState,
+      fetchedPublicKey: null,
+      fetchedNetwork: null,
+      error: "Failed to fetch balances",
+      isLoading: true,
+    };
+
+    renderHook(() =>
+      useSyncAccountsFiatTotals({
+        publicKey: PK_OLD,
         network: NETWORKS.PUBLIC,
       }),
     );
