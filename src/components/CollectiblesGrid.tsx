@@ -146,6 +146,24 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
       );
     }
 
+    // Never on the hidden list: a management view, not a place to add.
+    const shouldShowEmptyStateCta =
+      showEmptyStateCta && !isTypeHidden && Boolean(onAddCollectiblePress);
+
+    // Same variant/size as the tokens CTA. Shared by the empty AND error views:
+    // an error replaces the empty state, so leaving it out there would strand
+    // the tab with no way to add anything while a fetch is failing.
+    const addCollectibleCta = shouldShowEmptyStateCta ? (
+      <Button
+        tertiary
+        xl
+        onPress={onAddCollectiblePress}
+        testID="add-collectible-empty-state-button"
+      >
+        {t("collectiblesGrid.addCollectibleButton")}
+      </Button>
+    ) : null;
+
     const renderErrorView = () => (
       <View className="flex-1">
         <View
@@ -156,12 +174,13 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
             {t("collectiblesGrid.error")}
           </Text>
         </View>
+        {/* Matches EmptyState's 24px gap so the action sits the same distance
+        from the text in both views. */}
+        {addCollectibleCta ? (
+          <View className="mt-6 items-center">{addCollectibleCta}</View>
+        ) : null}
       </View>
     );
-
-    // Never on the hidden list: a management view, not a place to add.
-    const shouldShowEmptyStateCta =
-      showEmptyStateCta && !isTypeHidden && Boolean(onAddCollectiblePress);
 
     const renderEmptyView = () => (
       <View className="flex-1">
@@ -177,18 +196,8 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
           }
           testID="collectibles-empty-state"
         >
-          {/* Same variant/size as the tokens CTA, and EmptyState's own gap
-              supplies the spacing, so neither tab hardcodes a margin. */}
-          {shouldShowEmptyStateCta && (
-            <Button
-              tertiary
-              xl
-              onPress={onAddCollectiblePress}
-              testID="add-collectible-empty-state-button"
-            >
-              {t("collectiblesGrid.addCollectibleButton")}
-            </Button>
-          )}
+          {/* EmptyState's own gap supplies the spacing here. */}
+          {addCollectibleCta}
         </EmptyState>
       </View>
     );

@@ -122,10 +122,12 @@ describe("CollectiblesGrid empty-state CTA", () => {
     expect(getByTestId("add-collectible-empty-state-button")).toBeTruthy();
   });
 
-  it("renders the error view instead of the CTA when the fetch failed", () => {
+  // An error replaces the empty state, so the error view has to carry the CTA
+  // or a failing fetch leaves the tab with no way to add anything.
+  it("keeps the CTA in the error view", () => {
     mockError = "boom";
 
-    const { queryByTestId } = render(
+    const { getByTestId, queryByTestId } = render(
       <CollectiblesGrid
         disableInnerScrolling
         showEmptyStateCta
@@ -133,7 +135,25 @@ describe("CollectiblesGrid empty-state CTA", () => {
       />,
     );
 
-    expect(queryByTestId("add-collectible-empty-state-button")).toBeNull();
+    expect(getByTestId("add-collectible-empty-state-button")).toBeTruthy();
     expect(queryByTestId("collectibles-empty-state")).toBeNull();
+  });
+
+  it("keeps the CTA in the error view via the FlatList path too", () => {
+    mockError = "boom";
+
+    const { getByTestId } = render(
+      <CollectiblesGrid showEmptyStateCta onAddCollectiblePress={jest.fn()} />,
+    );
+
+    expect(getByTestId("add-collectible-empty-state-button")).toBeTruthy();
+  });
+
+  it("renders no CTA in the error view when the caller did not ask for one", () => {
+    mockError = "boom";
+
+    const { queryByTestId } = render(<CollectiblesGrid disableInnerScrolling />);
+
+    expect(queryByTestId("add-collectible-empty-state-button")).toBeNull();
   });
 });

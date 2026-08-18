@@ -150,13 +150,17 @@ jest.mock("ducks/prices", () => ({
 
 // Mutable so tests can land a collectible without funding the account.
 let mockCollections: unknown[] = [];
+// The error and loading branches both pre-empt the grid's empty view, which is
+// where the CTA mounts — so both need exercising.
+let mockCollectiblesError: string | null = null;
+let mockIsCollectiblesLoading = false;
 
 jest.mock("ducks/collectibles", () => ({
   useCollectiblesStore: jest.fn((selector) => {
     const mockState = {
       collections: mockCollections,
-      isLoading: false,
-      error: null,
+      isLoading: mockIsCollectiblesLoading,
+      error: mockCollectiblesError,
       fetchCollectibles: mockFetchCollectibles,
     };
     return selector ? selector(mockState) : mockState;
@@ -307,6 +311,8 @@ describe("HomeScreen", () => {
     mockNetwork = "TESTNET";
     mockIsFunded = true;
     mockCollections = [];
+    mockCollectiblesError = null;
+    mockIsCollectiblesLoading = false;
   });
 
   const buildProps = () => ({
@@ -557,6 +563,20 @@ describe("HomeScreen", () => {
       // No empty state to host the CTA, so the pill is the only affordance.
       expect(getByTestId("home-add-collectible-button")).toBeTruthy();
       expect(queryByTestId("add-collectible-empty-state-button")).toBeNull();
+    });
+
+    // Regression: the error view replaces the empty state, so the pill standing
+    // down used to leave the tab with nothing at all.
+    it("keeps an Add affordance when unfunded and the collectibles fetch failed", () => {
+      mockIsFunded = false;
+      mockCollectiblesError = "Error loading collectibles";
+
+      const { getByTestId } = renderHomeScreen();
+
+      fireEvent.press(getByTestId("tab-collectibles"));
+
+      // The CTA now rides along in the error view.
+      expect(getByTestId("add-collectible-empty-state-button")).toBeTruthy();
     });
 
     // Hidden items aren't on the visible grid, so it still renders its empty
