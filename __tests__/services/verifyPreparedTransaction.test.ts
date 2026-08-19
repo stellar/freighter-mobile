@@ -103,6 +103,23 @@ const addressCredentialsAuth = () =>
     rootInvocation: rootTransferInvocation(),
   });
 
+// A source-account auth entry whose root invocation is an unrelated contract
+// call (a token transfer to the attacker) with no sub-invocations.
+const unrelatedRootAuth = () =>
+  new xdr.SorobanAuthorizationEntry({
+    credentials: xdr.SorobanCredentials.sorobanCredentialsSourceAccount(),
+    rootInvocation: authorizedInvocation(SAC, "transfer", [
+      new Address(SOURCE).toScVal(),
+      new Address(ATTACKER).toScVal(),
+      xdr.ScVal.scvI128(
+        new xdr.Int128Parts({
+          hi: xdr.Int64.fromString("0"),
+          lo: xdr.Uint64.fromString("99884944477"),
+        }),
+      ),
+    ]),
+  });
+
 // Rebuild the transaction the way an assembling backend does: reuse the invoked
 // host function verbatim (or tamper with it), set a fee, and attach auth entries.
 const buildPreparedXdr = (
@@ -111,7 +128,8 @@ const buildPreparedXdr = (
   {
     tamperFunc = false,
     fee = BASE_FEE,
-  }: { tamperFunc?: boolean; fee?: string } = {},
+    opSource,
+  }: { tamperFunc?: boolean; fee?: string; opSource?: string } = {},
 ): string => {
   const built = TransactionBuilder.fromXDR(builtXdr, NETWORK) as Transaction;
   const builtOp = built.operations[0];
@@ -130,7 +148,9 @@ const buildPreparedXdr = (
     : builtOp.func;
 
   return newBuilder(fee)
-    .addOperation(Operation.invokeHostFunction({ func, auth }))
+    .addOperation(
+      Operation.invokeHostFunction({ func, auth, source: opSource }),
+    )
     .setTimeout(0)
     .build()
     .toXDR();
@@ -212,5 +232,32 @@ describe("verifyFlatTransferPreparedTransaction", () => {
     const preparedXdr = buildPreparedXdr(builtXdr, [addressCredentialsAuth()]);
 
     expect(() => verify(builtXdr, preparedXdr)).toThrow(/source-account/);
+  });
+
+  it("rejects a source-account auth entry whose root is an unrelated call", () => {
+    const builtXdr = buildFlatTransferXdr();
+    const preparedXdr = buildPreparedXdr(builtXdr, [unrelatedRootAuth()]);
+
+    expect(() => verify(builtXdr, preparedXdr)).toThrow(/authorization root/);
+  });
+
+  it("rejects a changed operation source", () => {
+    const builtXdr = buildFlatTransferXdr();
+    const preparedXdr = buildPreparedXdr(builtXdr, [sourceAccountAuth([])], {
+      opSource: ATTACKER,
+    });
+
+    expect(() => verify(builtXdr, preparedXdr)).toThrow(/operation source/);
+  });
+
+  it("rejects a non-finite simulated resource fee (fee ceiling cannot fail open)", () => {
+    const builtXdr = buildFlatTransferXdr();
+    const preparedXdr = buildPreparedXdr(builtXdr, [sourceAccountAuth([])], {
+      fee: "100000000",
+    });
+
+    expect(() => verify(builtXdr, preparedXdr, "Infinity")).toThrow(
+      /resource fee/,
+    );
   });
 });
