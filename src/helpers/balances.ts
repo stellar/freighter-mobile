@@ -4,7 +4,9 @@ import {
   NATIVE_TOKEN_CODE,
   BASE_RESERVE,
   MIN_TRANSACTION_FEE,
+  NetworkDetails,
 } from "config/constants";
+import { logger } from "config/logger";
 import {
   Balance,
   NativeToken,
@@ -18,6 +20,7 @@ import {
   Token,
 } from "config/types";
 import { formatFiatAmount, NO_FIAT_VALUE } from "helpers/formatAmount";
+import { isContractId } from "helpers/soroban";
 
 interface GetTokenPriceFromBalanceParams {
   prices: TokenPricesMap;
@@ -592,3 +595,66 @@ export const getTotalUsdLabel = ({
 
   return formatFiatAmount(totalUsd ?? "0");
 };
+
+/**
+ * Finds the held balance corresponding to a Soroban asset contract address.
+ *
+ * Blend's catalog addresses every reserve by contract ID, while balances are
+ * keyed by TokenIdentifier ("XLM" / "CODE:ISSUER"). Bridging the two means
+ * deriving each balance's SAC address and comparing.
+ *
+ * Native XLM is the case that breaks naive implementations: it has no issuer,
+ * so any check shaped like `"issuer" in balance.token` silently skips the most
+ * common asset in the wallet. It is handled explicitly, first.
+ *
+ * Soroban balances already carry their own `contractId` and match directly.
+ * Liquidity pool balances have no `token` at all and never match.
+ */
+export const getBalanceByContractId = (
+  contractId: string,
+  balances: PricedBalanceMap,
+  networkDetails: NetworkDetails,
+): PricedBalance | undefined =>
+  Object.values(balances).find((balance) => {
+    // Soroban tokens carry their contract address directly.
+    if ("contractId" in balance && balance.contractId === contractId) {
+      return true;
+    }
+
+    // Liquidity pool shares have no token and cannot be a Blend reserve.
+    if (!("token" in balance)) {
+      return false;
+    }
+
+    try {
+      if ("type" in balance.token && balance.token.type === "native") {
+        return (
+          SdkToken.native().contractId(networkDetails.networkPassphrase) ===
+          contractId
+        );
+      }
+
+      if (!("issuer" in balance.token)) {
+        return false;
+      }
+
+      const issuerKey = balance.token.issuer.key;
+      // A contract-ID issuer is not a classic asset and has no derivable SAC.
+      if (isContractId(issuerKey)) {
+        return false;
+      }
+
+      return (
+        new SdkToken(balance.token.code, issuerKey).contractId(
+          networkDetails.networkPassphrase,
+        ) === contractId
+      );
+    } catch (error) {
+      logger.error(
+        "getBalanceByContractId",
+        "Failed to derive SAC address for balance",
+        error,
+      );
+      return false;
+    }
+  });

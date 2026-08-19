@@ -1,5 +1,6 @@
+import { Asset, Networks } from "@stellar/stellar-sdk";
 import { BigNumber } from "bignumber.js";
-import { NATIVE_TOKEN_CODE } from "config/constants";
+import { NATIVE_TOKEN_CODE, NETWORKS } from "config/constants";
 import {
   ClassicBalance,
   NonNativeToken,
@@ -17,6 +18,7 @@ import {
   calculateSpendableAmount,
   isAmountSpendable,
   getIssuerFromIdentifier,
+  getBalanceByContractId,
 } from "helpers/balances";
 
 describe("balances helpers", () => {
@@ -449,5 +451,113 @@ describe("balances helpers", () => {
       const issuer = getIssuerFromIdentifier("");
       expect(issuer).toBe("");
     });
+  });
+});
+
+describe("getBalanceByContractId", () => {
+  const networkDetails = {
+    network: NETWORKS.TESTNET,
+    networkPassphrase: Networks.TESTNET,
+  } as never;
+
+  const USDC_ISSUER =
+    "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5";
+
+  const nativeBalance = {
+    total: new BigNumber("100"),
+    available: new BigNumber("95"),
+    token: { type: "native", code: "XLM" },
+  } as never;
+
+  const usdcBalance = {
+    total: new BigNumber("50"),
+    available: new BigNumber("50"),
+    token: { code: "USDC", issuer: { key: USDC_ISSUER } },
+  } as never;
+
+  const balances = { XLM: nativeBalance, [`USDC:${USDC_ISSUER}`]: usdcBalance };
+
+  it("matches native XLM to its SAC address", () => {
+    const nativeSac = Asset.native().contractId(Networks.TESTNET);
+    expect(getBalanceByContractId(nativeSac, balances, networkDetails)).toBe(
+      nativeBalance,
+    );
+  });
+
+  it("matches a classic asset to its SAC address", () => {
+    const usdcSac = new Asset("USDC", USDC_ISSUER).contractId(Networks.TESTNET);
+    expect(getBalanceByContractId(usdcSac, balances, networkDetails)).toBe(
+      usdcBalance,
+    );
+  });
+
+  it("matches a Soroban balance on its own contractId", () => {
+    const contractId =
+      "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
+    const sorobanBalance = {
+      total: new BigNumber("7"),
+      available: new BigNumber("7"),
+      contractId,
+      token: { code: "ABC", issuer: { key: contractId } },
+    } as never;
+
+    expect(
+      getBalanceByContractId(
+        contractId,
+        { ...balances, "ABC:x": sorobanBalance },
+        networkDetails,
+      ),
+    ).toBe(sorobanBalance);
+  });
+
+  it("returns undefined when nothing matches", () => {
+    // Not derivable from any balance above: neither the native SAC, the USDC
+    // SAC, nor a contractId any balance carries directly.
+    const unheld = "CC4QNKPEFDA2DOYRJ7AQZQ66AOSKX3PBUAOBH7YW3CQIQDS4KI42ATS3";
+    expect(
+      getBalanceByContractId(unheld, { XLM: nativeBalance }, networkDetails),
+    ).toBeUndefined();
+  });
+
+  it("does not throw on a liquidity pool balance, which has no token", () => {
+    const lpBalance = {
+      total: new BigNumber("1"),
+      liquidityPoolId: "abc123",
+      reserves: [],
+    } as never;
+
+    expect(() =>
+      getBalanceByContractId(
+        Asset.native().contractId(Networks.TESTNET),
+        { "abc123:lp": lpBalance },
+        networkDetails,
+      ),
+    ).not.toThrow();
+  });
+
+  it("does not mistake a classic asset coded XLM for the native balance", () => {
+    // A classic (non-native) asset can be issued with the code "XLM" by any
+    // issuer — asset-code impersonation is a known Stellar phishing pattern.
+    // Its token has no `type: "native"`, only a matching `code`.
+    const spoofedXlmIssuer =
+      "GCELD3NDDG6TUTPWYSZFAMGO7VITAV27DCLW5HDU5WWXX2A2QEXHLW4A";
+    const spoofedXlmBalance = {
+      total: new BigNumber("1000"),
+      available: new BigNumber("1000"),
+      token: { code: "XLM", issuer: { key: spoofedXlmIssuer } },
+    } as never;
+
+    // Spoof placed FIRST so a code-based check (`token.code === "XLM"`)
+    // would return it before ever reaching the real native balance.
+    const spoofedBalances = {
+      [`XLM:${spoofedXlmIssuer}`]: spoofedXlmBalance,
+      ...balances,
+    };
+
+    const nativeSac = Asset.native().contractId(Networks.TESTNET);
+
+    expect(
+      getBalanceByContractId(nativeSac, spoofedBalances, networkDetails),
+    ).toBe(nativeBalance);
   });
 });
