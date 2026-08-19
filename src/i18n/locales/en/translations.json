@@ -691,7 +691,15 @@
     "swapped": "Swapped"
   },
   "earnTokenPicker": {
-    "title": "Choose a token"
+    "title": "Choose a token",
+    "inYourAccount": "In your account",
+    "supportedTokens": "Supported tokens",
+    "apyDisclaimer": "*APY is an estimate and may change based on pool activity.",
+    "error": {
+      "title": "We couldn't load Earn right now",
+      "body": "Please check your connection and try again.",
+      "retry": "Try again"
+    }
   },
   "transactionTokenScreen": {
     "title": "Sending",
