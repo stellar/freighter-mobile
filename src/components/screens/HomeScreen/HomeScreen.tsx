@@ -19,7 +19,12 @@ import ManageAccounts from "components/screens/HomeScreen/ManageAccounts";
 import WelcomeBannerBottomSheet from "components/screens/HomeScreen/WelcomeBannerBottomSheet";
 import Icon from "components/sds/Icon";
 import { Display } from "components/sds/Typography";
-import { DEFAULT_PADDING, NATIVE_TOKEN_CODE } from "config/constants";
+import { isEarnSupportedNetwork } from "config/blend";
+import {
+  DEFAULT_PADDING,
+  NATIVE_TOKEN_CODE,
+  mapNetworkToNetworkDetails,
+} from "config/constants";
 import {
   MainTabStackParamList,
   MAIN_TAB_ROUTES,
@@ -29,6 +34,7 @@ import {
   ADD_FUNDS_ROUTES,
   SEND_PAYMENT_ROUTES,
   SWAP_ROUTES,
+  EARN_ROUTES,
 } from "config/routes";
 import { TokenTypeWithCustomToken } from "config/types";
 import { useAccountsFiatTotalsStore } from "ducks/accountsFiatTotals";
@@ -142,7 +148,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
     // for real, since holding one needs no funded account (no trustline, no
     // reserve). So the pill stands down only when the CTA actually renders.
     const isCollectiblesGridEmpty = visibleCollectibles.length === 0;
-    const showCollectiblesPill = !(showEmptyStateCta && isCollectiblesGridEmpty);
+    const showCollectiblesPill = !(
+      showEmptyStateCta && isCollectiblesGridEmpty
+    );
+
+    // Earn is gated purely on network support (an allowlisted Blend pool) —
+    // there is deliberately no feature flag alongside it.
+    const earnEnabled = isEarnSupportedNetwork(
+      mapNetworkToNetworkDetails(network),
+    );
 
     const handleManageAccountsPress = useCallback(() => {
       manageAccountsBottomSheetRef.current?.present();
@@ -250,6 +264,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
       navigation.navigate(ROOT_NAVIGATOR_ROUTES.SWAP_STACK, {
         screen: SWAP_ROUTES.SWAP_AMOUNT_SCREEN,
         params: { tokenId: NATIVE_TOKEN_CODE, tokenSymbol: NATIVE_TOKEN_CODE },
+      });
+    }, [navigation]);
+
+    const handleEarnPress = useCallback(() => {
+      navigation.navigate(ROOT_NAVIGATOR_ROUTES.EARN_STACK, {
+        screen: EARN_ROUTES.EARN_TOKEN_PICKER_SCREEN,
       });
     }, [navigation]);
 
@@ -404,6 +424,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
                 disabled={hasZeroBalance}
                 onPress={handleSwapPress}
                 testID="icon-button-swap"
+              />
+            )}
+            {earnEnabled && (
+              <HomeActionButton
+                Icon={Icon.TrendUp02}
+                title={t("home.earn")}
+                disabled={hasZeroBalance}
+                onPress={handleEarnPress}
+                testID="icon-button-earn"
               />
             )}
           </View>

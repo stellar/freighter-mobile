@@ -48,6 +48,7 @@ import { useMaintenanceMode } from "hooks/useMaintenanceMode";
 import {
   AuthNavigator,
   AddFundsStackNavigator,
+  EarnStackNavigator,
   ManageTokensStackNavigator,
   ManageWalletsStackNavigator,
   SendPaymentStackNavigator,
@@ -249,6 +250,11 @@ export const RootNavigator = () => {
             <RootStack.Screen
               name={ROOT_NAVIGATOR_ROUTES.SWAP_STACK}
               component={SwapStackNavigator}
+              options={getStackBottomNavigateOptions()}
+            />
+            <RootStack.Screen
+              name={ROOT_NAVIGATOR_ROUTES.EARN_STACK}
+              component={EarnStackNavigator}
               options={getStackBottomNavigateOptions()}
             />
             <RootStack.Screen

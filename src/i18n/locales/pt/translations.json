@@ -49,6 +49,7 @@
     "buy": "Adicionar",
     "send": "Enviar",
     "swap": "Trocar",
+    "earn": "Render",
     "actions": {
       "settings": "Configurações",
       "myQRCode": "Meu QR code"
@@ -654,6 +655,9 @@
   },
   "swapTransactionDetails": {
     "swapped": "Trocado"
+  },
+  "earnTokenPicker": {
+    "title": "Escolha um token"
   },
   "transactionTokenScreen": {
     "title": "Enviando",
