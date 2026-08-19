@@ -6,11 +6,15 @@ import {
   Address,
   Transaction,
   Operation,
+  XdrLargeInt,
 } from "@stellar/stellar-sdk";
+import BigNumber from "bignumber.js";
 import { NETWORKS, mapNetworkToNetworkDetails } from "config/constants";
+import { BlendRequestType } from "helpers/blend";
 import { analytics } from "services/analytics";
 import * as backend from "services/backend";
 import {
+  buildBlendDepositTransaction,
   buildSendCollectibleTransaction,
   BuildSendCollectibleParams,
   buildSwapTransaction,
@@ -518,5 +522,114 @@ describe("buildSwapTransaction — includeTrustline", () => {
     expect(tx.operations[0].type).toBe("pathPaymentStrictSend");
     // Single op: total == the user-set 0.001 XLM (10,000 stroops).
     expect(tx.fee).toBe("10000");
+  });
+});
+
+describe("buildBlendDepositTransaction", () => {
+  const USDC_SAC = "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
+  const SENDER = "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H";
+  // Mirrors config/blend.ts BLEND_FIXED_POOL_IDS[NETWORKS.PUBLIC].
+  const POOL_ID = "CAJJZSGMMM3PD7N33TAPHGBUGTB43OC73HVIK2L2G6BNGGGYOSSYBXBD";
+  const mockPreparedXdr = "mock_prepared_blend_xdr";
+
+  const baseParams = {
+    senderAddress: SENDER,
+    assetId: USDC_SAC,
+    amount: "500",
+    decimals: 7,
+    network: NETWORKS.PUBLIC,
+    transactionFee: "0.00001",
+    transactionTimeout: 180,
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (backend.simulateTransaction as jest.Mock).mockResolvedValue({
+      preparedTransaction: mockPreparedXdr,
+      simulationResponse: { minResourceFee: "546395" },
+    });
+  });
+
+  it("rejects a network with no allowlisted pool", async () => {
+    await expect(
+      buildBlendDepositTransaction({
+        ...baseParams,
+        network: NETWORKS.FUTURENET,
+      }),
+    ).rejects.toThrow(/not supported/i);
+  });
+
+  it("scales the human amount by decimals into an integer string", () => {
+    // 500 USDC at 7 decimals is 5_000_000_000 stroops-equivalent. An i128
+    // cannot carry a fraction and exponential notation would not parse, so the
+    // scaled value must be a plain integer string.
+    const scaled = new BigNumber("500")
+      .multipliedBy(new BigNumber(10).pow(7))
+      .toFixed(0);
+    expect(scaled).toBe("5000000000");
+    expect(scaled).not.toMatch(/[.e+]/);
+  });
+
+  it("submits a SupplyCollateral request against the allowlisted pool with the scaled amount", async () => {
+    const result = await buildBlendDepositTransaction(baseParams);
+
+    expect(result.preparedXdr).toBe(mockPreparedXdr);
+    expect(result.minResourceFee).toBe("546395");
+
+    const parsedTx = TransactionBuilder.fromXDR(
+      result.xdr,
+      Networks.PUBLIC,
+    ) as Transaction;
+
+    expect(parsedTx.operations).toHaveLength(1);
+
+    const operation = parsedTx.operations[0] as Operation.InvokeHostFunction;
+    const hostFunction = operation.func;
+    expect(hostFunction.switch().name).toBe("hostFunctionTypeInvokeContract");
+
+    const invocation = hostFunction.invokeContract();
+    expect(invocation.functionName().toString()).toBe("submit");
+    expect(Address.fromScAddress(invocation.contractAddress()).toString()).toBe(
+      POOL_ID,
+    );
+
+    // submit(from, spender, to, requests) — requests is a vec of one Request map.
+    const requestScVal = invocation.args()[3].vec()![0];
+    const requestEntries = requestScVal.map()!;
+    const byKey = (name: string) =>
+      requestEntries.find((e) => e.key().sym().toString() === name)!.val();
+
+    expect(byKey("request_type").u32()).toBe(BlendRequestType.SupplyCollateral);
+    expect(byKey("amount").toXDR("base64")).toBe(
+      new XdrLargeInt("i128", "5000000000").toI128().toXDR("base64"),
+    );
+
+    // transactionFee is the INCLUSION fee only: 0.00001 XLM = 100 stroops.
+    expect(parsedTx.fee).toBe("100");
+  });
+
+  it("returns minResourceFee as null when the simulation response omits it", async () => {
+    (backend.simulateTransaction as jest.Mock).mockResolvedValue({
+      preparedTransaction: mockPreparedXdr,
+      simulationResponse: {},
+    });
+
+    const result = await buildBlendDepositTransaction(baseParams);
+
+    // A missing minResourceFee is left unknown (null), never coerced to "0" —
+    // a zero resource fee would understate the real cost and is
+    // indistinguishable from a genuine zero.
+    expect(result.minResourceFee).toBeNull();
+  });
+
+  it("throws a plain error when simulation succeeds with no prepared transaction", async () => {
+    (backend.simulateTransaction as jest.Mock).mockResolvedValue({
+      preparedTransaction: undefined,
+      simulationResponse: {},
+    });
+
+    await expect(buildBlendDepositTransaction(baseParams)).rejects.toThrow(
+      /simulate/i,
+    );
   });
 });
