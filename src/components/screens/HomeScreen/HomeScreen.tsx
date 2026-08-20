@@ -428,7 +428,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
             )}
             {earnEnabled && (
               <HomeActionButton
-                Icon={Icon.TrendUp02}
+                Icon={Icon.Asterisk01}
                 title={t("home.earn")}
                 disabled={hasZeroBalance}
                 onPress={handleEarnPress}
