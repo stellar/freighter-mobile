@@ -2,6 +2,7 @@ import { Networks, xdr } from "@stellar/stellar-sdk";
 import { NETWORK_URLS, NETWORKS } from "config/constants";
 import { logger } from "config/logger";
 import {
+  fetchBalances,
   fetchCollectibles,
   fetchTokenPrices,
   freighterBackendV1,
@@ -11,6 +12,17 @@ import {
   SimulateTransactionParams,
   SubmitTransactionBody,
 } from "services/backend";
+import { scanBulkTokens } from "services/blockaid/api";
+import { dataStorage } from "services/storage/storageFactory";
+
+// The v2 balances path stamps Blockaid data through the blockaidTokenScans
+// duck's disk-backed cache; mock the raw scan API underneath it (it would
+// otherwise loop back into the mocked freighterBackendV1 client) and the
+// storage the cache reads/writes.
+jest.mock("services/blockaid/api", () => ({
+  scanBulkTokens: jest.fn(),
+}));
+jest.mock("services/storage/storageFactory");
 
 jest.mock("services/apiFactory", () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports, global-require
@@ -915,5 +927,349 @@ describe("Backend Service - fetchTokenPrices v2 migration", () => {
       networkError,
     );
     expect(logger.error).not.toHaveBeenCalled();
+  });
+});
+
+const SEP41_CONTRACT =
+  "CDMLFMKMMD7MWZP3FKUBZPVHTUEDLSX4BYGYKH4GCESXYHS3IHQ4EIG4";
+
+describe("Backend Service - fetchBalances v2 routing", () => {
+  let mockV1Get: jest.MockedFunction<any>;
+  let mockV2Post: jest.MockedFunction<any>;
+
+  const publicKey = "GACCOUNT";
+
+  const v2Account = {
+    address: publicKey,
+    is_funded: true,
+    subentry_count: 2,
+    balances: [
+      {
+        token_type: "NATIVE",
+        token_id: "CNATIVE",
+        key: "native",
+        token: { type: "native", code: "XLM" },
+        total: "100",
+        available: "88.5",
+        minimum_balance: "1.5",
+        buying_liabilities: "0",
+        selling_liabilities: "10",
+      },
+      {
+        token_type: "CLASSIC",
+        token_id: "CUSDC",
+        key: "USDC:GISSUER",
+        token: {
+          type: "credit_alphanum4",
+          code: "USDC",
+          issuer: { key: "GISSUER" },
+        },
+        total: "50",
+        available: "45",
+        code: "USDC",
+        issuer: "GISSUER",
+        type: "credit_alphanum4",
+        limit: "1000",
+        buying_liabilities: "0",
+        selling_liabilities: "5",
+        is_authorized: true,
+        is_authorized_to_maintain_liabilities: true,
+      },
+    ],
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockV1Get = freighterBackendV1.get as jest.MockedFunction<any>;
+    mockV2Post = freighterBackendV2.post as jest.MockedFunction<any>;
+    (scanBulkTokens as jest.MockedFunction<any>).mockResolvedValue({
+      results: {},
+    });
+    (dataStorage.getItem as jest.MockedFunction<any>).mockResolvedValue(null);
+    (dataStorage.setItem as jest.MockedFunction<any>).mockResolvedValue(
+      undefined,
+    );
+  });
+
+  it("POSTs the address to the v2 endpoint and maps the response (useV2 on PUBLIC)", async () => {
+    mockV2Post.mockResolvedValueOnce({ data: { data: [v2Account] } });
+
+    const result = await fetchBalances({
+      publicKey,
+      network: NETWORKS.PUBLIC,
+      useV2: true,
+    });
+
+    expect(mockV2Post).toHaveBeenCalledWith(
+      "/accounts/balances",
+      { addresses: [publicKey] },
+      { params: { network: NETWORKS.PUBLIC } },
+    );
+    expect(mockV1Get).not.toHaveBeenCalled();
+
+    // Native is keyed by the app convention, not the v1 wire key
+    expect(result.balances!.XLM).toBeDefined();
+    expect((result.balances as any).native).toBeUndefined();
+    expect((result.balances!.XLM as any).total.toString()).toBe("100");
+    expect((result.balances!["USDC:GISSUER"] as any).available.toString()).toBe(
+      "45",
+    );
+    expect(result.isFunded).toBe(true);
+    expect(result.subentryCount).toBe(2);
+  });
+
+  it("routes to v2 on testnet too (no Blockaid scan off-mainnet)", async () => {
+    mockV2Post.mockResolvedValueOnce({ data: { data: [v2Account] } });
+
+    const result = await fetchBalances({
+      publicKey,
+      network: NETWORKS.TESTNET,
+      useV2: true,
+    });
+
+    expect(mockV2Post).toHaveBeenCalledTimes(1);
+    expect(mockV1Get).not.toHaveBeenCalled();
+    // Entries still carry the benign default blockaidData stamp
+    expect((result.balances!["USDC:GISSUER"] as any).blockaidData).toEqual({
+      result_type: "Benign",
+    });
+  });
+
+  it("rejects a response missing the requested account (contract violation)", async () => {
+    // The backend returns one entry per requested address — unfunded accounts
+    // arrive as is_funded: false, never as an omission — so an absent entry
+    // is a malformed/partial response, not an unfunded account.
+    mockV2Post.mockResolvedValueOnce({ data: { data: [] } });
+
+    await expect(
+      fetchBalances({
+        publicKey,
+        network: NETWORKS.PUBLIC,
+        useV2: true,
+      }),
+    ).rejects.toThrow("v2 balances response is missing the requested account");
+  });
+
+  it("keeps the public key out of the thrown message (it becomes the Sentry title)", async () => {
+    // The message is used verbatim as the Sentry issue title, which bypasses
+    // sanitizeLogData — that redactor only walks structured `extra.args` and
+    // returns an Error's `message` untouched. Interpolating the key would
+    // also give every account its own issue, breaking grouping.
+    mockV2Post.mockResolvedValueOnce({ data: { data: [] } });
+
+    const error = await fetchBalances({
+      publicKey,
+      network: NETWORKS.PUBLIC,
+      useV2: true,
+    }).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).not.toContain(publicKey);
+  });
+
+  it("propagates a v2 server error without falling back to v1", async () => {
+    // A v2 failure must surface, not silently degrade to v1 — a fallback
+    // would mask indexer outages behind stale-looking v1 data.
+    mockV2Post.mockRejectedValueOnce(
+      Object.assign(new Error("Request failed with status code 500"), {
+        response: { status: 500 },
+      }),
+    );
+
+    await expect(
+      fetchBalances({
+        publicKey,
+        network: NETWORKS.PUBLIC,
+        useV2: true,
+      }),
+    ).rejects.toThrow("500");
+    expect(mockV1Get).not.toHaveBeenCalled();
+  });
+
+  it("routes to v1 when the flag is off", async () => {
+    mockV1Get.mockResolvedValueOnce({
+      data: { balances: {}, isFunded: true, subentryCount: 0 },
+    });
+
+    await fetchBalances({
+      publicKey,
+      network: NETWORKS.PUBLIC,
+      useV2: false,
+    });
+
+    expect(mockV2Post).not.toHaveBeenCalled();
+    expect(mockV1Get).toHaveBeenCalledWith(
+      expect.stringContaining(`/account-balances/${publicKey}`),
+    );
+  });
+
+  it("routes to v1 on Futurenet even with the flag on", async () => {
+    mockV1Get.mockResolvedValueOnce({
+      data: { balances: {}, isFunded: true, subentryCount: 0 },
+    });
+
+    await fetchBalances({
+      publicKey,
+      network: NETWORKS.FUTURENET,
+      useV2: true,
+    });
+
+    expect(mockV2Post).not.toHaveBeenCalled();
+    expect(mockV1Get).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports every local contract id as removable on the v1 path", async () => {
+    // v1 returns a contract-token balance only for an ID it was handed, so the
+    // whole local list is local-only by construction.
+    mockV1Get.mockResolvedValueOnce({
+      data: { balances: {}, isFunded: true, subentryCount: 0 },
+    });
+
+    const result = await fetchBalances({
+      publicKey,
+      network: NETWORKS.PUBLIC,
+      contractIds: [SEP41_CONTRACT],
+      useV2: false,
+    });
+
+    expect(result.localOnlyTokenIds).toEqual([SEP41_CONTRACT]);
+  });
+});
+
+describe("Backend Service - fetchBalances v2 local custom-token merge", () => {
+  let mockV1Get: jest.MockedFunction<any>;
+  let mockV2Post: jest.MockedFunction<any>;
+
+  const publicKey = "GACCOUNT";
+
+  const v2Account = (isFunded = true) => ({
+    address: publicKey,
+    is_funded: isFunded,
+    subentry_count: 0,
+    balances: [
+      {
+        token_type: "NATIVE",
+        token_id: "native",
+        key: "native",
+        token: { type: "native", code: "XLM" },
+        total: "100",
+        available: "98",
+        minimum_balance: "1.5",
+        buying_liabilities: "0",
+        selling_liabilities: "0",
+      },
+    ],
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockV1Get = freighterBackendV1.get as jest.MockedFunction<any>;
+    mockV2Post = freighterBackendV2.post as jest.MockedFunction<any>;
+    (scanBulkTokens as jest.MockedFunction<any>).mockResolvedValue({
+      results: {},
+    });
+    (dataStorage.getItem as jest.MockedFunction<any>).mockResolvedValue(null);
+    (dataStorage.setItem as jest.MockedFunction<any>).mockResolvedValue(
+      undefined,
+    );
+  });
+
+  it("merges back a locally saved token the indexer omitted, with its real balance", async () => {
+    mockV2Post.mockResolvedValueOnce({ data: { data: [v2Account()] } });
+    mockV1Get.mockResolvedValueOnce({
+      data: {
+        name: "My Token",
+        symbol: "TKN",
+        decimals: 7,
+        balance: "42",
+      },
+    });
+
+    const result = await fetchBalances({
+      publicKey,
+      network: NETWORKS.PUBLIC,
+      contractIds: [SEP41_CONTRACT],
+      useV2: true,
+    });
+
+    // The balance must be requested explicitly — token-details omits it by
+    // default, which would render the merged token as zero.
+    expect(mockV1Get).toHaveBeenCalledWith(
+      `/token-details/${SEP41_CONTRACT}`,
+      expect.objectContaining({
+        params: expect.objectContaining({
+          pub_key: publicKey,
+          network: NETWORKS.PUBLIC,
+          should_fetch_balance: true,
+        }),
+      }),
+    );
+
+    const entry = result.balances![`TKN:${SEP41_CONTRACT}`] as any;
+    expect(entry.total.toString()).toBe("42");
+    expect(result.localOnlyTokenIds).toEqual([SEP41_CONTRACT]);
+    // Merged before the scan, so it carries a Blockaid stamp like v1 did
+    expect(entry.blockaidData).toEqual({ result_type: "Benign" });
+  });
+
+  it("resolves no tokens for an unfunded account", async () => {
+    // The not-funded UI renders in place of balances, so resolving local
+    // tokens would only burn requests.
+    mockV2Post.mockResolvedValueOnce({ data: { data: [v2Account(false)] } });
+
+    const result = await fetchBalances({
+      publicKey,
+      network: NETWORKS.PUBLIC,
+      contractIds: [SEP41_CONTRACT],
+      useV2: true,
+    });
+
+    expect(mockV1Get).not.toHaveBeenCalled();
+    expect(result.isFunded).toBe(false);
+    expect(result.localOnlyTokenIds).toBeUndefined();
+  });
+
+  it("does not resolve a local token the indexer already returned", async () => {
+    const account = v2Account();
+    account.balances.push({
+      token_type: "SEP41",
+      token_id: SEP41_CONTRACT,
+      key: `TKN:${SEP41_CONTRACT}`,
+      token: { type: "SEP41", code: "TKN" },
+      total: "7",
+      available: "7",
+    } as any);
+    mockV2Post.mockResolvedValueOnce({ data: { data: [account] } });
+
+    const result = await fetchBalances({
+      publicKey,
+      network: NETWORKS.PUBLIC,
+      contractIds: [SEP41_CONTRACT],
+      useV2: true,
+    });
+
+    expect(mockV1Get).not.toHaveBeenCalled();
+    // Backend-owned, so hide-only rather than removable
+    expect(result.localOnlyTokenIds).toEqual([]);
+    expect(
+      (result.balances![`TKN:${SEP41_CONTRACT}`] as any).total.toString(),
+    ).toBe("7");
+  });
+
+  it("still returns backend balances when a local token cannot be resolved", async () => {
+    mockV2Post.mockResolvedValueOnce({ data: { data: [v2Account()] } });
+    mockV1Get.mockRejectedValueOnce(
+      Object.assign(new Error("boom"), { status: 400 }),
+    );
+
+    const result = await fetchBalances({
+      publicKey,
+      network: NETWORKS.PUBLIC,
+      contractIds: [SEP41_CONTRACT],
+      useV2: true,
+    });
+
+    expect(result.balances!.XLM).toBeDefined();
+    expect(result.localOnlyTokenIds).toEqual([]);
   });
 });
