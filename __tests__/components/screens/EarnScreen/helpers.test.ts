@@ -321,6 +321,19 @@ describe("hasSwappableBalance", () => {
     );
   });
 
+  // Every other `true` case in this file goes through the native() fixture,
+  // so a held classic asset never actually exercised the `true` branch of
+  // the "is this a classic token" check — a regression that inverted the
+  // `issuer in balance.token` guard would have passed the whole suite.
+  it("counts a held classic asset other than the target as swappable", () => {
+    expect(
+      hasSwappableBalance(
+        { "AQUA:GISSUER2": classic("AQUA", "GISSUER2", "100") },
+        "USDC:GISSUER",
+      ),
+    ).toBe(true);
+  });
+
   it("excludes the target asset itself so dust does not look swappable", () => {
     expect(
       hasSwappableBalance(

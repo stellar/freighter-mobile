@@ -30,6 +30,25 @@ describe("earn duck", () => {
     expect(state.selectedAssetDecimals).toBe(7);
   });
 
+  // FIX 1: without this, picking asset A (whose position fetch succeeds),
+  // backing out, then picking asset B (whose fetch fails, per
+  // `useEarnPosition`'s deliberately non-fatal design) would carry A's
+  // position into B's Review "before" value — even without ever leaving
+  // the Earn flow, so the navigator-level `resetEarn()` alone would not
+  // have caught it.
+  it("clears currentPositionTokens on an asset switch, even mid-flow", () => {
+    useEarnStore.getState().setCurrentPositionTokens("5000000000");
+
+    useEarnStore.getState().selectAsset({
+      assetId: "CANOTHERASSET",
+      apy: 0.05,
+      code: "XLM",
+      decimals: 7,
+    });
+
+    expect(useEarnStore.getState().currentPositionTokens).toBe("0");
+  });
+
   it("keeps a null rate null rather than coercing it to zero", () => {
     useEarnStore
       .getState()

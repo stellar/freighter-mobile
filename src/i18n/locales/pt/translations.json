@@ -663,7 +663,7 @@
     "apyDisclaimer": "*A APY é uma estimativa e pode mudar de acordo com a atividade do pool.",
     "error": {
       "title": "Não foi possível carregar o Earn agora",
-      "body": "Verifique sua conexão e tente novamente.",
+      "body": "O Earn está temporariamente indisponível. Tente novamente em breve.",
       "retry": "Tentar novamente"
     }
   },

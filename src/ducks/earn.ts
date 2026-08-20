@@ -69,12 +69,19 @@ export const useEarnStore = create<EarnState>((set) => ({
 
   setPool: (pool) => set({ pool }),
 
+  // Resets `currentPositionTokens` back to its "0" default on every asset
+  // switch, mid-flow or not. `useEarnPosition`'s fetch is non-fatal by
+  // design (see its docs) and leaves the duck holding whatever it already
+  // had on failure — without this reset, picking asset A (fetch succeeds),
+  // backing out, then picking asset B (fetch fails) would carry A's
+  // position into B's Review "before" value.
   selectAsset: ({ assetId, apy, code, decimals }) =>
     set({
       selectedAssetId: assetId,
       selectedAssetApy: apy,
       selectedAssetCode: code,
       selectedAssetDecimals: decimals,
+      currentPositionTokens: initialState.currentPositionTokens,
     }),
 
   setCurrentPositionTokens: (currentPositionTokens) =>

@@ -11,8 +11,8 @@
  *
  * Returns an i18n KEY, not translated prose — copy lives in the translation
  * files like everywhere else in this app (see `src/i18n/locales/*`). The key
- * below (`earnPoolDetails.descriptions.fixedPool`) does not exist there yet;
- * a later task adds it.
+ * below (`earnPoolDetails.descriptions.fixedPool`) exists in both `en` and
+ * `pt`.
  */
 const POOL_DESCRIPTION_KEYS: Record<string, string> = {
   // Fixed Pool v2 — mainnet

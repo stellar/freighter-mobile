@@ -61,7 +61,23 @@ describe("buildEarnTokenRows", () => {
 
     expect(held).toHaveLength(1);
     expect(held[0].total).toBe("50");
+    // The held row must carry the real balance through — `EarnTokenRow`
+    // relies on it to render the exact icon rather than reconstructing one
+    // from catalog data alone.
+    expect(held[0].balance).toBe(balances["USDC:GISSUER"]);
     expect(supported).toHaveLength(0);
+  });
+
+  it("leaves `balance` undefined for a zero-balance (supported) row", () => {
+    const { supported } = buildEarnTokenRows({
+      options: [option()],
+      poolId: POOL_ID,
+      balances: {} as never,
+      networkDetails,
+      findBalance: () => undefined,
+    });
+
+    expect(supported[0].balance).toBeUndefined();
   });
 
   it("skips assets the allowlisted pool does not offer", () => {
@@ -89,6 +105,27 @@ describe("buildEarnTokenRows", () => {
     });
 
     expect(supported[0].code).toBe(`${USDC_SAC.slice(0, 4)}…`);
+  });
+
+  it("falls back to the held balance's own code when the catalog symbol is missing", () => {
+    // The middle rung of the fallback chain: `option.symbol` absent but a
+    // held balance exists, so its `token.code` should be used in preference
+    // to the truncated-id last resort. Only the truncated-id branch (no
+    // symbol AND no balance) was previously covered.
+    const balance = {
+      total: new BigNumber("50"),
+      token: { code: "USDC", issuer: { key: "GISSUER" } },
+    } as never;
+
+    const { held } = buildEarnTokenRows({
+      options: [option({ symbol: null, name: null })],
+      poolId: POOL_ID,
+      balances: {} as never,
+      networkDetails,
+      findBalance: () => balance,
+    });
+
+    expect(held[0].code).toBe("USDC");
   });
 
   it("defaults decimals when the catalog omits them", () => {

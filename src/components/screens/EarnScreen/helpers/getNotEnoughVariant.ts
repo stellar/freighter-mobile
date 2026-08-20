@@ -53,10 +53,13 @@ export const hasSwappableBalance = (
   targetIdentifier: string,
 ) =>
   Object.entries(balances).some(([identifier, balance]) => {
-    // Contract-only tokens are not swappable, and LP shares are not a token.
+    // Contract-only (Soroban) balances are not swappable.
     if ("contractId" in balance) {
       return false;
     }
+    // LiquidityPoolBalance carries no `token` property (its tokens live
+    // under `reserves` instead) — this is what actually excludes LP shares,
+    // not the contractId check above.
     if (!("token" in balance)) {
       return false;
     }

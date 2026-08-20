@@ -6,6 +6,7 @@ import {
   EarnTokenPickerScreen,
 } from "components/screens/EarnScreen/screens";
 import { EARN_ROUTES, EarnStackParamList } from "config/routes";
+import { useEarnStore } from "ducks/earn";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import { getScreenBottomNavigateOptions } from "helpers/navigationOptions";
@@ -23,19 +24,29 @@ export const EarnStackNavigator = () => {
   // on open. Same rationale as SwapNavigator.
   useNetworkFees();
 
-  // Reset earn-flow fee/transaction state when the whole flow unmounts, so
-  // EVERY exit path (X, hardware/gesture back, or programmatic) leaves a
-  // clean slate — matches SendPaymentNavigator's teardown. `transactionFee`/
-  // `transactionTimeout` come from the SHARED `useTransactionSettingsStore`
-  // (Earn reuses TransactionContext.Send rather than a dedicated context,
-  // see EarnAmountScreen), so without this reset a fee the user manually
-  // customized in Send would silently leak into Earn's deposit — a real risk
-  // given Earn's resource fee runs ~5,000x the inclusion fee. Also clears the
-  // frozen network-fee snapshot so the next flow re-fetches fresh values.
+  // Reset earn-flow state when the whole flow unmounts, so EVERY exit path
+  // (X, hardware/gesture back, or programmatic) leaves a clean slate.
+  // `transactionFee`/`transactionTimeout` come from the SHARED
+  // `useTransactionSettingsStore` (Earn reuses TransactionContext.Send rather
+  // than a dedicated context, see EarnAmountScreen), so without this reset a
+  // fee the user manually customized in Send would silently leak into Earn's
+  // deposit — a real risk given Earn's resource fee runs ~5,000x the
+  // inclusion fee. Also clears the frozen network-fee snapshot so the next
+  // flow re-fetches fresh values.
+  //
+  // `useEarnStore.resetEarn()` is Earn's equivalent of
+  // `SendPaymentNavigator`'s `useSendRecipientStore.resetSendRecipient()` —
+  // its own domain duck, reset here for the same reason: prior to this fix,
+  // `resetEarn()` was only ever called from the success "Done" handler, so
+  // every other exit (back from the picker, back from Amount, close-while-
+  // submitting, error -> back -> out) left `pool`/asset selection,
+  // `currentPositionTokens`, and `lastSubmitFailed` populated for a later,
+  // unrelated Earn session to inherit.
   useEffect(
     () => () => {
       useTransactionSettingsStore.getState().resetSettings();
       useTransactionBuilderStore.getState().resetTransaction();
+      useEarnStore.getState().resetEarn();
       clearNetworkFeesCache();
     },
     [],

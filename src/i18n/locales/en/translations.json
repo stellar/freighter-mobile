@@ -697,7 +697,7 @@
     "apyDisclaimer": "*APY is an estimate and may change based on pool activity.",
     "error": {
       "title": "We couldn't load Earn right now",
-      "body": "Please check your connection and try again.",
+      "body": "Earn is temporarily unavailable. Please try again shortly.",
       "retry": "Try again"
     }
   },

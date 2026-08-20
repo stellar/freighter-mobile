@@ -30,6 +30,7 @@ import {
 } from "components/sds/NoticeBanner";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
+import { BLEND_DEPOSIT_XLM_FEE_BUFFER } from "config/blend";
 import {
   NATIVE_TOKEN_CODE,
   TransactionContext,
@@ -445,10 +446,21 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
         })
       : new BigNumber(0);
 
+    // `transactionFee` alone is just the inclusion fee (~0.00001 XLM). A
+    // Blend `submit` is dominated by its resource fee, which this gate
+    // cannot know precisely before simulating — so, like
+    // `getMaxDepositAmount`, it checks against the same generous
+    // `BLEND_DEPOSIT_XLM_FEE_BUFFER` pre-simulation estimate rather than the
+    // bare inclusion fee. Without this, a non-XLM deposit with XLM spendable
+    // somewhere in the ~0.00001-0.055 XLM band would clear this gate, simulate
+    // fine (the invocation never touches XLM), and only fail at Horizon
+    // submission — the exact case this sheet exists to catch.
     if (
       needsXlmForFee({
         spendableXlm: spendableXlm.toFixed(),
-        fee: transactionFee,
+        fee: new BigNumber(transactionFee)
+          .plus(BLEND_DEPOSIT_XLM_FEE_BUFFER)
+          .toFixed(),
       })
     ) {
       networkFeeBottomSheetModalRef.current?.present();
@@ -596,7 +608,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
           label={t("earnAmount.depositLabel")}
           selectedToken={depositBalance}
           pickerLabel={tokenCode}
-          onPickerPress={() => {}}
+          onPickerPress={() => navigation.goBack()}
           pickerTestID="earn-amount-token-pill"
           inputTestID="earn-amount-input"
           focusTriggerTestID="earn-amount-focus-trigger"
