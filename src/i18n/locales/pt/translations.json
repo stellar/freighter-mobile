@@ -667,6 +667,16 @@
       "retry": "Tentar novamente"
     }
   },
+  "earnPoolDetails": {
+    "title": "Detalhes do pool",
+    "lendingInterest": "Juros de empréstimo",
+    "currentNetApy": "APY líquido atual",
+    "totalSupplied": "Total fornecido",
+    "totalBorrowed": "Total emprestado",
+    "descriptions": {
+      "fixedPool": "Pool de empréstimo sem permissão e sem administrador. Os fatores de garantia, as curvas de juros e os ativos suportados são fixados no momento da implantação."
+    }
+  },
   "transactionTokenScreen": {
     "title": "Enviando",
     "empty": "Nenhum token ou colecionável para enviar"

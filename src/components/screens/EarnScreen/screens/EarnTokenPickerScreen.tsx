@@ -1,7 +1,10 @@
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import BottomSheet from "components/BottomSheet";
 import Spinner from "components/Spinner";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { EarnTokenRow } from "components/screens/EarnScreen/components/EarnTokenRow";
+import { PoolDetailsBottomSheet } from "components/screens/EarnScreen/components/PoolDetailsBottomSheet";
 import {
   EarnTokenOption,
   useEarnTokens,
@@ -13,7 +16,7 @@ import { EARN_ROUTES, EarnStackParamList } from "config/routes";
 import { useEarnStore } from "ducks/earn";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useRightHeaderButton } from "hooks/useRightHeader";
-import React, { useCallback } from "react";
+import React, { useCallback, useRef } from "react";
 import { SectionList, View } from "react-native";
 
 type EarnTokenPickerScreenProps = NativeStackScreenProps<
@@ -38,15 +41,20 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   navigation,
 }) => {
   const { t } = useAppTranslation();
-  const { isLoading, error, held, supported, refetch } = useEarnTokens();
+  const { isLoading, error, held, supported, pool, refetch } = useEarnTokens();
   const selectAsset = useEarnStore((state) => state.selectAsset);
+  const poolDetailsBottomSheetModalRef = useRef<BottomSheetModal>(null);
 
   /**
-   * Opens the pool details sheet — Task 10 builds the sheet itself. Wired to
-   * the header now (the trigger is a one-line hook call) so Task 10 only has
-   * to fill in the body.
+   * Opens the pool details sheet. Guarded on `pool` because the header
+   * button is wired up unconditionally (even while useEarnTokens is still
+   * loading or has errored) — there is nothing to present until the pool
+   * has resolved.
    */
-  const handlePoolInfoPress = useCallback(() => {}, []);
+  const handlePoolInfoPress = useCallback(() => {
+    if (!pool) return;
+    poolDetailsBottomSheetModalRef.current?.present();
+  }, [pool]);
 
   useRightHeaderButton({
     onPress: handlePoolInfoPress,
@@ -117,39 +125,53 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   ].filter((section) => section.data.length > 0);
 
   return (
-    <BaseLayout insets={{ top: false, bottom: false }}>
-      <SectionList<EarnTokenOption, EarnTokenSection>
-        sections={sections}
-        keyExtractor={(item) => item.assetId}
-        showsVerticalScrollIndicator={false}
-        stickySectionHeadersEnabled={false}
-        renderSectionHeader={({ section }) => (
-          <View className="mt-4 mb-6">
-            <Text md medium secondary>
-              {section.title}
-            </Text>
-          </View>
-        )}
-        renderItem={({ item, section }) => (
-          <EarnTokenRow
-            option={item}
-            testID={`earn-token-option-${item.code}`}
-            onPress={() =>
-              section.kind === "held"
-                ? handleHeldTokenPress(item)
-                : handleUnheldTokenPress()
-            }
+    <>
+      <BaseLayout insets={{ top: false, bottom: false }}>
+        <SectionList<EarnTokenOption, EarnTokenSection>
+          sections={sections}
+          keyExtractor={(item) => item.assetId}
+          showsVerticalScrollIndicator={false}
+          stickySectionHeadersEnabled={false}
+          renderSectionHeader={({ section }) => (
+            <View className="mt-4 mb-6">
+              <Text md medium secondary>
+                {section.title}
+              </Text>
+            </View>
+          )}
+          renderItem={({ item, section }) => (
+            <EarnTokenRow
+              option={item}
+              testID={`earn-token-option-${item.code}`}
+              onPress={() =>
+                section.kind === "held"
+                  ? handleHeldTokenPress(item)
+                  : handleUnheldTokenPress()
+              }
+            />
+          )}
+          ListFooterComponent={
+            <View className="mt-2 mb-6">
+              <Text xs secondary textAlign="center">
+                {t("earnTokenPicker.apyDisclaimer")}
+              </Text>
+            </View>
+          }
+        />
+      </BaseLayout>
+      <BottomSheet
+        modalRef={poolDetailsBottomSheetModalRef}
+        handleCloseModal={() =>
+          poolDetailsBottomSheetModalRef.current?.dismiss()
+        }
+        customContent={
+          <PoolDetailsBottomSheet
+            pool={pool}
+            bottomSheetModalRef={poolDetailsBottomSheetModalRef}
           />
-        )}
-        ListFooterComponent={
-          <View className="mt-2 mb-6">
-            <Text xs secondary textAlign="center">
-              {t("earnTokenPicker.apyDisclaimer")}
-            </Text>
-          </View>
         }
       />
-    </BaseLayout>
+    </>
   );
 };
 
