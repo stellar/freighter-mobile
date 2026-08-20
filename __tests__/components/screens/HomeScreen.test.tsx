@@ -108,8 +108,12 @@ const mockFetchCollectibles = jest.fn().mockResolvedValue(undefined);
 const mockFetchActiveSessions = jest.fn().mockResolvedValue(undefined);
 
 // Mutable so tests can simulate the initial balances fetch settling
-// (read lazily at render time, after jest hoisting).
+// (read lazily at render time, after jest hoisting). Declared ahead of the
+// store mocks below, which close over them.
+let mockNetwork = "TESTNET";
 let mockIsLoadingBalances = false;
+// Drives the tokens tab's empty state, which decides both tabs' button style.
+let mockIsFunded = true;
 
 jest.mock("ducks/balances", () => ({
   useBalancesStore: jest.fn((selector) => {
@@ -117,7 +121,7 @@ jest.mock("ducks/balances", () => ({
       balances: {},
       pricedBalances: {},
       isLoading: mockIsLoadingBalances,
-      isFunded: true,
+      isFunded: mockIsFunded,
       error: null,
       fetchAccountBalances: mockFetchAccountBalances,
     };
@@ -144,12 +148,19 @@ jest.mock("ducks/prices", () => ({
   usePricesForNetwork: jest.fn(() => ({})),
 }));
 
+// Mutable so tests can land a collectible without funding the account.
+let mockCollections: unknown[] = [];
+// The error and loading branches both pre-empt the grid's empty view, which is
+// where the CTA mounts — so both need exercising.
+let mockCollectiblesError: string | null = null;
+let mockIsCollectiblesLoading = false;
+
 jest.mock("ducks/collectibles", () => ({
   useCollectiblesStore: jest.fn((selector) => {
     const mockState = {
-      collections: [],
-      isLoading: false,
-      error: null,
+      collections: mockCollections,
+      isLoading: mockIsCollectiblesLoading,
+      error: mockCollectiblesError,
       fetchCollectibles: mockFetchCollectibles,
     };
     return selector ? selector(mockState) : mockState;
@@ -237,10 +248,6 @@ jest.mock("ducks/accountsFiatTotals", () => ({
   },
 }));
 
-// Mutable so tests can simulate a network switch (read lazily at render
-// time, after jest hoisting).
-let mockNetwork = "TESTNET";
-
 jest.mock("ducks/auth", () => ({
   useAuthenticationStore: (
     selector?: (storeState: Record<string, unknown>) => unknown,
@@ -274,16 +281,17 @@ jest.mock("hooks/useBalancesList", () => ({
     balanceItems: [],
     isLoading: false,
     error: null,
-    noBalances: false,
+    // An unfunded account has no balances, hence the empty state.
+    noBalances: !mockIsFunded,
     isRefreshing: false,
-    isFunded: true,
+    isFunded: mockIsFunded,
     handleRefresh: jest.fn(),
   })),
 }));
 
 jest.mock("hooks/useTotalBalance", () => ({
   useTotalBalance: jest.fn(() => ({
-    formattedBalance: "$350.75",
+    totalLabel: "$350.75",
     totalBalance: "350.75",
     hasFiatTotal: true,
   })),
@@ -301,6 +309,10 @@ describe("HomeScreen", () => {
     mockIsLoadingBalances = false;
     mockIsPricesLoading = false;
     mockNetwork = "TESTNET";
+    mockIsFunded = true;
+    mockCollections = [];
+    mockCollectiblesError = null;
+    mockIsCollectiblesLoading = false;
   });
 
   const buildProps = () => ({
@@ -338,7 +350,7 @@ describe("HomeScreen", () => {
   it("shows a zero fiat total when no balance is priced", () => {
     const { useTotalBalance } = jest.requireMock("hooks/useTotalBalance");
     useTotalBalance.mockReturnValueOnce({
-      formattedBalance: "$0.00",
+      totalLabel: "$0.00",
       totalBalance: "0",
       hasFiatTotal: false,
     });
@@ -348,10 +360,27 @@ describe("HomeScreen", () => {
     expect(getByText("$0.00")).toBeTruthy();
   });
 
+  it("shows the placeholder when a funded account's prices fail", () => {
+    // Nothing is loading anymore, so the hero commits to a label — and a
+    // confident $0.00 would misreport a funded wallet as empty.
+    const { useTotalBalance } = jest.requireMock("hooks/useTotalBalance");
+    useTotalBalance.mockReturnValueOnce({
+      totalLabel: "--",
+      totalBalance: "0",
+      hasFiatTotal: false,
+    });
+
+    const { getByText, queryByText, queryByTestId } = renderHomeScreen();
+
+    expect(getByText("--")).toBeTruthy();
+    expect(queryByText("$0.00")).toBeNull();
+    expect(queryByTestId("home-fiat-total-spinner")).toBeNull();
+  });
+
   it("shows a spinner instead of a placeholder $0.00 while balances load", () => {
     const { useTotalBalance } = jest.requireMock("hooks/useTotalBalance");
     useTotalBalance.mockReturnValue({
-      formattedBalance: "$0.00",
+      totalLabel: "$0.00",
       totalBalance: "0",
       hasFiatTotal: false,
     });
@@ -363,7 +392,7 @@ describe("HomeScreen", () => {
     expect(queryByText("$0.00")).toBeNull();
 
     useTotalBalance.mockReturnValue({
-      formattedBalance: "$350.75",
+      totalLabel: "$350.75",
       totalBalance: "350.75",
       hasFiatTotal: true,
     });
@@ -374,7 +403,7 @@ describe("HomeScreen", () => {
     // quotes are still in flight — the hero must not flash $0.00.
     const { useTotalBalance } = jest.requireMock("hooks/useTotalBalance");
     useTotalBalance.mockReturnValueOnce({
-      formattedBalance: "$0.00",
+      totalLabel: "$0.00",
       totalBalance: "0",
       hasFiatTotal: false,
     });
@@ -479,7 +508,7 @@ describe("HomeScreen", () => {
     );
   });
 
-  describe("HomeScreen floating add buttons", () => {
+  describe("HomeScreen add button style", () => {
     it("shows Add token on the tokens tab and Add collectible after switching", () => {
       const { getByTestId, queryByTestId } = renderHomeScreen();
 
@@ -492,6 +521,100 @@ describe("HomeScreen", () => {
 
       expect(getByTestId("home-add-collectible-button")).toBeTruthy();
       expect(queryByTestId("home-add-token-button")).toBeNull();
+    });
+
+    // Tokens tab is in its empty state, so collectibles matches that style.
+    it("puts the collectibles CTA in the empty state while the account is unfunded", () => {
+      mockIsFunded = false;
+
+      const { getByTestId, queryByTestId } = renderHomeScreen();
+
+      fireEvent.press(getByTestId("tab-collectibles"));
+
+      expect(getByTestId("add-collectible-empty-state-button")).toBeTruthy();
+      expect(queryByTestId("home-add-collectible-button")).toBeNull();
+    });
+
+    it("keeps the collectibles pill and drops its CTA once the account is funded", () => {
+      mockIsFunded = true;
+
+      const { getByTestId, queryByTestId } = renderHomeScreen();
+
+      fireEvent.press(getByTestId("tab-collectibles"));
+
+      expect(getByTestId("home-add-collectible-button")).toBeTruthy();
+      expect(queryByTestId("add-collectible-empty-state-button")).toBeNull();
+    });
+
+    // Guards the invariant: a pill and a CTA are never on screen together.
+    it("shows no pill on either tab while the account is unfunded", () => {
+      mockIsFunded = false;
+
+      const { getByTestId, queryByTestId } = renderHomeScreen();
+
+      expect(queryByTestId("home-add-token-button")).toBeNull();
+
+      fireEvent.press(getByTestId("tab-collectibles"));
+
+      expect(queryByTestId("home-add-collectible-button")).toBeNull();
+    });
+
+    // Regression: the CTA can only mount inside the empty state, so with a
+    // populated grid the pill has to stay or the tab offers nothing at all.
+    // Holding a collectible needs no funded account, so this is reachable.
+    it("keeps the pill when unfunded but the grid has content", () => {
+      mockIsFunded = false;
+      mockCollections = [
+        {
+          collectionAddress: "CCOLLECTION",
+          collectionName: "Test Collection",
+          count: 1,
+          items: [{ tokenId: "1", isHidden: false }],
+        },
+      ];
+
+      const { getByTestId, queryByTestId } = renderHomeScreen();
+
+      fireEvent.press(getByTestId("tab-collectibles"));
+
+      // No empty state to host the CTA, so the pill is the only affordance.
+      expect(getByTestId("home-add-collectible-button")).toBeTruthy();
+      expect(queryByTestId("add-collectible-empty-state-button")).toBeNull();
+    });
+
+    // Regression: the error view replaces the empty state, so the pill standing
+    // down used to leave the tab with nothing at all.
+    it("keeps an Add affordance when unfunded and the collectibles fetch failed", () => {
+      mockIsFunded = false;
+      mockCollectiblesError = "Error loading collectibles";
+
+      const { getByTestId } = renderHomeScreen();
+
+      fireEvent.press(getByTestId("tab-collectibles"));
+
+      // The CTA now rides along in the error view.
+      expect(getByTestId("add-collectible-empty-state-button")).toBeTruthy();
+    });
+
+    // Hidden items aren't on the visible grid, so it still renders its empty
+    // state — which means the CTA hosts the action and the pill stands down.
+    it("treats a grid of only hidden collectibles as empty", () => {
+      mockIsFunded = false;
+      mockCollections = [
+        {
+          collectionAddress: "CCOLLECTION",
+          collectionName: "Test Collection",
+          count: 1,
+          items: [{ tokenId: "1", isHidden: true }],
+        },
+      ];
+
+      const { getByTestId, queryByTestId } = renderHomeScreen();
+
+      fireEvent.press(getByTestId("tab-collectibles"));
+
+      expect(getByTestId("add-collectible-empty-state-button")).toBeTruthy();
+      expect(queryByTestId("home-add-collectible-button")).toBeNull();
     });
   });
 });

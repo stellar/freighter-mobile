@@ -240,4 +240,34 @@ describe("FeeBreakdownBottomSheet", () => {
       expect(queryByText(`${BASE_FEE} XLM`)).toBeNull();
     });
   });
+
+  describe("inclusion fee override (preview)", () => {
+    it("previews the override inclusion fee and total without using the stored fee", () => {
+      mockUseTransactionBuilderStore.mockReturnValue({
+        ...defaultBuilderState,
+        sorobanInclusionFeeXlm: INCLUSION_FEE,
+        sorobanResourceFeeXlm: RESOURCE_FEE,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any);
+
+      const overrideFee = "0.027";
+      const { getByText, queryByText } = render(
+        <FeeBreakdownBottomSheet
+          onClose={mockOnClose}
+          isSorobanContext
+          inclusionFeeXlmOverride={overrideFee}
+        />,
+      );
+
+      // Inclusion reflects the in-progress override, not the stored fee.
+      expect(getByText(`${overrideFee} XLM`)).toBeTruthy();
+      expect(queryByText(`${INCLUSION_FEE} XLM`)).toBeNull();
+
+      // Total = override inclusion + resource fee.
+      const expectedTotal = (parseFloat(overrideFee) + parseFloat(RESOURCE_FEE))
+        .toFixed(7)
+        .replace(/\.?0+$/, "");
+      expect(getByText(`${expectedTotal} XLM`)).toBeTruthy();
+    });
+  });
 });

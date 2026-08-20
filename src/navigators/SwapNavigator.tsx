@@ -9,12 +9,17 @@ import { SWAP_SELECTION_TYPES } from "config/constants";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
 import { getScreenBottomNavigateOptions } from "helpers/navigationOptions";
 import useAppTranslation from "hooks/useAppTranslation";
+import { useNetworkFees } from "hooks/useNetworkFees";
 import React from "react";
 
 const SwapStack = createNativeStackNavigator<SwapStackParamList>();
 
 export const SwapStackNavigator = () => {
   const { t } = useAppTranslation();
+
+  // Prewarm the network-fee snapshot on flow entry so the settings/review read
+  // frozen values from cache rather than fetching (and flickering) on open.
+  useNetworkFees();
 
   return (
     <SwapStack.Navigator

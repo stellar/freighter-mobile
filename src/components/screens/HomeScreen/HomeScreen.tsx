@@ -43,6 +43,7 @@ import { fsValue, pxValue } from "helpers/dimensions";
 import { isContractId } from "helpers/soroban";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
+import { useFilteredCollectibles } from "hooks/useFilteredCollectibles";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useHomeHeaders } from "hooks/useHomeHeaders";
 import { useTotalBalance } from "hooks/useTotalBalance";
@@ -97,7 +98,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
 
     const { t } = useAppTranslation();
 
-    const { formattedBalance, hasFiatTotal } = useTotalBalance();
+    const { totalLabel, hasFiatTotal } = useTotalBalance();
     const {
       balances,
       isFunded,
@@ -106,6 +107,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
     } = useBalancesStore();
     const fetchCollectibles = useCollectiblesStore((s) => s.fetchCollectibles);
     const isCollectiblesLoading = useCollectiblesStore((s) => s.isLoading);
+    // Same source the grid renders from, so "empty" here means what the user
+    // sees on that tab.
+    const { visibleCollectibles } = useFilteredCollectibles();
     // Covers the balances store's 3s price-timeout path: balances settle
     // with an unpriced map while quotes are still in flight, so the hero
     // must keep its spinner until the prices store finishes too.
@@ -126,6 +130,19 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
         ),
       [balances],
     );
+
+    // The tokens tab decides the Add button style for both tabs, and its pill
+    // appears exactly when funded — so driving both off that one flag keeps
+    // the in-empty-state CTA and the pill exact complements.
+    const showEmptyStateCta = !isFunded;
+
+    // ...but that CTA can only mount inside the collectibles empty state, so a
+    // grid with content has nowhere to host it. Suppressing the pill there too
+    // would leave the tab with no way to add a collectible at all — reachable
+    // for real, since holding one needs no funded account (no trustline, no
+    // reserve). So the pill stands down only when the CTA actually renders.
+    const isCollectiblesGridEmpty = visibleCollectibles.length === 0;
+    const showCollectiblesPill = !(showEmptyStateCta && isCollectiblesGridEmpty);
 
     const handleManageAccountsPress = useCallback(() => {
       manageAccountsBottomSheetRef.current?.present();
@@ -361,7 +378,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
               />
             ) : (
               <Display lg medium>
-                {formattedBalance}
+                {totalLabel}
               </Display>
             )}
           </View>
@@ -400,6 +417,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
             onTokenPress={handleTokenPress}
             onCollectiblePress={handleCollectiblePress}
             balanceRowTestIDPrefix="home-token"
+            showEmptyStateCta={showEmptyStateCta}
+            onAddCollectiblePress={handleAddCollectiblePress}
           />
         </ScrollView>
 
@@ -418,7 +437,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
               testID="home-add-token-button"
             />
           )}
-          {activeTab === TabType.COLLECTIBLES && (
+          {/* Stands down only while the collectibles empty state is carrying
+              the CTA itself, so the two are never both on screen — and the tab
+              is never left without either. */}
+          {activeTab === TabType.COLLECTIBLES && showCollectiblesPill && (
             <FloatingTabActionButton
               label={t("collectiblesGrid.addCollectibleButton")}
               onPress={handleAddCollectiblePress}

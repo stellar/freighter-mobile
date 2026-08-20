@@ -88,7 +88,19 @@ export const App = (): React.JSX.Element => {
       }
     };
 
-    initSentry();
+    // Defer until the persisted data-sharing preference has hydrated from
+    // AsyncStorage. Zustand's pre-hydration default is `true` (Android), so
+    // running initSentry() before hydration could initialize Sentry for a
+    // returning opted-out user in the brief window before the stored `false`
+    // restores — breaking the cold-start opt-out. Mirrors the analytics
+    // module's onFinishHydration handling in services/analytics/core.ts.
+    if (useAnalyticsStore.persist.hasHydrated()) {
+      initSentry();
+      return undefined;
+    }
+    return useAnalyticsStore.persist.onFinishHydration(() => {
+      initSentry();
+    });
   }, []);
 
   return (

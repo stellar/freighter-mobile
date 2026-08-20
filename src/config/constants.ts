@@ -185,7 +185,6 @@ export const BOTTOM_SHEET_CONTENT_GAP = 16;
 
 // settings screen URLs
 export const FREIGHTER_BASE_URL = "https://www.freighter.app";
-export const FREIGHTER_DISCORD_URL = "https://discord.gg/rtXyAXPHYT";
 export const FREIGHTER_GITHUB_ISSUE_URL =
   "https://github.com/stellar/freighter-mobile/issues";
 export const STELLAR_FOUNDATION_BASE_URL = "https://stellar.org";

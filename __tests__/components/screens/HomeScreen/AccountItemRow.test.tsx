@@ -1,5 +1,4 @@
 import { fireEvent } from "@testing-library/react-native";
-import { BigNumber } from "bignumber.js";
 import AccountItemRow from "components/screens/HomeScreen/AccountItemRow";
 import { Account } from "config/types";
 import { renderWithProviders } from "helpers/testUtils";
@@ -58,7 +57,7 @@ describe("AccountItemRow", () => {
 
   it("shows the formatted fiat total when available", () => {
     const { getByText } = renderWithProviders(
-      <AccountItemRow {...defaultProps} fiatTotal={new BigNumber("1149.23")} />,
+      <AccountItemRow {...defaultProps} fiatTotal={{ label: "$1,149.23", hasError: false }} />,
     );
 
     expect(getByText("$1,149.23")).toBeTruthy();
@@ -73,22 +72,44 @@ describe("AccountItemRow", () => {
     expect(queryByText("$0.00")).toBeNull();
   });
 
-  it("shows a zero fiat total when it is unavailable", () => {
+  it("shows the placeholder when the total could not be read", () => {
     const { getByText, queryByTestId } = renderWithProviders(
-      <AccountItemRow {...defaultProps} fiatTotal={null} />,
+      <AccountItemRow
+        {...defaultProps}
+        fiatTotal={{ label: "--", hasError: true }}
+      />,
     );
 
-    expect(getByText("$0.00")).toBeTruthy();
+    // A zero here would claim the account is empty when its balances are
+    // simply unknown.
+    expect(getByText("--")).toBeTruthy();
     expect(queryByTestId("account-row-0-total-spinner")).toBeNull();
   });
 
   it("shows the spinner while a failed total is being retried", () => {
     const { getByTestId, queryByText } = renderWithProviders(
-      <AccountItemRow {...defaultProps} fiatTotal={null} isLoadingFiatTotal />,
+      <AccountItemRow
+        {...defaultProps}
+        fiatTotal={{ label: "--", hasError: true }}
+        isLoadingFiatTotal
+      />,
     );
 
     expect(getByTestId("account-row-0-total-spinner")).toBeTruthy();
-    expect(queryByText("$0.00")).toBeNull();
+    expect(queryByText("--")).toBeNull();
+  });
+
+  it("keeps a fetched total visible while other rows refresh", () => {
+    const { getByText, queryByTestId } = renderWithProviders(
+      <AccountItemRow
+        {...defaultProps}
+        fiatTotal={{ label: "$1,149.23", hasError: false }}
+        isLoadingFiatTotal
+      />,
+    );
+
+    expect(getByText("$1,149.23")).toBeTruthy();
+    expect(queryByTestId("account-row-0-total-spinner")).toBeNull();
   });
 
   it("shows a zero fiat total when none was fetched and nothing is loading", () => {
@@ -143,7 +164,7 @@ describe("AccountItemRow", () => {
       <AccountItemRow
         {...defaultProps}
         account={{ ...mockAccount, importedFromSecretKey: true }}
-        fiatTotal={new BigNumber("1149.23")}
+        fiatTotal={{ label: "$1,149.23", hasError: false }}
       />,
     );
 
