@@ -746,6 +746,13 @@
     "buy": "Buy {{tokenCode}}",
     "receive": "Receive"
   },
+  "earnProcessing": {
+    "depositing": "Depositing",
+    "deposited": "Deposited!",
+    "failed": "Deposit failed",
+    "closeMessage": "You can close this screen, your deposit should be complete in less than a minute",
+    "backToAmount": "Back to amount"
+  },
   "transactionTokenScreen": {
     "title": "Sending",
     "empty": "No tokens or collectibles to send"

@@ -18,7 +18,9 @@ import {
   needsXlmForFee,
 } from "components/screens/EarnScreen/helpers";
 import { useEarnPosition } from "components/screens/EarnScreen/hooks/useEarnPosition";
+import { useEarnTransaction } from "components/screens/EarnScreen/hooks/useEarnTransaction";
 import { useSimulateEarnDeposit } from "components/screens/EarnScreen/hooks/useSimulateEarnDeposit";
+import { EarnProcessingScreen } from "components/screens/EarnScreen/screens";
 import { Badge } from "components/sds/Badge";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
@@ -36,6 +38,7 @@ import {
   ADD_FUNDS_ROUTES,
   EARN_ROUTES,
   EarnStackParamList,
+  MAIN_TAB_ROUTES,
   ROOT_NAVIGATOR_ROUTES,
   RootStackParamList,
 } from "config/routes";
@@ -74,7 +77,10 @@ type EarnAmountScreenProps = NativeStackScreenProps<
   typeof EARN_ROUTES.EARN_AMOUNT_SCREEN
 >;
 
-const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({ route }) => {
+const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
+  route,
+  navigation,
+}) => {
   const { assetId, tokenCode } = route.params;
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
@@ -96,6 +102,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({ route }) => {
   );
   const lastSubmitFailed = useEarnStore((state) => state.lastSubmitFailed);
   const setSubmitFailed = useEarnStore((state) => state.setSubmitFailed);
+  const resetEarn = useEarnStore((state) => state.resetEarn);
   const { overriddenBlockaidResponse } = useDebugStore();
 
   const { resetTransaction } = useTransactionBuilderStore();
@@ -326,17 +333,80 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({ route }) => {
     earnReviewBottomSheetModalRef.current?.present();
   }, []);
 
+  // `EarnProcessingScreen` is rendered INLINE below (not a registered
+  // route — there is no `EARN_ROUTES.EARN_PROCESSING_SCREEN`), gated on
+  // `earnTransactionStatus !== "idle"`. This structurally prevents a
+  // swipe-back gesture from abandoning an in-flight submit, which is
+  // stronger than a navigator's `gestureEnabled: false`.
+  const {
+    status: earnTransactionStatus,
+    error: earnTransactionError,
+    submit: submitEarnTransaction,
+    reset: resetEarnTransactionStatus,
+    abandon: abandonEarnTransaction,
+  } = useEarnTransaction({ account, network });
+
   /**
-   * Placeholder for Task 13, which builds `EarnProcessingScreen` and
-   * registers it on `EarnStackNavigator`. `EARN_ROUTES.EARN_PROCESSING_SCREEN`
-   * already exists in `EarnStackParamList`, but is NOT YET a registered
-   * `<EarnStack.Screen>` (confirmed against `EarnNavigator.tsx`) — calling
-   * `navigation.navigate` on it now would throw at runtime. Named clearly so
-   * wiring it up is a one-line swap once Task 13 lands.
+   * Confirms the deposit from the review sheet. `submitEarnTransaction`
+   * flips `earnTransactionStatus` to "submitting" synchronously — which is
+   * what gates the inline `EarnProcessingScreen` render below — so calling
+   * it both sets the processing flag and kicks off the sign/submit work.
    */
   const handleConfirmDeposit = useCallback(() => {
-    // TODO(Task 13): navigation.navigate(EARN_ROUTES.EARN_PROCESSING_SCREEN);
-  }, []);
+    submitEarnTransaction();
+  }, [submitEarnTransaction]);
+
+  // Close during "submitting": returns Home WITHOUT waiting for the result.
+  // There is no background-submission infrastructure to show the outcome
+  // once this screen is gone — but closing does not just hope the abandoned
+  // submit is harmless: `abandonEarnTransaction()` marks it so, and
+  // `useEarnTransaction`'s request-id guard (see `abandon()`'s doc there)
+  // makes sure that when it eventually settles, it skips every write —
+  // including the persisted `setSubmitFailed` duck flag — so it cannot
+  // surface here OR corrupt a later Earn session's retry banner. This is
+  // intentional, matching the flow's spec, not an oversight.
+  const handleCloseEarnProcessingWhileSubmitting = useCallback(() => {
+    abandonEarnTransaction();
+    navigation.reset({
+      index: 0,
+      routes: [
+        {
+          // @ts-expect-error: Cross-stack navigation to MainTabStack with Home tab
+          name: ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK,
+          state: {
+            routes: [{ name: MAIN_TAB_ROUTES.TAB_HOME }],
+            index: 0,
+          },
+        },
+      ],
+    });
+  }, [navigation, abandonEarnTransaction]);
+
+  // Success's "Done" action: clear the earn duck (pool/asset selection,
+  // lastSubmitFailed) now that the flow completed, then return Home.
+  const handleEarnProcessingDone = useCallback(() => {
+    resetEarn();
+    navigation.reset({
+      index: 0,
+      routes: [
+        {
+          // @ts-expect-error: Cross-stack navigation to MainTabStack with Home tab
+          name: ROOT_NAVIGATOR_ROUTES.MAIN_TAB_STACK,
+          state: {
+            routes: [{ name: MAIN_TAB_ROUTES.TAB_HOME }],
+            index: 0,
+          },
+        },
+      ],
+    });
+  }, [navigation, resetEarn]);
+
+  // Error's action: drop back to this screen (no navigation) — the retry
+  // banner shows because `lastSubmitFailed` was already set by the failed
+  // submit.
+  const handleEarnProcessingBackToAmount = useCallback(() => {
+    resetEarnTransactionStatus();
+  }, [resetEarnTransactionStatus]);
 
   const handleCancelSecurityWarning = useCallback(() => {
     transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
@@ -480,6 +550,19 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({ route }) => {
       params: { isUnfunded: false },
     });
   }, [rootNavigation]);
+
+  if (earnTransactionStatus !== "idle") {
+    return (
+      <EarnProcessingScreen
+        status={earnTransactionStatus}
+        tokenAmount={tokenAmount}
+        error={earnTransactionError}
+        onCloseWhileSubmitting={handleCloseEarnProcessingWhileSubmitting}
+        onDone={handleEarnProcessingDone}
+        onBackToAmount={handleEarnProcessingBackToAmount}
+      />
+    );
+  }
 
   const availableBalanceText = depositBalance
     ? `${formatBalanceAmount(depositBalance, tokenCode, maxDepositableBn)} ${t(

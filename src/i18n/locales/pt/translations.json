@@ -712,6 +712,13 @@
     "buy": "Comprar {{tokenCode}}",
     "receive": "Receber"
   },
+  "earnProcessing": {
+    "depositing": "Depositando",
+    "deposited": "Depositado!",
+    "failed": "Falha no depósito",
+    "closeMessage": "Você pode fechar esta tela, seu depósito deve ser concluído em menos de um minuto",
+    "backToAmount": "Voltar ao valor"
+  },
   "transactionTokenScreen": {
     "title": "Enviando",
     "empty": "Nenhum token ou colecionável para enviar"

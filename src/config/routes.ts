@@ -124,7 +124,6 @@ export const SWAP_ROUTES = {
 export const EARN_ROUTES = {
   EARN_TOKEN_PICKER_SCREEN: "EarnTokenPickerScreen",
   EARN_AMOUNT_SCREEN: "EarnAmountScreen",
-  EARN_PROCESSING_SCREEN: "EarnProcessingScreen",
 } as const;
 
 /**
@@ -283,5 +282,4 @@ export type EarnStackParamList = {
     assetId: string;
     tokenCode: string;
   };
-  [EARN_ROUTES.EARN_PROCESSING_SCREEN]: undefined;
 };
