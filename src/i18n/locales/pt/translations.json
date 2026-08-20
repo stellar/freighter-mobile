@@ -677,6 +677,30 @@
       "fixedPool": "Pool de empréstimo sem permissão e sem administrador. Os fatores de garantia, as curvas de juros e os ativos suportados são fixados no momento da implantação."
     }
   },
+  "earnAmount": {
+    "title": "Depositar",
+    "depositLabel": "Depositar",
+    "enterAmount": "Insira o valor",
+    "insufficientFunds": "Saldo insuficiente",
+    "review": "Revisar",
+    "apyLabel": "APY",
+    "retryBanner": "A transação falhou. Tente novamente.",
+    "networkFeeSheet": {
+      "title": "XLM insuficiente para a taxa de rede",
+      "description": "Este depósito precisa de uma pequena quantia de XLM ({{fee}}) para pagar a taxa de rede. Adicione mais XLM à sua conta e tente novamente.",
+      "buyXlm": "Comprar XLM"
+    },
+    "errors": {
+      "simulationFailed": "Falha ao simular o depósito. Tente novamente."
+    }
+  },
+  "earnNotEnough": {
+    "title": "Você não possui {{tokenCode}}",
+    "bodyWithBuy": "Compre {{tokenCode}} ou receba de outra carteira para depositá-lo neste pool.",
+    "bodyReceiveOnly": "Receba {{tokenCode}} de outra carteira para depositá-lo neste pool.",
+    "buy": "Comprar {{tokenCode}}",
+    "receive": "Receber"
+  },
   "transactionTokenScreen": {
     "title": "Enviando",
     "empty": "Nenhum token ou colecionável para enviar"

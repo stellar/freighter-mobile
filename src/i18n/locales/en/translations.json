@@ -711,6 +711,30 @@
       "fixedPool": "Permissionless lending pool with no admin. Collateral factors, interest curves, and supported assets are locked at deployment."
     }
   },
+  "earnAmount": {
+    "title": "Deposit",
+    "depositLabel": "Deposit",
+    "enterAmount": "Enter amount",
+    "insufficientFunds": "Insufficient funds",
+    "review": "Review",
+    "apyLabel": "APY",
+    "retryBanner": "Transaction failed. Try again.",
+    "networkFeeSheet": {
+      "title": "Not enough XLM for the network fee",
+      "description": "This deposit needs a small amount of XLM ({{fee}}) to pay the network fee. Add more XLM to your account and try again.",
+      "buyXlm": "Buy XLM"
+    },
+    "errors": {
+      "simulationFailed": "Failed to simulate the deposit. Please try again."
+    }
+  },
+  "earnNotEnough": {
+    "title": "You don't have any {{tokenCode}}",
+    "bodyWithBuy": "Buy {{tokenCode}} or receive it from another wallet to deposit it into this pool.",
+    "bodyReceiveOnly": "Receive {{tokenCode}} from another wallet to deposit it into this pool.",
+    "buy": "Buy {{tokenCode}}",
+    "receive": "Receive"
+  },
   "transactionTokenScreen": {
     "title": "Sending",
     "empty": "No tokens or collectibles to send"

@@ -1,10 +1,18 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
+import { NavigationProp, useNavigation } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import BottomSheet from "components/BottomSheet";
 import Spinner from "components/Spinner";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { EarnTokenRow } from "components/screens/EarnScreen/components/EarnTokenRow";
+import { NotEnoughTokenBottomSheet } from "components/screens/EarnScreen/components/NotEnoughTokenBottomSheet";
 import { PoolDetailsBottomSheet } from "components/screens/EarnScreen/components/PoolDetailsBottomSheet";
+import {
+  NotEnoughVariant,
+  getNotEnoughVariant,
+  hasSwappableBalance,
+  isOnrampableAsset,
+} from "components/screens/EarnScreen/helpers";
 import {
   EarnTokenOption,
   useEarnTokens,
@@ -12,11 +20,21 @@ import {
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { EARN_ROUTES, EarnStackParamList } from "config/routes";
+import { mapNetworkToNetworkDetails } from "config/constants";
+import {
+  ADD_FUNDS_ROUTES,
+  EARN_ROUTES,
+  EarnStackParamList,
+  ROOT_NAVIGATOR_ROUTES,
+  RootStackParamList,
+} from "config/routes";
+import { useAuthenticationStore } from "ducks/auth";
+import { useBalancesStore } from "ducks/balances";
 import { useEarnStore } from "ducks/earn";
+import { getTokenIdentifier } from "helpers/balances";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useRightHeaderButton } from "hooks/useRightHeader";
-import React, { useCallback, useRef } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { SectionList, View } from "react-native";
 
 type EarnTokenPickerScreenProps = NativeStackScreenProps<
@@ -30,20 +48,78 @@ interface EarnTokenSection {
   data: EarnTokenOption[];
 }
 
-/**
- * Zero-balance rows aren't deposit-ready — tapping one should open the
- * "not enough" sheet Task 11 builds. Left named and empty here so the row's
- * press target and styling are correct in the meantime.
- */
-const handleUnheldTokenPress = () => {};
-
 export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   navigation,
 }) => {
   const { t } = useAppTranslation();
   const { isLoading, error, held, supported, pool, refetch } = useEarnTokens();
   const selectAsset = useEarnStore((state) => state.selectAsset);
+  const { network } = useAuthenticationStore();
+  const { pricedBalances } = useBalancesStore();
   const poolDetailsBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const notEnoughBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const [notEnoughOption, setNotEnoughOption] =
+    useState<EarnTokenOption | null>(null);
+
+  // Cross-stack navigation (Buy / Receive live outside EarnStack) needs the
+  // root-level param list — the screen's own `navigation` prop is typed to
+  // EarnStackParamList only.
+  const rootNavigation = useNavigation<NavigationProp<RootStackParamList>>();
+
+  const networkDetails = useMemo(
+    () => mapNetworkToNetworkDetails(network),
+    [network],
+  );
+
+  /**
+   * Zero-balance rows aren't deposit-ready — tapping one opens the "not
+   * enough" sheet instead of navigating to the (unusable) amount screen.
+   */
+  const handleUnheldTokenPress = useCallback((option: EarnTokenOption) => {
+    setNotEnoughOption(option);
+    notEnoughBottomSheetModalRef.current?.present();
+  }, []);
+
+  const notEnoughVariant = useMemo(() => {
+    if (!notEnoughOption) {
+      return NotEnoughVariant.TRANSFER_ONLY;
+    }
+
+    const isOnrampable = isOnrampableAsset(
+      notEnoughOption.code,
+      networkDetails,
+    );
+    // No trustline for this asset means it can't appear as a key in
+    // `pricedBalances` at all, so any identifier that isn't a real
+    // "XLM"/"CODE:ISSUER" key is a safe placeholder — the reserve's own
+    // contract address works and never collides.
+    const targetIdentifier = notEnoughOption.balance
+      ? getTokenIdentifier(notEnoughOption.balance)
+      : notEnoughOption.assetId;
+    const isSwappable = hasSwappableBalance(pricedBalances, targetIdentifier);
+
+    return getNotEnoughVariant({ isOnrampable, isSwappable });
+  }, [notEnoughOption, networkDetails, pricedBalances]);
+
+  const handleCloseNotEnoughSheet = useCallback(() => {
+    notEnoughBottomSheetModalRef.current?.dismiss();
+    setNotEnoughOption(null);
+  }, []);
+
+  const handleBuyPress = useCallback(() => {
+    notEnoughBottomSheetModalRef.current?.dismiss();
+    rootNavigation.navigate(ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK, {
+      screen: ADD_FUNDS_ROUTES.ADD_FUNDS_SCREEN,
+      params: { isUnfunded: false },
+    });
+  }, [rootNavigation]);
+
+  const handleReceivePress = useCallback(() => {
+    notEnoughBottomSheetModalRef.current?.dismiss();
+    rootNavigation.navigate(ROOT_NAVIGATOR_ROUTES.SCAN_RECEIVE_SCREEN, {
+      initialTab: "receive",
+    });
+  }, [rootNavigation]);
 
   /**
    * Opens the pool details sheet. Guarded on `pool` because the header
@@ -146,7 +222,7 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
               onPress={() =>
                 section.kind === "held"
                   ? handleHeldTokenPress(item)
-                  : handleUnheldTokenPress()
+                  : handleUnheldTokenPress(item)
               }
             />
           )}
@@ -168,6 +244,19 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
           <PoolDetailsBottomSheet
             pool={pool}
             bottomSheetModalRef={poolDetailsBottomSheetModalRef}
+          />
+        }
+      />
+      <BottomSheet
+        modalRef={notEnoughBottomSheetModalRef}
+        handleCloseModal={handleCloseNotEnoughSheet}
+        customContent={
+          <NotEnoughTokenBottomSheet
+            variant={notEnoughVariant}
+            tokenCode={notEnoughOption?.code ?? ""}
+            onBuy={handleBuyPress}
+            onReceive={handleReceivePress}
+            onClose={handleCloseNotEnoughSheet}
           />
         }
       />
