@@ -1,5 +1,4 @@
 import BigNumber from "bignumber.js";
-import { BLEND_DEPOSIT_XLM_FEE_BUFFER } from "config/blend";
 
 /**
  * Pure CTA state machine for the deposit amount screen. Precedence matters:
@@ -53,89 +52,68 @@ export const needsXlmForFee = ({
 }) => new BigNumber(spendableXlm).lt(new BigNumber(fee));
 
 /**
- * Spendable amount to offer for a Max deposit.
+ * How much XLM a deposit is short of its own network fee, or "0" if it fits.
  *
- * `calculateSpendableAmount` subtracts the base reserve and the *inclusion*
- * fee, but a Blend `submit` is dominated by its resource fee — ~0.0546 XLM
- * against the live pool, roughly 5,000x the inclusion fee. Depositing the raw
- * available balance of XLM therefore simulates into an insufficient-balance
- * error. Hold back a buffer; the CTA handler re-checks against the real
- * `minResourceFee` once simulation returns (see `clampXlmDepositAmount`).
+ * A Blend `submit` is dominated by its resource fee — ~0.0546 XLM against the
+ * live pool, roughly 5,000x the inclusion fee — and that figure is only known
+ * once simulation returns. Rather than hold a guessed buffer back from the
+ * balance (which locks XLM the user may well want to deposit), the deposit
+ * screen offers the whole spendable balance and checks the *measured* fee
+ * here, after simulation and before the review sheet.
  *
- * Only XLM needs this — for any other asset the fee is paid from a separate
- * balance, and the shortfall surfaces through the network-fee sheet instead.
+ * `spendableXlm` is expected to come from `calculateSpendableAmount`, which
+ * already nets out the base reserve and the inclusion fee, so only the
+ * resource fee is left to cover.
+ *
+ * Only XLM deposits can be short this way: for any other asset the fee comes
+ * out of an untouched XLM balance.
  */
-export const getMaxDepositAmount = ({
-  availableBalance,
-  isXlm,
+export const getXlmFeeShortfall = ({
+  spendableXlm,
+  amount,
+  resourceFee,
 }: {
-  availableBalance: string;
-  isXlm: boolean;
-}) => {
-  const available = new BigNumber(availableBalance);
-  if (!isXlm) {
-    return available.toFixed();
-  }
-  return BigNumber.max(
-    available.minus(new BigNumber(BLEND_DEPOSIT_XLM_FEE_BUFFER)),
-    new BigNumber(0),
-  ).toFixed();
+  spendableXlm: string;
+  /** Cleaned deposit amount — no group separators. */
+  amount: string;
+  /** Measured resource fee from simulation, in XLM. */
+  resourceFee: string;
+}): string => {
+  const remaining = new BigNumber(spendableXlm).minus(new BigNumber(amount));
+  const shortfall = new BigNumber(resourceFee).minus(remaining);
+  return BigNumber.max(shortfall, new BigNumber(0)).toFixed();
 };
 
 /**
- * Re-clamps the entered deposit amount against the REAL resource fee, once
- * simulation has resolved and the fee is actually known — `getMaxDepositAmount`'s
- * 0.5 XLM buffer above is a generous pre-simulation estimate, not the real cost.
+ * Fallback fee fed to `getXlmFeeShortfall` when simulation did not report a
+ * measured resource fee (`sorobanResourceFeeXlm === null` — the backend
+ * omitted or returned an unparsable `minResourceFee`).
  *
- * Pure and side-effect-free by design: the caller (`EarnAmountScreen`'s CTA
- * handler) is responsible for actually updating `tokenAmount` and re-simulating
- * with the returned value BEFORE opening Review, so the staged transaction in
- * `transactionBuilder` always corresponds to what gets displayed. This function
- * only computes what the corrected amount SHOULD be.
+ * `null` means UNKNOWN, not zero. Feeding "0" in that case would make
+ * `getXlmFeeShortfall` report "0" any time `amount <= spendableXlm` — which,
+ * given the CTA's own `isAmountTooHigh` guard, is every single time it would
+ * be called — silently disabling the shortfall check entirely rather than
+ * skipping it visibly. This floor is a stand-in fee, not a stand-in "no fee":
+ * it sits comfortably above the ~0.0546 XLM resource fee measured against the
+ * live pool, so an unreported fee still gets caught here instead of passing
+ * through undetected.
  *
- * Returns `enteredAmount` unchanged (a no-op) when:
- * - the deposit asset is not XLM — every other asset's fee comes from a
- *   separate balance, so this cannot squeeze it;
- * - `resourceFeeXlm` is `null` — an unknown fee, not a zero one, so there is
- *   nothing more precise to re-check against than the buffer already applied;
- * - the entered amount already fits.
- *
- * Otherwise returns `spendableXlm - resourceFeeXlm`, floored at zero and
- * rounded DOWN at the asset's decimals — so the result never exceeds the
- * asset's precision and is never negative. Idempotent: feeding the function's
- * own output back in as `enteredAmount` is always a no-op, since the rounded
- * result can only be less than or equal to the un-rounded ceiling it was
- * derived from.
+ * This is NOT the removed Max-deposit buffer come back. That buffer applied
+ * unconditionally and reduced the amount Max/the percentage buttons offered.
+ * This floor applies only on the rare unknown-fee branch of the
+ * post-simulation shortfall check — it never changes what amount is
+ * enterable.
  */
-export const clampXlmDepositAmount = ({
-  enteredAmount,
-  spendableXlm,
-  resourceFeeXlm,
-  decimals,
-  isXlm,
-}: {
-  enteredAmount: string;
-  spendableXlm: string;
-  resourceFeeXlm: string | null;
-  decimals: number;
-  isXlm: boolean;
-}): string => {
-  if (!isXlm || resourceFeeXlm === null) {
-    return enteredAmount;
-  }
+export const UNKNOWN_RESOURCE_FEE_FLOOR_XLM = "0.1";
 
-  const maxFittingAmount = BigNumber.max(
-    new BigNumber(spendableXlm).minus(resourceFeeXlm),
-    new BigNumber(0),
-  );
-
-  const entered = new BigNumber(enteredAmount || "0");
-
-  if (entered.lte(maxFittingAmount)) {
-    return enteredAmount;
-  }
-
-  return maxFittingAmount
-    .decimalPlaces(decimals, BigNumber.ROUND_DOWN)
-    .toFixed();
-};
+/**
+ * Does a failed simulation read as "this account cannot cover the transfer"?
+ *
+ * Deliberately narrow: the Stellar Asset Contract's BalanceError (contract
+ * error #10) and the classic insufficient-balance result code are the only
+ * signals that mean the amount itself is the problem. Everything else —
+ * supply caps, a frozen pool, a stale oracle — must keep surfacing the pool's
+ * own message.
+ */
+export const isInsufficientBalanceFailure = (message: string): boolean =>
+  /Error\(Contract, #10\)|insufficient[ _]balance/i.test(message);

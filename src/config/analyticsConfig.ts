@@ -165,10 +165,14 @@ export enum AnalyticsEvent {
 
   // Earn deposit (Blend). No amounts/fiat on either event (product decision,
   // non-negotiable) -- only asset_code, pool_id, apy, matching how
-  // payment.completed / swap.completed are shaped.
-  EARN_DEPOSIT_SUCCESS = "earn_deposit.completed",
+  // payment.completed / swap.completed are shaped. Named earn.deposit_* to
+  // match the extension's event name exactly (it uses earn.deposit_completed
+  // / earn.deposit_failed) rather than mobile's usual <noun>_<verb> shape, so
+  // the two platforms land in the same Amplitude funnel instead of splitting
+  // it -- the VIEW_EARN_* events above already match the extension this way.
+  EARN_DEPOSIT_SUCCESS = "earn.deposit_completed",
   // carries reason_code
-  EARN_DEPOSIT_FAIL = "earn_deposit.failed",
+  EARN_DEPOSIT_FAIL = "earn.deposit_failed",
 
   // Send collectible
   SEND_COLLECTIBLE_SUCCESS = "collectible_send.completed",

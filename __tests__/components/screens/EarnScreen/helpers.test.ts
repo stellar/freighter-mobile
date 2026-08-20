@@ -1,16 +1,17 @@
 import BigNumber from "bignumber.js";
 import {
   NotEnoughVariant,
-  clampXlmDepositAmount,
+  UNKNOWN_RESOURCE_FEE_FLOOR_XLM,
   formatCompactUsd,
   formatProjection,
   formatRate,
   getEarnCtaState,
-  getMaxDepositAmount,
   getNotEnoughVariant,
   getPercentageDepositAmount,
   getPoolDescriptionKey,
+  getXlmFeeShortfall,
   hasSwappableBalance,
+  isInsufficientBalanceFailure,
   isOnrampableAsset,
   needsXlmForFee,
   projectEarnings,
@@ -82,115 +83,89 @@ describe("needsXlmForFee", () => {
   });
 });
 
-describe("getMaxDepositAmount", () => {
-  it("holds back a fee buffer for XLM", () => {
-    // A Blend submit's resource fee dwarfs the inclusion fee already netted out
-    // by calculateSpendableAmount, so Max must reserve more.
-    expect(getMaxDepositAmount({ availableBalance: "100", isXlm: true })).toBe(
-      "99.5",
-    );
-  });
-
-  it("never returns a negative amount", () => {
-    expect(getMaxDepositAmount({ availableBalance: "0.1", isXlm: true })).toBe(
-      "0",
-    );
-  });
-
-  it("leaves non-XLM balances untouched — their fee comes from a separate balance", () => {
-    expect(getMaxDepositAmount({ availableBalance: "100", isXlm: false })).toBe(
-      "100",
-    );
-  });
-});
-
-describe("clampXlmDepositAmount", () => {
-  it("reduces the entered amount to fit once the real resource fee is known", () => {
+describe("getXlmFeeShortfall", () => {
+  it("is zero when the deposit leaves more than the resource fee", () => {
     expect(
-      clampXlmDepositAmount({
-        enteredAmount: "99.5",
-        spendableXlm: "99.5",
-        resourceFeeXlm: "0.0546",
-        decimals: 7,
-        isXlm: true,
-      }),
-    ).toBe("99.4454");
-  });
-
-  it("leaves an amount that already fits untouched", () => {
-    expect(
-      clampXlmDepositAmount({
-        enteredAmount: "50",
-        spendableXlm: "99.5",
-        resourceFeeXlm: "0.0546",
-        decimals: 7,
-        isXlm: true,
-      }),
-    ).toBe("50");
-  });
-
-  it("never returns negative — floors at zero when the fee exceeds spendable", () => {
-    expect(
-      clampXlmDepositAmount({
-        enteredAmount: "1",
-        spendableXlm: "0.02",
-        resourceFeeXlm: "0.0546",
-        decimals: 7,
-        isXlm: true,
+      getXlmFeeShortfall({
+        spendableXlm: "100",
+        amount: "50",
+        resourceFee: "0.0546395",
       }),
     ).toBe("0");
   });
 
-  it("rounds DOWN at the asset's decimals rather than up or to nearest", () => {
-    // 10 - 0.0546000004 = 9.9453999996 -> floors to 9.945399 at 6 decimals,
-    // never 9.9454 (which would round up and no longer strictly fit).
+  it("reports the shortfall when the whole spendable balance is deposited", () => {
+    // The full balance is depositable — nothing is held back — so the entire
+    // resource fee is missing.
     expect(
-      clampXlmDepositAmount({
-        enteredAmount: "10",
-        spendableXlm: "10",
-        resourceFeeXlm: "0.0546000004",
-        decimals: 6,
-        isXlm: true,
+      getXlmFeeShortfall({
+        spendableXlm: "100",
+        amount: "100",
+        resourceFee: "0.0546395",
       }),
-    ).toBe("9.945399");
+    ).toBe("0.0546395");
   });
 
-  it("is idempotent: re-running on its own output is a no-op", () => {
-    const params = {
-      enteredAmount: "99.5",
-      spendableXlm: "99.5",
-      resourceFeeXlm: "0.0546",
-      decimals: 7,
-      isXlm: true,
-    };
-    const clamped = clampXlmDepositAmount(params);
-    expect(clampXlmDepositAmount({ ...params, enteredAmount: clamped })).toBe(
-      clamped,
-    );
+  it("reports only the part of the fee that is not covered", () => {
+    expect(
+      getXlmFeeShortfall({
+        spendableXlm: "100",
+        amount: "99.99",
+        resourceFee: "0.0546395",
+      }),
+    ).toBe("0.0446395");
   });
 
-  it("does not apply to a non-XLM deposit — its fee comes from a separate balance", () => {
+  it("is zero when the remainder exactly covers the fee", () => {
     expect(
-      clampXlmDepositAmount({
-        enteredAmount: "1000",
-        spendableXlm: "1",
-        resourceFeeXlm: "0.0546",
-        decimals: 7,
-        isXlm: false,
+      getXlmFeeShortfall({
+        spendableXlm: "100",
+        amount: "99.9453605",
+        resourceFee: "0.0546395",
       }),
-    ).toBe("1000");
+    ).toBe("0");
   });
 
-  it("does not apply when the resource fee is unknown (null) rather than treating it as zero", () => {
+  it("does not lose precision on a large balance", () => {
     expect(
-      clampXlmDepositAmount({
-        enteredAmount: "99.5",
-        spendableXlm: "50",
-        resourceFeeXlm: null,
-        decimals: 7,
-        isXlm: true,
+      getXlmFeeShortfall({
+        spendableXlm: "1691.6912345",
+        amount: "1691.6912345",
+        resourceFee: "0.0546395",
       }),
-    ).toBe("99.5");
+    ).toBe("0.0546395");
+  });
+});
+
+describe("UNKNOWN_RESOURCE_FEE_FLOOR_XLM", () => {
+  it("sits comfortably above the measured Blend submit resource fee", () => {
+    // Measured at ~546,395 stroops (0.0546 XLM) against the live mainnet
+    // pool. The floor must exceed that to actually catch an unreported fee.
+    expect(Number(UNKNOWN_RESOURCE_FEE_FLOOR_XLM)).toBeGreaterThan(0.0546);
+  });
+});
+
+describe("isInsufficientBalanceFailure", () => {
+  it("matches the asset contract's BalanceError", () => {
+    expect(
+      isInsufficientBalanceFailure(
+        "host invocation failed: HostError: Error(Contract, #10)",
+      ),
+    ).toBe(true);
+  });
+
+  it("matches a classic insufficient-balance result code", () => {
+    expect(isInsufficientBalanceFailure("tx_insufficient_balance")).toBe(true);
+    expect(isInsufficientBalanceFailure("txINSUFFICIENT_BALANCE")).toBe(true);
+  });
+
+  it("leaves the pool's own rejections alone", () => {
+    // Supply cap, frozen pool, stale oracle — these must keep surfacing their
+    // own message rather than being retold as a fee problem.
+    expect(
+      isInsufficientBalanceFailure("HostError: Error(Contract, #1206)"),
+    ).toBe(false);
+    expect(isInsufficientBalanceFailure("pool is frozen")).toBe(false);
   });
 });
 

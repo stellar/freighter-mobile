@@ -1,5 +1,4 @@
 import {
-  BLEND_DEPOSIT_XLM_FEE_BUFFER,
   BLEND_FIXED_POOL_IDS,
   getBlendPoolId,
   isEarnSupportedNetwork,
@@ -27,12 +26,6 @@ describe("blend config", () => {
   it("reports Earn supported wherever a pool is allowlisted", () => {
     expect(isEarnSupportedNetwork(details(NETWORKS.PUBLIC))).toBe(true);
     expect(isEarnSupportedNetwork(details(NETWORKS.TESTNET))).toBe(true);
-  });
-
-  it("holds back a fee buffer large enough for a Blend submit resource fee", () => {
-    // One submit measured at ~546,395 stroops (0.0546 XLM) against the live
-    // mainnet pool. The buffer must comfortably exceed that.
-    expect(Number(BLEND_DEPOSIT_XLM_FEE_BUFFER)).toBeGreaterThan(0.0546);
   });
 
   it("exposes exactly the two allowlisted networks", () => {

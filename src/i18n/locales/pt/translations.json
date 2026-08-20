@@ -691,7 +691,9 @@
       "buyXlm": "Comprar XLM"
     },
     "errors": {
-      "simulationFailed": "Falha ao simular o depósito. Tente novamente."
+      "simulationFailed": "Falha ao simular o depósito. Tente novamente.",
+      "feeShortfall": "Não há XLM suficiente para a taxa de rede. Reduza seu depósito em pelo menos {{amount}} XLM.",
+      "insufficientBalanceForFee": "Não há XLM suficiente para cobrir a taxa de rede. Tente depositar um valor menor."
     }
   },
   "earnReview": {
@@ -702,8 +704,7 @@
     "positionValue": "{{before}} → {{after}}",
     "estMonthlyEarnings": "Ganhos mensais est.",
     "estYearlyEarnings": "Ganhos anuais est.",
-    "projectionDisclaimer": "Os ganhos estimados são projeções baseadas na taxa atual e podem mudar de acordo com a atividade do pool.",
-    "amountReduced": "Valor reduzido para cobrir a taxa de rede"
+    "projectionDisclaimer": "Os ganhos estimados são projeções baseadas na taxa atual e podem mudar de acordo com a atividade do pool."
   },
   "earnNotEnough": {
     "title": "Você não possui {{tokenCode}}",

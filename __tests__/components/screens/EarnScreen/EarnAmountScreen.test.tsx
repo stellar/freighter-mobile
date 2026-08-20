@@ -2,6 +2,7 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { fireEvent } from "@testing-library/react-native";
 import BigNumber from "bignumber.js";
+import { UNKNOWN_RESOURCE_FEE_FLOOR_XLM } from "components/screens/EarnScreen/helpers";
 import EarnAmountScreen from "components/screens/EarnScreen/screens/EarnAmountScreen";
 import { EARN_ROUTES, EarnStackParamList } from "config/routes";
 import { useEarnStore } from "ducks/earn";
@@ -90,11 +91,16 @@ const mockAbandonEarnTransaction = jest.fn();
 let mockEarnTransactionStatus: "idle" | "submitting" | "success" | "error" =
   "idle";
 
+// Settable per-test so the failed-simulation message-swap effect (see
+// `EarnAmountScreen`'s `simulateError` useEffect) can be exercised without
+// actually driving a rejected `simulate()` call through this mock.
+let mockSimulateError: string | null = null;
+
 jest.mock("components/screens/EarnScreen/hooks/useSimulateEarnDeposit", () => ({
   useSimulateEarnDeposit: () => ({
     simulate: mockSimulate,
     isSimulating: false,
-    error: null,
+    error: mockSimulateError,
     scanResult: undefined,
   }),
 }));
@@ -269,6 +275,7 @@ describe("EarnAmountScreen", () => {
     // eslint-disable-next-line no-underscore-dangle
     globalThis.__earnAmountMockSheetRefs = [];
     mockEarnTransactionStatus = "idle";
+    mockSimulateError = null;
     mockPricedBalances = { XLM: XLM_BALANCE, [USDC_ASSET_ID]: USDC_BALANCE };
 
     useEarnStore.getState().resetEarn();
@@ -348,16 +355,30 @@ describe("EarnAmountScreen", () => {
       expect(cta).toHaveTextContent("earnAmount.review");
       expect(cta.props.accessibilityState?.disabled).toBeFalsy();
     });
+
+    it("offers the whole spendable balance for an XLM deposit -- no fee buffer held back", () => {
+      // A prior design held back a guessed 0.5 XLM buffer from Max, which
+      // made depositing the full spendable balance read as "insufficient".
+      // That buffer is gone: the full balance is now a valid amount.
+      mockGetBalanceByContractId.mockReturnValue(XLM_BALANCE);
+      setSpendable({ deposit: "100", xlm: "100" });
+      setTokenAmount("100");
+
+      const { getByTestId } = renderScreen();
+      const cta = getByTestId("earn-amount-cta");
+
+      expect(cta).toHaveTextContent("earnAmount.review");
+      expect(cta.props.accessibilityState?.disabled).toBeFalsy();
+    });
   });
 
-  describe("fee-headroom gate (FIX 2)", () => {
-    it("opens the fee sheet BEFORE calling simulate when spendable XLM sits in the resource-fee band", async () => {
-      // transactionFee defaults to MIN_TRANSACTION_FEE ("0.00001"). The
-      // buffered threshold is transactionFee + BLEND_DEPOSIT_XLM_FEE_BUFFER
-      // ("0.5") = "0.50001". 0.1 clears the bare inclusion fee (the
-      // pre-fix gate) but falls inside the real resource-fee band, which is
-      // exactly the ~5,000x gap FIX 2 closes.
-      setSpendable({ deposit: "1000", xlm: "0.1" });
+  describe("fee-headroom gate", () => {
+    it("opens the fee sheet BEFORE calling simulate when the account has no spendable XLM at all", async () => {
+      // The 0.5 XLM buffer is gone, so this pre-simulation gate now only
+      // needs to catch a zero-XLM account -- anything else clears it and is
+      // caught post-simulation instead (see "post-simulation fee shortfall"
+      // below), once the real resource fee is known.
+      setSpendable({ deposit: "1000", xlm: "0" });
       setTokenAmount("10");
 
       const { getByTestId } = renderScreen();
@@ -371,12 +392,12 @@ describe("EarnAmountScreen", () => {
       expect(mockSimulate).not.toHaveBeenCalled();
     });
 
-    it("does not trip the gate for an XLM deposit that leaves >= 0.5 XLM spendable", async () => {
-      // Regression guard noted in the review: the CTA's own insufficient-
-      // funds check already keeps any XLM amount that reaches this gate at
-      // >= 0.5 XLM spendable, so the raised threshold must not fire here.
+    it("does not trip the gate once there is any spendable XLM, even far less than a Blend submit's resource fee", async () => {
+      // This is exactly the case the buffer used to guess at pre-simulation.
+      // Now it clears this gate (it is not "zero XLM") and simulate runs;
+      // whether it actually covers the real fee is the shortfall check's job.
       mockGetBalanceByContractId.mockReturnValue(XLM_BALANCE);
-      setSpendable({ deposit: "0.6", xlm: "0.6" });
+      setSpendable({ deposit: "0.1", xlm: "0.1" });
       setTokenAmount("0.05");
 
       useTransactionBuilderStore.setState({ sorobanResourceFeeXlm: "0.01" });
@@ -391,6 +412,187 @@ describe("EarnAmountScreen", () => {
       const [feeSheet] = globalThis.__earnAmountMockSheetRefs;
       expect(feeSheet.present).not.toHaveBeenCalled();
       expect(mockSimulate).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("post-simulation fee shortfall", () => {
+    it("blocks Review and surfaces the reduce-by amount when the deposit does not leave enough XLM for the measured fee", async () => {
+      // The whole spendable balance is offered (no buffer held back), so
+      // depositing all of it leaves nothing for the resource fee simulation
+      // is about to report.
+      mockGetBalanceByContractId.mockReturnValue(XLM_BALANCE);
+      setSpendable({ deposit: "100", xlm: "100" });
+      setTokenAmount("100");
+
+      mockSimulate.mockImplementation(() => {
+        useTransactionBuilderStore.setState({
+          sorobanResourceFeeXlm: "0.0546395",
+        });
+        return { preparedXdr: "prepared-xdr", scanResult: undefined };
+      });
+
+      const { getByTestId } = renderScreen();
+
+      await fireEvent.press(getByTestId("earn-amount-cta"));
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(mockSimulate).toHaveBeenCalledTimes(1);
+      // eslint-disable-next-line no-underscore-dangle
+      const [, reviewSheet] = globalThis.__earnAmountMockSheetRefs;
+      expect(reviewSheet.present).not.toHaveBeenCalled();
+      expect(mockShowToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          variant: "error",
+          toastId: "earn-fee-shortfall",
+        }),
+      );
+    });
+
+    it("never computes a shortfall for a non-XLM deposit -- its fee comes from an untouched XLM balance", async () => {
+      // Deposit asset is USDC (this suite's default balance); depositing the
+      // whole USDC balance cannot squeeze the separate XLM balance the fee
+      // is actually paid from.
+      setSpendable({ deposit: "1000", xlm: "10" });
+      setTokenAmount("1000");
+
+      mockSimulate.mockImplementation(() => {
+        useTransactionBuilderStore.setState({
+          sorobanResourceFeeXlm: "0.0546395",
+        });
+        return { preparedXdr: "prepared-xdr", scanResult: undefined };
+      });
+
+      const { getByTestId } = renderScreen();
+
+      await fireEvent.press(getByTestId("earn-amount-cta"));
+      await Promise.resolve();
+      await Promise.resolve();
+
+      // eslint-disable-next-line no-underscore-dangle
+      const [, reviewSheet] = globalThis.__earnAmountMockSheetRefs;
+      expect(reviewSheet.present).toHaveBeenCalledTimes(1);
+      expect(mockShowToast).not.toHaveBeenCalledWith(
+        expect.objectContaining({ toastId: "earn-fee-shortfall" }),
+      );
+    });
+
+    it("blocks with the shortfall message when the resource fee is unknown (null) and the deposit is near-max", async () => {
+      // `null` must never be treated as "0": a near-max deposit leaves less
+      // room than the unknown-fee floor, so this must still block rather
+      // than silently letting Review open (the bug the fix report's finding
+      // flagged -- feeding "0" here would report "0" every time, since
+      // tokenAmount <= spendableXlm always holds by construction).
+      mockGetBalanceByContractId.mockReturnValue(XLM_BALANCE);
+      setSpendable({ deposit: "100", xlm: "100" });
+      setTokenAmount("99.95");
+
+      mockSimulate.mockImplementation(() => {
+        useTransactionBuilderStore.setState({ sorobanResourceFeeXlm: null });
+        return { preparedXdr: "prepared-xdr", scanResult: undefined };
+      });
+
+      const { getByTestId } = renderScreen();
+
+      await fireEvent.press(getByTestId("earn-amount-cta"));
+      await Promise.resolve();
+      await Promise.resolve();
+
+      // eslint-disable-next-line no-underscore-dangle
+      const [, reviewSheet] = globalThis.__earnAmountMockSheetRefs;
+      expect(reviewSheet.present).not.toHaveBeenCalled();
+      expect(mockShowToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          variant: "error",
+          toastId: "earn-fee-shortfall",
+        }),
+      );
+    });
+
+    it("still lets Review open when the resource fee is unknown (null) but the deposit leaves well over the unknown-fee floor", async () => {
+      mockGetBalanceByContractId.mockReturnValue(XLM_BALANCE);
+      setSpendable({ deposit: "100", xlm: "100" });
+      setTokenAmount("10");
+
+      mockSimulate.mockImplementation(() => {
+        useTransactionBuilderStore.setState({ sorobanResourceFeeXlm: null });
+        return { preparedXdr: "prepared-xdr", scanResult: undefined };
+      });
+
+      const { getByTestId } = renderScreen();
+
+      await fireEvent.press(getByTestId("earn-amount-cta"));
+      await Promise.resolve();
+      await Promise.resolve();
+
+      // eslint-disable-next-line no-underscore-dangle
+      const [, reviewSheet] = globalThis.__earnAmountMockSheetRefs;
+      expect(reviewSheet.present).toHaveBeenCalledTimes(1);
+      expect(mockShowToast).not.toHaveBeenCalledWith(
+        expect.objectContaining({ toastId: "earn-fee-shortfall" }),
+      );
+    });
+
+    it("leaves Max and the enterable amount unaffected by the unknown-fee floor", () => {
+      // The floor only feeds the post-simulation shortfall check on the rare
+      // null-fee branch -- it must never reduce what Max/the percentage
+      // buttons offer or what the CTA treats as "too high", regardless of
+      // what `sorobanResourceFeeXlm` happens to be. Depositing the FULL
+      // spendable balance must stay enabled even with the floor sitting in
+      // the duck.
+      mockGetBalanceByContractId.mockReturnValue(XLM_BALANCE);
+      setSpendable({ deposit: "100", xlm: "100" });
+      setTokenAmount("100");
+      useTransactionBuilderStore.setState({
+        sorobanResourceFeeXlm: UNKNOWN_RESOURCE_FEE_FLOOR_XLM,
+      });
+
+      const { getByTestId } = renderScreen();
+      const cta = getByTestId("earn-amount-cta");
+
+      expect(cta).toHaveTextContent("earnAmount.review");
+      expect(cta.props.accessibilityState?.disabled).toBeFalsy();
+    });
+  });
+
+  describe("failed-simulation message", () => {
+    it("replaces a balance rejection on an XLM deposit with the fee-specific message", () => {
+      mockGetBalanceByContractId.mockReturnValue(XLM_BALANCE);
+      setSpendable({ deposit: "100", xlm: "100" });
+      mockSimulateError =
+        "host invocation failed: HostError: Error(Contract, #10)";
+
+      renderScreen();
+
+      expect(mockShowToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "earnAmount.errors.insufficientBalanceForFee",
+        }),
+      );
+    });
+
+    it("keeps the pool's own rejection for a non-balance failure on an XLM deposit", () => {
+      mockGetBalanceByContractId.mockReturnValue(XLM_BALANCE);
+      setSpendable({ deposit: "100", xlm: "100" });
+      mockSimulateError = "pool is frozen";
+
+      renderScreen();
+
+      expect(mockShowToast).toHaveBeenCalledWith(
+        expect.objectContaining({ title: "pool is frozen" }),
+      );
+    });
+
+    it("keeps the pool's own rejection for a non-XLM deposit even on a balance-shaped message", () => {
+      // USDC is this suite's default deposit asset -- a fee-specific reword
+      // would be wrong here since the fee comes from a separate XLM balance.
+      mockSimulateError = "Error(Contract, #10)";
+
+      renderScreen();
+
+      expect(mockShowToast).toHaveBeenCalledWith(
+        expect.objectContaining({ title: "Error(Contract, #10)" }),
+      );
     });
   });
 

@@ -106,12 +106,14 @@ export const EarnReviewBottomSheet: React.FC<EarnReviewBottomSheetProps> = ({
     [selectedAssetId, pricedBalances, networkDetails],
   );
 
-  // The re-clamp against the REAL resource fee (see `clampXlmDepositAmount`)
-  // happens in `EarnAmountScreen`'s CTA handler, BEFORE this sheet is ever
-  // presented — not here. That is the invariant this sheet relies on: by the
-  // time it is mounted and visible, the staged XDR in `transactionBuilder`
-  // already corresponds exactly to `tokenAmount` below, for every asset,
-  // XLM included. This sheet therefore never needs to touch the amount.
+  // INVARIANT this sheet relies on: by the time it is mounted and visible,
+  // the staged XDR in `transactionBuilder` already corresponds exactly to
+  // `tokenAmount` below, for every asset, XLM included. `EarnAmountScreen`'s
+  // CTA handler checks the measured resource fee against an XLM deposit's
+  // remaining balance (see `getXlmFeeShortfall`) BEFORE this sheet is ever
+  // presented, and blocks there rather than adjusting the amount — it never
+  // opens Review with a display value the staged XDR doesn't match. This
+  // sheet therefore never needs to touch or re-check the amount itself.
   const depositUsd = useMemo(() => {
     if (!depositBalance?.currentPrice || depositBalance.currentPrice.isZero()) {
       return null;

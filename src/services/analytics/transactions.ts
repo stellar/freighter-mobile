@@ -284,9 +284,12 @@ export const trackGrantAccessBlocked = (
   });
 };
 
-// earn_deposit.completed carries asset_code + pool_id + apy. NO amount/fiat
+// earn.deposit_completed carries asset_code + pool_id + apy. NO amount/fiat
 // value -- product decision (matches payment.completed / swap.completed's
 // no-amount shape), non-negotiable per the cross-platform funnel agreement.
+// Named earn.deposit_completed (not earn_deposit.completed) to match the
+// extension's event name -- the two platforms must land in the same
+// Amplitude funnel.
 export const trackEarnDepositSuccess = (
   data: EarnDepositSuccessEvent,
 ): void => {
@@ -297,7 +300,7 @@ export const trackEarnDepositSuccess = (
   });
 };
 
-// earn_deposit.failed carries the same identifiers plus reason_code. Like
+// earn.deposit_failed carries the same identifiers plus reason_code. Like
 // trackTransactionError, reason_code is the machine-readable Horizon result
 // code (falling back to "unknown") -- never the free-text error message, to
 // avoid unbounded reason_code cardinality.

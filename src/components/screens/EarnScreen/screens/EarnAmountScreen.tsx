@@ -10,11 +10,12 @@ import { SecurityDetailBottomSheet } from "components/blockaid";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { EarnReviewBottomSheet } from "components/screens/EarnScreen/components/EarnReviewBottomSheet";
 import {
-  clampXlmDepositAmount,
+  UNKNOWN_RESOURCE_FEE_FLOOR_XLM,
   formatRate,
   getEarnCtaState,
-  getMaxDepositAmount,
   getPercentageDepositAmount,
+  getXlmFeeShortfall,
+  isInsufficientBalanceFailure,
   needsXlmForFee,
 } from "components/screens/EarnScreen/helpers";
 import { useEarnPosition } from "components/screens/EarnScreen/hooks/useEarnPosition";
@@ -30,12 +31,12 @@ import {
 } from "components/sds/NoticeBanner";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
-import { BLEND_DEPOSIT_XLM_FEE_BUFFER } from "config/blend";
 import {
   NATIVE_TOKEN_CODE,
   TransactionContext,
   mapNetworkToNetworkDetails,
 } from "config/constants";
+import { logger } from "config/logger";
 import {
   ADD_FUNDS_ROUTES,
   EARN_ROUTES,
@@ -173,36 +174,38 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     updateFiatDisplay,
   } = converter;
 
-  const maxDepositable = useMemo(() => {
+  // Max/percentage buttons and the CTA's insufficient-funds guard work off
+  // the plain spendable balance — nothing is held back for a Blend submit's
+  // resource fee here. That fee is only known once simulation returns, and
+  // is checked post-simulation instead (see `handleCtaPress`'s
+  // `getXlmFeeShortfall` call), rather than guessed at and reserved upfront.
+  const availableBalance = useMemo(() => {
     if (!depositBalance) {
       return "0";
     }
 
-    const spendable = calculateSpendableAmount({
+    return calculateSpendableAmount({
       balance: depositBalance,
       subentryCount: account?.subentryCount ?? 0,
       transactionFee,
-    });
+    }).toFixed();
+  }, [depositBalance, account?.subentryCount, transactionFee]);
 
-    return getMaxDepositAmount({
-      availableBalance: spendable.toFixed(),
-      isXlm,
-    });
-  }, [depositBalance, account?.subentryCount, transactionFee, isXlm]);
-
-  const maxDepositableBn = useMemo(
-    () => new BigNumber(maxDepositable),
-    [maxDepositable],
+  const availableBalanceBn = useMemo(
+    () => new BigNumber(availableBalance),
+    [availableBalance],
   );
 
   const ctaState = useMemo(
     () =>
       getEarnCtaState({
-        availableBalanceIsZero: maxDepositableBn.lte(0),
+        availableBalanceIsZero: availableBalanceBn.lte(0),
         amountIsZero: new BigNumber(tokenAmount || "0").lte(0),
-        isAmountTooHigh: new BigNumber(tokenAmount || "0").gt(maxDepositableBn),
+        isAmountTooHigh: new BigNumber(tokenAmount || "0").gt(
+          availableBalanceBn,
+        ),
       }),
-    [maxDepositableBn, tokenAmount],
+    [availableBalanceBn, tokenAmount],
   );
 
   const ctaLabelKeys: Record<typeof ctaState.labelKey, string> = {
@@ -255,14 +258,23 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
   useEffect(() => {
     if (simulateError && simulateError !== previousSimulateErrorRef.current) {
       previousSimulateErrorRef.current = simulateError;
+      // A balance rejection on an XLM deposit is the fee, not the amount:
+      // the CTA already gates anything above the spendable balance, so
+      // what is left is a deposit that cannot also pay for itself. Every
+      // other rejection — supply cap, frozen pool, stale oracle — is the
+      // pool's own and reads better in its own words.
+      const title =
+        isXlm && isInsufficientBalanceFailure(simulateError)
+          ? t("earnAmount.errors.insufficientBalanceForFee")
+          : simulateError;
       showToast({
         variant: "error",
-        title: simulateError,
+        title,
         toastId: "earn-simulate-failed",
         duration: 0,
       });
     }
-  }, [simulateError, showToast]);
+  }, [simulateError, showToast, isXlm, t]);
 
   // Clear the "Transaction failed" retry banner once the user edits the
   // amount — but not on mount, so a banner left over from a previous failed
@@ -280,7 +292,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
   const handlePercentagePress = useCallback(
     (percentage: number) => {
       const targetAmount = getPercentageDepositAmount({
-        maxDepositable,
+        maxDepositable: availableBalance,
         pct: percentage,
         decimals: selectedAssetDecimals,
       });
@@ -300,35 +312,13 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
       setTokenAmount(targetAmount);
     },
     [
-      maxDepositable,
+      availableBalance,
       selectedAssetDecimals,
       showFiatAmount,
       depositBalance,
       updateFiatDisplay,
       setTokenAmount,
     ],
-  );
-
-  // Applies the CTA handler's post-simulate re-clamp (see `handleCtaPress`
-  // and `clampXlmDepositAmount`) to this screen's local converter state.
-  // Mirrors `handlePercentagePress`'s fiat-mode bookkeeping above.
-  const handleAmountClamped = useCallback(
-    (newAmount: string) => {
-      if (showFiatAmount && depositBalance?.currentPrice) {
-        const tokenPrice = depositBalance.currentPrice;
-        if (!tokenPrice.isZero()) {
-          const fiatAmount = new BigNumber(newAmount)
-            .multipliedBy(tokenPrice)
-            .toFixed(2);
-          updateFiatDisplay(fiatAmount);
-          setTokenAmount(newAmount);
-          return;
-        }
-      }
-
-      setTokenAmount(newAmount);
-    },
-    [showFiatAmount, depositBalance, updateFiatDisplay, setTokenAmount],
   );
 
   const openReviewSheet = useCallback(() => {
@@ -446,21 +436,18 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
         })
       : new BigNumber(0);
 
-    // `transactionFee` alone is just the inclusion fee (~0.00001 XLM). A
-    // Blend `submit` is dominated by its resource fee, which this gate
-    // cannot know precisely before simulating — so, like
-    // `getMaxDepositAmount`, it checks against the same generous
-    // `BLEND_DEPOSIT_XLM_FEE_BUFFER` pre-simulation estimate rather than the
-    // bare inclusion fee. Without this, a non-XLM deposit with XLM spendable
-    // somewhere in the ~0.00001-0.055 XLM band would clear this gate, simulate
-    // fine (the invocation never touches XLM), and only fail at Horizon
-    // submission — the exact case this sheet exists to catch.
+    // `transactionFee` is just the inclusion fee (~0.00001 XLM) — this gate
+    // only catches "no meaningful XLM headroom at all" (e.g. no XLM held at
+    // all). A Blend `submit`'s resource fee is far larger and only known once
+    // simulation returns, so it is NOT folded in here as a pre-simulation
+    // guess anymore — the `getXlmFeeShortfall` check below, after simulate
+    // resolves, is what catches "some XLM, but not enough for the measured
+    // fee". Both cases must still surface something: this sheet for the
+    // former, an inline message for the latter.
     if (
       needsXlmForFee({
         spendableXlm: spendableXlm.toFixed(),
-        fee: new BigNumber(transactionFee)
-          .plus(BLEND_DEPOSIT_XLM_FEE_BUFFER)
-          .toFixed(),
+        fee: transactionFee,
       })
     ) {
       networkFeeBottomSheetModalRef.current?.present();
@@ -483,48 +470,59 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
       return;
     }
 
-    // INVARIANT Review and Task 13's Confirm rely on: the staged XDR in
-    // `transactionBuilder` always corresponds to the currently displayed
-    // `tokenAmount` by the time Review opens.
-    //
     // `simulate` just resolved, so the duck's `sorobanResourceFeeXlm` is now
-    // the REAL fee (not `getMaxDepositAmount`'s pre-simulation buffer
-    // estimate). Re-check the amount that was just simulated against it and,
-    // if it no longer fits (XLM only — see `clampXlmDepositAmount`), correct
-    // `tokenAmount` and re-simulate for the corrected amount BEFORE opening
-    // Review, rather than opening Review with a display value the staged XDR
-    // no longer matches.
+    // the REAL, measured resource fee (never a pre-simulation guess). For an
+    // XLM deposit, check whether the amount just simulated leaves enough XLM
+    // to cover it.
     const { sorobanResourceFeeXlm } = useTransactionBuilderStore.getState();
 
-    const clampedAmount = clampXlmDepositAmount({
-      enteredAmount: tokenAmount,
-      spendableXlm: spendableXlm.toFixed(),
-      resourceFeeXlm: sorobanResourceFeeXlm,
-      decimals: selectedAssetDecimals,
-      isXlm,
-    });
-
-    if (clampedAmount !== tokenAmount) {
-      handleAmountClamped(clampedAmount);
-      showToast({
-        variant: "warning",
-        title: t("earnReview.amountReduced"),
-        toastId: "earn-review-amount-clamped",
-      });
-
-      const reSimulateResult = await simulate({
-        assetId,
-        amount: clampedAmount,
-        decimals: selectedAssetDecimals,
-        transactionFee,
-        transactionTimeout,
-        network,
-        senderAddress: account.publicKey,
-      });
-
-      if (!reSimulateResult) {
-        return;
+    let shortfall = "0";
+    if (isXlm) {
+      // The backend omitted `minResourceFee` from this simulation, so the fee
+      // is genuinely UNKNOWN, not zero. `tokenAmount` is already <=
+      // `spendableXlm` by construction (the CTA's own `isAmountTooHigh` guard,
+      // and `availableBalance === spendableXlm` for an XLM deposit), so
+      // feeding "0" here would make `getXlmFeeShortfall` report "0" in every
+      // case that reaches this point — silently disabling the check rather
+      // than skipping it visibly, and reintroducing the exact failure this
+      // whole check exists to prevent: a max-balance XLM deposit signing
+      // successfully and only failing at submission. Fall back to a
+      // conservative floor instead (see its doc for why "0.1" specifically)
+      // — this is logged too, since it is still a gap in what simulation told
+      // us, even though it is now covered rather than skipped.
+      if (sorobanResourceFeeXlm === null) {
+        logger.warn(
+          "EarnAmountScreen",
+          "sorobanResourceFeeXlm is null after a successful simulation; falling back to the unknown-fee floor for the shortfall check",
+        );
       }
+      shortfall = getXlmFeeShortfall({
+        spendableXlm: spendableXlm.toFixed(),
+        amount: tokenAmount || "0",
+        resourceFee: sorobanResourceFeeXlm ?? UNKNOWN_RESOURCE_FEE_FLOOR_XLM,
+      });
+    }
+
+    // INVARIANT Review and Task 13's Confirm rely on: the staged XDR in
+    // `transactionBuilder` always corresponds to the currently displayed
+    // `tokenAmount` by the time Review opens. This check never adjusts
+    // `tokenAmount` — on a shortfall it blocks here and asks the user to
+    // reduce the amount themselves, rather than correcting it and
+    // re-simulating (as an earlier design did). The invariant therefore
+    // holds trivially on this path: nothing changes the displayed amount
+    // without a matching re-simulation, and this branch either opens Review
+    // with the amount `simulate` was just called with, or doesn't open it
+    // at all.
+    if (new BigNumber(shortfall).gt(0)) {
+      showToast({
+        variant: "error",
+        title: t("earnAmount.errors.feeShortfall", {
+          amount: formatTokenForDisplay(shortfall),
+        }),
+        toastId: "earn-fee-shortfall",
+        duration: 0,
+      });
+      return;
     }
 
     openReviewSheet();
@@ -541,7 +539,6 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     transactionTimeout,
     network,
     isXlm,
-    handleAmountClamped,
     showToast,
     t,
     openReviewSheet,
@@ -578,7 +575,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
   }
 
   const availableBalanceText = depositBalance
-    ? `${formatBalanceAmount(depositBalance, tokenCode, maxDepositableBn)} ${t(
+    ? `${formatBalanceAmount(depositBalance, tokenCode, availableBalanceBn)} ${t(
         "common.available",
       )}`
     : null;

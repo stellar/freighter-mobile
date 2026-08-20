@@ -31,7 +31,7 @@ jest.mock("ducks/earn", () => ({
   // support being called with a selector fn, matching how the real zustand
   // hook re-reads live state on every render. It also reads
   // pool/selectedAssetCode/selectedAssetApy via `useEarnStore.getState()`
-  // (for the earn_deposit.completed/.failed analytics payload), matching how
+  // (for the earn.deposit_completed/.failed analytics payload), matching how
   // the real zustand store exposes both the hook and a static `getState`.
   useEarnStore: Object.assign(
     (selector?: (state: Record<string, unknown>) => unknown) => {
@@ -140,7 +140,7 @@ describe("useEarnTransaction", () => {
     expect(result.current.error).toBeNull();
     expect(mockSetSubmitFailed).toHaveBeenCalledWith(false);
 
-    // earn_deposit.completed carries only identifiers -- no amount/fiat value.
+    // earn.deposit_completed carries only identifiers -- no amount/fiat value.
     expect(mockTrackEarnDepositSuccess).toHaveBeenCalledWith({
       assetCode: "USDC",
       poolId: "pool-1",
@@ -186,7 +186,7 @@ describe("useEarnTransaction", () => {
     expect(result.current.transactionHash).toBeNull();
     expect(mockSetSubmitFailed).toHaveBeenCalledWith(true);
 
-    // earn_deposit.failed carries the same identifiers plus reason_code --
+    // earn.deposit_failed carries the same identifiers plus reason_code --
     // sourced from `submitErrorResultCodes` (NOT threaded through this
     // hook's own return shape), never the free-text error message, and no
     // amount/fiat value.

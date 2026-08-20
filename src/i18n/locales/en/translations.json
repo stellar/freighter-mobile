@@ -725,7 +725,9 @@
       "buyXlm": "Buy XLM"
     },
     "errors": {
-      "simulationFailed": "Failed to simulate the deposit. Please try again."
+      "simulationFailed": "Failed to simulate the deposit. Please try again.",
+      "feeShortfall": "Not enough XLM left for the network fee. Reduce your deposit by at least {{amount}} XLM.",
+      "insufficientBalanceForFee": "Not enough XLM to cover the network fee. Try depositing a smaller amount."
     }
   },
   "earnReview": {
@@ -736,8 +738,7 @@
     "positionValue": "{{before}} → {{after}}",
     "estMonthlyEarnings": "Est. monthly earnings",
     "estYearlyEarnings": "Est. yearly earnings",
-    "projectionDisclaimer": "Estimated earnings are projections based on the current rate and may change based on pool activity.",
-    "amountReduced": "Amount reduced to cover the network fee"
+    "projectionDisclaimer": "Estimated earnings are projections based on the current rate and may change based on pool activity."
   },
   "earnNotEnough": {
     "title": "You don't have any {{tokenCode}}",
