@@ -368,6 +368,113 @@ describe("SwapAmountScreen", () => {
     expect(mockSetDestinationToken).toHaveBeenCalledWith(null);
   });
 
+  describe("default destination (USDC) seeding", () => {
+    // The auth store defaults to PUBLIC in tests, so the seeded default is
+    // mainnet USDC (Circle issuer).
+    const MAINNET_USDC_ID =
+      "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
+
+    it("seeds USDC as the destination when none is set", () => {
+      setSwapStoreState({ destinationToken: null });
+
+      renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      expect(mockSetDestinationToken).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: MAINNET_USDC_ID,
+          tokenCode: "USDC",
+          // The fixture balances hold a different USDC issuer, so the
+          // default is unheld and needs a trustline.
+          requiresTrustline: true,
+        }),
+      );
+    });
+
+    it("seeds native XLM instead when the swap starts from the default USDC", () => {
+      setSwapStoreState({ destinationToken: null });
+      const route = {
+        key: "swap-amount",
+        name: SWAP_ROUTES.SWAP_AMOUNT_SCREEN,
+        params: { tokenId: MAINNET_USDC_ID, tokenSymbol: "USDC" },
+      } as unknown as Props["route"];
+
+      renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={route} />,
+      );
+
+      expect(mockSetDestinationToken).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: "XLM",
+          tokenCode: "XLM",
+          requiresTrustline: false,
+        }),
+      );
+    });
+
+    it("derives requiresTrustline=false when the account already holds the default", () => {
+      setSwapStoreState({ destinationToken: null });
+      (useBalancesList as jest.Mock).mockImplementation(() => ({
+        balanceItems: [
+          ...mockBalances,
+          { ...mockBalances[1], id: MAINNET_USDC_ID },
+        ],
+        scanResults: {},
+        isLoading: false,
+        error: null,
+        noBalances: false,
+        isRefreshing: false,
+        isFunded: true,
+        handleRefresh: jest.fn(),
+      }));
+
+      renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      expect(mockSetDestinationToken).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: MAINNET_USDC_ID,
+          requiresTrustline: false,
+        }),
+      );
+    });
+
+    it("does not seed while balances have not hydrated", () => {
+      setSwapStoreState({ destinationToken: null });
+      (useBalancesList as jest.Mock).mockImplementation(() => ({
+        balanceItems: [],
+        scanResults: {},
+        isLoading: true,
+        error: null,
+        noBalances: false,
+        isRefreshing: false,
+        isFunded: true,
+        handleRefresh: jest.fn(),
+      }));
+
+      renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      expect(mockSetDestinationToken).not.toHaveBeenCalledWith(
+        expect.objectContaining({ tokenCode: "USDC" }),
+      );
+    });
+
+    it("does not override an existing destination", () => {
+      // Default store state carries a picked FTT destination.
+      renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      expect(mockSetDestinationToken).not.toHaveBeenCalledWith(
+        expect.objectContaining({ tokenCode: "USDC" }),
+      );
+    });
+  });
+
   it("renders security warnings for malicious states", () => {
     mockBalancesListReturn({
       "USDC-GBDQOFC6SKCNBHPLZ7NXQ6MCKFIYUUFVOWYGNWQCXC2F4AYZ27EUWYWH": {
