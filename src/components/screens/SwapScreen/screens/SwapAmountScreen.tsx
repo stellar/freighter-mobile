@@ -49,12 +49,17 @@ import { AnalyticsEvent, SwapPickerEntrypoint } from "config/analyticsConfig";
 import {
   BASE_RESERVE,
   DEFAULT_DECIMALS,
+  DEFAULT_SWAP_DEST_TOKEN_ID,
   isNativeAssetId,
+  NATIVE_TOKEN_CODE,
   TransactionContext,
 } from "config/constants";
 import { logger } from "config/logger";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
-import { FormattedSearchTokenRecord } from "config/types";
+import {
+  FormattedSearchTokenRecord,
+  TokenTypeWithCustomToken,
+} from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { useDebugStore } from "ducks/debug";
 import { descriptorAsPathBalance, useSwapStore } from "ducks/swap";
@@ -390,6 +395,65 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     swapFromTokenId,
     swapFromTokenSymbol,
     setSourceToken,
+    setDestinationToken,
+  ]);
+
+  // Default the destination to the network's USDC (#940) — or native XLM when
+  // the swap starts from USDC itself (the token-details entry), so the two
+  // sides never collide. Applies regardless of whether the account holds the
+  // default; requiresTrustline is derived from actual holdings, which is why
+  // seeding waits for balances to hydrate. Seeded once per mount (declared
+  // after the source effect above so it runs after the destination clear) and
+  // never re-seeds a destination the user picked or cleared themselves.
+  const hasSeededDefaultDestination = useRef(false);
+  useEffect(() => {
+    if (hasSeededDefaultDestination.current) {
+      return;
+    }
+    const defaultTokenId = DEFAULT_SWAP_DEST_TOKEN_ID[network];
+    if (!defaultTokenId || destinationTokenDescriptor) {
+      // No default on this network, or a destination already exists (e.g.
+      // returning from the picker before balances hydrated).
+      hasSeededDefaultDestination.current = true;
+      return;
+    }
+    if (balanceItems.length === 0) {
+      return;
+    }
+    hasSeededDefaultDestination.current = true;
+
+    if (swapFromTokenId === defaultTokenId) {
+      setDestinationToken({
+        id: NATIVE_TOKEN_CODE,
+        tokenCode: NATIVE_TOKEN_CODE,
+        decimals: DEFAULT_DECIMALS,
+        tokenType: TokenTypeWithCustomToken.NATIVE,
+        requiresTrustline: false,
+      });
+      return;
+    }
+
+    const [defaultTokenCode, defaultTokenIssuer] = defaultTokenId.split(":");
+    setDestinationToken({
+      id: defaultTokenId,
+      tokenCode: defaultTokenCode,
+      issuer: defaultTokenIssuer,
+      decimals: DEFAULT_DECIMALS,
+      tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+      // Derived from holdings: an already-held default must not build a
+      // redundant changeTrust (doubled fee, false reserve preflight).
+      requiresTrustline: !balanceItems.some(
+        (item) => item.id === defaultTokenId,
+      ),
+      // iconUrl intentionally omitted: mainnet USDC renders via the bundled
+      // logo special case in TokenIcon; other networks resolve through the
+      // icons store like held tokens.
+    });
+  }, [
+    network,
+    destinationTokenDescriptor,
+    balanceItems,
+    swapFromTokenId,
     setDestinationToken,
   ]);
 
