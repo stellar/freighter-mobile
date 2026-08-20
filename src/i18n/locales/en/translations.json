@@ -728,6 +728,17 @@
       "simulationFailed": "Failed to simulate the deposit. Please try again."
     }
   },
+  "earnReview": {
+    "title": "Review deposit",
+    "pool": "Pool",
+    "apy": "APY",
+    "position": "Your position",
+    "positionValue": "{{before}} → {{after}}",
+    "estMonthlyEarnings": "Est. monthly earnings",
+    "estYearlyEarnings": "Est. yearly earnings",
+    "projectionDisclaimer": "Estimated earnings are projections based on the current rate and may change based on pool activity.",
+    "amountReduced": "Amount reduced to cover the network fee"
+  },
   "earnNotEnough": {
     "title": "You don't have any {{tokenCode}}",
     "bodyWithBuy": "Buy {{tokenCode}} or receive it from another wallet to deposit it into this pool.",

@@ -59,8 +59,8 @@ export const needsXlmForFee = ({
  * fee, but a Blend `submit` is dominated by its resource fee — ~0.0546 XLM
  * against the live pool, roughly 5,000x the inclusion fee. Depositing the raw
  * available balance of XLM therefore simulates into an insufficient-balance
- * error. Hold back a buffer; Review re-checks against the real `minResourceFee`
- * once simulation returns.
+ * error. Hold back a buffer; the CTA handler re-checks against the real
+ * `minResourceFee` once simulation returns (see `clampXlmDepositAmount`).
  *
  * Only XLM needs this — for any other asset the fee is paid from a separate
  * balance, and the shortfall surfaces through the network-fee sheet instead.
@@ -80,4 +80,62 @@ export const getMaxDepositAmount = ({
     available.minus(new BigNumber(BLEND_DEPOSIT_XLM_FEE_BUFFER)),
     new BigNumber(0),
   ).toFixed();
+};
+
+/**
+ * Re-clamps the entered deposit amount against the REAL resource fee, once
+ * simulation has resolved and the fee is actually known — `getMaxDepositAmount`'s
+ * 0.5 XLM buffer above is a generous pre-simulation estimate, not the real cost.
+ *
+ * Pure and side-effect-free by design: the caller (`EarnAmountScreen`'s CTA
+ * handler) is responsible for actually updating `tokenAmount` and re-simulating
+ * with the returned value BEFORE opening Review, so the staged transaction in
+ * `transactionBuilder` always corresponds to what gets displayed. This function
+ * only computes what the corrected amount SHOULD be.
+ *
+ * Returns `enteredAmount` unchanged (a no-op) when:
+ * - the deposit asset is not XLM — every other asset's fee comes from a
+ *   separate balance, so this cannot squeeze it;
+ * - `resourceFeeXlm` is `null` — an unknown fee, not a zero one, so there is
+ *   nothing more precise to re-check against than the buffer already applied;
+ * - the entered amount already fits.
+ *
+ * Otherwise returns `spendableXlm - resourceFeeXlm`, floored at zero and
+ * rounded DOWN at the asset's decimals — so the result never exceeds the
+ * asset's precision and is never negative. Idempotent: feeding the function's
+ * own output back in as `enteredAmount` is always a no-op, since the rounded
+ * result can only be less than or equal to the un-rounded ceiling it was
+ * derived from.
+ */
+export const clampXlmDepositAmount = ({
+  enteredAmount,
+  spendableXlm,
+  resourceFeeXlm,
+  decimals,
+  isXlm,
+}: {
+  enteredAmount: string;
+  spendableXlm: string;
+  resourceFeeXlm: string | null;
+  decimals: number;
+  isXlm: boolean;
+}): string => {
+  if (!isXlm || resourceFeeXlm === null) {
+    return enteredAmount;
+  }
+
+  const maxFittingAmount = BigNumber.max(
+    new BigNumber(spendableXlm).minus(resourceFeeXlm),
+    new BigNumber(0),
+  );
+
+  const entered = new BigNumber(enteredAmount || "0");
+
+  if (entered.lte(maxFittingAmount)) {
+    return enteredAmount;
+  }
+
+  return maxFittingAmount
+    .decimalPlaces(decimals, BigNumber.ROUND_DOWN)
+    .toFixed();
 };

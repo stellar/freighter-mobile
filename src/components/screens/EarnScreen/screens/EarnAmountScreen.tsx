@@ -6,14 +6,18 @@ import { AmountCard } from "components/AmountCard";
 import BottomSheet from "components/BottomSheet";
 import InformationBottomSheet from "components/InformationBottomSheet";
 import { PercentageButtons } from "components/PercentageButtons";
+import { SecurityDetailBottomSheet } from "components/blockaid";
 import { BaseLayout } from "components/layout/BaseLayout";
+import { EarnReviewBottomSheet } from "components/screens/EarnScreen/components/EarnReviewBottomSheet";
 import {
+  clampXlmDepositAmount,
   formatRate,
   getEarnCtaState,
   getMaxDepositAmount,
   getPercentageDepositAmount,
   needsXlmForFee,
 } from "components/screens/EarnScreen/helpers";
+import { useEarnPosition } from "components/screens/EarnScreen/hooks/useEarnPosition";
 import { useSimulateEarnDeposit } from "components/screens/EarnScreen/hooks/useSimulateEarnDeposit";
 import { Badge } from "components/sds/Badge";
 import { Button } from "components/sds/Button";
@@ -37,6 +41,7 @@ import {
 } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
+import { useDebugStore } from "ducks/debug";
 import { useEarnStore } from "ducks/earn";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
@@ -58,6 +63,11 @@ import { useTokenFiatConverter } from "hooks/useTokenFiatConverter";
 import { useToast } from "providers/ToastProvider";
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { TextInput, View } from "react-native";
+import { SecurityLevel } from "services/blockaid/constants";
+import {
+  assessTransactionSecurity,
+  extractSecurityWarnings,
+} from "services/blockaid/helper";
 
 type EarnAmountScreenProps = NativeStackScreenProps<
   EarnStackParamList,
@@ -79,12 +89,14 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({ route }) => {
   // button.
   const rootNavigation = useNavigation<NavigationProp<RootStackParamList>>();
 
+  const pool = useEarnStore((state) => state.pool);
   const selectedAssetApy = useEarnStore((state) => state.selectedAssetApy);
   const selectedAssetDecimals = useEarnStore(
     (state) => state.selectedAssetDecimals,
   );
   const lastSubmitFailed = useEarnStore((state) => state.lastSubmitFailed);
   const setSubmitFailed = useEarnStore((state) => state.setSubmitFailed);
+  const { overriddenBlockaidResponse } = useDebugStore();
 
   const { resetTransaction } = useTransactionBuilderStore();
   const { transactionFee, transactionTimeout } = useTransactionSettingsStore();
@@ -122,8 +134,23 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({ route }) => {
 
   const xlmBalance = pricedBalances[NATIVE_TOKEN_CODE];
 
+  // Fetches the "before" side of Review's before -> after row as soon as the
+  // pool/asset/account are known (well ahead of the user reaching Review),
+  // and writes it to the earn duck. A failed fetch is non-fatal by design —
+  // see the hook's own docs — so its return value is intentionally unused
+  // here; Review reads `currentPositionTokens` off the duck directly.
+  useEarnPosition({
+    poolId: pool?.id ?? "",
+    assetId,
+    publicKey: account?.publicKey ?? "",
+    networkDetails,
+  });
+
   const amountInputRef = useRef<TextInput>(null);
   const networkFeeBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const earnReviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const transactionSecurityWarningBottomSheetModalRef =
+    useRef<BottomSheetModal>(null);
 
   const converter = useTokenFiatConverter({
     selectedBalance: depositBalance,
@@ -179,7 +206,35 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({ route }) => {
     simulate,
     isSimulating,
     error: simulateError,
+    scanResult,
   } = useSimulateEarnDeposit();
+
+  // `scanResult` is undefined both before any simulation has run and when the
+  // scan itself was unavailable (e.g. testnet, where Blockaid throws
+  // NETWORK_NOT_SUPPORTED) — `assessTransactionSecurity` already treats both
+  // the same way: "unable to scan", never a clean bill of health.
+  const transactionSecurityAssessment = useMemo(
+    () => assessTransactionSecurity(scanResult, overriddenBlockaidResponse),
+    [scanResult, overriddenBlockaidResponse],
+  );
+
+  const securityWarnings = useMemo(
+    () => extractSecurityWarnings(scanResult),
+    [scanResult],
+  );
+
+  const earnSecuritySeverity = useMemo(() => {
+    if (transactionSecurityAssessment.isMalicious) {
+      return SecurityLevel.MALICIOUS;
+    }
+    if (transactionSecurityAssessment.isSuspicious) {
+      return SecurityLevel.SUSPICIOUS;
+    }
+    if (transactionSecurityAssessment.isUnableToScan) {
+      return SecurityLevel.UNABLE_TO_SCAN;
+    }
+    return undefined;
+  }, [transactionSecurityAssessment]);
 
   // Surface the pool's own rejection (supply cap, frozen pool, stale oracle)
   // reactively off the hook's error state — mirrors the established
@@ -245,16 +300,57 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({ route }) => {
     ],
   );
 
-  /**
-   * Placeholder for Task 12, which builds `EarnReviewBottomSheet` and a
-   * `useEarnPosition` hook and wires this to present the review sheet with
-   * the prepared XDR / scan result `simulate` just resolved. Named now so
-   * the CTA's order-of-operations (fee check → simulate → open review) is
-   * already settled by the time Task 12 fills this in.
-   */
+  // Applies the CTA handler's post-simulate re-clamp (see `handleCtaPress`
+  // and `clampXlmDepositAmount`) to this screen's local converter state.
+  // Mirrors `handlePercentagePress`'s fiat-mode bookkeeping above.
+  const handleAmountClamped = useCallback(
+    (newAmount: string) => {
+      if (showFiatAmount && depositBalance?.currentPrice) {
+        const tokenPrice = depositBalance.currentPrice;
+        if (!tokenPrice.isZero()) {
+          const fiatAmount = new BigNumber(newAmount)
+            .multipliedBy(tokenPrice)
+            .toFixed(2);
+          updateFiatDisplay(fiatAmount);
+          setTokenAmount(newAmount);
+          return;
+        }
+      }
+
+      setTokenAmount(newAmount);
+    },
+    [showFiatAmount, depositBalance, updateFiatDisplay, setTokenAmount],
+  );
+
   const openReviewSheet = useCallback(() => {
-    // TODO(Task 12): present EarnReviewBottomSheet.
+    earnReviewBottomSheetModalRef.current?.present();
   }, []);
+
+  /**
+   * Placeholder for Task 13, which builds `EarnProcessingScreen` and
+   * registers it on `EarnStackNavigator`. `EARN_ROUTES.EARN_PROCESSING_SCREEN`
+   * already exists in `EarnStackParamList`, but is NOT YET a registered
+   * `<EarnStack.Screen>` (confirmed against `EarnNavigator.tsx`) — calling
+   * `navigation.navigate` on it now would throw at runtime. Named clearly so
+   * wiring it up is a one-line swap once Task 13 lands.
+   */
+  const handleConfirmDeposit = useCallback(() => {
+    // TODO(Task 13): navigation.navigate(EARN_ROUTES.EARN_PROCESSING_SCREEN);
+  }, []);
+
+  const handleCancelSecurityWarning = useCallback(() => {
+    transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
+  }, []);
+
+  // Reached only via the review sheet's banner -> detail sheet path (the
+  // review sheet's OWN "Confirm anyway" button calls `handleConfirmDeposit`
+  // directly and dismisses itself) — so this dismisses both sheets before
+  // proceeding.
+  const handleConfirmAnywayFromSecuritySheet = useCallback(() => {
+    transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
+    earnReviewBottomSheetModalRef.current?.dismiss();
+    handleConfirmDeposit();
+  }, [handleConfirmDeposit]);
 
   const handleCtaPress = useCallback(async () => {
     if (ctaState.disabled) {
@@ -298,11 +394,57 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({ route }) => {
       senderAddress: account.publicKey,
     });
 
-    if (result) {
-      openReviewSheet();
+    if (!result) {
+      // On failure, the effect above surfaces `simulateError` as a toast —
+      // nothing further to do here.
+      return;
     }
-    // On failure, the effect above surfaces `simulateError` as a toast —
-    // nothing further to do here.
+
+    // INVARIANT Review and Task 13's Confirm rely on: the staged XDR in
+    // `transactionBuilder` always corresponds to the currently displayed
+    // `tokenAmount` by the time Review opens.
+    //
+    // `simulate` just resolved, so the duck's `sorobanResourceFeeXlm` is now
+    // the REAL fee (not `getMaxDepositAmount`'s pre-simulation buffer
+    // estimate). Re-check the amount that was just simulated against it and,
+    // if it no longer fits (XLM only — see `clampXlmDepositAmount`), correct
+    // `tokenAmount` and re-simulate for the corrected amount BEFORE opening
+    // Review, rather than opening Review with a display value the staged XDR
+    // no longer matches.
+    const { sorobanResourceFeeXlm } = useTransactionBuilderStore.getState();
+
+    const clampedAmount = clampXlmDepositAmount({
+      enteredAmount: tokenAmount,
+      spendableXlm: spendableXlm.toFixed(),
+      resourceFeeXlm: sorobanResourceFeeXlm,
+      decimals: selectedAssetDecimals,
+      isXlm,
+    });
+
+    if (clampedAmount !== tokenAmount) {
+      handleAmountClamped(clampedAmount);
+      showToast({
+        variant: "warning",
+        title: t("earnReview.amountReduced"),
+        toastId: "earn-review-amount-clamped",
+      });
+
+      const reSimulateResult = await simulate({
+        assetId,
+        amount: clampedAmount,
+        decimals: selectedAssetDecimals,
+        transactionFee,
+        transactionTimeout,
+        network,
+        senderAddress: account.publicKey,
+      });
+
+      if (!reSimulateResult) {
+        return;
+      }
+    }
+
+    openReviewSheet();
   }, [
     ctaState.disabled,
     xlmBalance,
@@ -315,6 +457,10 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({ route }) => {
     selectedAssetDecimals,
     transactionTimeout,
     network,
+    isXlm,
+    handleAmountClamped,
+    showToast,
+    t,
     openReviewSheet,
   ]);
 
@@ -441,6 +587,42 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({ route }) => {
                 }),
               },
             ]}
+          />
+        }
+      />
+
+      <BottomSheet
+        modalRef={earnReviewBottomSheetModalRef}
+        handleCloseModal={() =>
+          earnReviewBottomSheetModalRef.current?.dismiss()
+        }
+        customContent={
+          <EarnReviewBottomSheet
+            bottomSheetModalRef={earnReviewBottomSheetModalRef}
+            tokenAmount={tokenAmount}
+            transactionSecurityAssessment={transactionSecurityAssessment}
+            onSecurityWarningPress={() =>
+              transactionSecurityWarningBottomSheetModalRef.current?.present()
+            }
+            onConfirm={handleConfirmDeposit}
+          />
+        }
+      />
+      <BottomSheet
+        modalRef={transactionSecurityWarningBottomSheetModalRef}
+        handleCloseModal={handleCancelSecurityWarning}
+        customContent={
+          <SecurityDetailBottomSheet
+            warnings={securityWarnings}
+            onCancel={handleCancelSecurityWarning}
+            onProceedAnyway={handleConfirmAnywayFromSecuritySheet}
+            onClose={handleCancelSecurityWarning}
+            severity={earnSecuritySeverity}
+            proceedAnywayText={
+              transactionSecurityAssessment.isUnableToScan
+                ? t("common.continue")
+                : t("transactionAmountScreen.confirmAnyway")
+            }
           />
         }
       />

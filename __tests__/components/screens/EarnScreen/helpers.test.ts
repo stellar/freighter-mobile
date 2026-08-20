@@ -1,6 +1,7 @@
 import BigNumber from "bignumber.js";
 import {
   NotEnoughVariant,
+  clampXlmDepositAmount,
   formatCompactUsd,
   formatProjection,
   formatRate,
@@ -100,6 +101,96 @@ describe("getMaxDepositAmount", () => {
     expect(getMaxDepositAmount({ availableBalance: "100", isXlm: false })).toBe(
       "100",
     );
+  });
+});
+
+describe("clampXlmDepositAmount", () => {
+  it("reduces the entered amount to fit once the real resource fee is known", () => {
+    expect(
+      clampXlmDepositAmount({
+        enteredAmount: "99.5",
+        spendableXlm: "99.5",
+        resourceFeeXlm: "0.0546",
+        decimals: 7,
+        isXlm: true,
+      }),
+    ).toBe("99.4454");
+  });
+
+  it("leaves an amount that already fits untouched", () => {
+    expect(
+      clampXlmDepositAmount({
+        enteredAmount: "50",
+        spendableXlm: "99.5",
+        resourceFeeXlm: "0.0546",
+        decimals: 7,
+        isXlm: true,
+      }),
+    ).toBe("50");
+  });
+
+  it("never returns negative — floors at zero when the fee exceeds spendable", () => {
+    expect(
+      clampXlmDepositAmount({
+        enteredAmount: "1",
+        spendableXlm: "0.02",
+        resourceFeeXlm: "0.0546",
+        decimals: 7,
+        isXlm: true,
+      }),
+    ).toBe("0");
+  });
+
+  it("rounds DOWN at the asset's decimals rather than up or to nearest", () => {
+    // 10 - 0.0546000004 = 9.9453999996 -> floors to 9.945399 at 6 decimals,
+    // never 9.9454 (which would round up and no longer strictly fit).
+    expect(
+      clampXlmDepositAmount({
+        enteredAmount: "10",
+        spendableXlm: "10",
+        resourceFeeXlm: "0.0546000004",
+        decimals: 6,
+        isXlm: true,
+      }),
+    ).toBe("9.945399");
+  });
+
+  it("is idempotent: re-running on its own output is a no-op", () => {
+    const params = {
+      enteredAmount: "99.5",
+      spendableXlm: "99.5",
+      resourceFeeXlm: "0.0546",
+      decimals: 7,
+      isXlm: true,
+    };
+    const clamped = clampXlmDepositAmount(params);
+    expect(clampXlmDepositAmount({ ...params, enteredAmount: clamped })).toBe(
+      clamped,
+    );
+  });
+
+  it("does not apply to a non-XLM deposit — its fee comes from a separate balance", () => {
+    expect(
+      clampXlmDepositAmount({
+        enteredAmount: "1000",
+        spendableXlm: "1",
+        resourceFeeXlm: "0.0546",
+        decimals: 7,
+        isXlm: false,
+      }),
+    ).toBe("1000");
+  });
+
+  it("does not apply when the resource fee is unknown (null) rather than treating it as zero", () => {
+    expect(
+      clampXlmDepositAmount({
+        enteredAmount: "99.5",
+        spendableXlm: "50",
+        resourceFeeXlm: null,
+        decimals: 7,
+        isXlm: true,
+      }),
+    ).toBe("99.5");
   });
 });
 

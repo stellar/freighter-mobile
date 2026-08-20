@@ -694,6 +694,17 @@
       "simulationFailed": "Falha ao simular o depósito. Tente novamente."
     }
   },
+  "earnReview": {
+    "title": "Revisar depósito",
+    "pool": "Pool",
+    "apy": "APY",
+    "position": "Sua posição",
+    "positionValue": "{{before}} → {{after}}",
+    "estMonthlyEarnings": "Ganhos mensais est.",
+    "estYearlyEarnings": "Ganhos anuais est.",
+    "projectionDisclaimer": "Os ganhos estimados são projeções baseadas na taxa atual e podem mudar de acordo com a atividade do pool.",
+    "amountReduced": "Valor reduzido para cobrir a taxa de rede"
+  },
   "earnNotEnough": {
     "title": "Você não possui {{tokenCode}}",
     "bodyWithBuy": "Compre {{tokenCode}} ou receba de outra carteira para depositá-lo neste pool.",
