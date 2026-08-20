@@ -82,10 +82,11 @@ export enum AnalyticsEvent {
   // Earn (Blend deposit). Values match the extension's decided funnel
   // (earn_intro -> earn_select_token -> earn_amount -> earn_review ->
   // earn_processing -> earn_success) so the two platforms merge into one
-  // funnel in Amplitude. Mobile has no earn_intro (descoped from Phase 1);
-  // this covers earn_select_token onward. VIEW_EARN_REVIEW/_PROCESSING/
-  // _SUCCESS are fired manually (see SCREEN_CATALOG / call sites below) since
-  // none of the three is a registered route.
+  // funnel in Amplitude. VIEW_EARN_INTRO/_REVIEW/_PROCESSING/_SUCCESS are
+  // fired manually (see SCREEN_CATALOG / call sites below) since none of the
+  // four is a registered route — the intro is a first-entry bottom sheet, not
+  // a screen.
+  VIEW_EARN_INTRO = "earn_intro",
   VIEW_EARN_TOKEN_PICKER = "earn_select_token",
   VIEW_EARN_AMOUNT = "earn_amount",
   VIEW_EARN_REVIEW = "earn_review",
@@ -540,11 +541,14 @@ const SCREEN_CATALOG: Record<string, { flow?: AnalyticsFlow; step?: Step }> = {
   [AnalyticsEvent.VIEW_MANAGE_WALLETS]: {
     flow: AnalyticsFlow.SETTINGS,
   },
-  // Earn (Blend deposit). VIEW_EARN_REVIEW/_PROCESSING/_SUCCESS are not
+  // Earn (Blend deposit). VIEW_EARN_INTRO/_REVIEW/_PROCESSING/_SUCCESS are not
   // routes -- they're retargeted to screen.viewed manually (BottomSheet's
-  // analyticsEvent prop for the review sheet; a direct track() call for the
-  // inline processing/success screen), same mechanism as the Scan/Receive
-  // per-tab views above.
+  // analyticsEvent prop for the intro and review sheets; a direct track()
+  // call for the inline processing/success screen), same mechanism as the
+  // Scan/Receive per-tab views above.
+  [AnalyticsEvent.VIEW_EARN_INTRO]: {
+    flow: AnalyticsFlow.EARN,
+  },
   [AnalyticsEvent.VIEW_EARN_TOKEN_PICKER]: {
     flow: AnalyticsFlow.EARN,
   },

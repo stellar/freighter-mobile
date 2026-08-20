@@ -4,6 +4,7 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import BottomSheet from "components/BottomSheet";
 import Spinner from "components/Spinner";
 import { BaseLayout } from "components/layout/BaseLayout";
+import { EarnIntroBottomSheet } from "components/screens/EarnScreen/components/EarnIntroBottomSheet";
 import { EarnTokenRow } from "components/screens/EarnScreen/components/EarnTokenRow";
 import { NotEnoughTokenBottomSheet } from "components/screens/EarnScreen/components/NotEnoughTokenBottomSheet";
 import { PoolDetailsBottomSheet } from "components/screens/EarnScreen/components/PoolDetailsBottomSheet";
@@ -20,6 +21,7 @@ import {
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import { mapNetworkToNetworkDetails } from "config/constants";
 import {
   ADD_FUNDS_ROUTES,
@@ -31,10 +33,17 @@ import {
 import { useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
 import { useEarnStore } from "ducks/earn";
+import { usePreferencesStore } from "ducks/preferences";
 import { getTokenIdentifier } from "helpers/balances";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useRightHeaderButton } from "hooks/useRightHeader";
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { SectionList, View } from "react-native";
 
 type EarnTokenPickerScreenProps = NativeStackScreenProps<
@@ -56,8 +65,15 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   const selectAsset = useEarnStore((state) => state.selectAsset);
   const { network } = useAuthenticationStore();
   const { pricedBalances } = useBalancesStore();
+  const hasSeenEarnIntro = usePreferencesStore(
+    (state) => state.hasSeenEarnIntro,
+  );
+  const setHasSeenEarnIntro = usePreferencesStore(
+    (state) => state.setHasSeenEarnIntro,
+  );
   const poolDetailsBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const notEnoughBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const earnIntroBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [notEnoughOption, setNotEnoughOption] =
     useState<EarnTokenOption | null>(null);
 
@@ -153,6 +169,36 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
     [selectAsset, navigation],
   );
 
+  const handleDismissEarnIntro = useCallback(() => {
+    setHasSeenEarnIntro(true);
+  }, [setHasSeenEarnIntro]);
+
+  // Presents the first-run Earn intro sheet exactly once per mount, gated on
+  // the persisted flag (see `usePreferencesStore.hasSeenEarnIntro`) rather
+  // than a route: Task 13 removed the dead `EARN_ROUTES` intro entry because
+  // a declared-but-unregistered route throws at runtime, so this is a sheet
+  // over the token picker instead of a step in the stack.
+  //
+  // `hasPresentedEarnIntroRef` (rather than depending on `isLoading` alone)
+  // guards against re-presenting after the sheet is dismissed: dismissing
+  // sets `hasSeenEarnIntro` true, which would otherwise be a legitimate
+  // dependency change that re-runs this effect on every subsequent
+  // isLoading/error toggle (e.g. a later retry) with a stale `false` still
+  // in a race. The ref makes "present at most once per mount" explicit
+  // regardless of how those other dependencies settle.
+  const hasPresentedEarnIntroRef = useRef(false);
+  useEffect(() => {
+    if (
+      !isLoading &&
+      !error &&
+      !hasSeenEarnIntro &&
+      !hasPresentedEarnIntroRef.current
+    ) {
+      hasPresentedEarnIntroRef.current = true;
+      earnIntroBottomSheetModalRef.current?.present();
+    }
+  }, [isLoading, error, hasSeenEarnIntro]);
+
   if (isLoading) {
     return (
       <BaseLayout>
@@ -235,6 +281,18 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
           }
         />
       </BaseLayout>
+      <BottomSheet
+        modalRef={earnIntroBottomSheetModalRef}
+        handleCloseModal={handleDismissEarnIntro}
+        analyticsEvent={AnalyticsEvent.VIEW_EARN_INTRO}
+        bottomSheetModalProps={{ onDismiss: handleDismissEarnIntro }}
+        customContent={
+          <EarnIntroBottomSheet
+            bottomSheetModalRef={earnIntroBottomSheetModalRef}
+            onDismiss={handleDismissEarnIntro}
+          />
+        }
+      />
       <BottomSheet
         modalRef={poolDetailsBottomSheetModalRef}
         handleCloseModal={() =>

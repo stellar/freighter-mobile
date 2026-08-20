@@ -690,6 +690,11 @@
   "swapTransactionDetails": {
     "swapped": "Swapped"
   },
+  "earnIntro": {
+    "title": "Make your tokens earn for you",
+    "body": "Deposit supported tokens into DeFi pools and start earning rewards.",
+    "startEarning": "Start earning"
+  },
   "earnTokenPicker": {
     "title": "Choose a token",
     "inYourAccount": "In your account",

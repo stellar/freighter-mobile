@@ -81,4 +81,43 @@ describe("preferences store", () => {
 
     expect(result.current.autoLockTimer).toBe(AUTO_LOCK_TIMER.FIFTEEN_MINUTES);
   });
+
+  describe("hasSeenEarnIntro", () => {
+    it("defaults to false", () => {
+      const { result } = renderHook(() => usePreferencesStore());
+
+      expect(result.current.hasSeenEarnIntro).toBe(false);
+    });
+
+    it("is set via setHasSeenEarnIntro", () => {
+      const { result } = renderHook(() => usePreferencesStore());
+
+      act(() => {
+        result.current.setHasSeenEarnIntro(true);
+      });
+
+      expect(result.current.hasSeenEarnIntro).toBe(true);
+    });
+
+    it("is included in the persisted (partialized) state, so it survives a rehydrate", () => {
+      const { result } = renderHook(() => usePreferencesStore());
+
+      act(() => {
+        result.current.setHasSeenEarnIntro(true);
+      });
+
+      // Exercises the same `partialize` function the `persist` middleware
+      // calls before writing to storage -- if `hasSeenEarnIntro` were
+      // missing from its allowlist, this would come back without the key
+      // and the flag would revert to false on every app launch, showing the
+      // intro every time despite the user having dismissed it.
+      const persistedState = usePreferencesStore.persist
+        .getOptions()
+        .partialize?.(usePreferencesStore.getState()) as {
+        hasSeenEarnIntro?: boolean;
+      };
+
+      expect(persistedState.hasSeenEarnIntro).toBe(true);
+    });
+  });
 });
