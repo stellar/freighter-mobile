@@ -10,6 +10,8 @@ import type {
   TransactionSuccessEvent,
   SwapSuccessEvent,
   TransactionErrorEvent,
+  EarnDepositSuccessEvent,
+  EarnDepositErrorEvent,
 } from "services/analytics/types";
 
 // `origin` is the bare dApp hostname (never a full URL) — matches the
@@ -279,6 +281,32 @@ export const trackGrantAccessBlocked = (
   track(AnalyticsEvent.GRANT_DAPP_ACCESS_BLOCKED, {
     ...originProps(domain),
     reason_code: reason,
+  });
+};
+
+// earn_deposit.completed carries asset_code + pool_id + apy. NO amount/fiat
+// value -- product decision (matches payment.completed / swap.completed's
+// no-amount shape), non-negotiable per the cross-platform funnel agreement.
+export const trackEarnDepositSuccess = (
+  data: EarnDepositSuccessEvent,
+): void => {
+  track(AnalyticsEvent.EARN_DEPOSIT_SUCCESS, {
+    asset_code: data.assetCode,
+    pool_id: data.poolId,
+    apy: data.apy,
+  });
+};
+
+// earn_deposit.failed carries the same identifiers plus reason_code. Like
+// trackTransactionError, reason_code is the machine-readable Horizon result
+// code (falling back to "unknown") -- never the free-text error message, to
+// avoid unbounded reason_code cardinality.
+export const trackEarnDepositFail = (data: EarnDepositErrorEvent): void => {
+  track(AnalyticsEvent.EARN_DEPOSIT_FAIL, {
+    asset_code: data.assetCode,
+    pool_id: data.poolId,
+    apy: data.apy,
+    reason_code: data.errorCode ?? "unknown",
   });
 };
 

@@ -45,6 +45,8 @@ import {
   trackGrantAccessBlocked,
   trackHistoryOpenItem,
   trackSendCollectibleSuccess,
+  trackEarnDepositSuccess,
+  trackEarnDepositFail,
 } from "services/analytics/transactions";
 import { identifyUser } from "services/analytics/user";
 
@@ -98,6 +100,10 @@ export interface AnalyticsInstance {
 
   // History analytics
   readonly trackHistoryOpenItem: typeof trackHistoryOpenItem;
+
+  // Earn (Blend deposit) analytics
+  readonly trackEarnDepositSuccess: typeof trackEarnDepositSuccess;
+  readonly trackEarnDepositFail: typeof trackEarnDepositFail;
 
   // Discover analytics
   readonly trackDiscoverProtocolOpened: typeof trackDiscoverProtocolOpened;
@@ -163,6 +169,8 @@ export const analytics: AnalyticsInstance = {
   trackGrantAccessFail,
   trackGrantAccessBlocked,
   trackHistoryOpenItem,
+  trackEarnDepositSuccess,
+  trackEarnDepositFail,
   trackDiscoverProtocolOpened,
   trackDiscoverProtocolDetailsViewed,
   trackDiscoverProtocolOpenedFromDetails,

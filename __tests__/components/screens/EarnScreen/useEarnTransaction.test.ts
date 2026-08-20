@@ -9,6 +9,9 @@ const mockSubmitTransaction = jest.fn();
 const mockGetBuilderState = jest.fn();
 const mockSetSubmitFailed = jest.fn();
 const mockIsWalletUnlocked = jest.fn();
+const mockGetEarnState = jest.fn();
+const mockTrackEarnDepositSuccess = jest.fn();
+const mockTrackEarnDepositFail = jest.fn();
 
 jest.mock("ducks/transactionBuilder", () => ({
   useTransactionBuilderStore: Object.assign(
@@ -26,15 +29,32 @@ jest.mock("ducks/earn", () => ({
   // The hook reads `setSubmitFailed` via a selector
   // (`useEarnStore((state) => state.setSubmitFailed)`), so the mock must
   // support being called with a selector fn, matching how the real zustand
-  // hook re-reads live state on every render.
-  useEarnStore: (selector?: (state: Record<string, unknown>) => unknown) => {
-    const state = { setSubmitFailed: mockSetSubmitFailed };
-    return selector ? selector(state) : state;
-  },
+  // hook re-reads live state on every render. It also reads
+  // pool/selectedAssetCode/selectedAssetApy via `useEarnStore.getState()`
+  // (for the earn_deposit.completed/.failed analytics payload), matching how
+  // the real zustand store exposes both the hook and a static `getState`.
+  useEarnStore: Object.assign(
+    (selector?: (state: Record<string, unknown>) => unknown) => {
+      const state = { setSubmitFailed: mockSetSubmitFailed };
+      return selector ? selector(state) : state;
+    },
+    {
+      getState: () => mockGetEarnState(),
+    },
+  ),
 }));
 
 jest.mock("hooks/useGetActiveAccount", () => ({
   isWalletUnlocked: () => mockIsWalletUnlocked(),
+}));
+
+jest.mock("services/analytics", () => ({
+  analytics: {
+    trackEarnDepositSuccess: (...args: unknown[]) =>
+      mockTrackEarnDepositSuccess(...args),
+    trackEarnDepositFail: (...args: unknown[]) =>
+      mockTrackEarnDepositFail(...args),
+  },
 }));
 
 const account: ActiveAccount = {
@@ -55,6 +75,11 @@ describe("useEarnTransaction", () => {
     jest.clearAllMocks();
     mockIsWalletUnlocked.mockReturnValue(true);
     mockGetBuilderState.mockReturnValue({ error: "Store error message" });
+    mockGetEarnState.mockReturnValue({
+      pool: { id: "pool-1" },
+      selectedAssetCode: "USDC",
+      selectedAssetApy: 0.05,
+    });
   });
 
   it("starts idle", () => {
@@ -114,6 +139,14 @@ describe("useEarnTransaction", () => {
     expect(result.current.transactionHash).toBe("tx-hash");
     expect(result.current.error).toBeNull();
     expect(mockSetSubmitFailed).toHaveBeenCalledWith(false);
+
+    // earn_deposit.completed carries only identifiers -- no amount/fiat value.
+    expect(mockTrackEarnDepositSuccess).toHaveBeenCalledWith({
+      assetCode: "USDC",
+      poolId: "pool-1",
+      apy: 0.05,
+    });
+    expect(mockTrackEarnDepositFail).not.toHaveBeenCalled();
   });
 
   it("sets status to error and calls setSubmitFailed(true), sourcing the message from the store, when signTransaction returns null", async () => {
@@ -139,6 +172,7 @@ describe("useEarnTransaction", () => {
     mockSubmitTransaction.mockResolvedValue(null);
     mockGetBuilderState.mockReturnValue({
       error: "op_underfunded",
+      submitErrorResultCodes: { operations: ["op_underfunded"] },
     });
 
     const { result } = renderHook(() => useEarnTransaction(baseParams));
@@ -151,6 +185,18 @@ describe("useEarnTransaction", () => {
     expect(result.current.error).toBe("op_underfunded");
     expect(result.current.transactionHash).toBeNull();
     expect(mockSetSubmitFailed).toHaveBeenCalledWith(true);
+
+    // earn_deposit.failed carries the same identifiers plus reason_code --
+    // sourced from `submitErrorResultCodes` (NOT threaded through this
+    // hook's own return shape), never the free-text error message, and no
+    // amount/fiat value.
+    expect(mockTrackEarnDepositFail).toHaveBeenCalledWith({
+      assetCode: "USDC",
+      poolId: "pool-1",
+      apy: 0.05,
+      errorCode: "op_underfunded",
+    });
+    expect(mockTrackEarnDepositSuccess).not.toHaveBeenCalled();
   });
 
   it("does NOT reject when submitTransaction rejects (e.g. the debug forced-failure override, which throws directly)", async () => {
@@ -251,6 +297,8 @@ describe("useEarnTransaction", () => {
       // And it must not silently flip status to "success" either.
       expect(result.current.status).toBe("submitting");
       expect(result.current.transactionHash).toBeNull();
+      // Nor should an abandoned submit fire a business-outcome event.
+      expect(mockTrackEarnDepositSuccess).not.toHaveBeenCalled();
     });
 
     it("does NOT call setSubmitFailed or write status when a submit rejects AFTER being abandoned", async () => {
@@ -282,6 +330,7 @@ describe("useEarnTransaction", () => {
       expect(mockSetSubmitFailed).not.toHaveBeenCalled();
       expect(result.current.status).toBe("submitting");
       expect(result.current.error).toBeNull();
+      expect(mockTrackEarnDepositFail).not.toHaveBeenCalled();
     });
 
     it("reset() is a no-op while status is submitting (hardening against the same bug class)", async () => {

@@ -6,6 +6,7 @@ import { EarnTransactionStatus } from "components/screens/EarnScreen/hooks/useEa
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
+import { AnalyticsEvent, buildScreenViewedProps } from "config/analyticsConfig";
 import { mapNetworkToNetworkDetails } from "config/constants";
 import { useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
@@ -14,8 +15,9 @@ import { getBalanceByContractId } from "helpers/balances";
 import { formatTokenForDisplay } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
-import React, { useEffect, useLayoutEffect, useMemo } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { View } from "react-native";
+import { track } from "services/analytics/core";
 
 export interface EarnProcessingScreenProps {
   /** Excludes "idle" — `EarnAmountScreen` only renders this screen once a
@@ -75,6 +77,7 @@ const EarnProcessingScreen: React.FC<EarnProcessingScreenProps> = ({
 
   const selectedAssetId = useEarnStore((state) => state.selectedAssetId);
   const selectedAssetCode = useEarnStore((state) => state.selectedAssetCode);
+  const hasEmittedSuccessView = useRef(false);
 
   const networkDetails = useMemo(
     () => mapNetworkToNetworkDetails(network),
@@ -86,6 +89,36 @@ const EarnProcessingScreen: React.FC<EarnProcessingScreenProps> = ({
       getBalanceByContractId(selectedAssetId, pricedBalances, networkDetails),
     [selectedAssetId, pricedBalances, networkDetails],
   );
+
+  // Neither this screen nor the review sheet it follows is a registered
+  // route (see the component doc above), so screen.viewed for the
+  // earn_processing funnel stage doesn't come free from route-based
+  // analytics -- emit it manually. The component only ever mounts once
+  // `status` has left "idle" (see `EarnAmountScreen`'s inline gate), so a
+  // bare mount effect fires this exactly once per submission, mirroring
+  // `TransactionProcessingScreen`'s VIEW_SEND_PROCESSING emission.
+  useEffect(() => {
+    track(
+      AnalyticsEvent.SCREEN_VIEWED,
+      buildScreenViewedProps(AnalyticsEvent.VIEW_EARN_PROCESSING),
+    );
+  }, []);
+
+  // This same screen also renders the terminal success state (see
+  // `getStatusText`/`getStatusIcon` below), so emit the earn_success funnel
+  // stage when `status` settles into "success" -- completing
+  // select_token -> amount -> review -> processing -> success cross-platform.
+  // Guarded to fire at most once per mount, mirroring
+  // `TransactionProcessingScreen`'s VIEW_SEND_SUCCESS emission.
+  useEffect(() => {
+    if (status === "success" && !hasEmittedSuccessView.current) {
+      hasEmittedSuccessView.current = true;
+      track(
+        AnalyticsEvent.SCREEN_VIEWED,
+        buildScreenViewedProps(AnalyticsEvent.VIEW_EARN_SUCCESS),
+      );
+    }
+  }, [status]);
 
   // This screen replaces EarnAmountScreen's body inline, but that screen
   // still has a registered header (via EarnNavigator) — hide it while this

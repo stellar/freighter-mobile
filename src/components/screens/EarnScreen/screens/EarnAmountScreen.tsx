@@ -29,6 +29,7 @@ import {
   NoticeBannerVariants,
 } from "components/sds/NoticeBanner";
 import { Text } from "components/sds/Typography";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import {
   NATIVE_TOKEN_CODE,
   TransactionContext,
@@ -679,6 +680,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
         handleCloseModal={() =>
           earnReviewBottomSheetModalRef.current?.dismiss()
         }
+        analyticsEvent={AnalyticsEvent.VIEW_EARN_REVIEW}
         customContent={
           <EarnReviewBottomSheet
             bottomSheetModalRef={earnReviewBottomSheetModalRef}

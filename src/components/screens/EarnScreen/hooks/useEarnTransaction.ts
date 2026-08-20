@@ -5,6 +5,7 @@ import { useEarnStore } from "ducks/earn";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { isWalletUnlocked } from "hooks/useGetActiveAccount";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { analytics } from "services/analytics";
 
 export type EarnTransactionStatus = "idle" | "submitting" | "success" | "error";
 
@@ -180,6 +181,17 @@ export const useEarnTransaction = ({
       setTransactionHash(hash);
       setSubmitFailed(false);
       setStatus("success");
+
+      // No amount/fiat value on this event by design (product decision,
+      // non-negotiable) -- only the identifiers, matching payment.completed /
+      // swap.completed's shape.
+      const { pool, selectedAssetCode, selectedAssetApy } =
+        useEarnStore.getState();
+      analytics.trackEarnDepositSuccess({
+        assetCode: selectedAssetCode,
+        poolId: pool?.id,
+        apy: selectedAssetApy,
+      });
     } catch (err) {
       if (activeRequestIdRef.current !== requestId) {
         return;
@@ -190,6 +202,23 @@ export const useEarnTransaction = ({
       setError(message);
       setSubmitFailed(true);
       setStatus("error");
+
+      // `submitErrorResultCodes` isn't threaded through this hook's own
+      // return shape (see the hook doc), so read it directly off the store,
+      // same as the sign/submit failure branches above. Null for a signing
+      // failure (there's no Horizon result yet) -- reason_code falls back to
+      // "unknown" in that case, same as trackTransactionError elsewhere.
+      const { pool, selectedAssetCode, selectedAssetApy } =
+        useEarnStore.getState();
+      const { submitErrorResultCodes } = useTransactionBuilderStore.getState();
+      analytics.trackEarnDepositFail({
+        assetCode: selectedAssetCode,
+        poolId: pool?.id,
+        apy: selectedAssetApy,
+        errorCode:
+          submitErrorResultCodes?.operations?.[0] ||
+          submitErrorResultCodes?.transaction,
+      });
     }
   }, [account, network, signTransaction, submitTransaction, setSubmitFailed]);
 

@@ -79,6 +79,19 @@ export enum AnalyticsEvent {
   VIEW_SEARCH_TOKEN = "search_asset",
   VIEW_ADD_TOKEN_MANUALLY = "add_asset_manually",
 
+  // Earn (Blend deposit). Values match the extension's decided funnel
+  // (earn_intro -> earn_select_token -> earn_amount -> earn_review ->
+  // earn_processing -> earn_success) so the two platforms merge into one
+  // funnel in Amplitude. Mobile has no earn_intro (descoped from Phase 1);
+  // this covers earn_select_token onward. VIEW_EARN_REVIEW/_PROCESSING/
+  // _SUCCESS are fired manually (see SCREEN_CATALOG / call sites below) since
+  // none of the three is a registered route.
+  VIEW_EARN_TOKEN_PICKER = "earn_select_token",
+  VIEW_EARN_AMOUNT = "earn_amount",
+  VIEW_EARN_REVIEW = "earn_review",
+  VIEW_EARN_PROCESSING = "earn_processing",
+  VIEW_EARN_SUCCESS = "earn_success",
+
   // ---------------------------------------------------------------------------
   // Domain (action / outcome) events (#2883)
   //
@@ -149,6 +162,13 @@ export enum AnalyticsEvent {
   SWAP_TRUSTLINE_ADDED = "swap.trustline_added",
   SWAP_XLM_RESERVE_INSUFFICIENT_SHOWN = "swap.xlm_reserve_insufficient_shown",
   SWAP_QUOTE_EXPIRED = "swap.quote_expired",
+
+  // Earn deposit (Blend). No amounts/fiat on either event (product decision,
+  // non-negotiable) -- only asset_code, pool_id, apy, matching how
+  // payment.completed / swap.completed are shaped.
+  EARN_DEPOSIT_SUCCESS = "earn_deposit.completed",
+  // carries reason_code
+  EARN_DEPOSIT_FAIL = "earn_deposit.failed",
 
   // Send collectible
   SEND_COLLECTIBLE_SUCCESS = "collectible_send.completed",
@@ -308,6 +328,7 @@ export enum AnalyticsFlow {
   DISCOVERY = "discovery",
   SECURITY = "security",
   HISTORY = "history",
+  EARN = "earn",
 }
 
 /**
@@ -515,6 +536,29 @@ const SCREEN_CATALOG: Record<string, { flow?: AnalyticsFlow; step?: Step }> = {
   [AnalyticsEvent.VIEW_MANAGE_WALLETS]: {
     flow: AnalyticsFlow.SETTINGS,
   },
+  // Earn (Blend deposit). VIEW_EARN_REVIEW/_PROCESSING/_SUCCESS are not
+  // routes -- they're retargeted to screen.viewed manually (BottomSheet's
+  // analyticsEvent prop for the review sheet; a direct track() call for the
+  // inline processing/success screen), same mechanism as the Scan/Receive
+  // per-tab views above.
+  [AnalyticsEvent.VIEW_EARN_TOKEN_PICKER]: {
+    flow: AnalyticsFlow.EARN,
+  },
+  [AnalyticsEvent.VIEW_EARN_AMOUNT]: {
+    flow: AnalyticsFlow.EARN,
+  },
+  [AnalyticsEvent.VIEW_EARN_REVIEW]: {
+    flow: AnalyticsFlow.EARN,
+    step: "confirm",
+  },
+  [AnalyticsEvent.VIEW_EARN_PROCESSING]: {
+    flow: AnalyticsFlow.EARN,
+    step: "processing",
+  },
+  [AnalyticsEvent.VIEW_EARN_SUCCESS]: {
+    flow: AnalyticsFlow.EARN,
+    step: "success",
+  },
 };
 
 /**
@@ -624,6 +668,12 @@ export const CUSTOM_ROUTE_MAPPINGS: Record<string, AnalyticsEvent> = {
 
   // Buy XLM override
   BuyXLMScreen: AnalyticsEvent.VIEW_BUY_XLM,
+
+  // Earn override: auto-derivation would produce "earn_token_picker", which
+  // does not match the extension's "earn_select_token" funnel stage.
+  // EarnAmountScreen needs no entry here -- it auto-derives to "earn_amount",
+  // which already matches.
+  EarnTokenPickerScreen: AnalyticsEvent.VIEW_EARN_TOKEN_PICKER,
 };
 
 /**
