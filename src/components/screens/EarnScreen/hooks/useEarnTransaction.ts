@@ -27,22 +27,25 @@ interface UseEarnTransactionResult {
    *
    * Setting `status` to "submitting" IS the processing flag:
    * `EarnAmountScreen` renders its inline `EarnProcessingScreen` whenever
-   * `status !== "idle"`, so calling `submit()` both flips that flag and
-   * kicks off the sign/submit work in a single call.
+   * `status` is "submitting" or "success", so calling `submit()` both flips
+   * that flag and kicks off the sign/submit work in a single call.
    */
   submit: () => Promise<void>;
   /**
    * Returns `status` to "idle" without touching the earn duck. This is not
    * part of the brief's literal `{ submit, status, transactionHash, error }`
-   * shape, but is needed by the "error" state's "back to amount" action:
-   * without it, `EarnAmountScreen`'s inline gate (`status !== "idle"`) would
-   * have no way to drop back to the normal amount screen, where
+   * shape, but is needed to drop back to the normal amount screen on
+   * failure: without it, `EarnAmountScreen`'s inline gate (`status ===
+   * "submitting" || "success"`) would have no way back from "error", where
    * `lastSubmitFailed` (already set by the failed `submit()` below) drives
-   * the retry banner.
+   * the retry banner. Called automatically by an effect in
+   * `EarnAmountScreen` as soon as `status` becomes "error" — the design has
+   * no failure screen with a user-facing "back to amount" button for this to
+   * live behind.
    *
    * A no-op while `status === "submitting"` — there is no call site that
-   * reaches `reset()` mid-submit today (the only caller renders solely in
-   * the "error" state), but this closes off that class of bug rather than
+   * reaches `reset()` mid-submit today (the only caller fires on the
+   * "error" transition), but this closes off that class of bug rather than
    * relying on today's single call site staying that way. Abandoning an
    * in-flight submit is `abandon()`'s job, not this one's.
    */

@@ -14,8 +14,9 @@ export const EARN_ONRAMP_ASSETS = new Set(["XLM", "USDC"]);
 /**
  * Which button set the "Not enough X" sheet shows.
  *
- * `TRANSFER_ONLY` is not in the designs but is reachable — an empty account on
- * a non-onrampable asset has nothing to buy with and nothing to swap from.
+ * `TRANSFER_ONLY` is designed (Figma node `9457:46530`) and reachable — an
+ * empty account on a non-onrampable asset has nothing to buy with and
+ * nothing to swap from.
  */
 export enum NotEnoughVariant {
   SWAP_OR_TRANSFER = "swap-or-transfer",

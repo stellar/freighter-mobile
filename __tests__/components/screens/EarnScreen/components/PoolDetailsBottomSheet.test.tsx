@@ -1,9 +1,27 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { fireEvent } from "@testing-library/react-native";
 import { PoolDetailsBottomSheet } from "components/screens/EarnScreen/components/PoolDetailsBottomSheet";
-import { BlendCatalogPool } from "config/blendTypes";
+import { BlendCatalogPool, BlendCatalogReserve } from "config/blendTypes";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
+
+const buildReserve = (
+  assetId: string,
+  symbol: string,
+): BlendCatalogReserve => ({
+  assetId,
+  symbol,
+  name: symbol,
+  decimals: 7,
+  enabled: true,
+  utilization: null,
+  supplyApy: null,
+  borrowApy: null,
+  emissionsSupplyApr: null,
+  suppliedUsd: null,
+  borrowedUsd: null,
+  priceUsd: null,
+});
 
 // A pool with nulls across every unpriced field — the COMMON case per the
 // live backend, not an edge case. `borrowedUsd` is a genuine zero here to
@@ -49,11 +67,13 @@ describe("PoolDetailsBottomSheet", () => {
     );
     expect(getByTestId("pool-details-lendingInterest")).toHaveTextContent("--");
     expect(getByTestId("pool-details-currentNetApy")).toHaveTextContent("--");
-    expect(getByTestId("pool-details-totalSupplied")).toHaveTextContent("--");
+    expect(getByTestId("pool-details-supplied")).toHaveTextContent("--");
     // A genuine zero must never collapse into the same "--" as null.
-    expect(getByTestId("pool-details-totalBorrowed")).toHaveTextContent(
-      "$0.00",
-    );
+    expect(getByTestId("pool-details-borrowed")).toHaveTextContent("$0.00");
+    // Backstop: the backend serves no `backstop_usd` for any pool today, so
+    // this is null (not omitted) for the same "unavailable" reason as the
+    // other three -- extends this regression to the new row.
+    expect(getByTestId("pool-details-backstop")).toHaveTextContent("--");
   });
 
   it("renders no description for a pool with no catalog entry", () => {
@@ -74,23 +94,21 @@ describe("PoolDetailsBottomSheet", () => {
     expect(getByTestId("pool-details-currentNetApy")).toHaveTextContent(
       "392.00%",
     );
-    expect(getByTestId("pool-details-totalSupplied")).toHaveTextContent(
-      "$40.39M",
-    );
-    expect(getByTestId("pool-details-totalBorrowed")).toHaveTextContent(
-      "$35.72M",
-    );
+    expect(getByTestId("pool-details-supplied")).toHaveTextContent("$40.39M");
+    expect(getByTestId("pool-details-borrowed")).toHaveTextContent("$35.72M");
   });
 
-  it("renders the pool's own name as the prominent heading, with no generic eyebrow label above it", () => {
-    // Pins the ProtocolDetailsBottomSheet-style hierarchy: the identity
-    // content the user opened the sheet for (the pool name) takes the
-    // prominent slot directly, with no "Pool details" eyebrow inverting it.
-    const { getByText, queryByText } = renderWithProviders(
+  it("renders the pool's own name directly in the header, and a separate 'Pool Details' eyebrow above the stat cards", () => {
+    // Updated for the design correction (`9448:18518`): the header itself
+    // still has no eyebrow stacked directly above the pool name -- but
+    // unlike before, the sheet now has a "Pool Details" eyebrow of its own,
+    // positioned above the two stat cards rather than the header.
+    const { getByText } = renderWithProviders(
       <PoolDetailsBottomSheet pool={fixedPool} />,
     );
     expect(getByText("TestnetV2").props.children).toBe("TestnetV2");
-    expect(queryByText("Pool details")).toBeNull();
+    expect(getByText("Pool Details")).toBeTruthy();
+    expect(getByText("by Blend")).toBeTruthy();
   });
 
   it("renders the fixed-pool description for a pool id present in the catalog", () => {
@@ -102,11 +120,61 @@ describe("PoolDetailsBottomSheet", () => {
     );
   });
 
-  it("never renders a Backstop row — the backend doesn't serve that figure yet", () => {
-    const { queryByText } = renderWithProviders(
+  it("renders the Backstop row structurally, reading '--' because the backend doesn't serve that figure yet", () => {
+    // Design decision (overriding this file's earlier omission): the row
+    // always renders, matching the design's structure and this app's
+    // "null means unavailable, never silently omitted" rule. It happens to
+    // read "--" for every live pool today because the backend serves no
+    // `backstop_usd` field yet (`fixedPool.backstopUsd` is null here) --
+    // and will start showing a real figure automatically once it does.
+    const { getByText, getByTestId } = renderWithProviders(
       <PoolDetailsBottomSheet pool={fixedPool} />,
     );
-    expect(queryByText(/backstop/i)).toBeNull();
+    expect(getByText("Backstop")).toBeTruthy();
+    expect(getByTestId("pool-details-backstop")).toHaveTextContent("--");
+  });
+
+  it("renders '--' for Accepted tokens when the reserve list is empty", () => {
+    const { getByTestId } = renderWithProviders(
+      <PoolDetailsBottomSheet pool={fixedPool} />,
+    );
+    expect(getByTestId("pool-details-acceptedTokens")).toHaveTextContent("--");
+  });
+
+  it("renders an icon stack (no '+N' trailer) for a reserve list at or under the visible cap", () => {
+    const poolWithReserves: BlendCatalogPool = {
+      ...fixedPool,
+      reserves: [
+        buildReserve("CUSDC...", "USDC"),
+        buildReserve("CEURC...", "EURC"),
+      ],
+    };
+    const { getByTestId, queryByTestId } = renderWithProviders(
+      <PoolDetailsBottomSheet pool={poolWithReserves} />,
+    );
+    expect(getByTestId("pool-details-acceptedTokens")).toBeTruthy();
+    expect(queryByTestId("pool-details-acceptedTokens-overflow")).toBeNull();
+  });
+
+  it("collapses reserves beyond the visible cap into a '+N' trailer", () => {
+    const poolWithManyReserves: BlendCatalogPool = {
+      ...fixedPool,
+      reserves: [
+        buildReserve("C1...", "AAA"),
+        buildReserve("C2...", "BBB"),
+        buildReserve("C3...", "CCC"),
+        buildReserve("C4...", "DDD"),
+        buildReserve("C5...", "EEE"),
+        buildReserve("C6...", "FFF"),
+      ],
+    };
+    const { getByTestId } = renderWithProviders(
+      <PoolDetailsBottomSheet pool={poolWithManyReserves} />,
+    );
+    // 6 reserves, 4 visible -> "+2".
+    expect(
+      getByTestId("pool-details-acceptedTokens-overflow"),
+    ).toHaveTextContent("+2");
   });
 
   it("the close button dismisses the sheet via the forwarded ref", () => {
@@ -121,6 +189,21 @@ describe("PoolDetailsBottomSheet", () => {
       <PoolDetailsBottomSheet pool={fixedPool} bottomSheetModalRef={ref} />,
     );
     fireEvent.press(getByTestId("pool-details-close"));
+    expect(dismissMock).toHaveBeenCalled();
+  });
+
+  it("the bottom 'Close' CTA also dismisses the sheet via the forwarded ref", () => {
+    const dismissMock = jest.fn();
+    const ref = React.createRef<BottomSheetModal>();
+    Object.defineProperty(ref, "current", {
+      value: { dismiss: dismissMock },
+      writable: true,
+    });
+
+    const { getByTestId } = renderWithProviders(
+      <PoolDetailsBottomSheet pool={fixedPool} bottomSheetModalRef={ref} />,
+    );
+    fireEvent.press(getByTestId("pool-details-close-cta"));
     expect(dismissMock).toHaveBeenCalled();
   });
 });

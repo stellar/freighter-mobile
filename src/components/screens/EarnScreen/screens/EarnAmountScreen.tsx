@@ -4,13 +4,15 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import BigNumber from "bignumber.js";
 import { AmountCard } from "components/AmountCard";
 import BottomSheet from "components/BottomSheet";
-import InformationBottomSheet from "components/InformationBottomSheet";
 import { PercentageButtons } from "components/PercentageButtons";
+import TransactionSettingsBottomSheet from "components/TransactionSettingsBottomSheet";
 import { SecurityDetailBottomSheet } from "components/blockaid";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { EarnReviewBottomSheet } from "components/screens/EarnScreen/components/EarnReviewBottomSheet";
 import { PoolCard } from "components/screens/EarnScreen/components/PoolCard";
 import { PoolDetailsBottomSheet } from "components/screens/EarnScreen/components/PoolDetailsBottomSheet";
+import { ReceiveFundsBottomSheet } from "components/screens/EarnScreen/components/ReceiveFundsBottomSheet";
+import { XlmFeeShortfallBottomSheet } from "components/screens/EarnScreen/components/XlmFeeShortfallBottomSheet";
 import {
   UNKNOWN_RESOURCE_FEE_FLOOR_XLM,
   getEarnCtaState,
@@ -24,7 +26,6 @@ import { useEarnTransaction } from "components/screens/EarnScreen/hooks/useEarnT
 import { useSimulateEarnDeposit } from "components/screens/EarnScreen/hooks/useSimulateEarnDeposit";
 import { EarnProcessingScreen } from "components/screens/EarnScreen/screens";
 import { Button } from "components/sds/Button";
-import Icon from "components/sds/Icon";
 import {
   NoticeBanner,
   NoticeBannerVariants,
@@ -60,7 +61,6 @@ import {
   formatTokenForDisplay,
 } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
-import useColors from "hooks/useColors";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useInitialRecommendedFee } from "hooks/useInitialRecommendedFee";
 import { useNetworkFees } from "hooks/useNetworkFees";
@@ -85,7 +85,6 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
 }) => {
   const { assetId, tokenCode } = route.params;
   const { t } = useAppTranslation();
-  const { themeColors } = useColors();
   const { account } = useGetActiveAccount();
   const { network } = useAuthenticationStore();
   const { pricedBalances } = useBalancesStore();
@@ -161,6 +160,8 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
   const transactionSecurityWarningBottomSheetModalRef =
     useRef<BottomSheetModal>(null);
   const poolDetailsBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const transactionSettingsBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const receiveFundsBottomSheetModalRef = useRef<BottomSheetModal>(null);
 
   const converter = useTokenFiatConverter({
     selectedBalance: depositBalance,
@@ -338,14 +339,68 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     poolDetailsBottomSheetModalRef.current?.present();
   }, []);
 
+  // Review sheet's footer gear (design `9448:29608`) -- same
+  // `TransactionSettingsBottomSheet`/`TransactionContext.Send` reuse as the
+  // fee/timeout context above, wired the same way Send/Swap's own review
+  // sheets open theirs (see `TransactionAmountScreen`'s
+  // `handleOpenSettingsFromReview`).
+  const openTransactionSettings = useCallback(() => {
+    transactionSettingsBottomSheetModalRef.current?.present();
+  }, []);
+
+  const handleCancelTransactionSettings = useCallback(() => {
+    transactionSettingsBottomSheetModalRef.current?.dismiss();
+  }, []);
+
+  const handleConfirmTransactionSettings = useCallback(() => {
+    transactionSettingsBottomSheetModalRef.current?.dismiss();
+  }, []);
+
+  // Rebuilds the staged deposit with the just-saved fee/timeout so Review's
+  // staged XDR keeps matching what Confirm will actually submit -- the same
+  // rebuild Send's own `handleSettingsChange` triggers after a fee/timeout
+  // save. Reads the settings store's value via `getState()` rather than the
+  // `transactionFee`/`transactionTimeout` closed over above: those are still
+  // the PRE-save values at the instant this fires, since
+  // `TransactionSettingsBottomSheet`'s `handleConfirm` calls
+  // `onSettingsChange` synchronously, before this screen re-renders with the
+  // just-saved store value (same reasoning as the `getState()` read in
+  // `handleCtaPress` above).
+  const handleEarnSettingsChange = useCallback(() => {
+    if (isSimulating || !account?.publicKey) {
+      return;
+    }
+    const freshSettings = useTransactionSettingsStore.getState();
+    simulate({
+      assetId,
+      amount: tokenAmount,
+      decimals: selectedAssetDecimals,
+      transactionFee: freshSettings.transactionFee,
+      transactionTimeout: freshSettings.transactionTimeout,
+      network,
+      senderAddress: account.publicKey,
+    });
+  }, [
+    isSimulating,
+    account?.publicKey,
+    simulate,
+    assetId,
+    tokenAmount,
+    selectedAssetDecimals,
+    network,
+  ]);
+
   // `EarnProcessingScreen` is rendered INLINE below (not a registered
   // route — there is no `EARN_ROUTES.EARN_PROCESSING_SCREEN`), gated on
-  // `earnTransactionStatus !== "idle"`. This structurally prevents a
-  // swipe-back gesture from abandoning an in-flight submit, which is
-  // stronger than a navigator's `gestureEnabled: false`.
+  // `earnTransactionStatus` being "submitting" or "success". This
+  // structurally prevents a swipe-back gesture from abandoning an in-flight
+  // submit, which is stronger than a navigator's `gestureEnabled: false`.
+  // "error" deliberately falls through to the normal amount screen instead
+  // (see the auto-reset effect and render gate below) — the design has no
+  // failure step.
   const {
     status: earnTransactionStatus,
-    error: earnTransactionError,
+    transactionHash: earnTransactionHash,
     submit: submitEarnTransaction,
     reset: resetEarnTransactionStatus,
     abandon: abandonEarnTransaction,
@@ -406,12 +461,27 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     });
   }, [navigation, resetEarn]);
 
-  // Error's action: drop back to this screen (no navigation) — the retry
-  // banner shows because `lastSubmitFailed` was already set by the failed
-  // submit.
+  // Drop back to this screen (no navigation) — the retry banner shows
+  // because `lastSubmitFailed` was already set by the failed submit. Per the
+  // design (`9599:40192`) there is no dedicated failure screen to trigger
+  // this from a button anymore -- the effect below calls it automatically as
+  // soon as `earnTransactionStatus` becomes "error".
   const handleEarnProcessingBackToAmount = useCallback(() => {
     resetEarnTransactionStatus();
   }, [resetEarnTransactionStatus]);
+
+  // Failure returns AUTOMATICALLY to the amount screen (design `9599:40192`
+  // is the amount screen with a retry banner, not a separate failure step).
+  // `resetEarnTransactionStatus` drops `earnTransactionStatus` back to
+  // "idle" so the render gate below falls through to the normal amount
+  // screen; `lastSubmitFailed` (already set by the failed submit inside
+  // `useEarnTransaction`) is what actually drives the retry banner, and is
+  // untouched by this reset.
+  useEffect(() => {
+    if (earnTransactionStatus === "error") {
+      handleEarnProcessingBackToAmount();
+    }
+  }, [earnTransactionStatus, handleEarnProcessingBackToAmount]);
 
   const handleCancelSecurityWarning = useCallback(() => {
     transactionSecurityWarningBottomSheetModalRef.current?.dismiss();
@@ -574,15 +644,35 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     });
   }, [rootNavigation]);
 
-  if (earnTransactionStatus !== "idle") {
+  // The fee-shortfall sheet's second action (design node `9457:45927`): an
+  // in-flow "Receive funds" QR sheet (`9457:46184`), presented ON TOP of the
+  // fee sheet rather than replacing it -- the mock itself composites the
+  // receive sheet directly over this one, and this mirrors the review
+  // sheet's own security-detail sheet (`onSecurityWarningPress` below), the
+  // established pattern in this feature for stacking a sheet without
+  // dismissing the one beneath. Dismissing it leaves the fee sheet exactly
+  // as it was -- the user never leaves Earn. Previously this navigated
+  // cross-stack to `ROOT_NAVIGATOR_ROUTES.SCAN_RECEIVE_SCREEN`, ejecting the
+  // user from the flow entirely -- same drift as
+  // `EarnTokenPickerScreen`'s `NotEnoughTokenBottomSheet`.
+  const handleReceiveXlmPress = useCallback(() => {
+    receiveFundsBottomSheetModalRef.current?.present();
+  }, []);
+
+  // "error" deliberately falls through to the normal amount screen below
+  // (see the auto-reset effect above) rather than rendering
+  // `EarnProcessingScreen` — the design has no failure step for it to show.
+  if (
+    earnTransactionStatus === "submitting" ||
+    earnTransactionStatus === "success"
+  ) {
     return (
       <EarnProcessingScreen
         status={earnTransactionStatus}
         tokenAmount={tokenAmount}
-        error={earnTransactionError}
+        transactionHash={earnTransactionHash}
         onCloseWhileSubmitting={handleCloseEarnProcessingWhileSubmitting}
         onDone={handleEarnProcessingDone}
-        onBackToAmount={handleEarnProcessingBackToAmount}
       />
     );
   }
@@ -670,27 +760,10 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
           networkFeeBottomSheetModalRef.current?.dismiss()
         }
         customContent={
-          <InformationBottomSheet
-            title={t("earnAmount.networkFeeSheet.title")}
-            onClose={() => networkFeeBottomSheetModalRef.current?.dismiss()}
-            onConfirm={handleBuyXlmPress}
-            confirmLabel={t("earnAmount.networkFeeSheet.buyXlm")}
-            headerElement={
-              <View className="bg-amber-3 p-2 rounded-[8px]">
-                <Icon.InfoOctagon
-                  color={themeColors.status.warning}
-                  size={28}
-                />
-              </View>
-            }
-            texts={[
-              {
-                key: "description",
-                value: t("earnAmount.networkFeeSheet.description", {
-                  fee: formatTokenForDisplay(transactionFee, NATIVE_TOKEN_CODE),
-                }),
-              },
-            ]}
+          <XlmFeeShortfallBottomSheet
+            bottomSheetModalRef={networkFeeBottomSheetModalRef}
+            onBuy={handleBuyXlmPress}
+            onReceive={handleReceiveXlmPress}
           />
         }
       />
@@ -710,6 +783,19 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
               transactionSecurityWarningBottomSheetModalRef.current?.present()
             }
             onConfirm={handleConfirmDeposit}
+            onSettingsPress={openTransactionSettings}
+          />
+        }
+      />
+      <BottomSheet
+        modalRef={transactionSettingsBottomSheetModalRef}
+        handleCloseModal={handleCancelTransactionSettings}
+        customContent={
+          <TransactionSettingsBottomSheet
+            context={TransactionContext.Send}
+            onCancel={handleCancelTransactionSettings}
+            onConfirm={handleConfirmTransactionSettings}
+            onSettingsChange={handleEarnSettingsChange}
           />
         }
       />
@@ -740,6 +826,17 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
           <PoolDetailsBottomSheet
             pool={pool}
             bottomSheetModalRef={poolDetailsBottomSheetModalRef}
+          />
+        }
+      />
+      <BottomSheet
+        modalRef={receiveFundsBottomSheetModalRef}
+        handleCloseModal={() =>
+          receiveFundsBottomSheetModalRef.current?.dismiss()
+        }
+        customContent={
+          <ReceiveFundsBottomSheet
+            bottomSheetModalRef={receiveFundsBottomSheetModalRef}
           />
         }
       />

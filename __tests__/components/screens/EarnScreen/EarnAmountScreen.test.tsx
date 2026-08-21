@@ -90,6 +90,7 @@ const mockAbandonEarnTransaction = jest.fn();
 
 let mockEarnTransactionStatus: "idle" | "submitting" | "success" | "error" =
   "idle";
+let mockEarnTransactionHash: string | null = null;
 
 // Settable per-test so the failed-simulation message-swap effect (see
 // `EarnAmountScreen`'s `simulateError` useEffect) can be exercised without
@@ -108,6 +109,7 @@ jest.mock("components/screens/EarnScreen/hooks/useSimulateEarnDeposit", () => ({
 jest.mock("components/screens/EarnScreen/hooks/useEarnTransaction", () => ({
   useEarnTransaction: () => ({
     status: mockEarnTransactionStatus,
+    transactionHash: mockEarnTransactionHash,
     error: null,
     submit: mockSubmitEarnTransaction,
     reset: mockResetEarnTransactionStatus,
@@ -275,6 +277,7 @@ describe("EarnAmountScreen", () => {
     // eslint-disable-next-line no-underscore-dangle
     globalThis.__earnAmountMockSheetRefs = [];
     mockEarnTransactionStatus = "idle";
+    mockEarnTransactionHash = null;
     mockSimulateError = null;
     mockPricedBalances = { XLM: XLM_BALANCE, [USDC_ASSET_ID]: USDC_BALANCE };
 
@@ -633,8 +636,17 @@ describe("EarnAmountScreen", () => {
   });
 
   describe("inline processing gate", () => {
-    it("renders the processing screen inline once status leaves idle", () => {
+    it("renders the processing screen inline while status is submitting", () => {
       mockEarnTransactionStatus = "submitting";
+
+      const { getByTestId, queryByTestId } = renderScreen();
+
+      expect(getByTestId("earn-processing-mock")).toBeTruthy();
+      expect(queryByTestId("earn-amount-screen")).toBeNull();
+    });
+
+    it("renders the processing screen inline while status is success", () => {
+      mockEarnTransactionStatus = "success";
 
       const { getByTestId, queryByTestId } = renderScreen();
 
@@ -647,6 +659,21 @@ describe("EarnAmountScreen", () => {
 
       expect(getByTestId("earn-amount-screen")).toBeTruthy();
       expect(queryByTestId("earn-processing-mock")).toBeNull();
+    });
+
+    // Design node `9599:40192` has no dedicated failure screen: on failure
+    // the user lands directly back on the amount screen, where the retry
+    // banner (driven by `lastSubmitFailed`, not by this local status) takes
+    // over. `handleEarnProcessingBackToAmount` used to be wired to a button
+    // on the now-removed failure screen; it is called automatically instead.
+    it("renders the normal amount screen (not the processing screen) when status is error, and resets the status automatically", () => {
+      mockEarnTransactionStatus = "error";
+
+      const { getByTestId, queryByTestId } = renderScreen();
+
+      expect(getByTestId("earn-amount-screen")).toBeTruthy();
+      expect(queryByTestId("earn-processing-mock")).toBeNull();
+      expect(mockResetEarnTransactionStatus).toHaveBeenCalledTimes(1);
     });
   });
 

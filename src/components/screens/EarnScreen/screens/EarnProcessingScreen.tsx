@@ -8,26 +8,45 @@ import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
 import { AnalyticsEvent, buildScreenViewedProps } from "config/analyticsConfig";
 import { mapNetworkToNetworkDetails } from "config/constants";
+import { logger } from "config/logger";
 import { useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
 import { useEarnStore } from "ducks/earn";
 import { getBalanceByContractId } from "helpers/balances";
 import { formatTokenForDisplay } from "helpers/formatAmount";
+import { getStellarExpertUrl } from "helpers/stellarExpert";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
-import React, { useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { useInAppBrowser } from "hooks/useInAppBrowser";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+} from "react";
 import { View } from "react-native";
 import { track } from "services/analytics/core";
 
 export interface EarnProcessingScreenProps {
-  /** Excludes "idle" — `EarnAmountScreen` only renders this screen once a
-   * submit is underway; "idle" means the normal amount screen is showing. */
-  status: Exclude<EarnTransactionStatus, "idle">;
+  /**
+   * Only "submitting" and "success" — per the design (`9599:40192`) there is
+   * no dedicated failure screen: on failure `EarnAmountScreen` returns
+   * automatically to the normal amount screen, where the retry banner
+   * (driven by the earn duck's `lastSubmitFailed`) takes over. Excluding
+   * "idle" and "error" here makes that illegal state unrepresentable rather
+   * than relying on the caller to simply not pass them.
+   */
+  status: Exclude<EarnTransactionStatus, "idle" | "error">;
   /** The amount entered on the amount screen, in display (non-raw) units. */
   tokenAmount: string;
-  /** The real reason sourced from `transactionBuilder`/`useEarnTransaction`
-   * — never a fabricated message. Only rendered when `status === "error"`. */
-  error: string | null;
+  /**
+   * Set once `submit()` resolves successfully; null while still submitting.
+   * Threaded through as a prop for the same reason `tokenAmount` is (see
+   * below): it lives in `useEarnTransaction`'s local state, not a duck.
+   * Powers the "View transaction" explorer link on the success state.
+   */
+  transactionHash: string | null;
   /**
    * Close while a submit is still in flight. Per the flow's design this
    * returns the user Home WITHOUT waiting for the result — there is no
@@ -42,10 +61,6 @@ export interface EarnProcessingScreenProps {
   onCloseWhileSubmitting: () => void;
   /** Success's "Done" action: resets the earn duck and returns Home. */
   onDone: () => void;
-  /** Error's action: drops back to the amount screen, where
-   * `lastSubmitFailed` (already set by the failed submit) shows the retry
-   * banner. */
-  onBackToAmount: () => void;
 }
 
 /**
@@ -53,30 +68,36 @@ export interface EarnProcessingScreenProps {
  * (icon + status text + a card summarizing what happened) but, like
  * `EarnReviewBottomSheet`, reads the pool/asset it's summarizing directly
  * off `useEarnStore` and `useBalancesStore` rather than threading them
- * through props — `tokenAmount` is the one exception, since it lives in the
- * amount screen's local `useTokenFiatConverter` state, not a duck.
+ * through props — `tokenAmount` and `transactionHash` are the exceptions,
+ * since they live in the amount screen's local hook state
+ * (`useTokenFiatConverter` / `useEarnTransaction`), not a duck.
  *
- * Rendered INLINE from `EarnAmountScreen` (not a registered route) behind a
- * `status !== "idle"` gate — see `useEarnTransaction`. This structurally
- * prevents a swipe-back gesture from abandoning an in-flight submit, which
- * is stronger than relying on a navigator's `gestureEnabled: false`.
+ * Rendered INLINE from `EarnAmountScreen` (not a registered route) whenever
+ * status is "submitting" or "success" — see `useEarnTransaction`. This
+ * structurally prevents a swipe-back gesture from abandoning an in-flight
+ * submit, which is stronger than relying on a navigator's
+ * `gestureEnabled: false`. There used to be a third, "error" state rendered
+ * here (a full-screen "Deposit failed" step) — the design (`9599:40192`) has
+ * no such screen, so it was removed; `EarnAmountScreen` now returns
+ * automatically to the normal amount screen on failure instead.
  */
 const EarnProcessingScreen: React.FC<EarnProcessingScreenProps> = ({
   status,
   tokenAmount,
-  error,
+  transactionHash,
   onCloseWhileSubmitting,
   onDone,
-  onBackToAmount,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const navigation = useNavigation();
   const { network } = useAuthenticationStore();
   const { pricedBalances } = useBalancesStore();
+  const { open: openInAppBrowser } = useInAppBrowser();
 
   const selectedAssetId = useEarnStore((state) => state.selectedAssetId);
   const selectedAssetCode = useEarnStore((state) => state.selectedAssetCode);
+  const pool = useEarnStore((state) => state.pool);
   const hasEmittedSuccessView = useRef(false);
 
   const networkDetails = useMemo(
@@ -137,31 +158,37 @@ const EarnProcessingScreen: React.FC<EarnProcessingScreenProps> = ({
     [navigation],
   );
 
-  const getStatusText = () => {
-    switch (status) {
-      case "success":
-        return t("earnProcessing.deposited");
-      case "error":
-        return t("earnProcessing.failed");
-      case "submitting":
-      default:
-        return t("earnProcessing.depositing");
-    }
-  };
+  const getStatusText = () =>
+    status === "success"
+      ? t("earnProcessing.deposited")
+      : t("earnProcessing.depositing");
 
-  const getStatusIcon = () => {
-    switch (status) {
-      case "success":
-        return (
-          <Icon.CheckCircle size={48} color={themeColors.status.success} />
-        );
-      case "error":
-        return <Icon.XCircle size={48} themeColor="red" />;
-      case "submitting":
-      default:
-        return <Spinner size="large" color={themeColors.base[1]} />;
+  const getStatusIcon = () =>
+    status === "success" ? (
+      <Icon.CheckCircle size={24} color={themeColors.status.success} />
+    ) : (
+      <Spinner size="large" color={themeColors.base[1]} />
+    );
+
+  // "View transaction" (success only, design node `9449:29739`). Same
+  // stellar.expert URL construction `SwapProcessingScreen`'s transaction
+  // details sheet and `ManageAccounts`' "view on explorer" action use —
+  // reused directly rather than hand-building the URL.
+  const handleViewTransaction = useCallback(() => {
+    if (!transactionHash) {
+      return;
     }
-  };
+
+    const explorerUrl = `${getStellarExpertUrl(network)}/tx/${transactionHash}`;
+
+    openInAppBrowser(explorerUrl).catch((err) =>
+      logger.error(
+        "EarnProcessingScreen",
+        "Error opening transaction explorer",
+        err,
+      ),
+    );
+  }, [transactionHash, network, openInAppBrowser]);
 
   return (
     <BaseLayout insets={{ top: false }}>
@@ -176,38 +203,60 @@ const EarnProcessingScreen: React.FC<EarnProcessingScreenProps> = ({
               </Display>
             </View>
 
+            {/* Triptych (design node `9449:29733`/`9449:29814`): the
+             deposit asset's icon, a secondary double-chevron connector, then
+             the pool's identity icon — no pool-artwork asset exists yet, so
+             this reuses `PoolCard`'s own lilac-square placeholder for
+             consistency across the flow, same reasoning as that
+             component's doc comment. */}
             <View className="rounded-[16px] p-[24px] gap-[16px] bg-background-tertiary w-full">
-              <View className="flex-row items-center justify-center">
+              <View className="flex-row items-center justify-center gap-[16px]">
                 {depositBalance && (
                   <TokenIcon token={depositBalance} size="lg" />
                 )}
+                <Icon.ChevronRightDouble
+                  size={16}
+                  color={themeColors.text.secondary}
+                />
+                <Icon.InfoCircle
+                  themeColor="lilac"
+                  withBackground
+                  square
+                  size={28}
+                />
               </View>
 
               <View className="items-center">
-                <Text xl medium primary testID="earn-processing-amount">
+                <Text
+                  xl
+                  medium
+                  primary
+                  textAlign="center"
+                  testID="earn-processing-caption"
+                >
                   {formatTokenForDisplay(tokenAmount, selectedAssetCode)}
+                  <Text xl medium secondary>
+                    {` ${t("earnProcessing.to")} `}
+                  </Text>
+                  {pool?.name}
                 </Text>
               </View>
             </View>
-
-            {status === "error" && error && (
-              <View className="mt-2">
-                <Text
-                  sm
-                  medium
-                  secondary
-                  textAlign="center"
-                  testID="earn-processing-error-detail"
-                >
-                  {error}
-                </Text>
-              </View>
-            )}
           </View>
         </View>
 
         {status === "success" && (
           <View className="gap-[16px]">
+            {transactionHash && (
+              <Button
+                secondary
+                xl
+                onPress={handleViewTransaction}
+                testID="earn-processing-view-transaction-button"
+              >
+                {t("earnProcessing.viewTransaction")}
+              </Button>
+            )}
             <Button
               tertiary
               xl
@@ -215,19 +264,6 @@ const EarnProcessingScreen: React.FC<EarnProcessingScreenProps> = ({
               testID="earn-processing-done-button"
             >
               {t("common.done")}
-            </Button>
-          </View>
-        )}
-
-        {status === "error" && (
-          <View className="gap-[16px]">
-            <Button
-              tertiary
-              xl
-              onPress={onBackToAmount}
-              testID="earn-processing-back-to-amount-button"
-            >
-              {t("earnProcessing.backToAmount")}
             </Button>
           </View>
         )}

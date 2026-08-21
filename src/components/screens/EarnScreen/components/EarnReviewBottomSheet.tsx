@@ -5,6 +5,7 @@ import { TokenIcon } from "components/TokenIcon";
 import {
   formatProjection,
   formatRate,
+  projectCurrentEarnings,
   projectEarnings,
 } from "components/screens/EarnScreen/helpers";
 import { Banner } from "components/sds/Banner";
@@ -12,17 +13,12 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { TextButton } from "components/sds/TextButton";
 import { Text } from "components/sds/Typography";
-import {
-  MIN_TRANSACTION_FEE,
-  NATIVE_TOKEN_CODE,
-  mapNetworkToNetworkDetails,
-} from "config/constants";
-import { THEME } from "config/theme";
+import { mapNetworkToNetworkDetails } from "config/constants";
 import { useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
 import { useEarnStore } from "ducks/earn";
-import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { getBalanceByContractId } from "helpers/balances";
+import { pxValue } from "helpers/dimensions";
 import {
   NO_FIAT_VALUE,
   formatFiatAmount,
@@ -46,6 +42,14 @@ export interface EarnReviewBottomSheetProps {
   transactionSecurityAssessment: SecurityAssessment;
   onSecurityWarningPress: () => void;
   onConfirm: () => void;
+  /**
+   * Opens the shared `TransactionSettingsBottomSheet` (fee/timeout) —
+   * mirrors `SendReviewBottomSheet`/`SwapReviewBottomSheet`'s footer
+   * settings button (Figma node `9448:29608`). Omitted (button hidden)
+   * when the security assessment isn't trusted, matching those same
+   * sheets' own layout for that state.
+   */
+  onSettingsPress?: () => void;
 }
 
 /**
@@ -67,6 +71,7 @@ export const EarnReviewBottomSheet: React.FC<EarnReviewBottomSheetProps> = ({
   transactionSecurityAssessment,
   onSecurityWarningPress,
   onConfirm,
+  onSettingsPress,
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
@@ -84,13 +89,10 @@ export const EarnReviewBottomSheet: React.FC<EarnReviewBottomSheetProps> = ({
     (state) => state.currentPositionTokens,
   );
 
-  const sorobanInclusionFeeXlm = useTransactionBuilderStore(
-    (state) => state.sorobanInclusionFeeXlm,
-  );
-  const sorobanResourceFeeXlm = useTransactionBuilderStore(
-    (state) => state.sorobanResourceFeeXlm,
-  );
-
+  // Fee no longer renders on the face of the sheet (design `9448:29319`) --
+  // it lives behind the "Transaction details" row below, which reuses this
+  // same hook's `openFeeDetails`/`feeDetailsSheets` (the Send/Swap review
+  // sheets' own fee-breakdown affordance).
   const { openFeeDetails, feeDetailsSheets } = useFeeDetailsBottomSheet({
     isSorobanContext: true,
   });
@@ -123,11 +125,6 @@ export const EarnReviewBottomSheet: React.FC<EarnReviewBottomSheetProps> = ({
       .toFixed();
   }, [depositBalance, tokenAmount]);
 
-  const { monthly, yearly } = useMemo(
-    () => projectEarnings({ depositUsd, apy: selectedAssetApy }),
-    [depositUsd, selectedAssetApy],
-  );
-
   // `currentPositionTokens` is `total_tokens`, not `supplied_tokens` — see
   // `getBlendSuppliedTokens`'s docs. Deposits use SupplyCollateral, so the
   // plain-supply bucket never reflects a top-up.
@@ -141,11 +138,58 @@ export const EarnReviewBottomSheet: React.FC<EarnReviewBottomSheetProps> = ({
     [beforeTokens, tokenAmount],
   );
 
-  const totalFeeXlm = sorobanResourceFeeXlm
-    ? new BigNumber(sorobanInclusionFeeXlm ?? MIN_TRANSACTION_FEE)
-        .plus(sorobanResourceFeeXlm)
-        .toFixed()
-    : (sorobanInclusionFeeXlm ?? MIN_TRANSACTION_FEE);
+  // USD value of the position as it stands today, and as it will stand once
+  // this deposit lands -- the two inputs for the Details card's before →
+  // after earnings rows (design `9448:29581`). Both share `depositBalance`'s
+  // price with `depositUsd` above, so they only diverge from it (and from
+  // each other) when there is already a pre-existing position -- the
+  // first-deposit case collapses `currentPositionUsd` to "0", matching the
+  // "0.00 → 500.00 USDC" example in the mock exactly.
+  const currentPositionUsd = useMemo(() => {
+    if (!depositBalance?.currentPrice || depositBalance.currentPrice.isZero()) {
+      return null;
+    }
+    return beforeTokens.multipliedBy(depositBalance.currentPrice).toFixed();
+  }, [depositBalance, beforeTokens]);
+
+  const totalPositionUsd = useMemo(() => {
+    if (!depositBalance?.currentPrice || depositBalance.currentPrice.isZero()) {
+      return null;
+    }
+    return afterTokens.multipliedBy(depositBalance.currentPrice).toFixed();
+  }, [depositBalance, afterTokens]);
+
+  const { monthly: beforeMonthly, yearly: beforeYearly } = useMemo(
+    () =>
+      projectCurrentEarnings({
+        currentPositionUsd,
+        apy: selectedAssetApy,
+      }),
+    [currentPositionUsd, selectedAssetApy],
+  );
+  const { monthly: afterMonthly, yearly: afterYearly } = useMemo(
+    () =>
+      projectEarnings({ depositUsd: totalPositionUsd, apy: selectedAssetApy }),
+    [totalPositionUsd, selectedAssetApy],
+  );
+
+  // Both sides are only ever null together -- they share the same `apy` and
+  // the same underlying price -- so an unknown projection collapses to a
+  // single "--" rather than "-- → --".
+  const monthlyDisplay =
+    beforeMonthly === null && afterMonthly === null
+      ? "--"
+      : t("earnReview.monthlyEarningsValue", {
+          before: formatProjection(beforeMonthly),
+          after: formatProjection(afterMonthly),
+        });
+  const yearlyDisplay =
+    beforeYearly === null && afterYearly === null
+      ? "--"
+      : t("earnReview.yearlyEarningsValue", {
+          before: formatProjection(beforeYearly),
+          after: formatProjection(afterYearly),
+        });
 
   const { isMalicious, isSuspicious, isUnableToScan } =
     transactionSecurityAssessment;
@@ -181,17 +225,49 @@ export const EarnReviewBottomSheet: React.FC<EarnReviewBottomSheetProps> = ({
         </Text>
 
         {depositBalance && (
-          <View className="w-full flex-row items-center gap-[16px]">
-            <TokenIcon token={depositBalance} />
-            <View className="flex-1">
-              <Text xl medium>
-                {formatTokenForDisplay(tokenAmount || "0", selectedAssetCode)}
-              </Text>
-              <Text md medium secondary>
-                {depositUsd !== null
-                  ? formatFiatAmount(depositUsd)
-                  : NO_FIAT_VALUE}
-              </Text>
+          <View className="gap-[16px]">
+            <View className="w-full flex-row items-center gap-[16px]">
+              <TokenIcon token={depositBalance} />
+              <View className="flex-1">
+                <Text xl medium>
+                  {formatTokenForDisplay(tokenAmount || "0", selectedAssetCode)}
+                </Text>
+                <Text md medium secondary>
+                  {depositUsd !== null
+                    ? formatFiatAmount(depositUsd)
+                    : NO_FIAT_VALUE}
+                </Text>
+              </View>
+            </View>
+
+            {/* Source → destination connector (design `9448:29579`) — same
+                glyph/placement as `SendReviewBottomSheet`'s sender → recipient
+                chevron, aligned under the leading icon column above. */}
+            <View className="w-[40px] items-center py-1">
+              <Icon.ChevronDownDouble
+                size={16}
+                color={themeColors.foreground.secondary}
+              />
+            </View>
+
+            <View className="w-full flex-row items-center gap-[16px]">
+              {/* No pool-artwork asset exists yet — reuses `PoolCard`'s own
+                  placeholder treatment for pool identity, for consistency
+                  between the two surfaces (see that component's doc). */}
+              <Icon.InfoCircle
+                themeColor="lilac"
+                withBackground
+                square
+                size={28}
+              />
+              <View className="flex-1">
+                <Text sm secondary>
+                  {t("earnReview.to")}
+                </Text>
+                <Text md medium testID="earn-review-pool">
+                  {pool?.name ?? "--"}
+                </Text>
+              </View>
             </View>
           </View>
         )}
@@ -207,40 +283,28 @@ export const EarnReviewBottomSheet: React.FC<EarnReviewBottomSheetProps> = ({
         />
       )}
 
+      {/* Details card (design `9448:29581`) — Position / Current APY /
+          Monthly earnings (est.) / Yearly earnings (est.). Only Position
+          carries a leading icon (the deposited asset's own small token
+          mark) — the other three rows are iconless, confirmed against the
+          render. Earnings render as before → after; Current APY renders in
+          `status.success` green (plain text, confirmed against the render —
+          not the picker/ribbon `green-10` pill; see this file's design-fix
+          report). */}
       <List
         variant="secondary"
         className="mt-[16px]"
         items={[
           {
-            icon: <Icon.Bank size={16} themeColor="gray" />,
+            // Small (`sm` = 16px) token icon — the same `TokenIcon` used at
+            // full size in the summary card's asset row above, sized down to
+            // sit inline with the row label rather than the picker's 32px
+            // row icon.
+            icon: depositBalance ? (
+              <TokenIcon token={depositBalance} size="sm" />
+            ) : undefined,
             titleComponent: (
-              <Text md secondary color={THEME.colors.text.secondary}>
-                {t("earnReview.pool")}
-              </Text>
-            ),
-            trailingContent: (
-              <Text md medium testID="earn-review-pool">
-                {pool?.name ?? "--"}
-              </Text>
-            ),
-          },
-          {
-            icon: <Icon.Percent02 size={16} themeColor="gray" />,
-            titleComponent: (
-              <Text md secondary color={THEME.colors.text.secondary}>
-                {t("earnReview.apy")}
-              </Text>
-            ),
-            trailingContent: (
-              <Text md medium testID="earn-review-apy">
-                {formatRate(selectedAssetApy)}
-              </Text>
-            ),
-          },
-          {
-            icon: <Icon.PiggyBank02 size={16} themeColor="gray" />,
-            titleComponent: (
-              <Text md secondary color={THEME.colors.text.secondary}>
+              <Text md secondary>
                 {t("earnReview.position")}
               </Text>
             ),
@@ -257,53 +321,48 @@ export const EarnReviewBottomSheet: React.FC<EarnReviewBottomSheetProps> = ({
             ),
           },
           {
-            icon: <Icon.LineChartUp01 size={16} themeColor="gray" />,
             titleComponent: (
-              <Text md secondary color={THEME.colors.text.secondary}>
+              <Text md secondary>
+                {t("earnReview.apy")}
+              </Text>
+            ),
+            trailingContent: (
+              <Text
+                md
+                medium
+                color={
+                  selectedAssetApy !== null
+                    ? themeColors.status.success
+                    : undefined
+                }
+                testID="earn-review-apy"
+              >
+                {formatRate(selectedAssetApy)}
+              </Text>
+            ),
+          },
+          {
+            titleComponent: (
+              <Text md secondary>
                 {t("earnReview.estMonthlyEarnings")}
               </Text>
             ),
             trailingContent: (
               <Text md medium testID="earn-review-monthly">
-                {formatProjection(monthly)}
+                {monthlyDisplay}
               </Text>
             ),
           },
           {
-            icon: <Icon.LineChartUp02 size={16} themeColor="gray" />,
             titleComponent: (
-              <Text md secondary color={THEME.colors.text.secondary}>
+              <Text md secondary>
                 {t("earnReview.estYearlyEarnings")}
               </Text>
             ),
             trailingContent: (
               <Text md medium testID="earn-review-yearly">
-                {formatProjection(yearly)}
+                {yearlyDisplay}
               </Text>
-            ),
-          },
-          {
-            icon: (
-              <Icon.Route size={16} color={themeColors.foreground.primary} />
-            ),
-            titleComponent: (
-              <Text md secondary color={THEME.colors.text.secondary}>
-                {t("transactionAmountScreen.details.fee")}
-              </Text>
-            ),
-            trailingContent: (
-              <View className="flex-row items-center gap-[8px]">
-                <TouchableOpacity
-                  onPress={openFeeDetails}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  className="mt-[2px]"
-                >
-                  <Icon.InfoCircle themeColor="gray" size={16} />
-                </TouchableOpacity>
-                <Text md medium testID="earn-review-fee">
-                  {formatTokenForDisplay(totalFeeXlm, NATIVE_TOKEN_CODE)}
-                </Text>
-              </View>
             ),
           },
         ]}
@@ -315,9 +374,43 @@ export const EarnReviewBottomSheet: React.FC<EarnReviewBottomSheetProps> = ({
         </Text>
       </View>
 
+      {/* "Transaction details" row (design `9448:29603`) — the fee's only
+          home now that it is off the face of the sheet. Reuses the same
+          `openFeeDetails` affordance Send/Swap already show inline next to
+          their fee row, just moved onto its own full-row tap target. */}
+      <TouchableOpacity
+        onPress={openFeeDetails}
+        className="mt-[16px] flex-row items-center gap-[8px] p-[16px] rounded-[16px] bg-background-tertiary"
+        testID="earn-review-transaction-details"
+      >
+        <Icon.List size={16} color={themeColors.lilac[11]} />
+        <Text md medium color={themeColors.lilac[11]}>
+          {t("earnReview.transactionDetails")}
+        </Text>
+      </TouchableOpacity>
+
       <View className="mt-[24px] gap-[12px]">
         {isTrusted ? (
-          <View className="flex-row gap-[12px]">
+          <View className="flex-row items-center gap-[12px]">
+            {onSettingsPress && (
+              // Same 50×50 circular affordance as `SendReviewFooter`'s and
+              // `SwapReviewBottomSheet`'s settings button -- reused as-is
+              // for cross-flow consistency rather than a one-off 36×36
+              // square matching the mock's literal geometry (flagged in the
+              // design-fix report).
+              <TouchableOpacity
+                onPress={onSettingsPress}
+                className="border border-gray-6 items-center justify-center"
+                style={{
+                  height: pxValue(50),
+                  borderRadius: pxValue(25),
+                  width: pxValue(50),
+                }}
+                testID="earn-review-settings-button"
+              >
+                <Icon.Settings04 size={24} themeColor="gray" />
+              </TouchableOpacity>
+            )}
             <View className="flex-1">
               <Button
                 secondary

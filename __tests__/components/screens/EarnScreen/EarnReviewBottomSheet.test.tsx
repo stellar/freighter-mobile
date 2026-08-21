@@ -92,15 +92,17 @@ describe("EarnReviewBottomSheet", () => {
     });
   });
 
-  it("renders the pool name, APY, and fee", () => {
+  // The fee no longer renders on the face of the sheet (design `9448:29319`,
+  // correction R7) -- it lives behind the "Transaction details" row, which
+  // this test checks for instead of a face-visible fee value.
+  it("renders the pool name and APY, with fee behind Transaction details", () => {
     const { getByTestId } = renderWithProviders(
       <EarnReviewBottomSheet {...defaultProps} />,
     );
 
     expect(getByTestId("earn-review-pool").props.children).toBe("Fixed Pool");
     expect(getByTestId("earn-review-apy").props.children).toBe("16.94%");
-    // 0.00001 + 0.05463 = 0.05464
-    expect(getByTestId("earn-review-fee").props.children).toMatch(/0\.05464/);
+    expect(getByTestId("earn-review-transaction-details")).toBeTruthy();
   });
 
   it("renders a 0 -> n before/after for a first deposit", () => {
@@ -121,6 +123,26 @@ describe("EarnReviewBottomSheet", () => {
     );
 
     expect(getByText(/500\.00 USDC.*510\.00 USDC/)).toBeTruthy();
+  });
+
+  it("projects before/after earnings off the total position, not the deposit alone", () => {
+    // 500 USDC already supplied (price $2) plus a 10 USDC top-up (also
+    // price $2) at 16.94% APY: before = $1000 at the rate, after = $1020.
+    // If this instead projected off the bare $20 deposit, "after" would
+    // read far lower than "before" -- earnings appearing to drop after
+    // depositing more would be actively misleading.
+    useEarnStore.getState().setCurrentPositionTokens("5000000000");
+
+    const { getByTestId } = renderWithProviders(
+      <EarnReviewBottomSheet {...defaultProps} />,
+    );
+
+    expect(getByTestId("earn-review-monthly").props.children).toBe(
+      "$14.12 → $14.40",
+    );
+    expect(getByTestId("earn-review-yearly").props.children).toBe(
+      "$169.40 → $172.79",
+    );
   });
 
   it("renders '--' for APY and projected earnings when the rate is unknown", () => {

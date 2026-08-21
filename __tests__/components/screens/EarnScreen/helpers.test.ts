@@ -14,6 +14,7 @@ import {
   isInsufficientBalanceFailure,
   isOnrampableAsset,
   needsXlmForFee,
+  projectCurrentEarnings,
   projectEarnings,
 } from "components/screens/EarnScreen/helpers";
 import { NETWORKS } from "config/constants";
@@ -216,6 +217,34 @@ describe("projectEarnings", () => {
   it("renders an unknown projection as --", () => {
     expect(formatProjection(null)).toBe("--");
     expect(formatProjection("120.00")).toBe("$120.00");
+  });
+});
+
+describe("projectCurrentEarnings", () => {
+  it("mirrors projectEarnings' simple-interest math for the position's current USD value", () => {
+    expect(
+      projectCurrentEarnings({ currentPositionUsd: "1200", apy: 0.1 }),
+    ).toEqual({ yearly: "120.00", monthly: "10.00" });
+  });
+
+  it("is zero, not null, for a genuinely zero position at a known rate", () => {
+    // A brand-new position (nothing held yet) is a real, known zero -- not
+    // "unknown" -- so it must render 0.00, never --.
+    expect(
+      projectCurrentEarnings({ currentPositionUsd: "0", apy: 0.1694 }),
+    ).toEqual({ yearly: "0.00", monthly: "0.00" });
+  });
+
+  it("returns nulls when the rate is unavailable", () => {
+    expect(
+      projectCurrentEarnings({ currentPositionUsd: "1200", apy: null }),
+    ).toEqual({ yearly: null, monthly: null });
+  });
+
+  it("returns nulls when the position is unpriced", () => {
+    expect(
+      projectCurrentEarnings({ currentPositionUsd: null, apy: 0.1 }),
+    ).toEqual({ yearly: null, monthly: null });
   });
 });
 

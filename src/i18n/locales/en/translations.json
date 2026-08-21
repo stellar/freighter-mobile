@@ -707,11 +707,15 @@
     }
   },
   "earnPoolDetails": {
-    "title": "Pool details",
-    "lendingInterest": "Lending interest",
-    "currentNetApy": "Current net APY",
-    "totalSupplied": "Total supplied",
-    "totalBorrowed": "Total borrowed",
+    "byBlend": "by Blend",
+    "description": "Description",
+    "poolDetails": "Pool Details",
+    "lendingInterest": "Lending Interest",
+    "currentNetApy": "Current Net APY",
+    "acceptedTokens": "Accepted tokens",
+    "supplied": "Supplied",
+    "borrowed": "Borrowed",
+    "backstop": "Backstop",
     "descriptions": {
       "fixedPool": "Permissionless lending pool with no admin. Collateral factors, interest curves, and supported assets are locked at deployment."
     }
@@ -729,9 +733,10 @@
     },
     "retryBanner": "Transaction failed. Try again.",
     "networkFeeSheet": {
-      "title": "Not enough XLM for the network fee",
-      "description": "This deposit needs a small amount of XLM ({{fee}}) to pay the network fee. Add more XLM to your account and try again.",
-      "buyXlm": "Buy XLM"
+      "title": "You need some XLM for network fee",
+      "body": "Add XLM to your wallet to continue",
+      "buyWithCoinbase": "Buy with Coinbase",
+      "transfer": "Transfer from another account"
     },
     "errors": {
       "simulationFailed": "Failed to simulate the deposit. Please try again.",
@@ -740,28 +745,38 @@
     }
   },
   "earnReview": {
-    "title": "Review deposit",
-    "pool": "Pool",
-    "apy": "APY",
-    "position": "Your position",
+    "title": "You are depositing",
+    "to": "To",
+    "apy": "Current APY",
+    "position": "Position",
     "positionValue": "{{before}} → {{after}}",
-    "estMonthlyEarnings": "Est. monthly earnings",
-    "estYearlyEarnings": "Est. yearly earnings",
+    "estMonthlyEarnings": "Monthly earnings (est.)",
+    "estYearlyEarnings": "Yearly earnings (est.)",
+    "monthlyEarningsValue": "{{before}} → {{after}}",
+    "yearlyEarningsValue": "{{before}} → {{after}}",
+    "transactionDetails": "Transaction details",
     "projectionDisclaimer": "Estimated earnings are projections based on the current rate and may change based on pool activity."
   },
   "earnNotEnough": {
-    "title": "You don't have any {{tokenCode}}",
-    "bodyWithBuy": "Buy {{tokenCode}} or receive it from another wallet to deposit it into this pool.",
-    "bodyReceiveOnly": "Receive {{tokenCode}} from another wallet to deposit it into this pool.",
+    "title": "Not enough {{tokenCode}}",
+    "bodyWithBuy": "You'll need {{tokenCode}} to deposit into this pool. Buy or swap for {{tokenCode}} to continue.",
+    "bodySwapOnly": "You'll need {{tokenCode}} to deposit into this pool. Swap or transfer {{tokenCode}} to continue.",
+    "bodyTransferOnly": "You'll need {{tokenCode}} to deposit into this pool. Transfer {{tokenCode}} from another account to continue.",
     "buy": "Buy {{tokenCode}}",
-    "receive": "Receive"
+    "buyWithCoinbase": "Buy with Coinbase",
+    "swap": "Swap for {{tokenCode}}",
+    "transfer": "Transfer from another account",
+    "or": "or"
+  },
+  "earnReceiveFunds": {
+    "title": "Receive funds"
   },
   "earnProcessing": {
     "depositing": "Depositing",
     "deposited": "Deposited!",
-    "failed": "Deposit failed",
-    "closeMessage": "You can close this screen, your deposit should be complete in less than a minute",
-    "backToAmount": "Back to amount"
+    "to": "to",
+    "closeMessage": "You can close this screen, your transaction should be complete in less than a minute",
+    "viewTransaction": "View transaction"
   },
   "transactionTokenScreen": {
     "title": "Sending",
