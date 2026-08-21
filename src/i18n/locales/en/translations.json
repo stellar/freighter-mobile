@@ -696,10 +696,10 @@
     "startEarning": "Start earning"
   },
   "earnTokenPicker": {
-    "title": "Choose a token",
+    "title": "Choose Token to earn",
     "inYourAccount": "In your account",
     "supportedTokens": "Supported tokens",
-    "apyDisclaimer": "*APY is an estimate and may change based on pool activity.",
+    "apyDisclaimer": "*APY is an estimate based on current protocol conditions and changes with market activity. It is not guaranteed by Freighter, SDF, or the protocol.",
     "error": {
       "title": "We couldn't load Earn right now",
       "body": "Earn is temporarily unavailable. Please try again shortly.",
@@ -718,11 +718,15 @@
   },
   "earnAmount": {
     "title": "Deposit",
-    "depositLabel": "Deposit",
-    "enterAmount": "Enter amount",
+    "depositLabel": "You deposit",
+    "enterAmount": "enter an amount",
     "insufficientFunds": "Insufficient funds",
-    "review": "Review",
-    "apyLabel": "APY",
+    "review": "Review deposit",
+    "poolCard": {
+      "currentApy": "Current APY: {{rate}}*",
+      "byBlend": "by Blend",
+      "accessibilityLabel": "View pool details"
+    },
     "retryBanner": "Transaction failed. Try again.",
     "networkFeeSheet": {
       "title": "Not enough XLM for the network fee",

@@ -24,8 +24,12 @@ interface PoolDetailRow {
 }
 
 /**
- * Content for the Earn pool-details sheet, presented from
- * `EarnTokenPickerScreen`'s header info button.
+ * Content for the Earn pool-details sheet. Previously presented from
+ * `EarnTokenPickerScreen`'s header info button, which was never in the
+ * design and has been removed there. Now triggered from the amount screen's
+ * `PoolCard` chevron (design node `9448:29157`/`9448:18518`) -- the design's
+ * only route into this sheet -- mirroring the extension's
+ * `EarnAmount/PoolCard.tsx` `onOpenDetails`.
  *
  * Modeled on `XlmReserveBottomSheet`: pure content (the caller wraps it in
  * `components/BottomSheet` and owns the modal ref); `bottomSheetModalRef` is

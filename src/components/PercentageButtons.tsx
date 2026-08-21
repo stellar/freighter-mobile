@@ -34,7 +34,7 @@ export const PercentageButtons: React.FC<PercentageButtonsProps> = ({
     { value: 100, label: t("transactionAmountScreen.percentageButtons.max") },
   ];
   return (
-    <View testID={testID} className="flex-row gap-[8px] w-full">
+    <View testID={testID} className="flex-row gap-[12px] w-full">
       {items.map(({ value, label }) => (
         <View key={value} className="flex-1">
           <Button

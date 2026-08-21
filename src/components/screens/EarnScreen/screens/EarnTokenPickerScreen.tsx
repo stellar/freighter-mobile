@@ -7,7 +7,6 @@ import { BaseLayout } from "components/layout/BaseLayout";
 import { EarnIntroBottomSheet } from "components/screens/EarnScreen/components/EarnIntroBottomSheet";
 import { EarnTokenRow } from "components/screens/EarnScreen/components/EarnTokenRow";
 import { NotEnoughTokenBottomSheet } from "components/screens/EarnScreen/components/NotEnoughTokenBottomSheet";
-import { PoolDetailsBottomSheet } from "components/screens/EarnScreen/components/PoolDetailsBottomSheet";
 import {
   NotEnoughVariant,
   getNotEnoughVariant,
@@ -19,7 +18,6 @@ import {
   useEarnTokens,
 } from "components/screens/EarnScreen/hooks/useEarnTokens";
 import { Button } from "components/sds/Button";
-import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { mapNetworkToNetworkDetails } from "config/constants";
@@ -36,7 +34,6 @@ import { useEarnStore } from "ducks/earn";
 import { usePreferencesStore } from "ducks/preferences";
 import { getTokenIdentifier } from "helpers/balances";
 import useAppTranslation from "hooks/useAppTranslation";
-import { useRightHeaderButton } from "hooks/useRightHeader";
 import React, {
   useCallback,
   useEffect,
@@ -61,7 +58,7 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   navigation,
 }) => {
   const { t } = useAppTranslation();
-  const { isLoading, error, held, supported, pool, refetch } = useEarnTokens();
+  const { isLoading, error, held, supported, refetch } = useEarnTokens();
   const selectAsset = useEarnStore((state) => state.selectAsset);
   const { network } = useAuthenticationStore();
   const { pricedBalances } = useBalancesStore();
@@ -71,7 +68,6 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   const setHasSeenEarnIntro = usePreferencesStore(
     (state) => state.setHasSeenEarnIntro,
   );
-  const poolDetailsBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const notEnoughBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const earnIntroBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [notEnoughOption, setNotEnoughOption] =
@@ -137,21 +133,12 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
     });
   }, [rootNavigation]);
 
-  /**
-   * Opens the pool details sheet. Guarded on `pool` because the header
-   * button is wired up unconditionally (even while useEarnTokens is still
-   * loading or has errored) — there is nothing to present until the pool
-   * has resolved.
-   */
-  const handlePoolInfoPress = useCallback(() => {
-    if (!pool) return;
-    poolDetailsBottomSheetModalRef.current?.present();
-  }, [pool]);
-
-  useRightHeaderButton({
-    onPress: handlePoolInfoPress,
-    icon: Icon.InfoCircle,
-  });
+  // There used to be a header-right info button here that opened
+  // `PoolDetailsBottomSheet`, but that button was never in the design and
+  // the design owner confirmed pool info isn't accessed from this screen.
+  // `PoolDetailsBottomSheet` now has its real trigger on the amount screen's
+  // `PoolCard` chevron instead (mirroring the extension's
+  // `EarnAmount/PoolCard.tsx`'s `onOpenDetails`) — see `EarnAmountScreen`.
 
   const handleHeldTokenPress = useCallback(
     (option: EarnTokenOption) => {
@@ -249,67 +236,62 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   return (
     <>
       <BaseLayout insets={{ top: false, bottom: false }}>
-        <SectionList<EarnTokenOption, EarnTokenSection>
-          sections={sections}
-          keyExtractor={(item) => item.assetId}
-          showsVerticalScrollIndicator={false}
-          stickySectionHeadersEnabled={false}
-          renderSectionHeader={({ section }) => (
-            <View className="mt-4 mb-6">
-              <Text md medium secondary>
-                {section.title}
-              </Text>
-            </View>
-          )}
-          renderItem={({ item, section }) => (
-            <EarnTokenRow
-              option={item}
-              testID={`earn-token-option-${item.code}`}
-              onPress={() =>
-                section.kind === "held"
-                  ? handleHeldTokenPress(item)
-                  : handleUnheldTokenPress(item)
-              }
-            />
-          )}
-          ListFooterComponent={
-            <View className="mt-2 mb-6">
-              <Text xs secondary textAlign="center">
-                {t("earnTokenPicker.apyDisclaimer")}
-              </Text>
-            </View>
-          }
-        />
+        {/* Figma node 8828:19263: the disclaimer sits at the bottom of the
+            screen (y=522 of a 600 canvas), well below where the list itself
+            ends (y=356) -- not immediately after the last row. Wrapping the
+            list in its own `flex-1` and keeping the disclaimer as a sibling
+            (rather than a `ListFooterComponent`, which would scroll with the
+            list and sit flush under the last row) pins it to the bottom of
+            the screen on any device while the list scrolls above it. */}
+        <View className="flex-1">
+          <SectionList<EarnTokenOption, EarnTokenSection>
+            sections={sections}
+            keyExtractor={(item) => item.assetId}
+            showsVerticalScrollIndicator={false}
+            stickySectionHeadersEnabled={false}
+            renderSectionHeader={({ section }) => (
+              <View className="mb-3">
+                <Text md medium secondary>
+                  {section.title}
+                </Text>
+              </View>
+            )}
+            renderItem={({ item, section }) => (
+              <EarnTokenRow
+                option={item}
+                testID={`earn-token-option-${item.code}`}
+                onPress={() =>
+                  section.kind === "held"
+                    ? handleHeldTokenPress(item)
+                    : handleUnheldTokenPress(item)
+                }
+              />
+            )}
+          />
+        </View>
+        <View className="pb-6">
+          <Text xs secondary textAlign="center">
+            {t("earnTokenPicker.apyDisclaimer")}
+          </Text>
+        </View>
       </BaseLayout>
       <BottomSheet
         modalRef={earnIntroBottomSheetModalRef}
         handleCloseModal={handleDismissEarnIntro}
         analyticsEvent={AnalyticsEvent.VIEW_EARN_INTRO}
         bottomSheetModalProps={{ onDismiss: handleDismissEarnIntro }}
-        // Figma node 9457:46768 sizes the sheet to 484 of a 600-tall canvas
-        // (~81% of screen height) rather than sizing to its (short) content
-        // -- an explicit snap point reproduces that proportion; dynamic
-        // sizing is disabled so it doesn't shrink-to-fit instead (same
-        // pairing SignTransactionDetails already uses for its own
-        // fixed-height sheet).
-        enableDynamicSizing={false}
-        snapPoints={["81%"]}
+        // Content-sized (the default), matching every other sheet in this
+        // feature. Figma node 9457:46768's 484-of-600 (~81%) is an artifact
+        // of the mock's own canvas height, not a design rule -- a real
+        // device's screen height doesn't share that ratio to the content's
+        // actual (~498px) stack, so a percentage snap point would leave the
+        // sheet oversized with dead space below the CTA. Letting it hug its
+        // content reproduces the design's proportions on any device instead
+        // of pinning to one canvas's ratio.
         customContent={
           <EarnIntroBottomSheet
             bottomSheetModalRef={earnIntroBottomSheetModalRef}
             onDismiss={handleDismissEarnIntro}
-          />
-        }
-      />
-      <BottomSheet
-        modalRef={poolDetailsBottomSheetModalRef}
-        handleCloseModal={() =>
-          poolDetailsBottomSheetModalRef.current?.dismiss()
-        }
-        customContent={
-          <PoolDetailsBottomSheet
-            pool={pool}
-            bottomSheetModalRef={poolDetailsBottomSheetModalRef}
           />
         }
       />

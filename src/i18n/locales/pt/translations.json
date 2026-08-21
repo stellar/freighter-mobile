@@ -662,10 +662,10 @@
     "startEarning": "Comece a ganhar"
   },
   "earnTokenPicker": {
-    "title": "Escolha um token",
+    "title": "Escolha o token para ganhar",
     "inYourAccount": "Na sua conta",
     "supportedTokens": "Tokens suportados",
-    "apyDisclaimer": "*A APY é uma estimativa e pode mudar de acordo com a atividade do pool.",
+    "apyDisclaimer": "*A APY é uma estimativa baseada nas condições atuais do protocolo e muda de acordo com a atividade do mercado. Não é garantida pela Freighter, pela SDF ou pelo protocolo.",
     "error": {
       "title": "Não foi possível carregar o Earn agora",
       "body": "O Earn está temporariamente indisponível. Tente novamente em breve.",
@@ -684,11 +684,15 @@
   },
   "earnAmount": {
     "title": "Depositar",
-    "depositLabel": "Depositar",
-    "enterAmount": "Insira o valor",
+    "depositLabel": "Você deposita",
+    "enterAmount": "insira um valor",
     "insufficientFunds": "Saldo insuficiente",
-    "review": "Revisar",
-    "apyLabel": "APY",
+    "review": "Revisar depósito",
+    "poolCard": {
+      "currentApy": "APY atual: {{rate}}*",
+      "byBlend": "por Blend",
+      "accessibilityLabel": "Ver detalhes do pool"
+    },
     "retryBanner": "A transação falhou. Tente novamente.",
     "networkFeeSheet": {
       "title": "XLM insuficiente para a taxa de rede",

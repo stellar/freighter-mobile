@@ -58,6 +58,16 @@ export const EarnIntroBottomSheet: React.FC<EarnIntroBottomSheetProps> = ({
           `components/BottomSheet`'s `fixedContent`) so this reaches the
           sheet's actual edges, matching the Figma frame's full-bleed 360x248
           "image 1" placed at the very top of the sheet.
+          `rounded-t-3xl` MUST match `components/BottomSheet.tsx`'s
+          `renderHandle` (line ~163) exactly: that handle is a thin band, too
+          short to render its own corner radius's full arc on its own -- it
+          reads as rounded today only because everything below it shares the
+          same flat background color, so the curve is invisible rather than
+          absent. Once a differently-colored block (this one) sits flush
+          against the top, it needs the identical radius itself to continue
+          that same curve instead of squaring it off. A hardcoded px value
+          here would silently drift from the handle's if that class ever
+          changes, so this stays a literal copy of that same utility class.
           Flat grey fill -- no artwork asset exists yet on either platform
           (the extension's own EarnIntro uses the same kind of placeholder,
           see EarnIntro/styles.scss). `themeColors.gray[9]` is the closest
@@ -65,7 +75,7 @@ export const EarnIntroBottomSheet: React.FC<EarnIntroBottomSheetProps> = ({
           #707070 -- a few points off per channel, well within "nearest
           token" territory; no gray step lands any closer). */}
       <View
-        className="-mt-6 -mx-6 h-[248px]"
+        className="-mt-6 -mx-6 h-[248px] rounded-t-3xl"
         style={{ backgroundColor: themeColors.gray[9] }}
       >
         {/* Dark circular close control floating on the art, 24px from the

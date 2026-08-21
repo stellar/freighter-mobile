@@ -9,9 +9,10 @@ import { PercentageButtons } from "components/PercentageButtons";
 import { SecurityDetailBottomSheet } from "components/blockaid";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { EarnReviewBottomSheet } from "components/screens/EarnScreen/components/EarnReviewBottomSheet";
+import { PoolCard } from "components/screens/EarnScreen/components/PoolCard";
+import { PoolDetailsBottomSheet } from "components/screens/EarnScreen/components/PoolDetailsBottomSheet";
 import {
   UNKNOWN_RESOURCE_FEE_FLOOR_XLM,
-  formatRate,
   getEarnCtaState,
   getPercentageDepositAmount,
   getXlmFeeShortfall,
@@ -22,14 +23,12 @@ import { useEarnPosition } from "components/screens/EarnScreen/hooks/useEarnPosi
 import { useEarnTransaction } from "components/screens/EarnScreen/hooks/useEarnTransaction";
 import { useSimulateEarnDeposit } from "components/screens/EarnScreen/hooks/useSimulateEarnDeposit";
 import { EarnProcessingScreen } from "components/screens/EarnScreen/screens";
-import { Badge } from "components/sds/Badge";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import {
   NoticeBanner,
   NoticeBannerVariants,
 } from "components/sds/NoticeBanner";
-import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import {
   NATIVE_TOKEN_CODE,
@@ -161,6 +160,7 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
   const earnReviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const transactionSecurityWarningBottomSheetModalRef =
     useRef<BottomSheetModal>(null);
+  const poolDetailsBottomSheetModalRef = useRef<BottomSheetModal>(null);
 
   const converter = useTokenFiatConverter({
     selectedBalance: depositBalance,
@@ -196,16 +196,22 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
     [availableBalance],
   );
 
+  // Shared between the CTA state machine and the amount card's red-text
+  // treatment (design `9599:40119`) -- both must agree on exactly the same
+  // "over balance" condition.
+  const isAmountTooHigh = useMemo(
+    () => new BigNumber(tokenAmount || "0").gt(availableBalanceBn),
+    [tokenAmount, availableBalanceBn],
+  );
+
   const ctaState = useMemo(
     () =>
       getEarnCtaState({
         availableBalanceIsZero: availableBalanceBn.lte(0),
         amountIsZero: new BigNumber(tokenAmount || "0").lte(0),
-        isAmountTooHigh: new BigNumber(tokenAmount || "0").gt(
-          availableBalanceBn,
-        ),
+        isAmountTooHigh,
       }),
-    [availableBalanceBn, tokenAmount],
+    [availableBalanceBn, tokenAmount, isAmountTooHigh],
   );
 
   const ctaLabelKeys: Record<typeof ctaState.labelKey, string> = {
@@ -323,6 +329,13 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
 
   const openReviewSheet = useCallback(() => {
     earnReviewBottomSheetModalRef.current?.present();
+  }, []);
+
+  // The pool card's chevron -- design `9448:29157` -- is the only route into
+  // `PoolDetailsBottomSheet` now that the token picker's header info-button
+  // has been removed (see that sheet's own doc comment).
+  const handleOpenPoolDetails = useCallback(() => {
+    poolDetailsBottomSheetModalRef.current?.present();
   }, []);
 
   // `EarnProcessingScreen` is rendered INLINE below (not a registered
@@ -618,21 +631,19 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
           converter={converter}
           hasUsdPrice={hasUsdPrice}
           secondaryAmountText={secondaryAmountText}
+          isError={isAmountTooHigh}
         />
 
-        <View className="flex-row items-center justify-center gap-[6px] mt-[20px]">
-          <Text sm secondary medium>
-            {t("earnAmount.apyLabel")}
-          </Text>
-          <Badge
-            variant={selectedAssetApy === null ? "secondary" : "success"}
-            size="sm"
-          >
-            {formatRate(selectedAssetApy)}
-          </Badge>
+        <View className="mt-[12px]">
+          <PoolCard
+            pool={pool}
+            apy={selectedAssetApy}
+            onPress={handleOpenPoolDetails}
+            testID="earn-amount-pool-card"
+          />
         </View>
 
-        <View className="items-center mt-[24px]">
+        <View className="items-center mt-[12px]">
           <PercentageButtons
             onPress={handlePercentagePress}
             testID="earn-amount-percentage-buttons"
@@ -717,6 +728,18 @@ const EarnAmountScreen: React.FC<EarnAmountScreenProps> = ({
                 ? t("common.continue")
                 : t("transactionAmountScreen.confirmAnyway")
             }
+          />
+        }
+      />
+      <BottomSheet
+        modalRef={poolDetailsBottomSheetModalRef}
+        handleCloseModal={() =>
+          poolDetailsBottomSheetModalRef.current?.dismiss()
+        }
+        customContent={
+          <PoolDetailsBottomSheet
+            pool={pool}
+            bottomSheetModalRef={poolDetailsBottomSheetModalRef}
           />
         }
       />

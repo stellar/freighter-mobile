@@ -47,8 +47,7 @@ jest.mock("components/BottomSheet", () => {
       return spy;
     }, []);
     // Don't render customContent -- the real EarnIntroBottomSheet/
-    // PoolDetailsBottomSheet/NotEnoughTokenBottomSheet are covered by their
-    // own component tests.
+    // NotEnoughTokenBottomSheet are covered by their own component tests.
     return ReactModule.createElement(RNModule.View);
   };
   return { __esModule: true, default: NoopSheet };
@@ -60,11 +59,6 @@ jest.mock("@react-navigation/native", () => ({
     setOptions: jest.fn(),
   }),
 }));
-
-// Sidesteps CustomHeaderButton/ContextMenuButton's native dependencies --
-// this screen's pool-info header button is unrelated to the intro sheet
-// under test here.
-jest.mock("hooks/useRightHeader");
 
 jest.mock("ducks/auth", () => ({
   useAuthenticationStore: () => ({ network: "TESTNET" }),

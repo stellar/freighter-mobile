@@ -107,6 +107,10 @@ type AmountCardEditableProps = AmountCardCommonProps & {
   autoFocus?: boolean;
   accessibilityLabel?: string;
   accessibilityHint?: string;
+  /** Renders the entered amount in the error color (e.g. the deposit exceeds
+   *  the spendable balance). Additive -- defaults to false, matching every
+   *  existing caller's (Send/Swap) behavior unchanged. */
+  isError?: boolean;
 };
 
 type AmountCardReadOnlyProps = AmountCardCommonProps & {
@@ -239,6 +243,7 @@ const EditableAmountCard: React.FC<AmountCardEditableProps> = ({
   autoFocus,
   accessibilityLabel,
   accessibilityHint,
+  isError,
 }) => {
   const { themeColors } = useColors();
 
@@ -263,6 +268,16 @@ const EditableAmountCard: React.FC<AmountCardEditableProps> = ({
 
   const amountFontSize = getAmountFontSize(primaryText.length);
   // PickerChip resolves its own fallback when pickerLabel is undefined.
+
+  // `isError` takes precedence over the placeholder/value distinction --
+  // an over-balance amount is never empty, but keeping the check explicit
+  // avoids relying on that.
+  const amountTextColor = isError
+    ? themeColors.status.error
+    : themeColors.text.primary;
+  const amountPlaceholderColor = isError
+    ? themeColors.status.error
+    : themeColors.text.secondary;
 
   // iOS focus-retry workaround: focus() can silently drop when the input is
   // hidden/animated; re-attempt on the next tick if isFocused() is still
@@ -335,9 +350,7 @@ const EditableAmountCard: React.FC<AmountCardEditableProps> = ({
                   fontSize: amountFontSize,
                   letterSpacing: AMOUNT_LETTER_SPACING,
                   fontWeight: "500",
-                  color: isEmpty
-                    ? themeColors.text.secondary
-                    : themeColors.text.primary,
+                  color: isEmpty ? amountPlaceholderColor : amountTextColor,
                   padding: 0,
                   includeFontPadding: false,
                 }}
@@ -365,7 +378,7 @@ const EditableAmountCard: React.FC<AmountCardEditableProps> = ({
                 fontSize: amountFontSize,
                 letterSpacing: AMOUNT_LETTER_SPACING,
                 fontWeight: "500",
-                color: themeColors.text.primary,
+                color: amountTextColor,
                 padding: 0,
                 includeFontPadding: false,
               }}

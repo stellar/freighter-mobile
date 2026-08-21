@@ -9,7 +9,10 @@ import { EARN_ROUTES, EarnStackParamList } from "config/routes";
 import { useEarnStore } from "ducks/earn";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
-import { getScreenBottomNavigateOptions } from "helpers/navigationOptions";
+import {
+  getScreenBottomNavigateOptions,
+  getScreenOptionsWithCustomHeader,
+} from "helpers/navigationOptions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { clearNetworkFeesCache, useNetworkFees } from "hooks/useNetworkFees";
 import React, { useEffect } from "react";
@@ -67,7 +70,14 @@ export const EarnStackNavigator = () => {
       <EarnStack.Screen
         name={EARN_ROUTES.EARN_AMOUNT_SCREEN}
         component={EarnAmountScreen}
-        options={getScreenBottomNavigateOptions(t("earnAmount.title"))}
+        // Design `9448:29091` calls for a back arrow here, not the X the
+        // picker route above gets from `getScreenBottomNavigateOptions`.
+        // `getScreenOptionsWithCustomHeader` sets no `headerLeft` override,
+        // so `CustomNavigationHeader` falls back to its own default --
+        // `<CustomHeaderButton position="left" />`, i.e. `Icon.ArrowLeft` +
+        // `navigation.goBack()` -- an existing, general (not Earn-specific)
+        // back-arrow variant rather than a new one-off helper.
+        options={getScreenOptionsWithCustomHeader(t("earnAmount.title"))}
       />
     </EarnStack.Navigator>
   );
