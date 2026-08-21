@@ -30,9 +30,11 @@ export interface EarnIntroBottomSheetProps {
  * passed through here only so the close control and the CTA can dismiss it
  * themselves).
  *
- * The art region is a placeholder -- `Icon.PiggyBank01` in a large badge.
- * The extension's illustration has no mobile asset equivalent yet; design
- * may want to replace this with a real asset later.
+ * Visual composition matches Figma node `9457:46686` ("First time", Earn
+ * section) exactly -- see the report for the full geometry-to-token mapping.
+ * The art region is a flat placeholder fill (no artwork asset exists on
+ * either platform yet, mirroring the extension's own placeholder --
+ * `EarnIntro/styles.scss:11-18`).
  */
 export const EarnIntroBottomSheet: React.FC<EarnIntroBottomSheetProps> = ({
   bottomSheetModalRef,
@@ -51,43 +53,66 @@ export const EarnIntroBottomSheet: React.FC<EarnIntroBottomSheetProps> = ({
 
   return (
     <View testID="earn-intro-bottom-sheet">
-      <View className="relative items-center mb-6">
-        <View className="size-24 rounded-full items-center justify-center bg-lilac-3">
-          <Icon.PiggyBank01 color={themeColors.lilac[9]} size={48} />
-        </View>
+      {/* Full-bleed art region. The `-mt-6 -mx-6` cancels the wrapping
+          BottomSheetView's own 24px top/left/right padding (see
+          `components/BottomSheet`'s `fixedContent`) so this reaches the
+          sheet's actual edges, matching the Figma frame's full-bleed 360x248
+          "image 1" placed at the very top of the sheet.
+          Flat grey fill -- no artwork asset exists yet on either platform
+          (the extension's own EarnIntro uses the same kind of placeholder,
+          see EarnIntro/styles.scss). `themeColors.gray[9]` is the closest
+          existing token to the render's flat fill (#697177 vs. gray-9's
+          #707070 -- a few points off per channel, well within "nearest
+          token" territory; no gray step lands any closer). */}
+      <View
+        className="-mt-6 -mx-6 h-[248px]"
+        style={{ backgroundColor: themeColors.gray[9] }}
+      >
+        {/* Dark circular close control floating on the art, 24px from the
+            top and right edges of the art region -- not the app's usual
+            header-style close. `gray[6]` is the nearest token to the
+            render's circle fill (#313334 vs. gray-6's #343434); the X glyph
+            itself samples as pure white, i.e. `base[1]`. */}
         <TouchableOpacity
           onPress={handleDismiss}
-          className="absolute right-0 top-0"
+          className="absolute right-6 top-6 size-8 items-center justify-center rounded-full"
+          style={{ backgroundColor: themeColors.gray[6] }}
           testID="earn-intro-close"
         >
-          <Icon.X
-            color={themeColors.foreground.secondary}
-            size={22}
-            circle
-            circleBackground={themeColors.background.tertiary}
-          />
+          <Icon.X color={themeColors.base[1]} size={18} />
         </TouchableOpacity>
       </View>
 
-      <Text xl medium primary textAlign="center">
-        {t("earnIntro.title")}
-      </Text>
+      <View className="mt-6">
+        <Text xl semiBold primary textAlign="center">
+          {t("earnIntro.title")}
+        </Text>
+      </View>
 
-      <View className="mt-3 mb-6">
+      <View className="mt-6">
         <Text md regular secondary textAlign="center">
           {t("earnIntro.body")}
         </Text>
       </View>
 
-      <Button
-        secondary
-        xl
-        isFullWidth
-        onPress={handleDismiss}
-        testID="earn-intro-start"
-      >
-        {t("earnIntro.startEarning")}
-      </Button>
+      <View className="mt-6">
+        {/* `tertiary` is the closest existing Button variant to the render's
+            light-pill/dark-text CTA (bg #fcfcfc / text #171717 vs. the
+            render's #ededed / #161616 -- same light-on-dark pairing, off by
+            a shade because Button's variant colors are hand-ported fixed
+            values rather than theme tokens). Already the established choice
+            for this exact role elsewhere (MaintenanceBannerBottomSheet,
+            ConnectedAppsBottomSheet). */}
+        <Button
+          tertiary
+          xl
+          isFullWidth
+          onPress={handleDismiss}
+          testID="earn-intro-start"
+        >
+          {t("earnIntro.startEarning")}
+        </Button>
+      </View>
     </View>
   );
 };

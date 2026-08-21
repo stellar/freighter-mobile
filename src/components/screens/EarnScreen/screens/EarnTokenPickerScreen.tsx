@@ -286,6 +286,14 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
         handleCloseModal={handleDismissEarnIntro}
         analyticsEvent={AnalyticsEvent.VIEW_EARN_INTRO}
         bottomSheetModalProps={{ onDismiss: handleDismissEarnIntro }}
+        // Figma node 9457:46768 sizes the sheet to 484 of a 600-tall canvas
+        // (~81% of screen height) rather than sizing to its (short) content
+        // -- an explicit snap point reproduces that proportion; dynamic
+        // sizing is disabled so it doesn't shrink-to-fit instead (same
+        // pairing SignTransactionDetails already uses for its own
+        // fixed-height sheet).
+        enableDynamicSizing={false}
+        snapPoints={["81%"]}
         customContent={
           <EarnIntroBottomSheet
             bottomSheetModalRef={earnIntroBottomSheetModalRef}
