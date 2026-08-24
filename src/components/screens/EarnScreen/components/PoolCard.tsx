@@ -1,3 +1,4 @@
+import blendIcon from "assets/logos/blend-icon.png";
 import { formatRate } from "components/screens/EarnScreen/helpers";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
@@ -5,7 +6,7 @@ import { BlendCatalogPool } from "config/blendTypes";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React from "react";
-import { TouchableOpacity, View } from "react-native";
+import { Image, TouchableOpacity, View } from "react-native";
 
 export interface PoolCardProps {
   pool: BlendCatalogPool | null;
@@ -18,32 +19,30 @@ export interface PoolCardProps {
 }
 
 /**
- * Amount screen's pool-identity card (Figma node `9448:29157`): a green
- * "Current APY" ribbon tucked above a pool row (identity + a chevron
- * button), which is this screen's only entry into `PoolDetailsBottomSheet`.
+ * Amount screen's pool-identity card, redesigned per Figma `12607:42834`
+ * (nodes `12607:42851`/`42852` for the tab, `I12607:42855;4603:1211` for the
+ * row): a "Current APY" tab sitting flush on top of a pool row (identity +
+ * a chevron button), which is this screen's only entry into
+ * `PoolDetailsBottomSheet`.
  *
- * The ribbon's fill/text are copied verbatim from `EarnTokenRow`'s APY pill
- * (`bg-green-10` / `themeColors.green[4]`) rather than SDS `Badge`'s
- * "success" variant, which resolves to lime, not this teal-green -- see that
- * component's own comment for the pixel-sampling that confirmed it. When the
- * asset has no fresh APY (`apy === null`), the ribbon is omitted entirely,
- * mirroring `EarnTokenRow`'s same-shaped fallback rather than inventing an
- * unspecified "no rate" ribbon state.
+ * Three things the redesign changed, all of which the previous pass had
+ * inferred from an older mock and got wrong:
  *
- * No pool-artwork asset exists yet, so the identity icon reuses
- * `PoolDetailsBottomSheet`'s own placeholder treatment (lilac `InfoCircle`
- * in a themed square) for visual consistency between the two surfaces,
- * rather than introducing a second, different placeholder.
+ * - The tab is a DARK green (`Success/Background/Secondary` #0c1f17, an exact
+ *   match for `green[2]`) with `green/9` text -- not the solid `green[10]`
+ *   fill with `green[4]` text that `EarnTokenRow`'s pill uses. The two are
+ *   deliberately different treatments now.
+ * - Its shape is a top-rounded strip inset 16 on each side, not a full-width
+ *   pill, and it sits FLUSH above the card rather than tucked under it by a
+ *   negative margin -- the design lists them as non-overlapping siblings, and
+ *   the inset alone produces the tab motif.
+ * - The identity icon is the real Blend mark. It is byte-identical to the
+ *   token picker's badge glyph, so it reuses that same asset rather than the
+ *   lilac `InfoCircle` placeholder that stood in while no artwork existed.
  *
- * In the mock the ribbon visually tucks behind the card below it (a "tab"
- * reading), while the raw geometry lists them as flush, non-overlapping
- * siblings. This renders that "tab" reading with a small negative margin --
- * just enough to tuck the pill's rounded bottom corners under the card's
- * rounded top ones -- rather than the literal flush layout, since the
- * visual note is explicit about the overlap and a flush stack would lose
- * the ribbon/tab motif entirely. The overlap is kept shallow (4px, well
- * under the pill's own vertical text inset) so it never crops the "Current
- * APY" text itself, unlike a literal half-height overlap would.
+ * When the asset has no fresh APY (`apy === null`), the tab is omitted
+ * entirely, mirroring `EarnTokenRow`'s same-shaped fallback rather than
+ * inventing an unspecified "no rate" state.
  */
 export const PoolCard: React.FC<PoolCardProps> = ({
   pool,
@@ -61,10 +60,15 @@ export const PoolCard: React.FC<PoolCardProps> = ({
   return (
     <View testID={testID}>
       {apy !== null && (
-        <View className="mx-4 h-[22px] rounded-full bg-green-10 items-center justify-center -mb-[4px]">
-          <Text sm medium color={themeColors.green[4]}>
-            {t("earnAmount.poolCard.currentApy", { rate: formatRate(apy) })}
-          </Text>
+        <View className="mx-4">
+          <View
+            className="items-center justify-center rounded-t-2xl px-3 py-0.5"
+            style={{ backgroundColor: themeColors.green[2] }}
+          >
+            <Text xs medium color={themeColors.green[9]}>
+              {t("earnAmount.poolCard.currentApy", { rate: formatRate(apy) })}
+            </Text>
+          </View>
         </View>
       )}
 
@@ -77,20 +81,30 @@ export const PoolCard: React.FC<PoolCardProps> = ({
         accessibilityLabel={t("earnAmount.poolCard.accessibilityLabel")}
       >
         <View className="flex-row items-center flex-1 mr-4">
-          <Icon.InfoCircle themeColor="lilac" withBackground square size={28} />
+          <Image
+            source={blendIcon}
+            className="size-10 rounded"
+            resizeMode="cover"
+            accessibilityIgnoresInvertColors
+          />
           <View className="ml-4 flex-1">
             {pool.name && (
               <Text md medium primary numberOfLines={1}>
                 {pool.name}
               </Text>
             )}
-            <Text sm regular secondary numberOfLines={1}>
+            <Text sm medium secondary numberOfLines={1}>
               {t("earnAmount.poolCard.byBlend")}
             </Text>
           </View>
         </View>
-        <View className="w-[32px] h-[32px] rounded-full items-center justify-center bg-gray-4">
-          <Icon.ChevronRight size={18} color={themeColors.text.primary} />
+        {/* 34x34 (10 padding around a 14 glyph) on the page background, so it
+            reads as a well punched into the card rather than a raised chip. */}
+        <View
+          className="size-[34px] items-center justify-center rounded-full"
+          style={{ backgroundColor: themeColors.background.primary }}
+        >
+          <Icon.ChevronRight size={14} color={themeColors.text.primary} />
         </View>
       </TouchableOpacity>
     </View>

@@ -691,15 +691,28 @@
     "swapped": "Swapped"
   },
   "earnIntro": {
-    "title": "Make your tokens earn for you",
-    "body": "Deposit supported tokens into DeFi pools and start earning rewards.",
-    "startEarning": "Start earning"
+    "title": "Earn with Blend",
+    "subtitle": "Supply assets to Blend and earn variable yield.",
+    "variableYield": {
+      "title": "Earn variable yield",
+      "body": "Supply supported assets and earn based on current APY."
+    },
+    "stayInControl": {
+      "title": "Stay in control",
+      "body": "Manage and withdraw your supplied assets from your wallet."
+    }
   },
   "earnTokenPicker": {
-    "title": "Choose Token to earn",
+    "protocolName": "Blend",
+    "heading": "Choose an asset",
+    "subheading": "Supply assets to Blend and earn variable yield.",
     "inYourAccount": "In your account",
     "supportedTokens": "Supported tokens",
-    "apyDisclaimer": "*APY is an estimate based on current protocol conditions and changes with market activity. It is not guaranteed by Freighter, SDF, or the protocol.",
+    "noSupportedAssets": {
+      "title": "No supported assets in your wallet",
+      "body": "Add a supported asset to start earning."
+    },
+    "apyDisclaimer": "APY may change based on protocol conditions.",
     "error": {
       "title": "We couldn't load Earn right now",
       "body": "Earn is temporarily unavailable. Please try again shortly.",
@@ -723,7 +736,7 @@
   "earnAmount": {
     "title": "Deposit",
     "depositLabel": "You deposit",
-    "enterAmount": "enter an amount",
+    "enterAmount": "Enter an amount",
     "insufficientFunds": "Insufficient funds",
     "review": "Review deposit",
     "poolCard": {

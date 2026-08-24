@@ -657,15 +657,28 @@
     "swapped": "Trocado"
   },
   "earnIntro": {
-    "title": "Faça seus tokens trabalharem para você",
-    "body": "Deposite tokens suportados em pools de DeFi e comece a ganhar recompensas.",
-    "startEarning": "Comece a ganhar"
+    "title": "Ganhe com a Blend",
+    "subtitle": "Forneça ativos à Blend e ganhe rendimento variável.",
+    "variableYield": {
+      "title": "Ganhe rendimento variável",
+      "body": "Forneça ativos suportados e ganhe com base na APY atual."
+    },
+    "stayInControl": {
+      "title": "Mantenha o controle",
+      "body": "Gerencie e retire seus ativos fornecidos direto da sua carteira."
+    }
   },
   "earnTokenPicker": {
-    "title": "Escolha o token para ganhar",
+    "protocolName": "Blend",
+    "heading": "Escolha um ativo",
+    "subheading": "Forneça ativos à Blend e ganhe rendimento variável.",
     "inYourAccount": "Na sua conta",
     "supportedTokens": "Tokens suportados",
-    "apyDisclaimer": "*A APY é uma estimativa baseada nas condições atuais do protocolo e muda de acordo com a atividade do mercado. Não é garantida pela Freighter, pela SDF ou pelo protocolo.",
+    "noSupportedAssets": {
+      "title": "Nenhum ativo suportado na sua carteira",
+      "body": "Adicione um ativo suportado para começar a ganhar."
+    },
+    "apyDisclaimer": "A APY pode mudar conforme as condições do protocolo.",
     "error": {
       "title": "Não foi possível carregar o Earn agora",
       "body": "O Earn está temporariamente indisponível. Tente novamente em breve.",
@@ -689,7 +702,7 @@
   "earnAmount": {
     "title": "Depositar",
     "depositLabel": "Você deposita",
-    "enterAmount": "insira um valor",
+    "enterAmount": "Insira um valor",
     "insufficientFunds": "Saldo insuficiente",
     "review": "Revisar depósito",
     "poolCard": {

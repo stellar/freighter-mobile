@@ -10,8 +10,8 @@ import { useEarnStore } from "ducks/earn";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import {
-  getScreenBottomNavigateOptions,
   getScreenOptionsWithCustomHeader,
+  getStackBottomNavigateOptions,
 } from "helpers/navigationOptions";
 import useAppTranslation from "hooks/useAppTranslation";
 import { clearNetworkFeesCache, useNetworkFees } from "hooks/useNetworkFees";
@@ -65,7 +65,13 @@ export const EarnStackNavigator = () => {
       <EarnStack.Screen
         name={EARN_ROUTES.EARN_TOKEN_PICKER_SCREEN}
         component={EarnTokenPickerScreen}
-        options={getScreenBottomNavigateOptions(t("earnTokenPicker.title"))}
+        // Design `13701:332629` moved this screen's title into the body and
+        // left the header a bare X, which the screen draws itself (the intro
+        // it can render in its place does the same). Keeping the stack header
+        // would double up on both. `getStackBottomNavigateOptions` still
+        // supplies the slide-from-bottom animation that
+        // `getScreenBottomNavigateOptions` used to bring along with it.
+        options={{ ...getStackBottomNavigateOptions(), headerShown: false }}
       />
       <EarnStack.Screen
         name={EARN_ROUTES.EARN_AMOUNT_SCREEN}

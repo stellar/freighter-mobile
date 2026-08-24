@@ -1,5 +1,7 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
+import blendIcon from "assets/logos/blend-icon.png";
 import BigNumber from "bignumber.js";
+import BottomSheet from "components/BottomSheet";
 import { List } from "components/List";
 import { TokenIcon } from "components/TokenIcon";
 import {
@@ -8,15 +10,19 @@ import {
   projectCurrentEarnings,
   projectEarnings,
 } from "components/screens/EarnScreen/helpers";
+import SignTransactionDetailsBottomSheet from "components/screens/SignTransactionDetails/components/SignTransactionDetailsBottomSheet";
+import { useSignTransactionDetails } from "components/screens/SignTransactionDetails/hooks/useSignTransactionDetails";
 import { Banner } from "components/sds/Banner";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { TextButton } from "components/sds/TextButton";
 import { Text } from "components/sds/Typography";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import { mapNetworkToNetworkDetails } from "config/constants";
 import { useAuthenticationStore } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
 import { useEarnStore } from "ducks/earn";
+import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { getBalanceByContractId } from "helpers/balances";
 import { pxValue } from "helpers/dimensions";
 import {
@@ -26,9 +32,8 @@ import {
 } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
-import { useFeeDetailsBottomSheet } from "hooks/useFeeDetailsBottomSheet";
-import React, { useCallback, useMemo } from "react";
-import { TouchableOpacity, View } from "react-native";
+import React, { useCallback, useMemo, useRef } from "react";
+import { Image, TouchableOpacity, View } from "react-native";
 import type { SecurityAssessment } from "services/blockaid/types";
 
 export interface EarnReviewBottomSheetProps {
@@ -89,13 +94,20 @@ export const EarnReviewBottomSheet: React.FC<EarnReviewBottomSheetProps> = ({
     (state) => state.currentPositionTokens,
   );
 
-  // Fee no longer renders on the face of the sheet (design `9448:29319`) --
-  // it lives behind the "Transaction details" row below, which reuses this
-  // same hook's `openFeeDetails`/`feeDetailsSheets` (the Send/Swap review
-  // sheets' own fee-breakdown affordance).
-  const { openFeeDetails, feeDetailsSheets } = useFeeDetailsBottomSheet({
-    isSorobanContext: true,
+  // "Transaction details" opens the FULL decoded transaction -- summary
+  // (fee, sequence, memo, raw XDR), auth entries, and operations -- exactly
+  // as the dapp signing review and the Send/Swap reviews do, via the shared
+  // `useSignTransactionDetails` + `SignTransactionDetailsBottomSheet` pair.
+  //
+  // It previously opened `useFeeDetailsBottomSheet`'s fee breakdown, which is
+  // a much narrower surface: the fee alone. The fee is still reachable here,
+  // as the summary's own `feeXlm` row, so nothing is lost by pointing the row
+  // at the full details instead.
+  const { transactionXDR } = useTransactionBuilderStore();
+  const transactionDetails = useSignTransactionDetails({
+    xdr: transactionXDR || "",
   });
+  const transactionDetailsSheetRef = useRef<BottomSheetModal>(null);
 
   const networkDetails = useMemo(
     () => mapNetworkToNetworkDetails(network),
@@ -251,14 +263,17 @@ export const EarnReviewBottomSheet: React.FC<EarnReviewBottomSheetProps> = ({
             </View>
 
             <View className="w-full flex-row items-center gap-[16px]">
-              {/* No pool-artwork asset exists yet — reuses `PoolCard`'s own
-                  placeholder treatment for pool identity, for consistency
-                  between the two surfaces (see that component's doc). */}
-              <Icon.InfoCircle
-                themeColor="lilac"
-                withBackground
-                square
-                size={28}
+              {/* The real Blend mark, shared with `PoolCard`, the pool
+                  details sheet, and the token picker's badge. Sized 40 to sit
+                  in the same leading-icon column as the deposit asset's
+                  `TokenIcon` above (also 40, as is the connector between
+                  them); the lilac `InfoCircle` placeholder this replaces was
+                  28, so it never lined up with that column. */}
+              <Image
+                source={blendIcon}
+                className="size-10 rounded"
+                resizeMode="cover"
+                accessibilityIgnoresInvertColors
               />
               <View className="flex-1">
                 <Text sm secondary>
@@ -374,12 +389,11 @@ export const EarnReviewBottomSheet: React.FC<EarnReviewBottomSheetProps> = ({
         </Text>
       </View>
 
-      {/* "Transaction details" row (design `9448:29603`) — the fee's only
-          home now that it is off the face of the sheet. Reuses the same
-          `openFeeDetails` affordance Send/Swap already show inline next to
-          their fee row, just moved onto its own full-row tap target. */}
+      {/* "Transaction details" row (design `9448:29603`) — opens the full
+          decoded transaction, the same sheet the dapp signing review and the
+          Send/Swap reviews use. */}
       <TouchableOpacity
-        onPress={openFeeDetails}
+        onPress={() => transactionDetailsSheetRef.current?.present()}
         className="mt-[16px] flex-row items-center gap-[8px] p-[16px] rounded-[16px] bg-background-tertiary"
         testID="earn-review-transaction-details"
       >
@@ -457,7 +471,23 @@ export const EarnReviewBottomSheet: React.FC<EarnReviewBottomSheetProps> = ({
         )}
       </View>
 
-      {feeDetailsSheets}
+      {transactionDetails && (
+        <BottomSheet
+          modalRef={transactionDetailsSheetRef}
+          handleCloseModal={() => transactionDetailsSheetRef.current?.dismiss()}
+          enableDynamicSizing={false}
+          useInsetsBottomPadding={false}
+          enablePanDownToClose={false}
+          analyticsEvent={AnalyticsEvent.VIEW_EARN_TRANSACTION_DETAILS}
+          snapPoints={["90%"]}
+          customContent={
+            <SignTransactionDetailsBottomSheet
+              data={transactionDetails}
+              onDismiss={() => transactionDetailsSheetRef.current?.dismiss()}
+            />
+          }
+        />
+      )}
     </View>
   );
 };

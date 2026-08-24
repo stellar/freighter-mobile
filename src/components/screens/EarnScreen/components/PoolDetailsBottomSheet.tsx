@@ -1,4 +1,5 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
+import blendIcon from "assets/logos/blend-icon.png";
 import { TokenIcon } from "components/TokenIcon";
 import {
   formatCompactUsd,
@@ -16,7 +17,7 @@ import { getNativeContractDetails } from "helpers/soroban";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React from "react";
-import { TouchableOpacity, View } from "react-native";
+import { Image, TouchableOpacity, View } from "react-native";
 
 export interface PoolDetailsBottomSheetProps {
   pool: BlendCatalogPool | null;
@@ -243,12 +244,19 @@ export const PoolDetailsBottomSheet: React.FC<PoolDetailsBottomSheetProps> = ({
     <View className="gap-[24px]">
       <View className="flex-row items-center justify-between">
         <View className="flex-row items-center flex-1 mr-4">
-          {/* No pool-artwork asset exists yet. Sized 28px, matching
-              `PoolCard`'s identical placeholder treatment on the amount
-              screen -- not this sheet's own 32px header-icon geometry
-              (`9448:18861`) -- to keep the two surfaces' shared "no artwork
-              yet" identity treatment visually consistent with each other. */}
-          <Icon.InfoCircle themeColor="lilac" withBackground square size={28} />
+          {/* The real Blend mark, shared with `PoolCard` and the token
+              picker's badge. This was a lilac `InfoCircle` placeholder while
+              no artwork existed, sized 28 to match `PoolCard`'s identical
+              stand-in; now that the asset exists each surface takes its own
+              designed size, so this follows this sheet's own header-icon
+              geometry (`9448:18861`) at 32 rather than the amount screen's
+              40. */}
+          <Image
+            source={blendIcon}
+            className="size-8 rounded"
+            resizeMode="cover"
+            accessibilityIgnoresInvertColors
+          />
           <View className="ml-4 flex-1">
             {pool.name && (
               <Text md medium primary numberOfLines={1}>

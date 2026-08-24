@@ -1,16 +1,17 @@
 /* eslint-disable @fnando/consistent-import/consistent-import */
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { act } from "@testing-library/react-native";
+import { act, fireEvent } from "@testing-library/react-native";
 import EarnTokenPickerScreen from "components/screens/EarnScreen/screens/EarnTokenPickerScreen";
 import { EARN_ROUTES, EarnStackParamList } from "config/routes";
 import { usePreferencesStore } from "ducks/preferences";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 
-// This screen presents the first-run Earn intro sheet on mount, gated on
-// `usePreferencesStore.hasSeenEarnIntro` -- Task 13 removed the dead
-// `EARN_ROUTES` intro entry, so this is a bottom sheet over the token
-// picker rather than its own route/screen. Mocking approach modeled on
+// This screen renders the first-run Earn intro as a full-screen early
+// return, gated on `usePreferencesStore.hasSeenEarnIntro` -- `EARN_ROUTES`
+// has no intro entry, so the intro replaces the picker's own body rather
+// than being a route or (as previously) a bottom sheet over it. Mocking
+// approach for the REMAINING sheets is modeled on
 // EarnAmountScreen.test.tsx: a stubbed <BottomSheet> that records each
 // sheet's imperative ref (by declaration order) and the props it was given,
 // so we can assert which sheet was presented -- and inspect the
@@ -46,8 +47,8 @@ jest.mock("components/BottomSheet", () => {
       globalThis.__earnTokenPickerMockSheets.push({ ref: spy, props });
       return spy;
     }, []);
-    // Don't render customContent -- the real EarnIntroBottomSheet/
-    // NotEnoughTokenBottomSheet are covered by their own component tests.
+    // Don't render customContent -- the real NotEnoughTokenBottomSheet /
+    // ReceiveFundsBottomSheet are covered by their own component tests.
     return ReactModule.createElement(RNModule.View);
   };
   return { __esModule: true, default: NoopSheet };
@@ -91,11 +92,11 @@ type Props = NativeStackScreenProps<
   typeof EARN_ROUTES.EARN_TOKEN_PICKER_SCREEN
 >;
 
-const makeNavigation = () =>
-  ({
-    navigate: jest.fn(),
-    goBack: jest.fn(),
-  }) as unknown as Props["navigation"];
+// Shared across a render so the intro's close wiring (`navigation.goBack`)
+// is assertable; re-created per test in `beforeEach`.
+let mockNavigation: { navigate: jest.Mock; goBack: jest.Mock };
+
+const makeNavigation = () => mockNavigation as unknown as Props["navigation"];
 
 const makeRoute = () =>
   ({
@@ -109,17 +110,23 @@ const renderScreen = () =>
     <EarnTokenPickerScreen navigation={makeNavigation()} route={makeRoute()} />,
   );
 
-/** The earn-intro `<BottomSheet>` is declared first in the JSX, so it's
- * always index 0 in mount order. */
-const getEarnIntroSheet = () =>
-  // eslint-disable-next-line no-underscore-dangle
-  globalThis.__earnTokenPickerMockSheets[0];
+const makeOption = (code: string, total = "0") => ({
+  assetId: `C${code}FAKESACADDRESS`,
+  code,
+  decimals: 7,
+  total,
+  apy: 0.1694,
+  poolId: "CPOOLFAKE",
+  isNative: false,
+  balance: undefined,
+});
 
 describe("EarnTokenPickerScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     // eslint-disable-next-line no-underscore-dangle
     globalThis.__earnTokenPickerMockSheets = [];
+    mockNavigation = { navigate: jest.fn(), goBack: jest.fn() };
     mockUseEarnTokens = {
       isLoading: false,
       error: null,
@@ -131,83 +138,115 @@ describe("EarnTokenPickerScreen", () => {
   });
 
   describe("first-entry presentation", () => {
-    it("presents the intro sheet on mount when the flag is unset", () => {
+    it("renders the intro instead of the picker when the flag is unset", () => {
       usePreferencesStore.getState().setHasSeenEarnIntro(false);
 
-      renderScreen();
+      const { getByTestId } = renderScreen();
 
-      expect(getEarnIntroSheet().ref.present).toHaveBeenCalledTimes(1);
+      expect(getByTestId("earn-intro-screen")).toBeTruthy();
     });
 
-    it("does NOT present the intro sheet when the flag is already set", () => {
+    it("renders the picker, not the intro, when the flag is already set", () => {
       usePreferencesStore.getState().setHasSeenEarnIntro(true);
 
-      renderScreen();
+      const { queryByTestId } = renderScreen();
 
-      expect(getEarnIntroSheet().ref.present).not.toHaveBeenCalled();
+      expect(queryByTestId("earn-intro-screen")).toBeNull();
     });
 
-    it("does not present while the token list is still loading", () => {
+    // The intro is deliberately gated AHEAD of the loading/error branches:
+    // it doesn't depend on the token list, and gating it on the fetch would
+    // flash a spinner before the first thing a new user ever sees. Both
+    // cases previously suppressed the intro entirely.
+    it("shows the intro even while the token list is still loading", () => {
       usePreferencesStore.getState().setHasSeenEarnIntro(false);
       mockUseEarnTokens.isLoading = true;
 
-      renderScreen();
+      const { getByTestId, queryByTestId } = renderScreen();
 
-      // The loading branch returns before the BottomSheet tree mounts at
-      // all, so there is nothing captured to present.
-      // eslint-disable-next-line no-underscore-dangle
-      expect(globalThis.__earnTokenPickerMockSheets).toHaveLength(0);
+      expect(getByTestId("earn-intro-screen")).toBeTruthy();
+      expect(queryByTestId("earn-token-picker-spinner")).toBeNull();
     });
 
-    it("does not present when the token fetch errored", () => {
+    it("shows the intro even when the token fetch errored", () => {
       usePreferencesStore.getState().setHasSeenEarnIntro(false);
       mockUseEarnTokens.error = "boom";
 
-      renderScreen();
+      const { getByTestId } = renderScreen();
 
-      // eslint-disable-next-line no-underscore-dangle
-      expect(globalThis.__earnTokenPickerMockSheets).toHaveLength(0);
+      expect(getByTestId("earn-intro-screen")).toBeTruthy();
     });
   });
 
-  describe("dismiss wiring", () => {
+  describe("intro dismissal", () => {
     beforeEach(() => {
       usePreferencesStore.getState().setHasSeenEarnIntro(false);
     });
 
-    it("marks the intro seen when the sheet's onDismiss fires (CTA or close, from inside EarnIntroBottomSheet)", () => {
-      renderScreen();
-
-      const introSheet = getEarnIntroSheet();
-      const customContent = introSheet.props
-        .customContent as React.ReactElement<{
-        onDismiss: () => void;
-      }>;
+    it("Continue marks the intro seen and reveals the picker", () => {
+      const { getByTestId, queryByTestId } = renderScreen();
 
       expect(usePreferencesStore.getState().hasSeenEarnIntro).toBe(false);
 
       act(() => {
-        customContent.props.onDismiss();
+        fireEvent.press(getByTestId("earn-intro-continue"));
       });
 
       expect(usePreferencesStore.getState().hasSeenEarnIntro).toBe(true);
+      // Same screen, no navigation -- the intro is an early return, so the
+      // picker simply takes over on the next render.
+      expect(queryByTestId("earn-intro-screen")).toBeNull();
+      expect(mockNavigation.goBack).not.toHaveBeenCalled();
     });
 
-    it("also marks the intro seen via the sheet's native onDismiss (swipe/backdrop dismissal)", () => {
-      renderScreen();
-
-      const introSheet = getEarnIntroSheet();
-      const bottomSheetModalProps = introSheet.props.bottomSheetModalProps as {
-        onDismiss: () => void;
-      };
-
-      expect(usePreferencesStore.getState().hasSeenEarnIntro).toBe(false);
+    it("close marks the intro seen and leaves the Earn flow", () => {
+      const { getByTestId } = renderScreen();
 
       act(() => {
-        bottomSheetModalProps.onDismiss();
+        fireEvent.press(getByTestId("earn-intro-close"));
       });
 
+      // Marked seen as well as dismissed: a user who closed the pitch should
+      // not be shown it again on this install.
       expect(usePreferencesStore.getState().hasSeenEarnIntro).toBe(true);
+      expect(mockNavigation.goBack).toHaveBeenCalledTimes(1);
+    });
+  });
+  // Figma `13701:332629`: the held section is replaced by explanatory prose
+  // when the user holds none of the pool's reserves -- the only variant the
+  // mock draws.
+  describe("list structure", () => {
+    beforeEach(() => {
+      usePreferencesStore.getState().setHasSeenEarnIntro(true);
+    });
+
+    it("shows the empty-held prose instead of an 'in your account' section", () => {
+      mockUseEarnTokens.supported = [makeOption("USDC")];
+
+      const { getByTestId, queryByText } = renderScreen();
+
+      expect(getByTestId("earn-token-picker-empty-held")).toBeTruthy();
+      expect(queryByText("earnTokenPicker.inYourAccount")).toBeNull();
+      expect(getByTestId("earn-token-option-USDC")).toBeTruthy();
+    });
+
+    it("shows the held section, and no empty-held prose, when the user holds a reserve", () => {
+      mockUseEarnTokens.held = [makeOption("XLM", "100")];
+      mockUseEarnTokens.supported = [makeOption("USDC")];
+
+      const { getByText, queryByTestId } = renderScreen();
+
+      expect(getByText("earnTokenPicker.inYourAccount")).toBeTruthy();
+      expect(queryByTestId("earn-token-picker-empty-held")).toBeNull();
+    });
+
+    it("renders the disclaimer and the ambient glow", () => {
+      mockUseEarnTokens.supported = [makeOption("USDC")];
+
+      const { getByText, getByTestId } = renderScreen();
+
+      expect(getByText("earnTokenPicker.apyDisclaimer")).toBeTruthy();
+      expect(getByTestId("earn-glow")).toBeTruthy();
     });
   });
 });

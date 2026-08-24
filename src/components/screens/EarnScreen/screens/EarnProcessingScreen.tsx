@@ -1,4 +1,5 @@
 import { useNavigation } from "@react-navigation/native";
+import blendIcon from "assets/logos/blend-icon.png";
 import Spinner from "components/Spinner";
 import { TokenIcon } from "components/TokenIcon";
 import { BaseLayout } from "components/layout/BaseLayout";
@@ -25,7 +26,7 @@ import React, {
   useMemo,
   useRef,
 } from "react";
-import { View } from "react-native";
+import { Image, View } from "react-native";
 import { track } from "services/analytics/core";
 
 export interface EarnProcessingScreenProps {
@@ -205,10 +206,13 @@ const EarnProcessingScreen: React.FC<EarnProcessingScreenProps> = ({
 
             {/* Triptych (design node `9449:29733`/`9449:29814`): the
              deposit asset's icon, a secondary double-chevron connector, then
-             the pool's identity icon — no pool-artwork asset exists yet, so
-             this reuses `PoolCard`'s own lilac-square placeholder for
-             consistency across the flow, same reasoning as that
-             component's doc comment. */}
+             the pool's identity icon — the real Blend mark, shared with
+             `PoolCard`, the review sheet, the pool details sheet, and the
+             token picker's badge. Sized 40 to match the deposit asset's
+             `TokenIcon size="lg"` beside it; the lilac `InfoCircle`
+             placeholder it replaces was 28, so the two never matched.
+             Rendered for both the submitting and success states — this block
+             sits outside the status branch below. */}
             <View className="rounded-[16px] p-[24px] gap-[16px] bg-background-tertiary w-full">
               <View className="flex-row items-center justify-center gap-[16px]">
                 {depositBalance && (
@@ -218,11 +222,11 @@ const EarnProcessingScreen: React.FC<EarnProcessingScreenProps> = ({
                   size={16}
                   color={themeColors.text.secondary}
                 />
-                <Icon.InfoCircle
-                  themeColor="lilac"
-                  withBackground
-                  square
-                  size={28}
+                <Image
+                  source={blendIcon}
+                  className="size-10 rounded"
+                  resizeMode="cover"
+                  accessibilityIgnoresInvertColors
                 />
               </View>
 

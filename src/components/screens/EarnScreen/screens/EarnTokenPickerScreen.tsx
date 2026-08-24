@@ -1,10 +1,12 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NavigationProp, useNavigation } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import blendIcon from "assets/logos/blend-icon.png";
 import BottomSheet from "components/BottomSheet";
 import Spinner from "components/Spinner";
 import { BaseLayout } from "components/layout/BaseLayout";
-import { EarnIntroBottomSheet } from "components/screens/EarnScreen/components/EarnIntroBottomSheet";
+import { EarnGlow } from "components/screens/EarnScreen/components/EarnGlow";
+import { EarnScreenHeader } from "components/screens/EarnScreen/components/EarnScreenHeader";
 import { EarnTokenRow } from "components/screens/EarnScreen/components/EarnTokenRow";
 import { NotEnoughTokenBottomSheet } from "components/screens/EarnScreen/components/NotEnoughTokenBottomSheet";
 import { ReceiveFundsBottomSheet } from "components/screens/EarnScreen/components/ReceiveFundsBottomSheet";
@@ -18,9 +20,12 @@ import {
   EarnTokenOption,
   useEarnTokens,
 } from "components/screens/EarnScreen/hooks/useEarnTokens";
+// Imported by module path rather than through `screens/index.ts`: this file is
+// itself re-exported from that barrel, so going through it would close an
+// import cycle.
+import { EarnIntroScreen } from "components/screens/EarnScreen/screens/EarnIntroScreen";
 import { Button } from "components/sds/Button";
 import { Text } from "components/sds/Typography";
-import { AnalyticsEvent } from "config/analyticsConfig";
 import {
   NATIVE_TOKEN_CODE,
   mapNetworkToNetworkDetails,
@@ -39,30 +44,29 @@ import { useEarnStore } from "ducks/earn";
 import { usePreferencesStore } from "ducks/preferences";
 import { getTokenIdentifier } from "helpers/balances";
 import useAppTranslation from "hooks/useAppTranslation";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { SectionList, View } from "react-native";
+import useColors from "hooks/useColors";
+import React, { useCallback, useMemo, useRef, useState } from "react";
+import { Image, ScrollView, View } from "react-native";
 
 type EarnTokenPickerScreenProps = NativeStackScreenProps<
   EarnStackParamList,
   typeof EARN_ROUTES.EARN_TOKEN_PICKER_SCREEN
 >;
 
-interface EarnTokenSection {
-  kind: "held" | "supported";
-  title: string;
-  data: EarnTokenOption[];
-}
+/**
+ * Figma `13701:332629` places content at y=118 and the X's box at y=70..94,
+ * i.e. 24 below the icon. The glow's circle is centered at (201, 725) with a
+ * 0.7 fill opacity, unlike the intro's full-opacity one.
+ */
+const CONTENT_TOP_OFFSET = 24;
+const GLOW_CENTER_Y = 725;
+const GLOW_OPACITY = 0.7;
 
 export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   navigation,
 }) => {
   const { t } = useAppTranslation();
+  const { themeColors } = useColors();
   const { isLoading, error, held, supported, refetch } = useEarnTokens();
   const selectAsset = useEarnStore((state) => state.selectAsset);
   const { network } = useAuthenticationStore();
@@ -74,7 +78,6 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
     (state) => state.setHasSeenEarnIntro,
   );
   const notEnoughBottomSheetModalRef = useRef<BottomSheetModal>(null);
-  const earnIntroBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const receiveFundsBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [notEnoughOption, setNotEnoughOption] =
     useState<EarnTokenOption | null>(null);
@@ -198,41 +201,57 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
     [selectAsset, navigation],
   );
 
-  const handleDismissEarnIntro = useCallback(() => {
+  // Continue: mark the intro seen and fall through to the picker rendered
+  // below. `setHasSeenEarnIntro` writes synchronously, so the very next
+  // render drops the intro -- no navigation involved, since the intro is a
+  // full-screen early return from this same screen rather than its own route.
+  const handleContinueEarnIntro = useCallback(() => {
     setHasSeenEarnIntro(true);
   }, [setHasSeenEarnIntro]);
 
-  // Presents the first-run Earn intro sheet exactly once per mount, gated on
-  // the persisted flag (see `usePreferencesStore.hasSeenEarnIntro`) rather
-  // than a route: Task 13 removed the dead `EARN_ROUTES` intro entry because
-  // a declared-but-unregistered route throws at runtime, so this is a sheet
-  // over the token picker instead of a step in the stack.
-  //
-  // `hasPresentedEarnIntroRef` (rather than depending on `isLoading` alone)
-  // guards against re-presenting after the sheet is dismissed: dismissing
-  // sets `hasSeenEarnIntro` true, which would otherwise be a legitimate
-  // dependency change that re-runs this effect on every subsequent
-  // isLoading/error toggle (e.g. a later retry) with a stale `false` still
-  // in a race. The ref makes "present at most once per mount" explicit
-  // regardless of how those other dependencies settle.
-  const hasPresentedEarnIntroRef = useRef(false);
-  useEffect(() => {
-    if (
-      !isLoading &&
-      !error &&
-      !hasSeenEarnIntro &&
-      !hasPresentedEarnIntroRef.current
-    ) {
-      hasPresentedEarnIntroRef.current = true;
-      earnIntroBottomSheetModalRef.current?.present();
-    }
-  }, [isLoading, error, hasSeenEarnIntro]);
+  // The intro's X leaves Earn entirely, matching what this screen's own
+  // header X does (`getScreenBottomNavigateOptions` -> `CustomHeaderButton`
+  // -> `navigation.goBack()`, which pops the whole stack from its initial
+  // route). It still marks the intro seen: a user who dismissed the pitch
+  // should not be shown it again on this install.
+  const handleCloseEarnIntro = useCallback(() => {
+    setHasSeenEarnIntro(true);
+    navigation.goBack();
+  }, [setHasSeenEarnIntro, navigation]);
 
+  // First-run interstitial, once per install (see
+  // `usePreferencesStore.hasSeenEarnIntro`). Rendered INLINE as a full-screen
+  // early return rather than as a route: `EARN_ROUTES` has no intro entry,
+  // and a declared-but-unregistered route throws at runtime. Same pattern as
+  // `EarnAmountScreen`'s inline `EarnProcessingScreen`.
+  //
+  // Deliberately gated ahead of the `isLoading`/`error` branches below so it
+  // shows immediately on entry, with the token fetch resolving behind it --
+  // the pitch does not depend on the token list, and gating it on the fetch
+  // would flash a spinner before the first thing a new user ever sees.
+  if (!hasSeenEarnIntro) {
+    return (
+      <EarnIntroScreen
+        onContinue={handleContinueEarnIntro}
+        onClose={handleCloseEarnIntro}
+      />
+    );
+  }
+
+  // The loading and error branches carry the same bare-X header as the list
+  // below: the stack header is off for this route (see `EarnNavigator`), so
+  // without it these states would have no way out of the flow.
   if (isLoading) {
     return (
-      <BaseLayout>
-        <View className="flex-1 items-center justify-center">
-          <Spinner testID="earn-token-picker-spinner" />
+      <BaseLayout
+        useSafeArea
+        insets={{ top: true, bottom: true, left: false, right: false }}
+      >
+        <View className="flex-1 px-6">
+          <EarnScreenHeader onClose={() => navigation.goBack()} />
+          <View className="flex-1 items-center justify-center">
+            <Spinner testID="earn-token-picker-spinner" />
+          </View>
         </View>
       </BaseLayout>
     );
@@ -244,99 +263,156 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   // actively misleading about why the list is empty).
   if (error) {
     return (
-      <BaseLayout>
-        <View className="flex-1 items-center justify-center px-6">
-          <Text md medium primary textAlign="center">
-            {t("earnTokenPicker.error.title")}
-          </Text>
-          <View className="h-2" />
-          <Text sm secondary textAlign="center">
-            {t("earnTokenPicker.error.body")}
-          </Text>
-          <View className="h-6" />
-          <Button secondary onPress={refetch} testID="earn-token-picker-retry">
-            {t("earnTokenPicker.error.retry")}
-          </Button>
+      <BaseLayout
+        useSafeArea
+        insets={{ top: true, bottom: true, left: false, right: false }}
+      >
+        <View className="flex-1 px-6">
+          <EarnScreenHeader onClose={() => navigation.goBack()} />
+          <View className="flex-1 items-center justify-center">
+            <Text md medium primary textAlign="center">
+              {t("earnTokenPicker.error.title")}
+            </Text>
+            <View className="h-2" />
+            <Text sm secondary textAlign="center">
+              {t("earnTokenPicker.error.body")}
+            </Text>
+            <View className="h-6" />
+            <Button
+              secondary
+              onPress={refetch}
+              testID="earn-token-picker-retry"
+            >
+              {t("earnTokenPicker.error.retry")}
+            </Button>
+          </View>
         </View>
       </BaseLayout>
     );
   }
 
-  const sections: EarnTokenSection[] = [
-    {
-      kind: "held" as const,
-      title: t("earnTokenPicker.inYourAccount"),
-      data: held,
-    },
-    {
-      kind: "supported" as const,
-      title: t("earnTokenPicker.supportedTokens"),
-      data: supported,
-    },
-  ].filter((section) => section.data.length > 0);
+  // Figma `13701:332629` groups the list as: an "in your account" area
+  // (replaced by an empty-state block when the user holds none of the
+  // reserves), then "Supported tokens". The mock only draws the empty
+  // variant, so the held variant keeps this screen's existing section header
+  // and rows, restyled to the new spec.
+  const heldSection = held.length > 0;
 
   return (
     <>
-      <BaseLayout insets={{ top: false, bottom: false }}>
-        {/* Figma node 8828:19263: the disclaimer sits at the bottom of the
-            screen (y=522 of a 600 canvas), well below where the list itself
-            ends (y=356) -- not immediately after the last row. Wrapping the
-            list in its own `flex-1` and keeping the disclaimer as a sibling
-            (rather than a `ListFooterComponent`, which would scroll with the
-            list and sit flush under the last row) pins it to the bottom of
-            the screen on any device while the list scrolls above it. */}
-        <View className="flex-1">
-          <SectionList<EarnTokenOption, EarnTokenSection>
-            sections={sections}
-            keyExtractor={(item) => item.assetId}
-            showsVerticalScrollIndicator={false}
-            stickySectionHeadersEnabled={false}
-            renderSectionHeader={({ section }) => (
-              <View className="mb-3">
-                <Text md medium secondary>
-                  {section.title}
-                </Text>
+      <BaseLayout
+        useSafeArea
+        backgroundColor={themeColors.background.primary}
+        insets={{ top: true, bottom: true, left: false, right: false }}
+      >
+        {/* Design node `13701:332635`: same blurred circle as the intro but at
+            70% fill opacity, centered low on the screen behind the disclaimer
+            rather than behind a logo. */}
+        <EarnGlow centerY={GLOW_CENTER_Y} opacity={GLOW_OPACITY} />
+
+        <View className="flex-1 px-6">
+          <EarnScreenHeader onClose={() => navigation.goBack()} />
+
+          <View className="flex-1" style={{ marginTop: CONTENT_TOP_OFFSET }}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerClassName="gap-10 pb-6"
+            >
+              {/* Title block: the Blend badge, then heading + subheading.
+                  These moved OUT of the navigation header in this redesign --
+                  the header is now a bare X (see `EarnScreenHeader`). */}
+              <View className="gap-2">
+                <View
+                  className="h-8 flex-row items-center justify-center self-start gap-1 rounded-lg px-2.5 py-1"
+                  style={{ backgroundColor: themeColors.background.tertiary }}
+                >
+                  {/* A different Blend mark from the intro's outlined jar --
+                      a filled glyph on a transparent ground -- so it ships as
+                      its own asset rather than reusing `blend-logo.svg`. */}
+                  <Image
+                    source={blendIcon}
+                    className="size-5 rounded"
+                    resizeMode="cover"
+                    accessibilityIgnoresInvertColors
+                  />
+                  <Text md medium primary>
+                    {t("earnTokenPicker.protocolName")}
+                  </Text>
+                </View>
+
+                <View className="gap-1">
+                  {/* Text/LG/500 (18/26) -- SDS `Text lg` is 18/26 exactly. */}
+                  <Text lg medium primary>
+                    {t("earnTokenPicker.heading")}
+                  </Text>
+                  <Text sm regular secondary>
+                    {t("earnTokenPicker.subheading")}
+                  </Text>
+                </View>
               </View>
-            )}
-            renderItem={({ item, section }) => (
-              <EarnTokenRow
-                option={item}
-                testID={`earn-token-option-${item.code}`}
-                onPress={() =>
-                  section.kind === "held"
-                    ? handleHeldTokenPress(item)
-                    : handleUnheldTokenPress(item)
-                }
-              />
-            )}
-          />
-        </View>
-        <View className="pb-6">
-          <Text xs secondary textAlign="center">
-            {t("earnTokenPicker.apyDisclaimer")}
-          </Text>
+
+              <View className="gap-6">
+                {heldSection ? (
+                  <View className="gap-3">
+                    <Text md medium primary>
+                      {t("earnTokenPicker.inYourAccount")}
+                    </Text>
+                    <View className="gap-3">
+                      {held.map((option) => (
+                        <EarnTokenRow
+                          key={option.assetId}
+                          option={option}
+                          testID={`earn-token-option-${option.code}`}
+                          onPress={() => handleHeldTokenPress(option)}
+                        />
+                      ))}
+                    </View>
+                  </View>
+                ) : (
+                  // Design nodes `13701:332739`/`332774`: where the held
+                  // section would be, prose explaining why it is absent.
+                  <View className="gap-1" testID="earn-token-picker-empty-held">
+                    <Text md medium primary>
+                      {t("earnTokenPicker.noSupportedAssets.title")}
+                    </Text>
+                    <Text sm regular secondary>
+                      {t("earnTokenPicker.noSupportedAssets.body")}
+                    </Text>
+                  </View>
+                )}
+
+                {supported.length > 0 && (
+                  <View className="gap-3">
+                    <Text md medium primary>
+                      {t("earnTokenPicker.supportedTokens")}
+                    </Text>
+                    <View className="gap-3">
+                      {supported.map((option) => (
+                        <EarnTokenRow
+                          key={option.assetId}
+                          option={option}
+                          testID={`earn-token-option-${option.code}`}
+                          onPress={() => handleUnheldTokenPress(option)}
+                        />
+                      ))}
+                    </View>
+                  </View>
+                )}
+              </View>
+            </ScrollView>
+          </View>
+
+          {/* Node `13701:332636`: the disclaimer is pinned near the bottom of
+              the screen, well below where the list ends -- not flush under the
+              last row. Keeping it a sibling of the scroll area (rather than
+              inside it) holds it there on any device while the list scrolls. */}
+          <View className="pb-6">
+            <Text sm regular secondary textAlign="center">
+              {t("earnTokenPicker.apyDisclaimer")}
+            </Text>
+          </View>
         </View>
       </BaseLayout>
-      <BottomSheet
-        modalRef={earnIntroBottomSheetModalRef}
-        handleCloseModal={handleDismissEarnIntro}
-        analyticsEvent={AnalyticsEvent.VIEW_EARN_INTRO}
-        bottomSheetModalProps={{ onDismiss: handleDismissEarnIntro }}
-        // Content-sized (the default), matching every other sheet in this
-        // feature. Figma node 9457:46768's 484-of-600 (~81%) is an artifact
-        // of the mock's own canvas height, not a design rule -- a real
-        // device's screen height doesn't share that ratio to the content's
-        // actual (~498px) stack, so a percentage snap point would leave the
-        // sheet oversized with dead space below the CTA. Letting it hug its
-        // content reproduces the design's proportions on any device instead
-        // of pinning to one canvas's ratio.
-        customContent={
-          <EarnIntroBottomSheet
-            bottomSheetModalRef={earnIntroBottomSheetModalRef}
-            onDismiss={handleDismissEarnIntro}
-          />
-        }
-      />
       <BottomSheet
         modalRef={notEnoughBottomSheetModalRef}
         handleCloseModal={handleCloseNotEnoughSheet}

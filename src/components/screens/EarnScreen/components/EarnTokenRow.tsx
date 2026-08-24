@@ -76,7 +76,7 @@ export const EarnTokenRow: React.FC<EarnTokenRowProps> = ({
       testID={testID}
       onPress={onPress}
       activeOpacity={0.7}
-      className="flex-row justify-between items-center px-4 py-3 mb-3 rounded-2xl bg-background-tertiary"
+      className="flex-row justify-between items-center px-4 py-3 rounded-2xl bg-background-tertiary"
     >
       <View className="flex-row items-center flex-1 mr-4">
         <TokenIcon token={token} />
@@ -106,12 +106,12 @@ export const EarnTokenRow: React.FC<EarnTokenRowProps> = ({
         // match this teal-green, so this pill is built directly from the
         // `green` theme scale instead of `Badge`.
         //
-        // The trailing "*" ties the figure to the disclaimer footnote below
-        // the list. Appended here, not in `formatRate`, which is shared and
-        // unit-tested elsewhere.
+        // No trailing "*": the redesign's disclaimer ("APY may change based on
+        // protocol conditions.") is standalone prose, not a footnote keyed to
+        // a marker on each figure.
         <View className="items-center justify-center px-3 py-1.5 rounded-full bg-green-10">
           <Text sm medium color={themeColors.green[4]}>
-            {`${formatRate(option.apy)}*`}
+            {formatRate(option.apy)}
           </Text>
         </View>
       )}

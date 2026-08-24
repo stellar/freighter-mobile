@@ -90,6 +90,7 @@ export enum AnalyticsEvent {
   VIEW_EARN_TOKEN_PICKER = "earn_select_token",
   VIEW_EARN_AMOUNT = "earn_amount",
   VIEW_EARN_REVIEW = "earn_review",
+  VIEW_EARN_TRANSACTION_DETAILS = "earn_transaction_details",
   VIEW_EARN_PROCESSING = "earn_processing",
   VIEW_EARN_SUCCESS = "earn_success",
 
@@ -558,6 +559,9 @@ const SCREEN_CATALOG: Record<string, { flow?: AnalyticsFlow; step?: Step }> = {
   [AnalyticsEvent.VIEW_EARN_REVIEW]: {
     flow: AnalyticsFlow.EARN,
     step: "confirm",
+  },
+  [AnalyticsEvent.VIEW_EARN_TRANSACTION_DETAILS]: {
+    flow: AnalyticsFlow.EARN,
   },
   [AnalyticsEvent.VIEW_EARN_PROCESSING]: {
     flow: AnalyticsFlow.EARN,
