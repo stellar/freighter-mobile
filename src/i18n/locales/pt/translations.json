@@ -42,7 +42,8 @@
     "collection": "Coleção",
     "tokenId": "ID do Token",
     "linkOpenError": "Não foi possível abrir o link",
-    "authEntry": "Entrada de Autorização"
+    "authEntry": "Entrada de Autorização",
+    "back": "Voltar"
   },
   "home": {
     "title": "Início",
@@ -712,10 +713,10 @@
     },
     "retryBanner": "A transação falhou. Tente novamente.",
     "networkFeeSheet": {
-      "title": "Você precisa de XLM para a taxa de rede",
+      "title": "XLM necessário para taxas de rede",
       "body": "Adicione XLM à sua carteira para continuar",
       "buyWithCoinbase": "Comprar com a Coinbase",
-      "transfer": "Transferir de outra conta"
+      "receive": "Receber XLM"
     },
     "errors": {
       "simulationFailed": "Falha ao simular o depósito. Tente novamente.",
@@ -738,13 +739,13 @@
   },
   "earnNotEnough": {
     "title": "{{tokenCode}} insuficiente",
-    "bodyWithBuy": "Você precisará de {{tokenCode}} para depositar neste pool. Compre ou troque por {{tokenCode}} para continuar.",
+    "bodyWithBuy": "Obtenha {{tokenCode}} para depositar neste pool. Compre ou transfira {{tokenCode}} para continuar.",
     "bodySwapOnly": "Você precisará de {{tokenCode}} para depositar neste pool. Troque ou transfira {{tokenCode}} para continuar.",
     "bodyTransferOnly": "Você precisará de {{tokenCode}} para depositar neste pool. Transfira {{tokenCode}} de outra conta para continuar.",
     "buy": "Comprar {{tokenCode}}",
     "buyWithCoinbase": "Comprar com a Coinbase",
     "swap": "Trocar por {{tokenCode}}",
-    "transfer": "Transferir de outra conta",
+    "receive": "Receber {{tokenCode}}",
     "or": "ou"
   },
   "earnReceiveFunds": {
@@ -1383,5 +1384,11 @@
     "title": "Não é possível executar neste dispositivo",
     "description": "Este dispositivo possui root ou jailbreak, o que impede o aplicativo de proteger as chaves da sua carteira.",
     "disclaimer": "O aplicativo está desabilitado em sistemas comprometidos. Instale e use-o em um dispositivo com segurança padrão intacta."
+  },
+  "earnSwapFrom": {
+    "title": "Trocar de",
+    "searchPlaceholder": "Busque pelo nome ou endereço do token",
+    "yourTokens": "Seus tokens",
+    "noResults": "Nenhum token correspondente na sua carteira."
   }
 }

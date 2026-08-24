@@ -7,6 +7,8 @@ import Spinner from "components/Spinner";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { EarnGlow } from "components/screens/EarnScreen/components/EarnGlow";
 import { EarnScreenHeader } from "components/screens/EarnScreen/components/EarnScreenHeader";
+import { EarnSwapBottomSheet } from "components/screens/EarnScreen/components/EarnSwapBottomSheet";
+import { EarnSwapFromBottomSheet } from "components/screens/EarnScreen/components/EarnSwapFromBottomSheet";
 import { EarnTokenRow } from "components/screens/EarnScreen/components/EarnTokenRow";
 import { NotEnoughTokenBottomSheet } from "components/screens/EarnScreen/components/NotEnoughTokenBottomSheet";
 import { ReceiveFundsBottomSheet } from "components/screens/EarnScreen/components/ReceiveFundsBottomSheet";
@@ -16,6 +18,7 @@ import {
   hasSwappableBalance,
   isOnrampableAsset,
 } from "components/screens/EarnScreen/helpers";
+import { useEarnSwap } from "components/screens/EarnScreen/hooks/useEarnSwap";
 import {
   EarnTokenOption,
   useEarnTokens,
@@ -24,12 +27,18 @@ import {
 // itself re-exported from that barrel, so going through it would close an
 // import cycle.
 import { EarnIntroScreen } from "components/screens/EarnScreen/screens/EarnIntroScreen";
+import SwapReviewBottomSheet from "components/screens/SwapScreen/components/SwapReviewBottomSheet";
+import { SWAP_TOAST_IDS } from "components/screens/SwapScreen/hooks/useSwapAmountError";
+import { useSwapFooter } from "components/screens/SwapScreen/hooks/useSwapFooter";
+import { SwapProcessingScreen } from "components/screens/SwapScreen/screens";
 import { Button } from "components/sds/Button";
 import { Text } from "components/sds/Typography";
+import { AnalyticsEvent } from "config/analyticsConfig";
 import {
   NATIVE_TOKEN_CODE,
   mapNetworkToNetworkDetails,
 } from "config/constants";
+import { logger } from "config/logger";
 import {
   ADD_FUNDS_ROUTES,
   EARN_ROUTES,
@@ -43,8 +52,11 @@ import { useBalancesStore } from "ducks/balances";
 import { useEarnStore } from "ducks/earn";
 import { usePreferencesStore } from "ducks/preferences";
 import { getTokenIdentifier } from "helpers/balances";
+import { formatBalanceAmount } from "helpers/formatAmount";
 import useAppTranslation from "hooks/useAppTranslation";
+import { HeldBalanceItem } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
+import { useToast } from "providers/ToastProvider";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { Image, ScrollView, View } from "react-native";
 
@@ -66,6 +78,7 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   navigation,
 }) => {
   const { t } = useAppTranslation();
+  const { showToast } = useToast();
   const { themeColors } = useColors();
   const { isLoading, error, held, supported, refetch } = useEarnTokens();
   const selectAsset = useEarnStore((state) => state.selectAsset);
@@ -79,8 +92,109 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   );
   const notEnoughBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const receiveFundsBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const swapBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const swapFromBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [notEnoughOption, setNotEnoughOption] =
     useState<EarnTokenOption | null>(null);
+  /**
+   * The reserve the swap branch is working toward, held SEPARATELY from
+   * `notEnoughOption`.
+   *
+   * They look interchangeable -- swap is always entered from the "not enough"
+   * sheet, so they start equal -- but that sheet OWNS `notEnoughOption` and
+   * clears it on close. Driving the swap sheet from it meant any dismissal of
+   * the sheet underneath blanked the swap sheet's content and reset its whole
+   * store state mid-flow, which read as "the modal closed by itself".
+   */
+  const [swapOption, setSwapOption] = useState<EarnTokenOption | null>(null);
+
+  // Swap-within-Earn state. Driven by `notEnoughOption` -- the reserve whose
+  // row was tapped -- so the destination is already locked by the time the
+  // sheet presents. Null while no row is pending, which no-ops the hook.
+  const swapReviewBottomSheetModalRef = useRef<BottomSheetModal>(null);
+
+  // A completed swap leaves the user holding the reserve they came for, so
+  // close the whole swap branch and drop them back on the picker -- refetching
+  // so the row they wanted moves from "Supported tokens" into "In your
+  // account". Swap's own default (reset onto the History tab) would strand
+  // them outside Earn entirely.
+  const handleSwapProcessingClose = useCallback(() => {
+    swapReviewBottomSheetModalRef.current?.dismiss();
+    swapBottomSheetModalRef.current?.dismiss();
+    setSwapOption(null);
+    setNotEnoughOption(null);
+    refetch();
+  }, [refetch]);
+
+  const earnSwap = useEarnSwap({
+    option: swapOption,
+    onProcessingClose: handleSwapProcessingClose,
+  });
+
+  // "1,691.69 XLM available" on the sell card. Null hides the line, matching
+  // `AmountCard`'s own contract.
+  const earnSwapAvailableText = useMemo(() => {
+    if (!earnSwap.sourceBalance || !earnSwap.spendableAmount) {
+      return null;
+    }
+    return `${formatBalanceAmount(
+      earnSwap.sourceBalance,
+      earnSwap.sourceBalance.tokenCode ?? "",
+      earnSwap.spendableAmount,
+    )} ${t("common.available")}`;
+  }, [earnSwap.sourceBalance, earnSwap.spendableAmount, t]);
+
+  // "Swap from" (design `13723:343723`) stacks over the swap sheet rather
+  // than replacing it, so its back arrow can return with the source
+  // unchanged. The swap sheet stays mounted underneath.
+  const handleSwapSourcePickerPress = useCallback(() => {
+    swapFromBottomSheetModalRef.current?.present();
+  }, []);
+
+  const handleSwapSourceSelected = useCallback(
+    (balance: HeldBalanceItem) => {
+      earnSwap.selectSource(balance);
+      swapFromBottomSheetModalRef.current?.dismiss();
+    },
+    [earnSwap],
+  );
+
+  // Build + Blockaid-scan, then open Review -- mirroring `SwapAmountScreen`'s
+  // own CTA handler.
+  //
+  // The review sheet is presented ONLY on success. Presenting it
+  // unconditionally is what made a failed path look like "the modal closed":
+  // stacking a second sheet hides the swap sheet beneath it, so a review that
+  // opened with nothing to show left the user staring at an empty sheet with
+  // their amount gone. On failure the swap sheet must simply stay put and the
+  // reason surface as a toast, exactly as the amount screen does.
+  const handleSwapReview = useCallback(async () => {
+    try {
+      await earnSwap.setupSwapTransaction();
+      swapReviewBottomSheetModalRef.current?.present();
+    } catch (setupError) {
+      logger.error(
+        "EarnTokenPickerScreen",
+        "Failed to setup the earn swap transaction",
+        setupError,
+      );
+      showToast({
+        variant: "error",
+        title:
+          setupError instanceof Error
+            ? setupError.message
+            : t("swapScreen.errors.failedToSetupTransaction"),
+        toastId: SWAP_TOAST_IDS.FAILED_TO_SETUP_TRANSACTION,
+        duration: 0,
+      });
+    }
+  }, [earnSwap, showToast, t]);
+
+  // Swap's own settings sheet is reached from `SwapAmountScreen`'s header and
+  // is route-scoped to `SWAP_STACK`; wiring it from here needs that sheet
+  // lifted out of the stack first. The control is in the design, so it is
+  // rendered and named rather than dropped -- see the branch's follow-ups.
+  const handleSwapSettingsPress = useCallback(() => {}, []);
 
   // Cross-stack navigation (Buy / Receive live outside EarnStack) needs the
   // root-level param list — the screen's own `navigation` prop is typed to
@@ -152,16 +266,68 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
     });
   }, [rootNavigation]);
 
-  // The swap-within-earn branch (prefilling a swap into the deposit asset)
-  // doesn't exist yet on this branch -- the design owner has decided to
-  // build it, so the button is wired to a named handler now rather than
-  // routed to `SWAP_STACK` (that would jump the user out of Earn, the exact
-  // drift this pass is correcting elsewhere) or omitted. Landing a named,
-  // inert handler ahead of the real implementation mirrors this feature's
-  // own established pattern (`handleUnheldTokenPress`, `openReviewSheet`
-  // were both landed this way and filled in later).
+  // Swap-within-Earn (design `13722:341980`): opens a sheet stacked OVER the
+  // still-visible picker, with the destination locked to the reserve the
+  // user just failed to deposit. Deliberately NOT a jump to `SWAP_STACK`,
+  // which would eject them from Earn and leave them to find their way back
+  // to the reserve they wanted.
+  //
+  // The "not enough" sheet underneath is dismissed first: the two would
+  // otherwise stack three deep with the picker, and returning to it after a
+  // completed swap would be wrong -- the balance it is complaining about no
+  // longer applies.
   const handleSwapForToken = useCallback(() => {
-    // Intentionally empty -- the swap-within-earn branch fills this in.
+    // Capture before dismissing: the sheet below clears `notEnoughOption` as
+    // it closes, so the swap branch needs its own copy to survive that.
+    setSwapOption(notEnoughOption);
+    notEnoughBottomSheetModalRef.current?.dismiss();
+    swapBottomSheetModalRef.current?.present();
+  }, [notEnoughOption]);
+
+  // Confirm: tear down EVERY swap sheet, then submit.
+  //
+  // Dismissing only the review was not enough. `executeSwap` flips
+  // `isProcessing`, which early-returns the processing screen and unmounts
+  // the whole sheet tree -- but unmounting a `BottomSheetModal` that is still
+  // PRESENTED leaves gorhom rendering it over the screen beneath. The swap
+  // sheet stayed on top of the processing screen, so a submit that actually
+  // succeeded looked like being dumped back on the configuration sheet.
+  //
+  // `swapOption` is deliberately NOT cleared here: the submit reads the
+  // destination from the swap store, and the processing screen still needs
+  // the source/destination tokens to render. `handleSwapProcessingClose`
+  // releases it once the user is done.
+  //
+  // Errors are handled inside `useSwapTransaction` so they survive this
+  // component unmounting -- the same reason `SwapAmountScreen` calls
+  // `executeSwap` bare rather than awaiting it.
+  const handleConfirmSwap = useCallback(() => {
+    swapReviewBottomSheetModalRef.current?.dismiss();
+    swapFromBottomSheetModalRef.current?.dismiss();
+    swapBottomSheetModalRef.current?.dismiss();
+    earnSwap.executeSwap();
+  }, [earnSwap]);
+
+  // The review sheet's footer (settings / Cancel / Confirm) is NOT part of
+  // `SwapReviewBottomSheet` -- it is a separate component the sheet takes as
+  // `scrollViewFooterComponent`, which also requires `scrollable`. Omitting
+  // both is what left the review with no way to submit.
+  const { renderFooterComponent: renderSwapReviewFooter } = useSwapFooter({
+    swapReviewBottomSheetModalRef,
+    onConfirm: handleConfirmSwap,
+    isBuilding: earnSwap.isBuilding,
+    isMalicious: earnSwap.isMalicious,
+    isSuspicious: earnSwap.isSuspicious,
+    transactionXDR: earnSwap.transactionXDR,
+    onSettingsPress: handleSwapSettingsPress,
+  });
+
+  // Leaves the swap branch entirely, releasing its captured reserve.
+  const handleCloseSwap = useCallback(() => {
+    swapFromBottomSheetModalRef.current?.dismiss();
+    swapReviewBottomSheetModalRef.current?.dismiss();
+    swapBottomSheetModalRef.current?.dismiss();
+    setSwapOption(null);
   }, []);
 
   // Design node `9457:46184`: an in-flow "Receive funds" QR sheet, presented
@@ -238,10 +404,37 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
     );
   }
 
+  // The swap's submit lifecycle. `executeSwap` flips this the moment Confirm
+  // is pressed; without rendering it the user saw the review dismiss and the
+  // swap sheet reappear with no feedback at all -- which reads as "Confirm
+  // did nothing", even though the transaction was in flight. Regular Swap
+  // early-returns the same screen from `SwapAmountScreen`.
+  //
+  // Sits above the sheet tree deliberately: the processing screen owns the
+  // whole surface, so the sheets underneath should be gone by then.
+  if (earnSwap.isProcessing) {
+    return (
+      <SwapProcessingScreen
+        onClose={earnSwap.handleProcessingScreenClose}
+        sourceAmount={earnSwap.sourceAmount}
+        sourceToken={earnSwap.sourceToken}
+        destinationAmount={earnSwap.destinationAmount || "0"}
+        destinationToken={earnSwap.destinationToken}
+      />
+    );
+  }
+
+  // Both full-screen states are gated on having NOTHING to show, not merely
+  // on the flag: they early-return past the whole sheet tree below, so
+  // firing one during a refresh unmounts every open bottom sheet -- which is
+  // what made the swap sheet close by itself mid-configuration. A refresh
+  // that already has rows keeps rendering them.
+  const hasEarnRows = held.length > 0 || supported.length > 0;
+
   // The loading and error branches carry the same bare-X header as the list
   // below: the stack header is off for this route (see `EarnNavigator`), so
   // without it these states would have no way out of the flow.
-  if (isLoading) {
+  if (isLoading && !hasEarnRows) {
     return (
       <BaseLayout
         useSafeArea
@@ -261,7 +454,7 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
   // the flow's most-exercised path in the real app today. It must read as a
   // failure to load, never as "no tokens available" (which would be
   // actively misleading about why the list is empty).
-  if (error) {
+  if (error && !hasEarnRows) {
     return (
       <BaseLayout
         useSafeArea
@@ -425,6 +618,75 @@ export const EarnTokenPickerScreen: React.FC<EarnTokenPickerScreenProps> = ({
             onSwap={handleSwapForToken}
             onReceive={handleReceivePress}
             onClose={handleCloseNotEnoughSheet}
+          />
+        }
+      />
+      <BottomSheet
+        modalRef={swapBottomSheetModalRef}
+        handleCloseModal={() => swapBottomSheetModalRef.current?.dismiss()}
+        enableDynamicSizing={false}
+        snapPoints={["90%"]}
+        analyticsEvent={AnalyticsEvent.VIEW_EARN_SWAP}
+        customContent={
+          swapOption && earnSwap.destination ? (
+            <EarnSwapBottomSheet
+              sourceBalance={earnSwap.sourceBalance}
+              sourceLabel={earnSwap.sourceTokenSymbol}
+              availableBalanceText={earnSwapAvailableText}
+              onSourcePickerPress={handleSwapSourcePickerPress}
+              converter={earnSwap.converter}
+              hasUsdPrice={
+                !!earnSwap.sourceBalance?.currentPrice &&
+                !earnSwap.sourceBalance.currentPrice.isZero()
+              }
+              destinationToken={{
+                code: swapOption.code,
+                issuer: { key: earnSwap.destination.issuer ?? "" },
+              }}
+              destinationLabel={swapOption.code}
+              destinationAmount={earnSwap.pathResult?.destinationAmount ?? "0"}
+              onPercentagePress={earnSwap.handlePercentagePress}
+              onSettingsPress={handleSwapSettingsPress}
+              onClose={handleCloseSwap}
+              onReview={earnSwap.isCtaDisabled ? null : handleSwapReview}
+              ctaLabel={earnSwap.ctaLabel}
+              isReviewLoading={earnSwap.isLoadingPath}
+            />
+          ) : null
+        }
+      />
+      <BottomSheet
+        modalRef={swapReviewBottomSheetModalRef}
+        handleCloseModal={() =>
+          swapReviewBottomSheetModalRef.current?.dismiss()
+        }
+        scrollable
+        analyticsEvent={AnalyticsEvent.VIEW_EARN_SWAP_REVIEW}
+        scrollViewFooterComponent={renderSwapReviewFooter}
+        customContent={
+          <SwapReviewBottomSheet
+            transactionSecurityAssessment={
+              earnSwap.transactionSecurityAssessment
+            }
+            sourceSecurityAssessment={earnSwap.sourceSecurityAssessment}
+            destinationSecurityAssessment={
+              earnSwap.destinationSecurityAssessment
+            }
+          />
+        }
+      />
+      <BottomSheet
+        modalRef={swapFromBottomSheetModalRef}
+        handleCloseModal={() => swapFromBottomSheetModalRef.current?.dismiss()}
+        enableDynamicSizing={false}
+        snapPoints={["90%"]}
+        customContent={
+          <EarnSwapFromBottomSheet
+            balances={earnSwap.swappableBalances}
+            network={network}
+            onSelect={handleSwapSourceSelected}
+            onBack={() => swapFromBottomSheetModalRef.current?.dismiss()}
+            onClose={handleCloseSwap}
           />
         }
       />

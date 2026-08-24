@@ -85,10 +85,20 @@ export const NotEnoughTokenBottomSheet: React.FC<
 
   const renderActions = () => {
     switch (variant) {
+      // THREE-action layout, from design `13132:50277` (inside frame
+      // `12615:43940`): two filled pills side by side, an "or" rule, then
+      // Receive as a bare TEXT button -- not a third stacked pill.
+      //
+      // The two-action frames (`13701:332804`, `13717:333036`) stack a filled
+      // primary above an outlined secondary; that shape does NOT extend to
+      // three actions, which is what the design uses this layout for.
       case NotEnoughVariant.BUY_SWAP_OR_TRANSFER:
         return (
-          <View testID="not-enough-token-actions-buy-swap">
-            <View className="flex-row gap-[12px]">
+          <View
+            className="gap-[8px]"
+            testID="not-enough-token-actions-buy-swap"
+          >
+            <View className="flex-row gap-[8px]">
               <View className="flex-1">
                 <Button
                   tertiary
@@ -113,27 +123,28 @@ export const NotEnoughTokenBottomSheet: React.FC<
               </View>
             </View>
 
-            <View className="flex-row items-center mt-[16px]">
-              <View className="flex-1 h-px bg-border-primary" />
-              <View className="px-3">
-                <Text sm secondary>
-                  {t("earnNotEnough.or")}
-                </Text>
-              </View>
-              <View className="flex-1 h-px bg-border-primary" />
+            <View className="flex-row items-center gap-[8px]">
+              <View className="h-px flex-1 bg-border-primary" />
+              <Text md semiBold secondary>
+                {t("earnNotEnough.or")}
+              </Text>
+              <View className="h-px flex-1 bg-border-primary" />
             </View>
 
+            {/* Bare text button (`13132:50285`): no fill, no border. The
+                pt-8/pb-16 is the design's own, not pill padding. */}
             <TouchableOpacity
               onPress={onReceive}
-              className="mt-[16px] items-center"
+              className="items-center px-4 pb-4 pt-2"
               testID="not-enough-token-receive-link"
             >
-              <Text sm medium secondary>
-                {t("earnNotEnough.transfer")}
+              <Text md semiBold secondary>
+                {t("earnNotEnough.receive", { tokenCode })}
               </Text>
             </TouchableOpacity>
           </View>
         );
+
       case NotEnoughVariant.BUY_OR_TRANSFER:
         return (
           <View className="gap-[8px]" testID="not-enough-token-actions-buy">
@@ -153,7 +164,7 @@ export const NotEnoughTokenBottomSheet: React.FC<
               onPress={onReceive}
               testID="not-enough-token-receive-button"
             >
-              {t("earnNotEnough.transfer")}
+              {t("earnNotEnough.receive", { tokenCode })}
             </Button>
           </View>
         );
@@ -176,7 +187,7 @@ export const NotEnoughTokenBottomSheet: React.FC<
               onPress={onReceive}
               testID="not-enough-token-receive-button"
             >
-              {t("earnNotEnough.transfer")}
+              {t("earnNotEnough.receive", { tokenCode })}
             </Button>
           </View>
         );
@@ -190,7 +201,7 @@ export const NotEnoughTokenBottomSheet: React.FC<
             onPress={onReceive}
             testID="not-enough-token-receive-button"
           >
-            {t("earnNotEnough.transfer")}
+            {t("earnNotEnough.receive", { tokenCode })}
           </Button>
         );
     }
@@ -198,13 +209,19 @@ export const NotEnoughTokenBottomSheet: React.FC<
 
   return (
     <View className="flex-1" testID="not-enough-token-bottom-sheet">
-      <View className="relative flex-row items-center mb-8">
-        <TokenIcon token={token} />
-        <TouchableOpacity
-          onPress={onClose}
-          className="absolute right-0"
-          testID="not-enough-token-close"
-        >
+      {/* Design `13717:333143`: the asset icon and title share a left-hand
+          column (gap 12), with the close control opposite at the TOP rather
+          than vertically centred on a full-width icon row. Title is 20/28
+          (`Text xl`), previously 18/26. The 24 gaps below come from the
+          modal's own `13717:333139`/`333141` stacks; they were 12 and 16. */}
+      <View className="flex-row items-start justify-between">
+        <View className="flex-1 gap-[12px]">
+          <TokenIcon token={token} />
+          <Text xl medium primary textAlign="left">
+            {t("earnNotEnough.title", { tokenCode })}
+          </Text>
+        </View>
+        <TouchableOpacity onPress={onClose} testID="not-enough-token-close">
           <Icon.X
             color={themeColors.foreground.secondary}
             size={22}
@@ -214,17 +231,13 @@ export const NotEnoughTokenBottomSheet: React.FC<
         </TouchableOpacity>
       </View>
 
-      <Text lg medium primary textAlign="left">
-        {t("earnNotEnough.title", { tokenCode })}
-      </Text>
-
-      <View className="mt-[12px]">
+      <View className="mt-[24px]">
         <Text md regular secondary textAlign="left">
           {t(bodyKey, { tokenCode })}
         </Text>
       </View>
 
-      <View className="mt-[16px]">{renderActions()}</View>
+      <View className="mt-[24px]">{renderActions()}</View>
     </View>
   );
 };

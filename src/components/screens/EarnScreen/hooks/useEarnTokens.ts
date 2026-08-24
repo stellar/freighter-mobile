@@ -32,6 +32,17 @@ export interface EarnTokenOption {
   apy: number | null;
   poolId: string;
   /**
+   * The catalog's canonical asset id -- "CODE:ISSUER" for classic assets,
+   * null for native XLM (and for anything the catalog leaves unnamed).
+   *
+   * Carried because Earn's reserves are addressed by SAC contract id, but
+   * swapping into one is classic-only (`pathPaymentStrictSend` rejects
+   * contract-id assets), so the swap destination has to be rebuilt from the
+   * issuer. `assetId` cannot supply it -- a SAC address is not decomposable
+   * back into code + issuer.
+   */
+  canonicalId: string | null;
+  /**
    * True when this reserve's contract address is the network's native SAC.
    * Decided by comparing `assetId` to the derived native contract address —
    * NEVER by `code === "XLM"` — because any issuer can mint a classic asset
@@ -116,6 +127,7 @@ export const buildEarnTokenRows = ({
       total: total ? total.toFixed() : "0",
       apy: headlineApy(offer.supplyApy, offer.emissionsSupplyApr),
       poolId: offer.id,
+      canonicalId: option.name,
       isNative: option.assetId === nativeContractId,
       balance,
     };
@@ -141,11 +153,24 @@ export const useEarnTokens = () => {
     [network],
   );
 
+  /**
+   * The fetched catalog, kept RAW.
+   *
+   * Rows are derived from it separately (below) rather than being built here,
+   * because they also depend on `pricedBalances` -- which the balances store
+   * repolls every 30s. Folding that into the fetch made `fetchData` a new
+   * callback on every poll, re-running the effect, flipping `isLoading` back
+   * to true, and unmounting this screen (and every bottom sheet mounted under
+   * it) on a 30-second cadence. Deriving instead keeps the network call tied
+   * to the account/network only.
+   */
+  const [catalog, setCatalog] = useState<{
+    options: BlendEarnAssetOption[];
+    poolId: string;
+    pool: BlendCatalogPool | null;
+  } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [held, setHeld] = useState<EarnTokenOption[]>([]);
-  const [supported, setSupported] = useState<EarnTokenOption[]>([]);
-  const [pool, setLocalPool] = useState<BlendCatalogPool | null>(null);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -169,16 +194,7 @@ export const useEarnTokens = () => {
 
       const resolvedPool = pools.find((p) => p.id === poolId) || null;
 
-      const rows = buildEarnTokenRows({
-        options: earnOptions,
-        poolId,
-        balances: pricedBalances,
-        networkDetails,
-      });
-
-      setHeld(rows.held);
-      setSupported(rows.supported);
-      setLocalPool(resolvedPool);
+      setCatalog({ options: earnOptions, poolId, pool: resolvedPool });
       setPool(resolvedPool);
     } catch (err) {
       logger.error("useEarnTokens", "Failed to fetch earn tokens", err);
@@ -186,7 +202,7 @@ export const useEarnTokens = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [pricedBalances, networkDetails, setPool]);
+  }, [networkDetails, setPool]);
 
   useEffect(() => {
     if (account?.publicKey && network) {
@@ -194,5 +210,26 @@ export const useEarnTokens = () => {
     }
   }, [account?.publicKey, network, fetchData]);
 
-  return { isLoading, error, held, supported, pool, refetch: fetchData };
+  // Re-derived whenever balances change, so a deposit or swap moves a row
+  // between sections immediately -- with no refetch and no remount.
+  const { held, supported } = useMemo(() => {
+    if (!catalog) {
+      return { held: [], supported: [] };
+    }
+    return buildEarnTokenRows({
+      options: catalog.options,
+      poolId: catalog.poolId,
+      balances: pricedBalances,
+      networkDetails,
+    });
+  }, [catalog, pricedBalances, networkDetails]);
+
+  return {
+    isLoading,
+    error,
+    held,
+    supported,
+    pool: catalog?.pool ?? null,
+    refetch: fetchData,
+  };
 };

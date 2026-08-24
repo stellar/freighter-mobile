@@ -40,10 +40,25 @@ interface SwapTransactionParams {
   pathResult: SwapPathResult | null;
   account: ActiveAccount | null;
   network: NETWORKS;
-  navigation: NativeStackNavigationProp<
+  /**
+   * Optional because swap-within-Earn drives this hook from a bottom sheet
+   * rather than a `SWAP_STACK` route, and supplies `onProcessingClose`
+   * instead. Every route-based caller still passes it.
+   */
+  navigation?: NativeStackNavigationProp<
     SwapStackParamList,
     typeof SWAP_ROUTES.SWAP_AMOUNT_SCREEN
   >;
+  /**
+   * Where to go when the processing screen is closed. Defaults to resetting
+   * onto the History tab, which is right for a standalone swap.
+   *
+   * Swap-within-Earn overrides it: there the swap exists only to obtain the
+   * asset the user was already trying to deposit, so dumping them on History
+   * strands them away from the flow they were in. History is still refreshed
+   * either way -- only the destination changes.
+   */
+  onProcessingClose?: () => void;
 }
 
 interface UseSwapTransactionResult {
@@ -73,6 +88,7 @@ export const useSwapTransaction = ({
   account,
   network,
   navigation,
+  onProcessingClose,
 }: SwapTransactionParams): UseSwapTransactionResult => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [transactionScanResult, setTransactionScanResult] =
@@ -367,7 +383,12 @@ export const useSwapTransaction = ({
       });
     }
 
-    navigation.reset({
+    if (onProcessingClose) {
+      onProcessingClose();
+      return;
+    }
+
+    navigation?.reset({
       index: 0,
       routes: [
         {

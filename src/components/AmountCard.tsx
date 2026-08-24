@@ -83,6 +83,13 @@ type AmountCardCommonProps = {
    *  back to a 2-letter avatar until the trustline is added. */
   pickerIconUrl?: string;
   onPickerPress: () => void;
+  /** Renders the picker chip as a static label -- no chevron, not tappable.
+   *  For surfaces where the token is fixed rather than chosen: the Earn swap
+   *  sheet's "You receive" side is locked to the asset being deposited into
+   *  (design `13722:342108` draws that chip with no chevron, unlike the
+   *  "You sell" chip beside it). Additive -- defaults to false, so every
+   *  existing Send/Swap caller is unchanged. */
+  isLocked?: boolean;
   pickerTestID?: string;
   testID?: string;
   /** Shown on the right of the label row. Hidden when null/undefined. */
@@ -176,8 +183,9 @@ const PickerChip: React.FC<{
   securityLevel?: SecurityLevel;
   iconUrl?: string;
   onPress: () => void;
+  isLocked?: boolean;
   testID?: string;
-}> = ({ token, label, securityLevel, iconUrl, onPress, testID }) => {
+}> = ({ token, label, securityLevel, iconUrl, onPress, isLocked, testID }) => {
   const { themeColors } = useColors();
   // PricedBalance / Balance carry `tokenCode`; bare `Token` carries `code`.
   // Fall back to whichever exists so non-held descriptors still get a label.
@@ -187,9 +195,13 @@ const PickerChip: React.FC<{
   } else if (token && "code" in token) {
     fallbackLabel = token.code;
   }
+  // A locked chip is a label, not a control, so it renders as a plain View:
+  // suppressing only the chevron would leave an invisible tap target that
+  // still fires `onPress`.
+  const Container = isLocked ? View : TouchableOpacity;
   return (
-    <TouchableOpacity
-      onPress={onPress}
+    <Container
+      onPress={isLocked ? undefined : onPress}
       className="flex-row items-center gap-[4px] rounded-full bg-background-secondary px-[10px] py-[8px]"
       testID={testID}
     >
@@ -218,8 +230,10 @@ const PickerChip: React.FC<{
       <Text md medium>
         {label ?? fallbackLabel ?? ""}
       </Text>
-      <Icon.ChevronDown size={16} color={themeColors.text.primary} />
-    </TouchableOpacity>
+      {!isLocked && (
+        <Icon.ChevronDown size={16} color={themeColors.text.primary} />
+      )}
+    </Container>
   );
 };
 
@@ -230,6 +244,7 @@ const EditableAmountCard: React.FC<AmountCardEditableProps> = ({
   pickerSecurityLevel,
   pickerIconUrl,
   onPickerPress,
+  isLocked,
   pickerTestID,
   testID,
   availableBalanceText,
@@ -392,6 +407,7 @@ const EditableAmountCard: React.FC<AmountCardEditableProps> = ({
           securityLevel={pickerSecurityLevel}
           iconUrl={pickerIconUrl}
           onPress={onPickerPress}
+          isLocked={isLocked}
           testID={pickerTestID}
         />
       </View>
@@ -432,6 +448,7 @@ const ReadOnlyAmountCard: React.FC<AmountCardReadOnlyProps> = ({
   pickerSecurityLevel,
   pickerIconUrl,
   onPickerPress,
+  isLocked,
   pickerTestID,
   testID,
   availableBalanceText,
@@ -472,6 +489,7 @@ const ReadOnlyAmountCard: React.FC<AmountCardReadOnlyProps> = ({
           securityLevel={pickerSecurityLevel}
           iconUrl={pickerIconUrl}
           onPress={onPickerPress}
+          isLocked={isLocked}
           testID={pickerTestID}
         />
       </View>

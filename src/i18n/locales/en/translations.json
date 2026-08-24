@@ -42,7 +42,8 @@
     "tokenId": "Token ID",
     "message": "Message",
     "linkOpenError": "Unable to open link",
-    "authEntry": "Auth Entry"
+    "authEntry": "Auth Entry",
+    "back": "Back"
   },
   "home": {
     "title": "Home",
@@ -746,10 +747,10 @@
     },
     "retryBanner": "Transaction failed. Try again.",
     "networkFeeSheet": {
-      "title": "You need some XLM for network fee",
+      "title": "XLM needed for network fees",
       "body": "Add XLM to your wallet to continue",
       "buyWithCoinbase": "Buy with Coinbase",
-      "transfer": "Transfer from another account"
+      "receive": "Receive XLM"
     },
     "errors": {
       "simulationFailed": "Failed to simulate the deposit. Please try again.",
@@ -772,13 +773,13 @@
   },
   "earnNotEnough": {
     "title": "Not enough {{tokenCode}}",
-    "bodyWithBuy": "You'll need {{tokenCode}} to deposit into this pool. Buy or swap for {{tokenCode}} to continue.",
+    "bodyWithBuy": "Get {{tokenCode}} to deposit into this pool. Buy or transfer {{tokenCode}} to continue.",
     "bodySwapOnly": "You'll need {{tokenCode}} to deposit into this pool. Swap or transfer {{tokenCode}} to continue.",
     "bodyTransferOnly": "You'll need {{tokenCode}} to deposit into this pool. Transfer {{tokenCode}} from another account to continue.",
     "buy": "Buy {{tokenCode}}",
     "buyWithCoinbase": "Buy with Coinbase",
     "swap": "Swap for {{tokenCode}}",
-    "transfer": "Transfer from another account",
+    "receive": "Receive {{tokenCode}}",
     "or": "or"
   },
   "earnReceiveFunds": {
@@ -1383,5 +1384,11 @@
     "title": "Cannot run on this device",
     "description": "This device is rooted or jailbroken, which prevents the app from protecting your wallet keys.",
     "disclaimer": "The app is disabled on compromised systems. Install and use it on a device with standard security intact."
+  },
+  "earnSwapFrom": {
+    "title": "Swap from",
+    "searchPlaceholder": "Search token name or address",
+    "yourTokens": "Your tokens",
+    "noResults": "No matching tokens in your wallet."
   }
 }

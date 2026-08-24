@@ -56,8 +56,8 @@ describe("NotEnoughTokenBottomSheet", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  describe("BUY_SWAP_OR_TRANSFER (design node 9457:46345)", () => {
-    it("renders Buy/Swap side by side and 'Transfer from another account' as a link, each wired to its own handler", () => {
+  describe("BUY_SWAP_OR_TRANSFER (design node 13132:50277)", () => {
+    it("renders Buy/Swap side by side with Receive as a text button, each wired to its own handler", () => {
       const onBuy = jest.fn();
       const onSwap = jest.fn();
       const onReceive = jest.fn();
@@ -73,9 +73,13 @@ describe("NotEnoughTokenBottomSheet", () => {
         />,
       );
 
+      // Design `13132:50277`: two filled pills, an "or" rule, then Receive
+      // as a bare text button -- NOT three stacked pills. Note "Buy USDC",
+      // not "Buy with Coinbase": the long label is the two-action variant's.
       expect(getByText("Buy USDC")).toBeTruthy();
       expect(getByText("Swap for USDC")).toBeTruthy();
       expect(getByText("or")).toBeTruthy();
+      expect(getByText("Receive USDC")).toBeTruthy();
       // Not a button in this variant -- there is no secondary/outlined
       // "Transfer" button, only the centred text link.
       expect(queryByTestId("not-enough-token-receive-button")).toBeNull();
@@ -90,8 +94,8 @@ describe("NotEnoughTokenBottomSheet", () => {
     });
   });
 
-  describe("BUY_OR_TRANSFER (design node 9457:46399)", () => {
-    it("renders 'Buy with Coinbase' (not 'Buy USDC') stacked above 'Transfer from another account'", () => {
+  describe("BUY_OR_TRANSFER (design node 13701:332804)", () => {
+    it("renders 'Buy with Coinbase' (not 'Buy USDC') stacked above 'Receive USDC'", () => {
       const onBuy = jest.fn();
       const onReceive = jest.fn();
       const { getByTestId, getByText, queryByText } = renderWithProviders(
@@ -107,7 +111,7 @@ describe("NotEnoughTokenBottomSheet", () => {
       );
 
       expect(getByText("Buy with Coinbase")).toBeTruthy();
-      expect(getByText("Transfer from another account")).toBeTruthy();
+      expect(getByText("Receive USDC")).toBeTruthy();
       expect(queryByText("Buy USDC")).toBeNull();
 
       fireEvent.press(getByTestId("not-enough-token-buy-button"));
@@ -118,8 +122,8 @@ describe("NotEnoughTokenBottomSheet", () => {
     });
   });
 
-  describe("SWAP_OR_TRANSFER (design node 9457:42846)", () => {
-    it("renders 'Swap for {code}' stacked above 'Transfer from another account'", () => {
+  describe("SWAP_OR_TRANSFER (design node 13717:333036)", () => {
+    it("renders 'Swap for {code}' stacked above 'Receive {code}'", () => {
       const onSwap = jest.fn();
       const onReceive = jest.fn();
       const { getByTestId, getByText } = renderWithProviders(
@@ -135,7 +139,7 @@ describe("NotEnoughTokenBottomSheet", () => {
       );
 
       expect(getByText("Swap for EURC")).toBeTruthy();
-      expect(getByText("Transfer from another account")).toBeTruthy();
+      expect(getByText("Receive EURC")).toBeTruthy();
 
       fireEvent.press(getByTestId("not-enough-token-swap-button"));
       fireEvent.press(getByTestId("not-enough-token-receive-button"));
@@ -145,8 +149,8 @@ describe("NotEnoughTokenBottomSheet", () => {
     });
   });
 
-  describe("TRANSFER_ONLY (design node 9457:46530)", () => {
-    it("renders a single 'Transfer from another account' button", () => {
+  describe("TRANSFER_ONLY (undesigned; Receive as the sole action)", () => {
+    it("renders a single 'Receive {code}' button", () => {
       const onReceive = jest.fn();
       const { getByTestId, getByText, queryByTestId } = renderWithProviders(
         <NotEnoughTokenBottomSheet
@@ -160,7 +164,7 @@ describe("NotEnoughTokenBottomSheet", () => {
         />,
       );
 
-      expect(getByText("Transfer from another account")).toBeTruthy();
+      expect(getByText("Receive EURC")).toBeTruthy();
       expect(queryByTestId("not-enough-token-buy-button")).toBeNull();
       expect(queryByTestId("not-enough-token-swap-button")).toBeNull();
 

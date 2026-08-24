@@ -28,13 +28,13 @@ export interface XlmFeeShortfallBottomSheetProps {
  * feeShortfall`/`insufficientBalanceForFee`) and is untouched by this
  * component.
  *
- * Previously the generic `InformationBottomSheet` with a single "Buy XLM"
- * action; this is a dedicated sheet matching design node `9457:45927`
- * exactly: the XLM asset icon (not an amber warning glyph), and **two**
- * stacked full-width actions -- "Buy with Coinbase" (light `tertiary` pill)
- * above "Transfer from another account" (outlined `secondary` pill) -- the
- * same two-action stack shape as `NotEnoughTokenBottomSheet`'s
- * `BUY_OR_TRANSFER` variant.
+ * Matches design node `13722:341905`: the XLM asset icon (not an amber
+ * warning glyph) and **two** stacked full-width actions -- "Buy with
+ * Coinbase" (light `tertiary` pill) above "Receive XLM" (outlined
+ * `secondary` pill). Structurally identical to
+ * `NotEnoughTokenBottomSheet`'s header and action stack, and redesigned in
+ * the same pass: icon and title share a left column (gap 12) with the close
+ * control opposite at the top, title at 20/28, and 24 gaps beneath.
  *
  * Pure content: mirrors `PoolDetailsBottomSheet`'s convention (the caller
  * wraps this in `components/BottomSheet` and owns the modal ref, passed
@@ -52,13 +52,20 @@ export const XlmFeeShortfallBottomSheet: React.FC<
 
   return (
     <View className="flex-1" testID="xlm-fee-shortfall-bottom-sheet">
-      <View className="relative flex-row items-center mb-8">
-        <TokenIcon
-          token={{ type: "native" as const, code: NATIVE_TOKEN_CODE as "XLM" }}
-        />
+      <View className="flex-row items-start justify-between">
+        <View className="flex-1 gap-[12px]">
+          <TokenIcon
+            token={{
+              type: "native" as const,
+              code: NATIVE_TOKEN_CODE as "XLM",
+            }}
+          />
+          <Text xl medium primary textAlign="left">
+            {t("earnAmount.networkFeeSheet.title")}
+          </Text>
+        </View>
         <TouchableOpacity
           onPress={handleClose}
-          className="absolute right-0"
           testID="xlm-fee-shortfall-close"
         >
           <Icon.X
@@ -70,17 +77,13 @@ export const XlmFeeShortfallBottomSheet: React.FC<
         </TouchableOpacity>
       </View>
 
-      <Text lg medium primary textAlign="left">
-        {t("earnAmount.networkFeeSheet.title")}
-      </Text>
-
-      <View className="mt-[12px]">
+      <View className="mt-[24px]">
         <Text md regular secondary textAlign="left">
           {t("earnAmount.networkFeeSheet.body")}
         </Text>
       </View>
 
-      <View className="mt-[16px] gap-[8px]">
+      <View className="mt-[24px] gap-[8px]">
         <Button
           tertiary
           xl
@@ -97,7 +100,7 @@ export const XlmFeeShortfallBottomSheet: React.FC<
           onPress={onReceive}
           testID="xlm-fee-shortfall-receive-button"
         >
-          {t("earnAmount.networkFeeSheet.transfer")}
+          {t("earnAmount.networkFeeSheet.receive")}
         </Button>
       </View>
     </View>

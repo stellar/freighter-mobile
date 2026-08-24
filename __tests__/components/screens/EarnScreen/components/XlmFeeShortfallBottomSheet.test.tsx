@@ -14,15 +14,15 @@ const makeRef = (dismissMock: jest.Mock) => {
 };
 
 describe("XlmFeeShortfallBottomSheet", () => {
-  it("renders the design's copy (node 9457:45927): title, one-line body, and both action labels", () => {
+  it("renders the design's copy (node 13722:341905): title, one-line body, and both action labels", () => {
     const { getByText } = renderWithProviders(
       <XlmFeeShortfallBottomSheet onBuy={jest.fn()} onReceive={jest.fn()} />,
     );
 
-    expect(getByText("You need some XLM for network fee")).toBeTruthy();
+    expect(getByText("XLM needed for network fees")).toBeTruthy();
     expect(getByText("Add XLM to your wallet to continue")).toBeTruthy();
     expect(getByText("Buy with Coinbase")).toBeTruthy();
-    expect(getByText("Transfer from another account")).toBeTruthy();
+    expect(getByText("Receive XLM")).toBeTruthy();
   });
 
   it("calls onBuy when 'Buy with Coinbase' is pressed", () => {
