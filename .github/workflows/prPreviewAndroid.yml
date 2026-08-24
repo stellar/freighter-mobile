@@ -45,8 +45,8 @@ jobs:
     timeout-minutes: 45
     permissions:
       contents: write # draft release create/delete + tag operations
-      pull-requests: write # sticky preview-link comment + add/remove preview-degraded label
-      issues: write # create the `preview-degraded` label definition if missing
+      pull-requests: write # sticky preview-link comment + add/remove preview-degraded-android label
+      issues: write # create the `preview-degraded-android` label definition if missing
     env:
       NODE_VERSION: "22"
       RUBY_VERSION: 3.1.4
@@ -80,6 +80,12 @@ jobs:
       MP_COLLECTIONS_ADDRESSES: ${{ vars.MP_COLLECTIONS_ADDRESSES }}
       IS_E2E_TEST: "false"
       E2E_TEST_RECOVERY_PHRASE: ""
+      # Skips the jail-monkey root check, which reports true on many
+      # emulators — otherwise the app renders SecurityBlockScreen and the
+      # preview cannot be reviewed at all. Scoped to this one behavior;
+      # IS_E2E_TEST stays false so Sentry, logging, analytics and the
+      # WalletConnect test helpers all behave like a normal dev build.
+      IS_PREVIEW_BUILD: "true"
 
     steps:
       - name: Checkout PR head
@@ -198,14 +204,14 @@ jobs:
           } >> "$GITHUB_ENV"
           echo "Backend target: ${TARGET} — ${DESC}"
 
-          gh label create preview-degraded --repo "$GH_REPO" \
+          gh label create preview-degraded-android --repo "$GH_REPO" \
             --color B60205 \
-            --description "PR preview fell back to staging because freighter-config was unreachable" \
+            --description "Android PR preview fell back to staging because freighter-config was unreachable" \
             2>/dev/null || true
           if [ "$DEGRADED" = "true" ]; then
-            gh pr edit "$PR_NUMBER" --repo "$GH_REPO" --add-label preview-degraded || true
+            gh pr edit "$PR_NUMBER" --repo "$GH_REPO" --add-label preview-degraded-android || true
           else
-            gh pr edit "$PR_NUMBER" --repo "$GH_REPO" --remove-label preview-degraded || true
+            gh pr edit "$PR_NUMBER" --repo "$GH_REPO" --remove-label preview-degraded-android || true
           fi
 
       - name: Make scripts executable
@@ -340,7 +346,11 @@ jobs:
 
           1. Download the \`.apk\` from the Assets section below
           2. Start an emulator (Android Studio → Device Manager), or use a running one
-          3. Drag the \`.apk\` onto the emulator window, or run \`adb install <path-to-apk>\`
+          3. If you already have a **Freighter Dev** build installed, uninstall it first:
+             \`adb uninstall org.stellar.freighterdev\`. Preview APKs are signed with the
+             checked-in debug keystore rather than the dev-release key, so installing over
+             an existing dev build fails with \`INSTALL_FAILED_UPDATE_INCOMPATIBLE\`.
+          4. Drag the \`.apk\` onto the emulator window, or run \`adb install <path-to-apk>\`
 
           ### Important
 
