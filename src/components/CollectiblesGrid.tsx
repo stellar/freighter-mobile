@@ -1,32 +1,20 @@
-import { CollectibleImage } from "components/CollectibleImage";
+import { CollectionSection } from "components/CollectionSection";
 import { DefaultListFooter } from "components/DefaultListFooter";
+import { EmptyState } from "components/EmptyState";
 import Spinner from "components/Spinner";
+import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import {
-  DEFAULT_PADDING,
-  DEFAULT_PRESS_DELAY,
-  DEFAULT_REFRESH_DELAY,
-} from "config/constants";
+import { DEFAULT_PADDING, DEFAULT_REFRESH_DELAY } from "config/constants";
 import { useAuthenticationStore } from "ducks/auth";
-import {
-  Collectible,
-  Collection,
-  useCollectiblesStore,
-} from "ducks/collectibles";
+import { Collection, useCollectiblesStore } from "ducks/collectibles";
 import { pxValue } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import { useFilteredCollectibles } from "hooks/useFilteredCollectibles";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React, { useCallback, useState } from "react";
-import { TouchableOpacity, View, FlatList, RefreshControl } from "react-native";
-
-/**
- * Opacity value for hidden collectibles in the UI.
- * Used to visually differentiate hidden collectibles from visible ones.
- */
-export const HIDDEN_COLLECTIBLE_OPACITY = 0.25;
+import { View, FlatList, RefreshControl } from "react-native";
 
 /**
  * Filter type for collectibles display
@@ -53,6 +41,14 @@ interface CollectiblesGridProps {
 
   /** Type to determine which collectibles to display. Defaults to VISIBLE. */
   type?: CollectibleFilterType;
+  /**
+   * Renders an "Add collectible" action inside the empty state. Home turns it
+   * on while its tokens tab shows an empty state, so both tabs offer the same
+   * kind of button. Off by default — other callers have no pill to match.
+   */
+  showEmptyStateCta?: boolean;
+  /** Press handler for the CTA; it only renders when one is provided. */
+  onAddCollectiblePress?: () => void;
 }
 
 /**
@@ -61,8 +57,8 @@ interface CollectiblesGridProps {
  * A component that displays collectibles organized by collections in a grid layout.
  * Features include:
  * - Groups collectibles by collection
- * - Displays collection names with item counts
- * - Shows collectible images in a horizontal scrollable grid
+ * - Renders each collection as a collapsible 2-column vertical grid (via CollectionSection)
+ * - Displays collection names with item counts and an expand/collapse chevron
  * - Handles loading and empty states
  * - Pull-to-refresh functionality
  * - Responsive grid layout with proper spacing
@@ -85,6 +81,8 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
     onCollectiblePress,
     disableInnerScrolling = false,
     type = CollectibleFilterType.VISIBLE,
+    showEmptyStateCta = false,
+    onAddCollectiblePress,
   }) => {
     const { t } = useAppTranslation();
     const { themeColors } = useColors();
@@ -122,70 +120,17 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
       }
     }, [fetchCollectibles, account?.publicKey, network]);
 
-    const renderCollectibleItem = useCallback(
-      ({ item }: { item: Collectible }) => (
-        <TouchableOpacity
-          className="w-[165px] h-[165px] rounded-2xl overflow-hidden mr-6"
-          delayPressIn={DEFAULT_PRESS_DELAY}
-          onPress={() =>
-            onCollectiblePress?.({
-              collectionAddress: item.collectionAddress,
-              tokenId: item.tokenId,
-            })
-          }
-        >
-          <View
-            style={
-              item.isHidden
-                ? { opacity: HIDDEN_COLLECTIBLE_OPACITY }
-                : undefined
-            }
-            className="w-full h-full"
-          >
-            <CollectibleImage imageUri={item.image} placeholderIconSize={45} />
-          </View>
-          {item.isHidden && (
-            <View
-              className="absolute inset-0 items-center justify-center z-10"
-              pointerEvents="none"
-            >
-              <Icon.EyeOff size={20} color={themeColors.text.primary} />
-            </View>
-          )}
-        </TouchableOpacity>
-      ),
-      [onCollectiblePress, themeColors.text.primary],
-    );
-
     const renderCollection = useCallback(
       // eslint-disable-next-line react/no-unused-prop-types
       ({ item }: { item: Collection }) => (
-        <View key={item.collectionAddress} className="mb-6">
-          <View
-            className="flex-row items-center gap-2 mb-3"
-            style={{ paddingHorizontal: pxValue(DEFAULT_PADDING) }}
-          >
-            <Icon.Grid01 size={20} color={themeColors.text.secondary} />
-            <Text medium secondary style={{ flex: 1 }}>
-              {item.collectionName}
-            </Text>
-            <Text medium secondary>
-              {item.items.length}
-            </Text>
-          </View>
-          <FlatList
-            data={item.items}
-            renderItem={renderCollectibleItem}
-            keyExtractor={(collectible) => collectible.tokenId}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{
-              paddingHorizontal: pxValue(DEFAULT_PADDING),
-            }}
-          />
-        </View>
+        <CollectionSection
+          key={item.collectionAddress}
+          collection={item}
+          onCollectiblePress={onCollectiblePress}
+          testID={`collection-section-${item.collectionAddress}`}
+        />
       ),
-      [renderCollectibleItem, themeColors.text.secondary],
+      [onCollectiblePress],
     );
 
     // During initial loading, show spinner without refresh capability
@@ -195,11 +140,29 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
           <Spinner
             testID="collectibles-grid-spinner"
             size="large"
-            color={themeColors.secondary}
+            color={themeColors.foreground.primary}
           />
         </View>
       );
     }
+
+    // Never on the hidden list: a management view, not a place to add.
+    const shouldShowEmptyStateCta =
+      showEmptyStateCta && !isTypeHidden && Boolean(onAddCollectiblePress);
+
+    // Same variant/size as the tokens CTA. Shared by the empty AND error views:
+    // an error replaces the empty state, so leaving it out there would strand
+    // the tab with no way to add anything while a fetch is failing.
+    const addCollectibleCta = shouldShowEmptyStateCta ? (
+      <Button
+        tertiary
+        xl
+        onPress={onAddCollectiblePress}
+        testID="add-collectible-empty-state-button"
+      >
+        {t("collectiblesGrid.addCollectibleButton")}
+      </Button>
+    ) : null;
 
     const renderErrorView = () => (
       <View className="flex-1">
@@ -211,22 +174,31 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
             {t("collectiblesGrid.error")}
           </Text>
         </View>
+        {/* Matches EmptyState's 24px gap so the action sits the same distance
+        from the text in both views. */}
+        {addCollectibleCta ? (
+          <View className="mt-6 items-center">{addCollectibleCta}</View>
+        ) : null}
       </View>
     );
 
     const renderEmptyView = () => (
       <View className="flex-1">
-        <View
-          className="flex-row items-center justify-center pt-5 gap-2"
-          style={{ paddingHorizontal: pxValue(DEFAULT_PADDING) }}
-        >
-          <Icon.Grid01 size={20} color={themeColors.text.secondary} />
-          <Text md medium secondary>
-            {isTypeHidden
+        <EmptyState
+          Icon={Icon.Image01}
+          title={
+            isTypeHidden
               ? t("collectiblesGrid.emptyHidden")
-              : t("collectiblesGrid.empty")}
-          </Text>
-        </View>
+              : t("collectiblesGrid.empty")
+          }
+          description={
+            isTypeHidden ? undefined : t("collectiblesGrid.emptyDescription")
+          }
+          testID="collectibles-empty-state"
+        >
+          {/* EmptyState's own gap supplies the spacing here. */}
+          {addCollectibleCta}
+        </EmptyState>
       </View>
     );
 

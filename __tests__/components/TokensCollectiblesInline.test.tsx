@@ -56,7 +56,9 @@ jest.mock("hooks/useColors", () => ({
   default: () => ({
     themeColors: {
       secondary: "#000",
+      gray: { 11: "#a0a0a0" },
       text: {
+        primary: "#ededed",
         secondary: "#111",
       },
     },
@@ -169,9 +171,7 @@ describe("TokensCollectiblesInline", () => {
     renderComponent();
 
     expect(screen.getByText("Collectibles")).toBeTruthy();
-    expect(
-      screen.getByTestId("collectibles-inline-error"),
-    ).toBeTruthy();
+    expect(screen.getByTestId("collectibles-inline-error")).toBeTruthy();
     expect(screen.getByText("Error loading collectibles")).toBeTruthy();
   });
 
@@ -306,9 +306,7 @@ describe("TokensCollectiblesInline", () => {
 
     renderComponent();
 
-    expect(
-      screen.getByText("No tokens or collectibles to send"),
-    ).toBeTruthy();
+    expect(screen.getByText("No tokens or collectibles to send")).toBeTruthy();
   });
 
   it("hides the collectibles section when there are no collectibles", () => {
@@ -319,9 +317,7 @@ describe("TokensCollectiblesInline", () => {
     expect(screen.getByText("Tokens")).toBeTruthy();
     expect(screen.getByTestId("balances-list-token-row")).toBeTruthy();
     expect(screen.queryByText("Collectibles")).toBeNull();
-    expect(
-      screen.queryByText("No tokens or collectibles to send"),
-    ).toBeNull();
+    expect(screen.queryByText("No tokens or collectibles to send")).toBeNull();
   });
 
   it("renders both the tokens and collectibles sections when both are present", () => {
@@ -349,9 +345,7 @@ describe("TokensCollectiblesInline", () => {
     expect(screen.getByTestId("balances-list-token-row")).toBeTruthy();
     expect(screen.getByText("Collectibles")).toBeTruthy();
     expect(screen.getByText("Collectible #42")).toBeTruthy();
-    expect(
-      screen.queryByText("No tokens or collectibles to send"),
-    ).toBeNull();
+    expect(screen.queryByText("No tokens or collectibles to send")).toBeNull();
   });
 
   it("hides the tokens section when there are no balances", () => {

@@ -33,6 +33,7 @@ import {
   KeyPair,
   TemporaryStore,
 } from "config/types";
+import { useAccountsFiatTotalsStore } from "ducks/accountsFiatTotals";
 import { useBalancesStore } from "ducks/balances";
 import { useBrowserTabsStore } from "ducks/browserTabs";
 import { useCollectiblesStore } from "ducks/collectibles";
@@ -1370,7 +1371,9 @@ const verifyAndCreateExistingAccountsOnNetwork = async (
  *   `error` values, so callers must ensure that subsequent fetch logic correctly
  *   updates these flags for the newly active account.
  */
-export function clearAccountData(): void {
+export function clearAccountData(
+  options: { keepAccountsFiatTotals?: boolean } = {},
+): void {
   // Clear balances data
   useBalancesStore.setState({
     balances: {},
@@ -1378,6 +1381,8 @@ export function clearAccountData(): void {
     scanResults: {},
     isLoading: false,
     isFunded: false,
+    fetchedPublicKey: null,
+    fetchedNetwork: null,
     subentryCount: 0,
     error: null,
   });
@@ -1406,6 +1411,18 @@ export function clearAccountData(): void {
     isLoading: false,
     error: null,
   });
+
+  // Clear the wallets-list fiat totals by default, so one wallet lifetime's
+  // totals can't bleed into the next (wipe → restore of the same seed).
+  // Uses the store action (not setState) so any in-flight fetch cycle is
+  // aborted too — otherwise it would write its pre-reset totals back a
+  // moment after this wipe. Same-wallet transitions (account switch,
+  // add/import account) opt out: the other accounts' totals are still
+  // valid, and dropping them makes the open wallets sheet flash $0.00 on
+  // every row mid-switch.
+  if (!options.keepAccountsFiatTotals) {
+    useAccountsFiatTotalsStore.getState().resetAccountsFiatTotals();
+  }
 }
 
 /**
@@ -1599,16 +1616,21 @@ const importWallet = async ({
       AUTH_STATUS.AUTHENTICATED,
     );
 
-    analytics.track(AnalyticsEvent.ACCOUNT_SCREEN_IMPORT_ACCOUNT);
+    // Restoring a wallet from a recovery phrase is account_recovery.*, NOT
+    // account.import* (that is the secret-key path). This corrects a
+    // cross-platform mislabel — the extension already classifies it this way.
+    analytics.track(AnalyticsEvent.RECOVER_ACCOUNT_SUCCESS, {
+      recovery_method: "recovery_phrase",
+    });
   } catch (error) {
     // Scrub Stellar StrKeys before sending to analytics — this is a
     // third-party sink (Amplitude) not covered by Sentry's beforeSend, and the
     // forwarded message can include uncontrolled native error text.
     const importFailureMessage =
       error instanceof Error ? error.message : String(error);
-    analytics.trackAccountScreenImportAccountFail(
-      scrubStrKeys(importFailureMessage) ?? importFailureMessage,
-    );
+    analytics.track(AnalyticsEvent.RECOVER_ACCOUNT_FAIL, {
+      reason_code: scrubStrKeys(importFailureMessage) ?? importFailureMessage,
+    });
     // Clean up any partial data on error
     clearAccountData();
     await clearAllData();
@@ -1981,7 +2003,10 @@ const importSecretKeyLocal = async (
       importedFromSecretKey: true,
     });
 
-    analytics.track(AnalyticsEvent.ACCOUNT_SCREEN_IMPORT_ACCOUNT);
+    // account.imported carries import_method (secret-key path).
+    analytics.track(AnalyticsEvent.ACCOUNT_SCREEN_IMPORT_ACCOUNT, {
+      import_method: "secret_key",
+    });
   } catch (error) {
     // Scrub Stellar StrKeys before sending to analytics — third-party sink
     // (Amplitude) not covered by Sentry's beforeSend.
@@ -2308,6 +2333,15 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
       // generated so it doesn't inherit a previous wallet's timer.
       await resetAutoLockForNewWallet();
       await signUp(params);
+      // Mirror the extension's onboarding.password_created (createAccount.fulfilled)
+      // so the create-password funnel has a success side on mobile (was fail-only).
+      analytics.track(AnalyticsEvent.CREATE_PASSWORD_SUCCESS);
+      // onboarding.completed at the single create-account terminal point (mirrors
+      // the extension's confirmMnemonicPhrase.fulfilled). Consolidated here from
+      // four UI-site emits (recovery-phrase / biometrics screens) that risked
+      // double-counting. The import/recover flow emits account_recovery.completed
+      // instead (see module importWallet), matching the extension's split.
+      analytics.track(AnalyticsEvent.ACCOUNT_CREATOR_FINISHED);
       set({
         ...initialState,
         navigationRef: get().navigationRef,
@@ -2319,6 +2353,15 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
       return true;
     } catch (error) {
       logger.error("useAuthenticationStore.signUp", "Sign up failed", error);
+      // Mirror the extension's onboarding.password_create_failed emit so the
+      // create-password failure funnel has cross-platform coverage.
+      // Scrub Stellar StrKeys first — analytics is a third-party sink
+      // (Amplitude) and the error text can include uncontrolled native content.
+      const signUpFailureMessage =
+        error instanceof Error ? error.message : String(error);
+      analytics.track(AnalyticsEvent.CREATE_PASSWORD_FAIL, {
+        reason_code: scrubStrKeys(signUpFailureMessage) ?? signUpFailureMessage,
+      });
       set({
         error: getUserFacingError(error, "authStore.error.failedToSignUp"),
         isLoading: false,
@@ -2417,7 +2460,11 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
           get().navigateToLockScreen();
         });
     } catch (error) {
-      analytics.trackReAuthFail();
+      const reAuthFailureMessage =
+        error instanceof Error ? error.message : String(error);
+      analytics.trackReAuthFail(
+        scrubStrKeys(reAuthFailureMessage) ?? reAuthFailureMessage,
+      );
       logger.error("useAuthenticationStore.signIn", "Sign in failed", error);
       set({
         error: getUserFacingError(error, "authStore.error.failedToSignIn"),
@@ -3005,7 +3052,20 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
     try {
       await createAccount(password);
 
+      // The new account becomes active: drop the previous account's data so
+      // nothing (e.g. priced balances) carries over into its first render.
+      // Same wallet, so the other accounts' list totals stay valid.
+      clearAccountData({ keepAccountsFiatTotals: true });
+
       await Promise.all([get().getAllAccounts(), get().fetchActiveAccount()]);
+
+      // account.created on the creation-success path with the real post-creation
+      // count (matches the extension's addAccount.fulfilled -> allAccounts.length).
+      // Replaces the former tap-time emit in ManageAccounts, which over-counted
+      // abandoned add flows.
+      analytics.track(AnalyticsEvent.ACCOUNT_SCREEN_ADD_ACCOUNT, {
+        number_of_accounts: get().allAccounts.length,
+      });
 
       set({ isCreatingAccount: false, error: null });
     } catch (error) {
@@ -3040,7 +3100,10 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
 
       // Only clear stale data once the switch is confirmed to proceed —
       // if anything above throws, the previous account's data stays intact.
-      clearAccountData();
+      // The wallets-list totals survive: same wallet, still valid, and
+      // dropping them would flash $0.00 rows in the sheet mid-switch (the
+      // switch itself force-refreshes them in the background).
+      clearAccountData({ keepAccountsFiatTotals: true });
       await selectAccount(publicKey);
       const activeAccount = await getActiveAccount(authStatus);
       set({ account: activeAccount, isSwitchingAccount: false });
@@ -3087,6 +3150,11 @@ export const useAuthenticationStore = create<AuthStore>()((set, get) => ({
 
     try {
       await importSecretKeyLocal(params, get().authStatus);
+
+      // The imported account becomes active: drop the previous account's
+      // data so nothing (e.g. priced balances) carries over into its first
+      // render. Same wallet, so the other accounts' list totals stay valid.
+      clearAccountData({ keepAccountsFiatTotals: true });
 
       await Promise.all([get().getAllAccounts(), get().fetchActiveAccount()]);
 

@@ -223,6 +223,15 @@ jest.mock("ducks/prices", () => ({
   },
 }));
 
+const mockResetAccountsFiatTotals = jest.fn();
+jest.mock("ducks/accountsFiatTotals", () => ({
+  useAccountsFiatTotalsStore: {
+    getState: jest.fn(() => ({
+      resetAccountsFiatTotals: mockResetAccountsFiatTotals,
+    })),
+  },
+}));
+
 describe("auth duck", () => {
   // Mock keyManager
   const mockKeyManager = {
@@ -2203,6 +2212,8 @@ describe("auth duck", () => {
         scanResults: {},
         isLoading: false,
         isFunded: false,
+        fetchedPublicKey: null,
+        fetchedNetwork: null,
         subentryCount: 0,
         error: null,
       });
@@ -2236,14 +2247,33 @@ describe("auth duck", () => {
       });
     });
 
-    it("should clear all three stores in a single call", () => {
-      // Verify all three stores are cleared
+    it("should reset the accounts fiat totals store through its action", () => {
+      // The action (not setState) also aborts any in-flight fetch cycle, so
+      // a cycle running during a wipe can't write pre-wipe totals back.
+      clearAccountData();
+
+      expect(mockResetAccountsFiatTotals).toHaveBeenCalledTimes(1);
+    });
+
+    it("should keep the wallets-list totals when keepAccountsFiatTotals is set", () => {
+      // Same-wallet transitions (account switch, add/import account) keep
+      // the other accounts' totals — they're still valid, and dropping them
+      // flashes $0.00 rows in the open wallets sheet mid-switch.
+      clearAccountData({ keepAccountsFiatTotals: true });
+
+      expect(mockResetAccountsFiatTotals).not.toHaveBeenCalled();
+      // The account-scoped stores still reset as usual.
+      expect(useBalancesStore.setState).toHaveBeenCalledTimes(1);
+    });
+
+    it("should clear every account-scoped store in a single call", () => {
       clearAccountData();
 
       expect(useBalancesStore.setState).toHaveBeenCalledTimes(1);
       expect(useHistoryStore.setState).toHaveBeenCalledTimes(1);
       expect(usePricesStore.setState).toHaveBeenCalledTimes(1);
       expect(useCollectiblesStore.setState).toHaveBeenCalledTimes(1);
+      expect(mockResetAccountsFiatTotals).toHaveBeenCalledTimes(1);
     });
 
     it("should reset loading flags to false", () => {
@@ -2295,6 +2325,21 @@ describe("auth duck", () => {
       expect(balancesCall?.scanResults).toEqual({});
       expect(balancesCall?.isFunded).toBe(false);
       expect(balancesCall?.subentryCount).toBe(0);
+    });
+
+    it("should reset fetchedPublicKey and fetchedNetwork so account_funded fails closed across an account switch", () => {
+      // Regression: clearAccountData must reset fetchedPublicKey/fetchedNetwork
+      // alongside isFunded. Otherwise, during the selectAccount switch window the
+      // balances snapshot reads isFunded=false while fetchedPublicKey still equals
+      // the (still-active) previous account, so buildCommonContext's
+      // `fetchedPublicKey === activePublicKey` guard matches and emits a wrong
+      // account_funded=false for an account that is actually funded.
+      clearAccountData();
+
+      const balancesCall = (useBalancesStore.setState as jest.Mock).mock
+        .calls[0]?.[0];
+      expect(balancesCall?.fetchedPublicKey).toBeNull();
+      expect(balancesCall?.fetchedNetwork).toBeNull();
     });
 
     it("should reset history store to null values and false flags", () => {

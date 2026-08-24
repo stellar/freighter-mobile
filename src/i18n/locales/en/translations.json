@@ -54,8 +54,7 @@
       "myQRCode": "My QR code"
     },
     "manageAccount": {
-      "title": "Wallets",
-      "addWallet": "Add a wallet",
+      "addWallet": "Add wallet",
       "renameWallet": "Rename wallet",
       "copyAddress": "Copy address",
       "viewOnExplorer": "View on stellar.expert"
@@ -65,7 +64,6 @@
     }
   },
   "renameAccountModal": {
-    "currentName": "Current name",
     "saveName": "Save name",
     "nameInputPlaceholder": "Enter a name for your account"
   },
@@ -85,19 +83,19 @@
     "deleteAccountConfirmMessage": "Make sure you have your recovery phrase in a safe place. You will not be able to recover your wallet without it."
   },
   "preferences": {
-    "anonymousDataSharing": {
-      "title": "Anonymous data sharing",
-      "description": "Allow Freighter to collect limited information about usage. We will collect public keys, transaction amounts, and balances. This information will not be used for marketing or to identify you personally. We will not collect information such as name, address, email addresses, phone numbers, etc."
+    "usageDataSharing": {
+      "title": "Usage data sharing",
+      "description": "Help us improve Freighter by sharing usage, device, and activity data, including your public keys, IP address, and a persistent ID that links your wallet across extension and mobile, with our analytics and crash-reporting providers. You can turn this off at any time. See our Privacy Policy for details."
     },
     "permissionModal": {
       "enable": {
         "title": "Enable Analytics",
-        "description": "To enable anonymous data sharing, you'll need to allow tracking permissions in your device settings.",
+        "description": "To enable usage data sharing, you'll need to allow tracking permissions in your device settings.",
         "instruction": "Tap \"Open Settings\" below, then find Freighter and enable \"Allow Tracking\"."
       },
       "disable": {
         "title": "Disable Analytics",
-        "description": "To disable anonymous data sharing, you'll need to change tracking permissions in your device settings.",
+        "description": "To disable usage data sharing, you'll need to change tracking permissions in your device settings.",
         "instruction": "Tap \"Open Settings\" below, then find Freighter and disable \"Allow Tracking\"."
       },
       "openSettings": "Open Settings",
@@ -114,7 +112,6 @@
   },
   "shareFeedbackScreen": {
     "title": "Share Feedback",
-    "discord": "Join community Discord",
     "github": "Report issue on Github"
   },
   "aboutScreen": {
@@ -129,12 +126,13 @@
       "termsOfService": "Terms of Service"
     }
   },
-  "accountQRCodeScreen": {
-    "title": "Receive funds",
-    "copyButton": "Copy address",
-    "helperText": "Scan the QR code or \ncopy your address",
-    "bottomSheet": {
-      "description": "Have the sender scan the QR code on their Freighter app to retrieve your wallet address securely."
+  "scanReceiveScreen": {
+    "scanTab": "Scan",
+    "receiveTab": "Receive",
+    "receive": {
+      "network": "Stellar",
+      "networkSupport": "This address supports the Stellar network.",
+      "copyButton": "Copy wallet address"
     }
   },
   "walletConnect": {
@@ -153,9 +151,6 @@
   },
   "addFundsScreen": {
     "title": "Add funds",
-    "bottomSheet": {
-      "description": "You need at least 1 XLM to have an account on Stellar. Buy Stellar Lumens (XLM) easily using one of our on-ramps or transfer XLM from another wallet to this wallet."
-    },
     "transferFromAnotherAccount": {
       "title": "Transfer from another account",
       "description": "Receive funds from another wallet"
@@ -292,10 +287,15 @@
   },
   "connectedApps": {
     "title": "Connected Apps",
-    "noConnectedDapps": "No connected apps. Find apps\nto use on Discover.",
+    "noConnectedDappsTitle": "Nothing connected yet",
+    "noConnectedDappsDescription": "Discover apps and connect your first one.",
     "noConnectedDappsNoDiscover": "No connected apps.",
     "goToDiscover": "Go to Discover",
-    "disconnectAllSessions": "Disconnect all"
+    "disconnectAllSessions": "Disconnect all",
+    "disconnectApp": "Disconnect {{appName}}",
+    "appDisconnected": "{{appName}} disconnected",
+    "appDisconnectedFallback": "App disconnected",
+    "allAppsDisconnected": "All apps disconnected"
   },
   "discovery": {
     "discover": "Discover",
@@ -454,20 +454,23 @@
     "title": "Tokens",
     "error": "Error loading balances",
     "unfundedAccount": {
-      "message": "To start using this account, fund it with at least 1 XLM.",
       "learnMore": "Learn more",
-      "fundAccountButton": "Add XLM"
+      "fundAccountButton": "Add XLM",
+      "title": "Looking a little empty...",
+      "messageStart": "Add at least",
+      "messageAmount": "2 XLM",
+      "messageEnd": "to activate your wallet. Once funded, you'll be able to add tokens and make transactions."
     },
-    "menuAddToken": "Add a token",
-    "menuManageTokens": "Manage tokens"
+    "addTokenButton": "Add token"
   },
   "collectiblesGrid": {
     "title": "Collectibles",
     "error": "Error loading collectibles",
     "empty": "No collectibles yet",
     "emptyHidden": "No hidden collectibles",
-    "menuAddManually": "Add manually",
-    "menuHidenCollectibles": "Hidden collectibles"
+    "addCollectibleButton": "Add collectible",
+    "itemHiddenLabel": "{{name}}, hidden",
+    "emptyDescription": "Collectibles you own will appear here."
   },
   "collectibleDetails": {
     "title": "Collectible Details",
@@ -502,7 +505,8 @@
     "description": "If a collectible is missing from your wallet, you can manually add it here.",
     "toastSuccess": "Successfully added collectible",
     "toastError": "Error adding collectible. {{errorMessage}}",
-    "alreadyInWallet": "This collectible is already in your wallet"
+    "alreadyInWallet": "This collectible is already in your wallet",
+    "showHidden": "Show hidden"
   },
   "hiddenCollectiblesScreen": {
     "title": "Hidden Collectibles"
@@ -525,8 +529,6 @@
     "title": "Fund with Friendbot"
   },
   "manageTokensScreen": {
-    "title": "Manage tokens",
-    "addTokenButton": "Add a token",
     "moreInfo": {
       "title": "Manage Tokens",
       "block1": "When you manage tokens, you're choosing which tokens your wallet can hold and use on the Stellar network. For Stellar Classic, adding a token creates a trustline, allowing your wallet to recognize and interact with it. Soroban tokens don't use trustlines but can still be managed and accessed here.",
@@ -703,6 +705,11 @@
     "timeoutPlaceholder": "Enter timeout",
     "seconds": "seconds",
     "congestion": "{{networkCongestion}} congestion",
+    "network": "Network",
+    "priorityLow": "Low",
+    "priorityMed": "Med",
+    "priorityHigh": "High",
+    "priorityCustom": "Custom",
     "memoInfo": {
       "title": "Memo",
       "description": "Some destination accounts on the Stellar network require a memo to identify your payment.",
@@ -797,16 +804,12 @@
     "checkMemoRequirements": "Check the destination account memo requirements and include it in the transaction."
   },
   "addAnotherWalletScreen": {
-    "title": "Add another wallet",
+    "title": "Add wallet",
     "actions": {
       "createNewWallet": "Create a new wallet",
-      "createNewWalletDescription": "Create a wallet on your seed phrase",
+      "createNewWalletDescription": "Create a wallet from your seed phrase",
       "importSecretKey": "Import a Stellar secret key",
       "importSecretKeyDescription": "Add a wallet using a secret key"
-    },
-    "helperBottomSheet": {
-      "title": "Add another wallet",
-      "description": "You need at least 1 XLM to have an account on Stellar. Buy Stellar Lumens (XLM) easily using one of our on-ramps or transfer XLM from another wallet to this wallet."
     }
   },
   "verifyPasswordScreen": {
@@ -891,7 +894,7 @@
     "errorAuthEntryNetworkMismatch": "Authorization entry is for a different network",
     "errorAuthEntryAddressMismatch": "Authorization entry is bound to a different account",
     "errorEmptyMessage": "Cannot sign empty message",
-    "errorMessageTooLong": "Message too long (max 1KB)",
+    "errorMessageTooLong": "Message too long (max 10KB)",
     "errorSubmitting": "Failed to submit transaction",
     "errorRespondingRequest": "Failed to respond transaction request",
     "errorWrongNetwork": "Wrong Network",
@@ -1050,14 +1053,15 @@
       "invalidRecipientAddress": "Invalid recipient address",
       "cannotSendToSelf": "Cannot send to yourself",
       "invalidDecimals": "Invalid or missing decimals for custom token",
-      "invalidFederationMemo": "The federation server returned an invalid memo. Please verify the address and try again."
+      "invalidFederationMemo": "The federation server returned an invalid memo. Please verify the address and try again.",
+      "recipientIsTokenContract": "Cannot send to the token's own contract"
     }
   },
   "welcomeBanner": {
     "welcomeMessage": "Welcome to Freighter!",
     "fundingText": "To start using this account, ",
-    "fundingText2": "fund it with at least 1 XLM.",
-    "minimumBalanceText": "Stellar accounts require a minimum balance of 1 XLM to ensure network security and prevent spam.",
+    "fundingText2": "fund it with at least 2 XLM.",
+    "minimumBalanceText": "Stellar accounts require a minimum balance of 2 XLM to ensure network security and prevent spam.",
     "reserveExplanationText": "This reserve helps maintain the ledger by covering transaction fees and discouraging the creation of unnecessary accounts, keeping the system efficient and functional.",
     "addXLM": "Add XLM",
     "doThisLater": "Do this later"
@@ -1244,7 +1248,13 @@
       "executableType": "Executable Type",
       "accountId": "Account ID",
       "salt": "Salt",
-      "executableWasmHash": "Executable WASM Hash"
+      "executableWasmHash": "Executable WASM Hash",
+      "masterKeyWarningMessage": "This transaction disables your account's master key. You may permanently lose access to this account unless another signer with sufficient weight is added.",
+      "cleared": "Cleared",
+      "deleted": "Deleted",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "unknownFlags": "Unknown ({{bits}})"
     },
     "claimPredicates": {
       "unconditional": "Unconditional",

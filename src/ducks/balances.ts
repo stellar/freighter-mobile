@@ -36,6 +36,8 @@ import { create } from "zustand";
  * @property {boolean} isFunded - Whether the account is funded
  * @property {number} subentryCount - The number of subentries for the account
  * @property {string | null} error - Error message if fetch failed, null otherwise
+ * @property {string | null} fetchedPublicKey - The public key the current balances snapshot was fetched for, null before the first fetch
+ * @property {NETWORKS | null} fetchedNetwork - The network the current balances snapshot was fetched for, null before the first fetch
  * @property {Function} fetchAccountBalances - Function to fetch account balances from the backend
  */
 interface BalancesState {
@@ -46,6 +48,8 @@ interface BalancesState {
   isFunded: boolean;
   subentryCount: number;
   error: string | null;
+  fetchedPublicKey: string | null;
+  fetchedNetwork: NETWORKS | null;
   fetchAccountBalances: (params: {
     publicKey: string;
     network: NETWORKS;
@@ -94,7 +98,15 @@ const getExistingPricedBalances = (
       currentPrice: existingPriceData?.currentPrice,
       percentagePriceChange24h: existingPriceData?.percentagePriceChange24h,
       fiatCode: existingPriceData?.fiatCode,
-      fiatTotal: existingPriceData?.fiatTotal,
+      // fiatTotal is a derived product (total × price), so recompute it
+      // against THIS balance's total instead of carrying the previous map's
+      // product verbatim — the carried value belongs to whatever balance
+      // produced it (e.g. another account's XLM right after an add/import
+      // wallet, or a pre-send total), and on price-fetch failures this map
+      // becomes state, making the wrong value stick.
+      fiatTotal:
+        existingPriceData?.currentPrice &&
+        balance.total.multipliedBy(existingPriceData.currentPrice),
     };
 
     // Return entry as [id, pricedBalance] tuple
@@ -289,6 +301,8 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
   isFunded: false,
   subentryCount: 0,
   error: null,
+  fetchedPublicKey: null,
+  fetchedNetwork: null,
   fetchAccountBalances: async (params) => {
     try {
       // It can happen that the public key is not available yet during app initialization
@@ -324,6 +338,8 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
         balances,
         isFunded: isFunded ?? false,
         subentryCount: subentryCount ?? 0,
+        fetchedPublicKey: params.publicKey,
+        fetchedNetwork: params.network,
       });
 
       // Get existing state priced balances to preserve price data

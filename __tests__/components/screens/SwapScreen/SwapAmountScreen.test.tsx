@@ -185,6 +185,8 @@ jest.mock("ducks/swapSettings", () => ({
     saveSwapFee: mockSaveSwapFee,
     feeManuallyChanged: false,
     markFeeManuallyChanged: jest.fn(),
+    feePriority: "medium",
+    saveFeePriority: jest.fn(),
   })),
 }));
 // Deterministic network fee so the fee-freeze behavior is testable and
@@ -192,8 +194,9 @@ jest.mock("ducks/swapSettings", () => ({
 jest.mock("hooks/useNetworkFees", () => ({
   useNetworkFees: () => ({
     recommendedFee: "0.001",
-    networkCongestion: "LOW",
+    networkCongestion: "Low",
   }),
+  clearNetworkFeesCache: jest.fn(),
 }));
 jest.mock("components/screens/SwapScreen/hooks/useSwapTransaction", () => ({
   useSwapTransaction: jest.fn(() => ({
@@ -1197,7 +1200,7 @@ describe("SwapAmountScreen", () => {
       expect(queryByTestId("swap-receive-pill")).toBeNull();
     });
 
-    it("fires SWAP_TO_PICKER_OPENED with source:dropdown when the Receive pill is tapped", () => {
+    it("fires SWAP_PICKER_OPENED side:to with source:dropdown when the Receive pill is tapped", () => {
       jest.spyOn(analytics, "track").mockClear();
 
       setSwapStoreState({
@@ -1219,8 +1222,8 @@ describe("SwapAmountScreen", () => {
       fireEvent.press(getByTestId("swap-receive-pill"));
 
       expect(analytics.track).toHaveBeenCalledWith(
-        AnalyticsEvent.SWAP_TO_PICKER_OPENED,
-        { source: "dropdown" },
+        AnalyticsEvent.SWAP_PICKER_OPENED,
+        { side: "to", source: "dropdown" },
       );
     });
   });
@@ -1354,7 +1357,7 @@ describe("SwapAmountScreen", () => {
       jest.spyOn(analytics, "track").mockClear();
     });
 
-    it("fires SWAP_TO_PICKER_OPENED with source:cta when the 'Select a token' CTA is pressed", async () => {
+    it("fires SWAP_PICKER_OPENED side:to with source:cta when the 'Select a token' CTA is pressed", async () => {
       setSwapStoreState({ destinationToken: null, sourceAmount: "0" });
 
       const navigation = makeNavigation();
@@ -1370,12 +1373,12 @@ describe("SwapAmountScreen", () => {
       });
 
       expect(analytics.track).toHaveBeenCalledWith(
-        AnalyticsEvent.SWAP_TO_PICKER_OPENED,
-        { source: "cta" },
+        AnalyticsEvent.SWAP_PICKER_OPENED,
+        { side: "to", source: "cta" },
       );
     });
 
-    it("fires SWAP_TO_PICKER_OPENED with source:dropdown when the Receive dropdown is tapped", () => {
+    it("fires SWAP_PICKER_OPENED side:to with source:dropdown when the Receive dropdown is tapped", () => {
       // destinationToken is null so the "Select a token" placeholder pill is rendered
       setSwapStoreState({ destinationToken: null, sourceAmount: "0" });
 
@@ -1386,12 +1389,12 @@ describe("SwapAmountScreen", () => {
       fireEvent.press(getByTestId("swap-receive-choose-pill"));
 
       expect(analytics.track).toHaveBeenCalledWith(
-        AnalyticsEvent.SWAP_TO_PICKER_OPENED,
-        { source: "dropdown" },
+        AnalyticsEvent.SWAP_PICKER_OPENED,
+        { side: "to", source: "dropdown" },
       );
     });
 
-    it("fires SWAP_FROM_PICKER_OPENED with source:dropdown when the Sell pill is tapped", () => {
+    it("fires SWAP_PICKER_OPENED side:from with source:dropdown when the Sell pill is tapped", () => {
       // Held source (XLM) → "swap-sell-pill" is rendered; press routes
       // through navigateToSelectSourceTokenScreen which is the only call
       // site for the source-side picker event.
@@ -1407,14 +1410,13 @@ describe("SwapAmountScreen", () => {
       fireEvent.press(getByTestId("swap-sell-pill"));
 
       expect(analytics.track).toHaveBeenCalledWith(
-        AnalyticsEvent.SWAP_FROM_PICKER_OPENED,
-        { source: "dropdown" },
+        AnalyticsEvent.SWAP_PICKER_OPENED,
+        { side: "from", source: "dropdown" },
       );
-      // Negative assertion: source picker MUST NOT reuse the destination
-      // event after the caa4aeab split.
+      // Negative assertion: the source picker MUST tag side:from, never side:to.
       expect(analytics.track).not.toHaveBeenCalledWith(
-        AnalyticsEvent.SWAP_TO_PICKER_OPENED,
-        { source: "dropdown" },
+        AnalyticsEvent.SWAP_PICKER_OPENED,
+        { side: "to", source: "dropdown" },
       );
     });
 

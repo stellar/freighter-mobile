@@ -11,6 +11,7 @@ import { NAVIGATION_THEME } from "config/navigationTheme";
 import { RootStackParamList } from "config/routes";
 import { initializeSentry } from "config/sentryConfig";
 import { THEME } from "config/theme";
+import { useAnalyticsStore } from "ducks/analytics";
 import { useAuthenticationStore } from "ducks/auth";
 import { useNavigationAnalytics } from "hooks/useNavigationAnalytics";
 import { useSentryContext } from "hooks/useSentryContext";
@@ -76,14 +77,41 @@ export const App = (): React.JSX.Element => {
 
       const userId = await getUserId();
 
-      Sentry.setUser({ id: userId });
+      // Consent-gate the Sentry user identity: the resolved id is the
+      // seed-derived auth pubkey (== backend JWT `sub`), a stable
+      // cross-service identifier that must not be attached to crash
+      // telemetry when the user has opted out of data sharing.
+      // updateSentryContext (via useSentryContext) owns clearing it on a
+      // later toggle-off; this guard covers the cold-start identification.
+      if (useAnalyticsStore.getState().isEnabled) {
+        Sentry.setUser({ id: userId });
+      }
     };
 
-    initSentry();
+    // Defer until the persisted data-sharing preference has hydrated from
+    // AsyncStorage. Zustand's pre-hydration default is `true` (Android), so
+    // running initSentry() before hydration could initialize Sentry for a
+    // returning opted-out user in the brief window before the stored `false`
+    // restores — breaking the cold-start opt-out. Mirrors the analytics
+    // module's onFinishHydration handling in services/analytics/core.ts.
+    if (useAnalyticsStore.persist.hasHydrated()) {
+      initSentry();
+      return undefined;
+    }
+    return useAnalyticsStore.persist.onFinishHydration(() => {
+      initSentry();
+    });
   }, []);
 
   return (
-    <KeyboardProvider>
+    /*
+      The translucent flags tell keyboard-controller the app already runs
+      edge-to-edge (Android 15+ enforces it), so its native layer must NOT
+      inset the content view by the system-bar sizes. Without them it margins
+      the content and consumes the window insets, making useSafeAreaInsets()
+      report 0 for every edge on Android.
+    */
+    <KeyboardProvider statusBarTranslucent navigationBarTranslucent>
       {/* Paints the area behind transparent system bars under Android 15+
           enforced edge-to-edge so the status/nav strips match app chrome. */}
       <GestureHandlerRootView

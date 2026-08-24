@@ -5,17 +5,16 @@ import {
   createNativeStackNavigator,
   NativeStackNavigationProp,
 } from "@react-navigation/native-stack";
-import AccountQRCodeScreen from "components/screens/AccountQRCodeScreen";
 import AddCollectibleScreen from "components/screens/AddCollectibleScreen";
 import { BiometricsOnboardingScreen } from "components/screens/BiometricsEnableScreen/BiometricsEnableScreen";
 import CollectibleDetailsScreen from "components/screens/CollectibleDetailsScreen";
-import ConnectedAppsScreen from "components/screens/ConnectedAppsScreen";
 import { ForceUpdateScreen } from "components/screens/ForceUpdateScreen/ForceUpdateScreen";
 import HiddenCollectiblesScreen from "components/screens/HiddenCollectiblesScreen";
 import { LoadingScreen } from "components/screens/LoadingScreen";
 import { LockScreen } from "components/screens/LockScreen";
 import { MaintenanceScreen } from "components/screens/MaintenanceScreen/MaintenanceScreen";
 import ScanQRCodeScreen from "components/screens/ScanQRCodeScreen";
+import ScanReceiveScreen from "components/screens/ScanReceiveScreen";
 import { SecurityBlockScreen } from "components/screens/SecurityBlockScreen";
 import TokenDetailsScreen from "components/screens/TokenDetailsScreen";
 import {
@@ -253,18 +252,6 @@ export const RootNavigator = () => {
               options={getStackBottomNavigateOptions()}
             />
             <RootStack.Screen
-              name={ROOT_NAVIGATOR_ROUTES.ACCOUNT_QR_CODE_SCREEN}
-              component={AccountQRCodeScreen}
-              options={({ route }) =>
-                withTransitionOverride(
-                  getScreenBottomNavigateOptions(
-                    t("accountQRCodeScreen.title"),
-                  ),
-                  route,
-                )
-              }
-            />
-            <RootStack.Screen
               name={ROOT_NAVIGATOR_ROUTES.SCAN_QR_CODE_SCREEN}
               component={ScanQRCodeScreen}
               options={({ route }) =>
@@ -272,9 +259,9 @@ export const RootNavigator = () => {
               }
             />
             <RootStack.Screen
-              name={ROOT_NAVIGATOR_ROUTES.CONNECTED_APPS_SCREEN}
-              component={ConnectedAppsScreen}
-              options={getScreenBottomNavigateOptions(t("connectedApps.title"))}
+              name={ROOT_NAVIGATOR_ROUTES.SCAN_RECEIVE_SCREEN}
+              component={ScanReceiveScreen}
+              options={getScreenOptionsNoHeader()}
             />
             <RootStack.Screen
               name={ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK}

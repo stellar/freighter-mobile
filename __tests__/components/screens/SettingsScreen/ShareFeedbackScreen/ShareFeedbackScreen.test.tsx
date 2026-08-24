@@ -1,10 +1,7 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { screen, userEvent } from "@testing-library/react-native";
 import ShareFeedbackScreen from "components/screens/SettingsScreen/ShareFeedbackScreen/ShareFeedbackScreen";
-import {
-  FREIGHTER_DISCORD_URL,
-  FREIGHTER_GITHUB_ISSUE_URL,
-} from "config/constants";
+import { FREIGHTER_GITHUB_ISSUE_URL } from "config/constants";
 import { SETTINGS_ROUTES, SettingsStackParamList } from "config/routes";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
@@ -12,7 +9,6 @@ import React from "react";
 jest.mock("hooks/useAppTranslation", () => () => ({
   t: (key: string) => {
     const translations: Record<string, string> = {
-      "shareFeedbackScreen.discord": "Discord",
       "shareFeedbackScreen.github": "GitHub",
     };
     return translations[key] || key;
@@ -49,25 +45,12 @@ describe("ShareFeedbackScreen", () => {
     mockOpenInAppBrowser.mockClear();
   });
 
-  it("renders correctly with Discord and GitHub options", () => {
+  it("renders correctly with GitHub option", () => {
     renderWithProviders(
       <ShareFeedbackScreen navigation={mockNavigation} route={mockRoute} />,
     );
 
-    expect(screen.getByText("Discord")).toBeTruthy();
     expect(screen.getByText("GitHub")).toBeTruthy();
-  });
-
-  it("calls inAppBrowser.open with Discord URL when Discord option is pressed", async () => {
-    renderWithProviders(
-      <ShareFeedbackScreen navigation={mockNavigation} route={mockRoute} />,
-    );
-
-    const discordOption = screen.getByText("Discord");
-    await userEvent.press(discordOption);
-
-    expect(mockOpenInAppBrowser).toHaveBeenCalledTimes(1);
-    expect(mockOpenInAppBrowser).toHaveBeenCalledWith(FREIGHTER_DISCORD_URL);
   });
 
   it("calls inAppBrowser.open with GitHub URL when GitHub option is pressed", async () => {

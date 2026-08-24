@@ -1,6 +1,6 @@
 import * as Sentry from "@sentry/react-native";
 import { EnvConfig } from "config/envConfig";
-import { MAX_DEPTH_SENTINEL, MAX_RECURSIVE_DEPTH } from "config/logger";
+import { MAX_DEPTH_SENTINEL, MAX_RECURSIVE_DEPTH, logger } from "config/logger";
 import { useAnalyticsStore } from "ducks/analytics";
 import { useAuthenticationStore } from "ducks/auth";
 import { useNetworkStore } from "ducks/networkInfo";
@@ -154,10 +154,21 @@ const buildSentryContext = (): Record<string, unknown> => {
  * This should be called whenever relevant state changes (auth, analytics, etc.)
  */
 export const updateSentryContext = (): void => {
-  const { isEnabled: analyticsEnabled } = useAnalyticsStore.getState();
+  const { isEnabled: analyticsEnabled, userId } = useAnalyticsStore.getState();
   const { account } = useAuthenticationStore.getState();
 
   Sentry.setContext("appContext", buildSentryContext());
+
+  // Consent-gate the Sentry user identity. The analytics user id is the
+  // seed-derived auth pubkey (== the backend JWT `sub`): a stable,
+  // cross-service, reinstall-surviving identifier. When the user has not
+  // consented to data sharing it must not ride along on crash telemetry, so
+  // clear it. This is the single owner of the Sentry user across the toggle
+  // and auth transitions (useSentryContext re-runs this on both), which also
+  // sidesteps the persist-hydration race a one-shot read at launch would hit.
+  // Mirrors the extension, which only calls Sentry.setUser when data-sharing
+  // is allowed.
+  Sentry.setUser(analyticsEnabled && userId ? { id: userId } : null);
 
   // Update tags based on analytics preferences
   if (analyticsEnabled && account?.publicKey) {
@@ -168,12 +179,77 @@ export const updateSentryContext = (): void => {
   }
 };
 
+// Tracks whether the Sentry client is currently running, so the data-sharing
+// toggle can (re)initialize or shut it down idempotently (see
+// syncSentryEnablement).
+let isSentryInitialized = false;
+
+// The data-sharing preference as of the most recent syncSentryEnablement()
+// call. Updated synchronously so rapid toggles collapse to their final value,
+// while the (asynchronous) native teardown catches up via sentryLifecycle.
+let desiredSentryEnabled = false;
+
+// Serializes lifecycle transitions. Shutting the native SDK down is async —
+// client.close() awaits a JS flush and only then calls NATIVE.closeNativeSdk()
+// — so an unserialized off→on toggle lets a late-landing closeNativeSdk() tear
+// down the native SDK belonging to the *new* client, leaving JS reporting alive
+// with native silently dead. Chaining every transition onto one promise means a
+// re-init can never start until the preceding teardown has fully settled.
+let sentryLifecycle: Promise<void> = Promise.resolve();
+
 /**
- * Initialize Sentry with privacy-conscious configuration
+ * Drop breadcrumbs the isolation scope accumulated while consent was off.
+ *
+ * INVARIANT: every path that (re-)enables reporting must call this first.
+ * There are two — `initializeSentry()` and the re-arm branch of
+ * `reconcileSentryEnablement()` — and missing either one leaks. Centralized so
+ * a third path can't quietly forget: this has been got wrong more than once.
+ *
+ * Why it's needed at all: neither disabling nor closing a client unbinds it,
+ * and `addBreadcrumb()` checks only `if (!client) return` — never the `enabled`
+ * flag — so `logger.warn` and the automatic integrations keep appending for the
+ * entire time consent is off. `Sentry.init()` rebinds the client but leaves the
+ * isolation scope untouched (`initAndBind` only calls
+ * `getCurrentScope().update(initialScope)`), so without this the first event
+ * after a re-opt-in would ship activity recorded while the user was opted out.
+ *
+ * The clear in `syncSentryEnablement` is a different, complementary one: it
+ * drops breadcrumbs from *before* opt-out, which is the other side of the
+ * window and does not cover this case.
+ */
+const dropConsentGapBreadcrumbs = (): void => {
+  Sentry.getIsolationScope().clearBreadcrumbs();
+};
+
+/**
+ * Initialize Sentry with privacy-conscious configuration.
+ *
+ * No-ops (does not call Sentry.init) in three cases:
+ * - during e2e tests;
+ * - if Sentry is already initialized (idempotent — safe to call from both
+ *   App's startup effect and the analytics-store subscription regardless of
+ *   order);
+ * - if data sharing is currently OFF (master switch; mirrors the extension).
+ * syncSentryEnablement() re-invokes this when the user turns sharing back on.
  */
 export const initializeSentry = (): void => {
   // Disable Sentry during e2e tests
   if (isE2ETest) {
+    return;
+  }
+
+  // Idempotent: never run Sentry.init() twice. Both App's startup effect and
+  // the analytics-store subscription (via syncSentryEnablement) can reach here,
+  // and their order isn't guaranteed — guard the initializer itself so whichever
+  // runs second is a no-op.
+  if (isSentryInitialized) {
+    return;
+  }
+
+  // Master switch: with data sharing OFF, do not initialize Sentry at all —
+  // mirrors the extension (no init when sharing is disabled), so nothing is
+  // reported. syncSentryEnablement() re-initializes if the user turns it on.
+  if (!useAnalyticsStore.getState().isEnabled) {
     return;
   }
 
@@ -197,6 +273,21 @@ export const initializeSentry = (): void => {
     appHangTimeoutInterval: 5,
 
     beforeSend(event) {
+      // Master switch (defense-in-depth): if data sharing is off, drop every
+      // event that reaches this hook. Covers the window between a runtime
+      // toggle-off and client teardown, and anything captured by a lingering
+      // JS client.
+      //
+      // It does NOT cover the native layer. Native crashes, iOS app hangs and
+      // Android ANRs are captured and transmitted by the Cocoa/Android SDKs
+      // without ever passing through beforeSend, so this hook is not a
+      // substitute for the client.close() in reconcileSentryEnablement —
+      // removing that close on the assumption this covers it would silently
+      // restore native crash reporting for opted-out users.
+      if (!useAnalyticsStore.getState().isEnabled) {
+        return null;
+      }
+
       // Drop or downgrade known-noise patterns before any PII scrubbing
       // or context updates. Each entry should describe a noise source
       // we've seen in production (third-party SDK quirks, native auth
@@ -317,6 +408,173 @@ export const initializeSentry = (): void => {
     },
   });
 
+  isSentryInitialized = true;
+  // Keep the desired-state mirror honest for callers that reach the
+  // initializer directly (App's startup effect) rather than via
+  // syncSentryEnablement, so a later reconcile doesn't read a stale `false`.
+  desiredSentryEnabled = true;
+
+  dropConsentGapBreadcrumbs();
+
   // Set initial context and tags
   updateSentryContext();
 };
+
+/**
+ * Bring the running Sentry client in line with `desiredSentryEnabled`.
+ *
+ * Always invoked through `sentryLifecycle`, never directly, so only one
+ * transition is in flight at a time. Reads the desired state at execution time
+ * rather than capturing it at queue time, so a burst of toggles converges on
+ * the final value instead of replaying every intermediate one.
+ */
+const reconcileSentryEnablement = async (): Promise<void> => {
+  if (desiredSentryEnabled) {
+    if (!isSentryInitialized) {
+      initializeSentry();
+      return;
+    }
+
+    // The client is already up, but the synchronous opt-out path may have
+    // flipped `enabled` off in a toggle that was reversed before this reconcile
+    // ran (off→on inside a single tick collapses to "still initialized"). Left
+    // alone, that client would stay silently disabled forever while every
+    // subsequent reconcile short-circuits as a no-op. Re-arm it.
+    //
+    // This re-enables reporting without going through initializeSentry(), so it
+    // owns the consent-gap clear itself. Breadcrumbs written in the gap between
+    // the synchronous opt-out block and this reconcile were recorded while
+    // consent was off, and would otherwise ride along on the next event.
+    dropConsentGapBreadcrumbs();
+
+    const client = Sentry.getClient();
+    if (client) {
+      client.getOptions().enabled = true;
+    }
+    return;
+  }
+
+  if (isSentryInitialized) {
+    // Flip the flag first: it describes intent for subsequent reconciles, and
+    // leaving it true across the await would let a queued transition observe a
+    // client that is already being torn down.
+    isSentryInitialized = false;
+
+    const client = Sentry.getClient();
+    if (!client) {
+      return;
+    }
+
+    // Re-assert the JS stop against whichever client is live now. The
+    // synchronous path in syncSentryEnablement already did this for the client
+    // present at opt-out time; this covers the case where a re-init replaced it
+    // while an earlier transition was settling.
+    client.getOptions().enabled = false;
+
+    // close() is what stops the *native* SDK: @sentry/react-native runs a
+    // separate Cocoa/Android SDK started by ReactNativeClient._initNativeSdk(),
+    // and NATIVE.closeNativeSdk() is reachable only through this path. Native
+    // crashes, iOS app hangs and Android ANRs are captured and transmitted by
+    // that layer without ever passing through our JS beforeSend, so disabling
+    // the JS client alone leaves them reporting for the rest of the process.
+    //
+    // Deliberately called with NO timeout argument. ReactNativeClient overrides
+    // close() as `close(): PromiseLike<boolean>` — it takes no parameter and
+    // invokes `super.close()` with zero arguments — so any value passed here is
+    // silently discarded and the base always runs the unbounded flush path
+    // (`_isClientDoneProcessing` loops `while (!timeout || ...)`, and
+    // `PromiseBuffer.drain` returns the undrained promise when `!timeout`).
+    // tsc does not catch a stray argument because getClient() is typed as the
+    // base Client, whose close(timeout?: number) does accept one. Passing a
+    // constant here would advertise a bound that does not exist.
+    //
+    // The unbounded flush is tolerable, and is not the consent leak it might
+    // look like: the RN NativeTransport hands each envelope straight to
+    // NATIVE.sendEnvelope() on send(), and its promise buffer tracks in-flight
+    // bridge handoffs rather than an offline retry queue. There is no JS-side
+    // backlog of events captured under prior consent for the flush to push out
+    // — that queueing lives natively, on disk, and is retried by the native SDK
+    // regardless of the JS `enabled` flag. The awaited work is bridge handoff
+    // plus in-process event handling, not a network round-trip, so it settles
+    // in about a tick.
+    await client.close();
+  }
+};
+
+/**
+ * Reconcile Sentry with the current data-sharing preference. Idempotent and
+ * safe to call on any analytics-store change: when sharing is ON it
+ * (re)initializes Sentry; when sharing is OFF it clears the user, stops the JS
+ * client immediately and shuts the native SDK down. Mirrors the extension's
+ * init-when-allowed / disable-on-opt-out behavior.
+ *
+ * Returns synchronously. The native teardown it may schedule is exposed for
+ * tests via `whenSentryLifecycleSettled()`; production callers fire and forget.
+ */
+export const syncSentryEnablement = (): void => {
+  // Consent (isEnabled) is persisted to AsyncStorage and hydrates
+  // asynchronously; before hydration the store holds its default, which is
+  // `true` on Android (ANALYTICS_CONFIG.DEFAULT_ENABLED). This runs from the
+  // analytics-store subscription, which can fire pre-hydration (e.g. setUserId
+  // during identify), so reading isEnabled now could initialize Sentry for a
+  // returning opted-out user. Treat persisted consent as authoritative and
+  // skip until hydration completes — App's startup effect performs the initial
+  // reconcile from onFinishHydration. Mirrors syncIdentifyTraits in
+  // services/analytics/core.ts.
+  if (!useAnalyticsStore.persist.hasHydrated()) return;
+
+  const { isEnabled } = useAnalyticsStore.getState();
+  desiredSentryEnabled = isEnabled;
+
+  if (!isEnabled) {
+    // Stop the JS side synchronously, before anything is queued. Flipping
+    // `enabled` is what makes captureEvent's `_isEnabled()` guard reject every
+    // subsequent send, and beforeSend hard-drops whatever slips through the
+    // gap. Doing it here rather than only in the reconcile means consent takes
+    // effect the instant the user toggles, even if an earlier transition is
+    // still settling.
+    Sentry.setUser(null);
+    const client = Sentry.getClient();
+    if (client) {
+      client.getOptions().enabled = false;
+    }
+
+    // Drop breadcrumbs recorded *before* this moment, so activity from the
+    // consented period is not retained once consent is withdrawn. This alone
+    // does NOT close the re-opt-in leak: the client stays bound and
+    // addBreadcrumb() keeps appending throughout the opted-out window. The
+    // clear in initializeSentry() is the one that handles that side.
+    Sentry.getIsolationScope().clearBreadcrumbs();
+  }
+
+  sentryLifecycle = sentryLifecycle
+    .then(reconcileSentryEnablement)
+    .catch((error: unknown) => {
+      // Catch so one failed transition cannot poison the chain for every later
+      // one.
+      //
+      // Be aware this is effectively invisible in production on the opt-out
+      // path, and unavoidably so: initializeSentryLogger() installs the
+      // Sentry-only adapter outside dev (no console sink), and the
+      // captureException it performs is dropped by the client's `_isEnabled()`
+      // guard — which the synchronous block above just set. Consent revokes
+      // the only production channel we have, so there is nowhere left to
+      // report to. Logging still earns its keep on the other two paths: the
+      // dev/QA adapter writes to console, and on the opt-in branch `enabled`
+      // is true, so a failing initializeSentry() reports normally.
+      logger.error(
+        "sentryConfig",
+        "Failed to reconcile Sentry enablement",
+        error,
+      );
+    });
+};
+
+/**
+ * Resolves once every lifecycle transition queued so far has settled.
+ *
+ * Exists for tests: syncSentryEnablement() is fire-and-forget by design (it
+ * runs from a Zustand subscription that cannot await), so without this there is
+ * no deterministic way to observe the native shutdown completing.
+ */
+export const whenSentryLifecycleSettled = (): Promise<void> => sentryLifecycle;
