@@ -98,9 +98,9 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = () => {
   const preferencesItems: PreferenceListItem[] = useMemo(
     () => [
       {
-        title: t("preferences.anonymousDataSharing.title"),
+        title: t("preferences.usageDataSharing.title"),
         titleColor: themeColors.text.primary,
-        description: t("preferences.anonymousDataSharing.description"),
+        description: t("preferences.usageDataSharing.description"),
         trailingContent: renderAnalyticsToggle(),
         testID: "anonymous-data-sharing-item",
       },

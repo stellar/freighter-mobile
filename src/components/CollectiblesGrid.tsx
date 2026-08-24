@@ -1,6 +1,8 @@
 import { CollectionSection } from "components/CollectionSection";
 import { DefaultListFooter } from "components/DefaultListFooter";
+import { EmptyState } from "components/EmptyState";
 import Spinner from "components/Spinner";
+import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { DEFAULT_PADDING, DEFAULT_REFRESH_DELAY } from "config/constants";
@@ -39,6 +41,14 @@ interface CollectiblesGridProps {
 
   /** Type to determine which collectibles to display. Defaults to VISIBLE. */
   type?: CollectibleFilterType;
+  /**
+   * Renders an "Add collectible" action inside the empty state. Home turns it
+   * on while its tokens tab shows an empty state, so both tabs offer the same
+   * kind of button. Off by default — other callers have no pill to match.
+   */
+  showEmptyStateCta?: boolean;
+  /** Press handler for the CTA; it only renders when one is provided. */
+  onAddCollectiblePress?: () => void;
 }
 
 /**
@@ -71,6 +81,8 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
     onCollectiblePress,
     disableInnerScrolling = false,
     type = CollectibleFilterType.VISIBLE,
+    showEmptyStateCta = false,
+    onAddCollectiblePress,
   }) => {
     const { t } = useAppTranslation();
     const { themeColors } = useColors();
@@ -128,11 +140,29 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
           <Spinner
             testID="collectibles-grid-spinner"
             size="large"
-            color={themeColors.secondary}
+            color={themeColors.foreground.primary}
           />
         </View>
       );
     }
+
+    // Never on the hidden list: a management view, not a place to add.
+    const shouldShowEmptyStateCta =
+      showEmptyStateCta && !isTypeHidden && Boolean(onAddCollectiblePress);
+
+    // Same variant/size as the tokens CTA. Shared by the empty AND error views:
+    // an error replaces the empty state, so leaving it out there would strand
+    // the tab with no way to add anything while a fetch is failing.
+    const addCollectibleCta = shouldShowEmptyStateCta ? (
+      <Button
+        tertiary
+        xl
+        onPress={onAddCollectiblePress}
+        testID="add-collectible-empty-state-button"
+      >
+        {t("collectiblesGrid.addCollectibleButton")}
+      </Button>
+    ) : null;
 
     const renderErrorView = () => (
       <View className="flex-1">
@@ -144,22 +174,31 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
             {t("collectiblesGrid.error")}
           </Text>
         </View>
+        {/* Matches EmptyState's 24px gap so the action sits the same distance
+        from the text in both views. */}
+        {addCollectibleCta ? (
+          <View className="mt-6 items-center">{addCollectibleCta}</View>
+        ) : null}
       </View>
     );
 
     const renderEmptyView = () => (
       <View className="flex-1">
-        <View
-          className="flex-row items-center justify-center pt-5 gap-2"
-          style={{ paddingHorizontal: pxValue(DEFAULT_PADDING) }}
-        >
-          <Icon.Grid01 size={20} color={themeColors.text.secondary} />
-          <Text md medium secondary>
-            {isTypeHidden
+        <EmptyState
+          Icon={Icon.Image01}
+          title={
+            isTypeHidden
               ? t("collectiblesGrid.emptyHidden")
-              : t("collectiblesGrid.empty")}
-          </Text>
-        </View>
+              : t("collectiblesGrid.empty")
+          }
+          description={
+            isTypeHidden ? undefined : t("collectiblesGrid.emptyDescription")
+          }
+          testID="collectibles-empty-state"
+        >
+          {/* EmptyState's own gap supplies the spacing here. */}
+          {addCollectibleCta}
+        </EmptyState>
       </View>
     );
 

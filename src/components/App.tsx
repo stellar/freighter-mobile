@@ -88,11 +88,30 @@ export const App = (): React.JSX.Element => {
       }
     };
 
-    initSentry();
+    // Defer until the persisted data-sharing preference has hydrated from
+    // AsyncStorage. Zustand's pre-hydration default is `true` (Android), so
+    // running initSentry() before hydration could initialize Sentry for a
+    // returning opted-out user in the brief window before the stored `false`
+    // restores — breaking the cold-start opt-out. Mirrors the analytics
+    // module's onFinishHydration handling in services/analytics/core.ts.
+    if (useAnalyticsStore.persist.hasHydrated()) {
+      initSentry();
+      return undefined;
+    }
+    return useAnalyticsStore.persist.onFinishHydration(() => {
+      initSentry();
+    });
   }, []);
 
   return (
-    <KeyboardProvider>
+    /*
+      The translucent flags tell keyboard-controller the app already runs
+      edge-to-edge (Android 15+ enforces it), so its native layer must NOT
+      inset the content view by the system-bar sizes. Without them it margins
+      the content and consumes the window insets, making useSafeAreaInsets()
+      report 0 for every edge on Android.
+    */
+    <KeyboardProvider statusBarTranslucent navigationBarTranslucent>
       {/* Paints the area behind transparent system bars under Android 15+
           enforced edge-to-edge so the status/nav strips match app chrome. */}
       <GestureHandlerRootView

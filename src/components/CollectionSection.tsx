@@ -116,6 +116,7 @@ export const CollectionSection: React.FC<CollectionSectionProps> = ({
         count={collection.items.length}
         isExpanded={isExpanded}
         onToggle={toggleExpanded}
+        titlePrimary
         testID={`collection-header-${collection.collectionAddress}`}
       />
 

@@ -55,8 +55,11 @@ export const List: React.FC<ListProps> = ({
   compact = false,
 }) => (
   <View className={`${getContainerStyles(variant)} ${className}`}>
+    {/* The title can't identify a row on its own — an operation carrying both a
+        source and a destination asset repeats labels like "Token Issuer". Pass
+        an explicit `key` for a row whose identity must survive a reorder. */}
     {items.map((item, index) => (
-      <React.Fragment key={item.key || item.title || `list-item-${index}`}>
+      <React.Fragment key={item.key || `${item.title || "list-item"}-${index}`}>
         <TouchableOpacity
           disabled={!item.onPress}
           onPress={item.onPress}

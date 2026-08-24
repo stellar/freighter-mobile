@@ -1,7 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import BottomSheet from "components/BottomSheet";
 import { BaseLayout } from "components/layout/BaseLayout";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
@@ -11,8 +8,7 @@ import {
 } from "config/routes";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
-import { useRightHeaderButton } from "hooks/useRightHeader";
-import React, { useRef } from "react";
+import React from "react";
 import { TouchableOpacity, View } from "react-native";
 
 type AddAnotherWalletScreenProps = NativeStackScreenProps<
@@ -25,11 +21,6 @@ const AddAnotherWalletScreen: React.FC<AddAnotherWalletScreenProps> = ({
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
-  const bottomSheetModalRef = useRef<BottomSheetModal>(null);
-
-  useRightHeaderButton({
-    onPress: () => bottomSheetModalRef.current?.present(),
-  });
 
   const handleCreateAccount = () => {
     navigation.navigate(MANAGE_WALLETS_ROUTES.VERIFY_PASSWORD_SCREEN);
@@ -41,14 +32,7 @@ const AddAnotherWalletScreen: React.FC<AddAnotherWalletScreenProps> = ({
 
   return (
     <BaseLayout insets={{ top: false }}>
-      <BottomSheet
-        title={t("addAnotherWalletScreen.helperBottomSheet.title")}
-        description={t("addAnotherWalletScreen.helperBottomSheet.description")}
-        modalRef={bottomSheetModalRef}
-        icon="PlusCircle"
-        handleCloseModal={() => bottomSheetModalRef.current?.dismiss()}
-      />
-      <View>
+      <View className="pt-8">
         <TouchableOpacity
           className="bg-background-tertiary rounded-2xl p-5"
           onPress={handleCreateAccount}

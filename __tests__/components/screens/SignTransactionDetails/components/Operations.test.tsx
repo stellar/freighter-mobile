@@ -184,9 +184,7 @@ describe("SignTransactionDetails > Operations: setOptions presence checks & mast
   it("masterWeight: 0 renders the row, its value, and the master-key warning (not an empty operation)", async () => {
     const ops = operationsFor(Operation.setOptions({ masterWeight: 0 }));
 
-    const { findByText, getByTestId } = render(
-      <Operations operations={ops} />,
-    );
+    const { findByText, getByTestId } = render(<Operations operations={ops} />);
 
     expect(await findByText(label("masterWeight"), {}, FIND)).toBeTruthy();
     expect(await findByText("0", {}, FIND)).toBeTruthy();
@@ -309,20 +307,14 @@ describe("SignTransactionDetails > Operations: setOptions presence checks & mast
     // asserted here; assert the known flag and that an unknown-remainder row is
     // emitted (proving the high bit wasn't silently dropped).
     expect(
-      await findByText(
-        /Authorization Required.*unknownFlags/,
-        {},
-        FIND,
-      ),
+      await findByText(/Authorization Required.*unknownFlags/, {}, FIND),
     ).toBeTruthy();
   });
 });
 
 describe("SignTransactionDetails > Operations: manageData presence checks", () => {
   it("value: null (deletion) renders the Value row with a Deleted badge", async () => {
-    const ops = operationsFor(
-      Operation.manageData({ name: "k", value: null }),
-    );
+    const ops = operationsFor(Operation.manageData({ name: "k", value: null }));
 
     const { findByText } = render(<Operations operations={ops} />);
 
@@ -333,9 +325,7 @@ describe("SignTransactionDetails > Operations: manageData presence checks", () =
   it("value: '' (empty, not a deletion) still renders the Value row", async () => {
     const ops = operationsFor(Operation.manageData({ name: "k", value: "" }));
 
-    const { findByText, queryByText } = render(
-      <Operations operations={ops} />,
-    );
+    const { findByText, queryByText } = render(<Operations operations={ops} />);
 
     expect(await findByText(label("value"), {}, FIND)).toBeTruthy();
     expect(queryByText(label("deleted"))).toBeNull();
@@ -354,9 +344,7 @@ describe("SignTransactionDetails > Operations: setTrustLineFlags presence checks
 
     const { findByText } = render(<Operations operations={ops} />);
 
-    expect(
-      await findByText(label("flags.authorized"), {}, FIND),
-    ).toBeTruthy();
+    expect(await findByText(label("flags.authorized"), {}, FIND)).toBeTruthy();
     expect(await findByText(label("disabled"), {}, FIND)).toBeTruthy();
   });
 
@@ -371,9 +359,7 @@ describe("SignTransactionDetails > Operations: setTrustLineFlags presence checks
 
     const { findByText } = render(<Operations operations={ops} />);
 
-    expect(
-      await findByText(label("flags.authorized"), {}, FIND),
-    ).toBeTruthy();
+    expect(await findByText(label("flags.authorized"), {}, FIND)).toBeTruthy();
     expect(await findByText(label("enabled"), {}, FIND)).toBeTruthy();
   });
 });
@@ -402,9 +388,7 @@ describe("SignTransactionDetails > Operations: asset issuer disclosure", () => {
       }),
     );
 
-    const { findByText, queryByText } = render(
-      <Operations operations={ops} />,
-    );
+    const { findByText, queryByText } = render(<Operations operations={ops} />);
 
     expect(await findByText(label("tokenCode"), {}, FIND)).toBeTruthy();
     expect(queryByText(label("tokenIssuer"))).toBeNull();

@@ -33,15 +33,21 @@ jest.mock("helpers/localeUtils");
  * const { getByText } = renderWithProviders(<MyComponent />);
  * expect(getByText('Hello')).toBeTruthy();
  */
+const AllProviders: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => (
+  <I18nextProvider i18n={i18n}>
+    <BottomSheetModalProvider>
+      <ToastProvider>{children}</ToastProvider>
+    </BottomSheetModalProvider>
+  </I18nextProvider>
+);
+
 export const renderWithProviders: RenderWithProviderType = (component) => {
   try {
-    return render(
-      <I18nextProvider i18n={i18n}>
-        <BottomSheetModalProvider>
-          <ToastProvider>{React.Children.only(component)}</ToastProvider>
-        </BottomSheetModalProvider>
-      </I18nextProvider>,
-    );
+    // The `wrapper` option (rather than wrapping the element inline) keeps
+    // the providers in place across `rerender` calls too.
+    return render(React.Children.only(component), { wrapper: AllProviders });
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error("Error rendering component:", error);

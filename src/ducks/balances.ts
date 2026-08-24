@@ -98,7 +98,15 @@ const getExistingPricedBalances = (
       currentPrice: existingPriceData?.currentPrice,
       percentagePriceChange24h: existingPriceData?.percentagePriceChange24h,
       fiatCode: existingPriceData?.fiatCode,
-      fiatTotal: existingPriceData?.fiatTotal,
+      // fiatTotal is a derived product (total × price), so recompute it
+      // against THIS balance's total instead of carrying the previous map's
+      // product verbatim — the carried value belongs to whatever balance
+      // produced it (e.g. another account's XLM right after an add/import
+      // wallet, or a pre-send total), and on price-fetch failures this map
+      // becomes state, making the wrong value stick.
+      fiatTotal:
+        existingPriceData?.currentPrice &&
+        balance.total.multipliedBy(existingPriceData.currentPrice),
     };
 
     // Return entry as [id, pricedBalance] tuple

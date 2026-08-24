@@ -52,6 +52,14 @@ interface Props {
   disableInnerScrolling?: boolean;
   /** Optional testID prefix forwarded to each balance row (e.g. "token-option" → "token-option-XLM") */
   balanceRowTestIDPrefix?: string;
+  /**
+   * Show the collectibles Add CTA inside its empty state instead of the
+   * caller's floating pill. Derived from the tokens tab, which owns the
+   * decision so both tabs use the same kind of button.
+   */
+  showEmptyStateCta?: boolean;
+  /** Press handler for the collectibles empty-state CTA. */
+  onAddCollectiblePress?: () => void;
 }
 
 /**
@@ -84,6 +92,8 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
     feeContext = TransactionContext.Send,
     disableInnerScrolling = false,
     balanceRowTestIDPrefix,
+    showEmptyStateCta = true,
+    onAddCollectiblePress,
   }) => {
     const { t } = useAppTranslation();
     const { themeColors } = useColors();
@@ -146,10 +156,17 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
           <CollectiblesGrid
             onCollectiblePress={onCollectiblePress}
             disableInnerScrolling={disableInnerScrolling}
+            showEmptyStateCta={showEmptyStateCta}
+            onAddCollectiblePress={onAddCollectiblePress}
           />
         </View>
       ),
-      [onCollectiblePress, disableInnerScrolling],
+      [
+        onCollectiblePress,
+        disableInnerScrolling,
+        showEmptyStateCta,
+        onAddCollectiblePress,
+      ],
     );
 
     /**
@@ -170,17 +187,23 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
         className="flex-1"
         style={{ paddingHorizontal: pxValue(DEFAULT_PADDING) }}
       >
-        <View className="flex-row items-center gap-3 mb-4">
+        <View className="flex-row items-center gap-1 mb-6">
           <TouchableOpacity
-            className="py-2"
+            className={`px-3 py-2 border-b-2 ${
+              activeTab === TabType.TOKENS
+                ? "border-lilac-9"
+                : "border-transparent"
+            }`}
             onPress={() => handleTabChange(TabType.TOKENS)}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: activeTab === TabType.TOKENS }}
             testID="tab-tokens"
           >
             <Text
-              medium
+              weight={activeTab === TabType.TOKENS ? "medium" : "semiBold"}
               color={
                 activeTab === TabType.TOKENS
-                  ? themeColors.text.primary
+                  ? themeColors.lilac[11]
                   : themeColors.text.secondary
               }
             >
@@ -189,15 +212,25 @@ export const TokensCollectiblesTabs: React.FC<Props> = React.memo(
           </TouchableOpacity>
 
           <TouchableOpacity
-            className="py-2"
+            className={`px-3 py-2 border-b-2 ${
+              activeTab === TabType.COLLECTIBLES
+                ? "border-lilac-9"
+                : "border-transparent"
+            }`}
             onPress={() => handleTabChange(TabType.COLLECTIBLES)}
+            accessibilityRole="tab"
+            accessibilityState={{
+              selected: activeTab === TabType.COLLECTIBLES,
+            }}
             testID="tab-collectibles"
           >
             <Text
-              medium
+              weight={
+                activeTab === TabType.COLLECTIBLES ? "medium" : "semiBold"
+              }
               color={
                 activeTab === TabType.COLLECTIBLES
-                  ? themeColors.text.primary
+                  ? themeColors.lilac[11]
                   : themeColors.text.secondary
               }
             >

@@ -17,16 +17,19 @@ import Icon from "components/sds/Icon";
 import { TextButton } from "components/sds/TextButton";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
-import { DEFAULT_PADDING } from "config/constants";
+import { DEFAULT_PADDING, NATIVE_TOKEN_CODE } from "config/constants";
 import { THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
 import { useSwapStore } from "ducks/swap";
+import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { pxValue } from "helpers/dimensions";
+import { formatTokenForDisplay } from "helpers/formatAmount";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
 import useColors from "hooks/useColors";
+import { useFeeDetailsBottomSheet } from "hooks/useFeeDetailsBottomSheet";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import React, { useRef } from "react";
 import { TouchableOpacity, View } from "react-native";
@@ -59,13 +62,22 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
     sourceTokenId,
     destinationToken: destinationTokenDescriptor,
   } = useSwapStore();
-  const { transactionXDR } = useTransactionBuilderStore();
+  const { transactionXDR, sorobanInclusionFeeXlm } =
+    useTransactionBuilderStore();
+  const { swapFee } = useSwapSettingsStore();
   const transactionDetails = useSignTransactionDetails({
     xdr: transactionXDR || "",
   });
   const swapTransactionDetailsBottomSheetModalRef =
     useRef<BottomSheetModal>(null);
   const trustlineInfoRef = useRef<BottomSheetModal>(null);
+
+  // The fee row mirrors the settings sheet: the inclusion fee the user set.
+  // Swaps are classic, so the info icon opens the fee info sheet (not a breakdown).
+  const inclusionFeeXlm = sorobanInclusionFeeXlm ?? swapFee;
+  const { openFeeDetails, feeDetailsSheets } = useFeeDetailsBottomSheet({
+    isSorobanContext: false,
+  });
 
   const handleOpenTransactionDetails = () => {
     swapTransactionDetailsBottomSheetModalRef.current?.present();
@@ -221,6 +233,30 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
               </Text>
             ),
           },
+          {
+            icon: (
+              <Icon.Route size={16} color={themeColors.foreground.primary} />
+            ),
+            titleComponent: (
+              <Text md secondary color={THEME.colors.text.secondary}>
+                {t("transactionAmountScreen.details.fee")}
+              </Text>
+            ),
+            trailingContent: (
+              <View className="flex-row items-center gap-[8px]">
+                <TouchableOpacity
+                  onPress={openFeeDetails}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  className="mt-[2px]"
+                >
+                  <Icon.InfoCircle themeColor="gray" size={16} />
+                </TouchableOpacity>
+                <Text md medium>
+                  {formatTokenForDisplay(inclusionFeeXlm, NATIVE_TOKEN_CODE)}
+                </Text>
+              </View>
+            ),
+          },
         ]}
       />
 
@@ -262,6 +298,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
           />
         }
       />
+      {feeDetailsSheets}
     </View>
   );
 };
