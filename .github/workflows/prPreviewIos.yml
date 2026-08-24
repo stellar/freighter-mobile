@@ -66,8 +66,8 @@ jobs:
     timeout-minutes: 45
     permissions:
       contents: write # draft release create/delete + tag operations
-      pull-requests: write # sticky preview-link comment + add/remove preview-degraded label
-      issues: write # create the `preview-degraded` label definition if missing (label defs are managed under the Issues API; add/remove on the PR itself only needs pull-requests: write)
+      pull-requests: write # sticky preview-link comment + add/remove preview-degraded-ios label
+      issues: write # create the `preview-degraded-ios` label definition if missing (label defs are managed under the Issues API; add/remove on the PR itself only needs pull-requests: write)
     env:
       NODE_VERSION: "22"
       RUBY_VERSION: 3.1.4
@@ -108,6 +108,13 @@ jobs:
       MP_COLLECTIONS_ADDRESSES: ${{ vars.MP_COLLECTIONS_ADDRESSES }}
       IS_E2E_TEST: "false"
       E2E_TEST_RECOVERY_PHRASE: ""
+      # Skips the jail-monkey root/jailbreak check, which reports true on
+      # many simulators — otherwise the app renders SecurityBlockScreen and
+      # the preview cannot be reviewed at all. Scoped to that one behavior;
+      # IS_E2E_TEST stays false so Sentry, logging, analytics and the
+      # WalletConnect test helpers all behave like a normal dev build.
+      # Read by isPreviewBuild (src/helpers/isEnv.ts), added in #971.
+      IS_PREVIEW_BUILD: "true"
 
     steps:
       - name: Checkout PR head
@@ -197,7 +204,7 @@ jobs:
       # cached config.json (if the fetch succeeded), looks the PR author up by
       # GitHub login, and writes the resolved URLs to $GITHUB_ENV so
       # "Set env (preview routing)" bakes them into .env. Also manages the
-      # `preview-degraded` label and exports BACKEND_TARGET/DESC/NOTE for the
+      # `preview-degraded-ios` label and exports BACKEND_TARGET/DESC/NOTE for the
       # release notes + sticky comment.
       - name: Resolve backend URLs (sandbox vs staging)
         id: resolve_backend
@@ -260,17 +267,17 @@ jobs:
           } >> "$GITHUB_ENV"
           echo "Backend target: ${TARGET} — ${DESC}"
 
-          # preview-degraded label: create-if-missing, then add on degrade /
+          # preview-degraded-ios label: create-if-missing, then add on degrade /
           # remove otherwise so a fixed re-run self-corrects. Label plumbing
           # must never fail the build.
-          gh label create preview-degraded --repo "$GH_REPO" \
+          gh label create preview-degraded-ios --repo "$GH_REPO" \
             --color B60205 \
-            --description "PR preview fell back to staging because freighter-config was unreachable" \
+            --description "iOS PR preview fell back to staging because freighter-config was unreachable" \
             2>/dev/null || true
           if [ "$DEGRADED" = "true" ]; then
-            gh pr edit "$PR_NUMBER" --repo "$GH_REPO" --add-label preview-degraded || true
+            gh pr edit "$PR_NUMBER" --repo "$GH_REPO" --add-label preview-degraded-ios || true
           else
-            gh pr edit "$PR_NUMBER" --repo "$GH_REPO" --remove-label preview-degraded || true
+            gh pr edit "$PR_NUMBER" --repo "$GH_REPO" --remove-label preview-degraded-ios || true
           fi
 
       - name: Make scripts executable
