@@ -66,7 +66,8 @@ jobs:
     timeout-minutes: 45
     permissions:
       contents: write # draft release create/delete + tag operations
-      pull-requests: write # sticky preview-link comment
+      pull-requests: write # sticky preview-link comment + add/remove preview-degraded-ios label
+      issues: write # create the `preview-degraded-ios` label definition if missing (label defs are managed under the Issues API; add/remove on the PR itself only needs pull-requests: write)
     env:
       NODE_VERSION: "22"
       RUBY_VERSION: 3.1.4
@@ -75,22 +76,20 @@ jobs:
       SENTRY_DSN: "disabled-for-preview"
       AMPLITUDE_API_KEY: "disabled-for-preview"
       AMPLITUDE_EXPERIMENT_DEPLOYMENT_KEY: "disabled-for-preview"
-      # === Backend URLs — V1 PROD, V2 STG in Phase 1 (Phase 2 adds freighter-config sandbox URLs) ===
-      # V1: PROD. V1 staging does NOT have a public DNS entry — the only
-      #   v1 stg ingress is kube-internal (freighter-backend-stg.kube001-
-      #   dev.services.stellar-ops.com, sshuttle-required). When v1 stg
-      #   gets a public ingress (Ops follow-up), swap back to V1_STG.
-      # V2: STG. freighter-backend-v2-stg.stellar.org IS publicly
-      #   reachable and is the right target for preview-stage testing.
-      # freighter-backend is a read-side indexer (balances, assets,
-      # history); the wallet submits txs directly to Horizon/RPC, so the
-      # backend choice here doesn't affect write paths.
-      FREIGHTER_BACKEND_V1_PROD_URL: ${{ vars.FREIGHTER_BACKEND_V1_PROD_URL }}
-      FREIGHTER_BACKEND_V1_STG_URL: ${{ vars.FREIGHTER_BACKEND_V1_PROD_URL }}
-      FREIGHTER_BACKEND_V1_DEV_URL: ${{ vars.FREIGHTER_BACKEND_V1_PROD_URL }}
-      FREIGHTER_BACKEND_V2_PROD_URL: ${{ vars.FREIGHTER_BACKEND_V2_STG_URL }}
-      FREIGHTER_BACKEND_V2_STG_URL: ${{ vars.FREIGHTER_BACKEND_V2_STG_URL }}
-      FREIGHTER_BACKEND_V2_DEV_URL: ${{ vars.FREIGHTER_BACKEND_V2_STG_URL }}
+      # === Backend URLs ===
+      # Phase 2: the six FREIGHTER_BACKEND_V{1,2}_{PROD,STG,DEV}_URL values are
+      # intentionally NOT set here. They are resolved at runtime by the
+      # "Resolve backend URLs" step below — the PR author's per-engineer
+      # sandbox (from freighter-config) when they have an entry, otherwise the
+      # staging fallback — and written to $GITHUB_ENV before "Set env (preview
+      # routing)" materializes .env. Setting them here as well would create a
+      # job-`env:`-vs-`$GITHUB_ENV` precedence ambiguity, so they live
+      # EXCLUSIVELY in the resolve step. Staging fallback values still come
+      # from vars.FREIGHTER_BACKEND_V1_PROD_URL / vars.FREIGHTER_BACKEND_V2_STG_URL
+      # (V1 staging has no public DNS; V2 staging at freighter-backend-v2-stg is
+      # publicly reachable). freighter-backend is a read-side indexer; wallet
+      # writes go direct to Horizon/RPC, so the backend choice never affects
+      # write paths.
       # === WalletKit dev keys (existing isolation; production keys never injected) ===
       WALLET_KIT_PROJECT_ID_PROD: ${{ secrets.WALLET_KIT_PROJECT_ID_DEV }}
       WALLET_KIT_MT_NAME_PROD: ${{ vars.WALLET_KIT_MT_NAME_DEV }}
@@ -109,6 +108,13 @@ jobs:
       MP_COLLECTIONS_ADDRESSES: ${{ vars.MP_COLLECTIONS_ADDRESSES }}
       IS_E2E_TEST: "false"
       E2E_TEST_RECOVERY_PHRASE: ""
+      # Skips the jail-monkey root/jailbreak check, which reports true on
+      # many simulators — otherwise the app renders SecurityBlockScreen and
+      # the preview cannot be reviewed at all. Scoped to that one behavior;
+      # IS_E2E_TEST stays false so Sentry, logging, analytics and the
+      # WalletConnect test helpers all behave like a normal dev build.
+      # Read by isPreviewBuild (src/helpers/isEnv.ts), added in #971.
+      IS_PREVIEW_BUILD: "true"
 
     steps:
       - name: Checkout PR head
@@ -121,6 +127,158 @@ jobs:
           # `git push` using those persisted creds. `gh` uses GH_TOKEN env
           # separately so disabling this doesn't affect the release flow.
           persist-credentials: false
+
+      # ── Phase 2: fetch the PR author's sandbox URL map from freighter-config ──
+      # Runs IMMEDIATELY after checkout, BEFORE any PR-controlled script
+      # (scripts/display-ios-environment, scripts/gh-ios-env, yarn lifecycle
+      # hooks) executes, so the read-only deploy key is never in process scope
+      # while PR-authored code runs. The key material lives ONLY inside this
+      # step: written to a mode-600 tempfile, used for one shallow clone, then
+      # deleted on step exit (trap). freighter-config is a separate PRIVATE
+      # repo, so the job's GITHUB_TOKEN cannot read it — hence a dedicated,
+      # contents-read-only deploy key (provisioned via terraform/github,
+      # private half stored as secrets.FREIGHTER_CONFIG_DEPLOY_KEY).
+      #
+      # This step NEVER fails the build: an unreachable/malformed config
+      # degrades to the staging fallback (handled in "Resolve backend URLs").
+      - name: Fetch freighter-config (sandbox URL map)
+        id: fetch_config
+        env:
+          FREIGHTER_CONFIG_DEPLOY_KEY:
+            ${{ secrets.FREIGHTER_CONFIG_DEPLOY_KEY }}
+        run: |
+          set -uo pipefail
+          KEY_FILE="$(mktemp)"
+          KNOWN_HOSTS="$(mktemp)"
+          CLONE_DIR="$(mktemp -d)"
+          CONFIG_OUT="${RUNNER_TEMP}/freighter-config.json"
+          cleanup() { rm -f "$KEY_FILE" "$KNOWN_HOSTS"; rm -rf "$CLONE_DIR"; }
+          trap cleanup EXIT
+
+          if [ -z "${FREIGHTER_CONFIG_DEPLOY_KEY}" ]; then
+            echo "config_available=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::FREIGHTER_CONFIG_DEPLOY_KEY is not set; falling back to staging"
+            exit 0
+          fi
+
+          printf '%s\n' "${FREIGHTER_CONFIG_DEPLOY_KEY}" > "$KEY_FILE"
+          chmod 600 "$KEY_FILE"
+
+          # Pin GitHub's SSH host keys instead of trusting-on-first-use. On an
+          # ephemeral runner every connection is "first contact", so
+          # StrictHostKeyChecking=accept-new offers no MITM protection — a
+          # network impersonator could serve an attacker-controlled config.json
+          # whose URLs would be baked into the preview. Fetch GitHub's published
+          # host keys from the meta API over TLS-authenticated HTTPS (always
+          # current — no hardcoded key to rot; a MITM can't forge api.github.com's
+          # cert), write them to a temp known_hosts, and require
+          # StrictHostKeyChecking=yes. If we can't obtain the keys, degrade to
+          # staging rather than fall back to unverified host trust.
+          if ! curl -fsS --max-time 15 https://api.github.com/meta \
+               | jq -r '.ssh_keys[] | "github.com \(.)"' > "$KNOWN_HOSTS" \
+             || [ ! -s "$KNOWN_HOSTS" ]; then
+            echo "config_available=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Could not fetch GitHub SSH host keys; falling back to staging"
+            exit 0
+          fi
+
+          if GIT_SSH_COMMAND="ssh -i $KEY_FILE -o IdentitiesOnly=yes -o UserKnownHostsFile=$KNOWN_HOSTS -o StrictHostKeyChecking=yes" \
+               git clone --depth 1 git@github.com:stellar/freighter-config.git "$CLONE_DIR" 2>/tmp/fc-clone.err \
+             && [ -f "$CLONE_DIR/config.json" ] \
+             && jq empty "$CLONE_DIR/config.json" 2>/dev/null; then
+            # `jq empty` validates the file is parseable JSON before we publish
+            # config_available=true — otherwise a malformed config.json would
+            # make the resolve step's jq abort under `set -e` (build failure)
+            # instead of taking the documented staging fallback.
+            cp "$CLONE_DIR/config.json" "$CONFIG_OUT"
+            echo "config_available=true" >> "$GITHUB_OUTPUT"
+            echo "Fetched freighter-config/config.json"
+          else
+            echo "config_available=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::freighter-config unreachable or config.json missing/invalid; falling back to staging"
+            cat /tmp/fc-clone.err 2>/dev/null || true
+          fi
+
+      # ── Phase 2: choose sandbox vs staging and inject the six backend URLs ──
+      # No deploy key in scope here (fetch already tore it down). Reads the
+      # cached config.json (if the fetch succeeded), looks the PR author up by
+      # GitHub login, and writes the resolved URLs to $GITHUB_ENV so
+      # "Set env (preview routing)" bakes them into .env. Also manages the
+      # `preview-degraded-ios` label and exports BACKEND_TARGET/DESC/NOTE for the
+      # release notes + sticky comment.
+      - name: Resolve backend URLs (sandbox vs staging)
+        id: resolve_backend
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          CONFIG_AVAILABLE: ${{ steps.fetch_config.outputs.config_available }}
+          # Phase 1 staging fallbacks (the values previously hardcoded in job env).
+          STAGING_V1_URL: ${{ vars.FREIGHTER_BACKEND_V1_PROD_URL }}
+          STAGING_V2_URL: ${{ vars.FREIGHTER_BACKEND_V2_STG_URL }}
+        run: |
+          set -euo pipefail
+          CONFIG_OUT="${RUNNER_TEMP}/freighter-config.json"
+          V1_URL=""; V2_URL=""; TARGET=""; DESC=""; NOTE=""; DEGRADED="false"
+
+          if [ "${CONFIG_AVAILABLE}" = "true" ]; then
+            # Tolerate a malformed entry (valid JSON but unexpected shape):
+            # jq errors -> empty -> staging fallback, never aborts the build.
+            V1_URL=$(jq -r --arg u "$PR_AUTHOR" '.engineers[$u].v1 // empty' "$CONFIG_OUT" 2>/dev/null || echo "")
+            V2_URL=$(jq -r --arg u "$PR_AUTHOR" '.engineers[$u].v2 // empty' "$CONFIG_OUT" 2>/dev/null || echo "")
+            if [ -n "$V1_URL" ] && [ -n "$V2_URL" ]; then
+              TARGET="sandbox"
+              DESC="sandbox (${PR_AUTHOR})"
+              NOTE="This preview points at a per-engineer **sandbox** backend — you must have sshuttle connected to reach it (see the \`/preview\` skill)."
+            else
+              TARGET="staging"
+              DESC="V1 prod + V2 staging (no sandbox configured for @${PR_AUTHOR})"
+              NOTE="This preview points at the public V1-production / V2-staging backend — no VPN needed."
+            fi
+          else
+            TARGET="staging-degraded"; DEGRADED="true"
+            DESC="V1 prod + V2 staging — freighter-config unreachable (preview degraded)"
+            NOTE="This preview points at the public V1-production / V2-staging backend — no VPN needed."
+          fi
+
+          if [ "$TARGET" != "sandbox" ]; then
+            V1_URL="$STAGING_V1_URL"
+            V2_URL="$STAGING_V2_URL"
+          fi
+
+          if [ -z "$V1_URL" ] || [ -z "$V2_URL" ]; then
+            echo "::error::Resolved backend URLs are empty (V1='$V1_URL' V2='$V2_URL'). Check repo vars FREIGHTER_BACKEND_V1_PROD_URL / FREIGHTER_BACKEND_V2_STG_URL."
+            exit 1
+          fi
+
+          # Bake into ALL three PROD/STG/DEV slots so runtime network-switching
+          # cannot escape the intended backend (mirrors the Phase 1 trick).
+          {
+            echo "FREIGHTER_BACKEND_V1_PROD_URL=${V1_URL}"
+            echo "FREIGHTER_BACKEND_V1_STG_URL=${V1_URL}"
+            echo "FREIGHTER_BACKEND_V1_DEV_URL=${V1_URL}"
+            echo "FREIGHTER_BACKEND_V2_PROD_URL=${V2_URL}"
+            echo "FREIGHTER_BACKEND_V2_STG_URL=${V2_URL}"
+            echo "FREIGHTER_BACKEND_V2_DEV_URL=${V2_URL}"
+            echo "BACKEND_TARGET=${TARGET}"
+            echo "BACKEND_DESC=${DESC}"
+            echo "BACKEND_NOTE=${NOTE}"
+          } >> "$GITHUB_ENV"
+          echo "Backend target: ${TARGET} — ${DESC}"
+
+          # preview-degraded-ios label: create-if-missing, then add on degrade /
+          # remove otherwise so a fixed re-run self-corrects. Label plumbing
+          # must never fail the build.
+          gh label create preview-degraded-ios --repo "$GH_REPO" \
+            --color B60205 \
+            --description "iOS PR preview fell back to staging because freighter-config was unreachable" \
+            2>/dev/null || true
+          if [ "$DEGRADED" = "true" ]; then
+            gh pr edit "$PR_NUMBER" --repo "$GH_REPO" --add-label preview-degraded-ios || true
+          else
+            gh pr edit "$PR_NUMBER" --repo "$GH_REPO" --remove-label preview-degraded-ios || true
+          fi
 
       - name: Make scripts executable
         run: find scripts -type f -exec chmod +x {} \;
@@ -339,7 +497,9 @@ jobs:
           Internal preview iOS Simulator build for PR [#${PR_NUMBER}](${PR_URL}). SDF collaborators only — non-SDF GitHub users get 404 on this page. Auto-deleted when the PR is closed.
 
           **Commit:** ${PR_HEAD_SHA}
-          **Backend:** V1 production, V2 staging/beta (read-only indexer; wallet writes go direct to Horizon/RPC)
+          **Backend:** ${BACKEND_DESC} (read-only indexer; wallet writes go direct to Horizon/RPC)
+
+          ${BACKEND_NOTE}
 
           ### How to install (macOS, requires Xcode)
 
@@ -382,7 +542,7 @@ jobs:
         run: |
           set -euo pipefail
           MARKER="<!-- pr-preview-ios-simulator-comment -->"
-          BODY="${MARKER}"$'\n'"iOS Simulator preview build is ready: ${RELEASE_URL} (SDF collaborators only — install instructions in the release description)"
+          BODY="${MARKER}"$'\n'"iOS Simulator preview build is ready: ${RELEASE_URL}"$'\n'"Backend: ${BACKEND_DESC}. SDF collaborators only — install instructions in the release description."
 
           # --paginate so this works on PRs with >30 comments (default page
           # size). Without it, the marker comment can fall off a later page
