@@ -1247,11 +1247,19 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         }
       />
 
-      {/* Bottom sheet for dApp transaction requests */}
+      {/* Bottom sheet for dApp transaction requests.
+
+          sign_message and sign_auth_entry render the payload in a capped,
+          inner-scrolling box. The sheet wraps its content in a pan gesture and
+          on Android that pan cancels the nested ScrollView's scroll, so
+          dragging the payload moves the whole sheet instead of scrolling the
+          text. Disabling the content pan for those requests leaves the drag
+          handle (and the Cancel button) to dismiss the sheet. */}
       <BottomSheet
         modalRef={dappRequestBottomSheetModalRef}
         handleCloseModal={handleClearDappRequest}
         analyticsEvent={AnalyticsEvent.VIEW_SIGN_DAPP_TRANSACTION}
+        enableContentPanningGesture={!isNonTransactionRequest}
         bottomSheetModalProps={{
           onDismiss: handleClearDappRequest,
           enableDynamicSizing: true,
