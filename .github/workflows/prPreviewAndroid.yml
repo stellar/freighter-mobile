@@ -31,6 +31,12 @@ on:
 
 permissions: {}
 
+# Single concurrency group across build and cleanup. When a PR closes
+# mid-build, the close-event cleanup job cancels the still-running build
+# (cancel-in-progress: true) so the build can't finish and create an
+# orphaned release after the cleanup has already deleted whatever was
+# there. The next build's "Delete existing preview release" step is
+# idempotent, so a cancelled cleanup leaves no permanent half-state.
 concurrency:
   group: pr-preview-android-emulator-${{ github.event.pull_request.number }}
   cancel-in-progress: true
@@ -38,6 +44,15 @@ concurrency:
 jobs:
   build:
     name: Build Android Emulator APK for PR Preview
+    # Two-layer gate evaluated BEFORE any secret is injected:
+    #   1. Skip on PR close (handled by cleanup job)
+    #   2. Reject fork PRs (defense-in-depth — platform also withholds secrets)
+    # NOTE: we don't gate on author_association because the field in the
+    # webhook event payload only reflects PUBLIC org membership; SDF members
+    # with private memberships show as CONTRIBUTOR, which would lock them
+    # out. Non-SDF gating is handled by the org-level "Require approval
+    # for outside collaborators" setting plus the platform-level fork-PR
+    # secret-withholding.
     if: >-
       github.event.action != 'closed' &&
       github.event.pull_request.head.repo.full_name == github.repository
@@ -92,6 +107,11 @@ jobs:
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
         with:
           ref: ${{ github.event.pull_request.head.sha }}
+          # The default leaves a GITHUB_TOKEN auth header in .git/config for
+          # the rest of the job. With contents:write granted, any subsequent
+          # code execution (yarn lifecycle scripts, gradle) could `git push`
+          # using those persisted creds. `gh` uses GH_TOKEN env separately
+          # so disabling this doesn't affect the release flow.
           persist-credentials: false
 
       # ── Phase 2: fetch the PR author's sandbox URL map from freighter-config ──
@@ -156,6 +176,12 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
           CONFIG_AVAILABLE: ${{ steps.fetch_config.outputs.config_available }}
+          # V1 reads the PROD var deliberately, not a staging one: V1 staging
+          # has no public DNS entry — its only ingress is kube-internal and
+          # sshuttle-gated — so a preview pointed there would fail for any
+          # reviewer without VPN. V2 staging is publicly reachable, hence the
+          # asymmetry. freighter-backend is a read-side indexer; wallet writes
+          # go direct to Horizon/RPC, so this never affects write paths.
           STAGING_V1_URL: ${{ vars.FREIGHTER_BACKEND_V1_PROD_URL }}
           STAGING_V2_URL: ${{ vars.FREIGHTER_BACKEND_V2_STG_URL }}
         run: |
@@ -315,7 +341,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ env.PR_NUMBER }}
         run: |
+          # Check-then-delete instead of `|| true`. `|| true` would also
+          # swallow transient API errors (network, 422 tag-conflict) and let
+          # the subsequent `gh release create` silently reuse a stale tag
+          # pointing at an old commit.
           if gh release view "pr-preview-android-${PR_NUMBER}" > /dev/null 2>&1; then
+            # `--cleanup-tag` 422s on draft releases because drafts don't
+            # create the git tag until publish. Branch on isDraft so we only
+            # ask for tag-cleanup when there is actually a tag.
             IS_DRAFT=$(gh release view "pr-preview-android-${PR_NUMBER}" --json isDraft --jq '.isDraft')
             if [ "$IS_DRAFT" = "true" ]; then
               gh release delete "pr-preview-android-${PR_NUMBER}" --yes
@@ -334,6 +367,9 @@ jobs:
           PR_URL: ${{ github.event.pull_request.html_url }}
         run: |
           set -euo pipefail
+          # Write notes to a file rather than $(cat <<EOF) because bash's
+          # command-substitution parser tokenizes single quotes inside the
+          # heredoc body, breaking on apostrophes in prose (e.g., "haven't").
           cat > /tmp/release-notes.md <<EOF
           Internal preview Android Emulator APK for PR [#${PR_NUMBER}](${PR_URL}). SDF collaborators only — non-SDF GitHub users get 404 on this page. Auto-deleted when the PR is closed.
 
@@ -358,6 +394,18 @@ jobs:
 
           _Physical-device Android testing returns in Phase 3 (Tailscale + Closed Testing) — not available today._
           EOF
+          # Don't capture stdout from `gh release create` — it can include
+          # progress/status lines, not just the URL. Query the URL with a
+          # dedicated `gh release view --json url` call instead.
+          #
+          # No --target: if the draft is ever manually published, the tag
+          # falls back to main HEAD (reviewed code) rather than the PR's
+          # HEAD commit (unreviewed). Dropping the targeted-tag property
+          # closes a one-click escalation path where any account that can
+          # click "Publish release" on a draft mints an official-looking
+          # release containing arbitrary PR-head code; branch-protection
+          # rules do not extend to release publication. The PR's HEAD
+          # commit is still recorded in the release notes for traceability.
           gh release create "pr-preview-android-${PR_NUMBER}" \
             "${APK_PATH}" \
             --title "PR Preview #${PR_NUMBER} (Android Emulator)" \
@@ -376,6 +424,9 @@ jobs:
           set -euo pipefail
           MARKER="<!-- pr-preview-android-emulator-comment -->"
           BODY="${MARKER}"$'\n'"Android Emulator preview APK is ready: ${RELEASE_URL}"$'\n'"Backend: ${BACKEND_DESC}. SDF collaborators only — install instructions in the release description."
+          # --paginate so this works on PRs with >30 comments (default page
+          # size). Without it, the marker comment can fall off a later page
+          # and we'd post a duplicate instead of editing in place.
           EXISTING=$(gh api --paginate "repos/${GH_REPO}/issues/${PR_NUMBER}/comments" \
             --jq ".[] | select(.body | startswith(\"${MARKER}\")) | .id" | head -1)
           if [ -n "$EXISTING" ]; then
@@ -400,7 +451,14 @@ jobs:
           GH_REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
+          # Check-then-delete instead of `|| true`. `|| true` would also
+          # swallow transient API errors (network, 422 tag-conflict) and let
+          # the subsequent `gh release create` silently reuse a stale tag
+          # pointing at an old commit.
           if gh release view "pr-preview-android-${PR_NUMBER}" > /dev/null 2>&1; then
+            # `--cleanup-tag` 422s on draft releases because drafts don't
+            # create the git tag until publish. Branch on isDraft so we only
+            # ask for tag-cleanup when there is actually a tag.
             IS_DRAFT=$(gh release view "pr-preview-android-${PR_NUMBER}" --json isDraft --jq '.isDraft')
             if [ "$IS_DRAFT" = "true" ]; then
               gh release delete "pr-preview-android-${PR_NUMBER}" --yes
