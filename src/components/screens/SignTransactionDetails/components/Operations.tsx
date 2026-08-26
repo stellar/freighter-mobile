@@ -956,13 +956,13 @@ const RenderOperationByType = ({
     }
     case "invokeHostFunction": {
       const { func } = operation;
-      switch (func.switch()) {
-        case xdr.HostFunctionType.hostFunctionTypeInvokeContract(): {
-          const invocation = func.invokeContract();
+      switch (func.type) {
+        case "hostFunctionTypeInvokeContract": {
+          const invocation = func.invokeContract;
           const contractId = Address.fromScAddress(
-            invocation.contractAddress(),
+            invocation.contractAddress,
           ).toString();
-          const functionName = invocation.functionName().toString();
+          const functionName = invocation.functionName.toString();
 
           const items: ListItemProps[] = [
             {
@@ -995,7 +995,7 @@ const RenderOperationByType = ({
 
           return <List variant="secondary" items={items} />;
         }
-        case xdr.HostFunctionType.hostFunctionTypeUploadContractWasm(): {
+        case "hostFunctionTypeUploadContractWasm": {
           const items: ListItemProps[] = [
             {
               title: t("signTransactionDetails.operations.type"),
@@ -1010,8 +1010,8 @@ const RenderOperationByType = ({
 
           return <List variant="secondary" items={items} />;
         }
-        case xdr.HostFunctionType.hostFunctionTypeCreateContractV2():
-        case xdr.HostFunctionType.hostFunctionTypeCreateContract(): {
+        case "hostFunctionTypeCreateContractV2":
+        case "hostFunctionTypeCreateContract": {
           // Fall back to existing detailed component for complex create contract rendering
           return <KeyValueInvokeHostFn operation={operation} />;
         }
@@ -1248,9 +1248,9 @@ const RenderOperationArgsByType = ({
       const { func } = operation;
 
       const renderDetails = () => {
-        switch (func.switch()) {
-          case xdr.HostFunctionType.hostFunctionTypeCreateContractV2():
-          case xdr.HostFunctionType.hostFunctionTypeCreateContract(): {
+        switch (func.type) {
+          case "hostFunctionTypeCreateContractV2":
+          case "hostFunctionTypeCreateContract": {
             const createContractArgs = getCreateContractArgs(func);
             const createV2Args = createContractArgs.constructorArgs;
 
@@ -1264,13 +1264,13 @@ const RenderOperationArgsByType = ({
             );
           }
 
-          case xdr.HostFunctionType.hostFunctionTypeInvokeContract(): {
-            const invocation = func.invokeContract();
+          case "hostFunctionTypeInvokeContract": {
+            const invocation = func.invokeContract;
             const contractId = Address.fromScAddress(
-              invocation.contractAddress(),
+              invocation.contractAddress,
             ).toString();
-            const functionName = invocation.functionName().toString();
-            const args = invocation.args();
+            const functionName = invocation.functionName.toString();
+            const { args } = invocation;
 
             return (
               <KeyValueInvokeHostFnArgs
@@ -1283,8 +1283,10 @@ const RenderOperationArgsByType = ({
             );
           }
 
-          case xdr.HostFunctionType.hostFunctionTypeUploadContractWasm(): {
-            const wasm = func.wasm().toString();
+          case "hostFunctionTypeUploadContractWasm": {
+            // v17: `wasm` is a Uint8Array, whose `toString()` would render
+            // comma-joined decimals — encode it explicitly.
+            const wasm = xdr.encodeBytes(func.wasm, "hex");
 
             return (
               <KeyValueListItem

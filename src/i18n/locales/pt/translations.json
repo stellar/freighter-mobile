@@ -1173,6 +1173,11 @@
       "functionName": "Nome da função",
       "parameters": "Parâmetros",
       "contractAddress": "Endereço do contrato",
+      "executableOwner": "Proprietário do executável",
+      "executableTag": "Tag do executável",
+      "executableNote": "O código deste contrato é gerenciado pelo proprietário do executável e pode mudar depois que você assinar.",
+      "unrecognizedInvocation": "Invocação não reconhecida",
+      "unrecognizedInvocationWarning": "O Freighter não conseguiu ler esta autorização. Não assine a menos que você confie neste site.",
       "address": "Endereço do signatário"
     },
     "operations": {

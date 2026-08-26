@@ -465,7 +465,7 @@ describe("transactionBuilder Duck", () => {
         transactionService.buildSendCollectibleTransaction as jest.Mock
       ).mockResolvedValue({
         xdr: mockBuiltXDR,
-        tx: { toXDR: () => mockBuiltXDR, sequence: "1" },
+        tx: { toXdr: () => mockBuiltXDR, sequence: "1" },
       });
       (
         transactionService.simulateCollectibleTransfer as jest.Mock

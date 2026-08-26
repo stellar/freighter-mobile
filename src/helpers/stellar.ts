@@ -249,8 +249,22 @@ export const truncateAddress = (
   return `${prefix}...${suffix}`;
 };
 
-export const formattedBuffer = (data: Buffer) =>
-  truncateAddress(Buffer.from(data).toString("hex").toUpperCase());
+/**
+ * Renders a hash for display as truncated uppercase hex.
+ *
+ * Accepts a string as well as bytes because the SDK is inconsistent: the
+ * `revokeSponsorship` signer arm returns `sha256Hash` / `preAuthTx` as
+ * already-hex strings (`convertXdrSignerKeyToObject`), while `setOptions`
+ * returns real `Uint8Array`s. A string is passed through rather than re-encoded
+ * -- encoding it again would hex the ASCII of the hex.
+ */
+export const formattedBuffer = (data: Uint8Array | string) =>
+  truncateAddress(
+    (typeof data === "string"
+      ? data
+      : xdr.encodeBytes(data, "hex")
+    ).toUpperCase(),
+  );
 
 /**
  * Determines if two Stellar addresses refer to the same account
@@ -340,14 +354,14 @@ export const SIGN_MESSAGE_PREFIX = "Stellar Signed Message:\n";
  *
  * @see https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0053.md
  * @param message - UTF-8 string message to encode
- * @returns Buffer containing the 32-byte SHA-256 hash ready for signing
+ * @returns Uint8Array containing the 32-byte SHA-256 hash ready for signing
  *
  * @example
  * const message = "Hello, Stellar!";
  * const encodedMessage = encodeSep53Message(message);
- * // Returns Buffer containing SHA-256 hash of "Stellar Signed Message:\nHello, Stellar!"
+ * // Returns Uint8Array containing SHA-256 hash of "Stellar Signed Message:\nHello, Stellar!"
  */
-export const encodeSep53Message = (message: string): Buffer => {
+export const encodeSep53Message = (message: string): Uint8Array => {
   const messageBytes = Buffer.from(message, "utf8");
   const prefixBytes = Buffer.from(SIGN_MESSAGE_PREFIX, "utf8");
   const encodedMessage = Buffer.concat([prefixBytes, messageBytes]);
@@ -380,8 +394,10 @@ export const signMessage = (message: string, privateKey: string): string => {
 
   const keyPair = Keypair.fromSecret(privateKey);
   const encodedMessage = encodeSep53Message(message);
+  // v17: Keypair.sign returns a Uint8Array, whose `toString("base64")` would
+  // silently yield comma-joined decimals — encode explicitly.
   const signature = keyPair.sign(encodedMessage);
-  return signature.toString("base64");
+  return xdr.encodeBytes(signature, "base64");
 };
 
 /**
@@ -410,7 +426,7 @@ export const signAuthEntry = (
 ): { signedAuthEntry: string; signerAddress: string } => {
   // Validate that the XDR is a Soroban authorization HashIdPreimage (either
   // arm) before signing — rejects arbitrary blobs that do not conform to SEP-43.
-  const preimage = xdr.HashIdPreimage.fromXDR(preimageXdr, "base64");
+  const preimage = xdr.HashIdPreimage.fromXdr(preimageXdr, "base64");
   if (!normalizeAuthPreimage(preimage)) {
     throw new Error("Unsupported auth entry preimage type");
   }
@@ -428,7 +444,7 @@ export const signAuthEntry = (
   const signingPayload = hash(Buffer.from(preimageXdr, "base64"));
   const signature = keyPair.sign(signingPayload);
   return {
-    signedAuthEntry: signature.toString("base64"),
+    signedAuthEntry: xdr.encodeBytes(signature, "base64"),
     signerAddress: keyPair.publicKey(),
   };
 };

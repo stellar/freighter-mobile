@@ -518,7 +518,7 @@ export const approveSessionRequest = async ({
   let signedTransaction: string | null;
   let dappDomain: string | undefined;
   try {
-    transaction = TransactionBuilder.fromXDR(xdr as string, networkPassphrase);
+    transaction = TransactionBuilder.fromXdr(xdr as string, networkPassphrase);
 
     // Always sign the transaction for both supported RPC methods
     signedTransaction = signTransaction(transaction);

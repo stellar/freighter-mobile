@@ -7,6 +7,7 @@ import {
   Operation,
   Address,
   scValToNative,
+  xdr,
 } from "@stellar/stellar-sdk";
 import { BigNumber } from "bignumber.js";
 import { NETWORKS } from "config/constants";
@@ -87,15 +88,21 @@ const customTokenBalance = {
   tokenCode: "WETH",
 } as unknown as PricedBalance;
 
-const decodeInvocation = (xdr: string) => {
-  const tx = TransactionBuilder.fromXDR(xdr, Networks.TESTNET) as Transaction;
+const decodeInvocation = (xdrString: string) => {
+  const tx = TransactionBuilder.fromXdr(
+    xdrString,
+    Networks.TESTNET,
+  ) as Transaction;
   const op = tx.operations[0] as Operation.InvokeHostFunction;
-  const invoke = op.func.invokeContract();
+  const invoke = xdr.expectUnionVariant(
+    op.func,
+    "hostFunctionTypeInvokeContract",
+  ).invokeContract;
 
   return {
-    invokedContract: Address.fromScAddress(invoke.contractAddress()).toString(),
-    fnName: invoke.functionName().toString(),
-    args: invoke.args().map((arg) => scValToNative(arg)),
+    invokedContract: Address.fromScAddress(invoke.contractAddress).toString(),
+    fnName: invoke.functionName.toString(),
+    args: invoke.args.map((arg) => scValToNative(arg)),
   };
 };
 

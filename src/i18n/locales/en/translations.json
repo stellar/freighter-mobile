@@ -1173,6 +1173,11 @@
       "functionName": "Function name",
       "parameters": "Parameters",
       "contractAddress": "Contract address",
+      "executableOwner": "Executable owner",
+      "executableTag": "Executable tag",
+      "executableNote": "This contract's code is managed by the executable owner and can change after you sign.",
+      "unrecognizedInvocation": "Unrecognized invocation",
+      "unrecognizedInvocationWarning": "Freighter could not read this authorization. Do not sign unless you trust this site.",
       "address": "Signer address"
     },
     "operations": {

@@ -13,11 +13,16 @@ import {
 } from "@stellar/stellar-sdk";
 import Spinner from "components/Spinner";
 import Avatar from "components/sds/Avatar";
+import { Banner } from "components/sds/Banner";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { CLAIM_PREDICATES, mapNetworkToNetworkDetails } from "config/constants";
 import { useAuthenticationStore } from "ducks/auth";
-import { getCreateContractArgs, scValByType } from "helpers/soroban";
+import {
+  addressToString,
+  getCreateContractArgs,
+  scValByType,
+} from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
@@ -36,12 +41,20 @@ type SignerKeyOptions = Extract<
   { type: "revokeSignerSponsorship" }
 >["signer"];
 
-// Signer hash fields (sha256Hash / preAuthTx) parse to a Buffer at runtime but
-// are typed `Buffer | string`; render either as an uppercase hex string.
-const signerKeyToHex = (value: Buffer | string): string =>
-  typeof value === "string"
+/**
+ * Renders a signer hash (sha256Hash / preAuthTx) as uppercase hex.
+ *
+ * Accepts a string as well as bytes because the SDK is inconsistent: the
+ * `revokeSponsorship` signer arm returns these fields as already-hex strings
+ * (`convertXdrSignerKeyToObject`), while `setOptions` returns real
+ * `Uint8Array`s. A string is passed through rather than re-encoded -- encoding
+ * it again would hex the ASCII of the hex.
+ */
+const signerKeyToHex = (value: Uint8Array | string): string =>
+  (typeof value === "string"
     ? value
-    : Buffer.from(value).toString("hex").toUpperCase();
+    : xdr.encodeBytes(value, "hex")
+  ).toUpperCase();
 
 interface KeyValueListItemProps {
   operationKey: string;
@@ -131,7 +144,7 @@ export const KeyValueInvokeHostFnArgs = ({
           </>
         )}
         {args.map((arg, index) => {
-          const xdrString = arg.toXDR().toString();
+          const xdrString = arg.toXdr("base64");
           const contextKey = `${contractId || "no-contract"}-${fnName || "no-fn"}`;
 
           return (
@@ -364,14 +377,14 @@ export const KeyValueClaimants = ({ claimants }: KeyValueClaimantsProps) => {
     predicate,
     hideKey = false,
   }: ClaimPredicateValueProps): React.ReactNode => {
-    switch (predicate.switch().name) {
+    switch (predicate.type) {
       case "claimPredicateUnconditional": {
         return (
           <KeyValueListItem
             operationKey={
               hideKey ? "" : t("signTransactionDetails.operations.predicate")
             }
-            operationValue={CLAIM_PREDICATES[predicate.switch().name]}
+            operationValue={CLAIM_PREDICATES[predicate.type]}
           />
         );
       }
@@ -383,11 +396,11 @@ export const KeyValueClaimants = ({ claimants }: KeyValueClaimantsProps) => {
               operationKey={
                 hideKey ? "" : t("signTransactionDetails.operations.predicate")
               }
-              operationValue={CLAIM_PREDICATES[predicate.switch().name]}
+              operationValue={CLAIM_PREDICATES[predicate.type]}
             />
-            {predicate
-              .andPredicates()
-              .map((p) => claimPredicateValue({ predicate: p, hideKey: true }))}
+            {predicate.andPredicates.map((p) =>
+              claimPredicateValue({ predicate: p, hideKey: true }),
+            )}
           </>
         );
       }
@@ -399,11 +412,11 @@ export const KeyValueClaimants = ({ claimants }: KeyValueClaimantsProps) => {
               operationKey={
                 hideKey ? "" : t("signTransactionDetails.operations.predicate")
               }
-              operationValue={CLAIM_PREDICATES[predicate.switch().name]}
+              operationValue={CLAIM_PREDICATES[predicate.type]}
             />
             <KeyValueListItem
               operationKey=""
-              operationValue={predicate.absBefore().toString()}
+              operationValue={predicate.absBefore.toString()}
             />
           </>
         );
@@ -416,18 +429,18 @@ export const KeyValueClaimants = ({ claimants }: KeyValueClaimantsProps) => {
               operationKey={
                 hideKey ? "" : t("signTransactionDetails.operations.predicate")
               }
-              operationValue={CLAIM_PREDICATES[predicate.switch().name]}
+              operationValue={CLAIM_PREDICATES[predicate.type]}
             />
             <KeyValueListItem
               operationKey=""
-              operationValue={predicate.relBefore().toString()}
+              operationValue={predicate.relBefore.toString()}
             />
           </>
         );
       }
 
       case "claimPredicateNot": {
-        const notPredicate = predicate.notPredicate();
+        const { notPredicate } = predicate;
 
         if (notPredicate) {
           return (
@@ -438,7 +451,7 @@ export const KeyValueClaimants = ({ claimants }: KeyValueClaimantsProps) => {
                     ? ""
                     : t("signTransactionDetails.operations.predicate")
                 }
-                operationValue={CLAIM_PREDICATES[predicate.switch().name]}
+                operationValue={CLAIM_PREDICATES[predicate.type]}
               />
               {claimPredicateValue({ predicate: notPredicate, hideKey: true })}
             </>
@@ -455,11 +468,11 @@ export const KeyValueClaimants = ({ claimants }: KeyValueClaimantsProps) => {
               operationKey={
                 hideKey ? "" : t("signTransactionDetails.operations.predicate")
               }
-              operationValue={CLAIM_PREDICATES[predicate.switch().name]}
+              operationValue={CLAIM_PREDICATES[predicate.type]}
             />
-            {predicate
-              .orPredicates()
-              .map((p) => claimPredicateValue({ predicate: p, hideKey: true }))}
+            {predicate.orPredicates.map((p) =>
+              claimPredicateValue({ predicate: p, hideKey: true }),
+            )}
           </>
         );
       }
@@ -473,7 +486,7 @@ export const KeyValueClaimants = ({ claimants }: KeyValueClaimantsProps) => {
   return (
     <>
       {claimants.map((claimant, index) => (
-        <View key={claimant.destination + claimant.predicate.switch().name}>
+        <View key={claimant.destination + claimant.predicate.type}>
           <KeyValueWithPublicKey
             operationKey={t(
               "signTransactionDetails.operations.destinationWithNumber",
@@ -493,6 +506,93 @@ export const KeyValueClaimants = ({ claimants }: KeyValueClaimantsProps) => {
   );
 };
 
+/**
+ * Explains that a CAP-85 externally managed executable is not pinned by the
+ * transaction being signed: the owner can change the code the reference
+ * resolves to after this transaction is signed.
+ */
+export const ExternalExecutableNote = () => (
+  <Banner
+    variant="warning"
+    showChevron={false}
+    testID="ExternalExecutableNote"
+    text={t("signTransactionDetails.authorizations.executableNote")}
+  />
+);
+
+/**
+ * Renders the executable of a contract-creation host function. CAP-85
+ * (Protocol 28) adds a third arm whose code lives behind a reference into
+ * another contract's storage -- we show the owner and tag that identify the
+ * reference, and deliberately no wasm hash, because the owner can change the
+ * code the reference resolves to after this transaction is signed.
+ */
+interface ExecutableDetailsProps {
+  executable: xdr.ContractExecutable;
+}
+
+export const ExecutableDetails = ({ executable }: ExecutableDetailsProps) => {
+  const { copyToClipboard } = useClipboard();
+
+  // v17: `wasmHash` is an xdr.Hash wrapper on the wasm arm only; render it as
+  // hex (Uint8Array.toString would give comma-joined decimals).
+  const wasmHash =
+    executable.type === "contractExecutableWasm"
+      ? xdr.encodeBytes(executable.wasmHash.toBytes(), "hex")
+      : null;
+  const externalRef =
+    executable.type === "contractExecutableExternalRef"
+      ? executable.externalRef
+      : null;
+  const externalRefOwner = externalRef
+    ? addressToString(externalRef.executableOwner)
+    : null;
+
+  return (
+    <>
+      <KeyValueListItem
+        operationKey={t("signTransactionDetails.operations.executableType")}
+        operationValue={executable.type}
+      />
+      {wasmHash && (
+        <KeyValueListItem
+          operationKey={t(
+            "signTransactionDetails.operations.executableWasmHash",
+          )}
+          operationValue={
+            <View className="flex-row items-center gap-[4px]">
+              <Text>{truncateAddress(wasmHash)}</Text>
+              <Icon.Copy01
+                size={14}
+                themeColor="gray"
+                onPress={() => copyToClipboard(wasmHash)}
+              />
+            </View>
+          }
+        />
+      )}
+      {externalRef && externalRefOwner && (
+        <>
+          <KeyValueWithPublicKey
+            operationKey={t(
+              "signTransactionDetails.authorizations.executableOwner",
+            )}
+            operationValue={externalRefOwner}
+          />
+          <KeyValueListItem
+            operationKey={t(
+              "signTransactionDetails.authorizations.executableTag",
+            )}
+            // SEP-51 form: reversible for non-UTF-8 bytes, plain text otherwise.
+            operationValue={externalRef.tag.toJson()}
+          />
+          <ExternalExecutableNote />
+        </>
+      )}
+    </>
+  );
+};
+
 interface KeyValueInvokeHostFnProps {
   operation: Operation.InvokeHostFunction;
 }
@@ -504,25 +604,25 @@ export const KeyValueInvokeHostFn = ({
   const { copyToClipboard } = useClipboard();
 
   const renderDetails = () => {
-    switch (hostfn.switch()) {
-      case xdr.HostFunctionType.hostFunctionTypeCreateContractV2():
-      case xdr.HostFunctionType.hostFunctionTypeCreateContract(): {
+    switch (hostfn.type) {
+      case "hostFunctionTypeCreateContractV2":
+      case "hostFunctionTypeCreateContract": {
         const createContractArgs = getCreateContractArgs(hostfn);
         const preimage = createContractArgs.contractIdPreimage;
         const { executable } = createContractArgs;
         const createV2Args = createContractArgs.constructorArgs;
-        const executableType = executable.switch().name;
-        const wasmHash = executable.wasmHash();
 
-        if (preimage.switch().name === "contractIdPreimageFromAddress") {
-          const preimageFromAddress = preimage.fromAddress();
-          const address = preimageFromAddress.address();
-          const salt = preimageFromAddress.salt().toString("hex");
-          const addressType = address.switch();
+        if (preimage.type === "contractIdPreimageFromAddress") {
+          const preimageFromAddress = preimage.fromAddress;
+          const { address } = preimageFromAddress;
+          const salt = xdr.encodeBytes(
+            preimageFromAddress.salt.toBytes(),
+            "hex",
+          );
 
-          if (addressType.name === "scAddressTypeAccount") {
+          if (address.type === "scAddressTypeAccount") {
             const accountId = StrKey.encodeEd25519PublicKey(
-              address.accountId().ed25519(),
+              address.accountId.ed25519.toBytes(),
             );
 
             return (
@@ -552,31 +652,7 @@ export const KeyValueInvokeHostFn = ({
                     </View>
                   }
                 />
-                <KeyValueListItem
-                  operationKey={t(
-                    "signTransactionDetails.operations.executableType",
-                  )}
-                  operationValue={executableType}
-                />
-                {executable.wasmHash() && (
-                  <KeyValueListItem
-                    operationKey={t(
-                      "signTransactionDetails.operations.executableWasmHash",
-                    )}
-                    operationValue={
-                      <View className="flex-row items-center gap-[4px]">
-                        <Text>{truncateAddress(wasmHash.toString("hex"))}</Text>
-                        <Icon.Copy01
-                          size={14}
-                          themeColor="gray"
-                          onPress={() =>
-                            copyToClipboard(wasmHash.toString("hex"))
-                          }
-                        />
-                      </View>
-                    }
-                  />
-                )}
+                <ExecutableDetails executable={executable} />
               </>
             );
           }
@@ -608,39 +684,15 @@ export const KeyValueInvokeHostFn = ({
                   </View>
                 }
               />
-              <KeyValueListItem
-                operationKey={t(
-                  "signTransactionDetails.operations.executableType",
-                )}
-                operationValue={executableType}
-              />
-              {executable.wasmHash() && (
-                <KeyValueListItem
-                  operationKey={t(
-                    "signTransactionDetails.operations.executableWasmHash",
-                  )}
-                  operationValue={
-                    <View className="flex-row items-center gap-[4px]">
-                      <Text>{truncateAddress(wasmHash.toString("hex"))}</Text>
-                      <Icon.Copy01
-                        size={14}
-                        themeColor="gray"
-                        onPress={() =>
-                          copyToClipboard(wasmHash.toString("hex"))
-                        }
-                      />
-                    </View>
-                  }
-                />
-              )}
+              <ExecutableDetails executable={executable} />
               {createV2Args && <KeyValueInvokeHostFnArgs args={createV2Args} />}
             </>
           );
         }
 
         // contractIdPreimageFromAsset
-        const preimageFromAsset = preimage.fromAsset();
-        const preimageValue = preimageFromAsset.value();
+        const preimageFromAsset = preimage.fromAsset;
+        const preimageValue = preimageFromAsset.value;
 
         return (
           <>
@@ -650,16 +702,20 @@ export const KeyValueInvokeHostFn = ({
                 "signTransactionDetails.operations.createContract",
               )}
             />
-            {preimageFromAsset.switch().name === "assetTypeCreditAlphanum4" ||
-            preimageFromAsset.switch().name === "assetTypeCreditAlphanum12" ? (
+            {preimageFromAsset.type === "assetTypeCreditAlphanum4" ||
+            preimageFromAsset.type === "assetTypeCreditAlphanum12" ? (
               <>
                 <KeyValueListItem
                   operationKey={t(
                     "signTransactionDetails.operations.tokenCode",
                   )}
-                  operationValue={(preimageValue as xdr.AlphaNum12)
-                    .assetCode()
-                    .toString()}
+                  operationValue={
+                    // v17: BytesValue.toString() base64-encodes; toJson()
+                    // yields the trimmed ASCII asset code.
+                    (
+                      preimageValue as xdr.AlphaNum12
+                    ).assetCode.toJson() as string
+                  }
                 />
                 <KeyValueListItem
                   operationKey={t("signTransactionDetails.operations.issuer")}
@@ -668,9 +724,9 @@ export const KeyValueInvokeHostFn = ({
                       <Text>
                         {truncateAddress(
                           StrKey.encodeEd25519PublicKey(
-                            (preimageValue as xdr.AlphaNum12)
-                              .issuer()
-                              .ed25519(),
+                            (
+                              preimageValue as xdr.AlphaNum12
+                            ).issuer.ed25519.toBytes(),
                           ),
                         )}
                       </Text>
@@ -680,9 +736,9 @@ export const KeyValueInvokeHostFn = ({
                         onPress={() =>
                           copyToClipboard(
                             StrKey.encodeEd25519PublicKey(
-                              (preimageValue as xdr.AlphaNum12)
-                                .issuer()
-                                .ed25519(),
+                              (
+                                preimageValue as xdr.AlphaNum12
+                              ).issuer.ed25519.toBytes(),
                             ),
                           )
                         }
@@ -693,40 +749,18 @@ export const KeyValueInvokeHostFn = ({
               </>
             ) : null}
 
-            <KeyValueListItem
-              operationKey={t(
-                "signTransactionDetails.operations.executableType",
-              )}
-              operationValue={executableType}
-            />
-            {executable.wasmHash() && (
-              <KeyValueListItem
-                operationKey={t(
-                  "signTransactionDetails.operations.executableWasmHash",
-                )}
-                operationValue={
-                  <View className="flex-row items-center gap-[4px]">
-                    <Text>{truncateAddress(wasmHash.toString("hex"))}</Text>
-                    <Icon.Copy01
-                      size={14}
-                      themeColor="gray"
-                      onPress={() => copyToClipboard(wasmHash.toString("hex"))}
-                    />
-                  </View>
-                }
-              />
-            )}
+            <ExecutableDetails executable={executable} />
             {createV2Args && <KeyValueInvokeHostFnArgs args={createV2Args} />}
           </>
         );
       }
 
-      case xdr.HostFunctionType.hostFunctionTypeInvokeContract(): {
-        const invocation = hostfn.invokeContract();
+      case "hostFunctionTypeInvokeContract": {
+        const invocation = hostfn.invokeContract;
         const contractId = Address.fromScAddress(
-          invocation.contractAddress(),
+          invocation.contractAddress,
         ).toString();
-        const functionName = invocation.functionName().toString();
+        const functionName = invocation.functionName.toString();
 
         return (
           <>
@@ -757,7 +791,7 @@ export const KeyValueInvokeHostFn = ({
         );
       }
 
-      case xdr.HostFunctionType.hostFunctionTypeUploadContractWasm(): {
+      case "hostFunctionTypeUploadContractWasm": {
         return (
           <KeyValueListItem
             operationKey={t("signTransactionDetails.operations.type")}

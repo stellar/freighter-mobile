@@ -1,6 +1,6 @@
 import * as amplitude from "@amplitude/analytics-react-native";
 import { Experiment } from "@amplitude/experiment-react-native-client";
-import { hash } from "@stellar/stellar-sdk";
+import { hash, xdr } from "@stellar/stellar-sdk";
 import { AnalyticsEvent, isScreenViewEvent } from "config/analyticsConfig";
 import { logger } from "config/logger";
 import { syncSentryEnablement } from "config/sentryConfig";
@@ -274,7 +274,7 @@ export const getAccountIdHash = (publicKey: string): string => {
   const cached = accountIdHashCache.get(publicKey);
   if (cached) return cached;
   try {
-    const digest = hash(Buffer.from(publicKey, "utf8")).toString("hex");
+    const digest = xdr.encodeBytes(hash(Buffer.from(publicKey, "utf8")), "hex");
     accountIdHashCache.set(publicKey, digest);
     return digest;
   } catch {
