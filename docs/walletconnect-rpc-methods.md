@@ -289,6 +289,10 @@ import {
 const simulationResult = await server.simulateTransaction(tx);
 const authEntry = simulationResult.result.auth[0]; // SorobanAuthorizationEntry
 
+// The signature is only valid until this ledger; give the user time to review.
+const { sequence } = await server.getLatestLedger();
+const validUntilLedgerSeq = sequence + 100;
+
 // Build the HashIdPreimage — this is what the wallet will hash and sign.
 // As of stellar-sdk v17 simulation records CAP-71 ADDRESS_V2 credentials by
 // default, whose preimage is the address-bound

@@ -216,27 +216,24 @@ export const DappAuthEntryDisplay: React.FC<DappAuthEntryDisplayProps> = ({
     }
 
     if (detail.type === INVOCATION_TYPE_EXTERNAL_REF) {
-      const { address } = detail;
       return (
         <View className="gap-[12px]">
           <ExternalExecutableNote />
-          {address && (
-            <View className="gap-[4px]">
-              <Text sm secondary>
-                {t("signTransactionDetails.authorizations.contractAddress")}
+          <View className="gap-[4px]">
+            <Text sm secondary>
+              {t("signTransactionDetails.authorizations.contractAddress")}
+            </Text>
+            <View className="flex-row items-center gap-[8px]">
+              <Text sm primary style={{ flex: 1 }}>
+                {truncateAddress(detail.address)}
               </Text>
-              <View className="flex-row items-center gap-[8px]">
-                <Text sm primary style={{ flex: 1 }}>
-                  {truncateAddress(address)}
-                </Text>
-                <Icon.Copy01
-                  size={14}
-                  themeColor="gray"
-                  onPress={() => copyToClipboard(address)}
-                />
-              </View>
+              <Icon.Copy01
+                size={14}
+                themeColor="gray"
+                onPress={() => copyToClipboard(detail.address)}
+              />
             </View>
-          )}
+          </View>
           <View className="gap-[4px]">
             <Text sm secondary>
               {t("signTransactionDetails.authorizations.executableOwner")}
@@ -260,16 +257,14 @@ export const DappAuthEntryDisplay: React.FC<DappAuthEntryDisplayProps> = ({
               {detail.tag}
             </Text>
           </View>
-          {detail.salt && (
-            <View className="gap-[4px]">
-              <Text sm secondary>
-                {t("signTransactionDetails.operations.salt")}
-              </Text>
-              <Text sm primary>
-                {truncateAddress(detail.salt)}
-              </Text>
-            </View>
-          )}
+          <View className="gap-[4px]">
+            <Text sm secondary>
+              {t("signTransactionDetails.operations.salt")}
+            </Text>
+            <Text sm primary>
+              {truncateAddress(detail.salt)}
+            </Text>
+          </View>
           {detail.args && detail.args.length > 0 && (
             <KeyValueInvokeHostFnArgs args={detail.args} variant="tertiary" />
           )}

@@ -9,7 +9,8 @@ Mobile.
 
 ### Prerequisites
 
-- **Node.js** >= 22: [nodejs.org](https://nodejs.org/) or `nvm install 22`
+- **Node.js** >= 22.12: [nodejs.org](https://nodejs.org/) or `nvm install 22`
+  (`@stellar/stellar-sdk` 17 needs 22.12+ to load its ESM-only dependencies)
 - **Yarn** 4.10.0: `corepack enable && corepack prepare yarn@4.10.0 --activate`
 - **Ruby** >= 3.1.4: [rbenv](https://github.com/rbenv/rbenv) or
   [rvm](https://rvm.io/)

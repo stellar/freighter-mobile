@@ -393,9 +393,31 @@ describe("soroban helpers", () => {
       expect(details.args).toHaveLength(1);
     });
 
-    it("omits address/salt for an external-executable creation whose preimage is not the address arm", () => {
-      // The preimage arm is independent of the executable arm in XDR; the
-      // reference itself is still described.
+    it("renders a non-UTF-8 external-executable tag in its reversible SEP-51 form", () => {
+      // Two distinct binary tags must not collapse to the same replacement
+      // characters: the tag decides which executable runs.
+      const invocation = buildCreateInvocation(
+        xdr.ContractExecutable.contractExecutableExternalRef(
+          new xdr.ContractExecutableExternalRef({
+            executableOwner: new Address(OWNER_CONTRACT).toScAddress(),
+            tag: new Uint8Array([0xff, 0xfe]),
+          }),
+        ),
+      );
+
+      const [details] = getInvocationDetails(invocation);
+
+      expect(details.type).toBe(INVOCATION_TYPE_EXTERNAL_REF);
+      if (details.type !== INVOCATION_TYPE_EXTERNAL_REF) {
+        throw new Error("unreachable");
+      }
+      expect(details.tag).toBe("\\xff\\xfe");
+    });
+
+    it("rejects an external-executable creation whose preimage is not the address arm", () => {
+      // Like the SDK's own invocation decoder: an external reference deploys
+      // from an address, so this pairing is invalid and must surface as
+      // unrecognized rather than as a normal contract creation.
       const invocation = new xdr.SorobanAuthorizedInvocation({
         function:
           xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeCreateContractHostFn(
@@ -415,11 +437,12 @@ describe("soroban helpers", () => {
         subInvocations: [],
       });
 
-      expect(getInvocationArgs(invocation)).toEqual({
-        type: INVOCATION_TYPE_EXTERNAL_REF,
-        owner: OWNER_CONTRACT,
-        tag: "v2",
-      });
+      expect(() => getInvocationArgs(invocation)).toThrow(
+        /external executable reference.*contractIdPreimageFromAsset/,
+      );
+      expect(getInvocationDetails(invocation)).toEqual([
+        { type: INVOCATION_TYPE_UNRECOGNIZED },
+      ]);
     });
 
     it("explains which executable/preimage pairing was invalid when it throws", () => {
@@ -499,6 +522,12 @@ describe("soroban helpers", () => {
       expect(scValByType(xdr.ScVal.scvExecutableTag("token-v2"))).toBe(
         "token-v2",
       );
+    });
+
+    it("keeps a non-UTF-8 executable tag distinguishable via its SEP-51 form", () => {
+      expect(
+        scValByType(xdr.ScVal.scvExecutableTag(new Uint8Array([0xff, 0xfe]))),
+      ).toBe("\\xff\\xfe");
     });
 
     it("hex-encodes string payloads that are not valid UTF-8", () => {

@@ -407,15 +407,16 @@ export interface FnArgsCreateSac {
  * into another contract's storage rather than a wasm hash. `owner` and `tag`
  * identify the reference; the code behind it is chosen by the owner at
  * invocation time and can change after this entry is signed, so there is
- * deliberately no wasm hash here. `address`/`salt` are only present when the
- * contract id preimage is the address arm.
+ * deliberately no wasm hash here. `tag` is the SEP-51 JSON form of the
+ * SCString so a non-UTF-8 tag stays distinguishable (e.g. `\xff\xfe`) instead
+ * of collapsing to replacement characters.
  */
 export interface FnArgsCreateExternalRef {
   type: typeof INVOCATION_TYPE_EXTERNAL_REF;
   owner: string;
   tag: string;
-  address?: string;
-  salt?: string;
+  address: string;
+  salt: string;
   args?: xdr.ScVal[];
 }
 
@@ -514,26 +515,26 @@ export const getInvocationArgs = (
         // CAP-85 (Protocol 28): the executable is a reference to a Wasm hash
         // held by another contract, resolved on-chain at creation time.
         case "contractExecutableExternalRef": {
+          // Like wasm, an external reference deploys from an address; the SDK's
+          // own invocation decoder rejects every other pairing, so do the same
+          // rather than rendering an invalid authorization as a normal
+          // contract creation.
+          if (preimage.type !== "contractIdPreimageFromAddress") {
+            throw new Error(
+              `creation function appears invalid: an external executable reference is paired with ${preimage.type} (should be wasm+address, external ref+address, or token+asset)`,
+            );
+          }
+          const details = preimage.fromAddress;
           const { executableOwner, tag } = exec.externalRef;
+
           const externalRefDetails = {
             type: INVOCATION_TYPE_EXTERNAL_REF,
             owner: Address.fromScAddress(executableOwner).toString(),
-            tag: tag.toString(),
+            // SEP-51 form: reversible for non-UTF-8 bytes, plain text otherwise.
+            tag: tag.toJson(),
+            address: Address.fromScAddress(details.address).toString(),
+            salt: xdr.encodeBytes(details.salt.toBytes(), "hex"),
           } as FnArgsCreateExternalRef;
-
-          // CAP-85 refs are expected to deploy from an address, but the
-          // preimage arm is independent of the executable arm -- only read it
-          // when it is a shape we can describe.
-          if (preimage.type === "contractIdPreimageFromAddress") {
-            const details = preimage.fromAddress;
-            externalRefDetails.address = Address.fromScAddress(
-              details.address,
-            ).toString();
-            externalRefDetails.salt = xdr.encodeBytes(
-              details.salt.toBytes(),
-              "hex",
-            );
-          }
 
           if (isCreateV2) {
             externalRefDetails.args = (
@@ -641,9 +642,11 @@ export const scValByType = (scVal: xdr.ScVal): any => {
       );
     }
 
-    // CAP-85 (Protocol 28): an executable tag is an SCString.
+    // CAP-85 (Protocol 28): an executable tag is an SCString. Use the SEP-51
+    // JSON form so a non-UTF-8 tag stays distinguishable instead of decoding
+    // to replacement characters.
     case "scvExecutableTag": {
-      return scVal.executableTag.toString();
+      return scVal.executableTag.toJson();
     }
 
     case "scvString":

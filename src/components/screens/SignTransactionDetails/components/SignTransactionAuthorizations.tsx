@@ -196,23 +196,21 @@ const SignTransactionAuthorizations = ({
               </View>
             </View>
             <ExternalExecutableNote />
-            {detail.address && (
-              <KeyValueListItem
-                operationKey={t(
-                  "signTransactionDetails.authorizations.contractAddress",
-                )}
-                operationValue={
-                  <View className="flex-row items-center gap-[4px]">
-                    <Text>{truncateAddress(detail.address)}</Text>
-                    <Icon.Copy01
-                      size={14}
-                      themeColor="gray"
-                      onPress={() => copyToClipboard(detail.address ?? "")}
-                    />
-                  </View>
-                }
-              />
-            )}
+            <KeyValueListItem
+              operationKey={t(
+                "signTransactionDetails.authorizations.contractAddress",
+              )}
+              operationValue={
+                <View className="flex-row items-center gap-[4px]">
+                  <Text>{truncateAddress(detail.address)}</Text>
+                  <Icon.Copy01
+                    size={14}
+                    themeColor="gray"
+                    onPress={() => copyToClipboard(detail.address)}
+                  />
+                </View>
+              }
+            />
             <KeyValueListItem
               operationKey={t(
                 "signTransactionDetails.authorizations.executableOwner",
@@ -234,12 +232,10 @@ const SignTransactionAuthorizations = ({
               )}
               operationValue={detail.tag}
             />
-            {detail.salt && (
-              <KeyValueListItem
-                operationKey={t("common.salt")}
-                operationValue={truncateAddress(detail.salt)}
-              />
-            )}
+            <KeyValueListItem
+              operationKey={t("common.salt")}
+              operationValue={truncateAddress(detail.salt)}
+            />
             {detail.args && <KeyValueInvokeHostFnArgs args={detail.args} />}
           </View>
         );

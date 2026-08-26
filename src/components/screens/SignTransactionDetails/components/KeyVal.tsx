@@ -583,7 +583,8 @@ export const ExecutableDetails = ({
             operationKey={t(
               "signTransactionDetails.authorizations.executableTag",
             )}
-            operationValue={externalRef.tag.toString()}
+            // SEP-51 form: reversible for non-UTF-8 bytes, plain text otherwise.
+            operationValue={externalRef.tag.toJson()}
           />
           <ExternalExecutableNote />
         </>
