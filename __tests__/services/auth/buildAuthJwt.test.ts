@@ -1,4 +1,4 @@
-import { Keypair } from "@stellar/stellar-sdk";
+import { Keypair, xdr } from "@stellar/stellar-sdk";
 import {
   ISS,
   JWT_LIFETIME_SECONDS,
@@ -54,7 +54,9 @@ describe("buildAuthJwt", () => {
     });
 
     it("has sub = raw public key hex", () => {
-      expect(payloadJson.sub).toBe(keypair.rawPublicKey().toString("hex"));
+      expect(payloadJson.sub).toBe(
+        xdr.encodeBytes(keypair.rawPublicKey(), "hex"),
+      );
     });
 
     it("has iss = 'freighter-mobile'", () => {

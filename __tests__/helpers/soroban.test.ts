@@ -1,4 +1,4 @@
-import { Address, xdr } from "@stellar/stellar-sdk";
+import { Address, Keypair, xdr } from "@stellar/stellar-sdk";
 import { BigNumber } from "bignumber.js";
 import {
   ClassicBalance,
@@ -10,6 +10,12 @@ import {
   computeTotalFeeXlm,
   getArgsForTokenInvocation,
   getAuthEntryBoundAddress,
+  getInvocationArgs,
+  getInvocationDetails,
+  INVOCATION_TYPE_EXTERNAL_REF,
+  INVOCATION_TYPE_UNRECOGNIZED,
+  INVOCATION_TYPE_WASM,
+  scValByType,
   SorobanTokenInterface,
   addressToString,
   isSorobanTransaction,
@@ -24,6 +30,10 @@ jest.mock("helpers/soroban", () => {
     isContractId: (address: string) => mockIsContractId(address),
   };
 });
+
+// A well-formed contract strkey used as an executable owner / address fixture.
+const OWNER_CONTRACT =
+  "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSC4";
 
 describe("soroban helpers", () => {
   describe("getArgsForTokenInvocation", () => {
@@ -44,8 +54,8 @@ describe("soroban helpers", () => {
         // Mock i128 amount for token transfer
         const mockAmount = xdr.ScVal.scvI128(
           new xdr.Int128Parts({
-            lo: xdr.Uint64.fromString("1000000"),
-            hi: xdr.Int64.fromString("0"),
+            lo: BigInt("1000000"),
+            hi: BigInt(0),
           }),
         );
 
@@ -106,8 +116,8 @@ describe("soroban helpers", () => {
         );
         const mockAmount = xdr.ScVal.scvI128(
           new xdr.Int128Parts({
-            lo: xdr.Uint64.fromString("1000000"),
-            hi: xdr.Int64.fromString("0"),
+            lo: BigInt("1000000"),
+            hi: BigInt(0),
           }),
         );
 
@@ -161,8 +171,8 @@ describe("soroban helpers", () => {
         );
         const mockAmount = xdr.ScVal.scvI128(
           new xdr.Int128Parts({
-            lo: xdr.Uint64.fromString("5000000"),
-            hi: xdr.Int64.fromString("0"),
+            lo: BigInt("5000000"),
+            hi: BigInt(0),
           }),
         );
         // Add a dummy third argument to satisfy the implementation
@@ -223,9 +233,9 @@ describe("soroban helpers", () => {
     });
 
     it("should convert contract address to string", () => {
-      // Buffer extends Uint8Array, which is compatible with the Hash type expected by stellar-sdk
+      // v17: ScAddress contract ids are xdr.ContractId wrappers, not raw bytes.
       const mockAddress = xdr.ScAddress.scAddressTypeContract(
-        Buffer.alloc(32, 1) as any,
+        new xdr.ContractId(Buffer.alloc(32, 1)),
       );
 
       const result = addressToString(mockAddress);
@@ -259,7 +269,7 @@ describe("soroban helpers", () => {
     const addressCreds = () =>
       new xdr.SorobanAddressCredentials({
         address: new Address(BOUND_ADDRESS).toScAddress(),
-        nonce: xdr.Int64.fromString("1") as xdr.Int64,
+        nonce: BigInt("1"),
         signatureExpirationLedger: 999999,
         signature: xdr.ScVal.scvVoid(),
       });
@@ -301,6 +311,223 @@ describe("soroban helpers", () => {
         ),
       );
       expect(getAuthEntryBoundAddress(entry)).toBe(BOUND_ADDRESS);
+    });
+  });
+
+  describe("getInvocationDetails", () => {
+    const deployer = Keypair.random().publicKey();
+
+    const buildCreateInvocation = (
+      executable: xdr.ContractExecutable,
+      constructorArgs?: xdr.ScVal[],
+    ) => {
+      const preimage = xdr.ContractIdPreimage.contractIdPreimageFromAddress(
+        new xdr.ContractIdPreimageFromAddress({
+          address: new Address(deployer).toScAddress(),
+          salt: new xdr.Uint256Bytes(Buffer.alloc(32, 7)),
+        }),
+      );
+      const fn = constructorArgs
+        ? xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeCreateContractV2HostFn(
+            new xdr.CreateContractArgsV2({
+              contractIdPreimage: preimage,
+              executable,
+              constructorArgs,
+            }),
+          )
+        : xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeCreateContractHostFn(
+            new xdr.CreateContractArgs({
+              contractIdPreimage: preimage,
+              executable,
+            }),
+          );
+      return new xdr.SorobanAuthorizedInvocation({
+        function: fn,
+        subInvocations: [],
+      });
+    };
+
+    it("describes a wasm contract creation", () => {
+      const invocation = buildCreateInvocation(
+        xdr.ContractExecutable.contractExecutableWasm(
+          new xdr.Hash(Buffer.alloc(32, 9)),
+        ),
+      );
+
+      const [details] = getInvocationDetails(invocation);
+
+      expect(details.type).toBe(INVOCATION_TYPE_WASM);
+      if (details.type !== INVOCATION_TYPE_WASM) throw new Error("unreachable");
+      expect(details.hash).toBe("09".repeat(32));
+      expect(details.salt).toBe("07".repeat(32));
+      expect(details.address).toBe(deployer);
+    });
+
+    it("describes a CAP-85 external-executable contract creation (Protocol 28)", () => {
+      const invocation = buildCreateInvocation(
+        xdr.ContractExecutable.contractExecutableExternalRef(
+          new xdr.ContractExecutableExternalRef({
+            executableOwner: new Address(OWNER_CONTRACT).toScAddress(),
+            tag: "token-v2",
+          }),
+        ),
+        [xdr.ScVal.scvU32(1)],
+      );
+
+      // Round-trip through XDR so the assertion covers the decode path a dapp
+      // request actually takes.
+      const decoded = xdr.SorobanAuthorizedInvocation.fromXdr(
+        invocation.toXdr("base64"),
+        "base64",
+      );
+      const [details] = getInvocationDetails(decoded);
+
+      expect(details.type).toBe(INVOCATION_TYPE_EXTERNAL_REF);
+      if (details.type !== INVOCATION_TYPE_EXTERNAL_REF) {
+        throw new Error("unreachable");
+      }
+      expect(details.owner).toBe(OWNER_CONTRACT);
+      expect(details.tag).toBe("token-v2");
+      expect(details.salt).toBe("07".repeat(32));
+      expect(details.address).toBe(deployer);
+      expect(details.args).toHaveLength(1);
+    });
+
+    it("omits address/salt for an external-executable creation whose preimage is not the address arm", () => {
+      // The preimage arm is independent of the executable arm in XDR; the
+      // reference itself is still described.
+      const invocation = new xdr.SorobanAuthorizedInvocation({
+        function:
+          xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeCreateContractHostFn(
+            new xdr.CreateContractArgs({
+              contractIdPreimage:
+                xdr.ContractIdPreimage.contractIdPreimageFromAsset(
+                  xdr.Asset.assetTypeNative(),
+                ),
+              executable: xdr.ContractExecutable.contractExecutableExternalRef(
+                new xdr.ContractExecutableExternalRef({
+                  executableOwner: new Address(OWNER_CONTRACT).toScAddress(),
+                  tag: "v2",
+                }),
+              ),
+            }),
+          ),
+        subInvocations: [],
+      });
+
+      expect(getInvocationArgs(invocation)).toEqual({
+        type: INVOCATION_TYPE_EXTERNAL_REF,
+        owner: OWNER_CONTRACT,
+        tag: "v2",
+      });
+    });
+
+    it("explains which executable/preimage pairing was invalid when it throws", () => {
+      const assetPreimage = xdr.ContractIdPreimage.contractIdPreimageFromAsset(
+        xdr.Asset.assetTypeNative(),
+      );
+      const addressPreimage =
+        xdr.ContractIdPreimage.contractIdPreimageFromAddress(
+          new xdr.ContractIdPreimageFromAddress({
+            address: new Address(deployer).toScAddress(),
+            salt: new xdr.Uint256Bytes(Buffer.alloc(32)),
+          }),
+        );
+      const build = (
+        executable: xdr.ContractExecutable,
+        contractIdPreimage: xdr.ContractIdPreimage,
+      ) =>
+        new xdr.SorobanAuthorizedInvocation({
+          function:
+            xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeCreateContractHostFn(
+              new xdr.CreateContractArgs({ contractIdPreimage, executable }),
+            ),
+          subInvocations: [],
+        });
+
+      // wasm code must be deployed from an address, never derived from an asset
+      expect(() =>
+        getInvocationArgs(
+          build(
+            xdr.ContractExecutable.contractExecutableWasm(
+              new xdr.Hash(Buffer.alloc(32)),
+            ),
+            assetPreimage,
+          ),
+        ),
+      ).toThrow(/wasm executable.*contractIdPreimageFromAsset/);
+
+      // and a SAC is only ever derived from an asset
+      expect(() =>
+        getInvocationArgs(
+          build(
+            xdr.ContractExecutable.contractExecutableStellarAsset(),
+            addressPreimage,
+          ),
+        ),
+      ).toThrow(/Stellar asset executable.*contractIdPreimageFromAddress/);
+    });
+
+    it("marks an invocation it cannot parse as unrecognized instead of throwing", () => {
+      // A wasm executable paired with an asset preimage is decodable XDR but a
+      // nonsensical combination -- the kind of thing a future protocol arm or a
+      // hostile dApp could produce. It must not crash the review UI.
+      const invocation = new xdr.SorobanAuthorizedInvocation({
+        function:
+          xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeCreateContractHostFn(
+            new xdr.CreateContractArgs({
+              contractIdPreimage:
+                xdr.ContractIdPreimage.contractIdPreimageFromAsset(
+                  xdr.Asset.assetTypeNative(),
+                ),
+              executable: xdr.ContractExecutable.contractExecutableWasm(
+                new xdr.Hash(Buffer.alloc(32)),
+              ),
+            }),
+          ),
+        subInvocations: [],
+      });
+
+      expect(getInvocationDetails(invocation)).toEqual([
+        { type: INVOCATION_TYPE_UNRECOGNIZED },
+      ]);
+    });
+  });
+
+  describe("scValByType", () => {
+    it("decodes a CAP-85 executable tag like a string", () => {
+      expect(scValByType(xdr.ScVal.scvExecutableTag("token-v2"))).toBe(
+        "token-v2",
+      );
+    });
+
+    it("hex-encodes string payloads that are not valid UTF-8", () => {
+      expect(
+        scValByType(xdr.ScVal.scvString(new Uint8Array([0xff, 0xfe]))),
+      ).toBe("fffe");
+    });
+
+    it("hex-encodes bytes", () => {
+      expect(scValByType(xdr.ScVal.scvBytes(new Uint8Array([1, 2, 255])))).toBe(
+        "0102ff",
+      );
+    });
+
+    it("returns a strkey for account and contract addresses", () => {
+      const account = Keypair.random().publicKey();
+      expect(
+        scValByType(xdr.ScVal.scvAddress(new Address(account).toScAddress())),
+      ).toBe(account);
+      expect(
+        scValByType(
+          xdr.ScVal.scvAddress(new Address(OWNER_CONTRACT).toScAddress()),
+        ),
+      ).toBe(OWNER_CONTRACT);
+    });
+
+    it("stringifies integers", () => {
+      expect(scValByType(xdr.ScVal.scvU32(7))).toBe("7");
+      expect(scValByType(xdr.ScVal.scvI64(BigInt("-5")))).toBe("-5");
     });
   });
 

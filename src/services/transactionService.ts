@@ -518,7 +518,7 @@ export const buildPaymentTransaction = async (
       });
 
       const transaction = transactionBuilder.build();
-      const transactionXDR = transaction.toXDR();
+      const transactionXDR = transaction.toXdr();
 
       return {
         tx: transaction,
@@ -557,7 +557,7 @@ export const buildPaymentTransaction = async (
 
             return {
               tx: transaction,
-              xdr: transaction.toXDR(),
+              xdr: transaction.toXdr(),
               finalDestination: recipientAddress,
             };
           }
@@ -580,7 +580,7 @@ export const buildPaymentTransaction = async (
 
     return {
       tx: transaction,
-      xdr: transaction.toXDR(),
+      xdr: transaction.toXdr(),
       finalDestination: recipientAddress,
     };
   } catch (error) {
@@ -678,7 +678,7 @@ export const buildSwapTransaction = async (
     );
 
     const transaction = txBuilder.build();
-    return { tx: transaction, xdr: transaction.toXDR() };
+    return { tx: transaction, xdr: transaction.toXdr() };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
 
@@ -758,7 +758,7 @@ export const buildSendCollectibleTransaction = async (
 
     return {
       tx: transaction,
-      xdr: transaction.toXDR(),
+      xdr: transaction.toXdr(),
       finalDestination,
     };
   } catch (error) {

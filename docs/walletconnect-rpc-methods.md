@@ -280,26 +280,27 @@ specific contract invocation without submitting a transaction.
 **Building the `entryXdr` on your dApp**
 
 ```typescript
-import { xdr, Networks, hash, Keypair } from "@stellar/stellar-sdk";
+import {
+  buildAuthorizationEntryPreimage,
+  Networks,
+} from "@stellar/stellar-sdk";
 
 // Obtain the SorobanAuthorizationEntry from your contract simulation
 const simulationResult = await server.simulateTransaction(tx);
 const authEntry = simulationResult.result.auth[0]; // SorobanAuthorizationEntry
 
-// Build the HashIdPreimage — this is what the wallet will hash and sign
-const preimage = xdr.HashIdPreimage.envelopeTypeSorobanAuthorization(
-  new xdr.HashIdPreimageSorobanAuthorization({
-    networkId: hash(Buffer.from(Networks.PUBLIC)),
-    nonce: authEntry.credentials().address().nonce(),
-    signatureExpirationLedger: authEntry
-      .credentials()
-      .address()
-      .signatureExpirationLedger(),
-    invocation: authEntry.rootInvocation(),
-  }),
+// Build the HashIdPreimage — this is what the wallet will hash and sign.
+// As of stellar-sdk v17 simulation records CAP-71 ADDRESS_V2 credentials by
+// default, whose preimage is the address-bound
+// `envelopeTypeSorobanAuthorizationWithAddress` arm; let the SDK pick the
+// right arm off the entry instead of hand-rolling the legacy one.
+const preimage = buildAuthorizationEntryPreimage(
+  authEntry,
+  validUntilLedgerSeq,
+  Networks.PUBLIC,
 );
 
-const entryXdr = preimage.toXDR("base64");
+const entryXdr = preimage.toXdr("base64");
 
 // Send via WalletConnect
 const result = await walletKit.request({

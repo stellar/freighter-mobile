@@ -46,7 +46,7 @@ jest.mock("@stellar/stellar-sdk", () => {
   return {
     ...actual,
     TransactionBuilder: {
-      fromXDR: jest.fn((xdrString: string, networkPassphrase: string) => ({
+      fromXdr: jest.fn((xdrString: string, networkPassphrase: string) => ({
         xdrString,
         networkPassphrase,
         build: jest.fn(),

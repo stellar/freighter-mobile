@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import {
   Account,
+  Address,
   Asset,
   BASE_FEE,
   Networks,
@@ -422,5 +423,109 @@ describe("SignTransactionDetails > Operations: asset issuer disclosure", () => {
 
     expect(await findByText(label("tokenCode"), {}, FIND)).toBeTruthy();
     expect(await findByText(label("tokenIssuer"), {}, FIND)).toBeTruthy();
+  });
+});
+
+describe("SignTransactionDetails > Operations: contract creation executables", () => {
+  // KeyVal labels come from i18next's bare `t` (not react-i18next's hook), which
+  // is not initialised here, so these assertions target rendered values.
+  const OWNER_CONTRACT =
+    "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSC4";
+
+  it("renders the wasm hash for a wasm executable and no external-executable note", async () => {
+    const ops = operationsFor(
+      Operation.createCustomContract({
+        address: new Address(SOURCE),
+        wasmHash: Buffer.alloc(32, 9),
+        salt: Buffer.alloc(32, 1),
+      }),
+    );
+
+    const { findByText, queryByTestId, queryByText } = render(
+      <Operations operations={ops} />,
+    );
+
+    expect(await findByText("contractExecutableWasm", {}, FIND)).toBeTruthy();
+    expect(
+      await findByText(truncateAddress("09".repeat(32)), {}, FIND),
+    ).toBeTruthy();
+    expect(queryByTestId("ExternalExecutableNote")).toBeNull();
+    expect(queryByText(truncateAddress(OWNER_CONTRACT))).toBeNull();
+  });
+
+  it("renders owner, tag and the note for a CAP-85 external executable (Protocol 28), and no wasm hash", async () => {
+    const ops = operationsFor(
+      Operation.createCustomContract({
+        address: new Address(SOURCE),
+        externalRef: { owner: OWNER_CONTRACT, tag: "token-v2" },
+        salt: Buffer.alloc(32, 1),
+      }),
+    );
+
+    const { findByText, findByTestId, queryByText } = render(
+      <Operations operations={ops} />,
+    );
+
+    expect(
+      await findByText("contractExecutableExternalRef", {}, FIND),
+    ).toBeTruthy();
+    expect(
+      await findByText(truncateAddress(OWNER_CONTRACT), {}, FIND),
+    ).toBeTruthy();
+    expect(await findByText("token-v2", {}, FIND)).toBeTruthy();
+    expect(await findByTestId("ExternalExecutableNote", {}, FIND)).toBeTruthy();
+    // An external reference deliberately carries no wasm hash.
+    expect(queryByText("contractExecutableWasm")).toBeNull();
+  });
+});
+
+describe("SignTransactionDetails > Operations: hash-based signer keys", () => {
+  // SDK 17 decodes revokeSignerSponsorship signer hashes to hex *strings* but
+  // setOptions signer hashes to Uint8Arrays; both must render as the same
+  // uppercase hex (and never re-hex the string or throw).
+  const HASH_HEX = "ab".repeat(32);
+  const HASH_UPPER = HASH_HEX.toUpperCase();
+
+  it("revokeSignerSponsorship with a sha256Hash signer renders the hash as uppercase hex", async () => {
+    const ops = operationsFor(
+      Operation.revokeSignerSponsorship({
+        account: SOURCE,
+        signer: { sha256Hash: HASH_HEX },
+      }),
+    );
+
+    const { findByText, queryByText } = render(<Operations operations={ops} />);
+
+    expect(await findByText(HASH_UPPER, {}, FIND)).toBeTruthy();
+    // the old Buffer.from(<hex string>) path rendered the hex of the ASCII
+    expect(queryByText(Buffer.from(HASH_HEX).toString("hex"))).toBeNull();
+  });
+
+  it("revokeSignerSponsorship with a preAuthTx signer renders the hash as uppercase hex", async () => {
+    const ops = operationsFor(
+      Operation.revokeSignerSponsorship({
+        account: SOURCE,
+        signer: { preAuthTx: HASH_HEX },
+      }),
+    );
+
+    const { findByText } = render(<Operations operations={ops} />);
+
+    expect(await findByText(HASH_UPPER, {}, FIND)).toBeTruthy();
+  });
+
+  it("setOptions with a sha256Hash signer (decoded as bytes) renders the same uppercase hex", async () => {
+    const ops = operationsFor(
+      Operation.setOptions({
+        signer: { sha256Hash: Buffer.from(HASH_HEX, "hex"), weight: 1 },
+      }),
+    );
+
+    const { findByText } = render(<Operations operations={ops} />);
+
+    // setOptions renders its signer through the truncating hash row
+    expect(
+      await findByText(truncateAddress(HASH_UPPER), {}, FIND),
+    ).toBeTruthy();
   });
 });

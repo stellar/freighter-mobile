@@ -91,7 +91,7 @@ export function parseAuthEntryPreimage(
   entryXdr: string,
 ): ValidationResult<xdr.HashIdPreimage> {
   try {
-    const preimage = xdr.HashIdPreimage.fromXDR(entryXdr, "base64");
+    const preimage = xdr.HashIdPreimage.fromXdr(entryXdr, "base64");
     return { valid: true, value: preimage };
   } catch (e) {
     return { valid: false, errorKey: ValidationErrorKeys.INVALID_AUTH_ENTRY };
@@ -105,7 +105,8 @@ export function parseAuthEntryPreimage(
  * signer address in addition to the legacy fields.
  */
 export interface NormalizedAuthPreimage {
-  networkId: Buffer;
+  /** v17: an `xdr.Hash` wrapper (not raw bytes) — compare via `.equals()`. */
+  networkId: xdr.Hash;
   invocation: xdr.SorobanAuthorizedInvocation;
   /** Present only for envelopeTypeSorobanAuthorizationWithAddress (CAP-71 ADDRESS_V2). */
   address?: xdr.ScAddress;
@@ -119,17 +120,17 @@ export function normalizeAuthPreimage(
   preimage: xdr.HashIdPreimage,
 ): NormalizedAuthPreimage | null {
   try {
-    switch (preimage.switch()) {
-      case xdr.EnvelopeType.envelopeTypeSorobanAuthorization(): {
-        const auth = preimage.sorobanAuthorization();
-        return { networkId: auth.networkId(), invocation: auth.invocation() };
+    switch (preimage.type) {
+      case "envelopeTypeSorobanAuthorization": {
+        const auth = preimage.sorobanAuthorization;
+        return { networkId: auth.networkId, invocation: auth.invocation };
       }
-      case xdr.EnvelopeType.envelopeTypeSorobanAuthorizationWithAddress(): {
-        const auth = preimage.sorobanAuthorizationWithAddress();
+      case "envelopeTypeSorobanAuthorizationWithAddress": {
+        const auth = preimage.sorobanAuthorizationWithAddress;
         return {
-          networkId: auth.networkId(),
-          invocation: auth.invocation(),
-          address: auth.address(),
+          networkId: auth.networkId,
+          invocation: auth.invocation,
+          address: auth.address,
         };
       }
       default:
@@ -158,7 +159,10 @@ export function validateAuthEntryNetwork(
     return { valid: false, errorKey: ValidationErrorKeys.INVALID_AUTH_ENTRY };
   }
 
-  const expectedNetworkId = hash(Buffer.from(networkPassphrase));
+  // v17: `networkId` is an `xdr.Hash` wrapper, so compare via its structural
+  // `equals` against an equally-wrapped expected hash (a wrapper's `equals`
+  // returns false for raw bytes rather than comparing them).
+  const expectedNetworkId = new xdr.Hash(hash(Buffer.from(networkPassphrase)));
   if (!normalized.networkId.equals(expectedNetworkId)) {
     return {
       valid: false,
