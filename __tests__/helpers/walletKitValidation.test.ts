@@ -623,7 +623,7 @@ describe("validateAuthEntryAddress", () => {
     }
   });
 
-  it("passes a contract-bound address through (cannot match a wallet key)", () => {
+  it("rejects a contract-bound address (delegated auth is not supported — freighter-mobile#894)", () => {
     const preimage = xdr.HashIdPreimage.fromXDR(
       buildTestWithAddressPreimage(
         Networks.TESTNET,
@@ -633,7 +633,12 @@ describe("validateAuthEntryAddress", () => {
       "base64",
     );
     const result = validateAuthEntryAddress(preimage, OTHER_WALLET_ADDRESS);
-    expect(result.valid).toBe(true);
+    expect(result.valid).toBe(false);
+    if (!result.valid) {
+      expect(result.errorKey).toBe(
+        ValidationErrorKeys.AUTH_ENTRY_ADDRESS_MISMATCH,
+      );
+    }
   });
 
   it("returns invalid for a non-Soroban-authorization preimage", () => {
