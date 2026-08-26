@@ -200,8 +200,6 @@ export const DappAuthEntryDisplay: React.FC<DappAuthEntryDisplayProps> = ({
       );
     }
 
-    // CAP-85 (Protocol 28): contract created from an external executable
-    // reference (owner contract + tag) instead of a Wasm hash.
     if (detail.type === INVOCATION_TYPE_UNRECOGNIZED) {
       return (
         <Banner
@@ -215,6 +213,8 @@ export const DappAuthEntryDisplay: React.FC<DappAuthEntryDisplayProps> = ({
       );
     }
 
+    // CAP-85 (Protocol 28): contract created from an external executable
+    // reference (owner contract + tag) instead of a Wasm hash.
     if (detail.type === INVOCATION_TYPE_EXTERNAL_REF) {
       return (
         <View className="gap-[12px]">
@@ -326,7 +326,8 @@ export const DappAuthEntryDisplay: React.FC<DappAuthEntryDisplayProps> = ({
           const isExpanded = expandedIndices.has(index);
           return (
             <View
-              key={getDetailKey(detail)}
+              // eslint-disable-next-line react/no-array-index-key --- the list is static per entry and getDetailKey can repeat (e.g. every unrecognized invocation), so the index disambiguates
+              key={`${getDetailKey(detail)}-${index}`}
               className="rounded-[16px] overflow-hidden"
               style={{ backgroundColor: themeColors.background.secondary }}
               testID={`auth-entry-item-${index}`}

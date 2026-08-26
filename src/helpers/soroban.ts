@@ -436,6 +436,23 @@ const isInvocationArg = (
   invocation: InvocationArgs | undefined,
 ): invocation is InvocationArgs => !!invocation;
 
+/**
+ * Decodes a single authorized invocation into the shape the signing screens
+ * render.
+ *
+ * Returns `undefined` for function types we do not render. For contract
+ * creations, decodes the wasm, Stellar-asset, and CAP-85 (Protocol 28)
+ * external-reference executables; the `externalRef` arm reports the owner and
+ * tag but deliberately no wasm hash, since the owner can change the code the
+ * reference resolves to after signing.
+ *
+ * Throws when the creation is not something we can safely describe: an
+ * executable paired with the wrong contract-id preimage (wasm or external ref
+ * without an address preimage, Stellar asset without an asset preimage), or an
+ * executable type this build does not know. Callers that must not fail the
+ * whole view should catch and substitute `FnArgsUnrecognized` (see
+ * `getInvocationDetails`).
+ */
 export const getInvocationArgs = (
   invocation: xdr.SorobanAuthorizedInvocation,
 ): InvocationArgs | undefined => {
@@ -570,6 +587,13 @@ export const getInvocationDetails = (
     } catch (error) {
       // An invocation we cannot decode must not take down the whole signing
       // view -- surface it so the user sees that something was unreadable.
+      //
+      // `error` rather than `warn` (unlike the XDR-parse failures upstream):
+      // the XDR itself parsed, so reaching here means either our decoder is
+      // missing an executable/preimage arm the network now accepts, or a dApp
+      // is asking the user to sign a creation the SDK considers invalid. Both
+      // warrant an engineer's attention, and volume is bounded by user-initiated
+      // sign requests.
       logger.error("soroban", "Failed to decode authorized invocation", error);
       invocations.push({ type: INVOCATION_TYPE_UNRECOGNIZED });
     }

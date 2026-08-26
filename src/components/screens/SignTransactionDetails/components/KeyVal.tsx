@@ -527,11 +527,11 @@ export const ExternalExecutableNote = () => (
  * reference, and deliberately no wasm hash, because the owner can change the
  * code the reference resolves to after this transaction is signed.
  */
-export const ExecutableDetails = ({
-  executable,
-}: {
+interface ExecutableDetailsProps {
   executable: xdr.ContractExecutable;
-}) => {
+}
+
+export const ExecutableDetails = ({ executable }: ExecutableDetailsProps) => {
   const { copyToClipboard } = useClipboard();
 
   // v17: `wasmHash` is an xdr.Hash wrapper on the wasm arm only; render it as
