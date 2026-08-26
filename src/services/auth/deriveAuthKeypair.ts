@@ -9,7 +9,7 @@
 // derives from `bip39` directly (stellar/freighter#2876), and (2) we need its
 // async `mnemonicToSeed` + `validateMnemonic` here. It is pinned to the same
 // exact version stellar-hd-wallet resolves transitively.
-import { Keypair } from "@stellar/stellar-sdk";
+import { Keypair, xdr } from "@stellar/stellar-sdk";
 import { mnemonicToSeed, validateMnemonic } from "bip39";
 import { createHmac } from "crypto";
 
@@ -36,5 +36,7 @@ export const deriveAuthKeypair = async (
   mnemonic: string,
 ): Promise<{ userId: string; keypair: Keypair }> => {
   const keypair = Keypair.fromRawEd25519Seed(await deriveAuthSeed(mnemonic));
-  return { userId: keypair.rawPublicKey().toString("hex"), keypair };
+  // v17: rawPublicKey returns a Uint8Array (not Buffer), whose
+  // `toString("hex")` would silently yield comma-joined decimals.
+  return { userId: xdr.encodeBytes(keypair.rawPublicKey(), "hex"), keypair };
 };

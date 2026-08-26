@@ -1,4 +1,4 @@
-import { Keypair } from "@stellar/stellar-sdk";
+import { Keypair, xdr } from "@stellar/stellar-sdk";
 import { createHash } from "crypto";
 
 export const ISS = "freighter-mobile";
@@ -12,9 +12,11 @@ export interface BuildAuthJwtParams {
   now?: number; // ms epoch; injectable for tests
 }
 
-const b64url = (b: Buffer): string =>
-  b
-    .toString("base64")
+// v17: Keypair.sign / rawPublicKey return Uint8Array (not Buffer), whose
+// `toString("base64")` would silently yield comma-joined decimals.
+const b64url = (b: Uint8Array): string =>
+  xdr
+    .encodeBytes(b, "base64")
     .replace(/\+/g, "-")
     .replace(/\//g, "_")
     .replace(/=+$/, "");
@@ -38,7 +40,7 @@ export const buildAuthJwt = ({
     .update(body ?? "")
     .digest("hex");
   const payload = {
-    sub: keypair.rawPublicKey().toString("hex"),
+    sub: xdr.encodeBytes(keypair.rawPublicKey(), "hex"),
     iss: ISS,
     iat,
     exp: iat + JWT_LIFETIME_SECONDS,

@@ -1042,7 +1042,7 @@ export const simulateTokenTransfer = async (
 
   return {
     ...data,
-    preparedTx: TransactionBuilder.fromXDR(
+    preparedTx: TransactionBuilder.fromXdr(
       data.preparedTransaction,
       params.network_passphrase,
     ),
