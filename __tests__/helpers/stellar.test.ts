@@ -75,6 +75,9 @@ jest.mock("@stellar/stellar-sdk", () => {
 
 jest.mock("helpers/soroban", () => ({
   isContractId: jest.fn(),
+  // Real implementation: validateAuthEntryAddress (exercised via signAuthEntry's
+  // defense-in-depth check) needs arm-agnostic address stringification to work.
+  addressToString: jest.requireActual("helpers/soroban").addressToString,
 }));
 
 jest.mock("config/logger", () => ({
