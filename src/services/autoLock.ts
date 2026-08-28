@@ -161,6 +161,15 @@ const refreshHashKeyExpiration = async (hashKey: HashKey): Promise<void> => {
     return;
   }
 
+  // A backward clock change strands the attempt marker in the future, and
+  // the check below would then suppress every re-anchor until wall time
+  // caught back up — for a >71h rollback, long enough to hard-expire even
+  // the fresh key the forced re-auth just minted, despite continued use.
+  // Mirror this module's other future-timestamp guards: a future marker is
+  // invalid, reset it.
+  if (lastRefreshAttemptAt > now) {
+    lastRefreshAttemptAt = 0;
+  }
   if (now - lastRefreshAttemptAt < HASH_KEY_REFRESH_THROTTLE_MS) {
     return;
   }

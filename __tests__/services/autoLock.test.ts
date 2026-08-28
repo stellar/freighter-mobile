@@ -311,6 +311,50 @@ describe("autoLock service", () => {
       expect(secureDataStorage.setItem).toHaveBeenCalledTimes(2);
     });
 
+    it("recovers the attempt throttle after a backward clock change", async () => {
+      // A refresh attempt stamps lastRefreshAttemptAt with the pre-rollback
+      // wall time. If the clock then rolls back, that marker sits in the
+      // future and `now - marker < throttle` holds until wall time catches
+      // up — for a >71h rollback, long enough to hard-expire even the fresh
+      // key a forced re-auth just minted, despite continued use. A future
+      // marker must be treated as invalid, like the module's other
+      // future-timestamp guards.
+      const T0 = 1_800_000_000_000;
+      const dateSpy = jest.spyOn(Date, "now").mockReturnValue(T0);
+
+      try {
+        const preRollbackKey: HashKey = {
+          hashKey: "mock-hash-key",
+          salt: "mock-salt",
+          generatedAt: T0 - (HASH_KEY_REFRESH_THROTTLE_MS + 60_000),
+          expiresAt: T0 + 3_600_000,
+        };
+        (getHashKey as jest.Mock).mockResolvedValue(preRollbackKey);
+        await refreshHashKeyExpiration(preRollbackKey);
+        // Attempt marker is now stamped at T0.
+        expect(secureDataStorage.setItem).toHaveBeenCalledTimes(1);
+
+        // Clock rolls back 72h. The old key hard-expires via the future-
+        // generatedAt guard and a full re-auth mints a new key at the
+        // rolled-back time; model it an hour+ later, when it is stale
+        // enough that a re-anchor SHOULD fire.
+        const T1 = T0 - 72 * 60 * 60 * 1000;
+        dateSpy.mockReturnValue(T1);
+        const reAuthedKey: HashKey = {
+          hashKey: "mock-hash-key-2",
+          salt: "mock-salt-2",
+          generatedAt: T1 - (HASH_KEY_REFRESH_THROTTLE_MS + 60_000),
+          expiresAt: T1 + 3_600_000,
+        };
+        (getHashKey as jest.Mock).mockResolvedValue(reAuthedKey);
+
+        await refreshHashKeyExpiration(reAuthedKey);
+        expect(secureDataStorage.setItem).toHaveBeenCalledTimes(2);
+      } finally {
+        dateSpy.mockRestore();
+      }
+    });
+
     it("re-stamps a legacy key without generatedAt (and upgrades it)", async () => {
       const { generatedAt, ...legacyKey } = staleValidKey;
       (getHashKey as jest.Mock).mockResolvedValue(legacyKey);
