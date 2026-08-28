@@ -562,8 +562,11 @@ const getAuthStatus = async (): Promise<AuthStatus> => {
     // the 5s foreground tick doesn't hammer the keychain. This runs strictly
     // after the LOCKED / hard-expiry / clock-rollback checks above, so an
     // expired or rolled-back key can never be resurrected here — those still
-    // require signIn's credential-verified re-stamp.
-    if (hashKey && AppState.currentState === "active") {
+    // require signIn's credential-verified re-stamp. An orphan key (present
+    // with no temporary store, e.g. a partial wipe) is never re-anchored
+    // either, so it still hard-expires and gets cleaned up rather than having
+    // its deadline pushed out forever by each tick.
+    if (hashKey && temporaryStore && AppState.currentState === "active") {
       try {
         await refreshHashKeyExpiration(hashKey);
       } catch (error) {

@@ -15,6 +15,7 @@ import {
   recordBackgroundedAt,
   refreshHashKeyExpiration,
 } from "services/autoLock";
+import { getHashKey } from "services/storage/helpers";
 import { secureDataStorage } from "services/storage/storageFactory";
 
 jest.mock("services/storage/storageFactory", () => ({
@@ -196,6 +197,10 @@ describe("autoLock service", () => {
     };
 
     it("re-stamps expiresAt and generatedAt for a valid, stale key", async () => {
+      // The TOCTOU guard re-reads at write time: storage still holds the
+      // exact key the caller validated.
+      (getHashKey as jest.Mock).mockResolvedValue(staleValidKey);
+
       const before = Date.now();
       await refreshHashKeyExpiration(staleValidKey);
 
@@ -242,8 +247,49 @@ describe("autoLock service", () => {
       expect(secureDataStorage.setItem).not.toHaveBeenCalled();
     });
 
+    it("refuses to write when the stored key was wiped mid-check (TOCTOU)", async () => {
+      // A concurrent logout / corruption wipe (clearTemporaryData) removed the
+      // key between the caller's read and this write. Re-stamping the stale
+      // snapshot here would resurrect wiped key material with a fresh 72h
+      // deadline — and, since the key would then exist without a temporary
+      // store, the `!hashKey && !temporaryStore` guard would never fire.
+      (getHashKey as jest.Mock).mockResolvedValue(null);
+
+      await refreshHashKeyExpiration(staleValidKey);
+
+      expect(secureDataStorage.setItem).not.toHaveBeenCalled();
+    });
+
+    it("refuses to write when the stored key changed mid-check (TOCTOU)", async () => {
+      // e.g. a concurrent signIn already re-stamped the key with a
+      // credential-verified anchor; our stale snapshot must not clobber it.
+      (getHashKey as jest.Mock).mockResolvedValue({
+        ...staleValidKey,
+        generatedAt: Date.now(),
+        expiresAt: Date.now() + HASH_KEY_EXPIRATION_MS,
+      });
+
+      await refreshHashKeyExpiration(staleValidKey);
+
+      expect(secureDataStorage.setItem).not.toHaveBeenCalled();
+    });
+
+    it("writes exactly once when the stored key is identical to the snapshot", async () => {
+      (getHashKey as jest.Mock).mockResolvedValue({ ...staleValidKey });
+
+      await refreshHashKeyExpiration(staleValidKey);
+
+      expect(secureDataStorage.setItem).toHaveBeenCalledTimes(1);
+      expect(secureDataStorage.setItem).toHaveBeenCalledWith(
+        SENSITIVE_STORAGE_KEYS.HASH_KEY,
+        expect.any(String),
+      );
+    });
+
     it("re-stamps a legacy key without generatedAt (and upgrades it)", async () => {
       const { generatedAt, ...legacyKey } = staleValidKey;
+      (getHashKey as jest.Mock).mockResolvedValue(legacyKey);
+
       await refreshHashKeyExpiration(legacyKey);
 
       expect(secureDataStorage.setItem).toHaveBeenCalledTimes(1);

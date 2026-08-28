@@ -124,8 +124,9 @@ const isHashKeyExpired = (hashKey: HashKey): boolean => {
  *   it refreshes immediately (gaining generatedAt, after which the throttle
  *   applies).
  *
- * Takes the already-read HashKey rather than re-reading it, since every
- * caller (getAuthStatus) has just loaded it to run the expiry checks.
+ * Takes the caller-validated HashKey snapshot to run the guards and throttle
+ * (every caller has just loaded it for the expiry checks), then re-reads the
+ * stored key once at write time for the TOCTOU check below.
  */
 const refreshHashKeyExpiration = async (hashKey: HashKey): Promise<void> => {
   if (isHashKeyExpired(hashKey)) {
@@ -136,6 +137,23 @@ const refreshHashKeyExpiration = async (hashKey: HashKey): Promise<void> => {
   if (
     hashKey.generatedAt !== undefined &&
     now - hashKey.generatedAt < HASH_KEY_REFRESH_THROTTLE_MS
+  ) {
+    return;
+  }
+
+  // TOCTOU guard: the caller validated this key several awaits ago; a logout
+  // or corruption wipe (clearTemporaryData) may have removed or replaced it
+  // since. Re-stamp only the exact key that was validated — never resurrect
+  // a wiped key, never clobber a concurrent credential-verified re-stamp.
+  // The remaining window is the single await between this read and the write
+  // (same bound as getActiveMnemonicPhrase's re-check pattern in auth.ts).
+  const currentHashKey = await getHashKey();
+  if (
+    !currentHashKey ||
+    currentHashKey.hashKey !== hashKey.hashKey ||
+    currentHashKey.salt !== hashKey.salt ||
+    currentHashKey.expiresAt !== hashKey.expiresAt ||
+    currentHashKey.generatedAt !== hashKey.generatedAt
   ) {
     return;
   }
