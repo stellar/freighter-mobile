@@ -65,6 +65,7 @@ import {
   getBackgroundedAt,
   isHashKeyExpired,
   persistAutoLockTimer,
+  refreshHashKeyExpiration,
 } from "services/autoLock";
 import { getAccount } from "services/stellar";
 import {
@@ -542,14 +543,40 @@ const getAuthStatus = async (): Promise<AuthStatus> => {
 
       if (AppState.currentState === "active") {
         // Returned within the timer: consume the timestamp so the foreground
-        // interval can't lock mid-use. The hash-key TTL is deliberately NOT
-        // refreshed here — it's only anchored at credential-verified moments
-        // (signIn / generateHashKey) so key material stays bounded however
-        // often the app is reopened.
+        // interval can't lock mid-use. (The hash-key TTL re-anchor happens
+        // below, on the shared AUTHENTICATED path — not here — so it also
+        // covers ticks where no backgrounded-at timestamp exists.)
         await clearBackgroundedAt();
       }
       // Still backgrounded (periodic background check): leave the timestamp
       // intact so the timer keeps counting from the original moment.
+    }
+
+    // Re-anchor the hash-key hard-expiry on use (#924): every authenticated
+    // foreground auth check pushes the deadline out, so the backstop bounds
+    // *inactivity* — HASH_KEY_EXPIRATION_MS with no foreground use — instead
+    // of time since the last credential entry, and an actively-used wallet
+    // never hard-expires (parity with the extension's session model). Gated
+    // to the active app state so the periodic background check can't extend
+    // the deadline of a pocketed device, and throttled inside the helper so
+    // the 5s foreground tick doesn't hammer the keychain. This runs strictly
+    // after the LOCKED / hard-expiry / clock-rollback checks above, so an
+    // expired or rolled-back key can never be resurrected here — those still
+    // require signIn's credential-verified re-stamp.
+    if (hashKey && AppState.currentState === "active") {
+      try {
+        await refreshHashKeyExpiration(hashKey);
+      } catch (error) {
+        // The re-anchor is opportunistic: a failed keychain write must not
+        // demote an authenticated session (the outer catch returns
+        // NOT_AUTHENTICATED). Worst case the key keeps its old deadline and
+        // hard-expires as it would have before the re-anchor existed.
+        logger.error(
+          "getAuthStatus",
+          "Failed to refresh hash key expiration",
+          error,
+        );
+      }
     }
 
     // All conditions for authentication are met
