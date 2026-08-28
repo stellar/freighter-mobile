@@ -14,6 +14,7 @@ import {
   persistAutoLockTimer,
   recordBackgroundedAt,
   refreshHashKeyExpiration,
+  resetHashKeyRefreshAttemptThrottle,
 } from "services/autoLock";
 import { getHashKey } from "services/storage/helpers";
 import { secureDataStorage } from "services/storage/storageFactory";
@@ -38,6 +39,10 @@ jest.mock("services/storage/helpers", () => ({
 describe("autoLock service", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // The attempt throttle is module-level state that would otherwise leak
+    // across tests: the first write-expecting case would consume the window
+    // and every later one would skip its write.
+    resetHashKeyRefreshAttemptThrottle();
   });
 
   describe("getAutoLockTimer", () => {
@@ -284,6 +289,26 @@ describe("autoLock service", () => {
         SENSITIVE_STORAGE_KEYS.HASH_KEY,
         expect.any(String),
       );
+    });
+
+    it("throttles repeat ATTEMPTS, not just successful anchors", async () => {
+      // The generatedAt throttle only advances when the write succeeds, so a
+      // persistently failing keychain would be retried (and logged) on every
+      // 5s auth tick. The attempt throttle bounds that to one try per window.
+      (getHashKey as jest.Mock).mockResolvedValue(staleValidKey);
+
+      await refreshHashKeyExpiration(staleValidKey);
+      expect(secureDataStorage.setItem).toHaveBeenCalledTimes(1);
+
+      // Same stale snapshot (as if the write had failed and generatedAt never
+      // moved): the attempt throttle suppresses the retry.
+      await refreshHashKeyExpiration(staleValidKey);
+      expect(secureDataStorage.setItem).toHaveBeenCalledTimes(1);
+
+      // Once the attempt window elapses, the retry is allowed again.
+      resetHashKeyRefreshAttemptThrottle();
+      await refreshHashKeyExpiration(staleValidKey);
+      expect(secureDataStorage.setItem).toHaveBeenCalledTimes(2);
     });
 
     it("re-stamps a legacy key without generatedAt (and upgrades it)", async () => {

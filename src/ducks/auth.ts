@@ -3271,8 +3271,9 @@ export const clearSessionAuthValidMemo = (): void => {
  * so it evaluates account existence, persisted LOCKED, hash-key hard-expiry AND
  * the auto-lock timer (`backgroundedAt` + `autoLockTimer`), rather than
  * re-implementing a subset. Result is memoized for SESSION_AUTH_VALID_TTL_MS
- * (see above). Does not decrypt the temporary store (no PBKDF2); persisted/secure
- * reads only.
+ * (see above). Does not decrypt the temporary store (no scrypt); secure-storage
+ * reads plus at most one throttled hash-key re-anchor write per hour on the
+ * active path.
  */
 export const isSessionAuthValid = async (): Promise<boolean> => {
   const memo = sessionAuthValidMemo;

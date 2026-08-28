@@ -110,6 +110,22 @@ const isHashKeyExpired = (hashKey: HashKey): boolean => {
   return now > hashKey.expiresAt;
 };
 
+// Last time a re-anchor write was attempted (module-level, process-lifetime).
+// The generatedAt throttle below only advances when the write SUCCEEDS; if
+// the keychain write fails persistently, generatedAt never moves and every
+// 5s auth tick would retry (and log) forever. Throttling attempts bounds
+// that failure mode to one attempt per throttle window. In-memory on
+// purpose: a process restart retrying immediately is fine.
+let lastRefreshAttemptAt = 0;
+
+/**
+ * Resets the module-level attempt throttle (tests only — module state would
+ * otherwise leak across cases in the same file).
+ */
+const resetHashKeyRefreshAttemptThrottle = (): void => {
+  lastRefreshAttemptAt = 0;
+};
+
 /**
  * Re-anchors the hash-key hard-expiry on use (#924): pushes expiresAt out to
  * a full HASH_KEY_EXPIRATION_MS from now, so the backstop bounds *inactivity*
@@ -123,6 +139,10 @@ const isHashKeyExpired = (hashKey: HashKey): boolean => {
  *   A legacy key without generatedAt can't prove it was recently anchored, so
  *   it refreshes immediately (gaining generatedAt, after which the throttle
  *   applies).
+ * - Refresh *attempts* are throttled too (lastRefreshAttemptAt): the
+ *   generatedAt throttle only advances on a successful write, so a
+ *   persistently failing keychain would otherwise be retried (and logged)
+ *   on every 5s auth tick.
  *
  * Takes the caller-validated HashKey snapshot to run the guards and throttle
  * (every caller has just loaded it for the expiry checks), then re-reads the
@@ -140,6 +160,12 @@ const refreshHashKeyExpiration = async (hashKey: HashKey): Promise<void> => {
   ) {
     return;
   }
+
+  if (now - lastRefreshAttemptAt < HASH_KEY_REFRESH_THROTTLE_MS) {
+    return;
+  }
+  // Set before the write so a throwing write still counts as an attempt.
+  lastRefreshAttemptAt = now;
 
   // TOCTOU guard: the caller validated this key several awaits ago; a logout
   // or corruption wipe (clearTemporaryData) may have removed or replaced it
@@ -161,7 +187,11 @@ const refreshHashKeyExpiration = async (hashKey: HashKey): Promise<void> => {
   await secureDataStorage.setItem(
     SENSITIVE_STORAGE_KEYS.HASH_KEY,
     JSON.stringify({
-      ...hashKey,
+      // Spread the re-read key, not the caller's snapshot: the comparison
+      // above proves they are identical today, but if HashKey ever gains a
+      // field the explicit check stops covering it and spreading the stale
+      // snapshot would silently revert it.
+      ...currentHashKey,
       expiresAt: now + HASH_KEY_EXPIRATION_MS,
       generatedAt: now,
     } satisfies HashKey),
@@ -192,5 +222,6 @@ export {
   clearBackgroundedAt,
   isHashKeyExpired,
   refreshHashKeyExpiration,
+  resetHashKeyRefreshAttemptThrottle,
   hasPersistedSession,
 };

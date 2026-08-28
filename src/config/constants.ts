@@ -102,15 +102,21 @@ export const ACCOUNTS_TO_VERIFY_ON_EXISTING_MNEMONIC_PHRASE = 6;
 // hard-expires, matching the Freighter extension's session model. It must stay
 // strictly above the largest AUTO_LOCK_TIMER preset (24h): the hard expiry is
 // checked before the soft timer, so if this were <= 24h a 24h-preset user
-// would hit the full re-auth instead of that preset's fast unlock.
+// would hit the full re-auth instead of that preset's fast unlock. A device
+// left foregrounded and untouched keeps re-anchoring until the foreground-idle
+// soft lock trips (up to 24h on the max preset), so the worst case from last
+// human interaction to hard expiry is ~96h.
 export const HASH_KEY_EXPIRATION_MS = 72 * 60 * 60 * 1000; // 72 hours
 
 // Minimum age of a hash key's generatedAt anchor before an authenticated
 // foreground auth check re-stamps it. getAuthStatus runs as often as every 5s
 // while the app is active — this gates the secure-storage (keychain) write to
 // at most one per hour rather than one per tick. Granularity is negligible
-// against the 72h backstop (worst case the effective bound is 72h + 1h).
+// against the 72h backstop: a skipped write leaves generatedAt at most 1h
+// behind the last activity, so the real idle-to-expiry window is 71-72h
+// rather than exactly 72h.
 export const HASH_KEY_REFRESH_THROTTLE_MS = 60 * 60 * 1000; // 1 hour
+
 export const VISUAL_DELAY_MS = 500;
 
 const SECOND_IN_MS = 1000;

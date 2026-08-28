@@ -41,6 +41,7 @@ import { clearScreenshotDek } from "helpers/screenshotCrypto";
 import { AppState } from "react-native";
 import { getSupportedBiometryType, BIOMETRY_TYPE } from "react-native-keychain";
 import { clearAuthKeypairCache } from "services/auth/authKeypairCache";
+import { resetHashKeyRefreshAttemptThrottle } from "services/autoLock";
 import {
   clearNonSensitiveData,
   clearTemporaryData,
@@ -1686,9 +1687,16 @@ describe("auth duck", () => {
       // failures (e.g. the isSessionAuthValid call-count tests). Restore here
       // so a failure stays attributable to the test that caused it.
       const defaultAppState = AppState.currentState;
+      // These integration tests exercise the real refreshHashKeyExpiration,
+      // whose attempt throttle is module-level state: without a reset, the
+      // first test to attempt a write would suppress every later one.
+      beforeEach(() => {
+        resetHashKeyRefreshAttemptThrottle();
+      });
       afterEach(() => {
         (AppState as { currentState: typeof defaultAppState }).currentState =
           defaultAppState;
+        resetHashKeyRefreshAttemptThrottle();
       });
 
       const mockAuthenticatedStorage = ({
@@ -1767,7 +1775,6 @@ describe("auth duck", () => {
         const { result } = renderHook(() => useAuthenticationStore());
         restoreGetAuthStatus();
 
-        const previousAppState = AppState.currentState;
         (AppState as { currentState: string }).currentState = "active";
 
         mockAuthenticatedStorage({
@@ -1810,16 +1817,12 @@ describe("auth duck", () => {
         expect(written.expiresAt).toBe(
           written.generatedAt + HASH_KEY_EXPIRATION_MS,
         );
-
-        (AppState as { currentState: typeof previousAppState }).currentState =
-          previousAppState;
       });
 
       it("should NOT re-anchor a freshly-stamped hash key (write throttle)", async () => {
         const { result } = renderHook(() => useAuthenticationStore());
         restoreGetAuthStatus();
 
-        const previousAppState = AppState.currentState;
         (AppState as { currentState: string }).currentState = "active";
 
         mockAuthenticatedStorage({
@@ -1842,16 +1845,12 @@ describe("auth duck", () => {
           SENSITIVE_STORAGE_KEYS.HASH_KEY,
           expect.any(String),
         );
-
-        (AppState as { currentState: typeof previousAppState }).currentState =
-          previousAppState;
       });
 
       it("should NOT re-anchor from the periodic background check", async () => {
         const { result } = renderHook(() => useAuthenticationStore());
         restoreGetAuthStatus();
 
-        const previousAppState = AppState.currentState;
         (AppState as { currentState: string }).currentState = "background";
 
         mockAuthenticatedStorage({
@@ -1880,16 +1879,12 @@ describe("auth duck", () => {
         expect(secureDataStorage.remove).not.toHaveBeenCalledWith(
           SENSITIVE_STORAGE_KEYS.AUTO_LOCK_BACKGROUNDED_AT,
         );
-
-        (AppState as { currentState: typeof previousAppState }).currentState =
-          previousAppState;
       });
 
       it("should stay AUTHENTICATED when the re-anchor keychain write fails", async () => {
         const { result } = renderHook(() => useAuthenticationStore());
         restoreGetAuthStatus();
 
-        const previousAppState = AppState.currentState;
         (AppState as { currentState: string }).currentState = "active";
 
         mockAuthenticatedStorage({
@@ -1931,16 +1926,12 @@ describe("auth duck", () => {
           "Failed to validate auth",
           expect.anything(),
         );
-
-        (AppState as { currentState: typeof previousAppState }).currentState =
-          previousAppState;
       });
 
       it("should not resurrect a hash key wiped mid-check (TOCTOU)", async () => {
         const { result } = renderHook(() => useAuthenticationStore());
         restoreGetAuthStatus();
 
-        const previousAppState = AppState.currentState;
         (AppState as { currentState: string }).currentState = "active";
 
         mockAuthenticatedStorage({
@@ -1971,16 +1962,12 @@ describe("auth duck", () => {
           SENSITIVE_STORAGE_KEYS.HASH_KEY,
           expect.any(String),
         );
-
-        (AppState as { currentState: typeof previousAppState }).currentState =
-          previousAppState;
       });
 
       it("should NOT re-anchor an orphan hash key with no temporary store", async () => {
         const { result } = renderHook(() => useAuthenticationStore());
         restoreGetAuthStatus();
 
-        const previousAppState = AppState.currentState;
         (AppState as { currentState: string }).currentState = "active";
 
         mockAuthenticatedStorage({
@@ -2013,16 +2000,12 @@ describe("auth duck", () => {
           SENSITIVE_STORAGE_KEYS.HASH_KEY,
           expect.any(String),
         );
-
-        (AppState as { currentState: typeof previousAppState }).currentState =
-          previousAppState;
       });
 
       it("should NOT re-anchor an expired hash key (idle device forces full re-auth)", async () => {
         const { result } = renderHook(() => useAuthenticationStore());
         restoreGetAuthStatus();
 
-        const previousAppState = AppState.currentState;
         (AppState as { currentState: string }).currentState = "active";
 
         mockAuthenticatedStorage({
@@ -2045,16 +2028,12 @@ describe("auth duck", () => {
           SENSITIVE_STORAGE_KEYS.HASH_KEY,
           expect.any(String),
         );
-
-        (AppState as { currentState: typeof previousAppState }).currentState =
-          previousAppState;
       });
 
       it("should NOT re-anchor a rolled-back-clock hash key (generatedAt guard, #905)", async () => {
         const { result } = renderHook(() => useAuthenticationStore());
         restoreGetAuthStatus();
 
-        const previousAppState = AppState.currentState;
         (AppState as { currentState: string }).currentState = "active";
 
         mockAuthenticatedStorage({
@@ -2079,16 +2058,12 @@ describe("auth duck", () => {
           SENSITIVE_STORAGE_KEYS.HASH_KEY,
           expect.any(String),
         );
-
-        (AppState as { currentState: typeof previousAppState }).currentState =
-          previousAppState;
       });
 
       it("should return HASH_KEY_EXPIRED when the hash key expired even if within the timer", async () => {
         const { result } = renderHook(() => useAuthenticationStore());
         restoreGetAuthStatus();
 
-        const previousAppState = AppState.currentState;
         (AppState as { currentState: string }).currentState = "active";
 
         mockAuthenticatedStorage({
@@ -2113,9 +2088,6 @@ describe("auth duck", () => {
         // Hard-expiry must evict the derived auth keypair — retention, not just
         // use, ends at expiry (the eviction-coverage gap raised in review).
         expect(clearAuthKeypairCache).toHaveBeenCalled();
-
-        (AppState as { currentState: typeof previousAppState }).currentState =
-          previousAppState;
       });
 
       it("should return HASH_KEY_EXPIRED (not LOCKED) when backgrounded beyond BOTH the timer and the hash-key TTL", async () => {
@@ -2820,6 +2792,13 @@ describe("auth duck", () => {
       expect(await isSessionAuthValid()).toBe(false);
     });
 
+    // getHashKey call counts are used here purely as a proxy for "how many
+    // funnel runs happened". That 1:1 mapping only holds because the jest
+    // AppState mock's default state is not "active": in production the active
+    // path also runs the #924 re-anchor, which re-reads the key (a second
+    // getHashKey per funnel run). Don't tighten these assertions against a
+    // production-like AppState — the counts would drift for reasons that have
+    // nothing to do with the memo/in-flight dedup under test.
     it("dedupes a concurrent burst into a single funnel run (in-flight promise shared)", async () => {
       mockFunnelStorage();
       (getHashKey as jest.Mock).mockClear();
