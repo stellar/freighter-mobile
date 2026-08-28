@@ -543,6 +543,10 @@
     "cantRemoveBalance": {
       "title": "Token still has a balance",
       "description": "You can’t remove this token yet. To remove a token, your balance for this token must be 0. You must send or sell the remaining balance before trying again."
+    },
+    "cantRemoveNotLocallyAdded": {
+      "title": "Can’t remove this token",
+      "description": "This token was added to your wallet automatically because your account interacts with it, so removing it won’t take it off the list. You can hide it instead."
     }
   },
   "addTokenScreen": {
@@ -1173,6 +1177,11 @@
       "functionName": "Function name",
       "parameters": "Parameters",
       "contractAddress": "Contract address",
+      "executableOwner": "Executable owner",
+      "executableTag": "Executable tag",
+      "executableNote": "This contract's code is managed by the executable owner and can change after you sign.",
+      "unrecognizedInvocation": "Unrecognized invocation",
+      "unrecognizedInvocationWarning": "Freighter could not read this authorization. Do not sign unless you trust this site.",
       "address": "Signer address"
     },
     "operations": {

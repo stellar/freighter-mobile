@@ -6,6 +6,7 @@ import {
   Address,
   Transaction,
   Operation,
+  xdr,
 } from "@stellar/stellar-sdk";
 import { NETWORKS, mapNetworkToNetworkDetails } from "config/constants";
 import { analytics } from "services/analytics";
@@ -76,7 +77,7 @@ describe("buildSendCollectibleTransaction", () => {
   it("should create transaction with correct sender address from parsed XDR", async () => {
     const result = await buildSendCollectibleTransaction(baseParams);
 
-    const parsedTx = TransactionBuilder.fromXDR(
+    const parsedTx = TransactionBuilder.fromXdr(
       result.xdr,
       Networks.TESTNET,
     ) as Transaction;
@@ -87,7 +88,7 @@ describe("buildSendCollectibleTransaction", () => {
   it("should include invoke host function operation with transfer call", async () => {
     const result = await buildSendCollectibleTransaction(baseParams);
 
-    const parsedTx = TransactionBuilder.fromXDR(
+    const parsedTx = TransactionBuilder.fromXdr(
       result.xdr,
       Networks.TESTNET,
     ) as Transaction;
@@ -99,7 +100,7 @@ describe("buildSendCollectibleTransaction", () => {
   it("should encode correct contract address in operation", async () => {
     const result = await buildSendCollectibleTransaction(baseParams);
 
-    const parsedTx = TransactionBuilder.fromXDR(
+    const parsedTx = TransactionBuilder.fromXdr(
       result.xdr,
       Networks.TESTNET,
     ) as Transaction;
@@ -107,10 +108,13 @@ describe("buildSendCollectibleTransaction", () => {
     const operation = parsedTx.operations[0] as Operation.InvokeHostFunction;
     const hostFunction = operation.func;
 
-    expect(hostFunction.switch().name).toBe("hostFunctionTypeInvokeContract");
+    expect(hostFunction.type).toBe("hostFunctionTypeInvokeContract");
 
-    const invokeContractArgs = hostFunction.invokeContract();
-    const contractAddress = invokeContractArgs.contractAddress();
+    const invokeContractArgs = xdr.expectUnionVariant(
+      hostFunction,
+      "hostFunctionTypeInvokeContract",
+    ).invokeContract;
+    const { contractAddress } = invokeContractArgs;
     const addressFromXdr = Address.fromScAddress(contractAddress);
 
     expect(addressFromXdr.toString()).toBe(mockCollectionAddress);
@@ -119,15 +123,18 @@ describe("buildSendCollectibleTransaction", () => {
   it("should call transfer function in the contract", async () => {
     const result = await buildSendCollectibleTransaction(baseParams);
 
-    const parsedTx = TransactionBuilder.fromXDR(
+    const parsedTx = TransactionBuilder.fromXdr(
       result.xdr,
       Networks.TESTNET,
     ) as Transaction;
 
     const operation = parsedTx.operations[0] as Operation.InvokeHostFunction;
     const hostFunction = operation.func;
-    const invokeContractArgs = hostFunction.invokeContract();
-    const functionName = invokeContractArgs.functionName().toString();
+    const invokeContractArgs = xdr.expectUnionVariant(
+      hostFunction,
+      "hostFunctionTypeInvokeContract",
+    ).invokeContract;
+    const functionName = invokeContractArgs.functionName.toString();
 
     expect(functionName).toBe("transfer");
   });
@@ -135,15 +142,18 @@ describe("buildSendCollectibleTransaction", () => {
   it("should encode correct transfer parameters: from, to, token_id", async () => {
     const result = await buildSendCollectibleTransaction(baseParams);
 
-    const parsedTx = TransactionBuilder.fromXDR(
+    const parsedTx = TransactionBuilder.fromXdr(
       result.xdr,
       Networks.TESTNET,
     ) as Transaction;
 
     const operation = parsedTx.operations[0] as Operation.InvokeHostFunction;
     const hostFunction = operation.func;
-    const invokeContractArgs = hostFunction.invokeContract();
-    const args = invokeContractArgs.args();
+    const invokeContractArgs = xdr.expectUnionVariant(
+      hostFunction,
+      "hostFunctionTypeInvokeContract",
+    ).invokeContract;
+    const { args } = invokeContractArgs;
 
     // Should have 3 arguments: from, to, token_id
     expect(args).toHaveLength(3);
@@ -158,8 +168,8 @@ describe("buildSendCollectibleTransaction", () => {
 
     // Third argument should be token_id as u32
     const tokenIdScVal = args[2];
-    expect(tokenIdScVal.switch().name).toBe("scvU32");
-    const tokenIdValue = tokenIdScVal.u32();
+    expect(tokenIdScVal.type).toBe("scvU32");
+    const tokenIdValue = xdr.expectUnionVariant(tokenIdScVal, "scvU32").u32;
     expect(tokenIdValue.toString()).toBe("12345");
   });
 
@@ -169,7 +179,7 @@ describe("buildSendCollectibleTransaction", () => {
 
     const result = await buildSendCollectibleTransaction(params);
 
-    const parsedTx = TransactionBuilder.fromXDR(
+    const parsedTx = TransactionBuilder.fromXdr(
       result.xdr,
       Networks.TESTNET,
     ) as Transaction;
@@ -186,7 +196,7 @@ describe("buildSendCollectibleTransaction", () => {
 
     const result = await buildSendCollectibleTransaction(mainnetParams);
 
-    const parsedTx = TransactionBuilder.fromXDR(
+    const parsedTx = TransactionBuilder.fromXdr(
       result.xdr,
       Networks.PUBLIC,
     ) as Transaction;
@@ -241,7 +251,7 @@ describe("buildSendCollectibleTransaction", () => {
   it("should create transaction with correct sequence number", async () => {
     const result = await buildSendCollectibleTransaction(baseParams);
 
-    const parsedTx = TransactionBuilder.fromXDR(
+    const parsedTx = TransactionBuilder.fromXdr(
       result.xdr,
       Networks.TESTNET,
     ) as Transaction;
@@ -254,16 +264,16 @@ describe("buildSendCollectibleTransaction", () => {
   it("should create XDR that can be successfully parsed and rebuilt", async () => {
     const result = await buildSendCollectibleTransaction(baseParams);
 
-    const parsedTx = TransactionBuilder.fromXDR(result.xdr, Networks.TESTNET);
+    const parsedTx = TransactionBuilder.fromXdr(result.xdr, Networks.TESTNET);
 
-    const reExportedXdr = parsedTx.toXDR();
+    const reExportedXdr = parsedTx.toXdr();
     expect(reExportedXdr).toBe(result.xdr);
   });
 
   it("should set correct timebounds", async () => {
     const result = await buildSendCollectibleTransaction(baseParams);
 
-    const parsedTx = TransactionBuilder.fromXDR(
+    const parsedTx = TransactionBuilder.fromXdr(
       result.xdr,
       Networks.TESTNET,
     ) as Transaction;
@@ -482,7 +492,7 @@ describe("buildSwapTransaction — includeTrustline", () => {
   };
 
   it("prepends a changeTrust op when includeTrustline is provided", async () => {
-    const { xdr } = await buildSwapTransaction({
+    const { xdr: swapXdr } = await buildSwapTransaction({
       ...baseParams,
       includeTrustline: {
         tokenCode: "USDC",
@@ -490,7 +500,10 @@ describe("buildSwapTransaction — includeTrustline", () => {
       },
     });
 
-    const tx = TransactionBuilder.fromXDR(xdr, Networks.PUBLIC) as Transaction;
+    const tx = TransactionBuilder.fromXdr(
+      swapXdr,
+      Networks.PUBLIC,
+    ) as Transaction;
 
     expect(tx.operations).toHaveLength(2);
     expect(tx.operations[0].type).toBe("changeTrust");
@@ -510,9 +523,12 @@ describe("buildSwapTransaction — includeTrustline", () => {
   });
 
   it("builds a single pathPaymentStrictSend op when includeTrustline is omitted (regression)", async () => {
-    const { xdr } = await buildSwapTransaction(baseParams);
+    const { xdr: swapXdr } = await buildSwapTransaction(baseParams);
 
-    const tx = TransactionBuilder.fromXDR(xdr, Networks.PUBLIC) as Transaction;
+    const tx = TransactionBuilder.fromXdr(
+      swapXdr,
+      Networks.PUBLIC,
+    ) as Transaction;
 
     expect(tx.operations).toHaveLength(1);
     expect(tx.operations[0].type).toBe("pathPaymentStrictSend");

@@ -405,7 +405,7 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         // The transaction XDR already contains the muxed address (if applicable) from buildSendCollectibleTransaction
         // which checks contract muxed support and creates muxed addresses according to the behavior matrix
         const simulateResult = await simulateCollectibleTransfer({
-          transactionXdr: builtTxResult.tx.toXDR(),
+          transactionXdr: builtTxResult.tx.toXdr(),
           networkDetails,
         });
 

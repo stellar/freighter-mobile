@@ -11,6 +11,7 @@ import {
 } from "config/types";
 import { useBalancesStore } from "ducks/balances";
 import { usePricesStore } from "ducks/prices";
+import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { fetchBalances } from "services/backend";
 import { dataStorage } from "services/storage/storageFactory";
 
@@ -145,6 +146,9 @@ describe("balances duck", () => {
         isLoading: false,
         error: null,
       });
+      // The duck reads use_balances_v2 from the real remote-config store at
+      // call time; pin it off so flag-ON tests must opt in explicitly.
+      useRemoteConfigStore.setState({ use_balances_v2: false });
     });
 
     // Reset all mocks
@@ -185,7 +189,10 @@ describe("balances duck", () => {
         await result.current.fetchAccountBalances(mockParams);
       });
 
-      expect(mockFetchBalances).toHaveBeenCalledWith(mockParams);
+      expect(mockFetchBalances).toHaveBeenCalledWith({
+        ...mockParams,
+        useV2: false,
+      });
     });
   });
 
@@ -202,7 +209,34 @@ describe("balances duck", () => {
         await result.current.fetchAccountBalances(mockParams);
       });
 
-      expect(mockFetchBalances).toHaveBeenCalledWith(mockParams);
+      expect(mockFetchBalances).toHaveBeenCalledWith({
+        ...mockParams,
+        useV2: false,
+      });
+    });
+
+    it("passes useV2: true when the use_balances_v2 flag is on", async () => {
+      mockFetchBalances.mockResolvedValueOnce({ balances: mockBalances });
+      (usePricesStore.getState as jest.Mock).mockReturnValue(
+        createMockPricesStore(),
+      );
+
+      const { result } = renderHook(() => useBalancesStore());
+
+      // Flip the flag after render — the duck must read it at call time, not
+      // capture it, so a freshly resolved Amplitude flag isn't missed.
+      act(() => {
+        useRemoteConfigStore.setState({ use_balances_v2: true });
+      });
+
+      await act(async () => {
+        await result.current.fetchAccountBalances(mockParams);
+      });
+
+      expect(mockFetchBalances).toHaveBeenCalledWith({
+        ...mockParams,
+        useV2: true,
+      });
     });
 
     it("should update balances and pricedBalances state on successful fetch", async () => {

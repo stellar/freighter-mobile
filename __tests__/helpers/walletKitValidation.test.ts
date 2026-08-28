@@ -48,11 +48,11 @@ const buildTestPreimage = (
   xdr.HashIdPreimage.envelopeTypeSorobanAuthorization(
     new xdr.HashIdPreimageSorobanAuthorization({
       networkId: hash(Buffer.from(network)),
-      nonce: xdr.Int64.fromString(nonce) as xdr.Int64,
+      nonce: BigInt(nonce),
       signatureExpirationLedger: 999999,
       invocation: buildTestInvocation(),
     }),
-  ).toXDR("base64");
+  ).toXdr("base64");
 
 /**
  * Builds a base64 CAP-71 envelopeTypeSorobanAuthorizationWithAddress preimage,
@@ -66,22 +66,22 @@ const buildTestWithAddressPreimage = (
   xdr.HashIdPreimage.envelopeTypeSorobanAuthorizationWithAddress(
     new xdr.HashIdPreimageSorobanAuthorizationWithAddress({
       networkId: hash(Buffer.from(network)),
-      nonce: xdr.Int64.fromString(nonce) as xdr.Int64,
+      nonce: BigInt(nonce),
       signatureExpirationLedger: 999999,
       address: new Address(signerAddress).toScAddress(),
       invocation: buildTestInvocation(),
     }),
-  ).toXDR("base64");
+  ).toXdr("base64");
 
 /** Builds a real non-Soroban-authorization preimage (operation ID arm). */
 const buildNonSorobanPreimage = (): string =>
   xdr.HashIdPreimage.envelopeTypeOpId(
     new xdr.HashIdPreimageOperationId({
       sourceAccount: Keypair.fromPublicKey(TEST_SIGNER_ADDRESS).xdrAccountId(),
-      seqNum: xdr.Int64.fromString("1") as xdr.Int64,
+      seqNum: BigInt("1"),
       opNum: 0,
     }),
-  ).toXDR("base64");
+  ).toXdr("base64");
 
 // ─────────────────────────────────────────────────────────────────────────────
 // validateSignMessageContent
@@ -278,7 +278,7 @@ describe("parseAuthEntryPreimage", () => {
     const result = parseAuthEntryPreimage(preimageXdr);
     expect(result.valid).toBe(true);
     if (result.valid) {
-      expect(result.value.toXDR("base64")).toBe(preimageXdr);
+      expect(result.value.toXdr("base64")).toBe(preimageXdr);
     }
   });
 });
@@ -289,12 +289,15 @@ describe("parseAuthEntryPreimage", () => {
 
 describe("normalizeAuthPreimage", () => {
   it("normalizes a legacy sorobanAuthorization preimage without an address", () => {
-    const preimage = xdr.HashIdPreimage.fromXDR(buildTestPreimage(), "base64");
+    const preimage = xdr.HashIdPreimage.fromXdr(buildTestPreimage(), "base64");
     const normalized = normalizeAuthPreimage(preimage);
     expect(normalized).not.toBeNull();
     expect(normalized?.address).toBeUndefined();
+    // v17: networkId is an xdr.Hash wrapper; compare against a wrapped hash.
     expect(
-      normalized?.networkId.equals(hash(Buffer.from(Networks.TESTNET))),
+      normalized?.networkId.equals(
+        new xdr.Hash(hash(Buffer.from(Networks.TESTNET))),
+      ),
     ).toBe(true);
     expect(normalized?.invocation).toBeInstanceOf(
       xdr.SorobanAuthorizedInvocation,
@@ -302,7 +305,7 @@ describe("normalizeAuthPreimage", () => {
   });
 
   it("returns null for a non-Soroban-authorization preimage arm", () => {
-    const preimage = xdr.HashIdPreimage.fromXDR(
+    const preimage = xdr.HashIdPreimage.fromXdr(
       buildNonSorobanPreimage(),
       "base64",
     );
@@ -319,7 +322,7 @@ describe("normalizeAuthPreimage", () => {
   });
 
   it("normalizes a CAP-71 sorobanAuthorizationWithAddress preimage and surfaces the address", () => {
-    const preimage = xdr.HashIdPreimage.fromXDR(
+    const preimage = xdr.HashIdPreimage.fromXdr(
       buildTestWithAddressPreimage(),
       "base64",
     );
@@ -342,7 +345,7 @@ describe("normalizeAuthPreimage", () => {
 describe("validateAuthEntryNetwork", () => {
   it("returns valid when preimage networkId matches the wallet network", () => {
     const preimageXdr = buildTestPreimage(Networks.TESTNET);
-    const preimage = xdr.HashIdPreimage.fromXDR(preimageXdr, "base64");
+    const preimage = xdr.HashIdPreimage.fromXdr(preimageXdr, "base64");
     const result = validateAuthEntryNetwork(preimage, Networks.TESTNET);
     expect(result.valid).toBe(true);
     if (result.valid) {
@@ -352,7 +355,7 @@ describe("validateAuthEntryNetwork", () => {
 
   it("returns network mismatch error when preimage is for mainnet but wallet is on testnet", () => {
     const preimageXdr = buildTestPreimage(Networks.PUBLIC);
-    const preimage = xdr.HashIdPreimage.fromXDR(preimageXdr, "base64");
+    const preimage = xdr.HashIdPreimage.fromXdr(preimageXdr, "base64");
     const result = validateAuthEntryNetwork(preimage, Networks.TESTNET);
     expect(result.valid).toBe(false);
     if (!result.valid) {
@@ -364,7 +367,7 @@ describe("validateAuthEntryNetwork", () => {
 
   it("returns network mismatch error when preimage is for testnet but wallet is on mainnet", () => {
     const preimageXdr = buildTestPreimage(Networks.TESTNET);
-    const preimage = xdr.HashIdPreimage.fromXDR(preimageXdr, "base64");
+    const preimage = xdr.HashIdPreimage.fromXdr(preimageXdr, "base64");
     const result = validateAuthEntryNetwork(preimage, Networks.PUBLIC);
     expect(result.valid).toBe(false);
     if (!result.valid) {
@@ -376,7 +379,7 @@ describe("validateAuthEntryNetwork", () => {
 
   it("returns valid for mainnet preimage with mainnet passphrase", () => {
     const preimageXdr = buildTestPreimage(Networks.PUBLIC);
-    const preimage = xdr.HashIdPreimage.fromXDR(preimageXdr, "base64");
+    const preimage = xdr.HashIdPreimage.fromXdr(preimageXdr, "base64");
     const result = validateAuthEntryNetwork(preimage, Networks.PUBLIC);
     expect(result.valid).toBe(true);
   });
@@ -400,7 +403,7 @@ describe("validateAuthEntryNetwork", () => {
   });
 
   it("returns invalid auth entry error for a non-Soroban-authorization preimage arm", () => {
-    const preimage = xdr.HashIdPreimage.fromXDR(
+    const preimage = xdr.HashIdPreimage.fromXdr(
       buildNonSorobanPreimage(),
       "base64",
     );
@@ -412,7 +415,7 @@ describe("validateAuthEntryNetwork", () => {
   });
 
   it("returns valid when a CAP-71 withAddress preimage networkId matches the wallet network", () => {
-    const preimage = xdr.HashIdPreimage.fromXDR(
+    const preimage = xdr.HashIdPreimage.fromXdr(
       buildTestWithAddressPreimage(Networks.TESTNET),
       "base64",
     );
@@ -424,7 +427,7 @@ describe("validateAuthEntryNetwork", () => {
   });
 
   it("returns network mismatch error for a CAP-71 withAddress preimage on the wrong network", () => {
-    const preimage = xdr.HashIdPreimage.fromXDR(
+    const preimage = xdr.HashIdPreimage.fromXdr(
       buildTestWithAddressPreimage(Networks.PUBLIC),
       "base64",
     );
@@ -541,7 +544,7 @@ describe("validateSignAuthEntry", () => {
     );
     expect(result.valid).toBe(true);
     if (result.valid) {
-      expect(result.value.toXDR("base64")).toBe(preimageXdr);
+      expect(result.value.toXdr("base64")).toBe(preimageXdr);
     }
   });
 
@@ -554,7 +557,7 @@ describe("validateSignAuthEntry", () => {
     );
     expect(result.valid).toBe(true);
     if (result.valid) {
-      expect(result.value.toXDR("base64")).toBe(preimageXdr);
+      expect(result.value.toXdr("base64")).toBe(preimageXdr);
     }
   });
 
@@ -595,13 +598,13 @@ describe("validateSignAuthEntry", () => {
 
 describe("validateAuthEntryAddress", () => {
   it("passes a legacy preimage through (no bound address to enforce)", () => {
-    const preimage = xdr.HashIdPreimage.fromXDR(buildTestPreimage(), "base64");
+    const preimage = xdr.HashIdPreimage.fromXdr(buildTestPreimage(), "base64");
     const result = validateAuthEntryAddress(preimage, OTHER_WALLET_ADDRESS);
     expect(result.valid).toBe(true);
   });
 
   it("returns valid when the bound address matches the wallet", () => {
-    const preimage = xdr.HashIdPreimage.fromXDR(
+    const preimage = xdr.HashIdPreimage.fromXdr(
       buildTestWithAddressPreimage(Networks.TESTNET, "1", TEST_SIGNER_ADDRESS),
       "base64",
     );
@@ -610,7 +613,7 @@ describe("validateAuthEntryAddress", () => {
   });
 
   it("returns address mismatch when the bound account differs from the wallet", () => {
-    const preimage = xdr.HashIdPreimage.fromXDR(
+    const preimage = xdr.HashIdPreimage.fromXdr(
       buildTestWithAddressPreimage(Networks.TESTNET, "1", TEST_SIGNER_ADDRESS),
       "base64",
     );
@@ -624,7 +627,7 @@ describe("validateAuthEntryAddress", () => {
   });
 
   it("rejects a contract-bound address (delegated auth is not supported — freighter-mobile#894)", () => {
-    const preimage = xdr.HashIdPreimage.fromXDR(
+    const preimage = xdr.HashIdPreimage.fromXdr(
       buildTestWithAddressPreimage(
         Networks.TESTNET,
         "1",
@@ -642,7 +645,7 @@ describe("validateAuthEntryAddress", () => {
   });
 
   it("returns invalid for a non-Soroban-authorization preimage", () => {
-    const preimage = xdr.HashIdPreimage.fromXDR(
+    const preimage = xdr.HashIdPreimage.fromXdr(
       buildNonSorobanPreimage(),
       "base64",
     );

@@ -19,11 +19,11 @@ import { stellarSdkServer } from "services/stellar";
 /**
  * Checks if a memo is required by querying cached memo-required accounts
  *
- * @param {ReturnType<typeof TransactionBuilder.fromXDR>} transaction - The transaction to check
+ * @param {ReturnType<typeof TransactionBuilder.fromXdr>} transaction - The transaction to check
  * @returns {Promise<boolean>} True if a memo is required, false otherwise
  */
 export const checkMemoRequiredFromCache = async (
-  transaction: ReturnType<typeof TransactionBuilder.fromXDR>,
+  transaction: ReturnType<typeof TransactionBuilder.fromXdr>,
 ): Promise<boolean> => {
   const response = await cachedFetch<MemoRequiredAccountsApiResponse>({
     urlOrFn: getApiStellarExpertIsMemoRequiredListUrl(),
@@ -50,12 +50,12 @@ export const checkMemoRequiredFromCache = async (
  * Checks if a memo is required using Stellar SDK's built-in validation
  * This is a fallback method when cache validation fails
  *
- * @param {ReturnType<typeof TransactionBuilder.fromXDR>} transaction - The transaction to check
+ * @param {ReturnType<typeof TransactionBuilder.fromXdr>} transaction - The transaction to check
  * @param {string} networkUrl - The network URL for the Stellar server
  * @returns {Promise<boolean>} True if a memo is required, false otherwise
  */
 export const checkMemoRequiredFromStellarSDK = async (
-  transaction: ReturnType<typeof TransactionBuilder.fromXDR>,
+  transaction: ReturnType<typeof TransactionBuilder.fromXdr>,
   networkUrl: string,
 ): Promise<boolean> => {
   const server = stellarSdkServer(networkUrl);
@@ -93,7 +93,7 @@ export const useValidateTransactionMemo = (incomingXdr?: string | null) => {
   const [localMemo, setLocalMemo] = useState<string>(transactionMemo ?? "");
   const [isValidatingMemo, setIsValidatingMemo] = useState(false);
   const [localTransaction, setLocalTransaction] = useState<ReturnType<
-    typeof TransactionBuilder.fromXDR
+    typeof TransactionBuilder.fromXdr
   > | null>(null);
   const networkDetails = useMemo(
     () => mapNetworkToNetworkDetails(network),
@@ -136,9 +136,9 @@ export const useValidateTransactionMemo = (incomingXdr?: string | null) => {
       return;
     }
 
-    let transaction: ReturnType<typeof TransactionBuilder.fromXDR>;
+    let transaction: ReturnType<typeof TransactionBuilder.fromXdr>;
     try {
-      transaction = TransactionBuilder.fromXDR(xdr, network);
+      transaction = TransactionBuilder.fromXdr(xdr, network);
     } catch (e) {
       // Malformed XDR — cannot validate memo, reset state to avoid stale UI
       logger.warn(

@@ -47,6 +47,12 @@ interface BalancesState {
   isLoading: boolean;
   isFunded: boolean;
   subentryCount: number;
+  /**
+   * Contract IDs in `balances` that are there only because the user saved them
+   * locally. The balances view offers removal for these and hide-only for
+   * everything else the backend returns on its own.
+   */
+  localOnlyTokenIds: string[];
   error: string | null;
   fetchedPublicKey: string | null;
   fetchedNetwork: NETWORKS | null;
@@ -300,6 +306,7 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
   isLoading: false,
   isFunded: false,
   subentryCount: 0,
+  localOnlyTokenIds: [],
   error: null,
   fetchedPublicKey: null,
   fetchedNetwork: null,
@@ -323,11 +330,15 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
         ...customTokensContractsIds,
       ];
 
-      // Fetch balances with combined contract IDs
-      const { balances, isFunded, subentryCount } = await fetchBalances({
-        ...params,
-        contractIds: allContractIds,
-      });
+      // Fetch balances with combined contract IDs. Read the v2 flag from the
+      // store at call time (not a captured value) so a freshly resolved
+      // Amplitude flag isn't missed — mirrors the token-prices flag below.
+      const { balances, isFunded, subentryCount, localOnlyTokenIds } =
+        await fetchBalances({
+          ...params,
+          contractIds: allContractIds,
+          useV2: useRemoteConfigStore.getState().use_balances_v2,
+        });
 
       if (!balances) {
         throw new Error("No balances returned from API");
@@ -340,6 +351,7 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
         subentryCount: subentryCount ?? 0,
         fetchedPublicKey: params.publicKey,
         fetchedNetwork: params.network,
+        localOnlyTokenIds: localOnlyTokenIds ?? [],
       });
 
       // Get existing state priced balances to preserve price data
@@ -391,6 +403,9 @@ export const useBalancesStore = create<BalancesState>((set, get) => ({
         error,
         {
           network: params.network,
+          // Structured, so sanitizeLogData can redact it for opt-out users —
+          // interpolating it into an error message would bypass the redactor.
+          publicKey: params.publicKey,
           ...(apiError && {
             status: apiError.status,
             isNetworkError: apiError.isNetworkError,

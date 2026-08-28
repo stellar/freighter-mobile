@@ -18,6 +18,7 @@ const BOOLEAN_FLAGS = [
   "discover_enabled",
   "onramp_enabled",
   "use_token_prices_v2",
+  "use_balances_v2",
 ] as const;
 
 const VERSION_FLAGS = ["required_app_version", "latest_app_version"] as const;
@@ -71,6 +72,10 @@ const INITIAL_REMOTE_CONFIG_STATE =
         discover_enabled: true,
         onramp_enabled: true,
         use_token_prices_v2: true,
+        // Defaults to v1 until the wallet-backend indexer is deployed for
+        // every network; Amplitude flips this on to roll out v2 balances
+        // without a release.
+        use_balances_v2: false,
         required_app_version: currentAppVersion,
         latest_app_version: currentAppVersion,
         app_update_banner_text: {
@@ -92,6 +97,10 @@ const INITIAL_REMOTE_CONFIG_STATE =
         discover_enabled: isAndroid,
         onramp_enabled: isAndroid,
         use_token_prices_v2: true,
+        // Defaults to v1 until the wallet-backend indexer is deployed for
+        // every network; Amplitude flips this on to roll out v2 balances
+        // without a release.
+        use_balances_v2: false,
         required_app_version: currentAppVersion,
         latest_app_version: currentAppVersion,
         app_update_banner_text: {

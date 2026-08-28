@@ -30,11 +30,13 @@ module.exports = {
       "react-native-keyboard-controller",
       "react-native-qrcode-svg",
       "stellar-hd-wallet",
-      // v16 ships ESM-only deps (@noble/*, smol-toml, uint8array-extras,
-      // eventsource), some nested under the SDK; transform these so Jest can
-      // load the SDK's CJS build.
+      // v17's CJS build `require()`s ESM-only deps (@noble/*, @exodus/bytes,
+      // smol-toml, uint8array-extras, eventsource), some nested under the SDK.
+      // Node 22.12+ loads those natively, but Jest's CJS module registry does
+      // not, so babel has to transform them here.
       "@stellar/stellar-sdk",
       "@noble",
+      "@exodus/bytes",
       "smol-toml",
       "uint8array-extras",
       "eventsource",
