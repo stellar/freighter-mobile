@@ -1,8 +1,11 @@
 import {
   AUTO_LOCK_TIMER,
   DEFAULT_AUTO_LOCK_TIMER,
+  HASH_KEY_EXPIRATION_MS,
+  HASH_KEY_REFRESH_THROTTLE_MS,
   SENSITIVE_STORAGE_KEYS,
 } from "config/constants";
+import { HashKey } from "config/types";
 import { getHashKey } from "services/storage/helpers";
 import { secureDataStorage } from "services/storage/storageFactory";
 
@@ -89,6 +92,65 @@ const getBackgroundedAt = async (): Promise<number | null> => {
 };
 
 /**
+ * Checks if a hash key is expired.
+ *
+ * Clock-rollback backstop: a key whose generatedAt is in the future means the
+ * device clock was moved backward below the key's creation time — a rolled-back
+ * clock would otherwise keep `now <= expiresAt` true indefinitely and prevent
+ * the hard-expiry from ever forcing a full re-auth. Treat that as expired
+ * (mirrors getBackgroundedAt's future-timestamp guard for the soft timer).
+ * generatedAt is optional so keys persisted before this field fall back to the
+ * plain expiry check.
+ */
+const isHashKeyExpired = (hashKey: HashKey): boolean => {
+  const now = Date.now();
+  if (hashKey.generatedAt !== undefined && hashKey.generatedAt > now) {
+    return true;
+  }
+  return now > hashKey.expiresAt;
+};
+
+/**
+ * Re-anchors the hash-key hard-expiry on use (#924): pushes expiresAt out to
+ * a full HASH_KEY_EXPIRATION_MS from now, so the backstop bounds *inactivity*
+ * rather than time since the last credential entry.
+ *
+ * Guards (defense in depth — the getAuthStatus call site is also gated):
+ * - An expired or rolled-back key is never refreshed; only signIn's
+ *   credential-verified path may re-stamp those.
+ * - The write is throttled: a key anchored within HASH_KEY_REFRESH_THROTTLE_MS
+ *   is left alone, so the 5s foreground auth tick doesn't hammer the keychain.
+ *   A legacy key without generatedAt can't prove it was recently anchored, so
+ *   it refreshes immediately (gaining generatedAt, after which the throttle
+ *   applies).
+ *
+ * Takes the already-read HashKey rather than re-reading it, since every
+ * caller (getAuthStatus) has just loaded it to run the expiry checks.
+ */
+const refreshHashKeyExpiration = async (hashKey: HashKey): Promise<void> => {
+  if (isHashKeyExpired(hashKey)) {
+    return;
+  }
+
+  const now = Date.now();
+  if (
+    hashKey.generatedAt !== undefined &&
+    now - hashKey.generatedAt < HASH_KEY_REFRESH_THROTTLE_MS
+  ) {
+    return;
+  }
+
+  await secureDataStorage.setItem(
+    SENSITIVE_STORAGE_KEYS.HASH_KEY,
+    JSON.stringify({
+      ...hashKey,
+      expiresAt: now + HASH_KEY_EXPIRATION_MS,
+      generatedAt: now,
+    } satisfies HashKey),
+  );
+};
+
+/**
  * Whether an unlockable session is persisted on device (a hash key and a
  * temporary store both exist). Lets the background handler decide whether to
  * record/lock from disk state rather than the zustand auth status, which may
@@ -110,5 +172,7 @@ export {
   recordBackgroundedAt,
   getBackgroundedAt,
   clearBackgroundedAt,
+  isHashKeyExpired,
+  refreshHashKeyExpiration,
   hasPersistedSession,
 };

@@ -94,17 +94,23 @@ export const ACCOUNTS_TO_VERIFY_ON_EXISTING_MNEMONIC_PHRASE = 6;
 // rather than taking the fast soft-lock unlock path. It is a separate, coarser
 // bound than the user-configurable soft auto-lock: the soft timer governs how
 // soon the wallet re-locks (fast unlock), while this caps how long key material
-// may live in secure storage regardless of that choice.
+// may live in secure storage without the wallet being used.
 //
-// Set above the largest AUTO_LOCK_TIMER preset (24h) so that preset's soft-lock
-// fast path stays reachable — if this were <= 24h, the hard expiry (anchored at
-// sign-in and checked before the soft timer) would fire first and the 24h
-// preset could never fast-unlock. 72h (3x the max preset) gives enough headroom
-// that even a loosely-active 24h-preset user — one whose gaps stay just under
-// 24h so the soft-lock never fires and never resets this clock — is unlikely to
-// hit a surprise full re-auth. (The complete fix is to re-anchor this on
-// activity rather than sign-in; tracked as a follow-up.)
+// Anchored on activity, not sign-in (#924): every authenticated foreground
+// auth check re-stamps expiresAt (throttled via HASH_KEY_REFRESH_THROTTLE_MS),
+// so the bound is "72h with no foreground use" — an actively-used wallet never
+// hard-expires, matching the Freighter extension's session model. It must stay
+// strictly above the largest AUTO_LOCK_TIMER preset (24h): the hard expiry is
+// checked before the soft timer, so if this were <= 24h a 24h-preset user
+// would hit the full re-auth instead of that preset's fast unlock.
 export const HASH_KEY_EXPIRATION_MS = 72 * 60 * 60 * 1000; // 72 hours
+
+// Minimum age of a hash key's generatedAt anchor before an authenticated
+// foreground auth check re-stamps it. getAuthStatus runs as often as every 5s
+// while the app is active — this gates the secure-storage (keychain) write to
+// at most one per hour rather than one per tick. Granularity is negligible
+// against the 72h backstop (worst case the effective bound is 72h + 1h).
+export const HASH_KEY_REFRESH_THROTTLE_MS = 60 * 60 * 1000; // 1 hour
 export const VISUAL_DELAY_MS = 500;
 
 const SECOND_IN_MS = 1000;

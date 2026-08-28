@@ -63,6 +63,7 @@ import {
   clearBackgroundedAt,
   getAutoLockTimer,
   getBackgroundedAt,
+  isHashKeyExpired,
   persistAutoLockTimer,
 } from "services/autoLock";
 import { getAccount } from "services/stellar";
@@ -445,25 +446,6 @@ const loadPersistedNetwork = async (
  * We're using mainnet as the default, but the same key manager can be used for testnet as well
  */
 const keyManager = createKeyManager(Networks.PUBLIC);
-
-/**
- * Checks if a hash key is expired.
- *
- * Clock-rollback backstop: a key whose generatedAt is in the future means the
- * device clock was moved backward below the key's creation time — a rolled-back
- * clock would otherwise keep `now <= expiresAt` true indefinitely and prevent
- * the hard-expiry from ever forcing a full re-auth. Treat that as expired
- * (mirrors getBackgroundedAt's future-timestamp guard for the soft timer).
- * generatedAt is optional so keys persisted before this field fall back to the
- * plain expiry check.
- */
-const isHashKeyExpired = (hashKey: HashKey): boolean => {
-  const now = Date.now();
-  if (hashKey.generatedAt !== undefined && hashKey.generatedAt > now) {
-    return true;
-  }
-  return now > hashKey.expiresAt;
-};
 
 /**
  * Gets all accounts from the account list
