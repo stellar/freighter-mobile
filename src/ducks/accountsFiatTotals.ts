@@ -241,6 +241,7 @@ export const useAccountsFiatTotalsStore = create<AccountsFiatTotalsState>(
         fetchGeneration += 1;
         const thisGeneration = fetchGeneration;
         const useV2 = useRemoteConfigStore.getState().use_token_prices_v2;
+        const useBalancesV2 = useRemoteConfigStore.getState().use_balances_v2;
 
         // The prices store skips identifiers it already holds, so without an
         // occasional forced pass a quote fetched once would price totals for
@@ -278,6 +279,7 @@ export const useAccountsFiatTotalsStore = create<AccountsFiatTotalsState>(
                   const { balances, isFunded } = await fetchBalances({
                     publicKey,
                     network,
+                    useV2: useBalancesV2,
                     shouldSkipScan: true,
                   });
 
