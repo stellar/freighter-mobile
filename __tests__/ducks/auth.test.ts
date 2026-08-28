@@ -1866,6 +1866,57 @@ describe("auth duck", () => {
           SENSITIVE_STORAGE_KEYS.HASH_KEY,
           expect.any(String),
         );
+        expect(secureDataStorage.remove).not.toHaveBeenCalledWith(
+          SENSITIVE_STORAGE_KEYS.AUTO_LOCK_BACKGROUNDED_AT,
+        );
+
+        (AppState as { currentState: typeof previousAppState }).currentState =
+          previousAppState;
+      });
+
+      it("should stay AUTHENTICATED when the re-anchor keychain write fails", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+        restoreGetAuthStatus();
+
+        const previousAppState = AppState.currentState;
+        (AppState as { currentState: string }).currentState = "active";
+
+        mockAuthenticatedStorage({
+          backgroundedAt: null,
+          autoLockTimer: AUTO_LOCK_TIMER.ONE_HOUR,
+        });
+        // Stale anchor on a healthy key: the re-anchor will attempt a write.
+        (getHashKey as jest.Mock).mockResolvedValue({
+          hashKey: "mock-hash-key",
+          salt: "mock-salt",
+          generatedAt: Date.now() - (HASH_KEY_REFRESH_THROTTLE_MS + 60000),
+          expiresAt: Date.now() + ONE_HOUR_MS,
+        });
+        // The keychain rejects the re-anchor write (this is the only setItem
+        // getAuthStatus performs on the AUTHENTICATED path).
+        (secureDataStorage.setItem as jest.Mock).mockRejectedValue(
+          new Error("keychain unavailable"),
+        );
+
+        await act(async () => {
+          const status = await result.current.getAuthStatus();
+          // The re-anchor is opportunistic: a failed write must not escape to
+          // the outer catch and demote the session to NOT_AUTHENTICATED. The
+          // key simply keeps its old deadline.
+          expect(status).toBe(AUTH_STATUS.AUTHENTICATED);
+        });
+
+        expect(logger.error).toHaveBeenCalledWith(
+          "getAuthStatus",
+          "Failed to refresh hash key expiration",
+          expect.any(Error),
+        );
+        // ...and specifically NOT via the outer catch-all.
+        expect(logger.error).not.toHaveBeenCalledWith(
+          "validateAuth",
+          "Failed to validate auth",
+          expect.anything(),
+        );
 
         (AppState as { currentState: typeof previousAppState }).currentState =
           previousAppState;
