@@ -46,6 +46,7 @@ import {
   clearNonSensitiveData,
   clearTemporaryData,
   getHashKey,
+  getWipeGeneration,
 } from "services/storage/helpers";
 // Import mocked modules
 import { rnBiometrics } from "services/storage/secureStorage";
@@ -145,6 +146,7 @@ jest.mock("services/storage/helpers", () => ({
   clearNonSensitiveData: jest.fn(),
   clearTemporaryData: jest.fn(),
   getHashKey: jest.fn(),
+  getWipeGeneration: jest.fn(() => 0),
 }));
 
 jest.mock("config/logger", () => ({
@@ -2005,6 +2007,40 @@ describe("auth duck", () => {
         });
 
         expect(tempStoreReads).toBeGreaterThan(1);
+        expect(secureDataStorage.setItem).not.toHaveBeenCalledWith(
+          SENSITIVE_STORAGE_KEYS.HASH_KEY,
+          expect.any(String),
+        );
+      });
+
+      it("should not re-anchor when a wipe begins during the write-time re-read", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+        restoreGetAuthStatus();
+
+        (AppState as { currentState: string }).currentState = "active";
+
+        mockAuthenticatedStorage({
+          backgroundedAt: null,
+          autoLockTimer: AUTO_LOCK_TIMER.ONE_HOUR,
+        });
+        // Key and temp store both read back healthy — but a
+        // clearTemporaryData wipe started while the re-read was in flight
+        // (generation moved), so its removes may land after the re-anchor's
+        // write. The generation check must refuse the write.
+        (getHashKey as jest.Mock).mockResolvedValue({
+          hashKey: "mock-hash-key",
+          salt: "mock-salt",
+          generatedAt: Date.now() - (HASH_KEY_REFRESH_THROTTLE_MS + 60000),
+          expiresAt: Date.now() + ONE_HOUR_MS,
+        });
+        (getWipeGeneration as jest.Mock)
+          .mockReturnValueOnce(0)
+          .mockReturnValue(1);
+
+        await act(async () => {
+          await result.current.getAuthStatus();
+        });
+
         expect(secureDataStorage.setItem).not.toHaveBeenCalledWith(
           SENSITIVE_STORAGE_KEYS.HASH_KEY,
           expect.any(String),

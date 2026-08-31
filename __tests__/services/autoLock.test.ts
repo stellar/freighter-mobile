@@ -16,7 +16,7 @@ import {
   refreshHashKeyExpiration,
   resetHashKeyRefreshAttemptThrottle,
 } from "services/autoLock";
-import { getHashKey } from "services/storage/helpers";
+import { getHashKey, getWipeGeneration } from "services/storage/helpers";
 import { secureDataStorage } from "services/storage/storageFactory";
 
 jest.mock("services/storage/storageFactory", () => ({
@@ -34,6 +34,7 @@ jest.mock("services/storage/storageFactory", () => ({
 
 jest.mock("services/storage/helpers", () => ({
   getHashKey: jest.fn(),
+  getWipeGeneration: jest.fn(() => 0),
 }));
 
 describe("autoLock service", () => {
@@ -376,6 +377,22 @@ describe("autoLock service", () => {
       } finally {
         dateSpy.mockRestore();
       }
+    });
+
+    it("refuses the write when a wipe starts between the re-read and the write", async () => {
+      // Storage still holds a matching key and a live temp store, but a
+      // clearTemporaryData wipe BEGAN while the re-read was in flight (its
+      // removes may land after our write would). The generation check —
+      // captured before the re-read, compared synchronously before the
+      // write — must refuse rather than race the wipe.
+      (getHashKey as jest.Mock).mockResolvedValue(staleValidKey);
+      (getWipeGeneration as jest.Mock)
+        .mockReturnValueOnce(0)
+        .mockReturnValue(1);
+
+      await refreshHashKeyExpiration(staleValidKey);
+
+      expect(secureDataStorage.setItem).not.toHaveBeenCalled();
     });
 
     it("re-stamps a legacy key without generatedAt (and upgrades it)", async () => {

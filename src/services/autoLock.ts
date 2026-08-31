@@ -6,7 +6,7 @@ import {
   SENSITIVE_STORAGE_KEYS,
 } from "config/constants";
 import { HashKey } from "config/types";
-import { getHashKey } from "services/storage/helpers";
+import { getHashKey, getWipeGeneration } from "services/storage/helpers";
 import { secureDataStorage } from "services/storage/storageFactory";
 
 /**
@@ -185,9 +185,10 @@ const refreshHashKeyExpiration = async (hashKey: HashKey): Promise<void> => {
   // re-stamp, and never push out the deadline of an orphan key (no temp
   // store), which must hard-expire and get cleaned up instead. Checking the
   // store here rather than only at the call site keeps the orphan invariant
-  // with the helper for any future caller. The remaining window is the single
-  // await between this read and the write (same bound as
-  // getActiveMnemonicPhrase's re-check pattern in auth.ts).
+  // with the helper for any future caller. The wipe-generation check below
+  // covers the read-to-write gap itself, so within the JS thread no
+  // interleaving with clearTemporaryData can resurrect wiped material.
+  const wipeGenerationAtRead = getWipeGeneration();
   const [currentHashKey, temporaryStore] = await Promise.all([
     getHashKey(),
     secureDataStorage.getItem(SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE),
@@ -200,6 +201,17 @@ const refreshHashKeyExpiration = async (hashKey: HashKey): Promise<void> => {
     currentHashKey.expiresAt !== hashKey.expiresAt ||
     currentHashKey.generatedAt !== hashKey.generatedAt
   ) {
+    return;
+  }
+
+  // The re-read above only proves the key survived up to the point those
+  // reads resolved — a clearTemporaryData wipe starting while they were in
+  // flight could still have its removes land after the write below. The
+  // wipe bumps its generation synchronously at entry, so this check (no
+  // await between it and the write) refuses that interleaving: a wipe that
+  // instead starts after the write is dispatched has its removes land last
+  // and wins. Either ordering ends with no resurrected key.
+  if (getWipeGeneration() !== wipeGenerationAtRead) {
     return;
   }
 
