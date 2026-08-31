@@ -146,7 +146,8 @@ const resetHashKeyRefreshAttemptThrottle = (): void => {
  *
  * Takes the caller-validated HashKey snapshot to run the guards and throttle
  * (every caller has just loaded it for the expiry checks), then re-reads the
- * stored key once at write time for the TOCTOU check below.
+ * stored key and the temporary store once at write time for the TOCTOU check
+ * below — the re-anchor requires the exact validated key and a live session.
  */
 const refreshHashKeyExpiration = async (hashKey: HashKey): Promise<void> => {
   if (isHashKeyExpired(hashKey)) {
@@ -177,14 +178,23 @@ const refreshHashKeyExpiration = async (hashKey: HashKey): Promise<void> => {
   lastRefreshAttemptAt = now;
 
   // TOCTOU guard: the caller validated this key several awaits ago; a logout
-  // or corruption wipe (clearTemporaryData) may have removed or replaced it
-  // since. Re-stamp only the exact key that was validated — never resurrect
-  // a wiped key, never clobber a concurrent credential-verified re-stamp.
-  // The remaining window is the single await between this read and the write
-  // (same bound as getActiveMnemonicPhrase's re-check pattern in auth.ts).
-  const currentHashKey = await getHashKey();
+  // or corruption wipe (clearTemporaryData) may have removed or replaced it —
+  // or removed just the temporary store — since. Re-stamp only the exact key
+  // that was validated, and only while a session still exists on disk: never
+  // resurrect a wiped key, never clobber a concurrent credential-verified
+  // re-stamp, and never push out the deadline of an orphan key (no temp
+  // store), which must hard-expire and get cleaned up instead. Checking the
+  // store here rather than only at the call site keeps the orphan invariant
+  // with the helper for any future caller. The remaining window is the single
+  // await between this read and the write (same bound as
+  // getActiveMnemonicPhrase's re-check pattern in auth.ts).
+  const [currentHashKey, temporaryStore] = await Promise.all([
+    getHashKey(),
+    secureDataStorage.getItem(SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE),
+  ]);
   if (
     !currentHashKey ||
+    !temporaryStore ||
     currentHashKey.hashKey !== hashKey.hashKey ||
     currentHashKey.salt !== hashKey.salt ||
     currentHashKey.expiresAt !== hashKey.expiresAt ||

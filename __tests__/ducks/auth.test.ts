@@ -1964,6 +1964,53 @@ describe("auth duck", () => {
         );
       });
 
+      it("should not re-anchor when the temporary store is wiped mid-check (TOCTOU)", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+        restoreGetAuthStatus();
+
+        (AppState as { currentState: string }).currentState = "active";
+
+        mockAuthenticatedStorage({
+          backgroundedAt: null,
+          autoLockTimer: AUTO_LOCK_TIMER.ONE_HOUR,
+        });
+        const staleKey = {
+          hashKey: "mock-hash-key",
+          salt: "mock-salt",
+          generatedAt: Date.now() - (HASH_KEY_REFRESH_THROTTLE_MS + 60000),
+          expiresAt: Date.now() + ONE_HOUR_MS,
+        };
+        // The key survives, but a wipe removes the temporary store between
+        // getAuthStatus's entry-time read (which saw it present) and the
+        // helper's write-time re-read. The call-site gate passed on stale
+        // data, so the helper's own session check must refuse the write —
+        // otherwise the wipe race leaves an orphan key valid for 72h.
+        (getHashKey as jest.Mock).mockResolvedValue(staleKey);
+        let tempStoreReads = 0;
+        (secureDataStorage.getItem as jest.Mock).mockImplementation((key) => {
+          if (key === SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE) {
+            tempStoreReads += 1;
+            return Promise.resolve(
+              tempStoreReads === 1 ? "encrypted-temp-store" : null,
+            );
+          }
+          if (key === SENSITIVE_STORAGE_KEYS.AUTO_LOCK_TIMER_SETTING) {
+            return Promise.resolve(AUTO_LOCK_TIMER.ONE_HOUR);
+          }
+          return Promise.resolve(null);
+        });
+
+        await act(async () => {
+          await result.current.getAuthStatus();
+        });
+
+        expect(tempStoreReads).toBeGreaterThan(1);
+        expect(secureDataStorage.setItem).not.toHaveBeenCalledWith(
+          SENSITIVE_STORAGE_KEYS.HASH_KEY,
+          expect.any(String),
+        );
+      });
+
       it("should NOT re-anchor an orphan hash key with no temporary store", async () => {
         const { result } = renderHook(() => useAuthenticationStore());
         restoreGetAuthStatus();

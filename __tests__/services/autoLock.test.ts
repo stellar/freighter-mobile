@@ -201,6 +201,29 @@ describe("autoLock service", () => {
       expiresAt: Date.now() + 3_600_000,
     };
 
+    beforeEach(() => {
+      // The write-time re-read also requires a session to still exist (a
+      // present temporary store); arm it for the write-expecting tests —
+      // orphan-case tests override with null.
+      (secureDataStorage.getItem as jest.Mock).mockResolvedValue(
+        "encrypted-temp-store",
+      );
+    });
+
+    it("never re-anchors when the temporary store is gone at write time (orphan key)", async () => {
+      // A wipe that removed the temp store but not (yet) the hash key must
+      // not have the key's deadline pushed out — it should hard-expire.
+      (getHashKey as jest.Mock).mockResolvedValue(staleValidKey);
+      (secureDataStorage.getItem as jest.Mock).mockResolvedValue(null);
+
+      await refreshHashKeyExpiration(staleValidKey);
+
+      expect(secureDataStorage.getItem).toHaveBeenCalledWith(
+        SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE,
+      );
+      expect(secureDataStorage.setItem).not.toHaveBeenCalled();
+    });
+
     it("re-stamps expiresAt and generatedAt for a valid, stale key", async () => {
       // The TOCTOU guard re-reads at write time: storage still holds the
       // exact key the caller validated.
