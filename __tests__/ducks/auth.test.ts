@@ -1635,6 +1635,58 @@ describe("auth duck", () => {
         });
       });
 
+      it("should return HASH_KEY_EXPIRED (not LOCKED) when a persisted soft lock holds an expired key (#924)", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+
+        act(() => {
+          useAuthenticationStore.setState({
+            getAuthStatus: originalStoreMethods.getAuthStatus,
+          });
+        });
+
+        (dataStorage.getItem as jest.Mock).mockImplementation((key) => {
+          if (key === STORAGE_KEYS.ACCOUNT_LIST) {
+            return Promise.resolve(JSON.stringify([mockAccount]));
+          }
+          return Promise.resolve(null);
+        });
+
+        // Soft-locked session sitting past the whole backstop window: with
+        // the TTL anchored on activity, this only happens after 72h of no
+        // use — exactly the case that must surface as the full re-auth
+        // rather than the fast unlock (#924 AC2). Under sign-in anchoring
+        // (#905) lock-screen expiry was routine, so LOCKED deliberately won;
+        // activity anchoring makes it the genuine-idle signal.
+        (secureDataStorage.getItem as jest.Mock).mockImplementation((key) => {
+          if (key === SENSITIVE_STORAGE_KEYS.AUTH_STATUS) {
+            return Promise.resolve(AUTH_STATUS.LOCKED);
+          }
+          if (key === SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE) {
+            return Promise.resolve("encrypted-temp-store");
+          }
+          return Promise.resolve(null);
+        });
+
+        (getHashKey as jest.Mock).mockResolvedValue({
+          hashKey: "mock-hash-key",
+          salt: "mock-salt",
+          generatedAt: Date.now() - 73 * 3600000,
+          expiresAt: Date.now() - 3600000, // hard-expired an hour ago
+        });
+        (secureDataStorage.remove as jest.Mock).mockResolvedValue(undefined);
+
+        await act(async () => {
+          const status = await result.current.getAuthStatus();
+          expect(status).toBe(AUTH_STATUS.HASH_KEY_EXPIRED);
+        });
+
+        // The stale soft-lock marker is consumed so the next check doesn't
+        // resurrect the fast path.
+        expect(secureDataStorage.remove).toHaveBeenCalledWith(
+          SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
+        );
+      });
+
       it("should clear invalid LOCKED status if temp store doesn't exist", async () => {
         const { result } = renderHook(() => useAuthenticationStore());
 

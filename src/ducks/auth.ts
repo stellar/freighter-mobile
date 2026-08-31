@@ -492,14 +492,21 @@ const getAuthStatus = async (): Promise<AuthStatus> => {
     }
 
     // Read from SECURE storage (encrypted) to prevent tampering.
-    // LOCKED check comes before isHashKeyExpired: if the user locked the app,
-    // the hash key may have expired while it was sitting on the lock screen.
-    // We still want LOCKED (not HASH_KEY_EXPIRED) so the signIn fast path runs
-    // (TTL refresh + derived key cache) rather than forcing a full re-derivation.
+    // Hard expiry outranks a persisted soft lock (#924). Under sign-in
+    // anchoring (#905) the key routinely expired while sitting on the lock
+    // screen, so LOCKED deliberately won to keep the fast unlock reachable;
+    // with the TTL re-anchored on activity, an expired key here means a full
+    // backstop window (72h) of no use — exactly the genuine-idle case that
+    // must force the full password re-auth instead of the fast path. The
+    // stale soft-lock marker is consumed so later checks can't resurrect it.
     const persistedAuthStatus = await secureDataStorage.getItem(
       SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
     );
     if (persistedAuthStatus === AUTH_STATUS.LOCKED) {
+      if (hashKey && isHashKeyExpired(hashKey)) {
+        await secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.AUTH_STATUS);
+        return AUTH_STATUS.HASH_KEY_EXPIRED;
+      }
       if (temporaryStore) {
         return AUTH_STATUS.LOCKED;
       }
@@ -510,8 +517,7 @@ const getAuthStatus = async (): Promise<AuthStatus> => {
 
     // Hard expiry wins over the soft timer lock: checked before the timer so a
     // session backgrounded past the hash-key TTL forces a full re-auth instead
-    // of a fast-path LOCKED that would just refresh the expired key. (The
-    // persisted-LOCKED branch above keeps the fast path — there it's intended.)
+    // of a fast-path LOCKED that would just refresh the expired key.
     if (hashKey && isHashKeyExpired(hashKey)) {
       return AUTH_STATUS.HASH_KEY_EXPIRED;
     }
@@ -1521,10 +1527,18 @@ const signIn = async ({
     const existingTempStore = await secureDataStorage.getItem(
       SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE,
     );
-    if (existingHashKey && existingTempStore) {
+    if (
+      existingHashKey &&
+      existingTempStore &&
+      !isHashKeyExpired(existingHashKey)
+    ) {
       // Fast path: temp store is intact — just refresh the hard-expiry TTL.
       // Re-anchor generatedAt too (this is a credential-verified moment) so the
-      // clock-rollback backstop stays aligned with the new expiry.
+      // clock-rollback backstop stays aligned with the new expiry. An expired
+      // or rolled-back key never takes this path (getAuthStatus reports it as
+      // HASH_KEY_EXPIRED, but expiry can also cross between that check and
+      // this call): it falls through to the full rebuild below, which mints a
+      // fresh key instead of re-stamping stale material.
       const refreshNow = Date.now();
       await secureDataStorage.setItem(
         SENSITIVE_STORAGE_KEYS.HASH_KEY,
