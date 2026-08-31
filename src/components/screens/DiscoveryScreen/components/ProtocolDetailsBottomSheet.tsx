@@ -1,5 +1,6 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import BottomSheet from "components/BottomSheet";
+import { LinkedText } from "components/LinkedText";
 import { App } from "components/sds/App";
 import { Badge } from "components/sds/Badge";
 import { Button } from "components/sds/Button";
@@ -15,6 +16,11 @@ interface ProtocolDetails {
   name: string;
   iconUrl: string;
   websiteUrl: string;
+  /**
+   * Rendered via LinkedText: supports markdown-style `[text](https://...)`
+   * links and bare `https://` URLs, which render as tappable links. No
+   * other markdown/HTML is parsed.
+   */
   description: string;
   tags: string[];
 }
@@ -96,7 +102,7 @@ const ProtocolDetailsBottomSheet: React.FC<ProtocolDetailsBottomSheetProps> =
               <Text sm secondary>
                 {t("discovery.description")}
               </Text>
-              <Text md>{protocol.description}</Text>
+              <LinkedText md>{protocol.description}</LinkedText>
             </View>
           )}
         </View>
