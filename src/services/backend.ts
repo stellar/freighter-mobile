@@ -1018,7 +1018,9 @@ export const submitTransaction = async (body: SubmitTransactionBody) => {
  * @interface ProtocolsResponse
  * @property {Object} data - Response data container
  * @property {Object[]} data.protocols - Array of protocol objects
- * @property {string} data.protocols[].description - Protocol description
+ * @property {string} data.protocols[].description - Protocol description. Rendered via
+ * LinkedText (components/LinkedText): supports markdown-style `[text](https://...)` links
+ * and bare `https://` URLs, which render as tappable links. No other markdown/HTML is parsed.
  * @property {string} data.protocols[].icon_url - Protocol icon URL
  * @property {string} data.protocols[].name - Protocol name
  * @property {string} data.protocols[].website_url - Protocol website URL
