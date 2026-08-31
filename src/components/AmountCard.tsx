@@ -194,8 +194,7 @@ const PickerChip: React.FC<{
         // proportionally to this larger icon; with size="sm" (16×16) the
         // badge nearly covers the whole icon. Chip height stays 32px
         // because the `<Text md>` lineHeight (24) already dominates the
-        // row (which is also why the icon-less empty state below keeps the
-        // same height).
+        // row.
         <TokenIconWithBadge
           token={token}
           size="md"
@@ -205,10 +204,7 @@ const PickerChip: React.FC<{
           // already shown as the adjacent label, so one initial reads cleaner.
           singleLetterFallback
         />
-      ) : // No empty-state icon: the label ("Select a token") plus chevron is
-      // the whole affordance, per the #940 design note (the old
-      // Plus-in-circle was dropped alongside the destination defaulting).
-      null}
+      ) : null}
       <Text md medium>
         {label ?? fallbackLabel ?? ""}
       </Text>

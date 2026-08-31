@@ -61,6 +61,7 @@ import {
   TokenTypeWithCustomToken,
 } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
+import { useBalancesStore } from "ducks/balances";
 import { useDebugStore } from "ducks/debug";
 import { descriptorAsPathBalance, useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
@@ -398,13 +399,14 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     setDestinationToken,
   ]);
 
-  // Default the destination to the network's USDC (#940) — or native XLM when
-  // the swap starts from USDC itself (the token-details entry), so the two
-  // sides never collide. Applies regardless of whether the account holds the
-  // default; requiresTrustline is derived from actual holdings, which is why
-  // seeding waits for balances to hydrate. Seeded once per mount (declared
-  // after the source effect above so it runs after the destination clear) and
-  // never re-seeds a destination the user picked or cleared themselves.
+  const rawBalances = useBalancesStore((state) => state.balances);
+  const balancesFetchedPublicKey = useBalancesStore(
+    (state) => state.fetchedPublicKey,
+  );
+  const balancesFetchedNetwork = useBalancesStore(
+    (state) => state.fetchedNetwork,
+  );
+
   const hasSeededDefaultDestination = useRef(false);
   useEffect(() => {
     if (hasSeededDefaultDestination.current) {
@@ -412,12 +414,14 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     }
     const defaultTokenId = DEFAULT_SWAP_DEST_TOKEN_ID[network];
     if (!defaultTokenId || destinationTokenDescriptor) {
-      // No default on this network, or a destination already exists (e.g.
-      // returning from the picker before balances hydrated).
       hasSeededDefaultDestination.current = true;
       return;
     }
-    if (balanceItems.length === 0) {
+    if (
+      !account?.publicKey ||
+      balancesFetchedPublicKey !== account.publicKey ||
+      balancesFetchedNetwork !== network
+    ) {
       return;
     }
     hasSeededDefaultDestination.current = true;
@@ -440,19 +444,15 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       issuer: defaultTokenIssuer,
       decimals: DEFAULT_DECIMALS,
       tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
-      // Derived from holdings: an already-held default must not build a
-      // redundant changeTrust (doubled fee, false reserve preflight).
-      requiresTrustline: !balanceItems.some(
-        (item) => item.id === defaultTokenId,
-      ),
-      // iconUrl intentionally omitted: mainnet USDC renders via the bundled
-      // logo special case in TokenIcon; other networks resolve through the
-      // icons store like held tokens.
+      requiresTrustline: !(defaultTokenId in rawBalances),
     });
   }, [
     network,
     destinationTokenDescriptor,
-    balanceItems,
+    rawBalances,
+    balancesFetchedPublicKey,
+    balancesFetchedNetwork,
+    account?.publicKey,
     swapFromTokenId,
     setDestinationToken,
   ]);

@@ -212,6 +212,35 @@ jest.mock("components/screens/SwapScreen/hooks/useSwapTransaction", () => ({
 }));
 jest.mock("hooks/useBalancesList");
 
+// The default-destination seeding effect reads the raw balances map and its
+// fetched stamps straight from the balances store (useBalancesList is mocked
+// above and doesn't carry them). Tests drive them through these holders; the
+// global beforeEach resets to "hydrated for the test account on PUBLIC".
+let mockRawBalances: Record<string, unknown> = {};
+let mockFetchedPublicKey: string | null = null;
+let mockFetchedNetwork: NETWORKS | null = null;
+jest.mock("ducks/balances", () => ({
+  useBalancesStore: (selector?: (s: Record<string, unknown>) => unknown) => {
+    const state = {
+      balances: mockRawBalances,
+      fetchedPublicKey: mockFetchedPublicKey,
+      fetchedNetwork: mockFetchedNetwork,
+    };
+    return selector ? selector(state) : state;
+  },
+}));
+
+// Stamp the balances store as hydrated for the test account ("abc", per the
+// useGetActiveAccount mock) on PUBLIC, holding the fixture balances plus any
+// extra token ids.
+const hydrateBalancesStore = (extraIds: string[] = []) => {
+  mockRawBalances = Object.fromEntries(
+    [...mockBalances.map((b) => b.id), ...extraIds].map((id) => [id, {}]),
+  );
+  mockFetchedPublicKey = "abc";
+  mockFetchedNetwork = NETWORKS.PUBLIC;
+};
+
 jest.mock("@react-navigation/elements", () => ({
   useHeaderHeight: () => 0,
 }));
@@ -353,6 +382,7 @@ describe("SwapAmountScreen", () => {
     mockSaveSwapFee.mockClear();
     setSwapStoreState({});
     mockBalancesListReturn();
+    hydrateBalancesStore();
   });
 
   it("initializes source token from route params", () => {
@@ -415,19 +445,7 @@ describe("SwapAmountScreen", () => {
 
     it("derives requiresTrustline=false when the account already holds the default", () => {
       setSwapStoreState({ destinationToken: null });
-      (useBalancesList as jest.Mock).mockImplementation(() => ({
-        balanceItems: [
-          ...mockBalances,
-          { ...mockBalances[1], id: MAINNET_USDC_ID },
-        ],
-        scanResults: {},
-        isLoading: false,
-        error: null,
-        noBalances: false,
-        isRefreshing: false,
-        isFunded: true,
-        handleRefresh: jest.fn(),
-      }));
+      hydrateBalancesStore([MAINNET_USDC_ID]);
 
       renderWithProviders(
         <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
@@ -441,18 +459,37 @@ describe("SwapAmountScreen", () => {
       );
     });
 
-    it("does not seed while balances have not hydrated", () => {
+    it("does not seed before a snapshot for this account/network lands, then seeds once it does", () => {
       setSwapStoreState({ destinationToken: null });
-      (useBalancesList as jest.Mock).mockImplementation(() => ({
-        balanceItems: [],
-        scanResults: {},
-        isLoading: true,
-        error: null,
-        noBalances: false,
-        isRefreshing: false,
-        isFunded: true,
-        handleRefresh: jest.fn(),
-      }));
+      mockRawBalances = {};
+      mockFetchedPublicKey = null;
+      mockFetchedNetwork = null;
+
+      const { rerender } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      expect(mockSetDestinationToken).not.toHaveBeenCalledWith(
+        expect.objectContaining({ tokenCode: "USDC" }),
+      );
+
+      hydrateBalancesStore();
+      rerender(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      expect(mockSetDestinationToken).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: MAINNET_USDC_ID,
+          tokenCode: "USDC",
+          requiresTrustline: true,
+        }),
+      );
+    });
+
+    it("does not seed from a stale snapshot left over from another network", () => {
+      setSwapStoreState({ destinationToken: null });
+      mockFetchedNetwork = NETWORKS.TESTNET;
 
       renderWithProviders(
         <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
@@ -460,6 +497,22 @@ describe("SwapAmountScreen", () => {
 
       expect(mockSetDestinationToken).not.toHaveBeenCalledWith(
         expect.objectContaining({ tokenCode: "USDC" }),
+      );
+    });
+
+    it("seeds even when the hydrated snapshot is empty (unfunded account)", () => {
+      setSwapStoreState({ destinationToken: null });
+      mockRawBalances = {};
+
+      renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      expect(mockSetDestinationToken).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: MAINNET_USDC_ID,
+          requiresTrustline: true,
+        }),
       );
     });
 
