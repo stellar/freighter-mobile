@@ -2513,6 +2513,131 @@ describe("auth duck", () => {
         expect(decryptDataWithPassword).not.toHaveBeenCalled();
         expect(encryptDataWithPassword).not.toHaveBeenCalled();
       });
+
+      it.each([
+        [
+          "expired",
+          {
+            hashKey: "stale-mock-hash-key",
+            salt: "stale-mock-salt",
+            generatedAt: Date.now() - 73 * 3600000,
+            expiresAt: Date.now() - 3600000, // hard-expired an hour ago
+          },
+        ],
+        [
+          "rolled-back (future generatedAt)",
+          {
+            hashKey: "stale-mock-hash-key",
+            salt: "stale-mock-salt",
+            generatedAt: Date.now() + 3600000, // clock moved backward
+            expiresAt: Date.now() + 3600000,
+          },
+        ],
+      ])(
+        "should rebuild the session instead of re-stamping a %s key on LOCKED sign-in (#924)",
+        async (_label, staleKey) => {
+          // Expiry can cross between the getAuthStatus check and the unlock
+          // (or a stale persisted LOCKED can carry an expired key straight
+          // into signIn): the fast path must refuse to re-stamp the stale
+          // material and fall through to the full temporary-store rebuild,
+          // which mints a fresh hash key.
+          mockKeyManager.loadKey.mockResolvedValueOnce({
+            id: mockAccount.id,
+            publicKey: mockAccount.publicKey,
+            privateKey: "mock-private-key",
+            extra: { mnemonicPhrase: "mock mnemonic phrase" },
+          });
+          mockKeyManager.loadAllKeyIds.mockResolvedValueOnce([mockAccount.id]);
+
+          (dataStorage.getItem as jest.Mock).mockImplementation((key) => {
+            if (key === STORAGE_KEYS.ACTIVE_ACCOUNT_ID) {
+              return Promise.resolve(mockAccount.id);
+            }
+            if (key === STORAGE_KEYS.ACCOUNT_LIST) {
+              return Promise.resolve(JSON.stringify([mockAccount]));
+            }
+            return Promise.resolve(null);
+          });
+
+          // Stateful hash-key storage: reads reflect writes, so once the
+          // rebuild mints a fresh key the background getActiveAccount sees
+          // it (a static stale mock would knock the session back to LOCKED
+          // regardless of which branch ran).
+          let storedHashKey: Record<string, unknown> = staleKey;
+          (getHashKey as jest.Mock).mockImplementation(() =>
+            Promise.resolve(storedHashKey),
+          );
+          (secureDataStorage.setItem as jest.Mock).mockImplementation(
+            (key, value) => {
+              if (key === SENSITIVE_STORAGE_KEYS.HASH_KEY) {
+                storedHashKey = JSON.parse(value as string) as Record<
+                  string,
+                  unknown
+                >;
+              }
+              return Promise.resolve(undefined);
+            },
+          );
+
+          (secureDataStorage.getItem as jest.Mock).mockImplementation((key) => {
+            if (key === SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE) {
+              return Promise.resolve("encrypted-temp-store");
+            }
+            if (key === SENSITIVE_STORAGE_KEYS.HASH_KEY) {
+              return Promise.resolve(JSON.stringify(storedHashKey));
+            }
+            return Promise.resolve(null);
+          });
+
+          (decryptDataWithDerivedKey as jest.Mock).mockReturnValue(
+            JSON.stringify({
+              privateKeys: { [mockAccount.id]: "mock-private-key" },
+              mnemonicPhrase: "mock mnemonic phrase",
+            }),
+          );
+          (deriveKeyFromPassword as jest.Mock).mockResolvedValue(
+            new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]),
+          );
+
+          const { result } = renderHook(() => useAuthenticationStore());
+
+          act(() => {
+            useAuthenticationStore.setState({
+              authStatus: AUTH_STATUS.LOCKED,
+              signIn: originalStoreMethods.signIn,
+            });
+          });
+
+          await act(async () => {
+            await result.current.signIn({ password: "test-password" });
+          });
+
+          await act(async () => {
+            await new Promise<void>((resolve) => {
+              setTimeout(resolve, 0);
+            });
+          });
+
+          expect(result.current.authStatus).toBe(AUTH_STATUS.AUTHENTICATED);
+
+          // The full rebuild ran: a fresh temporary store was written (the
+          // TTL-refresh branch never touches TEMPORARY_STORE)...
+          expect(secureDataStorage.setItem).toHaveBeenCalledWith(
+            SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE,
+            expect.any(String),
+          );
+          // ...and no write re-stamped the stale key material.
+          const hashKeyWrites = (
+            secureDataStorage.setItem as jest.Mock
+          ).mock.calls.filter(
+            ([key]) => key === SENSITIVE_STORAGE_KEYS.HASH_KEY,
+          );
+          expect(hashKeyWrites.length).toBeGreaterThan(0);
+          hashKeyWrites.forEach(([, value]) => {
+            expect(value).not.toContain("stale-mock-hash-key");
+          });
+        },
+      );
     });
 
     describe("account switching", () => {
