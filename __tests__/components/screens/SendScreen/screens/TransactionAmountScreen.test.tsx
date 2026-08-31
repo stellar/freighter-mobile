@@ -36,6 +36,19 @@ jest.mock("ducks/auth");
 jest.mock("ducks/history");
 jest.mock("ducks/sendRecipient");
 jest.mock("ducks/preferences");
+// Volume telemetry's identity classification / price snapshot runs
+// unconditionally inside handleTransactionConfirmation. No test in this file
+// currently exercises that path (SendReviewBottomSheet is a stub with no
+// onConfirm wiring below), but these mocks keep it safe for one that does.
+jest.mock("ducks/balances", () => ({
+  useBalancesStore: { getState: () => ({ balances: {} }) },
+}));
+jest.mock("ducks/remoteConfig", () => ({
+  useRemoteConfigStore: { getState: () => ({ use_token_prices_v2: true }) },
+}));
+jest.mock("services/backend", () => ({
+  fetchTokenPrices: jest.fn().mockResolvedValue({}),
+}));
 
 // Service mocks
 jest.mock("services/transactionService");
@@ -52,6 +65,7 @@ jest.mock("services/analytics", () => ({
 
 // Helper mocks
 jest.mock("helpers/balances", () => ({
+  ...jest.requireActual("helpers/balances"),
   calculateSpendableAmount: jest.fn(),
   hasXLMForFees: jest.fn(),
   isLiquidityPool: jest.fn(() => false),

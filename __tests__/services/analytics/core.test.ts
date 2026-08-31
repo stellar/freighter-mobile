@@ -153,7 +153,7 @@ describe("buildCommonContext (four-bucket model)", () => {
 
   it("emits the reshaped bucket", () => {
     expect(buildCommonContext()).toMatchObject({
-      schema_version: "2",
+      schema_version: "3",
       surface: "mobile_ios",
       network: "TESTNET",
       account_type: "imported_secret_key",
@@ -189,7 +189,7 @@ describe("buildCommonContext (four-bucket model)", () => {
     ["account_id_hash", "account_type", "account_funded"].forEach((k) =>
       expect(ctx).not.toHaveProperty(k),
     );
-    expect(ctx).toMatchObject({ schema_version: "2", network: "TESTNET" });
+    expect(ctx).toMatchObject({ schema_version: "3", network: "TESTNET" });
   });
 
   it("omits account_funded when balances are for a different/unfetched account", () => {
@@ -298,7 +298,7 @@ describe("trackAppOpened (one-time connectivity snapshot)", () => {
         surface: "mobile_ios",
         connection_type: "wifi",
         effective_type: "4g",
-        schema_version: "2",
+        schema_version: "3",
       }),
     );
   });
@@ -327,7 +327,7 @@ describe("screen.viewed emission (hard cutover)", () => {
         flow: "send",
         // surface comes from the Slice-A common context (getSurface()).
         surface: "mobile_ios",
-        schema_version: "2",
+        schema_version: "3",
       }),
     );
   });
@@ -716,7 +716,7 @@ describe("domain event catalog (#2883)", () => {
         payment_type: "payment",
         // schema_version / surface / network come from buildCommonContext and
         // must not be hand-added at call sites.
-        schema_version: "2",
+        schema_version: "3",
         surface: "mobile_ios",
       }),
     );

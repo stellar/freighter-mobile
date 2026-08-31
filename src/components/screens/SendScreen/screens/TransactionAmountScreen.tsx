@@ -42,12 +42,23 @@ import {
   MAIN_TAB_ROUTES,
 } from "config/routes";
 import { useAuthenticationStore } from "ducks/auth";
+import { useBalancesStore } from "ducks/balances";
 import { useDebugStore } from "ducks/debug";
 import { useHistoryStore } from "ducks/history";
+import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { useSendRecipientStore } from "ducks/sendRecipient";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
-import { calculateSpendableAmount, hasXLMForFees } from "helpers/balances";
+import {
+  calculateSpendableAmount,
+  formatTokenIdentifier,
+  getTokenIdentifier,
+  hasXLMForFees,
+} from "helpers/balances";
+import {
+  ConfirmationSnapshotHandle,
+  startConfirmationPriceSnapshot,
+} from "helpers/confirmationPriceSnapshot";
 import {
   formatTokenForDisplay,
   formatFiatInputDisplay,
@@ -60,6 +71,13 @@ import {
   isMuxedAccount,
   truncateFedAddress,
 } from "helpers/stellar";
+import {
+  canonicalIdFromIdentity,
+  classifyAssetIdentity,
+  deriveLegUsd,
+  getFailureCategory,
+  pickReasonCode,
+} from "helpers/usdVolume";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useBalancesList } from "hooks/useBalancesList";
@@ -745,6 +763,9 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     reviewBottomSheetModalRef.current?.dismiss();
 
     const processTransaction = async () => {
+      // Declared outside the try so the catch can cancel a snapshot whose
+      // transaction never reached submission.
+      let snapshotHandle: ConfirmationSnapshotHandle | null = null;
       try {
         if (!account?.privateKey || !selectedBalance || !recipientAddress) {
           throw new Error("Missing account or balance information");
@@ -762,43 +783,111 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
         const { privateKey } = account;
 
-        signTransaction({
+        // Everything the volume telemetry needs is snapshotted here, at
+        // confirmation, before signing/submission — the amount and price are
+        // frozen together and carried to whichever terminal event fires.
+        const networkDetails = mapNetworkToNetworkDetails(network);
+        const { tokenCode: sourceCode, issuer: sourceIssuerRaw } =
+          formatTokenIdentifier(getTokenIdentifier(selectedBalance));
+        const sourceIdentity = classifyAssetIdentity(
+          sourceCode,
+          sourceIssuerRaw || undefined,
+          networkDetails,
+          Object.values(useBalancesStore.getState().balances),
+        );
+        const sourceCanonicalId = canonicalIdFromIdentity(sourceIdentity);
+        snapshotHandle = startConfirmationPriceSnapshot({
+          canonicalIds: [sourceCanonicalId],
+          network,
+          useV2: useRemoteConfigStore.getState().use_token_prices_v2,
+          cachedDisplayPrices: {
+            [sourceCanonicalId]: {
+              currentPrice: selectedBalance.currentPrice ?? null,
+            },
+          },
+        });
+
+        const signedXDR = signTransaction({
           secretKey: privateKey,
           network,
         });
+
+        if (!signedXDR) {
+          // Pre-submit signing failure — never reached the network, so it
+          // isn't a terminal event (no attempted volume). The store's own
+          // error state already surfaces a toast via the effect above.
+          snapshotHandle.cancel();
+          setIsProcessing(false);
+          return;
+        }
 
         const success = await submitTransaction({
           network,
         });
 
+        const snapshot = snapshotHandle.resolve();
+        const sourceLeg = deriveLegUsd(
+          tokenAmount,
+          snapshot.pricesById?.[sourceCanonicalId]?.currentPrice,
+        );
+
         if (success) {
           analytics.trackSendPaymentSuccess({
             sourceToken: selectedBalance?.tokenCode || "unknown",
+            volume: {
+              identity: sourceIdentity,
+              amount: new BigNumber(tokenAmount || 0).toNumber(),
+              sourceLeg,
+              priceSource: snapshot.source,
+              priceFreshness: snapshot.freshness,
+            },
           });
         } else {
-          // Prefer the Horizon op/tx result code as reason_code (buckets with
-          // the extension); submitTransaction stashes it rather than throwing.
-          const { error: submitError, submitErrorResultCodes } =
-            useTransactionBuilderStore.getState();
+          // Only a failure at or after submission reaches here — the
+          // pre-submit signing guard above already returned. Reason code
+          // picks the first code that isn't a no-op success/skip marker,
+          // matching the extension (a changeTrust-prepended payment isn't
+          // reachable here, but the picker is shared with the swap flow).
+          const {
+            error: submitError,
+            submitErrorResultCodes,
+            submitErrorHttpStatus,
+            submitErrorIsProtocolAnswer,
+          } = useTransactionBuilderStore.getState();
+          const reasonCode = pickReasonCode(submitErrorResultCodes);
+          const failureCategory = getFailureCategory(
+            submitErrorIsProtocolAnswer,
+            submitErrorHttpStatus,
+            reasonCode,
+          );
           analytics.trackTransactionError({
             error: submitError || "Transaction failed",
-            errorCode:
-              submitErrorResultCodes?.operations?.[0] ||
-              submitErrorResultCodes?.transaction,
+            errorCode: reasonCode,
             operationType: TransactionOperationType.Payment,
+            volume: {
+              identity: sourceIdentity,
+              amount: new BigNumber(tokenAmount || 0).toNumber(),
+              sourceLeg,
+              priceSource: snapshot.source,
+              priceFreshness: snapshot.freshness,
+              reasonCode,
+              failureCategory,
+            },
           });
         }
       } catch (error) {
+        // Pre-submission failure (missing account/balance/recipient, or the
+        // debug forced-submit-failure override): no terminal event will
+        // consume the snapshot, so cancel the price fetch rather than let it
+        // outlive the flow. Idempotent and safe after resolve(). No terminal
+        // event is emitted — TR-71: only a failure at or after submission
+        // contributes attempted volume.
+        snapshotHandle?.cancel();
         logger.error(
           "TransactionAmountScreen",
           "Transaction submission failed:",
           error,
         );
-
-        analytics.trackTransactionError({
-          error: error instanceof Error ? error.message : String(error),
-          operationType: TransactionOperationType.Payment,
-        });
       }
     };
 
@@ -810,6 +899,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     network,
     submitTransaction,
     recipientAddress,
+    tokenAmount,
   ]);
 
   const handleProcessingScreenClose = () => {

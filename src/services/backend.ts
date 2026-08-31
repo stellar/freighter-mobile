@@ -470,6 +470,12 @@ export interface FetchTokenPricesParams {
   network: NETWORKS;
   /** Whether to hit the network-scoped v2 endpoint (remote-config gated) */
   useV2: boolean;
+  /**
+   * Cancels the request when the caller no longer needs the answer (e.g. the
+   * confirmation price snapshot's terminal-status deadline). Forwarded
+   * straight to axios, which aborts the underlying HTTP request.
+   */
+  signal?: AbortSignal;
 }
 
 /**
@@ -522,6 +528,7 @@ export const fetchTokenPrices = async ({
   tokens,
   network,
   useV2,
+  signal,
 }: FetchTokenPricesParams): Promise<TokenPricesMap> => {
   // NOTE: API does not accept LP IDs or custom tokens
   const filteredTokens = tokens.filter((tokenId) => {
@@ -555,9 +562,17 @@ export const fetchTokenPrices = async ({
         ({ data } = await freighterBackendV2.post<TokenPricesResponse>(
           "/token-prices",
           { tokens: v2Tokens },
-          { params: { network: priceNetwork } },
+          { params: { network: priceNetwork }, signal },
+        ));
+      } else if (signal) {
+        ({ data } = await freighterBackendV1.post<TokenPricesResponse>(
+          "/token-prices",
+          { tokens: filteredTokens },
+          { signal },
         ));
       } else {
+        // No config object when there's no signal to carry — preserves the
+        // exact call shape for callers that don't pass one.
         ({ data } = await freighterBackendV1.post<TokenPricesResponse>(
           "/token-prices",
           { tokens: filteredTokens },
