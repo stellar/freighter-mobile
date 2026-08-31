@@ -24,6 +24,7 @@ export const LinkedText: React.FC<LinkedTextProps> = ({
   <Text {...textProps}>
     {parseLinkedText(children).map((segment, index) =>
       segment.url ? (
+        // eslint-disable-next-line react/no-array-index-key
         <Text
           key={`${index}-${segment.url}`}
           {...textProps}
