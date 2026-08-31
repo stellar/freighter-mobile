@@ -94,8 +94,13 @@ import {
   View,
 } from "react-native";
 import { analytics } from "services/analytics";
+import { scanToken } from "services/blockaid/api";
 import { SecurityContext, SecurityLevel } from "services/blockaid/constants";
-import { assessTransactionSecurity } from "services/blockaid/helper";
+import {
+  assessTokenSecurity,
+  assessTransactionSecurity,
+  extractSecurityWarnings,
+} from "services/blockaid/helper";
 
 type SwapAmountScreenProps = NativeStackScreenProps<
   SwapStackParamList,
@@ -407,6 +412,19 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     (state) => state.fetchedNetwork,
   );
 
+  // Keep a ref with the latest destination so the scan callback below can
+  // check what's selected NOW, not what was selected when the scan started.
+  // Cleared on unmount: the screen's cleanup resets the swap store, and a
+  // scan resolving after that must not see the old descriptor here and
+  // write it back into the reset store.
+  const destinationDescriptorRef = useRef(destinationTokenDescriptor);
+  useEffect(() => {
+    destinationDescriptorRef.current = destinationTokenDescriptor;
+    return () => {
+      destinationDescriptorRef.current = null;
+    };
+  }, [destinationTokenDescriptor]);
+
   const hasSeededDefaultDestination = useRef(false);
   useEffect(() => {
     if (hasSeededDefaultDestination.current) {
@@ -437,6 +455,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       return;
     }
 
+    const isDefaultHeld = defaultTokenId in rawBalances;
     const [defaultTokenCode, defaultTokenIssuer] = defaultTokenId.split(":");
     setDestinationToken({
       id: defaultTokenId,
@@ -444,8 +463,44 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       issuer: defaultTokenIssuer,
       decimals: DEFAULT_DECIMALS,
       tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
-      requiresTrustline: !(defaultTokenId in rawBalances),
+      requiresTrustline: !isDefaultHeld,
     });
+
+    if (isDefaultHeld) {
+      // Already-held tokens get their security signal from the held-balances
+      // bulk scan, so there's nothing to attach here.
+      return;
+    }
+
+    // A non-held destination needs a Blockaid security signal: the review
+    // flow treats a descriptor without a securityLevel as "unable to scan"
+    // and presents the security warning sheet. Descriptors from the picker
+    // get their level from the discovery-time bulk scan, but a
+    // programmatically seeded one has no such source, so fetch its own
+    // scan and attach the result when it lands.
+    scanToken({
+      tokenCode: defaultTokenCode,
+      tokenIssuer: defaultTokenIssuer,
+      network,
+    })
+      .then((scanResult) => {
+        const { current } = destinationDescriptorRef;
+        // Only update if the destination is still our seeded default and
+        // nothing has stamped it yet. If the user picked another token in
+        // the meantime, that one brought its own scan result.
+        if (current?.id !== defaultTokenId || current.securityLevel) {
+          return;
+        }
+        setDestinationToken({
+          ...current,
+          securityLevel: assessTokenSecurity(scanResult).level,
+          securityWarnings: extractSecurityWarnings(scanResult),
+        });
+      })
+      .catch(() => {
+        // If scan failed, leave the descriptor unstamped so the regular
+        // unable-to-scan warning flow takes over.
+      });
   }, [
     network,
     destinationTokenDescriptor,

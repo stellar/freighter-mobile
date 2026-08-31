@@ -212,6 +212,14 @@ jest.mock("components/screens/SwapScreen/hooks/useSwapTransaction", () => ({
 }));
 jest.mock("hooks/useBalancesList");
 
+// Single-token scan used to stamp the seeded default destination with a real
+// securityLevel. Controllable per-test; defaults to Benign in beforeEach.
+const mockScanToken = jest.fn();
+jest.mock("services/blockaid/api", () => ({
+  ...jest.requireActual("services/blockaid/api"),
+  scanToken: (...args: unknown[]) => mockScanToken(...args),
+}));
+
 // The default-destination seeding effect reads the raw balances map and its
 // fetched stamps straight from the balances store (useBalancesList is mocked
 // above and doesn't carry them). Tests drive them through these holders; the
@@ -383,6 +391,8 @@ describe("SwapAmountScreen", () => {
     setSwapStoreState({});
     mockBalancesListReturn();
     hydrateBalancesStore();
+    mockScanToken.mockReset();
+    mockScanToken.mockResolvedValue({ result_type: "Benign" });
   });
 
   it("initializes source token from route params", () => {
@@ -514,6 +524,140 @@ describe("SwapAmountScreen", () => {
           requiresTrustline: true,
         }),
       );
+    });
+
+    it("kicks off a token scan for a non-held seeded default and stamps the result", async () => {
+      setSwapStoreState({ destinationToken: null });
+      let resolveScan!: (value: unknown) => void;
+      mockScanToken.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveScan = resolve;
+          }),
+      );
+
+      const { rerender } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      expect(mockScanToken).toHaveBeenCalledWith({
+        tokenCode: "USDC",
+        tokenIssuer: MAINNET_USDC_ID.split(":")[1],
+        network: NETWORKS.PUBLIC,
+      });
+
+      // Simulate the store applying the seeded descriptor, so the scan
+      // callback sees the still-untouched default as the current selection.
+      const seededDescriptor = mockSetDestinationToken.mock.calls.at(
+        -1,
+      )?.[0] as Record<string, unknown>;
+      setSwapStoreState({
+        destinationToken:
+          seededDescriptor as SwapStoreState["destinationToken"],
+      });
+      rerender(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      await act(async () => {
+        resolveScan({ result_type: "Benign" });
+        await Promise.resolve();
+      });
+
+      expect(mockSetDestinationToken).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: MAINNET_USDC_ID,
+          securityLevel: "SAFE",
+          securityWarnings: [],
+        }),
+      );
+    });
+
+    it("does not stamp the scan result when the user picked another token meanwhile", async () => {
+      setSwapStoreState({ destinationToken: null });
+      let resolveScan!: (value: unknown) => void;
+      mockScanToken.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveScan = resolve;
+          }),
+      );
+
+      const { rerender } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      // The user picks FTT (the default swap-store fixture) before the scan
+      // resolves.
+      setSwapStoreState({});
+      rerender(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      await act(async () => {
+        resolveScan({ result_type: "Benign" });
+        await Promise.resolve();
+      });
+
+      expect(mockSetDestinationToken).not.toHaveBeenCalledWith(
+        expect.objectContaining({ securityLevel: expect.anything() }),
+      );
+    });
+
+    it("does not write the scan result into the store after unmount", async () => {
+      setSwapStoreState({ destinationToken: null });
+      let resolveScan!: (value: unknown) => void;
+      mockScanToken.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveScan = resolve;
+          }),
+      );
+
+      const { rerender, unmount } = renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      // The store applies the seeded descriptor, then the user leaves the
+      // screen before the scan resolves. Unmount runs resetSwap, so a late
+      // write here would repopulate the reset store and break the next
+      // visit's seeding.
+      const seededDescriptor = mockSetDestinationToken.mock.calls.at(
+        -1,
+      )?.[0] as Record<string, unknown>;
+      setSwapStoreState({
+        destinationToken:
+          seededDescriptor as SwapStoreState["destinationToken"],
+      });
+      rerender(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+      act(() => {
+        unmount();
+      });
+
+      await act(async () => {
+        resolveScan({ result_type: "Benign" });
+        await Promise.resolve();
+      });
+
+      expect(mockSetDestinationToken).not.toHaveBeenCalledWith(
+        expect.objectContaining({ securityLevel: expect.anything() }),
+      );
+    });
+
+    it("does not scan when the account already holds the default", () => {
+      setSwapStoreState({ destinationToken: null });
+      hydrateBalancesStore([MAINNET_USDC_ID]);
+
+      renderWithProviders(
+        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
+      );
+
+      expect(mockSetDestinationToken).toHaveBeenCalledWith(
+        expect.objectContaining({ id: MAINNET_USDC_ID }),
+      );
+      expect(mockScanToken).not.toHaveBeenCalled();
     });
 
     it("does not override an existing destination", () => {
