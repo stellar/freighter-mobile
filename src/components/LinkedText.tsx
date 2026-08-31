@@ -29,6 +29,7 @@ export const LinkedText: React.FC<LinkedTextProps> = ({
           {...textProps}
           color={THEME.colors.primary}
           url={segment.url}
+          accessibilityRole="link"
         >
           {segment.text}
         </Text>

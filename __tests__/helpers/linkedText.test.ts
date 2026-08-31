@@ -1,4 +1,7 @@
-import { parseLinkedText } from "helpers/linkedText";
+// "helpers/*" is remapped by jest.config.js's moduleNameMapper to
+// __mocks__/helpers/*, which has no entry for linkedText - import the real
+// module directly to get the actual implementation under test.
+import { parseLinkedText } from "../../src/helpers/linkedText";
 
 describe("parseLinkedText", () => {
   it("returns a single plain-text segment when there are no links", () => {
@@ -88,6 +91,32 @@ describe("parseLinkedText", () => {
         url: "https://en.wikipedia.org/wiki/Function_(mathematics)",
       },
       { text: " for details." },
+    ]);
+  });
+
+  it("does not let a stray unmatched bracket swallow the real link", () => {
+    expect(
+      parseLinkedText("Rates [APY vary. See the [docs](https://b.com)."),
+    ).toEqual([
+      { text: "Rates [APY vary. See the " },
+      { text: "docs", url: "https://b.com" },
+      { text: "." },
+    ]);
+  });
+
+  it("does not double-linkify a markdown label that is itself a URL", () => {
+    expect(
+      parseLinkedText("[https://label.example](https://target.example)"),
+    ).toEqual([
+      { text: "https://label.example", url: "https://target.example" },
+    ]);
+  });
+
+  it("does not absorb a quote that closes a quoted bare URL", () => {
+    expect(parseLinkedText('See "https://example.com/x" now.')).toEqual([
+      { text: 'See "' },
+      { text: "https://example.com/x", url: "https://example.com/x" },
+      { text: '" now.' },
     ]);
   });
 });
