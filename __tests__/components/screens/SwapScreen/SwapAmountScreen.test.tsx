@@ -164,10 +164,14 @@ jest.mock("ducks/swap", () => ({
 }));
 
 const setSwapStoreState = (patch: Partial<SwapStoreState>): void => {
-  (useSwapStore as unknown as jest.Mock).mockImplementation(() => ({
-    ...makeDefaultSwapState(),
-    ...patch,
-  }));
+  const state = { ...makeDefaultSwapState(), ...patch };
+  const mock = useSwapStore as unknown as jest.Mock & {
+    getState: () => SwapStoreState;
+  };
+  mock.mockImplementation(() => state);
+  // The scan-stamping callback reads the destination synchronously via
+  // useSwapStore.getState(), so mirror the hook-call state there too.
+  mock.getState = () => state;
 };
 
 jest.mock("ducks/transactionBuilder", () => ({
@@ -583,16 +587,15 @@ describe("SwapAmountScreen", () => {
           }),
       );
 
-      const { rerender } = renderWithProviders(
+      renderWithProviders(
         <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
       );
 
       // The user picks FTT (the default swap-store fixture) before the scan
-      // resolves.
+      // resolves. The picker writes to the store synchronously; deliberately
+      // no rerender here, so the hook's render state still lags the store —
+      // the callback must read the store, not render state, to see the pick.
       setSwapStoreState({});
-      rerender(
-        <SwapAmountScreen navigation={makeNavigation()} route={makeRoute()} />,
-      );
 
       await act(async () => {
         resolveScan({ result_type: "Benign" });
@@ -619,9 +622,10 @@ describe("SwapAmountScreen", () => {
       );
 
       // The store applies the seeded descriptor, then the user leaves the
-      // screen before the scan resolves. Unmount runs resetSwap, so a late
-      // write here would repopulate the reset store and break the next
-      // visit's seeding.
+      // screen before the scan resolves. Unmount runs resetSwap, which
+      // nulls the store destination (simulated below, since the mocked
+      // store doesn't mutate) — a late write would repopulate the reset
+      // store and break the next visit's seeding.
       const seededDescriptor = mockSetDestinationToken.mock.calls.at(
         -1,
       )?.[0] as Record<string, unknown>;
@@ -635,6 +639,8 @@ describe("SwapAmountScreen", () => {
       act(() => {
         unmount();
       });
+      expect(mockResetSwap).toHaveBeenCalled();
+      setSwapStoreState({ destinationToken: null });
 
       await act(async () => {
         resolveScan({ result_type: "Benign" });

@@ -7,6 +7,7 @@ import {
 } from "config/constants";
 import { TokenTypeWithCustomToken } from "config/types";
 import { useBalancesStore } from "ducks/balances";
+import { useSwapStore } from "ducks/swap";
 import { useEffect, useRef } from "react";
 import { scanToken } from "services/blockaid/api";
 import {
@@ -51,19 +52,6 @@ export const useDefaultSwapDestination = ({
   const balancesFetchedNetwork = useBalancesStore(
     (state) => state.fetchedNetwork,
   );
-
-  // Keep a ref with the latest destination so the scan callback below can
-  // check what's selected NOW, not what was selected when the scan started.
-  // Cleared on unmount.
-  const destinationDescriptorRef = useRef<DestinationTokenDescriptor | null>(
-    destinationTokenDescriptor,
-  );
-  useEffect(() => {
-    destinationDescriptorRef.current = destinationTokenDescriptor;
-    return () => {
-      destinationDescriptorRef.current = null;
-    };
-  }, [destinationTokenDescriptor]);
 
   const hasSeededDefaultDestination = useRef(false);
   useEffect(() => {
@@ -118,10 +106,14 @@ export const useDefaultSwapDestination = ({
       network,
     })
       .then((scanResult) => {
-        const { current } = destinationDescriptorRef;
-        // Only update if the destination is still our seeded default and
-        // nothing has stamped it yet. If the user picked another token in
-        // the meantime, that one brought its own scan result.
+        // Read the destination synchronously from the store: render state
+        // (props or a render-synced ref) can lag a store write from the
+        // picker, and resetSwap on unmount nulls it before a late scan
+        // resolves. Only update if the destination is still our seeded
+        // default and nothing has stamped it yet. If the user picked
+        // another token in the meantime, that one brought its own scan
+        // result.
+        const current = useSwapStore.getState().destinationToken;
         if (current?.id !== defaultTokenId || current.securityLevel) {
           return;
         }
