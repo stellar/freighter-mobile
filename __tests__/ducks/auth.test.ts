@@ -3,6 +3,8 @@ import { act, renderHook } from "@testing-library/react-hooks";
 import {
   AUTO_LOCK_TIMER,
   DEFAULT_AUTO_LOCK_TIMER,
+  HASH_KEY_EXPIRATION_MS,
+  HASH_KEY_REFRESH_THROTTLE_MS,
   NETWORKS,
   STORAGE_KEYS,
   SENSITIVE_STORAGE_KEYS,
@@ -39,10 +41,12 @@ import { clearScreenshotDek } from "helpers/screenshotCrypto";
 import { AppState } from "react-native";
 import { getSupportedBiometryType, BIOMETRY_TYPE } from "react-native-keychain";
 import { clearAuthKeypairCache } from "services/auth/authKeypairCache";
+import { resetHashKeyRefreshAttemptThrottle } from "services/autoLock";
 import {
   clearNonSensitiveData,
   clearTemporaryData,
   getHashKey,
+  getWipeGeneration,
 } from "services/storage/helpers";
 // Import mocked modules
 import { rnBiometrics } from "services/storage/secureStorage";
@@ -142,6 +146,7 @@ jest.mock("services/storage/helpers", () => ({
   clearNonSensitiveData: jest.fn(),
   clearTemporaryData: jest.fn(),
   getHashKey: jest.fn(),
+  getWipeGeneration: jest.fn(() => 0),
 }));
 
 jest.mock("config/logger", () => ({
@@ -1630,6 +1635,58 @@ describe("auth duck", () => {
         });
       });
 
+      it("should return HASH_KEY_EXPIRED (not LOCKED) when a persisted soft lock holds an expired key (#924)", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+
+        act(() => {
+          useAuthenticationStore.setState({
+            getAuthStatus: originalStoreMethods.getAuthStatus,
+          });
+        });
+
+        (dataStorage.getItem as jest.Mock).mockImplementation((key) => {
+          if (key === STORAGE_KEYS.ACCOUNT_LIST) {
+            return Promise.resolve(JSON.stringify([mockAccount]));
+          }
+          return Promise.resolve(null);
+        });
+
+        // Soft-locked session sitting past the whole backstop window: with
+        // the TTL anchored on activity, this only happens after 72h of no
+        // use — exactly the case that must surface as the full re-auth
+        // rather than the fast unlock (#924 AC2). Under sign-in anchoring
+        // (#905) lock-screen expiry was routine, so LOCKED deliberately won;
+        // activity anchoring makes it the genuine-idle signal.
+        (secureDataStorage.getItem as jest.Mock).mockImplementation((key) => {
+          if (key === SENSITIVE_STORAGE_KEYS.AUTH_STATUS) {
+            return Promise.resolve(AUTH_STATUS.LOCKED);
+          }
+          if (key === SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE) {
+            return Promise.resolve("encrypted-temp-store");
+          }
+          return Promise.resolve(null);
+        });
+
+        (getHashKey as jest.Mock).mockResolvedValue({
+          hashKey: "mock-hash-key",
+          salt: "mock-salt",
+          generatedAt: Date.now() - 73 * 3600000,
+          expiresAt: Date.now() - 3600000, // hard-expired an hour ago
+        });
+        (secureDataStorage.remove as jest.Mock).mockResolvedValue(undefined);
+
+        await act(async () => {
+          const status = await result.current.getAuthStatus();
+          expect(status).toBe(AUTH_STATUS.HASH_KEY_EXPIRED);
+        });
+
+        // The stale soft-lock marker is consumed so the next check doesn't
+        // resurrect the fast path.
+        expect(secureDataStorage.remove).toHaveBeenCalledWith(
+          SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
+        );
+      });
+
       it("should clear invalid LOCKED status if temp store doesn't exist", async () => {
         const { result } = renderHook(() => useAuthenticationStore());
 
@@ -1677,6 +1734,24 @@ describe("auth duck", () => {
 
     describe("getAuthStatus with auto-lock timer", () => {
       const ONE_HOUR_MS = 3600000;
+
+      // These tests drive AppState.currentState and restore it inline, but a
+      // failing expect() aborts the test before its restore line — leaking
+      // "active" into the rest of the file and cascading into unrelated
+      // failures (e.g. the isSessionAuthValid call-count tests). Restore here
+      // so a failure stays attributable to the test that caused it.
+      const defaultAppState = AppState.currentState;
+      // These integration tests exercise the real refreshHashKeyExpiration,
+      // whose attempt throttle is module-level state: without a reset, the
+      // first test to attempt a write would suppress every later one.
+      beforeEach(() => {
+        resetHashKeyRefreshAttemptThrottle();
+      });
+      afterEach(() => {
+        (AppState as { currentState: typeof defaultAppState }).currentState =
+          defaultAppState;
+        resetHashKeyRefreshAttemptThrottle();
+      });
 
       const mockAuthenticatedStorage = ({
         backgroundedAt,
@@ -1750,20 +1825,25 @@ describe("auth duck", () => {
         );
       });
 
-      it("should stay authenticated and consume the timestamp WITHOUT refreshing the hash key TTL", async () => {
+      it("should consume the timestamp and re-anchor a stale hash-key TTL on active use (#924)", async () => {
         const { result } = renderHook(() => useAuthenticationStore());
         restoreGetAuthStatus();
 
-        // The jest AppState mock has no real currentState; the consume
-        // branch only runs when the app is actively foregrounded
-        const previousAppState = AppState.currentState;
         (AppState as { currentState: string }).currentState = "active";
 
         mockAuthenticatedStorage({
           backgroundedAt: Date.now() - 60000, // 1 minute ago
           autoLockTimer: AUTO_LOCK_TIMER.ONE_HOUR,
         });
+        // Stale anchor: beyond the refresh throttle, but far from expired.
+        (getHashKey as jest.Mock).mockResolvedValue({
+          hashKey: "mock-hash-key",
+          salt: "mock-salt",
+          generatedAt: Date.now() - (HASH_KEY_REFRESH_THROTTLE_MS + 60000),
+          expiresAt: Date.now() + ONE_HOUR_MS,
+        });
 
+        const before = Date.now();
         await act(async () => {
           const status = await result.current.getAuthStatus();
           expect(status).toBe(AUTH_STATUS.AUTHENTICATED);
@@ -1773,22 +1853,352 @@ describe("auth duck", () => {
         expect(secureDataStorage.remove).toHaveBeenCalledWith(
           SENSITIVE_STORAGE_KEYS.AUTO_LOCK_BACKGROUNDED_AT,
         );
-        // ...but the hash key expiry must NOT advance without credential
-        // verification (key material lifetime stays bounded)
+        // ...and the hard-expiry is re-anchored on activity: same key
+        // material, fresh expiresAt/generatedAt.
+        const hashKeyWrites = (
+          secureDataStorage.setItem as jest.Mock
+        ).mock.calls.filter(([key]) => key === SENSITIVE_STORAGE_KEYS.HASH_KEY);
+        expect(hashKeyWrites).toHaveLength(1);
+        const written = JSON.parse(hashKeyWrites[0][1] as string) as {
+          hashKey: string;
+          salt: string;
+          expiresAt: number;
+          generatedAt: number;
+        };
+        expect(written.hashKey).toBe("mock-hash-key");
+        expect(written.salt).toBe("mock-salt");
+        expect(written.generatedAt).toBeGreaterThanOrEqual(before);
+        expect(written.expiresAt).toBe(
+          written.generatedAt + HASH_KEY_EXPIRATION_MS,
+        );
+      });
+
+      it("should NOT re-anchor a freshly-stamped hash key (write throttle)", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+        restoreGetAuthStatus();
+
+        (AppState as { currentState: string }).currentState = "active";
+
+        mockAuthenticatedStorage({
+          backgroundedAt: null,
+          autoLockTimer: AUTO_LOCK_TIMER.ONE_HOUR,
+        });
+        (getHashKey as jest.Mock).mockResolvedValue({
+          hashKey: "mock-hash-key",
+          salt: "mock-salt",
+          generatedAt: Date.now() - 60000, // anchored 1 minute ago
+          expiresAt: Date.now() + ONE_HOUR_MS,
+        });
+
+        await act(async () => {
+          const status = await result.current.getAuthStatus();
+          expect(status).toBe(AUTH_STATUS.AUTHENTICATED);
+        });
+
         expect(secureDataStorage.setItem).not.toHaveBeenCalledWith(
           SENSITIVE_STORAGE_KEYS.HASH_KEY,
           expect.any(String),
         );
+      });
 
-        (AppState as { currentState: typeof previousAppState }).currentState =
-          previousAppState;
+      it("should NOT re-anchor from the periodic background check", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+        restoreGetAuthStatus();
+
+        (AppState as { currentState: string }).currentState = "background";
+
+        mockAuthenticatedStorage({
+          backgroundedAt: Date.now() - 60000, // within the timer
+          autoLockTimer: AUTO_LOCK_TIMER.ONE_HOUR,
+        });
+        // Stale anchor — would refresh if the app were active.
+        (getHashKey as jest.Mock).mockResolvedValue({
+          hashKey: "mock-hash-key",
+          salt: "mock-salt",
+          generatedAt: Date.now() - (HASH_KEY_REFRESH_THROTTLE_MS + 60000),
+          expiresAt: Date.now() + ONE_HOUR_MS,
+        });
+
+        await act(async () => {
+          const status = await result.current.getAuthStatus();
+          expect(status).toBe(AUTH_STATUS.AUTHENTICATED);
+        });
+
+        // A backgrounded device must not extend its own deadline (and the
+        // still-counting soft timer must not be consumed either).
+        expect(secureDataStorage.setItem).not.toHaveBeenCalledWith(
+          SENSITIVE_STORAGE_KEYS.HASH_KEY,
+          expect.any(String),
+        );
+        expect(secureDataStorage.remove).not.toHaveBeenCalledWith(
+          SENSITIVE_STORAGE_KEYS.AUTO_LOCK_BACKGROUNDED_AT,
+        );
+      });
+
+      it("should stay AUTHENTICATED when the re-anchor keychain write fails", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+        restoreGetAuthStatus();
+
+        (AppState as { currentState: string }).currentState = "active";
+
+        mockAuthenticatedStorage({
+          backgroundedAt: null,
+          autoLockTimer: AUTO_LOCK_TIMER.ONE_HOUR,
+        });
+        // Stale anchor on a healthy key: the re-anchor will attempt a write.
+        (getHashKey as jest.Mock).mockResolvedValue({
+          hashKey: "mock-hash-key",
+          salt: "mock-salt",
+          generatedAt: Date.now() - (HASH_KEY_REFRESH_THROTTLE_MS + 60000),
+          expiresAt: Date.now() + ONE_HOUR_MS,
+        });
+        // The keychain rejects the re-anchor write (this is the only setItem
+        // getAuthStatus performs on the AUTHENTICATED path).
+        // `Once` (not a sticky mockRejectedValue): jest config has no
+        // resetMocks, so a sticky rejection would leak a broken keychain into
+        // every later test in this file.
+        (secureDataStorage.setItem as jest.Mock).mockRejectedValueOnce(
+          new Error("keychain unavailable"),
+        );
+
+        await act(async () => {
+          const status = await result.current.getAuthStatus();
+          // The re-anchor is opportunistic: a failed write must not escape to
+          // the outer catch and demote the session to NOT_AUTHENTICATED. The
+          // key simply keeps its old deadline.
+          expect(status).toBe(AUTH_STATUS.AUTHENTICATED);
+        });
+
+        expect(logger.error).toHaveBeenCalledWith(
+          "getAuthStatus",
+          "Failed to refresh hash key expiration",
+          expect.any(Error),
+        );
+        // ...and specifically NOT via the outer catch-all.
+        expect(logger.error).not.toHaveBeenCalledWith(
+          "validateAuth",
+          "Failed to validate auth",
+          expect.anything(),
+        );
+      });
+
+      it("should not resurrect a hash key wiped mid-check (TOCTOU)", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+        restoreGetAuthStatus();
+
+        (AppState as { currentState: string }).currentState = "active";
+
+        mockAuthenticatedStorage({
+          backgroundedAt: null,
+          autoLockTimer: AUTO_LOCK_TIMER.ONE_HOUR,
+        });
+        const staleKey = {
+          hashKey: "mock-hash-key",
+          salt: "mock-salt",
+          generatedAt: Date.now() - (HASH_KEY_REFRESH_THROTTLE_MS + 60000),
+          expiresAt: Date.now() + ONE_HOUR_MS,
+        };
+        // The entry-time read sees a healthy key; by the time the re-anchor
+        // re-reads at write time, a concurrent logout / corruption wipe
+        // (clearTemporaryData) has removed it.
+        (getHashKey as jest.Mock)
+          .mockResolvedValueOnce(staleKey)
+          .mockResolvedValue(null);
+
+        await act(async () => {
+          await result.current.getAuthStatus();
+        });
+
+        // The in-flight tick's status is not the point (it validated a key
+        // that was live at entry) — the point is that the write is refused,
+        // so wiped key material is never resurrected with a fresh deadline.
+        expect(secureDataStorage.setItem).not.toHaveBeenCalledWith(
+          SENSITIVE_STORAGE_KEYS.HASH_KEY,
+          expect.any(String),
+        );
+      });
+
+      it("should not re-anchor when the temporary store is wiped mid-check (TOCTOU)", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+        restoreGetAuthStatus();
+
+        (AppState as { currentState: string }).currentState = "active";
+
+        mockAuthenticatedStorage({
+          backgroundedAt: null,
+          autoLockTimer: AUTO_LOCK_TIMER.ONE_HOUR,
+        });
+        const staleKey = {
+          hashKey: "mock-hash-key",
+          salt: "mock-salt",
+          generatedAt: Date.now() - (HASH_KEY_REFRESH_THROTTLE_MS + 60000),
+          expiresAt: Date.now() + ONE_HOUR_MS,
+        };
+        // The key survives, but a wipe removes the temporary store between
+        // getAuthStatus's entry-time read (which saw it present) and the
+        // helper's write-time re-read. The call-site gate passed on stale
+        // data, so the helper's own session check must refuse the write —
+        // otherwise the wipe race leaves an orphan key valid for 72h.
+        (getHashKey as jest.Mock).mockResolvedValue(staleKey);
+        let tempStoreReads = 0;
+        (secureDataStorage.getItem as jest.Mock).mockImplementation((key) => {
+          if (key === SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE) {
+            tempStoreReads += 1;
+            return Promise.resolve(
+              tempStoreReads === 1 ? "encrypted-temp-store" : null,
+            );
+          }
+          if (key === SENSITIVE_STORAGE_KEYS.AUTO_LOCK_TIMER_SETTING) {
+            return Promise.resolve(AUTO_LOCK_TIMER.ONE_HOUR);
+          }
+          return Promise.resolve(null);
+        });
+
+        await act(async () => {
+          await result.current.getAuthStatus();
+        });
+
+        expect(tempStoreReads).toBeGreaterThan(1);
+        expect(secureDataStorage.setItem).not.toHaveBeenCalledWith(
+          SENSITIVE_STORAGE_KEYS.HASH_KEY,
+          expect.any(String),
+        );
+      });
+
+      it("should not re-anchor when a wipe begins during the write-time re-read", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+        restoreGetAuthStatus();
+
+        (AppState as { currentState: string }).currentState = "active";
+
+        mockAuthenticatedStorage({
+          backgroundedAt: null,
+          autoLockTimer: AUTO_LOCK_TIMER.ONE_HOUR,
+        });
+        // Key and temp store both read back healthy — but a
+        // clearTemporaryData wipe started while the re-read was in flight
+        // (generation moved), so its removes may land after the re-anchor's
+        // write. The generation check must refuse the write.
+        (getHashKey as jest.Mock).mockResolvedValue({
+          hashKey: "mock-hash-key",
+          salt: "mock-salt",
+          generatedAt: Date.now() - (HASH_KEY_REFRESH_THROTTLE_MS + 60000),
+          expiresAt: Date.now() + ONE_HOUR_MS,
+        });
+        (getWipeGeneration as jest.Mock)
+          .mockReturnValueOnce(0)
+          .mockReturnValue(1);
+
+        await act(async () => {
+          await result.current.getAuthStatus();
+        });
+
+        expect(secureDataStorage.setItem).not.toHaveBeenCalledWith(
+          SENSITIVE_STORAGE_KEYS.HASH_KEY,
+          expect.any(String),
+        );
+      });
+
+      it("should NOT re-anchor an orphan hash key with no temporary store", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+        restoreGetAuthStatus();
+
+        (AppState as { currentState: string }).currentState = "active";
+
+        mockAuthenticatedStorage({
+          backgroundedAt: null,
+          autoLockTimer: AUTO_LOCK_TIMER.ONE_HOUR,
+        });
+        // Partial wipe: the hash key survived but the temporary store is gone.
+        // The `!hashKey && !temporaryStore` guard can't catch this (the key IS
+        // present), so the re-anchor gate must refuse it — otherwise every
+        // later tick would push the orphan's deadline out indefinitely.
+        (secureDataStorage.getItem as jest.Mock).mockImplementation((key) => {
+          if (key === SENSITIVE_STORAGE_KEYS.AUTO_LOCK_TIMER_SETTING) {
+            return Promise.resolve(AUTO_LOCK_TIMER.ONE_HOUR);
+          }
+          // No TEMPORARY_STORE, no backgrounded-at, no persisted AUTH_STATUS.
+          return Promise.resolve(null);
+        });
+        (getHashKey as jest.Mock).mockResolvedValue({
+          hashKey: "mock-hash-key",
+          salt: "mock-salt",
+          generatedAt: Date.now() - (HASH_KEY_REFRESH_THROTTLE_MS + 60000),
+          expiresAt: Date.now() + ONE_HOUR_MS,
+        });
+
+        await act(async () => {
+          await result.current.getAuthStatus();
+        });
+
+        expect(secureDataStorage.setItem).not.toHaveBeenCalledWith(
+          SENSITIVE_STORAGE_KEYS.HASH_KEY,
+          expect.any(String),
+        );
+      });
+
+      it("should NOT re-anchor an expired hash key (idle device forces full re-auth)", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+        restoreGetAuthStatus();
+
+        (AppState as { currentState: string }).currentState = "active";
+
+        mockAuthenticatedStorage({
+          backgroundedAt: null, // e.g. cold start where nothing was recorded
+          autoLockTimer: AUTO_LOCK_TIMER.ONE_HOUR,
+        });
+        (getHashKey as jest.Mock).mockResolvedValue({
+          hashKey: "mock-hash-key",
+          salt: "mock-salt",
+          generatedAt: Date.now() - 73 * ONE_HOUR_MS,
+          expiresAt: Date.now() - ONE_HOUR_MS, // hard-expired
+        });
+
+        await act(async () => {
+          const status = await result.current.getAuthStatus();
+          expect(status).toBe(AUTH_STATUS.HASH_KEY_EXPIRED);
+        });
+
+        expect(secureDataStorage.setItem).not.toHaveBeenCalledWith(
+          SENSITIVE_STORAGE_KEYS.HASH_KEY,
+          expect.any(String),
+        );
+      });
+
+      it("should NOT re-anchor a rolled-back-clock hash key (generatedAt guard, #905)", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+        restoreGetAuthStatus();
+
+        (AppState as { currentState: string }).currentState = "active";
+
+        mockAuthenticatedStorage({
+          backgroundedAt: null,
+          autoLockTimer: AUTO_LOCK_TIMER.ONE_HOUR,
+        });
+        // Clock rolled back below the key's anchor: generatedAt is in the
+        // future, expiresAt still looks fine by wall clock.
+        (getHashKey as jest.Mock).mockResolvedValue({
+          hashKey: "mock-hash-key",
+          salt: "mock-salt",
+          generatedAt: Date.now() + 60000,
+          expiresAt: Date.now() + ONE_HOUR_MS,
+        });
+
+        await act(async () => {
+          const status = await result.current.getAuthStatus();
+          expect(status).toBe(AUTH_STATUS.HASH_KEY_EXPIRED);
+        });
+
+        expect(secureDataStorage.setItem).not.toHaveBeenCalledWith(
+          SENSITIVE_STORAGE_KEYS.HASH_KEY,
+          expect.any(String),
+        );
       });
 
       it("should return HASH_KEY_EXPIRED when the hash key expired even if within the timer", async () => {
         const { result } = renderHook(() => useAuthenticationStore());
         restoreGetAuthStatus();
 
-        const previousAppState = AppState.currentState;
         (AppState as { currentState: string }).currentState = "active";
 
         mockAuthenticatedStorage({
@@ -1813,9 +2223,6 @@ describe("auth duck", () => {
         // Hard-expiry must evict the derived auth keypair — retention, not just
         // use, ends at expiry (the eviction-coverage gap raised in review).
         expect(clearAuthKeypairCache).toHaveBeenCalled();
-
-        (AppState as { currentState: typeof previousAppState }).currentState =
-          previousAppState;
       });
 
       it("should return HASH_KEY_EXPIRED (not LOCKED) when backgrounded beyond BOTH the timer and the hash-key TTL", async () => {
@@ -2106,6 +2513,131 @@ describe("auth duck", () => {
         expect(decryptDataWithPassword).not.toHaveBeenCalled();
         expect(encryptDataWithPassword).not.toHaveBeenCalled();
       });
+
+      it.each([
+        [
+          "expired",
+          {
+            hashKey: "stale-mock-hash-key",
+            salt: "stale-mock-salt",
+            generatedAt: Date.now() - 73 * 3600000,
+            expiresAt: Date.now() - 3600000, // hard-expired an hour ago
+          },
+        ],
+        [
+          "rolled-back (future generatedAt)",
+          {
+            hashKey: "stale-mock-hash-key",
+            salt: "stale-mock-salt",
+            generatedAt: Date.now() + 3600000, // clock moved backward
+            expiresAt: Date.now() + 3600000,
+          },
+        ],
+      ])(
+        "should rebuild the session instead of re-stamping a %s key on LOCKED sign-in (#924)",
+        async (_label, staleKey) => {
+          // Expiry can cross between the getAuthStatus check and the unlock
+          // (or a stale persisted LOCKED can carry an expired key straight
+          // into signIn): the fast path must refuse to re-stamp the stale
+          // material and fall through to the full temporary-store rebuild,
+          // which mints a fresh hash key.
+          mockKeyManager.loadKey.mockResolvedValueOnce({
+            id: mockAccount.id,
+            publicKey: mockAccount.publicKey,
+            privateKey: "mock-private-key",
+            extra: { mnemonicPhrase: "mock mnemonic phrase" },
+          });
+          mockKeyManager.loadAllKeyIds.mockResolvedValueOnce([mockAccount.id]);
+
+          (dataStorage.getItem as jest.Mock).mockImplementation((key) => {
+            if (key === STORAGE_KEYS.ACTIVE_ACCOUNT_ID) {
+              return Promise.resolve(mockAccount.id);
+            }
+            if (key === STORAGE_KEYS.ACCOUNT_LIST) {
+              return Promise.resolve(JSON.stringify([mockAccount]));
+            }
+            return Promise.resolve(null);
+          });
+
+          // Stateful hash-key storage: reads reflect writes, so once the
+          // rebuild mints a fresh key the background getActiveAccount sees
+          // it (a static stale mock would knock the session back to LOCKED
+          // regardless of which branch ran).
+          let storedHashKey: Record<string, unknown> = staleKey;
+          (getHashKey as jest.Mock).mockImplementation(() =>
+            Promise.resolve(storedHashKey),
+          );
+          (secureDataStorage.setItem as jest.Mock).mockImplementation(
+            (key, value) => {
+              if (key === SENSITIVE_STORAGE_KEYS.HASH_KEY) {
+                storedHashKey = JSON.parse(value as string) as Record<
+                  string,
+                  unknown
+                >;
+              }
+              return Promise.resolve(undefined);
+            },
+          );
+
+          (secureDataStorage.getItem as jest.Mock).mockImplementation((key) => {
+            if (key === SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE) {
+              return Promise.resolve("encrypted-temp-store");
+            }
+            if (key === SENSITIVE_STORAGE_KEYS.HASH_KEY) {
+              return Promise.resolve(JSON.stringify(storedHashKey));
+            }
+            return Promise.resolve(null);
+          });
+
+          (decryptDataWithDerivedKey as jest.Mock).mockReturnValue(
+            JSON.stringify({
+              privateKeys: { [mockAccount.id]: "mock-private-key" },
+              mnemonicPhrase: "mock mnemonic phrase",
+            }),
+          );
+          (deriveKeyFromPassword as jest.Mock).mockResolvedValue(
+            new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]),
+          );
+
+          const { result } = renderHook(() => useAuthenticationStore());
+
+          act(() => {
+            useAuthenticationStore.setState({
+              authStatus: AUTH_STATUS.LOCKED,
+              signIn: originalStoreMethods.signIn,
+            });
+          });
+
+          await act(async () => {
+            await result.current.signIn({ password: "test-password" });
+          });
+
+          await act(async () => {
+            await new Promise<void>((resolve) => {
+              setTimeout(resolve, 0);
+            });
+          });
+
+          expect(result.current.authStatus).toBe(AUTH_STATUS.AUTHENTICATED);
+
+          // The full rebuild ran: a fresh temporary store was written (the
+          // TTL-refresh branch never touches TEMPORARY_STORE)...
+          expect(secureDataStorage.setItem).toHaveBeenCalledWith(
+            SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE,
+            expect.any(String),
+          );
+          // ...and no write re-stamped the stale key material.
+          const hashKeyWrites = (
+            secureDataStorage.setItem as jest.Mock
+          ).mock.calls.filter(
+            ([key]) => key === SENSITIVE_STORAGE_KEYS.HASH_KEY,
+          );
+          expect(hashKeyWrites.length).toBeGreaterThan(0);
+          hashKeyWrites.forEach(([, value]) => {
+            expect(value).not.toContain("stale-mock-hash-key");
+          });
+        },
+      );
     });
 
     describe("account switching", () => {
@@ -2520,6 +3052,13 @@ describe("auth duck", () => {
       expect(await isSessionAuthValid()).toBe(false);
     });
 
+    // getHashKey call counts are used here purely as a proxy for "how many
+    // funnel runs happened". That 1:1 mapping only holds because the jest
+    // AppState mock's default state is not "active": in production the active
+    // path also runs the #924 re-anchor, which re-reads the key (a second
+    // getHashKey per funnel run). Don't tighten these assertions against a
+    // production-like AppState — the counts would drift for reasons that have
+    // nothing to do with the memo/in-flight dedup under test.
     it("dedupes a concurrent burst into a single funnel run (in-flight promise shared)", async () => {
       mockFunnelStorage();
       (getHashKey as jest.Mock).mockClear();
