@@ -26,6 +26,7 @@ import {
 } from "components/screens/SwapScreen/helpers";
 import {
   SWAP_TOAST_IDS,
+  useDefaultSwapDestination,
   useSwapAmountError,
   useSwapBalances,
   useSwapCtaState,
@@ -49,19 +50,13 @@ import { AnalyticsEvent, SwapPickerEntrypoint } from "config/analyticsConfig";
 import {
   BASE_RESERVE,
   DEFAULT_DECIMALS,
-  DEFAULT_SWAP_DEST_TOKEN_ID,
   isNativeAssetId,
-  NATIVE_TOKEN_CODE,
   TransactionContext,
 } from "config/constants";
 import { logger } from "config/logger";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
-import {
-  FormattedSearchTokenRecord,
-  TokenTypeWithCustomToken,
-} from "config/types";
+import { FormattedSearchTokenRecord } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
-import { useBalancesStore } from "ducks/balances";
 import { useDebugStore } from "ducks/debug";
 import { descriptorAsPathBalance, useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
@@ -94,13 +89,8 @@ import {
   View,
 } from "react-native";
 import { analytics } from "services/analytics";
-import { scanToken } from "services/blockaid/api";
 import { SecurityContext, SecurityLevel } from "services/blockaid/constants";
-import {
-  assessTokenSecurity,
-  assessTransactionSecurity,
-  extractSecurityWarnings,
-} from "services/blockaid/helper";
+import { assessTransactionSecurity } from "services/blockaid/helper";
 
 type SwapAmountScreenProps = NativeStackScreenProps<
   SwapStackParamList,
@@ -404,113 +394,19 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     setDestinationToken,
   ]);
 
-  const rawBalances = useBalancesStore((state) => state.balances);
-  const balancesFetchedPublicKey = useBalancesStore(
-    (state) => state.fetchedPublicKey,
-  );
-  const balancesFetchedNetwork = useBalancesStore(
-    (state) => state.fetchedNetwork,
-  );
-
-  // Keep a ref with the latest destination so the scan callback below can
-  // check what's selected NOW, not what was selected when the scan started.
-  // Cleared on unmount: the screen's cleanup resets the swap store, and a
-  // scan resolving after that must not see the old descriptor here and
-  // write it back into the reset store.
-  const destinationDescriptorRef = useRef(destinationTokenDescriptor);
-  useEffect(() => {
-    destinationDescriptorRef.current = destinationTokenDescriptor;
-    return () => {
-      destinationDescriptorRef.current = null;
-    };
-  }, [destinationTokenDescriptor]);
-
-  const hasSeededDefaultDestination = useRef(false);
-  useEffect(() => {
-    if (hasSeededDefaultDestination.current) {
-      return;
-    }
-    const defaultTokenId = DEFAULT_SWAP_DEST_TOKEN_ID[network];
-    if (!defaultTokenId || destinationTokenDescriptor) {
-      hasSeededDefaultDestination.current = true;
-      return;
-    }
-    if (
-      !account?.publicKey ||
-      balancesFetchedPublicKey !== account.publicKey ||
-      balancesFetchedNetwork !== network
-    ) {
-      return;
-    }
-    hasSeededDefaultDestination.current = true;
-
-    if (swapFromTokenId === defaultTokenId) {
-      setDestinationToken({
-        id: NATIVE_TOKEN_CODE,
-        tokenCode: NATIVE_TOKEN_CODE,
-        decimals: DEFAULT_DECIMALS,
-        tokenType: TokenTypeWithCustomToken.NATIVE,
-        requiresTrustline: false,
-      });
-      return;
-    }
-
-    const isDefaultHeld = defaultTokenId in rawBalances;
-    const [defaultTokenCode, defaultTokenIssuer] = defaultTokenId.split(":");
-    setDestinationToken({
-      id: defaultTokenId,
-      tokenCode: defaultTokenCode,
-      issuer: defaultTokenIssuer,
-      decimals: DEFAULT_DECIMALS,
-      tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
-      requiresTrustline: !isDefaultHeld,
-    });
-
-    if (isDefaultHeld) {
-      // Already-held tokens get their security signal from the held-balances
-      // bulk scan, so there's nothing to attach here.
-      return;
-    }
-
-    // A non-held destination needs a Blockaid security signal: the review
-    // flow treats a descriptor without a securityLevel as "unable to scan"
-    // and presents the security warning sheet. Descriptors from the picker
-    // get their level from the discovery-time bulk scan, but a
-    // programmatically seeded one has no such source, so fetch its own
-    // scan and attach the result when it lands.
-    scanToken({
-      tokenCode: defaultTokenCode,
-      tokenIssuer: defaultTokenIssuer,
-      network,
-    })
-      .then((scanResult) => {
-        const { current } = destinationDescriptorRef;
-        // Only update if the destination is still our seeded default and
-        // nothing has stamped it yet. If the user picked another token in
-        // the meantime, that one brought its own scan result.
-        if (current?.id !== defaultTokenId || current.securityLevel) {
-          return;
-        }
-        setDestinationToken({
-          ...current,
-          securityLevel: assessTokenSecurity(scanResult).level,
-          securityWarnings: extractSecurityWarnings(scanResult),
-        });
-      })
-      .catch(() => {
-        // If scan failed, leave the descriptor unstamped so the regular
-        // unable-to-scan warning flow takes over.
-      });
-  }, [
+  // Seeds the Receive side with the network's default token (USDC, or XLM
+  // when swapping from USDC) once a balances snapshot for this
+  // account/network lands, and stamps a non-held default with its own
+  // Blockaid scan. See the hook for the full rationale. Called after the
+  // source-init effect above so it observes the destination that effect
+  // just cleared.
+  useDefaultSwapDestination({
     network,
-    destinationTokenDescriptor,
-    rawBalances,
-    balancesFetchedPublicKey,
-    balancesFetchedNetwork,
-    account?.publicKey,
+    publicKey: account?.publicKey,
     swapFromTokenId,
+    destinationTokenDescriptor,
     setDestinationToken,
-  ]);
+  });
 
   // The network fee auto-refreshes every 30s and is paid in XLM, so a fee
   // bump would shrink an XLM source's spendable and flash "Insufficient
