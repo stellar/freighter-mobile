@@ -26,6 +26,7 @@ import {
 } from "components/screens/SwapScreen/helpers";
 import {
   SWAP_TOAST_IDS,
+  useDefaultSwapDestination,
   useSwapAmountError,
   useSwapBalances,
   useSwapCtaState,
@@ -392,6 +393,20 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     setSourceToken,
     setDestinationToken,
   ]);
+
+  // Seeds the Receive side with the network's default token (USDC, or XLM
+  // when swapping from USDC) once a balances snapshot for this
+  // account/network lands, and stamps a non-held default with its own
+  // Blockaid scan. See the hook for the full rationale. Called after the
+  // source-init effect above so it observes the destination that effect
+  // just cleared.
+  useDefaultSwapDestination({
+    network,
+    publicKey: account?.publicKey,
+    swapFromTokenId,
+    destinationTokenDescriptor,
+    setDestinationToken,
+  });
 
   // The network fee auto-refreshes every 30s and is paid in XLM, so a fee
   // bump would shrink an XLM source's spendable and flash "Insufficient

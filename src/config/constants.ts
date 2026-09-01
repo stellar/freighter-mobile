@@ -65,6 +65,9 @@ export const CIRCLE_USDC_ISSUER =
 export const USDC_CODE = "USDC";
 export const CIRCLE_USDC_CONTRACT =
   "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
+// Circle's testnet USDC issuer (home_domain centre.io), matching the extension
+export const CIRCLE_USDC_TESTNET_ISSUER =
+  "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5";
 
 // Slippage constants
 export const DEFAULT_SLIPPAGE = 2;
@@ -332,6 +335,17 @@ export const DEFAULT_NETWORKS: Array<NetworkDetails> = [
   PUBLIC_NETWORK_DETAILS,
   TESTNET_NETWORK_DETAILS,
 ];
+
+/**
+ * Default swap destination ("You receive") per network, as a token id
+ * (CODE:ISSUER). Only networks listed here get a default; on others the
+ * picker starts empty. Mirrors the extension's DEFAULT_SWAP_DEST_CANONICAL
+ * (freighter#2914) — keep the issuers in sync across platforms.
+ */
+export const DEFAULT_SWAP_DEST_TOKEN_ID: Partial<Record<NETWORKS, string>> = {
+  [NETWORKS.PUBLIC]: `${USDC_CODE}:${CIRCLE_USDC_ISSUER}`,
+  [NETWORKS.TESTNET]: `${USDC_CODE}:${CIRCLE_USDC_TESTNET_ISSUER}`,
+};
 
 export const STELLAR_EXPERT_URL = "https://stellar.expert/explorer";
 export const STELLAR_EXPERT_API_URL = "https://api.stellar.expert/explorer";
