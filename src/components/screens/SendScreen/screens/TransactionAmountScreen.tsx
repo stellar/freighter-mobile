@@ -786,9 +786,34 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
         const { privateKey } = account;
 
-        // Everything the volume telemetry needs is snapshotted here, at
-        // confirmation, before signing/submission — the amount and price are
-        // frozen together and carried to whichever terminal event fires.
+        const signedXDR = signTransaction({
+          secretKey: privateKey,
+          network,
+        });
+
+        if (!signedXDR) {
+          // Pre-submit signing failure. The failure event still fires — it is
+          // the flow's outcome and the funnel counts on it — but it carries
+          // no volume data: nothing reached the network, so there is no
+          // attempted volume to report. No snapshot has been started yet, so
+          // there is nothing to cancel either.
+          const { error: signingError } = useTransactionBuilderStore.getState();
+          analytics.trackTransactionError({
+            error: signingError || "Failed to sign transaction",
+            operationType: TransactionOperationType.Payment,
+            sourceToken: selectedBalance?.tokenCode,
+          });
+          setIsProcessing(false);
+          return;
+        }
+
+        // Everything the volume telemetry needs is snapshotted here — after
+        // signing succeeded and immediately before submission, so the prices
+        // are as close as possible to the transaction's actual execution
+        // time. Amount and price are frozen together and carried to whichever
+        // terminal event fires. Starting it only once signing has succeeded
+        // also means a signing failure never issues a price request it would
+        // just have to abort.
         const networkDetails = mapNetworkToNetworkDetails(network);
         const { tokenCode: sourceCode, issuer: sourceIssuerRaw } =
           formatTokenIdentifier(getTokenIdentifier(selectedBalance));
@@ -809,27 +834,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
             },
           },
         });
-
-        const signedXDR = signTransaction({
-          secretKey: privateKey,
-          network,
-        });
-
-        if (!signedXDR) {
-          // Pre-submit signing failure. The failure event still fires — it is
-          // the flow's outcome and the funnel counts on it — but it carries
-          // no volume data: nothing reached the network, so there is no
-          // attempted volume to report and no snapshot to price it with.
-          snapshotHandle.cancel();
-          const { error: signingError } = useTransactionBuilderStore.getState();
-          analytics.trackTransactionError({
-            error: signingError || "Failed to sign transaction",
-            operationType: TransactionOperationType.Payment,
-            sourceToken: selectedBalance?.tokenCode,
-          });
-          setIsProcessing(false);
-          return;
-        }
 
         const success = await submitTransaction({
           network,

@@ -247,12 +247,30 @@ export const useSwapTransaction = ({
         return;
       }
 
-      // Everything the volume telemetry needs is snapshotted here, at
-      // confirmation, before signing/submission — amounts and prices are
-      // frozen together and carried to whichever terminal event fires. Both
-      // legs' canonical ids go into ONE price request, so they're priced at
-      // the same instant.
       const networkDetails = mapNetworkToNetworkDetails(network);
+
+      const signedXDR = signTransaction({
+        secretKey: account.privateKey,
+        network,
+      });
+
+      if (!signedXDR) {
+        // Pre-submit signing failure. Throw rather than return: the catch
+        // below is this flow's single failure path — it emits swap.failed
+        // (without volume data, since nothing reached the network) and shows
+        // the error toast, exactly as it did before volume telemetry existed.
+        const { error: signingError } = useTransactionBuilderStore.getState();
+        throw new Error(signingError || "Failed to sign transaction");
+      }
+
+      // Everything the volume telemetry needs is snapshotted here — after
+      // signing succeeded and immediately before submission, so the prices
+      // are as close as possible to the transaction's actual execution time.
+      // Amounts and prices are frozen together and carried to whichever
+      // terminal event fires. Both legs' canonical ids go into ONE price
+      // request, so they're priced at the same instant. Starting it only once
+      // signing has succeeded also means a signing failure never issues a
+      // price request it would just have to abort.
       const heldBalances = Object.values(useBalancesStore.getState().balances);
       const { tokenCode: srcCode, issuer: srcIssuerRaw } =
         formatTokenIdentifier(getTokenIdentifier(freshSource));
@@ -284,20 +302,6 @@ export const useSwapTransaction = ({
           [destCanonicalId]: { currentPrice: freshDest.currentPrice ?? null },
         },
       });
-
-      const signedXDR = signTransaction({
-        secretKey: account.privateKey,
-        network,
-      });
-
-      if (!signedXDR) {
-        // Pre-submit signing failure. Throw rather than return: the catch
-        // below is this flow's single failure path — it emits swap.failed
-        // (without volume data, since nothing reached the network) and shows
-        // the error toast, exactly as it did before volume telemetry existed.
-        const { error: signingError } = useTransactionBuilderStore.getState();
-        throw new Error(signingError || "Failed to sign transaction");
-      }
 
       // submitTransaction will throw if it fails (including debug overrides)
       // or return the hash if successful. If it returns null, surface the

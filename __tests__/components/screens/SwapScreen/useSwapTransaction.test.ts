@@ -228,7 +228,7 @@ describe("useSwapTransaction", () => {
       );
     });
 
-    it("cancels the confirmation price fetch when signing fails pre-submit", async () => {
+    it("issues no confirmation price fetch at all when signing fails pre-submit", async () => {
       mockSignTransaction.mockReturnValue(null);
 
       const { result } = renderHook(() => useSwapTransaction(baseParams));
@@ -237,15 +237,35 @@ describe("useSwapTransaction", () => {
         await result.current.executeSwap();
       });
 
-      // No terminal event consumes the snapshot, so the in-flight price
-      // request must not outlive the flow that started it — the real
-      // startConfirmationPriceSnapshot runs here, so the abort is observable
-      // on the signal it handed to the (mocked) network call.
-      expect(mockFetchTokenPrices).toHaveBeenCalledTimes(1);
-      const [{ signal }] = mockFetchTokenPrices.mock.calls[0] as [
-        { signal: AbortSignal },
-      ];
-      expect(signal.aborted).toBe(true);
+      // The snapshot starts only once signing has succeeded, so a signing
+      // failure never issues a price request it would just have to abort.
+      expect(mockFetchTokenPrices).not.toHaveBeenCalled();
+    });
+
+    it("starts the confirmation price fetch only after signing succeeds", async () => {
+      const callOrder: string[] = [];
+      mockSignTransaction.mockImplementation(() => {
+        callOrder.push("sign");
+        return "signed-xdr";
+      });
+      mockFetchTokenPrices.mockImplementation(() => {
+        callOrder.push("fetchPrices");
+        return Promise.resolve({});
+      });
+      mockSubmitTransaction.mockImplementation(() => {
+        callOrder.push("submit");
+        return Promise.resolve("tx-hash");
+      });
+
+      const { result } = renderHook(() => useSwapTransaction(baseParams));
+
+      await act(async () => {
+        await result.current.executeSwap();
+      });
+
+      // Prices are snapshotted as close to execution as possible: after
+      // signing, immediately before submission.
+      expect(callOrder).toEqual(["sign", "fetchPrices", "submit"]);
     });
 
     it("resolves successfully on a successful swap (sanity check)", async () => {
