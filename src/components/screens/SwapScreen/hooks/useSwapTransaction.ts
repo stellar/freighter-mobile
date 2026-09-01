@@ -40,6 +40,7 @@ import {
   computeUsdSlippagePct,
   deriveLegUsd,
   getFailureCategory,
+  LegUsdStatus,
   pickReasonCode,
 } from "helpers/usdVolume";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
@@ -212,6 +213,10 @@ export const useSwapTransaction = ({
     // transaction never reached submission, and can still enrich a
     // post-submission failure's telemetry with the identities it classified.
     let snapshotHandle: ConfirmationSnapshotHandle | null = null;
+    // Only a submitted transaction has attempted volume to report, so the
+    // catch reads this to decide whether the failure event carries volume
+    // data or just its pre-existing failure properties.
+    let didSubmit = false;
     let sourceIdentity: AssetIdentity | null = null;
     let destIdentity: AssetIdentity | null = null;
     let sourceCanonicalId = "";
@@ -245,12 +250,10 @@ export const useSwapTransaction = ({
       // Everything the volume telemetry needs is snapshotted here, at
       // confirmation, before signing/submission — amounts and prices are
       // frozen together and carried to whichever terminal event fires. Both
-      // legs' canonical ids go into ONE price request (TR-9), so they're
-      // priced at the same instant.
+      // legs' canonical ids go into ONE price request, so they're priced at
+      // the same instant.
       const networkDetails = mapNetworkToNetworkDetails(network);
-      const heldBalances = Object.values(
-        useBalancesStore.getState().balances,
-      );
+      const heldBalances = Object.values(useBalancesStore.getState().balances);
       const { tokenCode: srcCode, issuer: srcIssuerRaw } =
         formatTokenIdentifier(getTokenIdentifier(freshSource));
       sourceIdentity = classifyAssetIdentity(
@@ -288,23 +291,18 @@ export const useSwapTransaction = ({
       });
 
       if (!signedXDR) {
-        // Pre-submit signing failure — never reached the network, so it
-        // isn't a terminal event (no attempted volume, TR-71).
-        snapshotHandle.cancel();
-        setIsProcessing(false);
+        // Pre-submit signing failure. Throw rather than return: the catch
+        // below is this flow's single failure path — it emits swap.failed
+        // (without volume data, since nothing reached the network) and shows
+        // the error toast, exactly as it did before volume telemetry existed.
         const { error: signingError } = useTransactionBuilderStore.getState();
-        showToast({
-          variant: "error",
-          title: signingError || t("swapScreen.errors.swapTransactionFailed"),
-          toastId: "swap-transaction-failed",
-          duration: 0,
-        });
-        return;
+        throw new Error(signingError || "Failed to sign transaction");
       }
 
       // submitTransaction will throw if it fails (including debug overrides)
       // or return the hash if successful. If it returns null, surface the
       // stored error to keep the toast message accurate (e.g. DEBUG failures).
+      didSubmit = true;
       const transactionHash = await submitTransaction({ network });
 
       if (!transactionHash) {
@@ -362,10 +360,10 @@ export const useSwapTransaction = ({
             )
           : undefined;
       const usdSlippagePct =
-        sourceLeg.status === "ok" &&
-        destLeg?.status === "ok" &&
+        sourceLeg.status === LegUsdStatus.OK &&
+        destLeg?.status === LegUsdStatus.OK &&
         sourceLeg.value !== 0
-          ? computeUsdSlippagePct(sourceLeg.unrounded!, destLeg.unrounded!)
+          ? computeUsdSlippagePct(sourceLeg.unrounded, destLeg.unrounded)
           : undefined;
 
       analytics.trackSwapSuccess({
@@ -392,8 +390,8 @@ export const useSwapTransaction = ({
           ...(settledDestAmount !== null
             ? { toAmount: settledDestAmount.toNumber() }
             : {}),
-          toAmountUsdStatus: destLeg?.status ?? "error",
-          ...(destLeg?.status === "ok"
+          toAmountUsdStatus: destLeg?.status ?? LegUsdStatus.ERROR,
+          ...(destLeg?.status === LegUsdStatus.OK
             ? { toAmountUsd: destLeg.value, toAmountUsdRate: destLeg.rate }
             : {}),
           ...(usdSlippagePct !== undefined ? { usdSlippagePct } : {}),
@@ -435,14 +433,15 @@ export const useSwapTransaction = ({
             ).resultCodes
           : undefined;
 
-      // Only a failure at or after submission reaches here — the pre-submit
-      // signing guard above already returned before this catch could see it.
-      // snapshotHandle/sourceIdentity/destIdentity are non-null by
-      // construction at that point; the null check is a defensive fallback
-      // for a genuinely unexpected throw earlier in the try.
+      // A pre-submission failure (signing, or a throw before submit) still
+      // emits swap.failed, but with no volume data: nothing reached the
+      // network, so there is no attempted volume and no snapshot to price it
+      // with. Cancel the fetch rather than let it outlive the flow.
       const reasonCode = pickReasonCode(submitResultCodes);
       let volume: FailureVolume | undefined;
-      if (snapshotHandle && sourceIdentity && destIdentity) {
+      if (!didSubmit) {
+        snapshotHandle?.cancel();
+      } else if (snapshotHandle && sourceIdentity && destIdentity) {
         const snapshot = snapshotHandle.resolve();
         const sourceLeg = deriveLegUsd(
           sourceAmount,
@@ -487,16 +486,14 @@ export const useSwapTransaction = ({
         // out of the same reason-code mapping used for every other
         // rejection, so no special case is needed beyond emitting here too.
         // Only swap.failed carries volume, so the pair cannot double-count.
-        if (volume) {
-          analytics.trackTransactionError({
-            error: error instanceof Error ? error.message : String(error),
-            errorCode: reasonCode,
-            isSwap: true,
-            sourceToken: sourceBalance?.tokenCode,
-            destToken: destinationTokenInput?.tokenCode,
-            volume,
-          });
-        }
+        analytics.trackTransactionError({
+          error: error instanceof Error ? error.message : String(error),
+          errorCode: reasonCode,
+          isSwap: true,
+          sourceToken: sourceBalance?.tokenCode,
+          destToken: destinationTokenInput?.tokenCode,
+          volume,
+        });
 
         showToast({
           variant: "error",

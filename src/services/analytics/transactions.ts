@@ -1,7 +1,11 @@
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { getDisplayHost } from "helpers/protocols";
 import { scrubStrKeys } from "helpers/stellarStrKey";
-import { buildSourceLegUsdProps } from "helpers/usdVolume";
+import {
+  AssetKind,
+  buildSourceLegUsdProps,
+  LegUsdStatus,
+} from "helpers/usdVolume";
 import { track } from "services/analytics/core";
 import { TransactionOperationType } from "services/analytics/types";
 import type {
@@ -13,10 +17,10 @@ import type {
   TransactionErrorEvent,
 } from "services/analytics/types";
 
-/** Flattens an `AssetIdentity` under the given property prefix (e.g. `asset_` -> `asset_issuer`/`asset_type`, `from_` -> `from_asset_issuer`/`from_asset_type`). Issuer omitted for native XLM (TR-48). */
+/** Flattens an `AssetIdentity` under the given property prefix (e.g. `asset_` -> `asset_issuer`/`asset_type`, `from_` -> `from_asset_issuer`/`from_asset_type`). Issuer omitted for native XLM. */
 const assetIdentityProps = (
   prefix: string,
-  identity: { issuer?: string; type: string },
+  identity: { issuer?: string; type: AssetKind },
 ): Record<string, unknown> => ({
   ...(identity.issuer ? { [`${prefix}asset_issuer`]: identity.issuer } : {}),
   [`${prefix}asset_type`]: identity.type,
@@ -192,7 +196,7 @@ export const trackSwapSuccess = (data: SwapSuccessEvent): void => {
             ? { to_amount: volume.toAmount }
             : {}),
           to_amount_usd_status: volume.toAmountUsdStatus,
-          ...(volume.toAmountUsdStatus === "ok"
+          ...(volume.toAmountUsdStatus === LegUsdStatus.OK
             ? {
                 to_amount_usd: volume.toAmountUsd,
                 to_amount_usd_rate: volume.toAmountUsdRate,
@@ -271,10 +275,15 @@ export const trackTransactionError = (data: TransactionErrorEvent): void => {
     };
   } else if (event === AnalyticsEvent.SEND_PAYMENT_FAIL) {
     props.payment_type = "payment";
+    // asset_code is known even when there is no volume data (a pre-submit
+    // failure), and it is the property payment.failed shares with
+    // payment.completed — keep it outside the volume gate.
+    if (data.sourceToken) {
+      props.asset_code = data.sourceToken;
+    }
     if (volume) {
       props = {
         ...props,
-        asset_code: data.sourceToken,
         ...assetIdentityProps("", volume.identity),
         amount: volume.amount,
         failure_category: volume.failureCategory,

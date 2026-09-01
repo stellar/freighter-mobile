@@ -764,8 +764,11 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
     const processTransaction = async () => {
       // Declared outside the try so the catch can cancel a snapshot whose
-      // transaction never reached submission.
+      // transaction never reached submission, and so the catch can tell a
+      // pre-terminal throw apart from one raised after the terminal event
+      // already fired (which must not emit a second one).
       let snapshotHandle: ConfirmationSnapshotHandle | null = null;
+      let emittedTerminalEvent = false;
       try {
         if (!account?.privateKey || !selectedBalance || !recipientAddress) {
           throw new Error("Missing account or balance information");
@@ -813,10 +816,17 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         });
 
         if (!signedXDR) {
-          // Pre-submit signing failure — never reached the network, so it
-          // isn't a terminal event (no attempted volume). The store's own
-          // error state already surfaces a toast via the effect above.
+          // Pre-submit signing failure. The failure event still fires — it is
+          // the flow's outcome and the funnel counts on it — but it carries
+          // no volume data: nothing reached the network, so there is no
+          // attempted volume to report and no snapshot to price it with.
           snapshotHandle.cancel();
+          const { error: signingError } = useTransactionBuilderStore.getState();
+          analytics.trackTransactionError({
+            error: signingError || "Failed to sign transaction",
+            operationType: TransactionOperationType.Payment,
+            sourceToken: selectedBalance?.tokenCode,
+          });
           setIsProcessing(false);
           return;
         }
@@ -831,6 +841,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           snapshot.pricesById?.[sourceCanonicalId]?.currentPrice,
         );
 
+        emittedTerminalEvent = true;
         if (success) {
           analytics.trackSendPaymentSuccess({
             sourceToken: selectedBalance?.tokenCode || "unknown",
@@ -877,17 +888,27 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         }
       } catch (error) {
         // Pre-submission failure (missing account/balance/recipient, or the
-        // debug forced-submit-failure override): no terminal event will
-        // consume the snapshot, so cancel the price fetch rather than let it
-        // outlive the flow. Idempotent and safe after resolve(). No terminal
-        // event is emitted — TR-71: only a failure at or after submission
-        // contributes attempted volume.
+        // debug forced-submit-failure override): cancel the price fetch
+        // rather than let it outlive the flow. Idempotent and safe after
+        // resolve().
         snapshotHandle?.cancel();
         logger.error(
           "TransactionAmountScreen",
           "Transaction submission failed:",
           error,
         );
+
+        // The failure event still fires for a pre-submission failure, without
+        // volume data — only a submitted transaction has attempted volume to
+        // report. Guarded so a throw raised after the terminal event already
+        // emitted (e.g. from the post-emit work above) cannot double-count.
+        if (!emittedTerminalEvent) {
+          analytics.trackTransactionError({
+            error: error instanceof Error ? error.message : String(error),
+            operationType: TransactionOperationType.Payment,
+            sourceToken: selectedBalance?.tokenCode,
+          });
+        }
       }
     };
 

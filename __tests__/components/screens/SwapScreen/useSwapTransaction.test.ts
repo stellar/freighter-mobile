@@ -43,8 +43,9 @@ jest.mock("ducks/remoteConfig", () => ({
 }));
 // Stubs the network boundary only — startConfirmationPriceSnapshot itself
 // runs for real, so its cancel()/resolve() contract is still exercised.
+const mockFetchTokenPrices = jest.fn().mockResolvedValue({});
 jest.mock("services/backend", () => ({
-  fetchTokenPrices: jest.fn().mockResolvedValue({}),
+  fetchTokenPrices: (...args: unknown[]) => mockFetchTokenPrices(...args),
 }));
 // `signTransaction` is mocked to return the literal string "signed-xdr" in
 // most of this file's tests, which isn't parseable XDR — stub
@@ -200,7 +201,7 @@ describe("useSwapTransaction", () => {
       expect(mockShowToast).toHaveBeenCalled();
     });
 
-    it("does NOT reject when signTransaction returns null, and emits no volume telemetry (TR-71: pre-submit failure)", async () => {
+    it("does NOT reject when signTransaction returns null, and emits swap.failed without volume data", async () => {
       mockSignTransaction.mockReturnValue(null);
 
       const { result } = renderHook(() => useSwapTransaction(baseParams));
@@ -213,13 +214,38 @@ describe("useSwapTransaction", () => {
       });
 
       expect(didReject).toBe(false);
-      // A signing failure never reaches the network, so it isn't a terminal
-      // event and contributes no attempted volume — swap.failed must NOT
-      // fire. The user still sees a toast.
-      expect(mockTrackTransactionError).not.toHaveBeenCalled();
+      // A signing failure is still the flow's outcome, so swap.failed fires —
+      // but it never reached the network, so there is no attempted volume to
+      // report and `volume` is absent. The user still sees a toast.
+      expect(mockTrackTransactionError).toHaveBeenCalledTimes(1);
+      const [failurePayload] = mockTrackTransactionError.mock.calls[0] as [
+        { volume?: unknown; isSwap?: boolean },
+      ];
+      expect(failurePayload.isSwap).toBe(true);
+      expect(failurePayload.volume).toBeUndefined();
       expect(mockShowToast).toHaveBeenCalledWith(
         expect.objectContaining({ variant: "error" }),
       );
+    });
+
+    it("cancels the confirmation price fetch when signing fails pre-submit", async () => {
+      mockSignTransaction.mockReturnValue(null);
+
+      const { result } = renderHook(() => useSwapTransaction(baseParams));
+
+      await act(async () => {
+        await result.current.executeSwap();
+      });
+
+      // No terminal event consumes the snapshot, so the in-flight price
+      // request must not outlive the flow that started it — the real
+      // startConfirmationPriceSnapshot runs here, so the abort is observable
+      // on the signal it handed to the (mocked) network call.
+      expect(mockFetchTokenPrices).toHaveBeenCalledTimes(1);
+      const [{ signal }] = mockFetchTokenPrices.mock.calls[0] as [
+        { signal: AbortSignal },
+      ];
+      expect(signal.aborted).toBe(true);
     });
 
     it("resolves successfully on a successful swap (sanity check)", async () => {
@@ -396,7 +422,7 @@ describe("useSwapTransaction", () => {
   });
 
   describe("SWAP_QUOTE_EXPIRED analytics", () => {
-    it("fires SWAP_QUOTE_EXPIRED with the result code, AND also swap.failed with failure_category slippage (TR-70), when the submit is rejected with op_under_dest_min", async () => {
+    it("fires SWAP_QUOTE_EXPIRED with the result code, AND also swap.failed with failure_category slippage, when the submit is rejected with op_under_dest_min", async () => {
       mockGetBuilderState.mockReturnValue({
         error: "tx_failed",
         submitErrorResultCodes: {
@@ -431,7 +457,7 @@ describe("useSwapTransaction", () => {
       expect(quoteExpiredCall?.[1]).not.toHaveProperty("sourceAmount");
       expect(quoteExpiredCall?.[1]).not.toHaveProperty("destAmount");
       expect(quoteExpiredCall?.[1]).not.toHaveProperty("allowedSlippage");
-      // TR-70: a submit-time quote expiry also emits swap.failed with
+      // A submit-time quote expiry also emits swap.failed with
       // failure_category: slippage, so the failure it represents reaches a
       // volume-bearing event. swap.quote_expired is unchanged and carries no
       // volume, so the pair can't double-count.

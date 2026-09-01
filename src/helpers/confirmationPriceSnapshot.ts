@@ -2,8 +2,15 @@ import { NETWORKS } from "config/constants";
 import { TokenIdentifier, TokenPricesMap } from "config/types";
 import { fetchTokenPrices } from "services/backend";
 
-export type PriceSource = "token_prices_v1" | "token_prices_v2";
-export type PriceFreshness = "confirmation_fetch" | "cached_display";
+export enum PriceSource {
+  TOKEN_PRICES_V1 = "token_prices_v1",
+  TOKEN_PRICES_V2 = "token_prices_v2",
+}
+
+export enum PriceFreshness {
+  CONFIRMATION_FETCH = "confirmation_fetch",
+  CACHED_DISPLAY = "cached_display",
+}
 
 export interface ConfirmationPriceSnapshot {
   /** Prices by canonical id. `null` when no snapshot could be produced. */
@@ -51,7 +58,9 @@ export const startConfirmationPriceSnapshot = ({
   useV2: boolean;
   cachedDisplayPrices: TokenPricesMap | null;
 }): ConfirmationSnapshotHandle => {
-  const source: PriceSource = useV2 ? "token_prices_v2" : "token_prices_v1";
+  const source = useV2
+    ? PriceSource.TOKEN_PRICES_V2
+    : PriceSource.TOKEN_PRICES_V1;
 
   const controller = new AbortController();
   let succeeded = false;
@@ -84,7 +93,7 @@ export const startConfirmationPriceSnapshot = ({
       if (succeeded) {
         return {
           pricesById: fetchedPrices,
-          freshness: "confirmation_fetch",
+          freshness: PriceFreshness.CONFIRMATION_FETCH,
           source,
         };
       }
@@ -93,7 +102,7 @@ export const startConfirmationPriceSnapshot = ({
       controller.abort();
       return {
         pricesById: cachedDisplayPrices,
-        freshness: "cached_display",
+        freshness: PriceFreshness.CACHED_DISPLAY,
         source,
       };
     },

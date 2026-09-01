@@ -15,15 +15,17 @@ describe("startConfirmationPriceSnapshot", () => {
   });
 
   it("uses the freshly fetched prices once the fetch has settled (confirmation_fetch)", async () => {
-    jest
-      .spyOn(backendService, "fetchTokenPrices")
-      .mockResolvedValue({ XLM: { currentPrice: new BigNumber(0.5) } } as never);
+    jest.spyOn(backendService, "fetchTokenPrices").mockResolvedValue({
+      XLM: { currentPrice: new BigNumber(0.5) },
+    } as never);
 
     const handle = startConfirmationPriceSnapshot({
       canonicalIds: ["XLM"],
       network: NETWORKS.TESTNET,
       useV2: true,
-      cachedDisplayPrices: { XLM: { currentPrice: new BigNumber(0.1) } } as TokenPricesMap,
+      cachedDisplayPrices: {
+        XLM: { currentPrice: new BigNumber(0.1) },
+      } as TokenPricesMap,
     });
 
     await flushMicrotasks();
@@ -45,7 +47,9 @@ describe("startConfirmationPriceSnapshot", () => {
       canonicalIds: ["XLM"],
       network: NETWORKS.TESTNET,
       useV2: false,
-      cachedDisplayPrices: { XLM: { currentPrice: new BigNumber(0.1) } } as TokenPricesMap,
+      cachedDisplayPrices: {
+        XLM: { currentPrice: new BigNumber(0.1) },
+      } as TokenPricesMap,
     });
 
     expect(handle.resolve()).toEqual({
@@ -64,7 +68,9 @@ describe("startConfirmationPriceSnapshot", () => {
       canonicalIds: ["XLM"],
       network: NETWORKS.TESTNET,
       useV2: true,
-      cachedDisplayPrices: { XLM: { currentPrice: new BigNumber(0.1) } } as TokenPricesMap,
+      cachedDisplayPrices: {
+        XLM: { currentPrice: new BigNumber(0.1) },
+      } as TokenPricesMap,
     });
 
     await flushMicrotasks();
@@ -157,7 +163,9 @@ describe("startConfirmationPriceSnapshot", () => {
       canonicalIds: ["XLM"],
       network: NETWORKS.TESTNET,
       useV2: true,
-      cachedDisplayPrices: { XLM: { currentPrice: new BigNumber(0.2) } } as TokenPricesMap,
+      cachedDisplayPrices: {
+        XLM: { currentPrice: new BigNumber(0.2) },
+      } as TokenPricesMap,
     });
 
     // Not settled yet — this is the snapshot the terminal event uses.

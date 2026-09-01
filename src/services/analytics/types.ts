@@ -1,13 +1,11 @@
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { QRCodeSource } from "config/constants";
-import {
-  PriceFreshness,
-  PriceSource,
-} from "helpers/confirmationPriceSnapshot";
+import { PriceFreshness, PriceSource } from "helpers/confirmationPriceSnapshot";
 import {
   AssetIdentity,
   FailureCategory,
   LegUsdResult,
+  LegUsdStatus,
 } from "helpers/usdVolume";
 
 export enum TransactionType {
@@ -20,8 +18,8 @@ export enum TransactionType {
  * materials `services/analytics/transactions.ts` flattens into the final
  * Amplitude properties (`amount_usd*`), shared across `payment.completed`,
  * `payment.failed`, `swap.completed`, and `swap.failed`. Optional on the
- * carrying event interfaces: a pre-submit failure (TR-71) never reaches a
- * call site that has this data, and its terminal event isn't emitted at all.
+ * carrying event interfaces: a pre-submit failure never reaches a call site
+ * that has this data, so its terminal event emits without volume properties.
  */
 export interface PaymentVolume {
   identity: AssetIdentity;
@@ -38,7 +36,12 @@ export interface SwapVolume extends PaymentVolume {
   toAmount?: number;
   /** Destination amount the quote promised, frozen at confirmation. */
   toAmountQuoted?: number;
-  toAmountUsdStatus: "ok" | "no_price" | "error";
+  /**
+   * The catalog also allows `not_observed` for a destination leg, but mobile
+   * cannot produce it: the settled amount is read from the submit response,
+   * which is already in hand at the emit site.
+   */
+  toAmountUsdStatus: LegUsdStatus;
   toAmountUsd?: number;
   toAmountUsdRate?: number;
   usdSlippagePct?: number;

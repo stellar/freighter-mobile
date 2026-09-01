@@ -2,7 +2,9 @@ import { Asset as SdkToken, Keypair } from "@stellar/stellar-sdk";
 import BigNumber from "bignumber.js";
 import { TESTNET_NETWORK_DETAILS } from "config/constants";
 import { Balance } from "config/types";
+import { PriceFreshness, PriceSource } from "helpers/confirmationPriceSnapshot";
 import {
+  AssetKind,
   buildSourceLegUsdProps,
   canonicalIdFromIdentity,
   classifyAssetIdentity,
@@ -10,6 +12,7 @@ import {
   computeUsdSlippagePct,
   deriveLegUsd,
   getFailureCategory,
+  LegUsdStatus,
   pickReasonCode,
   roundHalfUp2dp,
 } from "helpers/usdVolume";
@@ -34,33 +37,41 @@ describe("roundHalfUp2dp", () => {
 
 describe("deriveLegUsd", () => {
   it("is no_price when no price is held for the asset", () => {
-    expect(deriveLegUsd("10", undefined)).toEqual({ status: "no_price" });
-    expect(deriveLegUsd("10", null)).toEqual({ status: "no_price" });
+    expect(deriveLegUsd("10", undefined)).toEqual({
+      status: LegUsdStatus.NO_PRICE,
+    });
+    expect(deriveLegUsd("10", null)).toEqual({
+      status: LegUsdStatus.NO_PRICE,
+    });
   });
 
   it("is ok and rounds half-up when a price is held", () => {
     const result = deriveLegUsd("10.5", new BigNumber("1.999"));
-    expect(result.status).toBe("ok");
+    if (result.status !== LegUsdStatus.OK) {
+      throw new Error(`expected ok, got ${result.status}`);
+    }
     expect(result.value).toBe(20.99); // 10.5 * 1.999 = 20.9895 -> half-up -> 20.99
     expect(result.rate).toBe(1.999);
-    expect(result.unrounded?.toString()).toBe("20.9895");
+    expect(result.unrounded.toString()).toBe("20.9895");
   });
 
   it("never emits 0 for a missing price — that's no_price, not a real zero", () => {
     const result = deriveLegUsd("0", undefined);
-    expect(result.status).toBe("no_price");
-    expect(result.value).toBeUndefined();
+    expect(result.status).toBe(LegUsdStatus.NO_PRICE);
+    expect("value" in result).toBe(false);
   });
 
   it("emits a real 0.00 for a genuine zero-value transfer when priced", () => {
     const result = deriveLegUsd("0", new BigNumber("1.5"));
-    expect(result.status).toBe("ok");
+    if (result.status !== LegUsdStatus.OK) {
+      throw new Error(`expected ok, got ${result.status}`);
+    }
     expect(result.value).toBe(0);
   });
 
   it("is error when the derivation produces a non-finite result", () => {
     expect(deriveLegUsd("not-a-number", new BigNumber("1.5")).status).toBe(
-      "error",
+      LegUsdStatus.ERROR,
     );
   });
 });
@@ -69,9 +80,9 @@ describe("buildSourceLegUsdProps", () => {
   it("carries only the status when unpriced", () => {
     expect(
       buildSourceLegUsdProps(
-        { status: "no_price" },
-        "token_prices_v2",
-        "confirmation_fetch",
+        { status: LegUsdStatus.NO_PRICE },
+        PriceSource.TOKEN_PRICES_V2,
+        PriceFreshness.CONFIRMATION_FETCH,
       ),
     ).toEqual({ amount_usd_status: "no_price" });
   });
@@ -79,7 +90,11 @@ describe("buildSourceLegUsdProps", () => {
   it("carries the full amount_usd family when ok", () => {
     const leg = deriveLegUsd("10", new BigNumber("2"));
     expect(
-      buildSourceLegUsdProps(leg, "token_prices_v2", "cached_display"),
+      buildSourceLegUsdProps(
+        leg,
+        PriceSource.TOKEN_PRICES_V2,
+        PriceFreshness.CACHED_DISPLAY,
+      ),
     ).toEqual({
       amount_usd_status: "ok",
       amount_usd: 20,
@@ -234,9 +249,9 @@ describe("classifyAssetIdentity", () => {
 
 describe("canonicalIdFromIdentity", () => {
   it("is the bare code for native", () => {
-    expect(canonicalIdFromIdentity({ code: "XLM", type: "native" })).toBe(
-      "XLM",
-    );
+    expect(
+      canonicalIdFromIdentity({ code: "XLM", type: AssetKind.NATIVE }),
+    ).toBe("XLM");
   });
 
   it("is CODE:ISSUER for a classic or soroban asset", () => {
@@ -244,7 +259,7 @@ describe("canonicalIdFromIdentity", () => {
       canonicalIdFromIdentity({
         code: "USDC",
         issuer: "GABC",
-        type: "classic",
+        type: AssetKind.CLASSIC,
       }),
     ).toBe("USDC:GABC");
   });
@@ -290,20 +305,14 @@ describe("pickReasonCode", () => {
 
 describe("getFailureCategory", () => {
   it("maps slippage-related op codes (also covers quote-expired-at-submit)", () => {
-    expect(getFailureCategory(true, 400, "op_under_dest_min")).toBe(
-      "slippage",
-    );
-    expect(getFailureCategory(true, 400, "op_too_few_offers")).toBe(
-      "slippage",
-    );
+    expect(getFailureCategory(true, 400, "op_under_dest_min")).toBe("slippage");
+    expect(getFailureCategory(true, 400, "op_too_few_offers")).toBe("slippage");
   });
 
   it("maps balance, trustline, destination, sequence, auth, and fee codes", () => {
     expect(getFailureCategory(true, 400, "op_underfunded")).toBe("balance");
     expect(getFailureCategory(true, 400, "op_no_trust")).toBe("trustline");
-    expect(getFailureCategory(true, 400, "op_src_no_trust")).toBe(
-      "trustline",
-    );
+    expect(getFailureCategory(true, 400, "op_src_no_trust")).toBe("trustline");
     expect(getFailureCategory(true, 400, "op_src_not_authorized")).toBe(
       "trustline",
     );

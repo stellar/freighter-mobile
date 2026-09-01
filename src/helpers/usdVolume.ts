@@ -2,10 +2,7 @@ import { Asset as SdkToken } from "@stellar/stellar-sdk";
 import BigNumber from "bignumber.js";
 import { NATIVE_TOKEN_CODE, NetworkDetails } from "config/constants";
 import { Balance, TokenIdentifier } from "config/types";
-import {
-  PriceFreshness,
-  PriceSource,
-} from "helpers/confirmationPriceSnapshot";
+import { PriceFreshness, PriceSource } from "helpers/confirmationPriceSnapshot";
 import { getBalanceByKey, isContractId } from "helpers/soroban";
 
 // ---------------------------------------------------------------------------
@@ -26,17 +23,32 @@ export const roundHalfUp2dp = (value: BigNumber.Value): number =>
 // Per-leg USD derivation
 // ---------------------------------------------------------------------------
 
-export type LegUsdStatus = "ok" | "no_price" | "error";
-
-export interface LegUsdResult {
-  status: LegUsdStatus;
-  /** Rounded to 2dp. Present only when status === "ok". */
-  value?: number;
-  /** Unrounded value, used for slippage math — never emitted directly. */
-  unrounded?: BigNumber;
-  /** Snapshot price per unit actually used. */
-  rate?: number;
+export enum LegUsdStatus {
+  OK = "ok",
+  NO_PRICE = "no_price",
+  ERROR = "error",
 }
+
+interface LegUsdOk {
+  status: LegUsdStatus.OK;
+  /** Rounded to 2dp. */
+  value: number;
+  /** Unrounded value, used for slippage math — never emitted directly. */
+  unrounded: BigNumber;
+  /** Snapshot price per unit actually used. */
+  rate: number;
+}
+
+interface LegUsdUnpriced {
+  status: Exclude<LegUsdStatus, LegUsdStatus.OK>;
+}
+
+/**
+ * Discriminated on `status` so `value`/`unrounded`/`rate` are only reachable
+ * once a caller has narrowed to `OK` — an unpriced leg has no partial figure
+ * to read by accident.
+ */
+export type LegUsdResult = LegUsdOk | LegUsdUnpriced;
 
 /**
  * Derives a leg's USD value from its token amount and the snapshot price for
@@ -49,23 +61,23 @@ export const deriveLegUsd = (
   pricePerUnit: BigNumber | null | undefined,
 ): LegUsdResult => {
   if (pricePerUnit === undefined || pricePerUnit === null) {
-    return { status: "no_price" };
+    return { status: LegUsdStatus.NO_PRICE };
   }
   try {
     const amount = new BigNumber(tokenAmount ?? NaN);
     const price = new BigNumber(pricePerUnit);
     const unrounded = amount.multipliedBy(price);
     if (!unrounded.isFinite() || !price.isFinite()) {
-      return { status: "error" };
+      return { status: LegUsdStatus.ERROR };
     }
     return {
-      status: "ok",
+      status: LegUsdStatus.OK,
       value: roundHalfUp2dp(unrounded),
       unrounded,
       rate: price.toNumber(),
     };
   } catch {
-    return { status: "error" };
+    return { status: LegUsdStatus.ERROR };
   }
 };
 
@@ -80,7 +92,7 @@ export const buildSourceLegUsdProps = (
   freshness: PriceFreshness,
 ): Record<string, unknown> => ({
   amount_usd_status: leg.status,
-  ...(leg.status === "ok"
+  ...(leg.status === LegUsdStatus.OK
     ? {
         amount_usd: leg.value,
         amount_usd_rate: leg.rate,
@@ -141,7 +153,11 @@ export const computeExecutionSlippagePct = (
 // Asset identity + SAC collapse
 // ---------------------------------------------------------------------------
 
-export type AssetKind = "native" | "classic" | "soroban";
+export enum AssetKind {
+  NATIVE = "native",
+  CLASSIC = "classic",
+  SOROBAN = "soroban",
+}
 
 export interface AssetIdentity {
   code: string;
@@ -180,11 +196,11 @@ export const classifyAssetIdentity = (
   balances?: Balance[],
 ): AssetIdentity => {
   if (!issuer) {
-    return { code, type: "native" };
+    return { code, type: AssetKind.NATIVE };
   }
 
   if (!isContractId(issuer)) {
-    return { code, issuer, type: "classic" };
+    return { code, issuer, type: AssetKind.CLASSIC };
   }
 
   try {
@@ -192,17 +208,23 @@ export const classifyAssetIdentity = (
     // collapse to native even when the queried balance list doesn't happen
     // to include a native entry (getBalanceByKey's own native check only
     // fires when iterating an actual native balance).
-    if (SdkToken.native().contractId(networkDetails.networkPassphrase) === issuer) {
-      return { code, type: "native" };
+    if (
+      SdkToken.native().contractId(networkDetails.networkPassphrase) === issuer
+    ) {
+      return { code, type: AssetKind.NATIVE };
     }
 
     const match = getBalanceByKey(issuer, balances ?? [], networkDetails);
     if (match && "token" in match) {
       if (match.token.code === NATIVE_TOKEN_CODE) {
-        return { code, type: "native" };
+        return { code, type: AssetKind.NATIVE };
       }
       if ("issuer" in match.token && !isContractId(match.token.issuer.key)) {
-        return { code, issuer: match.token.issuer.key, type: "classic" };
+        return {
+          code,
+          issuer: match.token.issuer.key,
+          type: AssetKind.CLASSIC,
+        };
       }
     }
   } catch {
@@ -210,7 +232,7 @@ export const classifyAssetIdentity = (
     // contract as Soroban-native rather than throwing out of a telemetry path.
   }
 
-  return { code, issuer, type: "soroban" };
+  return { code, issuer, type: AssetKind.SOROBAN };
 };
 
 /** The canonical id used to key a `TokenPricesMap` lookup for an identity. */
@@ -223,39 +245,40 @@ export const canonicalIdFromIdentity = (
 // Failure classification
 // ---------------------------------------------------------------------------
 
-export type FailureCategory =
-  | "slippage"
-  | "fee"
-  | "balance"
-  | "trustline"
-  | "destination"
-  | "sequence"
-  | "auth"
-  | "transport"
-  | "protocol_other"
-  | "unknown";
+export enum FailureCategory {
+  SLIPPAGE = "slippage",
+  FEE = "fee",
+  BALANCE = "balance",
+  TRUSTLINE = "trustline",
+  DESTINATION = "destination",
+  SEQUENCE = "sequence",
+  AUTH = "auth",
+  TRANSPORT = "transport",
+  PROTOCOL_OTHER = "protocol_other",
+  UNKNOWN = "unknown",
+}
 
 const REASON_CODE_TO_FAILURE_CATEGORY: Record<string, FailureCategory> = {
-  op_under_dest_min: "slippage",
-  op_too_few_offers: "slippage",
-  tx_insufficient_fee: "fee",
-  op_underfunded: "balance",
-  tx_insufficient_balance: "balance",
-  op_low_reserve: "balance",
-  op_no_trust: "trustline",
-  op_src_no_trust: "trustline",
-  op_line_full: "trustline",
-  op_not_authorized: "trustline",
-  op_src_not_authorized: "trustline",
-  op_no_issuer: "trustline",
-  op_invalid_limit: "trustline",
-  op_no_destination: "destination",
-  tx_bad_seq: "sequence",
-  tx_too_late: "sequence",
-  tx_too_early: "sequence",
-  tx_bad_auth: "auth",
-  tx_bad_auth_extra: "auth",
-  tx_no_source_account: "auth",
+  op_under_dest_min: FailureCategory.SLIPPAGE,
+  op_too_few_offers: FailureCategory.SLIPPAGE,
+  tx_insufficient_fee: FailureCategory.FEE,
+  op_underfunded: FailureCategory.BALANCE,
+  tx_insufficient_balance: FailureCategory.BALANCE,
+  op_low_reserve: FailureCategory.BALANCE,
+  op_no_trust: FailureCategory.TRUSTLINE,
+  op_src_no_trust: FailureCategory.TRUSTLINE,
+  op_line_full: FailureCategory.TRUSTLINE,
+  op_not_authorized: FailureCategory.TRUSTLINE,
+  op_src_not_authorized: FailureCategory.TRUSTLINE,
+  op_no_issuer: FailureCategory.TRUSTLINE,
+  op_invalid_limit: FailureCategory.TRUSTLINE,
+  op_no_destination: FailureCategory.DESTINATION,
+  tx_bad_seq: FailureCategory.SEQUENCE,
+  tx_too_late: FailureCategory.SEQUENCE,
+  tx_too_early: FailureCategory.SEQUENCE,
+  tx_bad_auth: FailureCategory.AUTH,
+  tx_bad_auth_extra: FailureCategory.AUTH,
+  tx_no_source_account: FailureCategory.AUTH,
 };
 
 /**
@@ -291,15 +314,18 @@ export const getFailureCategory = (
   reasonCode: string,
 ): FailureCategory => {
   if (!isProtocolAnswer) {
-    return "transport";
+    return FailureCategory.TRANSPORT;
   }
   if (reasonCode === "unknown") {
     if (httpStatus !== null && isNoVerdictHttpStatus(httpStatus)) {
-      return "transport";
+      return FailureCategory.TRANSPORT;
     }
-    return "unknown";
+    return FailureCategory.UNKNOWN;
   }
-  return REASON_CODE_TO_FAILURE_CATEGORY[reasonCode] ?? "protocol_other";
+  return (
+    REASON_CODE_TO_FAILURE_CATEGORY[reasonCode] ??
+    FailureCategory.PROTOCOL_OTHER
+  );
 };
 
 /**
