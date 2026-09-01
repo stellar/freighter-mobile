@@ -46,11 +46,17 @@ interface TransactionBuilderState {
   isBuilding: boolean;
   isSubmitting: boolean;
   transactionHash: string | null;
+  /** Raw Horizon `result_xdr` from a successful submit — read for the settled swap destination amount (volume telemetry). */
+  submitResultXdr: string | null;
   error: string | null;
   submitErrorResultCodes: {
     transaction?: string;
     operations?: string[];
   } | null;
+  /** HTTP status of a failed submit, when the error carried one — volume telemetry's transport-vs-protocol-failure split. */
+  submitErrorHttpStatus: number | null;
+  /** Whether a failed submit's error carried a genuine Horizon problem+json body, as opposed to a network/fetch exception with no response at all. */
+  submitErrorIsProtocolAnswer: boolean;
   requestId: string | null;
   isSoroban: boolean;
   sorobanResourceFeeXlm: string | null;
@@ -119,8 +125,11 @@ const initialState: Omit<
   isBuilding: false,
   isSubmitting: false,
   transactionHash: null,
+  submitResultXdr: null,
   error: null,
   submitErrorResultCodes: null,
+  submitErrorHttpStatus: null,
+  submitErrorIsProtocolAnswer: false,
   requestId: null,
   isSoroban: false,
   sorobanResourceFeeXlm: null,
@@ -505,6 +514,8 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         isSubmitting: true,
         error: null,
         submitErrorResultCodes: null,
+        submitErrorHttpStatus: null,
+        submitErrorIsProtocolAnswer: false,
         requestId: currentRequestId,
       });
 
@@ -542,13 +553,14 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
           network: params.network,
         });
 
-        const { hash } = result;
+        const { hash, result_xdr: resultXdr } = result;
 
         // Only update with success if this submit is still the latest one.
         // Guards against late responses from previous submits showing wrong hash.
         if (get().requestId === currentRequestId) {
           set({
             transactionHash: hash,
+            submitResultXdr: resultXdr ?? null,
             isSubmitting: false,
           });
         }
@@ -584,6 +596,31 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
             : undefined;
         /* eslint-enable @typescript-eslint/no-unsafe-member-access */
         /* eslint-enable @typescript-eslint/no-explicit-any */
+
+        // Volume telemetry's failure_category needs to distinguish "Horizon
+        // answered with a verdict" from "we never got a definitive outcome"
+        // (network/fetch exception, or a 5xx/408/429/403 that never reached
+        // the transaction itself) — independent of whether that answer was a
+        // 4xx result-codes payload. `isProtocolAnswer` checks the same
+        // problem+json markers as `horizon4xxResultCodes` above but across
+        // any status, not just 4xx.
+        /* eslint-disable @typescript-eslint/no-explicit-any */
+        /* eslint-disable @typescript-eslint/no-unsafe-member-access */
+        const submitErrorHttpStatus = isHorizonError(error)
+          ? error.response.status
+          : null;
+        const responseData = isHorizonError(error)
+          ? (error as any).response.data
+          : undefined;
+        const submitErrorIsProtocolAnswer =
+          !!responseData &&
+          typeof responseData === "object" &&
+          ("extras" in responseData ||
+            "status" in responseData ||
+            "title" in responseData);
+        /* eslint-enable @typescript-eslint/no-unsafe-member-access */
+        /* eslint-enable @typescript-eslint/no-explicit-any */
+
         if (horizon4xxResultCodes) {
           const horizonStatus = (error as { response: { status: number } })
             .response.status;
@@ -610,6 +647,8 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
               (horizon4xxResultCodes as
                 | { transaction?: string; operations?: string[] }
                 | undefined) ?? null,
+            submitErrorHttpStatus,
+            submitErrorIsProtocolAnswer,
           });
         }
 

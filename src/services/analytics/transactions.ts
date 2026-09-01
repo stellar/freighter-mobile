@@ -1,6 +1,11 @@
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { getDisplayHost } from "helpers/protocols";
 import { scrubStrKeys } from "helpers/stellarStrKey";
+import {
+  AssetKind,
+  buildSourceLegUsdProps,
+  LegUsdStatus,
+} from "helpers/usdVolume";
 import { track } from "services/analytics/core";
 import { TransactionOperationType } from "services/analytics/types";
 import type {
@@ -11,6 +16,15 @@ import type {
   SwapSuccessEvent,
   TransactionErrorEvent,
 } from "services/analytics/types";
+
+/** Flattens an `AssetIdentity` under the given property prefix (e.g. `asset_` -> `asset_issuer`/`asset_type`, `from_` -> `from_asset_issuer`/`from_asset_type`). Issuer omitted for native XLM. */
+const assetIdentityProps = (
+  prefix: string,
+  identity: { issuer?: string; type: AssetKind },
+): Record<string, unknown> => ({
+  ...(identity.issuer ? { [`${prefix}asset_issuer`]: identity.issuer } : {}),
+  [`${prefix}asset_type`]: identity.type,
+});
 
 // `origin` is the bare dApp hostname (never a full URL) — matches the
 // extension's getUrlHostname-based origin so cross-platform funnels merge.
@@ -138,9 +152,21 @@ export const trackSendPaymentSuccess = (
     return;
   }
 
+  const { volume } = data;
   track(AnalyticsEvent.SEND_PAYMENT_SUCCESS, {
     payment_type: "payment",
     asset_code: data.sourceToken,
+    ...(volume
+      ? {
+          ...assetIdentityProps("", volume.identity),
+          amount: volume.amount,
+          ...buildSourceLegUsdProps(
+            volume.sourceLeg,
+            volume.priceSource,
+            volume.priceFreshness,
+          ),
+        }
+      : {}),
   });
 };
 
@@ -154,9 +180,41 @@ export const trackSendCollectibleSuccess = (
 };
 
 export const trackSwapSuccess = (data: SwapSuccessEvent): void => {
+  const { volume } = data;
   track(AnalyticsEvent.SWAP_SUCCESS, {
     from_asset_code: data.sourceToken,
     to_asset_code: data.destToken,
+    ...(volume
+      ? {
+          ...assetIdentityProps("from_", volume.identity),
+          ...assetIdentityProps("to_", volume.toIdentity),
+          from_amount: volume.amount,
+          ...(volume.toAmountQuoted !== undefined
+            ? { to_amount_quoted: volume.toAmountQuoted }
+            : {}),
+          ...(volume.toAmount !== undefined
+            ? { to_amount: volume.toAmount }
+            : {}),
+          to_amount_usd_status: volume.toAmountUsdStatus,
+          ...(volume.toAmountUsdStatus === LegUsdStatus.OK
+            ? {
+                to_amount_usd: volume.toAmountUsd,
+                to_amount_usd_rate: volume.toAmountUsdRate,
+              }
+            : {}),
+          ...(volume.usdSlippagePct !== undefined
+            ? { usd_slippage_pct: volume.usdSlippagePct }
+            : {}),
+          ...(volume.executionSlippagePct !== undefined
+            ? { execution_slippage_pct: volume.executionSlippagePct }
+            : {}),
+          ...buildSourceLegUsdProps(
+            volume.sourceLeg,
+            volume.priceSource,
+            volume.priceFreshness,
+          ),
+        }
+      : {}),
   });
 };
 
@@ -179,25 +237,63 @@ export const trackTransactionError = (data: TransactionErrorEvent): void => {
 
   // Shared required sets: payment.failed {payment_type, reason_code};
   // swap.failed {from_asset_code, to_asset_code, reason_code};
-  // collectible_send.failed {reason_code}. operationType/isSwap/amounts dropped
-  // for cross-platform parity. reason_code is the machine-readable Horizon
-  // result code (op_underfunded, tx_insufficient_balance, ...), falling back to
-  // the literal "unknown" — IDENTICAL to the extension's SubmitFail derivation
-  // (`resultCodes.operations?.[0] || resultCodes.transaction || "unknown"`). We
+  // collectible_send.failed {reason_code}. operationType/isSwap dropped for
+  // cross-platform parity. reason_code is the machine-readable Horizon result
+  // code (op_underfunded, tx_insufficient_balance, ...), falling back to the
+  // literal "unknown" — IDENTICAL to the extension's derivation, and (via
+  // `data.volume.reasonCode`, `usdVolume.pickReasonCode`) picking the first
+  // code that isn't a changeTrust no-op marker rather than always index 0. We
   // deliberately do NOT fall back to the free-text error message: it produces
   // unbounded reason_code cardinality the extension never emits, poisoning a
   // shared payment/swap/collectible failure breakdown. The full message is still
   // captured by the logger / Sentry for debugging.
-  const reasonCode = data.errorCode ?? "unknown";
+  const { volume } = data;
+  const reasonCode = volume?.reasonCode ?? data.errorCode ?? "unknown";
   let props: Record<string, unknown> = { reason_code: reasonCode };
   if (event === AnalyticsEvent.SWAP_FAIL) {
     props = {
       from_asset_code: data.sourceToken,
       to_asset_code: data.destToken,
       reason_code: reasonCode,
+      ...(volume
+        ? {
+            ...assetIdentityProps("from_", volume.identity),
+            ...(volume.toIdentity
+              ? assetIdentityProps("to_", volume.toIdentity)
+              : {}),
+            // swap.failed carries the source token amount only — no
+            // destination amount/USD, since nothing settled to measure.
+            from_amount: volume.amount,
+            failure_category: volume.failureCategory,
+            ...buildSourceLegUsdProps(
+              volume.sourceLeg,
+              volume.priceSource,
+              volume.priceFreshness,
+            ),
+          }
+        : {}),
     };
   } else if (event === AnalyticsEvent.SEND_PAYMENT_FAIL) {
     props.payment_type = "payment";
+    // asset_code is known even when there is no volume data (a pre-submit
+    // failure), and it is the property payment.failed shares with
+    // payment.completed — keep it outside the volume gate.
+    if (data.sourceToken) {
+      props.asset_code = data.sourceToken;
+    }
+    if (volume) {
+      props = {
+        ...props,
+        ...assetIdentityProps("", volume.identity),
+        amount: volume.amount,
+        failure_category: volume.failureCategory,
+        ...buildSourceLegUsdProps(
+          volume.sourceLeg,
+          volume.priceSource,
+          volume.priceFreshness,
+        ),
+      };
+    }
   }
 
   track(event, props);

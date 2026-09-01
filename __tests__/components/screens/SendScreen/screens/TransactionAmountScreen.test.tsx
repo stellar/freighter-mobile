@@ -21,6 +21,7 @@ import { useTokenFiatConverter } from "hooks/useTokenFiatConverter";
 import * as useValidateTransactionMemo from "hooks/useValidateTransactionMemo";
 import { useToast } from "providers/ToastProvider";
 import React from "react";
+import { analytics } from "services/analytics";
 import * as transactionService from "services/transactionService";
 
 // Type definitions
@@ -36,6 +37,19 @@ jest.mock("ducks/auth");
 jest.mock("ducks/history");
 jest.mock("ducks/sendRecipient");
 jest.mock("ducks/preferences");
+// Volume telemetry's identity classification / price snapshot runs
+// unconditionally inside handleTransactionConfirmation. No test in this file
+// currently exercises that path (SendReviewBottomSheet is a stub with no
+// onConfirm wiring below), but these mocks keep it safe for one that does.
+jest.mock("ducks/balances", () => ({
+  useBalancesStore: { getState: () => ({ balances: {} }) },
+}));
+jest.mock("ducks/remoteConfig", () => ({
+  useRemoteConfigStore: { getState: () => ({ use_token_prices_v2: true }) },
+}));
+jest.mock("services/backend", () => ({
+  fetchTokenPrices: jest.fn().mockResolvedValue({}),
+}));
 
 // Service mocks
 jest.mock("services/transactionService");
@@ -52,6 +66,7 @@ jest.mock("services/analytics", () => ({
 
 // Helper mocks
 jest.mock("helpers/balances", () => ({
+  ...jest.requireActual("helpers/balances"),
   calculateSpendableAmount: jest.fn(),
   hasXLMForFees: jest.fn(),
   isLiquidityPool: jest.fn(() => false),
@@ -98,11 +113,19 @@ jest.mock("components/TokenIcon", () => ({
     return null;
   },
 }));
+// Captures the review footer's onConfirm so a test can drive
+// handleTransactionConfirmation directly, without presenting the bottom sheet.
+let capturedOnConfirm: (() => void) | null = null;
 jest.mock("components/screens/SendScreen/components", () => ({
   SendReviewBottomSheet: function MockSendReviewBottomSheet() {
     return null;
   },
-  SendReviewFooter: function MockSendReviewFooter() {
+  SendReviewFooter: function MockSendReviewFooter({
+    onConfirm,
+  }: {
+    onConfirm?: () => void;
+  }) {
+    capturedOnConfirm = onConfirm ?? null;
     return null;
   },
   ContactRow: function MockContactRow() {
@@ -1894,5 +1917,51 @@ describe("TransactionAmountScreen - Native keyboard input", () => {
     fireEvent.changeText(getByTestId("amount-text-input"), "123,45");
     expect(mockSetDisplayAmountFromText).toHaveBeenCalledTimes(1);
     expect(mockSetDisplayAmountFromText).toHaveBeenCalledWith("123,45");
+  });
+
+  describe("pre-submit failure telemetry", () => {
+    it("emits payment.failed without volume data when signing fails", async () => {
+      const mockSign = jest.fn().mockReturnValue(null);
+      const mockSubmit = jest.fn();
+      mockUseTransactionBuilderStore.mockReturnValue({
+        buildTransaction: jest.fn(),
+        signTransaction: mockSign,
+        submitTransaction: mockSubmit,
+        resetTransaction: jest.fn(),
+        isBuilding: false,
+        isSigning: false,
+        isSubmitting: false,
+        transactionXDR: "mockXDR",
+        transactionHash: null,
+        error: null,
+      } as any);
+      (
+        useTransactionBuilderStore as unknown as {
+          getState: jest.Mock;
+        }
+      ).getState = jest.fn(() => ({ error: "Signing blew up" }));
+
+      render(
+        <TransactionAmountScreen
+          navigation={mockNavigation}
+          route={mockRoute}
+        />,
+      );
+
+      expect(capturedOnConfirm).toBeInstanceOf(Function);
+      await act(() => {
+        capturedOnConfirm?.();
+        return Promise.resolve();
+      });
+
+      // The failure event is the flow's outcome and still fires, but nothing
+      // reached the network, so it carries no attempted volume.
+      expect(mockSubmit).not.toHaveBeenCalled();
+      expect(analytics.trackTransactionError).toHaveBeenCalledTimes(1);
+      const [failurePayload] = (analytics.trackTransactionError as jest.Mock)
+        .mock.calls[0] as [{ volume?: unknown; error: string }];
+      expect(failurePayload.volume).toBeUndefined();
+      expect(failurePayload.error).toBe("Signing blew up");
+    });
   });
 });

@@ -42,6 +42,7 @@ describe("transactionBuilder Duck", () => {
   const mockPreparedXDR = "mockPreparedXDR";
   const mockSignedXDR = "mockSignedXDR";
   const mockTxHash = "mockTxHash";
+  const mockResultXdr = "mockResultXdr";
   const mockNetwork = NETWORKS.TESTNET;
 
   beforeEach(() => {
@@ -75,6 +76,7 @@ describe("transactionBuilder Duck", () => {
     );
     (stellarServices.submitTx as jest.Mock).mockResolvedValue({
       hash: mockTxHash,
+      result_xdr: mockResultXdr,
     });
     (sorobanHelpers.isContractId as jest.Mock).mockImplementation((addr) =>
       addr?.startsWith("C"),
@@ -276,6 +278,8 @@ describe("transactionBuilder Duck", () => {
     expect(state.isSubmitting).toBe(false);
     expect(state.transactionHash).toBe(mockTxHash);
     expect(state.error).toBeNull();
+    // Read by volume telemetry to find the settled swap destination amount.
+    expect(state.submitResultXdr).toBe(mockResultXdr);
     expect(stellarServices.submitTx).toHaveBeenCalledWith({
       tx: mockSignedXDR,
       network: mockNetwork,
@@ -356,6 +360,11 @@ describe("transactionBuilder Duck", () => {
         { transaction: "tx_bad_seq" },
       );
       expect(logger.error).not.toHaveBeenCalled();
+      // Volume telemetry's failure_category derivation (getFailureCategory)
+      // needs these: a 4xx with a problem+json `extras` body is a genuine
+      // Horizon verdict, not a transport failure.
+      expect(store.getState().submitErrorHttpStatus).toBe(400);
+      expect(store.getState().submitErrorIsProtocolAnswer).toBe(true);
     });
 
     it("keeps Horizon 4xx WITHOUT result_codes as logger.error (operational failures, not user-correctable)", async () => {
@@ -383,6 +392,10 @@ describe("transactionBuilder Duck", () => {
         horizon4xxNoResultCodes,
       );
       expect(logger.warn).not.toHaveBeenCalled();
+      // No `extras`/`status`/`title` on the body — not a genuine protocol
+      // verdict, so volume telemetry reads this as transport, not "unknown".
+      expect(store.getState().submitErrorHttpStatus).toBe(429);
+      expect(store.getState().submitErrorIsProtocolAnswer).toBe(false);
     });
 
     it("keeps Horizon 5xx server errors as logger.error (e.g. submitted-then-overloaded)", async () => {
@@ -403,6 +416,8 @@ describe("transactionBuilder Duck", () => {
         horizon5xxError,
       );
       expect(logger.warn).not.toHaveBeenCalled();
+      expect(store.getState().submitErrorHttpStatus).toBe(504);
+      expect(store.getState().submitErrorIsProtocolAnswer).toBe(false);
     });
 
     it("keeps non-Horizon errors as logger.error (bad XDR, network unreachable, SDK exception)", async () => {
@@ -419,6 +434,10 @@ describe("transactionBuilder Duck", () => {
         sdkError,
       );
       expect(logger.warn).not.toHaveBeenCalled();
+      // Not a Horizon-shaped error at all (no `.response`) — volume
+      // telemetry's failure_category reads this as transport (no verdict).
+      expect(store.getState().submitErrorHttpStatus).toBeNull();
+      expect(store.getState().submitErrorIsProtocolAnswer).toBe(false);
     });
   });
 

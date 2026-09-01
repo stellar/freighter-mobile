@@ -30,6 +30,39 @@ jest.mock("ducks/transactionBuilder", () => ({
   ),
 }));
 
+// Volume telemetry's identity classification / price snapshot runs
+// unconditionally at the top of executeSwap, on every path (success,
+// failure, quote-expired, signing failure) — these dependencies need a
+// mock even for tests that only care about the pre-existing toast/analytics
+// contract.
+jest.mock("ducks/balances", () => ({
+  useBalancesStore: { getState: () => ({ balances: {} }) },
+}));
+jest.mock("ducks/remoteConfig", () => ({
+  useRemoteConfigStore: { getState: () => ({ use_token_prices_v2: true }) },
+}));
+// Stubs the network boundary only — startConfirmationPriceSnapshot itself
+// runs for real, so its cancel()/resolve() contract is still exercised.
+const mockFetchTokenPrices = jest.fn().mockResolvedValue({});
+jest.mock("services/backend", () => ({
+  fetchTokenPrices: (...args: unknown[]) => mockFetchTokenPrices(...args),
+}));
+// `signTransaction` is mocked to return the literal string "signed-xdr" in
+// most of this file's tests, which isn't parseable XDR — stub
+// TransactionBuilder.fromXdr (used only on the settled-swap success path,
+// to find the pathPaymentStrictSend operation index) rather than construct
+// real transaction XDR in every fixture.
+jest.mock("@stellar/stellar-sdk", () => {
+  const actual = jest.requireActual("@stellar/stellar-sdk");
+  return {
+    ...actual,
+    TransactionBuilder: {
+      ...actual.TransactionBuilder,
+      fromXdr: jest.fn(() => ({ operations: [] })),
+    },
+  };
+});
+
 jest.mock("ducks/swapSettings", () => ({
   useSwapSettingsStore: Object.assign(() => ({}), {
     getState: () => ({
@@ -168,7 +201,7 @@ describe("useSwapTransaction", () => {
       expect(mockShowToast).toHaveBeenCalled();
     });
 
-    it("does NOT reject when signTransaction returns null", async () => {
+    it("does NOT reject when signTransaction returns null, and emits swap.failed without volume data", async () => {
       mockSignTransaction.mockReturnValue(null);
 
       const { result } = renderHook(() => useSwapTransaction(baseParams));
@@ -181,16 +214,58 @@ describe("useSwapTransaction", () => {
       });
 
       expect(didReject).toBe(false);
-      expect(mockTrackTransactionError).toHaveBeenCalledWith(
-        expect.objectContaining({
-          isSwap: true,
-          sourceToken: "XLM",
-          destToken: "USDC",
-          sourceAmount: "1",
-          destAmount: "2.5",
-        }),
+      // A signing failure is still the flow's outcome, so swap.failed fires —
+      // but it never reached the network, so there is no attempted volume to
+      // report and `volume` is absent. The user still sees a toast.
+      expect(mockTrackTransactionError).toHaveBeenCalledTimes(1);
+      const [failurePayload] = mockTrackTransactionError.mock.calls[0] as [
+        { volume?: unknown; isSwap?: boolean },
+      ];
+      expect(failurePayload.isSwap).toBe(true);
+      expect(failurePayload.volume).toBeUndefined();
+      expect(mockShowToast).toHaveBeenCalledWith(
+        expect.objectContaining({ variant: "error" }),
       );
-      expect(mockShowToast).toHaveBeenCalled();
+    });
+
+    it("issues no confirmation price fetch at all when signing fails pre-submit", async () => {
+      mockSignTransaction.mockReturnValue(null);
+
+      const { result } = renderHook(() => useSwapTransaction(baseParams));
+
+      await act(async () => {
+        await result.current.executeSwap();
+      });
+
+      // The snapshot starts only once signing has succeeded, so a signing
+      // failure never issues a price request it would just have to abort.
+      expect(mockFetchTokenPrices).not.toHaveBeenCalled();
+    });
+
+    it("starts the confirmation price fetch only after signing succeeds", async () => {
+      const callOrder: string[] = [];
+      mockSignTransaction.mockImplementation(() => {
+        callOrder.push("sign");
+        return "signed-xdr";
+      });
+      mockFetchTokenPrices.mockImplementation(() => {
+        callOrder.push("fetchPrices");
+        return Promise.resolve({});
+      });
+      mockSubmitTransaction.mockImplementation(() => {
+        callOrder.push("submit");
+        return Promise.resolve("tx-hash");
+      });
+
+      const { result } = renderHook(() => useSwapTransaction(baseParams));
+
+      await act(async () => {
+        await result.current.executeSwap();
+      });
+
+      // Prices are snapshotted as close to execution as possible: after
+      // signing, immediately before submission.
+      expect(callOrder).toEqual(["sign", "fetchPrices", "submit"]);
     });
 
     it("resolves successfully on a successful swap (sanity check)", async () => {
@@ -367,13 +442,15 @@ describe("useSwapTransaction", () => {
   });
 
   describe("SWAP_QUOTE_EXPIRED analytics", () => {
-    it("fires SWAP_QUOTE_EXPIRED with the result code (not SWAP_FAIL) when the submit is rejected with op_under_dest_min", async () => {
+    it("fires SWAP_QUOTE_EXPIRED with the result code, AND also swap.failed with failure_category slippage, when the submit is rejected with op_under_dest_min", async () => {
       mockGetBuilderState.mockReturnValue({
         error: "tx_failed",
         submitErrorResultCodes: {
           transaction: "tx_failed",
           operations: ["op_under_dest_min"],
         },
+        submitErrorHttpStatus: 400,
+        submitErrorIsProtocolAnswer: true,
       });
       mockSignTransaction.mockReturnValue("signed-xdr");
       mockSubmitTransaction.mockResolvedValue(null);
@@ -400,8 +477,20 @@ describe("useSwapTransaction", () => {
       expect(quoteExpiredCall?.[1]).not.toHaveProperty("sourceAmount");
       expect(quoteExpiredCall?.[1]).not.toHaveProperty("destAmount");
       expect(quoteExpiredCall?.[1]).not.toHaveProperty("allowedSlippage");
-      // Quote-expiry is a distinct funnel step — the generic SWAP_FAIL must NOT fire.
-      expect(mockTrackTransactionError).not.toHaveBeenCalled();
+      // A submit-time quote expiry also emits swap.failed with
+      // failure_category: slippage, so the failure it represents reaches a
+      // volume-bearing event. swap.quote_expired is unchanged and carries no
+      // volume, so the pair can't double-count.
+      expect(mockTrackTransactionError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          isSwap: true,
+          errorCode: "op_under_dest_min",
+          volume: expect.objectContaining({
+            failureCategory: "slippage",
+            reasonCode: "op_under_dest_min",
+          }),
+        }),
+      );
       expect(mockShowToast).toHaveBeenCalledWith(
         expect.objectContaining({
           variant: "error",

@@ -1,6 +1,7 @@
 import { Networks, xdr } from "@stellar/stellar-sdk";
 import { NETWORK_URLS, NETWORKS } from "config/constants";
 import { logger } from "config/logger";
+import { isRequestCanceled } from "services/apiFactory";
 import {
   fetchBalances,
   fetchCollectibles,
@@ -907,6 +908,54 @@ describe("Backend Service - fetchTokenPrices v2 migration", () => {
       backendError,
     );
     expect(logger.warn).not.toHaveBeenCalled();
+  });
+
+  it("does NOT log a deliberate cancellation, but still rejects so the snapshot falls back", async () => {
+    // The confirmation price snapshot aborts its in-flight request on every
+    // cached_display fallback — a routine path, not a failure. The interceptor
+    // normalizes an axios cancellation as a network error, so logging it would
+    // stamp a misleading "network unreachable" breadcrumb on that path.
+    const canceledError = { message: "canceled" };
+    (isRequestCanceled as jest.Mock).mockReturnValue(true);
+    mockV2Post.mockRejectedValueOnce(canceledError);
+
+    await expect(
+      fetchTokenPrices({
+        tokens,
+        network: NETWORKS.PUBLIC,
+        useV2: true,
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toEqual(canceledError);
+
+    expect(logger.error).not.toHaveBeenCalled();
+    expect(logger.warn).not.toHaveBeenCalled();
+  });
+
+  it("still logs a genuine connectivity failure when the request was not canceled", async () => {
+    // The cancellation carve-out above must not swallow real failures.
+    const networkError = {
+      message: "Network Error",
+      status: 0,
+      isNetworkError: true,
+    };
+    (isRequestCanceled as jest.Mock).mockReturnValue(false);
+    mockV2Post.mockRejectedValueOnce(networkError);
+
+    await expect(
+      fetchTokenPrices({
+        tokens,
+        network: NETWORKS.PUBLIC,
+        useV2: true,
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toEqual(networkError);
+
+    expect(logger.warn).toHaveBeenCalledWith(
+      "backendApi.fetchTokenPrices",
+      "Network unreachable while fetching token prices",
+      networkError,
+    );
   });
 
   it("demotes a connectivity failure to a warn breadcrumb (no Sentry error)", async () => {

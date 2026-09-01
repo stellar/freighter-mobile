@@ -1,11 +1,13 @@
 import Blockaid from "@blockaid/client";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { TransactionBuilder } from "@stellar/stellar-sdk";
+import BigNumber from "bignumber.js";
 import {
   getQuoteExpiredOperationCodes,
   getTokenFromBalance,
 } from "components/screens/SwapScreen/helpers";
 import { AnalyticsEvent } from "config/analyticsConfig";
-import { NETWORKS } from "config/constants";
+import { NETWORKS, mapNetworkToNetworkDetails } from "config/constants";
 import { logger } from "config/logger";
 import {
   SWAP_ROUTES,
@@ -15,16 +17,39 @@ import {
 } from "config/routes";
 import { PricedBalance, NativeToken, NonNativeToken } from "config/types";
 import { ActiveAccount } from "ducks/auth";
+import { useBalancesStore } from "ducks/balances";
 import { useHistoryStore } from "ducks/history";
+import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { SwapPathResult, useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
+import { formatTokenIdentifier, getTokenIdentifier } from "helpers/balances";
+import {
+  ConfirmationSnapshotHandle,
+  startConfirmationPriceSnapshot,
+} from "helpers/confirmationPriceSnapshot";
+import {
+  findPathPaymentStrictSendIndex,
+  getSettledPathPaymentStrictSendAmount,
+} from "helpers/transactionResult";
+import {
+  AssetIdentity,
+  canonicalIdFromIdentity,
+  classifyAssetIdentity,
+  computeExecutionSlippagePct,
+  computeUsdSlippagePct,
+  deriveLegUsd,
+  getFailureCategory,
+  LegUsdStatus,
+  pickReasonCode,
+} from "helpers/usdVolume";
 import { useBlockaidTransaction } from "hooks/blockaid/useBlockaidTransaction";
 import useAppTranslation from "hooks/useAppTranslation";
 import { isWalletUnlocked } from "hooks/useGetActiveAccount";
 import { useToast } from "providers/ToastProvider";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { analytics } from "services/analytics";
+import { FailureVolume } from "services/analytics/types";
 
 /**
  * `destinationTokenInput` is either the user's held PricedBalance for
@@ -184,6 +209,19 @@ export const useSwapTransaction = ({
 
     setIsProcessing(true);
 
+    // Declared outside the try so the catch can cancel a snapshot whose
+    // transaction never reached submission, and can still enrich a
+    // post-submission failure's telemetry with the identities it classified.
+    let snapshotHandle: ConfirmationSnapshotHandle | null = null;
+    // Only a submitted transaction has attempted volume to report, so the
+    // catch reads this to decide whether the failure event carries volume
+    // data or just its pre-existing failure properties.
+    let didSubmit = false;
+    let sourceIdentity: AssetIdentity | null = null;
+    let destIdentity: AssetIdentity | null = null;
+    let sourceCanonicalId = "";
+    let destCanonicalId = "";
+
     try {
       // Abort cleanly if an auto-lock engaged after the swap was prepared.
       // Return (don't throw): being locked isn't a swap failure, so skip the
@@ -195,20 +233,80 @@ export const useSwapTransaction = ({
         return;
       }
 
+      // Read the freshest balances at call time via the ref (not the
+      // closure, which is stale for anything besides tokenCode — see the
+      // comment on swapBalancesRef above) for classification and the
+      // cached-display-price fallback: `currentPrice` changes on every price
+      // poll without recreating this callback. Always defined in practice —
+      // the ref is seeded from this same hook's props and re-synced on every
+      // render — but narrowed explicitly rather than asserted.
+      const { sourceBalance: freshSource, destinationTokenInput: freshDest } =
+        swapBalancesRef.current;
+      if (!freshSource || !freshDest) {
+        setIsProcessing(false);
+        return;
+      }
+
+      const networkDetails = mapNetworkToNetworkDetails(network);
+
       const signedXDR = signTransaction({
         secretKey: account.privateKey,
         network,
       });
 
       if (!signedXDR) {
-        // Get the error message stored in the transaction builder
+        // Pre-submit signing failure. Throw rather than return: the catch
+        // below is this flow's single failure path — it emits swap.failed
+        // (without volume data, since nothing reached the network) and shows
+        // the error toast, exactly as it did before volume telemetry existed.
         const { error: signingError } = useTransactionBuilderStore.getState();
         throw new Error(signingError || "Failed to sign transaction");
       }
 
+      // Everything the volume telemetry needs is snapshotted here — after
+      // signing succeeded and immediately before submission, so the prices
+      // are as close as possible to the transaction's actual execution time.
+      // Amounts and prices are frozen together and carried to whichever
+      // terminal event fires. Both legs' canonical ids go into ONE price
+      // request, so they're priced at the same instant. Starting it only once
+      // signing has succeeded also means a signing failure never issues a
+      // price request it would just have to abort.
+      const heldBalances = Object.values(useBalancesStore.getState().balances);
+      const { tokenCode: srcCode, issuer: srcIssuerRaw } =
+        formatTokenIdentifier(getTokenIdentifier(freshSource));
+      sourceIdentity = classifyAssetIdentity(
+        srcCode,
+        srcIssuerRaw || undefined,
+        networkDetails,
+        heldBalances,
+      );
+      const { tokenCode: dstCode, issuer: dstIssuerRaw } =
+        formatTokenIdentifier(getTokenIdentifier(freshDest));
+      destIdentity = classifyAssetIdentity(
+        dstCode,
+        dstIssuerRaw || undefined,
+        networkDetails,
+        heldBalances,
+      );
+      sourceCanonicalId = canonicalIdFromIdentity(sourceIdentity);
+      destCanonicalId = canonicalIdFromIdentity(destIdentity);
+
+      snapshotHandle = startConfirmationPriceSnapshot({
+        canonicalIds: [sourceCanonicalId, destCanonicalId],
+        network,
+        useV2: useRemoteConfigStore.getState().use_token_prices_v2,
+        cachedDisplayPrices: {
+          [sourceCanonicalId]: {
+            currentPrice: freshSource.currentPrice ?? null,
+          },
+          [destCanonicalId]: { currentPrice: freshDest.currentPrice ?? null },
+        },
+      });
+
       // submitTransaction will throw if it fails (including debug overrides)
       // or return the hash if successful. If it returns null, surface the
       // stored error to keep the toast message accurate (e.g. DEBUG failures).
+      didSubmit = true;
       const transactionHash = await submitTransaction({ network });
 
       if (!transactionHash) {
@@ -230,6 +328,48 @@ export const useSwapTransaction = ({
       const { swapSlippage: freshSwapSlippage } =
         useSwapSettingsStore.getState();
 
+      // Settled destination amount, read from the transaction result — never
+      // the quote. Horizon's submit response carries `result_xdr`
+      // synchronously, so an unreadable read here is a genuine derivation
+      // failure (`error`), not a "not observed" case — there's no
+      // navigate-away window between submit and reading the response.
+      const submittedTx = TransactionBuilder.fromXdr(
+        signedXDR,
+        networkDetails.networkPassphrase,
+      );
+      const opIndex = findPathPaymentStrictSendIndex(submittedTx);
+      const { submitResultXdr } = useTransactionBuilderStore.getState();
+      const settledDestAmount = submitResultXdr
+        ? getSettledPathPaymentStrictSendAmount(submitResultXdr, opIndex)
+        : null;
+
+      const snapshot = snapshotHandle.resolve();
+      const sourceLeg = deriveLegUsd(
+        sourceAmount,
+        snapshot.pricesById?.[sourceCanonicalId]?.currentPrice,
+      );
+      const destLeg =
+        settledDestAmount !== null
+          ? deriveLegUsd(
+              settledDestAmount,
+              snapshot.pricesById?.[destCanonicalId]?.currentPrice,
+            )
+          : null;
+
+      const executionSlippagePct =
+        settledDestAmount !== null
+          ? computeExecutionSlippagePct(
+              pathResult?.destinationAmount,
+              settledDestAmount,
+            )
+          : undefined;
+      const usdSlippagePct =
+        sourceLeg.status === LegUsdStatus.OK &&
+        destLeg?.status === LegUsdStatus.OK &&
+        sourceLeg.value !== 0
+          ? computeUsdSlippagePct(sourceLeg.unrounded, destLeg.unrounded)
+          : undefined;
+
       analytics.trackSwapSuccess({
         sourceToken: sourceBalance.tokenCode,
         destToken: destinationTokenInput.tokenCode,
@@ -237,6 +377,32 @@ export const useSwapTransaction = ({
         destAmount: pathResult?.destinationAmount,
         allowedSlippage: freshSwapSlippage?.toString(),
         isSwap: true,
+        volume: {
+          identity: sourceIdentity,
+          toIdentity: destIdentity,
+          amount: new BigNumber(sourceAmount || 0).toNumber(),
+          sourceLeg,
+          priceSource: snapshot.source,
+          priceFreshness: snapshot.freshness,
+          ...(pathResult?.destinationAmount
+            ? {
+                toAmountQuoted: new BigNumber(
+                  pathResult.destinationAmount,
+                ).toNumber(),
+              }
+            : {}),
+          ...(settledDestAmount !== null
+            ? { toAmount: settledDestAmount.toNumber() }
+            : {}),
+          toAmountUsdStatus: destLeg?.status ?? LegUsdStatus.ERROR,
+          ...(destLeg?.status === LegUsdStatus.OK
+            ? { toAmountUsd: destLeg.value, toAmountUsdRate: destLeg.rate }
+            : {}),
+          ...(usdSlippagePct !== undefined ? { usdSlippagePct } : {}),
+          ...(executionSlippagePct !== undefined
+            ? { executionSlippagePct }
+            : {}),
+        },
       });
 
       // Fire SWAP_TRUSTLINE_ADDED when the combined changeTrust +
@@ -262,6 +428,47 @@ export const useSwapTransaction = ({
           : undefined;
       const isQuoteExpired = !!quoteExpiredCodes?.length;
 
+      const submitResultCodes =
+        error instanceof Error
+          ? (
+              error as Error & {
+                resultCodes?: { transaction?: string; operations?: string[] };
+              }
+            ).resultCodes
+          : undefined;
+
+      // A pre-submission failure (signing, or a throw before submit) still
+      // emits swap.failed, but with no volume data: nothing reached the
+      // network, so there is no attempted volume and no snapshot to price it
+      // with. Cancel the fetch rather than let it outlive the flow.
+      const reasonCode = pickReasonCode(submitResultCodes);
+      let volume: FailureVolume | undefined;
+      if (!didSubmit) {
+        snapshotHandle?.cancel();
+      } else if (snapshotHandle && sourceIdentity && destIdentity) {
+        const snapshot = snapshotHandle.resolve();
+        const sourceLeg = deriveLegUsd(
+          sourceAmount,
+          snapshot.pricesById?.[sourceCanonicalId]?.currentPrice,
+        );
+        const { submitErrorHttpStatus, submitErrorIsProtocolAnswer } =
+          useTransactionBuilderStore.getState();
+        volume = {
+          identity: sourceIdentity,
+          toIdentity: destIdentity,
+          amount: new BigNumber(sourceAmount || 0).toNumber(),
+          sourceLeg,
+          priceSource: snapshot.source,
+          priceFreshness: snapshot.freshness,
+          reasonCode,
+          failureCategory: getFailureCategory(
+            submitErrorIsProtocolAnswer,
+            submitErrorHttpStatus,
+            reasonCode,
+          ),
+        };
+      }
+
       if (isQuoteExpired) {
         // Over-slippage / liquidity-changed rejection: fire the dedicated
         // event instead of SWAP_FAIL and prompt the user to retry for a
@@ -274,6 +481,22 @@ export const useSwapTransaction = ({
           from_asset_code: sourceBalance?.tokenCode,
           to_asset_code: destinationTokenInput?.tokenCode,
           result_code: quoteExpiredCodes.join(", "),
+        });
+
+        // A quote expiry rejected at submit also counts as a failed swap for
+        // volume purposes: swap.quote_expired carries no volume, and without
+        // this the failure the failure_category exists to measure never
+        // reaches a volume-bearing event. failure_category: "slippage" falls
+        // out of the same reason-code mapping used for every other
+        // rejection, so no special case is needed beyond emitting here too.
+        // Only swap.failed carries volume, so the pair cannot double-count.
+        analytics.trackTransactionError({
+          error: error instanceof Error ? error.message : String(error),
+          errorCode: reasonCode,
+          isSwap: true,
+          sourceToken: sourceBalance?.tokenCode,
+          destToken: destinationTokenInput?.tokenCode,
+          volume,
         });
 
         showToast({
@@ -305,23 +528,15 @@ export const useSwapTransaction = ({
         return;
       }
 
-      const submitResultCodes =
-        error instanceof Error
-          ? (
-              error as Error & {
-                resultCodes?: { transaction?: string; operations?: string[] };
-              }
-            ).resultCodes
-          : undefined;
       analytics.trackTransactionError({
         error: error instanceof Error ? error.message : String(error),
-        errorCode:
-          submitResultCodes?.operations?.[0] || submitResultCodes?.transaction,
+        errorCode: reasonCode,
         isSwap: true,
         sourceToken: sourceBalance?.tokenCode,
         destToken: destinationTokenInput?.tokenCode,
         sourceAmount,
         destAmount: pathResult?.destinationAmount,
+        volume,
       });
 
       // Show error toast that persists even if component unmounts
