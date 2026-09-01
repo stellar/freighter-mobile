@@ -24,6 +24,11 @@ interface UseBalancesListResult {
   noBalances: boolean;
   isRefreshing: boolean;
   isFunded: boolean;
+  /**
+   * Contract IDs that are only in the list because the user saved them
+   * locally — the only contract tokens the manage view may offer to remove.
+   */
+  localOnlyTokenIds: string[];
   handleRefresh: () => void;
 }
 
@@ -46,6 +51,7 @@ export const useBalancesList = ({
     isLoading: isBalancesLoading,
     error: balancesError,
     isFunded,
+    localOnlyTokenIds,
     fetchAccountBalances,
   } = useBalancesStore();
 
@@ -125,6 +131,7 @@ export const useBalancesList = ({
       noBalances,
       isRefreshing,
       isFunded,
+      localOnlyTokenIds,
       handleRefresh,
     }),
     [
@@ -136,6 +143,7 @@ export const useBalancesList = ({
       noBalances,
       isRefreshing,
       isFunded,
+      localOnlyTokenIds,
       handleRefresh,
     ],
   );

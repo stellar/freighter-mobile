@@ -193,6 +193,7 @@ describe("TransactionSettingsBottomSheet - onSettingsChange Integration", () => 
       noBalances: true,
       isRefreshing: false,
       isFunded: true,
+      localOnlyTokenIds: [],
       handleRefresh: jest.fn(),
     });
     mockIsContractId.mockReturnValue(false);
@@ -656,6 +657,7 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
       noBalances: true,
       isRefreshing: false,
       isFunded: true,
+      localOnlyTokenIds: [],
       handleRefresh: jest.fn(),
     });
     mockUseAuthenticationStore.mockReturnValue({
@@ -767,6 +769,7 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
       noBalances: false,
       isRefreshing: false,
       isFunded: true,
+      localOnlyTokenIds: [],
       handleRefresh: jest.fn(),
     });
 
@@ -841,6 +844,7 @@ describe("TransactionSettingsBottomSheet - Soroban Transaction Tests", () => {
       noBalances: false,
       isRefreshing: false,
       isFunded: true,
+      localOnlyTokenIds: [],
       handleRefresh: jest.fn(),
     });
 

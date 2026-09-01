@@ -509,6 +509,10 @@
     "cantRemoveBalance": {
       "title": "O token ainda possui saldo",
       "description": "Você ainda não pode remover este token. Para remover uma token, o saldo deste token deve ser 0. Você precisa enviar ou vender o saldo restante antes de tentar novamente."
+    },
+    "cantRemoveNotLocallyAdded": {
+      "title": "Não é possível remover este token",
+      "description": "Este token foi adicionado à sua carteira automaticamente porque sua conta interage com ele, portanto removê-lo não o retirará da lista. Em vez disso, você pode ocultá-lo."
     }
   },
   "addTokenScreen": {
@@ -1173,6 +1177,11 @@
       "functionName": "Nome da função",
       "parameters": "Parâmetros",
       "contractAddress": "Endereço do contrato",
+      "executableOwner": "Proprietário do executável",
+      "executableTag": "Tag do executável",
+      "executableNote": "O código deste contrato é gerenciado pelo proprietário do executável e pode mudar depois que você assinar.",
+      "unrecognizedInvocation": "Invocação não reconhecida",
+      "unrecognizedInvocationWarning": "O Freighter não conseguiu ler esta autorização. Não assine a menos que você confie neste site.",
       "address": "Endereço do signatário"
     },
     "operations": {

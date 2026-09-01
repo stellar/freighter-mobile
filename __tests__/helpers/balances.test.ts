@@ -1,3 +1,4 @@
+import { Asset, Networks } from "@stellar/stellar-sdk";
 import { BigNumber } from "bignumber.js";
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import {
@@ -17,6 +18,7 @@ import {
   calculateSpendableAmount,
   isAmountSpendable,
   getIssuerFromIdentifier,
+  isSacContractForAsset,
 } from "helpers/balances";
 
 describe("balances helpers", () => {
@@ -305,11 +307,59 @@ describe("balances helpers", () => {
           type: "native",
         } as NativeToken,
         total: new BigNumber("10"),
-        available: new BigNumber("9.5"),
-        minimumBalance: new BigNumber("1"),
+        available: new BigNumber("7.5"),
+        minimumBalance: new BigNumber("2.5"),
         buyingLiabilities: "0",
         sellingLiabilities: "0",
       };
+
+      // The server-provided minimumBalance is authoritative: 2.5 XLM
+      // spendable = 10 - 2.5 - 0.00001 = 7.49999 XLM
+      const spendable = calculateSpendableAmount({
+        balance: xlmBalance,
+        subentryCount: 3,
+        transactionFee: "0.00001",
+      });
+      expect(spendable.toString()).toBe("7.49999");
+    });
+
+    it("should subtract XLM locked by open sell offers", () => {
+      const xlmBalance: NativeBalance = {
+        token: {
+          code: "XLM",
+          issuer: null,
+          type: "native",
+        } as NativeToken,
+        total: new BigNumber("10"),
+        available: new BigNumber("3.5"),
+        // reserve (2.5) + selling liabilities (4), as both balance paths
+        // supply it
+        minimumBalance: new BigNumber("6.5"),
+        buyingLiabilities: "0",
+        sellingLiabilities: "4",
+      };
+
+      // spendable = 10 - 6.5 - 0.00001 = 3.49999 XLM
+      const spendable = calculateSpendableAmount({
+        balance: xlmBalance,
+        subentryCount: 3,
+        transactionFee: "0.00001",
+      });
+      expect(spendable.toString()).toBe("3.49999");
+    });
+
+    it("should fall back to the locally derived reserve when minimumBalance is absent", () => {
+      const xlmBalance = {
+        token: {
+          code: "XLM",
+          issuer: null,
+          type: "native",
+        } as NativeToken,
+        total: new BigNumber("10"),
+        available: new BigNumber("9.5"),
+        buyingLiabilities: "0",
+        sellingLiabilities: "0",
+      } as unknown as NativeBalance;
 
       // subentryCount = 3, so minimum balance = (2 + 3) * 0.5 = 2.5 XLM
       // spendable = 10 - 2.5 - 0.00001 = 7.49999 XLM
@@ -390,8 +440,9 @@ describe("balances helpers", () => {
           type: "native",
         } as NativeToken,
         total: new BigNumber("10"),
-        available: new BigNumber("9.5"),
-        minimumBalance: new BigNumber("1"),
+        available: new BigNumber("7.5"),
+        // subentryCount = 3, so the reserve is (2 + 3) * 0.5 = 2.5 XLM
+        minimumBalance: new BigNumber("2.5"),
         buyingLiabilities: "0",
         sellingLiabilities: "0",
       };
@@ -413,8 +464,10 @@ describe("balances helpers", () => {
           type: "native",
         } as NativeToken,
         total: new BigNumber("10"),
-        available: new BigNumber("9.5"),
-        minimumBalance: new BigNumber("1"),
+        available: new BigNumber("7.5"),
+        // subentryCount = 3, so the reserve is (2 + 3) * 0.5 = 2.5 XLM,
+        // leaving 7.49999 spendable — 8 is over it
+        minimumBalance: new BigNumber("2.5"),
         buyingLiabilities: "0",
         sellingLiabilities: "0",
       };
@@ -448,6 +501,51 @@ describe("balances helpers", () => {
     it("should return empty string for empty identifier", () => {
       const issuer = getIssuerFromIdentifier("");
       expect(issuer).toBe("");
+    });
+  });
+  describe("isSacContractForAsset", () => {
+    const issuer = "GCEODJVUUVYVFD5KT4TOEDTMXQ76OPFOQC2EMYYMLPXQCUVPOB6XRWPQ";
+    const canonical = `USDC:${issuer}`;
+    const sacContract = new Asset("USDC", issuer).contractId(Networks.TESTNET);
+
+    it("matches the asset's own SAC address", () => {
+      expect(
+        isSacContractForAsset(canonical, sacContract, Networks.TESTNET),
+      ).toBe(true);
+    });
+
+    it("rejects a contract that is not that asset's SAC", () => {
+      // The whole point of deriving rather than pattern-matching the name: a
+      // SEP-41 token can be named CODE:ISSUER without being that asset's SAC.
+      expect(
+        isSacContractForAsset(
+          canonical,
+          "CDMLFMKMMD7MWZP3FKUBZPVHTUEDLSX4BYGYKH4GCESXYHS3IHQ4EIG4",
+          Networks.TESTNET,
+        ),
+      ).toBe(false);
+    });
+
+    it("rejects the same asset's SAC derived for another network", () => {
+      expect(
+        isSacContractForAsset(canonical, sacContract, Networks.PUBLIC),
+      ).toBe(false);
+    });
+
+    it("returns false for a name that is not a canonical asset", () => {
+      expect(
+        isSacContractForAsset("My Token", sacContract, Networks.TESTNET),
+      ).toBe(false);
+      expect(isSacContractForAsset("", sacContract, Networks.TESTNET)).toBe(
+        false,
+      );
+      expect(
+        isSacContractForAsset(
+          "USDC:not-an-issuer",
+          sacContract,
+          Networks.TESTNET,
+        ),
+      ).toBe(false);
     });
   });
 });

@@ -1,5 +1,9 @@
 import { xdr } from "@stellar/stellar-sdk";
-import { KeyValueInvokeHostFnArgs } from "components/screens/SignTransactionDetails/components/KeyVal";
+import {
+  ExternalExecutableNote,
+  KeyValueInvokeHostFnArgs,
+} from "components/screens/SignTransactionDetails/components/KeyVal";
+import { Banner } from "components/sds/Banner";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { logger } from "config/logger";
@@ -7,7 +11,9 @@ import {
   addressToString,
   getInvocationDetails,
   InvocationArgs,
+  INVOCATION_TYPE_EXTERNAL_REF,
   INVOCATION_TYPE_INVOKE,
+  INVOCATION_TYPE_UNRECOGNIZED,
   INVOCATION_TYPE_WASM,
 } from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
@@ -49,7 +55,7 @@ export const DappAuthEntryDisplay: React.FC<DappAuthEntryDisplayProps> = ({
   const normalized = useMemo<NormalizedAuthPreimage | null>(() => {
     try {
       return normalizeAuthPreimage(
-        xdr.HashIdPreimage.fromXDR(entryXdr, "base64"),
+        xdr.HashIdPreimage.fromXdr(entryXdr, "base64"),
       );
     } catch (e) {
       logger.warn("DappAuthEntryDisplay", "Failed to parse auth entry XDR", {
@@ -94,11 +100,16 @@ export const DappAuthEntryDisplay: React.FC<DappAuthEntryDisplayProps> = ({
     if (detail.type === INVOCATION_TYPE_INVOKE)
       return `invoke-${detail.contractId}-${detail.fnName}`;
     if (detail.type === INVOCATION_TYPE_WASM) return `wasm-${detail.hash}`;
+    if (detail.type === INVOCATION_TYPE_EXTERNAL_REF)
+      return `externalRef-${detail.owner}-${detail.tag}`;
+    if (detail.type === INVOCATION_TYPE_UNRECOGNIZED) return detail.type;
     return `sac-${detail.asset}`;
   };
 
   const renderDetailTitle = (detail: InvocationArgs): string => {
     if (detail.type === INVOCATION_TYPE_INVOKE) return detail.fnName;
+    if (detail.type === INVOCATION_TYPE_UNRECOGNIZED)
+      return t("signTransactionDetails.authorizations.unrecognizedInvocation");
     return t("signTransactionDetails.authorizations.contractCreation");
   };
 
@@ -189,6 +200,78 @@ export const DappAuthEntryDisplay: React.FC<DappAuthEntryDisplayProps> = ({
       );
     }
 
+    if (detail.type === INVOCATION_TYPE_UNRECOGNIZED) {
+      return (
+        <Banner
+          variant="error"
+          showChevron={false}
+          testID="UnrecognizedInvocationWarning"
+          text={t(
+            "signTransactionDetails.authorizations.unrecognizedInvocationWarning",
+          )}
+        />
+      );
+    }
+
+    // CAP-85 (Protocol 28): contract created from an external executable
+    // reference (owner contract + tag) instead of a Wasm hash.
+    if (detail.type === INVOCATION_TYPE_EXTERNAL_REF) {
+      return (
+        <View className="gap-[12px]">
+          <ExternalExecutableNote />
+          <View className="gap-[4px]">
+            <Text sm secondary>
+              {t("signTransactionDetails.authorizations.contractAddress")}
+            </Text>
+            <View className="flex-row items-center gap-[8px]">
+              <Text sm primary style={{ flex: 1 }}>
+                {truncateAddress(detail.address)}
+              </Text>
+              <Icon.Copy01
+                size={14}
+                themeColor="gray"
+                onPress={() => copyToClipboard(detail.address)}
+              />
+            </View>
+          </View>
+          <View className="gap-[4px]">
+            <Text sm secondary>
+              {t("signTransactionDetails.authorizations.executableOwner")}
+            </Text>
+            <View className="flex-row items-center gap-[8px]">
+              <Text sm primary style={{ flex: 1 }}>
+                {truncateAddress(detail.owner)}
+              </Text>
+              <Icon.Copy01
+                size={14}
+                themeColor="gray"
+                onPress={() => copyToClipboard(detail.owner)}
+              />
+            </View>
+          </View>
+          <View className="gap-[4px]">
+            <Text sm secondary>
+              {t("signTransactionDetails.authorizations.executableTag")}
+            </Text>
+            <Text sm primary>
+              {detail.tag}
+            </Text>
+          </View>
+          <View className="gap-[4px]">
+            <Text sm secondary>
+              {t("signTransactionDetails.operations.salt")}
+            </Text>
+            <Text sm primary>
+              {truncateAddress(detail.salt)}
+            </Text>
+          </View>
+          {detail.args && detail.args.length > 0 && (
+            <KeyValueInvokeHostFnArgs args={detail.args} variant="tertiary" />
+          )}
+        </View>
+      );
+    }
+
     // sac
     return (
       <View className="gap-[12px]">
@@ -243,7 +326,8 @@ export const DappAuthEntryDisplay: React.FC<DappAuthEntryDisplayProps> = ({
           const isExpanded = expandedIndices.has(index);
           return (
             <View
-              key={getDetailKey(detail)}
+              // eslint-disable-next-line react/no-array-index-key --- the list is static per entry and getDetailKey can repeat (e.g. every unrecognized invocation), so the index disambiguates
+              key={`${getDetailKey(detail)}-${index}`}
               className="rounded-[16px] overflow-hidden"
               style={{ backgroundColor: themeColors.background.secondary }}
               testID={`auth-entry-item-${index}`}

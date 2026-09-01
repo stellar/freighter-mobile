@@ -1,3 +1,4 @@
+import { xdr } from "@stellar/stellar-sdk";
 import * as authDuck from "ducks/auth";
 import { clearAuthKeypairCache } from "services/auth/authKeypairCache";
 import { AUTH_KEYPAIR_VECTORS } from "services/auth/authKeypairVectors";
@@ -27,7 +28,7 @@ describe("getAuthKeypair", () => {
     const a = await getAuthKeypair();
     const b = await getAuthKeypair();
     expect(a).not.toBeNull();
-    expect(a!.rawPublicKey().toString("hex")).toBe(M.userId);
+    expect(xdr.encodeBytes(a!.rawPublicKey(), "hex")).toBe(M.userId);
     expect(b).toBe(a); // same cached instance
     expect(mockMnemonic).toHaveBeenCalledTimes(1);
   });
@@ -66,7 +67,7 @@ describe("getAuthKeypair", () => {
     clearAuthKeypairCache();
     mockMnemonic.mockResolvedValue(AUTH_KEYPAIR_VECTORS[1].mnemonic);
     const c = await getAuthKeypair();
-    expect(c!.rawPublicKey().toString("hex")).toBe(
+    expect(xdr.encodeBytes(c!.rawPublicKey(), "hex")).toBe(
       AUTH_KEYPAIR_VECTORS[1].userId,
     );
     expect(c).not.toBe(a);

@@ -99,7 +99,7 @@ const TransactionDetailsBottomSheet: React.FC<
     ],
   );
 
-  const transaction = TransactionBuilder.fromXDR(
+  const transaction = TransactionBuilder.fromXdr(
     transactionXDR as string,
     network,
   );

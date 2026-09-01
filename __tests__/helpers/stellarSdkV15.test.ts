@@ -45,8 +45,8 @@ describe("Stellar SDK v15 compatibility", () => {
         .setTimeout(30)
         .build();
 
-      const xdrString = tx.toXDR();
-      const restored = TransactionBuilder.fromXDR(
+      const xdrString = tx.toXdr();
+      const restored = TransactionBuilder.fromXdr(
         xdrString,
         networkPassphrase,
       ) as Transaction;
@@ -80,8 +80,8 @@ describe("Stellar SDK v15 compatibility", () => {
         networkPassphrase,
       );
 
-      const xdrString = feeBump.toXDR();
-      const restored = TransactionBuilder.fromXDR(xdrString, networkPassphrase);
+      const xdrString = feeBump.toXdr();
+      const restored = TransactionBuilder.fromXdr(xdrString, networkPassphrase);
 
       expect(restored).toBeInstanceOf(FeeBumpTransaction);
     });
@@ -107,7 +107,9 @@ describe("Stellar SDK v15 compatibility", () => {
       tx.sign(keypair);
       expect(tx.signatures.length).toBe(1);
 
-      const sigBytes = tx.signatures[0].signature();
+      // v17: DecoratedSignature.signature is an xdr.Signature wrapper — unwrap
+      // to bytes before checking the length.
+      const sigBytes = tx.signatures[0].signature.toBytes();
       expect(sigBytes.length).toBe(64);
     });
   });
@@ -159,9 +161,10 @@ describe("Stellar SDK v15 compatibility", () => {
   });
 
   describe("hash function", () => {
-    it("returns a 32-byte Buffer for network passphrase", () => {
+    it("returns 32 bytes for network passphrase", () => {
       const result = hash(Buffer.from(networkPassphrase));
-      expect(result).toBeInstanceOf(Buffer);
+      // v17: byte-returning APIs hand back a plain Uint8Array, not a Buffer.
+      expect(result).toBeInstanceOf(Uint8Array);
       expect(result.length).toBe(32);
     });
 
@@ -169,7 +172,7 @@ describe("Stellar SDK v15 compatibility", () => {
       const input = Buffer.from("test-input");
       const hash1 = hash(input);
       const hash2 = hash(input);
-      expect(hash1.toString("hex")).toBe(hash2.toString("hex"));
+      expect(xdr.encodeBytes(hash1, "hex")).toBe(xdr.encodeBytes(hash2, "hex"));
     });
   });
 
@@ -197,14 +200,14 @@ describe("Stellar SDK v15 compatibility", () => {
     it("constructs and reads an ScVal i128", () => {
       const scVal = xdr.ScVal.scvI128(
         new xdr.Int128Parts({
-          lo: xdr.Uint64.fromString("1000000"),
-          hi: xdr.Int64.fromString("0"),
+          lo: BigInt("1000000"),
+          hi: BigInt("0"),
         }),
       );
-      expect(scVal.switch().name).toBe("scvI128");
-      const parts = scVal.i128();
-      expect(parts.lo().toString()).toBe("1000000");
-      expect(parts.hi().toString()).toBe("0");
+      expect(scVal.type).toBe("scvI128");
+      const parts = xdr.expectUnionVariant(scVal, "scvI128").i128;
+      expect(parts.lo.toString()).toBe("1000000");
+      expect(parts.hi.toString()).toBe("0");
     });
 
     it("constructs an ScAddress for an account", () => {
@@ -213,7 +216,7 @@ describe("Stellar SDK v15 compatibility", () => {
           StrKey.decodeEd25519PublicKey(keypair.publicKey()),
         ),
       );
-      expect(scAddr.switch().name).toBe("scAddressTypeAccount");
+      expect(scAddr.type).toBe("scAddressTypeAccount");
     });
   });
 
@@ -240,7 +243,7 @@ describe("Stellar SDK v15 compatibility", () => {
       const credentials = xdr.SorobanCredentials.sorobanCredentialsAddressV2(
         new xdr.SorobanAddressCredentials({
           address: new Address(keypair.publicKey()).toScAddress(),
-          nonce: xdr.Int64.fromString("1") as xdr.Int64,
+          nonce: BigInt(1),
           signatureExpirationLedger: 999999,
           signature: xdr.ScVal.scvVoid(),
         }),
@@ -251,22 +254,27 @@ describe("Stellar SDK v15 compatibility", () => {
         rootInvocation: invocation,
       });
 
-      // The signing-review screens only read rootInvocation() and never
+      // The signing-review screens only read rootInvocation and never
       // switch on credentials — this locks that assumption for ADDRESS_V2.
-      const roundtripped = xdr.SorobanAuthorizationEntry.fromXDR(
-        entry.toXDR("base64"),
+      const roundtripped = xdr.SorobanAuthorizationEntry.fromXdr(
+        entry.toXdr("base64"),
         "base64",
       );
-      const root = roundtripped.rootInvocation();
+      const root = roundtripped.rootInvocation;
       expect(root).toBeInstanceOf(xdr.SorobanAuthorizedInvocation);
-      expect(root.function().contractFn().functionName().toString()).toBe(
-        "transfer",
-      );
+      expect(
+        xdr
+          .expectUnionVariant(
+            root.function,
+            "sorobanAuthorizedFunctionTypeContractFn",
+          )
+          .contractFn.functionName.toString(),
+      ).toBe("transfer");
 
       // walkInvocationTree (used by getInvocationDetails) traverses it fine
       const visited: string[] = [];
       walkInvocationTree(root, (node) => {
-        visited.push(node.function().switch().name);
+        visited.push(node.function.type);
         return true;
       });
       expect(visited.length).toBe(1);

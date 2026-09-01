@@ -64,7 +64,7 @@ const buildAuthEntries = (transaction: Transaction | FeeBumpTransaction) => {
   if (!allAuthEntries.length) return [];
 
   return allAuthEntries.map((authEntry) => ({
-    invocation: authEntry.rootInvocation(),
+    invocation: authEntry.rootInvocation,
     boundAddress: getAuthEntryBoundAddress(authEntry),
   }));
 };
@@ -78,7 +78,7 @@ export const useSignTransactionDetails = ({
   if (!xdr) return null;
 
   try {
-    const transaction = TransactionBuilder.fromXDR(
+    const transaction = TransactionBuilder.fromXdr(
       xdr,
       networkDetails.networkPassphrase,
     );

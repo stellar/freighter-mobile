@@ -1,3 +1,4 @@
+import { xdr } from "@stellar/stellar-sdk";
 import { getAuthKeypair } from "services/auth/getAuthKeypair";
 
 /**
@@ -7,5 +8,5 @@ import { getAuthKeypair } from "services/auth/getAuthKeypair";
  */
 export const getAuthUserId = async (): Promise<string | null> => {
   const keypair = await getAuthKeypair();
-  return keypair ? keypair.rawPublicKey().toString("hex") : null;
+  return keypair ? xdr.encodeBytes(keypair.rawPublicKey(), "hex") : null;
 };

@@ -429,6 +429,11 @@ export type CollectibleMetadata = {
  * Represents a discover protocol from the backend API
  */
 export type DiscoverProtocol = {
+  /**
+   * Rendered via LinkedText (components/LinkedText): supports markdown-style
+   * `[text](https://...)` links and bare `https://` URLs, which render as
+   * tappable links. No other markdown/HTML is parsed.
+   */
   description: string;
   iconUrl: string;
   name: string;
