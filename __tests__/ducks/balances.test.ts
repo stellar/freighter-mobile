@@ -584,13 +584,15 @@ describe("balances duck", () => {
   });
 
   describe("extractScanResultsFromBalances (via fetchAccountBalances)", () => {
-    const LPT_ISSUER =
-      "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
+    const ISSUER = "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
 
-    const lptBalance: ClassicBalance = {
+    // Stellar classic asset codes are case-sensitive alphanumeric, so a
+    // lowercase code is legal and can contain "lp" as a substring (e.g.
+    // "help") without being a liquidity pool.
+    const helpBalance: ClassicBalance = {
       token: {
-        code: "LPT",
-        issuer: { key: LPT_ISSUER },
+        code: "help",
+        issuer: { key: ISSUER },
         type: "credit_alphanum4" as TokenTypeWithCustomToken,
       },
       total: new BigNumber("10"),
@@ -616,19 +618,19 @@ describe("balances duck", () => {
       mockFetchBalances.mockResolvedValue({
         balances: {
           XLM: mockNativeBalance,
-          [`LPT:${LPT_ISSUER}`]: lptBalance,
+          [`help:${ISSUER}`]: helpBalance,
           "4ac86c65b9f7b175ae0493da0d36cc5bc88b72677ca69fce8fe374233983d8e7:lp":
             lpBalance,
         } as BalanceMap,
       });
     });
 
-    it("keeps scan results for a classic asset whose code contains 'lp'", async () => {
+    it("keeps scan results for a classic asset whose lowercase code contains 'lp'", async () => {
       const { result } = renderHook(() => useBalancesStore());
       await act(async () => {
         await result.current.fetchAccountBalances(mockParamsPubnet);
       });
-      expect(result.current.scanResults[`LPT-${LPT_ISSUER}`]).toBeDefined();
+      expect(result.current.scanResults[`help-${ISSUER}`]).toBeDefined();
     });
 
     it("skips liquidity-pool balances and the native balance", async () => {
