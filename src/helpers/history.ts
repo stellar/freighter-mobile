@@ -2,12 +2,12 @@
 import { Horizon } from "@stellar/stellar-sdk";
 import BigNumber from "bignumber.js";
 import { NATIVE_TOKEN_CODE, NetworkDetails } from "config/constants";
+import { getNativeContractId } from "helpers/assetIdentity";
 import {
   SorobanTokenInterface,
   getAttrsFromSorobanHorizonOp,
   getTokenSacAddress,
   isContractId,
-  getNativeContractDetails,
 } from "helpers/soroban";
 
 type OperationWithSpamCheckAttr = Horizon.ServerApi.OperationRecord & {
@@ -136,8 +136,14 @@ export const operationInvolvesToken = (
     return false;
   }
 
-  // Handle native XLM operations (both classic and Soroban)
-  if (targetToken.code === NATIVE_TOKEN_CODE && !targetToken.contractId) {
+  // Handle native XLM operations (both classic and Soroban). Native is
+  // identified by the bare "XLM"/"native" identifier — an issuer-bound
+  // XLM:G... identifier is a different asset and is handled below.
+  if (
+    targetToken.code === NATIVE_TOKEN_CODE &&
+    !targetToken.issuer &&
+    !targetToken.contractId
+  ) {
     // Check for classic payment operations
     if (getIsPayment(operation.type)) {
       if ("asset_type" in operation && operation.asset_type === "native") {
@@ -158,11 +164,11 @@ export const operationInvolvesToken = (
 
       if (attrs && typeof attrs === "object" && "contractId" in attrs) {
         const typedAttrs = attrs as { contractId: string };
-        const nativeContractDetails = getNativeContractDetails(
-          networkDetails.network,
-        );
 
-        return typedAttrs.contractId === nativeContractDetails.contract;
+        return (
+          typedAttrs.contractId ===
+          getNativeContractId(networkDetails.networkPassphrase)
+        );
       }
     }
 
