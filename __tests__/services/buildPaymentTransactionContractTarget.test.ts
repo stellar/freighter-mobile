@@ -11,7 +11,7 @@ import {
 } from "@stellar/stellar-sdk";
 import { BigNumber } from "bignumber.js";
 import { NETWORKS } from "config/constants";
-import { PricedBalance } from "config/types";
+import { PricedBalance, TokenTypeWithCustomToken } from "config/types";
 import { getNativeContractDetails } from "helpers/soroban";
 import { buildPaymentTransaction } from "services/transactionService";
 
@@ -47,6 +47,13 @@ const UNRELATED_CONTRACT =
 const CUSTOM_TOKEN_CONTRACT =
   "CBOVW5CXOPHYWGLJPWBQMGX2F3REBY2ZTZX3N47RTYWWHZV2BXCIIGTL";
 
+const SPOOF_ISSUER = "GBEO62ZYAOEKVL4WMF5Q6VYTOJQUT7H2QYRDVFO5LT4W7VQPFDWVKUHO";
+const spoofSacTestnet = new Asset("XLM", SPOOF_ISSUER).contractId(
+  Networks.TESTNET,
+);
+const NATIVE_SAC_TESTNET =
+  "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC";
+
 const sender = Keypair.random();
 
 const baseParams = {
@@ -56,6 +63,32 @@ const baseParams = {
   network: NETWORKS.TESTNET,
   senderAddress: sender.publicKey(),
 };
+
+const nativeXlmBalance = {
+  id: "native",
+  token: { type: "native", code: "XLM" },
+  total: new BigNumber("100"),
+  available: new BigNumber("99"),
+  minimumBalance: new BigNumber("1"),
+  buyingLiabilities: "0",
+  sellingLiabilities: "0",
+  tokenCode: "XLM",
+} as unknown as PricedBalance;
+
+const spoofedXlmBalance = {
+  id: `XLM:${SPOOF_ISSUER}`,
+  token: {
+    type: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+    code: "XLM",
+    issuer: { key: SPOOF_ISSUER },
+  },
+  total: new BigNumber("100"),
+  available: new BigNumber("100"),
+  limit: new BigNumber("1000"),
+  buyingLiabilities: "0",
+  sellingLiabilities: "0",
+  tokenCode: "XLM",
+} as unknown as PricedBalance;
 
 const classicUsdcBalance = {
   token: { code: "USDC", issuer: { key: ISSUER }, type: "credit_alphanum4" },
@@ -182,4 +215,48 @@ describe("buildPaymentTransaction — Soroban transfer target selection", () => 
       ).rejects.toThrow("transaction.errors.recipientIsTokenContract");
     },
   );
+});
+
+describe("send to contract address — asset/contract resolution", () => {
+  const contractTestBaseParams = {
+    tokenAmount: "5",
+    transactionFee: "0.001",
+    transactionTimeout: 300,
+    network: NETWORKS.TESTNET,
+    senderAddress: sender.publicKey(),
+  };
+
+  it("refuses when the recipient is the selected asset's own token contract", async () => {
+    await expect(
+      buildPaymentTransaction({
+        ...contractTestBaseParams,
+        selectedBalance: spoofedXlmBalance,
+        recipientAddress: spoofSacTestnet,
+      } as never),
+    ).rejects.toThrow("transaction.errors.recipientIsTokenContract");
+  });
+
+  it("still refuses native sends to the native token contract", async () => {
+    await expect(
+      buildPaymentTransaction({
+        ...contractTestBaseParams,
+        selectedBalance: nativeXlmBalance,
+        recipientAddress: NATIVE_SAC_TESTNET,
+      } as never),
+    ).rejects.toThrow("transaction.errors.recipientIsTokenContract");
+  });
+
+  it("invokes the selected asset's own contract, not the native one, for an XLM-coded non-native balance", async () => {
+    const unrelatedContract =
+      spoofSacTestnet === NATIVE_SAC_TESTNET
+        ? "CB64D3G7SM2RTH6JSGG34DDTFTQ5CFDKVDZJZSODMCX4NJ2HV2KN7OHT"
+        : "CB64D3G7SM2RTH6JSGG34DDTFTQ5CFDKVDZJZSODMCX4NJ2HV2KN7OHT";
+    const result = await buildPaymentTransaction({
+      ...contractTestBaseParams,
+      selectedBalance: spoofedXlmBalance,
+      recipientAddress: unrelatedContract,
+    } as never);
+    expect(result.contractId).toBe(spoofSacTestnet);
+    expect(result.contractId).not.toBe(NATIVE_SAC_TESTNET);
+  });
 });
