@@ -1,5 +1,5 @@
 import Blockaid from "@blockaid/client";
-import { NATIVE_TOKEN_CODE, NETWORKS, STORAGE_KEYS } from "config/constants";
+import { isNativeAssetId, NETWORKS, STORAGE_KEYS } from "config/constants";
 import { logger } from "config/logger";
 import {
   BalanceMap,
@@ -228,10 +228,10 @@ const extractScanResultsFromBalances = (
   const scanResults: Record<string, Blockaid.Token.TokenScanResponse> = {};
 
   Object.entries(pricedBalances).forEach(([tokenIdentifier, balance]) => {
-    if (
-      tokenIdentifier === NATIVE_TOKEN_CODE ||
-      tokenIdentifier.includes("lp")
-    ) {
+    // Native has no scan; liquidity pools are detected by their shape —
+    // never by substring-matching the identifier, which the asset code
+    // could collide with.
+    if (isNativeAssetId(tokenIdentifier) || isLiquidityPool(balance)) {
       return;
     }
 

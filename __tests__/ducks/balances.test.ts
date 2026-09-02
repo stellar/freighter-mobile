@@ -582,4 +582,63 @@ describe("balances duck", () => {
       unmount();
     });
   });
+
+  describe("extractScanResultsFromBalances (via fetchAccountBalances)", () => {
+    const LPT_ISSUER =
+      "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
+
+    const lptBalance: ClassicBalance = {
+      token: {
+        code: "LPT",
+        issuer: { key: LPT_ISSUER },
+        type: "credit_alphanum4" as TokenTypeWithCustomToken,
+      },
+      total: new BigNumber("10"),
+      available: new BigNumber("10"),
+      limit: new BigNumber("1000"),
+      buyingLiabilities: "0",
+      sellingLiabilities: "0",
+      blockaidData: benignTokenScan,
+    };
+
+    const lpBalance = {
+      total: new BigNumber("1"),
+      limit: new BigNumber("1"),
+      liquidityPoolId:
+        "4ac86c65b9f7b175ae0493da0d36cc5bc88b72677ca69fce8fe374233983d8e7",
+      reserves: [],
+    } as unknown as BalanceMap[string];
+
+    beforeEach(() => {
+      (usePricesStore.getState as jest.Mock).mockReturnValue(
+        createMockPricesStore(),
+      );
+      mockFetchBalances.mockResolvedValue({
+        balances: {
+          XLM: mockNativeBalance,
+          [`LPT:${LPT_ISSUER}`]: lptBalance,
+          "4ac86c65b9f7b175ae0493da0d36cc5bc88b72677ca69fce8fe374233983d8e7:lp":
+            lpBalance,
+        } as BalanceMap,
+      });
+    });
+
+    it("keeps scan results for a classic asset whose code contains 'lp'", async () => {
+      const { result } = renderHook(() => useBalancesStore());
+      await act(async () => {
+        await result.current.fetchAccountBalances(mockParamsPubnet);
+      });
+      expect(result.current.scanResults[`LPT-${LPT_ISSUER}`]).toBeDefined();
+    });
+
+    it("skips liquidity-pool balances and the native balance", async () => {
+      const { result } = renderHook(() => useBalancesStore());
+      await act(async () => {
+        await result.current.fetchAccountBalances(mockParamsPubnet);
+      });
+      const keys = Object.keys(result.current.scanResults);
+      expect(keys.some((k) => k.startsWith("4ac86c65"))).toBe(false);
+      expect(keys).not.toContain("XLM");
+    });
+  });
 });
