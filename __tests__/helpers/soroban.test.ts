@@ -1,6 +1,8 @@
-import { Address, Keypair, xdr } from "@stellar/stellar-sdk";
+import { Address, Asset as SdkToken, Keypair, xdr } from "@stellar/stellar-sdk";
 import { BigNumber } from "bignumber.js";
+import { NETWORKS, TESTNET_NETWORK_DETAILS } from "config/constants";
 import {
+  Balance,
   ClassicBalance,
   NativeBalance,
   SorobanBalance,
@@ -10,8 +12,10 @@ import {
   computeTotalFeeXlm,
   getArgsForTokenInvocation,
   getAuthEntryBoundAddress,
+  getBalanceByKey,
   getInvocationArgs,
   getInvocationDetails,
+  getNativeContractDetails,
   INVOCATION_TYPE_EXTERNAL_REF,
   INVOCATION_TYPE_UNRECOGNIZED,
   INVOCATION_TYPE_WASM,
@@ -811,6 +815,59 @@ describe("soroban helpers", () => {
 
         expect(result).toBe(false);
       });
+    });
+  });
+
+  describe("getNativeContractDetails", () => {
+    it("derives a contract id for every network, including unlisted ones", () => {
+      expect(getNativeContractDetails(NETWORKS.PUBLIC).contract).toBe(
+        "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA",
+      );
+      expect(getNativeContractDetails(NETWORKS.TESTNET).contract).toBe(
+        "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC",
+      );
+      expect(getNativeContractDetails(NETWORKS.FUTURENET).contract).toMatch(
+        /^C[A-Z2-7]{55}$/,
+      );
+    });
+  });
+
+  describe("getBalanceByKey", () => {
+    const networkDetails = TESTNET_NETWORK_DETAILS; // from config/constants
+    const NATIVE_SAC =
+      "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC";
+    const SPOOF_ISSUER =
+      "GBEO62ZYAOEKVL4WMF5Q6VYTOJQUT7H2QYRDVFO5LT4W7VQPFDWVKUHO";
+    const spoofSac = new SdkToken("XLM", SPOOF_ISSUER).contractId(
+      networkDetails.networkPassphrase,
+    );
+
+    const nativeBalance = {
+      token: { type: "native", code: "XLM" },
+      total: new BigNumber("10"),
+    } as unknown as Balance;
+
+    const spoofedXlmBalance = {
+      token: { code: "XLM", issuer: { key: SPOOF_ISSUER } },
+      total: new BigNumber("10"),
+    } as unknown as Balance;
+
+    it("resolves the native SAC to the native balance even when an XLM-coded classic balance sorts first", () => {
+      const found = getBalanceByKey(
+        NATIVE_SAC,
+        [spoofedXlmBalance, nativeBalance],
+        networkDetails,
+      );
+      expect(found).toBe(nativeBalance);
+    });
+
+    it("resolves an XLM-coded classic balance by its own SAC", () => {
+      const found = getBalanceByKey(
+        spoofSac,
+        [spoofedXlmBalance, nativeBalance],
+        networkDetails,
+      );
+      expect(found).toBe(spoofedXlmBalance);
     });
   });
 });
