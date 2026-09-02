@@ -226,6 +226,10 @@ describe("send to contract address — asset/contract resolution", () => {
     senderAddress: sender.publicKey(),
   };
 
+  beforeAll(() => {
+    expect(spoofSacTestnet).not.toBe(NATIVE_SAC_TESTNET);
+  });
+
   it("refuses when the recipient is the selected asset's own token contract", async () => {
     await expect(
       buildPaymentTransaction({
@@ -248,9 +252,8 @@ describe("send to contract address — asset/contract resolution", () => {
 
   it("invokes the selected asset's own contract, not the native one, for an XLM-coded non-native balance", async () => {
     const unrelatedContract =
-      spoofSacTestnet === NATIVE_SAC_TESTNET
-        ? "CB64D3G7SM2RTH6JSGG34DDTFTQ5CFDKVDZJZSODMCX4NJ2HV2KN7OHT"
-        : "CB64D3G7SM2RTH6JSGG34DDTFTQ5CFDKVDZJZSODMCX4NJ2HV2KN7OHT";
+      "CB64D3G7SM2RTH6JSGG34DDTFTQ5CFDKVDZJZSODMCX4NJ2HV2KN7OHT";
+    expect(unrelatedContract).not.toBe(spoofSacTestnet);
     const result = await buildPaymentTransaction({
       ...contractTestBaseParams,
       selectedBalance: spoofedXlmBalance,
