@@ -87,8 +87,6 @@ export interface BuildSendCollectibleParams {
   senderAddress?: string;
 }
 
-export { isNativeBalance };
-
 interface IValidateTransactionParams {
   senderAddress: string;
   balance: PricedBalance;

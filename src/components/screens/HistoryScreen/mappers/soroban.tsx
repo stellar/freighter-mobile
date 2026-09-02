@@ -338,9 +338,9 @@ const processSorobanMint = async ({
     }
   } else {
     // User already has this token in their balances
-    const { decimals, symbol, contractId, name } = tokenBalance as CustomToken;
+    const { decimals, symbol, name } = tokenBalance as CustomToken;
     const { code } = resolveSorobanDisplayIdentity(
-      { symbol, name, contractId },
+      { symbol, name, contractId: sorobanAttributes.contractId },
       networkDetails.networkPassphrase,
     );
 

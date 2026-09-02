@@ -466,8 +466,13 @@ describe("splitVerifiedTokens", () => {
   });
 
   it("never seeds an empty string into the verified-id set", async () => {
-    // On a network with no hardcoded native contract entry, the derived id
-    // must be non-empty; a token with an empty issuer must not become verified.
+    // Use the real derivation instead of the module-level stub: on a network
+    // with no hardcoded native contract entry, the derived id must be
+    // non-empty, and a token with an empty issuer must not become verified.
+    mockGetNativeContractDetails.mockImplementation(
+      jest.requireActual<typeof import("helpers/soroban")>("helpers/soroban")
+        .getNativeContractDetails,
+    );
     mockGetVerifiedTokens.mockResolvedValue([]);
 
     const tokens = [

@@ -56,7 +56,7 @@ export const getIconUrlFromTokensLists = async ({
       !!issuer &&
       !!code &&
       token.issuer?.toLowerCase() === issuer.toLowerCase() &&
-      token.code?.toUpperCase() === code.toUpperCase()
+      token.code === code
     );
   });
 

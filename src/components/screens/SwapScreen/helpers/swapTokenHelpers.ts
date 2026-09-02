@@ -64,7 +64,7 @@ export const getTokenFromBalance = (
 };
 
 /**
- * Finds a balance item that matches the given token using multiple strategies.
+ * Finds the balance item whose full identity matches the given token.
  */
 export const findBalanceForToken = ({
   token: incomingToken,

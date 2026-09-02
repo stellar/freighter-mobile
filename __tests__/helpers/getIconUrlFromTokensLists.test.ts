@@ -40,7 +40,7 @@ describe("getIconUrlFromTokensLists", () => {
 
   it("returns the icon when both code and issuer match", async () => {
     const icon = await getIconUrlFromTokensLists({
-      asset: { issuer: "ISSUER2", code: "bbb" }, // case-insensitive
+      asset: { issuer: "ISSUER2", code: "BBB" }, // issuer match is case-insensitive
       network: NETWORKS.PUBLIC,
     });
     expect(icon).toBe("icon-url-2");
