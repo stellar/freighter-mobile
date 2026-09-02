@@ -29,14 +29,14 @@ describe("resolveSorobanDisplayIdentity", () => {
 
   it("accepts a CODE:ISSUER name as a SAC only when the contract id derives from that pair", () => {
     const claimed = `USDC:${CIRCLE_ISSUER}`;
-    const impersonator = resolveSorobanDisplayIdentity(
+    const unverifiedClaim = resolveSorobanDisplayIdentity(
       { symbol: "USDC", name: claimed, contractId: OTHER_CONTRACT },
       passphrase,
     );
     // Not verified as a SAC: displayed as a plain contract token, issuer NOT
     // taken from the self-reported name.
-    expect(impersonator.isVerifiedSac).toBe(false);
-    expect(impersonator.issuerKey).toBe(OTHER_CONTRACT);
+    expect(unverifiedClaim.isVerifiedSac).toBe(false);
+    expect(unverifiedClaim.issuerKey).toBe(OTHER_CONTRACT);
 
     const realSacId = new SdkToken("USDC", CIRCLE_ISSUER).contractId(
       passphrase,
