@@ -1,6 +1,11 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-import { NATIVE_TOKEN_CODE, NETWORKS } from "config/constants";
+import {
+  mapNetworkToNetworkDetails,
+  NATIVE_TOKEN_CODE,
+  NETWORKS,
+} from "config/constants";
 import { logger } from "config/logger";
+import { isNativeContract } from "helpers/assetIdentity";
 import { isContractId } from "helpers/soroban";
 import { useEffect, useState } from "react";
 import { getTokenDetails } from "services/backend";
@@ -45,8 +50,12 @@ const useTokenDetails = ({
         });
 
         if (tokenDetails?.symbol && tokenDetails?.name) {
+          const { networkPassphrase } = mapNetworkToNetworkDetails(network);
+          // "native" as a symbol is only meaningful when the contract is
+          // the native SAC itself.
           const displaySymbol =
-            tokenDetails.symbol === "native"
+            tokenDetails.symbol === "native" &&
+            isNativeContract(tokenId, networkPassphrase)
               ? NATIVE_TOKEN_CODE
               : tokenDetails.symbol;
 

@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { Networks } from "@stellar/stellar-sdk";
 import BigNumber from "bignumber.js";
 import { CollectibleImage } from "components/CollectibleImage";
 import { TokenIcon } from "components/TokenIcon";
@@ -23,7 +24,8 @@ import {
   BalanceMap,
   CustomToken,
 } from "config/types";
-import { isSacContract } from "helpers/balances";
+import { isNativeContract } from "helpers/assetIdentity";
+import { isSacContractForAsset } from "helpers/balances";
 import { transformBackendCollections } from "helpers/collectibles";
 import { formatTokenForDisplay } from "helpers/formatAmount";
 import {
@@ -72,6 +74,7 @@ interface ProcessSorobanTransferData {
   operation: any;
   sorobanAttributes: any;
   publicKey: string;
+  networkDetails: NetworkDetails;
   network: NETWORKS;
   stellarExpertUrl: string;
   fee: string;
@@ -93,6 +96,49 @@ interface ProcessCollectibleTransferData {
   operationString: string;
   xdr: string;
 }
+
+interface SorobanTokenIdentityInput {
+  symbol: string;
+  name?: string;
+  contractId: string;
+}
+
+/**
+ * Resolves how a Soroban token identifies for display. Self-reported
+ * metadata (symbol/name) is never trusted on its own: "native" counts as
+ * XLM only when the contract IS the native SAC, and a CODE:ISSUER name
+ * counts as that SAC only when the contract id derives from the pair.
+ */
+export const resolveSorobanDisplayIdentity = (
+  token: SorobanTokenIdentityInput,
+  networkPassphrase: Networks,
+): {
+  isNative: boolean;
+  isVerifiedSac: boolean;
+  code: string;
+  issuerKey: string;
+} => {
+  const isNative = isNativeContract(token.contractId, networkPassphrase);
+  if (isNative) {
+    return {
+      isNative: true,
+      isVerifiedSac: true,
+      code: NATIVE_TOKEN_CODE,
+      issuerKey: "",
+    };
+  }
+
+  const isVerifiedSac =
+    !!token.name &&
+    isSacContractForAsset(token.name, token.contractId, networkPassphrase);
+
+  return {
+    isNative: false,
+    isVerifiedSac,
+    code: token.symbol,
+    issuerKey: isVerifiedSac ? token.name!.split(":")[1] : token.contractId,
+  };
+};
 
 /**
  * Process Soroban Token mint operations
@@ -171,8 +217,11 @@ const processSorobanMint = async ({
           symbol: tokenDetailsResponse.symbol,
         };
 
-        const isNative = token.symbol === "native";
-        const code = isNative ? NATIVE_TOKEN_CODE : token.symbol;
+        const identity = resolveSorobanDisplayIdentity(
+          token,
+          networkDetails.networkPassphrase,
+        );
+        const { isNative, code } = identity;
 
         const transactionTitle = isReceiving
           ? t("history.transactionHistory.mintedToSelf", {
@@ -224,11 +273,11 @@ const processSorobanMint = async ({
             issuer: { key: "" },
             type: TokenTypeWithCustomToken.NATIVE,
           };
-        } else if (token.name && isSacContract(token.name)) {
+        } else if (identity.isVerifiedSac) {
           displayName = token.symbol; // Show only symbol for SACs
           tokenIconDetails = {
             code: token.symbol,
-            issuer: { key: token.name.split(":")[1] },
+            issuer: { key: identity.issuerKey },
             // No type for SACs (classic token)
             type: undefined,
           };
@@ -289,9 +338,11 @@ const processSorobanMint = async ({
     }
   } else {
     // User already has this token in their balances
-    const { decimals, symbol } = tokenBalance as CustomToken;
-    const isNative = symbol === "native";
-    const code = isNative ? NATIVE_TOKEN_CODE : symbol;
+    const { decimals, symbol, contractId, name } = tokenBalance as CustomToken;
+    const { code } = resolveSorobanDisplayIdentity(
+      { symbol, name, contractId },
+      networkDetails.networkPassphrase,
+    );
 
     const amountString = String(sorobanAttributes.amount);
 
@@ -339,6 +390,7 @@ const processSorobanTransfer = async ({
   operation,
   sorobanAttributes,
   publicKey,
+  networkDetails,
   network,
   stellarExpertUrl,
   fee,
@@ -387,8 +439,11 @@ const processSorobanTransfer = async ({
     }
 
     const { symbol, decimals, name } = tokenDetailsResponse;
-    const isNative = symbol === "native";
-    const code = isNative ? NATIVE_TOKEN_CODE : symbol;
+    const identity = resolveSorobanDisplayIdentity(
+      { symbol, name, contractId: sorobanAttributes.contractId },
+      networkDetails.networkPassphrase,
+    );
+    const { isNative, code } = identity;
     const amountString = String(sorobanAttributes.amount);
 
     const formattedTokenAmount = formatSorobanTokenAmount(
@@ -415,11 +470,11 @@ const processSorobanTransfer = async ({
         issuer: { key: "" },
         type: TokenTypeWithCustomToken.NATIVE,
       };
-    } else if (name && isSacContract(name)) {
+    } else if (identity.isVerifiedSac) {
       displayName = code;
       tokenIconDetails = {
         code,
-        issuer: { key: name.split(":")[1] },
+        issuer: { key: identity.issuerKey },
         type: undefined,
       };
     } else {
@@ -762,6 +817,7 @@ export const mapSorobanHistoryItem = async ({
         operation,
         sorobanAttributes,
         publicKey,
+        networkDetails,
         network,
         stellarExpertUrl,
         fee,

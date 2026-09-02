@@ -474,27 +474,12 @@ export const calculateSwapRate = (
   return rate.toString();
 };
 
-export function isSacContract(name: string): boolean {
-  if (!name || typeof name !== "string") return false;
-  const [code, issuer] = name.split(":");
-  if (!code || !issuer) return false;
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const token = new SdkToken(code, issuer);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 /**
  * Answers whether `contractId` is the Stellar Asset Contract for the classic
  * asset named `name` (a canonical `CODE:ISSUER` string).
  *
- * Stricter than `isSacContract`, which only checks that `name` parses as
- * `CODE:ISSUER` and so returns true for any SEP-41 token that happens to be
- * named that way. Here the SAC address is derived from the asset and compared
- * to the contract in hand, so a false positive would require a genuine SAC.
+ * The SAC address is derived from the asset and compared to the contract in
+ * hand, so a false positive would require a genuine SAC.
  *
  * Used to dedupe a locally added SAC against the classic trustline for the
  * same asset: the two are the same holding under different identities, and a
