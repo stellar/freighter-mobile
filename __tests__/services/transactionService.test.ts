@@ -8,25 +8,37 @@ import {
   Operation,
   xdr,
 } from "@stellar/stellar-sdk";
+import { BigNumber } from "bignumber.js";
 import { NETWORKS, mapNetworkToNetworkDetails } from "config/constants";
+import { TokenTypeWithCustomToken, type PricedBalance } from "config/types";
 import { analytics } from "services/analytics";
 import * as backend from "services/backend";
 import {
+  buildPaymentTransaction,
   buildSendCollectibleTransaction,
   BuildSendCollectibleParams,
   buildSwapTransaction,
+  getContractIdForNativeToken,
+  getTokenForPayment,
   simulateCollectibleTransfer,
   validateSendCollectibleTransactionParams,
 } from "services/transactionService";
 
+// Hoisted so it can be reconfigured per test (e.g. to simulate an unfunded
+// destination) while defaulting to the always-succeed behavior the rest of
+// this file's tests rely on.
+const mockLoadAccount = jest.fn((publicKey: string) =>
+  Promise.resolve({
+    accountId: () => publicKey,
+    sequenceNumber: () => "1000",
+    incrementSequenceNumber: jest.fn(),
+  }),
+);
+
 jest.mock("services/stellar", () => ({
   ...jest.requireActual("services/stellar"),
   stellarSdkServer: jest.fn(() => ({
-    loadAccount: jest.fn((publicKey: string) => ({
-      accountId: () => publicKey,
-      sequenceNumber: () => "1000",
-      incrementSequenceNumber: jest.fn(),
-    })),
+    loadAccount: mockLoadAccount,
     fetchTimebounds: jest.fn(() => ({
       minTime: 0,
       maxTime: Math.floor(Date.now() / 1000) + 300,
@@ -48,6 +60,209 @@ jest.mock("services/backend", () => ({
   simulateTransaction: jest.fn(),
   checkContractSupportsMuxed: jest.fn().mockResolvedValue(false),
 }));
+
+const SPOOF_ISSUER = "GBEO62ZYAOEKVL4WMF5Q6VYTOJQUT7H2QYRDVFO5LT4W7VQPFDWVKUHO";
+
+// Fixture pair: the two must differ ONLY in token type/issuer, both carry
+// tokenCode "XLM", so a test passing for one and failing for the other pins
+// the predicate to the type rather than the code.
+const nativeXlmBalance = {
+  id: "native",
+  token: { type: "native", code: "XLM" },
+  total: new BigNumber("100"),
+  available: new BigNumber("99"),
+  minimumBalance: new BigNumber("1"),
+  buyingLiabilities: "0",
+  sellingLiabilities: "0",
+  tokenCode: "XLM",
+} as unknown as PricedBalance;
+
+const spoofedXlmBalance = {
+  id: `XLM:${SPOOF_ISSUER}`,
+  token: {
+    type: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+    code: "XLM",
+    issuer: { key: SPOOF_ISSUER },
+  },
+  total: new BigNumber("100"),
+  available: new BigNumber("100"),
+  limit: new BigNumber("1000"),
+  buyingLiabilities: "0",
+  sellingLiabilities: "0",
+  tokenCode: "XLM",
+} as unknown as PricedBalance;
+
+describe("getTokenForPayment", () => {
+  it("returns the native asset only for a native-typed balance", () => {
+    const token = getTokenForPayment(nativeXlmBalance);
+    expect(token.isNative()).toBe(true);
+  });
+
+  it("returns the classic asset for an XLM-coded non-native balance", () => {
+    const token = getTokenForPayment(spoofedXlmBalance);
+    expect(token.isNative()).toBe(false);
+    expect(token.getCode()).toBe("XLM");
+    expect(token.getIssuer()).toBe(SPOOF_ISSUER);
+  });
+});
+
+describe("getContractIdForNativeToken", () => {
+  it("derives the native contract for every network without throwing", () => {
+    expect(getContractIdForNativeToken(NETWORKS.PUBLIC)).toBe(
+      "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA",
+    );
+    expect(getContractIdForNativeToken(NETWORKS.TESTNET)).toBe(
+      "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC",
+    );
+    // Networks without a hardcoded entry must still derive a real id.
+    expect(getContractIdForNativeToken(NETWORKS.FUTURENET)).toMatch(
+      /^C[A-Z2-7]{55}$/,
+    );
+  });
+});
+
+describe("buildPaymentTransaction asset resolution", () => {
+  const sender = Keypair.random().publicKey();
+  const fundedRecipient = Keypair.random().publicKey();
+
+  const baseParams = {
+    tokenAmount: "5",
+    recipientAddress: fundedRecipient,
+    transactionFee: "0.00001",
+    transactionTimeout: 300,
+    network: NETWORKS.TESTNET,
+    senderAddress: sender,
+  };
+
+  it("builds a payment carrying the classic asset for an XLM-coded non-native balance", async () => {
+    const result = await buildPaymentTransaction({
+      ...baseParams,
+      selectedBalance: spoofedXlmBalance,
+    });
+    const tx = TransactionBuilder.fromXdr(
+      result.xdr,
+      Networks.TESTNET,
+    ) as Transaction;
+    const op = tx.operations[0] as Operation.Payment;
+    expect(op.type).toBe("payment");
+    expect(op.asset.getCode()).toBe("XLM");
+    expect(op.asset.getIssuer()).toBe(SPOOF_ISSUER);
+    expect(op.asset.isNative()).toBe(false);
+  });
+
+  it("still builds a native payment for the native balance", async () => {
+    const result = await buildPaymentTransaction({
+      ...baseParams,
+      selectedBalance: nativeXlmBalance,
+    });
+    const tx = TransactionBuilder.fromXdr(
+      result.xdr,
+      Networks.TESTNET,
+    ) as Transaction;
+    const op = tx.operations[0] as Operation.Payment;
+    expect(op.asset.isNative()).toBe(true);
+  });
+});
+
+describe("buildPaymentTransaction unfunded destination", () => {
+  // loadAccount: succeeds for the sender, 404s for the destination —
+  // configure via the overridable mock from the module factory.
+  const sender = Keypair.random().publicKey();
+  const unfundedRecipient = Keypair.random().publicKey();
+
+  const baseParams = {
+    tokenAmount: "5", // >= MINIMUM_CREATE_ACCOUNT_XLM
+    recipientAddress: unfundedRecipient,
+    transactionFee: "0.00001",
+    transactionTimeout: 300,
+    network: NETWORKS.TESTNET,
+    senderAddress: sender,
+  };
+
+  beforeEach(() => {
+    mockLoadAccount.mockImplementation((publicKey: string) => {
+      if (publicKey === unfundedRecipient) {
+        const notFound = new Error("Not Found") as Error & {
+          response: { status: number };
+        };
+        notFound.response = { status: 404 };
+        return Promise.reject(notFound);
+      }
+      return Promise.resolve({
+        accountId: () => publicKey,
+        sequenceNumber: () => "1000",
+        incrementSequenceNumber: jest.fn(),
+      });
+    });
+  });
+
+  afterEach(() => {
+    // Restore the file-wide always-succeed default so later describes are
+    // unaffected by this block's per-destination override.
+    mockLoadAccount.mockImplementation((publicKey: string) =>
+      Promise.resolve({
+        accountId: () => publicKey,
+        sequenceNumber: () => "1000",
+        incrementSequenceNumber: jest.fn(),
+      }),
+    );
+  });
+
+  it("creates the account only for the native balance", async () => {
+    const result = await buildPaymentTransaction({
+      ...baseParams,
+      selectedBalance: nativeXlmBalance,
+    });
+    const tx = TransactionBuilder.fromXdr(
+      result.xdr,
+      Networks.TESTNET,
+    ) as Transaction;
+    expect(tx.operations[0].type).toBe("createAccount");
+  });
+
+  it("builds a classic-asset payment (not createAccount) for an XLM-coded non-native balance", async () => {
+    const result = await buildPaymentTransaction({
+      ...baseParams,
+      selectedBalance: spoofedXlmBalance,
+    });
+    const tx = TransactionBuilder.fromXdr(
+      result.xdr,
+      Networks.TESTNET,
+    ) as Transaction;
+    const op = tx.operations[0] as Operation.Payment;
+    expect(op.type).toBe("payment");
+    expect(op.asset.getIssuer()).toBe(SPOOF_ISSUER);
+  });
+});
+
+describe("buildSwapTransaction asset resolution", () => {
+  // Mirrors the params/mocks used by the existing buildSwapTransaction —
+  // includeTrustline tests below; asserts on the built pathPaymentStrictSend op.
+  it("carries the classic asset as sendAsset for an XLM-coded non-native source", async () => {
+    const senderAddress = Keypair.random().publicKey();
+
+    const result = await buildSwapTransaction({
+      sourceBalance: spoofedXlmBalance,
+      destinationBalance: nativeXlmBalance,
+      sourceAmount: "5",
+      destinationAmount: "5",
+      destinationAmountMin: "4.9",
+      path: [],
+      transactionFee: "0.00001",
+      transactionTimeout: 300,
+      network: NETWORKS.TESTNET,
+      senderAddress,
+    });
+    const tx = TransactionBuilder.fromXdr(
+      result.xdr,
+      Networks.TESTNET,
+    ) as Transaction;
+    const op = tx.operations[0] as Operation.PathPaymentStrictSend;
+    expect(op.sendAsset.isNative()).toBe(false);
+    expect(op.sendAsset.getIssuer()).toBe(SPOOF_ISSUER);
+    expect(op.destAsset.isNative()).toBe(true);
+  });
+});
 
 describe("buildSendCollectibleTransaction", () => {
   const mockSenderKeypair = Keypair.random();

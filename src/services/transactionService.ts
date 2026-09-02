@@ -14,14 +14,13 @@ import { BigNumber } from "bignumber.js";
 import {
   DEFAULT_DECIMALS,
   MINIMUM_CREATE_ACCOUNT_XLM,
-  NATIVE_TOKEN_CODE,
   NETWORKS,
   NetworkDetails,
   mapNetworkToNetworkDetails,
 } from "config/constants";
 import { logger } from "config/logger";
 import { PricedBalance } from "config/types";
-import { isNativeBalance } from "helpers/assetIdentity";
+import { isNativeBalance, getNativeContractId } from "helpers/assetIdentity";
 import { isLiquidityPool } from "helpers/balances";
 import {
   getPerOperationBaseFeeStroops,
@@ -31,7 +30,7 @@ import {
   determineMuxedDestination,
   checkContractMuxedSupport,
 } from "helpers/muxedAddress";
-import { isContractId, getNativeContractDetails } from "helpers/soroban";
+import { isContractId } from "helpers/soroban";
 import {
   isValidStellarAddress,
   isSameAccount,
@@ -228,8 +227,9 @@ export const validateSendCollectibleTransactionParams = (params: {
  * Gets the appropriate token for payment
  */
 export const getTokenForPayment = (balance: PricedBalance): SdkToken => {
-  // For native XLM tokens
-  if (balance.tokenCode === NATIVE_TOKEN_CODE || isNativeBalance(balance)) {
+  // Nativeness is decided by the token's type, never by its code — asset
+  // codes are not unique on Stellar.
+  if (isNativeBalance(balance)) {
     return SdkToken.native();
   }
 
@@ -252,17 +252,11 @@ export const getTokenForPayment = (balance: PricedBalance): SdkToken => {
 };
 
 /**
- * Returns the native token contract ID for a given network
+ * Returns the native token contract ID for a given network.
+ * Derived from the network passphrase so it is correct on every network.
  */
-export const getContractIdForNativeToken = (network: NETWORKS): string => {
-  const nativeContractDetails = getNativeContractDetails(network);
-  if (!nativeContractDetails.contract) {
-    throw new Error(
-      `No native token contract available for network: ${network}`,
-    );
-  }
-  return nativeContractDetails.contract;
-};
+export const getContractIdForNativeToken = (network: NETWORKS): string =>
+  getNativeContractId(mapNetworkToNetworkDetails(network).networkPassphrase);
 
 interface IBuildSorobanTransferOperation {
   sourceAccount: string;
