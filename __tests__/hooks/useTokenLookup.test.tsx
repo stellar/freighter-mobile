@@ -137,6 +137,18 @@ jest.mock("services/stellarExpert", () => ({
         },
       });
     }
+    if (searchTerm === "xlm") {
+      return Promise.resolve({
+        _embedded: {
+          records: [
+            {
+              asset: "XLM",
+              domain: "stellar.org",
+            },
+          ],
+        },
+      });
+    }
     if (searchTerm === "contract-only") {
       return Promise.resolve({
         _embedded: {
@@ -402,6 +414,28 @@ describe("useTokenLookup", () => {
     expect(token.tokenType).toBe(TokenTypeWithCustomToken.CUSTOM_TOKEN);
     expect(token.decimals).toBeUndefined();
     expect(token.iconUrl).toBeUndefined();
+  });
+
+  it("classifies the native search record as NATIVE", async () => {
+    const { result } = renderHook(() =>
+      useTokenLookup({
+        network: mockNetwork,
+        publicKey: mockPublicKey,
+        balanceItems: mockBalanceItems,
+      }),
+    );
+
+    await act(async () => {
+      result.current.handleSearch("xlm");
+      await flushPromises();
+    });
+
+    expect(result.current.status).toBe(HookStatus.SUCCESS);
+    expect(result.current.searchResults).toHaveLength(1);
+
+    const record = result.current.searchResults[0];
+    expect(record.isNative).toBe(true);
+    expect(record.tokenType).toBe(TokenTypeWithCustomToken.NATIVE);
   });
 
   it("should handle contract ID search", async () => {

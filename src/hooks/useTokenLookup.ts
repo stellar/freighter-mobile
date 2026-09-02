@@ -98,11 +98,9 @@ export const useTokenLookup = ({
     scanResults: Blockaid.TokenBulkScanResponse,
   ): FormattedSearchTokenRecord[] =>
     tokens.map((token) => {
-      const tokenIdentifier = token.issuer
-        ? `${token.tokenCode}-${token.issuer}`
-        : token.tokenCode;
-
-      const scanResult = scanResults.results?.[tokenIdentifier];
+      const scanResult = token.issuer
+        ? scanResults.results?.[`${token.tokenCode}-${token.issuer}`]
+        : undefined;
       const securityInfo = assessTokenSecurity(
         scanResult,
         overriddenBlockaidResponse,
@@ -226,14 +224,17 @@ export const useTokenLookup = ({
       });
       const iconUrl = icons[tokenIdentifier]?.imageUrl;
 
+      const isNative = result.asset === NATIVE_TOKEN_CODE;
       return {
         tokenCode,
         domain: result.domain ?? "",
         hasTrustline: hasExistingTrustline(userBalances, tokenCode, issuer),
         iconUrl,
         issuer: issuer ?? "",
-        isNative: result.asset === NATIVE_TOKEN_CODE,
-        tokenType: getTokenType(`${tokenCode}:${issuer}`),
+        isNative,
+        tokenType: isNative
+          ? getTokenType(NATIVE_TOKEN_CODE)
+          : getTokenType(`${tokenCode}:${issuer}`),
       };
     });
 

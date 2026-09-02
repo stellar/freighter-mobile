@@ -63,9 +63,9 @@ export const computeTrendingIntersection = (
     return true;
   });
 
-  // Intersect with verified issuers + always allow native XLM.
+  // Intersect with verified issuers + always allow the native record.
   return deduped.filter((t) => {
-    if (t.isNative || t.tokenCode === NATIVE_TOKEN_CODE) return true;
+    if (t.isNative) return true;
     const issuer = t.issuer?.toLowerCase();
     return !!issuer && verifiedIds.has(issuer);
   });
