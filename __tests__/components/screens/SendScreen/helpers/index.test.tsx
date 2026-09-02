@@ -348,6 +348,7 @@ describe("SendScreen Helpers", () => {
         }),
       ).toEqual({
         assetCode: "XLM",
+        isNativeAsset: true,
         isDestinationFunded: false,
         canCreateAccountWithAmount: true,
         isClassicAsset: true,
@@ -367,6 +368,7 @@ describe("SendScreen Helpers", () => {
         }),
       ).toEqual({
         assetCode: "XLM",
+        isNativeAsset: true,
         isDestinationFunded: false,
         canCreateAccountWithAmount: false,
         isClassicAsset: true,
@@ -486,6 +488,36 @@ describe("SendScreen Helpers", () => {
           tokenAmount: "1",
         }),
       ).toMatchObject({ assetCode: "unknown", isClassicAsset: false });
+    });
+  });
+
+  describe("buildUnfundedContext — isNativeAsset", () => {
+    it("marks only the NATIVE tokenType as native, regardless of code", () => {
+      const spoofed = buildUnfundedContext({
+        selectedBalance: {
+          tokenCode: "XLM",
+          tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+        },
+        isDestinationFunded: false,
+        tokenAmount: "5",
+        recipientAddress:
+          "GBEO62ZYAOEKVL4WMF5Q6VYTOJQUT7H2QYRDVFO5LT4W7VQPFDWVKUHO",
+      });
+      expect(spoofed?.isNativeAsset).toBe(false);
+      expect(spoofed?.canCreateAccountWithAmount).toBeUndefined();
+
+      const native = buildUnfundedContext({
+        selectedBalance: {
+          tokenCode: "XLM",
+          tokenType: TokenTypeWithCustomToken.NATIVE,
+        },
+        isDestinationFunded: false,
+        tokenAmount: "5",
+        recipientAddress:
+          "GBEO62ZYAOEKVL4WMF5Q6VYTOJQUT7H2QYRDVFO5LT4W7VQPFDWVKUHO",
+      });
+      expect(native?.isNativeAsset).toBe(true);
+      expect(native?.canCreateAccountWithAmount).toBe(true);
     });
   });
 });

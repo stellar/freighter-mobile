@@ -32,8 +32,10 @@ export interface SecurityWarning {
  * Avoids parsing error strings by using actual transaction data
  */
 export interface UnfundedDestinationContext {
-  /** Asset code being sent (e.g., "USDC", "XLM") */
+  /** Asset code being sent (display copy only — never a decision input). */
   assetCode: string;
+  /** True only when the selected asset is the native lumen (type-derived). */
+  isNativeAsset: boolean;
   /** Whether the destination account exists and is funded */
   isDestinationFunded: boolean;
   /**
@@ -260,15 +262,17 @@ export const isUnfundedDestinationError = (
     return false;
   }
 
-  // Unfunded destination errors occur when destination doesn't exist/funded and
-  // either (a) asset is non-XLM, or (b) asset is XLM but amount cannot create the account.
+  // Unfunded destination errors occur when the destination doesn't exist and
+  // either (a) the asset is not the native lumen, or (b) it is native but the
+  // amount cannot create the account. Nativeness comes from the context's
+  // type-derived flag, never from the asset code.
   const isDestinationNotFunded = !unfundedContext.isDestinationFunded;
-  const isNonXlm = unfundedContext.assetCode !== "XLM";
+  const isNonNative = !unfundedContext.isNativeAsset;
   const canCreateAccount =
-    unfundedContext.assetCode === "XLM" &&
+    unfundedContext.isNativeAsset &&
     unfundedContext.canCreateAccountWithAmount === true;
 
-  return isDestinationNotFunded && (isNonXlm || !canCreateAccount);
+  return isDestinationNotFunded && (isNonNative || !canCreateAccount);
 };
 
 /**
@@ -391,7 +395,7 @@ export const extractSecurityWarnings = (
     isUnfunded = isUnfundedDestinationError(unfundedContext);
     isNativeUnderMinimum =
       isUnfunded &&
-      unfundedContext?.assetCode === "XLM" &&
+      unfundedContext?.isNativeAsset === true &&
       unfundedContext?.canCreateAccountWithAmount === false;
   }
 

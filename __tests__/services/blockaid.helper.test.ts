@@ -296,6 +296,7 @@ describe("isUnfundedDestinationError", () => {
     expect(
       isUnfundedDestinationError({
         assetCode: "PBT",
+        isNativeAsset: false,
         isDestinationFunded: false,
         isClassicAsset: false,
         isContractDestination: false,
@@ -307,6 +308,7 @@ describe("isUnfundedDestinationError", () => {
     expect(
       isUnfundedDestinationError({
         assetCode: "collectible",
+        isNativeAsset: false,
         isDestinationFunded: false,
         isClassicAsset: false,
         isContractDestination: false,
@@ -318,6 +320,7 @@ describe("isUnfundedDestinationError", () => {
     expect(
       isUnfundedDestinationError({
         assetCode: "USDC",
+        isNativeAsset: false,
         isDestinationFunded: false,
         isClassicAsset: true,
         isContractDestination: false,
@@ -329,6 +332,7 @@ describe("isUnfundedDestinationError", () => {
     expect(
       isUnfundedDestinationError({
         assetCode: "XLM",
+        isNativeAsset: true,
         isDestinationFunded: false,
         canCreateAccountWithAmount: false,
         isClassicAsset: true,
@@ -341,6 +345,7 @@ describe("isUnfundedDestinationError", () => {
     expect(
       isUnfundedDestinationError({
         assetCode: "XLM",
+        isNativeAsset: true,
         isDestinationFunded: false,
         canCreateAccountWithAmount: true,
         isClassicAsset: true,
@@ -353,6 +358,7 @@ describe("isUnfundedDestinationError", () => {
     expect(
       isUnfundedDestinationError({
         assetCode: "USDC",
+        isNativeAsset: false,
         isDestinationFunded: true,
         isClassicAsset: true,
         isContractDestination: false,
@@ -367,6 +373,7 @@ describe("isUnfundedDestinationError", () => {
     expect(
       isUnfundedDestinationError({
         assetCode: "USDC",
+        isNativeAsset: false,
         isDestinationFunded: false,
         isClassicAsset: true,
         isContractDestination: true,
@@ -378,12 +385,54 @@ describe("isUnfundedDestinationError", () => {
     expect(
       isUnfundedDestinationError({
         assetCode: "XLM",
+        isNativeAsset: true,
         isDestinationFunded: false,
         canCreateAccountWithAmount: false,
         isClassicAsset: true,
         isContractDestination: true,
       }),
     ).toBe(false);
+  });
+});
+
+describe("isUnfundedDestinationError — asset identity", () => {
+  const base = {
+    isDestinationFunded: false,
+    isClassicAsset: true,
+    isContractDestination: false,
+  };
+
+  it("is an error when a non-native XLM-coded asset goes to an unfunded destination", () => {
+    expect(
+      isUnfundedDestinationError({
+        ...base,
+        assetCode: "XLM",
+        isNativeAsset: false,
+        canCreateAccountWithAmount: undefined,
+      }),
+    ).toBe(true);
+  });
+
+  it("is not an error for native with a sufficient amount", () => {
+    expect(
+      isUnfundedDestinationError({
+        ...base,
+        assetCode: "XLM",
+        isNativeAsset: true,
+        canCreateAccountWithAmount: true,
+      }),
+    ).toBe(false);
+  });
+
+  it("is an error for native under the account-creation minimum", () => {
+    expect(
+      isUnfundedDestinationError({
+        ...base,
+        assetCode: "XLM",
+        isNativeAsset: true,
+        canCreateAccountWithAmount: false,
+      }),
+    ).toBe(true);
   });
 });
 
