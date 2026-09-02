@@ -20,7 +20,8 @@ import {
   mapNetworkToNetworkDetails,
 } from "config/constants";
 import { logger } from "config/logger";
-import { Balance, NativeBalance, PricedBalance } from "config/types";
+import { PricedBalance } from "config/types";
+import { isNativeBalance } from "helpers/assetIdentity";
 import { isLiquidityPool } from "helpers/balances";
 import {
   getPerOperationBaseFeeStroops,
@@ -87,11 +88,7 @@ export interface BuildSendCollectibleParams {
   senderAddress?: string;
 }
 
-export const isNativeBalance = (balance: Balance): balance is NativeBalance =>
-  "token" in balance &&
-  balance.token &&
-  "type" in balance.token &&
-  balance.token.type === "native";
+export { isNativeBalance };
 
 interface IValidateTransactionParams {
   senderAddress: string;
