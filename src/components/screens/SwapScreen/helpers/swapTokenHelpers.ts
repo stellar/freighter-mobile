@@ -70,51 +70,29 @@ export const findBalanceForToken = ({
   token: incomingToken,
   balanceItems,
 }: FindBalanceForTokenParams): PricedBalance | undefined => {
-  // Strategy 1: Use getTokenIdentifier for exact matching
+  // Exact identifier match (code:issuer / symbol:contract / "XLM").
   const tokenIdentifier = getTokenIdentifier(incomingToken);
   if (tokenIdentifier) {
-    const exactMatch = balanceItems.find((item) => {
-      const itemIdentifier = getTokenIdentifier(item);
-      return itemIdentifier === tokenIdentifier;
-    });
+    const exactMatch = balanceItems.find(
+      (item) => getTokenIdentifier(item) === tokenIdentifier,
+    );
     if (exactMatch) return exactMatch;
   }
 
-  // Strategy 2: Match by token code for native tokens
+  // Native tokens can also be keyed by the raw "native" sentinel.
   if (incomingToken.type === "native") {
-    const nativeMatch = balanceItems.find((item) => {
+    return balanceItems.find((item) => {
       if ("token" in item && item.token.type === "native") {
         return true;
       }
       return isNativeAssetId(item.id);
     });
-    if (nativeMatch) return nativeMatch;
   }
 
-  // Strategy 3: Match by code and issuer for tokens
-  if (incomingToken.type !== "native") {
-    const token = incomingToken;
-    const tokenMatch = balanceItems.find((item) => {
-      if ("token" in item && item.token.type !== "native") {
-        const itemToken = item.token;
-        return (
-          itemToken.code === token.code && itemToken.issuer === token.issuer
-        );
-      }
-      return false;
-    });
-    if (tokenMatch) return tokenMatch;
-  }
-
-  // Strategy 4: Fallback to code-only matching (less reliable)
-  const codeMatch = balanceItems.find((item) => {
-    if ("token" in item) {
-      return item.token.code === incomingToken.code;
-    }
-    return item.tokenCode === incomingToken.code;
-  });
-
-  return codeMatch;
+  // No looser fallbacks: a balance that doesn't match by full identity is
+  // a different asset, and valuing one asset at another's price is wrong
+  // even when the codes agree.
+  return undefined;
 };
 
 /**
