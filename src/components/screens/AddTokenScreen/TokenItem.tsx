@@ -6,6 +6,7 @@ import {
   TokenTypeWithCustomToken,
   FormattedSearchTokenRecord,
 } from "config/types";
+import useAppTranslation from "hooks/useAppTranslation";
 import React, { memo } from "react";
 import { View } from "react-native";
 
@@ -19,42 +20,48 @@ const TokenItem: React.FC<TokenItemProps> = ({
   token,
   handleAddToken,
   handleRemoveToken,
-}) => (
-  <View className="mb-4 flex-row justify-between items-center flex-1">
-    <View className="flex-row items-center flex-1">
-      <TokenIconWithBadge
-        iconUrl={token.iconUrl}
-        token={{
-          type: token.tokenType as TokenTypeWithCustomToken,
-          code: token.tokenCode,
-          issuer: {
-            key: token.issuer,
-          },
-        }}
-        securityLevel={token.securityLevel}
-      />
-      <View className="ml-4 flex-1 mr-2">
-        <Text md primary medium numberOfLines={1}>
-          {token.tokenCode}
-        </Text>
-        <Text sm secondary medium numberOfLines={1}>
-          {token.domain || "-"}
-        </Text>
+}) => {
+  const { t } = useAppTranslation();
+
+  return (
+    <View className="mb-4 flex-row justify-between items-center flex-1">
+      <View className="flex-row items-center flex-1">
+        <TokenIconWithBadge
+          iconUrl={token.iconUrl}
+          token={{
+            type: token.tokenType as TokenTypeWithCustomToken,
+            code: token.tokenCode,
+            issuer: {
+              key: token.issuer,
+            },
+          }}
+          securityLevel={token.securityLevel}
+        />
+        <View className="ml-4 flex-1 mr-2">
+          <Text md primary medium numberOfLines={1}>
+            {token.tokenCode}
+          </Text>
+          <Text sm secondary medium numberOfLines={1}>
+            {token.isNative ? t("common.stellarNetwork") : token.domain || "-"}
+          </Text>
+        </View>
       </View>
+      {token.hasTrustline ? (
+        <ManageTokenRightContent
+          token={{
+            isNative: token.isNative,
+            id: token.isNative
+              ? token.tokenCode
+              : `${token.tokenCode}:${token.issuer}`,
+          }}
+          handleRemoveToken={() => handleRemoveToken(token)}
+        />
+      ) : (
+        <AddTokenRightContent handleAddToken={() => handleAddToken(token)} />
+      )}
     </View>
-    {token.hasTrustline ? (
-      <ManageTokenRightContent
-        token={{
-          isNative: token.isNative,
-          id: `${token.tokenCode}:${token.issuer}`,
-        }}
-        handleRemoveToken={() => handleRemoveToken(token)}
-      />
-    ) : (
-      <AddTokenRightContent handleAddToken={() => handleAddToken(token)} />
-    )}
-  </View>
-);
+  );
+};
 export default memo(
   TokenItem,
   (prev, next) =>
