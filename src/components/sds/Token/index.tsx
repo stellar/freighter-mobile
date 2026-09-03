@@ -594,7 +594,6 @@ const ImageWithFallback: React.FC<{
     React.useCallback(
       (storeState) => {
         if (!tokenCode || !tokenIssuer) return null;
-        if (tokenCode === NATIVE_TOKEN_CODE) return null;
         return storeState.icons[`${tokenCode}:${tokenIssuer}`];
       },
       [tokenCode, tokenIssuer],
@@ -607,7 +606,6 @@ const ImageWithFallback: React.FC<{
 
   useEffect(() => {
     if (!tokenCode || !tokenIssuer || icon === null) return;
-    if (tokenCode === NATIVE_TOKEN_CODE) return;
     if (icon && icon.isValidated !== true && icon.isValid !== false) {
       validateIconOnAccess(`${tokenCode}:${tokenIssuer}`);
     }
@@ -617,7 +615,11 @@ const ImageWithFallback: React.FC<{
   // -------------------------------------------------------------------------
 
   // Resolve the final image URL from props or the store.
-  const isNativeToken = tokenCode === NATIVE_TOKEN_CODE;
+  // An asset code alone cannot identify the native lumen — any classic asset
+  // may use the code "XLM". The native asset reaches this component through
+  // `source.image` (see TokenIcon's native branch), so a token passed here
+  // with the native code and no issuer is the only native shape left.
+  const isNativeToken = tokenCode === NATIVE_TOKEN_CODE && !tokenIssuer;
   const isUSDC =
     tokenCode === USDC_CODE &&
     (tokenIssuer === CIRCLE_USDC_ISSUER ||
