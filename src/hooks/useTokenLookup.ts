@@ -43,6 +43,56 @@ interface UseTokenLookupProps {
   })[];
 }
 
+// The native asset is trusted by default and isn't a scannable Blockaid
+// address (it's excluded from the bulk-scan address list), so it's assessed
+// as benign directly rather than looked up in the scan response.
+const NATIVE_BENIGN_SCAN_RESULT = {
+  result_type: "Benign",
+} as Blockaid.TokenScanResponse;
+
+// Resolves the bulk-scan result to assess a search record with: the native
+// record is always benign, an issuer-bearing record is looked up by its
+// tokenCode-issuer pair, and any other record (no issuer, not native) is
+// honestly unable to be scanned.
+const getBulkScanResultForToken = (
+  token: FormattedSearchTokenRecord,
+  scanResults: Blockaid.TokenBulkScanResponse,
+): Blockaid.TokenScanResponse | undefined => {
+  if (token.isNative) {
+    return NATIVE_BENIGN_SCAN_RESULT;
+  }
+
+  if (!token.issuer) {
+    return undefined;
+  }
+
+  return scanResults.results?.[`${token.tokenCode}-${token.issuer}`];
+};
+
+// Fallback security fields applied when the bulk scan request itself fails:
+// the native record stays safe (it's never actually sent to the scanner),
+// while every other record is conservatively marked suspicious.
+const getFallbackSecurityFields = (
+  token: FormattedSearchTokenRecord,
+): Pick<
+  FormattedSearchTokenRecord,
+  "isSuspicious" | "isMalicious" | "securityLevel"
+> => {
+  if (token.isNative) {
+    return {
+      isSuspicious: false,
+      isMalicious: false,
+      securityLevel: SecurityLevel.SAFE,
+    };
+  }
+
+  return {
+    isSuspicious: true,
+    isMalicious: false,
+    securityLevel: SecurityLevel.SUSPICIOUS,
+  };
+};
+
 export const useTokenLookup = ({
   network,
   publicKey,
@@ -99,9 +149,7 @@ export const useTokenLookup = ({
     scanResults: Blockaid.TokenBulkScanResponse,
   ): FormattedSearchTokenRecord[] =>
     tokens.map((token) => {
-      const scanResult = token.issuer
-        ? scanResults.results?.[`${token.tokenCode}-${token.issuer}`]
-        : undefined;
+      const scanResult = getBulkScanResultForToken(token, scanResults);
       const securityInfo = assessTokenSecurity(
         scanResult,
         overriddenBlockaidResponse,
@@ -229,7 +277,11 @@ export const useTokenLookup = ({
       return {
         tokenCode,
         domain: result.domain ?? "",
-        hasTrustline: hasExistingTrustline(userBalances, tokenCode, issuer),
+        hasTrustline: hasExistingTrustline(
+          userBalances,
+          tokenCode,
+          issuer ?? "",
+        ),
         iconUrl,
         issuer: issuer ?? "",
         isNative,
@@ -366,9 +418,7 @@ export const useTokenLookup = ({
         const fallbackSearchResults: FormattedSearchTokenRecord[] =
           formattedRecords.map((token) => ({
             ...token,
-            isSuspicious: true,
-            isMalicious: false,
-            securityLevel: SecurityLevel.SUSPICIOUS,
+            ...getFallbackSecurityFields(token),
           }));
 
         const groupedFallbackResults = groupTokensBySecurityLevel(

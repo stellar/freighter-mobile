@@ -5,10 +5,7 @@ import { Badge } from "components/sds/Badge";
 import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import {
-  mapNetworkToNetworkDetails,
-  NATIVE_TOKEN_CODE,
-} from "config/constants";
+import { mapNetworkToNetworkDetails } from "config/constants";
 import {
   NativeToken,
   NonNativeToken,
@@ -28,6 +25,10 @@ type TokenDetails = {
   tokenCode: string;
   tokenType: string;
   domain?: string;
+  // Optional: TokenDetailsScreen's RemoveTokenSheetContent never reaches this
+  // component for the native asset (it's guarded earlier), so it doesn't pass
+  // this field. Add-token's AddTokenScreen always passes it explicitly.
+  isNative?: boolean;
 };
 
 type RemoveTokenBottomSheetContentProps = {
@@ -110,19 +111,18 @@ const RemoveTokenBottomSheetContent: React.FC<
     return null;
   }
 
-  const iconTokenProp =
-    token.issuer === NATIVE_TOKEN_CODE
-      ? ({
-          type: "native",
-          code: token.issuer,
-        } as NativeToken)
-      : ({
-          type: token.tokenType as TokenTypeWithCustomToken,
-          code: token.tokenCode,
-          issuer: {
-            key: token.issuer,
-          },
-        } as NonNativeToken);
+  const iconTokenProp = token.isNative
+    ? ({
+        type: "native",
+        code: token.tokenCode,
+      } as NativeToken)
+    : ({
+        type: token.tokenType as TokenTypeWithCustomToken,
+        code: token.tokenCode,
+        issuer: {
+          key: token.issuer,
+        },
+      } as NonNativeToken);
 
   return (
     <View className="flex-1 justify-center items-center mt-8">

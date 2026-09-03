@@ -8,6 +8,8 @@ import {
   PricedBalance,
 } from "config/types";
 import { useTokenLookup } from "hooks/useTokenLookup";
+import { scanBulkTokens } from "services/blockaid/api";
+import { SecurityLevel } from "services/blockaid/constants";
 
 // Mock helpers
 jest.mock("helpers/balances", () => {
@@ -16,10 +18,12 @@ jest.mock("helpers/balances", () => {
     ...originalModule,
     formatTokenIdentifier: (tokenId: string) => {
       const [tokenCode, issuer] = tokenId.split(":");
-      return { tokenCode, issuer };
+      return { tokenCode, issuer: issuer ?? "" };
     },
   };
 });
+
+jest.mock("services/blockaid/api");
 
 jest.mock("helpers/soroban", () => ({
   isContractId: (value: string) => value.startsWith("C") && value.length === 56,
@@ -149,6 +153,36 @@ jest.mock("services/stellarExpert", () => ({
         },
       });
     }
+    if (searchTerm === "xlm-coded-classic") {
+      return Promise.resolve({
+        _embedded: {
+          records: [
+            {
+              asset:
+                "XLM-GASIX3XBHMFJGHOMC2FEELMO2E6JYE5LL2V2QBW3GX23GJI2EHWM4R5E-1",
+              domain: "example.com",
+            },
+          ],
+        },
+      });
+    }
+    if (searchTerm === "xlm-mixed") {
+      return Promise.resolve({
+        _embedded: {
+          records: [
+            {
+              asset: "XLM",
+              domain: "stellar.org",
+            },
+            {
+              asset:
+                "XLM-GASIX3XBHMFJGHOMC2FEELMO2E6JYE5LL2V2QBW3GX23GJI2EHWM4R5E-1",
+              domain: "example.com",
+            },
+          ],
+        },
+      });
+    }
     if (searchTerm === "contract-only") {
       return Promise.resolve({
         _embedded: {
@@ -177,6 +211,10 @@ const flushPromises = () =>
   new Promise((resolve) => {
     setTimeout(resolve, 500);
   });
+
+const mockScanBulkTokens = scanBulkTokens as jest.MockedFunction<
+  typeof scanBulkTokens
+>;
 
 describe("useTokenLookup", () => {
   const mockNetwork = NETWORKS.TESTNET;
@@ -456,5 +494,137 @@ describe("useTokenLookup", () => {
 
     expect(result.current.status).toBe(HookStatus.SUCCESS);
     expect(result.current.searchResults[0].tokenCode).toBe("TOKEN");
+  });
+});
+
+describe("useTokenLookup — native asset consolidation in bulk-scan results", () => {
+  const mockMainnet = NETWORKS.PUBLIC;
+  const mockPublicKey =
+    "GBWMCCC3NHSKLAOJDBKKYW7SSH2PFTTNVFKWSGLWGDLEBKLOVP5JLBBP";
+  const classicXlmCodedIssuer =
+    "GASIX3XBHMFJGHOMC2FEELMO2E6JYE5LL2V2QBW3GX23GJI2EHWM4R5E";
+
+  const nativeBalanceItem: PricedBalance & { id: string } = {
+    id: "XLM",
+    total: new BigNumber("100"),
+    available: new BigNumber("99"),
+    minimumBalance: new BigNumber("1"),
+    buyingLiabilities: "0",
+    sellingLiabilities: "0",
+    token: {
+      code: "XLM",
+      type: "native" as const,
+    },
+    tokenCode: "XLM",
+    fiatCode: "USD",
+    fiatTotal: new BigNumber("50"),
+    displayName: "Stellar Lumens",
+    currentPrice: new BigNumber("0.5"),
+    percentagePriceChange24h: new BigNumber("2.5"),
+  };
+
+  beforeEach(() => {
+    mockScanBulkTokens.mockReset();
+  });
+
+  it("does not report the native search record as unable to scan", async () => {
+    mockScanBulkTokens.mockResolvedValueOnce({ results: {} } as never);
+
+    const { result } = renderHook(() =>
+      useTokenLookup({
+        network: mockMainnet,
+        publicKey: mockPublicKey,
+        balanceItems: [],
+      }),
+    );
+
+    await act(async () => {
+      result.current.handleSearch("xlm");
+      await flushPromises();
+    });
+
+    expect(result.current.status).toBe(HookStatus.SUCCESS);
+    const record = result.current.searchResults.find((t) => t.isNative);
+    expect(record).toBeDefined();
+    expect(record?.isUnableToScan).toBe(false);
+    expect(record?.securityLevel).toBe(SecurityLevel.SAFE);
+  });
+
+  it("still applies the bulk-scan verdict to an XLM-coded classic asset with an issuer", async () => {
+    mockScanBulkTokens.mockResolvedValueOnce({
+      results: {
+        [`XLM-${classicXlmCodedIssuer}`]: { result_type: "Malicious" },
+      },
+    } as never);
+
+    const { result } = renderHook(() =>
+      useTokenLookup({
+        network: mockMainnet,
+        publicKey: mockPublicKey,
+        balanceItems: [],
+      }),
+    );
+
+    await act(async () => {
+      result.current.handleSearch("xlm-coded-classic");
+      await flushPromises();
+    });
+
+    expect(result.current.status).toBe(HookStatus.SUCCESS);
+    expect(result.current.searchResults).toHaveLength(1);
+
+    const record = result.current.searchResults[0];
+    expect(record.isNative).toBe(false);
+    expect(record.isMalicious).toBe(true);
+  });
+
+  it("marks the native record as held and the unheld XLM-coded classic asset as not held", async () => {
+    mockScanBulkTokens.mockResolvedValueOnce({ results: {} } as never);
+
+    const { result } = renderHook(() =>
+      useTokenLookup({
+        network: mockMainnet,
+        publicKey: mockPublicKey,
+        balanceItems: [nativeBalanceItem],
+      }),
+    );
+
+    await act(async () => {
+      result.current.handleSearch("xlm-mixed");
+      await flushPromises();
+    });
+
+    expect(result.current.status).toBe(HookStatus.SUCCESS);
+
+    const nativeRecord = result.current.searchResults.find((t) => t.isNative);
+    const classicRecord = result.current.searchResults.find((t) => !t.isNative);
+
+    expect(nativeRecord?.hasTrustline).toBe(true);
+    expect(classicRecord?.hasTrustline).toBe(false);
+  });
+
+  it("keeps the native record safe when the bulk scan fails, unlike other records", async () => {
+    mockScanBulkTokens.mockRejectedValueOnce(new Error("scan unavailable"));
+
+    const { result } = renderHook(() =>
+      useTokenLookup({
+        network: mockMainnet,
+        publicKey: mockPublicKey,
+        balanceItems: [],
+      }),
+    );
+
+    await act(async () => {
+      result.current.handleSearch("xlm-mixed");
+      await flushPromises();
+    });
+
+    expect(result.current.status).toBe(HookStatus.SUCCESS);
+
+    const nativeRecord = result.current.searchResults.find((t) => t.isNative);
+    const classicRecord = result.current.searchResults.find((t) => !t.isNative);
+
+    expect(nativeRecord?.isSuspicious).toBe(false);
+    expect(classicRecord?.isSuspicious).toBe(true);
   });
 });

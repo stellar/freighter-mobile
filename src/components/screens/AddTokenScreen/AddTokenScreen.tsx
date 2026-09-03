@@ -216,7 +216,7 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
   }, [selectedToken]);
 
   const renderRemoveBottomSheet = useCallback(() => {
-    if (selectedToken && selectedToken.issuer === "XLM") {
+    if (selectedToken && selectedToken.isNative) {
       return (
         <CannotRemoveTokenBottomSheet
           type={CannotRemoveType.native}
@@ -254,6 +254,7 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
             issuer: selectedToken.issuer,
             tokenCode: selectedToken.tokenCode,
             tokenType: selectedToken.tokenType!,
+            isNative: selectedToken.isNative,
           }}
           account={account}
           onCancel={handleCancelTokenRemoval}
