@@ -218,11 +218,17 @@ export const useTokenLookup = ({
         return {
           ...result,
           iconUrl,
-          hasTrustline: hasExistingTrustline(
-            userBalances,
-            result.tokenCode,
-            result.issuer,
-          ),
+          // An explicitly native record already knows it's held (the native
+          // asset always has a trustline); only recompute for everything
+          // else, so a future issuer value on the native record can't
+          // resurrect a stale trustline check here.
+          hasTrustline: result.isNative
+            ? result.hasTrustline
+            : hasExistingTrustline(
+                userBalances,
+                result.tokenCode,
+                result.issuer,
+              ),
         };
       }
 

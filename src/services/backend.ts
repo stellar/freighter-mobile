@@ -35,6 +35,7 @@ import {
   TokenPricesMap,
 } from "config/types";
 import { addBlockaidScanResults } from "helpers/addBlockaidScanResults";
+import { isNativeContract } from "helpers/assetIdentity";
 import { getTokenType } from "helpers/balances";
 import { bigize } from "helpers/bigize";
 import { injectLocalTokenBalances } from "helpers/injectLocalTokenBalances";
@@ -914,14 +915,18 @@ export const handleContractLookup = async (
   publicKey?: string,
   signal?: AbortSignal,
 ): Promise<FormattedSearchTokenRecord | null> => {
-  const nativeContractDetails = getNativeContractDetails(network);
+  const { networkPassphrase } = mapNetworkToNetworkDetails(network);
 
-  if (nativeContractDetails.contract === contractId) {
+  if (isNativeContract(contractId, networkPassphrase)) {
+    const nativeContractDetails = getNativeContractDetails(network);
+
     return {
       tokenCode: nativeContractDetails.code,
       domain: nativeContractDetails.domain,
       hasTrustline: true,
-      issuer: nativeContractDetails.issuer,
+      // The native asset has no issuer; matches the stellar.expert path's
+      // native record (`issuer: issuer ?? ""`).
+      issuer: "",
       isNative: true,
       tokenType: TokenTypeWithCustomToken.NATIVE,
     };
@@ -946,7 +951,8 @@ export const handleContractLookup = async (
 
   return {
     tokenCode: tokenDetails.symbol,
-    domain: "Stellar Network",
+    // No domain is available for a contract token; the UI falls back to "-".
+    domain: "",
     hasTrustline: false,
     issuer,
     isNative: false,

@@ -58,6 +58,11 @@ jest.mock("hooks/useDebounce", () => ({
   default: (callback: () => void) => callback,
 }));
 
+// The pubnet native SAC id, used to exercise the contract-search path
+// (handleContractLookup) for the native asset end-to-end.
+const NATIVE_CONTRACT_ID =
+  "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA";
+
 // Mock API services - don't use jest.fn() since it's causing issues
 jest.mock("services/backend", () => ({
   handleContractLookup: (contractId: string) => {
@@ -69,6 +74,23 @@ jest.mock("services/backend", () => ({
         tokenCode: "TOKEN",
         issuer: "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5",
         domain: "soroban.stellar.org",
+      });
+    }
+    if (
+      contractId === "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA"
+    ) {
+      // Mirrors a native record whose issuer field is populated (as
+      // `getNativeContractDetails` supplies on pubnet) to prove the hook
+      // trusts the record's own `hasTrustline` for a native result rather
+      // than recomputing it from an issuer that a held native balance
+      // (issuer "") would never match.
+      return Promise.resolve({
+        tokenCode: "XLM",
+        issuer: "GDMTVHLWJTHSUDMZVVMXXH6VJHA2ZV3HNG5LYNAZ6RTWB7GISM6PGTUV",
+        domain: "https://stellar.org",
+        hasTrustline: true,
+        isNative: true,
+        tokenType: "native",
       });
     }
     return Promise.reject(new Error("Contract lookup failed"));
@@ -601,6 +623,28 @@ describe("useTokenLookup — native asset consolidation in bulk-scan results", (
 
     expect(nativeRecord?.hasTrustline).toBe(true);
     expect(classicRecord?.hasTrustline).toBe(false);
+  });
+
+  it("marks the native contract address as held when searched directly and the user holds the native balance", async () => {
+    mockScanBulkTokens.mockResolvedValueOnce({ results: {} } as never);
+
+    const { result } = renderHook(() =>
+      useTokenLookup({
+        network: mockMainnet,
+        publicKey: mockPublicKey,
+        balanceItems: [nativeBalanceItem],
+      }),
+    );
+
+    await act(async () => {
+      result.current.handleSearch(NATIVE_CONTRACT_ID);
+      await flushPromises();
+    });
+
+    expect(result.current.status).toBe(HookStatus.SUCCESS);
+
+    const nativeRecord = result.current.searchResults.find((t) => t.isNative);
+    expect(nativeRecord?.hasTrustline).toBe(true);
   });
 
   it("keeps the native record safe when the bulk scan fails, unlike other records", async () => {
