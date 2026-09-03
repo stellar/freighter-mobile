@@ -4,12 +4,10 @@ import { Balance, NativeBalance, NativeToken, Token } from "config/types";
 /**
  * Shared asset-identity predicates.
  *
- * Nativeness is a property of a token's TYPE (or, in contract space, of the
- * contract id), never of its code or symbol: "XLM" is not a reserved code,
- * so any comparison against the bare code cannot distinguish the native
- * lumen from another asset using the same code. Every native check in the
- * app should go through one of these predicates (or, for canonical
- * identifier strings, through `isNativeAssetId` in config/constants).
+ * Nativeness is a property of a token's type, or — in contract space — of
+ * the contract id. Every native check in the app should go through one of
+ * these predicates, or, for canonical identifier strings, through
+ * `isNativeAssetId` in config/constants.
  */
 
 /** True only for a token whose declared type is native. */
@@ -24,9 +22,7 @@ export const isNativeBalance = (balance: Balance): balance is NativeBalance =>
 
 /**
  * The native lumen's Stellar Asset Contract id, derived from the network
- * passphrase. Correct by construction on every network — never read this
- * from a per-network table, which silently returns a wrong/empty value for
- * networks the table doesn't list.
+ * passphrase, so it is correct by construction on every network.
  */
 export const getNativeContractId = (networkPassphrase: string): string =>
   Asset.native().contractId(networkPassphrase);

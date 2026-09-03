@@ -89,9 +89,8 @@ export const findBalanceForToken = ({
     });
   }
 
-  // No looser fallbacks: a balance that doesn't match by full identity is
-  // a different asset, and valuing one asset at another's price is wrong
-  // even when the codes agree.
+  // A balance that doesn't match by full identity is a different asset, so
+  // there is no looser fallback.
   return undefined;
 };
 

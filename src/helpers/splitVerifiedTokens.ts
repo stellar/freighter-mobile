@@ -54,8 +54,7 @@ export const splitVerifiedTokens = async ({
         return [verifiedList, unverifiedList];
       }
 
-      // Native is always verified. Nativeness comes from the record's own
-      // flag, never from its code.
+      // Native is always verified.
       if (token.isNative) {
         verifiedList.push(token);
         return [verifiedList, unverifiedList];

@@ -118,8 +118,7 @@ export const getNativeContractDetails = (network: NETWORKS) => {
   };
 
   // The native SAC address derives deterministically from the network
-  // passphrase — deriving it keeps every network correct, including ones
-  // without an entry in the issuer table below.
+  // passphrase, which keeps every network correct.
   const contract = getNativeContractId(
     mapNetworkToNetworkDetails(network).networkPassphrase,
   );
@@ -333,8 +332,8 @@ export const getBalanceByKey = (
       "contractId" in balance && contractId === balance.contractId;
 
     try {
-      // The native arm is entered only for the native-typed balance; any
-      // other balance — whatever its code — is matched by its own SAC below.
+      // The native arm is entered only for the native-typed balance; every
+      // other balance is matched by its own SAC below.
       if ("token" in balance && isNativeToken(balance.token)) {
         return isNativeContract(contractId, networkDetails.networkPassphrase);
       }

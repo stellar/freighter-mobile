@@ -104,10 +104,9 @@ interface SorobanTokenIdentityInput {
 }
 
 /**
- * Resolves how a Soroban token identifies for display. Self-reported
- * metadata (symbol/name) is never trusted on its own: "native" counts as
- * XLM only when the contract IS the native SAC, and a CODE:ISSUER name
- * counts as that SAC only when the contract id derives from the pair.
+ * Resolves how a Soroban token identifies for display. "native" counts as
+ * XLM when the contract is the native SAC, and a CODE:ISSUER name counts
+ * as that SAC when the contract id derives from the pair.
  */
 export const resolveSorobanDisplayIdentity = (
   token: SorobanTokenIdentityInput,

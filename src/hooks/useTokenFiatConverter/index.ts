@@ -87,8 +87,7 @@ export const useTokenFiatConverter = ({
 
   const [state, dispatch] = useReducer(reducer, initialState);
 
-  // Track the previous token identity (code:issuer) to detect changes —
-  // two assets can share a code, and switching between them must reset.
+  // Track the previous token identity (code:issuer) to detect changes.
   const previousTokenIdRef = useRef<string | undefined>(
     selectedBalance ? getTokenIdentifier(selectedBalance) : undefined,
   );

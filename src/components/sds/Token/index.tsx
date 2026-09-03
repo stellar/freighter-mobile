@@ -615,10 +615,9 @@ const ImageWithFallback: React.FC<{
   // -------------------------------------------------------------------------
 
   // Resolve the final image URL from props or the store.
-  // An asset code alone cannot identify the native lumen — any classic asset
-  // may use the code "XLM". The native asset reaches this component through
-  // `source.image` (see TokenIcon's native branch), so a token passed here
-  // with the native code and no issuer is the only native shape left.
+  // The native asset normally reaches this component through `source.image`
+  // (see TokenIcon's native branch); a token passed here with the native
+  // code and no issuer is the remaining native shape.
   const isNativeToken = tokenCode === NATIVE_TOKEN_CODE && !tokenIssuer;
   const isUSDC =
     tokenCode === USDC_CODE &&

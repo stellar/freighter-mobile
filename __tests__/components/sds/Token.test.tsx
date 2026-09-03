@@ -494,7 +494,7 @@ describe("Token", () => {
         />,
       );
 
-      // The bundled Stellar logo (mocked sentinel) must never appear.
+      // The bundled Stellar logo (mocked sentinel) is not used for this asset.
       const image = queryByLabelText("Classic asset with XLM code");
       expect(image?.props.source?.uri).not.toBe("stellar-logo-url");
 

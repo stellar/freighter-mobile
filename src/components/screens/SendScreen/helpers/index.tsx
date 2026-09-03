@@ -60,8 +60,7 @@ export function buildUnfundedContext({
 
   const assetCode = selectedBalance.tokenCode || "unknown";
   // tokenType is derived from the balance's canonical identifier
-  // (code:issuer), so it distinguishes the native lumen from any other
-  // asset that shares its code.
+  // (code:issuer).
   const isNativeAsset =
     selectedBalance.tokenType === TokenTypeWithCustomToken.NATIVE;
   const canCreateAccountWithAmount = isNativeAsset

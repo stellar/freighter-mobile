@@ -136,9 +136,9 @@ export const operationInvolvesToken = (
     return false;
   }
 
-  // Handle native XLM operations (both classic and Soroban). Native is
-  // identified by the bare "XLM"/"native" identifier — an issuer-bound
-  // XLM:G... identifier is a different asset and is handled below.
+  // Handle native XLM operations (both classic and Soroban), identified by
+  // the bare "XLM"/"native" identifier; issuer-bound identifiers are
+  // handled by the classic arm below.
   if (
     targetToken.code === NATIVE_TOKEN_CODE &&
     !targetToken.issuer &&

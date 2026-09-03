@@ -228,9 +228,7 @@ const extractScanResultsFromBalances = (
   const scanResults: Record<string, Blockaid.Token.TokenScanResponse> = {};
 
   Object.entries(pricedBalances).forEach(([tokenIdentifier, balance]) => {
-    // Native has no scan; liquidity pools are detected by their shape —
-    // never by substring-matching the identifier, which the asset code
-    // could collide with.
+    // Native has no scan result; liquidity pools are detected by their shape.
     if (isNativeAssetId(tokenIdentifier) || isLiquidityPool(balance)) {
       return;
     }

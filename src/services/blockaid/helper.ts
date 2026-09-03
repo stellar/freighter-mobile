@@ -32,7 +32,7 @@ export interface SecurityWarning {
  * Avoids parsing error strings by using actual transaction data
  */
 export interface UnfundedDestinationContext {
-  /** Asset code being sent (display copy only — never a decision input). */
+  /** Asset code being sent, for display copy. */
   assetCode: string;
   /** True only when the selected asset is the native lumen (type-derived). */
   isNativeAsset: boolean;
@@ -264,8 +264,7 @@ export const isUnfundedDestinationError = (
 
   // Unfunded destination errors occur when the destination doesn't exist and
   // either (a) the asset is not the native lumen, or (b) it is native but the
-  // amount cannot create the account. Nativeness comes from the context's
-  // type-derived flag, never from the asset code.
+  // amount cannot create the account.
   const isDestinationNotFunded = !unfundedContext.isDestinationFunded;
   const isNonNative = !unfundedContext.isNativeAsset;
   const canCreateAccount =

@@ -225,8 +225,6 @@ export const validateSendCollectibleTransactionParams = (params: {
  * Gets the appropriate token for payment
  */
 export const getTokenForPayment = (balance: PricedBalance): SdkToken => {
-  // Nativeness is decided by the token's type, never by its code — asset
-  // codes are not unique on Stellar.
   if (isNativeBalance(balance)) {
     return SdkToken.native();
   }

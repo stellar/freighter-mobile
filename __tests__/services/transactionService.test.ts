@@ -63,9 +63,8 @@ jest.mock("services/backend", () => ({
 
 const SPOOF_ISSUER = "GBEO62ZYAOEKVL4WMF5Q6VYTOJQUT7H2QYRDVFO5LT4W7VQPFDWVKUHO";
 
-// Fixture pair: the two must differ ONLY in token type/issuer, both carry
-// tokenCode "XLM", so a test passing for one and failing for the other pins
-// the predicate to the type rather than the code.
+// Fixture pair: identical tokenCode "XLM", differing only in token type and
+// issuer.
 const nativeXlmBalance = {
   id: "native",
   token: { type: "native", code: "XLM" },

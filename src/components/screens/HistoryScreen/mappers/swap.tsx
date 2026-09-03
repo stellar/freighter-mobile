@@ -65,9 +65,7 @@ export const mapSwapHistoryItem = async ({
   const destTokenCodeFinal = destTokenCode || NATIVE_TOKEN_CODE;
   const formattedAmount = `+${formatTokenForDisplay(amount, destTokenCodeFinal)}`;
 
-  // Nativeness is decided from the operation record's own type discriminant,
-  // not from the display code — a classic asset can be coded "XLM" without
-  // being the native asset.
+  // Nativeness comes from the operation record's own type discriminant.
   const isSourceNative = isNativeAssetId(operation.source_asset_type);
   const isDestNative = isNativeAssetId(operation.asset_type);
 

@@ -25,7 +25,6 @@ const nativeBalance: Balance = {
 };
 
 // An XLM-coded classic asset: same code as native, different type/issuer.
-// Must never satisfy a nativeness predicate.
 const spoofedXlmBalance: Balance = {
   token: {
     type: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
