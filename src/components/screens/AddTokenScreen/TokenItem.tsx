@@ -33,6 +33,12 @@ const TokenItem: React.FC<TokenItemProps> = ({
     token.tokenType === TokenTypeWithCustomToken.CUSTOM_TOKEN
   ) {
     subtitle = token.name;
+  } else if (token.name) {
+    // A record with a name but a classic tokenType is a Stellar Asset
+    // Contract resolved by address: its name is the canonical CODE:ISSUER
+    // pair, which is too long and not domain-shaped, so show the token
+    // code in its place instead.
+    subtitle = token.tokenCode;
   }
 
   return (

@@ -211,14 +211,15 @@ describe("TokenItem", () => {
     expect(getByText("-")).toBeTruthy();
   });
 
-  it("does not use a Stellar Asset Contract's canonical name as the subtitle", () => {
+  it("renders a Stellar Asset Contract's token code instead of its canonical name", () => {
     const token = makeToken({
+      tokenCode: "USDC",
       domain: "",
       name: "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
       tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
     });
 
-    const { getByText } = render(
+    const { getAllByText, queryByText } = render(
       <TokenItem
         token={token}
         handleAddToken={handleAddToken}
@@ -226,6 +227,13 @@ describe("TokenItem", () => {
       />,
     );
 
-    expect(getByText("-")).toBeTruthy();
+    expect(
+      queryByText(
+        "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+      ),
+    ).toBeNull();
+    // The token code appears twice: once as the title, once as the
+    // contract-resolved asset's subtitle stand-in for its canonical name.
+    expect(getAllByText("USDC")).toHaveLength(2);
   });
 });
