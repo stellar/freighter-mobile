@@ -23,6 +23,18 @@ const TokenItem: React.FC<TokenItemProps> = ({
 }) => {
   const { t } = useAppTranslation();
 
+  let subtitle = "-";
+  if (token.isNative) {
+    subtitle = t("common.stellarNetwork");
+  } else if (token.domain) {
+    subtitle = token.domain;
+  } else if (
+    token.name &&
+    token.tokenType === TokenTypeWithCustomToken.CUSTOM_TOKEN
+  ) {
+    subtitle = token.name;
+  }
+
   return (
     <View className="mb-4 flex-row justify-between items-center flex-1">
       <View className="flex-row items-center flex-1">
@@ -42,7 +54,7 @@ const TokenItem: React.FC<TokenItemProps> = ({
             {token.tokenCode}
           </Text>
           <Text sm secondary medium numberOfLines={1}>
-            {token.isNative ? t("common.stellarNetwork") : token.domain || "-"}
+            {subtitle}
           </Text>
         </View>
       </View>

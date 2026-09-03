@@ -155,4 +155,77 @@ describe("TokenItem", () => {
       id: "USDC:GAABBCCDDEEFF",
     });
   });
+
+  it("renders a custom token's name when it has no domain", () => {
+    const token = makeToken({
+      domain: "",
+      name: "Aquarius",
+      tokenType: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+    });
+
+    const { getByText } = render(
+      <TokenItem
+        token={token}
+        handleAddToken={handleAddToken}
+        handleRemoveToken={handleRemoveToken}
+      />,
+    );
+
+    expect(getByText("Aquarius")).toBeTruthy();
+  });
+
+  it("prefers the domain over the name for a custom token when both are present", () => {
+    const token = makeToken({
+      domain: "example.com",
+      name: "Aquarius",
+      tokenType: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+    });
+
+    const { getByText, queryByText } = render(
+      <TokenItem
+        token={token}
+        handleAddToken={handleAddToken}
+        handleRemoveToken={handleRemoveToken}
+      />,
+    );
+
+    expect(getByText("example.com")).toBeTruthy();
+    expect(queryByText("Aquarius")).toBeNull();
+  });
+
+  it("renders a dash for a custom token with neither a domain nor a name", () => {
+    const token = makeToken({
+      domain: "",
+      name: undefined,
+      tokenType: TokenTypeWithCustomToken.CUSTOM_TOKEN,
+    });
+
+    const { getByText } = render(
+      <TokenItem
+        token={token}
+        handleAddToken={handleAddToken}
+        handleRemoveToken={handleRemoveToken}
+      />,
+    );
+
+    expect(getByText("-")).toBeTruthy();
+  });
+
+  it("does not use a Stellar Asset Contract's canonical name as the subtitle", () => {
+    const token = makeToken({
+      domain: "",
+      name: "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+      tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+    });
+
+    const { getByText } = render(
+      <TokenItem
+        token={token}
+        handleAddToken={handleAddToken}
+        handleRemoveToken={handleRemoveToken}
+      />,
+    );
+
+    expect(getByText("-")).toBeTruthy();
+  });
 });
