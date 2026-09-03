@@ -836,9 +836,9 @@ describe("soroban helpers", () => {
     const networkDetails = TESTNET_NETWORK_DETAILS; // from config/constants
     const NATIVE_SAC =
       "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC";
-    const SPOOF_ISSUER =
+    const CLASSIC_XLM_ISSUER =
       "GBEO62ZYAOEKVL4WMF5Q6VYTOJQUT7H2QYRDVFO5LT4W7VQPFDWVKUHO";
-    const spoofSac = new SdkToken("XLM", SPOOF_ISSUER).contractId(
+    const classicXlmSac = new SdkToken("XLM", CLASSIC_XLM_ISSUER).contractId(
       networkDetails.networkPassphrase,
     );
 
@@ -847,15 +847,15 @@ describe("soroban helpers", () => {
       total: new BigNumber("10"),
     } as unknown as Balance;
 
-    const spoofedXlmBalance = {
-      token: { code: "XLM", issuer: { key: SPOOF_ISSUER } },
+    const nonNativeXlmBalance = {
+      token: { code: "XLM", issuer: { key: CLASSIC_XLM_ISSUER } },
       total: new BigNumber("10"),
     } as unknown as Balance;
 
     it("resolves the native SAC to the native balance even when an XLM-coded classic balance sorts first", () => {
       const found = getBalanceByKey(
         NATIVE_SAC,
-        [spoofedXlmBalance, nativeBalance],
+        [nonNativeXlmBalance, nativeBalance],
         networkDetails,
       );
       expect(found).toBe(nativeBalance);
@@ -863,11 +863,11 @@ describe("soroban helpers", () => {
 
     it("resolves an XLM-coded classic balance by its own SAC", () => {
       const found = getBalanceByKey(
-        spoofSac,
-        [spoofedXlmBalance, nativeBalance],
+        classicXlmSac,
+        [nonNativeXlmBalance, nativeBalance],
         networkDetails,
       );
-      expect(found).toBe(spoofedXlmBalance);
+      expect(found).toBe(nonNativeXlmBalance);
     });
   });
 });

@@ -25,7 +25,7 @@ const nativeBalance: Balance = {
 };
 
 // An XLM-coded classic asset: same code as native, different type/issuer.
-const spoofedXlmBalance: Balance = {
+const nonNativeXlmBalance: Balance = {
   token: {
     type: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
     code: "XLM",
@@ -60,7 +60,7 @@ const lpBalance: Balance = {
 describe("isNativeToken", () => {
   it("is true only for type native", () => {
     expect(isNativeToken({ type: "native", code: "XLM" })).toBe(true);
-    expect(isNativeToken(spoofedXlmBalance.token)).toBe(false);
+    expect(isNativeToken(nonNativeXlmBalance.token)).toBe(false);
     expect(isNativeToken(sorobanXlmSymbolBalance.token)).toBe(false);
     expect(isNativeToken(undefined)).toBe(false);
     expect(isNativeToken(null)).toBe(false);
@@ -70,7 +70,7 @@ describe("isNativeToken", () => {
 describe("isNativeBalance", () => {
   it("accepts the native balance and nothing else with code XLM", () => {
     expect(isNativeBalance(nativeBalance)).toBe(true);
-    expect(isNativeBalance(spoofedXlmBalance)).toBe(false);
+    expect(isNativeBalance(nonNativeXlmBalance)).toBe(false);
     expect(isNativeBalance(sorobanXlmSymbolBalance)).toBe(false);
     expect(isNativeBalance(lpBalance)).toBe(false);
   });

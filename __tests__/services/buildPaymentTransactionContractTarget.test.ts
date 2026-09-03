@@ -47,8 +47,9 @@ const UNRELATED_CONTRACT =
 const CUSTOM_TOKEN_CONTRACT =
   "CBOVW5CXOPHYWGLJPWBQMGX2F3REBY2ZTZX3N47RTYWWHZV2BXCIIGTL";
 
-const SPOOF_ISSUER = "GBEO62ZYAOEKVL4WMF5Q6VYTOJQUT7H2QYRDVFO5LT4W7VQPFDWVKUHO";
-const spoofSacTestnet = new Asset("XLM", SPOOF_ISSUER).contractId(
+const CLASSIC_XLM_ISSUER =
+  "GBEO62ZYAOEKVL4WMF5Q6VYTOJQUT7H2QYRDVFO5LT4W7VQPFDWVKUHO";
+const classicXlmSacTestnet = new Asset("XLM", CLASSIC_XLM_ISSUER).contractId(
   Networks.TESTNET,
 );
 const NATIVE_SAC_TESTNET =
@@ -75,12 +76,12 @@ const nativeXlmBalance = {
   tokenCode: "XLM",
 } as unknown as PricedBalance;
 
-const spoofedXlmBalance = {
-  id: `XLM:${SPOOF_ISSUER}`,
+const nonNativeXlmBalance = {
+  id: `XLM:${CLASSIC_XLM_ISSUER}`,
   token: {
     type: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
     code: "XLM",
-    issuer: { key: SPOOF_ISSUER },
+    issuer: { key: CLASSIC_XLM_ISSUER },
   },
   total: new BigNumber("100"),
   available: new BigNumber("100"),
@@ -227,15 +228,15 @@ describe("send to contract address — asset/contract resolution", () => {
   };
 
   beforeAll(() => {
-    expect(spoofSacTestnet).not.toBe(NATIVE_SAC_TESTNET);
+    expect(classicXlmSacTestnet).not.toBe(NATIVE_SAC_TESTNET);
   });
 
   it("refuses when the recipient is the selected asset's own token contract", async () => {
     await expect(
       buildPaymentTransaction({
         ...contractTestBaseParams,
-        selectedBalance: spoofedXlmBalance,
-        recipientAddress: spoofSacTestnet,
+        selectedBalance: nonNativeXlmBalance,
+        recipientAddress: classicXlmSacTestnet,
       } as never),
     ).rejects.toThrow("transaction.errors.recipientIsTokenContract");
   });
@@ -253,13 +254,13 @@ describe("send to contract address — asset/contract resolution", () => {
   it("invokes the selected asset's own contract, not the native one, for an XLM-coded non-native balance", async () => {
     const unrelatedContract =
       "CB64D3G7SM2RTH6JSGG34DDTFTQ5CFDKVDZJZSODMCX4NJ2HV2KN7OHT";
-    expect(unrelatedContract).not.toBe(spoofSacTestnet);
+    expect(unrelatedContract).not.toBe(classicXlmSacTestnet);
     const result = await buildPaymentTransaction({
       ...contractTestBaseParams,
-      selectedBalance: spoofedXlmBalance,
+      selectedBalance: nonNativeXlmBalance,
       recipientAddress: unrelatedContract,
     } as never);
-    expect(result.contractId).toBe(spoofSacTestnet);
+    expect(result.contractId).toBe(classicXlmSacTestnet);
     expect(result.contractId).not.toBe(NATIVE_SAC_TESTNET);
   });
 });

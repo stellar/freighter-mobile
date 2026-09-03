@@ -12,12 +12,12 @@ describe("resolveSorobanDisplayIdentity", () => {
   const passphrase = Networks.TESTNET;
 
   it("treats symbol 'native' as XLM only for the native contract", () => {
-    const spoofed = resolveSorobanDisplayIdentity(
+    const nonNativeResult = resolveSorobanDisplayIdentity(
       { symbol: "native", name: "native", contractId: OTHER_CONTRACT },
       passphrase,
     );
-    expect(spoofed.isNative).toBe(false);
-    expect(spoofed.code).toBe("native");
+    expect(nonNativeResult.isNative).toBe(false);
+    expect(nonNativeResult.code).toBe("native");
 
     const genuine = resolveSorobanDisplayIdentity(
       { symbol: "native", name: "native", contractId: NATIVE_SAC_TESTNET },

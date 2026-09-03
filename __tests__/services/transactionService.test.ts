@@ -61,7 +61,8 @@ jest.mock("services/backend", () => ({
   checkContractSupportsMuxed: jest.fn().mockResolvedValue(false),
 }));
 
-const SPOOF_ISSUER = "GBEO62ZYAOEKVL4WMF5Q6VYTOJQUT7H2QYRDVFO5LT4W7VQPFDWVKUHO";
+const CLASSIC_XLM_ISSUER =
+  "GBEO62ZYAOEKVL4WMF5Q6VYTOJQUT7H2QYRDVFO5LT4W7VQPFDWVKUHO";
 
 // Fixture pair: identical tokenCode "XLM", differing only in token type and
 // issuer.
@@ -76,12 +77,12 @@ const nativeXlmBalance = {
   tokenCode: "XLM",
 } as unknown as PricedBalance;
 
-const spoofedXlmBalance = {
-  id: `XLM:${SPOOF_ISSUER}`,
+const nonNativeXlmBalance = {
+  id: `XLM:${CLASSIC_XLM_ISSUER}`,
   token: {
     type: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
     code: "XLM",
-    issuer: { key: SPOOF_ISSUER },
+    issuer: { key: CLASSIC_XLM_ISSUER },
   },
   total: new BigNumber("100"),
   available: new BigNumber("100"),
@@ -98,10 +99,10 @@ describe("getTokenForPayment", () => {
   });
 
   it("returns the classic asset for an XLM-coded non-native balance", () => {
-    const token = getTokenForPayment(spoofedXlmBalance);
+    const token = getTokenForPayment(nonNativeXlmBalance);
     expect(token.isNative()).toBe(false);
     expect(token.getCode()).toBe("XLM");
-    expect(token.getIssuer()).toBe(SPOOF_ISSUER);
+    expect(token.getIssuer()).toBe(CLASSIC_XLM_ISSUER);
   });
 });
 
@@ -136,7 +137,7 @@ describe("buildPaymentTransaction asset resolution", () => {
   it("builds a payment carrying the classic asset for an XLM-coded non-native balance", async () => {
     const result = await buildPaymentTransaction({
       ...baseParams,
-      selectedBalance: spoofedXlmBalance,
+      selectedBalance: nonNativeXlmBalance,
     });
     const tx = TransactionBuilder.fromXdr(
       result.xdr,
@@ -145,7 +146,7 @@ describe("buildPaymentTransaction asset resolution", () => {
     const op = tx.operations[0] as Operation.Payment;
     expect(op.type).toBe("payment");
     expect(op.asset.getCode()).toBe("XLM");
-    expect(op.asset.getIssuer()).toBe(SPOOF_ISSUER);
+    expect(op.asset.getIssuer()).toBe(CLASSIC_XLM_ISSUER);
     expect(op.asset.isNative()).toBe(false);
   });
 
@@ -222,7 +223,7 @@ describe("buildPaymentTransaction unfunded destination", () => {
   it("builds a classic-asset payment (not createAccount) for an XLM-coded non-native balance", async () => {
     const result = await buildPaymentTransaction({
       ...baseParams,
-      selectedBalance: spoofedXlmBalance,
+      selectedBalance: nonNativeXlmBalance,
     });
     const tx = TransactionBuilder.fromXdr(
       result.xdr,
@@ -230,7 +231,7 @@ describe("buildPaymentTransaction unfunded destination", () => {
     ) as Transaction;
     const op = tx.operations[0] as Operation.Payment;
     expect(op.type).toBe("payment");
-    expect(op.asset.getIssuer()).toBe(SPOOF_ISSUER);
+    expect(op.asset.getIssuer()).toBe(CLASSIC_XLM_ISSUER);
   });
 });
 
@@ -241,7 +242,7 @@ describe("buildSwapTransaction asset resolution", () => {
     const senderAddress = Keypair.random().publicKey();
 
     const result = await buildSwapTransaction({
-      sourceBalance: spoofedXlmBalance,
+      sourceBalance: nonNativeXlmBalance,
       destinationBalance: nativeXlmBalance,
       sourceAmount: "5",
       destinationAmount: "5",
@@ -258,7 +259,7 @@ describe("buildSwapTransaction asset resolution", () => {
     ) as Transaction;
     const op = tx.operations[0] as Operation.PathPaymentStrictSend;
     expect(op.sendAsset.isNative()).toBe(false);
-    expect(op.sendAsset.getIssuer()).toBe(SPOOF_ISSUER);
+    expect(op.sendAsset.getIssuer()).toBe(CLASSIC_XLM_ISSUER);
     expect(op.destAsset.isNative()).toBe(true);
   });
 });

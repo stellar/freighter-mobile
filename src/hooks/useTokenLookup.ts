@@ -3,6 +3,7 @@ import Blockaid from "@blockaid/client";
 import { logos } from "assets/logos";
 import {
   CIRCLE_USDC_ISSUER,
+  isNativeAssetId,
   NATIVE_TOKEN_CODE,
   NETWORKS,
   USDC_CODE,
@@ -224,7 +225,7 @@ export const useTokenLookup = ({
       });
       const iconUrl = icons[tokenIdentifier]?.imageUrl;
 
-      const isNative = result.asset === NATIVE_TOKEN_CODE;
+      const isNative = isNativeAssetId(result.asset);
       return {
         tokenCode,
         domain: result.domain ?? "",

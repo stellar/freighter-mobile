@@ -198,7 +198,7 @@ describe("history helpers", () => {
     });
 
     describe("operationInvolvesToken — XLM-coded classic assets", () => {
-      const SPOOF_ISSUER =
+      const CLASSIC_XLM_ISSUER =
         "GBEO62ZYAOEKVL4WMF5Q6VYTOJQUT7H2QYRDVFO5LT4W7VQPFDWVKUHO";
 
       const nativePaymentOp = {
@@ -207,7 +207,7 @@ describe("history helpers", () => {
       } as unknown as Horizon.ServerApi.OperationRecord;
 
       it("does not match a native operation to an issuer-bound XLM target", () => {
-        const target = getTokenFromTokenId(`XLM:${SPOOF_ISSUER}`);
+        const target = getTokenFromTokenId(`XLM:${CLASSIC_XLM_ISSUER}`);
         expect(
           operationInvolvesToken(
             nativePaymentOp,
@@ -233,9 +233,9 @@ describe("history helpers", () => {
           type: "payment",
           asset_type: "credit_alphanum4",
           asset_code: "XLM",
-          asset_issuer: SPOOF_ISSUER,
+          asset_issuer: CLASSIC_XLM_ISSUER,
         } as unknown as Horizon.ServerApi.OperationRecord;
-        const target = getTokenFromTokenId(`XLM:${SPOOF_ISSUER}`);
+        const target = getTokenFromTokenId(`XLM:${CLASSIC_XLM_ISSUER}`);
         expect(
           operationInvolvesToken(classicOp, target, TESTNET_NETWORK_DETAILS),
         ).toBe(true);

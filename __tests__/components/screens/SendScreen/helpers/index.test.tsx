@@ -493,7 +493,7 @@ describe("SendScreen Helpers", () => {
 
   describe("buildUnfundedContext — isNativeAsset", () => {
     it("marks only the NATIVE tokenType as native, regardless of code", () => {
-      const spoofed = buildUnfundedContext({
+      const nonNative = buildUnfundedContext({
         selectedBalance: {
           tokenCode: "XLM",
           tokenType: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
@@ -503,8 +503,8 @@ describe("SendScreen Helpers", () => {
         recipientAddress:
           "GBEO62ZYAOEKVL4WMF5Q6VYTOJQUT7H2QYRDVFO5LT4W7VQPFDWVKUHO",
       });
-      expect(spoofed?.isNativeAsset).toBe(false);
-      expect(spoofed?.canCreateAccountWithAmount).toBeUndefined();
+      expect(nonNative?.isNativeAsset).toBe(false);
+      expect(nonNative?.canCreateAccountWithAmount).toBeUndefined();
 
       const native = buildUnfundedContext({
         selectedBalance: {
