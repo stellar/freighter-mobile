@@ -6,6 +6,7 @@ import RemoveTokenBottomSheetContent from "components/screens/AddTokenScreen/Rem
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import { TokenTypeWithCustomToken } from "config/types";
 import { ActiveAccount } from "ducks/auth";
+import { isNativeBalance } from "helpers/assetIdentity";
 import { HeldBalanceItem } from "hooks/useBalancesList";
 import React from "react";
 
@@ -61,11 +62,7 @@ export const RemoveTokenSheetContent: React.FC<
       ? selectedToken.token.issuer.key
       : NATIVE_TOKEN_CODE;
 
-  if (
-    selectedToken &&
-    selectedTokenIssuer === NATIVE_TOKEN_CODE &&
-    !isLpShare
-  ) {
+  if (selectedToken && isNativeBalance(selectedToken) && !isLpShare) {
     return (
       <CannotRemoveTokenBottomSheet
         type={CannotRemoveType.native}

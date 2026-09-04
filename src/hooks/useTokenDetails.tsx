@@ -51,13 +51,11 @@ const useTokenDetails = ({
 
         if (tokenDetails?.symbol && tokenDetails?.name) {
           const { networkPassphrase } = mapNetworkToNetworkDetails(network);
-          // "native" as a symbol is only meaningful when the contract is
-          // the native SAC itself.
-          const displaySymbol =
-            tokenDetails.symbol === "native" &&
-            isNativeContract(tokenId, networkPassphrase)
-              ? NATIVE_TOKEN_CODE
-              : tokenDetails.symbol;
+          // The contract address settles the identity, so a contract's
+          // self-reported symbol adds nothing.
+          const displaySymbol = isNativeContract(tokenId, networkPassphrase)
+            ? NATIVE_TOKEN_CODE
+            : tokenDetails.symbol;
 
           setActualTokenDetails({
             symbol: displaySymbol,

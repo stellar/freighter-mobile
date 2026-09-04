@@ -3,6 +3,7 @@ import BigNumber from "bignumber.js";
 import { TokenTypeWithCustomToken, type Balance } from "config/types";
 import {
   getNativeContractId,
+  isNativeAssetPair,
   isNativeBalance,
   isNativeContract,
   isNativeToken,
@@ -96,5 +97,26 @@ describe("isNativeContract", () => {
     expect(isNativeContract(PUBNET_NATIVE_SAC, Networks.TESTNET)).toBe(false);
     expect(isNativeContract(undefined, Networks.PUBLIC)).toBe(false);
     expect(isNativeContract("", Networks.PUBLIC)).toBe(false);
+  });
+});
+
+describe("isNativeAssetPair", () => {
+  it("is true for the native code with no issuer", () => {
+    expect(isNativeAssetPair("XLM", undefined)).toBe(true);
+    expect(isNativeAssetPair("XLM", null)).toBe(true);
+    expect(isNativeAssetPair("XLM", "")).toBe(true);
+  });
+
+  it("is false for the native code with an issuer", () => {
+    expect(isNativeAssetPair("XLM", ISSUER_A)).toBe(false);
+  });
+
+  it("is false for another code with no issuer", () => {
+    expect(isNativeAssetPair("USDC", undefined)).toBe(false);
+  });
+
+  it("is false for undefined or null inputs", () => {
+    expect(isNativeAssetPair(undefined, undefined)).toBe(false);
+    expect(isNativeAssetPair(null, null)).toBe(false);
   });
 });

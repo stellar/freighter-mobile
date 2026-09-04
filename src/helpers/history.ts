@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-enum-comparison */
 import { Horizon } from "@stellar/stellar-sdk";
 import BigNumber from "bignumber.js";
-import { NATIVE_TOKEN_CODE, NetworkDetails } from "config/constants";
-import { getNativeContractId } from "helpers/assetIdentity";
+import { NetworkDetails } from "config/constants";
+import { getNativeContractId, isNativeAssetPair } from "helpers/assetIdentity";
 import {
   SorobanTokenInterface,
   getAttrsFromSorobanHorizonOp,
@@ -140,8 +140,7 @@ export const operationInvolvesToken = (
   // the bare "XLM"/"native" identifier; issuer-bound identifiers are
   // handled by the classic arm below.
   if (
-    targetToken.code === NATIVE_TOKEN_CODE &&
-    !targetToken.issuer &&
+    isNativeAssetPair(targetToken.code, targetToken.issuer) &&
     !targetToken.contractId
   ) {
     // Check for classic payment operations

@@ -1,4 +1,5 @@
 import { Asset } from "@stellar/stellar-sdk";
+import { NATIVE_TOKEN_CODE } from "config/constants";
 import { Balance, NativeBalance, NativeToken, Token } from "config/types";
 
 /**
@@ -33,3 +34,13 @@ export const isNativeContract = (
   networkPassphrase: string,
 ): boolean =>
   !!contractId && contractId === getNativeContractId(networkPassphrase);
+
+/**
+ * Native test for a raw code/issuer pair. Use it only where neither a token
+ * type nor a contract id is available — the native asset carries the native
+ * code and no issuer, so both halves are required.
+ */
+export const isNativeAssetPair = (
+  code: string | undefined | null,
+  issuer: string | undefined | null,
+): boolean => code === NATIVE_TOKEN_CODE && !issuer;
