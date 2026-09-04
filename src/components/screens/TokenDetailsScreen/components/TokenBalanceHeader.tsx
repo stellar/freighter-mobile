@@ -2,7 +2,7 @@
 import { List } from "components/List";
 import { TokenIcon } from "components/TokenIcon";
 import { Display, Text } from "components/sds/Typography";
-import { NATIVE_TOKEN_CODE, isNativeAssetId } from "config/constants";
+import { NATIVE_TOKEN_CODE } from "config/constants";
 import { THEME } from "config/theme";
 import { useBalancesStore } from "ducks/balances";
 import {
@@ -68,10 +68,10 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
 
     if (isSorobanToken) {
       if (actualTokenSymbol && tokenName) {
-        const displaySymbol = isNativeAssetId(actualTokenSymbol)
-          ? NATIVE_TOKEN_CODE
-          : actualTokenSymbol;
-        return { symbol: displaySymbol, name: tokenName };
+        // `actualTokenSymbol` arrives from useTokenDetails, which already
+        // resolves the symbol against the contract address, so it is shown
+        // as it stands.
+        return { symbol: actualTokenSymbol, name: tokenName };
       }
 
       const shortAddress = truncateAddress(tokenId);
