@@ -33,11 +33,11 @@ ruleTester.run("no-asset-code-comparison", rule, {
       errors: [{ messageId: "noAssetCodeComparison" }],
     },
     {
-      code: 'balance.token.code === "XLM";',
+      code: "balance.token.code === 'XLM';",
       errors: [{ messageId: "noAssetCodeComparison" }],
     },
     {
-      code: 'symbol === "native";',
+      code: "symbol === 'native';",
       errors: [{ messageId: "noAssetCodeComparison" }],
     },
     {
@@ -45,7 +45,7 @@ ruleTester.run("no-asset-code-comparison", rule, {
       errors: [{ messageId: "noAssetCodeComparison" }],
     },
     {
-      code: 't.issuer.key === "XLM";',
+      code: "t.issuer.key === 'XLM';",
       errors: [{ messageId: "noAssetCodeComparison" }],
     },
     {
