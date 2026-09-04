@@ -174,8 +174,7 @@ Use the predicate that matches what you're holding:
 | the native contract id itself                        | `getNativeContractId(networkPassphrase)`          |
 | a raw code and issuer, with nothing better available | `isNativeAssetPair(code, issuer)`                 |
 
-All of these live in `src/helpers/assetIdentity.ts`, except `isNativeAssetId`,
-which is in `src/config/constants.ts`.
+All of these live in `src/helpers/assetIdentity.ts`.
 
 For anything other than nativeness — equality, map keys, list membership, or
 user-visible labels — use the full identifier from `getTokenIdentifier()` (in

@@ -18,9 +18,9 @@ import {
   DEFAULT_DECIMALS,
   NATIVE_TOKEN_CODE,
   NETWORKS,
-  isNativeAssetId,
 } from "config/constants";
 import { TokenTypeWithCustomToken } from "config/types";
+import { isNativeAssetId } from "helpers/assetIdentity";
 import { formatTokenForDisplay } from "helpers/formatAmount";
 import { getIconUrl } from "helpers/getIconUrl";
 import useColors, { ThemeColors } from "hooks/useColors";

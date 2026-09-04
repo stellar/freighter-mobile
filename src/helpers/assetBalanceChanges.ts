@@ -5,11 +5,11 @@ import {
 } from "components/screens/HistoryScreen/types";
 import {
   DEFAULT_DECIMALS,
-  isNativeAssetId,
   NATIVE_TOKEN_CODE,
   NetworkDetails,
 } from "config/constants";
 import { logger } from "config/logger";
+import { isNativeAssetId } from "helpers/assetIdentity";
 import { getIconUrl } from "helpers/getIconUrl";
 
 /**

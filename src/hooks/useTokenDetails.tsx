@@ -1,12 +1,11 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import {
-  isNativeAssetId,
   mapNetworkToNetworkDetails,
   NATIVE_TOKEN_CODE,
   NETWORKS,
 } from "config/constants";
 import { logger } from "config/logger";
-import { isNativeContract } from "helpers/assetIdentity";
+import { isNativeAssetId, isNativeContract } from "helpers/assetIdentity";
 import { isContractId } from "helpers/soroban";
 import { useEffect, useState } from "react";
 import { getTokenDetails } from "services/backend";

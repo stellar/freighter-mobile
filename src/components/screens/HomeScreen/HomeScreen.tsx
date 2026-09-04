@@ -19,11 +19,7 @@ import ManageAccounts from "components/screens/HomeScreen/ManageAccounts";
 import WelcomeBannerBottomSheet from "components/screens/HomeScreen/WelcomeBannerBottomSheet";
 import Icon from "components/sds/Icon";
 import { Display } from "components/sds/Typography";
-import {
-  DEFAULT_PADDING,
-  isNativeAssetId,
-  NATIVE_TOKEN_CODE,
-} from "config/constants";
+import { DEFAULT_PADDING, NATIVE_TOKEN_CODE } from "config/constants";
 import {
   MainTabStackParamList,
   MAIN_TAB_ROUTES,
@@ -42,6 +38,7 @@ import { useCollectiblesStore } from "ducks/collectibles";
 import { usePricesStore } from "ducks/prices";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { useWalletKitStore } from "ducks/walletKit";
+import { isNativeAssetId } from "helpers/assetIdentity";
 import { getTokenType } from "helpers/balances";
 import { fsValue, pxValue } from "helpers/dimensions";
 import { isContractId } from "helpers/soroban";

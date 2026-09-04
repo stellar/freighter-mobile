@@ -133,7 +133,7 @@ export default [
     },
   },
   {
-    files: ["src/helpers/assetIdentity.ts", "src/config/constants.ts"],
+    files: ["src/helpers/assetIdentity.ts"],
     rules: {
       "asset-identity/no-asset-code-comparison": "off",
     },

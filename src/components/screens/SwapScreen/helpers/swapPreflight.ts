@@ -1,7 +1,7 @@
 import BigNumber from "bignumber.js";
-import { BASE_RESERVE, isNativeAssetId } from "config/constants";
+import { BASE_RESERVE } from "config/constants";
 import { PricedBalance, TokenTypeWithCustomToken } from "config/types";
-import { isNativeBalance } from "helpers/assetIdentity";
+import { isNativeAssetId, isNativeBalance } from "helpers/assetIdentity";
 import { calculateSpendableAmount } from "helpers/balances";
 
 type BalanceItem = PricedBalance & {

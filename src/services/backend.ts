@@ -18,7 +18,6 @@ import { Horizon, TransactionBuilder } from "@stellar/stellar-sdk";
 import { AxiosError } from "axios";
 import {
   mapNetworkToNetworkDetails,
-  isNativeAssetId,
   NATIVE_TOKEN_CODE,
   NetworkDetails,
   NETWORKS,
@@ -36,7 +35,7 @@ import {
   TokenPricesMap,
 } from "config/types";
 import { addBlockaidScanResults } from "helpers/addBlockaidScanResults";
-import { isNativeContract } from "helpers/assetIdentity";
+import { isNativeAssetId, isNativeContract } from "helpers/assetIdentity";
 import { getTokenType } from "helpers/balances";
 import { bigize } from "helpers/bigize";
 import { injectLocalTokenBalances } from "helpers/injectLocalTokenBalances";

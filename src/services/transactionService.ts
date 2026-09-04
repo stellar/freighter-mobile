@@ -13,7 +13,6 @@ import { AxiosError } from "axios";
 import { BigNumber } from "bignumber.js";
 import {
   DEFAULT_DECIMALS,
-  isNativeAssetId,
   MINIMUM_CREATE_ACCOUNT_XLM,
   NETWORKS,
   NetworkDetails,
@@ -22,6 +21,7 @@ import {
 import { logger } from "config/logger";
 import { PricedBalance } from "config/types";
 import {
+  isNativeAssetId,
   isNativeBalance,
   isNativeToken,
   getNativeContractId,

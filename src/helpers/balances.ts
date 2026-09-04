@@ -3,7 +3,6 @@ import BigNumber from "bignumber.js";
 import {
   NATIVE_TOKEN_CODE,
   BASE_RESERVE,
-  isNativeAssetId,
   MIN_TRANSACTION_FEE,
 } from "config/constants";
 import {
@@ -18,7 +17,11 @@ import {
   NonNativeToken,
   Token,
 } from "config/types";
-import { isNativeBalance, isNativeToken } from "helpers/assetIdentity";
+import {
+  isNativeAssetId,
+  isNativeBalance,
+  isNativeToken,
+} from "helpers/assetIdentity";
 import { formatFiatAmount, NO_FIAT_VALUE } from "helpers/formatAmount";
 
 interface GetTokenPriceFromBalanceParams {
@@ -158,7 +161,9 @@ export const getTokenIdentifier = (
     token = item;
   }
 
-  // Native token
+  // Native token. `isLiquidityPool` returns a boolean rather than a type
+  // predicate, so the early return above doesn't narrow `token` — the `in`
+  // check is what rules out the LP shape for the type system.
   if ("type" in token && isNativeToken(token)) {
     return NATIVE_TOKEN_CODE;
   }

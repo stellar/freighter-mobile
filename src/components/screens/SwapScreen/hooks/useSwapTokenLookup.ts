@@ -10,7 +10,6 @@ import {
 } from "components/screens/SwapScreen/helpers/recordPredicates";
 import {
   DEFAULT_DEBOUNCE_DELAY,
-  isNativeAssetId,
   NATIVE_TOKEN_CODE,
   NETWORKS,
 } from "config/constants";
@@ -23,6 +22,7 @@ import { useBlockaidTokenScansStore } from "ducks/blockaidTokenScans";
 import { useDebugStore } from "ducks/debug";
 import { useStellarExpertTopTokensStore } from "ducks/stellarExpertTopTokens";
 import { useVerifiedTokensStore } from "ducks/verifiedTokens";
+import { isNativeAssetId } from "helpers/assetIdentity";
 import { formatTokenIdentifier, getTokenType } from "helpers/balances";
 import { isMainnet } from "helpers/networks";
 import { splitVerifiedTokens } from "helpers/splitVerifiedTokens";

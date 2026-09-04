@@ -1,6 +1,7 @@
 import { StellarExpertRecord } from "components/screens/SwapScreen/helpers/recordPredicates";
-import { isNativeAssetId, NATIVE_TOKEN_CODE } from "config/constants";
+import { NATIVE_TOKEN_CODE } from "config/constants";
 import { FormattedSearchTokenRecord } from "config/types";
+import { isNativeAssetId } from "helpers/assetIdentity";
 import { getTokenType } from "helpers/balances";
 
 /**

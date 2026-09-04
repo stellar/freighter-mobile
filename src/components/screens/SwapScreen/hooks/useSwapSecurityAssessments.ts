@@ -1,6 +1,6 @@
 import Blockaid from "@blockaid/client";
 import { DestinationTokenDescriptor } from "components/screens/SwapScreen/helpers/types";
-import { isNativeAssetId } from "config/constants";
+import { isNativeAssetId } from "helpers/assetIdentity";
 import useAppTranslation from "hooks/useAppTranslation";
 import { type HeldBalanceItem } from "hooks/useBalancesList";
 import { useMemo } from "react";

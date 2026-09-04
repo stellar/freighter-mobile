@@ -1,5 +1,5 @@
 import { Asset } from "@stellar/stellar-sdk";
-import { NATIVE_TOKEN_CODE } from "config/constants";
+import { HORIZON_NATIVE_ASSET_TYPE, NATIVE_TOKEN_CODE } from "config/constants";
 import { Balance, NativeBalance, NativeToken, Token } from "config/types";
 
 /**
@@ -7,8 +7,8 @@ import { Balance, NativeBalance, NativeToken, Token } from "config/types";
  *
  * Nativeness is a property of a token's type, or — in contract space — of
  * the contract id. Every native check in the app should go through one of
- * these predicates, or, for canonical identifier strings, through
- * `isNativeAssetId` in config/constants.
+ * these predicates, including `isNativeAssetId` for canonical identifier
+ * strings.
  */
 
 /** True only for a token whose declared type is native. */
@@ -20,6 +20,13 @@ export const isNativeToken = (
 /** True only for a balance carrying a native-typed token. */
 export const isNativeBalance = (balance: Balance): balance is NativeBalance =>
   "token" in balance && isNativeToken(balance.token);
+
+/**
+ * True if `id` refers to native XLM, matching both Horizon's raw "native"
+ * sentinel and the normalized NATIVE_TOKEN_CODE ("XLM").
+ */
+export const isNativeAssetId = (id: string | undefined | null): boolean =>
+  id === HORIZON_NATIVE_ASSET_TYPE || id === NATIVE_TOKEN_CODE;
 
 /**
  * The native lumen's Stellar Asset Contract id, derived from the network

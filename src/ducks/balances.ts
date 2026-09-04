@@ -1,5 +1,5 @@
 import Blockaid from "@blockaid/client";
-import { isNativeAssetId, NETWORKS, STORAGE_KEYS } from "config/constants";
+import { NETWORKS, STORAGE_KEYS } from "config/constants";
 import { logger } from "config/logger";
 import {
   BalanceMap,
@@ -9,7 +9,7 @@ import {
 } from "config/types";
 import { usePricesStore } from "ducks/prices";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
-import { isNativeToken } from "helpers/assetIdentity";
+import { isNativeAssetId, isNativeToken } from "helpers/assetIdentity";
 import {
   getLPShareCode,
   isLiquidityPool,

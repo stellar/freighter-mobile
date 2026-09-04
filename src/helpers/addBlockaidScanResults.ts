@@ -1,8 +1,9 @@
 import Blockaid from "@blockaid/client";
-import { isNativeAssetId, NETWORKS } from "config/constants";
+import { NETWORKS } from "config/constants";
 import { logger } from "config/logger";
 import { Balance, BalanceMap } from "config/types";
 import { useBlockaidTokenScansStore } from "ducks/blockaidTokenScans";
+import { isNativeAssetId } from "helpers/assetIdentity";
 import { MappedAccountBalances } from "helpers/mapAccountBalancesV2";
 import { isMainnet } from "helpers/networks";
 

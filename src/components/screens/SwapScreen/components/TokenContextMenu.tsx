@@ -4,8 +4,9 @@ import {
   TokenReference,
 } from "components/screens/SwapScreen/helpers";
 import Icon from "components/sds/Icon";
-import { isNativeAssetId, NATIVE_TOKEN_CODE, NETWORKS } from "config/constants";
+import { NATIVE_TOKEN_CODE, NETWORKS } from "config/constants";
 import { logger } from "config/logger";
+import { isNativeAssetId } from "helpers/assetIdentity";
 import { getStellarExpertUrl } from "helpers/stellarExpert";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";

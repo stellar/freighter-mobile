@@ -1,5 +1,5 @@
 import { BigNumber } from "bignumber.js";
-import { isNativeAssetId, NATIVE_TOKEN_CODE } from "config/constants";
+import { NATIVE_TOKEN_CODE } from "config/constants";
 import {
   FormattedSearchTokenRecord,
   NativeToken,
@@ -8,7 +8,11 @@ import {
   TokenIdentifier,
   TokenPricesMap,
 } from "config/types";
-import { isNativeBalance, isNativeToken } from "helpers/assetIdentity";
+import {
+  isNativeAssetId,
+  isNativeBalance,
+  isNativeToken,
+} from "helpers/assetIdentity";
 import { getTokenIdentifier, getTokenPriceFromBalance } from "helpers/balances";
 
 /**

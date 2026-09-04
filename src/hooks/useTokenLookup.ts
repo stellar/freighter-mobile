@@ -3,7 +3,6 @@ import Blockaid from "@blockaid/client";
 import { logos } from "assets/logos";
 import {
   CIRCLE_USDC_ISSUER,
-  isNativeAssetId,
   NATIVE_TOKEN_CODE,
   NETWORKS,
   USDC_CODE,
@@ -17,6 +16,7 @@ import {
 } from "config/types";
 import { useDebugStore } from "ducks/debug";
 import { Icon } from "ducks/tokenIcons";
+import { isNativeAssetId } from "helpers/assetIdentity";
 import {
   formatTokenIdentifier,
   getTokenIdentifier,

@@ -2,9 +2,10 @@
 import { List } from "components/List";
 import { TokenIcon } from "components/TokenIcon";
 import { Display, Text } from "components/sds/Typography";
-import { isNativeAssetId, NATIVE_TOKEN_CODE } from "config/constants";
+import { NATIVE_TOKEN_CODE } from "config/constants";
 import { THEME } from "config/theme";
 import { useBalancesStore } from "ducks/balances";
+import { isNativeAssetId } from "helpers/assetIdentity";
 import {
   formatBalanceAmount,
   formatFiatAmount,

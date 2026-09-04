@@ -3,13 +3,13 @@ import BigNumber from "bignumber.js";
 import { DestinationTokenDescriptor } from "components/screens/SwapScreen/helpers";
 import {
   DEFAULT_DECIMALS,
-  isNativeAssetId,
   NETWORKS,
   mapNetworkToNetworkDetails,
 } from "config/constants";
 import { logger } from "config/logger";
 import { PricedBalance, TokenTypeWithCustomToken } from "config/types";
 import { useDebugStore } from "ducks/debug";
+import { isNativeAssetId } from "helpers/assetIdentity";
 import { formatBigNumberForDisplay } from "helpers/formatAmount";
 import { isContractId } from "helpers/soroban";
 import { type HeldBalanceItem } from "hooks/useBalancesList";

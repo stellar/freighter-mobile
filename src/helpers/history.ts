@@ -1,8 +1,12 @@
 /* eslint-disable @typescript-eslint/no-unsafe-enum-comparison */
 import { Horizon } from "@stellar/stellar-sdk";
 import BigNumber from "bignumber.js";
-import { isNativeAssetId, NetworkDetails } from "config/constants";
-import { getNativeContractId, isNativeAssetPair } from "helpers/assetIdentity";
+import { NetworkDetails } from "config/constants";
+import {
+  getNativeContractId,
+  isNativeAssetId,
+  isNativeAssetPair,
+} from "helpers/assetIdentity";
 import {
   SorobanTokenInterface,
   getAttrsFromSorobanHorizonOp,
