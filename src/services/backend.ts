@@ -18,6 +18,7 @@ import { Horizon, TransactionBuilder } from "@stellar/stellar-sdk";
 import { AxiosError } from "axios";
 import {
   mapNetworkToNetworkDetails,
+  isNativeAssetId,
   NATIVE_TOKEN_CODE,
   NetworkDetails,
   NETWORKS,
@@ -551,7 +552,7 @@ export const fetchTokenPrices = async ({
         // the native asset as "native", so translate "XLM" -> "native" on the
         // way out (v1, below, is neither network-scoped nor native-translated).
         const v2Tokens = filteredTokens.map((tokenId) =>
-          tokenId === NATIVE_TOKEN_CODE ? V2_NATIVE_PRICE_ID : tokenId,
+          isNativeAssetId(tokenId) ? V2_NATIVE_PRICE_ID : tokenId,
         );
         ({ data } = await freighterBackendV2.post<TokenPricesResponse>(
           "/token-prices",

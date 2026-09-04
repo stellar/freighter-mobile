@@ -1,5 +1,5 @@
 import Blockaid from "@blockaid/client";
-import { NATIVE_TOKEN_CODE, NETWORKS } from "config/constants";
+import { isNativeAssetId, NETWORKS } from "config/constants";
 import { logger } from "config/logger";
 import { Balance, BalanceMap } from "config/types";
 import { useBlockaidTokenScansStore } from "ducks/blockaidTokenScans";
@@ -52,7 +52,7 @@ export const addBlockaidScanResults = async (
   // results by exactly the strings we send, this lookup cannot drift.
   const scanIdToBalanceKey = new Map<string, string>();
   keys.forEach((key) => {
-    if (key === NATIVE_TOKEN_CODE || key.endsWith(":lp")) {
+    if (isNativeAssetId(key) || key.endsWith(":lp")) {
       return;
     }
     scanIdToBalanceKey.set(key.replace(":", "-"), key);

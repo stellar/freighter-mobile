@@ -1,5 +1,5 @@
 import { StellarExpertRecord } from "components/screens/SwapScreen/helpers/recordPredicates";
-import { NATIVE_TOKEN_CODE } from "config/constants";
+import { isNativeAssetId, NATIVE_TOKEN_CODE } from "config/constants";
 import { FormattedSearchTokenRecord } from "config/types";
 import { getTokenType } from "helpers/balances";
 
@@ -20,7 +20,7 @@ export const formatClassicRecord = (
     hasTrustline,
     iconUrl: record.tomlInfo?.image,
     issuer: issuer ?? "",
-    isNative: record.asset === NATIVE_TOKEN_CODE,
+    isNative: isNativeAssetId(record.asset),
     tokenType: getTokenType(
       issuer ? `${tokenCode}:${issuer}` : NATIVE_TOKEN_CODE,
     ),

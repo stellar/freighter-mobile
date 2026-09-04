@@ -5,7 +5,7 @@ import {
   isClassicTokenType,
   isSorobanRecord,
 } from "components/screens/SwapScreen/helpers/recordPredicates";
-import { NATIVE_TOKEN_CODE } from "config/constants";
+import { isNativeAssetId, NATIVE_TOKEN_CODE } from "config/constants";
 import { FormattedSearchTokenRecord, SearchTokenResponse } from "config/types";
 import { getTokenType } from "helpers/balances";
 import { TokenListReponseItem } from "services/verified-token-lists/types";
@@ -40,7 +40,7 @@ export const computeTrendingIntersection = (
   const classicRecords = records.filter((r) => {
     if (isSorobanRecord(r)) return false;
     const [tokenCode, issuer] = r.asset.split("-");
-    if (!issuer && r.asset !== NATIVE_TOKEN_CODE) return false;
+    if (!issuer && !isNativeAssetId(r.asset)) return false;
     const tokenType = getTokenType(
       issuer ? `${tokenCode}:${issuer}` : NATIVE_TOKEN_CODE,
     );

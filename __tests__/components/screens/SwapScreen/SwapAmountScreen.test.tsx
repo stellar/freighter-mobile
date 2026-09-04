@@ -8,7 +8,9 @@ import Icon from "components/sds/Icon";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { NETWORKS } from "config/constants";
 import { SWAP_ROUTES, SwapStackParamList } from "config/routes";
+import { Token } from "config/types";
 import { useSwapStore } from "ducks/swap";
+import { isNativeToken } from "helpers/assetIdentity";
 import { renderWithProviders } from "helpers/testUtils";
 import { useBalancesList } from "hooks/useBalancesList";
 import React, { act } from "react";
@@ -943,7 +945,9 @@ describe("SwapAmountScreen", () => {
       //   hasXLMForFees: 100.1 >= 100 → true (no error)
       //   spendable = max(0, 100.1 - 1 - 100) = max(0, -0.9) = 0 < 0.5 → gate trips
       const lowXlmBalances = mockBalances.map((b) => {
-        if (b.token?.type !== "native") return b;
+        // mockBalances isn't typed as Balance[], so its token shape needs a
+        // cast to line up with the shared predicate's signature.
+        if (!isNativeToken(b.token as Token)) return b;
         return {
           ...b,
           total: new BigNumber("100.1"),
@@ -1049,7 +1053,9 @@ describe("SwapAmountScreen", () => {
       //   xlmSpendable = 101.4 - 101 = 0.4  (< 0.5 → no deduction, gate fires)
       //   sourceAmount = 0.39  (≤ 0.4 ✓, CTA reaches review)
       const xlmAsSourceBalances = mockBalances.map((b) => {
-        if (b.token?.type !== "native") return b;
+        // mockBalances isn't typed as Balance[], so its token shape needs a
+        // cast to line up with the shared predicate's signature.
+        if (!isNativeToken(b.token as Token)) return b;
         return {
           ...b,
           total: new BigNumber("101.4"),
@@ -1112,7 +1118,9 @@ describe("SwapAmountScreen", () => {
       // the CTA must read "Insufficient balance" rather than reaching the
       // review / reserve-sheet path.
       const xlmAsSourceBalances = mockBalances.map((b) => {
-        if (b.token?.type !== "native") return b;
+        // mockBalances isn't typed as Balance[], so its token shape needs a
+        // cast to line up with the shared predicate's signature.
+        if (!isNativeToken(b.token as Token)) return b;
         return {
           ...b,
           total: new BigNumber("101.9"),

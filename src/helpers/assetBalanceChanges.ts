@@ -5,6 +5,7 @@ import {
 } from "components/screens/HistoryScreen/types";
 import {
   DEFAULT_DECIMALS,
+  isNativeAssetId,
   NATIVE_TOKEN_CODE,
   NetworkDetails,
 } from "config/constants";
@@ -28,7 +29,7 @@ async function processAssetChange(
     let assetIssuer: string | null = null;
     const decimals = DEFAULT_DECIMALS;
 
-    if (change.asset_type === "native") {
+    if (isNativeAssetId(change.asset_type)) {
       assetCode = NATIVE_TOKEN_CODE;
     } else if (
       change.asset_type === "credit_alphanum4" ||

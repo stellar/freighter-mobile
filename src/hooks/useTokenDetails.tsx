@@ -1,5 +1,6 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import {
+  isNativeAssetId,
   mapNetworkToNetworkDetails,
   NATIVE_TOKEN_CODE,
   NETWORKS,
@@ -75,7 +76,7 @@ const useTokenDetails = ({
   }, [tokenId, publicKey, network]);
 
   const displayTitle = (() => {
-    if (tokenId === "native") {
+    if (isNativeAssetId(tokenId)) {
       return NATIVE_TOKEN_CODE;
     }
 

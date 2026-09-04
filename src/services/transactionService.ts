@@ -13,6 +13,7 @@ import { AxiosError } from "axios";
 import { BigNumber } from "bignumber.js";
 import {
   DEFAULT_DECIMALS,
+  isNativeAssetId,
   MINIMUM_CREATE_ACCOUNT_XLM,
   NETWORKS,
   NetworkDetails,
@@ -20,7 +21,11 @@ import {
 } from "config/constants";
 import { logger } from "config/logger";
 import { PricedBalance } from "config/types";
-import { isNativeBalance, getNativeContractId } from "helpers/assetIdentity";
+import {
+  isNativeBalance,
+  isNativeToken,
+  getNativeContractId,
+} from "helpers/assetIdentity";
 import { isLiquidityPool } from "helpers/balances";
 import {
   getPerOperationBaseFeeStroops,
@@ -234,7 +239,7 @@ export const getTokenForPayment = (balance: PricedBalance): SdkToken => {
     if (
       "type" in balance.token &&
       typeof balance.token.type === "string" &&
-      (balance.token.type as string) !== "native" &&
+      !isNativeToken(balance.token) &&
       "code" in balance.token &&
       "issuer" in balance.token &&
       balance.token.issuer &&
@@ -633,7 +638,7 @@ export const buildSwapTransaction = async (
     const sourceToken = getTokenForPayment(sourceBalance);
     const destToken = getTokenForPayment(destinationBalance);
     const pathTokens = path.map((pathItem) => {
-      if (pathItem === "native") {
+      if (isNativeAssetId(pathItem)) {
         return SdkToken.native();
       }
 

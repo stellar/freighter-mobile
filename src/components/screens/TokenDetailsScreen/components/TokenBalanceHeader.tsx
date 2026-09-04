@@ -2,7 +2,7 @@
 import { List } from "components/List";
 import { TokenIcon } from "components/TokenIcon";
 import { Display, Text } from "components/sds/Typography";
-import { NATIVE_TOKEN_CODE } from "config/constants";
+import { isNativeAssetId, NATIVE_TOKEN_CODE } from "config/constants";
 import { THEME } from "config/theme";
 import { useBalancesStore } from "ducks/balances";
 import {
@@ -59,7 +59,7 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
   }
 
   const getTokenDisplayInfo = (): TokenDisplayInfo => {
-    if (tokenId === "native") {
+    if (isNativeAssetId(tokenId)) {
       return {
         symbol: NATIVE_TOKEN_CODE,
         name: tokenBalance.displayName || tokenSymbol,

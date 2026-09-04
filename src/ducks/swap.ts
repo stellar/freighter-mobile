@@ -3,6 +3,7 @@ import BigNumber from "bignumber.js";
 import { DestinationTokenDescriptor } from "components/screens/SwapScreen/helpers";
 import {
   DEFAULT_DECIMALS,
+  isNativeAssetId,
   NETWORKS,
   mapNetworkToNetworkDetails,
 } from "config/constants";
@@ -119,7 +120,7 @@ const findClassicSwapPath = async (params: {
     const bestPath = pathsResult.records[0];
 
     const path: string[] = bestPath.path.map((token: HorizonPathToken) => {
-      if (token.asset_type === "native") {
+      if (isNativeAssetId(token.asset_type)) {
         return "native";
       }
       return `${token.asset_code}:${token.asset_issuer}`;

@@ -8,6 +8,7 @@ import {
   TokenIdentifier,
   TokenPricesMap,
 } from "config/types";
+import { isNativeBalance, isNativeToken } from "helpers/assetIdentity";
 import { getTokenIdentifier, getTokenPriceFromBalance } from "helpers/balances";
 
 /**
@@ -80,9 +81,9 @@ export const findBalanceForToken = ({
   }
 
   // Native tokens can also be keyed by the raw "native" sentinel.
-  if (incomingToken.type === "native") {
+  if (isNativeToken(incomingToken)) {
     return balanceItems.find((item) => {
-      if ("token" in item && item.token.type === "native") {
+      if (isNativeBalance(item)) {
         return true;
       }
       return isNativeAssetId(item.id);

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-enum-comparison */
 import { Horizon } from "@stellar/stellar-sdk";
 import BigNumber from "bignumber.js";
-import { NetworkDetails } from "config/constants";
+import { isNativeAssetId, NetworkDetails } from "config/constants";
 import { getNativeContractId, isNativeAssetPair } from "helpers/assetIdentity";
 import {
   SorobanTokenInterface,
@@ -33,7 +33,7 @@ export const getIsDustPayment = (
 ) =>
   getIsPayment(operation.type) &&
   "asset_type" in operation &&
-  operation.asset_type === "native" &&
+  isNativeAssetId(operation.asset_type) &&
   "to" in operation &&
   operation.to === publicKey &&
   "amount" in operation &&
@@ -90,7 +90,7 @@ export const getIsSupportedSorobanOp = (
  *   - { code: string, issuer: string, contractId: undefined } for classic tokens (CODE:ISSUER format)
  */
 export const getTokenFromTokenId = (tokenId: string) => {
-  if (tokenId === "native") {
+  if (isNativeAssetId(tokenId)) {
     return { code: "XLM", issuer: undefined, contractId: undefined };
   }
 
@@ -145,13 +145,13 @@ export const operationInvolvesToken = (
   ) {
     // Check for classic payment operations
     if (getIsPayment(operation.type)) {
-      if ("asset_type" in operation && operation.asset_type === "native") {
+      if ("asset_type" in operation && isNativeAssetId(operation.asset_type)) {
         return true;
       }
 
       if (
         "source_asset_type" in operation &&
-        operation.source_asset_type === "native"
+        isNativeAssetId(operation.source_asset_type)
       ) {
         return true;
       }

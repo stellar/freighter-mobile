@@ -3,6 +3,7 @@ import BigNumber from "bignumber.js";
 import {
   NATIVE_TOKEN_CODE,
   BASE_RESERVE,
+  isNativeAssetId,
   MIN_TRANSACTION_FEE,
 } from "config/constants";
 import {
@@ -17,6 +18,7 @@ import {
   NonNativeToken,
   Token,
 } from "config/types";
+import { isNativeBalance, isNativeToken } from "helpers/assetIdentity";
 import { formatFiatAmount, NO_FIAT_VALUE } from "helpers/formatAmount";
 
 interface GetTokenPriceFromBalanceParams {
@@ -157,7 +159,7 @@ export const getTokenIdentifier = (
   }
 
   // Native token
-  if ("type" in token && token.type === "native") {
+  if ("type" in token && isNativeToken(token)) {
     return NATIVE_TOKEN_CODE;
   }
 
@@ -320,7 +322,7 @@ export const formatTokenIdentifier = (tokenIdentifier: string) => {
 export const getTokenType = (
   tokenIdentifier: string,
 ): TokenTypeWithCustomToken => {
-  if (tokenIdentifier === NATIVE_TOKEN_CODE) {
+  if (isNativeAssetId(tokenIdentifier)) {
     return TokenTypeWithCustomToken.NATIVE;
   }
 
@@ -375,7 +377,7 @@ export const calculateSpendableAmount = ({
   }
 
   // For non-native tokens, return available balance or total balance
-  if ("token" in balance && balance.token.type !== "native") {
+  if (!isNativeBalance(balance)) {
     // Use available balance if present
     const availableBalance =
       "available" in balance ? new BigNumber(balance.available) : totalBalance;
@@ -384,7 +386,7 @@ export const calculateSpendableAmount = ({
   }
 
   // For XLM (native asset), consider minimum balance requirements and transaction fee
-  if ("token" in balance && balance.token.type === "native") {
+  if (isNativeBalance(balance)) {
     const fee = new BigNumber(transactionFee);
 
     // Prefer the server-derived `minimumBalance`. Both balance paths define it
@@ -527,9 +529,7 @@ export const hasXLMForFees = (
   transactionFee: string = MIN_TRANSACTION_FEE,
 ): boolean => {
   // Find XLM balance
-  const xlmBalance = balanceItems.find(
-    (item) => "token" in item && item.token.type === "native",
-  );
+  const xlmBalance = balanceItems.find((item) => isNativeBalance(item));
 
   if (!xlmBalance) {
     return false;

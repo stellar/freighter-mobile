@@ -19,7 +19,11 @@ import ManageAccounts from "components/screens/HomeScreen/ManageAccounts";
 import WelcomeBannerBottomSheet from "components/screens/HomeScreen/WelcomeBannerBottomSheet";
 import Icon from "components/sds/Icon";
 import { Display } from "components/sds/Typography";
-import { DEFAULT_PADDING, NATIVE_TOKEN_CODE } from "config/constants";
+import {
+  DEFAULT_PADDING,
+  isNativeAssetId,
+  NATIVE_TOKEN_CODE,
+} from "config/constants";
 import {
   MainTabStackParamList,
   MAIN_TAB_ROUTES,
@@ -142,7 +146,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
     // for real, since holding one needs no funded account (no trustline, no
     // reserve). So the pill stands down only when the CTA actually renders.
     const isCollectiblesGridEmpty = visibleCollectibles.length === 0;
-    const showCollectiblesPill = !(showEmptyStateCta && isCollectiblesGridEmpty);
+    const showCollectiblesPill = !(
+      showEmptyStateCta && isCollectiblesGridEmpty
+    );
 
     const handleManageAccountsPress = useCallback(() => {
       manageAccountsBottomSheetRef.current?.present();
@@ -205,7 +211,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
 
         let tokenSymbol: string;
 
-        if (tokenId === "native") {
+        if (isNativeAssetId(tokenId)) {
           tokenSymbol = NATIVE_TOKEN_CODE;
         } else if (isContractId(tokenId)) {
           // For Soroban contracts, pass the contract ID as symbol initially

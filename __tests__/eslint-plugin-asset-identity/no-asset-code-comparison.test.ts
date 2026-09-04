@@ -19,65 +19,104 @@ const ruleTester = new RuleTester({
 
 ruleTester.run("no-asset-code-comparison", rule, {
   valid: [
-    // Identifier-space comparisons are sound and must stay clean.
-    { code: "tokenIdentifier === NATIVE_TOKEN_CODE;" },
-    { code: "tokenId === NATIVE_TOKEN_CODE;" },
-    { code: "key === NATIVE_TOKEN_CODE;" },
-    { code: "record.asset === NATIVE_TOKEN_CODE;" },
-    { code: "r.asset !== NATIVE_TOKEN_CODE;" },
-    { code: "sourceTokenId !== NATIVE_TOKEN_CODE;" },
-    // The word test must not over-match on names that merely contain the
-    // letters "code" without that being a whole word of their own.
-    { code: "decodeUrl === NATIVE_TOKEN_CODE;" },
-    { code: "encoded === NATIVE_TOKEN_CODE;" },
+    // No sentinel on either side — a bare code-to-code comparison never
+    // triggers the rule, no matter how "code"-ish the names look.
+    { code: "tokenCode === otherCode;" },
+    { code: "asset.code === USDC_CODE;" },
+    // An unrelated string literal is not a native sentinel.
+    { code: "status === 'pending';" },
   ],
   invalid: [
+    // Both sentinel string literals, both operand orders.
     {
-      code: "tokenCode === NATIVE_TOKEN_CODE;",
+      code: "code === 'XLM';",
       errors: [{ messageId: "noAssetCodeComparison" }],
     },
     {
-      code: "balance.token.code === 'XLM';",
+      code: "'XLM' === code;",
       errors: [{ messageId: "noAssetCodeComparison" }],
     },
     {
-      code: "symbol === 'native';",
+      code: "code === 'native';",
       errors: [{ messageId: "noAssetCodeComparison" }],
     },
     {
-      code: "token.issuer === NATIVE_TOKEN_CODE;",
+      code: "'native' === code;",
+      errors: [{ messageId: "noAssetCodeComparison" }],
+    },
+    // Both sentinel identifiers, both operand orders.
+    {
+      code: "code === NATIVE_TOKEN_CODE;",
       errors: [{ messageId: "noAssetCodeComparison" }],
     },
     {
-      code: "t.issuer.key === 'XLM';",
+      code: "NATIVE_TOKEN_CODE === code;",
       errors: [{ messageId: "noAssetCodeComparison" }],
     },
     {
-      code: "tokenCode !== NATIVE_TOKEN_CODE;",
-      errors: [{ messageId: "noAssetCodeComparison" }],
-    },
-    // Aliases carrying the "code" word that are not in any hardcoded
-    // exact-name list — this is the shape the rule must catch to detect a
-    // revert of the swap mapper's fix.
-    {
-      code: "srcTokenCode === NATIVE_TOKEN_CODE;",
+      code: "code === HORIZON_NATIVE_ASSET_TYPE;",
       errors: [{ messageId: "noAssetCodeComparison" }],
     },
     {
-      code: "destTokenCodeFinal === NATIVE_TOKEN_CODE;",
+      code: "HORIZON_NATIVE_ASSET_TYPE === code;",
+      errors: [{ messageId: "noAssetCodeComparison" }],
+    },
+    // !== is covered exactly like ===.
+    {
+      code: "code !== 'native';",
       errors: [{ messageId: "noAssetCodeComparison" }],
     },
     {
-      code: "asset_code === NATIVE_TOKEN_CODE;",
+      code: "code !== NATIVE_TOKEN_CODE;",
       errors: [{ messageId: "noAssetCodeComparison" }],
     },
-    // Optional chaining must be unwrapped before inspecting each operand.
+    // Optional chaining on the non-sentinel side must still be unwrapped
+    // correctly, in either operand order.
     {
       code: "t?.code === 'XLM';",
       errors: [{ messageId: "noAssetCodeComparison" }],
     },
     {
-      code: "balance?.token?.issuer?.key === 'XLM';",
+      code: "NATIVE_TOKEN_CODE === balance?.token?.issuer?.key;",
+      errors: [{ messageId: "noAssetCodeComparison" }],
+    },
+    // The rule no longer inspects the other operand at all, so any
+    // identifier — not just one spelling "code", "symbol" or "issuer" —
+    // is flagged once a sentinel sits on the other side. These were all
+    // listed under `valid` before the heuristic was removed.
+    {
+      code: "tokenIdentifier === NATIVE_TOKEN_CODE;",
+      errors: [{ messageId: "noAssetCodeComparison" }],
+    },
+    {
+      code: "tokenId === NATIVE_TOKEN_CODE;",
+      errors: [{ messageId: "noAssetCodeComparison" }],
+    },
+    {
+      code: "key === NATIVE_TOKEN_CODE;",
+      errors: [{ messageId: "noAssetCodeComparison" }],
+    },
+    {
+      code: "record.asset === NATIVE_TOKEN_CODE;",
+      errors: [{ messageId: "noAssetCodeComparison" }],
+    },
+    {
+      code: "r.asset !== NATIVE_TOKEN_CODE;",
+      errors: [{ messageId: "noAssetCodeComparison" }],
+    },
+    {
+      code: "sourceTokenId !== NATIVE_TOKEN_CODE;",
+      errors: [{ messageId: "noAssetCodeComparison" }],
+    },
+    // Names that merely contain the letters "code" without that being a
+    // whole word used to be the rule's own false-negative regression
+    // check; now they are ordinary hits like everything else.
+    {
+      code: "decodeUrl === NATIVE_TOKEN_CODE;",
+      errors: [{ messageId: "noAssetCodeComparison" }],
+    },
+    {
+      code: "encoded === NATIVE_TOKEN_CODE;",
       errors: [{ messageId: "noAssetCodeComparison" }],
     },
   ],

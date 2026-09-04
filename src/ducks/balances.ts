@@ -9,6 +9,7 @@ import {
 } from "config/types";
 import { usePricesStore } from "ducks/prices";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
+import { isNativeToken } from "helpers/assetIdentity";
 import {
   getLPShareCode,
   isLiquidityPool,
@@ -91,8 +92,7 @@ const getExistingPricedBalances = (
     } else {
       // Handle regular token balances
       tokenCode = balance.token.code;
-      displayName =
-        balance.token.type === "native" ? "Stellar Lumens" : tokenCode;
+      displayName = isNativeToken(balance.token) ? "Stellar Lumens" : tokenCode;
     }
 
     // Create the priced balance object and keep existing price data if available
