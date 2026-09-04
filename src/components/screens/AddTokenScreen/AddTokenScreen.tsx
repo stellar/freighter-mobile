@@ -254,7 +254,6 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
             issuer: selectedToken.issuer,
             tokenCode: selectedToken.tokenCode,
             tokenType: selectedToken.tokenType!,
-            isNative: selectedToken.isNative,
           }}
           account={account}
           onCancel={handleCancelTokenRemoval}

@@ -6,11 +6,7 @@ import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { mapNetworkToNetworkDetails } from "config/constants";
-import {
-  NativeToken,
-  NonNativeToken,
-  TokenTypeWithCustomToken,
-} from "config/types";
+import { NonNativeToken, TokenTypeWithCustomToken } from "config/types";
 import { ActiveAccount, useAuthenticationStore } from "ducks/auth";
 import { getTokenSacAddress, isContractId } from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
@@ -25,10 +21,6 @@ type TokenDetails = {
   tokenCode: string;
   tokenType: string;
   domain?: string;
-  // Optional: TokenDetailsScreen's RemoveTokenSheetContent never reaches this
-  // component for the native asset (it's guarded earlier), so it doesn't pass
-  // this field. Add-token's AddTokenScreen always passes it explicitly.
-  isNative?: boolean;
 };
 
 type RemoveTokenBottomSheetContentProps = {
@@ -111,18 +103,13 @@ const RemoveTokenBottomSheetContent: React.FC<
     return null;
   }
 
-  const iconTokenProp = token.isNative
-    ? ({
-        type: "native",
-        code: token.tokenCode,
-      } as NativeToken)
-    : ({
-        type: token.tokenType as TokenTypeWithCustomToken,
-        code: token.tokenCode,
-        issuer: {
-          key: token.issuer,
-        },
-      } as NonNativeToken);
+  const iconTokenProp = {
+    type: token.tokenType as TokenTypeWithCustomToken,
+    code: token.tokenCode,
+    issuer: {
+      key: token.issuer,
+    },
+  } as NonNativeToken;
 
   return (
     <View className="flex-1 justify-center items-center mt-8">
