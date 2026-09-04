@@ -6,24 +6,36 @@ const NATIVE_IDENTIFIER_NAMES = [
   "HORIZON_NATIVE_ASSET_TYPE",
 ];
 
-// Identifiers/property names that carry a code or an issuer for some asset —
-// comparing one of these directly to a native-code literal singles out the
+// Words that mean "this holds a code or a symbol" when they appear as one of
+// the camelCase/snake_case words making up an identifier or property name —
+// comparing such a name directly to a native-code literal singles out the
 // native asset by string equality instead of going through a predicate.
-const CODE_OR_ISSUER_NAMES = [
-  "code",
-  "tokenCode",
-  "assetCode",
-  "symbol",
-  "tokenSymbol",
-  "issuer",
-  "tokenIssuer",
-  "assetIssuer",
-];
+// This is deliberately a word match, not a substring match: it must catch
+// `srcTokenCode`, `tokenCode`, `asset_code`, `symbol`, `tokenSymbol`, etc.,
+// while still ignoring names that merely contain these letters, such as
+// `encoded` or `decodeUrl`.
+const CODE_OR_SYMBOL_WORDS = ["code", "symbol"];
 
-// Object property names that mean "this is an issuer" one level up, so that
-// `<something>.issuer.key` is recognized even though "key" alone is not
-// asset-identity-bearing.
-const ISSUER_OBJECT_NAMES = ["issuer", "tokenIssuer", "assetIssuer"];
+// The word that means "this is an issuer" — used both for a name that
+// directly carries an issuer address/object, and for the object one level
+// up in `<something>.issuer.key`.
+const ISSUER_WORD = "issuer";
+
+// Splits an identifier/property name into lowercase words on camelCase
+// boundaries and underscores, e.g. "srcTokenCode" -> ["src", "token",
+// "code"], "asset_code" -> ["asset", "code"].
+function toWords(name) {
+  return name
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1_$2")
+    .toLowerCase()
+    .split("_")
+    .filter(Boolean);
+}
+
+function hasWord(name, word) {
+  return toWords(name).includes(word);
+}
 
 function getStaticPropertyName(node) {
   if (!node.computed) {
@@ -38,7 +50,14 @@ function getStaticPropertyName(node) {
   return null;
 }
 
-function isNativeLiteralSide(node) {
+// Unwraps an optional-chaining member access (`a?.b`) to the plain member
+// expression it wraps, so `t?.code` is inspected the same as `t.code`.
+function unwrapChain(node) {
+  return node.type === "ChainExpression" ? node.expression : node;
+}
+
+function isNativeLiteralSide(rawNode) {
+  const node = unwrapChain(rawNode);
   if (
     node.type === "Literal" &&
     typeof node.value === "string" &&
@@ -51,24 +70,34 @@ function isNativeLiteralSide(node) {
   );
 }
 
-function isCodeOrIssuerSide(node) {
+function isCodeOrIssuerSide(rawNode) {
+  const node = unwrapChain(rawNode);
+
   if (node.type === "Identifier") {
-    return CODE_OR_ISSUER_NAMES.includes(node.name);
+    return (
+      CODE_OR_SYMBOL_WORDS.some((word) => hasWord(node.name, word)) ||
+      hasWord(node.name, ISSUER_WORD)
+    );
   }
 
   if (node.type === "MemberExpression") {
     const propertyName = getStaticPropertyName(node);
-    if (propertyName && CODE_OR_ISSUER_NAMES.includes(propertyName)) {
+    if (
+      propertyName &&
+      (CODE_OR_SYMBOL_WORDS.some((word) => hasWord(propertyName, word)) ||
+        hasWord(propertyName, ISSUER_WORD))
+    ) {
       return true;
     }
 
     // `<something>.issuer.key`: "key" alone means nothing, but paired with
     // an issuer-named object one level up it identifies an issuer address.
-    if (propertyName === "key" && node.object.type === "MemberExpression") {
-      const objectPropertyName = getStaticPropertyName(node.object);
-      return (
-        !!objectPropertyName && ISSUER_OBJECT_NAMES.includes(objectPropertyName)
-      );
+    if (propertyName === "key") {
+      const object = unwrapChain(node.object);
+      if (object.type === "MemberExpression") {
+        const objectPropertyName = getStaticPropertyName(object);
+        return !!objectPropertyName && hasWord(objectPropertyName, ISSUER_WORD);
+      }
     }
   }
 

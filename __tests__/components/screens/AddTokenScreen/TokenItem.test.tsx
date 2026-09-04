@@ -236,4 +236,59 @@ describe("TokenItem", () => {
     // contract-resolved asset's subtitle stand-in for its canonical name.
     expect(getAllByText("USDC")).toHaveLength(2);
   });
+
+  it("re-renders the subtitle when the domain changes but the code and issuer do not", () => {
+    const token = makeToken({ domain: "" });
+
+    const { getByText, queryByText, rerender } = render(
+      <TokenItem
+        token={token}
+        handleAddToken={handleAddToken}
+        handleRemoveToken={handleRemoveToken}
+      />,
+    );
+
+    expect(getByText("-")).toBeTruthy();
+
+    const updatedToken = makeToken({ domain: "centre.io" });
+
+    rerender(
+      <TokenItem
+        token={updatedToken}
+        handleAddToken={handleAddToken}
+        handleRemoveToken={handleRemoveToken}
+      />,
+    );
+
+    expect(getByText("centre.io")).toBeTruthy();
+    expect(queryByText("-")).toBeNull();
+  });
+
+  it("re-renders the right-side content when hasTrustline flips but the code and issuer do not", () => {
+    const token = makeToken({ hasTrustline: false });
+
+    const { getByTestId, queryByTestId, rerender } = render(
+      <TokenItem
+        token={token}
+        handleAddToken={handleAddToken}
+        handleRemoveToken={handleRemoveToken}
+      />,
+    );
+
+    expect(getByTestId("add-token-right-content")).toBeTruthy();
+    expect(queryByTestId("manage-token-right-content")).toBeNull();
+
+    const updatedToken = makeToken({ hasTrustline: true });
+
+    rerender(
+      <TokenItem
+        token={updatedToken}
+        handleAddToken={handleAddToken}
+        handleRemoveToken={handleRemoveToken}
+      />,
+    );
+
+    expect(getByTestId("manage-token-right-content")).toBeTruthy();
+    expect(queryByTestId("add-token-right-content")).toBeNull();
+  });
 });

@@ -80,9 +80,4 @@ const TokenItem: React.FC<TokenItemProps> = ({
     </View>
   );
 };
-export default memo(
-  TokenItem,
-  (prev, next) =>
-    prev.token.tokenCode === next.token.tokenCode &&
-    prev.token.issuer === next.token.issuer,
-);
+export default memo(TokenItem);
