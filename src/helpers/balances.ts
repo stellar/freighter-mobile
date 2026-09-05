@@ -17,6 +17,11 @@ import {
   NonNativeToken,
   Token,
 } from "config/types";
+import {
+  isNativeAssetId,
+  isNativeBalance,
+  isNativeToken,
+} from "helpers/assetIdentity";
 import { formatFiatAmount, NO_FIAT_VALUE } from "helpers/formatAmount";
 
 interface GetTokenPriceFromBalanceParams {
@@ -156,8 +161,10 @@ export const getTokenIdentifier = (
     token = item;
   }
 
-  // Native token
-  if ("type" in token && token.type === "native") {
+  // Native token. `isLiquidityPool` returns a boolean rather than a type
+  // predicate, so the early return above doesn't narrow `token` — the `in`
+  // check is what rules out the LP shape for the type system.
+  if ("type" in token && isNativeToken(token)) {
     return NATIVE_TOKEN_CODE;
   }
 
@@ -320,7 +327,7 @@ export const formatTokenIdentifier = (tokenIdentifier: string) => {
 export const getTokenType = (
   tokenIdentifier: string,
 ): TokenTypeWithCustomToken => {
-  if (tokenIdentifier === NATIVE_TOKEN_CODE) {
+  if (isNativeAssetId(tokenIdentifier)) {
     return TokenTypeWithCustomToken.NATIVE;
   }
 
@@ -375,7 +382,7 @@ export const calculateSpendableAmount = ({
   }
 
   // For non-native tokens, return available balance or total balance
-  if ("token" in balance && balance.token.type !== "native") {
+  if (!isNativeBalance(balance)) {
     // Use available balance if present
     const availableBalance =
       "available" in balance ? new BigNumber(balance.available) : totalBalance;
@@ -384,7 +391,7 @@ export const calculateSpendableAmount = ({
   }
 
   // For XLM (native asset), consider minimum balance requirements and transaction fee
-  if ("token" in balance && balance.token.type === "native") {
+  if (isNativeBalance(balance)) {
     const fee = new BigNumber(transactionFee);
 
     // Prefer the server-derived `minimumBalance`. Both balance paths define it
@@ -474,27 +481,12 @@ export const calculateSwapRate = (
   return rate.toString();
 };
 
-export function isSacContract(name: string): boolean {
-  if (!name || typeof name !== "string") return false;
-  const [code, issuer] = name.split(":");
-  if (!code || !issuer) return false;
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const token = new SdkToken(code, issuer);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 /**
  * Answers whether `contractId` is the Stellar Asset Contract for the classic
  * asset named `name` (a canonical `CODE:ISSUER` string).
  *
- * Stricter than `isSacContract`, which only checks that `name` parses as
- * `CODE:ISSUER` and so returns true for any SEP-41 token that happens to be
- * named that way. Here the SAC address is derived from the asset and compared
- * to the contract in hand, so a false positive would require a genuine SAC.
+ * The SAC address is derived from the asset and compared to the contract in
+ * hand, so a false positive would require a genuine SAC.
  *
  * Used to dedupe a locally added SAC against the classic trustline for the
  * same asset: the two are the same holding under different identities, and a
@@ -542,9 +534,7 @@ export const hasXLMForFees = (
   transactionFee: string = MIN_TRANSACTION_FEE,
 ): boolean => {
   // Find XLM balance
-  const xlmBalance = balanceItems.find(
-    (item) => "token" in item && item.token.type === "native",
-  );
+  const xlmBalance = balanceItems.find((item) => isNativeBalance(item));
 
   if (!xlmBalance) {
     return false;

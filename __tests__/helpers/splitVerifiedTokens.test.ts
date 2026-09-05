@@ -111,7 +111,7 @@ describe("splitVerifiedTokens", () => {
       expect(result.unverified).toHaveLength(0);
     });
 
-    it("categorizes native tokens as verified", async () => {
+    it("categorizes native tokens as verified by their isNative flag, not their code", async () => {
       mockGetVerifiedTokens.mockResolvedValue([]);
 
       const tokens: FormattedSearchTokenRecord[] = [
@@ -127,7 +127,7 @@ describe("splitVerifiedTokens", () => {
           issuer: "some-issuer",
           domain: "stellar.org",
           hasTrustline: true,
-          isNative: false, // not marked as native but code is XLM
+          isNative: false, // XLM-coded record with an unlisted issuer
         },
       ];
 
@@ -136,11 +136,10 @@ describe("splitVerifiedTokens", () => {
         network: NETWORKS.PUBLIC,
       });
 
-      expect(result.verified).toHaveLength(2);
-      expect(
-        result.verified.every((t) => t.tokenCode === NATIVE_TOKEN_CODE),
-      ).toBe(true);
-      expect(result.unverified).toHaveLength(0);
+      expect(result.verified).toHaveLength(1);
+      expect(result.verified[0].isNative).toBe(true);
+      expect(result.unverified).toHaveLength(1);
+      expect(result.unverified[0].issuer).toBe("some-issuer");
     });
 
     it("categorizes tokens as unverified when not in verified list", async () => {
@@ -439,5 +438,53 @@ describe("splitVerifiedTokens", () => {
         "UNVERIFIED2",
       ]);
     });
+  });
+
+  it("treats only records flagged isNative as automatically verified", async () => {
+    mockGetVerifiedTokens.mockResolvedValue([]);
+
+    const tokens = [
+      { tokenCode: "XLM", issuer: "", isNative: true }, // genuine native record
+      {
+        tokenCode: "XLM",
+        issuer: "GBEO62ZYAOEKVL4WMF5Q6VYTOJQUT7H2QYRDVFO5LT4W7VQPFDWVKUHO",
+        isNative: false,
+      }, // XLM-coded classic asset, unlisted issuer
+    ] as FormattedSearchTokenRecord[];
+
+    const { verified, unverified } = await splitVerifiedTokens({
+      tokens,
+      network: NETWORKS.PUBLIC,
+    });
+
+    expect(verified).toHaveLength(1);
+    expect(verified[0].isNative).toBe(true);
+    expect(unverified).toHaveLength(1);
+    expect(unverified[0].issuer).toBe(
+      "GBEO62ZYAOEKVL4WMF5Q6VYTOJQUT7H2QYRDVFO5LT4W7VQPFDWVKUHO",
+    );
+  });
+
+  it("never seeds an empty string into the verified-id set", async () => {
+    // Use the real derivation instead of the module-level stub: on a network
+    // with no hardcoded native contract entry, the derived id must be
+    // non-empty, and a token with an empty issuer must not become verified.
+    mockGetNativeContractDetails.mockImplementation(
+      jest.requireActual<typeof import("helpers/soroban")>("helpers/soroban")
+        .getNativeContractDetails,
+    );
+    mockGetVerifiedTokens.mockResolvedValue([]);
+
+    const tokens = [
+      { tokenCode: "FOO", issuer: "", isNative: false },
+    ] as FormattedSearchTokenRecord[];
+
+    const { verified, unverified } = await splitVerifiedTokens({
+      tokens,
+      network: NETWORKS.FUTURENET,
+    });
+
+    expect(verified).toHaveLength(0);
+    expect(unverified).toHaveLength(1);
   });
 });

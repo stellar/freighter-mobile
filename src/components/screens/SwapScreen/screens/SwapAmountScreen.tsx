@@ -50,7 +50,6 @@ import { AnalyticsEvent, SwapPickerEntrypoint } from "config/analyticsConfig";
 import {
   BASE_RESERVE,
   DEFAULT_DECIMALS,
-  isNativeAssetId,
   TransactionContext,
 } from "config/constants";
 import { logger } from "config/logger";
@@ -61,6 +60,7 @@ import { useDebugStore } from "ducks/debug";
 import { descriptorAsPathBalance, useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionBuilderStore } from "ducks/transactionBuilder";
+import { isNativeAssetId } from "helpers/assetIdentity";
 import { calculateSpendableAmount } from "helpers/balances";
 import { formatFiatAmount } from "helpers/formatAmount";
 import { waitForKeyboardDismiss } from "helpers/keyboard";

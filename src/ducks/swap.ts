@@ -9,6 +9,7 @@ import {
 import { logger } from "config/logger";
 import { PricedBalance, TokenTypeWithCustomToken } from "config/types";
 import { useDebugStore } from "ducks/debug";
+import { isNativeAssetId } from "helpers/assetIdentity";
 import { formatBigNumberForDisplay } from "helpers/formatAmount";
 import { isContractId } from "helpers/soroban";
 import { type HeldBalanceItem } from "hooks/useBalancesList";
@@ -119,7 +120,7 @@ const findClassicSwapPath = async (params: {
     const bestPath = pathsResult.records[0];
 
     const path: string[] = bestPath.path.map((token: HorizonPathToken) => {
-      if (token.asset_type === "native") {
+      if (isNativeAssetId(token.asset_type)) {
         return "native";
       }
       return `${token.asset_code}:${token.asset_issuer}`;

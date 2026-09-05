@@ -1270,6 +1270,44 @@ describe("useTokenFiatConverter", () => {
   });
 });
 
+describe("useTokenFiatConverter - identity-based reset", () => {
+  it("resets amounts when switching between same-code balances with different issuers", () => {
+    const mockNativeBalance = {
+      ...createMockPricedBalance(100, 0.5),
+      token: {
+        type: TokenTypeWithCustomToken.NATIVE,
+        code: "XLM",
+      },
+      tokenCode: "XLM",
+    } as unknown as PricedBalance;
+
+    const xlmCodedClassicBalance = {
+      ...mockNativeBalance,
+      token: {
+        type: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+        code: "XLM",
+        issuer: {
+          key: "GBEO62ZYAOEKVL4WMF5Q6VYTOJQUT7H2QYRDVFO5LT4W7VQPFDWVKUHO",
+        },
+      },
+      tokenCode: "XLM",
+    } as unknown as PricedBalance;
+
+    const { result, rerender } = renderHook(
+      ({ selectedBalance }) => useTokenFiatConverter({ selectedBalance }),
+      { initialProps: { selectedBalance: mockNativeBalance } },
+    );
+
+    act(() => {
+      result.current.handleDisplayAmountChange("5");
+    });
+    expect(result.current.tokenAmount).toBe("5");
+
+    rerender({ selectedBalance: xlmCodedClassicBalance });
+    expect(result.current.tokenAmount).toBe("0");
+  });
+});
+
 describe("useTokenFiatConverter.setDisplayAmountFromText", () => {
   const createMockBalance = (price: number | string) =>
     ({

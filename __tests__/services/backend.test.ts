@@ -7,6 +7,7 @@ import {
   fetchTokenPrices,
   freighterBackendV1,
   freighterBackendV2,
+  handleContractLookup,
   simulateTransaction,
   submitTransaction,
   SimulateTransactionParams,
@@ -1271,5 +1272,97 @@ describe("Backend Service - fetchBalances v2 local custom-token merge", () => {
 
     expect(result.balances!.XLM).toBeDefined();
     expect(result.localOnlyTokenIds).toEqual([]);
+  });
+});
+
+describe("Backend Service - handleContractLookup", () => {
+  let mockV1Get: jest.MockedFunction<any>;
+
+  // The native lumen's Stellar Asset Contract id on each network, derived
+  // deterministically from the network passphrase.
+  const PUBNET_NATIVE_CONTRACT =
+    "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA";
+  const TESTNET_NATIVE_CONTRACT =
+    "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC";
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockV1Get = freighterBackendV1.get as jest.MockedFunction<any>;
+  });
+
+  it("resolves the pubnet native contract as an already-held native token", async () => {
+    const result = await handleContractLookup(
+      PUBNET_NATIVE_CONTRACT,
+      NETWORKS.PUBLIC,
+    );
+
+    expect(result).toMatchObject({
+      isNative: true,
+      hasTrustline: true,
+      issuer: "",
+      tokenCode: "XLM",
+    });
+    expect(mockV1Get).not.toHaveBeenCalled();
+  });
+
+  it("resolves the testnet native contract identically to the pubnet one", async () => {
+    const result = await handleContractLookup(
+      TESTNET_NATIVE_CONTRACT,
+      NETWORKS.TESTNET,
+    );
+
+    expect(result).toMatchObject({
+      isNative: true,
+      hasTrustline: true,
+      issuer: "",
+      tokenCode: "XLM",
+    });
+    expect(mockV1Get).not.toHaveBeenCalled();
+  });
+
+  it("does not treat the pubnet native contract id as native when looked up on testnet", async () => {
+    mockV1Get.mockImplementation((url: string) => {
+      if (url.startsWith("/token-details/")) {
+        return Promise.resolve({
+          data: { name: "XLM:native", decimals: 7, symbol: "XLM" },
+        });
+      }
+      if (url.startsWith("/is-sac-contract/")) {
+        return Promise.resolve({ data: { isSacContract: true } });
+      }
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+
+    const result = await handleContractLookup(
+      PUBNET_NATIVE_CONTRACT,
+      NETWORKS.TESTNET,
+    );
+
+    expect(result?.isNative).toBe(false);
+    expect(mockV1Get).toHaveBeenCalled();
+  });
+
+  it("returns an empty domain for a non-native contract lookup", async () => {
+    const contractId = "CCUSDCCUSDCCUSDCCUSDCCUSDCCUSDCCUSDCCUSDCCUSDCCUSDCCUS";
+
+    mockV1Get.mockImplementation((url: string) => {
+      if (url.startsWith("/token-details/")) {
+        return Promise.resolve({
+          data: { name: "USDC:GISSUER", decimals: 7, symbol: "USDC" },
+        });
+      }
+      if (url.startsWith("/is-sac-contract/")) {
+        return Promise.resolve({ data: { isSacContract: true } });
+      }
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+
+    const result = await handleContractLookup(contractId, NETWORKS.PUBLIC);
+
+    expect(result).toMatchObject({
+      isNative: false,
+      domain: "",
+      tokenCode: "USDC",
+    });
   });
 });

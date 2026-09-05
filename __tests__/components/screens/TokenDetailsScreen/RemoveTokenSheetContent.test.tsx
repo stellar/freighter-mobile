@@ -65,7 +65,7 @@ describe("RemoveTokenSheetContent", () => {
       id: "XLM",
       tokenCode: "XLM",
       tokenType: TokenTypeWithCustomToken.NATIVE,
-      token: {},
+      token: { type: TokenTypeWithCustomToken.NATIVE, code: "XLM" },
     });
     const { getByText } = render(
       <RemoveTokenSheetContent {...baseProps} selectedToken={token} />,
