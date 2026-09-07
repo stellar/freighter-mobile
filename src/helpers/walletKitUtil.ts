@@ -11,8 +11,15 @@ import {
   getSdkError,
   SdkErrorKey,
 } from "@walletconnect/utils";
-import { NETWORK_NAMES, NETWORKS } from "config/constants";
+import {
+  NETWORK_NAMES,
+  NETWORKS,
+  mapNetworkToNetworkDetails,
+} from "config/constants";
+import { DappErrorCode, DappRequest, DappTransport } from "config/dappRequest";
 import { logger } from "config/logger";
+import { AUTH_STATUS } from "config/types";
+import { useAuthenticationStore } from "ducks/auth";
 import {
   ActiveSessions,
   StellarRpcChains,
@@ -53,10 +60,10 @@ const stellarNamespaceEvents = [StellarRpcEvents.ACCOUNTS_CHANGED];
  *
  * A rejection is emitted ONLY for a genuine user dismissal of a still-pending
  * request:
- * - `hasResponded` (approveSessionRequest already sent a WC response) => the
+ * - `hasResponded` (executeDappRequest already sent a response) => the
  *   request was approved/completed, never a rejection.
  * - `approvalInFlight` (the user hit Approve — success OR an unexpected throw in
- *   approveSessionRequest) => an approval attempt, not a dismissal; the throw
+ *   executeDappRequest) => an approval attempt, not a dismissal; the throw
  *   still triggers a WC-level fallback rejection but must not be counted as a
  *   user reject in analytics.
  * - no active `requestEvent` => nothing to reject.
@@ -256,9 +263,45 @@ export const rejectSessionRequest = async ({
 };
 
 /**
- * Approves and processes a session request from a dApp
+ * Rejects a dApp request on whichever transport it arrived on. Fire-and-forget:
+ * a delivery failure is logged, never thrown, so rejection paths cannot
+ * themselves fail.
  * @param {Object} params - The parameters object
- * @param {WalletKitSessionRequest} params.sessionRequest - The session request to approve
+ * @param {DappRequest} params.sessionRequest - The request to reject
+ * @param {string} params.message - Human-readable reason sent to the dApp
+ * @param {DappErrorCode} [params.code] - Error code; defaults to USER_REJECTED
+ */
+export const rejectDappRequest = ({
+  sessionRequest,
+  message,
+  code = DappErrorCode.USER_REJECTED,
+}: {
+  sessionRequest: DappRequest;
+  message: string;
+  code?: DappErrorCode;
+}): void => {
+  sessionRequest
+    .respond({
+      id: sessionRequest.id,
+      jsonrpc: "2.0",
+      error: { code, message },
+    })
+    .catch((error) => {
+      logger.warn(
+        "walletKitUtil.rejectDappRequest",
+        "Rejection could not be delivered",
+        error,
+      );
+    });
+};
+
+/**
+ * Validates, signs and (for sign-and-submit) submits a dApp request, then
+ * responds on the request's own transport. Shared by WalletConnect and the
+ * in-app WebView bridge; re-checks `sessionRequest.isValid()` right before
+ * signing so a stale request never reaches the signer.
+ * @param {Object} params - The parameters object
+ * @param {DappRequest} params.sessionRequest - The native-verified request to execute
  * @param {Function} params.signTransaction - Function to sign the transaction
  * @param {string} params.networkPassphrase - The network passphrase
  * @param {string} params.activeChain - The active chain identifier
@@ -266,7 +309,7 @@ export const rejectSessionRequest = async ({
  * @param {TFunction} params.t - Translation function
  * @returns {Promise<void>} A promise that resolves when the approval is complete
  */
-export const approveSessionRequest = async ({
+export const executeDappRequest = async ({
   sessionRequest,
   signTransaction,
   signMessage,
@@ -277,7 +320,7 @@ export const approveSessionRequest = async ({
   showToast,
   t,
 }: {
-  sessionRequest: WalletKitSessionRequest;
+  sessionRequest: DappRequest;
   signTransaction: (
     transaction: Transaction | FeeBumpTransaction,
   ) => string | null;
@@ -291,12 +334,31 @@ export const approveSessionRequest = async ({
   showToast: (options: ToastOptions) => void;
   t: TFunction<"translations", undefined>;
 }) => {
-  const { id, params, topic } = sessionRequest;
+  const { id, params } = sessionRequest;
   const { request, chainId } = params || {};
   const { params: requestParams, method: requestMethod } = request || {};
   const { xdr } = requestParams || {};
 
   const rpcMethod = requestMethod as StellarRpcMethods;
+
+  const ensureValid = () => {
+    if (sessionRequest.isValid()) return true;
+    rejectDappRequest({
+      sessionRequest,
+      message: "Wallet context changed",
+      code: DappErrorCode.CONTEXT_CHANGED,
+    });
+    return false;
+  };
+  if (!ensureValid()) return;
+  if (!stellarNamespaceMethods.includes(rpcMethod)) {
+    rejectDappRequest({
+      sessionRequest,
+      message: t("walletKit.errorUnsupportedMethod", { method: requestMethod }),
+      code: DappErrorCode.UNSUPPORTED_METHOD,
+    });
+    return;
+  }
 
   const supportedChains = [StellarRpcChains.PUBLIC, StellarRpcChains.TESTNET];
 
@@ -310,7 +372,11 @@ export const approveSessionRequest = async ({
       message,
       variant: "error",
     });
-    rejectSessionRequest({ sessionRequest, message });
+    rejectDappRequest({
+      sessionRequest,
+      message,
+      code: DappErrorCode.WRONG_NETWORK,
+    });
     return;
   }
 
@@ -329,7 +395,11 @@ export const approveSessionRequest = async ({
       message,
       variant: "error",
     });
-    rejectSessionRequest({ sessionRequest, message });
+    rejectDappRequest({
+      sessionRequest,
+      message,
+      code: DappErrorCode.WRONG_NETWORK,
+    });
     return;
   }
 
@@ -345,7 +415,11 @@ export const approveSessionRequest = async ({
         message: errorMessage,
         variant: "error",
       });
-      rejectSessionRequest({ sessionRequest, message: errorMessage });
+      rejectDappRequest({
+        sessionRequest,
+        message: errorMessage,
+        code: DappErrorCode.INVALID_PARAMS,
+      });
       return;
     }
 
@@ -357,35 +431,33 @@ export const approveSessionRequest = async ({
         message: errorMessage,
         variant: "error",
       });
-      rejectSessionRequest({ sessionRequest, message: errorMessage });
+      rejectDappRequest({
+        sessionRequest,
+        message: errorMessage,
+        code: DappErrorCode.INVALID_PARAMS,
+      });
       return;
     }
 
+    if (!sessionRequest.isValid()) {
+      ensureValid();
+      return;
+    }
     const signedMessage = signMessage(contentResult.value);
 
     if (!signedMessage) {
       const errorMessage = "Failed to sign message";
-      logger.error(
-        "approveSessionRequest",
-        errorMessage,
-        new Error(errorMessage),
-      );
+      logger.error("executeDappRequest", errorMessage, new Error(errorMessage));
       showToast({
         title: t("walletKit.errorSigningMessage"),
         message: t("walletKit.pleaseTryAgainLater"),
         variant: "error",
       });
-      rejectSessionRequest({ sessionRequest, message: errorMessage });
+      rejectDappRequest({ sessionRequest, message: errorMessage });
       return;
     }
 
-    // Get dapp metadata for analytics
-    const { activeSessions } = useWalletKitStore.getState();
-    const dappMetadata = getDappMetadataFromEvent(
-      sessionRequest,
-      activeSessions,
-    );
-    const dappDomain = dappMetadata?.url;
+    const dappDomain = sessionRequest.origin;
 
     analytics.trackSignedMessage({
       messageLength: contentResult.value.length,
@@ -399,7 +471,7 @@ export const approveSessionRequest = async ({
     };
 
     try {
-      await walletKit.respondSessionRequest({ topic, response });
+      await sessionRequest.respond(response);
 
       showToast({
         title: t("walletKit.signMessageSuccessfull"),
@@ -418,7 +490,7 @@ export const approveSessionRequest = async ({
         variant: "error",
       });
 
-      rejectSessionRequest({ sessionRequest, message: errorMsg });
+      rejectDappRequest({ sessionRequest, message: errorMsg });
     }
 
     return;
@@ -443,36 +515,34 @@ export const approveSessionRequest = async ({
         message: errorMessage,
         variant: "error",
       });
-      rejectSessionRequest({ sessionRequest, message: errorMessage });
+      rejectDappRequest({
+        sessionRequest,
+        message: errorMessage,
+        code: DappErrorCode.INVALID_PARAMS,
+      });
       return;
     }
 
     // signAuthEntry catches internally — null return signals failure
+    if (!sessionRequest.isValid()) {
+      ensureValid();
+      return;
+    }
     const result = signAuthEntry(entryXdr as string);
 
     if (!result) {
       const errorMessage = t("walletKit.failedToProcessAuthEntry");
-      logger.error(
-        "approveSessionRequest",
-        errorMessage,
-        new Error(errorMessage),
-      );
+      logger.error("executeDappRequest", errorMessage, new Error(errorMessage));
       showToast({
         title: t("walletKit.errorSigningAuthEntry"),
         message: errorMessage,
         variant: "error",
       });
-      rejectSessionRequest({ sessionRequest, message: errorMessage });
+      rejectDappRequest({ sessionRequest, message: errorMessage });
       return;
     }
 
-    // Get dapp metadata for analytics
-    const { activeSessions } = useWalletKitStore.getState();
-    const dappMetadata = getDappMetadataFromEvent(
-      sessionRequest,
-      activeSessions,
-    );
-    const dappDomain = dappMetadata?.url;
+    const dappDomain = sessionRequest.origin;
 
     analytics.trackSignedAuthEntry({
       ...(dappDomain ? { dappDomain } : {}),
@@ -485,7 +555,7 @@ export const approveSessionRequest = async ({
     };
 
     try {
-      await walletKit.respondSessionRequest({ topic, response });
+      await sessionRequest.respond(response);
 
       showToast({
         title: t("walletKit.signAuthEntrySuccessfull"),
@@ -504,7 +574,7 @@ export const approveSessionRequest = async ({
         variant: "error",
       });
 
-      rejectSessionRequest({
+      rejectDappRequest({
         sessionRequest,
         message: t("walletKit.failedToProcessAuthEntry"),
       });
@@ -521,34 +591,28 @@ export const approveSessionRequest = async ({
     transaction = TransactionBuilder.fromXdr(xdr as string, networkPassphrase);
 
     // Always sign the transaction for both supported RPC methods
+    if (!sessionRequest.isValid()) {
+      ensureValid();
+      return;
+    }
     signedTransaction = signTransaction(transaction);
 
     if (!signedTransaction) {
       const errorMessage = "Failed to sign transaction";
-      logger.error(
-        "approveSessionRequest",
-        errorMessage,
-        new Error(errorMessage),
-      );
+      logger.error("executeDappRequest", errorMessage, new Error(errorMessage));
       showToast({
         title: t("walletKit.errorSigning"),
         message: t("walletKit.pleaseTryAgainLater"),
         variant: "error",
       });
-      rejectSessionRequest({
+      rejectDappRequest({
         sessionRequest,
         message: t("common.error", { errorMessage }),
       });
       return;
     }
 
-    // Get dapp metadata for analytics
-    const { activeSessions } = useWalletKitStore.getState();
-    const dappMetadata = getDappMetadataFromEvent(
-      sessionRequest,
-      activeSessions,
-    );
-    dappDomain = dappMetadata?.url;
+    dappDomain = sessionRequest.origin;
 
     analytics.trackSignedTransaction({
       ...(dappDomain ? { dappDomain } : {}),
@@ -563,7 +627,7 @@ export const approveSessionRequest = async ({
       message,
       variant: "error",
     });
-    rejectSessionRequest({ sessionRequest, message });
+    rejectDappRequest({ sessionRequest, message });
     return;
   }
 
@@ -571,6 +635,10 @@ export const approveSessionRequest = async ({
   if (rpcMethod === StellarRpcMethods.SIGN_AND_SUBMIT_XDR) {
     // For stellar_signAndSubmitXDR: sign AND submit, then return success status
     try {
+      if (!sessionRequest.isValid()) {
+        ensureValid();
+        return;
+      }
       await submitTx({
         network: targetNetwork,
         tx: signedTransaction,
@@ -591,7 +659,7 @@ export const approveSessionRequest = async ({
         variant: "error",
       });
 
-      rejectSessionRequest({ sessionRequest, message });
+      rejectDappRequest({ sessionRequest, message });
 
       return;
     }
@@ -603,7 +671,7 @@ export const approveSessionRequest = async ({
         jsonrpc: "2.0",
       };
 
-      await walletKit.respondSessionRequest({ topic, response });
+      await sessionRequest.respond(response);
 
       showToast({
         title: t("walletKit.signAndSubmitSuccessfull"),
@@ -622,7 +690,7 @@ export const approveSessionRequest = async ({
         variant: "error",
       });
 
-      rejectSessionRequest({ sessionRequest, message });
+      rejectDappRequest({ sessionRequest, message });
     }
   } else if (rpcMethod === StellarRpcMethods.SIGN_XDR) {
     // For stellar_signXDR: sign only, then return the signed transaction
@@ -633,7 +701,7 @@ export const approveSessionRequest = async ({
     };
 
     try {
-      await walletKit.respondSessionRequest({ topic, response });
+      await sessionRequest.respond(response);
 
       showToast({
         title: t("walletKit.signSuccessfull"),
@@ -652,21 +720,55 @@ export const approveSessionRequest = async ({
         variant: "error",
       });
 
-      rejectSessionRequest({ sessionRequest, message });
+      rejectDappRequest({ sessionRequest, message });
     }
-  } else {
-    // Unknown RPC method
-    const message = t("walletKit.errorUnsupportedMethod", {
-      method: rpcMethod || "unknown",
-    });
-    logger.error("approveSessionRequest", message, new Error(message));
-    showToast({
-      title: t("walletKit.errorUnsupportedMethodTitle"),
-      message,
-      variant: "error",
-    });
-    rejectSessionRequest({ sessionRequest, message });
   }
+};
+
+/** WalletConnect keeps its session transport and numeric rejection code. */
+export const toDappRequest = (
+  sessionRequest: WalletKitSessionRequest,
+  publicKey: string,
+  networkPassphrase: string,
+): DappRequest => {
+  const metadata = getDappMetadataFromEvent(
+    sessionRequest,
+    useWalletKitStore.getState().activeSessions,
+  ) || { name: "", description: "", url: "", icons: [] };
+  return {
+    id: sessionRequest.id,
+    params: sessionRequest.params,
+    origin: sessionRequest.verifyContext?.verified?.origin || metadata.url,
+    metadata,
+    transport: DappTransport.WALLET_CONNECT,
+    isValid: () => {
+      const state = useAuthenticationStore.getState();
+      return (
+        state.authStatus === AUTH_STATUS.AUTHENTICATED &&
+        !state.isSoftLocked &&
+        state.account?.publicKey === publicKey &&
+        (mapNetworkToNetworkDetails(state.network)
+          .networkPassphrase as string) === networkPassphrase
+      );
+    },
+    respond: async (response) => {
+      if (response.error) {
+        await rejectSessionRequest({
+          sessionRequest,
+          message: response.error.message,
+        });
+      } else {
+        await walletKit.respondSessionRequest({
+          topic: sessionRequest.topic,
+          response: {
+            id: sessionRequest.id,
+            jsonrpc: "2.0",
+            result: response.result,
+          },
+        });
+      }
+    },
+  };
 };
 
 /**
