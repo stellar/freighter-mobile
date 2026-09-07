@@ -1,4 +1,4 @@
-import type { DappRequest } from "config/dappRequest";
+import { type DappRequest, DappTransport } from "config/dappRequest";
 import { ActiveAccount } from "ducks/auth";
 import { useProtocolsStore } from "ducks/protocols";
 import { findMatchedProtocol, getDisplayHost } from "helpers/protocols";
@@ -28,7 +28,10 @@ export const useDappHeader = (
   if (!dappMetadata || !account) return null;
 
   return {
-    dAppDomain: getDisplayHost(requestOrigin || dappMetadata.url || ""),
+    dAppDomain:
+      requestEvent?.transport === DappTransport.WEBVIEW
+        ? requestOrigin
+        : getDisplayHost(requestOrigin || dappMetadata.url || ""),
     dAppName: matchedProtocol?.name ?? dappMetadata.name,
     dAppFavicon: matchedProtocol?.iconUrl ?? dappMetadata.icons[0],
   };

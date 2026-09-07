@@ -41,7 +41,7 @@ describe("shared dApp executor", () => {
         url: "https://example.org",
         icons: [],
       },
-      transport: DappTransport.WALLET_CONNECT,
+      transport: DappTransport.WEBVIEW,
       isValid: jest.fn(() => true),
       respond,
     };
@@ -89,7 +89,7 @@ describe("shared dApp executor", () => {
     );
   });
 
-  it("returns message signatures through the transport", async () => {
+  it("returns message signatures through the transport without browser instructions", async () => {
     const args = setup(StellarRpcMethods.SIGN_MESSAGE, { message: "hello" });
     await executeDappRequest(args);
     expect(args.signMessage).toHaveBeenCalledWith("hello");
@@ -100,7 +100,6 @@ describe("shared dApp executor", () => {
     });
     expect(args.showToast).toHaveBeenCalledWith({
       title: "walletKit.signMessageSuccessfull",
-      message: "walletKit.returnToBrowser",
       variant: "success",
     });
   });

@@ -15,6 +15,7 @@ import { SecurityWarning } from "services/blockaid/helper";
 
 export interface SecurityDetailBottomSheetProps {
   warnings: SecurityWarning[];
+  origin?: string;
   onCancel?: () => void;
   onProceedAnyway?: () => void;
   onClose: () => void;
@@ -36,6 +37,7 @@ export const SecurityDetailBottomSheet: React.FC<
   SecurityDetailBottomSheetProps
 > = ({
   warnings,
+  origin,
   onCancel,
   onProceedAnyway,
   onClose,
@@ -212,6 +214,11 @@ export const SecurityDetailBottomSheet: React.FC<
           return t("securityWarning.suspiciousRequest");
         })()}
       </Text>
+      {origin && (
+        <Text md primary>
+          {origin}
+        </Text>
+      )}
       <Text md secondary regular>
         {getDescription()}
       </Text>

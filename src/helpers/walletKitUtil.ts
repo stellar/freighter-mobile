@@ -475,7 +475,9 @@ export const executeDappRequest = async ({
 
       showToast({
         title: t("walletKit.signMessageSuccessfull"),
-        message: t("walletKit.returnToBrowser"),
+        ...(sessionRequest.transport === DappTransport.WALLET_CONNECT
+          ? { message: t("walletKit.returnToBrowser") }
+          : {}),
         variant: "success",
       });
     } catch (err) {
@@ -559,7 +561,9 @@ export const executeDappRequest = async ({
 
       showToast({
         title: t("walletKit.signAuthEntrySuccessfull"),
-        message: t("walletKit.returnToBrowser"),
+        ...(sessionRequest.transport === DappTransport.WALLET_CONNECT
+          ? { message: t("walletKit.returnToBrowser") }
+          : {}),
         variant: "success",
       });
     } catch (err) {
@@ -675,7 +679,9 @@ export const executeDappRequest = async ({
 
       showToast({
         title: t("walletKit.signAndSubmitSuccessfull"),
-        message: t("walletKit.returnToBrowser"),
+        ...(sessionRequest.transport === DappTransport.WALLET_CONNECT
+          ? { message: t("walletKit.returnToBrowser") }
+          : {}),
         variant: "success",
       });
     } catch (error) {
@@ -705,7 +711,9 @@ export const executeDappRequest = async ({
 
       showToast({
         title: t("walletKit.signSuccessfull"),
-        message: t("walletKit.returnToBrowser"),
+        ...(sessionRequest.transport === DappTransport.WALLET_CONNECT
+          ? { message: t("walletKit.returnToBrowser") }
+          : {}),
         variant: "success",
       });
     } catch (error) {

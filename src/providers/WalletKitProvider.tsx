@@ -11,10 +11,16 @@ import DappRequestBottomSheetContent from "components/screens/WalletKit/DappRequ
 import Icon from "components/sds/Icon";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { mapNetworkToNetworkDetails, NETWORKS } from "config/constants";
-import { DappErrorCode, type DappRequest } from "config/dappRequest";
+import {
+  DappApprovalKind,
+  DappErrorCode,
+  type DappRequest,
+  DappTransport,
+} from "config/dappRequest";
 import { logger } from "config/logger";
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
+import { useDappApprovalStore } from "ducks/dappApproval";
 import { useDebugStore } from "ducks/debug";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import {
@@ -141,10 +147,16 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   const activeRequestRef = useRef<DappRequest | null>(null);
   const isClearingRequestRef = useRef(false);
   const securityWarningDecisionRef = useRef(false);
+  const webviewJob = useDappApprovalStore((state) => state.job);
+  const setWalletConnectBusy = useDappApprovalStore(
+    (state) => state.setWalletConnectBusy,
+  );
+  const handledWebviewJobRef = useRef<DappRequest | null>(null);
   /** Releases the active request slot after a rejection so the next queued request can proceed. */
   const resetActiveRequest = () => {
     activeRequestRef.current = null;
     isProcessingRequestRef.current = false;
+    setWalletConnectBusy(false);
   };
   const pendingRequestsQueueRef = useRef<WalletKitSessionRequest[]>([]);
   // Guard against double-reject: set to true once executeDappRequest has sent
@@ -464,6 +476,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     // Also ensure other sheets are closed to avoid any leftovers
     dappRequestBottomSheetModalRef.current?.dismiss();
 
+    setWalletConnectBusy(false);
     setIsConnecting(false);
     setProposalEvent(null);
     setSiteScanResult(undefined);
@@ -540,6 +553,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 
       // Mark processing as complete and process pending request if any
       isProcessingRequestRef.current = false;
+      setWalletConnectBusy(false);
       isClearingRequestRef.current = false;
       if (pendingRequestsQueueRef.current.length > 0) {
         logger.debug(
@@ -689,6 +703,28 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
    * Handles proceeding anyway from security warning (context-aware)
    */
   const handleProceedAnyway = (): void => {
+    const { job } = useDappApprovalStore.getState();
+    if (job?.kind === DappApprovalKind.SITE) {
+      if (job.request.isValid())
+        job.request
+          .respond({ id: job.request.id, jsonrpc: "2.0", result: true })
+          .catch((error) => {
+            logger.warn(
+              "WalletKitProvider",
+              "Site approval could not be delivered",
+              error,
+            );
+          });
+      else
+        rejectDappRequest({
+          sessionRequest: job.request,
+          message: t("walletKit.userRejected"),
+          code: DappErrorCode.CONTEXT_CHANGED,
+        });
+      securityWarningDecisionRef.current = true;
+      dismissSecurityWarning();
+      return;
+    }
     securityWarningDecisionRef.current = true;
     dismissSecurityWarning();
 
@@ -722,6 +758,14 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
    * @returns {void}
    */
   const handleCancelSecurityWarning = () => {
+    const { job } = useDappApprovalStore.getState();
+    if (job?.kind === DappApprovalKind.SITE) {
+      rejectDappRequest({
+        sessionRequest: job.request,
+        message: t("walletKit.userRejected"),
+        code: DappErrorCode.USER_REJECTED,
+      });
+    }
     securityWarningDecisionRef.current = true;
     dismissSecurityWarning();
 
@@ -957,6 +1001,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   const handleSessionProposal = (sessionProposal: WalletKitSessionProposal) => {
     if (activeProposalRef.current === sessionProposal.id) return;
     if (
+      useDappApprovalStore.getState().job ||
       isProcessingRequestRef.current ||
       isClearingRequestRef.current ||
       activeProposalRef.current !== null
@@ -968,6 +1013,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       clearEvent();
       return;
     }
+    setWalletConnectBusy(true);
     // Check if user is not authenticated
     if (authStatus === AUTH_STATUS.NOT_AUTHENTICATED) {
       showToast({
@@ -989,6 +1035,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       );
 
       clearEvent();
+      setWalletConnectBusy(false);
       return;
     }
 
@@ -1002,6 +1049,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         message: t("walletKit.pleaseUnlockToConnect"),
         variant: "error",
       });
+      setWalletConnectBusy(false);
       return;
     }
 
@@ -1180,7 +1228,8 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     if (
       isProcessingRequestRef.current ||
       activeProposalRef.current !== null ||
-      isClearingRequestRef.current
+      isClearingRequestRef.current ||
+      useDappApprovalStore.getState().job
     ) {
       // Normal queue flow, not an error condition.
       logger.info(
@@ -1199,6 +1248,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 
     // Mark as processing
     isProcessingRequestRef.current = true;
+    setWalletConnectBusy(true);
 
     // Check if user is not authenticated
     if (authStatus === AUTH_STATUS.NOT_AUTHENTICATED) {
@@ -1215,6 +1265,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 
       clearEvent();
       isProcessingRequestRef.current = false;
+      setWalletConnectBusy(false);
       return;
     }
 
@@ -1229,12 +1280,14 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         variant: "error",
       });
       isProcessingRequestRef.current = false;
+      setWalletConnectBusy(false);
       return;
     }
 
     // Wait for active sessions to be fetched
     if (Object.keys(activeSessions).length === 0) {
       isProcessingRequestRef.current = false;
+      setWalletConnectBusy(false);
       return;
     }
 
@@ -1259,6 +1312,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 
       clearEvent();
       isProcessingRequestRef.current = false;
+      setWalletConnectBusy(false);
       return;
     }
 
@@ -1310,6 +1364,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 
       clearEvent();
       isProcessingRequestRef.current = false;
+      setWalletConnectBusy(false);
       return;
     }
 
@@ -1321,6 +1376,65 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       ),
     );
   };
+
+  useEffect(() => {
+    if (!webviewJob) {
+      if (handledWebviewJobRef.current) {
+        handledWebviewJobRef.current = null;
+        securityWarningDecisionRef.current = true;
+        dismissSecurityWarning();
+        if (requestEvent?.transport === DappTransport.WEBVIEW) {
+          hasRespondedRef.current = true;
+          handleClearDappRequest();
+        } else if (pendingRequestsQueueRef.current.length) {
+          setEvent(pendingRequestsQueueRef.current.shift()!);
+        }
+      }
+      return;
+    }
+    if (handledWebviewJobRef.current === webviewJob.request) return;
+    handledWebviewJobRef.current = webviewJob.request;
+    const { request, kind } = webviewJob;
+    if (kind === DappApprovalKind.SIGN) {
+      handleNormalizedRequest(request);
+      return;
+    }
+    scanSite(request.origin)
+      .then((result) => {
+        if (!request.isValid()) return;
+        setSiteScanResult(result);
+        const assessment = assessSiteSecurity(
+          result,
+          overriddenBlockaidResponse,
+        );
+        if (
+          !assessment.isMalicious &&
+          !assessment.isSuspicious &&
+          !assessment.isUnableToScan
+        ) {
+          request
+            .respond({ id: request.id, jsonrpc: "2.0", result: true })
+            .catch((error) => {
+              logger.warn(
+                "WalletKitProvider",
+                "Site approval could not be delivered",
+                error,
+              );
+            });
+          return;
+        }
+        setSecurityWarningContext(SecurityContext.SITE);
+        presentSecurityWarning();
+      })
+      .catch(() => {
+        if (!request.isValid()) return;
+        setSiteScanResult(undefined);
+        setSecurityWarningContext(SecurityContext.SITE);
+        presentSecurityWarning();
+      });
+    // Job identity is immutable; account/navigation changes invalidate it upstream.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [webviewJob]);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Main WalletKit event handler effect
@@ -1459,6 +1573,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         customContent={
           <SecurityDetailBottomSheet
             warnings={getWarnings()}
+            origin={webviewJob?.request.origin}
             onCancel={handleCancelSecurityWarning}
             onProceedAnyway={handleProceedAnyway}
             onClose={handleCancelSecurityWarning}
