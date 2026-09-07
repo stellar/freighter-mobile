@@ -116,6 +116,8 @@ export const WEBVIEW_BRIDGE_MAX_SEEN_REQUESTS = 10_000;
 export const WEBVIEW_BRIDGE_MAX_READY_PER_DOCUMENT = 2;
 /** How long a dApp request may wait for the user's decision before it times out. */
 export const DAPP_APPROVAL_TIMEOUT_MS = 5 * 60 * 1000;
+/** Network timeout for stellar.toml and SEP-10 challenge fetches during silent sign-in. */
+export const SEP10_FETCH_TIMEOUT_MS = 6_000;
 
 const SECOND_IN_MS = 1000;
 const MINUTE_IN_MS = 60 * SECOND_IN_MS;

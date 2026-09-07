@@ -21,6 +21,7 @@ import {
   WEBVIEW_BRIDGE_PROTOCOL,
   WEBVIEW_BRIDGE_PROTOCOL_VERSION,
 } from "services/webview/injection";
+import type { Sep10Auth } from "services/webview/sep10";
 
 /** The account context a connected document sees; never more than this. */
 export interface BridgeAccount {
@@ -47,6 +48,11 @@ interface BridgeOptions {
   /** Fresh per-document token; must be unguessable. */
   token: () => string;
   onInvalidated?: () => void;
+  /** Silent SEP-10 for an approved document; null means the dApp asks for a signature itself. */
+  prepareAuth?: (
+    origin: string,
+    account: BridgeAccount,
+  ) => Promise<Sep10Auth | null>;
 }
 
 /** Development-only HTTP hosts (simulator, emulator, loopback). */
@@ -416,7 +422,13 @@ export class WebviewBridge {
         this.wantsConnection = true;
         this.connected = true;
         this.lastAccount = account;
-        finish({ result: account });
+        // Never cached: a challenge is single-use server-side, so every
+        // connect (including after a dApp-side logout) gets a fresh one.
+        const auth = this.options.prepareAuth
+          ? await this.options.prepareAuth(this.origin, account)
+          : null;
+        if (!request.isValid()) return;
+        finish({ result: auth ? { ...account, auth } : account });
       } else if (method === WebviewBridgeMethod.GET_ACCOUNT) {
         finish(
           this.connected

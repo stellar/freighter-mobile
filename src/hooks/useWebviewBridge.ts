@@ -16,12 +16,15 @@ import { useBrowserTabsStore } from "ducks/browserTabs";
 import { useDappApprovalStore } from "ducks/dappApproval";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { isDev } from "helpers/isEnv";
-import { isWalletUnlocked } from "hooks/useGetActiveAccount";
+import useGetActiveAccount, {
+  isWalletUnlocked,
+} from "hooks/useGetActiveAccount";
 import { useEffect, useRef, useCallback, useMemo } from "react";
 import { AppState } from "react-native";
 import { randomBytes } from "react-native-quick-crypto";
 import type { WebView } from "react-native-webview";
 import { WebviewBridge } from "services/webview/bridge";
+import { prepareSep10Auth } from "services/webview/sep10";
 
 /**
  * Hands a WebView request to WalletKitProvider through the shared approval
@@ -98,6 +101,9 @@ export const useWebviewBridge = (
   const enabled = useRemoteConfigStore(
     (state) => state.webview_provider_enabled,
   );
+  const { signTransaction } = useGetActiveAccount();
+  const signTransactionRef = useRef(signTransaction);
+  signTransactionRef.current = signTransaction;
   const focused = useIsFocused();
   const focusedRef = useRef(focused);
   focusedRef.current = focused;
@@ -116,6 +122,15 @@ export const useWebviewBridge = (
           inject: (script) => refs.current[tabId]?.injectJavaScript(script),
           approve,
           onInvalidated: cancelInvalidApproval,
+          prepareAuth: (origin, account) =>
+            useRemoteConfigStore.getState().webview_auto_signin_enabled
+              ? prepareSep10Auth({
+                  origin,
+                  account,
+                  development: isDev,
+                  signTransaction: (tx) => signTransactionRef.current(tx),
+                })
+              : Promise.resolve(null),
           context: () => {
             const browser = useBrowserTabsStore.getState();
             const auth = useAuthenticationStore.getState();

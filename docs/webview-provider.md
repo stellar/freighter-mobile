@@ -8,6 +8,7 @@ SDK; WalletConnect and extension integrations are unchanged.
 Feature flags (remote config, on in dev, off in production):
 
 - `webview_provider_enabled` — inject and activate the bridge.
+- `webview_auto_signin_enabled` — countersign a SEP-10 challenge on connect.
 
 ## Native boundary
 
@@ -40,16 +41,22 @@ Feature flags (remote config, on in dev, off in production):
 - `helpers/walletKitUtil.ts#executeDappRequest` signs and submits for both
   transports and re-checks request validity right before signing.
 
-## Connect
+## Connect and SEP-10
 
 `connect()` scans the origin with Blockaid; safe sites connect silently, others
-need the existing warning acknowledgment. Connecting never signs anything: the
-dApp runs its own SEP-10 flow and every signature goes through the normal
-approval sheet.
+need the existing warning acknowledgment. When auto sign-in is on,
+`services/webview/sep10.ts` reads the site's `/.well-known/stellar.toml`,
+fetches a challenge from its `WEB_AUTH_ENDPOINT`, verifies it with
+`WebAuth.readChallengeTx` against the TOML `SIGNING_KEY`, the page's exact host
+as home domain (never a parent domain, so a stray subdomain cannot obtain a
+session on its parent), `web_auth_domain` and the wallet's network, checks the
+client account, and countersigns without a prompt. Any failure returns no `auth`
+and the dApp asks for a signature normally. Challenges are never cached. A
+challenge (sequence 0, manage-data only) skips the Blockaid transaction scan.
 
 ## Tests
 
 `__tests__/services/webviewBridge.test.ts` runs the injected JavaScript in a VM
-against the controller; `hooks/useWebviewBridge.test.ts` pins the flag gating;
-`providers/WalletKitWebview.test.tsx` and `helpers/dappExecutor.test.ts` cover
-the approval provider and executor.
+against the controller; `webviewSep10.test.ts` covers SEP-10 acceptance and
+refusals; `providers/WalletKitWebview.test.tsx` and
+`helpers/dappExecutor.test.ts` cover the approval provider and executor.

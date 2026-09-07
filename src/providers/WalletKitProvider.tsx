@@ -1,6 +1,10 @@
 import Blockaid from "@blockaid/client";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
-import { TransactionBuilder, xdr as stellarXdr } from "@stellar/stellar-sdk";
+import {
+  Transaction,
+  TransactionBuilder,
+  xdr as stellarXdr,
+} from "@stellar/stellar-sdk";
 import AddMemoExplanationBottomSheet from "components/AddMemoExplanationBottomSheet";
 import BottomSheet from "components/BottomSheet";
 import InformationBottomSheet from "components/InformationBottomSheet";
@@ -1155,11 +1159,17 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         (StellarRpcMethods.SIGN_AND_SUBMIT_XDR as string);
 
     if (isXdrRequest && requestXdr) {
+      let isSep10Challenge = false;
       try {
-        TransactionBuilder.fromXdr(
+        const parsed = TransactionBuilder.fromXdr(
           requestXdr,
           networkDetails.networkPassphrase,
         );
+        isSep10Challenge =
+          parsed instanceof Transaction &&
+          parsed.sequence === "0" &&
+          parsed.operations.length > 0 &&
+          parsed.operations.every((op) => op.type === "manageData");
       } catch {
         rejectDappRequest({
           sessionRequest,
@@ -1170,6 +1180,13 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         return;
       }
       setRequestEvent(sessionRequest);
+      if (isSep10Challenge) {
+        // A SEP-10 challenge cannot be submitted (sequence 0); scanning it only
+        // adds a network round trip and, when Blockaid is unreachable, a
+        // second warning gate before the login signature.
+        dappRequestBottomSheetModalRef.current?.present();
+        return;
+      }
       // XDR-based requests: scan transaction first
       scanTransaction(requestXdr, dappDomain)
         .then((scanResult) => {
