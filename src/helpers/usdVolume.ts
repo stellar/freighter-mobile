@@ -1,7 +1,7 @@
-import { Asset as SdkToken } from "@stellar/stellar-sdk";
 import BigNumber from "bignumber.js";
 import { NATIVE_TOKEN_CODE, NetworkDetails } from "config/constants";
 import { Balance, TokenIdentifier } from "config/types";
+import { isNativeContract, isNativeToken } from "helpers/assetIdentity";
 import { PriceFreshness, PriceSource } from "helpers/confirmationPriceSnapshot";
 import { getBalanceByKey, isContractId } from "helpers/soroban";
 
@@ -208,15 +208,18 @@ export const classifyAssetIdentity = (
     // collapse to native even when the queried balance list doesn't happen
     // to include a native entry (getBalanceByKey's own native check only
     // fires when iterating an actual native balance).
-    if (
-      SdkToken.native().contractId(networkDetails.networkPassphrase) === issuer
-    ) {
+    if (isNativeContract(issuer, networkDetails.networkPassphrase)) {
       return { code, type: AssetKind.NATIVE };
     }
 
     const match = getBalanceByKey(issuer, balances ?? [], networkDetails);
     if (match && "token" in match) {
-      if (match.token.code === NATIVE_TOKEN_CODE) {
+      // Nativeness is the token's declared type, never its code: a classic
+      // asset may legitimately carry the code "XLM" with a real `G…` issuer,
+      // and reporting that as native would drop its issuer and pool it into
+      // real lumen volume — the impersonation the issuer property exists to
+      // prevent.
+      if (isNativeToken(match.token)) {
         return { code, type: AssetKind.NATIVE };
       }
       if ("issuer" in match.token && !isContractId(match.token.issuer.key)) {

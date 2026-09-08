@@ -198,6 +198,14 @@ describe("useSwapTransaction", () => {
           destAmount: "2.5",
         }),
       );
+      // A throw out of submitTransaction itself (the debug forced-failure
+      // override) never reached the network, so the event carries no
+      // attempted volume — and in particular is not bucketed as `transport`,
+      // which means "submitted, but no verdict came back".
+      const [payload] = mockTrackTransactionError.mock.calls[0] as [
+        { volume?: unknown },
+      ];
+      expect(payload.volume).toBeUndefined();
       expect(mockShowToast).toHaveBeenCalled();
     });
 

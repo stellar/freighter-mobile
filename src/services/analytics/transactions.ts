@@ -17,11 +17,22 @@ import type {
   TransactionErrorEvent,
 } from "services/analytics/types";
 
-/** Flattens an `AssetIdentity` under the given property prefix (e.g. `asset_` -> `asset_issuer`/`asset_type`, `from_` -> `from_asset_issuer`/`from_asset_type`). Issuer omitted for native XLM. */
+/**
+ * Flattens an `AssetIdentity` under the given property prefix (e.g. `asset_`
+ * -> `asset_code`/`asset_issuer`/`asset_type`, `from_` ->
+ * `from_asset_code`/`from_asset_issuer`/`from_asset_type`). Issuer omitted for
+ * native XLM.
+ *
+ * The code is emitted here rather than left to each call site so an asset's
+ * three identifying properties always travel together: a call site that
+ * forgets to pass its token code separately can no longer produce an event
+ * carrying an issuer and a type but no code.
+ */
 const assetIdentityProps = (
   prefix: string,
-  identity: { issuer?: string; type: AssetKind },
+  identity: { code: string; issuer?: string; type: AssetKind },
 ): Record<string, unknown> => ({
+  [`${prefix}asset_code`]: identity.code,
   ...(identity.issuer ? { [`${prefix}asset_issuer`]: identity.issuer } : {}),
   [`${prefix}asset_type`]: identity.type,
 });
@@ -277,7 +288,9 @@ export const trackTransactionError = (data: TransactionErrorEvent): void => {
     props.payment_type = "payment";
     // asset_code is known even when there is no volume data (a pre-submit
     // failure), and it is the property payment.failed shares with
-    // payment.completed — keep it outside the volume gate.
+    // payment.completed — keep it outside the volume gate. When volume IS
+    // present, assetIdentityProps below restates it from the classified
+    // identity (same bare code) alongside the issuer and type.
     if (data.sourceToken) {
       props.asset_code = data.sourceToken;
     }

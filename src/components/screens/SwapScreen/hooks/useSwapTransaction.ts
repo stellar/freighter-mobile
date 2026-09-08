@@ -306,8 +306,14 @@ export const useSwapTransaction = ({
       // submitTransaction will throw if it fails (including debug overrides)
       // or return the hash if successful. If it returns null, surface the
       // stored error to keep the toast message accurate (e.g. DEBUG failures).
-      didSubmit = true;
       const transactionHash = await submitTransaction({ network });
+      // Set only once the call has returned. A throw out of submitTransaction
+      // itself (the debug forced-failure override) never reached the network,
+      // so it carries no attempted volume and must not be bucketed as
+      // `transport` — which means "submitted, but no verdict came back". A
+      // genuine submit failure returns null rather than throwing, so it still
+      // counts as submitted, as it should.
+      didSubmit = true;
 
       if (!transactionHash) {
         const { error: submitError, submitErrorResultCodes } =
