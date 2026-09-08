@@ -1,0 +1,9 @@
+{
+  "name": "eslint-plugin-asset-identity",
+  "version": "1.0.0",
+  "description": "ESLint plugin guarding asset-identity comparisons",
+  "main": "index.js",
+  "scripts": {},
+  "author": "Freighter",
+  "license": "ISC"
+}

@@ -12,12 +12,15 @@ import { useVerifiedTokensStore } from "ducks/verifiedTokens";
  * @param {Object} params.asset - The asset to find the icon for.
  * @param {string} [params.asset.contractId] - The contract ID of the asset (optional C Address).
  * @param {string} [params.asset.issuer] - The issuer of the asset (optional G address).
+ * @param {string} [params.asset.code] - The asset code, required together with `issuer` to
+ *   identify a classic asset (a contract id is a complete identity on its own; a classic
+ *   asset is identified by the (code, issuer) pair).
  * @param {NETWORKS} params.network - The Stellar network to use (e.g., PUBLIC, TESTNET).
  * @returns {Promise<string | undefined>} A promise that resolves to the token's icon URL if found, or `undefined` if no match exists.
  *
  * @example
  * const iconUrl = await getIconUrlFromTokensLists({
- *   asset: { contractId: "C...", issuer: "G..." },
+ *   asset: { contractId: "C...", issuer: "G...", code: "USDC" },
  *   network: NETWORKS.PUBLIC
  * });
  */
@@ -29,20 +32,33 @@ export const getIconUrlFromTokensLists = async ({
   asset: {
     issuer?: string;
     contractId?: string;
+    code?: string;
   };
   network: NETWORKS;
 }) => {
-  const { contractId, issuer } = asset;
+  const { contractId, issuer, code } = asset;
   const { getVerifiedTokens } = useVerifiedTokensStore.getState();
   const verifiedTokens = await getVerifiedTokens({ network });
 
-  const match = verifiedTokens.find(
-    (token) =>
-      token?.icon &&
-      ((contractId &&
-        token.contract?.toLowerCase() === contractId.toLowerCase()) ||
-        (issuer && token.issuer?.toLowerCase() === issuer.toLowerCase())),
-  );
+  const match = verifiedTokens.find((token) => {
+    if (!token?.icon) return false;
+
+    // A contract id is a complete identity on its own.
+    if (
+      contractId &&
+      token.contract?.toLowerCase() === contractId.toLowerCase()
+    ) {
+      return true;
+    }
+
+    // A classic asset is identified by the (code, issuer) pair.
+    return (
+      !!issuer &&
+      !!code &&
+      token.issuer?.toLowerCase() === issuer.toLowerCase() &&
+      token.code === code
+    );
+  });
 
   return match?.icon;
 };

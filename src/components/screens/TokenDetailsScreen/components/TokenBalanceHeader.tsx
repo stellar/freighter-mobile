@@ -5,6 +5,7 @@ import { Display, Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import { THEME } from "config/theme";
 import { useBalancesStore } from "ducks/balances";
+import { isNativeAssetId } from "helpers/assetIdentity";
 import {
   formatBalanceAmount,
   formatFiatAmount,
@@ -59,7 +60,7 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
   }
 
   const getTokenDisplayInfo = (): TokenDisplayInfo => {
-    if (tokenId === "native") {
+    if (isNativeAssetId(tokenId)) {
       return {
         symbol: NATIVE_TOKEN_CODE,
         name: tokenBalance.displayName || tokenSymbol,
@@ -68,11 +69,10 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
 
     if (isSorobanToken) {
       if (actualTokenSymbol && tokenName) {
-        const displaySymbol =
-          actualTokenSymbol === "native"
-            ? NATIVE_TOKEN_CODE
-            : actualTokenSymbol;
-        return { symbol: displaySymbol, name: tokenName };
+        // `actualTokenSymbol` arrives from useTokenDetails, which already
+        // resolves the symbol against the contract address, so it is shown
+        // as it stands.
+        return { symbol: actualTokenSymbol, name: tokenName };
       }
 
       const shortAddress = truncateAddress(tokenId);

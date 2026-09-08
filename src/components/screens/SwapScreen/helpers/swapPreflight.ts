@@ -1,6 +1,7 @@
 import BigNumber from "bignumber.js";
-import { BASE_RESERVE, isNativeAssetId } from "config/constants";
+import { BASE_RESERVE } from "config/constants";
 import { PricedBalance, TokenTypeWithCustomToken } from "config/types";
+import { isNativeAssetId, isNativeBalance } from "helpers/assetIdentity";
 import { calculateSpendableAmount } from "helpers/balances";
 
 type BalanceItem = PricedBalance & {
@@ -53,9 +54,7 @@ export const shouldShowXlmReservePreflight = ({
 }): boolean => {
   if (!destinationRequiresTrustline) return false;
 
-  const xlmBalance = balanceItems.find(
-    (b) => "token" in b && b.token.type === "native",
-  );
+  const xlmBalance = balanceItems.find((b) => isNativeBalance(b));
   const xlmSpendable = xlmBalance
     ? calculateSpendableAmount({
         balance: xlmBalance,

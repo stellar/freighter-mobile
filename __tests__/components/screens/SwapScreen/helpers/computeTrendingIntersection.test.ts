@@ -81,4 +81,25 @@ describe("computeTrendingIntersection", () => {
     const result = computeTrendingIntersection(top, verified, held);
     expect(result[0].hasTrustline).toBe(true);
   });
+
+  it("does not auto-verify an XLM-coded record that is not the native asset", () => {
+    const top = buildTopTokensResp([`XLM-${FOO_ISSUER}-1`]);
+    const result = computeTrendingIntersection(
+      top,
+      buildVerified([]),
+      noTrustline,
+    );
+    expect(result).toHaveLength(0);
+  });
+
+  it("keeps the native record", () => {
+    const top = buildTopTokensResp(["XLM"]);
+    const result = computeTrendingIntersection(
+      top,
+      buildVerified([]),
+      noTrustline,
+    );
+    expect(result).toHaveLength(1);
+    expect(result[0].isNative).toBe(true);
+  });
 });

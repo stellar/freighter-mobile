@@ -42,7 +42,8 @@
     "tokenId": "Token ID",
     "message": "Message",
     "linkOpenError": "Unable to open link",
-    "authEntry": "Auth Entry"
+    "authEntry": "Auth Entry",
+    "stellarNetwork": "Stellar Network"
   },
   "home": {
     "title": "Home",

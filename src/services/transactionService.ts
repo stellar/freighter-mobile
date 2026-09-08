@@ -14,13 +14,18 @@ import { BigNumber } from "bignumber.js";
 import {
   DEFAULT_DECIMALS,
   MINIMUM_CREATE_ACCOUNT_XLM,
-  NATIVE_TOKEN_CODE,
   NETWORKS,
   NetworkDetails,
   mapNetworkToNetworkDetails,
 } from "config/constants";
 import { logger } from "config/logger";
-import { Balance, NativeBalance, PricedBalance } from "config/types";
+import { PricedBalance } from "config/types";
+import {
+  isNativeAssetId,
+  isNativeBalance,
+  isNativeToken,
+  getNativeContractId,
+} from "helpers/assetIdentity";
 import { isLiquidityPool } from "helpers/balances";
 import {
   getPerOperationBaseFeeStroops,
@@ -30,7 +35,7 @@ import {
   determineMuxedDestination,
   checkContractMuxedSupport,
 } from "helpers/muxedAddress";
-import { isContractId, getNativeContractDetails } from "helpers/soroban";
+import { isContractId } from "helpers/soroban";
 import {
   isValidStellarAddress,
   isSameAccount,
@@ -86,12 +91,6 @@ export interface BuildSendCollectibleParams {
   network?: NETWORKS;
   senderAddress?: string;
 }
-
-export const isNativeBalance = (balance: Balance): balance is NativeBalance =>
-  "token" in balance &&
-  balance.token &&
-  "type" in balance.token &&
-  balance.token.type === "native";
 
 interface IValidateTransactionParams {
   senderAddress: string;
@@ -231,8 +230,7 @@ export const validateSendCollectibleTransactionParams = (params: {
  * Gets the appropriate token for payment
  */
 export const getTokenForPayment = (balance: PricedBalance): SdkToken => {
-  // For native XLM tokens
-  if (balance.tokenCode === NATIVE_TOKEN_CODE || isNativeBalance(balance)) {
+  if (isNativeBalance(balance)) {
     return SdkToken.native();
   }
 
@@ -241,7 +239,7 @@ export const getTokenForPayment = (balance: PricedBalance): SdkToken => {
     if (
       "type" in balance.token &&
       typeof balance.token.type === "string" &&
-      (balance.token.type as string) !== "native" &&
+      !isNativeToken(balance.token) &&
       "code" in balance.token &&
       "issuer" in balance.token &&
       balance.token.issuer &&
@@ -255,17 +253,11 @@ export const getTokenForPayment = (balance: PricedBalance): SdkToken => {
 };
 
 /**
- * Returns the native token contract ID for a given network
+ * Returns the native token contract ID for a given network.
+ * Derived from the network passphrase so it is correct on every network.
  */
-export const getContractIdForNativeToken = (network: NETWORKS): string => {
-  const nativeContractDetails = getNativeContractDetails(network);
-  if (!nativeContractDetails.contract) {
-    throw new Error(
-      `No native token contract available for network: ${network}`,
-    );
-  }
-  return nativeContractDetails.contract;
-};
+export const getContractIdForNativeToken = (network: NETWORKS): string =>
+  getNativeContractId(mapNetworkToNetworkDetails(network).networkPassphrase);
 
 interface IBuildSorobanTransferOperation {
   sourceAccount: string;
@@ -646,7 +638,7 @@ export const buildSwapTransaction = async (
     const sourceToken = getTokenForPayment(sourceBalance);
     const destToken = getTokenForPayment(destinationBalance);
     const pathTokens = path.map((pathItem) => {
-      if (pathItem === "native") {
+      if (isNativeAssetId(pathItem)) {
         return SdkToken.native();
       }
 

@@ -43,17 +43,11 @@ export const NATIVE_TOKEN_CODE = "XLM";
 /**
  * Horizon's wire string for the native (XLM) asset's `asset_type` / `id`.
  * Distinct from `NATIVE_TOKEN_CODE` ("XLM"): raw Horizon responses use
- * "native", but normalized surfaces use "XLM". Prefer the
- * {@link isNativeAssetId} guard over comparing to either sentinel directly.
+ * "native", but normalized surfaces use "XLM". Prefer the native-asset-id
+ * predicate in helpers/assetIdentity over comparing to either sentinel
+ * directly.
  */
 export const HORIZON_NATIVE_ASSET_TYPE = "native";
-
-/**
- * True if `id` refers to native XLM, matching both Horizon's raw "native"
- * sentinel and the normalized NATIVE_TOKEN_CODE ("XLM").
- */
-export const isNativeAssetId = (id: string | undefined | null): boolean =>
-  id === HORIZON_NATIVE_ASSET_TYPE || id === NATIVE_TOKEN_CODE;
 export const MIN_TRANSACTION_FEE = "0.00001";
 export const BASE_RESERVE = BigNumber(0.5);
 export const MINIMUM_CREATE_ACCOUNT_XLM = 1;

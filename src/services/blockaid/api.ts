@@ -1,7 +1,7 @@
 import Blockaid from "@blockaid/client";
 import axios from "axios";
 import { AnalyticsEvent } from "config/analyticsConfig";
-import { isNativeAssetId } from "config/constants";
+import { isNativeAssetId } from "helpers/assetIdentity";
 import { isMainnet } from "helpers/networks";
 import { scrubStrKeys } from "helpers/stellarStrKey";
 import { analytics } from "services/analytics";

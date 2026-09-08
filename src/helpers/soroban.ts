@@ -16,9 +16,19 @@ import {
   Address,
 } from "@stellar/stellar-sdk";
 import { BigNumber } from "bignumber.js";
-import { NATIVE_TOKEN_CODE, NetworkDetails, NETWORKS } from "config/constants";
+import {
+  mapNetworkToNetworkDetails,
+  NATIVE_TOKEN_CODE,
+  NetworkDetails,
+  NETWORKS,
+} from "config/constants";
 import { logger } from "config/logger";
 import { Balance } from "config/types";
+import {
+  getNativeContractId,
+  isNativeContract,
+  isNativeToken,
+} from "helpers/assetIdentity";
 
 export const SOROBAN_OPERATION_TYPES = [
   "invoke_host_function",
@@ -107,21 +117,21 @@ export const getNativeContractDetails = (network: NETWORKS) => {
     org: "",
   };
 
+  // The native SAC address derives deterministically from the network
+  // passphrase, which keeps every network correct.
+  const contract = getNativeContractId(
+    mapNetworkToNetworkDetails(network).networkPassphrase,
+  );
+
   switch (network) {
     case NETWORKS.PUBLIC:
       return {
         ...NATIVE_CONTRACT_DEFAULTS,
-        contract: "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA",
+        contract,
         issuer: "GDMTVHLWJTHSUDMZVVMXXH6VJHA2ZV3HNG5LYNAZ6RTWB7GISM6PGTUV",
       };
-    case NETWORKS.TESTNET:
-      return {
-        ...NATIVE_CONTRACT_DEFAULTS,
-        contract: "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC",
-        issuer: "",
-      };
     default:
-      return { ...NATIVE_CONTRACT_DEFAULTS, contract: "", issuer: "" };
+      return { ...NATIVE_CONTRACT_DEFAULTS, contract, issuer: "" };
   }
 };
 
@@ -322,12 +332,10 @@ export const getBalanceByKey = (
       "contractId" in balance && contractId === balance.contractId;
 
     try {
-      // if xlm, check for a SAC match
-      if ("token" in balance && balance.token.code === NATIVE_TOKEN_CODE) {
-        const matchesSac =
-          SdkToken.native().contractId(networkDetails.networkPassphrase) ===
-          contractId;
-        return matchesSac;
+      // The native arm is entered only for the native-typed balance; every
+      // other balance is matched by its own SAC below.
+      if ("token" in balance && isNativeToken(balance.token)) {
+        return isNativeContract(contractId, networkDetails.networkPassphrase);
       }
 
       // if issuer is a G address, check for a SAC match

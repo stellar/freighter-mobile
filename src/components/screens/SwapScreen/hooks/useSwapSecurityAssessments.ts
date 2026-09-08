@@ -1,6 +1,6 @@
 import Blockaid from "@blockaid/client";
 import { DestinationTokenDescriptor } from "components/screens/SwapScreen/helpers/types";
-import { NATIVE_TOKEN_CODE } from "config/constants";
+import { isNativeAssetId } from "helpers/assetIdentity";
 import useAppTranslation from "hooks/useAppTranslation";
 import { type HeldBalanceItem } from "hooks/useBalancesList";
 import { useMemo } from "react";
@@ -124,14 +124,14 @@ export const useSwapSecurityAssessments = ({
   const showSecurityWarningForSource = useMemo(
     () =>
       sourceSecurityAssessment.isUnableToScan &&
-      sourceTokenId !== NATIVE_TOKEN_CODE,
+      !isNativeAssetId(sourceTokenId),
     [sourceSecurityAssessment.isUnableToScan, sourceTokenId],
   );
 
   const showSecurityWarningForDestination = useMemo(
     () =>
       destinationSecurityAssessment.isUnableToScan &&
-      destinationTokenDescriptor?.id !== NATIVE_TOKEN_CODE,
+      !isNativeAssetId(destinationTokenDescriptor?.id),
     [destinationSecurityAssessment.isUnableToScan, destinationTokenDescriptor],
   );
 

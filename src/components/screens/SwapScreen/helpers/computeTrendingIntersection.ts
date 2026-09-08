@@ -7,6 +7,7 @@ import {
 } from "components/screens/SwapScreen/helpers/recordPredicates";
 import { NATIVE_TOKEN_CODE } from "config/constants";
 import { FormattedSearchTokenRecord, SearchTokenResponse } from "config/types";
+import { isNativeAssetId } from "helpers/assetIdentity";
 import { getTokenType } from "helpers/balances";
 import { TokenListReponseItem } from "services/verified-token-lists/types";
 
@@ -40,7 +41,7 @@ export const computeTrendingIntersection = (
   const classicRecords = records.filter((r) => {
     if (isSorobanRecord(r)) return false;
     const [tokenCode, issuer] = r.asset.split("-");
-    if (!issuer && r.asset !== NATIVE_TOKEN_CODE) return false;
+    if (!issuer && !isNativeAssetId(r.asset)) return false;
     const tokenType = getTokenType(
       issuer ? `${tokenCode}:${issuer}` : NATIVE_TOKEN_CODE,
     );
@@ -63,9 +64,9 @@ export const computeTrendingIntersection = (
     return true;
   });
 
-  // Intersect with verified issuers + always allow native XLM.
+  // Intersect with verified issuers + always allow the native record.
   return deduped.filter((t) => {
-    if (t.isNative || t.tokenCode === NATIVE_TOKEN_CODE) return true;
+    if (t.isNative) return true;
     const issuer = t.issuer?.toLowerCase();
     return !!issuer && verifiedIds.has(issuer);
   });

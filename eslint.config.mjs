@@ -10,6 +10,8 @@ import globals from "globals";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import assetIdentity from "./src/eslint-plugin-asset-identity/index.js";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const compat = new FlatCompat({
@@ -46,6 +48,7 @@ export default [
       "tsconfig.json",
       "shim.js",
       "src/eslint-plugin-translations/**/*",
+      "src/eslint-plugin-asset-identity/**/*",
       "scripts/**/*.js",
       "mock-dapp/**/*",
     ],
@@ -64,6 +67,7 @@ export default [
     plugins: {
       "@fnando/consistent-import": consistentImport,
       translations,
+      "asset-identity": assetIdentity,
     },
     rules: {
       "import/order": [
@@ -125,6 +129,13 @@ export default [
       "no-unreachable": "error",
 
       "translations/missing-translations": "error",
+      "asset-identity/no-asset-code-comparison": "error",
+    },
+  },
+  {
+    files: ["src/helpers/assetIdentity.ts"],
+    rules: {
+      "asset-identity/no-asset-code-comparison": "off",
     },
   },
 ];

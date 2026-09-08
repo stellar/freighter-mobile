@@ -42,7 +42,8 @@
     "collection": "Coleção",
     "tokenId": "ID do Token",
     "linkOpenError": "Não foi possível abrir o link",
-    "authEntry": "Entrada de Autorização"
+    "authEntry": "Entrada de Autorização",
+    "stellarNetwork": "Rede Stellar"
   },
   "home": {
     "title": "Início",
