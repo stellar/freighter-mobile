@@ -1,7 +1,10 @@
 import { act } from "@testing-library/react-hooks";
 import { NETWORKS } from "config/constants";
 import { logger } from "config/logger";
-import { useTransactionBuilderStore } from "ducks/transactionBuilder";
+import {
+  SubmitTransactionOutcome,
+  useTransactionBuilderStore,
+} from "ducks/transactionBuilder";
 import * as sorobanHelpers from "helpers/soroban";
 import * as stellarServices from "services/stellar";
 import * as transactionService from "services/transactionService";
@@ -268,13 +271,17 @@ describe("transactionBuilder Duck", () => {
       store.setState({ signedTransactionXDR: mockSignedXDR });
     });
 
-    let hash: string | null = null;
+    let outcome: SubmitTransactionOutcome | null = null;
     await act(async () => {
-      hash = await store.getState().submitTransaction({ network: mockNetwork });
+      outcome = await store
+        .getState()
+        .submitTransaction({ network: mockNetwork });
     });
 
     const state = store.getState();
-    expect(hash).toBe(mockTxHash);
+    expect(outcome!.hash).toBe(mockTxHash);
+    // The attempt's own result, so a mid-submit store reset can't strip it.
+    expect(outcome!.resultXdr).toBe(mockResultXdr);
     expect(state.isSubmitting).toBe(false);
     expect(state.transactionHash).toBe(mockTxHash);
     expect(state.error).toBeNull();
@@ -287,14 +294,16 @@ describe("transactionBuilder Duck", () => {
   });
 
   it("should handle errors during submitTransaction (no signed XDR)", async () => {
-    let hash: string | null = null;
+    let outcome: SubmitTransactionOutcome | null = null;
     await act(async () => {
       store.setState({ signedTransactionXDR: null });
-      hash = await store.getState().submitTransaction({ network: mockNetwork });
+      outcome = await store
+        .getState()
+        .submitTransaction({ network: mockNetwork });
     });
 
     const state = store.getState();
-    expect(hash).toBeNull();
+    expect(outcome!.hash).toBeNull();
     expect(state.isSubmitting).toBe(false);
     expect(state.transactionHash).toBeNull();
     expect(state.error).toBe("No signed transaction to submit");
@@ -309,13 +318,15 @@ describe("transactionBuilder Duck", () => {
       store.setState({ signedTransactionXDR: mockSignedXDR });
     });
 
-    let hash: string | null = null;
+    let outcome: SubmitTransactionOutcome | null = null;
     await act(async () => {
-      hash = await store.getState().submitTransaction({ network: mockNetwork });
+      outcome = await store
+        .getState()
+        .submitTransaction({ network: mockNetwork });
     });
 
     const state = store.getState();
-    expect(hash).toBeNull();
+    expect(outcome!.hash).toBeNull();
     expect(state.isSubmitting).toBe(false);
     expect(state.transactionHash).toBeNull();
     expect(state.error).toBe(submitError.message);

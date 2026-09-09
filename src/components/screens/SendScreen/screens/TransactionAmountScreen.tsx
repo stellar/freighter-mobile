@@ -835,7 +835,12 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           },
         });
 
-        const success = await submitTransaction({
+        // The attempt's own outcome, not the store: closing the processing
+        // screen mid-submit resets the store, and the requestId guard then
+        // (correctly) refuses to write this attempt's result — which would
+        // otherwise classify a real Horizon rejection as `unknown` /
+        // `transport`.
+        const submitOutcome = await submitTransaction({
           network,
         });
 
@@ -846,7 +851,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         );
 
         emittedTerminalEvent = true;
-        if (success) {
+        if (submitOutcome.hash) {
           analytics.trackSendPaymentSuccess({
             sourceToken: selectedBalance?.tokenCode || "unknown",
             volume: {
@@ -863,20 +868,14 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           // picks the first code that isn't a no-op success/skip marker,
           // matching the extension (a changeTrust-prepended payment isn't
           // reachable here, but the picker is shared with the swap flow).
-          const {
-            error: submitError,
-            submitErrorResultCodes,
-            submitErrorHttpStatus,
-            submitErrorIsProtocolAnswer,
-          } = useTransactionBuilderStore.getState();
-          const reasonCode = pickReasonCode(submitErrorResultCodes);
+          const reasonCode = pickReasonCode(submitOutcome.resultCodes);
           const failureCategory = getFailureCategory(
-            submitErrorIsProtocolAnswer,
-            submitErrorHttpStatus,
+            submitOutcome.isProtocolAnswer,
+            submitOutcome.httpStatus,
             reasonCode,
           );
           analytics.trackTransactionError({
-            error: submitError || "Transaction failed",
+            error: submitOutcome.error || "Transaction failed",
             errorCode: reasonCode,
             operationType: TransactionOperationType.Payment,
             volume: {

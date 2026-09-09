@@ -40,6 +40,45 @@ const extractErrorMessage = (error: unknown): string => {
   return String(error);
 };
 
+/** Horizon `result_codes` extras, as the submit error carries them. */
+export interface SubmitResultCodes {
+  transaction?: string;
+  operations?: string[];
+}
+
+/**
+ * The outcome of ONE submit attempt, returned to the caller that awaited it.
+ *
+ * The equivalent store fields are written only while the attempt is still the
+ * current one (`requestId`), so that a late response cannot repaint a newer
+ * transaction — which means they are absent for an attempt whose flow was
+ * closed mid-submit. Telemetry needs the outcome regardless of what the UI
+ * still cares about, so it reads this value rather than the store.
+ */
+export interface SubmitTransactionOutcome {
+  /** Transaction hash on success; `null` when the submit failed. */
+  hash: string | null;
+  /** Horizon `result_xdr` from a successful submit. */
+  resultXdr: string | null;
+  /** Error message when the submit failed. */
+  error: string | null;
+  /** Horizon `result_codes` from a 4xx protocol rejection. */
+  resultCodes: SubmitResultCodes | null;
+  /** HTTP status of a failed submit, when the error carried one. */
+  httpStatus: number | null;
+  /** Whether a failed submit carried a genuine Horizon problem+json body. */
+  isProtocolAnswer: boolean;
+}
+
+const FAILED_SUBMIT_OUTCOME: SubmitTransactionOutcome = {
+  hash: null,
+  resultXdr: null,
+  error: null,
+  resultCodes: null,
+  httpStatus: null,
+  isProtocolAnswer: false,
+};
+
 interface TransactionBuilderState {
   transactionXDR: string | null;
   signedTransactionXDR: string | null;
@@ -106,7 +145,9 @@ interface TransactionBuilderState {
     network: NETWORKS;
   }) => string | null;
 
-  submitTransaction: (params: { network: NETWORKS }) => Promise<string | null>;
+  submitTransaction: (params: {
+    network: NETWORKS;
+  }) => Promise<SubmitTransactionOutcome>;
 
   resetTransaction: () => void;
 }
@@ -565,7 +606,14 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
           });
         }
 
-        return hash;
+        // Returned per-attempt, not read back from the store: the writes above
+        // are skipped when the flow was closed mid-submit (requestId reset),
+        // and telemetry still needs this attempt's settled result.
+        return {
+          ...FAILED_SUBMIT_OUTCOME,
+          hash,
+          resultXdr: resultXdr ?? null,
+        };
       } catch (error) {
         const errorMessage = extractErrorMessage(error);
 
@@ -644,15 +692,24 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
             error: errorMessage,
             isSubmitting: false,
             submitErrorResultCodes:
-              (horizon4xxResultCodes as
-                | { transaction?: string; operations?: string[] }
-                | undefined) ?? null,
+              (horizon4xxResultCodes as SubmitResultCodes | undefined) ?? null,
             submitErrorHttpStatus,
             submitErrorIsProtocolAnswer,
           });
         }
 
-        return null;
+        // As on the success path: returned per-attempt so a flow closed
+        // mid-submit still classifies its own failure instead of falling back
+        // to the reset store's "unknown" / "transport".
+        return {
+          hash: null,
+          resultXdr: null,
+          error: errorMessage,
+          resultCodes:
+            (horizon4xxResultCodes as SubmitResultCodes | undefined) ?? null,
+          httpStatus: submitErrorHttpStatus,
+          isProtocolAnswer: submitErrorIsProtocolAnswer,
+        };
       }
     },
 

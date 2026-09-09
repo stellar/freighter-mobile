@@ -28,7 +28,10 @@ import { usePricesStore } from "ducks/prices";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { SwapPathResult, useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
-import { useTransactionBuilderStore } from "ducks/transactionBuilder";
+import {
+  SubmitResultCodes,
+  useTransactionBuilderStore,
+} from "ducks/transactionBuilder";
 import { formatTokenIdentifier, getTokenIdentifier } from "helpers/balances";
 import {
   ConfirmationSnapshotHandle,
@@ -326,50 +329,59 @@ export const useSwapTransaction = ({
         },
       });
 
-      // submitTransaction will throw if it fails (including debug overrides)
-      // or return the hash if successful. If it returns null, surface the
-      // stored error to keep the toast message accurate (e.g. DEBUG failures).
-      const transactionHash = await submitTransaction({ network });
+      // Read before the await: closing the processing screen mid-submit
+      // unmounts the swap screen, whose cleanup resets the swap settings to
+      // their defaults. Reading afterwards would report the default tolerance
+      // rather than the one this swap was actually built with.
+      const { swapSlippage: freshSwapSlippage } =
+        useSwapSettingsStore.getState();
+
+      // submitTransaction throws only for a debug override; otherwise it
+      // resolves with this attempt's own outcome. That outcome is read from
+      // the return value, never from the store: closing the processing screen
+      // mid-submit resets the store, and the store's requestId guard then
+      // (correctly) refuses to write this attempt's result — so the terminal
+      // event would otherwise report a settled swap as a derivation error, or
+      // a Horizon rejection as `unknown` / `transport`.
+      const submitOutcome = await submitTransaction({ network });
       // Set only once the call has returned. A throw out of submitTransaction
       // itself (the debug forced-failure override) never reached the network,
       // so it carries no attempted volume and must not be bucketed as
       // `transport` — which means "submitted, but no verdict came back". A
-      // genuine submit failure returns null rather than throwing, so it still
+      // genuine submit failure resolves rather than throwing, so it still
       // counts as submitted, as it should.
       didSubmit = true;
 
-      if (!transactionHash) {
-        const { error: submitError, submitErrorResultCodes } =
-          useTransactionBuilderStore.getState();
-        const errorMessage = submitError || "Failed to submit transaction";
+      if (!submitOutcome.hash) {
+        const errorMessage =
+          submitOutcome.error || "Failed to submit transaction";
         const submitFailure = new Error(errorMessage) as Error & {
           quoteExpiredCodes?: string[];
-          resultCodes?: { transaction?: string; operations?: string[] } | null;
+          resultCodes?: SubmitResultCodes | null;
+          httpStatus?: number | null;
+          isProtocolAnswer?: boolean;
         };
         submitFailure.quoteExpiredCodes = getQuoteExpiredOperationCodes(
-          submitErrorResultCodes,
+          submitOutcome.resultCodes,
         );
-        submitFailure.resultCodes = submitErrorResultCodes;
+        submitFailure.resultCodes = submitOutcome.resultCodes;
+        submitFailure.httpStatus = submitOutcome.httpStatus;
+        submitFailure.isProtocolAnswer = submitOutcome.isProtocolAnswer;
         throw submitFailure;
       }
 
-      // Get fresh slippage value for analytics
-      const { swapSlippage: freshSwapSlippage } =
-        useSwapSettingsStore.getState();
-
       // Settled destination amount, read from the transaction result — never
       // the quote. Horizon's submit response carries `result_xdr`
-      // synchronously, so an unreadable read here is a genuine derivation
-      // failure (`error`), not a "not observed" case — there's no
-      // navigate-away window between submit and reading the response.
+      // synchronously, and it reaches us on the returned outcome, so an
+      // unreadable read here is a genuine derivation failure (`error`) rather
+      // than a "not observed" case.
       const submittedTx = TransactionBuilder.fromXdr(
         signedXDR,
         networkDetails.networkPassphrase,
       );
       const opIndex = findPathPaymentStrictSendIndex(submittedTx);
-      const { submitResultXdr } = useTransactionBuilderStore.getState();
-      const settledDestAmount = submitResultXdr
-        ? getSettledPathPaymentStrictSendAmount(submitResultXdr, opIndex)
+      const settledDestAmount = submitOutcome.resultXdr
+        ? getSettledPathPaymentStrictSendAmount(submitOutcome.resultXdr, opIndex)
         : null;
 
       const snapshot = snapshotHandle.resolve();
@@ -457,14 +469,17 @@ export const useSwapTransaction = ({
           : undefined;
       const isQuoteExpired = !!quoteExpiredCodes?.length;
 
-      const submitResultCodes =
+      // Carried on the thrown error, off this attempt's own submit outcome —
+      // not read back from the store, which a mid-submit Close resets.
+      const submitFailure =
         error instanceof Error
-          ? (
-              error as Error & {
-                resultCodes?: { transaction?: string; operations?: string[] };
-              }
-            ).resultCodes
+          ? (error as Error & {
+              resultCodes?: SubmitResultCodes | null;
+              httpStatus?: number | null;
+              isProtocolAnswer?: boolean;
+            })
           : undefined;
+      const submitResultCodes = submitFailure?.resultCodes ?? undefined;
 
       // A pre-submission failure (signing, or a throw before submit) still
       // emits swap.failed, but with no volume data: nothing reached the
@@ -480,8 +495,6 @@ export const useSwapTransaction = ({
           sourceAmount,
           snapshot.pricesById?.[sourceCanonicalId]?.currentPrice,
         );
-        const { submitErrorHttpStatus, submitErrorIsProtocolAnswer } =
-          useTransactionBuilderStore.getState();
         volume = {
           identity: sourceIdentity,
           toIdentity: destIdentity,
@@ -491,8 +504,8 @@ export const useSwapTransaction = ({
           priceFreshness: snapshot.freshness,
           reasonCode,
           failureCategory: getFailureCategory(
-            submitErrorIsProtocolAnswer,
-            submitErrorHttpStatus,
+            submitFailure?.isProtocolAnswer ?? false,
+            submitFailure?.httpStatus ?? null,
             reasonCode,
           ),
         };

@@ -137,6 +137,33 @@ const baseParams: Parameters<typeof useSwapTransaction>[0] = {
   navigation: mockNavigation,
 };
 
+/** submitTransaction now resolves with the attempt's own outcome. */
+const submitOk = (resultXdr: string | null = null) => ({
+  hash: "tx-hash",
+  resultXdr,
+  error: null,
+  resultCodes: null,
+  httpStatus: null,
+  isProtocolAnswer: false,
+});
+
+const submitFailed = (
+  overrides: Partial<{
+    error: string | null;
+    resultCodes: { transaction?: string; operations?: string[] } | null;
+    httpStatus: number | null;
+    isProtocolAnswer: boolean;
+  }> = {},
+) => ({
+  hash: null,
+  resultXdr: null,
+  error: "Submit error from store",
+  resultCodes: null,
+  httpStatus: null,
+  isProtocolAnswer: false,
+  ...overrides,
+});
+
 describe("useSwapTransaction", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -149,13 +176,13 @@ describe("useSwapTransaction", () => {
 
   describe("executeSwap rejection contract", () => {
     it("does NOT reject when submitTransaction returns null (failure)", async () => {
-      // submitTransaction returns null on failure - the hook reads the
-      // error from the store and throws inside the try, where the catch
-      // handles toast / analytics. The catch must NOT rethrow, otherwise
-      // SwapAmountScreen's fire-and-forget call site would surface an
-      // unhandled promise rejection at the global handler.
+      // submitTransaction resolves with a hash-less outcome on failure - the
+      // hook reads the error off that outcome and throws inside the try,
+      // where the catch handles toast / analytics. The catch must NOT
+      // rethrow, otherwise SwapAmountScreen's fire-and-forget call site would
+      // surface an unhandled promise rejection at the global handler.
       mockSignTransaction.mockReturnValue("signed-xdr");
-      mockSubmitTransaction.mockResolvedValue(null);
+      mockSubmitTransaction.mockResolvedValue(submitFailed());
 
       const { result } = renderHook(() => useSwapTransaction(baseParams));
 
@@ -273,7 +300,7 @@ describe("useSwapTransaction", () => {
       });
       mockSubmitTransaction.mockImplementation(() => {
         callOrder.push("submit");
-        return Promise.resolve("tx-hash");
+        return Promise.resolve(submitOk());
       });
 
       const { result } = renderHook(() => useSwapTransaction(baseParams));
@@ -289,7 +316,7 @@ describe("useSwapTransaction", () => {
 
     it("resolves successfully on a successful swap (sanity check)", async () => {
       mockSignTransaction.mockReturnValue("signed-xdr");
-      mockSubmitTransaction.mockResolvedValue("tx-hash");
+      mockSubmitTransaction.mockResolvedValue(submitOk());
 
       const { result } = renderHook(() => useSwapTransaction(baseParams));
 
@@ -413,7 +440,7 @@ describe("useSwapTransaction", () => {
       });
 
       mockSignTransaction.mockReturnValue("signed-xdr");
-      mockSubmitTransaction.mockResolvedValue("tx-hash");
+      mockSubmitTransaction.mockResolvedValue(submitOk());
 
       const { result } = renderHook(() => useSwapTransaction(baseParams));
 
@@ -445,7 +472,7 @@ describe("useSwapTransaction", () => {
       });
 
       mockSignTransaction.mockReturnValue("signed-xdr");
-      mockSubmitTransaction.mockResolvedValue("tx-hash");
+      mockSubmitTransaction.mockResolvedValue(submitOk());
 
       const { result } = renderHook(() => useSwapTransaction(baseParams));
 
@@ -506,7 +533,6 @@ describe("useSwapTransaction", () => {
       mockFetchTokenPrices.mockRejectedValue(new Error("prices unavailable"));
 
       const resultXdr = settledResultXdr("50000000"); // 5 units
-      mockGetBuilderState.mockReturnValue({ submitResultXdr: resultXdr });
       (
         TransactionBuilder.fromXdr as unknown as jest.Mock
       ).mockReturnValueOnce({
@@ -514,7 +540,8 @@ describe("useSwapTransaction", () => {
       });
 
       mockSignTransaction.mockReturnValue("signed-xdr");
-      mockSubmitTransaction.mockResolvedValue("tx-hash");
+      // The settled result rides on the attempt's own outcome, not the store.
+      mockSubmitTransaction.mockResolvedValue(submitOk(resultXdr));
 
       const { result } = renderHook(() =>
         useSwapTransaction({
@@ -553,6 +580,106 @@ describe("useSwapTransaction", () => {
     });
   });
 
+  describe("Close during submit (store reset mid-flight)", () => {
+    // Closing the processing screen unmounts the swap screen, whose cleanup
+    // resets the transaction store and the swap settings. The store's
+    // requestId guard then refuses to write this attempt's result, so
+    // anything the terminal event reads from the store afterwards is gone.
+    // The emit path reads the attempt's own returned outcome instead.
+    const emptyBuilderState = {
+      error: null,
+      submitResultXdr: null,
+      submitErrorResultCodes: null,
+      submitErrorHttpStatus: null,
+      submitErrorIsProtocolAnswer: false,
+    };
+
+    it("still reports the settled destination amount for a successful swap", () => {
+      const resultXdr = (() => {
+        const simple = new xdr.SimplePaymentResult({
+          destination: xdr.PublicKey.publicKeyTypeEd25519(
+            Keypair.random().rawPublicKey(),
+          ),
+          asset: Asset.native().toXdrObject(),
+          amount: BigInt("50000000"),
+        });
+        return new xdr.TransactionResult({
+          feeCharged: BigInt("100"),
+          result: xdr.TransactionResultResult.txSuccess([
+            xdr.OperationResult.opInner(
+              xdr.OperationResultTr.pathPaymentStrictSend(
+                xdr.PathPaymentStrictSendResult.pathPaymentStrictSendSuccess(
+                  new xdr.PathPaymentStrictSendResultSuccess({
+                    offers: [],
+                    last: simple,
+                  }),
+                ),
+              ),
+            ),
+          ]),
+          ext: xdr.TransactionResultExt.v0(),
+        }).toXdr("base64");
+      })();
+
+      // The store has been reset: it holds none of this attempt's result.
+      mockGetBuilderState.mockReturnValue(emptyBuilderState);
+      (
+        TransactionBuilder.fromXdr as unknown as jest.Mock
+      ).mockReturnValueOnce({
+        operations: [{ type: "pathPaymentStrictSend" }],
+      });
+      mockSignTransaction.mockReturnValue("signed-xdr");
+      mockSubmitTransaction.mockResolvedValue(submitOk(resultXdr));
+
+      return (async () => {
+        const { result } = renderHook(() => useSwapTransaction(baseParams));
+        await act(async () => {
+          await result.current.executeSwap();
+        });
+
+        const [payload] = mockTrackSwapSuccess.mock.calls[0] as [
+          { volume: Record<string, unknown>; allowedSlippage?: string },
+        ];
+        expect(payload.volume).toMatchObject({ toAmount: 5 });
+        expect(payload.volume.toAmountUsdStatus).not.toBe("error");
+        // Read before the await, so the screen's reset-to-defaults on unmount
+        // can't replace it with the default tolerance.
+        expect(payload.allowedSlippage).toBe("0.5");
+      })();
+    });
+
+    it("still classifies a rejected swap instead of falling back to transport", async () => {
+      mockGetBuilderState.mockReturnValue(emptyBuilderState);
+      mockSignTransaction.mockReturnValue("signed-xdr");
+      mockSubmitTransaction.mockResolvedValue(
+        submitFailed({
+          error: "tx_failed",
+          resultCodes: {
+            transaction: "tx_failed",
+            operations: ["op_underfunded"],
+          },
+          httpStatus: 400,
+          isProtocolAnswer: true,
+        }),
+      );
+
+      const { result } = renderHook(() => useSwapTransaction(baseParams));
+      await act(async () => {
+        await result.current.executeSwap().catch(() => {});
+      });
+
+      expect(mockTrackTransactionError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          errorCode: "op_underfunded",
+          volume: expect.objectContaining({
+            reasonCode: "op_underfunded",
+            failureCategory: "balance",
+          }),
+        }),
+      );
+    });
+  });
+
   describe("SWAP_QUOTE_EXPIRED analytics", () => {
     it("fires SWAP_QUOTE_EXPIRED with the result code, AND also swap.failed with failure_category slippage, when the submit is rejected with op_under_dest_min", async () => {
       mockGetBuilderState.mockReturnValue({
@@ -565,7 +692,17 @@ describe("useSwapTransaction", () => {
         submitErrorIsProtocolAnswer: true,
       });
       mockSignTransaction.mockReturnValue("signed-xdr");
-      mockSubmitTransaction.mockResolvedValue(null);
+      mockSubmitTransaction.mockResolvedValue(
+        submitFailed({
+          error: "tx_failed",
+          resultCodes: {
+            transaction: "tx_failed",
+            operations: ["op_under_dest_min"],
+          },
+          httpStatus: 400,
+          isProtocolAnswer: true,
+        }),
+      );
 
       const { result } = renderHook(() => useSwapTransaction(baseParams));
 
@@ -621,7 +758,15 @@ describe("useSwapTransaction", () => {
         },
       });
       mockSignTransaction.mockReturnValue("signed-xdr");
-      mockSubmitTransaction.mockResolvedValue(null);
+      mockSubmitTransaction.mockResolvedValue(
+        submitFailed({
+          error: "tx_insufficient_balance",
+          resultCodes: {
+            transaction: "tx_failed",
+            operations: ["op_underfunded"],
+          },
+        }),
+      );
 
       const { result } = renderHook(() => useSwapTransaction(baseParams));
 
