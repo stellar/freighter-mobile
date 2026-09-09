@@ -15,10 +15,16 @@ import {
   ROOT_NAVIGATOR_ROUTES,
   MAIN_TAB_ROUTES,
 } from "config/routes";
-import { PricedBalance, NativeToken, NonNativeToken } from "config/types";
+import {
+  PricedBalance,
+  NativeToken,
+  NonNativeToken,
+  TokenIdentifier,
+} from "config/types";
 import { ActiveAccount } from "ducks/auth";
 import { useBalancesStore } from "ducks/balances";
 import { useHistoryStore } from "ducks/history";
+import { usePricesStore } from "ducks/prices";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { SwapPathResult, useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
@@ -291,15 +297,32 @@ export const useSwapTransaction = ({
       sourceCanonicalId = canonicalIdFromIdentity(sourceIdentity);
       destCanonicalId = canonicalIdFromIdentity(destIdentity);
 
+      // A non-held destination arrives as the `descriptorAsPathBalance` shim,
+      // which carries no `currentPrice` — the receive card's fiat line reads
+      // the prices store instead (`useSwapTokenPrices`). Fall back to that
+      // same map, keyed identically to `recordTokenId`, so the cached_display
+      // snapshot records the price the user actually saw rather than
+      // reporting the leg unpriced. Precedence matches computeDestinationFiat:
+      // the balance's own price first, then the store.
+      const displayPrices =
+        usePricesStore.getState().pricesByNetwork[network] ?? {};
+      const displayPriceFor = (
+        balance: PricedBalance,
+        canonicalId: TokenIdentifier,
+      ) =>
+        balance.currentPrice ?? displayPrices[canonicalId]?.currentPrice ?? null;
+
       snapshotHandle = startConfirmationPriceSnapshot({
         canonicalIds: [sourceCanonicalId, destCanonicalId],
         network,
         useV2: useRemoteConfigStore.getState().use_token_prices_v2,
         cachedDisplayPrices: {
           [sourceCanonicalId]: {
-            currentPrice: freshSource.currentPrice ?? null,
+            currentPrice: displayPriceFor(freshSource, sourceCanonicalId),
           },
-          [destCanonicalId]: { currentPrice: freshDest.currentPrice ?? null },
+          [destCanonicalId]: {
+            currentPrice: displayPriceFor(freshDest, destCanonicalId),
+          },
         },
       });
 

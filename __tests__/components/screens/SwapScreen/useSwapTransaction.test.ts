@@ -1,5 +1,7 @@
 /* eslint-disable @fnando/consistent-import/consistent-import */
+import { Asset, Keypair, TransactionBuilder, xdr } from "@stellar/stellar-sdk";
 import { renderHook, act } from "@testing-library/react-hooks";
+import BigNumber from "bignumber.js";
 import { useSwapTransaction } from "components/screens/SwapScreen/hooks/useSwapTransaction";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { NETWORKS } from "config/constants";
@@ -40,6 +42,14 @@ jest.mock("ducks/balances", () => ({
 }));
 jest.mock("ducks/remoteConfig", () => ({
   useRemoteConfigStore: { getState: () => ({ use_token_prices_v2: true }) },
+}));
+// The prices store backs the receive card's fiat line for a NON-held
+// destination, which carries no `currentPrice` of its own. Mutated per-test.
+let mockPricesByNetwork: Record<string, unknown> = {};
+jest.mock("ducks/prices", () => ({
+  usePricesStore: {
+    getState: () => ({ pricesByNetwork: mockPricesByNetwork }),
+  },
 }));
 // Stubs the network boundary only — startConfirmationPriceSnapshot itself
 // runs for real, so its cancel()/resolve() contract is still exercised.
@@ -131,6 +141,7 @@ describe("useSwapTransaction", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGetBuilderState.mockReturnValue({ error: "Submit error from store" });
+    mockPricesByNetwork = {};
     act(() => {
       useSwapStore.getState().resetSwap();
     });
@@ -446,6 +457,99 @@ describe("useSwapTransaction", () => {
         AnalyticsEvent.SWAP_TRUSTLINE_ADDED,
         expect.anything(),
       );
+    });
+  });
+
+  describe("confirmation snapshot cached_display fallback", () => {
+    const USDC_ISSUER =
+      "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
+
+    /** A TransactionResult XDR whose single op settled a pathPaymentStrictSend. */
+    const settledResultXdr = (stroops: string): string => {
+      const simple = new xdr.SimplePaymentResult({
+        destination: xdr.PublicKey.publicKeyTypeEd25519(
+          Keypair.random().rawPublicKey(),
+        ),
+        asset: Asset.native().toXdrObject(),
+        amount: BigInt(stroops),
+      });
+      const opResult = xdr.OperationResult.opInner(
+        xdr.OperationResultTr.pathPaymentStrictSend(
+          xdr.PathPaymentStrictSendResult.pathPaymentStrictSendSuccess(
+            new xdr.PathPaymentStrictSendResultSuccess({
+              offers: [],
+              last: simple,
+            }),
+          ),
+        ),
+      );
+      return new xdr.TransactionResult({
+        feeCharged: BigInt("100"),
+        result: xdr.TransactionResultResult.txSuccess([opResult]),
+        ext: xdr.TransactionResultExt.v0(),
+      }).toXdr("base64");
+    };
+
+    it("prices a non-held destination from the display prices store, not the priceless shim", async () => {
+      // A non-held destination is the descriptorAsPathBalance shim: it has a
+      // token identity but deliberately no `currentPrice`. The receive card
+      // still shows a fiat value, sourced from the prices store — so when the
+      // confirmation fetch fails and the snapshot falls back to
+      // cached_display, the destination leg must price from that same store
+      // rather than reporting no_price.
+      mockPricesByNetwork = {
+        [NETWORKS.PUBLIC]: {
+          XLM: { currentPrice: new BigNumber("0.5") },
+          [`USDC:${USDC_ISSUER}`]: { currentPrice: new BigNumber("1.5") },
+        },
+      };
+      mockFetchTokenPrices.mockRejectedValue(new Error("prices unavailable"));
+
+      const resultXdr = settledResultXdr("50000000"); // 5 units
+      mockGetBuilderState.mockReturnValue({ submitResultXdr: resultXdr });
+      (
+        TransactionBuilder.fromXdr as unknown as jest.Mock
+      ).mockReturnValueOnce({
+        operations: [{ type: "pathPaymentStrictSend" }],
+      });
+
+      mockSignTransaction.mockReturnValue("signed-xdr");
+      mockSubmitTransaction.mockResolvedValue("tx-hash");
+
+      const { result } = renderHook(() =>
+        useSwapTransaction({
+          ...baseParams,
+          sourceBalance: {
+            tokenCode: "XLM",
+            token: { type: "native", code: "XLM" },
+            currentPrice: new BigNumber("0.5"),
+          } as never,
+          destinationTokenInput: {
+            tokenCode: "USDC",
+            token: {
+              code: "USDC",
+              issuer: { key: USDC_ISSUER },
+              type: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+            },
+          } as never,
+        }),
+      );
+
+      await act(async () => {
+        await result.current.executeSwap();
+      });
+
+      expect(mockTrackSwapSuccess).toHaveBeenCalledTimes(1);
+      const [payload] = mockTrackSwapSuccess.mock.calls[0] as [
+        { volume: Record<string, unknown> },
+      ];
+      expect(payload.volume).toMatchObject({
+        priceFreshness: "cached_display",
+        toAmountUsdStatus: "ok",
+        toAmount: 5,
+        toAmountUsd: 7.5,
+        toAmountUsdRate: 1.5,
+      });
     });
   });
 
