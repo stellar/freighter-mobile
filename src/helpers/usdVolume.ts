@@ -1,7 +1,11 @@
 import BigNumber from "bignumber.js";
 import { NATIVE_TOKEN_CODE, NetworkDetails } from "config/constants";
 import { Balance, TokenIdentifier } from "config/types";
-import { isNativeContract, isNativeToken } from "helpers/assetIdentity";
+import {
+  isNativeAssetPair,
+  isNativeContract,
+  isNativeToken,
+} from "helpers/assetIdentity";
 import { PriceFreshness, PriceSource } from "helpers/confirmationPriceSnapshot";
 import { getBalanceByKey, isContractId } from "helpers/soroban";
 
@@ -195,12 +199,16 @@ export const classifyAssetIdentity = (
   networkDetails: NetworkDetails,
   balances?: Balance[],
 ): AssetIdentity => {
-  if (!issuer) {
+  // Nativeness needs both halves: the native asset carries the native code
+  // AND no issuer. Treating any issuerless input as native would pool an
+  // issuerless non-native code (an empty identifier from a liquidity-pool
+  // share, say) into lumen volume.
+  if (isNativeAssetPair(code, issuer)) {
     return { code, type: AssetKind.NATIVE };
   }
 
-  if (!isContractId(issuer)) {
-    return { code, issuer, type: AssetKind.CLASSIC };
+  if (!issuer || !isContractId(issuer)) {
+    return { code, issuer: issuer || undefined, type: AssetKind.CLASSIC };
   }
 
   try {
@@ -238,11 +246,19 @@ export const classifyAssetIdentity = (
   return { code, issuer, type: AssetKind.SOROBAN };
 };
 
-/** The canonical id used to key a `TokenPricesMap` lookup for an identity. */
+/**
+ * The canonical id used to key a `TokenPricesMap` lookup for an identity.
+ *
+ * Keyed off the classified type rather than the presence of an issuer, so an
+ * issuerless non-native code resolves to its own (unpriceable) id rather than
+ * being looked up — and priced — as lumens.
+ */
 export const canonicalIdFromIdentity = (
   identity: AssetIdentity,
 ): TokenIdentifier =>
-  identity.issuer ? `${identity.code}:${identity.issuer}` : NATIVE_TOKEN_CODE;
+  identity.type === AssetKind.NATIVE
+    ? NATIVE_TOKEN_CODE
+    : `${identity.code}${identity.issuer ? `:${identity.issuer}` : ""}`;
 
 // ---------------------------------------------------------------------------
 // Failure classification

@@ -90,15 +90,27 @@ export const startConfirmationPriceSnapshot = ({
 
   return {
     resolve: () => {
-      if (succeeded) {
+      // A 200 can still omit a requested id (e.g. a non-held destination
+      // token /token-prices has no entry for). A partial result isn't
+      // trustworthy enough to use even for the ids it does cover, so it's
+      // treated the same as no result at all: fall back to the display
+      // cache wholesale rather than merging. Unlike the extension, mobile's
+      // fetchTokenPrices null-fills every omitted id rather than leaving the
+      // key absent, so completeness is a check on `currentPrice`, not on
+      // key presence.
+      const isComplete =
+        succeeded &&
+        canonicalIds.every((id) => fetchedPrices?.[id]?.currentPrice != null);
+      if (isComplete) {
         return {
           pricesById: fetchedPrices,
           freshness: PriceFreshness.CONFIRMATION_FETCH,
           source,
         };
       }
-      // Pending, rejected, or cancelled: abort so the request cannot outlive
-      // the flow that needed it, and close on the display cache.
+      // Pending, rejected, incomplete, or cancelled: abort so the request
+      // cannot outlive the flow that needed it, and close on the display
+      // cache.
       controller.abort();
       return {
         pricesById: cachedDisplayPrices,

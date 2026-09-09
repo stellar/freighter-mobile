@@ -507,11 +507,13 @@ const V2_NATIVE_PRICE_ID = "native";
  * v1 endpoint. LP shares and custom tokens are always filtered out before the
  * request, and any requested token without a returned price is filled with null.
  *
- * @param params Tokens to price, the active network, and the v2 flag
+ * @param params Tokens to price, the active network, the v2 flag, and an
+ * optional `AbortSignal` to cancel the request
  * @returns Promise resolving to a map of token identifiers to their price information
  *
  * @example
  * // Fetch prices for XLM and USDC on mainnet via v2
+ * const controller = new AbortController();
  * const prices = await fetchTokenPrices({
  *   tokens: [
  *     "XLM",
@@ -519,6 +521,7 @@ const V2_NATIVE_PRICE_ID = "native";
  *   ],
  *   network: NETWORKS.PUBLIC,
  *   useV2: true,
+ *   signal: controller.signal,
  * });
  *
  * // Access individual token prices

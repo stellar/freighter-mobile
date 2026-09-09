@@ -151,6 +151,17 @@ describe("classifyAssetIdentity", () => {
     ).toEqual({ code: "XLM", type: "native" });
   });
 
+  it("does not call an issuerless non-native code native", () => {
+    // Nativeness takes both halves of the pair. An empty identifier — what
+    // getTokenIdentifier returns for a liquidity-pool share or an unknown
+    // balance shape — must not be pooled into lumen volume. Not reachable
+    // through the send or swap flows today, which cannot build a transaction
+    // for those inputs.
+    expect(
+      classifyAssetIdentity("", undefined, TESTNET_NETWORK_DETAILS),
+    ).toEqual({ code: "", type: "classic" });
+  });
+
   it("classifies a plain classic asset (G-issuer)", () => {
     const issuer = Keypair.random().publicKey();
     expect(
@@ -252,6 +263,13 @@ describe("canonicalIdFromIdentity", () => {
     expect(
       canonicalIdFromIdentity({ code: "XLM", type: AssetKind.NATIVE }),
     ).toBe("XLM");
+  });
+
+  it("does not resolve an issuerless non-native code to the native id", () => {
+    // Otherwise the degenerate identity above would be priced as lumens.
+    expect(
+      canonicalIdFromIdentity({ code: "", type: AssetKind.CLASSIC }),
+    ).toBe("");
   });
 
   it("is CODE:ISSUER for a classic or soroban asset", () => {

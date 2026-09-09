@@ -37,6 +37,48 @@ describe("startConfirmationPriceSnapshot", () => {
     });
   });
 
+  it("falls back to the cached display prices when the fetch returns 200 but omits a leg", async () => {
+    // fetchTokenPrices null-fills every requested id the endpoint omitted, so
+    // a partial response still fulfills. A partial result isn't trustworthy
+    // enough to use even for the ids it does cover: fall back wholesale,
+    // matching the extension, rather than reporting the omitted leg no_price
+    // while a display price for it was on screen.
+    jest.spyOn(backendService, "fetchTokenPrices").mockResolvedValue({
+      XLM: { currentPrice: new BigNumber(0.5) },
+      "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN": {
+        currentPrice: null,
+      },
+    } as never);
+
+    const handle = startConfirmationPriceSnapshot({
+      canonicalIds: [
+        "XLM",
+        "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+      ],
+      network: NETWORKS.PUBLIC,
+      useV2: true,
+      cachedDisplayPrices: {
+        XLM: { currentPrice: new BigNumber(0.4) },
+        "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN": {
+          currentPrice: new BigNumber(1),
+        },
+      } as TokenPricesMap,
+    });
+
+    await flushMicrotasks();
+
+    expect(handle.resolve()).toEqual({
+      pricesById: {
+        XLM: { currentPrice: new BigNumber(0.4) },
+        "USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN": {
+          currentPrice: new BigNumber(1),
+        },
+      },
+      freshness: "cached_display",
+      source: "token_prices_v2",
+    });
+  });
+
   it("falls back to the cached display prices when the fetch hasn't settled yet (cached_display)", () => {
     // Never resolves within this test — resolve() is called before any await.
     jest
@@ -176,8 +218,9 @@ describe("startConfirmationPriceSnapshot", () => {
     resolveFetch({ XLM: { currentPrice: new BigNumber(999) } } as never);
     await flushMicrotasks();
 
-    // Calling resolve() again would now see it as settled — proving the
-    // *first* frozen snapshot (already returned above) never changes.
+    // The already-returned snapshot object is unchanged by the late result.
+    // (It could not be revived either way: the first resolve() aborted the
+    // controller, so the .then guard discards a result landing afterwards.)
     expect(frozen).toEqual({
       pricesById: { XLM: { currentPrice: new BigNumber(0.2) } },
       freshness: "cached_display",

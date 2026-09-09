@@ -500,9 +500,10 @@ export const useSwapTransaction = ({
 
       if (isQuoteExpired) {
         // Over-slippage / liquidity-changed rejection: fire the dedicated
-        // event instead of SWAP_FAIL and prompt the user to retry for a
-        // fresh quote. `resultCode` carries the Horizon op code(s) that drove
-        // the expiry so we can slice by reason.
+        // event alongside SWAP_FAIL (emitted just below — the pair is
+        // deliberate, see there) and prompt the user to retry for a fresh
+        // quote. `resultCode` carries the Horizon op code(s) that drove the
+        // expiry so we can slice by reason.
         // Amounts intentionally dropped (parity with swap.completed/failed,
         // which carry no amounts). Bare asset codes so from/to_asset_code match
         // the extension.
@@ -514,7 +515,7 @@ export const useSwapTransaction = ({
 
         // A quote expiry rejected at submit also counts as a failed swap for
         // volume purposes: swap.quote_expired carries no volume, and without
-        // this the failure the failure_category exists to measure never
+        // this, the failure that `failure_category` exists to measure never
         // reaches a volume-bearing event. failure_category: "slippage" falls
         // out of the same reason-code mapping used for every other
         // rejection, so no special case is needed beyond emitting here too.
