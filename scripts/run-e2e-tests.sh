@@ -556,13 +556,22 @@ record_flaky_flow() {
 # maestro.log — the flake stays diagnosable after the job goes green.
 FLOW_ATTEMPTS="${E2E_FLOW_ATTEMPTS:-1}"
 
-# The loop bound is compared with `-ge`. A non-numeric or zero value makes that
-# test error out and evaluate false on every pass, so the "bounded" retry loop
-# would never exit and would keep re-running the flow until the job times out.
-# Reject anything that is not a positive integer rather than trusting the env.
-if ! printf '%s' "$FLOW_ATTEMPTS" | grep -qE '^[1-9][0-9]*$'; then
-  echo "⚠️  E2E_FLOW_ATTEMPTS='$FLOW_ATTEMPTS' is not a positive integer — using 1"
+# The loop bound is compared with `-ge`. Any value that comparison cannot
+# evaluate — non-numeric, or a number past bash's 64-bit integer range — makes
+# it error out and return false on every pass, so the "bounded" retry loop would
+# never exit and would keep re-running the flow until the job times out. Zero and
+# negatives bound nothing either. So validate rather than trusting the env: the
+# regex accepts 1..999999, which is comfortably inside the range where the
+# numeric comparison below is meaningful, and that comparison applies the cap.
+# Anything longer or non-numeric is malformed rather than merely too big, so it
+# falls back to 1 instead of being clamped.
+FLOW_ATTEMPTS_MAX=10
+if ! printf '%s' "$FLOW_ATTEMPTS" | grep -qE '^[1-9][0-9]{0,5}$'; then
+  echo "⚠️  E2E_FLOW_ATTEMPTS='$FLOW_ATTEMPTS' is not an integer in 1..$FLOW_ATTEMPTS_MAX — using 1"
   FLOW_ATTEMPTS=1
+elif [ "$FLOW_ATTEMPTS" -gt "$FLOW_ATTEMPTS_MAX" ]; then
+  echo "⚠️  E2E_FLOW_ATTEMPTS=$FLOW_ATTEMPTS exceeds the $FLOW_ATTEMPTS_MAX-attempt cap — using $FLOW_ATTEMPTS_MAX"
+  FLOW_ATTEMPTS="$FLOW_ATTEMPTS_MAX"
 fi
 
 # "device offline" is an ADB hiccup rather than a signal about the app, so it
