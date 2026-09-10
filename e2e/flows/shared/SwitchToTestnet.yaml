@@ -25,14 +25,13 @@ appId: org.stellar.freighterdev
       id: home-token-XLM|welcome-banner-dismiss-button
     timeout: 30000
 
-# 2. Open settings via the manage-accounts sheet (settings moved there from
-#    the old header context menu). The shared flow dismisses the welcome
+# 2. Navigate to Settings via the manage-accounts sheet (settings moved there
+#    from the old header context menu). The shared flow dismisses the welcome
 #    sheet and the "Account not loaded" toast if either is overlaying the
-#    header, retrying so a late-mounting sheet cannot swallow the tap.
+#    header, and retries the whole navigation so a late-mounting sheet cannot
+#    swallow a tap. It returns with `settings-screen` visible.
 - runFlow:
     file: OpenManageAccountsSheet.yaml
-- tapOn:
-    id: manage-accounts-settings-button
 
 # Wait for change network button to be visible (confirms settings screen loaded)
 - extendedWaitUntil:

@@ -548,6 +548,27 @@ record_flaky_flow() {
   fi
 }
 
+# E2E_FLOW_ATTEMPTS caps how many times a flow may run before it is reported as
+# failed. It defaults to 1 so local runs still fail fast and surface real
+# breakage immediately; CI raises it so a flaky flow does not force a manual
+# re-run of the whole matrix job. Each attempt writes its own artifact
+# directory, so a passing retry never overwrites the failing attempt's video and
+# maestro.log — the flake stays diagnosable after the job goes green.
+FLOW_ATTEMPTS="${E2E_FLOW_ATTEMPTS:-1}"
+
+# The loop bound is compared with `-ge`. A non-numeric or zero value makes that
+# test error out and evaluate false on every pass, so the "bounded" retry loop
+# would never exit and would keep re-running the flow until the job times out.
+# Reject anything that is not a positive integer rather than trusting the env.
+if ! printf '%s' "$FLOW_ATTEMPTS" | grep -qE '^[1-9][0-9]*$'; then
+  echo "⚠️  E2E_FLOW_ATTEMPTS='$FLOW_ATTEMPTS' is not a positive integer — using 1"
+  FLOW_ATTEMPTS=1
+fi
+
+# "device offline" is an ADB hiccup rather than a signal about the app, so it
+# reconnects and retries on its own budget without consuming a flow attempt.
+ADB_RETRY_BUDGET=3
+
 # Preserve the original funded phrase so provisioned flows (which overwrite
 # E2E_TEST_FUNDED_RECOVERY_PHRASE with an ephemeral mnemonic) don't leak it into
 # later non-provisioned flows in the same local run.
@@ -586,18 +607,6 @@ for file in $FLOW_FILES; do
   set_ios_clipboard_for_flow
 
   # ---- Run the flow, with bounded retries -----------------------------------
-  # E2E_FLOW_ATTEMPTS caps how many times a flow may run before it is reported
-  # as failed. It defaults to 1 so local runs still fail fast and surface real
-  # breakage immediately; CI raises it so a single flaky flow does not force a
-  # manual re-run of the whole matrix job. Each attempt writes its own artifact
-  # directory, so a passing retry never overwrites the failing attempt's video
-  # and maestro.log — the flake stays diagnosable after the job goes green.
-  #
-  # "device offline" is an ADB hiccup rather than a signal about the app, so it
-  # reconnects and retries on its own budget without consuming an attempt.
-  FLOW_ATTEMPTS="${E2E_FLOW_ATTEMPTS:-1}"
-  ADB_RETRY_BUDGET=3
-
   attempt=1
   adb_retries=0
   _ret=0
