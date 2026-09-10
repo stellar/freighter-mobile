@@ -471,6 +471,12 @@ export interface FetchTokenPricesParams {
   network: NETWORKS;
   /** Whether to hit the network-scoped v2 endpoint (remote-config gated) */
   useV2: boolean;
+  /**
+   * Cancels the request when the caller no longer needs the answer (e.g. the
+   * confirmation price snapshot's terminal-status deadline). Forwarded
+   * straight to axios, which aborts the underlying HTTP request.
+   */
+  signal?: AbortSignal;
 }
 
 /**
@@ -501,11 +507,13 @@ const V2_NATIVE_PRICE_ID = "native";
  * v1 endpoint. LP shares and custom tokens are always filtered out before the
  * request, and any requested token without a returned price is filled with null.
  *
- * @param params Tokens to price, the active network, and the v2 flag
+ * @param params Tokens to price, the active network, the v2 flag, and an
+ * optional `AbortSignal` to cancel the request
  * @returns Promise resolving to a map of token identifiers to their price information
  *
  * @example
  * // Fetch prices for XLM and USDC on mainnet via v2
+ * const controller = new AbortController();
  * const prices = await fetchTokenPrices({
  *   tokens: [
  *     "XLM",
@@ -513,6 +521,7 @@ const V2_NATIVE_PRICE_ID = "native";
  *   ],
  *   network: NETWORKS.PUBLIC,
  *   useV2: true,
+ *   signal: controller.signal,
  * });
  *
  * // Access individual token prices
@@ -523,6 +532,7 @@ export const fetchTokenPrices = async ({
   tokens,
   network,
   useV2,
+  signal,
 }: FetchTokenPricesParams): Promise<TokenPricesMap> => {
   // NOTE: API does not accept LP IDs or custom tokens
   const filteredTokens = tokens.filter((tokenId) => {
@@ -556,9 +566,17 @@ export const fetchTokenPrices = async ({
         ({ data } = await freighterBackendV2.post<TokenPricesResponse>(
           "/token-prices",
           { tokens: v2Tokens },
-          { params: { network: priceNetwork } },
+          { params: { network: priceNetwork }, signal },
+        ));
+      } else if (signal) {
+        ({ data } = await freighterBackendV1.post<TokenPricesResponse>(
+          "/token-prices",
+          { tokens: filteredTokens },
+          { signal },
         ));
       } else {
+        // No config object when there's no signal to carry — preserves the
+        // exact call shape for callers that don't pass one.
         ({ data } = await freighterBackendV1.post<TokenPricesResponse>(
           "/token-prices",
           { tokens: filteredTokens },
@@ -586,18 +604,28 @@ export const fetchTokenPrices = async ({
         delete pricesMap[V2_NATIVE_PRICE_ID];
       }
     } catch (error) {
-      // Without this, the store callers swallow price-fetch failures (keeping
-      // stale prices / a local error string) with no Sentry signal — so a
-      // broadly-failing endpoint (e.g. a bad v2 rollout) would be invisible.
-      // Connectivity failures (offline/DNS/TLS) demote to a warn breadcrumb;
-      // backend 4xx/5xx and timeouts surface as logger.error. Rethrow so the
-      // callers still manage UI state.
-      logApiError(
-        "backendApi.fetchTokenPrices",
-        "Network unreachable while fetching token prices",
-        "Error fetching token prices",
-        error,
-      );
+      // A deliberate abort is not a failure worth reporting. The confirmation
+      // price snapshot cancels its in-flight request on every cached_display
+      // fallback — a routine path — and the interceptor normalizes an axios
+      // cancellation as a network error, so logging it would stamp a
+      // misleading "network unreachable" breadcrumb every time. Same carve-out
+      // getTokenDetails makes below. Still rethrown either way, so the
+      // snapshot's fallback runs.
+      //
+      // Otherwise: without this, the store callers swallow price-fetch
+      // failures (keeping stale prices / a local error string) with no Sentry
+      // signal — so a broadly-failing endpoint (e.g. a bad v2 rollout) would
+      // be invisible. Connectivity failures (offline/DNS/TLS) demote to a warn
+      // breadcrumb; backend 4xx/5xx and timeouts surface as logger.error.
+      // Rethrow so the callers still manage UI state.
+      if (!isRequestCanceled(error)) {
+        logApiError(
+          "backendApi.fetchTokenPrices",
+          "Network unreachable while fetching token prices",
+          "Error fetching token prices",
+          error,
+        );
+      }
       throw error;
     }
   }
