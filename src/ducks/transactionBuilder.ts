@@ -49,11 +49,12 @@ export interface SubmitResultCodes {
 /**
  * The outcome of ONE submit attempt, returned to the caller that awaited it.
  *
- * The equivalent store fields are written only while the attempt is still the
- * current one (`requestId`), so that a late response cannot repaint a newer
- * transaction — which means they are absent for an attempt whose flow was
- * closed mid-submit. Telemetry needs the outcome regardless of what the UI
- * still cares about, so it reads this value rather than the store.
+ * The store keeps only what the UI renders (`transactionHash`, `error`,
+ * `submitErrorResultCodes`), and writes it only while the attempt is still
+ * the current one (`requestId`) so a late response cannot repaint a newer
+ * transaction. That guard means the store is empty for an attempt whose flow
+ * was closed mid-submit, so anything that must describe the attempt itself —
+ * telemetry above all — reads it from here instead.
  */
 export interface SubmitTransactionOutcome {
   /** Transaction hash on success; `null` when the submit failed. */
@@ -85,17 +86,11 @@ interface TransactionBuilderState {
   isBuilding: boolean;
   isSubmitting: boolean;
   transactionHash: string | null;
-  /** Raw Horizon `result_xdr` from a successful submit — read for the settled swap destination amount (volume telemetry). */
-  submitResultXdr: string | null;
   error: string | null;
   submitErrorResultCodes: {
     transaction?: string;
     operations?: string[];
   } | null;
-  /** HTTP status of a failed submit, when the error carried one — volume telemetry's transport-vs-protocol-failure split. */
-  submitErrorHttpStatus: number | null;
-  /** Whether a failed submit's error carried a genuine Horizon problem+json body, as opposed to a network/fetch exception with no response at all. */
-  submitErrorIsProtocolAnswer: boolean;
   requestId: string | null;
   isSoroban: boolean;
   sorobanResourceFeeXlm: string | null;
@@ -166,11 +161,8 @@ const initialState: Omit<
   isBuilding: false,
   isSubmitting: false,
   transactionHash: null,
-  submitResultXdr: null,
   error: null,
   submitErrorResultCodes: null,
-  submitErrorHttpStatus: null,
-  submitErrorIsProtocolAnswer: false,
   requestId: null,
   isSoroban: false,
   sorobanResourceFeeXlm: null,
@@ -555,8 +547,6 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         isSubmitting: true,
         error: null,
         submitErrorResultCodes: null,
-        submitErrorHttpStatus: null,
-        submitErrorIsProtocolAnswer: false,
         requestId: currentRequestId,
       });
 
@@ -601,7 +591,6 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
         if (get().requestId === currentRequestId) {
           set({
             transactionHash: hash,
-            submitResultXdr: resultXdr ?? null,
             isSubmitting: false,
           });
         }
@@ -693,8 +682,6 @@ export const useTransactionBuilderStore = create<TransactionBuilderState>(
             isSubmitting: false,
             submitErrorResultCodes:
               (horizon4xxResultCodes as SubmitResultCodes | undefined) ?? null,
-            submitErrorHttpStatus,
-            submitErrorIsProtocolAnswer,
           });
         }
 

@@ -588,10 +588,7 @@ describe("useSwapTransaction", () => {
     // The emit path reads the attempt's own returned outcome instead.
     const emptyBuilderState = {
       error: null,
-      submitResultXdr: null,
       submitErrorResultCodes: null,
-      submitErrorHttpStatus: null,
-      submitErrorIsProtocolAnswer: false,
     };
 
     it("still reports the settled destination amount for a successful swap", () => {
@@ -682,15 +679,8 @@ describe("useSwapTransaction", () => {
 
   describe("SWAP_QUOTE_EXPIRED analytics", () => {
     it("fires SWAP_QUOTE_EXPIRED with the result code, AND also swap.failed with failure_category slippage, when the submit is rejected with op_under_dest_min", async () => {
-      mockGetBuilderState.mockReturnValue({
-        error: "tx_failed",
-        submitErrorResultCodes: {
-          transaction: "tx_failed",
-          operations: ["op_under_dest_min"],
-        },
-        submitErrorHttpStatus: 400,
-        submitErrorIsProtocolAnswer: true,
-      });
+      // The store no longer carries the failure classification — the hook
+      // reads it off the attempt's own outcome below.
       mockSignTransaction.mockReturnValue("signed-xdr");
       mockSubmitTransaction.mockResolvedValue(
         submitFailed({

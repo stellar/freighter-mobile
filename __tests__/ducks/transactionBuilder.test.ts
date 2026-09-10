@@ -285,8 +285,6 @@ describe("transactionBuilder Duck", () => {
     expect(state.isSubmitting).toBe(false);
     expect(state.transactionHash).toBe(mockTxHash);
     expect(state.error).toBeNull();
-    // Read by volume telemetry to find the settled swap destination amount.
-    expect(state.submitResultXdr).toBe(mockResultXdr);
     expect(stellarServices.submitTx).toHaveBeenCalledWith({
       tx: mockSignedXDR,
       network: mockNetwork,
@@ -361,8 +359,11 @@ describe("transactionBuilder Duck", () => {
         horizon4xxError,
       );
 
+      let outcome: SubmitTransactionOutcome | null = null;
       await act(async () => {
-        await store.getState().submitTransaction({ network: mockNetwork });
+        outcome = await store
+          .getState()
+          .submitTransaction({ network: mockNetwork });
       });
 
       expect(logger.warn).toHaveBeenCalledWith(
@@ -372,10 +373,10 @@ describe("transactionBuilder Duck", () => {
       );
       expect(logger.error).not.toHaveBeenCalled();
       // Volume telemetry's failure_category derivation (getFailureCategory)
-      // needs these: a 4xx with a problem+json `extras` body is a genuine
-      // Horizon verdict, not a transport failure.
-      expect(store.getState().submitErrorHttpStatus).toBe(400);
-      expect(store.getState().submitErrorIsProtocolAnswer).toBe(true);
+      // needs these, off the attempt's own outcome: a 4xx with a problem+json
+      // `extras` body is a genuine Horizon verdict, not a transport failure.
+      expect(outcome!.httpStatus).toBe(400);
+      expect(outcome!.isProtocolAnswer).toBe(true);
     });
 
     it("keeps Horizon 4xx WITHOUT result_codes as logger.error (operational failures, not user-correctable)", async () => {
@@ -393,8 +394,11 @@ describe("transactionBuilder Duck", () => {
         horizon4xxNoResultCodes,
       );
 
+      let outcome: SubmitTransactionOutcome | null = null;
       await act(async () => {
-        await store.getState().submitTransaction({ network: mockNetwork });
+        outcome = await store
+          .getState()
+          .submitTransaction({ network: mockNetwork });
       });
 
       expect(logger.error).toHaveBeenCalledWith(
@@ -405,8 +409,8 @@ describe("transactionBuilder Duck", () => {
       expect(logger.warn).not.toHaveBeenCalled();
       // No `extras`/`status`/`title` on the body — not a genuine protocol
       // verdict, so volume telemetry reads this as transport, not "unknown".
-      expect(store.getState().submitErrorHttpStatus).toBe(429);
-      expect(store.getState().submitErrorIsProtocolAnswer).toBe(false);
+      expect(outcome!.httpStatus).toBe(429);
+      expect(outcome!.isProtocolAnswer).toBe(false);
     });
 
     it("keeps Horizon 5xx server errors as logger.error (e.g. submitted-then-overloaded)", async () => {
@@ -417,8 +421,11 @@ describe("transactionBuilder Duck", () => {
         horizon5xxError,
       );
 
+      let outcome: SubmitTransactionOutcome | null = null;
       await act(async () => {
-        await store.getState().submitTransaction({ network: mockNetwork });
+        outcome = await store
+          .getState()
+          .submitTransaction({ network: mockNetwork });
       });
 
       expect(logger.error).toHaveBeenCalledWith(
@@ -427,16 +434,19 @@ describe("transactionBuilder Duck", () => {
         horizon5xxError,
       );
       expect(logger.warn).not.toHaveBeenCalled();
-      expect(store.getState().submitErrorHttpStatus).toBe(504);
-      expect(store.getState().submitErrorIsProtocolAnswer).toBe(false);
+      expect(outcome!.httpStatus).toBe(504);
+      expect(outcome!.isProtocolAnswer).toBe(false);
     });
 
     it("keeps non-Horizon errors as logger.error (bad XDR, network unreachable, SDK exception)", async () => {
       const sdkError = new Error("Bad XDR encoding");
       (stellarServices.submitTx as jest.Mock).mockRejectedValue(sdkError);
 
+      let outcome: SubmitTransactionOutcome | null = null;
       await act(async () => {
-        await store.getState().submitTransaction({ network: mockNetwork });
+        outcome = await store
+          .getState()
+          .submitTransaction({ network: mockNetwork });
       });
 
       expect(logger.error).toHaveBeenCalledWith(
@@ -447,8 +457,8 @@ describe("transactionBuilder Duck", () => {
       expect(logger.warn).not.toHaveBeenCalled();
       // Not a Horizon-shaped error at all (no `.response`) — volume
       // telemetry's failure_category reads this as transport (no verdict).
-      expect(store.getState().submitErrorHttpStatus).toBeNull();
-      expect(store.getState().submitErrorIsProtocolAnswer).toBe(false);
+      expect(outcome!.httpStatus).toBeNull();
+      expect(outcome!.isProtocolAnswer).toBe(false);
     });
   });
 
