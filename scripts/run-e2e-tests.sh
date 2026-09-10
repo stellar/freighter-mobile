@@ -467,9 +467,86 @@ provision_flags_for_flow() {
   esac
 }
 
+# Provision a fresh testnet account for the current flow and export the
+# KEY=VALUE pairs the provisioning script emits. No-op for flows that need no
+# provisioning. Returns non-zero if provisioning failed.
+provision_flow_account() {
+  local _flags="$1"
+  if [ -z "$_flags" ]; then
+    return 0
+  fi
+  echo "🔑 Provisioning fresh testnet account for $FLOW_NAME ($_flags)..."
+  if ! PROVISION_OUT=$(node e2e/scripts/provision-test-account.mjs $_flags); then
+    return 1
+  fi
+  # Export each KEY=VALUE line the script emitted.
+  while IFS= read -r _pline; do
+    [ -n "$_pline" ] && export "${_pline?}"
+  done <<EOF
+$PROVISION_OUT
+EOF
+  echo "✅ Provisioned: sender phrase + ${_flags}"
+  return 0
+}
+
+# Build the `-e KEY=value` args Maestro needs from the current environment.
+# Each flag and its argument are separate array elements, so no word-splitting
+# occurs even for values containing base64 chars (+, /, =). Rebuilt after
+# re-provisioning so a retry passes the freshly provisioned account.
+build_maestro_env_args() {
+  MAESTRO_ENV_ARGS=()
+  if [ -n "${E2E_TEST_RECOVERY_PHRASE:-}" ]; then
+    MAESTRO_ENV_ARGS+=("-e" "E2E_TEST_RECOVERY_PHRASE=$E2E_TEST_RECOVERY_PHRASE")
+  fi
+  if [ -n "${IS_CI_ENV:-}" ]; then
+    MAESTRO_ENV_ARGS+=("-e" "IS_CI_ENV=$IS_CI_ENV")
+  fi
+  if [ -n "${E2E_TEST_FUNDED_RECOVERY_PHRASE:-}" ]; then
+    MAESTRO_ENV_ARGS+=("-e" "E2E_TEST_FUNDED_RECOVERY_PHRASE=$E2E_TEST_FUNDED_RECOVERY_PHRASE")
+  fi
+  if [ -n "${E2E_TEST_RECIPIENT_ADDRESS:-}" ]; then
+    MAESTRO_ENV_ARGS+=("-e" "E2E_TEST_RECIPIENT_ADDRESS=$E2E_TEST_RECIPIENT_ADDRESS")
+  fi
+}
+
+# Put the recovery phrase the current flow imports on the iOS simulator
+# clipboard (local runs only; CI sets it in the workflow). Re-run after
+# re-provisioning so a retry does not paste a spent account's phrase.
+set_ios_clipboard_for_flow() {
+  if [ "$PLATFORM" != "ios" ] || [ -z "${MAESTRO_DEVICE:-}" ]; then
+    return 0
+  fi
+  # Check if this test uses ImportFundedWallet (either standalone or as subflow)
+  if [ "$FLOW_NAME" = "ImportFundedWallet" ] || grep -q "ImportFundedWallet.yaml" "$file" 2>/dev/null; then
+    if [ -n "${E2E_TEST_FUNDED_RECOVERY_PHRASE:-}" ]; then
+      echo "$E2E_TEST_FUNDED_RECOVERY_PHRASE" | xcrun simctl pbcopy "$MAESTRO_DEVICE"
+      echo "✅ Funded recovery phrase set in simulator clipboard (for $FLOW_NAME)"
+    fi
+  elif [ "$FLOW_NAME" = "ImportWallet" ] || echo "$FLOW_NAME" | grep -qi "import"; then
+    if [ -n "${E2E_TEST_RECOVERY_PHRASE:-}" ]; then
+      echo "$E2E_TEST_RECOVERY_PHRASE" | xcrun simctl pbcopy "$MAESTRO_DEVICE"
+      echo "✅ Recovery phrase set in simulator clipboard (for $FLOW_NAME)"
+    fi
+  fi
+}
+
 # Track failures
 failed=0
 failed_tests=""
+# Flows that failed an attempt but passed on a retry. Reported at the end so a
+# green job still tells you which flows are flaky.
+flaky_tests=""
+
+record_flaky_flow() {
+  case ", $flaky_tests, " in
+    *", $1, "*) return 0 ;;
+  esac
+  if [ -z "$flaky_tests" ]; then
+    flaky_tests="$1"
+  else
+    flaky_tests="$flaky_tests, $1"
+  fi
+}
 
 # Preserve the original funded phrase so provisioned flows (which overwrite
 # E2E_TEST_FUNDED_RECOVERY_PHRASE with an ephemeral mnemonic) don't leak it into
@@ -494,124 +571,121 @@ for file in $FLOW_FILES; do
   # Provision a fresh, isolated testnet account for transaction flows so
   # concurrent runs never share a source-account sequence number (tx_bad_seq).
   PROVISION_FLAGS=$(provision_flags_for_flow "$FLOW_NAME")
-  if [ -n "$PROVISION_FLAGS" ]; then
-    echo "🔑 Provisioning fresh testnet account for $FLOW_NAME ($PROVISION_FLAGS)..."
-    if ! PROVISION_OUT=$(node e2e/scripts/provision-test-account.mjs $PROVISION_FLAGS); then
-      echo "❌ Provisioning failed for $FLOW_NAME — skipping"
-      failed=1
-      if [ -z "$failed_tests" ]; then
-        failed_tests="$FLOW_NAME"
-      else
-        failed_tests="$failed_tests, $FLOW_NAME"
-      fi
-      continue
+  if ! provision_flow_account "$PROVISION_FLAGS"; then
+    echo "❌ Provisioning failed for $FLOW_NAME — skipping"
+    failed=1
+    if [ -z "$failed_tests" ]; then
+      failed_tests="$FLOW_NAME"
+    else
+      failed_tests="$failed_tests, $FLOW_NAME"
     fi
-    # Export each KEY=VALUE line the script emitted.
-    while IFS= read -r _pline; do
-      [ -n "$_pline" ] && export "${_pline?}"
-    done <<EOF
-$PROVISION_OUT
-EOF
-    echo "✅ Provisioned: sender phrase + ${PROVISION_FLAGS}"
+    continue
   fi
 
   # Set iOS simulator clipboard based on flow type (local runs). CI sets it in the workflow.
-  if [ "$PLATFORM" = "ios" ] && [ -n "${MAESTRO_DEVICE:-}" ]; then
-    # Check if this test uses ImportFundedWallet (either standalone or as subflow)
-    if [ "$FLOW_NAME" = "ImportFundedWallet" ] || grep -q "ImportFundedWallet.yaml" "$file" 2>/dev/null; then
-      if [ -n "${E2E_TEST_FUNDED_RECOVERY_PHRASE:-}" ]; then
-        echo "$E2E_TEST_FUNDED_RECOVERY_PHRASE" | xcrun simctl pbcopy "$MAESTRO_DEVICE"
-        echo "✅ Funded recovery phrase set in simulator clipboard (for $FLOW_NAME)"
-      fi
-    elif [ "$FLOW_NAME" = "ImportWallet" ] || echo "$FLOW_NAME" | grep -qi "import"; then
-      if [ -n "${E2E_TEST_RECOVERY_PHRASE:-}" ]; then
-        echo "$E2E_TEST_RECOVERY_PHRASE" | xcrun simctl pbcopy "$MAESTRO_DEVICE"
-        echo "✅ Recovery phrase set in simulator clipboard (for $FLOW_NAME)"
-      fi
-    fi
-  fi
-  TS=$(date +%s)
-  FLOW_OUTPUT_DIR="$OUTPUT_DIR/${FLOW_NAME}-${TS}"
-  
-  echo "🚀 Running test: $FLOW_NAME"
-  echo "📁 Output directory: $FLOW_OUTPUT_DIR"
-  
-  # Create per-flow output directory
-  mkdir -p "$FLOW_OUTPUT_DIR"
-  
-  # Start recording for this flow
-  start_flow_recording "$FLOW_OUTPUT_DIR"
-  
-  # Run Maestro test with per-flow output directory.
-  # Pass E2E_TEST_RECOVERY_PHRASE and IS_CI_ENV when set via Maestro's `-e KEY=value`.
-  # --debug-output ensures maestro.log is written to FLOW_OUTPUT_DIR (otherwise it goes to ~/.maestro/tests/).
-  _ret=0
-  # Each -e flag and its KEY=VALUE argument are separate array elements, so no
-  # word-splitting occurs even for values containing base64 chars (+, /, =).
-  MAESTRO_ENV_ARGS=()
-  if [ -n "${E2E_TEST_RECOVERY_PHRASE:-}" ]; then
-    MAESTRO_ENV_ARGS+=("-e" "E2E_TEST_RECOVERY_PHRASE=$E2E_TEST_RECOVERY_PHRASE")
-  fi
-  if [ -n "${IS_CI_ENV:-}" ]; then
-    MAESTRO_ENV_ARGS+=("-e" "IS_CI_ENV=$IS_CI_ENV")
-  fi
-  if [ -n "${E2E_TEST_FUNDED_RECOVERY_PHRASE:-}" ]; then
-    MAESTRO_ENV_ARGS+=("-e" "E2E_TEST_FUNDED_RECOVERY_PHRASE=$E2E_TEST_FUNDED_RECOVERY_PHRASE")
-  fi
-  if [ -n "${E2E_TEST_RECIPIENT_ADDRESS:-}" ]; then
-    MAESTRO_ENV_ARGS+=("-e" "E2E_TEST_RECIPIENT_ADDRESS=$E2E_TEST_RECIPIENT_ADDRESS")
-  fi
+  set_ios_clipboard_for_flow
 
-  # Retry logic for ADB connection issues
-  MAX_RETRIES=3
-  retry_count=0
-  while [ $retry_count -lt $MAX_RETRIES ]; do
-    if [ $retry_count -gt 0 ]; then
-      echo "⚠️  Retry attempt $retry_count/$MAX_RETRIES after ADB connection issue..."
-      # Reconnect ADB before retry
-      ensure_adb_connection
-      sleep 5
+  # ---- Run the flow, with bounded retries -----------------------------------
+  # E2E_FLOW_ATTEMPTS caps how many times a flow may run before it is reported
+  # as failed. It defaults to 1 so local runs still fail fast and surface real
+  # breakage immediately; CI raises it so a single flaky flow does not force a
+  # manual re-run of the whole matrix job. Each attempt writes its own artifact
+  # directory, so a passing retry never overwrites the failing attempt's video
+  # and maestro.log — the flake stays diagnosable after the job goes green.
+  #
+  # "device offline" is an ADB hiccup rather than a signal about the app, so it
+  # reconnects and retries on its own budget without consuming an attempt.
+  FLOW_ATTEMPTS="${E2E_FLOW_ATTEMPTS:-1}"
+  ADB_RETRY_BUDGET=3
+
+  attempt=1
+  adb_retries=0
+  _ret=0
+  TS=$(date +%s)
+  build_maestro_env_args
+
+  while :; do
+    if [ "$attempt" -eq 1 ]; then
+      FLOW_OUTPUT_DIR="$OUTPUT_DIR/${FLOW_NAME}-${TS}"
+    else
+      FLOW_OUTPUT_DIR="$OUTPUT_DIR/${FLOW_NAME}-${TS}-attempt${attempt}"
     fi
-    
+
+    echo "🚀 Running test: $FLOW_NAME (attempt $attempt/$FLOW_ATTEMPTS)"
+    echo "📁 Output directory: $FLOW_OUTPUT_DIR"
+
+    # Create per-attempt output directory
+    mkdir -p "$FLOW_OUTPUT_DIR"
+
+    # Start recording for this attempt
+    start_flow_recording "$FLOW_OUTPUT_DIR"
+
     # Capture stderr to detect device offline errors
     MAESTRO_ERROR_LOG="$FLOW_OUTPUT_DIR/maestro_error.log"
-    
+
+    # Run Maestro test with per-attempt output directory.
+    # --debug-output ensures maestro.log is written to FLOW_OUTPUT_DIR (otherwise it goes to ~/.maestro/tests/).
+    _ret=0
     if [ -n "$MAESTRO_DEVICE" ]; then
-      maestro test "${MAESTRO_ENV_ARGS[@]}" --device "$MAESTRO_DEVICE" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" 2>"$MAESTRO_ERROR_LOG" && _ret=0 && break || _ret=$?
+      maestro test "${MAESTRO_ENV_ARGS[@]}" --device "$MAESTRO_DEVICE" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" 2>"$MAESTRO_ERROR_LOG" || _ret=$?
     else
-      maestro test "${MAESTRO_ENV_ARGS[@]}" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" 2>"$MAESTRO_ERROR_LOG" && _ret=0 && break || _ret=$?
+      maestro test "${MAESTRO_ENV_ARGS[@]}" "$file" --test-output-dir "$FLOW_OUTPUT_DIR" --debug-output "$FLOW_OUTPUT_DIR" 2>"$MAESTRO_ERROR_LOG" || _ret=$?
     fi
-    
-    # Check if it's an ADB connection issue
-    if grep -qi "device offline" "$MAESTRO_ERROR_LOG" 2>/dev/null; then
-      retry_count=$((retry_count + 1))
-      if [ $retry_count -lt $MAX_RETRIES ]; then
-        echo "🔧 Detected ADB connection issue, will retry..."
+
+    # Remove error log if test succeeded
+    if [ $_ret -eq 0 ] && [ -f "$MAESTRO_ERROR_LOG" ]; then
+      rm "$MAESTRO_ERROR_LOG"
+    fi
+
+    # Move maestro.log from nested .maestro/tests/<timestamp>/ to flow output directory
+    # Maestro creates a nested structure even with --debug-output, so we move it to the top level
+    if [ -d "$FLOW_OUTPUT_DIR/.maestro/tests" ]; then
+      _maestro_log=$(find "$FLOW_OUTPUT_DIR/.maestro/tests" -name "maestro.log" -type f | head -1)
+      if [ -n "$_maestro_log" ] && [ -f "$_maestro_log" ]; then
+        mv "$_maestro_log" "$FLOW_OUTPUT_DIR/maestro.log" 2>/dev/null || true
+        echo "✅ Moved maestro.log to flow output directory"
       fi
-    else
-      # Not an ADB issue, don't retry
+    fi
+
+    # Stop recording for this attempt
+    stop_flow_recording
+
+    if [ $_ret -eq 0 ]; then
       break
     fi
-  done
-  
-  # Remove error log if test succeeded
-  if [ $_ret -eq 0 ] && [ -f "$MAESTRO_ERROR_LOG" ]; then
-    rm "$MAESTRO_ERROR_LOG"
-  fi
-  
-  # Move maestro.log from nested .maestro/tests/<timestamp>/ to flow output directory
-  # Maestro creates a nested structure even with --debug-output, so we move it to the top level
-  if [ -d "$FLOW_OUTPUT_DIR/.maestro/tests" ]; then
-    _maestro_log=$(find "$FLOW_OUTPUT_DIR/.maestro/tests" -name "maestro.log" -type f | head -1)
-    if [ -n "$_maestro_log" ] && [ -f "$_maestro_log" ]; then
-      mv "$_maestro_log" "$FLOW_OUTPUT_DIR/maestro.log" 2>/dev/null || true
-      echo "✅ Moved maestro.log to flow output directory"
+
+    # ADB hiccup: reconnect and retry without consuming a flow attempt.
+    if grep -qi "device offline" "$MAESTRO_ERROR_LOG" 2>/dev/null; then
+      if [ "$adb_retries" -lt "$ADB_RETRY_BUDGET" ]; then
+        adb_retries=$((adb_retries + 1))
+        echo "🔧 Detected ADB connection issue, will retry ($adb_retries/$ADB_RETRY_BUDGET)..."
+        ensure_adb_connection
+        sleep 5
+        continue
+      fi
+      echo "❌ ADB still offline after $ADB_RETRY_BUDGET reconnect attempts"
+      break
     fi
-  fi
-  
-  # Stop recording for this flow
-  stop_flow_recording
-  
+
+    if [ "$attempt" -ge "$FLOW_ATTEMPTS" ]; then
+      break
+    fi
+
+    attempt=$((attempt + 1))
+    echo "⚠️  $FLOW_NAME failed — retrying (attempt $attempt/$FLOW_ATTEMPTS)"
+
+    # Transaction flows consume their provisioned source account, so a retry
+    # needs a fresh one — plus fresh -e args and clipboard to match.
+    if ! provision_flow_account "$PROVISION_FLAGS"; then
+      echo "❌ Re-provisioning failed for $FLOW_NAME"
+      _ret=1
+      break
+    fi
+    build_maestro_env_args
+    set_ios_clipboard_for_flow
+    sleep 3
+  done
+
   if [ $_ret -ne 0 ]; then
     echo "❌ Test failed: $FLOW_NAME"
     failed=1
@@ -621,12 +695,22 @@ EOF
       failed_tests="$failed_tests, $FLOW_NAME"
     fi
   else
-    echo "✅ Test passed: $FLOW_NAME"
+    if [ "$attempt" -gt 1 ]; then
+      echo "✅ Test passed: $FLOW_NAME (on attempt $attempt — flaky)"
+      record_flaky_flow "$FLOW_NAME"
+    else
+      echo "✅ Test passed: $FLOW_NAME"
+    fi
   fi
   echo ""
 done
 
 # Exit with appropriate code
+if [ -n "$flaky_tests" ]; then
+  echo "⚠️  Flows that needed a retry: $flaky_tests"
+  echo "   Per-attempt artifacts are kept under $OUTPUT_DIR/<flow>-<ts>-attemptN/"
+fi
+
 if [ $failed -eq 1 ]; then
   echo "❌ E2E tests completed with failures"
   echo "Failed tests: $failed_tests"

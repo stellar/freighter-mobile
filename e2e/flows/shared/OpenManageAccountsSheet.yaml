@@ -1,0 +1,51 @@
+appId: org.stellar.freighterdev
+---
+# Shared flow: open the manage-accounts sheet from the home screen header and
+# leave it open with the settings button visible. Callers tap that button.
+#
+# Why this needs to retry: the "Welcome to Freighter!" bottom sheet is only
+# presented once an AsyncStorage read *and* the account's balance fetch have
+# both settled, and only for accounts that resolve as unfunded. Both happen
+# well after home-screen renders, so a one-shot `when: visible` check on the
+# sheet races it — the check passes while the fetch is still in flight, the
+# dismissal is skipped, and the sheet then mounts on top of the header and
+# swallows the account-switcher tap. The switcher tap reports COMPLETED
+# because the tap itself succeeded; the failure only surfaces 15s later as
+# "manage-accounts-settings-button is visible" timing out.
+#
+# Retrying dismiss-then-tap as one unit removes the race: if the sheet mounted
+# late and ate the first tap, the next pass sees it, dismisses it, and the tap
+# lands. Nothing here assumes the sheet appears at all, so funded accounts
+# pass straight through on the first attempt.
+- retry:
+    maxRetries: 2
+    commands:
+      - runFlow:
+          when:
+            visible:
+              id: welcome-banner-dismiss-button
+          commands:
+            - tapOn:
+                id: welcome-banner-dismiss-button
+            - extendedWaitUntil:
+                visible:
+                  id: home-screen
+                timeout: 15000
+
+      # An "Account not loaded" toast can also overlay the top of the header.
+      # It auto-dismisses in 6s, but swiping is faster and deterministic.
+      - runFlow:
+          when:
+            visible: ".*could not be loaded.*"
+          commands:
+            - swipe:
+                from:
+                  text: ".*could not be loaded.*"
+                direction: UP
+
+      - tapOn:
+          id: home-account-switcher
+      - extendedWaitUntil:
+          visible:
+            id: manage-accounts-settings-button
+          timeout: 15000

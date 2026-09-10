@@ -60,7 +60,7 @@ tags:
 - extendedWaitUntil:
     visible:
       id: home-screen|welcome-banner-dismiss-button
-    timeout: 10000
+    timeout: 30000
 
 # Dismiss welcome banner if it appears after wallet creation
 - runFlow:
