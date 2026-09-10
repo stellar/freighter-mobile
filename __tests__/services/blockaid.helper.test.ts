@@ -65,7 +65,7 @@ describe("getTransactionBalanceChanges", () => {
   it.each([
     ["assets_diffs is absent", { simulation: {} } as any],
     ["assets_diffs is empty", { simulation: { assets_diffs: {} } } as any],
-    ["assets_diffs has no entry for the signer", makeScanResult([])],
+    ["the signer's assets_diffs entry is an empty array", makeScanResult([])],
   ])("returns [] when %s", (_description, input) => {
     expect(balanceChangesFor(input)).toEqual([]);
   });
