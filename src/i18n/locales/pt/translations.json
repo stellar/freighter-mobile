@@ -1,7 +1,7 @@
 {
   "wallet": "Carteira",
   "network": "Rede",
-  "freighterWallet": "Carteira Freighter",
+  "freighterWallet": "Carteira Varial",
   "noInternetConnection": "Sem conexão com a internet",
   "accountAddressCopied": "Endereço da conta copiado!",
   "tokenAddress": "Endereço do Token",
@@ -79,25 +79,25 @@
     "about": "Sobre",
     "security": "Segurança",
     "deleteAccount": "Excluir conta",
-    "deleteAccountDisclaimer": "As contas na rede Stellar são imutáveis e não podem ser excluídas. No entanto, você pode remover qualquer conta do seu aplicativo Freighter a qualquer momento usando a opção 'Excluir conta'. Verifique se sua frase de recuperação funciona antes de fazer isso.",
+    "deleteAccountDisclaimer": "As contas na rede Stellar são imutáveis e não podem ser excluídas. No entanto, você pode remover qualquer conta do seu aplicativo Varial a qualquer momento usando a opção 'Excluir conta'. Verifique se sua frase de recuperação funciona antes de fazer isso.",
     "deleteAccountConfirmTitle": "Tem certeza?",
     "deleteAccountConfirmMessage": "Certifique-se de que você tem sua frase de recuperação em um local seguro. Você não conseguirá recuperar sua carteira sem ela."
   },
   "preferences": {
     "usageDataSharing": {
       "title": "Compartilhamento de dados de uso",
-      "description": "Ajude-nos a melhorar o Freighter compartilhando dados de uso, do dispositivo e de atividade — incluindo suas chaves públicas, endereço IP e um ID persistente que vincula sua carteira entre a extensão e o aplicativo móvel — com nossos provedores de análise de dados e de relatórios de falhas. Você pode desativar essa opção a qualquer momento. Consulte nossa Política de Privacidade para mais detalhes."
+      "description": "Ajude-nos a melhorar o Varial compartilhando dados de uso, do dispositivo e de atividade — incluindo suas chaves públicas, endereço IP e um ID persistente que vincula sua carteira entre a extensão e o aplicativo móvel — com nossos provedores de análise de dados e de relatórios de falhas. Você pode desativar essa opção a qualquer momento. Consulte nossa Política de Privacidade para mais detalhes."
     },
     "permissionModal": {
       "enable": {
         "title": "Habilitar Analytics",
         "description": "Para habilitar o compartilhamento de dados de uso, você precisará permitir permissões de rastreamento nas configurações do seu dispositivo.",
-        "instruction": "Toque em \"Abrir Configurações\" abaixo, depois encontre Freighter e habilite \"Permitir Rastreamento\"."
+        "instruction": "Toque em \"Abrir Configurações\" abaixo, depois encontre Varial e habilite \"Permitir Rastreamento\"."
       },
       "disable": {
         "title": "Desabilitar Analytics",
         "description": "Para desabilitar o compartilhamento de dados de uso, você precisará alterar as permissões de rastreamento nas configurações do seu dispositivo.",
-        "instruction": "Toque em \"Abrir Configurações\" abaixo, depois encontre Freighter e desabilite \"Permitir Rastreamento\"."
+        "instruction": "Toque em \"Abrir Configurações\" abaixo, depois encontre Varial e desabilite \"Permitir Rastreamento\"."
       },
       "openSettings": "Abrir Configurações",
       "notNow": "Agora não"
@@ -117,7 +117,7 @@
   },
   "aboutScreen": {
     "title": "Sobre",
-    "freighterDescription": "Freighter é uma carteira sem custódia para a blockchain Stellar",
+    "freighterDescription": "Varial é uma carteira sem custódia para a blockchain Stellar",
     "listTitle": "Links",
     "stellarFoundation": "© {{year}} Stellar Development Foundation",
     "links": {
@@ -150,7 +150,7 @@
     "iAlreadyHaveWallet": "Já tenho uma carteira",
     "terms": {
       "byProceeding": "Ao prosseguir, você concorda com os ",
-      "termsOfService": "termos de uso do Freighter",
+      "termsOfService": "termos de uso do Varial",
       "privacyPolicy": "política de privacidade"
     }
   },
@@ -226,7 +226,7 @@
   },
   "lockScreen": {
     "title": "Bem-vindo de volta",
-    "description": "Digite a senha para desbloquear o Freighter",
+    "description": "Digite a senha para desbloquear o Varial",
     "passwordInputPlaceholder": "Digite sua senha",
     "unlockButtonText": "Desbloquear",
     "forgotPasswordButtonText": "Esqueci minha senha",
@@ -243,9 +243,9 @@
     "failedToLoadAccountMessage": "Sua conta não pôde ser carregada após o login. Tente novamente.",
     "forgotPasswordWarningTitle": "Tem certeza?",
     "forgotPasswordWarningMessage1": "Não podemos recuperar sua senha para você. Este processo apagará sua carteira e você precisará passar pelo fluxo de importação da carteira para reimportá-la com sua frase de recuperação.",
-    "forgotPasswordWarningMessage2": "Você perderá permanentemente o acesso à conta atualmente armazenada no Freighter.",
+    "forgotPasswordWarningMessage2": "Você perderá permanentemente o acesso à conta atualmente armazenada no Varial.",
     "forgotPasswordWarningMessage3": "Só faça isso se você tiver sua frase guardada em segurança em outro lugar.",
-    "forgotPasswordWarningResetButton": "Redefinir Freighter"
+    "forgotPasswordWarningResetButton": "Redefinir Varial"
   },
   "onboarding": {
     "continue": "Continuar",
@@ -269,7 +269,7 @@
     "defaultTabTitle": "Nova Aba",
     "recent": "Recentes",
     "trending": "Em Alta",
-    "legalDisclaimer": "Estes serviços são operados por terceiros independentes, não pela Freighter ou SDF. A inclusão aqui não é um endosso. DeFi envolve riscos, incluindo perda de fundos. Use por sua própria conta e risco.",
+    "legalDisclaimer": "Estes serviços são operados por terceiros independentes, não pelo Varial ou SDF. A inclusão aqui não é um endosso. DeFi envolve riscos, incluindo perda de fundos. Use por sua própria conta e risco.",
     "oneTab": "1 Aba",
     "tabs": "{{count}} Abas",
     "urlBarPlaceholder": "Pesquisar",
@@ -561,7 +561,7 @@
     "suggestions": "Sugestões",
     "cannotSendToSelf": "Não é possível enviar para você mesmo",
     "invalidAddress": "Endereço Stellar inválido",
-    "scanQRCodeText": "Escanear um QR Code do Freighter"
+    "scanQRCodeText": "Escanear um QR Code do Varial"
   },
   "sendSearchContacts": {
     "myWallets": "Minhas carteiras",
@@ -771,7 +771,7 @@
   "addMemoExplanationBottomSheet": {
     "title": "Memo é obrigatório",
     "description": "Uma conta de destino requer o uso do campo memo que não está presente na transação que você está prestes a assinar.",
-    "disabledWarning": "O Freighter desabilitou automaticamente a opção de assinar esta transação.",
+    "disabledWarning": "O Varial desabilitou automaticamente a opção de assinar esta transação.",
     "checkMemoRequirements": "Verifique os requisitos de memo da conta de destino e inclua-o na transação."
   },
   "addAnotherWalletScreen": {
@@ -869,13 +869,13 @@
     "errorSubmitting": "Erro ao enviar a transação",
     "errorRespondingRequest": "Erro ao responder à solicitação de transação",
     "errorWrongNetwork": "Rede incorreta",
-    "errorWrongNetworkMessage": "Por favor, mude para a rede {{targetNetworkName}} nas Configurações do Freighter e tente novamente",
+    "errorWrongNetworkMessage": "Por favor, mude para a rede {{targetNetworkName}} nas Configurações do Varial e tente novamente",
     "errorUnsupportedChain": "Rede não suportada",
     "errorUnsupportedChainMessage": "Por favor, certifique-se de que o dApp com o qual você está tentando conectar suporta a rede Stellar",
     "errorUnsupportedTransactionChain": "Rede não suportada",
     "errorUnsupportedTransactionChainMessage": "A rede {{chainId}} não é suportada. Por favor, certifique-se de que a transação que você está tentando assinar foi construída em uma rede Stellar suportada",
     "errorUnsupportedMethodTitle": "Método não suportado",
-    "errorUnsupportedMethod": "O método '{{method}}' não é suportado pela carteira Freighter",
+    "errorUnsupportedMethod": "O método '{{method}}' não é suportado pela carteira Varial",
     "pleaseTryAgainLater": "Por favor, tente novamente mais tarde",
     "notAuthenticated": "Desconectado",
     "pleaseLoginToConnect": "Por favor, entre na sua carteira e tente novamente para se conectar a este App",
@@ -884,10 +884,10 @@
     "pleaseUnlockToConnect": "Por favor, desbloqueie sua carteira para se conectar a este App",
     "pleaseUnlockToSignTransaction": "Por favor, desbloqueie sua carteira para assinar esta transação",
     "connectionNotFound": "Conexão não encontrada",
-    "connectionNotFoundMessage": "Por favor, tente criar uma nova conexão ou alternar para outra conta que possui a conexão na sua carteira Freighter",
+    "connectionNotFoundMessage": "Por favor, tente criar uma nova conexão ou alternar para outra conta que possui a conexão na sua carteira Varial",
     "userNotAuthenticated": "Usuário não autenticado",
     "invalidTransactionOrigin": "Domínio de transação não confiável",
-    "invalidTransactionOriginMessage": "Uma solicitação de transação WalletConnect foi recebida de {{transactionRequestOrigin}}, mas este domínio não está conectado na sua carteira Freighter.",
+    "invalidTransactionOriginMessage": "Uma solicitação de transação WalletConnect foi recebida de {{transactionRequestOrigin}}, mas este domínio não está conectado na sua carteira Varial.",
     "unableToLoadAuthEntry": "Não foi possível carregar os detalhes da solicitação",
     "failedToProcessAuthEntry": "Não foi possível assinar — a entrada de autorização está malformada ou inválida",
     "e2eHelper": {
@@ -965,7 +965,7 @@
     "secretKeyPlaceholder": "Sua chave secreta",
     "passwordPlaceholder": "Senha",
     "passwordNote": "Digite sua senha",
-    "responsibilityNote": "Estou ciente de que o Freighter não pode recuperar a chave secreta importada e armazená-la é minha responsabilidade.",
+    "responsibilityNote": "Estou ciente de que o Varial não pode recuperar a chave secreta importada e armazená-la é minha responsabilidade.",
     "importButton": "Importar Carteira",
     "invalidSecretKey": "Chave secreta inválida"
   },
@@ -1063,7 +1063,7 @@
     }
   },
   "welcomeBanner": {
-    "welcomeMessage": "Bem-vindo ao Freighter!",
+    "welcomeMessage": "Bem-vindo ao Varial!",
     "fundingText": "Para começar a usar esta conta, ",
     "fundingText2": "financie-a com pelo menos 2 XLM.",
     "minimumBalanceText": "As contas Stellar exigem um saldo mínimo de 2 XLM para garantir a segurança da rede e prevenir spam.",
@@ -1182,7 +1182,7 @@
       "executableTag": "Tag do executável",
       "executableNote": "O código deste contrato é gerenciado pelo proprietário do executável e pode mudar depois que você assinar.",
       "unrecognizedInvocation": "Invocação não reconhecida",
-      "unrecognizedInvocationWarning": "O Freighter não conseguiu ler esta autorização. Não assine a menos que você confie neste site.",
+      "unrecognizedInvocationWarning": "O Varial não conseguiu ler esta autorização. Não assine a menos que você confie neste site.",
       "address": "Endereço do signatário"
     },
     "operations": {
@@ -1280,11 +1280,11 @@
     "defaultMessage": "Por favor atualize seu app para a última versão.",
     "forceUpdate": {
       "title": "Atualização Necessária",
-      "description": "Uma nova versão do Freighter está disponível. Por favor, atualize para garantir que sua carteira funcione corretamente e com segurança. Seus fundos não são afetados.",
+      "description": "Uma nova versão do Varial está disponível. Por favor, atualize para garantir que sua carteira funcione corretamente e com segurança. Seus fundos não são afetados.",
       "updateButton": "Atualizar app",
       "laterButton": "Vou atualizar depois",
       "skipTitle": "Continuar sem atualizar?",
-      "skipMessage": "Usar uma versão desatualizada pode causar erros ou transações falhadas. Ao continuar, você aceita total responsabilidade por quaisquer problemas até atualizar o Freighter."
+      "skipMessage": "Usar uma versão desatualizada pode causar erros ou transações falhadas. Ao continuar, você aceita total responsabilidade por quaisquer problemas até atualizar o Varial."
     }
   },
   "jailbreakDetected": {

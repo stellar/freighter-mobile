@@ -23,7 +23,7 @@ describe("WelcomeScreen", () => {
     const { getByText } = renderWithProviders(
       <WelcomeScreen navigation={{ push: mockPush } as never} />,
     );
-    expect(getByText("Freighter Wallet")).toBeTruthy();
+    expect(getByText("Varial Wallet")).toBeTruthy();
   });
 
   it("navigates to choose password screen when create new wallet button is pressed", () => {
