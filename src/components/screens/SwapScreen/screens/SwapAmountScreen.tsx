@@ -949,6 +949,10 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       <BottomSheet
         modalRef={swapReviewBottomSheetModalRef}
         handleCloseModal={() => {
+          // Backing out of the review is the internal rejection — see the
+          // send flow's handleCancelReview. The confirm path dismisses the
+          // sheet separately, so an approval never reaches here.
+          analytics.trackInternalSignedTransactionRejected();
           swapReviewBottomSheetModalRef.current?.dismiss();
           setActiveError(null);
         }}

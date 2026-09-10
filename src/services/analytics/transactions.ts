@@ -44,9 +44,52 @@ const originProps = (url?: string): { origin?: string } => {
   return host ? { origin: host } : {};
 };
 
+/**
+ * Where a signing request came from.
+ *
+ * `dapp_api` is a website asking through WalletConnect. `internal` is a
+ * transaction the wallet composed itself — a send, a swap, or a collectible
+ * send. Both origins emit the same events with the same properties, so one
+ * query counts all signing and `source` splits it. An internal transaction
+ * has no dApp, so it carries no `origin`.
+ */
+export type SigningSource = "dapp_api" | "internal";
+
 export const trackSignedTransaction = (data: SignedTransactionEvent): void => {
   track(AnalyticsEvent.SIGN_TRANSACTION_SUCCESS, {
+    source: data.source ?? "dapp_api",
     ...originProps(data.dappDomain),
+  });
+};
+
+/**
+ * Signing produced a signature for a wallet-composed transaction. The same
+ * event a dApp request emits; `source` separates the two.
+ */
+export const trackInternalSignedTransaction = (): void => {
+  track(AnalyticsEvent.SIGN_TRANSACTION_SUCCESS, { source: "internal" });
+};
+
+/**
+ * The user declined a wallet-composed transaction — by dismissing the review
+ * sheet without approving.
+ */
+export const trackInternalSignedTransactionRejected = (): void => {
+  track(AnalyticsEvent.SIGN_TRANSACTION_FAIL, { source: "internal" });
+};
+
+/**
+ * Signing threw for a wallet-composed transaction, for a reason the user did
+ * not choose. The user already approved at the review sheet, so this is a
+ * fault and not a decision. `reason_code` is scrubbed: a signing error can
+ * embed a G…/S… key and Amplitude is a third-party sink.
+ */
+export const trackInternalSignedTransactionError = (
+  error?: string | null,
+): void => {
+  track(AnalyticsEvent.SIGN_TRANSACTION_FAILED, {
+    source: "internal",
+    reason_code: scrubStrKeys(error) || "unknown",
   });
 };
 
@@ -59,12 +102,14 @@ export const trackSignedMessage = (data: {
   // the extension's hostname-based origin.
   track(AnalyticsEvent.SIGN_MESSAGE_SUCCESS, {
     message_type: "blob",
+    source: "dapp_api",
     ...originProps(data.dappDomain),
   });
 };
 
 export const trackSignedAuthEntry = (data: { dappDomain?: string }): void => {
   track(AnalyticsEvent.SIGN_AUTH_ENTRY_SUCCESS, {
+    source: "dapp_api",
     ...originProps(data.dappDomain),
   });
 };
@@ -78,6 +123,7 @@ export const trackSignedMessageError = (data: {
   // instrumented separately (trackSignedMessageRejected, below).
   track(AnalyticsEvent.SIGN_MESSAGE_FAIL, {
     message_type: "blob",
+    source: "dapp_api",
     // Scrub Stellar StrKeys — a signing exception's message can embed a G…/S…
     // key, and Amplitude is a third-party sink not covered by Sentry. Matches
     // the extension's signBlob.rejected handler.
@@ -92,6 +138,7 @@ export const trackSignedAuthEntryError = (data: {
 }): void => {
   // Runtime signing-failure path; see trackSignedMessageError.
   track(AnalyticsEvent.SIGN_AUTH_ENTRY_FAIL, {
+    source: "dapp_api",
     // Scrub StrKeys before this reaches Amplitude (see trackSignedMessageError).
     reason_code: scrubStrKeys(data.error) ?? data.error,
     ...originProps(data.dappDomain),
@@ -106,6 +153,7 @@ export const trackSignedMessageRejected = (data: {
 }): void => {
   track(AnalyticsEvent.SIGN_MESSAGE_REJECTED, {
     message_type: "blob",
+    source: "dapp_api",
     ...originProps(data.dappDomain),
   });
 };
@@ -114,6 +162,7 @@ export const trackSignedAuthEntryRejected = (data: {
   dappDomain?: string;
 }): void => {
   track(AnalyticsEvent.SIGN_AUTH_ENTRY_REJECTED, {
+    source: "dapp_api",
     ...originProps(data.dappDomain),
   });
 };
@@ -125,6 +174,7 @@ export const trackSignedTransactionRejected = (data: {
   // (SIGN_XDR / SIGN_AND_SUBMIT_XDR); parity with the extension's
   // signing.transaction_rejected.
   track(AnalyticsEvent.SIGN_TRANSACTION_FAIL, {
+    source: "dapp_api",
     ...originProps(data.dappDomain),
   });
 };
@@ -133,6 +183,7 @@ export const trackSubmittedTransaction = (
   data: SubmittedTransactionEvent,
 ): void => {
   track(AnalyticsEvent.SUBMIT_TRANSACTION_SUCCESS, {
+    source: "dapp_api",
     ...originProps(data.dappDomain),
   });
 };

@@ -153,7 +153,7 @@ describe("buildCommonContext (four-bucket model)", () => {
 
   it("emits the reshaped bucket", () => {
     expect(buildCommonContext()).toMatchObject({
-      schema_version: "3",
+      schema_version: "4",
       surface: "mobile_ios",
       network: "TESTNET",
       account_type: "imported_secret_key",
@@ -189,7 +189,7 @@ describe("buildCommonContext (four-bucket model)", () => {
     ["account_id_hash", "account_type", "account_funded"].forEach((k) =>
       expect(ctx).not.toHaveProperty(k),
     );
-    expect(ctx).toMatchObject({ schema_version: "3", network: "TESTNET" });
+    expect(ctx).toMatchObject({ schema_version: "4", network: "TESTNET" });
   });
 
   it("omits account_funded when balances are for a different/unfetched account", () => {
@@ -298,7 +298,7 @@ describe("trackAppOpened (one-time connectivity snapshot)", () => {
         surface: "mobile_ios",
         connection_type: "wifi",
         effective_type: "4g",
-        schema_version: "3",
+        schema_version: "4",
       }),
     );
   });
@@ -327,7 +327,7 @@ describe("screen.viewed emission (hard cutover)", () => {
         flow: "send",
         // surface comes from the Slice-A common context (getSurface()).
         surface: "mobile_ios",
-        schema_version: "3",
+        schema_version: "4",
       }),
     );
   });
@@ -425,6 +425,22 @@ describe("screen.viewed throttling (D1: cross-screen collapse regression)", () =
       "send_payment_amount",
       "send_payment_confirm",
     ]);
+  });
+
+  it("emits all three swap stages inside one throttle window", () => {
+    // The swap flow reported no processing or success stage, so a swap could
+    // not be followed past the review sheet. The three stages must survive a
+    // fast swap that settles inside one window.
+    track(AnalyticsEvent.SCREEN_VIEWED, { screen_name: "swap_confirm" });
+    track(AnalyticsEvent.SCREEN_VIEWED, { screen_name: "swap_processing" });
+    track(AnalyticsEvent.SCREEN_VIEWED, { screen_name: "swap_success" });
+
+    jest.advanceTimersByTime(THROTTLE_DELAY_MS + 1);
+
+    const names = (amplitudeMock.track as jest.Mock).mock.calls.map(
+      (call) => (call[1] as { screen_name: string }).screen_name,
+    );
+    expect(names).toEqual(["swap_confirm", "swap_processing", "swap_success"]);
   });
 
   it("still dedups rapid re-emits of the SAME screen (throttle intent preserved)", () => {
@@ -716,7 +732,7 @@ describe("domain event catalog (#2883)", () => {
         payment_type: "payment",
         // schema_version / surface / network come from buildCommonContext and
         // must not be hand-added at call sites.
-        schema_version: "3",
+        schema_version: "4",
         surface: "mobile_ios",
       }),
     );

@@ -65,6 +65,8 @@ export type AnalyticsProps = Record<string, unknown> | undefined;
 
 export interface SignedTransactionEvent {
   dappDomain?: string;
+  /** Defaults to "dapp_api"; internal flows use the dedicated helpers. */
+  source?: "dapp_api" | "internal";
 }
 
 export interface SubmittedTransactionEvent {

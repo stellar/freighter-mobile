@@ -798,6 +798,10 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           // attempted volume to report. No snapshot has been started yet, so
           // there is nothing to cancel either.
           const { error: signingError } = useTransactionBuilderStore.getState();
+          // The signing action failed. The user already approved at the
+          // review sheet, so this is a fault, not a decision. Reported with
+          // the same event a dApp request uses; `source` separates the two.
+          analytics.trackInternalSignedTransactionError(signingError);
           analytics.trackTransactionError({
             error: signingError || "Failed to sign transaction",
             operationType: TransactionOperationType.Payment,
@@ -806,6 +810,9 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           setIsProcessing(false);
           return;
         }
+
+        // A signature exists, so the signing action succeeded.
+        analytics.trackInternalSignedTransaction();
 
         // Everything the volume telemetry needs is snapshotted here — after
         // signing succeeded and immediately before submission, so the prices
@@ -963,6 +970,11 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   };
 
   const handleCancelReview = useCallback(() => {
+    // Backing out of the review is the internal equivalent of declining a
+    // dApp prompt, so it reports the same event. A rejection carries no
+    // reason_code. Only the explicit cancel counts: the confirm path dismisses
+    // the sheet too, and that is an approval.
+    analytics.trackInternalSignedTransactionRejected();
     reviewBottomSheetModalRef.current?.dismiss();
     focusAmountInput();
   }, [focusAmountInput]);
