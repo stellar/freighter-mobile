@@ -11,14 +11,23 @@ const CONTRACT_ADDRESS =
   "CAZXRTOKNUQ2JQQF3NCRU7GYMDJNZ2NMQN6IGN4FCT5DWPODMPVEXSND";
 const USDC_ISSUER = "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
 
+const SIGNER = "GDF32CQINROD3E2LMCGZUDVMWTXCJFR5SBYVRJ7WAAIAS3P7DCVWZEFY";
+const OTHER_ACCOUNT =
+  "GBTYAFHGNZSTE4VBWZYAGB3SRGJEPTI5I4Y22KZ4JTVAN56LESB6JZOF";
+
+/** A successful simulation whose `assets_diffs` attributes `diffs` to SIGNER. */
 const makeScanResult = (diffs: unknown[]) =>
   ({
     simulation: {
-      account_summary: {
-        account_assets_diffs: diffs,
+      assets_diffs: {
+        [SIGNER]: diffs,
       },
     },
   }) as any;
+
+/** Every case below resolves diffs for SIGNER unless it says otherwise. */
+const balanceChangesFor = (scanResult: any) =>
+  getTransactionBalanceChanges(scanResult, SIGNER);
 
 describe("getTransactionBalanceChanges", () => {
   it.each([
@@ -29,18 +38,108 @@ describe("getTransactionBalanceChanges", () => {
       { simulation: { error: "simulation failed" } } as any,
     ],
   ])("returns null when %s", (_description, input) => {
-    expect(getTransactionBalanceChanges(input)).toBeNull();
+    expect(balanceChangesFor(input)).toBeNull();
   });
 
   it.each([
-    ["account_assets_diffs is absent", { simulation: {} } as any],
-    ["account_assets_diffs is empty", makeScanResult([])],
+    ["publicKey is undefined", undefined],
+    ["publicKey is empty", ""],
+  ])(
+    "returns null when %s, rather than claiming no balance changes",
+    (_description, publicKey) => {
+      expect(
+        getTransactionBalanceChanges(
+          makeScanResult([
+            {
+              asset: { type: "NATIVE", code: "XLM" },
+              in: { raw_value: 10290000 },
+              out: null,
+            },
+          ]),
+          publicKey,
+        ),
+      ).toBeNull();
+    },
+  );
+
+  it.each([
+    ["assets_diffs is absent", { simulation: {} } as any],
+    ["assets_diffs is empty", { simulation: { assets_diffs: {} } } as any],
+    ["assets_diffs has no entry for the signer", makeScanResult([])],
   ])("returns [] when %s", (_description, input) => {
-    expect(getTransactionBalanceChanges(input)).toEqual([]);
+    expect(balanceChangesFor(input)).toEqual([]);
+  });
+
+  it("attributes diffs to the signing account, not the scanned source account", () => {
+    // assets_diffs carries both sides of a transfer. The signer is debited;
+    // account_summary (which mirrors whichever account the scan was requested
+    // for) shows the counterparty's credit and must not be read.
+    const scanResult = {
+      simulation: {
+        assets_diffs: {
+          [SIGNER]: [
+            {
+              asset: { type: "NATIVE", code: "XLM" },
+              in: null,
+              out: { raw_value: 2000000 },
+            },
+          ],
+          [OTHER_ACCOUNT]: [
+            {
+              asset: { type: "NATIVE", code: "XLM" },
+              in: { raw_value: 2000000 },
+              out: null,
+            },
+          ],
+        },
+        account_summary: {
+          account_assets_diffs: [
+            {
+              asset: { type: "NATIVE", code: "XLM" },
+              in: { raw_value: 2000000 },
+              out: null,
+            },
+          ],
+        },
+      },
+    } as any;
+
+    const result = balanceChangesFor(scanResult);
+
+    expect(result).toHaveLength(1);
+    expect(result![0]).toMatchObject({ assetCode: "XLM", isCredit: false });
+    expect(result![0].amount).toEqual(new BigNumber("0.2"));
+  });
+
+  it("returns [] when only another account's balances change", () => {
+    const scanResult = {
+      simulation: {
+        assets_diffs: {
+          [OTHER_ACCOUNT]: [
+            {
+              asset: { type: "NATIVE", code: "XLM" },
+              in: { raw_value: 2000000 },
+              out: null,
+            },
+          ],
+        },
+        account_summary: {
+          account_assets_diffs: [
+            {
+              asset: { type: "NATIVE", code: "XLM" },
+              in: { raw_value: 2000000 },
+              out: null,
+            },
+          ],
+        },
+      },
+    } as any;
+
+    expect(balanceChangesFor(scanResult)).toEqual([]);
   });
 
   it("correctly maps all valid asset types", () => {
-    const result = getTransactionBalanceChanges(
+    const result = balanceChangesFor(
       makeScanResult([
         // NATIVE credit — no decimals field → DEFAULT_DECIMALS (7); 10290000 / 1e7 = 1.029
         {
@@ -124,7 +223,7 @@ describe("getTransactionBalanceChanges", () => {
   });
 
   it("skips invalid entries and returns only valid ones", () => {
-    const result = getTransactionBalanceChanges(
+    const result = balanceChangesFor(
       makeScanResult([
         // no in/out
         { asset: { type: "NATIVE", code: "XLM" }, in: null, out: null },
@@ -234,7 +333,7 @@ describe("getTransactionBalanceChanges", () => {
   });
 
   it("falls back to XLM for NATIVE asset with no code or symbol", () => {
-    const result = getTransactionBalanceChanges(
+    const result = balanceChangesFor(
       makeScanResult([
         {
           asset: { type: "NATIVE" },
@@ -255,7 +354,7 @@ describe("getTransactionBalanceChanges", () => {
   });
 
   it("accepts decimals at the upper boundary (19) and rejects above it (20)", () => {
-    const result = getTransactionBalanceChanges(
+    const result = balanceChangesFor(
       makeScanResult([
         // decimals: 19 — at the boundary, must be included
         {
