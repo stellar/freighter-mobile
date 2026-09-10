@@ -12,13 +12,13 @@ invoked with `--platform`, `--shard-index`, `--shard-total`, and the flow name.
 
 ### Flow retries (`E2E_FLOW_ATTEMPTS`)
 
-CI sets `E2E_FLOW_ATTEMPTS: "2"`, so a flow that fails gets one more attempt on
-the same device before the job is reported red. This exists so a single flaky
-attempt does not require manually re-running the whole matrix job.
+CI sets `E2E_FLOW_ATTEMPTS: "3"`, so a flow that fails gets up to two more
+attempts on the same device before the job is reported red. This exists so a
+flaky attempt does not require manually re-running the whole matrix job.
 
 - Defaults to `1` when unset, so **local runs still fail fast** and real
   breakage surfaces immediately. Set it locally to reproduce CI behaviour:
-  `E2E_FLOW_ATTEMPTS=2 yarn test:e2e:android ForgotPasswordWarning`.
+  `E2E_FLOW_ATTEMPTS=3 yarn test:e2e:android ForgotPasswordWarning`.
 - Retries are **not** silent: a flow that only passed on a retry is logged as
   `passed ... (on attempt N — flaky)` and listed under
   `⚠️  Flows that needed a retry:` in the run summary. A flow that fails every

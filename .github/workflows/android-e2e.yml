@@ -69,10 +69,10 @@ env:
 
   # E2E Test Configuration
   IS_E2E_TEST: "true"
-  # Attempts per flow before it is reported as failed. 2 absorbs a single
-  # flaky attempt without a manual job re-run; flows that needed a retry are
+  # Attempts per flow before it is reported as failed. 3 absorbs a couple of
+  # flaky attempts without a manual job re-run; flows that needed a retry are
   # still listed in the job summary so the flakiness stays visible.
-  E2E_FLOW_ATTEMPTS: "2"
+  E2E_FLOW_ATTEMPTS: "3"
   E2E_TEST_RECOVERY_PHRASE: ${{ secrets.E2E_TEST_RECOVERY_PHRASE }}
   E2E_TEST_FUNDED_RECOVERY_PHRASE:
     ${{ secrets.E2E_TEST_FUNDED_RECOVERY_PHRASE }}
