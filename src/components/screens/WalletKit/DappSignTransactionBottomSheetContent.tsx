@@ -71,6 +71,7 @@ export const DappSignTransactionBottomSheetContent: React.FC<
   const transactionBalanceListItems = useTransactionBalanceListItems(
     transactionScanResult,
     signTransactionDetails,
+    account?.publicKey,
   );
 
   const accountList = useMemo(
