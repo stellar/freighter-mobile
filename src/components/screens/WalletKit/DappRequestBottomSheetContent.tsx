@@ -4,17 +4,13 @@ import { DappSignAuthEntryBottomSheetContent } from "components/screens/WalletKi
 import { DappSignMessageBottomSheetContent } from "components/screens/WalletKit/DappSignMessageBottomSheetContent";
 import { DappSignTransactionBottomSheetContent } from "components/screens/WalletKit/DappSignTransactionBottomSheetContent";
 import { NetworkDetails } from "config/constants";
+import type { DappRequest } from "config/dappRequest";
 import { ActiveAccount } from "ducks/auth";
-import {
-  StellarRpcMethods,
-  StellarSignAuthEntryParams,
-  StellarSignMessageParams,
-  WalletKitSessionRequest,
-} from "ducks/walletKit";
+import { StellarRpcMethods } from "ducks/walletKit";
 import React from "react";
 
 interface DappRequestBottomSheetContentProps {
-  requestEvent: WalletKitSessionRequest | null;
+  requestEvent: DappRequest | null;
   account: ActiveAccount | null;
   networkDetails: NetworkDetails;
   onCancelRequest: () => void;
@@ -40,16 +36,16 @@ const DappRequestBottomSheetContent: React.FC<
   const requestParams = requestEvent?.params?.request?.params;
 
   if (requestMethod === StellarRpcMethods.SIGN_MESSAGE) {
-    const message = (requestParams as StellarSignMessageParams)?.message;
-    if (message) {
+    const message = requestParams?.message;
+    if (typeof message === "string" && message) {
       return <DappSignMessageBottomSheetContent {...props} message={message} />;
     }
     return null;
   }
 
   if (requestMethod === StellarRpcMethods.SIGN_AUTH_ENTRY) {
-    const entryXdr = (requestParams as StellarSignAuthEntryParams)?.entryXdr;
-    if (entryXdr) {
+    const entryXdr = requestParams?.entryXdr;
+    if (typeof entryXdr === "string" && entryXdr) {
       return (
         <DappSignAuthEntryBottomSheetContent {...props} entryXdr={entryXdr} />
       );

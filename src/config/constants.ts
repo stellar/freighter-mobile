@@ -104,6 +104,21 @@ export const ACCOUNTS_TO_VERIFY_ON_EXISTING_MNEMONIC_PHRASE = 6;
 export const HASH_KEY_EXPIRATION_MS = 72 * 60 * 60 * 1000; // 72 hours
 export const VISUAL_DELAY_MS = 500;
 
+// In-app WebView dApp bridge (Discovery). Limits are enforced natively; the
+// injected bootstrap mirrors the envelope and deadline values.
+/** Upper bound on one JSON envelope from a page, checked before parsing. */
+export const WEBVIEW_BRIDGE_MAX_ENVELOPE_BYTES = 1024 * 1024;
+/** Request ids are page-chosen; cap their length before they enter the replay set. */
+export const WEBVIEW_BRIDGE_MAX_REQUEST_ID_LENGTH = 128;
+/** Replay-protection set size per document; past it the page must reload. */
+export const WEBVIEW_BRIDGE_MAX_SEEN_REQUESTS = 10_000;
+/** Readiness announcements accepted per document (document start + DOMContentLoaded). */
+export const WEBVIEW_BRIDGE_MAX_READY_PER_DOCUMENT = 2;
+/** How long a dApp request may wait for the user's decision before it times out. */
+export const DAPP_APPROVAL_TIMEOUT_MS = 5 * 60 * 1000;
+/** Network timeout for stellar.toml and SEP-10 challenge fetches during silent sign-in. */
+export const SEP10_FETCH_TIMEOUT_MS = 6_000;
+
 const SECOND_IN_MS = 1000;
 const MINUTE_IN_MS = 60 * SECOND_IN_MS;
 const HOUR_IN_MS = 60 * MINUTE_IN_MS;

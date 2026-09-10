@@ -6,10 +6,16 @@ import { useBrowserTabsStore } from "ducks/browserTabs";
 import { isDangerousScheme, isHomepageUrl } from "helpers/browser";
 import { captureTabScreenshot } from "helpers/screenshots";
 import useColors from "hooks/useColors";
+import { useWebviewBridge } from "hooks/useWebviewBridge";
 import React, { useRef, useCallback, useEffect, useState } from "react";
 import { View, Animated } from "react-native";
 import ViewShot from "react-native-view-shot";
-import { WebView, WebViewNavigation } from "react-native-webview";
+import {
+  WebView,
+  WebViewNavigation,
+  WebViewMessageEvent,
+} from "react-native-webview";
+import { bridgeBootstrap } from "services/webview/injection";
 
 interface WebViewContainerProps {
   webViewRef: React.RefObject<WebView | null>;
@@ -45,6 +51,7 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
     // Refs to track ViewShot components for each tab
     const viewShotRefs = useRef<{ [tabId: string]: ViewShot | null }>({});
     const webViewRefs = useRef<{ [tabId: string]: WebView | null }>({});
+    const bridge = useWebviewBridge(webViewRefs);
     const quickCaptureTimeouts = useRef<{ [tabId: string]: NodeJS.Timeout }>(
       {},
     );
@@ -100,6 +107,7 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
      * @param tabId - The tab ID to unregister
      */
     const handleWebViewUnmount = (tabId: string) => {
+      bridge.dispose(tabId);
       unregisterWebView(tabId);
     };
 
@@ -107,49 +115,53 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
      * Properly disposes of WebView instances to prevent memory leaks
      * @param tabIds - Array of tab IDs to dispose
      */
-    const disposeWebViews = useCallback((tabIds: string[]) => {
-      tabIds.forEach((tabId) => {
-        const webViewInstance = webViewRefs.current[tabId];
+    const disposeWebViews = useCallback(
+      (tabIds: string[]) => {
+        tabIds.forEach((tabId) => {
+          bridge.dispose(tabId);
+          const webViewInstance = webViewRefs.current[tabId];
 
-        if (webViewInstance) {
-          try {
-            // Stop loading and clear cache
-            webViewInstance.stopLoading?.();
-            webViewInstance.clearCache?.(true); // true = clear everything including cookies
-            webViewInstance.clearHistory?.();
-          } catch (error) {
-            // Disposal race - same family as the screenshot capture
-            // failures (the WebView may have already been unmounted).
-            // Not actionable for downstream errors.
-            logger.info(
-              "WebViewContainer",
-              `Failed to dispose WebView for tab ${tabId}`,
-              error,
-            );
+          if (webViewInstance) {
+            try {
+              // Stop loading and clear cache
+              webViewInstance.stopLoading?.();
+              webViewInstance.clearCache?.(true); // true = clear everything including cookies
+              webViewInstance.clearHistory?.();
+            } catch (error) {
+              // Disposal race - same family as the screenshot capture
+              // failures (the WebView may have already been unmounted).
+              // Not actionable for downstream errors.
+              logger.info(
+                "WebViewContainer",
+                `Failed to dispose WebView for tab ${tabId}`,
+                error,
+              );
+            }
           }
-        }
 
-        // Clear ViewShot ref
-        viewShotRefs.current[tabId] = null;
-        webViewRefs.current[tabId] = null;
+          // Clear ViewShot ref
+          viewShotRefs.current[tabId] = null;
+          webViewRefs.current[tabId] = null;
 
-        // Clear any pending timeouts
-        if (quickCaptureTimeouts.current[tabId]) {
-          clearTimeout(quickCaptureTimeouts.current[tabId]);
-          delete quickCaptureTimeouts.current[tabId];
-        }
-        if (finalCaptureTimeouts.current[tabId]) {
-          clearTimeout(finalCaptureTimeouts.current[tabId]);
-          delete finalCaptureTimeouts.current[tabId];
-        }
-        if (scrollCaptureTimeouts.current[tabId]) {
-          clearTimeout(scrollCaptureTimeouts.current[tabId]);
-          delete scrollCaptureTimeouts.current[tabId];
-        }
+          // Clear any pending timeouts
+          if (quickCaptureTimeouts.current[tabId]) {
+            clearTimeout(quickCaptureTimeouts.current[tabId]);
+            delete quickCaptureTimeouts.current[tabId];
+          }
+          if (finalCaptureTimeouts.current[tabId]) {
+            clearTimeout(finalCaptureTimeouts.current[tabId]);
+            delete finalCaptureTimeouts.current[tabId];
+          }
+          if (scrollCaptureTimeouts.current[tabId]) {
+            clearTimeout(scrollCaptureTimeouts.current[tabId]);
+            delete scrollCaptureTimeouts.current[tabId];
+          }
 
-        logger.info("WebViewContainer", `Disposed WebView for tab ${tabId}`);
-      });
-    }, []);
+          logger.info("WebViewContainer", `Disposed WebView for tab ${tabId}`);
+        });
+      },
+      [bridge],
+    );
 
     /**
      * Checks for and disposes excess WebViews when limit is exceeded
@@ -336,13 +348,30 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
                         javaScriptEnabled={javaScriptEnabled}
                         domStorageEnabled={domStorageEnabled}
                         startInLoadingState
-                        injectedJavaScriptBeforeContentLoaded={`
-                          window.stellar = {
-                            provider: 'freighter',
-                            platform: 'mobile',
-                            version: '${APP_VERSION}'
-                          };
-                        `}
+                        injectedJavaScriptBeforeContentLoaded={
+                          bridge.enabled
+                            ? bridgeBootstrap(APP_VERSION)
+                            : `window.stellar = {provider:'freighter',platform:'mobile',version:${JSON.stringify(APP_VERSION)}}; true;`
+                        }
+                        onMessage={
+                          bridge.enabled
+                            ? (event: WebViewMessageEvent) => {
+                                bridge
+                                  .receive(
+                                    tab.id,
+                                    event.nativeEvent.data,
+                                    event.nativeEvent.url,
+                                  )
+                                  .catch((error) =>
+                                    logger.warn(
+                                      "WebViewBridge",
+                                      "Message failed",
+                                      error,
+                                    ),
+                                  );
+                              }
+                            : undefined
+                        }
                         ref={(ref) => {
                           webViewRefs.current[tab.id] = ref;
                           if (isActive) {
@@ -357,18 +386,25 @@ const WebViewContainer: React.FC<WebViewContainerProps> = React.memo(
                           }
                         }}
                         source={{ uri: tab.url }}
-                        onLoadEnd={() => handleLoadEnd(tab.id)}
+                        onLoadEnd={(event) => {
+                          bridge.loaded(tab.id, event.nativeEvent.url);
+                          handleLoadEnd(tab.id);
+                        }}
                         onScroll={() => handleScroll(tab.id)}
                         allowsBackForwardNavigationGestures={isActive}
-                        onNavigationStateChange={
-                          isActive ? onNavigationStateChange : undefined
-                        }
+                        onNavigationStateChange={(state) => {
+                          if (state.loading) bridge.start(tab.id, state.url);
+                          if (isActive) onNavigationStateChange(state);
+                        }}
                         onShouldStartLoadWithRequest={
                           isActive
                             ? onShouldStartLoadWithRequest
                             : (req) => !isDangerousScheme(req.url)
                         }
-                        onLoadStart={() => handleWebViewMount(tab.id)}
+                        onLoadStart={(event) => {
+                          bridge.start(tab.id, event.nativeEvent.url);
+                          handleWebViewMount(tab.id);
+                        }}
                         onError={() => handleWebViewUnmount(tab.id)}
                       />
                     </ViewShot>

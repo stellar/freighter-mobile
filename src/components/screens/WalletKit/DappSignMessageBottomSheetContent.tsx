@@ -8,8 +8,8 @@ import Avatar from "components/sds/Avatar";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { NetworkDetails } from "config/constants";
+import type { DappRequest } from "config/dappRequest";
 import { ActiveAccount } from "ducks/auth";
-import { WalletKitSessionRequest } from "ducks/walletKit";
 import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import React, { useMemo } from "react";
@@ -25,7 +25,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 const SHEET_CHROME_HEIGHT = 80;
 
 interface DappSignMessageBottomSheetContentProps {
-  requestEvent: WalletKitSessionRequest | null;
+  requestEvent: DappRequest | null;
   account: ActiveAccount | null;
   networkDetails: NetworkDetails;
   message: string;

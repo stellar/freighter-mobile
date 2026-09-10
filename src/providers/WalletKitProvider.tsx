@@ -1,6 +1,10 @@
 import Blockaid from "@blockaid/client";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
-import { xdr as stellarXdr } from "@stellar/stellar-sdk";
+import {
+  Transaction,
+  TransactionBuilder,
+  xdr as stellarXdr,
+} from "@stellar/stellar-sdk";
 import AddMemoExplanationBottomSheet from "components/AddMemoExplanationBottomSheet";
 import BottomSheet from "components/BottomSheet";
 import InformationBottomSheet from "components/InformationBottomSheet";
@@ -11,9 +15,16 @@ import DappRequestBottomSheetContent from "components/screens/WalletKit/DappRequ
 import Icon from "components/sds/Icon";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { mapNetworkToNetworkDetails, NETWORKS } from "config/constants";
+import {
+  DappApprovalKind,
+  DappErrorCode,
+  type DappRequest,
+  DappTransport,
+} from "config/dappRequest";
 import { logger } from "config/logger";
 import { AUTH_STATUS } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
+import { useDappApprovalStore } from "ducks/dappApproval";
 import { useDebugStore } from "ducks/debug";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
 import {
@@ -23,13 +34,14 @@ import {
   WalletKitSessionRequest,
   StellarRpcChains,
   StellarRpcMethods,
-  StellarSignXDRParams,
 } from "ducks/walletKit";
 import { isE2ETest } from "helpers/isEnv";
 import { getHostname } from "helpers/protocols";
 import {
   approveSessionProposal,
-  approveSessionRequest,
+  executeDappRequest,
+  rejectDappRequest,
+  toDappRequest,
   rejectSessionRequest,
   rejectSessionProposal,
   resolveDappRejectionEvent,
@@ -125,8 +137,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   const [isSigning, setIsSigning] = useState(false);
   const [proposalEvent, setProposalEvent] =
     useState<WalletKitSessionProposal | null>(null);
-  const [requestEvent, setRequestEvent] =
-    useState<WalletKitSessionRequest | null>(null);
+  const [requestEvent, setRequestEvent] = useState<DappRequest | null>(null);
   const [siteScanResult, setSiteScanResult] = useState<
     Blockaid.SiteScanResponse | undefined
   >(undefined);
@@ -136,13 +147,28 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 
   // Request queue to prevent concurrent request handling race conditions
   const isProcessingRequestRef = useRef(false);
+  const activeProposalRef = useRef<number | null>(null);
+  const activeRequestRef = useRef<DappRequest | null>(null);
+  const isClearingRequestRef = useRef(false);
+  const securityWarningDecisionRef = useRef(false);
+  const webviewJob = useDappApprovalStore((state) => state.job);
+  const setWalletConnectBusy = useDappApprovalStore(
+    (state) => state.setWalletConnectBusy,
+  );
+  const handledWebviewJobRef = useRef<DappRequest | null>(null);
+  /** Releases the active request slot after a rejection so the next queued request can proceed. */
+  const resetActiveRequest = () => {
+    activeRequestRef.current = null;
+    isProcessingRequestRef.current = false;
+    setWalletConnectBusy(false);
+  };
   const pendingRequestsQueueRef = useRef<WalletKitSessionRequest[]>([]);
-  // Guard against double-reject: set to true once approveSessionRequest has sent
+  // Guard against double-reject: set to true once executeDappRequest has sent
   // its own response (success or handled error) so handleClearDappRequest doesn't
   // send a duplicate rejection when it fires via .finally().
   const hasRespondedRef = useRef(false);
   // True once the user has committed to approving (handleDappRequest called
-  // approveSessionRequest). Distinguishes an approval attempt — whether it
+  // executeDappRequest). Distinguishes an approval attempt — whether it
   // succeeds or throws — from a genuine user dismissal, so the exceptional
   // approve-threw path isn't miscounted as a signing.*_rejected. Reset with
   // hasRespondedRef in the teardown.
@@ -150,7 +176,9 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 
   const xdr = useMemo(
     () =>
-      (requestEvent?.params.request.params as StellarSignXDRParams)?.xdr ?? "",
+      typeof requestEvent?.params.request.params?.xdr === "string"
+        ? requestEvent.params.request.params.xdr
+        : "",
     [requestEvent],
   );
 
@@ -189,6 +217,31 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
   const dappConnectionBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const dappRequestBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const siteSecurityWarningBottomSheetModalRef = useRef<BottomSheetModal>(null);
+  // The site and transaction warnings share one BottomSheetModal. Presenting it
+  // while its previous dismissal is still animating lets that dismissal's
+  // onDismiss fire against the new presentation and cancel it (the signing
+  // sheet then never appears and the dApp waits forever). Track presentation
+  // and in-flight dismissal so a present during a dismiss is deferred to
+  // onDismiss instead.
+  const securityWarningPresentedRef = useRef(false);
+  const securityWarningDismissingRef = useRef(false);
+  const securityWarningPendingPresentRef = useRef(false);
+  /** Presents the shared security warning sheet, deferring until an in-flight dismiss has settled. */
+  const presentSecurityWarning = () => {
+    if (securityWarningDismissingRef.current) {
+      securityWarningPendingPresentRef.current = true;
+      return;
+    }
+    securityWarningPresentedRef.current = true;
+    securityWarningDecisionRef.current = false;
+    siteSecurityWarningBottomSheetModalRef.current?.present();
+  };
+  /** Dismisses the shared security warning sheet if presented; onDismiss replays a deferred present. */
+  const dismissSecurityWarning = () => {
+    if (!securityWarningPresentedRef.current) return;
+    securityWarningDismissingRef.current = true;
+    siteSecurityWarningBottomSheetModalRef.current?.dismiss();
+  };
   const verifyDomainBottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [securityWarningContext, setSecurityWarningContext] =
     useState<SecurityContext>(SecurityContext.SITE);
@@ -419,17 +472,22 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
    * @returns {void}
    */
   const handleClearDappConnection = () => {
+    activeProposalRef.current = null;
     dappConnectionBottomSheetModalRef.current?.dismiss();
-    siteSecurityWarningBottomSheetModalRef.current?.dismiss();
+    securityWarningDecisionRef.current = true;
+    dismissSecurityWarning();
     verifyDomainBottomSheetModalRef.current?.dismiss();
     // Also ensure other sheets are closed to avoid any leftovers
     dappRequestBottomSheetModalRef.current?.dismiss();
 
+    setWalletConnectBusy(false);
     setIsConnecting(false);
     setProposalEvent(null);
     setSiteScanResult(undefined);
     setSecurityWarningContext(SecurityContext.SITE);
     clearEvent();
+    if (pendingRequestsQueueRef.current.length)
+      setEvent(pendingRequestsQueueRef.current.shift()!);
   };
 
   /**
@@ -439,16 +497,23 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
    * @returns {void}
    */
   const handleClearDappRequest = () => {
+    if (
+      isClearingRequestRef.current ||
+      activeRequestRef.current !== requestEvent
+    )
+      return;
+    isClearingRequestRef.current = true;
     dappRequestBottomSheetModalRef.current?.dismiss();
-    siteSecurityWarningBottomSheetModalRef.current?.dismiss();
+    securityWarningDecisionRef.current = true;
+    dismissSecurityWarning();
 
     // We need to explicitly reject the request here otherwise
     // the app will show the request again on next app launch.
-    // Skip if approveSessionRequest already sent a response. This WC-level
-    // fallback fires on BOTH a user dismissal AND the exceptional case where
-    // approveSessionRequest threw (so the dApp isn't left hanging).
+    // Skip if executeDappRequest already sent a response. This fallback
+    // fires on BOTH a user dismissal AND the exceptional case where
+    // executeDappRequest threw (so the dApp isn't left hanging).
     if (requestEvent && !hasRespondedRef.current) {
-      rejectSessionRequest({
+      rejectDappRequest({
         sessionRequest: requestEvent,
         message: t("walletKit.userRejected"),
       });
@@ -465,8 +530,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       approvalInFlight: approvalInFlightRef.current,
     });
     if (rejectionEvent && requestEvent) {
-      const dappDomain =
-        getDappMetadataFromEvent(requestEvent, activeSessions)?.url || "";
+      const dappDomain = requestEvent.metadata.url || "";
       const payload = dappDomain ? { dappDomain } : {};
       if (rejectionEvent === "message") {
         analytics.trackSignedMessageRejected(payload);
@@ -478,6 +542,8 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     }
 
     setTimeout(() => {
+      if (activeRequestRef.current !== requestEvent) return;
+      activeRequestRef.current = null;
       setIsSigning(false);
       setRequestEvent(null);
       setTransactionScanResult(undefined);
@@ -491,6 +557,8 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 
       // Mark processing as complete and process pending request if any
       isProcessingRequestRef.current = false;
+      setWalletConnectBusy(false);
+      isClearingRequestRef.current = false;
       if (pendingRequestsQueueRef.current.length > 0) {
         logger.debug(
           "WalletKitProvider",
@@ -563,7 +631,12 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
    * @returns {void}
    */
   const handleDappRequest = () => {
-    if (!requestEvent) {
+    if (
+      !requestEvent ||
+      approvalInFlightRef.current ||
+      isClearingRequestRef.current ||
+      !requestEvent.isValid()
+    ) {
       return;
     }
 
@@ -572,7 +645,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
     // exceptional approve-threw .catch path) is not miscounted as a user reject.
     approvalInFlightRef.current = true;
 
-    approveSessionRequest({
+    executeDappRequest({
       sessionRequest: requestEvent,
       signTransaction,
       signMessage,
@@ -584,7 +657,8 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       t,
     })
       .then(() => {
-        // approveSessionRequest handled the WC response internally (success or
+        if (activeRequestRef.current !== requestEvent) return;
+        // executeDappRequest handled the WC response internally (success or
         // its own rejection). Mark responded so handleClearDappRequest won't
         // send a duplicate rejection.
         hasRespondedRef.current = true;
@@ -599,6 +673,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         );
       })
       .finally(() => {
+        if (activeRequestRef.current !== requestEvent) return;
         handleClearDappRequest();
       });
   };
@@ -623,7 +698,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         dappConnectionBottomSheetModalRef.current?.dismiss();
       }
 
-      siteSecurityWarningBottomSheetModalRef.current?.present();
+      presentSecurityWarning();
     },
     [],
   );
@@ -632,7 +707,30 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
    * Handles proceeding anyway from security warning (context-aware)
    */
   const handleProceedAnyway = (): void => {
-    siteSecurityWarningBottomSheetModalRef.current?.dismiss();
+    const { job } = useDappApprovalStore.getState();
+    if (job?.kind === DappApprovalKind.SITE) {
+      if (job.request.isValid())
+        job.request
+          .respond({ id: job.request.id, jsonrpc: "2.0", result: true })
+          .catch((error) => {
+            logger.warn(
+              "WalletKitProvider",
+              "Site approval could not be delivered",
+              error,
+            );
+          });
+      else
+        rejectDappRequest({
+          sessionRequest: job.request,
+          message: t("walletKit.userRejected"),
+          code: DappErrorCode.CONTEXT_CHANGED,
+        });
+      securityWarningDecisionRef.current = true;
+      dismissSecurityWarning();
+      return;
+    }
+    securityWarningDecisionRef.current = true;
+    dismissSecurityWarning();
 
     const isUnableToScan =
       securityWarningContext === SecurityContext.TRANSACTION
@@ -664,7 +762,16 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
    * @returns {void}
    */
   const handleCancelSecurityWarning = () => {
-    siteSecurityWarningBottomSheetModalRef.current?.dismiss();
+    const { job } = useDappApprovalStore.getState();
+    if (job?.kind === DappApprovalKind.SITE) {
+      rejectDappRequest({
+        sessionRequest: job.request,
+        message: t("walletKit.userRejected"),
+        code: DappErrorCode.USER_REJECTED,
+      });
+    }
+    securityWarningDecisionRef.current = true;
+    dismissSecurityWarning();
 
     if (
       securityWarningBlocksSheet &&
@@ -698,9 +805,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
    * Validates the message param for sign_message requests.
    * @returns true if valid, false if invalid (rejection already handled)
    */
-  const prevalidateSignMessage = (
-    sessionRequest: WalletKitSessionRequest,
-  ): boolean => {
+  const prevalidateSignMessage = (sessionRequest: DappRequest): boolean => {
     const msgParam = (
       sessionRequest.params as
         | { request?: { params?: { message?: unknown } } }
@@ -715,12 +820,12 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         message: t(contentResult.errorKey),
         variant: "error",
       });
-      rejectSessionRequest({
+      rejectDappRequest({
         sessionRequest,
         message: t(contentResult.errorKey),
       });
       clearEvent();
-      isProcessingRequestRef.current = false;
+      resetActiveRequest();
       return false;
     }
 
@@ -732,12 +837,12 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         message: t(lengthResult.errorKey),
         variant: "error",
       });
-      rejectSessionRequest({
+      rejectDappRequest({
         sessionRequest,
         message: t(lengthResult.errorKey),
       });
       clearEvent();
-      isProcessingRequestRef.current = false;
+      resetActiveRequest();
       return false;
     }
 
@@ -749,7 +854,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
    * @returns the entryXdr string if valid, or null if invalid (rejection handled)
    */
   const prevalidateSignAuthEntryContent = (
-    sessionRequest: WalletKitSessionRequest,
+    sessionRequest: DappRequest,
   ): string | null => {
     const entryParam = (
       sessionRequest.params as
@@ -764,12 +869,12 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         message: t(result.errorKey),
         variant: "error",
       });
-      rejectSessionRequest({
+      rejectDappRequest({
         sessionRequest,
         message: t(result.errorKey),
       });
       clearEvent();
-      isProcessingRequestRef.current = false;
+      resetActiveRequest();
       return null;
     }
 
@@ -781,7 +886,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
    * @returns the parsed preimage if valid, or null if invalid (rejection handled)
    */
   const prevalidateSignAuthEntryXdrFormat = (
-    sessionRequest: WalletKitSessionRequest,
+    sessionRequest: DappRequest,
     entryXdr: string,
   ): stellarXdr.HashIdPreimage | null => {
     const result = parseAuthEntryPreimage(entryXdr);
@@ -791,12 +896,12 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         message: t(result.errorKey),
         variant: "error",
       });
-      rejectSessionRequest({
+      rejectDappRequest({
         sessionRequest,
         message: t(result.errorKey),
       });
       clearEvent();
-      isProcessingRequestRef.current = false;
+      resetActiveRequest();
       return null;
     }
 
@@ -809,7 +914,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
    * @returns true if valid, false if invalid (rejection handled)
    */
   const prevalidateSignAuthEntryNetworkId = (
-    sessionRequest: WalletKitSessionRequest,
+    sessionRequest: DappRequest,
     preimage: stellarXdr.HashIdPreimage,
   ): boolean => {
     const result = validateAuthEntryNetwork(
@@ -822,12 +927,12 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         message: t(result.errorKey),
         variant: "error",
       });
-      rejectSessionRequest({
+      rejectDappRequest({
         sessionRequest,
         message: t(result.errorKey),
       });
       clearEvent();
-      isProcessingRequestRef.current = false;
+      resetActiveRequest();
       return false;
     }
 
@@ -839,7 +944,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
    * wallet account. Rejects the request on mismatch.
    */
   const prevalidateSignAuthEntryAddress = (
-    sessionRequest: WalletKitSessionRequest,
+    sessionRequest: DappRequest,
     preimage: stellarXdr.HashIdPreimage,
   ): boolean => {
     const result = validateAuthEntryAddress(preimage, publicKey);
@@ -849,12 +954,12 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         message: t(result.errorKey),
         variant: "error",
       });
-      rejectSessionRequest({
+      rejectDappRequest({
         sessionRequest,
         message: t(result.errorKey),
       });
       clearEvent();
-      isProcessingRequestRef.current = false;
+      resetActiveRequest();
       return false;
     }
 
@@ -865,9 +970,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
    * Orchestrates all sign_auth_entry pre-validations.
    * @returns true if all validations pass, false if any fail (rejection handled)
    */
-  const prevalidateSignAuthEntry = (
-    sessionRequest: WalletKitSessionRequest,
-  ): boolean => {
+  const prevalidateSignAuthEntry = (sessionRequest: DappRequest): boolean => {
     // Step 1: Validate content (presence, type, non-empty)
     const entryXdr = prevalidateSignAuthEntryContent(sessionRequest);
     if (!entryXdr) {
@@ -900,6 +1003,21 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
    * Handles SESSION_PROPOSAL events — validates auth, scans site, shows connection sheet.
    */
   const handleSessionProposal = (sessionProposal: WalletKitSessionProposal) => {
+    if (activeProposalRef.current === sessionProposal.id) return;
+    if (
+      useDappApprovalStore.getState().job ||
+      isProcessingRequestRef.current ||
+      isClearingRequestRef.current ||
+      activeProposalRef.current !== null
+    ) {
+      rejectSessionProposal({
+        sessionProposal,
+        message: t("walletKit.userRejected"),
+      });
+      clearEvent();
+      return;
+    }
+    setWalletConnectBusy(true);
     // Check if user is not authenticated
     if (authStatus === AUTH_STATUS.NOT_AUTHENTICATED) {
       showToast({
@@ -921,6 +1039,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       );
 
       clearEvent();
+      setWalletConnectBusy(false);
       return;
     }
 
@@ -934,9 +1053,11 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         message: t("walletKit.pleaseUnlockToConnect"),
         variant: "error",
       });
+      setWalletConnectBusy(false);
       return;
     }
 
+    activeProposalRef.current = sessionProposal.id;
     setProposalEvent(sessionProposal);
 
     const dappMetadata = getDappMetadataFromEvent(
@@ -947,6 +1068,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 
     scanSite(dappDomain)
       .then((scanResult) => {
+        if (activeProposalRef.current !== sessionProposal.id) return;
         setSiteScanResult(scanResult);
         const securityAssessment = assessSiteSecurity(
           scanResult,
@@ -954,12 +1076,13 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         );
         if (securityAssessment.isUnableToScan) {
           setSecurityWarningContext(SecurityContext.SITE);
-          siteSecurityWarningBottomSheetModalRef.current?.present();
+          presentSecurityWarning();
         } else {
           dappConnectionBottomSheetModalRef.current?.present();
         }
       })
       .catch(() => {
+        if (activeProposalRef.current !== sessionProposal.id) return;
         setSiteScanResult(undefined);
         const securityAssessment = assessSiteSecurity(
           undefined,
@@ -967,11 +1090,150 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         );
         if (securityAssessment.isUnableToScan) {
           setSecurityWarningContext(SecurityContext.SITE);
-          siteSecurityWarningBottomSheetModalRef.current?.present();
+          presentSecurityWarning();
         } else {
           dappConnectionBottomSheetModalRef.current?.present();
         }
       });
+  };
+
+  /**
+   * Entry point shared by both transports once a request is native-verified:
+   * pins it as the active request, validates method and params, runs the
+   * Blockaid transaction scan for XDR requests, and presents the signing
+   * sheet. Everything downstream (approve/reject) reads `activeRequestRef`.
+   */
+  const handleNormalizedRequest = (incoming: DappRequest) => {
+    const sessionRequest: DappRequest = {
+      ...incoming,
+      isValid: () =>
+        activeRequestRef.current === sessionRequest &&
+        !isClearingRequestRef.current &&
+        incoming.isValid(),
+    };
+    activeRequestRef.current = sessionRequest;
+    if (!sessionRequest.isValid()) {
+      rejectDappRequest({
+        sessionRequest,
+        message: t("walletKit.userNotAuthenticated"),
+        code: DappErrorCode.CONTEXT_CHANGED,
+      });
+      resetActiveRequest();
+      return;
+    }
+    const { method } = sessionRequest.params.request;
+    const { params } = sessionRequest.params.request;
+    const supported = Object.values(StellarRpcMethods).includes(
+      method as StellarRpcMethods,
+    );
+    const transactionMethod =
+      method === (StellarRpcMethods.SIGN_XDR as string) ||
+      method === (StellarRpcMethods.SIGN_AND_SUBMIT_XDR as string);
+    if (
+      !supported ||
+      (transactionMethod &&
+        (typeof params?.xdr !== "string" || !params.xdr.trim()))
+    ) {
+      rejectDappRequest({
+        sessionRequest,
+        message: t("walletKit.invalidRequestTitle"),
+        code: !supported
+          ? DappErrorCode.UNSUPPORTED_METHOD
+          : DappErrorCode.INVALID_PARAMS,
+      });
+      resetActiveRequest();
+      return;
+    }
+    // Get dApp metadata
+    const dappDomain = sessionRequest.origin;
+
+    const requestParams = sessionRequest.params as
+      | { request?: { method?: string; params?: { xdr?: string } } }
+      | undefined;
+    const currentRequestMethod = requestParams?.request?.method;
+    const requestXdr = requestParams?.request?.params?.xdr;
+
+    const isXdrRequest =
+      currentRequestMethod === (StellarRpcMethods.SIGN_XDR as string) ||
+      currentRequestMethod ===
+        (StellarRpcMethods.SIGN_AND_SUBMIT_XDR as string);
+
+    if (isXdrRequest && requestXdr) {
+      let isSep10Challenge = false;
+      try {
+        const parsed = TransactionBuilder.fromXdr(
+          requestXdr,
+          networkDetails.networkPassphrase,
+        );
+        isSep10Challenge =
+          parsed instanceof Transaction &&
+          parsed.sequence === "0" &&
+          parsed.operations.length > 0 &&
+          parsed.operations.every((op) => op.type === "manageData");
+      } catch {
+        rejectDappRequest({
+          sessionRequest,
+          message: t("walletKit.invalidRequestTitle"),
+          code: DappErrorCode.INVALID_PARAMS,
+        });
+        resetActiveRequest();
+        return;
+      }
+      setRequestEvent(sessionRequest);
+      if (isSep10Challenge) {
+        // A SEP-10 challenge cannot be submitted (sequence 0); scanning it only
+        // adds a network round trip and, when Blockaid is unreachable, a
+        // second warning gate before the login signature.
+        dappRequestBottomSheetModalRef.current?.present();
+        return;
+      }
+      // XDR-based requests: scan transaction first
+      scanTransaction(requestXdr, dappDomain)
+        .then((scanResult) => {
+          if (!sessionRequest.isValid()) return;
+          setTransactionScanResult(scanResult);
+          const securityAssessment = assessTransactionSecurity(
+            scanResult,
+            overriddenBlockaidResponse,
+          );
+          if (securityAssessment.isUnableToScan) {
+            setSecurityWarningContext(SecurityContext.TRANSACTION);
+            setSecurityWarningBlocksSheet(true);
+            presentSecurityWarning();
+          } else {
+            dappRequestBottomSheetModalRef.current?.present();
+          }
+        })
+        .catch(() => {
+          if (!sessionRequest.isValid()) return;
+          setTransactionScanResult(undefined);
+          const securityAssessment = assessTransactionSecurity(
+            undefined,
+            overriddenBlockaidResponse,
+          );
+          if (securityAssessment.isUnableToScan) {
+            setSecurityWarningContext(SecurityContext.TRANSACTION);
+            setSecurityWarningBlocksSheet(true);
+            presentSecurityWarning();
+          } else {
+            dappRequestBottomSheetModalRef.current?.present();
+          }
+        });
+    } else {
+      // Non-XDR requests (sign_message, sign_auth_entry): validate params first
+      if (currentRequestMethod === (StellarRpcMethods.SIGN_MESSAGE as string)) {
+        if (!prevalidateSignMessage(sessionRequest)) return;
+      }
+
+      if (
+        currentRequestMethod === (StellarRpcMethods.SIGN_AUTH_ENTRY as string)
+      ) {
+        if (!prevalidateSignAuthEntry(sessionRequest)) return;
+      }
+
+      setRequestEvent(sessionRequest);
+      dappRequestBottomSheetModalRef.current?.present();
+    }
   };
 
   /**
@@ -980,7 +1242,12 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
    */
   const handleSessionRequest = (sessionRequest: WalletKitSessionRequest) => {
     // Simple queue: if already processing a request, store this one as pending
-    if (isProcessingRequestRef.current) {
+    if (
+      isProcessingRequestRef.current ||
+      activeProposalRef.current !== null ||
+      isClearingRequestRef.current ||
+      useDappApprovalStore.getState().job
+    ) {
       // Normal queue flow, not an error condition.
       logger.info(
         "WalletKitProvider",
@@ -998,6 +1265,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 
     // Mark as processing
     isProcessingRequestRef.current = true;
+    setWalletConnectBusy(true);
 
     // Check if user is not authenticated
     if (authStatus === AUTH_STATUS.NOT_AUTHENTICATED) {
@@ -1014,6 +1282,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 
       clearEvent();
       isProcessingRequestRef.current = false;
+      setWalletConnectBusy(false);
       return;
     }
 
@@ -1028,12 +1297,14 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
         variant: "error",
       });
       isProcessingRequestRef.current = false;
+      setWalletConnectBusy(false);
       return;
     }
 
     // Wait for active sessions to be fetched
     if (Object.keys(activeSessions).length === 0) {
       isProcessingRequestRef.current = false;
+      setWalletConnectBusy(false);
       return;
     }
 
@@ -1058,6 +1329,7 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 
       clearEvent();
       isProcessingRequestRef.current = false;
+      setWalletConnectBusy(false);
       return;
     }
 
@@ -1109,78 +1381,77 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
 
       clearEvent();
       isProcessingRequestRef.current = false;
+      setWalletConnectBusy(false);
       return;
     }
 
-    setRequestEvent(sessionRequest);
-
-    // Get dApp metadata
-    const dappMetadata = getDappMetadataFromEvent(
-      sessionRequest,
-      activeSessions,
+    handleNormalizedRequest(
+      toDappRequest(
+        sessionRequest,
+        publicKey,
+        networkDetails.networkPassphrase,
+      ),
     );
-    const dappDomain =
-      (dappMetadata?.url as string) ||
-      sessionRequest.verifyContext?.verified?.origin ||
-      "";
-
-    const requestParams = sessionRequest.params as
-      | { request?: { method?: string; params?: { xdr?: string } } }
-      | undefined;
-    const currentRequestMethod = requestParams?.request?.method;
-    const requestXdr = requestParams?.request?.params?.xdr;
-
-    const isXdrRequest =
-      currentRequestMethod === (StellarRpcMethods.SIGN_XDR as string) ||
-      currentRequestMethod ===
-        (StellarRpcMethods.SIGN_AND_SUBMIT_XDR as string);
-
-    if (isXdrRequest && requestXdr) {
-      // XDR-based requests: scan transaction first
-      scanTransaction(requestXdr, dappDomain)
-        .then((scanResult) => {
-          setTransactionScanResult(scanResult);
-          const securityAssessment = assessTransactionSecurity(
-            scanResult,
-            overriddenBlockaidResponse,
-          );
-          if (securityAssessment.isUnableToScan) {
-            setSecurityWarningContext(SecurityContext.TRANSACTION);
-            setSecurityWarningBlocksSheet(true);
-            siteSecurityWarningBottomSheetModalRef.current?.present();
-          } else {
-            dappRequestBottomSheetModalRef.current?.present();
-          }
-        })
-        .catch(() => {
-          setTransactionScanResult(undefined);
-          const securityAssessment = assessTransactionSecurity(
-            undefined,
-            overriddenBlockaidResponse,
-          );
-          if (securityAssessment.isUnableToScan) {
-            setSecurityWarningContext(SecurityContext.TRANSACTION);
-            setSecurityWarningBlocksSheet(true);
-            siteSecurityWarningBottomSheetModalRef.current?.present();
-          } else {
-            dappRequestBottomSheetModalRef.current?.present();
-          }
-        });
-    } else {
-      // Non-XDR requests (sign_message, sign_auth_entry): validate params first
-      if (currentRequestMethod === (StellarRpcMethods.SIGN_MESSAGE as string)) {
-        if (!prevalidateSignMessage(sessionRequest)) return;
-      }
-
-      if (
-        currentRequestMethod === (StellarRpcMethods.SIGN_AUTH_ENTRY as string)
-      ) {
-        if (!prevalidateSignAuthEntry(sessionRequest)) return;
-      }
-
-      dappRequestBottomSheetModalRef.current?.present();
-    }
   };
+
+  useEffect(() => {
+    if (!webviewJob) {
+      if (handledWebviewJobRef.current) {
+        handledWebviewJobRef.current = null;
+        securityWarningDecisionRef.current = true;
+        dismissSecurityWarning();
+        if (requestEvent?.transport === DappTransport.WEBVIEW) {
+          hasRespondedRef.current = true;
+          handleClearDappRequest();
+        } else if (pendingRequestsQueueRef.current.length) {
+          setEvent(pendingRequestsQueueRef.current.shift()!);
+        }
+      }
+      return;
+    }
+    if (handledWebviewJobRef.current === webviewJob.request) return;
+    handledWebviewJobRef.current = webviewJob.request;
+    const { request, kind } = webviewJob;
+    if (kind === DappApprovalKind.SIGN) {
+      handleNormalizedRequest(request);
+      return;
+    }
+    scanSite(request.origin)
+      .then((result) => {
+        if (!request.isValid()) return;
+        setSiteScanResult(result);
+        const assessment = assessSiteSecurity(
+          result,
+          overriddenBlockaidResponse,
+        );
+        if (
+          !assessment.isMalicious &&
+          !assessment.isSuspicious &&
+          !assessment.isUnableToScan
+        ) {
+          request
+            .respond({ id: request.id, jsonrpc: "2.0", result: true })
+            .catch((error) => {
+              logger.warn(
+                "WalletKitProvider",
+                "Site approval could not be delivered",
+                error,
+              );
+            });
+          return;
+        }
+        setSecurityWarningContext(SecurityContext.SITE);
+        presentSecurityWarning();
+      })
+      .catch(() => {
+        if (!request.isValid()) return;
+        setSiteScanResult(undefined);
+        setSecurityWarningContext(SecurityContext.SITE);
+        presentSecurityWarning();
+      });
+    // Job identity is immutable; account/navigation changes invalidate it upstream.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [webviewJob]);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Main WalletKit event handler effect
@@ -1302,9 +1573,24 @@ export const WalletKitProvider: React.FC<WalletKitProviderProps> = ({
       <BottomSheet
         modalRef={siteSecurityWarningBottomSheetModalRef}
         handleCloseModal={handleCancelSecurityWarning}
+        bottomSheetModalProps={{
+          onDismiss: () => {
+            securityWarningPresentedRef.current = false;
+            securityWarningDismissingRef.current = false;
+            const decided = securityWarningDecisionRef.current;
+            securityWarningDecisionRef.current = false;
+            if (securityWarningPendingPresentRef.current) {
+              securityWarningPendingPresentRef.current = false;
+              presentSecurityWarning();
+              return;
+            }
+            if (!decided) handleCancelSecurityWarning();
+          },
+        }}
         customContent={
           <SecurityDetailBottomSheet
             warnings={getWarnings()}
+            origin={webviewJob?.request.origin}
             onCancel={handleCancelSecurityWarning}
             onProceedAnyway={handleProceedAnyway}
             onClose={handleCancelSecurityWarning}
