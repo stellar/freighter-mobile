@@ -12,8 +12,9 @@ appId: org.stellar.freighterdev
 # the header. Both are handled by OpenManageAccountsSheet.yaml, which retries
 # so neither overlay can block the network-switch tap.
 #
-# Timeouts on the network-switch UI are generous (15s) for the post-switch
-# back-nav because the app refetches balances on the new network.
+# Timeouts on the post-switch back-nav are generous (30s) because the app
+# refetches balances on the new network first; 15s was observed timing out at
+# 16s on a loaded CI simulator.
 
 # 1. Wait for the home screen to reach a steady post-load state — either the
 #    "Welcome to Freighter!" bottom sheet (fresh testnet-only account shown as
@@ -60,14 +61,15 @@ appId: org.stellar.freighterdev
 - tapOn:
     id: change-network-option-testnet
 
-# Return to home screen
+# Return to home screen. Both back-nav waits allow 30s: the network switch
+# triggers a balance refetch on the new network before the screens settle.
 - tapOn:
     id: header-button
 
 - extendedWaitUntil:
     visible:
       id: change-network-button
-    timeout: 15000
+    timeout: 30000
 
 - tapOn:
     id: header-button
@@ -75,4 +77,4 @@ appId: org.stellar.freighterdev
 - extendedWaitUntil:
     visible:
       id: home-screen
-    timeout: 15000
+    timeout: 30000
