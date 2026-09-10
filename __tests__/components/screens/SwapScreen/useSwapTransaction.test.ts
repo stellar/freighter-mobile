@@ -1,5 +1,7 @@
 /* eslint-disable @fnando/consistent-import/consistent-import */
+import { Asset, Keypair, TransactionBuilder, xdr } from "@stellar/stellar-sdk";
 import { renderHook, act } from "@testing-library/react-hooks";
+import BigNumber from "bignumber.js";
 import { useSwapTransaction } from "components/screens/SwapScreen/hooks/useSwapTransaction";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { NETWORKS } from "config/constants";
@@ -29,6 +31,47 @@ jest.mock("ducks/transactionBuilder", () => ({
     },
   ),
 }));
+
+// Volume telemetry's identity classification / price snapshot runs
+// unconditionally at the top of executeSwap, on every path (success,
+// failure, quote-expired, signing failure) — these dependencies need a
+// mock even for tests that only care about the pre-existing toast/analytics
+// contract.
+jest.mock("ducks/balances", () => ({
+  useBalancesStore: { getState: () => ({ balances: {} }) },
+}));
+jest.mock("ducks/remoteConfig", () => ({
+  useRemoteConfigStore: { getState: () => ({ use_token_prices_v2: true }) },
+}));
+// The prices store backs the receive card's fiat line for a NON-held
+// destination, which carries no `currentPrice` of its own. Mutated per-test.
+let mockPricesByNetwork: Record<string, unknown> = {};
+jest.mock("ducks/prices", () => ({
+  usePricesStore: {
+    getState: () => ({ pricesByNetwork: mockPricesByNetwork }),
+  },
+}));
+// Stubs the network boundary only — startConfirmationPriceSnapshot itself
+// runs for real, so its cancel()/resolve() contract is still exercised.
+const mockFetchTokenPrices = jest.fn().mockResolvedValue({});
+jest.mock("services/backend", () => ({
+  fetchTokenPrices: (...args: unknown[]) => mockFetchTokenPrices(...args),
+}));
+// `signTransaction` is mocked to return the literal string "signed-xdr" in
+// most of this file's tests, which isn't parseable XDR — stub
+// TransactionBuilder.fromXdr (used only on the settled-swap success path,
+// to find the pathPaymentStrictSend operation index) rather than construct
+// real transaction XDR in every fixture.
+jest.mock("@stellar/stellar-sdk", () => {
+  const actual = jest.requireActual("@stellar/stellar-sdk");
+  return {
+    ...actual,
+    TransactionBuilder: {
+      ...actual.TransactionBuilder,
+      fromXdr: jest.fn(() => ({ operations: [] })),
+    },
+  };
+});
 
 jest.mock("ducks/swapSettings", () => ({
   useSwapSettingsStore: Object.assign(() => ({}), {
@@ -94,10 +137,38 @@ const baseParams: Parameters<typeof useSwapTransaction>[0] = {
   navigation: mockNavigation,
 };
 
+/** submitTransaction now resolves with the attempt's own outcome. */
+const submitOk = (resultXdr: string | null = null) => ({
+  hash: "tx-hash",
+  resultXdr,
+  error: null,
+  resultCodes: null,
+  httpStatus: null,
+  isProtocolAnswer: false,
+});
+
+const submitFailed = (
+  overrides: Partial<{
+    error: string | null;
+    resultCodes: { transaction?: string; operations?: string[] } | null;
+    httpStatus: number | null;
+    isProtocolAnswer: boolean;
+  }> = {},
+) => ({
+  hash: null,
+  resultXdr: null,
+  error: "Submit error from store",
+  resultCodes: null,
+  httpStatus: null,
+  isProtocolAnswer: false,
+  ...overrides,
+});
+
 describe("useSwapTransaction", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGetBuilderState.mockReturnValue({ error: "Submit error from store" });
+    mockPricesByNetwork = {};
     act(() => {
       useSwapStore.getState().resetSwap();
     });
@@ -105,13 +176,13 @@ describe("useSwapTransaction", () => {
 
   describe("executeSwap rejection contract", () => {
     it("does NOT reject when submitTransaction returns null (failure)", async () => {
-      // submitTransaction returns null on failure - the hook reads the
-      // error from the store and throws inside the try, where the catch
-      // handles toast / analytics. The catch must NOT rethrow, otherwise
-      // SwapAmountScreen's fire-and-forget call site would surface an
-      // unhandled promise rejection at the global handler.
+      // submitTransaction resolves with a hash-less outcome on failure - the
+      // hook reads the error off that outcome and throws inside the try,
+      // where the catch handles toast / analytics. The catch must NOT
+      // rethrow, otherwise SwapAmountScreen's fire-and-forget call site would
+      // surface an unhandled promise rejection at the global handler.
       mockSignTransaction.mockReturnValue("signed-xdr");
-      mockSubmitTransaction.mockResolvedValue(null);
+      mockSubmitTransaction.mockResolvedValue(submitFailed());
 
       const { result } = renderHook(() => useSwapTransaction(baseParams));
 
@@ -165,10 +236,18 @@ describe("useSwapTransaction", () => {
           destAmount: "2.5",
         }),
       );
+      // A throw out of submitTransaction itself (the debug forced-failure
+      // override) never reached the network, so the event carries no
+      // attempted volume — and in particular is not bucketed as `transport`,
+      // which means "submitted, but no verdict came back".
+      const [payload] = mockTrackTransactionError.mock.calls[0] as [
+        { volume?: unknown },
+      ];
+      expect(payload.volume).toBeUndefined();
       expect(mockShowToast).toHaveBeenCalled();
     });
 
-    it("does NOT reject when signTransaction returns null", async () => {
+    it("does NOT reject when signTransaction returns null, and emits swap.failed without volume data", async () => {
       mockSignTransaction.mockReturnValue(null);
 
       const { result } = renderHook(() => useSwapTransaction(baseParams));
@@ -181,21 +260,63 @@ describe("useSwapTransaction", () => {
       });
 
       expect(didReject).toBe(false);
-      expect(mockTrackTransactionError).toHaveBeenCalledWith(
-        expect.objectContaining({
-          isSwap: true,
-          sourceToken: "XLM",
-          destToken: "USDC",
-          sourceAmount: "1",
-          destAmount: "2.5",
-        }),
+      // A signing failure is still the flow's outcome, so swap.failed fires —
+      // but it never reached the network, so there is no attempted volume to
+      // report and `volume` is absent. The user still sees a toast.
+      expect(mockTrackTransactionError).toHaveBeenCalledTimes(1);
+      const [failurePayload] = mockTrackTransactionError.mock.calls[0] as [
+        { volume?: unknown; isSwap?: boolean },
+      ];
+      expect(failurePayload.isSwap).toBe(true);
+      expect(failurePayload.volume).toBeUndefined();
+      expect(mockShowToast).toHaveBeenCalledWith(
+        expect.objectContaining({ variant: "error" }),
       );
-      expect(mockShowToast).toHaveBeenCalled();
+    });
+
+    it("issues no confirmation price fetch at all when signing fails pre-submit", async () => {
+      mockSignTransaction.mockReturnValue(null);
+
+      const { result } = renderHook(() => useSwapTransaction(baseParams));
+
+      await act(async () => {
+        await result.current.executeSwap();
+      });
+
+      // The snapshot starts only once signing has succeeded, so a signing
+      // failure never issues a price request it would just have to abort.
+      expect(mockFetchTokenPrices).not.toHaveBeenCalled();
+    });
+
+    it("starts the confirmation price fetch only after signing succeeds", async () => {
+      const callOrder: string[] = [];
+      mockSignTransaction.mockImplementation(() => {
+        callOrder.push("sign");
+        return "signed-xdr";
+      });
+      mockFetchTokenPrices.mockImplementation(() => {
+        callOrder.push("fetchPrices");
+        return Promise.resolve({});
+      });
+      mockSubmitTransaction.mockImplementation(() => {
+        callOrder.push("submit");
+        return Promise.resolve(submitOk());
+      });
+
+      const { result } = renderHook(() => useSwapTransaction(baseParams));
+
+      await act(async () => {
+        await result.current.executeSwap();
+      });
+
+      // Prices are snapshotted as close to execution as possible: after
+      // signing, immediately before submission.
+      expect(callOrder).toEqual(["sign", "fetchPrices", "submit"]);
     });
 
     it("resolves successfully on a successful swap (sanity check)", async () => {
       mockSignTransaction.mockReturnValue("signed-xdr");
-      mockSubmitTransaction.mockResolvedValue("tx-hash");
+      mockSubmitTransaction.mockResolvedValue(submitOk());
 
       const { result } = renderHook(() => useSwapTransaction(baseParams));
 
@@ -319,7 +440,7 @@ describe("useSwapTransaction", () => {
       });
 
       mockSignTransaction.mockReturnValue("signed-xdr");
-      mockSubmitTransaction.mockResolvedValue("tx-hash");
+      mockSubmitTransaction.mockResolvedValue(submitOk());
 
       const { result } = renderHook(() => useSwapTransaction(baseParams));
 
@@ -351,7 +472,7 @@ describe("useSwapTransaction", () => {
       });
 
       mockSignTransaction.mockReturnValue("signed-xdr");
-      mockSubmitTransaction.mockResolvedValue("tx-hash");
+      mockSubmitTransaction.mockResolvedValue(submitOk());
 
       const { result } = renderHook(() => useSwapTransaction(baseParams));
 
@@ -366,17 +487,212 @@ describe("useSwapTransaction", () => {
     });
   });
 
-  describe("SWAP_QUOTE_EXPIRED analytics", () => {
-    it("fires SWAP_QUOTE_EXPIRED with the result code (not SWAP_FAIL) when the submit is rejected with op_under_dest_min", async () => {
-      mockGetBuilderState.mockReturnValue({
-        error: "tx_failed",
-        submitErrorResultCodes: {
-          transaction: "tx_failed",
-          operations: ["op_under_dest_min"],
+  describe("confirmation snapshot cached_display fallback", () => {
+    const USDC_ISSUER =
+      "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
+
+    /** A TransactionResult XDR whose single op settled a pathPaymentStrictSend. */
+    const settledResultXdr = (stroops: string): string => {
+      const simple = new xdr.SimplePaymentResult({
+        destination: xdr.PublicKey.publicKeyTypeEd25519(
+          Keypair.random().rawPublicKey(),
+        ),
+        asset: Asset.native().toXdrObject(),
+        amount: BigInt(stroops),
+      });
+      const opResult = xdr.OperationResult.opInner(
+        xdr.OperationResultTr.pathPaymentStrictSend(
+          xdr.PathPaymentStrictSendResult.pathPaymentStrictSendSuccess(
+            new xdr.PathPaymentStrictSendResultSuccess({
+              offers: [],
+              last: simple,
+            }),
+          ),
+        ),
+      );
+      return new xdr.TransactionResult({
+        feeCharged: BigInt("100"),
+        result: xdr.TransactionResultResult.txSuccess([opResult]),
+        ext: xdr.TransactionResultExt.v0(),
+      }).toXdr("base64");
+    };
+
+    it("prices a non-held destination from the display prices store, not the priceless shim", async () => {
+      // A non-held destination is the descriptorAsPathBalance shim: it has a
+      // token identity but deliberately no `currentPrice`. The receive card
+      // still shows a fiat value, sourced from the prices store — so when the
+      // confirmation fetch fails and the snapshot falls back to
+      // cached_display, the destination leg must price from that same store
+      // rather than reporting no_price.
+      mockPricesByNetwork = {
+        [NETWORKS.PUBLIC]: {
+          XLM: { currentPrice: new BigNumber("0.5") },
+          [`USDC:${USDC_ISSUER}`]: { currentPrice: new BigNumber("1.5") },
         },
+      };
+      mockFetchTokenPrices.mockRejectedValue(new Error("prices unavailable"));
+
+      const resultXdr = settledResultXdr("50000000"); // 5 units
+      (
+        TransactionBuilder.fromXdr as unknown as jest.Mock
+      ).mockReturnValueOnce({
+        operations: [{ type: "pathPaymentStrictSend" }],
+      });
+
+      mockSignTransaction.mockReturnValue("signed-xdr");
+      // The settled result rides on the attempt's own outcome, not the store.
+      mockSubmitTransaction.mockResolvedValue(submitOk(resultXdr));
+
+      const { result } = renderHook(() =>
+        useSwapTransaction({
+          ...baseParams,
+          sourceBalance: {
+            tokenCode: "XLM",
+            token: { type: "native", code: "XLM" },
+            currentPrice: new BigNumber("0.5"),
+          } as never,
+          destinationTokenInput: {
+            tokenCode: "USDC",
+            token: {
+              code: "USDC",
+              issuer: { key: USDC_ISSUER },
+              type: TokenTypeWithCustomToken.CREDIT_ALPHANUM4,
+            },
+          } as never,
+        }),
+      );
+
+      await act(async () => {
+        await result.current.executeSwap();
+      });
+
+      expect(mockTrackSwapSuccess).toHaveBeenCalledTimes(1);
+      const [payload] = mockTrackSwapSuccess.mock.calls[0] as [
+        { volume: Record<string, unknown> },
+      ];
+      expect(payload.volume).toMatchObject({
+        priceFreshness: "cached_display",
+        toAmountUsdStatus: "ok",
+        toAmount: 5,
+        toAmountUsd: 7.5,
+        toAmountUsdRate: 1.5,
+      });
+    });
+  });
+
+  describe("Close during submit (store reset mid-flight)", () => {
+    // Closing the processing screen unmounts the swap screen, whose cleanup
+    // resets the transaction store and the swap settings. The store's
+    // requestId guard then refuses to write this attempt's result, so
+    // anything the terminal event reads from the store afterwards is gone.
+    // The emit path reads the attempt's own returned outcome instead.
+    const emptyBuilderState = {
+      error: null,
+      submitErrorResultCodes: null,
+    };
+
+    it("still reports the settled destination amount for a successful swap", () => {
+      const resultXdr = (() => {
+        const simple = new xdr.SimplePaymentResult({
+          destination: xdr.PublicKey.publicKeyTypeEd25519(
+            Keypair.random().rawPublicKey(),
+          ),
+          asset: Asset.native().toXdrObject(),
+          amount: BigInt("50000000"),
+        });
+        return new xdr.TransactionResult({
+          feeCharged: BigInt("100"),
+          result: xdr.TransactionResultResult.txSuccess([
+            xdr.OperationResult.opInner(
+              xdr.OperationResultTr.pathPaymentStrictSend(
+                xdr.PathPaymentStrictSendResult.pathPaymentStrictSendSuccess(
+                  new xdr.PathPaymentStrictSendResultSuccess({
+                    offers: [],
+                    last: simple,
+                  }),
+                ),
+              ),
+            ),
+          ]),
+          ext: xdr.TransactionResultExt.v0(),
+        }).toXdr("base64");
+      })();
+
+      // The store has been reset: it holds none of this attempt's result.
+      mockGetBuilderState.mockReturnValue(emptyBuilderState);
+      (
+        TransactionBuilder.fromXdr as unknown as jest.Mock
+      ).mockReturnValueOnce({
+        operations: [{ type: "pathPaymentStrictSend" }],
       });
       mockSignTransaction.mockReturnValue("signed-xdr");
-      mockSubmitTransaction.mockResolvedValue(null);
+      mockSubmitTransaction.mockResolvedValue(submitOk(resultXdr));
+
+      return (async () => {
+        const { result } = renderHook(() => useSwapTransaction(baseParams));
+        await act(async () => {
+          await result.current.executeSwap();
+        });
+
+        const [payload] = mockTrackSwapSuccess.mock.calls[0] as [
+          { volume: Record<string, unknown>; allowedSlippage?: string },
+        ];
+        expect(payload.volume).toMatchObject({ toAmount: 5 });
+        expect(payload.volume.toAmountUsdStatus).not.toBe("error");
+        // Read before the await, so the screen's reset-to-defaults on unmount
+        // can't replace it with the default tolerance.
+        expect(payload.allowedSlippage).toBe("0.5");
+      })();
+    });
+
+    it("still classifies a rejected swap instead of falling back to transport", async () => {
+      mockGetBuilderState.mockReturnValue(emptyBuilderState);
+      mockSignTransaction.mockReturnValue("signed-xdr");
+      mockSubmitTransaction.mockResolvedValue(
+        submitFailed({
+          error: "tx_failed",
+          resultCodes: {
+            transaction: "tx_failed",
+            operations: ["op_underfunded"],
+          },
+          httpStatus: 400,
+          isProtocolAnswer: true,
+        }),
+      );
+
+      const { result } = renderHook(() => useSwapTransaction(baseParams));
+      await act(async () => {
+        await result.current.executeSwap().catch(() => {});
+      });
+
+      expect(mockTrackTransactionError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          errorCode: "op_underfunded",
+          volume: expect.objectContaining({
+            reasonCode: "op_underfunded",
+            failureCategory: "balance",
+          }),
+        }),
+      );
+    });
+  });
+
+  describe("SWAP_QUOTE_EXPIRED analytics", () => {
+    it("fires SWAP_QUOTE_EXPIRED with the result code, AND also swap.failed with failure_category slippage, when the submit is rejected with op_under_dest_min", async () => {
+      // The store no longer carries the failure classification — the hook
+      // reads it off the attempt's own outcome below.
+      mockSignTransaction.mockReturnValue("signed-xdr");
+      mockSubmitTransaction.mockResolvedValue(
+        submitFailed({
+          error: "tx_failed",
+          resultCodes: {
+            transaction: "tx_failed",
+            operations: ["op_under_dest_min"],
+          },
+          httpStatus: 400,
+          isProtocolAnswer: true,
+        }),
+      );
 
       const { result } = renderHook(() => useSwapTransaction(baseParams));
 
@@ -400,8 +716,20 @@ describe("useSwapTransaction", () => {
       expect(quoteExpiredCall?.[1]).not.toHaveProperty("sourceAmount");
       expect(quoteExpiredCall?.[1]).not.toHaveProperty("destAmount");
       expect(quoteExpiredCall?.[1]).not.toHaveProperty("allowedSlippage");
-      // Quote-expiry is a distinct funnel step — the generic SWAP_FAIL must NOT fire.
-      expect(mockTrackTransactionError).not.toHaveBeenCalled();
+      // A submit-time quote expiry also emits swap.failed with
+      // failure_category: slippage, so the failure it represents reaches a
+      // volume-bearing event. swap.quote_expired is unchanged and carries no
+      // volume, so the pair can't double-count.
+      expect(mockTrackTransactionError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          isSwap: true,
+          errorCode: "op_under_dest_min",
+          volume: expect.objectContaining({
+            failureCategory: "slippage",
+            reasonCode: "op_under_dest_min",
+          }),
+        }),
+      );
       expect(mockShowToast).toHaveBeenCalledWith(
         expect.objectContaining({
           variant: "error",
@@ -420,7 +748,15 @@ describe("useSwapTransaction", () => {
         },
       });
       mockSignTransaction.mockReturnValue("signed-xdr");
-      mockSubmitTransaction.mockResolvedValue(null);
+      mockSubmitTransaction.mockResolvedValue(
+        submitFailed({
+          error: "tx_insufficient_balance",
+          resultCodes: {
+            transaction: "tx_failed",
+            operations: ["op_underfunded"],
+          },
+        }),
+      );
 
       const { result } = renderHook(() => useSwapTransaction(baseParams));
 
