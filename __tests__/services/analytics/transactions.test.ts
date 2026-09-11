@@ -385,6 +385,22 @@ describe("internal signing events", () => {
     });
   });
 
+  it("keeps a dApp failure attributable to its website", () => {
+    // The website identity is resolved before signing, so a failure carries it
+    // too. It previously resolved only after signing succeeded, which left
+    // every failure without an origin.
+    trackSignedTransactionError({
+      error: "Failed to sign transaction",
+      dappDomain: "https://example.com/app",
+    });
+
+    expect(track).toHaveBeenCalledWith(AnalyticsEvent.SIGN_TRANSACTION_FAILED, {
+      source: "dapp_api",
+      reason_code: "Failed to sign transaction",
+      origin: "example.com",
+    });
+  });
+
   it("reports a dApp signing failure with a scrubbed reason", () => {
     // A website request can fail to sign for the same reasons a wallet-composed
     // one can. Without this the failure outcome existed for internal

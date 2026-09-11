@@ -652,7 +652,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
    */
   const handleReviewDismiss = useCallback(() => {
     if (hasApprovedRef.current) {
-      hasApprovedRef.current = false;
       return;
     }
     analytics.trackInternalSignedTransactionRejected();
@@ -983,7 +982,16 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           // (visible OR dismissed) so the CTA's spinner stops the moment
           // the sheet is on screen, and can never get stuck if the user
           // somehow dismisses before it reaches its snap point.
-          onChange: () => setIsOpeningReviewSheet(false),
+          onChange: (index: number) => {
+            setIsOpeningReviewSheet(false);
+            // Clear the latch as the sheet opens, not as it closes. The
+            // dismiss handler does not always run — it returns early when the
+            // sheet is not present — so clearing there could leave an earlier
+            // approval latched and swallow the next rejection.
+            if (index >= 0) {
+              hasApprovedRef.current = false;
+            }
+          },
           onDismiss: handleReviewDismiss,
         }}
         analyticsEvent={AnalyticsEvent.VIEW_SWAP_CONFIRM}

@@ -396,20 +396,10 @@ const SendCollectibleReviewScreen: React.FC<
 
         const { privateKey } = account;
 
-        const signedXDR = signTransaction({
+        signTransaction({
           secretKey: privateKey,
           network,
         });
-
-        // A collectible send is a wallet-composed transaction, so it reports
-        // its signing outcome like a token send does. The control flow is
-        // unchanged: this branch only reports.
-        if (signedXDR) {
-          analytics.trackInternalSignedTransaction();
-        } else {
-          const { error: signingError } = useTransactionBuilderStore.getState();
-          analytics.trackInternalSignedTransactionError(signingError);
-        }
 
         const { hash: submittedHash } = await submitTransaction({
           network,

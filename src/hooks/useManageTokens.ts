@@ -197,14 +197,26 @@ export const useManageTokens = ({
           throw new Error(WALLET_LOCKED_ERROR);
         }
 
-        const signedTx = signTransaction({
-          tx: addTokenTrustlineTx,
-          secretKey: privateKey,
-          network,
-        });
-
         // A trustline change is a wallet-composed transaction, so it reports
-        // its signing outcome like a send or a swap does.
+        // its signing outcome like a send or a swap does. Signing can throw,
+        // and the enclosing handler reports only the operation failure, so
+        // catch here, report the signing fault, and rethrow.
+        let signedTx;
+        try {
+          signedTx = signTransaction({
+            tx: addTokenTrustlineTx,
+            secretKey: privateKey,
+            network,
+          });
+        } catch (signingError) {
+          analytics.trackInternalSignedTransactionError(
+            signingError instanceof Error
+              ? signingError.message
+              : String(signingError),
+          );
+          throw signingError;
+        }
+
         analytics.trackInternalSignedTransaction();
 
         await submitTx({
@@ -335,14 +347,26 @@ export const useManageTokens = ({
           throw new Error(WALLET_LOCKED_ERROR);
         }
 
-        const signedTx = signTransaction({
-          tx: removeTokenTrustlineTx,
-          secretKey: privateKey,
-          network,
-        });
-
         // A trustline change is a wallet-composed transaction, so it reports
-        // its signing outcome like a send or a swap does.
+        // its signing outcome like a send or a swap does. Signing can throw,
+        // and the enclosing handler reports only the operation failure, so
+        // catch here, report the signing fault, and rethrow.
+        let signedTx;
+        try {
+          signedTx = signTransaction({
+            tx: removeTokenTrustlineTx,
+            secretKey: privateKey,
+            network,
+          });
+        } catch (signingError) {
+          analytics.trackInternalSignedTransactionError(
+            signingError instanceof Error
+              ? signingError.message
+              : String(signingError),
+          );
+          throw signingError;
+        }
+
         analytics.trackInternalSignedTransaction();
 
         await submitTx({

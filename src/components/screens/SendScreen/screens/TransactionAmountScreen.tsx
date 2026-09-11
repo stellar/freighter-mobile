@@ -992,7 +992,6 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
    */
   const handleReviewDismiss = useCallback(() => {
     if (hasApprovedRef.current) {
-      hasApprovedRef.current = false;
       return;
     }
     analytics.trackInternalSignedTransactionRejected();
@@ -1227,6 +1226,13 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         scrollable
         bottomSheetModalProps={{
           accessible: false,
+          // Clear the latch as the sheet opens — see the swap flow for why
+          // clearing it on dismissal is not reliable.
+          onChange: (index: number) => {
+            if (index >= 0) {
+              hasApprovedRef.current = false;
+            }
+          },
           onDismiss: handleReviewDismiss,
         }}
         customContent={
