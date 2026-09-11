@@ -9,8 +9,8 @@ import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { NetworkDetails } from "config/constants";
+import type { DappRequest } from "config/dappRequest";
 import { ActiveAccount } from "ducks/auth";
-import { WalletKitSessionRequest } from "ducks/walletKit";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
@@ -18,7 +18,7 @@ import React, { useMemo } from "react";
 import { Dimensions, ScrollView, View } from "react-native";
 
 interface DappSignAuthEntryBottomSheetContentProps {
-  requestEvent: WalletKitSessionRequest | null;
+  requestEvent: DappRequest | null;
   account: ActiveAccount | null;
   networkDetails: NetworkDetails;
   entryXdr: string;
