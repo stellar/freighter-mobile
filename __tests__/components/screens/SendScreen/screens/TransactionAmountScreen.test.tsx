@@ -61,6 +61,9 @@ jest.mock("services/analytics", () => ({
     track: jest.fn(),
     trackSendPaymentSuccess: jest.fn(),
     trackTransactionError: jest.fn(),
+    trackInternalSignedTransaction: jest.fn(),
+    trackInternalSignedTransactionRejected: jest.fn(),
+    trackInternalSignedTransactionError: jest.fn(),
   },
 }));
 

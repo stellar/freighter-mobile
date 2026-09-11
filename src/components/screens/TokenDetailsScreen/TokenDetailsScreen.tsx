@@ -7,7 +7,11 @@ import { SecurityDetailBottomSheet } from "components/blockaid";
 import { BaseLayout } from "components/layout/BaseLayout";
 import HistoryList from "components/screens/HistoryScreen/HistoryList";
 import { TokenBalanceHeader } from "components/screens/TokenDetailsScreen/components";
-import { RemoveTokenSheetContent } from "components/screens/TokenDetailsScreen/components/RemoveTokenSheetContent";
+import {
+  getRemoveTokenSheetVariant,
+  RemoveTokenSheetContent,
+  RemoveTokenSheetVariant,
+} from "components/screens/TokenDetailsScreen/components/RemoveTokenSheetContent";
 import { Banner } from "components/sds/Banner";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
@@ -139,6 +143,30 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
       navigation.goBack();
     },
   });
+
+  // The prompt reports a signing outcome only when it offers the removal
+  // confirmation for a trustline. It offers no signing decision when it
+  // explains that the wallet cannot remove the token, and a local-only token
+  // never signs.
+  const promptSigns =
+    getRemoveTokenSheetVariant(selectedBalance, localOnlyTokenIds) ===
+      RemoveTokenSheetVariant.confirm &&
+    selectedBalance?.tokenType !== TokenTypeWithCustomToken.CUSTOM_TOKEN;
+
+  // True once the user approves. Cleared as the sheet opens, because a
+  // dismissal does not always run.
+  const hasApprovedRemoveRef = useRef(false);
+
+  /**
+   * Reports a rejection when the user leaves the removal prompt without
+   * approving, by any route.
+   */
+  const handleRemoveDismiss = useCallback(() => {
+    if (hasApprovedRemoveRef.current || !promptSigns) {
+      return;
+    }
+    analytics.trackInternalSignedTransactionRejected();
+  }, [promptSigns]);
 
   const handleCancelTokenRemoval = useCallback(() => {
     if (selectedBalance) {
@@ -328,6 +356,14 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
         handleCloseModal={() =>
           removeTokenBottomSheetModalRef.current?.dismiss()
         }
+        bottomSheetModalProps={{
+          onChange: (index: number) => {
+            if (index >= 0) {
+              hasApprovedRemoveRef.current = false;
+            }
+          },
+          onDismiss: handleRemoveDismiss,
+        }}
         analyticsEvent={AnalyticsEvent.VIEW_REMOVE_TOKEN}
         shouldCloseOnPressBackdrop={!!selectedBalance}
         customContent={
@@ -336,7 +372,10 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
             localOnlyTokenIds={localOnlyTokenIds}
             account={account}
             onCancel={handleCancelTokenRemoval}
-            onRemoveToken={removeToken}
+            onRemoveToken={() => {
+              hasApprovedRemoveRef.current = true;
+              return removeToken();
+            }}
             isRemovingToken={isRemovingToken}
             onDismiss={() => removeTokenBottomSheetModalRef.current?.dismiss()}
           />
