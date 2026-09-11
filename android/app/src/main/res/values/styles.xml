@@ -9,7 +9,7 @@
           light background on a light-mode phone, leaving white strips at the top and
           bottom of the screen.
         -->
-        <item name="android:windowBackground">@color/bootsplash_background</item>
+        <item name="android:windowBackground">@color/app_background</item>
     </style>
 
     <style name="BootTheme" parent="Theme.BootSplash">

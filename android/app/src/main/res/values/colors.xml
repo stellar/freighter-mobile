@@ -1,3 +1,10 @@
 <resources>
-    <color name="bootsplash_background">#161616</color>
+    <color name="bootsplash_background">#ffffff</color>
+    <!--
+      The app's dark chrome. Shows through the transparent system bars under
+      Android 15+ enforced edge-to-edge, so keep it in sync with
+      THEME.colors.background.default (PALETTE.dark.gray["01"]). Deliberately
+      separate from bootsplash_background: the splash is light, the chrome is not.
+    -->
+    <color name="app_background">#161616</color>
 </resources>
