@@ -98,7 +98,7 @@ tags:
       - extendedWaitUntil:
           visible:
             id: home-screen
-          timeout: 10000
+          timeout: 15000
 
 # If welcome banner didn't appear, wait for home screen
 - runFlow:

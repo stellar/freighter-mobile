@@ -1,0 +1,78 @@
+appId: org.stellar.freighterdev
+---
+# Shared flow: go from the home screen to the Settings screen via the
+# manage-accounts sheet. Returns with `settings-screen` visible.
+#
+# Why this needs to retry: the "Welcome to Freighter!" bottom sheet is presented
+# only once an AsyncStorage read *and* the account's balance fetch have both
+# settled, and only for accounts that resolve as unfunded. Both happen well
+# after home-screen renders, so a one-shot `when: visible` check on the sheet
+# races it — the check passes while the fetch is still in flight, the dismissal
+# is skipped, and the sheet then mounts on top of whatever is on screen and
+# swallows the next tap. Taps report COMPLETED because the tap itself
+# succeeded; the failure only surfaces later as an unrelated-looking timeout.
+#
+# The whole navigation — dismiss, open the sheet, tap settings, confirm we
+# landed — is therefore one retryable unit. Success cannot be reported until
+# Settings is actually on screen, so a sheet that mounts late and eats the
+# settings tap fails the unit rather than leaking a broken state to the caller.
+# The sheet is presented at most once per account (AsyncStorage guards it), so
+# the retry that dismisses it is the last one that has to deal with it.
+#
+# Each attempt starts by restoring a known state, so the unit is idempotent
+# whether the previous attempt left us on the home screen, on the home screen
+# under the welcome sheet, or with the manage-accounts sheet already open.
+- retry:
+    maxRetries: 2
+    commands:
+      # Dismiss the welcome sheet first: while it is up it covers everything
+      # else, so any other tap would hit it instead of its intended target.
+      - runFlow:
+          when:
+            visible:
+              id: welcome-banner-dismiss-button
+          commands:
+            - tapOn:
+                id: welcome-banner-dismiss-button
+            - extendedWaitUntil:
+                visible:
+                  id: home-screen
+                timeout: 15000
+
+      # If a previous attempt got as far as opening the manage-accounts sheet,
+      # close it so the account-switcher tap below starts from the home screen.
+      - runFlow:
+          when:
+            visible:
+              id: manage-accounts-close-button
+          commands:
+            - tapOn:
+                id: manage-accounts-close-button
+            - extendedWaitUntil:
+                visible:
+                  id: home-account-switcher
+                timeout: 15000
+
+      # An "Account not loaded" toast can also overlay the top of the header.
+      # It auto-dismisses in 6s, but swiping is faster and deterministic.
+      - runFlow:
+          when:
+            visible: ".*could not be loaded.*"
+          commands:
+            - swipe:
+                from:
+                  text: ".*could not be loaded.*"
+                direction: UP
+
+      - tapOn:
+          id: home-account-switcher
+      - extendedWaitUntil:
+          visible:
+            id: manage-accounts-settings-button
+          timeout: 15000
+      - tapOn:
+          id: manage-accounts-settings-button
+      - extendedWaitUntil:
+          visible:
+            id: settings-screen
+          timeout: 15000
