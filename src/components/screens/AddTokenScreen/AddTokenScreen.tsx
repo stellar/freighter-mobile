@@ -23,7 +23,7 @@ import {
   MANAGE_TOKENS_ROUTES,
   ManageTokensStackParamList,
 } from "config/routes";
-import { FormattedSearchTokenRecord, HookStatus } from "config/types";
+import { FormattedSearchTokenRecord, HookStatus , TokenTypeWithCustomToken } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { getTokenIdentifier } from "helpers/balances";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -178,6 +178,28 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
     }
   }, []);
 
+  // A custom token is stored locally and never signs, so its prompt reports no
+  // signing outcome. Every other token adds or removes a trustline, which does.
+  const promptSigns = selectedToken
+    ? selectedToken.tokenType !== TokenTypeWithCustomToken.CUSTOM_TOKEN
+    : false;
+
+  // True once the user approves. Cleared as each sheet opens, because a
+  // dismissal does not always run.
+  const hasApprovedAddRef = useRef(false);
+  const hasApprovedRemoveRef = useRef(false);
+
+  /**
+   * Reports a rejection when the user leaves a trustline prompt without
+   * approving, by any route.
+   */
+  const reportDismissal = (approved: React.MutableRefObject<boolean>) => {
+    if (approved.current || !promptSigns) {
+      return;
+    }
+    analytics.trackInternalSignedTransactionRejected();
+  };
+
   const handleCancelTokenAddition = useCallback(() => {
     if (selectedToken) {
       analytics.trackAddTokenRejected(selectedToken.tokenCode);
@@ -257,7 +279,10 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
           }}
           account={account}
           onCancel={handleCancelTokenRemoval}
-          onRemoveToken={removeToken}
+          onRemoveToken={() => {
+            hasApprovedRemoveRef.current = true;
+            return removeToken();
+          }}
           isRemovingToken={isRemovingToken}
         />
       );
@@ -332,6 +357,14 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
           handleCloseModal={() => {
             addTokenBottomSheetModalRef.current?.dismiss();
           }}
+          bottomSheetModalProps={{
+            onChange: (index: number) => {
+              if (index >= 0) {
+                hasApprovedAddRef.current = false;
+              }
+            },
+            onDismiss: () => reportDismissal(hasApprovedAddRef),
+          }}
           analyticsEvent={AnalyticsEvent.VIEW_ADD_TOKEN_MANUALLY}
           shouldCloseOnPressBackdrop={!!selectedToken}
           customContent={
@@ -339,8 +372,14 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
               token={selectedToken}
               account={account}
               onCancel={handleCancelTokenAddition}
-              onAddToken={addToken}
-              proceedAnywayAction={addToken}
+              onAddToken={() => {
+                hasApprovedAddRef.current = true;
+                return addToken();
+              }}
+              proceedAnywayAction={() => {
+                hasApprovedAddRef.current = true;
+                return addToken();
+              }}
               isAddingToken={isAddingToken}
               isMalicious={isTokenMalicious}
               isSuspicious={isTokenSuspicious}
@@ -353,6 +392,14 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
           modalRef={removeTokenBottomSheetModalRef}
           handleCloseModal={() => {
             removeTokenBottomSheetModalRef.current?.dismiss();
+          }}
+          bottomSheetModalProps={{
+            onChange: (index: number) => {
+              if (index >= 0) {
+                hasApprovedRemoveRef.current = false;
+              }
+            },
+            onDismiss: () => reportDismissal(hasApprovedRemoveRef),
           }}
           analyticsEvent={AnalyticsEvent.VIEW_REMOVE_TOKEN}
           shouldCloseOnPressBackdrop={!!selectedToken}

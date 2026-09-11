@@ -140,6 +140,27 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
     },
   });
 
+  // A local-only token is stored on the device and never signs, so its prompt
+  // reports no signing outcome. Every other token removes a trustline.
+  const promptSigns = selectedBalance
+    ? selectedBalance.tokenType !== TokenTypeWithCustomToken.CUSTOM_TOKEN
+    : false;
+
+  // True once the user approves. Cleared as the sheet opens, because a
+  // dismissal does not always run.
+  const hasApprovedRemoveRef = useRef(false);
+
+  /**
+   * Reports a rejection when the user leaves the removal prompt without
+   * approving, by any route.
+   */
+  const handleRemoveDismiss = useCallback(() => {
+    if (hasApprovedRemoveRef.current || !promptSigns) {
+      return;
+    }
+    analytics.trackInternalSignedTransactionRejected();
+  }, [promptSigns]);
+
   const handleCancelTokenRemoval = useCallback(() => {
     if (selectedBalance) {
       analytics.trackRemoveTokenRejected(selectedBalance.tokenCode);
@@ -328,6 +349,14 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
         handleCloseModal={() =>
           removeTokenBottomSheetModalRef.current?.dismiss()
         }
+        bottomSheetModalProps={{
+          onChange: (index: number) => {
+            if (index >= 0) {
+              hasApprovedRemoveRef.current = false;
+            }
+          },
+          onDismiss: handleRemoveDismiss,
+        }}
         analyticsEvent={AnalyticsEvent.VIEW_REMOVE_TOKEN}
         shouldCloseOnPressBackdrop={!!selectedBalance}
         customContent={
@@ -336,7 +365,10 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
             localOnlyTokenIds={localOnlyTokenIds}
             account={account}
             onCancel={handleCancelTokenRemoval}
-            onRemoveToken={removeToken}
+            onRemoveToken={() => {
+              hasApprovedRemoveRef.current = true;
+              return removeToken();
+            }}
             isRemovingToken={isRemovingToken}
             onDismiss={() => removeTokenBottomSheetModalRef.current?.dismiss()}
           />
