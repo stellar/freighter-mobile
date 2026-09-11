@@ -7,7 +7,11 @@ import { SecurityDetailBottomSheet } from "components/blockaid";
 import { BaseLayout } from "components/layout/BaseLayout";
 import HistoryList from "components/screens/HistoryScreen/HistoryList";
 import { TokenBalanceHeader } from "components/screens/TokenDetailsScreen/components";
-import { RemoveTokenSheetContent } from "components/screens/TokenDetailsScreen/components/RemoveTokenSheetContent";
+import {
+  getRemoveTokenSheetVariant,
+  RemoveTokenSheetContent,
+  RemoveTokenSheetVariant,
+} from "components/screens/TokenDetailsScreen/components/RemoveTokenSheetContent";
 import { Banner } from "components/sds/Banner";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
@@ -140,11 +144,14 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
     },
   });
 
-  // A local-only token is stored on the device and never signs, so its prompt
-  // reports no signing outcome. Every other token removes a trustline.
-  const promptSigns = selectedBalance
-    ? selectedBalance.tokenType !== TokenTypeWithCustomToken.CUSTOM_TOKEN
-    : false;
+  // The prompt reports a signing outcome only when it offers the removal
+  // confirmation for a trustline. It offers no signing decision when it
+  // explains that the wallet cannot remove the token, and a local-only token
+  // never signs.
+  const promptSigns =
+    getRemoveTokenSheetVariant(selectedBalance, localOnlyTokenIds) ===
+      RemoveTokenSheetVariant.confirm &&
+    selectedBalance?.tokenType !== TokenTypeWithCustomToken.CUSTOM_TOKEN;
 
   // True once the user approves. Cleared as the sheet opens, because a
   // dismissal does not always run.
