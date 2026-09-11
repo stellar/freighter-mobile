@@ -19,6 +19,7 @@ import {
   trackInternalSignedTransaction,
   trackInternalSignedTransactionRejected,
   trackInternalSignedTransactionError,
+  trackSignedTransactionError,
   trackSignedMessage,
   trackSignedAuthEntry,
   trackSignedMessageError,
@@ -69,6 +70,7 @@ export interface AnalyticsInstance {
   readonly trackInternalSignedTransaction: typeof trackInternalSignedTransaction;
   readonly trackInternalSignedTransactionRejected: typeof trackInternalSignedTransactionRejected;
   readonly trackInternalSignedTransactionError: typeof trackInternalSignedTransactionError;
+  readonly trackSignedTransactionError: typeof trackSignedTransactionError;
   readonly trackSignedMessage: typeof trackSignedMessage;
   readonly trackSignedAuthEntry: typeof trackSignedAuthEntry;
   readonly trackSignedMessageError: typeof trackSignedMessageError;
@@ -145,6 +147,7 @@ export const analytics: AnalyticsInstance = {
   trackInternalSignedTransaction,
   trackInternalSignedTransactionRejected,
   trackInternalSignedTransactionError,
+  trackSignedTransactionError,
   trackSignedMessage,
   trackSignedAuthEntry,
   trackSignedMessageError,

@@ -93,6 +93,22 @@ export const trackInternalSignedTransactionError = (
   });
 };
 
+/**
+ * Signing threw for a transaction a website requested. A user declining is
+ * NOT a failure — that is trackSignedTransactionRejected. `reason_code` is
+ * scrubbed for the same reason as the internal helper above.
+ */
+export const trackSignedTransactionError = (data: {
+  error?: string | null;
+  dappDomain?: string;
+}): void => {
+  track(AnalyticsEvent.SIGN_TRANSACTION_FAILED, {
+    source: "dapp_api",
+    reason_code: scrubStrKeys(data.error) || "unknown",
+    ...originProps(data.dappDomain),
+  });
+};
+
 export const trackSignedMessage = (data: {
   messageLength: number;
   dappDomain?: string;

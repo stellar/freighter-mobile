@@ -758,7 +758,14 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     prepareTransaction(false, needsEstimation ? "0" : undefined);
   };
 
+  // True while a confirmed transaction dismisses the review sheet. See
+  // handleReviewDismiss.
+  const hasApprovedRef = useRef(false);
+
   const handleTransactionConfirmation = useCallback(() => {
+    // Mark the dismissal below as an approval, so the sheet's dismiss handler
+    // does not report it as a rejection.
+    hasApprovedRef.current = true;
     setIsProcessing(true);
     reviewBottomSheetModalRef.current?.dismiss();
 
@@ -970,14 +977,26 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
   };
 
   const handleCancelReview = useCallback(() => {
-    // Backing out of the review is the internal equivalent of declining a
-    // dApp prompt, so it reports the same event. A rejection carries no
-    // reason_code. Only the explicit cancel counts: the confirm path dismisses
-    // the sheet too, and that is an approval.
-    analytics.trackInternalSignedTransactionRejected();
     reviewBottomSheetModalRef.current?.dismiss();
     focusAmountInput();
   }, [focusAmountInput]);
+
+  /**
+   * Reports a rejection when the user leaves the review sheet without
+   * approving.
+   *
+   * Keyed on the dismissal rather than the Cancel button, because the user can
+   * also leave by swiping down or tapping the backdrop, and those never reach
+   * a button handler. The confirm path sets an approval latch first, so an
+   * approval is not reported as a rejection.
+   */
+  const handleReviewDismiss = useCallback(() => {
+    if (hasApprovedRef.current) {
+      hasApprovedRef.current = false;
+      return;
+    }
+    analytics.trackInternalSignedTransactionRejected();
+  }, []);
 
   const footerProps = useMemo(
     () => ({
@@ -1206,7 +1225,10 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         handleCloseModal={handleCancelReview}
         analyticsEvent={AnalyticsEvent.VIEW_SEND_CONFIRM}
         scrollable
-        bottomSheetModalProps={{ accessible: false }}
+        bottomSheetModalProps={{
+          accessible: false,
+          onDismiss: handleReviewDismiss,
+        }}
         customContent={
           <SendReviewBottomSheet
             type={SendType.Token}

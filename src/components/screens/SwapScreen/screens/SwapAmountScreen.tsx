@@ -636,7 +636,32 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     ],
   );
 
+  // True while a confirmed swap dismisses the review sheet. See
+  // handleReviewDismiss.
+  const hasApprovedRef = useRef(false);
+
+  /**
+   * Reports a rejection when the user leaves the review sheet without
+   * approving.
+   *
+   * Keyed on the dismissal rather than the Cancel button. The footer's Cancel
+   * dismisses the sheet directly, and the user can also leave by swiping down
+   * or tapping the backdrop, so no button handler sees every decline. The
+   * confirm path sets an approval latch first, so an approval is not reported
+   * as a rejection.
+   */
+  const handleReviewDismiss = useCallback(() => {
+    if (hasApprovedRef.current) {
+      hasApprovedRef.current = false;
+      return;
+    }
+    analytics.trackInternalSignedTransactionRejected();
+  }, []);
+
   const handleConfirmSwap = useCallback(() => {
+    // Mark the dismissal below as an approval, so the sheet's dismiss handler
+    // does not report it as a rejection.
+    hasApprovedRef.current = true;
     swapReviewBottomSheetModalRef.current?.dismiss();
 
     // Execute swap without setTimeout - errors are handled in the hook itself
@@ -949,10 +974,6 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
       <BottomSheet
         modalRef={swapReviewBottomSheetModalRef}
         handleCloseModal={() => {
-          // Backing out of the review is the internal rejection — see the
-          // send flow's handleCancelReview. The confirm path dismisses the
-          // sheet separately, so an approval never reaches here.
-          analytics.trackInternalSignedTransactionRejected();
           swapReviewBottomSheetModalRef.current?.dismiss();
           setActiveError(null);
         }}
@@ -963,6 +984,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           // the sheet is on screen, and can never get stuck if the user
           // somehow dismisses before it reaches its snap point.
           onChange: () => setIsOpeningReviewSheet(false),
+          onDismiss: handleReviewDismiss,
         }}
         analyticsEvent={AnalyticsEvent.VIEW_SWAP_CONFIRM}
         customContent={

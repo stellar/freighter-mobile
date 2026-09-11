@@ -75,18 +75,23 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
   }, []);
 
   // This one screen also renders the terminal success state, so emit the
-  // success stage when the swap settles into SWAPPED. Completes
-  // confirm -> processing -> success for swap, matching send. Guarded to fire
-  // at most once per mount (SWAPPED is terminal here anyway).
+  // success stage once the swap settles. Completes confirm -> processing ->
+  // success for swap, matching send. Guarded to fire at most once per mount.
+  //
+  // Keyed on the transaction hash rather than the SWAPPED status. The status
+  // waits for the follow-up details request as well, and that request only
+  // logs when it fails. A settled swap whose details never arrive would
+  // therefore drop out of the funnel. The hash is set only after submission
+  // succeeds, so it alone marks settlement.
   useEffect(() => {
-    if (status === SwapStatus.SWAPPED && !hasEmittedSuccess.current) {
+    if (transactionHash && !transactionError && !hasEmittedSuccess.current) {
       hasEmittedSuccess.current = true;
       track(
         AnalyticsEvent.SCREEN_VIEWED,
         buildScreenViewedProps(AnalyticsEvent.VIEW_SWAP_SUCCESS),
       );
     }
-  }, [status]);
+  }, [transactionHash, transactionError]);
 
   useLayoutEffect(() => {
     navigation.setOptions({

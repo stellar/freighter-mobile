@@ -13,6 +13,7 @@ import {
   trackInternalSignedTransactionRejected,
   trackSendPaymentSuccess,
   trackSignedTransaction,
+  trackSignedTransactionError,
   trackSignedAuthEntryError,
   trackSignedMessageError,
   trackSwapSuccess,
@@ -381,6 +382,22 @@ describe("internal signing events", () => {
     expect(track).toHaveBeenCalledWith(AnalyticsEvent.SIGN_TRANSACTION_FAILED, {
       source: "internal",
       reason_code: "unknown",
+    });
+  });
+
+  it("reports a dApp signing failure with a scrubbed reason", () => {
+    // A website request can fail to sign for the same reasons a wallet-composed
+    // one can. Without this the failure outcome existed for internal
+    // transactions only.
+    trackSignedTransactionError({
+      error: `cannot sign as ${USDC_ISSUER}`,
+      dappDomain: "https://example.com/app",
+    });
+
+    expect(track).toHaveBeenCalledWith(AnalyticsEvent.SIGN_TRANSACTION_FAILED, {
+      source: "dapp_api",
+      reason_code: "cannot sign as G***",
+      origin: "example.com",
     });
   });
 

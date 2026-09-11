@@ -203,6 +203,10 @@ export const useManageTokens = ({
           network,
         });
 
+        // A trustline change is a wallet-composed transaction, so it reports
+        // its signing outcome like a send or a swap does.
+        analytics.trackInternalSignedTransaction();
+
         await submitTx({
           network,
           tx: signedTx,
@@ -336,6 +340,10 @@ export const useManageTokens = ({
           secretKey: privateKey,
           network,
         });
+
+        // A trustline change is a wallet-composed transaction, so it reports
+        // its signing outcome like a send or a swap does.
+        analytics.trackInternalSignedTransaction();
 
         await submitTx({
           network,

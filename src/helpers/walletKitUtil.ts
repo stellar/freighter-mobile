@@ -525,6 +525,9 @@ export const approveSessionRequest = async ({
 
     if (!signedTransaction) {
       const errorMessage = "Failed to sign transaction";
+      // Signing produced nothing. The user already approved the prompt, so
+      // this is a fault and not a decision.
+      analytics.trackSignedTransactionError({ error: errorMessage });
       logger.error(
         "approveSessionRequest",
         errorMessage,
@@ -554,10 +557,15 @@ export const approveSessionRequest = async ({
       ...(dappDomain ? { dappDomain } : {}),
     });
   } catch (error) {
-    const message = t("common.error", {
-      errorMessage:
-        error instanceof Error ? error.message : t("common.unknownError"),
+    const errorMessage =
+      error instanceof Error ? error.message : t("common.unknownError");
+    // Signing threw. The user already approved the prompt, so this is a fault
+    // and not a decision.
+    analytics.trackSignedTransactionError({
+      error: errorMessage,
+      ...(dappDomain ? { dappDomain } : {}),
     });
+    const message = t("common.error", { errorMessage });
     showToast({
       title: t("walletKit.errorSigning"),
       message,
