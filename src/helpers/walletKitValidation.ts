@@ -25,6 +25,13 @@ export const ValidationErrorKeys = {
  */
 export const SIGN_MESSAGE_MAX_BYTES = 10240;
 
+/**
+ * Max UTF-8 byte length for sign_message content arriving over the in-app
+ * WebView bridge. Tighter than WalletConnect because the bridge is reachable
+ * by any page the user browses to.
+ */
+export const WEBVIEW_SIGN_MESSAGE_MAX_BYTES = 1024;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
@@ -62,6 +69,22 @@ export function validateSignMessageLength(
     return { valid: false, errorKey: ValidationErrorKeys.MESSAGE_TOO_LONG };
   }
   return { valid: true, value: message };
+}
+
+/**
+ * Validates a WebView sign_message payload: non-empty string within
+ * WEBVIEW_SIGN_MESSAGE_MAX_BYTES (UTF-8 bytes).
+ */
+export function validateWebviewSignMessage(
+  message: unknown,
+): ValidationResult<string> {
+  const content = validateSignMessageContent(message);
+  if (!content.valid) return content;
+  const messageByteLength = new TextEncoder().encode(content.value).length;
+  if (messageByteLength > WEBVIEW_SIGN_MESSAGE_MAX_BYTES) {
+    return { valid: false, errorKey: ValidationErrorKeys.MESSAGE_TOO_LONG };
+  }
+  return content;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

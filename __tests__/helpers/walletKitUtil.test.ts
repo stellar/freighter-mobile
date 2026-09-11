@@ -44,7 +44,7 @@ describe("resolveDappRejectionEvent (dApp-request teardown → signing.*_rejecte
     ).toBeNull();
   });
 
-  // approveSessionRequest threw: the WC fallback rejection still fires, but this
+  // executeDappRequest threw: the WC fallback rejection still fires, but this
   // is an approval attempt, not a user reject — so no analytics rejection.
   it("returns null when an approval attempt was in flight (even if it threw)", () => {
     expect(

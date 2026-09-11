@@ -16,6 +16,7 @@ const ON_VARIANT_VALUES = ["on", "true", "enabled", "yes"];
 const BOOLEAN_FLAGS = [
   "swap_enabled",
   "discover_enabled",
+  "webview_provider_enabled",
   "onramp_enabled",
   "use_token_prices_v2",
   "use_balances_v2",
@@ -70,6 +71,7 @@ const INITIAL_REMOTE_CONFIG_STATE =
     ? {
         swap_enabled: true,
         discover_enabled: true,
+        webview_provider_enabled: true,
         onramp_enabled: true,
         use_token_prices_v2: true,
         // Defaults to v1 until the wallet-backend indexer is deployed for
@@ -95,6 +97,7 @@ const INITIAL_REMOTE_CONFIG_STATE =
     : {
         swap_enabled: isAndroid,
         discover_enabled: isAndroid,
+        webview_provider_enabled: false,
         onramp_enabled: isAndroid,
         use_token_prices_v2: true,
         // Defaults to v1 until the wallet-backend indexer is deployed for

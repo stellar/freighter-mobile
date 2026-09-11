@@ -12,8 +12,8 @@ import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { NATIVE_TOKEN_CODE, NetworkDetails } from "config/constants";
+import type { DappRequest } from "config/dappRequest";
 import { ActiveAccount } from "ducks/auth";
-import { WalletKitSessionRequest } from "ducks/walletKit";
 import { formatTokenForDisplay } from "helpers/formatAmount";
 import { useTransactionBalanceListItems } from "hooks/blockaid/useTransactionBalanceListItems";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -22,7 +22,7 @@ import React, { useMemo } from "react";
 import { View } from "react-native";
 
 interface DappSignTransactionBottomSheetContentProps {
-  requestEvent: WalletKitSessionRequest | null;
+  requestEvent: DappRequest | null;
   account: ActiveAccount | null;
   networkDetails: NetworkDetails;
   onCancelRequest: () => void;
