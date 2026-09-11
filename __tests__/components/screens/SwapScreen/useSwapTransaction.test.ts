@@ -109,6 +109,9 @@ jest.mock("services/analytics", () => ({
       mockTrackTransactionError(...args),
     ),
     trackSwapSuccess: jest.fn((...args) => mockTrackSwapSuccess(...args)),
+    trackInternalSignedTransaction: jest.fn(),
+    trackInternalSignedTransactionRejected: jest.fn(),
+    trackInternalSignedTransactionError: jest.fn(),
   },
 }));
 
@@ -533,9 +536,7 @@ describe("useSwapTransaction", () => {
       mockFetchTokenPrices.mockRejectedValue(new Error("prices unavailable"));
 
       const resultXdr = settledResultXdr("50000000"); // 5 units
-      (
-        TransactionBuilder.fromXdr as unknown as jest.Mock
-      ).mockReturnValueOnce({
+      (TransactionBuilder.fromXdr as unknown as jest.Mock).mockReturnValueOnce({
         operations: [{ type: "pathPaymentStrictSend" }],
       });
 
@@ -620,9 +621,7 @@ describe("useSwapTransaction", () => {
 
       // The store has been reset: it holds none of this attempt's result.
       mockGetBuilderState.mockReturnValue(emptyBuilderState);
-      (
-        TransactionBuilder.fromXdr as unknown as jest.Mock
-      ).mockReturnValueOnce({
+      (TransactionBuilder.fromXdr as unknown as jest.Mock).mockReturnValueOnce({
         operations: [{ type: "pathPaymentStrictSend" }],
       });
       mockSignTransaction.mockReturnValue("signed-xdr");

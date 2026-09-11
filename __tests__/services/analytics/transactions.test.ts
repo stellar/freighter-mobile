@@ -8,7 +8,12 @@ import {
   LegUsdStatus,
 } from "helpers/usdVolume";
 import {
+  trackInternalSignedTransaction,
+  trackInternalSignedTransactionError,
+  trackInternalSignedTransactionRejected,
   trackSendPaymentSuccess,
+  trackSignedTransaction,
+  trackSignedTransactionError,
   trackSignedAuthEntryError,
   trackSignedMessageError,
   trackSwapSuccess,
@@ -319,5 +324,109 @@ describe("signing-failure reason_code scrubbing (D2 security hygiene)", () => {
     const props = track.mock.calls[0][1];
     expect(props.reason_code).toBe("signAuthEntry failed for G***");
     expect(props.reason_code).not.toContain(STRKEY);
+  });
+});
+
+describe("internal signing events", () => {
+  // Internal transactions report signing with the same events a dApp request
+  // uses; `source` separates the two. Without these, a wallet-composed
+  // transaction reported nothing for the signing action.
+  beforeEach(() => {
+    (track as jest.Mock).mockClear();
+  });
+
+  it("reports an approval with no origin", () => {
+    // An internal transaction has no dApp, so `origin` stays off the payload.
+    trackInternalSignedTransaction();
+
+    expect(track).toHaveBeenCalledWith(
+      AnalyticsEvent.SIGN_TRANSACTION_SUCCESS,
+      {
+        source: "internal",
+      },
+    );
+  });
+
+  it("reports a rejection with no reason_code", () => {
+    // A rejection is a user decision, so nothing went wrong to report.
+    trackInternalSignedTransactionRejected();
+
+    expect(track).toHaveBeenCalledWith(AnalyticsEvent.SIGN_TRANSACTION_FAIL, {
+      source: "internal",
+    });
+  });
+
+  it("reports a failure with a reason_code", () => {
+    trackInternalSignedTransactionError("Failed to sign transaction");
+
+    expect(track).toHaveBeenCalledWith(AnalyticsEvent.SIGN_TRANSACTION_FAILED, {
+      source: "internal",
+      reason_code: "Failed to sign transaction",
+    });
+  });
+
+  it("scrubs Stellar StrKeys out of the failure reason_code", () => {
+    // Amplitude is a third-party sink, and a signing error can echo the
+    // account it tried to sign as.
+    trackInternalSignedTransactionError(`cannot sign as ${USDC_ISSUER}`);
+
+    expect(track).toHaveBeenCalledWith(AnalyticsEvent.SIGN_TRANSACTION_FAILED, {
+      source: "internal",
+      reason_code: "cannot sign as G***",
+    });
+  });
+
+  it("falls back to unknown when the failure has no message", () => {
+    trackInternalSignedTransactionError(null);
+
+    expect(track).toHaveBeenCalledWith(AnalyticsEvent.SIGN_TRANSACTION_FAILED, {
+      source: "internal",
+      reason_code: "unknown",
+    });
+  });
+
+  it("keeps a dApp failure attributable to its website", () => {
+    // The website identity is resolved before signing, so a failure carries it
+    // too. It previously resolved only after signing succeeded, which left
+    // every failure without an origin.
+    trackSignedTransactionError({
+      error: "Failed to sign transaction",
+      dappDomain: "https://example.com/app",
+    });
+
+    expect(track).toHaveBeenCalledWith(AnalyticsEvent.SIGN_TRANSACTION_FAILED, {
+      source: "dapp_api",
+      reason_code: "Failed to sign transaction",
+      origin: "example.com",
+    });
+  });
+
+  it("reports a dApp signing failure with a scrubbed reason", () => {
+    // A website request can fail to sign for the same reasons a wallet-composed
+    // one can. Without this the failure outcome existed for internal
+    // transactions only.
+    trackSignedTransactionError({
+      error: `cannot sign as ${USDC_ISSUER}`,
+      dappDomain: "https://example.com/app",
+    });
+
+    expect(track).toHaveBeenCalledWith(AnalyticsEvent.SIGN_TRANSACTION_FAILED, {
+      source: "dapp_api",
+      reason_code: "cannot sign as G***",
+      origin: "example.com",
+    });
+  });
+
+  it("marks a dApp approval with the dapp_api source", () => {
+    // Both origins carry `source`, so the two payload shapes stay identical.
+    trackSignedTransaction({ dappDomain: "https://example.com/app" });
+
+    expect(track).toHaveBeenCalledWith(
+      AnalyticsEvent.SIGN_TRANSACTION_SUCCESS,
+      {
+        source: "dapp_api",
+        origin: "example.com",
+      },
+    );
   });
 });
