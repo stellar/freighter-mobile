@@ -1,7 +1,11 @@
 /* eslint-disable global-require, @typescript-eslint/no-var-requires */
 import { render } from "@testing-library/react-native";
 import BigNumber from "bignumber.js";
-import { RemoveTokenSheetContent } from "components/screens/TokenDetailsScreen/components/RemoveTokenSheetContent";
+import {
+  getRemoveTokenSheetVariant,
+  RemoveTokenSheetContent,
+  RemoveTokenSheetVariant,
+} from "components/screens/TokenDetailsScreen/components/RemoveTokenSheetContent";
 import { TokenTypeWithCustomToken } from "config/types";
 import React from "react";
 
@@ -136,4 +140,58 @@ describe("RemoveTokenSheetContent", () => {
     );
     expect(getByText("remove-content")).toBeTruthy();
   });
+});
+
+describe("getRemoveTokenSheetVariant", () => {
+  // Only the confirmation body asks the user to sign. The callers that report
+  // the signing outcome read this function, so a "cannot remove" message must
+  // never report a signing decision.
+  it.each([
+    ["no selection", null, [] as string[], RemoveTokenSheetVariant.none],
+    [
+      "XLM",
+      makeToken({
+        id: "XLM",
+        tokenCode: "XLM",
+        tokenType: TokenTypeWithCustomToken.NATIVE,
+        token: { type: TokenTypeWithCustomToken.NATIVE, code: "XLM" },
+      }),
+      [] as string[],
+      RemoveTokenSheetVariant.cannotRemoveNative,
+    ],
+    [
+      "a token with balance",
+      makeToken({ total: new BigNumber(10) }),
+      [] as string[],
+      RemoveTokenSheetVariant.cannotRemoveHasBalance,
+    ],
+    [
+      "a liquidity-pool share",
+      makeToken({
+        total: new BigNumber(0),
+        tokenType: TokenTypeWithCustomToken.LIQUIDITY_POOL_SHARES,
+      }),
+      [] as string[],
+      RemoveTokenSheetVariant.cannotRemoveHasBalance,
+    ],
+    [
+      "a backend-reported contract token",
+      makeCustomToken(),
+      [] as string[],
+      RemoveTokenSheetVariant.cannotRemoveNotLocallyAdded,
+    ],
+    [
+      "a zero-balance trustline",
+      makeToken({ total: new BigNumber(0) }),
+      [] as string[],
+      RemoveTokenSheetVariant.confirm,
+    ],
+  ])(
+    "reports the variant for %s",
+    (_name, token, localOnlyTokenIds, expected) => {
+      expect(getRemoveTokenSheetVariant(token, localOnlyTokenIds)).toBe(
+        expected,
+      );
+    },
+  );
 });

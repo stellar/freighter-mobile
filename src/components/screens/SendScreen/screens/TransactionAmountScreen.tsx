@@ -758,7 +758,14 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     prepareTransaction(false, needsEstimation ? "0" : undefined);
   };
 
+  // True while a confirmed transaction dismisses the review sheet. See
+  // handleReviewDismiss.
+  const hasApprovedRef = useRef(false);
+
   const handleTransactionConfirmation = useCallback(() => {
+    // Mark the dismissal below as an approval, so the sheet's dismiss handler
+    // does not report it as a rejection.
+    hasApprovedRef.current = true;
     setIsProcessing(true);
     reviewBottomSheetModalRef.current?.dismiss();
 
@@ -798,6 +805,10 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           // attempted volume to report. No snapshot has been started yet, so
           // there is nothing to cancel either.
           const { error: signingError } = useTransactionBuilderStore.getState();
+          // The signing action failed. The user already approved at the
+          // review sheet, so this is a fault, not a decision. Reported with
+          // the same event a dApp request uses; `source` separates the two.
+          analytics.trackInternalSignedTransactionError(signingError);
           analytics.trackTransactionError({
             error: signingError || "Failed to sign transaction",
             operationType: TransactionOperationType.Payment,
@@ -806,6 +817,9 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
           setIsProcessing(false);
           return;
         }
+
+        // A signature exists, so the signing action succeeded.
+        analytics.trackInternalSignedTransaction();
 
         // Everything the volume telemetry needs is snapshotted here — after
         // signing succeeded and immediately before submission, so the prices
@@ -966,6 +980,22 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
     reviewBottomSheetModalRef.current?.dismiss();
     focusAmountInput();
   }, [focusAmountInput]);
+
+  /**
+   * Reports a rejection when the user leaves the review sheet without
+   * approving.
+   *
+   * Keyed on the dismissal rather than the Cancel button, because the user can
+   * also leave by swiping down or tapping the backdrop, and those never reach
+   * a button handler. The confirm path sets an approval latch first, so an
+   * approval is not reported as a rejection.
+   */
+  const handleReviewDismiss = useCallback(() => {
+    if (hasApprovedRef.current) {
+      return;
+    }
+    analytics.trackInternalSignedTransactionRejected();
+  }, []);
 
   const footerProps = useMemo(
     () => ({
@@ -1194,7 +1224,17 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
         handleCloseModal={handleCancelReview}
         analyticsEvent={AnalyticsEvent.VIEW_SEND_CONFIRM}
         scrollable
-        bottomSheetModalProps={{ accessible: false }}
+        bottomSheetModalProps={{
+          accessible: false,
+          // Clear the latch as the sheet opens — see the swap flow for why
+          // clearing it on dismissal is not reliable.
+          onChange: (index: number) => {
+            if (index >= 0) {
+              hasApprovedRef.current = false;
+            }
+          },
+          onDismiss: handleReviewDismiss,
+        }}
         customContent={
           <SendReviewBottomSheet
             type={SendType.Token}

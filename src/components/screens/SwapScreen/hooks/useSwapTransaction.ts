@@ -269,8 +269,14 @@ export const useSwapTransaction = ({
         // (without volume data, since nothing reached the network) and shows
         // the error toast, exactly as it did before volume telemetry existed.
         const { error: signingError } = useTransactionBuilderStore.getState();
+        // The signing action failed. The user already approved at the review
+        // sheet, so this is a fault, not a decision.
+        analytics.trackInternalSignedTransactionError(signingError);
         throw new Error(signingError || "Failed to sign transaction");
       }
+
+      // A signature exists, so the signing action succeeded.
+      analytics.trackInternalSignedTransaction();
 
       // Everything the volume telemetry needs is snapshotted here — after
       // signing succeeded and immediately before submission, so the prices
@@ -313,7 +319,9 @@ export const useSwapTransaction = ({
         balance: PricedBalance,
         canonicalId: TokenIdentifier,
       ) =>
-        balance.currentPrice ?? displayPrices[canonicalId]?.currentPrice ?? null;
+        balance.currentPrice ??
+        displayPrices[canonicalId]?.currentPrice ??
+        null;
 
       snapshotHandle = startConfirmationPriceSnapshot({
         canonicalIds: [sourceCanonicalId, destCanonicalId],
@@ -381,7 +389,10 @@ export const useSwapTransaction = ({
       );
       const opIndex = findPathPaymentStrictSendIndex(submittedTx);
       const settledDestAmount = submitOutcome.resultXdr
-        ? getSettledPathPaymentStrictSendAmount(submitOutcome.resultXdr, opIndex)
+        ? getSettledPathPaymentStrictSendAmount(
+            submitOutcome.resultXdr,
+            opIndex,
+          )
         : null;
 
       const snapshot = snapshotHandle.resolve();

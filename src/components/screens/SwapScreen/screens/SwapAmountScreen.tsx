@@ -636,7 +636,31 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     ],
   );
 
+  // True while a confirmed swap dismisses the review sheet. See
+  // handleReviewDismiss.
+  const hasApprovedRef = useRef(false);
+
+  /**
+   * Reports a rejection when the user leaves the review sheet without
+   * approving.
+   *
+   * Keyed on the dismissal rather than the Cancel button. The footer's Cancel
+   * dismisses the sheet directly, and the user can also leave by swiping down
+   * or tapping the backdrop, so no button handler sees every decline. The
+   * confirm path sets an approval latch first, so an approval is not reported
+   * as a rejection.
+   */
+  const handleReviewDismiss = useCallback(() => {
+    if (hasApprovedRef.current) {
+      return;
+    }
+    analytics.trackInternalSignedTransactionRejected();
+  }, []);
+
   const handleConfirmSwap = useCallback(() => {
+    // Mark the dismissal below as an approval, so the sheet's dismiss handler
+    // does not report it as a rejection.
+    hasApprovedRef.current = true;
     swapReviewBottomSheetModalRef.current?.dismiss();
 
     // Execute swap without setTimeout - errors are handled in the hook itself
@@ -958,7 +982,17 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
           // (visible OR dismissed) so the CTA's spinner stops the moment
           // the sheet is on screen, and can never get stuck if the user
           // somehow dismisses before it reaches its snap point.
-          onChange: () => setIsOpeningReviewSheet(false),
+          onChange: (index: number) => {
+            setIsOpeningReviewSheet(false);
+            // Clear the latch as the sheet opens, not as it closes. The
+            // dismiss handler does not always run — it returns early when the
+            // sheet is not present — so clearing there could leave an earlier
+            // approval latched and swallow the next rejection.
+            if (index >= 0) {
+              hasApprovedRef.current = false;
+            }
+          },
+          onDismiss: handleReviewDismiss,
         }}
         analyticsEvent={AnalyticsEvent.VIEW_SWAP_CONFIRM}
         customContent={
