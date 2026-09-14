@@ -34,9 +34,13 @@ appId: org.stellar.freighterdev
           commands:
             - tapOn:
                 id: welcome-banner-dismiss-button
+            # Wait on the sheet's own control disappearing, not on something
+            # behind it: Maestro does not occlusion-test, so the home screen
+            # resolves as visible the whole time the sheet is up and asserting
+            # on it would pass instantly without confirming anything.
             - extendedWaitUntil:
-                visible:
-                  id: home-screen
+                notVisible:
+                  id: welcome-banner-dismiss-button
                 timeout: 15000
 
       # If a previous attempt got as far as opening the manage-accounts sheet,
@@ -49,8 +53,8 @@ appId: org.stellar.freighterdev
             - tapOn:
                 id: manage-accounts-close-button
             - extendedWaitUntil:
-                visible:
-                  id: home-account-switcher
+                notVisible:
+                  id: manage-accounts-close-button
                 timeout: 15000
 
       # An "Account not loaded" toast can also overlay the top of the header.
