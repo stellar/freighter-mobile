@@ -10,6 +10,27 @@ Tests run automatically on triggers described in
 `CreateWallet`) on Android or iOS. The project script `run-e2e-tests.sh` is
 invoked with `--platform`, `--shard-index`, `--shard-total`, and the flow name.
 
+### Flow retries (`E2E_FLOW_ATTEMPTS`)
+
+CI sets `E2E_FLOW_ATTEMPTS: "3"`, so a flow that fails gets up to two more
+attempts on the same device before the job is reported red. This exists so a
+flaky attempt does not require manually re-running the whole matrix job.
+
+- Defaults to `1` when unset, so **local runs still fail fast** and real
+  breakage surfaces immediately. Set it locally to reproduce CI behaviour:
+  `E2E_FLOW_ATTEMPTS=3 yarn test:e2e:android ForgotPasswordWarning`.
+- Retries are **not** silent: a flow that only passed on a retry is logged as
+  `passed ... (on attempt N — flaky)` and listed under
+  `⚠️  Flows that needed a retry:` in the run summary. A flow that fails every
+  attempt is reported as failed, never as flaky.
+- Each attempt writes its own artifact directory, so a passing retry never
+  overwrites the failing attempt's video and `maestro.log` — see
+  [Artifacts & Debugging](artifacts-and-debugging.md).
+- Transaction flows are re-provisioned with a fresh testnet account between
+  attempts, since the first attempt may have consumed the previous one.
+- `device offline` (ADB) errors retry on a separate budget and do not consume a
+  flow attempt — that is an infra hiccup, not a signal about the app.
+
 ## Local
 
 ### Prerequisites
