@@ -46,10 +46,10 @@ export const ReceiveTabView: React.FC = () => {
           <View className="bg-white p-4 rounded-2xl">
             <QRCode
               size={pxValue(QR_SIZE)}
-              logo={logos.freighter2d}
+              logo={logos.varial2d}
               value={publicKey}
               quietZone={6}
-              logoMargin={12}
+              logoMargin={7}
               logoSize={60}
               logoBackgroundColor="transparent"
               ecl="H"

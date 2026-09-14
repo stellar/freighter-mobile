@@ -1,5 +1,5 @@
 import ConfirmationModal from "components/ConfirmationModal";
-import { FreighterLogo } from "components/FreighterLogo";
+import { VarialLogo } from "components/VarialLogo";
 import { Button } from "components/sds/Button";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -45,7 +45,7 @@ export const ForceUpdateScreen: React.FC<ForceUpdateScreenProps> = ({
     <View className="flex-1 justify-center items-center p-6 bg-gray-1">
       <View className="bg-gray-3 rounded-[24px] p-6 w-full max-w-sm">
         <View className="mb-6">
-          <FreighterLogo width={56} height={56} />
+          <VarialLogo width={56} height={56} />
         </View>
 
         <Text className="text-xl font-semibold text-gray-12 text-left mb-4">

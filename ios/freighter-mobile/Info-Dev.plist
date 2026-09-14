@@ -5,7 +5,7 @@
 		<key>CFBundleDevelopmentRegion</key>
 		<string>en</string>
 		<key>CFBundleDisplayName</key>
-		<string>Freighter Dev</string>
+		<string>Varial Dev</string>
 		<key>CFBundleExecutable</key>
 		<string>$(EXECUTABLE_NAME)</string>
 		<key>CFBundleIdentifier</key>
@@ -43,9 +43,9 @@
 			<false />
 		</dict>
 		<key>NSCameraUsageDescription</key>
-		<string>Freighter Dev uses your camera to connect to dApps and scan account addresses.</string>
+		<string>Varial Dev uses your camera to connect to dApps and scan account addresses.</string>
 		<key>NSFaceIDUsageDescription</key>
-		<string>Freighter Dev needs access to your Face ID to securely log in and approve transactions.</string>
+		<string>Varial Dev needs access to your Face ID to securely log in and approve transactions.</string>
 		<key>UIAppFonts</key>
 		<array>
 			<string>Inter-Bold.ttf</string>
@@ -68,11 +68,11 @@
 		<key>UIViewControllerBasedStatusBarAppearance</key>
 		<false />
 		<key>NSUserTrackingUsageDescription</key>
-		<string>Allow Freighter Dev to collect limited information about usage. We will collect public keys, transaction amounts, and balances. This information will not be used for marketing or to identify you personally. We will not collect information such as name, address, email addresses, phone numbers, etc.</string>
+		<string>Allow Varial Dev to collect limited information about usage. We will collect public keys, transaction amounts, and balances. This information will not be used for marketing or to identify you personally. We will not collect information such as name, address, email addresses, phone numbers, etc.</string>
 		<key>NSPhotoLibraryUsageDescription</key>
-		<string>Freighter Dev needs access to your Photos to save collectibles to your photo library.</string>
+		<string>Varial Dev needs access to your Photos to save collectibles to your photo library.</string>
 		<key>NSPhotoLibraryAddUsageDescription</key>
-		<string>Freighter Dev needs access to your Photos to save collectibles to your photo library.</string>
+		<string>Varial Dev needs access to your Photos to save collectibles to your photo library.</string>
 		<key>ITSAppUsesNonExemptEncryption</key>
 		<false />
 	</dict>

@@ -1,4 +1,4 @@
-import { FreighterLogo } from "components/FreighterLogo";
+import { VarialLogo } from "components/VarialLogo";
 import { BaseLayout, BaseLayoutInsets } from "components/layout/BaseLayout";
 import Avatar from "components/sds/Avatar";
 import { BiometricToggleButton } from "components/sds/BiometricToggleButton";
@@ -77,9 +77,7 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
       testID={testID}
     >
       <View className="flex-1 justify-between">
-        <View className="items-center mt-10">
-          {showLogo && <FreighterLogo />}
-        </View>
+        <View className="items-center mt-10">{showLogo && <VarialLogo />}</View>
         <View className="items-center justify-center bg-background-tertiary rounded-2xl p-8 gap-2 mt-4 mb-10">
           <Avatar size="xl" publicAddress={publicKey ?? ""} hasDarkBackground />
           <Display xs semiBold>

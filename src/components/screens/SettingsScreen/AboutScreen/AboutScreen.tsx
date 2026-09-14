@@ -1,6 +1,6 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { FreighterLogo } from "components/FreighterLogo";
 import { List } from "components/List";
+import { VarialLogo } from "components/VarialLogo";
 import { BaseLayout } from "components/layout/BaseLayout";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
@@ -57,7 +57,7 @@ const AboutScreen: React.FC<AboutScreenProps> = () => {
     <BaseLayout insets={{ top: false }}>
       <View className="flex mt-4 bg-background-secondary rounded-[16px] gap-9 p-7">
         <View className="flex gap-4">
-          <FreighterLogo />
+          <VarialLogo />
 
           <View className="flex gap-2">
             <Text md medium>
