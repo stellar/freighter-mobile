@@ -239,6 +239,77 @@ export interface TokenPricesMap {
   [tokenIdentifier: TokenIdentifier]: TokenPrice;
 }
 
+/** Closed set; the spelling is the wire contract and the analytics value. */
+export const PRICE_HISTORY_RANGES = [
+  "1H",
+  "1D",
+  "1W",
+  "1M",
+  "1Y",
+  "ALL",
+] as const;
+
+export type PriceHistoryRange = (typeof PRICE_HISTORY_RANGES)[number];
+
+/**
+ * `t` is the bucket-START unix timestamp; the price was obtained at the bucket
+ * END (`t + resolutionSeconds`) — plot it there, never at `t`.
+ */
+export interface PriceHistoryPoint {
+  /** Bucket-start unix timestamp, in seconds */
+  t: number;
+  /** Bucket close price as a decimal string (parse with BigNumber) */
+  p: string;
+}
+
+/** Displayed verbatim, never recomputed client-side. */
+export interface PriceHistoryChange {
+  /** Absolute USD change over the range, as a decimal string */
+  absolute: string;
+  /** Percentage change over the range, as a decimal string */
+  percent: string;
+}
+
+/**
+ * No data is `points: []` with `change: null` — a 200, not an error. `change`
+ * may also be null with points present (the coverage guard).
+ */
+export interface TokenPriceHistory {
+  /**
+   * The BACKEND WIRE identifier, not the id the caller passed: anything
+   * resolving to native is translated to "native" and validated against that.
+   * Key your own data by the identifier you asked with.
+   */
+  token: string;
+  range: PriceHistoryRange;
+  /** Derived bucket width in seconds (advisory; used only for plotting) */
+  resolutionSeconds: number;
+  currency: string;
+  /**
+   * true → manipulation warning; false → no banner; null → verdict
+   * unavailable, which shows "couldn't verify", never the accusation.
+   */
+  lowVolume: boolean | null;
+  change: PriceHistoryChange | null;
+  points: PriceHistoryPoint[];
+}
+
+export interface TokenPriceHistoryResponse {
+  data: TokenPriceHistory;
+}
+
+/** Unsourceable fields are absent entirely, never null. */
+export interface TokenStats {
+  /** The backend wire identifier — see {@link TokenPriceHistory.token}. */
+  token: string;
+  supplyOnStellar?: string;
+  holders?: number;
+}
+
+export interface TokenStatsResponse {
+  data: TokenStats;
+}
+
 /**
  * Represents a balance with additional price and display information
  *
