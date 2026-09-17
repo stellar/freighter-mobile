@@ -6,6 +6,7 @@ import React from "react";
 import {
   Text as RNText,
   AccessibilityRole,
+  LayoutChangeEvent,
   Platform,
   StyleProp,
   TextStyle,
@@ -95,7 +96,7 @@ const DISPLAY_SIZES = {
   xs: { fontSize: 24, lineHeight: 32 },
 } as const;
 
-const TEXT_SIZES = {
+export const TEXT_SIZES = {
   xl: { fontSize: 20, lineHeight: 28 },
   lg: { fontSize: 18, lineHeight: 26 },
   md: { fontSize: 16, lineHeight: 24 },
@@ -274,6 +275,8 @@ export const Display: React.FC<DisplayProps> = ({
 
 export interface TextProps extends TypographyBaseProps {
   size?: TextSize;
+  /** Forwarded to the native Text, for callers that must measure the text. */
+  onLayout?: (event: LayoutChangeEvent) => void;
   isVerticallyCentered?: boolean;
   url?: string;
   style?: StyleProp<TextStyle>;

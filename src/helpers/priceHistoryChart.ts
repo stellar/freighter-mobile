@@ -209,7 +209,10 @@ export const easeOutCubic = (progress: number): number => {
  * `coords` must be sorted by x, which the geometry's monotonic clamp
  * guarantees; a duplicate x is a zero-width bracket and the later y wins.
  */
-const sampleCoordinateY = (coords: ChartCoordinate[], x: number): number => {
+export const sampleCoordinateY = (
+  coords: ChartCoordinate[],
+  x: number,
+): number => {
   "worklet";
 
   const last = coords.length - 1;

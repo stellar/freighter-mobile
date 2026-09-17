@@ -55,6 +55,12 @@ module.exports = {
   // collide via Haste and break the whole suite.
   modulePathIgnorePatterns: ["<rootDir>/.claude/"],
   testPathIgnorePatterns: ["/node_modules/", "<rootDir>/.claude/"],
+  // Only files that name themselves as suites. The default treats every file
+  // under `__tests__/` as one, which forced an ignore rule for the shared
+  // helpers in `__tests__/support/` — and that rule would then have silently
+  // swallowed any real test placed there, reporting nothing rather than
+  // failing.
+  testMatch: ["**/*.(test|spec).[jt]s?(x)"],
   coveragePathIgnorePatterns: ["/node_modules/", "/jest"],
   transform: {
     "^.+\\.(js|jsx|ts|tsx|mjs)$": "babel-jest",

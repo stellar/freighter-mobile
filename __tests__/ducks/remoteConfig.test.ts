@@ -46,6 +46,42 @@ const mockGetExperimentClient = getExperimentClient as jest.MockedFunction<
   typeof getExperimentClient
 >;
 
+describe("production defaults", () => {
+  it("ships the price-history kill switch OFF", () => {
+    // The endpoints it calls are not deployed yet, and `isInitialized` is set
+    // on a FAILED flag fetch too — so a `true` default would mount the
+    // feature and fire seven failing requests per mainnet token-detail open
+    // on any build that reached users before the backend. Amplitude flips it
+    // on once the endpoints are live, like `use_balances_v2`.
+    // `__DEV__` is a React Native global; jest defines it as true, and the
+    // production branch is what needs asserting.
+    // eslint-disable-next-line no-underscore-dangle
+    const devGlobal = global as unknown as { __DEV__: boolean };
+    // eslint-disable-next-line no-underscore-dangle
+    const previousDev = devGlobal.__DEV__;
+    // eslint-disable-next-line no-underscore-dangle
+    devGlobal.__DEV__ = false;
+
+    try {
+      jest.isolateModules(() => {
+        jest.doMock("helpers/isEnv", () => ({ isDev: false }));
+        // eslint-disable-next-line @typescript-eslint/no-require-imports, global-require, @typescript-eslint/no-var-requires
+        const { useRemoteConfigStore: store } =
+          jest.requireActual<typeof import("ducks/remoteConfig")>(
+            "ducks/remoteConfig",
+          );
+
+        expect(store.getState().use_token_price_history).toBe(false);
+        // The switch is off, not the whole config: a neighbour still ships on.
+        expect(store.getState().use_token_prices_v2).toBe(true);
+      });
+    } finally {
+      // eslint-disable-next-line no-underscore-dangle
+      devGlobal.__DEV__ = previousDev;
+    }
+  });
+});
+
 describe("remoteConfig duck", () => {
   beforeEach(() => {
     act(() => {
