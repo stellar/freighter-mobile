@@ -290,6 +290,9 @@ jest.mock("services/analytics", () => ({
     trackCopyBackupPhrase: jest.fn(),
     trackQRScanSuccess: jest.fn(),
     trackQRScanError: jest.fn(),
+    trackTokenChartLoaded: jest.fn(),
+    trackTokenChartViewed: jest.fn(),
+    trackTokenChartRangeChanged: jest.fn(),
   },
   TransactionType: {
     Classic: "classic",

@@ -12,6 +12,9 @@ import type {
   TransactionErrorEvent,
 } from "services/analytics/types";
 
+// Section refs (§N) below are to the token-price-graphs design doc:
+// wallet-eng-monorepo/design-docs/token-price-graphs/token-price-graphs-design.md
+
 // `origin` is the bare dApp hostname (never a full URL) — matches the
 // extension's getUrlHostname-based origin so cross-platform funnels merge.
 const originProps = (url?: string): { origin?: string } => {
@@ -157,6 +160,9 @@ export const trackSwapSuccess = (data: SwapSuccessEvent): void => {
   track(AnalyticsEvent.SWAP_SUCCESS, {
     from_asset_code: data.sourceToken,
     to_asset_code: data.destToken,
+    // Entry tag (design §7.5): swaps entered from the token detail view carry
+    // source: "token_details"; other entries keep the historical shape.
+    ...(data.source ? { source: data.source } : {}),
   });
 };
 

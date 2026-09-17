@@ -26,6 +26,7 @@ import { mockUseColors } from "../../../../__mocks__/use-colors";
 const MockView = View;
 const mockSetSourceToken = jest.fn();
 const mockSetDestinationToken = jest.fn();
+const mockSetEntrySource = jest.fn();
 const mockSetSourceAmount = jest.fn();
 const mockSetSourceAmountDisplay = jest.fn();
 const mockResetSwap = jest.fn();
@@ -112,6 +113,7 @@ type SwapStoreState = {
   pathError: string | null;
   setSourceToken: jest.Mock;
   setDestinationToken: jest.Mock;
+  setEntrySource: jest.Mock;
   setSourceAmount: jest.Mock;
   setSourceAmountDisplay: jest.Mock;
   resetSwap: jest.Mock;
@@ -137,6 +139,7 @@ const makeDefaultSwapState = (): SwapStoreState => ({
   pathError: null,
   setSourceToken: mockSetSourceToken,
   setDestinationToken: mockSetDestinationToken,
+  setEntrySource: mockSetEntrySource,
   setSourceAmount: mockSetSourceAmount,
   setSourceAmountDisplay: mockSetSourceAmountDisplay,
   resetSwap: mockResetSwap,

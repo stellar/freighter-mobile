@@ -26,6 +26,9 @@ import { useToast } from "providers/ToastProvider";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { analytics } from "services/analytics";
 
+// Section refs (§N) below are to the token-price-graphs design doc:
+// wallet-eng-monorepo/design-docs/token-price-graphs/token-price-graphs-design.md
+
 /**
  * `destinationTokenInput` is either the user's held PricedBalance for
  * the destination, or a `descriptorAsPathBalance(descriptor)` shim for
@@ -182,6 +185,13 @@ export const useSwapTransaction = ({
       throw new Error("Destination token is required for swap transaction");
     }
 
+    // Entry tag stamped by SwapAmountScreen (e.g. "token_details") so
+    // swap.completed can be broken down by entry point (design §7.5).
+    // Captured HERE, into the submission closure, like every other payload
+    // field: SwapAmountScreen's unmount cleanup calls resetSwap(), so
+    // navigating away during submission would clear it before success.
+    const { entrySource } = useSwapStore.getState();
+
     setIsProcessing(true);
 
     try {
@@ -237,6 +247,7 @@ export const useSwapTransaction = ({
         destAmount: pathResult?.destinationAmount,
         allowedSlippage: freshSwapSlippage?.toString(),
         isSwap: true,
+        source: entrySource ?? undefined,
       });
 
       // Fire SWAP_TRUSTLINE_ADDED when the combined changeTrust +

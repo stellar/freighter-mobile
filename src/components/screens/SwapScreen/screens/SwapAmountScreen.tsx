@@ -92,6 +92,9 @@ import { analytics } from "services/analytics";
 import { SecurityContext, SecurityLevel } from "services/blockaid/constants";
 import { assessTransactionSecurity } from "services/blockaid/helper";
 
+// Section refs (§N) below are to the token-price-graphs design doc:
+// wallet-eng-monorepo/design-docs/token-price-graphs/token-price-graphs-design.md
+
 type SwapAmountScreenProps = NativeStackScreenProps<
   SwapStackParamList,
   typeof SWAP_ROUTES.SWAP_AMOUNT_SCREEN
@@ -101,8 +104,11 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
   navigation,
   route,
 }) => {
-  const { tokenId: swapFromTokenId, tokenSymbol: swapFromTokenSymbol } =
-    route.params;
+  const {
+    tokenId: swapFromTokenId,
+    tokenSymbol: swapFromTokenSymbol,
+    source: swapEntrySource,
+  } = route.params;
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
   const headerHeight = useHeaderHeight();
@@ -146,6 +152,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     pathError,
     setSourceToken,
     setDestinationToken,
+    setEntrySource,
     setSourceAmount,
     setSourceAmountDisplay,
     resetSwap,
@@ -407,6 +414,13 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
     destinationTokenDescriptor,
     setDestinationToken,
   });
+
+  // Stamp the analytics entry tag every mount/param change (undefined for
+  // non-detail entries), so swap.completed can carry `source` (§7.5). Kept
+  // in the swap store because the success tracking fires screens later.
+  useEffect(() => {
+    setEntrySource(swapEntrySource ?? null);
+  }, [swapEntrySource, setEntrySource]);
 
   // The network fee auto-refreshes every 30s and is paid in XLM, so a fee
   // bump would shrink an XLM source's spendable and flash "Insufficient
