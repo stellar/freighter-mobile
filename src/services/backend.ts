@@ -866,10 +866,17 @@ const assertDrawableSeries = (data: TokenPriceHistory) => {
       )}, resolutionSeconds=${String(data.resolutionSeconds)})`,
     );
   }
-  // `change` is optional — the §4.2 coverage guard nulls it deliberately —
-  // but when present both halves are rendered as numbers, and a non-numeric
-  // one prints "$NaN" in the header rather than failing loudly.
-  if (data?.change != null) {
+  // `change` is NULLABLE, not optional: the §6.1 contract has it present on
+  // every payload, `null` when the §4.2 coverage guard rejects the window.
+  // `!= null` would wave through a missing field as though the backend had
+  // deliberately declined to compute a change, and the empty header that
+  // produces is indistinguishable from the legitimate null — cached, and
+  // silently wrong. Same rule the `lowVolume` verdict above is held to.
+  if (data.change === undefined) {
+    throw new Error("token price history: missing change");
+  }
+
+  if (data.change !== null) {
     if (
       !isNumericString(data.change.absolute) ||
       !isNumericString(data.change.percent)

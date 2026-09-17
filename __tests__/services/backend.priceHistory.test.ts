@@ -228,6 +228,11 @@ describe("fetchTokenPriceHistory", () => {
     // and silence the notice.
     ["a missing lowVolume", { lowVolume: undefined }, "lowVolume"],
     ["a stringly lowVolume", { lowVolume: "false" }, "lowVolume"],
+    // `change` is nullable, not optional: present on every payload, `null`
+    // only when the coverage guard rejected the window. A missing field is a
+    // malformed payload, and the empty header it produces is indistinguishable
+    // from the legitimate null.
+    ["a missing change", { change: undefined }, "missing change"],
     [
       "a non-numeric change",
       { change: { absolute: "n/a", percent: "0.86" } },
