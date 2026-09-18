@@ -406,6 +406,43 @@ export const initializeSentry = (): void => {
 
       return event;
     },
+
+    /**
+     * Scrub Stellar StrKeys from every breadcrumb at creation time.
+     *
+     * `beforeSend` above already deep-scrubs `event.breadcrumbs[].data`, but
+     * only for events that travel through the JS layer. Native crashes, iOS
+     * app hangs and Android ANRs are captured and transmitted by the
+     * Cocoa/Android SDKs (see the note in `beforeSend`) and attach the
+     * breadcrumb buffer *as stored*, so send-time scrubbing never runs for
+     * them. Scrubbing on the way in means the stored buffer is already clean
+     * whichever layer ends up shipping it.
+     *
+     * This also covers `breadcrumb.message`, which `beforeSend` does not
+     * touch. Sentry's HTTP auto-instrumentation puts the request URL in
+     * `data.url`, and several of our endpoints embed the account directly in
+     * the path (`/accounts/${publicKey}`, `/account-history/${publicKey}`),
+     * but console and navigation breadcrumbs carry strings in `message`
+     * instead.
+     *
+     * @param breadcrumb - The breadcrumb Sentry is about to record.
+     * @returns The same breadcrumb with StrKeys replaced by prefix sentinels.
+     */
+    beforeBreadcrumb(breadcrumb) {
+      if (typeof breadcrumb.message === "string") {
+        // eslint-disable-next-line no-param-reassign
+        breadcrumb.message = scrubStrKeys(breadcrumb.message);
+      }
+      if (breadcrumb.data) {
+        // eslint-disable-next-line no-param-reassign
+        breadcrumb.data = deepScrubStrKeys(breadcrumb.data) as Record<
+          string,
+          unknown
+        >;
+      }
+
+      return breadcrumb;
+    },
   });
 
   isSentryInitialized = true;
