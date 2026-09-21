@@ -141,6 +141,7 @@ describe("TokenPriceHistorySection", () => {
       statsByNetwork: {},
       historyStatusByKey: {},
       selectedRange: null,
+      inspectedPoint: null,
     });
     mockFetchHistory.mockResolvedValue(makeHistory());
   });
@@ -748,6 +749,42 @@ describe("TokenPriceHistorySection", () => {
       } finally {
         jest.useRealTimers();
       }
+    });
+
+    it("a same-range refetch landing under the finger clears it, even with no range switch", async () => {
+      // The range-switch test above is satisfied by the DUCK's own
+      // `setSelectedRange`, which clears a same-scope inspection on its own —
+      // it doesn't touch this section's `data?.points` cleanup dependency at
+      // all. This covers the other branch: a revalidation (retry, or a
+      // background refetch) that lands a NEW payload for the SAME range,
+      // with no tab pressed and no `range` change anywhere. The index would
+      // otherwise describe a point in the OLD series, not the one now drawn.
+      const { getByTestId } = renderSection();
+
+      await waitFor(() => {
+        expect(getByTestId("price-history-chart")).toBeTruthy();
+      });
+
+      putInMidInspect();
+      expect(usePriceHistoryStore.getState().inspectedPoint).not.toBeNull();
+
+      // Drives the duck's own fetch path directly (not a UI retry, which
+      // requires an error state first) with `forceRefresh` to bypass the
+      // flat cache-validity window, resolving a DIFFERENT points array for
+      // the SAME "1D" range — a new object, a new array identity, same key.
+      mockFetchHistory.mockResolvedValueOnce(
+        makeHistory({ points: densePoints.slice(0, 35) }),
+      );
+      await act(async () => {
+        await usePriceHistoryStore.getState().fetchPriceHistory({
+          tokenId: "native",
+          network: NETWORKS.PUBLIC,
+          range: "1D",
+          forceRefresh: true,
+        });
+      });
+
+      expect(usePriceHistoryStore.getState().inspectedPoint).toBeNull();
     });
 
     it("clears the inspected point when the kill switch flips off mid-drag", async () => {
