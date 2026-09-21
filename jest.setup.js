@@ -304,6 +304,7 @@ jest.mock("services/analytics", () => ({
     trackTokenChartLoaded: jest.fn(),
     trackTokenChartViewed: jest.fn(),
     trackTokenChartRangeChanged: jest.fn(),
+    trackTokenChartBrushed: jest.fn(),
   },
   TransactionType: {
     Classic: "classic",

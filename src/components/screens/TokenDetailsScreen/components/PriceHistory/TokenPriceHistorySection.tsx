@@ -17,6 +17,10 @@ import {
   TokenIdentifier,
   TokenPriceHistory,
 } from "config/types";
+import {
+  useInspectedPriceHistory,
+  usePriceHistoryStore,
+} from "ducks/priceHistory";
 import { formatDate } from "helpers/date";
 import { pxValue } from "helpers/dimensions";
 import {
@@ -137,6 +141,61 @@ const TokenPriceHistorySection: React.FC<TokenPriceHistorySectionProps> = ({
       onLoaded: handleLoaded,
       onRangeSettled: handleRangeSettled,
     });
+
+  // The chart snaps a drag position to an INDEX; this section knows which
+  // series that index indexes into and publishes both, so the header can
+  // resolve the point off the same cache entry the chart drew.
+  const setInspectedPoint = usePriceHistoryStore(
+    (state) => state.setInspectedPoint,
+  );
+  const clearInspectedPoint = usePriceHistoryStore(
+    (state) => state.clearInspectedPoint,
+  );
+  const inspected = useInspectedPriceHistory(network, tokenId);
+  const plottedRange = data?.range;
+
+  const handleInspectStart = useCallback(
+    (index: number) => {
+      if (!plottedRange) return;
+      setInspectedPoint({ network, tokenId, range: plottedRange, index });
+      // Once per activation, never per move (§7.5).
+      analytics.trackTokenChartBrushed(plottedRange);
+    },
+    [network, tokenId, plottedRange, setInspectedPoint],
+  );
+  const handleInspectMove = useCallback(
+    (index: number) => {
+      if (!plottedRange) return;
+      setInspectedPoint({ network, tokenId, range: plottedRange, index });
+    },
+    [network, tokenId, plottedRange, setInspectedPoint],
+  );
+  const handleInspectEnd = useCallback(
+    () => clearInspectedPoint({ network, tokenId }),
+    [network, tokenId, clearInspectedPoint],
+  );
+
+  // A new series under the finger (fetch landed, range switched) or an
+  // unmount ends the inspection: the index would otherwise describe the
+  // wrong point. Keyed off `data?.points` rather than the post-return
+  // `points` local so this stays a hook called unconditionally every render.
+  useEffect(
+    () => () => clearInspectedPoint({ network, tokenId }),
+    [network, tokenId, data?.points, clearInspectedPoint],
+  );
+
+  // The kill switch can flip off WITHOUT this section unmounting — it just
+  // renders null below — so without this the header would keep describing a
+  // point off a chart that is no longer on screen (mobile's counterpart to
+  // the extension's "header never outlives the chart" guard).
+  useEffect(() => {
+    if (!isEnabled) {
+      clearInspectedPoint({ network, tokenId });
+    }
+  }, [isEnabled, network, tokenId, clearInspectedPoint]);
+
+  const inspectedIndex =
+    inspected && inspected.range === plottedRange ? inspected.index : null;
 
   /**
    * One event per (token, range) SHOWN, cache hits included — `loaded` skips
@@ -287,6 +346,10 @@ const TokenPriceHistorySection: React.FC<TokenPriceHistorySectionProps> = ({
             data?.change?.percent,
             data?.change?.absolute,
           )}
+          inspectedIndex={inspectedIndex}
+          onInspectStart={handleInspectStart}
+          onInspectMove={handleInspectMove}
+          onInspectEnd={handleInspectEnd}
         />
       </View>
     );
