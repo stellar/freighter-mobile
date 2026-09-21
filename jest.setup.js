@@ -2,7 +2,6 @@
 /* eslint-disable import/extensions */
 import mockClipboard from "@react-native-clipboard/clipboard/jest/clipboard-mock.js";
 import mockRNDeviceInfo from "react-native-device-info/jest/react-native-device-info-mock";
-import mockGestureHandler from "react-native-gesture-handler/jestSetup";
 import { TextEncoder, TextDecoder } from "util";
 
 // Ensure TextEncoder/TextDecoder are available for libs that expect Web APIs
@@ -209,7 +208,15 @@ jest.mock("@react-navigation/bottom-tabs", () => ({
 
 jest.mock("react-native-device-info", () => mockRNDeviceInfo);
 
-jest.mock("react-native-gesture-handler", () => mockGestureHandler);
+// `jestSetup` is a SIDE-EFFECT script: it mocks the library's native module
+// and its native-backed components, and exports nothing. Importing it as a
+// value and feeding that to `jest.mock("react-native-gesture-handler")`
+// replaced the whole package with `{}` for every suite, so `Gesture`,
+// `GestureDetector` and `State` were all undefined repo-wide. Requiring it
+// for its side effects instead leaves the real JS API in place — which is
+// what `react-native-gesture-handler/jest-utils` needs. Suites that want a
+// stub still opt into `__mocks__/gesture-handler.tsx` themselves.
+require("react-native-gesture-handler/jestSetup");
 
 jest.mock("@gorhom/bottom-sheet", () => {
   const mockBottomSheet = {
