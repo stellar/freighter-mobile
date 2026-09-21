@@ -32,6 +32,7 @@ import {
 import React from "react";
 import {
   AccessibilityInfo,
+  DeviceEventEmitter,
   Dimensions,
   StyleSheet,
   useWindowDimensions,
@@ -852,5 +853,113 @@ describe("drag to inspect", () => {
       accessibilityElementsHidden: true,
       importantForAccessibility: "no-hide-descendants",
     });
+  });
+
+  /**
+   * Drives RNGH's own event pipeline — the one `fireGestureHandler` emits on —
+   * a single state change at a time.
+   *
+   * `fireGestureHandler` cannot express a gesture that is still running: its
+   * `fillMissingStatesTransitions` always appends a terminal END to whatever
+   * it is given, so there is no event list that leaves the handler ACTIVE.
+   * Emitting the state changes directly is the same path, minus that sugar.
+   */
+  const emitStateChange = (
+    handlerTag: number,
+    event: { oldState: State; state: State; x?: number },
+  ) =>
+    DeviceEventEmitter.emit("onGestureHandlerStateChange", {
+      handlerTag,
+      numberOfPointers: 1,
+      y: 0,
+      absoluteX: event.x ?? 40,
+      absoluteY: 0,
+      translationX: 0,
+      translationY: 0,
+      velocityX: 0,
+      velocityY: 0,
+      x: 40,
+      ...event,
+    });
+
+  it("ends an inspect the chart is unmounted out of", () => {
+    const onInspectEnd = jest.fn();
+    const { unmount } = renderInspectable({ onInspectEnd });
+    const { handlerTag } = getByGestureTestId(INSPECT_GESTURE_TEST_ID);
+
+    emitStateChange(handlerTag, {
+      oldState: State.UNDETERMINED,
+      state: State.BEGAN,
+    });
+    emitStateChange(handlerTag, { oldState: State.BEGAN, state: State.ACTIVE });
+    // Still live: RNGH sends no terminal state change on teardown, so nothing
+    // else is going to clear the parent's inspected point.
+    expect(onInspectEnd).not.toHaveBeenCalled();
+
+    unmount();
+
+    expect(onInspectEnd).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not end twice when a finished gesture is followed by an unmount", () => {
+    const onInspectEnd = jest.fn();
+    const { unmount } = renderInspectable({ onInspectEnd });
+
+    fireGestureHandler<PanGesture>(
+      getByGestureTestId(INSPECT_GESTURE_TEST_ID),
+      [
+        { state: State.BEGAN, x: 40 },
+        { state: State.ACTIVE, x: 40 },
+        { state: State.END },
+      ],
+    );
+    expect(onInspectEnd).toHaveBeenCalledTimes(1);
+
+    unmount();
+
+    expect(onInspectEnd).toHaveBeenCalledTimes(1);
+  });
+
+  it("never ends a chart that was unmounted without a gesture", () => {
+    const onInspectEnd = jest.fn();
+    const { unmount } = renderInspectable({ onInspectEnd });
+
+    unmount();
+
+    expect(onInspectEnd).not.toHaveBeenCalled();
+  });
+
+  it("keeps ONE gesture across a callback change, and reports through the latest", () => {
+    const first = jest.fn();
+    const second = jest.fn();
+    const { rerender } = renderInspectable({ onInspectStart: first });
+    const gesture = getByGestureTestId(INSPECT_GESTURE_TEST_ID);
+
+    // The ordinary call site passes inline arrows: a new function identity
+    // every render. The detector must not be re-armed for that.
+    rerender(
+      <TokenPriceChart
+        testID="price-history-chart"
+        points={inspectPoints}
+        resolutionSeconds={900}
+        width={width}
+        direction="positive"
+        onInspectStart={second}
+      />,
+    );
+    expect(getByGestureTestId(INSPECT_GESTURE_TEST_ID)).toBe(gesture);
+
+    fireGestureHandler<PanGesture>(
+      getByGestureTestId(INSPECT_GESTURE_TEST_ID),
+      [
+        { state: State.BEGAN, x: 40 },
+        { state: State.ACTIVE, x: 40 },
+        { state: State.END },
+      ],
+    );
+
+    expect(first).not.toHaveBeenCalled();
+    expect(second).toHaveBeenCalledTimes(1);
+    expect(second).toHaveBeenCalledWith(0);
   });
 });

@@ -184,6 +184,13 @@ interface TokenPriceChartProps {
   inspectedIndex?: number | null;
   onInspectStart?: (index: number) => void;
   onInspectMove?: (index: number) => void;
+  /**
+   * Fires for EVERY finalized gesture, not only a completed inspect: a pan
+   * that FAILED or was CANCELLED before it ever activated — which is every
+   * scroll that begins on the chart — clears through here too, as does an
+   * unmount while a gesture is still live. Callers must treat it as
+   * idempotent and must never hang analytics off it.
+   */
   onInspectEnd?: () => void;
   testID?: string;
 }
@@ -275,10 +282,36 @@ const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
       ? points[inspectedIndex]
       : undefined;
 
+  /**
+   * The live callbacks, read through refs so the gesture does not depend on
+   * them.
+   *
+   * A parent that passes inline arrows — the ordinary way to write this call
+   * site — would otherwise hand the memo three new functions every render and
+   * rebuild the gesture every time, re-registering the handler mid-drag. The
+   * refs make the memo's dependency honest: it is `xs` and nothing else.
+   */
+  const onInspectStartRef = useRef(onInspectStart);
+  const onInspectMoveRef = useRef(onInspectMove);
+  const onInspectEndRef = useRef(onInspectEnd);
+
+  useEffect(() => {
+    onInspectStartRef.current = onInspectStart;
+    onInspectMoveRef.current = onInspectMove;
+    onInspectEndRef.current = onInspectEnd;
+  });
+
+  /**
+   * Whether a gesture is currently active, for the unmount cleanup below.
+   * A ref, not state: it is written from the gesture handlers and read once
+   * on teardown, and nothing renders from it.
+   */
+  const isInspectingRef = useRef(false);
+
   // `runOnJS(true)`: the handlers set React state and call analytics, both JS
-  // work, and one `nearestCoordinateIndex` per event is cheap. Rebuilt only
-  // when the xs or the callbacks change, so the detector is not re-armed
-  // every render.
+  // work, and one `nearestCoordinateIndex` per event is cheap. Re-created ONLY
+  // when the plotted xs change — never on a callback identity change — so the
+  // detector is not re-armed while a finger is down.
   const inspectGesture = useMemo(
     () =>
       Gesture.Pan()
@@ -287,17 +320,40 @@ const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
         .activateAfterLongPress(INSPECT_LONG_PRESS_MS)
         .runOnJS(true)
         .onStart((event) => {
-          onInspectStart?.(nearestCoordinateIndex(xs, event.x));
+          isInspectingRef.current = true;
+          onInspectStartRef.current?.(nearestCoordinateIndex(xs, event.x));
         })
         .onUpdate((event) => {
-          onInspectMove?.(nearestCoordinateIndex(xs, event.x));
+          onInspectMoveRef.current?.(nearestCoordinateIndex(xs, event.x));
         })
         // Finalize covers END, CANCELLED and FAILED alike; clearing is
         // idempotent, so a failed long-press costs nothing.
         .onFinalize(() => {
-          onInspectEnd?.();
+          isInspectingRef.current = false;
+          onInspectEndRef.current?.();
         }),
-    [xs, onInspectStart, onInspectMove, onInspectEnd],
+    [xs],
+  );
+
+  /**
+   * Ends an inspect that the chart is unmounted out of.
+   *
+   * RNGH drops the handler on teardown WITHOUT a terminal state change, so
+   * `onFinalize` never runs for a gesture that was still live — navigating
+   * away mid-drag, or the section swapping the chart for the ghost on a range
+   * that has to fetch. The parent would keep the inspected point it was last
+   * told about and leave the list unscrollable with nothing on screen to
+   * release it. Guarded by the ref so it cannot double-fire after a gesture
+   * that did finalize.
+   */
+  useEffect(
+    () => () => {
+      if (isInspectingRef.current) {
+        isInspectingRef.current = false;
+        onInspectEndRef.current?.();
+      }
+    },
+    [],
   );
 
   // Tooltip placement needs the pill's measured width; hidden until it lands
