@@ -377,12 +377,22 @@ export const usePriceHistoryStore = create<PriceHistoryState>((set, get) => {
     },
 
     setInspectedPoint: ({ network, tokenId, range, index }) =>
-      set({
-        inspectedPoint: {
-          key: getTokenScopeKey(network, tokenId),
-          range,
-          index,
-        },
+      set((state) => {
+        const key = getTokenScopeKey(network, tokenId);
+        const current = state.inspectedPoint;
+        // A pointer move fires at touch frequency; most moves land on the
+        // same snapped index as the last one. Returning the SAME state
+        // object when key/range/index are unchanged keeps every subscriber
+        // (header, delta, section, chart) from re-rendering on a no-op move.
+        if (
+          current &&
+          current.key === key &&
+          current.range === range &&
+          current.index === index
+        ) {
+          return state;
+        }
+        return { inspectedPoint: { key, range, index } };
       }),
 
     clearInspectedPoint: ({ network, tokenId }) => {

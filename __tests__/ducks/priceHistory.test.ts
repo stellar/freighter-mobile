@@ -740,4 +740,28 @@ describe("inspected point", () => {
     );
     expect(result.current).toBe(true);
   });
+
+  it("re-setting the same point keeps the state reference", () => {
+    seedEntry();
+    const store = usePriceHistoryStore.getState();
+    store.setInspectedPoint({ network, tokenId, range: "1D", index: 1 });
+    const before = usePriceHistoryStore.getState().inspectedPoint;
+
+    store.setInspectedPoint({ network, tokenId, range: "1D", index: 1 });
+
+    expect(usePriceHistoryStore.getState().inspectedPoint).toBe(before);
+  });
+
+  it("a different index yields a new object", () => {
+    seedEntry();
+    const store = usePriceHistoryStore.getState();
+    store.setInspectedPoint({ network, tokenId, range: "1D", index: 1 });
+    const before = usePriceHistoryStore.getState().inspectedPoint;
+
+    store.setInspectedPoint({ network, tokenId, range: "1D", index: 2 });
+
+    const after = usePriceHistoryStore.getState().inspectedPoint;
+    expect(after).not.toBe(before);
+    expect(after).toEqual({ key: before?.key, range: "1D", index: 2 });
+  });
 });
