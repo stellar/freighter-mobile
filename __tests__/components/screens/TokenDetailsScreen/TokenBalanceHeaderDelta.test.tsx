@@ -328,8 +328,15 @@ describe("TokenBalanceHeader range delta", () => {
         fireEvent.press(getByTestId("timeframe-selector-1Y"));
       });
       await act(async () => {
-        jest.advanceTimersByTime(500);
-        await Promise.resolve();
+        // `advanceTimersByTimeAsync`, not a sync advance plus one
+        // `await Promise.resolve()`: a real range switch starts a genuine
+        // Reanimated `withTiming` morph, and its completion callback reaches
+        // `stopMorphing` through `runOnJS`, which needs more than one
+        // microtask tick to land. The async variant loops advancing and
+        // flushing microtasks until nothing is left pending, so the morph's
+        // `setIsMorphing(false)` update is captured inside this `act`
+        // instead of surfacing as an unwrapped update later.
+        await jest.advanceTimersByTimeAsync(500);
       });
 
       expect(getByTestId("token-price-delta").props.children).toBe(
@@ -390,8 +397,15 @@ describe("TokenBalanceHeader range delta", () => {
         fireEvent.press(getByTestId("timeframe-selector-1Y"));
       });
       await act(async () => {
-        jest.advanceTimersByTime(500);
-        await Promise.resolve();
+        // `advanceTimersByTimeAsync`, not a sync advance plus one
+        // `await Promise.resolve()`: a real range switch starts a genuine
+        // Reanimated `withTiming` morph, and its completion callback reaches
+        // `stopMorphing` through `runOnJS`, which needs more than one
+        // microtask tick to land. The async variant loops advancing and
+        // flushing microtasks until nothing is left pending, so the morph's
+        // `setIsMorphing(false)` update is captured inside this `act`
+        // instead of surfacing as an unwrapped update later.
+        await jest.advanceTimersByTimeAsync(500);
       });
 
       expect(getByTestId("price-history-error")).toBeTruthy();
@@ -415,8 +429,15 @@ describe("TokenBalanceHeader range delta", () => {
         fireEvent.press(getByTestId("timeframe-selector-1W"));
       });
       await act(async () => {
-        jest.advanceTimersByTime(500);
-        await Promise.resolve();
+        // `advanceTimersByTimeAsync`, not a sync advance plus one
+        // `await Promise.resolve()`: a real range switch starts a genuine
+        // Reanimated `withTiming` morph, and its completion callback reaches
+        // `stopMorphing` through `runOnJS`, which needs more than one
+        // microtask tick to land. The async variant loops advancing and
+        // flushing microtasks until nothing is left pending, so the morph's
+        // `setIsMorphing(false)` update is captured inside this `act`
+        // instead of surfacing as an unwrapped update later.
+        await jest.advanceTimersByTimeAsync(500);
       });
 
       // Exactly one request per range with both components mounted: 1W's came
@@ -697,8 +718,15 @@ describe("TokenBalanceHeader range delta", () => {
         fireEvent.press(getByTestId("timeframe-selector-1W"));
       });
       await act(async () => {
-        jest.advanceTimersByTime(500);
-        await Promise.resolve();
+        // `advanceTimersByTimeAsync`, not a sync advance plus one
+        // `await Promise.resolve()`: a real range switch starts a genuine
+        // Reanimated `withTiming` morph, and its completion callback reaches
+        // `stopMorphing` through `runOnJS`, which needs more than one
+        // microtask tick to land. The async variant loops advancing and
+        // flushing microtasks until nothing is left pending, so the morph's
+        // `setIsMorphing(false)` update is captured inside this `act`
+        // instead of surfacing as an unwrapped update later.
+        await jest.advanceTimersByTimeAsync(500);
       });
 
       expect(getByTestId("token-price-delta")).toHaveTextContent(
@@ -718,6 +746,62 @@ describe("TokenBalanceHeader range delta", () => {
       // stale 1D inspection is never mistaken for one on the visible range.
       expect(getByTestId("token-price-delta")).toHaveTextContent(
         formatPriceHistoryRangeDelta({ absolute: "-0.05", percent: "-11.11" }),
+      );
+
+      jest.useRealTimers();
+    });
+
+    it("an inspection on a range other than the selected one leaves the header price on spot", async () => {
+      jest.useFakeTimers();
+      mockFetchHistory.mockImplementation(({ range }) =>
+        Promise.resolve(
+          range === "1W"
+            ? makeHistory({
+                range: "1W",
+                change: { absolute: "-0.05", percent: "-11.11" },
+              })
+            : makeHistory({ points: inspectedPoints }),
+        ),
+      );
+
+      const { getByTestId } = renderDetailView();
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      act(() => {
+        fireEvent.press(getByTestId("timeframe-selector-1W"));
+      });
+      await act(async () => {
+        // `advanceTimersByTimeAsync`, not a sync advance plus one
+        // `await Promise.resolve()`: a real range switch starts a genuine
+        // Reanimated `withTiming` morph, and its completion callback reaches
+        // `stopMorphing` through `runOnJS`, which needs more than one
+        // microtask tick to land. The async variant loops advancing and
+        // flushing microtasks until nothing is left pending, so the morph's
+        // `setIsMorphing(false)` update is captured inside this `act`
+        // instead of surfacing as an unwrapped update later.
+        await jest.advanceTimersByTimeAsync(500);
+      });
+
+      expect(getByTestId("token-price-header-price")).toHaveTextContent(
+        formatFiatAmount(nativeBalance.currentPrice ?? "0"),
+      );
+
+      act(() => {
+        usePriceHistoryStore.getState().setInspectedPoint({
+          network: NETWORKS.PUBLIC,
+          tokenId: "native",
+          range: "1D",
+          index: 1,
+        });
+      });
+
+      // The selected range (1W) still shows spot — the stale 1D inspection
+      // is never mistaken for one on the visible range.
+      expect(getByTestId("token-price-header-price")).toHaveTextContent(
+        formatFiatAmount(nativeBalance.currentPrice ?? "0"),
       );
 
       jest.useRealTimers();

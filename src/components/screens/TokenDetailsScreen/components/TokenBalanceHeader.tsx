@@ -5,7 +5,10 @@ import TokenPriceDelta from "components/screens/TokenDetailsScreen/components/Pr
 import { Display, Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE, NETWORKS } from "config/constants";
 import { useBalancesStore } from "ducks/balances";
-import { useInspectedPriceHistory } from "ducks/priceHistory";
+import {
+  useInspectedPriceHistory,
+  useSelectedPriceHistoryRange,
+} from "ducks/priceHistory";
 import { isNativeAssetId } from "helpers/assetIdentity";
 import { formatBalanceAmount, formatFiatAmount } from "helpers/formatAmount";
 import { isContractId } from "helpers/soroban";
@@ -60,6 +63,7 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
   const isSorobanToken = isContractId(tokenId);
   const tokenBalance = useTokenDetailBalance(tokenId);
   const inspected = useInspectedPriceHistory(network, tokenId);
+  const selectedRange = useSelectedPriceHistoryRange(network, tokenId);
 
   // Early return if tokenBalance is not available
   if (!tokenBalance) {
@@ -100,11 +104,18 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
 
   // While a drag-to-inspect is in progress the price is the inspected
   // point's close, through the same formatter as the live spot; released, it
-  // is spot again (Phase 3). The duck only ever holds an inspection for a
-  // chart that is mounted, so no flag check is needed here. Otherwise the
-  // price is live spot and does NOT vary by timeframe; only the delta
-  // beneath it follows the chart's selected range (§7.3).
-  const headerPrice = inspected?.point.p ?? tokenBalance.currentPrice ?? "0";
+  // is spot again (Phase 3). Guarded on the SELECTED range too, exactly like
+  // {@link TokenPriceDelta}: the duck drops an inspection on a range switch,
+  // but for the frame in between, an inspection keyed to the OLD range must
+  // not still drive the price here — the price, the delta and the chart all
+  // have to read the same guard or they can show three different points at
+  // once. Otherwise the price is live spot and does NOT vary by timeframe;
+  // only the delta beneath it follows the chart's selected range (§7.3).
+  const inspectedPrice =
+    inspected && inspected.range === selectedRange
+      ? inspected.point.p
+      : undefined;
+  const headerPrice = inspectedPrice ?? tokenBalance.currentPrice ?? "0";
 
   const renderPriceInfo = () => (
     <View className="gap-1">
