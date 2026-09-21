@@ -22,6 +22,7 @@ import {
   addressToString,
   getCreateContractArgs,
   scValByType,
+  xdrStringToDisplay,
 } from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
 import { useClipboard } from "hooks/useClipboard";
@@ -760,7 +761,7 @@ export const KeyValueInvokeHostFn = ({
         const contractId = Address.fromScAddress(
           invocation.contractAddress,
         ).toString();
-        const functionName = invocation.functionName.toString();
+        const functionName = xdrStringToDisplay(invocation.functionName);
 
         return (
           <>
