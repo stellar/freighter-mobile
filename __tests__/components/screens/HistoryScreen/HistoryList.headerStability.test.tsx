@@ -2,7 +2,7 @@ import HistoryList from "components/screens/HistoryScreen/HistoryList";
 import { NETWORKS, mapNetworkToNetworkDetails } from "config/constants";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
-import { Text } from "react-native";
+import { SectionList, Text } from "react-native";
 
 jest.mock("hooks/useAppTranslation", () => () => ({
   t: (key: string) => key,
@@ -106,5 +106,42 @@ describe("HistoryList header stability", () => {
     expect(queryByText("history.error")).toBeTruthy();
     // ...and the header still must not have been rebuilt to say so.
     expect(mounts.count).toBe(1);
+  });
+
+  /**
+   * `TokenDetailsScreen` flips `scrollEnabled` off while the chart is being
+   * inspected (drag-to-inspect), so the parent list must not scroll under a
+   * finger that is dragging on the chart above it. This is the real
+   * `SectionList`, so it proves the prop is actually forwarded, not just
+   * accepted.
+   */
+  it("forwards scrollEnabled to the underlying SectionList", () => {
+    const loaded = {
+      historyData: {
+        history: [{ monthYear: "September 2026", operations: [] }],
+      },
+      isLoading: false,
+      error: null,
+    };
+
+    const { UNSAFE_getByType: getByType } = renderWithProviders(
+      <HistoryList {...props({ ...loaded, scrollEnabled: false })} />,
+    );
+    expect(getByType(SectionList).props.scrollEnabled).toBe(false);
+  });
+
+  it("defaults scrollEnabled to true when the prop is omitted", () => {
+    const loaded = {
+      historyData: {
+        history: [{ monthYear: "September 2026", operations: [] }],
+      },
+      isLoading: false,
+      error: null,
+    };
+
+    const { UNSAFE_getByType: getByType } = renderWithProviders(
+      <HistoryList {...props(loaded)} />,
+    );
+    expect(getByType(SectionList).props.scrollEnabled).toBe(true);
   });
 });
