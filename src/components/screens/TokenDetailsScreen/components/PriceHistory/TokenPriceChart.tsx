@@ -86,7 +86,8 @@ export const END_DOT_RADIUS = 4;
  * Drag-to-inspect (Phase 3). A long-press arms the Pan: a finger that moves
  * within this window FAILS the gesture and the parent list scrolls as before,
  * which is the whole of the scroll arbitration — nothing here touches the
- * ScrollView; the section flips `scrollEnabled` off while inspecting.
+ * ScrollView; the detail screen (`TokenDetailsScreen`) flips `scrollEnabled`
+ * off while inspecting.
  */
 export const INSPECT_LONG_PRESS_MS = 200;
 /** 8px dot per the design; a 2px background ring separates it from the line. */
@@ -204,10 +205,25 @@ export const tooltipPlacement = (
     ? "right"
     : "left";
 
-export const tooltipLeft = (x: number, tooltipWidth: number | undefined) =>
-  tooltipPlacement(x, tooltipWidth) === "left"
-    ? x - INSPECT_TOOLTIP_GAP - (tooltipWidth ?? 0)
-    : x + INSPECT_TOOLTIP_GAP;
+/**
+ * `left` for the tooltip pill, clamped so it never overhangs either edge of
+ * the chart: a point near the right edge flips left-of-guide (see
+ * `tooltipPlacement`) but the pill itself can still be wider than the
+ * remaining room, so the clamp is a second, independent guard against the
+ * chart's own `width`, not a placement decision.
+ */
+export const tooltipLeft = (
+  x: number,
+  tooltipWidth: number | undefined,
+  width: number,
+) => {
+  const left =
+    tooltipPlacement(x, tooltipWidth) === "left"
+      ? x - INSPECT_TOOLTIP_GAP - (tooltipWidth ?? 0)
+      : x + INSPECT_TOOLTIP_GAP;
+
+  return Math.max(0, Math.min(left, width - (tooltipWidth ?? 0)));
+};
 
 /** The pill's 8px tip: a rotated square tucked 4px under the pill's edge. */
 const Tip: React.FC<{ color: string; side: "left" | "right" }> = ({
@@ -686,7 +702,7 @@ const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
           style={{
             position: "absolute",
             top: priceChartLabelHeight(fontScale),
-            left: tooltipLeft(inspectedCoord.x, tooltipWidth),
+            left: tooltipLeft(inspectedCoord.x, tooltipWidth, width),
             // Hidden until its own measurement lands, for the same reason the
             // axis labels are: the placement depends on the width.
             opacity: tooltipWidth === undefined ? 0 : 1,

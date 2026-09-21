@@ -845,6 +845,23 @@ describe("drag to inspect", () => {
     ).toMatchObject({ left: 0 + 8, opacity: 1 });
   });
 
+  it("clamps a wide pill flipped right near the left edge to the chart's right edge", () => {
+    const measure = (el: ReturnType<typeof screen.getByTestId>, w: number) =>
+      fireEvent(el, "layout", {
+        nativeEvent: { layout: { width: w, height: 34 } },
+      });
+
+    // x = 0 flips right (0 - 8 - 295 < 0); an unclamped right placement would
+    // put the pill's right edge at 0 + 8 + 295 = 303, past the 300px chart.
+    const wide = renderInspectable({ inspectedIndex: 0 });
+    measure(wide.getByTestId("price-history-inspect-tooltip", HIDDEN), 295);
+    expect(
+      StyleSheet.flatten(
+        wide.getByTestId("price-history-inspect-tooltip", HIDDEN).props.style,
+      ),
+    ).toMatchObject({ left: width - 295, opacity: 1 });
+  });
+
   it("is hidden from assistive tech", () => {
     const { getByTestId } = renderInspectable({ inspectedIndex: 1 });
     expect(
