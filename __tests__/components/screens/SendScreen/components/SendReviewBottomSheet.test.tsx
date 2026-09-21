@@ -13,10 +13,8 @@ import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 
 import { mockBalances } from "../../../../../__mocks__/balances";
-import { mockGestureHandler } from "../../../../../__mocks__/gesture-handler";
 import { mockUseColors } from "../../../../../__mocks__/use-colors";
 
-mockGestureHandler();
 mockUseColors();
 
 const mockAccount = {
