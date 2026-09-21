@@ -1,4 +1,9 @@
-import { act, fireEvent, renderHook } from "@testing-library/react-native";
+import {
+  act,
+  fireEvent,
+  renderHook,
+  screen,
+} from "@testing-library/react-native";
 import TokenPriceChart, {
   buildChartLinePath,
   axisLabelWidth,
@@ -7,6 +12,7 @@ import TokenPriceChart, {
   priceChartHeight,
   priceChartLabelHeight,
   PRICE_CHART_LINE_HEIGHT,
+  INSPECT_GESTURE_TEST_ID,
 } from "components/screens/TokenDetailsScreen/components/PriceHistory/TokenPriceChart";
 import { TEXT_SIZES } from "components/sds/Typography";
 import { getThemeColors } from "config/colors";
@@ -14,6 +20,7 @@ import { fsValue } from "helpers/dimensions";
 import {
   CHART_MORPH_DURATION_MS,
   computeChartGeometry,
+  formatPriceHistoryLabel,
   interpolateChartCoordinates,
   PriceChangeDirection,
 } from "helpers/priceHistoryChart";
@@ -29,6 +36,11 @@ import {
   StyleSheet,
   useWindowDimensions,
 } from "react-native";
+import { State, PanGesture } from "react-native-gesture-handler";
+import {
+  fireGestureHandler,
+  getByGestureTestId,
+} from "react-native-gesture-handler/jest-utils";
 
 // `useColorScheme` reports "light" under the react-native jest preset, so the
 // component resolves its palette through the light theme. The two status
@@ -707,5 +719,138 @@ describe("axis label measurements survive their own edge cases", () => {
     });
 
     expect(opacityOf()).toBe(0);
+  });
+});
+
+describe("drag to inspect", () => {
+  // The tooltip is deliberately hidden from assistive tech, and hidden again
+  // by `opacity: 0` until it has measured itself. RNTL's queries skip
+  // a11y-hidden nodes by default, so every assertion about it — including the
+  // negative ones — has to opt those nodes back in, or it would be asserting
+  // on the filter rather than on the component.
+  const HIDDEN = { includeHiddenElements: true };
+  const width = 300;
+  // 4 points spanning the width: bucket ends at 900, 1800, 2700, 3600 → x 0, 100, 200, 300
+  const inspectPoints = [
+    { t: 0, p: "1.00" },
+    { t: 900, p: "1.10" },
+    { t: 1800, p: "1.05" },
+    { t: 2700, p: "1.20" },
+  ];
+  const renderInspectable = (
+    props: Partial<React.ComponentProps<typeof TokenPriceChart>> = {},
+  ) =>
+    renderWithProviders(
+      <TokenPriceChart
+        testID="price-history-chart"
+        points={inspectPoints}
+        resolutionSeconds={900}
+        width={width}
+        direction="positive"
+        {...props}
+      />,
+    );
+
+  beforeEach(() => {
+    jest.spyOn(Date, "now").mockReturnValue(1_000_000 * 1000);
+  });
+  afterEach(() => jest.restoreAllMocks());
+
+  it("reports the SNAPPED index on start and on every move, then ends", () => {
+    const onInspectStart = jest.fn();
+    const onInspectMove = jest.fn();
+    const onInspectEnd = jest.fn();
+    renderInspectable({ onInspectStart, onInspectMove, onInspectEnd });
+
+    fireGestureHandler<PanGesture>(
+      getByGestureTestId(INSPECT_GESTURE_TEST_ID),
+      [
+        { state: State.BEGAN, x: 40 },
+        { state: State.ACTIVE, x: 40 },
+        { x: 160 },
+        { x: 999 },
+        { state: State.END },
+      ],
+    );
+
+    expect(onInspectStart).toHaveBeenCalledTimes(1);
+    expect(onInspectStart).toHaveBeenCalledWith(0);
+    expect(onInspectMove.mock.calls.map(([i]) => i)).toEqual([2, 3]);
+    expect(onInspectEnd).toHaveBeenCalledTimes(1);
+  });
+
+  it("ends when the gesture is cancelled", () => {
+    const onInspectEnd = jest.fn();
+    renderInspectable({ onInspectEnd });
+    fireGestureHandler<PanGesture>(
+      getByGestureTestId(INSPECT_GESTURE_TEST_ID),
+      [
+        { state: State.BEGAN, x: 40 },
+        { state: State.ACTIVE, x: 40 },
+        { state: State.CANCELLED },
+      ],
+    );
+    expect(onInspectEnd).toHaveBeenCalledTimes(1);
+  });
+
+  it("draws the guide, the dot and the tooltip at the inspected point and hides the end dot", () => {
+    const { toJSON, getByTestId, queryByTestId } = renderInspectable({
+      inspectedIndex: 1,
+    });
+    const tree = toJSON() as RenderedTree;
+    const circles = findAllRenderedByType(tree, "skCircle");
+    // ring + dot at x=100; no end dot at x=300
+    expect(circles.map((c) => c.props.cx)).toEqual([100, 100]);
+    expect(findAllRenderedByType(tree, "skLine")).toHaveLength(1);
+    expect(findAllRenderedByType(tree, "skDashPathEffect")).toHaveLength(1);
+    expect(
+      getByTestId("price-history-inspect-tooltip", HIDDEN),
+    ).toHaveTextContent(formatPriceHistoryLabel("1.10"));
+    expect(
+      queryByTestId("price-history-inspect-tooltip", HIDDEN),
+    ).not.toBeNull();
+  });
+
+  it("draws nothing extra and keeps the end dot when not inspecting", () => {
+    const { toJSON, queryByTestId } = renderInspectable({
+      inspectedIndex: null,
+    });
+    const tree = toJSON() as RenderedTree;
+    expect(findAllRenderedByType(tree, "skCircle")).toHaveLength(1);
+    expect(findAllRenderedByType(tree, "skLine")).toHaveLength(0);
+    expect(queryByTestId("price-history-inspect-tooltip", HIDDEN)).toBeNull();
+  });
+
+  it("places the tooltip left of the guide once measured, and flips right near the left edge", () => {
+    const measure = (el: ReturnType<typeof screen.getByTestId>, w: number) =>
+      fireEvent(el, "layout", {
+        nativeEvent: { layout: { width: w, height: 34 } },
+      });
+
+    const right = renderInspectable({ inspectedIndex: 2 }); // x = 200
+    measure(right.getByTestId("price-history-inspect-tooltip", HIDDEN), 60);
+    expect(
+      StyleSheet.flatten(
+        right.getByTestId("price-history-inspect-tooltip", HIDDEN).props.style,
+      ),
+    ).toMatchObject({ left: 200 - 8 - 60, opacity: 1 });
+
+    const left = renderInspectable({ inspectedIndex: 0 }); // x = 0
+    measure(left.getByTestId("price-history-inspect-tooltip", HIDDEN), 60);
+    expect(
+      StyleSheet.flatten(
+        left.getByTestId("price-history-inspect-tooltip", HIDDEN).props.style,
+      ),
+    ).toMatchObject({ left: 0 + 8, opacity: 1 });
+  });
+
+  it("is hidden from assistive tech", () => {
+    const { getByTestId } = renderInspectable({ inspectedIndex: 1 });
+    expect(
+      getByTestId("price-history-inspect-tooltip", HIDDEN).props,
+    ).toMatchObject({
+      accessibilityElementsHidden: true,
+      importantForAccessibility: "no-hide-descendants",
+    });
   });
 });

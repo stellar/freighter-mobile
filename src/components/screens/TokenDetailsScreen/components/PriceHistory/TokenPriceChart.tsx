@@ -1,7 +1,9 @@
 import {
   Canvas,
   Circle,
+  DashPathEffect,
   LinearGradient,
+  Line,
   Path,
   vec,
 } from "@shopify/react-native-skia";
@@ -15,6 +17,7 @@ import {
   formatPriceHistoryLabel,
   getPriceChangeColor,
   interpolateChartCoordinates,
+  nearestCoordinateIndex,
   PriceChangeDirection,
 } from "helpers/priceHistoryChart";
 import useColors from "hooks/useColors";
@@ -27,6 +30,7 @@ import React, {
   useState,
 } from "react";
 import { LayoutChangeEvent, useWindowDimensions, View } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import {
   cancelAnimation,
   Easing,
@@ -77,6 +81,20 @@ const LINE_STROKE_WIDTH = 2;
  * its measured width minus this radius rather than letting it overflow.
  */
 export const END_DOT_RADIUS = 4;
+
+/**
+ * Drag-to-inspect (Phase 3). A long-press arms the Pan: a finger that moves
+ * within this window FAILS the gesture and the parent list scrolls as before,
+ * which is the whole of the scroll arbitration — nothing here touches the
+ * ScrollView; the section flips `scrollEnabled` off while inspecting.
+ */
+export const INSPECT_LONG_PRESS_MS = 200;
+/** 8px dot per the design; a 2px background ring separates it from the line. */
+export const INSPECT_DOT_RADIUS = 4;
+export const INSPECT_DOT_RING_WIDTH = 2;
+/** Gap between the tooltip's tip and the guide, per the design. */
+export const INSPECT_TOOLTIP_GAP = 8;
+export const INSPECT_GESTURE_TEST_ID = "price-history-chart-inspect";
 
 /**
  * Width assumed for an axis label before it has measured itself.
@@ -162,12 +180,46 @@ interface TokenPriceChartProps {
   width: number;
   /** Colours the whole artwork, from the same source as the header delta. */
   direction: PriceChangeDirection;
+  /** Index into `points` under the finger, or null when not inspecting. */
+  inspectedIndex?: number | null;
+  onInspectStart?: (index: number) => void;
+  onInspectMove?: (index: number) => void;
+  onInspectEnd?: () => void;
   testID?: string;
 }
 
+/** Which side of the guide the pill sits on: left unless it would overhang x=0. */
+export const tooltipPlacement = (
+  x: number,
+  tooltipWidth: number | undefined,
+): "left" | "right" =>
+  tooltipWidth !== undefined && x - INSPECT_TOOLTIP_GAP - tooltipWidth < 0
+    ? "right"
+    : "left";
+
+export const tooltipLeft = (x: number, tooltipWidth: number | undefined) =>
+  tooltipPlacement(x, tooltipWidth) === "left"
+    ? x - INSPECT_TOOLTIP_GAP - (tooltipWidth ?? 0)
+    : x + INSPECT_TOOLTIP_GAP;
+
+/** The pill's 8px tip: a rotated square tucked 4px under the pill's edge. */
+const Tip: React.FC<{ color: string; side: "left" | "right" }> = ({
+  color,
+  side,
+}) => (
+  <View
+    style={{
+      width: 8,
+      height: 8,
+      backgroundColor: color,
+      transform: [{ rotate: "45deg" }],
+      ...(side === "right" ? { marginLeft: -4 } : { marginRight: -4 }),
+    }}
+  />
+);
+
 /**
- * Static Skia polyline — no gestures in Phase 1, so nothing competes with the
- * parent ScrollView. Geometry comes from {@link computeChartGeometry}: exactly
+ * Skia polyline with drag-to-inspect. Geometry comes from {@link computeChartGeometry}: exactly
  * the returned points, positioned by timestamp at bucket ends, spot never
  * plotted. Axis labels come from those points, not the requested window.
  *
@@ -176,12 +228,24 @@ interface TokenPriceChartProps {
  * an approximation. Only the line moves — colour and labels describe the
  * selected range and update at once. A switch that must fetch shows the ghost
  * instead, so the previous range's line never sits under another range's tab.
+ *
+ * A long press of {@link INSPECT_LONG_PRESS_MS} arms the Pan; from there every
+ * event snaps to the nearest plotted point and is reported by index, and
+ * `onFinalize` clears on END, CANCELLED and FAILED alike. A finger that moves
+ * inside the arming window fails the gesture and the parent list scrolls as
+ * before, so nothing here competes with the ScrollView. Inspecting is pointer/
+ * touch only and purely additive: every value it surfaces — the price, the
+ * range, the extremes — is already on screen without it (§7.4).
  */
 const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
   points,
   resolutionSeconds,
   width,
   direction,
+  inspectedIndex,
+  onInspectStart,
+  onInspectMove,
+  onInspectEnd,
   testID,
 }) => {
   const { themeColors } = useColors();
@@ -200,6 +264,50 @@ const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
   );
 
   const coords = useMemo(() => geometry?.coords ?? [], [geometry]);
+
+  const xs = useMemo(() => coords.map((coord) => coord.x), [coords]);
+  const inspectedCoord =
+    inspectedIndex !== null && inspectedIndex !== undefined
+      ? coords[inspectedIndex]
+      : undefined;
+  const inspectedPoint =
+    inspectedIndex !== null && inspectedIndex !== undefined
+      ? points[inspectedIndex]
+      : undefined;
+
+  // `runOnJS(true)`: the handlers set React state and call analytics, both JS
+  // work, and one `nearestCoordinateIndex` per event is cheap. Rebuilt only
+  // when the xs or the callbacks change, so the detector is not re-armed
+  // every render.
+  const inspectGesture = useMemo(
+    () =>
+      Gesture.Pan()
+        .withTestId(INSPECT_GESTURE_TEST_ID)
+        .enabled(xs.length >= 2)
+        .activateAfterLongPress(INSPECT_LONG_PRESS_MS)
+        .runOnJS(true)
+        .onStart((event) => {
+          onInspectStart?.(nearestCoordinateIndex(xs, event.x));
+        })
+        .onUpdate((event) => {
+          onInspectMove?.(nearestCoordinateIndex(xs, event.x));
+        })
+        // Finalize covers END, CANCELLED and FAILED alike; clearing is
+        // idempotent, so a failed long-press costs nothing.
+        .onFinalize(() => {
+          onInspectEnd?.();
+        }),
+    [xs, onInspectStart, onInspectMove, onInspectEnd],
+  );
+
+  // Tooltip placement needs the pill's measured width; hidden until it lands
+  // (same model as the axis labels).
+  const [tooltipWidth, setTooltipWidth] = useState<number | undefined>();
+  const measureTooltip = (event: LayoutChangeEvent) => {
+    const measured = event.nativeEvent.layout.width;
+
+    setTooltipWidth((current) => (current === measured ? current : measured));
+  };
 
   // Reduced motion is honoured by not animating at all: the hard switch is
   // the correct behaviour in its own right, not a degraded one.
@@ -347,6 +455,9 @@ const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
   // gradient fill (that colour at 30% fading to transparent) all follow the
   // direction, the way the design draws a losing range entirely in red.
   const lineColor = getPriceChangeColor(direction, themeColors);
+  const placement = inspectedCoord
+    ? tooltipPlacement(inspectedCoord.x, tooltipWidth)
+    : "left";
   /** What a stored measurement has to still describe to be usable. */
   const labelTag = (label: string) => `${label}|${fontScale}`;
 
@@ -416,37 +527,67 @@ const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
       </View>
       {/* Skia's Path `style` is its paint style ("fill"/"stroke"), not an RN style object */}
       {/* eslint-disable react/style-prop-object */}
-      <Canvas
-        style={{
-          width: width + END_DOT_RADIUS,
-          height: PRICE_CHART_LINE_HEIGHT,
-        }}
-      >
-        <Path
-          path={isMorphing ? morphedFillPath : settled.fillPath}
-          style="fill"
+      <GestureDetector gesture={inspectGesture}>
+        <Canvas
+          style={{
+            width: width + END_DOT_RADIUS,
+            height: PRICE_CHART_LINE_HEIGHT,
+          }}
         >
-          <LinearGradient
-            start={vec(0, 0)}
-            end={vec(0, PRICE_CHART_LINE_HEIGHT)}
-            colors={[`${lineColor}4D`, `${lineColor}00`]}
+          <Path
+            path={isMorphing ? morphedFillPath : settled.fillPath}
+            style="fill"
+          >
+            <LinearGradient
+              start={vec(0, 0)}
+              end={vec(0, PRICE_CHART_LINE_HEIGHT)}
+              colors={[`${lineColor}4D`, `${lineColor}00`]}
+            />
+          </Path>
+          <Path
+            path={isMorphing ? morphedLinePath : settled.linePath}
+            style="stroke"
+            strokeWidth={LINE_STROKE_WIDTH}
+            strokeJoin="round"
+            strokeCap="round"
+            color={lineColor}
           />
-        </Path>
-        <Path
-          path={isMorphing ? morphedLinePath : settled.linePath}
-          style="stroke"
-          strokeWidth={LINE_STROKE_WIDTH}
-          strokeJoin="round"
-          strokeCap="round"
-          color={lineColor}
-        />
-        <Circle
-          cx={isMorphing ? morphedEndDotX : settled.endDot.x}
-          cy={isMorphing ? morphedEndDotY : settled.endDot.y}
-          r={END_DOT_RADIUS}
-          color={lineColor}
-        />
-      </Canvas>
+          {/* The inspect artwork uses the SETTLED coords: a morph runs 250 ms
+              and the long-press is 200 ms, so the overlap is a frame or two of
+              the dot leading the line; not worth a shared-value path. */}
+          {inspectedCoord ? (
+            <>
+              <Line
+                p1={vec(inspectedCoord.x, 0)}
+                p2={vec(inspectedCoord.x, PRICE_CHART_LINE_HEIGHT)}
+                color={themeColors.border.primary}
+                strokeWidth={1}
+              >
+                <DashPathEffect intervals={[4, 4]} />
+              </Line>
+              <Circle
+                cx={inspectedCoord.x}
+                cy={inspectedCoord.y}
+                r={INSPECT_DOT_RADIUS + INSPECT_DOT_RING_WIDTH}
+                color={themeColors.background.primary}
+              />
+              <Circle
+                cx={inspectedCoord.x}
+                cy={inspectedCoord.y}
+                r={INSPECT_DOT_RADIUS}
+                color={lineColor}
+              />
+            </>
+          ) : (
+            <Circle
+              cx={isMorphing ? morphedEndDotX : settled.endDot.x}
+              cy={isMorphing ? morphedEndDotY : settled.endDot.y}
+              r={END_DOT_RADIUS}
+              color={lineColor}
+            />
+          )}
+        </Canvas>
+      </GestureDetector>
       {/* eslint-enable react/style-prop-object */}
       <View
         testID="price-history-chart-label-row-low"
@@ -479,6 +620,40 @@ const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
           {formatPriceHistoryLabel(geometry.minPrice)}
         </Text>
       </View>
+      {inspectedCoord && inspectedPoint ? (
+        <View
+          testID="price-history-inspect-tooltip"
+          pointerEvents="none"
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          onLayout={measureTooltip}
+          style={{
+            position: "absolute",
+            top: priceChartLabelHeight(fontScale),
+            left: tooltipLeft(inspectedCoord.x, tooltipWidth),
+            // Hidden until its own measurement lands, for the same reason the
+            // axis labels are: the placement depends on the width.
+            opacity: tooltipWidth === undefined ? 0 : 1,
+            flexDirection: "row",
+            alignItems: "center",
+          }}
+        >
+          {placement === "right" ? (
+            <Tip color={themeColors.text.primary} side="left" />
+          ) : null}
+          <View
+            className="rounded-lg px-3 py-2"
+            style={{ backgroundColor: themeColors.text.primary }}
+          >
+            <Text xs semiBold color={themeColors.background.primary}>
+              {formatPriceHistoryLabel(inspectedPoint.p)}
+            </Text>
+          </View>
+          {placement === "left" ? (
+            <Tip color={themeColors.text.primary} side="right" />
+          ) : null}
+        </View>
+      ) : null}
     </View>
   );
 };
