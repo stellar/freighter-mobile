@@ -26,7 +26,7 @@ import {
 import { logger } from "config/logger";
 import { useAuthenticationStore } from "ducks/auth";
 import { formatTokenForDisplay } from "helpers/formatAmount";
-import { getCreateContractArgs } from "helpers/soroban";
+import { getCreateContractArgs, xdrStringToDisplay } from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
@@ -962,7 +962,7 @@ const RenderOperationByType = ({
           const contractId = Address.fromScAddress(
             invocation.contractAddress,
           ).toString();
-          const functionName = invocation.functionName.toString();
+          const functionName = xdrStringToDisplay(invocation.functionName);
 
           const items: ListItemProps[] = [
             {
@@ -1269,7 +1269,7 @@ const RenderOperationArgsByType = ({
             const contractId = Address.fromScAddress(
               invocation.contractAddress,
             ).toString();
-            const functionName = invocation.functionName.toString();
+            const functionName = xdrStringToDisplay(invocation.functionName);
             const { args } = invocation;
 
             return (
