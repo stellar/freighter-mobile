@@ -188,6 +188,164 @@ export const getAuthEntryBoundAddress = (
     : undefined;
 };
 
+const DISPLAY_INDENT = "  ";
+
+/** Soroban symbols are `[a-zA-Z0-9_]`, so anything else has to be quoted. */
+const isBareSymbol = (value: string) => /^[a-zA-Z0-9_]+$/.test(value);
+
+type XdrStringLike = {
+  asStringOrBytes: () => string | Uint8Array;
+  toJson: () => string;
+};
+
+/**
+ * Decodes an `XdrString`-backed field (an SCString, an SCSymbol, a function
+ * name, a CAP-85 executable tag) for display.
+ *
+ * These fields are byte strings, not guaranteed text. A lenient decode turns
+ * every invalid byte into U+FFFD, so `"transfer" + 0xFF` and
+ * `"transfer" + 0xFE` render identically — two distinct signed payloads, one
+ * screen string. Decode strictly instead, falling back to the reversible
+ * SEP-51 escape form. Valid text (including non-ASCII UTF-8) stays readable;
+ * binary content stays distinguishable.
+ */
+export const xdrStringToDisplay = (value: XdrStringLike): string => {
+  const decoded = value.asStringOrBytes();
+  return typeof decoded === "string" ? decoded : value.toJson();
+};
+
+/** Wraps display text in quotes, escaping any quotes it already contains. */
+const quoteText = (text: string) => `"${text.replace(/"/g, '\\"')}"`;
+
+/**
+ * Renders an `SCVal` as a Soroban value literal for the signing screens.
+ *
+ * Deliberately does *not* route containers through `scValToNative()`. That
+ * decoder builds maps with `Object.fromEntries`, which coerces every key
+ * through `ToPropertyKey` and lets a later entry overwrite an earlier one, so
+ * an SCMap with N signed entries can render as one — silently, on the screen
+ * the user approves from. The map arm walks the signed entry list directly, so
+ * every signed entry reaches the screen.
+ *
+ * Quoting carries the type, which is what keeps colliding keys legible:
+ * strings are quoted, symbols and numbers are bare, binary is escaped or hex.
+ * `u64(1)` renders `1` where `string("1")` renders `"1"`.
+ *
+ * Map keys are always rendered `compact` (on one line) so that one signed
+ * entry is always exactly one line.
+ */
+export const scValToDisplayValue = (
+  scVal: xdr.ScVal,
+  { depth = 0, compact = false }: { depth?: number; compact?: boolean } = {},
+): string => {
+  const pad = DISPLAY_INDENT.repeat(depth);
+  const innerPad = DISPLAY_INDENT.repeat(depth + 1);
+
+  switch (scVal.type) {
+    case "scvMap": {
+      const entries = scVal.map || [];
+      if (!entries.length) {
+        return "{}";
+      }
+      const lines = entries.map(
+        (entry) =>
+          `${scValToDisplayValue(entry.key, {
+            compact: true,
+          })}: ${scValToDisplayValue(entry.val, {
+            depth: depth + 1,
+            compact,
+          })}`,
+      );
+      return compact
+        ? `{ ${lines.join(", ")} }`
+        : `{\n${innerPad}${lines.join(`,\n${innerPad}`)}\n${pad}}`;
+    }
+
+    case "scvVec": {
+      const values = scVal.vec || [];
+      if (!values.length) {
+        return "[]";
+      }
+      const lines = values.map((value) =>
+        scValToDisplayValue(value, { depth: depth + 1, compact }),
+      );
+      return compact
+        ? `[${lines.join(", ")}]`
+        : `[\n${innerPad}${lines.join(`,\n${innerPad}`)}\n${pad}]`;
+    }
+
+    case "scvString": {
+      return quoteText(xdrStringToDisplay(scVal.str));
+    }
+
+    case "scvSymbol": {
+      const symbol = xdrStringToDisplay(scVal.sym);
+      return isBareSymbol(symbol) ? symbol : `symbol(${quoteText(symbol)})`;
+    }
+
+    case "scvExecutableTag": {
+      return `tag(${quoteText(xdrStringToDisplay(scVal.executableTag))})`;
+    }
+
+    case "scvBytes": {
+      return `0x${xdr.encodeBytes(scVal.bytes.toBytes(), "hex")}`;
+    }
+
+    case "scvAddress": {
+      return Address.fromScAddress(scVal.address).toString();
+    }
+
+    case "scvBool": {
+      return `${scVal.b}`;
+    }
+
+    case "scvLedgerKeyNonce": {
+      return scVal.nonceKey.nonce.toString();
+    }
+
+    case "scvContractInstance": {
+      const { executable } = scVal.instance;
+      return executable.type === "contractExecutableWasm"
+        ? `contractInstance(0x${xdr.encodeBytes(executable.wasmHash.toBytes(), "hex")})`
+        : `contractInstance(${executable.type})`;
+    }
+
+    case "scvError": {
+      const error = scValToNative(scVal) as {
+        type: string;
+        code: number;
+        value?: string;
+      };
+      return `error(${error.type}:${error.value ?? error.code})`;
+    }
+
+    case "scvTimepoint":
+    case "scvDuration":
+    case "scvI128":
+    case "scvI256":
+    case "scvI32":
+    case "scvI64":
+    case "scvU128":
+    case "scvU256":
+    case "scvU32":
+    case "scvU64": {
+      return scValToNative(scVal).toString();
+    }
+
+    case "scvVoid": {
+      return "void";
+    }
+
+    case "scvLedgerKeyContractInstance": {
+      return "ledgerKeyContractInstance";
+    }
+
+    default: {
+      return "null";
+    }
+  }
+};
+
 export const getArgsForTokenInvocation = (
   fnName: string,
   args: xdr.ScVal[],
@@ -240,8 +398,16 @@ export const getTokenInvocationArgs = (
   const contractId = Address.fromScAddress(
     invokedContract.contractAddress,
   ).toString();
-  const fnName = invokedContract.functionName.toString();
+  // A function name is a byte string, not guaranteed text. Decode it strictly
+  // rather than leniently: a binary name can never be one of the token
+  // interfaces, so treat it as "not a token invocation" instead of matching on
+  // a lossily decoded string.
+  const fnName = invokedContract.functionName.asStringOrBytes();
   const { args } = invokedContract;
+
+  if (typeof fnName !== "string") {
+    return null;
+  }
 
   if (
     fnName !== SorobanTokenInterface.transfer &&
@@ -472,7 +638,7 @@ export const getInvocationArgs = (
       const contractId = Address.fromScAddress(
         invocationItem.contractAddress,
       ).toString();
-      const fnName = invocationItem.functionName.toString();
+      const fnName = xdrStringToDisplay(invocationItem.functionName);
       const { args } = invocationItem;
       return { fnName, contractId, args, type: INVOCATION_TYPE_INVOKE };
     }
@@ -555,8 +721,9 @@ export const getInvocationArgs = (
           const externalRefDetails = {
             type: INVOCATION_TYPE_EXTERNAL_REF,
             owner: Address.fromScAddress(executableOwner).toString(),
-            // SEP-51 form: reversible for non-UTF-8 bytes, plain text otherwise.
-            tag: tag.toJson(),
+            // Strict decode, falling back to the reversible SEP-51 form only
+            // for bytes that are not valid UTF-8.
+            tag: xdrStringToDisplay(tag),
             address: Address.fromScAddress(details.address).toString(),
             salt: xdr.encodeBytes(details.salt.toBytes(), "hex"),
           } as FnArgsCreateExternalRef;
@@ -667,29 +834,23 @@ export const scValByType = (scVal: xdr.ScVal): any => {
 
     case "scvVec":
     case "scvMap": {
-      return JSON.stringify(
-        scValToNative(scVal),
-        (_, val) => (typeof val === "bigint" ? val.toString() : val),
-        2,
-      );
+      return scValToDisplayValue(scVal);
     }
 
-    // CAP-85 (Protocol 28): an executable tag is an SCString. Use the SEP-51
-    // JSON form so a non-UTF-8 tag stays distinguishable instead of decoding
-    // to replacement characters.
+    // CAP-85 (Protocol 28): an executable tag is an SCString, so it is not
+    // guaranteed text. Fall back to the SEP-51 form only when it does not
+    // decode, so a non-UTF-8 tag stays distinguishable without escaping
+    // legitimate non-ASCII text.
     case "scvExecutableTag": {
-      return scVal.executableTag.toJson();
+      return xdrStringToDisplay(scVal.executableTag);
     }
 
-    case "scvString":
+    case "scvString": {
+      return xdrStringToDisplay(scVal.str);
+    }
+
     case "scvSymbol": {
-      const native = scValToNative(scVal);
-      // v17: scValToNative returns Uint8Array (not a lossy string) when the
-      // XDR string/symbol payload is not valid UTF-8.
-      if (native instanceof Uint8Array) {
-        return xdr.encodeBytes(native, "hex");
-      }
-      return native;
+      return xdrStringToDisplay(scVal.sym);
     }
 
     case "scvVoid": {
