@@ -101,7 +101,7 @@ export const getPlottedRangeStart = (input: {
     : input.points[0].t + input.resolutionSeconds;
 
 /**
- * Index of the plotted x nearest to `x` — the drag-to-inspect SNAP (Phase 3, §9).
+ * Index of the plotted x nearest to `x` — the drag-to-inspect SNAP (Phase 3).
  *
  * `xs` is ascending but not strictly: the clock-skew clamp can put several
  * points on one x. Ties and duplicates resolve to the LATER index, so a
@@ -141,7 +141,7 @@ export const nearestCoordinateIndex = (xs: number[], x: number): number => {
 };
 
 /**
- * The one delta the client computes (D8 exception, Phase 3, §9): close-to-close
+ * The one delta the client computes (D8 exception, Phase 3): close-to-close
  * from the first plotted point to the inspected one. Shaped exactly like the
  * server's `change` so the header formats it through the same path.
  * `percent` is rounded to 2dp as the backend does, so a real-but-tiny move
