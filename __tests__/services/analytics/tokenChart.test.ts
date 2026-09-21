@@ -4,6 +4,7 @@ import { mapNetworkToNetworkDetails, NETWORKS } from "config/constants";
 import { TokenPriceHistory } from "config/types";
 import {
   getChartTokenType,
+  trackTokenChartBrushed,
   trackTokenChartLoaded,
   trackTokenChartRangeChanged,
   trackTokenChartViewed,
@@ -73,6 +74,7 @@ const CANONICAL_FIXTURES = {
     event: "token_chart.range_changed",
     props: { range: "1W" },
   },
+  brushed: { event: "token_chart.brushed", props: { range: "1D" } },
 } as const;
 
 describe("token_chart analytics (frozen cross-platform payloads)", () => {
@@ -103,7 +105,7 @@ describe("token_chart analytics (frozen cross-platform payloads)", () => {
       has_data: true,
       range: "1D",
     };
-    for (const tokenId of ["native", "XLM", sac, `XLM:${sac}`]) {
+    ["native", "XLM", sac, `XLM:${sac}`].forEach((tokenId) => {
       jest.clearAllMocks();
       trackTokenChartViewed({
         tokenId,
@@ -111,7 +113,7 @@ describe("token_chart analytics (frozen cross-platform payloads)", () => {
         network: NETWORKS.PUBLIC,
       });
       expect(track.mock.calls[0][1]).toStrictEqual(expected);
-    }
+    });
   });
 
   it("omits asset_issuer for native and asset_code for a bare contract id", () => {
@@ -166,6 +168,13 @@ describe("token_chart analytics (frozen cross-platform payloads)", () => {
     const [event, props] = track.mock.calls[0];
     expect(event).toBe(CANONICAL_FIXTURES.rangeChanged.event);
     expect(props).toStrictEqual(CANONICAL_FIXTURES.rangeChanged.props);
+  });
+
+  it("emits the canonical brushed payload byte-for-byte", () => {
+    trackTokenChartBrushed("1D");
+    const [event, props] = track.mock.calls[0];
+    expect(event).toBe(CANONICAL_FIXTURES.brushed.event);
+    expect(props).toStrictEqual(CANONICAL_FIXTURES.brushed.props);
   });
 
   it("keeps the enum wire strings dot-namespaced per the interaction-event convention", () => {

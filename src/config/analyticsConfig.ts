@@ -249,6 +249,8 @@ export enum AnalyticsEvent {
   /** Per-range VIEW (cache hits included), unlike loaded's per-network-fetch. */
   TOKEN_CHART_VIEWED = "token_chart.viewed",
   TOKEN_CHART_RANGE_CHANGED = "token_chart.range_changed",
+  /** Once per drag-to-inspect activation, never per move (§7.5, Phase 3). */
+  TOKEN_CHART_BRUSHED = "token_chart.brushed",
 
   // Onramp
   COINBASE_ONRAMP_OPENED = "onramp.coinbase_opened",
