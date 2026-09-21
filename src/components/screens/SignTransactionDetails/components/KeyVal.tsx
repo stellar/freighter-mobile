@@ -20,6 +20,7 @@ import { CLAIM_PREDICATES, mapNetworkToNetworkDetails } from "config/constants";
 import { useAuthenticationStore } from "ducks/auth";
 import {
   addressToString,
+  getContractFnArgNames,
   getCreateContractArgs,
   scValByType,
 } from "helpers/soroban";
@@ -79,12 +80,100 @@ export const KeyValueListItem = ({
   </View>
 );
 
+/**
+ * Resolves an invocation's parameter names from the contract spec.
+ *
+ * A hook so that a caller rendering the "Parameters" heading itself can look
+ * the names up once -- it owns the spec note that belongs beside that heading,
+ * and hands the same names to the rows below.
+ */
+export const useContractArgNames = ({
+  contractId,
+  fnName,
+  argCount,
+  isAuthEntry = false,
+}: {
+  contractId?: string;
+  fnName?: string;
+  argCount: number;
+  isAuthEntry?: boolean;
+}) => {
+  const { network } = useAuthenticationStore();
+  const networkDetails = mapNetworkToNetworkDetails(network);
+  const [isLoading, setIsLoading] = useState(true);
+  const [argNames, setArgNames] = useState<string[] | null>(null);
+
+  useEffect(() => {
+    // A resolved fetch must never label a different invocation than the one it
+    // was issued for, so drop the names up front and ignore a response that
+    // arrives after the inputs moved on.
+    let isCurrent = true;
+    setArgNames(null);
+
+    const getSpec = async (id: string, name: string) => {
+      try {
+        const spec = await getContractSpecs({ contractId: id, networkDetails });
+
+        if (!isCurrent) {
+          return;
+        }
+
+        setArgNames(getContractFnArgNames(spec, name, argCount));
+        setIsLoading(false);
+      } catch (error) {
+        if (isCurrent) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    // An auth entry is never labelled from the contract spec. Its args are not
+    // the function's declared parameters: `require_auth_for_args` substitutes
+    // an arbitrary list under the same contract and function name, and the
+    // arity can match, so the length check in `getContractFnArgNames` does not
+    // catch it. Those rows render unlabelled. See stellar/freighter#2196.
+    if (contractId && fnName && !isAuthEntry) {
+      getSpec(contractId, fnName);
+    } else {
+      setIsLoading(false);
+    }
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [contractId, fnName, networkDetails, isAuthEntry, argCount]);
+
+  return { argNames, isLoading };
+};
+
+/**
+ * Qualifies spec-derived parameter names: the spec is author-controlled wasm
+ * metadata that nothing validates against the implementation, so a name is the
+ * contract's claim about its own parameter, not a verified fact. It renders
+ * with the "Parameters" heading, above the rows it annotates.
+ */
+export const ContractSpecNote = ({
+  translationKey = "signTransactionDetails.operations.contractSpecNote",
+}: {
+  translationKey?: string;
+}) => (
+  <Text sm secondary testID="ContractSpecNote">
+    {t(translationKey)}
+  </Text>
+);
+
 interface KeyValueInvokeHostFnArgsProps {
   args: xdr.ScVal[];
   contractId?: string;
   fnName?: string;
   showHeader?: boolean;
   variant?: "secondary" | "tertiary";
+  isAuthEntry?: boolean;
+  // A caller that renders the heading itself resolves the names (it owns the
+  // spec note beside that heading) and passes them here instead of the
+  // contract id, so the spec is fetched once for the section.
+  argNames?: string[] | null;
+  isLoadingArgNames?: boolean;
 }
 
 export const KeyValueInvokeHostFnArgs = ({
@@ -93,35 +182,19 @@ export const KeyValueInvokeHostFnArgs = ({
   fnName,
   showHeader = true,
   variant = "secondary",
+  isAuthEntry = false,
+  argNames: resolvedArgNames,
+  isLoadingArgNames = false,
 }: KeyValueInvokeHostFnArgsProps) => {
-  const { network } = useAuthenticationStore();
-  const networkDetails = mapNetworkToNetworkDetails(network);
-  const [isLoading, setIsLoading] = useState(true);
-  const [argNames, setArgNames] = useState([] as string[]);
   const { copyToClipboard } = useClipboard();
-
-  useEffect(() => {
-    const getSpec = async (id: string, name: string) => {
-      try {
-        const spec = await getContractSpecs({ contractId: id, networkDetails });
-        const { definitions } = spec;
-        const invocationSpec = definitions[name];
-        const argNamesPositional = invocationSpec.properties?.args
-          ?.required as string[];
-
-        setArgNames(argNamesPositional);
-        setIsLoading(false);
-      } catch (error) {
-        setIsLoading(false);
-      }
-    };
-
-    if (contractId && fnName) {
-      getSpec(contractId, fnName);
-    } else {
-      setIsLoading(false);
-    }
-  }, [contractId, fnName, networkDetails]);
+  const ownSpec = useContractArgNames({
+    contractId,
+    fnName,
+    argCount: args.length,
+    isAuthEntry,
+  });
+  const argNames = resolvedArgNames ?? ownSpec.argNames;
+  const isLoading = isLoadingArgNames || ownSpec.isLoading;
 
   const renderContent = () => {
     if (isLoading) {
@@ -140,6 +213,12 @@ export const KeyValueInvokeHostFnArgs = ({
                 {t("signTransactionDetails.authorizations.parameters")}
               </Text>
             </View>
+            {/* The note goes wherever the heading goes, and only once names
+            resolved -- auth entries and failed lookups have nothing to
+            qualify. */}
+            {!!argNames?.length && (
+              <ContractSpecNote translationKey="signTransactionDetails.authorizations.contractSpecNote" />
+            )}
             <View className="h-[1px] bg-background-tertiary" />
           </>
         )}
@@ -153,14 +232,16 @@ export const KeyValueInvokeHostFnArgs = ({
               className="gap-[8px]"
             >
               <View className="flex-row items-center gap-[4px]">
-                <Text secondary>{argNames[index] && argNames[index]}</Text>
+                <Text secondary testID="ParameterKey">
+                  {argNames?.[index]}
+                </Text>
                 <Icon.Copy01
                   size={14}
                   themeColor="gray"
                   onPress={() => copyToClipboard(scValByType(arg) as string)}
                 />
               </View>
-              <Text>{scValByType(arg)}</Text>
+              <Text testID="ParameterValue">{scValByType(arg)}</Text>
             </View>
           );
         })}
