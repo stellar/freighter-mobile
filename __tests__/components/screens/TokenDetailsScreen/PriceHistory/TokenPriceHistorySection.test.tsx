@@ -705,6 +705,66 @@ describe("TokenPriceHistorySection", () => {
       expect(setInspectedPointSpy).toHaveBeenCalled();
     });
 
+    it("fires brushed exactly twice across two full gestures", async () => {
+      const { getByTestId } = renderSection();
+
+      await waitFor(() => {
+        expect(getByTestId("price-history-chart")).toBeTruthy();
+      });
+
+      act(() => {
+        fireGestureHandler<PanGesture>(
+          getByGestureTestId(INSPECT_GESTURE_TEST_ID),
+          [
+            { state: State.BEGAN, x: 10 },
+            { state: State.ACTIVE, x: 10 },
+            { x: 200 },
+            { state: State.END },
+          ],
+        );
+      });
+
+      act(() => {
+        fireGestureHandler<PanGesture>(
+          getByGestureTestId(INSPECT_GESTURE_TEST_ID),
+          [
+            { state: State.BEGAN, x: 50 },
+            { state: State.ACTIVE, x: 50 },
+            { x: 150 },
+            { state: State.END },
+          ],
+        );
+      });
+
+      // Once per ACTIVATION, never per move — two separate gestures are two
+      // activations, so exactly two calls (§7.5).
+      expect(analytics.trackTokenChartBrushed).toHaveBeenCalledTimes(2);
+    });
+
+    it("does not inspect when no series is loaded — the chart itself does not render", () => {
+      // `plottedRange` (off `data?.range`) is undefined with no series: the
+      // real TokenPriceChart (and its gesture) never mounts without data —
+      // only the ghost does — so there is no gesture to drive. This is the
+      // structural guarantee that `handleInspectStart`/`handleInspectMove`'s
+      // `if (!plottedRange) return;` early-outs exist for defense-in-depth;
+      // the gesture test id being entirely absent proves the primary guard.
+      mockFetchHistory.mockImplementation(() => new Promise(() => {}));
+      const setInspectedPointSpy = jest.spyOn(
+        usePriceHistoryStore.getState(),
+        "setInspectedPoint",
+      );
+
+      const { queryByTestId } = renderSection();
+
+      expect(queryByTestId("price-history-chart")).toBeNull();
+      // The gesture handler registry (a global keyed by testID, not the
+      // rendered tree) has nothing under this id either: no `GestureDetector`
+      // ever mounted to register it.
+      expect(() => getByGestureTestId(INSPECT_GESTURE_TEST_ID)).toThrow();
+      expect(setInspectedPointSpy).not.toHaveBeenCalled();
+      expect(analytics.trackTokenChartBrushed).not.toHaveBeenCalled();
+    });
+
     it("unmounting clears the scope's inspected point", async () => {
       const { getByTestId, unmount } = renderSection();
 
