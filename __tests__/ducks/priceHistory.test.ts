@@ -605,6 +605,10 @@ describe("priceHistory duck", () => {
   });
 });
 
+// Placed here rather than up with the other module-level fixtures: a
+// `network`/`tokenId` this high up would shadow the `select` helper's own
+// (network, tokenId) parameters inside "selected range" above and trip
+// @typescript-eslint/no-shadow.
 const network = NETWORKS.PUBLIC;
 const tokenId = "native";
 const points = [
@@ -684,19 +688,25 @@ describe("inspected point", () => {
     usePriceHistoryStore
       .getState()
       .setInspectedPoint({ network, tokenId, range: "1D", index: 1 });
-    expect(
-      renderHook(() => useInspectedPriceHistory(network, tokenId)).result
-        .current,
-    ).toBeNull();
+    const missingSeries = renderHook(() =>
+      useInspectedPriceHistory(network, tokenId),
+    );
+    expect(missingSeries.result.current).toBeNull();
+    // Unmount before the next round of store mutations: this hook is still
+    // subscribed, and seeding/re-pointing below would otherwise re-render it
+    // outside `act`, which is what the "not wrapped in act(...)" warning
+    // (a leftover subscriber, not a bug in the selector) is telling us.
+    missingSeries.unmount();
 
     seedEntry();
     usePriceHistoryStore
       .getState()
       .setInspectedPoint({ network, tokenId, range: "1D", index: 7 });
-    expect(
-      renderHook(() => useInspectedPriceHistory(network, tokenId)).result
-        .current,
-    ).toBeNull();
+    const outOfBounds = renderHook(() =>
+      useInspectedPriceHistory(network, tokenId),
+    );
+    expect(outOfBounds.result.current).toBeNull();
+    outOfBounds.unmount();
   });
 
   it("clears only its own scope", () => {
