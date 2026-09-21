@@ -1,11 +1,14 @@
 import { NETWORKS } from "config/constants";
 import { logger } from "config/logger";
 import {
+  PriceHistoryPoint,
   PriceHistoryRange,
   TokenIdentifier,
   TokenPriceHistory,
   TokenStats,
 } from "config/types";
+import { hasChartData } from "helpers/priceHistoryChart";
+import { useMemo } from "react";
 import { fetchTokenPriceHistory, fetchTokenStats } from "services/backend";
 import { create } from "zustand";
 
@@ -37,6 +40,17 @@ export interface TokenStatsEntry {
 export interface PriceHistoryKeyStatus {
   isLoading: boolean;
   error: string | null;
+}
+
+/**
+ * The point under the user's finger (Phase 3 drag-to-inspect), keyed to the
+ * scope AND the range it was chosen on: the header reads it, the chart
+ * draws it, and a range switch must not carry an index into another series.
+ */
+export interface InspectedPoint {
+  key: string;
+  range: PriceHistoryRange;
+  index: number;
 }
 
 /**
@@ -187,6 +201,13 @@ interface PriceHistoryState {
    * one mounts, and must not wipe its selection.
    */
   clearSelectedRange: (params: TokenScopeParams) => void;
+  /** The inspected point, if a drag is in progress. Never persisted. */
+  inspectedPoint: InspectedPoint | null;
+  setInspectedPoint: (
+    params: TokenScopeParams & { range: PriceHistoryRange; index: number },
+  ) => void;
+  /** Scoped like {@link clearSelectedRange}, for the same unmount-order reason. */
+  clearInspectedPoint: (params: TokenScopeParams) => void;
   /**
    * Resolves with the payload only when a network fetch completed — callers
    * fire `token_chart.loaded` off that — and null on cache hits, superseded
@@ -334,11 +355,18 @@ export const usePriceHistoryStore = create<PriceHistoryState>((set, get) => {
     statsByNetwork: {},
     historyStatusByKey: {},
     selectedRange: null,
+    inspectedPoint: null,
 
-    setSelectedRange: ({ network, tokenId, range }) =>
-      set({
-        selectedRange: { key: getTokenScopeKey(network, tokenId), range },
-      }),
+    setSelectedRange: ({ network, tokenId, range }) => {
+      const key = getTokenScopeKey(network, tokenId);
+      set((state) => ({
+        selectedRange: { key, range },
+        // A new series under the finger would re-point the index at the
+        // wrong point; the drag ends with the switch.
+        inspectedPoint:
+          state.inspectedPoint?.key === key ? null : state.inspectedPoint,
+      }));
+    },
 
     clearSelectedRange: ({ network, tokenId }) => {
       if (get().selectedRange?.key !== getTokenScopeKey(network, tokenId)) {
@@ -346,6 +374,22 @@ export const usePriceHistoryStore = create<PriceHistoryState>((set, get) => {
       }
 
       set({ selectedRange: null });
+    },
+
+    setInspectedPoint: ({ network, tokenId, range, index }) =>
+      set({
+        inspectedPoint: {
+          key: getTokenScopeKey(network, tokenId),
+          range,
+          index,
+        },
+      }),
+
+    clearInspectedPoint: ({ network, tokenId }) => {
+      if (get().inspectedPoint?.key !== getTokenScopeKey(network, tokenId)) {
+        return;
+      }
+      set({ inspectedPoint: null });
     },
 
     fetchPriceHistory: ({ tokenId, network, range, forceRefresh }) => {
@@ -465,3 +509,60 @@ export const useTokenStatsEntry = (
   tokenId: TokenIdentifier,
 ): TokenStatsEntry | undefined =>
   usePriceHistoryStore((state) => state.statsByNetwork[network]?.[tokenId]);
+
+export interface InspectedPriceHistory {
+  range: PriceHistoryRange;
+  index: number;
+  point: PriceHistoryPoint;
+  first: PriceHistoryPoint;
+}
+
+/**
+ * The inspected point resolved against the CACHED series it was chosen on.
+ * Read by the chart (artwork), the header price and the header delta, so the
+ * three cannot disagree. Null when nothing is inspected for this scope, the
+ * series is gone, or the index no longer fits it. Two primitive-ish selects
+ * plus a memo rather than one object-returning selector: zustand compares
+ * with Object.is, and a fresh object per store write re-renders every
+ * subscriber on every unrelated update.
+ */
+export const useInspectedPriceHistory = (
+  network: NETWORKS,
+  tokenId: TokenIdentifier,
+): InspectedPriceHistory | null => {
+  const key = getTokenScopeKey(network, tokenId);
+  const inspected = usePriceHistoryStore((state) =>
+    state.inspectedPoint?.key === key ? state.inspectedPoint : null,
+  );
+  const points = usePriceHistoryStore((state) =>
+    inspected
+      ? state.historyByNetwork[network]?.[tokenId]?.[inspected.range]?.data
+          .points
+      : undefined,
+  );
+
+  return useMemo(() => {
+    if (!inspected || !points || !hasChartData(points)) {
+      return null;
+    }
+    const point = points[inspected.index];
+    if (!point) {
+      return null;
+    }
+    return {
+      range: inspected.range,
+      index: inspected.index,
+      point,
+      first: points[0],
+    };
+  }, [inspected, points]);
+};
+
+/** True while a drag-to-inspect is in progress for this scope. */
+export const useIsInspectingPriceHistory = (
+  network: NETWORKS,
+  tokenId: TokenIdentifier,
+): boolean =>
+  usePriceHistoryStore(
+    (state) => state.inspectedPoint?.key === getTokenScopeKey(network, tokenId),
+  );
