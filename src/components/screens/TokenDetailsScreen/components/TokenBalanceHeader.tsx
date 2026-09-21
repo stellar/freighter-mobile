@@ -5,6 +5,7 @@ import TokenPriceDelta from "components/screens/TokenDetailsScreen/components/Pr
 import { Display, Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE, NETWORKS } from "config/constants";
 import { useBalancesStore } from "ducks/balances";
+import { useInspectedPriceHistory } from "ducks/priceHistory";
 import { isNativeAssetId } from "helpers/assetIdentity";
 import { formatBalanceAmount, formatFiatAmount } from "helpers/formatAmount";
 import { isContractId } from "helpers/soroban";
@@ -58,6 +59,7 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
   const { t } = useAppTranslation();
   const isSorobanToken = isContractId(tokenId);
   const tokenBalance = useTokenDetailBalance(tokenId);
+  const inspected = useInspectedPriceHistory(network, tokenId);
 
   // Early return if tokenBalance is not available
   if (!tokenBalance) {
@@ -96,12 +98,18 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
   const { name } = getTokenDisplayInfo();
   const hasPrice = tokenBalance.currentPrice && tokenBalance.fiatTotal;
 
-  // The price is live spot and does NOT vary by timeframe; only the delta
+  // While a drag-to-inspect is in progress the price is the inspected
+  // point's close, through the same formatter as the live spot; released, it
+  // is spot again (Phase 3). The duck only ever holds an inspection for a
+  // chart that is mounted, so no flag check is needed here. Otherwise the
+  // price is live spot and does NOT vary by timeframe; only the delta
   // beneath it follows the chart's selected range (§7.3).
+  const headerPrice = inspected?.point.p ?? tokenBalance.currentPrice ?? "0";
+
   const renderPriceInfo = () => (
     <View className="gap-1">
-      <Display xs medium>
-        {formatFiatAmount(tokenBalance.currentPrice ?? "0")}
+      <Display xs medium testID="token-price-header-price">
+        {formatFiatAmount(headerPrice)}
       </Display>
       <TokenPriceDelta
         tokenId={tokenId}

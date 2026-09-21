@@ -13,6 +13,8 @@ import {
 } from "ducks/priceHistory";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { fsValue } from "helpers/dimensions";
+import { formatFiatAmount } from "helpers/formatAmount";
+import { formatPriceHistoryRangeDelta } from "helpers/priceHistoryChart";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 import {
@@ -569,6 +571,156 @@ describe("TokenBalanceHeader range delta", () => {
       const delta = getByTestId("token-price-delta");
       expect(delta.props.children).toBe("-1.23%");
       expect(deltaColor(delta)).toBe(themeColors.text.secondary);
+    });
+  });
+
+  describe("drag-to-inspect (M6)", () => {
+    const inspectedPoints = [
+      { t: densePoints[0].t, p: "0.20" },
+      { t: densePoints[1].t, p: "0.22" },
+      { t: densePoints[2].t, p: "0.26" },
+    ];
+
+    it("while inspecting, the delta is close-to-close from the first point to the inspected one", async () => {
+      mockFetchHistory.mockResolvedValue(
+        makeHistory({
+          change: { absolute: "0.06", percent: "30.00" },
+          points: inspectedPoints,
+        }),
+      );
+
+      const { getByTestId } = renderDetailView();
+
+      await waitFor(() => {
+        expect(getByTestId("token-price-delta")).toBeTruthy();
+      });
+
+      act(() => {
+        usePriceHistoryStore.getState().setInspectedPoint({
+          network: NETWORKS.PUBLIC,
+          tokenId: "native",
+          range: "1D",
+          index: 1,
+        });
+      });
+
+      expect(getByTestId("token-price-delta")).toHaveTextContent(
+        formatPriceHistoryRangeDelta({ absolute: "0.02", percent: "10.00" }),
+      );
+    });
+
+    it("while inspecting, the header price is the inspected point's price", async () => {
+      mockFetchHistory.mockResolvedValue(
+        makeHistory({
+          change: { absolute: "0.06", percent: "30.00" },
+          points: inspectedPoints,
+        }),
+      );
+
+      const { getByTestId } = renderDetailView();
+
+      await waitFor(() => {
+        expect(getByTestId("token-price-delta")).toBeTruthy();
+      });
+
+      act(() => {
+        usePriceHistoryStore.getState().setInspectedPoint({
+          network: NETWORKS.PUBLIC,
+          tokenId: "native",
+          range: "1D",
+          index: 1,
+        });
+      });
+
+      expect(getByTestId("token-price-header-price")).toHaveTextContent(
+        formatFiatAmount("0.22"),
+      );
+    });
+
+    it("clearing the inspection restores the server delta and the live price", async () => {
+      mockFetchHistory.mockResolvedValue(
+        makeHistory({
+          change: { absolute: "0.06", percent: "30.00" },
+          points: inspectedPoints,
+        }),
+      );
+
+      const { getByTestId } = renderDetailView();
+
+      await waitFor(() => {
+        expect(getByTestId("token-price-delta")).toBeTruthy();
+      });
+
+      act(() => {
+        usePriceHistoryStore.getState().setInspectedPoint({
+          network: NETWORKS.PUBLIC,
+          tokenId: "native",
+          range: "1D",
+          index: 1,
+        });
+      });
+
+      act(() => {
+        usePriceHistoryStore
+          .getState()
+          .clearInspectedPoint({ network: NETWORKS.PUBLIC, tokenId: "native" });
+      });
+
+      expect(getByTestId("token-price-delta")).toHaveTextContent(
+        formatPriceHistoryRangeDelta({ absolute: "0.06", percent: "30.00" }),
+      );
+      expect(getByTestId("token-price-header-price")).toHaveTextContent(
+        formatFiatAmount(nativeBalance.currentPrice ?? "0"),
+      );
+    });
+
+    it("an inspection on a range other than the selected one is ignored", async () => {
+      jest.useFakeTimers();
+      mockFetchHistory.mockImplementation(({ range }) =>
+        Promise.resolve(
+          range === "1W"
+            ? makeHistory({
+                range: "1W",
+                change: { absolute: "-0.05", percent: "-11.11" },
+              })
+            : makeHistory({ points: inspectedPoints }),
+        ),
+      );
+
+      const { getByTestId } = renderDetailView();
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      act(() => {
+        fireEvent.press(getByTestId("timeframe-selector-1W"));
+      });
+      await act(async () => {
+        jest.advanceTimersByTime(500);
+        await Promise.resolve();
+      });
+
+      expect(getByTestId("token-price-delta")).toHaveTextContent(
+        formatPriceHistoryRangeDelta({ absolute: "-0.05", percent: "-11.11" }),
+      );
+
+      act(() => {
+        usePriceHistoryStore.getState().setInspectedPoint({
+          network: NETWORKS.PUBLIC,
+          tokenId: "native",
+          range: "1D",
+          index: 1,
+        });
+      });
+
+      // The selected range (1W) still shows the server's 1W delta — the
+      // stale 1D inspection is never mistaken for one on the visible range.
+      expect(getByTestId("token-price-delta")).toHaveTextContent(
+        formatPriceHistoryRangeDelta({ absolute: "-0.05", percent: "-11.11" }),
+      );
+
+      jest.useRealTimers();
     });
   });
 });
