@@ -100,52 +100,73 @@ export const useContractArgNames = ({
 }) => {
   const { network } = useAuthenticationStore();
   const networkDetails = mapNetworkToNetworkDetails(network);
-  const [isLoading, setIsLoading] = useState(true);
-  const [argNames, setArgNames] = useState<string[] | null>(null);
+
+  // An auth entry is never labelled from the contract spec. Its args are not
+  // the function's declared parameters: `require_auth_for_args` substitutes
+  // an arbitrary list under the same contract and function name, and the
+  // arity can match, so the length check in `getContractFnArgNames` does not
+  // catch it. Those rows render unlabelled. See stellar/freighter#2196.
+  const shouldResolve = !!contractId && !!fnName && !isAuthEntry;
+  const invocationKey = `${contractId ?? ""}|${fnName ?? ""}|${argCount}|${network}`;
+
+  const [resolved, setResolved] = useState<{
+    invocationKey: string;
+    argNames: string[] | null;
+  } | null>(null);
+
+  // A name resolved for one invocation must never label another, so the stored
+  // result carries the key it was fetched for and that key is compared here,
+  // during render. Dropping the names in the effect instead would let the
+  // commit that first shows a new invocation carry the previous one's names.
+  // The loading flag comes from the same comparison rather than from its own
+  // state: absent names on their own read as "resolved to nothing", not "in
+  // flight", so the rows would render unlabelled instead of showing a spinner.
+  const isFresh = resolved !== null && resolved.invocationKey === invocationKey;
+  const argNames = isFresh ? resolved.argNames : null;
+  const isLoading = shouldResolve && !isFresh;
 
   useEffect(() => {
-    // A resolved fetch must never label a different invocation than the one it
-    // was issued for, so drop the names up front and ignore a response that
-    // arrives after the inputs moved on. The loading flag moves with them:
-    // cleared names on their own read as "resolved to nothing", not "in
-    // flight", so the rows would render unlabelled instead of showing a
-    // spinner -- keep the two in step wherever either is reset.
+    if (!shouldResolve) {
+      return undefined;
+    }
+
+    // A response that arrives after the inputs moved on is dropped rather than
+    // stored: the key check alone would not stop it clobbering a newer result
+    // once the inputs return to a value already seen.
     let isCurrent = true;
-    setArgNames(null);
-    setIsLoading(true);
 
-    const getSpec = async (id: string, name: string) => {
+    const getSpec = async () => {
       try {
-        const spec = await getContractSpecs({ contractId: id, networkDetails });
+        const spec = await getContractSpecs({ contractId, networkDetails });
 
-        if (!isCurrent) {
-          return;
-        }
-
-        setArgNames(getContractFnArgNames(spec, name, argCount));
-        setIsLoading(false);
-      } catch (error) {
         if (isCurrent) {
-          setIsLoading(false);
+          setResolved({
+            invocationKey,
+            argNames: getContractFnArgNames(spec, fnName, argCount),
+          });
+        }
+      } catch (error) {
+        // A failed lookup settles on unlabelled rows rather than keeping the
+        // names it already had -- those were resolved for another invocation.
+        if (isCurrent) {
+          setResolved({ invocationKey, argNames: null });
         }
       }
     };
 
-    // An auth entry is never labelled from the contract spec. Its args are not
-    // the function's declared parameters: `require_auth_for_args` substitutes
-    // an arbitrary list under the same contract and function name, and the
-    // arity can match, so the length check in `getContractFnArgNames` does not
-    // catch it. Those rows render unlabelled. See stellar/freighter#2196.
-    if (contractId && fnName && !isAuthEntry) {
-      getSpec(contractId, fnName);
-    } else {
-      setIsLoading(false);
-    }
+    getSpec();
 
     return () => {
       isCurrent = false;
     };
-  }, [contractId, fnName, networkDetails, isAuthEntry, argCount]);
+  }, [
+    contractId,
+    fnName,
+    argCount,
+    networkDetails,
+    shouldResolve,
+    invocationKey,
+  ]);
 
   return { argNames, isLoading };
 };

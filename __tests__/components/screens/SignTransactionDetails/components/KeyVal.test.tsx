@@ -99,4 +99,65 @@ describe("useContractArgNames", () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.argNames).toBeNull();
   });
+
+  // The guarantee is about the render itself, not about the state after
+  // effects have flushed. Resetting inside the effect would still satisfy the
+  // assertions above -- `rerender` flushes effects before they run -- while
+  // committing one frame that pairs the new invocation's values with the
+  // previous one's names. So record what every render actually saw.
+  it("never renders the previous invocation's names against a new one", async () => {
+    getContractSpecsMock
+      .mockResolvedValueOnce(TRANSFER_SPEC)
+      // Stays pending, so any stale frame has time to be observed.
+      .mockImplementationOnce(() => new Promise<never>(() => {}));
+
+    const renders: Array<{ argNames: string[] | null; isLoading: boolean }> =
+      [];
+
+    const { result, rerender } = renderHook(
+      (props: { contractId: string; fnName: string; argCount: number }) => {
+        const current = useContractArgNames(props);
+        renders.push({ ...current });
+        return current;
+      },
+      {
+        initialProps: {
+          contractId: CONTRACT_A,
+          fnName: "transfer",
+          argCount: 2,
+        },
+      },
+    );
+
+    await waitFor(() =>
+      expect(result.current.argNames).toEqual(["from", "to"]),
+    );
+
+    renders.length = 0;
+    rerender({ contractId: CONTRACT_B, fnName: "swap", argCount: 2 });
+
+    expect(renders.length).toBeGreaterThan(0);
+    renders.forEach((render) => {
+      expect(render.argNames).toBeNull();
+      expect(render.isLoading).toBe(true);
+    });
+  });
+
+  // An auth entry resolves nothing, so it has no in-flight state to report.
+  // Reporting one anyway would flash a spinner over rows that are always
+  // going to render unlabelled.
+  it("never reports loading for an invocation it will not resolve", () => {
+    const { result } = renderHook(() =>
+      useContractArgNames({
+        contractId: CONTRACT_A,
+        fnName: "transfer",
+        argCount: 2,
+        isAuthEntry: true,
+      }),
+    );
+
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.argNames).toBeNull();
+    expect(getContractSpecsMock).not.toHaveBeenCalled();
+  });
 });

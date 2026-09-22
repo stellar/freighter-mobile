@@ -1177,7 +1177,6 @@
       "contractId": "ID do Contrato",
       "functionName": "Nome da função",
       "parameters": "Parâmetros",
-      "contractSpecNote": "Os nomes dos parâmetros são baseados na especificação do contrato e podem não refletir o comportamento real do contrato.",
       "contractAddress": "Endereço do contrato",
       "executableOwner": "Proprietário do executável",
       "executableTag": "Tag do executável",
@@ -1265,7 +1264,8 @@
       "deleted": "Excluído",
       "enabled": "Habilitado",
       "disabled": "Desabilitado",
-      "unknownFlags": "Desconhecido ({{bits}})"
+      "unknownFlags": "Desconhecido ({{bits}})",
+      "contractSpecNote": "Os nomes dos parâmetros são baseados na especificação do contrato e podem não refletir o comportamento real do contrato."
     },
     "claimPredicates": {
       "unconditional": "Incondicional",

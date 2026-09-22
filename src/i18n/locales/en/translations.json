@@ -1177,7 +1177,6 @@
       "contractId": "Contract ID",
       "functionName": "Function name",
       "parameters": "Parameters",
-      "contractSpecNote": "Parameter names are based on the contract spec and may not reflect actual contract behavior.",
       "contractAddress": "Contract address",
       "executableOwner": "Executable owner",
       "executableTag": "Executable tag",
@@ -1265,7 +1264,8 @@
       "deleted": "Deleted",
       "enabled": "Enabled",
       "disabled": "Disabled",
-      "unknownFlags": "Unknown ({{bits}})"
+      "unknownFlags": "Unknown ({{bits}})",
+      "contractSpecNote": "Parameter names are based on the contract spec and may not reflect actual contract behavior."
     },
     "claimPredicates": {
       "unconditional": "Unconditional",

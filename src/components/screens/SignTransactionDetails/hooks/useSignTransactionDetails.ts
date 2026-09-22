@@ -14,6 +14,7 @@ import { logger } from "config/logger";
 import { useAuthenticationStore } from "ducks/auth";
 import { stroopToXlm } from "helpers/formatAmount";
 import { getAuthEntryBoundAddress } from "helpers/soroban";
+import { useMemo } from "react";
 
 interface UseSignTransactionDetailsParams {
   xdr: string;
@@ -73,33 +74,37 @@ export const useSignTransactionDetails = ({
   xdr,
 }: UseSignTransactionDetailsParams): SignTransactionDetailsInterface | null => {
   const { network } = useAuthenticationStore();
-  const networkDetails = mapNetworkToNetworkDetails(network);
+  const { networkPassphrase } = mapNetworkToNetworkDetails(network);
 
-  if (!xdr) return null;
+  // Memoized because consumers render this result straight into the details
+  // tree: re-parsing on every render would hand down a fresh `operations`
+  // array each time, defeating the `React.memo` on the operation details and
+  // remounting everything below it. The empty-xdr guard lives inside the
+  // callback so the hook is never called conditionally.
+  return useMemo(() => {
+    if (!xdr) return null;
 
-  try {
-    const transaction = TransactionBuilder.fromXdr(
-      xdr,
-      networkDetails.networkPassphrase,
-    );
+    try {
+      const transaction = TransactionBuilder.fromXdr(xdr, networkPassphrase);
 
-    const summary = buildSummary({ transaction, xdr });
-    const authEntries = buildAuthEntries(transaction);
+      const summary = buildSummary({ transaction, xdr });
+      const authEntries = buildAuthEntries(transaction);
 
-    const trustlineChanges = transaction.operations.filter(
-      (op) => op.type === "changeTrust",
-    );
+      const trustlineChanges = transaction.operations.filter(
+        (op) => op.type === "changeTrust",
+      );
 
-    return {
-      summary,
-      authEntries,
-      operations: transaction.operations,
-      hasTrustlineChanges: trustlineChanges.length > 0,
-    };
-  } catch (e) {
-    // Malformed or unsupported XDR — return null so callers degrade gracefully
-    // instead of propagating an uncaught exception through the render cycle.
-    logger.warn("useSignTransactionDetails", "Failed to parse XDR", e);
-    return null;
-  }
+      return {
+        summary,
+        authEntries,
+        operations: transaction.operations,
+        hasTrustlineChanges: trustlineChanges.length > 0,
+      };
+    } catch (e) {
+      // Malformed or unsupported XDR — return null so callers degrade gracefully
+      // instead of propagating an uncaught exception through the render cycle.
+      logger.warn("useSignTransactionDetails", "Failed to parse XDR", e);
+      return null;
+    }
+  }, [xdr, networkPassphrase]);
 };
