@@ -106,9 +106,13 @@ export const useContractArgNames = ({
   useEffect(() => {
     // A resolved fetch must never label a different invocation than the one it
     // was issued for, so drop the names up front and ignore a response that
-    // arrives after the inputs moved on.
+    // arrives after the inputs moved on. The loading flag moves with them:
+    // cleared names on their own read as "resolved to nothing", not "in
+    // flight", so the rows would render unlabelled instead of showing a
+    // spinner -- keep the two in step wherever either is reset.
     let isCurrent = true;
     setArgNames(null);
+    setIsLoading(true);
 
     const getSpec = async (id: string, name: string) => {
       try {
