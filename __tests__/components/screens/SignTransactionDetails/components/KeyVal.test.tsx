@@ -160,4 +160,45 @@ describe("useContractArgNames", () => {
     expect(result.current.argNames).toBeNull();
     expect(getContractSpecsMock).not.toHaveBeenCalled();
   });
+
+  // `isAuthEntry` is not part of the invocation key, so names resolved for the
+  // operation view would survive a switch to an auth entry at the same
+  // contract, function and arity -- spec labels on args that need not be the
+  // function's declared parameters, which is what the flag exists to prevent.
+  it("drops resolved names when the same invocation becomes an auth entry", async () => {
+    getContractSpecsMock.mockResolvedValueOnce(TRANSFER_SPEC);
+
+    const { result, rerender } = renderHook(
+      (props: {
+        contractId: string;
+        fnName: string;
+        argCount: number;
+        isAuthEntry: boolean;
+      }) => useContractArgNames(props),
+      {
+        initialProps: {
+          contractId: CONTRACT_A,
+          fnName: "transfer",
+          argCount: 2,
+          isAuthEntry: false,
+        },
+      },
+    );
+
+    await waitFor(() =>
+      expect(result.current.argNames).toEqual(["from", "to"]),
+    );
+
+    rerender({
+      contractId: CONTRACT_A,
+      fnName: "transfer",
+      argCount: 2,
+      isAuthEntry: true,
+    });
+
+    expect(result.current.argNames).toBeNull();
+    // No spinner either: the rows are always going to render unlabelled.
+    expect(result.current.isLoading).toBe(false);
+    expect(getContractSpecsMock).toHaveBeenCalledTimes(1);
+  });
 });

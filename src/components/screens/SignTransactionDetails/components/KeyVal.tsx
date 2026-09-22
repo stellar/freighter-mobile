@@ -121,7 +121,14 @@ export const useContractArgNames = ({
   // The loading flag comes from the same comparison rather than from its own
   // state: absent names on their own read as "resolved to nothing", not "in
   // flight", so the rows would render unlabelled instead of showing a spinner.
-  const isFresh = resolved !== null && resolved.invocationKey === invocationKey;
+  // `shouldResolve` gates the read as well as the fetch: an invocation this
+  // hook will not resolve has no names, whatever it resolved for a previous
+  // one, and `isAuthEntry` is not part of the key that would otherwise drop
+  // them.
+  const isFresh =
+    shouldResolve &&
+    resolved !== null &&
+    resolved.invocationKey === invocationKey;
   const argNames = isFresh ? resolved.argNames : null;
   const isLoading = shouldResolve && !isFresh;
 
