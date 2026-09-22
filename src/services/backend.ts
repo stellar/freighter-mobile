@@ -43,7 +43,7 @@ import {
   mapAccountBalancesV2,
   V2AccountBalances,
 } from "helpers/mapAccountBalancesV2";
-import { getNativeContractDetails } from "helpers/soroban";
+import { ContractSpecSchema, getNativeContractDetails } from "helpers/soroban";
 import {
   createApiService,
   isRequestCanceled,
@@ -66,7 +66,6 @@ export const freighterBackendV2 = createApiService({
   configureInstance: attachAuthInterceptors,
 });
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Fetches the Soroban contract specification (JSON Schema) from the backend.
  *
@@ -84,7 +83,7 @@ export const freighterBackendV2 = createApiService({
  * @param {Object} params - Request parameters
  * @param {string} params.contractId - Soroban contract ID (hex-encoded)
  * @param {NetworkDetails} params.networkDetails - Target network details
- * @returns {Promise<Record<string, any>>} Contract spec JSON schema
+ * @returns {Promise<ContractSpecSchema>} Contract spec JSON schema
  * @throws {Error} If the backend responds with an error or an invalid payload
  *
  * @example
@@ -145,8 +144,8 @@ export const getContractSpecs = async ({
 }: {
   contractId: string;
   networkDetails: NetworkDetails;
-}): Promise<Record<string, any>> => {
-  const response = await freighterBackendV1.get<{ data: Record<string, any> }>(
+}): Promise<ContractSpecSchema> => {
+  const response = await freighterBackendV1.get<{ data: ContractSpecSchema }>(
     `/contract-spec/${contractId}`,
     {
       params: {
@@ -187,19 +186,7 @@ export const checkContractSupportsMuxed = async ({
     const spec = await getContractSpecs({ contractId, networkDetails });
 
     // Check if transfer function exists
-    const definitions = spec.definitions as
-      | {
-          transfer?: {
-            properties?: {
-              args?: {
-                properties?: Record<string, unknown>;
-                required?: string[];
-              };
-            };
-          };
-        }
-      | undefined;
-    const transferDef = definitions?.transfer;
+    const transferDef = spec.definitions?.transfer;
     if (!transferDef) {
       return false;
     }
@@ -225,7 +212,6 @@ export const checkContractSupportsMuxed = async ({
     return false;
   }
 };
-/* eslint-enable @typescript-eslint/no-explicit-any */
 
 /**
  * Response type for account balance fetching
