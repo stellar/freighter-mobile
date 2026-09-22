@@ -71,8 +71,12 @@ export const freighterBackendV2 = createApiService({
  * Fetches the Soroban contract specification (JSON Schema) from the backend.
  *
  * The returned object contains a `definitions` map for contract functions and types.
- * Function entries expose an `args` object with a positional `required` array that we
- * use to label parameters in the UI. Some specs may also include a top-level
+ * A function entry's parameter list is the keys of `properties.args.properties`, in
+ * declaration order -- that is what labels parameters in the UI. It is never
+ * `properties.args.required`: the payload is a JSON Schema, so `required` lists only
+ * the parameters that must be present and omits every `Option<T>` one, which shifts
+ * later names onto the wrong values. See `getContractFnArgNames` in `helpers/soroban`
+ * for the guards that key order needs. Some specs may also include a top-level
  * `$schema` field; we forward the backend payload as-is.
  *
  * @async
@@ -86,12 +90,17 @@ export const freighterBackendV2 = createApiService({
  * @example
  * // Access positional argument names for a function
  * const spec = await getContractSpecs({ contractId: "CC...", networkDetails });
- * const argNames = spec.definitions["transfer"].properties.args.required; // ["from", "to", "amount"]
+ * const argNames = Object.keys(
+ *   spec.definitions["transfer"].properties.args.properties,
+ * ); // ["from", "to", "amount"]
  *
  * @example
  * // Pool contract function (e.g., swap_chained)
- * const required = spec.definitions["swap_chained"].properties.args.required;
+ * const argNames = Object.keys(
+ *   spec.definitions["swap_chained"].properties.args.properties,
+ * );
  * // ["user", "swaps_chain", "token_in", "in_amount", "out_min"]
+ * // `properties.args.required` would drop any `Option<T>` parameter here.
  *
  * @example
  * // Sample (trimmed) response for a token-like contract
