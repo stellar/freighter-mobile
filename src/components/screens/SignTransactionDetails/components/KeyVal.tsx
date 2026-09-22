@@ -20,6 +20,7 @@ import { CLAIM_PREDICATES, mapNetworkToNetworkDetails } from "config/constants";
 import { useAuthenticationStore } from "ducks/auth";
 import {
   addressToString,
+  getContractFnArgNames,
   getCreateContractArgs,
   scValByType,
 } from "helpers/soroban";
@@ -79,12 +80,128 @@ export const KeyValueListItem = ({
   </View>
 );
 
+/**
+ * Resolves an invocation's parameter names from the contract spec.
+ *
+ * A hook so that a caller rendering the "Parameters" heading itself can look
+ * the names up once -- it owns the spec note that belongs beside that heading,
+ * and hands the same names to the rows below.
+ */
+export const useContractArgNames = ({
+  contractId,
+  fnName,
+  argCount,
+  isAuthEntry = false,
+}: {
+  contractId?: string;
+  fnName?: string;
+  argCount: number;
+  isAuthEntry?: boolean;
+}) => {
+  const { network } = useAuthenticationStore();
+  const networkDetails = mapNetworkToNetworkDetails(network);
+
+  // An auth entry is never labelled from the contract spec. Its args are not
+  // the function's declared parameters: `require_auth_for_args` substitutes
+  // an arbitrary list under the same contract and function name, and the
+  // arity can match, so the length check in `getContractFnArgNames` does not
+  // catch it. Those rows render unlabelled. See stellar/freighter#2196.
+  const shouldResolve = !!contractId && !!fnName && !isAuthEntry;
+  const invocationKey = `${contractId ?? ""}|${fnName ?? ""}|${argCount}|${network}`;
+
+  const [resolved, setResolved] = useState<{
+    invocationKey: string;
+    argNames: string[] | null;
+  } | null>(null);
+
+  // A name resolved for one invocation must never label another, so the stored
+  // result carries the key it was fetched for and that key is compared here,
+  // during render. Dropping the names in the effect instead would let the
+  // commit that first shows a new invocation carry the previous one's names.
+  // The loading flag comes from the same comparison rather than from its own
+  // state: absent names on their own read as "resolved to nothing", not "in
+  // flight", so the rows would render unlabelled instead of showing a spinner.
+  // `shouldResolve` gates the read as well as the fetch: an invocation this
+  // hook will not resolve has no names, whatever it resolved for a previous
+  // one, and `isAuthEntry` is not part of the key that would otherwise drop
+  // them.
+  const isFresh =
+    shouldResolve &&
+    resolved !== null &&
+    resolved.invocationKey === invocationKey;
+  const argNames = isFresh ? resolved.argNames : null;
+  const isLoading = shouldResolve && !isFresh;
+
+  useEffect(() => {
+    if (!shouldResolve) {
+      return undefined;
+    }
+
+    // A response that arrives after the inputs moved on is dropped rather than
+    // stored: the key check alone would not stop it clobbering a newer result
+    // once the inputs return to a value already seen.
+    let isCurrent = true;
+
+    const getSpec = async () => {
+      try {
+        const spec = await getContractSpecs({ contractId, networkDetails });
+
+        if (isCurrent) {
+          setResolved({
+            invocationKey,
+            argNames: getContractFnArgNames(spec, fnName, argCount),
+          });
+        }
+      } catch (error) {
+        // A failed lookup settles on unlabelled rows rather than keeping the
+        // names it already had -- those were resolved for another invocation.
+        if (isCurrent) {
+          setResolved({ invocationKey, argNames: null });
+        }
+      }
+    };
+
+    getSpec();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [
+    contractId,
+    fnName,
+    argCount,
+    networkDetails,
+    shouldResolve,
+    invocationKey,
+  ]);
+
+  return { argNames, isLoading };
+};
+
+/**
+ * Qualifies spec-derived parameter names: the spec is author-controlled wasm
+ * metadata that nothing validates against the implementation, so a name is the
+ * contract's claim about its own parameter, not a verified fact. It renders
+ * with the "Parameters" heading, above the rows it annotates.
+ */
+export const ContractSpecNote = () => (
+  <Text sm secondary testID="ContractSpecNote">
+    {t("signTransactionDetails.authorizations.contractSpecNote")}
+  </Text>
+);
+
 interface KeyValueInvokeHostFnArgsProps {
   args: xdr.ScVal[];
   contractId?: string;
   fnName?: string;
   showHeader?: boolean;
   variant?: "secondary" | "tertiary";
+  isAuthEntry?: boolean;
+  // A caller that renders the heading itself resolves the names (it owns the
+  // spec note beside that heading) and passes them here instead of the
+  // contract id, so the spec is fetched once for the section.
+  argNames?: string[] | null;
+  isLoadingArgNames?: boolean;
 }
 
 export const KeyValueInvokeHostFnArgs = ({
@@ -93,35 +210,19 @@ export const KeyValueInvokeHostFnArgs = ({
   fnName,
   showHeader = true,
   variant = "secondary",
+  isAuthEntry = false,
+  argNames: resolvedArgNames,
+  isLoadingArgNames = false,
 }: KeyValueInvokeHostFnArgsProps) => {
-  const { network } = useAuthenticationStore();
-  const networkDetails = mapNetworkToNetworkDetails(network);
-  const [isLoading, setIsLoading] = useState(true);
-  const [argNames, setArgNames] = useState([] as string[]);
   const { copyToClipboard } = useClipboard();
-
-  useEffect(() => {
-    const getSpec = async (id: string, name: string) => {
-      try {
-        const spec = await getContractSpecs({ contractId: id, networkDetails });
-        const { definitions } = spec;
-        const invocationSpec = definitions[name];
-        const argNamesPositional = invocationSpec.properties?.args
-          ?.required as string[];
-
-        setArgNames(argNamesPositional);
-        setIsLoading(false);
-      } catch (error) {
-        setIsLoading(false);
-      }
-    };
-
-    if (contractId && fnName) {
-      getSpec(contractId, fnName);
-    } else {
-      setIsLoading(false);
-    }
-  }, [contractId, fnName, networkDetails]);
+  const ownSpec = useContractArgNames({
+    contractId,
+    fnName,
+    argCount: args.length,
+    isAuthEntry,
+  });
+  const argNames = resolvedArgNames ?? ownSpec.argNames;
+  const isLoading = isLoadingArgNames || ownSpec.isLoading;
 
   const renderContent = () => {
     if (isLoading) {
@@ -140,6 +241,9 @@ export const KeyValueInvokeHostFnArgs = ({
                 {t("signTransactionDetails.authorizations.parameters")}
               </Text>
             </View>
+            {/* No spec note here: the only caller that resolves names owns
+            the heading itself (showHeader={false}) and renders the note
+            beside it, so nothing this component headers is ever labelled. */}
             <View className="h-[1px] bg-background-tertiary" />
           </>
         )}
@@ -153,14 +257,16 @@ export const KeyValueInvokeHostFnArgs = ({
               className="gap-[8px]"
             >
               <View className="flex-row items-center gap-[4px]">
-                <Text secondary>{argNames[index] && argNames[index]}</Text>
+                <Text secondary testID="ParameterKey">
+                  {argNames?.[index]}
+                </Text>
                 <Icon.Copy01
                   size={14}
                   themeColor="gray"
                   onPress={() => copyToClipboard(scValByType(arg) as string)}
                 />
               </View>
-              <Text>{scValByType(arg)}</Text>
+              <Text testID="ParameterValue">{scValByType(arg)}</Text>
             </View>
           );
         })}
