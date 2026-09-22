@@ -1255,7 +1255,6 @@
       "seller": "Vendedor",
       "wasm": "WASM",
       "parameters": "Parâmetros",
-      "contractSpecNote": "Os nomes dos parâmetros são baseados na especificação do contrato e podem não refletir o comportamento real do contrato.",
       "source": "Origem",
       "executableType": "Tipo de executável",
       "accountId": "ID da conta",

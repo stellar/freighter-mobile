@@ -152,13 +152,9 @@ export const useContractArgNames = ({
  * contract's claim about its own parameter, not a verified fact. It renders
  * with the "Parameters" heading, above the rows it annotates.
  */
-export const ContractSpecNote = ({
-  translationKey = "signTransactionDetails.operations.contractSpecNote",
-}: {
-  translationKey?: string;
-}) => (
+export const ContractSpecNote = () => (
   <Text sm secondary testID="ContractSpecNote">
-    {t(translationKey)}
+    {t("signTransactionDetails.operations.contractSpecNote")}
   </Text>
 );
 
@@ -213,12 +209,9 @@ export const KeyValueInvokeHostFnArgs = ({
                 {t("signTransactionDetails.authorizations.parameters")}
               </Text>
             </View>
-            {/* The note goes wherever the heading goes, and only once names
-            resolved -- auth entries and failed lookups have nothing to
-            qualify. */}
-            {!!argNames?.length && (
-              <ContractSpecNote translationKey="signTransactionDetails.authorizations.contractSpecNote" />
-            )}
+            {/* No spec note here: the only caller that resolves names owns
+            the heading itself (showHeader={false}) and renders the note
+            beside it, so nothing this component headers is ever labelled. */}
             <View className="h-[1px] bg-background-tertiary" />
           </>
         )}
