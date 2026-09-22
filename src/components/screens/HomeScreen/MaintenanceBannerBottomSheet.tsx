@@ -96,7 +96,7 @@ const MaintenanceBannerBottomSheetContent: React.FC<{
         ))}
       </View>
 
-      <Button tertiary xl isFullWidth onPress={onDismiss}>
+      <Button secondary xl isFullWidth onPress={onDismiss}>
         {t("common.done")}
       </Button>
     </View>

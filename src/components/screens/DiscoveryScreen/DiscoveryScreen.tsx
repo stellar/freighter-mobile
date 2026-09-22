@@ -16,6 +16,7 @@ import {
 } from "config/constants";
 import { logger } from "config/logger";
 import { MainTabStackParamList, MAIN_TAB_ROUTES } from "config/routes";
+import { BACKDROP_COLOR } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
 import { useBrowserTabsStore } from "ducks/browserTabs";
 import { WALLET_KIT_MT_REDIRECT_NATIVE } from "ducks/walletKit";
@@ -361,7 +362,7 @@ export const DiscoveryScreen: React.FC<DiscoveryScreenProps> = () => {
               left: 0,
               right: 0,
               bottom: 0,
-              backgroundColor: "rgba(0, 0, 0, 0.9)",
+              backgroundColor: BACKDROP_COLOR,
               opacity: overlayFadeAnim,
             }}
             pointerEvents={isUrlBarFocused ? "auto" : "none"}

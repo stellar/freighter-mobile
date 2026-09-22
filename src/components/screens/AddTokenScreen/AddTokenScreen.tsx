@@ -478,12 +478,10 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
         {status === HookStatus.ERROR && <ErrorState />}
         <View className="h-4" />
         <Button
-          secondary
+          tertiary
           testID="paste-from-clipboard-button"
           onPress={handlePasteFromClipboard}
-          icon={
-            <Icon.Clipboard size={16} color={themeColors.foreground.primary} />
-          }
+          icon={<Icon.Clipboard size={16} />}
         >
           {t("addTokenScreen.pasteFromClipboard")}
         </Button>

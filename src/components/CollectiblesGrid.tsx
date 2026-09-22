@@ -155,7 +155,7 @@ export const CollectiblesGrid: React.FC<CollectiblesGridProps> = React.memo(
     // the tab with no way to add anything while a fetch is failing.
     const addCollectibleCta = shouldShowEmptyStateCta ? (
       <Button
-        tertiary
+        secondary
         xl
         onPress={onAddCollectiblePress}
         testID="add-collectible-empty-state-button"

@@ -1,14 +1,11 @@
 import { LockScreenContent } from "components/screens/LockScreen";
-import { THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
+import useTheme from "hooks/useTheme";
 import React, { useEffect } from "react";
 import { BackHandler, StyleSheet, View } from "react-native";
 
 const styles = StyleSheet.create({
-  container: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: THEME.colors.background.default,
-  },
+  container: StyleSheet.absoluteFillObject,
 });
 
 /**
@@ -22,6 +19,7 @@ const styles = StyleSheet.create({
 export const LockScreenOverlay: React.FC = () => {
   // Narrow selector: avoid re-rendering on unrelated auth-store churn
   const isSoftLocked = useAuthenticationStore((state) => state.isSoftLocked);
+  const theme = useTheme();
 
   // Swallow the Android back button while locked so it can't pop the hidden
   // tree or exit the app
@@ -44,7 +42,7 @@ export const LockScreenOverlay: React.FC = () => {
 
   return (
     <View
-      style={styles.container}
+      style={[styles.container, { backgroundColor: theme.colors.base.primary }]}
       testID="lock-screen-overlay"
       accessibilityViewIsModal
     >

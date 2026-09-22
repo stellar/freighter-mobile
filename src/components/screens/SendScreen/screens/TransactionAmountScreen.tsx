@@ -1066,7 +1066,7 @@ const TransactionAmountScreen: React.FC<TransactionAmountScreenProps> = ({
 
       <View className="w-full mt-auto mb-[8px]">
         <Button
-          tertiary
+          secondary
           xl
           onPress={handleContinueButtonPress}
           disabled={isContinueButtonDisabled}

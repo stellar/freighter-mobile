@@ -61,7 +61,7 @@ const AddMemoExplanationBottomSheet = ({
       {onConfirm && (
         <View className="mt-[24px] gap-[12px] flex-row">
           <View className="flex-1">
-            <Button onPress={onConfirm} tertiary xl>
+            <Button onPress={onConfirm} secondary xl>
               {t("common.addMemo")}
             </Button>
           </View>

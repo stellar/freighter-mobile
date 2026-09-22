@@ -1,13 +1,14 @@
 import Icon from "components/sds/Icon";
 import { Text, TextProps } from "components/sds/Typography";
-import { PALETTE, THEME } from "config/theme";
 import { fs, px } from "helpers/dimensions";
 import useAppTranslation from "hooks/useAppTranslation";
+import useTheme from "hooks/useTheme";
 import React from "react";
 import styled from "styled-components/native";
 
-const Container = styled.View`
-  background-color: ${THEME.colors.background.tertiary};
+const Container = styled.View<{ $backgroundColor: string }>`
+  background-color: ${({ $backgroundColor }: { $backgroundColor: string }) =>
+    $backgroundColor};
   padding: ${px(24)};
   border-radius: ${px(16)};
   gap: ${px(16)};
@@ -87,14 +88,18 @@ const RecoveryPhraseWarningBox: React.FC<RecoveryPhraseWarningBoxProps> = ({
   testID,
 }) => {
   const { t } = useAppTranslation();
+  const theme = useTheme();
 
   const iconProps = {
     size: 20,
-    color: PALETTE.dark.gray["09"],
+    color: theme.colors.foreground.primary,
   };
 
   return (
-    <Container testID={testID || "recovery-phrase-warning-box"}>
+    <Container
+      testID={testID || "recovery-phrase-warning-box"}
+      $backgroundColor={theme.colors.background.tertiary}
+    >
       <ItemBox testID="recovery-phrase-warning-item-1">
         <Icon.Lock01 {...iconProps} />
         <ItemText testID="recovery-phrase-warning-text-1">

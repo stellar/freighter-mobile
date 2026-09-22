@@ -64,7 +64,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
           <StyledDisplay>{t("freighterWallet")}</StyledDisplay>
           <StyledSpacer $size={32} />
           <Button
-            tertiary
+            secondary
             xl
             testID="create-wallet-button"
             onPress={() => navigateToScreen(false)}
@@ -73,7 +73,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
           </Button>
           <StyledSpacer $size={12} />
           <Button
-            secondary
+            tertiary
             xl
             testID="import-wallet-button"
             onPress={() => navigateToScreen(true)}

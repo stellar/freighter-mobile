@@ -3,7 +3,6 @@ import { List } from "components/List";
 import { TokenIcon } from "components/TokenIcon";
 import { Display, Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE } from "config/constants";
-import { THEME } from "config/theme";
 import { useBalancesStore } from "ducks/balances";
 import { isNativeAssetId } from "helpers/assetIdentity";
 import {
@@ -137,29 +136,23 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
     const baseRows = [
       {
         titleComponent: (
-          <Text md secondary color={THEME.colors.text.secondary}>
+          <Text md secondary>
             {t("tokenDetailsScreen.balance")}
           </Text>
         ),
-        trailingContent: (
-          <Text md secondary color={THEME.colors.text.primary}>
-            {balanceDisplay}
-          </Text>
-        ),
+        trailingContent: <Text md>{balanceDisplay}</Text>,
       },
     ];
 
     const priceRow = hasPrice
       ? {
           titleComponent: (
-            <Text md secondary color={THEME.colors.text.secondary}>
+            <Text md secondary>
               {t("tokenDetailsScreen.value")}
             </Text>
           ),
           trailingContent: (
-            <Text md secondary color={THEME.colors.text.primary}>
-              {formatFiatAmount(tokenBalance.fiatTotal ?? "0")}
-            </Text>
+            <Text md>{formatFiatAmount(tokenBalance.fiatTotal ?? "0")}</Text>
           ),
         }
       : null;

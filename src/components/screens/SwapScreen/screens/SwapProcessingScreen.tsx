@@ -238,7 +238,7 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
         {status === SwapStatus.SWAPPED ? (
           <View className="gap-[16px]">
             <Button
-              secondary
+              tertiary
               xl
               onPress={() =>
                 transactionDetailsBottomSheetModalRef.current?.present()
@@ -248,7 +248,7 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
               {t("swapProcessingScreen.viewTransaction")}
             </Button>
             <Button
-              tertiary
+              secondary
               xl
               onPress={onClose}
               testID="swap-processing-done-button"
@@ -262,7 +262,7 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
               {t("swapProcessingScreen.closeMessage")}
             </Text>
             <Button
-              secondary
+              tertiary
               xl
               onPress={onClose}
               testID="swap-processing-close-button"

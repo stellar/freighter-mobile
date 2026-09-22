@@ -657,7 +657,7 @@ const SendCollectibleReviewScreen: React.FC<
         </View>
         <View className="w-full mt-auto mb-4">
           <Button
-            tertiary
+            secondary
             xl
             onPress={handleContinueButtonPress}
             disabled={isContinueButtonDisabled}

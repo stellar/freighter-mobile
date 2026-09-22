@@ -11,6 +11,7 @@ import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent, getScreenViewedProps } from "config/analyticsConfig";
 import { DEFAULT_PADDING } from "config/constants";
+import { BACKDROP_OPACITY } from "config/theme";
 import { pxValue } from "helpers/dimensions";
 import useColors from "hooks/useColors";
 import { useKeyboardHeight } from "hooks/useKeyboardHeight";
@@ -152,7 +153,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
         disappearsOnIndex={-1}
         pressBehavior={shouldCloseOnPressBackdrop ? "close" : "none"}
         appearsOnIndex={0}
-        opacity={0.9}
+        opacity={BACKDROP_OPACITY}
       />
     ),
     [shouldCloseOnPressBackdrop],

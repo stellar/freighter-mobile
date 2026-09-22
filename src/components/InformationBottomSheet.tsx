@@ -92,7 +92,7 @@ const InformationBottomSheet = ({
       {onConfirm && (
         <View className="mt-[24px] gap-[12px] flex-row">
           <View className="flex-1">
-            <Button onPress={onConfirm} tertiary xl>
+            <Button onPress={onConfirm} secondary xl>
               {confirmLabel ?? t("common.addMemo")}
             </Button>
           </View>

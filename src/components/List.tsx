@@ -1,6 +1,6 @@
 import { Text } from "components/sds/Typography";
 import { DEFAULT_PRESS_DELAY } from "config/constants";
-import { THEME } from "config/theme";
+import useTheme from "hooks/useTheme";
 import React from "react";
 import { View, TouchableOpacity } from "react-native";
 
@@ -53,61 +53,69 @@ export const List: React.FC<ListProps> = ({
   className,
   hideDivider = false,
   compact = false,
-}) => (
-  <View className={`${getContainerStyles(variant)} ${className}`}>
-    {/* The title can't identify a row on its own — an operation carrying both a
+}) => {
+  const theme = useTheme();
+
+  return (
+    <View className={`${getContainerStyles(variant)} ${className}`}>
+      {/* The title can't identify a row on its own — an operation carrying both a
         source and a destination asset repeats labels like "Token Issuer". Pass
         an explicit `key` for a row whose identity must survive a reorder. */}
-    {items.map((item, index) => (
-      <React.Fragment key={item.key || `${item.title || "list-item"}-${index}`}>
-        <TouchableOpacity
-          disabled={!item.onPress}
-          onPress={item.onPress}
-          delayPressIn={DEFAULT_PRESS_DELAY}
-          testID={item.testID}
-          className={`flex-row gap-3 ${compact ? "py-2" : "p-4"} ${
-            item.description ? "items-start" : "items-center"
-          }`}
+      {items.map((item, index) => (
+        <React.Fragment
+          key={item.key || `${item.title || "list-item"}-${index}`}
         >
-          {item.icon && (
-            <View className={item.description ? "mt-1" : ""}>{item.icon}</View>
-          )}
-          <View className="flex-1">
-            {item.titleComponent ? (
-              item.titleComponent
-            ) : (
-              <Text
-                {...getTextStyles(variant)}
-                color={item.titleColor || THEME.colors.text.primary}
-              >
-                {item.title}
-              </Text>
-            )}
-            {item.description && (
-              <View className="mt-4">
-                <Text
-                  sm
-                  secondary
-                  color={item.descriptionColor || THEME.colors.text.secondary}
-                >
-                  {item.description}
-                </Text>
+          <TouchableOpacity
+            disabled={!item.onPress}
+            onPress={item.onPress}
+            delayPressIn={DEFAULT_PRESS_DELAY}
+            testID={item.testID}
+            className={`flex-row gap-3 ${compact ? "py-2" : "p-4"} ${
+              item.description ? "items-start" : "items-center"
+            }`}
+          >
+            {item.icon && (
+              <View className={item.description ? "mt-1" : ""}>
+                {item.icon}
               </View>
             )}
-          </View>
-          {item.trailingContent && (
-            <View className={item.description ? "mt-1" : ""}>
-              {item.trailingContent}
+            <View className="flex-1">
+              {item.titleComponent ? (
+                item.titleComponent
+              ) : (
+                <Text
+                  {...getTextStyles(variant)}
+                  color={item.titleColor || theme.colors.text.primary}
+                >
+                  {item.title}
+                </Text>
+              )}
+              {item.description && (
+                <View className="mt-4">
+                  <Text
+                    sm
+                    secondary
+                    color={item.descriptionColor || theme.colors.text.secondary}
+                  >
+                    {item.description}
+                  </Text>
+                </View>
+              )}
             </View>
+            {item.trailingContent && (
+              <View className={item.description ? "mt-1" : ""}>
+                {item.trailingContent}
+              </View>
+            )}
+          </TouchableOpacity>
+          {!hideDivider && index < items.length - 1 && (
+            <View
+              testID={`divider-${index}`}
+              className="h-[1px] mx-4 bg-border-primary"
+            />
           )}
-        </TouchableOpacity>
-        {!hideDivider && index < items.length - 1 && (
-          <View
-            testID={`divider-${index}`}
-            className="h-[1px] mx-4 bg-border-primary"
-          />
-        )}
-      </React.Fragment>
-    ))}
-  </View>
-);
+        </React.Fragment>
+      ))}
+    </View>
+  );
+};

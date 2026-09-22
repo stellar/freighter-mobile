@@ -57,10 +57,10 @@ export const ForceUpdateScreen: React.FC<ForceUpdateScreenProps> = ({
         </Text>
 
         <View className="gap-4">
-          <Button variant="tertiary" xl onPress={handleGoToAppStore}>
+          <Button variant="secondary" xl onPress={handleGoToAppStore}>
             {t("appUpdate.forceUpdate.updateButton")}
           </Button>
-          <Button variant="secondary" xl onPress={handleLater}>
+          <Button variant="tertiary" xl onPress={handleLater}>
             {t("appUpdate.forceUpdate.laterButton")}
           </Button>
         </View>

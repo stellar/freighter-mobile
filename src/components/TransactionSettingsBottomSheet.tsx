@@ -774,13 +774,13 @@ const TransactionSettingsBottomSheet: React.FC<
 
       <View className="mt-[24px] gap-[12px] flex-row">
         <View className="flex-1">
-          <Button onPress={onCancel} secondary xl>
+          <Button onPress={onCancel} tertiary xl>
             {t("common.cancel")}
           </Button>
         </View>
         <View className="flex-1">
           <Button
-            tertiary
+            secondary
             xl
             onPress={handleConfirm}
             disabled={settings.some((setting) => settingErrors[setting])}

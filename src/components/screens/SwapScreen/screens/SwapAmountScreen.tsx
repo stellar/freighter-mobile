@@ -936,7 +936,7 @@ const SwapAmountScreen: React.FC<SwapAmountScreenProps> = ({
         {/* 16px spacer above the CTA */}
         <View className="h-4" />
         <Button
-          tertiary
+          secondary
           onPress={handleMainButtonPress}
           disabled={isCtaDisabled}
           isLoading={ctaState.kind === "loading"}

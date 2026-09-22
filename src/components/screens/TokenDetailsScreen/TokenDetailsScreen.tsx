@@ -285,14 +285,14 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
         <View className="flex-row gap-3">
           {swapEnabled && isClassicAsset && (
             <View className="flex-1">
-              <Button tertiary xl isFullWidth onPress={handleSwapPress}>
+              <Button secondary xl isFullWidth onPress={handleSwapPress}>
                 {t("tokenDetailsScreen.swap")}
               </Button>
             </View>
           )}
           <View className="flex-1">
             <Button
-              tertiary
+              secondary
               xl
               isFullWidth
               onPress={handleSendPress}

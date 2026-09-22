@@ -1,7 +1,7 @@
 import { fireEvent } from "@testing-library/react-native";
 import { List } from "components/List";
 import { Text } from "components/sds/Typography";
-import { THEME } from "config/theme";
+import { getTheme } from "config/theme";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 
@@ -75,9 +75,12 @@ describe("List", () => {
   });
 
   it("renders items with custom title color", () => {
+    // Dark text differs from the light default the test renders under, so
+    // the assertion proves the override rather than matching the fallback.
+    const customColor = getTheme("dark").colors.text.primary;
     const itemsWithCustomColor = mockItems.map((item) => ({
       ...item,
-      titleColor: THEME.colors.text.primary,
+      titleColor: customColor,
     }));
 
     const { getByText } = renderWithProviders(
@@ -86,7 +89,7 @@ describe("List", () => {
 
     const firstItem = getByText("Item 1");
     expect(firstItem.props.style).toMatchObject({
-      color: THEME.colors.text.primary,
+      color: customColor,
     });
   });
 

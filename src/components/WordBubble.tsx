@@ -1,4 +1,5 @@
 import { Text } from "components/sds/Typography";
+import useColors from "hooks/useColors";
 import React from "react";
 import { TouchableOpacity, View } from "react-native";
 
@@ -21,6 +22,8 @@ export const WordBubble: React.FC<WordBubbleProps> = ({
   testID,
   size = "md",
 }) => {
+  const { themeColors } = useColors();
+
   const getSizeClasses = () => {
     const map: Record<WordBubbleSize, string> = {
       sm: "px-3 py-2",
@@ -43,7 +46,14 @@ export const WordBubble: React.FC<WordBubbleProps> = ({
       activeOpacity={disabled ? 1 : 0.8}
     >
       <View className={`${containerClasses}`}>
-        <Text semiBold textAlign="center">
+        {/* The brand color fills the selected bubble in both schemes, so its
+        label is white in both: the default text color is near-black on a light
+        device and would not read well on blue. */}
+        <Text
+          semiBold
+          textAlign="center"
+          color={isSelected ? themeColors.white : undefined}
+        >
           {word}
         </Text>
       </View>

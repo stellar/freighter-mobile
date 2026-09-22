@@ -1,4 +1,5 @@
 import { Avatar, AvatarSizes } from "components/sds/Avatar";
+import { getTheme } from "config/theme";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 
@@ -49,6 +50,7 @@ jest.mock("hooks/useColors", () => ({
   default: () => ({
     themeColors: {
       base: ["#000000", "#FFFFFF"],
+      white: "#ffffff",
       text: {
         secondary: "#666666",
       },
@@ -127,7 +129,12 @@ describe("Avatar", () => {
 
       const initials = getByText("JD");
       expect(initials.props.style).toEqual(
-        expect.objectContaining({ fontWeight: "700", color: "#a0a0a0" }),
+        expect.objectContaining({
+          fontWeight: "700",
+          // Initials render through <Text secondary>, so the color follows the
+          // active scheme; jest reports no device scheme, hence the light one.
+          color: getTheme("light").colors.text.secondary,
+        }),
       );
     });
 
@@ -152,6 +159,27 @@ describe("Avatar", () => {
       );
 
       expect(queryByTestId("avatar-indicator")).toBeNull();
+    });
+
+    it("draws the check in white, which the blue badge needs in both schemes", () => {
+      // The badge is bg-primary in both schemes, so an inverting token put a
+      // black check on blue for anyone on a light device.
+      const { getByTestId } = renderWithProviders(
+        <Avatar size={AvatarSizes.MEDIUM} isSelected testID="avatar" />,
+      );
+
+      const colorsIn = (node: unknown): unknown[] => {
+        if (Array.isArray(node)) return node.flatMap(colorsIn);
+        if (!node || typeof node !== "object") return [];
+        const el = node as { props?: { color?: unknown }; children?: unknown };
+
+        return [
+          ...(el.props?.color === undefined ? [] : [el.props.color]),
+          ...colorsIn(el.children),
+        ];
+      };
+
+      expect(colorsIn(getByTestId("avatar-indicator"))).toContain("#ffffff");
     });
 
     it("shows indicator when isSelected is true", () => {

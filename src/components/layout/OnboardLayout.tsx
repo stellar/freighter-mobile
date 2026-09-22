@@ -4,9 +4,9 @@ import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
 import { DEFAULT_PADDING } from "config/constants";
-import { PALETTE, THEME } from "config/theme";
 import { px, pxValue } from "helpers/dimensions";
 import useKeyboardVisible from "hooks/useKeyboardVisible";
+import useTheme from "hooks/useTheme";
 import { t } from "i18next";
 import React from "react";
 import { EdgeInsets, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -31,7 +31,11 @@ interface OnboardLayoutProps {
   defaultActionButtonIconPosition?: IconPosition;
 }
 
-interface StyledProps {
+interface SurfaceProps {
+  $backgroundColor: string;
+}
+
+interface StyledProps extends SurfaceProps {
   $insets: EdgeInsets;
   $isKeyboardVisible: boolean;
 }
@@ -46,18 +50,18 @@ const StyledContainer = styled.View<StyledProps>`
       : $insets.bottom + pxValue(DEFAULT_PADDING)}px;
   flex: 1;
   justify-content: space-between;
-  background-color: ${THEME.colors.background.default};
+  background-color: ${({ $backgroundColor }: StyledProps) => $backgroundColor};
 `;
 
-const StyledContentContainer = styled.View`
+const StyledContentContainer = styled.View<SurfaceProps>`
   flex: 1;
-  background-color: ${THEME.colors.background.default};
+  background-color: ${({ $backgroundColor }: SurfaceProps) => $backgroundColor};
   gap: ${px(24)};
 `;
 
-const FooterContainer = styled.View`
+const FooterContainer = styled.View<SurfaceProps>`
   gap: ${px(24)};
-  background-color: ${THEME.colors.background.default};
+  background-color: ${({ $backgroundColor }: SurfaceProps) => $backgroundColor};
 `;
 
 const FooterNoteText = styled(Text)`
@@ -119,17 +123,17 @@ const DefaultFooter: React.FC<DefaultFooterProps> = ({
   <StyledFooterButtonContainer>
     {hasClipboardButton && (
       <Button
-        secondary
+        tertiary
         isFullWidth
         testID="clipboard-button"
         onPress={onPressClipboardButton as () => void}
-        icon={<Icon.Clipboard size={16} color={PALETTE.dark.gray["09"]} />}
+        icon={<Icon.Clipboard size={16} />}
       >
         {t("onboarding.pasteFromClipboard")}
       </Button>
     )}
     <Button
-      tertiary
+      secondary
       testID="default-action-button"
       isLoading={isLoading}
       onPress={onPressDefaultActionButton}
@@ -141,9 +145,9 @@ const DefaultFooter: React.FC<DefaultFooterProps> = ({
     </Button>
     {secondaryActionButtonText && (
       <Button
-        secondary
+        tertiary
         disabled={isLoading || isSecondaryActionButtonDisabled}
-        testID="secondary-action-button"
+        testID="tertiary-action-button"
         onPress={onPressSecondaryActionButton}
       >
         {secondaryActionButtonText}
@@ -202,16 +206,22 @@ export const OnboardLayout = ({
 }: OnboardLayoutProps) => {
   const insets = useSafeAreaInsets();
   const isKeyboardVisible = useKeyboardVisible();
+  const theme = useTheme();
+  const backgroundColor = theme.colors.base.primary;
 
   return (
     <ScrollableKeyboardView>
-      <StyledContainer $insets={insets} $isKeyboardVisible={isKeyboardVisible}>
-        <StyledContentContainer>
+      <StyledContainer
+        $insets={insets}
+        $isKeyboardVisible={isKeyboardVisible}
+        $backgroundColor={backgroundColor}
+      >
+        <StyledContentContainer $backgroundColor={backgroundColor}>
           {icon}
           {title && <Display medium>{title}</Display>}
           {children}
         </StyledContentContainer>
-        <FooterContainer>
+        <FooterContainer $backgroundColor={backgroundColor}>
           {footerNoteText && (
             <FooterNoteText sm secondary>
               {footerNoteText}

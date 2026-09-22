@@ -1,4 +1,5 @@
 import { getThemeColors } from "config/colors";
+import { DEFAULT_COLOR_SCHEME } from "config/theme";
 import { useCallback } from "react";
 import { Linking, useColorScheme } from "react-native";
 import { InAppBrowser } from "react-native-inappbrowser-reborn";
@@ -9,14 +10,21 @@ import { InAppBrowser } from "react-native-inappbrowser-reborn";
  */
 const useInAppBrowser = () => {
   const colorScheme = useColorScheme();
-  const themeColors = getThemeColors(colorScheme ?? "dark");
+  const themeColors = getThemeColors(colorScheme ?? DEFAULT_COLOR_SCHEME);
 
   const getThemeOptions = useCallback(
     () => ({
       // iOS options
+      //
+      // No preferredBarTintColor / preferredControlTintColor on purpose.
+      // SFSafariViewController renders out of process, so the app cannot see
+      // the page it is showing, while Safari tints its own bars from that
+      // page's rendered background. Naming a color here overrides that and
+      // paints the app's background above a site that may be the opposite
+      // brightness -- a light page under a dark bar, or the reverse, depending
+      // on the device. Leaving both unset is what lets the chrome follow the
+      // site the way it does in Safari.
       dismissButtonStyle: "cancel" as const,
-      preferredBarTintColor: themeColors.background.primary,
-      preferredControlTintColor: themeColors.text.primary,
       readerMode: false,
       animated: true,
       modalPresentationStyle: "fullScreen" as const,

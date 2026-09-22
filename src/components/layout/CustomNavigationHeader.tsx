@@ -29,7 +29,7 @@ const CustomNavigationHeader = (
 
   return (
     <View
-      className="flex-row justify-between items-center px-6 pb-4 bg-background-primary"
+      className="flex-row justify-between items-center px-6 pb-4 bg-base-0"
       style={{ paddingTop }}
     >
       {options.headerLeft ? (

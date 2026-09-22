@@ -19,7 +19,7 @@ export const DebugTrigger: React.FC<DebugTriggerProps> = ({ onPress }) => {
     <TouchableOpacity
       testID="debug-trigger"
       onPress={onPress}
-      className="absolute bottom-4 right-4 z-50 w-16 h-16 rounded-full items-center justify-center bg-black border border-purple-900"
+      className="absolute bottom-4 right-4 z-50 w-16 h-16 rounded-full items-center justify-center bg-background-tertiary border border-primary"
     >
       <Icon.Terminal color={themeColors.primary} />
     </TouchableOpacity>

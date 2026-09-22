@@ -115,14 +115,14 @@ export const XlmReserveBottomSheet: React.FC<XlmReserveBottomSheetProps> = ({
       {canOfferSwapToXlm && (
         <Button
           onPress={handleSwapForXlm}
-          tertiary
+          secondary
           isLoading={isSwapping}
           testID="xlm-reserve-swap-button"
         >
           {t("swapScreen.xlmReserve.swapXlm")}
         </Button>
       )}
-      <Button onPress={handleCopyAddress} secondary>
+      <Button onPress={handleCopyAddress} tertiary>
         {t("swapScreen.xlmReserve.copyAddress")}
       </Button>
     </View>

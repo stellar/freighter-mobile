@@ -1,9 +1,11 @@
 import { fireEvent } from "@testing-library/react-native";
 import { Button, ButtonSizes, ButtonVariants } from "components/sds/Button";
-import { BUTTON_THEME } from "components/sds/Button/theme";
+import { BUTTON_THEME, getButtonColors } from "components/sds/Button/theme";
+import Icon from "components/sds/Icon";
 import { pxValue } from "helpers/dimensions";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
+import { StyleSheet } from "react-native";
 
 const mockVerifyActionWithBiometrics = jest.fn((callback) => callback());
 const mockGetBiometricButtonIcon = jest.fn(() => null);
@@ -42,6 +44,10 @@ jest.mock("hooks/useBiometrics", () => ({
     getBiometricButtonIcon: mockGetBiometricButtonIcon,
   }),
 }));
+// Jest reports no device scheme, so the component resolves
+// DEFAULT_COLOR_SCHEME. Geometry stays on BUTTON_THEME; only colors move.
+const LIGHT_BUTTON_COLORS = getButtonColors("light");
+
 describe("Button", () => {
   const onPressMock = jest.fn();
 
@@ -59,8 +65,8 @@ describe("Button", () => {
       const button = getByTestId("test-button");
 
       expect(button.props.style).toMatchObject({
-        backgroundColor: BUTTON_THEME.colors.secondary.background,
-        borderColor: BUTTON_THEME.colors.secondary.border,
+        backgroundColor: LIGHT_BUTTON_COLORS.secondary.background,
+        borderColor: "transparent",
       });
     });
 
@@ -70,7 +76,7 @@ describe("Button", () => {
           prop: "primary",
           text: "Primary Button",
           expectedStyles: {
-            backgroundColor: BUTTON_THEME.colors.primary.background,
+            backgroundColor: LIGHT_BUTTON_COLORS.primary.background,
             borderWidth: 0,
           },
         },
@@ -78,23 +84,25 @@ describe("Button", () => {
           prop: "secondary",
           text: "Secondary Button",
           expectedStyles: {
-            backgroundColor: BUTTON_THEME.colors.secondary.background,
-            borderColor: BUTTON_THEME.colors.secondary.border,
+            backgroundColor: LIGHT_BUTTON_COLORS.secondary.background,
+            // Secondary is the filled CTA and carries no border, which the
+            // styled component renders as a zero-width transparent one.
+            borderColor: "transparent",
           },
         },
         {
           prop: "tertiary",
           text: "Tertiary Button",
           expectedStyles: {
-            backgroundColor: BUTTON_THEME.colors.tertiary.background,
-            borderColor: BUTTON_THEME.colors.tertiary.border,
+            backgroundColor: LIGHT_BUTTON_COLORS.tertiary.background,
+            borderColor: LIGHT_BUTTON_COLORS.tertiary.border,
           },
         },
         {
           prop: "destructive",
           text: "Destructive Button",
           expectedStyles: {
-            backgroundColor: BUTTON_THEME.colors.destructive.background,
+            backgroundColor: LIGHT_BUTTON_COLORS.destructive.background,
             borderWidth: 0,
           },
         },
@@ -102,8 +110,8 @@ describe("Button", () => {
           prop: "error",
           text: "Error Button",
           expectedStyles: {
-            backgroundColor: BUTTON_THEME.colors.error.background,
-            borderColor: BUTTON_THEME.colors.error.border,
+            backgroundColor: LIGHT_BUTTON_COLORS.error.background,
+            borderColor: LIGHT_BUTTON_COLORS.error.border,
           },
         },
       ];
@@ -128,7 +136,7 @@ describe("Button", () => {
       const button = getByTestId("test-button");
 
       expect(button.props.style).toMatchObject({
-        backgroundColor: BUTTON_THEME.colors.primary.background,
+        backgroundColor: LIGHT_BUTTON_COLORS.primary.background,
         borderWidth: 0,
       });
     });
@@ -140,7 +148,7 @@ describe("Button", () => {
       const button = getByTestId("test-button");
 
       expect(button.props.style).toMatchObject({
-        backgroundColor: BUTTON_THEME.colors.primary.background,
+        backgroundColor: LIGHT_BUTTON_COLORS.primary.background,
         borderWidth: 0,
       });
     });
@@ -284,7 +292,7 @@ describe("Button", () => {
       const button = getByTestId("test-button");
 
       expect(button.props.style).toMatchObject({
-        backgroundColor: BUTTON_THEME.colors.disabled.background,
+        backgroundColor: LIGHT_BUTTON_COLORS.disabled.background,
         height: pxValue(BUTTON_THEME.height.lg),
         width: "100%",
       });
@@ -329,7 +337,7 @@ describe("Button", () => {
       );
 
       const textElement = getByText("Large Button");
-      expect(textElement.props.style).toMatchObject({
+      expect(StyleSheet.flatten(textElement.props.style)).toMatchObject({
         fontSize: pxValue(16),
         fontWeight: "600", // semiBold
       });
@@ -343,8 +351,8 @@ describe("Button", () => {
       );
 
       const textElement = getByText("Disabled Button");
-      expect(textElement.props.style).toMatchObject({
-        color: BUTTON_THEME.colors.disabled.text,
+      expect(StyleSheet.flatten(textElement.props.style)).toMatchObject({
+        color: LIGHT_BUTTON_COLORS.disabled.text,
       });
     });
   });
@@ -440,6 +448,85 @@ describe("Button", () => {
       expect(mockVerifyActionWithBiometrics).not.toHaveBeenCalled();
       expect(mockGetBiometricButtonIcon).not.toHaveBeenCalled();
       expect(onPressMock).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("Icon tinting", () => {
+    /** The icon renders an svg carrying both the testID and the resolved color. */
+    const iconColor = (variant: "secondary" | "tertiary", color?: string) => {
+      const { getByTestId } = renderWithProviders(
+        <Button
+          variant={variant}
+          icon={<Icon.Copy01 size={16} color={color} testID="button-icon" />}
+        >
+          Copy
+        </Button>,
+      );
+
+      return getByTestId("button-icon").props.color as string;
+    };
+
+    it("tints the icon to match the label of its variant", () => {
+      // An icon sitting next to a label in a different color reads as a
+      // mistake, and a grey one on a filled button barely reads at all.
+      expect(iconColor("secondary")).toBe(LIGHT_BUTTON_COLORS.secondary.text);
+    });
+
+    it("tints it per variant, not to one fixed color", () => {
+      expect(iconColor("tertiary")).toBe(LIGHT_BUTTON_COLORS.tertiary.text);
+    });
+
+    it("tints the biometric icon too, which arrives through the HOC", () => {
+      // The biometric path builds its own icon and hands it to the same base
+      // component, so it has to pick up the label color like any other.
+      mockGetBiometricButtonIcon.mockReturnValueOnce(
+        (<Icon.FaceId size={16} testID="button-icon" />) as never,
+      );
+
+      const { getByTestId } = renderWithProviders(
+        <Button secondary biometric onPress={jest.fn()}>
+          Confirm
+        </Button>,
+      );
+
+      expect(getByTestId("button-icon").props.color).toBe(
+        LIGHT_BUTTON_COLORS.secondary.text,
+      );
+    });
+
+    it("leaves an explicitly colored icon alone", () => {
+      // Deliberate exceptions stay possible: a status-colored icon, say.
+      expect(iconColor("secondary", "#ff0000")).toBe("#ff0000");
+    });
+  });
+
+  describe("Long labels", () => {
+    // "Copy to clipboard" is half the length of its Portuguese translation, so
+    // a button that fits in English can overflow once translated.
+    const LONG_LABEL = "Copiar para a area de transferencia";
+
+    const label = () => {
+      const { getByText } = renderWithProviders(
+        <Button tertiary icon={<Icon.Copy01 size={20} />}>
+          {LONG_LABEL}
+        </Button>,
+      );
+
+      return getByText(LONG_LABEL);
+    };
+
+    it("lets the label give way instead of pushing the icon out of the row", () => {
+      // The row is centered, so a label that keeps its full width drives the
+      // icon past the button's edge and takes the pair off center with it.
+      expect(StyleSheet.flatten(label().props.style)).toMatchObject({
+        flexShrink: 1,
+      });
+    });
+
+    it("keeps the label on one line", () => {
+      // isVerticallyCentered pins the label to a single line height, so a
+      // second line would be clipped rather than shown.
+      expect(label().props.numberOfLines).toBe(1);
     });
   });
 });

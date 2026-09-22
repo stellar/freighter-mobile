@@ -306,14 +306,14 @@ const DiscoveryHomepage: React.FC<DiscoveryHomepageProps> = React.memo(
             ],
           }}
         >
-          <View className="items-center mt-4 mb-3 bg-background-primary">
+          <View className="items-center mt-4 mb-3 bg-base-0">
             <Text md medium>
               {t("discovery.discover")}
             </Text>
           </View>
 
           <ScrollView
-            className="flex-1 bg-background-primary"
+            className="flex-1 bg-base-0"
             showsVerticalScrollIndicator={false}
             pointerEvents={expandedSection ? "none" : "auto"}
           >

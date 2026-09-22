@@ -1,6 +1,6 @@
 import { Text } from "components/sds/Typography";
-import { THEME } from "config/theme";
 import { fsValue } from "helpers/dimensions";
+import useTheme from "hooks/useTheme";
 import React, { useMemo } from "react";
 import { Platform, TextInput, View, TextStyle } from "react-native";
 
@@ -213,6 +213,7 @@ export const Textarea: React.FC<TextareaProps> = ({
   isError,
   ...props
 }: TextareaProps) => {
+  const theme = useTheme();
   const containerClasses = useMemo(
     () => getContainerClasses(fieldSize),
     [fieldSize],
@@ -238,10 +239,10 @@ export const Textarea: React.FC<TextareaProps> = ({
   return (
     <View className={containerClasses}>
       {label && (
-        <Text {...labelProps} color={THEME.colors.text.secondary}>
+        <Text {...labelProps} color={theme.colors.text.secondary}>
           {isLabelUppercase ? label.toString().toUpperCase() : label}
           {labelSuffix && (
-            <Text {...labelProps} color={THEME.colors.text.secondary}>
+            <Text {...labelProps} color={theme.colors.text.secondary}>
               {" "}
               {labelSuffix}
             </Text>
@@ -260,7 +261,7 @@ export const Textarea: React.FC<TextareaProps> = ({
           multiline
           numberOfLines={TEXTAREA_SIZES[fieldSize].lines}
           textAlignVertical="top"
-          placeholderTextColor={THEME.colors.text.secondary}
+          placeholderTextColor={theme.colors.text.secondary}
           editable={editable}
           {...props}
         />
@@ -269,7 +270,7 @@ export const Textarea: React.FC<TextareaProps> = ({
       {note && (
         <View className="mt-2">
           {typeof note === "string" ? (
-            <Text sm color={THEME.colors.text.secondary}>
+            <Text sm color={theme.colors.text.secondary}>
               {note}
             </Text>
           ) : (
@@ -279,14 +280,14 @@ export const Textarea: React.FC<TextareaProps> = ({
       )}
       {error && (
         <View className="mt-2">
-          <Text sm color={THEME.colors.status.error}>
+          <Text sm color={theme.colors.status.error}>
             {error}
           </Text>
         </View>
       )}
       {success && (
         <View className="mt-2">
-          <Text sm color={THEME.colors.status.success}>
+          <Text sm color={theme.colors.status.success}>
             {success}
           </Text>
         </View>

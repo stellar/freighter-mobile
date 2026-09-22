@@ -81,7 +81,7 @@ const ConnectedAppsBottomSheet: React.FC<ConnectedAppsBottomSheetProps> = ({
             {t("connectedApps.noConnectedDappsDescription")}
           </Text>
           <View className="mt-3">
-            <Button xl tertiary onPress={onGoToDiscover}>
+            <Button xl secondary onPress={onGoToDiscover}>
               {t("connectedApps.goToDiscover")}
             </Button>
           </View>

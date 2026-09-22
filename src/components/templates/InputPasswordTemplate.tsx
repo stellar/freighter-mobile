@@ -123,7 +123,7 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
             )}
             <Button
               biometric
-              tertiary
+              secondary
               xl
               onPress={(password) => {
                 handleContinue((password as string) ?? passwordValue);
@@ -141,7 +141,7 @@ const InputPasswordTemplate: React.FC<InputPasswordTemplateProps> = ({
         <View className="mt-4">
           {handleLogout && (
             <Button
-              secondary
+              tertiary
               xl
               onPress={handleLogout}
               testID={forgotPasswordButtonTestID}

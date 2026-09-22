@@ -1,7 +1,6 @@
 import { logos } from "assets/logos";
 import { Avatar } from "components/sds/Avatar";
 import { Button, IconPosition } from "components/sds/Button";
-import { BUTTON_THEME } from "components/sds/Button/theme";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { pxValue } from "helpers/dimensions";
@@ -75,10 +74,8 @@ export const ReceiveTabView: React.FC = () => {
         </Text>
         <Button
           isFullWidth
-          tertiary
-          icon={
-            <Icon.Copy01 size={18} color={BUTTON_THEME.colors.tertiary.text} />
-          }
+          secondary
+          icon={<Icon.Copy01 size={18} />}
           iconPosition={IconPosition.LEFT}
           onPress={() => copyToClipboard(publicKey)}
         >

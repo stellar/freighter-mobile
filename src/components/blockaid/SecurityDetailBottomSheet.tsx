@@ -108,7 +108,7 @@ export const SecurityDetailBottomSheet: React.FC<
                 xl
                 isFullWidth
                 onPress={onCancel}
-                variant="secondary"
+                variant="tertiary"
                 testID="security-warning-cancel-button"
               >
                 {t("common.cancel")}
@@ -121,7 +121,7 @@ export const SecurityDetailBottomSheet: React.FC<
                 xl
                 isFullWidth
                 onPress={onProceedAnyway}
-                variant="tertiary"
+                variant="secondary"
                 testID="security-warning-proceed-button"
               >
                 {proceedAnywayText}

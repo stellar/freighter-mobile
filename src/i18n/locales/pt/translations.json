@@ -179,7 +179,7 @@
   "recoveryPhraseScreen": {
     "title": "Sua Frase de Recuperação",
     "warning": "Isso é só para seus olhos. Nunca compartilhe isso.",
-    "copyButtonText": "Copiar para a área de transferência",
+    "copyButtonText": "Copiar frase",
     "footerNoteText": "Certifique-se de manter isso em um\nlocal seguro antes de continuar"
   },
   "validateRecoveryPhraseScreen": {
@@ -1044,7 +1044,7 @@
   "yourRecoveryPhrase": {
     "title": "Sua Frase de Recuperação",
     "securityNote": "Essas palavras são as chaves da sua carteira—guarde-as com segurança para manter seus fundos protegidos.",
-    "copyButton": "Copiar para a área de transferência"
+    "copyButton": "Copiar frase"
   },
   "transaction": {
     "errors": {

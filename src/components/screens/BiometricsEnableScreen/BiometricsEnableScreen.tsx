@@ -9,6 +9,7 @@ import { OnboardLayout } from "components/layout/OnboardLayout";
 import { IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
+import { colors } from "config/colors";
 import {
   BiometricsSource,
   FACE_ID_BIOMETRY_TYPES,
@@ -21,6 +22,7 @@ import {
   ROOT_NAVIGATOR_ROUTES,
   RootStackParamList,
 } from "config/routes";
+import { DEFAULT_COLOR_SCHEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
 import { useLoginDataStore } from "ducks/loginData";
 import { isIOS } from "helpers/device";
@@ -29,8 +31,9 @@ import useAppTranslation from "hooks/useAppTranslation";
 import { useBiometrics } from "hooks/useBiometrics";
 import useColors from "hooks/useColors";
 import { useSetupFailedToast } from "hooks/useSetupFailedToast";
+import useTheme from "hooks/useTheme";
 import React, { useCallback, useMemo, useState } from "react";
-import { View, Image } from "react-native";
+import { View, Image, useColorScheme } from "react-native";
 import { BIOMETRY_TYPE } from "react-native-keychain";
 import { Svg, Defs, Rect, LinearGradient, Stop } from "react-native-svg";
 import { dataStorage } from "services/storage/storageFactory";
@@ -39,6 +42,39 @@ type BiometricsOnboardingScreenProps = NativeStackScreenProps<
   AuthStackParamList,
   typeof AUTH_STACK_ROUTES.BIOMETRICS_ENABLE_SCREEN
 >;
+
+/**
+ * The Face ID / Touch ID badge is a frosted card floating over the phone
+ * artwork, so it takes its contrast from its own surface rather than from the
+ * page. Values read from the Varial onboarding screens in Figma:
+ * light https://www.figma.com/design/lcdj2ucnJ2BfvRvsLboBNC/Varial?node-id=1-11981
+ * dark  https://www.figma.com/design/lcdj2ucnJ2BfvRvsLboBNC/Varial?node-id=760-36930
+ *
+ * Both glyphs are palette tokens: Figma binds the light card to Colors/Base/1
+ * and the dark one to Colors/Lime/9. base[1] is the scheme's ink, so the light
+ * glyph reads it from the light ramp -- base[0] there is the page white, which
+ * would erase the glyph against its own light card.
+ *
+ * `blurType` carries the tint on iOS: these materials are translucent, so the
+ * blurred iPhone artwork still reads through the card. `surface` is the flat
+ * stand-in for where no live blur exists -- Android, and iOS under
+ * reduce-transparency. Painting it over the blur as well stacks two tints and
+ * makes the card opaque, which defeats the point of blurring anything.
+ */
+export const BIOMETRIC_BADGE = {
+  light: {
+    blurType: "light",
+    blurAmount: 6,
+    surface: "rgba(255, 255, 255, 0.7)",
+    glyph: colors.light.base[1],
+  },
+  dark: {
+    blurType: "dark",
+    blurAmount: 5,
+    surface: "rgba(0, 0, 0, 0.56)",
+    glyph: colors.dark.lime[9],
+  },
+} as const;
 
 /**
  * Unified component for displaying biometric icons with blurred background
@@ -56,15 +92,16 @@ type BiometricsOnboardingScreenProps = NativeStackScreenProps<
  */
 const BlurredBackgroundIcon = ({
   iconBiometryType,
-  color,
   iconSize,
   iconContainerDimensions,
 }: {
   iconBiometryType: BIOMETRY_TYPE;
-  color: string;
   iconSize?: number;
   iconContainerDimensions: { width: number; height: number };
 }) => {
+  const colorScheme = useColorScheme() ?? DEFAULT_COLOR_SCHEME;
+  const theme = useTheme();
+  const badge = BIOMETRIC_BADGE[colorScheme];
   const isFaceId = FACE_ID_BIOMETRY_TYPES.includes(iconBiometryType);
   const defaultIconSize = pxValue(80);
   const iconSizeToUse = iconSize ?? defaultIconSize;
@@ -84,14 +121,16 @@ const BlurredBackgroundIcon = ({
           // On iOS, borderRadius set directly on BlurView doesn't clip the
           // native blur effect, so we round + clip here on the parent instead.
           borderRadius: Math.round(pxValue(16)),
+          borderWidth: pxValue(1),
+          borderColor: theme.colors.border.default,
           overflow: "hidden",
         }}
       >
         {isIOS ? (
           <BlurView
-            blurType="light"
-            blurAmount={6}
-            reducedTransparencyFallbackColor={color}
+            blurType={badge.blurType}
+            blurAmount={badge.blurAmount}
+            reducedTransparencyFallbackColor={badge.surface}
             style={{
               position: "absolute",
               top: 0,
@@ -102,16 +141,15 @@ const BlurredBackgroundIcon = ({
             }}
           />
         ) : (
-          // Android fallback: use a semi-transparent background instead of blur
+          // Android has no backdrop blur, so it gets the flat fill instead.
           <View
             style={{
               position: "absolute",
               top: 0,
               left: 0,
-              width: iconContainerDimensions.width,
-              height: iconContainerDimensions.height,
-              borderRadius: Math.round(pxValue(16)),
-              backgroundColor: "rgba(255, 255, 255, 0.17)",
+              bottom: 0,
+              right: 0,
+              backgroundColor: badge.surface,
               zIndex: 1,
             }}
           />
@@ -120,7 +158,7 @@ const BlurredBackgroundIcon = ({
           className="absolute inset-0 items-center justify-center"
           style={{ zIndex: 2 }}
         >
-          <IconComponent color={color} size={iconSizeToUse} />
+          <IconComponent color={badge.glyph} size={iconSizeToUse} />
         </View>
       </View>
     </View>
@@ -338,8 +376,16 @@ export const BiometricsOnboardingScreen: React.FC<
                 y2="300"
                 gradientUnits="userSpaceOnUse"
               >
-                <Stop offset="0" stopColor="#161616" stopOpacity="0" />
-                <Stop offset="1" stopColor="#161616" stopOpacity="1" />
+                <Stop
+                  offset="0"
+                  stopColor={themeColors.background.primary}
+                  stopOpacity="0"
+                />
+                <Stop
+                  offset="1"
+                  stopColor={themeColors.background.primary}
+                  stopOpacity="1"
+                />
               </LinearGradient>
             </Defs>
             <Rect
@@ -353,11 +399,11 @@ export const BiometricsOnboardingScreen: React.FC<
   );
 
   const getIcon = useCallback(
-    (color?: string, circle?: boolean) => {
+    (circle?: boolean) => {
       if (biometryType && FACE_ID_BIOMETRY_TYPES.includes(biometryType)) {
-        return <Icon.FaceId circle={circle} color={color} />;
+        return <Icon.FaceId circle={circle} />;
       }
-      return <Icon.Fingerprint01 circle={circle} color={color} />;
+      return <Icon.Fingerprint01 circle={circle} />;
     },
     [biometryType],
   );
@@ -431,7 +477,7 @@ export const BiometricsOnboardingScreen: React.FC<
       icon={getIcon()}
       title={biometryTitle[biometryType] ?? ""}
       footerNoteText={footerNoteText[biometryType] ?? ""}
-      defaultActionButtonIcon={getIcon(themeColors.foreground.primary, false)}
+      defaultActionButtonIcon={getIcon(false)}
       defaultActionButtonIconPosition={IconPosition.LEFT}
       defaultActionButtonText={t("common.enable")}
       secondaryActionButtonText={t("common.skip")}
@@ -449,7 +495,6 @@ export const BiometricsOnboardingScreen: React.FC<
       <View className="items-center">
         <BlurredBackgroundIcon
           iconBiometryType={biometryType}
-          color={themeColors.white}
           iconContainerDimensions={iconContainerDimensions}
         />
 

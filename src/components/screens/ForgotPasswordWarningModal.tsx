@@ -64,7 +64,7 @@ const ForgotPasswordWarningModal: React.FC<ForgotPasswordWarningModalProps> = ({
 
       <View className="gap-4">
         <Button
-          tertiary
+          secondary
           xl
           onPress={onCancel}
           testID="forgot-password-warning-cancel-button"
