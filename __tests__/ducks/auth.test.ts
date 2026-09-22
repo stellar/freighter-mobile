@@ -1730,6 +1730,80 @@ describe("auth duck", () => {
           SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
         );
       });
+
+      // Clearing the stale marker is a cleanup, not the decision. If it were
+      // allowed to reach getAuthStatus's outer catch, a known-expired session
+      // would answer NOT_AUTHENTICATED and RootNavigator would route an
+      // account-bearing wallet to the onboarding auth stack instead of the
+      // lock screen that collects the required password re-auth.
+      it.each([
+        [
+          "an expired key under a persisted soft lock",
+          {
+            temporaryStore: "encrypted-temp-store",
+            hashKey: {
+              hashKey: "mock-hash-key",
+              salt: "mock-salt",
+              generatedAt: Date.now() - 73 * 3600000,
+              expiresAt: Date.now() - 3600000,
+            },
+          },
+        ],
+        [
+          "a persisted soft lock with no temporary store",
+          {
+            temporaryStore: null,
+            hashKey: {
+              hashKey: "mock-hash-key",
+              salt: "mock-salt",
+              expiresAt: Date.now() + 3600000,
+            },
+          },
+        ],
+      ])(
+        "should still return HASH_KEY_EXPIRED for %s when clearing the stale marker fails",
+        async (_label, { temporaryStore, hashKey }) => {
+          const { result } = renderHook(() => useAuthenticationStore());
+
+          act(() => {
+            useAuthenticationStore.setState({
+              getAuthStatus: originalStoreMethods.getAuthStatus,
+            });
+          });
+
+          (dataStorage.getItem as jest.Mock).mockImplementation((key) => {
+            if (key === STORAGE_KEYS.ACCOUNT_LIST) {
+              return Promise.resolve(JSON.stringify([mockAccount]));
+            }
+            return Promise.resolve(null);
+          });
+
+          (secureDataStorage.getItem as jest.Mock).mockImplementation((key) => {
+            if (key === SENSITIVE_STORAGE_KEYS.AUTH_STATUS) {
+              return Promise.resolve(AUTH_STATUS.LOCKED);
+            }
+            if (key === SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE) {
+              return Promise.resolve(temporaryStore);
+            }
+            return Promise.resolve(null);
+          });
+
+          (getHashKey as jest.Mock).mockResolvedValue(hashKey);
+
+          (secureDataStorage.remove as jest.Mock).mockRejectedValue(
+            new Error("keychain unavailable"),
+          );
+
+          await act(async () => {
+            const status = await result.current.getAuthStatus();
+            expect(status).toBe(AUTH_STATUS.HASH_KEY_EXPIRED);
+          });
+
+          expect(secureDataStorage.remove).toHaveBeenCalledWith(
+            SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
+          );
+        },
+      );
     });
 
     describe("getAuthStatus with auto-lock timer", () => {
@@ -1821,6 +1895,36 @@ describe("auth duck", () => {
           AUTH_STATUS.LOCKED,
         );
         expect(secureDataStorage.remove).toHaveBeenCalledWith(
+          SENSITIVE_STORAGE_KEYS.AUTO_LOCK_BACKGROUNDED_AT,
+        );
+      });
+
+      // Unlike the reads above, secureDataStorage.setItem really does throw on
+      // a keychain failure. Letting that reach the outer catch would answer
+      // NOT_AUTHENTICATED for a session just decided to be LOCKED, dropping an
+      // account-bearing wallet onto the onboarding stack.
+      it("should still soft-lock when persisting the LOCKED marker fails", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+        restoreGetAuthStatus();
+
+        mockAuthenticatedStorage({
+          backgroundedAt: Date.now() - 2 * ONE_HOUR_MS,
+          autoLockTimer: AUTO_LOCK_TIMER.ONE_HOUR,
+        });
+
+        (secureDataStorage.setItem as jest.Mock).mockRejectedValue(
+          new Error("Failed to store item in keychain"),
+        );
+
+        await act(async () => {
+          const status = await result.current.getAuthStatus();
+          expect(status).toBe(AUTH_STATUS.LOCKED);
+        });
+
+        // The timestamp is deliberately NOT consumed: with no persisted
+        // marker, the next check must re-derive the same lock from elapsed
+        // background time rather than resolving AUTHENTICATED.
+        expect(secureDataStorage.remove).not.toHaveBeenCalledWith(
           SENSITIVE_STORAGE_KEYS.AUTO_LOCK_BACKGROUNDED_AT,
         );
       });
@@ -2381,6 +2485,77 @@ describe("auth duck", () => {
         expect(observedInvalidStates).toHaveLength(0);
         expect(result.current.authStatus).toBe(AUTH_STATUS.LOCKED);
         expect(result.current.isSoftLocked).toBe(true);
+      });
+
+      // Companion to the module-level "persisting the LOCKED marker fails"
+      // test, which starts from NOT_AUTHENTICATED (cold start) and so never
+      // reaches softLock. On the AUTHENTICATED -> LOCKED transition the store
+      // funnels through softLock, whose deliberate policy is retry-once-then-
+      // rethrow. The contract that matters is that the in-memory lock lands
+      // first, so a keychain outage surfaces the fault without ever leaving
+      // the wallet unlocked.
+      it("should still land the in-memory soft lock when the keychain write fails throughout", async () => {
+        const { result } = renderHook(() => useAuthenticationStore());
+        act(() => {
+          useAuthenticationStore.setState({
+            getAuthStatus: originalStoreMethods.getAuthStatus,
+            softLock: originalStoreMethods.softLock,
+            authStatus: AUTH_STATUS.AUTHENTICATED,
+            isSoftLocked: false,
+          });
+        });
+
+        (dataStorage.getItem as jest.Mock).mockImplementation((key) => {
+          if (key === STORAGE_KEYS.ACCOUNT_LIST) {
+            return Promise.resolve(JSON.stringify([mockAccount]));
+          }
+          return Promise.resolve(null);
+        });
+        (secureDataStorage.getItem as jest.Mock).mockImplementation((key) => {
+          if (key === SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE) {
+            return Promise.resolve("encrypted-temp-store");
+          }
+          if (key === SENSITIVE_STORAGE_KEYS.AUTO_LOCK_BACKGROUNDED_AT) {
+            return Promise.resolve(String(Date.now() - 7200000)); // 2h ago
+          }
+          if (key === SENSITIVE_STORAGE_KEYS.AUTO_LOCK_TIMER_SETTING) {
+            return Promise.resolve(AUTO_LOCK_TIMER.ONE_HOUR);
+          }
+          return Promise.resolve(null);
+        });
+        (getHashKey as jest.Mock).mockResolvedValue({
+          hashKey: "mock-hash-key",
+          salt: "mock-salt",
+          expiresAt: Date.now() + 3600000,
+        });
+        (secureDataStorage.setItem as jest.Mock).mockRejectedValue(
+          new Error("Failed to store item in keychain"),
+        );
+
+        const observedInvalidStates: string[] = [];
+        const unsubscribe = useAuthenticationStore.subscribe((state) => {
+          if (state.authStatus === AUTH_STATUS.LOCKED && !state.isSoftLocked) {
+            observedInvalidStates.push(state.authStatus);
+          }
+        });
+
+        await act(async () => {
+          // softLock rethrows after its retry, by design — the module-level
+          // swallow moves the failure here rather than hiding it.
+          await expect(result.current.getAuthStatus()).rejects.toThrow(
+            "Failed to store item in keychain",
+          );
+        });
+
+        unsubscribe();
+        expect(observedInvalidStates).toHaveLength(0);
+        expect(result.current.authStatus).toBe(AUTH_STATUS.LOCKED);
+        expect(result.current.isSoftLocked).toBe(true);
+        // The backgrounded-at timestamp survives, so a cold start after the
+        // outage re-derives the same lock instead of resolving AUTHENTICATED.
+        expect(secureDataStorage.remove).not.toHaveBeenCalledWith(
+          SENSITIVE_STORAGE_KEYS.AUTO_LOCK_BACKGROUNDED_AT,
+        );
       });
 
       it("should make navigateToLockScreen a no-op while soft-locked", () => {

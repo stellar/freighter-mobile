@@ -463,6 +463,36 @@ const getAllAccounts = async (): Promise<Account[]> => {
 };
 
 /**
+ * Clears a stale persisted soft-lock marker, best-effort.
+ *
+ * Only for `getAuthStatus`'s expiry paths, which have already decided the
+ * session is over and are just tidying up after themselves. That cleanup must
+ * not be able to change the decision: an error escaping to `getAuthStatus`'s
+ * outer catch downgrades a known HASH_KEY_EXPIRED session to
+ * NOT_AUTHENTICATED, which routes an account-bearing wallet to the onboarding
+ * auth stack instead of the lock screen that collects the required password
+ * re-auth. The marker is an optimisation; the returned status is the security
+ * decision.
+ *
+ * `secureDataStorage.remove` swallows its own keychain errors today, so this is
+ * defense in depth rather than a live fix. Deliberately NOT used for signIn's
+ * marker clear: there the removal is part of establishing the new session, not
+ * cleanup after a decision, so a failure genuinely means the persisted state
+ * disagrees with the session and should surface.
+ */
+const clearPersistedAuthStatus = async (): Promise<void> => {
+  try {
+    await secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.AUTH_STATUS);
+  } catch (error) {
+    logger.error(
+      "clearPersistedAuthStatus",
+      "Failed to clear stale persisted auth status",
+      error,
+    );
+  }
+};
+
+/**
  * Validates the authentication status of the user
  *
  * Checks if accounts exist, if hash key is valid, and if temporary store exists
@@ -504,14 +534,14 @@ const getAuthStatus = async (): Promise<AuthStatus> => {
     );
     if (persistedAuthStatus === AUTH_STATUS.LOCKED) {
       if (hashKey && isHashKeyExpired(hashKey)) {
-        await secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.AUTH_STATUS);
+        await clearPersistedAuthStatus();
         return AUTH_STATUS.HASH_KEY_EXPIRED;
       }
       if (temporaryStore) {
         return AUTH_STATUS.LOCKED;
       }
       // Temp store missing: LOCKED state is invalid, treat as expired
-      await secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.AUTH_STATUS);
+      await clearPersistedAuthStatus();
       return AUTH_STATUS.HASH_KEY_EXPIRED;
     }
 
@@ -539,11 +569,37 @@ const getAuthStatus = async (): Promise<AuthStatus> => {
       // unlock path (all presets are positive durations, so no zero/null case
       // to exclude).
       if (elapsedInBackground >= autoLockTimerMs && temporaryStore) {
-        await secureDataStorage.setItem(
-          SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
-          AUTH_STATUS.LOCKED,
-        );
-        await clearBackgroundedAt();
+        // Persisting the marker is best-effort here: unlike `remove`,
+        // `secureDataStorage.setItem` does throw on a keychain failure, and
+        // letting that reach the outer catch would answer NOT_AUTHENTICATED
+        // for a session we have just decided is LOCKED - sending an
+        // account-bearing wallet to the onboarding stack instead of the lock
+        // screen. That matters most on a cold start, where no in-memory lock
+        // state exists yet to fall back on. On failure the backgrounded-at
+        // timestamp is deliberately left intact (the clear is inside the try),
+        // so the next check re-derives the same lock from elapsed time and the
+        // wallet is never auto-unlockable.
+        //
+        // The store's softLock() takes the opposite line on the same write -
+        // retry once, then rethrow - and both are right: softLock also serves
+        // foreground-idle locks that have no backgrounded-at timestamp to
+        // re-derive from, so there a lost write really can leave the wallet
+        // unlocked on the next cold launch. It also sets the in-memory LOCKED
+        // state before writing, so its throw surfaces the fault without
+        // unlocking anything.
+        try {
+          await secureDataStorage.setItem(
+            SENSITIVE_STORAGE_KEYS.AUTH_STATUS,
+            AUTH_STATUS.LOCKED,
+          );
+          await clearBackgroundedAt();
+        } catch (error) {
+          logger.error(
+            "getAuthStatus",
+            "Failed to persist soft-lock auth status",
+            error,
+          );
+        }
         return AUTH_STATUS.LOCKED;
       }
 
