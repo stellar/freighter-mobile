@@ -13,6 +13,7 @@ import TokenPriceChart, {
   priceChartLabelHeight,
   PRICE_CHART_LINE_HEIGHT,
   INSPECT_GESTURE_TEST_ID,
+  tooltipTop,
 } from "components/screens/TokenDetailsScreen/components/PriceHistory/TokenPriceChart";
 import { TEXT_SIZES } from "components/sds/Typography";
 import { getThemeColors } from "config/colors";
@@ -723,6 +724,22 @@ describe("axis label measurements survive their own edge cases", () => {
   });
 });
 
+describe("tooltipTop", () => {
+  const BAND_TOP = 20;
+
+  it("centres the pill on the dot in the middle of the band", () => {
+    expect(tooltipTop(76, 34, BAND_TOP)).toBe(BAND_TOP + 59);
+  });
+
+  it("clamps flush with the band's top for a dot near the top edge", () => {
+    expect(tooltipTop(5, 34, BAND_TOP)).toBe(BAND_TOP + 0);
+  });
+
+  it("clamps flush with the band's bottom for a dot near the bottom edge", () => {
+    expect(tooltipTop(150, 34, BAND_TOP)).toBe(BAND_TOP + 118);
+  });
+});
+
 describe("drag to inspect", () => {
   // The tooltip is deliberately hidden from assistive tech, and hidden again
   // by `opacity: 0` until it has measured itself. RNTL's queries skip
@@ -751,6 +768,20 @@ describe("drag to inspect", () => {
         {...props}
       />,
     );
+
+  /**
+   * The same geometry the component computes, so the `top` assertions below
+   * check against the inspected point's REAL y rather than a hand-picked one.
+   * Depends on the `Date.now` mock in `beforeEach`, like the component does.
+   */
+  const inspectGeometry = () =>
+    computeChartGeometry({
+      points: inspectPoints,
+      resolutionSeconds: 900,
+      nowSeconds: Math.floor(Date.now() / 1000),
+      width,
+      height: PRICE_CHART_LINE_HEIGHT,
+    })!;
 
   beforeEach(() => {
     jest.spyOn(Date, "now").mockReturnValue(1_000_000 * 1000);
@@ -827,6 +858,10 @@ describe("drag to inspect", () => {
       fireEvent(el, "layout", {
         nativeEvent: { layout: { width: w, height: 34 } },
       });
+    const { fontScale } = renderHook(() => useWindowDimensions()).result
+      .current;
+    const { coords } = inspectGeometry();
+    const bandTop = priceChartLabelHeight(fontScale);
 
     const right = renderInspectable({ inspectedIndex: 2 }); // x = 200
     measure(right.getByTestId("price-history-inspect-tooltip", HIDDEN), 60);
@@ -834,7 +869,11 @@ describe("drag to inspect", () => {
       StyleSheet.flatten(
         right.getByTestId("price-history-inspect-tooltip", HIDDEN).props.style,
       ),
-    ).toMatchObject({ left: 200 - 8 - 60, opacity: 1 });
+    ).toMatchObject({
+      left: 200 - 8 - 60,
+      top: tooltipTop(coords[2].y, 34, bandTop),
+      opacity: 1,
+    });
 
     const left = renderInspectable({ inspectedIndex: 0 }); // x = 0
     measure(left.getByTestId("price-history-inspect-tooltip", HIDDEN), 60);
@@ -842,7 +881,11 @@ describe("drag to inspect", () => {
       StyleSheet.flatten(
         left.getByTestId("price-history-inspect-tooltip", HIDDEN).props.style,
       ),
-    ).toMatchObject({ left: 0 + 8, opacity: 1 });
+    ).toMatchObject({
+      left: 0 + 8,
+      top: tooltipTop(coords[0].y, 34, bandTop),
+      opacity: 1,
+    });
   });
 
   it("clamps a wide pill flipped right near the left edge to the chart's right edge", () => {

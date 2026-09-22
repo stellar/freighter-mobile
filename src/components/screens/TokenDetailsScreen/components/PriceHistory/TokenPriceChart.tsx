@@ -225,6 +225,34 @@ export const tooltipLeft = (
   return Math.max(0, Math.min(left, width - (tooltipWidth ?? 0)));
 };
 
+/**
+ * `top` for the tooltip pill, centred on the inspected dot's y so the pill's
+ * tip points at the dot — the Figma's own placement, not the plot band's top.
+ *
+ * Clamped to `[bandTop, bandTop + PRICE_CHART_LINE_HEIGHT - h]` so the pill
+ * stays inside the plot band and never overlaps the label rows above or below
+ * it. At either edge of the band that clamp holds the pill flush with the
+ * edge rather than centred on the dot — the Figma's own behaviour for a dot
+ * near the top or bottom of the line, where a truly centred pill would
+ * overhang into a label row.
+ *
+ * `tooltipHeight` is undefined until the pill has measured itself (same model
+ * as `tooltipWidth`); an unmeasured pill is drawn at `bandTop` with `h = 0`,
+ * which matches where it always rendered before it had a size to centre with
+ * and is hidden by the caller's opacity anyway.
+ */
+export const tooltipTop = (
+  y: number,
+  tooltipHeight: number | undefined,
+  bandTop: number,
+): number => {
+  const h = tooltipHeight ?? 0;
+
+  return (
+    bandTop + Math.min(Math.max(y - h / 2, 0), PRICE_CHART_LINE_HEIGHT - h)
+  );
+};
+
 /** The pill's 8px tip: a rotated square tucked 4px under the pill's edge. */
 const Tip: React.FC<{ color: string; side: "left" | "right" }> = ({
   color,
@@ -372,13 +400,23 @@ const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
     [],
   );
 
-  // Tooltip placement needs the pill's measured width; hidden until it lands
-  // (same model as the axis labels).
-  const [tooltipWidth, setTooltipWidth] = useState<number | undefined>();
+  // Tooltip placement needs the pill's measured size; hidden until it lands
+  // (same model as the axis labels). Width drives the horizontal placement
+  // (`tooltipLeft`/`tooltipPlacement`); height drives centring it on the
+  // inspected dot (`tooltipTop`).
+  const [tooltipSize, setTooltipSize] = useState<
+    { width: number; height: number } | undefined
+  >();
+  const tooltipWidth = tooltipSize?.width;
   const measureTooltip = (event: LayoutChangeEvent) => {
-    const measured = event.nativeEvent.layout.width;
+    const { width: measuredWidth, height: measuredHeight } =
+      event.nativeEvent.layout;
 
-    setTooltipWidth((current) => (current === measured ? current : measured));
+    setTooltipSize((current) =>
+      current?.width === measuredWidth && current?.height === measuredHeight
+        ? current
+        : { width: measuredWidth, height: measuredHeight },
+    );
   };
 
   // Reduced motion is honoured by not animating at all: the hard switch is
@@ -701,7 +739,11 @@ const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
           onLayout={measureTooltip}
           style={{
             position: "absolute",
-            top: priceChartLabelHeight(fontScale),
+            top: tooltipTop(
+              inspectedCoord.y,
+              tooltipSize?.height,
+              priceChartLabelHeight(fontScale),
+            ),
             left: tooltipLeft(inspectedCoord.x, tooltipWidth, width),
             // Hidden until its own measurement lands, for the same reason the
             // axis labels are: the placement depends on the width.
