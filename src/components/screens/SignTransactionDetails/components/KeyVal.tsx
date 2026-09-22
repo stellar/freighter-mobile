@@ -158,7 +158,7 @@ export const useContractArgNames = ({
  */
 export const ContractSpecNote = () => (
   <Text sm secondary testID="ContractSpecNote">
-    {t("signTransactionDetails.operations.contractSpecNote")}
+    {t("signTransactionDetails.authorizations.contractSpecNote")}
   </Text>
 );
 
