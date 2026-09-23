@@ -401,11 +401,11 @@ const SendCollectibleReviewScreen: React.FC<
           network,
         });
 
-        const success = await submitTransaction({
+        const { hash: submittedHash } = await submitTransaction({
           network,
         });
 
-        if (success) {
+        if (submittedHash) {
           analytics.trackSendCollectibleSuccess({
             collectionAddress: selectedCollectible.collectionAddress,
             tokenId: selectedCollectible.tokenId,

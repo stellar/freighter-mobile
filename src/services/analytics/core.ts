@@ -282,7 +282,14 @@ export const getAccountIdHash = (publicKey: string): string => {
   }
 };
 
-export const SCHEMA_VERSION = "2";
+/**
+ * Schema generation marker for the cross-platform property model. Bumped to
+ * "4" for the signing/step alignment: signing events now carry `source`, and
+ * the extension's `step: "confirm"` moved to the review screen. Without a
+ * bump, those events are ambiguous between a pre-change and a post-change
+ * client.
+ */
+export const SCHEMA_VERSION = "4";
 
 /**
  * Event-level volatile bucket + schema_version. Durable traits live in Identify;
