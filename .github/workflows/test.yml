@@ -4,7 +4,9 @@ on:
   push:
     branches: [main, release, emergency-release]
   pull_request:
-    branches: [main, release, emergency-release, "v*.*.*"]
+    # "rebrand/varial" is a MIRROR-ONLY entry so rebrand PRs get CI. Remove it
+    # during the launch-day hygiene pass, before pushing this branch public.
+    branches: [main, release, emergency-release, "v*.*.*", "rebrand/varial"]
 
 env:
   NODE_VERSION: "22"
