@@ -1,8 +1,7 @@
 import { mapNetworkToNetworkDetails, NETWORKS } from "config/constants";
-import { TokenIdentifier, TokenTypeWithCustomToken } from "config/types";
+import { TokenIdentifier } from "config/types";
 import { isNativeAssetId, isNativeContract } from "helpers/assetIdentity";
-import { getTokenType } from "helpers/balances";
-import { getTokenFromTokenId } from "helpers/history";
+import { isContractId } from "helpers/soroban";
 
 // Section refs (§N) below are to the token-price-graphs design doc:
 // wallet-eng-monorepo/design-docs/token-price-graphs/token-price-graphs-design.md
@@ -25,6 +24,23 @@ const NATIVE_KIND: TokenKind = "native";
  * this over comparing a `TokenKind` to a literal.
  */
 export const isNativeKind = (kind: TokenKind): boolean => kind === NATIVE_KIND;
+
+/**
+ * Splits on the LAST colon: a contract token's symbol may contain one, an
+ * issuer never does. Same contract as the extension's `splitCanonical`.
+ */
+export const splitTokenId = (
+  tokenId: TokenIdentifier,
+): { code: string; issuer: string } => {
+  const separator = tokenId.lastIndexOf(":");
+  if (separator === -1) {
+    return { code: tokenId, issuer: "" };
+  }
+  return {
+    code: tokenId.slice(0, separator),
+    issuer: tokenId.slice(separator + 1),
+  };
+};
 
 export interface ClassifiedToken {
   kind: TokenKind;
@@ -49,11 +65,12 @@ export const classifyToken = (
     return { kind: NATIVE_KIND, address: null };
   }
 
-  // The repo's existing identifier parser: resolves a bare contract ID and
-  // the SYMBOL:CONTRACTID form to `contractId`, CODE:ISSUER to `issuer`.
-  const { issuer, contractId } = getTokenFromTokenId(tokenId);
+  // Not `getTokenFromTokenId`: it splits on the first colon, so a symbol
+  // containing one would lose its contract id.
+  const { issuer } = splitTokenId(tokenId);
+  const contractId = issuer || tokenId;
 
-  if (contractId) {
+  if (isContractId(contractId)) {
     // XLM's own SAC is a contract id by shape but IS the native asset;
     // falling through would label it "Soroban" on the card and in a frozen
     // analytics dimension. The SAC id derives from the passphrase, hence the
@@ -71,13 +88,11 @@ export const classifyToken = (
   }
 
   // A C-prefixed issuer that isn't a decodable contract ID still counts as a
-  // custom token at the balance layer; keep that classification here too.
-  const kind =
-    getTokenType(tokenId) === TokenTypeWithCustomToken.CUSTOM_TOKEN
-      ? "soroban"
-      : "classic";
+  // custom token at the balance layer (`getTokenType`'s CUSTOM_TOKEN rule);
+  // keep that classification here too.
+  const kind = issuer.startsWith("C") ? "soroban" : "classic";
 
-  return { kind, address: issuer ?? null };
+  return { kind, address: issuer || null };
 };
 
 /**
@@ -103,7 +118,7 @@ export const getChartAssetIdentity = (
     return { asset_code: "XLM", token_type: tokenType };
   }
   if (tokenId.includes(":")) {
-    const [code, issuer] = tokenId.split(":");
+    const { code, issuer } = splitTokenId(tokenId);
     return {
       ...(code ? { asset_code: code } : {}),
       ...(issuer ? { asset_issuer: issuer } : {}),

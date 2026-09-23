@@ -1,6 +1,9 @@
 import { Asset } from "@stellar/stellar-sdk";
 import { mapNetworkToNetworkDetails, NETWORKS } from "config/constants";
-import { classifyToken } from "helpers/tokenClassification";
+import {
+  classifyToken,
+  getChartAssetIdentity,
+} from "helpers/tokenClassification";
 
 const ISSUER = "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
 const CONTRACT_ID = "CBIJBDNZNF4X35BJ4FFZWCDBSCKOP5NB4PLG4SNENRMLAPYG4P5FM6VN";
@@ -63,6 +66,27 @@ describe("classifyToken", () => {
     expect(classifyToken(NATIVE_SAC)).toEqual({
       kind: "soroban",
       address: NATIVE_SAC,
+    });
+  });
+
+  // A contract token's symbol is whatever the contract reports, colons
+  // included; the issuer never contains one, so the split is on the last.
+  it("finds the contract of SYMBOL:CONTRACTID when the symbol has a colon", () => {
+    expect(classifyToken(`A:B:${CONTRACT_ID}`, NETWORKS.PUBLIC)).toEqual({
+      kind: "soroban",
+      address: CONTRACT_ID,
+    });
+  });
+});
+
+describe("getChartAssetIdentity", () => {
+  it("splits SYMBOL:CONTRACTID on the last colon when the symbol has one", () => {
+    expect(
+      getChartAssetIdentity(`A:B:${CONTRACT_ID}`, NETWORKS.PUBLIC),
+    ).toEqual({
+      asset_code: "A:B",
+      asset_issuer: CONTRACT_ID,
+      token_type: "soroban",
     });
   });
 });
