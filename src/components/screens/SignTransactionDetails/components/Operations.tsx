@@ -3,6 +3,7 @@ import { Address, Operation, OperationRecord, xdr } from "@stellar/stellar-sdk";
 import { List, ListItemProps } from "components/List";
 import Spinner from "components/Spinner";
 import {
+  ContractSpecNote,
   InlinePublicKeyRow,
   KeyValueListItem,
   KeyValueSigner,
@@ -11,6 +12,7 @@ import {
   KeyValueInvokeHostFn,
   KeyValueSignerKeyOptions,
   KeyValueInvokeHostFnArgs,
+  useContractArgNames,
 } from "components/screens/SignTransactionDetails/components/KeyVal";
 import Avatar from "components/sds/Avatar";
 import { Badge } from "components/sds/Badge";
@@ -1186,8 +1188,14 @@ const RenderOperationByType = ({
 
 const RenderOperationArgsByType = ({
   operation,
+  argNames = null,
+  isLoadingArgNames = false,
 }: {
   operation: OperationRecord;
+  // Resolved once by OperationParametersSection below, which needs them to
+  // decide whether the spec note belongs beside the heading.
+  argNames?: string[] | null;
+  isLoadingArgNames?: boolean;
 }) => {
   const { t } = useAppTranslation();
   const { network } = useAuthenticationStore();
@@ -1265,18 +1273,13 @@ const RenderOperationArgsByType = ({
           }
 
           case "hostFunctionTypeInvokeContract": {
-            const invocation = func.invokeContract;
-            const contractId = Address.fromScAddress(
-              invocation.contractAddress,
-            ).toString();
-            const functionName = invocation.functionName.toString();
-            const { args } = invocation;
+            const { args } = func.invokeContract;
 
             return (
               <KeyValueInvokeHostFnArgs
                 args={args}
-                contractId={contractId}
-                fnName={functionName}
+                argNames={argNames}
+                isLoadingArgNames={isLoadingArgNames}
                 showHeader={false}
                 variant="tertiary"
               />
@@ -1307,6 +1310,53 @@ const RenderOperationArgsByType = ({
       return <View />;
     }
   }
+};
+
+/**
+ * The parameters section of an invoke-host-function operation: the heading,
+ * the note qualifying spec-derived names, and the rows. The note sits between
+ * the heading and the rows, so the spec lookup happens here and the names it
+ * resolves are handed down to the rows -- one lookup for both.
+ */
+const OperationParametersSection = ({
+  operation,
+}: {
+  operation: OperationRecord;
+}) => {
+  const { t } = useAppTranslation();
+  // Only a contract invocation has declared parameters to name; every other
+  // host function renders its args unlabelled, so it has nothing to qualify.
+  const invocation =
+    operation.type === "invokeHostFunction" &&
+    operation.func.type === "hostFunctionTypeInvokeContract"
+      ? operation.func.invokeContract
+      : undefined;
+  const { argNames, isLoading } = useContractArgNames({
+    contractId: invocation
+      ? Address.fromScAddress(invocation.contractAddress).toString()
+      : undefined,
+    fnName: invocation?.functionName.toString(),
+    argCount: invocation?.args.length ?? 0,
+  });
+
+  return (
+    <>
+      <View className="flex-row items-center gap-[8px]">
+        <Icon.BracketsEllipses size={16} themeColor="gray" />
+        <Text secondary>
+          {t("signTransactionDetails.operations.parameters")}
+        </Text>
+      </View>
+      {!!argNames?.length && <ContractSpecNote />}
+      <View>
+        <RenderOperationArgsByType
+          operation={operation}
+          argNames={argNames}
+          isLoadingArgNames={isLoading}
+        />
+      </View>
+    </>
+  );
 };
 
 const Operations = ({ operations }: OperationsProps) => {
@@ -1352,17 +1402,7 @@ const Operations = ({ operations }: OperationsProps) => {
               <RenderOperationByType operation={operation} />
             </View>
             {type === "invokeHostFunction" && (
-              <>
-                <View className="flex-row items-center gap-[8px]">
-                  <Icon.BracketsEllipses size={16} themeColor="gray" />
-                  <Text secondary>
-                    {t("signTransactionDetails.operations.parameters")}
-                  </Text>
-                </View>
-                <View>
-                  <RenderOperationArgsByType operation={operation} />
-                </View>
-              </>
+              <OperationParametersSection operation={operation} />
             )}
           </View>
         );

@@ -23,7 +23,11 @@ import {
   MANAGE_TOKENS_ROUTES,
   ManageTokensStackParamList,
 } from "config/routes";
-import { FormattedSearchTokenRecord, HookStatus } from "config/types";
+import {
+  FormattedSearchTokenRecord,
+  HookStatus,
+  TokenTypeWithCustomToken,
+} from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
 import { getTokenIdentifier } from "helpers/balances";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -178,6 +182,57 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
     }
   }, []);
 
+  // A custom token is stored locally and never signs, so its prompt reports no
+  // signing outcome. Every other token adds or removes a trustline, which does.
+  const promptSigns = selectedToken
+    ? selectedToken.tokenType !== TokenTypeWithCustomToken.CUSTOM_TOKEN
+    : false;
+
+  // The removal prompt shows a "cannot remove" message for XLM and for a token
+  // that still holds a balance. Those messages offer no signing decision, so
+  // leaving one is not a rejection.
+  const canRemoveTrustline = useMemo(() => {
+    if (!selectedToken || selectedToken.isNative) {
+      return false;
+    }
+
+    const tokenBalance = balanceItems.find(
+      (balance) =>
+        getTokenIdentifier(balance) ===
+        `${selectedToken.tokenCode}:${selectedToken.issuer}`,
+    );
+
+    return !tokenBalance?.total.isGreaterThan(new BigNumber(0));
+  }, [balanceItems, selectedToken]);
+
+  // True once the user approves. Cleared as each sheet opens, because a
+  // dismissal does not always run.
+  const hasApprovedAddRef = useRef(false);
+  const hasApprovedRemoveRef = useRef(false);
+
+  // True while one sheet closes to open another sheet of the same attempt.
+  // The add prompt and the security detail prompt hand off to each other, and
+  // that hand-off is not a decision.
+  const isSheetHandoffRef = useRef(false);
+
+  /**
+   * Reports a rejection when the user leaves a trustline prompt without
+   * approving, by any route.
+   */
+  const reportDismissal = (
+    approved: React.MutableRefObject<boolean>,
+    signs: boolean,
+  ) => {
+    if (isSheetHandoffRef.current) {
+      isSheetHandoffRef.current = false;
+      return;
+    }
+    if (approved.current || !signs) {
+      return;
+    }
+    analytics.trackInternalSignedTransactionRejected();
+  };
+
   const handleCancelTokenAddition = useCallback(() => {
     if (selectedToken) {
       analytics.trackAddTokenRejected(selectedToken.tokenCode);
@@ -187,6 +242,14 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
   }, [selectedToken]);
 
   const handleProceedAnyway = useCallback(() => {
+    // The user either returns to the add prompt or approves here. Both end the
+    // security detail prompt without a rejection.
+    if (isUnableToScanToken) {
+      isSheetHandoffRef.current = true;
+    } else {
+      hasApprovedAddRef.current = true;
+    }
+
     securityWarningBottomSheetModalRef.current?.dismiss();
 
     // If it's unable to scan, show the AddTokenBottomSheetContent with banner
@@ -198,6 +261,8 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
   }, [addToken, isUnableToScanToken]);
 
   const handleSecurityWarningPress = useCallback(() => {
+    // The add prompt hands the same attempt to the security detail prompt.
+    isSheetHandoffRef.current = true;
     addTokenBottomSheetModalRef.current?.dismiss();
     securityWarningBottomSheetModalRef.current?.present();
   }, []);
@@ -216,29 +281,16 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
   }, [selectedToken]);
 
   const renderRemoveBottomSheet = useCallback(() => {
-    if (selectedToken && selectedToken.isNative) {
+    // `canRemoveTrustline` decides this branch, so the prompt the user sees and
+    // the outcome the wallet reports always agree.
+    if (selectedToken && !canRemoveTrustline) {
       return (
         <CannotRemoveTokenBottomSheet
-          type={CannotRemoveType.native}
-          onDismiss={() => {
-            removeTokenBottomSheetModalRef.current?.dismiss();
-          }}
-        />
-      );
-    }
-
-    const tokenBalance = balanceItems.find(
-      (balance) =>
-        getTokenIdentifier(balance) ===
-        `${selectedToken?.tokenCode}:${selectedToken?.issuer}`,
-    );
-    const hasBalance =
-      tokenBalance && tokenBalance.total.isGreaterThan(new BigNumber(0));
-
-    if (hasBalance) {
-      return (
-        <CannotRemoveTokenBottomSheet
-          type={CannotRemoveType.hasBalance}
+          type={
+            selectedToken.isNative
+              ? CannotRemoveType.native
+              : CannotRemoveType.hasBalance
+          }
           onDismiss={() => {
             removeTokenBottomSheetModalRef.current?.dismiss();
           }}
@@ -257,7 +309,10 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
           }}
           account={account}
           onCancel={handleCancelTokenRemoval}
-          onRemoveToken={removeToken}
+          onRemoveToken={() => {
+            hasApprovedRemoveRef.current = true;
+            return removeToken();
+          }}
           isRemovingToken={isRemovingToken}
         />
       );
@@ -268,7 +323,7 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
     /* eslint-enable react/jsx-no-useless-fragment */
   }, [
     account,
-    balanceItems,
+    canRemoveTrustline,
     handleCancelTokenRemoval,
     removeToken,
     isRemovingToken,
@@ -332,6 +387,14 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
           handleCloseModal={() => {
             addTokenBottomSheetModalRef.current?.dismiss();
           }}
+          bottomSheetModalProps={{
+            onChange: (index: number) => {
+              if (index >= 0) {
+                hasApprovedAddRef.current = false;
+              }
+            },
+            onDismiss: () => reportDismissal(hasApprovedAddRef, promptSigns),
+          }}
           analyticsEvent={AnalyticsEvent.VIEW_ADD_TOKEN_MANUALLY}
           shouldCloseOnPressBackdrop={!!selectedToken}
           customContent={
@@ -339,8 +402,14 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
               token={selectedToken}
               account={account}
               onCancel={handleCancelTokenAddition}
-              onAddToken={addToken}
-              proceedAnywayAction={addToken}
+              onAddToken={() => {
+                hasApprovedAddRef.current = true;
+                return addToken();
+              }}
+              proceedAnywayAction={() => {
+                hasApprovedAddRef.current = true;
+                return addToken();
+              }}
               isAddingToken={isAddingToken}
               isMalicious={isTokenMalicious}
               isSuspicious={isTokenSuspicious}
@@ -354,6 +423,18 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
           handleCloseModal={() => {
             removeTokenBottomSheetModalRef.current?.dismiss();
           }}
+          bottomSheetModalProps={{
+            onChange: (index: number) => {
+              if (index >= 0) {
+                hasApprovedRemoveRef.current = false;
+              }
+            },
+            onDismiss: () =>
+              reportDismissal(
+                hasApprovedRemoveRef,
+                promptSigns && canRemoveTrustline,
+              ),
+          }}
           analyticsEvent={AnalyticsEvent.VIEW_REMOVE_TOKEN}
           shouldCloseOnPressBackdrop={!!selectedToken}
           customContent={renderRemoveBottomSheet()}
@@ -363,6 +444,16 @@ const AddTokenScreen: React.FC<AddTokenScreenProps> = ({ navigation }) => {
           handleCloseModal={() =>
             securityWarningBottomSheetModalRef.current?.dismiss()
           }
+          bottomSheetModalProps={{
+            onChange: (index: number) => {
+              if (index >= 0) {
+                hasApprovedAddRef.current = false;
+              }
+            },
+            // This prompt is the last step of an add attempt that carries a
+            // security warning. Leaving it without approval is a rejection.
+            onDismiss: () => reportDismissal(hasApprovedAddRef, promptSigns),
+          }}
           customContent={
             <SecurityDetailBottomSheet
               warnings={securityWarnings}

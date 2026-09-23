@@ -46,21 +46,16 @@ export enum AnalyticsEvent {
   VIEW_SIGN_DAPP_AUTH_ENTRY_DETAILS = "sign_auth_entry",
   VIEW_SEND_SEARCH_CONTACTS = "send_payment_to",
   VIEW_SEND_AMOUNT = "send_payment_amount",
-  VIEW_SEND_MEMO = "send_payment_settings",
-  VIEW_SEND_FEE = "send_payment_fee",
-  VIEW_SEND_TIMEOUT = "send_payment_timeout",
   VIEW_SEND_CONFIRM = "send_payment_confirm",
   VIEW_SEND_TRANSACTION_DETAILS = "send_transaction_details",
   VIEW_SEND_PROCESSING = "send_payment_processing",
   VIEW_SEND_SUCCESS = "send_payment_success",
   VIEW_SWAP = "swap",
   VIEW_SWAP_AMOUNT = "swap_amount",
-  VIEW_SWAP_FEE = "swap_fee",
-  VIEW_SWAP_SLIPPAGE = "swap_slippage",
-  VIEW_SWAP_TIMEOUT = "swap_timeout",
-  VIEW_SWAP_SETTINGS = "swap_settings",
   VIEW_SWAP_CONFIRM = "swap_confirm",
   VIEW_SWAP_TRANSACTION_DETAILS = "swap_transaction_details",
+  VIEW_SWAP_PROCESSING = "swap_processing",
+  VIEW_SWAP_SUCCESS = "swap_success",
   VIEW_SETTINGS = "settings",
   VIEW_PREFERENCES = "preferences",
   VIEW_CHANGE_NETWORK = "manage_network",
@@ -164,6 +159,10 @@ export enum AnalyticsEvent {
   GRANT_DAPP_ACCESS_BLOCKED = "dapp_access.blocked",
   SIGN_TRANSACTION_SUCCESS = "signing.transaction_approved",
   SIGN_TRANSACTION_FAIL = "signing.transaction_rejected",
+  // Signing threw for a reason the user did not choose. Kept distinct from
+  // SIGN_TRANSACTION_FAIL, which is the user declining. Mirrors the message
+  // and auth-entry families, which have carried both halves from the start.
+  SIGN_TRANSACTION_FAILED = "signing.transaction_failed",
   // signing.transaction_blocked (memo_required): NOT emitted on mobile — the
   // memo-required state is a passive UI gate (disabled confirm button), not a
   // reachable block/refuse branch. Extension emits it; kept for a shared catalog.
@@ -442,15 +441,6 @@ const SCREEN_CATALOG: Record<string, { flow?: AnalyticsFlow; step?: Step }> = {
   [AnalyticsEvent.VIEW_SEND_AMOUNT]: {
     flow: AnalyticsFlow.SEND,
   },
-  [AnalyticsEvent.VIEW_SEND_MEMO]: {
-    flow: AnalyticsFlow.SEND,
-  },
-  [AnalyticsEvent.VIEW_SEND_FEE]: {
-    flow: AnalyticsFlow.SEND,
-  },
-  [AnalyticsEvent.VIEW_SEND_TIMEOUT]: {
-    flow: AnalyticsFlow.SEND,
-  },
   [AnalyticsEvent.VIEW_SEND_CONFIRM]: {
     flow: AnalyticsFlow.SEND,
     step: "confirm",
@@ -471,24 +461,20 @@ const SCREEN_CATALOG: Record<string, { flow?: AnalyticsFlow; step?: Step }> = {
   [AnalyticsEvent.VIEW_SWAP_AMOUNT]: {
     flow: AnalyticsFlow.SWAP,
   },
-  [AnalyticsEvent.VIEW_SWAP_FEE]: {
-    flow: AnalyticsFlow.SWAP,
-  },
-  [AnalyticsEvent.VIEW_SWAP_SLIPPAGE]: {
-    flow: AnalyticsFlow.SWAP,
-  },
-  [AnalyticsEvent.VIEW_SWAP_TIMEOUT]: {
-    flow: AnalyticsFlow.SWAP,
-  },
-  [AnalyticsEvent.VIEW_SWAP_SETTINGS]: {
-    flow: AnalyticsFlow.SWAP,
-  },
   [AnalyticsEvent.VIEW_SWAP_CONFIRM]: {
     flow: AnalyticsFlow.SWAP,
     step: "confirm",
   },
   [AnalyticsEvent.VIEW_SWAP_TRANSACTION_DETAILS]: {
     flow: AnalyticsFlow.SWAP,
+  },
+  [AnalyticsEvent.VIEW_SWAP_PROCESSING]: {
+    flow: AnalyticsFlow.SWAP,
+    step: "processing",
+  },
+  [AnalyticsEvent.VIEW_SWAP_SUCCESS]: {
+    flow: AnalyticsFlow.SWAP,
+    step: "success",
   },
   // Settings
   [AnalyticsEvent.VIEW_SETTINGS]: {
@@ -613,9 +599,6 @@ export const CUSTOM_ROUTE_MAPPINGS: Record<string, AnalyticsEvent> = {
   // Send payment overrides (extension uses different names)
   SendSearchContactsScreen: AnalyticsEvent.VIEW_SEND_SEARCH_CONTACTS,
   TransactionAmountScreen: AnalyticsEvent.VIEW_SEND_AMOUNT,
-  TransactionMemoScreen: AnalyticsEvent.VIEW_SEND_MEMO,
-  TransactionFeeScreen: AnalyticsEvent.VIEW_SEND_FEE,
-  TransactionTimeoutScreen: AnalyticsEvent.VIEW_SEND_TIMEOUT,
 
   // Settings overrides
   ChangeNetworkScreen: AnalyticsEvent.VIEW_CHANGE_NETWORK,

@@ -1,6 +1,11 @@
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { getDisplayHost } from "helpers/protocols";
 import { scrubStrKeys } from "helpers/stellarStrKey";
+import {
+  AssetKind,
+  buildSourceLegUsdProps,
+  LegUsdStatus,
+} from "helpers/usdVolume";
 import { track } from "services/analytics/core";
 import { TransactionOperationType } from "services/analytics/types";
 import type {
@@ -12,6 +17,26 @@ import type {
   TransactionErrorEvent,
 } from "services/analytics/types";
 
+/**
+ * Flattens an `AssetIdentity` under the given property prefix (e.g. `asset_`
+ * -> `asset_code`/`asset_issuer`/`asset_type`, `from_` ->
+ * `from_asset_code`/`from_asset_issuer`/`from_asset_type`). Issuer omitted for
+ * native XLM.
+ *
+ * The code is emitted here rather than left to each call site so an asset's
+ * three identifying properties always travel together: a call site that
+ * forgets to pass its token code separately can no longer produce an event
+ * carrying an issuer and a type but no code.
+ */
+const assetIdentityProps = (
+  prefix: string,
+  identity: { code: string; issuer?: string; type: AssetKind },
+): Record<string, unknown> => ({
+  [`${prefix}asset_code`]: identity.code,
+  ...(identity.issuer ? { [`${prefix}asset_issuer`]: identity.issuer } : {}),
+  [`${prefix}asset_type`]: identity.type,
+});
+
 // `origin` is the bare dApp hostname (never a full URL) — matches the
 // extension's getUrlHostname-based origin so cross-platform funnels merge.
 const originProps = (url?: string): { origin?: string } => {
@@ -19,8 +44,67 @@ const originProps = (url?: string): { origin?: string } => {
   return host ? { origin: host } : {};
 };
 
+/**
+ * Where a signing request came from.
+ *
+ * `dapp_api` is a website asking through WalletConnect. `internal` is a
+ * transaction the wallet composed itself — a send, a swap, or a collectible
+ * send. Both origins emit the same events with the same properties, so one
+ * query counts all signing and `source` splits it. An internal transaction
+ * has no dApp, so it carries no `origin`.
+ */
+export type SigningSource = "dapp_api" | "internal";
+
 export const trackSignedTransaction = (data: SignedTransactionEvent): void => {
   track(AnalyticsEvent.SIGN_TRANSACTION_SUCCESS, {
+    source: data.source ?? "dapp_api",
+    ...originProps(data.dappDomain),
+  });
+};
+
+/**
+ * Signing produced a signature for a wallet-composed transaction. The same
+ * event a dApp request emits; `source` separates the two.
+ */
+export const trackInternalSignedTransaction = (): void => {
+  track(AnalyticsEvent.SIGN_TRANSACTION_SUCCESS, { source: "internal" });
+};
+
+/**
+ * The user declined a wallet-composed transaction — by dismissing the review
+ * sheet without approving.
+ */
+export const trackInternalSignedTransactionRejected = (): void => {
+  track(AnalyticsEvent.SIGN_TRANSACTION_FAIL, { source: "internal" });
+};
+
+/**
+ * Signing threw for a wallet-composed transaction, for a reason the user did
+ * not choose. The user already approved at the review sheet, so this is a
+ * fault and not a decision. `reason_code` is scrubbed: a signing error can
+ * embed a G…/S… key and Amplitude is a third-party sink.
+ */
+export const trackInternalSignedTransactionError = (
+  error?: string | null,
+): void => {
+  track(AnalyticsEvent.SIGN_TRANSACTION_FAILED, {
+    source: "internal",
+    reason_code: scrubStrKeys(error) || "unknown",
+  });
+};
+
+/**
+ * Signing threw for a transaction a website requested. A user declining is
+ * NOT a failure — that is trackSignedTransactionRejected. `reason_code` is
+ * scrubbed for the same reason as the internal helper above.
+ */
+export const trackSignedTransactionError = (data: {
+  error?: string | null;
+  dappDomain?: string;
+}): void => {
+  track(AnalyticsEvent.SIGN_TRANSACTION_FAILED, {
+    source: "dapp_api",
+    reason_code: scrubStrKeys(data.error) || "unknown",
     ...originProps(data.dappDomain),
   });
 };
@@ -34,12 +118,14 @@ export const trackSignedMessage = (data: {
   // the extension's hostname-based origin.
   track(AnalyticsEvent.SIGN_MESSAGE_SUCCESS, {
     message_type: "blob",
+    source: "dapp_api",
     ...originProps(data.dappDomain),
   });
 };
 
 export const trackSignedAuthEntry = (data: { dappDomain?: string }): void => {
   track(AnalyticsEvent.SIGN_AUTH_ENTRY_SUCCESS, {
+    source: "dapp_api",
     ...originProps(data.dappDomain),
   });
 };
@@ -53,6 +139,7 @@ export const trackSignedMessageError = (data: {
   // instrumented separately (trackSignedMessageRejected, below).
   track(AnalyticsEvent.SIGN_MESSAGE_FAIL, {
     message_type: "blob",
+    source: "dapp_api",
     // Scrub Stellar StrKeys — a signing exception's message can embed a G…/S…
     // key, and Amplitude is a third-party sink not covered by Sentry. Matches
     // the extension's signBlob.rejected handler.
@@ -67,6 +154,7 @@ export const trackSignedAuthEntryError = (data: {
 }): void => {
   // Runtime signing-failure path; see trackSignedMessageError.
   track(AnalyticsEvent.SIGN_AUTH_ENTRY_FAIL, {
+    source: "dapp_api",
     // Scrub StrKeys before this reaches Amplitude (see trackSignedMessageError).
     reason_code: scrubStrKeys(data.error) ?? data.error,
     ...originProps(data.dappDomain),
@@ -81,6 +169,7 @@ export const trackSignedMessageRejected = (data: {
 }): void => {
   track(AnalyticsEvent.SIGN_MESSAGE_REJECTED, {
     message_type: "blob",
+    source: "dapp_api",
     ...originProps(data.dappDomain),
   });
 };
@@ -89,6 +178,7 @@ export const trackSignedAuthEntryRejected = (data: {
   dappDomain?: string;
 }): void => {
   track(AnalyticsEvent.SIGN_AUTH_ENTRY_REJECTED, {
+    source: "dapp_api",
     ...originProps(data.dappDomain),
   });
 };
@@ -100,6 +190,7 @@ export const trackSignedTransactionRejected = (data: {
   // (SIGN_XDR / SIGN_AND_SUBMIT_XDR); parity with the extension's
   // signing.transaction_rejected.
   track(AnalyticsEvent.SIGN_TRANSACTION_FAIL, {
+    source: "dapp_api",
     ...originProps(data.dappDomain),
   });
 };
@@ -108,6 +199,7 @@ export const trackSubmittedTransaction = (
   data: SubmittedTransactionEvent,
 ): void => {
   track(AnalyticsEvent.SUBMIT_TRANSACTION_SUCCESS, {
+    source: "dapp_api",
     ...originProps(data.dappDomain),
   });
 };
@@ -138,9 +230,21 @@ export const trackSendPaymentSuccess = (
     return;
   }
 
+  const { volume } = data;
   track(AnalyticsEvent.SEND_PAYMENT_SUCCESS, {
     payment_type: "payment",
     asset_code: data.sourceToken,
+    ...(volume
+      ? {
+          ...assetIdentityProps("", volume.identity),
+          amount: volume.amount,
+          ...buildSourceLegUsdProps(
+            volume.sourceLeg,
+            volume.priceSource,
+            volume.priceFreshness,
+          ),
+        }
+      : {}),
   });
 };
 
@@ -154,9 +258,41 @@ export const trackSendCollectibleSuccess = (
 };
 
 export const trackSwapSuccess = (data: SwapSuccessEvent): void => {
+  const { volume } = data;
   track(AnalyticsEvent.SWAP_SUCCESS, {
     from_asset_code: data.sourceToken,
     to_asset_code: data.destToken,
+    ...(volume
+      ? {
+          ...assetIdentityProps("from_", volume.identity),
+          ...assetIdentityProps("to_", volume.toIdentity),
+          from_amount: volume.amount,
+          ...(volume.toAmountQuoted !== undefined
+            ? { to_amount_quoted: volume.toAmountQuoted }
+            : {}),
+          ...(volume.toAmount !== undefined
+            ? { to_amount: volume.toAmount }
+            : {}),
+          to_amount_usd_status: volume.toAmountUsdStatus,
+          ...(volume.toAmountUsdStatus === LegUsdStatus.OK
+            ? {
+                to_amount_usd: volume.toAmountUsd,
+                to_amount_usd_rate: volume.toAmountUsdRate,
+              }
+            : {}),
+          ...(volume.usdSlippagePct !== undefined
+            ? { usd_slippage_pct: volume.usdSlippagePct }
+            : {}),
+          ...(volume.executionSlippagePct !== undefined
+            ? { execution_slippage_pct: volume.executionSlippagePct }
+            : {}),
+          ...buildSourceLegUsdProps(
+            volume.sourceLeg,
+            volume.priceSource,
+            volume.priceFreshness,
+          ),
+        }
+      : {}),
   });
 };
 
@@ -179,25 +315,65 @@ export const trackTransactionError = (data: TransactionErrorEvent): void => {
 
   // Shared required sets: payment.failed {payment_type, reason_code};
   // swap.failed {from_asset_code, to_asset_code, reason_code};
-  // collectible_send.failed {reason_code}. operationType/isSwap/amounts dropped
-  // for cross-platform parity. reason_code is the machine-readable Horizon
-  // result code (op_underfunded, tx_insufficient_balance, ...), falling back to
-  // the literal "unknown" — IDENTICAL to the extension's SubmitFail derivation
-  // (`resultCodes.operations?.[0] || resultCodes.transaction || "unknown"`). We
+  // collectible_send.failed {reason_code}. operationType/isSwap dropped for
+  // cross-platform parity. reason_code is the machine-readable Horizon result
+  // code (op_underfunded, tx_insufficient_balance, ...), falling back to the
+  // literal "unknown" — IDENTICAL to the extension's derivation, and (via
+  // `data.volume.reasonCode`, `usdVolume.pickReasonCode`) picking the first
+  // code that isn't a changeTrust no-op marker rather than always index 0. We
   // deliberately do NOT fall back to the free-text error message: it produces
   // unbounded reason_code cardinality the extension never emits, poisoning a
   // shared payment/swap/collectible failure breakdown. The full message is still
   // captured by the logger / Sentry for debugging.
-  const reasonCode = data.errorCode ?? "unknown";
+  const { volume } = data;
+  const reasonCode = volume?.reasonCode ?? data.errorCode ?? "unknown";
   let props: Record<string, unknown> = { reason_code: reasonCode };
   if (event === AnalyticsEvent.SWAP_FAIL) {
     props = {
       from_asset_code: data.sourceToken,
       to_asset_code: data.destToken,
       reason_code: reasonCode,
+      ...(volume
+        ? {
+            ...assetIdentityProps("from_", volume.identity),
+            ...(volume.toIdentity
+              ? assetIdentityProps("to_", volume.toIdentity)
+              : {}),
+            // swap.failed carries the source token amount only — no
+            // destination amount/USD, since nothing settled to measure.
+            from_amount: volume.amount,
+            failure_category: volume.failureCategory,
+            ...buildSourceLegUsdProps(
+              volume.sourceLeg,
+              volume.priceSource,
+              volume.priceFreshness,
+            ),
+          }
+        : {}),
     };
   } else if (event === AnalyticsEvent.SEND_PAYMENT_FAIL) {
     props.payment_type = "payment";
+    // asset_code is known even when there is no volume data (a pre-submit
+    // failure), and it is the property payment.failed shares with
+    // payment.completed — keep it outside the volume gate. When volume IS
+    // present, assetIdentityProps below restates it from the classified
+    // identity (same bare code) alongside the issuer and type.
+    if (data.sourceToken) {
+      props.asset_code = data.sourceToken;
+    }
+    if (volume) {
+      props = {
+        ...props,
+        ...assetIdentityProps("", volume.identity),
+        amount: volume.amount,
+        failure_category: volume.failureCategory,
+        ...buildSourceLegUsdProps(
+          volume.sourceLeg,
+          volume.priceSource,
+          volume.priceFreshness,
+        ),
+      };
+    }
   }
 
   track(event, props);

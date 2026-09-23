@@ -571,12 +571,23 @@ type AccountAssetDiff = {
 
 /**
  * Extracts per-asset balance changes from a Blockaid transaction simulation.
- * - Returns null when simulation is unavailable or failed ("unable to simulate")
- * - Returns [] when there are no balance changes
+ *
+ * Reads `assets_diffs[publicKey]` — the diffs Blockaid attributes to the
+ * signing account — rather than `account_summary`, which summarizes whichever
+ * account was passed to the scan as `account_address`. The backend derives
+ * that from the transaction's source account, so for a transaction whose
+ * source is not the signing account (an operation-level `source`, for
+ * example) `account_summary` describes a different account than the one being
+ * asked to sign. Matches the extension, which keys off the signing account.
+ *
+ * - Returns null when simulation is unavailable or failed ("unable to
+ *   simulate"), or when there is no account to attribute diffs to
+ * - Returns [] when there are no balance changes for this account
  * - Otherwise returns a list of signed deltas per asset
  */
 export const getTransactionBalanceChanges = (
   scanResult?: Blockaid.StellarTransactionScanResponse,
+  publicKey?: string,
 ): TransactionBalanceChange[] | null => {
   // Missing result or simulation error -> treat as "unable to simulate"
   if (
@@ -587,13 +598,19 @@ export const getTransactionBalanceChanges = (
     return null;
   }
 
-  // account_assets_diffs holds per-asset in/out raw deltas
+  // Without an account there is nothing to attribute the diffs to. Report
+  // "unable to simulate" rather than the stronger "no balance changes".
+  if (!publicKey) {
+    return null;
+  }
+
+  // assets_diffs maps an account address to that account's in/out raw deltas
   type SimulationSummary = {
-    account_summary?: { account_assets_diffs?: AccountAssetDiff[] };
+    assets_diffs?: Record<string, AccountAssetDiff[] | undefined>;
   };
 
   const sim = scanResult.simulation as unknown as SimulationSummary;
-  const diffs = sim.account_summary?.account_assets_diffs;
+  const diffs = sim.assets_diffs?.[publicKey];
 
   if (!Array.isArray(diffs) || diffs.length === 0) {
     return [];
