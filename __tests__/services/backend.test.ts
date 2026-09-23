@@ -1005,6 +1005,35 @@ describe("Backend Service - fetchTokenPrices v2 migration", () => {
     });
   });
 
+  // A contract token's symbol may contain a colon; contract-ness is read from
+  // the last one. `THIRTEENCHARS` exceeds 12 chars, the length at which
+  // a first-colon parse types the id as an LP share.
+  const COLON_SYMBOL_TOKEN_ID = `THIRTEENCHARS:x:${CUSTOM_TOKEN_ID.split(":")[1]}`;
+
+  it("includes a contract token whose symbol has a colon in the v2 request", async () => {
+    await fetchTokenPrices({
+      tokens: [...tokens, COLON_SYMBOL_TOKEN_ID],
+      network: NETWORKS.PUBLIC,
+      useV2: true,
+    });
+
+    expect(mockV2Post).toHaveBeenCalledWith(
+      "/token-prices",
+      { tokens: [...v2Tokens, COLON_SYMBOL_TOKEN_ID] },
+      { params: { network: "PUBLIC" } },
+    );
+  });
+
+  it("filters a contract token whose symbol has a colon on the legacy path", async () => {
+    await fetchTokenPrices({
+      tokens: [...tokens, `A:B:${CUSTOM_TOKEN_ID.split(":")[1]}`],
+      network: NETWORKS.PUBLIC,
+      useV2: false,
+    });
+
+    expect(mockV1Post).toHaveBeenCalledWith("/token-prices", { tokens });
+  });
+
   it("filters LP shares unconditionally on the v2 path", async () => {
     await fetchTokenPrices({
       tokens: [...tokens, LP_ID],

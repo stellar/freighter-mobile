@@ -49,7 +49,7 @@ import {
   mapAccountBalancesV2,
   V2AccountBalances,
 } from "helpers/mapAccountBalancesV2";
-import { getNativeContractDetails, isContractId } from "helpers/soroban";
+import { getNativeContractDetails } from "helpers/soroban";
 import { classifyToken, isNativeKind } from "helpers/tokenClassification";
 import {
   createApiService,
@@ -559,28 +559,21 @@ export const fetchTokenPrices = async ({
   //   prices contract tokens, so v2 requests include them — without this, a
   //   priced SEP-41 token would show a live chart under a "--" price.
   const filteredTokens = tokens.filter((tokenId) => {
-    // `getTokenType` has no bare-contract-id case: anything without a colon
-    // that is not native falls through to its LP catch-all. A bare `C…` id —
-    // the form `classifyToken` and `toWireToken` both accept, including the
-    // native SAC — would therefore be dropped here as unpriceable and come
-    // back "--", even though v2 prices contract tokens. Resolve the shape
-    // before asking for a type.
-    const isBareContractId = isContractId(tokenId);
-    const token = getTokenType(tokenId);
+    // Contract-ness comes from `classifyToken`, not `getTokenType`: the latter
+    // splits on the first colon and has no bare-contract-id case, so a bare
+    // `C…` id or a symbol containing a colon would fall into its LP catch-all
+    // (dropped as unpriceable) or read as classic (sent to v1). No network is
+    // passed, so the native SAC stays a contract token here.
+    const isContractToken = classifyToken(tokenId).kind === "soroban";
 
     if (
-      !isBareContractId &&
-      token === TokenTypeWithCustomToken.LIQUIDITY_POOL_SHARES
+      !isContractToken &&
+      getTokenType(tokenId) === TokenTypeWithCustomToken.LIQUIDITY_POOL_SHARES
     ) {
       return false;
     }
 
-    // A bare contract id is a contract token, so the legacy path drops it for
-    // the same reason it drops `SYMBOL:CONTRACTID`.
-    return (
-      useV2 ||
-      (!isBareContractId && token !== TokenTypeWithCustomToken.CUSTOM_TOKEN)
-    );
+    return useV2 || !isContractToken;
   });
 
   // Skip the request entirely — returning empty prices that the loop below
