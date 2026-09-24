@@ -411,6 +411,17 @@ describe("formatPriceHistoryRangeDelta", () => {
       formatPriceHistoryRangeDelta({ absolute: "0", percent: "0.05" }),
     ).toBe("+0.05%");
   });
+
+  it("drops the dollar term when it rounds away at the printed precision", () => {
+    // Non-zero on the wire, but past the label's decimal cap it prints as
+    // "$0.00000000" — the same signed zero the extension drops.
+    expect(
+      formatPriceHistoryRangeDelta({ absolute: "0.000000001", percent: "1" }),
+    ).toBe("+1.00%");
+    expect(
+      formatPriceHistoryRangeDelta({ absolute: "-0.000000001", percent: "-1" }),
+    ).toBe("-1.00%");
+  });
 });
 
 describe("getPriceChangeDirection", () => {

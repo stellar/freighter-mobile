@@ -384,7 +384,12 @@ export const formatPriceHistoryRangeDelta = (
   const signedPercent = formatPercentageAmount(change.percent);
   const absolute = formatPriceHistoryDelta(change.absolute);
 
-  if (new BigNumber(change.absolute).isZero()) {
+  // Zero at the precision the label prints, not on the wire: past the decimal
+  // cap a real move formats to "$0.00000000", a signed zero.
+  const magnitude = new BigNumber(change.absolute).abs();
+  if (
+    new BigNumber(magnitude.toFixed(subDollarDecimalPlaces(magnitude))).isZero()
+  ) {
     return signedPercent;
   }
 
