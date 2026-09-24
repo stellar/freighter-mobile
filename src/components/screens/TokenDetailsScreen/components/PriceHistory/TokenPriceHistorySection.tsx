@@ -293,9 +293,9 @@ const TokenPriceHistorySection: React.FC<TokenPriceHistorySectionProps> = ({
       onLayout={handleLayout}
       testID="token-price-history-section"
     >
-      {noticeVariant && <PriceHistoryNotice variant={noticeVariant} />}
       {renderChartArea()}
       <TimeframeSelector selected={range} onSelect={setRange} />
+      {noticeVariant && <PriceHistoryNotice variant={noticeVariant} />}
     </View>
   );
 };

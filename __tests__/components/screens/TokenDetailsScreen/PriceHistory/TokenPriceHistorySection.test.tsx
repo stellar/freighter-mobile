@@ -620,8 +620,27 @@ describe("TokenPriceHistorySection", () => {
           "This token has low trading volume, so price data may be less reliable.",
         ),
       ).toBeTruthy();
-      // The chart still renders normally UNDER the banner.
+      // The chart still renders normally alongside the banner.
       expect(getByTestId("price-history-chart")).toBeTruthy();
+    });
+
+    it("places the notice under the timeframe selector", async () => {
+      mockFetchHistory.mockResolvedValue(makeHistory({ lowVolume: true }));
+
+      const { getByTestId, toJSON } = renderSection();
+
+      await waitFor(() => {
+        expect(getByTestId("price-history-notice-lowVolume")).toBeTruthy();
+      });
+      const tree = JSON.stringify(toJSON());
+      const chartAt = tree.indexOf('"testID":"price-history-chart"');
+      const selectorAt = tree.indexOf('"testID":"timeframe-selector"');
+      const noticeAt = tree.indexOf(
+        '"testID":"price-history-notice-lowVolume"',
+      );
+      expect(chartAt).toBeGreaterThan(-1);
+      expect(selectorAt).toBeGreaterThan(chartAt);
+      expect(noticeAt).toBeGreaterThan(selectorAt);
     });
 
     it("shows no banner for a dense, above-threshold series", async () => {
