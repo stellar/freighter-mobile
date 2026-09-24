@@ -27,13 +27,26 @@ export const EXPECTED_POINTS_BY_RANGE: Record<PriceHistoryRange, number> = {
   ALL: 277,
 };
 
-/** 0–1 points are the empty state, not sparse. */
+/**
+ * 0–1 points are the empty state, not sparse. ALL is measured against the
+ * token's own lifetime (first bucket to now), not the fixed table: ALL starts
+ * before the network, so the fixed count flags every token younger than XLM.
+ */
 export const isSparseSeries = (
   range: PriceHistoryRange,
-  pointCount: number,
-): boolean =>
-  pointCount >= 2 &&
-  pointCount < EXPECTED_POINTS_BY_RANGE[range] * SPARSE_SERIES_RATIO;
+  points: PriceHistoryPoint[],
+  resolutionSeconds: number,
+  nowSeconds: number,
+): boolean => {
+  if (points.length < 2) return false;
+
+  const expected =
+    range === "ALL" && resolutionSeconds > 0
+      ? Math.ceil((nowSeconds - points[0].t) / resolutionSeconds)
+      : EXPECTED_POINTS_BY_RANGE[range];
+
+  return points.length < expected * SPARSE_SERIES_RATIO;
+};
 
 /**
  * Keeps the plotted extremes off the plot band's edges: the high/low labels

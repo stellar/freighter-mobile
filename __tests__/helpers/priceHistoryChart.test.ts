@@ -261,18 +261,44 @@ describe("hasChartData", () => {
 });
 
 describe("isSparseSeries", () => {
+  const NOW = 1790000000;
+  const TWO_WEEKS = 1209600;
+  /** `count` consecutive buckets of `resolution`, the last one ending at NOW. */
+  const series = (count: number, resolution = 300) =>
+    Array.from({ length: count }, (_, i) => ({
+      t: NOW - (count - i) * resolution,
+      p: "1",
+    }));
+
   it("flags a series below ~33% of the range's expected point count", () => {
     // 1H expects 12 points → threshold 3.96: 3 is sparse, 4 is not.
-    expect(isSparseSeries("1H", 3)).toBe(true);
-    expect(isSparseSeries("1H", 4)).toBe(false);
+    expect(isSparseSeries("1H", series(3), 300, NOW)).toBe(true);
+    expect(isSparseSeries("1H", series(4), 300, NOW)).toBe(false);
     // 1Y expects 122 → threshold ~40: 39 sparse, 41 not.
-    expect(isSparseSeries("1Y", 39)).toBe(true);
-    expect(isSparseSeries("1Y", 41)).toBe(false);
+    expect(isSparseSeries("1Y", series(39, 259200), 259200, NOW)).toBe(true);
+    expect(isSparseSeries("1Y", series(41, 259200), 259200, NOW)).toBe(false);
   });
 
   it("never flags the empty/one-point states (they are empty, not sparse)", () => {
-    expect(isSparseSeries("1D", 0)).toBe(false);
-    expect(isSparseSeries("1D", 1)).toBe(false);
+    expect(isSparseSeries("1D", [], 900, NOW)).toBe(false);
+    expect(isSparseSeries("1D", series(1, 900), 900, NOW)).toBe(false);
+  });
+
+  it("does not flag ALL for a young token with an unbroken history", () => {
+    // USDY's shape: 27 two-week buckets since launch, none missing. Against
+    // the fixed 277 it read as 10% coverage.
+    expect(isSparseSeries("ALL", series(27, TWO_WEEKS), TWO_WEEKS, NOW)).toBe(
+      false,
+    );
+  });
+
+  it("still flags ALL when a token's own history has gaps", () => {
+    // First bucket ~3 years back (78 buckets to now), only 10 of them traded.
+    const gappy = [
+      { t: NOW - 78 * TWO_WEEKS, p: "1" },
+      ...series(9, TWO_WEEKS),
+    ];
+    expect(isSparseSeries("ALL", gappy, TWO_WEEKS, NOW)).toBe(true);
   });
 
   it("uses the named constants (ratio scales with the interval automatically)", () => {

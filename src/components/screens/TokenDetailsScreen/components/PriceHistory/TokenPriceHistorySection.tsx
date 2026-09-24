@@ -180,7 +180,12 @@ const TokenPriceHistorySection: React.FC<TokenPriceHistorySectionProps> = ({
     data && hasChart
       ? getPriceHistoryNoticeVariant({
           lowVolume: data.lowVolume,
-          isSparse: isSparseSeries(range, points.length),
+          isSparse: isSparseSeries(
+            range,
+            points,
+            data.resolutionSeconds,
+            Math.floor(Date.now() / 1000),
+          ),
         })
       : null;
 
