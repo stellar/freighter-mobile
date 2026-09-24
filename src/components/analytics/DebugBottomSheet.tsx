@@ -212,7 +212,7 @@ const CustomContent: React.FC<{
                 />
               </View>
               <Button
-                variant="secondary"
+                variant="tertiary"
                 onPress={handleSetVersionOverride}
                 disabled={!versionInput.trim()}
               >
@@ -223,7 +223,7 @@ const CustomContent: React.FC<{
             <View className="flex flex-row gap-2">
               {overriddenAppVersion && (
                 <Button
-                  variant="tertiary"
+                  variant="secondary"
                   sm
                   onPress={handleClearVersionOverride}
                 >
@@ -231,7 +231,7 @@ const CustomContent: React.FC<{
                 </Button>
               )}
               <Button
-                variant="tertiary"
+                variant="secondary"
                 sm
                 onPress={handleClearUpdateDismissalFlag}
               >
@@ -250,7 +250,7 @@ const CustomContent: React.FC<{
             </Text>
 
             {overriddenBlockaidResponse && (
-              <View className="p-3 rounded-lg bg-amber-50 border border-amber-200">
+              <View className="p-3 rounded-lg bg-amber-3 border border-amber-6">
                 <Text xs color={themeColors.status.warning}>
                   {t("debug.blockaidOverride.overriddenResponse", {
                     response: overriddenBlockaidResponse,
@@ -320,7 +320,7 @@ const CustomContent: React.FC<{
 
             {overriddenBlockaidResponse && (
               <Button
-                variant="tertiary"
+                variant="secondary"
                 sm
                 onPress={clearOverriddenBlockaidResponse}
               >
@@ -339,7 +339,7 @@ const CustomContent: React.FC<{
             </Text>
 
             {activeFailureMode !== TransactionFailureMode.NONE && (
-              <View className="p-3 rounded-lg bg-amber-50 border border-amber-200">
+              <View className="p-3 rounded-lg bg-amber-3 border border-amber-6">
                 <Text xs color={themeColors.status.warning}>
                   {t("debug.transactionFailure.activeOverrides")}
                 </Text>
@@ -450,7 +450,7 @@ const CustomContent: React.FC<{
 
             {activeFailureMode !== TransactionFailureMode.NONE && (
               <Button
-                variant="tertiary"
+                variant="secondary"
                 sm
                 onPress={() => {
                   clearAllTransactionFailures();
@@ -467,17 +467,17 @@ const CustomContent: React.FC<{
               {t("debug.actions")}
             </Text>
             <Button
-              secondary
+              tertiary
               md
               onPress={handleSimulateSessionExpiry}
               isFullWidth
             >
               {t("debug.simulateSessionExpiry")}
             </Button>
-            <Button secondary md onPress={handleResetIconsCache} isFullWidth>
+            <Button tertiary md onPress={handleResetIconsCache} isFullWidth>
               {t("debug.resetIconsCache")}
             </Button>
-            <Button secondary md onPress={handleResetApp} isFullWidth>
+            <Button tertiary md onPress={handleResetApp} isFullWidth>
               {t("debug.resetApp")}
             </Button>
           </View>

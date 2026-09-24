@@ -35,7 +35,7 @@ export const FriendbotButton = ({
       isLoading={isLoading}
       onPress={handleFundAccount}
       testID="friendbot-button"
-      tertiary
+      secondary
     >
       {t("friendbotButton.title")}
     </Button>

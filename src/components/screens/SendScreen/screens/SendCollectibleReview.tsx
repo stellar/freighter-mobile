@@ -401,11 +401,11 @@ const SendCollectibleReviewScreen: React.FC<
           network,
         });
 
-        const success = await submitTransaction({
+        const { hash: submittedHash } = await submitTransaction({
           network,
         });
 
-        if (success) {
+        if (submittedHash) {
           analytics.trackSendCollectibleSuccess({
             collectionAddress: selectedCollectible.collectionAddress,
             tokenId: selectedCollectible.tokenId,
@@ -657,7 +657,7 @@ const SendCollectibleReviewScreen: React.FC<
         </View>
         <View className="w-full mt-auto mb-4">
           <Button
-            tertiary
+            secondary
             xl
             onPress={handleContinueButtonPress}
             disabled={isContinueButtonDisabled}

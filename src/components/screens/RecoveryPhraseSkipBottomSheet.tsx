@@ -60,7 +60,7 @@ const CustomContent: React.FC<CustomContentProps> = ({
 
       <View className="gap-3">
         <Button
-          tertiary
+          secondary
           isFullWidth
           testID="skip-confirm-button"
           onPress={onConfirm}
@@ -68,7 +68,7 @@ const CustomContent: React.FC<CustomContentProps> = ({
         >
           {t("recoverySkipModal.confirm")}
         </Button>
-        <Button secondary isFullWidth onPress={onDismiss} disabled={isLoading}>
+        <Button tertiary isFullWidth onPress={onDismiss} disabled={isLoading}>
           {t("recoverySkipModal.cancel")}
         </Button>
       </View>

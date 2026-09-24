@@ -300,15 +300,10 @@ export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
             {collectible?.externalUrl && (
               <View className="flex-1">
                 <Button
-                  tertiary
+                  secondary
                   xl
                   isFullWidth
-                  icon={
-                    <Icon.LinkExternal01
-                      size={18}
-                      color={themeColors.foreground.primary}
-                    />
-                  }
+                  icon={<Icon.LinkExternal01 size={18} />}
                   onPress={() => handleViewInBrowser(collectible?.externalUrl)}
                 >
                   {t("collectibleDetails.view")}
@@ -316,7 +311,7 @@ export const CollectibleDetailsScreen: React.FC<CollectibleDetailsScreenProps> =
               </View>
             )}
             <View className={collectible?.externalUrl ? "flex-1" : ""}>
-              <Button tertiary xl isFullWidth onPress={handleGoToSend}>
+              <Button secondary xl isFullWidth onPress={handleGoToSend}>
                 {t("tokenDetailsScreen.send")}
               </Button>
             </View>

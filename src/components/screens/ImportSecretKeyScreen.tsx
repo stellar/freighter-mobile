@@ -179,7 +179,7 @@ const ImportSecretKeyScreen: React.FC<ImportSecretKeyScreenProps> = ({
 
         <View className="pb-4 mt-6">
           <Button
-            tertiary
+            secondary
             disabled={!isFormValid}
             onPress={handleImport}
             isLoading={isLoading}

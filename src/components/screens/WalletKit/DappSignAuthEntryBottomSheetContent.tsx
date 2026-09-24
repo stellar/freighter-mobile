@@ -92,7 +92,7 @@ export const DappSignAuthEntryBottomSheetContent: React.FC<
         <Text sm secondary>
           {t("walletKit.unableToLoadAuthEntry")}
         </Text>
-        <Button secondary onPress={onCancelRequest}>
+        <Button tertiary onPress={onCancelRequest}>
           {t("common.cancel")}
         </Button>
       </View>

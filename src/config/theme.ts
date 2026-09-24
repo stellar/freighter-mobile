@@ -25,18 +25,18 @@ export const PALETTE = {
       12: "#ededed",
     },
     lilac: {
-      "01": "#17151f",
-      "02": "#1c172b",
-      "03": "#251e40",
-      "04": "#2c2250",
-      "05": "#32275f",
-      "06": "#392c72",
-      "07": "#443592",
-      "08": "#5842c3",
-      "09": "#6e56cf",
-      10: "#7c66dc",
-      11: "#9e8cfc",
-      12: "#f1eefe",
+      "01": "#0e1623",
+      "02": "#101a29",
+      "03": "#0d264d",
+      "04": "#092f69",
+      "05": "#0f3b7c",
+      "06": "#19478d",
+      "07": "#2255a3",
+      "08": "#2865c1",
+      "09": "#1677ff",
+      10: "#0069f0",
+      11: "#7eb6ff",
+      12: "#cde3ff",
     },
     base: {
       "00": "#000000",
@@ -44,29 +44,29 @@ export const PALETTE = {
     },
     green: {
       "01": "#0d1912",
-      "02": "#0f2218",
-      "03": "#1a3826",
+      "02": "#0c1f17",
+      "03": "#0f291e",
       "09": "#30a46c",
       11: "#4cc38a",
     },
     red: {
       "01": "#1f1315",
-      "02": "#2c1a1d",
+      "02": "#291415",
       "06": "#671e22",
       "09": "#e5484d",
       11: "#ff6369",
     },
     amber: {
       "01": "#1f1300",
-      "02": "#2c1a00",
-      "03": "#382800",
+      "02": "#271700",
+      "03": "#341c00",
       "09": "#ffb224",
       11: "#f1a10d",
     },
   },
-  // Most of the time we'll be using the dark theme colors but
-  // in a few cases (like Button theme) we'll be using the light
-  // theme colors so we have them available here.
+  // Both schemes must expose the same shades: the theme factories below index
+  // the palette with a scheme that is only known at runtime, so a shade missing
+  // from one scheme is a type error and a crash the first time it is selected.
   light: {
     gray: {
       "01": "#fcfcfc",
@@ -83,18 +83,18 @@ export const PALETTE = {
       12: "#171717",
     },
     lilac: {
-      "01": "#fdfcfe",
-      "02": "#fbfaff",
-      "03": "#f5f2ff",
-      "04": "#ede9fe",
-      "05": "#e4defc",
-      "06": "#d7cff9",
-      "07": "#c4b8f3",
-      "08": "#aa99ec",
-      "09": "#6e56cf",
-      10: "#644fc1",
-      11: "#5746af",
-      12: "#20134b",
+      "01": "#fcfdff",
+      "02": "#f5faff",
+      "03": "#eef4ff",
+      "04": "#daeaff",
+      "05": "#c8e0ff",
+      "06": "#a8c6ff",
+      "07": "#98bfff",
+      "08": "#73a5ff",
+      "09": "#0050ff",
+      10: "#0246df",
+      11: "#0f53ec",
+      12: "#0e2b6c",
     },
     base: {
       "00": "#ffffff",
@@ -102,90 +102,139 @@ export const PALETTE = {
     },
     green: {
       "01": "#fbfefc",
+      "02": "#f2fcf5",
+      "03": "#e9f9ee",
       "09": "#30a46c",
       11: "#18794e",
     },
     red: {
       "01": "#fffcfc",
+      "02": "#fff8f8",
       "06": "#f9c6c6",
       "09": "#e5484d",
       11: "#cd2b31",
     },
     amber: {
       "01": "#fefdfb",
+      "02": "#fff9ed",
+      "03": "#fff4d5",
       "09": "#ffb224",
       11: "#ad5700",
     },
   },
 } as const;
 
-// Theme definitions
-export const THEME = {
+/** The color schemes the palette supports. */
+export type ColorScheme = keyof typeof PALETTE;
+
+/**
+ * Scheme used when the device reports none. Shared with `useColors` so that
+ * both theme systems always resolve the same palette -- if they disagreed, a
+ * device reporting no scheme would render part of a screen light and part dark.
+ */
+export const DEFAULT_COLOR_SCHEME: ColorScheme = "light";
+
+/**
+ * Colors that deliberately do not follow the scheme.
+ *
+ * A backdrop dims the page behind a sheet or a modal, and a shadow is one
+ * surface falling on another: both are black whichever scheme is active. The
+ * `overlay` ramp is not a substitute -- it inverts to white on dark, which
+ * washes a page out rather than dimming it, and turns a shadow into a glow.
+ *
+ * Backdrop opacity read from the Varial account sheet in Figma:
+ * https://www.figma.com/design/lcdj2ucnJ2BfvRvsLboBNC/Varial?node-id=694-19010
+ */
+export const BACKDROP_OPACITY = 0.6;
+export const BACKDROP_COLOR = `rgba(0, 0, 0, ${BACKDROP_OPACITY})`;
+export const SHADOW_COLOR = "#000000";
+
+/**
+ * Builds the semantic theme for a color scheme.
+ *
+ * Prefer the `useTheme` hook in components so the theme follows the device.
+ * Call this directly only where a hook cannot run, such as module-level
+ * constants built from a scheme resolved by their caller.
+ */
+export const getTheme = (scheme: ColorScheme) => ({
   colors: {
-    primary: PALETTE.dark.lilac["09"],
-    secondary: PALETTE.dark.gray["12"],
+    primary: PALETTE[scheme].lilac["09"],
+    secondary: PALETTE[scheme].gray["12"],
     background: {
-      default: PALETTE.dark.gray["01"],
-      secondary: PALETTE.dark.gray["02"],
-      tertiary: PALETTE.dark.gray["03"],
+      default: PALETTE[scheme].gray["01"],
+      secondary: PALETTE[scheme].gray["02"],
+      tertiary: PALETTE[scheme].gray["03"],
     },
+    // Not a monotonic walk down the ramp: `secondary` is gray 10 to match the
+    // token of the same name in config/colors.ts, which the app reads far more
+    // often. Gray 08 here made one token render as two shades depending on
+    // which theme system a component happened to use.
     foreground: {
-      primary: PALETTE.dark.gray["09"],
-      secondary: PALETTE.dark.gray["08"],
-      tertiary: PALETTE.dark.gray["07"],
+      primary: PALETTE[scheme].gray["09"],
+      secondary: PALETTE[scheme].gray["10"],
+      tertiary: PALETTE[scheme].gray["07"],
     },
     text: {
-      primary: PALETTE.dark.gray["12"],
-      secondary: PALETTE.dark.gray["11"],
+      primary: PALETTE[scheme].gray["12"],
+      secondary: PALETTE[scheme].gray["11"],
     },
     status: {
-      success: PALETTE.dark.green["09"],
-      error: PALETTE.dark.red["09"],
-      warning: PALETTE.dark.amber["09"],
+      success: PALETTE[scheme].green["09"],
+      error: PALETTE[scheme].red["09"],
+      warning: PALETTE[scheme].amber["09"],
     },
     border: {
-      default: PALETTE.dark.gray["06"],
-      error: PALETTE.dark.red["06"],
+      default: PALETTE[scheme].gray["06"],
+      error: PALETTE[scheme].red["06"],
     },
     tab: {
-      active: PALETTE.dark.gray["12"],
-      inactive: PALETTE.dark.gray["11"],
-      activeBackground: PALETTE.dark.gray["04"],
+      active: PALETTE[scheme].gray["12"],
+      inactive: PALETTE[scheme].gray["11"],
+      activeBackground: PALETTE[scheme].gray["04"],
       inactiveBackground: "transparent",
     },
     base: {
-      primary: PALETTE.dark.base["00"],
-      secondary: PALETTE.dark.base["01"],
+      primary: PALETTE[scheme].base["00"],
+      secondary: PALETTE[scheme].base["01"],
     },
     list: {
-      destructive: PALETTE.dark.red["11"],
-      disabled: PALETTE.dark.gray["09"],
+      destructive: PALETTE[scheme].red["11"],
+      disabled: PALETTE[scheme].gray["09"],
     },
   },
   opacity: {
     disabled: 0.6,
   },
-} as const;
+});
 
-export const NOTIFICATION_VARIANTS = {
+export type Theme = ReturnType<typeof getTheme>;
+
+/**
+ * Builds the notification variant colors for a color scheme.
+ *
+ * Prefer the `useNotificationVariants` hook in components.
+ */
+export const getNotificationVariants = (scheme: ColorScheme) => ({
   success: {
-    iconColor: PALETTE.dark.green["09"],
-    backgroundColor: PALETTE.dark.green["03"],
+    iconColor: PALETTE[scheme].green["09"],
+    backgroundColor: PALETTE[scheme].green["03"],
   },
   error: {
-    iconColor: PALETTE.dark.red["09"],
-    backgroundColor: PALETTE.dark.red["02"],
+    iconColor: PALETTE[scheme].red["09"],
+    backgroundColor: PALETTE[scheme].red["02"],
   },
   warning: {
-    iconColor: PALETTE.dark.amber["09"],
-    backgroundColor: PALETTE.dark.amber["03"],
+    iconColor: PALETTE[scheme].amber["09"],
+    backgroundColor: PALETTE[scheme].amber["03"],
   },
   secondary: {
-    iconColor: PALETTE.dark.gray["11"],
-    backgroundColor: PALETTE.dark.gray["03"],
+    iconColor: PALETTE[scheme].gray["11"],
+    backgroundColor: PALETTE[scheme].gray["03"],
   },
   primary: {
-    iconColor: PALETTE.dark.lilac["09"],
-    backgroundColor: PALETTE.dark.gray["01"],
+    iconColor: PALETTE[scheme].lilac["09"],
+    backgroundColor: PALETTE[scheme].gray["01"],
   },
-} as const;
+});
+
+export type NotificationVariants = ReturnType<typeof getNotificationVariants>;

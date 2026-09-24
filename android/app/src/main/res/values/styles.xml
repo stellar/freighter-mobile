@@ -3,13 +3,13 @@
         <!-- Customize your theme here. -->
         <item name="android:editTextBackground">@drawable/rn_edit_text_material</item>
         <!--
-          Paint the window backdrop with the app's dark chrome color. Under Android 15+
-          enforced edge-to-edge, the system bars are transparent and show this window
-          background. Without this, Theme.AppCompat.DayNight resolves to the system's
-          light background on a light-mode phone, leaving white strips at the top and
-          bottom of the screen.
+          Paint the window backdrop with the app's page color. Under Android 15+
+          enforced edge-to-edge the system bars are transparent and show this
+          window background, so without it the strips fall back to the platform
+          default and stop matching the app. app_background carries a
+          values-night counterpart, so this follows the device.
         -->
-        <item name="android:windowBackground">@color/bootsplash_background</item>
+        <item name="android:windowBackground">@color/app_background</item>
     </style>
 
     <style name="BootTheme" parent="Theme.BootSplash">

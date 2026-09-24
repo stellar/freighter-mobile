@@ -24,7 +24,6 @@ import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { DEFAULT_PADDING, NATIVE_TOKEN_CODE } from "config/constants";
-import { THEME } from "config/theme";
 import { calculateSwapRate } from "helpers/balances";
 import { formatDate } from "helpers/date";
 import { pxValue } from "helpers/dimensions";
@@ -67,7 +66,7 @@ const AssetDiffRow: React.FC<{
         ) : (
           <Icon.ArrowCircleUp size={20} color={themeColors.status.error} />
         )}
-        <Text md color={themeColors.white}>
+        <Text md>
           {diff.isCredit
             ? t("history.transactionHistory.received")
             : t("history.transactionHistory.sent")}
@@ -158,7 +157,7 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
             </Text>
           ),
           trailingContent: (
-            <Text md secondary color={themeColors.white}>
+            <Text md>
               {isSuccess
                 ? t("history.transactionDetails.statusSuccess")
                 : t("history.transactionDetails.statusFailed")}
@@ -173,7 +172,7 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
                 <Icon.File02 size={16} color={themeColors.foreground.primary} />
               ),
               titleComponent: (
-                <Text md secondary color={THEME.colors.text.secondary}>
+                <Text md secondary>
                   {t("transactionAmountScreen.details.memo")}
                 </Text>
               ),
@@ -211,7 +210,7 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
             <Icon.FileCode02 size={16} color={themeColors.foreground.primary} />
           ),
           titleComponent: (
-            <Text md secondary color={THEME.colors.text.secondary}>
+            <Text md secondary>
               {t("transactionAmountScreen.details.xdr")}
             </Text>
           ),
@@ -242,7 +241,6 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
       transactionDetails.memo,
       transactionDetails.xdr,
       isDestinationMuxed,
-      themeColors.white,
     ],
   ) as ListItemProps[];
 
@@ -285,7 +283,7 @@ export const TransactionDetailsBottomSheetCustomContent: React.FC<
             <View className="flex-row items-center justify-between pt-3 mt-3 border-t border-border-primary">
               <View className="flex-row items-center gap-2">
                 <Icon.User01 size={20} color={themeColors.gray[9]} />
-                <Text md color={themeColors.white}>
+                <Text md>
                   {isReceiving
                     ? t("history.transactionDetails.from")
                     : t("history.transactionDetails.to")}
@@ -356,7 +354,6 @@ export const TransactionDetailsFooter: React.FC<
   TransactionDetailsFooterProps
 > = ({ externalUrl }) => {
   const { t } = useAppTranslation();
-  const { themeColors } = useColors();
   const { open: openInAppBrowser } = useInAppBrowser();
   const insets = useSafeAreaInsets();
 
@@ -369,8 +366,8 @@ export const TransactionDetailsFooter: React.FC<
     >
       <Button
         isFullWidth
-        tertiary
-        icon={<Icon.LinkExternal01 size={16} color={themeColors.base[0]} />}
+        secondary
+        icon={<Icon.LinkExternal01 size={16} />}
         onPress={() => {
           // Opening THIS operation on Stellar Expert is an item-open, not a
           // full-history-list open — matches the extension's history.item_opened

@@ -2,7 +2,6 @@ import Icon from "components/sds/Icon";
 import { BIOMETRIC_STORAGE_KEYS, LoginType } from "config/constants";
 import { getLoginType, useAuthenticationStore } from "ducks/auth";
 import { usePreferencesStore } from "ducks/preferences";
-import useColors from "hooks/useColors";
 import React, { useCallback, useEffect, useState } from "react";
 import * as Keychain from "react-native-keychain";
 import { biometricDataStorage } from "services/storage/storageFactory";
@@ -46,7 +45,6 @@ export const useBiometrics = () => {
   const { verifyBiometrics, initBiometricPassword, setSignInMethod } =
     useAuthenticationStore();
   const { signInMethod } = useAuthenticationStore();
-  const { themeColors } = useColors();
 
   /**
    * Checks and sets the supported biometry type on the device
@@ -136,16 +134,16 @@ export const useBiometrics = () => {
       if (signInMethod === LoginType.PASSWORD) {
         return undefined;
       }
+      // No fallback color: Button tints an uncolored icon to match its own
+      // label, and a default here would pin this one shade across every
+      // variant. A caller that passes one still wins.
       if (signInMethod === LoginType.FACE) {
-        return (
-          <Icon.FaceId color={color ?? themeColors.foreground.secondary} />
-        );
+        return <Icon.FaceId color={color} />;
       }
-      return (
-        <Icon.Fingerprint01 color={color ?? themeColors.foreground.secondary} />
-      );
+
+      return <Icon.Fingerprint01 color={color} />;
     },
-    [signInMethod, themeColors],
+    [signInMethod],
   );
 
   useEffect(() => {

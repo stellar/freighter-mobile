@@ -79,11 +79,13 @@ const HistoryList: React.FC<HistoryListProps> = ({
   const CustomRefreshIndicator = useCallback(() => {
     if (!isNavigationRefresh) return null;
 
+    // No background: this sits on BaseLayout, which paints the page. A
+    // background of its own would be a second token that has to keep agreeing
+    // with the page, and the list scrolls below it rather than under it, so
+    // there is nothing for it to cover.
     return (
-      <View className="bg-white/80 backdrop-blur-sm">
-        <View className="flex-row justify-center items-center py-3">
-          <Spinner size="large" />
-        </View>
+      <View className="flex-row justify-center items-center py-3">
+        <Spinner size="large" />
       </View>
     );
   }, [isNavigationRefresh]);

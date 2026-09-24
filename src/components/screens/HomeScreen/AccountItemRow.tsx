@@ -133,7 +133,10 @@ const AccountItemRow: React.FC<AccountItemRowProps> = ({
               className="absolute -bottom-1 -right-1 z-20 w-6 h-6 rounded-full bg-navy-9 justify-center items-center"
               testID={testID ? `${testID}-selected-badge` : undefined}
             >
-              <Icon.Check size={12} color={themeColors.base[1]} />
+              {/* The badge is a solid navy circle in both schemes, so the
+                  check is white in both. An inverting token would go black on
+                  navy in light. */}
+              <Icon.Check size={12} color={themeColors.white} />
             </View>
           )}
         </View>

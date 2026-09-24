@@ -128,7 +128,7 @@ const ScanReceiveScreen: React.FC<ScanReceiveScreenProps> = ({
   const isScan = activeTab === "scan";
 
   return (
-    <View className="flex-1 bg-background-primary">
+    <View className="flex-1 bg-base-0">
       {/* Scan layer (camera) — mounted lazily on first Scan visit. Hidden from
           screen readers while Receive is active (pointerEvents/opacity alone do
           not remove descendants from the accessibility tree). */}
@@ -149,7 +149,7 @@ const ScanReceiveScreen: React.FC<ScanReceiveScreenProps> = ({
       {/* Receive layer (opaque; fades in over the camera). Hidden from screen
           readers while Scan is active. */}
       <Animated.View
-        className="bg-background-primary"
+        className="bg-base-0"
         style={[StyleSheet.absoluteFill, { opacity: receiveAnim }]}
         pointerEvents={isScan ? "none" : "auto"}
         accessibilityElementsHidden={isScan}

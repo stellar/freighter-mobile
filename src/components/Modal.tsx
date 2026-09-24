@@ -1,3 +1,4 @@
+import { BACKDROP_COLOR } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
 import React, { useEffect, useState } from "react";
 import {
@@ -93,7 +94,7 @@ const Modal: React.FC<ModalProps> = ({
   onClose,
   children,
   closeOnOverlayPress = false,
-  backdropColor = "rgba(0, 0, 0, 0.9)",
+  backdropColor = BACKDROP_COLOR,
   contentClassName,
   contentStyle,
   position = "center",

@@ -181,7 +181,9 @@ const AvatarWrapper: React.FC<AvatarWrapperProps> = ({
       <View className={getContentClasses()}>{children}</View>
       {isSelected && (
         <View className={getIndicatorClasses()} testID={`${testID}-indicator`}>
-          <Icon.Check size={8} color={themeColors.base[1]} />
+          {/* The badge is bg-primary in both schemes, so the check is white
+              in both. An inverting token would go black on blue in light. */}
+          <Icon.Check size={8} color={themeColors.white} />
         </View>
       )}
     </View>

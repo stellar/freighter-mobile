@@ -18,7 +18,6 @@ import { TextButton } from "components/sds/TextButton";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
 import { DEFAULT_PADDING, NATIVE_TOKEN_CODE } from "config/constants";
-import { THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
 import { useSwapStore } from "ducks/swap";
 import { useSwapSettingsStore } from "ducks/swapSettings";
@@ -197,7 +196,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
           {
             icon: <Icon.Wallet01 size={16} themeColor="gray" />,
             titleComponent: (
-              <Text md secondary color={THEME.colors.text.secondary}>
+              <Text md secondary>
                 {t("swapScreen.review.wallet")}
               </Text>
             ),
@@ -223,7 +222,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
               />
             ),
             titleComponent: (
-              <Text md secondary color={THEME.colors.text.secondary}>
+              <Text md secondary>
                 {t("swapScreen.review.rate")}
               </Text>
             ),
@@ -238,7 +237,7 @@ const SwapReviewBottomSheet: React.FC<SwapReviewBottomSheetProps> = ({
               <Icon.Route size={16} color={themeColors.foreground.primary} />
             ),
             titleComponent: (
-              <Text md secondary color={THEME.colors.text.secondary}>
+              <Text md secondary>
                 {t("transactionAmountScreen.details.fee")}
               </Text>
             ),
@@ -337,7 +336,7 @@ export const SwapReviewFooter: React.FC<SwapReviewFooterProps> = React.memo(
           <Button
             biometric={!isDisabled}
             onPress={onConfirm}
-            tertiary
+            secondary
             xl
             disabled={isDisabled}
             testID="swap-review-confirm-button"
@@ -363,8 +362,8 @@ export const SwapReviewFooter: React.FC<SwapReviewFooterProps> = React.memo(
       const cancelButton = (
         <View className={`${isTrusted ? "flex-1" : "w-full"}`}>
           <Button
-            tertiary={isSuspicious}
-            secondary={isTrusted}
+            secondary={isSuspicious}
+            tertiary={isTrusted}
             destructive={isMalicious}
             xl
             isFullWidth

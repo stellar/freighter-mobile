@@ -9,6 +9,7 @@ import { SwapStatus } from "components/screens/SwapScreen/helpers";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Display, Text } from "components/sds/Typography";
+import { AnalyticsEvent, buildScreenViewedProps } from "config/analyticsConfig";
 import { logger } from "config/logger";
 import { NonNativeToken, NativeToken } from "config/types";
 import { useAuthenticationStore } from "ducks/auth";
@@ -24,6 +25,7 @@ import React, {
   useMemo,
 } from "react";
 import { View } from "react-native";
+import { track } from "services/analytics/core";
 import { getTransactionDetails, TransactionDetail } from "services/stellar";
 
 export interface SwapProcessingScreenProps {
@@ -58,6 +60,38 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
   const [status, setStatus] = useState<SwapStatus>(SwapStatus.SWAPPING);
   const [transactionDetails, setTransactionDetails] =
     useState<TransactionDetail | null>(null);
+  const hasEmittedSuccess = useRef(false);
+
+  // Emit the in-flight stage. Swap reported no processing or success stage at
+  // all, so a swap could not be followed past the review sheet, while the send
+  // flow reported both. Mirrors TransactionProcessingScreen: the component is
+  // mounted only while swapping, so a bare mount effect fires this once per
+  // submission.
+  useEffect(() => {
+    track(
+      AnalyticsEvent.SCREEN_VIEWED,
+      buildScreenViewedProps(AnalyticsEvent.VIEW_SWAP_PROCESSING),
+    );
+  }, []);
+
+  // This one screen also renders the terminal success state, so emit the
+  // success stage once the swap settles. Completes confirm -> processing ->
+  // success for swap, matching send. Guarded to fire at most once per mount.
+  //
+  // Keyed on the transaction hash rather than the SWAPPED status. The status
+  // waits for the follow-up details request as well, and that request only
+  // logs when it fails. A settled swap whose details never arrive would
+  // therefore drop out of the funnel. The hash is set only after submission
+  // succeeds, so it alone marks settlement.
+  useEffect(() => {
+    if (transactionHash && !transactionError && !hasEmittedSuccess.current) {
+      hasEmittedSuccess.current = true;
+      track(
+        AnalyticsEvent.SCREEN_VIEWED,
+        buildScreenViewedProps(AnalyticsEvent.VIEW_SWAP_SUCCESS),
+      );
+    }
+  }, [transactionHash, transactionError]);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -238,7 +272,7 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
         {status === SwapStatus.SWAPPED ? (
           <View className="gap-[16px]">
             <Button
-              secondary
+              tertiary
               xl
               onPress={() =>
                 transactionDetailsBottomSheetModalRef.current?.present()
@@ -248,7 +282,7 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
               {t("swapProcessingScreen.viewTransaction")}
             </Button>
             <Button
-              tertiary
+              secondary
               xl
               onPress={onClose}
               testID="swap-processing-done-button"
@@ -262,7 +296,7 @@ const SwapProcessingScreen: React.FC<SwapProcessingScreenProps> = ({
               {t("swapProcessingScreen.closeMessage")}
             </Text>
             <Button
-              secondary
+              tertiary
               xl
               onPress={onClose}
               testID="swap-processing-close-button"

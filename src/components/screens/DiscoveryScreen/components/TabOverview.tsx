@@ -79,7 +79,7 @@ const TabOverviewFooter: React.FC<TabOverviewFooterProps> = ({
   }, [t, onCloseActiveTab, onCloseAllTabs, showCloseAllOption]);
 
   return (
-    <View className="flex-row items-center border-t border-border-primary bg-background-primary px-6 py-4">
+    <View className="flex-row items-center border-t border-border-primary bg-base-0 px-6 py-4">
       <View className="flex-1 items-start">
         <ContextMenuButton
           contextMenuProps={{ actions: contextMenuActions }}

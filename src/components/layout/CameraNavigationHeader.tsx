@@ -29,7 +29,9 @@ const CameraNavigationHeader = ({
 
   return (
     <View
-      className="absolute left-0 right-0 z-[999] flex-row justify-between items-center px-6 pb-4 bg-background-transparent"
+      // No background, unlike CustomNavigationHeader's bg-base-0: this one
+      // floats over the camera preview, which has to stay visible behind it.
+      className="absolute left-0 right-0 z-[999] flex-row justify-between items-center px-6 pb-4"
       style={{ paddingTop }}
     >
       {headerLeft ? headerLeft() : <CustomHeaderButton position="left" />}

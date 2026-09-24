@@ -80,7 +80,7 @@ const ExpandedSectionView: React.FC<ExpandedSectionViewProps> = React.memo(
     );
 
     return (
-      <View className="flex-1 bg-background-primary">
+      <View className="flex-1 bg-base-0">
         <View className="flex-row items-center justify-between px-6 pb-4 pt-4">
           <CustomHeaderButton position="left" onPress={onBack} />
           <Text md semiBold>

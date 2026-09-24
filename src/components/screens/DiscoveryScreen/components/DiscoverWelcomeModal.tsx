@@ -2,8 +2,8 @@ import Modal from "components/Modal";
 import { Button } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import { THEME } from "config/theme";
 import useAppTranslation from "hooks/useAppTranslation";
+import useTheme from "hooks/useTheme";
 import React from "react";
 import { View } from "react-native";
 
@@ -15,13 +15,14 @@ interface DiscoverWelcomeModalProps {
 const DiscoverWelcomeModal: React.FC<DiscoverWelcomeModalProps> = React.memo(
   ({ visible, onDismiss }) => {
     const { t } = useAppTranslation();
+    const theme = useTheme();
 
     return (
       <Modal visible={visible} onClose={onDismiss} closeOnOverlayPress>
         <View className="gap-7">
           <View className="gap-5">
             <View className="size-[40px] rounded-[8px] bg-lilac-3 border border-lilac-6 items-center justify-center">
-              <Icon.Compass03 size={25} color={THEME.colors.primary} />
+              <Icon.Compass03 size={25} color={theme.colors.primary} />
             </View>
 
             <View className="gap-5">
@@ -39,7 +40,7 @@ const DiscoverWelcomeModal: React.FC<DiscoverWelcomeModalProps> = React.memo(
             </View>
           </View>
 
-          <Button tertiary isFullWidth onPress={onDismiss}>
+          <Button secondary isFullWidth onPress={onDismiss}>
             {t("discovery.welcomeCta")}
           </Button>
         </View>

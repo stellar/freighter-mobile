@@ -17,7 +17,6 @@ import {
   ROOT_NAVIGATOR_ROUTES,
   RootStackParamList,
 } from "config/routes";
-import { THEME } from "config/theme";
 import { PricedBalance } from "config/types";
 import { useSwapSettingsStore } from "ducks/swapSettings";
 import { useTransactionSettingsStore } from "ducks/transactionSettings";
@@ -217,7 +216,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
           {/* Only show fund account button if navigation is available and not test network */}
           {!disableNavigation && !isTestNetwork && (
             <Button
-              tertiary
+              secondary
               xl
               onPress={() =>
                 navigation?.navigate(ROOT_NAVIGATOR_ROUTES.BUY_XLM_STACK, {
@@ -300,7 +299,7 @@ export const BalancesList: React.FC<BalancesListProps> = ({
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            tintColor={THEME.colors.secondary}
+            tintColor={themeColors.gray[12]}
           />
         }
       />

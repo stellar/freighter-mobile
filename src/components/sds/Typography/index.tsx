@@ -1,7 +1,8 @@
 /* eslint-disable react/jsx-props-no-spreading */
-import { THEME } from "config/theme";
+import { Theme } from "config/theme";
 import { fs } from "helpers/dimensions";
 import { useInAppBrowser } from "hooks/useInAppBrowser";
+import useTheme from "hooks/useTheme";
 import React from "react";
 import {
   Text as RNText,
@@ -40,7 +41,7 @@ export type FontWeight = keyof typeof FONT_WEIGHTS;
 /**
  * Base props for Typography components (Display and Text)
  *
- * @prop {string} [color] - Explicit color value (e.g. THEME.colors.text.primary)
+ * @prop {string} [color] - Explicit color value (e.g. theme.colors.text.primary)
  * @prop {TextSize} [size] - Explicit size value (xs, sm, md, lg, xl)
  * @prop {FontWeight} [weight] - Explicit weight value (light, regular, medium, semiBold, bold)
  *
@@ -59,8 +60,10 @@ export type FontWeight = keyof typeof FONT_WEIGHTS;
  * - bold - 700
  *
  * Color shorthands (alternative to color prop):
- * - primary - THEME.colors.text.primary (default)
- * - secondary - THEME.colors.text.secondary
+ * - primary - theme.colors.text.primary (default)
+ * - secondary - theme.colors.text.secondary
+ *
+ * Colors resolve from the active color scheme via the `useTheme` hook.
  *
  * Examples:
  * ```tsx
@@ -68,7 +71,7 @@ export type FontWeight = keyof typeof FONT_WEIGHTS;
  * <Text
  *   size="md"
  *   weight="semiBold"
- *   color={THEME.colors.text.primary}
+ *   color={theme.colors.text.primary}
  * >
  *   Hello World
  * </Text>
@@ -157,12 +160,11 @@ const getWeight = (
 // Get color from props, with priority to explicit prop
 const getColor = (
   props: { color?: string } & ColorProps,
-  defaultColor: string,
+  theme: Theme,
 ): string => {
   if (props.color) return props.color;
-  if (props.secondary) return THEME.colors.text.secondary;
-  if (props.primary) return THEME.colors.text.primary;
-  return defaultColor;
+  if (props.secondary) return theme.colors.text.secondary;
+  return theme.colors.text.primary;
 };
 
 // =============================================================================
@@ -240,7 +242,7 @@ const StyledDisplay = styled(BaseText)<{ $size: DisplaySize }>`
  * <Display
  *   size="lg"
  *   weight="semiBold"
- *   color={PALETTE.dark.green["09"]}
+ *   color={theme.colors.status.success}
  * >
  *   Custom Display
  * </Display>
@@ -255,19 +257,23 @@ export const Display: React.FC<DisplayProps> = ({
   numberOfLines,
   minimumFontScale,
   ...props
-}) => (
-  <StyledDisplay
-    $size={getSize({ size, ...props }, "sm")}
-    $weight={getWeight({ weight, ...props }, "regular")}
-    $color={getColor({ color, ...props }, THEME.colors.text.primary)}
-    adjustsFontSizeToFit={adjustsFontSizeToFit}
-    numberOfLines={numberOfLines}
-    minimumFontScale={minimumFontScale}
-    {...props}
-  >
-    {children}
-  </StyledDisplay>
-);
+}) => {
+  const theme = useTheme();
+
+  return (
+    <StyledDisplay
+      $size={getSize({ size, ...props }, "sm")}
+      $weight={getWeight({ weight, ...props }, "regular")}
+      $color={getColor({ color, ...props }, theme)}
+      adjustsFontSizeToFit={adjustsFontSizeToFit}
+      numberOfLines={numberOfLines}
+      minimumFontScale={minimumFontScale}
+      {...props}
+    >
+      {children}
+    </StyledDisplay>
+  );
+};
 
 // =============================================================================
 // Text
@@ -349,7 +355,7 @@ const StyledText = styled(BaseText)<{
  * <Text
  *   size="lg"
  *   weight="bold"
- *   color={PALETTE.dark.amber["09"]}
+ *   color={theme.colors.status.warning}
  * >
  *   Custom Text
  * </Text>
@@ -367,6 +373,7 @@ export const Text: React.FC<TextProps> = ({
   ...props
 }) => {
   const { open: openInAppBrowser } = useInAppBrowser();
+  const theme = useTheme();
 
   const handleOnPressUrl = () => {
     if (url) {
@@ -378,7 +385,7 @@ export const Text: React.FC<TextProps> = ({
     <StyledText
       $size={getSize({ size, ...props }, "md")}
       $weight={getWeight({ weight, ...props }, "regular")}
-      $color={getColor({ color, ...props }, THEME.colors.text.primary)}
+      $color={getColor({ color, ...props }, theme)}
       $isVerticallyCentered={isVerticallyCentered}
       $textAlign={textAlign}
       {...(url && { onPress: () => handleOnPressUrl() })}

@@ -2,7 +2,7 @@ import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { OnboardLayout } from "components/layout/OnboardLayout";
 import RecoveryPhraseSkipBottomSheet from "components/screens/RecoveryPhraseSkipBottomSheet";
-import { Button } from "components/sds/Button";
+import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
 import { AnalyticsEvent } from "config/analyticsConfig";
@@ -12,7 +12,6 @@ import {
   AuthStackParamList,
   RootStackParamList,
 } from "config/routes";
-import { PALETTE, THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
 import { useLoginDataStore } from "ducks/loginData";
 import { px } from "helpers/dimensions";
@@ -21,6 +20,7 @@ import { useBiometrics } from "hooks/useBiometrics";
 import useColors from "hooks/useColors";
 import { useSecureClipboard } from "hooks/useSecureClipboard";
 import { useSetupFailedToast } from "hooks/useSetupFailedToast";
+import useTheme from "hooks/useTheme";
 import React, { useCallback, useEffect, useState } from "react";
 import { analytics } from "services/analytics";
 import StellarHDWallet from "stellar-hd-wallet";
@@ -31,12 +31,13 @@ type RecoveryPhraseScreenProps = NativeStackScreenProps<
   typeof AUTH_STACK_ROUTES.RECOVERY_PHRASE_SCREEN
 >;
 
-const RecoveryPhraseContainer = styled.View`
+const RecoveryPhraseContainer = styled.View<{ $backgroundColor: string }>`
   padding: ${px(24)};
   justify-content: center;
   align-items: flex-start;
   border-radius: ${px(16)};
-  background-color: ${THEME.colors.background.tertiary};
+  background-color: ${({ $backgroundColor }: { $backgroundColor: string }) =>
+    $backgroundColor};
 `;
 
 const RecoveryPhraseText = styled(Text)`
@@ -57,7 +58,7 @@ const Footer: React.FC<{
   return (
     <StyledFooterButtonContainer>
       <Button
-        tertiary
+        secondary
         isFullWidth
         testID="continue-button"
         onPress={onPressContinue}
@@ -66,7 +67,7 @@ const Footer: React.FC<{
         {t("onboarding.continue")}
       </Button>
       <Button
-        secondary
+        tertiary
         testID="skip-button"
         isLoading={isLoading}
         onPress={onPressSkip}
@@ -90,6 +91,7 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
   const { error, isLoading, signUp, clearError, storeBiometricPassword } =
     useAuthenticationStore();
   const { t } = useAppTranslation();
+  const theme = useTheme();
   const { themeColors } = useColors();
   const { copyToClipboard } = useSecureClipboard();
   const notifySetupFailed = useSetupFailedToast();
@@ -201,16 +203,20 @@ export const RecoveryPhraseScreen: React.FC<RecoveryPhraseScreenProps> = ({
         <Text secondary md>
           {t("recoveryPhraseScreen.warning")}
         </Text>
-        <RecoveryPhraseContainer testID="recovery-phrase-container">
+        <RecoveryPhraseContainer
+          testID="recovery-phrase-container"
+          $backgroundColor={theme.colors.background.tertiary}
+        >
           <RecoveryPhraseText primary md>
             {localMnemonicPhrase}
           </RecoveryPhraseText>
         </RecoveryPhraseContainer>
         <Button
-          secondary
+          tertiary
           isFullWidth
           onPress={handleCopy}
-          icon={<Icon.Copy01 size={16} color={PALETTE.dark.gray["09"]} />}
+          icon={<Icon.Copy01 size={16} />}
+          iconPosition={IconPosition.LEFT}
         >
           {t("recoveryPhraseScreen.copyButtonText")}
         </Button>

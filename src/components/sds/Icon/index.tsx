@@ -1181,9 +1181,9 @@ import Zap from "assets/icons/zap.svg";
 import ZoomIn from "assets/icons/zoom-in.svg";
 import ZoomOut from "assets/icons/zoom-out.svg";
 import { DEFAULT_ICON_SIZE } from "config/constants";
-import { THEME } from "config/theme";
 import { px, pxValue } from "helpers/dimensions";
 import useColors from "hooks/useColors";
+import useTheme from "hooks/useTheme";
 import React from "react";
 import { View } from "react-native";
 
@@ -2445,7 +2445,7 @@ export interface IconProps {
 const IconComponent: React.FC<IconProps> = ({
   name,
   size = DEFAULT_ICON_SIZE,
-  color = THEME.colors.primary,
+  color,
   circle,
   square,
   testID,
@@ -2457,6 +2457,9 @@ const IconComponent: React.FC<IconProps> = ({
 }) => {
   const IconSvg = name ? Icons[name] : null;
   const { themeColors } = useColors();
+  const theme = useTheme();
+  // Resolved here rather than as a parameter default, which cannot call a hook.
+  const resolvedColor = color ?? theme.colors.primary;
 
   if (!IconSvg) {
     return null;
@@ -2466,7 +2469,7 @@ const IconComponent: React.FC<IconProps> = ({
     <IconSvg
       width={px(size)}
       height={px(size)}
-      color={themeColor ? themeColors[themeColor][9] : color}
+      color={themeColor ? themeColors[themeColor][9] : resolvedColor}
       testID={testID}
       onPress={onPress}
     />

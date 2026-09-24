@@ -4,7 +4,6 @@ import { TokenIcon } from "components/TokenIcon";
 import TokenPriceDelta from "components/screens/TokenDetailsScreen/components/PriceHistory/TokenPriceDelta";
 import { Display, Text } from "components/sds/Typography";
 import { NATIVE_TOKEN_CODE, NETWORKS } from "config/constants";
-import { THEME } from "config/theme";
 import { useBalancesStore } from "ducks/balances";
 import { isNativeAssetId } from "helpers/assetIdentity";
 import { formatBalanceAmount, formatFiatAmount } from "helpers/formatAmount";
@@ -158,12 +157,12 @@ export const TokenBalanceDetails: React.FC<{ tokenId: string }> = ({
   const rows = [
     {
       titleComponent: (
-        <Text md secondary color={THEME.colors.text.secondary}>
+        <Text md secondary>
           {t("tokenDetailsScreen.balance")}
         </Text>
       ),
       trailingContent: (
-        <Text md secondary color={THEME.colors.text.primary}>
+        <Text md>
           {formatBalanceAmount(tokenBalance, tokenBalance.tokenCode)}
         </Text>
       ),
@@ -172,14 +171,12 @@ export const TokenBalanceDetails: React.FC<{ tokenId: string }> = ({
       ? [
           {
             titleComponent: (
-              <Text md secondary color={THEME.colors.text.secondary}>
+              <Text md secondary>
                 {t("tokenDetailsScreen.value")}
               </Text>
             ),
             trailingContent: (
-              <Text md secondary color={THEME.colors.text.primary}>
-                {formatFiatAmount(tokenBalance.fiatTotal ?? "0")}
-              </Text>
+              <Text md>{formatFiatAmount(tokenBalance.fiatTotal ?? "0")}</Text>
             ),
           },
         ]

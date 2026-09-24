@@ -273,7 +273,7 @@ export const AddCollectibleScreen: React.FC<AddCollectibleScreenProps> = ({
       <View className="mt-auto">
         <Button
           xl
-          tertiary
+          secondary
           onPress={handleBottomButtonPress}
           isFullWidth
           isLoading={isAddingCollectible}

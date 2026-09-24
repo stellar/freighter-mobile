@@ -1,6 +1,6 @@
 import { Text, TextProps } from "components/sds/Typography";
-import { THEME } from "config/theme";
 import { parseLinkedText } from "helpers/linkedText";
+import useTheme from "hooks/useTheme";
 import React from "react";
 
 interface LinkedTextProps extends Omit<TextProps, "children" | "url"> {
@@ -20,24 +20,28 @@ interface LinkedTextProps extends Omit<TextProps, "children" | "url"> {
 export const LinkedText: React.FC<LinkedTextProps> = ({
   children,
   ...textProps
-}) => (
-  <Text {...textProps}>
-    {parseLinkedText(children).map((segment, index) =>
-      segment.url ? (
-        // eslint-disable-next-line react/no-array-index-key
-        <Text
-          key={`${index}-${segment.url}`}
-          {...textProps}
-          color={THEME.colors.primary}
-          url={segment.url}
-          accessibilityRole="link"
-        >
-          {segment.text}
-        </Text>
-      ) : (
-        // eslint-disable-next-line react/no-array-index-key
-        <React.Fragment key={`${index}-text`}>{segment.text}</React.Fragment>
-      ),
-    )}
-  </Text>
-);
+}) => {
+  const theme = useTheme();
+
+  return (
+    <Text {...textProps}>
+      {parseLinkedText(children).map((segment, index) =>
+        segment.url ? (
+          <Text
+            // eslint-disable-next-line react/no-array-index-key
+            key={`${index}-${segment.url}`}
+            {...textProps}
+            color={theme.colors.primary}
+            url={segment.url}
+            accessibilityRole="link"
+          >
+            {segment.text}
+          </Text>
+        ) : (
+          // eslint-disable-next-line react/no-array-index-key
+          <React.Fragment key={`${index}-text`}>{segment.text}</React.Fragment>
+        ),
+      )}
+    </Text>
+  );
+};

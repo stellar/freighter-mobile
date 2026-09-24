@@ -87,7 +87,7 @@ const RenameAccountModal: React.FC<RenameAccountModalProps> = ({
         <View className="flex-row gap-2">
           <View className="flex-1">
             <Button
-              secondary
+              tertiary
               xl
               isFullWidth
               onPress={() => setModalVisible(false)}
@@ -98,7 +98,7 @@ const RenameAccountModal: React.FC<RenameAccountModalProps> = ({
           </View>
           <View className="flex-1">
             <Button
-              tertiary
+              secondary
               xl
               isFullWidth
               onPress={() => handleRenameAccount(accountName.trim())}

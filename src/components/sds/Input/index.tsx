@@ -1,9 +1,9 @@
 import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import { Text } from "components/sds/Typography";
-import { THEME } from "config/theme";
 import { isAndroid } from "helpers/device";
 import { fsValue } from "helpers/dimensions";
 import { useClipboard } from "hooks/useClipboard";
+import useTheme from "hooks/useTheme";
 import { t } from "i18next";
 import React, { useState, useMemo } from "react";
 import {
@@ -188,9 +188,9 @@ const getSuffixContainerClasses = (fieldSize: InputSize) => {
  * @param {InputSize} fieldSize - The size variant of the input field
  * @returns {Object} Style object for suffix text elements
  */
-const getSuffixTextStyles = (fieldSize: InputSize) => ({
+const getSuffixTextStyles = (fieldSize: InputSize, color: string) => ({
   fontSize: FONT_SIZE_MAP[fieldSize],
-  color: THEME.colors.text.primary,
+  color,
   fontFamily: Platform.select({
     ios: "Inter-Variable",
     android: "Inter-Regular",
@@ -464,7 +464,7 @@ const TextInputComponent = React.forwardRef<InputRef, TextInputComponentProps>(
       value,
       onChangeText,
       placeholder,
-      placeholderTextColor = THEME.colors.text.secondary,
+      placeholderTextColor,
       secureTextEntry = false,
       editable = true,
       autoCorrect = true,
@@ -477,6 +477,10 @@ const TextInputComponent = React.forwardRef<InputRef, TextInputComponentProps>(
     },
     ref,
   ) => {
+    const theme = useTheme();
+    // Resolved here rather than as a parameter default, which cannot call a hook.
+    const resolvedPlaceholderColor =
+      placeholderTextColor ?? theme.colors.text.secondary;
     const inputClasses = useMemo(() => getInputClasses(!editable), [editable]);
 
     const inputStyles = useMemo(() => getInputStyles(fieldSize), [fieldSize]);
@@ -489,7 +493,7 @@ const TextInputComponent = React.forwardRef<InputRef, TextInputComponentProps>(
           }
           testID={testID}
           placeholder={placeholder}
-          placeholderTextColor={placeholderTextColor}
+          placeholderTextColor={resolvedPlaceholderColor}
           value={value}
           onChangeText={onChangeText}
           editable={editable}
@@ -508,7 +512,7 @@ const TextInputComponent = React.forwardRef<InputRef, TextInputComponentProps>(
         ref={ref as React.Ref<TextInput>}
         testID={testID}
         placeholder={placeholder}
-        placeholderTextColor={placeholderTextColor}
+        placeholderTextColor={resolvedPlaceholderColor}
         value={value}
         onChangeText={onChangeText}
         editable={editable}
@@ -585,6 +589,8 @@ const SuffixInput = React.forwardRef<InputRef, InputProps>(
     },
     ref,
   ) => {
+    const theme = useTheme();
+
     // Use the common hook
     const {
       renderCopyButton,
@@ -604,7 +610,7 @@ const SuffixInput = React.forwardRef<InputRef, InputProps>(
       ref,
       testID,
       placeholder,
-      placeholderTextColor: THEME.colors.text.secondary,
+      placeholderTextColor: theme.colors.text.secondary,
       value,
       onChangeText,
       editable,
@@ -618,10 +624,10 @@ const SuffixInput = React.forwardRef<InputRef, InputProps>(
     return (
       <View className={containerClasses}>
         {label && (
-          <Text {...getLabelSize()} sm color={THEME.colors.text.secondary}>
+          <Text {...getLabelSize()} sm color={theme.colors.text.secondary}>
             {isLabelUppercase ? label.toString().toUpperCase() : label}
             {labelSuffix && (
-              <Text {...getLabelSize()} color={THEME.colors.text.secondary}>
+              <Text {...getLabelSize()} color={theme.colors.text.secondary}>
                 {" "}
                 {labelSuffix}
               </Text>
@@ -643,10 +649,20 @@ const SuffixInput = React.forwardRef<InputRef, InputProps>(
               <View
                 className={`flex-1 flex-row items-center ${centered ? "justify-center" : "justify-start"} ${value ? "flex" : "hidden"}`}
               >
-                <Text style={getSuffixTextStyles(fieldSize)}>
+                <Text
+                  style={getSuffixTextStyles(
+                    fieldSize,
+                    theme.colors.text.primary,
+                  )}
+                >
                   {value || ""}
                 </Text>
-                <Text style={getSuffixTextStyles(fieldSize)}>
+                <Text
+                  style={getSuffixTextStyles(
+                    fieldSize,
+                    theme.colors.text.primary,
+                  )}
+                >
                   {inputSuffixDisplay}
                 </Text>
               </View>
@@ -684,7 +700,7 @@ const SuffixInput = React.forwardRef<InputRef, InputProps>(
                 style={{
                   backgroundColor:
                     endButton.backgroundColor ||
-                    THEME.colors.background.default,
+                    theme.colors.background.default,
                 }}
               >
                 {typeof endButton.content === "string" ? (
@@ -706,21 +722,21 @@ const SuffixInput = React.forwardRef<InputRef, InputProps>(
 
         {note && (
           <View className={fieldNoteClasses}>
-            <Text sm color={THEME.colors.text.secondary}>
+            <Text sm color={theme.colors.text.secondary}>
               {note}
             </Text>
           </View>
         )}
         {error && (
           <View className={fieldNoteClasses}>
-            <Text sm color={THEME.colors.status.error}>
+            <Text sm color={theme.colors.status.error}>
               {error}
             </Text>
           </View>
         )}
         {success && (
           <View className={fieldNoteClasses}>
-            <Text sm color={THEME.colors.status.success}>
+            <Text sm color={theme.colors.status.success}>
               {success}
             </Text>
           </View>
@@ -881,6 +897,8 @@ export const Input = React.forwardRef<InputRef, InputProps>(
   ) => {
     const [showPassword] = useState(false);
 
+    const theme = useTheme();
+
     // Use the common hook
     const {
       renderCopyButton,
@@ -931,10 +949,10 @@ export const Input = React.forwardRef<InputRef, InputProps>(
     return (
       <View className={containerClasses}>
         {label && (
-          <Text {...getLabelSize()} color={THEME.colors.text.secondary}>
+          <Text {...getLabelSize()} color={theme.colors.text.secondary}>
             {isLabelUppercase ? label.toString().toUpperCase() : label}
             {labelSuffix && (
-              <Text {...getLabelSize()} color={THEME.colors.text.secondary}>
+              <Text {...getLabelSize()} color={theme.colors.text.secondary}>
                 {" "}
                 {labelSuffix}
               </Text>
@@ -958,7 +976,7 @@ export const Input = React.forwardRef<InputRef, InputProps>(
               value={value}
               onChangeText={onChangeText}
               placeholder={placeholder}
-              placeholderTextColor={THEME.colors.text.secondary}
+              placeholderTextColor={theme.colors.text.secondary}
               secureTextEntry={isPassword && !showPassword}
               editable={editable}
               autoCorrect={autoCorrect}
@@ -987,7 +1005,7 @@ export const Input = React.forwardRef<InputRef, InputProps>(
                 style={{
                   backgroundColor:
                     endButton.backgroundColor ||
-                    THEME.colors.background.default,
+                    theme.colors.background.default,
                 }}
               >
                 {typeof endButton.content === "string" ? (
@@ -1009,21 +1027,21 @@ export const Input = React.forwardRef<InputRef, InputProps>(
 
         {note && (
           <View className={fieldNoteClasses}>
-            <Text sm color={THEME.colors.text.secondary}>
+            <Text sm color={theme.colors.text.secondary}>
               {note}
             </Text>
           </View>
         )}
         {error && (
           <View className={fieldNoteClasses}>
-            <Text sm color={THEME.colors.status.error}>
+            <Text sm color={theme.colors.status.error}>
               {error}
             </Text>
           </View>
         )}
         {success && (
           <View className={fieldNoteClasses}>
-            <Text sm color={THEME.colors.status.success}>
+            <Text sm color={theme.colors.status.success}>
               {success}
             </Text>
           </View>

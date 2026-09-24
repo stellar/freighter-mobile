@@ -88,7 +88,7 @@ const BottomNavigationBar: React.FC<BottomNavigationBarProps> = React.memo(
       <Animated.View style={slideStyle}>
         <Animated.View
           style={barContainerStyle}
-          className="flex-row items-center bg-background-primary border-t border-border-primary px-6 py-4"
+          className="flex-row items-center bg-base-0 border-t border-border-primary px-6 py-4"
         >
           {/* Avatar — fades out and shrinks during keyboard open */}
           <Animated.View style={avatarStyle}>

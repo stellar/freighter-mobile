@@ -135,7 +135,7 @@ const HomeScreenHeader = (
   ]);
 
   return (
-    <View className="bg-background-primary">
+    <View className="bg-base-0">
       {/* Main header */}
       <View
         className="flex-row justify-between items-center px-6 pb-4"

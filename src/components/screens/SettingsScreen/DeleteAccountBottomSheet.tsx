@@ -45,7 +45,7 @@ const DeleteAccountBottomSheet: React.FC<DeleteAccountBottomSheetProps> = ({
 
       {/* Buttons */}
       <View className="gap-3">
-        <Button xl secondary onPress={onCancel}>
+        <Button xl tertiary onPress={onCancel}>
           {t("common.cancel")}
         </Button>
 

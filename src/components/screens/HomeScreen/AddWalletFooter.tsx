@@ -43,10 +43,10 @@ export const AddWalletFooter: React.FC<AddWalletFooterProps> = ({
         identicons in the list above it. PlusDouble rather than Plus: at 16px
         the standard asset's stroke scales down to ~1.3px, where the heavier
         variant renders the 2px the design calls for. */}
-        <View className="w-[40px] h-[40px] rounded-full bg-lilac-2 justify-center items-center">
+        <View className="w-[40px] h-[40px] rounded-full bg-lilac-3 justify-center items-center">
           <Icon.PlusDouble size={16} color={themeColors.lilac[9]} />
         </View>
-        <Text md medium color={themeColors.lilac[11]}>
+        <Text md medium color={themeColors.lilac[9]}>
           {t("home.manageAccount.addWallet")}
         </Text>
       </TouchableOpacity>

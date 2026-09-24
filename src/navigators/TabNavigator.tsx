@@ -6,7 +6,6 @@ import { LoadingScreen } from "components/screens/LoadingScreen";
 import Icon from "components/sds/Icon";
 import { mapNetworkToNetworkDetails } from "config/constants";
 import { MAIN_TAB_ROUTES, MainTabStackParamList } from "config/routes";
-import { THEME } from "config/theme";
 import { useAuthenticationStore } from "ducks/auth";
 import { useProtocolsStore } from "ducks/protocols";
 import { useRecentProtocolsStore } from "ducks/recentProtocols";
@@ -20,6 +19,7 @@ import { useHistoryPolling } from "hooks/useHistoryPolling";
 import { usePricedBalancesPolling } from "hooks/usePricedBalancesPolling";
 import { useSwapTokenListsPrewarm } from "hooks/useSwapTokenListsPrewarm";
 import { useSyncAccountsFiatTotals } from "hooks/useSyncAccountsFiatTotals";
+import useTheme from "hooks/useTheme";
 import React, { useEffect, useMemo } from "react";
 import styled from "styled-components/native";
 
@@ -29,6 +29,8 @@ const TAB_ICON_SIZE = 20;
 
 interface TabIconWrapperProps {
   focused: boolean;
+  $activeBackground: string;
+  $inactiveBackground: string;
 }
 
 const TabIconWrapper = styled.View<TabIconWrapperProps>`
@@ -38,10 +40,12 @@ const TabIconWrapper = styled.View<TabIconWrapperProps>`
   border-radius: ${px(100)};
   justify-content: center;
   align-items: center;
-  background: ${({ focused }: TabIconWrapperProps) =>
-    focused
-      ? THEME.colors.tab.activeBackground
-      : THEME.colors.tab.inactiveBackground};
+  background: ${({
+    focused,
+    $activeBackground,
+    $inactiveBackground,
+  }: TabIconWrapperProps) =>
+    focused ? $activeBackground : $inactiveBackground};
 `;
 
 const TAB_ICONS = {
@@ -58,8 +62,14 @@ interface TabIconProps {
 
 const TabIcon = ({ route, focused, color }: TabIconProps) => {
   const IconComponent = TAB_ICONS[route.name];
+  const theme = useTheme();
+
   return (
-    <TabIconWrapper focused={focused}>
+    <TabIconWrapper
+      focused={focused}
+      $activeBackground={theme.colors.tab.activeBackground}
+      $inactiveBackground={theme.colors.tab.inactiveBackground}
+    >
       <IconComponent size={TAB_ICON_SIZE} color={color} />
     </TabIconWrapper>
   );
@@ -68,6 +78,7 @@ const TabIcon = ({ route, focused, color }: TabIconProps) => {
 export const TabNavigator = () => {
   const { account } = useGetActiveAccount();
   const publicKey = account?.publicKey;
+  const theme = useTheme();
   const { network: activeNetwork } = useAuthenticationStore();
   const networkDetails = useMemo(
     () => mapNetworkToNetworkDetails(activeNetwork),
@@ -139,11 +150,11 @@ export const TabNavigator = () => {
         tabBarIcon: (props) => <TabIcon route={route} {...props} />,
         headerShown: false,
         tabBarShowLabel: false,
-        tabBarActiveTintColor: THEME.colors.tab.active,
-        tabBarInactiveTintColor: THEME.colors.tab.inactive,
+        tabBarActiveTintColor: theme.colors.tab.active,
+        tabBarInactiveTintColor: theme.colors.tab.inactive,
         tabBarStyle: {
-          backgroundColor: THEME.colors.background.default,
-          borderColor: THEME.colors.border.default,
+          backgroundColor: theme.colors.base.primary,
+          borderColor: theme.colors.border.default,
           borderTopWidth: pxValue(1),
           borderStyle: "solid",
           paddingHorizontal: pxValue(72),
