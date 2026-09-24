@@ -5,15 +5,8 @@ import { Badge } from "components/sds/Badge";
 import { Button, IconPosition } from "components/sds/Button";
 import Icon from "components/sds/Icon";
 import { Text } from "components/sds/Typography";
-import {
-  mapNetworkToNetworkDetails,
-  NATIVE_TOKEN_CODE,
-} from "config/constants";
-import {
-  NativeToken,
-  NonNativeToken,
-  TokenTypeWithCustomToken,
-} from "config/types";
+import { mapNetworkToNetworkDetails } from "config/constants";
+import { NonNativeToken, TokenTypeWithCustomToken } from "config/types";
 import { ActiveAccount, useAuthenticationStore } from "ducks/auth";
 import { getTokenSacAddress, isContractId } from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
@@ -110,19 +103,13 @@ const RemoveTokenBottomSheetContent: React.FC<
     return null;
   }
 
-  const iconTokenProp =
-    token.issuer === NATIVE_TOKEN_CODE
-      ? ({
-          type: "native",
-          code: token.issuer,
-        } as NativeToken)
-      : ({
-          type: token.tokenType as TokenTypeWithCustomToken,
-          code: token.tokenCode,
-          issuer: {
-            key: token.issuer,
-          },
-        } as NonNativeToken);
+  const iconTokenProp = {
+    type: token.tokenType as TokenTypeWithCustomToken,
+    code: token.tokenCode,
+    issuer: {
+      key: token.issuer,
+    },
+  } as NonNativeToken;
 
   return (
     <View className="flex-1 justify-center items-center mt-8">

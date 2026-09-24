@@ -16,6 +16,10 @@ import {
 } from "services/analytics/discover";
 import {
   trackSignedTransaction,
+  trackInternalSignedTransaction,
+  trackInternalSignedTransactionRejected,
+  trackInternalSignedTransactionError,
+  trackSignedTransactionError,
   trackSignedMessage,
   trackSignedAuthEntry,
   trackSignedMessageError,
@@ -63,6 +67,10 @@ export interface AnalyticsInstance {
 
   // Transaction analytics
   readonly trackSignedTransaction: typeof trackSignedTransaction;
+  readonly trackInternalSignedTransaction: typeof trackInternalSignedTransaction;
+  readonly trackInternalSignedTransactionRejected: typeof trackInternalSignedTransactionRejected;
+  readonly trackInternalSignedTransactionError: typeof trackInternalSignedTransactionError;
+  readonly trackSignedTransactionError: typeof trackSignedTransactionError;
   readonly trackSignedMessage: typeof trackSignedMessage;
   readonly trackSignedAuthEntry: typeof trackSignedAuthEntry;
   readonly trackSignedMessageError: typeof trackSignedMessageError;
@@ -136,6 +144,10 @@ export const analytics: AnalyticsInstance = {
   trackReAuthSuccess,
   trackReAuthFail,
   trackSignedTransaction,
+  trackInternalSignedTransaction,
+  trackInternalSignedTransactionRejected,
+  trackInternalSignedTransactionError,
+  trackSignedTransactionError,
   trackSignedMessage,
   trackSignedAuthEntry,
   trackSignedMessageError,

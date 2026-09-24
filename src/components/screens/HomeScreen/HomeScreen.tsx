@@ -38,6 +38,7 @@ import { useCollectiblesStore } from "ducks/collectibles";
 import { usePricesStore } from "ducks/prices";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { useWalletKitStore } from "ducks/walletKit";
+import { isNativeAssetId } from "helpers/assetIdentity";
 import { getTokenType } from "helpers/balances";
 import { fsValue, pxValue } from "helpers/dimensions";
 import { isContractId } from "helpers/soroban";
@@ -142,7 +143,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
     // for real, since holding one needs no funded account (no trustline, no
     // reserve). So the pill stands down only when the CTA actually renders.
     const isCollectiblesGridEmpty = visibleCollectibles.length === 0;
-    const showCollectiblesPill = !(showEmptyStateCta && isCollectiblesGridEmpty);
+    const showCollectiblesPill = !(
+      showEmptyStateCta && isCollectiblesGridEmpty
+    );
 
     const handleManageAccountsPress = useCallback(() => {
       manageAccountsBottomSheetRef.current?.present();
@@ -205,7 +208,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = React.memo(
 
         let tokenSymbol: string;
 
-        if (tokenId === "native") {
+        if (isNativeAssetId(tokenId)) {
           tokenSymbol = NATIVE_TOKEN_CODE;
         } else if (isContractId(tokenId)) {
           // For Soroban contracts, pass the contract ID as symbol initially

@@ -105,4 +105,43 @@ describe("useTokenDetails", () => {
     expect(result.current.displayTitle).toBe("TEST");
     expect(result.current.actualTokenDetails).toEqual(mockTokenDetails);
   });
+
+  it("does not map a contract-reported 'native' symbol to XLM for a non-native contract", async () => {
+    mockGetTokenDetails.mockResolvedValue({ symbol: "native", name: "Native" });
+    const { result } = renderHook(() =>
+      useTokenDetails({
+        tokenId: "CB64D3G7SM2RTH6JSGG34DDTFTQ5CFDKVDZJZSODMCX4NJ2HV2KN7OHT",
+        tokenSymbol: "FOO",
+        publicKey: mockPublicKey,
+        network: mockNetwork,
+      }),
+    );
+
+    await act(async () => {
+      await flushPromises();
+    });
+
+    expect(result.current.actualTokenDetails).not.toBeNull();
+    expect(result.current.actualTokenDetails?.symbol).toBe("native");
+    expect(result.current.displayTitle).not.toBe("XLM");
+  });
+
+  it("maps the true native contract's 'native' symbol to XLM", async () => {
+    mockGetTokenDetails.mockResolvedValue({ symbol: "native", name: "native" });
+    const { result } = renderHook(() =>
+      useTokenDetails({
+        tokenId: "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC",
+        tokenSymbol: "XLM",
+        publicKey: mockPublicKey,
+        network: mockNetwork,
+      }),
+    );
+
+    await act(async () => {
+      await flushPromises();
+    });
+
+    expect(result.current.actualTokenDetails).not.toBeNull();
+    expect(result.current.actualTokenDetails?.symbol).toBe("XLM");
+  });
 });

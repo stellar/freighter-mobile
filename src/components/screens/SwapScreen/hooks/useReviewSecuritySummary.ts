@@ -1,5 +1,5 @@
 import { DestinationTokenDescriptor } from "components/screens/SwapScreen/helpers/types";
-import { isNativeAssetId } from "config/constants";
+import { isNativeAssetId } from "helpers/assetIdentity";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useMemo } from "react";
 import type { SecurityAssessment } from "services/blockaid/types";

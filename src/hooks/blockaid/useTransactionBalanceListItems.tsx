@@ -24,6 +24,9 @@ import { getTransactionBalanceChanges } from "services/blockaid/helper";
  * Adapter hook that maps Blockaid transaction simulation results and change trust operations
  * into `ListItemProps[]` for display.
  *
+ * Balance changes are the ones Blockaid attributes to `publicKey` — the
+ * account being asked to sign. See `getTransactionBalanceChanges`.
+ *
  * Scenarios handled:
  * - No scan result → single row "Unable to simulate transaction"
  * - No balance changes AND no change trust → single row "No balance changes detected"
@@ -34,6 +37,7 @@ import { getTransactionBalanceChanges } from "services/blockaid/helper";
 export const useTransactionBalanceListItems = (
   scanResult?: Blockaid.StellarTransactionScanResponse,
   signTransactionDetails?: SignTransactionDetailsInterface | null,
+  publicKey?: string,
 ): ListItemProps[] => {
   const { themeColors } = useColors();
   const { t } = useAppTranslation();
@@ -47,10 +51,12 @@ export const useTransactionBalanceListItems = (
   // re-render) and never shows another network's prices.
   const prices = usePricesForNetwork(network);
 
-  // Balance changes for this transaction: null = unable to simulate.
+  // Balance changes attributed to the signing account: null = unable to
+  // simulate.
   const balanceUpdates = useMemo(
-    () => (scanResult ? getTransactionBalanceChanges(scanResult) : null),
-    [scanResult],
+    () =>
+      scanResult ? getTransactionBalanceChanges(scanResult, publicKey) : null,
+    [scanResult, publicKey],
   );
 
   // Token ids affected by the transaction. Memoized so its identity is stable

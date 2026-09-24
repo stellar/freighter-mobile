@@ -42,7 +42,8 @@
     "tokenId": "Token ID",
     "message": "Message",
     "linkOpenError": "Unable to open link",
-    "authEntry": "Auth Entry"
+    "authEntry": "Auth Entry",
+    "stellarNetwork": "Stellar Network"
   },
   "home": {
     "title": "Home",
@@ -1263,7 +1264,8 @@
       "deleted": "Deleted",
       "enabled": "Enabled",
       "disabled": "Disabled",
-      "unknownFlags": "Unknown ({{bits}})"
+      "unknownFlags": "Unknown ({{bits}})",
+      "contractSpecNote": "Parameter names are based on the contract spec and may not reflect actual contract behavior."
     },
     "claimPredicates": {
       "unconditional": "Unconditional",

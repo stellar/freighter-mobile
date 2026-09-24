@@ -16,6 +16,7 @@ import {
 } from "config/types";
 import { useDebugStore } from "ducks/debug";
 import { Icon } from "ducks/tokenIcons";
+import { isNativeAssetId } from "helpers/assetIdentity";
 import {
   formatTokenIdentifier,
   getTokenIdentifier,
@@ -41,6 +42,56 @@ interface UseTokenLookupProps {
     id: string;
   })[];
 }
+
+// The native asset is trusted by default and isn't a scannable Blockaid
+// address (it's excluded from the bulk-scan address list), so it's assessed
+// as benign directly rather than looked up in the scan response.
+const NATIVE_BENIGN_SCAN_RESULT = {
+  result_type: "Benign",
+} as Blockaid.TokenScanResponse;
+
+// Resolves the bulk-scan result to assess a search record with: the native
+// record is always benign, an issuer-bearing record is looked up by its
+// tokenCode-issuer pair, and any other record (no issuer, not native) is
+// honestly unable to be scanned.
+const getBulkScanResultForToken = (
+  token: FormattedSearchTokenRecord,
+  scanResults: Blockaid.TokenBulkScanResponse,
+): Blockaid.TokenScanResponse | undefined => {
+  if (token.isNative) {
+    return NATIVE_BENIGN_SCAN_RESULT;
+  }
+
+  if (!token.issuer) {
+    return undefined;
+  }
+
+  return scanResults.results?.[`${token.tokenCode}-${token.issuer}`];
+};
+
+// Fallback security fields applied when the bulk scan request itself fails:
+// the native record stays safe (it's never actually sent to the scanner),
+// while every other record is conservatively marked suspicious.
+const getFallbackSecurityFields = (
+  token: FormattedSearchTokenRecord,
+): Pick<
+  FormattedSearchTokenRecord,
+  "isSuspicious" | "isMalicious" | "securityLevel"
+> => {
+  if (token.isNative) {
+    return {
+      isSuspicious: false,
+      isMalicious: false,
+      securityLevel: SecurityLevel.SAFE,
+    };
+  }
+
+  return {
+    isSuspicious: true,
+    isMalicious: false,
+    securityLevel: SecurityLevel.SUSPICIOUS,
+  };
+};
 
 export const useTokenLookup = ({
   network,
@@ -98,11 +149,7 @@ export const useTokenLookup = ({
     scanResults: Blockaid.TokenBulkScanResponse,
   ): FormattedSearchTokenRecord[] =>
     tokens.map((token) => {
-      const tokenIdentifier = token.issuer
-        ? `${token.tokenCode}-${token.issuer}`
-        : token.tokenCode;
-
-      const scanResult = scanResults.results?.[tokenIdentifier];
+      const scanResult = getBulkScanResultForToken(token, scanResults);
       const securityInfo = assessTokenSecurity(
         scanResult,
         overriddenBlockaidResponse,
@@ -171,11 +218,17 @@ export const useTokenLookup = ({
         return {
           ...result,
           iconUrl,
-          hasTrustline: hasExistingTrustline(
-            userBalances,
-            result.tokenCode,
-            result.issuer,
-          ),
+          // An explicitly native record already knows it's held (the native
+          // asset always has a trustline); only recompute for everything
+          // else, so a future issuer value on the native record can't
+          // resurrect a stale trustline check here.
+          hasTrustline: result.isNative
+            ? result.hasTrustline
+            : hasExistingTrustline(
+                userBalances,
+                result.tokenCode,
+                result.issuer,
+              ),
         };
       }
 
@@ -226,14 +279,21 @@ export const useTokenLookup = ({
       });
       const iconUrl = icons[tokenIdentifier]?.imageUrl;
 
+      const isNative = isNativeAssetId(result.asset);
       return {
         tokenCode,
         domain: result.domain ?? "",
-        hasTrustline: hasExistingTrustline(userBalances, tokenCode, issuer),
+        hasTrustline: hasExistingTrustline(
+          userBalances,
+          tokenCode,
+          issuer ?? "",
+        ),
         iconUrl,
         issuer: issuer ?? "",
-        isNative: result.asset === NATIVE_TOKEN_CODE,
-        tokenType: getTokenType(`${tokenCode}:${issuer}`),
+        isNative,
+        tokenType: isNative
+          ? getTokenType(NATIVE_TOKEN_CODE)
+          : getTokenType(`${tokenCode}:${issuer}`),
       };
     });
 
@@ -364,9 +424,7 @@ export const useTokenLookup = ({
         const fallbackSearchResults: FormattedSearchTokenRecord[] =
           formattedRecords.map((token) => ({
             ...token,
-            isSuspicious: true,
-            isMalicious: false,
-            securityLevel: SecurityLevel.SUSPICIOUS,
+            ...getFallbackSecurityFields(token),
           }));
 
         const groupedFallbackResults = groupTokensBySecurityLevel(

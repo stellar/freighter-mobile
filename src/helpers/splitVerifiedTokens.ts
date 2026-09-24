@@ -1,4 +1,4 @@
-import { NETWORKS, NATIVE_TOKEN_CODE } from "config/constants";
+import { NETWORKS } from "config/constants";
 import { FormattedSearchTokenRecord } from "config/types";
 import { useVerifiedTokensStore } from "ducks/verifiedTokens";
 import { getNativeContractDetails } from "helpers/soroban";
@@ -33,9 +33,11 @@ export const splitVerifiedTokens = async ({
     }
   });
 
-  // Always add native token contract to verified list
+  // Always add the native token's contract/issuer to the verified set.
   const nativeContractDetails = getNativeContractDetails(network);
-  verifiedIds.add(nativeContractDetails.contract.toLowerCase());
+  if (nativeContractDetails.contract) {
+    verifiedIds.add(nativeContractDetails.contract.toLowerCase());
+  }
   if (nativeContractDetails.issuer) {
     verifiedIds.add(nativeContractDetails.issuer.toLowerCase());
   }
@@ -52,8 +54,8 @@ export const splitVerifiedTokens = async ({
         return [verifiedList, unverifiedList];
       }
 
-      // For native tokens, always consider verified
-      if (token.isNative || token.tokenCode === NATIVE_TOKEN_CODE) {
+      // Native is always verified.
+      if (token.isNative) {
         verifiedList.push(token);
         return [verifiedList, unverifiedList];
       }

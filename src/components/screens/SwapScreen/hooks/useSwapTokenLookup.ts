@@ -22,6 +22,7 @@ import { useBlockaidTokenScansStore } from "ducks/blockaidTokenScans";
 import { useDebugStore } from "ducks/debug";
 import { useStellarExpertTopTokensStore } from "ducks/stellarExpertTopTokens";
 import { useVerifiedTokensStore } from "ducks/verifiedTokens";
+import { isNativeAssetId } from "helpers/assetIdentity";
 import { formatTokenIdentifier, getTokenType } from "helpers/balances";
 import { isMainnet } from "helpers/networks";
 import { splitVerifiedTokens } from "helpers/splitVerifiedTokens";
@@ -243,7 +244,7 @@ export const useSwapTokenLookup = ({
     () =>
       balanceItems
         .map((b) => {
-          if (b.id === "native") return NATIVE_TOKEN_CODE; // XLM
+          if (isNativeAssetId(b.id)) return NATIVE_TOKEN_CODE; // XLM
           const { tokenCode, issuer } = formatTokenIdentifier(b.id);
           return canonicalId(tokenCode, issuer ?? "");
         })
@@ -451,7 +452,7 @@ export const useSwapTokenLookup = ({
             domain: "",
             hasTrustline: true,
             issuer: resolvedIssuer,
-            isNative: b.id === "native",
+            isNative: isNativeAssetId(b.id),
             tokenType: resolvedIssuer
               ? getTokenType(`${tokenCode}:${resolvedIssuer}`)
               : TokenTypeWithCustomToken.NATIVE,
@@ -505,7 +506,7 @@ export const useSwapTokenLookup = ({
       const classicRecords = rawRecords.filter((r) => {
         if (isSorobanRecord(r)) return false;
         const [tokenCode, issuer] = r.asset.split("-");
-        if (!issuer && r.asset !== NATIVE_TOKEN_CODE) return false;
+        if (!issuer && !isNativeAssetId(r.asset)) return false;
         const tokenType = getTokenType(
           issuer ? `${tokenCode}:${issuer}` : NATIVE_TOKEN_CODE,
         );
@@ -710,14 +711,14 @@ export const useSwapTokenLookup = ({
   // Liquidity pool shares and Soroban custom tokens are not swappable and
   // should never surface in the Swap-To picker's "Your tokens" section.
   // getTokenType expects either NATIVE_TOKEN_CODE ("XLM") or a "CODE:ISSUER"
-  // string. Balance.id is "native" for XLM in this codebase, so normalize
-  // first — otherwise the catch-all classifies it as LIQUIDITY_POOL_SHARES
-  // and filters it out.
+  // string. Balance.id can carry the raw "native" spelling for XLM, so
+  // normalize first via the shared predicate — otherwise the catch-all
+  // classifies it as LIQUIDITY_POOL_SHARES and filters it out.
   const yourTokens = useMemo(
     () =>
       balanceItems.filter((b) =>
         isClassicTokenType(
-          getTokenType(b.id === "native" ? NATIVE_TOKEN_CODE : b.id),
+          getTokenType(isNativeAssetId(b.id) ? NATIVE_TOKEN_CODE : b.id),
         ),
       ),
     [balanceItems],

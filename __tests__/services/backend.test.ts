@@ -1,12 +1,14 @@
 import { Networks, xdr } from "@stellar/stellar-sdk";
 import { NETWORK_URLS, NETWORKS } from "config/constants";
 import { logger } from "config/logger";
+import { isRequestCanceled } from "services/apiFactory";
 import {
   fetchBalances,
   fetchCollectibles,
   fetchTokenPrices,
   freighterBackendV1,
   freighterBackendV2,
+  handleContractLookup,
   simulateTransaction,
   submitTransaction,
   SimulateTransactionParams,
@@ -909,6 +911,54 @@ describe("Backend Service - fetchTokenPrices v2 migration", () => {
     expect(logger.warn).not.toHaveBeenCalled();
   });
 
+  it("does NOT log a deliberate cancellation, but still rejects so the snapshot falls back", async () => {
+    // The confirmation price snapshot aborts its in-flight request on every
+    // cached_display fallback — a routine path, not a failure. The interceptor
+    // normalizes an axios cancellation as a network error, so logging it would
+    // stamp a misleading "network unreachable" breadcrumb on that path.
+    const canceledError = { message: "canceled" };
+    (isRequestCanceled as jest.Mock).mockReturnValue(true);
+    mockV2Post.mockRejectedValueOnce(canceledError);
+
+    await expect(
+      fetchTokenPrices({
+        tokens,
+        network: NETWORKS.PUBLIC,
+        useV2: true,
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toEqual(canceledError);
+
+    expect(logger.error).not.toHaveBeenCalled();
+    expect(logger.warn).not.toHaveBeenCalled();
+  });
+
+  it("still logs a genuine connectivity failure when the request was not canceled", async () => {
+    // The cancellation carve-out above must not swallow real failures.
+    const networkError = {
+      message: "Network Error",
+      status: 0,
+      isNetworkError: true,
+    };
+    (isRequestCanceled as jest.Mock).mockReturnValue(false);
+    mockV2Post.mockRejectedValueOnce(networkError);
+
+    await expect(
+      fetchTokenPrices({
+        tokens,
+        network: NETWORKS.PUBLIC,
+        useV2: true,
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toEqual(networkError);
+
+    expect(logger.warn).toHaveBeenCalledWith(
+      "backendApi.fetchTokenPrices",
+      "Network unreachable while fetching token prices",
+      networkError,
+    );
+  });
+
   it("demotes a connectivity failure to a warn breadcrumb (no Sentry error)", async () => {
     const networkError = {
       message: "Network Error",
@@ -1271,5 +1321,97 @@ describe("Backend Service - fetchBalances v2 local custom-token merge", () => {
 
     expect(result.balances!.XLM).toBeDefined();
     expect(result.localOnlyTokenIds).toEqual([]);
+  });
+});
+
+describe("Backend Service - handleContractLookup", () => {
+  let mockV1Get: jest.MockedFunction<any>;
+
+  // The native lumen's Stellar Asset Contract id on each network, derived
+  // deterministically from the network passphrase.
+  const PUBNET_NATIVE_CONTRACT =
+    "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA";
+  const TESTNET_NATIVE_CONTRACT =
+    "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC";
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockV1Get = freighterBackendV1.get as jest.MockedFunction<any>;
+  });
+
+  it("resolves the pubnet native contract as an already-held native token", async () => {
+    const result = await handleContractLookup(
+      PUBNET_NATIVE_CONTRACT,
+      NETWORKS.PUBLIC,
+    );
+
+    expect(result).toMatchObject({
+      isNative: true,
+      hasTrustline: true,
+      issuer: "",
+      tokenCode: "XLM",
+    });
+    expect(mockV1Get).not.toHaveBeenCalled();
+  });
+
+  it("resolves the testnet native contract identically to the pubnet one", async () => {
+    const result = await handleContractLookup(
+      TESTNET_NATIVE_CONTRACT,
+      NETWORKS.TESTNET,
+    );
+
+    expect(result).toMatchObject({
+      isNative: true,
+      hasTrustline: true,
+      issuer: "",
+      tokenCode: "XLM",
+    });
+    expect(mockV1Get).not.toHaveBeenCalled();
+  });
+
+  it("does not treat the pubnet native contract id as native when looked up on testnet", async () => {
+    mockV1Get.mockImplementation((url: string) => {
+      if (url.startsWith("/token-details/")) {
+        return Promise.resolve({
+          data: { name: "XLM:native", decimals: 7, symbol: "XLM" },
+        });
+      }
+      if (url.startsWith("/is-sac-contract/")) {
+        return Promise.resolve({ data: { isSacContract: true } });
+      }
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+
+    const result = await handleContractLookup(
+      PUBNET_NATIVE_CONTRACT,
+      NETWORKS.TESTNET,
+    );
+
+    expect(result?.isNative).toBe(false);
+    expect(mockV1Get).toHaveBeenCalled();
+  });
+
+  it("returns an empty domain for a non-native contract lookup", async () => {
+    const contractId = "CCUSDCCUSDCCUSDCCUSDCCUSDCCUSDCCUSDCCUSDCCUSDCCUSDCCUS";
+
+    mockV1Get.mockImplementation((url: string) => {
+      if (url.startsWith("/token-details/")) {
+        return Promise.resolve({
+          data: { name: "USDC:GISSUER", decimals: 7, symbol: "USDC" },
+        });
+      }
+      if (url.startsWith("/is-sac-contract/")) {
+        return Promise.resolve({ data: { isSacContract: true } });
+      }
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+
+    const result = await handleContractLookup(contractId, NETWORKS.PUBLIC);
+
+    expect(result).toMatchObject({
+      isNative: false,
+      domain: "",
+      tokenCode: "USDC",
+    });
   });
 });

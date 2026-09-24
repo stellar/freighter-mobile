@@ -1,6 +1,11 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-import { NATIVE_TOKEN_CODE, NETWORKS } from "config/constants";
+import {
+  mapNetworkToNetworkDetails,
+  NATIVE_TOKEN_CODE,
+  NETWORKS,
+} from "config/constants";
 import { logger } from "config/logger";
+import { isNativeAssetId, isNativeContract } from "helpers/assetIdentity";
 import { isContractId } from "helpers/soroban";
 import { useEffect, useState } from "react";
 import { getTokenDetails } from "services/backend";
@@ -45,10 +50,12 @@ const useTokenDetails = ({
         });
 
         if (tokenDetails?.symbol && tokenDetails?.name) {
-          const displaySymbol =
-            tokenDetails.symbol === "native"
-              ? NATIVE_TOKEN_CODE
-              : tokenDetails.symbol;
+          const { networkPassphrase } = mapNetworkToNetworkDetails(network);
+          // The contract address settles the identity, so a contract's
+          // self-reported symbol adds nothing.
+          const displaySymbol = isNativeContract(tokenId, networkPassphrase)
+            ? NATIVE_TOKEN_CODE
+            : tokenDetails.symbol;
 
           setActualTokenDetails({
             symbol: displaySymbol,
@@ -68,7 +75,7 @@ const useTokenDetails = ({
   }, [tokenId, publicKey, network]);
 
   const displayTitle = (() => {
-    if (tokenId === "native") {
+    if (isNativeAssetId(tokenId)) {
       return NATIVE_TOKEN_CODE;
     }
 

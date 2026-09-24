@@ -1,9 +1,6 @@
 import Blockaid from "@blockaid/client";
 import BigNumber from "bignumber.js";
-import {
-  MINIMUM_CREATE_ACCOUNT_XLM,
-  NATIVE_TOKEN_CODE,
-} from "config/constants";
+import { MINIMUM_CREATE_ACCOUNT_XLM } from "config/constants";
 import { TokenTypeWithCustomToken } from "config/types";
 import { isContractId } from "helpers/soroban";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -62,12 +59,15 @@ export function buildUnfundedContext({
   }
 
   const assetCode = selectedBalance.tokenCode || "unknown";
-  const canCreateAccountWithAmount =
-    assetCode === NATIVE_TOKEN_CODE
-      ? new BigNumber(tokenAmount).isGreaterThanOrEqualTo(
-          MINIMUM_CREATE_ACCOUNT_XLM,
-        )
-      : undefined;
+  // tokenType is derived from the balance's canonical identifier
+  // (code:issuer).
+  const isNativeAsset =
+    selectedBalance.tokenType === TokenTypeWithCustomToken.NATIVE;
+  const canCreateAccountWithAmount = isNativeAsset
+    ? new BigNumber(tokenAmount).isGreaterThanOrEqualTo(
+        MINIMUM_CREATE_ACCOUNT_XLM,
+      )
+    : undefined;
 
   const isClassicAsset =
     selectedBalance.tokenType !== TokenTypeWithCustomToken.CUSTOM_TOKEN;
@@ -78,6 +78,7 @@ export function buildUnfundedContext({
 
   return {
     assetCode,
+    isNativeAsset,
     isDestinationFunded,
     canCreateAccountWithAmount,
     isClassicAsset,

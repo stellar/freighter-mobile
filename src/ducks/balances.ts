@@ -1,5 +1,5 @@
 import Blockaid from "@blockaid/client";
-import { NATIVE_TOKEN_CODE, NETWORKS, STORAGE_KEYS } from "config/constants";
+import { NETWORKS, STORAGE_KEYS } from "config/constants";
 import { logger } from "config/logger";
 import {
   BalanceMap,
@@ -9,6 +9,7 @@ import {
 } from "config/types";
 import { usePricesStore } from "ducks/prices";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
+import { isNativeAssetId, isNativeToken } from "helpers/assetIdentity";
 import {
   getLPShareCode,
   isLiquidityPool,
@@ -91,8 +92,7 @@ const getExistingPricedBalances = (
     } else {
       // Handle regular token balances
       tokenCode = balance.token.code;
-      displayName =
-        balance.token.type === "native" ? "Stellar Lumens" : tokenCode;
+      displayName = isNativeToken(balance.token) ? "Stellar Lumens" : tokenCode;
     }
 
     // Create the priced balance object and keep existing price data if available
@@ -228,10 +228,8 @@ const extractScanResultsFromBalances = (
   const scanResults: Record<string, Blockaid.Token.TokenScanResponse> = {};
 
   Object.entries(pricedBalances).forEach(([tokenIdentifier, balance]) => {
-    if (
-      tokenIdentifier === NATIVE_TOKEN_CODE ||
-      tokenIdentifier.includes("lp")
-    ) {
+    // Native has no scan result; liquidity pools are detected by their shape.
+    if (isNativeAssetId(tokenIdentifier) || isLiquidityPool(balance)) {
       return;
     }
 

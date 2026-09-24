@@ -1,7 +1,7 @@
 import BigNumber from "bignumber.js";
 import { DestinationTokenDescriptor } from "components/screens/SwapScreen/helpers/types";
-import { isNativeAssetId } from "config/constants";
 import { TokenTypeWithCustomToken } from "config/types";
+import { isNativeAssetId } from "helpers/assetIdentity";
 import { type HeldBalanceItem } from "hooks/useBalancesList";
 import { useMemo } from "react";
 

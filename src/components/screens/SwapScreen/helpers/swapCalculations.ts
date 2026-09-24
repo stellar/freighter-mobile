@@ -1,11 +1,12 @@
 import { BigNumber } from "bignumber.js";
 import { DestinationTokenDescriptor } from "components/screens/SwapScreen/helpers/types";
-import { DEFAULT_DECIMALS, isNativeAssetId, NETWORKS } from "config/constants";
+import { DEFAULT_DECIMALS, NETWORKS } from "config/constants";
 import {
   PricedBalance,
   TokenPricesMap,
   TokenTypeWithCustomToken,
 } from "config/types";
+import { isNativeAssetId } from "helpers/assetIdentity";
 import { formatTokenForDisplay } from "helpers/formatAmount";
 import { getNativeContractDetails } from "helpers/soroban";
 

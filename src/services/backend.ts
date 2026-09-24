@@ -35,6 +35,7 @@ import {
   TokenPricesMap,
 } from "config/types";
 import { addBlockaidScanResults } from "helpers/addBlockaidScanResults";
+import { isNativeAssetId, isNativeContract } from "helpers/assetIdentity";
 import { getTokenType } from "helpers/balances";
 import { bigize } from "helpers/bigize";
 import { injectLocalTokenBalances } from "helpers/injectLocalTokenBalances";
@@ -42,7 +43,7 @@ import {
   mapAccountBalancesV2,
   V2AccountBalances,
 } from "helpers/mapAccountBalancesV2";
-import { getNativeContractDetails } from "helpers/soroban";
+import { ContractSpecSchema, getNativeContractDetails } from "helpers/soroban";
 import {
   createApiService,
   isRequestCanceled,
@@ -65,13 +66,16 @@ export const freighterBackendV2 = createApiService({
   configureInstance: attachAuthInterceptors,
 });
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Fetches the Soroban contract specification (JSON Schema) from the backend.
  *
  * The returned object contains a `definitions` map for contract functions and types.
- * Function entries expose an `args` object with a positional `required` array that we
- * use to label parameters in the UI. Some specs may also include a top-level
+ * A function entry's parameter list is the keys of `properties.args.properties`, in
+ * declaration order -- that is what labels parameters in the UI. It is never
+ * `properties.args.required`: the payload is a JSON Schema, so `required` lists only
+ * the parameters that must be present and omits every `Option<T>` one, which shifts
+ * later names onto the wrong values. See `getContractFnArgNames` in `helpers/soroban`
+ * for the guards that key order needs. Some specs may also include a top-level
  * `$schema` field; we forward the backend payload as-is.
  *
  * @async
@@ -79,18 +83,23 @@ export const freighterBackendV2 = createApiService({
  * @param {Object} params - Request parameters
  * @param {string} params.contractId - Soroban contract ID (hex-encoded)
  * @param {NetworkDetails} params.networkDetails - Target network details
- * @returns {Promise<Record<string, any>>} Contract spec JSON schema
+ * @returns {Promise<ContractSpecSchema>} Contract spec JSON schema
  * @throws {Error} If the backend responds with an error or an invalid payload
  *
  * @example
  * // Access positional argument names for a function
  * const spec = await getContractSpecs({ contractId: "CC...", networkDetails });
- * const argNames = spec.definitions["transfer"].properties.args.required; // ["from", "to", "amount"]
+ * const argNames = Object.keys(
+ *   spec.definitions["transfer"].properties.args.properties,
+ * ); // ["from", "to", "amount"]
  *
  * @example
  * // Pool contract function (e.g., swap_chained)
- * const required = spec.definitions["swap_chained"].properties.args.required;
+ * const argNames = Object.keys(
+ *   spec.definitions["swap_chained"].properties.args.properties,
+ * );
  * // ["user", "swaps_chain", "token_in", "in_amount", "out_min"]
+ * // `properties.args.required` would drop any `Option<T>` parameter here.
  *
  * @example
  * // Sample (trimmed) response for a token-like contract
@@ -135,8 +144,8 @@ export const getContractSpecs = async ({
 }: {
   contractId: string;
   networkDetails: NetworkDetails;
-}): Promise<Record<string, any>> => {
-  const response = await freighterBackendV1.get<{ data: Record<string, any> }>(
+}): Promise<ContractSpecSchema> => {
+  const response = await freighterBackendV1.get<{ data: ContractSpecSchema }>(
     `/contract-spec/${contractId}`,
     {
       params: {
@@ -177,19 +186,7 @@ export const checkContractSupportsMuxed = async ({
     const spec = await getContractSpecs({ contractId, networkDetails });
 
     // Check if transfer function exists
-    const definitions = spec.definitions as
-      | {
-          transfer?: {
-            properties?: {
-              args?: {
-                properties?: Record<string, unknown>;
-                required?: string[];
-              };
-            };
-          };
-        }
-      | undefined;
-    const transferDef = definitions?.transfer;
+    const transferDef = spec.definitions?.transfer;
     if (!transferDef) {
       return false;
     }
@@ -215,7 +212,6 @@ export const checkContractSupportsMuxed = async ({
     return false;
   }
 };
-/* eslint-enable @typescript-eslint/no-explicit-any */
 
 /**
  * Response type for account balance fetching
@@ -470,6 +466,12 @@ export interface FetchTokenPricesParams {
   network: NETWORKS;
   /** Whether to hit the network-scoped v2 endpoint (remote-config gated) */
   useV2: boolean;
+  /**
+   * Cancels the request when the caller no longer needs the answer (e.g. the
+   * confirmation price snapshot's terminal-status deadline). Forwarded
+   * straight to axios, which aborts the underlying HTTP request.
+   */
+  signal?: AbortSignal;
 }
 
 /**
@@ -500,11 +502,13 @@ const V2_NATIVE_PRICE_ID = "native";
  * v1 endpoint. LP shares and custom tokens are always filtered out before the
  * request, and any requested token without a returned price is filled with null.
  *
- * @param params Tokens to price, the active network, and the v2 flag
+ * @param params Tokens to price, the active network, the v2 flag, and an
+ * optional `AbortSignal` to cancel the request
  * @returns Promise resolving to a map of token identifiers to their price information
  *
  * @example
  * // Fetch prices for XLM and USDC on mainnet via v2
+ * const controller = new AbortController();
  * const prices = await fetchTokenPrices({
  *   tokens: [
  *     "XLM",
@@ -512,6 +516,7 @@ const V2_NATIVE_PRICE_ID = "native";
  *   ],
  *   network: NETWORKS.PUBLIC,
  *   useV2: true,
+ *   signal: controller.signal,
  * });
  *
  * // Access individual token prices
@@ -522,6 +527,7 @@ export const fetchTokenPrices = async ({
   tokens,
   network,
   useV2,
+  signal,
 }: FetchTokenPricesParams): Promise<TokenPricesMap> => {
   // NOTE: API does not accept LP IDs or custom tokens
   const filteredTokens = tokens.filter((tokenId) => {
@@ -550,14 +556,22 @@ export const fetchTokenPrices = async ({
         // the native asset as "native", so translate "XLM" -> "native" on the
         // way out (v1, below, is neither network-scoped nor native-translated).
         const v2Tokens = filteredTokens.map((tokenId) =>
-          tokenId === NATIVE_TOKEN_CODE ? V2_NATIVE_PRICE_ID : tokenId,
+          isNativeAssetId(tokenId) ? V2_NATIVE_PRICE_ID : tokenId,
         );
         ({ data } = await freighterBackendV2.post<TokenPricesResponse>(
           "/token-prices",
           { tokens: v2Tokens },
-          { params: { network: priceNetwork } },
+          { params: { network: priceNetwork }, signal },
+        ));
+      } else if (signal) {
+        ({ data } = await freighterBackendV1.post<TokenPricesResponse>(
+          "/token-prices",
+          { tokens: filteredTokens },
+          { signal },
         ));
       } else {
+        // No config object when there's no signal to carry — preserves the
+        // exact call shape for callers that don't pass one.
         ({ data } = await freighterBackendV1.post<TokenPricesResponse>(
           "/token-prices",
           { tokens: filteredTokens },
@@ -585,18 +599,28 @@ export const fetchTokenPrices = async ({
         delete pricesMap[V2_NATIVE_PRICE_ID];
       }
     } catch (error) {
-      // Without this, the store callers swallow price-fetch failures (keeping
-      // stale prices / a local error string) with no Sentry signal — so a
-      // broadly-failing endpoint (e.g. a bad v2 rollout) would be invisible.
-      // Connectivity failures (offline/DNS/TLS) demote to a warn breadcrumb;
-      // backend 4xx/5xx and timeouts surface as logger.error. Rethrow so the
-      // callers still manage UI state.
-      logApiError(
-        "backendApi.fetchTokenPrices",
-        "Network unreachable while fetching token prices",
-        "Error fetching token prices",
-        error,
-      );
+      // A deliberate abort is not a failure worth reporting. The confirmation
+      // price snapshot cancels its in-flight request on every cached_display
+      // fallback — a routine path — and the interceptor normalizes an axios
+      // cancellation as a network error, so logging it would stamp a
+      // misleading "network unreachable" breadcrumb every time. Same carve-out
+      // getTokenDetails makes below. Still rethrown either way, so the
+      // snapshot's fallback runs.
+      //
+      // Otherwise: without this, the store callers swallow price-fetch
+      // failures (keeping stale prices / a local error string) with no Sentry
+      // signal — so a broadly-failing endpoint (e.g. a bad v2 rollout) would
+      // be invisible. Connectivity failures (offline/DNS/TLS) demote to a warn
+      // breadcrumb; backend 4xx/5xx and timeouts surface as logger.error.
+      // Rethrow so the callers still manage UI state.
+      if (!isRequestCanceled(error)) {
+        logApiError(
+          "backendApi.fetchTokenPrices",
+          "Network unreachable while fetching token prices",
+          "Error fetching token prices",
+          error,
+        );
+      }
       throw error;
     }
   }
@@ -914,14 +938,18 @@ export const handleContractLookup = async (
   publicKey?: string,
   signal?: AbortSignal,
 ): Promise<FormattedSearchTokenRecord | null> => {
-  const nativeContractDetails = getNativeContractDetails(network);
+  const { networkPassphrase } = mapNetworkToNetworkDetails(network);
 
-  if (nativeContractDetails.contract === contractId) {
+  if (isNativeContract(contractId, networkPassphrase)) {
+    const nativeContractDetails = getNativeContractDetails(network);
+
     return {
       tokenCode: nativeContractDetails.code,
       domain: nativeContractDetails.domain,
       hasTrustline: true,
-      issuer: nativeContractDetails.issuer,
+      // The native asset has no issuer; matches the stellar.expert path's
+      // native record (`issuer: issuer ?? ""`).
+      issuer: "",
       isNative: true,
       tokenType: TokenTypeWithCustomToken.NATIVE,
     };
@@ -946,7 +974,8 @@ export const handleContractLookup = async (
 
   return {
     tokenCode: tokenDetails.symbol,
-    domain: "Stellar Network",
+    // No domain is available for a contract token; the UI falls back to "-".
+    domain: "",
     hasTrustline: false,
     issuer,
     isNative: false,

@@ -55,13 +55,13 @@ purpose.
 
 Use runtime type guards to discriminate between balance shapes from the network:
 
-- `isNativeBalance()` (in `src/services/transactionService.ts`) — checks if a
-  balance is the native XLM asset
+- `isNativeBalance()` (in `src/helpers/assetIdentity.ts`) — checks if a balance
+  is the native XLM asset
 - `isLiquidityPool()` (in `src/helpers/balances.ts`) — checks if a balance
   represents a liquidity pool share
 
-Add new type guards in the same files when you introduce new polymorphic data
-shapes.
+Add new asset or nativeness guards to `src/helpers/assetIdentity.ts`. Add other
+balance-shape guards (like `isLiquidityPool()`) to `src/helpers/balances.ts`.
 
 ## Network Retry
 

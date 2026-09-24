@@ -3086,7 +3086,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@noble/curves@npm:1.9.7, @noble/curves@npm:^1.9.7":
+"@noble/curves@npm:1.9.7":
   version: 1.9.7
   resolution: "@noble/curves@npm:1.9.7"
   dependencies:
@@ -4696,13 +4696,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@stellar/js-xdr@npm:^4.0.0":
-  version: 4.0.0
-  resolution: "@stellar/js-xdr@npm:4.0.0"
-  checksum: 10c0/617bb3d7fa9fbdb607e5cb42cc032a15ad1c111440c6d7ede40fcecde204e88ed351aebc80ce1e4eedac6c1d949c3da5722696611e2b00569e7edbd5a0634c37
-  languageName: node
-  linkType: hard
-
 "@stellar/js-xdr@npm:^5.0.0":
   version: 5.0.0
   resolution: "@stellar/js-xdr@npm:5.0.0"
@@ -4728,39 +4721,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@stellar/stellar-base@npm:^15.0.0":
-  version: 15.0.0
-  resolution: "@stellar/stellar-base@npm:15.0.0"
-  dependencies:
-    "@noble/curves": "npm:^1.9.7"
-    "@stellar/js-xdr": "npm:^4.0.0"
-    base32.js: "npm:^0.1.0"
-    bignumber.js: "npm:^9.3.1"
-    buffer: "npm:^6.0.3"
-    sha.js: "npm:^2.4.12"
-  checksum: 10c0/6493d5bfe2ad715e55eeb9441a0316a492fde005360ceb7454fa6b4af5f2be84bb1b60cdf74495d19562d7b82adaee045678edd37805d1870dc6d7220c760292
-  languageName: node
-  linkType: hard
-
-"@stellar/stellar-sdk@npm:15.0.1":
-  version: 15.0.1
-  resolution: "@stellar/stellar-sdk@npm:15.0.1"
-  dependencies:
-    "@stellar/stellar-base": "npm:^15.0.0"
-    axios: "npm:1.14.0"
-    bignumber.js: "npm:^9.3.1"
-    commander: "npm:^14.0.3"
-    eventsource: "npm:^2.0.2"
-    feaxios: "npm:^0.0.23"
-    randombytes: "npm:^2.1.0"
-    toml: "npm:^3.0.0"
-    urijs: "npm:^1.19.11"
-  bin:
-    stellar-js: bin/stellar-js
-  checksum: 10c0/73a5f972db0004492ea8f541ef3e12fa5a6769d6e2affd4535bd4d3680e3828a767bce182d6171dc74cc3e2486d17a9ce1ddc912e94fe73c7fe34f0c1008f5ed
-  languageName: node
-  linkType: hard
-
 "@stellar/stellar-sdk@npm:17.0.1":
   version: 17.0.1
   resolution: "@stellar/stellar-sdk@npm:17.0.1"
@@ -4783,9 +4743,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@stellar/typescript-wallet-sdk-km@npm:3.0.0":
-  version: 3.0.0
-  resolution: "@stellar/typescript-wallet-sdk-km@npm:3.0.0"
+"@stellar/typescript-wallet-sdk-km@npm:5.0.0":
+  version: 5.0.0
+  resolution: "@stellar/typescript-wallet-sdk-km@npm:5.0.0"
   dependencies:
     "@albedo-link/intent": "npm:^0.12.0"
     "@ledgerhq/hw-app-str": "npm:^6.28.4"
@@ -4793,13 +4753,14 @@ __metadata:
     "@stablelib/base64": "npm:^2.0.0"
     "@stablelib/utf8": "npm:^2.0.0"
     "@stellar/freighter-api": "npm:6.0.1"
-    "@stellar/stellar-sdk": "npm:15.0.1"
+    "@stellar/stellar-sdk": "npm:17.0.1"
     "@trezor/connect-plugin-stellar": "npm:^9.0.2"
     bignumber.js: "npm:^9.1.2"
     scrypt-async: "npm:^2.0.1"
     trezor-connect: "npm:^8.2.12"
     tweetnacl: "npm:^1.0.3"
-  checksum: 10c0/70d77de834ca0fc9d090949470618741cc1448d87e00b9a012195bdbafc437fc8333933d815ec212fb61f373104952ac4364f63622db802f068f93c62912d4d2
+    uint8array-extras: "npm:^1.5.0"
+  checksum: 10c0/174a03f31bac9217a6bc2ad90b7cfad63c2570d8674ca4044ea6b8a66b484a714008d2fc5de8f6e82bacfbb53d484a5d532397887e75d030539ba2bdb5e4bfa6
   languageName: node
   linkType: hard
 
@@ -6686,17 +6647,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"axios@npm:1.14.0":
-  version: 1.14.0
-  resolution: "axios@npm:1.14.0"
-  dependencies:
-    follow-redirects: "npm:^1.15.11"
-    form-data: "npm:^4.0.5"
-    proxy-from-env: "npm:^2.1.0"
-  checksum: 10c0/2541f4aa215a7d1842429dad006fc682d82bc0e74bd14500823f7d8cce3bbae0e0a8c328c8538946718f366ab8ce5a4c12e9ad40e5a0f3482ff8bff0cd115d45
-  languageName: node
-  linkType: hard
-
 "axios@npm:1.18.0":
   version: 1.18.0
   resolution: "axios@npm:1.18.0"
@@ -7116,13 +7066,6 @@ __metadata:
   version: 11.1.5
   resolution: "bignumber.js@npm:11.1.5"
   checksum: 10c0/8e829402c6c190d92becb2495d62581c66f170deae99f43ae859e54cdc586d4375c752131d07f60fcc709b84c9ca4c362623c97f3703629e69792c7bb1def00c
-  languageName: node
-  linkType: hard
-
-"bignumber.js@npm:^9.3.1":
-  version: 9.3.1
-  resolution: "bignumber.js@npm:9.3.1"
-  checksum: 10c0/61342ba5fe1c10887f0ecf5be02ff6709271481aff48631f86b4d37d55a99b87ce441cfd54df3d16d10ee07ceab7e272fc0be430c657ffafbbbf7b7d631efb75
   languageName: node
   linkType: hard
 
@@ -9511,13 +9454,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eventsource@npm:^2.0.2":
-  version: 2.0.2
-  resolution: "eventsource@npm:2.0.2"
-  checksum: 10c0/0b8c70b35e45dd20f22ff64b001be9d530e33b92ca8bdbac9e004d0be00d957ab02ef33c917315f59bf2f20b178c56af85c52029bc8e6cc2d61c31d87d943573
-  languageName: node
-  linkType: hard
-
 "eventsource@npm:^4.1.0":
   version: 4.1.0
   resolution: "eventsource@npm:4.1.0"
@@ -9844,16 +9780,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"follow-redirects@npm:^1.15.11, follow-redirects@npm:^1.16.0":
-  version: 1.16.0
-  resolution: "follow-redirects@npm:1.16.0"
-  peerDependenciesMeta:
-    debug:
-      optional: true
-  checksum: 10c0/a1e2900163e6f1b4d1ed5c221b607f41decbab65534c63fe7e287e40a5d552a6496e7d9d7d976fa4ba77b4c51c11e5e9f683f10b43011ea11e442ff128d0e181
-  languageName: node
-  linkType: hard
-
 "follow-redirects@npm:^1.15.6":
   version: 1.15.9
   resolution: "follow-redirects@npm:1.15.9"
@@ -9861,6 +9787,16 @@ __metadata:
     debug:
       optional: true
   checksum: 10c0/5829165bd112c3c0e82be6c15b1a58fa9dcfaede3b3c54697a82fe4a62dd5ae5e8222956b448d2f98e331525f05d00404aba7d696de9e761ef6e42fdc780244f
+  languageName: node
+  linkType: hard
+
+"follow-redirects@npm:^1.16.0":
+  version: 1.16.0
+  resolution: "follow-redirects@npm:1.16.0"
+  peerDependenciesMeta:
+    debug:
+      optional: true
+  checksum: 10c0/a1e2900163e6f1b4d1ed5c221b607f41decbab65534c63fe7e287e40a5d552a6496e7d9d7d976fa4ba77b4c51c11e5e9f683f10b43011ea11e442ff128d0e181
   languageName: node
   linkType: hard
 
@@ -9975,7 +9911,7 @@ __metadata:
     "@stablelib/base64": "npm:2.0.1"
     "@stablelib/utf8": "npm:2.0.1"
     "@stellar/stellar-sdk": "npm:17.0.1"
-    "@stellar/typescript-wallet-sdk-km": "npm:3.0.0"
+    "@stellar/typescript-wallet-sdk-km": "npm:5.0.0"
     "@testing-library/jest-native": "npm:5.4.3"
     "@testing-library/react-hooks": "npm:8.0.1"
     "@testing-library/react-native": "npm:13.3.3"
@@ -16407,7 +16343,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"sha.js@npm:^2.4.11, sha.js@npm:^2.4.12":
+"sha.js@npm:^2.4.11":
   version: 2.4.12
   resolution: "sha.js@npm:2.4.12"
   dependencies:
@@ -17564,13 +17500,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"toml@npm:^3.0.0":
-  version: 3.0.0
-  resolution: "toml@npm:3.0.0"
-  checksum: 10c0/8d7ed3e700ca602e5419fca343e1c595eb7aa177745141f0761a5b20874b58ee5c878cd045c408da9d130cb2b611c639912210ba96ce2f78e443569aa8060c18
-  languageName: node
-  linkType: hard
-
 "tough-cookie@npm:^5.1.1":
   version: 5.1.2
   resolution: "tough-cookie@npm:5.1.2"
@@ -18123,13 +18052,6 @@ __metadata:
   dependencies:
     punycode: "npm:^2.1.0"
   checksum: 10c0/4ef57b45aa820d7ac6496e9208559986c665e49447cb072744c13b66925a362d96dd5a46c4530a6b8e203e5db5fe849369444440cb22ecfc26c679359e5dfa3c
-  languageName: node
-  linkType: hard
-
-"urijs@npm:^1.19.11":
-  version: 1.19.11
-  resolution: "urijs@npm:1.19.11"
-  checksum: 10c0/96e15eea5b41a99361d506e4d8fcc64dc43f334bd5fd34e08261467b6954b97a6b45929a8d6c79e2dc76aadfd6ca950e0f4bd7f3c0757a08978429634d07eda1
   languageName: node
   linkType: hard
 

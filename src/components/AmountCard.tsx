@@ -204,13 +204,7 @@ const PickerChip: React.FC<{
           // already shown as the adjacent label, so one initial reads cleaner.
           singleLetterFallback
         />
-      ) : (
-        // Empty-state affordance: a Plus-in-circle to signal "tap to add a
-        // token" when no token has been picked yet.
-        <View className="w-[20px] h-[20px] rounded-full items-center justify-center bg-gray-3">
-          <Icon.Plus size={16} themeColor="gray" />
-        </View>
-      )}
+      ) : null}
       <Text md medium>
         {label ?? fallbackLabel ?? ""}
       </Text>

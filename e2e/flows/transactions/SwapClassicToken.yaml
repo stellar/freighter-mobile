@@ -52,9 +52,13 @@ tags:
 - tapOn:
     id: token-option-XLM
 
-# Select "to" (Receive) token (USDC). No destination chosen yet → choose pill.
+# Select "to" (Receive) token (USDC). The Receive side is pre-seeded with the
+# network's USDC once balances hydrate, so the pill renders as
+# swap-receive-pill; match the empty-state choose pill too in case seeding
+# hasn't landed yet. Still go through the picker (rather than trusting the
+# seeded default) so the flow keeps exercising destination selection.
 - tapOn:
-    id: swap-receive-choose-pill
+    id: "swap-receive-pill|swap-receive-choose-pill"
 # Wait for the token picker, then select USDC
 - extendedWaitUntil:
     visible:

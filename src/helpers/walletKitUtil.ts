@@ -516,7 +516,15 @@ export const approveSessionRequest = async ({
   // Transaction signing flow (for SIGN_XDR and SIGN_AND_SUBMIT_XDR)
   let transaction: Transaction | FeeBumpTransaction;
   let signedTransaction: string | null;
-  let dappDomain: string | undefined;
+  // Resolved before signing, so a signing failure is still attributable to the
+  // website that asked for it.
+  const { activeSessions } = useWalletKitStore.getState();
+  const dappDomain = getDappMetadataFromEvent(
+    sessionRequest,
+    activeSessions,
+  )?.url;
+  const dappProps = dappDomain ? { dappDomain } : {};
+
   try {
     transaction = TransactionBuilder.fromXdr(xdr as string, networkPassphrase);
 
@@ -525,6 +533,12 @@ export const approveSessionRequest = async ({
 
     if (!signedTransaction) {
       const errorMessage = "Failed to sign transaction";
+      // Signing produced nothing. The user already approved the prompt, so
+      // this is a fault and not a decision.
+      analytics.trackSignedTransactionError({
+        error: errorMessage,
+        ...dappProps,
+      });
       logger.error(
         "approveSessionRequest",
         errorMessage,
@@ -542,22 +556,17 @@ export const approveSessionRequest = async ({
       return;
     }
 
-    // Get dapp metadata for analytics
-    const { activeSessions } = useWalletKitStore.getState();
-    const dappMetadata = getDappMetadataFromEvent(
-      sessionRequest,
-      activeSessions,
-    );
-    dappDomain = dappMetadata?.url;
-
-    analytics.trackSignedTransaction({
-      ...(dappDomain ? { dappDomain } : {}),
-    });
+    analytics.trackSignedTransaction({ ...dappProps });
   } catch (error) {
-    const message = t("common.error", {
-      errorMessage:
-        error instanceof Error ? error.message : t("common.unknownError"),
+    const errorMessage =
+      error instanceof Error ? error.message : t("common.unknownError");
+    // Signing threw. The user already approved the prompt, so this is a fault
+    // and not a decision.
+    analytics.trackSignedTransactionError({
+      error: errorMessage,
+      ...dappProps,
     });
+    const message = t("common.error", { errorMessage });
     showToast({
       title: t("walletKit.errorSigning"),
       message,
@@ -576,9 +585,7 @@ export const approveSessionRequest = async ({
         tx: signedTransaction,
       });
 
-      analytics.trackSubmittedTransaction({
-        ...(dappDomain ? { dappDomain } : {}),
-      });
+      analytics.trackSubmittedTransaction({ ...dappProps });
     } catch (error) {
       const message = t("common.error", {
         errorMessage:

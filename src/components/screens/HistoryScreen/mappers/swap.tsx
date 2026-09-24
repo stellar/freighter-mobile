@@ -20,6 +20,7 @@ import {
   NETWORKS,
 } from "config/constants";
 import { TokenTypeWithCustomToken } from "config/types";
+import { isNativeAssetId } from "helpers/assetIdentity";
 import { formatTokenForDisplay } from "helpers/formatAmount";
 import { getIconUrl } from "helpers/getIconUrl";
 import useColors, { ThemeColors } from "hooks/useColors";
@@ -64,10 +65,14 @@ export const mapSwapHistoryItem = async ({
   const destTokenCodeFinal = destTokenCode || NATIVE_TOKEN_CODE;
   const formattedAmount = `+${formatTokenForDisplay(amount, destTokenCodeFinal)}`;
 
+  // Nativeness comes from the operation record's own type discriminant.
+  const isSourceNative = isNativeAssetId(operation.source_asset_type);
+  const isDestNative = isNativeAssetId(operation.asset_type);
+
   // Fetch icon URLs for the source and destination assets in parallel.
   // Native token icons are omitted — they use hardcoded logos in the row component.
   const [destIcon, sourceIcon] = await Promise.all([
-    destTokenCodeFinal === NATIVE_TOKEN_CODE
+    isDestNative
       ? Promise.resolve(undefined)
       : getIconUrl({
           asset: {
@@ -76,7 +81,7 @@ export const mapSwapHistoryItem = async ({
           },
           network,
         }),
-    srcTokenCode === NATIVE_TOKEN_CODE
+    isSourceNative
       ? Promise.resolve(undefined)
       : getIconUrl({
           asset: {
@@ -119,15 +124,14 @@ export const mapSwapHistoryItem = async ({
       variant="swap"
       sourceOne={{
         altText: "Swap source token logo",
-        // For native XLM, use the Stellar logo directly
-        image: srcTokenCode === NATIVE_TOKEN_CODE ? logos.stellar : undefined,
-        token:
-          srcTokenCode === NATIVE_TOKEN_CODE
-            ? undefined
-            : {
-                code: srcTokenCode,
-                issuer: sourceTokenIssuer || "",
-              },
+        // For the native asset, use the Stellar logo directly
+        image: isSourceNative ? logos.stellar : undefined,
+        token: isSourceNative
+          ? undefined
+          : {
+              code: srcTokenCode,
+              issuer: sourceTokenIssuer || "",
+            },
         // Fallback: show token initials if the icon is not available
         renderContent: () => (
           <Text xs secondary semiBold>
@@ -137,16 +141,14 @@ export const mapSwapHistoryItem = async ({
       }}
       sourceTwo={{
         altText: "Swap destination token logo",
-        // For native XLM, use the Stellar logo directly
-        image:
-          destTokenCodeFinal === NATIVE_TOKEN_CODE ? logos.stellar : undefined,
-        token:
-          destTokenCodeFinal === NATIVE_TOKEN_CODE
-            ? undefined
-            : {
-                code: destTokenCodeFinal,
-                issuer: tokenIssuer || "",
-              },
+        // For the native asset, use the Stellar logo directly
+        image: isDestNative ? logos.stellar : undefined,
+        token: isDestNative
+          ? undefined
+          : {
+              code: destTokenCodeFinal,
+              issuer: tokenIssuer || "",
+            },
         // Fallback: show token initials if the icon is not available
         renderContent: () => (
           <Text xs secondary semiBold>

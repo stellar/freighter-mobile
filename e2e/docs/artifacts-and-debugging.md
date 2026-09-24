@@ -32,7 +32,13 @@ e2e-artifacts/
 
 ### Per-flow directories
 
-Each flow produces `e2e-artifacts/<FlowName>-<timestamp>/`:
+Each flow produces `e2e-artifacts/<FlowName>-<timestamp>/`.
+
+When a flow is retried (see `E2E_FLOW_ATTEMPTS` in
+[Running Tests](running-tests.md)), each subsequent attempt gets its own
+directory — `e2e-artifacts/<FlowName>-<timestamp>-attempt2/` and so on. The
+failing attempt's recording and `maestro.log` are therefore still there after a
+retry turns the job green, which is what you want when diagnosing a flake.
 
 **Directly in flow folder:**
 

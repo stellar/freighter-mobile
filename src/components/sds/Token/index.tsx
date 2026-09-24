@@ -4,11 +4,11 @@ import { Text } from "components/sds/Typography";
 import {
   CIRCLE_USDC_ISSUER,
   CIRCLE_USDC_CONTRACT,
-  NATIVE_TOKEN_CODE,
   USDC_CODE,
 } from "config/constants";
 import { THEME } from "config/theme";
 import { useTokenIconsStore } from "ducks/tokenIcons";
+import { isNativeAssetPair } from "helpers/assetIdentity";
 import { px } from "helpers/dimensions";
 import { ICON_VALIDATION_TIMEOUT } from "helpers/validateIconUrl";
 import React, { useEffect } from "react";
@@ -594,7 +594,6 @@ const ImageWithFallback: React.FC<{
     React.useCallback(
       (storeState) => {
         if (!tokenCode || !tokenIssuer) return null;
-        if (tokenCode === NATIVE_TOKEN_CODE) return null;
         return storeState.icons[`${tokenCode}:${tokenIssuer}`];
       },
       [tokenCode, tokenIssuer],
@@ -607,7 +606,6 @@ const ImageWithFallback: React.FC<{
 
   useEffect(() => {
     if (!tokenCode || !tokenIssuer || icon === null) return;
-    if (tokenCode === NATIVE_TOKEN_CODE) return;
     if (icon && icon.isValidated !== true && icon.isValid !== false) {
       validateIconOnAccess(`${tokenCode}:${tokenIssuer}`);
     }
@@ -617,7 +615,10 @@ const ImageWithFallback: React.FC<{
   // -------------------------------------------------------------------------
 
   // Resolve the final image URL from props or the store.
-  const isNativeToken = tokenCode === NATIVE_TOKEN_CODE;
+  // The native asset normally reaches this component through `source.image`
+  // (see TokenIcon's native branch); a token passed here with the native
+  // code and no issuer is the remaining native shape.
+  const isNativeToken = isNativeAssetPair(tokenCode, tokenIssuer);
   const isUSDC =
     tokenCode === USDC_CODE &&
     (tokenIssuer === CIRCLE_USDC_ISSUER ||

@@ -43,17 +43,11 @@ export const NATIVE_TOKEN_CODE = "XLM";
 /**
  * Horizon's wire string for the native (XLM) asset's `asset_type` / `id`.
  * Distinct from `NATIVE_TOKEN_CODE` ("XLM"): raw Horizon responses use
- * "native", but normalized surfaces use "XLM". Prefer the
- * {@link isNativeAssetId} guard over comparing to either sentinel directly.
+ * "native", but normalized surfaces use "XLM". Prefer the native-asset-id
+ * predicate in helpers/assetIdentity over comparing to either sentinel
+ * directly.
  */
 export const HORIZON_NATIVE_ASSET_TYPE = "native";
-
-/**
- * True if `id` refers to native XLM, matching both Horizon's raw "native"
- * sentinel and the normalized NATIVE_TOKEN_CODE ("XLM").
- */
-export const isNativeAssetId = (id: string | undefined | null): boolean =>
-  id === HORIZON_NATIVE_ASSET_TYPE || id === NATIVE_TOKEN_CODE;
 export const MIN_TRANSACTION_FEE = "0.00001";
 export const BASE_RESERVE = BigNumber(0.5);
 export const MINIMUM_CREATE_ACCOUNT_XLM = 1;
@@ -65,6 +59,9 @@ export const CIRCLE_USDC_ISSUER =
 export const USDC_CODE = "USDC";
 export const CIRCLE_USDC_CONTRACT =
   "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75";
+// Circle's testnet USDC issuer (home_domain centre.io), matching the extension
+export const CIRCLE_USDC_TESTNET_ISSUER =
+  "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5";
 
 // Slippage constants
 export const DEFAULT_SLIPPAGE = 2;
@@ -344,6 +341,17 @@ export const DEFAULT_NETWORKS: Array<NetworkDetails> = [
   PUBLIC_NETWORK_DETAILS,
   TESTNET_NETWORK_DETAILS,
 ];
+
+/**
+ * Default swap destination ("You receive") per network, as a token id
+ * (CODE:ISSUER). Only networks listed here get a default; on others the
+ * picker starts empty. Mirrors the extension's DEFAULT_SWAP_DEST_CANONICAL
+ * (freighter#2914) — keep the issuers in sync across platforms.
+ */
+export const DEFAULT_SWAP_DEST_TOKEN_ID: Partial<Record<NETWORKS, string>> = {
+  [NETWORKS.PUBLIC]: `${USDC_CODE}:${CIRCLE_USDC_ISSUER}`,
+  [NETWORKS.TESTNET]: `${USDC_CODE}:${CIRCLE_USDC_TESTNET_ISSUER}`,
+};
 
 export const STELLAR_EXPERT_URL = "https://stellar.expert/explorer";
 export const STELLAR_EXPERT_API_URL = "https://api.stellar.expert/explorer";
