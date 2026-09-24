@@ -5,6 +5,22 @@ import {
   secureDataStorage,
 } from "services/storage/storageFactory";
 
+// Monotonic counter bumped at the START of every clearTemporaryData wipe.
+// Lets an in-flight opportunistic writer (the hash-key re-anchor in
+// services/autoLock) detect that a wipe began after it validated storage and
+// refuse its write, instead of racing the wipe's removes and re-creating
+// just-wiped key material. JS is single-threaded, so a bump is visible to any
+// check that runs after the wipe starts; a write dispatched before the bump
+// has its removes land after it, so either ordering ends with the key absent.
+let wipeGeneration = 0;
+
+/**
+ * Current wipe generation — see wipeGeneration above. Capture before an
+ * optimistic read-validate-write sequence and compare (synchronously, with no
+ * await in between) right before the write.
+ */
+const getWipeGeneration = (): number => wipeGeneration;
+
 /**
  * Clears the hash key, temporary store, and derived key cache from secure storage.
  *
@@ -15,6 +31,7 @@ import {
  * the logout-wipe path alongside clearAllWebViewData.
  */
 const clearTemporaryData = async (): Promise<void> => {
+  wipeGeneration += 1;
   await Promise.all([
     secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.HASH_KEY),
     secureDataStorage.remove(SENSITIVE_STORAGE_KEYS.TEMPORARY_STORE),
@@ -50,4 +67,9 @@ const getHashKey = async (): Promise<HashKey | null> => {
   return hashKey ? (JSON.parse(hashKey) as HashKey) : null;
 };
 
-export { clearTemporaryData, clearNonSensitiveData, getHashKey };
+export {
+  clearTemporaryData,
+  clearNonSensitiveData,
+  getHashKey,
+  getWipeGeneration,
+};
