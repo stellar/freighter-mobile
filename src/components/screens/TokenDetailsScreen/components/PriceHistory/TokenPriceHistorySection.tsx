@@ -176,9 +176,11 @@ const TokenPriceHistorySection: React.FC<TokenPriceHistorySectionProps> = ({
   );
 
   // A new series under the finger (fetch landed, range switched) or an
-  // unmount ends the inspection: the index would otherwise describe the
-  // wrong point. Keyed off `data?.points` rather than the post-return
-  // `points` local so this stays a hook called unconditionally every render.
+  // unmount clears the point, not ends the inspection: a still-live gesture
+  // re-sets it on its next move (RNGH keeps the handler and swaps in the new
+  // xs), so the drag re-resolves on the new series with no second `brushed`.
+  // Keyed off `data?.points` rather than the post-return `points` local so
+  // this stays a hook called unconditionally every render.
   useEffect(
     () => () => clearInspectedPoint({ network, tokenId }),
     [network, tokenId, data?.points, clearInspectedPoint],

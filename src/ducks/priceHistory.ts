@@ -361,8 +361,9 @@ export const usePriceHistoryStore = create<PriceHistoryState>((set, get) => {
       const key = getTokenScopeKey(network, tokenId);
       set((state) => ({
         selectedRange: { key, range },
-        // A new series under the finger would re-point the index at the
-        // wrong point; the drag ends with the switch.
+        // Clears the point rather than ending the drag: a still-live gesture
+        // re-sets it on its next move against the new range's series, so the
+        // switch never leaves the index pointing at the wrong series.
         inspectedPoint:
           state.inspectedPoint?.key === key ? null : state.inspectedPoint,
       }));

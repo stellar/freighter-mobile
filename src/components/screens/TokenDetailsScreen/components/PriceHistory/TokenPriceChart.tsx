@@ -745,8 +745,9 @@ const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
               priceChartLabelHeight(fontScale),
             ),
             left: tooltipLeft(inspectedCoord.x, tooltipWidth, width),
-            // Hidden until its own measurement lands, for the same reason the
-            // axis labels are: the placement depends on the width.
+            // Only the FIRST inspection is hidden this way: `tooltipSize`
+            // persists once measured, so every later inspection draws at full
+            // opacity with the previous pill's size for one frame.
             opacity: tooltipWidth === undefined ? 0 : 1,
             flexDirection: "row",
             alignItems: "center",
