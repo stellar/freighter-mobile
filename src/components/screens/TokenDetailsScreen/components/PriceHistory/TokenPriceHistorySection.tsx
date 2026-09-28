@@ -196,6 +196,10 @@ const TokenPriceHistorySection: React.FC<TokenPriceHistorySectionProps> = ({
     }
   }, [isEnabled, network, tokenId, clearInspectedPoint]);
 
+  // Guarded on the SELECTED range too: keeps the artwork honest if an
+  // inspection ever carries another range. `scrollEnabled` has no such
+  // guard — the atomic clear in `setSelectedRange` is what keeps that
+  // honest on a range switch, so it must stay.
   const inspectedIndex =
     inspected && inspected.range === plottedRange ? inspected.index : null;
 

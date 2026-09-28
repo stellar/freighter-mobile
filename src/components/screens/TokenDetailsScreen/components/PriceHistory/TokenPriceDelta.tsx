@@ -134,9 +134,10 @@ const TokenPriceDelta: React.FC<TokenPriceDeltaProps> = ({
   // delta above a canvas reading "No price data for this period".
   const hasChart = hasChartData(data?.points ?? []);
 
-  // Guarded on the SELECTED range too: the duck drops an inspection on a
-  // range switch, but the header must never print a 1D point's delta under
-  // a 1W tab for the frame in between.
+  // Guarded on the SELECTED range too: keeps the delta honest if an
+  // inspection ever carries another range. `scrollEnabled` has no such
+  // guard — the atomic clear in `setSelectedRange` is what keeps that
+  // honest on a range switch, so it must stay.
   const inspectedChange =
     inspected && inspected.range === range
       ? computeInspectedChange(inspected.first, inspected.point)

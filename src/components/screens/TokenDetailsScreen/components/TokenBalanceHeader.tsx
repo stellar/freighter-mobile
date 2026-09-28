@@ -105,12 +105,12 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
   // While a drag-to-inspect is in progress the price is the inspected
   // point's close, through the same formatter as the live spot; released, it
   // is spot again (Phase 3). Guarded on the SELECTED range too, exactly like
-  // {@link TokenPriceDelta}: the duck drops an inspection on a range switch,
-  // but for the frame in between, an inspection keyed to the OLD range must
-  // not still drive the price here — the price, the delta and the chart all
-  // have to read the same guard or they can show three different points at
-  // once. Otherwise the price is live spot and does NOT vary by timeframe;
-  // only the delta beneath it follows the chart's selected range (§7.3).
+  // {@link TokenPriceDelta}: keeps the price honest if an inspection ever
+  // carries another range. `scrollEnabled` has no such guard — the atomic
+  // clear in `setSelectedRange` is what keeps that honest on a range switch,
+  // so it must stay. Otherwise the price is live spot and does NOT vary by
+  // timeframe; only the delta beneath it follows the chart's selected range
+  // (§7.3).
   const inspectedPrice =
     inspected && inspected.range === selectedRange
       ? inspected.point.p

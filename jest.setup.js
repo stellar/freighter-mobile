@@ -208,14 +208,8 @@ jest.mock("@react-navigation/bottom-tabs", () => ({
 
 jest.mock("react-native-device-info", () => mockRNDeviceInfo);
 
-// `jestSetup` is a SIDE-EFFECT script: it mocks the library's native module
-// and its native-backed components, and exports nothing. Importing it as a
-// value and feeding that to `jest.mock("react-native-gesture-handler")`
-// replaced the whole package with `{}` for every suite, so `Gesture`,
-// `GestureDetector` and `State` were all undefined repo-wide. Requiring it
-// for its side effects instead leaves the real JS API in place — which is
-// what `react-native-gesture-handler/jest-utils` needs. Every suite now gets
-// the real library; there is no per-suite stub to opt into.
+// `react-native-gesture-handler/jestSetup` is a side-effect script that mocks
+// the native module; require it, never `jest.mock` the package with it.
 require("react-native-gesture-handler/jestSetup");
 
 jest.mock("@gorhom/bottom-sheet", () => {

@@ -237,8 +237,7 @@ export const tooltipLeft = (
  * overhang into a label row.
  *
  * `tooltipHeight` is undefined until the pill has measured itself (same model
- * as `tooltipWidth`); an unmeasured pill is drawn at `bandTop` with `h = 0`,
- * which matches where it always rendered before it had a size to centre with
+ * as `tooltipWidth`); an unmeasured pill is drawn at `bandTop` with `h = 0`
  * and is hidden by the caller's opacity anyway.
  */
 export const tooltipTop = (
