@@ -362,6 +362,9 @@ const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
         .withTestId(INSPECT_GESTURE_TEST_ID)
         .enabled(xs.length >= 2)
         .activateAfterLongPress(INSPECT_LONG_PRESS_MS)
+        // A resting second finger would otherwise pull the reported x to the
+        // two-pointer centroid, under neither finger.
+        .maxPointers(1)
         .runOnJS(true)
         .onStart((event) => {
           isInspectingRef.current = true;

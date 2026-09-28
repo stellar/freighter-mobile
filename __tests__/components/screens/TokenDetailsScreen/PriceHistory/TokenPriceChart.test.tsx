@@ -797,6 +797,14 @@ describe("drag to inspect", () => {
     ).toBe(INSPECT_LONG_PRESS_MS);
   });
 
+  it("limits the Pan gesture to a single pointer", () => {
+    renderInspectable();
+
+    expect(getByGestureTestId(INSPECT_GESTURE_TEST_ID).config.maxPointers).toBe(
+      1,
+    );
+  });
+
   it("reports the SNAPPED index on start and on every move, then ends", () => {
     const onInspectStart = jest.fn();
     const onInspectMove = jest.fn();
