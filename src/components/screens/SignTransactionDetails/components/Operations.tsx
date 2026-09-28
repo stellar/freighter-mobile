@@ -28,7 +28,11 @@ import {
 import { logger } from "config/logger";
 import { useAuthenticationStore } from "ducks/auth";
 import { formatTokenForDisplay } from "helpers/formatAmount";
-import { getCreateContractArgs, xdrStringToDisplay } from "helpers/soroban";
+import {
+  getCreateContractArgs,
+  xdrStringToDisplay,
+  xdrStringToRaw,
+} from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
 import { useClipboard } from "hooks/useClipboard";
@@ -1335,7 +1339,10 @@ const OperationParametersSection = ({
     contractId: invocation
       ? Address.fromScAddress(invocation.contractAddress).toString()
       : undefined,
-    fnName: invocation?.functionName.toString(),
+    // The raw signed name, not `toString()`: that decode replaces every
+    // invalid byte with U+FFFD, and a lossily decoded name is not a key any
+    // contract spec defines.
+    specFnName: invocation && xdrStringToRaw(invocation.functionName),
     argCount: invocation?.args.length ?? 0,
   });
 

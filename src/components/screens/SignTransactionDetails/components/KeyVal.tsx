@@ -12,6 +12,7 @@ import {
   xdr,
 } from "@stellar/stellar-sdk";
 import Spinner from "components/Spinner";
+import { ScValDisplay } from "components/screens/SignTransactionDetails/components/ScValDisplay";
 import Avatar from "components/sds/Avatar";
 import { Banner } from "components/sds/Banner";
 import Icon from "components/sds/Icon";
@@ -22,14 +23,14 @@ import {
   addressToString,
   getContractFnArgNames,
   getCreateContractArgs,
-  scValByType,
+  scValToDisplayValue,
   xdrStringToDisplay,
 } from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
 import { useClipboard } from "hooks/useClipboard";
 import useColors from "hooks/useColors";
 import { t } from "i18next";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { View } from "react-native";
 import { getContractSpecs } from "services/backend";
 
@@ -90,12 +91,18 @@ export const KeyValueListItem = ({
  */
 export const useContractArgNames = ({
   contractId,
-  fnName,
+  specFnName,
   argCount,
   isAuthEntry = false,
 }: {
   contractId?: string;
-  fnName?: string;
+  /**
+   * The raw signed function name. Deliberately not the displayed name: that
+   * one is escaped for the screen, and an escaped string is not a name any
+   * spec defines. `undefined` when the signed bytes are not text, which skips
+   * the lookup rather than keying it off something no contract declared.
+   */
+  specFnName?: string;
   argCount: number;
   isAuthEntry?: boolean;
 }) => {
@@ -107,8 +114,8 @@ export const useContractArgNames = ({
   // an arbitrary list under the same contract and function name, and the
   // arity can match, so the length check in `getContractFnArgNames` does not
   // catch it. Those rows render unlabelled. See stellar/freighter#2196.
-  const shouldResolve = !!contractId && !!fnName && !isAuthEntry;
-  const invocationKey = `${contractId ?? ""}|${fnName ?? ""}|${argCount}|${network}`;
+  const shouldResolve = !!contractId && !!specFnName && !isAuthEntry;
+  const invocationKey = `${contractId ?? ""}|${specFnName ?? ""}|${argCount}|${network}`;
 
   const [resolved, setResolved] = useState<{
     invocationKey: string;
@@ -150,7 +157,7 @@ export const useContractArgNames = ({
         if (isCurrent) {
           setResolved({
             invocationKey,
-            argNames: getContractFnArgNames(spec, fnName, argCount),
+            argNames: getContractFnArgNames(spec, specFnName, argCount),
           });
         }
       } catch (error) {
@@ -169,7 +176,7 @@ export const useContractArgNames = ({
     };
   }, [
     contractId,
-    fnName,
+    specFnName,
     argCount,
     networkDetails,
     shouldResolve,
@@ -194,7 +201,13 @@ export const ContractSpecNote = () => (
 interface KeyValueInvokeHostFnArgsProps {
   args: xdr.ScVal[];
   contractId?: string;
-  fnName?: string;
+  /**
+   * The raw signed function name, used only as a key into the contract spec.
+   * Deliberately not the displayed name: that one is escaped for the screen,
+   * and an escaped string is not a name any spec defines. `undefined` when the
+   * signed bytes are not text, which skips the lookup.
+   */
+  specFnName?: string;
   showHeader?: boolean;
   variant?: "secondary" | "tertiary";
   isAuthEntry?: boolean;
@@ -208,7 +221,7 @@ interface KeyValueInvokeHostFnArgsProps {
 export const KeyValueInvokeHostFnArgs = ({
   args,
   contractId,
-  fnName,
+  specFnName,
   showHeader = true,
   variant = "secondary",
   isAuthEntry = false,
@@ -218,12 +231,21 @@ export const KeyValueInvokeHostFnArgs = ({
   const { copyToClipboard } = useClipboard();
   const ownSpec = useContractArgNames({
     contractId,
-    fnName,
+    specFnName,
     argCount: args.length,
     isAuthEntry,
   });
   const argNames = resolvedArgNames ?? ownSpec.argNames;
   const isLoading = isLoadingArgNames || ownSpec.isLoading;
+
+  // One revealed token per parameter block, which is what this component is.
+  // Tapping the revealed token again, or any other one, moves or clears it.
+  const [revealedKey, setRevealedKey] = useState<string | null>(null);
+  const handleTokenPress = useCallback(
+    (key: string) =>
+      setRevealedKey((current) => (current === key ? null : key)),
+    [],
+  );
 
   const renderContent = () => {
     if (isLoading) {
@@ -250,7 +272,7 @@ export const KeyValueInvokeHostFnArgs = ({
         )}
         {args.map((arg, index) => {
           const xdrString = arg.toXdr("base64");
-          const contextKey = `${contractId || "no-contract"}-${fnName || "no-fn"}`;
+          const contextKey = `${contractId || "no-contract"}-${specFnName || "no-fn"}`;
 
           return (
             <View
@@ -264,10 +286,19 @@ export const KeyValueInvokeHostFnArgs = ({
                 <Icon.Copy01
                   size={14}
                   themeColor="gray"
-                  onPress={() => copyToClipboard(scValByType(arg) as string)}
+                  testID={`ScValCopy-${index}`}
+                  // The copied string is the same token stream that is drawn,
+                  // so what lands on the clipboard is what was on the screen.
+                  onPress={() => copyToClipboard(scValToDisplayValue(arg))}
                 />
               </View>
-              <Text testID="ParameterValue">{scValByType(arg)}</Text>
+              <ScValDisplay
+                scVal={arg}
+                tokenKeyPrefix={String(index)}
+                revealedKey={revealedKey}
+                onTokenPress={handleTokenPress}
+                testID="ParameterValue"
+              />
             </View>
           );
         })}
@@ -691,7 +722,7 @@ export const ExecutableDetails = ({ executable }: ExecutableDetailsProps) => {
               "signTransactionDetails.authorizations.executableTag",
             )}
             // SEP-51 form: reversible for non-UTF-8 bytes, plain text otherwise.
-            operationValue={externalRef.tag.toJson()}
+            operationValue={xdrStringToDisplay(externalRef.tag)}
           />
           <ExternalExecutableNote />
         </>

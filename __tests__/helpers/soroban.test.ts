@@ -30,9 +30,12 @@ import {
   INVOCATION_TYPE_UNRECOGNIZED,
   INVOCATION_TYPE_WASM,
   scValByType,
+  scValToDisplayTokens,
+  scValToDisplayValue,
   SorobanTokenInterface,
   addressToString,
   isSorobanTransaction,
+  xdrStringToRaw,
 } from "helpers/soroban";
 
 // Mock isContractId before importing the module
@@ -567,9 +570,12 @@ describe("soroban helpers", () => {
       );
     });
 
-    it("hex-encodes bytes", () => {
+    // The `0x` prefix is what the value-literal form uses, and the two forms
+    // rendering the same bytes differently is exactly the drift this whole
+    // change is about.
+    it("hex-encodes bytes, prefixed the same way the value literal is", () => {
       expect(scValByType(xdr.ScVal.scvBytes(new Uint8Array([1, 2, 255])))).toBe(
-        "0102ff",
+        "0x0102ff",
       );
     });
 
@@ -1274,5 +1280,275 @@ describe("getContractFnArgNames", () => {
     };
 
     expect(getContractFnArgNames(spec, "bump", 0)).toEqual([]);
+  });
+});
+
+const mapEntryOf = (key: xdr.ScVal, val: xdr.ScVal) =>
+  new xdr.ScMapEntry({ key, val });
+
+/**
+ * A signing screen is only honest if the string it draws stands for exactly
+ * one signed byte string. Every case below is a way two distinct payloads
+ * could otherwise collapse onto one line.
+ */
+describe("signing-screen text escaping", () => {
+  it("escapes an invalid byte in a string", () => {
+    const rendered = scValByType(
+      xdr.ScVal.scvString(new Uint8Array([0x61, 0x6c, 0xff])),
+    );
+    expect(rendered).toBe("al\\xff");
+  });
+
+  it("escapes an invalid byte in a symbol", () => {
+    expect(scValByType(xdr.ScVal.scvSymbol(new Uint8Array([0x61, 0xfe])))).toBe(
+      "a\\xfe",
+    );
+  });
+
+  it("escapes an invalid byte in an executable tag", () => {
+    expect(
+      scValByType(xdr.ScVal.scvExecutableTag(new Uint8Array([0x61, 0xff]))),
+    ).toBe("a\\xff");
+  });
+
+  it("does not let two distinct invalid payloads collapse onto one string", () => {
+    const first = scValByType(xdr.ScVal.scvString(new Uint8Array([0xff])));
+    const second = scValByType(xdr.ScVal.scvString(new Uint8Array([0xfe])));
+    expect(first).not.toBe(second);
+  });
+
+  // The escape alphabet is prefix-free because the backslash is itself
+  // escaped, so valid text can never spell out another payload's escape.
+  it("does not let valid text impersonate an escaped byte string", () => {
+    const escapedByte = scValByType(
+      xdr.ScVal.scvString(new Uint8Array([0xff])),
+    );
+    const literalText = scValByType(xdr.ScVal.scvString("\\xff"));
+    expect(escapedByte).toBe("\\xff");
+    expect(literalText).toBe("\\\\xff");
+    expect(literalText).not.toBe(escapedByte);
+  });
+
+  it("leaves legible non-ASCII text alone", () => {
+    expect(scValByType(xdr.ScVal.scvString("café ☕"))).toBe("café ☕");
+  });
+
+  // Valid UTF-8, but invisible: left raw, a bidi override reorders what is
+  // drawn without changing what is signed.
+  it("escapes invisible and control codepoints", () => {
+    expect(scValByType(xdr.ScVal.scvString("a‮b"))).toBe("a\\u{202e}b");
+    expect(scValByType(xdr.ScVal.scvString("a​b"))).toBe("a\\u{200b}b");
+    expect(scValByType(xdr.ScVal.scvString("a\u0007b"))).toBe("a\\x07b");
+    expect(scValByType(xdr.ScVal.scvString("a\tb"))).toBe("a\\tb");
+  });
+
+  it("escapes invalid UTF-8 nested inside a container", () => {
+    const rendered = scValToDisplayValue(
+      xdr.ScVal.scvVec([
+        xdr.ScVal.scvMap([
+          mapEntryOf(
+            xdr.ScVal.scvSymbol("k"),
+            xdr.ScVal.scvString(new Uint8Array([0x61, 0xff])),
+          ),
+        ]),
+      ]),
+    );
+    expect(rendered).toContain('"a\\xff"');
+  });
+
+  // These all exercise the hand-written UTF-8 decoder that replaced
+  // `new TextDecoder("utf-8", { fatal: true })`. React Native's polyfill throws
+  // from that constructor, so the strict decode has to be written out -- and
+  // written out means it needs its own coverage of the shapes a strict decoder
+  // is supposed to reject.
+  describe("strict UTF-8 decoding", () => {
+    const str = (...bytes: number[]) =>
+      xdr.ScVal.scvString(new Uint8Array(bytes));
+
+    it("accepts a four-byte codepoint", () => {
+      // U+1F680 ROCKET
+      expect(scValByType(str(0xf0, 0x9f, 0x9a, 0x80))).toBe("\u{1f680}");
+    });
+
+    it("rejects an overlong encoding", () => {
+      // 0xc0 0x80 is a two-byte spelling of U+0000.
+      expect(scValByType(str(0xc0, 0x80))).toBe("\\xc0\\x80");
+    });
+
+    it("rejects a lone continuation byte", () => {
+      expect(scValByType(str(0x80))).toBe("\\x80");
+    });
+
+    it("rejects a truncated multi-byte sequence", () => {
+      expect(scValByType(str(0x61, 0xe2, 0x82))).toBe("a\\xe2\\x82");
+    });
+
+    it("rejects a surrogate half", () => {
+      // 0xed 0xa0 0x80 is CESU-8 for U+D800.
+      expect(scValByType(str(0xed, 0xa0, 0x80))).toBe("\\xed\\xa0\\x80");
+    });
+
+    it("escapes only the bad byte, not the text that follows it", () => {
+      expect(scValByType(str(0x61, 0xff, 0x62))).toBe("a\\xffb");
+    });
+  });
+
+  describe("xdrStringToRaw", () => {
+    it("returns the text of a valid name", () => {
+      expect(xdrStringToRaw(new xdr.XdrString("transfer"))).toBe("transfer");
+    });
+
+    // An escaped display string is not a name any contract spec declares, so
+    // there is nothing to look up rather than something wrong to look up.
+    it("returns undefined when the bytes are not text", () => {
+      expect(xdrStringToRaw(new xdr.XdrString(new Uint8Array([0xff])))).toBe(
+        undefined,
+      );
+    });
+  });
+});
+
+describe("display tokens", () => {
+  it("tags every scalar with the arm it was signed as, at any depth", () => {
+    const tokens = scValToDisplayTokens(
+      xdr.ScVal.scvMap([
+        mapEntryOf(
+          xdr.ScVal.scvSymbol("nested"),
+          xdr.ScVal.scvVec([
+            xdr.ScVal.scvU64(BigInt(1)),
+            xdr.ScVal.scvString("1"),
+          ]),
+        ),
+      ]),
+    );
+
+    const values = tokens
+      .filter((token) => token.kind === "value")
+      .map((token) => [token.text, token.scValType]);
+
+    expect(values).toEqual([
+      ["nested", "scvSymbol"],
+      ["1", "scvU64"],
+      ['"1"', "scvString"],
+    ]);
+  });
+
+  // The rendered text and the copied text are the same stream, so they cannot
+  // drift apart.
+  it("joins back to exactly the string form", () => {
+    const fixtures = [
+      xdr.ScVal.scvU64(BigInt(7)),
+      xdr.ScVal.scvString("hello"),
+      xdr.ScVal.scvBool(false),
+      xdr.ScVal.scvVoid(),
+      xdr.ScVal.scvVec([xdr.ScVal.scvU32(1), xdr.ScVal.scvU32(2)]),
+      xdr.ScVal.scvMap([
+        mapEntryOf(xdr.ScVal.scvSymbol("a"), xdr.ScVal.scvString("b")),
+      ]),
+    ];
+
+    fixtures.forEach((scVal) => {
+      [{}, { compact: true }].forEach((opts) => {
+        expect(
+          scValToDisplayTokens(scVal, opts)
+            .map((token) => token.text)
+            .join(""),
+        ).toBe(scValToDisplayValue(scVal, opts));
+      });
+    });
+  });
+
+  const EMPTY_ROW_FIXTURES = [
+    xdr.ScVal.scvBool(false),
+    xdr.ScVal.scvBool(true),
+    xdr.ScVal.scvVoid(),
+    xdr.ScVal.scvLedgerKeyContractInstance(),
+    xdr.ScVal.scvU32(0),
+    // A signed empty string is a value too; the quoting in the literal form is
+    // what keeps it from being nothing at all.
+    xdr.ScVal.scvString(""),
+    xdr.ScVal.scvMap([]),
+    xdr.ScVal.scvVec([]),
+  ];
+
+  // `<Text>{undefined}</Text>` and `<Text>{false}</Text>` both render nothing,
+  // so anything that reaches the screen as a non-string, or as the empty
+  // string, is a blank row on the screen the user approves from.
+  it("never renders a signed value as an empty row", () => {
+    EMPTY_ROW_FIXTURES.forEach((scVal) => {
+      const rendered = scValToDisplayValue(scVal);
+      expect(typeof rendered).toBe("string");
+      expect(rendered.length).toBeGreaterThan(0);
+    });
+  });
+
+  // `scValByType` is the bare-scalar projection, so it does not quote — an
+  // empty string is legitimately empty there. What it must never do is hand
+  // back something React drops entirely.
+  it("always projects a scalar to a string", () => {
+    EMPTY_ROW_FIXTURES.forEach((scVal) => {
+      expect(typeof scValByType(scVal)).toBe("string");
+    });
+  });
+
+  it("renders false rather than dropping it", () => {
+    expect(scValByType(xdr.ScVal.scvBool(false))).toBe("false");
+    expect(scValByType(xdr.ScVal.scvVoid())).toBe("void");
+  });
+});
+
+describe("contract instances", () => {
+  const WASM_HASH = new Uint8Array(32).fill(0xab);
+
+  const instanceOf = (storage: xdr.ScMapEntry[] | null) =>
+    xdr.ScVal.scvContractInstance(
+      new xdr.ScContractInstance({
+        executable: xdr.ContractExecutable.contractExecutableWasm(WASM_HASH),
+        storage,
+      }),
+    );
+
+  it("renders the storage map, not just the executable", () => {
+    const rendered = scValByType(
+      instanceOf([
+        mapEntryOf(xdr.ScVal.scvSymbol("admin"), xdr.ScVal.scvU32(1)),
+      ]),
+    );
+    expect(rendered).toContain("storage:");
+    expect(rendered).toContain("admin");
+  });
+
+  // Two instances sharing an executable are told apart by storage alone, so
+  // dropping it makes them indistinguishable on the screen being approved.
+  it("tells two instances sharing an executable apart", () => {
+    const first = scValByType(
+      instanceOf([mapEntryOf(xdr.ScVal.scvSymbol("a"), xdr.ScVal.scvU32(1))]),
+    );
+    const second = scValByType(
+      instanceOf([mapEntryOf(xdr.ScVal.scvSymbol("a"), xdr.ScVal.scvU32(2))]),
+    );
+    expect(first).not.toBe(second);
+  });
+
+  // `storage` is an optional pointer: absent and empty are different signed
+  // values.
+  it("distinguishes absent storage from empty storage", () => {
+    expect(scValByType(instanceOf(null))).not.toBe(scValByType(instanceOf([])));
+  });
+
+  it("stays on one line when used as a map key", () => {
+    const rendered = scValToDisplayValue(
+      xdr.ScVal.scvMap([
+        mapEntryOf(
+          instanceOf([
+            mapEntryOf(xdr.ScVal.scvSymbol("a"), xdr.ScVal.scvU32(1)),
+          ]),
+          xdr.ScVal.scvU32(9),
+        ),
+      ]),
+    );
+    // One signed entry is exactly one line: the opening brace's newline, the
+    // entry, and the closing brace's newline — nothing more.
+    expect(rendered.split("\n")).toHaveLength(3);
   });
 });

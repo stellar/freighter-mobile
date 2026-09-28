@@ -154,7 +154,7 @@ export const DappAuthEntryDisplay: React.FC<DappAuthEntryDisplayProps> = ({
             <KeyValueInvokeHostFnArgs
               args={detail.args}
               contractId={detail.contractId}
-              fnName={detail.fnName}
+              specFnName={detail.fnNameRaw}
               variant="tertiary"
               isAuthEntry
             />
