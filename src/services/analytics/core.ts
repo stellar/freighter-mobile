@@ -444,6 +444,7 @@ const UNTHROTTLED_EVENTS: ReadonlySet<AnalyticsEventName> = new Set([
   AnalyticsEvent.TOKEN_CHART_LOADED,
   AnalyticsEvent.TOKEN_CHART_VIEWED,
   AnalyticsEvent.TOKEN_CHART_RANGE_CHANGED,
+  AnalyticsEvent.TOKEN_CHART_BRUSHED,
 ]);
 
 const getThrottleKey = (
