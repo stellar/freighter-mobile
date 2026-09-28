@@ -13,6 +13,7 @@ import TokenPriceChart, {
   priceChartLabelHeight,
   PRICE_CHART_LINE_HEIGHT,
   INSPECT_GESTURE_TEST_ID,
+  INSPECT_LONG_PRESS_MS,
   tooltipTop,
 } from "components/screens/TokenDetailsScreen/components/PriceHistory/TokenPriceChart";
 import { TEXT_SIZES } from "components/sds/Typography";
@@ -787,6 +788,14 @@ describe("drag to inspect", () => {
     jest.spyOn(Date, "now").mockReturnValue(1_000_000 * 1000);
   });
   afterEach(() => jest.restoreAllMocks());
+
+  it("arms the Pan gesture with the long-press duration, not an immediate drag", () => {
+    renderInspectable();
+
+    expect(
+      getByGestureTestId(INSPECT_GESTURE_TEST_ID).config.activateAfterLongPress,
+    ).toBe(INSPECT_LONG_PRESS_MS);
+  });
 
   it("reports the SNAPPED index on start and on every move, then ends", () => {
     const onInspectStart = jest.fn();

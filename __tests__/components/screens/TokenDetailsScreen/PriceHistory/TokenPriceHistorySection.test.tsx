@@ -719,10 +719,16 @@ describe("TokenPriceHistorySection", () => {
             { state: State.BEGAN, x: 10 },
             { state: State.ACTIVE, x: 10 },
             { x: 200 },
+            { x: 220 },
+            { x: 240 },
             { state: State.END },
           ],
         );
       });
+
+      // Three moves in this one gesture must not add three more calls — only
+      // the activation counts (§7.5).
+      expect(analytics.trackTokenChartBrushed).toHaveBeenCalledTimes(1);
 
       act(() => {
         fireGestureHandler<PanGesture>(
@@ -731,6 +737,8 @@ describe("TokenPriceHistorySection", () => {
             { state: State.BEGAN, x: 50 },
             { state: State.ACTIVE, x: 50 },
             { x: 150 },
+            { x: 170 },
+            { x: 190 },
             { state: State.END },
           ],
         );
