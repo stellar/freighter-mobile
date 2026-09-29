@@ -7,6 +7,7 @@ import {
 import {
   priceChartHeight,
   priceChartLabelHeight,
+  END_DOT_RADIUS,
   PRICE_CHART_LINE_HEIGHT,
 } from "components/screens/TokenDetailsScreen/components/PriceHistory/TokenPriceChart";
 import TokenPriceHistorySection from "components/screens/TokenDetailsScreen/components/PriceHistory/TokenPriceHistorySection";
@@ -313,6 +314,26 @@ describe("TokenPriceHistorySection", () => {
     expect(expectedChartHeight()).toBe(
       PRICE_CHART_LINE_HEIGHT + expectedLabelHeight() * 2,
     );
+  });
+
+  it("leaves the end dot's radius free to the right of the plot, inside its own bounds", async () => {
+    // The chart draws its canvas one dot radius wider than the plot so the
+    // dot on the last point is not cut in half. This section is a SectionList
+    // header, and an iOS ScrollView clips to its bounds, so that room has to
+    // come out of the measured width rather than overflow it.
+    const { getByTestId } = renderSection();
+
+    await waitFor(() => {
+      expect(getByTestId("price-history-chart")).toBeTruthy();
+    });
+
+    fireEvent(getByTestId("token-price-history-section"), "layout", {
+      nativeEvent: { layout: { width: 320, height: 200, x: 0, y: 0 } },
+    });
+
+    expect(
+      StyleSheet.flatten(getByTestId("price-history-chart").props.style).width,
+    ).toBe(320 - END_DOT_RADIUS);
   });
 
   it("draws no delta of its own — the detail view has exactly one, in the header", async () => {

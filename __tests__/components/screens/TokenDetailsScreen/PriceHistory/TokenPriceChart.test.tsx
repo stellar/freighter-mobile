@@ -3,8 +3,7 @@ import TokenPriceChart, {
   buildChartLinePath,
   axisLabelWidth,
   clampAxisLabelX,
-  clampEndDotX,
-  endDotFor,
+  END_DOT_RADIUS,
   priceChartHeight,
   priceChartLabelHeight,
   PRICE_CHART_LINE_HEIGHT,
@@ -367,81 +366,39 @@ describe("TokenPriceChart timeframe morph", () => {
   });
 });
 
-describe("clampEndDotX", () => {
-  const WIDTH = 320;
-  const RADIUS = 4;
+describe("end dot", () => {
+  it("sits on the last plotted point, not a radius short of it", () => {
+    const { toJSON } = renderChart("positive");
+    const tree = toJSON() as RenderedTree;
+    const last = geometryFor(points, 900).coords.at(-1)!;
+    const dot = findAllRenderedByType(tree, "skCircle")[0];
 
-  it("pulls the final point in by the dot's radius", () => {
-    // The last point is plotted at its bucket end, which normalises to
-    // exactly `width`. A circle centred there has its right half outside the
-    // Canvas and Skia clips it, so the "current price" marker renders as a
-    // half disc.
-    expect(clampEndDotX(WIDTH, WIDTH)).toBe(WIDTH - RADIUS);
+    // The last point plots at exactly `width`; on a dense range the previous
+    // point is under a radius away, so any inward shift reads as the dot
+    // marking the wrong bucket.
+    expect(dot.props.cx).toBe(last.x);
+    expect(dot.props.cy).toBe(last.y);
   });
 
-  it("leaves a point that already clears both edges alone", () => {
-    expect(clampEndDotX(WIDTH / 2, WIDTH)).toBe(WIDTH / 2);
-  });
+  it("widens the canvas by the dot's radius so the dot on the edge draws whole", () => {
+    const { toJSON } = renderChart("positive");
+    const tree = toJSON() as RenderedTree;
+    // Skia's Canvas mocks as a View; it is the one sized to the line height.
+    const styleOf = (node: { props: Record<string, unknown> }) =>
+      node.props.style as { width?: number; height?: number } | undefined;
+    const canvas = findAllRenderedByType(tree, "View").find(
+      (node) => styleOf(node)?.height === PRICE_CHART_LINE_HEIGHT,
+    );
 
-  it("clamps the left edge too, for a single-bucket series", () => {
-    expect(clampEndDotX(0, WIDTH)).toBe(RADIUS);
-  });
-});
-
-describe("endDotFor", () => {
-  const WIDTH = 320;
-
-  it("puts the dot on the line, not beside it, after clamping x", () => {
-    // Shifting x alone is not enough. A dense range puts the last two points
-    // a couple of points apart — a 1D series is ~96 buckets — so the dot ends
-    // up at the previous bucket's x carrying the final bucket's y, which on a
-    // steep last segment is a disc floating off the curve.
-    const steepFinalBucket = [
-      { x: 0, y: 100 },
-      { x: WIDTH - 2, y: 100 },
-      { x: WIDTH, y: 20 },
-    ];
-
-    const dot = endDotFor(steepFinalBucket, WIDTH);
-
-    expect(dot.x).toBe(WIDTH - 4);
-    // The line at x = 316 is still at y = 100; the last point's y of 20 would
-    // be 80pt away from it, twenty radii off the curve.
-    expect(dot.y).toBe(100);
-  });
-
-  it("survives an empty series instead of crashing above the null guard", () => {
-    // `endDotFor` runs inside a `useMemo` during render, which is ABOVE the
-    // component's `if (!geometry) return null`. Resampling the dot's y reads
-    // `coords[0]`, so on a one-point series — null geometry, empty coords —
-    // it threw before the guard could fire. (The code this replaced merely
-    // produced `undefined` there, which the guard then swallowed; the crash
-    // arrived with the resampling and is why this check exists.)
-    expect(() => endDotFor([], 320)).not.toThrow();
-    expect(endDotFor([], 320)).toEqual({ x: 0, y: 0 });
-  });
-
-  it("keeps the final y when the last segment is wide enough to span it", () => {
-    const gentle = [
-      { x: 0, y: 100 },
-      { x: WIDTH, y: 0 },
-    ];
-
-    const dot = endDotFor(gentle, WIDTH);
-
-    expect(dot.x).toBe(WIDTH - 4);
-    // Interpolated 4pt back along a straight line, not snapped to either end.
-    expect(dot.y).toBeCloseTo(1.25, 2);
+    expect(canvas && styleOf(canvas)?.width).toBe(CHART_WIDTH + END_DOT_RADIUS);
   });
 });
 
 describe("TokenPriceChart with too few points to plot", () => {
   it("renders nothing rather than throwing", async () => {
     // `computeChartGeometry` returns null below two points, so the component
-    // bails — but the end-dot memo runs first, during render, and resampling
-    // the dot's y dereferences `coords[0]`. Without a length check that threw
-    // before the bail could happen, making the guard unreachable for exactly
-    // the case it exists for.
+    // bails — but the artwork memo runs first, during render, on an empty
+    // coordinate list. It must not dereference a last point that is not there.
     //
     // Awaited so the reduce-motion query's setState lands inside `act`;
     // rendering bare leaves it outside and warns.

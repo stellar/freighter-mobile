@@ -16,7 +16,6 @@ import {
   getPriceChangeColor,
   interpolateChartCoordinates,
   PriceChangeDirection,
-  sampleCoordinateY,
 } from "helpers/priceHistoryChart";
 import useColors from "hooks/useColors";
 import useIsReduceMotionEnabled from "hooks/useIsReduceMotionEnabled";
@@ -69,58 +68,15 @@ export const priceChartHeight = (fontScale: number): number =>
   PRICE_CHART_LINE_HEIGHT + 2 * priceChartLabelHeight(fontScale);
 
 const LINE_STROKE_WIDTH = 2;
-const END_DOT_RADIUS = 4;
-
 /**
- * Keeps the end dot fully inside the canvas, ON the line.
- *
- * The last point is plotted at its bucket end, which normalises to exactly
- * `width`, so a circle centred there has its right half outside the Canvas
- * and Skia clips it — the marker for "this is the current price" rendered as
- * a half disc.
- *
- * Moving the centre in by its own radius is only half the job. A dense range
- * puts the last two points a couple of points apart — a 1D series is ~96
- * buckets, so the final segment is under 4pt wide — and shifting x alone
- * leaves the dot at the last point's Y beside a curve that has already moved
- * on, which on a steep final bucket is a disc floating off the line. The y is
- * therefore resampled at the shifted x, so the dot sits on the polyline
- * wherever it lands. The path, the fill and the labels are untouched and
- * still span the full width, so the extension's geometry is unaffected.
+ * The last point plots at exactly `width`, so its dot is centred on the
+ * canvas edge; the canvas is drawn this much wider than the plot so the dot
+ * draws whole instead of being cut to a half disc. The caller must leave that
+ * much room to the right of `width`: the chart sits in a SectionList header,
+ * and an iOS ScrollView clips to its bounds, so the section hands the chart
+ * its measured width minus this radius rather than letting it overflow.
  */
-export const clampEndDotX = (x: number, width: number) => {
-  "worklet";
-
-  return Math.min(Math.max(x, END_DOT_RADIUS), width - END_DOT_RADIUS);
-};
-
-/**
- * The end dot's centre: clamped inside the canvas, resampled onto the line.
- *
- * Returns the origin for an empty series. The component guards on null
- * geometry, but this runs inside a `useMemo` during render — above that
- * guard — so it cannot assume there is a last point to read.
- *
- * One case it does not fix, because the geometry does not: when the device
- * clock sits behind the server the monotonic clamp can collapse every x onto
- * 0, and the line draws as a vertical segment at the left edge. The dot is
- * then placed a radius to its right, at the correct height but beside it.
- * That is unchanged from before this clamp existed.
- */
-export const endDotFor = (
-  coords: ChartCoordinate[],
-  width: number,
-): ChartCoordinate => {
-  "worklet";
-
-  if (!coords.length) {
-    return { x: 0, y: 0 };
-  }
-
-  const x = clampEndDotX(coords[coords.length - 1].x, width);
-
-  return { x, y: sampleCoordinateY(coords, x) };
-};
+export const END_DOT_RADIUS = 4;
 
 /**
  * Width assumed for an axis label before it has measured itself.
@@ -346,19 +302,12 @@ const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
   const morphedFillPath = useDerivedValue(() =>
     buildChartFillPath(morphedCoords.value),
   );
-  const morphedEndDotX = useDerivedValue(() =>
-    clampEndDotX(
-      morphedCoords.value[morphedCoords.value.length - 1]?.x ?? 0,
-      width,
-    ),
+  const morphedEndDotX = useDerivedValue(
+    () => morphedCoords.value[morphedCoords.value.length - 1]?.x ?? 0,
   );
-  const morphedEndDotY = useDerivedValue(() => {
-    const coordinates = morphedCoords.value;
-
-    return coordinates.length
-      ? sampleCoordinateY(coordinates, morphedEndDotX.value)
-      : 0;
-  });
+  const morphedEndDotY = useDerivedValue(
+    () => morphedCoords.value[morphedCoords.value.length - 1]?.y ?? 0,
+  );
 
   // The settled artwork, built on the JS thread from the real geometry. This
   // is what the chart shows whenever nothing is animating — including the
@@ -367,9 +316,10 @@ const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
     () => ({
       linePath: buildChartLinePath(coords),
       fillPath: buildChartFillPath(coords),
-      endDot: endDotFor(coords, width),
+      // Runs above the null-geometry guard, so the series may be empty here.
+      endDot: coords[coords.length - 1] ?? { x: 0, y: 0 },
     }),
-    [coords, width],
+    [coords],
   );
 
   /**
@@ -466,7 +416,12 @@ const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
       </View>
       {/* Skia's Path `style` is its paint style ("fill"/"stroke"), not an RN style object */}
       {/* eslint-disable react/style-prop-object */}
-      <Canvas style={{ width, height: PRICE_CHART_LINE_HEIGHT }}>
+      <Canvas
+        style={{
+          width: width + END_DOT_RADIUS,
+          height: PRICE_CHART_LINE_HEIGHT,
+        }}
+      >
         <Path
           path={isMorphing ? morphedFillPath : settled.fillPath}
           style="fill"

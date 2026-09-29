@@ -5,6 +5,7 @@ import TimeframeSelector, {
   formatRangeLabel,
 } from "components/screens/TokenDetailsScreen/components/PriceHistory/TimeframeSelector";
 import TokenPriceChart, {
+  END_DOT_RADIUS,
   priceChartHeight,
 } from "components/screens/TokenDetailsScreen/components/PriceHistory/TokenPriceChart";
 import TokenPriceChartGhost from "components/screens/TokenDetailsScreen/components/PriceHistory/TokenPriceChartGhost";
@@ -273,7 +274,11 @@ const TokenPriceHistorySection: React.FC<TokenPriceHistorySectionProps> = ({
           testID="price-history-chart"
           points={points}
           resolutionSeconds={data!.resolutionSeconds}
-          width={measuredWidth}
+          // The chart draws its canvas a dot radius wider than the plot. This
+          // is a SectionList header, and an iOS ScrollView clips to its
+          // bounds, so that room comes out of the measured width instead of
+          // overflowing it. The ghost keeps the full width: its line has no dot.
+          width={measuredWidth - END_DOT_RADIUS}
           // Same `change` the header delta reads, through the same helper:
           // the chart cannot end up green while the number is red, and a move
           // the 2dp percent rounds away (D8) colours both the same way.
