@@ -97,6 +97,8 @@ export const INSPECT_LONG_PRESS_MS = 200;
 /** 8px dot per the design; a 2px background ring separates it from the line. */
 export const INSPECT_DOT_RADIUS = 4;
 export const INSPECT_DOT_RING_WIDTH = 2;
+/** Opacity of the line and fill after the inspected point, per the design. */
+export const INSPECT_DIM_OPACITY = 0.3;
 export const INSPECT_GESTURE_TEST_ID = "price-history-chart-inspect";
 
 /**
@@ -496,6 +498,21 @@ const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
   // gradient fill (that colour at 30% fading to transparent) all follow the
   // direction, the way the design draws a losing range entirely in red.
   const lineColor = getPriceChangeColor(direction, themeColors);
+  const fillGradient = (
+    <LinearGradient
+      start={vec(0, 0)}
+      end={vec(0, PRICE_CHART_LINE_HEIGHT)}
+      colors={[`${lineColor}4D`, `${lineColor}00`]}
+    />
+  );
+  // Both halves share the inspected coord, so the split leaves no gap.
+  const inspectedParts =
+    inspectedCoord && inspectedIndex !== null && inspectedIndex !== undefined
+      ? {
+          upTo: coords.slice(0, inspectedIndex + 1),
+          after: coords.slice(inspectedIndex),
+        }
+      : undefined;
   const inspectedTimestamp = (() => {
     if (
       !inspectedCoord ||
@@ -618,24 +635,54 @@ const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
             height: PRICE_CHART_LINE_HEIGHT,
           }}
         >
-          <Path
-            path={isMorphing ? morphedFillPath : settled.fillPath}
-            style="fill"
-          >
-            <LinearGradient
-              start={vec(0, 0)}
-              end={vec(0, PRICE_CHART_LINE_HEIGHT)}
-              colors={[`${lineColor}4D`, `${lineColor}00`]}
-            />
-          </Path>
-          <Path
-            path={isMorphing ? morphedLinePath : settled.linePath}
-            style="stroke"
-            strokeWidth={LINE_STROKE_WIDTH}
-            strokeJoin="round"
-            strokeCap="round"
-            color={lineColor}
-          />
+          {inspectedParts ? (
+            <>
+              <Path path={buildChartFillPath(inspectedParts.upTo)} style="fill">
+                {fillGradient}
+              </Path>
+              <Path
+                path={buildChartFillPath(inspectedParts.after)}
+                style="fill"
+                opacity={INSPECT_DIM_OPACITY}
+              >
+                {fillGradient}
+              </Path>
+              <Path
+                path={buildChartLinePath(inspectedParts.upTo)}
+                style="stroke"
+                strokeWidth={LINE_STROKE_WIDTH}
+                strokeJoin="round"
+                strokeCap="round"
+                color={lineColor}
+              />
+              <Path
+                path={buildChartLinePath(inspectedParts.after)}
+                style="stroke"
+                strokeWidth={LINE_STROKE_WIDTH}
+                strokeJoin="round"
+                strokeCap="round"
+                color={lineColor}
+                opacity={INSPECT_DIM_OPACITY}
+              />
+            </>
+          ) : (
+            <>
+              <Path
+                path={isMorphing ? morphedFillPath : settled.fillPath}
+                style="fill"
+              >
+                {fillGradient}
+              </Path>
+              <Path
+                path={isMorphing ? morphedLinePath : settled.linePath}
+                style="stroke"
+                strokeWidth={LINE_STROKE_WIDTH}
+                strokeJoin="round"
+                strokeCap="round"
+                color={lineColor}
+              />
+            </>
+          )}
           {/* The inspect artwork uses the SETTLED coords: a morph runs 250 ms
               and the long-press is 200 ms, so the overlap is a frame or two of
               the dot leading the line; not worth a shared-value path. */}

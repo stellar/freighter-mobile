@@ -1,5 +1,6 @@
 import { act, fireEvent, renderHook } from "@testing-library/react-native";
 import TokenPriceChart, {
+  buildChartFillPath,
   buildChartLinePath,
   axisLabelWidth,
   clampAxisLabelX,
@@ -933,6 +934,39 @@ describe("drag to inspect", () => {
     expect(queryByTestId("price-history-inspect-timestamp", HIDDEN)).toBeNull();
     expect(getByTestId("price-history-chart-label-high", HIDDEN)).toBeTruthy();
     expect(getByTestId("price-history-chart-label-low", HIDDEN)).toBeTruthy();
+  });
+
+  const pathsByStyle = (tree: RenderedTree, style: "stroke" | "fill") =>
+    findAllRenderedByType(tree, "skPath")
+      .filter((node) => node.props.style === style)
+      .map((node) => ({ path: node.props.path, opacity: node.props.opacity }));
+
+  it("dims the line and the fill beyond the inspected point, split at that point", () => {
+    const { coords } = geometryFor(inspectPoints, 900, width);
+    const { toJSON } = renderInspectable({ inspectedIndex: 1 });
+    const tree = toJSON() as RenderedTree;
+
+    expect(pathsByStyle(tree, "stroke")).toEqual([
+      { path: buildChartLinePath(coords.slice(0, 2)), opacity: undefined },
+      { path: buildChartLinePath(coords.slice(1)), opacity: 0.3 },
+    ]);
+    expect(pathsByStyle(tree, "fill")).toEqual([
+      { path: buildChartFillPath(coords.slice(0, 2)), opacity: undefined },
+      { path: buildChartFillPath(coords.slice(1)), opacity: 0.3 },
+    ]);
+  });
+
+  it("draws one undimmed line and fill when not inspecting", () => {
+    const { coords } = geometryFor(inspectPoints, 900, width);
+    const { toJSON } = renderInspectable({ inspectedIndex: null });
+    const tree = toJSON() as RenderedTree;
+
+    expect(pathsByStyle(tree, "stroke")).toEqual([
+      { path: buildChartLinePath(coords), opacity: undefined },
+    ]);
+    expect(pathsByStyle(tree, "fill")).toEqual([
+      { path: buildChartFillPath(coords), opacity: undefined },
+    ]);
   });
 
   /**
