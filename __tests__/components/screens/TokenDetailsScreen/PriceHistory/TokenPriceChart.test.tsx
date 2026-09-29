@@ -908,6 +908,35 @@ describe("drag to inspect", () => {
     expect(styleOf(edge)).toMatchObject({ left: width - 90, opacity: 1 });
   });
 
+  it("keeps the inspect timestamp mounted across a snapped move so it does not blink", () => {
+    const { getByTestId, rerender } = renderInspectable({ inspectedIndex: 1 });
+    const label = () => getByTestId("price-history-inspect-timestamp", HIDDEN);
+    const opacityOf = () =>
+      (StyleSheet.flatten(label().props.style) as { opacity: number }).opacity;
+
+    fireEvent(label(), "layout", {
+      nativeEvent: { layout: { width: 90, height: 16, x: 0, y: 0 } },
+    });
+    expect(opacityOf()).toBe(1);
+
+    // A snap to a different point changes the timestamp's TEXT (bucket end
+    // 1800 -> 2700) with no new layout event fired yet — exactly the case
+    // the text-keyed label used to remount and blank on.
+    rerender(
+      <TokenPriceChart
+        testID="price-history-chart"
+        points={inspectPoints}
+        resolutionSeconds={900}
+        range="1D"
+        width={width}
+        direction="positive"
+        inspectedIndex={2}
+      />,
+    );
+
+    expect(opacityOf()).toBe(1);
+  });
+
   it("draws the timestamp in the foreground colour and hides it from assistive tech", () => {
     const { getByTestId, getByText } = renderInspectable({
       inspectedIndex: 1,

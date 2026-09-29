@@ -177,7 +177,7 @@ export const buildChartFillPath = (coords: ChartCoordinate[]): string => {
   return `${buildChartLinePath(coords)} L${last.x.toFixed(2)} ${PRICE_CHART_LINE_HEIGHT} L${first.x.toFixed(2)} ${PRICE_CHART_LINE_HEIGHT} Z`;
 };
 
-type LabelKey = "high" | "low" | "timestamp";
+type LabelKey = "high" | "low";
 
 interface TokenPriceChartProps {
   /** The wire series — rendered exactly, no fabricated points */
@@ -221,8 +221,11 @@ interface TokenPriceChartProps {
  * `onFinalize` clears on END, CANCELLED and FAILED alike. A finger that moves
  * inside the arming window fails the gesture and the parent list scrolls as
  * before, so nothing here competes with the ScrollView. Inspecting is pointer/
- * touch only and purely additive: every value it surfaces — the price, the
- * range, the extremes — is already on screen without it (§7.4).
+ * touch only: it reveals a point's timestamp and re-points the header at that
+ * point's price. Everything shown by default — the price, the range, the
+ * extremes — stays available without it, so what a screen-reader user loses
+ * is only arbitrary-point inspection itself; the text alternative already
+ * announces the range's endpoints and delta (§7.4).
  */
 const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
   points,
@@ -492,6 +495,17 @@ const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
     Partial<Record<LabelKey, { tag: string; width: number }>>
   >({});
 
+  /**
+   * Measured width of the inspect timestamp label, once any measurement has
+   * landed. NOT tagged to its text like `labelWidths`: unlike the axis
+   * labels, this one's text changes on every snapped move, so re-tagging on
+   * text would remount it and blank it for a frame on every move rather than
+   * once per range switch.
+   */
+  const [timestampWidth, setTimestampWidth] = useState<number | undefined>(
+    undefined,
+  );
+
   if (!geometry || width <= 0) {
     return null;
   }
@@ -570,6 +584,25 @@ const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
     };
   };
 
+  const measureTimestampWidth = (event: LayoutChangeEvent) => {
+    const measured = event.nativeEvent.layout.width;
+
+    setTimestampWidth((current) => (current === measured ? current : measured));
+  };
+
+  const timestampLabelStyle = (x: number) => ({
+    position: "absolute" as const,
+    left: clampAxisLabelX(
+      x,
+      width,
+      timestampWidth ?? axisLabelWidth(width, fontScale),
+    ),
+    // Hidden only until the FIRST measurement ever lands. A later snapped
+    // move keeps the previous width for one frame rather than reflashing to
+    // opacity 0 — invisible at 12px text, unlike the blink it replaces.
+    opacity: timestampWidth === undefined ? 0 : 1,
+  });
+
   return (
     <View style={{ width }} testID={testID}>
       <View
@@ -578,17 +611,12 @@ const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
       >
         {inspectedCoord && inspectedTimestamp ? (
           <View
-            key={inspectedTimestamp}
             testID="price-history-inspect-timestamp"
             pointerEvents="none"
             accessibilityElementsHidden
             importantForAccessibility="no-hide-descendants"
-            onLayout={measureLabel("timestamp", inspectedTimestamp)}
-            style={labelStyle(
-              "timestamp",
-              inspectedCoord.x,
-              inspectedTimestamp,
-            )}
+            onLayout={measureTimestampWidth}
+            style={timestampLabelStyle(inspectedCoord.x)}
           >
             <Text
               numberOfLines={1}
