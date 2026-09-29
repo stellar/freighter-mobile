@@ -151,7 +151,10 @@ const mockRoute = {
 describe("TokenDetailsScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    usePriceHistoryStore.setState({ inspectedPoint: null });
+    usePriceHistoryStore.setState({
+      inspectedPoint: null,
+      inspectingKey: null,
+    });
   });
 
   it("displays token transaction history header", async () => {
@@ -214,11 +217,9 @@ describe("TokenDetailsScreen", () => {
     expect(list.props.scrollEnabled).toBe(true);
 
     act(() =>
-      usePriceHistoryStore.getState().setInspectedPoint({
+      usePriceHistoryStore.getState().startInspectGesture({
         network: NETWORKS.PUBLIC,
         tokenId: "native",
-        range: "1D",
-        index: 0,
       }),
     );
     expect(list.props.scrollEnabled).toBe(false);
@@ -226,7 +227,7 @@ describe("TokenDetailsScreen", () => {
     act(() =>
       usePriceHistoryStore
         .getState()
-        .clearInspectedPoint({ network: NETWORKS.PUBLIC, tokenId: "native" }),
+        .endInspectGesture({ network: NETWORKS.PUBLIC, tokenId: "native" }),
     );
     expect(list.props.scrollEnabled).toBe(true);
   });

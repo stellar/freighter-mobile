@@ -31,7 +31,11 @@ import {
   renderWithProviders,
 } from "helpers/testUtils";
 import React from "react";
-import { StyleSheet, useWindowDimensions } from "react-native";
+import {
+  DeviceEventEmitter,
+  StyleSheet,
+  useWindowDimensions,
+} from "react-native";
 import { State, PanGesture } from "react-native-gesture-handler";
 import {
   fireGestureHandler,
@@ -142,6 +146,7 @@ describe("TokenPriceHistorySection", () => {
       historyStatusByKey: {},
       selectedRange: null,
       inspectedPoint: null,
+      inspectingKey: null,
     });
     mockFetchHistory.mockResolvedValue(makeHistory());
   });
@@ -853,6 +858,79 @@ describe("TokenPriceHistorySection", () => {
       });
 
       expect(usePriceHistoryStore.getState().inspectedPoint).toBeNull();
+    });
+
+    /**
+     * Drives RNGH's own event pipeline directly — `fireGestureHandler`
+     * cannot leave a gesture ACTIVE (it always appends a terminal END) — so
+     * the gesture can be held open across the refetch below. Same pattern as
+     * `TokenPriceChart.test.tsx`'s `emitStateChange`.
+     */
+    const emitStateChange = (
+      handlerTag: number,
+      event: { oldState: State; state: State },
+    ) =>
+      DeviceEventEmitter.emit("onGestureHandlerStateChange", {
+        handlerTag,
+        numberOfPointers: 1,
+        x: 10,
+        y: 0,
+        absoluteX: 10,
+        absoluteY: 0,
+        translationX: 0,
+        translationY: 0,
+        velocityX: 0,
+        velocityY: 0,
+        ...event,
+      });
+
+    it("keeps the scroll lock through a same-range refetch landing mid-gesture, and drops it only on the gesture's own end", async () => {
+      const { getByTestId } = renderSection();
+
+      await waitFor(() => {
+        expect(getByTestId("price-history-chart")).toBeTruthy();
+      });
+
+      const { handlerTag } = getByGestureTestId(INSPECT_GESTURE_TEST_ID);
+      act(() => {
+        emitStateChange(handlerTag, {
+          oldState: State.UNDETERMINED,
+          state: State.BEGAN,
+        });
+        emitStateChange(handlerTag, {
+          oldState: State.BEGAN,
+          state: State.ACTIVE,
+        });
+      });
+      expect(usePriceHistoryStore.getState().inspectingKey).not.toBeNull();
+
+      // Same "landing under the finger" refetch as the test above — a new
+      // payload for the SAME "1D" range, no tab pressed.
+      mockFetchHistory.mockResolvedValueOnce(
+        makeHistory({ points: densePoints.slice(0, 35) }),
+      );
+      await act(async () => {
+        await usePriceHistoryStore.getState().fetchPriceHistory({
+          tokenId: "native",
+          network: NETWORKS.PUBLIC,
+          range: "1D",
+          forceRefresh: true,
+        });
+      });
+
+      // The point cleared (no stale index), but the gesture is still live,
+      // so the lock must still be held.
+      expect(usePriceHistoryStore.getState().inspectedPoint).toBeNull();
+      expect(usePriceHistoryStore.getState().inspectingKey).not.toBeNull();
+
+      act(() => {
+        emitStateChange(handlerTag, {
+          oldState: State.ACTIVE,
+          state: State.END,
+        });
+      });
+
+      expect(usePriceHistoryStore.getState().inspectingKey).toBeNull();
     });
 
     it("clears the inspected point when the kill switch flips off mid-drag", async () => {

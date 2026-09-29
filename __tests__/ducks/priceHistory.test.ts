@@ -645,6 +645,7 @@ describe("inspected point", () => {
       historyByNetwork: {},
       selectedRange: null,
       inspectedPoint: null,
+      inspectingKey: null,
     });
   });
 
@@ -734,11 +735,50 @@ describe("inspected point", () => {
     );
     expect(result.current).toBe(false);
     act(() =>
-      usePriceHistoryStore
-        .getState()
-        .setInspectedPoint({ network, tokenId, range: "1D", index: 1 }),
+      usePriceHistoryStore.getState().startInspectGesture({ network, tokenId }),
     );
     expect(result.current).toBe(true);
+    act(() =>
+      usePriceHistoryStore.getState().endInspectGesture({ network, tokenId }),
+    );
+    expect(result.current).toBe(false);
+  });
+
+  it("useIsInspectingPriceHistory is true after start even with no resolved point", () => {
+    // The lock follows the GESTURE, not `inspectedPoint` — a series landing
+    // mid-drag clears the point but must not drop the scroll lock.
+    const { result } = renderHook(() =>
+      useIsInspectingPriceHistory(network, tokenId),
+    );
+
+    act(() =>
+      usePriceHistoryStore.getState().startInspectGesture({ network, tokenId }),
+    );
+
+    expect(result.current).toBe(true);
+    expect(usePriceHistoryStore.getState().inspectedPoint).toBeNull();
+  });
+
+  it("startInspectGesture/endInspectGesture are scoped: another token's end is a no-op", () => {
+    const store = usePriceHistoryStore.getState();
+    store.startInspectGesture({ network, tokenId });
+
+    store.endInspectGesture({ network, tokenId: "USDC:GABC" });
+
+    expect(usePriceHistoryStore.getState().inspectingKey).not.toBeNull();
+
+    store.endInspectGesture({ network, tokenId });
+
+    expect(usePriceHistoryStore.getState().inspectingKey).toBeNull();
+  });
+
+  it("endInspectGesture is idempotent", () => {
+    const store = usePriceHistoryStore.getState();
+    store.startInspectGesture({ network, tokenId });
+    store.endInspectGesture({ network, tokenId });
+
+    expect(() => store.endInspectGesture({ network, tokenId })).not.toThrow();
+    expect(usePriceHistoryStore.getState().inspectingKey).toBeNull();
   });
 
   it("re-setting the same point keeps the state reference", () => {

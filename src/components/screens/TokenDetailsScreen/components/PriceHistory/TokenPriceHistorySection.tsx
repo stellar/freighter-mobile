@@ -151,17 +151,26 @@ const TokenPriceHistorySection: React.FC<TokenPriceHistorySectionProps> = ({
   const clearInspectedPoint = usePriceHistoryStore(
     (state) => state.clearInspectedPoint,
   );
+  const startInspectGesture = usePriceHistoryStore(
+    (state) => state.startInspectGesture,
+  );
+  const endInspectGesture = usePriceHistoryStore(
+    (state) => state.endInspectGesture,
+  );
   const inspected = useInspectedPriceHistory(network, tokenId);
   const plottedRange = data?.range;
 
   const handleInspectStart = useCallback(
     (index: number) => {
       if (!plottedRange) return;
+      // Before the point is set: the lock must be held for the whole
+      // gesture, not just while an index has resolved against it.
+      startInspectGesture({ network, tokenId });
       setInspectedPoint({ network, tokenId, range: plottedRange, index });
       // Once per activation, never per move (§7.5).
       analytics.trackTokenChartBrushed(plottedRange);
     },
-    [network, tokenId, plottedRange, setInspectedPoint],
+    [network, tokenId, plottedRange, setInspectedPoint, startInspectGesture],
   );
   const handleInspectMove = useCallback(
     (index: number) => {
@@ -170,20 +179,28 @@ const TokenPriceHistorySection: React.FC<TokenPriceHistorySectionProps> = ({
     },
     [network, tokenId, plottedRange, setInspectedPoint],
   );
-  const handleInspectEnd = useCallback(
-    () => clearInspectedPoint({ network, tokenId }),
-    [network, tokenId, clearInspectedPoint],
-  );
+  const handleInspectEnd = useCallback(() => {
+    endInspectGesture({ network, tokenId });
+    clearInspectedPoint({ network, tokenId });
+  }, [network, tokenId, endInspectGesture, clearInspectedPoint]);
 
-  // A new series under the finger (fetch landed, range switched) or an
-  // unmount clears the point, not ends the inspection: a still-live gesture
-  // re-sets it on its next move (RNGH keeps the handler and swaps in the new
-  // xs), so the drag re-resolves on the new series with no second `brushed`.
-  // Keyed off `data?.points` rather than the post-return `points` local so
-  // this stays a hook called unconditionally every render.
+  // A new series under the finger (fetch landed, range switched) clears the
+  // POINT, not the gesture: a still-live gesture re-sets it on its next move
+  // (RNGH keeps the handler and swaps in the new xs), so the drag re-resolves
+  // on the new series with no second `brushed`. Keyed off `data?.points`
+  // rather than the post-return `points` local so this stays a hook called
+  // unconditionally every render.
   useEffect(
     () => () => clearInspectedPoint({ network, tokenId }),
     [network, tokenId, data?.points, clearInspectedPoint],
+  );
+
+  // Unmount-only, deliberately NOT keyed off `data?.points` like the cleanup
+  // above: the scroll lock must survive a series landing mid-drag, and only
+  // end when the scope itself goes away.
+  useEffect(
+    () => () => endInspectGesture({ network, tokenId }),
+    [network, tokenId, endInspectGesture],
   );
 
   // The kill switch can flip off WITHOUT this section unmounting — it just
@@ -193,13 +210,13 @@ const TokenPriceHistorySection: React.FC<TokenPriceHistorySectionProps> = ({
   useEffect(() => {
     if (!isEnabled) {
       clearInspectedPoint({ network, tokenId });
+      endInspectGesture({ network, tokenId });
     }
-  }, [isEnabled, network, tokenId, clearInspectedPoint]);
+  }, [isEnabled, network, tokenId, clearInspectedPoint, endInspectGesture]);
 
   // Guarded on the SELECTED range too: keeps the artwork honest if an
-  // inspection ever carries another range. `scrollEnabled` has no such
-  // guard — the atomic clear in `setSelectedRange` is what keeps that
-  // honest on a range switch, so it must stay.
+  // inspection ever carries another range. `scrollEnabled` needs no such
+  // guard — it follows the gesture itself, not the resolved point or range.
   const inspectedIndex =
     inspected && inspected.range === plottedRange ? inspected.index : null;
 

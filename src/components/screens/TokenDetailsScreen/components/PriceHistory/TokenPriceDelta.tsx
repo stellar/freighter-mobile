@@ -135,9 +135,8 @@ const TokenPriceDelta: React.FC<TokenPriceDeltaProps> = ({
   const hasChart = hasChartData(data?.points ?? []);
 
   // Guarded on the SELECTED range too: keeps the delta honest if an
-  // inspection ever carries another range. `scrollEnabled` has no such
-  // guard — the atomic clear in `setSelectedRange` is what keeps that
-  // honest on a range switch, so it must stay.
+  // inspection ever carries another range. `scrollEnabled` needs no such
+  // guard — it follows the gesture itself, not the resolved point or range.
   const inspectedChange =
     inspected && inspected.range === range
       ? computeInspectedChange(inspected.first, inspected.point)

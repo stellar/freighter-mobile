@@ -209,6 +209,16 @@ interface PriceHistoryState {
   /** Scoped like {@link clearSelectedRange}, for the same unmount-order reason. */
   clearInspectedPoint: (params: TokenScopeParams) => void;
   /**
+   * Scope key of a live drag-to-inspect gesture. Separate from
+   * `inspectedPoint`: the scroll lock must follow the GESTURE (start → end),
+   * not whether an index has resolved against the current series.
+   */
+  inspectingKey: string | null;
+  /** Marks the scope's gesture as started. */
+  startInspectGesture: (params: TokenScopeParams) => void;
+  /** Scoped and idempotent, like {@link clearInspectedPoint}. */
+  endInspectGesture: (params: TokenScopeParams) => void;
+  /**
    * Resolves with the payload only when a network fetch completed — callers
    * fire `token_chart.loaded` off that — and null on cache hits, superseded
    * responses and errors.
@@ -356,6 +366,7 @@ export const usePriceHistoryStore = create<PriceHistoryState>((set, get) => {
     historyStatusByKey: {},
     selectedRange: null,
     inspectedPoint: null,
+    inspectingKey: null,
 
     setSelectedRange: ({ network, tokenId, range }) => {
       const key = getTokenScopeKey(network, tokenId);
@@ -401,6 +412,16 @@ export const usePriceHistoryStore = create<PriceHistoryState>((set, get) => {
         return;
       }
       set({ inspectedPoint: null });
+    },
+
+    startInspectGesture: ({ network, tokenId }) =>
+      set({ inspectingKey: getTokenScopeKey(network, tokenId) }),
+
+    endInspectGesture: ({ network, tokenId }) => {
+      if (get().inspectingKey !== getTokenScopeKey(network, tokenId)) {
+        return;
+      }
+      set({ inspectingKey: null });
     },
 
     fetchPriceHistory: ({ tokenId, network, range, forceRefresh }) => {
@@ -569,11 +590,13 @@ export const useInspectedPriceHistory = (
   }, [inspected, points]);
 };
 
-/** True while a drag-to-inspect is in progress for this scope. */
+// Reads `inspectingKey`, not `inspectedPoint`: a series landing under the
+// finger clears the resolved point but must not drop the scroll lock.
+/** True from gesture start to end for this scope. */
 export const useIsInspectingPriceHistory = (
   network: NETWORKS,
   tokenId: TokenIdentifier,
 ): boolean =>
   usePriceHistoryStore(
-    (state) => state.inspectedPoint?.key === getTokenScopeKey(network, tokenId),
+    (state) => state.inspectingKey === getTokenScopeKey(network, tokenId),
   );

@@ -107,11 +107,10 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
   // While a drag-to-inspect is in progress the price is the inspected
   // point's close; released, it is spot again (Phase 3). Guarded on the
   // SELECTED range too, exactly like {@link TokenPriceDelta}: keeps the price
-  // honest if an inspection ever carries another range. `scrollEnabled` has
-  // no such guard — the atomic clear in `setSelectedRange` is what keeps that
-  // honest on a range switch, so it must stay. Otherwise the price is live
-  // spot and does NOT vary by timeframe; only the delta beneath it follows
-  // the chart's selected range (§7.3).
+  // honest if an inspection ever carries another range. `scrollEnabled` needs
+  // no such guard — it follows the gesture itself, independent of range.
+  // Otherwise the price is live spot and does NOT vary by timeframe; only the
+  // delta beneath it follows the chart's selected range (§7.3).
   const inspectedHeaderPrice =
     isPriceHistoryEnabled && inspected && inspected.range === selectedRange
       ? inspected.point.p
