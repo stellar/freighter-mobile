@@ -219,6 +219,12 @@ interface PriceHistoryState {
   /** Scoped and idempotent, like {@link clearInspectedPoint}. */
   endInspectGesture: (params: TokenScopeParams) => void;
   /**
+   * Atomic sibling of `endInspectGesture` + `clearInspectedPoint`: one `set`,
+   * so no subscriber can observe the gesture ended while the point lingers
+   * (or the reverse).
+   */
+  endInspection: (params: TokenScopeParams) => void;
+  /**
    * Resolves with the payload only when a network fetch completed — callers
    * fire `token_chart.loaded` off that — and null on cache hits, superseded
    * responses and errors.
@@ -422,6 +428,18 @@ export const usePriceHistoryStore = create<PriceHistoryState>((set, get) => {
         return;
       }
       set({ inspectingKey: null });
+    },
+
+    endInspection: ({ network, tokenId }) => {
+      const key = getTokenScopeKey(network, tokenId);
+      const { inspectingKey, inspectedPoint } = get();
+      if (inspectingKey !== key && inspectedPoint?.key !== key) {
+        return;
+      }
+      set({
+        inspectingKey: inspectingKey === key ? null : inspectingKey,
+        inspectedPoint: inspectedPoint?.key === key ? null : inspectedPoint,
+      });
     },
 
     fetchPriceHistory: ({ tokenId, network, range, forceRefresh }) => {

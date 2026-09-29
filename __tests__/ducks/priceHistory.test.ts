@@ -781,6 +781,48 @@ describe("inspected point", () => {
     expect(usePriceHistoryStore.getState().inspectingKey).toBeNull();
   });
 
+  it("endInspection clears the gesture and the point in one write, with no bad intermediate state", () => {
+    seedEntry();
+    const store = usePriceHistoryStore.getState();
+    store.startInspectGesture({ network, tokenId });
+    store.setInspectedPoint({ network, tokenId, range: "1D", index: 1 });
+
+    const observed: { inspectingKey: string | null; hasPoint: boolean }[] = [];
+    const unsubscribe = usePriceHistoryStore.subscribe((state) => {
+      observed.push({
+        inspectingKey: state.inspectingKey,
+        hasPoint: state.inspectedPoint !== null,
+      });
+    });
+
+    store.endInspection({ network, tokenId });
+    unsubscribe();
+
+    expect(observed).toHaveLength(1);
+    expect(observed.some((s) => s.inspectingKey === null && s.hasPoint)).toBe(
+      false,
+    );
+    expect(usePriceHistoryStore.getState().inspectingKey).toBeNull();
+    expect(usePriceHistoryStore.getState().inspectedPoint).toBeNull();
+  });
+
+  it("endInspection is scoped: another token's inspection is untouched", () => {
+    seedEntry();
+    const store = usePriceHistoryStore.getState();
+    store.startInspectGesture({ network, tokenId });
+    store.setInspectedPoint({ network, tokenId, range: "1D", index: 1 });
+
+    store.endInspection({ network, tokenId: "USDC:GABC" });
+
+    expect(usePriceHistoryStore.getState().inspectingKey).not.toBeNull();
+    expect(usePriceHistoryStore.getState().inspectedPoint).not.toBeNull();
+
+    store.endInspection({ network, tokenId });
+
+    expect(usePriceHistoryStore.getState().inspectingKey).toBeNull();
+    expect(usePriceHistoryStore.getState().inspectedPoint).toBeNull();
+  });
+
   it("re-setting the same point keeps the state reference", () => {
     seedEntry();
     const store = usePriceHistoryStore.getState();

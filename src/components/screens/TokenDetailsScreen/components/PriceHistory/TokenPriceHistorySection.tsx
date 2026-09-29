@@ -154,9 +154,7 @@ const TokenPriceHistorySection: React.FC<TokenPriceHistorySectionProps> = ({
   const startInspectGesture = usePriceHistoryStore(
     (state) => state.startInspectGesture,
   );
-  const endInspectGesture = usePriceHistoryStore(
-    (state) => state.endInspectGesture,
-  );
+  const endInspection = usePriceHistoryStore((state) => state.endInspection);
   const inspected = useInspectedPriceHistory(network, tokenId);
   const plottedRange = data?.range;
 
@@ -180,9 +178,8 @@ const TokenPriceHistorySection: React.FC<TokenPriceHistorySectionProps> = ({
     [network, tokenId, plottedRange, setInspectedPoint],
   );
   const handleInspectEnd = useCallback(() => {
-    endInspectGesture({ network, tokenId });
-    clearInspectedPoint({ network, tokenId });
-  }, [network, tokenId, endInspectGesture, clearInspectedPoint]);
+    endInspection({ network, tokenId });
+  }, [network, tokenId, endInspection]);
 
   // A new series under the finger (fetch landed, range switched) clears the
   // POINT, not the gesture: a still-live gesture re-sets it on its next move
@@ -199,8 +196,8 @@ const TokenPriceHistorySection: React.FC<TokenPriceHistorySectionProps> = ({
   // above: the scroll lock must survive a series landing mid-drag, and only
   // end when the scope itself goes away.
   useEffect(
-    () => () => endInspectGesture({ network, tokenId }),
-    [network, tokenId, endInspectGesture],
+    () => () => endInspection({ network, tokenId }),
+    [network, tokenId, endInspection],
   );
 
   // The kill switch can flip off WITHOUT this section unmounting — it just
@@ -209,10 +206,9 @@ const TokenPriceHistorySection: React.FC<TokenPriceHistorySectionProps> = ({
   // the extension's "header never outlives the chart" guard).
   useEffect(() => {
     if (!isEnabled) {
-      clearInspectedPoint({ network, tokenId });
-      endInspectGesture({ network, tokenId });
+      endInspection({ network, tokenId });
     }
-  }, [isEnabled, network, tokenId, clearInspectedPoint, endInspectGesture]);
+  }, [isEnabled, network, tokenId, endInspection]);
 
   // Guarded on the SELECTED range too: keeps the artwork honest if an
   // inspection ever carries another range. `scrollEnabled` needs no such
