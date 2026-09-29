@@ -11,6 +11,7 @@ import {
 } from "ducks/priceHistory";
 import { isNativeAssetId } from "helpers/assetIdentity";
 import { formatBalanceAmount, formatFiatAmount } from "helpers/formatAmount";
+import { formatPriceHistoryLabel } from "helpers/priceHistoryChart";
 import { isContractId } from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -103,24 +104,20 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
   const hasPrice = tokenBalance.currentPrice && tokenBalance.fiatTotal;
 
   // While a drag-to-inspect is in progress the price is the inspected
-  // point's close, through the same formatter as the live spot; released, it
-  // is spot again (Phase 3). Guarded on the SELECTED range too, exactly like
-  // {@link TokenPriceDelta}: keeps the price honest if an inspection ever
-  // carries another range. `scrollEnabled` has no such guard — the atomic
-  // clear in `setSelectedRange` is what keeps that honest on a range switch,
-  // so it must stay. Otherwise the price is live spot and does NOT vary by
-  // timeframe; only the delta beneath it follows the chart's selected range
-  // (§7.3).
-  const inspectedPrice =
-    inspected && inspected.range === selectedRange
-      ? inspected.point.p
-      : undefined;
-  const headerPrice = inspectedPrice ?? tokenBalance.currentPrice ?? "0";
-
+  // point's close; released, it is spot again (Phase 3). Guarded on the
+  // SELECTED range too, exactly like {@link TokenPriceDelta}: keeps the price
+  // honest if an inspection ever carries another range. `scrollEnabled` has
+  // no such guard — the atomic clear in `setSelectedRange` is what keeps that
+  // honest on a range switch, so it must stay. Otherwise the price is live
+  // spot and does NOT vary by timeframe; only the delta beneath it follows
+  // the chart's selected range (§7.3).
   const renderPriceInfo = () => (
     <View className="gap-1">
       <Display xs medium testID="token-price-header-price">
-        {formatFiatAmount(headerPrice)}
+        {/* Inspecting describes a chart point, so it uses the chart's precision, as the delta already does. */}
+        {inspected && inspected.range === selectedRange
+          ? formatPriceHistoryLabel(inspected.point.p)
+          : formatFiatAmount(tokenBalance.currentPrice ?? "0")}
       </Display>
       <TokenPriceDelta
         tokenId={tokenId}

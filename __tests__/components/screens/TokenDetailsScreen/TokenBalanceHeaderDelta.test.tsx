@@ -14,7 +14,10 @@ import {
 import { useRemoteConfigStore } from "ducks/remoteConfig";
 import { fsValue } from "helpers/dimensions";
 import { formatFiatAmount } from "helpers/formatAmount";
-import { formatPriceHistoryRangeDelta } from "helpers/priceHistoryChart";
+import {
+  formatPriceHistoryLabel,
+  formatPriceHistoryRangeDelta,
+} from "helpers/priceHistoryChart";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
 import {
@@ -655,6 +658,82 @@ describe("TokenBalanceHeader range delta", () => {
 
       expect(getByTestId("token-price-header-price")).toHaveTextContent(
         formatFiatAmount("0.22"),
+      );
+    });
+
+    it("while inspecting a sub-dollar point, the header price uses the chart's precision", async () => {
+      const subDollarPoints = [
+        { t: densePoints[0].t, p: "0.2196" },
+        { t: densePoints[1].t, p: "0.2213" },
+        { t: densePoints[2].t, p: "0.2267" },
+      ];
+      mockFetchHistory.mockResolvedValue(
+        makeHistory({
+          change: { absolute: "0.0017", percent: "0.77" },
+          points: subDollarPoints,
+        }),
+      );
+
+      const { getByTestId } = renderDetailView();
+
+      await waitFor(() => {
+        expect(getByTestId("token-price-delta")).toBeTruthy();
+      });
+
+      act(() => {
+        usePriceHistoryStore.getState().setInspectedPoint({
+          network: NETWORKS.PUBLIC,
+          tokenId: "native",
+          range: "1D",
+          index: 1,
+        });
+      });
+
+      expect(getByTestId("token-price-header-price")).toHaveTextContent(
+        formatPriceHistoryLabel("0.2213"),
+      );
+
+      act(() => {
+        usePriceHistoryStore
+          .getState()
+          .clearInspectedPoint({ network: NETWORKS.PUBLIC, tokenId: "native" });
+      });
+
+      expect(getByTestId("token-price-header-price")).toHaveTextContent(
+        formatFiatAmount(nativeBalance.currentPrice ?? "0"),
+      );
+    });
+
+    it("while inspecting a sub-cent point, the header price keeps significant digits instead of rounding to zero", async () => {
+      const subCentPoints = [
+        { t: densePoints[0].t, p: "0.00001200" },
+        { t: densePoints[1].t, p: "0.00001234" },
+        { t: densePoints[2].t, p: "0.00001300" },
+      ];
+      mockFetchHistory.mockResolvedValue(
+        makeHistory({
+          change: { absolute: "0.00000034", percent: "2.83" },
+          points: subCentPoints,
+        }),
+      );
+
+      const { getByTestId } = renderDetailView();
+
+      await waitFor(() => {
+        expect(getByTestId("token-price-delta")).toBeTruthy();
+      });
+
+      act(() => {
+        usePriceHistoryStore.getState().setInspectedPoint({
+          network: NETWORKS.PUBLIC,
+          tokenId: "native",
+          range: "1D",
+          index: 1,
+        });
+      });
+
+      expect(getByTestId("token-price-header-price")).toHaveTextContent(
+        formatPriceHistoryLabel("0.00001234"),
       );
     });
 
