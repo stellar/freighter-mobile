@@ -29,6 +29,7 @@ import useIsReduceMotionEnabled from "hooks/useIsReduceMotionEnabled";
 import React, {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -281,7 +282,8 @@ const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
   const onInspectEndRef = useRef(onInspectEnd);
   const xsRef = useRef(xs);
 
-  useEffect(() => {
+  // Layout, not passive: a gesture event can land between commit and the passive flush.
+  useLayoutEffect(() => {
     onInspectStartRef.current = onInspectStart;
     onInspectMoveRef.current = onInspectMove;
     onInspectEndRef.current = onInspectEnd;

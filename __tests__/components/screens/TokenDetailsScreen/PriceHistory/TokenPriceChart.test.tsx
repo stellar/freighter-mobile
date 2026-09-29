@@ -26,7 +26,7 @@ import {
   RenderedTree,
   renderWithProviders,
 } from "helpers/testUtils";
-import React from "react";
+import React, { useLayoutEffect } from "react";
 import {
   AccessibilityInfo,
   DeviceEventEmitter,
@@ -1115,6 +1115,55 @@ describe("drag to inspect", () => {
       ],
     );
 
+    expect(onInspectStart).toHaveBeenCalledWith(1);
+  });
+
+  it("snaps a move that lands before the new series' passive effects against the NEW xs", () => {
+    const onInspectStart = jest.fn();
+    // Same x grid as the test above: x=40 is index 0 here, index 1 there.
+    const shiftedPoints = [
+      { t: 0, p: "1.00" },
+      { t: 300, p: "1.10" },
+      { t: 1800, p: "1.05" },
+      { t: 2700, p: "1.20" },
+    ];
+    // A later sibling's layout effect runs after the chart commits but
+    // before any passive effect, which is where a real gesture event can land.
+    const MoveOnCommit = ({ series }: { series: typeof inspectPoints }) => {
+      useLayoutEffect(() => {
+        if (series === shiftedPoints) {
+          fireGestureHandler<PanGesture>(
+            getByGestureTestId(INSPECT_GESTURE_TEST_ID),
+            [
+              { state: State.BEGAN, x: 40 },
+              { state: State.ACTIVE, x: 40 },
+              { state: State.END },
+            ],
+          );
+        }
+      }, [series]);
+
+      return null;
+    };
+    const view = (series: typeof inspectPoints) => (
+      <>
+        <TokenPriceChart
+          testID="price-history-chart"
+          points={series}
+          resolutionSeconds={900}
+          range="1D"
+          width={width}
+          direction="positive"
+          onInspectStart={onInspectStart}
+        />
+        <MoveOnCommit series={series} />
+      </>
+    );
+    const { rerender } = renderWithProviders(view(inspectPoints));
+
+    rerender(view(shiftedPoints));
+
+    expect(onInspectStart).toHaveBeenCalledTimes(1);
     expect(onInspectStart).toHaveBeenCalledWith(1);
   });
 });
