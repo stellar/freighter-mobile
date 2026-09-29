@@ -6,7 +6,13 @@ import BottomSheet from "components/BottomSheet";
 import { SecurityDetailBottomSheet } from "components/blockaid";
 import { BaseLayout } from "components/layout/BaseLayout";
 import HistoryList from "components/screens/HistoryScreen/HistoryList";
-import { TokenBalanceHeader } from "components/screens/TokenDetailsScreen/components";
+import {
+  TokenBalanceHeader,
+  TokenBalanceDetails,
+} from "components/screens/TokenDetailsScreen/components";
+import AboutSection from "components/screens/TokenDetailsScreen/components/PriceHistory/AboutSection";
+import TokenPriceHistorySection from "components/screens/TokenDetailsScreen/components/PriceHistory/TokenPriceHistorySection";
+import TokenStatsSection from "components/screens/TokenDetailsScreen/components/PriceHistory/TokenStatsSection";
 import {
   getRemoveTokenSheetVariant,
   RemoveTokenSheetContent,
@@ -35,6 +41,7 @@ import { useBalancesList } from "hooks/useBalancesList";
 import useGetActiveAccount from "hooks/useGetActiveAccount";
 import { useGetHistoryData } from "hooks/useGetHistoryData";
 import { useManageToken } from "hooks/useManageToken";
+import usePriceHistoryEnabled from "hooks/usePriceHistoryEnabled";
 import { useRightHeaderMenu } from "hooks/useRightHeader";
 import { useTokenActions } from "hooks/useTokenActions";
 import useTokenDetails from "hooks/useTokenDetails";
@@ -46,6 +53,9 @@ import {
   assessTokenSecurity,
   extractSecurityWarnings,
 } from "services/blockaid/helper";
+
+// Section refs (§N) below are to the token-price-graphs design doc:
+// wallet-eng-monorepo/design-docs/token-price-graphs/token-price-graphs-design.md
 
 const headerMenuIcons = Platform.select({
   ios: {
@@ -76,6 +86,9 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
   const { t } = useAppTranslation();
   const { width } = Dimensions.get("window");
   const { swap_enabled: swapEnabled } = useRemoteConfigStore();
+  // One shared predicate (kill switch + mainnet) for all three price-history
+  // sections; each section also enforces it itself, so they cannot drift.
+  const priceHistoryEnabled = usePriceHistoryEnabled(network);
   const { overriddenBlockaidResponse } = useDebugStore();
   const { saveSelectedTokenId, saveSelectedCollectibleDetails } =
     useTransactionSettingsStore();
@@ -214,7 +227,8 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
   const handleSwapPress = () => {
     navigation.navigate(ROOT_NAVIGATOR_ROUTES.SWAP_STACK, {
       screen: SWAP_ROUTES.SWAP_AMOUNT_SCREEN,
-      params: { tokenId, tokenSymbol },
+      // source tags swap.completed with the detail-view entry point (§7.5).
+      params: { tokenId, tokenSymbol, source: "token_details" },
     });
   };
 
@@ -263,29 +277,7 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
 
   return (
     <BaseLayout insets={{ top: false, bottom: false }}>
-      <View
-        testID="token-details-screen"
-        className="flex-1 gap-8 mt-5 max-xs:mt-2 max-xs:gap-4"
-      >
-        <TokenBalanceHeader
-          tokenId={tokenId}
-          tokenSymbol={tokenSymbol}
-          actualTokenSymbol={actualTokenDetails?.symbol}
-          tokenName={actualTokenDetails?.name}
-        />
-        {(isMalicious || isSuspicious) && (
-          <Banner
-            variant={isSuspicious ? "warning" : "error"}
-            text={
-              isMalicious
-                ? t("transactionAmountScreen.errors.malicious")
-                : t("transactionAmountScreen.errors.suspicious")
-            }
-            onPress={() =>
-              securityWarningBottomSheetModalRef.current?.present()
-            }
-          />
-        )}
+      <View testID="token-details-screen" className="flex-1 mt-5 max-xs:mt-2">
         <HistoryList
           ignoreTopInset
           noHorizontalPadding
@@ -299,7 +291,48 @@ const TokenDetailsScreen: React.FC<TokenDetailsScreenProps> = ({
           isRefreshing={isRefreshing}
           isNavigationRefresh={isNavigationRefresh}
           ListHeaderComponent={
-            <View className="mb-6 max-xs:mb-0">
+            /* EVERYTHING above the transactions lives in the list header, so
+               the screen scrolls as one column like the extension's does.
+               As siblings of the list these sat in a fixed flex row: the
+               chart ate ~250px of viewport, the list scrolled inside what was
+               left, and on a token with no transactions nothing scrolled at
+               all. Order matches the extension: name, price and delta, then
+               the chart, then the holdings it describes. */
+            <View className="mb-6 max-xs:mb-0 gap-8 max-xs:gap-4">
+              <TokenBalanceHeader
+                tokenId={tokenId}
+                tokenSymbol={tokenSymbol}
+                network={network}
+                actualTokenSymbol={actualTokenDetails?.symbol}
+                tokenName={actualTokenDetails?.name}
+              />
+              {/* Above the chart, deliberately: the chart block is ~250px
+                  tall, and a flagged token's warning sat directly under the
+                  header before this feature existed. Only shown when
+                  flagged, so the ordinary layout is unchanged. */}
+              {(isMalicious || isSuspicious) && (
+                <Banner
+                  variant={isSuspicious ? "warning" : "error"}
+                  text={
+                    isMalicious
+                      ? t("transactionAmountScreen.errors.malicious")
+                      : t("transactionAmountScreen.errors.suspicious")
+                  }
+                  onPress={() =>
+                    securityWarningBottomSheetModalRef.current?.present()
+                  }
+                />
+              )}
+              {priceHistoryEnabled && (
+                <TokenPriceHistorySection tokenId={tokenId} network={network} />
+              )}
+              <TokenBalanceDetails tokenId={tokenId} />
+              {priceHistoryEnabled && (
+                <TokenStatsSection tokenId={tokenId} network={network} />
+              )}
+              {priceHistoryEnabled && (
+                <AboutSection tokenId={tokenId} network={network} />
+              )}
               <Text md medium secondary>
                 {t("tokenDetailsScreen.listHeader", {
                   tokenName: displayTitle,

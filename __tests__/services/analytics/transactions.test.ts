@@ -21,6 +21,9 @@ import {
 } from "services/analytics/transactions";
 import { TransactionOperationType } from "services/analytics/types";
 
+// Section refs (§N) below are to the token-price-graphs design doc:
+// wallet-eng-monorepo/design-docs/token-price-graphs/token-price-graphs-design.md
+
 jest.mock("services/analytics/core", () => ({
   track: jest.fn(),
 }));
@@ -428,5 +431,39 @@ describe("internal signing events", () => {
         origin: "example.com",
       },
     );
+  });
+});
+
+describe("trackSwapSuccess entry source (design §7.5)", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it("carries source: token_details when the swap was entered from the detail view", () => {
+    trackSwapSuccess({
+      sourceToken: "XLM",
+      destToken: "USDC",
+      isSwap: true,
+      source: "token_details",
+    });
+
+    expect(track).toHaveBeenCalledWith(AnalyticsEvent.SWAP_SUCCESS, {
+      from_asset_code: "XLM",
+      to_asset_code: "USDC",
+      source: "token_details",
+    });
+  });
+
+  it("omits source entirely for other entries (historical payload unchanged)", () => {
+    trackSwapSuccess({
+      sourceToken: "XLM",
+      destToken: "USDC",
+      isSwap: true,
+    });
+
+    const [event, props] = track.mock.calls[0];
+    expect(event).toBe(AnalyticsEvent.SWAP_SUCCESS);
+    expect(props).toStrictEqual({
+      from_asset_code: "XLM",
+      to_asset_code: "USDC",
+    });
   });
 });

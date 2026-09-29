@@ -343,6 +343,54 @@
     "swap": "Trocar",
     "send": "Enviar"
   },
+  "priceHistory": {
+    "notice": {
+      "lowVolume": {
+        "title": "Baixo volume de negociação",
+        "body": "Este token tem baixo volume de negociação, então os dados de preço podem ser menos confiáveis."
+      },
+      "limitedData": {
+        "title": "Dados de negociação limitados",
+        "body": "O histórico de preços é limitado para este período."
+      },
+      "verdictUnavailable": {
+        "title": "Não foi possível verificar a atividade de negociação",
+        "body": "Os dados de preço podem ser menos confiáveis para este token."
+      }
+    },
+    "emptyState": "Sem dados de preço para este período",
+    "errorState": "Não foi possível carregar os dados de preço",
+    "retry": "Tentar novamente",
+    "loadingA11yLabel": "Carregando o gráfico de preço",
+    "chartA11yLabel": "Gráfico de preço, {{range}}: {{start}} a {{end}}, {{delta}}",
+    "noDelta": "sem dados de variação",
+    "loadingDeltaA11yLabel": "Carregando a variação de preço",
+    "timeframeSelectorA11yLabel": "Período",
+    "ranges": {
+      "1H": "1H",
+      "1D": "1D",
+      "1W": "1S",
+      "1M": "1M",
+      "1Y": "1A",
+      "ALL": "MÁX"
+    },
+    "tokenStats": {
+      "title": "Estatísticas do Token",
+      "supplyOnStellar": "Oferta na Stellar",
+      "holders": "Detentores"
+    },
+    "about": {
+      "title": "Sobre",
+      "issuer": "Emissor",
+      "type": "Tipo",
+      "domain": "Domínio",
+      "tokenType": {
+        "native": "Nativo",
+        "classic": "Stellar Clássico",
+        "soroban": "Soroban"
+      }
+    }
+  },
   "recoveryPhraseWarning": {
     "yourRecoveryPhrase": "Sua frase de recuperação dá acesso total às suas carteiras e fundos.",
     "ifYouForgetYourPassword": "Se você esquecer sua senha, use a frase de recuperação para acessar sua carteira",

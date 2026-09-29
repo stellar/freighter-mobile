@@ -43,6 +43,46 @@ const AllProviders: React.FC<{ children: React.ReactNode }> = ({
   </I18nextProvider>
 );
 
+/** A single node of the render tree `toJSON()` returns. */
+export interface RenderedNode {
+  type: string;
+  props: Record<string, unknown>;
+  children: (RenderedNode | string)[] | null;
+}
+
+/** Anything `toJSON()` can hand back, or any child of it. */
+export type RenderedTree =
+  | RenderedNode
+  | string
+  | null
+  | (RenderedNode | string)[];
+
+/**
+ * Every rendered node of a host type, in render order. Skia's `<Path>` and
+ * `<Circle>` reject a testID, so their paint props are only reachable by
+ * walking the tree.
+ *
+ * @example
+ * const [stroke] = findAllRenderedByType(toJSON(), "skPath");
+ */
+export const findAllRenderedByType = (
+  tree: RenderedTree,
+  type: string,
+): RenderedNode[] => {
+  if (!tree || typeof tree === "string") {
+    return [];
+  }
+
+  if (Array.isArray(tree)) {
+    return tree.flatMap((node) => findAllRenderedByType(node, type));
+  }
+
+  return [
+    ...(tree.type === type ? [tree] : []),
+    ...findAllRenderedByType(tree.children, type),
+  ];
+};
+
 export const renderWithProviders: RenderWithProviderType = (component) => {
   try {
     // The `wrapper` option (rather than wrapping the element inline) keeps

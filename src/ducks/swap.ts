@@ -41,6 +41,12 @@ interface SwapPathData {
 interface SwapState {
   sourceTokenId: string;
   sourceTokenSymbol: string;
+  /**
+   * Where the swap flow was entered from (e.g. "token_details"), carried
+   * onto the swap.completed analytics event as `source`. null for the
+   * default (home) entry; reset with the rest of the swap state on unmount.
+   */
+  entrySource: string | null;
   destinationToken: DestinationTokenDescriptor | null;
   sourceAmount: string; // Internal value (dot notation)
   sourceAmountDisplay: string; // Display value (locale formatted)
@@ -52,6 +58,7 @@ interface SwapState {
   buildError: string | null;
 
   setSourceToken: (tokenId: string, tokenSymbol: string) => void;
+  setEntrySource: (entrySource: string | null) => void;
   setDestinationToken: (descriptor: DestinationTokenDescriptor | null) => void;
   setSourceAmount: (amount: string, preserveDisplay?: boolean) => void;
   setSourceAmountDisplay: (displayAmount: string) => void;
@@ -70,6 +77,7 @@ interface SwapState {
 const initialState = {
   sourceTokenId: "",
   sourceTokenSymbol: "",
+  entrySource: null as string | null,
   destinationToken: null as DestinationTokenDescriptor | null,
   sourceAmount: "0",
   sourceAmountDisplay: "0",
@@ -165,6 +173,8 @@ export const useSwapStore = create<SwapState>((set) => ({
     ),
 
   setDestinationToken: (descriptor) => set({ destinationToken: descriptor }),
+
+  setEntrySource: (entrySource) => set({ entrySource }),
 
   setSourceAmount: (amount, preserveDisplay = false) => {
     // Expect internal dot notation input, convert to display format

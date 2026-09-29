@@ -6,6 +6,9 @@ import {
   SWAP_SELECTION_TYPES,
 } from "config/constants";
 
+// Section refs (§N) below are to the token-price-graphs design doc:
+// wallet-eng-monorepo/design-docs/token-price-graphs/token-price-graphs-design.md
+
 export enum ScreenTransition {
   Fade = "fade",
   SlideFromBottom = "slide_from_bottom",
@@ -264,5 +267,11 @@ export type SwapStackParamList = {
   [SWAP_ROUTES.SWAP_AMOUNT_SCREEN]: {
     tokenId: string;
     tokenSymbol: string;
+    /**
+     * Analytics entry tag: set to "token_details" when the swap flow is
+     * entered from TokenDetailsScreen so swap.completed carries
+     * `source: "token_details"` (design §7.5). Absent for other entries.
+     */
+    source?: "token_details";
   };
 };

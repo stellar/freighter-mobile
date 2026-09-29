@@ -104,6 +104,8 @@ export interface SwapSuccessEvent {
   destAmount?: string;
   allowedSlippage?: string;
   isSwap: true;
+  /** Entry-point tag (e.g. "token_details"); omitted from the payload when absent */
+  source?: string;
   volume?: SwapVolume;
 }
 

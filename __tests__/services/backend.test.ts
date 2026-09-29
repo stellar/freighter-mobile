@@ -17,6 +17,9 @@ import {
 import { scanBulkTokens } from "services/blockaid/api";
 import { dataStorage } from "services/storage/storageFactory";
 
+// Section refs (§N) below are to the token-price-graphs design doc:
+// wallet-eng-monorepo/design-docs/token-price-graphs/token-price-graphs-design.md
+
 // The v2 balances path stamps Blockaid data through the blockaidTokenScans
 // duck's disk-backed cache; mock the raw scan API underneath it (it would
 // otherwise loop back into the mocked freighterBackendV1 client) and the
@@ -851,6 +854,84 @@ describe("Backend Service - fetchTokenPrices v2 migration", () => {
     expect(result.native).toBeUndefined();
   });
 
+  it("prices a BARE contract id on v2 instead of filtering it as an LP share", async () => {
+    // `getTokenType`'s catch-all calls any colonless non-native id a liquidity
+    // pool share, so a bare `C…` token was dropped before the v2 mapping ran
+    // and came back "--" even though v2 prices contract tokens.
+    const bare = "CBIJBDNZNF4X35BJ4FFZWCDBSCKOP5NB4PLG4SNENRMLAPYG4P5FM6VN";
+    mockV2Post.mockResolvedValueOnce({
+      data: {
+        data: { [bare]: { currentPrice: "1.25", percentagePriceChange24h: 0 } },
+      },
+    });
+
+    const result = await fetchTokenPrices({
+      tokens: [bare],
+      network: NETWORKS.PUBLIC,
+      useV2: true,
+    });
+
+    expect(mockV2Post).toHaveBeenCalledWith(
+      "/token-prices",
+      { tokens: [bare] },
+      expect.anything(),
+    );
+    expect(result[bare]?.currentPrice?.toString()).toBe("1.25");
+  });
+
+  it("prices the BARE native SAC as native", async () => {
+    const bareSac = "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA";
+    mockV2Post.mockResolvedValueOnce({
+      data: {
+        data: {
+          native: { currentPrice: "0.5", percentagePriceChange24h: 0.02 },
+        },
+      },
+    });
+
+    const result = await fetchTokenPrices({
+      tokens: [bareSac],
+      network: NETWORKS.PUBLIC,
+      useV2: true,
+    });
+
+    expect(mockV2Post).toHaveBeenCalledWith(
+      "/token-prices",
+      { tokens: ["native"] },
+      expect.anything(),
+    );
+    expect(result[bareSac]?.currentPrice?.toString()).toBe("0.5");
+  });
+
+  it("prices XLM's own SAC as native, and keys the price back to it", async () => {
+    // Contract balances canonicalize `symbol:contractId`, so the native SAC
+    // arrives as `XLM:<contract id>`. Sent as a contract it asks the backend
+    // for a different asset, leaving the balance on "--" beside a chart the
+    // same identifier resolves as native.
+    const sacId =
+      "XLM:CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA";
+    mockV2Post.mockResolvedValueOnce({
+      data: {
+        data: {
+          native: { currentPrice: "0.5", percentagePriceChange24h: 0.02 },
+        },
+      },
+    });
+
+    const result = await fetchTokenPrices({
+      tokens: [sacId],
+      network: NETWORKS.PUBLIC,
+      useV2: true,
+    });
+
+    expect(mockV2Post).toHaveBeenCalledWith(
+      "/token-prices",
+      { tokens: ["native"] },
+      expect.anything(),
+    );
+    expect(result[sacId]?.currentPrice?.toString()).toBe("0.5");
+  });
+
   it("hits the v1 client with the 'XLM' native id and no network param when useV2 is false", async () => {
     await fetchTokenPrices({ tokens, network: NETWORKS.PUBLIC, useV2: false });
 
@@ -875,20 +956,107 @@ describe("Backend Service - fetchTokenPrices v2 migration", () => {
     });
   });
 
-  it("short-circuits when all tokens filter out (custom tokens) without any request", async () => {
-    const customTokens = ["USDC:CUSTOM_CONTRACT_ID"];
-    const result = await fetchTokenPrices({
-      tokens: customTokens,
+  // Phase 1 item 5 (token price graphs design §4.1): the old single
+  // LP+custom-token exclusion predicate is SPLIT, not moved. LP shares stay
+  // filtered unconditionally on both paths (never priceable; an LP id fails
+  // parsing at the batch endpoint), while the custom-token half applies only
+  // on the legacy v1 rollback path — the Go backend prices SEP-41 contract
+  // tokens, so v2 requests include them (header prices ship with the chart).
+  const CUSTOM_TOKEN_ID =
+    "SOLVBTC:CBIJBDNZNF4X35BJ4FFZWCDBSCKOP5NB4PLG4SNENRMLAPYG4P5FM6VN";
+  const LP_ID =
+    "4ac86c65b9f7b175ae0493da0d36cc5bc88b72677ca69fce8fe374233983d8e7:lp";
+
+  it("includes custom (SEP-41) tokens in the v2 request as SYMBOL:CONTRACTID", async () => {
+    await fetchTokenPrices({
+      tokens: [...tokens, CUSTOM_TOKEN_ID],
       network: NETWORKS.PUBLIC,
       useV2: true,
     });
 
+    expect(mockV2Post).toHaveBeenCalledWith(
+      "/token-prices",
+      { tokens: [...v2Tokens, CUSTOM_TOKEN_ID] },
+      { params: { network: "PUBLIC" } },
+    );
+  });
+
+  it("still filters custom tokens on the legacy v1 rollback path", async () => {
+    await fetchTokenPrices({
+      tokens: [...tokens, CUSTOM_TOKEN_ID],
+      network: NETWORKS.PUBLIC,
+      useV2: false,
+    });
+
+    expect(mockV1Post).toHaveBeenCalledWith("/token-prices", { tokens });
+  });
+
+  it("short-circuits on the legacy path when only custom tokens remain", async () => {
+    const result = await fetchTokenPrices({
+      tokens: [CUSTOM_TOKEN_ID],
+      network: NETWORKS.PUBLIC,
+      useV2: false,
+    });
+
     expect(mockV1Post).not.toHaveBeenCalled();
     expect(mockV2Post).not.toHaveBeenCalled();
-    expect(result["USDC:CUSTOM_CONTRACT_ID"]).toEqual({
+    expect(result[CUSTOM_TOKEN_ID]).toEqual({
       currentPrice: null,
       percentagePriceChange24h: null,
     });
+  });
+
+  // A contract token's symbol may contain a colon; contract-ness is read from
+  // the last one. `THIRTEENCHARS` exceeds 12 chars, the length at which
+  // a first-colon parse types the id as an LP share.
+  const COLON_SYMBOL_TOKEN_ID = `THIRTEENCHARS:x:${CUSTOM_TOKEN_ID.split(":")[1]}`;
+
+  it("includes a contract token whose symbol has a colon in the v2 request", async () => {
+    await fetchTokenPrices({
+      tokens: [...tokens, COLON_SYMBOL_TOKEN_ID],
+      network: NETWORKS.PUBLIC,
+      useV2: true,
+    });
+
+    expect(mockV2Post).toHaveBeenCalledWith(
+      "/token-prices",
+      { tokens: [...v2Tokens, COLON_SYMBOL_TOKEN_ID] },
+      { params: { network: "PUBLIC" } },
+    );
+  });
+
+  it("filters a contract token whose symbol has a colon on the legacy path", async () => {
+    await fetchTokenPrices({
+      tokens: [...tokens, `A:B:${CUSTOM_TOKEN_ID.split(":")[1]}`],
+      network: NETWORKS.PUBLIC,
+      useV2: false,
+    });
+
+    expect(mockV1Post).toHaveBeenCalledWith("/token-prices", { tokens });
+  });
+
+  it("filters LP shares unconditionally on the v2 path", async () => {
+    await fetchTokenPrices({
+      tokens: [...tokens, LP_ID],
+      network: NETWORKS.PUBLIC,
+      useV2: true,
+    });
+
+    expect(mockV2Post).toHaveBeenCalledWith(
+      "/token-prices",
+      { tokens: v2Tokens },
+      { params: { network: "PUBLIC" } },
+    );
+  });
+
+  it("filters LP shares unconditionally on the legacy path", async () => {
+    await fetchTokenPrices({
+      tokens: [...tokens, LP_ID],
+      network: NETWORKS.PUBLIC,
+      useV2: false,
+    });
+
+    expect(mockV1Post).toHaveBeenCalledWith("/token-prices", { tokens });
   });
 
   it("logs an error to Sentry and rethrows on a backend failure", async () => {

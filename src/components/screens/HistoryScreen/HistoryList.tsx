@@ -3,7 +3,6 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import BottomSheet from "components/BottomSheet";
 import { DefaultListFooter } from "components/DefaultListFooter";
-import RefreshCard from "components/RefreshCard";
 import Spinner from "components/Spinner";
 import { BaseLayout } from "components/layout/BaseLayout";
 import { TransactionDetails } from "components/screens/HistoryScreen";
@@ -21,8 +20,8 @@ import React, { useCallback, useRef, useState } from "react";
 import {
   RefreshControl,
   SectionList,
-  View,
   SectionListData,
+  View,
   useWindowDimensions,
 } from "react-native";
 import { analytics } from "services/analytics";
@@ -158,46 +157,61 @@ const HistoryList: React.FC<HistoryListProps> = ({
     right: !noHorizontalPadding,
   };
 
-  if (isLoading) {
-    return (
-      <BaseLayout insets={insets}>
-        {ListHeaderComponent}
-        <HistoryWrapper>
-          <Spinner size="large" testID="spinner" />
-        </HistoryWrapper>
-      </BaseLayout>
-    );
-  }
-
-  if (error) {
-    return (
-      <BaseLayout insets={insets}>
-        {ListHeaderComponent}
-        <HistoryWrapper text={t("history.error")} />
-      </BaseLayout>
-    );
-  }
-
-  const sections =
+  const loadedSections =
     historyData?.history.map((historyMonth: HistorySection) => ({
       title: historyMonth.monthYear,
       data: historyMonth.operations,
     })) || [];
 
-  if (sections.length === 0) {
+  /**
+   * A failed refresh sets `error` but deliberately keeps `rawHistoryData`, so
+   * without this the list stays non-empty — and `ListEmptyComponent` is only
+   * consulted for an empty one. The failure would then be invisible: the
+   * screen would go on showing the rows it had before the refresh, with
+   * nothing to say they are stale. Emptying the sections is what the three
+   * early returns used to do implicitly, and it is the safer read for a
+   * transaction list, where a silently out-of-date balance is worse than an
+   * explicit error.
+   */
+  const sections = error ? [] : loadedSections;
+
+  /**
+   * Loading, error and empty all render through the list's own
+   * `ListEmptyComponent` rather than short-circuiting to a bare layout.
+   *
+   * Two reasons, both found the hard way. The element type at the header's
+   * position must not change: returning a `ScrollView` while loading and a
+   * `SectionList` once sections arrive makes React drop and rebuild the whole
+   * header subtree — which on the token detail screen is the entire page, so
+   * the chart remounted, `token_chart.viewed` fired twice, and a timeframe
+   * chosen during the load was reset. And the list sizes its empty component
+   * against `minHeight: "100%"`, where a `flex-1` child of a plain
+   * `ScrollView` collapses to zero height once the header is taller than the
+   * viewport.
+   */
+  const listEmptyComponent = (() => {
+    if (isLoading) {
+      return (
+        <HistoryWrapper>
+          <Spinner size="large" testID="spinner" />
+        </HistoryWrapper>
+      );
+    }
+
+    if (error) {
+      return <HistoryWrapper text={t("history.error")} />;
+    }
+
     return (
-      <BaseLayout insets={insets}>
-        {ListHeaderComponent}
-        <View className={getEmptyListClasses(refreshActionPosition)}>
-          <HistoryWrapper
-            text={t("history.emptyState.title")}
-            isLoading={isRefreshing}
-            refreshFunction={onRefresh}
-          />
-        </View>
-      </BaseLayout>
+      <View className={getEmptyListClasses(refreshActionPosition)}>
+        <HistoryWrapper
+          text={t("history.emptyState.title")}
+          isLoading={isRefreshing}
+          refreshFunction={onRefresh}
+        />
+      </View>
     );
-  }
+  })();
 
   return (
     <BaseLayout insets={insets}>
@@ -238,17 +252,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
           ListHeaderComponent={ListHeaderComponent}
           ListFooterComponent={DefaultListFooter}
           className={className}
-          ListEmptyComponent={
-            <View className="flex-1 items-center justify-center px-2 gap-4">
-              <RefreshCard
-                title={t("history.emptyState.title")}
-                onRefresh={onRefresh}
-                actionTitle={t("history.refresh")}
-                loadingTitle={t("history.refreshing")}
-                isLoading={isRefreshing}
-              />
-            </View>
-          }
+          ListEmptyComponent={listEmptyComponent}
         />
       </View>
     </BaseLayout>

@@ -1,5 +1,8 @@
 import { ALL_ROUTES_OBJECT } from "config/routes";
 
+// Section refs (§N) below are to the token-price-graphs design doc:
+// wallet-eng-monorepo/design-docs/token-price-graphs/token-price-graphs-design.md
+
 /**
  * Analytics Event Definitions
  *
@@ -235,6 +238,17 @@ export enum AnalyticsEvent {
   // drifts if mobile adds one — mirrors how one-sided events are reserved on
   // both platforms (e.g. transaction.submitted, dapp_access.blocked).
   BLOCKAID_WARNING_REPORTED = "blockaid.warning_reported",
+
+  // Token price chart (design §7.5) — FROZEN cross-platform wire strings,
+  // identical on the extension from day one. token_chart.loaded is an
+  // OUTCOME event fired when the history fetch resolves (has_data: false on
+  // empty) — deliberately NOT a screen view: screen.viewed (asset_detail)
+  // already covers the detail-view open, and a chart-view event would
+  // duplicate it one-for-one.
+  TOKEN_CHART_LOADED = "token_chart.loaded",
+  /** Per-range VIEW (cache hits included), unlike loaded's per-network-fetch. */
+  TOKEN_CHART_VIEWED = "token_chart.viewed",
+  TOKEN_CHART_RANGE_CHANGED = "token_chart.range_changed",
 
   // Onramp
   COINBASE_ONRAMP_OPENED = "onramp.coinbase_opened",

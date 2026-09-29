@@ -377,6 +377,54 @@
     "swap": "Swap",
     "send": "Send"
   },
+  "priceHistory": {
+    "notice": {
+      "lowVolume": {
+        "title": "Low trading volume",
+        "body": "This token has low trading volume, so price data may be less reliable."
+      },
+      "limitedData": {
+        "title": "Limited trading data",
+        "body": "Price history is limited for this period."
+      },
+      "verdictUnavailable": {
+        "title": "Couldn't verify trading activity",
+        "body": "Price data may be less reliable for this token."
+      }
+    },
+    "emptyState": "No price data for this period",
+    "errorState": "Unable to load price data",
+    "retry": "Retry",
+    "loadingA11yLabel": "Loading price chart",
+    "chartA11yLabel": "Price chart, {{range}}: {{start}} to {{end}}, {{delta}}",
+    "noDelta": "no change data",
+    "loadingDeltaA11yLabel": "Loading price change",
+    "timeframeSelectorA11yLabel": "Timeframe",
+    "ranges": {
+      "1H": "1H",
+      "1D": "1D",
+      "1W": "1W",
+      "1M": "1M",
+      "1Y": "1Y",
+      "ALL": "ALL"
+    },
+    "tokenStats": {
+      "title": "Token Stats",
+      "supplyOnStellar": "Supply on Stellar",
+      "holders": "Holders"
+    },
+    "about": {
+      "title": "About",
+      "issuer": "Issuer",
+      "type": "Type",
+      "domain": "Domain",
+      "tokenType": {
+        "native": "Native",
+        "classic": "Stellar Classic",
+        "soroban": "Soroban"
+      }
+    }
+  },
   "recoveryPhraseWarning": {
     "yourRecoveryPhrase": "Your recovery phrase gives you full access to your wallets and funds.",
     "ifYouForgetYourPassword": "If you forget your password, use the recovery phrase to access your wallet",

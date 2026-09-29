@@ -16,7 +16,34 @@ jest.mock("components/screens/HistoryScreen/HistoryList", () => {
 
 jest.mock("components/screens/TokenDetailsScreen/components", () => ({
   TokenBalanceHeader: () => <div data-testid="token-balance-header" />,
+  TokenBalanceDetails: () => <div data-testid="token-balance-details" />,
 }));
+
+// Mock the chart section per existing practice (the screen test exercises
+// layout/navigation, not the chart; the section has its own suite).
+jest.mock(
+  "components/screens/TokenDetailsScreen/components/PriceHistory/TokenPriceHistorySection",
+  () => ({
+    __esModule: true,
+    default: () => <div data-testid="token-price-history-section" />,
+  }),
+);
+
+jest.mock(
+  "components/screens/TokenDetailsScreen/components/PriceHistory/TokenStatsSection",
+  () => ({
+    __esModule: true,
+    default: () => <div data-testid="token-stats-section" />,
+  }),
+);
+
+jest.mock(
+  "components/screens/TokenDetailsScreen/components/PriceHistory/AboutSection",
+  () => ({
+    __esModule: true,
+    default: () => <div data-testid="about-section" />,
+  }),
+);
 
 jest.mock("hooks/useGetActiveAccount", () => ({
   __esModule: true,
