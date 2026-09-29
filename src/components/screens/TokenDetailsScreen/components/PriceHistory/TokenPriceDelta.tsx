@@ -1,5 +1,5 @@
 import BigNumber from "bignumber.js";
-import { Text } from "components/sds/Typography";
+import { Text, TEXT_SIZES } from "components/sds/Typography";
 import { NETWORKS } from "config/constants";
 import { PriceHistoryRange, TokenIdentifier } from "config/types";
 import { useSelectedPriceHistoryRange } from "ducks/priceHistory";
@@ -17,7 +17,7 @@ import useColors from "hooks/useColors";
 import usePriceHistoryEnabled from "hooks/usePriceHistoryEnabled";
 import { usePriceHistoryRangeState } from "hooks/useTokenPriceHistory";
 import React from "react";
-import { View } from "react-native";
+import { useWindowDimensions, View } from "react-native";
 
 // Section refs (§N) below are to the token-price-graphs design doc:
 // wallet-eng-monorepo/design-docs/token-price-graphs/token-price-graphs-design.md
@@ -30,9 +30,13 @@ const FALLBACK_RANGE: PriceHistoryRange = "1D";
 
 /**
  * Reserved in every state — number, placeholder or nothing — so a range
- * switch never moves the price above it or the chart below it.
+ * switch never moves the price above it or the chart below it. Scaled with
+ * the live text size like the chart's label rows: `Text md` grows its line
+ * height under a larger OS text setting, and a fixed reserve would leave the
+ * placeholder row short.
  */
-const DELTA_ROW_HEIGHT = fsValue(24);
+export const deltaRowHeight = (fontScale: number): number =>
+  fsValue(TEXT_SIZES.md.lineHeight) * fontScale;
 
 interface TokenPriceDeltaProps {
   /** Route-param token identifier ("native" for XLM) */
@@ -65,6 +69,7 @@ const TokenPriceDelta: React.FC<TokenPriceDeltaProps> = ({
 }) => {
   const { t } = useAppTranslation();
   const { themeColors } = useColors();
+  const { fontScale } = useWindowDimensions();
   const isPriceHistoryEnabled = usePriceHistoryEnabled(network);
   const range = useSelectedPriceHistoryRange(network, tokenId);
   const { data, isLoading, error } = usePriceHistoryRangeState(
@@ -167,7 +172,7 @@ const TokenPriceDelta: React.FC<TokenPriceDeltaProps> = ({
     <View
       testID="token-price-delta-row"
       className="flex-row items-center gap-1"
-      style={{ minHeight: DELTA_ROW_HEIGHT }}
+      style={{ minHeight: deltaRowHeight(fontScale) }}
       accessible={isPlaceholder}
       accessibilityState={isPlaceholder ? { busy: true } : undefined}
       accessibilityLabel={

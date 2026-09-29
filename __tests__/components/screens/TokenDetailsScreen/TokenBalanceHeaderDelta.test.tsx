@@ -2,6 +2,7 @@ import { act, fireEvent, waitFor } from "@testing-library/react-native";
 import BigNumber from "bignumber.js";
 import TokenPriceHistorySection from "components/screens/TokenDetailsScreen/components/PriceHistory/TokenPriceHistorySection";
 import TokenBalanceHeader from "components/screens/TokenDetailsScreen/components/TokenBalanceHeader";
+import { TEXT_SIZES } from "components/sds/Typography";
 import { getThemeColors } from "config/colors";
 import { NETWORKS } from "config/constants";
 import { PricedBalance, TokenPriceHistory } from "config/types";
@@ -11,9 +12,16 @@ import {
   resetInFlightRequests,
 } from "ducks/priceHistory";
 import { useRemoteConfigStore } from "ducks/remoteConfig";
+import { fsValue } from "helpers/dimensions";
 import { renderWithProviders } from "helpers/testUtils";
 import React from "react";
-import { StyleProp, StyleSheet, TextStyle, View } from "react-native";
+import {
+  Dimensions,
+  StyleProp,
+  StyleSheet,
+  TextStyle,
+  View,
+} from "react-native";
 import { ReactTestInstance } from "react-test-renderer";
 import { fetchTokenPriceHistory } from "services/backend";
 
@@ -148,6 +156,34 @@ describe("TokenBalanceHeader range delta", () => {
     expect(queryByTestId("token-price-delta")).toBeNull();
     const row = getByTestId("token-price-delta-row");
     expect(StyleSheet.flatten(row.props.style).minHeight).toBeGreaterThan(0);
+  });
+
+  it("reserves the row from the live text scale, like the chart labels", async () => {
+    // `Text md` scales its line height with the OS text size. A fixed reserve
+    // leaves the placeholder row short, so a range resolving would jump the
+    // header and the chart below it for large-text users.
+    const window = Dimensions.get("window");
+    const screen = Dimensions.get("screen");
+    act(() => {
+      Dimensions.set({ window: { ...window, fontScale: 2 }, screen });
+    });
+    try {
+      mockFetchHistory.mockResolvedValue(makeHistory({ change: null }));
+      const { getByTestId } = renderDetailView();
+
+      await waitFor(() => {
+        expect(getByTestId("price-history-chart")).toBeTruthy();
+      });
+
+      const row = getByTestId("token-price-delta-row");
+      expect(StyleSheet.flatten(row.props.style).minHeight).toBe(
+        fsValue(TEXT_SIZES.md.lineHeight) * 2,
+      );
+    } finally {
+      act(() => {
+        Dimensions.set({ window, screen });
+      });
+    }
   });
 
   it("shows no range delta for a one-point series, even with a change", async () => {
