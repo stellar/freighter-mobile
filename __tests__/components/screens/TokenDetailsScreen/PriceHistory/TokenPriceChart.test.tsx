@@ -832,6 +832,9 @@ describe("drag to inspect", () => {
     const circles = findAllRenderedByType(tree, "skCircle");
     // ring + dot at x=100; no end dot at x=300
     expect(circles.map((c) => c.props.cx)).toEqual([100, 100]);
+    // The ring punches a gap between the dot and the line, so it must be the
+    // page surface the screen paints (base 0), not the gray-01 card tone.
+    expect(circles[0].props.color).toBe(themeColors.base[0]);
     expect(findAllRenderedByType(tree, "skLine")).toHaveLength(1);
     expect(findAllRenderedByType(tree, "skDashPathEffect")).toHaveLength(1);
   });

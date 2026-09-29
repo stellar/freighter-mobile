@@ -730,7 +730,7 @@ const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
                 cx={inspectedCoord.x}
                 cy={inspectedCoord.y}
                 r={INSPECT_DOT_RADIUS + INSPECT_DOT_RING_WIDTH}
-                color={themeColors.background.primary}
+                color={themeColors.base[0]}
               />
               <Circle
                 cx={inspectedCoord.x}
