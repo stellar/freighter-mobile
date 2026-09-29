@@ -885,5 +885,54 @@ describe("TokenBalanceHeader range delta", () => {
 
       jest.useRealTimers();
     });
+
+    it("falls back to spot when the kill switch flips off mid-drag, like the delta", () => {
+      // Seeds the cache and the inspection directly (no section mounted), so
+      // nothing else in the tree can clear the duck — isolating the header's
+      // OWN gate rather than a race with the section's disable-effect.
+      usePriceHistoryStore.setState({
+        historyByNetwork: {
+          [NETWORKS.PUBLIC]: {
+            native: {
+              "1D": {
+                data: makeHistory({ points: inspectedPoints }),
+                updatedAt: Date.now(),
+              },
+            },
+          },
+        },
+      });
+      act(() => {
+        usePriceHistoryStore.getState().setInspectedPoint({
+          network: NETWORKS.PUBLIC,
+          tokenId: "native",
+          range: "1D",
+          index: 1,
+        });
+      });
+
+      const { getByTestId } = renderWithProviders(
+        <TokenBalanceHeader
+          tokenId="native"
+          tokenSymbol="XLM"
+          network={NETWORKS.PUBLIC}
+        />,
+      );
+
+      expect(getByTestId("token-price-header-price")).toHaveTextContent(
+        formatFiatAmount("0.22"),
+      );
+
+      act(() => {
+        useRemoteConfigStore.setState({
+          isInitialized: true,
+          use_token_price_history: false,
+        });
+      });
+
+      expect(getByTestId("token-price-header-price")).toHaveTextContent(
+        formatFiatAmount(nativeBalance.currentPrice ?? "0"),
+      );
+    });
   });
 });

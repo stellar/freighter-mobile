@@ -15,6 +15,7 @@ import { formatPriceHistoryLabel } from "helpers/priceHistoryChart";
 import { isContractId } from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
+import usePriceHistoryEnabled from "hooks/usePriceHistoryEnabled";
 import React from "react";
 import { View } from "react-native";
 
@@ -63,6 +64,7 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
   const { t } = useAppTranslation();
   const isSorobanToken = isContractId(tokenId);
   const tokenBalance = useTokenDetailBalance(tokenId);
+  const isPriceHistoryEnabled = usePriceHistoryEnabled(network);
   const inspected = useInspectedPriceHistory(network, tokenId);
   const selectedRange = useSelectedPriceHistoryRange(network, tokenId);
 
@@ -115,7 +117,8 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
     <View className="gap-1">
       <Display xs medium testID="token-price-header-price">
         {/* Inspecting describes a chart point, so it uses the chart's precision, as the delta already does. */}
-        {inspected && inspected.range === selectedRange
+        {/* Same flag the delta gates on: a kill-switch flip must not leave the price on a duck the section hasn't cleared yet. */}
+        {isPriceHistoryEnabled && inspected && inspected.range === selectedRange
           ? formatPriceHistoryLabel(inspected.point.p)
           : formatFiatAmount(tokenBalance.currentPrice ?? "0")}
       </Display>
