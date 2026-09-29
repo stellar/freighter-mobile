@@ -326,22 +326,28 @@ const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
       : undefined;
 
   /**
-   * The live callbacks, read through refs so the gesture does not depend on
-   * them.
+   * The live callbacks AND the live plotted xs, read through refs so the
+   * gesture does not depend on them.
    *
    * A parent that passes inline arrows — the ordinary way to write this call
    * site — would otherwise hand the memo three new functions every render and
-   * rebuild the gesture every time, re-registering the handler mid-drag. The
-   * refs make the memo's dependency honest: it is `xs` and nothing else.
+   * rebuild the gesture every time, re-registering the handler mid-drag. `xs`
+   * is a new array every render too (a same-range revalidation or a range
+   * switch recomputes geometry), so memoising the gesture on it directly
+   * rebuilds it whenever ANY of those happen — mid-drag, that drops the
+   * finger's own handler. Reading through a ref keeps a live drag on ONE
+   * handler that always sees the latest xs on its next move.
    */
   const onInspectStartRef = useRef(onInspectStart);
   const onInspectMoveRef = useRef(onInspectMove);
   const onInspectEndRef = useRef(onInspectEnd);
+  const xsRef = useRef(xs);
 
   useEffect(() => {
     onInspectStartRef.current = onInspectStart;
     onInspectMoveRef.current = onInspectMove;
     onInspectEndRef.current = onInspectEnd;
+    xsRef.current = xs;
   });
 
   /**
@@ -351,15 +357,17 @@ const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
    */
   const isInspectingRef = useRef(false);
 
+  const hasEnoughPoints = xs.length >= 2;
+
   // `runOnJS(true)`: the handlers set React state and call analytics, both JS
-  // work, and one `nearestCoordinateIndex` per event is cheap. Re-created ONLY
-  // when the plotted xs change — never on a callback identity change — so the
-  // detector is not re-armed while a finger is down.
+  // work, and one `nearestCoordinateIndex` per event is cheap. Rebuilt only
+  // when the point count crosses two, never for a new series, so a live drag
+  // keeps its handler and re-snaps into the new xs on its next move.
   const inspectGesture = useMemo(
     () =>
       Gesture.Pan()
         .withTestId(INSPECT_GESTURE_TEST_ID)
-        .enabled(xs.length >= 2)
+        .enabled(hasEnoughPoints)
         .activateAfterLongPress(INSPECT_LONG_PRESS_MS)
         // A resting second finger would otherwise pull the reported x to the
         // two-pointer centroid, under neither finger.
@@ -367,10 +375,14 @@ const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
         .runOnJS(true)
         .onStart((event) => {
           isInspectingRef.current = true;
-          onInspectStartRef.current?.(nearestCoordinateIndex(xs, event.x));
+          onInspectStartRef.current?.(
+            nearestCoordinateIndex(xsRef.current, event.x),
+          );
         })
         .onUpdate((event) => {
-          onInspectMoveRef.current?.(nearestCoordinateIndex(xs, event.x));
+          onInspectMoveRef.current?.(
+            nearestCoordinateIndex(xsRef.current, event.x),
+          );
         })
         // Finalize covers END, CANCELLED and FAILED alike; clearing is
         // idempotent, so a failed long-press costs nothing.
@@ -378,7 +390,7 @@ const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
           isInspectingRef.current = false;
           onInspectEndRef.current?.();
         }),
-    [xs],
+    [hasEnoughPoints],
   );
 
   /**

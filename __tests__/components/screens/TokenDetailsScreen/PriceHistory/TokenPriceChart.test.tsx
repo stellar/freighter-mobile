@@ -1039,4 +1039,43 @@ describe("drag to inspect", () => {
     expect(second).toHaveBeenCalledTimes(1);
     expect(second).toHaveBeenCalledWith(0);
   });
+
+  it("keeps ONE gesture across a same-length series change, and snaps against the NEW xs", () => {
+    const onInspectStart = jest.fn();
+    const { rerender } = renderInspectable({ onInspectStart });
+    const gesture = getByGestureTestId(INSPECT_GESTURE_TEST_ID);
+
+    // Same length (4) as `inspectPoints`, but unevenly spaced: bucket ends
+    // 900, 1200, 2700, 3600 -> x 0, 33.3, 200, 300, so x=40 snaps to index 1
+    // here instead of index 0 (nearest to x=0 in the original, evenly-spaced
+    // series).
+    const shiftedPoints = [
+      { t: 0, p: "1.00" },
+      { t: 300, p: "1.10" },
+      { t: 1800, p: "1.05" },
+      { t: 2700, p: "1.20" },
+    ];
+    rerender(
+      <TokenPriceChart
+        testID="price-history-chart"
+        points={shiftedPoints}
+        resolutionSeconds={900}
+        width={width}
+        direction="positive"
+        onInspectStart={onInspectStart}
+      />,
+    );
+    expect(getByGestureTestId(INSPECT_GESTURE_TEST_ID)).toBe(gesture);
+
+    fireGestureHandler<PanGesture>(
+      getByGestureTestId(INSPECT_GESTURE_TEST_ID),
+      [
+        { state: State.BEGAN, x: 40 },
+        { state: State.ACTIVE, x: 40 },
+        { state: State.END },
+      ],
+    );
+
+    expect(onInspectStart).toHaveBeenCalledWith(1);
+  });
 });
