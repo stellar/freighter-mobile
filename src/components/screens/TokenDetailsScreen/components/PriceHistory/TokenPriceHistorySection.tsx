@@ -353,6 +353,10 @@ const TokenPriceHistorySection: React.FC<TokenPriceHistorySectionProps> = ({
     return (
       <View accessible accessibilityLabel={chartA11yLabel}>
         <TokenPriceChart
+          // Forces a remount on a scope change so a live gesture ends via
+          // this instance's own unmount cleanup, instead of the chart's
+          // ref-swap handing an in-flight drag callbacks for the new scope.
+          key={`${network}/${tokenId}`}
           testID="price-history-chart"
           points={points}
           resolutionSeconds={data!.resolutionSeconds}

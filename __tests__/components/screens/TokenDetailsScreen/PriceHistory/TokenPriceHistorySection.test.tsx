@@ -933,6 +933,96 @@ describe("TokenPriceHistorySection", () => {
       expect(usePriceHistoryStore.getState().inspectingKey).toBeNull();
     });
 
+    it("remounts the chart on a token/network switch so a live drag cannot carry the new scope's callbacks", async () => {
+      const { getByTestId, rerender } = renderSection();
+
+      await waitFor(() => {
+        expect(getByTestId("price-history-chart")).toBeTruthy();
+      });
+
+      const { handlerTag: oldHandlerTag } = getByGestureTestId(
+        INSPECT_GESTURE_TEST_ID,
+      );
+      act(() => {
+        emitStateChange(oldHandlerTag, {
+          oldState: State.UNDETERMINED,
+          state: State.BEGAN,
+        });
+        emitStateChange(oldHandlerTag, {
+          oldState: State.BEGAN,
+          state: State.ACTIVE,
+        });
+      });
+      expect(usePriceHistoryStore.getState().inspectingKey).not.toBeNull();
+
+      // Pre-seeds the new token's cache so the switch is a hit: no loading
+      // skeleton, so the chart would otherwise stay mounted through the prop
+      // change with nothing forcing the remount under test.
+      act(() => {
+        usePriceHistoryStore.setState((state) => ({
+          historyByNetwork: {
+            ...state.historyByNetwork,
+            [NETWORKS.PUBLIC]: {
+              ...state.historyByNetwork[NETWORKS.PUBLIC],
+              "USDC:GABC": {
+                "1D": { data: makeHistory(), updatedAt: Date.now() },
+              },
+            },
+          },
+        }));
+      });
+
+      // The screen swaps route params in place — same section instance, a
+      // NEW (network, tokenId) scope — while the drag above is still live.
+      act(() => {
+        rerender(
+          <TokenPriceHistorySection
+            tokenId="USDC:GABC"
+            network={NETWORKS.PUBLIC}
+          />,
+        );
+      });
+
+      await waitFor(() => {
+        expect(getByTestId("price-history-chart")).toBeTruthy();
+      });
+
+      // The OLD scope's lock and point are both gone — the remounted
+      // chart's own unmount cleanup ended the drag, not a ref swapped onto
+      // the new scope mid-gesture.
+      expect(usePriceHistoryStore.getState().inspectingKey).toBeNull();
+      expect(usePriceHistoryStore.getState().inspectedPoint).toBeNull();
+
+      // A genuinely new chart instance registered its own handler tag.
+      const { handlerTag: newHandlerTag } = getByGestureTestId(
+        INSPECT_GESTURE_TEST_ID,
+      );
+      expect(newHandlerTag).not.toBe(oldHandlerTag);
+
+      // The crux: RNGH's native Pan is still tracking the SAME finger and
+      // reports its next move on the OLD handler tag — never finalized, so
+      // nothing else would end it. Without the remount that tag is still
+      // registered and its ref-read callbacks now close over the NEW scope,
+      // so this write would land on the token the drag never touched.
+      act(() => {
+        DeviceEventEmitter.emit("onGestureHandlerStateChange", {
+          handlerTag: oldHandlerTag,
+          numberOfPointers: 1,
+          x: 250,
+          y: 0,
+          absoluteX: 250,
+          absoluteY: 0,
+          translationX: 0,
+          translationY: 0,
+          velocityX: 0,
+          velocityY: 0,
+        });
+      });
+
+      expect(usePriceHistoryStore.getState().inspectedPoint).toBeNull();
+      expect(usePriceHistoryStore.getState().inspectingKey).toBeNull();
+    });
+
     it("clears the inspected point when the kill switch flips off mid-drag", async () => {
       // Parity with the extension: the section keeps rendering null (it does
       // NOT unmount) once the flag flips, so only an explicit guard — not the
