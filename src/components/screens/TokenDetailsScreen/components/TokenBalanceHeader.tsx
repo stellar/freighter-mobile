@@ -113,13 +113,19 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
   // honest on a range switch, so it must stay. Otherwise the price is live
   // spot and does NOT vary by timeframe; only the delta beneath it follows
   // the chart's selected range (§7.3).
+  const inspectedHeaderPrice =
+    isPriceHistoryEnabled && inspected && inspected.range === selectedRange
+      ? inspected.point.p
+      : undefined;
+
+  // An active inspection re-points the header even without a spot quote — the
+  // chart is fetched independently of it, so a spot-price failure must not
+  // hide a drawable, inspectable series.
   const renderPriceInfo = () => (
     <View className="gap-1">
       <Display xs medium testID="token-price-header-price">
-        {/* Inspecting describes a chart point, so it uses the chart's precision, as the delta already does. */}
-        {/* Same flag the delta gates on: a kill-switch flip must not leave the price on a duck the section hasn't cleared yet. */}
-        {isPriceHistoryEnabled && inspected && inspected.range === selectedRange
-          ? formatPriceHistoryLabel(inspected.point.p)
+        {inspectedHeaderPrice !== undefined
+          ? formatPriceHistoryLabel(inspectedHeaderPrice)
           : formatFiatAmount(tokenBalance.currentPrice ?? "0")}
       </Display>
       <TokenPriceDelta
@@ -148,7 +154,9 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
         <Text md medium secondary>
           {name}
         </Text>
-        {hasPrice ? renderPriceInfo() : renderBalanceInfo()}
+        {hasPrice || inspectedHeaderPrice !== undefined
+          ? renderPriceInfo()
+          : renderBalanceInfo()}
       </View>
     </View>
   );

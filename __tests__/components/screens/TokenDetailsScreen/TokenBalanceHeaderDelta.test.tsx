@@ -934,5 +934,62 @@ describe("TokenBalanceHeader range delta", () => {
         formatFiatAmount(nativeBalance.currentPrice ?? "0"),
       );
     });
+
+    it("shows the inspected price even when the token has no spot quote", () => {
+      // No section mounted (direct-seed, like the kill-switch test above):
+      // isolates the header's own gate from anything that could clear the
+      // duck. `currentPrice`/`fiatTotal` are absent, as on a spot-price
+      // failure, but a drawable 1D series exists and is being inspected.
+      usePriceHistoryStore.setState({
+        historyByNetwork: {
+          [NETWORKS.PUBLIC]: {
+            native: {
+              "1D": {
+                data: makeHistory({ points: inspectedPoints }),
+                updatedAt: Date.now(),
+              },
+            },
+          },
+        },
+      });
+      act(() => {
+        usePriceHistoryStore.getState().setInspectedPoint({
+          network: NETWORKS.PUBLIC,
+          tokenId: "native",
+          range: "1D",
+          index: 1,
+        });
+      });
+      useBalancesStore.setState({
+        pricedBalances: {
+          native: {
+            ...nativeBalance,
+            currentPrice: undefined,
+            fiatTotal: undefined,
+          } as PricedBalance,
+        },
+      });
+
+      const { getByTestId, queryByTestId } = renderWithProviders(
+        <TokenBalanceHeader
+          tokenId="native"
+          tokenSymbol="XLM"
+          network={NETWORKS.PUBLIC}
+        />,
+      );
+
+      expect(getByTestId("token-price-header-price")).toHaveTextContent(
+        formatPriceHistoryLabel("0.22"),
+      );
+      expect(getByTestId("token-price-delta")).toBeTruthy();
+
+      act(() => {
+        usePriceHistoryStore
+          .getState()
+          .clearInspectedPoint({ network: NETWORKS.PUBLIC, tokenId: "native" });
+      });
+
+      expect(queryByTestId("token-price-header-price")).toBeNull();
+    });
   });
 });
