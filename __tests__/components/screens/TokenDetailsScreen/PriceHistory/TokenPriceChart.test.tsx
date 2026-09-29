@@ -1,9 +1,4 @@
-import {
-  act,
-  fireEvent,
-  renderHook,
-  screen,
-} from "@testing-library/react-native";
+import { act, fireEvent, renderHook } from "@testing-library/react-native";
 import TokenPriceChart, {
   buildChartLinePath,
   axisLabelWidth,
@@ -14,7 +9,6 @@ import TokenPriceChart, {
   PRICE_CHART_LINE_HEIGHT,
   INSPECT_GESTURE_TEST_ID,
   INSPECT_LONG_PRESS_MS,
-  tooltipTop,
 } from "components/screens/TokenDetailsScreen/components/PriceHistory/TokenPriceChart";
 import { TEXT_SIZES } from "components/sds/Typography";
 import { getThemeColors } from "config/colors";
@@ -22,7 +16,7 @@ import { fsValue } from "helpers/dimensions";
 import {
   CHART_MORPH_DURATION_MS,
   computeChartGeometry,
-  formatPriceHistoryLabel,
+  formatInspectedTimestamp,
   interpolateChartCoordinates,
   PriceChangeDirection,
 } from "helpers/priceHistoryChart";
@@ -75,6 +69,7 @@ const renderChart = (direction: PriceChangeDirection) =>
       testID="chart"
       points={points}
       resolutionSeconds={900}
+      range="1D"
       width={300}
       direction={direction}
     />,
@@ -213,6 +208,7 @@ describe("TokenPriceChart timeframe morph", () => {
         testID="chart"
         points={series}
         resolutionSeconds={resolutionSeconds}
+        range="1D"
         width={width}
         direction="positive"
       />,
@@ -236,6 +232,7 @@ describe("TokenPriceChart timeframe morph", () => {
           testID="chart"
           points={series}
           resolutionSeconds={resolutionSeconds}
+          range="1D"
           width={width}
           direction={direction}
         />,
@@ -423,6 +420,7 @@ describe("TokenPriceChart with too few points to plot", () => {
           testID="chart"
           points={[{ t: 1786636800, p: "0.1589" }]}
           resolutionSeconds={900}
+          range="1D"
           width={300}
           direction="positive"
         />,
@@ -524,6 +522,7 @@ describe("axis label placement uses the live text scale", () => {
         testID="chart"
         points={rising}
         resolutionSeconds={900}
+        range="1D"
         width={width}
         direction="positive"
       />,
@@ -569,6 +568,7 @@ describe("axis labels reposition once they have been measured", () => {
         testID="chart"
         points={rising}
         resolutionSeconds={900}
+        range="1D"
         width={width}
         direction="positive"
       />,
@@ -618,6 +618,7 @@ describe("axis label measurements do not outlive their text", () => {
         testID="chart"
         points={rising}
         resolutionSeconds={900}
+        range="1D"
         width={width}
         direction="positive"
       />,
@@ -645,6 +646,7 @@ describe("axis label measurements do not outlive their text", () => {
         testID="chart"
         points={higher}
         resolutionSeconds={900}
+        range="1D"
         width={width}
         direction="positive"
       />,
@@ -688,6 +690,7 @@ describe("axis label measurements survive their own edge cases", () => {
         testID="chart"
         points={series}
         resolutionSeconds={900}
+        range="1D"
         width={WIDTH}
         direction="positive"
       />,
@@ -725,28 +728,8 @@ describe("axis label measurements survive their own edge cases", () => {
   });
 });
 
-describe("tooltipTop", () => {
-  const BAND_TOP = 20;
-
-  it("centres the pill on the dot in the middle of the band", () => {
-    expect(tooltipTop(76, 34, BAND_TOP)).toBe(BAND_TOP + 59);
-  });
-
-  it("clamps flush with the band's top for a dot near the top edge", () => {
-    expect(tooltipTop(5, 34, BAND_TOP)).toBe(BAND_TOP + 0);
-  });
-
-  it("clamps flush with the band's bottom for a dot near the bottom edge", () => {
-    expect(tooltipTop(150, 34, BAND_TOP)).toBe(BAND_TOP + 118);
-  });
-});
-
 describe("drag to inspect", () => {
-  // The tooltip is deliberately hidden from assistive tech, and hidden again
-  // by `opacity: 0` until it has measured itself. RNTL's queries skip
-  // a11y-hidden nodes by default, so every assertion about it — including the
-  // negative ones — has to opt those nodes back in, or it would be asserting
-  // on the filter rather than on the component.
+  // RNTL skips a11y-hidden nodes by default; the timestamp is one.
   const HIDDEN = { includeHiddenElements: true };
   const width = 300;
   // 4 points spanning the width: bucket ends at 900, 1800, 2700, 3600 → x 0, 100, 200, 300
@@ -764,25 +747,12 @@ describe("drag to inspect", () => {
         testID="price-history-chart"
         points={inspectPoints}
         resolutionSeconds={900}
+        range="1D"
         width={width}
         direction="positive"
         {...props}
       />,
     );
-
-  /**
-   * The same geometry the component computes, so the `top` assertions below
-   * check against the inspected point's REAL y rather than a hand-picked one.
-   * Depends on the `Date.now` mock in `beforeEach`, like the component does.
-   */
-  const inspectGeometry = () =>
-    computeChartGeometry({
-      points: inspectPoints,
-      resolutionSeconds: 900,
-      nowSeconds: Math.floor(Date.now() / 1000),
-      width,
-      height: PRICE_CHART_LINE_HEIGHT,
-    })!;
 
   beforeEach(() => {
     jest.spyOn(Date, "now").mockReturnValue(1_000_000 * 1000);
@@ -842,94 +812,127 @@ describe("drag to inspect", () => {
     expect(onInspectEnd).toHaveBeenCalledTimes(1);
   });
 
-  it("draws the guide, the dot and the tooltip at the inspected point and hides the end dot", () => {
-    const { toJSON, getByTestId, queryByTestId } = renderInspectable({
-      inspectedIndex: 1,
+  const timestampFor = (
+    unixSeconds: number,
+    range: React.ComponentProps<typeof TokenPriceChart>["range"] = "1D",
+  ) => {
+    const { date, time } = formatInspectedTimestamp({
+      unixSeconds,
+      range,
+      locale: "en",
     });
+
+    return time ? `${date} at ${time}` : date;
+  };
+
+  it("draws the guide and the dot at the inspected point and hides the end dot", () => {
+    const { toJSON } = renderInspectable({ inspectedIndex: 1 });
     const tree = toJSON() as RenderedTree;
     const circles = findAllRenderedByType(tree, "skCircle");
     // ring + dot at x=100; no end dot at x=300
     expect(circles.map((c) => c.props.cx)).toEqual([100, 100]);
     expect(findAllRenderedByType(tree, "skLine")).toHaveLength(1);
     expect(findAllRenderedByType(tree, "skDashPathEffect")).toHaveLength(1);
-    expect(
-      getByTestId("price-history-inspect-tooltip", HIDDEN),
-    ).toHaveTextContent(formatPriceHistoryLabel("1.10"));
-    expect(
-      queryByTestId("price-history-inspect-tooltip", HIDDEN),
-    ).not.toBeNull();
   });
 
-  it("draws nothing extra and keeps the end dot when not inspecting", () => {
-    const { toJSON, queryByTestId } = renderInspectable({
+  it("shows the point's plotted time in the high-label row instead of the high and low prices", () => {
+    const { fontScale } = renderHook(() => useWindowDimensions()).result
+      .current;
+    const { getByTestId, queryByTestId } = renderInspectable({
+      inspectedIndex: 1,
+    });
+
+    const row = getByTestId("price-history-chart-label-row-high", HIDDEN);
+    const timestamp = getByTestId("price-history-inspect-timestamp", HIDDEN);
+    // Bucket end, not bucket start: point 1 starts at 900 and plots at 1800.
+    expect(timestamp).toHaveTextContent(timestampFor(1800));
+    expect(row).toContainElement(timestamp);
+    expect(queryByTestId("price-history-chart-label-high", HIDDEN)).toBeNull();
+    expect(queryByTestId("price-history-chart-label-low", HIDDEN)).toBeNull();
+    expect(queryByTestId("price-history-inspect-tooltip", HIDDEN)).toBeNull();
+    // The rows keep their height, so nothing below the chart moves.
+    expect(
+      getByTestId("price-history-chart-label-row-low", HIDDEN),
+    ).toHaveStyle({ height: priceChartLabelHeight(fontScale) });
+  });
+
+  it("times the last point at now, where the chart plots it", () => {
+    jest.spyOn(Date, "now").mockReturnValue(3000 * 1000);
+    const { getByTestId } = renderInspectable({ inspectedIndex: 3 });
+
+    expect(
+      getByTestId("price-history-inspect-timestamp", HIDDEN),
+    ).toHaveTextContent(timestampFor(3000));
+  });
+
+  it("dates a 1Y point with its year and no time", () => {
+    const { getByTestId } = renderInspectable({
+      inspectedIndex: 1,
+      range: "1Y",
+    });
+    const text = timestampFor(1800, "1Y");
+
+    expect(text).not.toContain(" at ");
+    expect(
+      getByTestId("price-history-inspect-timestamp", HIDDEN),
+    ).toHaveTextContent(text);
+  });
+
+  it("centres the timestamp on the guide once measured, clamped inside the chart", () => {
+    const { fontScale } = renderHook(() => useWindowDimensions()).result
+      .current;
+    const styleOf = (utils: ReturnType<typeof renderInspectable>) =>
+      StyleSheet.flatten(
+        utils.getByTestId("price-history-inspect-timestamp", HIDDEN).props
+          .style,
+      );
+    const measure = (utils: ReturnType<typeof renderInspectable>) =>
+      fireEvent(
+        utils.getByTestId("price-history-inspect-timestamp", HIDDEN),
+        "layout",
+        { nativeEvent: { layout: { width: 90, height: 16, x: 0, y: 0 } } },
+      );
+
+    const middle = renderInspectable({ inspectedIndex: 1 }); // x = 100
+    expect(styleOf(middle)).toMatchObject({
+      left: clampAxisLabelX(100, width, axisLabelWidth(width, fontScale)),
+      opacity: 0,
+    });
+    measure(middle);
+    expect(styleOf(middle)).toMatchObject({ left: 100 - 45, opacity: 1 });
+    middle.unmount();
+
+    const edge = renderInspectable({ inspectedIndex: 3 }); // x = 300
+    measure(edge);
+    expect(styleOf(edge)).toMatchObject({ left: width - 90, opacity: 1 });
+  });
+
+  it("draws the timestamp in the foreground colour and hides it from assistive tech", () => {
+    const { getByTestId, getByText } = renderInspectable({
+      inspectedIndex: 1,
+    });
+
+    expect(
+      getByTestId("price-history-inspect-timestamp", HIDDEN).props,
+    ).toMatchObject({
+      accessibilityElementsHidden: true,
+      importantForAccessibility: "no-hide-descendants",
+    });
+    expect(getByText(timestampFor(1800), HIDDEN)).toHaveStyle({
+      color: themeColors.foreground.primary,
+    });
+  });
+
+  it("draws nothing extra and keeps the end dot and price labels when not inspecting", () => {
+    const { toJSON, getByTestId, queryByTestId } = renderInspectable({
       inspectedIndex: null,
     });
     const tree = toJSON() as RenderedTree;
     expect(findAllRenderedByType(tree, "skCircle")).toHaveLength(1);
     expect(findAllRenderedByType(tree, "skLine")).toHaveLength(0);
-    expect(queryByTestId("price-history-inspect-tooltip", HIDDEN)).toBeNull();
-  });
-
-  it("places the tooltip left of the guide once measured, and flips right near the left edge", () => {
-    const measure = (el: ReturnType<typeof screen.getByTestId>, w: number) =>
-      fireEvent(el, "layout", {
-        nativeEvent: { layout: { width: w, height: 34 } },
-      });
-    const { fontScale } = renderHook(() => useWindowDimensions()).result
-      .current;
-    const { coords } = inspectGeometry();
-    const bandTop = priceChartLabelHeight(fontScale);
-
-    const right = renderInspectable({ inspectedIndex: 2 }); // x = 200
-    measure(right.getByTestId("price-history-inspect-tooltip", HIDDEN), 60);
-    expect(
-      StyleSheet.flatten(
-        right.getByTestId("price-history-inspect-tooltip", HIDDEN).props.style,
-      ),
-    ).toMatchObject({
-      left: 200 - 8 - 60,
-      top: tooltipTop(coords[2].y, 34, bandTop),
-      opacity: 1,
-    });
-
-    const left = renderInspectable({ inspectedIndex: 0 }); // x = 0
-    measure(left.getByTestId("price-history-inspect-tooltip", HIDDEN), 60);
-    expect(
-      StyleSheet.flatten(
-        left.getByTestId("price-history-inspect-tooltip", HIDDEN).props.style,
-      ),
-    ).toMatchObject({
-      left: 0 + 8,
-      top: tooltipTop(coords[0].y, 34, bandTop),
-      opacity: 1,
-    });
-  });
-
-  it("clamps a wide pill flipped right near the left edge to the chart's right edge", () => {
-    const measure = (el: ReturnType<typeof screen.getByTestId>, w: number) =>
-      fireEvent(el, "layout", {
-        nativeEvent: { layout: { width: w, height: 34 } },
-      });
-
-    // x = 0 flips right (0 - 8 - 295 < 0); an unclamped right placement would
-    // put the pill's right edge at 0 + 8 + 295 = 303, past the 300px chart.
-    const wide = renderInspectable({ inspectedIndex: 0 });
-    measure(wide.getByTestId("price-history-inspect-tooltip", HIDDEN), 295);
-    expect(
-      StyleSheet.flatten(
-        wide.getByTestId("price-history-inspect-tooltip", HIDDEN).props.style,
-      ),
-    ).toMatchObject({ left: width - 295, opacity: 1 });
-  });
-
-  it("is hidden from assistive tech", () => {
-    const { getByTestId } = renderInspectable({ inspectedIndex: 1 });
-    expect(
-      getByTestId("price-history-inspect-tooltip", HIDDEN).props,
-    ).toMatchObject({
-      accessibilityElementsHidden: true,
-      importantForAccessibility: "no-hide-descendants",
-    });
+    expect(queryByTestId("price-history-inspect-timestamp", HIDDEN)).toBeNull();
+    expect(getByTestId("price-history-chart-label-high", HIDDEN)).toBeTruthy();
+    expect(getByTestId("price-history-chart-label-low", HIDDEN)).toBeTruthy();
   });
 
   /**
@@ -1019,6 +1022,7 @@ describe("drag to inspect", () => {
         testID="price-history-chart"
         points={inspectPoints}
         resolutionSeconds={900}
+        range="1D"
         width={width}
         direction="positive"
         onInspectStart={second}
@@ -1060,6 +1064,7 @@ describe("drag to inspect", () => {
         testID="price-history-chart"
         points={shiftedPoints}
         resolutionSeconds={900}
+        range="1D"
         width={width}
         direction="positive"
         onInspectStart={onInspectStart}

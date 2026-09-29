@@ -339,6 +339,7 @@ const TokenPriceHistorySection: React.FC<TokenPriceHistorySectionProps> = ({
           testID="price-history-chart"
           points={points}
           resolutionSeconds={data!.resolutionSeconds}
+          range={data!.range}
           // The chart draws its canvas a dot radius wider than the plot. This
           // is a SectionList header, and an iOS ScrollView clips to its
           // bounds, so that room comes out of the measured width instead of

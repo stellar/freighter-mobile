@@ -100,6 +100,41 @@ export const getPlottedRangeStart = (input: {
     ? getPlottedRangeEnd(input)
     : input.points[0].t + input.resolutionSeconds;
 
+const INSPECT_TIME_RANGES: PriceHistoryRange[] = ["1H", "1D"];
+const INSPECT_YEAR_RANGES: PriceHistoryRange[] = ["1Y", "ALL"];
+
+/** The inspected point's timestamp label parts; the caller joins them through i18n. */
+export const formatInspectedTimestamp = ({
+  unixSeconds,
+  range,
+  locale,
+}: {
+  unixSeconds: number;
+  range: PriceHistoryRange;
+  locale: string;
+}): { date: string; time?: string } => {
+  const instant = new Date(unixSeconds * 1000);
+  const date = new Intl.DateTimeFormat(locale, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    ...(INSPECT_YEAR_RANGES.includes(range) && { year: "numeric" }),
+  }).format(instant);
+
+  if (!INSPECT_TIME_RANGES.includes(range)) {
+    return { date };
+  }
+
+  const time = new Intl.DateTimeFormat(locale, {
+    hour: "numeric",
+    minute: "2-digit",
+  })
+    .format(instant)
+    .toLowerCase();
+
+  return { date, time };
+};
+
 /**
  * Index of the plotted x nearest to `x` — the drag-to-inspect SNAP (Phase 3).
  *

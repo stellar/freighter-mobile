@@ -6,6 +6,7 @@ import {
   CHART_VERTICAL_PADDING,
   easeOutCubic,
   EXPECTED_POINTS_BY_RANGE,
+  formatInspectedTimestamp,
   formatPriceHistoryDelta,
   formatPriceHistoryLabel,
   formatPriceHistoryRangeDelta,
@@ -728,5 +729,59 @@ describe("interpolateChartCoordinates", () => {
     // The settled chart is byte-identical to what a hard switch would draw:
     // §7.0 ("exactly the points array") governs the settled state.
     expect(settled).toEqual(daily!.coords);
+  });
+});
+
+describe("formatInspectedTimestamp", () => {
+  // Built in local time, so the device-zone formatting reads back 4:03.
+  const unixSeconds = new Date(2026, 8, 21, 4, 3).getTime() / 1000;
+
+  it("gives an intraday point a weekday date and a lower-case time", () => {
+    const { date, time } = formatInspectedTimestamp({
+      unixSeconds,
+      range: "1D",
+      locale: "en",
+    });
+
+    expect(date).toBe("Mon, Sep 21");
+    expect(time).toMatch(/^4:03\sam$/u);
+  });
+
+  it("times a 1H point too", () => {
+    expect(
+      formatInspectedTimestamp({ unixSeconds, range: "1H", locale: "en" }).time,
+    ).toMatch(/^4:03\sam$/u);
+  });
+
+  it("dates a 1W point without a time or a year", () => {
+    expect(
+      formatInspectedTimestamp({ unixSeconds, range: "1W", locale: "en" }),
+    ).toEqual({ date: "Mon, Sep 21" });
+  });
+
+  it.each(["1Y", "ALL"] as const)(
+    "adds the year and drops the time on %s",
+    (range) => {
+      expect(
+        formatInspectedTimestamp({ unixSeconds, range, locale: "en" }),
+      ).toEqual({ date: "Mon, Sep 21, 2026" });
+    },
+  );
+
+  it("formats in the given locale", () => {
+    const { date } = formatInspectedTimestamp({
+      unixSeconds,
+      range: "1W",
+      locale: "pt",
+    });
+
+    expect(date).toBe(
+      new Intl.DateTimeFormat("pt", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+      }).format(new Date(unixSeconds * 1000)),
+    );
+    expect(date).not.toBe("Mon, Sep 21");
   });
 });

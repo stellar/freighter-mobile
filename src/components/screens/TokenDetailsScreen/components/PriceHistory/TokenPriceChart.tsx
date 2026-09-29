@@ -8,18 +8,22 @@ import {
   vec,
 } from "@shopify/react-native-skia";
 import { Text, TEXT_SIZES } from "components/sds/Typography";
-import { PriceHistoryPoint } from "config/types";
+import { PriceHistoryPoint, PriceHistoryRange } from "config/types";
 import { fsValue, pxValue } from "helpers/dimensions";
+import { getDeviceLanguage } from "helpers/localeUtils";
 import {
   ChartCoordinate,
   CHART_MORPH_DURATION_MS,
   computeChartGeometry,
+  formatInspectedTimestamp,
   formatPriceHistoryLabel,
+  getPlottedRangeEnd,
   getPriceChangeColor,
   interpolateChartCoordinates,
   nearestCoordinateIndex,
   PriceChangeDirection,
 } from "helpers/priceHistoryChart";
+import useAppTranslation from "hooks/useAppTranslation";
 import useColors from "hooks/useColors";
 import useIsReduceMotionEnabled from "hooks/useIsReduceMotionEnabled";
 import React, {
@@ -93,8 +97,6 @@ export const INSPECT_LONG_PRESS_MS = 200;
 /** 8px dot per the design; a 2px background ring separates it from the line. */
 export const INSPECT_DOT_RADIUS = 4;
 export const INSPECT_DOT_RING_WIDTH = 2;
-/** Gap between the tooltip's tip and the guide, per the design. */
-export const INSPECT_TOOLTIP_GAP = 8;
 export const INSPECT_GESTURE_TEST_ID = "price-history-chart-inspect";
 
 /**
@@ -172,6 +174,8 @@ export const buildChartFillPath = (coords: ChartCoordinate[]): string => {
   return `${buildChartLinePath(coords)} L${last.x.toFixed(2)} ${PRICE_CHART_LINE_HEIGHT} L${first.x.toFixed(2)} ${PRICE_CHART_LINE_HEIGHT} Z`;
 };
 
+type LabelKey = "high" | "low" | "timestamp";
+
 interface TokenPriceChartProps {
   /** The wire series — rendered exactly, no fabricated points */
   points: PriceHistoryPoint[];
@@ -181,6 +185,8 @@ interface TokenPriceChartProps {
   width: number;
   /** Colours the whole artwork, from the same source as the header delta. */
   direction: PriceChangeDirection;
+  /** Decides how much of the inspected point's timestamp to print. */
+  range: PriceHistoryRange;
   /** Index into `points` under the finger, or null when not inspecting. */
   inspectedIndex?: number | null;
   onInspectStart?: (index: number) => void;
@@ -195,78 +201,6 @@ interface TokenPriceChartProps {
   onInspectEnd?: () => void;
   testID?: string;
 }
-
-/** Which side of the guide the pill sits on: left unless it would overhang x=0. */
-export const tooltipPlacement = (
-  x: number,
-  tooltipWidth: number | undefined,
-): "left" | "right" =>
-  tooltipWidth !== undefined && x - INSPECT_TOOLTIP_GAP - tooltipWidth < 0
-    ? "right"
-    : "left";
-
-/**
- * `left` for the tooltip pill, clamped so it never overhangs either edge of
- * the chart: a point near the right edge flips left-of-guide (see
- * `tooltipPlacement`) but the pill itself can still be wider than the
- * remaining room, so the clamp is a second, independent guard against the
- * chart's own `width`, not a placement decision.
- */
-export const tooltipLeft = (
-  x: number,
-  tooltipWidth: number | undefined,
-  width: number,
-) => {
-  const left =
-    tooltipPlacement(x, tooltipWidth) === "left"
-      ? x - INSPECT_TOOLTIP_GAP - (tooltipWidth ?? 0)
-      : x + INSPECT_TOOLTIP_GAP;
-
-  return Math.max(0, Math.min(left, width - (tooltipWidth ?? 0)));
-};
-
-/**
- * `top` for the tooltip pill, centred on the inspected dot's y so the pill's
- * tip points at the dot — the Figma's own placement, not the plot band's top.
- *
- * Clamped to `[bandTop, bandTop + PRICE_CHART_LINE_HEIGHT - h]` so the pill
- * stays inside the plot band and never overlaps the label rows above or below
- * it. At either edge of the band that clamp holds the pill flush with the
- * edge rather than centred on the dot — the Figma's own behaviour for a dot
- * near the top or bottom of the line, where a truly centred pill would
- * overhang into a label row.
- *
- * `tooltipHeight` is undefined until the pill has measured itself (same model
- * as `tooltipWidth`); an unmeasured pill is drawn at `bandTop` with `h = 0`
- * and is hidden by the caller's opacity anyway.
- */
-export const tooltipTop = (
-  y: number,
-  tooltipHeight: number | undefined,
-  bandTop: number,
-): number => {
-  const h = tooltipHeight ?? 0;
-
-  return (
-    bandTop + Math.min(Math.max(y - h / 2, 0), PRICE_CHART_LINE_HEIGHT - h)
-  );
-};
-
-/** The pill's 8px tip: a rotated square tucked 4px under the pill's edge. */
-const Tip: React.FC<{ color: string; side: "left" | "right" }> = ({
-  color,
-  side,
-}) => (
-  <View
-    style={{
-      width: 8,
-      height: 8,
-      backgroundColor: color,
-      transform: [{ rotate: "45deg" }],
-      ...(side === "right" ? { marginLeft: -4 } : { marginRight: -4 }),
-    }}
-  />
-);
 
 /**
  * Skia polyline with drag-to-inspect. Geometry comes from {@link computeChartGeometry}: exactly
@@ -292,6 +226,7 @@ const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
   resolutionSeconds,
   width,
   direction,
+  range,
   inspectedIndex,
   onInspectStart,
   onInspectMove,
@@ -299,19 +234,24 @@ const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
   testID,
 }) => {
   const { themeColors } = useColors();
+  const { t } = useAppTranslation();
   const { fontScale } = useWindowDimensions();
 
-  const geometry = useMemo(
-    () =>
-      computeChartGeometry({
+  // One `now` for the geometry and the inspected timestamp, so the label names the time the dot is plotted at.
+  const { geometry, nowSeconds } = useMemo(() => {
+    const now = Math.floor(Date.now() / 1000);
+
+    return {
+      geometry: computeChartGeometry({
         points,
         resolutionSeconds,
-        nowSeconds: Math.floor(Date.now() / 1000),
+        nowSeconds: now,
         width,
         height: PRICE_CHART_LINE_HEIGHT,
       }),
-    [points, resolutionSeconds, width],
-  );
+      nowSeconds: now,
+    };
+  }, [points, resolutionSeconds, width]);
 
   const coords = useMemo(() => geometry?.coords ?? [], [geometry]);
 
@@ -319,10 +259,6 @@ const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
   const inspectedCoord =
     inspectedIndex !== null && inspectedIndex !== undefined
       ? coords[inspectedIndex]
-      : undefined;
-  const inspectedPoint =
-    inspectedIndex !== null && inspectedIndex !== undefined
-      ? points[inspectedIndex]
       : undefined;
 
   /**
@@ -413,25 +349,6 @@ const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
     },
     [],
   );
-
-  // Tooltip placement needs the pill's measured size; hidden until it lands
-  // (same model as the axis labels). Width drives the horizontal placement
-  // (`tooltipLeft`/`tooltipPlacement`); height drives centring it on the
-  // inspected dot (`tooltipTop`).
-  const [tooltipSize, setTooltipSize] = useState<
-    { width: number; height: number } | undefined
-  >();
-  const tooltipWidth = tooltipSize?.width;
-  const measureTooltip = (event: LayoutChangeEvent) => {
-    const { width: measuredWidth, height: measuredHeight } =
-      event.nativeEvent.layout;
-
-    setTooltipSize((current) =>
-      current?.width === measuredWidth && current?.height === measuredHeight
-        ? current
-        : { width: measuredWidth, height: measuredHeight },
-    );
-  };
 
   // Reduced motion is honoured by not animating at all: the hard switch is
   // the correct behaviour in its own right, not a degraded one.
@@ -568,7 +485,7 @@ const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
    * the label is then drawn, visibly, at a width it no longer has.
    */
   const [labelWidths, setLabelWidths] = useState<
-    Partial<Record<"high" | "low", { tag: string; width: number }>>
+    Partial<Record<LabelKey, { tag: string; width: number }>>
   >({});
 
   if (!geometry || width <= 0) {
@@ -579,14 +496,32 @@ const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
   // gradient fill (that colour at 30% fading to transparent) all follow the
   // direction, the way the design draws a losing range entirely in red.
   const lineColor = getPriceChangeColor(direction, themeColors);
-  const placement = inspectedCoord
-    ? tooltipPlacement(inspectedCoord.x, tooltipWidth)
-    : "left";
+  const inspectedTimestamp = (() => {
+    if (
+      !inspectedCoord ||
+      inspectedIndex === null ||
+      inspectedIndex === undefined
+    ) {
+      return undefined;
+    }
+
+    const plottedSeconds =
+      inspectedIndex === points.length - 1
+        ? getPlottedRangeEnd({ points, resolutionSeconds, nowSeconds })
+        : points[inspectedIndex].t + resolutionSeconds;
+    const { date, time } = formatInspectedTimestamp({
+      unixSeconds: plottedSeconds,
+      range,
+      locale: getDeviceLanguage(),
+    });
+
+    return time ? t("priceHistory.inspectedAt", { date, time }) : date;
+  })();
   /** What a stored measurement has to still describe to be usable. */
   const labelTag = (label: string) => `${label}|${fontScale}`;
 
   const measureLabel =
-    (key: "high" | "low", label: string) => (event: LayoutChangeEvent) => {
+    (key: LabelKey, label: string) => (event: LayoutChangeEvent) => {
       const measured = event.nativeEvent.layout.width;
       const tag = labelTag(label);
 
@@ -597,7 +532,7 @@ const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
       );
     };
 
-  const labelStyle = (key: "high" | "low", x: number, label: string) => {
+  const labelStyle = (key: LabelKey, x: number, label: string) => {
     const entry = labelWidths[key];
     const measured = entry?.tag === labelTag(label) ? entry.width : undefined;
 
@@ -622,32 +557,57 @@ const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
         testID="price-history-chart-label-row-high"
         style={{ height: priceChartLabelHeight(fontScale) }}
       >
-        <Text
-          // Remounts when the price changes, which GUARANTEES a layout event.
-          // React Native only emits `onLayout` when a node's metrics actually
-          // change, and a new price can land on byte-identical metrics — a
-          // digit anagram measures the same, and the clamped offset collides
-          // on a whole line of solutions. Without the remount the tag would
-          // stay stale with no event coming, and the label would sit hidden
-          // for the rest of the range.
-          key={formatPriceHistoryLabel(geometry.maxPrice)}
-          testID="price-history-chart-label-high"
-          numberOfLines={1}
-          sm
-          medium
-          secondary
-          onLayout={measureLabel(
-            "high",
-            formatPriceHistoryLabel(geometry.maxPrice),
-          )}
-          style={labelStyle(
-            "high",
-            geometry.maxCoord.x,
-            formatPriceHistoryLabel(geometry.maxPrice),
-          )}
-        >
-          {formatPriceHistoryLabel(geometry.maxPrice)}
-        </Text>
+        {inspectedCoord && inspectedTimestamp ? (
+          <View
+            key={inspectedTimestamp}
+            testID="price-history-inspect-timestamp"
+            pointerEvents="none"
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            onLayout={measureLabel("timestamp", inspectedTimestamp)}
+            style={labelStyle(
+              "timestamp",
+              inspectedCoord.x,
+              inspectedTimestamp,
+            )}
+          >
+            <Text
+              numberOfLines={1}
+              xs
+              medium
+              color={themeColors.foreground.primary}
+            >
+              {inspectedTimestamp}
+            </Text>
+          </View>
+        ) : (
+          <Text
+            // Remounts when the price changes, which GUARANTEES a layout event.
+            // React Native only emits `onLayout` when a node's metrics actually
+            // change, and a new price can land on byte-identical metrics — a
+            // digit anagram measures the same, and the clamped offset collides
+            // on a whole line of solutions. Without the remount the tag would
+            // stay stale with no event coming, and the label would sit hidden
+            // for the rest of the range.
+            key={formatPriceHistoryLabel(geometry.maxPrice)}
+            testID="price-history-chart-label-high"
+            numberOfLines={1}
+            sm
+            medium
+            secondary
+            onLayout={measureLabel(
+              "high",
+              formatPriceHistoryLabel(geometry.maxPrice),
+            )}
+            style={labelStyle(
+              "high",
+              geometry.maxCoord.x,
+              formatPriceHistoryLabel(geometry.maxPrice),
+            )}
+          >
+            {formatPriceHistoryLabel(geometry.maxPrice)}
+          </Text>
+        )}
       </View>
       {/* Skia's Path `style` is its paint style ("fill"/"stroke"), not an RN style object */}
       {/* eslint-disable react/style-prop-object */}
@@ -717,72 +677,35 @@ const TokenPriceChart: React.FC<TokenPriceChartProps> = ({
         testID="price-history-chart-label-row-low"
         style={{ height: priceChartLabelHeight(fontScale) }}
       >
-        <Text
-          // Remounts when the price changes, which GUARANTEES a layout event.
-          // React Native only emits `onLayout` when a node's metrics actually
-          // change, and a new price can land on byte-identical metrics — a
-          // digit anagram measures the same, and the clamped offset collides
-          // on a whole line of solutions. Without the remount the tag would
-          // stay stale with no event coming, and the label would sit hidden
-          // for the rest of the range.
-          key={formatPriceHistoryLabel(geometry.minPrice)}
-          testID="price-history-chart-label-low"
-          numberOfLines={1}
-          sm
-          medium
-          secondary
-          onLayout={measureLabel(
-            "low",
-            formatPriceHistoryLabel(geometry.minPrice),
-          )}
-          style={labelStyle(
-            "low",
-            geometry.minCoord.x,
-            formatPriceHistoryLabel(geometry.minPrice),
-          )}
-        >
-          {formatPriceHistoryLabel(geometry.minPrice)}
-        </Text>
-      </View>
-      {inspectedCoord && inspectedPoint ? (
-        <View
-          testID="price-history-inspect-tooltip"
-          pointerEvents="none"
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-          onLayout={measureTooltip}
-          style={{
-            position: "absolute",
-            top: tooltipTop(
-              inspectedCoord.y,
-              tooltipSize?.height,
-              priceChartLabelHeight(fontScale),
-            ),
-            left: tooltipLeft(inspectedCoord.x, tooltipWidth, width),
-            // Only the FIRST inspection is hidden this way: `tooltipSize`
-            // persists once measured, so every later inspection draws at full
-            // opacity with the previous pill's size for one frame.
-            opacity: tooltipWidth === undefined ? 0 : 1,
-            flexDirection: "row",
-            alignItems: "center",
-          }}
-        >
-          {placement === "right" ? (
-            <Tip color={themeColors.text.primary} side="left" />
-          ) : null}
-          <View
-            className="rounded-lg px-3 py-2"
-            style={{ backgroundColor: themeColors.text.primary }}
+        {inspectedCoord ? null : (
+          <Text
+            // Remounts when the price changes, which GUARANTEES a layout event.
+            // React Native only emits `onLayout` when a node's metrics actually
+            // change, and a new price can land on byte-identical metrics — a
+            // digit anagram measures the same, and the clamped offset collides
+            // on a whole line of solutions. Without the remount the tag would
+            // stay stale with no event coming, and the label would sit hidden
+            // for the rest of the range.
+            key={formatPriceHistoryLabel(geometry.minPrice)}
+            testID="price-history-chart-label-low"
+            numberOfLines={1}
+            sm
+            medium
+            secondary
+            onLayout={measureLabel(
+              "low",
+              formatPriceHistoryLabel(geometry.minPrice),
+            )}
+            style={labelStyle(
+              "low",
+              geometry.minCoord.x,
+              formatPriceHistoryLabel(geometry.minPrice),
+            )}
           >
-            <Text xs semiBold color={themeColors.background.primary}>
-              {formatPriceHistoryLabel(inspectedPoint.p)}
-            </Text>
-          </View>
-          {placement === "left" ? (
-            <Tip color={themeColors.text.primary} side="right" />
-          ) : null}
-        </View>
-      ) : null}
+            {formatPriceHistoryLabel(geometry.minPrice)}
+          </Text>
+        )}
+      </View>
     </View>
   );
 };
