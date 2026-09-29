@@ -11,7 +11,6 @@ import {
 } from "ducks/priceHistory";
 import { isNativeAssetId } from "helpers/assetIdentity";
 import { formatBalanceAmount, formatFiatAmount } from "helpers/formatAmount";
-import { formatPriceHistoryLabel } from "helpers/priceHistoryChart";
 import { isContractId } from "helpers/soroban";
 import { truncateAddress } from "helpers/stellar";
 import useAppTranslation from "hooks/useAppTranslation";
@@ -124,9 +123,9 @@ const TokenBalanceHeader: React.FC<TokenBalanceHeaderProps> = ({
   const renderPriceInfo = () => (
     <View className="gap-1">
       <Display xs medium testID="token-price-header-price">
-        {inspectedHeaderPrice !== undefined
-          ? formatPriceHistoryLabel(inspectedHeaderPrice)
-          : formatFiatAmount(tokenBalance.currentPrice ?? "0")}
+        {formatFiatAmount(
+          inspectedHeaderPrice ?? tokenBalance.currentPrice ?? "0",
+        )}
       </Display>
       <TokenPriceDelta
         tokenId={tokenId}
