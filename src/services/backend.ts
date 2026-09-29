@@ -750,15 +750,6 @@ export interface FetchTokenPriceHistoryParams {
 }
 
 /**
- * The endpoint keys the native asset as "native", so anything resolving to it
- * is translated here; other identifiers pass through and are echoed back.
- *
- * No data is a 200 with `points: []` and `change: null`, never an error; only
- * transport failures reject, and callers own the reporting.
- *
- * @returns the price-history payload (string prices; parse with BigNumber)
- */
-/**
  * A decimal string the chart can do arithmetic on — not merely non-empty.
  * `Number("  ")` is 0, so a whitespace-only price would otherwise pass here
  * and surface downstream as NaN prices and NaN chart coordinates.
@@ -946,6 +937,15 @@ const assertTokenStats = (data: TokenStats) => {
   }
 };
 
+/**
+ * The endpoint keys the native asset as "native", so anything resolving to it
+ * is translated here; other identifiers pass through and are echoed back.
+ *
+ * No data is a 200 with `points: []` and `change: null`, never an error; only
+ * transport failures reject, and callers own the reporting.
+ *
+ * @returns the price-history payload (string prices; parse with BigNumber)
+ */
 export const fetchTokenPriceHistory = async ({
   tokenId,
   network,

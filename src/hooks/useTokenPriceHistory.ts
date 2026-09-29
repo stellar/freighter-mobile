@@ -7,6 +7,8 @@ import {
 } from "config/types";
 import {
   DEFAULT_PRICE_HISTORY_RANGE,
+  getPriceHistoryKey,
+  IDLE_PRICE_HISTORY_STATUS,
   usePriceHistoryEntry,
   usePriceHistoryStatus,
   usePriceHistoryStore,
@@ -266,12 +268,22 @@ const useTokenPriceHistory = ({
       // five requests for a screen the user has left.
       if (!stillCurrent) return;
 
+      // A failed load must not fan out: one outage would become six requests,
+      // up to 75s of further timeouts for a chart the user already saw fail.
+      // `doFetch` cannot tell a failure from a cache hit (both resolve null),
+      // so the status the duck stored for this key is what says which it was.
+      const { error: loadError } =
+        usePriceHistoryStore.getState().historyStatusByKey[
+          getPriceHistoryKey(network, tokenId, loadRange)
+        ] ?? IDLE_PRICE_HISTORY_STATUS;
+      if (loadError) return;
+
       if (hasWarmedRef.current) return;
       hasWarmedRef.current = true;
 
       await warmOtherRanges(loadRange);
     },
-    [doFetch, warmOtherRanges],
+    [doFetch, warmOtherRanges, network, tokenId],
   );
 
   /**

@@ -404,6 +404,20 @@ describe("useTokenPriceHistory", () => {
       expect(requestedRanges()).toEqual(["1D", "1H"]);
     });
 
+    it("does not warm when the selected range's own load failed", async () => {
+      // One outage must stay one request. With a 15s client timeout, warming
+      // the other five after a failed load is up to 75s of further timeouts
+      // for a chart the user already saw fail.
+      renderChart();
+      await flush();
+
+      await fail("1D");
+      jest.advanceTimersByTime(PRICE_HISTORY_RANGE_DEBOUNCE_MS * 4);
+      await flush();
+
+      expect(requestedRanges()).toEqual(["1D"]);
+    });
+
     it("warms the remaining five one at a time, in selector order", async () => {
       renderChart();
       await flush();
