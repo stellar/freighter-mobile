@@ -35,6 +35,7 @@ Domain terms you will encounter throughout this codebase:
 - [WalletConnect E2E](./e2e/docs/walletconnect-e2e-testing.md)
 - [Mock dApp for Testing](./mock-dapp/README.md)
 - [Getting Started](./README.md)
+- [Development Guide](./DEVELOPMENT.md)
 - [Contributing](./CONTRIBUTING.md)
 
 ## Quick Reference
