@@ -12,6 +12,8 @@
 
 ### Checklist
 
+- [ ] I have read [CONTRIBUTING.md](https://github.com/stellar/freighter-mobile/blob/main/CONTRIBUTING.md) and this PR meets its requirements.
+
 #### PR structure
 
 - [ ] This PR does not mix refactoring changes with feature changes (break it down into smaller PRs if not).
