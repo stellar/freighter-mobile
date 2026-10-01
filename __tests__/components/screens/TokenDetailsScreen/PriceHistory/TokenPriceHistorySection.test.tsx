@@ -653,7 +653,14 @@ describe("TokenPriceHistorySection", () => {
       await waitFor(() => {
         expect(getByTestId("price-history-notice-lowVolume")).toBeTruthy();
       });
-      const tree = JSON.stringify(toJSON());
+      const tree = JSON.stringify(
+        toJSON(),
+        // Skia's vec()/rect() stash a live reference to the whole (circular)
+        // CanvasKit module on every point/rect node now that global.CanvasKit
+        // is wired up for all suites; drop it so this ordering check doesn't
+        // choke serializing it.
+        (key, value) => (key === "CanvasKit" ? undefined : value),
+      );
       const chartAt = tree.indexOf('"testID":"price-history-chart"');
       const selectorAt = tree.indexOf('"testID":"timeframe-selector"');
       const noticeAt = tree.indexOf(

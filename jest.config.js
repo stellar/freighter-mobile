@@ -4,6 +4,9 @@ const getSrcDirs = require("./config/getSrcDirs");
 module.exports = {
   preset: "react-native",
   testTimeout: 30000, // 30 seconds timeout for all tests
+  // Global so every suite can render a Skia-backed component (e.g. Shimmer)
+  // without an opt-in per test file; see jest/skiaTestEnvironment.js.
+  testEnvironment: "<rootDir>/jest/skiaTestEnvironment.js",
   setupFiles: ["./jest.setup.js", "@shopify/react-native-skia/jestSetup.js"],
   moduleNameMapper: {
     ...getSrcDirs(__dirname, "jest"),
